@@ -4,9 +4,17 @@
   "version": "1.6",
   "description": "Hỗ trợ người dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
-  "permissions": ["activeTab", "storage", "unlimitedStorage", "scripting"],
+  "permissions": [
+    "activeTab",
+    "storage",
+    "unlimitedStorage",
+    "scripting"
+  ],
   "host_permissions": [
-    "https://trolyhoso-hcc-admin.vnekyc.vn/*"
+    "https://trolyhoso-hcc-admin.vnekyc.vn/*",
+    "http://192.168.1.172:12005/*",
+    "http://10.1.10.21:12005/*",
+    "http://localhost:12005/*"
   ],
   "icons": {
     "16": "assets/icons/hcc-16.png",
@@ -44,14 +52,33 @@
         "https://dichvucong.bvhttdl.gov.vn/*"
       ],
       "all_frames": true,
-      "js": ["content/bbox-overlay.js", "content.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/review.js"],
-      "css": ["content/bbox-overlay.css"],
+      "js": [
+        "content/bbox-overlay.js",
+        "content.js",
+        "content/fill-angular.js",
+        "content/fill-liz.js",
+        "content/fill-legacy.js",
+        "content/fill-bacninh.js",
+        "content/procedures/business-registration.js",
+        "content/review.js"
+      ],
+      "css": [
+        "content/bbox-overlay.css"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["popup.html", "popup.css", "popup.js", "api/*", "lib/*", "vendor/*", "assets/icons/*"],
+      "resources": [
+        "popup.html",
+        "popup.css",
+        "popup.js",
+        "api/*",
+        "lib/*",
+        "vendor/*",
+        "assets/icons/*"
+      ],
       "matches": [
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",

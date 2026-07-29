@@ -516,14 +516,15 @@
     const ENGINE_KEY = { angular: "fillFormAngular", liz: "fillFormLiz", bacninh: "fillFormBacNinh", legacy: "fillForm" };
 
     // LUÔN trả response (kể cả khi engine ném lỗi) → tránh popup retry/re-inject gây điền lặp.
+    const _sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const runFill = async () => {
       let filler = resolveFiller();
-      // Nếu engine chưa nạp (fill-angular.js... chạy song song, chưa gán H.fillForm*) → chờ tối đa 1.2s.
+      // Nếu engine chưa nạp (fill-angular.js... chạy song song, chưa gán H.fillForm*) → chờ tối đa 2s.
       if (typeof filler !== "function") {
         const key = ENGINE_KEY[formKind];
         if (key) {
-          for (let i = 0; i < 12; i++) {
-            await sleep(100);
+          for (let i = 0; i < 20; i++) {
+            await _sleep(100);
             filler = resolveFiller();
             if (typeof filler === "function") break;
           }
@@ -2475,10 +2476,14 @@
     loaiDangKy: ["LoaiDangKy"],
     SoGiayToDinhDanhC1: ["SoGiayToTuyThanC1", "SoDinhDanhC1"],
     SoGiayToTuyThanC1: ["SoGiayToDinhDanhC1", "SoDinhDanhC1"],
-    // Dân tộc: form liên thông khai sinh có thể dùng các tên formcontrolname khác nhau
-    MaDanToc: ["maDanToc", "danToc", "DanToc", "danTocId", "MaDanTocId", "maDanTocId"],
-    MeMaDanToc: ["meMaDanToc", "meDanToc", "MeDanToc", "meManToc"],
-    ChaMaDanToc: ["chaMaDanToc", "chaDanToc", "ChaDanToc", "chaMaDanTocId"],
+    // Dân tộc: form Angular liên thông dùng nhiều tên khác nhau tuỳ phiên bản
+    MaDanToc: ["maDanToc", "danToc", "DanToc", "dantoc"],
+    MeMaDanToc: ["meMaDanToc", "meDanToc", "MeDanToc"],
+    ChaMaDanToc: ["chaMaDanToc", "chaDanToc", "ChaDanToc"],
+    DanTocC1: ["danTocC1", "maDanTocC1", "MaDanTocC1"],
+    // ĐKTT — formcontrolname thực tế trên form liên thông khác với tên BE gửi
+    DkttIsTtBo: ["defaultThongTinChaDsChaMeGiamHo", "dkttIsTtBo", "isTtBo"],
+    DkttIsTtMe: ["dkttIsTtMe", "isTtMe"],
   };
 
   function fieldCandidates(f) {

@@ -3,6 +3,8 @@
 import re
 import unicodedata
 
+from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.hospital_lookup import lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
 
 
@@ -129,143 +131,6 @@ def _norm_tinh(value):
     return _TINH_RENAME.get(_fold(value), value)
 
 
-# Bảng chuẩn hóa dân tộc: folded OCR variant → tên chính xác trong danh mục.
-# Bao phủ lỗi OCR phổ biến, biến thể viết hoa/dấu, và các tên đồng nghĩa.
-_DAN_TOC_MAP: dict[str, str] = {
-    # Kinh
-    "kinh": "Kinh",
-    "kinhh": "Kinh",
-    "kinnh": "Kinh",
-    # Tày
-    "tay": "Tày",
-    "tay trang": "Tày",
-    # Thái
-    "thai": "Thái",
-    "thai den": "Thái",
-    "thai trang": "Thái",
-    # Mường
-    "muong": "Mường",
-    # Khmer
-    "khmer": "Khmer",
-    "kho me": "Khmer",
-    "khome": "Khmer",
-    # Mông (H'Mông, Hmông, H Mông...)
-    "mong": "Mông",
-    "hmong": "Mông",
-    "h mong": "Mông",
-    "h'mong": "Mông",
-    "hmong": "Mông",
-    # Nùng
-    "nung": "Nùng",
-    # Hoa (người Hoa)
-    "hoa": "Hoa",
-    # Dao
-    "dao": "Dao",
-    "yao": "Dao",
-    # Giarai (Gia Rai)
-    "gia rai": "Gia Rai",
-    "giarai": "Gia Rai",
-    # Ê Đê
-    "e de": "Ê Đê",
-    "ede": "Ê Đê",
-    "e đe": "Ê Đê",
-    # Ba Na
-    "ba na": "Ba Na",
-    "bana": "Ba Na",
-    # Sán Chay
-    "san chay": "Sán Chay",
-    "cao lan": "Sán Chay",
-    "sán chay": "Sán Chay",
-    # Sán Dìu
-    "san diu": "Sán Dìu",
-    "san dìu": "Sán Dìu",
-    # Chăm (Cham)
-    "cham": "Chăm",
-    "chăm": "Chăm",
-    "cham": "Chăm",
-    # Cờ Ho
-    "co ho": "Cờ Ho",
-    "k ho": "Cờ Ho",
-    "c ho": "Cờ Ho",
-    "kho": "Cờ Ho",
-    # Xơ Đăng
-    "xo dang": "Xơ Đăng",
-    "sedang": "Xơ Đăng",
-    # Hmông (alias đã có ở trên qua _fold)
-    # Giáy
-    "giay": "Giáy",
-    "giáy": "Giáy",
-    "zay": "Giáy",
-    "záy": "Giáy",
-    "giao": "Giáy",
-    # Lào
-    "lao": "Lào",
-    # Lự
-    "lu": "Lự",
-    "lự": "Lự",
-    # Hà Nhì
-    "ha nhi": "Hà Nhì",
-    # La Hủ
-    "la hu": "La Hủ",
-    # Si La
-    "si la": "Si La",
-    "sila": "Si La",
-    # Khơ Mú
-    "kho mu": "Khơ Mú",
-    "khơ mu": "Khơ Mú",
-    "khmu": "Khơ Mú",
-    # Mảng
-    "mang": "Mảng",
-    # Cống
-    "cong": "Cống",
-    # Phù Lá
-    "phu la": "Phù Lá",
-    # Lô Lô
-    "lo lo": "Lô Lô",
-    # Chứt
-    "chut": "Chứt",
-    # Mảng / Kháng / Xinh Mun / ...
-    "khang": "Kháng",
-    "xinh mun": "Xinh Mun",
-    "xinhmun": "Xinh Mun",
-    # Mnông
-    "mnong": "Mnông",
-    "m nong": "Mnông",
-    # Co (Cor)
-    "co": "Co",
-    # Tà Ôi
-    "ta oi": "Tà Ôi",
-    "pahy": "Tà Ôi",
-    # Mạ
-    "ma": "Mạ",
-    # Giẻ Triêng
-    "gie trieng": "Giẻ Triêng",
-    # Raglai
-    "raglai": "Raglai",
-    "ra glai": "Raglai",
-    # Bru - Vân Kiều
-    "bru van kieu": "Bru - Vân Kiều",
-    "van kieu": "Bru - Vân Kiều",
-    # Ơ Đu
-    "o du": "Ơ Đu",
-    # Rơ Măm
-    "ro mam": "Rơ Măm",
-    # Brâu
-    "brau": "Brâu",
-}
-
-
-def _norm_dan_toc(value) -> str:
-    """Chuẩn hóa tên dân tộc về đúng danh mục (sửa lỗi OCR, biến thể viết hoa/dấu).
-    Trả về tên chuẩn nếu tìm thấy trong bảng, nguyên bản nếu không tìm thấy.
-    """
-    if not value:
-        return value
-    text = str(value).strip()
-    folded = _fold(text)
-    return _DAN_TOC_MAP.get(folded, text)
-
-
 def _area(value):
     if not isinstance(value, dict):
         return None
@@ -276,7 +141,9 @@ def _area(value):
     if dia and _strip_admin_prefix(dia).strip().lower() == (xa or "").strip().lower():
         dia = None
     out = {"tinh": _norm_tinh(value.get("tinh") or value.get("tỉnh")), "xa": xa, "diaChi": dia}
-    return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
+    out = {k: v for k, v in out.items() if v not in (None, "", {}, [])}
+    # Áp dụng remap địa chỉ để chuẩn hóa xã/phường theo sáp nhập đơn vị hành chính
+    return remap_area(out) if out else None
 
 
 def enrich(fields: list[dict]) -> list[dict]:
@@ -326,11 +193,11 @@ def enrich(fields: list[dict]) -> list[dict]:
         # Dân tộc con: ưu tiên giấy chứng sinh; nếu không có thì SUY LUẬN theo cha/mẹ (bôi vàng):
         #  1) Cha và mẹ CÙNG dân tộc → con theo dân tộc đó (chắc chắn nhất).
         #  2) Con mang họ cha → theo dân tộc cha; con mang họ mẹ → theo dân tộc mẹ.
-        dan_toc_con = _norm_dan_toc(values.get("Gcs_DanTocCon"))
+        dan_toc_con = values.get("Gcs_DanTocCon")
         dan_toc_suy_luan = False
         if not dan_toc_con:
-            dt_cha = _norm_dan_toc(values.get("CccdNam_DanToc"))
-            dt_me = _norm_dan_toc(values.get("CccdNu_DanToc"))
+            dt_cha = values.get("CccdNam_DanToc")
+            dt_me = values.get("CccdNu_DanToc")
             ho_con = _fold(_first_token(child_name))
             ho_cha = _fold(_first_token(values.get("CccdNam_HoTen")))
             ho_me = _fold(_first_token(values.get("CccdNu_HoTen")))
@@ -347,13 +214,24 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("MaQuocTich", "Việt Nam")
         add("NsMaQuocGia", "Việt Nam")
         # Nơi sinh: ưu tiên tờ khai đăng ký khai sinh, sau đó mới tới giấy chứng sinh.
-        add("NsDiaChi", _area(_norm_birth_place(values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh"))))
+        # Nếu LLM không suy ra được xa → tra bảng bệnh viện để bổ sung xa + tinh.
+        ns_raw = values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh")
+        ns_area = _area(_norm_birth_place(ns_raw))
+        if ns_area and not ns_area.get("xa"):
+            dia_chi = ns_area.get("diaChi") or ""
+            bv_info = lookup_hospital(dia_chi)
+            if bv_info:
+                ns_area = {**ns_area, "xa": bv_info["xa"]}
+                # Bổ sung tinh nếu LLM cũng bỏ trống
+                if not ns_area.get("tinh"):
+                    ns_area["tinh"] = bv_info["tinh"]
+        add("NsDiaChi", ns_area)
 
     if has_mother:
         add_name("Me", values.get("CccdNu_HoTen"))
         add("MeNgaySinh", values.get("CccdNu_NgaySinh"))
         add("MeSoGiayTo", values.get("CccdNu_SoDinhDanh"))
-        add("MeMaDanToc", _norm_dan_toc(values.get("CccdNu_DanToc")))
+        add("MeMaDanToc", values.get("CccdNu_DanToc"))
         add("MeMaQuocTich", values.get("CccdNu_QuocTich") or "Việt Nam")
         add("MeLoaiCuTru", "Thường trú")
         add("MeMaQuocGia", "Việt Nam")
@@ -365,26 +243,24 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("ChaHoTen", values.get("CccdNam_HoTen"))
         add("ChaNgaySinh", values.get("CccdNam_NgaySinh"))
         add("ChaSoGiayTo", values.get("CccdNam_SoDinhDanh"))
-        add("ChaMaDanToc", _norm_dan_toc(values.get("CccdNam_DanToc")))
+        add("ChaMaDanToc", values.get("CccdNam_DanToc"))
         add("ChaMaQuocTich", values.get("CccdNam_QuocTich") or "Việt Nam")
         add("ChaLoaiCuTru", "Thường trú")
         add("ChaMaQuocGia", "Việt Nam")
         add("ChaDiaChi", _area(values.get("CccdNam_NoiCuTru")))
 
-    # Quê quán CON (QqDiaChi) — ưu tiên nguồn:
-    #  1) TỜ KHAI đăng ký khai sinh (dòng "Quê quán" của trẻ) — CHÍNH XÁC, không bôi vàng.
-    #  2) Quê quán CHA trên CCCD (mục "Quê quán").
-    #  3) NƠI CƯ TRÚ cha — suy luận, bôi vàng.
-    # Quốc gia quê quán luôn Việt Nam. Không nguồn nào → để trống (không bịa).
+    # Quê quán CON (QqDiaChi) — luôn lấy theo quê quán CCCD của cha (không bôi vàng).
+    # Tờ khai có ghi quê quán con riêng → vẫn ưu tiên (chính xác hơn).
+    # Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
     if tk_que_quan:
         add("QqMaQuocGia", "Việt Nam")
         add("QqDiaChi", tk_que_quan)
     else:
-        que_quan_cha = _area(values.get("CccdNam_QueQuan")) or _area(values.get("CccdNam_NoiCuTru"))
+        que_quan_cha = _area(values.get("CccdNam_QueQuan"))
         if que_quan_cha:
             add("QqMaQuocGia", "Việt Nam")
-            add("QqDiaChi", que_quan_cha, default=True)
+            add("QqDiaChi", que_quan_cha)
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
     # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") KHÔNG phải số kết hôn.

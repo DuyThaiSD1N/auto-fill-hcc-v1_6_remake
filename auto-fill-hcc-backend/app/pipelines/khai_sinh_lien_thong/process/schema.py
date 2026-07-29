@@ -131,7 +131,8 @@ STATIC_DEFAULTS: list[dict] = [
      "value": "Bố là chủ sở hữu chỗ ở hợp pháp", "default": True},
     {"name": "_NguoiXacNhan", "comp": "radio-bylabel",
      "value": "Bố là người xác nhận", "default": True},
-    {"name": "DkttIsTtBo", "comp": "checkbox", "value": True, "default": True},
+    # DkttIsTtBo chỉ gửi khi mapper xác định có CT01 (thường trú) → bỏ khỏi STATIC_DEFAULTS
+    # để tránh extension báo "not found" khi section ĐKTT chưa render trên form.
     {"name": "DkttMaQuanHe", "comp": "select", "value": "Con đẻ", "default": True},
     {"name": "NguoiGiamHo", "comp": "select", "value": "Thông tin cha", "default": True},
 ]

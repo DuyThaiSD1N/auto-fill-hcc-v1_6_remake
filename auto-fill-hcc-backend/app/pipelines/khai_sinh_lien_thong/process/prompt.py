@@ -72,7 +72,7 @@ EXTRA_RULES = """
   + Có thể lấy từ giấy tờ khác miễn đối chiếu tên đúng cha/mẹ ứng với dân tộc đó.
 - TUYỆT ĐỐI không lấy dân tộc người này gán cho người khác (vd dân tộc con/mẹ KHÔNG gán cho cha).
 - KHÔNG giấy tờ nào ghi rõ dân tộc của người đó → ĐỂ TRỐNG (không bịa, không mặc định "Kinh"). Nhưng nếu CÓ THÔNG TIN thì BẮT BUỘC ghi rõ dân tộc của CẢ cha và mẹ.
-- CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh".
+- CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh"; "K Ho"/"C Ho"/"K'Ho"/"Kho" → "Cờ Ho".
 
 # ═══ F. TÁCH ĐỊA CHỈ (CccdNam_NoiCuTru, CccdNu_NoiCuTru, CccdNam_QueQuan — object {tinh,xa,diaChi}) ═══
 Địa chỉ hành chính 2 cấp XÃ/PHƯỜNG/THỊ TRẤN → TỈNH/THÀNH PHỐ:
