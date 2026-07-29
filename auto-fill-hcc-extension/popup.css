@@ -1,0 +1,549 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  width: 320px;
+  padding: 10px;
+  font-family: system-ui, "Segoe UI", sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  box-sizing: border-box;
+}
+
+/* Khi chạy trong floating panel (iframe): full width, cao theo nội dung (để auto-fit). */
+body.embedded {
+  width: 100%;
+  min-height: 0;
+}
+
+h1 {
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+
+/* Embedded panel có header riêng → ẩn h1 trong body */
+body.embedded h1 { display: none; }
+
+.block {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.block-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #1565c0;
+  margin-bottom: 6px;
+}
+
+label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+select,
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 5px;
+  margin-bottom: 6px;
+  box-sizing: border-box;
+}
+
+.procedure-select-hidden {
+  display: none;
+}
+
+.procedure-picker {
+  position: relative;  /* mốc cho dropdown absolute */
+}
+
+/* Trigger nhìn như 1 ô select: đóng thì gọn 1 dòng. */
+.procedure-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+.procedure-trigger:hover:not(:disabled):not(.locked),
+.procedure-trigger[aria-expanded="true"] {
+  border-color: #1565c0;
+}
+/* Locked (tự nhận diện): trông không bấm được nhưng KHÔNG dùng [disabled]
+   vì disabled chặn tooltip title → rê chuột vẫn phải xem được tên đầy đủ. */
+.procedure-trigger:disabled,
+.procedure-trigger.locked {
+  cursor: default;
+  background: #f5f6f7;
+}
+.procedure-trigger-caret {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: #666;
+  transition: transform 120ms ease;
+}
+.procedure-trigger[aria-expanded="true"] .procedure-trigger-caret {
+  transform: rotate(180deg);
+}
+
+/* Dropdown NỔI đè lên nội dung dưới (không đẩy layout). */
+.procedure-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.procedure-dropdown[hidden] {
+  display: none;
+}
+.procedure-dropdown input[type="text"] {
+  margin-bottom: 0;
+}
+
+.selected-procedure {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  min-height: 16px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #555;
+}
+
+/* Label trong trigger: cho xuống tối đa 2 dòng, font nhỏ để đọc rõ tên thủ tục dài;
+   phần vượt quá cắt "..." — tên đầy đủ xem qua tooltip (title) khi rê chuột. */
+.procedure-trigger-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.selected-procedure strong {
+  color: #1565c0;
+  font-weight: 600;
+}
+
+.procedure-none {
+  color: #9aa0a6;
+  font-style: italic;
+}
+
+.procedure-results {
+  display: grid;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.procedure-option {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  color: #1a1a1a;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.procedure-option:hover {
+  background: #e3f2fd;
+  color: #0d47a1;
+}
+
+.procedure-option.active {
+  border-color: #1565c0;
+  background: #e3f2fd;
+  color: #0d47a1;
+  font-weight: 600;
+}
+
+.procedure-option-label {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.procedure-empty {
+  padding: 7px 8px;
+  border: 1px dashed #d0d0d0;
+  border-radius: 4px;
+  color: #757575;
+  font-size: 12px;
+  text-align: center;
+}
+
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.user-email {
+  flex: 1;
+  min-width: 0; /* QUAN TRỌNG: cho phép co trong flex → ellipsis mới hoạt động, email dài không đẩy vỡ nút */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: #37424e;
+}
+
+/* Nút phụ trên user bar: kiểu ghost/outline nhẹ, không tranh màu với nút chính (xanh). */
+.user-action {
+  flex: 0 0 auto; /* cố định, không bao giờ bị email đẩy vỡ */
+  width: auto;
+  padding: 4px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #4a5560;
+  background: transparent;
+  border: 1px solid #cfd6de;
+  border-radius: 5px;
+}
+.user-action:hover {
+  background: #eef2f6;
+  border-color: #b6c0cb;
+  color: #243447;
+}
+
+/* Đăng xuất = hành động rời phiên → sắc đỏ nhạt để phân biệt với "Tạo phiên mới". */
+.user-action.danger { color: #c0392b; border-color: #e6b3b3; }
+.user-action.danger:hover { background: #fdecec; border-color: #d98c8c; color: #a5281b; }
+
+.guide-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: #1565c0;
+  color: #fff;
+  border-radius: 4px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.guide-btn:hover { background: #0d47a1; }
+
+button {
+  width: 100%;
+  padding: 7px;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover { background: #0d47a1; }
+button:disabled { background: #9e9e9e; cursor: not-allowed; }
+
+.secondary-btn {
+  margin-top: 6px;
+  background: #2e7d32;
+}
+
+.secondary-btn:hover { background: #1b5e20; }
+
+/* Trigger thu gọn: 1 dòng, dạng link — mặc định giấy tờ KHÔNG hiện, bấm mới mở. */
+.hint-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  background: #f4f8fe;
+  border: 1px solid #dbeafe;
+  border-radius: 4px;
+  color: #1565c0;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.hint-toggle:hover { background: #e3f2fd; }
+.hint-toggle .hint-toggle-text { flex: 1; }
+.hint-toggle .hint-toggle-icon { font-size: 13px; }
+.hint-toggle .hint-toggle-caret { transition: transform 120ms ease; }
+.hint-toggle[aria-expanded="true"] .hint-toggle-caret { transform: rotate(180deg); }
+
+/* Khối chi tiết: hiện khi mở, có nút × để ẩn. */
+.hint-box {
+  position: relative;
+  margin: 0 0 6px;
+  padding: 8px 26px 8px 10px;
+  background: #e3f2fd;
+  border-radius: 4px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+.hint-box .hint-text {
+  margin: 0;
+  font-size: 12px;
+  color: #0d47a1;
+  white-space: pre-line;
+  line-height: 1.4;
+}
+.hint-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  color: #1565c0;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+}
+.hint-close:hover { background: #cfe4fb; color: #0d47a1; }
+
+.business-page-panel {
+  margin: 0 0 8px;
+  padding: 7px;
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  background: #f8fbff;
+}
+
+.business-page-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0d47a1;
+}
+
+.business-page-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.business-page-btn {
+  min-height: 44px;
+  padding: 6px 7px;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: #fff;
+  color: #243447;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.business-page-btn:hover {
+  background: #eef6ff;
+  color: #0d47a1;
+}
+
+.business-page-btn.active {
+  border-color: #1565c0;
+  background: #1565c0;
+  color: #fff;
+  font-weight: 600;
+}
+
+.upload-label {
+  display: block;
+  padding: 7px;
+  border: 1px dashed #1565c0;
+  border-radius: 4px;
+  color: #1565c0;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.upload-label:hover { background: #e3f2fd; }
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+}
+.checkbox-row input { width: auto; margin: 0; }
+
+.file-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.file-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.file-list .fname {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-list select {
+  width: auto;
+  margin: 0;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.file-list .hw-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.file-list .hw-file input {
+  width: auto;
+  margin: 0;
+}
+
+.file-list .rm {
+  width: auto;
+  padding: 2px 6px;
+  background: #c62828;
+  font-size: 12px;
+}
+
+.status {
+  margin: 6px 0 0;
+  font-size: 12px;
+  min-height: 16px;
+  white-space: pre-line;
+}
+
+.status.ok { color: #2e7d32; }
+.status.err { color: #c62828; }
+.status.info { color: #1565c0; }
+
+/* ===== Card rà soát bbox (hiện sau khi điền xong, thủ tục bật review) ===== */
+.review-card {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #e6b3b3;
+  border-radius: 6px;
+  background: #fff7f7;
+}
+/* Nút tiêu đề — thu gọn/xổ danh sách rà soát. */
+.review-card__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px 0;
+  background: transparent;
+  border: 0;
+  color: #b91c1c;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: left;
+}
+.review-card__toggle:hover { background: transparent; color: #7f1d1d; }
+.review-card__toggle > span:first-child { flex: 1; }
+.review-card__caret { transition: transform 120ms ease; }
+.review-card__toggle[aria-expanded="true"] .review-card__caret { transform: rotate(180deg); }
+.review-card__body { margin-top: 6px; }
+.review-card__all {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 6px;
+  background: #dc2626;
+  font-size: 12.5px;
+}
+.review-card__all:hover { background: #b91c1c; }
+.review-card__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 130px;
+  overflow-y: auto;
+  display: grid;
+  gap: 4px;
+}
+.review-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #fff;
+  border: 1px solid #f0d3d3;
+  border-radius: 4px;
+}
+.review-item__text { flex: 1; min-width: 0; }
+.review-item__label { font-size: 11px; color: #7a7a7a; }
+.review-item__value {
+  font-size: 12px;
+  color: #1a1a1a;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.review-item__btn {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 4px 8px;
+  font-size: 11px;
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #e6b3b3;
+  border-radius: 4px;
+}
+.review-item__btn:hover { background: #fdecec; }
+.review-item__btn.no-bbox { color: #92400e; border-color: #fcd34d; }
+
+.app-footer {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}

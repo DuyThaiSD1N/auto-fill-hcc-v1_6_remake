@@ -1,0 +1,52 @@
+# MongoDB dùng cluster ngoài qua MONGO_URI trong .env → compose chỉ chạy app.
+# Nếu muốn Mongo local cho dev, bỏ comment service `mongo` bên dưới và trỏ
+# MONGO_URI=mongodb://mongo:27017 trong .env.
+services:
+  app:
+    build: .
+    image: autofill-hcc-be:latest
+    env_file: .env
+    environment:
+      # Mongo nằm trong network callbot-hcc-base_call_bot → gọi thẳng qua tên
+      # container + cổng nội bộ 27017 (không đi vòng host-gateway, tránh firewall).
+      - MONGO_HOST=call_bot_mongo_db
+      - MONGO_PORT=27017
+    ports:
+      # container nghe trên ${PORT} (CMD uvicorn dùng $PORT) → map cùng cổng ra host.
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      # Persist file/ảnh đã lưu của mỗi request ra host (./data).
+      - ./data:/app/data
+    restart: unless-stopped
+    networks:
+      - default
+      - callbot
+    # depends_on:
+    #   - mongo
+
+  fe:
+    build: ./fe
+    image: autofill-hcc-fe:latest
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://app:8000}
+    ports:
+      - "12006:12006"
+    depends_on:
+      - app
+    restart: unless-stopped
+
+networks:
+  # Network sẵn có của stack callbot (nơi call_bot_mongo_db đang chạy).
+  callbot:
+    external: true
+    name: callbot-hcc-base_call_bot
+
+  # mongo:
+  #   image: mongo:7
+  #   volumes:
+  #     - mongo_data:/data/db
+  #   ports:
+  #     - "27017:27017"
+
+# volumes:
+#   mongo_data:

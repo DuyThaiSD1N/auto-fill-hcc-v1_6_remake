@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Trợ lý tự động điền hồ sơ Dịch vụ công</h1>
+
+  <!-- ===== Màn hình đăng nhập ===== -->
+  <section id="loginScreen" class="block" hidden>
+    <div class="block-title">Đăng nhập</div>
+    <label for="loginUsername">Tên đăng nhập</label>
+    <input id="loginUsername" type="text" autocomplete="username" placeholder="tên đăng nhập">
+    <label for="loginPassword">Mật khẩu</label>
+    <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+    <button id="loginBtn">Đăng nhập</button>
+    <p id="loginStatus" class="status"></p>
+  </section>
+
+  <!-- ===== Màn hình chính ===== -->
+  <div id="mainScreen" hidden>
+    <div id="userBar" class="user-bar">
+      <span id="userLabel" class="user-email"></span>
+      <button id="newSessionBtn" class="user-action" title="Xoá file &amp; kết quả của tab này, bắt đầu phiên mới (vẫn giữ đăng nhập)">Tạo phiên mới</button>
+      <button id="logoutBtn" class="user-action danger" title="Đăng xuất khỏi tài khoản">Đăng xuất</button>
+    </div>
+
+    <section class="block">
+      <div class="block-title">Loại thủ tục</div>
+      <select id="procedureSelect" class="procedure-select-hidden" aria-hidden="true" tabindex="-1"></select>
+      <div class="procedure-picker" id="procedureCombo">
+        <button type="button" id="procedureTrigger" class="procedure-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span id="selectedProcedureLabel" class="selected-procedure procedure-trigger-label"></span>
+          <span class="procedure-trigger-caret" aria-hidden="true">▾</span>
+        </button>
+        <div id="procedureDropdown" class="procedure-dropdown" hidden>
+          <input id="procedureSearchInput" type="text" autocomplete="off" placeholder="Gõ để tìm thủ tục...">
+          <div id="procedureResults" class="procedure-results" role="listbox" aria-label="Danh sách thủ tục"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <div class="block-title">Giấy tờ</div>
+      <button id="uploadHintToggle" type="button" class="hint-toggle" hidden aria-expanded="false" aria-controls="uploadHintBox">
+        <span class="hint-toggle-icon" aria-hidden="true">📄</span>
+        <span class="hint-toggle-text">Xem chi tiết giấy tờ cần tải lên</span>
+        <span class="hint-toggle-caret" aria-hidden="true">▾</span>
+      </button>
+      <div id="uploadHintBox" class="hint-box" hidden role="region" aria-label="Chi tiết giấy tờ cần tải lên">
+        <button id="uploadHintClose" type="button" class="hint-close" aria-label="Ẩn chi tiết giấy tờ" title="Ẩn">×</button>
+        <p id="uploadHint" class="hint-text"></p>
+      </div>
+      <label for="requestMode">Người yêu cầu là</label>
+      <select id="requestMode">
+        <option value="self">Bản thân</option>
+        <option value="other">Người khác</option>
+      </select>
+      <label for="dangKyBy">Người đi đăng ký là</label>
+      <select id="dangKyBy">
+        <option value="father">Cha</option>
+        <option value="mother">Mẹ</option>
+      </select>
+      <label id="handwritingRow" class="checkbox-row">
+        <input id="handwritingToggle" type="checkbox">
+        <span>Có bản viết tay (tất cả)</span>
+      </label>
+      <label for="fileInput" class="upload-label">+ Thêm file ảnh/PDF</label>
+      <input id="fileInput" type="file" multiple accept="image/*,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+      <ul id="fileList" class="file-list"></ul>
+      <label id="splitModeRow" class="checkbox-row" style="display:none" title="Chỉ áp dụng cho chứng thực. Bật: mỗi tài liệu tạo 1 hồ sơ riêng (mở tab mới cho từng file).">
+        <input id="splitModeToggle" type="checkbox">
+        <span>Mỗi tài liệu 1 hồ sơ riêng (tách hồ sơ)</span>
+      </label>
+      <button id="ocrBtn">Quét và nhập dữ liệu</button>
+      <button id="fillAllBtn" class="secondary-btn" hidden title="Đăng ký kinh doanh: quét &amp; điền cả 8 trang rồi tự đính kèm hồ sơ">⚡ Quét nhập thông tin và đính kèm</button>
+      <button id="attachStepBtn" class="secondary-btn" hidden title="Dùng khi đang ở bước đính kèm hồ sơ trên cổng dịch vụ công">Đính kèm giấy tờ</button>
+    </section>
+
+    <p id="status" class="status"></p>
+    <section id="reviewCard" class="review-card" hidden></section>
+    <div class="app-footer">
+      <a id="guideBtn" class="guide-btn" href="https://drive.google.com/drive/folders/1ksdjwCGrelwNZ5fu9e6WIcsrf1RFn5u-?usp=drive_link" target="_blank" rel="noopener" title="Mở hướng dẫn sử dụng (Google Drive)">Hướng dẫn</a>
+    </div>
+  </div>
+
+  <script src="vendor/pdf-lib.min.js"></script>
+  <script src="lib/imageToPdf.js"></script>
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="api/client.js"></script>
+  <script src="api/endpoints.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

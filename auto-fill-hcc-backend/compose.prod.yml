@@ -1,0 +1,67 @@
+# Compose PROD — self-contained: tự chạy Mongo riêng (KHÔNG dùng cluster callbot).
+# Network riêng (autofill_hcc_net), volume riêng (mongo_data) → độc lập hoàn toàn.
+#
+#   docker compose -f compose.prod.yml up -d --build
+#
+# Ghi chú:
+# - ${MONGO_USERNAME}/${MONGO_PASSWORD}/${MONGO_DB} được nội suy từ ./.env (docker compose
+#   tự đọc ./.env cho variable substitution). Container app vẫn nhận full biến qua env_file.
+# - MONGO_HOST/PORT được override ở service app để trỏ về service `mongo` nội bộ network.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-callbot}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "12004:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - autofill
+
+  app:
+    build: .
+    image: autofill-hcc-be:latest
+    env_file: .env
+    environment:
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - autofill
+
+  fe:
+    build: ./fe
+    image: autofill-hcc-fe:latest
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://app:8000}
+    ports:
+      - "12006:12006"
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - autofill
+
+networks:
+  autofill:
+    name: autofill_hcc_net
+
+volumes:
+  mongo_data:
+    name: autofill_hcc_mongo_data
