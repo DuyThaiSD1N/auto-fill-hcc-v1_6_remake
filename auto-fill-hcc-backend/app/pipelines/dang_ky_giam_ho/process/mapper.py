@@ -6,6 +6,7 @@ import unicodedata
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines.dang_ky_giam_ho.process.schema import UI_COMP_BY_NAME
+from app.pipelines._shared.area_remap import remap_area
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -63,7 +64,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return out
+    return remap_area(out)
 
 
 def _province_label(value) -> str:

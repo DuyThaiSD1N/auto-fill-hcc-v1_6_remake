@@ -110,6 +110,22 @@ def _compact_code(value) -> str:
     match = re.search(r"\bkt([1-6])(?:[_\-. ]?([1-7]))?\b", folded)
     if match:
         return f"kt{match.group(1)}" + (f"_{match.group(2)}" if match.group(2) else "")
+    # Map ten day du / so thu tu -> ma
+    _NAME_MAP = {
+        "van dong": "kt1", "van": "kt1",
+        "nghe noi": "kt2", "nghe": "kt2", "noi": "kt2",
+        "nhin": "kt3", "mat": "kt3",
+        "than kinh": "kt4", "tam than": "kt4", "than kinh tam than": "kt4",
+        "tri tue": "kt5", "cham phat trien": "kt5",
+        "khac": "kt6",
+    }
+    # So thu tu 1-6 mapping truc tiep
+    num_match = re.fullmatch(r"([1-6])", folded.strip())
+    if num_match:
+        return f"kt{num_match.group(1)}"
+    for key, code in _NAME_MAP.items():
+        if key in folded:
+            return code
     return folded
 
 

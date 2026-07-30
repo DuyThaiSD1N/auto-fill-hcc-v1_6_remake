@@ -128,6 +128,11 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
 
     Buoc 1: neu "tinh" la thanh pho/thi xa thuoc tinh (vd "Da Lat") -> doi sang ten tinh (vd "Lam Dong").
     Buoc 2: neu (tinh, xa) co trong bang sap nhap -> thay bang ten don vi moi.
+    Buoc 3 (fallback): neu xa khong khop, thu dung diaChi lam xa de lookup.
+            Truong hop nay xay ra khi OCR/LLM nham ten thon/ban thanh xa (vd "Suoi Thong C"),
+            trong khi xa that su nam trong truong diaChi. Neu diaChi khop bang sap nhap:
+            - xa moi = ten xa sau sap nhap
+            - diaChi giu nguyen gia tri xa_cu (ten thon/ban) de hien thi chi tiet dia chi.
     Neu khong co entry nao -> giu nguyen (pass-through).
     """
     if not area or not isinstance(area, dict):
@@ -150,6 +155,21 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
     mapping = _REMAP.get(key)
     if mapping:
         return {**area, "tinh": mapping["tinh"], "xa": mapping["xa"]}
+
+    # Buoc 3: fallback — thu dung diaChi lam xa
+    # Neu xa khong khop bang ma diaChi lai la ten xa/thi tran hop le (co trong bang)
+    # -> remap theo diaChi, giu xa_cu vao diaChi (la ten thon/ban chi tiet)
+    dia_raw: str = area.get("diaChi") or ""
+    if dia_raw and xa_raw:
+        key_dia = (_fold(tinh_raw), _fold(dia_raw))
+        mapping_dia = _REMAP.get(key_dia)
+        if mapping_dia:
+            return {
+                **area,
+                "tinh": mapping_dia["tinh"],
+                "xa": mapping_dia["xa"],
+                "diaChi": xa_raw,  # xa_cu chuyen xuong lam chi tiet dia chi
+            }
 
     return area
 

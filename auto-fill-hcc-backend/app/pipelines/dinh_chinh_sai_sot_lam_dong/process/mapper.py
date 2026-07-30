@@ -14,6 +14,7 @@ from typing import Any
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.dinh_chinh_sai_sot_lam_dong.process.schema import UI_COMP_BY_NAME
+from app.pipelines._shared.area_remap import remap_area
 
 # Ô người mà extension CHỊU TRÁCH NHIỆM điền từ CCCD/đơn. Không có dữ liệu → phát "dom-expect" để FE
 # TÔ ĐỎ (không điền), dù form không đánh dấu ô đó bắt buộc.
@@ -144,7 +145,7 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
     }
-    return out if any(out.values()) else None
+    return remap_area(out if any(out.values()) else None)
 
 
 def _phone(value: Any) -> str | None:

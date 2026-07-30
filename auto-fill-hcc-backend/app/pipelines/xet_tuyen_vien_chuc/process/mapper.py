@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from app.pipelines.xet_tuyen_vien_chuc.process.schema import UI_COMP_BY_NAME
 from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.area_remap import remap_area
 
 
 @dataclass
@@ -57,7 +58,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return out
+    return remap_area(out)
 
 
 def _area_label(value: str | None) -> str | None:

@@ -7,6 +7,7 @@ import unicodedata
 from difflib import SequenceMatcher
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.dang_ky_kinh_doanh.process.schema import DEFAULT_PAGE, PAGES
 from app.pipelines._shared.formatting import normalize_date
 
@@ -139,20 +140,23 @@ def _strip_household_prefix(value: Any) -> str:
 
 def _addr(value: Any) -> dict[str, str]:
     if isinstance(value, dict):
-        return {
+        raw = {
             "quocGia": _compact_text(value.get("quocGia") or value.get("quoc_gia") or "Việt Nam"),
             "tinh": _compact_text(value.get("tinh") or value.get("province")),
             "xa": _clean_ward(value.get("xa") or value.get("phuongXa") or value.get("ward")),
             "diaChi": _compact_text(value.get("diaChi") or value.get("dia_chi") or value.get("address")),
         }
+        return remap_area(raw) or raw
     text = _compact_text(value)
     if not text:
         return {}
     parts = [p.strip() for p in text.split(",") if p.strip()]
     if len(parts) >= 3:
-        return {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": _clean_ward(parts[-2]), "diaChi": ", ".join(parts[:-2])}
+        raw = {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": _clean_ward(parts[-2]), "diaChi": ", ".join(parts[:-2])}
+        return remap_area(raw) or raw
     if len(parts) == 2:
-        return {"quocGia": "Việt Nam", "tinh": parts[-1], "diaChi": parts[0]}
+        raw = {"quocGia": "Việt Nam", "tinh": parts[-1], "diaChi": parts[0]}
+        return remap_area(raw) or raw
     return {"quocGia": "Việt Nam", "diaChi": text}
 
 

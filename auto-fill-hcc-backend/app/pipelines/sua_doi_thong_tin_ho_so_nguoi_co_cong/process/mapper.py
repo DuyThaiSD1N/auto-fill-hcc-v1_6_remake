@@ -17,6 +17,7 @@ from typing import Any
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.process.schema import UI_COMP_BY_NAME
+from app.pipelines._shared.area_remap import remap_area
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -116,7 +117,7 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
     }
-    return out if any(out.values()) else None
+    return remap_area(out if any(out.values()) else None)
 
 
 def _identity(value: Any) -> str | None:
