@@ -196,6 +196,13 @@ Xử lý thiếu/mờ/mâu thuẫn:
    (năm sinh), Father_Ethnicity/Mother_Ethnicity (dân tộc), Father_Nationality/Mother_Nationality
    (quốc tịch) TỪ trích lục khai tử đó — trích lục khai tử ghi rõ "Ngày, tháng, năm sinh", "Dân tộc",
    "Quốc tịch" của người đã mất. TUYỆT ĐỐI KHÔNG bỏ trống các field này chỉ vì người đó đã chết.
+   ĐẶC BIỆT: Khi cha/mẹ đã mất, trích lục khai tử thường ghi dòng "Nơi thường trú", "Nơi cư trú" hoặc
+   "Quê quán" của người đó. Hãy trích địa chỉ đó vào Father_HometownFromDeathCert (với cha) hoặc
+   Mother_HometownFromDeathCert (với mẹ) theo cùng format object {quocGia, tinh, xa, diaChi}:
+   - Ưu tiên "Nơi thường trú"/"Nơi cư trú" (nơi sinh sống trước khi mất).
+   - Nếu trích lục không ghi nơi cư trú thì lấy "Quê quán".
+   Đây là địa chỉ thay thế để điền vào ô nơi cư trú trên form khi không có CCCD.
+   Chỉ trả field này khi cha/mẹ đã mất VÀ có trích lục khai tử/giấy chứng tử trong hồ sơ.
 7. Nếu có số giống số đăng ký nhưng không có nhãn nghiệp vụ hoặc không nằm trong khối đăng ký trước đây,
    bỏ PreviousRegistration_Number. ĐẶC BIỆT: "Số:" + "Quyển số:" ở đầu GIẤY CHỨNG NHẬN KẾT HÔN
    (Mẫu TP/HT...) rất giống số/quyển giấy khai sinh — đây là BẪY, TUYỆT ĐỐI KHÔNG lấy cho

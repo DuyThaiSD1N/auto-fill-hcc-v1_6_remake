@@ -44,6 +44,12 @@ FIELDS: list[dict] = [
              'trên CCCD của cha nếu có (KHÔNG lấy nơi cư trú trên giấy khai sinh). '
              'Nếu tài liệu ghi cha đã chết/mất hoặc OCR nhiễu như "Da Chet", "D.d. Chat", "L.D.d. Chat" thì '
              'trả {"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.'},
+    {"name": "Father_HometownFromDeathCert",
+     "desc": 'Nơi cư trú/thường trú cuối cùng của cha lấy từ TRÍCH LỤC KHAI TỬ hoặc GIẤY CHỨNG TỬ khi cha đã mất '
+             'và không có CCCD trong hồ sơ, object {quocGia,tinh,xa,diaChi}. '
+             'Ưu tiên dòng "Nơi thường trú" hoặc "Nơi cư trú" trên trích lục khai tử; '
+             'nếu không có nơi cư trú thì lấy dòng "Quê quán". '
+             'Chỉ trả khi cha đã mất VÀ có trích lục khai tử trong hồ sơ.'},
 
     # Mẹ của người được đăng ký lại khai sinh.
     {"name": "Mother_FullName", "desc": "Họ tên mẹ của người được đăng ký lại khai sinh."},
@@ -65,6 +71,12 @@ FIELDS: list[dict] = [
              'trên CCCD của mẹ nếu có (KHÔNG lấy nơi cư trú trên giấy khai sinh). '
              'Nếu tài liệu ghi mẹ đã chết/mất hoặc OCR nhiễu như "Da Chet", "D.d. Chat", "L.D.d. Chat" thì '
              'trả {"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.'},
+    {"name": "Mother_HometownFromDeathCert",
+     "desc": 'Nơi cư trú/thường trú cuối cùng của mẹ lấy từ TRÍCH LỤC KHAI TỬ hoặc GIẤY CHỨNG TỬ khi mẹ đã mất '
+             'và không có CCCD trong hồ sơ, object {quocGia,tinh,xa,diaChi}. '
+             'Ưu tiên dòng "Nơi thường trú" hoặc "Nơi cư trú" trên trích lục khai tử; '
+             'nếu không có nơi cư trú thì lấy dòng "Quê quán". '
+             'Chỉ trả khi mẹ đã mất VÀ có trích lục khai tử trong hồ sơ.'},
 
     # Thông tin đăng ký khai sinh trước đây.
     # PreviousRegistration_* CHỈ từ tài liệu GHI NHẬN VIỆC KHAI SINH của Subject (giấy khai sinh cũ /
@@ -113,7 +125,9 @@ for _name in (
     "Subject_BirthPlaceDomestic",
     "Subject_HometownDomestic",
     "Father_ResidenceDomestic",
+    "Father_HometownFromDeathCert",
     "Mother_ResidenceDomestic",
+    "Mother_HometownFromDeathCert",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 

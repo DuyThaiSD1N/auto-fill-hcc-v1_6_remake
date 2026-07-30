@@ -123,16 +123,58 @@ _CITY_TO_PROVINCE: dict[str, str] = {
 # Public API
 # ---------------------------------------------------------------------------
 
+def _scan_for_xa(text: str, tinh_folded: str) -> Optional[dict]:
+    """Scan tung token trong chuoi text de tim xa/phuong hop le trong bang remap.
+
+    Dung khi LLM/OCR gop nhieu cap dia chi vao 1 truong, vi du:
+        "Tu Tra - Don Duong"  (thon - xa)
+        "Suoi Thong C, Don Duong"  (thon, xa)
+        "Rl Lon Tu Tra"  (thon xa viet lien)
+
+    Uu tien token dai nhat khop bang (tranh nham token con).
+    """
+    if not text:
+        return None
+    # Tach theo dau phan cach pho bien
+    separators = re.compile(r"[\s,;/\-–—]+")
+    raw_tokens = [t.strip() for t in separators.split(text) if t.strip()]
+    if not raw_tokens:
+        return None
+
+    # Thu ghep 1, 2, 3 token lien tiep (de bat ten xa nhieu chu, vd "Nam Ban", "Ka Do")
+    candidates: list[tuple[str, str]] = []  # (original_text, folded)
+    for length in (3, 2, 1):
+        for i in range(len(raw_tokens) - length + 1):
+            chunk = " ".join(raw_tokens[i:i + length])
+            candidates.append((chunk, _fold(chunk)))
+
+    best_original = None
+    best_mapping = None
+    best_len = 0
+    for original, folded in candidates:
+        key = (tinh_folded, folded)
+        mapping = _REMAP.get(key)
+        if mapping and len(folded) > best_len:
+            best_original = original
+            best_mapping = mapping
+            best_len = len(folded)
+
+    return (best_original, best_mapping) if best_mapping else None
+
+
 def remap_area(area: Optional[dict]) -> Optional[dict]:
     """Nhan object dia chi {quocGia, tinh, xa, diaChi}, tra ve da normalize.
 
     Buoc 1: neu "tinh" la thanh pho/thi xa thuoc tinh (vd "Da Lat") -> doi sang ten tinh (vd "Lam Dong").
     Buoc 2: neu (tinh, xa) co trong bang sap nhap -> thay bang ten don vi moi.
-    Buoc 3 (fallback): neu xa khong khop, thu dung diaChi lam xa de lookup.
+    Buoc 3 (fallback A): neu xa khong khop, thu dung diaChi lam xa de lookup.
             Truong hop nay xay ra khi OCR/LLM nham ten thon/ban thanh xa (vd "Suoi Thong C"),
             trong khi xa that su nam trong truong diaChi. Neu diaChi khop bang sap nhap:
             - xa moi = ten xa sau sap nhap
             - diaChi giu nguyen gia tri xa_cu (ten thon/ban) de hien thi chi tiet dia chi.
+    Buoc 4 (fallback B): scan tung token trong xa (hoac diaChi) de tim xa hop le.
+            Dung khi LLM gop nhieu cap dia chi vao 1 truong, vi du "Tu Tra - Don Duong",
+            "Suoi Thong C, Don Duong", "Rl Lon Tu Tra"...
     Neu khong co entry nao -> giu nguyen (pass-through).
     """
     if not area or not isinstance(area, dict):
@@ -150,26 +192,51 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
         area = {**area, "tinh": tinh_normalized}
         tinh_raw = tinh_normalized
 
+    tinh_folded = _fold(tinh_raw)
+
     # Buoc 2: lookup bang sap nhap (tinh, xa)
-    key = (_fold(tinh_raw), _fold(xa_raw))
+    key = (tinh_folded, _fold(xa_raw))
     mapping = _REMAP.get(key)
     if mapping:
         return {**area, "tinh": mapping["tinh"], "xa": mapping["xa"]}
 
-    # Buoc 3: fallback — thu dung diaChi lam xa
-    # Neu xa khong khop bang ma diaChi lai la ten xa/thi tran hop le (co trong bang)
-    # -> remap theo diaChi, giu xa_cu vao diaChi (la ten thon/ban chi tiet)
+    # Buoc 3: fallback A — thu dung diaChi lam xa
     dia_raw: str = area.get("diaChi") or ""
     if dia_raw and xa_raw:
-        key_dia = (_fold(tinh_raw), _fold(dia_raw))
+        key_dia = (tinh_folded, _fold(dia_raw))
         mapping_dia = _REMAP.get(key_dia)
         if mapping_dia:
             return {
                 **area,
                 "tinh": mapping_dia["tinh"],
                 "xa": mapping_dia["xa"],
-                "diaChi": xa_raw,  # xa_cu chuyen xuong lam chi tiet dia chi
+                "diaChi": xa_raw,
             }
+
+    # Buoc 4: fallback B — scan token trong xa hoac diaChi
+    # Uu tien scan trong xa truoc (co the la chuoi gop "thon - xa")
+    for scan_src, keep_as_detail in ((xa_raw, True), (dia_raw, False)):
+        if not scan_src:
+            continue
+        result = _scan_for_xa(scan_src, tinh_folded)
+        if result:
+            matched_original, matched_mapping = result
+            if keep_as_detail:
+                # xa goc chuyen thanh diaChi (chi tiet), xa moi = ten xa sau sap nhap
+                return {
+                    **area,
+                    "tinh": matched_mapping["tinh"],
+                    "xa": matched_mapping["xa"],
+                    "diaChi": scan_src,  # giu nguyen toan bo chuoi goc lam chi tiet
+                }
+            else:
+                # diaChi chua xa hop le, xa goc chuyen xuong diaChi
+                return {
+                    **area,
+                    "tinh": matched_mapping["tinh"],
+                    "xa": matched_mapping["xa"],
+                    "diaChi": xa_raw,
+                }
 
     return area
 
