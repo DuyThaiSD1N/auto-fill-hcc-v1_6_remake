@@ -123,17 +123,8 @@ STATIC_DEFAULTS: list[dict] = [
     # KHÔNG mặc định NycQuanHe="Cha": khai "người yêu cầu = cha" khiến cổng tự copy người
     # đăng nhập vào khối cha, đè dữ liệu cha từ giấy tờ. Để trống cho người dùng tự chọn.
     # default=True → extension đánh dấu VIỀN VÀNG (giá trị mặc định, không phải từ giấy tờ).
-    # Mục đăng ký thường trú: chọn xác nhận QUA VNeID (option 2) — chủ hộ/chủ sở hữu chỗ ở/cha-mẹ
-    # xác nhận ĐKTT cho trẻ qua VNeID (yêu cầu các bên có tài khoản VNeID mức 2 đang hoạt động).
-    # Khi chọn option 2, cổng hiện thêm 2 radio động → mặc định chọn "Bố" cho cả hai (bôi vàng).
-    {"name": "LoaiXacNhanVNeID", "comp": "radio", "value": "2", "default": True},
-    {"name": "_ChuSoHuuChoO", "comp": "radio-bylabel",
-     "value": "Bố là chủ sở hữu chỗ ở hợp pháp", "default": True},
-    {"name": "_NguoiXacNhan", "comp": "radio-bylabel",
-     "value": "Bố là người xác nhận", "default": True},
-    # DkttIsTtBo chỉ gửi khi mapper xác định có CT01 (thường trú) → bỏ khỏi STATIC_DEFAULTS
-    # để tránh extension báo "not found" khi section ĐKTT chưa render trên form.
-    {"name": "DkttMaQuanHe", "comp": "select", "value": "Con đẻ", "default": True},
+    # Mục đăng ký thường trú: CHỈ điền khi có tờ khai CT01 (xem mapper).
+    # Không mặc định VNeID vì nhiều nơi dùng mẫu hệ (bà/mẹ là chủ hộ), bỏ mặc định tránh sai.
     {"name": "NguoiGiamHo", "comp": "select", "value": "Thông tin cha", "default": True},
 ]
 

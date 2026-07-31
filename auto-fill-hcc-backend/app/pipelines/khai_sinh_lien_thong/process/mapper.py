@@ -292,8 +292,6 @@ def enrich(fields: list[dict]) -> list[dict]:
     ct01_ten = values.get("Ct01_ChuHoHoTen")
     ct01_sdd = values.get("Ct01_ChuHoSoDinhDanh")
     if ct01_ten or ct01_sdd:
-        # Nhánh giấy: 2 radio động của nhánh VNeID không tồn tại → tắt default để khỏi báo not-found.
-        seen.update({"_ChuSoHuuChoO", "_NguoiXacNhan"})
         add("LoaiXacNhanVNeID", "1")
 
         ct01_sdd_d = re.sub(r"\D", "", str(ct01_sdd or ""))
