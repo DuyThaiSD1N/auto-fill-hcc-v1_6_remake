@@ -53,6 +53,25 @@ def _fold(text: str) -> str:
     return re.sub(r"\s+", " ", t).strip().lower()
 
 
+def _expand_abbrev(text: str) -> str:
+    """Mo rong viet tat phuong/xa truoc khi lookup.
+
+    P9 / P.9 / P 9 → Phường 9
+    X5 / X.5       → Xã 5
+    Giu nguyen neu khong khop mau viet tat.
+    """
+    t = text.strip()
+    # P<so> hoac P.<so> hoac P <so> (ca hoa lan thuong)
+    m = re.fullmatch(r"[Pp]\.?\s*(\d+)", t)
+    if m:
+        return f"Phường {m.group(1)}"
+    # X<so> hoac X.<so>
+    m = re.fullmatch(r"[Xx]\.?\s*(\d+)", t)
+    if m:
+        return f"Xã {m.group(1)}"
+    return t
+
+
 def _load_remap_files() -> None:
     """Load tat ca remap_*.json va build lookup dict."""
     if not _DATA_DIR.exists():
@@ -186,6 +205,13 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
         letters_only = re.sub(r"[^a-z0-9]", "", _fold(tinh_raw))
         if len(letters_only) <= 2:
             return {**area, "xa": ""}
+
+    # Mở rộng viết tắt phường/xã trước khi lookup: P9 → Phường 9, X5 → Xã 5
+    if xa_raw:
+        xa_expanded = _expand_abbrev(xa_raw)
+        if xa_expanded != xa_raw:
+            area = {**area, "xa": xa_expanded}
+            xa_raw = xa_expanded
 
     # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
     tinh_normalized = _CITY_TO_PROVINCE.get(_fold(tinh_raw))
