@@ -123,7 +123,13 @@ def enrich(fields: list[dict]) -> list[dict]:
             if isinstance(addr_raw, dict):
                 raw_quoc_tich = addr_raw.get("quocGia") or addr_raw.get("quoc_gia")
         nationality = normalize_nationality(raw_quoc_tich)
-        area = _area(values.get(f"{src}_NoiCuTru_TrongNuoc"), nationality)
+        # Ưu tiên nơi cư trú từ TỜ KHAI (chính xác hơn), fallback CCCD.
+        to_khai_area_raw = values.get(declaration_area_name)
+        cccd_area_raw = values.get(f"{src}_NoiCuTru_TrongNuoc")
+        area_raw = to_khai_area_raw if isinstance(to_khai_area_raw, dict) and (
+            to_khai_area_raw.get("tinh") or to_khai_area_raw.get("xa") or to_khai_area_raw.get("diaChi")
+        ) else cccd_area_raw
+        area = _area(area_raw, nationality)
 
         add(f"HoTen{dst}", values.get(f"{src}_HoTen"))
         add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))

@@ -9,6 +9,10 @@ NGUỒN DỮ LIỆU:
 - CccdNam_* CHỈ lấy từ giấy tờ có tiêu đề CĂN CƯỚC/CMND và giới tính "Nam".
 - CccdNu_* CHỈ lấy từ giấy tờ có tiêu đề CĂN CƯỚC/CMND và giới tính "Nữ".
 - Không phân biệt nam/nữ theo tên file, thứ tự upload, hoặc suy đoán từ họ tên.
+- SAU KHI GÁN, BẮT BUỘC ĐỐI CHIẾU CHÉO: Kiểm tra lại số định danh và họ tên trong CccdNam_* phải
+  khớp với CCCD/CMND ghi giới tính "Nam"; số định danh và họ tên trong CccdNu_* phải khớp với CCCD/CMND
+  ghi giới tính "Nữ". Nếu phát hiện lẫn lộn (vd CccdNam_SoDinhDanh là số trên thẻ ghi "Nữ") → PHẢI
+  đảo lại cho đúng trước khi trả kết quả.
 - BẮT BUỘC cố đọc CccdNam_NoiCap/CccdNu_NoiCap (cơ quan cấp) trên CCCD/Căn cước, trả ĐÚNG cơ quan ghi trên thẻ:
   + Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024): cơ quan cấp ghi
     "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" -> trả "Bộ Công an".
@@ -19,6 +23,9 @@ NGUỒN DỮ LIỆU:
   + ToKhaiNam_NoiCuTru_TrongNuoc / ToKhaiNu_NoiCuTru_TrongNuoc CHỈ lấy từ hàng "Nơi cư trú" ở đúng
     cột Bên nam/Bên nữ của TỜ KHAI ĐĂNG KÝ KẾT HÔN. Đối chiếu đúng cột theo tiêu đề, họ tên và/hoặc số định danh.
   + CccdNam_NoiCuTru_TrongNuoc / CccdNu_NoiCuTru_TrongNuoc CHỈ lấy nơi cư trú in trên CCCD/CMND của chính người đó.
+    TOÀN BỘ thông tin (tinh + xa + diaChi) của CccdNam_NoiCuTru_TrongNuoc phải đọc từ ĐÚNG thẻ CCCD có
+    cùng số định danh với CccdNam_SoDinhDanh; tương tự CccdNu_NoiCuTru_TrongNuoc phải từ thẻ có số định
+    danh CccdNu_SoDinhDanh. TUYỆT ĐỐI không lấy diaChi từ thẻ người này gán cho người kia.
   + Nếu có cả tờ khai và CCCD thì BẮT BUỘC trả CẢ HAI field nguồn tương ứng; mapper sẽ tự ưu tiên tờ khai.
   + Không lấy địa chỉ từ giấy xác nhận tình trạng hôn nhân, giấy phép lái xe, bản cam đoan hoặc giấy tờ phụ
     gán vào bất kỳ field nơi cư trú nào nêu trên.
@@ -71,4 +78,8 @@ NGUỒN DỮ LIỆU:
   CapBanSao, SoLuong.
 - Họ tên/số định danh/ngày sinh/ngày-nơi cấp của mỗi nhóm CccdNam_*/CccdNu_* phải lấy trọn từ
   đúng MỘT CCCD, không trộn giữa hai người. RIÊNG dân tộc được phép lấy từ giấy tờ khác theo quy tắc DÂN TỘC;
-  nơi cư trú phải tách riêng từng nguồn theo quy tắc NGUỒN NƠI CƯ TRÚ ở trên."""
+  nơi cư trú phải tách riêng từng nguồn theo quy tắc NGUỒN NƠI CƯ TRÚ ở trên.
+- BẮT BUỘC KIỂM TRA CHÉO ĐỊA CHỈ: sau khi gán, kiểm tra CccdNam_NoiCuTru_TrongNuoc phải là địa chỉ
+  đọc từ CCCD có cùng số định danh với CccdNam_SoDinhDanh; CccdNu_NoiCuTru_TrongNuoc phải là địa chỉ
+  từ CCCD có cùng số định danh với CccdNu_SoDinhDanh. Nếu phát hiện địa chỉ bị gán nhầm (địa chỉ lấy
+  từ CCCD của người kia) → hoán đổi lại cho đúng."""

@@ -249,9 +249,10 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("ChaMaQuocGia", "Việt Nam")
         add("ChaDiaChi", _area(values.get("CccdNam_NoiCuTru")))
 
-    # Quê quán CON (QqDiaChi) — luôn lấy theo quê quán CCCD của cha (không bôi vàng).
-    # Tờ khai có ghi quê quán con riêng → vẫn ưu tiên (chính xác hơn).
-    # Không có nguồn nào → để trống (không bịa).
+    # Quê quán CON (QqDiaChi) — lấy theo CCCD cha:
+    #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
+    #  2) Quê quán trên CCCD cha (CccdNam_QueQuan).
+    #  Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
     if tk_que_quan:
         add("QqMaQuocGia", "Việt Nam")
@@ -272,10 +273,6 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("GiayCNKHQuyenSo", values.get("GcnKetHon_QuyenSo"))
         add("GiayCNKHNgayCap", values.get("GcnKetHon_NgayCap"))
         add("GiayCNKHNoiCap", values.get("GcnKetHon_NoiCap"))
-
-    phone = _clean_phone(values.get("LienHe_SoDienThoai"))
-    if phone:
-        add("NycSdt", phone)
 
     # Quan hệ người yêu cầu với người được khai sinh. Danh tính người yêu cầu (tên + CCCD) do
     # cổng tự đổ từ tài khoản đăng nhập vào ô readonly trên form → chỉ extension đọc được. Ta

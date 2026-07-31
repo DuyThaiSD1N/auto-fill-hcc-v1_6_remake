@@ -168,13 +168,8 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
     Buoc 1: neu "tinh" la thanh pho/thi xa thuoc tinh (vd "Da Lat") -> doi sang ten tinh (vd "Lam Dong").
     Buoc 2: neu (tinh, xa) co trong bang sap nhap -> thay bang ten don vi moi.
     Buoc 3 (fallback A): neu xa khong khop, thu dung diaChi lam xa de lookup.
-            Truong hop nay xay ra khi OCR/LLM nham ten thon/ban thanh xa (vd "Suoi Thong C"),
-            trong khi xa that su nam trong truong diaChi. Neu diaChi khop bang sap nhap:
-            - xa moi = ten xa sau sap nhap
-            - diaChi giu nguyen gia tri xa_cu (ten thon/ban) de hien thi chi tiet dia chi.
-    Buoc 4 (fallback B): scan tung token trong xa (hoac diaChi) de tim xa hop le.
-            Dung khi LLM gop nhieu cap dia chi vao 1 truong, vi du "Tu Tra - Don Duong",
-            "Suoi Thong C, Don Duong", "Rl Lon Tu Tra"...
+    Buoc 4 (fallback B): scan tung token trong xa hoac diaChi de tim xa hop le.
+    Neu tinh la viet tat qua ngan (< 3 ky tu: LA, LD, LĐ...) -> xoa xa tranh dien sai.
     Neu khong co entry nao -> giu nguyen (pass-through).
     """
     if not area or not isinstance(area, dict):
@@ -185,6 +180,12 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
 
     if not tinh_raw and not xa_raw:
         return area
+
+    # Chặn viết tắt tỉnh (LA, LD, LĐ, L.D...) → xóa xa để tránh điền sai.
+    if tinh_raw:
+        letters_only = re.sub(r"[^a-z0-9]", "", _fold(tinh_raw))
+        if len(letters_only) <= 2:
+            return {**area, "xa": ""}
 
     # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
     tinh_normalized = _CITY_TO_PROVINCE.get(_fold(tinh_raw))
