@@ -9,7 +9,6 @@ from typing import Any
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.nhan_cha_me_con.process.schema import UI_COMP_BY_NAME
-from app.pipelines._shared.area_remap import remap_area
 
 _OTHER_DOC = "Giấy tờ khác bao gồm các giấy tờ có dán"
 _REG_FOREIGN = "Ghi vào sổ việc nhận cha, mẹ, con đã được đăng ký tại cơ quan có thẩm quyền của nước ngoài"
@@ -102,7 +101,7 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
     }
-    return remap_area(out if any(out.values()) else None)
+    return out if any(out.values()) else None
 
 
 def _issuer(issue_place: Any, issue_date: Any) -> str:

@@ -4,21 +4,22 @@ EXTRA_RULES = """
 Bạn đang trích xuất dữ liệu cho thủ tục Đăng ký kinh doanh hộ kinh doanh.
 
 NGUỒN DỮ LIỆU VÀ SUY LUẬN:
-- Tài liệu chính thường là "Giấy đề nghị đăng ký hộ kinh doanh". OCR của giấy này là nguồn ưu tiên.
-- Nếu có CCCD thì dùng để bổ sung/kiểm chứng thông tin cá nhân của chủ hộ hoặc người nộp hồ sơ.
-- TỜ KHAI RÚT GỌN — nhiều "Giấy đề nghị đăng ký hộ kinh doanh" chỉ ghi HỌ TÊN + SỐ ĐỊNH DANH của chủ hộ,
-  THIẾU nơi ở/thường trú, ngày sinh, giới tính. Khi đó BẮT BUỘC đối chiếu CCCD đính kèm (khớp họ tên/số định
-  danh với chủ hộ) rồi LẤY BỔ SUNG các trường còn thiếu TỪ CCCD:
-  + ChuHo_DiaChi = "Nơi thường trú" trên CCCD (TUYỆT ĐỐI KHÔNG lấy "Quê quán"; KHÔNG lấy địa chỉ TRỤ SỞ hộ
-    kinh doanh — nơi ở của chủ hộ THƯỜNG KHÁC trụ sở kinh doanh).
-  + ChuHo_NgaySinh = ngày sinh trên CCCD; ChuHo_GioiTinh = giới tính trên CCCD.
-  + ChuHo_HoTen/ChuHo_SoDinhDanh: ưu tiên giấy đề nghị; thiếu thì lấy CCCD.
-  Nếu người nộp hồ sơ = chủ hộ (trùng tên/số định danh) thì NguoiNop_HoTen/NguoiNop_NgaySinh/NguoiNop_SoDinhDanh/
-  NguoiNop_DiaChi lấy tương tự từ CCCD.
-- TÁCH "Nơi thường trú" trên CCCD (thường 3 cấp CŨ: "[chi tiết], xã, HUYỆN, tỉnh") — ĐẾM TỪ CUỐI: cuối = tỉnh;
-  ngay trước tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó = xã;
-  phần đầu = diaChi. Vd "Xóm 2, Gia Thắng, Gia Viễn, Ninh Bình" → diaChi="Xóm 2", xa="Gia Thắng",
-  tinh="Ninh Bình" (BỎ huyện Gia Viễn).
+- Tài liệu chính là "Giấy đề nghị đăng ký hộ kinh doanh". Với thông tin đã kê khai trên giấy này, phải lấy theo giấy này trước.
+
+- ĐỊA CHỈ CÁ NHÂN TRÊN GIẤY ĐỀ NGHỊ:
+  + Chỉ đọc trong phần thông tin cá nhân của chủ hộ, từ đầu tờ khai đến trước dòng "Đăng ký hộ kinh doanh do tôi là chủ hộ...".
+  + ChuHo_DiaChi: ưu tiên mục "Nơi ở hiện tại" ở giấy đăng ký kinh doanh. Nếu mục này không có, trắng hoặc không đọc được thì lấy mục "Nơi thường trú".
+  + Khi đọc một khối địa chỉ cá nhân, ghép đúng 3 dòng: dòng "Số nhà/phòng.../tổ/xóm/ấp/thôn" -> diaChi;
+    dòng "Xã/Phường/Đặc khu" -> xa; dòng "Tỉnh/Thành phố trực thuộc trung ương" -> tinh.
+  + Không lấy địa chỉ tại mục "2. Trụ sở của hộ kinh doanh" cho ChuHo_DiaChi.
+  + Ví dụ: nếu Giấy đề nghị có "Nơi ở hiện tại" đọc được, còn CCCD ghi một nơi cư trú khác, thì ChuHo_DiaChi phải lấy theo "Nơi ở hiện tại" trên Giấy đề nghị.
+  + NguoiNop_DiaChi: nếu người nộp chính là chủ hộ thì dùng cùng địa chỉ cá nhân đã chọn cho ChuHo_DiaChi.
+    Nếu có giấy ủy quyền và người nộp khác chủ hộ thì lấy địa chỉ của người được ủy quyền trên giấy ủy quyền.
+- PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
+  + ChuHo_DiaChi/NguoiNop_DiaChi = địa chỉ cá nhân.
+  + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".
+  + Thue_DiaChiNhanThongBao = địa chỉ ở mục 5.1 "Địa chỉ nhận thông báo thuế", chỉ điền khi khác trụ sở.
+  Không thay thế qua lại giữa các loại địa chỉ này.
 - Không bịa thông tin. Field nào OCR không đủ chắc chắn thì bỏ qua.
 - Nếu một người vừa là chủ hộ vừa là người ký/người nộp hồ sơ, có thể trả cả ChuHo_* và NguoiNop_* bằng cùng dữ liệu.
 - Nếu giấy chỉ có một địa chỉ cá nhân và không tách rõ trụ sở/chủ hộ/người nộp, ưu tiên gán địa chỉ đó cho chủ hộ; chỉ gán trụ sở khi OCR nằm gần nhãn "Địa chỉ trụ sở hộ kinh doanh".
@@ -54,13 +55,28 @@ QUY TẮC TRÍCH XUẤT:
   BỎ HẾT dấu chấm ở phần trước @, giữ nguyên phần domain sau @ (email cá nhân trên form gần như luôn gmail,
   dấu chấm không có ý nghĩa). Ví dụ "tai.nguyen@gmail.com" -> "tainguyen@gmail.com".
 - Số điện thoại VN là 10 chữ số bắt đầu bằng "0". Nếu số xuất hiện ở nhiều chỗ, chọn bản đầy đủ 10 số có "0" đứng đầu; nếu bản đọc được thiếu "0" đứng đầu (vd "974455009") thì THÊM "0" vào trước (-> "0974455009"). Sửa lỗi OCR phổ biến: S->5, O->0; bỏ dấu cách trong dãy số.
+- CHỈ có 3 nhóm liên hệ cần trích từ hồ sơ:
+  + TruSo_DienThoai/TruSo_Email: mục "2. Trụ sở của hộ kinh doanh".
+  + ChuHo_DienThoai/ChuHo_Email: phần thông tin cá nhân của chủ hộ.
+  + Thue_DienThoai/Thue_Email: mục 5.1 địa chỉ nhận thông báo thuế.
+  KHÔNG lấy liên hệ người nộp thay cho trụ sở, chủ hộ hoặc thuế.
 - NGÀNH NGHỀ (mục 3, thường là BẢNG "STT | Tên ngành | Mã ngành | Ngành nghề kinh doanh chính"):
   BẮT BUỘC liệt kê ĐẦY ĐỦ MỌI dòng CÓ TÊN NGÀNH vào NganhNghe_DanhSach, mỗi dòng 1 object {ma, ten, chinh}.
+  + Mã ngành là dãy đúng 4 chữ số LIỀN NHAU, không có dấu cách/dấu chấm/dấu gạch. Ví dụ OCR thấy "56 10"
+    hoặc "56.10" thì trả ma="5610".
   + Cột "Mã ngành" trên tờ khai (nhất là viết tay) THƯỜNG ĐỂ TRỐNG → khi đó ma="" và VẪN PHẢI trả ten.
     TUYỆT ĐỐI KHÔNG được bỏ trống NganhNghe_DanhSach chỉ vì thiếu mã ngành.
   + Bỏ các dòng trống (không có tên ngành). Giữ nguyên thứ tự xuất hiện.
   + Nếu cột "Ngành nghề kinh doanh chính" đánh dấu ở dòng nào thì chinh=true cho dòng đó (và NganhNghe_TenChinh = tên đó).
 - Vốn kinh doanh: trả số tiền bằng chữ số đơn vị đồng. Nếu OCR có cả số và chữ, ưu tiên số ghi ở ô vốn; nếu chỉ có chữ thì chuyển thành số khi chắc chắn.
+- THÔNG TIN THUẾ:
+  + Thue_SoLaoDong (BẮT BUỘC trích nếu có chữ số): lấy tại mục "Tổng số lao động (dự kiến)". Chỉ cần
+    sau cụm này có BẤT KỲ chữ số nào — kể cả 1 chữ số như "2 người", "...4..." — thì LUÔN trả CHỈ chữ
+    số đó ("2", "4"). Một chữ số nhỏ VẪN là giá trị hợp lệ, KHÔNG coi là nhiễu. Chỉ bỏ field khi mục đó
+    HOÀN TOÀN không có chữ số nào (ô để trống / chỉ có dấu chấm). Không đoán/bịa.
+  + Thue_PhuongPhapTinh: lấy tại mục "Phương pháp tính thuế GTGT". Chỉ chọn phương pháp có ô/checkbox được đánh dấu
+    (☑, ☒, x, X) ngay trước hoặc cùng dòng: "Phương pháp kê khai" -> trả "Phương pháp kê khai";
+    "Phương pháp khoán" -> trả "Phương pháp khoán". Không lấy phương pháp không được đánh dấu.
 - Ngày tháng chuẩn dd/mm/yyyy khi có đủ ngày-tháng-năm; nếu giấy chỉ có tháng/năm hoặc năm thì giữ đúng mức chi tiết đọc được.
 - Ngày sinh: CHỈ điền ngày khi đọc được số ngày hợp lệ (01-31). Nếu ô ngày trống/mờ/chỉ thấy "0" (vd OCR "Sinh ngày: 0 / 7 1989") thì trả "mm/yyyy" (vd "07/1989") và TUYỆT ĐỐI KHÔNG đoán/bịa số ngày.
 - Giới tính chỉ trả "Nam" hoặc "Nữ".

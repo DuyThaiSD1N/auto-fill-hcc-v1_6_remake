@@ -34,3 +34,5 @@ class ProcessResp(BaseModel):
     requestId: str | None = None
     # Chế độ "fill tất cả trang" (đăng ký kinh doanh): {page_key: [field]} cho cả 8 trang.
     pages: dict[str, list[FieldOut]] | None = None
+    # Metadata state machine HkdOnline (wizard tìm HKD + các trang thực sự cần sửa).
+    businessFlow: dict[str, Any] | None = None

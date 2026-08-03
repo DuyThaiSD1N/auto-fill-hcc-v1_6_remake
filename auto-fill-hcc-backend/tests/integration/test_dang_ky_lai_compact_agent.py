@@ -8,13 +8,18 @@ import respx
 from app.config import settings
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.khai_sinh_dang_ky_lai import process as agent
-from app.pipelines.khai_sinh_dang_ky_lai.process import mapper
+from app.pipelines.khai_sinh_dang_ky_lai.process import mapper, reason
 from app.pipelines.khai_sinh_dang_ky_lai.process.prompt import EXTRA_RULES
 from app.pipelines.khai_sinh_dang_ky_lai.process.schema import FIELDS
 
 
 def _file(name, typ="image/jpeg"):
     return {"name": name, "type": typ, "dataUrl": "data:x;base64,AAA"}
+
+
+async def _no_reasoning_context(*_args, **_kwargs):
+    """Các test compact-agent cũ chỉ kiểm tra extraction/mapper, không kiểm tra call reasoning."""
+    return ""
 
 
 def test_dang_ky_lai_normalizes_all_domestic_address_fields():
@@ -190,6 +195,7 @@ def test_dang_ky_lai_rejects_unproven_copy_request_source():
 @respx.mock
 async def test_dang_ky_lai_compact_agent_derives_legacy_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
     respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
     )
@@ -315,6 +321,7 @@ def test_dang_ky_lai_compact_prompt_instructs_issuer_detection():
 @respx.mock
 async def test_dang_ky_lai_compact_agent_defaults_cccd_issuer(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
     respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
     )
@@ -354,6 +361,7 @@ async def test_dang_ky_lai_compact_agent_defaults_cccd_issuer(monkeypatch):
 @respx.mock
 async def test_dang_ky_lai_compact_agent_rejects_legacy_ui_keys(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
     respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
     )
@@ -394,6 +402,7 @@ async def test_dang_ky_lai_compact_agent_rejects_legacy_ui_keys(monkeypatch):
 @respx.mock
 async def test_dang_ky_lai_compact_agent_maps_self_requester_from_paper_declaration(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
+    monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
     respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
     )

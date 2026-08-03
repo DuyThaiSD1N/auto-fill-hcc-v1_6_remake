@@ -42,6 +42,7 @@ async def list_traces(
     procedure: str | None = Query(None),
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
+    requestId: str | None = Query(None),  # "mã hỗ trợ" cán bộ copy từ extension
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
 ):
@@ -50,6 +51,7 @@ async def list_traces(
         procedure=procedure,
         date_from=_parse_dt(dateFrom),
         date_to=_parse_dt(dateTo),
+        request_id=requestId,
         skip=(page - 1) * pageSize,
         limit=pageSize,
     )

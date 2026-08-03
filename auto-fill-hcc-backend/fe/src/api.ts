@@ -128,6 +128,7 @@ export interface TraceQuery {
   procedure?: string;
   dateFrom?: string;
   dateTo?: string;
+  requestId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -138,6 +139,7 @@ export function listTraces(q: TraceQuery): Promise<TraceListResp> {
   if (q.procedure) params.set("procedure", q.procedure);
   if (q.dateFrom) params.set("dateFrom", q.dateFrom);
   if (q.dateTo) params.set("dateTo", q.dateTo);
+  if (q.requestId) params.set("requestId", q.requestId);
   params.set("page", String(q.page ?? 1));
   params.set("pageSize", String(q.pageSize ?? 20));
   return request<TraceListResp>(`/api/v1/traces?${params.toString()}`);

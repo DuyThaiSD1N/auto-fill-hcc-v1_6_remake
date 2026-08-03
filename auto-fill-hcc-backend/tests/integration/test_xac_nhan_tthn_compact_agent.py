@@ -8,6 +8,7 @@ import respx
 from app.config import settings
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.xac_nhan_tthn import process as agent
+from app.pipelines.xac_nhan_tthn.process import mapper
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
 from app.pipelines.xac_nhan_tthn.process.schema import FIELDS
 from app.procedures.registry import get_pipeline, get_procedure
@@ -20,6 +21,179 @@ def _file(name, typ="image/jpeg"):
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(settings, "gemini_api_key", "")
+
+
+def test_xac_nhan_tthn_maps_declared_purpose_to_other_detail():
+    mapped = mapper.enrich([
+        {"name": "Purpose", "comp": "x-input", "value": "Bổ sung hồ sơ giao dịch dân sự"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["mucdich"] == "Sử dụng vào mục đích khác"
+    assert values["nhapmucdichkhac"] == "Bổ sung hồ sơ giao dịch dân sự"
+
+
+def test_xac_nhan_tthn_prompt_requires_purpose_from_current_declaration():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+    assert 'BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng' in system_prompt
+    assert "TỜ KHAI hiện tại →" in system_prompt
+    assert "Python sẽ mặc định chọn" in system_prompt
+
+
+def test_xac_nhan_tthn_maps_declared_married_and_self_relation():
+    mapped = mapper.enrich(
+        [
+            {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN THỊ A"},
+            {"name": "Cccd_SoDinhDanh", "comp": "x-input", "value": "0123456789"},
+            {"name": "ToKhai_LaBanThan", "comp": "x-input", "value": True},
+            {
+                "name": "TinhTrangHonNhanC1",
+                "comp": "x-select",
+                "value": "Hiện tại đang có vợ/chồng",
+            },
+        ],
+        {
+            "formContext": {
+                "applicantFullname": "NGUYỄN THỊ A",
+                "applicantIdentityNumber": "012345678901",
+            }
+        },
+    )
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["quanhevoinguoiduocxacminh"] == "1"
+    assert values["TinhTrangHonNhanC1"] == "Hiện tại đang có vợ/chồng"
+
+
+def test_xac_nhan_tthn_prompt_allows_declared_married_and_self_relation():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+    assert 'nội dung bắt đầu bằng "Chưa kết hôn"' in system_prompt
+    assert '"Chưa kết hôn lần hai"' in system_prompt
+    assert '"hiện tại đang có chồng" hoặc "hiện tại đang có vợ"' in system_prompt
+    assert 'TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng"' in system_prompt
+    assert "ToKhai_LaBanThan=true" in system_prompt
+    assert 'dòng quan hệ ghi "Tự khai"/"Bản thân"' in system_prompt
+
+
+def test_xac_nhan_tthn_maps_declared_spouse_name_without_marriage_certificate():
+    mapped = mapper.enrich([
+        {
+            "name": "TinhTrangHonNhanC1",
+            "comp": "x-select",
+            "value": "Hiện tại đang có vợ/chồng",
+        },
+        {"name": "Marriage_SpouseName", "comp": "x-input", "value": "TRẦN VĂN B"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["TinhTrangHonNhanC1"] == "Hiện tại đang có vợ/chồng"
+    assert values["nxnLoaiTinhTrangHonNhan=2"] == {"voChongHoTen": "TRẦN VĂN B"}
+
+
+def test_xac_nhan_tthn_maps_all_available_marriage_certificate_fields():
+    mapped = mapper.enrich([
+        {
+            "name": "TinhTrangHonNhanC1",
+            "comp": "x-select",
+            "value": "Hiện tại đang có vợ/chồng",
+        },
+        {"name": "Marriage_SpouseName", "comp": "x-input", "value": "TRẦN VĂN B"},
+        {"name": "Marriage_Number", "comp": "x-input", "value": "12/2020"},
+        {"name": "Marriage_Date", "comp": "x-date", "value": "02/03/2020"},
+        {"name": "Marriage_Agency", "comp": "x-input", "value": "Ủy ban nhân dân xã Minh Sơn"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+    names = [field["name"] for field in mapped]
+
+    assert values["nxnLoaiTinhTrangHonNhan=2"] == {
+        "voChongHoTen": "TRẦN VĂN B",
+        "soGiayTo": "12/2020",
+        "ngayCapGiayTo": "02/03/2020",
+        "coQuanCapGiayTo": "Ủy ban nhân dân xã Minh Sơn",
+    }
+    assert values["soGiayTo"] == "12/2020"
+    assert values["ngayCapGiayTo-day"] == "02"
+    assert values["ngayCapGiayTo-month"] == "03"
+    assert values["ngayCapGiayTo-year"] == "2020"
+    assert values["ngayCapGiayTo-name-date-input"] == "2020-03-02"
+    assert values["coQuanCapGiayTo"] == "Ủy ban nhân dân xã Minh Sơn"
+    assert names.index("nxnLoaiTinhTrangHonNhan=2") < names.index("soGiayTo")
+
+
+def test_xac_nhan_tthn_prompt_does_not_mix_spouse_identity_with_marriage_certificate():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+    assert 'sau cụm "đang có chồng là"' in system_prompt
+    assert "thiếu field nào thì bỏ field đó" in system_prompt
+    assert "Không lấy số CCCD/CMND, ngày sinh, ngày cấp CCCD" in system_prompt
+
+
+def test_xac_nhan_tthn_expands_commune_abbreviations():
+    def mapped_area(xa):
+        mapped = mapper.enrich([
+            {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
+            {
+                "name": "Cccd_NoiCuTru",
+                "comp": "x-select-area",
+                "value": {
+                    "quocGia": "Việt Nam",
+                    "tinh": "Lâm Đồng",
+                    "xa": xa,
+                    "diaChi": "12 Đường Mẫu",
+                },
+            },
+        ])
+        values = {field["name"]: field["value"] for field in mapped}
+        return values["nycNoiCuTru_TrongNuoc"]
+
+    assert mapped_area("P.10")["xa"] == "Phường 10"
+    assert mapped_area("X. Tân Hà")["xa"] == "Xã Tân Hà"
+
+
+def test_xac_nhan_tthn_prefers_declaration_residence_over_identity_card():
+    mapped = mapper.enrich([
+        {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
+        {
+            "name": "Cccd_NoiCuTru",
+            "comp": "x-select-area",
+            "value": {
+                "quocGia": "Việt Nam",
+                "tinh": "Lâm Đồng",
+                "xa": "P.10",
+                "diaChi": "10 Đường Cũ",
+            },
+        },
+        {
+            "name": "ToKhai_NoiCuTru",
+            "comp": "x-select-area",
+            "value": {
+                "quocGia": "Việt Nam",
+                "tinh": "Lâm Đồng",
+                "xa": "Phường Xuân Hương - Đà Lạt",
+                "diaChi": "20 Đường Mới",
+            },
+        },
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["nycNoiCuTru_TrongNuoc"] == {
+        "quocGia": "Việt Nam",
+        "tinh": "Lâm Đồng",
+        "xa": "Phường Xuân Hương - Đà Lạt",
+        "diaChi": "20 Đường Mới",
+    }
+    assert values["nxnNoiCuTru_TrongNuoc"] == values["nycNoiCuTru_TrongNuoc"]
+
+
+def test_xac_nhan_tthn_prompt_requires_separate_declaration_residence():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+    assert "ToKhai_NoiCuTru = dòng" in system_prompt
+    assert "BẮT BUỘC trả ToKhai_NoiCuTru" in system_prompt
+    assert "ToKhai_NoiCuTru → Cccd_NoiCuTru" in system_prompt
+    assert "output phải có ToKhai_NoiCuTru" in system_prompt
 
 
 @respx.mock
@@ -42,8 +216,9 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
                 "tinh": "Nghệ An",
                 "diaChi": "Xóm Long Thành",
             },
+            "Purpose": "Bổ sung hồ sơ giao dịch dân sự",
             "HoVaTenC1": "UI_SAI",
-            "TinhTrangHonNhanC1": "Độc thân",
+            "TinhTrangHonNhanC1": "Hiện tại chưa đăng ký kết hôn với ai",
         }
     }
     respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
@@ -59,8 +234,7 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
     by_name = {f["name"]: f for f in res["fields"]}
     d = {f["name"]: f["value"] for f in res["fields"]}
 
-    assert d["loaiDangKy"] == "1"
-    assert by_name["loaiDangKy"]["aliases"] == ["LoaiDangKy"]
+    assert "loaiDangKy" not in d
     assert d["HoVaTenC"] == "VŨ ĐÌNH THIẾT"
     assert d["SoDinhDanhC"] == "040203015844"
     assert d["LoaiGiayToDinhDanhC"] == "Căn cước công dân"
@@ -86,9 +260,10 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
     assert d["nxnNoiCuTru"] == "1"
     assert d["nxnNoiCuTru_TrongNuoc"]["diaChi"] == "Xóm Long Thành"
     assert d["mucdich"] == "Sử dụng vào mục đích khác"
+    assert d["nhapmucdichkhac"] == "Bổ sung hồ sơ giao dịch dân sự"
     assert d["TraKQ"] == "1"
 
-    assert "TinhTrangHonNhanC1" not in d
+    assert d["TinhTrangHonNhanC1"] == "Hiện tại chưa đăng ký kết hôn với ai"
     assert not res["errors"]
 
 
@@ -159,7 +334,7 @@ async def test_xac_nhan_tthn_compact_agent_defaults_issuer(monkeypatch):
     assert d["NoiCapDDC1"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
 
 
-def test_xac_nhan_tthn_compact_prompt_rejects_ui_fields():
+def test_xac_nhan_tthn_compact_prompt_allows_declared_never_married_status():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
     assert "mặc định NGƯỜI YÊU CẦU là BẢN THÂN" in system_prompt
@@ -168,8 +343,12 @@ def test_xac_nhan_tthn_compact_prompt_rejects_ui_fields():
     assert "quanhevoinguoiduocxacminh" in system_prompt
     assert "DivorceDecision_* lấy từ OCR" in system_prompt
     assert "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ" in system_prompt  # nguồn giấy XNTTHN cũ
-    assert "Không trả TinhTrangHonNhanC1" in system_prompt
+    assert 'RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ' in system_prompt
+    assert '"Hiện tại chưa đăng ký kết hôn với ai"' in system_prompt
     assert "Không suy luận tình trạng hôn nhân từ CCCD" in system_prompt
+    assert 'BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng' in system_prompt
+    assert "TỜ KHAI hiện tại →" in system_prompt
+    assert "Python sẽ mặc định chọn" in system_prompt
 
 
 def test_registry_uses_xac_nhan_tthn_compact_agent_mode():

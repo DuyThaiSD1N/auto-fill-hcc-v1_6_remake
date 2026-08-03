@@ -8,7 +8,7 @@ import respx
 from app.config import settings
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.ket_hon import process as agent
-from app.pipelines.ket_hon.process import mapper
+from app.pipelines.ket_hon.process import mapper, runner as ket_hon_runner
 from app.pipelines.ket_hon.process.prompt import EXTRA_RULES
 from app.pipelines.ket_hon.process.schema import FIELDS
 from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
@@ -140,6 +140,58 @@ def test_ket_hon_compact_prompt_instructs_gender_split():
     assert "mapper sẽ tự ưu tiên tờ khai" in system_prompt
     assert "giấy xác nhận tình trạng hôn nhân" in system_prompt
     assert 'nhãn rõ "Xã ..." hoặc "Phường ..."' in system_prompt
+
+
+def test_ket_hon_ethnicity_requires_explicit_labeled_source():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    field_desc = {field["name"]: field["desc"] for field in FIELDS}
+
+    assert 'không xuất hiện nhãn "Dân tộc" → BỎ CẢ HAI field dân tộc' in system_prompt
+    assert "không suy đoán dân tộc" in system_prompt
+    assert "Dân tộc phổ biến" not in system_prompt
+    assert "thiếu nhãn thì bỏ field" in field_desc["CccdNam_DanToc"]
+    assert "thiếu nhãn thì bỏ field" in field_desc["CccdNu_DanToc"]
+
+    # Hai CCCD không cung cấp dân tộc: compact output không có field dân tộc thì mapper
+    # cũng tuyệt đối không tự tạo giá trị cho form.
+    mapped = {
+        field["name"]: field["value"]
+        for field in mapper.enrich([
+            {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
+            {"name": "CccdNam_SoDinhDanh", "value": "001001001001"},
+            {"name": "CccdNu_HoTen", "value": "NGƯỜI NỮ"},
+            {"name": "CccdNu_SoDinhDanh", "value": "002002002002"},
+        ])
+    }
+    assert "DanTocBenNam" not in mapped
+    assert "DanTocBenNu" not in mapped
+
+
+def test_ket_hon_drops_inferred_ethnicity_when_two_cccd_have_no_ethnicity_label():
+    hallucinated = {
+        "CccdNam_HoTen": "NGƯỜI NAM",
+        "CccdNam_DanToc": "DÂN TỘC SUY ĐOÁN",
+        "CccdNu_HoTen": "NGƯỜI NỮ",
+        "CccdNu_DanToc": "DÂN TỘC SUY ĐOÁN",
+    }
+    two_identity_cards = [
+        {"text": "CĂN CƯỚC - Họ và tên: NGƯỜI NAM - Giới tính: Nam - Nơi cư trú: Bản A"},
+        {"text": "CĂN CƯỚC - Họ và tên: NGƯỜI NỮ - Giới tính: Nữ - Nơi cư trú: Bản B"},
+    ]
+
+    filtered = ket_hon_runner._compact_field_fallback(hallucinated, two_identity_cards)
+
+    assert filtered["CccdNam_HoTen"] == "NGƯỜI NAM"
+    assert filtered["CccdNu_HoTen"] == "NGƯỜI NỮ"
+    assert "CccdNam_DanToc" not in filtered
+    assert "CccdNu_DanToc" not in filtered
+
+
+def test_ket_hon_keeps_ethnicity_when_document_has_explicit_label():
+    extracted = {"CccdNam_DanToc": "Kinh", "CccdNu_DanToc": "Mông"}
+    declaration = [{"text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nDân tộc | Kinh | Mông"}]
+
+    assert ket_hon_runner._compact_field_fallback(extracted, declaration) == extracted
 
 
 def test_ket_hon_copy_request_has_no_default_and_quantity_is_positive_signal():

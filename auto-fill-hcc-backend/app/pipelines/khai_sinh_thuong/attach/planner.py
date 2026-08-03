@@ -226,7 +226,10 @@ async def plan_khai_sinh_thuong_attachments(
             }
         else:
             # Thành phần MỚI. Tên thành phần = "loại + tên người"; tên file ngắn gọn.
-            if doc_type == "identity" or _is_cccd_text(text):
+            # _is_cccd_text chỉ dùng ở fallback other → identity phía trên. Khi LLM đã
+            # phân loại rõ (ví dụ Bản cam đoan có nhắc số CCCD), không được đổi cách
+            # đặt tên tài liệu sang cccd_*.
+            if doc_type == "identity":
                 person = _extract_person_name(text)
                 label = detected.get("title") or _DOC_LABEL["identity"]
                 component_base = f"{label} {person}".strip() if person else label

@@ -6,7 +6,10 @@
 from app.pipelines.cap_ban_sao_so_goc.attach import plan as cap_ban_sao_so_goc_attach
 from app.pipelines.an_toan_thuc_pham.attach import plan as an_toan_thuc_pham_attach
 from app.pipelines.an_toan_thuc_pham.process import run as an_toan_thuc_pham_process
+from app.pipelines.cap_gcn_attp_nong_lam_thuy_san.attach import plan as cap_gcn_attp_nong_lam_thuy_san_attach
+from app.pipelines.cap_gcn_attp_nong_lam_thuy_san.process import run as cap_gcn_attp_nong_lam_thuy_san_process
 from app.pipelines.cap_lai_an_toan_thuc_pham.process import run as cap_lai_an_toan_thuc_pham_process
+from app.pipelines.cap_lai_an_toan_thuc_pham.attach import plan as cap_lai_an_toan_thuc_pham_attach
 from app.pipelines.cap_giay_phep_xay_dung.attach import plan as cap_giay_phep_xay_dung_attach
 from app.pipelines.cap_giay_phep_xay_dung.process import run as cap_giay_phep_xay_dung_process
 from app.pipelines.cap_doi_gcn_bac_ninh.attach import plan as cap_doi_gcn_bac_ninh_attach
@@ -16,6 +19,9 @@ from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.process import run as dinh_chi
 from app.pipelines.dang_ky_dat_dai_lan_dau_lam_dong.attach import plan as dang_ky_dat_dai_lan_dau_lam_dong_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_lam_dong.process import run as dang_ky_dat_dai_lan_dau_lam_dong_process
 from app.pipelines.dang_ky_kinh_doanh.attach import plan as dang_ky_kinh_doanh_attach
+from app.pipelines.dang_ky_thay_doi_kinh_doanh.attach import plan as dang_ky_thay_doi_kinh_doanh_attach
+from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.attach import plan as cham_dut_hoat_dong_ho_kinh_doanh_attach
+from app.pipelines.cap_lai_cap_doi_gcn_ho_kinh_doanh.attach import plan as cap_lai_cap_doi_gcn_ho_kinh_doanh_attach
 from app.pipelines.cap_nuoc_sach.attach import plan as cap_nuoc_sach_attach
 from app.pipelines.chung_thuc_ban_sao.attach import plan as chung_thuc_ban_sao_attach
 from app.pipelines.chung_thuc_chu_ky.attach import plan as chung_thuc_chu_ky_attach
@@ -28,8 +34,12 @@ from app.pipelines.cap_nuoc_sach.process import run as cap_nuoc_sach_process
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
+from app.pipelines.dang_ky_thay_doi_kinh_doanh.process import run as dang_ky_thay_doi_kinh_doanh_process
+from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.process import run as cham_dut_hoat_dong_ho_kinh_doanh_process
+from app.pipelines.cap_lai_cap_doi_gcn_ho_kinh_doanh.process import run as cap_lai_cap_doi_gcn_ho_kinh_doanh_process
 from app.pipelines.dieu_chinh_dat_dai.process import run as dieu_chinh_dat_dai_process
 from app.pipelines.dinh_chinh_sai_sot.process import run as dinh_chinh_sai_sot_process
+from app.pipelines.dinh_chinh_sai_sot.attach import plan as dinh_chinh_sai_sot_attach
 from app.pipelines.dinh_chinh_sai_sot_bac_ninh.process import run as dinh_chinh_sai_sot_bac_ninh_process
 from app.pipelines.dinh_chinh_sai_sot_bac_ninh.attach import plan as dinh_chinh_sai_sot_bac_ninh_attach
 from app.pipelines.dinh_chinh_sai_sot_lam_dong.process import run as dinh_chinh_sai_sot_lam_dong_process
@@ -111,6 +121,12 @@ from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.attach import plan as s
 from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.process import run as sua_doi_ttncc_process
 from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.attach import plan as di_chuyen_ho_so_attach
 from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.process import run as di_chuyen_ho_so_process
+from app.pipelines.tro_cap_xa_hoi_hang_thang.attach import plan as tro_cap_xa_hoi_hang_thang_attach
+from app.pipelines.tro_cap_xa_hoi_hang_thang.process import run as tro_cap_xa_hoi_hang_thang_process
+from app.pipelines.cap_giay_phep_lien_van_viet_lao.attach import plan as cap_giay_phep_lien_van_viet_lao_attach
+from app.pipelines.cap_giay_phep_lien_van_viet_lao.process import run as cap_giay_phep_lien_van_viet_lao_process
+from app.pipelines.xoa_dang_ky_tau_ca.attach import plan as xoa_dang_ky_tau_ca_attach
+from app.pipelines.xoa_dang_ky_tau_ca.process import run as xoa_dang_ky_tau_ca_process
 
 PROCEDURES: list[dict] = [
     {
@@ -274,6 +290,78 @@ PROCEDURES: list[dict] = [
             {"key": "chu-ho-kinh-doanh", "label": "Thông tin về chủ hộ kinh doanh"},
             {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
             {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+    },
+    {
+        "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+        # Không nhận diện bằng body text: màn chọn chung cũng chứa label thủ tục này dù người dùng
+        # chưa chọn. Extension gửi businessProcedureHint theo active wizard step/loại hồ sơ.
+        "detect": {"headingDisabled": True},
+        "label": "Đăng ký thay đổi nội dung đăng ký hộ kinh doanh",
+        "mode": "agent",
+        "businessWorkflow": "change",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo thay đổi nội dung đăng ký hộ kinh doanh (thường đi cùng GCN đăng ký HKD hiện tại).\n"
+            "2. Bản sao CCCD/căn cước của cá nhân liên quan.\n"
+            "3. Tài liệu điều kiện nếu thay đổi chủ hộ/thành viên hộ gia đình."
+        ),
+        "pages": [
+            {"key": "dia-chi", "label": "Địa chỉ"},
+            {"key": "nganh-nghe-kinh-doanh", "label": "Ngành nghề kinh doanh"},
+            {"key": "ten-ho-kinh-doanh", "label": "Tên hộ kinh doanh"},
+            {"key": "chu-ho-kinh-doanh", "label": "Thông tin về chủ hộ kinh doanh"},
+            {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
+            {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+    },
+    {
+        "key": "cham-dut-hoat-dong-ho-kinh-doanh",
+        # Bốn bước wizard đầu dùng chung URL/heading với các nhánh thay đổi khác. Extension chỉ
+        # nhận diện chắc chắn khi session đã chọn nhánh này hoặc trang Dissolution.aspx đang mở.
+        "detect": {"headingDisabled": True},
+        "label": "Chấm dứt hoạt động hộ kinh doanh",
+        "mode": "agent",
+        "businessWorkflow": "dissolution",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo về việc chấm dứt hoạt động hộ kinh doanh (Mẫu số 1).\n"
+            "2. Thông báo của cơ quan thuế về chấm dứt hiệu lực mã số thuế/hoàn thành nghĩa vụ thuế.\n"
+            "3. Bản gốc Giấy chứng nhận đăng ký hộ kinh doanh.\n"
+            "4. Nếu hộ gia đình cùng thành lập: biên bản họp thành viên hộ gia đình.\n"
+            "5. CCCD, ủy quyền hoặc giấy tờ bổ sung khác (đính vào loại Khác)."
+        ),
+        "pages": [
+            {"key": "cham-dut-hoat-dong", "label": "Chấm dứt hoạt động"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+    },
+    {
+        "key": "cap-lai-cap-doi-gcn-ho-kinh-doanh",
+        # Wizard REI dùng chung màn chọn/tìm kiếm với các nhánh HKD khác; extension giữ lựa chọn
+        # hiện tại ở màn mơ hồ và chỉ xác nhận lại bằng loại hồ sơ/trang DW_RE_ISSUANCEEdit.
+        "detect": {"headingDisabled": True},
+        "label": "Cấp lại Giấy chứng nhận đăng ký hộ kinh doanh, Cấp đổi sang Giấy chứng nhận đăng ký hộ kinh doanh",
+        "mode": "agent",
+        "businessWorkflow": "reissue",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị cấp lại/cấp đổi Giấy chứng nhận đăng ký hộ kinh doanh (Mẫu số 2).\n"
+            "2. CCCD, GCN cũ, giấy ủy quyền hoặc giấy tờ bổ sung khác được đính vào loại Khác."
+        ),
+        "pages": [
+            {"key": "thong-tin-de-nghi-cap-lai", "label": "Thông tin đề nghị cấp lại GCN/GXNTĐ"},
             {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
         ],
     },
@@ -563,14 +651,20 @@ PROCEDURES: list[dict] = [
         # Cổng laichau (SPA, dùng chung domain+path cho nhiều thủ tục, sid đổi mỗi phiên)
         # → nhận diện theo VĂN BẢN tên thủ tục hiển thị trên trang (tất cả cụm phải có mặt).
         "detect": {"textIncludes": ["đính chính", "sai sót"], "headingDisabled": True},
-        "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "label": "[Lai Châu] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
+        "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. CCCD của người nộp hồ sơ.\n"
-            "2. Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất."
+            "1. Đơn đăng ký biến động đất đai theo Mẫu số 11/ĐK hoặc Mẫu số 18.\n"
+            "2. Bản gốc/bản chụp Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất "
+            "đã cấp.\n"
+            "3. Giấy tờ chứng minh nội dung sai sót cần đính chính (CCCD, giấy khai sinh, quyết định, "
+            "văn bản xác nhận...).\n"
+            "4. Nếu có: Văn bản ủy quyền khi thực hiện thủ tục qua người đại diện.\n"
+            "Mỗi file tối đa 6 MB; hệ thống tự chọn đúng nhóm Mẫu 11/ĐK hoặc Mẫu 18."
         ),
     },
     {
@@ -1025,6 +1119,32 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-gcn-attp-nong-lam-thuy-san",
+        "detect": {
+            "urlIncludes": [
+                "apply-online/693a99efda87c4718ece1bc7",
+                "process=695dbb6de184634c1f3648af",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, "
+            "kinh doanh thực phẩm nông, lâm, thủy sản"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. CCCD của người nộp hồ sơ.\n"
+            "2. Nếu người nộp khác đại diện/chủ cơ sở: CCCD của đại diện/chủ cơ sở.\n"
+            "3. Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm theo Phụ lục I.\n"
+            "4. Bản thuyết minh điều kiện bảo đảm an toàn thực phẩm theo Phụ lục II.\n"
+            "5. Nếu có: Giấy chứng nhận đăng ký kinh doanh/doanh nghiệp/hộ kinh doanh để đối chiếu."
+        ),
+    },
+    {
         "key": "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
         "detect": {
             "textIncludes": [
@@ -1415,6 +1535,97 @@ PROCEDURES: list[dict] = [
             "đính kèm bổ sung thủ công."
         ),
     },
+    {
+        "key": "tro-cap-xa-hoi-hang-thang",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
+        # checkbox (engine attp-row như ATTP). URL SPA là ObjectId không có MaTTHC → detect theo cụm tên.
+        "detect": {
+            "textIncludes": [
+                "thực hiện, điều chỉnh, thôi hưởng trợ cấp xã hội",
+                "chăm sóc, nuôi dưỡng hàng tháng",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp xã hội hàng tháng, hỗ trợ kinh phí chăm sóc, "
+                 "nuôi dưỡng hàng tháng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đề nghị trợ giúp xã hội của đối tượng (Mẫu số 1a/1b/1c/1d/1đ) HOẶC Tờ khai nhận chăm "
+            "sóc, nuôi dưỡng (Mẫu 2a/2b/03) — nguồn chính.\n"
+            "2. CCCD của đối tượng hưởng trợ cấp (nếu là trẻ em thì Giấy khai sinh thay CCCD).\n"
+            "3. Giấy xác nhận khuyết tật / Biên bản giám định y khoa (nếu đối tượng khuyết tật).\n"
+            "4. Nếu có: Giấy xác nhận thông tin về cư trú, Giấy tờ xác nhận nhiễm HIV / đang mang thai, và "
+            "CCCD của người nộp/khai thay.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đối tượng hưởng trợ cấp (chủ hồ sơ) là người đứng tên hồ sơ; nếu người khác NỘP/KHAI THAY thì "
+            "extension điền Phần 1 (người nộp) từ tài khoản + CCCD người nộp, BỎ TÍCH ô 'Người nộp là chủ hồ "
+            "sơ' rồi điền Phần 2 (đối tượng).\n"
+            "Bước đính kèm: mỗi giấy tờ được tick vào đúng dòng thành phần hồ sơ (Mẫu 1x/2a/2b/03, CCCD/cư "
+            "trú, khai sinh, HIV, mang thai, khuyết tật) và chọn 'Scan tệp tin'."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-lien-van-viet-lao",
+        # Cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io apply-online) — CÙNG nền tảng/engine fill standard
+        # dom-* với cung_cap_thong_tin_quy_hoach. URL chỉ ObjectId (không có MaTTHC) → detect theo id
+        # đơn/process của bước 1 (urlIncludes là OR).
+        "detect": {"urlIncludes": [
+            "apply-online/69551d8635dc1d6a4c6b887b",
+            "process=69551d9f5ad52521f43d247b",
+        ]},
+        "label": "Cấp, cấp lại Giấy phép liên vận giữa Việt Nam và Lào",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị cấp, cấp lại Giấy phép liên vận Việt Nam - Lào (Mẫu Mucb) — nguồn chính về đề nghị.\n"
+            "2. CCCD của người/đơn vị đứng đơn — nguồn nhân thân người nộp.\n"
+            "3. Giấy chứng nhận đăng ký xe ô tô của phương tiện xin cấp phép.\n"
+            "4. Nếu có: Hợp đồng/tài liệu chứng minh công trình, dự án tại Lào (phi thương mại); Quyết định cử "
+            "đi công tác (xe công vụ); Hợp đồng thuê phương tiện (xe không chính chủ).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Điền đơn (Form.io): Phần I 'Thông tin người nộp' + Phần II 'Thông tin đề nghị' (dịch vụ, kính gửi "
+            "Sở Xây dựng, mục đích chuyến đi, người làm đơn). DANH SÁCH PHƯƠNG TIỆN (Phần III) do hệ thống nạp "
+            "từ hồ sơ xe đã đăng ký của tài khoản — người dùng tự bấm 'Thêm xe' chọn biển số.\n"
+            "Đính kèm: mỗi giấy tờ tick vào đúng dòng (đăng ký xe / giấy đề nghị / hợp đồng dự án / quyết định "
+            "công tác) theo nhóm thương mại hoặc phi thương mại, chọn Bản chính/Bản sao."
+        ),
+    },
+    {
+        "key": "xoa-dang-ky-tau-ca",
+        # Cổng dichvucongnnmt.mae.gov.vn dùng Form.io + bảng Angular. URL không có mã TTHC dạng số,
+        # nhận diện bằng id thủ tục hoặc id quy trình lấy trực tiếp từ snapshot apply-online thật.
+        "detect": {"urlIncludes": [
+            "apply-online/69394b62da87c4718eca03a3",
+            "process=6a588c510c8bb839cdfb06c8",
+        ]},
+        "label": "Xóa đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai xóa đăng ký tàu cá/tàu phục vụ nuôi trồng thủy sản (Mẫu số 10.ĐKT) — nguồn chính.\n"
+            "2. Giấy chứng nhận đăng ký tàu cá cũ.\n"
+            "3. Giấy tờ chứng minh lý do xóa đăng ký, ví dụ Hợp đồng mua bán/chuyển nhượng tàu cá.\n"
+            "4. CCCD của người đề nghị xóa đăng ký/chủ hồ sơ.\n"
+            "5. Theo quy trình trên cổng, bổ sung Mẫu 11.ĐKT, Mẫu 12.ĐKT và Mẫu 13.ĐKT nếu hồ sơ thuộc "
+            "trường hợp bắt buộc.\n"
+            "Có thể tải một PDF gộp; hệ thống vẫn đọc riêng người đề nghị/bên mua, chủ tàu cũ/bên bán và "
+            "thông tin GCN. Người nộp trên cổng được giữ theo tài khoản, không bị CCCD chủ hồ sơ ghi đè.\n"
+            "Đính kèm tự động vào bốn dòng Mẫu 10/11/12/13.ĐKT. Hợp đồng, GCN cũ và CCCD tách riêng cần "
+            "đính bằng nút 'Thêm giấy tờ'; nếu chúng nằm chung PDF có Mẫu 10.ĐKT thì PDF gộp được đưa vào "
+            "dòng Tờ khai."
+        ),
+    },
 ]
 
 
@@ -1450,6 +1661,7 @@ _PIPELINE = {
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
+    "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": cap_lai_an_toan_thuc_pham_process,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_process,
     "dieu-chinh-dat-dai": dieu_chinh_dat_dai_process,
@@ -1472,13 +1684,20 @@ _PIPELINE = {
     "giai-quyet-che-do-khang-chien": giai_quyet_che_do_khang_chien_process,
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": sua_doi_ttncc_process,
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_process,
+    "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_process,
+    "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
+    "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
+    "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_process,
+    "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_process,
+    "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
 # router chỉ dispatch qua registry).
 _ATTACH_PIPELINE = {
     "cap-ban-sao-so-goc": cap_ban_sao_so_goc_attach,
+    "dinh-chinh-sai-sot": dinh_chinh_sai_sot_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_attach,
@@ -1492,6 +1711,9 @@ _ATTACH_PIPELINE = {
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_attach,
     "dinh-chinh-gcn-da-cap-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_attach,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_attach,
+    "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_attach,
+    "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_attach,
+    "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_attach,
     "chung-thuc-ban-sao": chung_thuc_ban_sao_attach,
     # Chứng thực chữ ký: module RIÊNG (form 2 ô — STT1 giấy tờ, STT2 giấy tùy thân).
     "chung-thuc-chu-ky": chung_thuc_chu_ky_attach,
@@ -1531,9 +1753,14 @@ _ATTACH_PIPELINE = {
     "giai-quyet-che-do-khang-chien": giai_quyet_che_do_khang_chien_attach,
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": sua_doi_ttncc_attach,
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_attach,
+    "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_attach,
+    "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
+    "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
+    "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,
+    "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": cap_lai_an_toan_thuc_pham_attach,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_attach,
 }
 

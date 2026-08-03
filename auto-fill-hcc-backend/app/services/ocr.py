@@ -9,6 +9,7 @@ provider= tường minh để ghi đè (vd test).
 """
 import asyncio
 import logging
+import re
 from contextvars import ContextVar
 
 from app.config import settings
@@ -22,6 +23,20 @@ _DEFAULT_PROVIDER = "raw"
 # Provider hiệu lực cho request hiện tại. Mỗi request (1 asyncio task) có context riêng nên
 # không rò rỉ giữa các request; asyncio.gather copy context con → propagate vào OCR song song.
 _provider_ctx: ContextVar[str] = ContextVar("ocr_provider", default=_DEFAULT_PROVIDER)
+
+_PAGE_SEPARATOR_RE = re.compile(
+    r"(?im)^[\s\u2500-\u257f-]*(?:trang|page)\s+\d+\s*/\s*\d+[\s\u2500-\u257f-]*$"
+)
+
+
+def _has_meaningful_ocr_text(value: str | None) -> bool:
+    """Header phân trang do OCR tự sinh không phải nội dung tài liệu.
+
+    Một số scan viết tay khiến tiengnoi chỉ trả ``──── Trang 1/2 ────``. Nếu chỉ dùng
+    ``text.strip()`` thì kết quả giả này chặn Gemini fallback dù toàn bộ biểu mẫu bị bỏ sót.
+    """
+    without_page_headers = _PAGE_SEPARATOR_RE.sub("", str(value or ""))
+    return bool(without_page_headers.strip())
 
 
 def provider_from_options(options: dict | None) -> str:
@@ -74,7 +89,7 @@ async def _tiengnoi_then_gemini(files: list[dict]) -> list[dict]:
             r["provider"] = "gemini"
         return results
 
-    bad = [i for i, r in enumerate(results) if r.get("error") or not (r.get("text") or "").strip()]
+    bad = [i for i, r in enumerate(results) if r.get("error") or not _has_meaningful_ocr_text(r.get("text"))]
     if bad:
         gem = await ocr_gemini.ocr_per_file([files[i] for i in bad])
         for j, i in enumerate(bad):
@@ -98,6 +113,10 @@ async def ocr_per_file(files: list[dict], provider: str | None = None) -> list[d
 
     keys = [ocr_cache.content_key((f or {}).get("dataUrl") or "") for f in files]
     cached = await ocr_cache.get_many([k for k in keys if k])
+    # Cache cũ có thể đã lưu kết quả tiengnoi chỉ chứa header "Trang n/m". Coi chúng là miss
+    # để đi lại qua nhánh tiengnoi → Gemini fallback thay vì tiếp tục phát text rỗng giả.
+    cached = {key: value for key, value in cached.items()
+              if _has_meaningful_ocr_text((value or {}).get("text"))}
 
     miss_files = [f for f, k in zip(files, keys) if not k or k not in cached]
     fresh = await _ocr_per_file_uncached(miss_files, provider) if miss_files else []

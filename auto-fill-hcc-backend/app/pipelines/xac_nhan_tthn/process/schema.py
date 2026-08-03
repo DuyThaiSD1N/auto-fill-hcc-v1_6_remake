@@ -1,8 +1,8 @@
 """Compact schema for "Xác nhận tình trạng hôn nhân".
 
-The requester is always the subject ("Bản thân"). The LLM returns only CCCD
-source facts; UI defaults and duplicate requester/subject fields are derived in
-Python.
+The requester is always the subject ("Bản thân"). The LLM returns source facts
+from the declaration/identity documents; UI defaults and duplicate
+requester/subject fields are derived in Python.
 """
 
 FIELDS: list[dict] = [
@@ -16,7 +16,17 @@ FIELDS: list[dict] = [
     {"name": "Cccd_NoiCap",
      "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội", nếu là Bộ công an... thì trả "Bộ Công An".'},
-    {"name": "Cccd_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN lấy ở TỜ KHAI (dòng 'Nơi cư trú' của người yêu cầu/người được cấp), CHỈ khi tờ khai không có mới lấy 'Nơi thường trú' trên CCCD. Xem quy tắc <noi_cu_tru>."},
+    {"name": "ToKhai_NoiCuTru",
+     "desc": 'Nơi cư trú hiện tại trên TỜ KHAI cấp giấy XNTTHN, object {quocGia,tinh,xa,diaChi}. '
+             'Lấy đúng dòng "Nơi cư trú" của người yêu cầu/người được cấp; bắt buộc trả khi tờ khai có.'},
+    {"name": "Cccd_NoiCuTru",
+     "desc": 'Nơi thường trú/cư trú trên CCCD/CMND, object {quocGia,tinh,xa,diaChi}. Chỉ lấy từ thẻ '
+             'CCCD/CMND; đây là nguồn dự phòng khi tờ khai không có nơi cư trú.'},
+    {"name": "ToKhai_LaBanThan",
+     "desc": 'Trả true CHỈ khi TỜ KHAI ghi quan hệ "Tự khai"/"Bản thân" và họ tên người yêu cầu '
+             'trùng họ tên người được cấp giấy. Không suy luận từ một CCCD đơn lẻ.'},
+    {"name": "TinhTrangHonNhanC1",
+     "desc": 'Tình trạng hôn nhân'},
     {"name": "DivorceDecision_Number",
      "desc": "Số bản án/quyết định ly hôn, chỉ lấy từ tài liệu quyết định/bản án ly hôn thật."},
     {"name": "DivorceDecision_Date",
@@ -30,18 +40,19 @@ FIELDS: list[dict] = [
     {"name": "DeathCert_Agency",
      "desc": "Cơ quan cấp giấy chứng tử/trích lục khai tử/giấy báo tử (vd UBND phường...)."},
     {"name": "Marriage_SpouseName",
-     "desc": "Họ và tên VỢ/CHỒNG (người còn lại, KHÔNG phải người yêu cầu) trên Giấy chứng nhận/đăng ký "
-             "kết hôn. Đối chiếu tên trên CCCD: lấy tên người KHÁC với người yêu cầu."},
+     "desc": 'Họ tên vợ/chồng hiện tại. Ưu tiên Giấy chứng nhận/đăng ký kết hôn; nếu không có thì lấy '
+             'từ dòng "hiện tại đang có chồng/vợ là..." trên TỜ KHAI.'},
     {"name": "Marriage_Number",
-     "desc": "Số Giấy chứng nhận kết hôn (số đăng ký kết hôn), chỉ lấy từ Giấy chứng nhận/đăng ký kết hôn thật."},
+     "desc": "Số Giấy chứng nhận/đăng ký kết hôn, lấy từ giấy kết hôn hoặc dòng tình trạng hôn nhân trên "
+             "TỜ KHAI nếu ghi rõ. Không lấy số CCCD/CMND của vợ/chồng."},
     {"name": "Marriage_Date",
-     "desc": "Ngày đăng ký/cấp Giấy chứng nhận kết hôn, dd/mm/yyyy."},
+     "desc": "Ngày đăng ký/cấp Giấy chứng nhận kết hôn, dd/mm/yyyy; lấy từ giấy kết hôn hoặc TỜ KHAI "
+             "nếu ghi rõ. Không lấy ngày sinh/ngày cấp CCCD của vợ/chồng."},
     {"name": "Marriage_Agency",
-     "desc": "Cơ quan đăng ký/cấp Giấy chứng nhận kết hôn (vd UBND xã/phường...)."},
+     "desc": "Cơ quan đăng ký/cấp Giấy chứng nhận kết hôn, lấy từ giấy kết hôn hoặc TỜ KHAI nếu ghi rõ. "
+             "Không lấy cơ quan cấp CCCD của vợ/chồng."},
     {"name": "Purpose",
-     "desc": 'Mục đích sử dụng giấy XNTTHN, lấy từ dòng "Giấy này được sử dụng để: ..." trên GIẤY XÁC '
-             'NHẬN TÌNH TRẠNG HÔN NHÂN CŨ nếu có. BỎ chú thích trong ngoặc như "(Không có giá trị đăng ký '
-             'kết hôn)". Vd "Làm thủ tục vay vốn ngân hàng".'},
+     "desc": 'Mục đích sử dụng giấy XNTTHN.'},
     # --- Fields từ GIẤY ỦY QUYỀN (khi người yêu cầu nhờ người khác nộp thay) ---
     # Người ủy quyền (Section I của giấy ủy quyền) = người cần giấy XNTTHN → Mục II form.
     # Người được ủy quyền (Section II của giấy ủy quyền) = người đi nộp hồ sơ → Mục I form (thường có CCCD kèm).
@@ -70,8 +81,10 @@ for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdD
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["Marriage_Date"] = "x-date"
+COMPACT_COMP_BY_NAME["ToKhai_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["Cccd_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["PoA_SubjectAddress"] = "x-select-area"
+COMPACT_COMP_BY_NAME["TinhTrangHonNhanC1"] = "x-select"
 
 UI_COMP_BY_NAME = {
     # Section I: người yêu cầu cấp giấy.
@@ -87,7 +100,6 @@ UI_COMP_BY_NAME = {
     "nycNoiCuTru_TrongNuoc": "x-select-area",
     "quanhevoinguoiduocxacminh": "x-radio",
     # Section II: người được xác nhận tình trạng hôn nhân.
-    "loaiDangKy": "x-radio",    # luôn tick "Đăng ký lần đầu" = "1"
     "HoVaTenC1": "x-input",
     "NgaySinhC1": "x-date",
     "GioiTinhC1": "x-select",
@@ -103,6 +115,13 @@ UI_COMP_BY_NAME = {
     "nxnNoiCuTru_TrongNuoc": "x-select-area",
     "TinhTrangHonNhanC1": "x-select",
     "nxnLoaiTinhTrangHonNhan=2": "x-select-area",  # đang có vợ/chồng (có tên vợ/chồng + GCN kết hôn)
+    # Input con của vùng động =2. Backend phát raw sau x-select-area để extension chỉ cần điền theo DOM name.
+    "soGiayTo": "raw",
+    "ngayCapGiayTo-day": "raw",
+    "ngayCapGiayTo-month": "raw",
+    "ngayCapGiayTo-year": "raw",
+    "ngayCapGiayTo-name-date-input": "raw",
+    "coQuanCapGiayTo": "raw",
     "nxnLoaiTinhTrangHonNhan=3": "x-select-area",  # đã ly hôn
     "nxnLoaiTinhTrangHonNhan=4": "x-select-area",  # góa (vợ/chồng đã chết)
     "nxnLoaiTinhTrangHonNhan=5": "x-select-area",  # option 5 (form có nhưng schema cũ thiếu)

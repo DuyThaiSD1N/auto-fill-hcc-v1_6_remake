@@ -9,6 +9,7 @@ from app.config import settings
 from app.pipelines.dinh_chinh_sai_sot import process as agent
 from app.pipelines.dinh_chinh_sai_sot.process.prompt import EXTRA_RULES
 from app.pipelines.dinh_chinh_sai_sot.process.schema import FIELDS
+from app.pipelines.dinh_chinh_sai_sot.process import mapper
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.procedures.registry import get_pipeline, get_procedure
 
@@ -117,6 +118,24 @@ def test_dinh_chinh_sai_sot_prompt_locks_gcn_serial():
     assert "KHÔNG ghép \"số vào sổ\"" in system_prompt
     assert "Gcn_SoVaoSo" in system_prompt
     assert "Không trả field UI/default" in system_prompt
+
+
+def test_dinh_chinh_sai_sot_maps_application_contact_phone():
+    fields = [
+        {"name": "Don_DienThoaiLienHe", "comp": "x-input", "value": "0349 / 129 815"},
+    ]
+
+    result = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert result["CongDan_diDong"] == "0349129815"
+
+
+def test_dinh_chinh_sai_sot_schema_requests_application_contact_phone():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+    assert "Don_DienThoaiLienHe" in system_prompt
+    assert 'nhãn "Điện thoại liên hệ (nếu có)"' in system_prompt
+    assert "không lấy số CCCD, số GCN" in system_prompt
 
 
 def test_registry_uses_dinh_chinh_sai_sot_compact_agent_mode():

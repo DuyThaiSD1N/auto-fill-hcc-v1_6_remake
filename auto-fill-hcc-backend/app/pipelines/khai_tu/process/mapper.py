@@ -81,6 +81,17 @@ def _positive_copy_quantity(value) -> str:
     return str(quantity) if quantity > 0 else ""
 
 
+def _registration_type(value) -> str:
+    folded = _fold(value)
+    if "nguoi chet da lau" in folded:
+        return "5"
+    if "qua han" in folded:
+        return "4"
+    if "dung han" in folded:
+        return "1"
+    return ""
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -101,7 +112,12 @@ def _area(value):
 
 
 
-def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
+def enrich(
+    fields: list[dict],
+    options: dict | None = None,
+    *,
+    reasoning_context: str = "",
+) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
     values = _by_name(fields)
     out: list[dict] = []
@@ -120,18 +136,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         seen.add(name)
 
     has_cccd = bool(values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"))
-    has_gbt = any(
+    has_deceased = any(
         name in values
         for name in (
-            "Gbt_HoTenNguoiMat",
-            "Gbt_NgayMat",
-            "Gbt_GioMat",
+            "NguoiMat_HoTen",
+            "NguoiMat_NgayMat",
+            "NguoiMat_GioMat",
             "Gbt_So",
             "Gbt_CoQuanCap",
         )
     )
 
-    add("loaiDangKy", "1")
+    registration_type = _registration_type(values.get("ToKhai_LoaiDangKy"))
+    add(
+        "loaiDangKy",
+        registration_type or "1",
+        default=not bool(registration_type),
+    )
 
     # Người yêu cầu chỉ điền từ Cccd_* khi CCCD TRÙNG người đăng nhập (hoặc không có mỏ neo formContext).
     # Nếu CCCD upload KHÔNG trùng → đó là CCCD của NGƯỜI MẤT (dù LLM có lỡ nhét vào Cccd_*): không điền
@@ -157,32 +178,36 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
     add("QuanHe", values.get("ToKhai_QuanHeNguoiYeuCau"))
 
-    # CCCD đầu vào KHÔNG trùng người đăng nhập = CCCD của người mất → cứu danh tính sang mục II
-    # (kể cả khi LLM lỡ route vào Cccd_*). Ưu tiên Gbt_* (từ giấy báo tử/tờ khai), thiếu thì lấy Cccd_*.
-    cccd_is_deceased = has_cccd and not requester_trusted
+    # Chỉ giữ fallback cũ khi tầng phân vai không chạy được. Khi đã có reasoning,
+    # CCCD lệch requester có thể là người thứ ba và không được tự coi là người chết.
+    cccd_is_deceased = (
+        has_cccd
+        and not requester_trusted
+        and not reasoning_context
+    )
 
-    def deceased(gbt_key: str, cccd_key: str | None = None):
-        val = values.get(gbt_key)
+    def deceased(person_key: str, cccd_key: str | None = None):
+        val = values.get(person_key)
         if val in (None, "", {}, []) and cccd_is_deceased and cccd_key:
             return values.get(cccd_key)
         return val
 
-    if has_gbt or cccd_is_deceased:
-        add("HoTen", deceased("Gbt_HoTenNguoiMat", "Cccd_HoTen"))
-        add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("Gbt_NgaySinhNguoiMat", "Cccd_NgaySinh")))
-        add("GioiTinh", deceased("Gbt_GioiTinhNguoiMat", "Cccd_GioiTinh"))
-        add("nktDanToc", deceased("Gbt_DanTocNguoiMat", "Cccd_DanToc"))
-        add("nktQuocTich", deceased("Gbt_QuocTichNguoiMat", "Cccd_QuocTich") or "Việt Nam")
-        so_dinh_danh = deceased("Gbt_SoDinhDanhNguoiMat", "Cccd_SoDinhDanh")
+    if has_deceased or cccd_is_deceased:
+        add("HoTen", deceased("NguoiMat_HoTen", "Cccd_HoTen"))
+        add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("NguoiMat_NgaySinh", "Cccd_NgaySinh")))
+        add("GioiTinh", deceased("NguoiMat_GioiTinh", "Cccd_GioiTinh"))
+        add("nktDanToc", deceased("NguoiMat_DanToc", "Cccd_DanToc"))
+        add("nktQuocTich", deceased("NguoiMat_QuocTich", "Cccd_QuocTich") or "Việt Nam")
+        so_dinh_danh = deceased("NguoiMat_SoDinhDanh", "Cccd_SoDinhDanh")
         add("SoDinhDanh", so_dinh_danh)
         add("SoGiayToDinhDanh", so_dinh_danh)
         if so_dinh_danh:
-            _issuer_mat = deceased("Gbt_NoiCapDDNguoiMat", "Cccd_NoiCap") or default_issuer(deceased("Gbt_NgayCapDDNguoiMat", "Cccd_NgayCap"))
+            _issuer_mat = deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap") or default_issuer(deceased("NguoiMat_NgayCapGiayTo", "Cccd_NgayCap"))
             add("LoaiGiayToDinhDanh", _doc_type(so_dinh_danh, _issuer_mat))
-        add("NgayCapDD", deceased("Gbt_NgayCapDDNguoiMat", "Cccd_NgayCap"))
-        add("NoiCapDD", deceased("Gbt_NoiCapDDNguoiMat", "Cccd_NoiCap"))
+        add("NgayCapDD", deceased("NguoiMat_NgayCapGiayTo", "Cccd_NgayCap"))
+        add("NoiCapDD", deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap"))
         add("nktLoaiCuTru", "Thường trú")
-        residence = _area(deceased("Gbt_NoiCuTruNguoiMat", "Cccd_NoiCuTru"))
+        residence = _area(deceased("NguoiMat_NoiCuTruCuoiCung", "Cccd_NoiCuTru"))
         if residence:
             add("nktNoiCuTru", "1")
             add("nktNoiCuTru_TrongNuoc", residence)
@@ -191,16 +216,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("nktNoiCuTru", "1", default=True)
             add("nktNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
-        add("NgayMat", values.get("Gbt_NgayMat"))
-        death_time = parse_death_time(values.get("Gbt_GioMat"))
+        add("NgayMat", values.get("NguoiMat_NgayMat"))
+        death_time = parse_death_time(values.get("NguoiMat_GioMat"))
         add("GioMat", death_time.get("hour"))
         add("PhutMat", death_time.get("minute"))
-        add("NguyenNhanMat", values.get("Gbt_NguyenNhanMat"))
+        add("NguyenNhanMat", values.get("NguoiMat_NguyenNhanMat"))
 
-        death_place = _area(values.get("Gbt_NoiChet")) or _area({
-            "quocGia": "Việt Nam",
-            "diaChi": values.get("Gbt_CoQuanCap"),
-        })
+        # Cơ quan cấp giấy báo tử không mặc nhiên là nơi chết. Chỉ dùng nguồn
+        # NguoiMat_NoiChet đã được LLM định tuyến từ nhãn nơi chết/chứng cứ hợp lệ.
+        death_place = _area(values.get("NguoiMat_NoiChet"))
         if death_place:
             add("nktNoiChet", "1")
             add("nktNoiChet_TrongNuoc", death_place)

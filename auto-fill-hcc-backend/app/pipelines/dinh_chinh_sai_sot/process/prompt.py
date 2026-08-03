@@ -1,8 +1,11 @@
 """Procedure-specific compact prompt rules for land-certificate correction."""
 
-EXTRA_RULES = """Đầu vào thường gồm CCCD/CMND của người nộp hồ sơ và Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất.
+EXTRA_RULES = """Đầu vào thường gồm Đơn đăng ký biến động đất đai, CCCD/CMND của người nộp hồ sơ và Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất.
 
 NGUỒN DỮ LIỆU:
+- Don_DienThoaiLienHe CHỈ lấy tại nhãn "Điện thoại liên hệ (nếu có)" trên Đơn đăng ký biến động
+  đất đai, áp dụng cả khi OCR đọc số mẫu khác 11/ĐK hoặc 18. Chỉ trả dãy số điện thoại; không lấy
+  số CCCD, số GCN, mã số thuế hoặc số trong địa chỉ.
 - Cccd_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND, không lấy từ Giấy chứng nhận.
 - BẮT BUỘC cố đọc Cccd_NgayCap/Cccd_NoiCap từ mặt sau CCCD. Nơi cấp nằm ngay sau/gần dòng
   "Ngày, tháng, năm / Date, month, year"; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH

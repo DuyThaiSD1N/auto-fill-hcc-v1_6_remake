@@ -57,11 +57,31 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
   (vd "(Không có giá trị đăng ký kết hôn)"). Ví dụ → "Làm thủ tục vay vốn ngân hàng".
 </giay_xntthn_cu>
 
+<purpose_extraction>
+- BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng Giấy xác nhận tình trạng hôn nhân: ...".
+- Lấy toàn bộ nội dung sau nhãn trên, nối các dòng liên tiếp; dừng trước "Tôi cam đoan", "Làm tại" hoặc
+  "Người yêu cầu". Bỏ "(5)" và nhãn, không bỏ field chỉ vì OCR sai nhẹ trong nội dung.
+- Thứ tự nguồn: TỜ KHAI hiện tại → "Giấy này được sử dụng để: ..." trên giấy XNTTHN cũ.
+</purpose_extraction>
+
+<to_khai_status_relation>
+- Từ dòng "Tình trạng hôn nhân" trên TỜ KHAI:
+  + nội dung bắt đầu bằng "Chưa kết hôn" hoặc ghi rõ
+    "hiện tại chưa đăng ký kết hôn với ai" → TinhTrangHonNhanC1 = "Hiện tại chưa đăng ký kết hôn với ai";
+  + ghi rõ "hiện tại đang có chồng" hoặc "hiện tại đang có vợ" → TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
+- Trả ToKhai_LaBanThan=true CHỈ khi dòng quan hệ ghi "Tự khai"/"Bản thân" VÀ họ tên người yêu cầu
+  trùng họ tên người được cấp.
+</to_khai_status_relation>
+
 <source_rules>
 - Cccd_* CHỈ lấy từ CCCD/CMND upload (thẻ vật lý được chụp/scan kèm hồ sơ):
   + Trường hợp BẢN THÂN: CCCD upload là của chính người cần giấy XNTTHN.
   + Trường hợp ỦY QUYỀN: CCCD upload là của người ĐƯỢC ủy quyền (đi nộp hộ) — thông tin
     người cần giấy (người ủy quyền) lấy từ GIẤY ỦY QUYỀN → điền vào PoA_Subject*.
+- RIÊNG địa chỉ phải tách nguồn, KHÔNG tự chọn một nguồn rồi bỏ nguồn còn lại:
+  + ToKhai_NoiCuTru = dòng "Nơi cư trú" của người yêu cầu/người được cấp trên TỜ KHAI;
+  + Cccd_NoiCuTru = "Nơi thường trú/Nơi cư trú" trên CCCD/CMND.
+  Nếu tờ khai có địa chỉ thì BẮT BUỘC trả ToKhai_NoiCuTru, kể cả khi CCCD ghi địa chỉ khác.
 - Nếu có nhiều ảnh CCCD thì gộp mặt trước + mặt sau của cùng một người.
 - RIÊNG Cccd_DanToc (dân tộc) — thẻ CCCD/Căn cước mẫu mới thường KHÔNG in dân tộc. THỨ TỰ ƯU TIÊN NGUỒN:
   (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Dân tộc: ..." (ở khối người được cấp/người yêu cầu);
@@ -117,25 +137,21 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
 </divorce_decision_extraction>
 
 <marriage_extraction>
-- Marriage_* lấy từ GIẤY CHỨNG NHẬN KẾT HÔN / GIẤY ĐĂNG KÝ KẾT HÔN thật (dấu hiệu: tiêu đề
-  "GIẤY CHỨNG NHẬN KẾT HÔN"/"ĐĂNG KÝ KẾT HÔN", có thông tin CHỒNG và VỢ, ngày đăng ký, cơ quan đăng ký).
-  Đây là trường hợp NGƯỜI YÊU CẦU HIỆN ĐANG CÓ VỢ/CHỒNG.
-- Marriage_SpouseName = họ tên của NGƯỜI CÒN LẠI (vợ/chồng), tức người KHÁC với người yêu cầu.
-  Đối chiếu với tên trên CCCD người yêu cầu: trên giấy có 2 người (chồng + vợ) → lấy tên người KHÔNG trùng CCCD.
-- Marriage_Number = số Giấy chứng nhận kết hôn (số đăng ký kết hôn) ở phần "Số:" của giấy.
-- Marriage_Date = ngày đăng ký kết hôn (dd/mm/yyyy). Marriage_Agency = cơ quan đăng ký (vd UBND xã/phường...),
-  chuẩn hóa "UBND" → "Ủy ban nhân dân" nếu cần.
-- Chỉ trả Marriage_* khi tài liệu THẬT SỰ là giấy chứng nhận/đăng ký kết hôn. Nếu tài liệu là ly hôn/khai tử
-  thì KHÔNG trả Marriage_* (ưu tiên ly hôn/góa hơn đang có vợ/chồng).
+- Nguồn ưu tiên Marriage_*: (1) GIẤY CHỨNG NHẬN/ĐĂNG KÝ KẾT HÔN thật; (2) đoạn "Tình trạng hôn nhân"
+  trên TỜ KHAI khi ghi rõ người yêu cầu hiện tại đang có vợ/chồng.
+- Marriage_SpouseName = họ tên người vợ/chồng hiện tại. Trên tờ khai lấy sau cụm "đang có chồng là"/
+  "đang có vợ là".
+- Marriage_Number/Date/Agency chỉ trả khi giấy kết hôn hoặc tờ khai ghi rõ SỐ, NGÀY đăng ký/cấp và CƠ QUAN
+  đăng ký/cấp giấy kết hôn tương ứng; thiếu field nào thì bỏ field đó.
+- Không lấy số CCCD/CMND, ngày sinh, ngày cấp CCCD hoặc cơ quan cấp CCCD của vợ/chồng làm thông tin
+  giấy kết hôn. Đoạn tờ khai kết thúc trước "Mục đích sử dụng".
+- Nếu tài liệu là ly hôn/khai tử thì không lấy Marriage_* từ tài liệu đó; ưu tiên trạng thái ly hôn/góa.
 </marriage_extraction>
 
 <noi_cu_tru>
-- NGUỒN ƯU TIÊN Cccd_NoiCuTru: (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Nơi cư trú: ..." của NGƯỜI YÊU CẦU /
-  NGƯỜI ĐƯỢC CẤP (đây là nơi cư trú HIỆN TẠI người dân khai, thường MỚI HƠN CCCD vì có thể đã chuyển chỗ);
-  (2) CHỈ khi tờ khai KHÔNG có nơi cư trú mới lấy "Nơi thường trú" trên CCCD. TUYỆT ĐỐI KHÔNG lấy địa chỉ
-  nằm trong đoạn "Tình trạng hôn nhân" (đó là địa chỉ CŨ nhắc lại trong nội dung, không phải nơi cư trú hiện tại).
-  Áp quy tắc tách địa chỉ bên dưới cho địa chỉ ĐÃ CHỌN.
-- Cccd_NoiCuTru trả object {quocGia, tinh, xa, diaChi}. Địa chỉ hành chính hiện hành CHỈ 2 cấp:
+- TUYỆT ĐỐI KHÔNG lấy địa chỉ trong đoạn "Tình trạng hôn nhân" làm ToKhai_NoiCuTru; đó là địa chỉ
+  của vợ/chồng hoặc địa chỉ cũ được nhắc lại.
+- Mỗi địa chỉ trả object {quocGia, tinh, xa, diaChi}. Địa chỉ hành chính hiện hành CHỈ 2 cấp:
   XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ (KHÔNG còn cấp huyện/quận).
 - xa = tên xã/phường/thị trấn. tinh = tỉnh/thành phố.
 - diaChi = phần CHI TIẾT đứng TRƯỚC xã/phường: tổ, tổ dân phố, bản, thôn, xóm, khu, số nhà, đường.
@@ -147,12 +163,18 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
   bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã. BẮT BUỘC điền xa.
 </noi_cu_tru>
 
+<address_verification>
+Trước khi xuất JSON: nếu TỜ KHAI có dòng "Nơi cư trú" thì output phải có ToKhai_NoiCuTru và Python
+sẽ dùng địa chỉ này trước Cccd_NoiCuTru.
+</address_verification>
+
 <forbidden_ui_fields>
 - Không trả field UI/default như HoVaTenC, HoVaTenC1, SoDinhDanhC, SoDinhDanhC1,
   LoaiGiayToDinhDanhC, LoaiGiayToDinhDanhC1, quanhevoinguoiduocxacminh, mucdich, nhapmucdichkhac,
   loại cư trú, radio trong/ngoài nước. (Purpose vẫn TRẢ — Python sẽ điền vào ô Nhập mục đích.)
-- Không trả TinhTrangHonNhanC1. Python sẽ chọn tình trạng hôn nhân theo THỨ TỰ ƯU TIÊN: GÓA khi đủ
-  DeathCert_*; ĐÃ LY HÔN khi đủ DivorceDecision_*; HIỆN ĐANG CÓ VỢ/CHỒNG khi có Marriage_* (giấy kết hôn).
+- RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ một trong hai trạng thái chuẩn:
+  "Hiện tại chưa đăng ký kết hôn với ai" hoặc "Hiện tại đang có vợ/chồng".
+  Trạng thái GÓA/ĐÃ LY HÔN do Python chọn từ DeathCert_*/DivorceDecision_* và ưu tiên hơn tờ khai.
 - Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
 - Nếu thiếu quốc tịch thì bỏ qua Cccd_QuocTich; Python sẽ mặc định Việt Nam.
 </forbidden_ui_fields>"""

@@ -7,7 +7,14 @@ Khóa lại 3 chuẩn hóa xác định (deterministic) từ OCR "Giấy đề n
 """
 
 from app.pipelines.dang_ky_kinh_doanh.process import mapper
-from app.pipelines.dang_ky_kinh_doanh.process.mapper import _clean_phone, _clean_ward, _proper_name
+from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
+    _clean_business_code,
+    _clean_phone,
+    _clean_ward,
+    _proper_name,
+)
+from app.pipelines.dang_ky_kinh_doanh.process.prompt import EXTRA_RULES
+from app.pipelines.dang_ky_kinh_doanh.process.schema import FIELDS
 
 
 def test_clean_phone_restores_leading_zero():
@@ -35,6 +42,14 @@ def test_clean_ward_removes_common_prefixes_for_hkdonline_options():
     assert _clean_ward("Đặc khu Phú Quý") == "Phú Quý"
 
 
+def test_clean_business_code_requires_four_contiguous_digits():
+    assert _clean_business_code("56 10") == "5610"
+    assert _clean_business_code("56.10") == "5610"
+    assert _clean_business_code("5610") == "5610"
+    assert _clean_business_code("561") == ""
+    assert _clean_business_code("56100") == ""
+
+
 def test_enrich_address_page_outputs_ward_without_prefix():
     fields = [
         {
@@ -51,6 +66,45 @@ def test_enrich_address_page_outputs_ward_without_prefix():
     assert out["CITY_IDFld"] == "Lâm Đồng"
     assert out["WARD_IDFld"] == "Lâm Viên - Đà Lạt"
     assert out["STREET_NUMBERFld"] == "58 Trang Trình"
+
+
+def test_business_lines_keep_extracted_name_for_description_fill():
+    fields = [
+        {
+            "name": "NganhNghe_DanhSach",
+            "value": [{"ma": "5630", "ten": "Dịch vụ phục vụ đồ uống (cà phê)", "chinh": True}],
+        },
+        {"name": "NganhNghe_MaChinh", "value": "5630"},
+        {"name": "NganhNghe_TenChinh", "value": "Dịch vụ phục vụ đồ uống (cà phê)"},
+    ]
+
+    raw = next(f for f in mapper.enrich(fields, page="nganh-nghe-kinh-doanh") if f["name"] == "__businessLines")
+
+    assert raw["value"]["codes"] == ["5630"]
+    assert raw["value"]["main"] == "5630"
+    assert raw["value"]["items"] == [
+        {"code": "5630", "name": "Dịch vụ phục vụ đồ uống (cà phê)", "main": True}
+    ]
+
+
+def test_business_line_codes_strip_spaces_before_extension_fill():
+    fields = [
+        {
+            "name": "NganhNghe_DanhSach",
+            "value": [{"ma": "56 10", "ten": "Ăn uống", "chinh": True}],
+        },
+        {"name": "NganhNghe_MaChinh", "value": "56 10"},
+        {"name": "NganhNghe_TenChinh", "value": "Ăn uống"},
+    ]
+
+    out = mapper.enrich(fields, page="nganh-nghe-kinh-doanh")
+    raw = next(f for f in out if f["name"] == "__businessLines")
+    main_input = next(f for f in out if f["name"] == "ctl00$C$newBusinessLineCode")
+
+    assert raw["value"]["codes"] == ["5610"]
+    assert raw["value"]["main"] == "5610"
+    assert raw["value"]["items"] == [{"code": "5610", "name": "Ăn uống", "main": True}]
+    assert main_input["value"] == "5610"
 
 
 def _tax_fields(out):
@@ -107,3 +161,33 @@ def test_enrich_chu_ho_page_normalizes_name_and_phone():
     assert out["PHONEFld"] == "0974455009"
     # Ngày sinh chỉ có tháng/năm thì giữ nguyên, không bịa ngày.
     assert out["DATE_OF_BIRTHFld"] == "07/1989"
+
+
+def test_business_contact_sources_are_independent_and_submitter_has_no_contact_field():
+    fields = [
+        {"name": "TruSo_DienThoai", "value": "0901000001"},
+        {"name": "ChuHo_DienThoai", "value": "0902000002"},
+        {"name": "Thue_DienThoai", "value": "0903000003"},
+        # Khóa hồi quy: kể cả dữ liệu compact cũ còn key này, mapper cũng không đưa sang trang người nộp.
+        {"name": "NguoiNop_DienThoai", "value": "0904000004"},
+    ]
+
+    pages = mapper.enrich_all(fields)
+    address_values = {f["name"]: f["value"] for f in pages["dia-chi"]}
+    owner_values = {f["name"]: f["value"] for f in pages["chu-ho-kinh-doanh"]}
+    tax_values = {f["name"]: f["value"] for f in pages["thong-tin-ve-thue"]}
+    submitter_names = {f["name"] for f in pages["nguoi-nop-ho-so"]}
+
+    assert address_values["ctl00$C$DCONTClt$HO_PHONEFld"] == "0901000001"
+    assert owner_values["ctl00$C$OWN_PCtl$PERSCtl$PHONEFld"] == "0902000002"
+    assert tax_values["ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld"] == "0903000003"
+    assert "ctl00$C$PERSCtl$PHONEFld" not in submitter_names
+
+
+def test_business_schema_and_prompt_only_define_three_phone_sources():
+    names = {field["name"] for field in FIELDS}
+
+    assert {"TruSo_DienThoai", "ChuHo_DienThoai", "Thue_DienThoai"} <= names
+    assert "NguoiNop_DienThoai" not in names
+    assert "CHỈ có 3 nhóm liên hệ cần trích từ hồ sơ" in EXTRA_RULES
+    assert "KHÔNG lấy liên hệ người nộp thay cho trụ sở, chủ hộ hoặc thuế" in EXTRA_RULES

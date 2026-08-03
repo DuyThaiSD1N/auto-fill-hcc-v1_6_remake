@@ -15,7 +15,6 @@ from app.pipelines._shared.compact_agent.issuer import (
     normalize_issuer,
 )
 from app.pipelines.ket_hon_nuoc_ngoai.process.schema import UI_COMP_BY_NAME
-from app.pipelines._shared.area_remap import remap_area
 
 # Loại giấy tờ cho giấy tờ NƯỚC NGOÀI — PHẢI khớp ĐÚNG text option dropdown (ô có tìm kiếm, gõ
 # chuỗi lệch sẽ lọc ra 0 kết quả → không chọn được). Text option trên form: "Giấy tờ khác bao gồm
@@ -74,7 +73,7 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"] and not out["quocGia"]:
         return None
-    return remap_area(out)
+    return out
 
 
 def enrich(fields: list[dict]) -> list[dict]:

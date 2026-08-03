@@ -43,23 +43,23 @@ NGUỒN DỮ LIỆU:
   + CCCD/Căn cước Việt Nam → BỎ QUA field này (Python tự mặc định "Việt Nam").
   + quocGia trong object địa chỉ cũng phải khớp quốc tịch: người Trung Quốc → quocGia="Trung Quốc".
 - DÂN TỘC (CccdNam_DanToc = dân tộc BÊN NAM, CccdNu_DanToc = dân tộc BÊN NỮ): CCCD/Căn cước gắn chip
-  thường KHÔNG ghi dân tộc → hãy tìm dân tộc trong CÁC GIẤY TỜ KHÁC có ghi (TỜ KHAI ĐĂNG KÝ KẾT HÔN,
-  bản cam đoan, giấy tờ hộ tịch khác), ĐỐI CHIẾU ĐÚNG NGƯỜI:
+  KHÔNG ghi dân tộc. CHỈ lấy từ CÁC GIẤY TỜ KHÁC khi OCR có NHÃN "Dân tộc" và giá trị được ghi trực tiếp
+  cho đúng người (TỜ KHAI ĐĂNG KÝ KẾT HÔN, bản cam đoan, giấy tờ hộ tịch khác):
+  + Nếu toàn bộ hồ sơ chỉ có CCCD/Căn cước hoặc không xuất hiện nhãn "Dân tộc" → BỎ CẢ HAI field dân tộc.
+  + Họ, chữ đệm, tên, quê quán, nơi cư trú, địa danh và vùng miền KHÔNG phải chứng cứ dân tộc. TUYỆT ĐỐI
+    không suy đoán dân tộc từ các thông tin này dù có vẻ liên quan.
   + TỜ KHAI ĐĂNG KÝ KẾT HÔN THƯỜNG có hàng "Dân tộc" ghi cho CẢ HAI cột (bên nam VÀ bên nữ). Khi đó BẮT BUỘC
     trả ĐỦ CẢ HAI: CccdNam_DanToc VÀ CccdNu_DanToc — KHÔNG được bỏ sót bên nào, KỂ CẢ khi hai bên GIỐNG hệt
   + Bảng tờ khai có thể xếp cột theo THỨ TỰ BẤT KỲ (nhiều tờ ghi cột "Bên nữ" TRƯỚC cột "Bên nam"). Xác định cột
     nào là nam/nữ theo TIÊU ĐỀ cột ("Bên nam"/"Bên nữ") hoặc theo hàng Họ tên, TUYỆT ĐỐI không mặc định nam đứng trước.
   + Đối chiếu theo HỌ TÊN và/hoặc SỐ ĐỊNH DANH để biết dân tộc đó là của bên nam hay bên nữ; gán dân tộc
     cho ĐÚNG người đó. TUYỆT ĐỐI không lấy dân tộc của người này gán cho người kia.
-  + Nếu KHÔNG giấy tờ nào ghi rõ dân tộc của người đó → ĐỂ TRỐNG (KHÔNG bịa, KHÔNG mặc định "Kinh" hay
-    bất kỳ dân tộc nào). Chỉ điền khi PHÁT HIỆN được.
+  + Nếu KHÔNG có nhãn "Dân tộc" ghi rõ giá trị của người đó → BỎ field tương ứng (KHÔNG bịa, KHÔNG mặc định).
   + VÍ DỤ: nếu CHỈ tờ khai của BÊN NỮ ghi dân tộc, còn bên nam không giấy nào ghi → CHỈ trả CccdNu_DanToc,
     ĐỂ TRỐNG CccdNam_DanToc (TUYỆT ĐỐI KHÔNG copy dân tộc bên nữ sang bên nam và ngược lại).
   + Lưu ý option trên form: dân tộc H'Mông" (gồm các cách"H'Mông"/"H Mông"/"Hmông") PHẢI trả là
     "Mông (Hmông)"
   + Còn dân tộc Mông thì ghi "Mông"
-  + Dân tộc phổ biến:
-    Kinh, Mông, Dao, Giáy, Thái, Tày, Nùng, Hà Nhì, Lự, Lào, Khơ Mú, Mường...
 - Quốc tịch chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam; mặc định Việt Nam.
 - SỐ LẦN KẾT HÔN: nếu tờ khai/giấy tờ có mục "Kết hôn lần thứ mấy" (hoặc "Số lần kết hôn") ghi số cho từng bên
   thì trả CccdNam_SoLanKetHon (cột BÊN NAM) và CccdNu_SoLanKetHon (cột BÊN NỮ) là SỐ NGUYÊN (vd "1", "2", "3").

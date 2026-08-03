@@ -64,6 +64,16 @@ async def _chat_openai(messages: list[dict], temperature: float) -> str:
     return resp.choices[0].message.content or ""
 
 
+async def _chat_openai_text(messages: list[dict], temperature: float) -> str:
+    """Fallback OpenAI cho agent cần text tự do, không ép response_format JSON."""
+    resp = await _get_openai_client().chat.completions.create(
+        model=settings.openai_model,
+        messages=messages,
+        temperature=temperature,
+    )
+    return resp.choices[0].message.content or ""
+
+
 async def chat(
     messages: list[dict],
     temperature: float | None = None,
@@ -89,6 +99,30 @@ async def chat(
             logger.info("[LLM fallback OpenAI OK] model=%s len=%d content=%r",
                         settings.openai_model, len(out), out[:1500])
         return out
+
+
+async def chat_text(
+    messages: list[dict],
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    enable_thinking: bool = False,
+) -> str:
+    """Chat trả text; primary như cũ, fallback OpenAI không ép JSON object."""
+    temperature = settings.llm_temperature if temperature is None else temperature
+    max_tokens = settings.llm_max_tokens if max_tokens is None else max_tokens
+
+    try:
+        return await _chat_primary(messages, temperature, max_tokens, enable_thinking)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "LLM primary text lỗi [%s]: %r → fallback OpenAI %s",
+            type(e).__name__,
+            e,
+            settings.openai_model,
+        )
+        if not settings.openai_api_key:
+            raise
+        return await _chat_openai_text(messages, temperature)
 
 
 def extract_json_block(text: str) -> dict:

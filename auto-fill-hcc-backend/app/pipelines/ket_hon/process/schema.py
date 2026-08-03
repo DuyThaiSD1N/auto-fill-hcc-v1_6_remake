@@ -15,7 +15,7 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND bên nam từ mặt sau. Gần ngày cấp thường có '
              '"CỤC TRƯỞNG CỤC CẢNH SÁT..."; trả '
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CCCD chip thường không ghi → lấy từ tờ khai/cam đoan/giấy tờ khác có ghi, đối chiếu đúng người (họ tên/số định danh). Không có thì để trống, không mặc định."},
+    {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CHỈ trả khi OCR có nhãn 'Dân tộc' ghi trực tiếp giá trị của đúng người trong tờ khai/giấy tờ khác; CCCD/Căn cước không ghi dân tộc. Không suy từ họ tên, địa chỉ, quê quán hay vùng miền; thiếu nhãn thì bỏ field."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch bên nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNam_LoaiGiayTo",
      "desc": "Loại giấy tờ tùy thân bên nam — CHỈ điền khi là giấy tờ NƯỚC NGOÀI "
@@ -33,7 +33,7 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND bên nữ từ mặt sau. Gần ngày cấp thường có '
              '"CỤC TRƯỞNG CỤC CẢNH SÁT..."; trả '
              '"Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CCCD chip thường không ghi → lấy từ tờ khai/cam đoan/giấy tờ khác có ghi, đối chiếu đúng người (họ tên/số định danh). Không có thì để trống, không mặc định."},
+    {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CHỈ trả khi OCR có nhãn 'Dân tộc' ghi trực tiếp giá trị của đúng người trong tờ khai/giấy tờ khác; CCCD/Căn cước không ghi dân tộc. Không suy từ họ tên, địa chỉ, quê quán hay vùng miền; thiếu nhãn thì bỏ field."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch bên nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNu_LoaiGiayTo",
      "desc": "Loại giấy tờ tùy thân bên nữ — CHỈ điền khi là giấy tờ NƯỚC NGOÀI "

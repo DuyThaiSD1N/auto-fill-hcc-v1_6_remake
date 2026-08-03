@@ -40,6 +40,8 @@ const requestModeSelect = document.getElementById("requestMode");
 const requestModeLabel = document.querySelector('label[for="requestMode"]');
 const statusEl = document.getElementById("status");
 const reviewCardEl = document.getElementById("reviewCard");
+const supportCodeBtn = document.getElementById("supportCode");
+const supportCodeValueEl = document.getElementById("supportCodeValue");
 const uploadLabel = document.querySelector('label[for="fileInput"]');
 
 // Danh sách thủ tục lấy từ BE: [{ key, label, roles:[{value,label}], useDangKyBy }]
@@ -49,6 +51,7 @@ let selectedProcedureKey = "";
 let selectedBusinessPageKey = "";
 let procedureSearchQuery = "";
 let procedureLocked = false; // true = thủ tục tự nhận diện theo trang, khóa không cho đổi tay
+let currentUser = null; // user đang đăng nhập; dùng cho default theo phường/tài khoản ở HKD.
 const DEFAULT_PROCEDURE_KEYS = [];
 const SEARCH_PROCEDURE_LIMIT = 5;
 
@@ -101,9 +104,16 @@ async function sendToContent(payload) {
   for (const waitMs of [250, 800, 1600]) {
     if (waitMs) await sleep(waitMs);
     try {
+      // Modal NNMT phải chạy cùng MAIN world với Angular/Zone.js. Inject riêng trước bridge
+      // isolated để tab đang mở vẫn hoạt động ngay sau khi người dùng reload extension.
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
-        files: ["content/bbox-overlay.js", "content.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/review.js"],
+        world: "MAIN",
+        files: ["content/attach-mae-main.js"],
+      });
+      await chrome.scripting.executeScript({
+        target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
+        files: ["content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/review.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -171,8 +181,50 @@ function setStatus(text, type) {
   statusEl.className = "status" + (type ? " " + type : "");
 }
 
+// ===== Mã hỗ trợ: hiện request_id của lượt vừa chạy để cán bộ copy khi báo lỗi =====
+let _supportCodeResetTimer = null;
+function showSupportCode(id) {
+  if (!supportCodeBtn || !supportCodeValueEl) return;
+  if (!id) { hideSupportCode(); return; }
+  supportCodeValueEl.textContent = id;
+  supportCodeBtn.dataset.code = id;
+  supportCodeBtn.classList.remove("copied");
+  supportCodeBtn.hidden = false;
+}
+function hideSupportCode() {
+  if (!supportCodeBtn) return;
+  supportCodeBtn.hidden = true;
+  supportCodeBtn.classList.remove("copied");
+  delete supportCodeBtn.dataset.code;
+  if (_supportCodeResetTimer) { clearTimeout(_supportCodeResetTimer); _supportCodeResetTimer = null; }
+}
+if (supportCodeBtn) {
+  supportCodeBtn.addEventListener("click", async () => {
+    const code = supportCodeBtn.dataset.code || "";
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      // Fallback khi clipboard API bị chặn (một số cổng): dùng textarea tạm.
+      const ta = document.createElement("textarea");
+      ta.value = code; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch {}
+      ta.remove();
+    }
+    supportCodeBtn.classList.add("copied");
+    supportCodeValueEl.textContent = "Đã sao chép ✓";
+    if (_supportCodeResetTimer) clearTimeout(_supportCodeResetTimer);
+    _supportCodeResetTimer = setTimeout(() => {
+      supportCodeBtn.classList.remove("copied");
+      supportCodeValueEl.textContent = code;
+    }, 1500);
+  });
+}
+
 // ===== Auth UI =====
 function showLogin() {
+  currentUser = null;
   loginScreen.hidden = false;
   mainScreen.hidden = true;
   prefillLogin();
@@ -188,6 +240,7 @@ async function prefillLogin() {
 }
 
 function showMain(user) {
+  currentUser = user || null;
   loginScreen.hidden = true;
   mainScreen.hidden = false;
   userLabel.textContent = user?.name || user?.username || "";
@@ -248,6 +301,7 @@ loginPassword.addEventListener("keydown", (e) => {
 
 logoutBtn.addEventListener("click", async () => {
   await AuthStore.clearTokens();
+  currentUser = null;
   await clearSession();
   files.length = 0;
   if (handwritingToggle) handwritingToggle.checked = false;
@@ -271,6 +325,7 @@ if (newSessionBtn) {
     procedureLocked = false;
     closeProcedureDropdown();   // render lại trigger về "Chưa có thủ tục nào được chọn!"
     clearReviewCard();
+    hideSupportCode();
     setStatus("", "");
     renderFiles();
     applyFormUI();
@@ -290,6 +345,19 @@ function normalizeProcedureSearch(value) {
     .replace(/Đ/g, "D")
     .toLowerCase()
     .trim();
+}
+
+const XUAN_HUONG_BUSINESS_ACT_TEXT =
+  "Hộ kinh doanh phải thực hiện đúng các quy định của pháp luật về đất đai, xây dựng, phòng cháy chữa cháy, bảo vệ môi trường, các quy định khác của pháp luật hiện hành và các điều kiện kinh doanh đối với ngành nghề có điều kiện";
+
+function isXuanHuongBusinessUser(user) {
+  const haystack = [user?.xa, user?.name, user?.username].filter(Boolean).join(" ");
+  return normalizeProcedureSearch(haystack).includes("xuan huong");
+}
+
+function buildBusinessDefaults(user) {
+  if (!isXuanHuongBusinessUser(user)) return null;
+  return { businessActText: XUAN_HUONG_BUSINESS_ACT_TEXT };
 }
 
 function selectedProcedureConfig() {
@@ -500,6 +568,36 @@ function detectProcedureKeyFromSignals(signals) {
   const url = String(signals.url || "").toLowerCase();
   const body = normDetect(signals.bodyText || "");
 
+  // HkdOnline dùng chung domain/URL. DOM procedure hint phải thắng rule URL chung:
+  // - choice: màn chọn có nhiều option, không được đoán theo text option;
+  // - change/create: loại hồ sơ đã được xác nhận bởi active step hoặc khối thông tin hồ sơ.
+  const selected = selectedProcedureConfig();
+  if (url.includes("hokinhdoanh.dkkd.gov.vn")) {
+    const hint = String(signals.businessProcedureHint || "");
+    const changeProcedure = PROCEDURES.find((item) => item.businessWorkflow === "change");
+    const hintedWorkflowProcedure = PROCEDURES.find((item) => item.businessWorkflow === hint);
+    const createProcedure = PROCEDURES.find((item) => item.key === "dang-ky-kinh-doanh");
+    if (hintedWorkflowProcedure && hint !== "change") return hintedWorkflowProcedure.key;
+    if (hint === "change-exact" && changeProcedure) return changeProcedure.key;
+    // Màn tìm kiếm được dùng chung cho CHN/REI. Chỉ giữ workflow đã được người dùng chọn;
+    // nếu chưa có thì để dropdown mở, không tự đoán thành thủ tục thay đổi nội dung.
+    if (hint === "shared-business-search") {
+      return selected?.businessWorkflow ? selected.key : "";
+    }
+    // Các bước tìm kiếm/xác nhận dùng chung cho mọi nhánh CHN. Nếu popup đã chọn một nhánh
+    // cụ thể (vd chấm dứt), phải giữ nhánh đó thay vì đổi về thủ tục thay đổi nội dung chung.
+    if (hint === "change" && selected?.businessWorkflow) return selected.key;
+    if (hint === "change" && changeProcedure) return changeProcedure.key;
+    if (hint === "create" && createProcedure) return createProcedure.key;
+    // Registration.aspx chỉ liệt kê các loại đăng ký. Text của các option không chứng minh
+    // người dùng đã chọn loại nào, kể cả khi popup vừa khôi phục một thủ tục từ session cũ.
+    if (hint === "choice") return "";
+    // Trang phụ/đính kèm không còn marker wizard: giữ loại HKD đã chọn qua phiên popup.
+    if (selected && (selected.key === createProcedure?.key || selected.businessWorkflow)) {
+      return selected.key;
+    }
+  }
+
   // 0) Một số thủ tục dùng chung URL cổng chứng thực, nên cần ưu tiên cụm tên thủ tục
   //    rất đặc trưng trước rule URL chung.
   if (body) {
@@ -565,10 +663,31 @@ function setProcedureLocked(locked) {
   renderProcedureResults();
 }
 
+// Màn "Chọn loại đăng ký trực tuyến" là điểm bắt đầu dùng chung của mọi thủ tục HKD.
+// Không được mang lựa chọn đã lưu từ hồ sơ trước sang đây; chỉ xóa loại thủ tục, giữ file
+// để người dùng vẫn có thể chọn đúng thủ tục rồi tiếp tục mà không phải tải lại tài liệu.
+async function enterBusinessProcedureChoiceMode() {
+  const hadSelectedProcedure = !!selectedProcedureKey;
+  selectedProcedureKey = "";
+  selectedBusinessPageKey = "";
+  procedureSelect.value = "";
+  procedureLocked = false;
+  closeProcedureDropdown();
+  applyFormUI();
+  if (hadSelectedProcedure) await saveSession();
+}
+
 // Gọi content script lấy tín hiệu trang → nếu nhận diện được thì chọn + khóa thủ tục.
-async function autoDetectAndLockProcedure() {
+async function autoDetectAndLockProcedure({ clearChoiceSelection = true } = {}) {
   try {
     const res = await sendToContent({ action: "detectProcedure" });
+    if (res?.signals?.businessProcedureHint === "choice") {
+      // Khi vừa mở popup/chuyển URL: bỏ lựa chọn cũ. Khi người dùng đã chọn tay rồi bấm
+      // xử lý: giữ lựa chọn đó để engine biết phải bấm loại đăng ký nào trên cổng.
+      if (clearChoiceSelection) await enterBusinessProcedureChoiceMode();
+      else setProcedureLocked(false);
+      return false;
+    }
     const key = detectProcedureKeyFromSignals(res?.signals);
     if (key && PROCEDURES.some((p) => p.key === key)) {
       selectProcedure(key);
@@ -587,9 +706,13 @@ async function autoDetectAndLockProcedure() {
 async function reDetectProcedureOnNav() {
   try {
     const res = await sendToContent({ action: "detectProcedure" });
+    if (res?.signals?.businessProcedureHint === "choice") {
+      await enterBusinessProcedureChoiceMode();
+      return;
+    }
     const key = detectProcedureKeyFromSignals(res?.signals);
-    if (key && key !== selectedProcedureKey && PROCEDURES.some((p) => p.key === key)) {
-      selectProcedure(key);
+    if (key && PROCEDURES.some((p) => p.key === key)) {
+      if (key !== selectedProcedureKey) selectProcedure(key);
       setProcedureLocked(true);
     }
   } catch (e) {
@@ -1090,7 +1213,8 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     attachments,
     mode: attachSplitMode && isSplitEligibleProcedure() ? "split" : "merge",
   });
-  if (attachRes?.error) return attachRes;
+  // Kèm mã hỗ trợ (BE đã tạo trace dù đính kèm phía trang lỗi) để cán bộ báo lỗi có mã tra.
+  if (attachRes?.error) return { ...attachRes, requestId: planRes.requestId };
 
   const names = (attachRes?.fileNames || []).join(", ");
   const skippedNames = (attachRes?.skippedNames || []).join(", ");
@@ -1101,7 +1225,7 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   if (names) msg += `\n${names}`;
   if (skippedNames) msg += `\nĐã có: ${skippedNames}`;
   if (planRes.errors?.length) msg += `\nCảnh báo xử lý: ${planRes.errors.join("; ")}`;
-  return { ok: true, message: msg };
+  return { ok: true, message: msg, requestId: planRes.requestId };
 }
 
 // Lấy plan item của BE cho file gốc thứ `origIndex`, reset fileIndex=0 (gửi kèm đúng 1 file lẻ).
@@ -1173,6 +1297,7 @@ ocrBtn.addEventListener("click", async () => {
   window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
   ocrBtn.disabled = true;
   clearReviewCard(); // xoá card rà soát của lần trước trước khi chạy lại
+  hideSupportCode(); // ẩn mã hỗ trợ của lượt trước tới khi có kết quả mới
   refreshAttachStepUI();
   try {
     setStatus("Đang đọc file...", "info");
@@ -1180,7 +1305,7 @@ ocrBtn.addEventListener("click", async () => {
 
     // Nhận diện lại thủ tục theo TRANG HIỆN TẠI ngay trước khi gửi (tránh dùng thủ tục cũ bị khóa
     // stale từ trang trước khi đổi trang/đăng nhập lại trong cùng tab).
-    await autoDetectAndLockProcedure();
+    await autoDetectAndLockProcedure({ clearChoiceSelection: false });
     if (!selectedProcedureKey) {
       setStatus("Chưa chọn thủ tục. Hãy tìm & chọn thủ tục, hoặc mở đúng trang biểu mẫu rồi thử lại.", "err");
       return;
@@ -1230,10 +1355,14 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "trich-luc-ks" ||
       cfg.key === "xet-tuyen-vien-chuc" ||
       cfg.key === "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" ||
+      cfg.key === "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham" ||
       cfg.key === "dinh-chinh-sai-sot-lam-dong" ||
       cfg.key === "giai-quyet-che-do-khang-chien" ||
       cfg.key === "di-chuyen-ho-so-nguoi-huong-tro-cap" ||
-      cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong"
+      cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
+      cfg.key === "tro-cap-xa-hoi-hang-thang" ||
+      cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
+      cfg.key === "xoa-dang-ky-tau-ca"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;
@@ -1265,6 +1394,7 @@ ocrBtn.addEventListener("click", async () => {
     const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
     console.log("[BE]", { extracted: res.extracted, stats: res.stats });
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;
+    showSupportCode(res.requestId || res.sessionId);
 
     await dispatchFill(res.fields || [], res.errors || [], page);
 
@@ -1295,7 +1425,7 @@ if (fillAllBtn) {
     try {
       setStatus("Đang đọc file...", "info");
       await ensureSelectedFilesLoaded();
-      await autoDetectAndLockProcedure();
+      await autoDetectAndLockProcedure({ clearChoiceSelection: false });
       const cfg = currentConfig();
       if (!currentBusinessPages().length) {
         setStatus("Chỉ dùng cho thủ tục đăng ký kinh doanh.", "err");
@@ -1307,6 +1437,18 @@ if (fillAllBtn) {
         return;
       }
       const options = { page: "__all__", allPages: true };
+      const isAmendmentWorkflow = !!cfg.businessWorkflow;
+      if (isAmendmentWorkflow) {
+        const detected = await sendToContent({ action: "detectBusinessChangeStage" });
+        if (!detected || detected.stage === "unknown") {
+          setStatus("Trang hiện tại không thuộc luồng nghiệp vụ hộ kinh doanh đã chọn. Hãy mở đúng hồ sơ rồi chạy lại.", "err");
+          return;
+        }
+        options.businessStage = detected.stage;
+        // Pipeline thay đổi tự quyết định page theo nội dung hồ sơ, không chạy đủ 8 trang.
+        delete options.allPages;
+        options.page = `__${cfg.businessWorkflow}__`;
+      }
       options.hasHandwriting = payloadFiles.some((f) => f.hasHandwriting);
 
       setStatus(" Đang phân tích tài liệu...", "info");
@@ -1314,8 +1456,22 @@ if (fillAllBtn) {
       console.log("[BE fill-all]", { extracted: res.extracted, stats: res.stats });
       const pages = res.pages || {};
       if (!Object.keys(pages).length) {
-        setStatus("Backend không trả dữ liệu 8 trang. Kiểm tra lại.", "err");
+        setStatus(isAmendmentWorkflow
+          ? "Backend không xác định được trang thay đổi/người nộp từ hồ sơ. Kiểm tra lại tài liệu."
+          : "Backend không trả dữ liệu 8 trang. Kiểm tra lại.", "err");
         return;
+      }
+      if (isAmendmentWorkflow && (!res.businessFlow || res.businessFlow.workflow !== cfg.businessWorkflow)) {
+        setStatus("Backend chưa trả đúng metadata luồng nghiệp vụ hộ kinh doanh.", "err");
+        return;
+      }
+      const businessSearch = res.businessFlow?.search || res.extracted?.businessSearch || null;
+      if (isAmendmentWorkflow) {
+        console.log("[HKD businessFlow]", JSON.stringify({
+          workflow: res.businessFlow?.workflow,
+          search: businessSearch,
+          pageOrder: res.businessFlow?.pageOrder,
+        }));
       }
 
       // Gộp bước đính kèm: lấy kế hoạch đính kèm cho CÙNG bộ file để tự đính kèm sau khi điền xong 8 trang.
@@ -1332,14 +1488,28 @@ if (fillAllBtn) {
         console.warn("[HKD] Lỗi lấy kế hoạch đính kèm — chỉ điền 8 trang:", e?.message || e);
       }
 
-      const startRes = await sendToContent({ action: "startFillAllBusiness", pages, attachPayload });
+      const startRes = await sendToContent({
+        action: isAmendmentWorkflow ? "startChangeBusiness" : "startFillAllBusiness",
+        pages,
+        businessFlow: res.businessFlow || null,
+        businessSearch,
+        attachPayload,
+        businessDefaults: buildBusinessDefaults(currentUser),
+      });
       if (startRes?.error) {
         setStatus(startRes.error, "err");
         return;
       }
-      setStatus(attachPayload
-        ? "Đang tự điền & lưu 8 trang rồi TỰ ĐÍNH KÈM. Đừng thao tác trên trang cho tới khi xong."
-        : "Đang tự điền & lưu lần lượt 8 trang. Đừng thao tác trên trang cho tới khi xong.", "ok");
+      if (isAmendmentWorkflow) {
+        const pageCount = res.businessFlow.pageOrder?.length || Object.keys(pages).length;
+        setStatus(attachPayload
+          ? `Đang tiếp tục từ bước hiện tại, sửa ${pageCount} trang cần thiết rồi tự đính kèm. Đừng thao tác trên trang.`
+          : `Đang tiếp tục từ bước hiện tại và sửa ${pageCount} trang cần thiết. Đừng thao tác trên trang.`, "ok");
+      } else {
+        setStatus(attachPayload
+          ? "Đang tự điền & lưu 8 trang rồi TỰ ĐÍNH KÈM. Đừng thao tác trên trang cho tới khi xong."
+          : "Đang tự điền & lưu lần lượt 8 trang. Đừng thao tác trên trang cho tới khi xong.", "ok");
+      }
     } catch (e) {
       if (e.unauthorized) {
         await AuthStore.clearTokens();
@@ -1358,7 +1528,7 @@ if (fillAllBtn) {
 if (attachStepBtn) {
   attachStepBtn.addEventListener("click", async () => {
     if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
-    await autoDetectAndLockProcedure(); // khớp lại thủ tục theo trang hiện tại trước khi đính kèm
+    await autoDetectAndLockProcedure({ clearChoiceSelection: false }); // giữ lựa chọn tay ở màn HKD dùng chung
     const cfg = currentConfig();
     if (!cfg.hasAttachmentStep) {
       setStatus("Thủ tục này chưa có bước đính kèm tự động.", "err");
@@ -1372,6 +1542,7 @@ if (attachStepBtn) {
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
     if (ocrBtn) ocrBtn.disabled = true;
     attachStepBtn.disabled = true;
+    hideSupportCode(); // ẩn mã hỗ trợ của lượt trước tới khi có kết quả mới
     try {
       setStatus("Đang đọc file...", "info");
       await ensureSelectedFilesLoaded();
@@ -1379,6 +1550,7 @@ if (attachStepBtn) {
       // không có thì vẫn đính kèm bình thường (planner xử lý session=None).
       const sid = lastProcessSession?.procedure === cfg.key ? lastProcessSession.sessionId : null;
       const res = await runAttachmentPlanForCurrentFiles(sid ? { sessionId: sid } : {});
+      showSupportCode(res?.requestId);
       if (res?.error) {
         console.warn("[Popup] Attach step failed", res);
         setStatus(res.error, "err");
@@ -1415,6 +1587,7 @@ async function dispatchFill(allFields, errors, page = null) {
     action: "fillFields",
     fields: allFields,
     businessPage: page?.key || "",
+    businessDefaults: page?.key === "nganh-nghe-kinh-doanh" ? buildBusinessDefaults(currentUser) : null,
   });
   if (fillRes.error) {
     setStatus(fillRes.error, "err");
@@ -1539,3 +1712,64 @@ if (IS_EMBEDDED && typeof ResizeObserver !== "undefined") {
 
 // ===== Khởi động =====
 bootstrap();
+
+// ===== Lịch sử cập nhật (changelog) — thuần FE, dữ liệu ở changelog.js =====
+// Trigger là nút "★ Lịch sử" trên HEADER panel (content.js) → gửi postMessage vào iframe này.
+(function initReleaseHistory() {
+  const pop = document.getElementById("releasePopover");
+  const closeBtn = document.getElementById("releaseClose");
+  const list = document.getElementById("releaseList");
+  if (!pop || !list) return;
+
+  // Version hiện tại lấy TỰ ĐỘNG từ manifest → đánh dấu bản "đang dùng" trong danh sách.
+  let current = "";
+  try { current = (chrome.runtime.getManifest() || {}).version || ""; } catch (_) {}
+
+  const releases = (typeof APP_RELEASES !== "undefined" && Array.isArray(APP_RELEASES)) ? APP_RELEASES : [];
+  list.innerHTML = "";
+  for (const r of releases) {
+    const isCurrent = String(r.version) === String(current);
+    const art = document.createElement("article");
+    art.className = "release" + (isCurrent ? " current" : "");
+
+    const meta = document.createElement("div");
+    meta.className = "release-meta";
+    const ver = document.createElement("span");
+    ver.className = "release-version";
+    ver.textContent = "Phiên bản " + r.version;
+    meta.appendChild(ver);
+    if (isCurrent) {
+      const b = document.createElement("span");
+      b.className = "badge-current";
+      b.textContent = "ĐANG DÙNG";
+      meta.appendChild(b);
+    }
+    if (r.date) {
+      const d = document.createElement("span");
+      d.className = "release-date";
+      d.textContent = r.date;
+      meta.appendChild(d);
+    }
+    art.appendChild(meta);
+
+    const ul = document.createElement("ul");
+    for (const it of (r.items || [])) {
+      const li = document.createElement("li");
+      li.textContent = it;
+      ul.appendChild(li);
+    }
+    art.appendChild(ul);
+    list.appendChild(art);
+  }
+
+  function setOpen(open) { pop.hidden = !open; }
+  // Nút "★ Lịch sử" trên header panel (content.js) gửi message vào iframe → toggle popover.
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "autofill-hcc-open-history") setOpen(pop.hidden);
+  });
+  closeBtn && closeBtn.addEventListener("click", () => setOpen(false));
+  document.addEventListener("click", (e) => {
+    if (!pop.hidden && !pop.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+})();

@@ -1,8 +1,8 @@
 """Compact schema for "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót".
 
-The LLM returns only OCR-derived source facts from CCCD/CMND and land-use
-certificate documents. UI fields and deterministic defaults are derived in
-Python to keep the model output short.
+The LLM returns only OCR-derived source facts from the change application,
+CCCD/CMND and land-use certificate documents. UI fields and deterministic
+defaults are derived in Python to keep the model output short.
 """
 
 FIELDS: list[dict] = [
@@ -17,6 +17,11 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "Cccd_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
+
+    # Đơn đăng ký biến động đất đai.
+    {"name": "Don_DienThoaiLienHe",
+     "desc": 'Số tại mục "Điện thoại liên hệ (nếu có)" trên Đơn đăng ký biến động đất đai; '
+             "chỉ trả số điện thoại, không lấy số CCCD, số GCN hoặc mã số thuế."},
 
     # Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất.
     {"name": "Gcn_SoPhatHanh",
@@ -49,6 +54,14 @@ UI_COMP_BY_NAME = {
     "CongDan_noiCapCmnd": "dom-input",
     "CongDan_maDMQuocGia": "dom-select",
     "CongDan_diaChiNuocNgoai": "dom-input",
+    # Địa chỉ nơi cư trú (eForm Lai Châu 2 cấp: tỉnh → xã, KHÔNG huyện). Select cascade như các thủ tục
+    # laichau khác (xet_tuyen); extension isAreaSelectName đã nhận maTinhThanh/maPhuongXa.
+    "CongDan_maTinhThanh": "dom-select",     # Tỉnh/Thành phố.
+    "CongDan_maPhuongXa": "dom-select",      # Phường/Xã (load qua API sau khi chọn tỉnh).
+    "CongDan_diaChi": "dom-input",           # Số nhà/đường/bản/tổ/thôn.
+    "CongDan_diaChiThuongTru": "dom-input",  # Địa chỉ thường trú (chuỗi đầy đủ).
+    "CongDan_noiOHienTai": "dom-input",      # Nơi ở hiện tại (chuỗi đầy đủ).
+    "CongDan_diDong": "dom-input",           # Điện thoại liên hệ trên Đơn đăng ký biến động.
     "CongDan_soGCNGP": "dom-input",
     "CongDan_ngayCapGCNGP": "dom-input",
     "CongDan_noiCapGCNGP": "dom-input",

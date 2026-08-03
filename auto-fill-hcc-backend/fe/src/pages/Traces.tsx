@@ -13,9 +13,10 @@ interface Filters {
   procedure: string;
   dateFrom: string;
   dateTo: string;
+  requestId: string;
 }
 
-const EMPTY: Filters = { userId: "", procedure: "", dateFrom: "", dateTo: "" };
+const EMPTY: Filters = { userId: "", procedure: "", dateFrom: "", dateTo: "", requestId: "" };
 
 // Giữ bộ lọc + trang trong sessionStorage để khi xem chi tiết trace rồi bấm Back, danh sách
 // không bị reset (state-preservation). sessionStorage: chỉ trong tab, xóa khi đóng tab.
@@ -40,7 +41,8 @@ export default function Traces({
   onNavigate: (v: View) => void;
 }) {
   const [facets, setFacets] = useState<Facets>({ users: [], procedures: [] });
-  const [filters, setFilters] = useState<Filters>(() => loadPersisted().filters ?? EMPTY);
+  // Merge với EMPTY: bộ lọc lưu ở phiên bản cũ (chưa có requestId) không làm thiếu khóa → tránh .trim() undefined.
+  const [filters, setFilters] = useState<Filters>(() => ({ ...EMPTY, ...(loadPersisted().filters ?? {}) }));
   const [items, setItems] = useState<TraceListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(() => loadPersisted().page ?? 1);
@@ -64,6 +66,7 @@ export default function Traces({
         // input type=date trả YYYY-MM-DD; thêm giờ để bao trọn ngày.
         dateFrom: filters.dateFrom ? `${filters.dateFrom}T00:00:00` : undefined,
         dateTo: filters.dateTo ? `${filters.dateTo}T23:59:59` : undefined,
+        requestId: filters.requestId?.trim() || undefined,
         page,
         pageSize: PAGE_SIZE,
       });
@@ -96,6 +99,17 @@ export default function Traces({
       <TopBar user={user} view={view} onNavigate={onNavigate} onLogout={onLogout} />
 
       <section className="filters">
+        <label className="filter-reqid">
+          Mã hỗ trợ
+          <input
+            type="text"
+            value={filters.requestId}
+            onChange={(e) => update("requestId", e.target.value)}
+            placeholder="Dán mã hỗ trợ để tra nhanh"
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </label>
         <Combobox
           label="Phường"
           value={filters.userId}
@@ -141,6 +155,7 @@ export default function Traces({
           <thead>
             <tr>
               <th className="col-time">Thời gian</th>
+              <th>Mã hỗ trợ</th>
               <th>Phường</th>
               <th>Thủ tục</th>
               <th>Loại</th>
@@ -153,6 +168,7 @@ export default function Traces({
             {items.map((t) => (
               <tr key={t.id} className="row" onClick={() => setSelected(t.id)}>
                 <td className="col-time">{fmtDateTime(t.created_at)}</td>
+                <td className="col-reqid" title={t.request_id}>{t.request_id || "—"}</td>
                 <td>{t.name || "—"}</td>
                 <td>{t.procedure_label || t.procedure}</td>
                 <td>
@@ -171,7 +187,7 @@ export default function Traces({
             ))}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={7} className="muted center">
+                <td colSpan={8} className="muted center">
                   Không có dữ liệu
                 </td>
               </tr>

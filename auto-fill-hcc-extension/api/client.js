@@ -6,10 +6,6 @@
 
 function backendFetch(path, init = {}) {
   return new Promise((resolve) => {
-    // Guard: chrome.runtime bị undefined khi extension bị invalidated (reload extension mà popup iframe còn mở).
-    if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.sendMessage) {
-      return resolve(_makeRes(false, 0, JSON.stringify({ message: "Extension cần reload lại trang (chrome.runtime không khả dụng)." })));
-    }
     let bodyStr = init.body;
     // chrome.runtime.sendMessage chỉ serialize được JSON-friendly value; body luôn dạng string.
     if (bodyStr != null && typeof bodyStr !== "string") {

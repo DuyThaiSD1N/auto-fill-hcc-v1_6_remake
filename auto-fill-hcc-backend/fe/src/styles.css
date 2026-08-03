@@ -269,6 +269,18 @@ tbody tr:last-child td {
 .col-time {
   white-space: nowrap;
 }
+/* Cột "Mã hỗ trợ" (request_id): monospace để đối chiếu chính xác, không xuống dòng. */
+.col-reqid {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Ô tra nhanh theo mã hỗ trợ — rộng hơn để chứa trọn req_… */
+.filter-reqid input {
+  min-width: 220px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 .row {
   cursor: pointer;
 }

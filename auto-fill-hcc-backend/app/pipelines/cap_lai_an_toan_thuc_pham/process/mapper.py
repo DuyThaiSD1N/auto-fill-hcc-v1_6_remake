@@ -5,12 +5,12 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from typing import Any
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_lai_an_toan_thuc_pham.process.schema import UI_COMP_BY_NAME
-from app.pipelines._shared.area_remap import remap_area
 
 
 @dataclass
@@ -126,7 +126,7 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
     }
-    return remap_area(out if any(out.values()) else None)
+    return out if any(out.values()) else None
 
 
 def _area_label(value: Any) -> str | None:
@@ -312,7 +312,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     )
     add("data[noidungyeucaugiaiquyet]", reissue_content)
     add("data[tinhThanhPhoNopDon]", _area_label(values.get("DonCapLai_DiaDanh")))
-    add("data[ngayNopDon]", normalize_date(values.get("DonCapLai_NgayDon")))
+    # "Ngày nộp đơn" = ngày NỘP LÊN CỔNG (submission), KHÔNG phải ngày ghi trên tờ đơn giấy (thường quá
+    # khứ → date-picker chặn, để trống báo bắt buộc). Luôn điền NGÀY HÔM NAY (ngày server, giờ VN).
+    add("data[ngayNopDon]", date.today().strftime("%d/%m/%Y"))
     add("data[kinhGui]", _text(values.get("DonCapLai_KinhGui")))
     add("data[TenCoSoSanXuatKinhDoanh]", owner_name)
     add("data[GCNCuSo]", _clean_gcn_number(_pick(values.get("DonCapLai_GCNCuSo"), values.get("GCNCu_SoCap"))))

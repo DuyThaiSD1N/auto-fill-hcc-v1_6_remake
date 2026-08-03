@@ -120,6 +120,7 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         "stats": result.get("stats", {}),
         "errors": result.get("errors", []),
         "pages": result.get("pages"),
+        "businessFlow": result.get("businessFlow"),
     }
 
 

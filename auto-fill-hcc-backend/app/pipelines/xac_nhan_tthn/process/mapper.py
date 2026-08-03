@@ -12,69 +12,7 @@ _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
 _DIVORCED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai"
 _WIDOWED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại chưa đăng ký kết hôn với ai"
 _MARRIED_STATUS = "Hiện tại đang có vợ/chồng"
-
-# Bảng chuẩn hóa dân tộc: folded OCR variant → tên chính xác trong danh mục.
-_DAN_TOC_MAP: dict[str, str] = {
-    "kinh": "Kinh",
-    "tay": "Tày",
-    "thai": "Thái",
-    "muong": "Mường",
-    "khmer": "Khmer",
-    "kho me": "Khmer",
-    "khome": "Khmer",
-    "mong": "Mông",
-    "hmong": "Mông",
-    "h mong": "Mông",
-    "h'mong": "Mông",
-    "nung": "Nùng",
-    "hoa": "Hoa",
-    "dao": "Dao",
-    "yao": "Dao",
-    "gia rai": "Gia Rai",
-    "giarai": "Gia Rai",
-    "e de": "Ê Đê",
-    "ede": "Ê Đê",
-    "ba na": "Ba Na",
-    "bana": "Ba Na",
-    "san chay": "Sán Chay",
-    "cao lan": "Sán Chay",
-    "san diu": "Sán Dìu",
-    "cham": "Chăm",
-    # Cờ Ho — bao phủ OCR: "Cờ Ho", "K Ho", "C Ho", "K'Ho", "Kho"
-    "co ho": "Cờ Ho",
-    "k ho": "Cờ Ho",
-    "c ho": "Cờ Ho",
-    "k'ho": "Cờ Ho",
-    "kho": "Cờ Ho",
-    "xo dang": "Xơ Đăng",
-    "sedang": "Xơ Đăng",
-    "giay": "Giáy",
-    "zay": "Giáy",
-    "lao": "Lào",
-    "ha nhi": "Hà Nhì",
-    "la hu": "La Hủ",
-    "kho mu": "Khơ Mú",
-    "khmu": "Khơ Mú",
-    "mnong": "Mnông",
-    "m nong": "Mnông",
-    "co": "Co",
-    "ta oi": "Tà Ôi",
-    "ma": "Mạ",
-    "raglai": "Raglai",
-    "ra glai": "Raglai",
-    "bru van kieu": "Bru - Vân Kiều",
-    "van kieu": "Bru - Vân Kiều",
-}
-
-
-def _norm_dan_toc(value) -> str:
-    """Chuẩn hóa tên dân tộc về đúng danh mục (sửa lỗi OCR, biến thể viết hoa/dấu).
-    Trả về tên chuẩn nếu tìm thấy trong bảng, nguyên bản nếu không tìm thấy.
-    """
-    if not value:
-        return value
-    text = str(value).strip()
-    return _DAN_TOC_MAP.get(_fold(text), text)
+_NEVER_MARRIED_STATUS = "Hiện tại chưa đăng ký kết hôn với ai"
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -89,6 +27,19 @@ def _fold(value) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+def _normalize_commune_label(value) -> str:
+    """Mở rộng viết tắt đơn vị hành chính để khớp option trên cổng."""
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    for pattern, prefix in (
+        (r"^p(?:\.\s*|\s+)(.+)$", "Phường"),
+        (r"^x(?:\.\s*|\s+)(.+)$", "Xã"),
+    ):
+        match = re.match(pattern, text, flags=re.IGNORECASE)
+        if match:
+            return f"{prefix} {match.group(1).strip()}"
+    return text
 
 
 def _is_self_request(options: dict | None, cccd_name, cccd_id) -> bool:
@@ -116,12 +67,17 @@ def _area(value):
     out = {
         "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
         "tinh": value.get("tinh") or value.get("tỉnh") or "",
-        "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
+        "xa": _normalize_commune_label(
+            value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or ""
+        ),
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return remap_area(out)
+    remapped = remap_area(out)
+    if isinstance(remapped, dict):
+        remapped = {**remapped, "xa": _normalize_commune_label(remapped.get("xa"))}
+    return remapped
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
@@ -167,13 +123,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # --- Thông tin từ CCCD của người đi nộp (hoặc bản thân) ---
     issuer = values.get("Cccd_NoiCap") or default_issuer(values.get("Cccd_NgayCap"))
     nationality = values.get("Cccd_QuocTich") or "Việt Nam"
-    residence = _area(values.get("Cccd_NoiCuTru"))
+    # Tờ khai phản ánh nơi cư trú hiện tại; CCCD chỉ là nguồn dự phòng.
+    residence = _area(values.get("ToKhai_NoiCuTru") or values.get("Cccd_NoiCuTru"))
 
     is_self = _is_self_request(options, values.get("Cccd_HoTen"), values.get("Cccd_SoDinhDanh"))
 
     # Phát hiện trường hợp ủy quyền: có PoA_SubjectName từ giấy ủy quyền
     poa_subject_name = values.get("PoA_SubjectName")
     has_poa = bool(poa_subject_name)
+    declared_self = values.get("ToKhai_LaBanThan") is True or _fold(
+        values.get("ToKhai_LaBanThan")
+    ) in {"true", "1", "co"}
 
     # =========================================================
     # MỤC I & II cá nhân: chỉ điền khi có CCCD hoặc giấy ủy quyền
@@ -218,12 +178,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             else:
                 add("nycNoiCuTru", "1", default=True)
                 add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
-            if is_self:
+            if is_self or declared_self:
                 add("quanhevoinguoiduocxacminh", "1")
 
         # --- MỤC II: Người được xác nhận ---
-        add("loaiDangKy", "1")  # luôn tick "Đăng ký lần đầu"
-
         if has_poa:
             # ỦY QUYỀN: Mục II = người ủy quyền (người CẦN giấy) từ giấy ủy quyền
             poa_issuer = values.get("PoA_SubjectIssuer") or default_issuer(values.get("PoA_SubjectIdDate"))
@@ -249,7 +207,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("HoVaTenC1", values.get("Cccd_HoTen"))
             add("NgaySinhC1", values.get("Cccd_NgaySinh"))
             add("GioiTinhC1", values.get("Cccd_GioiTinh"))
-            add("DanTocC1", _norm_dan_toc(values.get("Cccd_DanToc")))
+            add("DanTocC1", values.get("Cccd_DanToc"))
             add("QuocTichC1", nationality)
             add("SoDinhDanhC1", values.get("Cccd_SoDinhDanh"))
             add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", issuer))
@@ -277,6 +235,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     marriage_number = values.get("Marriage_Number")
     marriage_date = values.get("Marriage_Date")
     marriage_agency = values.get("Marriage_Agency")
+    declared_status = _fold(values.get("TinhTrangHonNhanC1"))
 
     if death_number and death_date and death_agency:
         # GÓA: vợ/chồng đã chết
@@ -294,24 +253,40 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             "ngayCapBanAnQuyetDinhLyHon": divorce_date,
             "coQuanCapBanAnQuyetDinhLyHon": divorce_agency,
         })
-    elif marriage_number and marriage_date:
-        # HIỆN ĐANG CÓ VỢ/CHỒNG (có Giấy chứng nhận kết hôn)
-        # Ô area =2 dùng cùng key soBanAnQuyetDinhLyHon/... với =3/=4; thêm voChongHoTen riêng.
+    elif (marriage_number and marriage_date) or declared_status == _fold(_MARRIED_STATUS):
+        # HIỆN ĐANG CÓ VỢ/CHỒNG: giấy kết hôn hoặc tờ khai ghi rõ.
         add("TinhTrangHonNhanC1", _MARRIED_STATUS)
-        add("nxnLoaiTinhTrangHonNhan=2", {
+        marriage_detail = {
             "voChongHoTen": marriage_spouse,
-            "soBanAnQuyetDinhLyHon": marriage_number,
-            "ngayCapBanAnQuyetDinhLyHon": marriage_date,
-            "coQuanCapBanAnQuyetDinhLyHon": marriage_agency,
-        })
-    # Nếu không có giấy tờ hôn nhân nào → không set TinhTrangHonNhanC1,
-    # form đã có default "Hiện tại chưa đăng ký kết hôn với ai".
+            "soGiayTo": marriage_number,
+            "ngayCapGiayTo": marriage_date,
+            "coQuanCapGiayTo": marriage_agency,
+        }
+        marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
+        add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
+
+        # Vùng =2 được render động. Phát thêm đúng DOM name sau field vùng để extension điền raw,
+        # không phải hiểu số/ngày/cơ quan này thuộc nghiệp vụ kết hôn hay ly hôn.
+        add("soGiayTo", marriage_number)
+        date_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(marriage_date or "").strip())
+        if date_match:
+            day, month, year = date_match.groups()
+            day = day.zfill(2)
+            month = month.zfill(2)
+            add("ngayCapGiayTo-day", day)
+            add("ngayCapGiayTo-month", month)
+            add("ngayCapGiayTo-year", year)
+            add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
+        add("coQuanCapGiayTo", marriage_agency)
+    elif declared_status == _fold(_NEVER_MARRIED_STATUS):
+        # Chỉ điền độc thân khi tờ khai đã nói rõ; không coi thiếu giấy tờ là bằng chứng.
+        add("TinhTrangHonNhanC1", _NEVER_MARRIED_STATUS)
 
     # =========================================================
     # MỤC ĐÍCH & TRẢ KẾT QUẢ
     # =========================================================
     add("mucdich", _DEFAULT_PURPOSE)
-    # Mục đích cụ thể (từ giấy XNTTHN cũ) → ô "Nhập mục đích" free-text.
+    # Mục đích cụ thể từ tờ khai/giấy XNTTHN cũ → ô "Nhập mục đích" free-text.
     add("nhapmucdichkhac", values.get("Purpose"))
     add("TraKQ", "1")
 

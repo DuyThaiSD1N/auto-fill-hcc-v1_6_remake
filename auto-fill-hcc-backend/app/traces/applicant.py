@@ -16,7 +16,7 @@ _REQUESTER_RAW_KEYS = (
     "ToKhai_HoTenNguoiYeuCau",
 )
 
-# Dấu hiệu một khoá "tên người" bất kỳ (fallback cuối) — vd Gbt_HoTenNguoiMat, Mother_FullName.
+# Dấu hiệu một khoá "tên người" bất kỳ (fallback cuối) — vd NguoiMat_HoTen, Mother_FullName.
 _NAME_MARKERS = ("HoTen", "HoVaTen", "FullName")
 
 

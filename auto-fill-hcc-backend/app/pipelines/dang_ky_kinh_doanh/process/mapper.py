@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from difflib import SequenceMatcher
 from typing import Any
 
-from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.dang_ky_kinh_doanh.process.schema import DEFAULT_PAGE, PAGES
 from app.pipelines._shared.formatting import normalize_date
 
@@ -50,20 +48,9 @@ def _clean_ward(value: Any) -> str:
     if ("doan" in packed or "oan" in packed) and "ket" in packed:
         return "Đoàn Kết"
 
-    candidates = {
-        "Tân Phong": ("tan phong",),
-        "Đoàn Kết": ("doan ket",),
-    }
-    best_label = ""
-    best_score = 0.0
-    for label, aliases in candidates.items():
-        for alias in aliases:
-            score = SequenceMatcher(None, folded, alias).ratio()
-            if score > best_score:
-                best_label = label
-                best_score = score
-    if best_score >= 0.68:
-        return best_label
+    # KHÔNG fuzzy-match tên xã sang danh sách cứng: FE đã khớp theo option THẬT trên cổng
+    # (substring, đã fold dấu). Fuzzy trước đây map nhầm "Xuân Hương" → "Tân Phong" (ratio ≥ .68)
+    # → cổng không có option "Tân Phong" nên không điền được. Chỉ trả tên đã bỏ tiền tố.
     return text
 
 
@@ -138,25 +125,32 @@ def _strip_household_prefix(value: Any) -> str:
     return re.sub(r"^\s*hộ\s+kinh\s+doanh\s+", "", text, flags=re.IGNORECASE).strip()
 
 
+def _clean_business_code(value: Any) -> str:
+    """Mã ngành VSIC trên HkdOnline phải là đúng 4 chữ số liền nhau.
+
+    OCR/LLM có thể tách mã viết tay thành "56 10" hoặc "56.10"; cổng chỉ nhận "5610".
+    Nếu không thu được đúng 4 chữ số thì bỏ mã, không gửi chuỗi lỗi sang FE.
+    """
+    digits = re.sub(r"\D", "", _compact_text(value))
+    return digits if len(digits) == 4 else ""
+
+
 def _addr(value: Any) -> dict[str, str]:
     if isinstance(value, dict):
-        raw = {
+        return {
             "quocGia": _compact_text(value.get("quocGia") or value.get("quoc_gia") or "Việt Nam"),
             "tinh": _compact_text(value.get("tinh") or value.get("province")),
             "xa": _clean_ward(value.get("xa") or value.get("phuongXa") or value.get("ward")),
             "diaChi": _compact_text(value.get("diaChi") or value.get("dia_chi") or value.get("address")),
         }
-        return remap_area(raw) or raw
     text = _compact_text(value)
     if not text:
         return {}
     parts = [p.strip() for p in text.split(",") if p.strip()]
     if len(parts) >= 3:
-        raw = {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": _clean_ward(parts[-2]), "diaChi": ", ".join(parts[:-2])}
-        return remap_area(raw) or raw
+        return {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": _clean_ward(parts[-2]), "diaChi": ", ".join(parts[:-2])}
     if len(parts) == 2:
-        raw = {"quocGia": "Việt Nam", "tinh": parts[-1], "diaChi": parts[0]}
-        return remap_area(raw) or raw
+        return {"quocGia": "Việt Nam", "tinh": parts[-1], "diaChi": parts[0]}
     return {"quocGia": "Việt Nam", "diaChi": text}
 
 
@@ -184,14 +178,14 @@ def _business_line_text(values: dict[str, Any]) -> str:
             if not isinstance(row, dict):
                 item = _compact_text(row)
             else:
-                ma = _compact_text(row.get("ma"))
+                ma = _clean_business_code(row.get("ma"))
                 ten = _compact_text(row.get("ten"))
                 item = f"{ma} - {ten}" if ma and ten else (ma or ten)
             if item:
                 lines.append(item)
         if lines:
             return "\n".join(lines)
-    ma = _compact_text(values.get("NganhNghe_MaChinh"))
+    ma = _clean_business_code(values.get("NganhNghe_MaChinh"))
     ten = _compact_text(values.get("NganhNghe_TenChinh"))
     return f"{ma} - {ten}" if ma and ten else (ma or ten)
 
@@ -203,27 +197,72 @@ def _all_business_codes(values: dict[str, Any]) -> list[str]:
     if isinstance(rows, list):
         for row in rows:
             if isinstance(row, dict):
-                ma = _compact_text(row.get("ma"))
+                ma = _clean_business_code(row.get("ma"))
                 if ma and ma not in out:
                     out.append(ma)
-    direct = _compact_text(values.get("NganhNghe_MaChinh"))
+    direct = _clean_business_code(values.get("NganhNghe_MaChinh"))
     if direct and direct not in out:
         out.insert(0, direct)
     return out
 
 
+def _business_line_items(values: dict[str, Any]) -> list[dict[str, Any]]:
+    """Danh sách ngành kèm tên OCR để FE bổ sung mô tả khi tên chính thức của mã quá chung.
+
+    Cổng HkdOnline thêm ngành theo MÃ VSIC. Sau khi thêm, portal tự hiển thị tên chuẩn theo mã.
+    Nếu giấy ghi tên cụ thể hơn (vd "Dịch vụ phục vụ đồ uống (cà phê)" cho mã 5630),
+    extension cần giữ tên OCR này để điền vào ô mô tả của dòng ngành tương ứng.
+    """
+    out: list[dict[str, Any]] = []
+    by_code: dict[str, dict[str, Any]] = {}
+
+    rows = values.get("NganhNghe_DanhSach")
+    if isinstance(rows, list):
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            code = _clean_business_code(row.get("ma"))
+            if not code or code in by_code:
+                continue
+            item = {
+                "code": code,
+                "name": _compact_text(row.get("ten")),
+                "main": bool(row.get("chinh")),
+            }
+            out.append(item)
+            by_code[code] = item
+
+    direct = _clean_business_code(values.get("NganhNghe_MaChinh"))
+    direct_name = _compact_text(values.get("NganhNghe_TenChinh"))
+    if direct:
+        if direct in by_code:
+            if direct_name and not by_code[direct].get("name"):
+                by_code[direct]["name"] = direct_name
+            by_code[direct]["main"] = True
+        else:
+            out.insert(0, {"code": direct, "name": direct_name, "main": True})
+
+    return out
+
+
 def _main_business_code(values: dict[str, Any]) -> str:
-    direct = _compact_text(values.get("NganhNghe_MaChinh"))
+    direct = _clean_business_code(values.get("NganhNghe_MaChinh"))
     if direct:
         return direct
     rows = values.get("NganhNghe_DanhSach")
     if isinstance(rows, list):
         for row in rows:
-            if isinstance(row, dict) and row.get("chinh") and _compact_text(row.get("ma")):
-                return _compact_text(row.get("ma"))
+            if not isinstance(row, dict):
+                continue
+            code = _clean_business_code(row.get("ma"))
+            if row.get("chinh") and code:
+                return code
         for row in rows:
-            if isinstance(row, dict) and _compact_text(row.get("ma")):
-                return _compact_text(row.get("ma"))
+            if not isinstance(row, dict):
+                continue
+            code = _clean_business_code(row.get("ma"))
+            if code:
+                return code
     return ""
 
 
@@ -259,11 +298,13 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$DCONTClt$HO_URLFld", "dom-input", values.get("TruSo_Website"))
 
     elif selected_page == "nganh-nghe-kinh-doanh":
-        codes = _all_business_codes(values)
+        items = _business_line_items(values)
+        codes = [item["code"] for item in items] or _all_business_codes(values)
         main_code = _main_business_code(values)
         # Fill-tất-cả (extension) đọc __businessLines để thêm LẦN LƯỢT mọi mã + set ngành chính.
+        # `items` giữ tên ngành trên giấy để FE điền mô tả nếu tên portal theo mã không trùng.
         if codes:
-            add("__businessLines", "raw", {"codes": codes, "main": main_code})
+            add("__businessLines", "raw", {"codes": codes, "main": main_code, "items": items})
         # Giữ cho luồng fill-từng-trang cũ: điền 1 mã chính vào ô nhập.
         if main_code:
             add("ctl00$C$newBusinessLineCode", "dom-input", main_code)
@@ -318,9 +359,8 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("NguoiNop_NgaySinh") or values.get("ChuHo_NgaySinh")))
         add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("NguoiNop_SoDinhDanh") or values.get("ChuHo_SoDinhDanh"))
         add_address("ctl00$C$PERSCtl$ADDRCCtl", values.get("NguoiNop_DiaChi") or values.get("ChuHo_DiaChi"))
-        add("ctl00$C$PERSCtl$PHONEFld", "dom-input", _clean_phone(values.get("NguoiNop_DienThoai") or values.get("ChuHo_DienThoai")))
-        add("ctl00$C$PERSCtl$FAXFld", "dom-input", values.get("NguoiNop_Fax") or values.get("ChuHo_Fax"))
-        add("ctl00$C$PERSCtl$EMAILFld", "dom-input", _clean_email(values.get("NguoiNop_Email") or values.get("ChuHo_Email")))
+        # SĐT/email người nộp do nút "Sao chép thông tin đăng ký tài khoản" trên cổng tự điền.
+        # Không lấy contact chủ hộ làm dự phòng vì hai vai trò có thể là hai người khác nhau.
 
     return out
 

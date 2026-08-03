@@ -18,6 +18,8 @@ async def ensure_indexes() -> None:
     await db.traces.create_index([("created_at", -1)])
     await db.traces.create_index([("user_id", 1), ("created_at", -1)])
     await db.traces.create_index([("procedure", 1), ("created_at", -1)])
+    # Tra trace theo "mã hỗ trợ" (request_id) cán bộ copy từ extension khi báo lỗi.
+    await db.traces.create_index("request_id")
     # Cache OCR (_id = hash nội dung, tra bằng index primary). TTL tự dọn text OCR cũ.
     await db.ocr_cache.create_index(
         "created_at", expireAfterSeconds=settings.ocr_cache_ttl_days * 86400

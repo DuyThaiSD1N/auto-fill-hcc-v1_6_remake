@@ -43,13 +43,13 @@ def _data_url_bytes(data_url: str) -> int:
 
 async def _save_attach_trace(
     body: AttachmentPlanReq, proc: dict, options: dict, result: dict, user: dict,
-    total_bytes: int,
+    total_bytes: int, request_id: str,
 ) -> None:
     """Lưu file xuống disk + bản ghi request + trace cho thủ tục đính kèm (attach-only).
 
+    request_id do handler sinh & trả về FE (nút "Mã hỗ trợ") → dùng ĐÚNG id đó khi lưu trace.
     Best-effort: mọi lỗi ở đây không được làm hỏng response đính kèm.
     """
-    request_id = "req_" + uuid.uuid4().hex[:12]
     created_at = datetime.now(timezone.utc)
     try:
         # Lưu file + bản ghi process_requests để trace detail xem được nội dung file (qua /traces/{id}/files).
@@ -131,9 +131,12 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
     attach_fn = get_attach_pipeline(body.procedure)
     if attach_fn:
         result = await attach_fn(body.files, options, session=session)
+        # Mã hỗ trợ: sinh 1 request_id cho lượt đính kèm, trả về FE để cán bộ copy khi báo lỗi.
+        request_id = "req_" + uuid.uuid4().hex[:12]
+        result["requestId"] = request_id
         # Mỗi lượt đính kèm là một hành động riêng trên hồ sơ. Lưu trace kind="attach"
         # cho cả attach-only và thủ tục có hasAttachmentStep để màn trace đối chiếu được.
-        await _save_attach_trace(body, proc, options, result, user, total_bytes)
+        await _save_attach_trace(body, proc, options, result, user, total_bytes, request_id)
         return result
 
     raise AppError("UNSUPPORTED_ATTACHMENT_PROCEDURE", f"Chưa hỗ trợ plan đính kèm cho {body.procedure}", 400)

@@ -20,6 +20,14 @@
 
   <!-- ===== Màn hình chính ===== -->
   <div id="mainScreen" hidden>
+    <!-- Popover lịch sử cập nhật: mở từ nút "★ Lịch sử" trên header panel (content.js) qua postMessage. -->
+    <aside class="release-popover" id="releasePopover" role="dialog" aria-label="Lịch sử cập nhật phiên bản" hidden>
+      <div class="release-pop-head">
+        <span class="release-pop-title">Lịch sử cập nhật</span>
+        <button type="button" class="release-close" id="releaseClose" aria-label="Đóng">×</button>
+      </div>
+      <div class="release-list" id="releaseList"></div>
+    </aside>
     <div id="userBar" class="user-bar">
       <span id="userLabel" class="user-email"></span>
       <button id="newSessionBtn" class="user-action" title="Xoá file &amp; kết quả của tab này, bắt đầu phiên mới (vẫn giữ đăng nhập)">Tạo phiên mới</button>
@@ -79,6 +87,12 @@
     </section>
 
     <p id="status" class="status"></p>
+    <button id="supportCode" class="support-code" type="button" hidden
+            title="Sao chép và gửi cho bộ phận hỗ trợ khi cần kiểm tra kết quả xử lý.">
+      <span class="support-code-label">Mã hỗ trợ</span>
+      <span id="supportCodeValue" class="support-code-value"></span>
+      <span class="support-code-action" aria-hidden="true">📋 Sao chép</span>
+    </button>
     <section id="reviewCard" class="review-card" hidden></section>
     <div class="app-footer">
       <a id="guideBtn" class="guide-btn" href="https://drive.google.com/drive/folders/1ksdjwCGrelwNZ5fu9e6WIcsrf1RFn5u-?usp=drive_link" target="_blank" rel="noopener" title="Mở hướng dẫn sử dụng (Google Drive)">Hướng dẫn</a>
@@ -91,6 +105,7 @@
   <script src="api/auth.js"></script>
   <script src="api/client.js"></script>
   <script src="api/endpoints.js"></script>
+  <script src="changelog.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -4,7 +4,6 @@ import re
 
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as LEGACY_COMP_BY_NAME
 from app.pipelines._shared.compact_agent.issuer import default_issuer
-from app.pipelines._shared.area_remap import remap_area
 
 # Đổi tên tỉnh/thành theo sắp xếp đơn vị hành chính 2025 (giấy tờ cũ ghi tên cũ → chuẩn hóa tên mới).
 _TINH_RENAME = {"thua thien hue": "Huế"}
@@ -64,7 +63,7 @@ def _area(value):
         "xa": xa,
         "diaChi": dia,
     }
-    return remap_area({k: v for k, v in out.items() if v not in (None, "", {}, [])})
+    return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
 
 
 def enrich(fields: list[dict]) -> list[dict]:

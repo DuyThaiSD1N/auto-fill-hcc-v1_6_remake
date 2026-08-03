@@ -52,3 +52,25 @@ async def test_primary_ok_no_fallback(monkeypatch):
     monkeypatch.setattr(client, "_chat_openai", boom)
     out = await client.chat([{"role": "user", "content": "x"}])
     assert client.extract_json_block(out) == {"ok": 1}
+
+
+@respx.mock
+async def test_text_chat_fallback_does_not_require_json(monkeypatch):
+    respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
+        return_value=httpx.Response(500, text="upstream down")
+    )
+    monkeypatch.setattr(settings, "openai_api_key", "sk-test")
+
+    async def fake_openai_text(messages, temperature):
+        assert messages[0]["content"] == "phân vai"
+        assert temperature == 0
+        return "<nguoi_yeu_cau>...</nguoi_yeu_cau>"
+
+    monkeypatch.setattr(client, "_chat_openai_text", fake_openai_text)
+
+    out = await client.chat_text(
+        [{"role": "system", "content": "phân vai"}],
+        temperature=0,
+    )
+
+    assert out == "<nguoi_yeu_cau>...</nguoi_yeu_cau>"

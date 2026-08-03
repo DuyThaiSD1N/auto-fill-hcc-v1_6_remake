@@ -96,8 +96,13 @@ def _build_query(
     procedure: str | None,
     date_from: datetime | None,
     date_to: datetime | None,
+    request_id: str | None = None,
 ) -> dict:
     query: dict = {}
+    # Mã hỗ trợ là duy nhất/lượt → khớp CHÍNH XÁC; có mã thì bỏ qua các bộ lọc khác cho tiện tra.
+    if request_id:
+        query["request_id"] = request_id.strip()
+        return query
     if user_id:
         query["user_id"] = user_id
     if procedure:
@@ -118,12 +123,14 @@ async def list_traces(
     procedure: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
+    request_id: str | None = None,
     skip: int = 0,
     limit: int = 20,
 ) -> dict:
     db = get_db()
     query = _build_query(
-        user_id=user_id, procedure=procedure, date_from=date_from, date_to=date_to
+        user_id=user_id, procedure=procedure, date_from=date_from, date_to=date_to,
+        request_id=request_id,
     )
     total = await db.traces.count_documents(query)
     # Danh sách: không trả ocr_text/llm_output (nặng) — chỉ trả khi xem chi tiết.

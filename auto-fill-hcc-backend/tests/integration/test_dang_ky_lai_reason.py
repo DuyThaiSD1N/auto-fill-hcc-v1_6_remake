@@ -1,161 +1,335 @@
-"""Cổng suy luận tất định cho đăng ký lại khai sinh: chốt con/cha/mẹ đúng dù LLM roster lỗi.
-
-Ca gốc gây bug: hồ sơ có CCCD (con) + giấy KẾT HÔN + 2 giấy KHAI TỬ (cha, mẹ). Lần chạy xấu,
-LLM tưởng giấy kết hôn là khai sinh -> map chồng->cha, vợ->mẹ, bỏ 2 khai tử. Cổng phải sửa lại.
-"""
+"""Kiểm thử tầng phân vai raw-text của đăng ký lại khai sinh."""
 
 from app.pipelines.khai_sinh_dang_ky_lai.process import reason
+from app.pipelines.khai_sinh_dang_ky_lai.process import runner as process_runner
 
 
-def _roster_bad_case() -> dict:
-    """Roster LLM trả về ở lần chạy XẤU: chồng bị gán 'cha', vợ (chính là con) bị gán 'me'."""
-    return {
-        "documents": [
-            {"name": "cccd.pdf", "loai": "cccd", "ve_ai": "LƯƠNG THỊ KHOẢN"},
-            {"name": "gks.pdf", "loai": "ket_hon", "ve_ai": "HOÀNG VĂN KHANH"},
-            {"name": "khai tu bo.jpeg", "loai": "khai_tu", "ve_ai": "LƯƠNG VĂN DẦU"},
-            {"name": "khai tu me.jpeg", "loai": "khai_tu", "ve_ai": "HỒ THỊ SIÊU"},
-        ],
-        "persons": [
-            {"ten": "LƯƠNG THỊ KHOẢN", "gioi_tinh": "Nữ", "nam_sinh": "1987",
-             "so_dinh_danh": "012187003358", "da_chet": False, "vai_tro": "me",
-             "nguon": ["cccd.pdf", "gks.pdf"]},
-            {"ten": "HOÀNG VĂN KHANH", "gioi_tinh": "Nam", "nam_sinh": "1979",
-             "so_dinh_danh": "", "da_chet": False, "vai_tro": "cha", "nguon": ["gks.pdf"]},
-            {"ten": "LƯƠNG VĂN DẦU", "gioi_tinh": "Nam", "nam_sinh": "1971",
-             "so_dinh_danh": "", "da_chet": False, "vai_tro": "khac", "nguon": ["khai tu bo.jpeg"]},
-            {"ten": "HỒ THỊ SIÊU", "gioi_tinh": "Nữ", "nam_sinh": "1951",
-             "so_dinh_danh": "", "da_chet": False, "vai_tro": "khac", "nguon": ["khai tu me.jpeg"]},
-        ],
-    }
+def _raw_roles(
+    *,
+    requester="NGUYỄN THỊ HOÀ",
+    requester_id="027176001591",
+    child="MAN THỊ HUẾ",
+    child_id="027195012144",
+    mother="NGUYỄN THỊ HOÀ",
+    mother_id="027176001591",
+    father="MAN VĂN QUỲNH",
+) -> str:
+    return f"""
+<nguoi_yeu_cau>
+Họ tên: {requester}
+Số CCCD/CMND: {requester_id}
+Ngày sinh: 31/10/1976
+Giới tính: Nữ
+Nguồn: cccd-hoa.pdf
+Căn cứ phân vai: Trùng số định danh requester_context.
+Vai trò đồng thời: mẹ
+</nguoi_yeu_cau>
+<con>
+Họ tên: {child}
+Số CCCD/CMND: {child_id}
+Ngày sinh: 18/11/1995
+Giới tính: Nữ
+Trạng thái: còn sống
+Nguồn: cccd-hue.pdf
+Căn cứ phân vai: Người trẻ nhất trong bộ ba có khoảng cách thế hệ hợp lý.
+</con>
+<me>
+Họ tên: {mother}
+Số CCCD/CMND: {mother_id}
+Ngày sinh: 31/10/1976
+Giới tính: Nữ
+Trạng thái: còn sống
+Nguồn: cccd-hoa.pdf
+Căn cứ phân vai: Người nữ thuộc thế hệ trước con.
+</me>
+<cha>
+Họ tên: {father}
+Số CCCD/CMND: Không xác định
+Ngày sinh: 01/11/1972
+Giới tính: Nam
+Trạng thái: đã chết
+Nguồn: trich-luc-khai-tu.pdf
+Căn cứ phân vai: Người nam thuộc thế hệ trước con; giấy khai tử chỉ xác nhận danh tính và trạng thái.
+</cha>
+<dang_ky_khai_sinh_truoc_day>
+Có tài liệu khai sinh hợp lệ: Không
+Nguồn: Không có
+Căn cứ: Hồ sơ chỉ có CCCD và giấy khai tử.
+</dang_ky_khai_sinh_truoc_day>
+""".strip()
 
 
-def _role(roster: dict, ten: str) -> dict:
-    return next(p for p in roster["persons"] if p["ten"] == ten)
+def _documents_without_birth_record() -> list[dict]:
+    return [
+        {
+            "name": "cccd-hoa.pdf",
+            "text": (
+                "CĂN CƯỚC CÔNG DÂN\nSố / No.: 027176001591\n"
+                "Họ và tên / Full name: NGUYỄN THỊ HOÀ\n"
+                "Ngày sinh / Date of birth: 31/10/1976\n"
+                "Giới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam"
+            ),
+        },
+        {
+            "name": "cccd-hue.pdf",
+            "text": (
+                "CĂN CƯỚC CÔNG DÂN\nSố / No.: 027195012144\n"
+                "Họ và tên / Full name: MAN THỊ HUẾ\n"
+                "Ngày sinh / Date of birth: 18/11/1995\n"
+                "Giới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam"
+            ),
+        },
+        {
+            "name": "trich-luc-khai-tu.pdf",
+            "text": (
+                "Phần ghi về người được khai tử:\n"
+                "Họ, chữ đệm, tên: MAN VĂN QUỲNH\n"
+                "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+                "Ngày, tháng, năm sinh: 01/11/1972"
+            ),
+        },
+    ]
 
 
-def test_gate_khai_tu_thanh_cha_me_da_chet():
-    r = reason._apply_gate(_roster_bad_case(), {})
-    assert _role(r, "LƯƠNG VĂN DẦU")["vai_tro"] == "cha"
-    assert _role(r, "LƯƠNG VĂN DẦU")["da_chet"] is True
-    assert _role(r, "HỒ THỊ SIÊU")["vai_tro"] == "me"
-    assert _role(r, "HỒ THỊ SIÊU")["da_chet"] is True
-
-
-def test_gate_chong_ket_hon_khong_thanh_cha():
-    r = reason._apply_gate(_roster_bad_case(), {})
-    # HOÀNG VĂN KHANH chỉ từ giấy kết hôn + đã có cha từ khai tử -> hạ về "chong".
-    assert _role(r, "HOÀNG VĂN KHANH")["vai_tro"] == "chong"
-
-
-def test_gate_con_la_nguoi_co_cccd_con_song():
-    r = reason._apply_gate(_roster_bad_case(), {})
-    # KHOẢN bị LLM gán nhầm "me" nhưng SIÊU (khai tử, Nữ) đã chiếm vai mẹ; KHOẢN còn sống + có CCCD -> con.
-    assert _role(r, "LƯƠNG THỊ KHOẢN")["vai_tro"] == "con"
-
-
-def test_render_ghim_vai_tro_va_canh_bao():
-    ctx = reason._render(reason._apply_gate(_roster_bad_case(), {}))
-    assert "con): LƯƠNG THỊ KHOẢN" in ctx
-    assert "CHA: LƯƠNG VĂN DẦU (đã chết)" in ctx
-    assert "MẸ: HỒ THỊ SIÊU (đã chết)" in ctx
-    assert "HOÀNG VĂN KHANH là chồng" in ctx
-    # Không mỏ neo formContext -> người yêu cầu để mặc định.
-    assert "NGƯỜI YÊU CẦU: không xác định" in ctx
-    # Lưu ý số đăng ký khai sinh trước đây: bỏ qua giấy KẾT HÔN và khai tử.
-    assert "PreviousRegistration_Number" in ctx
-    assert "KẾT HÔN" in ctx and "BỎ QUA" in ctx
-
-
-def test_gate_gender_lech_thi_xoa_vai():
-    roster = {
-        "documents": [{"name": "a.pdf", "loai": "cccd", "ve_ai": "NGUYỄN VĂN A"}],
-        "persons": [{"ten": "NGUYỄN VĂN A", "gioi_tinh": "Nam", "nam_sinh": "1990",
-                     "so_dinh_danh": "1", "da_chet": False, "vai_tro": "me", "nguon": ["a.pdf"]}],
-    }
-    r = reason._apply_gate(roster, {})
-    # Nam mà bị gán "me" -> xóa vai (không điền bừa), rồi thành con vì là người còn sống có CCCD duy nhất.
-    assert _role(r, "NGUYỄN VĂN A")["vai_tro"] == "con"
-
-
-def _roster_cccd_parents() -> dict:
-    """Khai sinh con + 2 CCCD (bố/mẹ). Khai sinh KHÔNG ghi tên cha; LLM tag lỏng (khac) -> cổng phải cứu."""
-    return {
-        "documents": [
-            {"name": "cccd bố.pdf", "loai": "cccd", "ve_ai": "HÀNG A SINH"},
-            {"name": "cccd mẹ.pdf", "loai": "cccd", "ve_ai": "QUẢNG THỊ PHƯƠNG"},
-            {"name": "Giấy khai sinh.pdf", "loai": "khai_sinh_cu", "ve_ai": "QUÀNG CHẤN PHONG"},
-        ],
-        "persons": [
-            {"ten": "HÀNG A SINH", "gioi_tinh": "Nam", "nam_sinh": "1997",
-             "so_dinh_danh": "012097006327", "da_chet": False, "vai_tro": "khac", "nguon": ["cccd bố.pdf"]},
-            {"ten": "QUẢNG THỊ PHƯƠNG", "gioi_tinh": "Nữ", "nam_sinh": "1998",
-             "so_dinh_danh": "011198002034", "da_chet": False, "vai_tro": "khac", "nguon": ["cccd mẹ.pdf"]},
-            {"ten": "QUÀNG CHẤN PHONG", "gioi_tinh": "Nam", "nam_sinh": "2020",
-             "so_dinh_danh": "", "da_chet": False, "vai_tro": "khac", "nguon": ["Giấy khai sinh.pdf"]},
-        ],
-    }
-
-
-def test_gate_cccd_by_filename_and_gender():
-    """Khai sinh thiếu tên cha -> gán CCCD bố (Nam, tên file 'cccd bố') = cha, CCCD mẹ = mẹ, con = trẻ có khai sinh."""
-    r = reason._apply_gate(_roster_cccd_parents(), {})
-    assert _role(r, "HÀNG A SINH")["vai_tro"] == "cha"
-    assert _role(r, "QUẢNG THỊ PHƯƠNG")["vai_tro"] == "me"
-    assert _role(r, "QUÀNG CHẤN PHONG")["vai_tro"] == "con"
-
-
-def test_render_cccd_parents_nguon():
-    ctx = reason._render(reason._apply_gate(_roster_cccd_parents(), {}))
-    assert "CHA: HÀNG A SINH — nguồn: cccd bố.pdf" in ctx
-    assert "MẸ: QUẢNG THỊ PHƯƠNG — nguồn: cccd mẹ.pdf" in ctx
-    assert "con): QUÀNG CHẤN PHONG" in ctx
-
-
-def _roster_three_cccd() -> dict:
-    """Người lớn tự đăng ký lại khai sinh: CCCD của chính mình + CCCD bố + CCCD mẹ (không có khai sinh).
-    Bẫy: tên file "cccd chà" (tên người = CHÀ) gấp dấu thành "cccd cha" — KHÔNG được nhầm là bố."""
-    return {
-        "documents": [
-            {"name": "cccd bo.pdf", "loai": "cccd", "ve_ai": "LÈNG VĂN PỦN"},
-            {"name": "cccd chà.pdf", "loai": "cccd", "ve_ai": "LÈNG VĂN CHÀ"},
-            {"name": "cccd mẹ.pdf", "loai": "cccd", "ve_ai": "LÔ THỊ TỆT"},
-        ],
-        "persons": [
-            {"ten": "LÈNG VĂN PỦN", "gioi_tinh": "Nam", "nam_sinh": "1964",
-             "so_dinh_danh": "012064000527", "da_chet": False, "vai_tro": "khac", "nguon": ["cccd bo.pdf"]},
-            {"ten": "LÈNG VĂN CHÀ", "gioi_tinh": "Nam", "nam_sinh": "1990",
-             "so_dinh_danh": "012090004364", "da_chet": False, "vai_tro": "khac", "nguon": ["cccd chà.pdf"]},
-            {"ten": "LÔ THỊ TỆT", "gioi_tinh": "Nữ", "nam_sinh": "1962",
-             "so_dinh_danh": "012162000451", "da_chet": False, "vai_tro": "khac", "nguon": ["cccd mẹ.pdf"]},
-        ],
-    }
-
-
-def test_gate_three_cccd_detects_con():
-    """cccd bố→cha, cccd mẹ→mẹ, còn lại (CHÀ) = con; 'chà' KHÔNG bị nhầm thành 'cha'."""
-    r = reason._apply_gate(_roster_three_cccd(), {})
-    assert _role(r, "LÈNG VĂN PỦN")["vai_tro"] == "cha"
-    assert _role(r, "LÔ THỊ TỆT")["vai_tro"] == "me"
-    assert _role(r, "LÈNG VĂN CHÀ")["vai_tro"] == "con"
-
-
-def test_gate_three_cccd_con_is_requester_banthan():
-    """Người tự đăng ký (con) khớp formContext → vẫn là con, không bị loại khỏi con-fallback."""
-    r = reason._apply_gate(
-        _roster_three_cccd(),
-        {"formContext": {"applicantFullname": "Lèng Văn Chà",
-                         "applicantIdentityNumber": "012090004364"}},
+def test_render_context_keeps_three_people_in_correct_roles():
+    context = reason._render_context(
+        _raw_roles(),
+        {
+            "formContext": {
+                "applicantFullname": "NGUYỄN THỊ HOÀ",
+                "applicantIdentityNumber": "027176001591",
+            }
+        },
+        _documents_without_birth_record(),
     )
-    assert _role(r, "LÈNG VĂN CHÀ")["vai_tro"] == "con"
 
-
-def test_gate_requester_khop_formcontext():
-    r = reason._apply_gate(
-        _roster_bad_case(),
-        {"formContext": {"applicantFullname": "LƯƠNG THỊ KHOẢN",
-                         "applicantIdentityNumber": "012187003358"}},
+    assert "<con>" in context and "MAN THỊ HUẾ" in reason._section(context, "con")
+    assert "<me>" in context and "NGUYỄN THỊ HOÀ" in reason._section(context, "me")
+    assert "<cha>" in context and "MAN VĂN QUỲNH" in reason._section(context, "cha")
+    assert "Trạng thái: đã chết" in reason._section(context, "cha")
+    assert (
+        reason._labeled_value(
+            reason._section(context, "dang_ky_khai_sinh_truoc_day"),
+            "Có tài liệu khai sinh hợp lệ",
+        )
+        == "Không"
     )
-    assert _role(r, "LƯƠNG THỊ KHOẢN").get("_requester") is True
-    ctx = reason._render(r)
-    assert "NGƯỜI YÊU CẦU: LƯƠNG THỊ KHOẢN" in ctx
+
+
+def test_generation_gate_repairs_old_death_equals_parent_mistake():
+    raw = """
+<nguoi_yeu_cau>
+Họ tên: NGUYỄN THỊ HOÀ
+Số CCCD/CMND: 027176001591
+Ngày sinh: 31/10/1976
+Giới tính: Nữ
+Nguồn: cccd-hoa.pdf
+Căn cứ phân vai: Trùng requester_context
+Vai trò đồng thời: không xác định
+</nguoi_yeu_cau>
+<con>
+Họ tên: MAN VĂN QUỲNH
+Số CCCD/CMND: Không xác định
+Ngày sinh: 01/11/1972
+Giới tính: Nam
+Trạng thái: đã chết
+Nguồn: trich-luc-khai-tu.pdf
+Căn cứ phân vai: Bị gán nhầm từ giấy khai tử
+</con>
+<me>
+Họ tên: MAN THỊ HUẾ
+Số CCCD/CMND: 027195012144
+Ngày sinh: 18/11/1995
+Giới tính: Nữ
+Trạng thái: còn sống
+Nguồn: cccd-hue.pdf
+Căn cứ phân vai: Bị gán nhầm theo giới tính
+</me>
+<cha>
+Họ tên: MAN VĂN QUỲNH
+Số CCCD/CMND: Không xác định
+Ngày sinh: 01/11/1972
+Giới tính: Nam
+Trạng thái: đã chết
+Nguồn: trich-luc-khai-tu.pdf
+Căn cứ phân vai: Giấy khai tử
+</cha>
+<dang_ky_khai_sinh_truoc_day>
+Có tài liệu khai sinh hợp lệ: Không
+Nguồn: Không có
+Căn cứ: Không có
+</dang_ky_khai_sinh_truoc_day>
+""".strip()
+
+    context = reason._render_context(raw, {}, _documents_without_birth_record())
+
+    assert "MAN THỊ HUẾ" in reason._section(context, "con")
+    assert "NGUYỄN THỊ HOÀ" in reason._section(context, "me")
+    assert "MAN VĂN QUỲNH" in reason._section(context, "cha")
+
+
+def test_sanitizer_does_not_borrow_ethnicity_between_people():
+    context = reason._render_context(
+        _raw_roles(),
+        {},
+        _documents_without_birth_record(),
+    )
+    fields = [
+        {"name": "Subject_FullName", "value": "MAN THỊ HUẾ"},
+        {"name": "Subject_Ethnicity", "value": "Kinh"},
+        {"name": "Subject_Nationality", "value": "Việt Nam"},
+        {"name": "Mother_FullName", "value": "NGUYỄN THỊ HOÀ"},
+        {"name": "Mother_Ethnicity", "value": "Kinh"},
+        {"name": "Mother_Nationality", "value": "Việt Nam"},
+        {"name": "Father_FullName", "value": "MAN VĂN QUỲNH"},
+        {"name": "Father_Ethnicity", "value": "Kinh"},
+        {"name": "Father_Nationality", "value": "Việt Nam"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+    names = {field["name"] for field in result}
+
+    assert "Subject_Ethnicity" not in names
+    assert "Mother_Ethnicity" not in names
+    assert "Father_Ethnicity" in names
+    assert "Subject_Nationality" in names
+    assert "Mother_Nationality" in names
+    assert "Father_Nationality" in names
+
+
+def test_sanitizer_drops_wrong_people_and_death_registration_metadata():
+    context = reason._render_context(
+        _raw_roles(),
+        {},
+        _documents_without_birth_record(),
+    )
+    fields = [
+        {"name": "Subject_FullName", "value": "MAN VĂN QUỲNH"},
+        {"name": "Subject_BirthDate", "value": "01/11/1972"},
+        {"name": "Father_FullName", "value": "MAN VĂN QUỲNH"},
+        {"name": "Father_BirthDateOrYear", "value": "1972"},
+        {"name": "Mother_FullName", "value": "MAN THỊ HUẾ"},
+        {"name": "Mother_BirthDateOrYear", "value": "18/11/1995"},
+        {"name": "PreviousRegistration_Number", "value": "07"},
+        {"name": "PreviousRegistration_Date", "value": "24/02/2017"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+    values = {field["name"]: field["value"] for field in result}
+
+    assert values == {
+        "Father_FullName": "MAN VĂN QUỲNH",
+        "Father_BirthDateOrYear": "1972",
+    }
+
+
+def test_valid_birth_document_allows_previous_registration_fields():
+    documents = _documents_without_birth_record() + [
+        {
+            "name": "ban-sao-khai-sinh.pdf",
+            "text": "GIẤY KHAI SINH\nHọ, chữ đệm, tên: MAN THỊ HUẾ\nSố: 15",
+        }
+    ]
+    context = reason._render_context(_raw_roles(), {}, documents)
+    fields = [
+        {"name": "Subject_FullName", "value": "MAN THỊ HUẾ"},
+        {"name": "PreviousRegistration_Number", "value": "15"},
+        {"name": "PreviousRegistration_Date", "value": "20/11/1995"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+    assert {field["name"] for field in result} == {
+        "Subject_FullName",
+        "PreviousRegistration_Number",
+        "PreviousRegistration_Date",
+    }
+
+
+def test_same_person_cannot_be_both_child_and_father():
+    raw = _raw_roles(father="MAN THỊ HUẾ")
+    context = reason._render_context(raw, {}, _documents_without_birth_record())
+
+    assert "Không xác định" in reason._section(context, "cha")
+    result = reason.sanitize_extracted_fields(
+        [
+            {"name": "Subject_FullName", "value": "MAN THỊ HUẾ"},
+            {"name": "Father_FullName", "value": "MAN THỊ HUẾ"},
+        ],
+        context,
+    )
+    assert [field["name"] for field in result] == ["Subject_FullName"]
+
+
+def test_requester_mismatch_does_not_destroy_family_roles():
+    context = reason._render_context(
+        _raw_roles(requester="NGƯỜI KHÁC", requester_id="012345678901"),
+        {
+            "formContext": {
+                "applicantFullname": "NGUYỄN THỊ HOÀ",
+                "applicantIdentityNumber": "027176001591",
+            }
+        },
+        _documents_without_birth_record(),
+    )
+
+    assert "Không xác định" in reason._section(context, "nguoi_yeu_cau")
+    assert "MAN THỊ HUẾ" in reason._section(context, "con")
+    assert "MAN VĂN QUỲNH" in reason._section(context, "cha")
+
+
+async def test_build_context_uses_raw_text_agent(monkeypatch):
+    captured = {}
+
+    async def _chat_text(messages, **kwargs):
+        captured["messages"] = messages
+        captured["kwargs"] = kwargs
+        return _raw_roles()
+
+    monkeypatch.setattr(reason.client, "chat_text", _chat_text)
+    context = await reason.build_context(
+        _documents_without_birth_record(),
+        {
+            "formContext": {
+                "applicantFullname": "NGUYỄN THỊ HOÀ",
+                "applicantIdentityNumber": "027176001591",
+            }
+        },
+    )
+
+    assert captured["kwargs"]["temperature"] == 0
+    assert "không trả JSON" in captured["messages"][0]["content"]
+    assert "<phan_vai_da_xac_dinh>" in context
+    assert "MAN THỊ HUẾ" in reason._section(context, "con")
+
+
+async def test_process_runner_sanitizes_before_mapper(monkeypatch):
+    context = reason._render_context(
+        _raw_roles(),
+        {},
+        _documents_without_birth_record(),
+    )
+    extracted = [
+        {"name": "Subject_FullName", "value": "MAN VĂN QUỲNH"},
+        {"name": "Father_FullName", "value": "MAN VĂN QUỲNH"},
+        {"name": "PreviousRegistration_Number", "value": "07"},
+    ]
+    seen = {}
+
+    async def _compact_run(*_args, **_kwargs):
+        return {
+            "fields": extracted,
+            "reasoning_context": context,
+            "errors": [],
+        }
+
+    def _mapper_enrich(fields, _options):
+        seen["fields"] = fields
+        return fields
+
+    monkeypatch.setattr(process_runner.runner, "run", _compact_run)
+    monkeypatch.setattr(process_runner.mapper, "enrich", _mapper_enrich)
+
+    result = await process_runner.run({}, {})
+
+    assert seen["fields"] == [{"name": "Father_FullName", "value": "MAN VĂN QUỲNH"}]
+    assert result["fields"] == seen["fields"]
