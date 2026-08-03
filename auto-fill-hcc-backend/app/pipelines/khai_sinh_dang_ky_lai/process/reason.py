@@ -203,6 +203,28 @@ def _apply_gate(roster: dict, options: dict | None = None) -> dict:
         ]
         if len(cands) == 1:
             cands[0]["vai_tro"] = "con"
+        elif len(cands) > 1:
+            # Khi có nhiều ứng viên còn sống: người TRẺ NHẤT (năm sinh lớn nhất) = con.
+            # Người già hơn sẽ được gán cha/mẹ theo giới tính ở bước tiếp theo.
+            def _birth_year(p) -> int:
+                m = re.search(r"\b(19|20)\d{2}\b", str(p.get("nam_sinh") or ""))
+                return int(m.group()) if m else 0
+
+            sorted_cands = sorted(cands, key=_birth_year, reverse=True)  # trẻ nhất trước
+            youngest = sorted_cands[0]
+            youngest_year = _birth_year(youngest)
+
+            # Chỉ gán "con" khi người trẻ nhất rõ ràng trẻ hơn ít nhất 15 tuổi so với người tiếp theo
+            # (tránh nhầm giữa hai anh em gần tuổi không ai là cha/mẹ)
+            second_year = _birth_year(sorted_cands[1]) if len(sorted_cands) > 1 else 0
+            if youngest_year > 0 and second_year > 0 and (youngest_year - second_year) >= 15:
+                youngest["vai_tro"] = "con"
+                # Người già hơn (còn sống) → gán cha/mẹ theo giới tính nếu chưa có
+                for older in sorted_cands[1:]:
+                    if older["gioi_tinh"] == "Nam" and not any(x["vai_tro"] == "cha" for x in persons):
+                        older["vai_tro"] = "cha"
+                    elif older["gioi_tinh"] == "Nữ" and not any(x["vai_tro"] == "me" for x in persons):
+                        older["vai_tro"] = "me"
 
     roster["persons"] = persons
     return roster

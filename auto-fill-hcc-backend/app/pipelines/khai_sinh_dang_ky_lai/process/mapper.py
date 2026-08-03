@@ -4,6 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
 
@@ -11,6 +12,7 @@ _COMP_BY_NAME = {
     **UI_COMP_BY_NAME,
     "LoaiDangKy": "x-radio",
     "nksLoaiKhaiSinh": "x-select-default",
+    "DanTocC": "x-select",
     "CapBanSao": "x-radio",
     "SoLuong": "raw",
 }
@@ -196,6 +198,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("nycLoaiCuTru", "Thường trú", default=True)
     add("nycNoiCuTru", "1", default=True)
     add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+    add(
+        "DanTocC",
+        normalize_ethnic(
+            values.get("Father_Ethnicity")
+            or values.get("Subject_Ethnicity")
+            or values.get("Mother_Ethnicity")
+        ),
+    )
 
     # II. Nguoi duoc dang ky lai khai sinh.
     has_subject = any(name.startswith("Subject_") for name in values)
@@ -203,7 +213,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("HoTenKS", values.get("Subject_FullName"))
         add("NgaySinhChon", values.get("Subject_BirthDate"))
         add("GioiTinhKS", values.get("Subject_Gender"))
-        add("DanTocKS", values.get("Subject_Ethnicity"))
+        add("DanTocKS", normalize_ethnic(values.get("Subject_Ethnicity")))
         add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
         if values.get("Subject_BirthPlaceDomestic"):
             add("nksNoiSinh", "1")
@@ -223,7 +233,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NgayCapDDMe", values.get("Mother_IdIssueDate"))
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"))
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"))
-        add("DanTocMeKS", values.get("Mother_Ethnicity"))
+        add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")))
         add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam")
         add("MeLoaiCuTru", "Thường trú")
         me_addr = _resolve_residence(values, "Mother")
@@ -242,7 +252,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NgayCapDDCha", values.get("Father_IdIssueDate"))
         add("NoiCapDDCha", _issuer_or_default(values, "Father"))
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"))
-        add("DanTocChaKS", values.get("Father_Ethnicity"))
+        add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")))
         add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam")
         add("ChaLoaiCuTru", "Thường trú")
         cha_addr = _resolve_residence(values, "Father")

@@ -14,6 +14,18 @@ Các rule sau không được vi phạm:
 6. KHÔNG lấy chữ trên con dấu/tiêu đề/chức danh ("TƯ PHÁP", "ỦY BAN NHÂN DÂN", "CHỦ TỊCH",
    "PHÓ CHỦ TỊCH", "CỘNG HÒA XÃ HỘI..."...) làm họ tên người. Mục nào bị bỏ trống trên giấy (vd tên cha)
    thì để trống, TUYỆT ĐỐI không điền bằng chữ gần đó.
+7. KHI HỒ SƠ CÓ 2 CCCD + TRÍCH LỤC KHAI TỬ (hoặc giấy chứng tử): xác định vai trò theo các bước:
+   a) CCCD có tên TRÙNG với người trong trích lục khai tử = người ĐÃ MẤT → đưa vào nhóm cha/mẹ tương ứng
+      giới tính, đánh dấu ResidenceDomestic = {"diaChi":"Đã chết"}.
+   b) CCCD KHÔNG trùng tên người trong trích lục khai tử = người CÒN SỐNG.
+   c) So sánh năm sinh của 2 CCCD còn sống (hoặc CCCD không trùng tên khai tử):
+      - CCCD CÓ NĂM SINH TRẺ HƠN (năm lớn hơn) → là NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI KHAI SINH (Subject_*).
+        Giới tính của CCCD này → Subject_Gender. Lấy ngày sinh, số CCCD này vào Subject_BirthDate,
+        Subject_IdNumber (nếu có trong schema).
+      - CCCD CÓ NĂM SINH GIÀ HƠN (năm nhỏ hơn) → là CHA hoặc MẸ theo giới tính CCCD đó
+        (Nam → Father_*, Nữ → Mother_*).
+   d) Nếu KHÔNG thể phân biệt năm sinh (bằng nhau hoặc không đọc được) → dùng nhãn nghiệp vụ ghi trên
+      giấy khai sinh cũ (nếu có) để xác định cha/mẹ/con.
 </critical_rules>
 
 <output_contract>

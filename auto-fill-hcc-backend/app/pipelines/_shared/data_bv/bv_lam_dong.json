@@ -108,5 +108,16 @@
         "ten": "Trung tâm Y tế khu vực Đơn Dương",
         "xa": "Xã Đơn Dương",
         "tinh": "Tỉnh Lâm Đồng"
+    },
+    {
+        "ten": "Trung tâm Chăm sóc sức khỏe sinh sản tỉnh Lâm Đồng",
+        "xa": "Phường Xuân Hương",
+        "tinh": "Tỉnh Lâm Đồng",
+        "ghi_chu": "Số 1 Hải Thượng, Phường Xuân Hương (Phường 6 cũ), TP Đà Lạt"
+    },
+    {
+        "ten": "Trung tâm CSSKSS tỉnh Lâm Đồng",
+        "xa": "Phường Xuân Hương",
+        "tinh": "Tỉnh Lâm Đồng"
     }
 ]
