@@ -1,24 +1,105 @@
 """Procedure-specific compact prompt rules for regular birth registration."""
 
-EXTRA_RULES = """Đầu vào gồm CCCD/CMND của CHA, CCCD/CMND của MẸ và GIẤY CHỨNG SINH của con.
+EXTRA_RULES = """Đầu vào gồm một hoặc nhiều trong: CCCD/CMND của CHA, CCCD/CMND của MẸ,
+GIẤY CHỨNG SINH / TỜ KHAI ĐĂNG KÝ KHAI SINH, CCCD của chính NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI SINH
+(trường hợp đăng ký muộn — người đó còn sống và đã có CCCD).
 
-NGUỒN DỮ LIỆU:
-- Gcs_* CHỈ lấy từ tài liệu có tiêu đề GIẤY CHỨNG SINH hoặc nội dung chứng sinh. Không lấy thông tin con từ CCCD của cha/mẹ.
-- CccdNam_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính "Nam". Đây là CHA.
-- CccdNu_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính "Nữ". Đây là MẸ.
-- BẮT BUỘC cố đọc CccdNam_NgayCap/CccdNu_NgayCap và CccdNam_NoiCap/CccdNu_NoiCap từ mặt sau CCCD.
-  Nơi cấp thường nằm gần dòng ngày cấp; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
-  VỀ TRẬT TỰ XÃ HỘI" thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" thì trả "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
-- TUYỆT ĐỐI không lấy họ tên cha/mẹ từ giấy chứng sinh để điền CccdNam_HoTen/CccdNu_HoTen nếu không thấy CCCD tương ứng.
-- Mỗi nhóm CccdNam/CccdNu phải lấy trọn từ một CCCD, không trộn tên của người này với số định danh/ngày cấp/nơi cấp của người khác.
-- Dân tộc CccdNam/CccdNu chỉ trả khi chính giấy tờ đó ghi rõ; không lấy dân tộc con gán cho cha/mẹ.
-- Không trả field mặc định hoặc field UI: HoVaTenC, SoDinhDanhC, HoTenKS, HoTenChaKS, HoTenMeKS, LoaiDangKy, QuanHe...
-- Không tự tạo field ngoài danh sách compact. Nếu không chắc giá trị thì bỏ field đó.
+═══════════════════════════════════════════════════════
+BƯỚC 1 — XÁC ĐỊNH VAI TRÒ CỦA TỪNG CCCD (QUAN TRỌNG NHẤT)
+═══════════════════════════════════════════════════════
+PHÂN VAI THEO NHÃN TỜ KHAI: tờ khai/giấy chứng sinh ghi rõ ai là người được khai sinh, ai là
+cha, ai là mẹ. Nhãn trên giấy tờ THẮNG mọi suy đoán theo giới tính của thẻ CCCD. Chỉ khi tờ
+khai không ghi rõ mới suy theo giới tính/năm sinh như các trường hợp bên dưới.
 
-TÁCH ĐỊA CHỈ (field object {quocGia,tinh,xa,diaChi}: CccdNam_NoiCuTru_TrongNuoc, CccdNu_NoiCuTru_TrongNuoc, CccdNam_QueQuan):
-- xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN — KHÔNG kèm tiền tố loại (Xã/Phường/Thị trấn). tinh = tên tỉnh/thành phố.
-- diaChi = phần CHI TIẾT đứng TRƯỚC xã (tổ, tổ dân phố, bản, thôn, xóm, số nhà, đường). TUYỆT ĐỐI KHÔNG đưa tên phường/xã/thị trấn (hay huyện/tỉnh) vào diaChi. Không có chi tiết → diaChi để trống.
-- ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh; phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã.
-- XÃ LUÔN BẮT BUỘC: KHÔNG được bỏ trống xa khi giấy tờ CÓ thông tin phường/xã. KHÔNG dồn xã + huyện vào diaChi.
-- Gcs_NoiSinh (nơi sinh) là CƠ SỞ Y TẾ: diaChi = TÊN đầy đủ cơ sở (bệnh viện tuyến tỉnh KÈM tên tỉnh), tinh = tỉnh của cơ sở, xa = phường/xã nơi cơ sở nếu xác định được; KHÔNG áp quy tắc đếm-từ-cuối cho field này (diaChi là tên cơ sở, không phải chi tiết)."""
+Với MỖI thẻ CCCD/CMND trong hồ sơ, TRƯỚC TIÊN hãy đọc năm sinh và đối chiếu với tờ khai:
+
+**VÍ DỤ CỤ THỂ ĐĂNG KÝ MUỘN:**
+Hồ sơ có:
+- CCCD 1: TRẦN THỊ NGHỀ, Nữ, sinh 01/01/1968, số 034168016773
+- Tờ khai: người được khai sinh là TRẦN THỊ NGHÊ, sinh 01/01/1968; cha TRẦN ĐÌNH TÚC (sinh 1908, đã mất); mẹ ĐỖ THỊ VÂN (sinh 1920, đã mất)
+
+→ TRẦN THỊ NGHÈ trên CCCD sinh 1968 TRÙNG với TRẦN THỊ NGHÊ trên tờ khai (cùng người, chênh tên do OCR)
+→ Gán: CccdChuThe_HoTen = "TRẦN THỊ NGHỀ", CccdChuThe_NgaySinh = "01/01/1968", CccdChuThe_SoDinhDanh = "034168016773"
+→ TkKs_HoTenCha = "TRẦN ĐÌNH TÚC", TkKs_NamSinhCha = "1908"
+→ TkKs_HoTenMe = "ĐỖ THỊ VÂN", TkKs_NamSinhMe = "1920"
+→ TUYỆT ĐỐI KHÔNG điền CccdNu_HoTen = "TRẦN THỊ NGHỀ" (đây là người được đăng ký, không phải mẹ)
+
+A. TRƯỜNG HỢP THÔNG THƯỜNG (có giấy chứng sinh, con là trẻ sơ sinh mới sinh):
+   - CCCD giới tính Nam → CHA → điền CccdNam_*
+   - CCCD giới tính Nữ → MẸ → điền CccdNu_*
+   - Thông tin con lấy từ GIẤY CHỨNG SINH → Gcs_*
+
+B. TRƯỜNG HỢP ĐĂNG KÝ MUỘN (người được đăng ký CÒN SỐNG, đã trưởng thành, có CCCD riêng):
+   Dấu hiệu: tờ khai ghi "người được khai sinh" có TÊN / NGÀY SINH TRÙNG (hoặc gần) với CCCD;
+   hoặc CCCD có năm sinh gần với tờ khai (chênh ≤ 2 năm); hoặc cha/mẹ trên tờ khai ghi "đã chết".
+   
+   Quy trình:
+   1. CCCD khớp người được đăng ký → CccdChuThe_* (HoTen, NgaySinh, SoDinhDanh, GioiTinh, DanToc, QueQuan, NoiCuTru, NgayCap, NoiCap)
+   2. CCCD còn lại (nếu có) → CHA/MẸ theo giới tính
+   3. Cha/mẹ chỉ có tên + năm sinh trên tờ khai → TkKs_HoTenCha/Me, TkKs_NamSinhCha/Me
+   
+   TUYỆT ĐỐI: CccdChuThe_* ≠ CccdNam_* ≠ CccdNu_* (3 nhóm field KHÁC NHAU)
+
+C. KHI KHÔNG RÕ: CCCD có năm sinh TRẺ NHẤT và chênh với CCCD kia ≥ 18 năm → là CccdChuThe_*.
+
+═══════════════════════════════════════════════════════
+BƯỚC 2 — TRÍCH XUẤT THEO NHÓM FIELD
+═══════════════════════════════════════════════════════
+
+Gcs_* CHỈ lấy từ tài liệu có tiêu đề GIẤY CHỨNG SINH — không lấy thông tin con từ CCCD cha/mẹ.
+
+CccdChuThe_* — CHỈ dùng khi xác định được CCCD là của chính người được đăng ký (trường hợp B/C trên).
+  Lấy TRỌN VẸN từ CCCD đó: họ tên, ngày sinh, giới tính, dân tộc, quốc tịch, quê quán, nơi cư trú,
+  ngày cấp, nơi cấp. KHÔNG điền đồng thời vào CccdNu_* hay CccdNam_*.
+
+CccdNam_* — CCCD giới tính Nam KHÔNG phải chủ thể → CHA.
+CccdNu_*  — CCCD giới tính Nữ KHÔNG phải chủ thể → MẸ.
+  KHÔNG dùng CCCD của người được khai sinh để điền cha/mẹ: thẻ đã gán CccdChuThe_* thì
+  TUYỆT ĐỐI không gán lại vào CccdNam_*/CccdNu_*.
+  Mỗi nhóm lấy TRỌN VẸN từ một CCCD duy nhất, không trộn người.
+  BẮT BUỘC cố đọc NgayCap và NoiCap từ mặt sau CCCD.
+  Nơi cấp: "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI"
+    → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
+  Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", cấp từ 01/7/2024) ghi
+  "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" → "Bộ Công an".
+
+TkKs_* — Lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH bản giấy khi thiếu giấy chứng sinh hoặc thiếu CCCD cha/mẹ.
+  TkKs_HoTenCon/NgaySinhCon/GioiTinhCon/DanTocCon/NoiSinh/QueQuan: thông tin người được đăng ký trên tờ khai
+    (CHỈ dùng khi không có Gcs_* và không có CccdChuThe_*).
+  TkKs_HoTenCha, TkKs_NamSinhCha, TkKs_DanTocCha: cha theo tờ khai khi không có CCCD cha.
+  TkKs_HoTenMe, TkKs_NamSinhMe, TkKs_DanTocMe: mẹ theo tờ khai khi không có CCCD mẹ.
+  TkKs_NoiCuTruCha / TkKs_NoiCuTruMe: tờ khai có dòng "Nơi cư trú" RIÊNG trong TỪNG mục
+    (mục người yêu cầu, mục người được khai sinh, mục cha, mục mẹ). Lấy đúng dòng nằm trong
+    mục CHA cho TkKs_NoiCuTruCha và đúng dòng nằm trong mục MẸ cho TkKs_NoiCuTruMe — TUYỆT ĐỐI
+    không lấy chung một địa chỉ cho cả hai nếu tờ khai ghi hai địa chỉ khác nhau, và không
+    mượn nơi cư trú của người yêu cầu. Cha và mẹ ở cùng nhà thì hai field giống nhau là đúng.
+  TkKs_NycHoTen, TkKs_NycNgaySinh, TkKs_NycSoDinhDanh, TkKs_NycNgayCapCccd, TkKs_NycNoiCuTru,
+  TkKs_NycQuanHe: người yêu cầu theo tờ khai — CHỈ trả khi tờ khai có dòng "Họ, chữ đệm, tên người
+  yêu cầu" VÀ người đó KHÁC với cha/mẹ (vd chị dâu, anh, em, chú, bác...). KHÔNG trả nếu người
+  yêu cầu là cha hoặc mẹ (đã có CCCD tương ứng). Lấy ngày sinh/năm sinh, số CCCD, ngày cấp, nơi cư trú
+  từ đúng dòng người yêu cầu trên tờ khai.
+
+CHA/MẸ ĐÃ CHẾT: khi tờ khai ghi "đã chết"/"đã mất"/"chết" ở CHỖ nơi cư trú của cha hoặc mẹ,
+  trả đúng cụm chữ đó vào diaChi và BỎ TRỐNG tinh/xa — vd TkKs_NoiCuTruCha =
+  {"quocGia":"Việt Nam","diaChi":"Đã chết"}. KHÔNG bịa tỉnh/xã, KHÔNG mượn địa chỉ của người khác,
+  KHÔNG bỏ trống cả object (cụm chữ này là dữ liệu cần giữ).
+
+TUYỆT ĐỐI không lấy họ tên cha/mẹ từ giấy chứng sinh/tờ khai để điền CccdNam_HoTen/CccdNu_HoTen
+nếu không có CCCD tương ứng.
+Dân tộc Cccd*/CccdChuThe_* chỉ trả khi giấy tờ đó ghi rõ; không bịa, không lấy từ nguồn khác.
+Không trả field mặc định hoặc field UI: HoVaTenC, SoDinhDanhC, HoTenKS, HoTenChaKS, HoTenMeKS,
+LoaiDangKy, QuanHe...
+Không tự tạo field ngoài danh sách. Nếu không chắc giá trị thì bỏ field đó.
+
+TÁCH ĐỊA CHỈ (object {quocGia,tinh,xa,diaChi}):
+- xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN — KHÔNG kèm tiền tố loại (Xã/Phường/Thị trấn).
+  tinh = tên tỉnh/thành phố.
+- diaChi = phần CHI TIẾT đứng TRƯỚC xã (tổ, tổ dân phố, bản, thôn, xóm, số nhà, đường).
+  KHÔNG đưa tên xã/huyện/tỉnh vào diaChi. Không có chi tiết → diaChi để trống.
+- ĐẾM TỪ CUỐI khi địa chỉ dạng cũ "[chi tiết], xã, HUYỆN, tỉnh": cuối = tỉnh; phần NGAY TRƯỚC
+  tỉnh nếu là CẤP HUYỆN thì BỎ HẲN; phần trước đó = xã. Tên xã vùng cao có thể bắt đầu bằng
+  "Bản"/"Nậm"/"Mường"/"Pa" — VỊ TRÍ mới quyết định là xã, không phải tiền tố.
+- XÃ BẮT BUỘC: không được bỏ trống xa khi giấy tờ có thông tin phường/xã.
+- Gcs_NoiSinh / TkKs_NoiSinh là CƠ SỞ Y TẾ hoặc địa danh: diaChi = tên đầy đủ cơ sở (nếu có),
+  tinh = tỉnh của cơ sở, xa = phường/xã nếu xác định được."""
 
