@@ -475,105 +475,27 @@ def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
 
 
 def _render_context(raw: str, options: dict | None, documents: list[dict]) -> str:
+    """Kiểm tra tất định kết quả LLM rồi ghim vào prompt trích xuất."""
     sections = {tag: _section(raw, tag) for tag in _FAMILY_TAGS}
-    if not any(not _is_unknown(section) for section in sections.values()):
+
+    # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
+    if not any(not _is_unknown(s) for s in sections.values()):
+        sections = _repair_family_by_generation(raw, sections, documents)
+
+    if not any(not _is_unknown(s) for s in sections.values()):
         return ""
 
-    for p in persons:
-        if not _is_free_cccd(p):
-            continue
-        hint = _file_role_hint(p)
-        if hint == "cha" and p["gioi_tinh"] != "Nữ":
-            p["vai_tro"] = "cha"
-        elif hint == "me" and p["gioi_tinh"] != "Nam":
-            p["vai_tro"] = "me"
+    sections = _validate_family_sections(sections)
 
-    # Còn CCCD chưa gán + có ngữ cảnh con (đã có "con" hoặc có giấy khai sinh/tờ khai)
-    # -> lấp khe cha/mẹ còn trống theo giới tính.
-    child_ctx = any(p["vai_tro"] == "con" for p in persons) or any(
-        (d.get("loai") or "").strip().lower() in ("khai_sinh_cu", "to_khai") for d in docs)
-    if child_ctx:
-        has_father = any(p["vai_tro"] == "cha" for p in persons)
-        has_mother = any(p["vai_tro"] == "me" for p in persons)
-        for p in persons:
-            if not _is_free_cccd(p):
-                continue
-            if p["gioi_tinh"] == "Nam" and not has_father:
-                p["vai_tro"], has_father = "cha", True
-            elif p["gioi_tinh"] == "Nữ" and not has_mother:
-                p["vai_tro"], has_mother = "me", True
+    # Người yêu cầu: kiểm tra khớp mỏ neo cổng.
+    requester_raw = _section(raw, "nguoi_yeu_cau")
+    requester = _validated_requester(requester_raw, options)
 
-    # con = người còn sống, có tài liệu neo (CCCD/KS cũ/học bạ/bằng), không phải cha/mẹ.
-    # (KHÔNG loại người yêu cầu: người tự đăng ký lại khai sinh chính là con — BanThan.)
-    if not any(p["vai_tro"] == "con" for p in persons):
-        cands = [
-            p for p in persons
-            if not p["da_chet"] and p["vai_tro"] not in ("cha", "me")
-            and any(l in _ANCHOR_LOAI for l in person_loais(p))
-        ]
-        if len(cands) == 1:
-            cands[0]["vai_tro"] = "con"
-        elif len(cands) > 1:
-            # Khi có nhiều ứng viên còn sống: người TRẺ NHẤT (năm sinh lớn nhất) = con.
-            # Người già hơn sẽ được gán cha/mẹ theo giới tính ở bước tiếp theo.
-            def _birth_year(p) -> int:
-                m = re.search(r"\b(19|20)\d{2}\b", str(p.get("nam_sinh") or ""))
-                return int(m.group()) if m else 0
+    # Đăng ký khai sinh trước đây: Python tự kiểm tra loại tài liệu (không tin LLM).
+    valid_sources = _valid_birth_source_names(documents)
+    registration_value = "Có" if valid_sources else "Không"
+    source_value = ", ".join(valid_sources) if valid_sources else "Không có"
 
-            sorted_cands = sorted(cands, key=_birth_year, reverse=True)  # trẻ nhất trước
-            youngest = sorted_cands[0]
-            youngest_year = _birth_year(youngest)
-
-            # Chỉ gán "con" khi người trẻ nhất rõ ràng trẻ hơn ít nhất 15 tuổi so với người tiếp theo
-            # (tránh nhầm giữa hai anh em gần tuổi không ai là cha/mẹ)
-            second_year = _birth_year(sorted_cands[1]) if len(sorted_cands) > 1 else 0
-            if youngest_year > 0 and second_year > 0 and (youngest_year - second_year) >= 15:
-                youngest["vai_tro"] = "con"
-                # Người già hơn (còn sống) → gán cha/mẹ theo giới tính nếu chưa có
-                for older in sorted_cands[1:]:
-                    if older["gioi_tinh"] == "Nam" and not any(x["vai_tro"] == "cha" for x in persons):
-                        older["vai_tro"] = "cha"
-                    elif older["gioi_tinh"] == "Nữ" and not any(x["vai_tro"] == "me" for x in persons):
-                        older["vai_tro"] = "me"
-
-    roster["persons"] = persons
-    return roster
-
-
-def _render(roster: dict) -> str:
-    persons = roster.get("persons") or []
-
-    def one(role):
-        return next((p for p in persons if p.get("vai_tro") == role), None)
-
-    def src(p):
-        return ", ".join(p.get("nguon") or []) or "?"
-
-    def desc(p):
-        dead = " (đã chết)" if p.get("da_chet") else ""
-        return f'{p.get("ten") or "?"}{dead} — nguồn: {src(p)}'
-
-    con, cha, me = one("con"), one("cha"), one("me")
-    req = next((p for p in persons if p.get("_requester")), None)
-
-    lines = []
-    if con:
-        lines.append(f"- NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI (con): {desc(con)}")
-    if cha:
-        lines.append(f"- CHA: {desc(cha)}")
-    if me:
-        lines.append(f"- MẸ: {desc(me)}")
-    if req:
-        lines.append(f"- NGƯỜI YÊU CẦU: {req.get('ten')} — nguồn: {src(req)}")
-    else:
-        lines.append("- NGƯỜI YÊU CẦU: không xác định được → để trống, dùng mặc định.")
-    for s in (p for p in persons if p.get("vai_tro") in ("chong", "vo")):
-        quan_he = "chồng" if s["vai_tro"] == "chong" else "vợ"
-        lines.append(f"- LƯU Ý: {s.get('ten')} là {quan_he} trong giấy kết hôn, KHÔNG phải cha/mẹ.")
-
-    if not any((con, cha, me)):
-        return ""
-    body = "\n".join(lines)
     return (
         "\n\n<phan_vai_da_xac_dinh>\n"
         "Dùng đúng các vai dưới đây; không tự đổi người giữa Subject/Father/Mother.\n"
@@ -661,7 +583,7 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         {"role": "system", "content": _ROLE_PROMPT},
         {"role": "user", "content": _build_user_content(documents, options)},
     ]
-    raw = await client.chat_text(
+    raw = await client.chat(
         messages,
         max_tokens=_REASON_MAX_TOKENS,
         temperature=0,

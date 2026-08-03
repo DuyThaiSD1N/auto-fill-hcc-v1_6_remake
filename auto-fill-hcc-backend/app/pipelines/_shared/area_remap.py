@@ -39,8 +39,14 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 _DATA_DIR = Path(__file__).parent / "data"
 
-# Lookup dict: (fold(tinh_cu), fold(xa_cu)) -> {"tinh": ..., "xa": ...}
+# Lookup dict chinh: (fold(tinh_cu), fold(xa_cu)) -> {"tinh": ..., "xa": ...}
 _REMAP: dict[tuple[str, str], dict[str, str]] = {}
+
+# Lookup dict phu: chi bo dau thanh (giu nguyen chu cai co/khong co mu),
+# de bat bien the OCR nham dau (Ha Man / Ha Man / Ha Mau deu map ve Ha Man).
+# Key: (fold_base(tinh_cu), fold_base(xa_cu)) -> list[{"tinh":..,"xa":..}]
+# Neu co nhieu entry khop (dong am khac nghia) -> lay entry dau (uu tien file truoc).
+_REMAP_BASE: dict[tuple[str, str], dict[str, str]] = {}
 
 
 def _fold(text: str) -> str:
@@ -49,6 +55,20 @@ def _fold(text: str) -> str:
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
     t = t.replace("\u0110", "D").replace("\u0111", "d")
     # Bo tien to loai don vi truoc khi fold (xa/phuong/thi tran/tt)
+    t = re.sub(r"^(xa|phuong|thi tran|tt\.?)\s+", "", t, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", t).strip().lower()
+
+
+def _fold_base(text: str) -> str:
+    """Bo toan bo dau va chu mu (a/â/ă -> a, o/ô/ơ -> o, u/ư -> u...).
+
+    Dung lam secondary key de bat OCR nham dau thanh hoac nham mu nguyen am.
+    Vi du: 'Ha Man' / 'Ha Man' / 'Ha Mau' / 'Ha Man' deu cho ra 'ha man'.
+    """
+    t = unicodedata.normalize("NFD", str(text or ""))
+    # Giu chi ky tu ASCII + so
+    t = "".join(ch for ch in t if ord(ch) < 128)
+    t = t.replace("D", "D").replace("d", "d")
     t = re.sub(r"^(xa|phuong|thi tran|tt\.?)\s+", "", t, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", t).strip().lower()
 
@@ -72,6 +92,11 @@ def _expand_abbrev(text: str) -> str:
     return t
 
 
+def _s(value) -> str:
+    """Normalize scalar input to a stripped string."""
+    return str(value or "").strip()
+
+
 def _load_remap_files() -> None:
     """Load tat ca remap_*.json va build lookup dict."""
     if not _DATA_DIR.exists():
@@ -93,13 +118,18 @@ def _load_remap_files() -> None:
             xa_cu   = entry.get("xa_cu") or ""
             if not tinh_cu or not xa_cu:
                 continue
+            mapping = {
+                "tinh": entry.get("tinh_moi") or tinh_cu,
+                "xa":   entry.get("xa_moi")   or xa_cu,
+            }
+            # Index chinh (fold bao gom dau thanh, bo mu nguyen am)
             key = (_fold(tinh_cu), _fold(xa_cu))
-            # Uu tien entry dau tien, khong ghi de
             if key not in _REMAP:
-                _REMAP[key] = {
-                    "tinh": entry.get("tinh_moi") or tinh_cu,
-                    "xa":   entry.get("xa_moi")   or xa_cu,
-                }
+                _REMAP[key] = mapping
+            # Index phu (fold ASCII thuan, bo ca mu nguyen am)
+            key_base = (_fold_base(tinh_cu), _fold_base(xa_cu))
+            if key_base not in _REMAP_BASE:
+                _REMAP_BASE[key_base] = mapping
 
 
 _load_remap_files()  # chay 1 lan luc import
@@ -194,8 +224,12 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
     if not area or not isinstance(area, dict):
         return area
 
-    tinh_raw: str = area.get("tinh") or ""
-    xa_raw:   str = area.get("xa")   or ""
+    tinh_raw: str = _s(area.get("tinh") or area.get("tỉnh"))
+    xa_raw: str = _s(area.get("xa") or area.get("xã") or area.get("phuong") or area.get("phường"))
+    dia_raw: str = _s(area.get("diaChi") or area.get("dia_chi") or area.get("diachi"))
+
+    # Keep normalized aliases in the outgoing object.
+    area = {**area, "tinh": tinh_raw, "xa": xa_raw, "diaChi": dia_raw}
 
     if not tinh_raw and not xa_raw:
         return area
@@ -221,14 +255,20 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
 
     tinh_folded = _fold(tinh_raw)
 
-    # Buoc 2: lookup bang sap nhap (tinh, xa)
+    # Buoc 2: lookup bang sap nhap (tinh, xa) -- index chinh
     key = (tinh_folded, _fold(xa_raw))
     mapping = _REMAP.get(key)
     if mapping:
         return {**area, "tinh": mapping["tinh"], "xa": mapping["xa"]}
 
+    # Buoc 2b: fallback -- so sanh khong dau (bat bien the OCR nham dau thanh/mu nguyen am)
+    # Vi du: "Ha Man" (sai dau) map duoc vao "Ha Man" (dung) hay "Ha Man" (ca hai cung fold base = "ha man")
+    key_base = (_fold_base(tinh_raw), _fold_base(xa_raw))
+    mapping_base = _REMAP_BASE.get(key_base)
+    if mapping_base:
+        return {**area, "tinh": mapping_base["tinh"], "xa": mapping_base["xa"]}
+
     # Buoc 3: fallback A — thu dung diaChi lam xa
-    dia_raw: str = area.get("diaChi") or ""
     if dia_raw and xa_raw:
         key_dia = (tinh_folded, _fold(dia_raw))
         mapping_dia = _REMAP.get(key_dia)
@@ -242,6 +282,8 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
 
     # Buoc 4: fallback B — scan token trong xa hoac diaChi
     # Uu tien scan trong xa truoc (co the la chuoi gop "thon - xa")
+    # LUU Y: chi boc ten xa (matched_original), KHONG remap sang ten moi (matched_mapping["xa"])
+    # De cho mapper pipeline xu ly remap sau.
     for scan_src, keep_as_detail in ((xa_raw, True), (dia_raw, False)):
         if not scan_src:
             continue
@@ -249,21 +291,68 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
         if result:
             matched_original, matched_mapping = result
             if keep_as_detail:
-                # xa goc chuyen thanh diaChi (chi tiet), xa moi = ten xa sau sap nhap
+                # xa goc (khong remap), diaChi = toan bo chuoi goc lam chi tiet
                 return {
                     **area,
-                    "tinh": matched_mapping["tinh"],
-                    "xa": matched_mapping["xa"],
+                    "tinh": tinh_raw,  # giu nguyen tinh (khong remap)
+                    "xa": matched_original,  # giu ten xa ban dau, khong chang sang ten moi
                     "diaChi": scan_src,  # giu nguyen toan bo chuoi goc lam chi tiet
                 }
             else:
-                # diaChi chua xa hop le, xa goc chuyen xuong diaChi
+                # diaChi chua xa hop le. Boc chi tiet dung tru ten xa + huyen.
+                # neu diaChi co dang "chi_tiet, xa, huyen" (3+ phan) thi phan truoc xa la chi tiet.
+                detail = xa_raw  # mac dinh: xa_raw la chi tiet (thuong rong)
+                if dia_raw:
+                    parts_d = [p.strip() for p in dia_raw.split(",") if p.strip()]
+                    # Tim vi tri phan khop voi xa duoc chon trong chuoi diaChi
+                    xa_folded = _fold(matched_original)
+                    for i, part in enumerate(parts_d):
+                        if _fold(part) == xa_folded and i > 0:
+                            # Cac phan truoc vi tri xa la chi tiet
+                            detail = ", ".join(parts_d[:i])
+                            break
                 return {
                     **area,
-                    "tinh": matched_mapping["tinh"],
-                    "xa": matched_mapping["xa"],
-                    "diaChi": xa_raw,
+                    "tinh": tinh_raw,  # giu nguyen tinh
+                    "xa": matched_original,  # giu ten xa ban dau, khong chang
+                    "diaChi": detail,
                 }
+
+    # Buoc 5: fallback C — khi xa trong va diaChi co dang "ten_xa, ten_huyen[, ...]"
+    # hoac "chi_tiet, ten_xa, ten_huyen" (3 phan).
+    # LLM doi khi dua ca cum "xa, huyen" vao diaChi ma de xa rong.
+    if not xa_raw and dia_raw:
+        parts = [p.strip() for p in dia_raw.split(",") if p.strip()]
+
+        # Some OCR/LLM outputs repeat province in diaChi. Drop trailing province token first,
+        # then parse [detail, xa, huyen] or [xa, huyen].
+        if len(parts) >= 2 and _fold(parts[-1]) == tinh_folded:
+            parts = parts[:-1]
+
+        xa_candidate = ""
+        detail_candidate = ""
+
+        if len(parts) == 1:
+            # Chi co 1 phan -> co the chinh la xa (vd "Ha Man")
+            xa_candidate = parts[0]
+            detail_candidate = ""
+        elif len(parts) == 2:
+            # 2 phan: [xa, huyen] -> phan dau la xa, phan sau la huyen (bo)
+            # vd "Ha Man, Thuan Thanh" -> xa="Ha Man"
+            xa_candidate = parts[0]
+            detail_candidate = ""
+        elif len(parts) >= 3:
+            # 3+ phan: [chi_tiet, xa, huyen, ...] -> phan thu 2 la xa, phan dau la chi tiet
+            # vd "Man Xa Tay, Ha Man, Thuan Thanh" -> xa="Ha Man", diaChi="Man Xa Tay"
+            # vd "Xom 3, Ban Ma, Muong Cha"         -> xa="Ban Ma", diaChi="Xom 3"
+            xa_candidate = parts[1]
+            detail_candidate = parts[0]
+
+        if xa_candidate:
+            # BOC xa tu diaChi ma KHONG remap — de mapper pipeline xu ly remap (sau normalization).
+            # Vi: LLM/OCR da tra ten xa, chi can tach ra khoi diaChi, khong tu dong chang sang ten moi.
+            # Vi du: "Ha Man" se giu lai "Ha Man", khong tuc dung "Phuong Song Lieu" (ten sau sap nhap).
+            return {**area, "xa": xa_candidate, "diaChi": detail_candidate}
 
     return area
 
@@ -271,4 +360,5 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
 def reload() -> None:
     """Reload tat ca file JSON (dung khi hot-reload trong development)."""
     _REMAP.clear()
+    _REMAP_BASE.clear()
     _load_remap_files()

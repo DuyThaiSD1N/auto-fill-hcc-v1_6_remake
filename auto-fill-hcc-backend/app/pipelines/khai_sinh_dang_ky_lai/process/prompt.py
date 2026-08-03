@@ -181,10 +181,16 @@ Chuẩn hóa giá trị:
      trong chuỗi (áp chót, ngay trước cấp huyện/tỉnh) mới quyết định đó là xã.
    - diaChi = phần CHI TIẾT còn lại ĐỨNG TRƯỚC tên xã (bản/tổ/tổ dân phố/xóm/khu/số nhà/đường).
      Tên xã, huyện/quận, tỉnh KHÔNG được đưa vào diaChi. KHÔNG để xa trống rồi dồn cả xã + huyện vào diaChi.
-     Nếu không có phần chi tiết đứng trước xã thì diaChi để TRỐNG.
+     BẮT BUỘC TRÍCH diaChi nếu có phần chi tiết đứng trước xã. Nếu không có phần chi tiết thì diaChi để TRỐNG.
    - Ví dụ (chung, KHÔNG phải dữ liệu thật):
      "Xóm 3, Bản Mạ, Mường Chà, Điện Biên" -> diaChi="Xóm 3", xa="Bản Mạ", tinh="Điện Biên" (BỎ huyện Mường Chà).
      "Bản Mạ, Mường Chà, Điện Biên" -> xa="Bản Mạ", tinh="Điện Biên", diaChi="" (BỎ huyện Mường Chà).
+     "Tổ 3, Quyết Tiến, TP. Lai Châu, Lai Châu" → diaChi="Tổ 3", xa="Phường Quyết Tiến", tinh="Lai Châu" (BỎ cấp huyện TP Lai Châu cũ).
+   - Ví dụ cụ thể Bắc Ninh (chuỗi có thể OCR sai dấu):
+     "Hà Mân" (một xã ở Bắc Ninh, dù OCR viết "Hà Man" hay "Hà Mãn") → xa="Hà Mân", diaChi="" (hoặc theo đầu vào).
+     "Mán Xá Đông, Hà Mân, Thuận Thành" → diaChi="Mán Xá Đông", xa="Hà Mân", tinh="Bắc Ninh" (BỎ huyện Thuận Thành).
+     "Mãn Xá Tây, Hà Mân, Thuận Thành" → diaChi="Mãn Xá Tây", xa="Hà Mân", tinh="Bắc Ninh" (BỎ huyện Thuận Thành).
+     "Hà Mân, Thuận Thành" → xa="Hà Mân", diaChi="", tinh="Bắc Ninh" (BỎ huyện Thuận Thành).
 7. Quốc tịch chỉ trả khi tài liệu ghi rõ hoặc chắc chắn từ mẫu là Việt Nam.
 8. Tách từ dính liền: nếu một cụm (địa chỉ chi tiết, tên xã, họ tên) bị viết DÍNH không có dấu cách
    nhưng có chữ HOA đứng giữa cụm (chữ hoa ngay sau chữ thường), tách thành các từ riêng bằng dấu cách.
