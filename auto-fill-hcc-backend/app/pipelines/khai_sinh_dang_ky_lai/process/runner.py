@@ -22,6 +22,12 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
         context_builder=reason.build_context,
     )
+    # Reasoning đã chốt vai trò theo người. Lọc trước mapper để không biến field
+    # bị gán nhầm người thành field UI hợp lệ.
+    res["fields"] = reason.sanitize_extracted_fields(
+        res["fields"],
+        res.get("reasoning_context") or "",
+    )
     res["fields"] = mapper.enrich(res["fields"], options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
@@ -35,4 +41,3 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         except Exception as e:  # noqa: BLE001
             res.setdefault("errors", []).append(f"review: {e}")
     return res
-

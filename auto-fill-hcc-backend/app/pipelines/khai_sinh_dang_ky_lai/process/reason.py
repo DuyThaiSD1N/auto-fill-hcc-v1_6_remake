@@ -1,15 +1,7 @@
-"""Tầng suy luận (PA1) cho "Đăng ký lại khai sinh".
+"""Phân vai hồ sơ đăng ký lại khai sinh trước bước trích field.
 
-Chạy TRƯỚC bước trích xuất, dùng lại OCR đã có. Luồng:
-  OCR -> LLM (roster: phân loại tài liệu + liệt kê người) -> CỔNG PYTHON tất định chốt vai trò
-  -> đoạn context tiếng người ghim "ai là ai, lấy từ đâu" -> nối vào prompt trích xuất.
-
-Cổng tất định (không tin LLM ở phần dễ sai) theo luật nghiệp vụ:
-- Giấy KHAI TỬ -> người trong giấy là cha/mẹ (theo giới tính) và ĐÃ CHẾT; 2 giấy -> cả cha lẫn mẹ chết.
-- Chồng/vợ trong giấy KẾT HÔN KHÔNG phải cha/mẹ của con (bị hạ vai nếu đã có cha/mẹ từ khai tử).
-- cha = Nam, mẹ = Nữ (lệch giới -> xóa vai để không điền bừa).
-- con = người còn sống, có CCCD/khai sinh cũ/học bạ/bằng, không phải cha/mẹ.
-- Người yêu cầu = người trùng tên/số định danh cổng điền sẵn (VNeID); không ai trùng -> để mặc định.
+Agent chỉ trả text phân vai. Python kiểm tra lại mỏ neo người, giới tính, thế hệ
+và loại tài liệu trước khi cho kết quả này điều khiển agent trích xuất.
 """
 
 import re
@@ -18,276 +10,578 @@ import unicodedata
 from app.config import settings
 from app.services.llm import client
 
-_ANCHOR_LOAI = {"cccd", "khai_sinh_cu", "trich_luc_ks", "hoc_ba", "bang_tot_nghiep"}
-_REASON_MAX_TOKENS = 1200
+_REASON_MAX_TOKENS = 1100
+_FAMILY_TAGS = ("con", "me", "cha")
+_ROLE_PREFIX = {
+    "con": "Subject_",
+    "me": "Mother_",
+    "cha": "Father_",
+}
+_FULL_NAME_FIELD = {
+    "con": "Subject_FullName",
+    "me": "Mother_FullName",
+    "cha": "Father_FullName",
+}
+_ID_FIELD = {
+    "me": "Mother_IdNumber",
+    "cha": "Father_IdNumber",
+}
+_CONTEXT_EVIDENCE_FIELDS = {
+    "Subject_Ethnicity": ("con", "Dân tộc"),
+    "Subject_Nationality": ("con", "Quốc tịch"),
+    "Mother_Ethnicity": ("me", "Dân tộc"),
+    "Mother_Nationality": ("me", "Quốc tịch"),
+    "Father_Ethnicity": ("cha", "Dân tộc"),
+    "Father_Nationality": ("cha", "Quốc tịch"),
+}
+_ROLE_TAGS = (
+    "nguoi_yeu_cau",
+    "con",
+    "me",
+    "cha",
+    "dang_ky_khai_sinh_truoc_day",
+)
+_IDENTITY_MARKERS = (
+    "can cuoc cong dan",
+    "citizen identity card",
+    "can cuoc",
+    "identity card",
+    "chung minh nhan dan",
+)
 
-_ROSTER_PROMPT = """
-Bạn là trợ lý phân tích hồ sơ ĐĂNG KÝ LẠI KHAI SINH. KHÔNG trích chi tiết field.
-Nhiệm vụ: đọc OCR các tài liệu rồi (1) phân loại từng tài liệu, (2) liệt kê từng người xuất hiện
-kèm thông tin nhận dạng và VAI TRÒ trong thủ tục.
+_ROLE_PROMPT = """
+Bạn là agent PHÂN VAI hồ sơ ĐĂNG KÝ LẠI KHAI SINH. Chỉ xác định:
+- người yêu cầu;
+- người được đăng ký lại khai sinh (CON);
+- MẸ;
+- CHA;
+- hồ sơ có hay không có tài liệu ghi nhận ĐĂNG KÝ KHAI SINH trước đây.
 
-loai (loại tài liệu): cccd, khai_sinh_cu, trich_luc_ks, to_khai, ket_hon, khai_tu,
-hoc_ba, bang_tot_nghiep, cam_doan, khac.
+Đọc toàn bộ OCR, không trích field biểu mẫu, không trả JSON.
 
-vai_tro: con (người được đăng ký lại khai sinh), cha, me, nguoi_yeu_cau, chong, vo, khac.
+THỨ TỰ PHÂN VAI:
+1. Ưu tiên nhãn rõ trên tờ khai đăng ký lại khai sinh, giấy khai sinh cũ hoặc trích lục khai sinh:
+   "người được khai sinh/con", "mẹ", "cha".
+2. Giấy khai tử chỉ chứng minh danh tính, năm sinh, giới tính và trạng thái đã chết của người trên giấy.
+   KHÔNG mặc định người trong giấy khai tử là cha/mẹ. Chỉ gán cha/mẹ khi có quan hệ rõ hoặc khi quy tắc
+   thế hệ tại mục 3 xác định được duy nhất.
+3. Khi không có nhãn quan hệ nhưng hồ sơ thể hiện đúng một gia đình hợp lý:
+   - người có năm sinh lớn nhất/gần hiện tại nhất là con;
+   - người nam lớn hơn con ít nhất khoảng 15 tuổi là cha;
+   - người nữ lớn hơn con ít nhất khoảng 15 tuổi là mẹ.
+   Chỉ áp dụng khi mỗi vai có đúng một ứng viên và con trùng họ với ít nhất một người thuộc thế hệ trước;
+   mơ hồ thì ghi "Không xác định".
+4. CCCD/CMND chỉ cho biết thông tin của chính người trên thẻ. Tên file và thứ tự tải lên chỉ là tín hiệu
+   phụ, không đủ để tự gán vai.
+5. Người yêu cầu lấy theo requester_context: khớp chính xác số định danh trước, thiếu số mới khớp họ tên.
+   Người yêu cầu có thể đồng thời là con, cha hoặc mẹ.
+6. Vợ/chồng, người ký, chủ hộ, người nhận công văn không tự động là cha/mẹ/con.
+7. Một người không được đồng thời là con và cha/mẹ. Không ghép tên, số định danh, ngày sinh hoặc nguồn
+   của hai người khác nhau.
+8. "Số/ngày đăng ký trước đây" chỉ hợp lệ khi thuộc GIẤY KHAI SINH, TRÍCH LỤC KHAI SINH hoặc
+   TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH. Số/ngày trên giấy khai tử, kết hôn, CCCD không hợp lệ.
 
-QUY TẮC XÁC ĐỊNH VAI TRÒ:
-- "con" (chủ thể) = người được đăng ký lại khai sinh; danh tính lấy từ giấy khai sinh cũ / CCCD /
-  học bạ / bằng tốt nghiệp của chính người đó.
-- Giấy KHAI TỬ: người trong giấy là CHA hoặc MẸ của con (theo giới tính) và đã chết (da_chet=true).
-- Giấy KẾT HÔN: người ghi "chồng"/"vợ" là vợ chồng, KHÔNG phải cha/mẹ của con.
-- cha là Nam, mẹ là Nữ.
-- Nhiều CCCD: khớp họ tên trên CCCD với vai trò đã biết (tên con / tên cha, mẹ trong khai tử).
-  Không có mỏ neo thì suy theo thế hệ (người trẻ nhất là con; người lớn hơn ~18+ tuổi là cha/mẹ
-  theo giới tính) và họ (con thường cùng họ với cha).
-- TÊN FILE là tín hiệu mạnh: "cccd bố"/"cccd cha" -> người đó là cha; "cccd mẹ" -> mẹ;
-  "cccd con"/"cccd" của chủ thể -> con.
-- Nếu GIẤY KHAI SINH KHÔNG ghi tên cha (hoặc mẹ) mà hồ sơ CÓ CCCD của người đó -> vẫn gán người
-  trên CCCD làm cha/mẹ (cha = CCCD giới tính Nam, mẹ = CCCD giới tính Nữ). KHÔNG lấy chữ trên con
-  dấu/tiêu đề (TƯ PHÁP, ỦY BAN, CHỦ TỊCH...) làm tên người.
-- KHÔNG bịa người không có trong OCR.
-
-CHỈ trả JSON trong ```json ... ``` đúng cấu trúc, không thêm chữ nào ngoài JSON:
-{"documents":[{"name":"<tên file>","loai":"<loai>","ve_ai":"<tên người tài liệu nói tới>"}],
- "persons":[{"ten":"...","gioi_tinh":"Nam|Nữ|","nam_sinh":"...","so_dinh_danh":"...","da_chet":false,"vai_tro":"con|cha|me|nguoi_yeu_cau|chong|vo|khac","nguon":["<tên file>"]}]}
+Chỉ trả TEXT theo đúng năm khối sau, không markdown/code fence và không thêm JSON:
+Mỗi nhãn đúng một dòng; "Căn cứ phân vai" tối đa 20 từ. Chỉ ghi KẾT LUẬN, không trình bày chuỗi suy luận.
+<nguoi_yeu_cau>
+Họ tên: ...
+Số CCCD/CMND: ...
+Ngày sinh: ...
+Giới tính: ...
+Dân tộc: ...
+Quốc tịch: ...
+Nguồn: ...
+Căn cứ phân vai: ...
+Vai trò đồng thời: con|mẹ|cha|không xác định
+</nguoi_yeu_cau>
+<con>
+Họ tên: ...
+Số CCCD/CMND: ...
+Ngày sinh: ...
+Giới tính: ...
+Dân tộc: ...
+Quốc tịch: ...
+Trạng thái: còn sống|đã chết|không xác định
+Nguồn: ...
+Căn cứ phân vai: ...
+</con>
+<me>
+Họ tên: ...
+Số CCCD/CMND: ...
+Ngày sinh: ...
+Giới tính: ...
+Dân tộc: ...
+Quốc tịch: ...
+Trạng thái: còn sống|đã chết|không xác định
+Nguồn: ...
+Căn cứ phân vai: ...
+</me>
+<cha>
+Họ tên: ...
+Số CCCD/CMND: ...
+Ngày sinh: ...
+Giới tính: ...
+Dân tộc: ...
+Quốc tịch: ...
+Trạng thái: còn sống|đã chết|không xác định
+Nguồn: ...
+Căn cứ phân vai: ...
+</cha>
+<dang_ky_khai_sinh_truoc_day>
+Có tài liệu khai sinh hợp lệ: Có|Không
+Nguồn: ...
+Căn cứ: ...
+</dang_ky_khai_sinh_truoc_day>
 """.strip()
 
 
 def _fold(value) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
-    text = text.replace("Đ", "D").replace("đ", "d")
-    return re.sub(r"\s+", " ", text).strip().lower()
+    text = text.replace("Đ", "D").replace("đ", "d").lower()
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
-def _requester_hint(options: dict) -> str:
-    ctx = (options or {}).get("formContext") or {}
-    name = str(ctx.get("applicantFullname") or "").strip()
-    idnum = str(ctx.get("applicantIdentityNumber") or "").strip()
-    if not name and not idnum:
+def _section(text: str, tag: str) -> str:
+    raw = str(text or "")
+    opening = re.search(rf"<{tag}>\s*", raw, flags=re.IGNORECASE)
+    if not opening:
         return ""
+    remainder = raw[opening.end():]
+    closing = re.search(rf"\s*</{tag}>", remainder, flags=re.IGNORECASE)
+    if closing:
+        return remainder[:closing.start()].strip()
+
+    # Model có thể hết max_tokens trước thẻ đóng. Vẫn lấy đến khối kế tiếp/EOF
+    # để một khối cuối bị cụt không làm mất toàn bộ kết quả phân vai.
+    other_tags = "|".join(re.escape(item) for item in _ROLE_TAGS if item != tag)
+    next_opening = re.search(rf"\s*<(?:{other_tags})>", remainder, flags=re.IGNORECASE)
+    return remainder[:next_opening.start()].strip() if next_opening else remainder.strip()
+
+
+def _labeled_value(section: str, label: str) -> str:
+    match = re.search(
+        rf"(?im)^\s*{re.escape(label)}\s*:\s*(.*?)\s*$",
+        section,
+    )
+    return match.group(1).strip() if match else ""
+
+
+def _requester_context(options: dict | None) -> tuple[str, str]:
+    ctx = (options or {}).get("formContext") or {}
     return (
-        f'\n\nNGƯỜI YÊU CẦU đã đăng nhập (VNeID): họ tên="{name}", số định danh="{idnum}". '
-        "Gán vai_tro=nguoi_yeu_cau cho người trùng tên/số định danh này."
+        str(ctx.get("applicantFullname") or "").strip(),
+        _digits(ctx.get("applicantIdentityNumber")),
     )
 
 
-def _build_user(documents: list[dict]) -> str:
-    body = "\n\n---\n\n".join(
-        f"===== {d.get('name') or '(không tên)'} =====\n{(d.get('text') or '').strip()}"
-        for d in documents
-    )
-    return "OCR các tài liệu trong hồ sơ:\n\n" + body
+def _is_unknown(section: str) -> bool:
+    if not section:
+        return True
+    name = _fold(_labeled_value(section, "Họ tên"))
+    return not name or "khong xac dinh" in name
 
 
-def _apply_gate(roster: dict, options: dict | None = None) -> dict:
-    """Chốt vai trò tất định. Không tin LLM ở phần dễ sai (khai tử/kết hôn/giới tính/người yêu cầu)."""
-    docs = roster.get("documents") or []
-    persons = roster.get("persons") or []
-
-    for p in persons:
-        p["vai_tro"] = (p.get("vai_tro") or "").strip().lower()
-        p["gioi_tinh"] = (p.get("gioi_tinh") or "").strip()
-        p["da_chet"] = bool(p.get("da_chet"))
-
-    doc_loai_by_file = {_fold(d.get("name")): (d.get("loai") or "").strip().lower() for d in docs}
-
-    def person_loais(p) -> list[str]:
-        return [doc_loai_by_file.get(_fold(s), "") for s in (p.get("nguon") or [])]
-
-    def find(name) -> dict | None:
-        key = _fold(name)
-        if not key:
-            return None
-        return next((p for p in persons if _fold(p.get("ten")) == key), None)
-
-    # (b) KHAI TỬ -> người đó là cha/mẹ (theo giới tính) và đã chết.
-    for d in docs:
-        if (d.get("loai") or "").strip().lower() != "khai_tu":
-            continue
-        p = find(d.get("ve_ai"))
-        if not p:
-            continue
-        p["da_chet"] = True
-        if p["gioi_tinh"] == "Nam":
-            p["vai_tro"] = "cha"
-        elif p["gioi_tinh"] == "Nữ":
-            p["vai_tro"] = "me"
-        elif p["vai_tro"] not in ("cha", "me"):
-            # Không rõ giới: lấp khe còn trống.
-            p["vai_tro"] = "cha" if not any(x["vai_tro"] == "cha" for x in persons) else "me"
-
-    # (a) cha=Nam, mẹ=Nữ. Lệch giới -> xóa vai (không điền bừa).
-    for p in persons:
-        if p["vai_tro"] == "cha" and p["gioi_tinh"] == "Nữ":
-            p["vai_tro"] = ""
-        elif p["vai_tro"] == "me" and p["gioi_tinh"] == "Nam":
-            p["vai_tro"] = ""
-
-    # (c) Cha/mẹ từ KHAI TỬ là chuẩn. Ai giữ vai cha/mẹ mà KHÔNG đến từ khai tử thì hạ vai:
-    #     có nguồn kết hôn -> chồng/vợ (chồng/vợ KHÔNG phải cha/mẹ của con); còn lại xóa vai
-    #     để bước "con" xét lại (vd chính chủ thể bị LLM gán nhầm cha/mẹ).
-    for role, spouse in (("cha", "chong"), ("me", "vo")):
-        khaitu_holder = any(p["vai_tro"] == role and "khai_tu" in person_loais(p) for p in persons)
-        if not khaitu_holder:
-            continue
-        for p in persons:
-            if p["vai_tro"] == role and "khai_tu" not in person_loais(p):
-                p["vai_tro"] = spouse if "ket_hon" in person_loais(p) else ""
-
-    # (d) Người yêu cầu = trùng formContext; không khớp thì bỏ vai nguoi_yeu_cau (dùng mặc định).
-    ctx = (options or {}).get("formContext") or {}
-    aid, aname = _digits(ctx.get("applicantIdentityNumber")), _fold(ctx.get("applicantFullname"))
-    if aid or aname:
-        for p in persons:
-            pid, pname = _digits(p.get("so_dinh_danh")), _fold(p.get("ten"))
-            matched = (aid and pid and aid == pid) or (aname and pname and aname == pname)
-            if matched:
-                p["_requester"] = True
-            elif p["vai_tro"] == "nguoi_yeu_cau":
-                p["vai_tro"] = ""
-
-    # (e) Giấy khai sinh KHÔNG ghi tên cha/mẹ nhưng hồ sơ CÓ CCCD của họ -> gán CCCD làm cha/mẹ.
-    #     Ưu tiên TÊN FILE ("cccd bố"/"cccd mẹ"), sau đó giới tính (cha=Nam, mẹ=Nữ).
-    def _is_free_cccd(p) -> bool:
-        return (not p.get("_requester") and p["vai_tro"] in ("", "khac")
-                and "cccd" in person_loais(p))
-
-    def _file_role_hint(p) -> str:
-        # "chà" (TÊN người) gấp dấu thành "cha" -> đừng nhầm thành quan hệ "cha". Nếu từ khóa quan hệ
-        # xuất hiện trong CHÍNH họ tên người thì đó là tên file gọi theo tên, bỏ qua hint.
-        name_words = set(_fold(p.get("ten")).split())
-        for s in (p.get("nguon") or []):
-            f = _fold(s)
-            if re.search(r"(^| )(bo|cha|father)( |\.|$)", f) and not (name_words & {"bo", "cha"}):
-                return "cha"
-            if re.search(r"(^| )(me|mother)( |\.|$)", f) and "me" not in name_words:
-                return "me"
+def _role_name(section: str) -> str:
+    if _is_unknown(section):
         return ""
+    return _labeled_value(section, "Họ tên")
 
-    for p in persons:
-        if not _is_free_cccd(p):
-            continue
-        hint = _file_role_hint(p)
-        if hint == "cha" and p["gioi_tinh"] != "Nữ":
-            p["vai_tro"] = "cha"
-        elif hint == "me" and p["gioi_tinh"] != "Nam":
-            p["vai_tro"] = "me"
 
-    # Còn CCCD chưa gán + có ngữ cảnh con (đã có "con" hoặc có giấy khai sinh/tờ khai)
-    # -> lấp khe cha/mẹ còn trống theo giới tính.
-    child_ctx = any(p["vai_tro"] == "con" for p in persons) or any(
-        (d.get("loai") or "").strip().lower() in ("khai_sinh_cu", "to_khai") for d in docs)
-    if child_ctx:
-        has_father = any(p["vai_tro"] == "cha" for p in persons)
-        has_mother = any(p["vai_tro"] == "me" for p in persons)
-        for p in persons:
-            if not _is_free_cccd(p):
+def _role_id(section: str) -> str:
+    value = _digits(_labeled_value(section, "Số CCCD/CMND"))
+    return value if len(value) in {9, 12} else ""
+
+
+def _role_year(section: str) -> int | None:
+    value = _labeled_value(section, "Ngày sinh")
+    years = re.findall(r"(?<!\d)(?:18|19|20)\d{2}(?!\d)", value)
+    return int(years[-1]) if years else None
+
+
+def _unknown_role_section(reason: str) -> str:
+    return (
+        "Họ tên: Không xác định\n"
+        "Số CCCD/CMND: Không xác định\n"
+        "Ngày sinh: Không xác định\n"
+        "Giới tính: Không xác định\n"
+        "Dân tộc: Không xác định\n"
+        "Quốc tịch: Không xác định\n"
+        "Trạng thái: Không xác định\n"
+        "Nguồn: Không xác định\n"
+        f"Căn cứ phân vai: {reason}"
+    )
+
+
+def _as_family_section(section: str, basis: str) -> str:
+    if not _labeled_value(section, "Trạng thái"):
+        section += "\nTrạng thái: Không xác định"
+    return section + f"\nCăn cứ kiểm tra thế hệ: {basis}"
+
+
+def _first_match(text: str, patterns: tuple[str, ...]) -> str:
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
+def _person_from_document(document: dict) -> dict | None:
+    """Đọc nhân thân chính của CCCD hoặc người được khai tử ngay từ OCR."""
+    text = str(document.get("text") or "")
+    folded = _fold(text)
+    is_identity = any(marker in folded for marker in _IDENTITY_MARKERS)
+    death_match = re.search(
+        r"Phần\s+ghi\s+về\s+người\s+được\s+khai\s+tử\s*:",
+        text,
+        flags=re.IGNORECASE,
+    )
+    is_death = bool(
+        death_match
+        or "trich luc khai tu" in folded
+        or "giay bao tu" in folded
+    )
+    if not is_identity and not is_death:
+        return None
+
+    # Với sổ/trích lục khai tử, chỉ đọc phần người được khai tử; không lấy người
+    # đi khai tử, người ký hay cán bộ xuất hiện phía sau.
+    block = text[death_match.end():] if death_match else text
+    name = _first_match(block, (
+        r"^\s*Họ\s+và\s+tên(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
+        r"^\s*Họ,\s*chữ\s*đệm(?:,\s*|\s+và\s+)tên\s*:\s*([^\n\r]+)",
+        r"^\s*Họ,\s*chữ\s*đệm,\s*tên\s*:\s*([^\n\r]+)",
+    ))
+    birth = _first_match(block, (
+        r"^\s*Ngày\s+sinh(?:\s*/\s*Date\s+of\s+birth)?\s*:\s*([^\n\r]+)",
+        r"^\s*Ngày,\s*tháng,\s*năm\s+sinh\s*:\s*([^\n\r]+)",
+    ))
+    gender = _first_match(block, (
+        r"Giới\s*tính(?:\s*/\s*Sex)?\s*:\s*(Nam|Nữ|Male|Female)",
+    ))
+    id_number = _first_match(block, (
+        r"Số\s*/\s*No\.?\s*:\s*([0-9 ]{9,})",
+        r"Số\s+định\s+danh\s+cá\s+nhân(?:\s*/[^:\n]+)?\s*:\s*([0-9 ]{9,})",
+    ))
+    ethnicity = _first_match(block, (
+        r"Dân\s*tộc\s*:\s*([^\n\r]+?)(?=\s+Quốc\s*tịch|$)",
+    ))
+    nationality = _first_match(block, (
+        r"Quốc\s*tịch(?:\s*/\s*Nationality)?\s*:?\s*([^\n\r]+)",
+    ))
+    if not name or not birth or not gender:
+        return None
+
+    status = "đã chết" if is_death else "không xác định"
+    section = (
+        f"Họ tên: {name}\n"
+        f"Số CCCD/CMND: {_digits(id_number) or 'Không xác định'}\n"
+        f"Ngày sinh: {birth}\n"
+        f"Giới tính: {gender}\n"
+        f"Dân tộc: {ethnicity or 'Không xác định'}\n"
+        f"Quốc tịch: {nationality or 'Không xác định'}\n"
+        f"Trạng thái: {status}\n"
+        f"Nguồn: {document.get('name') or '(không tên)'}\n"
+        "Căn cứ phân vai: Nhân thân chính đọc trực tiếp từ OCR của tài liệu."
+    )
+    return {
+        "section": section,
+        "name": name,
+        "year": _role_year(section),
+        "gender": _fold(gender),
+        "score": 10,
+    }
+
+
+def _repair_family_by_generation(
+    raw: str,
+    sections: dict[str, str],
+    documents: list[dict],
+) -> dict[str, str]:
+    """Chốt ca đúng ba người khi nhãn quan hệ thiếu nhưng thế hệ xác định duy nhất.
+
+    Mỗi người có thể xuất hiện hai lần (người yêu cầu đồng thời là cha/mẹ/con),
+    nên gom theo họ tên trước khi xét năm sinh.
+    """
+    # Ưu tiên nhân thân được Python đọc trực tiếp từ từng tài liệu. Nhờ vậy raw
+    # reason dài/bị cụt vẫn không làm mất người trẻ nhất hoặc nhầm giấy khai tử.
+    document_candidates = [
+        person
+        for document in documents
+        if (person := _person_from_document(document))
+    ]
+    candidates = {
+        _fold(person["name"]): person
+        for person in document_candidates
+        if person.get("year")
+    }
+
+    if len(candidates) != 3:
+        candidates = {}
+        for tag in ("nguoi_yeu_cau", *_FAMILY_TAGS):
+            section = _section(raw, tag)
+            name = _role_name(section)
+            year = _role_year(section)
+            gender = _fold(_labeled_value(section, "Giới tính"))
+            if not name or not year or gender not in {"nam", "nu", "male", "female"}:
                 continue
-            if p["gioi_tinh"] == "Nam" and not has_father:
-                p["vai_tro"], has_father = "cha", True
-            elif p["gioi_tinh"] == "Nữ" and not has_mother:
-                p["vai_tro"], has_mother = "me", True
+            key = _fold(name)
+            current = candidates.get(key)
+            score = sum(bool(_labeled_value(section, label)) for label in (
+                "Số CCCD/CMND", "Ngày sinh", "Giới tính", "Trạng thái", "Nguồn",
+            ))
+            if not current or score > current["score"]:
+                candidates[key] = {
+                    "section": section,
+                    "name": name,
+                    "year": year,
+                    "gender": gender,
+                    "score": score,
+                }
 
-    # con = người còn sống, có tài liệu neo (CCCD/KS cũ/học bạ/bằng), không phải cha/mẹ.
-    # (KHÔNG loại người yêu cầu: người tự đăng ký lại khai sinh chính là con — BanThan.)
-    if not any(p["vai_tro"] == "con" for p in persons):
-        cands = [
-            p for p in persons
-            if not p["da_chet"] and p["vai_tro"] not in ("cha", "me")
-            and any(l in _ANCHOR_LOAI for l in person_loais(p))
-        ]
-        if len(cands) == 1:
-            cands[0]["vai_tro"] = "con"
-        elif len(cands) > 1:
-            # Khi có nhiều ứng viên còn sống: người TRẺ NHẤT (năm sinh lớn nhất) = con.
-            # Người già hơn sẽ được gán cha/mẹ theo giới tính ở bước tiếp theo.
-            def _birth_year(p) -> int:
-                m = re.search(r"\b(19|20)\d{2}\b", str(p.get("nam_sinh") or ""))
-                return int(m.group()) if m else 0
+    if len(candidates) != 3:
+        return sections
 
-            sorted_cands = sorted(cands, key=_birth_year, reverse=True)  # trẻ nhất trước
-            youngest = sorted_cands[0]
-            youngest_year = _birth_year(youngest)
+    ordered = sorted(candidates.values(), key=lambda item: item["year"])
+    youngest = ordered[-1]
+    older = ordered[:-1]
+    if youngest["year"] - max(item["year"] for item in older) < 15:
+        return sections
+    child_surname = _fold(youngest["name"]).split(" ", 1)[0]
+    older_surnames = {_fold(item["name"]).split(" ", 1)[0] for item in older}
+    if not child_surname or child_surname not in older_surnames:
+        return sections
 
-            # Chỉ gán "con" khi người trẻ nhất rõ ràng trẻ hơn ít nhất 15 tuổi so với người tiếp theo
-            # (tránh nhầm giữa hai anh em gần tuổi không ai là cha/mẹ)
-            second_year = _birth_year(sorted_cands[1]) if len(sorted_cands) > 1 else 0
-            if youngest_year > 0 and second_year > 0 and (youngest_year - second_year) >= 15:
-                youngest["vai_tro"] = "con"
-                # Người già hơn (còn sống) → gán cha/mẹ theo giới tính nếu chưa có
-                for older in sorted_cands[1:]:
-                    if older["gioi_tinh"] == "Nam" and not any(x["vai_tro"] == "cha" for x in persons):
-                        older["vai_tro"] = "cha"
-                    elif older["gioi_tinh"] == "Nữ" and not any(x["vai_tro"] == "me" for x in persons):
-                        older["vai_tro"] = "me"
+    men = [item for item in older if item["gender"] in {"nam", "male"}]
+    women = [item for item in older if item["gender"] in {"nu", "female"}]
+    if len(men) != 1 or len(women) != 1:
+        return sections
 
-    roster["persons"] = persons
-    return roster
+    basis = "Đúng ba người, người trẻ nhất là con; hai người lớn hơn thuộc hai giới và cách ít nhất 15 năm."
+    return {
+        "con": _as_family_section(youngest["section"], basis),
+        "cha": _as_family_section(men[0]["section"], basis),
+        "me": _as_family_section(women[0]["section"], basis),
+    }
 
 
-def _render(roster: dict) -> str:
-    persons = roster.get("persons") or []
+def _valid_birth_source_names(documents: list[dict]) -> list[str]:
+    """Chỉ nhận tài liệu thực sự ghi nhận khai sinh, không nhận giấy khai tử/kết hôn."""
+    names: list[str] = []
+    for document in documents:
+        folded = _fold(document.get("text"))
+        is_birth_record = (
+            "giay khai sinh" in folded
+            or "giay khai sanh" in folded
+            or "trich luc khai sinh" in folded
+            or (
+                "to khai" in folded
+                and "dang ky lai" in folded
+                and "khai sinh" in folded
+            )
+        )
+        if is_birth_record:
+            names.append(str(document.get("name") or "(không tên)"))
+    return names
 
-    def one(role):
-        return next((p for p in persons if p.get("vai_tro") == role), None)
 
-    def src(p):
-        return ", ".join(p.get("nguon") or []) or "?"
-
-    def desc(p):
-        dead = " (đã chết)" if p.get("da_chet") else ""
-        return f'{p.get("ten") or "?"}{dead} — nguồn: {src(p)}'
-
-    con, cha, me = one("con"), one("cha"), one("me")
-    req = next((p for p in persons if p.get("_requester")), None)
-
-    lines = []
-    if con:
-        lines.append(f"- NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI (con): {desc(con)}")
-    if cha:
-        lines.append(f"- CHA: {desc(cha)}")
-    if me:
-        lines.append(f"- MẸ: {desc(me)}")
-    if req:
-        lines.append(f"- NGƯỜI YÊU CẦU: {req.get('ten')} — nguồn: {src(req)}")
-    else:
-        lines.append("- NGƯỜI YÊU CẦU: không xác định được → để trống, dùng mặc định.")
-    for s in (p for p in persons if p.get("vai_tro") in ("chong", "vo")):
-        quan_he = "chồng" if s["vai_tro"] == "chong" else "vợ"
-        lines.append(f"- LƯU Ý: {s.get('ten')} là {quan_he} trong giấy kết hôn, KHÔNG phải cha/mẹ.")
-
-    if not any((con, cha, me)):
-        return ""
-    body = "\n".join(lines)
+def _source_hints(documents: list[dict], options: dict | None) -> str:
+    requester_name, requester_id = _requester_context(options)
+    valid_sources = _valid_birth_source_names(documents)
     return (
-        "\n\n<ke_hoach_da_xac_dinh>\n"
-        "Vai trò từng người ĐÃ được xác định (DÙNG LÀM CHUẨN, không tự gán lại vai trò khác):\n"
-        f"{body}\n"
-        "Chỉ trích giá trị đúng theo vai trò trên. Người 'đã chết' → *_ResidenceDomestic = "
-        '{"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.\n'
-        "LƯU Ý: 'đã chết' CHỈ áp cho *_ResidenceDomestic. VẪN phải trích NĂM SINH, DÂN TỘC, QUỐC TỊCH "
-        "của cha/mẹ đã mất TỪ chính TRÍCH LỤC KHAI TỬ của người đó (giấy khai tử ghi rõ 'Ngày, tháng, "
-        "năm sinh', 'Dân tộc', 'Quốc tịch' của người đã mất). KHÔNG bỏ trống các field này chỉ vì đã chết.\n"
-        "LƯU Ý SỐ ĐĂNG KÝ KHAI SINH TRƯỚC ĐÂY (PreviousRegistration_Number/Date/AgencyProvince): CHỈ lấy từ "
-        "GIẤY KHAI SINH / TRÍCH LỤC KHAI SINH / BẢN SAO KHAI SINH / TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH của con. "
-        "GIẤY CHỨNG NHẬN KẾT HÔN (có 'Số'/'Quyển số' ở đầu) và TRÍCH LỤC KHAI TỬ thì BỎ QUA — KHÔNG lấy "
-        "số/ngày/nơi từ chúng. Không có giấy khai sinh trong hồ sơ → để trống PreviousRegistration_*.\n"
-        "</ke_hoach_da_xac_dinh>"
+        "<requester_context>\n"
+        f'Họ tên trên cổng: "{requester_name or "không có"}"\n'
+        f'Số định danh trên cổng: "{requester_id or "không có"}"\n'
+        "</requester_context>\n"
+        "<birth_registration_source_check>\n"
+        "Tài liệu khai sinh hợp lệ được Python nhận diện: "
+        + (", ".join(valid_sources) if valid_sources else "Không có")
+        + "\n</birth_registration_source_check>"
     )
+
+
+def _build_user_content(documents: list[dict], options: dict | None) -> str:
+    body = "\n\n---\n\n".join(
+        f"===== Tài liệu {index}: {document.get('name') or '(không tên)'} =====\n"
+        f"{str(document.get('text') or '').strip()}"
+        for index, document in enumerate(documents, start=1)
+    )
+    return f"{_source_hints(documents, options)}\n\nOCR hồ sơ:\n\n{body}"
+
+
+def _validated_requester(section: str, options: dict | None) -> str:
+    requester_name, requester_id = _requester_context(options)
+    if not requester_name and not requester_id:
+        return section or _unknown_role_section("Cổng không truyền mỏ neo người yêu cầu.")
+
+    section_id = _role_id(section)
+    section_name = _fold(_role_name(section))
+    id_matches = bool(requester_id and section_id and requester_id == section_id)
+    name_matches = bool(requester_name and section_name and _fold(requester_name) == section_name)
+    if id_matches or (not requester_id and name_matches):
+        return section
+
+    return (
+        "Họ tên: Không xác định\n"
+        "Số CCCD/CMND: Không xác định\n"
+        "Ngày sinh: Không xác định\n"
+        "Giới tính: Không xác định\n"
+        "Dân tộc: Không xác định\n"
+        "Quốc tịch: Không xác định\n"
+        "Nguồn: Không xác định\n"
+        "Căn cứ phân vai: Kết quả agent không khớp mỏ neo người yêu cầu trên cổng.\n"
+        "Vai trò đồng thời: không xác định"
+    )
+
+
+def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
+    """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất."""
+    result = dict(sections)
+
+    # Cha/mẹ phải phù hợp giới tính khi OCR đã xác định rõ.
+    if _fold(_labeled_value(result.get("cha", ""), "Giới tính")) in {"nu", "female"}:
+        result["cha"] = _unknown_role_section("Ứng viên cha có giới tính Nữ.")
+    if _fold(_labeled_value(result.get("me", ""), "Giới tính")) in {"nam", "male"}:
+        result["me"] = _unknown_role_section("Ứng viên mẹ có giới tính Nam.")
+    if "da chet" in _fold(_labeled_value(result.get("con", ""), "Trạng thái")):
+        result["con"] = _unknown_role_section("Người được đăng ký lại khai sinh không thể là người đã chết.")
+
+    # Một người không thể vừa là con vừa là cha/mẹ.
+    child_id = _role_id(result.get("con", ""))
+    child_name = _fold(_role_name(result.get("con", "")))
+    for tag in ("cha", "me"):
+        parent_id = _role_id(result.get(tag, ""))
+        parent_name = _fold(_role_name(result.get(tag, "")))
+        same_id = bool(child_id and parent_id and child_id == parent_id)
+        same_name = bool(child_name and parent_name and child_name == parent_name)
+        if same_id or same_name:
+            result[tag] = _unknown_role_section("Trùng chính người đã được phân vai là con.")
+
+    # Nếu có đủ năm sinh, cha/mẹ phải thuộc thế hệ trước con ít nhất khoảng 15 năm.
+    child_year = _role_year(result.get("con", ""))
+    if child_year:
+        for tag in ("cha", "me"):
+            parent_year = _role_year(result.get(tag, ""))
+            if parent_year and child_year - parent_year < 15:
+                result[tag] = _unknown_role_section(
+                    "Năm sinh không tạo được khoảng cách thế hệ cha/mẹ - con hợp lý."
+                )
+    return result
+
+
+def _render_context(raw: str, options: dict | None, documents: list[dict]) -> str:
+    """Kiểm tra tất định kết quả LLM rồi ghim vào prompt trích xuất."""
+    sections = {tag: _section(raw, tag) for tag in _FAMILY_TAGS}
+
+    # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
+    if not any(not _is_unknown(s) for s in sections.values()):
+        sections = _repair_family_by_generation(raw, sections, documents)
+
+    if not any(not _is_unknown(s) for s in sections.values()):
+        return ""
+
+    sections = _validate_family_sections(sections)
+
+    # Người yêu cầu: kiểm tra khớp mỏ neo cổng.
+    requester_raw = _section(raw, "nguoi_yeu_cau")
+    requester = _validated_requester(requester_raw, options)
+
+    # Đăng ký khai sinh trước đây: Python tự kiểm tra loại tài liệu (không tin LLM).
+    valid_sources = _valid_birth_source_names(documents)
+    registration_value = "Có" if valid_sources else "Không"
+    source_value = ", ".join(valid_sources) if valid_sources else "Không có"
+
+    return (
+        "\n\n<phan_vai_da_xac_dinh>\n"
+        "Dùng đúng các vai dưới đây; không tự đổi người giữa Subject/Father/Mother.\n"
+        "<nguoi_yeu_cau>\n"
+        f"{requester}\n"
+        "</nguoi_yeu_cau>\n"
+        "<con>\n"
+        f"{sections.get('con') or _unknown_role_section('Agent không xác định được.')}\n"
+        "</con>\n"
+        "<me>\n"
+        f"{sections.get('me') or _unknown_role_section('Agent không xác định được.')}\n"
+        "</me>\n"
+        "<cha>\n"
+        f"{sections.get('cha') or _unknown_role_section('Agent không xác định được.')}\n"
+        "</cha>\n"
+        "<dang_ky_khai_sinh_truoc_day>\n"
+        f"Có tài liệu khai sinh hợp lệ: {registration_value}\n"
+        f"Nguồn: {source_value}\n"
+        "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
+        "</dang_ky_khai_sinh_truoc_day>\n"
+        "Subject_* chỉ thuộc <con>; Mother_* chỉ thuộc <me>; Father_* chỉ thuộc <cha>. "
+        "Nếu một khối ghi Không xác định thì bỏ toàn bộ field của vai đó. "
+        "PreviousRegistration_* chỉ được trả khi khối đăng ký khai sinh trước đây ghi Có.\n"
+        "</phan_vai_da_xac_dinh>"
+    )
+
+
+def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
+    section = _section(context, tag)
+    if _is_unknown(section):
+        return False
+
+    expected_name = _fold(_role_name(section))
+    actual_name = _fold(fields_by_name.get(_FULL_NAME_FIELD[tag]))
+    expected_id = _role_id(section)
+    actual_id = _digits(fields_by_name.get(_ID_FIELD.get(tag, "")))
+
+    if expected_id and actual_id:
+        return expected_id == actual_id
+    return bool(expected_name and actual_name and expected_name == actual_name)
+
+
+def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
+    """Không cho field của một người chảy sang vai khác sau bước trích xuất."""
+    if not context:
+        return fields
+
+    values = {
+        field.get("name"): field.get("value")
+        for field in fields
+        if field.get("name")
+    }
+    invalid_prefixes = {
+        _ROLE_PREFIX[tag]
+        for tag in _FAMILY_TAGS
+        if not _identity_matches(values, context, tag)
+    }
+    registration = _section(context, "dang_ky_khai_sinh_truoc_day")
+    has_birth_source = _fold(
+        _labeled_value(registration, "Có tài liệu khai sinh hợp lệ")
+    ) == "co"
+
+    result: list[dict] = []
+    for field in fields:
+        name = str(field.get("name") or "")
+        if any(name.startswith(prefix) for prefix in invalid_prefixes):
+            continue
+        evidence = _CONTEXT_EVIDENCE_FIELDS.get(name)
+        if evidence:
+            tag, label = evidence
+            value = _fold(_labeled_value(_section(context, tag), label))
+            if not value or "khong xac dinh" in value or value == "khong co":
+                continue
+        if name.startswith("PreviousRegistration_") and not has_birth_source:
+            continue
+        result.append(field)
+    return result
 
 
 async def build_context(documents: list[dict], options: dict | None = None) -> str:
-    """Context builder cho runner: OCR docs -> đoạn context ghim vai trò (rỗng nếu không suy được)."""
+    """OCR docs -> text phân vai đã qua kiểm tra tất định."""
     if not documents:
         return ""
     messages = [
-        {"role": "system", "content": _ROSTER_PROMPT + _requester_hint(options or {})},
-        {"role": "user", "content": _build_user(documents)},
+        {"role": "system", "content": _ROLE_PROMPT},
+        {"role": "user", "content": _build_user_content(documents, options)},
     ]
     raw = await client.chat(
         messages,
@@ -295,6 +589,4 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    roster = client.extract_json_block(raw)
-    roster = _apply_gate(roster, options)
-    return _render(roster)
+    return _render_context(raw, options, documents)

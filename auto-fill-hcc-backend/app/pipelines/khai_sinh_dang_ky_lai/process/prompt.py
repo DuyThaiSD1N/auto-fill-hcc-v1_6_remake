@@ -54,6 +54,8 @@ Nhận diện từng tài liệu theo nội dung OCR trước khi trích xuất:
 <role_assignment>
 Quy trình gán vai trò:
 
+0. Nếu prompt có khối <phan_vai_da_xac_dinh>, BẮT BUỘC dùng đúng <con>/<me>/<cha> trong khối đó;
+   khối nào ghi "Không xác định" thì không trả field của vai ấy.
 1. Trích tất cả người xuất hiện trong hồ sơ và gom thông tin chắc chắn thuộc cùng một người.
 2. CHỈ gán 3 vai: Subject = người được đăng ký lại khai sinh; Father/Mother = cha/mẹ của Subject.
    KHÔNG trích người yêu cầu (cổng đã điền sẵn).
