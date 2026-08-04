@@ -8,6 +8,7 @@ from typing import Any
 
 from app.pipelines.dang_ky_kinh_doanh.process.schema import DEFAULT_PAGE, PAGES
 from app.pipelines._shared.formatting import normalize_date
+from app.pipelines._shared.area_remap import remap_area
 
 
 def _by_name(fields: list[dict]) -> dict[str, Any]:
@@ -137,12 +138,19 @@ def _clean_business_code(value: Any) -> str:
 
 def _addr(value: Any) -> dict[str, str]:
     if isinstance(value, dict):
-        return {
+        out = {
             "quocGia": _compact_text(value.get("quocGia") or value.get("quoc_gia") or "Việt Nam"),
             "tinh": _compact_text(value.get("tinh") or value.get("province")),
             "xa": _clean_ward(value.get("xa") or value.get("phuongXa") or value.get("ward")),
             "diaChi": _compact_text(value.get("diaChi") or value.get("dia_chi") or value.get("address")),
         }
+        # Normalize phường/xã theo bảng sáp nhập đơn vị hành chính
+        remapped = remap_area(out)
+        if remapped:
+            # _clean_ward lại vì remap_area có thể trả tên có tiền tố (vd "Phường Cam Ly")
+            xa_remapped = _clean_ward(remapped.get("xa") or out.get("xa") or "")
+            out = {**remapped, "xa": xa_remapped}
+        return out
     text = _compact_text(value)
     if not text:
         return {}
@@ -358,7 +366,13 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input", _proper_name(values.get("NguoiNop_HoTen") or values.get("ChuHo_HoTen")))
         add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("NguoiNop_NgaySinh") or values.get("ChuHo_NgaySinh")))
         add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("NguoiNop_SoDinhDanh") or values.get("ChuHo_SoDinhDanh"))
-        add_address("ctl00$C$PERSCtl$ADDRCCtl", values.get("NguoiNop_DiaChi") or values.get("ChuHo_DiaChi"))
+        # Địa chỉ người nộp: ưu tiên giấy đề nghị HKD → CCCD → địa chỉ chủ hộ trên giấy đề nghị
+        nguoi_nop_dia_chi = (
+            values.get("NguoiNop_DiaChi")
+            or values.get("NguoiNop_DiaChiCCCD")
+            or values.get("ChuHo_DiaChi")
+        )
+        add_address("ctl00$C$PERSCtl$ADDRCCtl", nguoi_nop_dia_chi)
         # SĐT/email người nộp do nút "Sao chép thông tin đăng ký tài khoản" trên cổng tự điền.
         # Không lấy contact chủ hộ làm dự phòng vì hai vai trò có thể là hai người khác nhau.
 

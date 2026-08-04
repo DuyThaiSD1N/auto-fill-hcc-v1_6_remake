@@ -1,0 +1,42 @@
+// Lịch sử cập nhật extension — SỬA TAY khi phát hành bản mới:
+//   thêm 1 mục lên ĐẦU mảng, đổi "version" cho khớp manifest.json (version mới nhất = đang dùng).
+// Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
+const APP_RELEASES = [
+  {
+    version: "1.9",
+    date: "4/8/2026",
+    items: [
+      "Thêm tính năng tải ảnh giấy tờ bằng điện thoại qua mã QR: quét mã, chụp hoặc chọn ảnh trên điện thoại, ảnh tự về extension.",
+    ],
+  },
+  {
+    version: "1.8",
+    date: "3/8/2026",
+    items: [
+      "Đăng ký hộ kinh doanh: hỗ trợ thêm thủ tục Thay đổi nội dung đăng ký và Chấm dứt hoạt động hộ kinh doanh.",
+      "Hỗ trợ cổng dịch vụ công Bộ Nông nghiệp và Môi trường: điền và đính kèm hồ sơ.",
+      "Hỗ trợ đính kèm hồ sơ cho thủ tục cấp Giấy chứng nhận an toàn thực phẩm.",
+      "Đọc chính xác hơn số điện thoại và email trên giấy tờ.",
+    ],
+  },
+  {
+    version: "1.7",
+    date: "30/7/2026",
+    items: [
+      "Thêm lịch sử cập nhật & nội dung thay đổi theo từng phiên bản.",
+      "Đăng ký hộ kinh doanh: bổ sung mô tả ngành nghề chi tiết nếu có",
+      "Đăng ký hộ kinh doanh: điền các thông tin đầy đủ hơn như: số lao động, phương pháp tính thuế",
+      "Cải thiện việc điền các thông tin về tỉnh và phường/xã",
+      "Cải thiện tốc độ quét và xử lý hồ sơ.",
+    ],
+  },
+  {
+    version: "1.6",
+    date: "26/7/2026",
+    items: [
+      "Bổ sung nhận diện và điền nhanh thông tin hồ sơ.",
+      "Cải thiện độ chính xác khi đọc giấy tờ viết tay.",
+      "Tối ưu tốc độ quét và nhập dữ liệu lên biểu mẫu.",
+    ],
+  }
+];

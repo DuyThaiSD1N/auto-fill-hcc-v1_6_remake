@@ -79,8 +79,18 @@ FIELDS: list[dict] = [
     {
         "name": "NguoiNop_DiaChi",
         "desc": (
-            "Địa chỉ người nộp hồ sơ, object {quocGia,tinh,xa,diaChi}; nếu người nộp là chủ hộ thì dùng địa chỉ "
-            "cá nhân của chủ hộ trên Giấy đề nghị, nếu người nộp khác chủ hộ thì lấy theo giấy ủy quyền."
+            "Địa chỉ người nộp hồ sơ lấy từ GIẤY ĐỀ NGHỊ ĐĂNG KÝ HỘ KINH DOANH, object {quocGia,tinh,xa,diaChi}; "
+            "nếu người nộp là chủ hộ thì dùng địa chỉ cá nhân của chủ hộ trên Giấy đề nghị (ChuHo_DiaChi); "
+            "nếu người nộp khác chủ hộ thì lấy theo giấy ủy quyền. "
+            "CHỈ lấy từ giấy đề nghị/ủy quyền — KHÔNG lấy từ CCCD."
+        ),
+    },
+    {
+        "name": "NguoiNop_DiaChiCCCD",
+        "desc": (
+            "Địa chỉ thường trú của người nộp hồ sơ lấy từ CCCD/CMND của người nộp (dòng 'Nơi thường trú'), "
+            "object {quocGia,tinh,xa,diaChi}. CHỈ trả khi hồ sơ CÓ CCCD của người nộp. "
+            "Dùng làm DỰ PHÒNG khi NguoiNop_DiaChi không đọc được từ giấy đề nghị."
         ),
     },
 ]
@@ -89,7 +99,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("TruSo_DiaChi", "ChuHo_DiaChi", "Thue_DiaChiNhanThongBao", "NguoiNop_DiaChi"):
+for _name in ("TruSo_DiaChi", "ChuHo_DiaChi", "Thue_DiaChiNhanThongBao", "NguoiNop_DiaChi", "NguoiNop_DiaChiCCCD"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 for _name in ("ChuHo_NgaySinh", "Thue_NgayBatDau", "NguoiNop_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"

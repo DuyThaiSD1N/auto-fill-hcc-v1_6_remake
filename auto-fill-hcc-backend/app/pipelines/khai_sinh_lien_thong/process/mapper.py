@@ -172,12 +172,15 @@ def enrich(fields: list[dict]) -> list[dict]:
         add(f"{prefix}Ten" if prefix else "Ten", ten)
 
     child_name = _clean_child_name(
-        values.get("Gcs_HoTenCon"),
+        values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon"),
         values.get("CccdNu_HoTen"),
     )
     has_child = bool(child_name) or any(
         name in values
         for name in (
+            "Tk_NgaySinhCon",
+            "Tk_GioiTinhCon",
+            "Tk_DanTocCon",
             "Gcs_NgaySinhCon",
             "Gcs_GioiTinhCon",
             "Gcs_DanTocCon",
@@ -189,12 +192,18 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     if has_child:
         add_name("", child_name)
-        add("NgaySinh", values.get("Gcs_NgaySinhCon"))
-        add("GioiTinh", values.get("Gcs_GioiTinhCon"))
-        # Dân tộc con: ưu tiên giấy chứng sinh; nếu không có thì SUY LUẬN theo cha/mẹ (bôi vàng):
-        #  1) Cha và mẹ CÙNG dân tộc → con theo dân tộc đó (chắc chắn nhất).
-        #  2) Con mang họ cha → theo dân tộc cha; con mang họ mẹ → theo dân tộc mẹ.
-        dan_toc_con = values.get("Gcs_DanTocCon")
+        # Tờ khai ưu tiên hơn giấy chứng sinh cho tất cả thông tin con
+        add("NgaySinh", values.get("Tk_NgaySinhCon") or values.get("Gcs_NgaySinhCon"))
+        add("GioiTinh", values.get("Tk_GioiTinhCon") or values.get("Gcs_GioiTinhCon"))
+        # Dân tộc con: ưu tiên tờ khai, rồi giấy chứng sinh; nếu không có thì SUY LUẬN theo cha/mẹ (bôi vàng):
+        #  1) Tờ khai ghi rõ dân tộc con → dùng (chính xác nhất).
+        #  2) Giấy chứng sinh ghi rõ dân tộc con → dùng.
+        #  3) Cha và mẹ CÙNG dân tộc → con theo dân tộc đó.
+        #  4) Con mang họ cha → theo dân tộc cha.
+        #  5) Con mang họ mẹ → theo dân tộc mẹ.
+        #  6) Chỉ có dân tộc cha (không biết dân tộc mẹ) → theo dân tộc cha.
+        #  7) Chỉ có dân tộc mẹ (không biết dân tộc cha) → theo dân tộc mẹ.
+        dan_toc_con = values.get("Tk_DanTocCon") or values.get("Gcs_DanTocCon")
         dan_toc_suy_luan = False
         if not dan_toc_con:
             dt_cha = values.get("CccdNam_DanToc")
@@ -203,12 +212,23 @@ def enrich(fields: list[dict]) -> list[dict]:
             ho_cha = _fold(_first_token(values.get("CccdNam_HoTen")))
             ho_me = _fold(_first_token(values.get("CccdNu_HoTen")))
             if dt_cha and dt_me and _fold(dt_cha) == _fold(dt_me):
+                # Bước 2: cùng dân tộc
                 dan_toc_con = dt_cha
                 dan_toc_suy_luan = True
-            elif ho_con and ho_con == ho_cha:
+            elif ho_con and ho_con == ho_cha and dt_cha:
+                # Bước 3: họ theo cha
                 dan_toc_con = dt_cha
                 dan_toc_suy_luan = True
-            elif ho_con and ho_con == ho_me:
+            elif ho_con and ho_con == ho_me and dt_me:
+                # Bước 4: họ theo mẹ
+                dan_toc_con = dt_me
+                dan_toc_suy_luan = True
+            elif dt_cha:
+                # Bước 5: chỉ biết dân tộc cha → mặc định theo cha
+                dan_toc_con = dt_cha
+                dan_toc_suy_luan = True
+            elif dt_me:
+                # Bước 6: chỉ biết dân tộc mẹ
                 dan_toc_con = dt_me
                 dan_toc_suy_luan = True
         add("MaDanToc", normalize_ethnic(dan_toc_con), default=dan_toc_suy_luan)
@@ -250,16 +270,23 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("ChaMaQuocGia", "Việt Nam")
         add("ChaDiaChi", _area(values.get("CccdNam_NoiCuTru")))
 
-    # Quê quán CON (QqDiaChi) — lấy theo CCCD cha:
+    # Quê quán CON (QqDiaChi) — lấy theo thứ tự ưu tiên:
     #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
-    #  2) Quê quán trên CCCD cha (CccdNam_QueQuan).
+    #  2) Quê quán trên CCCD cha (CccdNam_QueQuan) — CCCD cũ có dòng "Quê quán".
+    #  3) Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới của cha (CccdNam_NoiDangKyKhaiSinh).
+    #  4) Nơi cư trú của cha (CccdNam_NoiCuTru) — fallback cuối cùng theo tục lệ
+    #     quê quán con = quê cha.
     #  Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
     if tk_que_quan:
         add("QqMaQuocGia", "Việt Nam")
         add("QqDiaChi", tk_que_quan)
     else:
-        que_quan_cha = _area(values.get("CccdNam_QueQuan"))
+        que_quan_cha = (
+            _area(values.get("CccdNam_QueQuan"))
+            or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
+            or _area(values.get("CccdNam_NoiCuTru"))
+        )
         if que_quan_cha:
             add("QqMaQuocGia", "Việt Nam")
             add("QqDiaChi", que_quan_cha)

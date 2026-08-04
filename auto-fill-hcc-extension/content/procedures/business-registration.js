@@ -164,10 +164,14 @@ function detectBusinessChangeStage() {
 }
 
 function detectBusinessProcedureHint() {
-  const detected = detectBusinessChangeStage();
   const registrationType = foldBusinessPageText(
     document.getElementById("ctl00_C_INFOCtl_DOCUMENT_TYPE_IDFld")?.textContent || ""
   );
+  // Metadata hồ sơ là bằng chứng mạnh nhất. Ở trang tổng quan "Khối dữ liệu" chưa có pageKey;
+  // nếu đợi breadcrumb trang con, popup sẽ giữ nhầm workflow thay đổi từ session trước.
+  if (registrationType.includes("thanh lap moi")) return "create";
+
+  const detected = detectBusinessChangeStage();
   if (detected.stage === "main" && detected.pageKey === "cham-dut-hoat-dong") {
     return "dissolution";
   }
@@ -186,7 +190,9 @@ function detectBusinessProcedureHint() {
     const confirmedType = foldBusinessPageText(
       document.getElementById("ctl00_C_myWizard_InfoChnType")?.textContent || ""
     );
+    if (confirmedType.includes("thanh lap moi")) return "create";
     if (confirmedType.includes("cap lai")) return "reissue";
+    if (confirmedType.includes("thay doi")) return "change";
   }
   // Bước tìm kiếm dùng chung cho CHN và REI, HTML không mang loại đăng ký đã chọn. Không được
   // tự khóa về thủ tục thay đổi; popup sẽ giữ lựa chọn tay hiện tại hoặc yêu cầu người dùng chọn.
@@ -205,7 +211,6 @@ function detectBusinessProcedureHint() {
     return "dissolution";
   }
   if (registrationType.includes("cap lai")) return "reissue";
-  if (page.pageKey && registrationType.includes("thanh lap moi")) return "create";
   if (page.pageKey && registrationType.includes("thay doi")) return "change";
   if (page.pageKey && registrationType.includes("cap lai")) return "reissue";
   return "";

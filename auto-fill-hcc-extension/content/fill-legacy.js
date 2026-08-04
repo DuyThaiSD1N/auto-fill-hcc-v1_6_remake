@@ -301,11 +301,27 @@ function fillRadio(container, f) {
 const isPlaceholderOpt = (t) =>
   !t || t.includes("không tìm thấy") || t === "-- chọn --" || t === "-- chon --";
 
+// Khớp option địa bàn không phân biệt dấu. Một số form legacy tự lọc option
+// theo chuỗi có dấu, trong khi OCR có thể đọc "Hướng" thay vì "Hương".
+// Chuẩn hóa cả dấu gạch để tên phường sáp nhập có hậu tố "- Đà Lạt" vẫn khớp.
+function foldLegacyChoice(value) {
+  return String(value || "")
+    .replace(/Đ/g, "D")
+    .replace(/đ/g, "d")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s*[-–—‐‑]+\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 async function pickInWidget(root, value) {
   const header = root.querySelector(".input-field-select");
   if (!header) return false;
   header.click();
   const want = norm(value);
+  const foldedWant = foldLegacyChoice(value);
   const getOpts = () => {
     const box = root.querySelector(".input-field-select-options");
     return box ? Array.from(box.querySelectorAll("div")) : [];
@@ -313,7 +329,12 @@ async function pickInWidget(root, value) {
   const match = () => {
     const opts = getOpts().filter((o) => !isPlaceholderOpt(norm(o.textContent)));
     return opts.find((o) => norm(o.textContent) === want) ||
-           opts.find((o) => norm(o.textContent).includes(want));
+           opts.find((o) => norm(o.textContent).includes(want)) ||
+           opts.find((o) => {
+             const foldedOption = foldLegacyChoice(o.textContent);
+             return foldedOption === foldedWant ||
+               foldedOption.includes(foldedWant) || foldedWant.includes(foldedOption);
+           });
   };
 
   // Chờ option thật xuất hiện (list có thể load AJAX sau khi mở)
@@ -331,6 +352,12 @@ async function pickInWidget(root, value) {
       await waitFor(() => match() ||
         getOpts().some((o) => norm(o.textContent).includes("không tìm thấy")), 2000);
       target = match();
+      if (!target && foldedWant !== want) {
+        setNativeValue(search, foldedWant);
+        await waitFor(() => match() ||
+          getOpts().some((o) => foldLegacyChoice(o.textContent).includes("khong tim thay")), 2000);
+        target = match();
+      }
       if (!target) { setNativeValue(search, ""); await sleep(400); target = match(); }
     } else {
       await waitFor(() => match(), 1500);

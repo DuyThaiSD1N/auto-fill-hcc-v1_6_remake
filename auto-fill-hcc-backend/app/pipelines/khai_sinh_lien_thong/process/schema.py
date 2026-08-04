@@ -13,6 +13,10 @@ FIELDS: list[dict] = [
     {"name": "Gcs_NoiSinh", "desc": "Nơi sinh con lấy Ở DÒNG 'Tại:' trên GIẤY CHỨNG SINH (BẮT BUỘC khi có giấy chứng sinh, KHÔNG bỏ trống), object {tinh,xa,diaChi}; diaChi là TÊN ĐẦY ĐỦ cơ sở y tế (bệnh viện tuyến tỉnh kèm tên tỉnh). Chỉ trả xa khi OCR hoặc nguồn xác định đúng xã/phường của cơ sở; không lấy xã từ ví dụ của tỉnh khác. Nếu có tờ khai thì nơi sinh ưu tiên Tk_NoiSinh (xem mục B)."},
     {"name": "Tk_QueQuanCon", "desc": "QUÊ QUÁN của CON (người được khai sinh) lấy Ở DÒNG 'Quê quán' trong TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,xa,diaChi} (tách địa chỉ theo mục F). CHỈ có khi hồ sơ có tờ khai đăng ký khai sinh ghi rõ quê quán con; không có thì để trống."},
     {"name": "Tk_NoiSinh", "desc": "Nơi sinh con lấy Ở DÒNG 'Nơi sinh' trong TỜ KHAI ĐĂNG KÝ KHAI SINH (nếu có), object {tinh,xa,diaChi}. Trích NGUYÊN VĂN kể cả số nhà/đường/phố (vd diaChi='Bệnh viện Đa khoa Lâm Đồng, số 01 Phạm Ngọc Thạch'). CHỈ khi có tờ khai; không thì để trống. Nơi sinh điền vào form ưu tiên field này hơn Gcs_NoiSinh."},
+    {"name": "Tk_HoTenCon", "desc": "Họ tên đầy đủ của người được khai sinh (con) lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Họ, chữ đệm và tên khai sinh' hoặc 'Tên khai sinh'. CHỈ trả khi tờ khai ghi rõ; KHÔNG lấy từ giấy chứng sinh."},
+    {"name": "Tk_NgaySinhCon", "desc": "Ngày sinh của người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dd/mm/yyyy. CHỈ trả khi tờ khai ghi rõ."},
+    {"name": "Tk_GioiTinhCon", "desc": 'Giới tính người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH: "Nam" hoặc "Nữ". CHỈ trả khi tờ khai ghi rõ.'},
+    {"name": "Tk_DanTocCon", "desc": "Dân tộc người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Dân tộc' trong khối thông tin người được khai sinh (KHÔNG phải dân tộc cha/mẹ). CHỈ trả khi tờ khai ghi rõ dân tộc của chính đứa trẻ."},
 
     # Father facts from CCCD/CMND Nam.
     {"name": "CccdNam_HoTen", "desc": "Họ tên CHA: ưu tiên CCCD/CMND giới tính Nam; nếu không có CCCD của cha thì lấy tên chồng/bên nam trên giấy chứng nhận kết hôn. Không lấy từ giấy chứng sinh."},
@@ -20,7 +24,8 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh trên CCCD Nam, dd/mm/yyyy."},
     {"name": "CccdNam_DanToc", "desc": "Dân tộc của CHA. Thẻ CCCD/Căn cước (nhất là mẫu mới) thường KHÔNG in dân tộc → BẮT BUỘC lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH (khối cha) hoặc GIẤY CN KẾT HÔN (mục chồng/bên nam), KỂ CẢ khi cha đã có CCCD; đối chiếu đúng người. Chỉ để trống khi không giấy nào ghi."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch trên CCCD Nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nam, object {tinh,xa,diaChi} nếu có."},
+    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nam, object {tinh,xa,diaChi} nếu có. Với thẻ CĂN CƯỚC mới (tiêu đề 'CĂN CƯỚC'/'IDENTITY CARD', không có dòng 'Quê quán') thì để TRỐNG — KHÔNG dùng 'Nơi đăng ký khai sinh' làm quê quán."},
+    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'/'Place of birth'), object {tinh,xa,diaChi}. CHỈ trả khi thẻ là CĂN CƯỚC mới CÓ dòng này; KHÔNG trả cho CCCD cũ có 'Quê quán'."},
     {"name": "CccdNam_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nam, object {tinh,xa,diaChi}."},
 
     # Mother facts from CCCD/CMND Nu.
@@ -56,9 +61,9 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
-for _name in ("Gcs_NgaySinhCon", "CccdNam_NgaySinh", "CccdNu_NgaySinh", "GcnKetHon_NgayCap"):
+for _name in ("Gcs_NgaySinhCon", "CccdNam_NgaySinh", "CccdNu_NgaySinh", "GcnKetHon_NgayCap", "Tk_NgaySinhCon"):
     COMPACT_COMP_BY_NAME[_name] = "date"
-for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "CccdNam_QueQuan", "CccdNam_NoiCuTru", "CccdNu_NoiCuTru"):
+for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "CccdNam_QueQuan", "CccdNam_NoiDangKyKhaiSinh", "CccdNam_NoiCuTru", "CccdNu_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "diachi"
 
 UI_COMP_BY_NAME = {

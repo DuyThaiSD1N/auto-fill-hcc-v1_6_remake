@@ -76,6 +76,8 @@
       </label>
       <label for="fileInput" class="upload-label">+ Thêm file ảnh/PDF</label>
       <input id="fileInput" type="file" multiple accept="image/*,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+      <button id="phoneUploadBtn" type="button" class="upload-label upload-label-alt" title="Tạo mã QR để chụp/chọn ảnh từ điện thoại — ảnh tự về danh sách này">📱 Thêm ảnh từ điện thoại (QR)</button>
+      <div id="qrCard" class="qr-card" hidden></div>
       <ul id="fileList" class="file-list"></ul>
       <label id="splitModeRow" class="checkbox-row" style="display:none" title="Chỉ áp dụng cho chứng thực. Bật: mỗi tài liệu tạo 1 hồ sơ riêng (mở tab mới cho từng file).">
         <input id="splitModeToggle" type="checkbox">

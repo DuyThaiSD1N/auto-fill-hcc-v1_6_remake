@@ -23,7 +23,7 @@ const BUBBLE_ID = "autofill-hcc-bubble";
 const IFRAME_ID = "autofill-hcc-iframe";
 const IS_TOP_FRAME = window === window.top;
 const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-const APP_VERSION_LABEL = "1.8 · 3/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+const APP_VERSION_LABEL = "1.9 · 4/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
 // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
 // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
 let CURRENT_TAB_ID = null;

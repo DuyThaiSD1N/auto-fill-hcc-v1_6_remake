@@ -66,6 +66,9 @@ _ETHNIC_MAP: dict[str, str] = {
     # ===== HOA =====
     "hoa": "Hoa",
     "nguoi hoa": "Hoa",
+    "trung": "Hoa",
+    "trung hoa": "Hoa",
+    "hoa kieu": "Hoa",
 
     # ===== DAO =====
     "dao": "Dao",
@@ -101,11 +104,15 @@ _ETHNIC_MAP: dict[str, str] = {
     "k h ro": "Cơ Ho",
     "khro": "Cơ Ho",
     "k hro": "Cơ Ho",
-    # Co Ho (Cill) - nhom Cill la mot nhanh cua Co Ho
-    "cill": "Cơ Ho (Cill)",
-    "co ho cill": "Cơ Ho (Cill)",
-    "kho cill": "Cơ Ho (Cill)",
     "coho": "Cơ Ho",
+    "cill": "Cơ Ho",
+    "cil": "Cơ Ho",
+    "co ho cill": "Cơ Ho",
+    "co ho cil": "Cơ Ho",
+    "kho cill": "Cơ Ho",
+    "kho cil": "Cơ Ho",
+    "coho cill": "Cơ Ho",
+    "coho cil": "Cơ Ho",
 
     # ===== XO DANG =====
     "xo dang": "Xơ Đăng",

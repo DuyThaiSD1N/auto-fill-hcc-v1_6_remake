@@ -391,6 +391,47 @@ button:disabled { background: #9e9e9e; cursor: not-allowed; }
 
 .upload-label:hover { background: #e3f2fd; }
 
+/* Biến thể nút "Thêm ảnh từ điện thoại" (là <button> nên cần reset font/width) — tông xanh lá. */
+.upload-label-alt {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;   /* nhỏ hơn nút "+ Thêm file" (14px) — đây là cách phụ, đỡ tranh chú ý */
+  border-color: #12a06a;
+  color: #0d7d52;
+  background: none;
+}
+.upload-label-alt:hover { background: #eafaf1; }
+
+/* Card mã QR tải ảnh từ điện thoại — bố cục NGANG: QR trái + hướng dẫn/trạng thái phải. */
+.qr-card {
+  position: relative;
+  border: 1px solid #c9ead9;
+  background: #f5fbf7;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.qr-card .qr-close {
+  position: absolute; top: 3px; right: 4px; z-index: 2;
+  width: 20px; height: 20px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: #8a94a6;
+  font-size: 16px; line-height: 20px; text-align: center; cursor: pointer;
+}
+.qr-card .qr-close:hover { background: #e1efe8; color: #0d7d52; }
+.qr-card .qr-body { display: flex; align-items: center; gap: 12px; }
+.qr-card .qr-img {
+  flex: 0 0 auto;
+  width: 112px; height: 112px; image-rendering: pixelated;
+  background: #fff; border: 1px solid #e3e8f0; border-radius: 6px;
+}
+/* padding-right chừa chỗ cho nút × ở góc → dòng chữ đầu KHÔNG chạy lấn dưới nút. */
+.qr-card .qr-info { flex: 1 1 auto; min-width: 0; padding-right: 18px; }
+.qr-card .qr-cap { font-size: 11.5px; color: #5b7089; line-height: 1.45; }
+.qr-card .qr-stat { font-size: 11.5px; font-weight: 600; color: #0d7d52; margin-top: 8px; }
+
+/* Nhãn 📱 cho ảnh tải từ điện thoại trong danh sách file */
+.file-list .from-phone { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }
+
 .checkbox-row {
   display: flex;
   align-items: center;

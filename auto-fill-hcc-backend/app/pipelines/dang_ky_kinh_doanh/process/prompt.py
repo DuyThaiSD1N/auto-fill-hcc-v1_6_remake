@@ -15,6 +15,8 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
   + Ví dụ: nếu Giấy đề nghị có "Nơi ở hiện tại" đọc được, còn CCCD ghi một nơi cư trú khác, thì ChuHo_DiaChi phải lấy theo "Nơi ở hiện tại" trên Giấy đề nghị.
   + NguoiNop_DiaChi: nếu người nộp chính là chủ hộ thì dùng cùng địa chỉ cá nhân đã chọn cho ChuHo_DiaChi.
     Nếu có giấy ủy quyền và người nộp khác chủ hộ thì lấy địa chỉ của người được ủy quyền trên giấy ủy quyền.
+    CHỈ lấy NguoiNop_DiaChi từ GIẤY ĐỀ NGHỊ hoặc GIẤY ỦY QUYỀN — KHÔNG lấy từ CCCD.
+  + NguoiNop_DiaChiCCCD: nếu hồ sơ CÓ CCCD của người nộp hồ sơ, lấy dòng "Nơi thường trú" trên CCCD đó vào field này. Dùng làm dự phòng khi giấy đề nghị không ghi địa chỉ người nộp.
 - PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
   + ChuHo_DiaChi/NguoiNop_DiaChi = địa chỉ cá nhân.
   + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".

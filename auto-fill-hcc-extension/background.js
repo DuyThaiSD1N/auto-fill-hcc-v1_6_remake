@@ -65,6 +65,28 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // giữ kênh cho phản hồi async
   }
 
+  // Tải 1 ảnh (nhị phân) từ BE → dataURL base64. apiFetch trả text làm HỎNG nhị phân,
+  // nên ảnh phiên QR dùng riêng handler này. GET mở (guard bằng sid bí mật, không cần token).
+  if (msg?.action === "fetchImageDataUrl") {
+    (async () => {
+      try {
+        const res = await fetch(msg.url, { headers: msg.headers || {} });
+        if (!res.ok) return sendResponse({ error: `HTTP ${res.status}` });
+        const blob = await res.blob();
+        const dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = () => reject(r.error);
+          r.readAsDataURL(blob);
+        });
+        sendResponse({ ok: true, dataUrl, type: blob.type });
+      } catch (e) {
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+
   // ===== Điều phối tách hồ sơ (split) =====
   if (msg?.action === "openDossierTabAndAttach") {
     (async () => {

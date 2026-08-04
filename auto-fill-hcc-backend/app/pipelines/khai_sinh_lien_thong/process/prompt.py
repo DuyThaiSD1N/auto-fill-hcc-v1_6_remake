@@ -46,9 +46,17 @@ EXTRA_RULES = """
   đã biết của một bệnh viện thuộc tỉnh khác; nếu chỉ biết tên bệnh viện và tỉnh thì để xa trống.
 - Tk_QueQuanCon = QUÊ QUÁN của CON lấy ở dòng "Quê quán" trong TỜ KHAI ĐĂNG KÝ KHAI SINH (nếu hồ sơ có tờ khai). Tách địa chỉ theo mục F. Đây là quê quán của ĐỨA TRẺ, KHÔNG phải nơi cư trú/quê quán của cha mẹ. Không có tờ khai hoặc tờ khai không ghi quê quán → để TRỐNG.
 
+## B5. Thông tin con từ TỜ KHAI ĐĂNG KÝ KHAI SINH (Tk_*)
+Khi hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH (tiêu đề có "TỜ KHAI ĐĂNG KÝ KHAI SINH"), BẮT BUỘC trích thêm các field sau từ khối "NGƯỜI ĐƯỢC KHAI SINH" / "KHAI SINH CHO":
+- Tk_HoTenCon = họ tên đầy đủ người được khai sinh (dòng "Họ, chữ đệm và tên khai sinh" hoặc "Tên khai sinh"). Ưu tiên hơn Gcs_HoTenCon khi có.
+- Tk_NgaySinhCon = ngày sinh, dd/mm/yyyy. Ưu tiên hơn Gcs_NgaySinhCon khi có.
+- Tk_GioiTinhCon = "Nam" hoặc "Nữ". Ưu tiên hơn Gcs_GioiTinhCon khi có.
+- Tk_DanTocCon = dân tộc người được khai sinh (dòng "Dân tộc" trong khối CON — KHÔNG phải dòng "Dân tộc" của cha/mẹ). Ưu tiên hơn suy luận từ cha/mẹ.
+Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu tiên Tk_* trước.
+
 # ═══ C. THÔNG TIN CHA (CccdNam_*) ═══
 - CccdNam_* ưu tiên lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính "Nam" (dân tộc: xem mục E). NẾU KHÔNG CÓ CCCD/CMND nào của cha thì LẤY THÔNG TIN CHA TỪ block "chồng"/"bên nam" của GIẤY CHỨNG NHẬN KẾT HÔN: họ tên (CccdNam_HoTen), ngày sinh (CccdNam_NgaySinh), dân tộc (CccdNam_DanToc), quốc tịch (CccdNam_QuocTich), nơi cư trú (CccdNam_NoiCuTru), số định danh (CccdNam_SoDinhDanh — lấy ở "Giấy tờ tùy thân: Thẻ căn cước số ...").
-- CccdNam_QueQuan lấy từ mục "Quê quán"/"Place of origin" của người cha(nam) nếu OCR đọc được; nếu không có thì bỏ qua.
+- CccdNam_QueQuan lấy từ mục "Quê quán"/"Place of origin" của người cha(nam) nếu OCR đọc được; nếu không có thì bỏ qua. Với thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", KHÔNG có dòng "Quê quán") thì để TRỐNG CccdNam_QueQuan — thay vào đó trả CccdNam_NoiDangKyKhaiSinh = nội dung dòng "Nơi đăng ký khai sinh"/"Place of birth" (object {tinh,xa,diaChi}, tách địa chỉ theo mục F).
 - CccdNam_NoiCuTru (và CccdNu_NoiCuTru) lấy từ mục "Nơi thường trú"/"Place of residence" (tách địa chỉ theo mục F).
 - Với CHA, giấy chứng sinh thường không có thông tin cha → KHÔNG lấy CccdNam_HoTen từ giấy chứng sinh.
 
@@ -70,9 +78,16 @@ EXTRA_RULES = """
   + (2) GIẤY CHỨNG NHẬN KẾT HÔN: dân tộc mục "chồng"/"bên nam" → dân tộc CHA (CccdNam_DanToc); mục "vợ"/"bên nữ" → dân tộc MẸ (CccdNu_DanToc). BẮT BUỘC lấy KỂ CẢ khi cha/mẹ đã có CCCD — vd giấy kết hôn ghi "chồng ... Dân tộc: Mông" thì CccdNam_DanToc = "Mông" dù cha đã có thẻ CCCD.
   + (3) GIẤY CHỨNG SINH: dòng "Dân tộc: ..." trong KHỐI MẸ (ngay dưới "Họ tên khai sinh của mẹ") → CccdNu_DanToc (chỉ có dân tộc mẹ). BẮT BUỘC lấy kể cả khi mẹ đã có CCCD.
   + Có thể lấy từ giấy tờ khác miễn đối chiếu tên đúng cha/mẹ ứng với dân tộc đó.
+- VÍ DỤ BẮT BUỘC (PHẢI làm đúng):
+  Giấy chứng sinh ghi "Dân tộc: Cơ ho" trong khối mẹ + mẹ đã có CCCD (CCCD không in dân tộc)
+  → PHẢI trả CccdNu_DanToc = "Cơ Ho" (lấy từ giấy chứng sinh theo thứ tự (3))
+  → KHÔNG được bỏ trống với lý do "đã có CCCD".
+  Giấy kết hôn ghi "chồng Dân tộc: Trung" + cha đã có CCCD
+  → PHẢI trả CccdNam_DanToc = "Hoa" (chuẩn hóa "Trung" → "Hoa")
+  → KHÔNG được bỏ trống với lý do "đã có CCCD".
 - TUYỆT ĐỐI không lấy dân tộc người này gán cho người khác (vd dân tộc con/mẹ KHÔNG gán cho cha).
 - KHÔNG giấy tờ nào ghi rõ dân tộc của người đó → ĐỂ TRỐNG (không bịa, không mặc định "Kinh"). Nhưng nếu CÓ THÔNG TIN thì BẮT BUỘC ghi rõ dân tộc của CẢ cha và mẹ.
-- CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh".
+- CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh"; "Trung"/"Trung Hoa" → "Hoa"; "C ho"/"K ho"/"Kho" → "Cơ Ho".
 
 # ═══ F. TÁCH ĐỊA CHỈ (CccdNam_NoiCuTru, CccdNu_NoiCuTru, CccdNam_QueQuan — object {tinh,xa,diaChi}) ═══
 Địa chỉ hành chính 2 cấp XÃ/PHƯỜNG/THỊ TRẤN → TỈNH/THÀNH PHỐ:
