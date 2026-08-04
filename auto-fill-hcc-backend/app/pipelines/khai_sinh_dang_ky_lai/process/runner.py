@@ -24,11 +24,11 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     )
     # Reasoning đã chốt vai trò theo người. Lọc trước mapper để không biến field
     # bị gán nhầm người thành field UI hợp lệ.
-    res["fields"] = reason.sanitize_extracted_fields(
-        res["fields"],
-        res.get("reasoning_context") or "",
-    )
-    res["fields"] = mapper.enrich(res["fields"], options)
+    reasoning_context = res.get("reasoning_context") or ""
+    res["fields"] = reason.sanitize_extracted_fields(res["fields"], reasoning_context)
+    # Truyen reasoning_context de mapper biet cha/me nao da duoc xac dinh la da chet
+    enrich_options = {**(options or {}), "_reasoning_context": reasoning_context}
+    res["fields"] = mapper.enrich(res["fields"], enrich_options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
     if (options or {}).get("_review"):

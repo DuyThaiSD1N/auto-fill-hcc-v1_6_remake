@@ -5,7 +5,15 @@ extracts role facts; Python maps those facts to legacy UI fields and defaults.
 """
 
 FIELDS: list[dict] = [
-    # KHÔNG trích người yêu cầu: cổng đã điền sẵn từ VNeID. Chỉ trích con/cha/mẹ + hồ sơ gốc.
+    # Người yêu cầu — CHỈ trích khi tờ khai/đơn ghi rõ thông tin người yêu cầu KHÁC với cha/mẹ,
+    # hoặc khi tờ khai có dòng "Người yêu cầu" / "Họ tên người yêu cầu" với nội dung đầy đủ.
+    # Nếu người yêu cầu chính là cha hoặc mẹ thì KHÔNG trả Requester_* (đã có Father_*/Mother_*).
+    {"name": "Requester_FullName", "desc": "Họ tên người yêu cầu đăng ký lại khai sinh (từ tờ khai/đơn), chỉ trả khi tờ khai ghi rõ và khác với cha/mẹ."},
+    {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu (từ tờ khai/CCCD), chỉ trả khi có."},
+    {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy."},
+    {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh người yêu cầu."},
+    {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Requester_Relationship", "desc": "Quan hệ người yêu cầu với người được đăng ký lại khai sinh (vd 'Con', 'Anh', 'Em', 'Chị'...)."},
 
     # Người được đăng ký lại khai sinh.
     {"name": "Subject_FullName", "desc": "Họ tên đầy đủ của người được đăng ký lại khai sinh."},
@@ -115,6 +123,7 @@ ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
+    "Requester_IdIssueDate",
     "Subject_BirthDate",
     "Father_IdIssueDate",
     "Mother_IdIssueDate",
@@ -122,6 +131,7 @@ for _name in (
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (
+    "Requester_ResidenceDomestic",
     "Subject_BirthPlaceDomestic",
     "Subject_HometownDomestic",
     "Father_ResidenceDomestic",

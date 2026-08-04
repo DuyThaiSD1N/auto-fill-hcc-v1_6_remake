@@ -4,6 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.hospital_lookup import lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
 
@@ -210,7 +211,7 @@ def enrich(fields: list[dict]) -> list[dict]:
             elif ho_con and ho_con == ho_me:
                 dan_toc_con = dt_me
                 dan_toc_suy_luan = True
-        add("MaDanToc", dan_toc_con, default=dan_toc_suy_luan)
+        add("MaDanToc", normalize_ethnic(dan_toc_con), default=dan_toc_suy_luan)
         add("MaQuocTich", "Việt Nam")
         add("NsMaQuocGia", "Việt Nam")
         # Nơi sinh: ưu tiên tờ khai đăng ký khai sinh, sau đó mới tới giấy chứng sinh.
@@ -231,7 +232,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         add_name("Me", values.get("CccdNu_HoTen"))
         add("MeNgaySinh", values.get("CccdNu_NgaySinh"))
         add("MeSoGiayTo", values.get("CccdNu_SoDinhDanh"))
-        add("MeMaDanToc", values.get("CccdNu_DanToc"))
+        add("MeMaDanToc", normalize_ethnic(values.get("CccdNu_DanToc")))
         add("MeMaQuocTich", values.get("CccdNu_QuocTich") or "Việt Nam")
         add("MeLoaiCuTru", "Thường trú")
         add("MeMaQuocGia", "Việt Nam")
@@ -243,7 +244,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("ChaHoTen", values.get("CccdNam_HoTen"))
         add("ChaNgaySinh", values.get("CccdNam_NgaySinh"))
         add("ChaSoGiayTo", values.get("CccdNam_SoDinhDanh"))
-        add("ChaMaDanToc", values.get("CccdNam_DanToc"))
+        add("ChaMaDanToc", normalize_ethnic(values.get("CccdNam_DanToc")))
         add("ChaMaQuocTich", values.get("CccdNam_QuocTich") or "Việt Nam")
         add("ChaLoaiCuTru", "Thường trú")
         add("ChaMaQuocGia", "Việt Nam")
