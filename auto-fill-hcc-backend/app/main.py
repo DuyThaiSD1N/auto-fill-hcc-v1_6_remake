@@ -15,6 +15,8 @@ from app.procedures.router import router as procedures_router
 from app.process.router import router as process_router
 from app.review.router import router as review_router
 from app.traces.router import router as traces_router
+from app.upload_session.router import router as upload_session_router
+from app.upload_session.ws import router as upload_ws_router
 from app.users.router import router as users_router
 
 
@@ -80,6 +82,8 @@ app.include_router(review_router)
 app.include_router(attachments_router)
 app.include_router(traces_router)
 app.include_router(users_router)
+app.include_router(upload_session_router)
+app.include_router(upload_ws_router)
 
 
 @app.get("/healthz")

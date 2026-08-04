@@ -24,3 +24,7 @@ async def ensure_indexes() -> None:
     await db.ocr_cache.create_index(
         "created_at", expireAfterSeconds=settings.ocr_cache_ttl_days * 86400
     )
+    # Phiên tải ảnh QR: TTL tự dọn phiên hết hạn (bytes ảnh trên đĩa dọn theo cron/thủ công).
+    await db.upload_sessions.create_index(
+        "created_at", expireAfterSeconds=settings.upload_session_ttl_minutes * 60
+    )

@@ -186,7 +186,7 @@ def _scan_for_xa(text: str, tinh_folded: str) -> Optional[dict]:
     return (best_original, best_mapping) if best_mapping else None
 
 
-def remap_area(area: Optional[dict]) -> Optional[dict]:
+def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Optional[dict]:
     """Nhan object dia chi {quocGia, tinh, xa, diaChi}, tra ve da normalize.
 
     Buoc 1: neu "tinh" la thanh pho/thi xa thuoc tinh (vd "Da Lat") -> doi sang ten tinh (vd "Lam Dong").
@@ -238,6 +238,13 @@ def remap_area(area: Optional[dict]) -> Optional[dict]:
         return {**area, "tinh": mapping["tinh"], "xa": mapping["xa"]}
 
     if xa_has_admin_label:
+        return area
+
+    # MẶC ĐỊNH TẮT fallback cho MỌI thủ tục: chỉ remap khi (tinh, xa) khớp TRỰC TIẾP ở Bước 2. Bước 3/4
+    # (đoán lại xã từ diaChi / scan token cụm dính) hay đổi sai xã + đẩy giá trị cũ xuống diaChi khi LLM
+    # tách hụt → xã sai thì GIỮ NGUYÊN, không bịa. Thủ tục nào cần cứu địa chỉ dính (vd Lâm Đồng "thôn-xã")
+    # thì gọi remap_area(area, allow_diachi_fallback=True).
+    if not allow_diachi_fallback:
         return area
 
     # Buoc 3: fallback A — thu dung diaChi lam xa

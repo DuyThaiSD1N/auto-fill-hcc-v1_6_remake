@@ -117,6 +117,10 @@ class Settings(BaseSettings):
     # Storage — nơi lưu file/ảnh của mỗi request.
     storage_dir: str = "data/uploads"
 
+    # Phiên tải ảnh qua QR: URL công khai điện thoại quét (domain BE) + TTL tự dọn phiên.
+    mobile_base_url: str = "https://trolyhoso-hcc-admin.vnekyc.vn"
+    upload_session_ttl_minutes: int = 30
+
     # CORS
     allowed_extension_ids: str = ""
     # Origin của FE trace (web). Mặc định cho dev Vite. Phân tách bằng dấu phẩy.

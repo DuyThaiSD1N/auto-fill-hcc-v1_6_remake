@@ -90,6 +90,7 @@ def _normalize_domestic_area(value):
                 ).strip()
                 break
 
+    # remap_area mặc định TẮT fallback (chỉ đổi xã khi khớp trực tiếp; xã sai → giữ nguyên, không bịa).
     return remap_area(normalized) or normalized
 
 

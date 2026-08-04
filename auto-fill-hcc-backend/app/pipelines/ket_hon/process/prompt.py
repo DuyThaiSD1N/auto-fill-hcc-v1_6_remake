@@ -82,4 +82,19 @@ NGUỒN DỮ LIỆU:
 - BẮT BUỘC KIỂM TRA CHÉO ĐỊA CHỈ: sau khi gán, kiểm tra CccdNam_NoiCuTru_TrongNuoc phải là địa chỉ
   đọc từ CCCD có cùng số định danh với CccdNam_SoDinhDanh; CccdNu_NoiCuTru_TrongNuoc phải là địa chỉ
   từ CCCD có cùng số định danh với CccdNu_SoDinhDanh. Nếu phát hiện địa chỉ bị gán nhầm (địa chỉ lấy
-  từ CCCD của người kia) → hoán đổi lại cho đúng."""
+  từ CCCD của người kia) → hoán đổi lại cho đúng.
+  
+<dia_chi_cccd>
+Địa chỉ CCCD/CMND không tiền tố = dãy tên ngăn dấu phẩy, xếp NHỎ→LỚN. Cấp HUYỆN/QUẬN (tên thứ 2 TỪ CUỐI,
+sát tỉnh) LUÔN bị XÓA HẲN — không cho vào xa lẫn diaChi (biểu mẫu chỉ có 2 cấp xã-tỉnh). Xử lý theo ĐÚNG
+SỐ TÊN, KHÔNG được đảo:
+• ĐÚNG 3 tên "A, B, C" (KHÔNG có phần chi tiết): A = xa; B = huyện → XÓA; C = tinh; diaChi = RỖNG.
+  ⚠ Đây là chỗ HAY SAI: TUYỆT ĐỐI KHÔNG lấy B (sát tỉnh) làm xa, KHÔNG đẩy A xuống diaChi.
+  VD1: "Nội Duệ, Tiên Du, Bắc Ninh" → xa="Nội Duệ", huyen="Tiên Du", tinh="Bắc Ninh",
+  diaChi="".
+• 4 tên "D, A, B, C" (D là chi tiết: thôn/xóm/tổ dân phố/số nhà): D = diaChi; A = xa; B = huyện → XÓA;
+  C = tinh. VD2: "Thôn Đại Vi, Đại Đồng, Tiên Du, Bắc Ninh" → diaChi="Thôn Đại Vi", xa="Đại Đồng", huyen="Tiên Du",
+  tinh="Bắc Ninh".
+• 2 tên "A, C": A = xa; C = tinh; diaChi rỗng (không có huyện để xóa).
+</dia_chi_cccd>
+  """
