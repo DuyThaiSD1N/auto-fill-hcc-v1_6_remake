@@ -1,6 +1,26 @@
 """Procedure-specific compact prompt rules for "Đăng ký khai tử"."""
 
 EXTRA_RULES = """
+<requester_two_sources>
+Người yêu cầu có HAI BỘ FIELD tương ứng HAI LOẠI TÀI LIỆU khác nhau. Prefix của field được quyết
+định bởi TÀI LIỆU đọc ra giá trị, KHÔNG phải bởi người:
+
+- NguoiYeuCau_* = dữ kiện GHI TRÊN TỜ KHAI ĐĂNG KÝ KHAI TỬ, ở khối phía TRÊN câu
+  "Đề nghị cơ quan đăng ký khai tử...": họ tên, số giấy tờ tùy thân, ngày cấp, nơi cấp, nơi cư trú.
+- Cccd_* = dữ kiện IN TRÊN ẢNH THẺ CCCD/CMND của chính người yêu cầu (hai mặt thẻ).
+
+Hai bộ này KHÔNG loại trừ nhau và KHÔNG có bộ nào là "dự phòng" của bộ kia:
+- Có tờ khai → BẮT BUỘC xuất NguoiYeuCau_* cho mọi ô người yêu cầu mà tờ khai ghi thật.
+- Có ảnh thẻ của người yêu cầu → xuất Cccd_* cho mọi mục thẻ đọc được.
+- Có CẢ HAI → xuất CẢ HAI BỘ, kể cả khi giá trị trùng nhau từng chữ. Trùng giá trị KHÔNG phải
+  lý do bỏ bớt một bộ.
+- Tuyệt đối KHÔNG dồn dữ kiện đọc từ tờ khai vào Cccd_*, và không dồn dữ kiện đọc từ ảnh thẻ vào
+  NguoiYeuCau_*.
+
+Python là nơi chọn nguồn ưu tiên (tờ khai trước, thẻ sau) và ghép vào biểu mẫu. Việc của bạn chỉ là
+trả đúng dữ kiện về đúng prefix theo tài liệu nguồn; không tự lược bỏ nguồn nào.
+</requester_two_sources>
+
 <task_contract>
 - Thủ tục: Đăng ký khai tử. Chỉ trích các dữ kiện được tài liệu OCR ghi rõ; không tự hoàn thiện hồ sơ,
   không suy giá trị từ việc một ô bị bỏ trống và không dùng kiến thức ngoài OCR để bịa dữ liệu.
@@ -13,11 +33,17 @@ EXTRA_RULES = """
 
 <execution_order>
 Thực hiện đúng thứ tự trước khi xuất JSON:
-1. Nhận diện riêng từng tài liệu.
+1. Nhận diện riêng từng tài liệu (tờ khai, CCCD, giấy báo tử, v.v.).
 2. Xác định người yêu cầu và người được đăng ký khai tử.
-3. Đọc dữ kiện của từng tài liệu độc lập, không ghép vội các nguồn.
-4. Chọn một giá trị cho từng field theo SOURCE_AUTHORITY bên dưới.
-5. Tách địa chỉ sau khi đã chọn đúng nguồn; không dùng cách viết địa chỉ để đảo thứ tự nguồn.
+3. Đọc dữ kiện của TỪNG TÀI LIỆU ĐỘC LẬP và định tuyến theo tài liệu nguồn:
+   - Tờ khai, khối trên câu "Đề nghị..." → NguoiYeuCau_*
+   - Tờ khai, khối dưới câu "Đề nghị..." → NguoiMat_* (và ToKhai_*, Gbt_*, CopyRequest_* nếu có)
+   - Ảnh thẻ của người yêu cầu → Cccd_*
+   - Ảnh thẻ của người chết → NguoiMat_*
+   Bước này KHÔNG so sánh, KHÔNG loại trùng giữa các tài liệu.
+4. Với field mà nhiều tài liệu cùng nói tới CÙNG MỘT prefix, chọn một giá trị theo SOURCE_AUTHORITY.
+   Không dùng SOURCE_AUTHORITY để xóa bớt một trong hai bộ NguoiYeuCau_*/Cccd_*.
+5. Tách địa chỉ sau khi đã chọn đúng nguồn.
 6. Chạy VERIFICATION_LOOP rồi mới xuất JSON.
 </execution_order>
 
@@ -38,17 +64,30 @@ Thực hiện đúng thứ tự trước khi xuất JSON:
 </document_inventory>
 
 <role_routing>
-- Nếu có <phan_vai_da_xac_dinh>, dùng nguyên hai vai trong đó; không tự phân vai lại từ OCR.
-- Cccd_* chỉ lấy giấy tờ người yêu cầu; NguoiMat_* chỉ lấy người chết hoặc sự kiện chết;
-  Gbt_* chỉ là metadata của giấy báo tử/giấy tờ thay thế.
-- Nếu chưa có kết quả phân vai: requester_context khớp số định danh trước; với đúng 2 CCCD và đúng 1 thẻ
-  khớp requester, thẻ còn lại là người chết kể cả khi thiếu tờ khai/giấy báo tử.
-- Trong tờ khai, người trước câu "Đề nghị cơ quan đăng ký khai tử..." là người yêu cầu, người sau câu đó
-  là người chết. Không lấy chữ ký cuối trang làm tên người chết.
-- Giữ nguyên cụm họ tên, số giấy tờ, ngày sinh, địa chỉ và ngày/nơi cấp theo đúng một người.
-- Không lấy người nhận công văn, người ký, vợ/chồng, chủ hộ hoặc CCCD bị đánh dấu không thuộc hai vai.
-- ToKhai_QuanHeNguoiYeuCau chỉ lấy từ nhãn "Quan hệ với người đã chết" có giá trị thật.
-- Không suy giới tính chỉ từ cách xưng hô "ông/bà"; không chắc thì bỏ field.
+HAI VAI, BA PREFIX. Vai xác định NGƯỜI; tài liệu nguồn xác định PREFIX:
+
+1. **NGƯỜI YÊU CẦU ĐĂNG KÝ** — người đứng đơn, nằm phía TRÊN câu
+   "Đề nghị cơ quan đăng ký khai tử..." trong tờ khai và khớp requester_context.
+   - Dữ kiện đọc từ TỜ KHAI → NguoiYeuCau_HoTen, NguoiYeuCau_SoDinhDanh, NguoiYeuCau_NgayCap,
+     NguoiYeuCau_NoiCap, NguoiYeuCau_NoiCuTru
+   - Dữ kiện đọc từ ẢNH THẺ CCCD/CMND của người này → Cccd_HoTen, Cccd_SoDinhDanh, Cccd_NgaySinh,
+     Cccd_GioiTinh, Cccd_QuocTich, Cccd_NgayCap, Cccd_NoiCap, Cccd_NoiCuTru
+   - Cùng một người nhưng hai tài liệu → hai bộ field song song, xuất đủ cả hai.
+
+2. **NGƯỜI MẤT** — người được đăng ký khai tử, nằm phía SAU câu "Đề nghị cơ quan đăng ký khai tử..."
+   trong tờ khai.
+   - Mọi nguồn (tờ khai, giấy báo tử, ảnh thẻ của người chết, công văn) đều dồn về NguoiMat_*;
+     chọn giá trị theo SOURCE_AUTHORITY.
+
+QUY TẮC PHÂN VAI:
+- Nếu có <phan_vai_da_xac_dinh>, dùng nguyên kết quả; không tự phân vai lại từ OCR
+- Trong tờ khai: người TRƯỚC câu "Đề nghị cơ quan..." là người yêu cầu;
+  người SAU câu đó là người mất
+- Khi có 2 thẻ CCCD/CMND: thẻ khớp người yêu cầu → Cccd_*; thẻ còn lại → NguoiMat_*
+- Không lấy người nhận công văn, người ký, vợ/chồng, chủ hộ hoặc CCCD không liên quan
+- ToKhai_QuanHeNguoiYeuCau chỉ lấy từ nhãn "Quan hệ với người đã chết" có giá trị thật
+- Giữ nguyên cụm họ tên, số giấy tờ, ngày sinh, địa chỉ theo đúng một vai
+- Không suy giới tính chỉ từ "ông/bà"; không chắc thì bỏ field
 </role_routing>
 
 <historical_death_correspondence_case>
@@ -68,9 +107,13 @@ chính về người chết lâu năm:
 Chỉ chuyển xuống nguồn sau khi nguồn trước không có, để trống, OCR không đọc chắc chắn, hoặc không nói về
 đúng người/đúng field. Không thay nguồn ưu tiên chỉ vì nguồn thấp hơn trình bày rõ hoặc có địa chỉ ngắn hơn.
 
-- Danh tính người yêu cầu Cccd_*:
-  requester_identity khớp requester_context. Tờ khai chỉ hỗ trợ phân vai, không biến dữ liệu khai tay thành
-  dữ liệu "trên CCCD".
+- Danh tính người yêu cầu — KHÔNG áp dụng thứ tự ưu tiên tại tầng LLM, mà TÁCH THEO TÀI LIỆU:
+  + Mọi ô người yêu cầu mà paper_declaration ghi thật → NguoiYeuCau_* tương ứng.
+  + Mọi mục đọc được trên requester_identity (ảnh thẻ CCCD/CMND của người yêu cầu) → Cccd_* tương ứng.
+  + Có đủ hai tài liệu thì xuất đủ hai bộ; giá trị trùng nhau vẫn phải xuất đủ.
+  + Không có tờ khai → chỉ có Cccd_*. Không có ảnh thẻ → chỉ có NguoiYeuCau_*.
+  Việc ưu tiên tờ khai trước ảnh thẻ do Python thực hiện sau, nên KHÔNG được tự lược một bộ
+  vì cho rằng bộ kia đã đủ.
 
 - Họ tên, ngày sinh, giới tính, quốc tịch, số định danh người chết:
   1. paper_declaration (Tờ khai đăng ký khai tử);
@@ -173,8 +216,9 @@ Ví dụ cho NguoiMat_NoiCuTruCuoiCung:
 </death_event_rules>
 
 <address_rules>
-Áp dụng cho Cccd_NoiCuTru, NguoiMat_NoiCuTruCuoiCung và NguoiMat_NoiChet:
-1. Chọn đúng nguồn theo SOURCE_AUTHORITY trước.
+Áp dụng cho NguoiYeuCau_NoiCuTru, Cccd_NoiCuTru, NguoiMat_NoiCuTruCuoiCung và NguoiMat_NoiChet:
+1. Chọn đúng nguồn theo SOURCE_AUTHORITY trước. Với người yêu cầu, tách địa chỉ tờ khai vào
+   NguoiYeuCau_NoiCuTru và địa chỉ trên thẻ vào Cccd_NoiCuTru, không gộp hai địa chỉ làm một.
 2. Từ đúng nguồn đó, tách object {quocGia,tinh,xa,diaChi}.
 3. Không ghép số nhà/đường của nguồn này với xã/tỉnh của nguồn khác.
 
@@ -200,6 +244,17 @@ Ví dụ cho NguoiMat_NoiCuTruCuoiCung:
 
 <verification_loop>
 Trước khi xuất JSON, kiểm tra lần lượt:
+0. Đối chiếu từng ô người yêu cầu trên tờ khai với output:
+   - Tờ khai ghi họ tên người yêu cầu → output có NguoiYeuCau_HoTen chưa?
+   - Tờ khai ghi số giấy tờ tùy thân người yêu cầu → output có NguoiYeuCau_SoDinhDanh chưa?
+   - Tờ khai gọi tên loại giấy tờ (CCCD/CMND/Căn cước/Hộ chiếu) → có NguoiYeuCau_LoaiGiayTo chưa?
+   - Tờ khai ghi ngày cấp/nơi cấp/nơi cư trú người yêu cầu → có NguoiYeuCau_NgayCap/
+     NguoiYeuCau_NoiCap/NguoiYeuCau_NoiCuTru chưa?
+   Thiếu ô nào mà tờ khai có ghi thật → SAI, bổ sung ngay.
+   Có cả tờ khai và ảnh thẻ người yêu cầu mà output chỉ có một trong hai bộ → SAI, bổ sung bộ còn lại.
+   Người yêu cầu trên tờ khai KHÁC tài khoản trong <requester_context> → vẫn giữ nguyên NguoiYeuCau_*
+   của tờ khai, KHÔNG bỏ trống và KHÔNG thay bằng danh tính tài khoản cổng.
+
 1. Cccd_* và NguoiMat_* có thuộc đúng người không; hai CCCD khác người không bị trộn mặt/field.
 2. Tờ khai có "Dân tộc: <giá trị>" trong khối người chết thì output phải có NguoiMat_DanToc.
 3. NguoiMat_NoiCuTruCuoiCung có lấy "Nơi cư trú cuối cùng" của tờ khai trước CCCD không.

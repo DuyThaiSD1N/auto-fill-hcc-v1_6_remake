@@ -21,22 +21,26 @@ def _fold(value) -> str:
 
 
 def _requester_trusted(values: dict, options: dict | None) -> bool:
-    """CCCD (Cccd_*) có TRÙNG người yêu cầu cổng đã điền sẵn (VNeID) không?
+    """Thẻ đọc vào Cccd_* có đúng là thẻ của NGƯỜI YÊU CẦU không?
 
-    Không có mỏ neo từ cổng → tin như cũ. Có mỏ neo nhưng Cccd_* khác/thiếu → KHÔNG tin
-    (CCCD đó là của người mất, không phải người yêu cầu)."""
+    Mỏ neo ưu tiên là danh tính người yêu cầu ghi trên TỜ KHAI (NguoiYeuCau_*); chỉ khi tờ khai
+    không cho mỏ neo nào mới dùng tài khoản cổng (VNeID), vì tài khoản đó có thể là người nộp thay.
+    Không có mỏ neo nào → tin như cũ. Có mỏ neo mà Cccd_* không khớp số lẫn tên → KHÔNG tin
+    (thẻ đó là của người mất hoặc người nộp thay, không phải người yêu cầu).
+    Khớp MỘT trong hai (số hoặc tên) là đủ, vì OCR tờ khai hay sai vài chữ số."""
     ctx = (options or {}).get("formContext") or {}
-    applicant_id = _digits(ctx.get("applicantIdentityNumber"))
-    applicant_name = _fold(ctx.get("applicantFullname"))
-    if not applicant_id and not applicant_name:
+    anchor_ids = {value for value in (_digits(values.get("NguoiYeuCau_SoDinhDanh")),) if value}
+    anchor_names = {value for value in (_fold(values.get("NguoiYeuCau_HoTen")),) if value}
+    if not anchor_ids and not anchor_names:
+        anchor_ids = {value for value in (_digits(ctx.get("applicantIdentityNumber")),) if value}
+        anchor_names = {value for value in (_fold(ctx.get("applicantFullname")),) if value}
+    if not anchor_ids and not anchor_names:
         return True
     cccd_id = _digits(values.get("Cccd_SoDinhDanh"))
-    if applicant_id and cccd_id:
-        return applicant_id == cccd_id
     cccd_name = _fold(values.get("Cccd_HoTen"))
-    if applicant_name and cccd_name:
-        return applicant_name == cccd_name
-    return False
+    if cccd_id and cccd_id in anchor_ids:
+        return True
+    return bool(cccd_name and cccd_name in anchor_names)
 
 
 def _ngay_sinh_nguoi_mat(value) -> str:
@@ -106,6 +110,7 @@ def _area(value):
         "xa": re.sub(r"^(xã|phường|thị trấn|tt\.?)\s+", "", str(value.get("xa") or value.get("xã") or "").strip(), flags=re.IGNORECASE).strip(),
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
     }
+    # Nếu có ít nhất 1 trong 3 field (tinh, xa, diaChi) thì vẫn return, không bắt buộc phải có đủ cả 3
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
     return remap_area(out)
@@ -154,25 +159,72 @@ def enrich(
         default=not bool(registration_type),
     )
 
-    # Người yêu cầu chỉ điền từ Cccd_* khi CCCD TRÙNG người đăng nhập (hoặc không có mỏ neo formContext).
-    # Nếu CCCD upload KHÔNG trùng → đó là CCCD của NGƯỜI MẤT (dù LLM có lỡ nhét vào Cccd_*): không điền
-    # danh tính người yêu cầu, chỉ đặt MẶC ĐỊNH cư trú (viền vàng), giữ tên/CCCD cổng đã điền.
+    # ==================================================================================
+    # THÔNG TIN NGƯỜI YÊU CẦU
+    # ==================================================================================
+    # Ưu tiên TỪNG Ô: tờ khai (NguoiYeuCau_*) → thẻ CCCD của người yêu cầu (Cccd_*) →
+    # cổng VNeID (formContext) → default. Chọn theo từng ô nên tờ khai thiếu ô nào thì thẻ
+    # bù đúng ô đó, không phải bỏ cả cụm. Có dữ liệu giấy tờ thì KHÔNG đánh dấu default để
+    # extension GHI ĐÈ lên giá trị VNeID cổng điền sẵn.
+    ctx = (options or {}).get("formContext") or {}
+    applicant_name = ctx.get("applicantFullname")
+    applicant_id = ctx.get("applicantIdentityNumber")
+
+    # Thẻ chỉ được dùng cho người yêu cầu khi khớp mỏ neo tờ khai/cổng.
     requester_trusted = _requester_trusted(values, options)
-    if has_cccd and requester_trusted:
-        add("HoVaTenC", values.get("Cccd_HoTen"))
-        add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
-        add("SoGiayToDinhDanhC", values.get("Cccd_SoDinhDanh"))
-        _issuer_c = values.get("Cccd_NoiCap") or default_issuer(values.get("Cccd_NgayCap"))
-        add("LoaiGiayToDinhDanhC", _doc_type(values.get("Cccd_SoDinhDanh"), _issuer_c))
-        add("NgayCapDDC", values.get("Cccd_NgayCap"))
-        add("NoiCapDDC", _issuer_c)
-        add("nycLoaiCuTru", "Thường trú")
-        area = _area(values.get("Cccd_NoiCuTru"))
-        if area:
-            add("nycNoiCuTru", "1")
-            add("nycNoiCuTru_TrongNuoc", area)
+    cccd_usable = has_cccd and requester_trusted
+
+    def requester(declaration_key: str, cccd_key: str):
+        """Ô người yêu cầu: lấy tờ khai trước, thiếu mới lấy thẻ CCCD của chính người đó."""
+        value = values.get(declaration_key)
+        if value in (None, "", {}, []) and cccd_usable:
+            return values.get(cccd_key)
+        return value
+
+    requester_name = requester("NguoiYeuCau_HoTen", "Cccd_HoTen")
+    requester_id = requester("NguoiYeuCau_SoDinhDanh", "Cccd_SoDinhDanh")
+    requester_issue_date = requester("NguoiYeuCau_NgayCap", "Cccd_NgayCap")
+    requester_issuer = requester("NguoiYeuCau_NoiCap", "Cccd_NoiCap") or default_issuer(requester_issue_date)
+    requester_residence = _area(requester("NguoiYeuCau_NoiCuTru", "Cccd_NoiCuTru"))
+    # Tờ khai gọi tên loại giấy tờ ("CCCD số ..."/"CMND số ...") thì tin tên đó; không thì suy
+    # từ độ dài số định danh + nơi cấp như cũ.
+    requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
+
+    # Họ tên người yêu cầu.
+    if requester_name:
+        add("HoVaTenC", requester_name)
+    elif applicant_name:
+        add("HoVaTenC", applicant_name, default=True)
     else:
-        # Không xác định được người yêu cầu từ giấy tờ → mặc định cư trú trong nước/Việt Nam (viền vàng).
+        add("HoVaTenC", "NGƯỜI YÊU CẦU", default=True)
+
+    # Giấy tờ tùy thân người yêu cầu.
+    if requester_id:
+        add("SoDinhDanhC", requester_id)
+        add("SoGiayToDinhDanhC", requester_id)
+        add(
+            "LoaiGiayToDinhDanhC",
+            id_doc_type(requester_doc_type, requester_issuer)
+            if requester_doc_type
+            else _doc_type(requester_id, requester_issuer),
+        )
+        add("NgayCapDDC", requester_issue_date)
+        add("NoiCapDDC", requester_issuer)
+    elif applicant_id:
+        add("SoDinhDanhC", applicant_id, default=True)
+        add("SoGiayToDinhDanhC", applicant_id, default=True)
+        add("LoaiGiayToDinhDanhC", _doc_type(applicant_id, ""), default=True)
+    else:
+        add("SoDinhDanhC", "000000000000", default=True)
+        add("SoGiayToDinhDanhC", "000000000000", default=True)
+        add("LoaiGiayToDinhDanhC", "Thẻ căn cước công dân", default=True)
+
+    # Nơi cư trú người yêu cầu.
+    if requester_residence:
+        add("nycLoaiCuTru", "Thường trú")
+        add("nycNoiCuTru", "1")
+        add("nycNoiCuTru_TrongNuoc", requester_residence)
+    else:
         add("nycLoaiCuTru", "Thường trú", default=True)
         add("nycNoiCuTru", "1", default=True)
         add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)

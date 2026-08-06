@@ -386,22 +386,19 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$UC_DW_TAXEditCtl$TAX_CAL_METHOD_IDRbBox", "dom-radio", _tax_method_code(values.get("Thue_PhuongPhapTinh")))
 
     elif selected_page == "nguoi-nop-ho-so":
-        # Xác định vai trò người nộp:
-        # Nếu hồ sơ có nhiều CCCD (HasMultipleCCCD=true) → người nộp khác chủ hộ → tick "Người được ủy quyền"
-        # Thông tin người nộp sẽ do extension tự điền khi user click "Sao chép thông tin tài khoản"
+        # Xác định vai trò người nộp
         has_multiple_cccd = values.get("HasMultipleCCCD", False)
         is_self = not has_multiple_cccd
         
         pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
         add("ctl00$C$PERS_SUBGroup", "dom-radio", pers_sub_role)
         
-        # Điền thông tin chủ hộ làm mặc định (user sẽ click "Sao chép tài khoản" để thay thế nếu khác người)
+        # Điền thông tin chủ hộ
         add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input", _proper_name(values.get("ChuHo_HoTen")))
         add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("ChuHo_NgaySinh")))
         add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("ChuHo_SoDinhDanh"))
         
-        # KHÔNG điền địa chỉ - để extension tự điền sau khi user click "Sao chép tài khoản"
-        # SĐT/email người nộp cũng do nút "Sao chép thông tin đăng ký tài khoản" tự điền
+        # SĐT/email để extension tự điền khi user click "Sao chép tài khoản"
 
     return out
 

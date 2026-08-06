@@ -7,32 +7,75 @@ Python.
 """
 
 FIELDS: list[dict] = [
-    # CCCD/CMND CỦA NGƯỜI YÊU CẦU. Khi có nhiều thẻ, LLM định tuyến theo
-    # requester_context; Python tiếp tục kiểm tra mỏ neo trước khi điền UI.
+    # ==================================================================================
+    # NGƯỜI YÊU CẦU — BỘ 1: dữ kiện GHI TRÊN TỜ KHAI ĐĂNG KÝ KHAI TỬ
+    # ==================================================================================
+    # Hai bộ NguoiYeuCau_* và Cccd_* là HAI NGUỒN ĐỘC LẬP của cùng một người, không loại trừ
+    # nhau: có tờ khai thì xuất NguoiYeuCau_*, có ảnh CCCD thì xuất Cccd_*, có cả hai thì xuất
+    # cả hai. Python chọn nguồn ưu tiên (tờ khai trước) khi ghép vào UI.
+
+    {"name": "NguoiYeuCau_HoTen",
+     "desc": "Họ tên người yêu cầu ĐÚNG NHƯ TỜ KHAI ĐĂNG KÝ KHAI TỬ ghi tại nhãn "
+             "'Họ, chữ đệm, tên người yêu cầu'. Có tờ khai ghi giá trị này thì BẮT BUỘC trả, "
+             "kể cả khi hồ sơ cũng có ảnh CCCD của chính người đó."},
+
+    {"name": "NguoiYeuCau_SoDinhDanh",
+     "desc": "Số CCCD/CMND của người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi tại nhãn 'Giấy tờ tùy thân' "
+             "(dạng 'CCCD số ...'/'CMND số ...'). Có tờ khai ghi giá trị này thì BẮT BUỘC trả, "
+             "kể cả khi số đó trùng với số trên ảnh CCCD."},
+
+    {"name": "NguoiYeuCau_LoaiGiayTo",
+     "desc": "Loại giấy tờ tùy thân người yêu cầu ĐÚNG NHƯ TỜ KHAI gọi tên tại nhãn 'Giấy tờ tùy thân', "
+             "ví dụ tờ khai ghi 'CCCD số ...' thì trả 'Thẻ căn cước công dân', ghi 'CMND số ...' thì trả "
+             "'Chứng minh nhân dân', ghi 'Căn cước số ...' thì trả 'Thẻ Căn cước', ghi hộ chiếu thì trả "
+             "'Hộ chiếu'. Tờ khai không gọi tên loại giấy tờ thì bỏ field, không suy từ độ dài số."},
+
+    {"name": "NguoiYeuCau_NgayCap",
+     "desc": "Ngày cấp giấy tờ tùy thân của người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi (thường nằm trong "
+             "cụm 'Nơi cấp: ... cấp ngày dd/mm/yyyy' của khối người yêu cầu), dd/mm/yyyy."},
+
+    {"name": "NguoiYeuCau_NoiCap",
+     "desc": "Cơ quan cấp giấy tờ tùy thân của người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi tại nhãn 'Nơi cấp' "
+             "của khối người yêu cầu; chỉ trả tên cơ quan, bỏ chức danh như CỤC TRƯỞNG và bỏ phần "
+             "'cấp ngày ...' đi kèm."},
+
+    {"name": "NguoiYeuCau_NoiCuTru",
+     "desc": "Nơi cư trú người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi tại nhãn 'Nơi cư trú', object "
+             "{quocGia,tinh,xa,diaChi}. Giữ đúng địa danh của tờ khai, không thay bằng địa chỉ "
+             "trên CCCD dù CCCD viết rõ hơn."},
+
+    # ==================================================================================
+    # NGƯỜI YÊU CẦU — BỘ 2: dữ kiện ĐỌC TRÊN ẢNH CCCD/CMND của chính người yêu cầu
+    # ==================================================================================
+    # Khi có 2 thẻ: thẻ khớp người yêu cầu (theo tờ khai/requester_context) vào Cccd_*,
+    # thẻ còn lại vào NguoiMat_*.
+
     {"name": "Cccd_HoTen",
-     "desc": "Họ tên trên CCCD/CMND của NGƯỜI YÊU CẦU. Khi có 2 CCCD và đúng 1 CCCD "
-             "khớp tên/số định danh trong requester_context, chỉ lấy CCCD khớp vào Cccd_*; "
-             "CCCD còn lại là của người được đăng ký khai tử và phải đưa vào NguoiMat_*."},
+     "desc": "Họ tên in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU. Trả bất cứ khi nào hồ sơ có thẻ này, "
+             "kể cả khi tờ khai đã ghi cùng họ tên."},
+
     {"name": "Cccd_SoDinhDanh",
-     "desc": "Số CCCD 12 chữ số hoặc CMND 9 chữ số của NGƯỜI YÊU CẦU; có thể đọc từ MRZ mặt sau."},
+     "desc": "Số định danh (12 chữ số) hoặc số CMND (9 chữ số) in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU; "
+             "có thể đọc từ MRZ mặt sau. Trả bất cứ khi nào hồ sơ có thẻ này."},
     {"name": "Cccd_NgaySinh",
-     "desc": "Ngày sinh trên CCCD/CMND của NGƯỜI YÊU CẦU, dd/mm/yyyy; nếu chỉ có năm thì trả yyyy."},
+     "desc": "Ngày sinh in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU, dd/mm/yyyy; chỉ có năm thì trả yyyy."},
     {"name": "Cccd_GioiTinh",
-     "desc": 'Giới tính trên CCCD/CMND của NGƯỜI YÊU CẦU: "Nam" hoặc "Nữ".'},
+     "desc": 'Giới tính in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU: "Nam" hoặc "Nữ".'},
     {"name": "Cccd_DanToc",
      "desc": "Dân tộc của NGƯỜI YÊU CẦU chỉ khi chính giấy tờ tùy thân có in nhãn dân tộc; "
              "CCCD/Căn cước thông thường không có dân tộc thì bỏ field, không suy."},
     {"name": "Cccd_QuocTich",
-     "desc": "Quốc tịch trên CCCD/CMND của NGƯỜI YÊU CẦU nếu giấy có ghi."},
+     "desc": "Quốc tịch in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU nếu giấy có ghi."},
     {"name": "Cccd_NgayCap",
-     "desc": "Ngày cấp CCCD/CMND của NGƯỜI YÊU CẦU, dd/mm/yyyy."},
+     "desc": "Ngày cấp in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU (mặt sau, cạnh nhãn "
+             "'Ngày, tháng, năm / Date, month, year'), dd/mm/yyyy."},
     {"name": "Cccd_NoiCap",
-     "desc": "Cơ quan cấp CCCD/CMND của NGƯỜI YÊU CẦU, lấy đúng nội dung cạnh ngày cấp: "
-             "giữ Công an tỉnh/thành phố với CMND; chỉ trả Cục Cảnh sát hoặc Bộ Công an "
-             "khi chính nguồn ghi như vậy; chỉ trả tên cơ quan, bỏ chức danh như CỤC TRƯỞNG."},
+     "desc": "Cơ quan cấp in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU, lấy đúng nội dung cạnh ngày cấp: "
+             "giữ Công an tỉnh/thành phố với CMND; chỉ trả Cục Cảnh sát hoặc Bộ Công an khi chính "
+             "nguồn ghi như vậy; bỏ chức danh như CỤC TRƯỞNG."},
     {"name": "Cccd_NoiCuTru",
-     "desc": "Địa chỉ thường trú/cư trú trên CCCD/CMND của NGƯỜI YÊU CẦU, object "
-             "{quocGia,tinh,xa,diaChi}; xa bắt buộc khi giấy có."},
+     "desc": "Địa chỉ 'Nơi thường trú/Place of residence' in trên ẢNH CCCD/CMND của NGƯỜI YÊU CẦU, "
+             "object {quocGia,tinh,xa,diaChi}; xa bắt buộc khi giấy có."},
     {"name": "ToKhai_QuanHeNguoiYeuCau",
      "desc": 'Quan hệ của người yêu cầu với người đã chết, chỉ lấy từ nhãn "Quan hệ với người đã chết" '
              "có giá trị thật; không lấy quan hệ của người khác được nhắc trong công văn."},
@@ -119,6 +162,7 @@ ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
+    "NguoiYeuCau_NgayCap",
     "Cccd_NgaySinh",
     "Cccd_NgayCap",
     "NguoiMat_NgaySinh",
@@ -127,7 +171,7 @@ for _name in (
     "Gbt_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("Cccd_NoiCuTru", "NguoiMat_NoiCuTruCuoiCung", "NguoiMat_NoiChet"):
+for _name in ("NguoiYeuCau_NoiCuTru", "Cccd_NoiCuTru", "NguoiMat_NoiCuTruCuoiCung", "NguoiMat_NoiChet"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {

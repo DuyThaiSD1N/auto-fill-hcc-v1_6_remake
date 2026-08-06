@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.khai_tu.process import mapper, reason
+from app.pipelines.khai_tu.process import declaration, mapper, reason
 from app.pipelines.khai_tu.process.prompt import EXTRA_RULES
 from app.pipelines.khai_tu.process.schema import (
     ALIASES,
@@ -163,7 +163,11 @@ def _canonicalize_deceased_fields(raw_fields, documents):
 
 
 def _requester_hint(options: dict) -> str:
-    """Mỏ neo người yêu cầu cổng đã điền sẵn (VNeID) → giúp LLM tách CCCD người yêu cầu vs người mất."""
+    """Mỏ neo tài khoản cổng (VNeID) → giúp LLM tách CCCD người yêu cầu vs người mất.
+
+    Tài khoản đăng nhập CÓ THỂ là người nộp thay/cán bộ tiếp nhận, nên đây chỉ là mỏ neo hạng hai:
+    có tờ khai thì người đứng đơn trên tờ khai mới là người yêu cầu.
+    """
     ctx = (options or {}).get("formContext") or {}
     name = str(ctx.get("applicantFullname") or "").strip()
     idnum = str(ctx.get("applicantIdentityNumber") or "").strip()
@@ -171,8 +175,13 @@ def _requester_hint(options: dict) -> str:
         return ""
     return (
         "\n\n<requester_context>\n"
-        f'NGƯỜI YÊU CẦU đã đăng nhập (cổng điền sẵn từ VNeID): họ tên="{name}", số định danh="{idnum}".\n'
-        "Đây chỉ là mỏ neo phân vai; không phải nguồn dữ liệu giấy tờ và không thay <source_authority>.\n"
+        f'TÀI KHOẢN NỘP HỒ SƠ trên cổng (VNeID điền sẵn): họ tên="{name}", số định danh="{idnum}".\n'
+        "Đây CHƯA CHẮC là người yêu cầu: có thể là người nộp thay hoặc cán bộ tiếp nhận.\n"
+        "- Hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI TỬ: người ghi tại nhãn 'Họ, chữ đệm, tên người yêu cầu' mới là\n"
+        "  NGƯỜI YÊU CẦU. Vẫn phải xuất đủ NguoiYeuCau_* từ tờ khai DÙ lệch hoàn toàn tài khoản này.\n"
+        "  Lệch tài khoản KHÔNG phải lý do bỏ trống field người yêu cầu.\n"
+        "- Hồ sơ KHÔNG có tờ khai: mới dùng tài khoản này làm mỏ neo nhận diện thẻ của người yêu cầu.\n"
+        "Đây là mỏ neo phân vai; không phải nguồn dữ liệu giấy tờ và không thay <source_authority>.\n"
         "</requester_context>"
     )
 
@@ -193,6 +202,14 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     res["fields"] = reason.sanitize_identity_fields(
         res["fields"],
         reasoning_context,
+    )
+    # Agent hay dồn dữ kiện người yêu cầu của tờ khai vào Cccd_* rồi bỏ trống NguoiYeuCau_*,
+    # khiến mapper rơi xuống dữ liệu VNeID của tài khoản đăng nhập. Tờ khai là biểu mẫu chuẩn
+    # nên đọc lại khối đó tất định và bù các ô còn thiếu.
+    res["fields"] = declaration.fill_missing(
+        res["fields"],
+        res.get("ocr_text") or "",
+        COMPACT_COMP_BY_NAME,
     )
     res["fields"] = mapper.enrich(
         res["fields"],

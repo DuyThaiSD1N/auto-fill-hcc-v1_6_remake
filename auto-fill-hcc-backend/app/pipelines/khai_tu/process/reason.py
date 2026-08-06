@@ -18,6 +18,14 @@ _IDENTITY_MARKERS = (
     "identity card",
     "chung minh nhan dan",
 )
+# Tờ khai là mỏ neo người yêu cầu mạnh hơn tài khoản cổng, nên phải nhận diện được nó
+# trước khi quyết định có tin requester_context hay không.
+_DECLARATION_MARKERS = (
+    "to khai dang ky khai tu",
+    "ho, chu dem, ten nguoi yeu cau",
+    "ho chu dem ten nguoi yeu cau",
+    "de nghi co quan dang ky khai tu",
+)
 
 _ROLE_PROMPT = """
 Bạn là agent PHÂN VAI hồ sơ ĐĂNG KÝ KHAI TỬ. Chỉ xác định:
@@ -27,15 +35,20 @@ Bạn là agent PHÂN VAI hồ sơ ĐĂNG KÝ KHAI TỬ. Chỉ xác định:
 Đọc TOÀN BỘ tài liệu và TOÀN BỘ CCCD/CMND. Không trích field biểu mẫu, không trả JSON.
 
 QUYẾT ĐỊNH THEO ĐÚNG THỨ TỰ:
-1. requester_context là mỏ neo người yêu cầu: so số định danh chính xác trước, thiếu số mới so họ tên.
-2. CASE ĐÚNG 2 CCCD/CMND: nếu đúng 1 thẻ khớp requester_context thì BẮT BUỘC gán thẻ khớp cho
-   người yêu cầu và thẻ còn lại cho người chết. Không cần thêm tờ khai/giấy báo tử để xác nhận thẻ còn
-   lại và không được đưa thẻ còn lại vào <giay_to_khong_thuoc_hai_vai>.
-3. Ngoài case trên, dùng tờ khai: người trước câu "Đề nghị cơ quan đăng ký khai tử..." là người yêu cầu,
-   người sau câu đó là người chết. Giấy báo tử/trích lục/công văn ghi "đăng ký khai tử cho ông/bà..."
-   cũng xác định người chết.
-4. Chỉ khi không thuộc case đúng 2 thẻ, CCCD/CMND không khớp người yêu cầu và cũng không khớp người
-   chết mới được đưa vào <giay_to_khong_thuoc_hai_vai>.
+1. TỜ KHAI ĐĂNG KÝ KHAI TỬ LÀ MỎ NEO CAO NHẤT. Có tờ khai thì người ghi tại nhãn
+   "Họ, chữ đệm, tên người yêu cầu" (phía TRÊN câu "Đề nghị cơ quan đăng ký khai tử...") LÀ người yêu cầu,
+   và người phía SAU câu đó là người chết. Chốt như vậy KỂ CẢ KHI người này khác requester_context:
+   tài khoản đăng nhập trên cổng có thể là cán bộ tiếp nhận hoặc người nộp thay, không nhất thiết là
+   người đứng đơn. TUYỆT ĐỐI KHÔNG vì lệch requester_context mà bỏ trống người yêu cầu của tờ khai.
+2. Không có tờ khai thì requester_context mới là mỏ neo người yêu cầu: so số định danh chính xác trước,
+   thiếu số mới so họ tên.
+3. CASE ĐÚNG 2 CCCD/CMND: gán thẻ khớp người yêu cầu (đã chốt ở bước 1 hoặc 2) cho người yêu cầu và
+   thẻ còn lại cho người chết. Không cần thêm tờ khai/giấy báo tử để xác nhận thẻ còn lại và không được
+   đưa thẻ còn lại vào <giay_to_khong_thuoc_hai_vai>.
+4. Giấy báo tử/trích lục/công văn ghi "đăng ký khai tử cho ông/bà..." cũng xác định người chết.
+5. Chỉ khi không thuộc case đúng 2 thẻ, CCCD/CMND không khớp người yêu cầu và cũng không khớp người
+   chết mới được đưa vào <giay_to_khong_thuoc_hai_vai>. Thẻ trùng requester_context nhưng KHÔNG phải
+   người đứng đơn trên tờ khai cũng thuộc nhóm bị loại này.
 
 QUY TẮC GIỮ ĐÚNG NGƯỜI:
 - Người nhận công văn, người ký, vợ/chồng, chủ hộ hoặc người trên CCCD không liên quan không được gán
@@ -46,6 +59,10 @@ QUY TẮC GIỮ ĐÚNG NGƯỜI:
   và nơi cấp nếu OCR có; không được bỏ chỉ vì đây là bước phân vai.
 - Không suy giới tính chỉ từ cách xưng hô "ông/bà".
 - Không chắc thì ghi "Không xác định", không đoán.
+
+Với NGƯỜI YÊU CẦU, ghi rõ hồ sơ có những TÀI LIỆU NGUỒN nào nói về người đó, vì bước trích xuất
+phía sau tách field theo tài liệu: dữ kiện ghi trên TỜ KHAI và dữ kiện in trên ẢNH THẺ CCCD/CMND
+là hai bộ riêng, phải giữ cả hai chứ không gộp làm một.
 
 Chỉ trả TEXT theo đúng ba khối dưới đây, không dùng markdown/code fence và không thêm JSON:
 <nguoi_yeu_cau>
@@ -58,6 +75,8 @@ Nơi cấp giấy tờ: ...
 Địa chỉ: ...
 Nguồn: ...
 Căn cứ phân vai: ...
+Tờ khai đăng ký khai tử có khai người yêu cầu: Có/Không
+Ảnh thẻ CCCD/CMND của người yêu cầu có trong hồ sơ: Có/Không
 </nguoi_yeu_cau>
 <nguoi_mat>
 Họ tên: ...
@@ -93,6 +112,15 @@ def _is_identity_document(text: str) -> bool:
     return any(marker in folded for marker in _IDENTITY_MARKERS)
 
 
+def _is_declaration_document(text: str) -> bool:
+    folded = _fold(text)
+    return any(marker in folded for marker in _DECLARATION_MARKERS)
+
+
+def _has_declaration(documents: list[dict]) -> bool:
+    return any(_is_declaration_document(str(d.get("text") or "")) for d in documents or [])
+
+
 def _requester_context(options: dict | None) -> tuple[str, str]:
     ctx = (options or {}).get("formContext") or {}
     return (
@@ -106,9 +134,12 @@ def _document_hints(documents: list[dict], options: dict | None) -> str:
     requester_name, requester_id = _requester_context(options)
     identity_indexes: list[int] = []
     requester_indexes: list[int] = []
+    declaration_indexes: list[int] = []
 
     for index, document in enumerate(documents, start=1):
         text = str(document.get("text") or "")
+        if _is_declaration_document(text):
+            declaration_indexes.append(index)
         if not _is_identity_document(text):
             continue
         identity_indexes.append(index)
@@ -117,10 +148,20 @@ def _document_hints(documents: list[dict], options: dict | None) -> str:
 
     lines = [
         "<requester_context>",
-        f'Họ tên người yêu cầu trên cổng: "{requester_name or "không có"}".',
-        f'Số định danh người yêu cầu trên cổng: "{requester_id or "không có"}".',
+        f'Họ tên tài khoản nộp hồ sơ trên cổng: "{requester_name or "không có"}".',
+        f'Số định danh tài khoản nộp hồ sơ trên cổng: "{requester_id or "không có"}".',
+        "Đây là tài khoản đăng nhập, CÓ THỂ là người nộp thay/cán bộ tiếp nhận. Nếu hồ sơ có tờ khai",
+        "đăng ký khai tử thì người đứng đơn trên tờ khai mới là NGƯỜI YÊU CẦU, kể cả khi lệch tài khoản này.",
         "</requester_context>",
     ]
+    if declaration_indexes:
+        lines.extend([
+            "<declaration_document_hints>",
+            "Tài liệu có dấu hiệu TỜ KHAI ĐĂNG KÝ KHAI TỬ: "
+            + ", ".join(map(str, declaration_indexes))
+            + ". Lấy người yêu cầu từ đúng tài liệu này.",
+            "</declaration_document_hints>",
+        ])
     if identity_indexes:
         lines.extend([
             "<identity_document_hints>",
@@ -151,7 +192,7 @@ def _section(text: str, tag: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def _render_context(raw: str, options: dict | None) -> str:
+def _render_context(raw: str, options: dict | None, has_declaration: bool = False) -> str:
     requester = _section(raw, "nguoi_yeu_cau")
     deceased = _section(raw, "nguoi_mat")
     unrelated = _section(raw, "giay_to_khong_thuoc_hai_vai")
@@ -159,9 +200,11 @@ def _render_context(raw: str, options: dict | None) -> str:
         return ""
 
     requester_name, requester_id = _requester_context(options)
-    # Nếu OCR có mỏ neo số định danh nhưng agent không giữ nó ở đúng khối, không dùng
-    # kết luận phân vai này để tránh khóa sai vai cho agent trích xuất phía sau.
-    if requester_id and requester_id not in _digits(requester):
+    # Không có tờ khai thì tài khoản cổng là mỏ neo duy nhất: agent phân vai đánh mất mỏ neo
+    # đó nghĩa là kết luận không đáng tin, bỏ để agent trích xuất chạy luồng cũ.
+    # CÓ tờ khai thì người đứng đơn trên tờ khai mới là chuẩn — tài khoản cổng có thể là người
+    # nộp thay nên lệch số định danh là BÌNH THƯỜNG, không được vì thế mà vứt kết quả phân vai.
+    if requester_id and not has_declaration and requester_id not in _digits(requester):
         return ""
 
     return (
@@ -176,10 +219,22 @@ def _render_context(raw: str, options: dict | None) -> str:
         "<giay_to_khong_thuoc_hai_vai>\n"
         f"{unrelated or 'Không xác định'}\n"
         "</giay_to_khong_thuoc_hai_vai>\n"
-        f"Mỏ neo người yêu cầu từ cổng: {requester_name or '?'}"
-        f" — {requester_id or '?'}.\n"
-        "Cccd_* chỉ lấy từ <nguoi_yeu_cau>; NguoiMat_* chỉ lấy từ <nguoi_mat>; "
-        "Gbt_* chỉ dùng cho metadata giấy báo tử. "
+        f"Tài khoản nộp hồ sơ trên cổng: {requester_name or '?'}"
+        f" — {requester_id or '?'}"
+        + (
+            ". Hồ sơ CÓ tờ khai nên người đứng đơn trên tờ khai ở khối <nguoi_yeu_cau> mới là "
+            "NGƯỜI YÊU CẦU; tài khoản này chỉ là người nộp, KHÔNG được dùng để ghi đè hay bỏ trống "
+            "dữ liệu người yêu cầu đọc từ tờ khai.\n"
+            if has_declaration
+            else ". Hồ sơ không có tờ khai nên tài khoản này là mỏ neo người yêu cầu.\n"
+        )
+        + "Khối này chốt AI LÀ AI, KHÔNG chốt field nào được xuất. Prefix field vẫn quyết định theo "
+        "TÀI LIỆU NGUỒN:\n"
+        "- Dữ kiện của <nguoi_yeu_cau> ghi trên TỜ KHAI ĐĂNG KÝ KHAI TỬ → NguoiYeuCau_*.\n"
+        "- Dữ kiện của <nguoi_yeu_cau> in trên ẢNH THẺ CCCD/CMND → Cccd_*.\n"
+        "- Hồ sơ có cả tờ khai lẫn ảnh thẻ của người yêu cầu → BẮT BUỘC xuất CẢ HAI BỘ, kể cả khi "
+        "giá trị trùng nhau từng chữ; không được coi bộ này là bản sao thừa của bộ kia.\n"
+        "- Mọi dữ kiện của <nguoi_mat> → NguoiMat_*; Gbt_* chỉ dùng cho metadata giấy báo tử.\n"
         "Nếu hai khối có hai số CCCD khác nhau thì phải giữ cả hai, không bỏ hoặc trộn thông tin. "
         "Mọi CCCD trong <giay_to_khong_thuoc_hai_vai> đều bị loại và không được xuất vào field nào. "
         "Với CCCD đã phân vai, OCR có ngày cấp/nơi cấp thì bắt buộc trả field ngày cấp/nơi cấp tương ứng.\n"
@@ -220,6 +275,7 @@ def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
     }
     extracted_requester_id = _digits(values.get("Cccd_SoDinhDanh"))
     extracted_deceased_id = _digits(values.get("NguoiMat_SoDinhDanh"))
+    extracted_declaration_id = _digits(values.get("NguoiYeuCau_SoDinhDanh"))
 
     drop_requester_identity = bool(
         extracted_requester_id
@@ -229,7 +285,19 @@ def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
         not deceased_id
         or (extracted_deceased_id and extracted_deceased_id != deceased_id)
     )
+    # Cụm giấy tờ người yêu cầu đọc từ TỜ KHAI chỉ bị loại khi rơi đúng vào số của người chết;
+    # OCR tờ khai hay sai vài chữ số nên không so khớp cứng với mỏ neo người yêu cầu.
+    drop_declaration_identity = bool(
+        extracted_declaration_id
+        and deceased_id
+        and extracted_declaration_id == deceased_id
+    )
 
+    declaration_fields = {
+        "NguoiYeuCau_SoDinhDanh",
+        "NguoiYeuCau_NgayCap",
+        "NguoiYeuCau_NoiCap",
+    }
     requester_fields = {
         "Cccd_HoTen",
         "Cccd_SoDinhDanh",
@@ -252,6 +320,7 @@ def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
         for field in fields
         if not (
             (drop_requester_identity and field.get("name") in requester_fields)
+            or (drop_declaration_identity and field.get("name") in declaration_fields)
             or (
                 drop_deceased_document
                 and field.get("name") in deceased_document_fields
@@ -273,4 +342,4 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(raw, options)
+    return _render_context(raw, options, _has_declaration(documents))
