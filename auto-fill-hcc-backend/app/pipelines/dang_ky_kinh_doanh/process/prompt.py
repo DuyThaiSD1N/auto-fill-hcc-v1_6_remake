@@ -14,9 +14,18 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
   + Không lấy địa chỉ tại mục "2. Trụ sở của hộ kinh doanh" cho ChuHo_DiaChi.
   + Ví dụ: nếu Giấy đề nghị có "Nơi ở hiện tại" đọc được, còn CCCD ghi một nơi cư trú khác, thì ChuHo_DiaChi phải lấy theo "Nơi ở hiện tại" trên Giấy đề nghị.
   + NguoiNop_DiaChi: nếu người nộp chính là chủ hộ thì dùng cùng địa chỉ cá nhân đã chọn cho ChuHo_DiaChi.
-    Nếu có giấy ủy quyền và người nộp khác chủ hộ thì lấy địa chỉ của người được ủy quyền trên giấy ủy quyền.
-    CHỈ lấy NguoiNop_DiaChi từ GIẤY ĐỀ NGHỊ hoặc GIẤY ỦY QUYỀN — KHÔNG lấy từ CCCD.
+    CHỈ lấy NguoiNop_DiaChi từ GIẤY ĐỀ NGHỊ — KHÔNG lấy từ CCCD.
   + NguoiNop_DiaChiCCCD: nếu hồ sơ CÓ CCCD của người nộp hồ sơ, lấy dòng "Nơi thường trú" trên CCCD đó vào field này. Dùng làm dự phòng khi giấy đề nghị không ghi địa chỉ người nộp.
+
+- ⚠️ PHÁT HIỆN NHIỀU CCCD TRONG HỒ SƠ:
+  
+  **HasMultipleCCCD**: Đếm số trang/ảnh có chữ "CĂN CƯỚC" hoặc "IDENTITY CARD" trong hồ sơ.
+  
+  - Nếu CHỈ có 1 CCCD → trả HasMultipleCCCD = false
+  - Nếu có 2+ CCCD → trả HasMultipleCCCD = true
+  
+  ⚠️ CHỈ cần đếm số CCCD, KHÔNG cần parse thông tin người nộp hồ sơ từ CCCD thứ 2.
+  Thông tin người nộp sẽ do extension tự điền khi user click "Sao chép thông tin tài khoản".
 - PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
   + ChuHo_DiaChi/NguoiNop_DiaChi = địa chỉ cá nhân.
   + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".

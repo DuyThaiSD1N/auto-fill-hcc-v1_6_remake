@@ -121,6 +121,30 @@ def _proper_name(value: Any) -> str:
     return " ".join(word.capitalize() for word in text.split())
 
 
+def _is_same_person(submitter: Any, owner: Any) -> bool:
+    """Xác định có phải cùng một người hay không.
+
+    Ưu tiên so sánh số định danh khi có đủ dữ liệu. Nếu không có số định danh,
+    dùng tên đã chuẩn hóa. Nếu cả hai đều không có, trả False để tránh nhầm thành
+    người tự nộp khi hồ sơ rõ ràng là người nộp thay mặt chủ hộ.
+    """
+    submitter_id = re.sub(r"\D", "", str(submitter or ""))
+    owner_id = re.sub(r"\D", "", str(owner or ""))
+    if submitter_id and owner_id:
+        return submitter_id == owner_id
+
+    submitter_name = _fold_vi(submitter)
+    owner_name = _fold_vi(owner)
+    if submitter_name and owner_name:
+        return submitter_name == owner_name
+
+    return False
+
+
+_PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
+_PERS_SUB_AUTHORIZED_LABEL = "Người được ủy quyền"
+
+
 def _strip_household_prefix(value: Any) -> str:
     text = _compact_text(value)
     return re.sub(r"^\s*hộ\s+kinh\s+doanh\s+", "", text, flags=re.IGNORECASE).strip()
@@ -362,19 +386,22 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$UC_DW_TAXEditCtl$TAX_CAL_METHOD_IDRbBox", "dom-radio", _tax_method_code(values.get("Thue_PhuongPhapTinh")))
 
     elif selected_page == "nguoi-nop-ho-so":
-        add("ctl00$C$PERS_SUBGroup", "dom-radio", "IS_REPRESENTATIVE_BUTTON")
-        add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input", _proper_name(values.get("NguoiNop_HoTen") or values.get("ChuHo_HoTen")))
-        add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("NguoiNop_NgaySinh") or values.get("ChuHo_NgaySinh")))
-        add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("NguoiNop_SoDinhDanh") or values.get("ChuHo_SoDinhDanh"))
-        # Địa chỉ người nộp: ưu tiên giấy đề nghị HKD → CCCD → địa chỉ chủ hộ trên giấy đề nghị
-        nguoi_nop_dia_chi = (
-            values.get("NguoiNop_DiaChi")
-            or values.get("NguoiNop_DiaChiCCCD")
-            or values.get("ChuHo_DiaChi")
-        )
-        add_address("ctl00$C$PERSCtl$ADDRCCtl", nguoi_nop_dia_chi)
-        # SĐT/email người nộp do nút "Sao chép thông tin đăng ký tài khoản" trên cổng tự điền.
-        # Không lấy contact chủ hộ làm dự phòng vì hai vai trò có thể là hai người khác nhau.
+        # Xác định vai trò người nộp:
+        # Nếu hồ sơ có nhiều CCCD (HasMultipleCCCD=true) → người nộp khác chủ hộ → tick "Người được ủy quyền"
+        # Thông tin người nộp sẽ do extension tự điền khi user click "Sao chép thông tin tài khoản"
+        has_multiple_cccd = values.get("HasMultipleCCCD", False)
+        is_self = not has_multiple_cccd
+        
+        pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
+        add("ctl00$C$PERS_SUBGroup", "dom-radio", pers_sub_role)
+        
+        # Điền thông tin chủ hộ làm mặc định (user sẽ click "Sao chép tài khoản" để thay thế nếu khác người)
+        add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input", _proper_name(values.get("ChuHo_HoTen")))
+        add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("ChuHo_NgaySinh")))
+        add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("ChuHo_SoDinhDanh"))
+        
+        # KHÔNG điền địa chỉ - để extension tự điền sau khi user click "Sao chép tài khoản"
+        # SĐT/email người nộp cũng do nút "Sao chép thông tin đăng ký tài khoản" tự điền
 
     return out
 

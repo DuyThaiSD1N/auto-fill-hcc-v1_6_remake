@@ -184,6 +184,20 @@ def test_business_contact_sources_are_independent_and_submitter_has_no_contact_f
     assert "ctl00$C$PERSCtl$PHONEFld" not in submitter_names
 
 
+def test_submitter_with_different_name_is_marked_as_authorized_when_no_id_available():
+    fields = [
+        {"name": "ChuHo_HoTen", "value": "Nguyễn Văn A"},
+        {"name": "ChuHo_SoDinhDanh", "value": "123456789"},
+        {"name": "NguoiNop_HoTen", "value": "Trần Thị B"},
+        {"name": "NguoiNop_SoDinhDanh", "value": ""},
+    ]
+
+    out = mapper.enrich(fields, page="nguoi-nop-ho-so")
+    role = next(f for f in out if f["name"] == "ctl00$C$PERS_SUBGroup")
+
+    assert role["value"] == "Người được ủy quyền"
+
+
 def test_business_schema_and_prompt_only_define_three_phone_sources():
     names = {field["name"] for field in FIELDS}
 

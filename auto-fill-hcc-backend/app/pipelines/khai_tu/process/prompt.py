@@ -73,14 +73,15 @@ Chỉ chuyển xuống nguồn sau khi nguồn trước không có, để trốn
   dữ liệu "trên CCCD".
 
 - Họ tên, ngày sinh, giới tính, quốc tịch, số định danh người chết:
-  1. deceased_identity được xác định chắc chắn;
+  1. paper_declaration (Tờ khai đăng ký khai tử);
   2. death_notice/giấy tờ thay thế;
-  3. paper_declaration;
+  3. deceased_identity (CCCD/giấy tờ tùy thân người chết);
   4. death_event_proof hoặc death_registration_correspondence có ghi rõ.
 
 - Ngày cấp và nơi cấp giấy tờ tùy thân người chết:
-  1. chính deceased_identity;
-  2. dòng giấy tờ tùy thân của người chết trên death_notice hoặc paper_declaration.
+  1. dòng giấy tờ tùy thân của người chết trên paper_declaration (Tờ khai);
+  2. chính deceased_identity (CCCD/giấy tờ tùy thân);
+  3. dòng giấy tờ tùy thân của người chết trên death_notice.
   Không suy ngày/nơi cấp từ loại thẻ.
 
 - NguoiMat_DanToc:
@@ -91,11 +92,11 @@ Chỉ chuyển xuống nguồn sau khi nguồn trước không có, để trốn
   Mâu thuẫn ngày sinh, số định danh hoặc địa chỉ không làm mất dân tộc đọc rõ từ nguồn ưu tiên.
 
 - NguoiMat_NoiCuTruCuoiCung — NƠI CƯ TRÚ CUỐI CÙNG:
-  1. mục "Nơi cư trú cuối cùng" trong paper_declaration;
+  1. mục "Nơi cư trú cuối cùng" trong paper_declaration (Tờ khai);
   2. mục "Nơi cư trú trước khi chết/cuối cùng" trong death_notice/giấy tờ thay thế;
   3. với người chết lâu năm: địa chỉ cư trú gần thời điểm chết nhất mà văn bản có thẩm quyền xác nhận
      trực tiếp thuộc người chết; không dùng địa chỉ người yêu cầu, vợ/chồng hoặc chủ hộ khác;
-  4. "Nơi thường trú/Place of residence" trên deceased_identity, chỉ là fallback.
+  4. "Nơi thường trú/Place of residence" trên deceased_identity (CCCD/giấy tờ tùy thân), chỉ là fallback cuối cùng.
 
 - NguoiMat_NgayMat, NguoiMat_GioMat, NguoiMat_NoiChet, NguoiMat_NguyenNhanMat:
   1. death_notice/giấy tờ thay thế;
@@ -120,10 +121,10 @@ Chỉ chuyển xuống nguồn sau khi nguồn trước không có, để trốn
 
 <source_priority_example>
 Ví dụ cho NguoiMat_NoiCuTruCuoiCung:
-- paper_declaration ghi "Số 12 đường Hoa Mai, phường Bình An, tỉnh Minh Sơn".
-- death_notice ghi "Thôn Đông, xã Phú Lộc, tỉnh An Phúc".
-- deceased_identity ghi "Số 88 đường Núi Trúc, phường Tân Lập, tỉnh An Phúc".
-→ Chọn paper_declaration và trả {"quocGia":"Việt Nam","tinh":"Minh Sơn","xa":"Bình An",
+- paper_declaration (Tờ khai) ghi "Số 12 đường Hoa Mai, phường Bình An, tỉnh Minh Sơn".
+- death_notice (Giấy báo tử) ghi "Thôn Đông, xã Phú Lộc, tỉnh An Phúc".
+- deceased_identity (CCCD) ghi "Số 88 đường Núi Trúc, phường Tân Lập, tỉnh An Phúc".
+→ Chọn paper_declaration (Tờ khai) và trả {"quocGia":"Việt Nam","tinh":"Minh Sơn","xa":"Bình An",
 "diaChi":"Số 12 đường Hoa Mai"}; không ghép hoặc thay bằng địa chỉ từ hai nguồn sau.
 </source_priority_example>
 

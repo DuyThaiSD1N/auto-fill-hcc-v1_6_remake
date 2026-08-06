@@ -76,6 +76,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_HoTen", "desc": "Họ tên người nộp hồ sơ."},
     {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp hồ sơ."},
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số định danh cá nhân/CCCD của người nộp hồ sơ."},
+    {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính người nộp hồ sơ: "Nam" hoặc "Nữ". CHỈ trả khi người nộp KHÁC chủ hộ và có CCCD riêng.'},
     {
         "name": "NguoiNop_DiaChi",
         "desc": (
@@ -91,6 +92,13 @@ FIELDS: list[dict] = [
             "Địa chỉ thường trú của người nộp hồ sơ lấy từ CCCD/CMND của người nộp (dòng 'Nơi thường trú'), "
             "object {quocGia,tinh,xa,diaChi}. CHỈ trả khi hồ sơ CÓ CCCD của người nộp. "
             "Dùng làm DỰ PHÒNG khi NguoiNop_DiaChi không đọc được từ giấy đề nghị."
+        ),
+    },
+    {
+        "name": "HasMultipleCCCD",
+        "desc": (
+            "Boolean: true nếu hồ sơ có 2+ CCCD với số định danh khác nhau, false nếu chỉ có 1 CCCD. "
+            "Dùng để xác định người nộp có phải chủ hộ hay không."
         ),
     },
 ]
