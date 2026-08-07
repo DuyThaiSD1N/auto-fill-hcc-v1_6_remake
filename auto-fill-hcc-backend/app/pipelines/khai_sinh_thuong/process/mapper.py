@@ -4,6 +4,8 @@ import re
 
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as LEGACY_COMP_BY_NAME
 from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.hospital_lookup import lookup_hospital
 
 # Đổi tên tỉnh/thành theo sắp xếp đơn vị hành chính 2025 (giấy tờ cũ ghi tên cũ → chuẩn hóa tên mới).
 _TINH_RENAME = {"thua thien hue": "Huế"}
@@ -174,13 +176,33 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
         }
     # Ưu tiên 3: Giấy chứng sinh
     if values.get("Gcs_HoTenCon") or values.get("Gcs_NgaySinhCon"):
+        # Quê quán con = quê quán cha
+        # Ưu tiên: QueQuan (CCCD cũ) > NoiDangKyKhaiSinh (căn cước mới) > NoiCuTru (fallback)
+        que_quan_raw = (
+            _area(values.get("CccdNam_QueQuan"))
+            or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))  
+            or _area(values.get("CccdNam_NoiCuTru_TrongNuoc"))
+        )
+        que_quan = remap_area(que_quan_raw) if que_quan_raw else None
+        
+        # Nơi sinh: áp dụng lookup_hospital để bổ sung xã/phường cho bệnh viện
+        noi_sinh_raw = _area(values.get("Gcs_NoiSinh"))
+        noi_sinh = noi_sinh_raw
+        if noi_sinh_raw and not noi_sinh_raw.get("xa"):
+            dia_chi = noi_sinh_raw.get("diaChi") or ""
+            bv_info = lookup_hospital(dia_chi)
+            if bv_info:
+                noi_sinh = {**noi_sinh_raw, "xa": bv_info["xa"]}
+                if not noi_sinh_raw.get("tinh"):
+                    noi_sinh["tinh"] = bv_info["tinh"]
+        
         return {
             "ho_ten": values.get("Gcs_HoTenCon"),
             "ngay_sinh": values.get("Gcs_NgaySinhCon"),
             "gioi_tinh": values.get("Gcs_GioiTinhCon"),
             "dan_toc": values.get("Gcs_DanTocCon"),
-            "noi_sinh": _area(values.get("Gcs_NoiSinh")),
-            "que_quan": None,
+            "noi_sinh": noi_sinh,
+            "que_quan": que_quan,
             "source": "gcs",
         }
     # Ưu tiên 4: Tờ khai
@@ -405,9 +427,15 @@ def enrich(fields: list[dict]) -> list[dict]:
     )
 
     # Quê quán con KHÔNG được suy từ marker "đã chết" — đó không phải địa danh.
-    father_origin = None
-    if not nu_is_subject:
-        father_origin = _area(values.get("CccdNam_QueQuan")) or (None if father_deceased else father_residence)
+    # Ưu tiên: QueQuan > NoiDangKyKhaiSinh > NoiCuTru (khi không deceased)
+    # Tính toán father_origin trong MỌI trường hợp (cả nu_is_subject) để làm fallback cho quê quán con
+    father_origin_raw = (
+        _area(values.get("CccdNam_QueQuan"))
+        or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
+        or (None if father_deceased else father_residence)
+    )
+    # Áp dụng remap để chuẩn hóa xã/phường
+    father_origin = remap_area(father_origin_raw) if father_origin_raw else None
 
     father_issuer = values.get("CccdNam_NoiCap") or default_issuer(values.get("CccdNam_NgayCap"))
     mother_issuer = values.get("CccdNu_NoiCap") or default_issuer(values.get("CccdNu_NgayCap"))

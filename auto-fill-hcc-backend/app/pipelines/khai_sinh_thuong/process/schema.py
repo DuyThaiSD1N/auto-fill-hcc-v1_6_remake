@@ -49,6 +49,7 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_DanToc", "desc": "Dân tộc trên giấy tờ Nam chỉ khi chính giấy tờ Nam ghi rõ; CCCD gắn chip thường không có."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch trên CCCD Nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nam, object {quocGia,tinh,xa,diaChi} nếu có."},
+    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'/'Place of birth'), object {quocGia,tinh,xa,diaChi}. CHỈ khi thẻ là CĂN CƯỚC mới CÓ dòng này; thẻ CCCD cũ có 'Quê quán' thì không có field này."},
     {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nam, object {quocGia,tinh,xa,diaChi}."},
 
     # Mother facts from CCCD/CMND Nu.
@@ -127,6 +128,7 @@ for _name in (
     "CccdChuThe_QueQuan",
     "CccdChuThe_NoiCuTru",
     "CccdNam_QueQuan",
+    "CccdNam_NoiDangKyKhaiSinh",
     "CccdNam_NoiCuTru_TrongNuoc",
     "CccdNu_NoiCuTru_TrongNuoc",
     "TkKs_NoiSinh",

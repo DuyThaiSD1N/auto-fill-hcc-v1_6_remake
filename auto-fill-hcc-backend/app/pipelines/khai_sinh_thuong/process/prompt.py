@@ -7,11 +7,40 @@ GIẤY CHỨNG SINH / TỜ KHAI ĐĂNG KÝ KHAI SINH, CCCD của chính NGƯỜI
 ═══════════════════════════════════════════════════════
 BƯỚC 1 — XÁC ĐỊNH VAI TRÒ CỦA TỪNG CCCD (QUAN TRỌNG NHẤT)
 ═══════════════════════════════════════════════════════
+
+**QUY TẮC PHÂN LOẠI CCCD:**
+
+1. **ƯU TIÊN NHÌN GIẤY CHỨNG SINH TRƯỚC**: Nếu hồ sơ CÓ GIẤY CHỨNG SINH (tiêu đề "GIẤY CHỨNG SINH", 
+   có mục "Dự định đặt tên con là", "Số con trong lần sinh này") → đây là khai sinh THƯỜNG (trẻ sơ sinh):
+   - CCCD giới tính NAM → CHA → điền CccdNam_*
+   - CCCD giới tính NỮ → MẸ → điền CccdNu_*
+   - Thông tin con lấy từ GIẤY CHỨNG SINH → Gcs_*
+   - **TUYỆT ĐỐI KHÔNG điền CccdChuThe_*** trong trường hợp này
+
+2. **ĐĂNG KÝ MUỘN** (CHỈ khi KHÔNG có giấy chứng sinh HOẶC tờ khai ghi cha/mẹ "đã chết"):
+   - Dấu hiệu: Một CCCD có năm sinh TRÙNG/GẦN (chênh ≤ 2 năm) với năm sinh "người được khai sinh" 
+     trên tờ khai
+   - Hoặc: Tờ khai ghi cha/mẹ "đã chết"/"đã mất" VÀ có CCCD của người trẻ tuổi
+   - CCCD khớp người được đăng ký → CccdChuThe_*
+   - CCCD còn lại (nếu có) → CHA/MẸ theo giới tính
+
 PHÂN VAI THEO NHÃN TỜ KHAI: tờ khai/giấy chứng sinh ghi rõ ai là người được khai sinh, ai là
 cha, ai là mẹ. Nhãn trên giấy tờ THẮNG mọi suy đoán theo giới tính của thẻ CCCD. Chỉ khi tờ
 khai không ghi rõ mới suy theo giới tính/năm sinh như các trường hợp bên dưới.
 
 Với MỖI thẻ CCCD/CMND trong hồ sơ, TRƯỚC TIÊN hãy đọc năm sinh và đối chiếu với tờ khai:
+
+**VÍ DỤ KHAI SINH THƯỜNG (có giấy chứng sinh):**
+Hồ sơ có:
+- CCCD 1: NGUYỄN THỊ NHƯ HẢO, Nữ, sinh 02/02/1998, số 075198006890
+- CCCD 2: NGUYỄN TRƯỜNG GIANG, Nam, sinh 05/03/1993, số 040093043165
+- Giấy chứng sinh: con sinh 15/06/2026, dự định đặt tên "Nguyễn Như Ngọc"
+
+→ CÓ GIẤY CHỨNG SINH (trẻ sơ sinh) → khai sinh thường
+→ Gcs_HoTenCon = "Nguyễn Như Ngọc", Gcs_NgaySinhCon = "15/06/2026", Gcs_GioiTinhCon = "Nữ"
+→ CccdNu_HoTen = "NGUYỄN THỊ NHƯ HẢO", CccdNu_SoDinhDanh = "075198006890" (MẸ)
+→ CccdNam_HoTen = "NGUYỄN TRƯỜNG GIANG", CccdNam_SoDinhDanh = "040093043165" (CHA)
+→ **KHÔNG điền CccdChuThe_*** (vì không phải đăng ký muộn)
 
 **VÍ DỤ CỤ THỂ ĐĂNG KÝ MUỘN:**
 Hồ sơ có:

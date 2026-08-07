@@ -1233,11 +1233,27 @@
     if (targetKey === "nguoi-nop-ho-so") {
       const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
       const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+
+      // Lấy thông tin chủ hộ: ưu tiên từ pages["chu-ho-kinh-doanh"], fallback search.value (dissolution/change)
+      let ownerId = "";
+      let ownerName = "";
+
       const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
-      const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
-      const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
-      const ownerId = String((ownerIdField && ownerIdField.value) || "").replace(/\D/g, "");
-      const ownerName = foldBusinessPageText((ownerNameField && ownerNameField.value) || "");
+      if (ownerFields.length) {
+        // Luồng registration: có trang chu-ho-kinh-doanh
+        const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
+        const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
+        ownerId = String((ownerIdField && ownerIdField.value) || "").replace(/\D/g, "");
+        ownerName = foldBusinessPageText((ownerNameField && ownerNameField.value) || "");
+      } else if (st.businessFlow?.search) {
+        // Luồng change/dissolution: dùng identityNumber từ search hoặc expectedName
+        const searchMethod = st.businessFlow.search.method;
+        if (searchMethod === "identityNumber") {
+          ownerId = String(st.businessFlow.search.value || "").replace(/\D/g, "");
+        }
+        ownerName = foldBusinessPageText(st.businessFlow.search.expectedName || "");
+      }
+
       const accountDiffersFromOwner = (copiedId && ownerId && copiedId !== ownerId)
         || (!ownerId && copiedName && ownerName && copiedName !== ownerName);
       if (accountDiffersFromOwner) {

@@ -18,23 +18,23 @@ FIELDS: list[dict] = [
     {"name": "Tk_GioiTinhCon", "desc": 'Giới tính người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH: "Nam" hoặc "Nữ". CHỈ trả khi tờ khai ghi rõ.'},
     {"name": "Tk_DanTocCon", "desc": "Dân tộc người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Dân tộc' trong khối thông tin người được khai sinh (KHÔNG phải dân tộc cha/mẹ). CHỈ trả khi tờ khai ghi rõ dân tộc của chính đứa trẻ."},
 
-    # Father facts from CCCD/CMND Nam.
-    {"name": "CccdNam_HoTen", "desc": "Họ tên CHA: ưu tiên CCCD/CMND giới tính Nam; nếu không có CCCD của cha thì lấy tên chồng/bên nam trên giấy chứng nhận kết hôn. Không lấy từ giấy chứng sinh."},
-    {"name": "CccdNam_SoDinhDanh", "desc": "Số định danh/CCCD trên CCCD Nam, 12 số; có thể đọc từ MRZ mặt sau."},
-    {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh trên CCCD Nam, dd/mm/yyyy."},
-    {"name": "CccdNam_DanToc", "desc": "Dân tộc của CHA. Thẻ CCCD/Căn cước (nhất là mẫu mới) thường KHÔNG in dân tộc → BẮT BUỘC lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH (khối cha) hoặc GIẤY CN KẾT HÔN (mục chồng/bên nam), KỂ CẢ khi cha đã có CCCD; đối chiếu đúng người. Chỉ để trống khi không giấy nào ghi."},
-    {"name": "CccdNam_QuocTich", "desc": "Quốc tịch trên CCCD Nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nam, object {tinh,xa,diaChi} nếu có. Với thẻ CĂN CƯỚC mới (tiêu đề 'CĂN CƯỚC'/'IDENTITY CARD', không có dòng 'Quê quán') thì để TRỐNG — KHÔNG dùng 'Nơi đăng ký khai sinh' làm quê quán."},
-    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'/'Place of birth'), object {tinh,xa,diaChi}. CHỈ trả khi thẻ là CĂN CƯỚC mới CÓ dòng này; KHÔNG trả cho CCCD cũ có 'Quê quán'."},
-    {"name": "CccdNam_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nam, object {tinh,xa,diaChi}."},
+    # Father facts - ưu tiên giấy chứng sinh/khai sinh/kết hôn, fallback CCCD Nam.
+    {"name": "CccdNam_HoTen", "desc": "Họ tên CHA: ưu tiên giấy chứng sinh (khối cha) > giấy kết hôn (chồng/bên nam) > giấy khai sinh bản sao của con khác (khối cha) > CCCD/CMND Nam."},
+    {"name": "CccdNam_SoDinhDanh", "desc": "Số định danh cha: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD Nam (12 số, có thể đọc từ MRZ)."},
+    {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh cha: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD Nam (dd/mm/yyyy, có thể chỉ năm sinh)."},
+    {"name": "CccdNam_DanToc", "desc": "Dân tộc CHA: BẮT BUỘC từ giấy chứng sinh (khối cha) hoặc giấy kết hôn (chồng) hoặc giấy khai sinh (khối cha) hoặc tờ khai khai sinh (khối cha), KỂ CẢ khi cha đã có CCCD. CCCD thường không in dân tộc."},
+    {"name": "CccdNam_QuocTich", "desc": "Quốc tịch cha: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
+    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán cha object {tinh,xa,diaChi}: lấy từ CCCD cũ (dòng 'Quê quán'). Thẻ căn cước mới KHÔNG có quê quán → để trống."},
+    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh cha trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,xa,diaChi}. CHỈ khi thẻ CÓ dòng này."},
+    {"name": "CccdNam_NoiCuTru", "desc": "Nơi cư trú cha object {tinh,xa,diaChi}: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD Nam."},
 
-    # Mother facts from CCCD/CMND Nu.
-    {"name": "CccdNu_HoTen", "desc": "Họ tên MẸ: ưu tiên CCCD/CMND giới tính Nữ; nếu không có CCCD của mẹ thì lấy tên vợ/bên nữ trên giấy chứng nhận kết hôn (khớp mẹ trên giấy chứng sinh). Không lấy từ giấy chứng sinh."},
-    {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh/CCCD trên CCCD Nữ, 12 số; có thể đọc từ MRZ mặt sau."},
-    {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh trên CCCD Nữ, dd/mm/yyyy."},
-    {"name": "CccdNu_DanToc", "desc": "Dân tộc của MẸ. Thẻ CCCD/Căn cước (nhất là mẫu mới) thường KHÔNG in dân tộc → BẮT BUỘC lấy từ giấy chứng sinh (dòng 'Dân tộc' khối mẹ) hoặc giấy CN kết hôn (mục vợ), KỂ CẢ khi mẹ đã có CCCD; đối chiếu đúng người. Chỉ để trống khi không giấy nào ghi."},
-    {"name": "CccdNu_QuocTich", "desc": "Quốc tịch trên CCCD Nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNu_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nữ, object {tinh,xa,diaChi}."},
+    # Mother facts - ƯU TIÊN GIẤY CHỨNG SINH.
+    {"name": "CccdNu_HoTen", "desc": "Họ tên MẸ: ưu tiên giấy chứng sinh (khối mẹ) > giấy khai sinh bản sao (khối mẹ) > giấy kết hôn (bên nữ) > CCCD/CMND Nữ."},
+    {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh mẹ: ưu tiên giấy chứng sinh (Số ĐDCN/Hộ chiếu) > giấy khai sinh > giấy kết hôn > CCCD Nữ (12 số, có thể đọc từ MRZ)."},
+    {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh mẹ: ưu tiên giấy chứng sinh (có thể chỉ năm sinh) > giấy khai sinh > giấy kết hôn > CCCD Nữ (dd/mm/yyyy)."},
+    {"name": "CccdNu_DanToc", "desc": "Dân tộc mẹ: BẮT BUỘC từ giấy chứng sinh (dòng 'Dân tộc' khối mẹ) hoặc giấy khai sinh (khối mẹ) hoặc giấy kết hôn. CCCD thường không in dân tộc."},
+    {"name": "CccdNu_QuocTich", "desc": "Quốc tịch mẹ: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
+    {"name": "CccdNu_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi}: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD Nữ. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
 
     # Marriage certificate facts from GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ (nếu có).
     {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, ở mục "Số:", vd "119/2026".'},

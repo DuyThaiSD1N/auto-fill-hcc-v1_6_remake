@@ -54,22 +54,29 @@ Khi hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH (tiêu đề có "TỜ KHAI ĐĂ
 - Tk_DanTocCon = dân tộc người được khai sinh (dòng "Dân tộc" trong khối CON — KHÔNG phải dòng "Dân tộc" của cha/mẹ). Ưu tiên hơn suy luận từ cha/mẹ.
 Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu tiên Tk_* trước.
 
-# ═══ C. THÔNG TIN CHA (CccdNam_*) ═══
-- CccdNam_* ưu tiên lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính "Nam" (dân tộc: xem mục E). NẾU KHÔNG CÓ CCCD/CMND nào của cha thì LẤY THÔNG TIN CHA TỪ block "chồng"/"bên nam" của GIẤY CHỨNG NHẬN KẾT HÔN: họ tên (CccdNam_HoTen), ngày sinh (CccdNam_NgaySinh), dân tộc (CccdNam_DanToc), quốc tịch (CccdNam_QuocTich), nơi cư trú (CccdNam_NoiCuTru), số định danh (CccdNam_SoDinhDanh — lấy ở "Giấy tờ tùy thân: Thẻ căn cước số ...").
-- CccdNam_QueQuan lấy từ mục "Quê quán"/"Place of origin" của người cha(nam) nếu OCR đọc được; nếu không có thì bỏ qua. Với thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", KHÔNG có dòng "Quê quán") thì để TRỐNG CccdNam_QueQuan — thay vào đó trả CccdNam_NoiDangKyKhaiSinh = nội dung dòng "Nơi đăng ký khai sinh"/"Place of birth" (object {tinh,xa,diaChi}, tách địa chỉ theo mục F).
-- CccdNam_NoiCuTru (và CccdNu_NoiCuTru) lấy từ mục "Nơi thường trú"/"Place of residence" (tách địa chỉ theo mục F).
-- Với CHA, giấy chứng sinh thường không có thông tin cha → KHÔNG lấy CccdNam_HoTen từ giấy chứng sinh.
+# ═══ C. THÔNG TIN CHA (CccdNam_*) — ƯU TIÊN GIẤY CHỨNG SINH / KẾT HÔN ═══
+- THỨ TỰ ƯU TIÊN NGUỒN:
+  (1) **GIẤY CHỨNG SINH** (khối "người cha" trên giấy chứng sinh của con hoặc con khác) — ưu tiên cao nhất khi có
+  (2) **GIẤY CHỨNG NHẬN KẾT HÔN** (block "chồng"/"bên nam") — ưu tiên cao khi có
+  (3) **GIẤY KHAI SINH** (bản sao/trích lục của con khác trong hồ sơ, có khối "người cha") — lấy khi không có nguồn (1)(2)
+  (4) CCCD/CMND giới tính "Nam" — chỉ dùng khi các nguồn trên không có
+- CccdNam_HoTen, CccdNam_NgaySinh, CccdNam_SoDinhDanh, CccdNam_QuocTich, CccdNam_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, fallback CCCD Nam
+- CccdNam_DanToc: BẮT BUỘC từ tờ khai khai sinh (khối cha) hoặc giấy chứng sinh (khối cha) hoặc giấy kết hôn (mục chồng) hoặc giấy khai sinh (khối cha), KỂ CẢ khi cha đã có CCCD
+- CccdNam_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
+- CccdNam_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
+- LƯU Ý: Khi hồ sơ có GIẤY KHAI SINH (bản sao) của CON KHÁC (anh/chị/em của đứa trẻ đang khai sinh), giấy này thường có đầy đủ thông tin cha/mẹ trong khối "Họ, chữ đệm, tên người cha" và "Họ, chữ đệm, tên người mẹ" → BẮT BUỘC trích thông tin cha từ đó khi không có CCCD cha
 
-# ═══ D. THÔNG TIN MẸ (CccdNu_*) — theo thứ tự ưu tiên nguồn ═══
-- (1) Ưu tiên CCCD/CMND có giới tính "Nữ" (dân tộc: xem mục E).
-- (2) KHÔNG có CCCD mẹ → lấy từ block "vợ"/"bên nữ" của GIẤY CHỨNG NHẬN KẾT HÔN (đối chiếu tên/số định danh khớp với mẹ trên giấy chứng sinh): họ tên, ngày sinh, dân tộc, quốc tịch, nơi cư trú, số định danh. Nếu ngày sinh mẹ trên giấy kết hôn không đọc được, có thể lấy NĂM SINH mẹ ở giấy chứng sinh.
-- (3) KHÔNG có CCCD mẹ VÀ giấy kết hôn không đọc được bên vợ → LẤY TRỌN THÔNG TIN MẸ TỪ GIẤY CHỨNG SINH (khối "Họ, chữ đệm, tên khai sinh của mẹ"): CccdNu_HoTen = tên mẹ trên giấy chứng sinh; CccdNu_SoDinhDanh = "Số ĐDCN/Hộ chiếu" của mẹ; CccdNu_NgaySinh = ngày/năm sinh mẹ; CccdNu_DanToc = dân tộc mẹ (Giấy chứng sinh là NGUỒN HỢP LỆ cho mẹ khi không có CCCD/giấy kết hôn — KHÔNG được bỏ trống mẹ nếu giấy chứng sinh có các thông tin này.)
-- RIÊNG nơi cư trú của MẸ (CccdNu_NoiCuTru) có THỨ TỰ ƯU TIÊN NGUỒN RIÊNG (khác các trường khác của mẹ):
-  (i) GIẤY CHỨNG NHẬN KẾT HÔN (block "vợ") — ưu tiên CAO NHẤT;
-  (ii) rồi tới GIẤY CHỨNG SINH (dòng "Nơi cư trú" trong khối mẹ);
-  (iii) sau cùng mới tới CCCD của mẹ.
-  diaChi của mẹ KHÔNG BAO GIỜ là tên phường/xã (TUYỆT ĐỐI không đặt diaChi = "Phường ..."/"Xã ..." trùng với xa); diaChi chỉ là bản/tổ dân phố/thôn/xóm/số nhà. Nếu nguồn chỉ ghi "Phường X, tỉnh Y" (không có chi tiết) thì diaChi để TRỐNG.
-- (4) GIẤY CAM ĐOAN do MẸ viết ("Quan hệ với người được khai sinh: Mẹ đẻ") — khi chưa có CCCD mẹ, lấy CccdNu_* từ đây: CccdNu_HoTen ("Tên tôi là"), CccdNu_SoDinhDanh ("CCCD số"), CccdNu_NgaySinh ("Sinh năm/ngày"), CccdNu_DanToc ("Dân tộc"), CccdNu_NoiCuTru ("Thường trú tại"). Ưu tiên CCCD nếu có.
+# ═══ D. THÔNG TIN MẸ (CccdNu_*) — ƯU TIÊN GIẤY CHỨNG SINH ═══
+- THỨ TỰ ƯU TIÊN NGUỒN (đơn giản hóa):
+  (1) **GIẤY CHỨNG SINH** (khối thông tin mẹ) — ưu tiên cao nhất, luôn có
+  (2) **GIẤY KHAI SINH** (bản sao/trích lục của con khác trong hồ sơ, có khối "người mẹ") — lấy khi không có giấy chứng sinh
+  (3) GIẤY CHỨNG NHẬN KẾT HÔN (block "vợ"/"bên nữ") — bổ sung khi các nguồn trên thiếu
+  (4) CCCD/CMND giới tính "Nữ" — chỉ dùng khi các nguồn trên không đủ
+- CccdNu_HoTen: lấy từ giấy chứng sinh (khối mẹ), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
+- CccdNu_SoDinhDanh: lấy từ giấy chứng sinh (Số ĐDCN/Hộ chiếu), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
+- CccdNu_NgaySinh: ưu tiên giấy chứng sinh (có thể chỉ năm sinh), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
+- CccdNu_DanToc: BẮT BUỘC từ giấy chứng sinh (dòng "Dân tộc" khối mẹ) hoặc giấy khai sinh (khối mẹ) hoặc giấy kết hôn
+- CccdNu_NoiCuTru: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD
 
 # ═══ E. DÂN TỘC CHA/MẸ (CccdNam_DanToc = CHA, CccdNu_DanToc = MẸ) ═══
 - Thẻ CCCD/Căn cước gắn chip (mẫu mới) thường KHÔNG in dân tộc → PHẢI lấy dân tộc từ giấy tờ khác CÓ ghi, đối chiếu ĐÚNG NGƯỜI theo họ tên/số định danh. BẮT BUỘC điền dân tộc cho CẢ cha VÀ mẹ nếu bất kỳ giấy nào ghi — KỂ CẢ khi người đó ĐÃ CÓ CCCD (ĐỪNG vì cha/mẹ đã có CCCD mà bỏ qua dân tộc của họ).
