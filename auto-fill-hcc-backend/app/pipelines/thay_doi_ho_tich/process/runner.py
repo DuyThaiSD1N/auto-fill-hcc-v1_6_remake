@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.thay_doi_ho_tich.process import mapper
+from app.pipelines.thay_doi_ho_tich.process import declaration, mapper
 from app.pipelines.thay_doi_ho_tich.process.prompt import EXTRA_RULES
 from app.pipelines.thay_doi_ho_tich.process.schema import (
     ALIASES,
@@ -119,6 +119,14 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
         context_builder=_identity_context,
+    )
+    # Agent hay dồn dữ kiện người yêu cầu của tờ khai vào Cccd_* rồi bỏ trống NguoiYeuCau_*,
+    # khiến mapper rơi xuống dữ liệu VNeID của tài khoản đăng nhập. Tờ khai là biểu mẫu chuẩn
+    # nên đọc lại khối đó tất định và bù các ô còn thiếu.
+    res["fields"] = declaration.fill_missing(
+        res["fields"],
+        res.get("ocr_text") or "",
+        COMPACT_COMP_BY_NAME,
     )
     res["fields"] = mapper.enrich(res["fields"], options)
 
