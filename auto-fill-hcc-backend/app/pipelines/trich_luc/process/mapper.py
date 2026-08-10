@@ -445,6 +445,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             )
             if not _ct_valid:
                 ct_loai = ct_so = ct_ngay = ct_noi = None
+            
+            # FALLBACK: Khi không có ChuThe_* hợp lệ VÀ không có tờ khai giấy tờ,
+            # kiểm tra Nyc_* (người yêu cầu) có TRÙNG chủ thể → fallback Nyc_* cho NDK_*
+            if not ct_so and not ht_so:
+                nyc_id = values.get("Nyc_SoDinhDanh")
+                nyc_name = _fold(values.get("Nyc_HoTen"))
+                subj_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
+                
+                # Kiểm tra Nyc_* có khớp chủ thể không (so sánh tên vì không có số định danh trong giấy khai sinh)
+                nyc_matches_subject = False
+                if nyc_name and subj_name and nyc_name == subj_name:
+                    nyc_matches_subject = True
+                # Hoặc nếu có số định danh ở cả 2 bên
+                if nyc_id and _subj_d and _digits(nyc_id) == _subj_d:
+                    nyc_matches_subject = True
+                
+                # Nếu khớp → fallback Nyc_* cho giấy tờ của NDK
+                if nyc_matches_subject and nyc_id:
+                    ct_so = nyc_id
+                    ct_loai = "Căn cước"  # Fallback từ CCCD người yêu cầu
+                    ct_ngay = values.get("Nyc_NgayCap")
+                    ct_noi = values.get("Nyc_NoiCap")
 
             add("NDK_SoDinhDanh", ct_so or ht_so or values.get("HoTich_SoDinhDanh"))
             add(
@@ -466,6 +488,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("NDK_LoaiGiayToTuyThan", id_doc_type(id_hint, ndk_noicap or "") if id_hint else None)
             add("NDK_LoaiCuTru", "Thường trú")
             ndk_area = _area(values.get("HoTich_NoiCuTru")) or _area(_ct("ChuThe_NoiCuTru"))
+            # Fallback nơi cư trú từ Nyc_NoiCuTru khi không có từ giấy hộ tịch/ChuThe
+            # Kiểm tra nếu ct_so được set từ Nyc (fallback case) hoặc không có nơi cư trú nào
+            if not ndk_area:
+                # Kiểm tra nếu đã có fallback từ Nyc_* (ct_so mà không phải từ ChuThe_*)
+                if ct_so and not _ct("ChuThe_SoDinhDanh"):
+                    ndk_area = _area(values.get("Nyc_NoiCuTru"))
             if ndk_area:
                 add("NDK_NoiCuTru", "1")
                 add("NDK_NoiCuTru_TrongNuoc", ndk_area)
@@ -493,11 +521,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # Chỉ có một CCCD và thẻ đó khớp người đăng nhập: tự làm cho chính mình.
             _fill_subject_from_requester()
 
-    # Không điền (hoặc không tin) thông tin người yêu cầu → mặc định 3 trường cư trú, bôi vàng.
-    # `seen` đảm bảo KHÔNG đè lên giá trị thật đã fill ở trên.
-    add("NYC_LoaiCuTru", "Thường trú", default=True)
-    add("NYC_NoiCuTru", "1", default=True)
-    add("NYC_NoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+    # KHÔNG điền default cho NYC_* - để VNeID tự động điền từ thông tin đăng nhập
+    # Extension sẽ skip các field mà backend không trả về
 
     # Form chỉ có ô số lượng, không có radio Có/Không cấp bản sao.
     copy_quantity = _copy_quantity(values.get("CopyRequest_Quantity"))

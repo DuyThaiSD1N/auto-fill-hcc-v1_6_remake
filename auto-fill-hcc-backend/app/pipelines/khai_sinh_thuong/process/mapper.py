@@ -498,14 +498,15 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     # ── Mẹ ────────────────────────────────────────────────────────────────
     if has_mother_cccd:
-        add("HoTenMeKS", values.get("CccdNu_HoTen"))
+        # Ưu tiên tên từ tờ khai (TkKs_HoTenMe) nếu có, fallback CCCD
+        add("HoTenMeKS", values.get("TkKs_HoTenMe") or values.get("CccdNu_HoTen"))
         add("NamSinhMeKS", values.get("CccdNu_NgaySinh"))
         add("SoDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
         add("SoGiayToDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
         add("LoaiGiayToDinhDanhMe", "Căn cước công dân")
         add("NgayCapDDMe", values.get("CccdNu_NgayCap"))
         add("NoiCapDDMe", mother_issuer)
-        add("DanTocMeKS", values.get("CccdNu_DanToc"))
+        add("DanTocMeKS", values.get("TkKs_DanTocMe") or values.get("CccdNu_DanToc"))
         add("QuocTichMeKS", values.get("CccdNu_QuocTich") or "Việt Nam")
         _add_residence(add, "Me", mother_residence, mother_deceased)
     elif has_mother_tk:
@@ -514,18 +515,25 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("NamSinhMeKS", values.get("TkKs_NamSinhMe"))
         add("DanTocMeKS", values.get("TkKs_DanTocMe"))
         add("QuocTichMeKS", "Việt Nam")
+        # Thêm số CCCD từ tờ khai nếu có
+        tk_me_sdd = values.get("TkKs_SoDinhDanhMe")
+        if tk_me_sdd:
+            add("SoDinhDanhMe", tk_me_sdd)
+            add("SoGiayToDinhDanhMe", tk_me_sdd)
+            add("LoaiGiayToDinhDanhMe", "Căn cước công dân")
         _add_residence(add, "Me", mother_residence, mother_deceased)
 
     # ── Cha ───────────────────────────────────────────────────────────────
     if has_father_cccd:
-        add("HoTenChaKS", values.get("CccdNam_HoTen"))
+        # Ưu tiên tên từ tờ khai (TkKs_HoTenCha) nếu có, fallback CCCD
+        add("HoTenChaKS", values.get("TkKs_HoTenCha") or values.get("CccdNam_HoTen"))
         add("NamSinhChaKS", values.get("CccdNam_NgaySinh"))
         add("SoDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
         add("SoGiayToDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
         add("LoaiGiayToDinhDanhCha", "Căn cước công dân")
         add("NgayCapDDCha", values.get("CccdNam_NgayCap"))
         add("NoiCapDDCha", father_issuer)
-        add("DanTocChaKS", values.get("CccdNam_DanToc"))
+        add("DanTocChaKS", values.get("TkKs_DanTocCha") or values.get("CccdNam_DanToc"))
         add("QuocTichChaKS", values.get("CccdNam_QuocTich") or "Việt Nam")
         _add_residence(add, "Cha", father_residence, father_deceased)
     elif has_father_tk:
@@ -534,6 +542,12 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("NamSinhChaKS", values.get("TkKs_NamSinhCha"))
         add("DanTocChaKS", values.get("TkKs_DanTocCha"))
         add("QuocTichChaKS", "Việt Nam")
+        # Thêm số CCCD từ tờ khai nếu có
+        tk_cha_sdd = values.get("TkKs_SoDinhDanhCha")
+        if tk_cha_sdd:
+            add("SoDinhDanhCha", tk_cha_sdd)
+            add("SoGiayToDinhDanhCha", tk_cha_sdd)
+            add("LoaiGiayToDinhDanhCha", "Căn cước công dân")
         _add_residence(add, "Cha", father_residence, father_deceased)
 
     # QuanHe đã được điền sớm ở đầu. Các default còn lại (nếu có) điền ở đây.
