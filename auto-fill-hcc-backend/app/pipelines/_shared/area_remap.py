@@ -128,7 +128,8 @@ _CITY_TO_PROVINCE: dict[str, str] = {
     # Quảng Trị
     "dong ha":       "Quảng Trị",
     "quang tri":     "Quảng Trị",   # thị xã Quảng Trị cũ
-    # Thừa Thiên Huế (nay là TP Huế trực thuộc TW)
+    # Thừa Thiên Huế → Thành phố Huế trực thuộc TW (từ 01/01/2026)
+    "thua thien hue": "Huế",
     "hue":           "Huế",
     # Bắc Ninh
     "bac ninh":      "Bắc Ninh",

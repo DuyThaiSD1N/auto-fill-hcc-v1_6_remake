@@ -274,9 +274,13 @@ def enrich(
         add("PhutMat", death_time.get("minute"))
         add("NguyenNhanMat", values.get("NguoiMat_NguyenNhanMat"))
 
-        # Cơ quan cấp giấy báo tử không mặc nhiên là nơi chết. Chỉ dùng nguồn
-        # NguoiMat_NoiChet đã được LLM định tuyến từ nhãn nơi chết/chứng cứ hợp lệ.
+        # Nơi chết: ưu tiên tờ khai, không có thì fallback nơi cư trú từ CCCD
+        # (vì thường người chết tại nhà)
         death_place = _area(values.get("NguoiMat_NoiChet"))
+        if not death_place and cccd_is_deceased:
+            # Fallback: lấy nơi cư trú từ CCCD khi không có thông tin nơi chết
+            death_place = _area(values.get("Cccd_NoiCuTru"))
+        
         if death_place:
             add("nktNoiChet", "1")
             add("nktNoiChet_TrongNuoc", death_place)

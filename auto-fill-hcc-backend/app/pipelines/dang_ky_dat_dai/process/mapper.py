@@ -5,6 +5,7 @@ import re
 from app.pipelines.dang_ky_dat_dai.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.area_remap import remap_area
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -48,6 +49,15 @@ def _issuer(value):
     return text or None
 
 
+def _area(value):
+    """Normalize and remap address for administrative changes."""
+    if not isinstance(value, dict):
+        return None
+    # Apply remap_area to handle merged communes/wards
+    remapped = remap_area(value, allow_diachi_fallback=True)
+    return remapped if remapped else value
+
+
 def enrich(fields: list[dict]) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
     values = _by_name(fields)
@@ -72,6 +82,8 @@ def enrich(fields: list[dict]) -> list[dict]:
     if has_cccd:
         identity_no = values.get("Cccd_SoDinhDanh")
         issuer = values.get("Cccd_NoiCap") or default_issuer(values.get("Cccd_NgayCap"))
+        residence = _area(values.get("Cccd_NoiCuTru"))
+        
         add("CongDan_tenCongDan", values.get("Cccd_HoTen"))
         add("CongDan_tenCoQuanToChuc", values.get("Cccd_HoTen"))
         add("CongDan_maSoThueNguoiNop", identity_no)
@@ -82,9 +94,15 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("CongDan_ngayCapCmnd", values.get("Cccd_NgayCap"))
         add("CongDan_noiCapCmnd", issuer)
         add("CongDan_soCCCD", identity_no)
+        
+        # Add residence address if available
+        if residence:
+            # Extract components for individual fields if needed by UI
+            add("CongDan_diaChiNuocNgoai", residence.get("diaChi") or "")
+            # Full address object might be used by other fields
+            add("CongDan_NoiCuTru", residence)
 
     add("CongDan_maDMQuocGia", "Việt Nam")
-    add("CongDan_diaChiNuocNgoai", "Việt Nam")
 
     if has_gcn:
         add("CongDan_soGCNGP", _serial(values.get("Gcn_SoPhatHanh")))
