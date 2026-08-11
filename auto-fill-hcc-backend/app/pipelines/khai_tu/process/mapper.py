@@ -147,6 +147,11 @@ def enrich(
             "NguoiMat_HoTen",
             "NguoiMat_NgayMat",
             "NguoiMat_GioMat",
+            "NguoiMat_NgaySinh",
+            "NguoiMat_GioiTinh",
+            "NguoiMat_SoDinhDanh",
+            "NguoiMat_NoiCuTruCuoiCung",
+            "NguoiMat_NoiChet",
             "Gbt_So",
             "Gbt_CoQuanCap",
         )
