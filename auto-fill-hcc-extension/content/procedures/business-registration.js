@@ -1402,8 +1402,7 @@
   /**
    * Địa chỉ người nộp hồ sơ theo ĐÚNG vai trò đang chọn trên cổng:
    *  - Chủ hộ tự nộp ("Người có thẩm quyền ký") → địa chỉ cá nhân ghi trong ĐƠN (Giấy đề nghị).
-   *  - Người được ủy quyền → ưu tiên GIẤY ỦY QUYỀN, rồi mới tới các nguồn dự phòng:
-   *    CCCD khớp người nộp trong hồ sơ → địa chỉ người nộp trên đơn → địa chỉ CCCD do backend đọc.
+   *  - Người được ủy quyền → KHÔNG điền địa chỉ gì cả (người dùng sẽ tự điền thông tin ủy quyền).
    * Backend gửi sẵn hai nhánh này trong __applicantAddress vì lúc map chưa biết cổng sẽ tick vai trò nào.
    */
   function submitterAddressFields(st, fields, backendAddrFields) {
@@ -1418,29 +1417,8 @@
       return backendAddrFields;
     }
 
-    const authorized = plan.authorized || {};
-    const uyQuyen = applicantAddressFields(authorized.uyQuyen);
-    if (uyQuyen.length) {
-      console.log("[FillAll] người được ủy quyền → địa chỉ từ giấy ủy quyền:", JSON.stringify(authorized.uyQuyen));
-      return uyQuyen;
-    }
-
-    const matched = matchSubmitterIdentityCandidate(st);
-    const fromCandidate = matched ? applicantAddressFields(matched.diaChi) : [];
-    if (fromCandidate.length) {
-      console.log("[FillAll] người được ủy quyền → địa chỉ từ CCCD trong hồ sơ:", matched.hoTen);
-      return fromCandidate;
-    }
-
-    for (const key of ["donDeNghi", "cccd"]) {
-      const fallback = applicantAddressFields(authorized[key]);
-      if (fallback.length) {
-        console.log("[FillAll] người được ủy quyền → địa chỉ dự phòng (" + key + "):", JSON.stringify(authorized[key]));
-        return fallback;
-      }
-    }
-
-    console.warn("[FillAll] không đọc được địa chỉ người được ủy quyền từ hồ sơ → bỏ qua địa chỉ.");
+    // Nếu chọn "Người được ủy quyền" → KHÔNG điền địa chỉ
+    console.log("[FillAll] người được ủy quyền → không điền địa chỉ (người dùng tự nhập thông tin ủy quyền)");
     return [];
   }
 

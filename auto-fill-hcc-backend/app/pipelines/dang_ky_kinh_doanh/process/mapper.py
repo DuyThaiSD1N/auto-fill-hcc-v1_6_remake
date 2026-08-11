@@ -409,31 +409,24 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
 
         # ĐỊA CHỈ người nộp (cổng KHÔNG tự điền khi bấm "Sao chép tài khoản"):
         # - Người nộp là chủ hộ  → lấy thẳng địa chỉ cá nhân trên ĐƠN (Giấy đề nghị).
-        # - Người được ủy quyền  → ưu tiên GIẤY ỦY QUYỀN, rồi mới tới đơn, cuối cùng là CCCD.
+        # - Người được ủy quyền  → KHÔNG điền địa chỉ (người dùng tự nhập thông tin ủy quyền).
         self_address = next(
             (value for value in (values.get("ChuHo_DiaChi"), values.get("NguoiNop_DiaChi"))
              if _has_address(value)),
             None,
         )
-        authorized_sources = [
-            (key, value) for key, value in (
-                ("uyQuyen", values.get("NguoiNop_DiaChiUyQuyen")),
-                ("donDeNghi", values.get("NguoiNop_DiaChi")),
-                ("cccd", values.get("NguoiNop_DiaChiCCCD")),
-            ) if _has_address(value)
-        ]
-        authorized_address = authorized_sources[0][1] if authorized_sources else None
-        add_address("ctl00$C$PERSCtl$ADDRCCtl", self_address if is_self else authorized_address)
+        # Chỉ điền địa chỉ khi người nộp là chủ hộ
+        if is_self:
+            add_address("ctl00$C$PERSCtl$ADDRCCtl", self_address)
 
         # Extension chốt lại vai trò theo radio THẬT trên cổng (sau khi bấm "Sao chép tài khoản" mới
-        # biết tài khoản đăng nhập có phải chủ hộ không) → gửi kèm cả hai nhánh địa chỉ và thứ tự
-        # ưu tiên nguồn để FE chọn lại cho đúng mà không phải gọi backend lần nữa.
+        # biết tài khoản đăng nhập có phải chủ hộ không) → gửi kèm thông tin địa chỉ cho trường hợp
+        # người nộp là chủ hộ, không gửi cho trường hợp người được ủy quyền.
         applicant_address = {
             "role": "self" if is_self else "authorized",
             "self": _addr(self_address),
-            "authorized": {key: _addr(value) for key, value in authorized_sources},
         }
-        if applicant_address["self"] or applicant_address["authorized"]:
+        if applicant_address["self"]:
             add("__applicantAddress", "raw", applicant_address)
 
         # SĐT/email để extension tự điền khi user click "Sao chép tài khoản"
