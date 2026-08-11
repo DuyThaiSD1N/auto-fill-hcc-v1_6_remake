@@ -14,6 +14,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.process.schema import UI_COMP_BY_NAME
@@ -106,17 +107,22 @@ def _parse_area_text(value: Any) -> dict | None:
 
 
 def _area(value: Any) -> dict | None:
+    """Parse + REMAP tỉnh/xã để chuẩn hóa tên sau SÁP NHẬP hành chính, khớp option select trên cổng
+    (vd Quảng Nam→Đà Nẵng, tên xã cũ→xã mới) — giống thủ tục cấp phép khai thác thủy sản."""
     if isinstance(value, str):
-        return _parse_area_text(value)
-    if not isinstance(value, dict):
+        out = _parse_area_text(value)
+    elif isinstance(value, dict):
+        out = {
+            "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
+            "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
+            "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
+            "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
+        }
+    else:
         return None
-    out = {
-        "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
-        "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
-        "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
-        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
-    }
-    return out if any(out.values()) else None
+    if not out or not any(out.values()):
+        return None
+    return remap_area(out, allow_diachi_fallback=True)
 
 
 def _identity(value: Any) -> str | None:

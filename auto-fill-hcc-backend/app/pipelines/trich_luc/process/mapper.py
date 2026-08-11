@@ -302,20 +302,45 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         )
     )
 
-    def _fill_requester() -> None:
-        requester_issuer = normalize_issuer(values.get("Nyc_NoiCap")) or default_issuer(values.get("Nyc_NgayCap"))
-        add("HoVaTenC", values.get("Nyc_HoTen"))
-        add("SoDinhDanhC", values.get("Nyc_SoDinhDanh"))
-        # Loại giấy tờ theo nơi cấp: Bộ Công an → "Thẻ Căn cước"; Cục Cảnh sát → "Thẻ căn cước công dân".
-        add("LoaiGiayToDinhDanhC", id_doc_type("Căn cước", requester_issuer))
-        add("NYC_SoGiayToTuyThan", values.get("Nyc_SoDinhDanh"))
-        add("NgayCapDDC", values.get("Nyc_NgayCap"))
-        add("NoiCapDDC", requester_issuer)
-        add("NYC_LoaiCuTru", "Thường trú")
-        area = _area(values.get("Nyc_NoiCuTru"))
-        if area:
-            add("NYC_NoiCuTru", "1")
-            add("NYC_NoiCuTru_TrongNuoc", area)
+    # KHÔNG điền trực tiếp các field NYC_* nữa - thay bằng __requesterInfo
+    # Extension sẽ tự xử lý việc đè lên thông tin người đăng nhập
+    
+    # Thu thập thông tin người yêu cầu theo thứ tự ưu tiên
+    ctx = (options or {}).get("formContext") or {}
+    
+    def req(declaration_key: str, cccd_key: str):
+        """Lấy tờ khai trước, thiếu mới lấy CCCD."""
+        value = values.get(declaration_key)
+        if value in (None, "", {}, []) and has_requester:
+            return values.get(cccd_key)
+        return value
+    
+    requester_info = {}
+    
+    # Ưu tiên 1: Tờ khai hoặc CCCD
+    requester_name = req("NguoiYeuCau_HoTen", "Nyc_HoTen")
+    requester_id = req("NguoiYeuCau_SoDinhDanh", "Nyc_SoDinhDanh")
+    requester_issue_date = req("NguoiYeuCau_NgayCap", "Nyc_NgayCap")
+    requester_issuer_raw = req("NguoiYeuCau_NoiCap", "Nyc_NoiCap")
+    requester_issuer = normalize_issuer(requester_issuer_raw) or default_issuer(requester_issue_date)
+    requester_residence = req("NguoiYeuCau_NoiCuTru", "Nyc_NoiCuTru")
+    requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
+    
+    if requester_name or requester_id:
+        # Có dữ liệu từ giấy tờ → tạo requesterInfo
+        requester_info = {
+            "hoTen": requester_name,
+            "soDinhDanh": requester_id,
+            "loaiGiayTo": requester_doc_type,
+            "ngayCap": requester_issue_date,
+            "noiCap": requester_issuer,
+            "noiCuTru": _area(requester_residence) if requester_residence else None,
+        }
+        # Loại bỏ các key có giá trị None/empty
+        requester_info = {k: v for k, v in requester_info.items() if v not in (None, "", {}, [])}
+        
+        if requester_info:
+            add("__requesterInfo", requester_info)
 
     def _fill_subject_from_card() -> None:
         subject_issuer = normalize_issuer(values.get("ChuThe_NoiCap")) or default_issuer(values.get("ChuThe_NgayCap"))
@@ -365,9 +390,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NDK_QuocTich", "Việt Nam")
 
     if has_hotich:
-        # Có giấy hộ tịch: Nyc_* chỉ điền người yêu cầu; chủ thể lấy từ HoTich_* và bổ sung bằng ChuThe_*.
-        if has_requester and _requester_trusted(values, options):
-            _fill_requester()
+        # Có giấy hộ tịch: tạo __requesterInfo để extension tự xử lý
+        # (code ở trên, trước phần xử lý NDK)
 
         event_type = _event_type(values)
 
@@ -507,22 +531,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("PhuongThucNhanKQ", "2")
     elif has_subject_support:
         # Nyc_* là người yêu cầu; giấy chứng sinh/CT01 xác định người mục II.
-        if has_requester and _requester_trusted(values, options):
-            _fill_requester()
+        # __requesterInfo đã được tạo ở trên
         _fill_ndk_from_support()
     else:
         # Không có giấy hộ tịch: hai nhóm đã được phân vai độc lập trong prompt.
-        requester_trusted = has_requester and _requester_trusted(values, options)
-        if requester_trusted:
-            _fill_requester()
+        # __requesterInfo đã được tạo ở trên
         if has_subject_card:
             _fill_subject_from_card()
-        elif requester_trusted and has_requester_anchor:
+        elif has_requester and has_requester_anchor and _requester_trusted(values, options):
             # Chỉ có một CCCD và thẻ đó khớp người đăng nhập: tự làm cho chính mình.
             _fill_subject_from_requester()
-
-    # KHÔNG điền default cho NYC_* - để VNeID tự động điền từ thông tin đăng nhập
-    # Extension sẽ skip các field mà backend không trả về
 
     # Form chỉ có ô số lượng, không có radio Có/Không cấp bản sao.
     copy_quantity = _copy_quantity(values.get("CopyRequest_Quantity"))
