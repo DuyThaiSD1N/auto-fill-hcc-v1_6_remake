@@ -62,9 +62,12 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
         _field("ThietKe_ToChuc_MaSo", "2301199858"),
         _field("ThietKe_ChuNhiem_HoTen", "Nguyễn Văn Lục"),
         _field("ThietKe_ChuNhiem_ChungChi", "BAN-00000047"),
-        _field("ThietKe_ChuTri_BoMon", "Kiến trúc"),
-        _field("ThietKe_ChuTri_HoTen", "Nguyễn Văn Lục"),
-        _field("ThietKe_ChuTri_ChungChi", "BAN-00000047"),
+        _field("ThietKe_ChuTri_DanhSach", [
+            {"boMon": "Kiến trúc", "hoTen": "Nguyễn Văn Lục", "chungChi": "BAN-00000047"},
+            {"boMon": "Kết cấu", "hoTen": "Cao Đình Chính", "chungChi": "BAN-00127083"},
+            {"boMon": "Điện", "hoTen": "Nguyễn Văn Thắng", "chungChi": "BXD-00028135"},
+            {"boMon": "Nước", "hoTen": "Nguyễn Văn An", "chungChi": "BAN-00109462"},
+        ]),
         _field("CongTrinh_Ten", "NHÀ Ở GIA ĐÌNH"),
         _field("CongTrinh_Loai", "Nhà ở riêng lẻ"),
         _field("CongTrinh_Cap", "Cấp III"),
@@ -100,6 +103,17 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
     assert d["data[toChucCaNhanLapThietKe]"] == "toChuc"
     assert d["data[maSoDoanhNghiepLapThietKe]"] == "2301199858"
     assert d["data[thietKeXayDung][0][boMonChuTriThietKe]"] == "Kiến trúc"
+    assert d["data[thietKeXayDung][0][hoVaTenChuTriThietKe]"] == "Nguyễn Văn Lục"
+    assert d["data[thietKeXayDung][0][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00000047"
+    assert d["data[thietKeXayDung][1][boMonChuTriThietKe]"] == "Kết cấu"
+    assert d["data[thietKeXayDung][1][hoVaTenChuTriThietKe]"] == "Cao Đình Chính"
+    assert d["data[thietKeXayDung][1][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00127083"
+    assert d["data[thietKeXayDung][2][boMonChuTriThietKe]"] == "Điện"
+    assert d["data[thietKeXayDung][2][hoVaTenChuTriThietKe]"] == "Nguyễn Văn Thắng"
+    assert d["data[thietKeXayDung][2][maSoChungChiHanhNgheChuTriThietKe]"] == "BXD-00028135"
+    assert d["data[thietKeXayDung][3][boMonChuTriThietKe]"] == "Nước"
+    assert d["data[thietKeXayDung][3][hoVaTenChuTriThietKe]"] == "Nguyễn Văn An"
+    assert d["data[thietKeXayDung][3][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00109462"
     assert d["data[loaiCongTrinh]"] == "1"
     assert d["data[loaiCongTrinhKhongTheoTuyen]"] == "Nhà ở riêng lẻ"
     assert d["data[capCongTrinhKhongTheoTuyen]"] == "III"
@@ -108,7 +122,7 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
     assert d["data[tongDienTichSanKhongTheoTuyen]"] == "214.1"
     assert d["data[chieuCaoCongTrinhKhongTheoTuyen]"] == "9.6"
     assert d["data[soTangCongTrinhKhongTheoTuyen]"] == "2"
-    assert "data[toChucCaNhanThamTraThietKe]" not in d
+    assert d["data[toChucCaNhanThamTraThietKe]"] == "caNhan"
 
 
 def test_cap_giay_phep_xay_dung_fills_applicant_only_when_ui_context_matches():
@@ -155,6 +169,42 @@ def test_cap_giay_phep_xay_dung_prompt_locks_private_house_rules():
     assert "Đơn đề nghị cấp phép xây dựng là nguồn chính" in system_prompt
     assert "Công trình không theo tuyến, tín ngưỡng, tôn giáo" in system_prompt
     assert "không trả bất kỳ field ThamTra_* nào" in system_prompt
+    assert "ThietKe_ChuTri_DanhSach" in system_prompt
+    assert "TẤT CẢ các dòng" in system_prompt
+    assert "ưu tiên bộ môn Kiến trúc" not in system_prompt
+    assert "ƯU TIÊN TUYỆT ĐỐI \"Nơi cư" in system_prompt
+    assert "CHỈ khi Giấy ủy quyền không ghi hoặc không đọc được địa chỉ" in system_prompt
+    assert "ƯU TIÊN \"Địa chỉ liên hệ\"" not in system_prompt
+
+
+def test_cap_giay_phep_xay_dung_deduplicates_design_leads_and_keeps_one_row_shape():
+    out, _ = mapper.enrich([
+        _field("LapThietKe_Loai", "Tổ chức"),
+        _field("ThietKe_ToChuc_Ten", "CÔNG TY THIẾT KẾ MINH AN"),
+        _field("ThietKe_ChuTri_DanhSach", [
+            {"boMon": "Kết cấu", "hoTen": "Lê Minh Anh", "chungChi": ""},
+            {"boMon": "KẾT CẤU", "hoTen": "LÊ MINH ANH", "chungChi": "HCM-01234567"},
+        ]),
+    ], {})
+    d = _values(out)
+
+    assert d["data[thietKeXayDung][0][boMonChuTriThietKe]"] == "Kết cấu"
+    assert d["data[thietKeXayDung][0][hoVaTenChuTriThietKe]"] == "Lê Minh Anh"
+    assert d["data[thietKeXayDung][0][maSoChungChiHanhNgheChuTriThietKe]"] == "HCM-01234567"
+    assert not any(name.startswith("data[thietKeXayDung][1]") for name in d)
+
+
+def test_cap_giay_phep_xay_dung_does_not_promote_chief_designer_to_discipline_lead():
+    out, _ = mapper.enrich([
+        _field("LapThietKe_Loai", "Tổ chức"),
+        _field("ThietKe_ToChuc_Ten", "CÔNG TY THIẾT KẾ MINH AN"),
+        _field("ThietKe_ChuNhiem_HoTen", "Trần Văn Bình"),
+        _field("ThietKe_ChuNhiem_ChungChi", "HAN-07654321"),
+    ], {})
+    d = _values(out)
+
+    assert d["data[tenChuNhiemThietKe]"] == "Trần Văn Bình"
+    assert not any(name.startswith("data[thietKeXayDung]") for name in d)
 
 
 def test_cap_giay_phep_xay_dung_maps_explicit_dan_dung_subtype():

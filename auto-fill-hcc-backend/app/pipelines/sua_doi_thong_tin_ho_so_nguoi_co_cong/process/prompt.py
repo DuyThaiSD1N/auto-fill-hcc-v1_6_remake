@@ -31,7 +31,19 @@ NỘI DUNG ĐƠN (về việc sửa hồ sơ người có công):
   (vd "Hồ sơ liệt sĩ Huỳnh Kim Khoa").
 - Don_ThuocDienNCC: người khai thuộc diện / quan hệ với người có công (vd "Con đẻ của liệt sĩ …").
 - Don_ThongTinHienTai (thông tin ĐANG GHI, có thể sai) và Don_ThongTinDeNghiSua (thông tin ĐÚNG đề nghị
-  sửa): chép NGUYÊN VĂN toàn bộ từ Đơn Mẫu 26, giữ đủ danh sách tên/năm sinh, KHÔNG tóm tắt, KHÔNG hoán
-  đổi hai nội dung này cho nhau.
+  sửa). Nội dung này xuất hiện Ở NHIỀU GIẤY: TỜ TRÌNH (mục "Nội dung thông tin đính chính": a. Thông tin
+  đang ghi trong hồ sơ / b. Thông tin đề nghị đính chính), ĐƠN Mẫu 26 ("Thông tin đang ghi" / "Thông tin
+  đề nghị sửa đổi, bổ sung"), và CÔNG VĂN Sở Nội vụ.
+  + CHỌN NGUỒN ĐẦY ĐỦ & RÕ NHẤT; ƯU TIÊN bản ghi ĐỦ NGÀY/THÁNG/NĂM hơn bản chỉ có
+    NĂM ("1954") — thường Tờ trình đầy đủ hơn Đơn. TUYỆT ĐỐI không rút gọn ngày tháng về mỗi năm.
+  + ĐỐI CHIẾU CHÉO cùng một người giữa các giấy để sửa lỗi OCR: nếu 1 giấy đọc sai tên/năm của một dòng
+  + Don_ThongTinHienTai = danh sách mục "a./đang ghi" (giá trị CŨ). 
+<THÔNG TIN ĐỀ NGHỊ SỬA>
+trả ra trường `Don_ThongTinDeNghiSua`
+Nội dung này là mục "b./đề nghị"; nếu ghi dạng "X đính chính thành Y" thì lấy VẾ SAU (Y, giá trị MỚI, đủ ngày tháng)
+  + Giữ ĐỦ danh sách (mỗi người 1 dòng), KHÔNG tóm tắt, KHÔNG hoán đổi hai nội dung này cho nhau.
+## TUYỆT ĐỐI LẤY TẤT CẢ THÔNG TIN, Không cắt ngắn, không rút gọn
+</THÔNG TIN ĐỀ NGHỊ SỬA>
+
 
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa thông tin còn thiếu; giấy tờ không có thì bỏ field."""

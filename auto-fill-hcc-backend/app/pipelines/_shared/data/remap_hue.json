@@ -1,0 +1,800 @@
+[
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Thu",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Mỹ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Xuân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Thái"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Hiền",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Thái"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Sơn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Thái"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Hòa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Dinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Bình",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Dinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Chương",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Dinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Phú",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Phú"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Thạnh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Phú"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phong Hải",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Quảng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Công",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Quảng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Ngạn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phong Quảng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Tứ Hạ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương Trà"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Văn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương Trà"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Vân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương Trà"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Xuân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Kim Trà"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Chữ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Kim Trà"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Toàn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Kim Trà"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Long Hồ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Kim Long"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Long",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Kim Long"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Kim Long",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Kim Long"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "An Hòa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Sơ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Gia Hội",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Hậu",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Tây Lộc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thuận Lộc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thuận Hòa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Đông Ba",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thuận An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Hải",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Thuận",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Phong",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hóa Châu"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Vinh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hóa Châu"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Thành",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hóa Châu"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Thượng",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Mỹ Thượng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Mỹ Thượng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Mỹ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Mỹ Thượng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Vân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Vỹ Dạ"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Xuân Phú",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Vỹ Dạ"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vỹ Dạ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Vỹ Dạ"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Hội",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận Hóa"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Nhuận",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận Hóa"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phường Đúc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận Hóa"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vĩnh Ninh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận Hóa"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phước Vĩnh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận Hóa"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Trường An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thuận Hóa"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "An Đông",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường An Cựu"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "An Tây",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường An Cựu"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "An Cựu",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường An Cựu"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Biều",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thủy Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Bằng",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thủy Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Xuân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thủy Xuân"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Dương",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thanh Thủy"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Phương",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thanh Thủy"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Thanh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Thanh Thủy"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Lương",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương Thủy"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Châu",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương Thủy"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Tân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Hương Thủy"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Bài",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Bài"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thủy Phù",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Bài"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Sơn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Bài"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Dương Hòa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Phú Bài"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Thái",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Đan Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Lợi",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Đan Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Vinh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Đan Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Phú",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Đan Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn Sịa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Quảng Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Phước",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Quảng Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Quảng Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Thọ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Quảng Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Bình",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Bình Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Bình Thành",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Bình Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Bình Tiến",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Bình Điền"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Diên",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh Xuân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh Thanh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vinh"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Xuân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Hồ"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Lương",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Hồ"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Hồ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Hồ"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn Phú Đa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vang"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Gia",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vang"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh Hà",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Vang"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh Hưng",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Vinh Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh Mỹ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Vinh Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Giang Hải",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Vinh Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Vinh Hiền",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Vinh Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn Lộc Sơn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Hưng Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Bổn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Hưng Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Xuân Lộc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Hưng Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Hòa",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Lộc An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Điền",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Lộc An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc An",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Lộc An"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn Phú Lộc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Trì",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Bình",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Phú Lộc"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn Lăng Cô",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Chân Mây - Lăng Cô"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Tiến",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Chân Mây - Lăng Cô"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Vĩnh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Chân Mây - Lăng Cô"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lộc Thủy",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Chân Mây - Lăng Cô"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thượng Quảng",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Long Quảng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thượng Long",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Long Quảng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Hữu",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Long Quảng"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Xuân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Nam Đông"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thượng Nhật",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Nam Đông"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Sơn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Nam Đông"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn Khe Tre",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Khe Tre"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Phú",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Khe Tre"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Lộc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Khe Tre"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thượng Lộ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã Khe Tre"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Thủy",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 1"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Vân",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 1"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Trung Sơn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 1"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Kim",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 1"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Thị trấn A Lưới",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 2"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Bắc",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 2"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Quảng Nhâm",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 2"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "A Ngo",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 2"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Sơn Thủy",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 3"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Thượng",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 3"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Phú Vinh",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 3"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Thái",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 3"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Phong",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 4"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "A Roàng",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 4"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Đông Sơn",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 4"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Lâm Đớt",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 4"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hương Nguyên",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 5"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Hồng Hạ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Xã A Lưới 5"
+    },
+    {
+        "tinh_cu": "Thừa Thiên Huế",
+        "xa_cu": "Dương Nỗ",
+        "tinh_moi": "Huế",
+        "xa_moi": "Phường Dương Nỗ"
+    }
+]

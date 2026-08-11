@@ -14,6 +14,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -190,12 +191,20 @@ async def plan_thay_doi_ho_tich_attachments(
     attachments: list[dict] = []
     classified: list[dict] = []
     used_names: set[str] = set()
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "documentName": ""}
+        ocr_text_by_index[idx] = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
         doc_type = detected["type"]
+        if doc_type == "identity":
+            identity_indexes.add(idx)
         document_name = _resolve_document_name(file, doc_type, detected, used_names)
         attachments.append(_build_item(file, idx, doc_type, document_name))
         classified.append({"fileName": file.get("name"), "type": doc_type, "documentName": document_name})
+
+    # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau) vào thành phần giấy tùy thân.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
 
     return {
         "attachments": attachments,

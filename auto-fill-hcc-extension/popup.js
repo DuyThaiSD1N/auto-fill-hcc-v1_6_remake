@@ -58,6 +58,11 @@ const SEARCH_PROCEDURE_LIMIT = 5;
 // Chế độ đính kèm "tách hồ sơ" (split): CHỈ cho chứng thực. Mặc định TẮT = 1 hồ sơ nhiều file (merge).
 const SPLIT_MODE_KEY = "autofill_attach_split_mode";
 const SPLIT_MODE_PROCEDURES = new Set(["chung-thuc-ban-sao", "chung-thuc-chu-ky"]);
+const SPLIT_RELOADABLE_WALLET_CODES = new Set([
+  "wallet-stale-modal",
+  "wallet-modal-not-opened",
+  "wallet-device-upload-not-opened",
+]);
 let attachSplitMode = false; // hiệu lực từ ô tick (đã khôi phục từ storage)
 
 function isSplitEligibleProcedure() {
@@ -134,50 +139,16 @@ function sendToBackground(payload) {
   });
 }
 
-// Biến lỗi kỹ thuật lằng nhằng (OpenAI 500, JSON, request id, traceback...) thành 1 câu ngắn dễ hiểu.
-// Giữ lại câu người-đọc-được nếu có (vd "Không bóc tách được trường nào."), gắn thêm lý do ngắn.
-function friendlyError(text) {
-  const raw = String(text ?? "").trim();
-  if (!raw) return "Có lỗi xảy ra, vui lòng thử lại.";
-
-  // Tách câu người-đọc-được khỏi dòng kỹ thuật (agent:/reason:/OCR:, JSON, Error code, request id...).
-  const TECH = /(error code|req_[a-z0-9]{6,}|traceback|exception|"type"|"message"|"param"|help\.|\{['"]?\s*error|http\/?\s?\d{3}|^\s*(agent|reason|ocr)\s*:)/i;
-  const lines = raw.split(/\n+/).map((s) => s.trim()).filter(Boolean);
-  const humanLines = lines.filter((l) =>
-    l.length < 120 && !TECH.test(l) && !/[{}]/.test(l) && !/failed to fetch|networkerror|net::/i.test(l));
-  const humanMsg = humanLines.join(" ").trim();
-  const hasTech = humanLines.length < lines.length || /[{}]|error code|failed to fetch/i.test(raw);
-
-  // Không có noise kỹ thuật → vốn đã là thông báo cho người dùng, giữ nguyên (chỉ cắt nếu quá dài).
-  if (!hasTech) {
-    const msg = humanMsg || raw;
-    return msg.length > 200 ? msg.slice(0, 197) + "..." : msg;
+// friendlyError() + errorSupportCode() nằm ở api/errors.js (nạp trước popup.js) — 1 nguồn chân lý.
+// setStatus nhận input là Error (ưu tiên map theo MÃ lỗi BE) hoặc string; lỗi luôn được rút gọn an toàn.
+function setStatus(input, type) {
+  if (type === "err") {
+    const code = (typeof errorSupportCode === "function") ? errorSupportCode(input) : null;
+    if (code) showSupportCode(code);
+    statusEl.textContent = friendlyError(input);
+  } else {
+    statusEl.textContent = String(input == null ? "" : input);
   }
-
-  // Có noise → quy về 1 lý do ngắn.
-  const low = raw.toLowerCase();
-  let reason = "Có lỗi khi xử lý, vui lòng thử lại.";
-  if (/500|502|503|server_error|server had an error|internal server|overloaded/.test(low))
-    reason = "Máy chủ AI đang bận, vui lòng thử lại sau.";
-  else if (/429|rate.?limit|quá tải/.test(low))
-    reason = "Hệ thống đang quá tải, thử lại sau ít phút.";
-  else if (/timeout|timed out|deadline/.test(low))
-    reason = "Xử lý quá lâu, vui lòng thử lại.";
-  else if (/401|403|unauthorized|forbidden/.test(low))
-    reason = "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.";
-  else if (/failed to fetch|networkerror|econnrefused|net::|connection refused/.test(low))
-    reason = "Không kết nối được máy chủ, kiểm tra mạng rồi thử lại.";
-  else if (/400|422|bad request|validation/.test(low))
-    reason = "Dữ liệu gửi lên không hợp lệ.";
-
-  // Có câu tiếng Việt rõ nghĩa (không phải fragment kỹ thuật) → giữ + gắn lý do; không thì chỉ lý do.
-  if (humanMsg && !/error|exception|fetch/i.test(humanMsg)) return `${humanMsg} ${reason}`;
-  return reason;
-}
-
-function setStatus(text, type) {
-  // Lỗi hiển thị cho user luôn được rút gọn/dễ hiểu; thông báo info/ok giữ nguyên.
-  statusEl.textContent = type === "err" ? friendlyError(text) : text;
   statusEl.className = "status" + (type ? " " + type : "");
 }
 
@@ -202,23 +173,32 @@ if (supportCodeBtn) {
   supportCodeBtn.addEventListener("click", async () => {
     const code = supportCodeBtn.dataset.code || "";
     if (!code) return;
+    let ok = false;
     try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      // Fallback khi clipboard API bị chặn (một số cổng): dùng textarea tạm.
-      const ta = document.createElement("textarea");
-      ta.value = code; ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta); ta.select();
-      try { document.execCommand("copy"); } catch {}
-      ta.remove();
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(code);
+        ok = true;
+      }
+    } catch { ok = false; }
+    if (!ok) {
+      // Fallback khi clipboard API bị chặn/không có focus (iframe sau khi đính kèm): textarea + execCommand
+      // trong user-gesture. focus() trước khi select để execCommand không bị bỏ qua.
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = code; ta.style.position = "fixed"; ta.style.top = "0"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        ok = document.execCommand("copy");
+        ta.remove();
+      } catch { ok = false; }
     }
     supportCodeBtn.classList.add("copied");
-    supportCodeValueEl.textContent = "Đã sao chép ✓";
+    // Báo ĐÚNG kết quả: fail thì nhắc bôi đen mã để copy tay (value đã cho user-select).
+    supportCodeValueEl.textContent = ok ? "Đã sao chép ✓" : "Chưa copy được — bôi đen mã để copy tay";
     if (_supportCodeResetTimer) clearTimeout(_supportCodeResetTimer);
     _supportCodeResetTimer = setTimeout(() => {
       supportCodeBtn.classList.remove("copied");
       supportCodeValueEl.textContent = code;
-    }, 1500);
+    }, ok ? 1500 : 3000);
   });
 }
 
@@ -258,6 +238,7 @@ async function bootstrap() {
     await loadProcedures();
     await restoreSplitMode();
     await restoreSession();
+    await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectAndLockProcedure();
   } catch (e) {
     await AuthStore.clearTokens();
@@ -286,9 +267,11 @@ loginBtn.addEventListener("click", async () => {
     await loadProcedures();
     await restoreSplitMode();
     await restoreSession();
+    await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectAndLockProcedure();
   } catch (e) {
-    loginStatus.textContent = e.message || "Đăng nhập thất bại.";
+    console.warn("[Popup] Đăng nhập lỗi:", e);
+    loginStatus.textContent = friendlyError(e);   // INVALID_CREDENTIALS → "Sai tên đăng nhập hoặc mật khẩu."
     loginStatus.className = "status err";
   } finally {
     loginBtn.disabled = false;
@@ -327,6 +310,8 @@ if (newSessionBtn) {
     clearReviewCard();
     hideSupportCode();
     closePhoneUpload();
+    await clearConsent();   // phiên mới → phải đồng ý lại (mỗi phiên 1 lần)
+    showView("main");
     setStatus("", "");
     renderFiles();
     applyFormUI();
@@ -349,7 +334,7 @@ function normalizeProcedureSearch(value) {
 }
 
 const XUAN_HUONG_BUSINESS_ACT_TEXT =
-  "Hộ kinh doanh phải thực hiện đúng các quy định của pháp luật về đất đai, xây dựng, phòng cháy chữa cháy, bảo vệ môi trường, các quy định khác của pháp luật hiện hành và các điều kiện kinh doanh đối với ngành nghề có điều kiện";
+  "(Hộ kinh doanh phải thực hiện đúng các quy định của pháp luật về đất đai, xây dựng, phòng cháy chữa cháy, bảo vệ môi trường, các quy định khác của pháp luật hiện hành và các điều kiện kinh doanh đối với ngành nghề có điều kiện)";
 
 function isXuanHuongBusinessUser(user) {
   const haystack = [user?.xa, user?.name, user?.username].filter(Boolean).join(" ");
@@ -422,7 +407,8 @@ function renderBusinessPages() {
       try {
         await navigateSelectedBusinessPage(page);
       } catch (e) {
-        setStatus("Không mở được trang: " + (e.message || e), "err");
+        console.warn("[Popup] Mở trang HKD lỗi:", e);
+        setStatus("Không mở được trang. Vui lòng thử lại.", "err");
       }
     });
     businessPageButtons.appendChild(btn);
@@ -562,6 +548,16 @@ function normDetect(value) {
   return normalizeProcedureSearch(value).replace(/\s+/g, " ").trim();
 }
 
+// Cổng gate: rule có `urlScope` chỉ được xét khi URL đang mở thuộc cổng đó (OR nhiều mảnh).
+// Khác `urlIncludes` (tự khớp một mình) — `urlScope` KHÔNG tự nhận diện, chỉ giới hạn phạm vi để
+// các cụm text/heading bên dưới được so khớp. Dùng khi URL chỉ có ObjectId theo phường (không định
+// danh thủ tục) nhưng vẫn muốn chắc chắn đúng cổng trước khi tin vào text (vd Lâm Đồng lamdong.gov.vn).
+function detectUrlScopeOk(detect, url) {
+  const scope = detect.urlScope || [];
+  if (!scope.length) return true;
+  return scope.some((u) => u && url.includes(String(u).toLowerCase()));
+}
+
 // Khớp tín hiệu trang (URL + heading) với rule `detect` của thủ tục từ backend.
 function detectProcedureKeyFromSignals(signals) {
   if (!signals) return "";
@@ -606,6 +602,7 @@ function detectProcedureKeyFromSignals(signals) {
     let bestPriorityScore = 0;
     for (const p of detectables) {
       if (!p.detect.textPriority) continue;
+      if (!detectUrlScopeOk(p.detect, url)) continue;
       const phrases = (p.detect.textIncludes || []).map(normDetect).filter(Boolean);
       if (!phrases.length) continue;
       if (!phrases.every((ph) => body.includes(ph))) continue;
@@ -631,6 +628,7 @@ function detectProcedureKeyFromSignals(signals) {
   let bestLen = 0;
   for (const p of detectables) {
     if (p.detect.headingDisabled) continue;
+    if (!detectUrlScopeOk(p.detect, url)) continue;
     const want = normDetect(p.detect.heading || p.label);
     if (want.length < 6) continue;
     const hit = headings.some((h) => h === want || h.startsWith(want) || want.startsWith(h));
@@ -646,6 +644,7 @@ function detectProcedureKeyFromSignals(signals) {
   if (body) {
     let bestScore = 0;
     for (const p of detectables) {
+      if (!detectUrlScopeOk(p.detect, url)) continue;
       const phrases = (p.detect.textIncludes || []).map(normDetect).filter(Boolean);
       if (!phrases.length) continue;
       if (!phrases.every((ph) => body.includes(ph))) continue;
@@ -737,7 +736,8 @@ async function loadProcedures() {
       showLogin();
       return;
     }
-    setStatus("Không tải được danh sách thủ tục: " + e.message, "err");
+    console.warn("[Popup] Tải danh sách thủ tục lỗi:", e);
+    setStatus("Không tải được danh sách thủ tục. Kiểm tra mạng rồi thử lại.", "err");
     return;
   }
   procedureSelect.innerHTML = "";
@@ -975,7 +975,7 @@ function applyFormUI() {
   renderBusinessPages();
   if (fileInput) {
     fileInput.accept = isAttachMode()
-      ? ".pdf,.jpg,.jpeg,.png,.xml,.mp3,.mp4,.wav,.mov,audio/*,video/*"
+      ? ".pdf,.jpg,.jpeg,.png,.xml,.mp3,.mp4,.wav,.mov,.docx,audio/*,video/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       : "image/*,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   }
   // ĐKKD gộp quét + đính kèm vào 1 nút "Quét nhập thông tin và đính kèm" → ẩn nút "Quét và nhập dữ liệu".
@@ -1174,7 +1174,8 @@ async function openPhoneUpload() {
     setStatus("", "");
   } catch (e) {
     if (e.unauthorized) { await AuthStore.clearTokens(); setStatus("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "err"); showLogin(); return; }
-    setStatus("Không tạo được mã QR: " + e.message, "err");
+    console.warn("[Popup] Tạo mã QR lỗi:", e);
+    setStatus("Không tạo được mã QR. Vui lòng thử lại.", "err");
   }
 }
 
@@ -1363,29 +1364,130 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   const skippedNames = (attachRes?.skippedNames || []).join(", ");
   const attachedCount = Number.isInteger(attachRes?.attached) ? attachRes.attached : sendFiles.length;
   const skippedCount = Number.isInteger(attachRes?.skipped) ? attachRes.skipped : 0;
-  let msg = `Đã đính kèm ${attachedCount}/${sendFiles.length} file vào hồ sơ.`;
+
+  // Người dùng tải `payloadFiles.length` file GỐC; BE có thể GỘP nhiều file thành 1 nhóm (1 PDF) →
+  // còn `sendFiles.length` nhóm. Phải báo rõ số file gốc + gộp thành nhóm nào, tránh hiểu nhầm
+  // "4/4" là đã mất 3 file. Nếu không gộp (số nhóm = số file) thì giữ câu cũ cho gọn.
+  const uploadedCount = payloadFiles.length;
+  const isMerged = uploadedCount > sendFiles.length;
+  let msg = isMerged
+    ? `Đã tải lên ${uploadedCount} file, gộp thành ${sendFiles.length} nhóm hồ sơ; đã đính kèm ${attachedCount}/${sendFiles.length} nhóm.`
+    : `Đã đính kèm ${attachedCount}/${sendFiles.length} file vào hồ sơ.`;
+  if (isMerged) {
+    // Liệt kê từng nhóm gồm những file gốc nào (theo sourceFileIndexes của kế hoạch TRƯỚC khi gộp).
+    const groupLines = (rawAttachments || [])
+      .map((a) => {
+        const src = Array.isArray(a.sourceFileIndexes) && a.sourceFileIndexes.length
+          ? a.sourceFileIndexes
+          : [a.fileIndex];
+        const srcNames = src.map((i) => payloadFiles[i]?.name).filter(Boolean).join(" + ");
+        return srcNames ? `• ${a.documentName || "Hồ sơ"} ← ${srcNames}` : "";
+      })
+      .filter(Boolean);
+    if (groupLines.length) msg += `\n${groupLines.join("\n")}`;
+  } else if (names) {
+    msg += `\n${names}`;
+  }
   if (skippedCount) msg += `\nBỏ qua ${skippedCount} file đã có trong hồ sơ.`;
-  if (names) msg += `\n${names}`;
   if (skippedNames) msg += `\nĐã có: ${skippedNames}`;
-  if (planRes.errors?.length) msg += `\nCảnh báo xử lý: ${planRes.errors.join("; ")}`;
-  return { ok: true, message: msg, requestId: planRes.requestId };
+  // errors[] từ BE có thể chứa chi tiết kỹ thuật → chỉ log, KHÔNG nối thô vào thông báo thành công.
+  if (planRes.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
+  // Đính chưa đủ (attachedCount < số nhóm) → cảnh báo (warn) thay vì báo thành công trọn vẹn.
+  const warn = attachedCount < sendFiles.length;
+  return { ok: true, message: msg, warn, requestId: planRes.requestId };
 }
 
-// Lấy plan item của BE cho file gốc thứ `origIndex`, reset fileIndex=0 (gửi kèm đúng 1 file lẻ).
-function planItemForFile(attachments, origIndex, file) {
-  const it = (attachments || []).find((a) => a && a.fileIndex === origIndex) || {};
+// Lấy plan item của BE cho file thứ `origIndex`, rồi đổi sang vị trí của file trong bundle gửi cho tab.
+// sourceFileIndexes là fallback khi PdfConvert chưa gộp được nhiều mặt giấy tùy thân.
+function planItemForFile(attachments, origIndex, file, bundleIndex = 0) {
+  const it = (attachments || []).find((a) => a && a.fileIndex === origIndex) ||
+    (attachments || []).find((a) => Array.isArray(a?.sourceFileIndexes) && a.sourceFileIndexes.includes(origIndex)) ||
+    {};
   return {
     ...it,
-    fileIndex: 0,
+    fileIndex: bundleIndex,
     fileName: file?.name || it.fileName,
     documentName: it.documentName || file?.name,
     detectedType: it.detectedType || it.documentName || file?.name,
   };
 }
 
-// Tách hồ sơ: file[0] → STT1 tab hiện tại; file[1..] → mỗi file 1 tab/hồ sơ mới (poller tự đính ở Bước 3).
+function isSignatureIdentityPlanItem(item) {
+  return Number(item?.componentIndex) === 2;
+}
+
+async function buildSignatureSplitBundles(payloadFiles, attachments) {
+  const entries = payloadFiles.map((file, index) => ({
+    file,
+    planItem: planItemForFile(attachments, index, file),
+  }));
+  const identityEntries = entries.filter((entry) => isSignatureIdentityPlanItem(entry.planItem));
+  const documentEntries = entries.filter((entry) => !isSignatureIdentityPlanItem(entry.planItem));
+  if (!documentEntries.length) {
+    return { error: "Không tìm thấy giấy tờ, văn bản cần chứng thực chữ ký để đính vào STT1." };
+  }
+
+  let sharedIdentityFile = null;
+  let sharedIdentityPlan = null;
+  if (identityEntries.length) {
+    const firstIdentity = identityEntries[0];
+    sharedIdentityFile = firstIdentity.file;
+    sharedIdentityPlan = firstIdentity.planItem;
+    if (identityEntries.length > 1) {
+      if (!window.PdfConvert) {
+        return { error: "Không thể gộp các file giấy tùy thân để dùng chung cho STT2." };
+      }
+      try {
+        const merged = await PdfConvert.mergeToPdf(
+          identityEntries.map((entry) => entry.file),
+          sharedIdentityPlan.documentName || sharedIdentityFile.name
+        );
+        sharedIdentityFile = { ...sharedIdentityFile, ...merged };
+      } catch (e) {
+        return { error: `Không thể gộp các file giấy tùy thân cho STT2: ${e?.message || e}` };
+      }
+    }
+  }
+
+  return {
+    bundles: documentEntries.map((entry) => {
+      const files = [entry.file];
+      const planItems = [planItemForFile([entry.planItem], 0, entry.file, 0)];
+      if (sharedIdentityFile && sharedIdentityPlan) {
+        files.push(sharedIdentityFile);
+        planItems.push({
+          ...sharedIdentityPlan,
+          fileIndex: 1,
+          fileName: sharedIdentityFile.name || sharedIdentityPlan.fileName,
+          target: "existing",
+          componentIndex: 2,
+          needsAddComponent: false,
+          appendOnOccupied: false,
+        });
+      }
+      return { files, planItems };
+    }),
+  };
+}
+
+function buildDefaultSplitBundles(payloadFiles, attachments) {
+  return payloadFiles.map((file, index) => ({
+    files: [file],
+    planItems: [planItemForFile(attachments, index, file, 0)],
+  }));
+}
+
+// Tách hồ sơ: bundle[0] → tab hiện tại; bundle[1..] → hàng đợi tuần tự, mỗi lần chỉ 1 tab active.
+// Riêng chứng thực chữ ký: mỗi bundle = 1 tài liệu STT1 + cùng một giấy tùy thân dùng chung ở STT2.
 async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planRes) {
-  const rest = payloadFiles.slice(1);
+  const built = procedure === "chung-thuc-chu-ky"
+    ? await buildSignatureSplitBundles(payloadFiles, attachments)
+    : { bundles: buildDefaultSplitBundles(payloadFiles, attachments) };
+  if (built.error) return built;
+  const bundles = built.bundles || [];
+  if (!bundles.length) return { error: "Không có tài liệu để tách hồ sơ." };
+  const firstBundle = bundles[0];
+  const rest = bundles.slice(1);
   await sendToBackground({ action: "clearAllPendingAttach" }); // dọn hàng đợi cũ
 
   // URL hồ sơ SẠCH (chỉ giữ maThuTuc/tinhThanhId) — lấy TRƯỚC khi đính để tab mới là hồ sơ MỚI.
@@ -1395,40 +1497,258 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
     return { error: "Không lấy được URL hồ sơ để mở tab mới. Hãy mở đúng trang nộp hồ sơ chứng thực." };
   }
 
-  // file[0] → STT1 tab hiện tại.
+  // Bundle đầu → tab hiện tại.
   setStatus("Đang đính kèm tài liệu 1 vào hồ sơ hiện tại...", "info");
   const firstRes = await sendToContent({
     action: "attachFilesByPlan",
     procedure,
-    files: [payloadFiles[0]],
-    attachments: [planItemForFile(attachments, 0, payloadFiles[0])],
+    files: firstBundle.files,
+    attachments: firstBundle.planItems,
     mode: "split",
   });
-  if (firstRes?.error) return firstRes;
-
-  // file[1..] → mỗi file 1 tab/hồ sơ mới.
-  let opened = 0;
-  const openErrors = [];
-  for (let i = 0; i < rest.length; i++) {
-    const r = await sendToBackground({
-      action: "openDossierTabAndAttach",
-      url: dossierUrl,
-      file: rest[i],
-      planItem: planItemForFile(attachments, i + 1, rest[i]),
+  let currentTabRecovery = null;
+  if (firstRes?.error) {
+    if (!SPLIT_RELOADABLE_WALLET_CODES.has(String(firstRes.code || ""))) return firstRes;
+    const tabId = await getTargetTabId();
+    const staged = await sendToBackground({
+      action: "stageDossierTabAttach",
+      tabId,
+      files: firstBundle.files,
+      attachments: firstBundle.planItems,
       procedure,
+      recoveryCode: firstRes.code,
     });
-    if (r?.error) openErrors.push(r.error);
-    else opened++;
+    if (staged?.error) return { error: staged.error, code: firstRes.code };
+    currentTabRecovery = { tabId, code: firstRes.code };
+  }
+
+  // Không mở đồng thời: background chỉ tạo tab kế tiếp sau khi tab active báo thành công/thất bại.
+  // Cả bản sao và chữ ký đều đi qua cùng queue này; khác nhau chỉ ở nội dung từng bundle.
+  let queueRes = { ok: true, remaining: 0 };
+  if (rest.length) {
+    queueRes = await sendToBackground({
+      action: "startSplitAttachQueue",
+      waitForTabId: currentTabRecovery?.tabId || null,
+      items: rest.map((bundle, index) => ({
+        ordinal: index + 2,
+        url: dossierUrl,
+        files: bundle.files,
+        attachments: bundle.planItems,
+        procedure,
+      })),
+    });
+    if (queueRes?.error) return { error: queueRes.error };
+  }
+
+  // Khi tab đầu lỗi modal, queue chờ chính tab đó. Reload xong, content báo terminal thì background
+  // mới được tạo tab thứ hai; popup bị hủy bởi reload cũng không làm mất tiến trình.
+  if (currentTabRecovery) {
+    const reloadRes = await sendToBackground({
+      action: "reloadDossierTabAttach",
+      tabId: currentTabRecovery.tabId,
+    });
+    if (reloadRes?.error) {
+      return { error: `Không tải lại được tab hiện tại để phục hồi modal: ${reloadRes.error}` };
+    }
   }
 
   let msg =
-    `Đã đính kèm tài liệu 1 vào hồ sơ hiện tại (STT1).\n` +
-    `Đã mở ${opened} tab hồ sơ mới cho ${rest.length} tài liệu còn lại.\n` +
-    `Ở MỖI tab mới: bấm "Bước tiếp theo" tới Bước 3, hệ thống sẽ tự đính file vào STT1.`;
-  if (openErrors.length) msg += `\nLỗi mở tab: ${openErrors.join("; ")}`;
-  if (planRes?.errors?.length) msg += `\nCảnh báo xử lý: ${planRes.errors.join("; ")}`;
+    (currentTabRecovery
+      ? `Tab hồ sơ hiện tại đang được tải lại để tiếp tục đính bộ tài liệu 1.\n`
+      : `Đã đính kèm bộ tài liệu 1 vào hồ sơ hiện tại.\n`) +
+    `Đã xếp hàng tuần tự ${rest.length} bộ tài liệu còn lại.\n` +
+    `Hệ thống chỉ mở và xử lý một tab active; xong tab này mới chuyển sang tab tiếp theo.`;
+  if (planRes?.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   return { ok: true, message: msg };
 }
+
+// ===== BƯỚC CHẤP THUẬN XỬ LÝ DỮ LIỆU (PDPL) =====
+// Mỗi PHIÊN đồng ý 1 lần: gate ở ocrBtn/attachStepBtn. Đồng ý → BE lưu bằng chứng PDF → view-result
+// (CHƯA fill) → "Về màn hình" → bấm lại mới điền thật. Reset khi "Tạo phiên mới".
+const CONSENT_VERSION = "v1.1";
+// 2 kho grants: (1) theo PHIÊN/tab — reset khi "Tạo phiên mới"; (2) theo NGƯỜI (CCCD) — TOÀN CỤC, BỀN
+// qua phiên vì consent gắn theo (người + thủ tục): cùng CCCD làm lại đúng thủ tục thì không hỏi lại.
+const CONSENT_KEY = "autofill_consent_" + (EMBEDDED_TAB_ID ?? "popup");
+const CONSENT_CCCD_KEY = "autofill_consent_cccd";
+const CONSENT_STATEMENTS = [
+  "Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin được xử lý và mục đích nêu trên; đồng ý cho Trợ lý hồ sơ HCC đọc, xử lý và tự động điền dữ liệu vào biểu mẫu.",
+  "Tôi xác nhận tự chịu trách nhiệm về tính chính xác, hợp pháp của các thông tin nêu trên và về việc thực hiện thủ tục hành chính của mình.",
+];
+// Mục TÙY CHỌN (không chặn nút Đồng ý): xin lưu data lần xử lý khi điền lỗi để tối ưu hệ thống.
+const CONSENT_OPTIMIZE_STATEMENT =
+  "Khi hệ thống điền bị lỗi hoặc thiếu sót, tôi đồng ý cho Trợ lý lưu lại dữ liệu của lần xử lý này để phân tích, cải thiện và tối ưu hệ thống.";
+const CONSENT_DOCS = [
+  "Giấy tờ tùy thân (căn cước công dân/căn cước) của người liên quan trong hồ sơ",
+  "Giấy tờ hộ tịch, giấy tờ phù hợp với thủ tục đang thực hiện",
+  "Các tài liệu khác bạn chủ động tải lên cho hồ sơ này",
+];
+// Consent theo (người + thủ tục): key = "cccd:<CCCD tài khoản VNeID>|<mã thủ tục>" (bền qua phiên), hoặc
+// "session|<mã thủ tục>" khi cổng không đọc được CCCD (reset khi "Tạo phiên mới").
+let consentGrants = {};            // { "<key>": { logId, at } }
+let currentConsentContext = null;  // {key, principal, proc} của lượt đang xét — acceptConsent lưu đúng key
+
+const csViews = {
+  main: document.getElementById("view-main"),
+  consent: document.getElementById("view-consent"),
+  result: document.getElementById("view-result"),
+  legal: document.getElementById("view-legal"),
+};
+function showView(which) {
+  for (const [k, el] of Object.entries(csViews)) if (el) el.hidden = k !== which;
+}
+// Đọc danh tính tài khoản VNeID trên cổng → dựng consent key (người + thủ tục). Đọc không ra CCCD →
+// key theo phiên. Không throw: cổng lạ/không có content script → principal null → fallback phiên.
+async function resolveConsentContext() {
+  let principal = null;
+  try {
+    const r = await sendToContent({ action: "getPortalPrincipal" });
+    principal = r?.principal || null;
+  } catch (e) { /* cổng không đọc được → fallback phiên */ }
+  const proc = currentConfig()?.key || selectedProcedureKey || "";
+  const base = principal && principal.cccd ? "cccd:" + principal.cccd : "session";
+  return { key: base + "|" + proc, principal, proc };
+}
+// Nút đang chờ chạy tiếp sau khi đồng ý (ocrBtn/attachStepBtn/fillAllBtn). Đồng ý xong → về màn chính
+// rồi tự bấm lại đúng nút này để "đồng ý phát chạy luôn", không qua màn trung gian.
+let pendingConsentTrigger = null;
+// Chốt chặn PDPL: (người/phiên + thủ tục) này đã đồng ý → cho qua; chưa → nhớ nút + context, mở điều khoản.
+async function requireConsent(triggerEl) {
+  const ctx = await resolveConsentContext();
+  currentConsentContext = ctx;
+  if (consentGrants[ctx.key]) return true;
+  pendingConsentTrigger = triggerEl || null;
+  openConsent();
+  return false;
+}
+function escapeConsent(s) { const d = document.createElement("div"); d.textContent = String(s || ""); return d.innerHTML; }
+
+async function restoreConsent() {
+  consentGrants = {};
+  try {
+    const r = await chrome.storage.local.get([CONSENT_KEY, CONSENT_CCCD_KEY]);
+    const byCccd = r && r[CONSENT_CCCD_KEY];   // grants theo người (bền)
+    const sess = r && r[CONSENT_KEY];          // grants theo phiên/tab
+    if (byCccd && typeof byCccd === "object") Object.assign(consentGrants, byCccd);
+    // Bỏ qua bản cũ (lưu 1 flag {granted,...}); chỉ nhận map key mới.
+    if (sess && typeof sess === "object" && !("granted" in sess)) Object.assign(consentGrants, sess);
+  } catch (e) { consentGrants = {}; }
+}
+async function clearConsent() {
+  // "Tạo phiên mới": chỉ xoá grants theo PHIÊN; GIỮ grants theo CCCD (nhớ theo người + thủ tục).
+  for (const k of Object.keys(consentGrants)) if (!k.startsWith("cccd:")) delete consentGrants[k];
+  try { await chrome.storage.local.remove(CONSENT_KEY); } catch (e) { /* ignore */ }
+}
+async function persistConsent() {
+  // Tách kho: cccd:* → key toàn cục bền; còn lại (session:*) → key theo tab.
+  const sess = {};
+  const byCccd = {};
+  for (const [k, v] of Object.entries(consentGrants)) {
+    if (k.startsWith("cccd:")) byCccd[k] = v; else sess[k] = v;
+  }
+  try {
+    await chrome.storage.local.set({ [CONSENT_KEY]: sess, [CONSENT_CCCD_KEY]: byCccd });
+  } catch (e) { /* ignore */ }
+}
+
+function openConsent() {
+  const label = (currentConfig() && currentConfig().label) || "";
+  const procName = document.getElementById("consentProcName");
+  if (procName) procName.textContent = label ? `“${label}”` : "của thủ tục này";
+  const list = document.getElementById("consentDocList");
+  if (list) list.innerHTML = CONSENT_DOCS.map((d) => `<li>${escapeConsent(d)}</li>`).join("");
+  const c0 = document.getElementById("consentC0"), c1 = document.getElementById("consentC1"), c2 = document.getElementById("consentC2");
+  if (c0) c0.checked = false;
+  if (c1) c1.checked = false;
+  if (c2) c2.checked = false;
+  document.getElementById("consentErr")?.remove(); // bỏ lỗi cũ (nếu lần trước upload lỗi)
+  syncConsent();
+  showView("consent");
+}
+function syncConsent() {
+  const a = document.getElementById("consentC0")?.checked;
+  const b = document.getElementById("consentC1")?.checked;
+  const c = document.getElementById("consentC2")?.checked; // TÙY CHỌN, không chặn nút Đồng ý
+  const accept = document.getElementById("consentAcceptBtn");
+  if (accept) accept.disabled = !(a && b); // chỉ 2 mục bắt buộc mới quyết định
+  const sa = document.getElementById("consentSelectAll");
+  if (sa) { if (a && b && c) { sa.textContent = "✓ Đã chọn tất cả"; sa.disabled = true; } else { sa.textContent = "Chọn tất cả"; sa.disabled = false; } }
+}
+function selectAllConsent() {
+  const c0 = document.getElementById("consentC0"), c1 = document.getElementById("consentC1"), c2 = document.getElementById("consentC2");
+  if (c0) c0.checked = true;
+  if (c1) c1.checked = true;
+  if (c2) c2.checked = true;
+  syncConsent();
+}
+function consentStamp() {
+  const d = new Date(), p = (n) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())} ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+}
+function newConsentLogId() { return "HS-C" + String(Math.floor(10000 + Math.random() * 90000)); } // HS-C + 5 số
+function setConsentError(msg) {
+  let box = document.getElementById("consentErr");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "consentErr"; box.className = "cs-msg warn"; box.style.margin = "0 0 8px";
+    const actions = document.querySelector("#view-consent .cs-actions");
+    if (actions) actions.insertBefore(box, actions.firstChild);
+  }
+  box.textContent = msg;
+}
+
+async function acceptConsent() {
+  const accept = document.getElementById("consentAcceptBtn");
+  if (accept && accept.disabled) return;
+  const cfg = currentConfig();
+  const logId = newConsentLogId();
+  const at = consentStamp();
+  const optimize = !!document.getElementById("consentC2")?.checked;
+  // Ghi vào bằng chứng ĐÚNG những gì đã tick: 2 mục bắt buộc + mục tối ưu nếu người dùng chọn.
+  const statements = optimize ? [...CONSENT_STATEMENTS, CONSENT_OPTIMIZE_STATEMENT] : [...CONSENT_STATEMENTS];
+  // Context (key + principal) do requireConsent tính khi mở điều khoản; nếu thiếu thì tính lại tại đây.
+  const ctx = currentConsentContext || await resolveConsentContext();
+  if (accept) { accept.disabled = true; accept.textContent = "Đang ghi nhận…"; }
+  try {
+    // Chỉ khi BE lưu bằng chứng THÀNH CÔNG mới coi phiên là đã đồng ý.
+    await api.saveConsent({
+      logId, version: CONSENT_VERSION,
+      procedure: cfg?.key || "", procedureLabel: cfg?.label || "",
+      statements, optimize, at,
+      principalCccd: ctx?.principal?.cccd || null,   // chủ thể dữ liệu (VNeID) — ghi vào biên bản
+      principalName: ctx?.principal?.name || null,
+    });
+  } catch (e) {
+    if (accept) { accept.disabled = false; accept.textContent = "Đồng ý và tự động điền"; }
+    if (e.unauthorized) { await AuthStore.clearTokens(); setStatus("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "err"); showLogin(); return; }
+    console.warn("[Popup] Lưu bằng chứng chấp thuận lỗi:", e);
+    setConsentError("Không lưu được bằng chứng chấp thuận. Vui lòng thử lại.");
+    return;
+  }
+  if (accept) accept.textContent = "Đồng ý và tự động điền";
+  // Đánh dấu ĐÚNG key (người/phiên + thủ tục) này đã đồng ý — lần sau cùng key sẽ không hỏi lại.
+  consentGrants[ctx.key] = { logId, at };
+  await persistConsent();
+  // Đồng ý xong → về thẳng màn chính và CHẠY LUÔN hành động đang chờ (không qua màn "đã ghi nhận").
+  showView("main");
+  const trigger = pendingConsentTrigger;
+  pendingConsentTrigger = null;
+  if (trigger) trigger.click(); // gate giờ đã pass (granted=true) → handler chạy tiếp OCR/điền/đính kèm
+}
+function declineConsent() {
+  const inner = document.getElementById("consentResultInner");
+  if (inner) inner.innerHTML =
+    `<div class="cs-msg warn"><b>✍️ Bạn đã chọn không cho Trợ lý xử lý giấy tờ.</b><br>Các trường sẽ ở chế độ <b>tự nhập thủ công</b>. Bạn có thể quay lại và đồng ý bất cứ lúc nào để dùng tự động điền.</div>`;
+  showView("result");
+}
+
+document.getElementById("consentC0")?.addEventListener("change", syncConsent);
+document.getElementById("consentC1")?.addEventListener("change", syncConsent);
+document.getElementById("consentSelectAll")?.addEventListener("click", selectAllConsent);
+document.getElementById("consentAcceptBtn")?.addEventListener("click", acceptConsent);
+document.getElementById("consentDeclineBtn")?.addEventListener("click", declineConsent);
+document.getElementById("consentBackBtn")?.addEventListener("click", () => showView("main"));
+document.getElementById("consentLegalBtn")?.addEventListener("click", () => showView("legal"));
+document.getElementById("consentLegalBack")?.addEventListener("click", () => showView("consent"));
 
 // ===== OCR & điền =====
 ocrBtn.addEventListener("click", async () => {
@@ -1437,6 +1757,8 @@ ocrBtn.addEventListener("click", async () => {
     setStatus("Chưa có file nào.", "err");
     return;
   }
+  // Chốt chặn PDPL: chưa đồng ý trong phiên này → hiện điều khoản, KHÔNG điền (đồng ý xong tự chạy lại).
+  if (!(await requireConsent(ocrBtn))) return;
   window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
   ocrBtn.disabled = true;
   clearReviewCard(); // xoá card rà soát của lần trước trước khi chạy lại
@@ -1478,8 +1800,9 @@ ocrBtn.addEventListener("click", async () => {
 
     if (isAttachMode()) {
       const attachRes = await runAttachmentPlanForCurrentFiles(options);
+      showSupportCode(attachRes?.requestId);
       if (attachRes?.error) setStatus(attachRes.error, "err");
-      else setStatus(attachRes.message, "ok");
+      else setStatus(attachRes.message, attachRes.warn ? "warn" : "ok");
       return;
     }
 
@@ -1505,7 +1828,15 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
       cfg.key === "tro-cap-xa-hoi-hang-thang" ||
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
-      cfg.key === "xoa-dang-ky-tau-ca"
+      cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
+      cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
+      cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
+      cfg.key === "cap-giay-phep-khai-thac-thuy-san" ||
+      cfg.key === "dang-ky-bien-phap-bao-dam-qsdd" ||
+      cfg.key === "xoa-dang-ky-tau-ca" ||
+      cfg.key === "xoa-dang-ky-phuong-tien-thuy" ||
+      cfg.key === "dang-ky-bien-dong-dat-dai-da-nang" ||
+      cfg.key === "cap-giay-phep-chat-ha-cay-xanh"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;
@@ -1550,7 +1881,8 @@ ocrBtn.addEventListener("click", async () => {
       setStatus("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "err");
       showLogin();
     } else {
-      setStatus("Lỗi: " + e.message, "err");
+      console.warn("[AutoFill] Quét & nhập dữ liệu lỗi:", e);
+      setStatus(e, "err");   // map theo mã lỗi BE / status; text kỹ thuật bị lược
     }
   } finally {
     window.__AUTOFILL_HCC_POPUP_BUSY__ = false;
@@ -1563,6 +1895,8 @@ ocrBtn.addEventListener("click", async () => {
 if (fillAllBtn) {
   fillAllBtn.addEventListener("click", async () => {
     if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+    // Chốt chặn PDPL: luồng quét + đính kèm 8 trang cũng xử lý dữ liệu → chưa đồng ý phiên thì hỏi trước.
+    if (!(await requireConsent(fillAllBtn))) return;
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
     fillAllBtn.disabled = true;
     try {
@@ -1659,7 +1993,8 @@ if (fillAllBtn) {
         setStatus("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "err");
         showLogin();
       } else {
-        setStatus("Lỗi: " + (e?.message || e), "err");
+        console.warn("[AutoFill] Điền & lưu 8 trang lỗi:", e);
+        setStatus(e, "err");
       }
     } finally {
       window.__AUTOFILL_HCC_POPUP_BUSY__ = false;
@@ -1681,6 +2016,8 @@ if (attachStepBtn) {
       setStatus("Chưa có file nào để đính kèm.", "err");
       return;
     }
+    // Chốt chặn PDPL: đính kèm cũng xử lý dữ liệu → cần đồng ý trong phiên (đồng ý xong tự chạy lại).
+    if (!(await requireConsent(attachStepBtn))) return;
 
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
     if (ocrBtn) ocrBtn.disabled = true;
@@ -1698,7 +2035,7 @@ if (attachStepBtn) {
         console.warn("[Popup] Attach step failed", res);
         setStatus(res.error, "err");
       } else {
-        setStatus(res.message, "ok");
+        setStatus(res.message, res.warn ? "warn" : "ok");
       }
     } catch (e) {
       if (e.unauthorized) {
@@ -1706,7 +2043,8 @@ if (attachStepBtn) {
         setStatus("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "err");
         showLogin();
       } else {
-        setStatus("Lỗi: " + e.message, "err");
+        console.warn("[AutoFill] Đính kèm lỗi:", e);
+        setStatus(e, "err");
       }
     } finally {
       window.__AUTOFILL_HCC_POPUP_BUSY__ = false;
@@ -1717,8 +2055,10 @@ if (attachStepBtn) {
 }
 
 async function dispatchFill(allFields, errors, page = null) {
+  // errors[] từ BE có thể chứa chi tiết OCR/LLM kỹ thuật → chỉ log, KHÔNG hiện thô lên UI.
+  if (errors && errors.length) console.warn("[AutoFill] Cảnh báo trích xuất:", errors);
   if (!allFields.length) {
-    setStatus("Không bóc tách được trường nào.\n" + errors.join("\n"), "err");
+    setStatus("Không đọc được trường nào từ giấy tờ. Kiểm tra lại ảnh/tệp rồi thử lại.", "err");
     return;
   }
   setStatus(page
@@ -1729,19 +2069,23 @@ async function dispatchFill(allFields, errors, page = null) {
   const fillRes = await sendToContent({
     action: "fillFields",
     fields: allFields,
+    procedure: currentConfig()?.key || "",
     businessPage: page?.key || "",
     businessDefaults: page?.key === "nganh-nghe-kinh-doanh" ? buildBusinessDefaults(currentUser) : null,
   });
   if (fillRes.error) {
-    setStatus(fillRes.error, "err");
+    console.warn("[AutoFill] Điền form lỗi:", fillRes.error);
+    setStatus(fillRes.error, "err");   // content trả câu sạch (dọn ở content.js); vẫn qua friendlyError để chắc
     return;
   }
   let msg = page
     ? `Đã điền ${fillRes.filled}/${allFields.length} trường ở trang "${page.label}".`
     : `Đã điền ${fillRes.filled}/${allFields.length} trường.`;
   if (fillRes.notFound?.length) msg += `\nKhông khớp: ${fillRes.notFound.join(", ")}`;
-  if (errors.length) msg += `\nLỗi: ${errors.join("; ")}`;
-  setStatus(msg, fillRes.filled ? "ok" : "err");
+  // KHÔNG nối errors[] thô vào thông báo thành công (đã log ở trên).
+  // Điền đủ → ok; điền một phần → warn (vàng); không điền được ô nào → err.
+  const type = fillRes.filled >= allFields.length ? "ok" : (fillRes.filled ? "warn" : "err");
+  setStatus(msg, type);
 }
 
 // ===== Rà soát bbox: card "Xem trên ảnh" cho từng ô AI đã điền =====

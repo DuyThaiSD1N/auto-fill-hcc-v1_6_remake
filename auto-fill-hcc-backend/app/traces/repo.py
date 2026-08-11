@@ -2,6 +2,7 @@
 
 Collection: traces. Ghi best-effort (lỗi không được làm hỏng request /process).
 """
+import re
 import unicodedata
 from datetime import datetime, timezone
 
@@ -99,9 +100,12 @@ def _build_query(
     request_id: str | None = None,
 ) -> dict:
     query: dict = {}
-    # Mã hỗ trợ là duy nhất/lượt → khớp CHÍNH XÁC; có mã thì bỏ qua các bộ lọc khác cho tiện tra.
-    if request_id:
-        query["request_id"] = request_id.strip()
+    # Mã hỗ trợ: tìm GẦN ĐÚNG (CHỨA chuỗi), không phân biệt hoa/thường → cán bộ gõ 1 phần mã
+    # (hoặc dán dư/thiếu ký tự) vẫn ra. Có mã thì bỏ qua các bộ lọc khác cho tiện tra.
+    # re.escape để ký tự đặc biệt không phá regex; unanchored nên không dùng index (tra tay, chấp nhận).
+    code = (request_id or "").strip()
+    if code:
+        query["request_id"] = {"$regex": re.escape(code), "$options": "i"}
         return query
     if user_id:
         query["user_id"] = user_id

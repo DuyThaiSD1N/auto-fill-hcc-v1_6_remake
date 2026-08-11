@@ -14,6 +14,17 @@ cổng Lâm Đồng là Form.io — ô UI là `data[...]` với comp `dom-*`, ch
 """
 
 FIELDS: list[dict] = [
+    # --- NGƯỜI ĐƯỢC ỦY QUYỀN (điểm neo, TRÍCH ĐẦU TIÊN) — gộp 1 object để LLM khỏi phân tán/ngại điền.
+    {"name": "NguoiDuocUyQuyen",
+     "desc": "TRÍCH ĐẦU TIÊN. CHỈ điền khi hồ sơ có MỘT FILE RIÊNG tiêu đề 'GIẤY ỦY QUYỀN'/'HỢP ĐỒNG ỦY "
+             "QUYỀN'/'VĂN BẢN ỦY QUYỀN' (có dòng 'ủy quyền cho' + số CCCD của bên B). Chép người đứng NGAY "
+             "SAU 'ủy quyền cho:' (bên B) vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" "
+             "('Nam'/'Nữ'), \"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), \"noiCapCccd\", "
+             "\"thuongTru\":{\"quocGia\",\"tinh\",\"xa\",\"diaChi\"}}. BỎ TRỐNG object này nếu: KHÔNG có file "
+             "ủy quyền (chữ 'Giấy ủy quyền' trong danh sách mục IV của Đơn Mẫu 18 KHÔNG tính); hoặc chỉ có "
+             "CCCD rời; hoặc chỉ có người ĐỒNG KÝ Đơn / ĐỒNG SỞ HỮU (vd vợ/chồng) — họ KHÔNG phải người "
+             "được ủy quyền. Đừng bịa."},
+
     # --- NGƯỜI CÓ SAI SÓT / CHỦ HỒ SƠ (chủ Giấy chứng nhận) — nguồn chính CCCD + Đơn + khai sinh.
     {"name": "Nguoi_HoTen", "desc": "Họ tên CHỦ HỒ SƠ = người đứng tên trên Giấy chứng nhận (người có "
         "thông tin sai sót). Lấy từ CCCD / mục a) Tên của Đơn Mẫu 18 / tên người sử dụng đất trên GCN."},
@@ -35,10 +46,10 @@ FIELDS: list[dict] = [
     {"name": "Nguoi_Email", "desc": "Hộp thư điện tử ở mục 1d Đơn Mẫu 18 nếu có; đơn bỏ trống thì bỏ qua."},
 
     # --- NGƯỜI ĐẠI DIỆN / ĐƯỢC ỦY QUYỀN (chỉ khi có Giấy ủy quyền) — đây là NGƯỜI NỘP, KHÁC chủ hồ sơ.
-    {"name": "DaiDien_HoTen", "desc": "Họ tên NGƯỜI NỘP HỒ SƠ khi KHÁC chủ hồ sơ (nộp thay/đại diện). Xác "
-        "định qua khối <nguoi_nop_context> (mỏ neo người nộp từ tài khoản) hoặc Giấy ủy quyền / mục 'người "
-        "đại diện' trong Đơn. Người này KHÁC người đứng tên GCN/Đơn (Nguoi_HoTen). Tự nộp (trùng chủ hồ sơ) "
-        "hoặc không có giấy tờ người nộp → bỏ trống toàn bộ DaiDien_*."},
+    {"name": "DaiDien_HoTen", "desc": "Họ tên NGƯỜI ĐƯỢC ỦY QUYỀN (bên B — sau cụm 'ủy quyền cho') trong "
+        "Giấy ủy quyền. CHỈ điền khi hồ sơ CÓ Giấy ủy quyền; người này KHÁC người đứng tên GCN/Đơn "
+        "(Nguoi_HoTen). KHÔNG có Giấy ủy quyền → bỏ TRỐNG toàn bộ DaiDien_*, KỂ CẢ khi hồ sơ có CCCD rời "
+        "của người khác (thẻ rời không phải giấy ủy quyền)."},
     {"name": "DaiDien_NgaySinh", "desc": "Ngày sinh người đại diện, dd/mm/yyyy, nếu giấy ủy quyền/ CCCD người đại diện ghi rõ."},
     {"name": "DaiDien_GioiTinh", "desc": 'Giới tính người đại diện: "Nam"/"Nữ" nếu có.'},
     {"name": "DaiDien_SoDinhDanh", "desc": "Số CCCD/CMND của người đại diện (dòng 'Căn cước công dân số …' của Bên được ủy quyền)."},

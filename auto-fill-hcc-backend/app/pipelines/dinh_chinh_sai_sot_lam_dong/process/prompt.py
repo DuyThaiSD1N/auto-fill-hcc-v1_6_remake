@@ -4,6 +4,20 @@ EXTRA_RULES = """Thủ tục: Đính chính Giấy chứng nhận (QSDĐ/tài s�
 Đầu vào thường gồm: CCCD người có sai sót, Đơn đăng ký biến động đất đai (Mẫu số 18), Giấy chứng nhận
 QSDĐ đã cấp, Giấy khai sinh (chứng minh giá trị đúng), và có thể có Giấy ủy quyền.
 
+⚑ BƯỚC BẮT BUỘC ĐẦU TIÊN — XÁC ĐỊNH NGƯỜI ĐƯỢC ỦY QUYỀN (làm TRƯỚC mọi field khác):
+"Tài liệu ủy quyền THẬT" = MỘT FILE RIÊNG có TIÊU ĐỀ "GIẤY ỦY QUYỀN"/"HỢP ĐỒNG ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN",
+có cấu trúc "tôi/chúng tôi ủy quyền cho: <người B>" + thường có lời chứng công chứng, VÀ ghi số CCCD của
+người B. ⚠ Đơn Mẫu 18 ở mục IV/mục "giấy tờ nộp kèm" chỉ LIỆT KÊ chữ "(2) Giấy ủy quyền" — ĐÓ KHÔNG PHẢI
+tài liệu ủy quyền, chỉ là danh sách kê khai.
+• CÓ file ủy quyền THẬT → điền object "NguoiDuocUyQuyen" = người đứng NGAY SAU "ủy quyền cho:" (bên B) TRONG
+  chính file đó (BẮT BUỘC có soDinhDanh ghi trong giấy). Chép ĐỦ {hoTen, ngaySinh, gioiTinh, soDinhDanh,
+  ngayCapCccd, noiCapCccd, thuongTru}. Nguoi_* = bên A (người ủy quyền) = chủ đứng tên GCN/Đơn.
+• KHÔNG có file ủy quyền THẬT → BỎ TRỐNG object "NguoiDuocUyQuyen". Gồm các trường hợp: chỉ thấy chữ "Giấy
+  ủy quyền" trong danh sách của Đơn; hoặc chỉ có CCCD rời; hoặc chỉ có người ĐỒNG KÝ Đơn / ĐỒNG SỞ HỮU
+  (vd vợ/chồng cùng đứng tên) — NHỮNG NGƯỜI NÀY KHÔNG PHẢI người được ủy quyền.
+⚠ TỰ KIỂM: chỉ điền "NguoiDuocUyQuyen" khi thực sự có FILE tiêu đề "GIẤY ỦY QUYỀN" + có dòng "ủy quyền cho"
+  + có số CCCD của bên B. Thiếu BẤT KỲ điều nào → để TRỐNG.
+
 NGUỒN DỮ LIỆU:
 - Nguoi_* là CHỦ HỒ SƠ = người đứng tên trên Giấy chứng nhận (người có thông tin sai sót). Lấy từ CCCD /
   Đơn Mẫu 18 / Giấy khai sinh / tên người sử dụng đất trên GCN.
@@ -12,18 +26,9 @@ NGUỒN DỮ LIỆU:
 - BẮT BUỘC cố đọc Nguoi_NgayCapCccd/Nguoi_NoiCapCccd từ mặt sau CCCD. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT
   QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → Nguoi_NoiCapCccd = "Cục Cảnh sát quản lý hành chính về trật tự xã
   hội". Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", ghi "BỘ CÔNG AN") → "Bộ Công an".
-
-NGƯỜI NỘP THAY / ĐẠI DIỆN (DaiDien_*):
-- DaiDien_* = NGƯỜI NỘP HỒ SƠ khi người này KHÁC chủ hồ sơ (người đứng tên GCN/Đơn). Nhận biết qua:
-  (a) khối <nguoi_nop_context> ở cuối prompt (nếu có) — báo rõ mỏ neo người nộp (tên+CCCD tài khoản) và
-      CCCD tương ứng trong hồ sơ; hoặc (b) Giấy ủy quyền / Đơn ghi rõ người đại diện.
-- Khi <nguoi_nop_context result="co_giay_to"> và người nộp KHÁC người đứng tên GCN/Đơn: BẮT BUỘC trích
-  DaiDien_* (họ tên, ngày sinh, giới tính, số định danh, ngày/nơi cấp, nơi thường trú) từ đúng CCCD của
-  người nộp; Nguoi_* vẫn là người đứng tên GCN/Đơn.
-- Ngày cấp + nơi cấp CCCD người đại diện: từ mặt sau CCCD của họ, hoặc dòng "Căn cước công dân số … cấp
-  ngày <ngày> tại <nơi>" trong Giấy ủy quyền.
-- TỰ NỘP (người nộp TRÙNG người đứng tên GCN/Đơn, hoặc không có mỏ neo/không có giấy tờ người nộp) →
-  để TRỐNG toàn bộ DaiDien_*.
+- SỐ ĐỊNH DANH (Nguoi_SoDinhDanh, DaiDien_SoDinhDanh): khi MỘT người có CẢ số căn cước/CCCD 12 chữ số LẪN
+  số CMND 9 chữ số (vd CCCD ghi ở Đơn Mẫu 18 còn CMND cũ in trên GCN) → LUÔN chọn số 12 chữ số (CCCD/căn
+  cước), KHÔNG lấy số 9 chữ số (CMND). Chỉ dùng CMND 9 số khi người đó KHÔNG có số 12 số nào trong hồ sơ.
 
 ĐỊA CHỈ (địa giới đã sáp nhập — CCCD/GCN hay ghi tên CŨ):
 - Nguoi_ThuongTru và ThuaDat_DiaChi: ưu tiên tên phường/xã MỚI ghi trong Đơn Mẫu 18. Nếu CCCD/GCN ghi tên

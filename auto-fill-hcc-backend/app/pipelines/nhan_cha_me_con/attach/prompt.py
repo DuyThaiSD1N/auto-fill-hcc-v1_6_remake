@@ -37,7 +37,7 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 - relationship_proof: kết quả xét nghiệm ADN, văn bản của cơ quan y tế, cơ quan giám định hoặc cơ quan có thẩm quyền xác nhận quan hệ cha con/mẹ con. Bao gồm kết luận "có quan hệ huyết thống bố - con", "cha - con", "mẹ - con", độ tin cậy ADN.
 - witness_commitment: văn bản cam đoan của các bên nhận cha, mẹ, con về mối quan hệ và có người làm chứng.
 - paper_declaration: tờ khai đăng ký nhận cha, mẹ, con bản giấy.
-- identity: CCCD/CMND/căn cước/hộ chiếu/giấy tờ tùy thân của người yêu cầu, cha/mẹ/con hoặc người liên quan.
+- identity: CCCD/CMND/căn cước/hộ chiếu/giấy tờ tùy thân của người yêu cầu, cha/mẹ/con hoặc người liên quan. Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có 'Đặc điểm nhận dạng', vân tay, 'CỤC TRƯỞNG CỤC CẢNH SÁT', dòng MRZ 'IDVNM...', KHÔNG có tiêu đề 'Căn cước công dân') — VẪN là identity.
 - birth_document: giấy khai sinh hoặc giấy chứng sinh của người con.
 - authorization: văn bản ủy quyền/giấy ủy quyền nếu có.
 - other: giấy tờ liên quan nhưng không thuộc các nhóm trên.

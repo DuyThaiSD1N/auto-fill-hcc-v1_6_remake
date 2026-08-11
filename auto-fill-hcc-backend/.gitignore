@@ -3,7 +3,9 @@ __pycache__/
 .venv/
 venv/
 .env
-data/
+# CHỈ thư mục data/ ở GỐC repo (file upload runtime). KHÔNG được viết trần "data/" —
+# nó nuốt luôn app/pipelines/_shared/data/ (JSON remap xã/tỉnh) làm server thiếu mapping.
+/data/
 *.log
 .pytest_cache/
 .DS_Store

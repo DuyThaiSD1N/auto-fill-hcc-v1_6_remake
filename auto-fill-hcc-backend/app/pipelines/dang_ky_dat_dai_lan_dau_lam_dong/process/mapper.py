@@ -7,6 +7,7 @@ province2, district/district1/village2 khác nhau).
 
 from __future__ import annotations
 
+import datetime
 import re
 import unicodedata
 from typing import Any
@@ -217,12 +218,33 @@ def _agency(value: Any) -> str | None:
     return text or None
 
 
-def _cccd_issuer(value: Any, ngay_cap: Any) -> str | None:
+def _is_future_date(d: Any) -> bool:
+    """Ngày (dd/mm/yyyy đã chuẩn hóa) NẰM SAU hôm nay → coi là sai/OCR lỗi."""
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", str(d or ""))
+    if not m:
+        return False
+    dd, mm, yyyy = (int(x) for x in m.groups())
+    try:
+        return datetime.date(yyyy, mm, dd) > datetime.date.today()
+    except ValueError:
+        return False
+
+
+def _cccd_issuer(value: Any, ngay_cap: Any, identity: Any = None) -> str | None:
+    # CCCD/CĂN CƯỚC 12 SỐ: nơi cấp là HÀM TẤT ĐỊNH của ngày cấp — >= 01/7/2024 = "Bộ Công an" (thẻ Căn
+    # cước mới), TRƯỚC 01/7/2024 = "Cục Cảnh sát QLHC về TTXH" (CCCD gắn chip). Suy thẳng từ ngày cấp và
+    # ĐÈ MỌI giá trị (kể cả khi LLM/OCR đã trích ra nơi cấp — vì nơi cấp phải khớp mốc ngày). NGOẠI LỆ:
+    # ngày cấp Ở TƯƠNG LAI (> hôm nay) là ngày rác → KHÔNG suy, rơi về giá trị đã trích. CMND 9 số (nơi
+    # cấp "Công an tỉnh X", không suy được từ ngày) → luôn giữ giá trị OCR/LLM.
+    ident = _identity(identity)
+    d = _date(ngay_cap)
+    date_ok = bool(d) and not _is_future_date(d)
+    if ident and len(ident) == 12 and date_ok:
+        return default_issuer(d)
     text = _text(value)
     if text:
         return normalize_issuer(text)
-    d = _date(ngay_cap)
-    return default_issuer(d) if d else None
+    return default_issuer(d) if date_ok else None
 
 
 def _date_ymd(value: Any) -> str | None:
@@ -316,7 +338,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_phone = _phone(values.get("Nguoi_DienThoai"))
     owner_email = _text(values.get("Nguoi_Email"))
     owner_id_date = _date(values.get("Nguoi_NgayCapCccd"))
-    owner_id_agency = _cccd_issuer(values.get("Nguoi_NoiCapCccd"), values.get("Nguoi_NgayCapCccd"))
+    owner_id_agency = _cccd_issuer(
+        values.get("Nguoi_NoiCapCccd"), values.get("Nguoi_NgayCapCccd"), values.get("Nguoi_SoDinhDanh")
+    )
     owner_residence = _area(values.get("Nguoi_ThuongTru"))
 
     if has_uy_quyen:
@@ -324,11 +348,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         sub_identity = _identity(values.get("DaiDien_SoDinhDanh"))
         sub_birthday = _date(values.get("DaiDien_NgaySinh"))
         sub_gender = _text(values.get("DaiDien_GioiTinh"))
-        sub_phone = _phone(_pick(values.get("DaiDien_DienThoai"), values.get("Nguoi_DienThoai")))
-        sub_email = _text(_pick(values.get("DaiDien_Email"), values.get("Nguoi_Email")))
+        # KHÔNG fallback sang Nguoi_*: người nộp (đại diện) và chủ hồ sơ là HAI người khác nhau — mượn
+        # SĐT/email/nơi ở của chủ sẽ điền nhầm vào ô người nộp. Thiếu → để trống (FE tô đỏ nhập tay).
+        sub_phone = _phone(values.get("DaiDien_DienThoai"))
+        sub_email = _text(values.get("DaiDien_Email"))
         sub_id_date = _date(values.get("DaiDien_NgayCapCccd"))
-        sub_id_agency = _cccd_issuer(values.get("DaiDien_NoiCapCccd"), values.get("DaiDien_NgayCapCccd"))
-        sub_residence = _area(_pick(values.get("DaiDien_ThuongTru"), values.get("Nguoi_ThuongTru")))
+        sub_id_agency = _cccd_issuer(
+            values.get("DaiDien_NoiCapCccd"), values.get("DaiDien_NgayCapCccd"), values.get("DaiDien_SoDinhDanh")
+        )
+        sub_residence = _area(values.get("DaiDien_ThuongTru"))
     else:
         sub_name, sub_identity, sub_birthday, sub_gender = owner_name, owner_identity, owner_birthday, owner_gender
         sub_phone, sub_email, sub_id_date, sub_id_agency = owner_phone, owner_email, owner_id_date, owner_id_agency

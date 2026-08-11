@@ -44,6 +44,12 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục "Đính ch�
 - "GIẤY KHAI SINH", "BẢN SAO GIẤY KHAI SINH", "TRÍCH LỤC KHAI SINH" → birth_certificate.
 - "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card", "Số định danh cá nhân", "CMND" → identity_document.
 - "GIẤY ỦY QUYỀN", "HỢP ĐỒNG ỦY QUYỀN", "Bên được ủy quyền" → authorization.
+- CHỈ authorization khi tài liệu ĐÓ CHÍNH LÀ giấy ủy quyền (tiêu đề "GIẤY ỦY QUYỀN", có bên ủy quyền/bên
+  được ủy quyền, lời chứng công chứng). Phân loại theo TIÊU ĐỀ + BẢN CHẤT CHÍNH của tài liệu, KHÔNG theo
+  một dòng nhắc tên giấy khác.
+- BẪY: Đơn Mẫu 18 ở mục "IV. Giấy tờ ... nộp kèm theo đơn" thường LIỆT KÊ tên các giấy khác (vd "(2) Giấy
+  ủy quyền") — đây chỉ là DANH SÁCH kê khai, KHÔNG biến Đơn thành authorization. Tài liệu mở đầu bằng "ĐƠN
+  ĐĂNG KÝ BIẾN ĐỘNG..."/"Mẫu số 18" LUÔN là change_application.
 </classification_hints>
 
 <output_contract>

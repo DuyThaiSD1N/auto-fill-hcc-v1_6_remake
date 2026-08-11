@@ -101,6 +101,11 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - Với giấy khai sinh, HoTich_HoTenNguoiDuocDangKy là người được khai sinh (CON).
 - HoTich_NoiCuTru trên TỜ KHAI CẤP BẢN SAO: BẮT BUỘC lấy dòng "Nơi cư trú" trong block sau
   "cho người có tên dưới đây"; không lấy dòng "Nơi cư trú" của người yêu cầu ở phần đầu.
+  Nyc_NoiCuTru (người yêu cầu) và HoTich_NoiCuTru (người được đăng ký) là HAI field ĐỘC LẬP: phải
+  trả CẢ HAI, kể cả khi địa chỉ TRÙNG NHAU (ca tự làm) — KHÔNG gộp, KHÔNG bỏ một trong hai, KHÔNG
+  mượn cái này chắp cái kia (hai người có thể ở khác địa chỉ).
+- Có thể lấy HoTich_NoiCuTru từ chính GIẤY HỘ TỊCH của chủ thể (giấy khai sinh, trích lục khai tử,
+  giấy đăng ký kết hôn) khi giấy đó ghi nơi cư trú của người được đăng ký.
 - Phân biệt NGUỒN giấy tờ tùy thân trong hồ sơ khai sinh:
   + Trên TỜ KHAI CẤP BẢN SAO, dòng "Giấy tờ tùy thân" nằm trong block sau "cho người có tên dưới đây"
     là của CHÍNH người được cấp. BẮT BUỘC trả đủ HoTich_LoaiGiayToTuyThan,

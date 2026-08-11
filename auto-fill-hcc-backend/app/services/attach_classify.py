@@ -108,8 +108,22 @@ async def _ocr_trimmed(files: list[dict]) -> list[dict]:
     """
     trimmed = trim_files_for_classify(files, settings.attach_classify_max_pages)
     if settings.attach_classify_ocr == "tiengnoi":
+        results = None
         try:
-            return await ocr_tiengnoi.ocr_per_file(trimmed)
-        except Exception:  # noqa: BLE001 — tiengnoi lỗi/down → fallback Vision vnekyc
-            pass
+            results = await ocr_tiengnoi.ocr_per_file(trimmed)
+        except Exception:  # noqa: BLE001 — tiengnoi raise (down/timeout) → fallback toàn bộ sang raw
+            results = None
+        if results is not None:
+            # tiengnoi lúc quá tải trả ok=true nhưng text RỖNG (không raise) → phải fallback raw CHO
+            # TỪNG file rỗng, nếu không cả lô thành generic. Chỉ ghi đè khi raw đọc ra text thật.
+            empty_idx = [i for i, r in enumerate(results) if not (str(r.get("text") or "")).strip()]
+            if empty_idx:
+                try:
+                    raw_res = await ocr_raw.ocr_per_file([trimmed[i] for i in empty_idx])
+                    for j, i in enumerate(empty_idx):
+                        if j < len(raw_res) and str(raw_res[j].get("text") or "").strip():
+                            results[i] = raw_res[j]
+                except Exception:  # noqa: BLE001 — raw cũng lỗi → giữ kết quả tiengnoi (rỗng), không chặn
+                    pass
+            return results
     return await ocr_raw.ocr_per_file(trimmed)

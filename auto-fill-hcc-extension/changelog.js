@@ -3,6 +3,25 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.11",
+    date: "9/8/2026",
+    items: [
+      "Cải tiến luồng đính kèm nhiều tab cho nhóm thủ tục chứng thực: mỗi bộ tài liệu được xử lý tuần tự trên từng tab, hạn chế nhầm lẫn và sai sót.",
+      "Khắc phục lỗi không đính kèm được tệp Word (.docx).",
+      "Thông báo lỗi rõ ràng, dễ hiểu hơn khi gặp sự cố: đính kèm sai định dạng tệp, hoặc tệp/tổng dung lượng vượt quá giới hạn cho phép.",
+    ],
+  },
+  {
+    version: "1.10",
+    date: "6/8/2026",
+    items: [
+      "Bổ sung bước xác nhận đồng ý xử lý dữ liệu cá nhân trước khi tự động điền: hiển thị đầy đủ điều khoản, quyền và nghĩa vụ của chủ thể dữ liệu theo quy định về bảo vệ dữ liệu cá nhân.",
+      "Tải tài liệu bằng điện thoại qua mã QR nay hỗ trợ thêm tệp PDF, không chỉ ảnh.",
+      "Khắc phục một số lỗi khi đính kèm hồ sơ ở nhóm thủ tục chứng thực.",
+      "Khắc phục một số lỗi nhận diện và điền ở nhóm thủ tục đất đai.",
+    ],
+  },
+  {
     version: "1.9",
     date: "4/8/2026",
     items: [

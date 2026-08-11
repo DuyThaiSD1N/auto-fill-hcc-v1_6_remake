@@ -28,3 +28,6 @@ async def ensure_indexes() -> None:
     await db.upload_sessions.create_index(
         "created_at", expireAfterSeconds=settings.upload_session_ttl_minutes * 60
     )
+    # Bằng chứng chấp thuận PDPL — KHÔNG TTL (phải giữ lâu dài để đối soát).
+    await db.consent_logs.create_index("log_id")
+    await db.consent_logs.create_index([("user_id", 1), ("created_at", -1)])

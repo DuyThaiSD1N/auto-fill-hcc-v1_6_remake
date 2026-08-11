@@ -7,6 +7,7 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold, normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.khai_sinh_ket_hop_nhan_cmc.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -167,15 +168,20 @@ def build_plan_items(
     attachments: list[dict] = []
     classified: list[dict] = []
     used_new: set[str] = set()
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
 
     for index, file in enumerate(files):
         name = str(file.get("name") or f"file-{index + 1}")
         text = str(by_name.get(name, {}).get("text") or "")
+        ocr_text_by_index[index] = text
         classification_text = f"{name}\n{text}"
         rule_type = _doc_type(classification_text)
         llm_result = llm_types.get(index) or {}
         llm_type = _normalize_llm_type(llm_result.get("type")) if llm_result else ""
         doc_type = rule_type if rule_type != "other" else (llm_type or "other")
+        if doc_type == "identity":
+            identity_indexes.add(index)
         label = _label(doc_type, classification_text)
         if rule_type == "other":
             label = _specific_llm_name(llm_result.get("documentName")) or label
@@ -219,6 +225,8 @@ def build_plan_items(
             "componentIndex": component_index,
             "source": "rule" if rule_type != "other" else ("llm" if llm_result else "filename_fallback"),
         })
+    # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau); nhiều người → khóa số định danh gộp đúng từng người.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
     return attachments, classified
 
 

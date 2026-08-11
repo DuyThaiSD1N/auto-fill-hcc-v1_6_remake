@@ -144,6 +144,16 @@ def _identity(value: Any) -> str | None:
     return digits or None
 
 
+def _bienso(value: Any) -> str | None:
+    """Biển số xe: CHỈ giữ chữ + số (bỏ dấu cách, gạch '-', chấm...). Cổng DVC KHÔNG cho lưu ký tự đặc
+    biệt → '92C 12287' / '92C-12287' đều thành '92C12287'."""
+    text = _text(value)
+    if not text:
+        return None
+    cleaned = re.sub(r"[^0-9A-Za-z]", "", text).upper()
+    return cleaned or None
+
+
 def _phone(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -203,7 +213,9 @@ def _vehicles(value: Any) -> list[dict]:
         car: dict[str, str] = {}
         for k in _VEHICLE_KEYS:
             v = _text(item.get(k))
-            if k in ("tuNgay", "denNgay"):
+            if k == "bienSo":
+                v = _bienso(item.get(k))  # bỏ ký tự đặc biệt (cổng không cho lưu).
+            elif k in ("tuNgay", "denNgay"):
                 v = _date(item.get(k))
             elif k == "cuaKhau" and v and "tat ca" in _fold(v):
                 v = "Tất cả cửa khẩu"  # option web KHÔNG có chữ "các"

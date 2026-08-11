@@ -5,6 +5,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -237,9 +238,14 @@ async def plan_trich_luc_attachments(
     classified: list[dict] = []
     used_names: set[str] = set()
     used_slots: set[int] = set()  # componentIndex ô cố định đã bị chiếm
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "title": "", "documentName": ""}
         doc_type = detected["type"]
+        ocr_text_by_index[idx] = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+        if doc_type == "identity":
+            identity_indexes.add(idx)
         # Tên cơ sở: ưu tiên documentName CỤ THỂ từ LLM.
         # - "other": thiếu documentName → dùng tên file (OCR lỗi); chỉ về nhãn chung khi tên file vô nghĩa.
         # - loại đã biết: dùng nhãn loại; vẫn ưu tiên documentName nếu LLM cung cấp tên cụ thể hơn.
@@ -277,6 +283,9 @@ async def plan_trich_luc_attachments(
             "target": item["target"],
             "componentIndex": item["componentIndex"],
         })
+
+    # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau) vào ô giấy tùy thân.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
 
     return {
         "attachments": attachments,

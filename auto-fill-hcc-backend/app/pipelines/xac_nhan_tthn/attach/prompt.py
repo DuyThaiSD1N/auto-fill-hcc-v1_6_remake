@@ -11,7 +11,13 @@ Dựa vào OCR là nguồn chính; dùng tên file chỉ khi OCR không đủ th
 Mỗi tài liệu phải trả type thuộc đúng một trong các giá trị sau:
 identity, divorce_or_death_proof, foreign_divorce_note,
 previous_marital_status_certificate_or_authorization, other.
-identity = CCCD/CMND/hộ chiếu/giấy tờ tùy thân có ảnh.
+identity = ẢNH/BẢN CHỤP thẻ CCCD/CMND/hộ chiếu/giấy tờ tùy thân có ảnh. Bao gồm CẢ MẶT SAU thẻ CCCD/căn
+cước: mặt sau chỉ có mục "Đặc điểm nhận dạng", vân tay, chữ ký "CỤC TRƯỞNG CỤC CẢNH SÁT" và dòng MRZ
+bắt đầu "IDVNM..." — KHÔNG có tiêu đề "Căn cước công dân" nhưng VẪN là identity (title 'Căn cước công dân').
+QUAN TRỌNG: Tờ khai/đơn (vd "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN") KHÔNG phải identity, dù
+bên trong có dòng "Giấy tờ tùy thân: Thẻ CCCD số ..." của người yêu cầu — đó chỉ là THÔNG TIN KHAI,
+không phải ảnh thẻ. Tài liệu là tờ khai/đơn → type "other" và documentName ĐÚNG chuỗi "Tờ khai bản giấy"
+(KHÔNG lấy tên file dài, KHÔNG thêm tên người).
 divorce_or_death_proof = bản án/quyết định ly hôn hoặc giấy chứng tử của vợ/chồng.
 foreign_divorce_note = trích lục ghi chú ly hôn/hủy kết hôn ở nước ngoài.
 previous_marital_status_certificate_or_authorization = giấy xác nhận tình trạng hôn nhân đã cấp

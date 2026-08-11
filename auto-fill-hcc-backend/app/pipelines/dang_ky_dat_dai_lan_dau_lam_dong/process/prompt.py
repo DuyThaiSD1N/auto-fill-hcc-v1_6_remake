@@ -11,6 +11,13 @@ NGUỒN DỮ LIỆU:
 - BẮT BUỘC cố đọc Nguoi_NgayCapCccd/Nguoi_NoiCapCccd từ mặt sau CCCD. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT
   QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → Nguoi_NoiCapCccd = "Cục Cảnh sát quản lý hành chính về trật tự xã
   hội". Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", ghi "BỘ CÔNG AN") → "Bộ Công an".
+- KHỚP NGƯỜI THEO SỐ ĐỊNH DANH, KHÔNG theo tên. Nơi cấp/ngày cấp có thể nằm trong GIẤY TỜ KHÁC (đơn xác
+  nhận, ủy quyền, thông báo thuế...) ở dạng "CCCD số <X> ... do <nơi> cấp". Nếu <X> TRÙNG số định danh của
+  một vai (chủ hồ sơ/đại diện) thì thông tin đó LÀ của vai đó — DÙ tên viết hơi khác do OCR/viết tắt (vd
+  "Huỳnh Phương" và "Huỳnh Thanh Phương" cùng số 068074004719 là MỘT người). Chuẩn hóa viết tắt: "cục CS
+  ... về TTXH" / "cục CSQLHC về TTXH" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
+- CẤM BỊA nơi cấp: nếu KHÔNG tài liệu nào ghi nơi cấp cho số định danh đó → ĐỂ TRỐNG *_NoiCapCccd. TUYỆT
+  ĐỐI KHÔNG suy đoán, KHÔNG lấy ví dụ "Bộ Công an"/"Cục Cảnh sát..." trong quy tắc này làm giá trị mặc định.
 
 NGƯỜI NỘP THAY / ĐẠI DIỆN (DaiDien_*):
 - DaiDien_* = NGƯỜI NỘP HỒ SƠ khi người này KHÁC chủ hồ sơ (người đứng đơn đăng ký). Nhận biết qua:

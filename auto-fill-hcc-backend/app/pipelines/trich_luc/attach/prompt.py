@@ -40,6 +40,7 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
   hoặc giấy tờ hộ tịch ghi nhận việc khai tử.
 - identity: CCCD, CMND, Hộ chiếu, Thẻ căn cước, Căn cước điện tử,
   Giấy chứng nhận căn cước hoặc giấy tờ tùy thân có ảnh và thông tin cá nhân.
+  Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có 'Đặc điểm nhận dạng', vân tay, 'CỤC TRƯỞNG CỤC CẢNH SÁT', dòng MRZ 'IDVNM...', KHÔNG có tiêu đề 'Căn cước công dân') — VẪN là identity.
 - authorization: văn bản ủy quyền thực hiện yêu cầu cấp bản sao trích lục hộ tịch.
 - residence_proof: giấy tờ chứng minh thông tin cư trú/nơi cư trú/chỗ ở.
 - paper_declaration: tờ khai/yêu cầu cấp bản sao giấy khai sinh, bản sao trích lục hộ tịch bản giấy.

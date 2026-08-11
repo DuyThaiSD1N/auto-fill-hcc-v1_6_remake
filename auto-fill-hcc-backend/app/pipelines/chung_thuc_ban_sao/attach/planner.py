@@ -3,6 +3,7 @@
 OCR + LLM phân loại tài liệu rồi lập kế hoạch đính kèm vào ví giấy tờ. Helper đặt tên/fold
 dùng chung lấy từ app.pipelines._shared.
 """
+import logging
 import time
 from typing import Any
 
@@ -22,6 +23,8 @@ DEFAULT_COPY_CERTIFICATION_COMPONENT = (
     "tiện để chụp. Bản sao từ bản chính để thực hiện chứng thực phải có đầy đủ các trang đã ghi "
     "thông tin của bản chính."
 )
+
+logger = logging.getLogger(__name__)
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _IDENTITY_DOCUMENT_TYPES = {"Căn cước công dân"}
@@ -238,11 +241,18 @@ def build_plan_items(files: list[dict], ocr_results: list[dict], llm_types: dict
             target = "existing"
             component_index = 1
         else:
-            component_name = _unique_document_name(
-                doc.get("componentBaseName") or document_name,
-                used_component_names,
-                detected,
-            )
+            base = doc.get("componentBaseName") or document_name
+            if _fold(base) == _fold(_GENERIC_DOCUMENT_TYPE):
+                # OCR trống/không phân loại được → base = "Tài liệu chứng thực" cho MỌI file.
+                # Nếu đánh số tên THÀNH PHẦN bằng bộ đếm RIÊNG sẽ lệch pha với documentName và
+                # sinh tên trần "Tài liệu chứng thực" — bị FE (khớp substring 2 chiều ở
+                # attachmentKeyMatches) coi là trùng của "Tài liệu chứng thực 2/3…" nên bỏ sót
+                # file (4/7). Dùng THẲNG documentName đã đánh số duy nhất làm tên thành phần →
+                # mỗi file 1 thành phần riêng, các tên không lồng nhau.
+                component_name = document_name
+                used_component_names.add(_fold(component_name))
+            else:
+                component_name = _unique_document_name(base, used_component_names, detected)
             target = "new"
             component_index = None
 
@@ -280,7 +290,10 @@ async def plan(
     ocr_ms = int((time.monotonic() - t0) * 1000)
     for r in ocr_results:
         if r.get("error"):
-            errors.append(f"OCR {r.get('name')}: {r['error']}")
+            # OCR lỗi thường do dịch vụ OCR chập chờn (502/timeout) — KHÔNG phải lỗi hồ sơ.
+            # File vẫn được đính kèm (tên fallback qua build_plan_items), nên KHÔNG đẩy vào
+            # `errors` để tránh hiện "Cảnh báo xử lý" gây hoang mang cho cán bộ; chỉ log để debug.
+            logger.warning("OCR phân loại lỗi (%s): %s", r.get("name"), r["error"])
 
     ocr_by_name = {r.get("name"): r for r in ocr_results}
     llm_docs: list[dict[str, Any]] = []

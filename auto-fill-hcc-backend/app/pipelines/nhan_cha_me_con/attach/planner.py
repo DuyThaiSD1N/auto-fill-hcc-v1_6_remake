@@ -15,6 +15,7 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold, normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.nhan_cha_me_con.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -335,21 +336,27 @@ def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
     llm_types: dict[int, dict[str, str]] | None = None,
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], dict[int, str], set[int]]:
     llm_types = llm_types or {}
     by_name = {item.get("name"): item for item in ocr_results}
     used_names: set[str] = set()
     resolved: list[dict] = []
+    # Thu thập cho helper gộp CCCD 2 mặt cùng người (khóa theo số định danh).
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
+        ocr_text_by_index[idx] = text
         rule_type = _rule_doc_type(text)
         detected = llm_types.get(idx) or {}
         llm_type = detected.get("type") or ""
         doc_type = rule_type or llm_type or _DOC_OTHER
         if doc_type not in _ALLOWED_DOC_TYPES:
             doc_type = _DOC_OTHER
+        if doc_type == _DOC_IDENTITY:
+            identity_indexes.add(idx)
         rule_name = _rule_document_name(doc_type, text) if rule_type else ""
         name_source = {"documentName": rule_name} if rule_name else detected
         resolved.append({
@@ -405,7 +412,7 @@ def build_plan_items(
             "source": entry["source"],
         })
 
-    return attachments, classified
+    return attachments, classified, ocr_text_by_index, identity_indexes
 
 
 async def plan(
@@ -443,7 +450,11 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, classified = build_plan_items(raw_files, ocr_results, llm_types)
+    attachments, classified, ocr_text_by_index, identity_indexes = build_plan_items(
+        raw_files, ocr_results, llm_types
+    )
+    # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau); nhiều người → khóa số định danh nên an toàn.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
     skipped_ocr = [file["name"] for file in raw_files if file.get("type") not in _OCR_TYPES]
 
     return {

@@ -17,7 +17,8 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 4. Nếu một file gộp nhiều giấy tờ và có giấy chứng tử/trích lục khai tử/thông tin bia mộ/lăng mộ/chứng minh sự kiện chết, chọn death_proof để đính vào STT 2.
 5. Tờ khai đăng ký lại khai tử bản giấy vẫn là paper_declaration và sẽ thêm thành phần hồ sơ mới; không xếp tờ khai vào STT 2 chỉ vì tờ khai có dòng "Đã chết".
 6. CCCD/CMND/hộ chiếu/căn cước là identity và sẽ thêm thành phần hồ sơ mới.
-7. Trả JSON object duy nhất, không markdown, không giải thích.
+7. Giấy KHAI SINH/KHAI SANH/GIẤY CHỨNG SINH/GIẤY CHỨNG NHẬN BẢO SANH là other (thêm thành phần hồ sơ mới), TUYỆT ĐỐI KHÔNG phải death_proof — kể cả khi là giấy của chính người đã chết. Chỉ Giấy chứng tử / Giấy báo tử / Trích lục khai tử mới được vào STT 2.
+8. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
 
 <allowed_types>
@@ -29,11 +30,11 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 </allowed_types>
 
 <type_definitions>
-- death_proof: bản sao Giấy chứng tử trước đây, trích lục khai tử, giấy báo tử cũ, hoặc bất kỳ hồ sơ/giấy tờ/tài liệu liên quan có nội dung chứng minh sự kiện chết. Bao gồm cả ảnh/thông tin bia mộ, lăng mộ, văn bản ghi "tạ thế", "từ trần", ngày mất, năm mất.
+- death_proof: CHỈ gồm Giấy chứng tử, Giấy báo tử, hoặc Trích lục khai tử (bản sao Giấy chứng tử trước đây được cấp hợp lệ). Trường hợp KHÔNG có 3 giấy trên thì mới nhận giấy tờ khác chứng minh sự kiện chết của NGƯỜI ĐÃ CHẾT (bia mộ/lăng mộ, văn bản ghi "tạ thế"/"từ trần"/ngày mất/năm mất). KHÔNG bao giờ xếp Giấy khai sinh/khai sanh/giấy chứng sinh/bảo sanh vào đây — đó là other.
 - authorization: văn bản ủy quyền/giấy ủy quyền thực hiện đăng ký lại khai tử.
 - paper_declaration: tờ khai đăng ký lại khai tử bản giấy.
-- identity: CCCD/CMND/căn cước/hộ chiếu/giấy tờ tùy thân của người yêu cầu hoặc người liên quan.
-- other: giấy tờ khác không thuộc các nhóm trên.
+- identity: CCCD/CMND/căn cước/hộ chiếu/giấy tờ tùy thân của người yêu cầu hoặc người liên quan. Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có "Đặc điểm nhận dạng", vân tay, "CỤC TRƯỞNG CỤC CẢNH SÁT", dòng MRZ "IDVNM...", KHÔNG có tiêu đề "Căn cước công dân") — VẪN là identity, KHÔNG phải death_proof.
+- other: giấy tờ khác không thuộc các nhóm trên — bao gồm Giấy khai sinh/khai sanh/giấy chứng sinh/giấy chứng nhận bảo sanh (kể cả của người đã chết).
 </type_definitions>
 
 <classification_hints>
@@ -42,6 +43,7 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng nhóm u
 - OCR có "TỜ KHAI ĐĂNG KÝ LẠI KHAI TỬ" thì chọn paper_declaration, trừ khi file là hồ sơ gộp có thêm giấy chứng tử/trích lục/bia mộ rõ ràng; khi đó chọn death_proof theo critical rule 4.
 - OCR có "VĂN BẢN ỦY QUYỀN", "GIẤY ỦY QUYỀN", "BÊN ỦY QUYỀN", "BÊN ĐƯỢC ỦY QUYỀN" thì chọn authorization.
 - OCR có "CĂN CƯỚC CÔNG DÂN", "THẺ CĂN CƯỚC", "Số / No.", "Số định danh cá nhân", "IDVNM", "Citizen Identity Card" thì chọn identity nếu không có bằng chứng death_proof trong cùng file.
+- OCR có "KHAI SINH", "KHAI SANH", "GIẤY CHỨNG SINH", "BẢO SANH", "CHỨNG NHẬN BẢO SANH" thì chọn other (KHÔNG phải death_proof), trừ khi cùng file có thêm Giấy chứng tử/Giấy báo tử/Trích lục khai tử rõ ràng.
 </classification_hints>
 
 <output_contract>

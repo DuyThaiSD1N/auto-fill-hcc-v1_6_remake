@@ -7,7 +7,6 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
-from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_gcn_attp_nong_lam_thuy_san.process.schema import UI_COMP_BY_NAME
@@ -101,18 +100,18 @@ def _area(value: Any) -> dict | None:
             out["tinh"], out["diaChi"] = parts[-1], parts[0]
         else:
             out["diaChi"] = parts[0]
-    elif isinstance(value, dict):
-        out = {
-            "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
-            "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
-            "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
-            "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
-        }
-    else:
+        return out
+    if not isinstance(value, dict):
         return None
-    
-    # Apply area remapping to normalize xa/phuong names for administrative mergers
-    out = remap_area(out, allow_diachi_fallback=True)
+    out = {
+        "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
+        "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
+        "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
+        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
+    }
+    # Hồ sơ cũ có thể còn tên phường An Hải Tây; danh mục hiện tại của cổng dùng Phường An Hải.
+    if "da nang" in _fold(out["tinh"]) and _fold(out["xa"]) == "an hai tay":
+        out["xa"] = "Phường An Hải"
     return out if any(out.values()) else None
 
 

@@ -123,8 +123,6 @@ for _name in ("Nyc_NoiCuTru", "ChuThe_NoiCuTru", "HoTich_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {
-    # Metadata để extension tự điền người yêu cầu
-    "__requesterInfo": "raw",  # Thông tin người yêu cầu từ tờ khai/CCCD để extension tự điền đè lên VNeID
     # Người yêu cầu.
     "HoVaTenC": "x-input",
     "SoDinhDanhC": "x-input",

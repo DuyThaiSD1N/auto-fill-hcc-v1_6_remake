@@ -42,6 +42,10 @@ _PROOF_TYPES = {_DOC_LAND, _DOC_BIRTH}
 _AUTH_TYPES = {_DOC_AUTHORIZATION}
 _APPLICATION_TYPES = {_DOC_APPLICATION, _DOC_IDENTITY}
 
+# LLM là bộ phân loại CHÍNH (đọc đủ OCR, nhận đúng bản chất giấy tờ). Rule chỉ DỰ PHÒNG khi LLM trả
+# other/lỗi. Các type "đáng tin" của LLM (mọi type định tuyến được, trừ other/skip) → dùng thẳng.
+_CONFIDENT_LLM_TYPES = {_DOC_LAND, _DOC_BIRTH, _DOC_APPLICATION, _DOC_IDENTITY, _DOC_AUTHORIZATION}
+
 _ROW_PROOF = (
     "Giấy tờ chứng minh sai sót thông tin của người được cấp Giấy chứng nhận so với thông tin tại thời "
     "điểm đề nghị đính chính hoặc sai sót thông tin về thửa đất, tài sản gắn liền với đất so với thông "
@@ -140,12 +144,15 @@ def _rule_doc_type(text: str, file_name: str = "") -> str:
     haystack = fold((text or "") + "\n" + (file_name or ""))
     if not haystack:
         return ""
-    # Ủy quyền kiểm tra sớm (tránh dính CCCD của bên được ủy quyền in kèm).
+    # ĐƠN MẪU 18 kiểm tra ĐẦU TIÊN: chính Đơn Mẫu 18 ở mục IV luôn LIỆT KÊ "(2) Giấy ủy quyền" (giấy tờ
+    # nộp kèm) → nếu check ủy quyền trước sẽ nhét nhầm ĐƠN vào ô ủy quyền. Tiêu đề "Mẫu số 18 / Đơn đăng ký
+    # biến động đất đai" là dấu hiệu RIÊNG, KHÔNG xuất hiện trong Giấy ủy quyền thật (giấy ủy quyền chỉ nói
+    # "đăng ký biến động VỀ thửa đất", không có "đơn"/"mẫu số 18").
+    if _has_any(haystack, ("don dang ky bien dong dat dai", "don dang ky bien dong", "dang ky bien dong dat dai", "mau so 18", "theo mau so 18")):
+        return _DOC_APPLICATION
+    # Ủy quyền trước GCN/CCCD (tránh dính CCCD của bên được ủy quyền in kèm trong chính giấy ủy quyền).
     if _has_any(haystack, ("giay uy quyen", "van ban uy quyen", "hop dong uy quyen", "ben duoc uy quyen", "ben uy quyen")):
         return _DOC_AUTHORIZATION
-    # Đơn Mẫu 18 trước GCN (đơn cũng nhắc "biến động đất đai").
-    if _has_any(haystack, ("don dang ky bien dong dat dai", "dang ky bien dong dat dai", "mau so 18", "theo mau so 18")):
-        return _DOC_APPLICATION
     # Giấy khai sinh trước CCCD.
     if _has_any(haystack, ("giay khai sinh", "ban sao giay khai sinh", "trich luc khai sinh", "birth certificate")):
         return _DOC_BIRTH
@@ -258,19 +265,22 @@ def build_plan_items(
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
-        rule_type = _rule_doc_type(text, file_name)
         detected = llm_types.get(idx) or {}
         llm_type = detected.get("type") or ""
-        doc_type = rule_type or llm_type or _DOC_OTHER
+        llm_ok = llm_type in _CONFIDENT_LLM_TYPES
+        # LLM PHÂN LOẠI CHÍNH: nhận đúng bản chất tài liệu theo tiêu đề (vd Đơn Mẫu 18 dù mục IV có LIỆT KÊ
+        # "Giấy ủy quyền"). Rule CHỈ chạy khi LLM trả other/skip hoặc LLM lỗi — không để keyword rule (dễ
+        # dính chữ "giấy ủy quyền" in kèm trong đơn) đè quyết định của LLM.
+        rule_type = "" if llm_ok else _rule_doc_type(text, file_name)
+        doc_type = (llm_type if llm_ok else "") or rule_type or _DOC_OTHER
         if doc_type not in _ALLOWED_DOC_TYPES:
             doc_type = _DOC_OTHER
-        title = "" if rule_type and llm_type and rule_type != llm_type else detected.get("title", "")
         resolved.append({
             "idx": idx,
             "fileName": file_name,
             "docType": doc_type,
-            "title": title,
-            "source": "rule" if rule_type else ("llm" if llm_type else "default"),
+            "title": detected.get("title", ""),
+            "source": "llm" if llm_ok else ("rule" if rule_type else "default"),
         })
 
     proof_entries = [e for e in resolved if e["docType"] in _PROOF_TYPES]

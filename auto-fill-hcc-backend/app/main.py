@@ -1,13 +1,16 @@
 import logging
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.attachments.router import router as attachments_router
 from app.auth.router import router as auth_router
 from app.config import settings
+from app.consent.router import router as consent_router
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.db.indexes import ensure_indexes
 from app.db.mongo import close, connect
@@ -84,6 +87,15 @@ app.include_router(traces_router)
 app.include_router(users_router)
 app.include_router(upload_session_router)
 app.include_router(upload_ws_router)
+app.include_router(consent_router)
+
+# Asset tĩnh cho trang mobile QR:
+#  - /static/scanner/*  : bundle ESM scanner (build từ repo scanic-stream-mask, xem BUILD.md)
+#  - /static/vendor/*   : thư viện prebuilt (pdf-lib gộp ảnh scan thành 1 PDF)
+# Mount ở thư mục CHA để phục vụ cả hai; model ML vẫn tự tải CDN phía điện thoại.
+_static_dir = Path(__file__).parent / "upload_session" / "static"
+if _static_dir.is_dir():
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 
 @app.get("/healthz")

@@ -49,3 +49,6 @@ class AttachmentPlanResp(BaseModel):
     extracted: dict[str, Any] = Field(default_factory=dict)
     stats: dict[str, Any] = Field(default_factory=dict)
     errors: list[str] = Field(default_factory=list)
+    # Mã hỗ trợ (request_id) trả về FE để cán bộ copy. KHÔNG khai báo ở đây thì response_model
+    # sẽ LƯỢC MẤT field router gắn vào result → FE không hiện được chip mã hỗ trợ.
+    requestId: str | None = None

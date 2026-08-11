@@ -23,7 +23,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.9 · 4/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.11 · 9/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -538,7 +538,8 @@
         }
         sendResponse({ ok: true, url: u.origin + u.pathname + (keep.toString() ? "?" + keep.toString() : "") });
       } catch (e) {
-        sendResponse({ error: e?.message || String(e) });
+        console.warn("[AutoFill] Lấy URL hồ sơ lỗi:", e);
+        sendResponse({ error: "Không đọc được địa chỉ hồ sơ trên trang." });
       }
       return;
     }
@@ -546,6 +547,12 @@
       // Chỉ frame TRÊN CÙNG trả lời (URL + heading nằm ở trang gốc, không phải iframe con).
       if (window.top !== window) return;
       sendResponse({ ok: true, signals: collectProcedureSignals() });
+      return;
+    }
+    if (msg?.action === "getPortalPrincipal") {
+      // Danh tính tài khoản VNeID đang đăng nhập trên CỔNG → popup gắn consent theo (người + thủ tục).
+      if (window.top !== window) return;
+      sendResponse({ ok: true, principal: extractPortalPrincipal() });
       return;
     }
     if (msg?.action === "attachFilesViaWallet") {
@@ -590,7 +597,10 @@
         }
         sendResponse(res);
       })
-      .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
+      .catch((e) => {
+        console.warn("[AutoFill] Điền dữ liệu lên trang lỗi:", e);
+        sendResponse({ error: "Không điền được dữ liệu lên trang. Vui lòng thử lại." });
+      });
     return true; // giữ kênh để phản hồi bất đồng bộ (cascade địa danh cần chờ)
   }
 
@@ -702,10 +712,21 @@
     window.addEventListener("pageshow", resume);
   }
 
-  // ===== Tách hồ sơ (split): tab hồ sơ mới tự đính file (từ hàng đợi background) khi tới Bước 3 =====
+  const SPLIT_RELOADABLE_WALLET_CODES = new Set([
+    "wallet-stale-modal",
+    "wallet-modal-not-opened",
+    "wallet-device-upload-not-opened",
+  ]);
+  const SPLIT_MAX_RELOADS_PER_WALLET_CODE = 3;
+
+  function isSplitReloadableWalletError(code) {
+    return SPLIT_RELOADABLE_WALLET_CODES.has(String(code || ""));
+  }
+
+  // ===== Tách hồ sơ (split): tab hồ sơ mới tự đính bundle file từ background khi tới Bước 3 =====
   // Trang nộp hồ sơ reload/chuyển bước → content script chạy lại; mỗi lần load kiểm tra pending của tab.
   // Portal React (cổng mới): tab mới dừng ở "Thông tin chủ hồ sơ" → tự bấm "Bước tiếp theo" để qua
-  // trang đính kèm. Chỉ bấm khi CHƯA tới bảng đính kèm; cap tối đa vài lần để không lỡ vượt qua Bước 3.
+  // trang đính kèm. Chỉ bấm đúng ở bước này và chỉ tính retry khi DOM thực sự KHÔNG chuyển bước.
   // eForm cũ KHÔNG có nút này (data-e2e/id không khớp) → no-op, giữ nguyên hành vi user tự điều hướng.
   if (IS_TOP_FRAME && !window.__AUTOFILL_HCC_SPLIT_POLLER__) {
     window.__AUTOFILL_HCC_SPLIT_POLLER__ = true;
@@ -713,37 +734,176 @@
       chrome.runtime.sendMessage({ action: "getPendingAttach" }, (res) => {
         if (chrome.runtime.lastError) return;
         const pending = res?.pending;
-        if (!pending?.file || !pending?.planItem) return;
-        const deadline = Date.now() + 5 * 60 * 1000; // hết hạn 5 phút để tránh poll vô tận
+        const pendingFiles = Array.isArray(pending?.files) && pending.files.length
+          ? pending.files
+          : (pending?.file ? [pending.file] : []);
+        const pendingAttachments = Array.isArray(pending?.attachments) && pending.attachments.length
+          ? pending.attachments
+          : (pending?.planItem ? [pending.planItem] : []);
+        if (!pendingFiles.length || !pendingAttachments.length) return;
+        let deadline = Date.now() + 5 * 60 * 1000; // hết hạn 5 phút ACTIVE để tránh poll vô tận
         let busy = false;
-        let nextClicks = 0;
-        let lastNextClick = 0;
-        const clickNextStep = () => {
-          // Nút "Bước tiếp theo" ở bước Thông tin chủ hồ sơ (cổng React).
-          const btn = document.querySelector(
+        let terminal = false;
+        let hiddenSince = null;
+        let nextFailures = 0;
+        const maxNextFailures = 5;
+        const recoveryBaseKey = `__af_split_attach_reload_${pending.ts || "legacy"}`;
+        const recoveryTotalKey = `${recoveryBaseKey}_total`;
+        const ownerStepPresent = () => Array.from(document.querySelectorAll("h1, h2, h3")).some((heading) =>
+          isVisible(heading) && foldedNodeText(heading).includes("thong tin chu ho so")
+        );
+        const findOwnerNextButton = () => {
+          if (!ownerStepPresent()) return null;
+          return Array.from(document.querySelectorAll(
             'button[id^="kt_buoc-tiep-theo"], button[data-e2e="btn-next"]'
-          );
-          if (btn && !btn.disabled && typeof isVisible === "function" && isVisible(btn)) {
-            btn.click();
-            return true;
-          }
-          return false;
+          )).find((btn) =>
+            !btn.disabled && btn.getAttribute("aria-disabled") !== "true" && isVisible(btn)
+          ) || null;
         };
+        const clickNextAndVerify = async () => {
+          const btn = findOwnerNextButton();
+          if (!btn) return { attempted: false, advanced: false };
+          const beforeUrl = location.href;
+          btn.scrollIntoView({ block: "center", inline: "center" });
+          btn.focus?.();
+          btn.click(); // một click logic; không phát chuỗi event kép lên nút submit của React
+          const advanced = await waitFor(() =>
+            location.href !== beforeUrl ||
+            !ownerStepPresent() ||
+            hasAttachmentTarget(),
+            4000,
+            120
+          );
+          return { attempted: true, advanced: !!advanced };
+        };
+        const recoveryKeyForCode = (code) =>
+          `${recoveryBaseKey}_${String(code || "unknown").replace(/[^a-z0-9_-]+/gi, "_")}`;
+        const splitReloadCount = (code) => {
+          try { return Number.parseInt(sessionStorage.getItem(recoveryKeyForCode(code)) || "0", 10) || 0; }
+          catch (_) { return 0; }
+        };
+        const splitReloadTotal = () => {
+          try { return Number.parseInt(sessionStorage.getItem(recoveryTotalKey) || "0", 10) || 0; }
+          catch (_) { return 0; }
+        };
+        const markSplitReload = (code) => {
+          try {
+            sessionStorage.setItem(recoveryKeyForCode(code), String(splitReloadCount(code) + 1));
+            sessionStorage.setItem(recoveryTotalKey, String(splitReloadTotal() + 1));
+            return true;
+          } catch (_) {
+            return false; // không reload nếu không lưu được guard, tránh reload vô hạn
+          }
+        };
+        const seedInitialSplitReload = () => {
+          const code = String(pending?.recoveryCode || "");
+          const count = Number.parseInt(String(pending?.recoveryCount || "0"), 10) || 0;
+          if (!isSplitReloadableWalletError(code) || count <= 0) return;
+          try {
+            // Tab đầu tiên đã reload một lượt để chuyển từ popup sang state machine. Seed guard để
+            // tổng số reload của chính trạng thái treo này vẫn bị chặn ở mức 3 như các tab mới.
+            if (splitReloadCount(code) < count) {
+              sessionStorage.setItem(recoveryKeyForCode(code), String(count));
+            }
+            if (splitReloadTotal() < count) {
+              sessionStorage.setItem(recoveryTotalKey, String(count));
+            }
+          } catch (_) { /* guard chỉ là cơ chế chống lặp; lỗi storage thì tick sẽ tự dừng an toàn */ }
+        };
+        const clearSplitReloadGuards = () => {
+          try {
+            sessionStorage.removeItem(recoveryBaseKey); // dọn guard của bản extension cũ
+            sessionStorage.removeItem(recoveryTotalKey);
+            for (const code of SPLIT_RELOADABLE_WALLET_CODES) {
+              sessionStorage.removeItem(recoveryKeyForCode(code));
+            }
+          } catch (_) { /* ignore */ }
+        };
+        const finishPendingAttach = (ok, details = {}) => {
+          if (terminal) return;
+          terminal = true;
+          chrome.runtime.sendMessage({
+            action: ok ? "clearPendingAttach" : "failPendingAttach",
+            code: details.code || null,
+            error: details.error || null,
+          });
+        };
+        seedInitialSplitReload();
         const tick = async () => {
-          if (Date.now() > deadline) return;
+          if (terminal) return;
+          // Chrome và React throttle tab nền; tuyệt đối không click modal hoặc tiêu retry khi tab ẩn.
+          // Queue background luôn activate đúng một tab, còn người dùng chuyển tay thì tiến trình tạm dừng.
+          if (document.hidden) {
+            if (!hiddenSince) hiddenSince = Date.now();
+            setTimeout(tick, 500);
+            return;
+          }
+          if (hiddenSince) {
+            deadline += Date.now() - hiddenSince;
+            hiddenSince = null;
+          }
+          if (Date.now() > deadline) {
+            finishPendingAttach(false, { code: "split-timeout", error: "Hết thời gian chờ trang đính kèm sẵn sàng." });
+            return;
+          }
           if (!busy && typeof hasAttachmentTarget === "function" && hasAttachmentTarget()) {
-            busy = true; // TỚI BƯỚC 3 (có bảng thành phần hồ sơ) → tự đính STT1
+            busy = true; // TỚI BƯỚC 3 → tự đính toàn bộ bundle theo kế hoạch STT1/STT2
             try {
-              const r = await attachFilesByPlan([pending.file], [pending.planItem], pending.procedure || "", { mode: "split" });
-              if (r?.ok || r?.attached) {
-                chrome.runtime.sendMessage({ action: "clearPendingAttach" });
+              const r = await attachFilesByPlan(pendingFiles, pendingAttachments, pending.procedure || "", { mode: "split" });
+              // Không coi kết quả đính một phần là thành công: chứng thực chữ ký phải đủ cả STT1 và STT2.
+              if (r?.ok && !r?.error) {
+                clearSplitReloadGuards();
+                finishPendingAttach(true);
+                return;
+              }
+              if (isSplitReloadableWalletError(r?.code)) {
+                // Cổng React đôi khi cần nhiều hơn một lượt khởi tạo lại. Cho mỗi trạng thái treo reload
+                // tối đa 3 lần, đồng thời giữ trần tổng 9 lần cho cả pending để không tạo vòng lặp vô hạn.
+                const maxReloadTotal = SPLIT_RELOADABLE_WALLET_CODES.size * SPLIT_MAX_RELOADS_PER_WALLET_CODE;
+                if (
+                  splitReloadCount(r.code) < SPLIT_MAX_RELOADS_PER_WALLET_CODE &&
+                  splitReloadTotal() < maxReloadTotal
+                ) {
+                  if (markSplitReload(r.code)) {
+                    console.warn(`[AutoFill-Split] Ví tài liệu bị treo (${r.code}), reload để cổng khởi tạo lại trạng thái này.`);
+                    location.reload();
+                  } else {
+                    console.warn("[AutoFill-Split] Không lưu được reload guard; dừng để tránh vòng lặp.");
+                    finishPendingAttach(false, { code: r.code, error: r.error || "Không lưu được reload guard." });
+                  }
+                  return;
+                }
+                console.warn(`[AutoFill-Split] Trạng thái ${r.code} vẫn lỗi sau reload; dừng để tránh vòng lặp.`, r.error);
+                finishPendingAttach(false, { code: r.code, error: r.error });
+                return;
+              }
+              if (r?.error) {
+                console.warn("[AutoFill-Split] Đính kèm lỗi terminal; chuyển sang tab kế tiếp.", r.error);
+                finishPendingAttach(false, { code: r.code || "attach-failed", error: r.error });
                 return;
               }
             } catch (e) { /* thử lại vòng sau */ }
             busy = false;
-          } else if (!busy && nextClicks < 3 && Date.now() - lastNextClick > 2500) {
-            // Chưa tới bảng đính kèm → thử bấm "Bước tiếp theo" để qua trang đính kèm.
-            if (clickNextStep()) { nextClicks++; lastNextClick = Date.now(); }
+          } else if (!busy && nextFailures < maxNextFailures && ownerStepPresent()) {
+            busy = true;
+            const step = await clickNextAndVerify();
+            busy = false;
+            if (step.attempted && !step.advanced) {
+              nextFailures++;
+              console.warn(`[AutoFill-Split] Bước tiếp theo chưa chuyển trang (${nextFailures}/${maxNextFailures}).`);
+            }
+            if (step.advanced) {
+              setTimeout(tick, 500);
+              return;
+            }
+            if (nextFailures >= maxNextFailures) {
+              console.warn("[AutoFill-Split] Dừng retry Bước tiếp theo sau nhiều lần trang không chuyển.");
+              finishPendingAttach(false, {
+                code: "owner-next-not-advanced",
+                error: "Nút Bước tiếp theo không chuyển sang trang đính kèm.",
+              });
+              return;
+            }
           }
           setTimeout(tick, 1200);
         };
@@ -848,6 +1008,49 @@
     const businessProcedureHint = typeof H.detectBusinessProcedureHint === "function"
       ? H.detectBusinessProcedureHint() : "";
     return { url: location.href, title: document.title || "", headings, bodyText, businessProcedureHint };
+  }
+
+  // Danh tính tài khoản VNeID đang đăng nhập TRÊN CỔNG (để gắn consent theo người + thủ tục).
+  // CHỈ quét trong VÙNG TÀI KHOẢN (neo theo link định danh / #account_name) — KHÔNG quét cả trang, vì
+  // biểu mẫu cũng có số định danh của NGƯỜI NỘP (vd 036192014693) sẽ bị vớ nhầm. Đọc không ra → trả
+  // {cccd:null} → popup rơi về fallback "mã phiên + thủ tục". Không bao giờ throw.
+  function extractPortalPrincipal() {
+    const CCCD_RE = /(?<!\d)\d{12}(?!\d)/; // số định danh = đúng 12 chữ số (điện thoại 10 số không dính)
+    let cccd = null;
+    let name = null;
+    try {
+      // moj (dichvucongnganhtuphap.moj.gov.vn): drawer tài khoản có link "thong-tin-dinh-danh"/"ho-so-ca-nhan".
+      // Neo vào link rồi leo lên ancestor GẦN NHẤT có <h3> (khối hồ sơ: tên + CCCD) — không leo tới body.
+      const idLink = document.querySelector(
+        'a[href*="thong-tin-dinh-danh"], a[href*="ho-so-ca-nhan"], a[href*="thong-tin-tai-khoan"]'
+      );
+      if (idLink) {
+        let scope = idLink.parentElement;
+        let hops = 0;
+        while (scope && hops < 8 && !scope.querySelector("h3")) { scope = scope.parentElement; hops++; }
+        if (scope) {
+          const txt = String(scope.innerText || scope.textContent || "");
+          const m = txt.match(CCCD_RE);
+          if (m) cccd = m[0];
+          const h3 = scope.querySelector("h3");
+          if (h3) {
+            const t = String(h3.innerText || h3.textContent || "").replace(/\s+/g, " ").trim();
+            if (t && !/\d{6,}/.test(t)) name = t; // <h3> phải là tên, không phải dãy số
+          }
+        }
+      }
+      // Angular (Lâm Đồng/Lai Châu…): #account_name CHỈ có tên (không CCCD) → dùng cho bằng chứng, gate rơi phiên.
+      if (!name) {
+        const el = document.querySelector("#account_name");
+        if (el) {
+          const t = String(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim();
+          if (t && !/\d{6,}/.test(t)) name = t;
+        }
+      }
+    } catch (e) {
+      /* cổng lạ / DOM đổi → trả null, không chặn luồng */
+    }
+    return { cccd: cccd || null, name: name || null, host: location.hostname };
   }
 
   function foldedNodeText(el) {
@@ -1194,7 +1397,48 @@
       else document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
       await sleep(250);
     }
-    await waitFor(() => !findLatestDialogByText("Danh sách tài liệu điện tử"), 3000, 100);
+    const closed = await waitFor(() => !findLatestDialogByText("Danh sách tài liệu điện tử"), 3000, 100);
+    return !!closed;
+  }
+
+  function walletDeviceUploadState(previousDialog) {
+    // React có thể thay toàn bộ node Radix dialog khi chuyển từ danh sách ví sang form upload.
+    // Luôn đọc lại modal đang sống; không giữ cứng node trước khi click.
+    const liveDialog = findLatestDialogByText("Danh sách tài liệu điện tử") ||
+      (previousDialog && document.documentElement.contains(previousDialog) && isVisible(previousDialog)
+        ? previousDialog
+        : findLatestDialog());
+    if (!liveDialog) return { dialog: null, input: null };
+    const input = liveDialog.querySelector("#upload-container input[type='file']") ||
+      liveDialog.querySelector("input[type='file']");
+    return { dialog: liveDialog, input };
+  }
+
+  async function openWalletDeviceUpload(previousDialog) {
+    let lastButton = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const initial = walletDeviceUploadState(previousDialog);
+      if (initial.input) return { ...initial, button: lastButton };
+      const liveDialog = initial.dialog;
+      if (!liveDialog) break;
+
+      const button = findButtonByText(liveDialog, ["Tải lên từ thiết bị"]);
+      if (!button || button.disabled || button.getAttribute("aria-disabled") === "true") break;
+      lastButton = button;
+      button.scrollIntoView?.({ block: "center", inline: "center" });
+      button.focus?.();
+      button.click();
+
+      const opened = await waitFor(() => {
+        const state = walletDeviceUploadState(liveDialog);
+        return state.input ? state : null;
+      }, attempt === 0 ? 2500 : 4000, 100);
+      if (opened) return { ...opened, button };
+      await sleep(attempt === 0 ? 300 : 0);
+    }
+
+    const finalState = walletDeviceUploadState(previousDialog);
+    return { ...finalState, button: lastButton };
   }
 
   function findComponentNameInput(root) {
@@ -1377,7 +1621,7 @@
 
   async function openDocumentWalletForRow(row, planItem = {}) {
     const liveRow = await resolveLiveAttachmentRow(row, planItem);
-    if (!liveRow) return { error: "Không tìm thấy dòng hồ sơ để chọn tệp." };
+    if (!liveRow) return { error: "Không tìm thấy dòng hồ sơ để chọn tệp.", code: "attachment-row-not-found" };
 
     const preciseButtons = findAttachmentChooseButtons(liveRow);
     const legacyRowButton = findButtonByText(liveRow, ["Chọn tệp đính kèm", "Chọn tệp"]);
@@ -1401,7 +1645,7 @@
       buttons: buttons.map(describeElementForLog),
       dialogsBefore: visibleDialogSnapshot(),
     });
-    if (!buttons.length) return { error: "Không tìm thấy nút Chọn tệp đính kèm.", row: liveRow };
+    if (!buttons.length) return { error: "Không tìm thấy nút Chọn tệp đính kèm.", code: "attachment-button-not-found", row: liveRow };
 
     // Mỗi nút thử click tối đa 2 lần, chờ modal lâu hơn (trang còn bận re-render/preview sau khi
     // đính các file trước → click đầu dễ hụt; tăng timeout + retry để file cuối không bị bỏ sót).
@@ -1416,7 +1660,10 @@
           button: describeElementForLog(button),
           activeBefore: describeElementForLog(document.activeElement),
         });
-        clickLikeUser(button);
+        // Radix/React xử lý một logical click. clickLikeUser phát cả MouseEvent("click") rồi
+        // el.click(), có thể làm nút toggle mở modal xong đóng ngay trước lúc waitFor quan sát.
+        button.focus?.();
+        button.click();
         const dialog = await waitFor(() => findLatestDialogByText("Danh sách tài liệu điện tử"), 6000, 120);
         if (dialog) return { ok: true, dialog, row: liveRow };
         attachDebug("open-modal no-dialog-after-click", {
@@ -1432,6 +1679,7 @@
 
     return {
       error: "Không mở được modal Danh sách tài liệu điện tử.",
+      code: "wallet-modal-not-opened",
       row: liveRow,
       debug: {
         row: describeAttachmentRowForLog(liveRow),
@@ -1566,7 +1814,15 @@
     const intendedDocumentName = planItem.documentName || attachmentDocumentName(payloadFile);
     row = await resolveLiveAttachmentRow(row, planItem);
     if (!row) return { error: `Không tìm thấy dòng hồ sơ "${planItem.componentName || ""}".`, fileNames: [payloadFile.name] };
-    await closeDocumentWalletDialogs();
+    const staleDialogsClosed = await closeDocumentWalletDialogs();
+    if (!staleDialogsClosed) {
+      return {
+        error: "Modal Danh sách tài liệu điện tử cũ không đóng được.",
+        code: "wallet-stale-modal",
+        fileNames: [payloadFile.name],
+        debug: { dialogs: visibleDialogSnapshot() },
+      };
+    }
     row = await resolveLiveAttachmentRow(row, planItem);
     if (!row) return { error: `Không tìm thấy dòng hồ sơ "${planItem.componentName || ""}".`, fileNames: [payloadFile.name] };
     const existingName = rowAttachedFileName(row);
@@ -1607,24 +1863,25 @@
         planItem,
         payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
       });
-      return { error: openResult.error, fileNames: [payloadFile.name], debug: openResult.debug };
+      return { error: openResult.error, code: openResult.code, fileNames: [payloadFile.name], debug: openResult.debug };
     }
-    const dialog = openResult.dialog;
+    let dialog = openResult.dialog;
     row = openResult.row || row;
 
-    const firstUploadButton = findButtonByText(dialog, ["Tải lên từ thiết bị"]);
-    if (firstUploadButton) {
-      firstUploadButton.click();
-      await sleep(400);
+    const deviceUpload = await openWalletDeviceUpload(dialog);
+    dialog = deviceUpload.dialog || dialog;
+    const uploadInput = deviceUpload.input;
+    if (!uploadInput) {
+      return {
+        error: "Đã mở ví tài liệu nhưng nút Tải lên từ thiết bị không chuyển sang form chọn file.",
+        code: "wallet-device-upload-not-opened",
+        fileNames: [payloadFile.name],
+        debug: {
+          hasDeviceUploadButton: !!deviceUpload.button,
+          dialog: shortText(nodeText(dialog), 500),
+        },
+      };
     }
-
-    const uploadInput = await waitFor(() =>
-      dialog.querySelector("#upload-container input[type='file']") ||
-      dialog.querySelector("input[type='file']"),
-      12000,
-      100
-    );
-    if (!uploadInput) return { error: "Không tìm thấy input tải tệp trong modal." };
 
     const file = dataUrlToFile(payloadFile, intendedDocumentName);
     if (!setFilesOnInput(uploadInput, [file], { allowMultiple: false })) {
@@ -1698,6 +1955,7 @@
   }
 
   function isIdentityAttachmentItem(item) {
+    if (Number(item?.componentIndex) === 2) return true;
     const text = foldChoiceText([
       item?.detectedType,
       item?.componentName,
@@ -2188,7 +2446,7 @@
         const payload = payloadForPlanItem(payloadFiles, item);
         if (!payload) { errors.push(`Thiếu file cho "${item.fileName}".`); continue; }
         try { files.push(dataUrlToFile(payload, item.documentName)); names.push(item.fileName); }
-        catch (e) { errors.push(`Lỗi đọc file "${item.fileName}": ${e?.message || e}`); }
+        catch (e) { console.warn("[AutoFill-Attach] Đọc file lỗi:", item.fileName, e); errors.push(`Không đọc được tệp "${item.fileName}".`); }
       }
       if (!files.length) continue;
       const ok = setFilesOnInput(input, files, { assumeConsumed: true });
@@ -2223,6 +2481,7 @@
       const attachedNames = [];
       const skippedNames = [];
       const errors = [];
+      let errorCode = null;
       const allAttachments = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
 
       // Bảng-checkbox thuần (ATTP cấp lại...) vẫn dùng engine riêng như cũ.
@@ -2385,7 +2644,8 @@
         try {
           row = await rowForPlanItem(item);
         } catch (e) {
-          errors.push(e?.message || String(e));
+          console.warn("[AutoFill-Attach] Tìm dòng hồ sơ lỗi:", e);
+          errors.push(`Không mở được dòng hồ sơ "${item.componentName || ""}".`);
           break;
         }
         if (!row) {
@@ -2400,6 +2660,9 @@
         for (let attempt = 1; attempt <= MAX_ATTACH_ATTEMPTS; attempt++) {
           result = await attachOneFileViaDocumentWallet(row, payloadFile, item);
           if (!result?.error) break;
+          // Split tab: các trạng thái ví React bị treo không chữa được bằng cách click lại tại chỗ.
+          // Trả ngay cho state machine để áp dụng giới hạn reload theo từng trạng thái.
+          if (splitMode && isSplitReloadableWalletError(result.code)) break;
           if (attempt < MAX_ATTACH_ATTEMPTS) {
             console.warn(`[AutoFill-AttachPlan] thử lại đính kèm (${attempt}/${MAX_ATTACH_ATTEMPTS - 1}) do lỗi:`, result.error);
             await closeDocumentWalletDialogs();
@@ -2408,6 +2671,7 @@
           }
         }
         if (result?.error) {
+          errorCode = errorCode || result.code || null;
           console.warn("[AutoFill-AttachPlan] attach item failed", {
             error: result.error,
             debug: result.debug,
@@ -2424,6 +2688,7 @@
       if (errors.length) {
         return {
           error: errors.join("; "),
+          code: errorCode,
           attached: attachedNames.length,
           skipped: skippedNames.length,
           fileNames: attachedNames,
@@ -2440,7 +2705,7 @@
       };
     } catch (e) {
       console.warn("[AutoFill-Attach] Lỗi đính kèm file theo plan:", e);
-      return { error: "Lỗi đính kèm file theo plan: " + (e?.message || e) };
+      return { error: "Không đính kèm được tài liệu vào hồ sơ. Vui lòng thử lại." };
     } finally {
       window.__AUTOFILL_HCC_ATTACH_BUSY__ = false;
     }
@@ -2459,7 +2724,7 @@
       return await attachFilesViaDocumentWalletModal(row, payloadFiles);
     } catch (e) {
       console.warn("[AutoFill-Attach] Lỗi đính kèm file:", e);
-      return { error: "Lỗi đính kèm file: " + (e?.message || e) };
+      return { error: "Không đính kèm được tệp. Vui lòng thử lại." };
     }
   }
 
@@ -3096,6 +3361,40 @@
     );
   }
 
+  // Chấm ĐIỂM khớp option (cao = khớp tốt hơn). Dùng để CHỌN option tốt nhất thay cho .find() —
+  // .find() lấy option ĐẦU khớp lỏng, nên "Điện Bàn Đông" bị chọn nhầm "Điện Bàn" (option ngắn là
+  // CON của giá trị cần). Ưu tiên: khớp data-value/exact text > option CHỨA want > want CHỨA option.
+  function choiceScore(optText, optDataValue, value) {
+    const wants = choiceTextVariants(String(value ?? ""));
+    const texts = choiceTextVariants(optText || "");
+    const dataValues = choiceTextVariants(optDataValue || "");
+    const foldedWant = foldChoiceText(String(value ?? ""));
+    const genderValue = foldedWant === "nam" ? "1" : (foldedWant === "nu" ? "2" : "");
+    if (dataValues.some((v) => wants.includes(v))) return 4;
+    if (genderValue && dataValues.includes(genderValue)) return 4;
+    if (texts.some((t) => wants.includes(t))) return 3;                    // text == want (chính xác)
+    if (texts.some((t) => wants.some((w) => w && t.includes(w)))) return 2; // option CHỨA want
+    if (texts.some((t) => wants.some((w) => t && w.includes(t)))) return 1; // want CHỨA option (lỏng)
+    return 0;
+  }
+
+  // Chọn option KHỚP TỐT NHẤT trong danh sách. getText/getDataValue tuỳ loại phần tử (DOM option,
+  // Choices item, hay object Form.io). Hoà điểm → option có TEXT DÀI HƠN (cụ thể hơn) thắng.
+  function bestChoiceOption(options, value, getText, getDataValue) {
+    let best = null, bestScore = 0, bestLen = -1;
+    for (const o of options) {
+      const text = getText ? getText(o) : choiceDisplayText(o);
+      const dv = getDataValue ? getDataValue(o) : (o && o.getAttribute ? o.getAttribute("data-value") : "");
+      const score = choiceScore(text, dv, value);
+      if (score <= 0) continue;
+      const len = foldChoiceText(text || "").length;
+      if (score > bestScore || (score === bestScore && len > bestLen)) {
+        best = o; bestScore = score; bestLen = len;
+      }
+    }
+    return best;
+  }
+
   function choiceSearchTerms(select, value) {
     const raw = String(value ?? "").trim();
     if (!raw) return [""];
@@ -3185,7 +3484,34 @@
     }
   }
 
-  async function writeChoicesSearch(search, raw, choices) {
+  const STANDARD_AREA_FIELD_BUDGET_MS = 5000;
+  const STANDARD_AREA_STABILIZE_BUDGET_MS = 1800;
+
+  function standardSelectBudgetLeft(deadline = 0) {
+    return deadline ? deadline - Date.now() : Infinity;
+  }
+
+  function standardSelectWaitMs(deadline, requested) {
+    if (!deadline) return requested;
+    return Math.max(0, Math.min(requested, standardSelectBudgetLeft(deadline)));
+  }
+
+  async function waitForStandardSelect(fn, timeout, interval, deadline = 0) {
+    const allowed = standardSelectWaitMs(deadline, timeout);
+    if (allowed <= 0) return null;
+    return waitFor(fn, allowed, Math.min(interval, allowed));
+  }
+
+  async function sleepForStandardSelect(delay, deadline = 0) {
+    const allowed = standardSelectWaitMs(deadline, delay);
+    if (allowed <= 0) return false;
+    await sleep(allowed);
+    return allowed >= delay;
+  }
+
+  const searchedStandardSelects = new WeakSet();
+
+  async function writeChoicesSearch(search, raw, choices, deadline = 0, select = null) {
     if (!search || search.disabled) return false;
     const text = String(raw ?? "");
     if (typeof search.focus === "function") search.focus();
@@ -3201,7 +3527,7 @@
     dispatchInputEvent(search, "beforeinput", { data: null, inputType: "deleteContentBackward" });
     dispatchInputEvent(search, "input", { data: null, inputType: "deleteContentBackward" });
     search.dispatchEvent(new Event("change", { bubbles: true }));
-    await sleep(60);
+    await sleepForStandardSelect(60, deadline);
 
     const before = choicesListSignature(choices);
     if (!text) return true;
@@ -3213,16 +3539,17 @@
     dispatchKeyboardEvent(search, "keyup", text.slice(-1) || "Unidentified");
     search.dispatchEvent(new Event("change", { bubbles: true }));
 
-    const applied = await waitFor(() => {
+    const applied = await waitForStandardSelect(() => {
       if (String(search.value || "") !== text) return null;
       const after = choicesListSignature(choices);
       return after !== before || choicesHasNoChoices(choices) ? true : null;
-    }, 450, 50);
+    }, 450, 50, deadline);
+    if (select) searchedStandardSelects.add(select);
     if (applied) return true;
 
     setInputValueDirect(search, "");
     dispatchInputEvent(search, "input", { data: null, inputType: "deleteContentBackward" });
-    await sleep(50);
+    await sleepForStandardSelect(50, deadline);
     let typed = "";
     for (const ch of Array.from(text)) {
       typed += ch;
@@ -3232,17 +3559,18 @@
       setInputValueDirect(search, typed);
       dispatchInputEvent(search, "input", { data: ch, inputType: "insertText" });
       dispatchKeyboardEvent(search, "keyup", ch);
-      await sleep(8);
+      if (!await sleepForStandardSelect(8, deadline)) break;
     }
     search.dispatchEvent(new Event("change", { bubbles: true }));
-    await waitFor(() => {
+    await waitForStandardSelect(() => {
       const after = choicesListSignature(choices);
       return after !== before || choicesHasNoChoices(choices) ? true : null;
-    }, 450, 50);
+    }, 450, 50, deadline);
+    if (select) searchedStandardSelects.add(select);
     return true;
   }
 
-  async function openChoicesDropdown(choices, raw) {
+  async function openChoicesDropdown(choices, raw, deadline = 0, select = null) {
     const opener =
       choices.querySelector(".form-control.ui.selection.dropdown, .form-control, .choices__inner, [role='combobox']") ||
       choices.querySelector(".choices__list--single") ||
@@ -3250,14 +3578,14 @@
     if (!choicesDropdownOpen(choices)) {
       if (typeof opener.focus === "function") opener.focus();
       ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) => dispatchChoiceMouse(opener, type));
-      await waitFor(() => choicesDropdownOpen(choices), 500, 40);
+      await waitForStandardSelect(() => choicesDropdownOpen(choices), 500, 40, deadline);
     }
-    const search = await waitFor(() => {
+    const search = await waitForStandardSelect(() => {
       const input = choices.querySelector(".choices__input--cloned");
       return input && !input.disabled ? input : null;
-    }, 500, 40);
+    }, 500, 40, deadline);
     if (search && !search.disabled) {
-      await writeChoicesSearch(search, raw, choices);
+      await writeChoicesSearch(search, raw, choices, deadline, select);
     }
   }
 
@@ -3387,7 +3715,7 @@
     return option;
   }
 
-  async function fillFormioSelectComponent(select, value, names = []) {
+  async function fillFormioSelectComponent(select, value, names = [], deadline = 0) {
     if (!select) return false;
     const key = formioKeyFromSelect(select, names);
     if (!key) return false;
@@ -3402,17 +3730,18 @@
         ...(Array.isArray(comp.selectOptions) ? comp.selectOptions : []),
         ...(Array.isArray(comp.items) ? comp.items : []),
       ];
-      return all.find((option) => choiceMatches({ textContent: formioOptionText(option), getAttribute: () => "" }, raw));
+      return bestChoiceOption(all, raw, (option) => formioOptionText(option), () => "");
     };
 
     let option = null;
     const attempts = isAreaSelectName(select.name) ? 8 : 4;
     for (let i = 0; i < attempts; i++) {
+      if (standardSelectBudgetLeft(deadline) <= 0) break;
       option = findOption();
       if (option) break;
       try { comp.updateItems?.(); } catch { /* ignore */ }
       try { comp.refreshItems?.(); } catch { /* ignore */ }
-      await sleep(isAreaSelectName(select.name) ? 250 : 120);
+      if (!await sleepForStandardSelect(isAreaSelectName(select.name) ? 250 : 120, deadline)) break;
     }
 
     let finalValue = option ? formioOptionToValue(option, comp) : null;
@@ -3428,10 +3757,11 @@
     try { comp.triggerChange?.({ modified: true }); } catch { /* ignore */ }
     try { comp.redraw?.(); } catch (e) { console.warn("[AutoFill-STD] Form.io redraw lỗi:", key, e); }
 
-    const ok = await waitFor(() => currentStandardSelectMatches(select, raw) ||
+    const ok = await waitForStandardSelect(() => currentStandardSelectMatches(select, raw) ||
       choiceMatches({ textContent: formioOptionText(comp.dataValue || holder.submission.data[key]), getAttribute: () => "" }, raw),
       800,
-      80
+      80,
+      deadline
     );
     if (!ok) return false;
     markFilled(standardMarkTarget(select));
@@ -3464,7 +3794,31 @@
       : document.querySelector(`[name="${CSS.escape(`data[panel_caNhanToChuc][DanhSachPhuongTien][${idx}][BienSoXe]`)}"]`);
   }
 
+  // Đọc giá trị hiển thị hiện tại của 1 ô (input value hoặc Choices single item) để BIẾT ô đã điền đúng chưa.
+  function _rowCellValue(base, sub) {
+    const el = document.querySelector(`[name="${CSS.escape(base + sub)}"]`);
+    if (!el) return "";
+    const group = standardMarkTarget(el);
+    const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+    if (choices) {
+      const label = currentChoicesValue(choices);
+      return label && !isPlaceholderText(label) ? label : "";
+    }
+    return String(el.value || "").trim();
+  }
+
+  function _cellMatches(base, sub, val) {
+    if (val == null || val === "") return true;
+    const cur = _rowCellValue(base, sub);
+    if (!cur) return false;
+    return choiceMatches({ textContent: cur, getAttribute: () => "" }, String(val));
+  }
+
   // Điền các ô của MỘT dòng datagrid (theo index) từ object xe. Khớp ô bằng NAME đầy đủ (duy nhất theo index).
+  //
+  // Form.io datagrid VẼ LẠI (redraw) cả dòng sau MỖI thay đổi → ô điền trước có thể bị reset khi điền ô
+  // sau (đặc biệt Choices select mở dropdown). Trong ISOLATED world không set được model qua API, nên
+  // dùng vòng VERIFY-REFILL: điền → chờ ổn định → kiểm ô nào còn thiếu → điền lại, lặp tới khi đủ.
   async function _fillDatagridVehicleRow(idx, v) {
     const base = `data[panel_caNhanToChuc][DanhSachPhuongTien][${idx}]`;
     const q = (sub) => document.querySelector(`[name="${CSS.escape(base + sub)}"]`);
@@ -3474,19 +3828,36 @@
       if (!val) return; const name = base + sub; const el = document.querySelector(`select[name="${CSS.escape(name)}"]`);
       if (el) await fillStandardSelectAny(el, String(val), [name], 0);  // datagrid select → pickChoicesItem theo đúng element dòng
     };
-    setText("[BienSoXe]", v.bienSo);
-    setText("[SoChoNgoi]", v.trongTai);
-    setText("[NamSanXuat]", v.namSanXuat);
-    setText("[NhanHieu]", v.nhanHieu);
-    setText("[SoKhung]", v.soKhung);
-    setText("[SoMay]", v.soMay);
-    setText("[NienHanSuDung]", v.nienHan || "0");
-    await setSel("[MauSon]", v.mauSon);
-    await setSel("[HinhThucHoatDong]", v.hinhThucHoatDong);
-    await setSel("[CuaKhau]", v.cuaKhau);
-    if (v.loaiPhuongTien) await setSel("[LoaiPhuongTien]", v.loaiPhuongTien);
-    setDate("[NgayCap]", v.tuNgay);
-    setDate("[NgayHetHan]", v.denNgay);
+
+    const textJobs = [
+      ["[BienSoXe]", v.bienSo], ["[SoChoNgoi]", v.trongTai], ["[NamSanXuat]", v.namSanXuat],
+      ["[NhanHieu]", v.nhanHieu], ["[SoKhung]", v.soKhung], ["[SoMay]", v.soMay],
+      ["[NienHanSuDung]", v.nienHan || "0"],
+    ];
+    const dateJobs = [["[NgayCap]", v.tuNgay], ["[NgayHetHan]", v.denNgay]];
+    const selJobs = [
+      ["[MauSon]", v.mauSon], ["[HinhThucHoatDong]", v.hinhThucHoatDong], ["[CuaKhau]", v.cuaKhau],
+    ];
+    if (v.loaiPhuongTien) selJobs.push(["[LoaiPhuongTien]", v.loaiPhuongTien]);
+
+    // Lặp tới 4 vòng: mỗi vòng CHỈ điền ô nào đang THIẾU (đã đúng thì bỏ qua → không kích redraw thừa).
+    for (let attempt = 0; attempt < 4; attempt++) {
+      for (const [sub, val] of textJobs) if (!_cellMatches(base, sub, val)) { setText(sub, val); await sleep(60); }
+      for (const [sub, val] of dateJobs) if (!_cellMatches(base, sub, val)) { setDate(sub, val); await sleep(60); }
+      // Chờ redraw do text/date settle rồi mới đụng Choices (mở dropdown lúc đang redraw sẽ trượt).
+      await sleep(400);
+      for (const [sub, val] of selJobs) {
+        if (_cellMatches(base, sub, val)) continue;
+        await setSel(sub, val);
+        await sleep(250);  // để redraw sau khi chọn select này settle trước khi sang ô kế.
+      }
+      await sleep(300);
+      const allDone =
+        textJobs.every(([s, val]) => _cellMatches(base, s, val)) &&
+        dateJobs.every(([s, val]) => _cellMatches(base, s, val)) &&
+        selJobs.every(([s, val]) => _cellMatches(base, s, val));
+      if (allDone) break;
+    }
   }
 
   async function fillVehicleAddRows(field, candidates) {
@@ -3575,21 +3946,63 @@
     );
   }
 
-  // HẠN THỜI GIAN TỔNG cho toàn bộ việc điền select địa bàn (Tỉnh/Xã cascade). Đặt ở đầu fillFormStandard.
-  // Quá hạn thì thôi thử (để tô đỏ cho user tự chọn) — chặn "chọn đi chọn lại mấy phút" mà KHÔNG bỏ nhầm
-  // select đang cần thêm thời gian cascade (khác cách "doom" trước đây hay bỏ non).
-  let _areaSelectDeadline = 0;
-  function _areaBudgetLeft() {
-    return _areaSelectDeadline ? _areaSelectDeadline - Date.now() : Infinity;
+  function standardFieldIdentity(field) {
+    const name = fieldCandidates(field)[0] || field?.name || "";
+    const occurrence = standardOccurrence(field?.occurrence);
+    return `${name}::${occurrence === null ? "auto" : occurrence}`;
   }
 
-  async function pickChoicesItem(select, value) {
+  function standardFieldDeadline(deadlines, field, budgetMs = STANDARD_AREA_FIELD_BUDGET_MS) {
+    const key = standardFieldIdentity(field);
+    if (!deadlines.has(key)) deadlines.set(key, Date.now() + budgetMs);
+    return deadlines.get(key);
+  }
+
+  // Chỉ kết luận "không có giá trị" sớm khi nguồn option đã có tính quyết định:
+  // - Form.io dùng danh sách tĩnh values/json;
+  // - native select thuần đã có option;
+  // - hoặc Choices.js đã thực hiện tìm kiếm và trả "không có lựa chọn".
+  // Nguồn URL/resource/custom chưa ổn định vẫn được chờ hết ngân sách RIÊNG của ô.
+  function standardSelectOptionState(select, value, names = []) {
+    if (!select) return { settled: false, hasValue: false };
+    const texts = [];
+    const key = formioKeyFromSelect(select, names);
+    const holder = key ? formioFindHolderNear(select) : null;
+    const comp = holder?.formio?.getComponent?.(key);
+    if (Array.isArray(comp?.selectOptions)) comp.selectOptions.forEach((o) => texts.push(formioOptionText(o)));
+    if (Array.isArray(comp?.items)) comp.items.forEach((o) => texts.push(formioOptionText(o)));
+
+    const group = standardMarkTarget(select);
+    const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+    if (choices) choicesVisibleOptions(choices).forEach((o) => texts.push(choiceDisplayText(o)));
+    Array.from(select.options || []).forEach((o) => texts.push(o.textContent));
+
+    const real = [...new Set(texts.filter(Boolean))].filter((text) => {
+      const folded = foldChoiceText(text);
+      return folded && folded !== "chon" && !folded.includes("chon ") && !folded.startsWith("-");
+    });
+    const hasValue = real.some((text) => choiceMatches({ textContent: text, getAttribute: () => "" }, value));
+    const dataSrc = String(comp?.component?.dataSrc || "").toLowerCase();
+    const staticSource = dataSrc === "values" || dataSrc === "json";
+    const hasChoicesSearch = !!choices?.querySelector?.(".choices__input--cloned");
+    const plainNativeSource = !comp && !hasChoicesSearch && real.length > 0;
+    const searchedEmpty = searchedStandardSelects.has(select) && choicesHasNoChoices(choices);
+    const loading = !!(
+      comp?.loading || comp?.isLoading ||
+      choices?.classList?.contains("is-loading") ||
+      choices?.getAttribute?.("aria-busy") === "true" ||
+      choices?.querySelector?.('[aria-busy="true"], .is-loading, .spinner-border, .loading')
+    );
+    return { settled: !loading && (staticSource || plainNativeSource || searchedEmpty), hasValue };
+  }
+
+  async function pickChoicesItem(select, value, deadline = 0) {
     const group = standardMarkTarget(select);
     const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
     if (!choices || choices.classList.contains("is-disabled") || choices.getAttribute("aria-disabled") === "true") {
       return false;
     }
-    if (isAreaSelectName(select.name) && _areaBudgetLeft() <= 0) return false;  // hết hạn → bỏ, tô đỏ sau
+    if (standardSelectBudgetLeft(deadline) <= 0) return false;
     const raw = String(value ?? "");
     const current = choices.querySelector(".choices__list--single .choices__item");
     if (current && !isPlaceholderText(choiceDisplayText(current)) && choiceMatches(current, value)) {
@@ -3602,21 +4015,21 @@
     const targetTimeout = isAreaSelect ? 800 : 600;
     const terms = choiceSearchTerms(select, raw);
     for (let ti = 0; ti < terms.length; ti++) {
-      await openChoicesDropdown(choices, terms[ti]);
+      if (standardSelectBudgetLeft(deadline) <= 0) break;
+      await openChoicesDropdown(choices, terms[ti], deadline, select);
       // Term đầu (chuỗi đầy đủ) chỉ chờ ngắn vì search client-side gần như tức thì; nếu trượt thì
       // sang cụm ngắn hơn. Term cuối mới chờ đủ lâu (phòng options con cascade load bất đồng bộ).
       const isLast = ti === terms.length - 1;
-      target = await waitFor(() => {
+      target = await waitForStandardSelect(() => {
         const options = Array.from(choices.querySelectorAll(".choices__item--choice"))
           .filter((o) => !o.classList.contains("has-no-choices"));
-        return options.find((o) => choiceMatches(o, value));
-      }, isLast ? targetTimeout : 450, 100);
+        return bestChoiceOption(options, value);
+      }, isLast ? targetTimeout : 450, 100, deadline);
       if (target) break;
     }
     if (!target) {
       // Chưa thấy option khớp (có thể cascade con chưa nạp xong) → thử lại ở lượt retry/stabilize sau.
-      // Không kết luận "vô vọng" ở đây (tránh bỏ nhầm phường/xã đang load). Hạn thời gian tổng lo phần
-      // chặn lặp quá lâu.
+      // Không kết luận "vô vọng" nếu nguồn còn đang tải; deadline RIÊNG của ô chặn việc lặp quá lâu.
       return false;
     }
 
@@ -3635,22 +4048,24 @@
       dispatchChoiceMouse(target, type);
       if (clickTarget !== target) dispatchChoiceMouse(clickTarget, type);
     });
-    let selected = await waitFor(isSelected, 350, 60);
+    let selected = await waitForStandardSelect(isSelected, 350, 60, deadline);
     if (!selected) {
       // Một số bản Choices/Form.io bỏ qua MouseEvent tự tạo nhưng vẫn chạy listener khi gọi click().
       try { clickTarget.click(); } catch { /* ignore */ }
-      selected = await waitFor(isSelected, 350, 60);
+      selected = await waitForStandardSelect(isSelected, 350, 60, deadline);
     }
 
     // Cách 2 — luồng bàn phím Choices.js: highlight bằng mouseover rồi Enter (đã có keyCode 13).
     // Re-query option vì click ở trên có thể đã đổi trạng thái danh sách.
     if (!selected) {
-      const again = Array.from(choices.querySelectorAll(".choices__item--choice"))
-        .filter((o) => !o.classList.contains("has-no-choices"))
-        .find((o) => choiceMatches(o, value)) || target;
+      const again = bestChoiceOption(
+        Array.from(choices.querySelectorAll(".choices__item--choice"))
+          .filter((o) => !o.classList.contains("has-no-choices")),
+        value,
+      ) || target;
       dispatchChoiceMouse(again, "mouseover");
       dispatchChoiceMouse(again, "mousemove");
-      await sleep(30);
+      await sleepForStandardSelect(30, deadline);
       if (search && !search.disabled) {
         dispatchKeyboardEvent(search, "keydown", "Enter");
         dispatchKeyboardEvent(search, "keypress", "Enter");
@@ -3658,7 +4073,7 @@
       } else {
         dispatchChoiceMouse(again, "click");
       }
-      selected = await waitFor(isSelected, 450, 70);
+      selected = await waitForStandardSelect(isSelected, 450, 70, deadline);
     }
 
     // Cách 3 — ép Enter trên container + đồng bộ Form.io lần cuối.
@@ -3667,18 +4082,20 @@
       dispatchKeyboardEvent(choices, "keyup", "Enter");
       select.dispatchEvent(new Event("input", { bubbles: true }));
       select.dispatchEvent(new Event("change", { bubbles: true }));
-      selected = await waitFor(isSelected, 350, 70);
+      selected = await waitForStandardSelect(isSelected, 350, 70, deadline);
     }
 
     // Retry đúng hiện tượng thực tế: option đã có nhưng commit/search state của Choices bị kẹt.
     // Clear search rồi thử term có thêm khoảng trắng, sau đó xoá/điền lại term gốc như thao tác tay.
     if (!selected && search && !search.disabled) {
       for (const term of [raw + " ", raw]) {
-        await openChoicesDropdown(choices, term);
-        const again = await waitFor(() =>
-          choicesVisibleOptions(choices).find((o) => choiceMatches(o, value)),
+        if (standardSelectBudgetLeft(deadline) <= 0) break;
+        await openChoicesDropdown(choices, term, deadline, select);
+        const again = await waitForStandardSelect(() =>
+          bestChoiceOption(choicesVisibleOptions(choices), value),
           targetTimeout,
-          80
+          80,
+          deadline
         );
         if (!again) continue;
         if (typeof again.scrollIntoView === "function") again.scrollIntoView({ block: "nearest" });
@@ -3688,13 +4105,13 @@
           if (againClickTarget !== again) dispatchChoiceMouse(againClickTarget, type);
         });
         try { againClickTarget.click(); } catch { /* ignore */ }
-        selected = await waitFor(isSelected, 450, 60);
+        selected = await waitForStandardSelect(isSelected, 450, 60, deadline);
         if (selected) break;
         dispatchChoiceMouse(again, "mouseover");
         dispatchKeyboardEvent(search, "keydown", "Enter");
         dispatchKeyboardEvent(search, "keypress", "Enter");
         dispatchKeyboardEvent(search, "keyup", "Enter");
-        selected = await waitFor(isSelected, 450, 70);
+        selected = await waitForStandardSelect(isSelected, 450, 70, deadline);
         if (selected) break;
       }
     }
@@ -3711,10 +4128,8 @@
     let target =
       options.find((o) => String(o.value) === raw) ||
       options.find((o) => norm(o.textContent) === want) ||
-      options.find((o) => {
-        const text = norm(o.textContent);
-        return !!text && (text.includes(want) || want.includes(text));
-      });
+      // Khớp lỏng: chọn option TỐT NHẤT (không lấy option đầu) để "Điện Bàn Đông" không dính "Điện Bàn".
+      bestChoiceOption(options, raw, (o) => o.textContent, () => "");
     if (!target) {
       console.warn(`[AutoFill-STD] select[name="${el.name}"] không khớp "${raw}". Option:`,
         options.map((o) => `${o.value}:${o.textContent.trim()}`).filter(Boolean).slice(0, 25));
@@ -3750,14 +4165,24 @@
     return true;
   }
 
-  async function fillStandardSelectAny(el, value, names = [], occurrence = null) {
+  async function fillStandardSelectAny(el, value, names = [], occurrence = null, deadline = 0) {
     const isAreaSelect = names.some(isAreaSelectName) || isAreaSelectName(el?.name);
+    if (isAreaSelect && !deadline) deadline = Date.now() + STANDARD_AREA_FIELD_BUDGET_MS;
     if (!el && names.length) {
-      el = await waitFor(() => findStandardSelect(names, occurrence), isAreaSelect ? 3000 : 2500);
+      el = await waitForStandardSelect(
+        () => findStandardSelect(names, occurrence),
+        isAreaSelect ? 3000 : 2500,
+        100,
+        deadline
+      );
     }
     if (!el) return false;
-    if (isAreaSelect && _areaBudgetLeft() <= 0) return false;  // hết hạn tổng → bỏ (tô đỏ sau)
-    const enabled = await waitFor(() => {
+    if (standardSelectBudgetLeft(deadline) <= 0) return false;
+    const initialOptionState = isAreaSelect
+      ? standardSelectOptionState(el, value, names)
+      : { settled: false, hasValue: false };
+    if (initialOptionState.settled && !initialOptionState.hasValue) return false;
+    const enabled = await waitForStandardSelect(() => {
       const current = el || (names.length ? findStandardSelect(names, occurrence) : null);
       const group = standardMarkTarget(current);
       const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
@@ -3766,21 +4191,37 @@
         (!choices.classList.contains("is-disabled") && choices.getAttribute("aria-disabled") !== "true")
       )) return current;
       return null;
-    }, isAreaSelect ? 3000 : 2500);
+    }, isAreaSelect ? 3000 : 2500, 100, deadline);
     if (enabled) el = enabled;
-    if (shouldPreferFormioSelectComponent(el, names) && await fillFormioSelectComponent(el, value, names)) return true;
-    if (await pickChoicesItem(el, value)) return true;
-    if (await fillFormioSelectComponent(el, value, names)) return true;
+    const preferFormio = shouldPreferFormioSelectComponent(el, names);
+    // Nguồn động chưa có option trong component: tìm qua Choices trước để tránh chờ Form.io nhiều vòng
+    // rồi mới phát hiện giá trị không tồn tại. Nguồn tĩnh/đã có option vẫn giữ đường Form.io nhanh, ổn định.
+    if (preferFormio && (!isAreaSelect || initialOptionState.hasValue) &&
+      await fillFormioSelectComponent(el, value, names, deadline)) return true;
+    if (await pickChoicesItem(el, value, deadline)) return true;
+    const searchedOptionState = isAreaSelect
+      ? standardSelectOptionState(el, value, names)
+      : { settled: false, hasValue: false };
+    if (searchedOptionState.settled && !searchedOptionState.hasValue) return false;
+    if (await fillFormioSelectComponent(el, value, names, deadline)) return true;
     return fillStandardSelect(el, value);
   }
 
-  async function fillStandardSelectAll(names, value, occurrence = null) {
+  async function fillStandardSelectAll(names, value, occurrence = null, deadline = 0) {
+    const isAreaSelect = names.some(isAreaSelectName);
+    if (isAreaSelect && !deadline) deadline = Date.now() + STANDARD_AREA_FIELD_BUDGET_MS;
     let filledAny = false;
     for (const delay of [0, 250, 600, 1200]) {
-      if (_areaBudgetLeft() <= 0) break;  // hết hạn tổng → dừng (ô chưa khớp sẽ được tô đỏ)
-      if (delay) await sleep(delay);
+      if (standardSelectBudgetLeft(deadline) <= 0) break;
+      if (delay && !await sleepForStandardSelect(delay, deadline)) break;
       const selects = findStandardSelects(names, occurrence);
       if (!selects.length) continue;
+
+      const states = selects.map((sel) => standardSelectOptionState(sel, value, names));
+      if (isAreaSelect && states.every((state) => state.settled && !state.hasValue)) {
+        console.warn(`[AutoFill-STD] Dừng sớm select "${names[0]}"="${value}" — danh sách đã ổn định và không có giá trị.`);
+        break;
+      }
 
       for (const sel of selects) {
         if (currentStandardSelectMatches(sel, value)) {
@@ -3788,8 +4229,10 @@
           filledAny = true;
           continue;
         }
-        if (await fillStandardSelectAny(sel, value, [])) filledAny = true;
-        await sleep(120);
+        const state = standardSelectOptionState(sel, value, names);
+        if (isAreaSelect && state.settled && !state.hasValue) continue;
+        if (await fillStandardSelectAny(sel, value, names, occurrence, deadline)) filledAny = true;
+        await sleepForStandardSelect(120, deadline);
       }
 
       const latest = findStandardSelects(names, occurrence);
@@ -3941,10 +4384,12 @@
   }
 
   function parseStandardDatagridName(name) {
-    const m = String(name || "").match(/^data\[([^\]]+)\]\[(\d+)\]\[[^\]]+\]$/);
+    // Khớp cả grid ở gốc `data[GRID][i][field]` LẪN grid lồng trong panel `data[panel][GRID][i][field]`
+    // (vd bảng kê cây xanh data[panel][tbantest][0][stt]). grid = đoạn ngay TRƯỚC [index] — ref DOM
+    // (datagrid-<grid>-tbody/row/addRow) dùng đúng leaf này, không kèm tiền tố panel.
+    const m = String(name || "").match(/^data(?:\[[^\]]+\])*\[([^\]]+)\]\[(\d+)\]\[([^\]]+)\]$/);
     if (!m) return null;
-    const fieldMatch = String(name || "").match(/^data\[[^\]]+\]\[\d+\]\[([^\]]+)\]$/);
-    return { grid: m[1], index: Number(m[2]), field: fieldMatch ? fieldMatch[1] : "" };
+    return { grid: m[1], index: Number(m[2]), field: m[3] };
   }
 
   function standardDatagridRows(grid) {
@@ -4021,10 +4466,10 @@
   async function fillFormStandard(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
-    // Ngân sách thời gian cho việc điền các select địa bàn (Tỉnh/Xã cascade) — chặn lặp quá lâu.
-    _areaSelectDeadline = Date.now() + 18000;
     await ensureStandardDatagridRows(fields);
     const result = { filled: 0, notFound: [], errors: [] };
+    const areaDeadlines = new Map();
+    const failedFieldKeys = new Set();
     const orderedFields = [
       ...fields.filter((f) => !isPostbackAddressField(f)),
       ...fields.filter((f) => isPostbackAddressField(f)),
@@ -4057,7 +4502,8 @@
           ok = await fillStandardRadio(el, f.value);
         } else if (f.comp === "dom-select") {
           if (isAreaSelectField(f)) {
-            ok = await fillStandardSelectAll(candidates, f.value, occurrence);
+            const deadline = standardFieldDeadline(areaDeadlines, f);
+            ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline);
           } else {
             const el = findStandardSelect(candidates, occurrence);
             ok = await fillStandardSelectAny(el, f.value, candidates, occurrence);
@@ -4077,6 +4523,7 @@
 
         if (ok) result.filled++;
         else {
+          failedFieldKeys.add(standardFieldIdentity(f));
           result.notFound.push(f.name);
           console.warn(`[AutoFill-STD] Không điền được ${f.name}`);
         }
@@ -4087,8 +4534,8 @@
       await sleep(50);
     }
 
-    await retryStandardAreaSelects(fields, result);
-    await stabilizeStandardAreaSelects(fields, result);
+    await retryStandardAreaSelects(fields, result, areaDeadlines, failedFieldKeys);
+    await stabilizeStandardAreaSelects(fields, result, failedFieldKeys);
     await reapplyEmptyStandardTextFields(fields);
     await reapplyOwnerDossierCopy(fields);
     markAllStandardEmptyFieldsRed();
@@ -4097,83 +4544,56 @@
     return result;
   }
 
-  // Trạng thái option của 1 ô địa bàn: đã load đủ danh sách chưa + có chứa giá trị cần không.
-  // Form.io giữ danh sách đầy đủ trong comp.selectOptions dù native <select> chỉ có 1 option → phải đọc
-  // từ component. Dùng để BỎ SỚM ô mà options ĐÃ LOAD nhưng KHÔNG có giá trị (vd "Phường 9" bị đổi tên do
-  // sáp nhập) — tránh retry vô ích ăn hết ngân sách, làm ô hợp lệ khác (vd "Tỉnh Hà Tĩnh") không kịp điền.
+  // Trạng thái option của 1 field địa bàn theo đúng occurrence; chỉ "settled" khi từng select cụ thể
+  // đã có nguồn option quyết định. Field thất bại vẫn giữ notFound nhưng không ảnh hưởng deadline field khác.
   function areaSelectOptionState(f) {
     const candidates = fieldCandidates(f);
     const selects = findStandardSelects(candidates, standardOccurrence(f.occurrence));
-    const raw = String(f.value ?? "");
-    if (!raw) return { loaded: false, hasValue: false };
-    let maxCount = 0;
-    let hasValue = false;
-    for (const sel of selects) {
-      const texts = [];
-      const key = formioKeyFromSelect(sel, candidates);
-      const holder = key ? formioFindHolderNear(sel) : null;
-      const comp = holder?.formio?.getComponent?.(key);
-      if (comp) {
-        if (Array.isArray(comp.selectOptions)) comp.selectOptions.forEach((o) => texts.push(formioOptionText(o)));
-        if (Array.isArray(comp.items)) comp.items.forEach((o) => texts.push(formioOptionText(o)));
-      }
-      const group = standardMarkTarget(sel);
-      const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
-      if (choices) choicesVisibleOptions(choices).forEach((o) => texts.push(choiceDisplayText(o)));
-      Array.from(sel.options || []).forEach((o) => texts.push(o.textContent));
-      const real = [...new Set(texts.filter(Boolean))].filter((t) => {
-        const ft = foldChoiceText(t);
-        return ft && !ft.includes("chon ") && ft !== "chon" && !ft.startsWith("-");
-      });
-      maxCount = Math.max(maxCount, real.length);
-      if (real.some((t) => choiceMatches({ textContent: t, getAttribute: () => "" }, raw))) hasValue = true;
-    }
-    return { loaded: maxCount >= 3, hasValue };
+    if (!selects.length || String(f.value ?? "") === "") return { loaded: false, settled: false, hasValue: false };
+    const states = selects.map((select) => standardSelectOptionState(select, f.value, candidates));
+    const settled = states.every((state) => state.settled);
+    return { loaded: settled, settled, hasValue: states.some((state) => state.hasValue) };
   }
 
-  async function retryStandardAreaSelects(fields, result) {
-    let pending = fields.filter((f) => isAreaSelectField(f) && result.notFound.includes(f.name));
+  function clearStandardFieldNotFound(result, failedFieldKeys, field) {
+    failedFieldKeys.delete(standardFieldIdentity(field));
+    const index = result.notFound.indexOf(field.name);
+    if (index >= 0) result.notFound.splice(index, 1);
+  }
+
+  async function retryStandardAreaSelects(fields, result, deadlines, failedFieldKeys) {
+    const pending = fields.filter((f) => isAreaSelectField(f) && failedFieldKeys.has(standardFieldIdentity(f)));
     if (!pending.length) return;
 
-    for (const delay of [700, 1400, 2400]) {
-      if (_areaBudgetLeft() <= 0) break;  // hết ngân sách thời gian → dừng, tô đỏ ô còn lại
-      await sleep(delay);
-      // BỎ SỚM ô đã load options mà KHÔNG có giá trị (đổi tên do sáp nhập) → nhường ngân sách cho ô hợp lệ.
-      pending = pending.filter((f) => {
-        const st = areaSelectOptionState(f);
-        if (st.loaded && !st.hasValue) {
-          console.warn(`[AutoFill-STD] Bỏ ô "${f.name}"="${f.value}" — danh sách đã load nhưng KHÔNG có giá trị (đổi tên do sáp nhập?). Tô đỏ để chọn tay.`);
-          return false;  // giữ trong notFound (đã tô đỏ), thôi retry để không phí thời gian
+    for (const f of pending) {
+      const deadline = standardFieldDeadline(deadlines, f);
+      if (standardSelectBudgetLeft(deadline) <= 0) continue;
+      const state = areaSelectOptionState(f);
+      if (state.settled && !state.hasValue) continue;
+      try {
+        const ok = await fillStandardSelectAll(
+          fieldCandidates(f),
+          f.value,
+          standardOccurrence(f.occurrence),
+          deadline
+        );
+        if (ok) {
+          result.filled++;
+          clearStandardFieldNotFound(result, failedFieldKeys, f);
+          console.log(`[AutoFill-STD] Retry OK ${f.name} occurrence=${standardOccurrence(f.occurrence)}`);
         }
-        return true;
-      });
-      if (!pending.length) return;
-      const stillPending = [];
-      for (const f of pending) {
-        const candidates = fieldCandidates(f);
-        try {
-          const ok = await fillStandardSelectAll(candidates, f.value, standardOccurrence(f.occurrence));
-          if (ok) {
-            result.filled++;
-            result.notFound = result.notFound.filter((name) => name !== f.name);
-            console.log(`[AutoFill-STD] Retry OK ${f.name}`);
-          } else {
-            stillPending.push(f);
-          }
-        } catch (e) {
-          stillPending.push(f);
-          console.warn(`[AutoFill-STD] Retry lỗi ${f.name}:`, e);
-        }
-        await sleep(120);
+      } catch (e) {
+        console.warn(`[AutoFill-STD] Retry lỗi ${f.name}:`, e);
       }
-      pending = stillPending;
-      if (!pending.length) return;
     }
   }
 
-  async function stabilizeStandardAreaSelects(fields, result) {
-    const targets = fields.filter((f) => isAreaSelectField(f));
+  async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
+    const targets = fields.filter((f) =>
+      isAreaSelectField(f) && !failedFieldKeys.has(standardFieldIdentity(f))
+    );
     if (!targets.length) return;
+    const deadlines = new Map();
 
     const isStable = (f) => {
       const selects = findStandardSelects(fieldCandidates(f), standardOccurrence(f.occurrence));
@@ -4181,7 +4601,6 @@
     };
 
     for (const delay of [800, 1600]) {
-      if (_areaBudgetLeft() <= 0) return;  // hết ngân sách thời gian → dừng
       // Kiểm TRƯỚC: nếu mọi ô địa chỉ đã đúng thì thoát ngay, không ngủ (form moha không postback
       // xoá field nên vòng ổn định là thừa). Chỉ ngủ+sửa khi còn ô lệch (form postback HkdOnline).
       if (targets.every(isStable)) return;
@@ -4193,12 +4612,8 @@
         const matches = selects.length && selects.every((sel) => currentStandardSelectMatches(sel, f.value));
         if (matches) continue;
         try {
-          const wasNotFound = result.notFound.includes(f.name);
-          const ok = await fillStandardSelectAll(candidates, f.value, occurrence);
-          if (ok && wasNotFound) {
-            result.filled++;
-            result.notFound = result.notFound.filter((name) => name !== f.name);
-          }
+          const deadline = standardFieldDeadline(deadlines, f, STANDARD_AREA_STABILIZE_BUDGET_MS);
+          await fillStandardSelectAll(candidates, f.value, occurrence, deadline);
         } catch (e) {
           console.warn(`[AutoFill-STD] Stabilize lỗi ${f.name}:`, e);
         }

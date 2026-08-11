@@ -30,6 +30,8 @@ _ALLOWED_TYPES = {
     "audio/wav",
     "video/mp4",
     "video/quicktime",
+    # DOCX: đính nguyên file (luồng attach không OCR docx → xếp "other", tạo thành phần hồ sơ mới).
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
 
 
@@ -107,7 +109,8 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
     max_total = settings.max_total_payload_mb * 1024 * 1024
     total_bytes = 0
     for f in body.files:
-        if f.type not in _ALLOWED_TYPES:
+        # Chấp nhận theo mime HOẶC đuôi .docx (một số máy trả mime docx rỗng/octet-stream).
+        if f.type not in _ALLOWED_TYPES and not (f.name or "").lower().endswith(".docx"):
             raise AppError("BAD_FILE_TYPE", f"Loại file không hỗ trợ: {f.type}", 400)
         size = _data_url_bytes(f.dataUrl)
         if size > max_file:

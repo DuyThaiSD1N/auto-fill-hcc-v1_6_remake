@@ -25,13 +25,11 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 - QUAN TRỌNG — TRƯỜNG HỢP ỦY QUYỀN (đơn có CẢ mục "chủ đầu tư/chủ hộ" LẪN mục "người đại diện/người
   được ủy quyền", hoặc kèm Giấy ủy quyền): đây là HAI NGƯỜI KHÁC NHAU, phải tách:
     · ChuHo_* = CHỦ ĐẦU TƯ/CHỦ HỘ (người đứng tên công trình) — tên, số định danh, SĐT ở mục "chủ đầu tư".
-    · Applicant_* = NGƯỜI ĐẠI DIỆN/ĐƯỢC ỦY QUYỀN (người đi nộp) — tên, CCCD, ngày/nơi cấp, SĐT, địa chỉ
-      ở mục "người đại diện" (hoặc "Bên được ủy quyền" trong Giấy ủy quyền). CCCD kèm hồ sơ là của người này.
+    · Applicant_* = NGƯỜI ĐẠI DIỆN/ĐƯỢC ỦY QUYỀN (người đi nộp). Tên, CCCD, ngày/nơi cấp và NƠI CƯ TRÚ
+      ưu tiên từ "Bên được ủy quyền" trong Giấy ủy quyền; SĐT có thể lấy ở mục người đại diện trong Đơn.
     · NGÀY CẤP + NƠI CẤP CCCD của người đại diện thường KHÔNG có trong đơn mà nằm trong GIẤY ỦY QUYỀN —
       dòng "Căn cước công dân số <số> cấp ngày <ngày> tại <nơi cấp>" của Bên được ủy quyền. PHẢI đọc giấy
       ủy quyền để lấy Applicant_NgayCap và Applicant_NoiCap; đừng để trống nếu giấy ủy quyền có ghi.
-      (Ví dụ: "CCCD số 052.097.003.842 cấp ngày 12/11/2021 tại Cục cảnh sát QLHC về TTXH" → Applicant_NgayCap
-      ="12/11/2021", Applicant_NoiCap="Cục Cảnh sát quản lý hành chính về trật tự xã hội".)
     · Đơn có 2 số điện thoại: số ở mục chủ đầu tư → ChuHo_DienThoai; số ở mục người đại diện → Applicant_DienThoai.
       ĐỪNG bỏ sót SĐT người đại diện và đừng gán nhầm sang chủ hộ.
 - Nếu đơn ghi "Tên chủ đầu tư (tên chủ hộ): Ông/Bà ..." và người xin phép là cá nhân/hộ gia đình,
@@ -67,11 +65,11 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 - Địa chỉ trong nước trả object {quocGia,tinh,xa,diaChi}. Tách cấp huyện ra khỏi diaChi.
 - Với "TDP Ngọc Tỉnh - Phường Song Liễu - Tỉnh Bắc Ninh":
   tinh="Tỉnh Bắc Ninh", xa="Phường Song Liễu", diaChi="TDP Ngọc Tỉnh".
-- Với CCCD ghi "Yên Nho, Gia Đông, Thuận Thành, Bắc Ninh", nếu đơn cũng có địa chỉ thì ưu tiên đơn.
 - QUAN TRỌNG — HAI ĐỊA CHỈ KHÁC NHAU, KHÔNG được gán trùng:
-    · Applicant_NoiCuTru = địa chỉ NGƯỜI NỘP/ĐẠI DIỆN — ƯU TIÊN "Địa chỉ liên hệ" ở mục người đại diện
-      trong ĐƠN (địa bàn hiện hành, điền được). CHỈ dùng "Nơi cư trú" trong Giấy ủy quyền khi đơn không
-      ghi — vì địa chỉ ủy quyền có thể là tỉnh CŨ đã sáp nhập (vd "Bình Định") không chọn được trên form.
+    · Applicant_NoiCuTru = địa chỉ NGƯỜI NỘP/ĐẠI DIỆN. Có Giấy ủy quyền thì ƯU TIÊN TUYỆT ĐỐI "Nơi cư
+      trú"/"Nơi thường trú" của BÊN ĐƯỢC ỦY QUYỀN trong giấy đó, dù Đơn có ghi địa chỉ liên hệ khác.
+      CHỈ khi Giấy ủy quyền không ghi hoặc không đọc được địa chỉ mới lấy "Địa chỉ liên hệ" của người đại
+      diện trong Đơn. Địa danh cũ do sáp nhập vẫn lấy theo nguồn này; Python sẽ chuẩn hóa địa bàn sau.
     · Dat_DiaDiemXayDung = ĐỊA ĐIỂM XÂY DỰNG/vị trí lô đất — lấy từ mục "3. Thông tin công trình /
       Địa điểm xây dựng / Tại địa chỉ …" hoặc địa chỉ thửa đất trên Giấy chứng nhận.
   Ví dụ: người đại diện cư trú "phường Xuân Hương - Đà Lạt" NHƯNG công trình ở "Phường Lâm Viên - Đà
@@ -86,7 +84,12 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
   mã chứng chỉ NĂNG LỰC/hành nghề (vd "LAD 00038424") — đó không phải mã số doanh nghiệp, form validate
   sẽ báo sai định dạng. Nếu giấy tờ không có MSDN hợp lệ thì BỎ TRỐNG field này.
 - ThietKe_ChuNhiem_* lấy từ dòng chủ nhiệm thiết kế trong đơn/bản kê khai/chứng chỉ hành nghề.
-- Chủ trì thiết kế chính ưu tiên bộ môn Kiến trúc nếu có nhiều bộ môn; trả ThietKe_ChuTri_BoMon="Kiến trúc".
+- ThietKe_ChuTri_DanhSach phải chứa TẤT CẢ các dòng tại mục "Chủ trì thiết kế các bộ môn", mỗi dòng là
+  {"boMon":"<bộ môn>","hoTen":"<họ tên>","chungChi":"<số chứng chỉ>"}; một bộ môn vẫn trả mảng.
+- Ưu tiên danh sách ghi rõ trong bản kê khai kinh nghiệm thiết kế; sau đó mới dùng dòng chủ trì ghi rõ trong
+  đơn/chứng chỉ để bổ sung đúng người. Không tạo dòng chỉ vì một tên xuất hiện rời rạc trong bản vẽ nhiễu.
+- Giữ thứ tự kê khai, không bỏ các bộ môn sau Kiến trúc và không trả dòng trùng. Không tự đưa chủ nhiệm thiết
+  kế vào danh sách nếu giấy tờ không ghi người đó đồng thời chủ trì một bộ môn; không bịa bộ môn/chứng chỉ thiếu.
 - Nếu chỉ có chứng chỉ hành nghề cá nhân và không có tổ chức thiết kế thì LapThietKe_Loai="Cá nhân".
 </design_rules>
 

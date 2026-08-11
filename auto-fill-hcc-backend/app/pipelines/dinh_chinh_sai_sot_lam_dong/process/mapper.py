@@ -261,32 +261,11 @@ def _ghi_chu(values: dict) -> str | None:
     return suffix.strip() or None
 
 
-def _form_context(options: dict | None) -> dict:
-    ctx = (options or {}).get("formContext") or {}
-    return {
-        "applicant_name": ctx.get("applicantFullname") or ctx.get("fullname") or "",
-        "applicant_identity": ctx.get("applicantIdentityNumber") or ctx.get("identityNumber") or "",
-    }
-
-
-def _has_context_anchor(context: dict) -> bool:
-    return bool(_identity(context.get("applicant_identity")) or _fold(context.get("applicant_name")))
-
-
-def _same_person(doc_id: Any, doc_name: Any, ctx_id: Any, ctx_name: Any) -> bool:
-    did, cid = _identity(doc_id), _identity(ctx_id)
-    if did and cid:
-        return did == cid
-    dname, cname = _fold(doc_name), _fold(ctx_name)
-    return bool(dname and cname and dname == cname)
-
-
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
-    context = _form_context(options)
 
     def add(name: str, value) -> None:
         if name in seen or value in (None, "", {}, []):
@@ -306,8 +285,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # HAI NGƯỜI khi có ủy quyền:
     #  - Chủ hồ sơ (Phần III) = chủ Giấy chứng nhận (Nguoi_*) — người có sai sót.
-    #  - Người nộp (Phần I) = người đại diện/được ủy quyền (DaiDien_*) nếu có; không thì trùng chủ hồ sơ.
-    has_uy_quyen = bool(values.get("DaiDien_HoTen") or values.get("DaiDien_SoDinhDanh"))
+    #  - Người nộp (Phần I) = người ĐƯỢC ủy quyền. ƯU TIÊN object NguoiDuocUyQuyen (LLM trích gộp 1 lần, đặt
+    #    ĐẦU schema nên điền chắc hơn nhiều so với 10 field DaiDien_* rời); fallback DaiDien_* nếu LLM lỡ
+    #    điền kiểu cũ. Có object/DaiDien ⇒ nộp thay; trống ⇒ tự nộp.
+    _rep = values.get("NguoiDuocUyQuyen")
+    _rep = _rep if isinstance(_rep, dict) else {}
+
+    def _dd(obj_key: str, flat_key: str):
+        v = _rep.get(obj_key)
+        return v if v not in (None, "", {}, []) else values.get(flat_key)
+
+    daidien_hoten = _dd("hoTen", "DaiDien_HoTen")
+    daidien_identity = _dd("soDinhDanh", "DaiDien_SoDinhDanh")
+    has_uy_quyen = bool(_text(daidien_hoten) or _identity(daidien_identity))
 
     owner_name = _text(values.get("Nguoi_HoTen"))
     owner_identity = _identity(values.get("Nguoi_SoDinhDanh"))
@@ -320,43 +310,37 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_residence = _area(values.get("Nguoi_ThuongTru"))
 
     if has_uy_quyen:
-        sub_name = _text(values.get("DaiDien_HoTen"))
-        sub_identity = _identity(values.get("DaiDien_SoDinhDanh"))
-        sub_birthday = _date(values.get("DaiDien_NgaySinh"))
-        sub_gender = _text(values.get("DaiDien_GioiTinh"))
-        sub_phone = _phone(_pick(values.get("DaiDien_DienThoai"), values.get("Nguoi_DienThoai")))
-        sub_email = _text(_pick(values.get("DaiDien_Email"), values.get("Nguoi_Email")))
-        sub_id_date = _date(values.get("DaiDien_NgayCapCccd"))
-        sub_id_agency = _cccd_issuer(values.get("DaiDien_NoiCapCccd"), values.get("DaiDien_NgayCapCccd"))
-        sub_residence = _area(_pick(values.get("DaiDien_ThuongTru"), values.get("Nguoi_ThuongTru")))
+        # Đại diện và chủ hồ sơ là HAI người KHÁC nhau → KHÔNG fallback SĐT/email/nơi ở sang chủ.
+        sub_name = _text(daidien_hoten)
+        sub_identity = _identity(daidien_identity)
+        sub_birthday = _date(_dd("ngaySinh", "DaiDien_NgaySinh"))
+        sub_gender = _text(_dd("gioiTinh", "DaiDien_GioiTinh"))
+        sub_phone = _phone(values.get("DaiDien_DienThoai"))
+        sub_email = _text(values.get("DaiDien_Email"))
+        sub_id_date = _date(_dd("ngayCapCccd", "DaiDien_NgayCapCccd"))
+        sub_id_agency = _cccd_issuer(_dd("noiCapCccd", "DaiDien_NoiCapCccd"), _dd("ngayCapCccd", "DaiDien_NgayCapCccd"))
+        sub_residence = _area(_dd("thuongTru", "DaiDien_ThuongTru"))
     else:
         sub_name, sub_identity, sub_birthday, sub_gender = owner_name, owner_identity, owner_birthday, owner_gender
         sub_phone, sub_email, sub_id_date, sub_id_agency = owner_phone, owner_email, owner_id_date, owner_id_agency
         sub_residence = owner_residence
 
-    # Phần I chỉ ghi đè khi khớp tài khoản đang đăng nhập (tránh đè nhầm thông tin người khác).
-    # Không có anchor (tài khoản trống) → cứ điền theo giấy tờ ("sửa lại theo người nộp thực tế").
-    can_fill_applicant = (
-        not _has_context_anchor(context)
-        or _same_person(sub_identity, sub_name, context.get("applicant_identity"), context.get("applicant_name"))
-    )
-
     # ---- Phần I: Thông tin người nộp ----
-    if can_fill_applicant:
-        add("data[fullname]", sub_name)
-        add("data[birthday]", sub_birthday)
-        add("data[gender]", sub_gender)
-        add("data[phoneNumber]", sub_phone)
-        add("data[email]", sub_email)
-        add("data[identityNumber]", sub_identity)
-        add("data[identityDate]", sub_id_date)
-        add("data[identityAgency]", sub_id_agency)
-        add("data[nation]", "Việt Nam" if sub_name or sub_identity else None)
-        if sub_residence:
-            add("data[province]", _province_label(sub_residence.get("tinh")))
-            add("data[district]", _commune_label(sub_residence.get("xa")))
-            add("data[address]", _text(sub_residence.get("diaChi")))
-        expect(_EXPECT_APPLICANT)
+    # Người nộp = đại diện (nếu có ủy quyền) hoặc chính chủ hồ sơ (tự nộp). LUÔN điền Phần I từ sub_*.
+    add("data[fullname]", sub_name)
+    add("data[birthday]", sub_birthday)
+    add("data[gender]", sub_gender)
+    add("data[phoneNumber]", sub_phone)
+    add("data[email]", sub_email)
+    add("data[identityNumber]", sub_identity)
+    add("data[identityDate]", sub_id_date)
+    add("data[identityAgency]", sub_id_agency)
+    add("data[nation]", "Việt Nam" if sub_name or sub_identity else None)
+    if sub_residence:
+        add("data[province]", _province_label(sub_residence.get("tinh")))
+        add("data[district]", _commune_label(sub_residence.get("xa")))
+        add("data[address]", _text(sub_residence.get("diaChi")))
+    expect(_EXPECT_APPLICANT)
 
     add("data[ghiChu]", _ghi_chu(values))
 
@@ -367,10 +351,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[village2]", _commune_label(land.get("xa")))
 
     # ---- Phần III: Thông tin chủ hồ sơ (chủ GCN) ----
-    # Tự nộp (người nộp = chủ hồ sơ) VÀ đã điền được Phần I → BẤM nút "Người nộp là chủ hồ sơ"
-    # (data[BUTTON3]) để form tự copy toàn bộ Phần I xuống Phần III, thay vì fill tay. Đúng UX form,
-    # tránh lệch cascade. Có ủy quyền (2 người khác nhau) hoặc không đè được Phần I → fill trực tiếp.
-    if not has_uy_quyen and can_fill_applicant:
+    # Tự nộp (KHÔNG ủy quyền → người nộp = chủ hồ sơ) → BẤM nút "Người nộp là chủ hồ sơ" (data[BUTTON3])
+    # để form tự copy toàn bộ Phần I xuống Phần III, thay vì fill tay. Đúng UX form, tránh lệch cascade.
+    # Có ủy quyền (2 người khác nhau) → fill Phần III trực tiếp bằng thông tin chủ hồ sơ.
+    if not has_uy_quyen:
         add("data[BUTTON3]", True)
     else:
         add("data[ownerFullname]", owner_name)

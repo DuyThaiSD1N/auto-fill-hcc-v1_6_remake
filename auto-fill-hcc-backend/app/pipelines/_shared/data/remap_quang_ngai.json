@@ -1,0 +1,1646 @@
+[
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Kỳ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tịnh Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Châu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tịnh Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Long",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tịnh Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Thiện",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tịnh Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Khê",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tịnh Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Hà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Dõng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Dũng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "An Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Nhơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nguyễn Nghiêm"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Phong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nguyễn Nghiêm"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Khánh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Khánh Cường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Cường",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Khánh Cường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Khương",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình An",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Minh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Mỹ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Chương"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Chương",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Chương"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Châu Ổ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Chánh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Dương",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Nguyên",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Trung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Long",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Thuận",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vạn Tường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Đông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vạn Tường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Trị",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vạn Tường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Hải",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vạn Tường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Hòa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vạn Tường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Phước",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vạn Tường"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Hiệp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Thanh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Tân Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Bình Châu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Hòa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Giang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trường Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Đông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trường Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Minh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trường Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Bắc",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Gia"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Hiệp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Gia"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Trà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Gia"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Tịnh Hà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tịnh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Bình",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tịnh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Sơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tịnh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Phong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thọ Phong"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Thọ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thọ Phong"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn La Hà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tư Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Trung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tư Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Thương",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tư Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Hòa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tư Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Sông Vệ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vệ Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Hiệp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vệ Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Phương",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Vệ Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Thuận",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nghĩa Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Kỳ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nghĩa Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Điền",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nghĩa Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Sơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trà Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Lâm",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trà Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Thắng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trà Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Chợ Chùa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nghĩa Hành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Thuận",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nghĩa Hành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Trung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Nghĩa Hành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Đức",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đình Cương"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Phước",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đình Cương"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Thịnh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đình Cương"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Thiện",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thiện Tín"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Tín Tây",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thiện Tín"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Tín Đông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thiện Tín"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Dũng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Phước Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Nhân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Phước Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hành Minh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Phước Giang"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thắng Lợi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Long Phụng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Nhuận",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Long Phụng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Hiệp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Long Phụng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Chánh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Thạnh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Minh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Mộ Đức",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mộ Đức"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Hòa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mộ Đức"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mộ Đức"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Tân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mộ Đức"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Phong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Lân Phong"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Đức Lân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Lân Phong"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Trà Xuân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Sơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Thủy",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Bình",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Giang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đông Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Trà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tây Trà"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Phong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tây Trà"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Xinh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tây Trà"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Lâm",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thanh Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Hiệp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thanh Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Thanh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Thanh Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Tân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Cà Đam"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Bùi (một phần)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Cà Đam"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Hương Trà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tây Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Tây",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tây Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trà Bùi (phần còn lại)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tây Trà Bồng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Thành",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Hạ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Nham",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Hạ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Hạ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Hạ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Giang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Linh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Cao",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Linh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Linh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Linh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Di Lăng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Bao",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Thượng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Trung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Hải",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Thủy",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Ba",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Kỳ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Kỳ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Kỳ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Long",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Tân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Dung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Mùa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây Thượng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Liên",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây Thượng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Bua",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây Thượng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Tinh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây Hạ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Lập",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây Hạ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Sơn Màu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Tây Hạ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Long Hiệp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Minh Long"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thanh An",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Minh Long"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Long Môn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Minh Long"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Long Mai",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Mai"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Long Sơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sơn Mai"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Tiêu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Vì"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Ngạc",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Vì"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Vì",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Vì"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Lế",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Tô"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Nam",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Tô"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Tô",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Tô"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Giang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Dinh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Dinh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Dinh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Thị trấn Ba Tơ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Tơ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Cung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Tơ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Bích",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Tơ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Điền",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Vinh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Vinh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Vinh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Liên",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Động"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Thành",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Động"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Động",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Động"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Trang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đặng Thùy Trâm"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Khâm",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đặng Thùy Trâm"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Kroong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Bay"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Vinh Quang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Bay"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Bay",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Bay"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đoàn Kết",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ia Chim"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Năng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ia Chim"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ia Chim",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ia Chim"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Hòa Bình",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Rơ Wa"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Chư Hreng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Rơ Wa"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Blà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Rơ Wa"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Rơ Wa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Rơ Wa"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Long (huyện Đăk Hà)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Pxi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Pxi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Pxi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Hring",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Mar"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Mar",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Mar"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Ngọk",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Ui"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Ui",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Ui"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Wang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Réo"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Réo",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Réo"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Đăk Hà",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Hà"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Hà Mòn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Hà"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk La",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Hà"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Rơ Nga",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Tụ"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Tụ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọk Tụ"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Đăk Tô",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Tô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Tân Cảnh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Tô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Pô Kô",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Tô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Diên Bình",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Tô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Văn Lem",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Đào"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Trăm",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Đào"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Kon Đào",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Đào"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Na",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Sao"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Sao",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Sao"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Rơ Ông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Tờ Kan"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Tờ Kan",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Tờ Kan"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Hà (huyện Tu Mơ Rông)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tu Mơ Rông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Tu Mơ Rông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Tu Mơ Rông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Yêu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Ri"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Văn Xuôi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Ri"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Tê Xăng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Ri"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Lây",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Ri"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Măng Ri",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Ri"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Plei Kần",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bờ Y"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Xú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bờ Y"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Pờ Y",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Bờ Y"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Kan",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Loong"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Sa Loong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Loong"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Ang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Dục Nông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Dục",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Dục Nông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Nông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Dục Nông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Choong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Xốp"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Xốp",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Xốp"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Mường Hoong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọc Linh"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọc Linh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ngọc Linh"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Nhoong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Plô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Man",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Plô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Plô",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Plô"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Đăk Glei",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Pék"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Pék",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Pék"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Kroong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Môn"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Môn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Môn"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Sa Thầy",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Thầy"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Sa Sơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Thầy"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Sa Nhơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Thầy"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Sa Nghĩa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Bình"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Hơ Moong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Bình"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Sa Bình",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Sa Bình"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ya Xiêr",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ya Ly"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ya Tăng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ya Ly"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ya Ly",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ya Ly"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ia Dom",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ia Tơi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ia Tơi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ia Tơi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Tơ Lung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Kôi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Kôi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Kôi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Tờ Re",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Braih"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Ruồng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Braih"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Braih"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Đăk Rve",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Rve"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Pne",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Rve"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thị trấn Măng Đen",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Đen"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Măng Cành",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Đen"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Tăng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Đen"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Nên",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Bút"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Ring",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Bút"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Măng Bút",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Măng Bút"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngọk Tem",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Plông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Hiếu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Plông"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Pờ Ê",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Kon Plông"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trương Quang Trọng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trương Quang Trọng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Ấn Tây",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trương Quang Trọng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh Ấn Đông",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trương Quang Trọng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Tịnh An",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trương Quang Trọng"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nguyễn Nghiêm (TP Quảng Ngãi)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Cẩm Thành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trần Hưng Đạo (TP Quảng Ngãi)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Cẩm Thành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Chánh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Cẩm Thành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Chánh Lộ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Cẩm Thành"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Lê Hồng Phong",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Trần Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Quảng Phú",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nghĩa Lộ",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Văn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trà Câu"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Quang",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trà Câu"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ An",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trà Câu"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Thuận",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Trà Câu"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Nguyễn Nghiêm (thị xã Đức Phổ)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đức Phổ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Hòa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đức Phổ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Minh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đức Phổ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Vinh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đức Phổ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Ninh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đức Phổ"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Thạnh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Sa Huỳnh"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Phổ Châu",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Sa Huỳnh"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Quang Trung",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Kon Tum"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Quyết Thắng",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Kon Tum"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thắng Lợi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Kon Tum"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Trường Chinh",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Kon Tum"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Thống Nhất",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Kon Tum"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ngô Mây",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đăk Cấm"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Duy Tân",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đăk Cấm"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Cấm",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đăk Cấm"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Trần Hưng Đạo (TP Kon Tum)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đăk Bla"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Lê Lợi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đăk Bla"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Nguyễn Trãi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Đăk Bla"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Huyện Lý Sơn",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Đặc khu Lý Sơn"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Đăk Long (huyện Đăk Glei)",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Đăk Long"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "Ba Xa",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ba Xa"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Rờ Kơi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Rờ Kơi"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Mô Rai",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Mô Rai"
+    },
+    {
+        "tinh_cu": "Kon Tum",
+        "xa_cu": "Ia Đal",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Xã Ia Đal"
+    }
+]

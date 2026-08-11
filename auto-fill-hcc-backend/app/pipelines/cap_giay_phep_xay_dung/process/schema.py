@@ -23,11 +23,11 @@ FIELDS: list[dict] = [
     {"name": "Applicant_DienThoai", "desc": "Số điện thoại của NGƯỜI NỘP/NGƯỜI ĐẠI DIỆN (ở mục 'người đại "
         "diện/được ủy quyền' nếu có). KHÁC số điện thoại của chủ đầu tư/chủ hộ (đó là ChuHo_DienThoai)."},
     {"name": "Applicant_Email", "desc": "Email người nộp nếu giấy tờ ghi rõ."},
-    {"name": "Applicant_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP/ĐẠI DIỆN. ƯU TIÊN 'Địa chỉ liên hệ' ở mục "
-        "người đại diện/người nộp trong ĐƠN (đây là địa bàn hiện hành, điền được vào form); CHỈ dùng 'Nơi cư "
-        "trú' trong Giấy ủy quyền khi đơn không ghi (địa chỉ trong ủy quyền có thể là tỉnh CŨ đã sáp nhập, "
-        "không chọn được). object {quocGia,tinh,xa,diaChi,fullText}. ĐÂY KHÔNG PHẢI địa điểm xây dựng — TUYỆT "
-        "ĐỐI KHÔNG lấy địa chỉ lô đất/thửa đất/công trình vào field này."},
+    {"name": "Applicant_NoiCuTru", "desc": "Địa chỉ của NGƯỜI NỘP/ĐẠI DIỆN. Nếu có Giấy ủy quyền, ƯU TIÊN "
+        "TUYỆT ĐỐI mục 'Nơi cư trú'/'Nơi thường trú' của BÊN ĐƯỢC ỦY QUYỀN trong giấy đó; KHÔNG lấy 'Địa chỉ "
+        "liên hệ' trong Đơn thay thế. Chỉ khi Giấy ủy quyền không ghi hoặc không đọc được địa chỉ mới dùng địa "
+        "chỉ liên hệ của người đại diện trong Đơn. object {quocGia,tinh,xa,diaChi,fullText}. ĐÂY KHÔNG PHẢI địa "
+        "điểm xây dựng — TUYỆT ĐỐI KHÔNG lấy địa chỉ lô đất/thửa đất/công trình vào field này."},
 
     # B/C. Cơ quan tiếp nhận + CHỦ ĐẦU TƯ/CHỦ HỘ (người đứng tên công trình, KHÁC người nộp khi có ủy quyền).
     {"name": "Don_KinhGui", "desc": "Cơ quan kính gửi/cơ quan tiếp nhận chính trong đơn, ưu tiên UBND cấp xã/phường."},
@@ -61,9 +61,9 @@ FIELDS: list[dict] = [
         "hợp lệ thì bỏ trống."},
     {"name": "ThietKe_ChuNhiem_HoTen", "desc": "Họ tên chủ nhiệm thiết kế."},
     {"name": "ThietKe_ChuNhiem_ChungChi", "desc": "Số chứng chỉ hành nghề của chủ nhiệm thiết kế."},
-    {"name": "ThietKe_ChuTri_BoMon", "desc": "Bộ môn/lĩnh vực của chủ trì thiết kế chính, ví dụ Kiến trúc."},
-    {"name": "ThietKe_ChuTri_HoTen", "desc": "Họ tên chủ trì thiết kế chính."},
-    {"name": "ThietKe_ChuTri_ChungChi", "desc": "Số chứng chỉ hành nghề của chủ trì thiết kế chính."},
+    {"name": "ThietKe_ChuTri_DanhSach", "desc": "Mảng TẤT CẢ người chủ trì các bộ môn thiết kế, mỗi phần tử "
+        "có dạng {boMon,hoTen,chungChi}. Một dòng/bộ môn trên giấy tờ tương ứng một phần tử; kể cả chỉ có "
+        "một bộ môn vẫn trả mảng một phần tử. Giữ đúng thứ tự kê khai, không chỉ lấy bộ môn Kiến trúc."},
     {"name": "ThietKe_CaNhan_HoTen", "desc": "Tên cá nhân lập thiết kế nếu không có tổ chức."},
     {"name": "ThietKe_CaNhan_ChungChi", "desc": "Số chứng chỉ cá nhân lập thiết kế nếu không có tổ chức."},
 
@@ -150,9 +150,7 @@ UI_COMP_BY_NAME = {
     "data[maSoDoanhNghiepLapThietKe]": "dom-input",
     "data[tenChuNhiemThietKe]": "dom-input",
     "data[maSoChungChiChuNhiemThietKe]": "dom-input",
-    "data[thietKeXayDung][0][boMonChuTriThietKe]": "dom-input",
-    "data[thietKeXayDung][0][hoVaTenChuTriThietKe]": "dom-input",
-    "data[thietKeXayDung][0][maSoChungChiHanhNgheChuTriThietKe]": "dom-input",
+    # Các dòng data[thietKeXayDung][N][...] được mapper nhận diện động để không giới hạn số bộ môn.
     "data[tenCaNhanLapThietKe]": "dom-input",
     "data[maSoChungChiCaNhanLapThietKe]": "dom-input",
 

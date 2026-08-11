@@ -36,11 +36,48 @@ def _decode_data_url(data_url: str) -> bytes:
     return base64.b64decode(b64)
 
 
+_W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+
+
+def _docx_para_text(paragraph) -> str:
+    """Text của 1 đoạn <w:p>: nối các run <w:t>, đổi <w:tab> thành khoảng trắng."""
+    parts: list[str] = []
+    for node in paragraph.iter():
+        tag = node.tag
+        if tag == _W_NS + "t":
+            parts.append(node.text or "")
+        elif tag in (_W_NS + "tab", _W_NS + "br"):
+            parts.append(" ")
+    return " ".join("".join(parts).split()).strip()
+
+
+def _docx_walk(container) -> list[str]:
+    """Duyệt con trực tiếp của body/cell theo THỨ TỰ tài liệu, GIỮ cấu trúc bảng:
+    - <w:p> → 1 dòng text.
+    - <w:tbl> → mỗi <w:tr> thành 1 dòng, các ô <w:tc> nối bằng ' | ' (giữ ranh giới cột để LLM khớp
+      đúng cột — vd 'Số khung' vs 'Số máy' trong bảng phương tiện, thay vì bị làm phẳng lẫn nhau)."""
+    lines: list[str] = []
+    for child in container:
+        tag = child.tag
+        if tag == _W_NS + "p":
+            txt = _docx_para_text(child)
+            if txt:
+                lines.append(txt)
+        elif tag == _W_NS + "tbl":
+            for row in child.findall(_W_NS + "tr"):
+                cells: list[str] = []
+                for cell in row.findall(_W_NS + "tc"):
+                    cells.append(" ".join(_docx_walk(cell)).strip())
+                if any(c for c in cells):
+                    lines.append(" | ".join(cells))
+    return lines
+
+
 def _extract_docx_text(file: dict) -> dict:
     item = {"name": file.get("name"), "type": file.get("type"), "text": "", "provider": "docx"}
     try:
         raw = _decode_data_url(file.get("dataUrl") or "")
-        texts: list[str] = []
+        lines: list[str] = []
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
             names = ["word/document.xml"]
             names.extend(n for n in zf.namelist() if n.startswith("word/header") or n.startswith("word/footer"))
@@ -48,8 +85,9 @@ def _extract_docx_text(file: dict) -> dict:
                 if name not in zf.namelist():
                     continue
                 root = ET.fromstring(zf.read(name))
-                texts.extend(t.strip() for t in root.itertext() if t and t.strip())
-        item["text"] = " ".join(texts)
+                body = root.find(_W_NS + "body")
+                lines.extend(_docx_walk(body if body is not None else root))
+        item["text"] = "\n".join(lines)
     except Exception as e:  # noqa: BLE001
         item["error"] = str(e)
     return item

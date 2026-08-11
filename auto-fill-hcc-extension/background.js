@@ -16,8 +16,9 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 // ===== Tách hồ sơ (split KPI): hàng đợi file chờ đính, keyed theo tabId =====
-// Mỗi tab hồ sơ mới giữ đúng 1 file riêng; content.js của tab đó tự lấy & đính khi tới Bước 3.
+// Mỗi tab hồ sơ mới giữ một bundle riêng; chữ ký có thể gồm tài liệu STT1 + CCCD dùng chung ở STT2.
 const PENDING_ATTACH_KEY = "autofill_pending_attach";
+const SPLIT_ATTACH_QUEUE_KEY = "autofill_split_attach_queue";
 
 async function getPendingMap() {
   try {
@@ -26,7 +27,113 @@ async function getPendingMap() {
   } catch (e) { return {}; }
 }
 async function setPendingMap(map) {
-  try { await chrome.storage.local.set({ [PENDING_ATTACH_KEY]: map }); } catch (e) { /* ignore */ }
+  try {
+    await chrome.storage.local.set({ [PENDING_ATTACH_KEY]: map });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getSplitAttachQueue() {
+  try {
+    const res = await chrome.storage.local.get(SPLIT_ATTACH_QUEUE_KEY);
+    return res[SPLIT_ATTACH_QUEUE_KEY] || null;
+  } catch (e) { return null; }
+}
+async function setSplitAttachQueue(state) {
+  try {
+    await chrome.storage.local.set({ [SPLIT_ATTACH_QUEUE_KEY]: state });
+    return true;
+  } catch (e) { return false; }
+}
+async function clearSplitAttachQueue() {
+  try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_KEY); }
+  catch (e) { /* ignore */ }
+}
+
+// Mọi mutation của queue đi qua một chuỗi Promise để clear/đóng tab không thể cùng lúc mở hai tab.
+let splitQueueMutation = Promise.resolve();
+function withSplitQueueLock(task) {
+  const run = splitQueueMutation.then(task, task);
+  splitQueueMutation = run.catch(() => {});
+  return run;
+}
+
+async function openNextSplitQueueItemUnlocked() {
+  let state = await getSplitAttachQueue();
+  if (!state) return { done: true };
+  if (state.activeTabId) return { waiting: true, tabId: state.activeTabId };
+
+  while (Array.isArray(state.remaining) && state.remaining.length) {
+    const item = state.remaining.shift();
+    let tab = null;
+    try {
+      const files = Array.isArray(item?.files) ? item.files.filter(Boolean) : [];
+      const attachments = Array.isArray(item?.attachments) ? item.attachments.filter(Boolean) : [];
+      if (!item?.url || !files.length || !attachments.length) {
+        throw new Error("Bundle tách hồ sơ không đủ URL/file/kế hoạch đính kèm.");
+      }
+
+      // Modal Radix/React không ổn định trong tab nền. Chỉ tạo DUY NHẤT một tab và kích hoạt nó;
+      // tab kế tiếp chỉ được tạo khi content báo thành công hoặc thất bại terminal.
+      tab = await chrome.tabs.create({ url: "about:blank", active: true });
+      const pendingMap = await getPendingMap();
+      pendingMap[tab.id] = {
+        files,
+        attachments,
+        procedure: item.procedure,
+        ts: Date.now(),
+      };
+      if (!await setPendingMap(pendingMap)) throw new Error("Không lưu được bundle đính kèm cho tab kế tiếp.");
+
+      state.activeTabId = tab.id;
+      state.activeItem = { ordinal: item.ordinal || null };
+      if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được trạng thái hàng đợi tách hồ sơ.");
+      await chrome.tabs.update(tab.id, { url: item.url, active: true });
+      console.log("[AutoFill-SplitQueue] Bắt đầu bundle", item.ordinal || "?", {
+        tabId: tab.id,
+        remaining: state.remaining.length,
+        procedure: item.procedure,
+      });
+      return { ok: true, tabId: tab.id, remaining: state.remaining.length };
+    } catch (e) {
+      if (tab?.id != null) {
+        const pendingMap = await getPendingMap();
+        if (pendingMap[tab.id]) { delete pendingMap[tab.id]; await setPendingMap(pendingMap); }
+        try { await chrome.tabs.remove(tab.id); } catch (_) { /* ignore */ }
+      }
+      state.activeTabId = null;
+      state.activeItem = null;
+      state.results = Array.isArray(state.results) ? state.results : [];
+      state.results.push({ ok: false, ordinal: item?.ordinal || null, error: e?.message || String(e) });
+      if (!await setSplitAttachQueue(state)) break;
+    }
+  }
+
+  await clearSplitAttachQueue();
+  console.log("[AutoFill-SplitQueue] Đã xử lý hết hàng đợi.", state?.results || []);
+  return { done: true, results: state?.results || [] };
+}
+
+async function finishSplitQueueTabUnlocked(tabId, result = {}) {
+  const state = await getSplitAttachQueue();
+  if (!state || Number(state.activeTabId) !== Number(tabId)) return { queueAdvanced: false };
+  state.results = Array.isArray(state.results) ? state.results : [];
+  state.results.push({
+    ok: result.ok === true,
+    ordinal: state.activeItem?.ordinal || null,
+    code: result.code || null,
+    error: result.error || null,
+  });
+  state.activeTabId = null;
+  state.activeItem = null;
+  if (!await setSplitAttachQueue(state)) return { queueAdvanced: false, error: "Không lưu được kết quả tab." };
+  console.log("[AutoFill-SplitQueue] Kết thúc bundle", state.results[state.results.length - 1]);
+  // Cho cổng giải phóng request/session của tab vừa xong trước khi khởi tạo eForm tiếp theo.
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  const next = await openNextSplitQueueItemUnlocked();
+  return { queueAdvanced: true, next };
 }
 
 // Cho phép content script / popup-iframe lấy tabId của chính nó.
@@ -37,8 +144,11 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
       "autofill_panel_open_" + tabId,
       "autofill_session_" + tabId,
     ]);
-    const map = await getPendingMap();
-    if (map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+    await withSplitQueueLock(async () => {
+      const map = await getPendingMap();
+      if (map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+      await finishSplitQueueTabUnlocked(tabId, { ok: false, code: "tab-closed", error: "Tab hồ sơ đã bị đóng." });
+    });
   } catch (e) { /* ignore */ }
 });
 
@@ -88,14 +198,85 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   // ===== Điều phối tách hồ sơ (split) =====
-  if (msg?.action === "openDossierTabAndAttach") {
+  if (msg?.action === "stageDossierTabAttach") {
+    (async () => {
+      const tabId = Number(msg.tabId);
+      try {
+        if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Không xác định được tab hồ sơ hiện tại.");
+        await chrome.tabs.get(tabId); // xác nhận tab vẫn còn trước khi ghi pending
+        const files = Array.isArray(msg.files) && msg.files.length ? msg.files : (msg.file ? [msg.file] : []);
+        const attachments = Array.isArray(msg.attachments) && msg.attachments.length
+          ? msg.attachments
+          : (msg.planItem ? [msg.planItem] : []);
+        if (!files.length || !attachments.length) throw new Error("Thiếu bộ file/kế hoạch phục hồi cho tab hiện tại.");
+        const map = await getPendingMap();
+        map[tabId] = {
+          files,
+          attachments,
+          procedure: msg.procedure,
+          ts: Date.now(),
+          // Lượt reload chuyển từ thao tác trực tiếp sang state machine được tính là lượt đầu tiên.
+          recoveryCode: msg.recoveryCode || null,
+          recoveryCount: msg.recoveryCode ? 1 : 0,
+        };
+        if (!await setPendingMap(map)) throw new Error("Không lưu được hàng đợi phục hồi cho tab hiện tại.");
+        sendResponse({ ok: true, tabId, ts: map[tabId].ts });
+      } catch (e) {
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+  if (msg?.action === "reloadDossierTabAttach") {
+    (async () => {
+      const tabId = Number(msg.tabId);
+      try {
+        if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Không xác định được tab cần tải lại.");
+        const map = await getPendingMap();
+        if (!map[tabId]) throw new Error("Tab hiện tại chưa có hàng đợi đính kèm để phục hồi.");
+        await chrome.tabs.reload(tabId);
+        sendResponse({ ok: true, tabId });
+      } catch (e) {
+        await withSplitQueueLock(async () => {
+          const map = await getPendingMap();
+          if (map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+          await finishSplitQueueTabUnlocked(tabId, {
+            ok: false,
+            code: "tab-reload-failed",
+            error: e?.message || String(e),
+          });
+        });
+        sendResponse({ error: e?.message || String(e) });
+      }
+    })();
+    return true;
+  }
+  if (msg?.action === "startSplitAttachQueue") {
     (async () => {
       try {
-        const tab = await chrome.tabs.create({ url: msg.url, active: false });
-        const map = await getPendingMap();
-        map[tab.id] = { file: msg.file, planItem: msg.planItem, procedure: msg.procedure, ts: Date.now() };
-        await setPendingMap(map);
-        sendResponse({ ok: true, tabId: tab.id });
+        const items = Array.isArray(msg.items) ? msg.items.filter(Boolean) : [];
+        const waitForTabId = Number(msg.waitForTabId) || null;
+        const result = await withSplitQueueLock(async () => {
+          if (waitForTabId) {
+            await chrome.tabs.get(waitForTabId);
+            const pendingMap = await getPendingMap();
+            if (!pendingMap[waitForTabId]) {
+              throw new Error("Tab hiện tại chưa có bundle phục hồi trước khi bắt đầu hàng đợi.");
+            }
+          }
+          const state = {
+            remaining: items,
+            activeTabId: waitForTabId,
+            activeItem: waitForTabId ? { ordinal: 1 } : null,
+            results: [],
+            startedAt: Date.now(),
+          };
+          if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được hàng đợi tách hồ sơ tuần tự.");
+          return waitForTabId
+            ? { ok: true, waiting: true, tabId: waitForTabId, remaining: items.length }
+            : await openNextSplitQueueItemUnlocked();
+        });
+        sendResponse(result);
       } catch (e) {
         sendResponse({ error: e?.message || String(e) });
       }
@@ -111,15 +292,68 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg?.action === "clearPendingAttach") {
     (async () => {
-      const map = await getPendingMap();
       const tabId = msg.tabId ?? sender?.tab?.id;
-      if (tabId != null && map[tabId]) { delete map[tabId]; await setPendingMap(map); }
-      sendResponse({ ok: true });
+      const result = await withSplitQueueLock(async () => {
+        const map = await getPendingMap();
+        if (tabId != null && map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+        return await finishSplitQueueTabUnlocked(tabId, { ok: true });
+      });
+      sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
+  if (msg?.action === "failPendingAttach") {
+    (async () => {
+      const tabId = msg.tabId ?? sender?.tab?.id;
+      const result = await withSplitQueueLock(async () => {
+        const map = await getPendingMap();
+        if (tabId != null && map[tabId]) { delete map[tabId]; await setPendingMap(map); }
+        return await finishSplitQueueTabUnlocked(tabId, {
+          ok: false,
+          code: msg.code || "attach-failed",
+          error: msg.error || "Đính kèm thất bại.",
+        });
+      });
+      sendResponse({ ok: true, ...result });
     })();
     return true;
   }
   if (msg?.action === "clearAllPendingAttach") {
-    (async () => { await setPendingMap({}); sendResponse({ ok: true }); })();
+    (async () => {
+      await withSplitQueueLock(async () => {
+        await setPendingMap({});
+        await clearSplitAttachQueue();
+      });
+      sendResponse({ ok: true });
+    })();
     return true;
   }
+});
+
+// Kéo file phiên QR về dataURL theo CHUNK qua Port (thay cho fetchImageDataUrl gửi 1 cục).
+// chrome.runtime message có trần kích thước (~64MB); file lớn (PDF 65MB → base64 ~87MB) gửi 1
+// message sẽ HỤT → popup không nhận được. Port stream từng mảnh nhỏ để vượt trần này.
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "filePull") return;
+  port.onMessage.addListener(async (msg) => {
+    try {
+      const res = await fetch(msg.url, { headers: msg.headers || {} });
+      if (!res.ok) { port.postMessage({ error: `HTTP ${res.status}` }); return; }
+      const blob = await res.blob();
+      const dataUrl = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(blob);
+      });
+      port.postMessage({ meta: true, type: blob.type });
+      const CHUNK = 4 * 1024 * 1024; // 4MB/mảnh — an toàn dưới trần message
+      for (let i = 0; i < dataUrl.length; i += CHUNK) {
+        port.postMessage({ chunk: dataUrl.slice(i, i + CHUNK) });
+      }
+      port.postMessage({ done: true });
+    } catch (e) {
+      try { port.postMessage({ error: e?.message || String(e) }); } catch (_) { /* port đã đóng */ }
+    }
+  });
 });

@@ -127,6 +127,22 @@ from app.pipelines.cap_giay_phep_lien_van_viet_lao.attach import plan as cap_gia
 from app.pipelines.cap_giay_phep_lien_van_viet_lao.process import run as cap_giay_phep_lien_van_viet_lao_process
 from app.pipelines.xoa_dang_ky_tau_ca.attach import plan as xoa_dang_ky_tau_ca_attach
 from app.pipelines.xoa_dang_ky_tau_ca.process import run as xoa_dang_ky_tau_ca_process
+from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.attach import plan as cap_moi_gphn_chuyen_tiep_attach
+from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.process import run as cap_moi_gphn_chuyen_tiep_process
+from app.pipelines.cap_chung_chi_hanh_nghe_duoc.attach import plan as cap_cchn_duoc_attach
+from app.pipelines.cap_chung_chi_hanh_nghe_duoc.process import run as cap_cchn_duoc_process
+from app.pipelines.cap_van_ban_chap_thuan_tau_ca.attach import plan as cap_vb_chap_thuan_tau_ca_attach
+from app.pipelines.cap_van_ban_chap_thuan_tau_ca.process import run as cap_vb_chap_thuan_tau_ca_process
+from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import plan as cap_gp_khai_thac_ts_attach
+from app.pipelines.cap_giay_phep_khai_thac_thuy_san.process import run as cap_gp_khai_thac_ts_process
+from app.pipelines.dang_ky_bien_phap_bao_dam_qsdd.attach import plan as dk_bien_phap_bao_dam_attach
+from app.pipelines.dang_ky_bien_phap_bao_dam_qsdd.process import run as dk_bien_phap_bao_dam_process
+from app.pipelines.xoa_dang_ky_phuong_tien_thuy.attach import plan as xoa_dk_phuong_tien_thuy_attach
+from app.pipelines.xoa_dang_ky_phuong_tien_thuy.process import run as xoa_dk_phuong_tien_thuy_process
+from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.attach import plan as dk_bien_dong_dat_dai_dn_attach
+from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.process import run as dk_bien_dong_dat_dai_dn_process
+from app.pipelines.cap_giay_phep_chat_ha_cay_xanh.attach import plan as cap_gp_chat_ha_cay_xanh_attach
+from app.pipelines.cap_giay_phep_chat_ha_cay_xanh.process import run as cap_gp_chat_ha_cay_xanh_process
 
 PROCEDURES: list[dict] = [
     {
@@ -648,9 +664,17 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-sai-sot",
-        # Cổng laichau (SPA, dùng chung domain+path cho nhiều thủ tục, sid đổi mỗi phiên)
-        # → nhận diện theo VĂN BẢN tên thủ tục hiển thị trên trang (tất cả cụm phải có mặt).
-        "detect": {"textIncludes": ["đính chính", "sai sót"], "headingDisabled": True},
+        # Cổng laichau (SPA, dùng chung domain+path, sid đổi mỗi phiên) → detect theo VĂN BẢN: tiêu đề đầy
+        # đủ + dấu tỉnh "Lai Châu" (footer "Cơ quan chủ quản: UBND tỉnh Lai Châu"). Cần "lai châu" để TÁCH
+        # khỏi Lâm Đồng (tiêu đề TRÙNG): trang Lâm Đồng có "1.012796.H36" nhưng KHÔNG có "lai châu"; trang
+        # Lai Châu có "lai châu" và chỉ "1.012796" (KHÔNG .H36) → Lâm Đồng rule không khớp trang Lai Châu.
+        # Rule cũ chỉ ["đính chính","sai sót"] quá lỏng, dễ dính trang lạ.
+        # urlScope = cổng gate Lai Châu (URL SPA đổi sid mỗi phiên, không định danh thủ tục) → chỉ tin
+        # text khi đúng cổng laichau.gov.vn; giữ "lai châu" trong text làm lớp chặn thứ hai.
+        "detect": {"urlScope": ["laichau.gov.vn"], "textIncludes": [
+            "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
+            "lai châu",
+        ], "headingDisabled": True},
         "label": "[Lai Châu] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -692,12 +716,15 @@ PROCEDURES: list[dict] = [
     {
         "key": "dinh-chinh-sai-sot-lam-dong",
         # Cổng dichvucong.lamdong.gov.vn (Form.io/Angular apply-online) — CÙNG nền tảng GPXD lamdong,
-        # engine fill standard dom-*. URL KHÔNG có maThuTucHanhChinh (chỉ ObjectId mờ) và tiêu đề trang
-        # TRÙNG bản Lai Châu → PHẢI detect theo URL id riêng: khớp ở bước 1 (URL) trước khi tới bước 3
-        # (textIncludes của dinh-chinh-sai-sot Lai Châu) nên không đụng.
-        "detect": {"urlIncludes": [
-            "apply-online/685fed1b7e14861a7db268b8",
-            "process=68832d4c112d6e09a9a40b03",
+        # engine fill standard dom-*. URL chỉ có ObjectId THEO PHƯỜNG (đổi theo mỗi phường/xã) → KHÔNG
+        # dùng urlIncludes được. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.012796.H36" (H36 = mã tỉnh
+        # Lâm Đồng, giống mọi phường). Mã H36 KHÔNG có ở trang Lai Châu (tiêu đề trùng) → tách được 2 tỉnh;
+        # tổng cụm dài hơn rule Lai Châu ("đính chính"+"sai sót") nên thắng điểm trên trang Lâm Đồng.
+        # urlScope = cổng gate: chỉ tin text khi URL đúng cổng Lâm Đồng (URL chỉ có ObjectId theo
+        # phường, không định danh thủ tục) → tránh dương tính giả nếu trang khác trùng cụm text.
+        "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [
+            "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
+            "1.012796.H36",
         ]},
         "label": "[Tỉnh Lâm Đồng] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
@@ -722,11 +749,15 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-lan-dau-lam-dong",
-        # Cổng dichvucong.lamdong.gov.vn (Form.io apply-online) — CÙNG form đính chính lamdong. URL không
-        # có maThuTucHanhChinh → detect theo ObjectId riêng (khớp bước 1 URL). Phần IV GCN "không cần điền".
-        "detect": {"urlIncludes": [
-            "apply-online/686121013e3c03620395bace",
-            "process=69a64243458bc81d5d4b2860",
+        # Cổng dichvucong.lamdong.gov.vn (Form.io apply-online) — CÙNG form đính chính lamdong. URL chỉ có
+        # ObjectId THEO PHƯỜNG (đổi mỗi phường) → KHÔNG dùng urlIncludes. Detect theo VĂN BẢN: tiêu đề +
+        # MÃ THỦ TỤC "1.013978.H36" (H36 = mã tỉnh Lâm Đồng, giống mọi phường; mã duy nhất). Phần IV GCN
+        # "không cần điền".
+        # urlScope = cổng gate Lâm Đồng (xem thủ tục đính chính lamdong ở trên): URL chỉ có ObjectId
+        # theo phường nên cần chắc đúng cổng trước khi tin cụm text + mã "1.013978.H36".
+        "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [
+            "đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận",
+            "1.013978.H36",
         ]},
         "label": (
             "[Tỉnh Lâm Đồng] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng "
@@ -1039,8 +1070,9 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-lan-dau",
-        "detect": {"textIncludes": ["đăng ký đất đai", "lần đầu", "tổ chức đang sử dụng đất"], "headingDisabled": True},
-        "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất",
+        # Cổng laichau (SPA) — urlScope gate đúng cổng laichau.gov.vn + dấu tỉnh "lai châu" (chống dính trang lạ).
+        "detect": {"urlScope": ["laichau.gov.vn"], "textIncludes": ["đăng ký đất đai", "lần đầu", "tổ chức đang sử dụng đất", "lai châu"], "headingDisabled": True},
+        "label": "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất",
         "mode": "agent",
         "roles": [],
         "useDangKyBy": False,
@@ -1052,8 +1084,11 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai",
-        "detect": {"textIncludes": ["người gốc việt nam định cư ở nước ngoài"], "headingDisabled": True},
-        "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+        "detect": {"urlScope": ["laichau.gov.vn"], "textIncludes": [
+            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+            "lai châu",
+        ], "headingDisabled": True},
+        "label": "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
         "mode": "agent",
         "roles": [],
         "useDangKyBy": False,
@@ -1287,6 +1322,7 @@ PROCEDURES: list[dict] = [
         # KHÁC "xet-tuyen-vien-chuc" (Form.io data[...]). SPA dùng chung domain → detect theo VĂN BẢN tên
         # thủ tục + "lai châu" (đặc trưng, không đụng bản Form.io do cụm "(Nghị định số 85..." khác).
         "detect": {
+            "urlScope": ["laichau.gov.vn"],
             "textIncludes": ["Thủ tục xét tuyển Viên Chức (Nghị định số 85/2023/NĐ-CP) (Lai Châu)"],
             "headingDisabled": True,
             "textPriority": True,
@@ -1570,6 +1606,289 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
+        # attp-row (như #62 tro-cap-xa-hoi-hang-thang, field-key data[...] TRÙNG KHÍT). CHỈ MỘT người =
+        # người hành nghề. URL SPA là ObjectId không có MaTTHC → detect theo cụm tên đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 "
+                 "tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức "
+                 "danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên "
+                 "ngoại viện, tâm lý lâm sàng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (đều là của NGƯỜI HÀNH NGHỀ đề nghị cấp phép):\n"
+            "1. Đơn đề nghị cấp giấy phép hành nghề khám bệnh, chữa bệnh / Thừa nhận GPHN (Mẫu 08 PL I "
+            "NĐ 96/2023) — đã ký.\n"
+            "2. Bản sao văn bằng chuyên môn (bằng tốt nghiệp/cử nhân).\n"
+            "3. Giấy khám sức khỏe do cơ sở KCB đủ điều kiện cấp.\n"
+            "4. Sơ yếu lý lịch tự thuật của người hành nghề (Mẫu 09 PL I).\n"
+            "5. Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 PL I).\n"
+            "6. 02 ảnh chân dung 4x6 nền trắng (≤ 6 tháng).\n"
+            "7. Thẻ Căn cước công dân của người hành nghề để đối chiếu; nếu người KHÁC nộp thay: tải kèm "
+            "CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Nếu TỰ NỘP (người nộp = người hành nghề): extension chỉ điền Phần 1 và GIỮ tích 'Người nộp là "
+            "chủ hồ sơ' — cổng tự đổ sang Phần 2. Nếu NỘP THAY: extension bỏ tích ô đó, điền Phần 1 (người "
+            "nộp) và Phần 2 (người hành nghề) riêng.\n"
+            "Bước đính kèm: mỗi giấy tờ được tick vào đúng dòng thành phần hồ sơ (a Đơn Mẫu 08 / b Văn bằng "
+            "/ d Sức khỏe / e Sơ yếu Mẫu 09 / g Xác nhận thực hành Mẫu 07 / h Ảnh chân dung) và chọn 'Scan "
+            "tệp tin' (CCCD chỉ dùng ở bước thông tin, không đính ở bước này)."
+        ),
+    },
+    {
+        "key": "cap-chung-chi-hanh-nghe-duoc",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
+        # attp-row (field-key data[...] TRÙNG KHÍT #92/#62). 1 người=người đề nghị (tự nộp / nộp thay như
+        # #92). URL SPA là ObjectId không MaTTHC → detect theo cụm tên đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "cấp chứng chỉ hành nghề dược",
+                "điều 28 của luật dược",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp Chứng chỉ hành nghề dược (bao gồm cả trường hợp cấp Chứng chỉ hành nghề dược cho "
+                 "người bị thu hồi Chứng chỉ hành nghề dược theo quy định tại các khoản 1, 2, 4, 5, 6, 7, "
+                 "8, 9, 10, 11 Điều 28 của Luật Dược) theo hình thức xét hồ sơ",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (đều là của NGƯỜI ĐỀ NGHỊ cấp CCHN dược):\n"
+            "1. Đơn đề nghị cấp Chứng chỉ hành nghề dược (Mẫu số 02) — đã ký, kèm ảnh chân dung 4x6 (≤ 6 "
+            "tháng).\n"
+            "2. Thẻ Căn cước công dân / Căn cước (mặt trước + mặt sau) của người đề nghị.\n"
+            "3. Văn bằng chuyên môn (bằng tốt nghiệp dược).\n"
+            "4. Phiếu lý lịch tư pháp.\n"
+            "5. Giấy chứng nhận đủ sức khỏe hành nghề dược (giấy khám sức khỏe).\n"
+            "6. Giấy xác nhận thời gian thực hành (Mẫu số 03). Trường hợp bị THU HỒI CCHN thì thay bằng "
+            "Giấy xác nhận hoàn thành đào tạo, cập nhật kiến thức chuyên môn về dược (Mẫu số 08).\n"
+            "7. Nếu người KHÁC nộp thay: tải kèm CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Nếu TỰ NỘP: extension chỉ điền Phần 1 và GIỮ tích 'Người nộp là chủ hồ sơ' — cổng tự đổ sang "
+            "Phần 2. Nếu NỘP THAY: extension bỏ tích ô đó, điền Phần 1 (người nộp) và Phần 2 (người đề "
+            "nghị) riêng.\n"
+            "Bước đính kèm: mỗi giấy tờ được tick vào đúng dòng thành phần hồ sơ (Đơn Mẫu 02 + ảnh, văn "
+            "bằng, LLTP, sức khỏe, thời gian thực hành Mẫu 03...) và chọn 'Scan tệp tin' (CCCD chỉ dùng ở "
+            "bước thông tin)."
+        ),
+    },
+    {
+        "key": "cap-van-ban-chap-thuan-tau-ca",
+        # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
+        # + attach attp-row (field-key nhân thân data[...] TRÙNG KHÍT #92/#101). Có thêm nội dung tờ khai
+        # Mẫu 12 (occurrence=1) + thông số tàu. URL SPA ObjectId → detect theo cụm tên đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "cấp văn bản chấp thuận đóng mới, cải hoán, thuê, mua tàu cá",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp văn bản chấp thuận đóng mới, cải hoán, thuê, mua tàu cá Việt Nam",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của NGƯỜI ĐỀ NGHỊ — chủ tàu/cá nhân, tổ chức đề nghị):\n"
+            "1. Tờ khai về việc chấp thuận đóng mới/cải hoán/thuê/mua tàu cá (Mẫu số 12.TC) — đã ký.\n"
+            "2. Thẻ Căn cước công dân / Căn cước (mặt trước + mặt sau) của người đề nghị để đối chiếu.\n"
+            "3. Nếu người KHÁC nộp thay: tải kèm CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Nếu TỰ NỘP: extension chỉ điền Phần 1 và GIỮ tích 'Người nộp là chủ hồ sơ' — cổng tự đổ sang "
+            "Phần 2. Nếu NỘP THAY: extension bỏ tích ô đó, điền Phần 1 (người nộp) và Phần 2 (người đề "
+            "nghị) riêng.\n"
+            "Extension còn điền Nội dung tờ khai (kính gửi, địa danh, mã định danh, địa chỉ) và thông số "
+            "tàu (đóng mới HOẶC cải hoán/thuê/mua tùy Tờ khai khai).\n"
+            "Bước đính kèm: Tờ khai Mẫu 12 được tick vào dòng thành phần hồ sơ và chọn 'Scan tệp tin' "
+            "(CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-khai-thac-thuy-san",
+        # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
+        # + attach attp-row (field-key nhân thân data[...] TRÙNG KHÍT #97/#92). CHỈ nhân thân Phần I/II;
+        # ô isOwnerDossierCheck mặc định CHƯA tick (như #97). URL SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "textIncludes": [
+                "cấp, cấp lại giấy phép khai thác thủy sản",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp, cấp lại Giấy phép khai thác thủy sản",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của NGƯỜI ĐỀ NGHỊ — chủ tàu):\n"
+            "1. Đơn đề nghị cấp Giấy phép khai thác thủy sản (Mẫu số 04.KT — cấp mới) HOẶC Đơn đề nghị cấp "
+            "lại (Mẫu số 05.KT — cấp lại) — đã ký.\n"
+            "2. Thẻ Căn cước công dân / Căn cước (mặt trước + mặt sau) của chủ tàu để đối chiếu.\n"
+            "3. Nếu người KHÁC nộp thay: tải kèm CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form online CHỈ thu nhân thân người nộp/chủ tàu; thông tin tàu (số đăng ký, an toàn kỹ thuật, "
+            "giám sát hành trình, nghề khai thác...) nằm trong file Mẫu 04/05.KT, không nhập lại.\n"
+            "Nếu TỰ NỘP: extension chỉ điền Phần 1 và TICH ô 'Người nộp là chủ hồ sơ' (ô này cổng để sẵn "
+            "CHƯA tick) — cổng tự đổ sang Phần 2. Nếu NỘP THAY: extension bỏ tích, điền Phần 1 (người nộp) "
+            "và Phần 2 (chủ tàu) riêng.\n"
+            "Bước đính kèm: Đơn Mẫu 04 (cấp mới) hoặc Mẫu 05 (cấp lại) được tick vào đúng dòng thành phần "
+            "hồ sơ và chọn 'Scan tệp tin' (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-phap-bao-dam-qsdd",
+        # Cổng dịch vụ công Đà Nẵng dichvucong.danang.gov.vn — Form.io (field-key RIÊNG), engine
+        # fillFormStandard dom-* + attach attp-row. Form chỉ thu NGƯỜI YÊU CẦU (cá nhân/tổ chức); nội dung
+        # thế chấp trong Phiếu Mẫu 01a đính kèm. URL SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "textIncludes": [
+                "đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Phiếu yêu cầu đăng ký biện pháp bảo đảm (Mẫu số 01a) — đã ký.\n"
+            "2. Thẻ Căn cước công dân / Căn cước của NGƯỜI YÊU CẦU ĐĂNG KÝ (người đứng nộp) để đối chiếu.\n"
+            "3. Hợp đồng bảo đảm (thế chấp) và Giấy chứng nhận QSDĐ (sổ đỏ/sổ hồng) — để đính kèm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form chỉ điền thông tin người yêu cầu đăng ký (cá nhân: nhân thân; tổ chức: tên + mã số thuế) "
+            "và tự tích 'Chủ hồ sơ cũng là người nộp'. Nội dung thế chấp (bên bảo đảm/nhận, thửa đất) nằm "
+            "trong Phiếu Mẫu 01a, không nhập lại trên form.\n"
+            "Bước đính kèm: Phiếu 01a (dòng 1), Hợp đồng bảo đảm (dòng 2), Giấy chứng nhận (dòng 3) được "
+            "tick vào đúng dòng thành phần hồ sơ (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "xoa-dang-ky-phuong-tien-thuy",
+        # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
+        # (CÙNG cổng #63 liên vận & quy-hoach). HAI vai: Người nộp (Phần I) / Chủ phương tiện (Phần II,
+        # cá nhân HOẶC tổ chức). Key trùng Phần I↔II điền bằng occurrence. Nút "Sao chép thông tin người
+        # nộp" là BUTTON → bỏ qua, điền Phần II trực tiếp. URL SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "textIncludes": [
+                "xóa đăng ký phương tiện thủy nội địa",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Xóa đăng ký phương tiện thủy nội địa",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của CHỦ PHƯƠNG TIỆN — người/tổ chức đề nghị xóa đăng ký):\n"
+            "1. Đơn đề nghị xóa đăng ký phương tiện thủy nội địa (Mẫu số 3/10) — đã ký, đóng dấu.\n"
+            "2. Nếu chủ phương tiện là CÁ NHÂN: Thẻ Căn cước công dân / Căn cước của chủ phương tiện để đối "
+            "chiếu.\n"
+            "3. Nếu người KHÁC nộp thay: tải kèm CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension điền Phần I (người nộp), Phần II (chủ phương tiện — tự nhận cá nhân/tổ chức), Phần "
+            "III (đặc điểm phương tiện: tên, số đăng ký, số GCN, lý do xóa) và Phần IV (nơi lập đơn).\n"
+            "Bước đính kèm: Đơn đề nghị được tick vào dòng thành phần hồ sơ và chọn 'Bản chính' (CCCD chỉ "
+            "dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-dat-dai-da-nang",
+        # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard dom-* + attach
+        # attp-row (CÙNG cổng #95). HAI vai trong 1 panel: Chủ hồ sơ (ownerFullname/organization) / Người
+        # nộp (fullname/CCCD/địa chỉ + chonDoiTuong + taxCode). isOwnerDossier bỏ tích khi ủy quyền. URL
+        # SPA ObjectId → detect theo cụm tên đặc trưng (phân biệt các thủ tục biến động khác).
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": [
+                "chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Đà Nẵng] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường "
+            "hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; "
+            "chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, "
+            "góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại "
+            "quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để "
+            "thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất "
+            "trả tiền hàng năm"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Hợp đồng chuyển nhượng/tặng cho/thừa kế/góp vốn QSDĐ (bản công chứng) — xác định chủ hồ sơ "
+            "(bên nhận) và thửa đất.\n"
+            "2. Nếu chủ hồ sơ ỦY QUYỀN cho người khác nộp: tải kèm Hợp đồng ủy quyền + CCCD người được ủy "
+            "quyền.\n"
+            "3. Nếu chủ hồ sơ là TỔ CHỨC: tải kèm Giấy chứng nhận đăng ký doanh nghiệp.\n"
+            "4. Đơn đăng ký biến động (Mẫu số 18) và Bản gốc Giấy chứng nhận QSDĐ — để đính kèm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form điền: Chủ hồ sơ (họ tên/tên tổ chức) + Người nộp (nhân thân, địa chỉ, loại đối tượng). "
+            "Nếu ủy quyền → BỎ tích 'Chủ hồ sơ cũng là người nộp' và điền cả hai. Nội dung yêu cầu giải "
+            "quyết tự ghép theo tên chủ hồ sơ.\n"
+            "Bước đính kèm: Đơn Mẫu 18, Hợp đồng chuyển quyền, Bản gốc Giấy chứng nhận... được tick vào "
+            "đúng dòng thành phần hồ sơ và chọn 'Bản chính' (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-chat-ha-cay-xanh",
+        # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
+        # (CÙNG cổng #63/#103). HAI vai: Người nộp (flat data[...]) / Chủ hồ sơ + đơn (nested
+        # data[panel][...]). Có DATAGRID bảng kê cây data[panel][tbantest][N][...] (cần FE parse grid lồng
+        # trong panel). Nút "Sao chép" là BUTTON → bỏ qua. URL SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "textIncludes": [
+                "cấp giấy phép chặt hạ, dịch chuyển cây xanh",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp giấy phép chặt hạ, dịch chuyển cây xanh",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của CHỦ HỒ SƠ — người/tổ chức đề nghị cấp phép):\n"
+            "1. Đơn đề nghị cấp giấy phép chặt hạ, dịch chuyển cây xanh (Mẫu số 01) có bảng kê cây xanh — "
+            "đã ký.\n"
+            "2. Thẻ Căn cước công dân / Căn cước của chủ hồ sơ để đối chiếu.\n"
+            "3. Giấy chứng nhận QSDĐ (nếu có) và Ảnh chụp hiện trạng cây xanh — để đính kèm.\n"
+            "4. Nếu người KHÁC nộp thay: tải kèm CCCD của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension điền Phần I (người nộp), Phần II (chủ hồ sơ + nội dung đơn), bảng kê cây xanh (nhiều "
+            "dòng), lý do và thông tin ký.\n"
+            "Bước đính kèm: Đơn Mẫu 01 chọn 'Bản chính', Ảnh hiện trạng cây chọn 'Scan tệp tin' (CCCD chỉ "
+            "dùng ở bước thông tin)."
+        ),
+    },
+    {
         "key": "cap-giay-phep-lien-van-viet-lao",
         # Cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io apply-online) — CÙNG nền tảng/engine fill standard
         # dom-* với cung_cap_thong_tin_quy_hoach. URL chỉ ObjectId (không có MaTTHC) → detect theo id
@@ -1685,6 +2004,14 @@ _PIPELINE = {
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": sua_doi_ttncc_process,
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_process,
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_process,
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_process,
+    "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_process,
+    "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
+    "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
+    "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_process,
+    "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_process,
+    "dang-ky-bien-dong-dat-dai-da-nang": dk_bien_dong_dat_dai_dn_process,
+    "cap-giay-phep-chat-ha-cay-xanh": cap_gp_chat_ha_cay_xanh_process,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -1754,6 +2081,14 @@ _ATTACH_PIPELINE = {
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": sua_doi_ttncc_attach,
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_attach,
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_attach,
+    "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_attach,
+    "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_attach,
+    "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
+    "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
+    "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_attach,
+    "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_attach,
+    "dang-ky-bien-dong-dat-dai-da-nang": dk_bien_dong_dat_dai_dn_attach,
+    "cap-giay-phep-chat-ha-cay-xanh": cap_gp_chat_ha_cay_xanh_attach,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,

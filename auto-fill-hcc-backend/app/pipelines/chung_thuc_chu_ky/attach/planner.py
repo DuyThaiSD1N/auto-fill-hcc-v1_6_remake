@@ -71,6 +71,13 @@ def _is_identity(detected: str, ocr_text: str, file_name: str) -> bool:
     return any(kw in haystack for kw in _IDENTITY_KEYWORDS_FOLDED)
 
 
+# --- Gộp MỌI giấy tùy thân thành 1 PDF vào ô STT2 ---
+# Form chứng thực chữ ký chỉ có DUY NHẤT 1 ô giấy tùy thân (STT2). Dù có nhiều CCCD / nhiều mặt /
+# nhiều người (vd người yêu cầu + người làm chứng/ủy quyền), TẤT CẢ phải gộp thành 1 PDF theo THỨ TỰ
+# file gốc rồi đính vào ô đó — KHÔNG tách mặt trước hay người thứ 2 sang thành phần mới. (Không gom
+# theo số định danh nữa: mặt sau chỉ có MRZ nên số 12 chữ số hay rỗng → gom theo người rất dễ nhầm.)
+
+
 def build_plan_items(
     files: list[dict], ocr_results: list[dict], llm_types: dict[int, Any] | None = None
 ) -> list[dict]:
@@ -87,11 +94,9 @@ def build_plan_items(
         llm_info = _coerce_llm_document_info(llm_types[idx]) if idx in llm_types else {"detectedType": "", "documentName": ""}
         llm_detected = llm_info["detectedType"]
         rule_detected = detect_document_type(ocr_text, file_name)
-        detected = llm_detected if llm_detected and llm_detected != _GENERIC_DOCUMENT_TYPE else rule_detected
-        if not detected and llm_detected:
-            detected = llm_detected
-        if not detected:
-            detected = _GENERIC_DOCUMENT_TYPE
+        # ƯU TIÊN LLM hơn rule: LLM đọc toàn văn OCR nên ít nhầm hơn rule keyword → LLM trả gì
+        # dùng nấy; chỉ khi LLM trống mới dùng rule; cả hai trống → generic.
+        detected = llm_detected or rule_detected or _GENERIC_DOCUMENT_TYPE
 
         docs.append({
             "index": idx,
@@ -110,9 +115,13 @@ def build_plan_items(
     used_component_names: set[str] = set()
     items: list[dict] = []
 
-    def _emit(doc: dict, *, existing_index: int | None, existing_component: str) -> None:
+    def _emit_unit(unit: list[dict], *, existing_index: int | None, existing_component: str) -> None:
+        """Một đơn vị đính kèm. unit>1 file → FE gộp thành 1 PDF (sourceFileIndexes, mặt trước→sau).
+        Tên tài liệu/thành phần lấy theo file ĐẦU unit (mặt trước, thường có tiêu đề rõ)."""
+        primary = unit[0]
+        source_indexes = [d["index"] for d in unit]
         document_name = _unique_document_name(
-            doc.get("documentName") or doc["detectedType"], used_document_names, doc["detectedType"]
+            primary.get("documentName") or primary["detectedType"], used_document_names, primary["detectedType"]
         )
         if existing_index is not None:
             component_name = existing_component
@@ -120,29 +129,43 @@ def build_plan_items(
             component_index: int | None = existing_index
             needs_add = False
         else:
-            component_name = _unique_document_name(
-                doc.get("componentBaseName") or document_name, used_component_names, doc["detectedType"]
-            )
+            base = primary.get("componentBaseName") or document_name
+            if _fold(base) == _fold(_GENERIC_DOCUMENT_TYPE):
+                # OCR trống/không phân loại được → base = "Tài liệu chứng thực" cho MỌI file. Đánh số tên
+                # THÀNH PHẦN bằng bộ đếm RIÊNG sẽ lệch pha với documentName và sinh tên trần "Tài liệu
+                # chứng thực" — bị FE (khớp substring 2 chiều ở attachmentKeyMatches) coi là trùng của
+                # "Tài liệu chứng thực 2/3…" nên bỏ sót file. Dùng THẲNG documentName đã đánh số duy nhất.
+                component_name = document_name
+                used_component_names.add(_fold(component_name))
+            else:
+                component_name = _unique_document_name(
+                    base, used_component_names, primary["detectedType"]
+                )
             target = "new"
             component_index = None
             needs_add = True
-        items.append({
-            "fileIndex": doc["index"],
-            "fileName": doc["fileName"],
+        item = {
+            "fileIndex": primary["index"],
+            "fileName": primary["fileName"],
             "documentName": document_name,
             "componentName": component_name,
             "target": target,
             "componentIndex": component_index,
             "needsAddComponent": needs_add,
-            "detectedType": doc["detectedType"],
-        })
+            "detectedType": primary["detectedType"],
+        }
+        # CHỈ gắn khi >1 để không đổi hành vi file lẻ (FE coi thiếu field = [fileIndex]).
+        if len(source_indexes) > 1:
+            item["sourceFileIndexes"] = source_indexes
+        items.append(item)
 
-    # STT1: giấy tờ đầu → ô #1, còn lại → thành phần mới.
+    # STT1: mỗi giấy tờ 1 đơn vị (không gộp). Cái đầu → ô #1, còn lại → thành phần mới.
     for pos, doc in enumerate(doc_bucket):
-        _emit(doc, existing_index=1 if pos == 0 else None, existing_component=SIGNATURE_DOC_COMPONENT)
-    # STT2: giấy tùy thân đầu → ô #2, các cái sau → thành phần mới (không bao giờ vào ô #1).
-    for pos, doc in enumerate(id_bucket):
-        _emit(doc, existing_index=2 if pos == 0 else None, existing_component=IDENTITY_COMPONENT)
+        _emit_unit([doc], existing_index=1 if pos == 0 else None, existing_component=SIGNATURE_DOC_COMPONENT)
+    # STT2: GỘP TẤT CẢ giấy tùy thân (mọi CCCD/mọi mặt/mọi người) → 1 PDF DUY NHẤT theo thứ tự file
+    # gốc, đính vào ô #2 có sẵn. Form chỉ 1 ô giấy tùy thân → không tách thành phần mới cho CCCD.
+    if id_bucket:
+        _emit_unit(id_bucket, existing_index=2, existing_component=IDENTITY_COMPONENT)
 
     # Sắp: ô có sẵn trước (theo componentIndex), rồi tới thành phần mới — theo fileIndex cho ổn định.
     items.sort(key=lambda it: (

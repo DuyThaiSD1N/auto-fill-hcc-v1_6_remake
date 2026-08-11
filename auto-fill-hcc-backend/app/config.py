@@ -111,7 +111,7 @@ class Settings(BaseSettings):
     llm_debug: bool = False
 
     # Upload limits
-    max_file_size_mb: int = 30
+    max_file_size_mb: int = 80
     max_total_payload_mb: int = 100
 
     # Storage — nơi lưu file/ảnh của mỗi request.

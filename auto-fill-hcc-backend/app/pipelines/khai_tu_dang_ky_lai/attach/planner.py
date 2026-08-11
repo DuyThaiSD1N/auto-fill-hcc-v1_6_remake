@@ -14,6 +14,7 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold, normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.khai_tu_dang_ky_lai.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -223,8 +224,14 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
 
 
 def _resolve_document_name(file: dict, doc_type: str, detected: dict, used: set[str]) -> str:
+    # Type ĐÃ BIẾT → dùng NHÃN CHUẨN theo type, KHÔNG lấy documentName tự do của LLM: tránh tờ khai bị
+    # LLM đặt nhầm "Trích lục khai tử" (do đọc trúng dòng "Giấy chứng tử/Trích lục khai tử số..." trong
+    # tờ khai). Chỉ 'other' mới lấy tên LLM/tên file vì không có nhãn cố định.
     fallback = _label_for_type(doc_type)
-    base = detected.get("documentName") or fallback or file.get("name") or ""
+    if doc_type == _DOC_OTHER:
+        base = detected.get("documentName") or file.get("name") or ""
+    else:
+        base = fallback
     return _unique_document_name(base, used, fallback)
 
 
@@ -253,18 +260,29 @@ def build_plan_items(
     used_names: set[str] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
+        ocr_text_by_index[idx] = text
         rule_type = _rule_doc_type(text)
         detected = llm_types.get(idx) or {}
         llm_type = detected.get("type") or ""
-        # Rule ưu tiên các tín hiệu rõ: tờ khai/CCCD không nên bị LLM đẩy vào STT2 sai,
-        # còn file gộp có thông tin chết vẫn vào STT2.
-        doc_type = rule_type or llm_type or _DOC_OTHER
+        # ƯU TIÊN LLM cho phân loại chung; rule là LƯỚI ĐỠ khi LLM rỗng/không hợp lệ.
+        doc_type = llm_type or rule_type or _DOC_OTHER
+        # CHỐT CHẶN tất định: tờ khai (paper_declaration) và CCCD (identity) rule bắt RẤT CHẮC và TUYỆT
+        # ĐỐI không được vào STT2 (chúng là thành phần hồ sơ MỚI). Ép theo rule, đè LLM — vì LLM hay gán
+        # nhầm tờ khai thành death_proof (tờ khai có dòng "Đã chết..." + tham chiếu "Trích lục khai tử số"),
+        # khiến tờ khai và trích lục thật đụng cùng ô STT2 → FE bỏ qua 1 file.
+        rule_override = rule_type in (_DOC_PAPER_DECLARATION, _DOC_IDENTITY)
+        if rule_override:
+            doc_type = rule_type
         if doc_type not in _ALLOWED_DOC_TYPES:
             doc_type = _DOC_OTHER
+        if doc_type == _DOC_IDENTITY:
+            identity_indexes.add(idx)
         document_name = _resolve_document_name(file, doc_type, detected, used_names)
         item = _build_item(file, idx, doc_type, document_name)
         attachments.append(item)
@@ -274,8 +292,11 @@ def build_plan_items(
             "documentName": document_name,
             "target": item["target"],
             "componentIndex": item["componentIndex"],
-            "source": "rule" if rule_type else ("llm" if llm_type else "default"),
+            "source": "rule" if rule_override else ("llm" if llm_type else ("rule" if rule_type else "default")),
         })
+
+    # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau) vào ô giấy tùy thân.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
 
     return attachments, classified
 

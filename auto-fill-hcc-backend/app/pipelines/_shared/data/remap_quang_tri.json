@@ -1,0 +1,1592 @@
+[
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Quảng Phong",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Quảng Long",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Ba Đồn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Hải",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Quảng Phúc",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Bắc Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Quảng Thọ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Bắc Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Quảng Thuận",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Bắc Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 2 (thành phố Đông Hà)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Nam Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 5",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Nam Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đông Lễ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Nam Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đông Lương",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Nam Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Quảng Trị"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Quảng Trị"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 3 (thị xã Quảng Trị)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Quảng Trị"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường An Đôn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Quảng Trị"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hải Lệ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Quảng Trị"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 1 (thành phố Đông Hà)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 3 (thành phố Đông Hà)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đông Giang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đông Thanh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đông Hà"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đức Ninh Đông",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đồng Hải",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đồng Phú",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Phú Hải",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Hải Thành",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Nam Lý",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Bảo Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đức Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Hới"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Bắc Nghĩa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Đồng Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Nghĩa Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thuận Đức",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Phường Bắc Lý",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lộc Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quang Phú",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Phường Đồng Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ba Tầng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã A Dơi"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Xy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã A Dơi"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã A Dơi",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã A Dơi"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Nguyên",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ba Lòng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ba Lòng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ba Lòng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thanh Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bắc Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hạ Mỹ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bắc Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Liên Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bắc Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Bắc Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bắc Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trung Hải",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Hải"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trung Giang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Hải"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trung Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Hải"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Bến Quan",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Quan"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Ô",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Quan"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Hà",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Quan"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Khê",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bến Quan"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hưng Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bố Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Cự Nẫm",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bố Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Vạn Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bố Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phú Định",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Bố Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Thủy (huyện Lệ Thủy)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Hồng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thanh Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Hồng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hồng Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Hồng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ngư Thủy Bắc",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Hồng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Cam Lộ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Thành",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Chính",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Nghĩa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cam Lộ"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Thái",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cồn Tiên"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Linh Trường",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cồn Tiên"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Gio An",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cồn Tiên"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Gio Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cồn Tiên"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Cửa Tùng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Tùng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Giang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Tùng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hiền Thành",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Tùng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Kim Thạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Tùng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Cửa Việt",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Việt"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Gio Mai",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Việt"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Gio Hải",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Cửa Việt"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Diên Sanh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Diên Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Trường",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Diên Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Định",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Diên Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trọng Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Dân Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Dân Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Dân Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Gio Linh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Gio Linh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Gio Quang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Gio Linh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Gio Mỹ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Gio Linh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phong Bình",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Gio Linh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Thủy (huyện Cam Lộ)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hiếu Giang"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Hiếu",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hiếu Giang"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Cam Tuyền",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hiếu Giang"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thanh An",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hiếu Giang"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Hoàn Lão",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hoàn Lão"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trung Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hoàn Lão"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đại Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hoàn Lão"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tây Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hoàn Lão"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hòa Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hoàn Lão"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Châu",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hòa Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Tùng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hòa Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Cảnh Dương",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hòa Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Krông Klang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Hiệp"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Mò Ó",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Hiệp"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Hiệp",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Hiệp"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Việt",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Lập"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Lập",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Lập"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Phùng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Linh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Phùng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Phùng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hướng Phùng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Phú (huyện Hải Lăng)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hải Lăng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Lâm",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hải Lăng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Thượng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Hải Lăng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Khe Sanh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Khe Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Hợp",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Khe Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Húc",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Khe Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Tân",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Khe Sanh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Kim Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Ngân"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ngân Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Ngân"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lâm Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Ngân"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thượng Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trung Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Minh Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hóa Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Điền"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hóa Hợp",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Kim Điền"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã A Bung",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã La Lay"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã A Ngo",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã La Lay"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Thành (huyện Hướng Hóa)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lao Bảo"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Long",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lao Bảo"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Lao Bảo",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lao Bảo"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thanh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lìa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thuận",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lìa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lìa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lìa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Nông trường Lệ Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Sơn Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hoa Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Kiến Giang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Liên Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Xuân Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã An Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phong Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lộc Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Lệ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Quy Đạt",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Minh Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Xuân Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Minh Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Yên Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Minh Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hồng Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Minh Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Dương",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Mỹ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải An",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Mỹ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Khê",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Mỹ Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Tân",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Trung",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Tiên",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Ba Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Cửa Việt"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Phước",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Cửa Việt"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Tân",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Cửa Việt"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Hòa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Lộc",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Văn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Minh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Hải Lăng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Phong",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Hải Lăng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Chánh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Hải Lăng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Nông trường Việt Trung",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Nhân Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lý Nam",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Nam Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ninh Châu"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Gia Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ninh Châu"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Duy Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ninh Châu"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ninh Châu"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Phong Nha",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phong Nha"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lâm Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phong Nha"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Xuân Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phong Nha"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phúc Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phong Nha"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Đông",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phú Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Phú",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phú Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Kim",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phú Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Hợp",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Phú Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Quán Hàu",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Võ Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hàm Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Phương",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Xuân",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Hưng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Quảng Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hưng Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Sen Ngư"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Sen Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Sen Ngư"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ngư Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Sen Ngư"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Thượng Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thượng Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Thượng Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Độ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Bình"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Thuận",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Bình"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Hòa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Bình"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Đại",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Bình"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Trung",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Cơ"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Tài",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Cơ"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Cơ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Cơ"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Thị trấn Ái Tử",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Phong"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Thành",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Phong"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Thượng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Triệu Phong"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Lưu",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trung Thuần"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Thạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trung Thuần"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Tiến",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trung Thuần"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Vạn Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã An Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Xuân Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hiền Ninh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trường Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Mai Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phú Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trường Xuân",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trường Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Trường Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phong Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ngư Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Mai Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tiến Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Châu Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Cao Quảng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Văn Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Hóa"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lâm Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Lâm"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thanh Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Lâm"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đồng Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thạch Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đức Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Phú"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thanh Thạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hương Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tuyên Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã A Vao",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tà Rụt"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Húc Nghì",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tà Rụt"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tà Rụt",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tà Rụt"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Phù Cảnh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Liên Trường",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Quảng Thanh",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Gianh"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Liên",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Lập"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Hướng Lộc",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Lập"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Lập",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Lập"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Dương Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Mỹ Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thái Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tân Thành",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Thái",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Hoàng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Trung Nam",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Hoàng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Hòa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Hoàng"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Tú",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Hoàng"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Hồ Xá",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Linh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Long",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Linh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Chấp",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Linh"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Lâm",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Sơn",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Vĩnh Thủy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Thủy"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Quy",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Định"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Hưng",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Định"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Bình",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Vĩnh Định"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Ái",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ái Tử"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Giang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ái Tử"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Xã Triệu Long",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Ái Tử"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Ba Nang",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đakrông"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Tà Long",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đakrông"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đakrông",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đakrông"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Hải Phú (huyện Bố Trạch)",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đông Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Sơn Lộc",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đông Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đức Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đông Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Đồng Trạch",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đông Trạch"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Thị trấn Đồng Lê",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đồng Lê"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Kim Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đồng Lê"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Lê Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đồng Lê"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Thuận Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đồng Lê"
+    },
+    {
+        "tinh_cu": "Quảng Bình",
+        "xa_cu": "Xã Sơn Hóa",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Xã Đồng Lê"
+    },
+    {
+        "tinh_cu": "Quảng Trị",
+        "xa_cu": "Huyện Cồn Cỏ",
+        "tinh_moi": "Quảng Trị",
+        "xa_moi": "Đặc khu Cồn Cỏ"
+    }
+]

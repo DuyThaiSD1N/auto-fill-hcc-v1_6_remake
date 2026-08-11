@@ -35,6 +35,7 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
   thẩm quyền cấp. Nhóm này phải là giấy tờ do cơ quan có thẩm quyền cấp, không phải giấy tự cam đoan.
 - personal_supporting_document: CCCD/CMND/hộ chiếu, giấy tờ chứng minh cư trú, bằng tốt nghiệp,
   giấy chứng nhận, chứng chỉ, học bạ, hồ sơ học tập, văn bản xác nhận của cơ quan/đơn vị về nội dung khai sinh.
+  Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có 'Đặc điểm nhận dạng', vân tay, 'CỤC TRƯỞNG CỤC CẢNH SÁT', dòng MRZ 'IDVNM...', KHÔNG có tiêu đề 'Căn cước công dân') — VẪN thuộc loại giấy tờ nhân thân này.
 - authorization: văn bản ủy quyền thực hiện đăng ký lại khai sinh.
 - paper_declaration: tờ khai đăng ký lại khai sinh bản giấy, có các trường tương tự mẫu form web.
 - commitment_statement: bản cam đoan/giấy cam đoan do người dân lập về việc mất/không còn/không có giấy khai sinh,

@@ -393,6 +393,61 @@ def _construction_subtype_value(values: dict) -> str | None:
     return _text(values.get("CongTrinh_Loai"))
 
 
+_DESIGN_LEAD_UI_RE = re.compile(
+    r"^data\[thietKeXayDung\]\[\d+\]\["
+    r"(?:boMonChuTriThietKe|hoVaTenChuTriThietKe|maSoChungChiHanhNgheChuTriThietKe)\]$"
+)
+
+
+def _ui_comp(name: str) -> str | None:
+    """Nhận diện field DataGrid động vì số dòng chủ trì không cố định."""
+    if _DESIGN_LEAD_UI_RE.fullmatch(name):
+        return "dom-input"
+    return UI_COMP_BY_NAME.get(name)
+
+
+def _design_leads(values: dict) -> list[dict[str, str | None]]:
+    """Chuẩn hóa và gộp dòng trùng từ danh sách chủ trì do LLM trả về."""
+    raw = values.get("ThietKe_ChuTri_DanhSach")
+    rows: list[dict[str, str | None]] = []
+    row_by_key: dict[tuple[str, str], dict[str, str | None]] = {}
+
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+            row = {
+                "boMon": _text(_pick(item.get("boMon"), item.get("bo_mon"), item.get("boMonThietKe"))),
+                "hoTen": _text(_pick(item.get("hoTen"), item.get("ho_ten"), item.get("hoVaTen"))),
+                "chungChi": _text(_pick(item.get("chungChi"), item.get("maSoChungChi"), item.get("soChungChi"))),
+            }
+            # Không tạo dòng Form.io vô danh vì sẽ sinh thêm một hàng bắt buộc nhưng không xác định được người.
+            if not row["hoTen"]:
+                continue
+            key = (_fold(row["boMon"]), _fold(row["hoTen"]))
+            existing = row_by_key.get(key)
+            if existing:
+                # Cùng bộ môn + cùng người ở nhiều giấy tờ: chỉ bổ sung phần còn thiếu, không nhân đôi dòng.
+                existing["chungChi"] = existing["chungChi"] or row["chungChi"]
+                continue
+            row_by_key[key] = row
+            rows.append(row)
+
+    if rows:
+        return rows
+
+    # Chỉ tương thích bộ field CHỦ TRÌ cũ; không được tự nâng CHỦ NHIỆM thành chủ trì một bộ môn.
+    legacy_name = _text(values.get("ThietKe_ChuTri_HoTen"))
+    legacy_certificate = _text(values.get("ThietKe_ChuTri_ChungChi"))
+    if legacy_name:
+        return [{
+            "boMon": _text(values.get("ThietKe_ChuTri_BoMon")),
+            "hoTen": legacy_name,
+            "chungChi": legacy_certificate,
+        }]
+    return []
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     _ = options or {}
     values = _by_name(fields)
@@ -407,7 +462,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         key = (name, occurrence)
         if key in seen or value in (None, "", {}, []):
             return
-        comp = UI_COMP_BY_NAME.get(name)
+        comp = _ui_comp(name)
         if not comp:
             return
         item = {"name": name, "comp": comp, "value": value}
@@ -524,9 +579,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[maSoDoanhNghiepLapThietKe]", _ma_so_doanh_nghiep(values.get("ThietKe_ToChuc_MaSo")))
         add("data[tenChuNhiemThietKe]", _text(values.get("ThietKe_ChuNhiem_HoTen")))
         add("data[maSoChungChiChuNhiemThietKe]", _text(values.get("ThietKe_ChuNhiem_ChungChi")))
-        add("data[thietKeXayDung][0][boMonChuTriThietKe]", _text(values.get("ThietKe_ChuTri_BoMon")) or "Kiến trúc")
-        add("data[thietKeXayDung][0][hoVaTenChuTriThietKe]", _text(_pick(values.get("ThietKe_ChuTri_HoTen"), values.get("ThietKe_ChuNhiem_HoTen"))))
-        add("data[thietKeXayDung][0][maSoChungChiHanhNgheChuTriThietKe]", _text(_pick(values.get("ThietKe_ChuTri_ChungChi"), values.get("ThietKe_ChuNhiem_ChungChi"))))
+        for index, lead in enumerate(_design_leads(values)):
+            add(f"data[thietKeXayDung][{index}][boMonChuTriThietKe]", lead.get("boMon"))
+            add(f"data[thietKeXayDung][{index}][hoVaTenChuTriThietKe]", lead.get("hoTen"))
+            add(
+                f"data[thietKeXayDung][{index}][maSoChungChiHanhNgheChuTriThietKe]",
+                lead.get("chungChi"),
+            )
     elif values.get("ThietKe_CaNhan_HoTen") or values.get("ThietKe_CaNhan_ChungChi"):
         add("data[toChucCaNhanLapThietKe]", "caNhan")
         add("data[tenCaNhanLapThietKe]", _text(values.get("ThietKe_CaNhan_HoTen")))

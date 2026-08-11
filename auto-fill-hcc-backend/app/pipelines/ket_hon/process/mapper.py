@@ -99,13 +99,18 @@ def enrich(fields: list[dict]) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, default: bool = False) -> None:
+        # default=True: giá trị suy diễn/mặc định (không đọc từ giấy tờ) — FE tô viền VÀNG
+        # để người dân tự rà và sửa nếu không đúng hoàn cảnh của mình.
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        item = {"name": name, "comp": comp, "value": value}
+        if default:
+            item["default"] = True
+        out.append(item)
         seen.add(name)
 
     def add_person(src: str, dst: str, declaration_area_name: str) -> None:
@@ -160,12 +165,18 @@ def enrich(fields: list[dict]) -> list[dict]:
                 # Người Việt Nam: radio "1" (Trong nước) + field TrongNuoc
                 add(f"NoiCuTru_{dst}", "1")
                 add(f"NoiCuTru_{dst}_TrongNuoc", area)
-        # Số lần kết hôn: chỉ điền khi tờ khai ghi rõ (không mặc định).
+        # Số lần kết hôn: ưu tiên tờ khai ghi rõ.
         so_lan = str(values.get(f"{src}_SoLanKetHon") or "").strip()
-        add(f"SoLanKetHon_{dst}", values.get(f"{src}_SoLanKetHon"))
-        # Kết hôn lần 1 -> tình trạng hôn nhân mặc định "chưa đăng ký kết hôn với ai".
-        if so_lan == "1":
-            add(f"LoaiTinhTrangHonNhan_{dst}", "Hiện tại chưa đăng ký kết hôn với ai")
+        if so_lan:
+            add(f"SoLanKetHon_{dst}", so_lan)
+            # Kết hôn lần 1 -> tình trạng hôn nhân "chưa đăng ký kết hôn với ai".
+            if so_lan == "1":
+                add(f"LoaiTinhTrangHonNhan_{dst}", "Hiện tại chưa đăng ký kết hôn với ai")
+        else:
+            # Chỉ có CCCD (không tờ khai ghi số lần) → coi như kết hôn LẦN ĐẦU + chưa có
+            # vợ/chồng — trường hợp phổ biến nhất; tô vàng để người tái hôn tự sửa.
+            add(f"SoLanKetHon_{dst}", "1", default=True)
+            add(f"LoaiTinhTrangHonNhan_{dst}", "Hiện tại chưa đăng ký kết hôn với ai", default=True)
 
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")

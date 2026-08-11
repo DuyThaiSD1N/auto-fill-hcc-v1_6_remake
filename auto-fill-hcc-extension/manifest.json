@@ -1,15 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý hỗ trợ người dân hoàn thiện thủ tục hành chính",
-  "version": "1.9",
+  "version": "1.11",
   "description": "Hỗ trợ người dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "unlimitedStorage",
-    "scripting"
-  ],
+  "permissions": ["activeTab", "storage", "unlimitedStorage", "scripting"],
   "host_permissions": [
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
@@ -47,48 +42,32 @@
         "https://dichvucong.bacninh.gov.vn/*",
         "https://dichvucong.lamdong.gov.vn/*",
         "https://dichvucong.bvhttdl.gov.vn/*",
-        "https://dichvucongnnmt.mae.gov.vn/*"
+        "https://dichvucongnnmt.mae.gov.vn/*",
+        "https://dichvucong.danang.gov.vn/*"
       ],
       "all_frames": true,
-      "js": [
-        "content/bbox-overlay.js",
-        "content.js",
-        "content/attach-mae.js",
-        "content/fill-angular.js",
-        "content/fill-liz.js",
-        "content/fill-legacy.js",
-        "content/fill-bacninh.js",
-        "content/procedures/business-registration.js",
-        "content/review.js"
-      ],
-      "css": [
-        "content/bbox-overlay.css"
-      ],
+      "js": ["content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/review.js"],
+      "css": ["content/bbox-overlay.css"],
       "run_at": "document_start"
     },
     {
-      "matches": [
-        "https://dichvucongnnmt.mae.gov.vn/*"
-      ],
+      "matches": ["https://dichvucongnnmt.mae.gov.vn/*"],
       "all_frames": true,
       "world": "MAIN",
-      "js": [
-        "content/attach-mae-main.js"
-      ],
+      "js": ["content/attach-mae-main.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://dichvucong.lamdong.gov.vn/*"],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": ["content/fill-lamdong-main.js"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": [
-        "popup.html",
-        "popup.css",
-        "popup.js",
-        "api/*",
-        "lib/*",
-        "vendor/*",
-        "assets/icons/*"
-      ],
+      "resources": ["popup.html", "popup.css", "popup.js", "changelog.js", "api/*", "lib/*", "vendor/*", "assets/icons/*"],
       "matches": [
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
@@ -103,7 +82,8 @@
         "https://dichvucong.bacninh.gov.vn/*",
         "https://dichvucong.lamdong.gov.vn/*",
         "https://dichvucong.bvhttdl.gov.vn/*",
-        "https://dichvucongnnmt.mae.gov.vn/*"
+        "https://dichvucongnnmt.mae.gov.vn/*",
+        "https://dichvucong.danang.gov.vn/*"
       ]
     }
   ]

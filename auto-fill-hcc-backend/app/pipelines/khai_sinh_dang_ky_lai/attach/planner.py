@@ -4,6 +4,7 @@ import unicodedata
 from typing import Any
 
 from app.config import settings
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -220,13 +221,17 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
     used_labels: set[str] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "title": ""}
         doc_type = detected["type"]
         text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+        ocr_text_by_index[idx] = text
 
         # CCCD/CMND → đặt tên "cccd_<tên chủ thẻ>" để mỗi thẻ là 1 thành phần riêng (cho phép up nhiều).
         if doc_type == "personal_supporting_document" and _is_cccd_text(text):
+            identity_indexes.add(idx)
             name = _extract_person_name(text)
             base_label = f"cccd_{name}" if name else f"cccd_{idx + 1}"
         else:
@@ -245,6 +250,9 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
             "target": item["target"],
             "componentIndex": item["componentIndex"],
         })
+
+    # Gộp CCCD 2 mặt CÙNG người thành 1 PDF (mặt trước→sau) vào ô giấy tùy thân.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
 
     return {
         "attachments": attachments,

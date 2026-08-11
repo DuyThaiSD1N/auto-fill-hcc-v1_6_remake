@@ -1,0 +1,3385 @@
+[
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Anh Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Các Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Các Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Các Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trường Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trường Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Đông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Trung",
+        "ghi_chu": "Một phần thị trấn Hà Trung, một phần xã Hà Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yến Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Lĩnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tống Sơn",
+        "ghi_chu": "Thị trấn Hà Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tống Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tống Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tống Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Long",
+        "ghi_chu": "Thị trấn Hà Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Bắc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hà Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Dương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoạt Giang",
+        "ghi_chu": "Gồm cả phần còn lại của thị trấn Hà Trung, xã Hà Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoạt Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoạt Giang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lĩnh Toại"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Châu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lĩnh Toại"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thái Lai",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lĩnh Toại"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lĩnh Toại",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lĩnh Toại"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đại Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tiến Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Triệu Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đồng Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cầu Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tuy Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hậu Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hậu Lộc",
+        "ghi_chu": "Thị trấn Hậu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thuần Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hậu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mỹ Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hậu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lộc Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hậu Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lộc (Hậu Lộc)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoa Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Liên Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoa Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quang Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoa Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoa Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hòa Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoa Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoa Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoa Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vạn Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vạn Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hưng Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vạn Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngư Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vạn Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đa Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vạn Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Sơn",
+        "ghi_chu": "Thị trấn Nga Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Yên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Hiệp",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thủy",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Văn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Thắng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Phượng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Thắng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thạch",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Thắng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga Thắng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hồ Vương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hồ Vương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Giáp",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hồ Vương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Liên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hồ Vương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thái",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Điền",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga An"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga An"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga An",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nga An"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Vịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ba Đình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ba Đình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nga Thiện",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ba Đình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ba Đình (Nga Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ba Đình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bút Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Hóa",
+        "ghi_chu": "Thị trấn Bút Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Đức",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Đồng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Đạo",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Hà",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Đạt",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Yến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Đông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Phụ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Thái",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Trạch",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Châu"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Phong",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Châu"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Lưu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Châu"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Châu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Châu"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Trinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Xuyên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Cát",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Quý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Kim",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Giang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Quỳ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Giang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Hợp",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Giang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hoằng Giang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Phong",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lưu Vệ",
+        "ghi_chu": "Thị trấn Tân Phong"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Đức",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lưu Vệ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Định",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lưu Vệ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Trạch",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Yên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Yên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Yên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Yên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Yên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Hợp",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Văn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Phúc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Nhân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Ninh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Lưu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Thái",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Thạch",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tiên Trang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Nham",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tiên Trang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tiên Trang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tiên Trang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Khê",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Chính",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quảng Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nông Cống",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nông Cống",
+        "ghi_chu": "Thị trấn Nông Cống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vạn Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nông Cống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vạn Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nông Cống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vạn Thiện",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nông Cống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Nghĩa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nông Cống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Khôi",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nông Cống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Thành (Nông Cống)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thắng Lợi"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tế Nông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thắng Lợi"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tế Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thắng Lợi"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tế Lợi",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thắng Lợi"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Phúc (Nông Cống)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Khang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoàng Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoàng Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Chính",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trường Văn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trường Văn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trường Văn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trường Văn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thăng Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thăng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thăng Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thăng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thăng Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thăng Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tượng Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tượng Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tượng Văn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tượng Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tượng Lĩnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tượng Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Công Liêm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Công Chính",
+        "ghi_chu": "Gồm một phần xã Thanh Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Mỹ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Công Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Công Chính",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Công Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Công Chính"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Phúc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Hóa",
+        "ghi_chu": "Gồm một phần thị trấn Thiệu Hóa, xã Thiệu Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Công",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Nguyên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Hóa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Duy",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Quang",
+        "ghi_chu": "Gồm một phần thị trấn Thiệu Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Hợp",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Quang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Vũ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hậu Hiền",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Toán",
+        "ghi_chu": "Thị trấn Hậu Hiền"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Chính",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Toán"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Toán"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Toán",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Toán"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Vận",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Trung",
+        "ghi_chu": "Gồm phần còn lại của thị trấn Thiệu Hóa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Lý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Viên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiệu Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quán Lào",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Định",
+        "ghi_chu": "Thị trấn Quán Lào"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Liên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Định"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Định"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Tăng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Định"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Trường"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Phong",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Trường"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Thái",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Trường"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Trường"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thống Nhất",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Phú",
+        "ghi_chu": "Thị trấn Thống Nhất"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Tâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Thọ (Yên Định)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quý Lộc",
+        "ghi_chu": "Thị trấn Yên Lâm, thị trấn Quý Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quý Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quý Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quý Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Hùng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Ninh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Hải (Yên Định)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Hòa",
+        "ghi_chu": "Gồm phần còn lại của xã Thiệu Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Công",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Định Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Xuân",
+        "ghi_chu": "Thị trấn Thọ Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Hồng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Phong",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nam Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bắc Lương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tây Hồ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Long"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Hòa (Thọ Xuân)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Diên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Sao Vàng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Sao Vàng",
+        "ghi_chu": "Thị trấn Sao Vàng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Sao Vàng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Sao Vàng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Sinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Sao Vàng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lam Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lam Sơn",
+        "ghi_chu": "Thị trấn Lam Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Bái",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lam Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Xương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lam Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Thiên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thuận Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Lập",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Xuân (Thọ Xuân)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Tín"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Tín"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Tín",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Tín"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lai",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lập",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Lộc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vĩnh Lộc",
+        "ghi_chu": "Thị trấn Vĩnh Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ninh Khang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vĩnh Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Phúc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vĩnh Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vĩnh Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vĩnh Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Quang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tây Đô"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Yên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tây Đô"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tây Đô"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tây Đô"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Hùng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Biện Thượng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Biện Thượng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Biện Thượng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vĩnh An",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Biện Thượng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Triệu Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Sơn",
+        "ghi_chu": "Thị trấn Triệu Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Sơn (Triệu Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Dân Lực",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Dân Lý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Dân Quyền",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Triệu Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bình Sơn (Triệu Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Cường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Ngọc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lộc (Triệu Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Dân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Thế",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thọ Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hợp Lý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hợp Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hợp Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Triệu Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hợp Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tiến Nông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã An Nông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Khuyến Nông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã An Nông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nông Trường",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã An Nông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "An Nông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã An Nông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nưa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Ninh",
+        "ghi_chu": "Thị trấn Nưa"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thái Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vân Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đồng Lợi",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đồng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đồng Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đồng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đồng Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đồng Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hồi Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hồi Xuân",
+        "ghi_chu": "Thị trấn Hồi Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Nghiêm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hồi Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nam Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nam Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nam Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nam Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nam Động",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiên Phủ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiên Phủ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiên Phủ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hiền Chung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hiền Kiệt"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hiền Kiệt",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hiền Kiệt"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Sơn (Quan Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Phú Lệ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Phú Lệ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Lệ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Phú Lệ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Sơn (Quan Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Thành (Quan Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Sơn Hà",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tam Lư",
+        "ghi_chu": "Một phần thị trấn Sơn Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tam Lư",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tam Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Sơn Lư",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tam Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Thượng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quan Sơn",
+        "ghi_chu": "Phần còn lại của thị trấn Sơn Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Sơn Lư",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quan Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Hạ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Hạ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Hạ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Hạ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lang Chánh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Linh Sơn",
+        "ghi_chu": "Thị trấn Lang Chánh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trí Nang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Linh Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Phúc (Lang Chánh)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đồng Lương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đồng Lương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Đồng Lương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tam Văn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Văn Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lâm Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Văn Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Giao Thiện",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Giao An"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Giao An",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Giao An"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cành Nàng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Bá Thước",
+        "ghi_chu": "Thị trấn Cành Nàng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ban Công",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Bá Thước"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hạ Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Bá Thước"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiết Kế",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiết Ống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiết Ống",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thiết Ống"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Kỳ Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Văn Nho"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Văn Nho",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Văn Nho"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Điền Thượng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Điền Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Điền Hạ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Điền Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Điền Quang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Điền Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ái Thượng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Điền Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Điền Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Điền Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Điền Lư",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Điền Lư"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lương Nội",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quý Lương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lương Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quý Lương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lương Ngoại",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quý Lương"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lũng Cao",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cổ Lũng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cổ Lũng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cổ Lũng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Sơn (Bá Thước)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Pù Luông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lũng Niêm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Pù Luông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Pù Luông"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Lặc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Lặc",
+        "ghi_chu": "Thị trấn Ngọc Lặc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mỹ Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Lặc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thúy Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Lặc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quang Trung (Ngọc Lặc)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đồng Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Lập",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Lập"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lộc Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Liên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cao Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Liên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Sơn (Ngọc Lặc)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Liên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Trung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Liên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Liên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Liên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Sơn (Ngọc Lặc)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Minh Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lam Sơn (Ngọc Lặc)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Minh Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cao Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Minh Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Minh Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Minh Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phùng Giáo",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nguyệt Ấn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vân Am",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nguyệt Ấn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nguyệt Ấn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nguyệt Ấn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phúc Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kiên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phùng Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kiên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Kiên Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kiên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Thạch"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Liên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Thạch"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Thạch"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Thạch",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Thạch"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phong Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Thủy",
+        "ghi_chu": "Thị trấn Phong Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Ngọc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Thủy"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Quý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Giang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Lương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Tú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Tâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Vân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Châu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Vân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Yên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Vân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Vân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Vân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cẩm Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Cẩm Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Kim Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kim Tân",
+        "ghi_chu": "Thị trấn Kim Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kim Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kim Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Định",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kim Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Trực",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kim Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Kim Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vân Du",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vân Du",
+        "ghi_chu": "Thị trấn Vân Du"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Công",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vân Du"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vân Du"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành An",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Trạo"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Trạo"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Tâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Trạo"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Trạo (Thạch Thành)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Ngọc Trạo"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Cẩm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thành Vinh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Mỹ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thành Vinh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Yên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thành Vinh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thành Vinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thành Vinh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Quảng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Tượng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Quảng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thạch Quảng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thạch Quảng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Cát",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Như Xuân",
+        "ghi_chu": "Thị trấn Yên Cát"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Như Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cát Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thượng Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cát Vân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thượng Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thượng Ninh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thượng Ninh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Hòa (Như Xuân)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bãi Trành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bình Lương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hóa Quỳ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hóa Quỳ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Hóa Quỳ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Phong"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Phong"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Phong",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Phong"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Sơn (Như Xuân)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Quân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Quân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Quân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Quân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Cán Khê",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Du"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phượng Nghi",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Du"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Du",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Du"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Nhuận",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Mậu Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mậu Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Mậu Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bến Sung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Như Thanh",
+        "ghi_chu": "Thị trấn Bến Sung; một phần xã Yên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Khang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Như Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Long",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Như Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Thọ (Như Thanh)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Như Thanh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Phúc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Thọ",
+        "ghi_chu": "Phần còn lại của xã Yên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Lạc",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Thọ (Như Thanh)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Kỳ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Kỳ",
+        "ghi_chu": "Phần còn lại của xã Thanh Tân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thanh Kỳ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thường Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thường Xuân",
+        "ghi_chu": "Thị trấn Thường Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thọ Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thường Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Phụng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thường Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Dương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thường Xuân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Cao",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Luận Thành",
+        "ghi_chu": "Một phần xã Luận Khê"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Luận Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Luận Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Luận Khê",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Luận Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Thành",
+        "ghi_chu": "Phần còn lại của xã Luận Khê"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Luận Khê",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lộc (Thường Xuân)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thắng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Thắng Lộc"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lẹ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Chinh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Chinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Chinh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mường Lát",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Mường Lát",
+        "ghi_chu": "Thị trấn Mường Lát"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Sơn (TP Thanh Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành",
+        "ghi_chu": "Một phần phường Đông Thọ, một phần phường An Hưng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lam Sơn (TP Thanh Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ba Đình (TP Thanh Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Trạo (TP Thanh Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Sơn (TP Thanh Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Thi",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Điện Biên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Hương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Vệ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "An Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hạc Thành"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Tâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Thành",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Đông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Cát",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang",
+        "ghi_chu": "Phần còn lại của phường An Hưng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Vinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Quang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Yên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Văn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Phú",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Nam",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "An Hưng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Quang"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Rừng Thông",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Thịnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Tân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Hoàng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Khê",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Ninh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Lĩnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Khánh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Vân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Châu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Giao",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đông Tiến"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thiệu Dương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hàm Rồng",
+        "ghi_chu": "Phần còn lại của phường Đông Thọ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Cương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hàm Rồng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nam Ngạn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hàm Rồng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hàm Rồng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hàm Rồng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hàm Rồng"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tào Xuyên",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nguyệt Viên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Long Anh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nguyệt Viên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Quang",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nguyệt Viên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hoằng Đại",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nguyệt Viên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bắc Sơn (TP Sầm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Tiến",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Cư",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trường Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Châu (Sầm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Thọ",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Vinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nam Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Minh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nam Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đại Hùng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nam Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quảng Giao",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nam Sầm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Đông Sơn (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Bỉm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lam Sơn (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Bỉm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ba Đình (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Bỉm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hà Vinh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Bỉm Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bắc Sơn (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quang Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Trạo (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quang Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Sơn (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quang Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quang Trung (TX Bỉm Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Quang Trung"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Sơn (TX Nghi Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Ngọc Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Thanh Thủy (TX Nghi Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Ngọc Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Châu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Ngọc Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Ninh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Ngọc Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải An",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tân Dân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tân Dân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tân Dân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ngọc Lĩnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tân Dân"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Định Hải (TX Nghi Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hải Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Ninh Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hải Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Lĩnh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hải Lĩnh"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Hòa",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tĩnh Gia"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bình Minh (TX Nghi Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tĩnh Gia"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tĩnh Gia"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Nhân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Tĩnh Gia"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nguyên Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đào Duy Từ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Lâm (TX Nghi Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Đào Duy Từ"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mai Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hải Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tĩnh Hải",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hải Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Bình",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Hải Bình"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trúc Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Trúc Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Sơn (TX Nghi Sơn)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Trúc Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Trúc Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tùng Lâm",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Trúc Lâm"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Thượng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nghi Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Hải Hà",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nghi Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nghi Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Phường Nghi Sơn"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Phú Xuân (huyện Quan Hóa)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Phú Xuân (huyện Quan Hóa)",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mường Chanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Mường Chanh",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Quang Chiểu",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Quang Chiểu",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tam Chung",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tam Chung",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Pù Nhi",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Pù Nhi",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Nhi Sơn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Nhi Sơn",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mường Lý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Mường Lý",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Lý",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Lý",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Trung Sơn (huyện Mường Lát)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Trung Sơn (huyện Mường Lát)",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Na Mèo",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Na Mèo",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Sơn Thủy",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Sơn Thủy",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Sơn Điện",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Sơn Điện",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Mường Mìn",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Mường Mìn",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Tam Thanh",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Tam Thanh",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Khương",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Khương",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Thắng",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Thắng",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Xuân Thái",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Xuân Thái",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Bát Mọt",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Bát Mọt",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Yên Nhân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Yên Nhân",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Lương Sơn (huyện Thường Xuân)",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Lương Sơn (huyện Thường Xuân)",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    },
+    {
+        "tinh_cu": "Thanh Hóa",
+        "xa_cu": "Vạn Xuân",
+        "tinh_moi": "Thanh Hóa",
+        "xa_moi": "Xã Vạn Xuân",
+        "ghi_chu": "Không thực hiện sắp xếp, giữ nguyên"
+    }
+]

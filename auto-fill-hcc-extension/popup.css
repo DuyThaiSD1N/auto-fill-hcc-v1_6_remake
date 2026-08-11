@@ -264,12 +264,17 @@ button {
   color: #fff;
   border: none;
   border-radius: 4px;
+  /* <button> KHÔNG tự kế thừa font-family (mặc định form control) → phải ép inherit, nếu không nút
+     rơi về font hệ thống, lệch hẳn với chữ panel (system-ui). Đồng bộ font mọi nút. */
+  font-family: inherit;
   font-size: 14px;
   cursor: pointer;
 }
 
 button:hover { background: #0d47a1; }
 button:disabled { background: #9e9e9e; cursor: not-allowed; }
+/* Đồng bộ font TOÀN panel: input/select/textarea cũng không tự kế thừa font-family (như button). */
+input, select, textarea { font-family: inherit; }
 
 .secondary-btn {
   margin-top: 6px;
@@ -503,6 +508,7 @@ button:disabled { background: #9e9e9e; cursor: not-allowed; }
 
 .status.ok { color: #2e7d32; }
 .status.err { color: #c62828; }
+.status.warn { color: #b26a00; }
 .status.info { color: #1565c0; }
 
 /* ===== Mã hỗ trợ: chip copy request_id để cán bộ gửi hỗ trợ khi báo lỗi ===== */
@@ -528,6 +534,8 @@ button:disabled { background: #9e9e9e; cursor: not-allowed; }
   font-weight: 600;
   color: #33383f;
   letter-spacing: .2px;
+  user-select: text;   /* cho bôi đen chọn tay khi copy tự động thất bại */
+  -webkit-user-select: text;
 }
 .support-code-action { color: #1565c0; margin-left: 2px; }
 .support-code.copied {
@@ -647,11 +655,16 @@ button:disabled { background: #9e9e9e; cursor: not-allowed; }
   background: linear-gradient(135deg, #eff6ff, #f8fbff);
   border-bottom: 1px solid #dce6f2;
 }
-.release-pop-title { font-size: 14px; font-weight: 700; color: #164f90; }
+.release-pop-title { font-size: 14px; font-weight: 700; color: #164f90; white-space: nowrap; }
+/* flex:0 0 auto + kích thước cố định để HỦY "width:100%" thừa hưởng từ rule button{} — nếu không nút X
+   chiếm hết chiều ngang, đẩy tiêu đề co xuống 2 dòng và nút to bất thường. */
 .release-close {
+  flex: 0 0 auto; width: 22px; height: 22px;
+  display: grid; place-items: center;
   border: 0; background: transparent; color: #667587;
-  font-size: 20px; line-height: 1; cursor: pointer; padding: 0 2px;
+  font-size: 16px; line-height: 1; cursor: pointer; padding: 0; border-radius: 6px;
 }
+.release-close:hover { background: rgba(20, 48, 79, .08); color: #33445a; }
 .release-list { max-height: 340px; overflow-y: auto; padding: 6px 12px 12px; }
 .release {
   position: relative;
@@ -676,3 +689,63 @@ button:disabled { background: #9e9e9e; cursor: not-allowed; }
 .release ul { margin: 0; padding-left: 16px; color: #46566a; font-size: 12.5px; line-height: 1.5; }
 .release li + li { margin-top: 3px; }
 .release li::marker { color: #1565c0; }
+
+/* ================= BƯỚC CHẤP THUẬN XỬ LÝ DỮ LIỆU (consent) ================= */
+:root{ --cs-blue:#2f5ecb; --cs-blue-dark:#244fb0; --cs-blue-soft:#e9f1fc; --cs-blue-soft-border:#c8dcf6; }
+.cs-view{ display:flex; flex-direction:column; }
+/* QUAN TRỌNG: display:flex ở trên đè lên [hidden] mặc định → phải cho [hidden] thắng lại,
+   nếu không cả 3 view consent/result/legal cùng hiện lúc mở (tuồn hết ra). */
+.cs-view[hidden]{ display:none !important; }
+.cs-scroll{ overflow:auto; max-height:340px; padding:4px 2px 2px; }
+.cs-badge{ display:inline-block; padding:3px 9px; border-radius:999px; background:var(--cs-blue); color:#fff; font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; margin-bottom:8px; }
+.cs-title{ margin:0 0 8px; font-size:15px; color:#193a72; line-height:1.32; font-weight:800; }
+.cs-lead{ margin:0 0 10px; font-size:12px; line-height:1.5; color:#33445a; }
+.cs-lead b{ color:var(--cs-blue-dark); }
+.cs-list-title{ margin:0 0 5px; font-size:11.5px; font-weight:800; color:#2a3a4b; }
+.cs-doc-read{ list-style:none; margin:0 0 10px; padding:0; display:grid; gap:5px; }
+.cs-doc-read li{ position:relative; padding-left:21px; font-size:11.5px; line-height:1.4; color:#3b4d60; }
+.cs-doc-read li::before{ content:"✓"; position:absolute; left:0; top:1px; width:14px; height:14px; display:grid; place-items:center; background:var(--cs-blue); color:#fff; border-radius:999px; font-size:8px; font-weight:900; }
+.cs-note{ padding:8px 10px; border-radius:8px; font-size:11px; line-height:1.45; margin:0 0 8px; }
+.cs-note.cs-scope{ background:#f2f6fb; color:#3d5266; }
+.cs-note.cs-purpose{ background:#eaf4ee; color:#245c3f; }
+.cs-note.cs-purpose b{ color:#12603f; }
+.cs-legal-link{ width:100%; padding:8px; border:1px solid var(--cs-blue-soft-border); border-radius:8px; background:#fff; color:var(--cs-blue); font-weight:700; font-size:12px; cursor:pointer; }
+.cs-legal-link:hover{ background:var(--cs-blue-soft); }
+
+.cs-actions{ border-top:1px solid #dbe3ec; background:#fbfdff; padding:9px 2px 4px; margin-top:8px; }
+.cs-select-all{ display:flex; justify-content:flex-end; margin-bottom:6px; }
+.cs-select-all button{ padding:4px 10px; border:1px solid var(--cs-blue-soft-border); border-radius:7px; background:#fff; color:var(--cs-blue); font-size:11.5px; font-weight:700; cursor:pointer; }
+.cs-select-all button:disabled{ opacity:.55; cursor:default; }
+.cs-check{ display:grid; grid-template-columns:auto 1fr; gap:8px; align-items:start; padding:8px 9px; border:1px solid #dbe3ec; border-radius:9px; margin-bottom:7px; font-size:11px; line-height:1.4; color:#2f4152; cursor:pointer; background:#fff; }
+.cs-check:has(input:checked){ background:#eef5fd; border-color:#9cc2f0; }
+.cs-check input{ width:17px; height:17px; margin:0; accent-color:var(--cs-blue); }
+.cs-check-opt{ background:#fbfcfe; }
+.cs-opt-tag{ display:inline-block; margin-left:2px; padding:1px 6px; border-radius:999px; background:#eef1f6; color:#6b7684; font-size:9.5px; font-style:normal; font-weight:700; vertical-align:middle; }
+.cs-btns{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:3px; }
+.cs-btns button{ padding:11px 8px; border-radius:9px; font-weight:800; font-size:12.5px; border:1px solid transparent; cursor:pointer; }
+.cs-btn-blue{ background:var(--cs-blue); color:#fff; }
+.cs-btn-blue:hover:not(:disabled){ background:var(--cs-blue-dark); }
+.cs-btn-blue:disabled{ opacity:.5; cursor:default; }
+/* Dùng ".cs-btns .cs-btn-outline" (2 class) để THẮNG ".cs-btns button" (1 class + 1 element) — nếu để
+   ".cs-btn-outline" trần thì viền bị ".cs-btns button{border:transparent}" đè, nút mất khung → trông trơn.
+   Kiểu: nền xám nhạt + viền rõ (nút phụ chắc chắn, không chìm, không lệch tông xanh của panel). */
+.cs-btns .cs-btn-outline{ background:#f4f6f9; border:1px solid #cbd5e1; color:#3a4a5c; }
+.cs-btns .cs-btn-outline:hover{ background:#e9edf3; border-color:#b6c2d2; }
+.cs-audit{ margin-top:8px; color:#7c8b99; font-size:10.5px; line-height:1.4; text-align:center; }
+
+/* kết quả + footer nút về */
+.cs-view-foot{ border-top:1px solid #dbe3ec; padding-top:9px; margin-top:8px; }
+.cs-view-foot .cs-btn-blue{ width:100%; padding:12px; border:0; }
+.cs-msg{ padding:12px; border-radius:10px; font-size:13px; line-height:1.55; margin-bottom:11px; }
+.cs-msg.ok{ background:#eaf7ef; border:1px solid #b7e2c8; color:#1a6b43; }
+.cs-msg.info{ background:var(--cs-blue-soft); border:1px solid var(--cs-blue-soft-border); color:#234a86; }
+.cs-msg.warn{ background:#fff7e6; border:1px solid #f0dca6; color:#7a5600; }
+.cs-msg b{ font-weight:800; }
+
+/* view pháp luật (full-panel) */
+.cs-legal .cs-tool-badge{ display:inline-block; padding:4px 9px; border-radius:999px; background:var(--cs-blue); color:#fff; font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em; }
+.cs-legal-h2{ margin:8px 0 6px; font-size:16px; color:#123d49; }
+.cs-legal-source{ margin:0 0 12px; padding:9px 11px; background:#f3f7f8; border-left:4px solid var(--cs-blue); border-radius:8px; color:#45616d; font-size:12px; line-height:1.45; }
+.cs-legal-h3{ margin:0 0 10px; color:#123d49; font-size:14px; line-height:1.4; }
+.cs-legal-clause{ margin:12px 0 6px; color:#193f49; font-weight:800; font-size:12.5px; }
+.cs-legal-point{ margin:5px 0; padding-left:16px; text-indent:-16px; font-size:12px; line-height:1.55; color:#33454f; }

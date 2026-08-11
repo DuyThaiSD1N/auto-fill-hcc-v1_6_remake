@@ -21,7 +21,7 @@ Với từng file, đọc tên file và OCR để xác định:
 - birth_proof: giấy chứng sinh hoặc giấy tờ thay thế chứng minh việc sinh.
 - birth_declaration: tờ khai đăng ký khai sinh bản giấy.
 - recognition_declaration: tờ khai đăng ký nhận cha, mẹ, con bản giấy.
-- identity: CCCD, căn cước, CMND, hộ chiếu hoặc giấy tờ tùy thân.
+- identity: CCCD, căn cước, CMND, hộ chiếu hoặc giấy tờ tùy thân. Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có 'Đặc điểm nhận dạng', vân tay, 'CỤC TRƯỞNG CỤC CẢNH SÁT', dòng MRZ 'IDVNM...', KHÔNG có tiêu đề 'Căn cước công dân') — VẪN là identity.
 - marital_status_evidence: giấy chứng tử, trích lục khai tử, bản án/quyết định ly hôn hoặc giấy tờ chứng minh tình trạng hôn nhân.
 - witness_commitment: văn bản cam đoan quan hệ cha, mẹ, con có người làm chứng.
 - authorization: văn bản hoặc giấy ủy quyền.

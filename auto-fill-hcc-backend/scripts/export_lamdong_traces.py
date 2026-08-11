@@ -7,16 +7,34 @@ Chạy:
   .venv/bin/python export_lamdong_traces.py > lamdong_traces.json
 Nếu không set MONGO_URI, script tự dựng từ MONGO_HOST/PORT/USERNAME/PASSWORD/AUTH_SOURCE.
 Đổi/thêm tỉnh: set TINH="A, B, C" (phân tách bằng dấu phẩy) hoặc sửa DEFAULT_TINH.
+
+Lọc theo NGÀY (tùy chọn, theo giờ Việt Nam UTC+7, bao trọn ngày):
+  FROM_DATE=2026-08-01 TO_DATE=2026-08-06   # nhận YYYY-MM-DD hoặc DD/MM/YYYY; đặt 1 trong 2 cũng được.
 """
 import json
 import os
 import sys
 import unicodedata
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote_plus
 
 import pymongo
 
 DEFAULT_TINH = "Lai Châu, Bắc Ninh, Lâm Đồng"
+VN_TZ = timezone(timedelta(hours=7))  # Việt Nam UTC+7 (không có DST) — người dùng nhập ngày theo giờ này
+
+
+def parse_date(value: str | None) -> datetime | None:
+    """Chuỗi ngày (giờ VN) -> datetime aware tại 00:00 +07:00. Rỗng -> None; sai định dạng -> thoát."""
+    s = str(value or "").strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(s, fmt).replace(tzinfo=VN_TZ)
+        except ValueError:
+            continue
+    raise SystemExit(f"[!] Ngày không hợp lệ: {s!r}. Dùng YYYY-MM-DD hoặc DD/MM/YYYY.")
 
 
 def fold(s: str) -> str:
@@ -40,6 +58,15 @@ def build_uri() -> str:
 def main() -> None:
     targets = {fold(t) for t in os.getenv("TINH", DEFAULT_TINH).split(",") if fold(t)}
     db_name = os.getenv("MONGO_DB", "autofill_hcc")
+    # Lọc ngày (giờ VN → UTC-aware cho query; created_at lưu UTC). TO bao TRỌN ngày: dùng < (TO + 1 ngày).
+    from_dt = parse_date(os.getenv("FROM_DATE") or os.getenv("FROM"))
+    to_dt = parse_date(os.getenv("TO_DATE") or os.getenv("TO"))
+    date_query: dict = {}
+    if from_dt:
+        date_query["$gte"] = from_dt
+    if to_dt:
+        date_query["$lt"] = to_dt + timedelta(days=1)
+
     client = pymongo.MongoClient(build_uri(), serverSelectionTimeoutMS=5000)
     db = client[db_name]
 
@@ -55,8 +82,11 @@ def main() -> None:
     # 2) Traces của các user đó. user_id trong trace là chuỗi str(ObjectId).
     seen: dict[str, dict] = {}  # request_id -> {id, tinh} (dedupe theo request_id)
     trace_count = 0
+    trace_filter: dict = {"user_id": {"$in": list(tinh_by_uid)}}
+    if date_query:
+        trace_filter["created_at"] = date_query
     cur = db.traces.find(
-        {"user_id": {"$in": list(tinh_by_uid)}},
+        trace_filter,
         {"request_id": 1, "user_id": 1, "created_at": 1},
     )
     for t in cur:
@@ -72,7 +102,10 @@ def main() -> None:
     by_tinh: dict[str, int] = {}
     for r in result:
         by_tinh[r["tinh"]] = by_tinh.get(r["tinh"], 0) + 1
-    print(f"[i] DB={db_name} | tỉnh lọc={sorted(targets)} | users khớp={len(tinh_by_uid)} | "
+    date_desc = "tất cả" if not date_query else (
+        f"{from_dt.date() if from_dt else '...'} → {to_dt.date() if to_dt else '...'} (giờ VN)"
+    )
+    print(f"[i] DB={db_name} | tỉnh lọc={sorted(targets)} | ngày={date_desc} | users khớp={len(tinh_by_uid)} | "
           f"trace docs={trace_count} | request_id duy nhất={len(result)}", file=sys.stderr)
     print(f"[i] theo tỉnh: {by_tinh}", file=sys.stderr)
     print("[i] distinct tinh trong users:", file=sys.stderr)

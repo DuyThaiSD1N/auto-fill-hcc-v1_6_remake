@@ -1,8 +1,9 @@
 """Đính kèm bước "Thành phần hồ sơ" cho [Lâm Đồng] đăng ký đất đai cấp GCN lần đầu.
 
 Cổng Lâm Đồng (Form.io/Angular apply-online) — CÙNG nền tảng đính kèm GPXD/đính chính lamdong.
-KHÁC: mỗi NHÓM gộp NHIỀU file → 1 PDF (FE `applyMergeGroups` theo `sourceFileIndexes`), rồi bơm
-file gộp vào TRIGGER ĐẦU của nhóm (khớp theo slotIndex — FE fallback vị trí, không cần sửa extension).
+Mỗi ô "Chọn tệp tin" NHẬN NHIỀU FILE → KHÔNG gộp PDF: phát 1 attachment/file, các file cùng slotKey
+được FE (`attachFilesByFixedSlot`) tự gom rồi bơm cả loạt vào đúng ô (khớp theo slotIndex — FE fallback
+vị trí, không cần sửa extension). Tên hiển thị = tên giấy tờ thật của từng file.
 
 4 nhóm cố định (slotIndex = trigger 'Chọn tệp tin' đầu tiên của nhóm trên form):
   slot 0  "Đơn đăng ký đất đai, tài sản gắn liền với đất" ← Đơn Mẫu 15 + CCCD + Giấy ủy quyền.
@@ -242,27 +243,27 @@ def build_plan_items(
         entries = sorted(groups[group_key], key=lambda e: (_TYPE_PRIORITY.get(e["docType"], 99), e["idx"]))
         if not entries:
             continue
-        source_indexes = [e["idx"] for e in entries]
-        # documentName nhóm: ưu tiên nhãn giấy tờ chính (entry đầu) để hiển thị dễ hiểu.
-        head = entries[0]
-        document_name = _label_for_type(head["docType"], head.get("title", "")) if len(entries) == 1 else meta["label"]
-        attachments.append({
-            "fileIndex": source_indexes[0],
-            "sourceFileIndexes": source_indexes,   # FE gộp các file này thành 1 PDF theo thứ tự
-            "fileName": str(files[source_indexes[0]].get("name") or f"file-{source_indexes[0] + 1}"),
-            "documentName": document_name,
-            "componentName": meta["componentName"],
-            "target": "fixed-slot",
-            "needsAddComponent": False,
-            "detectedType": document_name,
-            "slotKey": group_key,
-            "slotIndex": meta["slotIndex"],
-            "slotName": meta["componentName"],
-        })
+        # KHÔNG GỘP: mỗi file 1 attachment riêng, cùng slotKey → FE (attachFilesByFixedSlot) tự gom mọi
+        # file cùng slotKey rồi bơm cả loạt vào 1 ô (input multiple). Nhờ vậy tên hiển thị = tên giấy
+        # tờ THẬT của từng file (không còn nhãn nhóm cứng "Đơn đăng ký đất đai + CCCD" gây hiểu nhầm).
         for e in entries:
+            document_name = _label_for_type(e["docType"], e.get("title", ""))
+            attachments.append({
+                "fileIndex": e["idx"],
+                "sourceFileIndexes": [e["idx"]],   # chỉ chính nó → FE KHÔNG gộp PDF
+                "fileName": e["fileName"],
+                "documentName": document_name,
+                "componentName": meta["componentName"],
+                "target": "fixed-slot",
+                "needsAddComponent": False,
+                "detectedType": document_name,
+                "slotKey": group_key,
+                "slotIndex": meta["slotIndex"],
+                "slotName": meta["componentName"],
+            })
             classified.append({
                 "fileName": e["fileName"], "docType": e["docType"],
-                "documentName": _label_for_type(e["docType"], e.get("title", "")),
+                "documentName": document_name,
                 "group": group_key, "slotIndex": meta["slotIndex"], "source": e["source"],
             })
 

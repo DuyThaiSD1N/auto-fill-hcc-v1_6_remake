@@ -1,24 +1,37 @@
 // apiCall: gắn Bearer token + tự refresh khi 401. apiJson: parse JSON + ném lỗi chuẩn.
 //
-// Mọi request tới BE đi QUA background service worker để tránh mixed-content blocking
-// (popup được nhúng iframe trên trang HTTPS, fetch http:// bị auto-upgrade → SSL error).
-// Background SW chạy ở context extension thuần, fetch http:// bình thường.
+// BE đã là HTTPS (xem config.js) + có host_permissions → popup/iframe (context extension) FETCH THẲNG
+// tới BE, KHÔNG qua chrome.runtime.sendMessage. Lý do: sendMessage có trần cứng 64MiB/message, hồ sơ
+// nhiều file base64 nặng (vd biến động đất đai) vượt ngưỡng → "Message exceeded maximum allowed size".
+// Fetch trực tiếp không có giới hạn này. Giữ background SW làm DỰ PHÒNG (chỉ khi fetch thẳng bị chặn,
+// vd môi trường cũ BE còn http:// gây mixed-content).
 
-function backendFetch(path, init = {}) {
+async function backendFetch(path, init = {}) {
+  let bodyStr = init.body;
+  if (bodyStr != null && typeof bodyStr !== "string") {
+    try { bodyStr = JSON.stringify(bodyStr); } catch (_) { bodyStr = String(bodyStr); }
+  }
+  const method = init.method || "GET";
+  const headers = init.headers || {};
+  const noBody = method === "GET" || method === "HEAD";
+  try {
+    const res = await fetch(BACKEND_URL + path, {
+      method,
+      headers,
+      body: noBody ? undefined : (bodyStr ?? undefined),
+    });
+    // fetch chỉ throw khi LỖI MẠNG; status lỗi (401/5xx) vẫn trả res bình thường để apiCall xử lý.
+    return _makeRes(res.ok, res.status, await res.text());
+  } catch (_) {
+    // Fetch thẳng thất bại (mạng/mixed-content) → quay lại đường background SW cũ.
+    return _backendFetchViaBackground(path, method, headers, bodyStr);
+  }
+}
+
+function _backendFetchViaBackground(path, method, headers, bodyStr) {
   return new Promise((resolve) => {
-    let bodyStr = init.body;
-    // chrome.runtime.sendMessage chỉ serialize được JSON-friendly value; body luôn dạng string.
-    if (bodyStr != null && typeof bodyStr !== "string") {
-      try { bodyStr = JSON.stringify(bodyStr); } catch (_) { bodyStr = String(bodyStr); }
-    }
     chrome.runtime.sendMessage(
-      {
-        action: "apiFetch",
-        url: BACKEND_URL + path,
-        method: init.method || "GET",
-        headers: init.headers || {},
-        body: bodyStr ?? null,
-      },
+      { action: "apiFetch", url: BACKEND_URL + path, method, headers, body: bodyStr ?? null },
       (res) => {
         const errMsg = chrome.runtime.lastError?.message;
         if (errMsg || !res) {

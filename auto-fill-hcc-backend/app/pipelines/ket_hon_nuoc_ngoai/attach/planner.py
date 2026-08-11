@@ -13,6 +13,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -169,9 +170,15 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     classified: list[dict] = []
     used_names: set[str] = set()
     used_slots: set[int] = set()  # ô cố định đã bị chiếm
+    # Người dân hay chụp CCCD 2 mặt thành 2 file rời → gom CÙNG NGƯỜI thành 1 PDF (helper hậu xử lý).
+    ocr_text_by_index: dict[int, str] = {}
+    identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "documentName": ""}
         doc_type = detected["type"]
+        ocr_text_by_index[idx] = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+        if doc_type == "identity_vn":  # CCCD/CMND công dân VN → ứng viên gộp 2 mặt
+            identity_indexes.add(idx)
         base_name = detected.get("documentName") or _LABELS.get(doc_type, _LABELS["other"]) or file.get("name")
         document_name = _unique_document_name(base_name, used_names, _LABELS.get(doc_type, _LABELS["other"]))
 
@@ -188,6 +195,9 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             "fileName": file.get("name"), "type": doc_type, "documentName": document_name,
             "target": item["target"], "componentIndex": item["componentIndex"],
         })
+
+    # Gộp CCCD 2 mặt cùng người → 1 item mang sourceFileIndexes (FE ghép pdf-lib); 2 người khác KHÔNG gộp.
+    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
 
     return {
         "attachments": attachments,

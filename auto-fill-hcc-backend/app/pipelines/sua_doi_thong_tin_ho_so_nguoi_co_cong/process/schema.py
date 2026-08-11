@@ -51,11 +51,14 @@ FIELDS: list[dict] = [
     {"name": "Don_ThuocDienNCC", "desc": "Người khai thuộc diện người có công nào / quan hệ với người có công — "
         "dòng 'Thuộc diện người có công' của Đơn hoặc 'Mối quan hệ với liệt sĩ' của Bản khai. Vd 'Con đẻ của "
         "liệt sĩ Huỳnh Kim Khoa'. Chép nguyên văn."},
-    {"name": "Don_ThongTinHienTai", "desc": "THÔNG TIN ĐANG GHI trong hồ sơ (thông tin HIỆN TẠI, có thể sai) — "
-        "dòng 'Thông tin đang ghi trong hồ sơ' của Đơn Mẫu 26 / Công văn Sở Nội vụ. Chép NGUYÊN VĂN toàn bộ, "
-        "giữ nguyên tên/năm sinh liệt kê, không tóm tắt."},
-    {"name": "Don_ThongTinDeNghiSua", "desc": "THÔNG TIN ĐỀ NGHỊ SỬA ĐỔI, BỔ SUNG (thông tin ĐÚNG) — dòng "
-        "'Thông tin đề nghị sửa đổi, bổ sung' của Đơn Mẫu 26. Chép NGUYÊN VĂN toàn bộ, không tóm tắt."},
+    {"name": "Don_ThongTinHienTai", "desc": "THÔNG TIN ĐANG GHI trong hồ sơ (HIỆN TẠI, có thể sai) — mục "
+        "'a. Thông tin đang ghi trong hồ sơ' của TỜ TRÌNH, hoặc 'Thông tin đang ghi' của Đơn Mẫu 26 / Công "
+        "văn Sở Nội vụ. Lấy nguồn ĐẦY ĐỦ NHẤT; đối chiếu chéo các giấy để sửa lỗi OCR tên/năm. Giữ đủ danh "
+        "sách mỗi người 1 dòng, không tóm tắt."},
+    {"name": "Don_ThongTinDeNghiSua", "desc": "THÔNG TIN ĐỀ NGHỊ SỬA ĐỔI, BỔ SUNG (ĐÚNG) — mục 'b. Thông tin "
+        "đề nghị đính chính' của TỜ TRÌNH (lấy vế SAU 'đính chính thành'), hoặc 'Thông tin đề nghị sửa đổi, "
+        "bổ sung' của Đơn. ƯU TIÊN bản có ĐỦ NGÀY/THÁNG/NĂM (vd '10/01/1954')"
+        ". TUYỆT ĐỐI LẤY TẤT CẢ THÔNG TIN, Không cắt ngắn, không rút gọn."},
 
     # === NGƯỜI NỘP HỒ SƠ (Phần I) — khi NỘP THAY thì KHÁC người khai đơn. Chỉ trích khi hồ sơ CÓ CCCD
     # người nộp (xem <nguoi_nop_context>). Tự nộp → để trống, mapper tự lấy người khai cho Phần I. ===
