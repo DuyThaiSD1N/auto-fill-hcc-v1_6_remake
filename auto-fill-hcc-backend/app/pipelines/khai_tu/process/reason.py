@@ -45,6 +45,11 @@ QUYẾT ĐỊNH THEO ĐÚNG THỨ TỰ:
 3. CASE ĐÚNG 2 CCCD/CMND: gán thẻ khớp người yêu cầu (đã chốt ở bước 1 hoặc 2) cho người yêu cầu và
    thẻ còn lại cho người chết. Không cần thêm tờ khai/giấy báo tử để xác nhận thẻ còn lại và không được
    đưa thẻ còn lại vào <giay_to_khong_thuoc_hai_vai>.
+3b. QUY TẮC TUỔI — chỉ khi hồ sơ CHỈ có đúng 2 thẻ CCCD/CMND, không có tờ khai/giấy báo tử và KHÔNG
+   thẻ nào khớp requester_context: người có NĂM SINH NHỎ HƠN (sinh trước, GIÀ HƠN) là NGƯỜI ĐƯỢC
+   ĐĂNG KÝ KHAI TỬ; người sinh sau (TRẺ HƠN) là NGƯỜI YÊU CẦU. Ví dụ thẻ A sinh 1985 và thẻ B sinh
+   1994: 1985 < 1994 nên A già hơn → A là người chết, B là người yêu cầu. Khi <quy_tac_tuoi_hai_the>
+   xuất hiện trong phần hint, dùng đúng kết luận đã tính sẵn ở đó, không tự so lại.
 4. Giấy báo tử/trích lục/công văn ghi "đăng ký khai tử cho ông/bà..." cũng xác định người chết.
 5. Chỉ khi không thuộc case đúng 2 thẻ, CCCD/CMND không khớp người yêu cầu và cũng không khớp người
    chết mới được đưa vào <giay_to_khong_thuoc_hai_vai>. Thẻ trùng requester_context nhưng KHÔNG phải
@@ -129,6 +134,98 @@ def _requester_context(options: dict | None) -> tuple[str, str]:
     )
 
 
+def _birth_sort_key(value: str) -> tuple[int, int, int] | None:
+    """Ngày sinh -> khóa so sánh tuổi. Chỉ có năm thì coi như 01/01 của năm đó."""
+    folded = _fold(value)
+    match = re.search(r"(?<!\d)(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})(?!\d)", folded)
+    if match:
+        day, month, year = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            return (year, month, day)
+    year_match = re.search(r"(?<!\d)(1[89]\d{2}|20\d{2})(?!\d)", folded)
+    return (int(year_match.group(1)), 1, 1) if year_match else None
+
+
+def _card_birth_date(text: str) -> tuple[int, int, int] | None:
+    """Ngày sinh in trên thẻ CCCD/CMND ("Ngày sinh / Date of birth: 20/05/1994")."""
+    folded = _fold(text)
+    match = re.search(
+        r"(?:ngay sinh|date of birth|ngay, thang, nam sinh)[^\d]{0,40}"
+        r"(\d{1,2}\s*[/\-.]\s*\d{1,2}\s*[/\-.]\s*\d{4})",
+        folded,
+    )
+    return _birth_sort_key(match.group(1)) if match else None
+
+
+# Số định danh in trên thẻ: CMND 9 số, CCCD 12 số. Ràng buộc biên để không bắt nhầm dãy MRZ.
+_CARD_NUMBER_RE = re.compile(r"(?<!\d)(\d{9}|\d{12})(?!\d)")
+
+
+def _card_people(documents: list[dict]) -> dict[str, tuple[int, int, int]]:
+    """{số định danh: ngày sinh} gom từ mọi thẻ trong hồ sơ.
+
+    Gom theo SỐ ĐỊNH DANH chứ không theo tài liệu, vì mặt trước/mặt sau của cùng một thẻ
+    hay được tải lên thành hai file riêng (mặt sau còn không có dấu hiệu "CĂN CƯỚC CÔNG DÂN").
+    """
+    people: dict[str, tuple[int, int, int]] = {}
+    for document in documents or []:
+        text = str(document.get("text") or "")
+        birth = _card_birth_date(text)
+        if not birth:
+            continue
+        for number in _CARD_NUMBER_RE.findall(text):
+            people.setdefault(number, birth)
+    return people
+
+
+def _has_deceased_naming_document(documents: list[dict]) -> bool:
+    """Hồ sơ có tài liệu chỉ đích danh người chết (tờ khai/giấy báo tử/trích lục/công văn)?"""
+    for document in documents or []:
+        folded = _fold(document.get("text") or "")
+        if _is_declaration_document(folded) or any(
+            marker in folded
+            for marker in (
+                "giay bao tu",
+                "trich luc khai tu",
+                "giay chung tu",
+                "dang ky khai tu cho",
+            )
+        ):
+            return True
+    return False
+
+
+def _age_rule_applies(documents: list[dict], options: dict | None) -> bool:
+    """Quy tắc tuổi chỉ chạy khi hồ sơ đúng là "2 thẻ CCCD và không gì khác".
+
+    Điều kiện: không tài liệu nào chỉ đích danh người chết, đọc được đúng 2 người trên thẻ,
+    và tài khoản cổng KHÔNG khớp thẻ nào. Tài khoản VNeID trùng một thẻ là bằng chứng mạnh
+    hơn tuổi (người đăng nhập nộp hồ sơ thì đang còn sống) — ví dụ cha mẹ già đứng đơn khai
+    tử cho con.
+    """
+    if _has_deceased_naming_document(documents):
+        return False
+    if len(_card_people(documents)) != 2:
+        return False
+    _, requester_id = _requester_context(options)
+    if not requester_id:
+        return True
+    return not any(
+        requester_id in _digits(document.get("text") or "") for document in documents
+    )
+
+
+def _older_card_number(documents: list[dict]) -> str:
+    """Số định danh của người SINH TRƯỚC; hai ngày sinh bằng nhau thì bỏ, không đoán."""
+    people = _card_people(documents)
+    if len(people) != 2:
+        return ""
+    (first, first_birth), (second, second_birth) = sorted(people.items())
+    if first_birth == second_birth:
+        return ""
+    return first if first_birth < second_birth else second
+
+
 def _document_hints(documents: list[dict], options: dict | None) -> str:
     """Mỏ neo tất định theo số CCCD để agent không phải tự đếm/tìm lại từ đầu."""
     requester_name, requester_id = _requester_context(options)
@@ -171,6 +268,19 @@ def _document_hints(documents: list[dict], options: dict | None) -> str:
             + ".",
             "</identity_document_hints>",
         ])
+
+    older = _older_card_number(documents) if _age_rule_applies(documents, options) else ""
+    if older:
+        younger = next(n for n in _card_people(documents) if n != older)
+        lines.extend([
+            "<quy_tac_tuoi_hai_the>",
+            "Hồ sơ CHỈ có đúng 2 thẻ CCCD/CMND, không có tờ khai/giấy báo tử và không thẻ nào",
+            "khớp tài khoản cổng. Áp dụng quy tắc tuổi đã được tính sẵn ở đây:",
+            f"- Thẻ số {older} là người SINH TRƯỚC (già hơn) → NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ.",
+            f"- Thẻ số {younger} là người SINH SAU (trẻ hơn) → NGƯỜI YÊU CẦU.",
+            "Đây là kết luận tất định, KHÔNG được đảo lại.",
+            "</quy_tac_tuoi_hai_the>",
+        ])
     return "\n".join(lines)
 
 
@@ -192,7 +302,12 @@ def _section(text: str, tag: str) -> str:
     return match.group(1).strip() if match else ""
 
 
-def _render_context(raw: str, options: dict | None, has_declaration: bool = False) -> str:
+def _render_context(
+    raw: str,
+    options: dict | None,
+    has_declaration: bool = False,
+    age_rule: bool = False,
+) -> str:
     requester = _section(raw, "nguoi_yeu_cau")
     deceased = _section(raw, "nguoi_mat")
     unrelated = _section(raw, "giay_to_khong_thuoc_hai_vai")
@@ -204,8 +319,20 @@ def _render_context(raw: str, options: dict | None, has_declaration: bool = Fals
     # đó nghĩa là kết luận không đáng tin, bỏ để agent trích xuất chạy luồng cũ.
     # CÓ tờ khai thì người đứng đơn trên tờ khai mới là chuẩn — tài khoản cổng có thể là người
     # nộp thay nên lệch số định danh là BÌNH THƯỜNG, không được vì thế mà vứt kết quả phân vai.
-    if requester_id and not has_declaration and requester_id not in _digits(requester):
+    # Case hai thẻ: tài khoản cổng KHÔNG khớp thẻ nào là điều kiện để quy tắc tuổi chạy, nên
+    # lệch mỏ neo ở đây là bình thường chứ không phải dấu hiệu phân vai sai.
+    if requester_id and not has_declaration and not age_rule and requester_id not in _digits(requester):
         return ""
+
+    # Chốt lại quy tắc tuổi bằng Python: agent phân vai đảo vai thì đổi nguyên hai khối về
+    # đúng chỗ (hai khối cùng bộ nhãn nên hoán đổi là đủ, không cần ghép lại từng dòng).
+    # LOGIC: deceased phải GIÀ HƠN (birth year NHỎ HƠN) requester
+    # Nếu deceased_birth > requester_birth (deceased TRẺ HƠN requester) → SAI → đổi lại
+    if age_rule:
+        requester_birth = _birth_sort_key(_labeled_value(requester, "Ngày sinh"))
+        deceased_birth = _birth_sort_key(_labeled_value(deceased, "Ngày sinh"))
+        if requester_birth and deceased_birth and deceased_birth > requester_birth:
+            requester, deceased = deceased, requester
 
     return (
         "\n\n<phan_vai_da_xac_dinh>\n"
@@ -226,7 +353,13 @@ def _render_context(raw: str, options: dict | None, has_declaration: bool = Fals
             "NGƯỜI YÊU CẦU; tài khoản này chỉ là người nộp, KHÔNG được dùng để ghi đè hay bỏ trống "
             "dữ liệu người yêu cầu đọc từ tờ khai.\n"
             if has_declaration
-            else ". Hồ sơ không có tờ khai nên tài khoản này là mỏ neo người yêu cầu.\n"
+            else (
+                ". Hồ sơ chỉ có 2 thẻ CCCD/CMND và tài khoản này không khớp thẻ nào, nên vai đã "
+                "được chốt theo QUY TẮC TUỔI: người sinh trước (già hơn) là NGƯỜI ĐƯỢC ĐĂNG KÝ "
+                "KHAI TỬ, người sinh sau (trẻ hơn) là NGƯỜI YÊU CẦU. Không được đảo lại.\n"
+                if age_rule
+                else ". Hồ sơ không có tờ khai nên tài khoản này là mỏ neo người yêu cầu.\n"
+            )
         )
         + "Khối này chốt AI LÀ AI, KHÔNG chốt field nào được xuất. Prefix field vẫn quyết định theo "
         "TÀI LIỆU NGUỒN:\n"
@@ -250,6 +383,18 @@ def _labeled_value(section: str, label: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def role_anchor(context: str, tag: str = "nguoi_yeu_cau") -> tuple[str, str]:
+    """(số định danh, họ tên) của một vai đã chốt trong <phan_vai_da_xac_dinh>.
+
+    Mỏ neo này mạnh hơn tài khoản cổng: tài khoản đăng nhập có thể là người nộp thay,
+    còn khối phân vai đã đọc chính giấy tờ trong hồ sơ.
+    """
+    section = _section(context, tag)
+    if not section:
+        return "", ""
+    return _role_identity_number(context, tag), _labeled_value(section, "Họ tên")
+
+
 def _role_identity_number(context: str, tag: str) -> str:
     section = _section(context, tag)
     value = _labeled_value(section, "Số CCCD/CMND")
@@ -257,17 +402,87 @@ def _role_identity_number(context: str, tag: str) -> str:
     return digits if len(digits) in {9, 12} else ""
 
 
+def _rejected_identity_numbers(context: str) -> set[str]:
+    """Số giấy tờ mà agent phân vai đã loại khỏi cả hai vai.
+
+    Đây mới là bằng chứng "thẻ của người thứ ba", mạnh hơn việc mỏ neo bị thiếu:
+    agent phân vai đọc "Không xác định" cho số CCCD người chết là chuyện thường
+    (tờ khai không kèm ảnh thẻ), không có nghĩa dữ liệu giấy tờ người chết là sai.
+    """
+    section = _section(context, "giay_to_khong_thuoc_hai_vai")
+    return {
+        digits
+        for digits in re.findall(r"(?<!\d)\d[\d.\s]{7,16}\d(?!\d)", section)
+        for digits in (_digits(digits),)
+        if len(digits) in {9, 12}
+    }
+
+
+# Cùng một thẻ, hai vai: khối Cccd_* và khối NguoiMat_* là song ánh từng ô.
+_ROLE_FIELD_PAIRS: tuple[tuple[str, str], ...] = (
+    ("Cccd_HoTen", "NguoiMat_HoTen"),
+    ("Cccd_SoDinhDanh", "NguoiMat_SoDinhDanh"),
+    ("Cccd_NgaySinh", "NguoiMat_NgaySinh"),
+    ("Cccd_GioiTinh", "NguoiMat_GioiTinh"),
+    ("Cccd_DanToc", "NguoiMat_DanToc"),
+    ("Cccd_QuocTich", "NguoiMat_QuocTich"),
+    ("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"),
+    ("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo"),
+    ("Cccd_NoiCuTru", "NguoiMat_NoiCuTruCuoiCung"),
+)
+
+
+def enforce_role_assignment(fields: list[dict], context: str) -> list[dict]:
+    """Đảo lại hai khối khi agent trích xuất gán ngược so với vai đã chốt.
+
+    Chỉ chạy khi ĐẢO HOÀN TOÀN theo số định danh (thẻ của người yêu cầu bị gán cho người
+    mất). Đây là lỗi thường gặp khi hồ sơ chỉ có 2 thẻ CCCD; nếu không đảo, bước
+    sanitize_identity_fields sẽ xóa cả cụm thay vì trả về đúng vai.
+    
+    LOGIC: Người chết (deceased) phải GIÀ HƠN người yêu cầu (requester).
+    Nếu Cccd_* có năm sinh NHỎ HƠN NguoiMat_* → LLM đã gán NGƯỢC → đảo lại.
+    """
+    requester_id = _role_identity_number(context, "nguoi_yeu_cau")
+    deceased_id = _role_identity_number(context, "nguoi_mat")
+    if not requester_id or not deceased_id or requester_id == deceased_id:
+        return fields
+
+    values = {f.get("name"): f.get("value") for f in fields if f.get("name")}
+    extracted_requester_id = _digits(values.get("Cccd_SoDinhDanh"))
+    extracted_deceased_id = _digits(values.get("NguoiMat_SoDinhDanh"))
+    
+    # Kiểm tra xem có bị gán ngược theo số định danh không
+    inverted = extracted_requester_id == deceased_id and (
+        not extracted_deceased_id or extracted_deceased_id == requester_id
+    )
+    if not inverted:
+        return fields
+
+    swap = {a: b for a, b in _ROLE_FIELD_PAIRS}
+    swap.update({b: a for a, b in _ROLE_FIELD_PAIRS})
+    return [
+        {**field, "name": swap[field["name"]]} if field.get("name") in swap else field
+        for field in fields
+    ]
+
+
 def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
     """Loại cụm giấy tờ không khớp whitelist mà agent phân vai đã chốt.
 
     Chỉ đụng các field CCCD/CMND; tên, năm sinh, địa chỉ lịch sử và sự kiện chết
     vẫn giữ theo source authority của agent trích xuất.
+
+    Nguyên tắc: chỉ XÓA khi có bằng chứng cụm giấy tờ thuộc NGƯỜI KHÁC (trùng số của
+    vai còn lại, hoặc nằm trong <giay_to_khong_thuoc_hai_vai>). Lệch số so với mỏ neo
+    thì SỬA theo mỏ neo chứ không xóa — OCR tờ khai hay thừa/thiếu vài chữ số, mà xóa
+    cả cụm sẽ làm biểu mẫu bỏ trống số định danh/ngày cấp/nơi cấp của người mất.
     """
     if not context:
         return fields
 
     requester_id = _role_identity_number(context, "nguoi_yeu_cau")
     deceased_id = _role_identity_number(context, "nguoi_mat")
+    rejected_ids = _rejected_identity_numbers(context)
     values = {
         field.get("name"): field.get("value")
         for field in fields
@@ -277,13 +492,35 @@ def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
     extracted_deceased_id = _digits(values.get("NguoiMat_SoDinhDanh"))
     extracted_declaration_id = _digits(values.get("NguoiYeuCau_SoDinhDanh"))
 
+    # Ảnh thẻ gán cho người yêu cầu chỉ bị loại khi đúng là thẻ của người khác:
+    # trùng số người chết, bị agent phân vai loại, hoặc lệch mỏ neo người yêu cầu.
     drop_requester_identity = bool(
         extracted_requester_id
-        and (not requester_id or extracted_requester_id != requester_id)
+        and (
+            extracted_requester_id in rejected_ids
+            or (deceased_id and extracted_requester_id == deceased_id)
+            or (requester_id and extracted_requester_id != requester_id)
+        )
     )
+    # Cụm giấy tờ người chết chỉ bị loại khi đúng là giấy tờ của người khác.
     drop_deceased_document = bool(
-        not deceased_id
-        or (extracted_deceased_id and extracted_deceased_id != deceased_id)
+        extracted_deceased_id
+        and (
+            extracted_deceased_id in rejected_ids
+            or (requester_id and extracted_deceased_id == requester_id)
+        )
+    )
+    # Số người chết lệch mỏ neo (OCR tờ khai sai chữ số) → SỬA về số trên thẻ đã phân vai,
+    # giữ nguyên ngày cấp/nơi cấp đi kèm.
+    fix_deceased_id = (
+        deceased_id
+        if (
+            deceased_id
+            and not drop_deceased_document
+            and extracted_deceased_id
+            and extracted_deceased_id != deceased_id
+        )
+        else ""
     )
     # Cụm giấy tờ người yêu cầu đọc từ TỜ KHAI chỉ bị loại khi rơi đúng vào số của người chết;
     # OCR tờ khai hay sai vài chữ số nên không so khớp cứng với mỏ neo người yêu cầu.
@@ -315,7 +552,7 @@ def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
         "NguoiMat_NoiCapGiayTo",
     }
 
-    return [
+    kept = [
         field
         for field in fields
         if not (
@@ -327,6 +564,14 @@ def sanitize_identity_fields(fields: list[dict], context: str) -> list[dict]:
             )
         )
     ]
+    if fix_deceased_id:
+        kept = [
+            {**field, "value": fix_deceased_id}
+            if field.get("name") == "NguoiMat_SoDinhDanh"
+            else field
+            for field in kept
+        ]
+    return kept
 
 
 async def build_context(documents: list[dict], options: dict | None = None) -> str:
@@ -342,4 +587,9 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(raw, options, _has_declaration(documents))
+    return _render_context(
+        raw,
+        options,
+        _has_declaration(documents),
+        age_rule=bool(_age_rule_applies(documents, options) and _older_card_number(documents)),
+    )

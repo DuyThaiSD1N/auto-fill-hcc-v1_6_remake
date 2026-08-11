@@ -199,6 +199,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         compact_field_fallback=_canonicalize_deceased_fields,
     )
     reasoning_context = res.get("reasoning_context") or ""
+    # Đưa hai khối thẻ về đúng vai TRƯỚC khi sanitize, nếu không cụm bị gán ngược sẽ bị xóa
+    # thay vì được trả về đúng người.
+    res["fields"] = reason.enforce_role_assignment(res["fields"], reasoning_context)
     res["fields"] = reason.sanitize_identity_fields(
         res["fields"],
         reasoning_context,

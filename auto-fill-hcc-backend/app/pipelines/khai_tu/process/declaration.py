@@ -1,12 +1,12 @@
-"""Trích khối NGƯỜI YÊU CẦU trên Tờ khai đăng ký khai tử bằng Python thuần.
+"""Trích khối NGƯỜI YÊU CẦU và khối NGƯỜI MẤT trên Tờ khai đăng ký khai tử bằng Python thuần.
 
-Tờ khai đăng ký khai tử là biểu mẫu chuẩn, nhãn cố định, nên khối người yêu cầu đọc được
-tất định mà không cần LLM. Module này tồn tại vì agent trích xuất liên tục dồn dữ kiện của
-tờ khai vào Cccd_* và bỏ trống NguoiYeuCau_*, khiến biểu mẫu bị điền bằng dữ liệu VNeID của
-tài khoản đăng nhập thay vì người đứng đơn.
+Tờ khai đăng ký khai tử là biểu mẫu chuẩn, nhãn cố định, nên cả hai khối đọc được tất định
+mà không cần LLM. Module này tồn tại vì agent trích xuất liên tục dồn dữ kiện của tờ khai vào
+Cccd_* và bỏ trống NguoiYeuCau_*, khiến biểu mẫu bị điền bằng dữ liệu VNeID của tài khoản đăng
+nhập thay vì người đứng đơn; và tương tự, hay bỏ sót nguyên khối người mất (ngày/giờ chết,
+nguyên nhân chết, dân tộc, nơi cư trú cuối cùng) khiến mục II của biểu mẫu trống.
 
-Kết quả ở đây chỉ BÙ các field NguoiYeuCau_* mà agent bỏ sót; agent trả giá trị nào thì
-giá trị đó vẫn được giữ.
+Kết quả ở đây chỉ BÙ các field mà agent bỏ sót; agent trả giá trị nào thì giá trị đó vẫn được giữ.
 """
 
 import re
@@ -30,6 +30,34 @@ _LABELS: tuple[tuple[str, str], ...] = (
     ("noiCap", r"noi\s*cap"),
     ("quanHe", r"quan\s*he\s*voi\s*nguoi\s*(?:da\s*chet|chet|duoc\s*khai\s*tu)"),
 )
+
+# Khối NGƯỜI MẤT: từ câu "Đề nghị cơ quan đăng ký khai tử..." tới lời cam đoan cuối tờ khai.
+_DECEASED_START = _REQUESTER_END
+_DECEASED_END = r"toi\s*cam\s*doan|lam\s*tai\s*[:,]|de\s*nghi\s*cap\s*ban\s*sao|nguoi\s*yeu\s*cau\s*\("
+_DECEASED_BLOCK_MAX = 1200
+
+# Nhãn khối người mất theo mẫu TP/HT-2020-TKKT. "soGiayBaoTu" chỉ dùng để CHẶN ĐUÔI cho
+# nguyên nhân chết, không xuất field (Gbt_* có luồng kiểm chứng riêng ở runner).
+_DECEASED_LABELS: tuple[tuple[str, str], ...] = (
+    ("hoTen", r"ho\s*,?\s*chu\s*dem\s*,?\s*ten"),
+    ("ngaySinh", r"ngay\s*,?\s*thang\s*,?\s*nam\s*sinh"),
+    ("gioiTinh", r"gioi\s*tinh"),
+    ("danToc", r"dan\s*toc"),
+    ("quocTich", r"quoc\s*tich"),
+    ("noiCuTru", r"noi\s*cu\s*tru(?:\s*cuoi\s*cung)?"),
+    ("giayTo", r"giay\s*to\s*tuy\s*than"),
+    ("noiCap", r"noi\s*cap"),
+    ("thoiDiemChet", r"(?:da\s*)?chet\s*vao\s*luc|tu\s*vong\s*(?:vao\s*)?luc"),
+    ("noiChet", r"noi\s*chet|noi\s*tu\s*vong"),
+    ("nguyenNhanChet", r"nguyen\s*nhan\s*chet|nguyen\s*nhan\s*tu\s*vong"),
+    ("soGiayBaoTu", r"so\s*giay\s*bao\s*tu"),
+)
+
+# "10 giờ 30 phút" / "10 giờ" — giờ phải đứng trước phút, tránh bắt nhầm số nhà.
+_DEATH_CLOCK_RE = re.compile(r"(?<!\d)(\d{1,2})\s*gio(?:\s*(\d{1,2})\s*phut)?")
+# "ngày 18 tháng 7 năm 2026"
+_DEATH_DATE_TEXT_RE = re.compile(r"ngay\s*(\d{1,2})\s*thang\s*(\d{1,2})\s*nam\s*(\d{4})")
+_YEAR_RE = re.compile(r"(?<!\d)(1[89]\d{2}|20\d{2})(?!\d)")
 
 # Số định danh: CMND 9 số, CCCD/Căn cước 12 số. OCR có thể chèn khoảng trắng/dấu chấm.
 _ID_NUMBER_RE = re.compile(r"(?<!\d)(\d[\d.\s]{7,16}\d)(?!\d)")
@@ -61,21 +89,42 @@ def _clean(value: str) -> str:
     return "" if _BLANK_RE.match(text) else text.strip()
 
 
-def _requester_block(text: str) -> tuple[str, str]:
-    """Cắt đúng khối người yêu cầu; trả (text gốc, text đã bỏ dấu) cùng độ dài."""
+def _block(text: str, start_pattern: str, end_pattern: str, skip_start: bool = False) -> tuple[str, str]:
+    """Cắt đúng một khối của tờ khai; trả (text gốc, text đã bỏ dấu) cùng độ dài."""
     folded = _fold(text)
-    start = re.search(_REQUESTER_START, folded)
+    start = re.search(start_pattern, folded)
     if not start:
         return "", ""
-    end = re.search(_REQUESTER_END, folded[start.start():])
-    stop = start.start() + (end.start() if end else len(folded) - start.start())
-    return text[start.start():stop], folded[start.start():stop]
+    begin = start.end() if skip_start else start.start()
+    end = re.search(end_pattern, folded[begin:])
+    stop = begin + (end.start() if end else len(folded) - begin)
+    return text[begin:stop], folded[begin:stop]
 
 
-def _labeled_values(block: str, folded_block: str) -> dict[str, str]:
+def _requester_block(text: str) -> tuple[str, str]:
+    """Cắt đúng khối người yêu cầu; trả (text gốc, text đã bỏ dấu) cùng độ dài."""
+    return _block(text, _REQUESTER_START, _REQUESTER_END)
+
+
+def _deceased_block(text: str) -> tuple[str, str]:
+    """Cắt đúng khối người mất (sau câu "Đề nghị cơ quan đăng ký khai tử...").
+
+    ocr_text là text GỘP mọi tài liệu, nên khi tờ khai thiếu lời cam đoan cuối trang khối
+    này có thể chạy lan sang CCCD/giấy báo tử phía sau. Mục II của mẫu chỉ dài vài trăm ký
+    tự, nên cắt cứng để không kéo nhãn của tài liệu khác vào.
+    """
+    block, folded = _block(text, _DECEASED_START, _DECEASED_END, skip_start=True)
+    return block[:_DECEASED_BLOCK_MAX], folded[:_DECEASED_BLOCK_MAX]
+
+
+def _labeled_values(
+    block: str,
+    folded_block: str,
+    labels: tuple[tuple[str, str], ...] = _LABELS,
+) -> dict[str, str]:
     """Giá trị của mỗi nhãn = đoạn từ hết nhãn đó tới đầu nhãn kế tiếp theo VỊ TRÍ."""
     hits: list[tuple[int, int, str]] = []
-    for key, pattern in _LABELS:
+    for key, pattern in labels:
         match = re.search(pattern, folded_block)
         if match:
             hits.append((match.start(), match.end(), key))
@@ -172,6 +221,61 @@ def _area(value: str) -> dict | None:
     })
 
 
+def _short_word(value: str, limit: int = 30) -> str:
+    """Giá trị một-cụm-từ (dân tộc, quốc tịch): OCR dính cả câu thì bỏ, không đoán."""
+    text = _clean(value)
+    if not text or len(text) > limit or re.search(r"\d", text):
+        return ""
+    return text
+
+
+def _gender(value: str) -> str:
+    """Giới tính chỉ nhận khi ô ngắn và có đúng từ Nam/Nữ — "Việt Nam" cũng chứa "nam"."""
+    text = _clean(value)
+    if not text or len(text) > 20:
+        return ""
+    folded = _fold(text)
+    if re.search(r"\bnu\b", folded):
+        return "Nữ"
+    if re.search(r"\bnam\b", folded):
+        return "Nam"
+    return ""
+
+
+def _birth_date(value: str) -> str:
+    """Ngày sinh: đủ dd/mm/yyyy thì trả đủ, chỉ có năm thì trả yyyy."""
+    folded = _fold(value)
+    match = _ANY_DATE_RE.search(folded)
+    if match:
+        day, month, year = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            return f"{day:02d}/{month:02d}/{year}"
+    year_match = _YEAR_RE.search(folded)
+    return year_match.group(1) if year_match else ""
+
+
+def _death_moment(value: str) -> tuple[str, str]:
+    """"10 giờ 30 phút, ngày 18 tháng 7 năm 2026" -> ("18/07/2026", "10:30")."""
+    folded = _fold(value)
+    date = ""
+    text_match = _DEATH_DATE_TEXT_RE.search(folded)
+    numeric_match = _ANY_DATE_RE.search(folded)
+    match = text_match or numeric_match
+    if match:
+        day, month, year = (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            date = f"{day:02d}/{month:02d}/{year}"
+
+    time = ""
+    clock = _DEATH_CLOCK_RE.search(folded)
+    if clock:
+        hour = int(clock.group(1))
+        minute = int(clock.group(2) or 0)
+        if hour <= 23 and minute <= 59:
+            time = f"{hour:02d}:{minute:02d}"
+    return date, time
+
+
 def requester_fields(ocr_text: str) -> dict:
     """Đọc khối người yêu cầu của tờ khai -> dict NguoiYeuCau_*/ToKhai_* (bỏ ô trống)."""
     block, folded_block = _requester_block(ocr_text or "")
@@ -194,16 +298,50 @@ def requester_fields(ocr_text: str) -> dict:
     return {name: value for name, value in out.items() if value}
 
 
+def deceased_fields(ocr_text: str) -> dict:
+    """Đọc khối người mất của tờ khai -> dict NguoiMat_* (bỏ ô trống).
+
+    Mục II của tờ khai là biểu mẫu cố định nên đọc tất định được; đây là lưới an toàn cho
+    các ô agent hay bỏ sót (ngày/giờ chết, nguyên nhân chết, dân tộc, nơi cư trú cuối cùng).
+    """
+    block, folded_block = _deceased_block(ocr_text or "")
+    if not block:
+        return {}
+
+    values = _labeled_values(block, folded_block, _DECEASED_LABELS)
+    id_line = values.get("giayTo", "")
+    issuer_line = values.get("noiCap", "")
+    ngay_mat, gio_mat = _death_moment(values.get("thoiDiemChet", ""))
+
+    out = {
+        "NguoiMat_HoTen": values.get("hoTen", ""),
+        "NguoiMat_NgaySinh": _birth_date(values.get("ngaySinh", "")),
+        "NguoiMat_GioiTinh": _gender(values.get("gioiTinh", "")),
+        "NguoiMat_DanToc": _short_word(values.get("danToc", "")),
+        "NguoiMat_QuocTich": _short_word(values.get("quocTich", "")),
+        "NguoiMat_SoDinhDanh": _identity_number(id_line),
+        "NguoiMat_NgayCapGiayTo": _issue_date(issuer_line, id_line),
+        "NguoiMat_NoiCapGiayTo": _issuer(issuer_line),
+        "NguoiMat_NoiCuTruCuoiCung": _area(values.get("noiCuTru", "")),
+        "NguoiMat_NgayMat": ngay_mat,
+        "NguoiMat_GioMat": gio_mat,
+        "NguoiMat_NoiChet": _area(values.get("noiChet", "")),
+        "NguoiMat_NguyenNhanMat": _clean(values.get("nguyenNhanChet", "")),
+    }
+    return {name: value for name, value in out.items() if value}
+
+
 def fill_missing(fields: list[dict], ocr_text: str, comp_by_name: dict[str, str]) -> list[dict]:
-    """Bù các field người yêu cầu mà agent bỏ sót; KHÔNG ghi đè giá trị agent đã trả."""
+    """Bù các field tờ khai mà agent bỏ sót; KHÔNG ghi đè giá trị agent đã trả."""
     present = {
         field.get("name")
         for field in fields
         if field.get("value") not in (None, "", {}, [])
     }
+    backfill = {**requester_fields(ocr_text), **deceased_fields(ocr_text)}
     extra = [
         {"name": name, "comp": comp_by_name.get(name, "x-input"), "value": value}
-        for name, value in requester_fields(ocr_text).items()
+        for name, value in backfill.items()
         if name not in present
     ]
     return fields + extra

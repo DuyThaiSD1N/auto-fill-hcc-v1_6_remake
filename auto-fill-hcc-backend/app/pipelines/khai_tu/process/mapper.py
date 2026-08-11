@@ -3,10 +3,15 @@
 import re
 import unicodedata
 
+from app.pipelines.khai_tu.process import reason
 from app.pipelines.khai_tu.process.schema import UI_COMP_BY_NAME
 from app.pipelines._shared.formatting import parse_death_time
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
+from app.pipelines._shared.compact_agent.issuer import (
+    default_issuer,
+    id_doc_type,
+    normalize_issuer,
+)
 from app.pipelines._shared.area_remap import remap_area
 
 
@@ -20,17 +25,23 @@ def _fold(value) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
-def _requester_trusted(values: dict, options: dict | None) -> bool:
+def _requester_trusted(values: dict, options: dict | None, reasoning_context: str = "") -> bool:
     """Thẻ đọc vào Cccd_* có đúng là thẻ của NGƯỜI YÊU CẦU không?
 
-    Mỏ neo ưu tiên là danh tính người yêu cầu ghi trên TỜ KHAI (NguoiYeuCau_*); chỉ khi tờ khai
-    không cho mỏ neo nào mới dùng tài khoản cổng (VNeID), vì tài khoản đó có thể là người nộp thay.
+    Thứ tự mỏ neo: TỜ KHAI (NguoiYeuCau_*) → khối phân vai đã chốt (<nguoi_yeu_cau>) →
+    tài khoản cổng (VNeID). Tài khoản cổng đứng cuối vì có thể là người nộp thay: hồ sơ chỉ
+    có 2 thẻ CCCD của hai người khác hẳn tài khoản đăng nhập là case bình thường, và khi đó
+    khối phân vai (đã áp quy tắc tuổi) mới là mỏ neo đúng.
     Không có mỏ neo nào → tin như cũ. Có mỏ neo mà Cccd_* không khớp số lẫn tên → KHÔNG tin
     (thẻ đó là của người mất hoặc người nộp thay, không phải người yêu cầu).
     Khớp MỘT trong hai (số hoặc tên) là đủ, vì OCR tờ khai hay sai vài chữ số."""
     ctx = (options or {}).get("formContext") or {}
     anchor_ids = {value for value in (_digits(values.get("NguoiYeuCau_SoDinhDanh")),) if value}
     anchor_names = {value for value in (_fold(values.get("NguoiYeuCau_HoTen")),) if value}
+    if not anchor_ids and not anchor_names and reasoning_context:
+        role_id, role_name = reason.role_anchor(reasoning_context, "nguoi_yeu_cau")
+        anchor_ids = {value for value in (_digits(role_id),) if value}
+        anchor_names = {value for value in (_fold(role_name),) if value}
     if not anchor_ids and not anchor_names:
         anchor_ids = {value for value in (_digits(ctx.get("applicantIdentityNumber")),) if value}
         anchor_names = {value for value in (_fold(ctx.get("applicantFullname")),) if value}
@@ -171,12 +182,17 @@ def enrich(
     # cổng VNeID (formContext) → default. Chọn theo từng ô nên tờ khai thiếu ô nào thì thẻ
     # bù đúng ô đó, không phải bỏ cả cụm. Có dữ liệu giấy tờ thì KHÔNG đánh dấu default để
     # extension GHI ĐÈ lên giá trị VNeID cổng điền sẵn.
+    #
+    # ⚠️ PHÂN VAI KHI CÓ 2 CCCD: Backend đã phân vai theo tuổi trong prompt.py:
+    # - CCCD người GIÀ HƠN (năm sinh nhỏ hơn) → NguoiMat_* (người được đăng ký khai tử)
+    # - CCCD người TRẺ HƠN (năm sinh lớn hơn) → Cccd_* (người yêu cầu)
+    # Mapper này nhận kết quả đã phân vai từ LLM, không cần phân vai lại.
     ctx = (options or {}).get("formContext") or {}
     applicant_name = ctx.get("applicantFullname")
     applicant_id = ctx.get("applicantIdentityNumber")
 
     # Thẻ chỉ được dùng cho người yêu cầu khi khớp mỏ neo tờ khai/cổng.
-    requester_trusted = _requester_trusted(values, options)
+    requester_trusted = _requester_trusted(values, options, reasoning_context)
     cccd_usable = has_cccd and requester_trusted
 
     def requester(declaration_key: str, cccd_key: str):
@@ -214,7 +230,9 @@ def enrich(
             else _doc_type(requester_id, requester_issuer),
         )
         add("NgayCapDDC", requester_issue_date)
-        add("NoiCapDDC", requester_issuer)
+        # Tờ khai hay ghi kèm chức danh ("Cục trưởng cục cảnh sát QLHC...") — ô nơi cấp chỉ
+        # nhận tên cơ quan.
+        add("NoiCapDDC", normalize_issuer(requester_issuer))
     elif applicant_id:
         add("SoDinhDanhC", applicant_id, default=True)
         add("SoGiayToDinhDanhC", applicant_id, default=True)
@@ -235,12 +253,13 @@ def enrich(
         add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
     add("QuanHe", values.get("ToKhai_QuanHeNguoiYeuCau"))
 
-    # Chỉ giữ fallback cũ khi tầng phân vai không chạy được. Khi đã có reasoning,
-    # CCCD lệch requester có thể là người thứ ba và không được tự coi là người chết.
+    # Logic phân vai khi có CCCD:
+    # - Có reasoning_context: trust kết quả phân vai → CCCD không phải requester = deceased
+    # - Không có reasoning_context: CCCD lệch requester CÓ THỂ là người thứ ba → không tin
+    # - reasoning_context đã loại bỏ CCCD người thứ ba trong sanitize_identity_fields
     cccd_is_deceased = (
         has_cccd
         and not requester_trusted
-        and not reasoning_context
     )
 
     def deceased(person_key: str, cccd_key: str | None = None):
@@ -262,7 +281,7 @@ def enrich(
             _issuer_mat = deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap") or default_issuer(deceased("NguoiMat_NgayCapGiayTo", "Cccd_NgayCap"))
             add("LoaiGiayToDinhDanh", _doc_type(so_dinh_danh, _issuer_mat))
         add("NgayCapDD", deceased("NguoiMat_NgayCapGiayTo", "Cccd_NgayCap"))
-        add("NoiCapDD", deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap"))
+        add("NoiCapDD", normalize_issuer(deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap")))
         add("nktLoaiCuTru", "Thường trú")
         residence = _area(deceased("NguoiMat_NoiCuTruCuoiCung", "Cccd_NoiCuTru"))
         if residence:

@@ -84,6 +84,15 @@ QUY TẮC PHÂN VAI:
 - Trong tờ khai: người TRƯỚC câu "Đề nghị cơ quan..." là người yêu cầu;
   người SAU câu đó là người mất
 - Khi có 2 thẻ CCCD/CMND: thẻ khớp người yêu cầu → Cccd_*; thẻ còn lại → NguoiMat_*
+- ⚠️ QUY TẮC TUỔI (ƯU TIÊN CAO), chỉ khi hồ sơ CHỈ có đúng 2 thẻ CCCD/CMND (không tờ khai, không giấy báo tử) và
+  không thẻ nào khớp <requester_context>:
+  * Thẻ có NĂM SINH NHỎ HƠN (sinh SỚM HƠN, người GIÀ HƠN, tuổi CAO HƠN) → NguoiMat_* (NGƯỜI CHẾT)
+  * Thẻ có NĂM SINH LỚN HƠN (sinh MUỘN HƠN, người TRẺ HƠN, tuổi THẤP HƠN) → Cccd_* (NGƯỜI YÊU CẦU)
+  * Ví dụ: Thẻ A sinh 05/03/1939, thẻ B sinh 10/02/1976:
+    - So sánh: 1939 < 1976 → Thẻ A sinh SỚM HƠN (người GIÀ HƠN) → A là NguoiMat_* (người chết)
+    - Thẻ B sinh MUỘN HƠN (người TRẺ HƠN) → B là Cccd_* (người yêu cầu)
+  * TUYỆT ĐỐI KHÔNG được đảo ngược: Người già hơn LUÔN là người chết, người trẻ hơn LUÔN là người yêu cầu!
+  * Có tờ khai/giấy báo tử hoặc có thẻ khớp requester_context thì KHÔNG dùng quy tắc tuổi.
 - Không lấy người nhận công văn, người ký, vợ/chồng, chủ hộ hoặc CCCD không liên quan
 - ToKhai_QuanHeNguoiYeuCau chỉ lấy từ nhãn "Quan hệ với người đã chết" có giá trị thật
 - Giữ nguyên cụm họ tên, số giấy tờ, ngày sinh, địa chỉ theo đúng một vai
@@ -256,6 +265,14 @@ Trước khi xuất JSON, kiểm tra lần lượt:
    của tờ khai, KHÔNG bỏ trống và KHÔNG thay bằng danh tính tài khoản cổng.
 
 1. Cccd_* và NguoiMat_* có thuộc đúng người không; hai CCCD khác người không bị trộn mặt/field.
+1b. ⚠️ KIỂM TRA PHÂN VAI THEO TUỔI (BẮT BUỘC khi áp dụng QUY TẮC TUỔI):
+   Nếu hồ sơ CHỈ có 2 thẻ CCCD/CMND (không tờ khai, không giấy báo tử) và đang áp dụng QUY TẮC TUỔI:
+   - Trích xuất NĂM từ Cccd_NgaySinh và NguoiMat_NgaySinh
+   - So sánh: NĂM trong NguoiMat_NgaySinh PHẢI NHỎ HƠN NĂM trong Cccd_NgaySinh
+   - Ví dụ ĐÚNG: NguoiMat_NgaySinh="05/03/1939" (năm 1939), Cccd_NgaySinh="10/02/1976" (năm 1976) → 1939 < 1976 ✓
+   - Ví dụ SAI: NguoiMat_NgaySinh="10/02/1976", Cccd_NgaySinh="05/03/1939" → 1976 > 1939 ✗ (ĐÃ PHÂN VAI NGƯỢC!)
+   - Nếu phát hiện SAI (năm NguoiMat >= năm Cccd) → ĐỔI LẠI TOÀN BỘ hai cụm Cccd_* và NguoiMat_*
+   - Sau khi đổi, kiểm tra lại: năm NguoiMat phải < năm Cccd
 2. Tờ khai có "Dân tộc: <giá trị>" trong khối người chết thì output phải có NguoiMat_DanToc.
 3. NguoiMat_NoiCuTruCuoiCung có lấy "Nơi cư trú cuối cùng" của tờ khai trước CCCD không.
 4. NguoiMat_NoiChet có đến từ nhãn nơi chết, không phải cơ quan cấp giấy báo tử không.
