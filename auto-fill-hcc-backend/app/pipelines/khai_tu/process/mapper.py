@@ -164,8 +164,10 @@ def enrich(
     # ==================================================================================
     # Ưu tiên TỪNG Ô: tờ khai (NguoiYeuCau_*) → thẻ CCCD của người yêu cầu (Cccd_*) →
     # cổng VNeID (formContext) → default. Chọn theo từng ô nên tờ khai thiếu ô nào thì thẻ
-    # bù đúng ô đó, không phải bỏ cả cụm. Có dữ liệu giấy tờ thì KHÔNG đánh dấu default để
-    # extension GHI ĐÈ lên giá trị VNeID cổng điền sẵn.
+    # bù đúng ô đó, không phải bỏ cả cụm.
+    #
+    # QUAN TRỌNG: Khi có dữ liệu từ giấy tờ, KHÔNG đánh dấu default để extension GHI ĐÈ
+    # lên thông tin VNeID mặc định của người đăng nhập trong form.
     ctx = (options or {}).get("formContext") or {}
     applicant_name = ctx.get("applicantFullname")
     applicant_id = ctx.get("applicantIdentityNumber")
@@ -190,12 +192,18 @@ def enrich(
     # từ độ dài số định danh + nơi cấp như cũ.
     requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
 
+    # Kiểm tra xem có dữ liệu người yêu cầu từ giấy tờ không (từ tờ khai hoặc CCCD)
+    has_requester_from_docs = bool(
+        requester_name or requester_id or requester_residence
+    )
+
     # Họ tên người yêu cầu.
     if requester_name:
         add("HoVaTenC", requester_name)
-    elif applicant_name:
+    elif applicant_name and not has_requester_from_docs:
+        # Chỉ dùng thông tin VNeID khi KHÔNG có bất kỳ thông tin nào từ giấy tờ
         add("HoVaTenC", applicant_name, default=True)
-    else:
+    elif not has_requester_from_docs:
         add("HoVaTenC", "NGƯỜI YÊU CẦU", default=True)
 
     # Giấy tờ tùy thân người yêu cầu.
@@ -210,11 +218,12 @@ def enrich(
         )
         add("NgayCapDDC", requester_issue_date)
         add("NoiCapDDC", requester_issuer)
-    elif applicant_id:
+    elif applicant_id and not has_requester_from_docs:
+        # Chỉ dùng thông tin VNeID khi KHÔNG có bất kỳ thông tin nào từ giấy tờ
         add("SoDinhDanhC", applicant_id, default=True)
         add("SoGiayToDinhDanhC", applicant_id, default=True)
         add("LoaiGiayToDinhDanhC", _doc_type(applicant_id, ""), default=True)
-    else:
+    elif not has_requester_from_docs:
         add("SoDinhDanhC", "000000000000", default=True)
         add("SoGiayToDinhDanhC", "000000000000", default=True)
         add("LoaiGiayToDinhDanhC", "Thẻ căn cước công dân", default=True)
@@ -224,7 +233,8 @@ def enrich(
         add("nycLoaiCuTru", "Thường trú")
         add("nycNoiCuTru", "1")
         add("nycNoiCuTru_TrongNuoc", requester_residence)
-    else:
+    elif not has_requester_from_docs:
+        # Chỉ dùng giá trị mặc định khi KHÔNG có bất kỳ thông tin nào từ giấy tờ
         add("nycLoaiCuTru", "Thường trú", default=True)
         add("nycNoiCuTru", "1", default=True)
         add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)

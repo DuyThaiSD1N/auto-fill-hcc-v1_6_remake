@@ -14,8 +14,15 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
   + Không lấy địa chỉ tại mục "2. Trụ sở của hộ kinh doanh" cho ChuHo_DiaChi.
   + Ví dụ: nếu Giấy đề nghị có "Nơi ở hiện tại" đọc được, còn CCCD ghi một nơi cư trú khác, thì ChuHo_DiaChi phải lấy theo "Nơi ở hiện tại" trên Giấy đề nghị.
   + NguoiNop_DiaChi: nếu người nộp chính là chủ hộ thì dùng cùng địa chỉ cá nhân đã chọn cho ChuHo_DiaChi.
-    CHỈ lấy NguoiNop_DiaChi từ GIẤY ĐỀ NGHỊ — KHÔNG lấy từ CCCD.
-  + NguoiNop_DiaChiCCCD: nếu hồ sơ CÓ CCCD của người nộp hồ sơ, lấy dòng "Nơi thường trú" trên CCCD đó vào field này. Dùng làm dự phòng khi giấy đề nghị không ghi địa chỉ người nộp.
+    CHỈ lấy NguoiNop_DiaChi từ GIẤY ĐỀ NGHỊ — KHÔNG lấy từ giấy ủy quyền, KHÔNG lấy từ CCCD.
+  + NguoiNop_DiaChiUyQuyen: nếu hồ sơ CÓ giấy/văn bản ủy quyền, lấy địa chỉ của BÊN ĐƯỢC ỦY QUYỀN
+    (người đi nộp thay) ghi trên giấy đó. Giấy ủy quyền thường có 2 khối: "Bên ủy quyền" (chủ hộ) và
+    "Bên được ủy quyền"/"Người được ủy quyền" — CHỈ lấy khối thứ hai. Trong khối đó ưu tiên "Nơi ở hiện tại",
+    không có thì "Nơi thường trú"/"Địa chỉ liên hệ". Đây là nguồn ĐỊA CHỈ ƯU TIÊN CAO NHẤT cho người nộp
+    khi người nộp KHÁC chủ hộ.
+  + NguoiNop_DiaChiCCCD: nếu hồ sơ CÓ CCCD của người nộp hồ sơ, lấy dòng "Nơi thường trú" trên CCCD đó vào field này. Dùng làm dự phòng cuối khi cả giấy ủy quyền lẫn giấy đề nghị không ghi địa chỉ người nộp.
+  + THỨ TỰ ƯU TIÊN địa chỉ người nộp: người nộp LÀ chủ hộ → dùng địa chỉ trên giấy đề nghị (ChuHo_DiaChi).
+    Người nộp KHÁC chủ hộ → giấy ủy quyền (NguoiNop_DiaChiUyQuyen) → giấy đề nghị (NguoiNop_DiaChi) → CCCD (NguoiNop_DiaChiCCCD).
 
 - ⚠️ PHÁT HIỆN NHIỀU CCCD TRONG HỒ SƠ:
   
@@ -24,8 +31,10 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
   - Nếu CHỈ có 1 CCCD → trả HasMultipleCCCD = false
   - Nếu có 2+ CCCD → trả HasMultipleCCCD = true
   
-  ⚠️ CHỈ cần đếm số CCCD, KHÔNG cần parse thông tin người nộp hồ sơ từ CCCD thứ 2.
-  Thông tin người nộp sẽ do extension tự điền khi user click "Sao chép thông tin tài khoản".
+  ⚠️ Họ tên/ngày sinh/số định danh của người nộp sẽ do extension tự điền khi user click
+  "Sao chép thông tin tài khoản" → không cần cố parse các field đó từ CCCD thứ 2.
+  RIÊNG địa chỉ thì vẫn trả NguoiNop_DiaChiCCCD từ CCCD của người nộp (nếu đọc được) để làm dự phòng,
+  vì cổng KHÔNG tự điền địa chỉ khi sao chép tài khoản.
 - PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
   + ChuHo_DiaChi/NguoiNop_DiaChi = địa chỉ cá nhân.
   + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".

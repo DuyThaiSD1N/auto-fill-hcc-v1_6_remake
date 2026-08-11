@@ -1154,6 +1154,7 @@
       st.filledStep = st.step;
       await setFillAllState(st);
       const structural = fields.filter((f) =>
+        !/^__/.test(f.name || "") && // field metadata (__applicantAddress...) không phải control trên DOM
         !cfg.addrMatch.test(f.name || "") &&
         !/FULL_NAME|GENDER|DATE_OF_BIRTH|PERS_DOC_NO|PHONE|FAX|EMAIL|URL/i.test(f.name || "")
       );
@@ -1271,52 +1272,7 @@
     // 3. Điền ĐỊA CHỈ từ backend — cascade inline (quốc gia→tỉnh→xã→số nhà).
     let addrFields = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
     if (targetKey === "nguoi-nop-ho-so") {
-      // Lấy danh sách candidates: ưu tiên businessFlow (luồng thay đổi), fallback từ pages (luồng thành lập mới).
-      let candidates = Array.isArray(st.businessFlow?.identityCandidates)
-        ? st.businessFlow.identityCandidates
-        : null;
-      if (!candidates) {
-        const nopFields = Array.isArray(st.pages && st.pages["nguoi-nop-ho-so"])
-          ? st.pages["nguoi-nop-ho-so"] : [];
-        const cf = nopFields.find((f) => f && f.name === "__identityCandidates");
-        if (cf && Array.isArray(cf.value)) candidates = cf.value;
-        console.log("[FillAll] candidates from pages:", JSON.stringify(candidates), "nopFields count:", nopFields.length);
-      }
-
-      if (Array.isArray(candidates) && candidates.length) {
-        console.log("[FillAll] nguoi-nop candidates:", JSON.stringify(candidates));
-        // Với luồng thành lập mới (không phải thay đổi), candidates chỉ chứa đúng 1 người nộp ủy quyền
-        // → dùng thẳng địa chỉ đó mà không cần so khớp tên/CCCD với tài khoản đã sao chép.
-        // (Luồng thay đổi vẫn dùng matchCopiedApplicant qua businessFlow.identityCandidates)
-        const isFillAllFlow = !st.businessFlow?.identityCandidates;
-        let matched = null;
-        if (isFillAllFlow && candidates.length === 1) {
-          matched = candidates[0];
-          console.log("[FillAll] người nộp ủy quyền → điền địa chỉ từ CCCD:", matched.hoTen);
-        } else {
-          // Luồng thay đổi: so khớp tên/CCCD với tài khoản đã sao chép
-          const copiedName = foldBusinessPageText(
-            readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld")
-          );
-          matched = candidates.find((item) => {
-            const name = foldBusinessPageText(item && (item.hoTen || ""));
-            return name && copiedName && name === copiedName;
-          }) || candidates.find((item) => {
-            const id = String(item && (item.soDinhDanh || "")).replace(/\D/g, "");
-            const formId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
-            return id && formId && id === formId;
-          });
-          if (!matched) {
-            console.warn("[FillAll] CCCD người nộp không khớp tài khoản đã sao chép → bỏ qua địa chỉ.");
-          }
-        }
-
-        if (matched && matched.diaChi) {
-          addrFields = applicantAddressFields(matched.diaChi);
-        } else if (!matched) {
-          addrFields = [];
-        }
-      }
+      addrFields = submitterAddressFields(st, fields, addrFields);
     }
     try { await fillAddressCascade(addrFields); } catch (e) { /* ignore */ }
 
@@ -1384,12 +1340,108 @@
   function applicantAddressFields(address) {
     if (!address || typeof address !== "object") return [];
     const base = "ctl00$C$PERSCtl$ADDRCCtl";
-    return [
+    const out = [
       { name: `${base}$COUNTRY_IDFld`, comp: "dom-select", value: address.quocGia || "Việt Nam" },
       { name: `${base}$CITY_IDFld`, comp: "dom-select", value: address.tinh || "" },
       { name: `${base}$WARD_IDFld`, comp: "dom-select", value: address.xa || "" },
       { name: `${base}$STREET_NUMBERFld`, comp: "dom-input", value: address.diaChi || "" },
     ].filter((field) => field.value);
+    // Chỉ có mỗi "Việt Nam" thì coi như không có địa chỉ → để nguồn kế tiếp trong chuỗi ưu tiên lo.
+    return out.some((field) => !/COUNTRY_IDFld$/.test(field.name)) ? out : [];
+  }
+
+  /** Vai trò người nộp đang tick THẬT trên cổng (sau bước "Sao chép thông tin đăng ký tài khoản"). */
+  function submitterIsAuthorized() {
+    const authRadio = document.querySelector(
+      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
+    );
+    if (authRadio) return !!authRadio.checked;
+    const selfRadio = document.querySelector(
+      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
+    );
+    return !!(selfRadio && !selfRadio.checked);
+  }
+
+  function readSubmitterPageField(st, fields, name) {
+    const inPage = (fields || []).find((f) => f && f.name === name);
+    if (inPage && inPage.value) return inPage.value;
+    const nopFields = Array.isArray(st.pages && st.pages["nguoi-nop-ho-so"])
+      ? st.pages["nguoi-nop-ho-so"] : [];
+    const stored = nopFields.find((f) => f && f.name === name);
+    return (stored && stored.value) || null;
+  }
+
+  /** CCCD trong hồ sơ khớp với người nộp đã sao chép từ tài khoản (nguồn địa chỉ dự phòng). */
+  function matchSubmitterIdentityCandidate(st) {
+    const fromFlow = Array.isArray(st.businessFlow?.identityCandidates)
+      ? st.businessFlow.identityCandidates : null;
+    let candidates = fromFlow;
+    if (!candidates) {
+      const nopFields = Array.isArray(st.pages && st.pages["nguoi-nop-ho-so"])
+        ? st.pages["nguoi-nop-ho-so"] : [];
+      const cf = nopFields.find((f) => f && f.name === "__identityCandidates");
+      if (cf && Array.isArray(cf.value)) candidates = cf.value;
+    }
+    if (!Array.isArray(candidates) || !candidates.length) return null;
+
+    // Luồng thành lập mới: candidates chỉ chứa đúng 1 người nộp ủy quyền → dùng thẳng,
+    // không cần so khớp tên/CCCD với tài khoản đã sao chép.
+    if (!fromFlow && candidates.length === 1) return candidates[0];
+
+    const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+    const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+    return candidates.find((item) => {
+      const name = foldBusinessPageText(item && (item.hoTen || ""));
+      return name && copiedName && name === copiedName;
+    }) || candidates.find((item) => {
+      const id = String(item && (item.soDinhDanh || "")).replace(/\D/g, "");
+      return id && copiedId && id === copiedId;
+    }) || null;
+  }
+
+  /**
+   * Địa chỉ người nộp hồ sơ theo ĐÚNG vai trò đang chọn trên cổng:
+   *  - Chủ hộ tự nộp ("Người có thẩm quyền ký") → địa chỉ cá nhân ghi trong ĐƠN (Giấy đề nghị).
+   *  - Người được ủy quyền → ưu tiên GIẤY ỦY QUYỀN, rồi mới tới các nguồn dự phòng:
+   *    CCCD khớp người nộp trong hồ sơ → địa chỉ người nộp trên đơn → địa chỉ CCCD do backend đọc.
+   * Backend gửi sẵn hai nhánh này trong __applicantAddress vì lúc map chưa biết cổng sẽ tick vai trò nào.
+   */
+  function submitterAddressFields(st, fields, backendAddrFields) {
+    const plan = readSubmitterPageField(st, fields, "__applicantAddress") || {};
+
+    if (!submitterIsAuthorized()) {
+      const own = applicantAddressFields(plan.self);
+      if (own.length) {
+        console.log("[FillAll] người nộp là chủ hộ → địa chỉ trong đơn:", JSON.stringify(plan.self));
+        return own;
+      }
+      return backendAddrFields;
+    }
+
+    const authorized = plan.authorized || {};
+    const uyQuyen = applicantAddressFields(authorized.uyQuyen);
+    if (uyQuyen.length) {
+      console.log("[FillAll] người được ủy quyền → địa chỉ từ giấy ủy quyền:", JSON.stringify(authorized.uyQuyen));
+      return uyQuyen;
+    }
+
+    const matched = matchSubmitterIdentityCandidate(st);
+    const fromCandidate = matched ? applicantAddressFields(matched.diaChi) : [];
+    if (fromCandidate.length) {
+      console.log("[FillAll] người được ủy quyền → địa chỉ từ CCCD trong hồ sơ:", matched.hoTen);
+      return fromCandidate;
+    }
+
+    for (const key of ["donDeNghi", "cccd"]) {
+      const fallback = applicantAddressFields(authorized[key]);
+      if (fallback.length) {
+        console.log("[FillAll] người được ủy quyền → địa chỉ dự phòng (" + key + "):", JSON.stringify(authorized[key]));
+        return fallback;
+      }
+    }
+
+    console.warn("[FillAll] không đọc được địa chỉ người được ủy quyền từ hồ sơ → bỏ qua địa chỉ.");
+    return [];
   }
 
   function areaFold(s) {

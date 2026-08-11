@@ -198,6 +198,80 @@ def test_submitter_with_different_name_is_marked_as_authorized_when_no_id_availa
     assert role["value"] == "Người được ủy quyền"
 
 
+def _submitter_page(fields: list[dict]) -> tuple[dict, dict]:
+    out = mapper.enrich(fields, page="nguoi-nop-ho-so")
+    by_name = {f["name"]: f["value"] for f in out}
+    plan = by_name.get("__applicantAddress") or {}
+    return by_name, plan
+
+
+def _addr(tinh: str, xa: str, dia_chi: str) -> dict:
+    return {"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": dia_chi}
+
+
+def test_submitter_is_owner_uses_application_address():
+    # Người nộp chính là chủ hộ → lấy thẳng địa chỉ cá nhân trên đơn, bỏ qua địa chỉ CCCD.
+    by_name, plan = _submitter_page([
+        {"name": "ChuHo_HoTen", "value": "Nguyễn Văn A"},
+        {"name": "ChuHo_SoDinhDanh", "value": "001199000111"},
+        {"name": "ChuHo_DiaChi", "value": _addr("Lâm Đồng", "Đoàn Kết", "SN 300 Tổ 11")},
+        {"name": "NguoiNop_DiaChiCCCD", "value": _addr("Lâm Đồng", "Tân Phong", "SN 1 Tổ 2")},
+    ])
+
+    assert by_name["ctl00$C$PERS_SUBGroup"] == "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
+    assert by_name["ctl00$C$PERSCtl$ADDRCCtl$STREET_NUMBERFld"] == "SN 300 Tổ 11"
+    assert plan["role"] == "self"
+    assert plan["self"]["diaChi"] == "SN 300 Tổ 11"
+
+
+def test_authorized_submitter_prefers_authorization_letter_address():
+    # Người nộp khác chủ hộ → giấy ủy quyền thắng cả địa chỉ trên đơn lẫn CCCD.
+    by_name, plan = _submitter_page([
+        {"name": "ChuHo_HoTen", "value": "Nguyễn Văn A"},
+        {"name": "ChuHo_SoDinhDanh", "value": "001199000111"},
+        {"name": "ChuHo_DiaChi", "value": _addr("Lâm Đồng", "Đoàn Kết", "SN 300 Tổ 11")},
+        {"name": "NguoiNop_HoTen", "value": "Trần Thị B"},
+        {"name": "NguoiNop_SoDinhDanh", "value": "001199000222"},
+        {"name": "NguoiNop_DiaChiUyQuyen", "value": _addr("Lâm Đồng", "Tân Phong", "SN 7 Tổ 3")},
+        {"name": "NguoiNop_DiaChi", "value": _addr("Lâm Đồng", "Tân Phong", "SN 8 Tổ 4")},
+        {"name": "NguoiNop_DiaChiCCCD", "value": _addr("Lâm Đồng", "Tân Phong", "SN 9 Tổ 5")},
+    ])
+
+    assert by_name["ctl00$C$PERS_SUBGroup"] == "Người được ủy quyền"
+    assert by_name["ctl00$C$PERSCtl$FULL_NAMEFld"] == "Trần Thị B"
+    assert by_name["ctl00$C$PERSCtl$ADDRCCtl$STREET_NUMBERFld"] == "SN 7 Tổ 3"
+    assert plan["role"] == "authorized"
+    # FE nhận đủ chuỗi ưu tiên để chọn lại khi cổng tick vai trò khác dự đoán của mapper.
+    assert [key for key in plan["authorized"]] == ["uyQuyen", "donDeNghi", "cccd"]
+    assert plan["self"]["diaChi"] == "SN 300 Tổ 11"
+
+
+def test_authorized_submitter_falls_back_to_identity_card_address():
+    _, plan = _submitter_page([
+        {"name": "ChuHo_HoTen", "value": "Nguyễn Văn A"},
+        {"name": "ChuHo_DiaChi", "value": _addr("Lâm Đồng", "Đoàn Kết", "SN 300 Tổ 11")},
+        {"name": "HasMultipleCCCD", "value": True},
+        {"name": "NguoiNop_DiaChiCCCD", "value": _addr("Lâm Đồng", "Tân Phong", "SN 9 Tổ 5")},
+    ])
+
+    assert plan["role"] == "authorized"
+    assert list(plan["authorized"]) == ["cccd"]
+    assert plan["authorized"]["cccd"]["diaChi"] == "SN 9 Tổ 5"
+
+
+def test_empty_address_object_is_not_treated_as_a_source():
+    # OCR trả object rỗng → không được coi là có địa chỉ (nếu không FE chỉ điền mỗi "Việt Nam").
+    by_name, plan = _submitter_page([
+        {"name": "ChuHo_HoTen", "value": "Nguyễn Văn A"},
+        {"name": "HasMultipleCCCD", "value": True},
+        {"name": "NguoiNop_DiaChiUyQuyen", "value": {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": ""}},
+        {"name": "NguoiNop_DiaChiCCCD", "value": _addr("Lâm Đồng", "Tân Phong", "SN 9 Tổ 5")},
+    ])
+
+    assert list(plan["authorized"]) == ["cccd"]
+    assert by_name["ctl00$C$PERSCtl$ADDRCCtl$STREET_NUMBERFld"] == "SN 9 Tổ 5"
+
+
 def test_business_schema_and_prompt_only_define_three_phone_sources():
     names = {field["name"] for field in FIELDS}
 

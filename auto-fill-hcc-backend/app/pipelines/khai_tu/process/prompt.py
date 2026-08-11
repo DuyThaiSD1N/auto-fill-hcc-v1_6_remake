@@ -34,12 +34,18 @@ trả đúng dữ kiện về đúng prefix theo tài liệu nguồn; không t�
 <execution_order>
 Thực hiện đúng thứ tự trước khi xuất JSON:
 1. Nhận diện riêng từng tài liệu (tờ khai, CCCD, giấy báo tử, v.v.).
-2. Xác định người yêu cầu và người được đăng ký khai tử.
+2. Xác định người yêu cầu và người được đăng ký khai tử:
+   - **ƯU TIÊN**: Nếu có 2 CCCD với ngày sinh rõ ràng, so sánh ngày sinh:
+     * Người có năm sinh LỚN HƠN (trẻ hơn, sinh sau) = Người yêu cầu → Cccd_*
+     * Người có năm sinh NHỎ HƠN (già hơn, sinh trước) = Người chết → NguoiMat_*
+   - Nếu không có đủ thông tin ngày sinh, dựa vào tờ khai hoặc requester_context
 3. Đọc dữ kiện của TỪNG TÀI LIỆU ĐỘC LẬP và định tuyến theo tài liệu nguồn:
    - Tờ khai, khối trên câu "Đề nghị..." → NguoiYeuCau_*
    - Tờ khai, khối dưới câu "Đề nghị..." → NguoiMat_* (và ToKhai_*, Gbt_*, CopyRequest_* nếu có)
-   - Ảnh thẻ của người yêu cầu → Cccd_*
-   - Ảnh thẻ của người chết → NguoiMat_*
+   - Ảnh thẻ của người yêu cầu (đã xác định ở bước 2) → Cccd_*
+   - Ảnh thẻ của người chết (đã xác định ở bước 2) → NguoiMat_*
+   - **LƯU Ý**: Người chết KHÔNG BAO GIỜ dùng prefix Gbt_* cho thông tin cá nhân
+   - **CHỈ Gbt_So, Gbt_CoQuanCap, Gbt_NgayCap** là metadata giấy báo tử
    Bước này KHÔNG so sánh, KHÔNG loại trùng giữa các tài liệu.
 4. Với field mà nhiều tài liệu cùng nói tới CÙNG MỘT prefix, chọn một giá trị theo SOURCE_AUTHORITY.
    Không dùng SOURCE_AUTHORITY để xóa bớt một trong hai bộ NguoiYeuCau_*/Cccd_*.
@@ -76,18 +82,37 @@ HAI VAI, BA PREFIX. Vai xác định NGƯỜI; tài liệu nguồn xác định 
 
 2. **NGƯỜI MẤT** — người được đăng ký khai tử, nằm phía SAU câu "Đề nghị cơ quan đăng ký khai tử..."
    trong tờ khai.
+   - **QUAN TRỌNG**: Thông tin người chết PHẢI dùng prefix NguoiMat_*, KHÔNG PHẢI Gbt_*
+   - Dữ kiện người chết (họ tên, ngày sinh, giới tính, dân tộc, số định danh, ngày cấp, nơi cấp, 
+     nơi cư trú, ngày mất, giờ mất, nơi chết, nguyên nhân) → NguoiMat_HoTen, NguoiMat_NgaySinh, 
+     NguoiMat_GioiTinh, NguoiMat_DanToc, NguoiMat_QuocTich, NguoiMat_SoDinhDanh, 
+     NguoiMat_NgayCapGiayTo, NguoiMat_NoiCapGiayTo, NguoiMat_NoiCuTruCuoiCung, NguoiMat_NgayMat, 
+     NguoiMat_GioMat, NguoiMat_NoiChet, NguoiMat_NguyenNhanMat
+   - **CHỈ 3 FIELD** dùng prefix Gbt_* (metadata GIẤY BÁO TỬ): Gbt_So, Gbt_CoQuanCap, Gbt_NgayCap
    - Mọi nguồn (tờ khai, giấy báo tử, ảnh thẻ của người chết, công văn) đều dồn về NguoiMat_*;
      chọn giá trị theo SOURCE_AUTHORITY.
 
 QUY TẮC PHÂN VAI:
 - Nếu có <phan_vai_da_xac_dinh>, dùng nguyên kết quả; không tự phân vai lại từ OCR
-- Trong tờ khai: người TRƯỚC câu "Đề nghị cơ quan..." là người yêu cầu;
+- **QUY TẮC TUỔI (ƯU TIÊN CAO NHẤT)**: Khi có 2 người với ngày sinh rõ ràng:
+  + Người TRẺ HƠN (sinh sau, năm sinh lớn hơn) = Người yêu cầu đăng ký → Cccd_*
+  + Người GIÀ HƠN (sinh trước, năm sinh nhỏ hơn) = Người được khai tử (người chết) → NguoiMat_*
+  + Logic tuổi ƯU TIÊN TUYỆT ĐỐI hơn vị trí trong tờ khai
+  + Ví dụ: Sinh năm 1976 (trẻ hơn) là người yêu cầu, sinh năm 1939 (già hơn) là người chết
+- Trong tờ khai (khi không có ngày sinh để so sánh): người TRƯỚC câu "Đề nghị cơ quan..." là người yêu cầu;
   người SAU câu đó là người mất
 - Khi có 2 thẻ CCCD/CMND: thẻ khớp người yêu cầu → Cccd_*; thẻ còn lại → NguoiMat_*
 - Không lấy người nhận công văn, người ký, vợ/chồng, chủ hộ hoặc CCCD không liên quan
 - ToKhai_QuanHeNguoiYeuCau chỉ lấy từ nhãn "Quan hệ với người đã chết" có giá trị thật
 - Giữ nguyên cụm họ tên, số giấy tờ, ngày sinh, địa chỉ theo đúng một vai
 - Không suy giới tính chỉ từ "ông/bà"; không chắc thì bỏ field
+
+**SAI LẦM THƯỜNG GẶP CẦN TRÁNH**:
+❌ SAI: {"Gbt_HoTenNguoiMat": "...", "Gbt_SoDinhDanhNguoiMat": "..."}
+✅ ĐÚNG: {"NguoiMat_HoTen": "...", "NguoiMat_SoDinhDanh": "..."}
+
+❌ SAI: Dùng prefix Gbt_ cho bất kỳ thông tin người chết nào
+✅ ĐÚNG: Chỉ dùng Gbt_ cho 3 field metadata giấy báo tử: Gbt_So, Gbt_CoQuanCap, Gbt_NgayCap
 </role_routing>
 
 <historical_death_correspondence_case>
@@ -254,6 +279,30 @@ Trước khi xuất JSON, kiểm tra lần lượt:
    Có cả tờ khai và ảnh thẻ người yêu cầu mà output chỉ có một trong hai bộ → SAI, bổ sung bộ còn lại.
    Người yêu cầu trên tờ khai KHÁC tài khoản trong <requester_context> → vẫn giữ nguyên NguoiYeuCau_*
    của tờ khai, KHÔNG bỏ trống và KHÔNG thay bằng danh tính tài khoản cổng.
+
+0.1. **KIỂM TRA PREFIX CỦA NGƯỜI CHẾT (CỰC KỲ QUAN TRỌNG)**:
+   - Khi có 2 CCCD: So sánh ngày sinh → người GIÀ HƠN (năm sinh nhỏ hơn) là người chết
+   - Thông tin người chết PHẢI dùng prefix NguoiMat_*, TUYỆT ĐỐI KHÔNG dùng Gbt_*
+   - Kiểm tra output có trường nào dạng Gbt_HoTen*, Gbt_SoDinhDanh*, Gbt_NgaySinh*, Gbt_GioiTinh*,
+     Gbt_QuocTich*, Gbt_NgayCapDD*, Gbt_NoiCapDD* KHÔNG?
+   - NẾU CÓ → SAI HOÀN TOÀN, phải sửa lại thành NguoiMat_HoTen, NguoiMat_SoDinhDanh, 
+     NguoiMat_NgaySinh, NguoiMat_GioiTinh, NguoiMat_QuocTich, NguoiMat_NgayCapGiayTo, 
+     NguoiMat_NoiCapGiayTo
+   - CHỈ 3 trường được dùng Gbt_: Gbt_So, Gbt_CoQuanCap, Gbt_NgayCap (metadata giấy báo tử)
+   
+   Ví dụ ĐÚNG khi có 2 CCCD (sinh 1976 và sinh 1939):
+   {
+     "Cccd_HoTen": "VŨ DUY TẠO",           // Người trẻ (1976) = người yêu cầu
+     "Cccd_SoDinhDanh": "068076005991",
+     "Cccd_NgaySinh": "10/02/1976",
+     "NguoiMat_HoTen": "VŨ QUANG CẦU",     // Người già (1939) = người chết
+     "NguoiMat_SoDinhDanh": "035039004964",
+     "NguoiMat_NgaySinh": "05/03/1939",
+     "NguoiMat_GioiTinh": "Nam",
+     "NguoiMat_QuocTich": "Việt Nam",
+     "NguoiMat_NgayCapGiayTo": "06/08/2022",
+     "NguoiMat_NoiCapGiayTo": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+   }
 
 1. Cccd_* và NguoiMat_* có thuộc đúng người không; hai CCCD khác người không bị trộn mặt/field.
 2. Tờ khai có "Dân tộc: <giá trị>" trong khối người chết thì output phải có NguoiMat_DanToc.

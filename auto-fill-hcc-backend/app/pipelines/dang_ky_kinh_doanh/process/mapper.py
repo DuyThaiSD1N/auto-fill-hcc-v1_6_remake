@@ -121,24 +121,23 @@ def _proper_name(value: Any) -> str:
     return " ".join(word.capitalize() for word in text.split())
 
 
-def _is_same_person(submitter: Any, owner: Any) -> bool:
-    """Xác định có phải cùng một người hay không.
+def _submitter_is_owner(values: dict[str, Any]) -> bool | None:
+    """Người nộp có phải chính chủ hộ không, dựa trên nhân thân hồ sơ kê khai.
 
-    Ưu tiên so sánh số định danh khi có đủ dữ liệu. Nếu không có số định danh,
-    dùng tên đã chuẩn hóa. Nếu cả hai đều không có, trả False để tránh nhầm thành
-    người tự nộp khi hồ sơ rõ ràng là người nộp thay mặt chủ hộ.
+    Trả None khi hồ sơ không kê khai riêng người nộp (không đủ dữ liệu để kết luận) —
+    lúc đó caller suy tiếp từ số lượng CCCD trong hồ sơ.
     """
-    submitter_id = re.sub(r"\D", "", str(submitter or ""))
-    owner_id = re.sub(r"\D", "", str(owner or ""))
+    submitter_id = re.sub(r"\D", "", _compact_text(values.get("NguoiNop_SoDinhDanh")))
+    owner_id = re.sub(r"\D", "", _compact_text(values.get("ChuHo_SoDinhDanh")))
     if submitter_id and owner_id:
         return submitter_id == owner_id
 
-    submitter_name = _fold_vi(submitter)
-    owner_name = _fold_vi(owner)
+    submitter_name = _fold_vi(values.get("NguoiNop_HoTen"))
+    owner_name = _fold_vi(values.get("ChuHo_HoTen"))
     if submitter_name and owner_name:
         return submitter_name == owner_name
 
-    return False
+    return None
 
 
 _PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
@@ -184,6 +183,12 @@ def _addr(value: Any) -> dict[str, str]:
     if len(parts) == 2:
         return {"quocGia": "Việt Nam", "tinh": parts[-1], "diaChi": parts[0]}
     return {"quocGia": "Việt Nam", "diaChi": text}
+
+
+def _has_address(value: Any) -> bool:
+    """Địa chỉ có nội dung thật hay không (chỉ mỗi quốc gia mặc định thì coi như trống)."""
+    address = _addr(value)
+    return any(address.get(key) for key in ("tinh", "xa", "diaChi"))
 
 
 def _same_address(a: Any, b: Any) -> bool:
@@ -386,18 +391,51 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$UC_DW_TAXEditCtl$TAX_CAL_METHOD_IDRbBox", "dom-radio", _tax_method_code(values.get("Thue_PhuongPhapTinh")))
 
     elif selected_page == "nguoi-nop-ho-so":
-        # Xác định vai trò người nộp
-        has_multiple_cccd = values.get("HasMultipleCCCD", False)
-        is_self = not has_multiple_cccd
-        
+        # Vai trò người nộp: ưu tiên so khớp nhân thân người nộp với chủ hộ (khi hồ sơ kê khai riêng);
+        # hồ sơ không kê khai thì suy từ số lượng CCCD (2+ CCCD ⇒ có người nộp thay).
+        has_multiple_cccd = bool(values.get("HasMultipleCCCD", False))
+        is_self = _submitter_is_owner(values) is not False and not has_multiple_cccd
+
         pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
         add("ctl00$C$PERS_SUBGroup", "dom-radio", pers_sub_role)
-        
-        # Điền thông tin chủ hộ
-        add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input", _proper_name(values.get("ChuHo_HoTen")))
-        add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("ChuHo_NgaySinh")))
-        add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("ChuHo_SoDinhDanh"))
-        
+
+        # Nhân thân người nộp: dùng dữ liệu người nộp nếu hồ sơ có kê khai, không thì mặc định chủ hộ.
+        add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input",
+            _proper_name(values.get("NguoiNop_HoTen") or values.get("ChuHo_HoTen")))
+        add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date",
+            normalize_date(values.get("NguoiNop_NgaySinh") or values.get("ChuHo_NgaySinh")))
+        add("ctl00$C$PERSCtl$PERS_DOC_NOFld", "dom-input",
+            values.get("NguoiNop_SoDinhDanh") or values.get("ChuHo_SoDinhDanh"))
+
+        # ĐỊA CHỈ người nộp (cổng KHÔNG tự điền khi bấm "Sao chép tài khoản"):
+        # - Người nộp là chủ hộ  → lấy thẳng địa chỉ cá nhân trên ĐƠN (Giấy đề nghị).
+        # - Người được ủy quyền  → ưu tiên GIẤY ỦY QUYỀN, rồi mới tới đơn, cuối cùng là CCCD.
+        self_address = next(
+            (value for value in (values.get("ChuHo_DiaChi"), values.get("NguoiNop_DiaChi"))
+             if _has_address(value)),
+            None,
+        )
+        authorized_sources = [
+            (key, value) for key, value in (
+                ("uyQuyen", values.get("NguoiNop_DiaChiUyQuyen")),
+                ("donDeNghi", values.get("NguoiNop_DiaChi")),
+                ("cccd", values.get("NguoiNop_DiaChiCCCD")),
+            ) if _has_address(value)
+        ]
+        authorized_address = authorized_sources[0][1] if authorized_sources else None
+        add_address("ctl00$C$PERSCtl$ADDRCCtl", self_address if is_self else authorized_address)
+
+        # Extension chốt lại vai trò theo radio THẬT trên cổng (sau khi bấm "Sao chép tài khoản" mới
+        # biết tài khoản đăng nhập có phải chủ hộ không) → gửi kèm cả hai nhánh địa chỉ và thứ tự
+        # ưu tiên nguồn để FE chọn lại cho đúng mà không phải gọi backend lần nữa.
+        applicant_address = {
+            "role": "self" if is_self else "authorized",
+            "self": _addr(self_address),
+            "authorized": {key: _addr(value) for key, value in authorized_sources},
+        }
+        if applicant_address["self"] or applicant_address["authorized"]:
+            add("__applicantAddress", "raw", applicant_address)
+
         # SĐT/email để extension tự điền khi user click "Sao chép tài khoản"
 
     return out
