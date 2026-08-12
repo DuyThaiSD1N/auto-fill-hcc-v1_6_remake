@@ -203,17 +203,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("nxnNoiCuTru", "1", default=True)
                 add("nxnNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
         else:
-            # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên CCCD upload
-            add("HoVaTenC1", values.get("Cccd_HoTen"))
-            add("NgaySinhC1", values.get("Cccd_NgaySinh"))
-            add("GioiTinhC1", values.get("Cccd_GioiTinh"))
-            add("DanTocC1", values.get("Cccd_DanToc"))
-            add("QuocTichC1", nationality)
-            add("SoDinhDanhC1", values.get("Cccd_SoDinhDanh"))
-            add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", issuer))
-            add("SoGiayToTuyThanC1", values.get("Cccd_SoDinhDanh"))
-            add("NgayCapDDC1", values.get("Cccd_NgayCap"))
-            add("NoiCapDDC1", issuer)
+            # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên tờ khai (ưu tiên) hoặc CCCD upload
+            # Ưu tiên: ToKhai_* → Cccd_* (từng field riêng lẻ)
+            add("HoVaTenC1", values.get("ToKhai_HoTen") or values.get("Cccd_HoTen"))
+            add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh"))
+            add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh"))
+            add("DanTocC1", values.get("ToKhai_DanToc") or values.get("Cccd_DanToc"))
+            add("QuocTichC1", values.get("ToKhai_QuocTich") or nationality)
+            # Giấy tờ: ưu tiên tờ khai, fallback CCCD
+            so_dinh_danh = values.get("ToKhai_SoDinhDanh") or values.get("Cccd_SoDinhDanh")
+            ngay_cap = values.get("ToKhai_NgayCapGiayTo") or values.get("Cccd_NgayCap")
+            noi_cap = values.get("ToKhai_NoiCapGiayTo") or issuer
+            add("SoDinhDanhC1", so_dinh_danh)
+            add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", noi_cap))
+            add("SoGiayToTuyThanC1", so_dinh_danh)
+            add("NgayCapDDC1", ngay_cap)
+            add("NoiCapDDC1", noi_cap)
             add("nxnLoaiCuTru", "Thường trú")
             if residence:
                 add("nxnNoiCuTru", "1")

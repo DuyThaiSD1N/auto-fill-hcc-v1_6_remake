@@ -15,6 +15,23 @@ giấy chứng tử/trích lục khai tử/giấy báo tử của vợ/chồng �
 HÔN NHÂN CŨ (đã cấp trước đây).
 </procedure>
 
+<critical_tokhai_extraction>
+QUAN TRỌNG: Khi có TỜ KHAI cấp giấy XNTTHN, BẮT BUỘC trả TẤT CẢ các field ToKhai_* tương ứng với thông tin
+trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (Section II - người được cấp):
+- ToKhai_HoTen (từ "Họ, chữ đệm, tên:")
+- ToKhai_NgaySinh (từ "Ngày, tháng, năm sinh:", dd/mm/yyyy)
+- ToKhai_GioiTinh (từ "Giới tính:", "Nam" hoặc "Nữ")
+- ToKhai_DanToc (từ "Dân tộc:")
+- ToKhai_QuocTich (từ "Quốc tịch:")
+- ToKhai_SoDinhDanh (từ "Giấy tờ tùy thân: ... số")
+- ToKhai_NgayCapGiayTo (từ "Cấp ngày...", dd/mm/yyyy)
+- ToKhai_NoiCapGiayTo (từ "tại ..." sau "Cấp ngày")
+- ToKhai_NoiCuTru (từ "Nơi cư trú:", object {quocGia,tinh,xa,diaChi})
+
+TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ Cccd_*) 
+đều phải được trả khi đều có thông tin. Python mapper sẽ quyết định ưu tiên nguồn nào, KHÔNG phải LLM.
+</critical_tokhai_extraction>
+
 <giay_uy_quyen>
 NHẬN DẠNG GIẤY ỦY QUYỀN: tài liệu có tiêu đề "GIẤY ỦY QUYỀN" hoặc "GIẤY UỶ QUYỀN", có phần
 "I. Người ủy quyền" (hoặc "Bên ủy quyền") và "II. Người được ủy quyền" (hoặc "Bên nhận ủy quyền"),
@@ -78,22 +95,30 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
   + Trường hợp BẢN THÂN: CCCD upload là của chính người cần giấy XNTTHN.
   + Trường hợp ỦY QUYỀN: CCCD upload là của người ĐƯỢC ủy quyền (đi nộp hộ) — thông tin
     người cần giấy (người ủy quyền) lấy từ GIẤY ỦY QUYỀN → điền vào PoA_Subject*.
-- RIÊNG địa chỉ phải tách nguồn, KHÔNG tự chọn một nguồn rồi bỏ nguồn còn lại:
-  + ToKhai_NoiCuTru = dòng "Nơi cư trú" của người yêu cầu/người được cấp trên TỜ KHAI;
-  + Cccd_NoiCuTru = "Nơi thường trú/Nơi cư trú" trên CCCD/CMND.
-  Nếu tờ khai có địa chỉ thì BẮT BUỘC trả ToKhai_NoiCuTru, kể cả khi CCCD ghi địa chỉ khác.
+- ToKhai_* lấy từ TỜ KHAI cấp giấy XNTTHN, TUYỆT ĐỐI PHẢI TÁCH NGUỒN VỚI Cccd_*:
+  + ToKhai_HoTen = dòng "Họ, chữ đệm, tên:" trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (Section II - người được cấp).
+  + ToKhai_NgaySinh = dòng "Ngày, tháng, năm sinh:" trong phần người được cấp, dd/mm/yyyy.
+  + ToKhai_GioiTinh = dòng "Giới tính:" trong phần người được cấp ("Nam" hoặc "Nữ").
+  + ToKhai_DanToc = dòng "Dân tộc:" trong phần người được cấp.
+  + ToKhai_QuocTich = dòng "Quốc tịch:" trong phần người được cấp.
+  + ToKhai_SoDinhDanh = dòng "Giấy tờ tùy thân: ... số" trong phần người được cấp.
+  + ToKhai_NgayCapGiayTo = dòng "Cấp ngày..." trong phần người được cấp, dd/mm/yyyy.
+  + ToKhai_NoiCapGiayTo = dòng "tại ..." sau "Cấp ngày" trong phần người được cấp.
+  + ToKhai_NoiCuTru = dòng "Nơi cư trú:" trong phần người được cấp, object {quocGia,tinh,xa,diaChi}.
+  + BẮT BUỘC trả TẤT CẢ các field ToKhai_* khi TỜ KHAI có ghi thông tin tương ứng, NGAY CẢ KHI CCCD cũng có thông tin đó.
+  + TUYỆT ĐỐI KHÔNG tự chọn một nguồn rồi bỏ nguồn còn lại; cả ToKhai_* VÀ Cccd_* đều phải được trả khi cả hai nguồn đều có.
+- Cccd_NoiCuTru = "Nơi thường trú/Nơi cư trú" trên CCCD/CMND, chỉ lấy từ thẻ CCCD/CMND.
 - Nếu có nhiều ảnh CCCD thì gộp mặt trước + mặt sau của cùng một người.
 - RIÊNG Cccd_DanToc (dân tộc) — thẻ CCCD/Căn cước mẫu mới thường KHÔNG in dân tộc. THỨ TỰ ƯU TIÊN NGUỒN:
-  (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Dân tộc: ..." (ở khối người được cấp/người yêu cầu);
-  (2) thẻ CCCD/CMND nếu có in. BẮT BUỘC điền Cccd_DanToc nếu bất kỳ giấy nào ghi — ĐỪNG bỏ trống chỉ vì thẻ CCCD không in.
-- Cccd_NgayCap (ngày cấp CCCD) — BẮT BUỘC trả nếu BẤT KỲ giấy nào có; TUYỆT ĐỐI KHÔNG được có thông tin
-  mà bỏ trống. Khi có NGÀY Ở NHIỀU CHỖ (mặt sau CCCD và tờ khai), CHỌN THEO THỨ TỰ ƯU TIÊN, ĐỪNG vì phân vân
-  mà bỏ trống:
-  + (1) ƯU TIÊN NHẤT: MẶT SAU CCCD — ngày ở dòng "Ngày, tháng, năm / Date, month, year" (dd/mm/yyyy). Ngày này
+  (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Dân tộc: ..." (ở khối người được cấp) → ToKhai_DanToc;
+  (2) thẻ CCCD/CMND nếu có in → Cccd_DanToc. BẮT BUỘC điền ToKhai_DanToc nếu tờ khai ghi, VÀ điền Cccd_DanToc nếu CCCD ghi — ĐỪNG bỏ trống chỉ vì thẻ CCCD không in.
+- Cccd_NgayCap (ngày cấp CCCD) — BẮT BUỘC trả nếu BẤT KỲ giấy nào có. Khi có NGÀY Ở NHIỀU CHỖ (mặt sau CCCD và tờ khai), TRẢ CẢ HAI NGUỒN:
+  + Cccd_NgayCap: MẶT SAU CCCD — ngày ở dòng "Ngày, tháng, năm / Date, month, year" (dd/mm/yyyy). Ngày này
     CÓ THỂ DÍNH LIỀN nhãn do OCR gộp, vd "...Date, month, year01/05/2021" → Cccd_NgayCap = "01/05/2021".
-  + (2) Nếu MẶT SAU CCCD KHÔNG đọc được ngày cấp → lấy Ở TỜ KHAI (dòng "Giấy tờ tùy thân: CCCD số ... cấp ngày <D>").
-  + Cccd_NoiCap nằm gần dòng ngày cấp; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
+  + ToKhai_NgayCapGiayTo: Nếu TỜ KHAI có dòng "Giấy tờ tùy thân: CCCD số ... cấp ngày <D>" thì BẮT BUỘC trả ToKhai_NgayCapGiayTo = <D> (dd/mm/yyyy).
+  + Cccd_NoiCap nằm gần dòng ngày cấp trên MẶT SAU CCCD; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
   VỀ TRẬT TỰ XÃ HỘI" thì trả Cccd_NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" thì trả Cccd_NoiCap = "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
+  + ToKhai_NoiCapGiayTo: Nếu TỜ KHAI có dòng "tại ..." sau "Cấp ngày" thì BẮT BUỘC trả ToKhai_NoiCapGiayTo.
 - DivorceDecision_* lấy từ OCR của tài liệu là quyết định/bản án ly hôn thật, HOẶC từ dòng tình trạng
   hôn nhân trên giấy XNTTHN cũ (nhắc lại "Bản án/Quyết định ly hôn số ..."). Không dùng tên file để kết luận.
 - Một tài liệu ly hôn thật thường có các dấu hiệu: "TÒA ÁN NHÂN DÂN" hoặc "TAND",

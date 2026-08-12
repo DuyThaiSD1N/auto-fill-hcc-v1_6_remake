@@ -16,6 +16,23 @@ FIELDS: list[dict] = [
     {"name": "Cccd_NoiCap",
      "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội", nếu là Bộ công an... thì trả "Bộ Công An".'},
+    # --- Fields từ TỜ KHAI (thông tin người được xác nhận - Section II) ---
+    {"name": "ToKhai_HoTen",
+     "desc": 'Họ tên từ TỜ KHAI cấp giấy XNTTHN, lấy từ dòng "Họ, chữ đệm, tên:" trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (người được cấp).'},
+    {"name": "ToKhai_NgaySinh",
+     "desc": 'Ngày sinh từ TỜ KHAI, lấy từ dòng "Ngày, tháng, năm sinh:" trong phần người được cấp, dd/mm/yyyy.'},
+    {"name": "ToKhai_GioiTinh",
+     "desc": 'Giới tính từ TỜ KHAI, lấy từ dòng "Giới tính:" trong phần người được cấp: "Nam" hoặc "Nữ".'},
+    {"name": "ToKhai_DanToc",
+     "desc": 'Dân tộc từ TỜ KHAI, lấy từ dòng "Dân tộc:" trong phần người được cấp. Ưu tiên cao nhất cho thông tin người được cấp.'},
+    {"name": "ToKhai_QuocTich",
+     "desc": 'Quốc tịch từ TỜ KHAI, lấy từ dòng "Quốc tịch:" trong phần người được cấp.'},
+    {"name": "ToKhai_SoDinhDanh",
+     "desc": 'Số CCCD/CMND từ TỜ KHAI, lấy từ dòng "Giấy tờ tùy thân: ... số" trong phần người được cấp.'},
+    {"name": "ToKhai_NgayCapGiayTo",
+     "desc": 'Ngày cấp giấy tờ từ TỜ KHAI, lấy từ dòng "Cấp ngày..." trong phần người được cấp, dd/mm/yyyy.'},
+    {"name": "ToKhai_NoiCapGiayTo",
+     "desc": 'Nơi cấp giấy tờ từ TỜ KHAI, lấy từ dòng "tại ..." sau "Cấp ngày" trong phần người được cấp.'},
     {"name": "ToKhai_NoiCuTru",
      "desc": 'Nơi cư trú hiện tại trên TỜ KHAI cấp giấy XNTTHN, object {quocGia,tinh,xa,diaChi}. '
              'Lấy đúng dòng "Nơi cư trú" của người yêu cầu/người được cấp; bắt buộc trả khi tờ khai có.'},
@@ -76,7 +93,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate"):
+for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
