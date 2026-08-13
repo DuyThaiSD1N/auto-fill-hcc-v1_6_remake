@@ -22,6 +22,23 @@ FIELDS: list[dict] = [
              "'[chi tiết], [xã], [huyện], [tỉnh]': xa là cụm [xã] ngay sau chi tiết; "
              "bỏ cụm [huyện] dù OCR không ghi chữ 'huyện'."},
 
+    # NGƯỜI YÊU CẦU ghi trên TỜ KHAI (phần đầu, trước "cho người có tên dưới đây").
+    # Đây là NGUỒN ƯU TIÊN cho khối người yêu cầu; Nyc_* (CCCD) chỉ bù field tờ khai không có.
+    {"name": "TkNyc_HoTen",
+     "desc": "Họ tên người yêu cầu ghi trên TỜ KHAI cấp bản sao (dòng 'Họ, chữ đệm, tên người yêu cầu' "
+             "ở phần đầu). KHÔNG lấy tên người được cấp bản sao ở block 'cho người có tên dưới đây'."},
+    {"name": "TkNyc_NoiCuTru",
+     "desc": "Nơi cư trú của NGƯỜI YÊU CẦU ghi trên TỜ KHAI (dòng 'Nơi cư trú' ở phần đầu, TRƯỚC "
+             "'cho người có tên dưới đây'), object {quocGia,tinh,xa,diaChi}; bỏ cấp huyện."},
+    {"name": "TkNyc_LoaiGiayToTuyThan",
+     "desc": "Loại giấy tờ tùy thân của NGƯỜI YÊU CẦU trên TỜ KHAI (Căn cước/Căn cước công dân/CMND/Hộ chiếu)."},
+    {"name": "TkNyc_SoGiayToTuyThan",
+     "desc": "Số giấy tờ tùy thân của NGƯỜI YÊU CẦU trên TỜ KHAI."},
+    {"name": "TkNyc_NgayCapGiayToTuyThan",
+     "desc": "Ngày cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU trên TỜ KHAI, dd/mm/yyyy."},
+    {"name": "TkNyc_NoiCapGiayToTuyThan",
+     "desc": "Cơ quan cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU trên TỜ KHAI."},
+
     {"name": "NguoiDuocCap_HoTen",
      "desc": 'Họ tên người được cấp bản sao từ tài liệu bổ trợ. GIẤY CHỨNG SINH lấy ở "Dự định đặt tên con"; '
              'TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (CT01) lấy người tại mục 1. Không lấy mẹ, chủ hộ, người ký.'},
@@ -117,9 +134,9 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in ("Nyc_NgaySinh", "Nyc_NgayCap", "ChuThe_NgaySinh", "ChuThe_NgayCap",
               "NguoiDuocCap_NgaySinh",
               "HoTich_NgaySinh", "HoTich_NgayDangKy",
-              "HoTich_NgayCapGiayToTuyThan"):
+              "HoTich_NgayCapGiayToTuyThan", "TkNyc_NgayCapGiayToTuyThan"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("Nyc_NoiCuTru", "ChuThe_NoiCuTru", "HoTich_NoiCuTru"):
+for _name in ("Nyc_NoiCuTru", "ChuThe_NoiCuTru", "HoTich_NoiCuTru", "TkNyc_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {

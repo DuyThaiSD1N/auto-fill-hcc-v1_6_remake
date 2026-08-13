@@ -33,7 +33,7 @@ FIELDS: list[dict] = [
              "Lấy từ QUÊ QUÁN trên giấy tờ (CCCD/giấy khai sinh); KHÔNG dùng nơi sinh/nơi cư trú làm quê quán."},
 
     # Cha của người được đăng ký lại khai sinh.
-    {"name": "Father_FullName", "desc": "Họ tên cha của người được đăng ký lại khai sinh."},
+    {"name": "Father_FullName", "desc": "Họ tên cha của người được đăng ký lại khai sinh. Ưu tiên lấy từ CCCD của cha; nếu cha đã mất và không có CCCD thì lấy từ TRÍCH LỤC KHAI TỬ (dòng 'Họ tên người chết')."},
     {"name": "Father_IdNumber",
      "desc": "Số định danh/CCCD/CMND của cha, ƯU TIÊN lấy từ CCCD/CMND CỦA CHÍNH CHA. "
              "KHÔNG lấy số định danh của con trên giấy khai sinh làm số của cha."},
@@ -60,7 +60,7 @@ FIELDS: list[dict] = [
              'Chỉ trả khi cha đã mất VÀ có trích lục khai tử trong hồ sơ.'},
 
     # Mẹ của người được đăng ký lại khai sinh.
-    {"name": "Mother_FullName", "desc": "Họ tên mẹ của người được đăng ký lại khai sinh."},
+    {"name": "Mother_FullName", "desc": "Họ tên mẹ của người được đăng ký lại khai sinh. Ưu tiên lấy từ CCCD của mẹ; nếu mẹ đã mất và không có CCCD thì lấy từ TRÍCH LỤC KHAI TỬ (dòng 'Họ tên người chết')."},
     {"name": "Mother_IdNumber",
      "desc": "Số định danh/CCCD/CMND của mẹ, ƯU TIÊN lấy từ CCCD/CMND CỦA CHÍNH MẸ THAY VÌ TỪ GIẤY KHAI SINH CỦA CON. "
              "KHÔNG lấy số định danh của con trên giấy khai sinh làm số của mẹ."},

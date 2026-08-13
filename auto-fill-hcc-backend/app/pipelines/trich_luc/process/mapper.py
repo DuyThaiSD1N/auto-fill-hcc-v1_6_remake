@@ -148,6 +148,23 @@ def _requester_trusted(values: dict, options: dict | None) -> bool:
     return True
 
 
+def _card_is_requester(values: dict, options: dict | None) -> bool:
+    """CCCD Nyc_* có đúng là thẻ của NGƯỜI YÊU CẦU ghi trên tờ khai không?
+
+    Tờ khai đã ghi rõ người yêu cầu → chỉ nhận thẻ trùng người đó (hồ sơ hay có thêm thẻ của người
+    được đăng ký). Tờ khai không ghi → quay về mỏ neo VNeID/chủ thể như trước.
+    """
+    tk_name = _fold(values.get("TkNyc_HoTen"))
+    tk_id = _digits(values.get("TkNyc_SoGiayToTuyThan"))
+    card_name = _fold(values.get("Nyc_HoTen"))
+    card_id = _digits(values.get("Nyc_SoDinhDanh"))
+    if tk_id and card_id:
+        return tk_id == card_id
+    if tk_name and card_name:
+        return tk_name == card_name
+    return _requester_trusted(values, options)
+
+
 def _strip_admin_prefix(value):
     """Giữ tên theo contract cũ, riêng phường hiện hành cần tiền tố để khớp option."""
     text = str(value or "").strip()
@@ -277,6 +294,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         seen.add(name)
 
     has_requester = bool(values.get("Nyc_SoDinhDanh") or values.get("Nyc_HoTen"))
+    # Tờ khai ghi rõ người yêu cầu → điền khối này bất kể CCCD có khớp tài khoản VNeID hay không
+    # (người nộp hộ/tài khoản dịch vụ vẫn phải ra đúng người yêu cầu trên giấy).
+    has_tk_requester = bool(
+        values.get("TkNyc_HoTen")
+        or values.get("TkNyc_SoGiayToTuyThan")
+        or values.get("TkNyc_NoiCuTru")
+    )
     has_subject_card = bool(values.get("ChuThe_SoDinhDanh") or values.get("ChuThe_HoTen"))
     ctx = (options or {}).get("formContext") or {}
     has_requester_anchor = bool(
@@ -303,16 +327,31 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     )
 
     def _fill_requester() -> None:
-        requester_issuer = normalize_issuer(values.get("Nyc_NoiCap")) or default_issuer(values.get("Nyc_NgayCap"))
-        add("HoVaTenC", values.get("Nyc_HoTen"))
-        add("SoDinhDanhC", values.get("Nyc_SoDinhDanh"))
+        """Khối người yêu cầu: TỜ KHAI trước, CCCD chỉ bù field tờ khai không có.
+
+        Cổng điền sẵn khối này theo tài khoản VNeID đang đăng nhập; hồ sơ giấy mới là căn cứ nên
+        mapper luôn phát đủ field để extension GHI ĐÈ lên dữ liệu đăng nhập.
+        Chỉ dùng CCCD khi thẻ đó đúng là của người yêu cầu (_card_is_requester) — nếu không, thẻ trong
+        hồ sơ có thể là của người được đăng ký, ghép vào đây là sai người.
+        """
+        card = values if _card_is_requester(values, options) else {}
+        so_giay_to = values.get("TkNyc_SoGiayToTuyThan") or card.get("Nyc_SoDinhDanh")
+        ngay_cap = values.get("TkNyc_NgayCapGiayToTuyThan") or card.get("Nyc_NgayCap")
+        requester_issuer = (
+            normalize_issuer(values.get("TkNyc_NoiCapGiayToTuyThan"))
+            or normalize_issuer(card.get("Nyc_NoiCap"))
+            or default_issuer(ngay_cap)
+        )
+        add("HoVaTenC", values.get("TkNyc_HoTen") or card.get("Nyc_HoTen"))
+        add("SoDinhDanhC", so_giay_to)
         # Loại giấy tờ theo nơi cấp: Bộ Công an → "Thẻ Căn cước"; Cục Cảnh sát → "Thẻ căn cước công dân".
-        add("LoaiGiayToDinhDanhC", id_doc_type("Căn cước", requester_issuer))
-        add("NYC_SoGiayToTuyThan", values.get("Nyc_SoDinhDanh"))
-        add("NgayCapDDC", values.get("Nyc_NgayCap"))
+        add("LoaiGiayToDinhDanhC",
+            id_doc_type(values.get("TkNyc_LoaiGiayToTuyThan") or "Căn cước", requester_issuer))
+        add("NYC_SoGiayToTuyThan", so_giay_to)
+        add("NgayCapDDC", ngay_cap)
         add("NoiCapDDC", requester_issuer)
         add("NYC_LoaiCuTru", "Thường trú")
-        area = _area(values.get("Nyc_NoiCuTru"))
+        area = _area(values.get("TkNyc_NoiCuTru")) or _area(card.get("Nyc_NoiCuTru"))
         if area:
             add("NYC_NoiCuTru", "1")
             add("NYC_NoiCuTru_TrongNuoc", area)
@@ -364,9 +403,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NDK_GioiTinh", values.get("NguoiDuocCap_GioiTinh"))
         add("NDK_QuocTich", "Việt Nam")
 
+    requester_ready = has_tk_requester or (has_requester and _requester_trusted(values, options))
+
     if has_hotich:
-        # Có giấy hộ tịch: Nyc_* chỉ điền người yêu cầu; chủ thể lấy từ HoTich_* và bổ sung bằng ChuThe_*.
-        if has_requester and _requester_trusted(values, options):
+        # Có giấy hộ tịch: khối người yêu cầu lấy tờ khai (CCCD bù thiếu); chủ thể lấy từ HoTich_*
+        # và bổ sung bằng ChuThe_*.
+        if requester_ready:
             _fill_requester()
 
         event_type = _event_type(values)
@@ -430,7 +472,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     ht_loai = ht_so = ht_ngay = ht_noi = None
 
             # Giấy tờ tùy thân RIÊNG của chính người được đăng ký (thẻ căn cước/CCCD của họ) —
-            # ưu tiên CAO NHẤT khi có, đúng cho cả khai sinh (con đã có thẻ căn cước riêng).
+            # chỉ là nguồn BÙ THIẾU: tờ khai/giấy hộ tịch ghi gì thì ưu tiên cái đó.
             ct_loai = _ct("ChuThe_LoaiGiayTo")
             ct_so = _ct("ChuThe_SoDinhDanh")
             ct_ngay = _ct("ChuThe_NgayCap")
@@ -468,21 +510,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     ct_ngay = values.get("Nyc_NgayCap")
                     ct_noi = values.get("Nyc_NoiCap")
 
-            add("NDK_SoDinhDanh", ct_so or ht_so or values.get("HoTich_SoDinhDanh"))
+            # THỨ TỰ: tờ khai/giấy hộ tịch (ht_*) trước, thẻ căn cước của chủ thể (ct_*) bù thiếu.
+            add("NDK_SoDinhDanh", ht_so or values.get("HoTich_SoDinhDanh") or ct_so)
             add(
                 "NDK_SoGiayToTuyThan",
-                ct_so or ht_so or (values.get("HoTich_SoDinhDanh") if not is_birth else None),
+                ht_so or (values.get("HoTich_SoDinhDanh") if not is_birth else None) or ct_so,
             )
-            add("NDK_NgayCap", ct_ngay or ht_ngay)
+            ndk_ngaycap = ht_ngay or ct_ngay
+            add("NDK_NgayCap", ndk_ngaycap)
             # Nơi cấp (issuer) tính TRƯỚC để suy loại giấy tờ theo đúng nơi cấp.
-            ndk_noicap = None
-            if ct_noi or ct_ngay:  # có thẻ riêng của chủ thể → suy nơi cấp từ thẻ đó
-                ndk_noicap = normalize_issuer(ct_noi) or default_issuer(ct_ngay)
-            if not ndk_noicap:
-                ndk_noicap = normalize_issuer(ht_noi)
+            ndk_noicap = normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
+            if not ndk_noicap and ndk_ngaycap:
+                ndk_noicap = default_issuer(ndk_ngaycap)
             add("NDK_NoiCap", ndk_noicap)
             # Loại giấy tờ theo nơi cấp: Bộ Công an → "Thẻ Căn cước"; Cục Cảnh sát → "Thẻ căn cước công dân".
-            id_hint = ct_loai or ht_loai
+            id_hint = ht_loai or ct_loai
             if not id_hint and (ct_so or ht_so):
                 id_hint = "Căn cước"  # có số nhưng LLM ko trả loại → để nơi cấp quyết
             add("NDK_LoaiGiayToTuyThan", id_doc_type(id_hint, ndk_noicap or "") if id_hint else None)
@@ -506,14 +548,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("HoSo_NgayCapSo", values.get("HoTich_NgayDangKy"))
         add("PhuongThucNhanKQ", "2")
     elif has_subject_support:
-        # Nyc_* là người yêu cầu; giấy chứng sinh/CT01 xác định người mục II.
-        if has_requester and _requester_trusted(values, options):
+        # Tờ khai/CCCD cho người yêu cầu; giấy chứng sinh/CT01 xác định người mục II.
+        if requester_ready:
             _fill_requester()
         _fill_ndk_from_support()
     else:
         # Không có giấy hộ tịch: hai nhóm đã được phân vai độc lập trong prompt.
         requester_trusted = has_requester and _requester_trusted(values, options)
-        if requester_trusted:
+        if requester_ready:
             _fill_requester()
         if has_subject_card:
             _fill_subject_from_card()
@@ -521,8 +563,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # Chỉ có một CCCD và thẻ đó khớp người đăng nhập: tự làm cho chính mình.
             _fill_subject_from_requester()
 
-    # KHÔNG điền default cho NYC_* - để VNeID tự động điền từ thông tin đăng nhập
-    # Extension sẽ skip các field mà backend không trả về
+    # Không bịa default cho NYC_*: chỉ phát field đọc được từ tờ khai/CCCD. Có dữ liệu thì extension
+    # GHI ĐÈ lên thông tin VNeID điền sẵn; không có thì giữ nguyên phần cổng đã tự điền.
 
     # Form chỉ có ô số lượng, không có radio Có/Không cấp bản sao.
     copy_quantity = _copy_quantity(values.get("CopyRequest_Quantity"))

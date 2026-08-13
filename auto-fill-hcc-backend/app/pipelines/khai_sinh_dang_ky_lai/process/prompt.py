@@ -30,10 +30,14 @@ Mỗi người lấy thông tin ĐỒNG BỘ từ CCCD/CMND của CHÍNH họ; T
 1. Subject_BirthDate: ưu tiên đủ dd/mm/yyyy; đọc CẢ phần số lẫn phần "ghi bằng chữ" để khôi phục khi số bị
    nhiễu (vd "mười bảy, mười một, một chín bảy sáu" → "17/11/1976"). Chỉ trả "yyyy" khi không rõ ngày/tháng.
 2. CHA/MẸ ĐÃ MẤT (khối vai ghi Trạng thái "đã chết", HOẶC OCR khối cha/mẹ có "đã chết/đã mất/từ trần",
-   kể cả nhiễu "Da Chet"/"L.D. Chat"): trả *_ResidenceDomestic = {"quocGia":"","tinh":"","xa":"","diaChi":
-   "Đã chết"}. NHƯNG vẫn PHẢI trích *_BirthDateOrYear, *_Ethnicity, *_Nationality TỪ TRÍCH LỤC KHAI TỬ /
-   GIẤY CHỨNG TỬ nếu có; và trích "Nơi thường trú"/"Nơi cư trú" (thiếu thì "Quê quán") trên trích lục vào
-   *_HometownFromDeathCert (object {quocGia,tinh,xa,diaChi}). Chỉ trả HometownFromDeathCert khi có trích lục.
+   kể cả nhiễu "Da Chet"/"L.D. Chat"):
+   - HỌ TÊN: Ưu tiên lấy từ CCCD nếu có trong hồ sơ; nếu không có CCCD thì lấy từ TRÍCH LỤC KHAI TỬ /
+     GIẤY CHỨNG TỬ (dòng "Họ tên người chết" hoặc "Họ và tên").
+   - ĐỊA CHỈ: Trả *_ResidenceDomestic = {"quocGia":"","tinh":"","xa":"","diaChi":"Đã chết"}.
+   - THÔNG TIN KHÁC: Vẫn PHẢI trích *_BirthDateOrYear, *_Ethnicity, *_Nationality TỪ TRÍCH LỤC KHAI TỬ /
+     GIẤY CHỨNG TỬ nếu có (dòng "Ngày, tháng, năm sinh", "Dân tộc", "Quốc tịch").
+   - ĐỊA CHỈ TỪ GIẤY KHAI TỬ: Trích "Nơi thường trú"/"Nơi cư trú" (thiếu thì "Quê quán") trên trích lục 
+     vào *_HometownFromDeathCert (object {quocGia,tinh,xa,diaChi}). Chỉ trả HometownFromDeathCert khi có trích lục.
 3. Nơi cấp giấy tờ định danh:
    - CCCD gắn chip ghi "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh sát
      quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới (cấp từ 01/7/2024) ghi "BỘ CÔNG AN" → "Bộ Công an".

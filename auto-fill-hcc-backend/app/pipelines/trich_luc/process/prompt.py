@@ -21,8 +21,23 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - Có hơn 2 CCCD mà không đủ mỏ neo phân vai → chỉ trả người chắc chắn; không đoán theo tuổi hoặc tên file.
 </multi_cccd_rules>
 
+<to_khai_uu_tien>
+- TỜ KHAI CẤP BẢN SAO là NGUỒN ƯU TIÊN SỐ 1 cho CẢ HAI người; CCCD/CMND chỉ để BÙ field mà tờ khai
+  không có hoặc không đọc được. Không có tờ khai thì mới dùng hoàn toàn CCCD.
+- Tờ khai có HAI block người, KHÔNG được trộn:
+  + Phần ĐẦU (trước "cho người có tên dưới đây") = NGƯỜI YÊU CẦU → nhóm TkNyc_*:
+    TkNyc_HoTen, TkNyc_NoiCuTru, TkNyc_LoaiGiayToTuyThan, TkNyc_SoGiayToTuyThan,
+    TkNyc_NgayCapGiayToTuyThan, TkNyc_NoiCapGiayToTuyThan.
+    BẮT BUỘC trả các field này khi tờ khai có ghi, KỂ CẢ khi hồ sơ đã có CCCD của người yêu cầu.
+  + Block SAU "cho người có tên dưới đây" = NGƯỜI ĐƯỢC ĐĂNG KÝ → nhóm HoTich_* (như mô tả bên dưới).
+- Người yêu cầu trên tờ khai có thể KHÁC người đang đăng nhập cổng và KHÁC người được đăng ký; cứ trả
+  đúng những gì tờ khai ghi, không tự sửa cho khớp CCCD hay khớp người đăng nhập.
+- Người yêu cầu và người được đăng ký có thể là CÙNG một người (tự xin cho mình) — khi đó vẫn trả CẢ
+  TkNyc_* lẫn HoTich_*, không gộp, không bỏ bên nào.
+</to_khai_uu_tien>
+
 <source_rules>
-- Nyc_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND/Hộ chiếu của người yêu cầu.
+- Nyc_* CHỈ lấy từ giấy tờ CĂN CƯỚC/CMND/Hộ chiếu của người yêu cầu (nguồn BÙ THIẾU cho TkNyc_*).
 - BẮT BUỘC cố đọc Nyc_NgayCap/Nyc_NoiCap từ mặt sau CCCD. Nơi cấp nằm ngay sau/gần dòng
   "Ngày, tháng, năm / Date, month, year"; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
   VỀ TRẬT TỰ XÃ HỘI" thì trả Nyc_NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" thì trả Nyc_NoiCap = "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
@@ -169,6 +184,8 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   HoTich_HoTenNguoiDuocDangKy. Khi không có HoTich_* nhưng có đúng 2 thẻ và 1 thẻ khớp CONTEXT người
   yêu cầu, thẻ còn lại là ChuThe_*.
 - ChuThe_* và Nyc_* phải là HAI thẻ KHÁC nhau; ChuThe_SoDinhDanh trùng Nyc_SoDinhDanh là sai.
+- ChuThe_* là nguồn BÙ THIẾU cho người được đăng ký: tờ khai/giấy hộ tịch (HoTich_*) ghi gì thì ưu
+  tiên cái đó, thẻ căn cước chỉ điền vào chỗ tờ khai bỏ trống.
 - Khi khớp đúng, BẮT BUỘC điền TỪ CHÍNH THẺ CỦA CHỦ THỂ:
   ChuThe_HoTen, ChuThe_SoDinhDanh, ChuThe_NgaySinh, ChuThe_GioiTinh, ChuThe_QuocTich,
   ChuThe_LoaiGiayTo, ChuThe_NgayCap, ChuThe_NoiCap và ChuThe_NoiCuTru.
