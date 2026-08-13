@@ -98,21 +98,7 @@ _ETHNIC_MAP: dict[str, str] = {
 
     # ===== CO HO =====
     "co ho": "Cơ Ho",
-    "kho": "Cơ Ho",
-    "k ho": "Cơ Ho",
-    "c ho": "Cơ Ho",
-    "k h ro": "Cơ Ho",
-    "khro": "Cơ Ho",
-    "k hro": "Cơ Ho",
     "coho": "Cơ Ho",
-    "cill": "Cơ Ho",
-    "cil": "Cơ Ho",
-    "co ho cill": "Cơ Ho",
-    "co ho cil": "Cơ Ho",
-    "kho cill": "Cơ Ho",
-    "kho cil": "Cơ Ho",
-    "coho cill": "Cơ Ho",
-    "coho cil": "Cơ Ho",
 
     # ===== XO DANG =====
     "xo dang": "Xơ Đăng",

@@ -195,14 +195,22 @@ def enrich(fields: list[dict]) -> list[dict]:
         # Tờ khai ưu tiên hơn giấy chứng sinh cho tất cả thông tin con
         add("NgaySinh", values.get("Tk_NgaySinhCon") or values.get("Gcs_NgaySinhCon"))
         add("GioiTinh", values.get("Tk_GioiTinhCon") or values.get("Gcs_GioiTinhCon"))
+        
+        # Xác định nơi sinh + kiểm tra ngoại lệ Lâm Đồng (dùng chung cho dân tộc và quê quán)
+        ns_raw = values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh")
+        ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
+        birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
+        is_lam_dong = "lam dong" in birth_province
+        
         # Dân tộc con: ưu tiên tờ khai, rồi giấy chứng sinh; nếu không có thì SUY LUẬN theo cha/mẹ (bôi vàng):
         #  1) Tờ khai ghi rõ dân tộc con → dùng (chính xác nhất).
         #  2) Giấy chứng sinh ghi rõ dân tộc con → dùng.
-        #  3) Cha và mẹ CÙNG dân tộc → con theo dân tộc đó.
-        #  4) Con mang họ cha → theo dân tộc cha.
-        #  5) Con mang họ mẹ → theo dân tộc mẹ.
-        #  6) Chỉ có dân tộc cha (không biết dân tộc mẹ) → theo dân tộc cha.
-        #  7) Chỉ có dân tộc mẹ (không biết dân tộc cha) → theo dân tộc mẹ.
+        #  3) NGOẠI LỆ LÂM ĐỒNG: nếu con sinh ra ở Lâm Đồng → theo dân tộc MẸ.
+        #  4) Cha và mẹ CÙNG dân tộc → con theo dân tộc đó.
+        #  5) Con mang họ cha → theo dân tộc cha.
+        #  6) Con mang họ mẹ → theo dân tộc mẹ.
+        #  7) Chỉ có dân tộc cha (không biết dân tộc mẹ) → theo dân tộc cha.
+        #  8) Chỉ có dân tộc mẹ (không biết dân tộc cha) → theo dân tộc mẹ.
         dan_toc_con = values.get("Tk_DanTocCon") or values.get("Gcs_DanTocCon")
         dan_toc_suy_luan = False
         if not dan_toc_con:
@@ -211,33 +219,35 @@ def enrich(fields: list[dict]) -> list[dict]:
             ho_con = _fold(_first_token(child_name))
             ho_cha = _fold(_first_token(values.get("CccdNam_HoTen")))
             ho_me = _fold(_first_token(values.get("CccdNu_HoTen")))
-            if dt_cha and dt_me and _fold(dt_cha) == _fold(dt_me):
-                # Bước 2: cùng dân tộc
+            
+            if is_lam_dong and dt_me:
+                # NGOẠI LỆ LÂM ĐỒNG: theo dân tộc mẹ
+                dan_toc_con = dt_me
+                dan_toc_suy_luan = True
+            elif dt_cha and dt_me and _fold(dt_cha) == _fold(dt_me):
+                # Cùng dân tộc
                 dan_toc_con = dt_cha
                 dan_toc_suy_luan = True
             elif ho_con and ho_con == ho_cha and dt_cha:
-                # Bước 3: họ theo cha
+                # Họ theo cha
                 dan_toc_con = dt_cha
                 dan_toc_suy_luan = True
             elif ho_con and ho_con == ho_me and dt_me:
-                # Bước 4: họ theo mẹ
+                # Họ theo mẹ
                 dan_toc_con = dt_me
                 dan_toc_suy_luan = True
             elif dt_cha:
-                # Bước 5: chỉ biết dân tộc cha → mặc định theo cha
+                # Chỉ biết dân tộc cha → mặc định theo cha
                 dan_toc_con = dt_cha
                 dan_toc_suy_luan = True
             elif dt_me:
-                # Bước 6: chỉ biết dân tộc mẹ
+                # Chỉ biết dân tộc mẹ
                 dan_toc_con = dt_me
                 dan_toc_suy_luan = True
         add("MaDanToc", normalize_ethnic(dan_toc_con), default=dan_toc_suy_luan)
         add("MaQuocTich", "Việt Nam")
         add("NsMaQuocGia", "Việt Nam")
-        # Nơi sinh: ưu tiên tờ khai đăng ký khai sinh, sau đó mới tới giấy chứng sinh.
-        # Nếu LLM không suy ra được xa → tra bảng bệnh viện để bổ sung xa + tinh.
-        ns_raw = values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh")
-        ns_area = _area(_norm_birth_place(ns_raw))
+        # Nơi sinh: nếu LLM không suy ra được xa → tra bảng bệnh viện để bổ sung xa + tinh.
         if ns_area and not ns_area.get("xa"):
             dia_chi = ns_area.get("diaChi") or ""
             bv_info = lookup_hospital(dia_chi)
@@ -276,20 +286,35 @@ def enrich(fields: list[dict]) -> list[dict]:
     #  3) Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới của cha (CccdNam_NoiDangKyKhaiSinh).
     #  4) Nơi cư trú của cha (CccdNam_NoiCuTru) — fallback cuối cùng theo tục lệ
     #     quê quán con = quê cha.
+    #  NGOẠI LỆ LÂM ĐỒNG: nếu nơi sinh con (NsDiaChi) có tỉnh = "Lâm Đồng", lấy quê quán từ MẸ
+    #     thay vì cha (theo quy định địa phương).
     #  Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
     if tk_que_quan:
         add("QqMaQuocGia", "Việt Nam")
         add("QqDiaChi", tk_que_quan)
     else:
-        que_quan_cha = (
-            _area(values.get("CccdNam_QueQuan"))
-            or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
-            or _area(values.get("CccdNam_NoiCuTru"))
-        )
-        if que_quan_cha:
-            add("QqMaQuocGia", "Việt Nam")
-            add("QqDiaChi", que_quan_cha)
+        # Sử dụng is_lam_dong đã tính ở trên (khi xử lý dân tộc con)
+        if is_lam_dong and has_mother:
+            # NGOẠI LỆ LÂM ĐỒNG: lấy quê quán từ MẸ
+            que_quan_me = (
+                _area(values.get("CccdNu_QueQuan"))
+                or _area(values.get("CccdNu_NoiDangKyKhaiSinh"))
+                or _area(values.get("CccdNu_NoiCuTru"))
+            )
+            if que_quan_me:
+                add("QqMaQuocGia", "Việt Nam")
+                add("QqDiaChi", que_quan_me)
+        else:
+            # Trường hợp thông thường: lấy quê quán từ CHA
+            que_quan_cha = (
+                _area(values.get("CccdNam_QueQuan"))
+                or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
+                or _area(values.get("CccdNam_NoiCuTru"))
+            )
+            if que_quan_cha:
+                add("QqMaQuocGia", "Việt Nam")
+                add("QqDiaChi", que_quan_cha)
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
     # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") KHÔNG phải số kết hôn.

@@ -1148,6 +1148,10 @@
       return void handleChangeOwnerPage(st, fields, cfg);
     }
 
+    // Nhân thân người nộp = CCCD của CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP trong hồ sơ. Chỉ xác định được sau
+    // bước "Sao chép thông tin đăng ký tài khoản" (lúc đó form mới có tên/số định danh của tài khoản).
+    let submitterOverride = null;
+
     // 1. Điền trường CẤU TRÚC (không phải địa chỉ, không phải thông tin cá nhân/liên hệ do copy điền),
     //    vd radio loại chủ thể (OWNER_TYPE) / loại người nộp (PERS_SUBGroup) — 1 lần.
     if (st.filledStep !== st.step) {
@@ -1197,40 +1201,17 @@
         const el = document.getElementById(id);
         if (!el) continue;
         if (isRadio) {
-          const radioName = el.getAttribute("name") || id.replace(/_/g, "$");
-          const wantedValue = source ? source.value : "";
-          // Thử tìm trực tiếp theo value từ backend (vd "M"/"F")
-          let radio = document.querySelector(`input[type="radio"][name="${radioName}"][value="${wantedValue}"]`);
-          // Fallback: cổng HkdOnline dùng "1"=Nam/"0"=Nữ — map từ M/F/Nam/Nữ
-          if (!radio && wantedValue) {
-            const gender = foldBusinessPageText(wantedValue);
-            const mappedValue = (gender === "m" || gender === "nam" || gender === "1") ? "1"
-              : (gender === "f" || gender === "nu" || gender === "nữ" || gender === "0") ? "0" : null;
-            if (mappedValue) {
-              radio = document.querySelector(`input[type="radio"][name="${radioName}"][value="${mappedValue}"]`);
-            }
-            // Fallback cuối: tìm radio theo label chứa text giới tính
-            if (!radio) {
-              const allRadios = Array.from(document.querySelectorAll(`input[type="radio"][name="${radioName}"]`));
-              radio = allRadios.find((r) => {
-                const label = document.querySelector(`label[for="${r.id}"]`) || r.closest("label") || r.parentElement;
-                const labelText = foldBusinessPageText(label ? label.textContent : "");
-                return labelText.includes(gender);
-              });
-            }
-          }
-          if (radio && !radio.checked) {
-            radio.checked = true;
-            radio.dispatchEvent(new Event("click", { bubbles: true }));
-            radio.dispatchEvent(new Event("change", { bubbles: true }));
-          }
+          setGenderRadio(el.getAttribute("name") || id.replace(/_/g, "$"), source ? source.value : "");
         } else {
           setNativeValue(el, source ? source.value : "", { typing: false, commit: true });
         }
       }
     }
 
-    // 2c. Sau khi tài khoản đã được sao chép, so sánh với chủ hộ; nếu khác → chọn "Người được ủy quyền".
+    // 2c. Chốt vai trò người nộp:
+    //  - So sánh tài khoản với chủ hộ theo số định danh VÀ họ tên
+    //  - Chủ hộ: Nếu số HOẶC tên KHỚP (chỉ cần 1 trong 2)
+    //  - Người được ủy quyền: Nếu CẢ số VÀ tên đều KHÁC
     if (targetKey === "nguoi-nop-ho-so") {
       const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
       const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
@@ -1246,25 +1227,48 @@
         const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
         ownerId = String((ownerIdField && ownerIdField.value) || "").replace(/\D/g, "");
         ownerName = foldBusinessPageText((ownerNameField && ownerNameField.value) || "");
-      } else if (st.businessFlow?.search) {
-        // Luồng change/dissolution: dùng identityNumber từ search hoặc expectedName
-        const searchMethod = st.businessFlow.search.method;
-        if (searchMethod === "identityNumber") {
+      } else if (st.businessFlow?.owner || st.businessFlow?.search) {
+        // Luồng change/dissolution: không có trang chủ hộ → dùng nhân thân chủ hộ backend gửi kèm.
+        const owner = st.businessFlow.owner || {};
+        ownerId = String(owner.soDinhDanh || "").replace(/\D/g, "");
+        ownerName = foldBusinessPageText(owner.hoTen || "");
+        if (!ownerId && st.businessFlow.search?.method === "identityNumber") {
           ownerId = String(st.businessFlow.search.value || "").replace(/\D/g, "");
         }
-        ownerName = foldBusinessPageText(st.businessFlow.search.expectedName || "");
+        // KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ —
+        // so với tên tài khoản thì luôn lệch và tick nhầm "Người được ủy quyền".
       }
 
-      const accountDiffersFromOwner = (copiedId && ownerId && copiedId !== ownerId)
-        || (!ownerId && copiedName && ownerName && copiedName !== ownerName);
-      if (accountDiffersFromOwner) {
+      // Logic mới: Chỉ chọn "Người được ủy quyền" khi CẢ số VÀ tên đều KHÁC
+      // (Ngược lại: số HOẶC tên KHỚP → là Chủ hộ, không chọn ủy quyền)
+      const idMatches = copiedId && ownerId && copiedId === ownerId;
+      const nameMatches = copiedName && ownerName && copiedName === ownerName;
+      const isOwner = idMatches || nameMatches;  // Chỉ cần 1 trong 2 đúng
+
+      if (!isOwner) {
+        // CẢ số VÀ tên đều khác → chọn Người được ủy quyền
         const authRadio = document.querySelector(
           'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
         );
         if (authRadio && !authRadio.checked) {
-          console.log("[FillAll] tài khoản khác chủ hộ → chọn Người được ủy quyền");
+          console.log("[FillAll] tài khoản khác chủ hộ (cả số và tên) → chọn Người được ủy quyền");
           (document.querySelector(`label[for="${CSS.escape(authRadio.id)}"]`) || authRadio).click();
-          await sleep(300);
+          // Radio này AutoPostBack: phải CHỜ cổng render lại khối người nộp xong
+          await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
+        }
+      } else {
+        console.log("[FillAll] tài khoản khớp chủ hộ",
+          idMatches ? "(số định danh)" : "(họ tên)", "→ giữ Chủ hộ");
+      }
+
+      // 2d. Người đăng nhập KHÔNG phải chủ hộ ⇒ chính họ là người nộp. Tìm đúng CCCD của họ trong hồ
+      // sơ (khớp số định danh HOẶC họ tên với dữ liệu vừa sao chép) rồi ghi nhân thân + địa chỉ của
+      // thẻ đó vào khối người nộp. Không khớp thẻ nào → giữ nguyên dữ liệu tài khoản, không đoán bừa.
+      if (!isOwner) {
+        submitterOverride = buildSubmitterOverride(st, fields);
+        if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
+          if (await enableSubmitterEdit(st)) return; // cổng reload → lần chạy kế điền tiếp
+          applySubmitterOverride(submitterOverride);
         }
       }
     }
@@ -1272,11 +1276,16 @@
     // 3. Điền ĐỊA CHỈ từ backend — cascade inline (quốc gia→tỉnh→xã→số nhà).
     let addrFields = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
     if (targetKey === "nguoi-nop-ho-so") {
-      addrFields = submitterAddressFields(st, fields, addrFields);
+      addrFields = submitterAddressFields(st, fields, addrFields, submitterOverride);
     }
     try { await fillAddressCascade(addrFields); } catch (e) { /* ignore */ }
 
-    // 4. Lưu.
+    // 4. Lưu. Ghi lại nhân thân người nộp ngay trước khi Lưu: mỗi postback của cascade địa chỉ đều
+    // render lại khối người nộp theo dữ liệu tài khoản nên bản ghi ở bước 2d có thể đã bị đè.
+    if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
+      if (await enableSubmitterEdit(st)) return;
+      applySubmitterOverride(submitterOverride);
+    }
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
     st.phase = "saving";
@@ -1319,6 +1328,126 @@
     const input = document.getElementById(baseId);
     const view = document.getElementById(baseId + "_Vw");
     return norm((input && input.value) || (view && view.textContent) || "");
+  }
+
+  /** Tick radio giới tính: thử value backend ("M"/"F"), rồi value cổng ("1"=Nam/"0"=Nữ), rồi theo label. */
+  function setGenderRadio(radioName, wantedValue) {
+    const wanted = String(wantedValue || "");
+    let radio = document.querySelector(`input[type="radio"][name="${radioName}"][value="${wanted}"]`);
+    if (!radio && wanted) {
+      const gender = foldBusinessPageText(wanted);
+      const mappedValue = (gender === "m" || gender === "nam" || gender === "1") ? "1"
+        : (gender === "f" || gender === "nu" || gender === "nữ" || gender === "0") ? "0" : null;
+      if (mappedValue) {
+        radio = document.querySelector(`input[type="radio"][name="${radioName}"][value="${mappedValue}"]`);
+      }
+      if (!radio) {
+        const allRadios = Array.from(document.querySelectorAll(`input[type="radio"][name="${radioName}"]`));
+        radio = allRadios.find((r) => {
+          const label = document.querySelector(`label[for="${r.id}"]`) || r.closest("label") || r.parentElement;
+          return foldBusinessPageText(label ? label.textContent : "").includes(gender);
+        });
+      }
+    }
+    if (!radio || radio.checked) return !!radio;
+    radio.checked = true;
+    radio.dispatchEvent(new Event("click", { bubbles: true }));
+    radio.dispatchEvent(new Event("change", { bubbles: true }));
+    return true;
+  }
+
+  // Nhân thân người nộp lấy từ GIẤY ỦY QUYỀN, ghi đè lên dữ liệu tài khoản mà nút "Sao chép thông tin
+  // đăng ký tài khoản" vừa đổ vào. KHÔNG đụng tới sđt/email: hồ sơ vẫn nhận thông báo qua liên hệ
+  // của tài khoản đang nộp.
+  const SUBMITTER_OVERRIDE_FIELDS = [
+    { key: "hoTen", id: "ctl00_C_PERSCtl_FULL_NAMEFld" },
+    { key: "gioiTinh", radioName: "ctl00$C$PERSCtl$GENDER_IDFld" },
+    { key: "ngaySinh", id: "ctl00_C_PERSCtl_DATE_OF_BIRTHFld" },
+    { key: "soDinhDanh", id: "ctl00_C_PERSCtl_PERS_DOC_NOFld" },
+  ];
+
+  function findCheckboxByLabel(folded) {
+    return Array.from(document.querySelectorAll('input[type="checkbox"]')).find((box) => {
+      const label = (box.id && document.querySelector(`label[for="${box.id}"]`))
+        || box.closest("label") || box.parentElement;
+      return foldBusinessPageText(label ? label.textContent : "").includes(folded);
+    }) || null;
+  }
+
+  /**
+   * Bật "Sửa đổi dữ liệu" ở khối người nộp — điều kiện để nhập được người được ủy quyền.
+   * Cổng khóa nhân thân đã "Khớp với CSDLQG về dân cư"; BỎ tích thì cổng nạp lại ngay dữ liệu tài
+   * khoản (đã xem trực tiếp trên cổng) nên tích xong phải GIỮ NGUYÊN tới lúc Lưu.
+   * Trả true nếu cổng reload cả trang → lần chạy kế của state machine điền tiếp.
+   */
+  async function enableSubmitterEdit(st) {
+    const box = document.querySelector(
+      'input[name="ctl00$C$PERSCtl$PERSONChange"], #ctl00_C_PERSCtl_PERSONChange'
+    ) || findCheckboxByLabel("sua doi du lieu");
+    if (!box) {
+      console.warn("[FillAll] không thấy ô 'Sửa đổi dữ liệu' ở khối người nộp");
+      return false;
+    }
+    if (box.checked) return false;
+    if ((st.submitterEditTries || 0) >= 3) return false;
+    st.submitterEditTries = (st.submitterEditTries || 0) + 1;
+    await setFillAllState(st); // persist TRƯỚC: ô này AutoPostBack, có thể reload cả trang
+    console.log("[FillAll] bật 'Sửa đổi dữ liệu' để nhập người được ủy quyền");
+    if (await clickSaveDetectReload(box)) return true;
+    await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
+    return false;
+  }
+
+  /**
+   * Chờ UpdatePanel của cổng render xong sau một postback AJAX.
+   * Dấu hiệu: node đích bị thay bằng node mới (ASP.NET dựng lại DOM của panel) rồi đứng yên. Không đọc
+   * được Sys.WebForms từ content script (isolated world) nên bám theo chính DOM.
+   */
+  async function waitForPanelSettle(id, timeout = 4000) {
+    const before = document.getElementById(id);
+    await waitFor(() => document.getElementById(id) !== before, timeout, 150);
+    let last = document.getElementById(id);
+    for (let i = 0; i < 6; i += 1) {
+      await sleep(200);
+      const now = document.getElementById(id);
+      if (now === last) return; // hai nhịp liền không đổi node → panel đã ổn định
+      last = now;
+    }
+  }
+
+  /**
+   * Ghi nhân thân người ĐƯỢC ủy quyền đè lên dữ liệu tài khoản ở khối người nộp hồ sơ.
+   * Giống cách trang chủ hộ ghi đè: set thẳng value (KHÔNG bấm "Xóa"), sau khi enableSubmitterEdit()
+   * đã bật "Sửa đổi dữ liệu". Ô của trang này có thể là input (kể cả đang disabled) hoặc span hiển
+   * thị `..._Vw` — ghi cả hai nếu có để giá trị vừa hiện đúng vừa được submit.
+   */
+  function applySubmitterOverride(override) {
+    if (!override || override.role !== "authorized") return;
+    const missing = [];
+    for (const { key, id, radioName } of SUBMITTER_OVERRIDE_FIELDS) {
+      const value = String(override[key] || "").trim(); // norm() hạ chữ thường → chỉ dùng để SO SÁNH
+      if (!value) continue;
+      if (radioName) {
+        if (!setGenderRadio(radioName, value)) missing.push(key);
+        continue;
+      }
+      const el = document.getElementById(id);
+      const view = document.getElementById(`${id}_Vw`);
+      if (!el && !view) { missing.push(key); continue; }
+      const state = el ? `input disabled=${!!el.disabled} readonly=${!!el.readOnly}` : "chỉ có span _Vw";
+      if (el) {
+        // Input bị disable KHÔNG được trình duyệt submit → giá trị vừa gõ mất sau postback kế tiếp.
+        // Bỏ disable/readonly ngay trước khi ghi để giá trị đi cùng form (không đụng "Sửa đổi dữ liệu").
+        if (el.disabled) el.disabled = false;
+        if (el.readOnly) el.readOnly = false;
+        if (norm(el.value) !== norm(value)) setNativeValue(el, value, { typing: false, commit: true });
+      }
+      if (view) view.textContent = value;
+      console.log("[FillAll] người được ủy quyền:", key, "=", value, `(${state})`);
+    }
+    if (missing.length) {
+      console.warn("[FillAll] người được ủy quyền — không thấy ô:", missing.join(", "));
+    }
   }
 
   function matchCopiedApplicant(candidates) {
@@ -1371,41 +1500,58 @@
     return (stored && stored.value) || null;
   }
 
-  /** CCCD trong hồ sơ khớp với người nộp đã sao chép từ tài khoản (nguồn địa chỉ dự phòng). */
-  function matchSubmitterIdentityCandidate(st) {
-    const fromFlow = Array.isArray(st.businessFlow?.identityCandidates)
-      ? st.businessFlow.identityCandidates : null;
-    let candidates = fromFlow;
-    if (!candidates) {
-      const nopFields = Array.isArray(st.pages && st.pages["nguoi-nop-ho-so"])
-        ? st.pages["nguoi-nop-ho-so"] : [];
-      const cf = nopFields.find((f) => f && f.name === "__identityCandidates");
-      if (cf && Array.isArray(cf.value)) candidates = cf.value;
-    }
+  /**
+   * CCCD trong hồ sơ thuộc về CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP (dữ liệu vừa sao chép từ tài khoản).
+   * Khớp số định danh HOẶC họ tên là đủ; ưu tiên số định danh vì chắc hơn.
+   * Không thẻ nào khớp → trả null, KHÔNG lấy đại thẻ đầu tiên (rất dễ vớ phải CCCD của chủ hộ).
+   */
+  function matchSubmitterIdentityCandidate(st, fields) {
+    const fromPage = readSubmitterPageField(st, fields, "__identityCandidates");
+    const fromFlow = st.businessFlow?.identityCandidates;
+    const candidates = (Array.isArray(fromPage) && fromPage.length ? fromPage : fromFlow) || [];
     if (!Array.isArray(candidates) || !candidates.length) return null;
-
-    // Luồng thành lập mới: candidates chỉ chứa đúng 1 người nộp ủy quyền → dùng thẳng,
-    // không cần so khớp tên/CCCD với tài khoản đã sao chép.
-    if (!fromFlow && candidates.length === 1) return candidates[0];
 
     const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
     const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+    if (!copiedName && !copiedId) return null;
+
     return candidates.find((item) => {
-      const name = foldBusinessPageText(item && (item.hoTen || ""));
-      return name && copiedName && name === copiedName;
-    }) || candidates.find((item) => {
-      const id = String(item && (item.soDinhDanh || "")).replace(/\D/g, "");
+      const id = String((item && item.soDinhDanh) || "").replace(/\D/g, "");
       return id && copiedId && id === copiedId;
+    }) || candidates.find((item) => {
+      const name = foldBusinessPageText((item && item.hoTen) || "");
+      return name && copiedName && name === copiedName;
     }) || null;
+  }
+
+  /** Nhân thân người nộp lấy từ CCCD của chính người đăng nhập; không khớp thẻ nào thì trả null. */
+  function buildSubmitterOverride(st, fields) {
+    const person = matchSubmitterIdentityCandidate(st, fields);
+    if (!person) {
+      console.warn("[FillAll] hồ sơ không có CCCD nào khớp người đăng nhập → giữ nguyên dữ liệu tài khoản");
+      return null;
+    }
+    console.log("[FillAll] người nộp = CCCD khớp tài khoản:", person.hoTen, person.soDinhDanh);
+    return { role: "authorized", ...person };
+  }
+
+  /** Nhân thân trên form đã đúng người nộp chưa — đỡ phải bật "Sửa đổi dữ liệu" một cách vô ích. */
+  function submitterNeedsRewrite(override) {
+    const currentId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+    const currentName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+    const wantedId = String(override.soDinhDanh || "").replace(/\D/g, "");
+    const wantedName = foldBusinessPageText(override.hoTen || "");
+    return (!!wantedId && wantedId !== currentId) || (!!wantedName && wantedName !== currentName);
   }
 
   /**
    * Địa chỉ người nộp hồ sơ theo ĐÚNG vai trò đang chọn trên cổng:
-   *  - Chủ hộ tự nộp ("Người có thẩm quyền ký") → địa chỉ cá nhân ghi trong ĐƠN (Giấy đề nghị).
-   *  - Người được ủy quyền → KHÔNG điền địa chỉ gì cả (người dùng sẽ tự điền thông tin ủy quyền).
-   * Backend gửi sẵn hai nhánh này trong __applicantAddress vì lúc map chưa biết cổng sẽ tick vai trò nào.
+   *  - Chủ hộ tự nộp ("Người có thẩm quyền ký") → địa chỉ cá nhân ghi trong ĐƠN (Giấy đề nghị),
+   *    backend gửi sẵn trong __applicantAddress.self.
+   *  - Người nộp thay → địa chỉ trên CCCD của chính người đăng nhập (override). Không khớp được thẻ
+   *    nào thì KHÔNG điền gì (thà để trống còn hơn ghi địa chỉ chủ hộ vào người nộp thay).
    */
-  function submitterAddressFields(st, fields, backendAddrFields) {
+  function submitterAddressFields(st, fields, backendAddrFields, override) {
     const plan = readSubmitterPageField(st, fields, "__applicantAddress") || {};
 
     if (!submitterIsAuthorized()) {
@@ -1417,8 +1563,12 @@
       return backendAddrFields;
     }
 
-    // Nếu chọn "Người được ủy quyền" → KHÔNG điền địa chỉ
-    console.log("[FillAll] người được ủy quyền → không điền địa chỉ (người dùng tự nhập thông tin ủy quyền)");
+    const fromIdentity = applicantAddressFields(override && override.diaChi);
+    if (fromIdentity.length) {
+      console.log("[FillAll] người nộp thay → địa chỉ trên CCCD:", JSON.stringify(override.diaChi));
+      return fromIdentity;
+    }
+    console.log("[FillAll] người nộp thay, không có CCCD khớp tài khoản → không điền địa chỉ");
     return [];
   }
 
@@ -2033,6 +2183,10 @@
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
+  // Vai trò/địa chỉ người nộp hồ sơ — export để test được không cần cả state machine.
+  H.applySubmitterOverride = applySubmitterOverride;
+  H.submitterAddressFields = submitterAddressFields;
+  H.buildSubmitterOverride = buildSubmitterOverride;
   H.getFillAllState = getFillAllState;
   H.navigateBusinessRegistrationPage = navigateBusinessRegistrationPage;
   H.setFillAllState = setFillAllState;

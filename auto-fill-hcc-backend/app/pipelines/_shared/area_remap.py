@@ -225,7 +225,14 @@ def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Opt
     xa_has_admin_label = bool(re.match(r"^\s*(xã|phường|thị trấn|tt\.?)\b", xa_raw, flags=re.IGNORECASE))
 
     # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
-    tinh_normalized = _CITY_TO_PROVINCE.get(_fold(tinh_raw))
+    # Strip tiền tố "TP ", "Thành phố ", "Thị xã ", "TX " trước khi lookup
+    tinh_for_lookup = re.sub(
+        r"^\s*(tp|thanh pho|thi xa|tx|city of)\.?\s+",
+        "",
+        _fold(tinh_raw),
+        flags=re.IGNORECASE,
+    ).strip()
+    tinh_normalized = _CITY_TO_PROVINCE.get(tinh_for_lookup) or _CITY_TO_PROVINCE.get(_fold(tinh_raw))
     if tinh_normalized:
         area = {**area, "tinh": tinh_normalized}
         tinh_raw = tinh_normalized

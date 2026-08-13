@@ -86,6 +86,15 @@ FIELDS: list[dict] = [
         ),
     },
     {
+        "name": "Cccd_DanhSach",
+        "desc": (
+            "Danh sách MỌI thẻ căn cước/CCCD/CMND có trong hồ sơ, array object "
+            "{hoTen,gioiTinh,ngaySinh,soDinhDanh,diaChi}; diaChi là object {quocGia,tinh,xa,diaChi} đọc từ "
+            "\"Nơi thường trú\". Mặt trước + mặt sau của cùng một thẻ chỉ là MỘT object. "
+            "KHÔNG suy vai trò (chủ hộ hay người nộp) từ thứ tự file — cứ liệt kê đủ."
+        ),
+    },
+    {
         "name": "HasMultipleCCCD",
         "desc": (
             "Boolean: true nếu hồ sơ có 2+ CCCD với số định danh khác nhau, false nếu chỉ có 1 CCCD. "
@@ -102,4 +111,5 @@ for _name in ("TruSo_DiaChi", "ChuHo_DiaChi", "Thue_DiaChiNhanThongBao", "NguoiN
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 for _name in ("ChuHo_NgaySinh", "Thue_NgayBatDau", "NguoiNop_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-COMPACT_COMP_BY_NAME["NganhNghe_DanhSach"] = "raw"
+for _name in ("NganhNghe_DanhSach", "Cccd_DanhSach"):
+    COMPACT_COMP_BY_NAME[_name] = "raw"

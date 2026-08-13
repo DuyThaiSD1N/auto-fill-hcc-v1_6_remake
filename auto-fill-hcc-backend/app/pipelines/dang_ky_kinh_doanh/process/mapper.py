@@ -143,6 +143,37 @@ def _submitter_is_owner(values: dict[str, Any]) -> bool | None:
 _PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
 _PERS_SUB_AUTHORIZED_LABEL = "Người được ủy quyền"
 
+def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
+    """Nhân thân đọc từ MỌI thẻ căn cước trong hồ sơ (đã gộp mặt trước/sau của cùng một thẻ).
+
+    Backend KHÔNG biết ai đang đăng nhập cổng nên không tự chọn người nộp; extension so danh sách này
+    với dữ liệu tài khoản (sau khi bấm "Sao chép thông tin đăng ký tài khoản") — khớp số định danh
+    hoặc họ tên là ra đúng thẻ của người nộp, rồi ghi nhân thân + địa chỉ đó vào khối người nộp.
+    """
+    rows = values.get("Cccd_DanhSach")
+    if not isinstance(rows, list):
+        return []
+
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        ho_ten = _proper_name(row.get("hoTen"))
+        so_dinh_danh = re.sub(r"\D", "", _compact_text(row.get("soDinhDanh")))
+        key = (_fold_vi(ho_ten), so_dinh_danh)
+        if key == ("", "") or key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "hoTen": ho_ten,
+            "gioiTinh": _gender_code(row.get("gioiTinh")),
+            "ngaySinh": normalize_date(row.get("ngaySinh")),
+            "soDinhDanh": so_dinh_danh,
+            "diaChi": _addr(row.get("diaChi")),
+        })
+    return out
+
 
 def _strip_household_prefix(value: Any) -> str:
     text = _compact_text(value)
@@ -159,11 +190,29 @@ def _clean_business_code(value: Any) -> str:
     return digits if len(digits) == 4 else ""
 
 
+def _clean_city(value: Any) -> str:
+    """Bỏ tiền tố "TP", "Thành phố", "TP.", "T.P" khỏi tên thành phố để extension match được với option.
+    
+    VD: "TP Hồ Chí Minh" → "Hồ Chí Minh", "Thành phố Đà Nẵng" → "Đà Nẵng"
+    """
+    text = _compact_text(value)
+    if not text:
+        return ""
+    # Bỏ tiền tố thành phố (nhiều dạng viết)
+    text = re.sub(
+        r"^\s*(?:TP\.?|T\.P\.?|Thành\s+phố|thanh\s+pho)\s+",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
+    return text
+
+
 def _addr(value: Any) -> dict[str, str]:
     if isinstance(value, dict):
         out = {
             "quocGia": _compact_text(value.get("quocGia") or value.get("quoc_gia") or "Việt Nam"),
-            "tinh": _compact_text(value.get("tinh") or value.get("province")),
+            "tinh": _clean_city(value.get("tinh") or value.get("province")),
             "xa": _clean_ward(value.get("xa") or value.get("phuongXa") or value.get("ward")),
             "diaChi": _compact_text(value.get("diaChi") or value.get("dia_chi") or value.get("address")),
         }
@@ -172,16 +221,18 @@ def _addr(value: Any) -> dict[str, str]:
         if remapped:
             # _clean_ward lại vì remap_area có thể trả tên có tiền tố (vd "Phường Cam Ly")
             xa_remapped = _clean_ward(remapped.get("xa") or out.get("xa") or "")
-            out = {**remapped, "xa": xa_remapped}
+            # _clean_city lại vì remap_area có thể trả tên có tiền tố "TP"
+            tinh_remapped = _clean_city(remapped.get("tinh") or out.get("tinh") or "")
+            out = {**remapped, "xa": xa_remapped, "tinh": tinh_remapped}
         return out
     text = _compact_text(value)
     if not text:
         return {}
     parts = [p.strip() for p in text.split(",") if p.strip()]
     if len(parts) >= 3:
-        return {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": _clean_ward(parts[-2]), "diaChi": ", ".join(parts[:-2])}
+        return {"quocGia": "Việt Nam", "tinh": _clean_city(parts[-1]), "xa": _clean_ward(parts[-2]), "diaChi": ", ".join(parts[:-2])}
     if len(parts) == 2:
-        return {"quocGia": "Việt Nam", "tinh": parts[-1], "diaChi": parts[0]}
+        return {"quocGia": "Việt Nam", "tinh": _clean_city(parts[-1]), "diaChi": parts[0]}
     return {"quocGia": "Việt Nam", "diaChi": text}
 
 
@@ -391,15 +442,18 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$UC_DW_TAXEditCtl$TAX_CAL_METHOD_IDRbBox", "dom-radio", _tax_method_code(values.get("Thue_PhuongPhapTinh")))
 
     elif selected_page == "nguoi-nop-ho-so":
-        # Vai trò người nộp: ưu tiên so khớp nhân thân người nộp với chủ hộ (khi hồ sơ kê khai riêng);
-        # hồ sơ không kê khai thì suy từ số lượng CCCD (2+ CCCD ⇒ có người nộp thay).
-        has_multiple_cccd = bool(values.get("HasMultipleCCCD", False))
+        # Vai trò người nộp: so khớp nhân thân người nộp với chủ hộ (khi hồ sơ kê khai riêng); hồ sơ
+        # không kê khai thì suy từ số lượng CCCD (2+ CCCD ⇒ có người nộp thay). Extension chốt lại
+        # theo tài khoản THẬT sau khi bấm "Sao chép thông tin đăng ký tài khoản".
+        candidates = _identity_candidates(values)
+        has_multiple_cccd = bool(values.get("HasMultipleCCCD", False)) or len(candidates) >= 2
         is_self = _submitter_is_owner(values) is not False and not has_multiple_cccd
 
         pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
         add("ctl00$C$PERS_SUBGroup", "dom-radio", pers_sub_role)
 
-        # Nhân thân người nộp: dùng dữ liệu người nộp nếu hồ sơ có kê khai, không thì mặc định chủ hộ.
+        # Nhân thân người nộp theo giấy đề nghị (mặc định là chủ hộ). Nếu người đăng nhập là người nộp
+        # thay, extension sẽ ghi đè bằng CCCD của chính họ trong __identityCandidates.
         add("ctl00$C$PERSCtl$FULL_NAMEFld", "dom-input",
             _proper_name(values.get("NguoiNop_HoTen") or values.get("ChuHo_HoTen")))
         add("ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "dom-date",
@@ -408,26 +462,28 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
             values.get("NguoiNop_SoDinhDanh") or values.get("ChuHo_SoDinhDanh"))
 
         # ĐỊA CHỈ người nộp (cổng KHÔNG tự điền khi bấm "Sao chép tài khoản"):
-        # - Người nộp là chủ hộ  → lấy thẳng địa chỉ cá nhân trên ĐƠN (Giấy đề nghị).
-        # - Người được ủy quyền  → KHÔNG điền địa chỉ (người dùng tự nhập thông tin ủy quyền).
+        # - Người nộp là chủ hộ → địa chỉ cá nhân trên ĐƠN (Giấy đề nghị).
+        # - Người nộp thay      → địa chỉ trên CCCD của chính người đăng nhập, do extension chọn từ
+        #   __identityCandidates; không khớp được thẻ nào thì KHÔNG điền (thà trống còn hơn ghi nhầm
+        #   địa chỉ chủ hộ vào người nộp thay).
         self_address = next(
             (value for value in (values.get("ChuHo_DiaChi"), values.get("NguoiNop_DiaChi"))
              if _has_address(value)),
             None,
         )
-        # Chỉ điền địa chỉ khi người nộp là chủ hộ
         if is_self:
             add_address("ctl00$C$PERSCtl$ADDRCCtl", self_address)
 
         # Extension chốt lại vai trò theo radio THẬT trên cổng (sau khi bấm "Sao chép tài khoản" mới
-        # biết tài khoản đăng nhập có phải chủ hộ không) → gửi kèm thông tin địa chỉ cho trường hợp
-        # người nộp là chủ hộ, không gửi cho trường hợp người được ủy quyền.
-        applicant_address = {
-            "role": "self" if is_self else "authorized",
-            "self": _addr(self_address),
-        }
+        # biết tài khoản đăng nhập có phải chủ hộ không) → gửi kèm địa chỉ nhánh "chủ hộ tự nộp".
+        applicant_address = {"role": "self" if is_self else "authorized", "self": _addr(self_address)}
         if applicant_address["self"]:
             add("__applicantAddress", "raw", applicant_address)
+
+        # Mọi CCCD trong hồ sơ: extension chọn đúng thẻ của người đang đăng nhập rồi ghi đè nhân thân
+        # + địa chỉ vào khối người nộp (dữ liệu nút "Sao chép tài khoản" đổ vào không có địa chỉ).
+        if candidates:
+            add("__identityCandidates", "raw", candidates)
 
         # SĐT/email để extension tự điền khi user click "Sao chép tài khoản"
 

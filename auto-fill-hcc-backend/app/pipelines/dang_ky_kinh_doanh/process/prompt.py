@@ -15,18 +15,117 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
   + Ví dụ: nếu Giấy đề nghị có "Nơi ở hiện tại" đọc được, còn CCCD ghi một nơi cư trú khác, thì ChuHo_DiaChi phải lấy theo "Nơi ở hiện tại" trên Giấy đề nghị.
   + NguoiNop_DiaChi: CHỈ lấy khi người nộp chính là chủ hộ. Nếu người nộp chính là chủ hộ thì dùng cùng địa chỉ cá nhân đã chọn cho ChuHo_DiaChi.
     CHỈ lấy NguoiNop_DiaChi từ GIẤY ĐỀ NGHỊ — KHÔNG lấy từ giấy ủy quyền, KHÔNG lấy từ CCCD.
-  + Nếu người nộp KHÁC chủ hộ (người được ủy quyền): KHÔNG trả địa chỉ gì cả - người dùng sẽ tự nhập thông tin ủy quyền.
-  + THỨ TỰ ƯU TIÊN: CHỈ lấy địa chỉ khi người nộp LÀ chủ hộ → dùng địa chỉ trên giấy đề nghị (ChuHo_DiaChi).
-    Người nộp KHÁC chủ hộ → KHÔNG lấy địa chỉ.
+  + Nếu người nộp KHÁC chủ hộ (người được ủy quyền): TUYỆT ĐỐI KHÔNG trả NguoiNop_DiaChi.
+    Nhân thân + địa chỉ của người nộp thay đi qua nhóm field UyQuyen_NguoiDuocUyQuyen_* ở dưới.
+  + THỨ TỰ ƯU TIÊN: CHỈ lấy NguoiNop_DiaChi khi người nộp LÀ chủ hộ → dùng địa chỉ trên giấy đề nghị (ChuHo_DiaChi).
+    Người nộp KHÁC chủ hộ → KHÔNG lấy NguoiNop_DiaChi.
 
-- ⚠️ PHÁT HIỆN NHIỀU CCCD TRONG HỒ SƠ:
-  
-  **HasMultipleCCCD**: Đếm số trang/ảnh có chữ "CĂN CƯỚC" hoặc "IDENTITY CARD" trong hồ sơ.
-  
+- 🪪 Cccd_DanhSach — NHÂN THÂN ĐỌC TỪ THẺ CĂN CƯỚC (BẮT BUỘC khi hồ sơ có ảnh/bản scan thẻ):
+  + Với MỖI thẻ ("CĂN CƯỚC", "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card", "CHỨNG MINH NHÂN DÂN")
+    trả đúng MỘT object {hoTen, gioiTinh, ngaySinh, soDinhDanh, diaChi}.
+  + Mặt trước và mặt sau của CÙNG một thẻ là MỘT người → gộp thành một object, không tách đôi.
+  + Hồ sơ nộp thay thường có CCCD của chủ hộ VÀ CCCD của người đi nộp: phải trả ĐỦ MỌI thẻ đọc được,
+    không bỏ thẻ nào, kể cả khi trùng thông tin với chủ hộ.
+  + diaChi đọc ở "Nơi thường trú/Place of residence", dạng {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
+    ví dụ "Thôn Nam Hiệp 2, Ka Đô, Đơn Dương, Lâm Đồng" → diaChi="Thôn Nam Hiệp 2", xa="Ka Đô",
+    tinh="Lâm Đồng" (Đơn Dương là huyện, bỏ).
+  + KHÔNG suy vai trò (chủ hộ hay người nộp) từ thứ tự file hay tên file — hệ thống tự đối chiếu với
+    tài khoản đang nộp trên cổng.
+  + Dữ liệu trong Cccd_DanhSach KHÔNG được dùng thay cho ChuHo_DiaChi / TruSo_DiaChi / NguoiNop_DiaChi
+    (các field đó chỉ lấy từ Giấy đề nghị).
+  + Giấy ủy quyền (nếu có) CHỈ dùng để biết hồ sơ nộp thay; KHÔNG lấy nhân thân/địa chỉ từ giấy đó.
+
+- ⚠️ PHÁT HIỆN NHIỀU CCCD/GIẤY TỜ TÙY THÂN TRONG HỒ SƠ:
+
+  **HasMultipleCCCD**: Đếm số CCCD/CMND/giấy tùy thân trong hồ sơ.
   - Nếu CHỈ có 1 CCCD → trả HasMultipleCCCD = false
   - Nếu có 2+ CCCD → trả HasMultipleCCCD = true
   
-  ⚠️ Khi người nộp KHÁC chủ hộ: KHÔNG lấy địa chỉ người nộp - người dùng sẽ tự nhập thông tin ủy quyền.
+  **⚠️ QUY TẮC BẮT BUỘC KHI CÓ 2+ CCCD:**
+  Khi phát hiện HasMultipleCCCD = true, BẮT BUỘC phải:
+  1. Xác định CCCD nào là của CHỦ HỘ (so với giấy đề nghị)
+  2. Xác định CCCD còn lại là của ai
+  3. Nếu CCCD còn lại KHÁC chủ hộ (khác cả số và tên) → ĐIỀN ĐẦY ĐỦ các field UyQuyen_*
+  4. KHÔNG ĐƯỢC bỏ trống các field UyQuyen_* khi đã xác định có người ủy quyền
+  
+  **KHI CÓ 2+ CCCD - LOGIC XÁC ĐỊNH CHỦ HỘ VÀ NGƯỜI ỦY QUYỀN:**
+  
+  + **BƯỚC 1 - XÁC ĐỊNH AI LÀ CHỦ HỘ:**
+    Ưu tiên xác định theo GIẤY ĐỀ NGHỊ ĐĂNG KÝ HỘ KINH DOANH:
+    - Đọc họ tên và số CCCD của CHỦ HỘ từ phần đầu giấy đề nghị (phần "Tôi là...")
+    - So sánh với CÁC CCCD trong hồ sơ:
+      * CCCD nào có SỐ ĐỊNH DANH KHỚP với số CCCD trên giấy đề nghị → ĐÓ LÀ CHỦ HỘ
+      * Nếu không khớp số, so sánh HỌ TÊN: CCCD nào khớp tên trên giấy đề nghị → ĐÓ LÀ CHỦ HỘ
+    - CCCD còn lại → là NGƯỜI ĐƯỢC ỦY QUYỀN (người đi nộp hồ sơ thay)
+  
+  + **BƯỚC 2 - ĐIỀN THÔNG TIN CHỦ HỘ:**
+    - Lấy từ CCCD của CHỦ HỘ (đã xác định ở bước 1):
+      * ChuHo_HoTen, ChuHo_SoDinhDanh, ChuHo_GioiTinh, ChuHo_NgaySinh
+      * ChuHo_DiaChi: ƯU TIÊN địa chỉ "Nơi ở hiện tại" trên GIẤY ĐỀ NGHỊ, nếu không có thì lấy từ CCCD
+  
+  + **BƯỚC 3 - ĐIỀN THÔNG TIN NGƯỜI ỦY QUYỀN:**
+    - Nếu CCCD còn lại có CẢ số định danh VÀ họ tên KHÁC với chủ hộ:
+      → ĐÓ LÀ NGƯỜI ĐƯỢC ỦY QUYỀN
+      → BẮT BUỘC điền ĐẦY ĐỦ:
+        * UyQuyen_NguoiDuocUyQuyen_HoTen (từ CCCD người ủy quyền)
+        * UyQuyen_NguoiDuocUyQuyen_SoDinhDanh (từ CCCD người ủy quyền)
+        * UyQuyen_NguoiDuocUyQuyen_GioiTinh (từ CCCD người ủy quyền)
+        * UyQuyen_NguoiDuocUyQuyen_NgaySinh (từ CCCD người ủy quyền)
+        * UyQuyen_NguoiDuocUyQuyen_DiaChi (từ CCCD người ủy quyền - lấy "Nơi thường trú")
+        * UyQuyen_NguoiUyQuyen_HoTen = tên CHỦ HỘ (từ giấy đề nghị)
+        * UyQuyen_NguoiUyQuyen_SoDinhDanh = số CCCD CHỦ HỘ (từ giấy đề nghị)
+        * UyQuyen_CoGiayUyQuyen = true (nếu có giấy ủy quyền văn bản) hoặc false (chỉ có 2 CCCD)
+    
+    - Nếu CCCD còn lại có số CCCD KHỚP HOẶC họ tên KHỚP với CHỦ HỘ:
+      → Coi như CÙNG NGƯỜI (chủ hộ có 2 CCCD cũ/mới, hoặc chủ hộ tự nộp)
+      → KHÔNG điền các field UyQuyen_*
+      → Trả UyQuyen_CoGiayUyQuyen = false
+  
+  + **LƯU Ý QUAN TRỌNG:**
+    - So sánh HỌ TÊN phải chuẩn hóa (bỏ dấu, chữ thường, bỏ khoảng trắng thừa)
+    - Ví dụ: "NGUYỄN VĂN A" = "Nguyen Van A" = "nguyễn văn a"
+    - PHẢI điền ĐẦY ĐỦ thông tin người ủy quyền, KHÔNG được bỏ field nào
+  
+  + **VÍ DỤ CỤ THỂ VỚI SỐ CCCD THẬT:**
+    
+    **Ví dụ: Giấy đề nghị của Lê Văn Sơn + CCCD của Nguyễn Duy Thái (người ủy quyền)**
+    
+    INPUT HỒ SƠ:
+    - Giấy đề nghị: "Tôi là LÊ VĂN SƠN... Số định danh: 042093011745... Nơi ở hiện tại: Số 150 đường 2/4, thôn Thạnh Nghĩa, Đơn Dương, Lâm Đồng"
+    - CCCD: Số 001204018566, tên "NGUYỄN DUY THÁI", sinh 11/08/2004, Nam, nơi thường trú "TDP 13 Nhân Mỹ Mỹ Đình 1, Nam Từ Liêm, Hà Nội"
+    
+    PHÂN TÍCH:
+    1. Đọc giấy đề nghị → Chủ hộ là "LÊ VĂN SƠN" (042093011745)
+    2. So sánh CCCD với chủ hộ:
+       - CCCD 001204018566 "NGUYỄN DUY THÁI" ≠ 042093011745 "LÊ VĂN SƠN"
+       - Số CCCD KHÁC và Tên KHÁC → ĐÂY LÀ NGƯỜI ỦY QUYỀN
+    3. Điền thông tin ủy quyền
+    
+    OUTPUT BẮT BUỘC:
+    {
+      "HasMultipleCCCD": true,
+      "ChuHo_HoTen": "LÊ VĂN SƠN",
+      "ChuHo_SoDinhDanh": "042093011745",
+      "ChuHo_DiaChi": {
+        "quocGia": "Việt Nam",
+        "tinh": "Lâm Đồng",
+        "xa": "Đơn Dương",
+        "diaChi": "Số 150 đường 2/4, thôn Thạnh Nghĩa"
+      },
+      "UyQuyen_CoGiayUyQuyen": false,
+      "UyQuyen_NguoiUyQuyen_HoTen": "LÊ VĂN SƠN",
+      "UyQuyen_NguoiUyQuyen_SoDinhDanh": "042093011745",
+      "UyQuyen_NguoiDuocUyQuyen_HoTen": "NGUYỄN DUY THÁI",
+      "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh": "001204018566",
+      "UyQuyen_NguoiDuocUyQuyen_GioiTinh": "Nam",
+      "UyQuyen_NguoiDuocUyQuyen_NgaySinh": "11/08/2004",
+      "UyQuyen_NguoiDuocUyQuyen_DiaChi": {
+        "quocGia": "Việt Nam",
+        "tinh": "Hà Nội",
+        "xa": "Mỹ Đình 1",
+        "diaChi": "TDP 13 Nhân Mỹ"
+      }
+    }
 - PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
   + ChuHo_DiaChi/NguoiNop_DiaChi = địa chỉ cá nhân.
   + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".
@@ -53,7 +152,13 @@ QUY TẮC TRÍCH XUẤT:
   + Ưu tiên bản có đủ "Tổ <số>"/số nhà; loại bỏ bản bị cụt (kết thúc bằng "Tổ" mà thiếu số) hoặc nhiễu vô nghĩa (vd "S.CN 300 Tổ" là OCR lỗi của "SN 300 Tổ 11").
   + Ví dụ: giữa "S.CN 300 Tổ" (cụt, vô nghĩa) và "SN 300 Tổ 11" (đầy đủ) → chọn "SN 300 Tổ 11".
 - Tỉnh/xã:
-  + tinh trả tên tỉnh/thành phố như giấy, nhưng không cần tự thêm tiền tố nếu giấy không có.
+  + tinh LUÔN trả tên TỈNH/THÀNH PHỐ TRỰC THUỘC TRUNG ƯƠNG (cấp tỉnh), KHÔNG trả tên thành phố/thị xã thuộc tỉnh.
+    Ví dụ: "TP Đà Lạt", "Thành phố Đà Lạt", "Đà Lạt" → tinh="Lâm Đồng" (vì Đà Lạt thuộc tỉnh Lâm Đồng).
+    "TP Bảo Lộc", "Bảo Lộc" → tinh="Lâm Đồng".
+    "TP Buôn Ma Thuột" → tinh="Đắk Lắk".
+    "TP Phan Thiết" → tinh="Bình Thuận".
+    "TP Tam Kỳ" → tinh="Quảng Nam".
+    Các thành phố trực thuộc trung ương (Hà Nội, TP HCM, Đà Nẵng, Cần Thơ, Hải Phòng, Huế) vẫn trả đúng tên đó.
   + xa CHỈ trả phần tên riêng của phường/xã/đặc khu, KHÔNG kèm tiền tố "Phường", "P.", "P", "Xã",
     "Thị trấn", "Đặc khu".
     Ví dụ: "Xã Nam Ban Lâm Hà" -> xa="Nam Ban Lâm Hà".

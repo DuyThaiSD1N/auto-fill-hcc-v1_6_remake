@@ -83,12 +83,48 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
 
 <to_khai_status_relation>
 - Từ dòng "Tình trạng hôn nhân" trên TỜ KHAI:
-  + nội dung bắt đầu bằng "Chưa kết hôn" hoặc ghi rõ
-    "hiện tại chưa đăng ký kết hôn với ai" → TinhTrangHonNhanC1 = "Hiện tại chưa đăng ký kết hôn với ai";
-  + ghi rõ "hiện tại đang có chồng" hoặc "hiện tại đang có vợ" → TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
+  + Nếu ghi "đã đăng ký kết hôn nhưng chồng đã chết" hoặc "đã đăng ký kết hôn nhưng vợ đã chết"
+    hoặc "vợ/chồng đã chết" VÀ CÓ dòng "Theo giấy chứng tử số ... do ... cấp ngày ..." → BẮT BUỘC
+    trích xuất DeathCert_Number, DeathCert_Date, DeathCert_Agency từ dòng đó (xem chi tiết ở
+    <death_cert_from_tokhai>). TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 trong trường hợp này
+    (Python mapper sẽ tự điền trạng thái GÓA từ DeathCert_*).
+  + Nếu ghi "đã ly hôn" hoặc "đã đăng ký kết hôn nhưng đã ly hôn" VÀ CÓ dòng "Theo bản án/quyết định
+    ly hôn số ... do/của ... cấp/ngày ..." → trích xuất DivorceDecision_* (tương tự death cert).
+    KHÔNG trả TinhTrangHonNhanC1.
+  + Nếu nội dung bắt đầu bằng "Chưa kết hôn" hoặc CHỈ ghi "hiện tại chưa đăng ký kết hôn với ai"
+    (KHÔNG có thông tin về chồng/vợ đã chết hay ly hôn) → TinhTrangHonNhanC1 = "Hiện tại chưa đăng ký kết hôn với ai".
+  + Nếu ghi rõ "hiện tại đang có chồng" hoặc "hiện tại đang có vợ" → TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
 - Trả ToKhai_LaBanThan=true CHỈ khi dòng quan hệ ghi "Tự khai"/"Bản thân" VÀ họ tên người yêu cầu
   trùng họ tên người được cấp.
 </to_khai_status_relation>
+
+<death_cert_from_tokhai>
+Khi TỜ KHAI có dòng "Tình trạng hôn nhân" ghi rõ "chồng/vợ đã chết" VÀ có dòng tiếp theo dạng
+"Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>" hoặc "Theo trích lục khai tử số <N> do <CQ> cấp ngày <D>":
+
+- DeathCert_Number = <N> (SỐ ĐĂNG KÝ, có thể có hậu tố như "12", "212/2022", v.v.)
+- DeathCert_Date = <D> (dd/mm/yyyy hoặc dd-mm-yyyy, chuẩn hóa thành dd/mm/yyyy)
+- DeathCert_Agency = <CQ> (cơ quan cấp, ví dụ "UBND phường 1 TP Dalat tỉnh Lâm Đồng").
+  Chuẩn hóa: "UBND" → "Ủy ban nhân dân", giữ nguyên địa danh phía sau.
+
+LƯU Ý: 
+- BẮT BUỘC trả CẢ BA field DeathCert_* khi tờ khai có đủ thông tin số, cơ quan, ngày.
+- TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 khi đã trích được DeathCert_* từ tờ khai, vì Python mapper
+  sẽ tự động điền trạng thái "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại
+  chưa đăng ký kết hôn với ai" dựa trên sự hiện diện của DeathCert_*.
+- Dòng "Hiện tại chưa đăng ký kết hôn với ai" trong tờ khai CHỈ LÀ phần bổ sung, KHÔNG được dùng để
+  đè lên trạng thái GÓA khi đã có thông tin chồng/vợ đã chết.
+
+Ví dụ: TỜ KHAI ghi:
+  "Tình trạng hôn nhân: (4) đã đăng ký kết hôn nhưng chồng đã chết
+   Theo giấy chứng tử số 12 do UBND phường 1 TP Dalat tỉnh Lâm Đồng cấp ngày 28-2-2005
+   Hiện tại chưa đăng ký kết hôn với ai"
+→ Trả:
+  - DeathCert_Number = "12"
+  - DeathCert_Date = "28/02/2005"
+  - DeathCert_Agency = "Ủy ban nhân dân phường 1 TP Đà Lạt tỉnh Lâm Đồng"
+  - KHÔNG trả TinhTrangHonNhanC1 (để Python mapper xử lý).
+</death_cert_from_tokhai>
 
 <source_rules>
 - Cccd_* CHỈ lấy từ CCCD/CMND upload (thẻ vật lý được chụp/scan kèm hồ sơ):
