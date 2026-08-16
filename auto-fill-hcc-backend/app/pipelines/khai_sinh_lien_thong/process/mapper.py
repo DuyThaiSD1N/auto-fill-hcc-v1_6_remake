@@ -284,37 +284,38 @@ def enrich(fields: list[dict]) -> list[dict]:
     #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
     #  2) Quê quán trên CCCD cha (CccdNam_QueQuan) — CCCD cũ có dòng "Quê quán".
     #  3) Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới của cha (CccdNam_NoiDangKyKhaiSinh).
-    #  4) Nơi cư trú của cha (CccdNam_NoiCuTru) — fallback cuối cùng theo tục lệ
-    #     quê quán con = quê cha.
+    #  ⚠️ KHÔNG fallback xuống Nơi thường trú (CccdNam_NoiCuTru/CccdNu_NoiCuTru) — dễ nhầm.
     #  NGOẠI LỆ LÂM ĐỒNG: nếu nơi sinh con (NsDiaChi) có tỉnh = "Lâm Đồng", lấy quê quán từ MẸ
     #     thay vì cha (theo quy định địa phương).
     #  Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
+    # Quê quán mỗi bên: CHỈ từ dòng "Quê quán" trên CCCD cũ, hoặc "Nơi đăng ký khai sinh" trên thẻ
+    # căn cước mới. KHÔNG lấy nơi thường trú.
+    que_quan_cha = (
+        _area(values.get("CccdNam_QueQuan"))
+        or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
+    )
+    que_quan_me = (
+        _area(values.get("CccdNu_QueQuan"))
+        or _area(values.get("CccdNu_NoiDangKyKhaiSinh"))
+    )
+    # Mặc định con theo quê quán CHA; sinh ở Lâm Đồng thì theo MẸ (quy định địa phương).
+    if is_lam_dong and has_mother:
+        chinh, du_phong = que_quan_me, que_quan_cha
+    else:
+        chinh, du_phong = que_quan_cha, que_quan_me
+
     if tk_que_quan:
         add("QqMaQuocGia", "Việt Nam")
         add("QqDiaChi", tk_que_quan)
-    else:
-        # Sử dụng is_lam_dong đã tính ở trên (khi xử lý dân tộc con)
-        if is_lam_dong and has_mother:
-            # NGOẠI LỆ LÂM ĐỒNG: lấy quê quán từ MẸ
-            que_quan_me = (
-                _area(values.get("CccdNu_QueQuan"))
-                or _area(values.get("CccdNu_NoiDangKyKhaiSinh"))
-                or _area(values.get("CccdNu_NoiCuTru"))
-            )
-            if que_quan_me:
-                add("QqMaQuocGia", "Việt Nam")
-                add("QqDiaChi", que_quan_me)
-        else:
-            # Trường hợp thông thường: lấy quê quán từ CHA
-            que_quan_cha = (
-                _area(values.get("CccdNam_QueQuan"))
-                or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
-                or _area(values.get("CccdNam_NoiCuTru"))
-            )
-            if que_quan_cha:
-                add("QqMaQuocGia", "Việt Nam")
-                add("QqDiaChi", que_quan_cha)
+    elif chinh:
+        add("QqMaQuocGia", "Việt Nam")
+        add("QqDiaChi", chinh)
+    elif du_phong:
+        # CCCD bên chính không có dòng "Quê quán" (thẻ căn cước mới) → tạm lấy bên còn lại và BÔI VÀNG
+        # để cán bộ đối chiếu, thay vì bỏ trống ô bắt buộc.
+        add("QqMaQuocGia", "Việt Nam")
+        add("QqDiaChi", du_phong, default=True)
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
     # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") KHÔNG phải số kết hôn.

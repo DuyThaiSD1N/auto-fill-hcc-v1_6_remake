@@ -1,8 +1,16 @@
 """Facts nguồn cho hồ sơ chấm dứt hoạt động hộ kinh doanh."""
 
 FIELDS: list[dict] = [
-    {"name": "HoKinhDoanh_MaSo", "desc": "Mã số hộ kinh doanh, ưu tiên trên Thông báo chấm dứt hoặc GCN đăng ký HKD; chỉ giữ chữ số."},
-    {"name": "HoKinhDoanh_MaDangKy", "desc": "Mã số đăng ký hộ kinh doanh nếu giấy tờ có ghi riêng."},
+    {"name": "HoKinhDoanh_MaSo", "desc": (
+        "Mã số hộ kinh doanh. "
+        "CHỈ lấy khi có nhãn rõ ràng 'Mã số hộ kinh doanh', 'MST', 'Số đăng ký' trên Thông báo chấm dứt hoặc GCN đăng ký HKD. "
+        "TUYỆT ĐỐI KHÔNG lấy số định danh/CCCD/CMND của bất kỳ cá nhân nào (dù xuất hiện dưới bất kỳ nhãn nào). "
+        "Nếu không tìm thấy nhãn rõ ràng → để trống."
+    )},
+    {"name": "HoKinhDoanh_MaDangKy", "desc": (
+        "Mã số đăng ký hộ kinh doanh nếu giấy tờ ghi riêng (khác HoKinhDoanh_MaSo). "
+        "TUYỆT ĐỐI KHÔNG lấy số CCCD/CMND."
+    )},
     {"name": "HoKinhDoanh_MaNoiBo", "desc": "Mã số nội bộ trong Hệ thống nếu tài liệu có ghi; không tự suy ra."},
     {"name": "HienTai_Ten", "desc": "Tên hộ kinh doanh hiện tại trên GCN hoặc Thông báo chấm dứt."},
     {"name": "ChamDut_LoaiHinh", "desc": "Loại hình/lý do chấm dứt nếu tài liệu ghi rõ; không rõ thì để trống để mapper chọn Lý do khác."},

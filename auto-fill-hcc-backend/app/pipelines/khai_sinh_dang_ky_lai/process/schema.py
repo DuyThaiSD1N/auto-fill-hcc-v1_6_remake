@@ -37,6 +37,9 @@ FIELDS: list[dict] = [
     {"name": "Father_IdNumber",
      "desc": "Số định danh/CCCD/CMND của cha, ƯU TIÊN lấy từ CCCD/CMND CỦA CHÍNH CHA. "
              "KHÔNG lấy số định danh của con trên giấy khai sinh làm số của cha."},
+    {"name": "Father_Gender",
+     "desc": 'Giới tính GHI TRÊN giấy tờ đã dùng để điền Father_* ("Nam" hoặc "Nữ"). BẮT BUỘC trả khi có '
+             'trả bất kỳ field Father_* nào lấy từ CCCD/CMND. Thẻ ghi "Nữ" nghĩa là thẻ đó KHÔNG phải của cha.'},
     {"name": "Father_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh của cha, dd/mm/yyyy — LẤY TỪ CCCD của cha nếu có."},
     {"name": "Father_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của cha — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an')."},
     {"name": "Father_BirthDateOrYear",
@@ -64,6 +67,9 @@ FIELDS: list[dict] = [
     {"name": "Mother_IdNumber",
      "desc": "Số định danh/CCCD/CMND của mẹ, ƯU TIÊN lấy từ CCCD/CMND CỦA CHÍNH MẸ THAY VÌ TỪ GIẤY KHAI SINH CỦA CON. "
              "KHÔNG lấy số định danh của con trên giấy khai sinh làm số của mẹ."},
+    {"name": "Mother_Gender",
+     "desc": 'Giới tính GHI TRÊN giấy tờ đã dùng để điền Mother_* ("Nam" hoặc "Nữ"). BẮT BUỘC trả khi có '
+             'trả bất kỳ field Mother_* nào lấy từ CCCD/CMND. Thẻ ghi "Nam" nghĩa là thẻ đó KHÔNG phải của mẹ.'},
     {"name": "Mother_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh của mẹ, dd/mm/yyyy — LẤY TỪ CCCD của mẹ nếu có."},
     {"name": "Mother_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của mẹ — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an')."},
     {"name": "Mother_BirthDateOrYear",

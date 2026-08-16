@@ -5,8 +5,16 @@ có đổi tên hay không và mã ngành nào phải xóa thuộc về mapper t
 """
 
 FIELDS: list[dict] = [
-    {"name": "HoKinhDoanh_MaSo", "desc": "Mã số hộ kinh doanh/mã số thuế, ưu tiên trên Thông báo thay đổi."},
-    {"name": "HoKinhDoanh_MaDangKy", "desc": "Mã số đăng ký hộ kinh doanh nếu đọc được."},
+    {"name": "HoKinhDoanh_MaSo", "desc": (
+        "Mã số hộ kinh doanh. "
+        "CHỈ lấy khi có nhãn rõ ràng 'Mã số hộ kinh doanh', 'MST', 'Số đăng ký' trên Thông báo thay đổi hoặc GCN đăng ký HKD. "
+        "TUYỆT ĐỐI KHÔNG lấy số định danh/CCCD/CMND của bất kỳ cá nhân nào (dù xuất hiện dưới bất kỳ nhãn nào). "
+        "Nếu không tìm thấy nhãn rõ ràng → để trống."
+    )},
+    {"name": "HoKinhDoanh_MaDangKy", "desc": (
+        "Mã số đăng ký hộ kinh doanh nếu đọc được (khác HoKinhDoanh_MaSo). "
+        "TUYỆT ĐỐI KHÔNG lấy số CCCD/CMND."
+    )},
     {"name": "HoKinhDoanh_MaNoiBo", "desc": "Mã số nội bộ trong hệ thống nếu tài liệu có ghi."},
     {"name": "HienTai_Ten", "desc": "Tên hiện tại trên Giấy chứng nhận đăng ký hộ kinh doanh."},
     {"name": "DeNghi_Ten", "desc": "Tên mới CHỈ khi Thông báo ghi rõ đề nghị thay đổi tên hộ kinh doanh."},
@@ -31,6 +39,70 @@ FIELDS: list[dict] = [
     {"name": "DeNghi_Thue", "desc": "Thông tin thuế mới CHỈ khi thuộc nội dung thay đổi, object {diaChiNhanThongBao,dienThoai,fax,email,ngayBatDau,soLaoDong,phuongPhapTinh}."},
     {"name": "NguoiNop", "desc": "Người ký/nộp theo Thông báo hoặc ủy quyền, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,diaChi}."},
     {"name": "Cccd_DanhSach", "desc": "Mọi CCCD/căn cước vật lý trong hồ sơ, array {hoTen,ngaySinh,gioiTinh,soDinhDanh,ngayCap,noiCap,diaChi}. Không tự gán vai trò."},
+    {
+        "name": "HasMultipleCCCD",
+        "desc": (
+            "Boolean: true nếu hồ sơ có 2+ CCCD với số định danh khác nhau, false nếu chỉ có 1 CCCD. "
+            "Dùng để xác định người nộp có phải chủ hộ hay không."
+        ),
+    },
+    {
+        "name": "UyQuyen_CoGiayUyQuyen",
+        "desc": (
+            "Boolean: true nếu hồ sơ có giấy ủy quyền văn bản riêng, false nếu chỉ có 2 CCCD. "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiUyQuyen_HoTen",
+        "desc": (
+            "Họ tên người ủy quyền (= CHỦ HỘ KINH DOANH). "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ có người nộp thay."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiUyQuyen_SoDinhDanh",
+        "desc": (
+            "Số CCCD người ủy quyền (= số CCCD CHỦ HỘ). "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ có người nộp thay."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_HoTen",
+        "desc": (
+            "Họ tên người được ủy quyền (= NGƯỜI ĐI NỘP HỒ SƠ THAY). "
+            "Đọc từ CCCD của người nộp thay. CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh",
+        "desc": (
+            "Số CCCD người được ủy quyền. "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_GioiTinh",
+        "desc": (
+            "Giới tính người được ủy quyền: 'Nam' hoặc 'Nữ'. "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_NgaySinh",
+        "desc": (
+            "Ngày sinh người được ủy quyền, dd/mm/yyyy. "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_DiaChi",
+        "desc": (
+            "Địa chỉ người được ủy quyền, object {quocGia,tinh,xa,diaChi}. "
+            "Đọc từ 'Nơi thường trú' trên CCCD của người nộp thay. "
+            "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
+        ),
+    },
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}

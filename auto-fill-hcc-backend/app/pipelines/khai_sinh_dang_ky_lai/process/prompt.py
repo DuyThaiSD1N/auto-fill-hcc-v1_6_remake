@@ -18,12 +18,79 @@ EXTRA_RULES = """
 <mot_nguoi_mot_nguon>
 Mỗi người lấy thông tin ĐỒNG BỘ từ CCCD/CMND của CHÍNH họ; TUYỆT ĐỐI không trộn ngày sinh/nơi cư trú/số
 định danh giữa các vai (mỗi thẻ là MỘT người khác nhau).
+
+⚠️⚠️⚠️ QUY TẮC BẮT BUỘC - XÁC ĐỊNH CHA/MẸ DựA VÀO GIỚI TÍNH TRÊN CCCD:
+
+**BƯỚC 1: ĐẾM VÀ PHÂN LOẠI CCCD THEO GIỚI TÍNH**
+- Đọc TẤT CẢ CCCD/CMND trong hồ sơ
+- Mỗi CCCD có field "Giới tính / Sex": "Nam" hoặc "Nữ"
+- Phân loại:
+  * CCCD có "Giới tính: Nam" → Danh sách NAM
+  * CCCD có "Giới tính: Nữ" → Danh sách NỮ
+
+**BƯỚC 2: XÁC ĐỊNH VAI TRÒ - QUY TẮC BẮT BUỘC**
+
+A. Nếu có 2 CCCD (1 Nam + 1 Nữ):
+   - CCCD có tuổi TRẺ HƠN (năm sinh SAU, gần hiện tại hơn) → CON (Subject_*)
+   - CCCD còn lại:
+     * Nếu là NAM → CHA (Father_*)
+     * Nếu là NỮ → MẸ (Mother_*)
+   - ⚠️ BỎ TRỐNG vai còn thiếu:
+     * Nếu không có CCCD Nam nào khác → BỎ TRỐNG TẤT CẢ Father_*
+     * Nếu không có CCCD Nữ nào khác → BỎ TRỐNG TẤT CẢ Mother_*
+
+B. Nếu có 2 CCCD (cùng 2 Nam HOẶC cùng 2 Nữ):
+   - CCCD có tuổi TRẺ HƠN → CON (Subject_*)
+   - CCCD có tuổi LỚN HƠN:
+     * Nếu cả 2 đều NAM → người lớn tuổi là CHA (Father_*), BỎ TRỐNG Mother_*
+     * Nếu cả 2 đều NỮ → người lớn tuổi là MẸ (Mother_*), BỎ TRỐNG Father_*
+
+C. Nếu có 3 CCCD:
+   - Tìm CCCD TRẺ TUỔI NHẤT → CON (Subject_*)
+   - Trong 2 CCCD còn lại:
+     * CCCD có "Giới tính: Nam" → CHA (Father_*)
+     * CCCD có "Giới tính: Nữ" → MẸ (Mother_*)
+
+**BƯỚC 3: ĐIỀN THÔNG TIN - CẤM TUYỆT ĐỐI**
+
+✅ ĐÚNG:
+- Father_* CHỈ lấy từ CCCD có "Giới tính: Nam"
+- Mother_* CHỈ lấy từ CCCD có "Giới tính: Nữ"
+- Mỗi CCCD CHỈ dùng cho MỘT vai (không duplicate)
+
+❌ CẤM TUYỆT ĐỐI:
+- ❌ CẤM lấy CCCD "Giới tính: Nữ" điền vào Father_* 
+  (Father phải là Nam, Mother phải là Nữ)
+- ❌ CẤM lấy CCCD "Giới tính: Nam" điền vào Mother_*
+  (Mother phải là Nữ, Father phải là Nam)
+- ❌ CẤM duplicate: cùng 1 người vào 2 vai khác nhau
+- ❌ CẤM lấy thông tin CON sang CHA/MẸ
+- ❌ CẤM đoán: Nếu không có CCCD Nam (ngoài CON) → BỎ TRỐNG Father_*
+- ❌ CẤM đoán: Nếu không có CCCD Nữ (ngoài CON) → BỎ TRỐNG Mother_*
+- ❌ CẤM tự thêm địa chỉ "Đã chết" khi không có CCCD: nếu thiếu Father/Mother → BỎ TRỐNG, KHÔNG trả Father_ResidenceDomestic hoặc Mother_ResidenceDomestic
+
+**VÍ DỤ CỤ THỂ:**
+
+Có 2 CCCD:
+- CCCD 1: Người A, Giới tính: Nam, Năm sinh: 1984
+- CCCD 2: Người B, Giới tính: Nữ, Năm sinh: 1953
+
+→ Người TRẺ HƠN (1984) = Subject_*
+→ Người LỚN TUỔI (1953) + Nữ = Mother_*
+→ KHÔNG có Father_* (bỏ trống hoàn toàn)
+
 - Subject (con): người lớn tự đăng ký thường nộp CCCD của chính mình → ngày sinh/giới tính/quê quán/nơi
   sinh lấy TỪ CCCD CỦA CON, không lấy của cha hay mẹ.
 - Cha/mẹ CÓ CCCD/CMND → họ tên, số định danh, ngày-nơi cấp, nơi thường trú, ngày sinh (đủ dd/mm/yyyy),
   dân tộc lấy TỪ CCCD đó (nguồn sạch); KHÔNG lấy tên/nơi cư trú nhiễu trên giấy khai sinh. Chỉ dùng giấy
   khai sinh/tờ khai cho cha/mẹ khi người đó KHÔNG có CCCD trong hồ sơ.
 - CẤM lấy "Số định danh cá nhân" của CON in trên giấy khai sinh làm số định danh của cha/mẹ.
+- BẮT BUỘC trả Father_Gender / Mother_Gender = giới tính GHI TRÊN chính giấy tờ đã dùng cho vai đó
+  ("Nam"/"Nữ"). Đây là căn cứ để hậu kiểm: thẻ ghi "Nữ" mà điền vào Father_* sẽ bị XÓA sạch vai cha
+  (và ngược lại). Không suy giới tính từ tên người.
+- HỒ SƠ THIẾU MỘT BÊN (chỉ có con + CCCD mẹ, hoặc chỉ có con + CCCD cha): BỎ TRỐNG HOÀN TOÀN vai còn
+  lại — không trả BẤT KỲ field nào của vai đó, kể cả Nationality/Ethnicity/ResidenceDomestic. Thà để
+  cổng trống còn hơn điền dữ liệu của con hoặc của bên kia sang.
 </mot_nguoi_mot_nguon>
 
 <trich_field>
@@ -80,6 +147,20 @@ SỐ TÊN, KHÔNG được đảo:
 </chuan_hoa_dac_thu>
 
 <output>
+⚠️⚠️⚠️ KIỂM TRA BẮT BUỘC TRƯỚC KHI TRẢ OUTPUT:
+
+1. **KIỂM TRA DUPLICATE TÊN**:
+   - Nếu Father_FullName = Mother_FullName → XÓA MỘT TRONG HAI (giữ người đúng giới tính)
+   - Nếu Father_IdNumber = Mother_IdNumber → XÓA MỘT TRONG HAI
+
+2. **KIỂM TRA GIỚI TÍNH**:
+   - Nếu có Father_FullName nhưng người đó là NỮ (từ CCCD "Giới tính: Nữ") → XÓA TẤT CẢ Father_*, điền vào Mother_*
+   - Nếu có Mother_FullName nhưng người đó là NAM (từ CCCD "Giới tính: Nam") → XÓA TẤT CẢ Mother_*, điền vào Father_*
+
+3. **KIỂM TRA DUPLICATE VỚI CON**:
+   - Nếu Father_FullName = Subject_FullName → XÓA TẤT CẢ Father_*
+   - Nếu Mother_FullName = Subject_FullName → XÓA TẤT CẢ Mother_*
+
 Chỉ trả một JSON object: {"fields":{"<field_hop_le>": <value>}}. Chỉ dùng field trong danh sách FIELD ĐƯỢC
 PHÉP TRẢ; KHÔNG trả field UI (HoTenKS, HoTenChaKS, NamSinhMeKS, QuanHe, LoaiDangKy...); không bịa; field
 không đủ căn cứ thì bỏ; không trả giải thích/nguồn sau JSON.

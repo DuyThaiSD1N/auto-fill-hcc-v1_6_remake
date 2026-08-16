@@ -539,39 +539,131 @@ def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
 
 
 def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
-    """Không cho field của một người chảy sang vai khác sau bước trích xuất."""
-    if not context:
-        return fields
-
+    """Không cho field của một người chảy sang vai khác sau bước trích xuất.
+    
+    Bổ sung validation chặt chẽ:
+    1. Phát hiện duplicate (cùng tên/CCCD ở Father và Mother)
+    2. Kiểm tra giới tính (Father phải Nam, Mother phải Nữ)
+    3. Loại bỏ trùng lặp với Subject
+    4. Xóa địa chỉ "Đã chết" không hợp lệ từ LLM
+    """
     values = {
         field.get("name"): field.get("value")
         for field in fields
         if field.get("name")
     }
-    invalid_prefixes = {
-        _ROLE_PREFIX[tag]
-        for tag in _FAMILY_TAGS
-        if not _identity_matches(values, context, tag)
-    }
-    registration = _section(context, "dang_ky_khai_sinh_truoc_day")
-    has_birth_source = _fold(
-        _labeled_value(registration, "Có tài liệu khai sinh hợp lệ")
+    
+    # ===== BƯỚC 1: PHÁT HIỆN VÀ SỬA DUPLICATE + GIỚI TÍNH SAI =====
+    father_name = _fold(str(values.get("Father_FullName") or ""))
+    mother_name = _fold(str(values.get("Mother_FullName") or ""))
+    father_id = _digits(values.get("Father_IdNumber"))
+    mother_id = _digits(values.get("Mother_IdNumber"))
+    subject_name = _fold(str(values.get("Subject_FullName") or ""))
+    subject_birth = _fold(str(values.get("Subject_BirthDate") or ""))
+    
+    # ĐỌC GIỚI TÍNH TRỰC TIẾP TỪ EXTRACTED FIELDS (LLM output)
+    father_gender_extracted = _fold(str(values.get("Father_Gender") or ""))
+    mother_gender_extracted = _fold(str(values.get("Mother_Gender") or ""))
+    
+    # Tập các prefix cần XÓA
+    invalid_prefixes = set()
+    
+    # KIỂM TRA 0A: Phát hiện duplicate TÊN giữa Father và Mother TRƯỚC
+    # Nếu Father_FullName = Mother_FullName → Chỉ giữ 1, xóa cái còn lại
+    if father_name and mother_name and father_name == mother_name:
+        # Kiểm tra giới tính để quyết định giữ Father hay Mother
+        # Nếu Father có giới tính Nữ → XÓA Father, giữ Mother
+        if father_gender_extracted in {"nu", "nữ", "female"}:
+            invalid_prefixes.add("Father_")
+        # Nếu Mother có giới tính Nam → XÓA Mother, giữ Father
+        elif mother_gender_extracted in {"nam", "male"}:
+            invalid_prefixes.add("Mother_")
+        # Không rõ → ưu tiên XÓA Father (giữ Mother)
+        else:
+            invalid_prefixes.add("Father_")
+    
+    # KIỂM TRA 0B: Phát hiện duplicate CCCD
+    if father_id and mother_id and father_id == mother_id:
+        # Tương tự logic trên
+        if father_gender_extracted in {"nu", "nữ", "female"}:
+            invalid_prefixes.add("Father_")
+        elif mother_gender_extracted in {"nam", "male"}:
+            invalid_prefixes.add("Mother_")
+        else:
+            invalid_prefixes.add("Father_")
+    
+    # KIỂM TRA 0C: Father có giới tính Nữ (KHÔNG duplicate)
+    if father_gender_extracted in {"nu", "nữ", "female"} and father_name and "Father_" not in invalid_prefixes:
+        invalid_prefixes.add("Father_")
+    
+    # KIỂM TRA 0D: Mother có giới tính Nam (KHÔNG duplicate)
+    if mother_gender_extracted in {"nam", "male"} and mother_name and "Mother_" not in invalid_prefixes:
+        invalid_prefixes.add("Mother_")
+    
+    # KIỂM TRA 2: Father/Mother trùng với Subject (con)
+    if subject_name and "Father_" not in invalid_prefixes and "Mother_" not in invalid_prefixes:
+        if father_name and father_name == subject_name:
+            invalid_prefixes.add("Father_")
+        if mother_name and mother_name == subject_name:
+            invalid_prefixes.add("Mother_")
+    
+    # KIỂM TRA 2B: cha/mẹ CÙNG ngày sinh với con → chắc chắn là dữ liệu của con bị chép sang vai đó.
+    if subject_birth:
+        if _fold(str(values.get("Father_BirthDateOrYear") or "")) == subject_birth:
+            invalid_prefixes.add("Father_")
+        if _fold(str(values.get("Mother_BirthDateOrYear") or "")) == subject_birth:
+            invalid_prefixes.add("Mother_")
+
+    # KIỂM TRA 3: vai KHÔNG có nhân thân (không họ tên, không số định danh) thì BỎ HẲN vai đó.
+    # Hồ sơ chỉ có con + CCCD mẹ mà LLM vẫn trả rơi rớt Father_QuocTich/Father_ResidenceDomestic sẽ
+    # khiến mapper dựng một khối "cha" rỗng với quốc tịch/loại cư trú mặc định — thà bỏ trống.
+    for prefix, name_key, id_key in (
+        ("Father_", "Father_FullName", "Father_IdNumber"),
+        ("Mother_", "Mother_FullName", "Mother_IdNumber"),
+    ):
+        if not str(values.get(name_key) or "").strip() and not _digits(values.get(id_key)):
+            invalid_prefixes.add(prefix)
+    
+    # ===== BƯỚC 3: KIỂM TRA CONTEXT MATCHING (logic cũ) =====
+    if context:
+        for tag in _FAMILY_TAGS:
+            if not _identity_matches(values, context, tag):
+                invalid_prefixes.add(_ROLE_PREFIX[tag])
+    
+    has_birth_source = bool(context) and _fold(
+        _labeled_value(_section(context, "dang_ky_khai_sinh_truoc_day"), "Có tài liệu khai sinh hợp lệ")
     ) == "co"
 
+    # ===== BƯỚC 4: LỌC FIELDS =====
     result: list[dict] = []
     for field in fields:
         name = str(field.get("name") or "")
+        value = field.get("value")
+        
+        # Xóa các prefix không hợp lệ
         if any(name.startswith(prefix) for prefix in invalid_prefixes):
             continue
-        evidence = _CONTEXT_EVIDENCE_FIELDS.get(name)
+        
+        # KIỂM TRA 5: Xóa địa chỉ "Đã chết" không hợp lệ từ LLM
+        if name in ("Father_ResidenceDomestic", "Mother_ResidenceDomestic"):
+            if isinstance(value, dict):
+                dia_chi = _fold(str(value.get("diaChi") or ""))
+                tinh = str(value.get("tinh") or "").strip()
+                xa = str(value.get("xa") or "").strip()
+                # Nếu LLM tự thêm "Đã chết" nhưng không có tinh/xa → xóa
+                if not tinh and not xa and ("da chet" in dia_chi or "chet" in dia_chi):
+                    continue
+        
+        evidence = _CONTEXT_EVIDENCE_FIELDS.get(name) if context else None
         if evidence:
             tag, label = evidence
-            value = _fold(_labeled_value(_section(context, tag), label))
-            if not value or "khong xac dinh" in value or value == "khong co":
+            ctx_value = _fold(_labeled_value(_section(context, tag), label))
+            if not ctx_value or "khong xac dinh" in ctx_value or ctx_value == "khong co":
                 continue
-        if name.startswith("PreviousRegistration_") and not has_birth_source:
+        if context and name.startswith("PreviousRegistration_") and not has_birth_source:
             continue
         result.append(field)
+    
     return result
 
 

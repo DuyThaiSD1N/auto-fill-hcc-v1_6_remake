@@ -126,7 +126,56 @@ def _person_fields(person: Any, prefix: str) -> list[dict]:
     return [_compact_field(target, person.get(source)) for source, target in mapping.items() if person.get(source) not in (None, "", {}, [])]
 
 
+def _proper_name(value: Any) -> str:
+    """Chuẩn hóa họ tên về dạng viết hoa chữ đầu mỗi từ."""
+    text = _text(value)
+    if not text:
+        return ""
+    return " ".join(word.capitalize() for word in text.split())
+
+
+def _has_address(value: Any) -> bool:
+    """Địa chỉ có nội dung thật hay không (chỉ mỗi quốc gia mặc định thì coi như trống)."""
+    if not isinstance(value, dict):
+        return bool(_text(value))
+    return any(value.get(key) for key in ("tinh", "xa", "diaChi"))
+
+
+def _submitter_is_owner(values: dict[str, Any]) -> bool | None:
+    """Người nộp có phải chính chủ hộ không, dựa trên nhân thân hồ sơ kê khai.
+
+    Trả None khi hồ sơ không kê khai riêng người nộp (không đủ dữ liệu để kết luận) —
+    lúc đó caller suy tiếp từ số lượng CCCD trong hồ sơ.
+    """
+    submitter_id = _digits(values.get("NguoiNop", {}).get("soDinhDanh") if isinstance(values.get("NguoiNop"), dict) else "")
+    # So với chủ hộ hiện tại (thay đổi) hoặc chủ hộ đề nghị
+    owner_id = _digits(
+        values.get("HienTai_ChuHo", {}).get("soDinhDanh") if isinstance(values.get("HienTai_ChuHo"), dict) else ""
+    ) or _digits(
+        values.get("DeNghi_ChuHo", {}).get("soDinhDanh") if isinstance(values.get("DeNghi_ChuHo"), dict) else ""
+    )
+    if submitter_id and owner_id:
+        return submitter_id == owner_id
+
+    submitter_name = _fold(values.get("NguoiNop", {}).get("hoTen") if isinstance(values.get("NguoiNop"), dict) else "")
+    owner_name = _fold(
+        values.get("HienTai_ChuHo", {}).get("hoTen") if isinstance(values.get("HienTai_ChuHo"), dict) else ""
+    ) or _fold(
+        values.get("DeNghi_ChuHo", {}).get("hoTen") if isinstance(values.get("DeNghi_ChuHo"), dict) else ""
+    )
+    if submitter_name and owner_name:
+        return submitter_name == owner_name
+
+    return None
+
+
 def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
+    """Nhân thân đọc từ MỌI thẻ căn cước trong hồ sơ (đã gộp mặt trước/sau của cùng một thẻ).
+
+    Backend KHÔNG biết ai đang đăng nhập cổng nên không tự chọn người nộp; extension so danh sách này
+    với dữ liệu tài khoản (sau khi bấm "Sao chép thông tin đăng ký tài khoản") — khớp số định danh
+    hoặc họ tên là ra đúng thẻ của người nộp, rồi ghi nhân thân + địa chỉ đó vào khối người nộp.
+    """
     candidates: list[dict[str, Any]] = []
     raw = values.get("Cccd_DanhSach")
     if isinstance(raw, list):
@@ -143,6 +192,10 @@ def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
         seen.add(key)
         out.append(item)
     return out
+
+
+_PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
+_PERS_SUB_AUTHORIZED_LABEL = "Người được ủy quyền"
 
 
 def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
@@ -240,9 +293,69 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         pages["thong-tin-ve-thue"] = creation_mapper.enrich(compact, page="thong-tin-ve-thue")
         order.append("thong-tin-ve-thue")
 
+    # Người nộp là chủ hộ hiện tại (hoặc chủ hộ đề nghị nếu đổi chủ) làm mặc định
+    owner = values.get("HienTai_ChuHo") if isinstance(values.get("HienTai_ChuHo"), dict) else (
+        values.get("DeNghi_ChuHo") if isinstance(values.get("DeNghi_ChuHo"), dict) else {}
+    )
     applicant = values.get("NguoiNop") if isinstance(values.get("NguoiNop"), dict) else {}
-    applicant_compact = _person_fields(applicant, "NguoiNop")
-    pages["nguoi-nop-ho-so"] = creation_mapper.enrich(applicant_compact, page="nguoi-nop-ho-so")
+    
+    # Vai trò người nộp: so khớp nhân thân người nộp với chủ hộ (khi hồ sơ kê khai riêng); hồ sơ
+    # không kê khai thì suy từ số lượng CCCD (2+ CCCD ⇒ có người nộp thay). Extension chốt lại
+    # theo tài khoản THẬT sau khi bấm "Sao chép thông tin đăng ký tài khoản".
+    candidates = _identity_candidates(values)
+    has_multiple_cccd = bool(values.get("HasMultipleCCCD", False)) or len(candidates) >= 2
+    is_self = _submitter_is_owner(values) is not False and not has_multiple_cccd
+
+    # Tạo page người nộp theo đúng logic của đăng ký kinh doanh
+    applicant_page = []
+    
+    # 1. Radio vai trò
+    pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
+    applicant_page.append({"name": "ctl00$C$PERS_SUBGroup", "comp": "dom-radio", "value": pers_sub_role})
+
+    # 2. Nhân thân người nộp (mặc định là chủ hộ, extension sẽ override nếu là người nộp thay)
+    applicant_page.append({
+        "name": "ctl00$C$PERSCtl$FULL_NAMEFld", "comp": "dom-input",
+        "value": _proper_name(applicant.get("hoTen") or owner.get("hoTen"))
+    })
+    applicant_page.append({
+        "name": "ctl00$C$PERSCtl$DATE_OF_BIRTHFld", "comp": "dom-date",
+        "value": applicant.get("ngaySinh") or owner.get("ngaySinh")
+    })
+    applicant_page.append({
+        "name": "ctl00$C$PERSCtl$PERS_DOC_NOFld", "comp": "dom-input",
+        "value": applicant.get("soDinhDanh") or owner.get("soDinhDanh")
+    })
+
+    # 3. ĐỊA CHỈ người nộp (cổng KHÔNG tự điền khi bấm "Sao chép tài khoản"):
+    # - Người nộp là chủ hộ → địa chỉ cá nhân trên ĐƠN.
+    # - Người nộp thay      → địa chỉ trên CCCD của chính người đăng nhập, do extension chọn từ
+    #   __identityCandidates; không khớp được thẻ nào thì KHÔNG điền.
+    self_address = next(
+        (value for value in (owner.get("diaChi"), applicant.get("diaChi"))
+         if _has_address(value)),
+        None,
+    )
+    if is_self:
+        # Dùng creation_mapper.enrich để xử lý địa chỉ đúng cách
+        addr_compact = [_compact_field("NguoiNop_DiaChi", self_address)] if self_address else []
+        addr_enriched = creation_mapper.enrich(addr_compact, page="nguoi-nop-ho-so")
+        # Chỉ lấy field địa chỉ (ADDRCCtl)
+        applicant_page.extend(f for f in addr_enriched if "ADDRCCtl" in f.get("name", ""))
+
+    # 4. Extension chốt lại vai trò theo radio THẬT trên cổng (sau khi bấm "Sao chép tài khoản" mới
+    # biết tài khoản đăng nhập có phải chủ hộ không) → gửi kèm địa chỉ nhánh "chủ hộ tự nộp".
+    from app.pipelines.dang_ky_kinh_doanh.process.mapper import _addr
+    applicant_address = {"role": "self" if is_self else "authorized", "self": _addr(self_address)}
+    if applicant_address["self"]:
+        applicant_page.append({"name": "__applicantAddress", "comp": "raw", "value": applicant_address})
+
+    # 5. Mọi CCCD trong hồ sơ: extension chọn đúng thẻ của người đang đăng nhập rồi ghi đè nhân thân
+    # + địa chỉ vào khối người nộp (dữ liệu nút "Sao chép tài khoản" đổ vào không có địa chỉ).
+    if candidates:
+        applicant_page.append({"name": "__identityCandidates", "comp": "raw", "value": candidates})
+    
+    pages["nguoi-nop-ho-so"] = applicant_page
     order.append("nguoi-nop-ho-so")
 
     search_options = [

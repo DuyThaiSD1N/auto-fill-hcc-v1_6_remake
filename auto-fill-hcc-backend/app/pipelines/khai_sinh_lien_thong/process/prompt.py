@@ -62,7 +62,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
   (4) CCCD/CMND giới tính "Nam" — chỉ dùng khi các nguồn trên không có
 - CccdNam_HoTen, CccdNam_NgaySinh, CccdNam_SoDinhDanh, CccdNam_QuocTich, CccdNam_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, fallback CCCD Nam
 - CccdNam_DanToc: BẮT BUỘC từ tờ khai khai sinh (khối cha) hoặc giấy chứng sinh (khối cha) hoặc giấy kết hôn (mục chồng) hoặc giấy khai sinh (khối cha), KỂ CẢ khi cha đã có CCCD
-- CccdNam_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
+- **CccdNam_QueQuan**: ⚠️ BẮT BUỘC lấy từ CCCD/CMND cũ khi có dòng "Quê quán / Place of origin". Đây là field QUAN TRỌNG để điền quê quán con. Tách địa chỉ theo mục F (object {tinh,xa,diaChi}). VÍ DỤ: "Quê quán: Nghĩa Hòa, Tư Nghĩa, Quảng Ngãi" → {"tinh":"Quảng Ngãi","xa":"Nghĩa Hòa","diaChi":""}. KHÔNG bỏ qua field này!
 - CccdNam_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
 - LƯU Ý: Khi hồ sơ có GIẤY KHAI SINH (bản sao) của CON KHÁC (anh/chị/em của đứa trẻ đang khai sinh), giấy này thường có đầy đủ thông tin cha/mẹ trong khối "Họ, chữ đệm, tên người cha" và "Họ, chữ đệm, tên người mẹ" → BẮT BUỘC trích thông tin cha từ đó khi không có CCCD cha
 
@@ -76,7 +76,17 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - CccdNu_SoDinhDanh: lấy từ giấy chứng sinh (Số ĐDCN/Hộ chiếu), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
 - CccdNu_NgaySinh: ưu tiên giấy chứng sinh (có thể chỉ năm sinh), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
 - CccdNu_DanToc: BẮT BUỘC từ giấy chứng sinh (dòng "Dân tộc" khối mẹ) hoặc giấy khai sinh (khối mẹ) hoặc giấy kết hôn
+- **CccdNu_QueQuan**: ⚠️ BẮT BUỘC lấy từ CCCD/CMND cũ khi có dòng "Quê quán / Place of origin". Tách địa chỉ theo mục F (object {tinh,xa,diaChi}). VÍ DỤ: "Quê quán: Tư Nghĩa, Quảng Ngãi" → {"tinh":"Quảng Ngãi","xa":"Tư Nghĩa","diaChi":""}. Quê quán chỉ có 2 cấp thì cấp còn lại là XÃ, KHÔNG bỏ trống field này.
+- CccdNu_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có.
 - CccdNu_NoiCuTru: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD
+
+# ═══ D2. QUÊ QUÁN CON (dùng CccdNam_QueQuan / CccdNu_QueQuan) ═══
+- Quê quán của CON KHÔNG có trên giấy chứng sinh: hệ thống suy từ quê quán CHA (mặc định), riêng ca
+  sinh tại LÂM ĐỒNG thì lấy quê quán MẸ. Vì vậy PHẢI đọc dòng "Quê quán / Place of origin" trên CCCD
+  của CẢ CHA LẪN MẸ khi thẻ có dòng đó — thiếu bên nào là mất quê quán con.
+- KHÔNG lấy "Nơi thường trú / Place of residence" làm quê quán; hai dòng này khác nhau.
+- Thẻ CĂN CƯỚC mẫu mới không in quê quán → để trống field quê quán, và lấy "Nơi đăng ký khai sinh"
+  vào *_NoiDangKyKhaiSinh nếu thẻ có dòng này.
 
 # ═══ E. DÂN TỘC CHA/MẸ (CccdNam_DanToc = CHA, CccdNu_DanToc = MẸ) ═══
 - Thẻ CCCD/Căn cước gắn chip (mẫu mới) thường KHÔNG in dân tộc → PHẢI lấy dân tộc từ giấy tờ khác CÓ ghi, đối chiếu ĐÚNG NGƯỜI theo họ tên/số định danh. BẮT BUỘC điền dân tộc cho CẢ cha VÀ mẹ nếu bất kỳ giấy nào ghi — KỂ CẢ khi người đó ĐÃ CÓ CCCD (ĐỪNG vì cha/mẹ đã có CCCD mà bỏ qua dân tộc của họ).

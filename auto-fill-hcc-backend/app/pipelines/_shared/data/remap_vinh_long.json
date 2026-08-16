@@ -1,0 +1,2156 @@
+[
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "An Phước (huyện Mang Thít)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Nhum"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Chánh An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Nhum"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Cái Nhum",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Nhum"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân An Hội",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Long Hội"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Long Hội"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Long Hội",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Long Hội"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Mỹ An (huyện Mang Thít)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhơn Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Mỹ Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhơn Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Nhơn Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhơn Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Long Mỹ (huyện Mang Thít)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Phước"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Tịnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Phước"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Bình Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Phước"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Ninh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Bình Hòa Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Đồng Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "An Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Long Hồ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hồ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Long An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hồ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Long Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hồ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Lộc Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thạnh Quới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phú Quới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thanh Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới Thiện"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Quới Thiện",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới Thiện"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Vũng Liêm",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Hiếu",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Thành Đông",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Ngãi"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Nghĩa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Ngãi"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Ngãi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Ngãi"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Thành Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới An"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Quới Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới An"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Quới An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới An"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân An Luông",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Hiệp"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Chánh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Hiệp"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trung Hiệp"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hiếu Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiếu Phụng"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trung An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiếu Phụng"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hiếu Phụng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiếu Phụng"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hiếu Nhơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiếu Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hiếu Nghĩa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiếu Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hiếu Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiếu Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phú Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lục Sĩ Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Lục Sĩ Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lục Sĩ Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tích Thiện",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Ôn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Trà Ôn (một phần)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Ôn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Nhơn Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Côn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trà Côn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Côn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Côn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Tam Bình (một phần)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Côn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hựu Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vĩnh Xuân"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thuận Thới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vĩnh Xuân"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Vĩnh Xuân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vĩnh Xuân"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Xuân Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thới Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Hiệp"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Hiệp"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hòa Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Hiệp"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Mỹ Thạnh Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tam Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Tam Bình (phần còn lại)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tam Bình"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Loan Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ngãi Tứ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Bình Ninh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ngãi Tứ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Ngãi Tứ (một phần)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ngãi Tứ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Trà Ôn (phần còn lại)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ngãi Tứ"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Phú (huyện Tam Bình)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Long Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phú Thịnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Song Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Phú"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Mỹ Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Ngang"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Ngang"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Hậu Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Ngang"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phú Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cái Ngang"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Bình (huyện Bình Tân)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thành Lợi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thị trấn Tân Quới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Quới"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Lược"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân An Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Lược"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Lược",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Lược"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thành Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Nguyễn Văn Thảnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Mỹ Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hiệp Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hữu"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Hữu",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hữu"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Càng Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Càng Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Mỹ Cẩm",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Càng Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Nhị Long Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Càng Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tân Bình (huyện Càng Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Trường"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "An Trường A",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Trường"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "An Trường",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Trường"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Huyền Hội",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tân An (huyện Càng Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đại Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhị Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đức Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhị Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Nhị Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhị Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Bình Phú (huyện Càng Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đại Phúc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phương Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Châu Thành (huyện Châu Thành, Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Mỹ Chánh (huyện Châu Thành, Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thanh Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đa Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Lương Hòa (huyện Châu Thành, Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Lộc"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Lương Hòa A",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Lộc"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Song Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Song Lộc"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hòa Lợi (huyện Châu Thành, Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Mỹ"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phước Hảo",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Mỹ"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hưng Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Mỹ"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Cầu Kè",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cầu Kè"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hòa Ân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cầu Kè"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Châu Điền",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cầu Kè"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Ninh Thới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phong Thạnh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phong Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phong Thạnh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phong Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phong Thạnh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hòa Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Phú Tân"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "An Phú Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Phú Tân"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thông Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tam Ngãi"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thạnh Phú (huyện Cầu Kè)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tam Ngãi"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tam Ngãi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tam Ngãi"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Tiểu Cần",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tiểu Cần"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phú Cần",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tiểu Cần"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hiếu Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tiểu Cần"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Thới (huyện Tiểu Cần)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Cầu Quan",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Ngãi Hùng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hùng Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tân Hùng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hùng Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hùng Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hùng Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hiếu Tử",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tập Ngãi"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tập Ngãi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tập Ngãi"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Mỹ Hòa (huyện Cầu Ngang)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cầu Ngang"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thuận Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cầu Ngang"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Cầu Ngang",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Cầu Ngang"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Mỹ Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Mỹ Long Bắc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Mỹ Long Nam",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Long"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Kim Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vinh Kim"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Vinh Kim",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vinh Kim"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hiệp Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhị Trường"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Trường Thọ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhị Trường"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Nhị Trường",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhị Trường"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiệp Mỹ"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hiệp Mỹ Đông",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiệp Mỹ"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hiệp Mỹ Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hiệp Mỹ"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Trà Cú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Cú"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Ngãi Xuyên",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Cú"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thanh Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Trà Cú"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Định An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại An"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Định An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại An"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đại An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại An"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "An Quảng Hữu",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lưu Nghiệp Anh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Lưu Nghiệp Anh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lưu Nghiệp Anh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hàm Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hàm Giang"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Kim Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hàm Giang"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hàm Giang",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hàm Giang"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Ngọc Biên",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hiệp"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tân Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hiệp"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hiệp"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tân Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tập Sơn"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phước Hưng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tập Sơn"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Tập Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tập Sơn"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thị trấn Long Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Khánh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đôn Xuân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đôn Châu"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đôn Châu",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đôn Châu"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Thạnh Hòa Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ngũ Lạc"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Ngũ Lạc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ngũ Lạc"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Châu Thành (huyện Châu Thành, Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Thạch",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tường Đa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Túc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Phước (huyện Châu Thành, Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Giao Long"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Quới Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Giao Long"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Giao Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Giao Long"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Tiên Thủy",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tiên Thủy"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thành Triệu",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tiên Thủy"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Quới Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tiên Thủy"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Phú (huyện Châu Thành, Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tiên Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Đức",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Sơn Định",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Phụng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vĩnh Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Phụng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Phụng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Phụng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Long Thới (huyện Chợ Lách)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Chợ Lách"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hòa Nghĩa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Chợ Lách"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Chợ Lách",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Chợ Lách"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vĩnh Thành"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Thiềng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vĩnh Thành"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vĩnh Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Vĩnh Thành"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vĩnh Hòa (huyện Chợ Lách)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Khánh Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hưng Khánh Trung A",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Khánh Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hưng Khánh Trung B",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Khánh Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Phước Mỹ Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Mỹ Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Mỹ Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thạnh Ngãi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Mỹ Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Phú Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Mỹ Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Bình (huyện Mỏ Cày Bắc)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thành Bình"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thành An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thành Bình"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hòa Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thành Bình"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Thành Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thành Bình"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Khánh Thạnh Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhuận Phú Tân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Thanh Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhuận Phú Tân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Nhuận Phú Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Nhuận Phú Tân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Định Thủy",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đồng Khởi"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phước Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đồng Khởi"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Khánh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đồng Khởi"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Mỏ Cày",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Thạnh (huyện Mỏ Cày Nam)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Hội",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Đa Phước Hội",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỏ Cày"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Thới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thành Thới"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thành Thới A",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thành Thới"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thành Thới B",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thành Thới"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Định"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Minh Đức",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Định"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Định",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Định"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Ngãi Đăng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hương Mỹ"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Cẩm Sơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hương Mỹ"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hương Mỹ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hương Mỹ"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Khánh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Phong",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thới Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Đại Điền",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đại Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hòa Lợi (huyện Thạnh Phú)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Hưng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Quới Điền",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Quới Điền"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Thạnh Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Thạnh (huyện Thạnh Phú)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Qui"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Nhơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Qui"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Qui",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Qui"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Điền",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Hải"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thạnh Hải",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Hải"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Giao Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phong"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thạnh Phong",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phong"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Tiệm Tôm",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thủy"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Hòa Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thủy"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Thủy",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Thủy"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bảo Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bảo Thạnh"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bảo Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bảo Thạnh"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Ba Tri",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ba Tri"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vĩnh Hòa (huyện Ba Tri)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ba Tri"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Đức",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ba Tri"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vĩnh An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ba Tri"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Bình Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Ba Tri"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Lễ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Xuân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phước Ngãi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Xuân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Xuân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Xuân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Hòa (huyện Ba Tri)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Chánh Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Chánh (huyện Ba Tri)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Chánh Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Nhơn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Mỹ Chánh Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Thạnh (huyện Ba Tri)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Ngãi Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Phú Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Ngãi Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Ngãi Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Ngãi Trung"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Hưng (huyện Ba Tri)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Hiệp"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Ngãi Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Hiệp"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã An Hiệp"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Thanh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Nhượng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hưng Lễ",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Nhượng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hưng Nhượng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hưng Nhượng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Giồng Trôm",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Giồng Trôm"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Giồng Trôm"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Giồng Trôm"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Lợi Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Hào"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thạnh Phú Đông",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Hào"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tân Hào",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Tân Hào"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Long Mỹ (huyện Giồng Trôm)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Long"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hưng Phong",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Long"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phước Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phước Long"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Thạnh (huyện Giồng Trôm)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lương Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thuận Điền",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lương Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Lương Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lương Phú"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Châu Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Lương Quới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Châu Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Lương Hòa (huyện Giồng Trôm)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lương Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phong Nẫm",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lương Hòa"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thừa Đức",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thới Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thới Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thới Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Đại Hòa Lộc",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phước"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thạnh Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Phước"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thị trấn Bình Đại",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Đại"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Thới",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Đại"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Thắng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Bình Đại"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Định Trung",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Trị"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Long",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Trị"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thạnh Trị",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Thạnh Trị"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vang Quới Đông",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lộc Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Vang Quới Tây",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lộc Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Lộc Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Lộc Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Long Hòa (huyện Bình Đại)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Hưng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thới Lai",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Hưng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Châu Hưng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Châu Hưng"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Long Định",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tam Hiệp",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phường 5 (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Thanh Đức"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thanh Đức",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Thanh Đức"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phường 1 (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Long Châu"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phường 9 (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Long Châu"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Trường An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Long Châu"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phường 3 (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phước Hậu"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phường 4 (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phước Hậu"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phước Hậu",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phước Hậu"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Phường 8 (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Tân Hạnh"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Hạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Tân Hạnh"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Hòa (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Tân Ngãi"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Hội (thành phố Vĩnh Long)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Tân Ngãi"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Tân Ngãi",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Tân Ngãi"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thuận An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Bình Minh"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thành Phước (một phần)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Bình Minh"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Cái Vồn (một phần)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Bình Minh"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Mỹ Hòa (thị xã Bình Minh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Cái Vồn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Ngãi Tứ (phần còn lại)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Cái Vồn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Thành Phước (phần còn lại)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Cái Vồn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Cái Vồn (phần còn lại)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Cái Vồn"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Đông Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Đông Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Đông Bình",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Đông Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Đông Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Đông Thành"
+    },
+    {
+        "tinh_cu": "Vĩnh Long",
+        "xa_cu": "Đông Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Đông Thành"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 1 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Trà Vinh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 3 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Trà Vinh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 9 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Trà Vinh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 4 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Long Đức"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Đức",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Long Đức"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 7 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Nguyệt Hoá"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 8 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Nguyệt Hoá"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Nguyệt Hóa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Nguyệt Hoá"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 5 (thành phố Trà Vinh)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Hoà Thuận"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hòa Thuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Hoà Thuận"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 1 (thị xã Duyên Hải)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Duyên Hải"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Toàn",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Duyên Hải"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Dân Thành",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Duyên Hải"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Phường 2 (thị xã Duyên Hải)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Trường Long Hoà"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Trường Long Hòa",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Trường Long Hoà"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "An Hội",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường An Hội"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Mỹ Thạnh An",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường An Hội"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Nhuận",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường An Hội"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Sơn Phú",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường An Hội"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phường 8 (thành phố Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Khương"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Khương",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Khương"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Hưng",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Khương"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Nhơn Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Khương"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phường 7 (thành phố Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Bến Tre"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Bình Phú (thành phố Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Bến Tre"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Thanh Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Bến Tre"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phường 6 (thành phố Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Sơn Đông"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Sơn Đông",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Sơn Đông"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Tam Phước",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Sơn Đông"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phú Tân",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Tân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Hữu Định",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Tân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Phước Thạnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Phường Phú Tân"
+    },
+    {
+        "tinh_cu": "Bến Tre",
+        "xa_cu": "Long Hòa (huyện Châu Thành, Bến Tre)",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Hòa"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Đông Hải",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Đông Hải"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Long Vĩnh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Long Vĩnh"
+    },
+    {
+        "tinh_cu": "Trà Vinh",
+        "xa_cu": "Hòa Minh",
+        "tinh_moi": "Vĩnh Long",
+        "xa_moi": "Xã Hòa Minh"
+    }
+]

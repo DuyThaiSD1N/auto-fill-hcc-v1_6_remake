@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -187,6 +188,75 @@ def _scan_for_xa(text: str, tinh_folded: str) -> Optional[dict]:
     return (best_original, best_mapping) if best_mapping else None
 
 
+@lru_cache(maxsize=1024)
+def _remap_area_cached(
+    tinh: str,
+    xa: str,
+    dia_chi: str,
+    allow_diachi_fallback: bool,
+) -> tuple[str, str, str]:
+    """Cached version of remap logic. Returns (tinh_moi, xa_moi, dia_chi_moi)."""
+    # Chặn viết tắt tỉnh (LA, LD, LĐ, L.D...) → xóa xa để tránh điền sai.
+    if tinh:
+        letters_only = re.sub(r"[^a-z0-9]", "", _fold(tinh))
+        if len(letters_only) <= 2:
+            return (tinh, "", dia_chi)
+
+    # Mở rộng viết tắt phường/xã trước khi lookup: P9 → Phường 9, X5 → Xã 5
+    xa_expanded = _expand_abbrev(xa) if xa else xa
+
+    # Khi xa đã có nhãn hành chính rõ, diaChi chỉ là chi tiết địa chỉ.
+    xa_has_admin_label = bool(re.match(r"^\s*(xã|phường|thị trấn|tt\.?)\b", xa_expanded, flags=re.IGNORECASE)) if xa_expanded else False
+
+    # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
+    tinh_for_lookup = re.sub(
+        r"^\s*(tp|thanh pho|thi xa|tx|city of)\.?\s+",
+        "",
+        _fold(tinh),
+        flags=re.IGNORECASE,
+    ).strip() if tinh else ""
+    
+    tinh_normalized = _CITY_TO_PROVINCE.get(tinh_for_lookup) or _CITY_TO_PROVINCE.get(_fold(tinh)) if tinh else None
+    if tinh_normalized:
+        tinh = tinh_normalized
+
+    tinh_folded = _fold(tinh)
+
+    # Buoc 2: lookup bang sap nhap (tinh, xa)
+    key = (tinh_folded, _fold(xa_expanded))
+    mapping = _REMAP.get(key)
+    if mapping:
+        return (mapping["tinh"], mapping["xa"], dia_chi)
+
+    if xa_has_admin_label:
+        return (tinh, xa_expanded, dia_chi)
+
+    # MẶC ĐỊNH TẮT fallback
+    if not allow_diachi_fallback:
+        return (tinh, xa_expanded, dia_chi)
+
+    # Buoc 3: fallback A — thu dung diaChi lam xa
+    if dia_chi and xa_expanded:
+        key_dia = (tinh_folded, _fold(dia_chi))
+        mapping_dia = _REMAP.get(key_dia)
+        if mapping_dia:
+            return (mapping_dia["tinh"], mapping_dia["xa"], xa_expanded)
+
+    # Buoc 4: fallback B — scan token trong xa hoac diaChi
+    for scan_src, keep_as_detail in ((xa_expanded, True), (dia_chi, False)):
+        if not scan_src:
+            continue
+        result = _scan_for_xa(scan_src, tinh_folded)
+        if result:
+            matched_original, matched_mapping = result
+            if keep_as_detail:
+                return (matched_mapping["tinh"], matched_mapping["xa"], scan_src)
+            else:
+                return (matched_mapping["tinh"], matched_mapping["xa"], xa_expanded)
+
+    return (tinh, xa_expanded, dia_chi)
+
+
 def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Optional[dict]:
     """Nhan object dia chi {quocGia, tinh, xa, diaChi}, tra ve da normalize.
 
@@ -202,101 +272,25 @@ def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Opt
 
     tinh_raw: str = area.get("tinh") or ""
     xa_raw:   str = area.get("xa")   or ""
+    dia_raw:  str = area.get("diaChi") or ""
 
     if not tinh_raw and not xa_raw:
         return area
 
-    # Chặn viết tắt tỉnh (LA, LD, LĐ, L.D...) → xóa xa để tránh điền sai.
-    if tinh_raw:
-        letters_only = re.sub(r"[^a-z0-9]", "", _fold(tinh_raw))
-        if len(letters_only) <= 2:
-            return {**area, "xa": ""}
+    # Sử dụng cached function để tính toán
+    tinh_moi, xa_moi, dia_moi = _remap_area_cached(
+        tinh_raw,
+        xa_raw,
+        dia_raw,
+        allow_diachi_fallback,
+    )
 
-    # Mở rộng viết tắt phường/xã trước khi lookup: P9 → Phường 9, X5 → Xã 5
-    if xa_raw:
-        xa_expanded = _expand_abbrev(xa_raw)
-        if xa_expanded != xa_raw:
-            area = {**area, "xa": xa_expanded}
-            xa_raw = xa_expanded
-
-    # Khi xa đã có nhãn hành chính rõ, diaChi chỉ là chi tiết địa chỉ.
-    # Không được dùng tên đường/số nhà trong diaChi để đoán lại xã rồi hoán đổi
-    # hai trường (vd "Phường Xuân Hương", "216 Bùi Thị Xuân").
-    xa_has_admin_label = bool(re.match(r"^\s*(xã|phường|thị trấn|tt\.?)\b", xa_raw, flags=re.IGNORECASE))
-
-    # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
-    # Strip tiền tố "TP ", "Thành phố ", "Thị xã ", "TX " trước khi lookup
-    tinh_for_lookup = re.sub(
-        r"^\s*(tp|thanh pho|thi xa|tx|city of)\.?\s+",
-        "",
-        _fold(tinh_raw),
-        flags=re.IGNORECASE,
-    ).strip()
-    tinh_normalized = _CITY_TO_PROVINCE.get(tinh_for_lookup) or _CITY_TO_PROVINCE.get(_fold(tinh_raw))
-    if tinh_normalized:
-        area = {**area, "tinh": tinh_normalized}
-        tinh_raw = tinh_normalized
-
-    tinh_folded = _fold(tinh_raw)
-
-    # Buoc 2: lookup bang sap nhap (tinh, xa)
-    key = (tinh_folded, _fold(xa_raw))
-    mapping = _REMAP.get(key)
-    if mapping:
-        return {**area, "tinh": mapping["tinh"], "xa": mapping["xa"]}
-
-    if xa_has_admin_label:
-        return area
-
-    # MẶC ĐỊNH TẮT fallback cho MỌI thủ tục: chỉ remap khi (tinh, xa) khớp TRỰC TIẾP ở Bước 2. Bước 3/4
-    # (đoán lại xã từ diaChi / scan token cụm dính) hay đổi sai xã + đẩy giá trị cũ xuống diaChi khi LLM
-    # tách hụt → xã sai thì GIỮ NGUYÊN, không bịa. Thủ tục nào cần cứu địa chỉ dính (vd Lâm Đồng "thôn-xã")
-    # thì gọi remap_area(area, allow_diachi_fallback=True).
-    if not allow_diachi_fallback:
-        return area
-
-    # Buoc 3: fallback A — thu dung diaChi lam xa
-    dia_raw: str = area.get("diaChi") or ""
-    if dia_raw and xa_raw:
-        key_dia = (tinh_folded, _fold(dia_raw))
-        mapping_dia = _REMAP.get(key_dia)
-        if mapping_dia:
-            return {
-                **area,
-                "tinh": mapping_dia["tinh"],
-                "xa": mapping_dia["xa"],
-                "diaChi": xa_raw,
-            }
-
-    # Buoc 4: fallback B — scan token trong xa hoac diaChi
-    # Uu tien scan trong xa truoc (co the la chuoi gop "thon - xa")
-    for scan_src, keep_as_detail in ((xa_raw, True), (dia_raw, False)):
-        if not scan_src:
-            continue
-        result = _scan_for_xa(scan_src, tinh_folded)
-        if result:
-            matched_original, matched_mapping = result
-            if keep_as_detail:
-                # xa goc chuyen thanh diaChi (chi tiet), xa moi = ten xa sau sap nhap
-                return {
-                    **area,
-                    "tinh": matched_mapping["tinh"],
-                    "xa": matched_mapping["xa"],
-                    "diaChi": scan_src,  # giu nguyen toan bo chuoi goc lam chi tiet
-                }
-            else:
-                # diaChi chua xa hop le, xa goc chuyen xuong diaChi
-                return {
-                    **area,
-                    "tinh": matched_mapping["tinh"],
-                    "xa": matched_mapping["xa"],
-                    "diaChi": xa_raw,
-                }
-
-    return area
+    return {**area, "tinh": tinh_moi, "xa": xa_moi, "diaChi": dia_moi}
 
 
 def reload() -> None:
     """Reload tat ca file JSON (dung khi hot-reload trong development)."""
     _REMAP.clear()
     _load_remap_files()
+    # Clear cache khi reload data
+    _remap_area_cached.cache_clear()

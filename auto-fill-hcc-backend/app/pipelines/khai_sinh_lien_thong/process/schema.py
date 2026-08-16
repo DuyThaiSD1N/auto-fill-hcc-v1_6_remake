@@ -32,6 +32,8 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_HoTen", "desc": "Họ tên MẸ: ưu tiên giấy chứng sinh (khối mẹ) > giấy khai sinh bản sao (khối mẹ) > giấy kết hôn (bên nữ) > CCCD/CMND Nữ."},
     {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh mẹ: ưu tiên giấy chứng sinh (Số ĐDCN/Hộ chiếu) > giấy khai sinh > giấy kết hôn > CCCD Nữ (12 số, có thể đọc từ MRZ)."},
     {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh mẹ: ưu tiên giấy chứng sinh (có thể chỉ năm sinh) > giấy khai sinh > giấy kết hôn > CCCD Nữ (dd/mm/yyyy)."},
+    {"name": "CccdNu_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,xa,diaChi}: lấy từ CCCD/CMND cũ (dòng 'Quê quán / Place of origin'). Thẻ căn cước mới KHÔNG có quê quán → để trống. Dùng cho quê quán con khi áp dụng ngoại lệ Lâm Đồng."},
+    {"name": "CccdNu_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh MẸ trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,xa,diaChi}. CHỈ khi thẻ CÓ dòng này."},
     {"name": "CccdNu_DanToc", "desc": "Dân tộc mẹ: BẮT BUỘC lấy từ giấy chứng sinh (dòng 'Dân tộc' khối mẹ) hoặc giấy khai sinh (khối mẹ) hoặc giấy kết hôn. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả). CCCD thường không in dân tộc."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch mẹ: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNu_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi}: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD Nữ. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
@@ -63,7 +65,9 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
 for _name in ("Gcs_NgaySinhCon", "CccdNam_NgaySinh", "CccdNu_NgaySinh", "GcnKetHon_NgayCap", "Tk_NgaySinhCon"):
     COMPACT_COMP_BY_NAME[_name] = "date"
-for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "CccdNam_QueQuan", "CccdNam_NoiDangKyKhaiSinh", "CccdNam_NoiCuTru", "CccdNu_NoiCuTru"):
+for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon",
+              "CccdNam_QueQuan", "CccdNam_NoiDangKyKhaiSinh", "CccdNam_NoiCuTru",
+              "CccdNu_QueQuan", "CccdNu_NoiDangKyKhaiSinh", "CccdNu_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "diachi"
 
 UI_COMP_BY_NAME = {

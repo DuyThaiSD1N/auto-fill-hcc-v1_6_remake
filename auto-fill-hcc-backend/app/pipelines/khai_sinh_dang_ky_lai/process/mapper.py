@@ -327,8 +327,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("nksQueQuan", "1")
             add("nksQueQuan_TrongNuoc", _normalize_domestic_area(values.get("Subject_HometownDomestic")))
 
-    # III. Me.
-    has_mother = any(name.startswith("Mother_") for name in values)
+    # III. Me. Chỉ dựng khối khi có NHÂN THÂN thật (họ tên hoặc số định danh) — hồ sơ chỉ có con +
+    # CCCD của một bên thì bên kia phải để TRỐNG, không điền quốc tịch/loại cư trú mặc định.
+    has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
     if has_mother:
         add("HoTenMeKS", values.get("Mother_FullName"))
         add("SoDinhDanhMe", values.get("Mother_IdNumber"))
@@ -346,8 +347,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("MeNoiCuTru", "1")
             add("MeNoiCuTru_TrongNuoc", me_addr)
 
-    # IV. Cha.
-    has_father = any(name.startswith("Father_") for name in values)
+    # IV. Cha. Cùng nguyên tắc với khối mẹ: không có nhân thân thì bỏ trống cả khối.
+    has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
     if has_father:
         add("HoTenChaKS", values.get("Father_FullName"))
         add("SoDinhDanhCha", values.get("Father_IdNumber"))
