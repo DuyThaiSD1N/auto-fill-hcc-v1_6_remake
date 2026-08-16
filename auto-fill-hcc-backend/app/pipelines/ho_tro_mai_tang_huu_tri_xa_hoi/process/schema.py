@@ -1,70 +1,104 @@
-"""Compact schema for "Hỗ trợ mai táng".
+"""Schema hai vai trò cho thủ tục mai táng người hưởng hưu trí xã hội.
 
-The LLM returns only OCR-derived CCCD/CMND facts. The mapper decides whether
-the requester and dossier owner are the same person from file count and current
-form context, then emits short DOM actions for the Form.io page.
+- ChuHoSo: cá nhân/hộ gia đình đứng ra mai táng tại mục II.2 Mẫu số 04.
+- NguoiNop: người thực sự nộp hồ sơ, chỉ khi tài liệu khớp mỏ neo UI.
+
+Người chết ở mục I không phải chủ thể của hai khối UI và không được trích.
 """
 
 FIELDS: list[dict] = [
-    {"name": "Person1_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ nhất."},
-    {"name": "Person1_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ nhất; có thể đọc từ MRZ mặt sau."},
-    {"name": "Person1_NgaySinh", "desc": "Ngày sinh người thứ nhất, dd/mm/yyyy."},
-    {"name": "Person1_GioiTinh", "desc": 'Giới tính người thứ nhất: "Nam" hoặc "Nữ".'},
-    {"name": "Person1_QuocTich", "desc": "Quốc tịch nếu CCCD/CMND ghi rõ hoặc khác Việt Nam."},
-    {"name": "Person1_NgayCap",
-     "desc": "Ngày cấp CCCD/CMND người thứ nhất, dd/mm/yyyy. Bắt buộc cố đọc từ mặt sau; không được bỏ trống khi đã nhận diện được CCCD."},
-    {"name": "Person1_NoiCap",
-     "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
-             'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
-
-    {"name": "Person2_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ hai, nếu có người thứ hai."},
-    {"name": "Person2_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ hai; có thể đọc từ MRZ mặt sau."},
-    {"name": "Person2_NgaySinh", "desc": "Ngày sinh người thứ hai, dd/mm/yyyy."},
-    {"name": "Person2_GioiTinh", "desc": 'Giới tính người thứ hai: "Nam" hoặc "Nữ".'},
-    {"name": "Person2_QuocTich", "desc": "Quốc tịch nếu CCCD/CMND ghi rõ hoặc khác Việt Nam."},
-    {"name": "Person2_NgayCap",
-     "desc": "Ngày cấp CCCD/CMND người thứ hai, dd/mm/yyyy. Bắt buộc cố đọc từ mặt sau; không được bỏ trống khi đã nhận diện được CCCD."},
-    {"name": "Person2_NoiCap",
-     "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
-             'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "Person2_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
-
-    # Chủ hồ sơ (người/hộ đứng ra mai táng) — lấy từ TỜ KHAI đề nghị hỗ trợ chi phí mai táng
-    # (Mẫu số 04), CHỈ ở MỤC II.2 "Trường hợp hộ gia đình, cá nhân đứng ra mai táng". KHÔNG lấy từ
-    # mục I (người chết) hay mục II.1 (cơ quan/tổ chức). Có tờ khai thì mới trả nhóm này.
-    {"name": "ToKhai_ChuHoTen", "desc": "Họ tên chủ hộ/người đại diện đứng ra mai táng — mục II.2.a của tờ khai."},
-    {"name": "ToKhai_ChuHoNamSinh", "desc": "Ngày/tháng/năm sinh chủ hộ ở mục II.2, dd/mm/yyyy nếu đủ; chỉ yyyy khi tờ khai chỉ ghi năm."},
-    {"name": "ToKhai_ChuHoSoGiayTo", "desc": "Số CMND/CCCD của chủ hộ ghi ở mục II.2 (nhãn \"Giấy CMND số\"/\"CCCD số\")."},
-    {"name": "ToKhai_ChuHoNgayCap", "desc": "Ngày cấp giấy tờ định danh của chủ hộ ở mục II.2, dd/mm/yyyy."},
-    {"name": "ToKhai_ChuHoNoiCap", "desc": "Nơi cấp giấy tờ định danh của chủ hộ ở mục II.2 (vd \"Bộ Công an\")."},
-    {"name": "ToKhai_ChuHoNoiCuTru",
-     "desc": "Nơi cư trú chủ hộ ở mục II.2 (Hộ khẩu thường trú / Nơi ở), object {quocGia,tinh,xa,diaChi}. "
-             "Địa chỉ 2 cấp: xa = xã/phường/thị trấn, tinh = tỉnh/thành phố; "
-             "diaChi = phần chi tiết đứng TRƯỚC xã (tổ/thôn/xóm/bản/số nhà), KHÔNG lặp tên xã/tỉnh vào diaChi."},
+    {
+        "name": "ChuHoSo_HoTen",
+        "desc": "Họ tên CHỦ HỒ SƠ: chủ hộ/người đại diện đứng ra mai táng tại mục II.2.a Mẫu số 04. Không lấy họ tên người chết ở mục I.",
+    },
+    {
+        "name": "ChuHoSo_NgaySinh",
+        "desc": "Ngày sinh chủ hồ sơ tại mục II.2, dd/mm/yyyy; ưu tiên CCCD đúng người nếu có giấy tờ riêng rõ hơn.",
+    },
+    {
+        "name": "ChuHoSo_GioiTinh",
+        "desc": 'Giới tính chủ hồ sơ, chỉ "Nam" hoặc "Nữ" khi tài liệu của đúng người ghi rõ; không suy từ tên hoặc quan hệ.',
+    },
+    {
+        "name": "ChuHoSo_SoDinhDanh",
+        "desc": "Số CMND/CCCD/số định danh của chủ hồ sơ ở mục II.2; chỉ giữ chữ số. Có CCCD đúng người thì ưu tiên số trên CCCD.",
+    },
+    {
+        "name": "ChuHoSo_NgayCap",
+        "desc": "Ngày cấp giấy tờ định danh của chủ hồ sơ, dd/mm/yyyy, lấy từ mục II.2 hoặc giấy tờ đúng người khi OCR ghi rõ.",
+    },
+    {
+        "name": "ChuHoSo_NoiCap",
+        "desc": "Nơi cấp giấy tờ định danh của chủ hồ sơ từ mục II.2 hoặc giấy tờ đúng người; không lấy chữ trên logo/dấu.",
+    },
+    {
+        "name": "ChuHoSo_NoiCuTru",
+        "desc": "Hộ khẩu thường trú/Nơi ở của chủ hồ sơ tại mục II.2, object {quocGia,tinh,xa,diaChi}. Ưu tiên tờ khai; giấy tờ khác chỉ bổ sung khi cả hai dòng địa chỉ mục II.2 trống.",
+    },
+    {
+        "name": "ChuHoSo_DienThoai",
+        "desc": "Số điện thoại của chủ hồ sơ tại mục II.2 nếu có.",
+    },
+    {
+        "name": "ChuHoSo_QuocTich",
+        "desc": "Quốc tịch chủ hồ sơ khi giấy tờ của đúng người ghi rõ.",
+    },
+    {
+        "name": "NguoiNop_HoTen",
+        "desc": "Họ tên NGƯỜI NỘP HỒ SƠ khác chủ hồ sơ, chỉ trả khi requester_context xác nhận tài liệu của người này khớp UI.",
+    },
+    {
+        "name": "NguoiNop_NgaySinh",
+        "desc": "Ngày sinh người nộp, dd/mm/yyyy, lấy từ đúng giấy tờ hoặc khối người nộp đã được requester_context xác nhận.",
+    },
+    {
+        "name": "NguoiNop_GioiTinh",
+        "desc": 'Giới tính người nộp, chỉ "Nam" hoặc "Nữ" khi tài liệu ghi rõ; không suy từ tên hoặc quan hệ.',
+    },
+    {
+        "name": "NguoiNop_SoDinhDanh",
+        "desc": "Số CMND/CCCD/số định danh người nộp; phải thuộc tài liệu khớp mỏ neo UI.",
+    },
+    {
+        "name": "NguoiNop_NgayCap",
+        "desc": "Ngày cấp giấy tờ người nộp, dd/mm/yyyy, chỉ khi tài liệu đúng người ghi rõ.",
+    },
+    {
+        "name": "NguoiNop_NoiCap",
+        "desc": "Nơi cấp giấy tờ người nộp, chỉ lấy từ tài liệu đúng người; không tự suy.",
+    },
+    {
+        "name": "NguoiNop_NoiCuTru",
+        "desc": "Nơi cư trú người nộp, object {quocGia,tinh,xa,diaChi}, chỉ lấy từ tài liệu đúng người.",
+    },
+    {
+        "name": "NguoiNop_DienThoai",
+        "desc": "Số điện thoại người nộp nếu tài liệu đúng người ghi rõ.",
+    },
+    {
+        "name": "NguoiNop_QuocTich",
+        "desc": "Quốc tịch người nộp khi tài liệu đúng người ghi rõ.",
+    },
 ]
 
-ALLOWED = {f["name"] for f in FIELDS}
+ALLOWED = {field["name"] for field in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
-    "Person1_NgaySinh",
-    "Person1_NgayCap",
-    "Person2_NgaySinh",
-    "Person2_NgayCap",
-    "ToKhai_ChuHoNamSinh",
-    "ToKhai_ChuHoNgayCap",
+    "ChuHoSo_NgaySinh",
+    "ChuHoSo_NgayCap",
+    "NguoiNop_NgaySinh",
+    "NguoiNop_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("Person1_NoiCuTru", "Person2_NoiCuTru", "ToKhai_ChuHoNoiCuTru"):
+for _name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {
-    # Checkbox action must be emitted first when present.
     "data[isOwnerDossierCheck]": "dom-checkbox",
 
-    # Requester section.
+    # Người nộp hồ sơ.
     "data[fullname]": "dom-input",
     "data[birthday]": "dom-date",
     "data[gender]": "dom-select",
@@ -74,8 +108,9 @@ UI_COMP_BY_NAME = {
     "data[province]": "dom-select",
     "data[district]": "dom-select",
     "data[address]": "dom-input",
+    "data[phoneNumber]": "dom-input",
 
-    # Owner section.
+    # Chủ hồ sơ.
     "data[ownerFullname]": "dom-input",
     "data[ownerBirthday]": "dom-date",
     "data[ownerGender]": "dom-select",
@@ -85,5 +120,6 @@ UI_COMP_BY_NAME = {
     "data[ownerProvince]": "dom-select",
     "data[ownerDistrict]": "dom-select",
     "data[ownerAddress]": "dom-input",
+    "data[ownerPhoneNumber]": "dom-input",
     "data[ownerNation]": "dom-select",
 }

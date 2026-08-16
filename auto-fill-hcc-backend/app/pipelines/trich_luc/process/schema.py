@@ -49,11 +49,49 @@ FIELDS: list[dict] = [
      "desc": 'Giới tính người được cấp bản sao từ tài liệu bổ trợ: "Nam" hoặc "Nữ". GIẤY CHỨNG SINH lấy '
              '"Giới tính của con"; CT01 lấy mục 3.'},
 
+    # TỜ KHAI CẤP BẢN SAO: tách nguồn riêng để Python khóa loại yêu cầu và chủ thể,
+    # không cho một giấy hộ tịch khác loại nhưng cùng người ghi đè.
+    {"name": "ToKhai_LoaiSuKien",
+     "desc": 'Loại được yêu cầu tại mục (4) TỜ KHAI CẤP BẢN SAO: "birth", "marriage" hoặc "death". '
+             "Chỉ phân loại đúng cụm ở mục (4), không nhìn loại của giấy hộ tịch đính kèm; giá trị phải "
+             "khớp ToKhai_TenGiayTo."},
+    {"name": "ToKhai_TenGiayTo",
+     "desc": "Tên giấy được yêu cầu tại dòng 'Đề nghị cơ quan cấp bản sao trích lục (4)' trên TỜ KHAI."},
+    {"name": "ToKhai_HoTenNguoiDuocCap",
+     "desc": "Họ tên trong block sau 'cho người có tên dưới đây' trên TỜ KHAI CẤP BẢN SAO."},
+    {"name": "ToKhai_NgaySinh", "desc": "Ngày sinh người được cấp trong TỜ KHAI, dd/mm/yyyy."},
+    {"name": "ToKhai_GioiTinh", "desc": 'Giới tính người được cấp trong TỜ KHAI: "Nam" hoặc "Nữ".'},
+    {"name": "ToKhai_DanToc", "desc": "Dân tộc người được cấp trong TỜ KHAI."},
+    {"name": "ToKhai_QuocTich", "desc": "Quốc tịch người được cấp trong TỜ KHAI."},
+    {"name": "ToKhai_SoDinhDanh",
+     "desc": "Số định danh cá nhân trong block người được cấp trên TỜ KHAI. CHỈ trả khi số có đúng 12 "
+             "chữ số; CMND 9 chữ số không phải số định danh và phải bỏ trường này. Nếu dòng 'Giấy tờ tùy thân' "
+             "ghi đúng 12 chữ số thì vẫn trả, kể cả khi không có chữ CCCD/Căn cước hoặc trùng người yêu cầu."},
+    {"name": "ToKhai_LoaiGiayToTuyThan",
+     "desc": "Loại giấy tờ tùy thân trong block người được cấp trên TỜ KHAI: Căn cước, CCCD, CMND hoặc "
+             "Hộ chiếu. Nếu chỉ có số thì 12 chữ số suy ra Căn cước, 9 chữ số suy ra CMND."},
+    {"name": "ToKhai_SoGiayToTuyThan",
+     "desc": "Số giấy tờ tùy thân trong block người được cấp trên TỜ KHAI."},
+    {"name": "ToKhai_NgayCapGiayToTuyThan",
+     "desc": "Ngày cấp giấy tờ tùy thân trong block người được cấp trên TỜ KHAI, dd/mm/yyyy."},
+    {"name": "ToKhai_NoiCapGiayToTuyThan",
+     "desc": "Cơ quan cấp giấy tờ tùy thân trong block người được cấp trên TỜ KHAI."},
+    {"name": "ToKhai_NoiCuTru",
+     "desc": "Nơi cư trú trong block người được cấp trên TỜ KHAI, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "ToKhai_CoQuanDangKy",
+     "desc": "Cơ quan ở mục 'Đã đăng ký tại' trên TỜ KHAI CẤP BẢN SAO."},
+    {"name": "ToKhai_So", "desc": "Số đăng ký ghi sau mục 'Đã đăng ký tại' trên TỜ KHAI."},
+    {"name": "ToKhai_QuyenSo",
+     "desc": "Quyển số trên TỜ KHAI, chỉ trả khi có giá trị thật sau nhãn; nhãn trống thì bỏ field."},
+    {"name": "ToKhai_NgayDangKy",
+     "desc": "Ngày đăng ký trong mục 'Đã đăng ký tại ... ngày D tháng M năm Y' trên TỜ KHAI, dd/mm/yyyy."},
+
     # Giấy tờ hộ tịch đã đăng ký trước đây: khai sinh/kết hôn/khai tử.
     {"name": "HoTich_LoaiSuKien",
-     "desc": 'Loại sự kiện hộ tịch của giấy tờ chính: "birth", "marriage" hoặc "death".'},
+     "desc": 'Loại của CHÍNH giấy hộ tịch đính kèm đang xét: "birth", "marriage" hoặc "death". '
+             "Không lấy loại yêu cầu từ TỜ KHAI vào trường này."},
     {"name": "HoTich_TenGiayTo",
-     "desc": "Tên giấy tờ hộ tịch theo OCR, ví dụ Giấy khai sinh, Giấy chứng nhận kết hôn, Trích lục khai tử."},
+     "desc": "Tên của CHÍNH giấy hộ tịch đính kèm đang xét; không lấy tên giấy được yêu cầu trên TỜ KHAI."},
     {"name": "HoTich_HoTenNguoiDuocDangKy",
      "desc": "Họ tên người được đăng ký trong giấy tờ hộ tịch; riêng giấy kết hôn lấy người chồng/bên nam."},
     {"name": "HoTich_NgaySinh", "desc": "Ngày sinh người được đăng ký nếu giấy tờ có ghi, dd/mm/yyyy."},
@@ -62,20 +100,21 @@ FIELDS: list[dict] = [
      "desc": 'Dân tộc người được đăng ký nếu giấy tờ có ghi; giữ nguyên tên trên giấy tờ, kể cả tên '
              'không có trong danh sách chọn. Không tự đổi thành "Khác".'},
     {"name": "HoTich_QuocTich", "desc": "Quốc tịch người được đăng ký nếu giấy tờ có ghi hoặc khác Việt Nam."},
-    {"name": "HoTich_SoDinhDanh", "desc": "Số định danh cá nhân của người được đăng ký nếu giấy tờ có ghi."},
+    {"name": "HoTich_SoDinhDanh",
+     "desc": "Số định danh cá nhân của người được đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; "
+             "không lấy từ TỜ KHAI."},
     {"name": "HoTich_LoaiGiayToTuyThan",
-     "desc": "Loại giấy tờ tùy thân của người được đăng ký. Với TỜ KHAI CẤP BẢN SAO lấy trong block "
-             "sau 'cho người có tên dưới đây"},
+     "desc": "Loại giấy tờ tùy thân của người được đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; "
+             "không lấy từ TỜ KHAI."},
     {"name": "HoTich_SoGiayToTuyThan",
-     "desc": "Số giấy tờ tùy thân của người được đăng ký. Với TỜ KHAI CẤP BẢN SAO lấy trong block "
-             "sau 'cho người có tên dưới đây"},
+     "desc": "Số giấy tờ tùy thân của người được đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; "
+             "không lấy từ TỜ KHAI."},
     {"name": "HoTich_NgayCapGiayToTuyThan",
-     "desc": "Ngày cấp giấy tờ tùy thân của người được đăng ký, dd/mm/yyyy. Với TỜ KHAI CẤP BẢN SAO "
-             "lấy trong block sau 'cho người có tên dưới đây'. Với TRÍCH LỤC KHAI TỬ, "
-             "lấy ngày cấp trong dòng giấy tờ tùy thân của NGƯỜI CHẾT, không lấy của người đi khai tử; "},
+     "desc": "Ngày cấp giấy tờ tùy thân của người được đăng ký trên CHÍNH giấy hộ tịch đính kèm, "
+             "dd/mm/yyyy; không lấy từ TỜ KHAI. Với TRÍCH LỤC KHAI TỬ, lấy của NGƯỜI CHẾT."},
     {"name": "HoTich_NoiCapGiayToTuyThan",
-     "desc": 'Cơ quan cấp giấy tờ tùy thân của người được đăng ký. Với TỜ KHAI CẤP BẢN SAO lấy trong '
-             'block sau "cho người có tên dưới đây". Với TRÍCH LỤC KHAI TỬ, lấy cơ quan '
+     "desc": 'Cơ quan cấp giấy tờ tùy thân của người được đăng ký trên CHÍNH giấy hộ tịch đính kèm; '
+             'không lấy từ TỜ KHAI. Với TRÍCH LỤC KHAI TỬ, lấy cơ quan '
              'trong dòng giấy tờ tùy thân của NGƯỜI CHẾT; "Cục CS QLHC về trật tự xã hội" chuẩn hóa '
              'thành "Cục Cảnh sát quản lý hành chính về trật tự xã hội", không lấy của người đi khai tử; '
              "riêng giấy kết hôn lấy của chồng/bên nam."},
@@ -104,21 +143,21 @@ FIELDS: list[dict] = [
              "bỏ cụm [huyện] dù OCR không ghi chữ 'huyện'."},
 
     {"name": "HoTich_NoiCuTru",
-     "desc": "Nơi cư trú của người được đăng ký nếu giấy tờ có ghi, object {quocGia,tinh,xa,diaChi}; "
-             "với TỜ KHAI CẤP BẢN SAO, bắt buộc lấy dòng 'Nơi cư trú' trong block sau "
-             "'cho người có tên dưới đây', không lấy nơi cư trú của người yêu cầu ở phần đầu; "
+     "desc": "Nơi cư trú của người được đăng ký trên CHÍNH giấy hộ tịch đính kèm, "
+             "object {quocGia,tinh,xa,diaChi}; không lấy từ TỜ KHAI; "
              "riêng giấy kết hôn lấy nơi cư trú của người chồng/bên nam."},
-    {"name": "HoTich_CoQuanDangKy", "desc": "Cơ quan đã đăng ký sự kiện hộ tịch trước đây."},
+    {"name": "HoTich_CoQuanDangKy",
+     "desc": "Cơ quan đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; không lấy từ TỜ KHAI."},
     {"name": "HoTich_So",
-     "desc": 'Số giấy tờ/số đăng ký/số trích lục của giấy tờ hộ tịch. BẮT BUỘC trả khi giấy tờ '
-             'hộ tịch chính có dòng "Số:" ở phần đầu hoặc sát tiêu đề; nhận đầy đủ dạng số/năm.'},
+     "desc": "Số giấy tờ/số đăng ký/số trích lục ghi trên CHÍNH giấy hộ tịch đính kèm; "
+             "không lấy từ TỜ KHAI hoặc giấy khác."},
     {"name": "HoTich_QuyenSo",
      "desc": "Quyển số đăng ký hộ tịch, CHỈ trả khi nhãn 'Quyển số'/'Quyển' có giá trị ghi rõ ngay sau nhãn. "
+             "Chỉ lấy trên CHÍNH giấy hộ tịch đính kèm, không lấy từ TỜ KHAI. "
              "Không lấy 'số bộ', 'sổ bộ', 'bộ số', 'số hiệu' hoặc HoTich_So làm quyển số."},
     {"name": "HoTich_NgayDangKy",
-     "desc": "Ngày đăng ký sự kiện hộ tịch trước đây, dd/mm/yyyy. Với TỜ KHAI, lấy D/M/Y trong block "
-             "'Đã đăng ký tại ... ngày D tháng M năm Y số ...' kể cả khi bị xuống dòng; dấu chấm sau "
-             "D/M là đường chấm của mẫu, không phải thiếu dữ liệu. Đủ D/M/Y thì BẮT BUỘC trả."},
+     "desc": "Ngày đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm, dd/mm/yyyy; "
+             "không lấy từ TỜ KHAI hoặc giấy khác."},
 
     {"name": "CopyRequest_Quantity",
      "desc": "Số lượng bản sao được yêu cầu, chỉ trả số nguyên dương khi tờ khai/tài liệu yêu cầu ghi rõ. "
@@ -133,6 +172,7 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in ("Nyc_NgaySinh", "Nyc_NgayCap", "ChuThe_NgaySinh", "ChuThe_NgayCap",
               "NguoiDuocCap_NgaySinh",
+              "ToKhai_NgaySinh", "ToKhai_NgayCapGiayToTuyThan", "ToKhai_NgayDangKy",
               "HoTich_NgaySinh", "HoTich_NgayDangKy",
               "HoTich_NgayCapGiayToTuyThan", "TkNyc_NgayCapGiayToTuyThan"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"

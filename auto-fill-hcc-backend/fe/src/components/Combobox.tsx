@@ -24,6 +24,7 @@ export default function Combobox({
   onChange,
   allLabel = "Tất cả",
   placeholder = "Tìm…",
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -31,6 +32,7 @@ export default function Combobox({
   onChange: (v: string) => void;
   allLabel?: string;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -60,6 +62,10 @@ export default function Combobox({
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
+
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
 
   // Đang gõ → tô sáng KẾT QUẢ KHỚP đầu tiên (bỏ qua hàng "Tất cả") để Enter chọn đúng thủ tục.
   useEffect(() => {
@@ -93,6 +99,7 @@ export default function Combobox({
         type="button"
         className={`combobox-control${value ? "" : " placeholder"}`}
         onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
       >

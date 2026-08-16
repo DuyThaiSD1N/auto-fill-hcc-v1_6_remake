@@ -1,7 +1,5 @@
 """Compact agent pipeline for "Cấp bản sao trích lục Giấy khai sinh"."""
 
-import re
-
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.trich_luc.process import mapper
 from app.pipelines.trich_luc.process.prompt import EXTRA_RULES
@@ -11,50 +9,6 @@ from app.pipelines.trich_luc.process.schema import (
     COMPACT_COMP_BY_NAME,
     FIELDS,
 )
-
-
-_CIVIL_STATUS_TITLE = re.compile(
-    r"\b(?:GIẤY\s+KHAI\s+SINH|KHAI\s+SANH|GIẤY\s+CHỨNG\s+NHẬN\s+KẾT\s+HÔN|"
-    r"TRÍCH\s+LỤC\s+(?:KHAI\s+SINH|KẾT\s+HÔN|KHAI\s+TỬ))\b",
-    flags=re.IGNORECASE,
-)
-_HEADER_NUMBER = re.compile(
-    r"^\s*Số\s*:\s*([A-Z0-9][A-Z0-9./-]{0,80})\s*$",
-    flags=re.IGNORECASE | re.MULTILINE,
-)
-
-
-def _fields_dict(raw_fields) -> dict:
-    if isinstance(raw_fields, dict):
-        return dict(raw_fields)
-    if isinstance(raw_fields, list):
-        return {
-            item.get("name"): item.get("value")
-            for item in raw_fields
-            if isinstance(item, dict) and item.get("name")
-        }
-    return {}
-
-
-def _header_document_number(documents: list[dict]) -> str:
-    """Lấy dòng Số ở ngay trước tiêu đề giấy hộ tịch, không quét sang số CCCD trong tài liệu khác."""
-    for document in documents:
-        text = str(document.get("text") or "")
-        for title in _CIVIL_STATUS_TITLE.finditer(text):
-            prefix = text[max(0, title.start() - 500):title.start()]
-            matches = list(_HEADER_NUMBER.finditer(prefix))
-            if matches:
-                return matches[-1].group(1).strip()
-    return ""
-
-
-def _compact_field_fallback(raw_fields, documents: list[dict]):
-    fields = _fields_dict(raw_fields)
-    if not fields.get("HoTich_So"):
-        number = _header_document_number(documents)
-        if number:
-            fields["HoTich_So"] = number
-    return fields or raw_fields
 
 
 def _requester_hint(options: dict) -> str:
@@ -82,7 +36,6 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         comp_by_name=COMPACT_COMP_BY_NAME,
         aliases=ALIASES,
         extra_rules=EXTRA_RULES + _requester_hint(options),
-        compact_field_fallback=_compact_field_fallback,
     )
     res["fields"] = mapper.enrich(res["fields"], options)
 

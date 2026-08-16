@@ -177,14 +177,6 @@ def _issuer(value: Any) -> str | None:
     return normalize_issuer(text) if text else None
 
 
-def _same_person(doc_id: Any, doc_name: Any, ctx_id: Any, ctx_name: Any) -> bool:
-    did, cid = _identity(doc_id), _identity(ctx_id)
-    if did and cid:
-        return did == cid
-    dname, cname = _fold(doc_name), _fold(ctx_name)
-    return bool(dname and cname and dname == cname)
-
-
 def _form_context(options: dict | None) -> dict:
     ctx = (options or {}).get("formContext") or {}
     return {
@@ -197,6 +189,39 @@ def _has_context_anchor(context: dict) -> bool:
     return bool(_identity(context.get("applicant_identity")) or _fold(context.get("applicant_name")))
 
 
+def _matches_context(person: dict, context: dict) -> bool:
+    """Có cả tên và CCCD trên UI thì bắt buộc cùng khớp."""
+    context_name = _fold(context.get("applicant_name"))
+    context_identity = _identity(context.get("applicant_identity"))
+    person_name = _fold(person.get("name"))
+    person_identity = _identity(person.get("identity"))
+
+    if context_name and context_identity:
+        return person_name == context_name and person_identity == context_identity
+    if context_identity:
+        return bool(person_identity and person_identity == context_identity)
+    return bool(context_name and person_name == context_name)
+
+
+def _role(values: dict, prefix: str) -> dict | None:
+    name = _text(values.get(f"{prefix}_HoTen"))
+    identity = _identity(values.get(f"{prefix}_SoDinhDanh"))
+    if not name and not identity:
+        return None
+    return {
+        "name": name,
+        "birthday": values.get(f"{prefix}_NgaySinh"),
+        "gender": values.get(f"{prefix}_GioiTinh"),
+        "identity": identity,
+        "issue_date": values.get(f"{prefix}_NgayCap"),
+        "issue_place": values.get(f"{prefix}_NoiCap"),
+        "residence": values.get(f"{prefix}_NoiCuTru"),
+        "phone": values.get(f"{prefix}_DienThoai"),
+        "nationality": values.get(f"{prefix}_QuocTich") or "Việt Nam",
+        "origin": values.get(f"{prefix}_QueQuan"),
+    }
+
+
 def _list(value: Any) -> list:
     return value if isinstance(value, list) else []
 
@@ -205,6 +230,60 @@ def _item_text(item: Any, *keys: str) -> str | None:
     if not isinstance(item, dict):
         return None
     return _text(_pick(*(item.get(k) for k in keys)))
+
+
+def _joined_names(value: Any) -> str | None:
+    """Form chỉ có một ô text; LLM lỡ trả list thì nối tên ổn định bằng 'và'."""
+    if not isinstance(value, list):
+        return _text(value)
+    names: list[str] = []
+    seen: set[str] = set()
+    for item in value:
+        name = _text(item)
+        folded = _fold(name)
+        if not name or not folded or folded in seen:
+            continue
+        names.append(name)
+        seen.add(folded)
+    return " và ".join(names) or None
+
+
+def _dedupe_relatives(value: Any) -> list[dict]:
+    """Gộp dòng OCR trùng tên khi năm sinh không mâu thuẫn, giữ thứ tự đầu tiên."""
+    out: list[dict] = []
+    for raw in _list(value):
+        if not isinstance(raw, dict):
+            continue
+        item = {
+            "hoTen": _item_text(raw, "hoTen", "hoVaTen"),
+            "namSinh": _year(_item_text(raw, "namSinh", "ngaySinh")),
+            "namMat": _year(_item_text(raw, "namMat", "ngayMat")),
+            "noiThuongTru": _item_text(raw, "noiThuongTru", "diaChi"),
+            "moiQuanHe": _item_text(raw, "moiQuanHe", "mqh", "quanHe"),
+        }
+        if not item["hoTen"]:
+            continue
+        folded_name = _fold(item["hoTen"])
+        duplicate = next(
+            (
+                existing
+                for existing in out
+                if _fold(existing.get("hoTen")) == folded_name
+                and (
+                    not existing.get("namSinh")
+                    or not item.get("namSinh")
+                    or existing.get("namSinh") == item.get("namSinh")
+                )
+            ),
+            None,
+        )
+        if duplicate is None:
+            out.append(item)
+            continue
+        for key in ("namSinh", "namMat", "noiThuongTru", "moiQuanHe"):
+            if not duplicate.get(key) and item.get(key):
+                duplicate[key] = item[key]
+    return out
 
 
 def _add_area(add, province_name, district_name, address_name, value, *, occurrence=None) -> None:
@@ -251,11 +330,15 @@ def _add_person_block(
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+    """Map hai vai trò đầu form và luôn dùng chủ hồ sơ cho chi tiết Mẫu 18."""
     values = _by_name(fields)
+    owner = _role(values, "ChuHoSo")
+    requester = _role(values, "NguoiNop")
+    context = _form_context(options)
+
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[tuple[str, int | None]] = set()
-    context = _form_context(options)
 
     def add(name: str, value, *, occurrence=None) -> None:
         seen_key = (name, occurrence)
@@ -270,73 +353,107 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(field)
         seen.add(seen_key)
 
-    candidate_name = _text(_pick(values.get("Person1_HoTen"), values.get("ToKhai_HoTen")))
-    candidate_identity = _identity(_pick(values.get("Person1_SoDinhDanh"), values.get("ToKhai_SoDinhDanh")))
-    candidate_birthday = _pick(values.get("Person1_NgaySinh"), values.get("ToKhai_NgaySinh"))
-    candidate_gender = _pick(values.get("Person1_GioiTinh"), values.get("ToKhai_GioiTinh"))
-    candidate_issue_date = _date(_pick(values.get("Person1_NgayCap"), values.get("ToKhai_NgayCap")))
-    candidate_issue_place = _pick(values.get("Person1_NoiCap"), values.get("ToKhai_NoiCap"))
-    candidate_residence = _area(values.get("ToKhai_NoiThuongTru")) or _area(values.get("Person1_NoiCuTru"))
-    candidate_phone = values.get("ToKhai_DienThoai")
+    owner_matches = bool(owner and _matches_context(owner, context))
+    requester_matches = bool(requester and _matches_context(requester, context))
 
-    if not candidate_name or not candidate_identity:
-        warnings.append("Thiếu họ tên hoặc số định danh người đề nghị từ Đơn Mẫu 18/CCCD.")
+    # Checkbox phải phát trước để portal render/clear đúng khối chủ hồ sơ;
+    # các giá trị xác thực được điền sau nên không phụ thuộc cơ chế tự sao chép.
+    if owner or requester:
+        add("data[isOwnerDossierCheck]", owner_matches)
 
-    can_fill_applicant = (
-        not _has_context_anchor(context)
-        or _same_person(candidate_identity, candidate_name, context.get("applicant_identity"), context.get("applicant_name"))
-    )
-
-    # --- Phần 1: Người nộp hồ sơ (occurrence 0) ---
-    if can_fill_applicant:
+    if owner_matches and owner:
         add("data[chonDoiTuong]", "Cá nhân")
         _add_person_block(
-            add, "",
-            name=candidate_name, birthday=candidate_birthday, gender=candidate_gender,
-            identity=candidate_identity, issue_date=candidate_issue_date, issue_place=candidate_issue_place,
-            residence=candidate_residence, phone=candidate_phone, occurrence=0,
+            add,
+            "",
+            name=owner.get("name"),
+            birthday=owner.get("birthday"),
+            gender=owner.get("gender"),
+            identity=owner.get("identity"),
+            issue_date=owner.get("issue_date"),
+            issue_place=owner.get("issue_place"),
+            residence=owner.get("residence"),
+            phone=owner.get("phone"),
+            occurrence=0,
         )
-        add("data[isOwnerDossierCheck]", True)
-    else:
-        add("data[isOwnerDossierCheck]", False)
+    elif requester_matches and requester:
+        add("data[chonDoiTuong]", "Cá nhân")
+        _add_person_block(
+            add,
+            "",
+            name=requester.get("name"),
+            birthday=requester.get("birthday"),
+            gender=requester.get("gender"),
+            identity=requester.get("identity"),
+            issue_date=requester.get("issue_date"),
+            issue_place=requester.get("issue_place"),
+            residence=requester.get("residence"),
+            phone=requester.get("phone"),
+            occurrence=0,
+        )
+    elif _has_context_anchor(context) and owner:
+        anchor = context.get("applicant_identity") or context.get("applicant_name")
+        warnings.append(
+            "Không xác định được người nộp khớp thông tin trên form "
+            f"({anchor}); không điền phần người nộp."
+        )
+
+    # Chủ hồ sơ luôn là người đề nghị/được ủy quyền thờ cúng, không phải người
+    # đăng nhập. Điền rõ cả ngày sinh và ngày cấp vì portal sao chép không ổn định.
+    if owner:
         add("data[chonDoiTuong1]", "Cá nhân")
+        _add_person_block(
+            add,
+            "owner",
+            name=owner.get("name"),
+            birthday=owner.get("birthday"),
+            gender=owner.get("gender"),
+            identity=owner.get("identity"),
+            issue_date=owner.get("issue_date"),
+            issue_place=owner.get("issue_place"),
+            residence=owner.get("residence"),
+            phone=owner.get("phone"),
+        )
+    else:
+        warnings.append("Chưa đọc được chủ hồ sơ từ mục 1 Đơn Mẫu 18/giấy ủy quyền.")
 
-    # --- Phần 2: Chủ hồ sơ (trùng người nộp) ---
-    _add_person_block(
-        add, "owner",
-        name=candidate_name, birthday=candidate_birthday, gender=candidate_gender,
-        identity=candidate_identity, issue_date=candidate_issue_date, issue_place=candidate_issue_place,
-        residence=candidate_residence, phone=candidate_phone,
-    )
+    # Chi tiết Mẫu 18 luôn theo chủ hồ sơ, kể cả người nộp UI là người khác.
+    if owner:
+        add("data[fullname]", owner.get("name"), occurrence=1)
+        add("data[birthday]", _date(owner.get("birthday")), occurrence=1)
+        add("data[gender]", _text(owner.get("gender")), occurrence=1)
+        add("data[identityNumber]", _identity(owner.get("identity")), occurrence=1)
+        add("data[identityDate]", _date(owner.get("issue_date")), occurrence=1)
+        add(
+            "data[identityAgency]",
+            _issuer(owner.get("issue_place")) or _text(owner.get("issue_place")),
+        )
+        add("data[phoneNumber]", _phone(owner.get("phone")), occurrence=1)
 
-    # --- Phần 4: Chi tiết mẫu khai — người đề nghị (occurrence 1, đồng bộ Phần 1) ---
-    add("data[fullname]", candidate_name, occurrence=1)
-    add("data[birthday]", _date(candidate_birthday), occurrence=1)
-    add("data[gender]", _text(candidate_gender), occurrence=1)
-    add("data[identityNumber]", candidate_identity, occurrence=1)
-    add("data[identityDate]", candidate_issue_date, occurrence=1)
-    add("data[identityAgency]", _issuer(candidate_issue_place) or _text(candidate_issue_place))
-    add("data[phoneNumber]", _phone(candidate_phone), occurrence=1)
-    # Quê quán → province(occ1)/village/address(occ1). `village` là field DUY NHẤT trên DOM (không
-    # occurrence); chỉ province/address có occ0/occ1 → village add KHÔNG occurrence.
-    _kh_que = _area(values.get("ToKhai_QueQuan"))
-    if _kh_que:
-        add("data[province]", _province_label(_kh_que.get("tinh")), occurrence=1)
-        add("data[village]", _commune_label(_kh_que.get("xa")))
-        add("data[address]", _text(_kh_que.get("diaChi")), occurrence=1)
-    # Nơi thường trú → province1/village1/address1.
-    _add_area(add, "data[province1]", "data[village1]", "data[address1]", candidate_residence)
+        origin = _area(owner.get("origin"))
+        if origin:
+            add("data[province]", _province_label(origin.get("tinh")), occurrence=1)
+            add("data[village]", _commune_label(origin.get("xa")))
+            add("data[address]", _text(origin.get("diaChi")), occurrence=1)
+        _add_area(
+            add,
+            "data[province1]",
+            "data[village1]",
+            "data[address1]",
+            owner.get("residence"),
+        )
+
     add("data[MqhVls1]", _text(values.get("ToKhai_MoiQuanHeVoiLietSi")))
-    add("data[UqTcLs]", _text(values.get("ToKhai_LietSiThoCung")))
+    add("data[UqTcLs]", _joined_names(values.get("ToKhai_LietSiThoCung")))
 
-    # --- Thông tin liệt sĩ + Bằng TQGC ---
+    # Thông tin liệt sĩ + Bằng TQGC.
     add("data[address2]", _text(values.get("LietSi_QueQuan")))
     add("data[SoBtqGc]", _text(values.get("LietSi_SoBang")))
     add("data[SoQd]", _text(values.get("LietSi_SoQuyetDinh")))
     add("data[NgayQd]", _date(values.get("LietSi_NgayQuyetDinh")))
 
-    # --- Bảng thân nhân liệt sĩ (DataGrid) ---
-    than_nhan = _list(values.get("ToKhai_ThanNhan"))
+    # Bảng thân nhân liệt sĩ.
+    than_nhan = _dedupe_relatives(values.get("ToKhai_ThanNhan"))
     for idx, item in enumerate(than_nhan[:8]):
         add(f"data[DataGrid][{idx}][Ht]", _item_text(item, "hoTen", "hoVaTen"))
         add(f"data[DataGrid][{idx}][Ns]", _year(_item_text(item, "namSinh", "ngaySinh")))
@@ -344,8 +461,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(f"data[DataGrid][{idx}][Ntt]", _item_text(item, "noiThuongTru", "diaChi"))
         add(f"data[DataGrid][{idx}][MqhVls]", _item_text(item, "moiQuanHe", "mqh", "quanHe"))
 
-    # --- Khai báo hồ sơ đính kèm (dòng đầu) ---
-    add("data[hoSoDinhKem][0][textField1]", "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18)")
+    add(
+        "data[hoSoDinhKem][0][textField1]",
+        "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18)",
+    )
     add("data[hoSoDinhKem][0][textField2]", "Bản chính")
 
     if not values.get("ToKhai_LietSiThoCung"):

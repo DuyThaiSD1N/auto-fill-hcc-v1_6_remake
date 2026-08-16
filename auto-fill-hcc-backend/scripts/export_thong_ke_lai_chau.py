@@ -8,15 +8,12 @@ Cách dùng (chạy tại thư mục gốc backend, cần .env trỏ đúng Mong
 
 Mỗi sheet: STT | Mã thủ tục | Tên thủ tục | Thủ tục thuộc cấp | Phạm vi hỗ trợ | Số lượng hồ sơ đã tiếp nhận.
 Chỉ liệt kê thủ tục CÓ hồ sơ phát sinh (> 0). Số liệu cộng dồn từ trace ĐẦU TIÊN của xã đó đến mốc
---den (giờ VN; bỏ trống = hiện tại). Cách đếm "hồ sơ" dùng CHUNG logic với
-trang trace web (app/traces/repo.py): nhiều lượt bấm cùng bộ file = 1 hồ sơ; lượt split=true
-(tách hồ sơ chứng thực) = mỗi file chứng thực 1 hồ sơ — nên số khớp với số trên web.
+--den (giờ VN; bỏ trống = hiện tại). Cách đếm giống dashboard: cùng bộ file, hoặc một bộ là tập
+con của bộ kia, được tính là một hồ sơ; lượt tách tab vẫn tính riêng từng tab.
 """
 import argparse
 import asyncio
-import re
 import unicodedata
-from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from openpyxl import Workbook
@@ -24,68 +21,20 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from app.db.mongo import connect, get_db
-from app.procedures.registry import PROCEDURES, _ATTACH_PIPELINE
-from app.traces.repo import _certified_file_names, _count_distinct_dossiers, _norm_file_set
+from app.procedures.registry import PROCEDURES
+from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
+from app.traces.metadata import (
+    count_distinct_attachment_sets,
+    legacy_dossier_count,
+    normalized_attachment_name_set,
+)
 
 XA_MAC_DINH = ["Tân Phong", "Tả Lèng", "Đoàn Kết", "Bình Lư"]
 _VN_TZ = timezone(timedelta(hours=7))  # giờ VN (UTC+7, không DST) — mọi mốc thời gian nhập/hiển thị theo giờ này
 
-# ===== Thủ tục thuộc cấp =====
-# Registry không lưu cấp thẩm quyền → phân theo nhóm pipeline; sửa tay tại đây nếu tỉnh yêu cầu khác.
-# Quy tắc theo THỨ TỰ: (điều kiện khớp key, nhãn cấp) — khớp rule đầu tiên.
-_CAP_RULES: list[tuple[re.Pattern, str]] = [
-    (re.compile(r"^chung-thuc|^cap-ban-sao-so-goc"), "Cấp xã"),
-    (re.compile(r"khai-sinh|ket-hon|khai-tu|trich-luc|ho-tich|hon-nhan|giam-ho|nhan-cha-me-con"), "Cấp xã"),
-    (re.compile(r"ho-kinh-doanh|^dang-ky-kinh-doanh"), "Cấp xã"),
-    (re.compile(r"mai-tang|huu-tri-xa-hoi|tro-cap-xa-hoi"), "Cấp xã"),
-    (re.compile(r"tro-choi-dien-tu"), "Cấp xã"),
-    # Đất đai / quy hoạch / GCN quyền sử dụng đất → Văn phòng ĐKĐĐ, Sở (cấp tỉnh).
-    (re.compile(r"dat-dai|gcn|dinh-chinh|thua-dat|giao-thue|quy-hoach|thu-hoi"), "Cấp tỉnh"),
-    # Người có công, tuyển dụng, chế độ (cổng Bộ Nội vụ/Y tế) — tiếp nhận qua xã, giải quyết cấp tỉnh.
-    (re.compile(r"liet-si|to-quoc-ghi-cong|nguoi-co-cong|khang-chien|tu-tran|di-chuyen-ho-so"), "Cấp tỉnh"),
-    (re.compile(r"thi-tuyen|xet-tuyen"), "Cấp tỉnh"),
-    (re.compile(r"attp|an-toan-thuc-pham|lien-van|tau-ca"), "Cấp tỉnh"),
-]
-_CAP_MAC_DINH = "Cấp xã"
-
-# Mã TTHC bổ sung cho thủ tục mà detect không chứa maThuTuc/MaTTHC (nhận diện bằng tiêu đề/ObjectId).
-_MA_TT_BO_SUNG = {
-    "cap-gcn-diem-tro-choi-dien-tu-cong-cong": "1.013792",
-    "giai-quyet-che-do-khang-chien": "2.009383",
-    "xet-tuyen-vien-chuc-lai-chau": "3.000601",
-}
-
-_MA_TT_RE = re.compile(r"(?:mathutuc|matthc)=(\d+\.\d+)", re.IGNORECASE)
-
-
 def _fold(s: str) -> str:
     s = unicodedata.normalize("NFD", str(s or "").lower()).replace("đ", "d")
     return " ".join("".join(c for c in s if not unicodedata.combining(c)).split())
-
-
-def _ma_thu_tuc(entry: dict) -> str:
-    for u in (entry.get("detect") or {}).get("urlIncludes") or []:
-        m = _MA_TT_RE.search(u)
-        if m:
-            return m.group(1)
-    return _MA_TT_BO_SUNG.get(entry["key"], "—")
-
-
-def _cap(key: str) -> str:
-    for pat, label in _CAP_RULES:
-        if pat.search(key):
-            return label
-    return _CAP_MAC_DINH
-
-
-def _pham_vi(entry: dict | None, key: str) -> str:
-    mode = (entry or {}).get("mode") or ""
-    co_attach = key in _ATTACH_PIPELINE
-    if mode == "attach":
-        return "Đính kèm hồ sơ tự động"
-    if co_attach:
-        return "Điền biểu mẫu + đính kèm hồ sơ tự động"
-    return "Điền biểu mẫu tự động"
 
 
 def _vn_time(dt: datetime | None) -> str:
@@ -128,31 +77,57 @@ async def _match_users(db, xa_folded: str) -> list[dict]:
 
 
 def _dem_ho_so(docs: list[dict]) -> dict[str, dict]:
-    """Đếm hồ sơ riêng biệt theo thủ tục — cùng thuật toán stats() của trang trace web."""
-    buckets: dict[str, list[frozenset]] = defaultdict(list)
-    split_buckets: dict[str, set[str]] = {}
+    """Đếm cùng tiêu chí dashboard: bộ file cho lượt thường, dossier_id cho lượt tách tab."""
+    split_dossier_ids: dict[str, set[str]] = {}
+    non_split_sets: dict[str, set[frozenset[str]]] = {}
+    non_split_empty_ids: dict[str, set[str]] = {}
+    requests: dict[str, set[str]] = {}
+    estimated: dict[str, int] = {}
     label_theo_trace: dict[str, str] = {}
     first_at: dict[str, datetime] = {}
     for d in docs:
         proc = d.get("procedure") or "—"
+        request_id = str(d.get("request_id") or d.get("_id") or "—")
+        requests.setdefault(proc, set()).add(request_id)
         label_theo_trace.setdefault(proc, d.get("procedure_label") or proc)
         ca = d.get("created_at")
         if isinstance(ca, datetime) and (proc not in first_at or ca < first_at[proc]):
             first_at[proc] = ca
+        ids = [str(value) for value in (d.get("dossier_ids") or []) if value]
+        exact = int(d.get("stats_version") or 0) >= 2 and bool(ids)
         if d.get("split") is True:
-            split_buckets.setdefault(proc, set()).update(
-                _certified_file_names(d.get("attachments"), proc))
+            if exact:
+                split_dossier_ids.setdefault(proc, set()).update(ids)
+                continue
+            count = legacy_dossier_count(
+                attachments=d.get("attachments") or [],
+                procedure=proc,
+                split=True,
+            )
+            split_dossier_ids.setdefault(proc, set()).update(
+                f"{request_id}:legacy:{index}" for index in range(count)
+            )
+            estimated[proc] = estimated.get(proc, 0) + count
+            continue
+
+        file_set = normalized_attachment_name_set(d.get("attachments") or [])
+        if file_set:
+            non_split_sets.setdefault(proc, set()).add(file_set)
         else:
-            buckets[proc].append(_norm_file_set(d.get("attachments")))
+            empty_id = ids[0] if exact else request_id
+            non_split_empty_ids.setdefault(proc, set()).add(empty_id)
 
     out: dict[str, dict] = {}
-    for proc in set(buckets) | set(split_buckets):
-        sets = buckets.get(proc, [])
-        count = _count_distinct_dossiers(sets) if sets else 0
-        count += len(split_buckets.get(proc, set()))
+    all_procedures = set(split_dossier_ids) | set(non_split_sets) | set(non_split_empty_ids)
+    for proc in all_procedures:
+        file_sets = list(non_split_sets.get(proc, set()))
+        file_sets.extend(frozenset() for _ in non_split_empty_ids.get(proc, set()))
+        inferred_count = count_distinct_attachment_sets(file_sets)
+        count = len(split_dossier_ids.get(proc, set())) + inferred_count
         out[proc] = {
             "count": count,
-            "requests": len(sets),
+            "requests": len(requests.get(proc, set())),
+            "estimated": estimated.get(proc, 0) + inferred_count,
             "label": label_theo_trace.get(proc, proc),
             "first_at": first_at.get(proc),
         }
@@ -252,10 +227,13 @@ async def main(danh_sach_xa: list[str], out_path: str, den: datetime | None = No
         # Trace của xã: theo user_id; kèm fallback fold(name/username) chứa tên xã
         # (trace cũ trước khi tài khoản bị tạo lại vẫn được tính).
         docs = []
-        for d in await db.traces.find(trace_query, {
+        cursor = db.traces.find(trace_query, {
             "user_id": 1, "name": 1, "username": 1, "split": 1,
+            "request_id": 1, "stats_version": 1, "dossier_ids": 1,
             "procedure": 1, "procedure_label": 1, "attachments": 1, "created_at": 1,
-        }).to_list(length=200000):
+        })
+        # Export chạy offline nên stream toàn bộ cursor: không cắt im lặng ở 200.000 trace.
+        async for d in cursor:
             if d.get("user_id") in uids or xa_folded in _fold(d.get("name") or d.get("username")):
                 docs.append(d)
 
@@ -267,14 +245,14 @@ async def main(danh_sach_xa: list[str], out_path: str, den: datetime | None = No
             if v["count"] <= 0:      # chỉ lấy thủ tục CÓ hồ sơ phát sinh (> 0)
                 continue
             entry = registry.get(key)
-            ma = _ma_thu_tuc(entry) if entry else "—"
+            ma = ma_thu_tuc(entry)
             if ma == "—":
                 thieu_ma[key] = (entry or {}).get("label") or v["label"]
             rows.append({
                 "ma": ma,
                 "ten": (entry or {}).get("label") or v["label"],
-                "cap": _cap(key),
-                "pham_vi": _pham_vi(entry, key),
+                "cap": cap_thu_tuc(key),
+                "pham_vi": pham_vi_ho_tro(entry, key),
                 "count": v["count"],
             })
         rows.sort(key=lambda x: (-x["count"], x["ten"]))

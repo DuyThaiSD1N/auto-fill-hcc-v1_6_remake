@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.core.deps import require_admin
 from app.users import service
-from app.users.schemas import UserCreate, UserUpdate
+from app.users.schemas import Role, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -13,8 +13,9 @@ async def list_users(
     _admin: dict = Depends(require_admin),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
+    role: Role | None = Query(None),
 ):
-    res = await service.list_users(skip=(page - 1) * pageSize, limit=pageSize)
+    res = await service.list_users(skip=(page - 1) * pageSize, limit=pageSize, role=role)
     return {**res, "page": page, "pageSize": pageSize}
 
 

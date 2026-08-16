@@ -1,6 +1,7 @@
 """Map compact facts của đăng ký lại kết hôn → field UI (dữ liệu mẫu từ spec)."""
 
-from app.pipelines.ket_hon_lai.process import mapper
+from app.pipelines.ket_hon_lai.process import mapper, schema
+from app.pipelines.ket_hon_lai.process.prompt import EXTRA_RULES
 
 _VO = {  # bên nữ
     "CccdNu_HoTen": "MÁ THỊ SỐ",
@@ -23,10 +24,11 @@ _CHONG = {  # bên nam
                                    "diaChi": "Tổ dân phố Cư Nhà La"},
 }
 _HOSO = {
-    "HoTich_So": "40/2026",
-    "HoTich_NgayDangKy": "01/04/2026",
-    "HoTich_TinhDangKy": "Lai Châu",
-    "HoTich_XaDangKy": "Phường Đoàn Kết",
+    "KetHonCu_So": "40/2026",
+    "KetHonCu_QuyenSo": "01/2026",
+    "KetHonCu_NgayDangKy": "01/04/2026",
+    "KetHonCu_TinhDangKy": "Lai Châu",
+    "KetHonCu_XaDangKy": "Phường Đoàn Kết",
 }
 
 
@@ -56,7 +58,7 @@ def test_map_full_case():
     assert out["QuocTichBenNu"]["value"] == "Việt Nam"
     assert out["LoaiCuTru_BenNu"]["value"] == "Thường trú"
     assert out["NoiCuTru_BenNu"]["value"] == "1"
-    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["xa"] == "Đoàn Kết"
+    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["xa"] == "Phường Đoàn Kết"
     assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["diaChi"] == "Tổ dân phố Cư Nhà La"
 
     # Bên nam (chồng)
@@ -76,8 +78,8 @@ def test_map_full_case():
     assert out["loaiDangKy"]["value"] == "Đăng ký lại"
     assert out["loaiDangKy"].get("default") is True
     assert out["soDangKyTruocDay"]["value"] == "40/2026"
-    assert out["quyenDangKyTruocDay"]["value"] == "01/2026"       # 40//200+1 = 1
-    assert out["quyenDangKyTruocDay"].get("default") is True
+    assert out["quyenDangKyTruocDay"]["value"] == "01/2026"
+    assert out["quyenDangKyTruocDay"].get("default") is None
     assert out["ngayDangKyTruocDay"]["value"] == "01/04/2026"
     assert out["noiDangKyTruocDay_filter"]["value"] == "Lai Châu"       # tỉnh (lọc)
     assert out["noiDangKyTruocDay"]["value"] == "Phường Đoàn Kết"        # xã/phường chuẩn
@@ -97,3 +99,45 @@ def test_missing_wife_cccd_falls_back_to_marriage_cert():
     assert out["HoTenBenNu"]["value"] == "MÁ THỊ SỐ"
     assert out["NgaySinhBenNu"]["value"] == "01/01/1989"
     assert out["HoTenBenNam"]["value"] == "SÙNG A CỦ"
+
+
+def test_old_marriage_metadata_does_not_infer_number_or_book_from_birth_certificate():
+    """Số/ngày giấy khai sinh không được lọt sang dữ liệu kết hôn cũ; quyển số không được tự tính."""
+    out = _by_name(mapper.enrich(_fields(
+        _VO,
+        _CHONG,
+        {
+            # Các key cũ mô phỏng dữ liệu từng bị lấy nhầm từ giấy khai sinh.
+            "HoTich_So": "804/2012",
+            "HoTich_NgayDangKy": "27/11/2012",
+            "HoTich_TinhDangKy": "Lai Châu",
+            "HoTich_XaDangKy": "Thị trấn Tam Đường",
+            # Giấy chứng nhận kết hôn cũ ghi rõ ngày/nơi đăng ký trước đây.
+            "KetHonCu_NgayDangKy": "11/09/1995",
+            "KetHonCu_TinhDangKy": "Thái Bình",
+            "KetHonCu_XaDangKy": "Xã Bình Long",
+        },
+    )))
+
+    assert "soDangKyTruocDay" not in out
+    assert "quyenDangKyTruocDay" not in out
+    assert out["ngayDangKyTruocDay"]["value"] == "11/09/1995"
+    assert out["noiDangKyTruocDay_filter"]["value"] == "Thái Bình"
+    assert out["noiDangKyTruocDay"]["value"] == "Xã Bình Long"
+
+
+def test_old_marriage_schema_uses_specific_fields_and_restricts_sources():
+    expected = {
+        "KetHonCu_So",
+        "KetHonCu_QuyenSo",
+        "KetHonCu_NgayDangKy",
+        "KetHonCu_TinhDangKy",
+        "KetHonCu_XaDangKy",
+    }
+    assert expected <= schema.ALLOWED
+    assert not {"HoTich_So", "HoTich_NgayDangKy", "HoTich_TinhDangKy", "HoTich_XaDangKy"} & schema.ALLOWED
+    assert "TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN" in EXTRA_RULES
+    assert "GIẤY CHỨNG NHẬN KẾT HÔN cũ" in EXTRA_RULES
+    assert "Ưu tiên theo TỪNG FIELD: giá trị ghi rõ trên GIẤY CHỨNG NHẬN KẾT HÔN cũ" in EXTRA_RULES
+    assert "TUYỆT ĐỐI không lấy" in EXTRA_RULES
+    assert "KHÔNG tự tính từ số" in EXTRA_RULES

@@ -2,6 +2,10 @@ import type {
   Facets,
   LoginResp,
   ManagedUser,
+  DownloadResult,
+  ReportExportBody,
+  ReportOptionsResp,
+  Role,
   StatsResp,
   TraceDetail,
   TraceListResp,
@@ -153,17 +157,29 @@ export function getFacets(): Promise<Facets> {
   return request<Facets>(`/api/v1/traces/facets`);
 }
 
-export function getStats(dateFrom?: string, dateTo?: string): Promise<StatsResp> {
+export function getStats(
+  scope: "official" | "all",
+  dateFrom?: string,
+  dateTo?: string,
+  signal?: AbortSignal,
+): Promise<StatsResp> {
   const params = new URLSearchParams();
+  params.set("scope", scope);
   if (dateFrom) params.set("dateFrom", dateFrom);
   if (dateTo) params.set("dateTo", dateTo);
   const qs = params.toString();
-  return request<StatsResp>(`/api/v1/traces/stats${qs ? `?${qs}` : ""}`);
+  return request<StatsResp>(`/api/v1/traces/stats${qs ? `?${qs}` : ""}`, { signal });
+}
+
+// --- Kết xuất báo cáo Excel (admin) ---
+export function getReportOptions(signal?: AbortSignal): Promise<ReportOptionsResp> {
+  return request<ReportOptionsResp>(`/api/v1/reports/options`, { signal });
 }
 
 // --- Quản lý tài khoản (admin) ---
-export function listUsers(page = 1, pageSize = 20): Promise<UserListResp> {
+export function listUsers(page = 1, pageSize = 20, role?: Role): Promise<UserListResp> {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+  if (role) params.set("role", role);
   return request<UserListResp>(`/api/v1/users?${params.toString()}`);
 }
 
@@ -187,17 +203,51 @@ export function deleteUser(id: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(`/api/v1/users/${id}`, { method: "DELETE" });
 }
 
+// --- Danh mục tỉnh/xã ---
+export interface Province {
+  text: string;
+  slug: string;
+  name: string;
+}
+
+export function getProvinces(signal?: AbortSignal): Promise<{ provinces: Province[] }> {
+  return request<{ provinces: Province[] }>(`/api/v1/provinces`, { signal });
+}
+
+export function getWards(
+  slug: string,
+  signal?: AbortSignal,
+): Promise<{ slug: string; province: string; communes: string[] }> {
+  const params = new URLSearchParams({ slug });
+  return request<{ slug: string; province: string; communes: string[] }>(
+    `/api/v1/wards?${params.toString()}`,
+    { signal },
+  );
+}
+
 // Tải nội dung 1 file đính kèm của trace (ảnh/PDF) dưới dạng Blob, có Authorization.
-async function requestBlob(path: string, retry = true): Promise<Blob> {
-  const headers = new Headers();
+async function requestDownload(
+  path: string,
+  init: RequestInit = {},
+  retry = true,
+): Promise<DownloadResult> {
+  const headers = new Headers(init.headers);
   if (tokens.access) headers.set("Authorization", `Bearer ${tokens.access}`);
-  const res = await fetch(`${BASE}${path}`, { headers });
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
   if (res.status === 401) {
-    if (retry && tokens.refresh && (await refreshTokens())) return requestBlob(path, false);
+    if (retry && tokens.refresh && (await refreshTokens())) {
+      return requestDownload(path, init, false);
+    }
     forceLogout();
   }
   if (!res.ok) throw await parseError(res);
-  return res.blob();
+  const disposition = res.headers.get("Content-Disposition") || "";
+  const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  return { blob: await res.blob(), filename };
+}
+
+async function requestBlob(path: string): Promise<Blob> {
+  return (await requestDownload(path)).blob;
 }
 
 export function fetchTraceFile(traceId: string, index: number): Promise<Blob> {
@@ -207,6 +257,18 @@ export function fetchTraceFile(traceId: string, index: number): Promise<Blob> {
 // Tải TẤT CẢ tài liệu của trace dưới dạng 1 file ZIP (BE gom, FE tải blob kèm Authorization).
 export function fetchTraceArchive(traceId: string): Promise<Blob> {
   return requestBlob(`/api/v1/traces/${traceId}/download`);
+}
+
+export function exportReportExcel(
+  body: ReportExportBody,
+  signal?: AbortSignal,
+): Promise<DownloadResult> {
+  return requestDownload(`/api/v1/reports/excel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
 }
 
 export { ApiError };

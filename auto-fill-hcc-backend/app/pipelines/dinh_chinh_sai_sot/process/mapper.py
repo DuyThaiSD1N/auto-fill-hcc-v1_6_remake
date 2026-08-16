@@ -47,7 +47,7 @@ def _province_label(value) -> str | None:
 
 
 def _area(value) -> dict | None:
-    """Cccd_NoiCuTru thường là object {quocGia,tinh,xa,diaChi}; hỗ trợ cả chuỗi rơi vào diaChi."""
+    """NguoiNop_NoiCuTru thường là object {quocGia,tinh,xa,diaChi}; hỗ trợ cả chuỗi rơi vào diaChi."""
     if isinstance(value, str):
         text = _plain(value)
         return {"tinh": "", "xa": "", "diaChi": text} if text else None
@@ -131,29 +131,28 @@ def enrich(fields: list[dict]) -> list[dict]:
         out.append(field)
         seen.add(name)
 
-    has_cccd = bool(values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"))
+    has_applicant = bool(values.get("NguoiNop_SoDinhDanh") or values.get("NguoiNop_HoTen"))
     has_gcn = bool(values.get("Gcn_SoPhatHanh") or values.get("Gcn_NgayCap") or values.get("Gcn_CoQuanCap"))
 
-    if has_cccd:
-        identity_no = values.get("Cccd_SoDinhDanh")
-        issuer = values.get("Cccd_NoiCap") or default_issuer(values.get("Cccd_NgayCap"))
-        add("CongDan_tenCongDan", values.get("Cccd_HoTen"))
-        add("CongDan_tenCoQuanToChuc", values.get("Cccd_HoTen"))
-        add("CongDan_maSoThueNguoiNop", identity_no)
-        add("CongDan_ngaySinhCongDan", values.get("Cccd_NgaySinh"))
-        add("CongDan_gioiTinhCongDan", values.get("Cccd_GioiTinh"))
-        add("CongDan_danTocCongDan", values.get("Cccd_DanToc"))
+    if has_applicant:
+        identity_no = values.get("NguoiNop_SoDinhDanh")
+        issue_date = values.get("NguoiNop_NgayCapGiayTo")
+        issuer = values.get("NguoiNop_NoiCapGiayTo") or default_issuer(issue_date)
+        add("CongDan_tenCongDan", values.get("NguoiNop_HoTen"))
+        add("CongDan_ngaySinhCongDan", values.get("NguoiNop_NgaySinh"))
+        add("CongDan_gioiTinhCongDan", values.get("NguoiNop_GioiTinh"))
+        add("CongDan_danTocCongDan", values.get("NguoiNop_DanToc"))
         add("CongDan_soCmnd", identity_no)
-        add("CongDan_ngayCapCmnd", values.get("Cccd_NgayCap"))
+        add("CongDan_ngayCapCmnd", issue_date)
         add("CongDan_noiCapCmnd", issuer)
         add("CongDan_soCCCD", identity_no)
 
     add("CongDan_maDMQuocGia", "Việt Nam")
     add("CongDan_diaChiNuocNgoai", "Việt Nam")
-    add("CongDan_diDong", _phone(values.get("Don_DienThoaiLienHe")))
+    add("CongDan_diDong", _phone(values.get("NguoiNop_DienThoai")))
 
-    # Địa chỉ nơi cư trú người nộp (từ CCCD). eForm Lai Châu 2 cấp: tỉnh (select) → xã (select) + chi tiết.
-    residence = _area(values.get("Cccd_NoiCuTru"))
+    # Địa chỉ nơi cư trú đã xác định theo vai trò người nộp. eForm Lai Châu 2 cấp: tỉnh → xã + chi tiết.
+    residence = _area(values.get("NguoiNop_NoiCuTru"))
     if residence:
         add("CongDan_maTinhThanh", _province_label(residence.get("tinh")))
         add("CongDan_maPhuongXa", _plain(residence.get("xa")))

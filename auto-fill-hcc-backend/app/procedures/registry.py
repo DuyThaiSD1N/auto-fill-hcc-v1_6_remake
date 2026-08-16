@@ -143,6 +143,10 @@ from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.attach import plan as dk_bi
 from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.process import run as dk_bien_dong_dat_dai_dn_process
 from app.pipelines.cap_giay_phep_chat_ha_cay_xanh.attach import plan as cap_gp_chat_ha_cay_xanh_attach
 from app.pipelines.cap_giay_phep_chat_ha_cay_xanh.process import run as cap_gp_chat_ha_cay_xanh_process
+from app.pipelines.cap_ban_sao_van_bang_so_goc.attach import plan as cap_ban_sao_van_bang_attach
+from app.pipelines.cap_ban_sao_van_bang_so_goc.process import run as cap_ban_sao_van_bang_process
+from app.pipelines.chap_thuan_dau_noi_tam.attach import plan as chap_thuan_dau_noi_tam_attach
+from app.pipelines.chap_thuan_dau_noi_tam.process import run as chap_thuan_dau_noi_tam_process
 
 PROCEDURES: list[dict] = [
     {
@@ -664,17 +668,14 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-sai-sot",
-        # Cổng laichau (SPA, dùng chung domain+path, sid đổi mỗi phiên) → detect theo VĂN BẢN: tiêu đề đầy
-        # đủ + dấu tỉnh "Lai Châu" (footer "Cơ quan chủ quản: UBND tỉnh Lai Châu"). Cần "lai châu" để TÁCH
-        # khỏi Lâm Đồng (tiêu đề TRÙNG): trang Lâm Đồng có "1.012796.H36" nhưng KHÔNG có "lai châu"; trang
-        # Lai Châu có "lai châu" và chỉ "1.012796" (KHÔNG .H36) → Lâm Đồng rule không khớp trang Lai Châu.
-        # Rule cũ chỉ ["đính chính","sai sót"] quá lỏng, dễ dính trang lạ.
-        # urlScope = cổng gate Lai Châu (URL SPA đổi sid mỗi phiên, không định danh thủ tục) → chỉ tin
-        # text khi đúng cổng laichau.gov.vn; giữ "lai châu" trong text làm lớp chặn thứ hai.
-        "detect": {"urlScope": ["laichau.gov.vn"], "textIncludes": [
-            "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
-            "lai châu",
-        ], "headingDisabled": True},
+        # Cổng Lai Châu là SPA, URL con/sid thay đổi theo phiên nên dùng đúng host làm cổng chặn rồi
+        # khớp tiêu đề đầy đủ. Không yêu cầu thêm chữ "Lai Châu" trong body vì footer có thể nằm ngoài
+        # 6.000 ký tự mà extension thu thập; host cụ thể đã tách an toàn khỏi thủ tục cùng tên ở Lâm Đồng.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": ["đính chính giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+        },
         "label": "[Lai Châu] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -845,8 +846,12 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "giao-thue-chuyen-muc-dich-dat-bac-ninh",
-        # Cổng dichvucong.bacninh.gov.vn (Liferay + select2) — dùng engine fill-bacninh.js.
-        "detect": {"urlIncludes": ["maThuTucHanhChinh=1.013949"]},
+        # maThuTucHanhChinh=1.013949 là mã QG dùng chung nhiều cổng iGate (Lâm Đồng cũng có mã này) → PHẢI
+        # khóa host bacninh, nếu không sẽ nhận nhầm trên cổng tỉnh khác.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.013949"],
+        },
         "label": (
             "[Tỉnh Bắc Ninh] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất; "
             "giao đất và giao rừng; cho thuê đất và cho thuê rừng; gia hạn sử dụng đất"
@@ -1757,13 +1762,14 @@ PROCEDURES: list[dict] = [
         # fillFormStandard dom-* + attach attp-row. Form chỉ thu NGƯỜI YÊU CẦU (cá nhân/tổ chức); nội dung
         # thế chấp trong Phiếu Mẫu 01a đính kèm. URL SPA ObjectId → detect theo cụm tên.
         "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
             "textIncludes": [
                 "đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
             ],
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "label": "[Đà Nẵng] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -1886,6 +1892,71 @@ PROCEDURES: list[dict] = [
             "dòng), lý do và thông tin ký.\n"
             "Bước đính kèm: Đơn Mẫu 01 chọn 'Bản chính', Ảnh hiện trạng cây chọn 'Scan tệp tin' (CCCD chỉ "
             "dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "cap-ban-sao-van-bang-so-goc",
+        # Cổng DVC Bộ GD&ĐT dvc.moet.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row.
+        # Field-key PHẲNG data[...]. Người nộp (Phần I) lấy tên+CCCD từ formContext (collectFormContext);
+        # nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) KHÔNG tick → điền thẳng chủ hồ sơ (owner*/
+        # ownerOrganization*) + Phần VIII kê khai BM04 (checkbox Nam/Nu, THPT/THPT1/THCS). URL SPA ObjectId
+        # → detect theo domain + cụm tên.
+        "detect": {
+            "urlScope": ["dvc.moet.gov.vn"],
+            "textIncludes": [
+                "cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc (tại cấp tỉnh)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của CHỦ VĂN BẰNG — người được cấp bản sao):\n"
+            "1. Phiếu yêu cầu cấp bản sao văn bằng (Mẫu BM04) đã điền, đã ký.\n"
+            "2. Thẻ Căn cước công dân / Căn cước của chủ văn bằng.\n"
+            "3. Bản photo văn bằng / bằng tốt nghiệp cần cấp bản sao.\n"
+            "4. Nếu người KHÁC yêu cầu thay: tải kèm giấy ủy quyền hoặc giấy tờ chứng minh quan hệ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension điền Phần thông tin người nộp (theo tài khoản), chủ hồ sơ và nội dung kê khai theo "
+            "Phiếu BM04. Nút 'Người nộp là chủ hồ sơ' để nguyên (không tự tích).\n"
+            "Bước đính kèm: Phiếu BM04, bản photo văn bằng và CCCD cùng đính dòng 'Đơn đề nghị' (Bản chính); "
+            "giấy ủy quyền/chứng minh quan hệ đính dòng riêng."
+        ),
+    },
+    {
+        "key": "chap-thuan-dau-noi-tam",
+        # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
+        # (CÙNG cổng #63/#76). Field-key PHẲNG data[...]. HAI vai: Người nộp (Phần I) / Đơn vị đề nghị +
+        # nội dung Đơn (Phần II). URL SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "textIncludes": [
+                "chấp thuận vị trí đấu nối tạm vào đường bộ đang khai thác",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Chấp thuận vị trí đấu nối tạm vào đường bộ đang khai thác",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Đơn/Văn bản đề nghị chấp thuận vị trí đấu nối tạm (Mẫu Mucb) — đã ký.\n"
+            "2. Thẻ Căn cước công dân / Căn cước của NGƯỜI NỘP để đối chiếu (không đính kèm).\n"
+            "3. Hợp đồng thi công xây dựng HOẶC Văn bản chấp thuận chủ trương đầu tư (kèm công văn, nghị "
+            "quyết, hồ sơ pháp lý dự án).\n"
+            "4. Hồ sơ thiết kế bản vẽ thi công nút giao đấu nối tạm, phương án tổ chức giao thông.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension điền Phần I (người nộp) và Phần II (đơn vị đề nghị, vị trí đấu nối, trường hợp, cam "
+            "kết, người ký).\n"
+            "Bước đính kèm: HĐ thi công/chủ trương + công văn/pháp lý → dòng 1; Đơn đề nghị → dòng 2; hồ sơ "
+            "bản vẽ → dòng 3 (đều 'Bản chính')."
         ),
     },
     {
@@ -2012,6 +2083,8 @@ _PIPELINE = {
     "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_process,
     "dang-ky-bien-dong-dat-dai-da-nang": dk_bien_dong_dat_dai_dn_process,
     "cap-giay-phep-chat-ha-cay-xanh": cap_gp_chat_ha_cay_xanh_process,
+    "cap-ban-sao-van-bang-so-goc": cap_ban_sao_van_bang_process,
+    "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_process,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -2089,6 +2162,8 @@ _ATTACH_PIPELINE = {
     "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_attach,
     "dang-ky-bien-dong-dat-dai-da-nang": dk_bien_dong_dat_dai_dn_attach,
     "cap-giay-phep-chat-ha-cay-xanh": cap_gp_chat_ha_cay_xanh_attach,
+    "cap-ban-sao-van-bang-so-goc": cap_ban_sao_van_bang_attach,
+    "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_attach,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,

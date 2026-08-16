@@ -29,22 +29,32 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch bên nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,diaChi}."},
 
-    # Hồ sơ gốc: lần đăng ký kết hôn TRƯỚC ĐÂY (từ giấy CN kết hôn cũ bản sao).
-    {"name": "HoTich_So",
-     "desc": 'Số đăng ký kết hôn trước đây — thường ở GÓC TRÊN giấy CN kết hôn, dạng "NN/YYYY" (vd 40/2026) hoặc "NN".'},
-    {"name": "HoTich_NgayDangKy", "desc": "Ngày đăng ký kết hôn trước đây, dd/mm/yyyy."},
-    {"name": "HoTich_TinhDangKy", "desc": "Tỉnh/thành phố của cơ quan đăng ký kết hôn trước đây (để lọc dropdown), vd Lai Châu."},
-    {"name": "HoTich_XaDangKy",
-     "desc": "Tên đơn vị hành chính PHƯỜNG/XÃ/THỊ TRẤN nơi đăng ký kết hôn trước đây, GIỮ tiền tố loại đơn vị. "
-             "Nơi đăng ký thường ghi 'UBND phường/xã <X>, tỉnh <Y>' → trả '<Phường/Xã> <X>' "
-             "(BỎ 'UBND' và phần ', tỉnh <Y>'). Vd 'UBND phường Đoàn Kết, tỉnh Lai Châu' → 'Phường Đoàn Kết'."},
+    # Lần đăng ký kết hôn TRƯỚC ĐÂY. Chỉ đọc từ tờ khai đăng ký lại hoặc giấy CN kết hôn cũ.
+    {"name": "KetHonCu_So",
+     "desc": "Số Giấy chứng nhận kết hôn/Số đăng ký kết hôn trước đây. Chỉ lấy khi GIẤY CHỨNG NHẬN KẾT HÔN cũ "
+             "hoặc TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN ghi rõ giá trị; ưu tiên giấy chứng nhận cũ. Không lấy số/quyển/ngày từ giấy khai sinh, "
+             "CCCD hay giấy tờ khác. Dòng nhãn có chỗ trống hoặc OCR không rõ thì bỏ field."},
+    {"name": "KetHonCu_QuyenSo",
+     "desc": "Quyển số đăng ký kết hôn trước đây. Chỉ lấy giá trị ghi rõ ngay sau nhãn 'Quyển số' trên giấy chứng nhận "
+             "kết hôn cũ hoặc tờ khai đăng ký lại; ưu tiên giấy chứng nhận cũ. Không tự tính từ số đăng ký. Trống/không rõ thì bỏ field."},
+    {"name": "KetHonCu_NgayDangKy",
+     "desc": "Ngày đăng ký kết hôn trước đây, dd/mm/yyyy. Ưu tiên ngày đăng ký trên GIẤY CHỨNG NHẬN KẾT HÔN cũ; "
+             "nếu giấy cũ không rõ thì lấy dòng 'Đã đăng ký kết hôn tại ... ngày ... tháng ... năm ...' trên tờ khai đăng ký lại. "
+             "Không lấy ngày đăng ký khai sinh, ngày cấp CCCD hoặc ngày lập tờ khai."},
+    {"name": "KetHonCu_TinhDangKy",
+     "desc": "Tỉnh/thành phố của cơ quan đăng ký kết hôn trước đây. Chỉ lấy từ cơ quan trên giấy chứng nhận kết hôn cũ "
+             "hoặc mục 'Đã đăng ký kết hôn tại' trên tờ khai đăng ký lại; ưu tiên giấy chứng nhận cũ. Không rõ thì bỏ field."},
+    {"name": "KetHonCu_XaDangKy",
+     "desc": "Tên PHƯỜNG/XÃ/THỊ TRẤN đăng ký kết hôn trước đây, giữ tiền tố đơn vị và bỏ 'UBND'. Chỉ lấy từ cơ quan "
+             "trên giấy chứng nhận kết hôn cũ hoặc mục 'Đã đăng ký kết hôn tại' trên tờ khai đăng ký lại; ưu tiên giấy "
+             "chứng nhận cũ. Không lấy 'Nơi đăng ký' của giấy khai sinh; không rõ thì bỏ field."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("CccdNam_NgaySinh", "CccdNam_NgayCap", "CccdNu_NgaySinh", "CccdNu_NgayCap", "HoTich_NgayDangKy"):
+for _name in ("CccdNam_NgaySinh", "CccdNam_NgayCap", "CccdNu_NgaySinh", "CccdNu_NgayCap", "KetHonCu_NgayDangKy"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in ("CccdNam_NoiCuTru_TrongNuoc", "CccdNu_NoiCuTru_TrongNuoc"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"

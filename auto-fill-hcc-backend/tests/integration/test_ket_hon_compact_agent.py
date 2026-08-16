@@ -140,6 +140,9 @@ def test_ket_hon_compact_prompt_instructs_gender_split():
     assert "mapper sẽ tự ưu tiên tờ khai" in system_prompt
     assert "giấy xác nhận tình trạng hôn nhân" in system_prompt
     assert 'nhãn rõ "Xã ..." hoặc "Phường ..."' in system_prompt
+    assert "TUYỆT ĐỐI không fuzzy/sửa họ tên để tạo khớp" in system_prompt
+    assert 'Cấp tỉnh Hồ Chí Minh luôn trả đúng "Thành phố Hồ Chí Minh"' in system_prompt
+    assert 'P9/P.9/P 9 → "Phường 9"' in system_prompt
 
 
 def test_ket_hon_ethnicity_requires_explicit_labeled_source():
@@ -192,6 +195,43 @@ def test_ket_hon_keeps_ethnicity_when_document_has_explicit_label():
     declaration = [{"text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nDân tộc | Kinh | Mông"}]
 
     assert ket_hon_runner._compact_field_fallback(extracted, declaration) == extracted
+
+
+def test_ket_hon_does_not_recheck_divorce_status_after_llm():
+    extracted = {
+        "CccdNu_HoTen": "NGƯỜI NỮ",
+        "CccdNu_TinhTrangHonNhan": "3",
+        "CccdNam_HoTen": "NGƯỜI NAM",
+        "CccdNam_TinhTrangHonNhan": "3",
+    }
+    documents = [{"text": "QUYẾT ĐỊNH LY HÔN"}]
+
+    assert ket_hon_runner._compact_field_fallback(extracted, documents) == extracted
+
+
+def test_ket_hon_mapper_normalizes_ho_chi_minh_province_aliases():
+    aliases = (
+        "TP.Hồ Chí Minh",
+        "TP Hồ Chí Minh",
+        "TP.HCM",
+        "TPHCM",
+        "HCM",
+        "Hồ Chí Minh",
+        "Thành phố Hồ Chí Minh",
+    )
+    for province in aliases:
+        mapped = {field["name"]: field["value"] for field in mapper.enrich([
+            {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
+            {"name": "CccdNam_SoDinhDanh", "value": "079000000001"},
+            {"name": "CccdNam_NoiCuTru_TrongNuoc", "value": {
+                "quocGia": "Việt Nam",
+                "tinh": province,
+                "xa": "P15",
+                "diaChi": "92B đường A",
+            }},
+        ])}
+        assert mapped["NoiCuTru_BenNam_TrongNuoc"]["tinh"] == "Thành phố Hồ Chí Minh"
+        assert mapped["NoiCuTru_BenNam_TrongNuoc"]["xa"] == "Phường 15"
 
 
 def test_ket_hon_copy_request_has_no_default_and_quantity_is_positive_signal():

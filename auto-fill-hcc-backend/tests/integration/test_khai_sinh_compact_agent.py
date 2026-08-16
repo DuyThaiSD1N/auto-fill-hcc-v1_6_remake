@@ -50,21 +50,21 @@ async def test_khai_sinh_compact_agent_derives_angular_fields(monkeypatch):
                 "tinh": "Lai Châu",
                 "diaChi": "Trung tâm y tế huyện Phong Thổ",
             },
-            "CccdNam_HoTen": "TRẦN THÀNH CÔNG",
-            "CccdNam_SoDinhDanh": "025203007360",
-            "CccdNam_NgaySinh": "11/7/2003",
-            "CccdNam_QueQuan": {
+            "ThongTinBo_HoTen": "TRẦN THÀNH CÔNG",
+            "ThongTinBo_SoDinhDanh": "025203007360",
+            "ThongTinBo_NgaySinh": "11/7/2003",
+            "ThongTinBo_QueQuan": {
                 "tinh": "Nghệ An",
                 "diaChi": "Xóm Long Thành",
             },
-            "CccdNam_NoiCuTru": {
+            "ThongTinBo_NoiCuTru": {
                 "tinh": "Phú Thọ",
                 "diaChi": "Khu 2",
             },
-            "CccdNu_HoTen": "PHẠM NGỌC THỦY",
-            "CccdNu_SoDinhDanh": "012193000851",
-            "CccdNu_NgaySinh": "20/03/1993",
-            "CccdNu_NoiCuTru": {
+            "ThongTinMe_HoTen": "PHẠM NGỌC THỦY",
+            "ThongTinMe_SoDinhDanh": "012193000851",
+            "ThongTinMe_NgaySinh": "20/03/1993",
+            "ThongTinMe_NoiCuTru": {
                 "tinh": "Lai Châu",
                 "diaChi": "Tổ 3",
             },
@@ -137,12 +137,128 @@ def test_khai_sinh_compact_prompt_forbids_ui_fields():
     assert "trẻ CHƯA CÓ TÊN: BỎ HẲN Gcs_HoTenCon" in system_prompt
     assert "Nếu ứng viên trùng tên mẹ thì BỎ Gcs_HoTenCon" in system_prompt
     assert "Tân Phong" not in system_prompt
-    assert "CccdNam_* ưu tiên lấy từ giấy tờ CĂN CƯỚC/CMND có giới tính \"Nam\"" in system_prompt
+    assert "THÔNG TIN THEO VAI TRÒ BỐ/MẸ" in system_prompt
     assert "CopyRequest_Quantity CHỈ lấy từ mục \"Đề nghị cấp bản sao\"" in system_prompt
     assert "TUYỆT ĐỐI không tự mặc định 1" in system_prompt
     assert "Không trả field mặc định hoặc field UI" in system_prompt
     assert "Ho, ChaHo, MeHo" in system_prompt
     assert "BanSaoSoLuong" in system_prompt
+
+
+def test_khai_sinh_prompt_prioritizes_mother_ethnicity_sources():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    field_desc = {field["name"]: field["desc"] for field in FIELDS}
+
+    desc = field_desc["ThongTinMe_DanToc"]
+    assert desc.index("GIẤY CHỨNG SINH") < desc.index("GIẤY CHỨNG NHẬN KẾT HÔN")
+    assert desc.index("GIẤY CHỨNG NHẬN KẾT HÔN") < desc.index("TỜ KHAI ĐĂNG KÝ KHAI SINH")
+    assert "Đọc được giá trị thì phải trả field dù cách ghi ít gặp" in desc
+
+    mother_rule = system_prompt.index("RIÊNG DÂN TỘC MẸ (ThongTinMe_DanToc)")
+    birth_proof = system_prompt.index("(1) GIẤY CHỨNG SINH", mother_rule)
+    marriage_certificate = system_prompt.index("(2) Nếu giấy chứng sinh", birth_proof)
+    birth_form = system_prompt.index("(3) Chỉ khi hai nguồn trên", marriage_certificate)
+    assert mother_rule < birth_proof < marriage_certificate < birth_form
+    assert "KHÔNG được bỏ field vì cách ghi ít gặp" in system_prompt
+    assert "Chỉ bỏ ThongTinMe_DanToc khi CẢ BA nguồn" in system_prompt
+
+
+def test_khai_sinh_prompt_requires_father_ethnicity_from_birth_form_or_marriage_certificate():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    field_desc = {field["name"]: field["desc"] for field in FIELDS}
+
+    desc = field_desc["ThongTinBo_DanToc"]
+    assert desc.index("TỜ KHAI ĐĂNG KÝ KHAI SINH") < desc.index("GIẤY CHỨNG NHẬN KẾT HÔN")
+    assert "bố đẻ/cha/người cha" in desc
+    assert "chồng/bên nam" in desc
+    assert "bắt buộc trả ThongTinBo_DanToc" in desc
+
+    father_rule = system_prompt.index("RIÊNG DÂN TỘC CHA (ThongTinBo_DanToc)")
+    birth_form = system_prompt.index("(1) TỜ KHAI ĐĂNG KÝ KHAI SINH", father_rule)
+    marriage_certificate = system_prompt.index("(2) Nếu tờ khai", birth_form)
+    mandatory_scan = system_prompt.index("PHẢI chủ động soát đúng khối cha/chồng", marriage_certificate)
+    assert father_rule < birth_form < marriage_certificate < mandatory_scan
+    assert "Chỉ khi CẢ HAI nguồn chính" in system_prompt
+    assert "giấy chứng sinh/giấy khai sinh" in system_prompt
+
+
+def test_khai_sinh_compact_contract_uses_parent_roles_not_cccd_gender_names():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    field_names = {field["name"] for field in FIELDS}
+
+    assert {
+        "ThongTinBo_HoTen",
+        "ThongTinBo_SoDinhDanh",
+        "ThongTinBo_DanToc",
+        "ThongTinBo_NoiCuTru",
+        "ThongTinMe_HoTen",
+        "ThongTinMe_SoDinhDanh",
+        "ThongTinMe_DanToc",
+        "ThongTinMe_QueQuan",
+        "ThongTinMe_NoiCuTru",
+    } <= field_names
+    assert not any(name.startswith(("CccdNam_", "CccdNu_")) for name in field_names)
+    assert "CccdNam_" not in system_prompt
+    assert "CccdNu_" not in system_prompt
+
+
+def test_khai_sinh_prompt_keeps_mother_hometown_separate_from_residence():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+    field_desc = {field["name"]: field["desc"] for field in FIELDS}
+
+    assert "ThongTinMe_QueQuan" in field_desc
+    assert "Quê quán / Place of origin:" in field_desc["ThongTinMe_QueQuan"]
+    assert "BẮT BUỘC trích" in field_desc["ThongTinMe_QueQuan"]
+    assert "không dùng nơi cư trú mẹ thay quê quán" in field_desc["ThongTinMe_QueQuan"]
+    assert 'ThongTinMe_QueQuan: BẮT BUỘC trích' in system_prompt
+    assert '"Quê quán / Place of origin:"' in system_prompt
+    assert "tối thiểu `tinh`" in system_prompt
+    assert "không được gán tên huyện vào `xa`" in system_prompt
+
+
+def test_mapper_uses_mother_hometown_for_lam_dong_child_not_mother_residence():
+    out = mapper.enrich(_fields({
+        "Gcs_NgaySinhCon": "17/07/2026",
+        "Gcs_NoiSinh": {
+            "tinh": "Lâm Đồng",
+            "diaChi": "Bệnh viện Đa khoa tỉnh Lâm Đồng",
+        },
+        "ThongTinMe_HoTen": "NGƯỜI MẸ",
+        "ThongTinMe_QueQuan": {
+            "tinh": "Quảng Ngãi",
+            "xa": "Nghĩa Hòa",
+        },
+        "ThongTinMe_NoiCuTru": {
+            "tinh": "Lâm Đồng",
+            "xa": "Phường 12",
+            "diaChi": "2/14 Thái Phiên",
+        },
+    }))
+    values = {field["name"]: field["value"] for field in out}
+
+    assert values["QqDiaChi"]["tinh"] == "Quảng Ngãi"
+    assert values["QqDiaChi"]["xa"] == "Xã Tư Nghĩa"
+    assert "2/14 Thái Phiên" not in str(values["QqDiaChi"])
+
+
+def test_mapper_does_not_fallback_to_mother_residence_when_hometown_missing():
+    out = mapper.enrich(_fields({
+        "Gcs_NgaySinhCon": "17/07/2026",
+        "Gcs_NoiSinh": {
+            "tinh": "Lâm Đồng",
+            "diaChi": "Bệnh viện Đa khoa tỉnh Lâm Đồng",
+        },
+        "ThongTinMe_HoTen": "NGƯỜI MẸ",
+        "ThongTinMe_NoiCuTru": {
+            "tinh": "Lâm Đồng",
+            "xa": "Phường 12",
+            "diaChi": "2/14 Thái Phiên",
+        },
+    }))
+    values = {field["name"]: field["value"] for field in out}
+
+    assert "QqDiaChi" not in values
+    assert "QqMaQuocGia" not in values
 
 
 def test_mapper_only_emits_copy_quantity_when_present():
@@ -163,6 +279,96 @@ def test_mapper_only_emits_copy_quantity_when_present():
     assert with_copy["BanSaoSoLuong"] == "3"
 
 
+def test_mapper_routes_cil_cill_to_other_ethnicity_fields():
+    out = mapper.enrich(_fields({
+        "Gcs_NgaySinhCon": "24/04/2026",
+        "Gcs_DanTocCon": "Cill",
+        "ThongTinMe_HoTen": "NGƯỜI MẸ",
+        "ThongTinMe_DanToc": "Cil",
+        "ThongTinBo_HoTen": "NGƯỜI CHA",
+        "ThongTinBo_DanToc": " cill ",
+    }))
+    values = {field["name"]: field for field in out}
+    names = [field["name"] for field in out]
+
+    assert values["MaDanToc"]["value"] == "Khác"
+    assert values["DantocKhac"]["value"] == "Cill"
+    assert names.index("MaDanToc") < names.index("DantocKhac")
+
+    assert values["MeMaDanToc"]["value"] == "Khác"
+    assert values["MeDantocKhac"]["value"] == "Cil"
+    assert names.index("MeMaDanToc") < names.index("MeDantocKhac")
+
+    assert values["ChaMaDanToc"]["value"] == "Khác"
+    assert values["ChaDantocKhac"]["value"] == "cill"
+    assert names.index("ChaMaDanToc") < names.index("ChaDantocKhac")
+
+
+def test_mapper_maps_role_based_parent_fields_for_cill_dossier():
+    out = mapper.enrich(_fields({
+        "Gcs_NgaySinhCon": "23/07/2026",
+        "Gcs_GioiTinhCon": "Nữ",
+        "Gcs_NoiSinh": {
+            "tinh": "Lâm Đồng",
+            "diaChi": "Bệnh viện Đa khoa tỉnh Lâm Đồng",
+        },
+        "ThongTinBo_HoTen": "CIL PAM LÊ NISH",
+        "ThongTinBo_SoDinhDanh": "068095001840",
+        "ThongTinBo_NgaySinh": "11/05/1995",
+        "ThongTinBo_DanToc": "Cill",
+        "ThongTinMe_HoTen": "KA SĂ K' TRINH",
+        "ThongTinMe_SoDinhDanh": "068195008008",
+        "ThongTinMe_NgaySinh": "20/09/1995",
+        "ThongTinMe_DanToc": "Cơ Ho",
+    }))
+    values = {field["name"]: field["value"] for field in out}
+
+    assert values["ChaHoTen"] == "CIL PAM LÊ NISH"
+    assert values["ChaSoGiayTo"] == "068095001840"
+    assert values["ChaMaDanToc"] == "Khác"
+    assert values["ChaDantocKhac"] == "Cill"
+    assert values["MeSoGiayTo"] == "068195008008"
+    assert values["MeMaDanToc"] == "Cơ Ho"
+    assert "MeDantocKhac" not in values
+
+
+def test_mapper_keeps_known_ethnicity_as_direct_select():
+    out = mapper.enrich(_fields({
+        "Gcs_NgaySinhCon": "24/04/2026",
+        "Gcs_DanTocCon": "Kinh",
+        "ThongTinMe_HoTen": "NGƯỜI MẸ",
+        "ThongTinMe_DanToc": "Cơ Ho",
+        "ThongTinBo_HoTen": "NGƯỜI CHA",
+        "ThongTinBo_DanToc": "Mông",
+    }))
+    values = {field["name"]: field["value"] for field in out}
+
+    assert values["MaDanToc"] == "Kinh"
+    assert values["MeMaDanToc"] == "Cơ Ho"
+    assert values["ChaMaDanToc"] == "Mông"
+    assert "DantocKhac" not in values
+    assert "MeDantocKhac" not in values
+    assert "ChaDantocKhac" not in values
+
+
+def test_mapper_routes_lam_dong_child_inferred_cil_to_other_as_default():
+    out = mapper.enrich(_fields({
+        "Gcs_NgaySinhCon": "24/04/2026",
+        "Gcs_NoiSinh": {
+            "tinh": "Lâm Đồng",
+            "diaChi": "Trung Tâm Y Tế Khu Vực Đơn Dương",
+        },
+        "ThongTinMe_HoTen": "KA KHÔN",
+        "ThongTinMe_DanToc": "Cil",
+    }))
+    values = {field["name"]: field for field in out}
+
+    assert values["MeMaDanToc"]["value"] == "Khác"
+    assert values["MeDantocKhac"]["value"] == "Cil"
+    assert values["MaDanToc"] == {"name": "MaDanToc", "comp": "select", "value": "Khác", "default": True}
+    assert values["DantocKhac"] == {"name": "DantocKhac", "comp": "text", "value": "Cil", "default": True}
+
+
 def test_mapper_rejects_mother_name_as_child_but_keeps_birth_facts():
     out = mapper.enrich(_fields({
         "Gcs_HoTenCon": "PHAN THỊ BÌNH",
@@ -172,8 +378,8 @@ def test_mapper_rejects_mother_name_as_child_but_keeps_birth_facts():
             "tinh": "Lâm Đồng",
             "diaChi": "Bệnh viện Đa khoa tỉnh Lâm Đồng",
         },
-        "CccdNu_HoTen": "PHAN THỊ BÌNH",
-        "CccdNu_SoDinhDanh": "040194019162",
+        "ThongTinMe_HoTen": "PHAN THỊ BÌNH",
+        "ThongTinMe_SoDinhDanh": "040194019162",
     }))
     values = {field["name"]: field["value"] for field in out}
 

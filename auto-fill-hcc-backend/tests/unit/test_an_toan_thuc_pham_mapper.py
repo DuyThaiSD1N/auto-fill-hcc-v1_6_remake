@@ -46,12 +46,17 @@ def test_an_toan_thuc_pham_same_requester_and_owner():
     assert warnings == []
     assert out[0] == {"name": "data[isOwnerDossierCheck]", "comp": "dom-checkbox", "value": True}
     assert d["data[fullname]"] == "BÙI THỊ LAN"
+    assert d["data[birthday]"] == "02/09/1975"
     assert d["data[identityNumber]"] == "034175011744"
     assert d["data[phoneNumber]"] == "0984126036"
     assert d["data[province]"] == "Lai Châu"
     assert d["data[district]"] == "Tân Phong"
     assert d["data[address]"] == "Tổ 16"
+    assert d["data[ownerBirthday]"] == "02/09/1975"
     assert "data[ownerFullname]" not in d
+    assert "data[ownerIdentityNumber]" not in d
+    names = [field["name"] for field in out]
+    assert names.index("data[ownerBirthday]") > names.index("data[birthday]")
 
 
 def test_an_toan_thuc_pham_different_requester_and_owner():

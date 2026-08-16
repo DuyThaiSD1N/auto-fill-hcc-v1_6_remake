@@ -1,110 +1,175 @@
-"""Unit test mapper hỗ trợ mai táng (gọi thẳng enrich, không qua OCR/LLM).
-
-Tách khỏi test integration để không dính config drift của respx/settings.
-"""
+"""Unit tests cho mapper hai vai trò của thủ tục hỗ trợ mai táng."""
 
 from app.pipelines.ho_tro_mai_tang.process import mapper
+from app.pipelines.ho_tro_mai_tang.process.runner import _owner_section, _requester_context
 
 
-def _flds(d: dict) -> list[dict]:
-    return [{"name": k, "value": v} for k, v in d.items()]
+def _run(values: dict, form_context: dict | None = None):
+    compact = [{"name": name, "value": value} for name, value in values.items()]
+    fields, warnings = mapper.enrich(
+        compact,
+        {"formContext": form_context or {}},
+    )
+    return {field["name"]: field["value"] for field in fields}, warnings
 
 
-def _run(vals: dict, ctx: dict | None = None):
-    fields, warnings = mapper.enrich(_flds(vals), ctx or {})
-    return {f["name"]: f["value"] for f in fields}, warnings
+_KA_TUI = {
+    "ChuHoSo_HoTen": "KA TUI",
+    "ChuHoSo_NgaySinh": "01/01/1975",
+    "ChuHoSo_SoDinhDanh": "068175007976",
+    "ChuHoSo_NgayCap": "27/12/2002",
+    "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    "ChuHoSo_NoiCuTru": {
+        "quocGia": "Việt Nam",
+        "tinh": "Lâm Đồng",
+        "xa": "Đơn Dương",
+        "diaChi": "Kambutte",
+    },
+    "ChuHoSo_DienThoai": "0378877127",
+}
 
 
-_UI_MAI = {"formContext": {"applicantFullname": "Bùi Thị Thanh Mai",
-                           "applicantIdentityNumber": "025199000635"}}
+def test_owner_matching_ui_is_requester_and_ticks_checkbox():
+    fields, warnings = _run(
+        _KA_TUI,
+        {
+            "applicantFullname": "KA TUI",
+            "applicantIdentityNumber": "068175007976",
+        },
+    )
+
+    assert fields["data[isOwnerDossierCheck]"] is True
+    assert fields["data[fullname]"] == "KA TUI"
+    assert fields["data[birthday]"] == "01/01/1975"
+    assert fields["data[identityNumber]"] == "068175007976"
+    assert fields["data[identityDate]"] == "27/12/2002"
+    assert fields["data[idIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert fields["data[province]"] == "Lâm Đồng"
+    assert fields["data[district]"] == "Đơn Dương"
+    assert fields["data[address]"] == "Kambutte"
+    assert fields["data[phoneNumber]"] == "0378877127"
+    assert fields["data[ownerBirthday]"] == "01/01/1975"
+    assert "data[ownerFullname]" not in fields
+    assert not warnings
 
 
-def test_tokhai_same_person_survives_wrong_handwritten_number():
-    """Số CMND trên tờ khai viết tay bị OCR sai vẫn phải nhận ra TRÙNG người nộp (khớp tên)
-    → tích 'người nộp là chủ hồ sơ', không điền owner trùng, số/ngày lấy từ CCCD."""
-    d, w = _run({
-        "Person1_HoTen": "BÙI THỊ THANH MAI",
-        "Person1_SoDinhDanh": "025199000635",
-        "Person1_NgayCap": "20/09/2024",
-        "Person1_NoiCap": "Bộ Công an",
-        "Person1_NoiCuTru": {"tinh": "Phú Thọ", "xa": "Lâm Thao", "diaChi": "Khu Phương Lai"},
-        # Tờ khai viết tay: số thừa space + sai chữ số, năm cấp sai (1924)
-        "ToKhai_ChuHoTen": "Bùi Thị Thanh Mai",
-        "ToKhai_ChuHoSoGiayTo": "025 199900635",
-        "ToKhai_ChuHoNgayCap": "20/09/1924",
-        "ToKhai_ChuHoNoiCuTru": {"tinh": "Phú Thọ", "xa": "Lâm Thao", "diaChi": "khu phương lại"},
-    }, _UI_MAI)
+def test_missing_requester_context_still_returns_owner_normally():
+    fields, warnings = _run(_KA_TUI)
 
-    assert d["data[isOwnerDossierCheck]"] is True
-    assert d["data[fullname]"] == "BÙI THỊ THANH MAI"
-    assert d["data[identityNumber]"] == "025199000635"     # số đúng từ CCCD
-    assert d["data[identityDate]"] == "20/09/2024"          # ngày cấp đúng từ CCCD
-    assert "data[ownerFullname]" not in d                    # không điền owner trùng
-    assert not w
+    assert fields["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in fields
+    assert fields["data[ownerFullname]"] == "KA TUI"
+    assert fields["data[ownerBirthday]"] == "01/01/1975"
+    assert fields["data[ownerIdentityNumber]"] == "068175007976"
+    assert fields["data[ownerPhoneNumber]"] == "0378877127"
+    assert fields["data[ownerNation]"] == "Việt Nam"
+    assert not warnings
 
 
-def test_tokhai_owner_from_form_when_no_cccd():
-    """Chủ hồ sơ khác người nộp và không có CCCD → owner lấy từ tờ khai, gender để trống."""
-    d, w = _run({
-        "Person1_HoTen": "TRẦN THỊ THANH THẢO",
-        "Person1_SoDinhDanh": "036192014693",
-        "Person1_NoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
-        "ToKhai_ChuHoTen": "Bùi Mạnh Cường",
-        "ToKhai_ChuHoNamSinh": "20/08/1990",
-        "ToKhai_ChuHoSoGiayTo": "001906118210",
-        "ToKhai_ChuHoNgayCap": "01/10/2025",
-        "ToKhai_ChuHoNoiCap": "Bộ Công an",
-        "ToKhai_ChuHoNoiCuTru": {"tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "Tổ 9"},
-    }, {"formContext": {"applicantFullname": "TRẦN THỊ THANH THẢO",
-                        "applicantIdentityNumber": "036192014693"}})
+def test_mismatching_ui_keeps_owner_and_does_not_fill_requester():
+    fields, warnings = _run(
+        _KA_TUI,
+        {
+            "applicantFullname": "HA YONG",
+            "applicantIdentityNumber": "012345678901",
+        },
+    )
 
-    assert d["data[isOwnerDossierCheck]"] is False
-    assert d["data[fullname]"] == "TRẦN THỊ THANH THẢO"
-    assert d["data[province]"] == "Ninh Bình"               # requester giữ địa chỉ CCCD
-    assert d["data[ownerFullname]"] == "Bùi Mạnh Cường"
-    assert d["data[ownerIdentityNumber]"] == "001906118210"
-    assert d["data[ownerBirthday]"] == "20/08/1990"
-    assert d["data[ownerProvince]"] == "Lai Châu"           # owner địa chỉ từ tờ khai
-    assert d["data[ownerDistrict]"] == "Tân Phong"
-    assert d["data[ownerAddress]"] == "Tổ 9"
-    assert "data[ownerGender]" not in d                      # tờ khai không ghi giới tính
-    assert not w
+    assert fields["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in fields
+    assert fields["data[ownerFullname]"] == "KA TUI"
+    assert "không điền phần người nộp" in warnings[0]
 
 
-def test_tokhai_owner_prefers_cccd_identity_but_tokhai_address():
-    """Có CCCD chủ hồ sơ: định danh ưu tiên CCCD, địa chỉ ưu tiên tờ khai (2 cấp)."""
-    d, w = _run({
-        "Person1_HoTen": "TRẦN THỊ THANH THẢO",
-        "Person1_SoDinhDanh": "036192014693",
-        "Person2_HoTen": "BÙI MẠNH CƯỜNG",
-        "Person2_SoDinhDanh": "001906118210",
-        "Person2_GioiTinh": "Nam",
-        "Person2_NgayCap": "01/10/2025",
-        "Person2_NoiCap": "Bộ Công an",
-        "Person2_NoiCuTru": {"tinh": "Điện Biên", "xa": "Mường Lay", "diaChi": "Bản 1"},
-        "ToKhai_ChuHoTen": "Bùi Mạnh Cường",
-        "ToKhai_ChuHoSoGiayTo": "001906118210",
-        "ToKhai_ChuHoNoiCuTru": {"tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "Tổ 9"},
-    }, {"formContext": {"applicantFullname": "TRẦN THỊ THANH THẢO",
-                        "applicantIdentityNumber": "036192014693"}})
+def test_both_ui_anchors_must_match_owner():
+    fields, warnings = _run(
+        _KA_TUI,
+        {
+            "applicantFullname": "KA TUI",
+            "applicantIdentityNumber": "999999999999",
+        },
+    )
 
-    assert d["data[isOwnerDossierCheck]"] is False
-    assert d["data[ownerGender]"] == "Nam"                  # định danh từ CCCD
-    assert d["data[ownerIdentityDate]"] == "01/10/2025"
-    assert d["data[ownerProvince]"] == "Lai Châu"           # địa chỉ từ tờ khai, KHÔNG lấy Điện Biên
-    assert d["data[ownerAddress]"] == "Tổ 9"
-    assert not w
+    assert fields["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in fields
+    assert fields["data[ownerFullname]"] == "KA TUI"
+    assert warnings
 
 
-def test_no_tokhai_falls_back_to_cccd_only_logic():
-    """Không có tờ khai → giữ logic cũ (1 CCCD = người nộp kiêm chủ hồ sơ)."""
-    d, w = _run({
-        "Person1_HoTen": "NGUYỄN VĂN A",
-        "Person1_SoDinhDanh": "111111111111",
-        "Person1_NoiCuTru": {"tinh": "Hà Nội", "xa": "Cầu Giấy", "diaChi": "Số 1"},
-    }, {})
+def test_distinct_verified_requester_fills_both_roles():
+    values = {
+        **_KA_TUI,
+        "NguoiNop_HoTen": "TRẦN THỊ THANH THẢO",
+        "NguoiNop_NgaySinh": "17/06/1992",
+        "NguoiNop_GioiTinh": "Nữ",
+        "NguoiNop_SoDinhDanh": "036192014693",
+        "NguoiNop_NgayCap": "17/06/2023",
+        "NguoiNop_NoiCap": "Bộ Công an",
+        "NguoiNop_NoiCuTru": {
+            "tinh": "Ninh Bình",
+            "xa": "Gia Thắng",
+            "diaChi": "Xóm 2",
+        },
+    }
+    fields, warnings = _run(
+        values,
+        {
+            "applicantFullname": "TRẦN THỊ THANH THẢO",
+            "applicantIdentityNumber": "036192014693",
+        },
+    )
 
-    assert d["data[isOwnerDossierCheck]"] is True
-    assert d["data[fullname]"] == "NGUYỄN VĂN A"
-    assert "data[ownerFullname]" not in d
-    assert not w
+    assert fields["data[isOwnerDossierCheck]"] is False
+    assert fields["data[fullname]"] == "TRẦN THỊ THANH THẢO"
+    assert fields["data[identityNumber]"] == "036192014693"
+    assert fields["data[ownerFullname]"] == "KA TUI"
+    assert fields["data[ownerIdentityNumber]"] == "068175007976"
+    assert not warnings
+
+
+def test_same_person_returned_in_both_groups_is_not_duplicated():
+    values = {
+        **_KA_TUI,
+        "NguoiNop_HoTen": "KA TUI",
+        "NguoiNop_SoDinhDanh": "068175007976",
+    }
+    fields, warnings = _run(
+        values,
+        {
+            "applicantFullname": "KA TUI",
+            "applicantIdentityNumber": "068175007976",
+        },
+    )
+
+    assert fields["data[isOwnerDossierCheck]"] is True
+    assert fields["data[fullname]"] == "KA TUI"
+    assert fields["data[ownerBirthday]"] == "01/01/1975"
+    assert "data[ownerFullname]" not in fields
+    assert not warnings
+
+
+async def test_current_form_04_owner_block_matches_ui_requester_context():
+    ocr = """I. THÔNG TIN NGƯỜI CHẾT ĐƯỢC MAI TÁNG
+Họ và tên: KA NANG
+II. THÔNG TIN CƠ QUAN, TỔ CHỨC, HỘ GIA ĐÌNH, CÁ NHÂN ĐỨNG RA MAI TÁNG
+2. Trường hợp hộ gia đình, cá nhân đứng ra mai táng
+a) Họ và tên (Chủ hộ hoặc người đại diện): KA TUI
+Ngày, tháng, năm sinh: 01/01/1975
+Giấy CCCD số: 068175007976 cấp ngày: 27/12/2002
+b) Hộ khẩu thường trú: Kambutte, xã Đơn Dương, Lâm Đồng
+Tôi xin cam đoan những lời khai trên là đúng.
+"""
+
+    assert "KA TUI" in _owner_section(ocr)
+    assert "KA NANG" not in _owner_section(ocr)
+
+    context = await _requester_context(
+        [{"name": "image.jpg", "text": ocr}],
+        {"formContext": {
+            "applicantFullname": "KA TUI",
+            "applicantIdentityNumber": "068175007976",
+        }},
+    )
+
+    assert 'result="owner_match"' in context
+    assert "Đây là tự nộp" in context

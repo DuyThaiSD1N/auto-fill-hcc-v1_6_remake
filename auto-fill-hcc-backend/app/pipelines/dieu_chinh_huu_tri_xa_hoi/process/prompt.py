@@ -52,8 +52,14 @@ F. Có nhiều CCCD nhưng không có Mẫu 01:
    - Chỉ trả ChuHoSo_* nếu tài liệu khác ghi rõ người đề nghị/người đang hưởng.
 
 HỢP NHẤT CÙNG MỘT CHỦ THỂ:
-- Ghép Mẫu số 01 với CCCD theo số định danh chính xác; chỉ khi một nguồn thiếu số mới dùng họ tên
-  đã chuẩn hóa. Không ghép hai người chỉ vì địa chỉ hoặc quan hệ giống nhau.
+- Trước hết ghép Mẫu số 01 với CCCD theo số định danh chính xác.
+- Riêng CHỦ HỒ SƠ: nếu số định danh hoặc ngày sinh giữa mục I và CCCD bị lệch, nhưng trong toàn bộ
+  hồ sơ chỉ có đúng MỘT CCCD có họ tên IN TRÊN MẶT TRƯỚC khớp chính xác họ tên người mục I sau khi
+  chuẩn hóa hoa/thường và dấu, vẫn xác định đó là CCCD của ChuHoSo. Khi đó BẮT BUỘC lấy HoTen,
+  NgaySinh, SoDinhDanh, GioiTinh, QuocTich, NgayCap và NoiCap từ CCCD; Nơi cư trú và điện thoại vẫn
+  theo quy tắc ưu tiên mục I bên dưới. Không dùng tên MRZ sai OCR làm mỏ neo thay cho tên in trên thẻ.
+- Nếu có từ hai CCCD trở lên cùng khớp tên chủ hồ sơ, hoặc tên chỉ gần giống/không khớp chính xác,
+  không ghép theo tên và không tự chọn một thẻ. Không ghép hai người chỉ vì địa chỉ hoặc quan hệ giống nhau.
 - Họ tên, ngày sinh, giới tính, số định danh, ngày cấp, nơi cấp, quốc tịch:
   ưu tiên CCCD khớp chủ thể vì đây là nguồn định danh chính thức.
 - Nơi cư trú/địa chỉ liên hệ và số điện thoại:
@@ -73,8 +79,12 @@ QUY TẮC TỪNG FIELD:
 - GioiTinh: chỉ "Nam"/"Nữ" khi tài liệu ghi rõ. Không suy từ họ tên, quan hệ hay giới tính thường gặp.
 - SoDinhDanh: chỉ giữ chữ số của CMND/CCCD/số định danh; có thể dùng MRZ để xác nhận.
 - NoiCap: chỉ lấy câu cơ quan cấp hiện diện trong OCR. Không có nơi cấp thì bỏ trống, kể cả khi có ngày cấp.
-  Nếu mặt sau CCCD ghi cơ quan Cục Cảnh sát quản lý hành chính về trật tự xã hội thì chuẩn hóa đúng tên đó;
-  thẻ Căn cước mới ghi Bộ Công an thì trả "Bộ Công an".
+  Phân biệt theo LOẠI THẺ và DÒNG CƠ QUAN CẤP, không chọn chữ trên con dấu/logo:
+  + Thẻ có tiêu đề "CĂN CƯỚC CÔNG DÂN" và mặt sau có dòng "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ
+    HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → BẮT BUỘC trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
+    Nếu cùng ảnh có chữ "BỘ CÔNG AN" ở con dấu/logo thì phải bỏ qua chữ đó, không được trả Bộ Công an.
+  + Chỉ thẻ "CĂN CƯỚC" mẫu mới, không có chữ "CÔNG DÂN" trong tiêu đề và ghi cơ quan Bộ Công an,
+    mới trả "Bộ Công an".
 - DienThoai: chỉ lấy số điện thoại nằm trong đúng mục của chủ thể; không dùng số người kia.
 - QuocTich: chỉ trả khi giấy tờ ghi rõ.
 - NoiCuTru trả object {quocGia,tinh,xa,diaChi}; xa chỉ là tên xã/phường/thị trấn, không chứa tiền tố;

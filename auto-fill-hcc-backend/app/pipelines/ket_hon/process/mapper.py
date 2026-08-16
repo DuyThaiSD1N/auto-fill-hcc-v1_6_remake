@@ -20,12 +20,40 @@ def _fold(value) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
+_HCM_PROVINCE_KEYS = {
+    "hochiminh",
+    "tphochiminh",
+    "thanhphohochiminh",
+    "tphcm",
+    "thanhphohcm",
+    "hcm",
+}
+
+
+def _normalize_domestic_province(value) -> str:
+    """Chuẩn hóa alias cấp tỉnh cục bộ cho đăng ký kết hôn."""
+    raw = re.sub(r"\s+", " ", str(value or "")).strip()
+    key = re.sub(r"[^a-z0-9]+", "", _fold(raw))
+    if key in _HCM_PROVINCE_KEYS:
+        return "Thành phố Hồ Chí Minh"
+    return raw
+
+
 # Chuẩn hóa dân tộc về ĐÚNG nhãn option trong dropdown x-select của form.
 # Phân biệt 2 option khác nhau: "Mông" (ghi "Mông") và "Mông (Hmông)" (ghi "H'Mông"/"H Mông"/"Hmông").
 # Key = fold(bỏ dấu) đã loại bỏ ' và khoảng trắng.
 _DAN_TOC_CANON = {
     "mong": "Mông",            # ghi "Mông" → option "Mông"
     "hmong": "Mông (Hmông)",   # ghi "H'Mông"/"H Mông"/"Hmông" → option "Mông (Hmông)"
+}
+
+_TINH_TRANG_HON_NHAN = {
+    "1": "Hiện tại đang có vợ/chồng",
+    "2": "Hiện tại chưa đăng ký kết hôn với ai",
+    "3": "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai",
+    "4": "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại chưa đăng ký kết hôn với ai",
+    "5": "Từ ngày… tháng… năm… đến ngày… tháng… năm … chưa đăng ký kết hôn với ai; hiện tại đang có vợ/chồng",
+    "6": "Khác",
 }
 
 
@@ -58,10 +86,21 @@ def _positive_copy_quantity(value) -> str:
     return str(quantity) if quantity > 0 else ""
 
 
-def _strip_admin_prefix(value):
-    """xa CHỈ giữ TÊN đơn vị, bỏ tiền tố loại (Xã/Phường/Thị trấn/TT)."""
-    text = str(value or "").strip()
-    return re.sub(r"^(xã|phường|thị trấn|tt\.?)\s+", "", text, flags=re.IGNORECASE).strip()
+def _normalize_admin_unit(value):
+    """Giữ loại đơn vị và mở rộng P/X/TT để khớp nhãn phường xã trên form."""
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    patterns = (
+        (r"^P(?:\.\s*|\s+)", "Phường "),
+        (r"^X(?:\.\s*|\s+)", "Xã "),
+        (r"^TT(?:\.\s*|\s+)", "Thị trấn "),
+        (r"^phường\s+", "Phường "),
+        (r"^xã\s+", "Xã "),
+        (r"^thị\s+trấn\s+", "Thị trấn "),
+    )
+    for pattern, replacement in patterns:
+        if re.match(pattern, text, flags=re.IGNORECASE):
+            return re.sub(pattern, replacement, text, count=1, flags=re.IGNORECASE).strip()
+    return text
 
 
 def _area(value, nationality: str = "Việt Nam"):
@@ -78,11 +117,14 @@ def _area(value, nationality: str = "Việt Nam"):
     # Normalize tên tỉnh nước ngoài nếu có trong bảng
     if is_foreign(quoc_gia) and tinh_raw:
         tinh_raw = normalize_foreign_tinh(quoc_gia, tinh_raw)
+    elif tinh_raw:
+        # Prompt phải trả tên cấp tỉnh đầy đủ; mapper vẫn chặn các alias HCM phổ biến.
+        tinh_raw = _normalize_domestic_province(tinh_raw)
 
     out = {
         "quocGia": quoc_gia,
         "tinh":    tinh_raw,
-        "xa":      _strip_admin_prefix(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
+        "xa":      _normalize_admin_unit(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
         "diaChi":  value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
@@ -165,18 +207,19 @@ def enrich(fields: list[dict]) -> list[dict]:
                 # Người Việt Nam: radio "1" (Trong nước) + field TrongNuoc
                 add(f"NoiCuTru_{dst}", "1")
                 add(f"NoiCuTru_{dst}_TrongNuoc", area)
-        # Số lần kết hôn: ưu tiên tờ khai ghi rõ.
+        # Mỗi bên xử lý độc lập: nếu cả số lần và tình trạng đều không có
+        # thì giữ mặc định nghiệp vụ của form (lần 1, chưa đăng ký).
+        # Nếu một trong hai có bằng chứng thì chỉ điền field có bằng chứng,
+        # không suy diễn field còn thiếu.
         so_lan = str(values.get(f"{src}_SoLanKetHon") or "").strip()
-        if so_lan:
-            add(f"SoLanKetHon_{dst}", so_lan)
-            # Kết hôn lần 1 -> tình trạng hôn nhân "chưa đăng ký kết hôn với ai".
-            if so_lan == "1":
-                add(f"LoaiTinhTrangHonNhan_{dst}", "Hiện tại chưa đăng ký kết hôn với ai")
-        else:
-            # Chỉ có CCCD (không tờ khai ghi số lần) → coi như kết hôn LẦN ĐẦU + chưa có
-            # vợ/chồng — trường hợp phổ biến nhất; tô vàng để người tái hôn tự sửa.
+        status_code = str(values.get(f"{src}_TinhTrangHonNhan") or "").strip()
+        if not so_lan and not status_code:
             add(f"SoLanKetHon_{dst}", "1", default=True)
-            add(f"LoaiTinhTrangHonNhan_{dst}", "Hiện tại chưa đăng ký kết hôn với ai", default=True)
+            add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN["2"], default=True)
+        else:
+            if so_lan:
+                add(f"SoLanKetHon_{dst}", so_lan)
+            add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN.get(status_code))
 
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")

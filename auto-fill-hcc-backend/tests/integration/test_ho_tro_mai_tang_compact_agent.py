@@ -16,12 +16,14 @@ from app.procedures.registry import get_attach_pipeline, get_pipeline, get_proce
 
 
 def _file(name, typ="image/jpeg"):
-    return {"name": name, "type": typ, "dataUrl": "data:x;base64,AAA"}
+    return {"name": name, "type": typ, "dataUrl": "data:x;base64,QUFB"}
 
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(settings, "gemini_api_key", "")
+    monkeypatch.setattr(settings, "ocr_by_tiengnoi", False)
+    monkeypatch.setattr(settings, "ocr_cache_enabled", False)
 
 
 def _mock_services(out):
@@ -43,13 +45,13 @@ async def test_ho_tro_mai_tang_one_cccd_ticks_owner_first(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
     _mock_services({
         "fields": {
-            "Person1_HoTen": "TRẦN THÀNH CÔNG",
-            "Person1_SoDinhDanh": "025203007360",
-            "Person1_NgaySinh": "11/07/2003",
-            "Person1_GioiTinh": "Nam",
-            "Person1_NgayCap": "12/06/2021",
-            "Person1_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "Person1_NoiCuTru": {
+            "ChuHoSo_HoTen": "TRẦN THÀNH CÔNG",
+            "ChuHoSo_SoDinhDanh": "025203007360",
+            "ChuHoSo_NgaySinh": "11/07/2003",
+            "ChuHoSo_GioiTinh": "Nam",
+            "ChuHoSo_NgayCap": "12/06/2021",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "ChuHoSo_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Tỉnh Phú Thọ",
                 "xa": "Xã Hoàng Cương",
@@ -59,7 +61,11 @@ async def test_ho_tro_mai_tang_one_cccd_ticks_owner_first(monkeypatch):
         }
     })
 
-    res = await agent.run({"doc": [_file("cccd mat truoc.jpg"), _file("cccd mat sau.jpg")]}, {})
+    res = await agent.run(
+        {"doc": [_file("cccd mat truoc.jpg"), _file("cccd mat sau.jpg")]},
+        {"formContext": {"applicantFullname": "TRẦN THÀNH CÔNG",
+                         "applicantIdentityNumber": "025203007360"}},
+    )
     fields = res["fields"]
     d = {f["name"]: f["value"] for f in fields}
 
@@ -73,6 +79,7 @@ async def test_ho_tro_mai_tang_one_cccd_ticks_owner_first(monkeypatch):
     assert d["data[province]"] == "Phú Thọ"
     assert d["data[district]"] == "Hoàng Cương"
     assert d["data[address]"] == "Khu 2"
+    assert d["data[ownerBirthday]"] == "11/07/2003"
     assert "data[ownerFullname]" not in d
     assert not res["errors"]
 
@@ -82,25 +89,25 @@ async def test_ho_tro_mai_tang_two_cccd_fills_other_person_as_owner(monkeypatch)
     _disable_external_fallbacks(monkeypatch)
     _mock_services({
         "fields": {
-            "Person1_HoTen": "TRẦN THÀNH CÔNG",
-            "Person1_SoDinhDanh": "025203007360",
-            "Person1_NgaySinh": "11/07/2003",
-            "Person1_GioiTinh": "Nam",
-            "Person1_NgayCap": "12/06/2021",
-            "Person1_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "Person1_NoiCuTru": {
+            "NguoiNop_HoTen": "TRẦN THÀNH CÔNG",
+            "NguoiNop_SoDinhDanh": "025203007360",
+            "NguoiNop_NgaySinh": "11/07/2003",
+            "NguoiNop_GioiTinh": "Nam",
+            "NguoiNop_NgayCap": "12/06/2021",
+            "NguoiNop_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiNop_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Tỉnh Phú Thọ",
                 "xa": "Xã Hoàng Cương",
                 "diaChi": "Khu 2",
             },
-            "Person2_HoTen": "PHẠM NGỌC THỦY",
-            "Person2_SoDinhDanh": "012193000851",
-            "Person2_NgaySinh": "20/03/1993",
-            "Person2_GioiTinh": "Nữ",
-            "Person2_NgayCap": "06/02/2024",
-            "Person2_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "Person2_NoiCuTru": {
+            "ChuHoSo_HoTen": "PHẠM NGỌC THỦY",
+            "ChuHoSo_SoDinhDanh": "012193000851",
+            "ChuHoSo_NgaySinh": "20/03/1993",
+            "ChuHoSo_GioiTinh": "Nữ",
+            "ChuHoSo_NgayCap": "06/02/2024",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "ChuHoSo_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Lai Châu",
                 "xa": "Quyết Tiến",
@@ -133,7 +140,7 @@ async def test_ho_tro_mai_tang_two_cccd_fills_other_person_as_owner(monkeypatch)
     assert d["data[ownerIdentityDate]"] == "06/02/2024"
     assert d["data[ownerIdIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["data[ownerProvince]"] == "Lai Châu"
-    assert d["data[ownerDistrict]"] == "Quyết Tiến"
+    assert d["data[ownerDistrict]"] == "Đoàn Kết"  # remap đơn vị hành chính Lai Châu hiện hành
     assert d["data[ownerAddress]"] == "Tổ 3"
     assert d["data[ownerNation]"] == "Việt Nam"
     assert not res["errors"]
@@ -144,10 +151,10 @@ async def test_ho_tro_mai_tang_two_cccd_requires_form_context_match(monkeypatch)
     _disable_external_fallbacks(monkeypatch)
     _mock_services({
         "fields": {
-            "Person1_HoTen": "TRẦN THÀNH CÔNG",
-            "Person1_SoDinhDanh": "025203007360",
-            "Person2_HoTen": "PHẠM NGỌC THỦY",
-            "Person2_SoDinhDanh": "012193000851",
+            "NguoiNop_HoTen": "TRẦN THÀNH CÔNG",
+            "NguoiNop_SoDinhDanh": "025203007360",
+            "ChuHoSo_HoTen": "PHẠM NGỌC THỦY",
+            "ChuHoSo_SoDinhDanh": "012193000851",
         }
     })
 
@@ -156,8 +163,11 @@ async def test_ho_tro_mai_tang_two_cccd_requires_form_context_match(monkeypatch)
         {"formContext": {"applicantFullname": "Vũ Đình Thiết", "applicantIdentityNumber": "040203015844"}},
     )
 
-    assert res["fields"] == []
-    assert "Không xác định được CCCD người nộp" in res["errors"][0]
+    d = {field["name"]: field["value"] for field in res["fields"]}
+    assert d["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in d
+    assert d["data[ownerFullname]"] == "PHẠM NGỌC THỦY"
+    assert "không điền phần người nộp" in res["errors"][0]
 
 
 @respx.mock
@@ -168,20 +178,20 @@ async def test_ho_tro_mai_tang_tokhai_owner_from_form_no_cccd(monkeypatch):
     _mock_services({
         "fields": {
             # CCCD người nộp (khớp UI)
-            "Person1_HoTen": "TRẦN THỊ THANH THẢO",
-            "Person1_SoDinhDanh": "036192014693",
-            "Person1_NgaySinh": "17/06/1992",
-            "Person1_GioiTinh": "Nữ",
-            "Person1_NgayCap": "17/06/2023",
-            "Person1_NoiCap": "Bộ Công an",
-            "Person1_NoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
+            "NguoiNop_HoTen": "TRẦN THỊ THANH THẢO",
+            "NguoiNop_SoDinhDanh": "036192014693",
+            "NguoiNop_NgaySinh": "17/06/1992",
+            "NguoiNop_GioiTinh": "Nữ",
+            "NguoiNop_NgayCap": "17/06/2023",
+            "NguoiNop_NoiCap": "Bộ Công an",
+            "NguoiNop_NoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
             # Chủ hồ sơ từ tờ khai mục II.2 (không có CCCD)
-            "ToKhai_ChuHoTen": "Bùi Mạnh Cường",
-            "ToKhai_ChuHoNamSinh": "20/08/1990",
-            "ToKhai_ChuHoSoGiayTo": "001906118210",
-            "ToKhai_ChuHoNgayCap": "01/10/2025",
-            "ToKhai_ChuHoNoiCap": "Bộ Công an",
-            "ToKhai_ChuHoNoiCuTru": {"tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "Tổ 9"},
+            "ChuHoSo_HoTen": "Bùi Mạnh Cường",
+            "ChuHoSo_NgaySinh": "20/08/1990",
+            "ChuHoSo_SoDinhDanh": "001906118210",
+            "ChuHoSo_NgayCap": "01/10/2025",
+            "ChuHoSo_NoiCap": "Bộ Công an",
+            "ChuHoSo_NoiCuTru": {"tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "Tổ 9"},
         }
     })
 
@@ -217,20 +227,17 @@ async def test_ho_tro_mai_tang_tokhai_owner_prefers_cccd_identity_tokhai_address
     _disable_external_fallbacks(monkeypatch)
     _mock_services({
         "fields": {
-            "Person1_HoTen": "TRẦN THỊ THANH THẢO",
-            "Person1_SoDinhDanh": "036192014693",
+            "NguoiNop_HoTen": "TRẦN THỊ THANH THẢO",
+            "NguoiNop_SoDinhDanh": "036192014693",
             # CCCD của chính chủ hồ sơ (địa chỉ CCCD còn cấp cũ)
-            "Person2_HoTen": "BÙI MẠNH CƯỜNG",
-            "Person2_SoDinhDanh": "001906118210",
-            "Person2_NgaySinh": "20/08/1990",
-            "Person2_GioiTinh": "Nam",
-            "Person2_NgayCap": "01/10/2025",
-            "Person2_NoiCap": "Bộ Công an",
-            "Person2_NoiCuTru": {"tinh": "Điện Biên", "xa": "Mường Lay", "diaChi": "Bản 1"},
+            "ChuHoSo_HoTen": "BÙI MẠNH CƯỜNG",
+            "ChuHoSo_SoDinhDanh": "001906118210",
+            "ChuHoSo_NgaySinh": "20/08/1990",
+            "ChuHoSo_GioiTinh": "Nam",
+            "ChuHoSo_NgayCap": "01/10/2025",
+            "ChuHoSo_NoiCap": "Bộ Công an",
             # Tờ khai mục II.2: địa chỉ 2 cấp sáp nhập
-            "ToKhai_ChuHoTen": "Bùi Mạnh Cường",
-            "ToKhai_ChuHoSoGiayTo": "001906118210",
-            "ToKhai_ChuHoNoiCuTru": {"tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "Tổ 9"},
+            "ChuHoSo_NoiCuTru": {"tinh": "Lai Châu", "xa": "Tân Phong", "diaChi": "Tổ 9"},
         }
     })
 
@@ -257,15 +264,12 @@ async def test_ho_tro_mai_tang_tokhai_owner_same_as_requester_ticks_check(monkey
     _disable_external_fallbacks(monkeypatch)
     _mock_services({
         "fields": {
-            "Person1_HoTen": "TRẦN THỊ THANH THẢO",
-            "Person1_SoDinhDanh": "036192014693",
-            "Person1_NgaySinh": "17/06/1992",
-            "Person1_NgayCap": "17/06/2023",
-            "Person1_NoiCap": "Bộ Công an",
-            "Person1_NoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
-            "ToKhai_ChuHoTen": "Trần Thị Thanh Thảo",
-            "ToKhai_ChuHoSoGiayTo": "036192014693",
-            "ToKhai_ChuHoNoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
+            "ChuHoSo_HoTen": "TRẦN THỊ THANH THẢO",
+            "ChuHoSo_SoDinhDanh": "036192014693",
+            "ChuHoSo_NgaySinh": "17/06/1992",
+            "ChuHoSo_NgayCap": "17/06/2023",
+            "ChuHoSo_NoiCap": "Bộ Công an",
+            "ChuHoSo_NoiCuTru": {"tinh": "Ninh Bình", "xa": "Gia Thắng", "diaChi": "Xóm 2"},
         }
     })
 
@@ -278,6 +282,7 @@ async def test_ho_tro_mai_tang_tokhai_owner_same_as_requester_ticks_check(monkey
 
     assert res["fields"][0] == {"name": "data[isOwnerDossierCheck]", "comp": "dom-checkbox", "value": True}
     assert d["data[fullname]"] == "TRẦN THỊ THANH THẢO"
+    assert d["data[ownerBirthday]"] == "17/06/1992"
     assert "data[ownerFullname]" not in d
     assert not res["errors"]
 
@@ -285,13 +290,13 @@ async def test_ho_tro_mai_tang_tokhai_owner_same_as_requester_ticks_check(monkey
 def test_ho_tro_mai_tang_prompt_keeps_output_compact():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
-    assert "Tự gộp mặt trước và mặt sau" in system_prompt
-    assert "Không cần phân loại người nộp/chủ hồ sơ trong LLM" in system_prompt
-    assert "BẮT BUỘC cố đọc Person*_NgayCap" in system_prompt
-    assert "Không lấy ngày sinh, không lấy ngày hết hạn" in system_prompt
-    assert "không được bỏ trống khi đã nhận diện được CCCD" in system_prompt
+    assert "ChuHoSo_*" in system_prompt
+    assert "NguoiNop_*" in system_prompt
+    assert "Không tạo Person1_*" in system_prompt
+    assert "TUYỆT ĐỐI KHÔNG lấy người chết" in system_prompt
+    assert "vẫn phải trích ChuHoSo_*" in system_prompt
     assert "data[isOwnerDossierCheck]" in system_prompt
-    assert "Không trả field UI/default" in system_prompt
+    assert "Không trả field UI như" in system_prompt
 
 
 def test_registry_uses_ho_tro_mai_tang_process_pipeline():

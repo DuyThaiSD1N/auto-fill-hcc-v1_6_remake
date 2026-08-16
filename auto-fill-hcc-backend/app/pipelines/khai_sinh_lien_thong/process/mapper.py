@@ -25,6 +25,16 @@ def _first_token(full_name) -> str:
     return parts[0] if parts else ""
 
 
+def _ethnicity_for_form(value) -> tuple[str, str]:
+    """Cil/Cill không có option riêng: chọn Khác và giữ nguyên cách ghi vào ô nhập tay."""
+    raw = str(value or "").strip()
+    if not raw:
+        return "", ""
+    if _fold(raw) in {"cil", "cill"}:
+        return "Khác", raw
+    return normalize_ethnic(raw), ""
+
+
 def _norm_birth_place(area):
     """Nơi sinh là cơ sở y tế tuyến tỉnh (vd "Bệnh viện đa khoa TỈNH") mà OCR ghi tắt, thiếu tên
     tỉnh → nối tên tỉnh vào chi tiết để ra "Bệnh viện đa khoa tỉnh <Tỉnh>"."""
@@ -173,7 +183,7 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     child_name = _clean_child_name(
         values.get("Tk_HoTenCon") or values.get("Gcs_HoTenCon"),
-        values.get("CccdNu_HoTen"),
+        values.get("ThongTinMe_HoTen"),
     )
     has_child = bool(child_name) or any(
         name in values
@@ -187,8 +197,8 @@ def enrich(fields: list[dict]) -> list[dict]:
             "Gcs_NoiSinh",
         )
     )
-    has_father = bool(values.get("CccdNam_SoDinhDanh") or values.get("CccdNam_HoTen"))
-    has_mother = bool(values.get("CccdNu_SoDinhDanh") or values.get("CccdNu_HoTen"))
+    has_father = bool(values.get("ThongTinBo_SoDinhDanh") or values.get("ThongTinBo_HoTen"))
+    has_mother = bool(values.get("ThongTinMe_SoDinhDanh") or values.get("ThongTinMe_HoTen"))
 
     if has_child:
         add_name("", child_name)
@@ -214,11 +224,11 @@ def enrich(fields: list[dict]) -> list[dict]:
         dan_toc_con = values.get("Tk_DanTocCon") or values.get("Gcs_DanTocCon")
         dan_toc_suy_luan = False
         if not dan_toc_con:
-            dt_cha = values.get("CccdNam_DanToc")
-            dt_me = values.get("CccdNu_DanToc")
+            dt_cha = values.get("ThongTinBo_DanToc")
+            dt_me = values.get("ThongTinMe_DanToc")
             ho_con = _fold(_first_token(child_name))
-            ho_cha = _fold(_first_token(values.get("CccdNam_HoTen")))
-            ho_me = _fold(_first_token(values.get("CccdNu_HoTen")))
+            ho_cha = _fold(_first_token(values.get("ThongTinBo_HoTen")))
+            ho_me = _fold(_first_token(values.get("ThongTinMe_HoTen")))
             
             if is_lam_dong and dt_me:
                 # NGOẠI LỆ LÂM ĐỒNG: theo dân tộc mẹ
@@ -244,7 +254,10 @@ def enrich(fields: list[dict]) -> list[dict]:
                 # Chỉ biết dân tộc mẹ
                 dan_toc_con = dt_me
                 dan_toc_suy_luan = True
-        add("MaDanToc", normalize_ethnic(dan_toc_con), default=dan_toc_suy_luan)
+        dan_toc_con_select, dan_toc_con_khac = _ethnicity_for_form(dan_toc_con)
+        # Dropdown phải đi trước để Angular render ô DantocKhac rồi extension mới điền field kế tiếp.
+        add("MaDanToc", dan_toc_con_select, default=dan_toc_suy_luan)
+        add("DantocKhac", dan_toc_con_khac, default=dan_toc_suy_luan)
         add("MaQuocTich", "Việt Nam")
         add("NsMaQuocGia", "Việt Nam")
         # Nơi sinh: nếu LLM không suy ra được xa → tra bảng bệnh viện để bổ sung xa + tinh.
@@ -259,63 +272,64 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("NsDiaChi", ns_area)
 
     if has_mother:
-        add_name("Me", values.get("CccdNu_HoTen"))
-        add("MeNgaySinh", values.get("CccdNu_NgaySinh"))
-        add("MeSoGiayTo", values.get("CccdNu_SoDinhDanh"))
-        add("MeMaDanToc", normalize_ethnic(values.get("CccdNu_DanToc")))
-        add("MeMaQuocTich", values.get("CccdNu_QuocTich") or "Việt Nam")
+        add_name("Me", values.get("ThongTinMe_HoTen"))
+        add("MeNgaySinh", values.get("ThongTinMe_NgaySinh"))
+        add("MeSoGiayTo", values.get("ThongTinMe_SoDinhDanh"))
+        dan_toc_me_select, dan_toc_me_khac = _ethnicity_for_form(values.get("ThongTinMe_DanToc"))
+        add("MeMaDanToc", dan_toc_me_select)
+        add("MeDantocKhac", dan_toc_me_khac)
+        add("MeMaQuocTich", values.get("ThongTinMe_QuocTich") or "Việt Nam")
         add("MeLoaiCuTru", "Thường trú")
         add("MeMaQuocGia", "Việt Nam")
-        add("MeDiaChi", _area(values.get("CccdNu_NoiCuTru")))
+        add("MeDiaChi", _area(values.get("ThongTinMe_NoiCuTru")))
 
     if has_father:
-        add_name("Cha", values.get("CccdNam_HoTen"))
+        add_name("Cha", values.get("ThongTinBo_HoTen"))
         # Form liên thông dùng 1 ô họ tên gộp (ChaHoTen); form cũ dùng 3 ô tách ở trên.
-        add("ChaHoTen", values.get("CccdNam_HoTen"))
-        add("ChaNgaySinh", values.get("CccdNam_NgaySinh"))
-        add("ChaSoGiayTo", values.get("CccdNam_SoDinhDanh"))
-        add("ChaMaDanToc", normalize_ethnic(values.get("CccdNam_DanToc")))
-        add("ChaMaQuocTich", values.get("CccdNam_QuocTich") or "Việt Nam")
+        add("ChaHoTen", values.get("ThongTinBo_HoTen"))
+        add("ChaNgaySinh", values.get("ThongTinBo_NgaySinh"))
+        add("ChaSoGiayTo", values.get("ThongTinBo_SoDinhDanh"))
+        dan_toc_cha_select, dan_toc_cha_khac = _ethnicity_for_form(values.get("ThongTinBo_DanToc"))
+        add("ChaMaDanToc", dan_toc_cha_select)
+        add("ChaDantocKhac", dan_toc_cha_khac)
+        add("ChaMaQuocTich", values.get("ThongTinBo_QuocTich") or "Việt Nam")
         add("ChaLoaiCuTru", "Thường trú")
         add("ChaMaQuocGia", "Việt Nam")
-        add("ChaDiaChi", _area(values.get("CccdNam_NoiCuTru")))
+        add("ChaDiaChi", _area(values.get("ThongTinBo_NoiCuTru")))
 
     # Quê quán CON (QqDiaChi) — lấy theo thứ tự ưu tiên:
     #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
-    #  2) Quê quán trên CCCD cha (CccdNam_QueQuan) — CCCD cũ có dòng "Quê quán".
-    #  3) Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới của cha (CccdNam_NoiDangKyKhaiSinh).
-    #  ⚠️ KHÔNG fallback xuống Nơi thường trú (CccdNam_NoiCuTru/CccdNu_NoiCuTru) — dễ nhầm.
-    #  NGOẠI LỆ LÂM ĐỒNG: nếu nơi sinh con (NsDiaChi) có tỉnh = "Lâm Đồng", lấy quê quán từ MẸ
-    #     thay vì cha (theo quy định địa phương).
+    #  2) Quê quán trên CCCD cha (ThongTinBo_QueQuan) — CCCD cũ có dòng "Quê quán".
+    #  3) Nơi đăng ký khai sinh trên thẻ CĂN CƯỚC mới của cha (ThongTinBo_NoiDangKyKhaiSinh).
+    #  4) Nơi cư trú của cha (ThongTinBo_NoiCuTru) — fallback cuối cùng theo tục lệ
+    #     quê quán con = quê cha.
+    #  NGOẠI LỆ LÂM ĐỒNG: nếu nơi sinh con (NsDiaChi) có tỉnh = "Lâm Đồng", lấy QUÊ QUÁN MẸ
+    #     thay vì cha (theo quy định địa phương); tuyệt đối không dùng nơi cư trú mẹ thay thế.
     #  Không có nguồn nào → để trống (không bịa).
     tk_que_quan = _area(values.get("Tk_QueQuanCon"))
-    # Quê quán mỗi bên: CHỈ từ dòng "Quê quán" trên CCCD cũ, hoặc "Nơi đăng ký khai sinh" trên thẻ
-    # căn cước mới. KHÔNG lấy nơi thường trú.
-    que_quan_cha = (
-        _area(values.get("CccdNam_QueQuan"))
-        or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))
-    )
-    que_quan_me = (
-        _area(values.get("CccdNu_QueQuan"))
-        or _area(values.get("CccdNu_NoiDangKyKhaiSinh"))
-    )
-    # Mặc định con theo quê quán CHA; sinh ở Lâm Đồng thì theo MẸ (quy định địa phương).
-    if is_lam_dong and has_mother:
-        chinh, du_phong = que_quan_me, que_quan_cha
-    else:
-        chinh, du_phong = que_quan_cha, que_quan_me
 
     if tk_que_quan:
         add("QqMaQuocGia", "Việt Nam")
         add("QqDiaChi", tk_que_quan)
-    elif chinh:
-        add("QqMaQuocGia", "Việt Nam")
-        add("QqDiaChi", chinh)
-    elif du_phong:
-        # CCCD bên chính không có dòng "Quê quán" (thẻ căn cước mới) → tạm lấy bên còn lại và BÔI VÀNG
-        # để cán bộ đối chiếu, thay vì bỏ trống ô bắt buộc.
-        add("QqMaQuocGia", "Việt Nam")
-        add("QqDiaChi", du_phong, default=True)
+    else:
+        # Sử dụng is_lam_dong đã tính ở trên (khi xử lý dân tộc con)
+        if is_lam_dong and has_mother:
+            # Lâm Đồng lấy đúng QUÊ QUÁN MẸ. Không có field này thì để trống; nơi cư trú là một
+            # khái niệm khác và không được dùng làm fallback cho quê quán của con.
+            que_quan_me = _area(values.get("ThongTinMe_QueQuan"))
+            if que_quan_me:
+                add("QqMaQuocGia", "Việt Nam")
+                add("QqDiaChi", que_quan_me)
+        else:
+            # Trường hợp thông thường: lấy quê quán từ CHA
+            que_quan_cha = (
+                _area(values.get("ThongTinBo_QueQuan"))
+                or _area(values.get("ThongTinBo_NoiDangKyKhaiSinh"))
+                or _area(values.get("ThongTinBo_NoiCuTru"))
+            )
+            if que_quan_cha:
+                add("QqMaQuocGia", "Việt Nam")
+                add("QqDiaChi", que_quan_cha)
 
     # Giấy chứng nhận kết hôn của cha mẹ (nếu có) → mục "Thông tin về Giấy CN kết hôn".
     # Chặn cứng: số giấy chứng sinh (chứa "GCS", vd "01327.GCS.12096.25") KHÔNG phải số kết hôn.
@@ -334,10 +348,10 @@ def enrich(fields: list[dict]) -> list[dict]:
     # khác cả hai → mặc định "Người giám hộ/đại diện hợp pháp".
     if has_father or has_mother:
         add("NycQuanHe", {
-            "chaCccd": values.get("CccdNam_SoDinhDanh"),
-            "chaTen": values.get("CccdNam_HoTen"),
-            "meCccd": values.get("CccdNu_SoDinhDanh"),
-            "meTen": values.get("CccdNu_HoTen"),
+            "chaCccd": values.get("ThongTinBo_SoDinhDanh"),
+            "chaTen": values.get("ThongTinBo_HoTen"),
+            "meCccd": values.get("ThongTinMe_SoDinhDanh"),
+            "meTen": values.get("ThongTinMe_HoTen"),
         })
 
     # Đăng ký thường trú: nếu hồ sơ có TỜ KHAI CT01 (thay đổi thông tin cư trú) → chọn xác nhận
@@ -349,15 +363,15 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("LoaiXacNhanVNeID", "1")
 
         ct01_sdd_d = re.sub(r"\D", "", str(ct01_sdd or ""))
-        cha_sdd_d = re.sub(r"\D", "", str(values.get("CccdNam_SoDinhDanh") or ""))
-        me_sdd_d = re.sub(r"\D", "", str(values.get("CccdNu_SoDinhDanh") or ""))
+        cha_sdd_d = re.sub(r"\D", "", str(values.get("ThongTinBo_SoDinhDanh") or ""))
+        me_sdd_d = re.sub(r"\D", "", str(values.get("ThongTinMe_SoDinhDanh") or ""))
         ct01_ten_f = _fold(ct01_ten)
 
         is_bo = (ct01_sdd_d and ct01_sdd_d == cha_sdd_d) or (
-            not ct01_sdd_d and ct01_ten_f and has_father and ct01_ten_f == _fold(values.get("CccdNam_HoTen"))
+            not ct01_sdd_d and ct01_ten_f and has_father and ct01_ten_f == _fold(values.get("ThongTinBo_HoTen"))
         )
         is_me = (ct01_sdd_d and ct01_sdd_d == me_sdd_d) or (
-            not ct01_sdd_d and ct01_ten_f and has_mother and ct01_ten_f == _fold(values.get("CccdNu_HoTen"))
+            not ct01_sdd_d and ct01_ten_f and has_mother and ct01_ten_f == _fold(values.get("ThongTinMe_HoTen"))
         )
 
         if is_bo:

@@ -8,12 +8,12 @@ import respx
 from app.config import settings
 from app.pipelines.khai_tu import process as agent
 from app.pipelines.khai_tu.process.prompt import EXTRA_RULES
-from app.pipelines.khai_tu.process import declaration, mapper, reason
+from app.pipelines.khai_tu.process import reason
 from app.pipelines.khai_tu.process.runner import (
     _canonicalize_deceased_fields,
     _requester_hint,
 )
-from app.pipelines.khai_tu.process.schema import COMPACT_COMP_BY_NAME, FIELDS
+from app.pipelines.khai_tu.process.schema import FIELDS
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.procedures.registry import get_pipeline, get_procedure
 from app.services import ocr
@@ -363,7 +363,7 @@ async def test_khai_tu_compact_agent_accepts_paper_declaration(monkeypatch):
             "ToKhai_QuanHeNguoiYeuCau": "Con",
             "ToKhai_LoaiDangKy": "Đăng ký quá hạn",
             "NguoiMat_HoTen": "LIỀU THỊ BỘ",
-            "NguoiMat_NgaySinh": "15/03/1985",
+            "NguoiMat_NgaySinh": "01/01/1991",
             "NguoiMat_GioiTinh": "Nữ",
             "NguoiMat_DanToc": "Mông",
             "NguoiMat_QuocTich": "Việt Nam",
@@ -406,7 +406,7 @@ async def test_khai_tu_compact_agent_accepts_paper_declaration(monkeypatch):
     assert d["QuanHe"] == "Con"
     assert d["loaiDangKy"] == "4"
     assert d["HoTen"] == "LIỀU THỊ BỘ"
-    assert d["NgaySinh"] == "15/03/1985"
+    assert d["NgaySinh"] == "01/01/1991"
     assert d["GioiTinh"] == "Nữ"
     assert d["nktDanToc"] == "Mông"
     assert d["SoDinhDanh"] == "012131081609"
@@ -432,6 +432,39 @@ def test_khai_tu_mapper_uses_positive_copy_quantity_as_wants_copy():
 
     assert d["CapBanSao"] == "Có"
     assert d["SoLuong"] == "3"
+
+
+def test_khai_tu_mapper_removes_ocr_separators_from_requester_cccd():
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "NGUYỄN THỊ MỸ DUNG"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "068/194005165"},
+        {"name": "NguoiYeuCau_LoaiGiayTo", "value": "Thẻ căn cước công dân"},
+        {"name": "Cccd_HoTen", "value": "NGUYỄN THỊ MỸ DUNG"},
+        {"name": "Cccd_SoDinhDanh", "value": "068194005165"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["SoDinhDanhC"] == "068194005165"
+    assert values["SoGiayToDinhDanhC"] == "068194005165"
+
+    field_desc = {field["name"]: field["desc"] for field in FIELDS}
+    assert "bỏ khoảng trắng, dấu chấm, dấu gạch hoặc dấu '/'" in field_desc["NguoiYeuCau_SoDinhDanh"]
+
+
+def test_khai_tu_mapper_keeps_alphanumeric_requester_passport():
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "NGƯỜI YÊU CẦU"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "B1234567"},
+        {"name": "NguoiYeuCau_LoaiGiayTo", "value": "Hộ chiếu"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["SoDinhDanhC"] == "B1234567"
+    assert values["SoGiayToDinhDanhC"] == "B1234567"
 
 
 def test_khai_tu_mapper_does_not_default_copy_request_when_source_is_blank():
@@ -760,393 +793,6 @@ def test_khai_tu_schema_uses_new_deceased_prefix_and_keeps_death_notice_names():
     assert "TLKT/TLKT-BS tuyệt đối không phải Gbt_So" in descriptions["Gbt_So"]
     assert "Không lấy cơ quan ban hành/ký Trích lục khai tử" in descriptions["Gbt_CoQuanCap"]
     assert "Không lấy ngày lập/cấp/đăng ký của Trích lục khai tử" in descriptions["Gbt_NgayCap"]
-
-
-_TO_KHAI_OCR = (
-    "TỜ KHAI ĐĂNG KÝ KHAI TỬ\n"
-    "Kính gửi: (1) UBND XÃ ĐƠN DƯƠNG\n"
-    "Họ, chữ đệm, tên người yêu cầu: TRẦN THỊ B "
-    "Ngày, tháng, năm sinh: 20/05/1994 "
-    "Nơi cư trú: (2) Thôn Số 3 - xã Đơn Dương - Lâm Đồng "
-    "Giấy tờ tùy thân: (3) CCCD số 999111222333 "
-    "Nơi cấp: Cục trưởng cục cảnh sát QLHC về trật tự xã hội cấp ngày 10/10/2022 "
-    "Quan hệ với người đã chết: Em ruột\n"
-    "Đề nghị cơ quan đăng ký khai tử cho người có tên dưới đây: "
-    "Họ, chữ đệm, tên: NGUYỄN VĂN A "
-    "Ngày, tháng, năm sinh: 15/03/1985 "
-    "Giới tính: (2) Nam Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam "
-    "Nơi cư trú cuối cùng: (2) Số 3 - xã Đơn Dương - Lâm Đồng "
-    "Giấy tờ tùy thân: (3) CCCD số 999444555666 "
-    "Nơi cấp: Cục trưởng cục cảnh sát QLHC về trật tự xã hội cấp ngày 5/5/2021 "
-    "Đã chết vào lúc: 10 giờ 30 phút, ngày 18 tháng 7 năm 2026 "
-    "Nơi chết: Thôn Số 3 - xã Đơn Dương - Lâm Đồng "
-    "Nguyên nhân chết: Bệnh lý "
-    "Số Giấy báo tử/Giấy tờ thay thế Giấy báo tử: (4)\n"
-    "Tôi cam đoan những nội dung khai trên đây là đúng sự thật.\n"
-)
-
-
-def test_khai_tu_declaration_reads_deceased_block_deterministically():
-    """Mục II của tờ khai đọc được bằng Python, không phụ thuộc agent nhớ đủ field."""
-    values = declaration.deceased_fields(_TO_KHAI_OCR)
-
-    assert values["NguoiMat_HoTen"] == "NGUYỄN VĂN A"
-    assert values["NguoiMat_NgaySinh"] == "15/03/1985"
-    assert values["NguoiMat_GioiTinh"] == "Nam"
-    assert values["NguoiMat_DanToc"] == "Kinh"
-    assert values["NguoiMat_QuocTich"] == "Việt Nam"
-    assert values["NguoiMat_SoDinhDanh"] == "999444555666"
-    assert values["NguoiMat_NgayCapGiayTo"] == "05/05/2021"
-    assert values["NguoiMat_NoiCapGiayTo"] == (
-        "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    )
-    assert values["NguoiMat_NgayMat"] == "18/07/2026"
-    assert values["NguoiMat_GioMat"] == "10:30"
-    assert values["NguoiMat_NguyenNhanMat"] == "Bệnh lý"
-    assert values["NguoiMat_NoiCuTruCuoiCung"]["xa"] == "Đơn Dương"
-    assert values["NguoiMat_NoiChet"]["xa"] == "Đơn Dương"
-    # Không được kéo dữ kiện người yêu cầu (mục I) xuống khối người mất.
-    assert "TRẦN THỊ B" not in json.dumps(values, ensure_ascii=False)
-
-
-def test_khai_tu_fill_missing_backfills_deceased_block_when_agent_skips_it():
-    fields = [
-        {"name": "NguoiMat_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
-    ]
-
-    filled = declaration.fill_missing(fields, _TO_KHAI_OCR, COMPACT_COMP_BY_NAME)
-    values = {field["name"]: field["value"] for field in filled}
-    ui = {
-        field["name"]: field["value"]
-        for field in mapper.enrich(filled, {}, reasoning_context="x")
-    }
-
-    assert values["NguoiMat_NgayMat"] == "18/07/2026"
-    assert ui["NgayMat"] == "18/07/2026"
-    assert ui["GioMat"] == "10"
-    assert ui["PhutMat"] == "30"
-    assert ui["NguyenNhanMat"] == "Bệnh lý"
-    assert ui["nktDanToc"] == "Kinh"
-    assert ui["QuanHe"] == "Em ruột"
-
-
-def test_khai_tu_fill_missing_never_overwrites_agent_values():
-    fields = [
-        {"name": "NguoiMat_HoTen", "comp": "x-input", "value": "TÊN TỪ GIẤY BÁO TỬ"},
-        {"name": "NguoiMat_NgayMat", "comp": "x-date", "value": "19/07/2026"},
-    ]
-
-    values = {
-        field["name"]: field["value"]
-        for field in declaration.fill_missing(fields, _TO_KHAI_OCR, COMPACT_COMP_BY_NAME)
-    }
-
-    assert values["NguoiMat_HoTen"] == "TÊN TỪ GIẤY BÁO TỬ"
-    assert values["NguoiMat_NgayMat"] == "19/07/2026"
-
-
-def test_khai_tu_sanitize_corrects_deceased_id_instead_of_dropping_document_block():
-    """OCR tờ khai thừa chữ số không được làm mất số định danh/ngày cấp/nơi cấp người mất."""
-    context = (
-        "<nguoi_yeu_cau>\nHọ tên: TRẦN THỊ B\n"
-        "Số CCCD/CMND: 999111222333\n</nguoi_yeu_cau>\n"
-        "<nguoi_mat>\nHọ tên: NGUYỄN VĂN A\n"
-        "Số CCCD/CMND: 999444555666\n</nguoi_mat>\n"
-        "<giay_to_khong_thuoc_hai_vai>\nKhông có\n</giay_to_khong_thuoc_hai_vai>"
-    )
-    fields = [
-        {"name": "Cccd_SoDinhDanh", "value": "999111222333"},
-        {"name": "NguoiMat_SoDinhDanh", "value": "0680911000907"},
-        {"name": "NguoiMat_NgayCapGiayTo", "value": "05/05/2021"},
-        {"name": "NguoiMat_NoiCapGiayTo", "value": "Cục Cảnh sát QLHC về TTXH"},
-    ]
-
-    values = {
-        field["name"]: field["value"]
-        for field in reason.sanitize_identity_fields(fields, context)
-    }
-
-    assert values["NguoiMat_SoDinhDanh"] == "999444555666"
-    assert values["NguoiMat_NgayCapGiayTo"] == "05/05/2021"
-    assert values["NguoiMat_NoiCapGiayTo"] == "Cục Cảnh sát QLHC về TTXH"
-    assert values["Cccd_SoDinhDanh"] == "999111222333"
-
-
-def test_khai_tu_sanitize_keeps_deceased_document_when_role_agent_has_no_card():
-    """Tờ khai không kèm ảnh thẻ người mất -> mỏ neo trống, nhưng số trên tờ khai vẫn đúng."""
-    context = (
-        "<nguoi_yeu_cau>\nHọ tên: TRẦN THỊ B\n"
-        "Số CCCD/CMND: 999111222333\n</nguoi_yeu_cau>\n"
-        "<nguoi_mat>\nHọ tên: NGUYỄN VĂN A\n"
-        "Số CCCD/CMND: Không xác định\n</nguoi_mat>\n"
-        "<giay_to_khong_thuoc_hai_vai>\nKhông có\n</giay_to_khong_thuoc_hai_vai>"
-    )
-    fields = [
-        {"name": "NguoiMat_SoDinhDanh", "value": "999444555666"},
-        {"name": "NguoiMat_NgayCapGiayTo", "value": "05/05/2021"},
-    ]
-
-    values = {
-        field["name"]: field["value"]
-        for field in reason.sanitize_identity_fields(fields, context)
-    }
-
-    assert values["NguoiMat_SoDinhDanh"] == "999444555666"
-    assert values["NguoiMat_NgayCapGiayTo"] == "05/05/2021"
-
-
-def test_khai_tu_sanitize_still_drops_third_party_card_from_deceased():
-    context = (
-        "<nguoi_yeu_cau>\nHọ tên: VŨ ĐÌNH THIẾT\n"
-        "Số CCCD/CMND: 040203015844\n</nguoi_yeu_cau>\n"
-        "<nguoi_mat>\nHọ tên: LÊ KHIỀN\n"
-        "Số CCCD/CMND: Không xác định\n</nguoi_mat>\n"
-        "<giay_to_khong_thuoc_hai_vai>\n"
-        "- LÊ VĂN TRUNG — 068063001858 — không khớp hai vai\n"
-        "</giay_to_khong_thuoc_hai_vai>"
-    )
-    fields = [
-        {"name": "NguoiMat_SoDinhDanh", "value": "068063001858"},
-        {"name": "NguoiMat_NgayCapGiayTo", "value": "27/12/2021"},
-        {"name": "NguoiMat_NoiCapGiayTo", "value": "Cục Cảnh sát QLHC về TTXH"},
-        {"name": "Cccd_SoDinhDanh", "value": "068063001858"},
-    ]
-
-    names = {
-        field["name"] for field in reason.sanitize_identity_fields(fields, context)
-    }
-
-    assert names == set()
-
-
-def _card(name, number, birth):
-    return {
-        "name": f"cccd_{number}.pdf",
-        "provider": "test",
-        "text": (
-            "CĂN CƯỚC CÔNG DÂN / Citizen Identity Card\n"
-            f"Số / No.: {number}\n"
-            f"Họ và tên / Full name: {name}\n"
-            f"Ngày sinh / Date of birth: {birth}\n"
-            "Quốc tịch / Nationality: Việt Nam"
-        ),
-    }
-
-
-def _role_block(tag, name, number, birth):
-    return (
-        f"<{tag}>\nHọ tên: {name}\nSố CCCD/CMND: {number}\n"
-        f"Ngày sinh: {birth}\n</{tag}>"
-    )
-
-
-def test_khai_tu_two_cards_only_uses_age_rule_for_role_hint():
-    """Chỉ 2 thẻ CCCD, tài khoản cổng không khớp thẻ nào -> người già hơn là người mất."""
-    documents = [
-        _card("TRẦN THỊ B", "999111222333", "20/05/1994"),
-        _card("NGUYỄN VĂN A", "999444555666", "15/03/1985"),
-    ]
-    options = {
-        "formContext": {
-            "applicantFullname": "LÊ VĂN C",
-            "applicantIdentityNumber": "999777888999",
-        }
-    }
-
-    assert reason._age_rule_applies(documents, options) is True
-    # THỨC sinh 1991, sinh trước DUNG (1994) -> THỨC là người mất.
-    assert reason._older_card_number(documents) == "999444555666"
-
-    hint = reason._document_hints(documents, options)
-    assert "<quy_tac_tuoi_hai_the>" in hint
-    assert "Thẻ số 999444555666 là người SINH TRƯỚC (già hơn) → NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ." in hint
-    assert "Thẻ số 999111222333 là người SINH SAU (trẻ hơn) → NGƯỜI YÊU CẦU." in hint
-
-
-def test_khai_tu_age_rule_survives_front_and_back_sides_as_separate_files():
-    """Mặt trước/mặt sau tải lên thành file riêng vẫn phải gom về đúng 2 người."""
-    back_side = {
-        "name": "mat_sau.jpg",
-        "provider": "test",
-        "text": (
-            "Đặc điểm nhận dạng / Personal identification: sẹo chấm ngay sơn căn\n"
-            "Ngày, tháng, năm / Date, month, year: 10/10/2022\n"
-            "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI\n"
-            "IDVNM1940051653999111222333<<9\n9404092F3404090VNM<<<<<<<<<<<<2"
-        ),
-    }
-    documents = [
-        _card("TRẦN THỊ B", "999111222333", "20/05/1994"),
-        back_side,
-        _card("NGUYỄN VĂN A", "999444555666", "15/03/1985"),
-    ]
-
-    # Dãy MRZ không được đếm thành người thứ ba.
-    assert set(reason._card_people(documents)) == {"999111222333", "999444555666"}
-    assert reason._age_rule_applies(documents, {}) is True
-    assert reason._older_card_number(documents) == "999444555666"
-
-
-def test_khai_tu_age_rule_swaps_role_blocks_when_agent_inverts_them():
-    raw = (
-        _role_block("nguoi_yeu_cau", "NGUYỄN VĂN A", "999444555666", "15/03/1985")
-        + "\n"
-        + _role_block("nguoi_mat", "TRẦN THỊ B", "999111222333", "20/05/1994")
-    )
-
-    context = reason._render_context(
-        raw,
-        {
-            "formContext": {
-                "applicantFullname": "LÊ VĂN C",
-                "applicantIdentityNumber": "999777888999",
-            }
-        },
-        has_declaration=False,
-        age_rule=True,
-    )
-
-    assert context, "quy tắc tuổi phải giữ lại context dù tài khoản cổng lệch cả hai thẻ"
-    assert reason._role_identity_number(context, "nguoi_mat") == "999444555666"
-    assert reason._role_identity_number(context, "nguoi_yeu_cau") == "999111222333"
-    assert "QUY TẮC TUỔI" in context
-
-
-def test_khai_tu_age_rule_leaves_correct_role_blocks_untouched():
-    raw = (
-        _role_block("nguoi_yeu_cau", "TRẦN THỊ B", "999111222333", "20/05/1994")
-        + "\n"
-        + _role_block("nguoi_mat", "NGUYỄN VĂN A", "999444555666", "15/03/1985")
-    )
-
-    context = reason._render_context(raw, {}, has_declaration=False, age_rule=True)
-
-    assert reason._role_identity_number(context, "nguoi_mat") == "999444555666"
-    assert reason._role_identity_number(context, "nguoi_yeu_cau") == "999111222333"
-
-
-def test_khai_tu_age_rule_skipped_when_portal_account_matches_a_card():
-    """Cha mẹ già đứng đơn khai tử cho con: tài khoản cổng khớp thẻ thì tuổi không quyết định."""
-    documents = [
-        _card("NGUYỄN VĂN CHA", "999000111222", "10/03/1955"),
-        _card("NGUYỄN VĂN CON", "999333444555", "20/08/1990"),
-    ]
-    options = {
-        "formContext": {
-            "applicantFullname": "NGUYỄN VĂN CHA",
-            "applicantIdentityNumber": "999000111222",
-        }
-    }
-
-    assert reason._age_rule_applies(documents, options) is False
-    assert "<quy_tac_tuoi_hai_the>" not in reason._document_hints(documents, options)
-
-
-def test_khai_tu_age_rule_skipped_when_declaration_present():
-    documents = [
-        _card("TRẦN THỊ B", "999111222333", "20/05/1994"),
-        _card("NGUYỄN VĂN A", "999444555666", "15/03/1985"),
-        {"name": "to_khai.pdf", "provider": "test", "text": _TO_KHAI_OCR},
-    ]
-
-    assert reason._age_rule_applies(documents, {}) is False
-
-
-def test_khai_tu_enforce_role_assignment_swaps_inverted_card_clusters():
-    context = (
-        "<nguoi_yeu_cau>\nHọ tên: TRẦN THỊ B\n"
-        "Số CCCD/CMND: 999111222333\n</nguoi_yeu_cau>\n"
-        "<nguoi_mat>\nHọ tên: NGUYỄN VĂN A\n"
-        "Số CCCD/CMND: 999444555666\n</nguoi_mat>"
-    )
-    fields = [
-        {"name": "Cccd_HoTen", "value": "NGUYỄN VĂN A"},
-        {"name": "Cccd_SoDinhDanh", "value": "999444555666"},
-        {"name": "Cccd_NgaySinh", "value": "15/03/1985"},
-        {"name": "NguoiMat_HoTen", "value": "TRẦN THỊ B"},
-        {"name": "NguoiMat_SoDinhDanh", "value": "999111222333"},
-        {"name": "NguoiMat_NgaySinh", "value": "20/05/1994"},
-        {"name": "NguoiMat_NgayMat", "value": "18/07/2026"},
-    ]
-
-    values = {
-        field["name"]: field["value"]
-        for field in reason.enforce_role_assignment(fields, context)
-    }
-
-    assert values["Cccd_HoTen"] == "TRẦN THỊ B"
-    assert values["Cccd_SoDinhDanh"] == "999111222333"
-    assert values["NguoiMat_HoTen"] == "NGUYỄN VĂN A"
-    assert values["NguoiMat_SoDinhDanh"] == "999444555666"
-    assert values["NguoiMat_NgaySinh"] == "15/03/1985"
-    # Sự kiện chết không thuộc cặp song ánh nên phải giữ nguyên.
-    assert values["NguoiMat_NgayMat"] == "18/07/2026"
-
-
-def test_khai_tu_enforce_role_assignment_is_noop_when_roles_already_correct():
-    context = (
-        "<nguoi_yeu_cau>\nSố CCCD/CMND: 999111222333\n</nguoi_yeu_cau>\n"
-        "<nguoi_mat>\nSố CCCD/CMND: 999444555666\n</nguoi_mat>"
-    )
-    fields = [
-        {"name": "Cccd_SoDinhDanh", "value": "999111222333"},
-        {"name": "NguoiMat_SoDinhDanh", "value": "999444555666"},
-    ]
-
-    assert reason.enforce_role_assignment(fields, context) == fields
-
-
-async def test_khai_tu_two_cards_only_maps_older_person_as_deceased(monkeypatch):
-    """End-to-end: 2 CCCD, tài khoản cổng là người thứ ba -> người già hơn vào mục II."""
-    ocr_docs = [
-        _card("TRẦN THỊ B", "999111222333", "20/05/1994"),
-        _card("NGUYỄN VĂN A", "999444555666", "15/03/1985"),
-    ]
-
-    async def fake_ocr_per_file(_files):
-        return ocr_docs
-
-    async def fake_chat(messages, **_kwargs):
-        if "agent PHÂN VAI" in messages[0]["content"]:
-            assert "<quy_tac_tuoi_hai_the>" in messages[1]["content"]
-            # Mô phỏng agent phân vai gán NGƯỢC để kiểm tra lớp chốt tất định.
-            return (
-                _role_block("nguoi_yeu_cau", "NGUYỄN VĂN A", "999444555666", "15/03/1985")
-                + "\n"
-                + _role_block("nguoi_mat", "TRẦN THỊ B", "999111222333", "20/05/1994")
-                + "\n<giay_to_khong_thuoc_hai_vai>\nKhông có\n</giay_to_khong_thuoc_hai_vai>"
-            )
-        return json.dumps({
-            "fields": {
-                "Cccd_HoTen": "TRẦN THỊ B",
-                "Cccd_SoDinhDanh": "999111222333",
-                "Cccd_NgaySinh": "20/05/1994",
-                "NguoiMat_HoTen": "NGUYỄN VĂN A",
-                "NguoiMat_SoDinhDanh": "999444555666",
-                "NguoiMat_NgaySinh": "15/03/1985",
-            }
-        }, ensure_ascii=False)
-
-    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr("app.services.llm.client.chat", fake_chat)
-    monkeypatch.setattr("app.services.llm.client.chat_text", fake_chat)
-
-    res = await agent.run(
-        {"doc": [_file("cccd_dung.pdf"), _file("cccd_thuc.pdf")]},
-        {
-            "formContext": {
-                "applicantFullname": "LÊ VĂN C",
-                "applicantIdentityNumber": "999777888999",
-            }
-        },
-    )
-    values = {field["name"]: field["value"] for field in res["fields"]}
-
-    assert values["HoTen"] == "NGUYỄN VĂN A"
-    assert values["SoDinhDanh"] == "999444555666"
-    assert values["NgaySinh"] == "15/03/1985"
-    assert values["HoVaTenC"] == "TRẦN THỊ B"
-    assert values["SoDinhDanhC"] == "999111222333"
 
 
 def test_registry_uses_khai_tu_compact_agent_mode():

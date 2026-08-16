@@ -18,25 +18,24 @@ FIELDS: list[dict] = [
     {"name": "Tk_GioiTinhCon", "desc": 'Giới tính người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH: "Nam" hoặc "Nữ". CHỈ trả khi tờ khai ghi rõ.'},
     {"name": "Tk_DanTocCon", "desc": "Dân tộc người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Dân tộc' trong khối thông tin người được khai sinh (KHÔNG phải dân tộc cha/mẹ). CHỈ trả khi tờ khai ghi rõ dân tộc của chính đứa trẻ. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả)."},
 
-    # Father facts - ưu tiên giấy chứng sinh/khai sinh/kết hôn, fallback CCCD Nam.
-    {"name": "CccdNam_HoTen", "desc": "Họ tên CHA: ưu tiên giấy chứng sinh (khối cha) > giấy kết hôn (chồng/bên nam) > giấy khai sinh bản sao của con khác (khối cha) > CCCD/CMND Nam."},
-    {"name": "CccdNam_SoDinhDanh", "desc": "Số định danh cha: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD Nam (12 số, có thể đọc từ MRZ)."},
-    {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh cha: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD Nam (dd/mm/yyyy, có thể chỉ năm sinh)."},
-    {"name": "CccdNam_DanToc", "desc": "Dân tộc CHA: BẮT BUỘC lấy từ giấy chứng sinh (khối cha) hoặc giấy kết hôn (chồng) hoặc giấy khai sinh (khối cha) hoặc tờ khai khai sinh (khối cha), KỂ CẢ khi cha đã có CCCD. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả). CCCD thường không in dân tộc."},
-    {"name": "CccdNam_QuocTich", "desc": "Quốc tịch cha: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNam_QueQuan", "desc": "Quê quán/nguyên quán cha object {tinh,xa,diaChi}: lấy từ CCCD cũ (dòng 'Quê quán'). Thẻ căn cước mới KHÔNG có quê quán → để trống."},
-    {"name": "CccdNam_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh cha trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,xa,diaChi}. CHỈ khi thẻ CÓ dòng này."},
-    {"name": "CccdNam_NoiCuTru", "desc": "Nơi cư trú cha object {tinh,xa,diaChi}: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD Nam."},
+    # Thông tin bố theo VAI TRÒ trong hồ sơ, không đồng nghĩa dữ liệu chỉ đến từ CCCD nam.
+    {"name": "ThongTinBo_HoTen", "desc": "Họ tên BỐ/CHA: ưu tiên giấy chứng sinh (khối cha) > giấy kết hôn (chồng/bên nam) > giấy khai sinh bản sao của con khác (khối cha) > CCCD/CMND của bố."},
+    {"name": "ThongTinBo_SoDinhDanh", "desc": "Số định danh cha: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD/CMND được đối chiếu là của đúng người bố (12 số, có thể đọc từ MRZ)."},
+    {"name": "ThongTinBo_NgaySinh", "desc": "Ngày sinh cha: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD/CMND được đối chiếu là của đúng người bố (dd/mm/yyyy, có thể chỉ năm sinh)."},
+    {"name": "ThongTinBo_DanToc", "desc": "Dân tộc CHA/BỐ ĐẺ: hai nguồn chính theo thứ tự ưu tiên là (1) TỜ KHAI ĐĂNG KÝ KHAI SINH — dòng 'Dân tộc' trong khối thông tin bố đẻ/cha/người cha; (2) GIẤY CHỨNG NHẬN KẾT HÔN — dòng 'Dân tộc' thuộc khối chồng/bên nam. Có một trong hai giấy tờ thì BẮT BUỘC soát đúng khối của cha; đọc được giá trị không rỗng thì bắt buộc trả ThongTinBo_DanToc dù cha đã có CCCD hoặc tên dân tộc ít gặp. Chỉ khi cả hai nguồn chính không có/không ghi/không đọc được mới xét giấy chứng sinh hoặc giấy khai sinh có khối cha. Không lấy dân tộc mẹ/vợ hay của con."},
+    {"name": "ThongTinBo_QuocTich", "desc": "Quốc tịch cha: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
+    {"name": "ThongTinBo_QueQuan", "desc": "Quê quán/nguyên quán cha object {tinh,xa,diaChi}: lấy từ CCCD cũ (dòng 'Quê quán'). Thẻ căn cước mới KHÔNG có quê quán → để trống."},
+    {"name": "ThongTinBo_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh cha trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,xa,diaChi}. CHỈ khi thẻ CÓ dòng này."},
+    {"name": "ThongTinBo_NoiCuTru", "desc": "Nơi cư trú cha object {tinh,xa,diaChi}: ưu tiên giấy chứng sinh > giấy kết hôn > giấy khai sinh > CCCD/CMND được đối chiếu là của đúng người bố."},
 
-    # Mother facts - ƯU TIÊN GIẤY CHỨNG SINH.
-    {"name": "CccdNu_HoTen", "desc": "Họ tên MẸ: ưu tiên giấy chứng sinh (khối mẹ) > giấy khai sinh bản sao (khối mẹ) > giấy kết hôn (bên nữ) > CCCD/CMND Nữ."},
-    {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh mẹ: ưu tiên giấy chứng sinh (Số ĐDCN/Hộ chiếu) > giấy khai sinh > giấy kết hôn > CCCD Nữ (12 số, có thể đọc từ MRZ)."},
-    {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh mẹ: ưu tiên giấy chứng sinh (có thể chỉ năm sinh) > giấy khai sinh > giấy kết hôn > CCCD Nữ (dd/mm/yyyy)."},
-    {"name": "CccdNu_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,xa,diaChi}: lấy từ CCCD/CMND cũ (dòng 'Quê quán / Place of origin'). Thẻ căn cước mới KHÔNG có quê quán → để trống. Dùng cho quê quán con khi áp dụng ngoại lệ Lâm Đồng."},
-    {"name": "CccdNu_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh MẸ trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,xa,diaChi}. CHỈ khi thẻ CÓ dòng này."},
-    {"name": "CccdNu_DanToc", "desc": "Dân tộc mẹ: BẮT BUỘC lấy từ giấy chứng sinh (dòng 'Dân tộc' khối mẹ) hoặc giấy khai sinh (khối mẹ) hoặc giấy kết hôn. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả). CCCD thường không in dân tộc."},
-    {"name": "CccdNu_QuocTich", "desc": "Quốc tịch mẹ: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNu_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi}: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD Nữ. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
+    # Thông tin mẹ theo VAI TRÒ trong hồ sơ — ưu tiên giấy chứng sinh.
+    {"name": "ThongTinMe_HoTen", "desc": "Họ tên MẸ: ưu tiên giấy chứng sinh (khối mẹ) > giấy khai sinh bản sao (khối mẹ) > giấy kết hôn (bên nữ) > CCCD/CMND được đối chiếu là của đúng người mẹ."},
+    {"name": "ThongTinMe_SoDinhDanh", "desc": "Số định danh mẹ: ưu tiên giấy chứng sinh (Số ĐDCN/Hộ chiếu) > giấy khai sinh > giấy kết hôn > CCCD/CMND được đối chiếu là của đúng người mẹ (12 số, có thể đọc từ MRZ)."},
+    {"name": "ThongTinMe_NgaySinh", "desc": "Ngày sinh mẹ: ưu tiên giấy chứng sinh (có thể chỉ năm sinh) > giấy khai sinh > giấy kết hôn > CCCD/CMND được đối chiếu là của đúng người mẹ (dd/mm/yyyy)."},
+    {"name": "ThongTinMe_DanToc", "desc": "Dân tộc MẸ: BẮT BUỘC trích khi một trong các nguồn ghi rõ, theo đúng ưu tiên: (1) GIẤY CHỨNG SINH — dòng 'Dân tộc' trong khối thông tin mẹ, gần họ tên/ngày sinh/số ĐDCN của mẹ; (2) GIẤY CHỨNG NHẬN KẾT HÔN — dòng 'Dân tộc' thuộc khối vợ/bên nữ; (3) TỜ KHAI ĐĂNG KÝ KHAI SINH — dòng 'Dân tộc' thuộc khối người mẹ. Có nguồn ưu tiên cao hơn thì không thay bằng nguồn thấp hơn. Đọc được giá trị thì phải trả field dù cách ghi ít gặp; chỉ bỏ khi cả ba nguồn đều không ghi. CCCD thường không in dân tộc."},
+    {"name": "ThongTinMe_QuocTich", "desc": "Quốc tịch mẹ: chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
+    {"name": "ThongTinMe_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,xa,diaChi}: BẮT BUỘC trích khi CCCD cũ của đúng người mẹ có dòng 'Quê quán / Place of origin:' (OCR có thể chỉ còn 'Quê quán:'). , không dùng nơi cư trú mẹ thay quê quán. Nếu dòng quê quán chỉ ghi cấp huyện và tỉnh mà không có xã/phường thì không được coi tên huyện là xa, nhưng VẪN PHẢI trả field với phần xác định chắc chắn, tối thiểu là tinh; không được bỏ toàn bộ field."},
+    {"name": "ThongTinMe_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,diaChi}: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD/CMND được đối chiếu là của đúng người mẹ. diaChi chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
 
     # Marriage certificate facts from GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ (nếu có).
     {"name": "GcnKetHon_So", "desc": 'Số giấy chứng nhận kết hôn trong GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ, ở mục "Số:", vd "119/2026".'},
@@ -63,11 +62,9 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "text" for name in ALLOWED}
-for _name in ("Gcs_NgaySinhCon", "CccdNam_NgaySinh", "CccdNu_NgaySinh", "GcnKetHon_NgayCap", "Tk_NgaySinhCon"):
+for _name in ("Gcs_NgaySinhCon", "ThongTinBo_NgaySinh", "ThongTinMe_NgaySinh", "GcnKetHon_NgayCap", "Tk_NgaySinhCon"):
     COMPACT_COMP_BY_NAME[_name] = "date"
-for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon",
-              "CccdNam_QueQuan", "CccdNam_NoiDangKyKhaiSinh", "CccdNam_NoiCuTru",
-              "CccdNu_QueQuan", "CccdNu_NoiDangKyKhaiSinh", "CccdNu_NoiCuTru"):
+for _name in ("Gcs_NoiSinh", "Tk_NoiSinh", "Tk_QueQuanCon", "ThongTinBo_QueQuan", "ThongTinBo_NoiDangKyKhaiSinh", "ThongTinBo_NoiCuTru", "ThongTinMe_QueQuan", "ThongTinMe_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "diachi"
 
 UI_COMP_BY_NAME = {
@@ -78,6 +75,7 @@ UI_COMP_BY_NAME = {
     "NgaySinh": "date",
     "GioiTinh": "select",
     "MaDanToc": "select",
+    "DantocKhac": "text",
     "MaQuocTich": "select",
     "NsMaQuocGia": "select",
     "NsDiaChi": "diachi",
@@ -90,6 +88,7 @@ UI_COMP_BY_NAME = {
     "MeNgaySinh": "date",
     "MeSoGiayTo": "text",
     "MeMaDanToc": "select",
+    "MeDantocKhac": "text",
     "MeMaQuocTich": "select",
     "MeLoaiCuTru": "select",
     "MeMaQuocGia": "select",
@@ -102,6 +101,7 @@ UI_COMP_BY_NAME = {
     "ChaNgaySinh": "date",
     "ChaSoGiayTo": "text",
     "ChaMaDanToc": "select",
+    "ChaDantocKhac": "text",
     "ChaMaQuocTich": "select",
     "ChaLoaiCuTru": "select",
     "ChaMaQuocGia": "select",

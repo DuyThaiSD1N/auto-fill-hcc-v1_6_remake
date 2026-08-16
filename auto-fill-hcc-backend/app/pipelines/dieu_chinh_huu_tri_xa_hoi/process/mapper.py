@@ -4,6 +4,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process.schema import UI_COMP_BY_NAME
 
 
@@ -109,7 +110,8 @@ def _area(value) -> dict | None:
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return out
+    # Dùng bảng sáp nhập chuẩn trong _shared/data/remap_*.json cho cả hai vai trò.
+    return remap_area(out) or out
 
 
 def _area_label(value: str | None) -> str | None:
@@ -200,7 +202,17 @@ def _person_evidence_scope(
                 r"(?m)^\s*I[.\s]+Thông tin người",
                 r"(?m)^\s*II[.\s]+Thông tin người",
             )
-            if section and _contains_person(section, name, identity):
+            # CCCD chính thức có thể sửa số/ngày sinh khai lệch tại mục I.
+            # Khi LLM đã chọn số CCCD, vẫn giữ mục I làm bằng chứng cho địa chỉ
+            # và điện thoại nếu họ tên chủ hồ sơ khớp chính xác.
+            section_name_matches = bool(
+                _norm_text(name)
+                and _norm_text(name) in _norm_text(section)
+            )
+            if section and (
+                _contains_person(section, name, identity)
+                or section_name_matches
+            ):
                 scopes.append(section)
         elif is_form_01 and prefix == "NguoiNop":
             section = _section(
@@ -244,6 +256,31 @@ def _text_with_evidence(
         return value
     normalized_value = _norm_text(value)
     return str(value) if normalized_value in _norm_text(evidence_scope) else None
+
+
+def _issuer_with_evidence(
+    value: str | None,
+    evidence_scope: str,
+    has_ocr: bool,
+) -> str | None:
+    """Ưu tiên dòng cơ quan cấp, không nhầm chữ Bộ Công an trên dấu/logo."""
+    if not has_ocr:
+        return value
+
+    normalized_scope = _norm_text(evidence_scope)
+    is_citizen_id = "can cuoc cong dan" in normalized_scope
+    has_police_department = (
+        "cuc canh sat quan ly hanh chinh ve trat tu xa hoi"
+        in normalized_scope
+    )
+    if is_citizen_id and has_police_department:
+        return "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+
+    is_new_identity_card = "can cuoc" in normalized_scope and not is_citizen_id
+    if is_new_identity_card and "bo cong an" in normalized_scope:
+        return "Bộ Công an"
+
+    return _text_with_evidence(value, evidence_scope, has_ocr)
 
 
 def _phone_with_evidence(
@@ -292,7 +329,7 @@ def _person(values: dict, prefix: str, ocr_text: str | None) -> Person | None:
             evidence_scope,
         ) if has_ocr else values.get(f"{prefix}_NgayCap"),
         # Không mặc định cơ quan cấp từ ngày cấp. Có bằng chứng mới được điền.
-        issuer=_text_with_evidence(
+        issuer=_issuer_with_evidence(
             values.get(f"{prefix}_NoiCap"),
             evidence_scope,
             has_ocr,

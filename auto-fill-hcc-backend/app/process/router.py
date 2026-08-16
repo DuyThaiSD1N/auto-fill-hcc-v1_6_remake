@@ -17,6 +17,7 @@ from app.storage.files import save_request_files
 from app.traces import repo as traces_repo
 from app.traces.applicant import resolve_applicant_name
 from app.traces.key_fields import count_key_fields
+from app.traces.metadata import build_process_trace_attachments
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["process"])
@@ -142,6 +143,7 @@ async def _persist_success(request_id, created_at, user, body, proc, total_bytes
 
     # 2) Lưu file xuống disk (đồng bộ → to_thread để không chặn event loop) + bản ghi request.
     doc_id: str | None = None
+    files_meta: list[dict] = []
     try:
         files_meta = await asyncio.to_thread(save_request_files, request_id, created_at, body.files)
         doc_id = await requests_repo.create_request(
@@ -164,13 +166,17 @@ async def _persist_success(request_id, created_at, user, body, proc, total_bytes
             fields=result.get("fields", []),
             extracted=result.get("extracted", {}),
         )
-        attachments = [{"name": f.name, "role": f.role} for f in body.files]
+        attachments = build_process_trace_attachments(files_meta)
+        if not attachments:
+            attachments = [{"name": f.name, "role": f.role, "sha256": None, "uses": 1}
+                           for f in body.files]
         applicant_name = resolve_applicant_name(body.options or {}, result)
         kf_total, kf_filled = count_key_fields(body.procedure, result.get("fields", []))
         await traces_repo.create_trace(
             request_id=request_id, user_id=user["id"],
             username=user.get("username"), name=user.get("name"),
             applicant_name=applicant_name, attachments=attachments,
+            stats_version=2, dossier_ids=[request_id],
             kind="autofill", key_fields_total=kf_total, key_fields_filled=kf_filled,
             stats=result.get("stats"), total_bytes=total_bytes,
             procedure=body.procedure, procedure_label=proc.get("label"),

@@ -43,9 +43,8 @@ def test_owner_matching_ui_is_self_submission_without_duplicate_owner_block():
             "ChuHoSo_NgaySinh": "20/10/1950",
             "ChuHoSo_GioiTinh": "Nữ",
             "ChuHoSo_NgayCap": "11/11/2021",
-            "ChuHoSo_NoiCap": (
-                "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-            ),
+            # Mô phỏng đúng lỗi LLM chọn nhầm chữ trên dấu/logo.
+            "ChuHoSo_NoiCap": "BỘ CÔNG AN",
             "ChuHoSo_NoiCuTru": {
                 "tinh": "Tỉnh Lai Châu",
                 "xa": "Phường Đoàn Kết",
@@ -124,6 +123,60 @@ def test_different_requester_and_owner_fill_both_with_requester_phone():
     # Mục II không có giới tính/nơi cấp: không được suy đoán.
     assert "data[gender]" not in data
     assert "data[idIssuePlace]" not in data
+    assert not warnings
+
+
+def test_owner_and_requester_addresses_use_shared_administrative_remap():
+    data, warnings = _run(
+        {
+            "ChuHoSo_HoTen": "NGƯỜI HƯỞNG A",
+            "ChuHoSo_SoDinhDanh": "012050000001",
+            "ChuHoSo_NoiCuTru": {
+                "tinh": "Lai Châu",
+                "xa": "Tam Đường",
+                "diaChi": "Tổ 2",
+            },
+            "NguoiNop_HoTen": "NGƯỜI NỘP B",
+            "NguoiNop_SoDinhDanh": "012080000002",
+            "NguoiNop_NoiCuTru": {
+                "tinh": "Lai Châu",
+                "xa": "Quyết Thắng",
+                "diaChi": "Tổ 5",
+            },
+        },
+        _context("Người Nộp B", "012080000002"),
+    )
+
+    assert data["data[province]"] == "Lai Châu"
+    assert data["data[district]"] == "Đoàn Kết"
+    assert data["data[address]"] == "Tổ 5"
+    assert data["data[ownerProvince]"] == "Lai Châu"
+    assert data["data[ownerDistrict]"] == "Bình Lư"
+    assert not warnings
+
+
+def test_address_not_present_in_shared_remap_is_kept_unchanged():
+    data, warnings = _run(
+        {
+            "ChuHoSo_HoTen": "NGƯỜI HƯỞNG A",
+            "ChuHoSo_SoDinhDanh": "012050000001",
+            "ChuHoSo_NoiCuTru": {
+                "tinh": "Lai Châu",
+                "xa": "Phường Đoàn Kết",
+            },
+            "NguoiNop_HoTen": "NGƯỜI NỘP B",
+            "NguoiNop_SoDinhDanh": "012080000002",
+            "NguoiNop_NoiCuTru": {
+                "tinh": "Điện Biên",
+                "xa": "Phường Chưa Có Trong Bảng",
+            },
+        },
+        _context("Người Nộp B", "012080000002"),
+    )
+
+    assert data["data[province]"] == "Điện Biên"
+    assert data["data[district]"] == "Chưa Có Trong Bảng"
+    assert data["data[ownerProvince]"] == "Lai Châu"
     assert not warnings
 
 
@@ -213,6 +266,79 @@ def test_mapper_does_not_fabricate_issuer_from_issue_date():
 
     assert data["data[ownerIdentityDate]"] == "24/06/2021"
     assert "data[ownerIdIssuePlace]" not in data
+
+
+def test_owner_identity_fields_prefer_unique_exact_name_cccd_over_form_conflict():
+    data, warnings = _run(
+        {
+            "ChuHoSo_HoTen": "VÕ THỊ HAI",
+            "ChuHoSo_NgaySinh": "01/01/1951",
+            "ChuHoSo_GioiTinh": "Nữ",
+            "ChuHoSo_SoDinhDanh": "089151007093",
+            "ChuHoSo_NgayCap": "16/08/2022",
+            "ChuHoSo_NoiCap": (
+                "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+            ),
+            "ChuHoSo_NoiCuTru": {
+                "tinh": "Lâm Đồng",
+                "xa": "Tu Tra",
+                "diaChi": "Thôn Kambutte",
+            },
+            "ChuHoSo_DienThoai": "0358230832",
+            "ChuHoSo_QuocTich": "Việt Nam",
+        },
+        {
+            **_context("Vũ Đình Thiết", "040203015844"),
+            "_ocr_text": """Mẫu số 01
+I. Thông tin người đề nghị trợ cấp hưu trí xã hội
+Họ tên: VÕ THỊ HAI
+Ngày sinh: 04/10/1956
+Số định danh: 089154007093
+Nơi cư trú: Thôn Kambutte, Tu Tra, Đơn Dương, Lâm Đồng
+Số điện thoại: 0358230832
+II. Thông tin người giám hộ, người được ủy quyền
+---
+CĂN CƯỚC CÔNG DÂN
+Số: 089151007093
+Họ và tên: VÕ THỊ HAI
+Ngày sinh: 01/01/1951
+Giới tính: Nữ Quốc tịch: Việt Nam
+Ngày, tháng, năm: 16/08/2022
+CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI
+BỘ CÔNG AN""",
+        },
+    )
+
+    assert data["data[ownerFullname]"] == "VÕ THỊ HAI"
+    assert data["data[ownerBirthday]"] == "01/01/1951"
+    assert data["data[ownerIdentityNumber]"] == "089151007093"
+    assert data["data[ownerIdentityDate]"] == "16/08/2022"
+    assert data["data[ownerIdIssuePlace]"] == (
+        "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    )
+    assert data["data[ownerPhoneNumber]"] == "0358230832"
+    assert data["data[ownerDistrict]"] == "Đơn Dương"
+    assert warnings
+
+
+def test_new_identity_card_keeps_ministry_of_public_security_as_issuer():
+    data, _ = _run(
+        {
+            "ChuHoSo_HoTen": "NGƯỜI HƯỞNG A",
+            "ChuHoSo_SoDinhDanh": "012050000001",
+            "ChuHoSo_NoiCap": "Bộ Công an",
+        },
+        {
+            **_context("Người Nộp Khác", "040203015844"),
+            "_ocr_text": """CĂN CƯỚC
+IDENTITY CARD
+Số định danh cá nhân: 012050000001
+Họ, chữ đệm và tên khai sinh: NGƯỜI HƯỞNG A
+BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY""",
+        },
+    )
+
+    assert data["data[ownerIdIssuePlace]"] == "Bộ Công an"
 
 
 def test_requester_context_includes_only_matched_ocr_scope():

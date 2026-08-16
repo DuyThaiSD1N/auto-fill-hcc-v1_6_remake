@@ -363,6 +363,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if owner_matches_ui:
         add("data[isOwnerDossierCheck]", True)
         _add_requester(add, owner)
+        # Form tự copy hầu hết thông tin khi tick "Người nộp là chủ hồ sơ"
+        # nhưng bỏ sót riêng ngày sinh chủ hồ sơ. Gửi field này sau khối người
+        # nộp để extension điền trực tiếp, không nhân đôi các owner field khác.
+        add("data[ownerBirthday]", owner.birthday)
         return out, warnings
 
     requester, warn = _pick_requester(people, context, owner)

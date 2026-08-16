@@ -1,4 +1,4 @@
-"""Compact agent đính chính sai sót: OCR text -> CCCD/GCN facts -> DOM UI fields."""
+"""Compact agent đính chính sai sót: OCR text -> người nộp/GCN facts -> DOM UI fields."""
 
 import json
 
@@ -10,8 +10,10 @@ from app.pipelines.dinh_chinh_sai_sot import process as agent
 from app.pipelines.dinh_chinh_sai_sot.process.prompt import EXTRA_RULES
 from app.pipelines.dinh_chinh_sai_sot.process.schema import FIELDS
 from app.pipelines.dinh_chinh_sai_sot.process import mapper
+from app.pipelines.dinh_chinh_sai_sot.process.fallback import apply_ocr_fallback
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.procedures.registry import get_pipeline, get_procedure
+from app.services import ocr
 
 
 def _file(name, typ="image/jpeg"):
@@ -21,18 +23,23 @@ def _file(name, typ="image/jpeg"):
 @respx.mock
 async def test_dinh_chinh_sai_sot_compact_agent_derives_ui_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
-    )
+
+    async def fake_ocr(files):
+        return [
+            {"name": file["name"], "type": file["type"], "text": "...", "provider": "test"}
+            for file in files
+        ]
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
     out = {
         "fields": {
-            "Cccd_HoTen": "VŨ ĐÌNH THIẾT",
-            "Cccd_SoDinhDanh": "040203015844",
-            "Cccd_NgaySinh": "26/04/2003",
-            "Cccd_GioiTinh": "Nam",
-            "Cccd_DanToc": "Kinh",
-            "Cccd_NgayCap": "02/07/2021",
-            "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiNop_HoTen": "VŨ ĐÌNH THIẾT",
+            "NguoiNop_SoDinhDanh": "040203015844",
+            "NguoiNop_NgaySinh": "26/04/2003",
+            "NguoiNop_GioiTinh": "Nam",
+            "NguoiNop_DanToc": "Kinh",
+            "NguoiNop_NgayCapGiayTo": "02/07/2021",
+            "NguoiNop_NoiCapGiayTo": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
             "Gcn_SoPhatHanh": "AB 123456 (số vào sổ: CH 00120)",
             "Gcn_SoVaoSo": "CH 00120",
             "Gcn_NgayCap": "21/12/2010",
@@ -56,8 +63,8 @@ async def test_dinh_chinh_sai_sot_compact_agent_derives_ui_fields(monkeypatch):
     d = {f["name"]: f["value"] for f in res["fields"]}
 
     assert d["CongDan_tenCongDan"] == "VŨ ĐÌNH THIẾT"
-    assert d["CongDan_tenCoQuanToChuc"] == "VŨ ĐÌNH THIẾT"
-    assert d["CongDan_maSoThueNguoiNop"] == "040203015844"
+    assert "CongDan_tenCoQuanToChuc" not in d
+    assert "CongDan_maSoThueNguoiNop" not in d
     assert d["CongDan_soCmnd"] == "040203015844"
     assert d["CongDan_soCCCD"] == "040203015844"
     assert d["CongDan_ngayCapCmnd"] == "02/07/2021"
@@ -84,9 +91,14 @@ async def test_dinh_chinh_sai_sot_falls_back_to_ocr_gcn_serial(monkeypatch):
         "Số vào sổ cấp giấy chứng nhận quyền sử dụng đất:",
         "H 0.0.2.0.6..",
     ])
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": ocr_text}}]})
-    )
+
+    async def fake_ocr(files):
+        return [
+            {"name": file["name"], "type": file["type"], "text": ocr_text, "provider": "test"}
+            for file in files
+        ]
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
     out = {
         "fields": {
             "Gcn_NgayCap": "24/07/2009",
@@ -120,9 +132,59 @@ def test_dinh_chinh_sai_sot_prompt_locks_gcn_serial():
     assert "Không trả field UI/default" in system_prompt
 
 
+def test_dinh_chinh_sai_sot_falls_back_to_identity_issue_date_on_application():
+    fields = {
+        "NguoiNop_HoTen": "GIÀNG A TỦA",
+        "NguoiNop_SoDinhDanh": "012080000778",
+    }
+    documents = [{
+        "text": (
+            "Người sử dụng đất, chủ sở hữu tài sản gắn liền với đất:\n"
+            "Tên: GIÀNG A TỦA Sinh ngày: 22/02/1980\n"
+            "Giấy tờ nhân thân/pháp nhân(3): Căn cước công dân số 012080000778, "
+            "ngày cấp: 28/04/2021, nơi cấp: Cục cảnh sát QLHC về TTXH\n"
+            "Địa chỉ: Bản Tả Cu Tỷ, xã Tả Lèng, tỉnh Lai Châu\n"
+            "Tả Lèng, ngày 27 tháng 7 năm 2026"
+        )
+    }]
+
+    result = apply_ocr_fallback(fields, documents)
+
+    assert result["NguoiNop_NgayCapGiayTo"] == "28/04/2021"
+
+
+def test_dinh_chinh_sai_sot_migrates_legacy_applicant_field_names():
+    result = apply_ocr_fallback({
+        "Cccd_HoTen": "GIÀNG A TỦA",
+        "Cccd_NgayCap": "28/04/2021",
+        "Don_DienThoaiLienHe": "0349129815",
+    }, [])
+
+    assert result["NguoiNop_HoTen"] == "GIÀNG A TỦA"
+    assert result["NguoiNop_NgayCapGiayTo"] == "28/04/2021"
+    assert result["NguoiNop_DienThoai"] == "0349129815"
+    assert "Cccd_HoTen" not in result
+    assert "Cccd_NgayCap" not in result
+    assert "Don_DienThoaiLienHe" not in result
+
+
+def test_dinh_chinh_sai_sot_does_not_fill_organization_or_tax_fields():
+    fields = [
+        {"name": "NguoiNop_HoTen", "comp": "x-input", "value": "GIÀNG A TỦA"},
+        {"name": "NguoiNop_SoDinhDanh", "comp": "x-input", "value": "012080000778"},
+    ]
+
+    result = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert result["CongDan_tenCongDan"] == "GIÀNG A TỦA"
+    assert result["CongDan_soCmnd"] == "012080000778"
+    assert "CongDan_tenCoQuanToChuc" not in result
+    assert "CongDan_maSoThueNguoiNop" not in result
+
+
 def test_dinh_chinh_sai_sot_maps_application_contact_phone():
     fields = [
-        {"name": "Don_DienThoaiLienHe", "comp": "x-input", "value": "0349 / 129 815"},
+        {"name": "NguoiNop_DienThoai", "comp": "x-input", "value": "0349 / 129 815"},
     ]
 
     result = {field["name"]: field["value"] for field in mapper.enrich(fields)}
@@ -133,9 +195,15 @@ def test_dinh_chinh_sai_sot_maps_application_contact_phone():
 def test_dinh_chinh_sai_sot_schema_requests_application_contact_phone():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
-    assert "Don_DienThoaiLienHe" in system_prompt
+    assert "NguoiNop_DienThoai" in system_prompt
     assert 'nhãn "Điện thoại liên hệ (nếu có)"' in system_prompt
     assert "không lấy số CCCD, số GCN" in system_prompt
+    assert 'đúng cụm "Giấy tờ nhân thân/pháp nhân"' in system_prompt
+    assert "BẮT BUỘC trả đủ NguoiNop_SoDinhDanh" in system_prompt
+    assert "NguoiNop_NgayCapGiayTo và NguoiNop_NoiCapGiayTo" in system_prompt
+    assert "Cccd_HoTen" not in system_prompt
+    assert "Cccd_NgayCap" not in system_prompt
+    assert "Don_DienThoaiLienHe" not in system_prompt
 
 
 def test_registry_uses_dinh_chinh_sai_sot_compact_agent_mode():

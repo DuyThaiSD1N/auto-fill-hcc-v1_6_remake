@@ -54,38 +54,74 @@ def test_trich_luc_maps_civil_status_header_number_to_form_number():
     assert result["HoSo_So"] == "402/2026"
 
 
-def test_trich_luc_recovers_header_number_when_llm_omits_it():
-    documents = [{
-        "name": "giay-khai-sinh.pdf",
-        "text": (
-            "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n"
-            "Số: 402/2026\n\n"
-            "GIẤY KHAI SINH\n"
-            "Họ, chữ đệm, tên: NGƯỜI ĐƯỢC KHAI SINH\n"
-            "Số định danh cá nhân: 068326011089"
-        ),
-    }]
+def test_trich_luc_declaration_rejects_same_person_wrong_document_type():
+    source_fields = [
+        # Model có thể phân loại nhầm theo file đính kèm; tên giấy ở mục (4) là mỏ neo tất định.
+        {"name": "ToKhai_LoaiSuKien", "value": "death"},
+        {"name": "ToKhai_TenGiayTo", "value": "Giấy khai sinh"},
+        {"name": "ToKhai_HoTenNguoiDuocCap", "value": "Nguyễn Thành Chung"},
+        {"name": "ToKhai_NgaySinh", "value": "12/12/1965"},
+        {"name": "ToKhai_SoDinhDanh", "value": "023284413"},
+        {"name": "ToKhai_LoaiGiayToTuyThan", "value": "CMND"},
+        {"name": "ToKhai_SoGiayToTuyThan", "value": "023284413"},
+        {"name": "ToKhai_NgayCapGiayToTuyThan", "value": "02/06/1999"},
+        {"name": "ToKhai_NoiCapGiayToTuyThan", "value": "Công an thành phố Hà Nội"},
+        {"name": "ToKhai_CoQuanDangKy", "value": "Ủy ban nhân dân phường 1, thành phố Đà Lạt, tỉnh Lâm Đồng"},
+        {"name": "ToKhai_So", "value": "24"},
+        {"name": "ToKhai_NgayDangKy", "value": "13/02/1956"},
+        # Giấy chứng tử đúng người nhưng sai loại: tuyệt đối không được làm nguồn bổ sung.
+        {"name": "HoTich_LoaiSuKien", "value": "death"},
+        {"name": "HoTich_TenGiayTo", "value": "Giấy chứng tử"},
+        {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "NGUYỄN THÀNH CHUNG"},
+        {"name": "HoTich_So", "value": "81"},
+        {"name": "HoTich_QuyenSo", "value": "01/2013"},
+        {"name": "HoTich_NgayDangKy", "value": "17/10/2013"},
+        {"name": "HoTich_CoQuanDangKy", "value": "Ủy ban nhân dân Phường 14, Quận 10"},
+    ]
 
-    result = trich_luc_runner._compact_field_fallback(  # noqa: SLF001
-        {"HoTich_LoaiSuKien": "birth"},
-        documents,
-    )
+    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
 
-    assert result["HoTich_So"] == "402/2026"
+    assert result["HoSo_LoaiYeuCau"].startswith("Giấy khai sinh bản sao")
+    assert result["NDK_HoVaTen"] == "Nguyễn Thành Chung"
+    assert "NDK_SoDinhDanh" not in result
+    assert result["NDK_LoaiGiayToTuyThan"] == "Chứng minh nhân dân"
+    assert result["NDK_SoGiayToTuyThan"] == "023284413"
+    assert result["NDK_NgayCap"] == "02/06/1999"
+    assert result["NDK_NoiCap"] == "Công an thành phố Hà Nội"
+    assert result["HoSo_TenGiayTo"] == "Giấy khai sinh"
+    assert result["HoSo_So"] == "24"
+    assert result["HoSo_NgayCapSo"] == "13/02/1956"
+    assert result["HoSo_CoQuanDangKy"].startswith("Ủy ban nhân dân phường 1")
+    assert "HoSo_QuyenSo" not in result
 
 
-def test_trich_luc_header_number_fallback_does_not_override_llm_value():
-    documents = [{
-        "name": "giay-khai-sinh.pdf",
-        "text": "Số: 402/2026\nGIẤY KHAI SINH\nSố định danh cá nhân: 068326011089",
-    }]
+def test_trich_luc_declaration_allows_matching_document_to_fill_blank_field():
+    source_fields = [
+        {"name": "ToKhai_LoaiSuKien", "value": "birth"},
+        {"name": "ToKhai_TenGiayTo", "value": "Giấy khai sinh"},
+        {"name": "ToKhai_HoTenNguoiDuocCap", "value": "TRẦN BÉ"},
+        {"name": "ToKhai_SoDinhDanh", "value": "012345678901"},
+        {"name": "ToKhai_LoaiGiayToTuyThan", "value": "Căn cước"},
+        {"name": "ToKhai_SoGiayToTuyThan", "value": "012345678901"},
+        {"name": "ToKhai_So", "value": "24"},
+        {"name": "HoTich_LoaiSuKien", "value": "birth"},
+        {"name": "HoTich_TenGiayTo", "value": "Giấy khai sinh"},
+        {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "TRẦN BÉ"},
+        {"name": "HoTich_So", "value": "55/2026"},
+        {"name": "HoTich_QuyenSo", "value": "01/2026"},
+    ]
 
-    result = trich_luc_runner._compact_field_fallback(  # noqa: SLF001
-        {"HoTich_So": "SỐ-ĐÃ-ĐỌC"},
-        documents,
-    )
+    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
 
-    assert result["HoTich_So"] == "SỐ-ĐÃ-ĐỌC"
+    assert result["HoSo_So"] == "24"
+    assert result["HoSo_QuyenSo"] == "01/2026"
+    assert result["NDK_SoDinhDanh"] == "012345678901"
+    assert result["NDK_SoGiayToTuyThan"] == "012345678901"
+
+
+def test_trich_luc_runner_does_not_use_number_fallback():
+    """Số hộ tịch phải do LLM chọn đúng nguồn, runner không được quét chéo tài liệu."""
+    assert not hasattr(trich_luc_runner, "_compact_field_fallback")
 
 
 def test_trich_luc_ignores_copy_choice_without_quantity():
@@ -144,6 +180,43 @@ def test_trich_luc_birth_declaration_maps_subject_identity_document():
     assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
     assert result["NDK_SoGiayToTuyThan"] == "037218005053"
     assert result["NDK_NgayCap"] == "20/06/2025"
+    assert result["NDK_NoiCap"] == "Bộ Công an"
+
+
+def test_trich_luc_self_request_keeps_identity_from_both_declaration_blocks():
+    """Hai block trùng giấy tờ vẫn độc lập; OCR lệch tên không được làm mất giấy tờ mục II."""
+    source_fields = [
+        {"name": "Nyc_HoTen", "value": "LÊ NGÔ TRỌNG NGUYÊN"},
+        {"name": "Nyc_SoDinhDanh", "value": "068308008269"},
+        {"name": "Nyc_NgaySinh", "value": "01/04/2008"},
+        {"name": "Nyc_NgayCap", "value": "26/06/2026"},
+        {"name": "Nyc_NoiCap", "value": "Bộ Công an"},
+        {"name": "HoTich_LoaiSuKien", "value": "birth"},
+        {"name": "HoTich_TenGiayTo", "value": "Trích lục khai sinh"},
+        {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "LÊ NỘI TRỌNG NGUYÊN"},
+        {"name": "HoTich_SoDinhDanh", "value": "068308008269"},
+        # Tờ khai chỉ ghi "Giấy tờ tùy thân: <số>", không ghi rõ CCCD/Căn cước.
+        {"name": "HoTich_SoGiayToTuyThan", "value": "068308008269"},
+        {"name": "HoTich_NgayCapGiayToTuyThan", "value": "26/06/2026"},
+        {"name": "HoTich_NoiCapGiayToTuyThan", "value": "Bộ Công an"},
+    ]
+    options = {
+        "formContext": {
+            "applicantFullname": "LÊ NGÔ TRỌNG NGUYÊN",
+            "applicantIdentityNumber": "068308008269",
+        }
+    }
+
+    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields, options)}
+
+    assert result["SoDinhDanhC"] == "068308008269"
+    assert result["NYC_SoGiayToTuyThan"] == "068308008269"
+    assert result["NgayCapDDC"] == "26/06/2026"
+    assert result["NoiCapDDC"] == "Bộ Công an"
+    assert result["NDK_SoDinhDanh"] == "068308008269"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_SoGiayToTuyThan"] == "068308008269"
+    assert result["NDK_NgayCap"] == "26/06/2026"
     assert result["NDK_NoiCap"] == "Bộ Công an"
 
 
@@ -526,7 +599,17 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
         "ChuThe_NoiCuTru",
     }.issubset(field_names)
     assert 'HoTich_LoaiSuKien = "marriage"' in system_prompt
-    assert "TỜ KHAI CẤP BẢN SAO là nguồn chính" in system_prompt
+    assert "TỜ KHAI CẤP BẢN SAO chỉ sinh ToKhai_*" in system_prompt
+    assert "LOẠI GIẤY ĐƯỢC YÊU CẦU, NGƯỜI ĐƯỢC CẤP" in system_prompt
+    assert "khớp CẢ loại giấy được yêu cầu VÀ người được cấp" in system_prompt
+    assert "đúng người nhưng sai loại" in system_prompt
+    assert "Không trộn số/quyển/ngày/nơi đăng ký" in system_prompt
+    assert "ToKhai_LoaiSuKien" in field_names
+    assert "ToKhai_HoTenNguoiDuocCap" in field_names
+    assert "ToKhai_SoDinhDanh" in field_names
+    assert "ToKhai_CoQuanDangKy" in field_names
+    assert "ToKhai_So" in field_names
+    assert "ToKhai_NgayDangKy" in field_names
     assert 'block sau "cho người có tên dưới đây"' in system_prompt
     assert "HoTich_NoiCuTru trên TỜ KHAI CẤP BẢN SAO" in system_prompt
     assert 'không lấy dòng "Nơi cư trú" của người yêu cầu' in system_prompt
@@ -534,6 +617,13 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
     assert "KHÔNG coi là field không chắc chắn" in system_prompt
     assert '"Thành phố Hồ Chí Minh"' in system_prompt
     assert "BẮT BUỘC trả đủ HoTich_LoaiGiayToTuyThan" in system_prompt
+    assert "TỜ KHAI CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH có HAI BLOCK ĐỘC LẬP" in system_prompt
+    assert "TUYỆT ĐỐI KHÔNG KHỬ TRÙNG giữa Nyc_* và HoTich_*" in system_prompt
+    assert "Xác định vai trò theo VỊ TRÍ BLOCK" in system_prompt
+    assert "OCR có thể đọc sai một vài ký tự trong tên" in system_prompt
+    assert 'không ghi rõ chữ "CCCD"/"Căn cước"' in system_prompt
+    assert "HoTich_SoDinhDanh = <12 chữ số>" in system_prompt
+    assert "block 2 THỰC SỰ có dòng" in system_prompt
     assert "Không trả field quan hệ NYC_QuanHe" in system_prompt
     assert "HoSo_LoaiYeuCau" in system_prompt
     assert "PhuongThucNhanKQ" in system_prompt
@@ -550,7 +640,7 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
     assert 'NguoiDuocCap_HoTen lấy ở "Dự định đặt tên con"' in system_prompt
     assert "Không lấy chủ hộ ở mục 7" in system_prompt
     assert "Không sao chép Nyc_SoDinhDanh/Nyc_NgayCap/" in system_prompt
-    assert 'HoTich_So BẮT BUỘC trả khi giấy tờ hộ tịch chính có dòng "Số:"' in system_prompt
+    assert 'HoTich_So ưu tiên số trong block "Đã đăng ký tại" của TỜ KHAI' in system_prompt
     assert 'Dòng "Số: <mã>/<năm>" ở phần đầu' in system_prompt
     assert "BỎ toàn bộ NguoiDuocCap_*" in system_prompt
     assert 'không tự trả "Khác"' in system_prompt

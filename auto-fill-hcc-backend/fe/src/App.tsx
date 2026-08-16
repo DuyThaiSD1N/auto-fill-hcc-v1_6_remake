@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Traces from "./pages/Traces";
 import Stats from "./pages/Stats";
 import Accounts from "./pages/Accounts";
+import Reports from "./pages/Reports";
 import TraceDetailPage from "./components/TraceDetailPage";
 import type { View } from "./components/TopBar";
 import { AUTH_EXPIRED_EVENT, tokens } from "./api";
@@ -57,10 +58,12 @@ export default function App() {
   }
 
   // Chỉ admin mới vào được trang quản lý tài khoản; user thường bị đẩy về Nhật ký.
-  const effectiveView: View = view === "accounts" && user.role !== "admin" ? "traces" : view;
+  const adminOnlyView = view === "accounts" || view === "reports";
+  const effectiveView: View = adminOnlyView && user.role !== "admin" ? "traces" : view;
   const shared = { user, onLogout: handleLogout, view: effectiveView, onNavigate: navigate };
 
   if (effectiveView === "accounts") return <Accounts {...shared} />;
+  if (effectiveView === "reports") return <Reports {...shared} />;
   if (effectiveView === "stats") return <Stats {...shared} />;
   return <Traces {...shared} />;
 }

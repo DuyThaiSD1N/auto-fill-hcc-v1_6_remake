@@ -1,7 +1,8 @@
 """Compact prompt rules cho "Đăng ký lại kết hôn"."""
 
 EXTRA_RULES = """
-Đầu vào gồm: CCCD/CMND của hai bên (nam/nữ) và (nếu có) BẢN SAO GIẤY CHỨNG NHẬN KẾT HÔN cũ.
+Đầu vào có thể gồm: CCCD/CMND của hai bên, TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN,
+GIẤY CHỨNG NHẬN KẾT HÔN cũ và các giấy tờ hỗ trợ khác.
 
 NGUỒN DỮ LIỆU DANH TÍNH (ưu tiên CCCD, giấy CN kết hôn là dự phòng):
 - Tự phân biệt hai người bằng trường GIỚI TÍNH trên chính giấy tờ: Nam → nhóm CccdNam_* (chồng), Nữ → nhóm CccdNu_* (vợ).
@@ -31,15 +32,29 @@ NƠI CƯ TRÚ (CccdNam_NoiCuTru_TrongNuoc/CccdNu_NoiCuTru_TrongNuoc, object {quo
   = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì
   bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã. KHÔNG dồn xã + huyện vào diaChi.
 
-HỒ SƠ GỐC (lần đăng ký kết hôn TRƯỚC ĐÂY — chỉ từ giấy CN kết hôn cũ, KHÔNG suy từ CCCD):
-- HoTich_So: số đăng ký kết hôn, thường ở GÓC TRÊN giấy CN, dạng "NN/YYYY" (vd 40/2026) hoặc "NN".
-- HoTich_NgayDangKy: ngày, tháng, năm đăng ký kết hôn trước đây, dd/mm/yyyy.
-- Nơi đăng ký kết hôn trước đây gồm 2 phần TỈNH + PHƯỜNG/XÃ, thường ghi "UBND phường/xã <X>, tỉnh <Y>":
-  + HoTich_TinhDangKy = "<Y>" (tỉnh/thành phố, để lọc dropdown).
-  + HoTich_XaDangKy = tên đơn vị "<Phường/Xã> <X>" — GIỮ tiền tố "Phường"/"Xã"/"Thị trấn", BỎ "UBND" và
-    phần ", tỉnh <Y>". Vd "UBND phường Đoàn Kết, tỉnh Lai Châu" → "Phường Đoàn Kết".
-- Quyển số KHÔNG trả (Python tính từ HoTich_So).
+KẾT HÔN CŨ (lần đăng ký kết hôn TRƯỚC ĐÂY):
+- CHỈ hai loại tài liệu được phép cấp dữ liệu cho nhóm KetHonCu_*:
+  (1) TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; (2) GIẤY CHỨNG NHẬN KẾT HÔN cũ.
+  TUYỆT ĐỐI không lấy "Số", "Quyển số", "Ngày đăng ký", "Nơi đăng ký" từ GIẤY KHAI SINH;
+  không lấy từ CCCD, ngày cấp giấy tờ, ngày lập tờ khai hoặc giấy tờ hỗ trợ khác.
+- Ưu tiên theo TỪNG FIELD: giá trị ghi rõ trên GIẤY CHỨNG NHẬN KẾT HÔN cũ → nếu giấy cũ trống/không rõ
+  mới lấy giá trị ghi rõ trên tờ khai đăng ký lại. Nếu hai nguồn ghi khác nhau nhưng giấy cũ đọc rõ thì dùng giấy cũ,
+  vì đây là chứng cứ chính thức của lần đăng ký trước. Cả hai nguồn đều trống, chỉ có nhãn không có giá trị, hoặc OCR mơ hồ
+  → BỎ FIELD, không đoán và không ghép số từ dòng khác.
+- KetHonCu_So = số Giấy chứng nhận kết hôn/số đăng ký kết hôn trước đây, chỉ khi có giá trị rõ ngay sau nhãn
+  "Số", "Số H-T" hoặc "Theo Giấy chứng nhận kết hôn số". Không coi số quyết định, số mẫu, số CCCD hoặc
+  một số rời không gắn đúng nhãn là số kết hôn.
+- KetHonCu_QuyenSo = giá trị ghi rõ ngay sau nhãn "Quyển số". Không có giá trị → bỏ field; KHÔNG tự tính từ số.
+- KetHonCu_NgayDangKy = ngày đăng ký kết hôn trước đây, dd/mm/yyyy. Ưu tiên ngày đăng ký trên giấy chứng nhận
+  kết hôn cũ; nếu giấy cũ không rõ thì lấy ngày trong câu "Đã đăng ký kết hôn tại ... ngày ... tháng ... năm ..."
+  trên tờ khai. Dòng ngày kết hôn vẫn hợp lệ khi OCR tên cạnh phần chữ ký bị sai; neo theo tiêu đề
+  GIẤY CHỨNG NHẬN KẾT HÔN và nhãn ngày, không lấy tên người ký để đổi vai hoặc loại bỏ ngày.
+- Nơi đăng ký trước đây:
+  + KetHonCu_TinhDangKy = tỉnh/thành phố của cơ quan đăng ký.
+  + KetHonCu_XaDangKy = "Phường/Xã/Thị trấn <tên>", giữ tiền tố đơn vị và bỏ "UBND".
+  Ưu tiên cơ quan đăng ký trên giấy chứng nhận kết hôn cũ; nếu giấy cũ không rõ mới lấy mục
+  "Đã đăng ký kết hôn tại" trên tờ khai.
 
 KHÔNG trả field UI/default: HoTenBenNam, HoTenBenNu, LoaiGiayToDinhDanh_*, SoGiayToDinhDanh_*, LoaiCuTru_*,
-NoiCuTru_*, LoaiTinhTrangHonNhan_*, SoLanKetHon_*, loaiDangKy, CapBanSao, quyenDangKyTruocDay.
+NoiCuTru_*, LoaiTinhTrangHonNhan_*, SoLanKetHon_*, loaiDangKy, CapBanSao.
 """

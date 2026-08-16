@@ -79,6 +79,21 @@ def _doc_type(so_dinh_danh, issuer: str = "") -> str:
     return id_doc_type("Thẻ căn cước công dân", issuer)
 
 
+def _identity_number_for_form(value, document_type: str = "") -> str:
+    """Bỏ dấu phân cách OCR khỏi số CCCD/CMND nhưng không phá số hộ chiếu chữ-số.
+
+    Tờ khai viết tay có thể bị OCR thành ``068/194005165``. Với CCCD/CMND, form chỉ nhận
+    chuỗi 12/9 chữ số; còn hộ chiếu có thể chứa chữ cái nên phải giữ nguyên.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if "ho chieu" in _fold(document_type):
+        return text
+    digits = _digits(text)
+    return digits if len(digits) in (9, 12) else text
+
+
 def _copy_value(value) -> str:
     folded = _fold(value)
     if folded in {"yes", "true", "1", "co"}:
@@ -203,14 +218,16 @@ def enrich(
         return value
 
     requester_name = requester("NguoiYeuCau_HoTen", "Cccd_HoTen")
-    requester_id = requester("NguoiYeuCau_SoDinhDanh", "Cccd_SoDinhDanh")
+    requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
+    requester_id = _identity_number_for_form(
+        requester("NguoiYeuCau_SoDinhDanh", "Cccd_SoDinhDanh"),
+        requester_doc_type,
+    )
     requester_issue_date = requester("NguoiYeuCau_NgayCap", "Cccd_NgayCap")
     requester_issuer = requester("NguoiYeuCau_NoiCap", "Cccd_NoiCap") or default_issuer(requester_issue_date)
     requester_residence = _area(requester("NguoiYeuCau_NoiCuTru", "Cccd_NoiCuTru"))
     # Tờ khai gọi tên loại giấy tờ ("CCCD số ..."/"CMND số ...") thì tin tên đó; không thì suy
     # từ độ dài số định danh + nơi cấp như cũ.
-    requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
-
     # Họ tên người yêu cầu.
     if requester_name:
         add("HoVaTenC", requester_name)

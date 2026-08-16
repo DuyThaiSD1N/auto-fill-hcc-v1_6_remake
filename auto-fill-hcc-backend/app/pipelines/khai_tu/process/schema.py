@@ -22,7 +22,8 @@ FIELDS: list[dict] = [
     {"name": "NguoiYeuCau_SoDinhDanh",
      "desc": "Số CCCD/CMND của người yêu cầu ĐÚNG NHƯ TỜ KHAI ghi tại nhãn 'Giấy tờ tùy thân' "
              "(dạng 'CCCD số ...'/'CMND số ...'). Có tờ khai ghi giá trị này thì BẮT BUỘC trả, "
-             "kể cả khi số đó trùng với số trên ảnh CCCD."},
+             "kể cả khi số đó trùng với số trên ảnh CCCD. Với CCCD/CMND chỉ trả 12/9 chữ số; "
+             "bỏ khoảng trắng, dấu chấm, dấu gạch hoặc dấu '/' do OCR chèn vào giữa các chữ số."},
 
     {"name": "NguoiYeuCau_LoaiGiayTo",
      "desc": "Loại giấy tờ tùy thân người yêu cầu ĐÚNG NHƯ TỜ KHAI gọi tên tại nhãn 'Giấy tờ tùy thân', "

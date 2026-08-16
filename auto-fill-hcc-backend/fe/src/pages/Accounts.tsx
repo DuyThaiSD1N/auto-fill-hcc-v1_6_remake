@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
-import { createUser, deleteUser, listUsers, updateUser } from "../api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createUser,
+  deleteUser,
+  getProvinces,
+  getWards,
+  listUsers,
+  updateUser,
+  type Province,
+} from "../api";
 import type { ManagedUser, Role, User } from "../types";
 import { fmtDateTime } from "../format";
+import Combobox from "../components/Combobox";
 import TopBar, { type View } from "../components/TopBar";
 
 interface Props {
@@ -13,6 +22,7 @@ interface Props {
 
 interface FormState {
   id: string | null; // null = tạo mới
+  originalRole: Role | null;
   username: string;
   password: string;
   name: string;
@@ -23,6 +33,7 @@ interface FormState {
 
 const EMPTY_FORM: FormState = {
   id: null,
+  originalRole: null,
   username: "",
   password: "",
   name: "",
@@ -40,22 +51,75 @@ const ROLE_META: Record<Role, { label: string; cls: string }> = {
 };
 
 const PAGE_SIZE = 20;
+const isOfficialRole = (role: Role | null): boolean => role === "commune" || role === "province";
+type RoleFilter = "all" | Role;
+const ROLE_FILTER_OPTIONS: { key: RoleFilter; label: string }[] = [
+  { key: "all", label: "Tất cả vai trò" },
+  { key: "admin", label: "Quản trị" },
+  { key: "user", label: "Người dùng" },
+  { key: "commune", label: "Hành chính công xã" },
+  { key: "province", label: "Hành chính công tỉnh" },
+];
+
+const foldLocation = (value: string): string =>
+  value
+    .replace(/Đ/g, "D")
+    .replace(/đ/g, "d")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+
+const withoutWardType = (value: string): string =>
+  value.replace(/^(Phường|Xã|Đặc khu)\s+/i, "").trim();
+
+function findProvince(provinces: Province[], value: string): Province | undefined {
+  const folded = foldLocation(value);
+  return provinces.find(
+    (province) =>
+      foldLocation(province.text) === folded || foldLocation(province.name) === folded,
+  );
+}
+
+function findWard(wards: string[], value: string): string | undefined {
+  const folded = foldLocation(value);
+  const exact = wards.find((ward) => foldLocation(ward) === folded);
+  if (exact) return exact;
+  const legacyMatches = wards.filter(
+    (ward) => foldLocation(withoutWardType(ward)) === folded,
+  );
+  return legacyMatches.length === 1 ? legacyMatches[0] : undefined;
+}
 
 export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   const [items, setItems] = useState<ManagedUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [wards, setWards] = useState<string[]>([]);
+  const [provincesLoading, setProvincesLoading] = useState(true);
+  const [wardsLoading, setWardsLoading] = useState(false);
+  const [provincesError, setProvincesError] = useState("");
+  const [locationError, setLocationError] = useState("");
+  const wardsCache = useRef(new Map<string, string[]>());
+  const wardsRequestId = useRef(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await listUsers(page, PAGE_SIZE);
+      const res = await listUsers(page, PAGE_SIZE, roleFilter === "all" ? undefined : roleFilter);
+      const lastPage = Math.max(1, Math.ceil(res.total / PAGE_SIZE));
+      if (page > lastPage) {
+        setPage(lastPage);
+        return;
+      }
       setItems(res.items);
       setTotal(res.total);
     } catch (e) {
@@ -63,21 +127,111 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, roleFilter]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setProvincesLoading(true);
+    getProvinces(controller.signal)
+      .then((result) => {
+        if (!active) return;
+        setProvinces(result.provinces);
+        setProvincesError("");
+      })
+      .catch((reason) => {
+        if (!active || (reason instanceof DOMException && reason.name === "AbortError")) return;
+        setProvincesError(
+          reason instanceof Error ? reason.message : "Không tải được danh mục tỉnh/thành",
+        );
+      })
+      .finally(() => {
+        if (active) setProvincesLoading(false);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const requestId = ++wardsRequestId.current;
+    if (!form) {
+      setWards([]);
+      setWardsLoading(false);
+      return;
+    }
+    const province = findProvince(provinces, form.tinh);
+    if (!province) {
+      setWards([]);
+      setWardsLoading(false);
+      return;
+    }
+
+    // Tài khoản cũ có thể lưu tên ngắn. Chỉ chuẩn hóa trong form; DB chỉ thay đổi
+    // khi quản trị viên chủ động bấm Lưu thay đổi.
+    if (form.tinh !== province.text) {
+      setForm((current) => current ? { ...current, tinh: province.text } : current);
+      return;
+    }
+
+    const applyWards = (items: string[]) => {
+      setWards(items);
+      setForm((current) => {
+        if (!current || current.tinh !== province.text || !current.xa) return current;
+        const canonicalWard = findWard(items, current.xa);
+        return canonicalWard && canonicalWard !== current.xa
+          ? { ...current, xa: canonicalWard }
+          : current;
+      });
+    };
+
+    const cached = wardsCache.current.get(province.slug);
+    if (cached) {
+      applyWards(cached);
+      setWardsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setWards([]);
+    setWardsLoading(true);
+    setLocationError("");
+    getWards(province.slug, controller.signal)
+      .then((result) => {
+        if (requestId !== wardsRequestId.current) return;
+        wardsCache.current.set(province.slug, result.communes);
+        applyWards(result.communes);
+      })
+      .catch((reason) => {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        if (requestId !== wardsRequestId.current) return;
+        setLocationError(
+          reason instanceof Error ? reason.message : "Không tải được danh mục xã/phường",
+        );
+      })
+      .finally(() => {
+        if (requestId === wardsRequestId.current) setWardsLoading(false);
+      });
+    return () => controller.abort();
+  }, [form?.tinh, provinces]);
+
   function openCreate() {
     setFormError("");
+    setLocationError("");
     setForm({ ...EMPTY_FORM });
   }
 
   function openEdit(u: ManagedUser) {
     setFormError("");
+    setLocationError("");
     setForm({
       id: u.id,
+      originalRole: u.role,
       username: u.username,
       password: "",
       name: u.name ?? "",
@@ -91,6 +245,17 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     e.preventDefault();
     if (!form) return;
     setFormError("");
+    const changesOfficialScope =
+      form.id !== null &&
+      form.originalRole !== null &&
+      isOfficialRole(form.originalRole) !== isOfficialRole(form.role);
+    if (changesOfficialScope) {
+      const entersOfficialScope = isOfficialRole(form.role);
+      const message = entersOfficialScope
+        ? "Đổi sang vai trò HCC sẽ cộng toàn bộ lịch sử của tài khoản này vào \"Hồ sơ thực tế\". Bạn có muốn tiếp tục?"
+        : "Bỏ vai trò HCC sẽ loại toàn bộ lịch sử của tài khoản này khỏi \"Hồ sơ thực tế\". Dữ liệu vẫn còn trong \"Tất cả hồ sơ\". Bạn có muốn tiếp tục?";
+      if (!window.confirm(message)) return;
+    }
     setSaving(true);
     try {
       if (form.id === null) {
@@ -135,13 +300,31 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   }
 
   const isCreate = form?.id === null;
+  const roleChangesOfficialScope = Boolean(
+    form &&
+      form.id !== null &&
+      form.originalRole !== null &&
+      isOfficialRole(form.originalRole) !== isOfficialRole(form.role),
+  );
+  const selectedProvince = form ? findProvince(provinces, form.tinh) : undefined;
+  const locationValid = Boolean(
+    form &&
+      ((!form.tinh.trim() && !form.xa.trim()) ||
+        (selectedProvince && (!form.xa.trim() || Boolean(findWard(wards, form.xa))))),
+  );
   const canSubmit =
     form &&
+    locationValid &&
     (isCreate
       ? form.username.trim().length >= 3 && form.password.length >= 8
       : form.password === "" || form.password.length >= 8);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  function changeRoleFilter(nextRole: RoleFilter) {
+    setRoleFilter(nextRole);
+    setPage(1);
+  }
 
   return (
     <div className="app">
@@ -152,9 +335,23 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           <h1 className="page-title">Quản lý tài khoản</h1>
           <p className="muted page-sub">Mỗi tài khoản gắn với một xã/phường</p>
         </div>
-        <button className="btn-primary" onClick={openCreate}>
-          + Thêm tài khoản
-        </button>
+        <div className="accounts-head-actions">
+          <label className="accounts-role-filter">
+            <span>Lọc theo vai trò</span>
+            <select
+              value={roleFilter}
+              onChange={(event) => changeRoleFilter(event.target.value as RoleFilter)}
+              disabled={loading}
+            >
+              {ROLE_FILTER_OPTIONS.map((option) => (
+                <option value={option.key} key={option.key}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <button className="btn-primary" onClick={openCreate}>
+            + Thêm tài khoản
+          </button>
+        </div>
       </div>
 
       {error && <div className="error bar">{error}</div>}
@@ -183,7 +380,9 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
             {!loading && items.length === 0 && (
               <tr>
                 <td colSpan={7} className="center muted">
-                  Chưa có tài khoản nào
+                  {roleFilter === "all"
+                    ? "Chưa có tài khoản nào"
+                    : "Không có tài khoản thuộc vai trò đã chọn"}
                 </td>
               </tr>
             )}
@@ -281,23 +480,64 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
             </label>
 
             <div className="form-row">
-              <label>
-                Xã / Phường
-                <input
-                  value={form.xa}
-                  onChange={(e) => setForm({ ...form, xa: e.target.value })}
-                  placeholder="vd: Tân Phong"
-                />
-              </label>
-              <label>
-                Tỉnh / Thành
-                <input
-                  value={form.tinh}
-                  onChange={(e) => setForm({ ...form, tinh: e.target.value })}
-                  placeholder="vd: Lai Châu"
-                />
-              </label>
+              <Combobox
+                label="Tỉnh / Thành"
+                value={selectedProvince?.text ?? form.tinh}
+                options={provinces.map((province) => ({
+                  value: province.text,
+                  label: province.text,
+                }))}
+                allLabel="Chưa chọn"
+                placeholder="Tìm tỉnh/thành…"
+                disabled={provincesLoading || Boolean(provincesError)}
+                onChange={(value) => {
+                  setLocationError("");
+                  setForm({ ...form, tinh: value, xa: "" });
+                }}
+              />
+              <Combobox
+                label="Xã / Phường"
+                value={findWard(wards, form.xa) ?? form.xa}
+                options={wards.map((ward) => ({ value: ward, label: ward }))}
+                allLabel="Chưa chọn"
+                placeholder="Tìm xã/phường…"
+                disabled={!selectedProvince || wardsLoading}
+                onChange={(value) => {
+                  setLocationError("");
+                  setForm({ ...form, xa: value });
+                }}
+              />
             </div>
+
+            {(provincesLoading || wardsLoading) && (
+              <div className="location-status">
+                {provincesLoading
+                  ? "Đang tải danh mục tỉnh/thành…"
+                  : "Đang tải danh mục xã/phường…"}
+              </div>
+            )}
+            {(provincesError || locationError) && (
+              <div className="error">{provincesError || locationError}</div>
+            )}
+            {!provincesError &&
+              !locationError &&
+              !provincesLoading &&
+              form.tinh &&
+              !selectedProvince && (
+                <div className="error">
+                  Tỉnh/thành cũ không còn trong danh mục. Vui lòng chọn lại.
+                </div>
+              )}
+            {!provincesError &&
+              !locationError &&
+              selectedProvince &&
+              form.xa &&
+              !wardsLoading &&
+              !findWard(wards, form.xa) && (
+                <div className="error">
+                  Xã/phường cũ không thuộc tỉnh đã chọn. Vui lòng chọn lại.
+                </div>
+              )}
 
             <label>
               Vai trò
@@ -311,6 +551,17 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                 <option value="admin">Quản trị</option>
               </select>
             </label>
+
+            {roleChangesOfficialScope && form && (
+              <div className="role-impact-note" role="note">
+                <strong>Ảnh hưởng số liệu thống kê</strong>
+                <span>
+                  {isOfficialRole(form.role)
+                    ? "Toàn bộ lịch sử của tài khoản sẽ được tính vào Hồ sơ thực tế."
+                    : "Toàn bộ lịch sử của tài khoản sẽ không còn được tính vào Hồ sơ thực tế; dữ liệu vẫn còn trong Tất cả hồ sơ."}
+                </span>
+              </div>
+            )}
 
             {formError && <div className="error">{formError}</div>}
 

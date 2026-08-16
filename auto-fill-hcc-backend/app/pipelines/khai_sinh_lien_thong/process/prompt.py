@@ -4,11 +4,11 @@ EXTRA_RULES = """
 Đầu vào gồm CCCD/CMND của CHA, CCCD/CMND của MẸ, GIẤY CHỨNG SINH của con, và CÓ THỂ có GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ.
 
 # ═══ A. NGUYÊN TẮC NGUỒN & ƯU TIÊN (CHUNG) ═══
-- ƯU TIÊN NGUỒN: nếu CÓ CCCD của cha/mẹ thì dùng CCCD; chỉ dùng giấy chứng nhận kết hôn (hoặc giấy chứng sinh/cam đoan) để suy THÔNG TIN CÁ NHÂN cha/mẹ (họ tên, ngày sinh, dân tộc, nơi cư trú...) KHI KHÔNG có CCCD tương ứng. Vẫn cố đọc đủ cả hai khi có.
+- ĐỐI CHIẾU NGUỒN: dùng CCCD/CMND đúng người để neo danh tính bố/mẹ khi có; nguồn chọn cho TỪNG FIELD phải tuân thủ đúng thứ tự riêng tại mục C/D/E. Không áp một thứ tự CCCD-first chung cho cả nhóm vì dân tộc và một số thông tin vai trò nằm trên giấy chứng sinh/tờ khai/giấy kết hôn.
 - LƯU Ý PHÂN BIỆT: quy tắc ưu tiên trên CHỈ áp cho THÔNG TIN CÁ NHÂN cha/mẹ. Các trường SỐ/NGÀY/NƠI CẤP của chính GIẤY CHỨNG NHẬN KẾT HÔN (GcnKetHon_*) là DỮ LIỆU CỦA FORM → LUÔN phải trích khi hồ sơ CÓ giấy kết hôn, BẤT KỂ cha/mẹ đã có CCCD hay chưa (xem mục G). Đừng bỏ qua giấy kết hôn chỉ vì đã có CCCD.
-- Mỗi nhóm CccdNam_*/CccdNu_* phải lấy TRỌN từ MỘT CCCD, KHÔNG trộn tên từ giấy chứng sinh với số định danh từ CCCD (ngoại lệ: dân tộc — xem mục E — và các fallback nêu ở mục C/D).
-- KHÔNG lấy thông tin người lớn trên CCCD để điền Gcs_* (thông tin con); và ngược lại KHÔNG lấy thông tin con để điền CccdNam_*/CccdNu_*.
-- Tên cha/mẹ ghi trên GIẤY CHỨNG SINH chỉ dùng để ĐỐI CHIẾU chọn đúng CCCD, KHÔNG trả ra output khi người đó ĐÃ có CCCD hoặc giấy kết hôn: CccdNam_HoTen/CccdNu_HoTen luôn là tên trên CCCD, kể cả khi khác tên trên giấy chứng sinh. NGOẠI LỆ cho MẸ: xem mục D.
+- ThongTinBo_* và ThongTinMe_* là nhóm THÔNG TIN THEO VAI TRÒ BỐ/MẸ, KHÔNG phải nhóm dữ liệu chỉ lấy từ CCCD nam/nữ. Phải đối chiếu họ tên/số định danh để mọi giá trị trong từng nhóm thuộc ĐÚNG CÙNG MỘT NGƯỜI; nguồn của từng field tuân theo thứ tự riêng tại mục C/D/E.
+- KHÔNG lấy thông tin người lớn trên CCCD để điền Gcs_* (thông tin con); và ngược lại KHÔNG lấy thông tin con để điền ThongTinBo_*/ThongTinMe_*.
+- CCCD/CMND là nguồn đối chiếu danh tính mạnh khi có, nhưng không được vì đã có CCCD mà bỏ dân tộc hoặc thông tin vai trò ghi rõ trên tờ khai/giấy chứng sinh/giấy kết hôn. Khi các giấy ghi khác nhau, chọn theo đúng thứ tự nguồn của field tại mục C/D/E; tuyệt đối không ghép dữ liệu của hai người khác nhau.
 
 # ═══ B. THÔNG TIN CON (Gcs_*) ═══
 ## B1. Nguồn thông tin con
@@ -32,7 +32,7 @@ EXTRA_RULES = """
   + Không tìm được họ tên con riêng biệt (khác mẹ) → ĐỂ TRỐNG, tuyệt đối không copy tên mẹ.
 
 ## B3. Dân tộc con (Gcs_DanTocCon)
-- Giấy chứng sinh KHÔNG có dân tộc của CON — dòng "Dân tộc" nằm trong KHỐI MẸ là dân tộc của MẸ (→ CccdNu_DanToc), KHÔNG phải của con. Để TRỐNG Gcs_DanTocCon (trừ khi giấy ghi rõ dân tộc riêng của con).
+- Giấy chứng sinh KHÔNG có dân tộc của CON — dòng "Dân tộc" nằm trong KHỐI MẸ là dân tộc của MẸ (→ ThongTinMe_DanToc), KHÔNG phải của con. Để TRỐNG Gcs_DanTocCon (trừ khi giấy ghi rõ dân tộc riêng của con).
 
 ## B4. Nơi sinh (Gcs_NoiSinh)
 - Gcs_NoiSinh BẮT BUỘC khi có GIẤY CHỨNG SINH — TUYỆT ĐỐI KHÔNG bỏ trống. Lấy từ dòng "Tại:" trên giấy chứng sinh:
@@ -54,60 +54,50 @@ Khi hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH (tiêu đề có "TỜ KHAI ĐĂ
 - Tk_DanTocCon = dân tộc người được khai sinh (dòng "Dân tộc" trong khối CON — KHÔNG phải dòng "Dân tộc" của cha/mẹ). Ưu tiên hơn suy luận từ cha/mẹ.
 Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu tiên Tk_* trước.
 
-# ═══ C. THÔNG TIN CHA (CccdNam_*) — ƯU TIÊN GIẤY CHỨNG SINH / KẾT HÔN ═══
+# ═══ C. THÔNG TIN BỐ/CHA (ThongTinBo_*) — ƯU TIÊN GIẤY CHỨNG SINH / KẾT HÔN ═══
 - THỨ TỰ ƯU TIÊN NGUỒN:
   (1) **GIẤY CHỨNG SINH** (khối "người cha" trên giấy chứng sinh của con hoặc con khác) — ưu tiên cao nhất khi có
   (2) **GIẤY CHỨNG NHẬN KẾT HÔN** (block "chồng"/"bên nam") — ưu tiên cao khi có
   (3) **GIẤY KHAI SINH** (bản sao/trích lục của con khác trong hồ sơ, có khối "người cha") — lấy khi không có nguồn (1)(2)
-  (4) CCCD/CMND giới tính "Nam" — chỉ dùng khi các nguồn trên không có
-- CccdNam_HoTen, CccdNam_NgaySinh, CccdNam_SoDinhDanh, CccdNam_QuocTich, CccdNam_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, fallback CCCD Nam
-- CccdNam_DanToc: BẮT BUỘC từ tờ khai khai sinh (khối cha) hoặc giấy chứng sinh (khối cha) hoặc giấy kết hôn (mục chồng) hoặc giấy khai sinh (khối cha), KỂ CẢ khi cha đã có CCCD
-- **CccdNam_QueQuan**: ⚠️ BẮT BUỘC lấy từ CCCD/CMND cũ khi có dòng "Quê quán / Place of origin". Đây là field QUAN TRỌNG để điền quê quán con. Tách địa chỉ theo mục F (object {tinh,xa,diaChi}). VÍ DỤ: "Quê quán: Nghĩa Hòa, Tư Nghĩa, Quảng Ngãi" → {"tinh":"Quảng Ngãi","xa":"Nghĩa Hòa","diaChi":""}. KHÔNG bỏ qua field này!
-- CccdNam_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
-- LƯU Ý: Khi hồ sơ có GIẤY KHAI SINH (bản sao) của CON KHÁC (anh/chị/em của đứa trẻ đang khai sinh), giấy này thường có đầy đủ thông tin cha/mẹ trong khối "Họ, chữ đệm, tên người cha" và "Họ, chữ đệm, tên người mẹ" → BẮT BUỘC trích thông tin cha từ đó khi không có CCCD cha
+  (4) CCCD/CMND được đối chiếu là của đúng người bố — chỉ dùng khi các nguồn trên không có
+- ThongTinBo_HoTen, ThongTinBo_NgaySinh, ThongTinBo_SoDinhDanh, ThongTinBo_QuocTich, ThongTinBo_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, sau đó mới xét CCCD/CMND đúng người bố
+- ThongTinBo_DanToc: áp dụng rule riêng tại mục E; hai nguồn chính bắt buộc soát là tờ khai đăng ký khai sinh (khối bố đẻ/cha) > giấy chứng nhận kết hôn (khối chồng/bên nam).
+- ThongTinBo_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
+- ThongTinBo_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
+- LƯU Ý: Khi hồ sơ có GIẤY KHAI SINH (bản sao) của CON KHÁC (anh/chị/em của đứa trẻ đang khai sinh), giấy này thường có đầy đủ thông tin cha/mẹ trong khối "Họ, chữ đệm, tên người cha" và "Họ, chữ đệm, tên người mẹ" → BẮT BUỘC trích thông tin cha từ đó theo thứ tự nguồn ở trên.
 
-# ═══ D. THÔNG TIN MẸ (CccdNu_*) — ƯU TIÊN GIẤY CHỨNG SINH ═══
+# ═══ D. THÔNG TIN MẸ (ThongTinMe_*) — ƯU TIÊN GIẤY CHỨNG SINH ═══
 - THỨ TỰ ƯU TIÊN NGUỒN (đơn giản hóa):
   (1) **GIẤY CHỨNG SINH** (khối thông tin mẹ) — ưu tiên cao nhất, luôn có
   (2) **GIẤY KHAI SINH** (bản sao/trích lục của con khác trong hồ sơ, có khối "người mẹ") — lấy khi không có giấy chứng sinh
   (3) GIẤY CHỨNG NHẬN KẾT HÔN (block "vợ"/"bên nữ") — bổ sung khi các nguồn trên thiếu
-  (4) CCCD/CMND giới tính "Nữ" — chỉ dùng khi các nguồn trên không đủ
-- CccdNu_HoTen: lấy từ giấy chứng sinh (khối mẹ), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
-- CccdNu_SoDinhDanh: lấy từ giấy chứng sinh (Số ĐDCN/Hộ chiếu), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
-- CccdNu_NgaySinh: ưu tiên giấy chứng sinh (có thể chỉ năm sinh), fallback giấy khai sinh, fallback giấy kết hôn, fallback CCCD
-- CccdNu_DanToc: BẮT BUỘC từ giấy chứng sinh (dòng "Dân tộc" khối mẹ) hoặc giấy khai sinh (khối mẹ) hoặc giấy kết hôn
-- **CccdNu_QueQuan**: ⚠️ BẮT BUỘC lấy từ CCCD/CMND cũ khi có dòng "Quê quán / Place of origin". Tách địa chỉ theo mục F (object {tinh,xa,diaChi}). VÍ DỤ: "Quê quán: Tư Nghĩa, Quảng Ngãi" → {"tinh":"Quảng Ngãi","xa":"Tư Nghĩa","diaChi":""}. Quê quán chỉ có 2 cấp thì cấp còn lại là XÃ, KHÔNG bỏ trống field này.
-- CccdNu_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có.
-- CccdNu_NoiCuTru: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD
+  (4) CCCD/CMND được đối chiếu là của đúng người mẹ — chỉ dùng khi các nguồn trên không đủ
+- ThongTinMe_HoTen: lấy từ giấy chứng sinh (khối mẹ), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
+- ThongTinMe_SoDinhDanh: lấy từ giấy chứng sinh (Số ĐDCN/Hộ chiếu), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
+- ThongTinMe_NgaySinh: ưu tiên giấy chứng sinh (có thể chỉ năm sinh), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
+- ThongTinMe_DanToc: BẮT BUỘC lấy theo đúng thứ tự: giấy chứng sinh (dòng "Dân tộc" trong khối mẹ) > giấy chứng nhận kết hôn (khối vợ/bên nữ) > tờ khai đăng ký khai sinh (khối người mẹ). Có nguồn ưu tiên cao hơn thì không thay bằng nguồn thấp hơn.
+- ThongTinMe_QueQuan: BẮT BUỘC trích độc lập từ dòng "Quê quán / Place of origin:" trên CCCD mẹ, dù giống quê quán bố. Nếu chỉ có huyện và tỉnh thì không được gán tên huyện vào `xa`, nhưng vẫn phải trả field với tối thiểu `tinh`; không được bỏ field.
+- ThongTinMe_NoiCuTru: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD
 
-# ═══ D2. QUÊ QUÁN CON (dùng CccdNam_QueQuan / CccdNu_QueQuan) ═══
-- Quê quán của CON KHÔNG có trên giấy chứng sinh: hệ thống suy từ quê quán CHA (mặc định), riêng ca
-  sinh tại LÂM ĐỒNG thì lấy quê quán MẸ. Vì vậy PHẢI đọc dòng "Quê quán / Place of origin" trên CCCD
-  của CẢ CHA LẪN MẸ khi thẻ có dòng đó — thiếu bên nào là mất quê quán con.
-- KHÔNG lấy "Nơi thường trú / Place of residence" làm quê quán; hai dòng này khác nhau.
-- Thẻ CĂN CƯỚC mẫu mới không in quê quán → để trống field quê quán, và lấy "Nơi đăng ký khai sinh"
-  vào *_NoiDangKyKhaiSinh nếu thẻ có dòng này.
-
-# ═══ E. DÂN TỘC CHA/MẸ (CccdNam_DanToc = CHA, CccdNu_DanToc = MẸ) ═══
+# ═══ E. DÂN TỘC CHA/MẸ (ThongTinBo_DanToc = CHA, ThongTinMe_DanToc = MẸ) ═══
 - Thẻ CCCD/Căn cước gắn chip (mẫu mới) thường KHÔNG in dân tộc → PHẢI lấy dân tộc từ giấy tờ khác CÓ ghi, đối chiếu ĐÚNG NGƯỜI theo họ tên/số định danh. BẮT BUỘC điền dân tộc cho CẢ cha VÀ mẹ nếu bất kỳ giấy nào ghi — KỂ CẢ khi người đó ĐÃ CÓ CCCD (ĐỪNG vì cha/mẹ đã có CCCD mà bỏ qua dân tộc của họ).
-- THỨ TỰ ƯU TIÊN NGUỒN dân tộc (áp cho CẢ cha và mẹ):
-  + (1) TỜ KHAI ĐĂNG KÝ KHAI SINH: dòng "Dân tộc" trong khối "người cha" → CccdNam_DanToc; khối "người mẹ" → CccdNu_DanToc.
-  + (2) GIẤY CHỨNG NHẬN KẾT HÔN: dân tộc mục "chồng"/"bên nam" → dân tộc CHA (CccdNam_DanToc); mục "vợ"/"bên nữ" → dân tộc MẸ (CccdNu_DanToc). BẮT BUỘC lấy KỂ CẢ khi cha/mẹ đã có CCCD — vd giấy kết hôn ghi "chồng ... Dân tộc: Mông" thì CccdNam_DanToc = "Mông" dù cha đã có thẻ CCCD.
-  + (3) GIẤY CHỨNG SINH: dòng "Dân tộc: ..." trong KHỐI MẸ (ngay dưới "Họ tên khai sinh của mẹ") → CccdNu_DanToc (chỉ có dân tộc mẹ). BẮT BUỘC lấy kể cả khi mẹ đã có CCCD.
-  + Có thể lấy từ giấy tờ khác miễn đối chiếu tên đúng cha/mẹ ứng với dân tộc đó.
-- VÍ DỤ BẮT BUỘC (PHẢI làm đúng):
-  Giấy chứng sinh ghi "Dân tộc: Cơ ho" trong khối mẹ + mẹ đã có CCCD (CCCD không in dân tộc)
-  → PHẢI trả CccdNu_DanToc = "Cơ Ho" (lấy từ giấy chứng sinh theo thứ tự (3))
-  → KHÔNG được bỏ trống với lý do "đã có CCCD".
-  Giấy kết hôn ghi "chồng Dân tộc: Trung" + cha đã có CCCD
-  → PHẢI trả CccdNam_DanToc = "Hoa" (chuẩn hóa "Trung" → "Hoa")
-  → KHÔNG được bỏ trống với lý do "đã có CCCD".
+- RIÊNG DÂN TỘC MẸ (ThongTinMe_DanToc), áp dụng DUY NHẤT thứ tự sau:
+  + (1) GIẤY CHỨNG SINH: lấy dòng "Dân tộc: ..." trong KHỐI THÔNG TIN MẸ, nằm cùng cụm với "Họ, chữ đệm, tên khai sinh của mẹ", ngày sinh và số ĐDCN/hộ chiếu của mẹ. Đây là dân tộc MẸ, không phải dân tộc con. Có giá trị ở nguồn này thì PHẢI dùng và dừng xét nguồn thấp hơn.
+  + (2) Nếu giấy chứng sinh không ghi/không đọc được dân tộc mẹ, lấy dòng "Dân tộc" trong khối "vợ"/"bên nữ" của GIẤY CHỨNG NHẬN KẾT HÔN. Đối chiếu đúng người mẹ theo họ tên hoặc số định danh.
+  + (3) Chỉ khi hai nguồn trên đều không có, lấy dòng "Dân tộc" trong khối "người mẹ" của TỜ KHAI ĐĂNG KÝ KHAI SINH.
+  + Khi đọc được một giá trị dân tộc mẹ không rỗng từ đúng khối, BẮT BUỘC trả ThongTinMe_DanToc; KHÔNG được bỏ field vì cách ghi ít gặp, vì chưa chuẩn hóa được tên dân tộc, hoặc vì CCCD của mẹ không in dân tộc.
+  + Chỉ bỏ ThongTinMe_DanToc khi CẢ BA nguồn trên đều không ghi hoặc thực sự không đọc được giá trị.
+- RIÊNG DÂN TỘC CHA (ThongTinBo_DanToc), ưu tiên bắt buộc hai nguồn chính sau:
+  + (1) TỜ KHAI ĐĂNG KÝ KHAI SINH: lấy dòng "Dân tộc" trong KHỐI THÔNG TIN BỐ ĐẺ/CHA/NGƯỜI CHA. Không lấy dòng dân tộc của người được khai sinh hoặc của mẹ.
+  + (2) Nếu tờ khai không có hoặc không ghi/không đọc được dân tộc cha, lấy dòng "Dân tộc" trong khối "chồng"/"bên nam" của GIẤY CHỨNG NHẬN KẾT HÔN. Đối chiếu đúng người cha theo họ tên hoặc số định danh.
+  + Hễ hồ sơ có một trong hai giấy tờ trên, PHẢI chủ động soát đúng khối cha/chồng. Khi đọc được giá trị dân tộc cha không rỗng thì BẮT BUỘC trả ThongTinBo_DanToc; KHÔNG được bỏ field vì cha đã có CCCD, vì CCCD không in dân tộc, vì tên dân tộc ít gặp hoặc vì chưa chuẩn hóa được tên dân tộc.
+  + Chỉ khi CẢ HAI nguồn chính trên đều không có, không ghi hoặc thực sự không đọc được giá trị thì mới xét dòng dân tộc trong khối cha của giấy chứng sinh/giấy khai sinh. Không nguồn nào ghi rõ mới được bỏ ThongTinBo_DanToc.
 - TUYỆT ĐỐI không lấy dân tộc người này gán cho người khác (vd dân tộc con/mẹ KHÔNG gán cho cha).
 - KHÔNG giấy tờ nào ghi rõ dân tộc của người đó → ĐỂ TRỐNG (không bịa, không mặc định "Kinh"). Nhưng nếu CÓ THÔNG TIN thì BẮT BUỘC ghi rõ dân tộc của CẢ cha và mẹ.
 - CHUẨN HÓA tên dân tộc về đúng danh mục (sửa lỗi/biến thể OCR): Kinh, Mông, Thái, Dao, Giáy, Tày, Nùng, Mường, Hà Nhì, Lự, Lào, Khơ Mú, Hoa, Sán Chay, Sán Dìu, Cống, Mảng, La Hủ, Si La, Hmông... Ví dụ OCR "Giây"/"Záy" → "Giáy"; "Hmông"/"H'Mông"/"H Mông" → "Mông"; "Kinnh" → "Kinh"; "Trung"/"Trung Hoa" → "Hoa"; "C ho"/"K ho"/"Kho" → "Cơ Ho".
 - **QUAN TRỌNG VỀ DÂN TỘC KHÔNG KHỚP**: Nếu dân tộc OCR đọc được KHÔNG KHỚP với bất kỳ tên chuẩn nào trong danh sách trên (ví dụ: "Cil", "Cill" và các tên dân tộc hiếm/không rõ), BẮT BUỘC phải TRẢ VỀ GIÁ TRỊ GỐC CHÍNH XÁC như OCR đọc được. TUYỆT ĐỐI KHÔNG tự ý suy luận hoặc đổi sang dân tộc khác (như "Kinh"). Ví dụ: OCR đọc "Cil" → trả "Cil" (KHÔNG đổi thành "Kinh" hay bất kỳ tên nào khác).
 
-# ═══ F. TÁCH ĐỊA CHỈ (CccdNam_NoiCuTru, CccdNu_NoiCuTru, CccdNam_QueQuan — object {tinh,xa,diaChi}) ═══
+# ═══ F. TÁCH ĐỊA CHỈ (ThongTinBo_NoiCuTru, ThongTinMe_NoiCuTru, ThongTinBo_QueQuan, ThongTinMe_QueQuan — object {tinh,xa,diaChi}) ═══
 Địa chỉ hành chính 2 cấp XÃ/PHƯỜNG/THỊ TRẤN → TỈNH/THÀNH PHỐ:
 - xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN — KHÔNG kèm tiền tố loại đơn vị (Xã/Phường/Thị trấn). Vd: "Xã Tả Lèng" → xa="Tả Lèng". tinh = tên tỉnh/thành phố.
 - diaChi = phần CHI TIẾT đứng TRƯỚC xã/phường: tổ, tổ dân phố, bản, thôn, xóm, khu, số nhà, đường. TUYỆT ĐỐI KHÔNG đưa tên phường/xã/thị trấn (hay huyện/tỉnh) vào diaChi. Không có phần chi tiết → diaChi để TRỐNG.

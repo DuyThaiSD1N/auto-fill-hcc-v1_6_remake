@@ -14,9 +14,11 @@ from app.consent.router import router as consent_router
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.db.indexes import ensure_indexes
 from app.db.mongo import close, connect
+from app.locations.router import router as locations_router
 from app.procedures.router import router as procedures_router
 from app.process.router import router as process_router
 from app.review.router import router as review_router
+from app.reports.router import router as reports_router
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
 from app.upload_session.ws import router as upload_ws_router
@@ -38,6 +40,7 @@ cors_kwargs = dict(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Disposition"],
 )
 # FE web luôn nằm trong allow_origins; extension dùng allow_origins (khi cấu hình id)
 # hoặc allow_origin_regex (khi cho phép mọi extension ở dev). Hai tham số này cùng hiệu lực.
@@ -84,7 +87,9 @@ app.include_router(process_router)
 app.include_router(review_router)
 app.include_router(attachments_router)
 app.include_router(traces_router)
+app.include_router(reports_router)
 app.include_router(users_router)
+app.include_router(locations_router)
 app.include_router(upload_session_router)
 app.include_router(upload_ws_router)
 app.include_router(consent_router)

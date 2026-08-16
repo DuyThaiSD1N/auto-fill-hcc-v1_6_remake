@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import os
 from datetime import datetime, timezone
 
@@ -23,6 +24,7 @@ def test_save_request_files(tmp_path, monkeypatch):
     assert meta[0]["name"] == "cccd trước.jpg"
     assert meta[0]["role"] == "father"
     assert meta[0]["size"] == len(raw)
+    assert meta[0]["sha256"] == hashlib.sha256(raw).hexdigest()
     # file thật được ghi đúng nội dung
     abs_path = os.path.join(str(tmp_path), meta[0]["path"])
     assert os.path.isfile(abs_path)

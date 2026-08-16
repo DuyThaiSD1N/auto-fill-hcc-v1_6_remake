@@ -9,6 +9,28 @@ _SKIP_SERIAL_LINE_RE = re.compile(
 _LABEL_SERIAL_RE = re.compile(r"\bS[ỐO0]\s*[:.]?\s*([A-Z]{1,3})\s*[-.]?\s*(\d{5,8})\b", re.IGNORECASE)
 _COMPACT_LABEL_SERIAL_RE = re.compile(r"\bS[ỐO0]([A-Z]{1,3})\s*[-.]?\s*(\d{5,8})\b", re.IGNORECASE)
 _PLAIN_SERIAL_RE = re.compile(r"\b([A-Z]{1,3})\s*[-.]?\s*(\d{5,8})\b", re.IGNORECASE)
+_APPLICANT_IDENTITY_BLOCK_RE = re.compile(
+    r"giấy\s+tờ\s+nhân\s+thân\s*/?\s*pháp\s+nhân",
+    re.IGNORECASE,
+)
+_ISSUE_DATE_RE = re.compile(
+    r"ngày\s+cấp\s*[:.]?\s*(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4})",
+    re.IGNORECASE,
+)
+
+# Tương thích ngắn hạn với output tên field cũ trong lúc triển khai cuốn chiếu. Các tên này không còn
+# xuất hiện trong schema/prompt mới nên không tiếp tục dẫn hướng LLM theo nguồn tài liệu CCCD.
+_LEGACY_APPLICANT_FIELDS = {
+    "Cccd_HoTen": "NguoiNop_HoTen",
+    "Cccd_SoDinhDanh": "NguoiNop_SoDinhDanh",
+    "Cccd_NgaySinh": "NguoiNop_NgaySinh",
+    "Cccd_GioiTinh": "NguoiNop_GioiTinh",
+    "Cccd_DanToc": "NguoiNop_DanToc",
+    "Cccd_NgayCap": "NguoiNop_NgayCapGiayTo",
+    "Cccd_NoiCap": "NguoiNop_NoiCapGiayTo",
+    "Cccd_NoiCuTru": "NguoiNop_NoiCuTru",
+    "Don_DienThoaiLienHe": "NguoiNop_DienThoai",
+}
 
 
 def _as_dict(raw_fields):
@@ -69,12 +91,38 @@ def extract_gcn_serial(text: str) -> str | None:
     return candidates[0][1]
 
 
+def extract_applicant_identity_issue_date(text: str) -> str | None:
+    """Lấy ngày cấp từ đúng khối giấy tờ nhân thân trên Đơn, không quét ngày trên GCN."""
+    if not text:
+        return None
+    marker = _APPLICANT_IDENTITY_BLOCK_RE.search(text)
+    if not marker:
+        return None
+    # Ngày cấp nằm cùng dòng hoặc ngay sau nhãn giấy tờ; giới hạn vùng để không bắt ngày ký đơn/GCN.
+    block = text[marker.start():marker.start() + 700]
+    match = _ISSUE_DATE_RE.search(block)
+    if not match:
+        return None
+    day, month, year = (int(part) for part in match.groups())
+    if not 1 <= day <= 31 or not 1 <= month <= 12:
+        return None
+    return f"{day:02d}/{month:02d}/{year:04d}"
+
+
 def apply_ocr_fallback(raw_fields, documents: list[dict]) -> dict:
     fields = _as_dict(raw_fields)
+    for old_name, new_name in _LEGACY_APPLICANT_FIELDS.items():
+        if new_name not in fields and old_name in fields:
+            fields[new_name] = fields[old_name]
+        fields.pop(old_name, None)
+
+    text = "\n".join(d.get("text") or "" for d in documents)
+    if not fields.get("NguoiNop_NgayCapGiayTo"):
+        issue_date = extract_applicant_identity_issue_date(text)
+        if issue_date:
+            fields["NguoiNop_NgayCapGiayTo"] = issue_date
     if not fields.get("Gcn_SoPhatHanh"):
-        text = "\n".join(d.get("text") or "" for d in documents)
         serial = extract_gcn_serial(text)
         if serial:
             fields["Gcn_SoPhatHanh"] = serial
     return fields
-

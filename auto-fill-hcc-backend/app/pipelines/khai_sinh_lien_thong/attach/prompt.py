@@ -13,6 +13,10 @@ Form cần tối đa 2 giấy tờ:
   có ý kiến/chữ ký của các thành phần.
 Với mỗi file, gán docType là một trong: birth_proof | residence_form | other.
 Các giấy tờ KHÁC như CCCD/CMND cha mẹ, sổ hộ khẩu, giấy đăng ký kết hôn → other.
+Dữ liệu có thể không có hoặc chỉ có một trong hai loại cần nộp. KHÔNG ép mỗi hồ sơ
+phải có birth_proof/residence_form; tài liệu không có bằng chứng rõ ràng phải là other.
+Giữ nguyên chính xác index của từng file đầu vào, trả mỗi index đúng một lần và theo
+đúng thứ tự đầu vào. Không đánh lại index và không sắp xếp theo docType.
 Dựa vào OCR là nguồn chính; chỉ dùng tên file khi OCR không đủ.
 Trả về JSON object duy nhất, không giải thích, không markdown.
 """.strip()

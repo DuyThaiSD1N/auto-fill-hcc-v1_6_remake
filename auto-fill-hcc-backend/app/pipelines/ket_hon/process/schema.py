@@ -21,8 +21,9 @@ FIELDS: list[dict] = [
      "desc": "Loại giấy tờ tùy thân bên nam — CHỈ điền khi là giấy tờ NƯỚC NGOÀI "
              "(vd 'Chứng minh thư', 'Hộ chiếu', 'Identity Card'). "
              "CCCD/Căn cước Việt Nam → BỎ QUA field này."},
-    {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú trên CCCD bên nam, object {quocGia,tinh,xa,diaChi}; xa (phường/xã) BẮT BUỘC khi giấy có, chỉ lấy TÊN."},
+    {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú CHỈ lấy từ CCCD/CMND của bên nam, object {quocGia,tinh,xa,diaChi}; xa BẮT BUỘC giữ tên loại đơn vị đầy đủ: P/P. → Phường, X/X. → Xã, TT/TT. → Thị trấn; không trả dạng viết tắt. tinh chỉ chứa tên tỉnh/thành phố đầy đủ."},
     {"name": "CccdNam_SoLanKetHon", "desc": "Số lần kết hôn của BÊN NAM — CHỈ lấy nếu tờ khai có mục 'Kết hôn lần thứ mấy'/'Số lần kết hôn' ghi rõ số ở cột nam. Trả SỐ NGUYÊN (vd '1', '2'). Không có thì bỏ qua."},
+    {"name": "CccdNam_TinhTrangHonNhan", "desc": "Mã tình trạng hôn nhân BÊN NAM. Với bản án/quyết định ly hôn, chỉ trả mã 3 khi họ tên đương sự khớp CHÍNH XÁC sau chuẩn hóa dấu/hoa-thường/khoảng trắng với CccdNam_HoTen, hoặc văn bản có đúng số CCCD của người nam. Không fuzzy tên; lệch bất kỳ chữ nào mà không có CCCD khớp thì bỏ field. Mã: 1=đang có vợ/chồng; 2=chưa đăng ký; 3=đã ly hôn, hiện tại chưa đăng ký; 4=vợ/chồng đã chết; 5=chưa đăng ký trong một khoảng thời gian nhưng hiện đang có vợ/chồng; 6=khác. Chỉ trả mã số."},
 
     # CCCD/CMND bên nữ.
     {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nữ."},
@@ -39,18 +40,21 @@ FIELDS: list[dict] = [
      "desc": "Loại giấy tờ tùy thân bên nữ — CHỈ điền khi là giấy tờ NƯỚC NGOÀI "
              "(vd 'Chứng minh thư', 'Hộ chiếu', 'Identity Card'). "
              "CCCD/Căn cước Việt Nam → BỎ QUA field này."},
-    {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú trên CCCD bên nữ, object {quocGia,tinh,xa,diaChi}; xa (phường/xã) BẮT BUỘC khi giấy có, chỉ lấy TÊN."},
+    {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú CHỈ lấy từ CCCD/CMND của bên nữ, object {quocGia,tinh,xa,diaChi}; xa BẮT BUỘC giữ tên loại đơn vị đầy đủ: P/P. → Phường, X/X. → Xã, TT/TT. → Thị trấn; không trả dạng viết tắt. tinh chỉ chứa tên tỉnh/thành phố đầy đủ."},
     {"name": "CccdNu_SoLanKetHon", "desc": "Số lần kết hôn của BÊN NỮ — CHỈ lấy nếu tờ khai có mục 'Kết hôn lần thứ mấy'/'Số lần kết hôn' ghi rõ số ở cột nữ. Trả SỐ NGUYÊN (vd '1', '2'). Không có thì bỏ qua."},
+    {"name": "CccdNu_TinhTrangHonNhan", "desc": "Mã tình trạng hôn nhân BÊN NỮ. Với bản án/quyết định ly hôn, chỉ trả mã 3 khi họ tên đương sự khớp CHÍNH XÁC sau chuẩn hóa dấu/hoa-thường/khoảng trắng với CccdNu_HoTen, hoặc văn bản có đúng số CCCD của người nữ. Không fuzzy tên; lệch bất kỳ chữ nào mà không có CCCD khớp thì bỏ field. Mã: 1=đang có vợ/chồng; 2=chưa đăng ký; 3=đã ly hôn, hiện tại chưa đăng ký; 4=vợ/chồng đã chết; 5=chưa đăng ký trong một khoảng thời gian nhưng hiện đang có vợ/chồng; 6=khác. Chỉ trả mã số."},
 
     # Tách nguồn tờ khai khỏi CCCD để mapper ưu tiên tất định, không phụ thuộc LLM tự chọn nguồn.
     {"name": "ToKhaiNam_NoiCuTru_TrongNuoc",
      "desc": "Nơi cư trú ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN, "
              "object {quocGia,tinh,xa,diaChi}. CHỈ lấy từ tờ khai; không lấy CCCD, giấy xác nhận "
-             "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ."},
+             "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ. tinh chỉ chứa tên tỉnh/thành phố đầy đủ; "
+             "xa phải mở rộng P/P. thành Phường, X/X. thành Xã, TT/TT. thành Thị trấn."},
     {"name": "ToKhaiNu_NoiCuTru_TrongNuoc",
      "desc": "Nơi cư trú ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN, "
              "object {quocGia,tinh,xa,diaChi}. CHỈ lấy từ tờ khai; không lấy CCCD, giấy xác nhận "
-             "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ."},
+             "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ. tinh chỉ chứa tên tỉnh/thành phố đầy đủ; "
+             "xa phải mở rộng P/P. thành Phường, X/X. thành Xã, TT/TT. thành Thị trấn."},
 
     # Yêu cầu cấp bản sao trên chính tờ khai đăng ký kết hôn, không đặt mặc định.
     {"name": "CopyRequest_WantsCopy",
@@ -74,6 +78,11 @@ for _name in (
     "CccdNu_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
+for _name in (
+    "CccdNam_TinhTrangHonNhan",
+    "CccdNu_TinhTrangHonNhan",
+):
+    COMPACT_COMP_BY_NAME[_name] = "x-select"
 for _name in (
     "CccdNam_NoiCuTru_TrongNuoc",
     "CccdNu_NoiCuTru_TrongNuoc",

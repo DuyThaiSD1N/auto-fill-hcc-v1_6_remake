@@ -4,6 +4,7 @@ Cấu trúc: {STORAGE_DIR}/{YYYY-MM-DD}/{request_id}/{idx}_{tên-an-toàn}
 Trả về metadata (name, type, role, size, path tương đối) để ghi vào Mongo.
 """
 import base64
+import hashlib
 import os
 import re
 from datetime import datetime
@@ -32,11 +33,15 @@ def save_request_files(request_id: str, created_at: datetime, files) -> list[dic
             raw = _decode_data_url(f.dataUrl)
         except Exception:  # noqa: BLE001 — file hỏng vẫn ghi metadata, không chặn request
             saved.append({"name": f.name, "type": f.type, "role": f.role,
-                          "size": 0, "path": None, "error": "decode_failed"})
+                          "size": 0, "path": None, "sha256": None,
+                          "error": "decode_failed"})
             continue
         fname = f"{idx:02d}_{_safe_name(f.name)}"
         with open(os.path.join(abs_dir, fname), "wb") as fh:
             fh.write(raw)
         saved.append({"name": f.name, "type": f.type, "role": f.role,
-                      "size": len(raw), "path": os.path.join(rel_dir, fname)})
+                      "size": len(raw), "path": os.path.join(rel_dir, fname),
+                      # Tính đúng một lần trong lúc bytes đã có sẵn; thống kê không phải đọc
+                      # lại file trên đĩa hay tin vào tên file có thể trùng/đổi tên.
+                      "sha256": hashlib.sha256(raw).hexdigest()})
     return saved

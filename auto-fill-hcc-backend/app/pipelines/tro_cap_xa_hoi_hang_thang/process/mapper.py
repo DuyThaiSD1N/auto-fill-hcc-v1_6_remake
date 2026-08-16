@@ -2,8 +2,8 @@
 trợ cấp xã hội hàng tháng, hỗ trợ kinh phí chăm sóc, nuôi dưỡng hàng tháng".
 
 HAI vai (có thể NỘP THAY):
-  Phần 1 (data[fullname...])   — NGƯỜI NỘP. Tự nộp → = đối tượng; nộp thay → chỉ điền cái CÓ (tên+CCCD tài
-                                 khoản qua formContext + NguoiNop_* nếu có CCCD người nộp), THIẾU thì để trống.
+  Phần 1 (data[fullname...])   — NGƯỜI NỘP = người khai thay trên tờ khai. Không có block người khai thay
+                                 → dùng đối tượng; không sử dụng tài khoản/formContext do FE truyền.
   Phần 2 (data[owner*])        — CHỦ HỒ SƠ = ĐỐI TƯỢNG hưởng trợ cấp. LUÔN bỏ tích isOwnerDossierCheck +
                                  điền tường minh (không dựa vào auto-copy của cổng).
 Mỗi data[key] xuất hiện 1× trong DOM → KHÔNG dùng occurrence.
@@ -74,6 +74,38 @@ def _commune_label(value: Any) -> str | None:
     return _text(value)
 
 
+def _locality_key(value: Any) -> str:
+    """Khóa so xã/phường, chịu được tiền tố Phường/P./Xã và khác biệt dấu câu."""
+    text = re.sub(r"[^a-z0-9]+", " ", _fold(value)).strip()
+    return re.sub(r"^(?:phuong|p|xa|thi tran|tt)\s+", "", text).strip()
+
+
+def _complete_missing_provinces(*areas: dict | None) -> None:
+    """Bổ sung tỉnh khi cùng xã/phường chỉ ánh xạ tới đúng một tỉnh trong hồ sơ.
+
+    Không dùng danh sách địa danh hay ví dụ hồ sơ cụ thể: chỉ tổng hợp chứng cứ địa chỉ đã trích trong
+    chính hồ sơ. Tỉnh đã có không bao giờ bị ghi đè; tên xã trùng nhiều tỉnh thì giữ trống.
+    """
+    province_by_locality: dict[str, dict[str, str]] = {}
+    for area in areas:
+        if not area:
+            continue
+        locality = _locality_key(area.get("xa"))
+        province = _text(area.get("tinh"))
+        if not locality or not province:
+            continue
+        province_key = _fold(_strip_admin_prefix(province))
+        if province_key:
+            province_by_locality.setdefault(locality, {}).setdefault(province_key, province)
+
+    for area in areas:
+        if not area or _text(area.get("tinh")):
+            continue
+        candidates = province_by_locality.get(_locality_key(area.get("xa")), {})
+        if len(candidates) == 1:
+            area["tinh"] = next(iter(candidates.values()))
+
+
 def _parse_area_text(value: Any) -> dict | None:
     text = " ".join(str(value or "").replace("\n", " ").split()).strip(" .")
     if not text:
@@ -121,6 +153,12 @@ def _identity(value: Any) -> str | None:
     return digits or None
 
 
+def _validated_submitter_identity(value: Any) -> str | None:
+    """Người khai thay chỉ được điền CMND 9 số hoặc CCCD/CMND 12 số; không sửa đoán OCR sai."""
+    digits = _identity(value)
+    return digits if digits and len(digits) in {9, 12} else None
+
+
 def _phone(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -149,6 +187,8 @@ def _issuer(value: Any) -> str | None:
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+    # Giữ tham số để tương thích caller/test cũ, nhưng thủ tục này cố ý không dùng nhân thân từ FE.
+    _ = options
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
@@ -184,27 +224,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not name:
         warnings.append("Thiếu họ tên đối tượng hưởng trợ cấp từ CCCD/Tờ khai/Giấy khai sinh.")
 
-    # --- NGƯỜI NỘP (Phần I). Quyết định TỰ NỘP / NỘP THAY bằng formContext (tên+CCCD tài khoản) SO với
-    # đối tượng — KHÔNG dựa vào việc có trích được NguoiNop_* hay không. ---
-    ctx = (options or {}).get("formContext") or {}
-    ctx_name = _text(ctx.get("applicantFullname") or ctx.get("ownerFullname"))
-    ctx_identity = _identity(ctx.get("applicantIdentityNumber") or ctx.get("ownerIdentityNumber"))
+    # --- NGƯỜI NỘP (Phần I) = người tại block "Thông tin người khai thay" trên tờ khai. ---
     nop_ext_name = _text(values.get("NguoiNop_HoTen"))
-    nop_ext_id = _identity(values.get("NguoiNop_SoDinhDanh"))
-    sub_name = nop_ext_name or ctx_name
-    sub_id = nop_ext_id or ctx_identity
+    nop_ext_id = _validated_submitter_identity(values.get("NguoiNop_SoDinhDanh"))
+    has_declarant = bool(nop_ext_name or nop_ext_id)
 
-    is_nop_thay = False
-    if sub_id and identity:
-        is_nop_thay = sub_id != identity
-    elif sub_name and name:
-        is_nop_thay = _fold(sub_name) != _fold(name)
-
-    if is_nop_thay:
-        # Phần I = THÔNG TIN NGƯỜI NỘP. Chỉ điền cái CÓ (tên/CCCD từ tài khoản + NguoiNop_* nếu hồ sơ có CCCD
-        # người nộp). TUYỆT ĐỐI KHÔNG lấy nhân thân đối tượng đổ vào đây — thiếu thì ĐỂ TRỐNG.
-        nop_name = nop_ext_name or ctx_name
-        nop_identity = nop_ext_id or ctx_identity
+    if has_declarant:
+        # Có người khai thay: chỉ điền dữ liệu đọc được của đúng người này; thiếu thì để trống.
+        nop_name = nop_ext_name
+        nop_identity = nop_ext_id
         nop_birthday = _date(values.get("NguoiNop_NgaySinh"))
         nop_gender = _text(values.get("NguoiNop_GioiTinh"))
         nop_id_date = _date(values.get("NguoiNop_NgayCap"))
@@ -213,7 +241,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         nop_phone = _phone(values.get("NguoiNop_DienThoai"))
         nop_email = _text(values.get("NguoiNop_Email"))
     else:
-        # Tự nộp (người nộp = đối tượng, hoặc không xác định được người nộp) → Phần I = đối tượng.
+        # Không có block người khai thay → đối tượng tự khai, Phần I dùng cùng nhân thân đối tượng.
         nop_name = name
         nop_identity = identity
         nop_birthday = birthday
@@ -223,6 +251,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         nop_residence = residence
         nop_phone = phone
         nop_email = _text(values.get("DoiTuong_Email"))
+
+    _complete_missing_provinces(residence, nop_residence)
 
     add("data[chonDoiTuong]", "Cá nhân")
     add("data[fullname]", nop_name)

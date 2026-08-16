@@ -20,6 +20,10 @@ async def ensure_indexes() -> None:
     await db.traces.create_index([("procedure", 1), ("created_at", -1)])
     # Tra trace theo "mã hỗ trợ" (request_id) cán bộ copy từ extension khi báo lỗi.
     await db.traces.create_index("request_id")
+    # Thống kê v2: dossier_ids là multikey; hash nằm trên từng attachment. Hai index này
+    # phục vụ đối soát/tra cứu riêng, còn lọc dashboard dùng procedure + created_at ở trên.
+    await db.traces.create_index("dossier_ids")
+    await db.traces.create_index("attachments.sha256")
     # Cache OCR (_id = hash nội dung, tra bằng index primary). TTL tự dọn text OCR cũ.
     await db.ocr_cache.create_index(
         "created_at", expireAfterSeconds=settings.ocr_cache_ttl_days * 86400

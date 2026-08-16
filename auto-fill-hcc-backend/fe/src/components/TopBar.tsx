@@ -1,7 +1,7 @@
 import type { User } from "../types";
 import Logo from "./Logo";
 
-export type View = "traces" | "stats" | "accounts";
+export type View = "traces" | "stats" | "reports" | "accounts";
 
 interface Props {
   user: User;
@@ -32,6 +32,14 @@ export default function TopBar({ user, view, onNavigate, onLogout }: Props) {
           >
             Thống kê
           </button>
+          {isAdmin && (
+            <button
+              className={`tab ${view === "reports" ? "active" : ""}`}
+              onClick={() => onNavigate("reports")}
+            >
+              Xuất báo cáo
+            </button>
+          )}
           {isAdmin && (
             <button
               className={`tab ${view === "accounts" ? "active" : ""}`}

@@ -10,6 +10,7 @@ import io
 import os
 import zipfile
 from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse, Response
@@ -19,6 +20,7 @@ from app.core.deps import require_admin
 from app.core.errors import AppError
 from app.process import requests_repo
 from app.traces import repo
+from app.traces.date_range import parse_stats_range
 
 router = APIRouter(prefix="/api/v1/traces", tags=["traces"])
 
@@ -33,6 +35,10 @@ def _parse_dt(value: str | None) -> datetime | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt
+
+
+# Giữ tên cũ để caller/test hiện có không vỡ khi parser được dùng chung cho module báo cáo.
+_parse_stats_range = parse_stats_range
 
 
 @router.get("")
@@ -68,8 +74,10 @@ async def stats(
     _: dict = Depends(require_admin),
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
+    scope: Literal["all", "official"] = Query("all"),
 ):
-    return await repo.stats(date_from=_parse_dt(dateFrom), date_to=_parse_dt(dateTo))
+    start, end = _parse_stats_range(dateFrom, dateTo)
+    return await repo.stats(date_from=start, date_to=end, scope=scope)
 
 
 @router.get("/{trace_id}")

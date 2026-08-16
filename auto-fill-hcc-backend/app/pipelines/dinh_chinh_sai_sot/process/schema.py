@@ -6,20 +6,31 @@ defaults are derived in Python to keep the model output short.
 """
 
 FIELDS: list[dict] = [
-    # CCCD/CMND người nộp hồ sơ.
-    {"name": "Cccd_HoTen", "desc": "Họ tên trên CCCD/CMND của người nộp hồ sơ."},
-    {"name": "Cccd_SoDinhDanh", "desc": "Số định danh/CCCD/CMND; có thể đọc từ MRZ mặt sau."},
-    {"name": "Cccd_NgaySinh", "desc": "Ngày sinh trên CCCD/CMND, dd/mm/yyyy."},
-    {"name": "Cccd_GioiTinh", "desc": 'Giới tính trên CCCD/CMND: "Nam" hoặc "Nữ".'},
-    {"name": "Cccd_DanToc", "desc": "Dân tộc trên CCCD/CMND nếu có."},
-    {"name": "Cccd_NgayCap", "desc": "Ngày cấp CCCD/CMND, dd/mm/yyyy."},
-    {"name": "Cccd_NoiCap",
-     "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
+    # Người nộp hồ sơ: một vai trò, có thể được xác minh từ CCCD/CMND hoặc khối người sử dụng đất trên Đơn.
+    {"name": "NguoiNop_HoTen",
+     "desc": 'Họ tên người nộp hồ sơ. Ưu tiên CCCD/CMND; nếu không có file căn cước thì lấy từ đúng '
+             'khối "Người sử dụng đất, chủ sở hữu tài sản gắn liền với đất" trên Đơn.'},
+    {"name": "NguoiNop_SoDinhDanh",
+     "desc": 'Số định danh/CCCD/CMND của người nộp. Ưu tiên giấy căn cước; nếu không có thì lấy tại '
+             'dòng "Giấy tờ nhân thân/pháp nhân" của đúng người trên Đơn.'},
+    {"name": "NguoiNop_NgaySinh",
+     "desc": "Ngày sinh người nộp, dd/mm/yyyy; lấy từ CCCD/CMND hoặc đúng khối người trên Đơn."},
+    {"name": "NguoiNop_GioiTinh",
+     "desc": 'Giới tính người nộp: "Nam" hoặc "Nữ" khi giấy tờ ghi rõ; không suy đoán từ họ tên.'},
+    {"name": "NguoiNop_DanToc",
+     "desc": "Dân tộc người nộp khi CCCD/CMND hoặc Đơn ghi rõ; không suy đoán."},
+    {"name": "NguoiNop_NgayCapGiayTo",
+     "desc": 'Ngày cấp CCCD/CMND của người nộp, dd/mm/yyyy. Ưu tiên giấy căn cước; nếu không có '
+             'file căn cước thì BẮT BUỘC lấy từ đúng cụm "Giấy tờ nhân thân/pháp nhân" trên Đơn, '
+             'ngay sau nhãn "ngày cấp" của cùng số CCCD/CMND.'},
+    {"name": "NguoiNop_NoiCapGiayTo",
+     "desc": 'Nơi cấp CCCD/CMND từ mặt sau, hoặc từ đúng cụm "Giấy tờ nhân thân/pháp nhân" trên '
+             'Đơn khi không có file căn cước. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "Cccd_NoiCuTru", "desc": "Địa chỉ cư trú/thường trú, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
-
-    # Đơn đăng ký biến động đất đai.
-    {"name": "Don_DienThoaiLienHe",
+    {"name": "NguoiNop_NoiCuTru",
+     "desc": "Địa chỉ cư trú/thường trú người nộp, object {quocGia,tinh,xa,diaChi}; ưu tiên CCCD, "
+             "không có thì lấy địa chỉ của đúng người trong khối trên Đơn."},
+    {"name": "NguoiNop_DienThoai",
      "desc": 'Số tại mục "Điện thoại liên hệ (nếu có)" trên Đơn đăng ký biến động đất đai; '
              "chỉ trả số điện thoại, không lấy số CCCD, số GCN hoặc mã số thuế."},
 
@@ -38,14 +49,12 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "Gcn_NgayCap"):
+for _name in ("NguoiNop_NgaySinh", "NguoiNop_NgayCapGiayTo", "Gcn_NgayCap"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-COMPACT_COMP_BY_NAME["Cccd_NoiCuTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiNop_NoiCuTru"] = "x-select-area"
 
 UI_COMP_BY_NAME = {
     "CongDan_tenCongDan": "dom-input",
-    "CongDan_tenCoQuanToChuc": "dom-input",
-    "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",
     "CongDan_gioiTinhCongDan": "dom-select",
     "CongDan_danTocCongDan": "dom-select",

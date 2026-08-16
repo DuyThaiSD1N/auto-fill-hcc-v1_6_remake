@@ -4,7 +4,8 @@ chăm sóc, nuôi dưỡng hàng tháng" (cổng Bộ Y tế — Form.io).
 HAI vai (có thể NỘP THAY — như sua_doi / di_chuyen):
 - ĐỐI TƯỢNG hưởng trợ cấp (DoiTuong_*) = CHỦ HỒ SƠ → Phần II data[owner*]. Đây là đối tượng chính (người
   khuyết tật / trẻ em / NCT / người đơn thân...). TRẺ EM không có CCCD → lấy từ Giấy khai sinh.
-- NGƯỜI NỘP (NguoiNop_*) = người đứng nộp / khai thay → Phần I data[fullname...]. Tự nộp → trùng đối tượng.
+- NGƯỜI NỘP (NguoiNop_*) = người được ghi trong block "Thông tin người khai thay" trên tờ khai → Phần I
+  data[fullname...]. Không có người khai thay → mapper dùng đối tượng cho Phần I.
 
 Cấu trúc form (field-key CHUẨN từ HTML thật; mỗi key XUẤT HIỆN 1 LẦN → KHÔNG occurrence):
   Phần 1 Người nộp  → data[fullname/birthday/gender/identityNumber/identityDate/idIssuePlace/province/
@@ -38,18 +39,30 @@ FIELDS: list[dict] = [
         "vận động, mức độ Nặng') lấy ở Giấy xác nhận khuyết tật / Biên bản giám định y khoa / Tờ khai; hoặc "
         "diện đối tượng bảo trợ (trẻ mồ côi, hộ nghèo...). Chép ngắn gọn nếu có, không thì bỏ."},
 
-    # === NGƯỜI NỘP (Phần I) — khi NỘP THAY thì KHÁC đối tượng. Chỉ trích khi hồ sơ CÓ CCCD người nộp
-    # (xem <nguoi_nop_context>). Tự nộp → để trống, mapper tự lấy đối tượng cho Phần I. ===
-    {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI NỘP (chỉ khi nộp thay & có CCCD người nộp). IN HOA."},
-    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh NGƯỜI NỘP, dd/mm/yyyy — CCCD người nộp."},
-    {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính NGƯỜI NỘP: "Nam"/"Nữ" — CCCD người nộp.'},
-    {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND NGƯỜI NỘP — CCCD người nộp. Chỉ chữ số."},
-    {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND NGƯỜI NỘP, dd/mm/yyyy."},
-    {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD/CMND NGƯỜI NỘP. Chuẩn hóa như DoiTuong_NoiCap."},
+    # === NGƯỜI NỘP (Phần I) = NGƯỜI KHAI THAY trên tờ khai. CCCD riêng chỉ bổ sung khi đúng người. ===
+    {"name": "NguoiNop_HoTen",
+     "desc": 'Họ tên NGƯỜI KHAI THAY tại đúng block "Thông tin người khai thay" trên tờ khai, thường nằm '
+             'gần chữ ký và dòng "Mối quan hệ với đối tượng". Ghi IN HOA. Không lấy người chăm sóc, người '
+             'thân được nhắc trong nội dung hoặc cán bộ ký xác nhận.'},
+    {"name": "NguoiNop_NgaySinh",
+     "desc": "Ngày sinh người khai thay, dd/mm/yyyy, chỉ trả khi block người khai thay hoặc CCCD riêng khớp "
+             "đúng họ tên/số giấy tờ có ghi; không suy đoán."},
+    {"name": "NguoiNop_GioiTinh",
+     "desc": 'Giới tính người khai thay: "Nam"/"Nữ", chỉ trả khi giấy tờ của đúng người ghi rõ; không suy từ tên.'},
+    {"name": "NguoiNop_SoDinhDanh",
+     "desc": 'Số CMND/CCCD tại đúng block "Thông tin người khai thay" hoặc CCCD riêng khớp đúng người. Chỉ '
+             "trả dãy 9 hoặc 12 chữ số; số thừa/thiếu chữ số thì bỏ, không tự sửa đoán."},
+    {"name": "NguoiNop_NgayCap",
+     "desc": "Ngày cấp CMND/CCCD người khai thay, dd/mm/yyyy, chỉ lấy từ block người khai thay hoặc CCCD "
+             "riêng khớp đúng người."},
+    {"name": "NguoiNop_NoiCap",
+     "desc": "Nơi cấp CMND/CCCD người khai thay, chỉ lấy từ block người khai thay hoặc CCCD riêng khớp đúng "
+             "người. Chuẩn hóa như DoiTuong_NoiCap."},
     {"name": "NguoiNop_ThuongTru",
-     "desc": "Nơi thường trú NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi} — CCCD người nộp. KHÁC đối tượng."},
-    {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại NGƯỜI NỘP nếu giấy tờ có."},
-    {"name": "NguoiNop_Email", "desc": "Email NGƯỜI NỘP nếu có."},
+     "desc": 'Địa chỉ người khai thay tại dòng "Địa chỉ" trong đúng block người khai thay, object '
+             "{quocGia,tinh,xa,diaChi}; CCCD riêng khớp đúng người chỉ dùng bổ sung khi block thiếu."},
+    {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người khai thay nếu đúng block/giấy tờ có."},
+    {"name": "NguoiNop_Email", "desc": "Email người khai thay nếu đúng block/giấy tờ có."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

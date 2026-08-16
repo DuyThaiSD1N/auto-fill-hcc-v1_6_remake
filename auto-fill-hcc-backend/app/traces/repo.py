@@ -3,36 +3,40 @@
 Collection: traces. Ghi best-effort (lỗi không được làm hỏng request /process).
 """
 import re
-import unicodedata
 from datetime import datetime, timezone
 
 from bson import ObjectId
 
 from app.db.mongo import get_db
+from app.traces.metadata import count_distinct_attachment_sets
+from app.users.roles import OFFICIAL_ACCOUNT_ROLES, normalized_role
 
 # Nhãn hiển thị model OCR theo provider key.
 _OCR_LABELS = {"raw": "RAW", "vintern": "Vintern", "gemini": "Gemini", "both": "BOTH",
                "tiengnoi": "vintern-v6"}
-
-# Đếm kiểu "TÁCH HỒ SƠ": trace có split=true (người dùng tick "tách hồ sơ" ở chứng thực
-# bản sao/chữ ký, hoặc backfill dữ liệu cũ) → mỗi FILE cần chứng thực là 1 hồ sơ, thay vì
-# gom cả lượt bấm thành 1. Trace split=false/None giữ cách đếm cũ.
-# Với chứng thực CHỮ KÝ, giấy tùy thân (STT2) chỉ là giấy kèm theo, không phải hồ sơ —
-# nhận diện qua tên file + tên ô đích (role) đã fold dấu. Bản sao thì đếm mọi file
-# (CCCD ở bản sao chính là giấy được chứng thực bản sao).
-_IDENTITY_HINTS_FOLDED = (
-    "can cuoc", "cccd", "chung minh nhan dan",
-    "ho chieu", "passport", "giay thong hanh", "xuat nhap canh",
-)
-
-
-def _fold_text(s: str) -> str:
-    s = unicodedata.normalize("NFD", str(s or "").lower()).replace("đ", "d")
-    return "".join(c for c in s if not unicodedata.combining(c))
+_ALL_STATS_ROLES = ("admin", "user", "commune", "province")
 
 
 def ocr_label(provider: str | None) -> str:
     return _OCR_LABELS.get(provider or "", provider or "—")
+
+
+def _stats_account_context(accounts: list[dict], scope: str) -> tuple[dict[str, str], list[str]]:
+    """Role hiện tại là nguồn phân loại; đổi role sẽ áp dụng lại cho toàn bộ trace lịch sử."""
+    if scope not in {"all", "official"}:
+        raise ValueError(f"Unsupported stats scope: {scope}")
+    roles = {
+        str(account["_id"]): normalized_role(account.get("role"))
+        for account in accounts
+        if account.get("_id") is not None
+    }
+    if scope == "official":
+        included_ids = [
+            user_id for user_id, role in roles.items() if role in OFFICIAL_ACCOUNT_ROLES
+        ]
+    else:
+        included_ids = list(roles)
+    return roles, included_ids
 
 
 async def create_trace(
@@ -53,6 +57,8 @@ async def create_trace(
     kind: str = "autofill",  # "autofill" (bước điền) | "attach" (bước đính kèm)
     split: bool | None = None,  # lựa chọn "tách hồ sơ" trên popup (chứng thực bản sao/chữ ký);
     # None = không rõ (extension bản cũ chưa gửi cờ / thủ tục không có ô tick)
+    stats_version: int = 1,
+    dossier_ids: list[str] | None = None,
     key_fields_total: int = 0,   # tổng trường then chốt của thủ tục (chỉ áp cho autofill)
     key_fields_filled: int = 0,  # số trường then chốt BÓC TÁCH ĐƯỢC
     stats: dict | None = None,       # {ocr_latency_ms, llm_latency_ms, total_latency_ms} — thời gian xử lý server (ms)
@@ -69,6 +75,10 @@ async def create_trace(
         "attachments": attachments or [],  # [{name, role}] file đã đính kèm
         "kind": kind,  # phân biệt bước điền (autofill) vs bước đính kèm (attach)
         "split": split,  # true/false = người dùng chọn tách/gộp hồ sơ; None = không rõ
+        # v2 giữ dossier_id để một lượt tách tab tạo đúng nhiều hồ sơ; lượt thường trên dashboard
+        # vẫn được gom theo tập tên file để tương thích tiêu chí thống kê cũ.
+        "stats_version": stats_version,
+        "dossier_ids": dossier_ids or [],
         "key_fields_total": key_fields_total,
         "key_fields_filled": key_fields_filled,
         "stats": stats,  # thời gian OCR/LLM/tổng (ms) — hiển thị ở drawer chi tiết trace
@@ -181,126 +191,437 @@ async def facets() -> dict:
     }
 
 
-def _norm_file_set(attachments) -> frozenset:
-    """Tập tên file (chuẩn hóa: gộp khoảng trắng + lowercase) của một lần bấm."""
-    return frozenset(
-        " ".join(str(a.get("name") or "").split()).lower()
-        for a in (attachments or [])
-        if a and a.get("name")
-    )
+def _stats_pipeline(query: dict) -> list[dict]:
+    """Aggregation chỉ trả các bucket nhỏ, không kéo toàn bộ trace về Python.
 
-
-def _certified_file_names(attachments, procedure: str) -> set[str]:
-    """Tập tên file (chuẩn hóa) được tính là hồ sơ theo cách đếm tách.
-
-    Chữ ký: loại file tùy thân (STT2). Trùng tên giữa các lượt bấm (bấm lại cùng bộ file)
-    tự khử khi union theo tên.
+    Lượt không tách được gom trước theo tập tên file duy nhất; Python chỉ phải so sánh các tập
+    duy nhất để khôi phục tiêu chí cũ (tập bằng nhau hoặc là tập con). Lượt tách tab vẫn dùng
+    dossier_ids để giữ đúng một hồ sơ cho mỗi tab.
     """
-    names: set[str] = set()
-    for a in attachments or []:
-        if not a or not a.get("name"):
-            continue
-        name = " ".join(str(a["name"]).split()).lower()
-        if procedure == "chung-thuc-chu-ky":
-            hay = _fold_text(name + " " + str(a.get("role") or ""))
-            if any(kw in hay for kw in _IDENTITY_HINTS_FOLDED):
-                continue
-        names.add(name)
-    return names
-
-
-def _count_distinct_dossiers(file_sets: list[frozenset]) -> int:
-    """Gom các lần bấm thành hồ sơ riêng biệt: 2 lần là CÙNG hồ sơ nếu tập file cái này ⊆ cái kia
-    (bao gồm bằng nhau). Union-find; tập RỖNG không gộp với ai (mỗi cái tính 1 hồ sơ)."""
-    n = len(file_sets)
-    parent = list(range(n))
-
-    def find(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
-
-    for i in range(n):
-        a = file_sets[i]
-        if not a:
-            continue
-        for j in range(i + 1, n):
-            b = file_sets[j]
-            if b and (a <= b or b <= a):
-                parent[find(i)] = find(j)
-
-    return len({find(i) for i in range(n)})
-
-
-async def stats(*, date_from: datetime | None = None, date_to: datetime | None = None) -> dict:
-    """Thống kê số HỒ SƠ RIÊNG BIỆT theo phường (tài khoản) × thủ tục.
-
-    Nhiều lần bấm (autofill/đính kèm) cùng một bộ giấy tờ (tập file trùng hoặc là con của nhau)
-    được tính là 1 hồ sơ. NGOẠI LỆ: trace split=true (tách hồ sơ khi nộp chứng thực)
-    → mỗi file cần chứng thực tính 1 hồ sơ.
-    """
-    db = get_db()
-    query = _build_query(user_id=None, procedure=None, date_from=date_from, date_to=date_to)
-    projection = {
-        "user_id": 1, "name": 1, "username": 1, "split": 1,
-        "procedure": 1, "procedure_label": 1, "attachments": 1, "created_at": 1,
+    exact = {
+        "$and": [
+            {"$gte": [{"$ifNull": ["$stats_version", 0]}, 2]},
+            {"$gt": [{"$size": {"$ifNull": ["$dossier_ids", []]}}, 0]},
+        ]
     }
-    docs = await db.traces.find(query, projection).to_list(length=200000)
+    identity_text = {
+        "$concat": [
+            {"$ifNull": ["$$attachment.name", ""]}, " ",
+            {"$ifNull": ["$$attachment.role", ""]},
+        ]
+    }
+    legacy_split_count = {
+        "$max": [
+            1,
+            {
+                "$size": {
+                    "$filter": {
+                        "input": {"$ifNull": ["$attachments", []]},
+                        "as": "attachment",
+                        "cond": {
+                            "$or": [
+                                {"$ne": ["$procedure", "chung-thuc-chu-ky"]},
+                                {
+                                    "$not": [
+                                        {
+                                            "$regexMatch": {
+                                                "input": identity_text,
+                                                "regex": (
+                                                    "cccd|căn\\s*cước|can\\s*cuoc|"
+                                                    "chứng\\s*minh|chung\\s*minh|"
+                                                    "hộ\\s*chiếu|ho\\s*chieu|passport|giấy\\s*tờ\\s*tùy\\s*thân"
+                                                ),
+                                                "options": "i",
+                                            }
+                                        }
+                                    ]
+                                },
+                            ]
+                        },
+                    }
+                }
+            },
+        ]
+    }
+    raw_attachment_name = {
+        "$toLower": {
+            "$convert": {
+                "input": {"$ifNull": ["$$attachment.name", ""]},
+                "to": "string",
+                "onError": "",
+                "onNull": "",
+            }
+        }
+    }
+    # Tương đương Python: " ".join(name.split()).lower(). Mongo chỉ trả mỗi tập tên file
+    # một lần nên retry trùng hoàn toàn không làm phình dữ liệu đưa về ứng dụng.
+    normalized_attachment_name = {
+        "$reduce": {
+            "input": {
+                "$map": {
+                    "input": {"$regexFindAll": {"input": raw_attachment_name, "regex": r"\S+"}},
+                    "as": "token",
+                    "in": "$$token.match",
+                }
+            },
+            "initialValue": "",
+            "in": {
+                "$concat": [
+                    "$$value",
+                    {"$cond": [{"$eq": ["$$value", ""]}, "", " "]},
+                    "$$this",
+                ]
+            },
+        }
+    }
+    attachment_name_set = {
+        "$sortArray": {
+            "input": {
+                "$setUnion": [
+                    {
+                        "$filter": {
+                            "input": {
+                                "$map": {
+                                    "input": {"$ifNull": ["$attachments", []]},
+                                    "as": "attachment",
+                                    "in": normalized_attachment_name,
+                                }
+                            },
+                            "as": "name",
+                            "cond": {"$ne": ["$$name", ""]},
+                        }
+                    },
+                    [],
+                ]
+            },
+            "sortBy": 1,
+        }
+    }
+    return [
+        {"$match": query},
+        {
+            "$set": {
+                "_stats_exact": exact,
+                "_stats_request_id": {"$ifNull": ["$request_id", {"$toString": "$_id"}]},
+                "_stats_user_id": {"$ifNull": ["$user_id", "—"]},
+                "_stats_procedure": {"$ifNull": ["$procedure", "—"]},
+                "_stats_name": {"$ifNull": ["$name", {"$ifNull": ["$username", "—"]}]},
+                "_stats_label": {"$ifNull": ["$procedure_label", {"$ifNull": ["$procedure", "—"]}]},
+                "_stats_is_split": {"$eq": ["$split", True]},
+                "_stats_file_set": attachment_name_set,
+            }
+        },
+        {
+            "$set": {
+                "_stats_legacy_count": {
+                    "$cond": [{"$eq": ["$split", True]}, legacy_split_count, 1]
+                }
+            }
+        },
+        {
+            "$set": {
+                "_stats_dossier_ids": {
+                    "$cond": [
+                        "$_stats_exact",
+                        "$dossier_ids",
+                        {
+                            "$map": {
+                                "input": {"$range": [0, "$_stats_legacy_count"]},
+                                "as": "index",
+                                "in": {
+                                    "$concat": [
+                                        "$_stats_request_id", ":legacy:", {"$toString": "$$index"}
+                                    ]
+                                },
+                            }
+                        },
+                    ]
+                },
+                "_stats_empty_id": {
+                    "$cond": [
+                        {"$gt": [{"$size": "$_stats_file_set"}, 0]},
+                        None,
+                        {
+                            "$cond": [
+                                "$_stats_exact",
+                                {"$arrayElemAt": ["$dossier_ids", 0]},
+                                "$_stats_request_id",
+                            ]
+                        },
+                    ]
+                },
+            }
+        },
+        {
+            "$facet": {
+                "nonSplitFileSets": [
+                    {"$match": {"_stats_is_split": False}},
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$_stats_user_id",
+                                "procedure": "$_stats_procedure",
+                                "fileSet": "$_stats_file_set",
+                                "emptyId": "$_stats_empty_id",
+                            },
+                            "name": {"$first": "$_stats_name"},
+                            "label": {"$first": "$_stats_label"},
+                            "requests": {"$sum": 1},
+                            "estimated": {"$max": {"$cond": ["$_stats_exact", 0, 1]}},
+                        }
+                    },
+                ],
+                "splitBuckets": [
+                    {"$match": {"_stats_is_split": True}},
+                    {"$unwind": "$_stats_dossier_ids"},
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$_stats_user_id",
+                                "procedure": "$_stats_procedure",
+                                "dossierId": "$_stats_dossier_ids",
+                            },
+                            "name": {"$first": "$_stats_name"},
+                            "label": {"$first": "$_stats_label"},
+                            "estimated": {"$max": {"$cond": ["$_stats_exact", 0, 1]}},
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$_id.userId",
+                                "procedure": "$_id.procedure",
+                            },
+                            "name": {"$first": "$name"},
+                            "label": {"$first": "$label"},
+                            "count": {"$sum": 1},
+                            "estimatedCount": {"$sum": "$estimated"},
+                        }
+                    },
+                ],
+                "requests": [
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$_stats_user_id",
+                                "procedure": "$_stats_procedure",
+                                "requestId": "$_stats_request_id",
+                            },
+                            "estimated": {"$max": {"$cond": ["$_stats_exact", 0, 1]}},
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$_id.userId",
+                                "procedure": "$_id.procedure",
+                            },
+                            "requests": {"$sum": 1},
+                            "estimatedRequests": {"$sum": "$estimated"},
+                        }
+                    },
+                ],
+                "documents": [
+                    {"$match": {"_stats_exact": True}},
+                    {"$unwind": "$attachments"},
+                    {"$match": {"attachments.sha256": {"$type": "string", "$ne": ""}}},
+                    {
+                        "$group": {
+                            "_id": "$attachments.sha256",
+                            "uses": {"$sum": {"$max": [1, {"$ifNull": ["$attachments.uses", 1]}]}},
+                        }
+                    },
+                    {"$group": {"_id": None, "unique": {"$sum": 1}, "uses": {"$sum": "$uses"}}},
+                ],
+            }
+        },
+    ]
 
-    from collections import defaultdict
 
-    buckets: dict[tuple[str, str], list[frozenset]] = defaultdict(list)
-    # Bucket đếm kiểu tách hồ sơ: union tên file chứng thực + số lượt bấm.
-    split_buckets: dict[tuple[str, str], dict] = {}
-    ward_name: dict[str, str] = {}
-    proc_label: dict[str, str] = {}
-    for d in docs:
-        uid = d.get("user_id") or "—"
-        proc = d.get("procedure") or "—"
-        ward_name[uid] = d.get("name") or d.get("username") or uid
-        proc_label[proc] = d.get("procedure_label") or proc
-        if d.get("split") is True:
-            sb = split_buckets.setdefault((uid, proc), {"names": set(), "requests": 0})
-            sb["names"] |= _certified_file_names(d.get("attachments"), proc)
-            sb["requests"] += 1
-        else:
-            buckets[(uid, proc)].append(_norm_file_set(d.get("attachments")))
+def _format_stats_facets(facets: dict) -> dict:
+    request_by_bucket = {
+        (item["_id"]["userId"], item["_id"]["procedure"]): item
+        for item in facets.get("requests", [])
+    }
+    # Giữ đọc được shape `buckets` cũ để không làm vỡ caller/test đang truyền dữ liệu đã tổng hợp.
+    bucket_map: dict[tuple[str, str], dict] = {}
+    for item in facets.get("buckets", []):
+        key = (item["_id"]["userId"], item["_id"]["procedure"])
+        bucket_map[key] = dict(item)
+
+    file_sets_by_bucket: dict[tuple[str, str], list[frozenset[str]]] = {}
+    for item in facets.get("nonSplitFileSets", []):
+        uid = item["_id"]["userId"]
+        procedure = item["_id"]["procedure"]
+        key = (uid, procedure)
+        file_set = frozenset(item["_id"].get("fileSet") or [])
+        # Mongo đã gom fileSet trùng nhau. Riêng tập rỗng dùng emptyId để mỗi request cũ
+        # vẫn là một hồ sơ; cùng dossier_id v2 chỉ xuất hiện một lần.
+        file_sets_by_bucket.setdefault(key, []).append(file_set)
+        bucket = bucket_map.setdefault(key, {
+            "_id": {"userId": uid, "procedure": procedure},
+            "name": item.get("name"),
+            "label": item.get("label"),
+            "count": 0,
+            "estimatedCount": 0,
+        })
+
+    for key, file_sets in file_sets_by_bucket.items():
+        count = count_distinct_attachment_sets(file_sets)
+        bucket_map[key]["count"] = int(bucket_map[key].get("count") or 0) + count
+        # Tiêu chí tên file là suy luận nghiệp vụ; trường này giữ compatibility API, FE chỉ hiện số.
+        bucket_map[key]["estimatedCount"] = int(
+            bucket_map[key].get("estimatedCount") or 0
+        ) + count
+
+    for item in facets.get("splitBuckets", []):
+        uid = item["_id"]["userId"]
+        procedure = item["_id"]["procedure"]
+        key = (uid, procedure)
+        bucket = bucket_map.setdefault(key, {
+            "_id": {"userId": uid, "procedure": procedure},
+            "name": item.get("name"),
+            "label": item.get("label"),
+            "count": 0,
+            "estimatedCount": 0,
+        })
+        bucket["count"] += int(item.get("count") or 0)
+        bucket["estimatedCount"] += int(item.get("estimatedCount") or 0)
 
     wards: dict[str, dict] = {}
-    grand: dict[str, int] = defaultdict(int)
+    procedures: dict[str, dict] = {}
+    total_dossiers = 0
+    estimated_dossiers = 0
 
-    def _add(uid: str, proc: str, count: int, requests: int) -> None:
-        ward = wards.setdefault(uid, {"userId": uid, "name": ward_name[uid], "total": 0, "requests": 0, "procedures": []})
-        ward["procedures"].append({"key": proc, "label": proc_label[proc], "count": count, "requests": requests})
+    for item in bucket_map.values():
+        uid = item["_id"]["userId"]
+        procedure = item["_id"]["procedure"]
+        count = int(item.get("count") or 0)
+        estimated = int(item.get("estimatedCount") or 0)
+        request_item = request_by_bucket.get((uid, procedure), {})
+        requests = int(request_item.get("requests") or 0)
+        ward = wards.setdefault(uid, {
+            "userId": uid,
+            "name": item.get("name") or uid,
+            "total": 0,
+            "exact": 0,
+            "estimated": 0,
+            "requests": 0,
+            "procedures": [],
+        })
         ward["total"] += count
+        ward["exact"] += count - estimated
+        ward["estimated"] += estimated
         ward["requests"] += requests
-        grand[proc] += count
-
-    # Một bucket có thể lẫn cả lượt tách lẫn lượt gộp (người dùng đổi lựa chọn giữa chừng)
-    # → cộng 2 cách đếm, vẫn ra đúng 1 dòng thủ tục.
-    for uid, proc in set(buckets) | set(split_buckets):
-        sets = buckets.get((uid, proc), [])
-        count = _count_distinct_dossiers(sets) if sets else 0
-        requests = len(sets)
-        sb = split_buckets.get((uid, proc))
-        if sb:
-            count += len(sb["names"])
-            requests += sb["requests"]
-        _add(uid, proc, count, requests)
+        ward["procedures"].append({
+            "key": procedure,
+            "label": item.get("label") or procedure,
+            "count": count,
+            "exact": count - estimated,
+            "estimated": estimated,
+            "requests": requests,
+        })
+        proc = procedures.setdefault(procedure, {
+            "key": procedure,
+            "label": item.get("label") or procedure,
+            "count": 0,
+            "requests": 0,
+            "exact": 0,
+            "estimated": 0,
+        })
+        proc["count"] += count
+        proc["requests"] += requests
+        proc["exact"] += count - estimated
+        proc["estimated"] += estimated
+        total_dossiers += count
+        estimated_dossiers += estimated
 
     for ward in wards.values():
-        ward["procedures"].sort(key=lambda p: (-p["count"], p["label"]))
+        ward["procedures"].sort(key=lambda proc: (-proc["count"], proc["label"]))
+
+    total_requests = sum(int(item.get("requests") or 0) for item in facets.get("requests", []))
+    estimated_requests = sum(
+        int(item.get("estimatedRequests") or 0) for item in facets.get("requests", [])
+    )
+    documents = (facets.get("documents") or [{}])[0]
+    unique_documents = int(documents.get("unique") or 0)
+    total_document_uses = int(documents.get("uses") or 0)
+    exact_dossiers = total_dossiers - estimated_dossiers
+    if estimated_dossiers == 0:
+        quality = "exact"
+    elif exact_dossiers == 0:
+        quality = "estimated"
+    else:
+        quality = "mixed"
 
     return {
-        "wards": sorted(wards.values(), key=lambda w: -w["total"]),
-        "procedures": sorted(
-            ({"key": k, "label": proc_label[k], "count": v} for k, v in grand.items()),
-            key=lambda p: (-p["count"], p["label"]),
-        ),
-        "totalDossiers": sum(grand.values()),
-        "totalRequests": len(docs),
+        "wards": sorted(wards.values(), key=lambda ward: (-ward["total"], ward["name"])),
+        "procedures": sorted(procedures.values(), key=lambda proc: (-proc["count"], proc["label"])),
+        "totalDossiers": total_dossiers,
+        "exactDossiers": exact_dossiers,
+        "estimatedDossiers": estimated_dossiers,
+        "dataQuality": quality,
+        "totalRequests": total_requests,
+        "estimatedRequests": estimated_requests,
+        "uniqueDocuments": unique_documents,
+        "totalDocumentUses": total_document_uses,
+        "reusedDocumentUses": max(total_document_uses - unique_documents, 0),
+        "documentDataQuality": "exact" if estimated_requests == 0 else "partial",
     }
+
+
+async def stats(
+    *,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    scope: str = "all",
+) -> dict:
+    """Thống kê theo bộ file như tiêu chí cũ; date_to là mốc loại trừ của khoảng nửa mở."""
+    db = get_db()
+    accounts = [account async for account in db.users.find({}, {"role": 1})]
+    roles_by_user, included_user_ids = _stats_account_context(accounts, scope)
+    query = _build_query(user_id=None, procedure=None, date_from=date_from, date_to=None)
+    if scope == "official":
+        query["user_id"] = {"$in": included_user_ids}
+    if date_to:
+        query.setdefault("created_at", {})["$lt"] = date_to
+    rows = await db.traces.aggregate(_stats_pipeline(query), allowDiskUse=True).to_list(length=1)
+    result = _format_stats_facets(rows[0] if rows else {})
+    for ward in result["wards"]:
+        ward["role"] = roles_by_user.get(ward["userId"])
+    included_roles = list(
+        sorted(OFFICIAL_ACCOUNT_ROLES) if scope == "official" else _ALL_STATS_ROLES
+    )
+    result.update({
+        "scope": scope,
+        "accountCount": len(included_user_ids),
+        "includedRoles": included_roles,
+    })
+    return result
+
+
+async def stats_by_user_ids(
+    *,
+    user_ids: list[str],
+    date_from: datetime,
+    date_to: datetime,
+) -> dict:
+    """Tổng hợp đúng tiêu chí dashboard cho một tập tài khoản xác định.
+
+    Module báo cáo truyền danh sách ``user_id`` hiện hành; không fallback theo tên xã/tài khoản
+    vì khớp chuỗi có thể kéo nhầm trace của đơn vị khác vào file chính thức.
+    """
+    unique_ids = list(dict.fromkeys(str(value) for value in user_ids if value))
+    if not unique_ids:
+        return _format_stats_facets({})
+    query = {
+        "user_id": {"$in": unique_ids},
+        "created_at": {"$gte": date_from, "$lt": date_to},
+    }
+    rows = await get_db().traces.aggregate(
+        _stats_pipeline(query), allowDiskUse=True
+    ).to_list(length=1)
+    return _format_stats_facets(rows[0] if rows else {})
 
 
 def _serialize(doc: dict) -> dict:

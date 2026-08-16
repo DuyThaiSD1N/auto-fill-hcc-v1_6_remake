@@ -68,7 +68,9 @@ def test_build_plan_routes_mau_18_to_second_four_slots():
     assert not errors
     assert branch == "18"
     assert source == "application"
-    assert {item["slotIndex"] for item in attachments} == {4, 5, 6, 7}
+    assert {item["slotIndex"] for item in attachments} == {4, 6, 7}
+    by_file = {item["fileName"]: item for item in attachments}
+    assert by_file["cccd.pdf"]["slotKey"] == by_file["don-18.pdf"]["slotKey"]
 
 
 def test_build_plan_defaults_to_current_11dk_group_without_application():
@@ -86,7 +88,7 @@ def test_build_plan_defaults_to_current_11dk_group_without_application():
     assert {item["slotIndex"] for item in attachments} == {0, 1}
 
 
-def test_real_case_mau_16_application_is_not_misclassified_as_land_certificate():
+def test_real_case_mau_16_routes_to_lai_chau_mau_18_group():
     files = [_raw("2. đơn ĐK biến động đất đai.pdf", 0), _raw("2. GCNQSD đất.pdf", 1)]
     ocr = [
         {
@@ -110,13 +112,35 @@ def test_real_case_mau_16_application_is_not_misclassified_as_land_certificate()
     attachments, errors, classified, branch, source = planner.build_plan_items(files, ocr)
 
     assert not errors
-    assert branch == "11dk"
-    assert source == "generic_application"
+    assert branch == "18"
+    assert source == "application"
     by_file = {item["fileName"]: item for item in attachments}
-    assert by_file["2. đơn ĐK biến động đất đai.pdf"]["slotIndex"] == 3
-    assert by_file["2. đơn ĐK biến động đất đai.pdf"]["documentName"] == "Đơn đăng ký biến động đất đai"
-    assert by_file["2. GCNQSD đất.pdf"]["slotIndex"] == 0
-    assert [row["docType"] for row in classified] == ["change_application", "land_certificate"]
+    assert by_file["2. đơn ĐK biến động đất đai.pdf"]["slotIndex"] == 7
+    assert by_file["2. đơn ĐK biến động đất đai.pdf"]["documentName"] == "Đơn đăng ký biến động Mẫu số 16"
+    assert by_file["2. GCNQSD đất.pdf"]["slotIndex"] == 4
+    assert [row["docType"] for row in classified] == ["application_16", "land_certificate"]
+
+
+def test_mau_16_groups_applicant_identity_with_application_in_row_8():
+    files = [_raw("don-16.pdf", 0), _raw("cccd-nguoi-yeu-cau.pdf", 1)]
+    ocr = [
+        {
+            "name": "don-16.pdf",
+            "text": "Mẫu số 16\nĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT",
+        },
+        {
+            "name": "cccd-nguoi-yeu-cau.pdf",
+            "text": "CĂN CƯỚC CÔNG DÂN\nSố: 012345678901",
+        },
+    ]
+
+    attachments, errors, _, branch, _ = planner.build_plan_items(files, ocr)
+
+    assert not errors
+    assert branch == "18"
+    assert [item["slotIndex"] for item in attachments] == [7, 7]
+    assert len({item["slotKey"] for item in attachments}) == 1
+    assert attachments[0]["slotKey"] == "dinh_chinh_lc_18_application"
 
 
 def test_build_plan_stops_when_both_application_versions_exist():
@@ -263,5 +287,10 @@ def test_registry_enables_lai_chau_attachment_pipeline():
 
     assert procedure["hasAttachmentStep"] is True
     assert get_attach_pipeline("dinh-chinh-sai-sot") is not None
+    assert procedure["detect"] == {
+        "urlScope": ["dichvucong.laichau.gov.vn"],
+        "textIncludes": ["đính chính giấy chứng nhận đã cấp lần đầu có sai sót"],
+        "headingDisabled": True,
+    }
     assert "Mẫu số 11/ĐK" in procedure["uploadHint"]
     assert "Mẫu số 18" in procedure["uploadHint"]

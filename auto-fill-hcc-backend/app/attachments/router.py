@@ -14,6 +14,7 @@ from app.services import ocr
 from app.storage.files import save_request_files
 from app.traces import repo as traces_repo
 from app.traces.applicant import resolve_applicant_name
+from app.traces.metadata import build_attach_trace_metadata
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/attachments", tags=["attachments"])
@@ -53,6 +54,7 @@ async def _save_attach_trace(
     Best-effort: mọi lỗi ở đây không được làm hỏng response đính kèm.
     """
     created_at = datetime.now(timezone.utc)
+    files_meta: list[dict] = []
     try:
         # Lưu file + bản ghi process_requests để trace detail xem được nội dung file (qua /traces/{id}/files).
         files_meta = save_request_files(request_id, created_at, body.files)
@@ -63,24 +65,34 @@ async def _save_attach_trace(
     except Exception as e:  # noqa: BLE001
         logger.warning("Lưu file/bản ghi request đính kèm thất bại (%s): %s", request_id, e)
 
-    # Trace đính kèm hiển thị: mỗi file → tên tài liệu + ô/component đích (để đối chiếu đúng chỗ).
     plan = result.get("attachments") or []
-    attachments = [
-        {
-            "name": it.get("fileName") or it.get("documentName") or "",
-            "role": it.get("componentName") or it.get("documentName") or it.get("slotName") or "",
-        }
-        for it in plan
-    ] or [{"name": f.name, "role": f.role} for f in body.files]
     applicant_name = resolve_applicant_name(options, result)
     # Lựa chọn "tách hồ sơ" popup gửi trong options (chỉ chứng thực bản sao/chữ ký có ô tick);
     # chỉ nhận bool thật để trace phân biệt được với "không rõ" (None — extension cũ).
     split = options.get("splitMode")
+    split_value = split if isinstance(split, bool) else None
+    trace_files_meta = files_meta or [
+        {"name": f.name, "type": f.type, "role": f.role, "sha256": None}
+        for f in body.files
+    ]
+    attachments, dossier_ids = build_attach_trace_metadata(
+        request_id=request_id,
+        session_id=str(options.get("sessionId") or options.get("requestId") or "").strip() or None,
+        procedure=body.procedure,
+        split=split_value is True,
+        plan=plan,
+        files_meta=trace_files_meta,
+    )
+    if not attachments:
+        attachments = [
+            {"name": f.name, "role": f.role, "sha256": None, "uses": 1}
+            for f in body.files
+        ]
     await traces_repo.create_trace(
         request_id=request_id, user_id=user["id"],
         username=user.get("username"), name=user.get("name"),
         applicant_name=applicant_name, attachments=attachments,
-        split=split if isinstance(split, bool) else None,
+        split=split_value, stats_version=2, dossier_ids=dossier_ids,
         kind="attach",  # bước đính kèm — phân biệt với autofill trên màn trace
         stats=result.get("stats"), total_bytes=total_bytes,
         procedure=body.procedure, procedure_label=proc.get("label"),

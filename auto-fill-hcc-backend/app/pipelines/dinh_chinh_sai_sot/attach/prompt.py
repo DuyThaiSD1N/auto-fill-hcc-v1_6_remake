@@ -13,13 +13,15 @@ trên cổng dịch vụ công tỉnh Lai Châu.
 <critical_rules>
 1. Ưu tiên OCR_TEXT. Chỉ dùng tên file khi OCR_TEXT rỗng hoặc không đủ bằng chứng; không dùng thứ tự file.
 2. Mỗi tài liệu trả đúng một type trong allowed_types.
-3. Phân biệt chính xác Đơn Mẫu 11/ĐK với Đơn Mẫu 18 vì hai mẫu thuộc hai nhóm ô đính kèm khác nhau.
+3. Phân biệt chính xác Đơn Mẫu 11/ĐK, Mẫu 16 và Mẫu 18; tại Lai Châu, Mẫu 16 được đưa vào
+   cùng nhóm ô Mẫu 18, còn Mẫu 11/ĐK thuộc nhóm ô riêng.
 4. Không mặc định tài liệu chưa rõ là giấy tờ chứng minh sai sót; chưa đủ bằng chứng thì trả other.
 5. Trả đúng một JSON object, không markdown và không giải thích.
 </critical_rules>
 
 <allowed_types>
 - application_11dk
+- application_16
 - application_18
 - change_application
 - land_certificate
@@ -32,9 +34,11 @@ trên cổng dịch vụ công tỉnh Lai Châu.
 <type_definitions>
 - application_11dk: Đơn đăng ký biến động đất đai, tài sản gắn liền với đất theo Mẫu số 11/ĐK;
   thường có "Mẫu số 11/ĐK", "Nghị định số 101/2024/NĐ-CP".
+- application_16: Đơn đăng ký biến động đất đai, tài sản gắn liền với đất theo Mẫu số 16;
+  trên cổng Lai Châu tài liệu này thuộc nhóm ô được giao diện đặt tên là Mẫu số 18.
 - application_18: Đơn đăng ký biến động đất đai, tài sản gắn liền với đất theo Mẫu số 18.
-- change_application: Đơn đăng ký biến động đất đai, tài sản gắn liền với đất nhưng số mẫu khác,
-  bị OCR sai hoặc không xác định rõ là 11/ĐK hay 18.
+- change_application: Đơn đăng ký biến động đất đai, tài sản gắn liền với đất nhưng OCR không đọc
+  rõ số mẫu và không đủ bằng chứng để xác định là 11/ĐK, 16 hay 18.
 - land_certificate: Bản gốc/bản chụp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu nhà ở hoặc
   tài sản gắn liền với đất; thường có "GIẤY CHỨNG NHẬN", "thửa đất", "tờ bản đồ", "số vào sổ cấp GCN".
 - error_proof: Giấy tờ dùng để chứng minh nội dung đúng và sai sót cần đính chính, như giấy khai sinh,

@@ -52,12 +52,22 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
     Tên huyện thường không có chữ "huyện" trên CCCD, nhưng vị trí áp cuối vẫn là cấp huyện, KHÔNG được chọn làm xa.
     Vd "Thôn Bình Minh / Tân Phú, Yên Lạc, Vĩnh Phúc" → diaChi="Thôn Bình Minh",
     xa="Tân Phú", tinh="Vĩnh Phúc" (bỏ huyện Yên Lạc).
-- HoTich_* không lấy từ CCCD. Nếu KHÔNG có giấy tờ hộ tịch gốc, TỜ KHAI CẤP BẢN SAO là nguồn chính:
-  lấy thông tin người được cấp trong block sau "cho người có tên dưới đây", cùng cơ quan đăng ký, số,
-  quyển số, ngày đăng ký và số lượng bản sao. Không lấy block người yêu cầu hoặc người ký.
-- Nếu hồ sơ có GIẤY KHAI SINH cũ/TRÍCH LỤC/KHAI SANH/TRÍCH Y SỔ BỘ thì ưu tiên tài liệu hộ tịch gốc
-  cho dữ liệu sự kiện; tờ khai chỉ bổ sung field còn thiếu và không được đổi HoTich_TenGiayTo thành tên tờ khai.
-- Nếu OCR có nhiều tài liệu hộ tịch chính, ưu tiên tài liệu có thông tin đăng ký rõ nhất.
+- Tách NGUỒN, không gộp trực tiếp:
+  + TỜ KHAI CẤP BẢN SAO chỉ sinh ToKhai_*. Mục (4) sinh ToKhai_LoaiSuKien/ToKhai_TenGiayTo;
+    block sau "cho người có tên dưới đây" sinh ToKhai_HoTenNguoiDuocCap và các ToKhai_* cá nhân;
+    block "Đã đăng ký tại" sinh ToKhai_CoQuanDangKy/ToKhai_So/ToKhai_QuyenSo/ToKhai_NgayDangKy.
+  + Giấy hộ tịch đính kèm chỉ sinh HoTich_* của CHÍNH giấy đó. Không sao chép dữ liệu TỜ KHAI vào HoTich_*.
+  + Python sẽ dùng ToKhai_LoaiSuKien + ToKhai_HoTenNguoiDuocCap làm khóa
+    (LOẠI GIẤY ĐƯỢC YÊU CẦU, NGƯỜI ĐƯỢC CẤP), ưu tiên mọi ToKhai_* không trống và chỉ giữ HoTich_*
+    làm nguồn bổ sung khi giấy khớp CẢ loại giấy được yêu cầu VÀ người được cấp.
+  + Giấy chỉ đúng loại nhưng sai người, hoặc đúng người nhưng sai loại, KHÔNG PHẢI nguồn bổ sung.
+    Không trộn số/quyển/ngày/nơi đăng ký từ giấy khác loại hoặc khác người.
+  + ToKhai_LoaiSuKien chỉ phân loại đúng chữ tại mục (4) của TỜ KHAI và phải khớp ToKhai_TenGiayTo;
+    tuyệt đối không đổi nó theo loại của bất kỳ giấy hộ tịch đính kèm nào.
+  + ToKhai_SoDinhDanh chỉ trả số đúng 12 chữ số. Số 9 chữ số chỉ là CMND: trả vào
+    ToKhai_SoGiayToTuyThan, không trả vào ToKhai_SoDinhDanh.
+- Chỉ khi KHÔNG có TỜ KHAI CẤP BẢN SAO hoặc mục (4) không ghi loại yêu cầu mới chọn giấy hộ tịch chính
+  từ tài liệu đính kèm; nếu có nhiều giấy thì ưu tiên giấy có thông tin đăng ký rõ nhất và nhất quán một chủ thể.
 </source_rules>
 
 <supplementary_subject_rules>
@@ -75,11 +85,14 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 </supplementary_subject_rules>
 
 <classification_rules>
-- Nếu OCR có "GIẤY KHAI SINH", "KHAI SANH", "TRÍCH LỤC KHAI SINH", "TRÍCH Y SỔ BỘ",
+- Nếu TỜ KHAI mục (4) ghi "Giấy khai sinh"/"Trích lục khai sinh" thì ToKhai_LoaiSuKien = "birth";
+  ghi kết hôn thì = "marriage"; ghi khai tử/chứng tử thì = "death". Không trả giá trị này vào HoTich_LoaiSuKien.
+- Phân loại từng giấy hộ tịch đính kèm riêng như sau để sinh HoTich_LoaiSuKien của giấy đó.
+- Nếu OCR của giấy đang xét có "GIẤY KHAI SINH", "KHAI SANH", "TRÍCH LỤC KHAI SINH", "TRÍCH Y SỔ BỘ",
   "TRÍCH Y SỐ BỘ" hoặc "Sổ hộ tịch việc khai sinh" thì HoTich_LoaiSuKien = "birth".
-- Nếu OCR có "GIẤY CHỨNG NHẬN KẾT HÔN", "TRÍCH LỤC KẾT HÔN", "TRÍCH LỤC GHI CHÚ KẾT HÔN",
+- Nếu OCR của giấy đang xét có "GIẤY CHỨNG NHẬN KẾT HÔN", "TRÍCH LỤC KẾT HÔN", "TRÍCH LỤC GHI CHÚ KẾT HÔN",
   hoặc các mục vợ/chồng, nơi đăng ký kết hôn, ngày đăng ký kết hôn thì HoTich_LoaiSuKien = "marriage".
-- Nếu OCR có "TRÍCH LỤC KHAI TỬ", "Sổ hộ tịch việc khai tử", thông tin người chết và ngày đăng ký khai tử
+- Nếu OCR của giấy đang xét có "TRÍCH LỤC KHAI TỬ", "Sổ hộ tịch việc khai tử", thông tin người chết và ngày đăng ký khai tử
   thì HoTich_LoaiSuKien = "death".
 - Chỉ trả HoTich_LoaiSuKien khi chắc chắn loại sự kiện từ OCR. Không đoán từ tên file.
 </classification_rules>
@@ -88,16 +101,19 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - HoTich_TenGiayTo là tên GIẤY TỜ HỘ TỊCH ĐƯỢC YÊU CẦU CẤP BẢN SAO, ví dụ "Giấy khai sinh",
   "Giấy chứng nhận kết hôn", "Trích lục khai tử". KHÔNG trả "Tờ khai đăng ký lại khai sinh",
   "Tờ khai cấp bản sao trích lục hộ tịch" hoặc "Bản cam đoan" làm HoTich_TenGiayTo.
-- HoTich_CoQuanDangKy = CƠ QUAN ĐÃ ĐĂNG KÝ/CẤP giấy tờ hộ tịch trước đây. BẮT BUỘC điền nếu giấy tờ CÓ
-  cơ quan này, TUYỆT ĐỐI KHÔNG bỏ trống. Lấy theo thứ tự ưu tiên:
-  + Nếu có nhãn rõ "Nơi đăng ký", "Cơ quan đăng ký", "Nơi đăng ký kết hôn" thì lấy giá trị đó.
+- HoTich_CoQuanDangKy = CƠ QUAN ĐÃ ĐĂNG KÝ/CẤP giấy tờ hộ tịch trước đây. Phải tuân thủ khóa nguồn
+  (loại giấy được yêu cầu, người được cấp) ở <source_rules>. Lấy theo thứ tự ưu tiên:
+  + TỜ KHAI: lấy nhãn "Đã đăng ký tại" trong block người được cấp.
+  + Nếu tờ khai thiếu, lấy nhãn rõ "Nơi đăng ký", "Cơ quan đăng ký", "Nơi đăng ký kết hôn" trên giấy
+    khớp CẢ loại được yêu cầu và người được cấp.
   + GIẤY KHAI SINH / TRÍCH LỤC hộ tịch thường KHÔNG có nhãn trên: lấy cơ quan ghi ở PHẦN ĐẦU văn bản
     (tiêu đề trên cùng, vd "UBND xã/phường/thị trấn ...", "TỈNH ... / UBND ...", "Sở Tư pháp ...")
     HOẶC ở PHẦN KÝ TÊN cuối (chức danh + nơi ký, vd "TM. UBND PHƯỜNG ĐOÀN KẾT - CHỦ TỊCH").
   + Chuẩn hóa "UBND" -> "Ủy ban nhân dân"; ghép kèm cấp tỉnh nếu OCR có
     (vd OCR "TỈNH LAI CHÂU / UBND PHƯỜNG ĐOÀN KẾT" -> "Ủy ban nhân dân phường Đoàn Kết, tỉnh Lai Châu").
   + Chỉ để trống khi giấy tờ THẬT SỰ không ghi bất kỳ cơ quan đăng ký/cấp nào.
-- HoTich_So BẮT BUỘC trả khi giấy tờ hộ tịch chính có dòng "Số:", "Số đăng ký" hoặc "Số trích lục".
+- HoTich_So ưu tiên số trong block "Đã đăng ký tại" của TỜ KHAI. Nếu thiếu, chỉ lấy khi giấy hộ tịch
+  khớp CẢ loại được yêu cầu và người được cấp có dòng "Số:", "Số đăng ký" hoặc "Số trích lục".
   Dòng "Số: <mã>/<năm>" ở phần đầu, ngay trước hoặc sát tiêu đề "GIẤY KHAI SINH"/"TRÍCH LỤC..."
   chính là HoTich_So; giữ nguyên toàn bộ mã và năm. Không lấy số CCCD, số định danh, số mục,
   số trang hoặc số điện thoại làm HoTich_So.
@@ -122,9 +138,22 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - Có thể lấy HoTich_NoiCuTru từ chính GIẤY HỘ TỊCH của chủ thể (giấy khai sinh, trích lục khai tử,
   giấy đăng ký kết hôn) khi giấy đó ghi nơi cư trú của người được đăng ký.
 - Phân biệt NGUỒN giấy tờ tùy thân trong hồ sơ khai sinh:
-  + Trên TỜ KHAI CẤP BẢN SAO, dòng "Giấy tờ tùy thân" nằm trong block sau "cho người có tên dưới đây"
-    là của CHÍNH người được cấp. BẮT BUỘC trả đủ HoTich_LoaiGiayToTuyThan,
-    HoTich_SoGiayToTuyThan, HoTich_NgayCapGiayToTuyThan, HoTich_NoiCapGiayToTuyThan nếu OCR có.
+  + TỜ KHAI CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH có HAI BLOCK ĐỘC LẬP. Block 1 từ
+    "Họ, chữ đệm, tên người yêu cầu" đến trước "Quan hệ với người được cấp" chỉ sinh Nyc_*.
+    Block 2 bắt đầu sau "cho người có tên dưới đây"; dòng "Giấy tờ tùy thân" trong block 2 là của
+    CHÍNH người được cấp và phải sinh HoTich_*. Xác định vai trò theo VỊ TRÍ BLOCK, không yêu cầu họ tên
+    hai block phải khớp vì OCR có thể đọc sai một vài ký tự trong tên.
+  + TUYỆT ĐỐI KHÔNG KHỬ TRÙNG giữa Nyc_* và HoTich_*. Nếu block 1 và block 2 ghi cùng số giấy tờ,
+    cùng ngày cấp, cùng cơ quan cấp (trường hợp người yêu cầu tự xin bản sao cho mình), vẫn BẮT BUỘC
+    trả CẢ HAI nhóm field độc lập. Không được chỉ trả Nyc_* rồi bỏ HoTich_* vì giá trị giống nhau.
+  + Nếu block 2 có dạng "Giấy tờ tùy thân: <12 chữ số> do <cơ quan công an> cấp ngày <ngày>" nhưng
+    không ghi rõ chữ "CCCD"/"Căn cước", vẫn BẮT BUỘC trả đủ HoTich_LoaiGiayToTuyThan,
+    HoTich_SoGiayToTuyThan, HoTich_NgayCapGiayToTuyThan, HoTich_NoiCapGiayToTuyThan và trả:
+    HoTich_SoDinhDanh = <12 chữ số>, HoTich_LoaiGiayToTuyThan = "Căn cước",
+    HoTich_SoGiayToTuyThan = <12 chữ số>, HoTich_NgayCapGiayToTuyThan = <ngày>,
+    HoTich_NoiCapGiayToTuyThan = <cơ quan>. Thiếu tên loại không được làm mất số/ngày/nơi cấp.
+  + Chỉ lấy các giá trị trên khi block 2 THỰC SỰ có dòng "Giấy tờ tùy thân". Nếu block 2 để trống,
+    không tự sao chép Nyc_* từ block 1 sang HoTich_* chỉ vì đây có thể là trường hợp tự yêu cầu.
   + Trên GIẤY KHAI SINH, dòng "Giấy tờ tùy thân: Thẻ căn cước/CCCD số ... cấp ngày ... tại ..."
   là của NGƯỜI ĐI KHAI SINH (cha/mẹ/người thân), KHÔNG PHẢI của con. TUYỆT ĐỐI KHÔNG lấy dòng này vào
   HoTich_LoaiGiayToTuyThan/HoTich_SoGiayToTuyThan/HoTich_NgayCapGiayToTuyThan/HoTich_NoiCapGiayToTuyThan

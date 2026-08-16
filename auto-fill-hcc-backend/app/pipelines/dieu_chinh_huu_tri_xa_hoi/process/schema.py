@@ -11,11 +11,11 @@ thực lại vai trò bằng formContext rồi đổi sang tên field của eFor
 FIELDS: list[dict] = [
     {
         "name": "ChuHoSo_HoTen",
-        "desc": "Họ tên CHỦ HỒ SƠ: người đề nghị/người đang hưởng tại mục I Mẫu số 01. Nếu có CCCD khớp số định danh thì ưu tiên chính tả họ tên trên CCCD.",
+        "desc": "Họ tên CHỦ HỒ SƠ: người đề nghị/người đang hưởng tại mục I Mẫu số 01. Ưu tiên chính tả họ tên in trên mặt trước CCCD khớp số định danh; nếu số trên Mẫu 01 bị lệch nhưng chỉ có đúng một CCCD có họ tên in trên thẻ khớp chính xác chủ hồ sơ thì vẫn dùng họ tên CCCD.",
     },
     {
         "name": "ChuHoSo_NgaySinh",
-        "desc": "Ngày sinh chủ hồ sơ, dd/mm/yyyy. Ưu tiên CCCD khớp chủ hồ sơ; nếu không có thì lấy đúng mục I Mẫu số 01.",
+        "desc": "Ngày sinh chủ hồ sơ, dd/mm/yyyy. BẮT BUỘC ưu tiên ngày sinh trên CCCD của chủ hồ sơ, kể cả khi ngày sinh hoặc số định danh trên Mẫu 01 bị lệch; chỉ dùng Mẫu 01 khi không xác định được duy nhất CCCD đúng người.",
     },
     {
         "name": "ChuHoSo_GioiTinh",
@@ -23,15 +23,15 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ChuHoSo_SoDinhDanh",
-        "desc": "Số định danh/CCCD/CMND chủ hồ sơ. Ưu tiên CCCD khớp người tại mục I; có thể đọc từ MRZ.",
+        "desc": "Số định danh/CCCD/CMND chủ hồ sơ. BẮT BUỘC ưu tiên số in trên CCCD của chủ hồ sơ; nếu số trên Mẫu 01 lệch nhưng chỉ có đúng một CCCD có họ tên in trên thẻ khớp chính xác chủ hồ sơ thì lấy số CCCD đó. Có thể dùng MRZ để xác nhận.",
     },
     {
         "name": "ChuHoSo_NgayCap",
-        "desc": "Ngày cấp giấy tờ chủ hồ sơ, dd/mm/yyyy, chỉ khi OCR có ngày rõ. Ưu tiên mặt sau CCCD khớp chủ hồ sơ; không đảo hoặc đoán ngày mơ hồ.",
+        "desc": "Ngày cấp giấy tờ chủ hồ sơ, dd/mm/yyyy. Khi đã xác định được CCCD của chủ hồ sơ thì BẮT BUỘC lấy ngày cấp rõ trên mặt sau cùng thẻ, kể cả số trên Mẫu 01 bị lệch; không đảo hoặc đoán ngày mơ hồ.",
     },
     {
         "name": "ChuHoSo_NoiCap",
-        "desc": "Nơi cấp giấy tờ chủ hồ sơ, chỉ lấy khi CCCD hoặc mục I ghi rõ; không tự suy từ ngày cấp.",
+        "desc": "Nơi cấp giấy tờ chủ hồ sơ. Khi đã xác định được CCCD thì BẮT BUỘC đọc dòng cơ quan cấp trên mặt sau cùng thẻ, không lấy chữ trên dấu/logo. Thẻ có tiêu đề CĂN CƯỚC CÔNG DÂN và dòng CỤC TRƯỞNG CỤC CẢNH SÁT QLHC VỀ TTXH phải trả 'Cục Cảnh sát quản lý hành chính về trật tự xã hội', dù gần đó có chữ BỘ CÔNG AN; chỉ thẻ CĂN CƯỚC mẫu mới mới dùng 'Bộ Công an'.",
     },
     {
         "name": "ChuHoSo_NoiCuTru",

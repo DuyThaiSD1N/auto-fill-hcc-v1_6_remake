@@ -1,12 +1,11 @@
-"""Map compact CCCD facts to Form.io fields for funeral support."""
+"""Đổi hai chủ thể nghiệp vụ sang field Form.io của mai táng hưu trí xã hội."""
 
 import re
 import unicodedata
 from dataclasses import dataclass
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.schema import UI_COMP_BY_NAME
-
-from app.pipelines._shared.compact_agent.issuer import default_issuer
 
 
 @dataclass
@@ -20,10 +19,15 @@ class Person:
     issue_date: str | None = None
     issuer: str | None = None
     residence: dict | None = None
+    phone: str | None = None
 
 
 def _by_name(fields: list[dict]) -> dict:
-    return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
+    return {
+        field["name"]: field["value"]
+        for field in fields
+        if field.get("value") not in (None, "", {}, [])
+    }
 
 
 def _norm_text(value: str | None) -> str:
@@ -40,24 +44,38 @@ def _norm_identity(value: str | None) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
-def _strip_admin_prefix(value):
-    """xa CHỈ giữ TÊN đơn vị, bỏ tiền tố loại (Xã/Phường/Thị trấn/TT)."""
+def _strip_admin_prefix(value) -> str:
     text = str(value or "").strip()
-    return re.sub(r"^(xã|phường|thị trấn|tt\.?)\s+", "", text, flags=re.IGNORECASE).strip()
+    return re.sub(
+        r"^(xã|phường|thị trấn|tt\.?)\s+",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    ).strip()
 
 
-def _area(value):
+def _area(value) -> dict | None:
     if not isinstance(value, dict):
         return None
     out = {
         "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
         "tinh": value.get("tinh") or value.get("tỉnh") or "",
-        "xa": _strip_admin_prefix(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
-        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
+        "xa": _strip_admin_prefix(
+            value.get("xa")
+            or value.get("xã")
+            or value.get("phuong")
+            or value.get("phường")
+        ),
+        "diaChi": (
+            value.get("diaChi")
+            or value.get("dia_chi")
+            or value.get("diachi")
+            or ""
+        ),
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return out
+    return remap_area(out) or out
 
 
 def _area_label(value: str | None) -> str | None:
@@ -66,7 +84,6 @@ def _area_label(value: str | None) -> str | None:
     text = " ".join(str(value).split()).strip()
     prefixes = (
         "Thành phố",
-        "Thành Phố",
         "Tỉnh",
         "Thị trấn",
         "Thị xã",
@@ -78,12 +95,12 @@ def _area_label(value: str | None) -> str | None:
     changed = True
     while changed:
         changed = False
-        norm_text = _norm_text(text)
+        normalized = _norm_text(text)
         for prefix in prefixes:
-            norm_prefix = _norm_text(prefix)
-            if norm_text == norm_prefix:
+            normalized_prefix = _norm_text(prefix)
+            if normalized == normalized_prefix:
                 return None
-            if norm_text.startswith(norm_prefix + " "):
+            if normalized.startswith(normalized_prefix + " "):
                 text = text[len(prefix):].strip()
                 changed = True
                 break
@@ -103,131 +120,69 @@ def _person(values: dict, prefix: str) -> Person | None:
         gender=values.get(f"{prefix}_GioiTinh"),
         nationality=values.get(f"{prefix}_QuocTich") or "Việt Nam",
         issue_date=values.get(f"{prefix}_NgayCap"),
-        issuer=values.get(f"{prefix}_NoiCap") or default_issuer(values.get(f"{prefix}_NgayCap")),
+        issuer=values.get(f"{prefix}_NoiCap"),
         residence=_area(values.get(f"{prefix}_NoiCuTru")),
+        phone=values.get(f"{prefix}_DienThoai"),
     )
-
-
-def _people(values: dict) -> list[Person]:
-    out = []
-    for prefix in ("Person1", "Person2"):
-        person = _person(values, prefix)
-        if person:
-            out.append(person)
-    return out
 
 
 def _form_context(options: dict | None) -> dict:
-    ctx = (options or {}).get("formContext") or {}
+    context = (options or {}).get("formContext") or {}
     return {
-        "applicant_name": ctx.get("applicantFullname") or ctx.get("fullname") or "",
-        "applicant_identity": ctx.get("applicantIdentityNumber") or ctx.get("identityNumber") or "",
+        "applicant_name": (
+            context.get("applicantFullname")
+            or context.get("fullname")
+            or ""
+        ),
+        "applicant_identity": (
+            context.get("applicantIdentityNumber")
+            or context.get("identityNumber")
+            or ""
+        ),
     }
+
+
+def _has_applicant_anchor(context: dict) -> bool:
+    return bool(
+        _norm_text(context.get("applicant_name"))
+        or _norm_identity(context.get("applicant_identity"))
+    )
 
 
 def _matches_applicant(person: Person, context: dict) -> bool:
-    ctx_identity = _norm_identity(context.get("applicant_identity"))
-    if ctx_identity and _norm_identity(person.identity) == ctx_identity:
-        return True
-    ctx_name = _norm_text(context.get("applicant_name"))
-    return bool(ctx_name and _norm_text(person.name) == ctx_name)
+    """Có cả tên và CCCD từ UI thì bắt buộc cùng khớp."""
+    context_name = _norm_text(context.get("applicant_name"))
+    context_identity = _norm_identity(context.get("applicant_identity"))
+    person_name = _norm_text(person.name)
+    person_identity = _norm_identity(person.identity)
+
+    if context_name and context_identity:
+        return person_name == context_name and person_identity == context_identity
+    if context_identity:
+        return bool(person_identity and person_identity == context_identity)
+    return bool(context_name and person_name == context_name)
 
 
-def _same_person(a_id, a_name, b_id, b_name) -> bool:
-    """Hai người trùng nhau? Số định danh khớp → cùng người. Nếu số LỆCH hoặc THIẾU thì vẫn
-    xét tên (bỏ dấu) — vì số CMND/CCCD trên TỜ KHAI VIẾT TAY hay bị OCR sai vài chữ số, không được
-    để số sai phủ quyết một tên trùng khớp hoàn toàn."""
-    ai, bi = _norm_identity(a_id), _norm_identity(b_id)
-    if ai and bi and ai == bi:
-        return True
-    an, bn = _norm_text(a_name), _norm_text(b_name)
-    return bool(an and bn and an == bn)
+def _same_person(first: Person, second: Person) -> bool:
+    first_identity = _norm_identity(first.identity)
+    second_identity = _norm_identity(second.identity)
+    if first_identity and second_identity:
+        return first_identity == second_identity
+    first_name = _norm_text(first.name)
+    second_name = _norm_text(second.name)
+    return bool(first_name and first_name == second_name)
 
 
-def _tokhai_owner(values: dict) -> dict | None:
-    """Chủ hồ sơ lấy từ TỜ KHAI mục II.2 (nhóm ToKhai_ChuHo*). Không có → None."""
-    name = values.get("ToKhai_ChuHoTen")
-    identity = values.get("ToKhai_ChuHoSoGiayTo")
-    if not name and not identity:
-        return None
-    return {
-        "name": name,
-        "identity": identity,
-        "birthday": values.get("ToKhai_ChuHoNamSinh"),
-        "issue_date": values.get("ToKhai_ChuHoNgayCap"),
-        "issuer": values.get("ToKhai_ChuHoNoiCap"),
-        "residence": _area(values.get("ToKhai_ChuHoNoiCuTru")),
-    }
-
-
-def _owner_from_tokhai(tk: dict, people: list[Person]) -> Person:
-    """Dựng chủ hồ sơ: định danh ƯU TIÊN CCCD của chính người đó (nếu upload có),
-    KHÔNG có thì lấy từ tờ khai. Địa chỉ ƯU TIÊN tờ khai (2 cấp xã+tỉnh); nếu tờ khai không
-    tách được xã/tỉnh thì fallback CCCD của người đó.
-    """
-    match = next(
-        (p for p in people if _same_person(p.identity, p.name, tk.get("identity"), tk.get("name"))),
-        None,
-    )
-
-    def pick(cccd_val, tk_val):
-        return cccd_val or tk_val
-
-    tk_res = tk.get("residence")
-    if tk_res and (tk_res.get("tinh") or tk_res.get("xa")):
-        residence = tk_res                       # tờ khai rõ (địa chỉ 2 cấp sáp nhập)
-    else:
-        residence = (match.residence if match else None) or tk_res
-
-    issue_date = pick(match.issue_date if match else None, tk.get("issue_date"))
-    return Person(
-        prefix="Owner",
-        name=pick(match.name if match else None, tk.get("name")),
-        identity=pick(match.identity if match else None, tk.get("identity")),
-        birthday=pick(match.birthday if match else None, tk.get("birthday")),
-        gender=(match.gender if match else None),  # tờ khai không ghi giới tính → để trống
-        nationality=(match.nationality if match else None) or "Việt Nam",
-        issue_date=issue_date,
-        issuer=pick(match.issuer if match else None, tk.get("issuer")) or default_issuer(issue_date),
-        residence=residence,
-    )
-
-
-def _pick_requester(people: list[Person], context: dict) -> tuple[Person | None, str | None]:
-    """Người nộp = CCCD khớp tên/số UI truyền lên. Chỉ 1 CCCD thì coi CCCD đó là người nộp."""
-    matches = [p for p in people if _matches_applicant(p, context)]
-    if len(matches) == 1:
-        return matches[0], None
-    if len(people) == 1:
-        return people[0], None
-    ctx = context.get("applicant_identity") or context.get("applicant_name") or "(trống)"
-    return None, (
-        "Không xác định được CCCD người nộp từ thông tin trên form "
-        f"({ctx}); cần form prefill khớp một CCCD đã upload."
-    )
-
-
-def _split_roles(people: list[Person], context: dict) -> tuple[Person | None, Person | None, list[str]]:
-    if len(people) == 1:
-        return people[0], people[0], []
-
-    matches = [p for p in people if _matches_applicant(p, context)]
-    if len(matches) == 1:
-        applicant = matches[0]
-        owner = next((p for p in people if p is not applicant), None)
-        return applicant, owner, []
-
-    ctx = context.get("applicant_identity") or context.get("applicant_name") or "(trống)"
-    return None, None, [
-        "Không xác định được CCCD người nộp từ thông tin đang có trên form "
-        f"({ctx}); cần form prefill khớp một trong các CCCD đã upload."
-    ]
-
-
-def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    """Derive ordered DOM fields and warnings from compact source facts."""
+def enrich(
+    fields: list[dict],
+    options: dict | None = None,
+) -> tuple[list[dict], list[str]]:
+    """Xác thực người nộp rồi phát hai khối UI theo đúng vai trò."""
     values = _by_name(fields)
-    people = _people(values)
+    owner = _person(values, "ChuHoSo")
+    requester = _person(values, "NguoiNop")
+    context = _form_context(options)
+
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
@@ -241,46 +196,54 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
-    context = _form_context(options)
-    tk = _tokhai_owner(values)
+    if not owner and not requester:
+        return out, ["Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."]
 
-    # ── Có TỜ KHAI (Mẫu 04): người nộp = CCCD khớp UI; chủ hồ sơ = mục II.2 tờ khai ──
-    if tk is not None:
-        if not people:
-            return out, ["Có tờ khai nhưng không đọc được CCCD của người nộp hồ sơ."]
-        requester, warn = _pick_requester(people, context)
-        if warn:
-            warnings.append(warn)
-        if not requester:
-            return out, warnings
+    # Người đứng ra mai táng trùng mỏ neo UI: tự nộp, tích checkbox và dùng
+    # chính chủ hồ sơ cho khối người nộp. Ngày sinh UI cũ không tham gia khớp.
+    if owner and _matches_applicant(owner, context):
+        add("data[isOwnerDossierCheck]", True)
+        _add_requester(add, owner)
+        # Portal tự sao chép hầu hết field khi tick nhưng bỏ sót ngày sinh chủ
+        # hồ sơ, nên phải phát riêng đúng field này sau khối người nộp.
+        add("data[ownerBirthday]", owner.birthday)
+        return out, warnings
 
-        owner = _owner_from_tokhai(tk, people)
-        same_person = _same_person(requester.identity, requester.name, owner.identity, owner.name)
-        add("data[isOwnerDossierCheck]", same_person)
-        _add_requester(add, requester)
-        if not same_person:
+    # Nộp thay: chỉ dùng NguoiNop sau khi khớp lại toàn bộ mỏ neo UI hiện có.
+    if owner and requester and _matches_applicant(requester, context):
+        if _same_person(owner, requester):
+            add("data[isOwnerDossierCheck]", True)
+            _add_requester(add, owner)
+            add("data[ownerBirthday]", owner.birthday)
+        else:
+            add("data[isOwnerDossierCheck]", False)
+            _add_requester(add, requester)
             _add_owner(add, owner)
         return out, warnings
 
-    # ── Không có tờ khai (chỉ CCCD): giữ logic cũ ──
-    if not people:
-        return out, ["Không đọc được CCCD/CMND hợp lệ cho thủ tục hỗ trợ mai táng."]
-
-    applicant, owner, role_warnings = _split_roles(people, context)
-    warnings.extend(role_warnings)
-    if not applicant or not owner:
+    # Không có/không xác định được người nộp vẫn trả chủ hồ sơ bình thường.
+    if owner:
+        add("data[isOwnerDossierCheck]", False)
+        _add_owner(add, owner)
+        if _has_applicant_anchor(context):
+            anchor = context.get("applicant_identity") or context.get("applicant_name")
+            warnings.append(
+                "Không xác định được người nộp khớp thông tin trên form "
+                f"({anchor}); không điền phần người nộp."
+            )
         return out, warnings
 
-    same_person = applicant is owner
-    add("data[isOwnerDossierCheck]", same_person)
+    if requester and _matches_applicant(requester, context):
+        add("data[isOwnerDossierCheck]", False)
+        _add_requester(add, requester)
+        warnings.append("Đã xác định người nộp nhưng chưa đọc được chủ hồ sơ từ Mẫu số 04.")
+        return out, warnings
 
-    if same_person:
-        _add_requester(add, applicant)
-    else:
-        _add_requester(add, applicant)
-        _add_owner(add, owner)
-
-    return out, warnings
+    anchor = context.get("applicant_identity") or context.get("applicant_name") or "(trống)"
+    return out, [
+        "Người nộp trích xuất không khớp thông tin trên form "
+        f"({anchor}); không điền để tránh nhầm người."
+    ]
 
 
 def _add_requester(add, person: Person) -> None:
@@ -290,6 +253,7 @@ def _add_requester(add, person: Person) -> None:
     add("data[identityNumber]", person.identity)
     add("data[identityDate]", person.issue_date)
     add("data[idIssuePlace]", person.issuer)
+    add("data[phoneNumber]", person.phone)
     if person.residence:
         add("data[province]", _area_label(person.residence.get("tinh")))
         add("data[district]", _area_label(person.residence.get("xa")))
@@ -303,6 +267,7 @@ def _add_owner(add, person: Person) -> None:
     add("data[ownerIdentityNumber]", person.identity)
     add("data[ownerIdentityDate]", person.issue_date)
     add("data[ownerIdIssuePlace]", person.issuer)
+    add("data[ownerPhoneNumber]", person.phone)
     if person.residence:
         add("data[ownerProvince]", _area_label(person.residence.get("tinh")))
         add("data[ownerDistrict]", _area_label(person.residence.get("xa")))

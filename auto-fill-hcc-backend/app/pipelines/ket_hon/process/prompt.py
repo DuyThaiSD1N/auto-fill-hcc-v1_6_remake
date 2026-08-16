@@ -30,8 +30,14 @@ NGUỒN DỮ LIỆU:
   + Không lấy địa chỉ từ giấy xác nhận tình trạng hôn nhân, giấy phép lái xe, bản cam đoan hoặc giấy tờ phụ
     gán vào bất kỳ field nơi cư trú nào nêu trên.
 - TÁCH ĐỊA CHỈ (mọi field *_NoiCuTru_TrongNuoc — object {quocGia,tinh,xa,diaChi}):
-  + xa = TÊN xã/phường/thị trấn, CHỈ lấy TÊN (bỏ tiền tố Xã/Phường/Thị trấn); tinh = tỉnh/thành phố;
+  + xa = tên đơn vị cấp xã KÈM tiền tố đầy đủ "Phường"/"Xã"/"Thị trấn"; tinh CHỈ chứa tên
+    tỉnh/thành phố trực thuộc trung ương, không chứa quận/huyện/xã hay phần địa chỉ chi tiết;
     diaChi = phần chi tiết đứng TRƯỚC xã (tổ/tổ dân phố/thôn/xóm/bản/số nhà/đường). KHÔNG đưa tên xã/huyện/tỉnh vào diaChi.
+  + BẮT BUỘC mở rộng viết tắt trong xa trước khi trả: P9/P.9/P 9 → "Phường 9";
+    X5/X.5/X 5 → "Xã 5"; TT Tam Đường/TT. Tam Đường → "Thị trấn Tam Đường".
+    Không trả "P9", "P.9", "X5", "X.5", "TT." hoặc tên trần khi nguồn xác định rõ loại đơn vị.
+  + Cấp tỉnh Hồ Chí Minh luôn trả đúng "Thành phố Hồ Chí Minh". Mọi dạng "TP.HCM", "TP HCM", "TPHCM",
+    "HCM", "TP.Hồ Chí Minh", "TP Hồ Chí Minh" hoặc "Hồ Chí Minh" đều phải chuẩn hóa thành tên đầy đủ này.
   + Khi địa chỉ trên tờ khai có nhãn rõ "Xã ..." hoặc "Phường ..." thì đơn vị mang nhãn đó BẮT BUỘC là xa;
     các thành phần "Thôn ...", "Tổ ...", "Khu phố ..." đứng trước vẫn thuộc diaChi, không được chọn chúng làm xa.
   + XÃ BẮT BUỘC khi giấy có phường/xã. ĐẾM TỪ CUỐI khi liệt kê không nhãn ("[chi tiết], xã, HUYỆN, tỉnh"):
@@ -63,7 +69,18 @@ NGUỒN DỮ LIỆU:
 - Quốc tịch chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam; mặc định Việt Nam.
 - SỐ LẦN KẾT HÔN: nếu tờ khai/giấy tờ có mục "Kết hôn lần thứ mấy" (hoặc "Số lần kết hôn") ghi số cho từng bên
   thì trả CccdNam_SoLanKetHon (cột BÊN NAM) và CccdNu_SoLanKetHon (cột BÊN NỮ) là SỐ NGUYÊN (vd "1", "2", "3").
-  Đối chiếu ĐÚNG CỘT nam/nữ theo tiêu đề bảng. KHÔNG có mục này → bỏ qua, KHÔNG mặc định.
+  Đối chiếu ĐÚNG CỘT nam/nữ theo tiêu đề bảng. Không có mục này → bỏ qua để mapper xử lý mặc định theo từng bên.
+- TÌNH TRẠNG HÔN NHÂN: chỉ trả mã số 1–6 cho CccdNam_TinhTrangHonNhan/CccdNu_TinhTrangHonNhan khi tờ khai ghi rõ
+  hoặc quyết định/bản án ly hôn thật xác định đúng người đó là đương sự. Với từng quyết định, đối chiếu riêng
+  từng đương sự với từng CCCD theo điều kiện CHẶT: (a) họ tên phải khớp chính xác sau khi chỉ chuẩn hóa
+  hoa-thường, dấu tiếng Việt và khoảng trắng; hoặc (b) số CCCD/số định danh trên quyết định khớp chính xác.
+  TUYỆT ĐỐI không fuzzy/sửa họ tên để tạo khớp: lệch, thiếu hoặc thừa dù chỉ một chữ mà quyết định không có
+  số CCCD khớp thì KHÔNG coi là cùng người; cùng năm sinh, địa chỉ hoặc giới tính cũng không đủ thay thế.
+  Xử lý từng quyết định độc lập: quyết định của người nào chỉ gán mã cho đúng người đó, không thấy hồ sơ có
+  hai CCCD rồi tự gán ly hôn cho cả hai, không lấy cặp đương sự của văn bản này ghép với CCCD của văn bản khác.
+  Người có quyết định ly hôn → mã 3 ("Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai").
+  Không trả cả câu dài, chỉ trả một mã số duy nhất.
+  Không có chứng cứ trực tiếp → bỏ field để mapper xử lý mặc định theo từng bên; không tự suy luận mã từ CCCD.
 - CẤP BẢN SAO — CHỈ đọc từ mục "Đề nghị cấp bản sao" trên tài liệu có đúng tiêu đề
   "TỜ KHAI ĐĂNG KÝ KẾT HÔN"; không lấy yêu cầu/số lượng bản sao từ giấy tờ khác:
   + Tích/chọn Có -> CopyRequest_WantsCopy = "Có"; tích/chọn Không -> "Không".

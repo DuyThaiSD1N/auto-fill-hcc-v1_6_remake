@@ -224,6 +224,79 @@ def _event_type(values: dict) -> str:
     return ""
 
 
+_DECLARATION_TO_HOTICH = {
+    "ToKhai_LoaiSuKien": "HoTich_LoaiSuKien",
+    "ToKhai_TenGiayTo": "HoTich_TenGiayTo",
+    "ToKhai_HoTenNguoiDuocCap": "HoTich_HoTenNguoiDuocDangKy",
+    "ToKhai_NgaySinh": "HoTich_NgaySinh",
+    "ToKhai_GioiTinh": "HoTich_GioiTinh",
+    "ToKhai_DanToc": "HoTich_DanToc",
+    "ToKhai_QuocTich": "HoTich_QuocTich",
+    "ToKhai_SoDinhDanh": "HoTich_SoDinhDanh",
+    "ToKhai_LoaiGiayToTuyThan": "HoTich_LoaiGiayToTuyThan",
+    "ToKhai_SoGiayToTuyThan": "HoTich_SoGiayToTuyThan",
+    "ToKhai_NgayCapGiayToTuyThan": "HoTich_NgayCapGiayToTuyThan",
+    "ToKhai_NoiCapGiayToTuyThan": "HoTich_NoiCapGiayToTuyThan",
+    "ToKhai_NoiCuTru": "HoTich_NoiCuTru",
+    "ToKhai_CoQuanDangKy": "HoTich_CoQuanDangKy",
+    "ToKhai_So": "HoTich_So",
+    "ToKhai_QuyenSo": "HoTich_QuyenSo",
+    "ToKhai_NgayDangKy": "HoTich_NgayDangKy",
+}
+
+
+def _event_from_title(title) -> str:
+    folded = _fold(title)
+    if "ket hon" in folded:
+        return "marriage"
+    if "khai tu" in folded or "chung tu" in folded:
+        return "death"
+    if "khai sinh" in folded:
+        return "birth"
+    return ""
+
+
+def _same_registered_person(declared_name, document_name) -> bool:
+    declared = _fold(declared_name)
+    document = _fold(document_name)
+    return bool(declared and document and (declared == document or declared in document or document in declared))
+
+
+def _apply_declaration_precedence(values: dict) -> dict:
+    """Tờ khai là khóa yêu cầu; giấy đính kèm chỉ bổ sung khi đúng cả loại và chủ thể."""
+    merged = dict(values)
+    # Tên giấy ghi nguyên văn ở mục (4) đáng tin hơn mã phân loại do model suy ra.
+    declared_event = _event_from_title(values.get("ToKhai_TenGiayTo"))
+    if not declared_event:
+        raw_declared_event = str(values.get("ToKhai_LoaiSuKien") or "").strip().lower()
+        declared_event = raw_declared_event if raw_declared_event in _EVENT_TO_OPTION else ""
+    declared_name = values.get("ToKhai_HoTenNguoiDuocCap")
+
+    if declared_event and declared_name:
+        document_event = str(values.get("HoTich_LoaiSuKien") or "").strip().lower()
+        if not document_event:
+            document_event = _event_from_title(values.get("HoTich_TenGiayTo"))
+        document_matches = (
+            document_event == declared_event
+            and _same_registered_person(declared_name, values.get("HoTich_HoTenNguoiDuocDangKy"))
+        )
+        if not document_matches:
+            # Xóa toàn bộ fact của giấy sai loại/sai người trước khi phủ dữ liệu tờ khai.
+            merged = {key: value for key, value in merged.items() if not key.startswith("HoTich_")}
+
+    for declaration_name, hotich_name in _DECLARATION_TO_HOTICH.items():
+        if declaration_name == "ToKhai_LoaiSuKien":
+            continue
+        value = values.get(declaration_name)
+        if declaration_name == "ToKhai_SoDinhDanh" and len(_digits(value)) != 12:
+            continue
+        if value not in (None, "", {}, []):
+            merged[hotich_name] = value
+    if declared_event:
+        merged["HoTich_LoaiSuKien"] = declared_event
+    return merged
+
+
 def _strip_role_label(text: str) -> str:
     return re.sub(
         r"^\s*(họ[, ]*chữ đệm[, ]*tên\s*)?(chồng|bên nam|nam|người chồng)\s*[:：-]?\s*",
@@ -275,7 +348,7 @@ def _registered_person_name(values: dict, event_type: str) -> str:
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
-    values = _by_name(fields)
+    values = _apply_declaration_precedence(_by_name(fields))
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -456,9 +529,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("NDK_DanToc", ethnicity)
             add("NDK_DanTocKhac", other_ethnicity)
             add("NDK_QuocTich", values.get("HoTich_QuocTich") or _ct("ChuThe_QuocTich") or "Việt Nam")
-            # HoTich_*GiayToTuyThan của birth chỉ được prompt trả từ block người được cấp
-            # trên TỜ KHAI cấp bản sao. Giấy khai sinh chỉ có số định danh của trẻ thì
-            # không có các field này, nên mapper chỉ điền NDK_SoDinhDanh.
+            # Sau bước khóa nguồn, HoTich_* có thể là fact từ tờ khai đã được phủ sang
+            # hoặc từ đúng giấy hộ tịch khớp loại + chủ thể.
             is_birth = event_type == "birth"
             ht_loai = values.get("HoTich_LoaiGiayToTuyThan")
             ht_so = values.get("HoTich_SoGiayToTuyThan")

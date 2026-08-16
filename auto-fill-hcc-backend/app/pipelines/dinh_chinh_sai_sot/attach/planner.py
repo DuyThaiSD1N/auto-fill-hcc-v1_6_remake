@@ -25,6 +25,7 @@ _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _MAX_FILE_BYTES = 6 * 1024 * 1024
 
 _APP_11 = "application_11dk"
+_APP_16 = "application_16"
 _APP_18 = "application_18"
 _APP_GENERIC = "change_application"
 _LAND = "land_certificate"
@@ -33,7 +34,7 @@ _AUTH = "authorization"
 _IDENTITY = "identity"
 _OTHER = "other"
 _ALLOWED_TYPES = {
-    _APP_11, _APP_18, _APP_GENERIC, _LAND, _PROOF, _AUTH, _IDENTITY, _OTHER,
+    _APP_11, _APP_16, _APP_18, _APP_GENERIC, _LAND, _PROOF, _AUTH, _IDENTITY, _OTHER,
 }
 
 _BRANCH_11 = "11dk"
@@ -69,6 +70,7 @@ _SLOT_BY_INDEX = {slot["slotIndex"]: slot for slot in SLOTS}
 
 _LABELS = {
     _APP_11: "Đơn đăng ký biến động Mẫu số 11/ĐK",
+    _APP_16: "Đơn đăng ký biến động Mẫu số 16",
     _APP_18: "Đơn đăng ký biến động Mẫu số 18",
     _APP_GENERIC: "Đơn đăng ký biến động đất đai",
     _LAND: "Giấy chứng nhận quyền sử dụng đất",
@@ -100,15 +102,18 @@ def _rule_doc_type(text: str) -> str:
     ):
         return _AUTH
 
-    # Mẫu 11/ĐK xét trước Mẫu 18 và các từ "đăng ký biến động" dùng chung.
-    if _has_any(haystack, ("mau so 11/dk", "mau 11/dk", "mau so 11 dk", "mau 11 dk")) or (
-        "nghi dinh so 101/2024/nd-cp" in haystack and "dang ky bien dong" in haystack
-    ):
+    # Số mẫu ghi trực tiếp trên đơn là bằng chứng mạnh nhất. Riêng cổng Lai Châu,
+    # đơn giấy Mẫu 16 được nộp vào nhóm thành phần mà giao diện đặt tên là Mẫu 18.
+    if _has_any(haystack, ("mau so 11/dk", "mau 11/dk", "mau so 11 dk", "mau 11 dk")):
         return _APP_11
     if _has_any(haystack, ("mau so 18", "mau 18")) and "dang ky bien dong" in haystack:
         return _APP_18
+    if _has_any(haystack, ("mau so 16", "mau 16")) and "dang ky bien dong" in haystack:
+        return _APP_16
+    if "nghi dinh so 101/2024/nd-cp" in haystack and "dang ky bien dong" in haystack:
+        return _APP_11
     # Tiêu đề đơn là bằng chứng mạnh hơn các cụm "người sử dụng đất", "Giấy chứng nhận đã cấp"
-    # xuất hiện bên trong đơn. Mẫu bị OCR sai số (ví dụ 16) vẫn phải vào dòng Đơn, không phải GCN.
+    # xuất hiện bên trong đơn. Khi số mẫu không đọc rõ, vẫn nhận đúng loại Đơn thay vì nhầm sang GCN.
     if _has_any(
         haystack,
         (
@@ -168,6 +173,8 @@ def _normalize_doc_type(value: str) -> str:
     text = fold(value or "")
     if "11/dk" in text or "11 dk" in text:
         return _APP_11
+    if "mau so 16" in text or "mau 16" in text:
+        return _APP_16
     if "mau so 18" in text or "mau 18" in text:
         return _APP_18
     if _has_any(text, ("change_application", "don dang ky bien dong", "dang ky bien dong dat dai")):
@@ -261,16 +268,17 @@ def _authorized_identity_numbers(ocr_results: list[dict]) -> set[str]:
 
 def _branch_from_entries(entries: list[dict]) -> tuple[str, str]:
     has_11 = any(entry["docType"] == _APP_11 for entry in entries)
+    has_16 = any(entry["docType"] == _APP_16 for entry in entries)
     has_18 = any(entry["docType"] == _APP_18 for entry in entries)
     has_generic = any(entry["docType"] == _APP_GENERIC for entry in entries)
-    if has_11 and has_18:
+    if has_11 and (has_16 or has_18):
         return "", "conflict"
-    if has_18:
+    if has_16 or has_18:
         return _BRANCH_18, "application"
     if has_11:
         return _BRANCH_11, "application"
     if has_generic:
-        # Không suy diễn Mẫu 16/OCR sai thành Mẫu 18; nhóm hiện hành 11/ĐK là mặc định an toàn.
+        # Đơn không đọc được số mẫu vẫn giữ mặc định hiện hành 11/ĐK; chỉ Mẫu 16/18 rõ ràng mới sang nhóm 18.
         return _BRANCH_11, "generic_application"
     # Trang hiển thị nhóm 11/ĐK trước và đây là mẫu hiện hành; dùng khi người dân không tải đơn.
     return _BRANCH_11, "default"
@@ -280,11 +288,15 @@ def _slot_index(branch: str, doc_type: str) -> int | None:
     offset = 0 if branch == _BRANCH_11 else 4
     if doc_type == _LAND:
         return offset
-    if doc_type in {_PROOF, _IDENTITY}:
+    if doc_type == _IDENTITY:
+        # Nhóm Mẫu 18 không có dòng CCCD riêng: CCCD người yêu cầu phải đi cùng ô Đơn (dòng 8).
+        # Giữ nguyên nhánh 11/ĐK để không thay đổi nghiệp vụ chưa được xác nhận của nhóm dòng 1-4.
+        return offset + 3 if branch == _BRANCH_18 else offset + 1
+    if doc_type == _PROOF:
         return offset + 1
     if doc_type == _AUTH:
         return offset + 2
-    if doc_type in {_APP_11, _APP_18, _APP_GENERIC}:
+    if doc_type in {_APP_11, _APP_16, _APP_18, _APP_GENERIC}:
         return offset + 3
     return None
 

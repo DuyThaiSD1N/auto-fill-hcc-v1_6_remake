@@ -13,11 +13,23 @@ CÓ THỂ CÓ 2 NGƯỜI — tách RIÊNG, KHÔNG lẫn:
   giới tính/số định danh/ngày-nơi cấp/thường trú/điện thoại) của NGƯỜI NÀY.
   · Nếu đối tượng là TRẺ EM (Mẫu 1a trẻ dưới 3 tuổi/trẻ mồ côi, hoặc con của người đơn thân/NKT): trẻ
     KHÔNG có CCCD → lấy họ tên/ngày sinh/giới tính từ Giấy khai sinh; DoiTuong_SoDinhDanh để trống.
-- NGƯỜI NỘP HỒ SƠ (NguoiNop_*) = người đứng nộp / khai thay trên cổng. Khi NỘP THAY thì KHÁC đối tượng
-  (vd cha/mẹ/vợ/chồng/người giám hộ nộp thay), thông tin lấy từ CCCD của người nộp. Xem khối
-  <nguoi_nop_context> ở cuối (nếu có) để biết CCCD nào là của người nộp và trích NguoiNop_* từ đó. TUYỆT
-  ĐỐI KHÔNG lẫn 2 người. Nếu KHÔNG có <nguoi_nop_context> hoặc không có CCCD người nộp riêng → chỉ trích
-  DoiTuong_*, bỏ trống NguoiNop_*.
+- NGƯỜI NỘP HỒ SƠ (NguoiNop_*) = NGƯỜI KHAI THAY được ghi trực tiếp trên tờ khai. Nhận diện bằng block
+  "Thông tin người khai thay", thường gồm "Giấy CMND hoặc Căn cước công dân số", "Mối quan hệ với đối
+  tượng", "Địa chỉ" và họ tên gần chữ ký. Khi block có GHI RÕ họ tên người khai thay thì BẮT BUỘC trả NguoiNop_HoTen
+  và mọi NguoiNop_* đọc chắc chắn được trong chính block đó. Không có hoặc block để trống
+  thì bỏ toàn bộ NguoiNop_*; mapper sẽ dùng đối tượng cho Phần I. Không sử dụng tên tài khoản/người làm
+  thủ tục từ cổng.
+
+NGUỒN DỮ LIỆU (NguoiNop_*):
+- Ưu tiên đúng block "Thông tin người khai thay" trên Tờ khai. NguoiNop_ThuongTru lấy từ dòng "Địa chỉ"
+  của block này, không lấy hộ khẩu/nơi ở của đối tượng.
+- Nếu có CCCD/CMND riêng của người khai thay, chỉ dùng bổ sung field còn thiếu khi họ tên hoặc số giấy tờ
+  khớp block người khai thay. Không coi mọi CCCD khác đối tượng là của người khai thay.
+- NguoiNop_SoDinhDanh chỉ trả khi sau chuẩn hóa còn đúng 9 hoặc 12 chữ số. Số thừa/thiếu chữ số thì bỏ,
+  tuyệt đối không tự xóa/chèn chữ số để đoán.
+- Không lấy "Cá nhân/hộ gia đình đang trực tiếp chăm sóc, nuôi dưỡng", vợ/chồng/cha/mẹ/con được nhắc trong
+  nội dung, người đỡ đầu, cán bộ tiếp nhận hoặc người ký xác nhận làm NguoiNop_*.
+- Field không có trong block hoặc CCCD riêng khớp đúng người thì bỏ; không sao DoiTuong_* sang NguoiNop_*.
 
 NGUỒN DỮ LIỆU (DoiTuong_*):
 - Họ tên/ngày sinh/giới tính/số định danh/ngày cấp: ưu tiên CCCD của đối tượng; Tờ khai / Giấy xác nhận

@@ -54,6 +54,8 @@ export interface LoginResp {
 export interface Attachment {
   name: string;
   role: string;
+  sha256?: string | null;
+  uses?: number;
 }
 
 export interface TraceListItem {
@@ -107,19 +109,74 @@ export interface StatsProcedure {
   label: string;
   count: number;      // số hồ sơ riêng biệt
   requests?: number;  // số lượt bấm (autofill + đính kèm)
+  exact?: number;
+  estimated?: number;
 }
 
 export interface StatsWard {
   userId: string;
   name: string;
+  role?: Role | null;
   total: number;     // tổng hồ sơ riêng biệt của phường
   requests: number;  // tổng lượt bấm
+  exact: number;
+  estimated: number;
   procedures: StatsProcedure[];
 }
 
+export type StatsScope = "official" | "all";
+
 export interface StatsResp {
+  scope: StatsScope;
+  accountCount: number;
+  includedRoles: Role[];
   wards: StatsWard[];
   procedures: StatsProcedure[]; // tổng theo thủ tục (toàn hệ thống)
   totalDossiers: number;
   totalRequests: number;
+  exactDossiers: number;
+  estimatedDossiers: number;
+  estimatedRequests: number;
+  dataQuality: "exact" | "estimated" | "mixed";
+  uniqueDocuments: number;
+  totalDocumentUses: number;
+  reusedDocumentUses: number;
+  documentDataQuality: "exact" | "partial";
+}
+
+export interface ReportProvinceOption {
+  value: string;
+  label: string;
+  accountCount: number;
+  officialAccountCount: number;
+}
+
+export interface ReportAccount {
+  id: string;
+  username: string;
+  name?: string | null;
+  xa?: string | null;
+  tinh?: string | null;
+  role: Role;
+}
+
+export interface ReportOptionsResp {
+  provinces: ReportProvinceOption[];
+  accounts: ReportAccount[];
+}
+
+export type ReportSelectionMode = "province" | "accounts";
+
+export interface ReportExportBody {
+  dateFrom: string;
+  dateTo: string;
+  selectionMode: ReportSelectionMode;
+  province?: string;
+  officialOnly?: boolean;
+  accountIds?: string[];
+}
+
+export interface DownloadResult {
+  blob: Blob;
+  filename?: string;
 }

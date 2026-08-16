@@ -56,21 +56,6 @@ def _area(value):
     return remap_area(out)
 
 
-def _compute_quyen_so(so, ngay_dang_ky) -> str:
-    """Quyển số = số // 200 + 1 (1 quyển 200 tờ). Năm lấy từ "số/năm" nếu có, không thì từ ngày đăng ký."""
-    s = str(so or "").strip()
-    m = re.match(r"\s*(\d+)", s)
-    if not m:
-        return ""
-    quyen = int(m.group(1)) // 200 + 1
-    ym = re.search(r"/\s*(\d{4})", s)
-    year = ym.group(1) if ym else ""
-    if not year:
-        dm = re.search(r"(\d{4})", str(ngay_dang_ky or ""))
-        year = dm.group(1) if dm else ""
-    return f"{quyen:02d}/{year}" if year else f"{quyen:02d}"
-
-
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Suy field UI tất định từ compact facts."""
     values = _by_name(fields)
@@ -117,14 +102,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # Hồ sơ gốc (lần đăng ký kết hôn trước đây).
     add("loaiDangKy", _LOAI_DANG_KY_LAI, default=True)
-    add("soDangKyTruocDay", values.get("HoTich_So"))
-    # Quyển số: giấy CN chỉ ghi "Số:" → tính từ Số đăng ký, bôi vàng.
-    add("quyenDangKyTruocDay",
-        _compute_quyen_so(values.get("HoTich_So"), values.get("HoTich_NgayDangKy")), default=True)
-    add("ngayDangKyTruocDay", values.get("HoTich_NgayDangKy"))
+    add("soDangKyTruocDay", values.get("KetHonCu_So"))
+    # Quyển số không có công thức suy ra đáng tin cậy; chỉ điền khi tài liệu ghi rõ.
+    add("quyenDangKyTruocDay", values.get("KetHonCu_QuyenSo"))
+    add("ngayDangKyTruocDay", values.get("KetHonCu_NgayDangKy"))
     # Cascading: chọn TỈNH (filter) trước để dropdown đơn vị load, rồi mới chọn đơn vị.
-    add("noiDangKyTruocDay_filter", values.get("HoTich_TinhDangKy"))
-    add("noiDangKyTruocDay", values.get("HoTich_XaDangKy"))
+    add("noiDangKyTruocDay_filter", values.get("KetHonCu_TinhDangKy"))
+    add("noiDangKyTruocDay", values.get("KetHonCu_XaDangKy"))
 
     # Đề nghị cấp bản sao: mặc định Có, số lượng 1 bản (bôi vàng).
     add("CapBanSao", "Có", default=True)
