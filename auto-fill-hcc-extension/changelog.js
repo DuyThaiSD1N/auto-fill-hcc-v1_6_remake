@@ -3,6 +3,29 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.13",
+    date: "16/8/2026",
+    items: [
+      "Giữ nguyên giấy tờ đã chọn khi tải lại hoặc chuyển bước trong cùng thủ tục; tự xóa giấy tờ cũ khi chuyển sang thủ tục khác để tránh dùng nhầm hồ sơ.",
+      "Tự nhận diện lại thủ tục khi cổng dịch vụ công chuyển trang không tải lại; cho phép người dùng bấm chọn thủ tục khác nếu kết quả nhận diện chưa chính xác.",
+      "Sau khi máy chủ trả dữ liệu, Trợ lý tự thu nhỏ trước khi điền để cán bộ dễ quan sát biểu mẫu; tự mở lại nếu không điền được hoặc khi đến bước đính kèm.",
+      "Rút gọn thông báo kết quả điền, bổ sung nút Xem chi tiết khi có trường chưa khớp và không hiển thị lỗi kỹ thuật thô.",
+      "Hiển thị thông báo hoàn tất ngay trên trang sau khi điền hoặc đính kèm hồ sơ; cải thiện màu hover, focus và khả năng đọc của ô chọn thủ tục.",
+    ],
+  },
+  {
+    version: "1.12",
+    date: "13/8/2026",
+    items: [
+      "Chỉnh sửa để phù hợp với trình duyệt firefox",
+      "Sửa một số lỗi về đăng ký hộ kinh doanh",
+      "Bổ sung tùy chọn ghi nhớ đăng nhập: tự điền tài khoản và mật khẩu ở lần đăng nhập sau khi người dùng chủ động bật tính năng.",
+      "Nhận ổn định các tệp PDF dung lượng lớn tải từ điện thoại về máy tính.",
+      "Điền chính xác hơn phường/xã sau sáp nhập trên biểu mẫu (khắc phục trường hợp chọn nhầm đơn vị có tên gần giống).",
+      "Tối ưu thêm về phần chứng thực tránh trường hợp các file quá lớn"
+    ],
+  },
+  {
     version: "1.11",
     date: "9/8/2026",
     items: [

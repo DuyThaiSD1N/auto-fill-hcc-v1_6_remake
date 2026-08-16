@@ -1,4 +1,4 @@
-// Service worker xử lý click extension icon.
+// Background runtime xử lý click extension icon (Chrome service worker / Firefox event page).
 // Bấm icon → gửi message content script (top frame) tab hiện tại để toggle panel nổi.
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab?.id) return;
@@ -19,6 +19,7 @@ chrome.action.onClicked.addListener(async (tab) => {
 // Mỗi tab hồ sơ mới giữ một bundle riêng; chữ ký có thể gồm tài liệu STT1 + CCCD dùng chung ở STT2.
 const PENDING_ATTACH_KEY = "autofill_pending_attach";
 const SPLIT_ATTACH_QUEUE_KEY = "autofill_split_attach_queue";
+const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
 
 async function getPendingMap() {
   try {
@@ -253,8 +254,22 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg?.action === "startSplitAttachQueue") {
     (async () => {
+      let itemsStorageKey = "";
       try {
-        const items = Array.isArray(msg.items) ? msg.items.filter(Boolean) : [];
+        itemsStorageKey = String(msg.itemsStorageKey || "");
+        let rawItems = msg.items;
+        if (itemsStorageKey) {
+          if (itemsStorageKey !== SPLIT_ATTACH_QUEUE_STAGE_KEY) {
+            throw new Error("Khóa staging của hàng đợi tách hồ sơ không hợp lệ.");
+          }
+          const staged = await chrome.storage.local.get(itemsStorageKey);
+          rawItems = staged?.[itemsStorageKey]?.items;
+          if (!Array.isArray(rawItems)) {
+            throw new Error("Không đọc được dữ liệu hàng đợi tách hồ sơ từ storage.");
+          }
+        }
+        const items = Array.isArray(rawItems) ? rawItems.filter(Boolean) : [];
+        if (!items.length) throw new Error("Hàng đợi tách hồ sơ không có bundle hợp lệ.");
         const waitForTabId = Number(msg.waitForTabId) || null;
         const result = await withSplitQueueLock(async () => {
           if (waitForTabId) {
@@ -279,6 +294,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse(result);
       } catch (e) {
         sendResponse({ error: e?.message || String(e) });
+      } finally {
+        if (itemsStorageKey) {
+          try { await chrome.storage.local.remove(itemsStorageKey); } catch (_) { /* ignore */ }
+        }
       }
     })();
     return true;
@@ -323,6 +342,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       await withSplitQueueLock(async () => {
         await setPendingMap({});
         await clearSplitAttachQueue();
+        try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_STAGE_KEY); } catch (_) { /* ignore */ }
       });
       sendResponse({ ok: true });
     })();

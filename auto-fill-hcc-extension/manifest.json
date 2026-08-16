@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý hỗ trợ người dân hoàn thiện thủ tục hành chính",
-  "version": "1.11",
+  "version": "1.13",
   "description": "Hỗ trợ người dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": ["activeTab", "storage", "unlimitedStorage", "scripting"],
@@ -24,6 +24,7 @@
     }
   },
   "background": {
+    "scripts": ["background.js"],
     "service_worker": "background.js"
   },
   "content_scripts": [
@@ -40,10 +41,14 @@
         "https://dichvucong-tthc.moit.gov.vn/*",
         "https://dvc.moc.gov.vn/*",
         "https://dichvucong.bacninh.gov.vn/*",
+        "https://dichvucong.quangngai.gov.vn/*",
+        "https://dichvucong.khanhhoa.gov.vn/*",
         "https://dichvucong.lamdong.gov.vn/*",
         "https://dichvucong.bvhttdl.gov.vn/*",
         "https://dichvucongnnmt.mae.gov.vn/*",
-        "https://dichvucong.danang.gov.vn/*"
+        "https://dichvucong.danang.gov.vn/*",
+        "https://dvc.moet.gov.vn/*",
+        "https://dichvucong.quangninh.gov.vn/*"
       ],
       "all_frames": true,
       "js": ["content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/review.js"],
@@ -80,10 +85,14 @@
         "https://dichvucong-tthc.moit.gov.vn/*",
         "https://dvc.moc.gov.vn/*",
         "https://dichvucong.bacninh.gov.vn/*",
+        "https://dichvucong.quangngai.gov.vn/*",
+        "https://dichvucong.khanhhoa.gov.vn/*",
         "https://dichvucong.lamdong.gov.vn/*",
         "https://dichvucong.bvhttdl.gov.vn/*",
         "https://dichvucongnnmt.mae.gov.vn/*",
-        "https://dichvucong.danang.gov.vn/*"
+        "https://dichvucong.danang.gov.vn/*",
+        "https://dvc.moet.gov.vn/*",
+        "https://dichvucong.quangninh.gov.vn/*"
       ]
     }
   ]

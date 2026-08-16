@@ -6,6 +6,8 @@ const loginScreen = document.getElementById("loginScreen");
 const mainScreen = document.getElementById("mainScreen");
 const loginUsername = document.getElementById("loginUsername");
 const loginPassword = document.getElementById("loginPassword");
+const rememberLogin = document.getElementById("rememberLogin");
+const forgetLoginBtn = document.getElementById("forgetLoginBtn");
 const loginBtn = document.getElementById("loginBtn");
 const loginStatus = document.getElementById("loginStatus");
 const userLabel = document.getElementById("userLabel");
@@ -39,6 +41,8 @@ const dangKyByLabel = document.querySelector('label[for="dangKyBy"]');
 const requestModeSelect = document.getElementById("requestMode");
 const requestModeLabel = document.querySelector('label[for="requestMode"]');
 const statusEl = document.getElementById("status");
+const statusDetailsToggle = document.getElementById("statusDetailsToggle");
+const statusDetailsEl = document.getElementById("statusDetails");
 const reviewCardEl = document.getElementById("reviewCard");
 const supportCodeBtn = document.getElementById("supportCode");
 const supportCodeValueEl = document.getElementById("supportCodeValue");
@@ -48,15 +52,26 @@ const uploadLabel = document.querySelector('label[for="fileInput"]');
 let PROCEDURES = [];
 let lastProcessSession = null; // { procedure, sessionId }
 let selectedProcedureKey = "";
+// Thủ tục sở hữu file/kết quả của phiên đang làm. Khác selectedProcedureKey ở màn chọn chung
+// HKD: lúc đó selection tạm rỗng nhưng vẫn phải nhớ file cũ thuộc thủ tục nào để không mang sang hồ sơ khác.
+let workProcedureKey = "";
 let selectedBusinessPageKey = "";
 let procedureSearchQuery = "";
-let procedureLocked = false; // true = thủ tục tự nhận diện theo trang, khóa không cho đổi tay
+let procedureAutoDetected = false; // chỉ dùng để hiển thị nguồn lựa chọn; ô thủ tục luôn cho phép sửa tay
+let manualProcedureOverride = false; // giữ lựa chọn tay trên URL hiện tại, reset khi reload/chuyển URL
+let procedureDetectRun = 0;  // bỏ kết quả detect cũ nếu SPA đã phát sinh nhịp render mới hơn
 let currentUser = null; // user đang đăng nhập; dùng cho default theo phường/tài khoản ở HKD.
+// Mã của lượt FILL từ nút gộp HKD. Lưu cùng phiên theo tab để panel dựng lại sau mỗi
+// WebForms postback vẫn hiện đúng mã; requestId của attachment plan không được ghi đè vào đây.
+let businessFillSupportCode = "";
 const DEFAULT_PROCEDURE_KEYS = [];
 const SEARCH_PROCEDURE_LIMIT = 5;
 
 // Chế độ đính kèm "tách hồ sơ" (split): CHỈ cho chứng thực. Mặc định TẮT = 1 hồ sơ nhiều file (merge).
 const SPLIT_MODE_KEY = "autofill_attach_split_mode";
+// Bundle tách hồ sơ chứa dataUrl base64 có thể vượt trần 64 MiB của runtime.sendMessage.
+// Popup ghi vào key cố định này; background nhận key, chuyển sang queue chính rồi xóa staging.
+const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
 const SPLIT_MODE_PROCEDURES = new Set(["chung-thuc-ban-sao", "chung-thuc-chu-ky"]);
 const SPLIT_RELOADABLE_WALLET_CODES = new Set([
   "wallet-stale-modal",
@@ -139,9 +154,40 @@ function sendToBackground(payload) {
   });
 }
 
+function setStatusDetails(details = []) {
+  if (!statusDetailsToggle || !statusDetailsEl) return;
+  const safeDetails = [...new Set((Array.isArray(details) ? details : [])
+    .map((item) => String(item || "").replace(/\s+/g, " ").trim().slice(0, 240))
+    .filter(Boolean))].slice(0, 8);
+  statusDetailsEl.textContent = "";
+  statusDetailsEl.hidden = true;
+  statusDetailsToggle.hidden = safeDetails.length === 0;
+  statusDetailsToggle.textContent = "Xem chi tiết";
+  statusDetailsToggle.setAttribute("aria-expanded", "false");
+  if (!safeDetails.length) return;
+  const list = document.createElement("ul");
+  for (const detail of safeDetails) {
+    const item = document.createElement("li");
+    item.textContent = detail;
+    list.appendChild(item);
+  }
+  statusDetailsEl.appendChild(list);
+}
+
+if (statusDetailsToggle && statusDetailsEl) {
+  statusDetailsToggle.addEventListener("click", () => {
+    const expanded = statusDetailsToggle.getAttribute("aria-expanded") === "true";
+    statusDetailsToggle.setAttribute("aria-expanded", String(!expanded));
+    statusDetailsToggle.textContent = expanded ? "Xem chi tiết" : "Ẩn chi tiết";
+    statusDetailsEl.hidden = expanded;
+    postPanelHeight();
+  });
+}
+
 // friendlyError() + errorSupportCode() nằm ở api/errors.js (nạp trước popup.js) — 1 nguồn chân lý.
 // setStatus nhận input là Error (ưu tiên map theo MÃ lỗi BE) hoặc string; lỗi luôn được rút gọn an toàn.
-function setStatus(input, type) {
+function setStatus(input, type, details = []) {
+  setStatusDetails(details);
   if (type === "err") {
     const code = (typeof errorSupportCode === "function") ? errorSupportCode(input) : null;
     if (code) showSupportCode(code);
@@ -150,6 +196,20 @@ function setStatus(input, type) {
     statusEl.textContent = String(input == null ? "" : input);
   }
   statusEl.className = "status" + (type ? " " + type : "");
+  statusEl.setAttribute("role", type === "err" ? "alert" : "status");
+}
+
+async function showPageToast(message, kind = "success") {
+  const text = String(message || "").replace(/\s+/g, " ").trim();
+  if (!text) return false;
+  try {
+    const res = await sendToContent({ action: "showPageToast", message: text, kind });
+    if (res?.error) console.warn("[AutoFill] Không hiện được toast:", res.error);
+    return !!res?.shown;
+  } catch (error) {
+    console.warn("[AutoFill] Không hiện được toast:", error);
+    return false;
+  }
 }
 
 // ===== Mã hỗ trợ: hiện request_id của lượt vừa chạy để cán bộ copy khi báo lỗi =====
@@ -203,6 +263,20 @@ if (supportCodeBtn) {
 }
 
 // ===== Auth UI =====
+const CAN_REMEMBER_LOGIN = chrome.extension?.inIncognitoContext !== true;
+let rememberedLoginLoaded = false;
+let loginPrefillRun = 0;
+
+function renderRememberedLoginState(hasSaved) {
+  rememberedLoginLoaded = Boolean(hasSaved);
+  rememberLogin.checked = Boolean(hasSaved) && CAN_REMEMBER_LOGIN;
+  rememberLogin.disabled = !CAN_REMEMBER_LOGIN;
+  forgetLoginBtn.hidden = !hasSaved || !CAN_REMEMBER_LOGIN;
+  if (!CAN_REMEMBER_LOGIN) {
+    rememberLogin.title = "Không thể ghi nhớ đăng nhập trong cửa sổ ẩn danh.";
+  }
+}
+
 function showLogin() {
   currentUser = null;
   loginScreen.hidden = false;
@@ -211,11 +285,44 @@ function showLogin() {
 }
 
 async function prefillLogin() {
+  const run = ++loginPrefillRun;
   try {
-    const saved = await CredStore.get();
+    await RememberedLoginStore.clearLegacyPrefill();
+    if (!CAN_REMEMBER_LOGIN) {
+      if (run === loginPrefillRun) renderRememberedLoginState(false);
+      return;
+    }
+    const saved = await RememberedLoginStore.get();
+    if (run !== loginPrefillRun) return;
+    renderRememberedLoginState(Boolean(saved));
     if (!saved) return;
-    if (saved.username && !loginUsername.value) loginUsername.value = saved.username;
+    if (!loginUsername.value) loginUsername.value = saved.username;
+    if (!loginPassword.value) loginPassword.value = saved.password;
   } catch (_) {
+    if (run === loginPrefillRun) renderRememberedLoginState(false);
+  }
+}
+
+async function clearRememberedLogin({ clearFields = false, announce = false } = {}) {
+  ++loginPrefillRun; // vô hiệu hóa lượt đọc IndexedDB cũ nếu người dùng bấm xóa ngay lúc popup mở
+  try {
+    await RememberedLoginStore.clear();
+    renderRememberedLoginState(false);
+    if (clearFields) {
+      loginUsername.value = "";
+      loginPassword.value = "";
+      loginUsername.focus();
+    }
+    if (announce) {
+      loginStatus.textContent = "Đã xóa thông tin đăng nhập được ghi nhớ.";
+      loginStatus.className = "status ok";
+    }
+  } catch (e) {
+    console.warn("[Popup] Không xóa được thông tin đăng nhập đã nhớ:", e);
+    if (announce) {
+      loginStatus.textContent = "Chưa xóa được thông tin đã nhớ. Vui lòng thử lại.";
+      loginStatus.className = "status err";
+    }
   }
 }
 
@@ -239,7 +346,8 @@ async function bootstrap() {
     await restoreSplitMode();
     await restoreSession();
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
-    await autoDetectAndLockProcedure();
+    await autoDetectProcedure();
+    restoreBusinessFillSupportCode();
   } catch (e) {
     await AuthStore.clearTokens();
     showLogin();
@@ -260,7 +368,17 @@ loginBtn.addEventListener("click", async () => {
   try {
     const data = await api.login(username, password);
     await AuthStore.saveTokens(data);
-    await CredStore.save(username);
+    if (CAN_REMEMBER_LOGIN && rememberLogin.checked) {
+      try {
+        await RememberedLoginStore.save(username, password);
+        renderRememberedLoginState(true);
+      } catch (e) {
+        console.warn("[Popup] Đăng nhập thành công nhưng không lưu được thông tin ghi nhớ:", e);
+        renderRememberedLoginState(false);
+      }
+    } else {
+      await clearRememberedLogin();
+    }
     loginPassword.value = "";
     loginStatus.textContent = "";
     showMain(data.user);
@@ -268,10 +386,19 @@ loginBtn.addEventListener("click", async () => {
     await restoreSplitMode();
     await restoreSession();
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
-    await autoDetectAndLockProcedure();
+    await autoDetectProcedure();
+    restoreBusinessFillSupportCode();
   } catch (e) {
     console.warn("[Popup] Đăng nhập lỗi:", e);
-    loginStatus.textContent = friendlyError(e);   // INVALID_CREDENTIALS → "Sai tên đăng nhập hoặc mật khẩu."
+    const invalidRememberedLogin = rememberedLoginLoaded
+      && (e?.status === 401 || e?.data?.error === "INVALID_CREDENTIALS");
+    if (invalidRememberedLogin) {
+      await clearRememberedLogin();
+      loginPassword.value = "";
+    }
+    loginStatus.textContent = invalidRememberedLogin
+      ? `${friendlyError(e)} Thông tin đã nhớ đã được xóa.`
+      : friendlyError(e);   // INVALID_CREDENTIALS → "Sai tên đăng nhập hoặc mật khẩu."
     loginStatus.className = "status err";
   } finally {
     loginBtn.disabled = false;
@@ -280,6 +407,14 @@ loginBtn.addEventListener("click", async () => {
 
 loginPassword.addEventListener("keydown", (e) => {
   if (e.key === "Enter") loginBtn.click();
+});
+
+rememberLogin.addEventListener("change", async () => {
+  if (!rememberLogin.checked) await clearRememberedLogin();
+});
+
+forgetLoginBtn.addEventListener("click", async () => {
+  await clearRememberedLogin({ clearFields: true, announce: true });
 });
 
 logoutBtn.addEventListener("click", async () => {
@@ -291,6 +426,7 @@ logoutBtn.addEventListener("click", async () => {
   lastProcessSession = null;
   renderFiles();
   refreshAttachStepUI();
+  hideSupportCode();
   setStatus("", "");
   showLogin();
 });
@@ -305,7 +441,8 @@ if (newSessionBtn) {
     // Đưa TẤT CẢ về mặc định: bỏ chọn thủ tục + mở khóa, xoá ô tìm, xoá card rà soát.
     selectedProcedureKey = "";
     selectedBusinessPageKey = "";
-    procedureLocked = false;
+    procedureAutoDetected = false;
+    manualProcedureOverride = false;
     closeProcedureDropdown();   // render lại trigger về "Chưa có thủ tục nào được chọn!"
     clearReviewCard();
     hideSupportCode();
@@ -317,7 +454,7 @@ if (newSessionBtn) {
     applyFormUI();
     refreshAttachStepUI();
     // Nhận diện lại theo TRANG HIỆN TẠI (giống lúc mới mở): trang form → tự chọn+khóa; không → để trống.
-    await autoDetectAndLockProcedure();
+    await autoDetectProcedure();
     setStatus("Đã tạo phiên mới — sẵn sàng cho hồ sơ tiếp theo.", "ok");
   });
 }
@@ -428,7 +565,9 @@ function getVisibleProcedures(query) {
 function renderProcedureResults(query = procedureSearchQuery) {
   if (!procedureResults) return;
   const selected = selectedProcedureConfig();
-  const prefix = procedureLocked ? "🔒 Tự nhận diện: " : "Đang chọn: ";
+  const prefix = procedureAutoDetected
+    ? "Tự nhận diện: "
+    : (manualProcedureOverride ? "Đã chọn thủ công: " : "Đang chọn: ");
   if (selectedProcedureLabel) {
     selectedProcedureLabel.textContent = "";
     if (selected) {
@@ -450,23 +589,13 @@ function renderProcedureResults(query = procedureSearchQuery) {
     procedureTrigger.title = selected ? prefix + selected.label : "";
   }
 
-  // Trang tự nhận diện → KHÓA (không cho đổi tay) + đóng dropdown.
-  // KHÔNG dùng thuộc tính [disabled] vì disabled chặn tooltip title khi hover;
-  // dùng class .locked (chỉ để tạo kiểu) + openProcedureDropdown() đã tự return khi locked.
+  // Tự nhận diện chỉ là trạng thái hiển thị; trigger luôn bấm được để cán bộ sửa khi detect sai.
   if (procedureTrigger) {
     procedureTrigger.disabled = false;
-    procedureTrigger.classList.toggle("locked", procedureLocked);
-    procedureTrigger.setAttribute("aria-disabled", procedureLocked ? "true" : "false");
-  }
-  if (procedureLocked && procedureDropdown && !procedureDropdown.hidden) {
-    procedureDropdown.hidden = true;
-    if (procedureTrigger) procedureTrigger.setAttribute("aria-expanded", "false");
+    procedureTrigger.classList.remove("locked");
+    procedureTrigger.setAttribute("aria-disabled", "false");
   }
   procedureResults.innerHTML = "";
-  if (procedureLocked) {
-    postPanelHeight();
-    return;
-  }
   const visible = getVisibleProcedures(query);
   if (!visible.length) {
     // CHỈ báo "Không tìm thấy" khi ĐÃ gõ tìm; chưa gõ → để TRỐNG (không gợi ý gì).
@@ -493,21 +622,53 @@ function renderProcedureResults(query = procedureSearchQuery) {
     label.textContent = p.label;
     btn.appendChild(label);
 
-    btn.addEventListener("click", () => selectProcedure(p.key));
+    btn.addEventListener("click", () => { void selectProcedure(p.key); });
     procedureResults.appendChild(btn);
   }
   postPanelHeight();
 }
 
-function selectProcedure(key) {
+function shouldResetProcedureWork(nextKey) {
+  const previousKey = workProcedureKey || selectedProcedureKey;
+  return !!(previousKey && nextKey && previousKey !== nextKey);
+}
+
+function resetProcedureWorkState() {
+  // Vô hiệu mọi saveSession cũ đang đọc file lớn; bản lưu đó không được ghi file thủ tục trước trở lại.
+  sessionWriteRevision++;
+  files.length = 0;
+  lastProcessSession = null;
+  businessFillSupportCode = "";
+  if (handwritingToggle) handwritingToggle.checked = false;
+  if (fileInput) fileInput.value = "";
+  clearReviewCard();
+  hideSupportCode();
+  closePhoneUpload();
+  currentConsentContext = null;
+  pendingConsentTrigger = null;
+  void sendToContent({ action: "clearPanelAutoRestore" });
+  showView("main");
+  setStatus("", "");
+}
+
+async function selectProcedure(key, { source = "manual" } = {}) {
   const next = PROCEDURES.find((p) => p.key === key) || PROCEDURES[0];
   if (!next) return;
+  if (source === "manual") {
+    manualProcedureOverride = true;
+    procedureAutoDetected = false;
+  }
+  const selectionChanged = selectedProcedureKey !== next.key;
+  const workOwnerChanged = workProcedureKey !== next.key;
+  if (shouldResetProcedureWork(next.key)) resetProcedureWorkState();
   selectedProcedureKey = next.key;
+  workProcedureKey = next.key;
   selectedBusinessPageKey = Array.isArray(next.pages) && next.pages.length ? next.pages[0].key : "";
   procedureSelect.value = next.key;
   closeProcedureDropdown();  // đã chọn → đóng combobox, trigger hiện "Đang chọn: X"
   applyFormUI();
-  saveSession();
+  // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
+  if (selectionChanged || workOwnerChanged) await saveSession();
 }
 
 function commitProcedureSearch() {
@@ -520,7 +681,7 @@ function isProcedureDropdownOpen() {
   return !!procedureDropdown && !procedureDropdown.hidden;
 }
 function openProcedureDropdown() {
-  if (procedureLocked || !procedureDropdown) return;
+  if (!procedureDropdown) return;
   procedureDropdown.hidden = false;
   procedureTrigger?.setAttribute("aria-expanded", "true");
   procedureSearchQuery = "";
@@ -616,8 +777,11 @@ function detectProcedureKeyFromSignals(signals) {
   }
 
   // 1) URL khớp — đặc trưng từng thủ tục (mạnh nhất). Vd liên thông mã 2.000986, moj nop-ho-so/<id>.
+  //    urlScope (nếu có) GIỚI HẠN host: mã QG như maThuTucHanhChinh=1.013949 dùng chung nhiều cổng iGate
+  //    (Bắc Ninh vs Lâm Đồng) → chỉ khớp khi đúng cổng đã khai urlScope.
   for (const p of detectables) {
     const inc = p.detect.urlIncludes || [];
+    if (!detectUrlScopeOk(p.detect, url)) continue;
     if (inc.some((u) => u && url.includes(String(u).toLowerCase()))) return p.key;
   }
 
@@ -658,8 +822,8 @@ function detectProcedureKeyFromSignals(signals) {
   return best;
 }
 
-function setProcedureLocked(locked) {
-  procedureLocked = locked;
+function setProcedureDetected(detected) {
+  procedureAutoDetected = detected;
   renderProcedureResults();
 }
 
@@ -671,49 +835,57 @@ async function enterBusinessProcedureChoiceMode() {
   selectedProcedureKey = "";
   selectedBusinessPageKey = "";
   procedureSelect.value = "";
-  procedureLocked = false;
+  procedureAutoDetected = false;
+  manualProcedureOverride = false;
   closeProcedureDropdown();
   applyFormUI();
   if (hadSelectedProcedure) await saveSession();
 }
 
-// Gọi content script lấy tín hiệu trang → nếu nhận diện được thì chọn + khóa thủ tục.
-async function autoDetectAndLockProcedure({ clearChoiceSelection = true } = {}) {
+// Gọi content script lấy tín hiệu trang → nếu nhận diện được thì chọn và ghi nhận nguồn tự động.
+async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
+  // Người dùng đã sửa detect sai: giữ lựa chọn tay đến khi reload/chuyển URL.
+  if (manualProcedureOverride) {
+    setProcedureDetected(false);
+    return !!selectedProcedureKey;
+  }
   try {
     const res = await sendToContent({ action: "detectProcedure" });
     if (res?.signals?.businessProcedureHint === "choice") {
       // Khi vừa mở popup/chuyển URL: bỏ lựa chọn cũ. Khi người dùng đã chọn tay rồi bấm
       // xử lý: giữ lựa chọn đó để engine biết phải bấm loại đăng ký nào trên cổng.
       if (clearChoiceSelection) await enterBusinessProcedureChoiceMode();
-      else setProcedureLocked(false);
+      else setProcedureDetected(false);
       return false;
     }
     const key = detectProcedureKeyFromSignals(res?.signals);
     if (key && PROCEDURES.some((p) => p.key === key)) {
-      selectProcedure(key);
-      setProcedureLocked(true);
+      await selectProcedure(key, { source: "auto" });
+      setProcedureDetected(true);
       return true;
     }
   } catch (e) {
     /* không nhận diện được → quay về chọn tay */
   }
-  setProcedureLocked(false);
+  setProcedureDetected(false);
   return false;
 }
 
 // Panel nổi (embedded) nhận tín hiệu trang dvc đổi URL (SPA, không F5) → nhận diện lại thủ tục.
 // CHỈ đổi khi thủ tục KHÁC hiện tại để tránh reset file/UI khi trang đổi URL nhưng cùng thủ tục.
-async function reDetectProcedureOnNav() {
+async function reDetectProcedureOnNav(run = 0) {
+  if (manualProcedureOverride) return;
   try {
     const res = await sendToContent({ action: "detectProcedure" });
+    if (run && run !== procedureDetectRun) return;
     if (res?.signals?.businessProcedureHint === "choice") {
       await enterBusinessProcedureChoiceMode();
       return;
     }
     const key = detectProcedureKeyFromSignals(res?.signals);
     if (key && PROCEDURES.some((p) => p.key === key)) {
-      if (key !== selectedProcedureKey) selectProcedure(key);
-      setProcedureLocked(true);
+      if (key !== selectedProcedureKey) await selectProcedure(key, { source: "auto" });
+      setProcedureDetected(true);
     }
   } catch (e) {
     /* không nhận diện được → giữ nguyên trạng thái hiện tại */
@@ -722,7 +894,19 @@ async function reDetectProcedureOnNav() {
 
 if (IS_EMBEDDED) {
   window.addEventListener("message", (e) => {
-    if (e.data?.type === "autofill-hcc-url-changed") reDetectProcedureOnNav();
+    if (e.source !== window.parent) return;
+    if (e.data?.type !== "autofill-hcc-page-changed"
+      && e.data?.type !== "autofill-hcc-url-changed") return;
+    const isUrlNavigation = e.data.type === "autofill-hcc-url-changed" || e.data.reason === "url";
+    if (isUrlNavigation) {
+      manualProcedureOverride = false;
+      setProcedureDetected(false);
+    } else if (manualProcedureOverride) {
+      return;
+    }
+    const run = ++procedureDetectRun;
+    // Nhiều nhịp render SPA có thể báo liên tiếp. Chỉ lượt mới nhất được quyền đổi thủ tục.
+    void reDetectProcedureOnNav(run);
   });
 }
 
@@ -748,7 +932,7 @@ async function loadProcedures() {
     procedureSelect.appendChild(opt);
   }
   // Không mặc định chọn thủ tục nào khi mở: key không hợp lệ/rỗng → để TRỐNG, chờ user chọn
-  // hoặc trang tự nhận diện (autoDetectAndLockProcedure).
+  // hoặc trang tự nhận diện (autoDetectProcedure).
   if (!PROCEDURES.some((p) => p.key === selectedProcedureKey)) {
     selectedProcedureKey = "";
   }
@@ -802,28 +986,48 @@ const files = []; // { file, role, dataUrl?, restored? }
 // Session lưu THEO TAB (autofill_session_<tabId>) → mỗi tab 1 phiên; tab mới không bị
 // kéo thủ tục/file của tab cũ sang. Bản popup đứng riêng (không nhúng) dùng key "popup".
 const SESSION_KEY = "autofill_session_" + (EMBEDDED_TAB_ID ?? "popup");
+const UNKNOWN_WORK_PROCEDURE_KEY = "__legacy_unknown__";
+let sessionWriteRevision = 0;
+let sessionWriteQueue = Promise.resolve();
+
+function enqueueSessionWrite(operation) {
+  sessionWriteQueue = sessionWriteQueue.catch(() => {}).then(operation);
+  return sessionWriteQueue;
+}
 
 async function saveSession() {
+  const revision = sessionWriteRevision;
   try {
     await ensureSelectedFilesLoaded();
-    await chrome.storage.local.set({
-      [SESSION_KEY]: {
-        procedureKey: selectedProcedureKey,
-        hasHandwriting: !!(handwritingToggle && handwritingToggle.checked),
-        files: files.map((it) => ({
-          name: it.file.name,
-          type: it.file.type || "image/jpeg",
-          dataUrl: it.dataUrl,
-          role: it.role || "doc",
-          hasHandwriting: !!it.hasHandwriting,
-        })),
-      },
+    if (revision !== sessionWriteRevision) return;
+    const snapshot = {
+      procedureKey: selectedProcedureKey,
+      workProcedureKey,
+      businessFillSupportCode,
+      hasHandwriting: !!(handwritingToggle && handwritingToggle.checked),
+      files: files.map((it) => ({
+        name: it.file.name,
+        type: it.file.type || "image/jpeg",
+        dataUrl: it.dataUrl,
+        role: it.role || "doc",
+        hasHandwriting: !!it.hasHandwriting,
+      })),
+    };
+    await enqueueSessionWrite(async () => {
+      if (revision !== sessionWriteRevision) return;
+      await chrome.storage.local.set({ [SESSION_KEY]: snapshot });
     });
   } catch (e) { /* ignore quota/serialize errors */ }
 }
 
 async function clearSession() {
-  try { await chrome.storage.local.remove(SESSION_KEY); } catch (e) { /* ignore */ }
+  businessFillSupportCode = "";
+  workProcedureKey = "";
+  sessionWriteRevision++;
+  void sendToContent({ action: "clearPanelAutoRestore" });
+  try {
+    await enqueueSessionWrite(() => chrome.storage.local.remove(SESSION_KEY));
+  } catch (e) { /* ignore */ }
 }
 
 async function restoreSession() {
@@ -833,6 +1037,12 @@ async function restoreSession() {
     saved = res?.[SESSION_KEY];
   } catch (e) { /* ignore */ }
   if (!saved) return;
+  businessFillSupportCode = String(saved.businessFillSupportCode || "").trim();
+  const savedFiles = Array.isArray(saved.files) ? saved.files : [];
+  workProcedureKey = String(saved.workProcedureKey || saved.procedureKey || "").trim();
+  // Session từ bản extension cũ có thể đã giữ file sau khi selection bị đưa về rỗng ở màn HKD.
+  // Đánh dấu không rõ nguồn để lần chọn thủ tục cụ thể kế tiếp phải xóa, tránh dùng nhầm hồ sơ.
+  if (!workProcedureKey && savedFiles.length) workProcedureKey = UNKNOWN_WORK_PROCEDURE_KEY;
   if (saved.procedureKey && PROCEDURES.some((p) => p.key === saved.procedureKey)) {
     selectedProcedureKey = saved.procedureKey;
     selectedBusinessPageKey = "";
@@ -840,7 +1050,7 @@ async function restoreSession() {
   }
   if (handwritingToggle) handwritingToggle.checked = !!saved.hasHandwriting;
   files.length = 0;
-  for (const f of saved.files || []) {
+  for (const f of savedFiles) {
     if (!f?.dataUrl) continue;
     // File khôi phục không có File object thật, nhưng đã có sẵn dataUrl nên đủ để gửi BE.
     files.push({ file: { name: f.name, type: f.type }, role: f.role || "doc", dataUrl: f.dataUrl,
@@ -848,6 +1058,13 @@ async function restoreSession() {
   }
   renderProcedureResults();
   applyFormUI();
+}
+
+function restoreBusinessFillSupportCode() {
+  // Chỉ khôi phục trên thủ tục HKD; cùng tab có thể được điều hướng sang một thủ tục/cổng khác.
+  if (businessFillSupportCode && currentBusinessPages().length) {
+    showSupportCode(businessFillSupportCode);
+  }
 }
 
 function defaultRoleFor(file) {
@@ -1010,7 +1227,7 @@ function applyFormUI() {
   refreshAttachStepUI();
 }
 
-procedureSelect.addEventListener("change", () => selectProcedure(procedureSelect.value));
+procedureSelect.addEventListener("change", () => { void selectProcedure(procedureSelect.value); });
 // Trigger giống ô select → bấm mở/đóng dropdown.
 if (procedureTrigger) procedureTrigger.addEventListener("click", toggleProcedureDropdown);
 // Bấm ra ngoài combobox → đóng dropdown.
@@ -1026,7 +1243,7 @@ if (procedureSearchInput) {
     if (e.key === "Enter") {
       e.preventDefault();
       const first = getVisibleProcedures(procedureSearchInput.value.trim())[0];
-      if (first) selectProcedure(first.key);  // Enter → chọn kết quả đầu tiên (tự đóng)
+      if (first) void selectProcedure(first.key);  // Enter → chọn kết quả đầu tiên (tự đóng)
     } else if (e.key === "Escape") {
       e.preventDefault();
       closeProcedureDropdown();
@@ -1350,13 +1567,24 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   }
 
   setStatus("Đang đính kèm file vào hồ sơ...", "info");
-  const attachRes = await sendToContent({
-    action: "attachFilesByPlan",
-    procedure: cfg.key,
-    files: sendFiles,
-    attachments,
-    mode: attachSplitMode && isSplitEligibleProcedure() ? "split" : "merge",
-  });
+  // File lớn (hợp đồng vài chục MB) → tổng payload base64 vượt giới hạn 64MiB của tabs.sendMessage.
+  // Chuyển file qua chrome.storage.local (permission unlimitedStorage — KHÔNG dính giới hạn message),
+  // chỉ gửi KEY kèm kế hoạch; content.js đọc lại rồi xoá key.
+  const attachMode = attachSplitMode && isSplitEligibleProcedure() ? "split" : "merge";
+  const approxBytes = sendFiles.reduce((s, f) => s + String(f?.dataUrl || "").length, 0);
+  let attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, files: sendFiles, attachments, mode: attachMode };
+  let attachFilesKey = "";
+  if (approxBytes > 45 * 1024 * 1024) {
+    attachFilesKey = "__af_attach_files_" + Date.now();
+    try {
+      await chrome.storage.local.set({ [attachFilesKey]: { files: sendFiles } });
+      attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, attachments, mode: attachMode, filesStorageKey: attachFilesKey };
+    } catch (e) {
+      attachFilesKey = ""; // ghi storage lỗi → gửi trực tiếp (có thể vẫn vượt nhưng còn cơ hội)
+    }
+  }
+  const attachRes = await sendToContent(attachMsg);
+  if (attachFilesKey) { try { await chrome.storage.local.remove(attachFilesKey); } catch (e) { /* ignore */ } }
   // Kèm mã hỗ trợ (BE đã tạo trace dù đính kèm phía trang lỗi) để cán bộ báo lỗi có mã tra.
   if (attachRes?.error) return { ...attachRes, requestId: planRes.requestId };
 
@@ -1394,6 +1622,10 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   if (planRes.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   // Đính chưa đủ (attachedCount < số nhóm) → cảnh báo (warn) thay vì báo thành công trọn vẹn.
   const warn = attachedCount < sendFiles.length;
+  const toastMessage = warn
+    ? "Đã xử lý xong bước đính kèm. Vui lòng rà soát hồ sơ."
+    : "Đã đính kèm xong hồ sơ.";
+  await showPageToast(toastMessage, warn ? "warn" : "success");
   return { ok: true, message: msg, warn, requestId: planRes.requestId };
 }
 
@@ -1526,17 +1758,29 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
   // Cả bản sao và chữ ký đều đi qua cùng queue này; khác nhau chỉ ở nội dung từng bundle.
   let queueRes = { ok: true, remaining: 0 };
   if (rest.length) {
-    queueRes = await sendToBackground({
-      action: "startSplitAttachQueue",
-      waitForTabId: currentTabRecovery?.tabId || null,
-      items: rest.map((bundle, index) => ({
-        ordinal: index + 2,
-        url: dossierUrl,
-        files: bundle.files,
-        attachments: bundle.planItems,
-        procedure,
-      })),
-    });
+    const queueItems = rest.map((bundle, index) => ({
+      ordinal: index + 2,
+      url: dossierUrl,
+      files: bundle.files,
+      attachments: bundle.planItems,
+      procedure,
+    }));
+    try {
+      await chrome.storage.local.set({
+        [SPLIT_ATTACH_QUEUE_STAGE_KEY]: { items: queueItems, stagedAt: Date.now() },
+      });
+      // Chỉ gửi key nhẹ qua runtime message; tuyệt đối không nhét dataUrl của cả queue vào message.
+      queueRes = await sendToBackground({
+        action: "startSplitAttachQueue",
+        waitForTabId: currentTabRecovery?.tabId || null,
+        itemsStorageKey: SPLIT_ATTACH_QUEUE_STAGE_KEY,
+      });
+    } catch (e) {
+      queueRes = { error: `Không lưu được hàng đợi tách hồ sơ: ${e?.message || String(e)}` };
+    } finally {
+      // Background cũng xóa sau khi nhận; popup xóa lần nữa để dọn khi message thất bại giữa chừng.
+      try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_STAGE_KEY); } catch (_) { /* ignore */ }
+    }
     if (queueRes?.error) return { error: queueRes.error };
   }
 
@@ -1559,6 +1803,7 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
     `Đã xếp hàng tuần tự ${rest.length} bộ tài liệu còn lại.\n` +
     `Hệ thống chỉ mở và xử lý một tab active; xong tab này mới chuyển sang tab tiếp theo.`;
   if (planRes?.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
+  if (!currentTabRecovery) await showPageToast("Đã đính kèm xong hồ sơ hiện tại.", "success");
   return { ok: true, message: msg };
 }
 
@@ -1770,7 +2015,7 @@ ocrBtn.addEventListener("click", async () => {
 
     // Nhận diện lại thủ tục theo TRANG HIỆN TẠI ngay trước khi gửi (tránh dùng thủ tục cũ bị khóa
     // stale từ trang trước khi đổi trang/đăng nhập lại trong cùng tab).
-    await autoDetectAndLockProcedure({ clearChoiceSelection: false });
+    await autoDetectProcedure({ clearChoiceSelection: false });
     if (!selectedProcedureKey) {
       setStatus("Chưa chọn thủ tục. Hãy tìm & chọn thủ tục, hoặc mở đúng trang biểu mẫu rồi thử lại.", "err");
       return;
@@ -1836,7 +2081,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "xoa-dang-ky-tau-ca" ||
       cfg.key === "xoa-dang-ky-phuong-tien-thuy" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-da-nang" ||
-      cfg.key === "cap-giay-phep-chat-ha-cay-xanh"
+      cfg.key === "cap-giay-phep-chat-ha-cay-xanh" ||
+      cfg.key === "cap-ban-sao-van-bang-so-goc" ||
+      cfg.key === "chap-thuan-dau-noi-tam"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;
@@ -1899,10 +2146,17 @@ if (fillAllBtn) {
     if (!(await requireConsent(fillAllBtn))) return;
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
     fillAllBtn.disabled = true;
+    // Lượt mới phải bỏ mã cũ trước khi gọi BE. Mã mới chỉ lấy từ /process (fill),
+    // tuyệt đối không thay bằng requestId của /attachments/plan chạy ngay sau đó.
+    businessFillSupportCode = "";
+    hideSupportCode();
     try {
       setStatus("Đang đọc file...", "info");
       await ensureSelectedFilesLoaded();
-      await autoDetectAndLockProcedure({ clearChoiceSelection: false });
+      // Ghi trạng thái đã xóa mã cũ ngay trong phiên hiện tại. Nếu /process lỗi hoặc người dùng
+      // reload thủ công, panel không được khôi phục nhầm mã của hồ sơ trước.
+      await saveSession();
+      await autoDetectProcedure({ clearChoiceSelection: false });
       const cfg = currentConfig();
       if (!currentBusinessPages().length) {
         setStatus("Chỉ dùng cho thủ tục đăng ký kinh doanh.", "err");
@@ -1931,6 +2185,10 @@ if (fillAllBtn) {
       setStatus(" Đang phân tích tài liệu...", "info");
       const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
       console.log("[BE fill-all]", { extracted: res.extracted, stats: res.stats });
+      businessFillSupportCode = String(res.requestId || res.sessionId || "").trim();
+      showSupportCode(businessFillSupportCode);
+      // Ghi trước khi content bắt đầu state machine: các postback sẽ phá iframe/popup hiện tại.
+      await saveSession();
       const pages = res.pages || {};
       if (!Object.keys(pages).length) {
         setStatus(isAmendmentWorkflow
@@ -2006,7 +2264,7 @@ if (fillAllBtn) {
 if (attachStepBtn) {
   attachStepBtn.addEventListener("click", async () => {
     if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
-    await autoDetectAndLockProcedure({ clearChoiceSelection: false }); // giữ lựa chọn tay ở màn HKD dùng chung
+    await autoDetectProcedure({ clearChoiceSelection: false }); // giữ lựa chọn tay ở màn HKD dùng chung
     const cfg = currentConfig();
     if (!cfg.hasAttachmentStep) {
       setStatus("Thủ tục này chưa có bước đính kèm tự động.", "err");
@@ -2054,38 +2312,108 @@ if (attachStepBtn) {
   });
 }
 
+function hasMeaningfulFieldValue(field) {
+  if (!field || field.default === true) return false;
+  const value = field.value;
+  if (value == null) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true; // số 0 và boolean false vẫn là giá trị hợp lệ
+}
+
+function hasUsableProcessData(fields) {
+  return Array.isArray(fields) && fields.some(hasMeaningfulFieldValue);
+}
+
+function safeFieldCodes(values) {
+  return [...new Set((Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter((value) => value && value.length <= 80 && /^[\p{L}\p{N}_$.[\]-]+$/u.test(value)))]
+    .slice(0, 12);
+}
+
+function buildFillDetails(fillRes, processErrors, totalFields) {
+  const details = [];
+  const filled = Math.max(0, Number(fillRes?.filled || 0));
+  const notFound = safeFieldCodes(fillRes?.notFound);
+  const fillErrors = Array.isArray(fillRes?.errors) ? fillRes.errors : [];
+  const extractWarnings = Array.isArray(processErrors) ? processErrors : [];
+  if (filled < totalFields) details.push(`Có ${Math.max(0, totalFields - filled)} thông tin chưa được điền.`);
+  if (notFound.length) details.push(`Mã ô hỗ trợ: ${notFound.join(", ")}.`);
+  if (fillErrors.length) details.push(`Có ${fillErrors.length} cảnh báo khi điền biểu mẫu.`);
+  if (extractWarnings.length) details.push(`Có ${extractWarnings.length} cảnh báo khi đọc hồ sơ.`);
+  return details;
+}
+
 async function dispatchFill(allFields, errors, page = null) {
   // errors[] từ BE có thể chứa chi tiết OCR/LLM kỹ thuật → chỉ log, KHÔNG hiện thô lên UI.
   if (errors && errors.length) console.warn("[AutoFill] Cảnh báo trích xuất:", errors);
-  if (!allFields.length) {
-    setStatus("Không đọc được trường nào từ giấy tờ. Kiểm tra lại ảnh/tệp rồi thử lại.", "err");
-    return;
+  if (!hasUsableProcessData(allFields)) {
+    const details = Array.isArray(errors) && errors.length
+      ? [`Có ${errors.length} cảnh báo khi đọc hồ sơ.`]
+      : [];
+    setStatus("Không đọc được thông tin từ giấy tờ. Kiểm tra lại ảnh/tệp rồi thử lại.", "err", details);
+    return { ok: false, reason: "no-usable-data", filled: 0 };
   }
   setStatus(page
-    ? `Đang điền ${allFields.length} trường vào trang "${page.label}"...`
-    : `Đang điền ${allFields.length} trường vào form...`,
+    ? `Đang điền dữ liệu vào trang "${page.label}"...`
+    : "Đang điền dữ liệu vào biểu mẫu...",
     "info"
   );
-  const fillRes = await sendToContent({
-    action: "fillFields",
-    fields: allFields,
-    procedure: currentConfig()?.key || "",
-    businessPage: page?.key || "",
-    businessDefaults: page?.key === "nganh-nghe-kinh-doanh" ? buildBusinessDefaults(currentUser) : null,
-  });
-  if (fillRes.error) {
-    console.warn("[AutoFill] Điền form lỗi:", fillRes.error);
-    setStatus(fillRes.error, "err");   // content trả câu sạch (dọn ở content.js); vẫn qua friendlyError để chắc
-    return;
+  const procedure = currentConfig()?.key || "";
+  let panelMinimized = false;
+  try {
+    // Chỉ ẩn SAU khi BE đã trả dữ liệu dùng được, nhưng TRƯỚC khi content bắt đầu điền DOM.
+    const panelRes = await sendToContent({ action: "minimizePanelForFill", procedure });
+    panelMinimized = !!panelRes?.minimized;
+    if (panelRes?.error) console.warn("[AutoFill] Không thu nhỏ được panel trước khi điền:", panelRes.error);
+
+    const fillRes = await sendToContent({
+      action: "fillFields",
+      fields: allFields,
+      procedure,
+      businessPage: page?.key || "",
+      businessDefaults: page?.key === "nganh-nghe-kinh-doanh" ? buildBusinessDefaults(currentUser) : null,
+    });
+    const filled = Math.max(0, Number(fillRes?.filled || 0));
+    const details = buildFillDetails(fillRes, errors, allFields.length);
+    if (fillRes?.error || filled === 0) {
+      console.warn("[AutoFill] Điền form lỗi:", fillRes?.error || fillRes);
+      if (panelMinimized) await sendToContent({ action: "restorePanelAfterFillFailure" });
+      setStatus(
+        fillRes?.error || "Không điền được dữ liệu vào biểu mẫu. Vui lòng kiểm tra trang và thử lại.",
+        "err",
+        details
+      );
+      return { ok: false, reason: "fill-failed", filled: 0, details };
+    }
+
+    const hasWarnings = filled < allFields.length
+      || !!fillRes?.notFound?.length
+      || !!fillRes?.errors?.length
+      || !!errors?.length;
+    const pageSuffix = page ? ` ở trang "${page.label}"` : "";
+    const message = hasWarnings
+      ? `Đã điền ${filled} thông tin${pageSuffix}. Vui lòng rà soát các ô còn trống.`
+      : `Đã điền ${filled} thông tin${pageSuffix}.`;
+    setStatus(message, hasWarnings ? "warn" : "ok", details);
+    await showPageToast(
+      hasWarnings
+        ? `Đã điền ${filled} thông tin. Vui lòng rà soát các ô còn trống.`
+        : `Đã điền xong ${filled} thông tin.`,
+      hasWarnings ? "warn" : "success"
+    );
+    if (panelMinimized) await sendToContent({ action: "markPanelFillComplete" });
+    return { ok: true, filled, partial: hasWarnings, details };
+  } catch (error) {
+    console.warn("[AutoFill] Điền form lỗi:", error);
+    if (panelMinimized) {
+      try { await sendToContent({ action: "restorePanelAfterFillFailure" }); } catch (_) { /* ignore */ }
+    }
+    setStatus("Không điền được dữ liệu vào biểu mẫu. Vui lòng kiểm tra trang và thử lại.", "err");
+    return { ok: false, reason: "fill-exception", filled: 0 };
   }
-  let msg = page
-    ? `Đã điền ${fillRes.filled}/${allFields.length} trường ở trang "${page.label}".`
-    : `Đã điền ${fillRes.filled}/${allFields.length} trường.`;
-  if (fillRes.notFound?.length) msg += `\nKhông khớp: ${fillRes.notFound.join(", ")}`;
-  // KHÔNG nối errors[] thô vào thông báo thành công (đã log ở trên).
-  // Điền đủ → ok; điền một phần → warn (vàng); không điền được ô nào → err.
-  const type = fillRes.filled >= allFields.length ? "ok" : (fillRes.filled ? "warn" : "err");
-  setStatus(msg, type);
 }
 
 // ===== Rà soát bbox: card "Xem trên ảnh" cho từng ô AI đã điền =====

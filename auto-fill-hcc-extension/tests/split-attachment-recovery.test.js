@@ -50,7 +50,16 @@ const splitAttach = popup.slice(splitAttachStart, splitAttachEnd);
 assert.match(splitAttach, /procedure === "chung-thuc-chu-ky"/);
 assert.match(splitAttach, /buildDefaultSplitBundles/);
 assert.match(splitAttach, /action: "startSplitAttachQueue"/);
+assert.match(splitAttach, /chrome\.storage\.local\.set/);
+assert.match(splitAttach, /itemsStorageKey: SPLIT_ATTACH_QUEUE_STAGE_KEY/);
+assert.doesNotMatch(splitAttach, /action: "startSplitAttachQueue",[\s\S]{0,200}items: rest\.map/);
 assert.doesNotMatch(splitAttach, /openDossierTabAndAttach/);
+
+const startQueueActionStart = background.indexOf('msg?.action === "startSplitAttachQueue"');
+const startQueueActionEnd = background.indexOf('msg?.action === "getPendingAttach"', startQueueActionStart);
+const startQueueAction = background.slice(startQueueActionStart, startQueueActionEnd);
+assert.match(startQueueAction, /chrome\.storage\.local\.get\(itemsStorageKey\)/);
+assert.match(startQueueAction, /chrome\.storage\.local\.remove\(itemsStorageKey\)/);
 
 const pollerStart = content.indexOf("// ===== Tách hồ sơ (split)");
 const pollerEnd = content.indexOf("\n  function detectFormKind", pollerStart);

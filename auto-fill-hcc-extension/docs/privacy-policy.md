@@ -1,6 +1,6 @@
 # Chính sách quyền riêng tư — Trợ lý hồ sơ Dịch vụ công
 
-**Cập nhật lần cuối:** 08/07/2026
+**Cập nhật lần cuối:** 12/08/2026
 
 Tiện ích mở rộng **"Trợ lý hồ sơ Dịch vụ công"** (sau đây gọi là "Tiện ích") hỗ trợ người dùng điền nhanh thông tin từ giấy tờ vào các biểu mẫu trên cổng Dịch vụ công. Chính sách này mô tả rõ Tiện ích thu thập dữ liệu gì, dùng để làm gì, lưu ở đâu và được bảo vệ ra sao.
 
@@ -44,21 +44,29 @@ Chúng tôi **không** dùng dữ liệu của bạn cho quảng cáo, không ph
 
 ## 4. Lưu trữ dữ liệu
 
-**Trên trình duyệt của bạn** (qua `chrome.storage.local`):
+**Trên trình duyệt của bạn:**
 - Mã phiên đăng nhập (access/refresh token) để bạn không phải đăng nhập lại mỗi lần.
-- **Tên đăng nhập** (để tự điền sẵn ở lần sau) — **KHÔNG lưu mật khẩu**.
+- Nếu bạn chủ động chọn **"Ghi nhớ đăng nhập"**, tên đăng nhập và mật khẩu được mã hóa bằng
+  AES-GCM 256-bit rồi lưu trong IndexedDB riêng của Tiện ích trên thiết bị. Khóa mã hóa là
+  `CryptoKey` không cho phép xuất dữ liệu khóa (`extractable=false`). Thông tin này không được lưu
+  ở dạng rõ, không dùng `chrome.storage.sync` và không đồng bộ sang thiết bị khác.
 - Dữ liệu phiên tạm thời theo từng tab (thủ tục đang chọn và tệp đang xử lý) để khôi phục khi bạn mở lại. Dữ liệu này bị xóa khi bạn bắt đầu phiên mới hoặc đăng xuất.
 
 **Trên máy chủ:**
 - Kết quả trích xuất và nhật ký xử lý được lưu để phục vụ vận hành và thống kê.
 
-Bạn có thể xóa dữ liệu cục bộ bất cứ lúc nào bằng cách **Đăng xuất** hoặc gỡ Tiện ích.
+Bạn có thể xóa thông tin đăng nhập được ghi nhớ bằng cách bỏ chọn **"Ghi nhớ đăng nhập"**, bấm
+**"Xóa đã nhớ"**, hoặc gỡ Tiện ích. Nút **Đăng xuất** kết thúc phiên làm việc nhưng vẫn giữ thông
+tin đã nhớ nếu bạn chưa yêu cầu xóa, để có thể tự điền ở lần đăng nhập sau.
 
 ---
 
 ## 5. Bảo mật
 
-- Mật khẩu **không** được lưu trên trình duyệt; chỉ gửi tới máy chủ để xác thực.
+- Mật khẩu chỉ được lưu cục bộ khi người dùng chủ động bật **"Ghi nhớ đăng nhập"**; khi đó mật khẩu
+  được mã hóa bằng AES-GCM và đặt trong kho IndexedDB thuộc origin riêng của Tiện ích. Website Dịch
+  vụ công và content script không dùng chung kho này.
+- Tính năng ghi nhớ đăng nhập bị vô hiệu hóa trong cửa sổ ẩn danh.
 - Phiên đăng nhập dùng cơ chế token có thời hạn và có thể thu hồi.
 - Chúng tôi áp dụng các biện pháp kỹ thuật hợp lý để bảo vệ dữ liệu trên máy chủ.
 
@@ -101,7 +109,7 @@ Chính sách này có thể được cập nhật. Khi có thay đổi quan tr�
 Dán các đoạn dưới đây vào ô **"Permission justification"** tương ứng trong Developer Dashboard.
 
 **`storage`**
-Lưu mã phiên đăng nhập, tên đăng nhập (để tự điền), và dữ liệu phiên tạm thời (thủ tục + tệp đang xử lý) nhằm khôi phục khi người dùng mở lại tiện ích. Không lưu mật khẩu.
+Lưu mã phiên đăng nhập và dữ liệu phiên tạm thời (thủ tục + tệp đang xử lý) nhằm khôi phục khi người dùng mở lại tiện ích. Mật khẩu không được lưu trong `chrome.storage`; khi người dùng chủ động bật ghi nhớ, dữ liệu xác thực được mã hóa và lưu trong IndexedDB riêng của Tiện ích trên thiết bị.
 
 **`unlimitedStorage`**
 Dữ liệu phiên tạm thời có thể chứa ảnh/PDF giấy tờ (mã hóa base64) nhiều trang, dễ vượt hạn mức lưu trữ mặc định (~10MB). Quyền này bảo đảm việc lưu tạm và khôi phục tệp không bị lỗi vượt hạn mức. Dữ liệu bị xóa khi người dùng bắt đầu phiên mới hoặc đăng xuất.

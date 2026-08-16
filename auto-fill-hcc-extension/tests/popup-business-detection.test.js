@@ -4,9 +4,9 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "..", "popup.js"), "utf8");
-const start = source.indexOf("function detectProcedureKeyFromSignals(signals)");
-const end = source.indexOf("\nfunction setProcedureLocked", start);
-assert.ok(start >= 0 && end > start, "Không tách được hàm detectProcedureKeyFromSignals");
+const start = source.indexOf("function detectUrlScopeOk(detect, url)");
+const end = source.indexOf("\nfunction setProcedureDetected", start);
+assert.ok(start >= 0 && end > start, "Không tách được engine detect thủ tục");
 const functionSource = source.slice(start, end);
 
 const sandbox = { selectedKey: "" };
@@ -72,10 +72,29 @@ assert.ok(
   "Cả nhận diện ban đầu và nhận diện khi chuyển trang phải vào chế độ chọn thủ tục chung",
 );
 assert.ok(
-  (source.match(/autoDetectAndLockProcedure\(\{ clearChoiceSelection: false \}\)/g) || []).length >= 3,
+  (source.match(/autoDetectProcedure\(\{ clearChoiceSelection: false \}\)/g) || []).length >= 3,
   "Các nút xử lý phải giữ thủ tục người dùng vừa chọn tay trên màn HKD dùng chung",
 );
 assert.match(source, /res\.businessFlow\?\.search \|\| res\.extracted\?\.businessSearch/);
 assert.match(source, /businessSearch,/);
+assert.match(
+  source,
+  /const res = await api\.process\(\{ procedure: cfg\.key, options, files: payloadFiles \}\);[\s\S]*?businessFillSupportCode = String\(res\.requestId \|\| res\.sessionId \|\| ""\)\.trim\(\);[\s\S]*?showSupportCode\(businessFillSupportCode\);[\s\S]*?await saveSession\(\);/,
+  "Nút fill-all HKD phải hiện và lưu requestId của lượt fill trước khi state machine postback",
+);
+assert.match(
+  source,
+  /businessFillSupportCode,\s*\n\s*hasHandwriting:/,
+  "Mã fill HKD phải sống cùng session theo tab qua các lần WebForms postback",
+);
+assert.ok(
+  (source.match(/restoreBusinessFillSupportCode\(\);/g) || []).length >= 2,
+  "Mở lại panel hoặc đăng nhập lại phải khôi phục mã fill HKD từ session theo tab",
+);
+assert.doesNotMatch(
+  source,
+  /businessFillSupportCode\s*=\s*String\(planRes\.requestId/,
+  "requestId của attachment plan không được ghi đè mã hỗ trợ của fill HKD",
+);
 
 console.log("popup business detection: choice/change/create precedence passed");

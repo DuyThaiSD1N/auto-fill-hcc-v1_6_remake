@@ -3,7 +3,7 @@
 // Guard chống nạp trùng: nếu content script bị inject lại (vd background re-inject sau khi
 // reload extension), KHÔNG đăng ký listener lần 2 → tránh 1 click toggle 2 lần (mở rồi đóng ngay).
 (() => {
-  const CONTENT_VERSION = "auto-detect-persist-v2";
+  const CONTENT_VERSION = "panel-after-fill-v3";
   if (window.__AUTOFILL_HCC_MESSAGE_HANDLER__) {
     try {
       chrome.runtime.onMessage.removeListener(window.__AUTOFILL_HCC_MESSAGE_HANDLER__);
@@ -23,7 +23,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.11 · 9/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.13 · 16/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -35,12 +35,19 @@
   function panelMinKey() {
     return "autofill_panel_min_" + (CURRENT_TAB_ID ?? "");
   }
+  // Chỉ trạng thái thu nhỏ DO EXTENSION tạo ra sau khi nhận dữ liệu mới được tự mở lại ở bước đính kèm.
+  // Tách key khỏi panelMinKey để không bao giờ hiểu nhầm thao tác thu nhỏ thủ công của cán bộ.
+  function panelAutoMinKey() {
+    return "autofill_panel_auto_min_" + (CURRENT_TAB_ID ?? "");
+  }
 
   // sessionStorage: ĐỒNG BỘ, sống qua reload TRONG CÙNG TAB, tab MỚI không kế thừa → dùng để dựng lại
   // panel NGAY LẬP TỨC khi reload (không chờ async getTabId/storage → hết giật "ẩn rồi hiện").
   const SS_OPEN = "__af_panel_open";
   const SS_MIN = "__af_panel_min"; // đang thu nhỏ (bubble) — song song SS_OPEN, đồng bộ để reload giữ nguyên bubble
+  const SS_AUTO_MIN = "__af_panel_auto_min"; // JSON { reason, procedure, phase, expiresAt }
   const SS_TAB = "__af_tab_id";
+  const AUTO_MIN_TTL_MS = 30 * 60 * 1000;
   // Phiên "điền 8 trang" đang chạy (đồng bộ, sống qua reload trong cùng tab). Khi bật, KHÔNG mount lại
   // panel/iframe (nặng → nhấp nháy mỗi postback); chỉ hiện banner tiến độ nhẹ "Đang điền X/8".
   const SS_FILLALL = "__af_fillall_active";
@@ -74,11 +81,52 @@
     } catch (e) { /* ignore */ }
   }
 
+  function normalizeAutoMinState(value) {
+    if (!value || typeof value !== "object") return null;
+    if (value.reason !== "after-fill") return null;
+    const expiresAt = Number(value.expiresAt || 0);
+    if (!expiresAt || expiresAt <= Date.now()) return null;
+    return {
+      reason: "after-fill",
+      procedure: String(value.procedure || ""),
+      phase: value.phase === "filled" ? "filled" : "filling",
+      expiresAt,
+    };
+  }
+
+  function readAutoMinState() {
+    try {
+      const raw = sessGet(SS_AUTO_MIN);
+      const state = normalizeAutoMinState(raw ? JSON.parse(raw) : null);
+      if (!state && raw) sessDel(SS_AUTO_MIN);
+      return state;
+    } catch (_) {
+      sessDel(SS_AUTO_MIN);
+      return null;
+    }
+  }
+
+  function setAutoMinState(value) {
+    const state = normalizeAutoMinState(value);
+    if (state) sessSet(SS_AUTO_MIN, JSON.stringify(state));
+    else sessDel(SS_AUTO_MIN);
+    if (CURRENT_TAB_ID == null) return;
+    try {
+      if (state) chrome.storage.local.set({ [panelAutoMinKey()]: state });
+      else chrome.storage.local.remove(panelAutoMinKey());
+    } catch (_) { /* ignore */ }
+  }
+
+  function clearAutoMinState() {
+    setAutoMinState(null);
+  }
+
   function removeUI() {
     document.getElementById(PANEL_ID)?.remove();
     document.getElementById(BUBBLE_ID)?.remove();
     setPanelOpen(false);
     setPanelMinimized(false); // đóng hẳn → xoá luôn cờ thu nhỏ
+    clearAutoMinState();
   }
 
   function togglePanel() {
@@ -187,6 +235,7 @@
     enableDrag(root, header);
     setPanelOpen(true);
     setPanelMinimized(false); // dựng panel FULL → không còn ở trạng thái thu nhỏ
+    clearAutoMinState();
   }
 
   // Dựng bubble góc phải trên (nếu chưa có). Tách riêng để nhánh khôi phục sau reload gọi được mà
@@ -213,21 +262,146 @@
   }
 
   // Thu nhỏ: ẩn panel (giữ iframe để không mất trạng thái) + hiện bubble + LƯU cờ thu nhỏ (để reload giữ nguyên).
-  function minimizePanel() {
+  function minimizePanel({ reason = "manual", procedure = "", preserveAuto = false, requirePanel = false } = {}) {
     const panel = document.getElementById(PANEL_ID);
+    if (requirePanel && !panel) return false;
     if (panel) panel.style.display = "none";
     showBubble();
     setPanelMinimized(true);
+    if (reason === "after-fill") {
+      setAutoMinState({
+        reason: "after-fill",
+        procedure,
+        phase: "filling",
+        expiresAt: Date.now() + AUTO_MIN_TTL_MS,
+      });
+    } else if (!preserveAuto) {
+      clearAutoMinState();
+    }
+    return true;
   }
 
   // Bấm bubble → hiện lại panel (tạo mới nếu chưa có) + xoá cờ thu nhỏ.
   function restorePanel() {
     document.getElementById(BUBBLE_ID)?.remove();
     setPanelMinimized(false);
+    clearAutoMinState();
     const panel = document.getElementById(PANEL_ID);
     if (panel) panel.style.display = "flex";
     else chrome.runtime.sendMessage({ action: "getTabId" }, (res) => createPanel(res?.tabId ?? ""));
   }
+
+  // Toast nằm trên TRANG CỔNG (không nằm trong iframe panel) nên cán bộ vẫn thấy khi panel đang thu nhỏ.
+  // Dùng Shadow DOM để CSS của từng cổng không làm đổi màu/kích thước thông báo.
+  const PAGE_TOAST_ID = "autofill-hcc-page-toast";
+  let pageToastTimer = null;
+  let pageToastRemoveTimer = null;
+
+  function pageToastIcon(kind) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "currentColor");
+    path.setAttribute("stroke-width", "2.4");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("d", kind === "warn" ? "M12 7v6m0 4h.01M12 3l10 18H2L12 3z" : "M5 12.5l4.2 4.2L19 7");
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function showPageToast(message, kind = "success") {
+    if (!IS_TOP_FRAME) return false;
+    const text = String(message || "").replace(/\s+/g, " ").trim().slice(0, 180);
+    if (!text) return false;
+    const tone = kind === "warn" ? "warn" : "success";
+    if (pageToastTimer) clearTimeout(pageToastTimer);
+    if (pageToastRemoveTimer) clearTimeout(pageToastRemoveTimer);
+    document.getElementById(PAGE_TOAST_ID)?.remove();
+
+    const host = document.createElement("div");
+    host.id = PAGE_TOAST_ID;
+    Object.assign(host.style, {
+      position: "fixed",
+      top: "18px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "min(420px, calc(100vw - 32px))",
+      zIndex: "2147483647",
+      pointerEvents: "none",
+    });
+    const shadow = host.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = `
+      .toast {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid rgba(255,255,255,.28);
+        border-radius: 10px;
+        color: #fff;
+        background: #166534;
+        box-shadow: 0 10px 28px rgba(15,23,42,.28);
+        font-family: system-ui, "Segoe UI", sans-serif;
+        opacity: 0;
+        transform: translateY(-10px);
+        animation: toast-in 180ms ease-out forwards;
+      }
+      .toast.warn { background: #92400e; }
+      .icon {
+        flex: 0 0 30px;
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.16);
+      }
+      .icon svg { width: 19px; height: 19px; }
+      .copy { min-width: 0; }
+      .title { margin: 0 0 1px; font-size: 12px; line-height: 1.3; font-weight: 700; opacity: .9; }
+      .message { margin: 0; font-size: 14px; line-height: 1.45; font-weight: 600; overflow-wrap: anywhere; }
+      .toast.leaving { animation: toast-out 160ms ease-in forwards; }
+      @keyframes toast-in { to { opacity: 1; transform: translateY(0); } }
+      @keyframes toast-out { to { opacity: 0; transform: translateY(-8px); } }
+      @media (prefers-reduced-motion: reduce) {
+        .toast, .toast.leaving { animation-duration: 1ms; transform: none; }
+      }
+    `;
+    const toast = document.createElement("div");
+    toast.className = `toast ${tone}`;
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.setAttribute("aria-atomic", "true");
+    const icon = document.createElement("span");
+    icon.className = "icon";
+    icon.appendChild(pageToastIcon(tone));
+    const copy = document.createElement("div");
+    copy.className = "copy";
+    const title = document.createElement("p");
+    title.className = "title";
+    title.textContent = tone === "warn" ? "Cần rà soát" : "Hoàn tất";
+    const body = document.createElement("p");
+    body.className = "message";
+    body.textContent = text;
+    copy.append(title, body);
+    toast.append(icon, copy);
+    shadow.append(style, toast);
+    document.documentElement.appendChild(host);
+
+    pageToastTimer = setTimeout(() => {
+      toast.classList.add("leaving");
+      pageToastRemoveTimer = setTimeout(() => host.remove(), 180);
+    }, 5000);
+    return true;
+  }
+
+  H.showPageToast = showPageToast;
 
   // ===== Chế độ "điền 8 trang": ẩn panel/iframe (nặng, nhấp nháy mỗi postback), chỉ giữ banner nhẹ =====
   const FILLALL_BANNER_ID = "af-fillall-progress";
@@ -352,29 +526,101 @@
     window.addEventListener("message", onResizeMsg);
   }
 
-  // Cổng dvc là SPA: đổi thủ tục = đổi URL KHÔNG reload trang → panel nổi không tự nhận diện lại.
-  // Theo dõi đổi URL rồi báo panel (popup.html embedded) để nó nhận diện lại thủ tục theo trang mới.
-  // LƯU Ý: content script ở isolated world nên KHÔNG patch được history.pushState của trang (main world);
-  // cách bắt chắc chắn là POLL location.href, kèm popstate/hashchange cho phản hồi tức thì.
+  // Cổng dvc là SPA: URL có thể đổi không reload, hoặc nội dung thủ tục đổi sau khi URL đã đứng yên.
+  // Theo dõi cả URL lẫn tín hiệu DOM; debounce + chữ ký giúp không quét lại theo mọi mutation nhỏ.
+  // Content script ở isolated world nên không patch history.pushState của trang (main world): vẫn poll href
+  // làm lưới an toàn, rồi retry vài nhịp để chờ Angular/Vue render xong tên thủ tục.
   if (IS_TOP_FRAME && !window.__AUTOFILL_HCC_URLWATCH__) {
     window.__AUTOFILL_HCC_URLWATCH__ = true;
     let lastHref = location.href;
+    let lastSignalSignature = "";
+    let domDetectTimer = null;
+    let navigationRetryTimers = [];
+
+    const postPanelPageChanged = (reason) => {
+      const iframe = document.getElementById(IFRAME_ID);
+      if (!iframe?.contentWindow) return;
+      try {
+        iframe.contentWindow.postMessage(
+          { type: "autofill-hcc-page-changed", url: location.href, reason },
+          "*"
+        );
+      } catch (_) { /* ignore */ }
+    };
+
+    const scheduleNavigationDetection = () => {
+      navigationRetryTimers.forEach(clearTimeout);
+      navigationRetryTimers = [0, 350, 1000, 2500].map((delay) =>
+        setTimeout(() => postPanelPageChanged("url"), delay)
+      );
+    };
+
+    const procedureSignalSignature = () => {
+      try {
+        const signals = collectProcedureSignals();
+        return JSON.stringify([
+          signals.url,
+          signals.title,
+          signals.headings,
+          signals.businessProcedureHint,
+          signals.bodyText,
+        ]);
+      } catch (_) {
+        return "";
+      }
+    };
+
+    const PROCEDURE_HEADING_SELECTOR = ".text-2xl.font-bold, h1, h2, title";
+    const containsProcedureHeading = (node) => node?.nodeType === Node.ELEMENT_NODE
+      && (node.matches(PROCEDURE_HEADING_SELECTOR) || node.querySelector(PROCEDURE_HEADING_SELECTOR));
+    const isProcedureMutation = (mutations) => mutations.some((mutation) => {
+      if (mutation.type === "characterData") {
+        return !!mutation.target.parentElement?.closest(PROCEDURE_HEADING_SELECTOR);
+      }
+      if (mutation.type === "attributes") {
+        // HKD đổi active wizard bằng class; các cổng khác chỉ quan tâm container có heading thủ tục.
+        return location.hostname.includes("hokinhdoanh.dkkd.gov.vn")
+          || !!mutation.target.closest?.(PROCEDURE_HEADING_SELECTOR)
+          || containsProcedureHeading(mutation.target);
+      }
+      if (mutation.target.closest?.(PROCEDURE_HEADING_SELECTOR)) return true;
+      return [...mutation.addedNodes, ...mutation.removedNodes].some((node) => {
+        if (containsProcedureHeading(node)) return true;
+        // Cổng không có heading (vd Lai Châu) thường thay cả một khối nội dung khi đổi thủ tục.
+        return String(node.textContent || "").replace(/\s+/g, " ").trim().length >= 20;
+      });
+    });
+
     const notifyPanelUrlChanged = () => {
       if (location.href === lastHref) return;
       lastHref = location.href;
-      const iframe = document.getElementById(IFRAME_ID);
-      if (iframe && iframe.contentWindow) {
-        try {
-          iframe.contentWindow.postMessage(
-            { type: "autofill-hcc-url-changed", url: location.href },
-            "*"
-          );
-        } catch (_) { /* ignore */ }
-      }
+      lastSignalSignature = "";
+      scheduleNavigationDetection();
     };
+
     window.addEventListener("popstate", notifyPanelUrlChanged);
     window.addEventListener("hashchange", notifyPanelUrlChanged);
     setInterval(notifyPanelUrlChanged, 1000);
+
+    lastSignalSignature = procedureSignalSignature();
+    const procedureObserver = new MutationObserver((mutations) => {
+      if (!isProcedureMutation(mutations)) return;
+      if (domDetectTimer) clearTimeout(domDetectTimer);
+      domDetectTimer = setTimeout(() => {
+        domDetectTimer = null;
+        const signature = procedureSignalSignature();
+        if (!signature || signature === lastSignalSignature) return;
+        lastSignalSignature = signature;
+        postPanelPageChanged("dom");
+      }, 400);
+    });
+    procedureObserver.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "hidden", "aria-current", "aria-selected"],
+    });
   }
 
   function enableDrag(root, handle) {
@@ -409,6 +655,44 @@
       "detectBusinessChangeStage",
     ].includes(msg?.action)) return;
     if (msg?.action === "togglePanel") { togglePanel(); sendResponse({ ok: true }); return; }
+    if (msg?.action === "showPageToast") {
+      if (!IS_TOP_FRAME) return;
+      sendResponse({ ok: true, shown: showPageToast(msg.message, msg.kind) });
+      return;
+    }
+    if (msg?.action === "minimizePanelForFill") {
+      if (!IS_TOP_FRAME) return;
+      const minimized = minimizePanel({
+        reason: "after-fill",
+        procedure: msg.procedure || "",
+        requirePanel: true,
+      });
+      sendResponse({ ok: true, minimized });
+      return;
+    }
+    if (msg?.action === "markPanelFillComplete") {
+      if (!IS_TOP_FRAME) return;
+      const state = readAutoMinState();
+      if (state) {
+        setAutoMinState({ ...state, phase: "filled" });
+        maybeRestorePanelForAttachment();
+      }
+      sendResponse({ ok: true, armed: !!state });
+      return;
+    }
+    if (msg?.action === "restorePanelAfterFillFailure") {
+      if (!IS_TOP_FRAME) return;
+      const state = readAutoMinState();
+      if (state) restorePanel();
+      sendResponse({ ok: true, restored: !!state });
+      return;
+    }
+    if (msg?.action === "clearPanelAutoRestore") {
+      if (!IS_TOP_FRAME) return;
+      clearAutoMinState();
+      sendResponse({ ok: true });
+      return;
+    }
     if (msg?.action === "startFillAllBusiness") {
       const pages = (msg && msg.pages) || {};
       const st = {
@@ -513,17 +797,33 @@
     }
     if (msg?.action === "attachFilesByPlan") {
       if (!hasAttachmentTarget()) return;
-      const files = Array.isArray(msg.files) ? msg.files : [];
       const attachments = Array.isArray(msg.attachments) ? msg.attachments : [];
-      if (!files.length) {
-        sendResponse({ error: "Không có file nào để đính kèm." });
-        return;
-      }
       if (!attachments.length) {
         sendResponse({ error: "Không có kế hoạch đính kèm từ backend." });
         return;
       }
-      attachFilesByPlan(files, attachments, msg.procedure || "", { mode: msg.mode || "merge" }).then(sendResponse);
+      (async () => {
+        let files = Array.isArray(msg.files) ? msg.files : [];
+        // File lớn (hợp đồng vài chục MB) vượt giới hạn 64MiB của sendMessage → popup ghi vào
+        // chrome.storage.local, chỉ gửi key; đọc lại ở đây rồi XOÁ key để không phình storage.
+        if (msg.filesStorageKey) {
+          try {
+            const got = await chrome.storage.local.get(msg.filesStorageKey);
+            const stored = got?.[msg.filesStorageKey];
+            if (Array.isArray(stored?.files)) files = stored.files;
+          } catch (e) {
+            console.warn("[AutoFill] đọc file đính kèm từ storage lỗi:", e);
+          } finally {
+            try { chrome.storage.local.remove(msg.filesStorageKey); } catch (e) { /* ignore */ }
+          }
+        }
+        if (!files.length) {
+          sendResponse({ error: "Không có file nào để đính kèm." });
+          return;
+        }
+        const res = await attachFilesByPlan(files, attachments, msg.procedure || "", { mode: msg.mode || "merge" });
+        sendResponse(res);
+      })();
       return true;
     }
     if (msg?.action === "getDossierUrl") {
@@ -641,7 +941,7 @@
         // Đọc CẢ cờ panel-open LẪN trạng thái fill-all. Cổng này reload kiểu reset sessionStorage ở nhiều
         // nhịp → SS_FILLALL có thể mất; nhưng FILLALL_STATE_KEY (chrome.storage) sống suốt phiên → dùng nó
         // làm chốt chặn mount panel (nếu chỉ dựa sessionStorage thì nhịp sau panel sẽ hiện lại).
-        chrome.storage.local.get([panelOpenKey(), panelMinKey(), FILLALL_STATE_KEY, ATTACHALL_STATE_KEY], (res) => {
+        chrome.storage.local.get([panelOpenKey(), panelMinKey(), panelAutoMinKey(), FILLALL_STATE_KEY, ATTACHALL_STATE_KEY], (res) => {
           if (chrome.runtime.lastError) return;
           const fillSt = res && res[FILLALL_STATE_KEY];
           const attachSt = res && res[ATTACHALL_STATE_KEY];
@@ -662,13 +962,17 @@
           const openByStore = res && res[panelOpenKey()];
           const openBySess = sessGet(SS_OPEN) === "1";
           if (!(openByStore || openBySess)) return;
+          const storedAutoMin = normalizeAutoMinState(res && res[panelAutoMinKey()]);
+          if (storedAutoMin) sessSet(SS_AUTO_MIN, JSON.stringify(storedAutoMin));
+          else if (res && res[panelAutoMinKey()]) clearAutoMinState();
           // Đang thu nhỏ (per-tab qua chrome.storage, chuẩn hơn sessionStorage vốn có thể bị reset) → giữ bubble,
           // không mount panel full. sessionStorage đồng bộ lại để nhánh restoreEarly nhịp sau cũng biết.
           if ((res && res[panelMinKey()]) || sessGet(SS_MIN) === "1") {
             sessSet(SS_MIN, "1");
             // Nếu nhánh đồng bộ lỡ dựng panel full (hiếm: SS_MIN mất mà SS_OPEN còn) → thu lại về bubble.
-            if (document.getElementById(PANEL_ID)) minimizePanel();
+            if (document.getElementById(PANEL_ID)) minimizePanel({ preserveAuto: true });
             else showBubble();
+            maybeRestorePanelForAttachment();
             return;
           }
           if (!document.getElementById(PANEL_ID)) createPanel(CURRENT_TAB_ID);
@@ -822,6 +1126,7 @@
         const finishPendingAttach = (ok, details = {}) => {
           if (terminal) return;
           terminal = true;
+          if (ok) showPageToast("Đã đính kèm xong hồ sơ.", "success");
           chrome.runtime.sendMessage({
             action: ok ? "clearPendingAttach" : "failPendingAttach",
             code: details.code || null,
@@ -966,6 +1271,42 @@
       findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"]) ||
       fixedSlotUploadInputs().length > 0 // cổng Bộ VHTTDL: input file trong <app-upload-flie-multi> (nút icon, không chữ "Chọn tệp")
     );
+  }
+
+  function maybeRestorePanelForAttachment() {
+    if (!IS_TOP_FRAME || location.hostname.includes("hokinhdoanh.dkkd.gov.vn")) return false;
+    const state = readAutoMinState();
+    // phase=filling chặn observer bật panel lại do chính thao tác điền làm DOM thay đổi.
+    if (!state || state.phase !== "filled" || !hasAttachmentTarget()) return false;
+    restorePanel(); // đồng thời xoá cờ → chỉ tự mở đúng một lần
+    return true;
+  }
+
+  // SPA có thể đưa màn đính kèm vào DOM mà không reload. Quan sát nhẹ, debounce và chỉ làm việc khi
+  // đang có cờ after-fill; thu nhỏ thủ công không tạo cờ nên hoàn toàn không bị ảnh hưởng.
+  if (IS_TOP_FRAME && !window.__AUTOFILL_HCC_ATTACH_REOPEN_WATCH__) {
+    window.__AUTOFILL_HCC_ATTACH_REOPEN_WATCH__ = true;
+    let attachReopenTimer = null;
+    const scheduleAttachmentReopen = () => {
+      if (!readAutoMinState()) return;
+      if (attachReopenTimer) clearTimeout(attachReopenTimer);
+      attachReopenTimer = setTimeout(() => {
+        attachReopenTimer = null;
+        maybeRestorePanelForAttachment();
+      }, 250);
+    };
+    const startAttachmentReopenWatch = () => {
+      scheduleAttachmentReopen();
+      const observer = new MutationObserver(scheduleAttachmentReopen);
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["class", "hidden", "style"],
+      });
+    };
+    if (document.documentElement) startAttachmentReopenWatch();
+    else document.addEventListener("DOMContentLoaded", startAttachmentReopenWatch, { once: true });
   }
 
   async function waitFor(fn, timeout = 3000, interval = 100) {
@@ -3003,13 +3344,18 @@
   }
 
   function formioStableRadioName(name) {
+    // "Stable name" = tên radio Form.io đã BỎ đuôi [instance-id] ngẫu nhiên (vd cổng khuyết tật Lâm Đồng:
+    // DOM name = data[khuyetTat1Obj][khuyetTatRadio1][ehzqddg-ew6asu7], BE gửi ...[khuyetTatRadio1]).
+    // Nhận diện qua field-key chứa "radio". Trả cả khi name ĐÃ ổn định (không có đuôi id) để so khớp 2 chiều.
     const text = String(name || "").trim();
     if (!text.startsWith("data[")) return "";
     const parts = text.match(/\[[^\]]+\]/g) || [];
-    if (parts.length < 3) return "";
-    const fieldKey = parts[parts.length - 2].slice(1, -1).toLowerCase();
-    if (!fieldKey.includes("radio")) return "";
-    return "data" + parts.slice(0, -1).join("");
+    if (parts.length < 2) return "";
+    const last = parts[parts.length - 1].slice(1, -1).toLowerCase();
+    const secondLast = parts[parts.length - 2].slice(1, -1).toLowerCase();
+    if (last.includes("radio")) return "data" + parts.join("");                    // đã ổn định
+    if (secondLast.includes("radio")) return "data" + parts.slice(0, -1).join(""); // bỏ đuôi [instance-id]
+    return "";
   }
 
   function formioBaseDataName(name) {
@@ -3026,19 +3372,21 @@
     if (!actual || !expected) return false;
     if (actual === expected) return true;
 
+    // ƯU TIÊN radio LỒNG (field-key chứa "radio", vd data[khuyetTatNObj][khuyetTatRadioX][id]): so theo
+    // STABLE name (đã bỏ đuôi [instance-id]) và phải khớp ĐÚNG field-key. KHÔNG dùng base data[khuyetTatNObj]
+    // vì cha (khuyetTatRadio) và các con (khuyetTatRadio1..6) CHUNG base → sẽ khớp nhầm cha↔con, con↔con.
+    const actualStable = formioStableRadioName(actual);
+    const expectedStable = formioStableRadioName(expected);
+    if (actualStable || expectedStable) {
+      return (actualStable || actual) === (expectedStable || expected);
+    }
+
+    // Field radio ĐƠN (data[key] hoặc data[key][instance-id], key KHÔNG chứa "radio"): khớp theo base.
     const actualBase = formioBaseDataName(actual).toLowerCase();
     const expectedBase = formioBaseDataName(expected).toLowerCase();
     if (actualBase && expectedBase && actualBase === expectedBase) return true;
     if (expectedBase && actual.startsWith(expectedBase + "[")) return true;
     if (actualBase && expected.startsWith(actualBase + "[")) return true;
-
-    const actualStable = formioStableRadioName(actual).toLowerCase();
-    const expectedStable = formioStableRadioName(expected).toLowerCase();
-    if (expectedStable && actualStable === expectedStable) return true;
-    if (expectedStable && actual.startsWith(expectedStable + "[")) return true;
-    if (actualStable && expected === actualStable) return true;
-    if (actualStable && expected.startsWith(actualStable + "[")) return true;
-
     return expected.startsWith("data[") && actual.startsWith(expected + "[");
   }
 
@@ -3117,9 +3465,25 @@
       if (el) return el;
     }
     const wanted = new Set(names.map((n) => String(n).toLowerCase()));
-    return Array.from(document.querySelectorAll("[formcontrolname]")).find((node) =>
+    const byFormControl = Array.from(document.querySelectorAll("[formcontrolname]")).find((node) =>
       wanted.has(String(node.getAttribute("formcontrolname") || "").toLowerCase())
-    ) || null;
+    );
+    if (byFormControl) return byFormControl;
+
+    // Một số ô Angular chỉ được render động sau khi chọn "Khác" và input con chỉ có `name`
+    // (không có formcontrolname trên app-input). Trả container Angular gần nhất để các hàm fill/mark
+    // vẫn thao tác giống control thông thường; fallback cuối là chính input.
+    for (const n of names) {
+      const escaped = CSS.escape(n);
+      const named = document.querySelector(
+        `input[name="${escaped}"], textarea[name="${escaped}"], select[name="${escaped}"]`
+      );
+      if (named) return named.closest("app-input, mat-form-field") || named;
+    }
+    return Array.from(document.querySelectorAll("input[name], textarea[name], select[name]")).map((node) => ({
+      node,
+      name: String(node.getAttribute("name") || "").toLowerCase(),
+    })).find((item) => wanted.has(item.name))?.node || null;
   }
 
   // Tô VIỀN VÀNG cho field default trên form x-* (legacy). markDefaultsYellow gốc chỉ xử Angular
@@ -3276,7 +3640,7 @@
     return isNaN(obj.getTime()) ? null : obj;
   }
 
-  function fillStandardDate(el, value) {
+  function fillStandardDate(el, value, opts = {}) {
     if (!el) return false;
     const text = String(value ?? "").trim();
     if (!text) return false;
@@ -3285,26 +3649,42 @@
     // Form.io datetime dùng flatpickr: set .value trực tiếp vào ô bị flatpickr GHI ĐÈ lại rỗng (→ báo
     // "bắt buộc"). Cách ổn định DUY NHẤT là gọi instance flatpickr `setDate` (tự set cả ô ẩn + ô hiển thị
     // theo dateFormat riêng của form, không quan trọng d/m/Y hay ISO, + bắn onChange cho Form.io/Angular).
+    // Instance có thể nằm trên input ẩn HOẶC ô hiển thị (altInput) trong cùng component → tìm rộng.
+    const dtContainer = el.closest?.(".formio-component-datetime") || el.closest?.(".formio-component") || group;
     const fpHost = el._flatpickr
       ? el
-      : (group?.querySelector?.("input.flatpickr-input")?._flatpickr && group.querySelector("input.flatpickr-input"))
+      : (dtContainer && Array.from(dtContainer.querySelectorAll("input")).find((n) => n._flatpickr))
       || (el.closest?.(".flatpickr-input")?._flatpickr && el.closest(".flatpickr-input"))
       || null;
     const fp = fpHost?._flatpickr;
     const dateObj = parseDmyDate(text);
     if (fp && dateObj) {
+      // setDate GÁN giá trị (ô ẩn + ô hiển thị) TRƯỚC khi bắn onChange. Nếu onChange của TRANG lỗi sẵn
+      // (vd cổng này custom-function "thongTinChung" throw liên tục) thì exception xảy ra SAU khi giá trị
+      // đã set → vẫn coi là THÀNH CÔNG, KHÔNG rơi xuống gõ text (gõ dd/mm/yyyy vào ô format Y-m-d sẽ sai).
       try {
         fp.setDate(dateObj, true);   // triggerChange=true
-        markFilled(group);
-        return true;
       } catch (e) {
-        console.warn("[AutoFill-STD] flatpickr.setDate lỗi:", e);
+        console.warn("[AutoFill-STD] flatpickr.setDate onChange trang lỗi (giá trị vẫn được set):", e);
       }
+      markFilled(group);
+      return true;
     }
 
-    // Fallback: input date thường (không phải flatpickr / không truy cập được instance).
-    setNativeValue(el, text, { typing: true, commit: true });
+    // Không lấy được instance flatpickr → fallback GÕ giá trị. Định dạng theo LOẠI ô (BE báo qua opts.iso):
+    // - opts.iso=true (ô datetime lưu ISO "Y-m-dTH:i:S", vd tuNgay/denNgay): set ISO + hiển thị "Y-m-d
+    //   12:00 AM" (giờ mặc định 00:00). KHÔNG gõ dd/mm/yyyy (ô format Y-m-d sẽ parse sai → 2008-08-26).
+    // - mặc định (ô lưu dd/MM/yyyy, vd birthday/identityDate): gõ dd/mm/yyyy như cũ.
     const visible = group?.querySelector?.('input:not([type="hidden"])');
+    if (opts.iso && dateObj) {
+      const pad = (n) => String(n).padStart(2, "0");
+      const ymd = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
+      setNativeValue(el, `${ymd}T00:00:00`, { typing: false, commit: true });
+      if (visible && visible !== el) setNativeValue(visible, `${ymd} 12:00 AM`, { typing: false, commit: true });
+      markFilled(group);
+      return true;
+    }
+    setNativeValue(el, text, { typing: true, commit: true });
     if (visible && visible !== el) setNativeValue(visible, text, { typing: true, commit: true });
     markFilled(group);
     return true;
@@ -3419,7 +3799,9 @@
     // tinhthanhphonopdon: ô "Tỉnh/TP nộp đơn" (Form.io ATTP cấp lại) là Choices.js REMOTE-SEARCH — chỉ vài
     //   option mặc định, phải gõ để nạp thêm qua API. Không nhận là area-select → chỉ thử 1 lần ~600ms,
     //   remote nạp chưa kịp thì bỏ. Nhận là area-select để được retry + timeout dài như ô Tỉnh.
-    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl/.test(String(name || "").toLowerCase());
+    // tinhtp/px1/tinhthanhpho/quanhuyen: các ô Tỉnh/Phường-xã ở cổng Bộ GD&ĐT dvc.moet.gov.vn (Cấp bản sao
+    //   văn bằng) — field-key riêng, phải nhận là area-select để cascade Tỉnh→Phường/Xã điền đủ.
+    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl/.test(String(name || "").toLowerCase());
   }
 
   function isAreaSelectField(f) {
@@ -4452,13 +4834,23 @@
 
     for (const [grid, maxIndex] of maxByGrid.entries()) {
       if (maxIndex <= 0) continue;
-      for (let guard = 0; guard < 8 && standardDatagridRows(grid).length <= maxIndex; guard++) {
+      // Chờ datagrid render (panel có thể mở chậm) trước khi bấm "Thêm dòng".
+      await waitFor(() => standardDatagridRows(grid).length > 0 || standardDatagridAddButton(grid), 2000, 100);
+      for (let guard = 0; guard < 12 && standardDatagridRows(grid).length <= maxIndex; guard++) {
         const before = standardDatagridRows(grid).length;
         const button = standardDatagridAddButton(grid);
         if (!button || button.disabled) break;
-        button.click();
-        await waitFor(() => standardDatagridRows(grid).length > before, 1200, 80);
-        await sleep(150);
+        try { button.scrollIntoView({ block: "nearest" }); } catch (_) { /* ignore */ }
+        // Form.io "Thêm dòng": một số bản BỎ QUA .click() thuần → bắn cả chuỗi sự kiện chuột rồi mới click().
+        for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+          try { button.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window })); } catch (_) { /* ignore */ }
+        }
+        try { button.click(); } catch (_) { /* ignore */ }
+        await waitFor(() => standardDatagridRows(grid).length > before, 1500, 80);
+        await sleep(180);
+      }
+      if (standardDatagridRows(grid).length <= maxIndex) {
+        console.warn(`[AutoFill-STD] Datagrid "${grid}": chỉ tạo được ${standardDatagridRows(grid).length}/${maxIndex + 1} dòng.`);
       }
     }
   }
@@ -4498,7 +4890,9 @@
           const el = findStandardCheckbox(candidates, f.optionValue);
           ok = await fillStandardCheckbox(el, f.value);
         } else if (f.comp === "dom-radio") {
-          const el = findStandardRadio(candidates);
+          // Radio có thể render ĐỘNG sau khi chọn radio cha (vd bảng dạng khuyết tật: chọn nhóm "Có" thì
+          // Angular mới bật các radio con) → chờ như dom-input/date, tránh bỏ sót mục con render trễ.
+          const el = findStandardRadio(candidates) || await waitFor(() => findStandardRadio(candidates), 1500, 80);
           ok = await fillStandardRadio(el, f.value);
         } else if (f.comp === "dom-select") {
           if (isAreaSelectField(f)) {
@@ -4508,9 +4902,19 @@
             const el = findStandardSelect(candidates, occurrence);
             ok = await fillStandardSelectAny(el, f.value, candidates, occurrence);
           }
-        } else if (f.comp === "dom-date") {
+        } else if (f.comp === "dom-date" || f.comp === "dom-datetime") {
           const el = findStandardInputForField(f, candidates, occurrence) || await waitFor(() => findStandardInputForField(f, candidates, occurrence), 1000, 80);
-          ok = fillStandardDate(el, f.value);
+          // Ô flatpickr trong panel render ĐỘNG: instance _flatpickr gắn TRỄ (có thể ở input ẩn HOẶC ô
+          // hiển thị trong cùng component) → chờ đến khi có instance để dùng setDate (điền đủ ẩn+hiển thị,
+          // format-agnostic). Nếu chờ theo mỗi el._flatpickr sẽ hụt vì instance nằm ở ô khác → dò RỘNG.
+          if (el && el.classList?.contains("flatpickr-input")) {
+            const dc = el.closest(".formio-component-datetime") || el.closest(".formio-component");
+            const hasFp = () => el._flatpickr || (dc && Array.from(dc.querySelectorAll("input")).some((n) => n._flatpickr));
+            if (!hasFp()) await waitFor(hasFp, 1500, 80);
+          }
+          // dom-datetime: ô lưu ISO có giờ (vd tuNgay/denNgay) → fallback set ISO 00:00:00; dom-date: ô
+          // dd/MM/yyyy (vd birthday) → fallback gõ dd/mm/yyyy. setDate (khi có instance) đúng cho cả hai.
+          ok = fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
         } else if (f.comp === "dom-input" || f.comp === "raw") {
           const el = findStandardInputForField(f, candidates, occurrence) || await waitFor(() => findStandardInputForField(f, candidates, occurrence), 1000, 80);
           const postbackAddressInput = isPostbackAddressField(f);
@@ -4626,7 +5030,7 @@
   // điền bằng JS (Họ tên, Ngày sinh, Số định danh, Số nhà...). Sau khi cascade địa chỉ ổn định,
   // điền lại các ô text/date đang trống; lặp vài lần phòng postback muộn xoá tiếp.
   async function reapplyEmptyStandardTextFields(fields) {
-    const SIMPLE = new Set(["dom-input", "dom-date", "raw"]);
+    const SIMPLE = new Set(["dom-input", "dom-date", "dom-datetime", "raw"]);
     const targets = fields.filter((f) => SIMPLE.has(f.comp) && !isAreaSelectField(f));
     if (!targets.length) return;
 
@@ -4640,7 +5044,7 @@
         if (String(el.value || "").trim()) continue; // còn giá trị → bỏ qua
         // Ô "Số nhà" nằm trong khối địa chỉ: điền không commit để khỏi kích hoạt postback mới.
         const opts = isPostbackAddressField(f) ? { change: false, commit: false } : {};
-        if (f.comp === "dom-date") fillStandardDate(el, f.value);
+        if (f.comp === "dom-date" || f.comp === "dom-datetime") fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
         else fillStandardInput(el, f.value, opts);
         refilled++;
       }
@@ -4649,9 +5053,11 @@
   }
 
   async function reapplyOwnerDossierCopy(fields) {
-    // (1) Dạng CHECKBOX "Người nộp là chủ hồ sơ" (data[isOwnerDossierCheck]) — tick để form tự copy.
+    // (1) Dạng CHECKBOX "Người nộp là chủ hồ sơ" — tick để form tự copy Phần I → chủ hồ sơ. Tên field-key
+    // khác nhau theo cổng: data[isOwnerDossierCheck] (đa số) và data[isOwnerDossier] (cổng Bộ GD&ĐT — Cấp
+    // bản sao văn bằng). Re-dispatch change SAU khi Phần I + cascade ổn định để copy đủ dữ liệu.
     const ownerCheckField = fields.find((f) =>
-      fieldCandidates(f).includes("data[isOwnerDossierCheck]") &&
+      (fieldCandidates(f).includes("data[isOwnerDossierCheck]") || fieldCandidates(f).includes("data[isOwnerDossier]")) &&
       (f.value === true || String(f.value).toLowerCase() === "true" || String(f.value) === "1")
     );
     if (ownerCheckField) {

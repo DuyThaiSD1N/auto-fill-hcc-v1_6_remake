@@ -14,6 +14,13 @@
     <input id="loginUsername" type="text" autocomplete="username" placeholder="tên đăng nhập">
     <label for="loginPassword">Mật khẩu</label>
     <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+    <div class="login-remember-actions">
+      <label for="rememberLogin" class="checkbox-row login-remember-row">
+        <input id="rememberLogin" type="checkbox">
+        <span>Ghi nhớ đăng nhập</span>
+      </label>
+      <button id="forgetLoginBtn" type="button" class="login-forget-btn" hidden>Xóa đã nhớ</button>
+    </div>
     <button id="loginBtn">Đăng nhập</button>
     <p id="loginStatus" class="status"></p>
   </section>
@@ -89,7 +96,13 @@
       <button id="attachStepBtn" class="secondary-btn" hidden title="Dùng khi đang ở bước đính kèm hồ sơ trên cổng dịch vụ công">Đính kèm giấy tờ</button>
     </section>
 
-    <p id="status" class="status"></p>
+    <div class="status-region">
+      <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <button id="statusDetailsToggle" class="status-details-toggle" type="button"
+              aria-expanded="false" aria-controls="statusDetails" hidden>Xem chi tiết</button>
+      <div id="statusDetails" class="status-details" role="region"
+           aria-label="Chi tiết kết quả xử lý" hidden></div>
+    </div>
     <button id="supportCode" class="support-code" type="button" hidden
             title="Sao chép và gửi cho bộ phận hỗ trợ khi cần kiểm tra kết quả xử lý.">
       <span class="support-code-label">Mã hỗ trợ</span>
@@ -163,7 +176,7 @@
     </div>
 
     <div class="app-footer">
-      <a id="guideBtn" class="guide-btn" href="https://drive.google.com/drive/folders/1ksdjwCGrelwNZ5fu9e6WIcsrf1RFn5u-?usp=drive_link" target="_blank" rel="noopener" title="Mở hướng dẫn sử dụng (Google Drive)">Hướng dẫn</a>
+      <a id="guideBtn" class="guide-btn" href="https://kynguyen.io/huong-dan-van-hanh-bot-hcc" target="_blank" rel="noopener" title="Mở hướng dẫn sử dụng">Hướng dẫn</a>
     </div>
   </div>
 
@@ -172,6 +185,7 @@
   <script src="api/config.js"></script>
   <script src="api/errors.js"></script>
   <script src="api/auth.js"></script>
+  <script src="api/credentials.js"></script>
   <script src="api/client.js"></script>
   <script src="api/endpoints.js"></script>
   <script src="changelog.js"></script>

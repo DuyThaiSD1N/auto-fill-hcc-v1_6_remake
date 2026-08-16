@@ -8,7 +8,12 @@ const api = {
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || data?.error || "Đăng nhập thất bại");
+    if (!res.ok) {
+      const err = new Error(data?.message || data?.error || "Đăng nhập thất bại");
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
     return data; // { accessToken, refreshToken, user }
   },
 

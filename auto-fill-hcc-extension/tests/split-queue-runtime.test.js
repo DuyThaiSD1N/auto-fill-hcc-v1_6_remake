@@ -46,6 +46,7 @@ const chrome = {
     onMessage: {
       addListener(listener) { runtimeListener = listener; },
     },
+    onConnect: { addListener() {} },
   },
 };
 
@@ -83,11 +84,16 @@ function bundle(ordinal) {
 }
 
 (async () => {
+  storage.autofill_split_attach_queue_stage = {
+    items: [bundle(2), bundle(3)],
+    stagedAt: Date.now(),
+  };
   const started = await dispatch({
     action: "startSplitAttachQueue",
-    items: [bundle(2), bundle(3)],
+    itemsStorageKey: "autofill_split_attach_queue_stage",
   });
   assert.equal(started.ok, true);
+  assert.equal(storage.autofill_split_attach_queue_stage, undefined, "Staging phải được dọn sau khi background nhận");
   assert.equal(createdTabs.length, 1, "Khởi động queue chỉ được mở một tab");
   assert.equal(createdTabs[0].active, true, "Tab đang đính kèm phải được activate");
   assert.equal(updatedTabs[0].active, true);

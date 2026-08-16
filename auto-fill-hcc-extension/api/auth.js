@@ -15,23 +15,6 @@ const AuthStore = {
   },
 };
 
-// Ghi nhớ tên đăng nhập (KHÔNG lưu mật khẩu) để tự điền sẵn ở lần đăng nhập sau.
-const PREFILL_KEY = "login_prefill";
-
-const CredStore = {
-  async save(username) {
-    await chrome.storage.local.set({ [PREFILL_KEY]: { username } });
-  },
-  async get() {
-    const r = await chrome.storage.local.get(PREFILL_KEY);
-    return r[PREFILL_KEY] || null;
-  },
-  async clear() {
-    await chrome.storage.local.remove(PREFILL_KEY);
-  },
-};
-
 if (typeof window !== "undefined") {
   window.AuthStore = AuthStore;
-  window.CredStore = CredStore;
 }

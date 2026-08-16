@@ -78,15 +78,27 @@ input[type="text"] {
   border-radius: 4px;
   cursor: pointer;
   text-align: left;
+  color: #1a1a1a;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
-.procedure-trigger:hover:not(:disabled):not(.locked),
-.procedure-trigger[aria-expanded="true"] {
+.procedure-trigger:hover:not(:disabled) {
+  background: #f4f8fe;
   border-color: #1565c0;
 }
-/* Locked (tự nhận diện): trông không bấm được nhưng KHÔNG dùng [disabled]
-   vì disabled chặn tooltip title → rê chuột vẫn phải xem được tên đầy đủ. */
-.procedure-trigger:disabled,
-.procedure-trigger.locked {
+.procedure-trigger[aria-expanded="true"] {
+  background: #eef6ff;
+  border-color: #1565c0;
+  box-shadow: 0 0 0 1px rgba(21, 101, 192, 0.16);
+}
+.procedure-trigger:focus-visible {
+  outline: 3px solid rgba(21, 101, 192, 0.24);
+  outline-offset: 2px;
+  border-color: #1565c0;
+}
+.procedure-trigger:active:not(:disabled) {
+  background: #e3f2fd;
+}
+.procedure-trigger:disabled {
   cursor: default;
   background: #f5f6f7;
 }
@@ -98,6 +110,14 @@ input[type="text"] {
 }
 .procedure-trigger[aria-expanded="true"] .procedure-trigger-caret {
   transform: rotate(180deg);
+  color: #1565c0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .procedure-trigger,
+  .procedure-trigger-caret {
+    transition: none;
+  }
 }
 
 /* Dropdown NỔI đè lên nội dung dưới (không đẩy layout). */
@@ -276,6 +296,38 @@ button:disabled { background: #9e9e9e; cursor: not-allowed; }
 /* Đồng bộ font TOÀN panel: input/select/textarea cũng không tự kế thừa font-family (như button). */
 input, select, textarea { font-family: inherit; }
 
+/* Ghi nhớ đăng nhập: hàng gọn, không để nút xóa thừa hưởng width:100% của button chung. */
+.login-remember-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 1px;
+}
+.login-remember-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 3px 0 2px;
+  font-size: 12px;
+}
+.login-remember-row:has(input:disabled) {
+  color: #8a8a8a;
+  cursor: not-allowed;
+}
+.login-forget-btn {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #b3261e;
+  font-size: 11.5px;
+  text-decoration: underline;
+}
+.login-forget-btn:hover {
+  background: transparent;
+  color: #7f1d1d;
+}
 .secondary-btn {
   margin-top: 6px;
   background: #2e7d32;
@@ -502,6 +554,7 @@ input, select, textarea { font-family: inherit; }
 .status {
   margin: 6px 0 0;
   font-size: 12px;
+  line-height: 1.45;
   min-height: 16px;
   white-space: pre-line;
 }
@@ -510,6 +563,57 @@ input, select, textarea { font-family: inherit; }
 .status.err { color: #c62828; }
 .status.warn { color: #b26a00; }
 .status.info { color: #1565c0; }
+
+/* Trạng thái chính luôn ngắn; thông tin hỗ trợ chỉ mở khi người dùng chủ động xem. */
+.status-details-toggle {
+  width: auto;
+  min-height: 32px;
+  margin: 2px 0 0;
+  padding: 4px 8px;
+  border: 1px solid #b8c9dc;
+  border-radius: 5px;
+  background: #f4f8fe;
+  color: #0d4f91;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.status-details-toggle:hover {
+  border-color: #6f97c4;
+  background: #e8f2fd;
+  color: #0b467f;
+}
+.status-details-toggle:focus-visible {
+  outline: 3px solid rgba(21, 101, 192, 0.24);
+  outline-offset: 2px;
+}
+.status-details {
+  margin-top: 4px;
+  padding: 7px 8px;
+  border: 1px solid #d9e2ec;
+  border-radius: 5px;
+  background: #f8fafc;
+  color: #3f4b59;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.status-details[hidden],
+.status-details-toggle[hidden] {
+  display: none;
+}
+.status-details ul {
+  margin: 0;
+  padding-left: 17px;
+}
+.status-details li + li {
+  margin-top: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-details-toggle { transition: none; }
+}
 
 /* ===== Mã hỗ trợ: chip copy request_id để cán bộ gửi hỗ trợ khi báo lỗi ===== */
 .support-code {
