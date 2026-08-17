@@ -582,22 +582,32 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     ct_ngay = values.get("Nyc_NgayCap")
                     ct_noi = values.get("Nyc_NoiCap")
 
-            # THỨ TỰ: tờ khai/giấy hộ tịch (ht_*) trước, thẻ căn cước của chủ thể (ct_*) bù thiếu.
-            add("NDK_SoDinhDanh", ht_so or values.get("HoTich_SoDinhDanh") or ct_so)
+            # THỨ TỰ ƯU TIÊN: 
+            # 1. Tờ khai/giấy hộ tịch (ht_*) - nguồn CHÍNH
+            # 2. Thẻ căn cước của chủ thể (ct_*) - fallback khi tờ khai thiếu
+            
+            # Số định danh: Ưu tiên HoTich_SoDinhDanh từ tờ khai, fallback ht_so (giấy tờ tùy thân trong giấy HT), cuối cùng mới CCCD
+            add("NDK_SoDinhDanh", values.get("HoTich_SoDinhDanh") or ht_so or ct_so)
+            
+            # Số giấy tờ tùy thân: giống logic trên nhưng loại trừ số định danh khai sinh
             add(
                 "NDK_SoGiayToTuyThan",
-                ht_so or (values.get("HoTich_SoDinhDanh") if not is_birth else None) or ct_so,
+                (ht_so if not is_birth else None) or values.get("HoTich_SoDinhDanh") or ct_so,
             )
+            
+            # Ngày cấp: Ưu tiên tờ khai trước
             ndk_ngaycap = ht_ngay or ct_ngay
             add("NDK_NgayCap", ndk_ngaycap)
-            # Nơi cấp (issuer) tính TRƯỚC để suy loại giấy tờ theo đúng nơi cấp.
+            
+            # Nơi cấp: Ưu tiên tờ khai trước
             ndk_noicap = normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
             if not ndk_noicap and ndk_ngaycap:
                 ndk_noicap = default_issuer(ndk_ngaycap)
             add("NDK_NoiCap", ndk_noicap)
-            # Loại giấy tờ theo nơi cấp: Bộ Công an → "Thẻ Căn cước"; Cục Cảnh sát → "Thẻ căn cước công dân".
+            
+            # Loại giấy tờ: Ưu tiên tờ khai trước
             id_hint = ht_loai or ct_loai
-            if not id_hint and (ct_so or ht_so):
+            if not id_hint and (ht_so or ct_so):
                 id_hint = "Căn cước"  # có số nhưng LLM ko trả loại → để nơi cấp quyết
             add("NDK_LoaiGiayToTuyThan", id_doc_type(id_hint, ndk_noicap or "") if id_hint else None)
             add("NDK_LoaiCuTru", "Thường trú")

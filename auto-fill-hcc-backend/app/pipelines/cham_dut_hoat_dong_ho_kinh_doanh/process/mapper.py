@@ -71,6 +71,25 @@ def _person_fields(person: Any) -> list[dict]:
             if person.get(source) not in (None, "", {}, [])]
 
 
+def _submitter_is_owner(values: dict[str, Any]) -> bool | None:
+    """Người nộp có phải chính chủ hộ không, dựa trên nhân thân hồ sơ kê khai.
+
+    Trả None khi hồ sơ không kê khai riêng người nộp (không đủ dữ liệu để kết luận) —
+    lúc đó caller suy tiếp từ số lượng CCCD trong hồ sơ.
+    """
+    submitter_id = _digits(values.get("NguoiNop", {}).get("soDinhDanh") if isinstance(values.get("NguoiNop"), dict) else "")
+    owner_id = _digits(values.get("ChuHo", {}).get("soDinhDanh") if isinstance(values.get("ChuHo"), dict) else "")
+    if submitter_id and owner_id:
+        return submitter_id == owner_id
+
+    submitter_name = _fold(values.get("NguoiNop", {}).get("hoTen") if isinstance(values.get("NguoiNop"), dict) else "")
+    owner_name = _fold(values.get("ChuHo", {}).get("hoTen") if isinstance(values.get("ChuHo"), dict) else "")
+    if submitter_name and owner_name:
+        return submitter_name == owner_name
+
+    return None
+
+
 def _identity_candidates(values: dict[str, Any], applicant: dict[str, Any]) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
     raw = values.get("Cccd_DanhSach")
@@ -88,6 +107,10 @@ def _identity_candidates(values: dict[str, Any], applicant: dict[str, Any]) -> l
         seen.add(key)
         out.append(item)
     return out
+
+
+_PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
+_PERS_SUB_AUTHORIZED_LABEL = "Người được ủy quyền"
 
 
 def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
@@ -109,7 +132,16 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
             "value": reason,
         })
 
+    # Xác định vai trò người nộp: chủ hộ tự nộp hay người được ủy quyền
+    candidates = _identity_candidates(values, applicant)
+    has_multiple_cccd = bool(values.get("HasMultipleCCCD", False)) or len(candidates) >= 2
+    is_self = _submitter_is_owner(values) is not False and not has_multiple_cccd
+    pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
+
     applicant_fields = creation_mapper.enrich(_person_fields(applicant), page="nguoi-nop-ho-so")
+    # Thêm radio button vai trò người nộp vào đầu danh sách
+    applicant_fields.insert(0, {"name": "ctl00$C$PERS_SUBGroup", "comp": "dom-radio", "value": pers_sub_role})
+    
     pages = {
         "cham-dut-hoat-dong": dissolution_fields,
         "nguoi-nop-ho-so": applicant_fields,
@@ -134,6 +166,6 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         },
         "nameChange": False,
         "pageOrder": ["cham-dut-hoat-dong", "nguoi-nop-ho-so"],
-        "identityCandidates": _identity_candidates(values, applicant),
+        "identityCandidates": candidates,
     }
     return pages, flow
