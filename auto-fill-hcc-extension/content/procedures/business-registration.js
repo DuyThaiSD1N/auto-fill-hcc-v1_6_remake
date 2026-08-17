@@ -1216,55 +1216,74 @@
       const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
       const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
 
-      // Lấy thông tin chủ hộ: ưu tiên từ pages["chu-ho-kinh-doanh"], fallback search.value (dissolution/change)
-      let ownerId = "";
-      let ownerName = "";
+      // Nhân thân chủ hộ để đối chiếu, gom từ MỌI nguồn hồ sơ có:
+      //  - pages["chu-ho-kinh-doanh"]: luồng đăng ký mới, và luồng thay đổi CÓ đổi chủ hộ (chủ hộ MỚI)
+      //  - businessFlow.owner: chủ hộ HIỆN TẠI backend gửi kèm cho luồng thay đổi/chấm dứt (không có
+      //    trang chủ hộ để đọc)
+      //  - search.value khi tra cứu bằng số định danh chủ hộ
+      // Khớp BẤT KỲ nguồn nào cũng là chủ hộ tự nộp: hồ sơ đổi chủ hộ có thể do chủ cũ hoặc chủ mới ký.
+      const ownerIdentities = [];
+      const addOwnerIdentity = (hoTen, soDinhDanh) => {
+        const id = String(soDinhDanh || "").replace(/\D/g, "");
+        const name = foldBusinessPageText(hoTen || "");
+        if (id || name) ownerIdentities.push({ id, name });
+      };
 
       const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
       if (ownerFields.length) {
-        // Luồng registration: có trang chu-ho-kinh-doanh
         const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
         const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
-        ownerId = String((ownerIdField && ownerIdField.value) || "").replace(/\D/g, "");
-        ownerName = foldBusinessPageText((ownerNameField && ownerNameField.value) || "");
-      } else if (st.businessFlow?.owner || st.businessFlow?.search) {
-        // Luồng change/dissolution: không có trang chủ hộ → dùng nhân thân chủ hộ backend gửi kèm.
-        const owner = st.businessFlow.owner || {};
-        ownerId = String(owner.soDinhDanh || "").replace(/\D/g, "");
-        ownerName = foldBusinessPageText(owner.hoTen || "");
-        if (!ownerId && st.businessFlow.search?.method === "identityNumber") {
-          ownerId = String(st.businessFlow.search.value || "").replace(/\D/g, "");
-        }
-        // KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ —
-        // so với tên tài khoản thì luôn lệch và tick nhầm "Người được ủy quyền".
+        addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
+          (ownerIdField && ownerIdField.value) || "");
       }
+      const flowOwner = st.businessFlow?.owner || {};
+      addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
+      if (st.businessFlow?.search?.method === "identityNumber") {
+        addOwnerIdentity("", st.businessFlow.search.value);
+      }
+      // KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ —
+      // so với tên tài khoản thì luôn lệch và tick nhầm "Người được ủy quyền".
 
-      // Logic mới: Chỉ chọn "Người được ủy quyền" khi CẢ số VÀ tên đều KHÁC
+      // Logic: Chỉ chọn "Người được ủy quyền" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ trong hồ sơ
       // (Ngược lại: số HOẶC tên KHỚP → là Chủ hộ, không chọn ủy quyền)
-      const idMatches = copiedId && ownerId && copiedId === ownerId;
-      const nameMatches = copiedName && ownerName && copiedName === ownerName;
+      const idMatches = ownerIdentities.some((o) => copiedId && o.id && copiedId === o.id);
+      const nameMatches = ownerIdentities.some((o) => copiedName && o.name && copiedName === o.name);
       const isOwner = idMatches || nameMatches;  // Chỉ cần 1 trong 2 đúng
+      // Hồ sơ không cho biết chủ hộ là ai (cả số lẫn tên đều trống) → KHÔNG kết luận là ủy quyền:
+      // giữ nguyên vai trò cổng/backend đã tick ("Người có thẩm quyền ký" là mặc định của cổng).
+      const ownerUnknown = !ownerIdentities.length;
 
-      if (!isOwner) {
-        // CẢ số VÀ tên đều khác → chọn Người được ủy quyền
-        const authRadio = document.querySelector(
-          'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
-        );
-        if (authRadio && !authRadio.checked) {
-          console.log("[FillAll] tài khoản khác chủ hộ (cả số và tên) → chọn Người được ủy quyền");
-          (document.querySelector(`label[for="${CSS.escape(authRadio.id)}"]`) || authRadio).click();
-          // Radio này AutoPostBack: phải CHỜ cổng render lại khối người nộp xong
+      const authRadio = document.querySelector(
+        'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
+      );
+      const selfRadio = document.querySelector(
+        'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
+      );
+
+      if (isOwner) {
+        console.log("[FillAll] tài khoản khớp chủ hộ",
+          idMatches ? "(số định danh)" : "(họ tên)", "→ Người có thẩm quyền ký");
+        // Hồ sơ mở lại (hoặc lần chạy trước tick nhầm) có thể đang ở "Người được ủy quyền" → tick lại
+        // "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh" để cổng render khối chủ hộ.
+        if (selfRadio && !selfRadio.checked) {
+          (document.querySelector(`label[for="${CSS.escape(selfRadio.id)}"]`) || selfRadio).click();
           await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
         }
-      } else {
-        console.log("[FillAll] tài khoản khớp chủ hộ",
-          idMatches ? "(số định danh)" : "(họ tên)", "→ giữ Chủ hộ");
+      } else if (ownerUnknown) {
+        console.warn("[FillAll] hồ sơ không có nhân thân chủ hộ để đối chiếu → giữ nguyên vai trò đang tick");
+      } else if (authRadio && !authRadio.checked) {
+        // CẢ số VÀ tên đều khác → chọn Người được ủy quyền
+        console.log("[FillAll] tài khoản khác chủ hộ (cả số và tên) → chọn Người được ủy quyền");
+        (document.querySelector(`label[for="${CSS.escape(authRadio.id)}"]`) || authRadio).click();
+        // Radio này AutoPostBack: phải CHỜ cổng render lại khối người nộp xong
+        await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
       }
 
       // 2d. Người đăng nhập KHÔNG phải chủ hộ ⇒ chính họ là người nộp. Tìm đúng CCCD của họ trong hồ
       // sơ (khớp số định danh HOẶC họ tên với dữ liệu vừa sao chép) rồi ghi nhân thân + địa chỉ của
       // thẻ đó vào khối người nộp. Không khớp thẻ nào → giữ nguyên dữ liệu tài khoản, không đoán bừa.
-      if (!isOwner) {
+      // Xét theo radio THẬT đang tick (đã chốt ở 2c) để không ghi đè khi form đang ở nhánh chủ hộ.
+      if (submitterIsAuthorized()) {
         submitterOverride = buildSubmitterOverride(st, fields);
         if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
           if (await enableSubmitterEdit(st)) return; // cổng reload → lần chạy kế điền tiếp

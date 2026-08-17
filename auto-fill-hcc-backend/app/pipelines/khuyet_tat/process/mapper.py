@@ -174,13 +174,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     elif values.get("DeNghi_NoiDung") == "xac_dinh_lai":
         add("data[chonNoiDungDeNghi][]", True, extra={"optionValue": "2"})
 
-    # I. Người khuyết tật.
-    add("data[NktHoTen]", values.get("Nkt_HoTen"))
-    add("data[NktNgaySinh]", values.get("Nkt_NgaySinh"))
-    add("data[NktSoDinhdanh]", values.get("Nkt_SoDinhDanh"))
-    add("data[NktGioiTinh]", values.get("Nkt_GioiTinh"))
+    # I. Người khuyết tật - ưu tiên tờ đơn, fallback sang CCCD.
+    add("data[NktHoTen]", values.get("Nkt_HoTen") or values.get("Cccd_HoTen"))
+    add("data[NktNgaySinh]", values.get("Nkt_NgaySinh") or values.get("Cccd_NgaySinh"))
+    add("data[NktSoDinhdanh]", values.get("Nkt_SoDinhDanh") or values.get("Cccd_SoDinhDanh"))
+    add("data[NktGioiTinh]", values.get("Nkt_GioiTinh") or values.get("Cccd_GioiTinh"))
 
-    nkt_tt = _area(values.get("Nkt_ThuongTru"))
+    nkt_tt = _area(values.get("Nkt_ThuongTru")) or cccd_area
     if nkt_tt:
         add("data[NktMaTinh]", nkt_tt.get("tinh"))
         add("data[NktMaXa]", nkt_tt.get("xa"))

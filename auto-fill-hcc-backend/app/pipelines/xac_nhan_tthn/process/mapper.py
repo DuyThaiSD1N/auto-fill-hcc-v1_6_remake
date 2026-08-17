@@ -228,7 +228,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("nxnNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
     # =========================================================
-    # TÌNH TRẠNG HÔN NHÂN: ưu tiên GÓA > LY HÔN > ĐANG KẾT HÔN > CHƯA KẾT HÔN (mặc định)
+    # TÌNH TRẠNG HÔN NHÂN: ưu tiên TỜ KHAI → fallback GIẤY TỜ CHỨNG MINH
     # =========================================================
     death_number = values.get("DeathCert_Number")
     death_date = values.get("DeathCert_Date")
@@ -242,8 +242,57 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     marriage_agency = values.get("Marriage_Agency")
     declared_status = _fold(values.get("TinhTrangHonNhanC1"))
 
-    if death_number and death_date and death_agency:
-        # GÓA: vợ/chồng đã chết
+    # Ưu tiên 1: TỜ KHAI khai báo rõ ràng tình trạng hôn nhân
+    if declared_status and declared_status != "":
+        if declared_status == _fold(_WIDOWED_STATUS):
+            # GÓA: từ tờ khai, bổ sung giấy tử nếu có
+            add("TinhTrangHonNhanC1", _WIDOWED_STATUS)
+            if death_number and death_date and death_agency:
+                add("nxnLoaiTinhTrangHonNhan=4", {
+                    "soBanAnQuyetDinhLyHon": death_number,
+                    "ngayCapBanAnQuyetDinhLyHon": death_date,
+                    "coQuanCapBanAnQuyetDinhLyHon": death_agency,
+                })
+        elif declared_status == _fold(_DIVORCED_STATUS):
+            # ĐÃ LY HÔN: từ tờ khai, bổ sung giấy ly hôn nếu có
+            add("TinhTrangHonNhanC1", _DIVORCED_STATUS)
+            if divorce_number and divorce_date and divorce_agency:
+                add("nxnLoaiTinhTrangHonNhan=3", {
+                    "soBanAnQuyetDinhLyHon": divorce_number,
+                    "ngayCapBanAnQuyetDinhLyHon": divorce_date,
+                    "coQuanCapBanAnQuyetDinhLyHon": divorce_agency,
+                })
+        elif declared_status == _fold(_MARRIED_STATUS):
+            # HIỆN ĐANG CÓ VỢ/CHỒNG: từ tờ khai, bổ sung giấy kết hôn nếu có
+            add("TinhTrangHonNhanC1", _MARRIED_STATUS)
+            marriage_detail = {
+                "voChongHoTen": marriage_spouse,
+                "soGiayTo": marriage_number,
+                "ngayCapGiayTo": marriage_date,
+                "coQuanCapGiayTo": marriage_agency,
+            }
+            marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
+            if marriage_detail:
+                add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
+                # Vùng =2 được render động. Phát thêm đúng DOM name sau field vùng để extension điền raw.
+                add("soGiayTo", marriage_number)
+                date_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(marriage_date or "").strip())
+                if date_match:
+                    day, month, year = date_match.groups()
+                    day = day.zfill(2)
+                    month = month.zfill(2)
+                    add("ngayCapGiayTo-day", day)
+                    add("ngayCapGiayTo-month", month)
+                    add("ngayCapGiayTo-year", year)
+                    add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
+                add("coQuanCapGiayTo", marriage_agency)
+        elif declared_status == _fold(_NEVER_MARRIED_STATUS):
+            # CHƯA KẾT HÔN: từ tờ khai
+            add("TinhTrangHonNhanC1", _NEVER_MARRIED_STATUS)
+    
+    # Ưu tiên 2: FALLBACK sang GIẤY TỜ CHỨNG MINH khi tờ khai không có
+    elif death_number and death_date and death_agency:
+        # GÓA: vợ/chồng đã chết (từ giấy tử)
         add("TinhTrangHonNhanC1", _WIDOWED_STATUS)
         add("nxnLoaiTinhTrangHonNhan=4", {
             "soBanAnQuyetDinhLyHon": death_number,
@@ -251,15 +300,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             "coQuanCapBanAnQuyetDinhLyHon": death_agency,
         })
     elif divorce_number and divorce_date and divorce_agency:
-        # ĐÃ LY HÔN
+        # ĐÃ LY HÔN (từ giấy ly hôn)
         add("TinhTrangHonNhanC1", _DIVORCED_STATUS)
         add("nxnLoaiTinhTrangHonNhan=3", {
             "soBanAnQuyetDinhLyHon": divorce_number,
             "ngayCapBanAnQuyetDinhLyHon": divorce_date,
             "coQuanCapBanAnQuyetDinhLyHon": divorce_agency,
         })
-    elif (marriage_number and marriage_date) or declared_status == _fold(_MARRIED_STATUS):
-        # HIỆN ĐANG CÓ VỢ/CHỒNG: giấy kết hôn hoặc tờ khai ghi rõ.
+    elif marriage_number and marriage_date:
+        # HIỆN ĐANG CÓ VỢ/CHỒNG (từ giấy kết hôn)
         add("TinhTrangHonNhanC1", _MARRIED_STATUS)
         marriage_detail = {
             "voChongHoTen": marriage_spouse,
@@ -269,9 +318,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         }
         marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
         add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
-
-        # Vùng =2 được render động. Phát thêm đúng DOM name sau field vùng để extension điền raw,
-        # không phải hiểu số/ngày/cơ quan này thuộc nghiệp vụ kết hôn hay ly hôn.
+        # Vùng =2 được render động.
         add("soGiayTo", marriage_number)
         date_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(marriage_date or "").strip())
         if date_match:
@@ -283,9 +330,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("ngayCapGiayTo-year", year)
             add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
         add("coQuanCapGiayTo", marriage_agency)
-    elif declared_status == _fold(_NEVER_MARRIED_STATUS):
-        # Chỉ điền độc thân khi tờ khai đã nói rõ; không coi thiếu giấy tờ là bằng chứng.
-        add("TinhTrangHonNhanC1", _NEVER_MARRIED_STATUS)
 
     # =========================================================
     # MỤC ĐÍCH & TRẢ KẾT QUẢ

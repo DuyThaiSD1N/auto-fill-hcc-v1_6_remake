@@ -59,6 +59,46 @@ def test_actual_name_change_sets_wizard_yes_and_name_page():
     }
 
 
+def test_owner_submits_himself_ticks_signer_and_fills_owner_identity():
+    """Chủ hộ tự nộp: tick "Người có thẩm quyền ký" + điền nhân thân/địa chỉ chủ hộ."""
+    pages, flow = mapper.build([
+        _field("HoKinhDoanh_MaSo", "027200011386"),
+        _field("HienTai_Ten", "HỘ KINH DOANH TRƯƠNG HÀN ĐAN"),
+        _field("DeNghi_Von", "500.000.000"),
+        _field("HienTai_ChuHo", {
+            "hoTen": "TRƯƠNG HÀN ĐAN",
+            "soDinhDanh": "027089000919",
+            "diaChi": {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Phường Song Liễu",
+                       "diaChi": "Tổ dân phố Đa Tiện"},
+        }),
+    ])
+
+    # Extension đối chiếu nhân thân chủ hộ với tài khoản đang đăng nhập (khớp số HOẶC tên là chủ hộ).
+    assert flow["owner"] == {"hoTen": "TRƯƠNG HÀN ĐAN", "soDinhDanh": "027089000919"}
+
+    applicant = {item["name"]: item for item in pages["nguoi-nop-ho-so"]}
+    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == (
+        "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
+    )
+    assert applicant["ctl00$C$PERSCtl$FULL_NAMEFld"]["value"] == "Trương Hàn Đan"
+    assert applicant["ctl00$C$PERSCtl$PERS_DOC_NOFld"]["value"] == "027089000919"
+    assert applicant["ctl00$C$PERSCtl$ADDRCCtl$CITY_IDFld"]["value"] == "Bắc Ninh"
+    assert applicant["ctl00$C$PERSCtl$ADDRCCtl$WARD_IDFld"]["value"] == "Song Liễu"
+    assert applicant["__applicantAddress"]["value"]["role"] == "self"
+
+
+def test_authorized_submitter_when_dossier_has_another_person():
+    pages, flow = mapper.build([
+        _field("HoKinhDoanh_MaSo", "027200011386"),
+        _field("HienTai_ChuHo", {"hoTen": "TRƯƠNG HÀN ĐAN", "soDinhDanh": "027089000919"}),
+        _field("NguoiNop", {"hoTen": "VŨ ĐÌNH THIẾT", "soDinhDanh": "040203015844"}),
+    ])
+
+    applicant = {item["name"]: item for item in pages["nguoi-nop-ho-so"]}
+    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == "Người được ủy quyền"
+    assert flow["owner"]["soDinhDanh"] == "027089000919"
+
+
 def test_identity_candidates_are_deduplicated_for_runtime_account_match():
     _, flow = mapper.build([
         _field("NguoiNop", {"hoTen": "Vũ Đình Thiết", "soDinhDanh": "040203015844", "diaChi": {"tinh": "Nghệ An"}}),

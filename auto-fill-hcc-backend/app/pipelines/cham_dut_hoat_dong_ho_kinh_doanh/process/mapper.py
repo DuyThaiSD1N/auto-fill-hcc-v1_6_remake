@@ -57,37 +57,18 @@ def _compact_field(name: str, value: Any) -> dict:
     return {"name": name, "comp": "raw", "value": value}
 
 
-def _person_fields(person: Any) -> list[dict]:
+def _person_fields(person: Any, prefix: str = "NguoiNop") -> list[dict]:
     if not isinstance(person, dict):
         return []
     mapping = {
-        "hoTen": "NguoiNop_HoTen",
-        "gioiTinh": "NguoiNop_GioiTinh",
-        "ngaySinh": "NguoiNop_NgaySinh",
-        "soDinhDanh": "NguoiNop_SoDinhDanh",
-        "diaChi": "NguoiNop_DiaChi",
+        "hoTen": f"{prefix}_HoTen",
+        "gioiTinh": f"{prefix}_GioiTinh",
+        "ngaySinh": f"{prefix}_NgaySinh",
+        "soDinhDanh": f"{prefix}_SoDinhDanh",
+        "diaChi": f"{prefix}_DiaChi",
     }
     return [_compact_field(target, person.get(source)) for source, target in mapping.items()
             if person.get(source) not in (None, "", {}, [])]
-
-
-def _submitter_is_owner(values: dict[str, Any]) -> bool | None:
-    """Người nộp có phải chính chủ hộ không, dựa trên nhân thân hồ sơ kê khai.
-
-    Trả None khi hồ sơ không kê khai riêng người nộp (không đủ dữ liệu để kết luận) —
-    lúc đó caller suy tiếp từ số lượng CCCD trong hồ sơ.
-    """
-    submitter_id = _digits(values.get("NguoiNop", {}).get("soDinhDanh") if isinstance(values.get("NguoiNop"), dict) else "")
-    owner_id = _digits(values.get("ChuHo", {}).get("soDinhDanh") if isinstance(values.get("ChuHo"), dict) else "")
-    if submitter_id and owner_id:
-        return submitter_id == owner_id
-
-    submitter_name = _fold(values.get("NguoiNop", {}).get("hoTen") if isinstance(values.get("NguoiNop"), dict) else "")
-    owner_name = _fold(values.get("ChuHo", {}).get("hoTen") if isinstance(values.get("ChuHo"), dict) else "")
-    if submitter_name and owner_name:
-        return submitter_name == owner_name
-
-    return None
 
 
 def _identity_candidates(values: dict[str, Any], applicant: dict[str, Any]) -> list[dict[str, Any]]:
@@ -109,10 +90,6 @@ def _identity_candidates(values: dict[str, Any], applicant: dict[str, Any]) -> l
     return out
 
 
-_PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
-_PERS_SUB_AUTHORIZED_LABEL = "Người được ủy quyền"
-
-
 def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     values = _by_name(fields)
     owner = values.get("ChuHo") if isinstance(values.get("ChuHo"), dict) else {}
@@ -132,16 +109,21 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
             "value": reason,
         })
 
-    # Xác định vai trò người nộp: chủ hộ tự nộp hay người được ủy quyền
+    # Trang người nộp dùng NGUYÊN logic của đăng ký hộ kinh doanh: đưa đủ nhân thân người nộp + chủ hộ
+    # + danh sách CCCD sang creation_mapper.enrich để nó tự chốt radio vai trò, nhân thân, địa chỉ,
+    # __applicantAddress và __identityCandidates. Extension vẫn chốt lại theo tài khoản THẬT sau khi
+    # bấm "Sao chép thông tin đăng ký tài khoản" (chỉ cần số định danh HOẶC họ tên khớp chủ hộ là tick
+    # "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh").
     candidates = _identity_candidates(values, applicant)
-    has_multiple_cccd = bool(values.get("HasMultipleCCCD", False)) or len(candidates) >= 2
-    is_self = _submitter_is_owner(values) is not False and not has_multiple_cccd
-    pers_sub_role = _PERS_SUB_SELF_LABEL if is_self else _PERS_SUB_AUTHORIZED_LABEL
+    applicant_compact = _person_fields(applicant) + _person_fields(owner, "ChuHo")
+    if isinstance(values.get("Cccd_DanhSach"), list) and values["Cccd_DanhSach"]:
+        applicant_compact.append(_compact_field("Cccd_DanhSach", values["Cccd_DanhSach"]))
+    # Hồ sơ có từ 2 nhân thân trở lên (kể cả chủ hộ + người ký Thông báo) ⇒ nhiều khả năng có người
+    # nộp thay; enrich chỉ đếm được Cccd_DanhSach nên truyền sẵn cờ theo danh sách đầy đủ.
+    if values.get("HasMultipleCCCD") or len(candidates) >= 2:
+        applicant_compact.append(_compact_field("HasMultipleCCCD", True))
+    applicant_fields = creation_mapper.enrich(applicant_compact, page="nguoi-nop-ho-so")
 
-    applicant_fields = creation_mapper.enrich(_person_fields(applicant), page="nguoi-nop-ho-so")
-    # Thêm radio button vai trò người nộp vào đầu danh sách
-    applicant_fields.insert(0, {"name": "ctl00$C$PERS_SUBGroup", "comp": "dom-radio", "value": pers_sub_role})
-    
     pages = {
         "cham-dut-hoat-dong": dissolution_fields,
         "nguoi-nop-ho-so": applicant_fields,
@@ -166,6 +148,13 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         },
         "nameChange": False,
         "pageOrder": ["cham-dut-hoat-dong", "nguoi-nop-ho-so"],
+        # Luồng chấm dứt KHÔNG có trang chủ hộ để extension đối chiếu → gửi kèm nhân thân chủ hộ.
+        # Extension so với tài khoản đang đăng nhập: khớp số định danh HOẶC họ tên ⇒ chủ hộ tự nộp.
+        # Hồ sơ không kê khai riêng chủ hộ thì lấy người ký Thông báo chấm dứt (mặc định là chủ hộ).
+        "owner": {
+            "hoTen": _text((owner or applicant).get("hoTen")),
+            "soDinhDanh": _digits((owner or applicant).get("soDinhDanh")),
+        },
         "identityCandidates": candidates,
     }
     return pages, flow

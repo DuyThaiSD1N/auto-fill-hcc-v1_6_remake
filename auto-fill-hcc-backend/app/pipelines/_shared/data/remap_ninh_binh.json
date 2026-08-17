@@ -1,0 +1,2432 @@
+[
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Bình Nghĩa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Lục"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tràng An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Lục"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đồng Du",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Lục"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thị trấn Bình Mỹ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đồn Xá",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "La Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Trung Lương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Ngọc Lũ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Bình An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Bồ Đề",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Vũ Bản",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "An Ninh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiêu Động",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "An Lão",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "An Đổ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liêm Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Liêm Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liêm Cần",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Liêm Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Hà",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Liêm Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thị trấn Tân Thanh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Tân Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Thủy",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Tân Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Tân Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liêm Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liêm Thuận",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liêm Túc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Nghị",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Hương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Tâm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Nguyên",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Chính Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Lý Nhân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hợp Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Lý Nhân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Văn Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Lý Nhân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Công Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Xang"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nguyên Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Xang"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đức Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Xang"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Chân Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bắc Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đạo Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bắc Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Bắc Lý",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bắc Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thị trấn Vĩnh Trụ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vĩnh Trụ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nhân Chính",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vĩnh Trụ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nhân Khang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vĩnh Trụ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Trần Hưng Đạo",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Trần Thương"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nhân Nghĩa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Trần Thương"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nhân Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Trần Thương"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nhân Thịnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nhân Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nhân Mỹ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nhân Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Xuân Khê",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nhân Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiến Thắng (huyện Lý Nhân)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Phú Phúc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hòa Hậu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Lý"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Nam Giang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Trực"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Cường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Trực"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Hùng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Trực"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Dương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Bình Minh (huyện Nam Trực)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Tiến",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Đồng Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Đồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Thái",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Đồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Hoa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Lợi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Thanh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Tân Thịnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Thắng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Hồng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nam Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Cộng Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Minh Tân"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Minh Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Minh Tân"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hợp Hưng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hiển Khánh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trung Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hiển Khánh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Quang Trung (huyện Vụ Bản)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hiển Khánh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hiển Khánh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hiển Khánh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Gôi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vụ Bản"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Kim Thái",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vụ Bản"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Tam Thanh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vụ Bản"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Vĩnh Hào",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Đại Thắng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Liên Minh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Phong (huyện Ý Yên)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ý Yên"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hồng Quang (huyện Ý Yên)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ý Yên"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Khánh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ý Yên"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Lâm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ý Yên"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Đồng (huyện Ý Yên)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Đồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Trị",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Đồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Khang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Đồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Nhân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Lộc (huyện Ý Yên)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Phúc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Cường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Thắng (huyện Ý Yên)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vạn Thắng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Tiến",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vạn Thắng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Lương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vạn Thắng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Mỹ (huyện Ý Yên)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vũ Dương"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vũ Dương"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Dương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vũ Dương"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Ninh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Vũ Dương"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trung Nghĩa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Tân Minh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Phú Hưng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phong Doanh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Thọ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phong Doanh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Yên Chính",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phong Doanh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Cổ Lễ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cổ Lễ"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trung Đông",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cổ Lễ"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Tuấn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cổ Lễ"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Chính",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Phương Định",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Liêm Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Cát Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cát Thành"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Việt Hùng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cát Thành"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Đạo",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cát Thành"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Thanh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Trực Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Nội",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Trực Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Hưng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Trực Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Khang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quang Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Mỹ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quang Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Thuận",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quang Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Đại",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Minh Thái"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Thái",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Minh Thái"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Thắng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Minh Thái"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Ninh Cường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ninh Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Cường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ninh Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trực Hùng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Ninh Cường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Xuân Trường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Phúc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Ninh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Ngọc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Vinh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trà Lũ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thọ Nghiệp",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Giang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Giang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Giang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Giang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Châu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Thượng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Xuân Hồng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Xuân Hồng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Yên Định",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Hậu"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Trung",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Hậu"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Long",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Hậu"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Minh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Anh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Đường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Anh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Anh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Anh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Cồn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Tiến"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Tiến"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Tiến"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Nam",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Lộc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Hưng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải An"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Giang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải An"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải An"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Đông",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Quang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Tây",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Quang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Quang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Quang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Xuân"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Xuân"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Xuân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Xuân"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Thịnh Long",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Thịnh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Châu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Thịnh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hải Ninh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hải Thịnh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Thiện",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Hương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Thanh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Minh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hồng Thuận",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Hòa"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Hòa"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Lạc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Hòa"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Giao Thủy",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Thủy"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Bình Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Thủy"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Xuân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Phúc"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Hà",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Phúc"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Phúc"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Nhân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Long",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Châu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Yến",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Bình"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Bạch Long",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Bình"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Bình"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Quất Lâm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Giao Thịnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Giao Ninh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hoàng Nam",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đồng Thịnh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Đồng Thịnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đồng Thịnh"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Liễu Đề",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Thái",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Châu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Trung",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Hưng"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Lạc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Sơn"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Sơn"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Hồng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hồng Phong"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hồng Phong"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Hồng Phong"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Quỹ Nhất",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quỹ Nhất"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quỹ Nhất"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Lợi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quỹ Nhất"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Hùng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Lâm"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Lâm"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa Lâm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nghĩa Lâm"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Điền (huyện Nghĩa Hưng)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Rạng Đông"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Phúc Thắng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Rạng Đông"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thị trấn Rạng Đông",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Rạng Đông"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thị trấn Thịnh Vượng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Viễn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Viễn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Tiến Thắng (huyện Gia Viễn)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đại Hoàng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Phương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đại Hoàng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Trung",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đại Hoàng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Liên Sơn (huyện Gia Viễn)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Hưng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Hưng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Hưng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Hưng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Lạc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Phong"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Minh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Phong"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Phong"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Lập",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Vân"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Vân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Vân"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Tân (một phần)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Vân"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Thanh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Trấn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Xuân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Trấn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Trấn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Trấn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thị trấn Nho Quan",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nho Quan"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Đồng Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nho Quan"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Quang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Nho Quan"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Xích Thổ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Lâm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Thủy",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Tường"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Đức Long",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Tường"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Tường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Gia Tường"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thạch Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phú Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Lạc Vân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phú Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Phú Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phú Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Văn Phương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cúc Phương"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Cúc Phương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Cúc Phương"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kỳ Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phú Long"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Phú Long",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phú Long"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thanh Sơn (huyện Nho Quan)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thượng Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Văn Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Thanh Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Phú Lộc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quỳnh Lưu"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Quỳnh Lưu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quỳnh Lưu"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thị trấn Yên Ninh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Khánh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Cư",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Khánh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Vân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Khánh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Khánh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Hồng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Nhạc"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Nhạc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Nhạc"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Cường",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Thiện"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Lợi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Thiện"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Thiện",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Thiện"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Mậu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Hội"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Thủy",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Hội"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Hội",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Hội"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Trung"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Công",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Trung"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Trung",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Khánh Trung"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thị trấn Yên Thịnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Mô"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Dương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Mô"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Mô"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Phong (huyện Yên Mô)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Từ"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Nhân (huyện Yên Mô)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Từ"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Từ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Từ"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Mỹ (huyện Yên Mô)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Mạc"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Lâm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Mạc"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Mạc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Yên Mạc"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Đồng (huyện Yên Mô)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đồng Thái"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đồng Thái"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Thái",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đồng Thái"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Xuân Chính",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Chất Bình"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Hồi Ninh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Chất Bình"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Chất Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Chất Bình"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kim Định",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ân Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Hùng Tiến",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Như Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quang Thiện"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Đồng Hướng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quang Thiện"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Quang Thiện",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Quang Thiện"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thị trấn Phát Diệm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phát Diệm"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thượng Kiệm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phát Diệm"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kim Chính",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Phát Diệm"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Lộc (huyện Kim Sơn)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Lai Thành"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Lai Thành"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Lai Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Lai Thành"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Văn Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Định Hóa"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kim Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Định Hóa"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Định Hóa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Định Hóa"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Thị trấn Bình Minh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Cồn Thoi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kim Mỹ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kim Trung",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Kim Đông"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Kim Đông",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Kim Đông"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khu vực bãi bồi ven biển (huyện Kim Sơn)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Kim Đông"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Chuyên Ngoại",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tiên"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Trác Văn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tiên"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Yên Nam",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tiên"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hòa Mạc (một phần)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tiên"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Châu Giang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Mộc Hoàn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hòa Mạc (phần còn lại)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Tân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Bạch Thượng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Yên Bắc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đồng Văn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Duy Minh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Duy Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hoàng Đông (một phần)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Duy Hà"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiên Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tiên Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiên Nội (một phần)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tiên Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiên Ngoại (một phần)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tiên Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đại Cương",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Lê Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đồng Hoá",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Lê Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Lê Hồ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Lê Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tượng Lĩnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nguyễn Úy"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tân Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nguyễn Úy"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Nguyễn Úy",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nguyễn Úy"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liên Sơn (thị xã Kim Bảng)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Lý Thường Kiệt"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Sơn (thị xã Kim Bảng)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Lý Thường Kiệt"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thi Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Lý Thường Kiệt"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tân Tựu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Kim Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hoàng Tây",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Kim Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Ba Sao",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tam Chúc"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Khả Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tam Chúc"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thuỵ Lôi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tam Chúc"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Quế",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Kim Bảng"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Ngọc Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Kim Bảng"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Văn Xá",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Kim Bảng"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Lam Hạ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hà Nam"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tân Hiệp",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hà Nam"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Quang Trung (thành phố Phủ Lý, một phần)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hà Nam"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Hoàng Đông (phần còn lại)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hà Nam"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiên Nội (phần còn lại)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hà Nam"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tiên Ngoại (phần còn lại)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hà Nam"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Lê Hồng Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phù Vân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Kim Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phù Vân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Phù Vân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phù Vân"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Tuyền",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Châu Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Châu Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Châu Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thị trấn Kiện Khê",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Châu Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Châu Cầu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phủ Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Thanh Châu",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phủ Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Liêm Chính",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phủ Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Quang Trung (thành phố Phủ Lý, phần còn lại)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Phủ Lý"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Tân Liêm",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Liêm Tuyền"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Đinh Xá",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Liêm Tuyền"
+    },
+    {
+        "tinh_cu": "Hà Nam",
+        "xa_cu": "Trịnh Xá",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Liêm Tuyền"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Quang Trung (thành phố Nam Định)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Vị Xuyên",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Lộc Vượng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Cửa Bắc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trần Hưng Đạo (thành phố Nam Định)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Năng Tĩnh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Cửa Nam",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Phúc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Định"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Lộc Hạ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Thiên Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Tân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Thiên Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Trung",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Thiên Trường"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Lộc Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông A"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Thắng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông A"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Hà",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông A"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Điền (huyện Nam Trực)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Vị Khê"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Vị Khê"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Xá",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Thành Nam"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Đại An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Thành Nam"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Trường Thi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Trường Thi"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Thành Lợi",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Trường Thi"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hồng Quang (huyện Nam Trực)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hồng Quang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nghĩa An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hồng Quang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Nam Vân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hồng Quang"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Hưng Lộc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Mỹ Lộc"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Thuận",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Mỹ Lộc"
+    },
+    {
+        "tinh_cu": "Nam Định",
+        "xa_cu": "Mỹ Lộc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Mỹ Lộc"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Giang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tây Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Trường Yên",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tây Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tây Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Phúc Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tây Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Sinh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tây Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Tân (phần còn lại)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tây Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Mỹ",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Khánh",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Đông Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Vân Giang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Nam Thành",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Nam Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Bích Đào",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Khang",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Nhất",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Tiến",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Phong",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Vân",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Hải",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Nam Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Ninh Phúc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Hòa",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Phú",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh An",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Đông Hoa Lư"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Bắc Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tam Điệp"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Tây Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tam Điệp"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Quang Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Tam Điệp"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Yên Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Quảng Lạc",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Yên Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Yên Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Nam Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Trung Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Trung Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Trung Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Đông Sơn",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Trung Sơn"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Thắng (huyện Yên Mô)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Yên Thắng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Khánh Thượng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Yên Thắng"
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Yên Bình (phường)",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Phường Yên Thắng"
+    }
+]
