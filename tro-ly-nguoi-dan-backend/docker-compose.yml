@@ -1,0 +1,57 @@
+# Compose DEV — Trợ lý người dân: Mongo RIÊNG hoàn toàn (chốt docs/01 §5:
+# không dùng chung cluster callbot/auto-fill). App chạy dev bằng uvicorn ngoài
+# docker cũng được (localhost:27027), compose này để dựng nhanh cả cặp.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      # CHỈ bind localhost — KHÔNG phơi Mongo ra internet (bot ransomware DROP sạch DB).
+      # 27027 tránh đụng Mongo local/cluster khác trên máy dev.
+      - "127.0.0.1:27027:27017"
+    networks:
+      - tro_ly_nguoi_dan
+
+  app:
+    build: .
+    image: tro-ly-nguoi-dan-be:latest
+    env_file: .env
+    environment:
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+    ports:
+      # container nghe trên ${PORT} (CMD uvicorn dùng $PORT) → map cùng cổng ra host.
+      - "${PORT:-8010}:${PORT:-8010}"
+    volumes:
+      # Persist file/ảnh đã lưu của mỗi request ra host (./data).
+      - ./data:/app/data
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    networks:
+      - tro_ly_nguoi_dan
+
+  # Trang quản trị (trace/thống kê/tài khoản — chỉ admin): nginx serve bản build Vite,
+  # tự build FE trong image (multi-stage node) — không cần node trên host.
+  fe:
+    build: ./fe
+    image: tro-ly-nguoi-dan-fe:latest
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://app:8010}
+    ports:
+      - "12010:12010"
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - tro_ly_nguoi_dan
+
+networks:
+  tro_ly_nguoi_dan:
+    name: tro_ly_nguoi_dan_net
+
+volumes:
+  mongo_data:
+    name: tro_ly_nguoi_dan_mongo_data

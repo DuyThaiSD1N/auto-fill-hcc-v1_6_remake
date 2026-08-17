@@ -1,0 +1,135 @@
+"""Map compact facts của "Đăng ký lại kết hôn" sang field UI x-*."""
+
+import re
+import unicodedata
+
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.area_remap import remap_area
+from app.pipelines.ket_hon_lai.process.schema import UI_COMP_BY_NAME
+
+_TINH_TRANG_HON_NHAN_DEFAULT = "Hiện tại đang có vợ/chồng"
+_LOAI_DANG_KY_LAI = "Đăng ký lại"
+
+
+def _fold(value) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+# Chuẩn hóa dân tộc về đúng nhãn option dropdown: "Mông" vs "Mông (Hmông)".
+_DAN_TOC_CANON = {
+    "mong": "Mông",
+    "hmong": "Mông (Hmông)",
+}
+
+
+def _normalize_dan_toc(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return raw
+    key = _fold(raw).replace("'", "").replace("’", "").replace(" ", "")
+    return _DAN_TOC_CANON.get(key, raw)
+
+
+def _by_name(fields: list[dict]) -> dict:
+    return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
+
+
+def _strip_admin_prefix(value):
+    """xa CHỈ giữ TÊN đơn vị, bỏ tiền tố loại (Xã/Phường/Thị trấn/TT)."""
+    text = str(value or "").strip()
+    return re.sub(r"^(xã|phường|thị trấn|tt\.?)\s+", "", text, flags=re.IGNORECASE).strip()
+
+
+def _area(value):
+    if not isinstance(value, dict):
+        return None
+    out = {
+        "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
+        "tinh": value.get("tinh") or value.get("tỉnh") or "",
+        "xa": _strip_admin_prefix(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
+        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
+    }
+    if not out["tinh"] and not out["xa"] and not out["diaChi"]:
+        return None
+    return remap_area(out)
+
+
+def _compute_quyen_so(so, ngay_dang_ky) -> str:
+    """Quyển số = số // 200 + 1 (1 quyển 200 tờ). Năm lấy từ "số/năm" nếu có, không thì từ ngày đăng ký."""
+    s = str(so or "").strip()
+    m = re.match(r"\s*(\d+)", s)
+    if not m:
+        return ""
+    quyen = int(m.group(1)) // 200 + 1
+    ym = re.search(r"/\s*(\d{4})", s)
+    year = ym.group(1) if ym else ""
+    if not year:
+        dm = re.search(r"(\d{4})", str(ngay_dang_ky or ""))
+        year = dm.group(1) if dm else ""
+    return f"{quyen:02d}/{year}" if year else f"{quyen:02d}"
+
+
+def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
+    """Suy field UI tất định từ compact facts."""
+    values = _by_name(fields)
+    out: list[dict] = []
+    seen: set[str] = set()
+
+    def add(name: str, value, default: bool = False) -> None:
+        if name in seen or value in (None, "", {}, []):
+            return
+        comp = UI_COMP_BY_NAME.get(name)
+        if not comp:
+            return
+        field = {"name": name, "comp": comp, "value": value}
+        if default:
+            field["default"] = True  # extension tô VIỀN VÀNG (giá trị mặc định, không từ giấy tờ)
+        out.append(field)
+        seen.add(name)
+
+    def add_person(src: str, dst: str) -> None:
+        if not (values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen")):
+            return
+        issuer = normalize_issuer(values.get(f"{src}_NoiCap")) or default_issuer(values.get(f"{src}_NgayCap"))
+        area = _area(values.get(f"{src}_NoiCuTru_TrongNuoc"))
+
+        add(f"HoTen{dst}", values.get(f"{src}_HoTen"))
+        add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
+        add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
+        # Nhãn option eForm cổng mới (đối chiếu thongtin/đăng ký lại kết hôn):
+        # Bộ Công an → "Thẻ Căn cước" (thẻ mới); còn lại → "Thẻ căn cước công dân".
+        add(f"LoaiGiayToDinhDanh_{dst}", id_doc_type("Thẻ căn cước công dân", issuer))
+        add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
+        add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
+        add(f"NoiCapDD_{dst}", issuer)
+        add(f"DanToc{dst}", _normalize_dan_toc(values.get(f"{src}_DanToc")))
+        add(f"QuocTich{dst}", values.get(f"{src}_QuocTich") or "Việt Nam")
+        add(f"LoaiCuTru_{dst}", "Thường trú")
+        if area:
+            add(f"NoiCuTru_{dst}", "1")
+            add(f"NoiCuTru_{dst}_TrongNuoc", area)
+        # Mặc định (bôi vàng): kết hôn lần thứ 1, tình trạng hôn nhân "Hiện đang có vợ/chồng".
+        add(f"SoLanKetHon_{dst}", "1", default=True)
+        add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN_DEFAULT, default=True)
+
+    add_person("CccdNu", "BenNu")
+    add_person("CccdNam", "BenNam")
+
+    # Hồ sơ gốc (lần đăng ký kết hôn trước đây).
+    add("loaiDangKy", _LOAI_DANG_KY_LAI, default=True)
+    add("soDangKyTruocDay", values.get("HoTich_So"))
+    # Quyển số: giấy CN chỉ ghi "Số:" → tính từ Số đăng ký, bôi vàng.
+    add("quyenDangKyTruocDay",
+        _compute_quyen_so(values.get("HoTich_So"), values.get("HoTich_NgayDangKy")), default=True)
+    add("ngayDangKyTruocDay", values.get("HoTich_NgayDangKy"))
+    # Cascading: chọn TỈNH (filter) trước để dropdown đơn vị load, rồi mới chọn đơn vị.
+    add("noiDangKyTruocDay_filter", values.get("HoTich_TinhDangKy"))
+    add("noiDangKyTruocDay", values.get("HoTich_XaDangKy"))
+
+    # Đề nghị cấp bản sao: mặc định Có, số lượng 1 bản (bôi vàng).
+    add("CapBanSao", "Có", default=True)
+    add("SoLuong", "1", default=True)
+
+    return out

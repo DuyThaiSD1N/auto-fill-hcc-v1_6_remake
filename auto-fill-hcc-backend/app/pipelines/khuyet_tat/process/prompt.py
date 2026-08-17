@@ -56,22 +56,51 @@ Có thể kèm hồ sơ bệnh án, trích lục khai sinh hoặc giấy tờ y 
 </representative_rules>
 
 <disability_type_rules>
-Đọc bảng "III. Dạng khuyết tật" trong đơn đề nghị. Chỉ trả mã có ô "Có"/ô tương ứng được đánh dấu.
-Nhóm mã:
-- kt1 = Khuyết tật vận động.
-- kt2 = Khuyết tật nghe, nói.
-- kt3 = Khuyết tật nhìn.
-- kt4 = Khuyết tật thần kinh, tâm thần.
-- kt5 = Khuyết tật trí tuệ.
-- kt6 = Khuyết tật khác.
-Mục con trả dạng ktX_Y, ví dụ kt5_1, kt5_3.
-Không suy luận một mục "Không" chỉ vì ô trống; nếu không có đánh dấu rõ thì không trả mục đó.
-Nếu thấy mục con ktX_Y được đánh dấu thì cũng trả nhóm cha ktX trong KhuyetTat_DanhMuc.
-OCR bảng có thể bị vỡ dòng/mất ký tự kẻ bảng. Khi một chữ "X" tách riêng xuất hiện trong cùng dòng OCR hoặc ngay sau nội dung của mục con,
-trước khi sang mục số tiếp theo, hãy coi đó là dấu chọn "Có" cho mục đó dù không có ký tự "|".
-Ví dụ: "5.3 Khó khăn trong việc đọc, viết, tính toán ... so với người X\ncùng tuổi do chậm phát triển trí tuệ"
-=> trả KhuyetTat_ChiTiet có "kt5_3" và KhuyetTat_DanhMuc có "kt5".
-Chỉ áp dụng với chữ "X" tách riêng/marker rõ; không coi chữ x thường nằm trong từ tiếng Việt là dấu chọn.
+Đọc bảng "III. Dạng khuyết tật" (hoặc "Thông tin về dạng khuyết tật") trong đơn đề nghị.
+
+**CẤU TRÚC BẢNG**: 4 cột theo thứ tự trái → phải:
+1. STT ("1", "1.1", ... "6.3")
+2. Các dạng khuyết tật (nội dung mô tả)
+3. **Có**   ← cột đánh dấu nếu CÓ dạng khuyết tật này
+4. **Không** ← cột đánh dấu nếu KHÔNG có
+
+**ĐẦU RA CHÍNH — KhuyetTat_BangDanhDau**: object, key là SỐ DÒNG in trên đơn, value là:
+- "co"    khi dấu X/✓/☑ nằm ở cột "Có";
+- "khong" khi dấu nằm ở cột "Không";
+- ""      khi dòng để trống HOẶC không chắc chắn dấu thuộc cột nào.
+Trả ĐỦ mọi dòng đọc được (37 dòng: 1, 1.1..1.6, 2, 2.1..2.6, 3, 3.1..3.7, 4, 4.1..4.5,
+5, 5.1..5.4, 6, 6.1..6.3). Dòng "khong" cũng PHẢI trả — bảng này gần như luôn có rất nhiều "khong".
+
+**HAI LỖI PHẢI TRÁNH (đây là nguyên nhân sai thực tế)**:
+1. Rất nhiều dòng có nội dung bắt đầu bằng "Có kết luận của cơ sở y tế cấp tỉnh trở lên về..."
+   (các dòng 1.6, 2.6, 3.7, 4.5, 5.4, 6.1, 6.2, 6.3). Chữ "Có" ở đây là NỘI DUNG MÔ TẢ, KHÔNG
+   phải ô đánh dấu. Tuyệt đối không vì thấy chữ "Có" trong câu mà kết luận dòng đó = "co".
+2. Khi OCR làm phẳng bảng (mất dấu "|"), dòng chỉ còn dạng "3.6 Bị dị tật, biến dạng ở vùng mắt X"
+   thì dấu X KHÔNG cho biết nó ở cột "Có" hay "Không" → value phải là "" (không chắc), TUYỆT ĐỐI
+   KHÔNG mặc định là "co". Chỉ khi đối chiếu được với các dòng cùng bảng còn giữ cột (hoặc cả bảng
+   rõ ràng chỉ đánh vào một cột) mới được kết luận.
+
+**Suy luận nhất quán**:
+- Dòng nhóm (1..6) là "co" nếu chính nó đánh cột "Có" HOẶC có ít nhất một dòng con "co".
+- Ngược lại, nhóm đánh "Không" thì mọi dòng con của nhóm đó cũng "khong".
+- KhuyetTat_DanhMuc / KhuyetTat_ChiTiet chỉ liệt kê các mã "co" (kt1..kt6 / ktX_Y), suy ra từ
+  KhuyetTat_BangDanhDau, phải khớp nhau. Mã: 1→kt1, 1.1→kt1_1, 5.3→kt5_3...
+  kt1 vận động (6 dòng con), kt2 nghe-nói (6), kt3 nhìn (7), kt4 thần kinh-tâm thần (5),
+  kt5 trí tuệ (4), kt6 khác (3).
+- KHÔNG coi chữ "x" thường trong từ tiếng Việt là dấu chọn.
+
+**Ví dụ đọc bảng**:
+```
+| STT | Dạng khuyết tật      | Có | Không |
+| 1   | Khuyết tật vận động  |    | X     |
+| 1.1 | Mềm nhão...          |    | X     |
+| 1.6 | Có kết luận của cơ sở y tế... |  | X |
+| 4   | Khuyết tật thần kinh | X  |       |
+| 4.1 | Thường ngồi một mình...| X |      |
+```
+→ KhuyetTat_BangDanhDau = {"1":"khong","1.1":"khong","1.6":"khong","4":"co","4.1":"co", ...}
+→ KhuyetTat_DanhMuc = ["kt4"], KhuyetTat_ChiTiet = ["kt4_1"]
+→ KHÔNG trả kt1/kt1_1/kt1_6 vì dấu X nằm ở cột "Không" (dòng 1.6 có chữ "Có" trong nội dung).
 </disability_type_rules>
 
 <activity_level_rules>

@@ -1,0 +1,1904 @@
+[
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thọ Xương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ngô Quyền",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Xương Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hoàng Văn Thụ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trần Phú",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Dĩnh Kế",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Dĩnh Trì",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bắc Giang"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Cách Bi",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bồng Lai"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Bồng Lai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bồng Lai"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Mộ Đạo",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Bồng Lai"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thanh Hải",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Chũ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hồng Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Chũ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trù Hựu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Chũ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cảnh Thụy",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Cảnh Thụy"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tiến Dũng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Cảnh Thụy"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tư Mai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Cảnh Thụy"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Khắc Niệm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Hạp Lĩnh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hạp Lĩnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Hạp Lĩnh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Suối Hoa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tiền Ninh Vệ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Vạn An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hòa Long",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Khúc Xuyên",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Kinh Bắc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Kinh Bắc"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "An Bình",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Mão Điền"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hoài Thượng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Mão Điền"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Mão Điền",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Mão Điền"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Vân Dương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nam Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Nam Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nam Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đại Xuân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nhân Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Nhân Hòa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nhân Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Việt Thống",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nhân Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Ninh Xá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Ninh Xá"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Nguyệt Đức",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Ninh Xá"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quang Châu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nếnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vân Trung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nếnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tăng Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nếnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nếnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Nếnh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Châu Khê",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phù Khê"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hương Mạc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phù Khê"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phù Khê",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phù Khê"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phượng Mao",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phương Liễu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phương Liễu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phương Liễu"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phượng Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phượng Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quý Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phượng Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Phượng Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phố Mới",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Quế Võ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Bằng An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Quế Võ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Việt Hùng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Quế Võ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Quế Tân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Quế Võ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Xuân Lâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Song Liễu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hà Mãn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Song Liễu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Ngũ Thái",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Song Liễu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Song Liễu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Song Liễu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tương Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tam Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tam Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tam Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hồ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Thuận Thành"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Song Hồ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Thuận Thành"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Gia Đông",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Thuận Thành"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đại Đồng Thành",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Thuận Thành"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nội Hoàng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tiên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Song Khê",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tiên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tiên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tiên Phong",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tiên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Thanh Khương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Trí Quả"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Trí Quả",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Trí Quả"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đình Tổ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Trí Quả"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Trạm Lộ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Trạm Lộ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Nghĩa Đạo",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Trạm Lộ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quỳnh Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trí Yên",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lãng Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hương Gián",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân Tiến"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân Tiến"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Xuân Phú",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tân Tiến"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Ngàn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Từ Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tân Hồng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Từ Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phù Chẩn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Từ Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đình Bảng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Từ Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tư Lan",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tư Lan"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Việt Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tư Lan"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thương Lan",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tư Lan"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hương Mai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Tư Lan"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bích Động",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Việt Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hồng Thái",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Việt Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Minh Đức",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Việt Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nghĩa Trung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Việt Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ninh Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vân Hà"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quảng Minh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vân Hà"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tiên Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vân Hà"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trung Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vân Hà"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vân Hà",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vân Hà"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đại Phúc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Võ Cường"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phong Khê",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Võ Cường"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Võ Cường",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Võ Cường"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Kim Chân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vũ Ninh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đáp Cầu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vũ Ninh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Thị Cầu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vũ Ninh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Vũ Ninh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Vũ Ninh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Liễu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Yên Dũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nham Biền",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Yên Dũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Yên Lư",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Yên Dũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Mỹ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đa Mai"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Mỹ Độ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đa Mai"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Song Mai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đa Mai"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đa Mai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đa Mai"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quế Nham",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đa Mai"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phú Lương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đào Viên"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Ngọc Xá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đào Viên"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đào Viên",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đào Viên"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Trang Ha",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đồng Nguyên"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Kỵ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đồng Nguyên"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Nguyên",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Phường Đồng Nguyên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lệ Viễn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã An Lạc"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "An Lạc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã An Lạc"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phong Vân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Biên Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Biên Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Biên Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trường bản TB1",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Biên Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Biển Động",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Biển Động",
+        "ghi_chu": "Thị trấn Biển Động"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Kim Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Biển Động"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phú Nhuận",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Biển Động"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bảo Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bảo Đài"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thanh Lâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bảo Đài"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tam Di",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bảo Đài"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bảo Đài",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bảo Đài"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Yên Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bắc Lũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lan Mẫu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bắc Lũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Khám Lạng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bắc Lũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bắc Lũng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bắc Lũng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bố Hạ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bố Hạ",
+        "ghi_chu": "Thị trấn Bố Hạ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bố Hạ",
+        "ambiguous": true,
+        "ghi_chu": "Trùng tên Đồng Sơn ở Phường Tiên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hương Vĩ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Bố Hạ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Vạn Ninh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Cao Đức"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Cao Đức",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Cao Đức"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Yên Giả",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Chi Lăng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Chi Lăng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Chi Lăng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đan Hội",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Cẩm Lý"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cẩm Lý",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Cẩm Lý"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Long Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Dương Hưu"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Dương Hưu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Dương Hưu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Gia Bình",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Gia Bình",
+        "ghi_chu": "Thị trấn Gia Bình"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Xuân Lai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Gia Bình"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Quỳnh Phú",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Gia Bình"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đại Bái",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Gia Bình"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thắng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hiệp Hòa",
+        "ghi_chu": "Thị trấn Thắng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Lỗ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đoan Bái",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Danh Thắng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lương Phong",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân",
+        "ghi_chu": "Đồng Tiến huyện Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Toàn Thắng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ngọc Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hoàng Vân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hoàng Vân"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thường Thắng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Mai Trung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hùng Thái",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Sơn Thịnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hợp Thịnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Hợp Thịnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Kiên Thành",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Kiên Lao"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Kiên Lao",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Kiên Lao"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Kép",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Kép",
+        "ghi_chu": "Thị trấn Kép"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quang Thịnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Kép"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hương Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Kép"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hiền Vân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Liên Bão"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Việt Đoàn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Liên Bão"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Liên Bão",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Liên Bão"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Bình Định",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lãm Thao"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Quảng Phú",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lãm Thao"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Lãm Thao",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lãm Thao"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Lương Tài",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lương Tài",
+        "ghi_chu": "Thị trấn Lương Tài"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phú Hòa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lương Tài"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tân Lãng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lương Tài"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vôi",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lạng Giang",
+        "ghi_chu": "Thị trấn Vôi"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Xương Lâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lạng Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hương Lạc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lạng Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Hưng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lạng Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phương Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Nam",
+        "ghi_chu": "Thị trấn Phương Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồi Ngô",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Nam",
+        "ghi_chu": "Thị trấn Đồi Ngô"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cương Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Nam"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tiên Nha",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Nam"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Chu Điện",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Nam"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phi Điền",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Ngạn",
+        "ghi_chu": "Thị trấn Phi Điền"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Giáp Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Ngạn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Cốc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Ngạn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Hoa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Ngạn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Quang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Ngạn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bình Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lục Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Lục Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Xuân Hương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Mỹ Thái"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Dương Đức",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Mỹ Thái"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Thanh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Mỹ Thái"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Mỹ Thái",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Mỹ Thái"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Mộc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nam Dương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nam Dương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nam Dương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trường Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nghĩa Phương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Huyền Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nghĩa Phương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nghĩa Phương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nghĩa Phương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Song Vân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Ngọc Thiện"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ngọc Châu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Ngọc Thiện"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ngọc Vân",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Ngọc Thiện"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Việt Ngọc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Ngọc Thiện"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ngọc Thiện",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Ngọc Thiện"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Nhân Thắng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhân Thắng",
+        "ghi_chu": "Thị trấn Nhân Thắng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Thái Bảo",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhân Thắng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Bình Dương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhân Thắng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nhã Nam",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhã Nam",
+        "ghi_chu": "Thị trấn Nhã Nam"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Trung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhã Nam"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Liên Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhã Nam"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "An Dương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Nhã Nam"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Châu Phong",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phù Lãng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đức Long",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phù Lãng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phù Lãng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phù Lãng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hợp Đức",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phúc Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Liên Chung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phúc Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phúc Hòa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phúc Hòa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Minh Đạo",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phật Tích"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Cảnh Hưng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phật Tích"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phật Tích",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Phật Tích"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Lam Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quang Trung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Quang Trung"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phong Minh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sa Lý"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Sa Lý",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sa Lý"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hố Đáp",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sơn Hải"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Sơn Hải",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sơn Hải"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "An Châu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sơn Động",
+        "ghi_chu": "Thị trấn An Châu"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "An Bá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sơn Động"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vĩnh An",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Sơn Động"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hòa Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Giang"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tam Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Giang"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tiến Thắng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Tiến"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "An Thượng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Tiến"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tam Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Tiến"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Thụy Hòa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Đa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Phong",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Đa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tam Đa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tam Đa"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Lim",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Du",
+        "ghi_chu": "Thị trấn Lim"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Nội Duệ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Du"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Phú Lâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Du"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đảo Mỹ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Lục"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nghĩa Hòa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Lục"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "An Hà",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Lục"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Nghĩa Hưng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Lục"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tiên Lục",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tiên Lục"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phú Lương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Chính",
+        "ambiguous": true,
+        "ghi_chu": "Trùng tên Phú Lương ở Phường Đào Viên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Quang Minh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Chính",
+        "ambiguous": true,
+        "ghi_chu": "Trùng tên Quang Minh ở Phường Vân Hà"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trung Chính",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Chính"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "An Thịnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Kênh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "An Tập",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Kênh"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Trung Kênh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trung Kênh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vô Tranh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trường Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Trường Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Trường Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Lạc Vệ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Chi"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tân Chi",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Chi"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Dĩnh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Dĩnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thái Đào",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Dĩnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đại Lâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Dĩnh"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cẩm Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cao Thượng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Yên",
+        "ghi_chu": "Thị trấn Cao Thượng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cao Xá",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Việt Lập",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Ngọc Lý",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tân Yên"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tây Yên Tử",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tây Yên Tử",
+        "ghi_chu": "Thị trấn Tây Yên Tử"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Thanh Luận",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Tây Yên Tử"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hữu Sản",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Vân Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Vân Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Vân Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Yên Phu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Văn Môn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Thọ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Văn Môn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Văn Môn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Văn Môn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Bắc Lý",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Cẩm",
+        "ghi_chu": "Thị trấn Bắc Lý"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Hương Lâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Cẩm"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Mai Đình",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Cẩm"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Châu Minh",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Cẩm"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Xuân Cẩm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Cẩm"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Tiến",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Lương",
+        "ghi_chu": "Đồng Tiến huyện Yên Thế",
+        "ambiguous": true
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Canh Nậu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Lương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Xuân Lương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Xuân Lương"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Chờ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Phong",
+        "ghi_chu": "Thị trấn Chờ"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Trung Nghĩa",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Long Châu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Phong"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Tiền",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Phong",
+        "ambiguous": true,
+        "ghi_chu": "Trùng tên Đồng Tiến/Tiền ở nhiều huyện"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phồn Xương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Thế",
+        "ghi_chu": "Thị trấn Phồn Xương"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Lạc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Thế"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Tâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Thế"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Hiệp",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Thế"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Sỏi",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Thế"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Dũng Liệt",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Trung"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Yên Trung",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Trung"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Cẩm Đàn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Định"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Yên Định",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Yên Định"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đèo Gia"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đèo Gia",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đèo Gia"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Giang Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Cửu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Lãng Ngâm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Cửu"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đồng Cửu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Cửu"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Hưng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Phú"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Phú",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Phú"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Song Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Lai"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đại Lai",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Lai"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Giáo Liêm",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Phúc Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đại Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Tri Phương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Đồng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Hoàn Sơn",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Đồng"
+    },
+    {
+        "tinh_cu": "Bắc Ninh",
+        "xa_cu": "Đại Đồng",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đại Đồng"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Hưu",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Kỵ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Vương",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Kỵ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Kỵ",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Kỵ"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đức Giang",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Việt"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Phúc",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Việt"
+    },
+    {
+        "tinh_cu": "Bắc Giang",
+        "xa_cu": "Đồng Việt",
+        "tinh_moi": "Bắc Ninh",
+        "xa_moi": "Xã Đồng Việt"
+    }
+]

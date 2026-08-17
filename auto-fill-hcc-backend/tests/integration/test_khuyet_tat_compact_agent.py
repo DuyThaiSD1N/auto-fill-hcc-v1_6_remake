@@ -143,8 +143,11 @@ def test_khuyet_tat_compact_prompt_contract():
     assert "MucDo_HoatDong" in system_prompt
     assert "kt5_1" in system_prompt
     assert "kt5_3" in system_prompt
-    assert "vỡ dòng" in system_prompt
-    assert "tách riêng" in system_prompt
+    # Bảng dạng khuyết tật phải trả theo TỪNG DÒNG, kèm hai luật chống đọc sai cột.
+    assert "KhuyetTat_BangDanhDau" in system_prompt
+    assert "Có kết luận của cơ sở y tế" in system_prompt
+    assert "làm phẳng bảng" in system_prompt
+    assert "KHÔNG mặc định là \"co\"" in system_prompt
     assert "THD" in system_prompt
 
 

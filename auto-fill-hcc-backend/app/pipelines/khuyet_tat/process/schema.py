@@ -40,6 +40,11 @@ FIELDS: list[dict] = [
     {"name": "Ndd_NoiCuTru", "desc": "Địa chỉ thường trú/nơi ở người đại diện, object {quocGia,tinh,xa,diaChi}."},
 
     # Bảng dạng khuyết tật.
+    {"name": "KhuyetTat_BangDanhDau",
+     "desc": 'Bảng "Thông tin về dạng khuyết tật" đọc THEO TỪNG DÒNG. Object: key là số dòng in trên '
+             'đơn ("1","1.1",...,"6","6.3"), value là "co" nếu dấu X/✓ nằm ở cột "Có", "khong" nếu dấu '
+             'nằm ở cột "Không", "" nếu dòng để trống hoặc KHÔNG chắc dấu thuộc cột nào. Trả ĐỦ mọi dòng '
+             'đọc được, kể cả dòng "khong" — đây là nguồn chính, không được chỉ liệt kê dòng "co".'},
     {"name": "KhuyetTat_DanhMuc",
      "desc": 'Danh sách nhóm khuyết tật được tích "Có": array mã "kt1".."kt6" tương ứng vận động, nghe nói, nhìn, thần kinh tâm thần, trí tuệ, khác.'},
     {"name": "KhuyetTat_ChiTiet",
@@ -58,7 +63,7 @@ for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "Nkt_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in ("Cccd_NoiCuTru", "Nkt_ThuongTru", "Nkt_NoiOHienNay", "Ndd_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
-for _name in ("KhuyetTat_DanhMuc", "KhuyetTat_ChiTiet", "MucDo_HoatDong"):
+for _name in ("KhuyetTat_BangDanhDau", "KhuyetTat_DanhMuc", "KhuyetTat_ChiTiet", "MucDo_HoatDong"):
     COMPACT_COMP_BY_NAME[_name] = "raw"
 
 UI_COMP_BY_NAME = {
@@ -152,6 +157,9 @@ DISABILITY_RADIO_FIELDS = {
     "kt6_2": "data[khuyetTat6Obj][khuyetTatRadio2]",
     "kt6_3": "data[khuyetTat6Obj][khuyetTatRadio3]",
 }
+
+# Số dòng con của từng nhóm trong bảng "dạng khuyết tật" (Mẫu số 01) — dùng để suy nhóm cha ⇄ dòng con.
+DISABILITY_GROUP_CHILDREN = {"kt1": 6, "kt2": 6, "kt3": 7, "kt4": 5, "kt5": 4, "kt6": 3}
 
 MUC_DO_RADIO_FIELDS = {
     "1": "data[mucDoKhuyetTatObj][mucDoRadio1]",

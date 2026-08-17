@@ -1,0 +1,1691 @@
+[
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Phước Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "An Hải Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "An Hải Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Phát",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "An Khê",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Điện An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Thắng"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Điện Thắng Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Thắng"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Điện Thắng Trung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Thắng"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Tân Thanh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Bàn Thạch"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Thuận",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Bàn Thạch",
+        "ambiguous": true
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Tam Thăng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Bàn Thạch"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Thọ Tây",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Cẩm Lệ"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Thọ Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Cẩm Lệ"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Khuê Trung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Cẩm Lệ"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Bình Thuận",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Cường"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Thuận Tây",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Cường"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Cường Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Cường"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Cường Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Cường"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Khánh Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Khánh"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Minh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Khánh"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Khánh"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Xuân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Xuân"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Châu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Xuân"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hòa Xuân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "An Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hương Trà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Hòa Hương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hương Trà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Ngọc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hương Trà"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thanh Bình",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thuận Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thạch Thang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Phước Ninh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hải Châu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Hiệp Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Vân"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Hiệp Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Vân"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Vân"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Liên",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Vân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Minh An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm Phố",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Sơn Phong",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm Kim",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Thanh Hà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tân An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm Hà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm Châu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cửa Đại",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cẩm Thanh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hội An Đông"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Khánh Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Liên Chiểu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Ngũ Hành Sơn"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Khuê Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Ngũ Hành Sơn"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Hải",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Ngũ Hành Sơn"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Quý",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Ngũ Hành Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "An Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Thanh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Quảng Phú"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thọ Quang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Sơn Trà"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Nại Hiên Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Sơn Trà"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Mân Thái",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Sơn Trà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "An Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Tam Kỳ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "An Xuân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Tam Kỳ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trường Xuân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Tam Kỳ"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Xuân Hà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Thanh Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Chính Gián",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Thanh Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thạc Gián",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Thanh Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thanh Khê Tây",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Thanh Khê"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Thanh Khê Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Thanh Khê"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Phương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Minh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Vĩnh Điện",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Thắng Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Bắc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Hòa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Bắc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Tiến",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Bắc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Nam Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Nam Trung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Dương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Ngọc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Nam Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Điện Bàn Đông"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bhalee",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Avương"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Avương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Avương"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Ninh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bà Nà"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Nhơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bà Nà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Cà Dy",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bến Giằng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tà Bhing",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bến Giằng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tà Pơơ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bến Giằng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Kà Dăng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bến Hiên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Mà Cooih",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Bến Hiên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phú Thịnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Chiên Đàn",
+        "ghi_chu": "Thị trấn Phú Thịnh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Đàn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Chiên Đàn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Thái",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Chiên Đàn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Thành",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Duy Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Hải",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Duy Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Nghĩa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Duy Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Trung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Duy Xuyên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Duy Xuyên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Trinh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Duy Xuyên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Phong",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Gò Nổi"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Trung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Gò Nổi"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Quang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Gò Nổi"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hiệp Đức",
+        "ghi_chu": "Thị trấn Tân Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Tân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hiệp Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Lưu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hiệp Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Đồng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hà Nha"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Hồng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hà Nha"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Quang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hà Nha"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Khương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hòa Tiến"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Tiến",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hòa Tiến"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Phong",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hòa Vang"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Hòa Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hòa Vang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Chơm",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hùng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Gari",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hùng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tr'hy",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hùng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Axan",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Hùng Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Khâm Đức",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Khâm Đức",
+        "ghi_chu": "Thị trấn Khâm Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Xuân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Khâm Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đắc Tôi",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã La Dêê"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "La Dêê",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã La Dêê"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Chơ Chun",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã La Êê"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "La Êê",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã La Êê"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Lãnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Lãnh Ngọc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Ngọc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Lãnh Ngọc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Hiệp",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Lãnh Ngọc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Zuôih",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Chà Vàl",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Nam Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Phước",
+        "ghi_chu": "Thị trấn Nam Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Vinh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Mai",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Trà My"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Don",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nam Trà My"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trung Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nông Sơn",
+        "ghi_chu": "Thị trấn Trung Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Lộc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Nông Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Núi Thành",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Núi Thành",
+        "ghi_chu": "Thị trấn Núi Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Quang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Núi Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Nghĩa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Núi Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Hiệp",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Núi Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Giang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Núi Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Dân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Đại",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Lãnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Tân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Thắng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Chánh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Thanh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phú Thuận"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Công",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Chánh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Chánh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Chánh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Hòa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Hiệp"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Hiệp",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Hiệp"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Đức",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Năng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Năng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Năng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Năng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Lộc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Kim",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Thành",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Thành"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Sông Trà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Trà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Gia",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Trà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Trà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Phước Trà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Lâm",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Phước Ninh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Ninh Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đồng Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn",
+        "ghi_chu": "Thị trấn Đồng Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Minh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Long",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Phong",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn Trung"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Hiệp",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn Trung"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Thuận",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn Trung"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Châu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Quế Sơn Trung"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "A Ting",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sông Kôn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Jơ Ngây",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sông Kôn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Sông Kôn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sông Kôn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tư",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sông Vàng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Ba",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sông Vàng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sơn Cẩm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Hà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sơn Cẩm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Châu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Sơn Cẩm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Hòa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Anh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Anh Bắc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Anh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Anh Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Anh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Mỹ Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Mỹ Tây",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Trà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Xuân I",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Xuân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Xuân II",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Xuân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Tiến",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tam Xuân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Châu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thu Bồn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Hoà",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thu Bồn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thu Bồn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Duy Tân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thu Bồn"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Triều",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Giang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Đào",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Minh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Dương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Hà Lam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Bình",
+        "ghi_chu": "Thị trấn Hà Lam"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Nguyên",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Quý",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Phục",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Quế",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Trường"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Hải",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Trường"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Sa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Trường"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Điền"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Trung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Điền"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Tú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thăng Điền"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Lãnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thượng Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Hưng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thượng Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thượng Đức"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Lập",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Lộc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Cảnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Thạnh Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Thạnh Mỹ",
+        "ghi_chu": "Thị trấn Thạnh Mỹ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Kỳ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tiên Phước",
+        "ghi_chu": "Thị trấn Tiên Kỳ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Mỹ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tiên Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Phong",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tiên Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tiên Thọ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tiên Phước"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Ka",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Giáp"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Giáp",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Giáp"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Dơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Leng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Leng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Leng"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Nam",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Linh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Linh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Linh"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Liên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Nú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Liên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Kót",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Liên"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà My",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà My",
+        "ghi_chu": "Thị trấn Trà My"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà My"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Giang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà My"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Dương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà My"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Giác",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Tân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Tân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Tân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Cang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Tập"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Tập",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Tập"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Vinh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Vân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Vân",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Vân"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Bui",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Đốc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Trà Đốc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Trà Đốc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Atiêng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Dang",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Anông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Lăng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Hồ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Thành",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Hồ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Hồ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Lộc",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Tây Hồ"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Thắng Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Việt An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Việt An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Thọ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Việt An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Lâm",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Việt An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Phong",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Vu Gia"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Minh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Vu Gia"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Cường",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Vu Gia"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Hương An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Xuân Phú",
+        "ghi_chu": "Thị trấn Hương An"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Xuân 1",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Xuân Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Xuân 2",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Xuân Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Quế Phú",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Xuân Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Hồng",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Điện Bàn Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Thọ",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Điện Bàn Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Điện Phước",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Điện Bàn Tây"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Prao",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đông Giang",
+        "ghi_chu": "Thị trấn Prao"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tà Lu",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đông Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "A Rooi",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đông Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Zà Hung",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đông Giang"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Ái Nghĩa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đại Lộc",
+        "ghi_chu": "Thị trấn Ái Nghĩa"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Hiệp",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đại Lộc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Hòa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đại Lộc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại An",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đại Lộc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đại Nghĩa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đại Lộc"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đắc Pre",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đắc Pring"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Đắc Pring",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đắc Pring"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Lãnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đồng Dương"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Trị",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đồng Dương"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Bình Định",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đồng Dương"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Sơn",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đức Phú"
+    },
+    {
+        "tinh_cu": "Quảng Nam",
+        "xa_cu": "Tam Thạnh",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Xã Đức Phú"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Huyện Hoàng Sa",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Đặc khu Hoàng Sa"
+    }
+]

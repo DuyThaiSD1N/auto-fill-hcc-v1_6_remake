@@ -1,0 +1,72 @@
+# Compose PROD — self-contained: Mongo riêng, network riêng, volume riêng.
+#
+#   docker compose -f compose.prod.yml up -d --build
+#
+# Ghi chú:
+# - ${MONGO_USERNAME}/${MONGO_PASSWORD} nội suy từ ./.env (docker compose tự đọc
+#   ./.env cho variable substitution). Container app nhận full biến qua env_file.
+# - MONGO_HOST/PORT override ở service app để trỏ về service `mongo` nội bộ network.
+# - Reverse proxy (nginx/caddy) + HTTPS/WSS cấu hình ngoài compose — xem docs/09.
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-change_me}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      # CHỈ bind localhost — TUYỆT ĐỐI KHÔNG phơi Mongo ra 0.0.0.0/internet. App nối qua network
+      # nội bộ (MONGO_HOST=mongo:27017) nên KHÔNG cần cổng host; 127.0.0.1 chỉ để mongosh qua SSH
+      # tunnel. Mongo mở ra ngoài = bot ransomware quét & DROP sạch mọi collection mỗi đêm.
+      - "127.0.0.1:27028:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - tro_ly_nguoi_dan
+
+  app:
+    build: .
+    image: tro-ly-nguoi-dan-be:latest
+    env_file: .env
+    environment:
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+    ports:
+      - "${PORT:-8010}:${PORT:-8010}"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - tro_ly_nguoi_dan
+
+  # Trang quản trị (chỉ admin) — nginx serve bản build Vite, FE build trong image.
+  # Truy cập: http://<server>:12010 (hoặc thêm location /quan-tri ở nginx host proxy vào).
+  fe:
+    build: ./fe
+    image: tro-ly-nguoi-dan-fe:latest
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://app:8010}
+    ports:
+      - "12010:12010"
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - tro_ly_nguoi_dan
+
+networks:
+  tro_ly_nguoi_dan:
+    name: tro_ly_nguoi_dan_net
+
+volumes:
+  mongo_data:
+    name: tro_ly_nguoi_dan_mongo_data

@@ -1,0 +1,2079 @@
+[
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Sar",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Lạc Dương"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Nhim",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Lạc Dương"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Chais",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Lạc Dương"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Thạnh Mỹ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đơn Dương",
+        "ghi_chu": "Thị trấn Thạnh Mỹ (huyện Đơn Dương cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Ròn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đơn Dương"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tu Tra",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đơn Dương"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lạc Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Ka Đô"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Ka Đô",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Ka Đô"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Ka Đơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Lập"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Quảng Lập",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Lập"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "D'Ran",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã D'Ran",
+        "ghi_chu": "Thị trấn D'Ran"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lạc Xuân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã D'Ran"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hiệp An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hiệp Thạnh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Liên Hiệp",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hiệp Thạnh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hiệp Thạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hiệp Thạnh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Liên Nghĩa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Trọng",
+        "ghi_chu": "Thị trấn Liên Nghĩa"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phú Hội",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Trọng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hội",
+        "ghi_chu": "Xã Tân Thành huyện Đức Trọng — khác Tân Thành huyện Hàm Thuận Nam (Bình Thuận) và Tân Thành huyện Krông Nô (Đắk Nông)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "N'Thôn Hạ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hội"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Hội",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hội"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Ninh Loan",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Hine"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đà Loan",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Hine"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tà Hine",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Hine"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đa Quyn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Năng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tà Năng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Năng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đinh Văn Lâm Hà",
+        "ghi_chu": "Xã Bình Thạnh huyện Đức Trọng — khác Bình Thạnh huyện Tuy Phong (Bình Thuận)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Văn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đinh Văn Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đinh Văn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đinh Văn Lâm Hà",
+        "ghi_chu": "Thị trấn Đinh Văn"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phú Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phú Sơn Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Đờn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phú Sơn Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Nam Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Hà Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phi Tô",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Hà Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Nam Ban",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Ban Lâm Hà",
+        "ghi_chu": "Thị trấn Nam Ban"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đông Thanh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Ban Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Mê Linh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Ban Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Gia Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Ban Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hà Lâm Hà",
+        "ghi_chu": "Xã Tân Hà huyện Lâm Hà — khác Tân Hà huyện Hàm Tân và Tân Hà huyện Đức Linh (đều thuộc Bình Thuận cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hoài Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hà Lâm Hà",
+        "ghi_chu": "Xã Hoài Đức huyện Lâm Hà — khác đơn vị mới 'Xã Hoài Đức' (hợp nhất từ Đức Tài, Đức Tín, Đức Hạnh, huyện Đức Linh, Bình Thuận cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đan Phượng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hà Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Liên Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hà Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phúc Thọ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phúc Thọ Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Thanh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phúc Thọ Lâm Hà"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phi Liêng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 1"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ K'Nàng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 1"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Rô Men",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Liêng Srônh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Rsal",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ M'Rông",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Tông",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 4"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Long",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 4"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đưng K'Nớ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đam Rông 4"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Di Linh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Di Linh",
+        "ghi_chu": "Thị trấn Di Linh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Liên Đầm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Di Linh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Châu",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Di Linh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Gung Ré",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Di Linh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đinh Trang Hòa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Ninh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hòa Trung",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Ninh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hòa Ninh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Ninh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hòa Nam",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Bắc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hòa Bắc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Bắc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đinh Trang Thượng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Thượng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đinh Trang Thượng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đinh Trang Thượng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đinh Trang Thượng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đinh Lạc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Thuận"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Nghĩa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Thuận",
+        "ghi_chu": "Xã Tân Nghĩa huyện Di Linh — khác Tân Nghĩa (thị trấn huyện Hàm Tân, Bình Thuận cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Bảo Thuận",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Thuận"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Gia Bắc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sơn Điền"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Sơn Điền",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sơn Điền"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tam Bố",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Gia Hiệp"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Gia Hiệp",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Gia Hiệp"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 1",
+        "ghi_chu": "Thị trấn Lộc Thắng"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Quảng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 1"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Ngãi",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 1"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tân Lạc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Nam",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 4"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 4"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "B'Lá",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 4"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Bảo",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 5"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Bắc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bảo Lâm 5"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Mađaguôi",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Huoai",
+        "ghi_chu": "Thị trấn Mađaguôi"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Mađaguôi",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Huoai",
+        "ghi_chu": "Xã Mađaguôi — xã riêng cùng tên với thị trấn Mađaguôi, cả hai cùng sáp nhập vào xã Đạ Huoai (mới)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Oai",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Huoai"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ M'ri",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Huoai 2",
+        "ghi_chu": "Thị trấn Đạ M'ri"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Hà Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Huoai 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Tẻh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh",
+        "ghi_chu": "Thị trấn Đạ Tẻh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "An Nhơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Lây",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Quảng Trị",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Pal",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đạ Kho",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Mỹ Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Quốc Oai",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Tẻh 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Cát Tiên",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên",
+        "ghi_chu": "Thị trấn Cát Tiên"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Nam Ninh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Quảng Ngãi",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phước Cát",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên 2",
+        "ghi_chu": "Thị trấn Phước Cát"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phước Cát 2",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đức Phổ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên 2"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Gia Viễn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tiên Hoàng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên 3"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đồng Nai Thượng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cát Tiên 3"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Vĩnh Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Vĩnh Hảo"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Vĩnh Hảo",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Vĩnh Hảo"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Liên Hương",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Liên Hương",
+        "ghi_chu": "Thị trấn Liên Hương"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Liên Hương",
+        "ghi_chu": "Xã Bình Thạnh huyện Tuy Phong — khác Bình Thạnh huyện Đức Trọng (Lâm Đồng cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phước Thể",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Liên Hương"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phú Lạc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Liên Hương"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Dũng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuy Phong"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phong Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuy Phong",
+        "ghi_chu": "Một phần xã Phong Phú (huyện Tuy Phong); đây là 1 xã Phong Phú duy nhất, bị chia — phần còn lại nhập vào xã Phan Rí Cửa (xem dòng tương ứng)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Rí Cửa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phan Rí Cửa",
+        "ghi_chu": "Thị trấn Phan Rí Cửa"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Chí Công",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phan Rí Cửa"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hòa Minh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phan Rí Cửa"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phong Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phan Rí Cửa",
+        "ghi_chu": "Phần còn lại của xã Phong Phú (huyện Tuy Phong) sau khi tách một phần nhập vào xã Tuy Phong (xem dòng tương ứng) — cùng là 1 xã Phong Phú duy nhất"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Chợ Lầu",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bắc Bình",
+        "ghi_chu": "Thị trấn Chợ Lầu"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Hòa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bắc Bình"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Hiệp",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bắc Bình"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Rí Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bắc Bình"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Thanh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hồng Thái"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hồng Thái",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hồng Thái"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hòa Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hồng Thái",
+        "ghi_chu": "Một phần xã Hòa Thắng (huyện Bắc Bình); đây là 1 xã Hòa Thắng duy nhất, bị chia — phần còn lại nhập vào xã Hòa Thắng (mới, xem dòng tương ứng)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Bình An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hải Ninh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Điền",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hải Ninh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hải Ninh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hải Ninh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phan Sơn"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Phan Sơn"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phan Tiến",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sông Lũy"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Bình Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sông Lũy",
+        "ghi_chu": "Xã Bình Tân huyện Bắc Bình — khác phường Bình Tân (TX La Gi cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Sông Lũy",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sông Lũy"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Lương Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Lương Sơn",
+        "ghi_chu": "Thị trấn Lương Sơn"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Sông Bình",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Lương Sơn"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hồng Phong",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Thắng"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hòa Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hòa Thắng",
+        "ghi_chu": "Phần còn lại của xã Hòa Thắng (huyện Bắc Bình) sau khi tách một phần nhập vào xã Hồng Thái (xem dòng tương ứng) — cùng là 1 xã Hòa Thắng duy nhất"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đông Tiến",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đông Giang"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đông Giang",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đông Giang"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đa Mi",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã La Dạ"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "La Dạ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã La Dạ"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thuận Hòa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận Bắc"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Trí",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận Bắc"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận Bắc"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Ma Lâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận",
+        "ghi_chu": "Thị trấn Ma Lâm"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thuận Minh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hồng Liêm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hồng Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Chính",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Liêm"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Liêm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Liêm"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tiến Lợi",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuyên Quang"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Mỹ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuyên Quang"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Mỹ Thạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Cần",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Thạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Mương Mán",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Kiệm"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Cường",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Kiệm"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Kiệm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Kiệm"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Thành",
+        "ghi_chu": "Xã Tân Thành huyện Hàm Thuận Nam — khác Tân Thành huyện Đức Trọng (Lâm Đồng) và Tân Thành huyện Krông Nô (Đắk Nông)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thuận Quý",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Thuận",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thuận Nam",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận Nam",
+        "ghi_chu": "Thị trấn Thuận Nam"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Minh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Thuận Nam"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Sông Phan",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Lập"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Lập"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Minh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Minh",
+        "ghi_chu": "Thị trấn Tân Minh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Phúc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Tân",
+        "ghi_chu": "Xã Tân Hà huyện Hàm Tân — khác Tân Hà huyện Lâm Hà (Lâm Đồng cũ) và Tân Hà huyện Đức Linh (Bình Thuận cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Xuân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Tân"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Nghĩa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hàm Tân",
+        "ghi_chu": "Thị trấn Tân Nghĩa huyện Hàm Tân — khác Tân Nghĩa (xã huyện Di Linh, Lâm Đồng cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sơn Mỹ"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thắng Hải",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sơn Mỹ"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Sơn Mỹ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Sơn Mỹ"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Tiến",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hải"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Hải",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tân Hải"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nghị Đức"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Nghị Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nghị Đức"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Măng Tố",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bắc Ruộng"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Bắc Ruộng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Bắc Ruộng"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Huy Khiêm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đồng Kho"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "La Ngâu",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đồng Kho"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Bình",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đồng Kho"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đồng Kho",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đồng Kho"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Lạc Tánh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tánh Linh",
+        "ghi_chu": "Thị trấn Lạc Tánh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Gia An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tánh Linh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Thuận",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tánh Linh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Gia Huynh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Suối Kiết"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Suối Kiết",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Suối Kiết"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Mê Pu",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Thành"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Sùng Nhơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Thành"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đa Kai",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Thành"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Võ Xu",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Linh",
+        "ghi_chu": "Thị trấn Võ Xu"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Nam Chính",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Linh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Vũ Hòa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Linh"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Tài",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hoài Đức",
+        "ghi_chu": "Thị trấn Đức Tài"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Tín",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Hạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Trà Tân",
+        "ghi_chu": "Xã Tân Hà huyện Đức Linh — khác Tân Hà huyện Lâm Hà (Lâm Đồng cũ) và Tân Hà huyện Hàm Tân (Bình Thuận cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đông Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Trà Tân"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Trà Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Trà Tân"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Ea Pô",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Wil"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Wil",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Wil"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk D'rông",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Dong"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nam Dong",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Dong"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Ea T'ling",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cư Jút",
+        "ghi_chu": "Thị trấn Ea T'ling"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Trúc Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cư Jút"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Tâm Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cư Jút"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Cư K'nia",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Cư Jút"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Lao",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Thuận An"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Thuận An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Thuận An"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Mil",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Lập",
+        "ghi_chu": "Thị trấn Đắk Mil"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đức Mạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Lập"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đức Minh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức Lập"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Gằn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Mil"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk N'Drót",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Mil"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk R'La",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Mil"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nam Xuân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Sắk"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Long Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Sắk"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Sắk",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Sắk"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Buôn Choáh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Đà"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Sôr",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Đà"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nam Đà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nam Đà"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Krông Nô",
+        "ghi_chu": "Xã Tân Thành huyện Krông Nô — khác Tân Thành huyện Đức Trọng (Lâm Đồng) và Tân Thành huyện Hàm Thuận Nam (Bình Thuận)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Drô",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Krông Nô"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Mâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Krông Nô",
+        "ghi_chu": "Thị trấn Đắk Mâm"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nâm N'Đir",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nâm Nung"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nâm Nung",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nâm Nung"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đức Xuyên",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Phú"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Nang",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Phú"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Phú"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Môl",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Song"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Hòa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đắk Song"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đức An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức An",
+        "ghi_chu": "Thị trấn Đức An"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk N'Drung",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức An"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nam Bình",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đức An"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Thuận Hà",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Thuận Hạnh"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Thuận Hạnh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Thuận Hạnh"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nâm N'Jang",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Trường Xuân"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Trường Xuân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Trường Xuân"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Som",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Đùng"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk R'Măng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tà Đùng"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Plao",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Khê"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Khê",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Khê"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Ngo",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Tân"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Tân"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Tâm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuy Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk R'Tíh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuy Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Búk So",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Tuy Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Kiến Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Kiến Đức",
+        "ghi_chu": "Thị trấn Kiến Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đạo Nghĩa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Kiến Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nghĩa Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Kiến Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Kiến Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Kiến Đức"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nhân Đạo",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nhân Cơ"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Wer",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nhân Cơ"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nhân Cơ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Nhân Cơ"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Sin",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Tín"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Hưng Bình",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Tín"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Ru",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Tín"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Tín",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Tín"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Hương - Đà Lạt",
+        "ghi_chu": "Phường 1 (TP Đà Lạt cũ) — khác Phường 1 (TP Bảo Lộc cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Hương - Đà Lạt",
+        "ghi_chu": "Phường 2 (TP Đà Lạt cũ) — khác Phường 2 (TP Bảo Lộc cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Hương - Đà Lạt",
+        "ghi_chu": "Phường 3 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Hương - Đà Lạt",
+        "ghi_chu": "Phường 4 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 10",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Hương - Đà Lạt",
+        "ghi_chu": "Phường 10 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 5",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Cam Ly - Đà Lạt",
+        "ghi_chu": "Phường 5 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 6",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Cam Ly - Đà Lạt",
+        "ghi_chu": "Phường 6 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Tà Nung",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Cam Ly - Đà Lạt"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 8",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Lâm Viên - Đà Lạt",
+        "ghi_chu": "Phường 8 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 9",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Lâm Viên - Đà Lạt",
+        "ghi_chu": "Phường 9 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 12",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Lâm Viên - Đà Lạt",
+        "ghi_chu": "Phường 12 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 11",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Trường - Đà Lạt",
+        "ghi_chu": "Phường 11 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Xuân Thọ",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Trường - Đà Lạt"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Xuân Trường",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Trường - Đà Lạt"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Trạm Hành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Xuân Trường - Đà Lạt"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 7",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Lang Biang - Đà Lạt",
+        "ghi_chu": "Phường 7 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lạc Dương",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Lang Biang - Đà Lạt",
+        "ghi_chu": "Thị trấn Lạc Dương (huyện Lạc Dương cũ) — khác xã Lạc Dương (mới, hợp nhất từ Đạ Sar, Đạ Nhim, Đạ Chais)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lát",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Lang Biang - Đà Lạt"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 1 Bảo Lộc",
+        "ghi_chu": "Phường 1 (TP Bảo Lộc cũ) — khác Phường 1 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Phát",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 1 Bảo Lộc",
+        "ghi_chu": "Phường Lộc Phát (TP Bảo Lộc cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Thanh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 1 Bảo Lộc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 2 Bảo Lộc",
+        "ghi_chu": "Phường 2 (TP Bảo Lộc cũ) — khác Phường 2 (TP Đà Lạt cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 2 Bảo Lộc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "ĐamBri",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 2 Bảo Lộc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Tiến",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 3 Bảo Lộc",
+        "ghi_chu": "Phường Lộc Tiến (TP Bảo Lộc cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Châu",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 3 Bảo Lộc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Đại Lào",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường 3 Bảo Lộc"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường B'Lao",
+        "ghi_chu": "Phường Lộc Sơn (TP Bảo Lộc cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "B'Lao",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường B'Lao",
+        "ghi_chu": "Phường B'Lao (TP Bảo Lộc cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Lộc Nga",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường B'Lao"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Xuân An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Hàm Thắng",
+        "ghi_chu": "Phường Xuân An (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phú Long",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Hàm Thắng",
+        "ghi_chu": "Thị trấn Phú Long"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Thắng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Hàm Thắng"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phú Tài",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bình Thuận",
+        "ghi_chu": "Phường Phú Tài (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phong Nẫm",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bình Thuận"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Hiệp",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bình Thuận"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Hàm Tiến",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Mũi Né",
+        "ghi_chu": "Phường Hàm Tiến (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Mũi Né",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Mũi Né",
+        "ghi_chu": "Phường Mũi Né (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thiện Nghiệp",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Mũi Né"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Thanh Hải",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phú Thủy",
+        "ghi_chu": "Phường Thanh Hải (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phú Hài",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phú Thủy",
+        "ghi_chu": "Phường Phú Hài (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phú Thủy",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phú Thủy",
+        "ghi_chu": "Phường Phú Thủy (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phú Trinh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phan Thiết",
+        "ghi_chu": "Phường Phú Trinh (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Lạc Đạo",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phan Thiết",
+        "ghi_chu": "Phường Lạc Đạo (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Bình Hưng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phan Thiết",
+        "ghi_chu": "Phường Bình Hưng (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Đức Long",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Tiến Thành",
+        "ghi_chu": "Phường Đức Long (TP Phan Thiết cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tiến Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Tiến Thành"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân An",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường La Gi",
+        "ghi_chu": "Phường Tân An (TX La Gi cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Bình Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường La Gi",
+        "ghi_chu": "Phường Bình Tân (TX La Gi cũ) — khác xã Bình Tân huyện Bắc Bình"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Thiện",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường La Gi",
+        "ghi_chu": "Phường Tân Thiện (TX La Gi cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường La Gi"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phước Lộc",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phước Hội",
+        "ghi_chu": "Phường Phước Lộc (TX La Gi cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Phước Hội",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phước Hội",
+        "ghi_chu": "Phường Phước Hội (TX La Gi cũ)"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tân Phước",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Phước Hội"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bắc Gia Nghĩa",
+        "ghi_chu": "Phường Quảng Thành (TP Gia Nghĩa cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nghĩa Thành",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bắc Gia Nghĩa",
+        "ghi_chu": "Phường Nghĩa Thành (TP Gia Nghĩa cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nghĩa Đức",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bắc Gia Nghĩa",
+        "ghi_chu": "Phường Nghĩa Đức (TP Gia Nghĩa cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Ha",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Bắc Gia Nghĩa"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nghĩa Phú",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Nam Gia Nghĩa",
+        "ghi_chu": "Phường Nghĩa Phú (TP Gia Nghĩa cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nghĩa Tân",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Nam Gia Nghĩa",
+        "ghi_chu": "Phường Nghĩa Tân (TP Gia Nghĩa cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk R'Moan",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Nam Gia Nghĩa"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Nghĩa Trung",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Đông Gia Nghĩa",
+        "ghi_chu": "Phường Nghĩa Trung (TP Gia Nghĩa cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Đắk Nia",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Phường Đông Gia Nghĩa"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Long Hải",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Đặc khu Phú Quý"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Ngũ Phụng",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Đặc khu Phú Quý"
+    },
+    {
+        "tinh_cu": "Bình Thuận",
+        "xa_cu": "Tam Thanh",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Đặc khu Phú Quý"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Bà Gia",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Đạ Huoai 3",
+        "ghi_chu": "Đổi tên xã Bà Gia thành xã Đạ Huoai 3 — không sáp nhập với xã khác"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Hòa",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Hòa",
+        "ghi_chu": "Giữ nguyên, không thực hiện sắp xếp (huyện Đắk Glong cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Sơn",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Sơn",
+        "ghi_chu": "Giữ nguyên, không thực hiện sắp xếp (huyện Đắk Glong cũ)"
+    },
+    {
+        "tinh_cu": "Đắk Nông",
+        "xa_cu": "Quảng Trực",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Quảng Trực",
+        "ghi_chu": "Giữ nguyên, không thực hiện sắp xếp (huyện Tuy Đức cũ)"
+    },
+    {
+        "tinh_cu": "Lâm Đồng",
+        "xa_cu": "Ninh Gia",
+        "tinh_moi": "Lâm Đồng",
+        "xa_moi": "Xã Ninh Gia",
+        "ghi_chu": "Giữ nguyên, không thực hiện sắp xếp (huyện Đức Trọng cũ)"
+    }
+]

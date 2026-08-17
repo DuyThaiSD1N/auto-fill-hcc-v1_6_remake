@@ -6,6 +6,7 @@ import unicodedata
 from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.khuyet_tat.process.schema import (
+    DISABILITY_GROUP_CHILDREN,
     DISABILITY_RADIO_FIELDS,
     MUC_DO_RADIO_FIELDS,
     UI_COMP_BY_NAME,
@@ -110,6 +111,10 @@ def _compact_code(value) -> str:
     match = re.search(r"\bkt([1-6])(?:[_\-. ]?([1-7]))?\b", folded)
     if match:
         return f"kt{match.group(1)}" + (f"_{match.group(2)}" if match.group(2) else "")
+    # Số dòng in trên đơn: "1.1", "1 1", "5.3" -> mã nhóm/mục con.
+    row = re.fullmatch(r"([1-6])[ ._-]?([1-7])", folded)
+    if row:
+        return f"kt{row.group(1)}_{row.group(2)}"
     # Map ten day du / so thu tu -> ma
     _NAME_MAP = {
         "van dong": "kt1", "van": "kt1",
@@ -127,6 +132,62 @@ def _compact_code(value) -> str:
         if key in folded:
             return code
     return folded
+
+
+def _tick_state(value) -> str:
+    """Chuẩn hóa ô đánh dấu 1 dòng về "co" | "khong" | "" (không kết luận)."""
+    if value is True:
+        return "co"
+    if value is False:
+        return "khong"
+    folded = _norm_text(value)
+    if not folded:
+        return ""
+    if folded in {"co", "x", "yes", "true", "1"}:
+        return "co"
+    if folded in {"khong", "no", "false", "0"}:
+        return "khong"
+    return ""
+
+
+def _disability_states(values: dict) -> dict[str, str]:
+    """Trạng thái từng dòng bảng dạng khuyết tật: {"kt1": "khong", "kt4_1": "co", ...}.
+
+    Nguồn theo thứ tự tin cậy: bảng đọc theo dòng (đã được fallback ghi đè bằng cột OCR thật) →
+    danh sách mã "Có" của LLM. Sau đó áp ràng buộc của chính mẫu đơn: nhóm cha "Có" khi có ít nhất
+    một dòng con "Có"; ngược lại nhóm "Không" thì mọi dòng con cũng "Không".
+    """
+    states: dict[str, str] = {}
+    blank: set[str] = set()
+    table = values.get("KhuyetTat_BangDanhDau")
+    if isinstance(table, dict):
+        for key, raw in table.items():
+            code = _compact_code(key)
+            if code not in DISABILITY_RADIO_FIELDS:
+                continue
+            state = _tick_state(raw)
+            if state:
+                states[code] = state
+            else:
+                # Dòng đọc được nhưng không có dấu (hoặc không chắc) -> chặn luôn phán đoán "co"
+                # của danh sách bên dưới; đây là chỗ LLM hay nhầm nhãn "Có kết luận..." thành ô tích.
+                blank.add(code)
+
+    for value in _as_list(values.get("KhuyetTat_ChiTiet")) + _as_list(values.get("KhuyetTat_DanhMuc")):
+        code = _compact_code(value)
+        if code in DISABILITY_RADIO_FIELDS and code not in blank:
+            states.setdefault(code, "co")
+
+    for group, count in DISABILITY_GROUP_CHILDREN.items():
+        children = [states.get(f"{group}_{index}") for index in range(1, count + 1)]
+        if any(child == "co" for child in children):
+            states[group] = "co"
+        elif states.get(group) == "khong" or all(child == "khong" for child in children):
+            states[group] = "khong"
+            # Nhóm "Không" ⇒ mọi dòng con "Không" (có con "Có" thì nhánh trên đã chốt nhóm là "Có").
+            for index in range(1, count + 1):
+                states.setdefault(f"{group}_{index}", "khong")
+    return states
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
@@ -203,18 +264,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("data[NddMaXa]", ndd_area.get("xa"))
         add("data[NddDiachi]", ndd_area.get("diaChi"))
 
-    # III. Dạng khuyết tật: parent trước child để Form.io mở các radio con.
-    categories = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_DanhMuc"))}
-    details = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_ChiTiet"))}
-    categories.update(code.split("_", 1)[0] for code in details if "_" in code)
-    for code in sorted(categories):
+    # III. Dạng khuyết tật: điền cả "co" lẫn "khong" đúng như đơn đã đánh dấu.
+    # sorted() cho nhóm cha đứng trước dòng con ("kt1" < "kt1_1" < "kt2") để Form.io mở radio con.
+    for code, state in sorted(_disability_states(values).items()):
         name = DISABILITY_RADIO_FIELDS.get(code)
         if name:
-            add(name, "co")
-    for code in sorted(details):
-        name = DISABILITY_RADIO_FIELDS.get(code)
-        if name:
-            add(name, "co")
+            add(name, state)
 
     muc_do = values.get("MucDo_HoatDong")
     if isinstance(muc_do, dict):

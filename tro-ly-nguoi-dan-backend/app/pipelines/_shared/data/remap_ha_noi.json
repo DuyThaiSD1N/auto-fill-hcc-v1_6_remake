@@ -1,0 +1,4766 @@
+[
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quán Thánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trúc Bạch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cửa Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Điện Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đội Cấn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kim Mã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thụy Khuê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cửa Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ba Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bạch Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bách Khoa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quỳnh Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Tâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lê Đại Hành",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trương Định",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Nhàn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bạch Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đức Giang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Gia Thụy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thượng Thanh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Thụy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bồ Đề",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Long Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Bồ Đề"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Biên Giang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Chúc Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phụng Châu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiên Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thuỵ Hương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Chương Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dịch Vọng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cầu Giấy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dịch Vọng Hậu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cầu Giấy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quan Hoa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cầu Giấy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mỹ Đình 1",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cầu Giấy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mỹ Đình 2",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cầu Giấy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cầu Giấy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bài",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phan Chu Trinh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trần Hưng Đạo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cửa Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nguyễn Du",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phạm Đình Hổ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Trống",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tràng Tiền",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Cửa Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dương Nội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Dương Nội"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Dương Nội"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Nghĩa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Dương Nội"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã La Phù",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Dương Nội"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Dương Nội"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường La Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Dương Nội"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Giảng Võ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cát Linh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Láng Hạ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Khánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thành Công",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cống Vị",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kim Mã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Giảng Võ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Nhân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phố Huế",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bạch Đằng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lê Đại Hành",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nguyễn Du",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Nhàn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phạm Đình Hổ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hai Bà Trưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bạc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bồ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Buồm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Đào",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Gai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Mã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lý Thái Tổ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cửa Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cửa Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Điện Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Trống",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tràng Tiền",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàn Kiếm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hoàng Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Văn Điển",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tam Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Kim",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Giáp Bát",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hoàng Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hoàng Văn Thụ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lĩnh Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tân Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thịnh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tương Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trần Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hoàng Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vạn Phúc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quang Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hà Cầu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường La Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Văn Quán",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Triều",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mộ Lao",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hà Đông"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Chương Dương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Tân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nhật Tân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quảng An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tứ Liên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Phụ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bồ Đề",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Thụy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bạch Đằng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Hồng Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hạ Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khương Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khương Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Kim",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Triều",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Xuân Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thượng Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Khương Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kim Liên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khương Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nam Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Liên Trung Tự",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quang Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kim Liên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kiến Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quang Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hà Cầu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cự Khối",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thạch Bàn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bát Tràng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Long Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bồ Đề",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Gia Thụy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Long Biên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Láng Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Láng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Láng Hạ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Láng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Khánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Láng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lĩnh Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Lĩnh Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Trì",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Lĩnh Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trần Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Lĩnh Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Lĩnh Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Lĩnh Nam"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nghĩa Tân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cổ Nhuế 1",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mai Dịch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nghĩa Đô",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Tảo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dịch Vọng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dịch Vọng Hậu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quan Hoa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Phúc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Liễu Giai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cống Vị",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kim Mã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Khánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nghĩa Đô",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đội Cấn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngọc Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ngọc Hà"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Diễn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Diễn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cổ Nhuế 1",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Diễn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mai Dịch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Diễn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Diễn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Diễn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Lãm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Lương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kiến Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Lương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Lương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cự Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Lương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hữu Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Lương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đông Ngạc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Thượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Thượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Đỉnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Thượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Tảo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Thượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phú Thượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thạch Bàn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Bi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Giang Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Việt Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Lợi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khương Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phương Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thịnh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phương Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phương Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Định Công",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phương Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khương Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phương Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khương Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Phương Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ngô Quyền",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Viên Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đường Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Sơn Lộc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Sơn Tây"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tả Thanh Oai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Kim",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Xuân Bắc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hạ Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Văn Quán",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Triều",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Liệt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nhân Chính",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Xuân Bắc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Xuân Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thượng Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Hoà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Văn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thanh Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Liên Mạc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thượng Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thượng Cát",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thượng Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thượng Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tây Tựu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thượng Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cổ Nhuế 2",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thượng Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thụy Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Thượng Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Bưởi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nhật Tân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quảng An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tứ Liên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Phụ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nghĩa Đô",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thụy Khuê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Hồ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dương Nội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Khánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tây Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Tựu"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tây Tựu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Tựu"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Chung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tây Tựu"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Khanh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tùng Thiện"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Sơn Trầm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tùng Thiện"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tùng Thiện"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tùng Thiện"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Sơn Lộc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tùng Thiện"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tùng Thiện"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Giáp Bát",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mai Động",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Tâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trương Định",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hoàng Văn Thụ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tân Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tương Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Tương Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cầu Diễn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Từ Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mễ Trì",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Từ Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Đô",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Từ Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mai Dịch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Từ Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mỹ Đình 1",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Từ Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mỹ Đình 2",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Từ Liêm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Giang Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Việt Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Lợi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Gia Thụy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đức Giang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thượng Thanh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Khâm Thiên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thổ Quan",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Văn Chương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Điện Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bột",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Văn Miếu Quốc Tử Giám",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cửa Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lê Đại Hành",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nam Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nguyễn Du",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Liên Trung Tự",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Văn Miếu - Quốc Tử Giám"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Lĩnh Nam",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Trì",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Tuy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mai Động",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thanh Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Vĩnh Tuy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phương Canh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tây Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Canh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phúc Diễn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Đỉnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Đỉnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cổ Nhuế 1",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Đỉnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Đỉnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Tảo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Xuân Đỉnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mễ Trì",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nhân Chính",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đồng Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Nghĩa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thịnh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Sở"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Sở"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tứ Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Sở"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hoàng Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Sở"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trần Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Yên Sở"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cát Linh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Điện Biên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thành Công",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ô Chợ Dừa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hàng Bột",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Văn Miếu Quốc Tử Giám",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Ô Chợ Dừa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đức Thắng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đông Ngạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cổ Nhuế 2",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đông Ngạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thụy Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đông Ngạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đông Ngạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đông Ngạc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đông Ngạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Xuân Đỉnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đông Ngạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dương Nội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mộ Lao",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Mễ Trì",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nhân Chính",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Đô",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Văn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đại Mỗ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Định Công",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Hoàng Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thịnh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Triều",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Đại Kim",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Giáp Bát",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Định Công"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thịnh Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đống Đa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Quang Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đống Đa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Láng Hạ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đống Đa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Nam Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đống Đa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Ô Chợ Dừa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đống Đa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Trung Liệt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Phường Đống Đa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Dương Nội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Khánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã La Phù",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Song Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Côn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ba Vì",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ba Vì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Khánh Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ba Vì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ba Vì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Đức",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bát Tràng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Cự Khối",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bát Tràng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thạch Bàn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bát Tràng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Trâu Quỳ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bát Tràng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đa Tốn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bát Tràng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bát Tràng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bát Tràng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bích Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bình Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cao Viên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Cao",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lam Điền",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cự Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Phú Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bình Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thuần Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bất Bạt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tòng Bạt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bất Bạt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Sơn Đà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bất Bạt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cẩm Lĩnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bất Bạt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Bất Bạt"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Dân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chuyên Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Châu Can",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chuyên Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chuyên Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Từ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chuyên Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Chuyên Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chuyên Mỹ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Chương Dương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chương Dương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lê Lợi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chương Dương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thắng Lợi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chương Dương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tự Nhiên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chương Dương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tô Hiệu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chương Dương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vạn Nhất",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Chương Dương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Cường",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Cổ Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Đô",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Cổ Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phong Vân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Cổ Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Hồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Cổ Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Cổ Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vạn Thắng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Cổ Đô"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cao Xuân Dương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dân Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Dương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dân Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Châu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dân Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Ước",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dân Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dân Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dân Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cát Quế",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dương Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dương Liễu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dương Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đắc Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dương Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Khai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dương Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Dương Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dương Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kiêu Kỵ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Trâu Quỳ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Thạch Bàn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Bi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đa Tốn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bát Tràng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Gia Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Trạm Trôi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Di Trạch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đức Giang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đức Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tây Tựu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Lập",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Chung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hoài Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tam Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hiệp Thuận",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Tảo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tam Thuấn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Đa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hát Môn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hát Môn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiến Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bình Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hạ Bằng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Xã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hòa Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Lạc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thượng Vực",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Võ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Thư",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hòa Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Xá"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thái Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Xá"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bình Lưu Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Xá"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phù Lưu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hòa Xá"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cộng Hoà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hưng Đạo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hương Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hùng Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hương Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vạn Tín",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hương Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hương Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hương Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cần Kiệm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hạ Bằng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Trúc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hạ Bằng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bình Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hạ Bằng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hạ Bằng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hạ Bằng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Xã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hạ Bằng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Cát",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hạ Bằng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phùng Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hợp Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lê Thanh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuy Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hà Hồi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Vân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Tảo",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Duyên Thái",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ninh Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Hồng Vân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Dân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kim Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kim Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Trí",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kim Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cấn Hữu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kiều Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liệp Nghĩa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kiều Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tuyết Nghĩa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kiều Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Liệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kiều Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quang Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kiều Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Kiều Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phương Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trung Châu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thọ Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thọ An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiến Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Liên Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Châu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Minh Châu"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Tây Đằng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Minh Châu"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Chu Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Minh Châu"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tráng Việt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiền Phong",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mê Linh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Mạch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mê Linh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Đại Nghĩa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mỹ Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mỹ Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mỹ Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hợp Thanh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mỹ Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phù Lưu Tế",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Mỹ Đức"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vạn Phúc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Ninh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ninh Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Duyên Thái",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngũ Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Duyên Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nam Phù"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Hồi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ngọc Hồi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Duyên Thái",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ngọc Hồi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Áng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ngọc Hồi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Khánh Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ngọc Hồi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Ninh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ngọc Hồi"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Cường",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nội Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hiền Ninh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nội Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nội Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mai Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nội Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nội Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quang Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Nội Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Yên Viên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ninh Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phù Đổng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thiên Đức",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Thường",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Viên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Bi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đặng Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phù Đổng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hoà Thạch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Mãn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Cát",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Cát"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Phương Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Bình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trung Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trường Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Nghĩa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Phú Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Phú Xuyên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Thái",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Cường",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nam Phong",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nam Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quang Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Tự",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tô Hiệu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vạn Nhất",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phú Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nam Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Sen Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Phúc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Võng Xuyên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mỹ Xuyên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phúc Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thượng Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tuy Lai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Tâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bắc Hồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nam Hồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Nội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vĩnh Ngọc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nguyên Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Nộn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiên Dương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Đông Anh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Phúc Thọ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thọ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Long Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thọ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phúc Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thọ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phụng Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thọ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tích Lộc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thọ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trạch Mỹ Lộc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phúc Thọ"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hoàng Long",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phượng Dực"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phượng Dực"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Túc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phượng Dực"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Hoàng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phượng Dực"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phượng Dực",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Phượng Dực"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Chi Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Quang Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mê Linh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiền Phong",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Hoa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quang Minh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hoàng Diệu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Bị"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hợp Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Bị"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quảng Bị",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Bị"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tốt Động",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Bị"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lam Điền",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Bị"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cam Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiên Phong",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thụy An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Tây Đằng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Chu Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quảng Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Thán",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quốc Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Sài Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quốc Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quốc Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Quốc Oai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quốc Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phượng Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Quốc Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ba Trại",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Suối Hai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tản Lĩnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Suối Hai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thụy An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Suối Hai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cẩm Lĩnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Suối Hai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Sóc Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phù Lỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phù Linh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiên Dược",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mai Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quang Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sóc Sơn"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lại Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Sơn Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiền Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Khánh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Song Phương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Côn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã An Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Canh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Sơn Đồng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mỹ Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tam Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Thùy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tam Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Văn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tam Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tam Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tam Hưng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Kim Bài",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đỗ Động",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phương Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Thư",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Oai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Văn Điển",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngũ Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vĩnh Quỳnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Mỹ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Duyên Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tứ Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Yên Sở",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thanh Trì"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Võng La",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thiên Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Chung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thiên Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Mạch",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thiên Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Nỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thiên Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiền Phong",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thiên Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hải Bối",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thiên Lộc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dương Quang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thuận An"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lệ Chi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thuận An"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đặng Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thuận An"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thuận An"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thụy Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Nộn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Đông Anh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dục Tú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nguyên Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Uy Nỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Việt Hùng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thư Lâm"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Thường Tín",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiền Phong",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hiền Giang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hòa Bình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nhị Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Bình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Áng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Khánh Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thường Tín"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Minh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thượng Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dũng Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thượng Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quất Động",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thượng Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nghiêm Xuyên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thượng Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nguyễn Trãi",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thượng Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Liên Quan",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thạch Thất"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cẩm Yên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thạch Thất"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thạch Thất"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Quan",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thạch Thất"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lại Thượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thạch Thất"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Kim",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Thạch Thất"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tam Đồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiến Thắng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tự Lập",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Hoa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thanh Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Đà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tiến Thắng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bắc Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trung Giã"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Kỳ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trung Giã"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nam Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trung Giã"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trung Giã",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trung Giã"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hoàng Văn Thụ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hữu Văn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mỹ Lương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trần Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Tâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phùng Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hương Ngải",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Lam Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quang Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Quốc Oai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Ngọc Liệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phượng Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Tây Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Vân Đình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vân Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cao Sơn Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vân Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phương Tú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vân Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tảo Dương Văn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vân Đình"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tàm Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vĩnh Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Canh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vĩnh Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vĩnh Ngọc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vĩnh Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Chung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vĩnh Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hải Bối",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vĩnh Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Nỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vĩnh Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thái Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vật Lại"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vật Lại"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Thái",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vật Lại"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phú Châu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vật Lại"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vật Lại",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Vật Lại"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Xuân Mai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Xuân Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Nam Phương Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Xuân Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thủy Xuân Tiên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Xuân Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Xuân Mai"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vân Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Bài",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Bài"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Chu Phan",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hoàng Kim",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Mạc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Đà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Văn Khê",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiến Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trung Châu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thọ Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thọ An",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Lãng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Bình",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Yên Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiến Xuân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thạch Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Yên Xuân"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hạ Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Hội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hồng Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hồng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Trung",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Tây Tựu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Lập",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ô Diên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bắc Phú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đức Hoà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Lũ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tân Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Việt Long",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Giang",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Thu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đa Phúc"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Phùng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đan Phượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Tháp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đan Phượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Song Phượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đan Phượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Thượng Mỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đan Phượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đan Phượng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đan Phượng"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Sơn",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đoài Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Sơn Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đoài Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Đông",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đoài Phương"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Cổ Loa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Hội",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Mai Lâm",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Đông Anh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tàm Xá",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tiên Dương",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vĩnh Ngọc",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Xuân Canh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Hà",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Dục Tú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Uy Nỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Việt Hùng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đông Anh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tam Hiệp",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hữu Hòa",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Phường Kiến Hưng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Thị trấn Văn Điển",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tả Thanh Oai",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Vĩnh Quỳnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Thanh"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Bạch Hạ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Khai Thái",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Tân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Phúc Tiến",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quang Lãng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Tri Thủy",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Xuyên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Đại Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Cường",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đại Hùng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đông Lỗ",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Đồng Tân",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Kim Đường",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Minh Đức",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trầm Lộng",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trung Tú",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Hòa"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Hoa Viên",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Thiên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Liên Bạt",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Thiên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Quảng Phú Cầu",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Thiên"
+    },
+    {
+        "tinh_cu": "Hà Nội",
+        "xa_cu": "Xã Trường Thịnh",
+        "tinh_moi": "Hà Nội",
+        "xa_moi": "Xã Ứng Thiên"
+    }
+]
