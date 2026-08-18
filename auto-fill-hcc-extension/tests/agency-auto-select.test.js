@@ -251,6 +251,7 @@ function runScript(page, armValue) {
   const toasts = [];
   const listeners = [];
   const timers = [];
+  const notices = [];
   const sandbox = {
     console: { log() {}, warn() {} },
     setTimeout,
@@ -277,7 +278,10 @@ function runScript(page, armValue) {
     },
     chrome: {
       // Popup hỏi trạng thái luồng qua message -> giữ listener để test gọi được.
-      runtime: { onMessage: { addListener: (fn) => { listeners.push(fn); } } },
+      runtime: {
+        onMessage: { addListener: (fn) => { listeners.push(fn); } },
+        sendMessage: (msg) => { notices.push(msg); },   // notifyPopup -> panel đổi màn
+      },
       storage: {
         local: {
           async get(key) { return { [key]: storage[key] }; },
@@ -301,7 +305,7 @@ function runScript(page, armValue) {
   });
   const stop = () => timers.forEach(clearInterval);
   allStops.push(stop);
-  return { storage, toasts, ask, stop };
+  return { storage, toasts, ask, notices, stop };
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -626,7 +630,28 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   state = await ctx.ask("getPortalFlowState");
   assert.equal(state.infoModal, false, "nhập nhằng nhiều nút Xác nhận thì không nhận, khỏi bấm nhầm");
 
-  console.log("agency auto-select: 18 ca (mousedown, đổi input, tìm kiếm, nộp trực tuyến, xác nhận modal/mục, dặn bước chủ hồ sơ) — passed");
+  // --- 19. atPortalHome: trang chủ -> hiện khối điểm đến; vào trang thủ tục/hồ sơ -> ẩn ---
+  page = buildPage({ provinces, wardsByProvince });
+  const bareBody = new N("body");                     // trang chủ: không có khối chọn cơ quan
+  ctx = runScript({ ...page, body: bareBody, clicks: [] }, undefined);
+  await wait(200);
+  state = await ctx.ask("getPortalFlowState");
+  assert.equal(state.atPortalHome, true, "trang chủ phải bật khối điểm đến");
+
+  ctx = runScript(page, undefined);                   // trang thủ tục: CÓ khối chọn cơ quan
+  await wait(200);
+  state = await ctx.ask("getPortalFlowState");
+  assert.equal(state.onProcedurePage, true);
+  assert.equal(state.atPortalHome, false, "vào trang thủ tục thì phải trả màn về giấy tờ");
+
+  bareBody.append(new N("div", {}, "Kê khai thông tin"));
+  ctx = runScript({ ...page, body: bareBody, clicks: [] }, undefined);
+  await wait(200);
+  state = await ctx.ask("getPortalFlowState");
+  assert.equal(state.formReady, true);
+  assert.equal(state.atPortalHome, false, "ở bước kê khai cũng không được hiện khối điểm đến");
+
+  console.log("agency auto-select: 19 ca (mousedown, tìm kiếm, nộp trực tuyến, xác nhận, tự đổi màn theo trang) — passed");
   // Script đang test còn vài vòng waitFor chạy nền (cố ý: đó là hành vi chờ trang của nó) nên node
   // sẽ không tự thoát. Assert đã xong hết -> thoát hẳn, không để runner tưởng test treo.
   process.exit(0);

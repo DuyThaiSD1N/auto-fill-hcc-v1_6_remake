@@ -21,7 +21,6 @@
   window.__HCC_AGENCY_FLOW__ = true;
 
   const ARM_KEY = "autofill_agency_autoselect";
-  const DEST_OPEN_KEY = "autofill_dest_open";   // popup: khối "Đi đến thủ tục" đang bung hay không
   const ARM_TTL_MS = 10 * 60 * 1000;   // cờ quá cũ = người dùng đã bỏ giữa chừng
   const CARD_TITLE = "chon co quan thuc hien";
   const CONFIRM_LABELS = ["nop ho so", "dong y"];
@@ -285,8 +284,8 @@
     // Đổi cờ TRƯỚC khi bấm: bấm xong là cổng điều hướng, không được bấm "Nộp trực tuyến" lần hai.
     const next = arm.autoConfirm ? { ...arm, stage: "confirm", at: Date.now() } : null;
     if (next) await setArm(next); else await clearArm();
-    // Đã vào được hồ sơ -> panel thu khối "Đi đến thủ tục" về màn đính kèm giấy tờ.
-    try { await chrome.storage.local.set({ [DEST_OPEN_KEY]: false }); } catch (_) { /* ignore */ }
+    // Đã vào được hồ sơ -> panel tự đổi về màn giấy tờ nhờ atPortalHome, chỉ cần báo cho nó biết.
+    notifyPopup();
     realClick(button);
     if (!next) {
       toast(`Đã chọn ${arm.ward}, ${arm.province} và mở biểu mẫu kê khai.`, "success");
@@ -454,11 +453,18 @@
   }
 
   function flowState() {
+    const onProcedurePage = !!findAgencyCard();
+    const infoModal = !!findInfoModal();
+    const ownerInfo = ownerInfoStep();
+    const ready = formReady();
     return {
-      onProcedurePage: !!findAgencyCard(),
-      infoModal: !!findInfoModal(),
-      ownerInfo: ownerInfoStep(),
-      formReady: formReady(),
+      onProcedurePage,
+      infoModal,
+      ownerInfo,
+      formReady: ready,
+      // Chưa dính gì tới một thủ tục cụ thể (trang chủ, tra cứu, danh mục…) -> panel hiện khối
+      // chọn điểm đến; vào tới trang thủ tục/hồ sơ rồi thì trả màn về giấy tờ + quét.
+      atPortalHome: !(onProcedurePage || infoModal || ownerInfo || ready),
       ownerStepHint: OWNER_STEP_HINT,
     };
   }
@@ -490,11 +496,24 @@
   // SPA: cổng đổi route mà không tải lại trang → chạy lại khi URL đổi (cờ hết thì run() tự thoát).
   // Đăng nhập VNeID xong có khi chỉ render lại DOM mà giữ nguyên URL, nên còn rà thêm: đang có cờ
   // dở dang mà trang xuất hiện modal "Thông tin chung" thì vào tiếp luôn.
+  function notifyPopup() {
+    // Panel là iframe riêng, không thấy được DOM cổng -> phải bắn tin để nó đổi màn kịp thời.
+    try { chrome.runtime?.sendMessage?.({ action: "portalFlowChanged" }); } catch (_) { /* ignore */ }
+  }
+
   let lastUrl = location.href;
+  let lastHome = null;
   setInterval(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
+      notifyPopup();
       return void start();
+    }
+    // SPA đổi màn mà giữ URL: bám theo chính trạng thái luồng.
+    const home = flowState().atPortalHome;
+    if (home !== lastHome) {
+      lastHome = home;
+      notifyPopup();
     }
     if (!running && findInfoModal()) start();
   }, 1000);

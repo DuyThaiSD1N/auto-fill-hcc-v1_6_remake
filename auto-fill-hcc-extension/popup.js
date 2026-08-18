@@ -3015,45 +3015,37 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
 }
 
 // ===== ĐI ĐẾN THỦ TỤC =====
-// Một nút, hai nhịp: bấm lần 1 bung ô chọn Địa chỉ + Thủ tục; chọn xong bấm lần 2 thì mở trang
-// trên cổng (content/agency-select.js tự chọn cơ quan rồi bấm "Nộp trực tuyến"). Vào được hồ sơ
-// thì khối này tự thu lại, panel trở về màn đính kèm giấy tờ như ban đầu.
-const DEST_OPEN_KEY = "autofill_dest_open";
+// KHÔNG có nút bật/tắt: panel tự đổi màn theo trang cổng đang mở.
+//   đang ở trang chủ / tra cứu DVC  -> hiện khối chọn Địa chỉ + Thủ tục + nút mở trang
+//   đã vào trang thủ tục / hồ sơ    -> trả về màn Giấy tờ + Quét như cũ
+// Trạng thái do content/agency-select.js báo (atPortalHome), cổng khác trả unsupported -> luôn ẩn.
 const destSection = document.getElementById("destSection");
 const destPickers = document.getElementById("destPickers");
 const destGoBtn = document.getElementById("destGoBtn");
-const destBackBtn = document.getElementById("destBackBtn");
 const procedureSection = document.getElementById("procedureSection");
 const docsSection = document.getElementById("docsSection");
 
-function destIsOpen() {
-  return !!destPickers && !destPickers.hidden;
-}
-
 function applyDestOpen(open) {
-  if (!destPickers || !destGoBtn) return;
+  if (!destSection || !destPickers) return;
   const usable = keKhaiSection?.dataset.unavailable !== "1";
-  const showPickers = open && usable;
-  destPickers.hidden = !showPickers;
-  // Đang chọn điểm đến thì ẩn combo "Loại thủ tục" cho khỏi hai chỗ chọn thủ tục đá nhau —
-  // ô "Thủ tục" bên dưới đã set luôn pipeline điền tự động.
-  if (procedureSection) procedureSection.hidden = showPickers;
-  // Chọn điểm đến là một việc riêng, chưa đụng tới giấy tờ -> giấu hẳn khối Giấy tờ cho gọn màn.
-  if (docsSection) docsSection.hidden = showPickers;
-  if (destBackBtn) destBackBtn.hidden = !showPickers;
-  destGoBtn.textContent = showPickers ? "🧭 Mở trang thủ tục" : "🧭 Đi đến thủ tục";
-  if (showPickers) refreshKeKhaiHint();
+  const showDest = open && usable;
+  destSection.hidden = !showDest;
+  destPickers.hidden = !showDest;
+  // Đang chọn điểm đến thì ẩn combo "Loại thủ tục" (ô "Thủ tục" bên dưới đã set luôn pipeline)
+  // và ẩn khối Giấy tờ — chưa vào form thì chưa có gì để quét.
+  if (procedureSection) procedureSection.hidden = showDest;
+  if (docsSection) docsSection.hidden = showDest;
+  if (showDest) refreshKeKhaiHint();
   postPanelHeight();
 }
 
-async function setDestOpen(open) {
-  applyDestOpen(open);
-  try { await chrome.storage.local.set({ [DEST_OPEN_KEY]: !!open }); } catch (_) { /* ignore */ }
+/** Hỏi content script đang ở đâu rồi đổi màn cho khớp. */
+async function refreshDestVisibility() {
+  const state = await sendToContent({ action: "getPortalFlowState" });
+  applyDestOpen(!!state && !state.unsupported && !!state.atPortalHome);
 }
 
 async function onDestGoClick() {
-  if (!destIsOpen()) return void await setDestOpen(true);
-
   const link = selectedKeKhaiLink();
   if (!link) {
     keKhaiStatus.textContent = "Chưa chọn thủ tục.";
@@ -3092,16 +3084,15 @@ async function initDestSection() {
   destCombos.province = enhanceSelectWithSearch(provinceSelect, { searchPlaceholder: "Tìm tỉnh/thành phố..." });
   destCombos.ward = enhanceSelectWithSearch(wardSelect, { searchPlaceholder: "Tìm phường/xã..." });
   destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, { searchPlaceholder: "Tìm thủ tục..." });
-  let saved = {};
-  try { saved = await chrome.storage.local.get(DEST_OPEN_KEY); } catch (_) { /* mặc định đóng */ }
-  applyDestOpen(saved[DEST_OPEN_KEY] === true);
-  destGoBtn.addEventListener("click", () => void onDestGoClick());
-  destBackBtn?.addEventListener("click", () => void setDestOpen(false));
 
-  // agency-select.js bấm "Nộp trực tuyến" xong sẽ xoá cờ này -> panel tự thu về màn đính kèm.
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes[DEST_OPEN_KEY]) return;
-    applyDestOpen(changes[DEST_OPEN_KEY].newValue === true);
+  destGoBtn.addEventListener("click", () => void onDestGoClick());
+  // Ẩn trước, chờ biết đang ở trang nào rồi mới quyết -> không chớp khối sai màn lúc mở panel.
+  applyDestOpen(false);
+  await refreshDestVisibility();
+
+  // content/agency-select.js bắn tin mỗi khi trang cổng đổi (kể cả SPA giữ nguyên URL).
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg?.action === "portalFlowChanged") void refreshDestVisibility();
   });
 }
 
