@@ -107,3 +107,35 @@ def test_an_toan_thuc_pham_prompt_locks_sources():
     assert "Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm" in system_prompt
     assert "không gọi Giấy khám sức khỏe là giám định y khoa" in system_prompt
     assert "DonDeNghi_DiaChiChuCoSo chỉ trả nếu đơn có địa chỉ cư trú" in system_prompt
+
+
+def test_an_toan_thuc_pham_area_remap():
+    """Test remap phường/xã cho thủ tục an toàn thực phẩm."""
+    fields = [
+        _field("DonDeNghi_ChuCoSoHoTen", "NGUYỄN VĂN A"),
+        _field("DonDeNghi_DienThoai", "0987654321"),
+        _field("Person1_HoTen", "NGUYỄN VĂN A"),
+        _field("Person1_SoDinhDanh", "123456789012"),
+        _field("Person1_NgaySinh", "01/01/1980"),
+        _field("Person1_GioiTinh", "Nam"),
+        _field("Person1_NgayCap", "01/01/2021"),
+        _field("Person1_NoiCap", "Cục Cảnh sát quản lý hành chính về trật tự xã hội"),
+        # Test remap: Đạ Sar (Lâm Đồng cũ) -> Xã Lạc Dương (Lâm Đồng mới)
+        _field("Person1_NoiCuTru", {"tinh": "Lâm Đồng", "xa": "Đạ Sar", "diaChi": "Thôn 1"}),
+        _field("GiayKham_HoTen", "NGUYỄN VĂN A"),
+        _field("GiayKham_KetLuan", "Sức khỏe loại I"),
+    ]
+
+    out, warnings = mapper.enrich(
+        fields,
+        {"formContext": {"applicantFullname": "Nguyễn Văn A", "applicantIdentityNumber": "123456789012"}},
+    )
+    d = {f["name"]: f["value"] for f in out}
+
+    assert warnings == []
+    assert d["data[fullname]"] == "NGUYỄN VĂN A"
+    
+    # Kiểm tra remap area: Đạ Sar -> Xã Lạc Dương
+    assert d["data[province]"] == "Lâm Đồng"
+    assert d["data[district]"] == "Lạc Dương"  # _area_label() sẽ bỏ tiền tố "Xã"
+    assert d["data[address]"] == "Thôn 1"

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cấp quyền micro — Trợ lý hồ sơ</title>
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #f4f7fb; color: #1f2a44; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+    .box { background: #fff; max-width: 420px; padding: 28px 26px; border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08); text-align: center; }
+    h2 { margin: 0 0 10px; font-size: 19px; }
+    p { margin: 0 0 18px; line-height: 1.5; font-size: 14px; color: #46506b; }
+    button { border: 0; cursor: pointer; background: #2563eb; color: #fff; font-size: 15px;
+      padding: 11px 20px; border-radius: 10px; }
+    button:hover { background: #1d4ed8; }
+    .ok { color: #15803d; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🎤 Cho phép micro</h2>
+    <p id="msg">Bấm nút dưới rồi chọn <b>“Cho phép”</b> để dùng tính năng nói trong Trợ lý hồ sơ.</p>
+    <button id="grant" type="button">Cho phép micro</button>
+  </div>
+  <script src="permission.js"></script>
+</body>
+</html>

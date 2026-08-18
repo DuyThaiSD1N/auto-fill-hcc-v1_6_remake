@@ -17,6 +17,20 @@
   // Namespace chia sẻ giữa các file content (fill-angular.js...). Mỗi file 1 IIFE, giao tiếp qua đây.
   const H = (window.__HCC__ = window.__HCC__ || {});
 
+  // ===== Location Manager: Load địa chỉ tỉnh/xã =====
+  // Init và load data ngay khi content script chạy
+  (async function initLocationManager() {
+    // content/locations.js nạp trước content.js, nhưng nếu thiếu (hoặc đã nạp xong) thì bỏ qua —
+    // gọi thẳng .load() trên undefined sẽ ném lỗi và chặn cả phần khởi tạo panel bên dưới.
+    if (!window.locationManager || window.locationManager.loaded) return;
+    try {
+      await window.locationManager.load();
+      console.log('[AutoFill] LocationManager loaded successfully');
+    } catch (error) {
+      console.error('[AutoFill] Failed to load LocationManager:', error);
+    }
+  })();
+
   // ===== Floating panel (chỉ trong top frame) =====
   const PANEL_ID = "autofill-hcc-panel";
   const BUBBLE_ID = "autofill-hcc-bubble";
@@ -847,6 +861,14 @@
       // Chỉ frame TRÊN CÙNG trả lời (URL + heading nằm ở trang gốc, không phải iframe con).
       if (window.top !== window) return;
       sendResponse({ ok: true, signals: collectProcedureSignals() });
+      return;
+    }
+    if (msg?.action === "getPortalFlowState") {
+      // Chỉ cổng DVC quốc gia có khối chọn cơ quan + modal "Thông tin chung"
+      // (content/agency-select.js trả lời). Cổng khác trả unsupported để popup đi thẳng, không
+      // phải chờ hết vòng retry inject của sendToContent.
+      if (window.top !== window || window.__HCC_AGENCY_FLOW__) return;
+      sendResponse({ ok: true, unsupported: true });
       return;
     }
     if (msg?.action === "getPortalPrincipal") {

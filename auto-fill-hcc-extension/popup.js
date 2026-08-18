@@ -133,7 +133,7 @@ async function sendToContent(payload) {
       });
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
-        files: ["content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/review.js"],
+        files: ["content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/agency-select.js", "content/review.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -666,6 +666,7 @@ async function selectProcedure(key, { source = "manual" } = {}) {
   selectedBusinessPageKey = Array.isArray(next.pages) && next.pages.length ? next.pages[0].key : "";
   procedureSelect.value = next.key;
   closeProcedureDropdown();  // đã chọn → đóng combobox, trigger hiện "Đang chọn: X"
+  syncKeKhaiSelection(next.key);
   applyFormUI();
   // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
   if (selectionChanged || workOwnerChanged) await saveSession();
@@ -991,7 +992,7 @@ let sessionWriteRevision = 0;
 let sessionWriteQueue = Promise.resolve();
 
 function enqueueSessionWrite(operation) {
-  sessionWriteQueue = sessionWriteQueue.catch(() => {}).then(operation);
+  sessionWriteQueue = sessionWriteQueue.catch(() => { }).then(operation);
   return sessionWriteQueue;
 }
 
@@ -1053,8 +1054,10 @@ async function restoreSession() {
   for (const f of savedFiles) {
     if (!f?.dataUrl) continue;
     // File khôi phục không có File object thật, nhưng đã có sẵn dataUrl nên đủ để gửi BE.
-    files.push({ file: { name: f.name, type: f.type }, role: f.role || "doc", dataUrl: f.dataUrl,
-      hasHandwriting: !!f.hasHandwriting, restored: true });
+    files.push({
+      file: { name: f.name, type: f.type }, role: f.role || "doc", dataUrl: f.dataUrl,
+      hasHandwriting: !!f.hasHandwriting, restored: true
+    });
   }
   renderProcedureResults();
   applyFormUI();
@@ -1199,7 +1202,7 @@ function applyFormUI() {
   const isBusiness = !!currentBusinessPages().length;
   if (ocrBtn) {
     ocrBtn.hidden = isBusiness;
-    ocrBtn.textContent = isAttachMode() ? "Đính kèm vào hồ sơ" : "Quét và nhập dữ liệu";
+    refreshOcrButtonLabel();
   }
   // Nút gộp (quét cả 8 trang + tự đính kèm) chỉ hiện cho thủ tục đăng ký kinh doanh.
   if (fillAllBtn) fillAllBtn.hidden = !isBusiness;
@@ -1305,7 +1308,7 @@ const pulledFids = new Set();  // fid đã kéo về files[] → chống trùng 
 
 function stopPhoneUploadChannel() {
   if (phoneUploadWs) {
-    try { phoneUploadWs.onclose = null; phoneUploadWs.onmessage = null; phoneUploadWs.onerror = null; phoneUploadWs.close(); } catch (_) {}
+    try { phoneUploadWs.onclose = null; phoneUploadWs.onmessage = null; phoneUploadWs.onerror = null; phoneUploadWs.close(); } catch (_) { }
     phoneUploadWs = null;
   }
   if (phoneReconcile) { clearInterval(phoneReconcile); phoneReconcile = null; }
@@ -1421,7 +1424,7 @@ function subscribePhoneUpload(sid) {
       if (d.type === "session_opened") setQrStatus("📱 Điện thoại đã kết nối — mời bà con chụp/chọn ảnh…");
       else if (d.type === "files_added") await pullPhoneFiles(d.files);
     };
-    phoneUploadWs.onerror = () => { try { phoneUploadWs && phoneUploadWs.close(); } catch (_) {} };
+    phoneUploadWs.onerror = () => { try { phoneUploadWs && phoneUploadWs.close(); } catch (_) { } };
     // onclose: KHÔNG cần làm gì — reconcile poll đã luôn chạy làm lưới an toàn.
   } catch (_) { /* WS không mở được cũng không sao, đã có reconcile poll */ }
 }
@@ -2002,6 +2005,9 @@ ocrBtn.addEventListener("click", async () => {
     setStatus("Chưa có file nào.", "err");
     return;
   }
+  // Cổng DVC quốc gia còn chặn một modal "Thông tin chung" trước bước kê khai — bấm hộ rồi mới
+  // quét. Chưa qua được thì dừng lượt bấm, KHÔNG gọi backend cho phí lượt OCR.
+  if (!(await passInfoModalIfAny())) return;
   // Chốt chặn PDPL: chưa đồng ý trong phiên này → hiện điều khoản, KHÔNG điền (đồng ý xong tự chạy lại).
   if (!(await requireConsent(ocrBtn))) return;
   window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
@@ -2538,7 +2544,7 @@ bootstrap();
 
   // Version hiện tại lấy TỰ ĐỘNG từ manifest → đánh dấu bản "đang dùng" trong danh sách.
   let current = "";
-  try { current = (chrome.runtime.getManifest() || {}).version || ""; } catch (_) {}
+  try { current = (chrome.runtime.getManifest() || {}).version || ""; } catch (_) { }
 
   const releases = (typeof APP_RELEASES !== "undefined" && Array.isArray(APP_RELEASES)) ? APP_RELEASES : [];
   list.innerHTML = "";
@@ -2588,3 +2594,519 @@ bootstrap();
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
 })();
+
+
+// ===== LOCATION MANAGEMENT: Chọn tỉnh/xã =====
+const provinceSelect = document.getElementById("provinceSelect");
+const wardSelect = document.getElementById("wardSelect");
+const locationStatus = document.getElementById("locationStatus");
+const locationSection = document.getElementById("locationSection");
+
+const LOCATION_STORAGE_KEY = "autofill_user_location";
+// Cờ MỘT LẦN cho content/agency-select.js: mở trang thủ tục xong thì tự chọn Tỉnh/Xã ở khối
+// "Chọn cơ quan thực hiện". Chỉ đặt khi người dùng bấm "Mở trang kê khai" → không tự động can
+// thiệp khi cán bộ tự duyệt cổng bằng tay.
+const AGENCY_ARM_KEY = "autofill_agency_autoselect";
+let currentLocation = { province: "", provinceSlug: "", ward: "" };
+
+// Popup chạy trong iframe extension, KHÔNG có content/locations.js (đó là bản cho content script).
+// Bản dùng ở đây là popup-locations.js → window.popupLocationManager; nhận cả hai tên cho chắc.
+function locationStore() {
+  return window.popupLocationManager || window.locationManager || null;
+}
+
+async function initLocationManager() {
+  const store = locationStore();
+  if (!store) {
+    locationStatus.textContent = '✗ Chưa nạp được dữ liệu tỉnh/xã';
+    locationStatus.className = 'status err';
+    console.error('[Popup] Thiếu popup-locations.js — không có dữ liệu tỉnh/xã');
+    return;
+  }
+  if (!store.loaded) {
+    try {
+      await store.load();
+    } catch (error) {
+      locationStatus.textContent = '✗ Lỗi nạp dữ liệu tỉnh/xã';
+      locationStatus.className = 'status err';
+      console.error('[Popup] Failed to load LocationManager:', error);
+      return;
+    }
+  }
+
+  // Load saved location from storage
+  const saved = await chrome.storage.local.get(LOCATION_STORAGE_KEY);
+  if (saved[LOCATION_STORAGE_KEY]) {
+    currentLocation = { ...currentLocation, ...saved[LOCATION_STORAGE_KEY] };
+  }
+
+  // Populate province dropdown
+  for (const prov of store.getProvinces()) {
+    const option = document.createElement('option');
+    option.value = prov.slug;
+    option.textContent = prov.text;
+    if (prov.slug === currentLocation.provinceSlug) {
+      option.selected = true;
+    }
+    provinceSelect.appendChild(option);
+  }
+
+  // If province is selected, load wards
+  if (currentLocation.provinceSlug) {
+    loadWards(currentLocation.provinceSlug, currentLocation.ward);
+  }
+
+  // Event listeners — KHÔNG có nút Lưu: chọn tới đâu ghi tới đó.
+  provinceSelect.addEventListener('change', (e) => {
+    const slug = e.target.value;
+    currentLocation.provinceSlug = slug;
+    currentLocation.province = slug ? (e.target.options[e.target.selectedIndex]?.textContent || '') : '';
+    currentLocation.ward = '';
+    loadWards(slug, '');
+    void persistLocation();
+  });
+
+  wardSelect.addEventListener('change', (e) => {
+    currentLocation.ward = e.target.value;
+    void persistLocation();
+  });
+
+  showLocationSummary();
+  syncDestCombos();
+  refreshKeKhaiHint();  // địa chỉ nạp xong -> bỏ cảnh báo "chưa chọn Tỉnh/Xã" ở mục kê khai
+  postPanelHeight();
+}
+
+async function persistLocation() {
+  try {
+    await chrome.storage.local.set({ [LOCATION_STORAGE_KEY]: { ...currentLocation } });
+  } catch (error) {
+    locationStatus.textContent = '✗ Lỗi lưu địa chỉ';
+    locationStatus.className = 'status err';
+    console.error('[Popup] Failed to save location:', error);
+    return;
+  }
+  showLocationSummary();
+  refreshKeKhaiHint();
+}
+
+function locationIsComplete() {
+  return !!(currentLocation.provinceSlug && currentLocation.ward);
+}
+
+function showLocationSummary() {
+  if (locationIsComplete()) {
+    locationStatus.textContent = `✓ ${currentLocation.ward}, ${currentLocation.province}`;
+    locationStatus.className = 'status ok';
+  } else if (currentLocation.provinceSlug) {
+    locationStatus.textContent = 'Chọn tiếp Phường/Xã để trợ lý điền hộ trên cổng.';
+    locationStatus.className = 'status warn';
+  } else {
+    locationStatus.textContent = '';
+    locationStatus.className = 'status';
+  }
+}
+
+/** Địa chỉ đổi -> cập nhật lại gợi ý ở mục "Mở trang kê khai" (mục đó init sau, có thể chưa sẵn). */
+function refreshKeKhaiHint() {
+  try {
+    if (keKhaiSection && !keKhaiSection.hidden) updateKeKhaiUI();
+  } catch (_) { /* mục kê khai chưa khởi tạo xong */ }
+}
+
+/** Chọn thủ tục ở "Loại thủ tục" -> thanh kê khai bám theo (nếu thủ tục đó có link). */
+function syncKeKhaiSelection(key) {
+  try {
+    if (!keKhaiSelect || !keKhaiLinks().some((item) => item.key === key)) return;
+    keKhaiSelect.value = key;
+    updateKeKhaiUI();
+  } catch (_) { /* mục kê khai chưa khởi tạo xong */ }
+}
+
+function loadWards(provinceSlug, selectedWard) {
+  wardSelect.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = '-- Chọn phường/xã --';
+  wardSelect.appendChild(placeholder);
+
+  const data = provinceSlug ? locationStore()?.getWards(provinceSlug) : null;
+  wardSelect.disabled = !data;
+  if (!data) return;
+
+  for (const ward of data.communes) {
+    const option = document.createElement('option');
+    option.value = ward;
+    option.textContent = ward;
+    if (ward === selectedWard) {
+      option.selected = true;
+      currentLocation.ward = ward;
+    }
+    wardSelect.appendChild(option);
+  }
+  syncDestCombos();
+}
+
+// Init location UI when popup loads
+if (locationSection) {
+  initLocationManager().catch(err => {
+    console.error('[Popup] LocationManager init error:', err);
+  });
+}
+
+
+// ===== Ô "Thủ tục" trong khối Đi đến thủ tục: 13 thủ tục có link kê khai =====
+// Chọn ở đây set luôn pipeline điền tự động (cùng hệ key với auto-fill-hcc-backend).
+const keKhaiSection = document.getElementById("keKhaiSection");
+const keKhaiSelect = document.getElementById("keKhaiSelect");
+const keKhaiStatus = document.getElementById("keKhaiStatus");
+
+const KE_KHAI_STORAGE_KEY = "autofill_last_ke_khai_key";
+
+function keKhaiLinks() {
+  return Array.isArray(window.PROCEDURE_KE_KHAI_LINKS) ? window.PROCEDURE_KE_KHAI_LINKS : [];
+}
+
+function selectedKeKhaiLink() {
+  return keKhaiLinks().find((item) => item.key === keKhaiSelect.value) || null;
+}
+
+function updateKeKhaiUI() {
+  const link = selectedKeKhaiLink();
+  if (!link) {
+    keKhaiStatus.textContent = '';
+    keKhaiStatus.className = 'status';
+    return;
+  }
+  // Cổng React mới bắt chọn Tỉnh/Xã trước khi vào biểu mẫu → trợ lý điền hộ nếu đã có địa chỉ.
+  if (link.needsAgencySelect && !locationIsComplete()) {
+    keKhaiStatus.textContent = 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
+    keKhaiStatus.className = 'status warn';
+  } else if (link.needsAgencySelect) {
+    keKhaiStatus.textContent = link.autoConfirm
+      ? `Trợ lý sẽ chọn ${currentLocation.ward}, ${currentLocation.province}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
+      : `Trợ lý sẽ tự chọn ${currentLocation.ward}, ${currentLocation.province} và mở biểu mẫu kê khai.`;
+    keKhaiStatus.className = 'status info';
+  } else {
+    keKhaiStatus.textContent = 'Sẽ mở tại tab hiện tại: ' + link.url;
+    keKhaiStatus.className = 'status info';
+  }
+}
+
+async function initKeKhaiPicker() {
+  const links = keKhaiLinks();
+  if (!links.length) {
+    keKhaiSection.hidden = true;
+    keKhaiSection.dataset.unavailable = "1";   // chế độ "Toàn bộ" không được bật lại mục rỗng
+    console.error('[Popup] Thiếu data/procedure-links.js — không có link kê khai nào');
+    return;
+  }
+
+  for (const item of links) {
+    const option = document.createElement('option');
+    option.value = item.key;
+    option.textContent = item.label;
+    keKhaiSelect.appendChild(option);
+  }
+
+  const saved = await chrome.storage.local.get(KE_KHAI_STORAGE_KEY);
+  const savedKey = saved[KE_KHAI_STORAGE_KEY];
+  // Ưu tiên thủ tục đang chọn ở "Loại thủ tục" (cùng hệ key với auto-fill-hcc-backend).
+  const preferred = links.some((item) => item.key === selectedProcedureKey)
+    ? selectedProcedureKey
+    : (links.some((item) => item.key === savedKey) ? savedKey : '');
+  keKhaiSelect.value = preferred;
+
+  keKhaiSelect.addEventListener('change', () => {
+    updateKeKhaiUI();
+    void onKeKhaiProcedureChosen();
+  });
+  if (preferred) void onKeKhaiProcedureChosen();
+  syncDestCombos();
+  updateKeKhaiUI();
+  postPanelHeight();
+}
+
+/** Chọn thủ tục ở chế độ Toàn bộ = chọn luôn pipeline điền tự động (cùng hệ key với backend). */
+async function onKeKhaiProcedureChosen() {
+  const link = selectedKeKhaiLink();
+  if (!link) return;
+  try { await chrome.storage.local.set({ [KE_KHAI_STORAGE_KEY]: link.key }); } catch (_) { /* ignore */ }
+  if (PROCEDURES.some((p) => p.key === link.key) && selectedProcedureKey !== link.key) {
+    await selectProcedure(link.key, { source: "manual" });
+  }
+}
+
+/** Mở trang kê khai của thủ tục đang chọn, kèm "lên đạn" cho content/agency-select.js. */
+async function openKeKhaiPage() {
+  const link = selectedKeKhaiLink();
+  if (!link) return false;
+  await onKeKhaiProcedureChosen();
+  if (link.needsAgencySelect && locationIsComplete()) {
+    await chrome.storage.local.set({
+      [AGENCY_ARM_KEY]: {
+        province: currentLocation.province,
+        ward: currentLocation.ward,
+        procedureKey: link.key,
+        // Trang kết quả có thể liệt kê nhiều dịch vụ -> content script cần tên để bấm đúng thẻ.
+        procedureLabel: link.label,
+        // Bấm hộ "Xác nhận" ở modal Thông tin chung để vào thẳng wizard hồ sơ.
+        autoConfirm: !!link.autoConfirm,
+        at: Date.now(),
+      },
+    });
+  } else {
+    await chrome.storage.local.remove(AGENCY_ARM_KEY);
+  }
+  const tabId = await getTargetTabId();
+  if (tabId) await chrome.tabs.update(tabId, { url: link.url });
+  else await chrome.tabs.create({ url: link.url });
+  return true;
+}
+
+if (keKhaiSection) {
+  initKeKhaiPicker().catch(err => {
+    console.error('[Popup] KeKhaiPicker init error:', err);
+  });
+}
+
+
+
+
+
+// ===== Combobox có ô tìm kiếm cho <select> dài (34 tỉnh / 3321 xã / 13 thủ tục) =====
+// <select> gốc VẪN là nguồn dữ liệu và nơi phát sự kiện `change` — mọi code sẵn có (loadWards,
+// persistLocation, onKeKhaiProcedureChosen…) không phải sửa gì. Widget này chỉ là lớp nhìn:
+// đọc <option> mỗi lần mở, lọc theo từ khoá, chọn xong thì set .value rồi dispatch change.
+function enhanceSelectWithSearch(select, { searchPlaceholder }) {
+  if (!select || select.dataset.enhanced === "1") return null;
+  select.dataset.enhanced = "1";
+
+  const combo = document.createElement("div");
+  combo.className = "combo";
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "combo-trigger";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+  const label = document.createElement("span");
+  label.className = "combo-label";
+  const caret = document.createElement("span");
+  caret.className = "combo-caret";
+  caret.textContent = "▾";
+  caret.setAttribute("aria-hidden", "true");
+  trigger.append(label, caret);
+
+  const dropdown = document.createElement("div");
+  dropdown.className = "combo-dropdown";
+  dropdown.hidden = true;
+  const search = document.createElement("input");
+  search.type = "text";
+  search.className = "combo-search";
+  search.autocomplete = "off";
+  search.placeholder = searchPlaceholder || "Tìm...";
+  const list = document.createElement("div");
+  list.className = "combo-list";
+  list.setAttribute("role", "listbox");
+  dropdown.append(search, list);
+  combo.append(trigger, dropdown);
+  select.after(combo);
+
+  const options = () => Array.from(select.options).filter((opt) => opt.value !== "");
+  const currentOption = () => select.options[select.selectedIndex] || null;
+  const placeholderText = () => select.options[0]?.textContent || "-- Chọn --";
+
+  function syncTrigger() {
+    const picked = select.value ? currentOption() : null;
+    label.textContent = picked ? picked.textContent : placeholderText();
+    label.classList.toggle("placeholder", !picked);
+    trigger.disabled = select.disabled;
+    if (select.disabled) close();
+  }
+
+  function renderList(query) {
+    const needle = normalizeProcedureSearch(query);
+    list.innerHTML = "";
+    const matched = options().filter((opt) =>
+      !needle || normalizeProcedureSearch(opt.textContent).includes(needle));
+    if (!matched.length) {
+      const empty = document.createElement("div");
+      empty.className = "combo-empty";
+      empty.textContent = "Không tìm thấy";
+      list.appendChild(empty);
+      return;
+    }
+    for (const opt of matched) {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "combo-option" + (opt.value === select.value ? " active" : "");
+      item.setAttribute("role", "option");
+      item.textContent = opt.textContent;
+      item.addEventListener("click", () => {
+        select.value = opt.value;
+        // Phát `change` để handler gốc của select chạy y như người dùng bấm select thật.
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+        syncTrigger();
+        close();
+      });
+      list.appendChild(item);
+    }
+  }
+
+  function open() {
+    if (select.disabled) return;
+    dropdown.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    search.value = "";
+    renderList("");
+    search.focus();
+    postPanelHeight();
+  }
+
+  function close() {
+    if (dropdown.hidden) return;
+    dropdown.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    postPanelHeight();
+  }
+
+  trigger.addEventListener("click", () => (dropdown.hidden ? open() : close()));
+  search.addEventListener("input", () => renderList(search.value));
+  search.addEventListener("keydown", (e) => { if (e.key === "Escape") { close(); trigger.focus(); } });
+  document.addEventListener("click", (e) => {
+    if (!dropdown.hidden && !combo.contains(e.target)) close();
+  });
+  // loadWards()/initKeKhaiPicker() đổi option hoặc value bằng code -> nhãn phải bám theo.
+  select.addEventListener("change", syncTrigger);
+
+  syncTrigger();
+  return { syncTrigger };
+}
+
+// ===== ĐI ĐẾN THỦ TỤC =====
+// Một nút, hai nhịp: bấm lần 1 bung ô chọn Địa chỉ + Thủ tục; chọn xong bấm lần 2 thì mở trang
+// trên cổng (content/agency-select.js tự chọn cơ quan rồi bấm "Nộp trực tuyến"). Vào được hồ sơ
+// thì khối này tự thu lại, panel trở về màn đính kèm giấy tờ như ban đầu.
+const DEST_OPEN_KEY = "autofill_dest_open";
+const destSection = document.getElementById("destSection");
+const destPickers = document.getElementById("destPickers");
+const destGoBtn = document.getElementById("destGoBtn");
+const destBackBtn = document.getElementById("destBackBtn");
+const procedureSection = document.getElementById("procedureSection");
+const docsSection = document.getElementById("docsSection");
+
+function destIsOpen() {
+  return !!destPickers && !destPickers.hidden;
+}
+
+function applyDestOpen(open) {
+  if (!destPickers || !destGoBtn) return;
+  const usable = keKhaiSection?.dataset.unavailable !== "1";
+  const showPickers = open && usable;
+  destPickers.hidden = !showPickers;
+  // Đang chọn điểm đến thì ẩn combo "Loại thủ tục" cho khỏi hai chỗ chọn thủ tục đá nhau —
+  // ô "Thủ tục" bên dưới đã set luôn pipeline điền tự động.
+  if (procedureSection) procedureSection.hidden = showPickers;
+  // Chọn điểm đến là một việc riêng, chưa đụng tới giấy tờ -> giấu hẳn khối Giấy tờ cho gọn màn.
+  if (docsSection) docsSection.hidden = showPickers;
+  if (destBackBtn) destBackBtn.hidden = !showPickers;
+  destGoBtn.textContent = showPickers ? "🧭 Mở trang thủ tục" : "🧭 Đi đến thủ tục";
+  if (showPickers) refreshKeKhaiHint();
+  postPanelHeight();
+}
+
+async function setDestOpen(open) {
+  applyDestOpen(open);
+  try { await chrome.storage.local.set({ [DEST_OPEN_KEY]: !!open }); } catch (_) { /* ignore */ }
+}
+
+async function onDestGoClick() {
+  if (!destIsOpen()) return void await setDestOpen(true);
+
+  const link = selectedKeKhaiLink();
+  if (!link) {
+    keKhaiStatus.textContent = "Chưa chọn thủ tục.";
+    keKhaiStatus.className = "status err";
+    return;
+  }
+  if (link.needsAgencySelect && !locationIsComplete()) {
+    locationStatus.textContent = "Chưa chọn đủ Tỉnh/Thành phố và Phường/Xã.";
+    locationStatus.className = "status err";
+    return;
+  }
+  destGoBtn.disabled = true;
+  try {
+    await openKeKhaiPage();
+    keKhaiStatus.textContent = "Đang mở trang thủ tục…";
+    keKhaiStatus.className = "status ok";
+  } catch (error) {
+    keKhaiStatus.textContent = "✗ Không mở được trang thủ tục";
+    keKhaiStatus.className = "status err";
+    console.error("[Popup] Mở trang thủ tục lỗi:", error);
+  } finally {
+    destGoBtn.disabled = false;
+  }
+}
+
+const destCombos = {};
+
+/** Code nạp dữ liệu (loadWards, khôi phục lựa chọn cũ…) set .value/.selected mà KHÔNG phát `change`
+ *  -> nhãn trigger phải được đồng bộ tay sau mỗi lần đổi danh sách. */
+function syncDestCombos() {
+  for (const combo of Object.values(destCombos)) combo?.syncTrigger();
+}
+
+async function initDestSection() {
+  if (!destSection || !destGoBtn) return;
+  destCombos.province = enhanceSelectWithSearch(provinceSelect, { searchPlaceholder: "Tìm tỉnh/thành phố..." });
+  destCombos.ward = enhanceSelectWithSearch(wardSelect, { searchPlaceholder: "Tìm phường/xã..." });
+  destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, { searchPlaceholder: "Tìm thủ tục..." });
+  let saved = {};
+  try { saved = await chrome.storage.local.get(DEST_OPEN_KEY); } catch (_) { /* mặc định đóng */ }
+  applyDestOpen(saved[DEST_OPEN_KEY] === true);
+  destGoBtn.addEventListener("click", () => void onDestGoClick());
+  destBackBtn?.addEventListener("click", () => void setDestOpen(false));
+
+  // agency-select.js bấm "Nộp trực tuyến" xong sẽ xoá cờ này -> panel tự thu về màn đính kèm.
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes[DEST_OPEN_KEY]) return;
+    applyDestOpen(changes[DEST_OPEN_KEY].newValue === true);
+  });
+}
+
+function refreshOcrButtonLabel() {
+  if (!ocrBtn) return;
+  ocrBtn.textContent = isAttachMode() ? "Đính kèm vào hồ sơ" : "Quét và nhập dữ liệu";
+}
+
+/**
+ * Cổng DVC quốc gia chèn thêm modal "Thông tin chung" giữa lúc vào hồ sơ (xem luồng
+ * tro-ly-nguoi-dan-backend/app/chat/flow.py): thấy modal thì bấm Xác nhận hộ rồi mới quét & điền.
+ * Cổng khác trả unsupported -> đi thẳng như cũ.
+ */
+async function passInfoModalIfAny() {
+  const state = await sendToContent({ action: "getPortalFlowState" });
+  // Cổng khác (không có wizard này) hoặc đã ở bước kê khai -> quét luôn như cũ.
+  if (!state || state.unsupported || state.formReady) return true;
+
+  if (state.infoModal) {
+    setStatus("Đang xác nhận Thông tin chung…", "info");
+    const res = await sendToContent({ action: "confirmInfoModal" });
+    if (res?.formReady) return true;
+    // Xác nhận xong thường rơi vào bước "Thông tin chủ hồ sơ" -> dặn luôn cho khỏi bấm quét hụt.
+    const after = await sendToContent({ action: "getPortalFlowState" });
+    if (after?.formReady) return true;
+    setStatus(after?.ownerInfo ? after.ownerStepHint
+      : 'Đã bấm Xác nhận. Chờ cổng mở bước kê khai rồi bấm lại "Quét và nhập dữ liệu".', "warn");
+    return false;
+  }
+
+  // Bước "Thông tin chủ hồ sơ": cổng chưa dựng biểu mẫu kê khai nên quét cũng không điền được gì.
+  if (state.ownerInfo) {
+    setStatus(state.ownerStepHint, "warn");
+    return false;
+  }
+  return true;
+}
+
+initDestSection().catch((err) => console.error("[Popup] Dest section init error:", err));

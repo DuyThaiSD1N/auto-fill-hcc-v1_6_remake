@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8">
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <h1>Trợ lý tự động điền hồ sơ Dịch vụ công</h1>
 
@@ -37,79 +39,122 @@
     </aside>
     <div id="userBar" class="user-bar">
       <span id="userLabel" class="user-email"></span>
-      <button id="newSessionBtn" class="user-action" title="Xoá file &amp; kết quả của tab này, bắt đầu phiên mới (vẫn giữ đăng nhập)">Tạo phiên mới</button>
+      <button id="newSessionBtn" class="user-action"
+        title="Xoá file &amp; kết quả của tab này, bắt đầu phiên mới (vẫn giữ đăng nhập)">Tạo phiên mới</button>
       <button id="logoutBtn" class="user-action danger" title="Đăng xuất khỏi tài khoản">Đăng xuất</button>
     </div>
 
     <div id="view-main">
-    <section class="block">
-      <div class="block-title">Loại thủ tục</div>
-      <select id="procedureSelect" class="procedure-select-hidden" aria-hidden="true" tabindex="-1"></select>
-      <div class="procedure-picker" id="procedureCombo">
-        <button type="button" id="procedureTrigger" class="procedure-trigger" aria-haspopup="listbox" aria-expanded="false">
-          <span id="selectedProcedureLabel" class="selected-procedure procedure-trigger-label"></span>
-          <span class="procedure-trigger-caret" aria-hidden="true">▾</span>
-        </button>
-        <div id="procedureDropdown" class="procedure-dropdown" hidden>
-          <input id="procedureSearchInput" type="text" autocomplete="off" placeholder="Gõ để tìm thủ tục...">
-          <div id="procedureResults" class="procedure-results" role="listbox" aria-label="Danh sách thủ tục"></div>
+      <section class="block" id="procedureSection">
+        <div class="block-title">Loại thủ tục</div>
+        <select id="procedureSelect" class="procedure-select-hidden" aria-hidden="true" tabindex="-1"></select>
+        <div class="procedure-picker" id="procedureCombo">
+          <button type="button" id="procedureTrigger" class="procedure-trigger" aria-haspopup="listbox"
+            aria-expanded="false">
+            <span id="selectedProcedureLabel" class="selected-procedure procedure-trigger-label"></span>
+            <span class="procedure-trigger-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="procedureDropdown" class="procedure-dropdown" hidden>
+            <input id="procedureSearchInput" type="text" autocomplete="off" placeholder="Gõ để tìm thủ tục...">
+            <div id="procedureResults" class="procedure-results" role="listbox" aria-label="Danh sách thủ tục"></div>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="block">
-      <div class="block-title">Giấy tờ</div>
-      <button id="uploadHintToggle" type="button" class="hint-toggle" hidden aria-expanded="false" aria-controls="uploadHintBox">
-        <span class="hint-toggle-icon" aria-hidden="true">📄</span>
-        <span class="hint-toggle-text">Xem chi tiết giấy tờ cần tải lên</span>
-        <span class="hint-toggle-caret" aria-hidden="true">▾</span>
+      <!-- ===== Đi đến thủ tục: bấm lần 1 bung ô chọn, bấm lần 2 mở trang trên cổng ===== -->
+      <section class="block" id="destSection">
+        <div class="block-title">Đi đến thủ tục</div>
+        <div id="destPickers" hidden>
+          <div id="locationSection">
+            <!-- 34 tỉnh / 3321 xã: <select> gốc giữ nguyên làm NGUỒN DỮ LIỆU (JS cũ vẫn đọc .value,
+                 .options, dispatch change), phần nhìn thay bằng combobox có ô tìm kiếm — giống hệt
+                 cách "Loại thủ tục" đang làm với #procedureSelect. -->
+            <label for="provinceSelect">Tỉnh/Thành phố</label>
+            <select id="provinceSelect" class="combo-select-hidden" aria-hidden="true" tabindex="-1">
+              <option value="">-- Chọn tỉnh/thành phố --</option>
+            </select>
+            <label for="wardSelect">Phường/Xã</label>
+            <select id="wardSelect" class="combo-select-hidden" aria-hidden="true" tabindex="-1" disabled>
+              <option value="">-- Chọn phường/xã --</option>
+            </select>
+            <p id="locationStatus" class="status"></p>
+          </div>
+          <div id="keKhaiSection">
+            <label for="keKhaiSelect">Thủ tục</label>
+            <select id="keKhaiSelect" class="combo-select-hidden" aria-hidden="true" tabindex="-1">
+              <option value="">-- Chọn thủ tục --</option>
+            </select>
+            <p id="keKhaiStatus" class="status"></p>
+          </div>
+        </div>
+        <div class="dest-actions">
+          <button id="destGoBtn" class="secondary-btn">🧭 Đi đến thủ tục</button>
+          <button id="destBackBtn" class="dest-back-btn" hidden>← Quay lại</button>
+        </div>
+      </section>
+
+      <section class="block" id="docsSection">
+        <div class="block-title">Giấy tờ</div>
+        <button id="uploadHintToggle" type="button" class="hint-toggle" hidden aria-expanded="false"
+          aria-controls="uploadHintBox">
+          <span class="hint-toggle-icon" aria-hidden="true">📄</span>
+          <span class="hint-toggle-text">Xem chi tiết giấy tờ cần tải lên</span>
+          <span class="hint-toggle-caret" aria-hidden="true">▾</span>
+        </button>
+        <div id="uploadHintBox" class="hint-box" hidden role="region" aria-label="Chi tiết giấy tờ cần tải lên">
+          <button id="uploadHintClose" type="button" class="hint-close" aria-label="Ẩn chi tiết giấy tờ"
+            title="Ẩn">×</button>
+          <p id="uploadHint" class="hint-text"></p>
+        </div>
+        <label for="requestMode">Người yêu cầu là</label>
+        <select id="requestMode">
+          <option value="self">Bản thân</option>
+          <option value="other">Người khác</option>
+        </select>
+        <label for="dangKyBy">Người đi đăng ký là</label>
+        <select id="dangKyBy">
+          <option value="father">Cha</option>
+          <option value="mother">Mẹ</option>
+        </select>
+        <label id="handwritingRow" class="checkbox-row">
+          <input id="handwritingToggle" type="checkbox">
+          <span>Có bản viết tay (tất cả)</span>
+        </label>
+        <label for="fileInput" class="upload-label">+ Thêm file ảnh/PDF</label>
+        <input id="fileInput" type="file" multiple
+          accept="image/*,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          hidden>
+        <button id="phoneUploadBtn" type="button" class="upload-label upload-label-alt"
+          title="Tạo mã QR để chụp/chọn ảnh từ điện thoại — ảnh tự về danh sách này">📱 Thêm ảnh từ điện thoại
+          (QR)</button>
+        <div id="qrCard" class="qr-card" hidden></div>
+        <ul id="fileList" class="file-list"></ul>
+        <label id="splitModeRow" class="checkbox-row" style="display:none"
+          title="Chỉ áp dụng cho chứng thực. Bật: mỗi tài liệu tạo 1 hồ sơ riêng (mở tab mới cho từng file).">
+          <input id="splitModeToggle" type="checkbox">
+          <span>Mỗi tài liệu 1 hồ sơ riêng (tách hồ sơ)</span>
+        </label>
+        <button id="ocrBtn">Quét và nhập dữ liệu</button>
+        <button id="fillAllBtn" class="secondary-btn" hidden
+          title="Đăng ký kinh doanh: quét &amp; điền cả 8 trang rồi tự đính kèm hồ sơ">⚡ Quét nhập thông tin và đính
+          kèm</button>
+        <button id="attachStepBtn" class="secondary-btn" hidden
+          title="Dùng khi đang ở bước đính kèm hồ sơ trên cổng dịch vụ công">Đính kèm giấy tờ</button>
+      </section>
+
+      <div class="status-region">
+        <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <button id="statusDetailsToggle" class="status-details-toggle" type="button" aria-expanded="false"
+          aria-controls="statusDetails" hidden>Xem chi tiết</button>
+        <div id="statusDetails" class="status-details" role="region" aria-label="Chi tiết kết quả xử lý" hidden></div>
+      </div>
+      <button id="supportCode" class="support-code" type="button" hidden
+        title="Sao chép và gửi cho bộ phận hỗ trợ khi cần kiểm tra kết quả xử lý.">
+        <span class="support-code-label">Mã hỗ trợ</span>
+        <span id="supportCodeValue" class="support-code-value"></span>
+        <span class="support-code-action" aria-hidden="true">📋 Sao chép</span>
       </button>
-      <div id="uploadHintBox" class="hint-box" hidden role="region" aria-label="Chi tiết giấy tờ cần tải lên">
-        <button id="uploadHintClose" type="button" class="hint-close" aria-label="Ẩn chi tiết giấy tờ" title="Ẩn">×</button>
-        <p id="uploadHint" class="hint-text"></p>
-      </div>
-      <label for="requestMode">Người yêu cầu là</label>
-      <select id="requestMode">
-        <option value="self">Bản thân</option>
-        <option value="other">Người khác</option>
-      </select>
-      <label for="dangKyBy">Người đi đăng ký là</label>
-      <select id="dangKyBy">
-        <option value="father">Cha</option>
-        <option value="mother">Mẹ</option>
-      </select>
-      <label id="handwritingRow" class="checkbox-row">
-        <input id="handwritingToggle" type="checkbox">
-        <span>Có bản viết tay (tất cả)</span>
-      </label>
-      <label for="fileInput" class="upload-label">+ Thêm file ảnh/PDF</label>
-      <input id="fileInput" type="file" multiple accept="image/*,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
-      <button id="phoneUploadBtn" type="button" class="upload-label upload-label-alt" title="Tạo mã QR để chụp/chọn ảnh từ điện thoại — ảnh tự về danh sách này">📱 Thêm ảnh từ điện thoại (QR)</button>
-      <div id="qrCard" class="qr-card" hidden></div>
-      <ul id="fileList" class="file-list"></ul>
-      <label id="splitModeRow" class="checkbox-row" style="display:none" title="Chỉ áp dụng cho chứng thực. Bật: mỗi tài liệu tạo 1 hồ sơ riêng (mở tab mới cho từng file).">
-        <input id="splitModeToggle" type="checkbox">
-        <span>Mỗi tài liệu 1 hồ sơ riêng (tách hồ sơ)</span>
-      </label>
-      <button id="ocrBtn">Quét và nhập dữ liệu</button>
-      <button id="fillAllBtn" class="secondary-btn" hidden title="Đăng ký kinh doanh: quét &amp; điền cả 8 trang rồi tự đính kèm hồ sơ">⚡ Quét nhập thông tin và đính kèm</button>
-      <button id="attachStepBtn" class="secondary-btn" hidden title="Dùng khi đang ở bước đính kèm hồ sơ trên cổng dịch vụ công">Đính kèm giấy tờ</button>
-    </section>
-
-    <div class="status-region">
-      <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
-      <button id="statusDetailsToggle" class="status-details-toggle" type="button"
-              aria-expanded="false" aria-controls="statusDetails" hidden>Xem chi tiết</button>
-      <div id="statusDetails" class="status-details" role="region"
-           aria-label="Chi tiết kết quả xử lý" hidden></div>
-    </div>
-    <button id="supportCode" class="support-code" type="button" hidden
-            title="Sao chép và gửi cho bộ phận hỗ trợ khi cần kiểm tra kết quả xử lý.">
-      <span class="support-code-label">Mã hỗ trợ</span>
-      <span id="supportCodeValue" class="support-code-value"></span>
-      <span class="support-code-action" aria-hidden="true">📋 Sao chép</span>
-    </button>
-    <section id="reviewCard" class="review-card" hidden></section>
+      <section id="reviewCard" class="review-card" hidden></section>
     </div><!-- /view-main -->
 
     <!-- ===== VIEW: CHẤP THUẬN XỬ LÝ DỮ LIỆU ===== -->
@@ -117,18 +162,29 @@
       <div class="cs-scroll">
         <span class="cs-badge">Xác nhận trên Trợ lý hồ sơ HCC</span>
         <h2 class="cs-title">Cho phép Trợ lý đọc giấy tờ và tự động điền biểu mẫu</h2>
-        <p class="cs-lead">Chỉ khi bạn chọn <b>“Đồng ý và tự động điền”</b>, hệ thống <b>Trợ lý hồ sơ HCC</b> mới đọc, trích xuất và xử lý thông tin cần thiết từ các giấy tờ dưới đây, sau đó tự động điền vào biểu mẫu <b id="consentProcName">của thủ tục này</b>.</p>
+        <p class="cs-lead">Chỉ khi bạn chọn <b>“Đồng ý và tự động điền”</b>, hệ thống <b>Trợ lý hồ sơ HCC</b> mới đọc,
+          trích xuất và xử lý thông tin cần thiết từ các giấy tờ dưới đây, sau đó tự động điền vào biểu mẫu <b
+            id="consentProcName">của thủ tục này</b>.</p>
         <p class="cs-list-title">Giấy tờ Trợ lý sẽ đọc trong thủ tục này:</p>
         <ul class="cs-doc-read" id="consentDocList"></ul>
-        <p class="cs-note cs-scope">Trợ lý chỉ đọc những thông tin cần thiết từ giấy tờ bạn chủ động cung cấp để thực hiện thủ tục này. Bạn có thể kiểm tra, chỉnh sửa dữ liệu trước khi nộp hồ sơ.</p>
-        <p class="cs-note cs-purpose"><b>Mục đích xử lý dữ liệu:</b> OCR, chuẩn hoá, hỗ trợ điền biểu mẫu và chuẩn bị tệp đính kèm trên Cổng Dịch vụ công.</p>
-        <button type="button" class="cs-legal-link" id="consentLegalBtn">Xem đầy đủ quyền, nghĩa vụ của chủ thể dữ liệu ›</button>
+        <p class="cs-note cs-scope">Trợ lý chỉ đọc những thông tin cần thiết từ giấy tờ bạn chủ động cung cấp để thực
+          hiện thủ tục này. Bạn có thể kiểm tra, chỉnh sửa dữ liệu trước khi nộp hồ sơ.</p>
+        <p class="cs-note cs-purpose"><b>Mục đích xử lý dữ liệu:</b> OCR, chuẩn hoá, hỗ trợ điền biểu mẫu và chuẩn bị
+          tệp đính kèm trên Cổng Dịch vụ công.</p>
+        <button type="button" class="cs-legal-link" id="consentLegalBtn">Xem đầy đủ quyền, nghĩa vụ của chủ thể dữ liệu
+          ›</button>
       </div>
       <div class="cs-actions">
         <div class="cs-select-all"><button type="button" id="consentSelectAll">Chọn tất cả</button></div>
-        <label class="cs-check"><input type="checkbox" id="consentC0"><span>Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin được xử lý và mục đích nêu trên; đồng ý cho Trợ lý hồ sơ HCC đọc, xử lý và tự động điền dữ liệu vào biểu mẫu.</span></label>
-        <label class="cs-check"><input type="checkbox" id="consentC1"><span>Tôi xác nhận tự chịu trách nhiệm về tính chính xác, hợp pháp của các thông tin nêu trên và về việc thực hiện thủ tục hành chính của mình.</span></label>
-        <label class="cs-check cs-check-opt"><input type="checkbox" id="consentC2"><span>Khi hệ thống điền bị lỗi hoặc thiếu sót, tôi đồng ý cho Trợ lý <b>lưu lại dữ liệu của lần xử lý này</b> để phân tích, cải thiện và tối ưu hệ thống. <i class="cs-opt-tag">Không bắt buộc</i></span></label>
+        <label class="cs-check"><input type="checkbox" id="consentC0"><span>Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin
+            được xử lý và mục đích nêu trên; đồng ý cho Trợ lý hồ sơ HCC đọc, xử lý và tự động điền dữ liệu vào biểu
+            mẫu.</span></label>
+        <label class="cs-check"><input type="checkbox" id="consentC1"><span>Tôi xác nhận tự chịu trách nhiệm về tính
+            chính xác, hợp pháp của các thông tin nêu trên và về việc thực hiện thủ tục hành chính của
+            mình.</span></label>
+        <label class="cs-check cs-check-opt"><input type="checkbox" id="consentC2"><span>Khi hệ thống điền bị lỗi hoặc
+            thiếu sót, tôi đồng ý cho Trợ lý <b>lưu lại dữ liệu của lần xử lý này</b> để phân tích, cải thiện và tối ưu
+            hệ thống. <i class="cs-opt-tag">Không bắt buộc</i></span></label>
         <div class="cs-btns">
           <button type="button" class="cs-btn-outline" id="consentDeclineBtn">Không đồng ý · Tự nhập</button>
           <button type="button" class="cs-btn-blue" id="consentAcceptBtn" disabled>Đồng ý và tự động điền</button>
@@ -153,22 +209,38 @@
         <h3 class="cs-legal-h3">Điều 4. Quyền và nghĩa vụ của chủ thể dữ liệu cá nhân</h3>
         <p class="cs-legal-clause">1. Quyền của chủ thể dữ liệu cá nhân bao gồm:</p>
         <p class="cs-legal-point">a) Được biết về hoạt động xử lý dữ liệu cá nhân;</p>
-        <p class="cs-legal-point">b) Đồng ý hoặc không đồng ý, yêu cầu rút lại sự đồng ý cho phép xử lý dữ liệu cá nhân;</p>
+        <p class="cs-legal-point">b) Đồng ý hoặc không đồng ý, yêu cầu rút lại sự đồng ý cho phép xử lý dữ liệu cá nhân;
+        </p>
         <p class="cs-legal-point">c) Xem, chỉnh sửa hoặc yêu cầu chỉnh sửa dữ liệu cá nhân;</p>
-        <p class="cs-legal-point">d) Yêu cầu cung cấp, xóa, hạn chế xử lý dữ liệu cá nhân; gửi yêu cầu phản đối xử lý dữ liệu cá nhân;</p>
-        <p class="cs-legal-point">đ) Khiếu nại, tố cáo, khởi kiện, yêu cầu bồi thường thiệt hại theo quy định của pháp luật;</p>
-        <p class="cs-legal-point">e) Yêu cầu cơ quan có thẩm quyền hoặc cơ quan, tổ chức, cá nhân liên quan đến xử lý dữ liệu cá nhân thực hiện các biện pháp, giải pháp bảo vệ dữ liệu cá nhân của mình theo quy định của pháp luật.</p>
+        <p class="cs-legal-point">d) Yêu cầu cung cấp, xóa, hạn chế xử lý dữ liệu cá nhân; gửi yêu cầu phản đối xử lý dữ
+          liệu cá nhân;</p>
+        <p class="cs-legal-point">đ) Khiếu nại, tố cáo, khởi kiện, yêu cầu bồi thường thiệt hại theo quy định của pháp
+          luật;</p>
+        <p class="cs-legal-point">e) Yêu cầu cơ quan có thẩm quyền hoặc cơ quan, tổ chức, cá nhân liên quan đến xử lý dữ
+          liệu cá nhân thực hiện các biện pháp, giải pháp bảo vệ dữ liệu cá nhân của mình theo quy định của pháp luật.
+        </p>
         <p class="cs-legal-clause">2. Nghĩa vụ của chủ thể dữ liệu cá nhân bao gồm:</p>
         <p class="cs-legal-point">a) Tự bảo vệ dữ liệu cá nhân của mình;</p>
         <p class="cs-legal-point">b) Tôn trọng, bảo vệ dữ liệu cá nhân của người khác;</p>
-        <p class="cs-legal-point">c) Cung cấp đầy đủ, chính xác dữ liệu cá nhân của mình theo quy định của pháp luật, theo hợp đồng hoặc khi đồng ý cho phép xử lý dữ liệu cá nhân của mình;</p>
-        <p class="cs-legal-point">d) Chấp hành pháp luật về bảo vệ dữ liệu cá nhân và tham gia phòng, chống hoạt động xâm phạm dữ liệu cá nhân.</p>
-        <p class="cs-legal-clause">3. Chủ thể dữ liệu cá nhân khi thực hiện quyền và nghĩa vụ của mình phải tuân thủ đầy đủ các nguyên tắc sau đây:</p>
-        <p class="cs-legal-point">a) Thực hiện theo quy định của pháp luật; tuân thủ nghĩa vụ của chủ thể dữ liệu cá nhân theo hợp đồng. Việc thực hiện quyền và nghĩa vụ của chủ thể dữ liệu cá nhân phải nhằm mục đích bảo vệ quyền, lợi ích hợp pháp của chính chủ thể dữ liệu cá nhân đó;</p>
-        <p class="cs-legal-point">b) Không được gây khó khăn, cản trở việc thực hiện quyền, nghĩa vụ pháp lý của bên kiểm soát dữ liệu cá nhân, bên kiểm soát và xử lý dữ liệu cá nhân, bên xử lý dữ liệu cá nhân;</p>
-        <p class="cs-legal-point">c) Không được xâm phạm đến quyền, lợi ích hợp pháp của Nhà nước, cơ quan, tổ chức và cá nhân khác.</p>
-        <p class="cs-legal-clause">4. Cơ quan, tổ chức, cá nhân có trách nhiệm tạo điều kiện thuận lợi, không được gây khó khăn, cản trở việc thực hiện quyền và nghĩa vụ của chủ thể dữ liệu cá nhân theo quy định của pháp luật.</p>
-        <p class="cs-legal-clause">5. Khi nhận được yêu cầu của chủ thể dữ liệu cá nhân để thực hiện quyền của chủ thể dữ liệu cá nhân quy định tại khoản 1 Điều này, bên kiểm soát dữ liệu cá nhân, bên kiểm soát và xử lý dữ liệu cá nhân phải kịp thời thực hiện trong thời hạn theo quy định của pháp luật.</p>
+        <p class="cs-legal-point">c) Cung cấp đầy đủ, chính xác dữ liệu cá nhân của mình theo quy định của pháp luật,
+          theo hợp đồng hoặc khi đồng ý cho phép xử lý dữ liệu cá nhân của mình;</p>
+        <p class="cs-legal-point">d) Chấp hành pháp luật về bảo vệ dữ liệu cá nhân và tham gia phòng, chống hoạt động
+          xâm phạm dữ liệu cá nhân.</p>
+        <p class="cs-legal-clause">3. Chủ thể dữ liệu cá nhân khi thực hiện quyền và nghĩa vụ của mình phải tuân thủ đầy
+          đủ các nguyên tắc sau đây:</p>
+        <p class="cs-legal-point">a) Thực hiện theo quy định của pháp luật; tuân thủ nghĩa vụ của chủ thể dữ liệu cá
+          nhân theo hợp đồng. Việc thực hiện quyền và nghĩa vụ của chủ thể dữ liệu cá nhân phải nhằm mục đích bảo vệ
+          quyền, lợi ích hợp pháp của chính chủ thể dữ liệu cá nhân đó;</p>
+        <p class="cs-legal-point">b) Không được gây khó khăn, cản trở việc thực hiện quyền, nghĩa vụ pháp lý của bên
+          kiểm soát dữ liệu cá nhân, bên kiểm soát và xử lý dữ liệu cá nhân, bên xử lý dữ liệu cá nhân;</p>
+        <p class="cs-legal-point">c) Không được xâm phạm đến quyền, lợi ích hợp pháp của Nhà nước, cơ quan, tổ chức và
+          cá nhân khác.</p>
+        <p class="cs-legal-clause">4. Cơ quan, tổ chức, cá nhân có trách nhiệm tạo điều kiện thuận lợi, không được gây
+          khó khăn, cản trở việc thực hiện quyền và nghĩa vụ của chủ thể dữ liệu cá nhân theo quy định của pháp luật.
+        </p>
+        <p class="cs-legal-clause">5. Khi nhận được yêu cầu của chủ thể dữ liệu cá nhân để thực hiện quyền của chủ thể
+          dữ liệu cá nhân quy định tại khoản 1 Điều này, bên kiểm soát dữ liệu cá nhân, bên kiểm soát và xử lý dữ liệu
+          cá nhân phải kịp thời thực hiện trong thời hạn theo quy định của pháp luật.</p>
       </div>
       <div class="cs-view-foot">
         <button type="button" class="cs-btn-blue" id="consentLegalBack">Đã hiểu · Quay lại xác nhận</button>
@@ -176,7 +248,8 @@
     </div>
 
     <div class="app-footer">
-      <a id="guideBtn" class="guide-btn" href="https://kynguyen.io/huong-dan-van-hanh-bot-hcc" target="_blank" rel="noopener" title="Mở hướng dẫn sử dụng">Hướng dẫn</a>
+      <a id="guideBtn" class="guide-btn" href="https://kynguyen.io/huong-dan-van-hanh-bot-hcc" target="_blank"
+        rel="noopener" title="Mở hướng dẫn sử dụng">Hướng dẫn</a>
     </div>
   </div>
 
@@ -189,6 +262,10 @@
   <script src="api/client.js"></script>
   <script src="api/endpoints.js"></script>
   <script src="changelog.js"></script>
+  <!-- Dữ liệu tỉnh/xã + link kê khai phải nạp TRƯỚC popup.js (popup.js đọc window.* ngay khi chạy). -->
+  <script src="popup-locations.js"></script>
+  <script src="data/procedure-links.js"></script>
   <script src="popup.js"></script>
 </body>
+
 </html>

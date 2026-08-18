@@ -1,0 +1,133 @@
+/* bbox-overlay.css — panel review vùng ảnh nguồn (plan_tuyenquang/15).
+   Port từ public/officer/officer.css, prefix tlhs- + z-index cực cao để nổi trên Cổng DVC. */
+
+.tlhs-bbox-overlay {
+  position: absolute;
+  border: 2px solid rgba(220, 38, 38, 0.7); /* mảnh + nhạt để không đè chữ */
+  background: rgba(220, 38, 38, 0.06);
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.10);
+  border-radius: 3px;
+  pointer-events: none;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+.tlhs-bbox-zoom {
+  display: none;
+  border: 3px solid #dc2626;
+  border-radius: 10px;
+  background: #fef2f2;
+  overflow: hidden;
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+.tlhs-bbox-zoom * { box-sizing: border-box; }
+.tlhs-bbox-zoom--floating {
+  position: fixed;
+  z-index: 2147483647; /* max — trên cả badge ⓘ (…646) và tooltip (…647) */
+  width: 400px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, .28), 0 0 0 1px rgba(220, 38, 38, .25);
+}
+.tlhs-bbox-zoom--floating[data-placement="right"]::before {
+  content: ""; position: absolute; left: -14px; top: 22px; width: 0; height: 0;
+  border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+  border-right: 14px solid #dc2626; filter: drop-shadow(-2px 0 2px rgba(15,23,42,.15));
+}
+.tlhs-bbox-zoom--floating[data-placement="left"]::before {
+  content: ""; position: absolute; right: -14px; top: 22px; width: 0; height: 0;
+  border-top: 10px solid transparent; border-bottom: 10px solid transparent;
+  border-left: 14px solid #dc2626; filter: drop-shadow(2px 0 2px rgba(15,23,42,.15));
+}
+.tlhs-bbox-zoom--floating[data-placement="below"]::before {
+  content: ""; position: absolute; top: -14px; left: 28px; width: 0; height: 0;
+  border-left: 10px solid transparent; border-right: 10px solid transparent;
+  border-bottom: 14px solid #dc2626; filter: drop-shadow(0 -2px 2px rgba(15,23,42,.15));
+}
+.tlhs-bbox-zoom--active {
+  display: block;
+  animation: tlhs-bbox-zoom-in 0.24s ease-out;
+}
+@keyframes tlhs-bbox-zoom-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tlhs-bbox-zoom__header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: #dc2626;
+}
+.tlhs-bbox-zoom__icon { font-size: 16px; }
+.tlhs-bbox-zoom__label {
+  color: #fff; font-weight: 800; font-size: 14px; flex: 1; line-height: 1.2;
+}
+.tlhs-bbox-zoom__close {
+  background: rgba(255,255,255,.95); color: #b91c1c; border: 0;
+  width: 26px; height: 26px; border-radius: 50%;
+  font-weight: 800; font-size: 13px; cursor: pointer; padding: 0; flex: 0 0 auto;
+}
+.tlhs-bbox-zoom__close:hover { background: #fff; }
+.tlhs-bbox-zoom__counter { color: #fff; font-size: 12px; font-weight: 700; opacity: .9; flex: 0 0 auto; }
+.tlhs-bbox-zoom__nav {
+  background: rgba(255,255,255,.95); color: #b91c1c; border: 0;
+  width: 26px; height: 26px; border-radius: 50%;
+  font-weight: 800; font-size: 16px; line-height: 1; cursor: pointer; padding: 0; flex: 0 0 auto;
+}
+.tlhs-bbox-zoom__nav:hover { background: #fff; }
+.tlhs-bbox-zoom__viewport {
+  position: relative; width: 100%; overflow: hidden;
+  background: #1f2937; min-height: 120px; max-height: 300px;
+}
+.tlhs-bbox-zoom__stage {
+  position: absolute; top: 0; left: 0; width: 100%;
+  transform-origin: 0 0;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tlhs-bbox-zoom__img {
+  display: block; width: 100%; height: auto; user-select: none;
+  image-rendering: -webkit-optimize-contrast;
+}
+.tlhs-bbox-zoom__value {
+  padding: 8px 12px; background: #fef2f2; border-top: 1px dashed #fca5a5;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 14px; color: #7f1d1d; font-weight: 700; word-break: break-word;
+}
+.tlhs-bbox-zoom__value::before {
+  content: "AI đọc: "; color: #b91c1c; font-weight: 800; margin-right: 4px;
+}
+.tlhs-bbox-zoom__value[hidden] { display: none; }
+.tlhs-bbox-zoom__note {
+  padding: 7px 12px; background: #fffbeb; border-top: 1px dashed #fcd34d;
+  font-size: 12.5px; color: #92400e; line-height: 1.35;
+}
+.tlhs-bbox-zoom__note[hidden] { display: none; }
+
+/* Toast báo trạng thái rà soát (vd "đã rà xong"). */
+.tlhs-review-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translate(-50%, 16px);
+  z-index: 2147483647;
+  max-width: 90vw;
+  padding: 12px 20px;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, .3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .22s ease, transform .22s ease;
+}
+.tlhs-review-toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tlhs-bbox-zoom--active { animation: none; }
+  .tlhs-bbox-zoom__stage { transition: none; }
+  .tlhs-review-toast { transition: none; }
+}

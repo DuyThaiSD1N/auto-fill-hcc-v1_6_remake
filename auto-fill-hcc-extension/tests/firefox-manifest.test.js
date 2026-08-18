@@ -38,4 +38,25 @@ for (const match of portalMatches) {
   assert.ok(resourceMatches.has(match), `Popup resource chưa được phép tải tại: ${match}`);
 }
 
-console.log("manifest: Firefox background.scripts + Chrome service_worker passed");
+// Mọi file khai trong manifest phải tồn tại thật (thêm content script mà quên file = hỏng im lặng).
+const isolatedEntry = manifest.content_scripts.find((entry) => !entry.world);
+for (const file of isolatedEntry.js) {
+  assert.ok(fs.existsSync(path.join(root, file)), `Không tìm thấy content script: ${file}`);
+}
+
+// popup.js tự inject lại content script khi tab chưa có (sendToContent). Hai danh sách phải KHỚP,
+// nếu không thì tính năng chỉ chạy ở tab mới mở mà chết ở tab đang mở sẵn.
+const popupSource = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+// Lấy đúng lô isolated-world (lô chứa content.js), bỏ qua lô MAIN-world đứng trước.
+const injectedLists = [...popupSource.matchAll(/files: \[([^\]]+)\]/g)]
+  .map((m) => (m[1].match(/"([^"]+)"/g) || []).map((s) => s.slice(1, -1)))
+  .filter((list) => list.includes("content.js"));
+assert.equal(injectedLists.length, 1, "popup.js phải có đúng 1 danh sách inject content script");
+const injectedFiles = injectedLists[0];
+assert.deepEqual(
+  injectedFiles,
+  isolatedEntry.js,
+  "Danh sách inject trong popup.js lệch với manifest.content_scripts",
+);
+
+console.log("manifest: Firefox background.scripts + Chrome service_worker + inject list passed");

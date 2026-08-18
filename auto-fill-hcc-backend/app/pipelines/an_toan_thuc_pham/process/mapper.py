@@ -4,6 +4,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines.an_toan_thuc_pham.process.schema import UI_COMP_BY_NAME
 
@@ -79,18 +80,23 @@ def _parse_area_text(value: str) -> dict | None:
 
 def _area(value):
     if isinstance(value, str):
-        return _parse_area_text(value)
-    if not isinstance(value, dict):
+        raw_area = _parse_area_text(value)
+    elif isinstance(value, dict):
+        raw_area = {
+            "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
+            "tinh": value.get("tinh") or value.get("tỉnh") or "",
+            "xa": _strip_admin_prefix(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
+            "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
+        }
+    else:
         return None
-    out = {
-        "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
-        "tinh": value.get("tinh") or value.get("tỉnh") or "",
-        "xa": _strip_admin_prefix(value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường")),
-        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or "",
-    }
-    if not out["tinh"] and not out["xa"] and not out["diaChi"]:
+    
+    if not raw_area or (not raw_area.get("tinh") and not raw_area.get("xa") and not raw_area.get("diaChi")):
         return None
-    return out
+    
+    # Áp dụng remap phường/xã
+    remapped_area = remap_area(raw_area, allow_diachi_fallback=True)
+    return remapped_area
 
 
 def _area_label(value: str | None) -> str | None:
