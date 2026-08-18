@@ -1,4 +1,4 @@
-const BACKEND_URL = "http://localhost:12005";
+const BACKEND_URL = "https://trolyhoso-hcc-admin.vnekyc.vn";
 // WS cho phiên tải ảnh QR: https→wss (http→ws). WebSocket chạy THẲNG từ popup iframe
 // (không proxy qua background — SW MV3 bị kill sẽ rớt kết nối).
 const WS_BASE = BACKEND_URL.replace(/^http/, "ws");

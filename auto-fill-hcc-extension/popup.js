@@ -331,6 +331,8 @@ function showMain(user) {
   loginScreen.hidden = true;
   mainScreen.hidden = false;
   userLabel.textContent = user?.name || user?.username || "";
+  // /auth/me về sau khi khối địa chỉ đã dựng -> áp lại để lấy tỉnh/xã gắn trong tài khoản.
+  void applyStoredLocation();
 }
 
 async function bootstrap() {
@@ -2634,27 +2636,15 @@ async function initLocationManager() {
     }
   }
 
-  // Load saved location from storage
-  const saved = await chrome.storage.local.get(LOCATION_STORAGE_KEY);
-  if (saved[LOCATION_STORAGE_KEY]) {
-    currentLocation = { ...currentLocation, ...saved[LOCATION_STORAGE_KEY] };
-  }
-
-  // Populate province dropdown
+  // Danh sách tỉnh dựng trước; địa chỉ mặc định do applyStoredLocation() chốt (có thể phải chờ
+  // /auth/me trả về nên tách riêng, gọi lại được nhiều lần).
   for (const prov of store.getProvinces()) {
     const option = document.createElement('option');
     option.value = prov.slug;
     option.textContent = prov.text;
-    if (prov.slug === currentLocation.provinceSlug) {
-      option.selected = true;
-    }
     provinceSelect.appendChild(option);
   }
-
-  // If province is selected, load wards
-  if (currentLocation.provinceSlug) {
-    loadWards(currentLocation.provinceSlug, currentLocation.ward);
-  }
+  await applyStoredLocation();
 
   // Event listeners — KHÔNG có nút Lưu: chọn tới đâu ghi tới đó.
   provinceSelect.addEventListener('change', (e) => {
@@ -2662,24 +2652,25 @@ async function initLocationManager() {
     currentLocation.provinceSlug = slug;
     currentLocation.province = slug ? (e.target.options[e.target.selectedIndex]?.textContent || '') : '';
     currentLocation.ward = '';
+    currentLocation.source = "manual";   // đã tự chọn -> đừng để mặc định tài khoản ghi đè nữa
     loadWards(slug, '');
     void persistLocation();
   });
 
   wardSelect.addEventListener('change', (e) => {
     currentLocation.ward = e.target.value;
+    currentLocation.source = "manual";
     void persistLocation();
   });
 
-  showLocationSummary();
-  syncDestCombos();
-  refreshKeKhaiHint();  // địa chỉ nạp xong -> bỏ cảnh báo "chưa chọn Tỉnh/Xã" ở mục kê khai
-  postPanelHeight();
+  postPanelHeight();   // applyStoredLocation() ở trên đã đồng bộ nhãn + tóm tắt + gợi ý kê khai
 }
 
 async function persistLocation() {
   try {
-    await chrome.storage.local.set({ [LOCATION_STORAGE_KEY]: { ...currentLocation } });
+    await chrome.storage.local.set({
+      [LOCATION_STORAGE_KEY]: { username: currentUser?.username || "", ...currentLocation },
+    });
   } catch (error) {
     locationStatus.textContent = '✗ Lỗi lưu địa chỉ';
     locationStatus.className = 'status err';
@@ -2688,6 +2679,46 @@ async function persistLocation() {
   }
   showLocationSummary();
   refreshKeKhaiHint();
+}
+
+/**
+ * Chốt địa chỉ đang dùng rồi đổ lên UI. Thứ tự ưu tiên:
+ *   1. Lựa chọn cán bộ TỰ đổi (source: "manual") — không bao giờ bị ghi đè.
+ *   2. Mặc định đã lưu của CHÍNH tài khoản đang đăng nhập.
+ *   3. Tỉnh/xã gắn trong tài khoản (/auth/me) — giống cách tro-ly-nguoi-dan-backend seed location
+ *      cho phiên chat mới (app/chat/router.py: location_for(user.tinh, user.xa)).
+ * Gọi được nhiều lần: bootstrap() lấy /auth/me xong sẽ gọi lại để áp mặc định của tài khoản.
+ */
+async function applyStoredLocation() {
+  const store = locationStore();
+  if (!store?.loaded || !provinceSelect?.options.length) return;
+
+  let stored = null;
+  try { stored = (await chrome.storage.local.get(LOCATION_STORAGE_KEY))[LOCATION_STORAGE_KEY]; }
+  catch (_) { /* dùng mặc định tài khoản */ }
+
+  const keepStored = stored
+    && (stored.source === "manual" || stored.username === currentUser?.username);
+  const fromAccount = keepStored ? null : accountLocation(store);
+  if (fromAccount) {
+    currentLocation = fromAccount;
+    await persistLocation();
+  } else if (stored) {
+    currentLocation = { ...currentLocation, ...stored };
+  }
+
+  provinceSelect.value = currentLocation.provinceSlug || "";
+  loadWards(currentLocation.provinceSlug, currentLocation.ward);
+  showLocationSummary();
+  syncDestCombos();
+  refreshKeKhaiHint();
+}
+
+/** Tỉnh/xã gắn trong tài khoản -> địa chỉ mặc định, kèm dấu vết để biết là máy tự điền. */
+function accountLocation(store) {
+  const mapped = store?.locationFor?.(currentUser?.tinh, currentUser?.xa);
+  if (!mapped?.provinceSlug) return null;
+  return { ...mapped, source: "account", username: currentUser?.username || "" };
 }
 
 function locationIsComplete() {

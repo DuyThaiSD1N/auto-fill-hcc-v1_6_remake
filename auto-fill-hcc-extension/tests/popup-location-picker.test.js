@@ -36,6 +36,17 @@ assert.match(html, /<div id="destPickers" hidden>/, "destPickers phải ẩn m�
 
 const popupJs = read("popup.js");
 assert.match(popupJs, /async function persistLocation\(\)/, "popup.js phải tự lưu khi đổi lựa chọn");
+// Địa chỉ mặc định lấy từ tài khoản, nhưng KHÔNG được đè lên lựa chọn cán bộ tự đổi.
+assert.match(popupJs, /async function applyStoredLocation\(\)/, "thiếu áp địa chỉ mặc định");
+assert.match(popupJs, /store\?\.locationFor\?\.\(currentUser\?\.tinh, currentUser\?\.xa\)/,
+  "phải map tỉnh/xã của tài khoản qua locationFor");
+assert.match(popupJs, /stored\.source === "manual" \|\| stored\.username === currentUser\?\.username/,
+  "tự đổi hoặc cùng tài khoản thì giữ nguyên lựa chọn cũ");
+assert.equal((popupJs.match(/currentLocation\.source = "manual";/g) || []).length, 2,
+  "đổi tỉnh và đổi xã đều phải đánh dấu manual");
+// /auth/me về sau khi khối địa chỉ đã dựng -> phải áp lại.
+assert.match(popupJs, /userLabel\.textContent = user\?\.name[\s\S]{0,200}applyStoredLocation\(\)/,
+  "đăng nhập xong phải áp lại địa chỉ mặc định của tài khoản");
 assert.match(popupJs, /function applyDestOpen\(open\)/, "thiếu applyDestOpen");
 assert.match(popupJs, /if \(procedureSection\) procedureSection\.hidden = showPickers;/,
   'đang chọn điểm đến phải ẩn combo "Loại thủ tục"');
@@ -132,6 +143,17 @@ vm.runInNewContext(read("data/procedure-links.js"), sandbox, { filename: "proced
   assert.ok(wards && wards.communes.length > 0, "Lâm Đồng phải có danh sách phường/xã");
   assert.ok(wards.communes.includes("Xã Đơn Dương"), "thiếu Xã Đơn Dương trong Lâm Đồng");
   assert.equal(store.getWards("khong-co-tinh-nay"), null);
+
+  // --- tỉnh/xã gắn trong tài khoản -> địa chỉ mặc định (cùng hợp đồng location_for bên tro-ly) ---
+  assert.deepEqual({ ...store.locationFor("Tỉnh Lâm Đồng", "Xã Đơn Dương") },
+    { province: "Tỉnh Lâm Đồng", provinceSlug: lamDong.slug, ward: "Xã Đơn Dương" });
+  // Tên ngắn (tài khoản hay lưu kiểu này) vẫn phải khớp.
+  assert.deepEqual({ ...store.locationFor("Lâm Đồng", "Đơn Dương") },
+    { province: "Tỉnh Lâm Đồng", provinceSlug: lamDong.slug, ward: "Xã Đơn Dương" });
+  // Khớp tỉnh nhưng xã sai -> ward rỗng, KHÔNG đoán bừa.
+  assert.equal(store.locationFor("Lâm Đồng", "Xã Không Có").ward, "");
+  assert.equal(store.locationFor("Tỉnh Không Tồn Tại", "Xã Đơn Dương"), null);
+  assert.equal(store.locationFor("", ""), null);
 
   // --- link kê khai: trùng key với registry của tro-ly-nguoi-dan-backend ---
   const links = sandbox.window.PROCEDURE_KE_KHAI_LINKS;

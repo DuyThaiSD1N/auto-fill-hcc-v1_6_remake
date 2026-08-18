@@ -73,6 +73,42 @@ class PopupLocationManager {
     getWards(slug) {
         return this.wardsBySlug[slug] || null;
     }
+
+    /** Tìm tỉnh theo tên đầy đủ ("Tỉnh Lâm Đồng") hoặc tên ngắn ("Lâm Đồng"). */
+    findProvince(provinceName) {
+        const name = String(provinceName || '').trim();
+        if (!name) return null;
+        return this.provinces.find(p => p.text === name)
+            || this.provinces.find(p => p.name === name)
+            || null;
+    }
+
+    /** Tên xã/phường ĐẦY ĐỦ trong tỉnh; chấp nhận cả tên ngắn (bỏ tiền tố Phường/Xã/Đặc khu). */
+    findWard(slug, wardName) {
+        const name = String(wardName || '').trim();
+        if (!slug || !name) return '';
+        const data = this.wardsBySlug[slug];
+        if (!data) return '';
+        if (data.communes.includes(name)) return name;
+        const strip = (value) => value.replace(/^(Phường|Xã|Thị trấn|Đặc khu)\s+/i, '');
+        const stripped = strip(name);
+        return data.communes.find(w => strip(w) === stripped) || '';
+    }
+
+    /**
+     * Tỉnh/xã lưu trong tài khoản -> object địa chỉ chuẩn của popup.
+     * Cùng hợp đồng với location_for() bên tro-ly-nguoi-dan-backend (app/locations/lookup.py):
+     * không khớp tỉnh thì trả null, khớp tỉnh mà không khớp xã thì ward rỗng.
+     */
+    locationFor(tinh, xa) {
+        const prov = this.findProvince(tinh);
+        if (!prov) return null;
+        return {
+            province: prov.text,
+            provinceSlug: prov.slug,
+            ward: xa ? this.findWard(prov.slug, xa) : '',
+        };
+    }
 }
 
 // Export for popup.js
