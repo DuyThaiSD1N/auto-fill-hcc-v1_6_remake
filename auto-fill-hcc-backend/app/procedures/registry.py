@@ -206,11 +206,14 @@ PROCEDURES: list[dict] = [
     {
         "key": "chung-thuc-phan-chia-di-san",
         "detect": {
-            "textIncludes": ["chứng thực văn bản phân chia di sản"],
+            "urlIncludes": ["maThuTuc=2.001406"],
+            # Tách 2 cụm rời: cổng mới ghi "văn bản THỎA THUẬN phân chia di sản", cổng cũ ghi
+            # "văn bản phân chia di sản" — một cụm liền mạch sẽ trượt ở cổng mới.
+            "textIncludes": ["chứng thực văn bản", "phân chia di sản"],
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "Chứng thực văn bản phân chia di sản mà di sản là động sản, quyền sử dụng đất, nhà ở",
+        "label": "Chứng thực văn bản thỏa thuận phân chia di sản mà di sản là động sản, quyền sử dụng đất, nhà ở",
         "mode": "attach",
         "roles": [],
         "useDangKyBy": False,
@@ -228,6 +231,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
         "detect": {
+            "urlIncludes": ["maThuTuc=2.000913"],
             "textIncludes": ["chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch"],
             "headingDisabled": True,
             "textPriority": True,
@@ -271,8 +275,11 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chung-thuc-di-chuc",
-        # Chưa có mã maThuTuc ổn định trong mẫu; nhận diện theo tên thủ tục hiển thị.
-        "detect": {"textIncludes": ["chứng thực di chúc"], "headingDisabled": True},
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.001019"],
+            "textIncludes": ["chứng thực di chúc"],
+            "headingDisabled": True,
+        },
         "label": "Chứng thực di chúc",
         "mode": "attach",
         "roles": [],
@@ -289,6 +296,10 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-kinh-doanh",
+        # Mã TTHC quốc gia 1.001612. KHÔNG đưa vào urlIncludes: cả hai nơi đều không mang mã trên URL —
+        # HkdOnline dạng DW_DOCUMENTEdit.aspx?h=<handle phiên>, cổng QG dạng /thu-tuc-hanh-chinh/<uuid>.
+        # Trang trên cổng QG chỉ là điểm vào (xem PROCEDURE_KE_KHAI_LINKS ở extension); việc điền diễn ra
+        # sau khi cổng chuyển sang HkdOnline, nơi rule domain bên dưới bắt đúng mọi trang con.
         # Cổng riêng (ASP.NET) nhiều trang con .aspx nhưng CÙNG domain → nhận diện theo domain,
         # đúng trên mọi trang con (Địa chỉ, Tên hộ KD, Vốn, Thuế, Ngành nghề, Người nộp, Đính kèm...).
         "detect": {"urlIncludes": ["hokinhdoanh.dkkd.gov.vn"], "headingDisabled": True},
@@ -574,7 +585,11 @@ PROCEDURES: list[dict] = [
     {
         "key": "cap-ban-sao-so-goc",
         # Cổng dùng chung layout eForm, nhận diện theo TÊN thủ tục hiển thị trên trang.
-        "detect": {"textIncludes": ["cấp bản sao từ sổ gốc"], "headingDisabled": True},
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.000908"],
+            "textIncludes": ["cấp bản sao từ sổ gốc"],
+            "headingDisabled": True,
+        },
         "label": "Thủ tục cấp bản sao từ sổ gốc",
         # Chỉ đính kèm: BE OCR phân loại rồi xếp file vào 2 ô có sẵn (không điền bước Kê khai).
         "mode": "attach",
@@ -1045,6 +1060,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
         "detect": {
+            "urlIncludes": ["maThuTuc=1.013225"],
             "textIncludes": [
                 "cấp giấy phép xây dựng mới",
                 "công trình cấp iii",
@@ -1207,7 +1223,11 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang",
-        "detect": {"textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"], "headingDisabled": True},
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.001731"],
+            "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"],
+            "headingDisabled": True,
+        },
         "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -1249,6 +1269,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "dieu-chinh-huu-tri-xa-hoi",
         "detect": {
+            "urlIncludes": ["maThuTuc=1.014027"],
             "textIncludes": ["Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"],
             "headingDisabled": True,
         },
@@ -1288,6 +1309,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "xac-dinh-muc-do-khuyet-tat",
         "detect": {
+            "urlIncludes": ["maThuTuc=1.001699"],
             "textIncludes": ["Xác định, xác định lại mức độ khuyết tật và cấp Giấy xác nhận khuyết tật"],
             "headingDisabled": True,
         },
@@ -1403,6 +1425,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "bo-sung-than-nhan-liet-si",
         "detect": {
+            "urlIncludes": ["maThuTuc=1.010825"],
             "textIncludes": ["Bổ sung tình hình thân nhân trong hồ sơ liệt sĩ"],
             "headingDisabled": True,
             "textPriority": True,

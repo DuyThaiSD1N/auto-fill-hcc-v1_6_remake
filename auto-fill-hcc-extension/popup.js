@@ -480,9 +480,19 @@ function isXuanHuongBusinessUser(user) {
   return normalizeProcedureSearch(haystack).includes("xuan huong");
 }
 
+/** Tài khoản gắn tỉnh/thành Đà Nẵng (/auth/me trả `tinh`). */
+function isDaNangBusinessUser(user) {
+  return normalizeProcedureSearch(user?.tinh).includes("da nang");
+}
+
 function buildBusinessDefaults(user) {
-  if (!isXuanHuongBusinessUser(user)) return null;
-  return { businessActText: XUAN_HUONG_BUSINESS_ACT_TEXT };
+  const defaults = {};
+  if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
+  // Đà Nẵng: vai trò người nộp LUÔN là "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh",
+  // kể cả khi nhân thân tài khoản khác chủ hộ (nghiệp vụ địa phương yêu cầu). Chỉ áp cho tài khoản
+  // Đà Nẵng — tỉnh khác vẫn tự chốt vai trò theo đối chiếu tài khoản với chủ hộ như cũ.
+  if (isDaNangBusinessUser(user)) defaults.forceSelfSubmitter = true;
+  return Object.keys(defaults).length ? defaults : null;
 }
 
 function selectedProcedureConfig() {

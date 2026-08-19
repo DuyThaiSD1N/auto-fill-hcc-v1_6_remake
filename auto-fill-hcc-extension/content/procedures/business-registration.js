@@ -1148,6 +1148,14 @@
       return void handleChangeOwnerPage(st, fields, cfg);
     }
 
+    if (targetKey === "nguoi-nop-ho-so") {
+      // Vì sao vai trò lại ra như vậy — in ngay đầu mỗi lượt để soi được khi cổng tick sai.
+      console.log("[FillAll] vai trò người nộp — businessDefaults:",
+        JSON.stringify(st.businessDefaults || null),
+        "| workflow:", st.workflow || "create",
+        "| ép Người có thẩm quyền ký:", forceSelfSubmitter(st));
+    }
+
     // Nhân thân người nộp = CCCD của CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP trong hồ sơ. Chỉ xác định được sau
     // bước "Sao chép thông tin đăng ký tài khoản" (lúc đó form mới có tên/số định danh của tài khoản).
     let submitterOverride = null;
@@ -1160,6 +1168,10 @@
       const structural = fields.filter((f) =>
         !/^__/.test(f.name || "") && // field metadata (__applicantAddress...) không phải control trên DOM
         !cfg.addrMatch.test(f.name || "") &&
+        // Tài khoản Đà Nẵng: vai trò người nộp do bước 2c chốt cứng, KHÔNG điền radio vai trò theo
+        // backend (backend không biết ai đăng nhập; tick "Người được ủy quyền" ở đây là thừa một
+        // postback rồi lại phải tick ngược về).
+        !(forceSelfSubmitter(st) && /PERS_SUBGroup/.test(f.name || "")) &&
         !/FULL_NAME|GENDER|DATE_OF_BIRTH|PERS_DOC_NO|PHONE|FAX|EMAIL|URL/i.test(f.name || "")
       );
       if (structural.length) { try { await fillFormStandard(structural); } catch (e) { /* ignore */ } }
@@ -1212,7 +1224,12 @@
     //  - So sánh tài khoản với chủ hộ theo số định danh VÀ họ tên
     //  - Chủ hộ: Nếu số HOẶC tên KHỚP (chỉ cần 1 trong 2)
     //  - Người được ủy quyền: Nếu CẢ số VÀ tên đều KHÁC
-    if (targetKey === "nguoi-nop-ho-so") {
+    //  - Ngoại lệ Đà Nẵng: bỏ qua hết phần đối chiếu, luôn giữ "Người có thẩm quyền ký".
+    if (targetKey === "nguoi-nop-ho-so" && forceSelfSubmitter(st)) {
+      await tickSubmitterSelfRadio();
+      // submitterOverride để null: người nộp = chủ hộ nên KHÔNG ghi đè nhân thân bằng CCCD người
+      // đăng nhập, và địa chỉ lấy nhánh "chủ hộ tự nộp" (__applicantAddress.self) ở bước 3.
+    } else if (targetKey === "nguoi-nop-ho-so") {
       const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
       const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
 
@@ -1496,6 +1513,40 @@
     ].filter((field) => field.value);
     // Chỉ có mỗi "Việt Nam" thì coi như không có địa chỉ → để nguồn kế tiếp trong chuỗi ưu tiên lo.
     return out.some((field) => !/COUNTRY_IDFld$/.test(field.name)) ? out : [];
+  }
+
+  // Hai thủ tục áp ngoại lệ Đà Nẵng: "Đăng ký hộ kinh doanh" (luồng 8 trang, state không gắn
+  // workflow) và "Chấm dứt hoạt động hộ kinh doanh" (workflow "dissolution"). Thay đổi nội dung /
+  // cấp lại GCN vẫn tự chốt vai trò bằng cách đối chiếu tài khoản với chủ hộ.
+  const FORCE_SELF_SUBMITTER_WORKFLOWS = new Set(["create", "dissolution"]);
+
+  /**
+   * Tài khoản đăng nhập gắn tỉnh Đà Nẵng (popup đọc `tinh` từ /auth/me rồi gắn cờ vào
+   * businessDefaults) ⇒ vai trò người nộp LUÔN là "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ
+   * kinh doanh", KHÔNG bao giờ chuyển sang "Người được ủy quyền" dù nhân thân tài khoản khác chủ hộ.
+   */
+  function forceSelfSubmitter(st) {
+    if (!st || !st.businessDefaults || !st.businessDefaults.forceSelfSubmitter) return false;
+    return FORCE_SELF_SUBMITTER_WORKFLOWS.has(st.workflow || "create");
+  }
+
+  /** Tick "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh" (radio AutoPostBack → phải chờ). */
+  async function tickSubmitterSelfRadio() {
+    const selfRadio = document.querySelector(
+      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
+    );
+    if (!selfRadio) {
+      console.warn("[FillAll] tài khoản Đà Nẵng: không thấy radio Người có thẩm quyền ký trên trang");
+      return;
+    }
+    if (selfRadio.checked) {
+      console.log("[FillAll] tài khoản Đà Nẵng → giữ nguyên Người có thẩm quyền ký");
+      return;
+    }
+    // Hồ sơ mở lại (hoặc lần chạy trước tick nhầm) có thể đang ở "Người được ủy quyền" → tick lại.
+    console.log("[FillAll] tài khoản Đà Nẵng → tick lại Người có thẩm quyền ký");
+    (document.querySelector(`label[for="${CSS.escape(selfRadio.id)}"]`) || selfRadio).click();
+    await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
   }
 
   /** Vai trò người nộp đang tick THẬT trên cổng (sau bước "Sao chép thông tin đăng ký tài khoản"). */
@@ -2206,6 +2257,8 @@
   H.applySubmitterOverride = applySubmitterOverride;
   H.submitterAddressFields = submitterAddressFields;
   H.buildSubmitterOverride = buildSubmitterOverride;
+  H.forceSelfSubmitter = forceSelfSubmitter;
+  H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
   H.getFillAllState = getFillAllState;
   H.navigateBusinessRegistrationPage = navigateBusinessRegistrationPage;
   H.setFillAllState = setFillAllState;

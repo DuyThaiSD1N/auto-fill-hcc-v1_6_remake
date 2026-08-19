@@ -1,0 +1,2708 @@
+[
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Dương Quan",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thủy Nguyên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Thủy Đường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thủy Nguyên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hoa Động",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thủy Nguyên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Lư",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thủy Nguyên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Thủy Hà",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thủy Nguyên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Thiên Hương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thiên Hương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hoàng Lâm",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thiên Hương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Hồng Phong",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thiên Hương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hoa Động",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thiên Hương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hòa Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hòa Bình"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Lư",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hòa Bình"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Thủy Hà",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hòa Bình"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Nam Triệu Giang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Triệu"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lập Lễ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Triệu"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tam Hưng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Triệu"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Minh Đức (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bạch Đằng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Bạch Đằng (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bạch Đằng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Phạm Ngũ Lão (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bạch Đằng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Trần Hưng Đạo (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lưu Kiếm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lưu Kiếm (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lưu Kiếm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Liên Xuân (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lưu Kiếm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Quang Trung (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lưu Kiếm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Quảng Thanh (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Ích Mộc"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Hồng Phong (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Ích Mộc"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Quang Trung (thành phố Thủy Nguyên)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Ích Mộc"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hoàng Văn Thụ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Phan Bội Châu",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Thượng Lý",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Sở Dầu",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hùng Vương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Gia Viên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng Bàng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Quán Toan",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Hồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Hưng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đại Bản",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Thiện",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tân Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hồng An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Máy Chai",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ngô Quyền"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Vạn Mỹ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ngô Quyền"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Cầu Tre",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ngô Quyền"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Gia Viên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ngô Quyền"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đông Khê",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ngô Quyền"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đằng Giang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Gia Viên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Cầu Đất",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Gia Viên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lạch Tray",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Gia Viên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Gia Viên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Gia Viên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đông Khê",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Gia Viên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hàng Kênh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Dư Hàng Kênh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Kênh Dương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Biên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Trần Nguyên Hãn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Vĩnh Niệm",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Cầu Đất",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lạch Tray",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Chân"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Dương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Biên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Biên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Biên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Trần Nguyên Hãn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Biên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Vĩnh Niệm",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Biên"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Cát Bi",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đằng Lâm",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Thành Tô",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đằng Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tràng Cát",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Nam Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đông Hải 2",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đông Hải 1",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đông Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đông Hải 2",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đông Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Nam Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đông Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Nam Sơn (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kiến An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đồng Hòa (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kiến An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Bắc Sơn (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kiến An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Trần Thành Ngọ (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kiến An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Văn Đẩu (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kiến An"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Bắc Hà (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Ngọc Sơn (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Trường Sơn (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Nam Sơn (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đồng Hòa (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Bắc Sơn (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Trần Thành Ngọ (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Văn Đẩu (quận Kiến An)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phù Liễn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Minh Đức (quận Đồ Sơn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Bàng La (quận Đồ Sơn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hợp Đức (quận Đồ Sơn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Vạn Hương (quận Đồ Sơn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Ngọc Xuyên (quận Đồ Sơn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hải Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tân Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Vạn Hương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Ngọc Xuyên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Đồ Sơn"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đa Phúc",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hưng Đạo",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Anh Dũng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hải Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hòa Nghĩa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Dương Kinh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tân Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Dương Kinh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Anh Dũng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Dương Kinh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hải Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Dương Kinh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Nam Sơn (quận An Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Hải (quận An Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Lợi (quận An Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đồng Thái (quận An Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tân Tiến (quận An Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Hưng (quận An Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Đồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hồng Thái",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Lợi",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đồng Thái",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường An Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Phong"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Hồng Phong",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Phong"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Đại Bản",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Phong"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Thiện",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Phong"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Tân Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Phong"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Phường Lê Lợi",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường An Phong"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Trần Hưng Đạo (thành phố Hải Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải Dương"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Nhị Châu (thành phố Hải Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải Dương"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Ngọc Châu (thành phố Hải Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải Dương"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Quang Trung (thành phố Hải Dương)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Hải Dương"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Tân Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Thanh Nghị"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Thanh Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Thanh Nghị"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Lê Thanh Nghị",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Thanh Nghị"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Trần Phú",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Thanh Nghị"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Việt Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Việt Hòa"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cao An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Việt Hòa"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Tứ Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Việt Hòa"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Lai Cách",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Việt Hòa"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Cẩm Thượng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thành Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Bình Hàn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thành Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Nguyễn Trãi",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thành Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Thượng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thành Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Nam Đồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tiền Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nam Đồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Hải Tân",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Tân Hưng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Ngọc Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Trần Phú",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Thạch Khôi",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thạch Khôi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Gia Xuyên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thạch Khôi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Liên Hồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thạch Khôi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thống Nhất",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Thạch Khôi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Đoài",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tứ Minh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Tứ Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tứ Minh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Lai Cách",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Tứ Minh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Ái Quốc",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ái Quốc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quyết Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ái Quốc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Lạc",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Ái Quốc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Sao Đỏ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chu Văn An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Văn An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chu Văn An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Chí Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chu Văn An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Thái Học",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chu Văn An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Cộng Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chu Văn An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Văn Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chu Văn An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Phả Lại",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chí Linh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Cổ Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chí Linh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nhân Huệ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Chí Linh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lê Lợi (thành phố Chí Linh)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hưng Đạo (thành phố Chí Linh)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Cộng Hòa (thành phố Chí Linh)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Bến Tắm",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Bắc An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hoàng Hoa Thám",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Hoàng Tân",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Nhân Tông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Hoàng Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Nhân Tông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Văn Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Nhân Tông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Tân Dân (thành phố Chí Linh)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Đại Hành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường An Lạc (thành phố Chí Linh)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Đại Hành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Đồng Lạc (thành phố Chí Linh)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Lê Đại Hành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường An Lưu",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kinh Môn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Hiệp An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kinh Môn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Long Xuyên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Kinh Môn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Thái Thịnh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nguyễn Đại Năng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Hiến Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nguyễn Đại Năng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Minh Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nguyễn Đại Năng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường An Phụ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Liễu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hiệp Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Liễu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thượng Quận",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Trần Liễu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Thất Hùng (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bắc An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Bạch Đằng (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bắc An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lê Ninh (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bắc An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Văn Đức (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Bắc An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Phạm Thái",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phạm Sư Mạnh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường An Sinh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phạm Sư Mạnh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Hiệp Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Phạm Sư Mạnh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Tân Dân (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nhị Chiểu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Minh Tân (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nhị Chiểu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Duy Tân (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nhị Chiểu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Phường Phú Thứ (thị xã Kinh Môn)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Phường Nhị Chiểu"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã An Thái",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã An Thọ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Chiến Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Viên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Mỹ Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Thái Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Khánh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Quốc Tuấn (huyện An Lão)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Quang"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Quang Trung (huyện An Lão)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Quang"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Quang Hưng (huyện An Lão)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Quang"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Bát Trang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Trường"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Trường Thọ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Trường"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Trường Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Trường"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn An Lão",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã An Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Dân",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã An Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Trường Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Thái Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Núi Đối (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Thụy"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Thanh Sơn (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Thụy"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Thuận Thiên (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Thụy"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Hữu Bằng (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Thụy"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Kiến Hưng (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Thụy"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Minh Tân (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đại Đồng (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đông Phương (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Phong (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đại Hợp (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tú Sơn (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đoàn Xá (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Trào (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Kiến Hưng (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đoàn Xá (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kiến Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Ngũ Phúc (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nghi Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Kiến Quốc (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nghi Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Du Lễ (huyện Kiến Thụy)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nghi Dương"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đại Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Quyết Thắng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tiên Cường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Quyết Thắng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tự Cường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Quyết Thắng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Tiên Lãng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Lãng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Quyết Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Lãng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tiên Thanh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Lãng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Khởi Nghĩa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Lãng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Cấp Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Kiến Thiết",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đoàn Lập",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tiên Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tiên Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tiên Minh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Nam Hưng (huyện Tiên Lãng)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chấn Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Bắc Hưng (huyện Tiên Lãng)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chấn Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đông Hưng (huyện Tiên Lãng)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chấn Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tây Hưng (huyện Tiên Lãng)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chấn Hưng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Hùng Thắng (huyện Tiên Lãng)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hùng Thắng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Vinh Quang (huyện Tiên Lãng)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hùng Thắng"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Vĩnh Bảo (huyện Vĩnh Bảo)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Bảo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Vĩnh Hưng (huyện Vĩnh Bảo)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Bảo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Hưng (huyện Vĩnh Bảo)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Bảo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tân Liên (huyện Vĩnh Bảo)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Bảo"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Trấn Dương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Bỉnh Khiêm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Hòa Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Bỉnh Khiêm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Lý Học",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Bỉnh Khiêm"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tam Cường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Am"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Cao Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Am"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Liên Am",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Am"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Tiền Phong",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Vĩnh Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Vĩnh Hòa (huyện Vĩnh Bảo)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Hòa"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Hùng Tiến (huyện Vĩnh Bảo)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Hòa"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Thắng Thủy",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Thịnh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Trung Lập",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Thịnh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Việt Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Thịnh"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Vĩnh An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Thuận"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Giang Biên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Thuận"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Dũng Tiến",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Thuận"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Ninh Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Việt Khê"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Liên Xuân",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Việt Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quang Thành",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lạc Long",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thăng Long",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tuấn Việt",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vũ Dũng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cộng Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam An Phụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Nam Sách (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Sách"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Phong (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Sách"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đồng Lạc (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Sách"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Minh Tân (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thái Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Sơn (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thái Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Tân (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thái Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quốc Tuấn (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hiệp Cát (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Trần Phú (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trần Phú"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nam Hưng (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nam Tân (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hợp Tiến (huyện Nam Sách)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hợp Tiến"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Phú",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cộng Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Phú"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Thanh Hà (huyện Thanh Hà)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Hà"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Sơn (huyện Thanh Hà)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Hà"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Tân (huyện Thanh Hà)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Hà"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Tây"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Phượng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Tây"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Tây"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Việt (huyện Thanh Hà)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Bắc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Việt (huyện Thanh Hà)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Bắc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Lạc (huyện Thanh Hà)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Bắc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Xuân",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Nam"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Liên Mạc",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Nam"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Lang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Nam"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Nam"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hòa Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Nam"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Hồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vĩnh Cường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Quang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hà Đông"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Trường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Mao Điền"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Đông",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Mao Điền"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Phúc Điền",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Mao Điền"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lương Điền",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giàng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Ngọc Liên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giàng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Hưng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giàng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Phúc Điền",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giàng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Cẩm Giang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Định Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Hoàng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Cẩm Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đức Chính",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tuệ Tĩnh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Vũ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tuệ Tĩnh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Văn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tuệ Tĩnh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vĩnh Hưng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kẻ Sặt"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hùng Thắng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kẻ Sặt"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Kẻ Sặt (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kẻ Sặt"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vĩnh Hồng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kẻ Sặt"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Việt (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Long Xuyên (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Khê (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cổ Bì (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vĩnh Hồng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bình Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thúc Kháng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đường An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đường An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Hồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đường An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Dương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đường An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Hòa",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đường An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Bình Xuyên (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Tùng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đoàn Tùng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thúc Kháng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Minh (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Hồng (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Dương (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thái Hòa (huyện Bình Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Gia Tiến (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Lộc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Gia Lộc (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Lộc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Gia Phúc (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Lộc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Yết Kiêu (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Lộc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lê Lợi (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Lộc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thống Nhất (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Yết Kiêu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lê Lợi (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Yết Kiêu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Yết Kiêu (huyện Gia Lộc)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Yết Kiêu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Toàn Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hoàng Diệu",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Hưng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thống Kênh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đoàn Thượng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quang Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Gia Lộc",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Gia Phúc",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Gia Phúc"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Phạm Trấn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trường Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nhật Quang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trường Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thống Kênh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trường Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đoàn Thượng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trường Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quang Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trường Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Thanh Miện",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Trường Tân"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Tứ Kỳ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tứ Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Minh Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tứ Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quang Khải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tứ Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quang Phục",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tứ Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đại Hợp (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Kỳ (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Dân An (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kỳ Sơn (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hưng Đạo (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân Kỳ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Bình Lãng (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đại Sơn (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Hải (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hưng Đạo (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Đại Sơn"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Thanh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chí Minh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Văn Tố",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chí Minh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Chí Minh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Chí Minh"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Quang Trung (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lạc Phượng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lạc Phượng (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lạc Phượng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tiên Động (huyện Tứ Kỳ)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lạc Phượng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hà Kỳ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyên Giáp"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nguyên Giáp",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyên Giáp"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hà Thanh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyên Giáp"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tiên Động",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyên Giáp"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Ninh Giang (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vĩnh Hòa (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Dụ (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hiệp Lực (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Ninh Giang"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Ứng Hòe",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Lại"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Hương",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Lại"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nghĩa An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Vĩnh Lại"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Bình Xuyên (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Khúc Thừa Dụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Phong (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Khúc Thừa Dụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kiến Phúc (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Khúc Thừa Dụ"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Phong (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã An Đức (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đức Phúc (huyện Ninh Giang)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Quang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hồng Châu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Văn Hội",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hồng Châu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hưng Long",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hồng Châu"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cao Thắng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Ngũ Hùng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tứ Cường",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Thanh Miện",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Quang",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bắc Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lam Sơn",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bắc Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lê Hồng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Bắc Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tân Trào (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hải Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Ngô Quyền (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hải Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đoàn Kết (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Hải Hưng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Phạm Kha",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Nhân Quyền",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Tùng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đoàn Tùng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nguyễn Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hồng Phong (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh Giang (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Chi Lăng Bắc (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Chi Lăng Nam (huyện Thanh Miện)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Nam Thanh Miện"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Thị trấn Phú Thái",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Phú Thái"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kim Xuyên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Phú Thái"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kim Anh",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Phú Thái"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kim Liên",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Phú Thái"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thượng Quận",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Phú Thái"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Lai Khê",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lai Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Vũ Dũng",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lai Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tuấn Việt",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lai Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cộng Hoà",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lai Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Thanh An",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lai Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Cẩm Việt",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Lai Khê"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Ngũ Phúc (huyện Kim Thành)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Thành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kim Tân (huyện Kim Thành)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Thành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Kim Đính (huyện Kim Thành)",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã An Thành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đồng Cẩm",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kim Thành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Tam Kỳ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kim Thành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Đại Đức",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kim Thành"
+    },
+    {
+        "tinh_cu": "Hải Dương",
+        "xa_cu": "Xã Hòa Bình",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Xã Kim Thành"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Cát Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Thị trấn Cát Bà",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Đồng Bài",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Hoàng Châu",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Nghĩa Lộ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Văn Phong",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Gia Luận",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Hiền Hào",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Phù Long",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Trân Châu",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Việt Hải",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Xã Xuân Đám",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Cát Hải"
+    },
+    {
+        "tinh_cu": "Hải Phòng",
+        "xa_cu": "Huyện Bạch Long Vĩ",
+        "tinh_moi": "Hải Phòng",
+        "xa_moi": "Đặc khu Bạch Long Vĩ"
+    }
+]

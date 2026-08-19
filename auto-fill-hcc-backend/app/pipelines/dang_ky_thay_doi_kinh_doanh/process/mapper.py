@@ -44,6 +44,13 @@ def _digits(value: Any) -> str:
     return re.sub(r"\D", "", _text(value))
 
 
+def _business_number(value: Any) -> str:
+    """Giữ nguyên dấu - trong mã số hộ kinh doanh/MST vì cần thiết cho việc tìm kiếm."""
+    text = _text(value)
+    # Chỉ loại bỏ ký tự không phải số và dấu gạch ngang
+    return re.sub(r"[^\d\-]", "", text)
+
+
 def _business_code(value: Any) -> str:
     digits = _digits(value)
     return digits if len(digits) == 4 else ""
@@ -270,7 +277,7 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     order.append("nguoi-nop-ho-so")
 
     search_options = [
-        ("businessNumber", _digits(values.get("HoKinhDoanh_MaSo"))),
+        ("businessNumber", _business_number(values.get("HoKinhDoanh_MaSo"))),
         ("registrationNumber", _digits(values.get("HoKinhDoanh_MaDangKy"))),
         ("internalNumber", _digits(values.get("HoKinhDoanh_MaNoiBo"))),
     ]
@@ -286,7 +293,7 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
             "method": method,
             "value": value,
             "expectedName": _text(values.get("HienTai_Ten")),
-            "expectedBusinessNumber": _digits(values.get("HoKinhDoanh_MaSo")),
+            "expectedBusinessNumber": _business_number(values.get("HoKinhDoanh_MaSo")),
         },
         "nameChange": flags["name"],
         "changeFlags": flags,
