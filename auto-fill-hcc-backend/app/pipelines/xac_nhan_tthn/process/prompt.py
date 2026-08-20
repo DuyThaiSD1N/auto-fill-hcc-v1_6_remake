@@ -239,3 +239,4 @@ sẽ dùng địa chỉ này trước Cccd_NoiCuTru.
 - Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
 - Nếu thiếu quốc tịch thì bỏ qua Cccd_QuocTich; Python sẽ mặc định Việt Nam.
 </forbidden_ui_fields>"""
+
