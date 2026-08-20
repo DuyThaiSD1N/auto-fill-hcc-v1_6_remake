@@ -1,0 +1,968 @@
+[
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thạch Lâm",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quảng Lâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quảng Lâm",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quảng Lâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Nam Cao",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nam Quang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Nam Quang",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nam Quang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vĩnh Quang (huyện Bảo Lâm)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lý Bôn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lý Bôn (huyện Bảo Lâm)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lý Bôn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Pác Miầu",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bảo Lâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Mông Ân",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bảo Lâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vĩnh Phong",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bảo Lâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thái Học",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Yên Thổ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thái Sơn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Yên Thổ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Yên Thổ",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Yên Thổ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Sơn Lập",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Sơn Lộ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Sơn Lộ",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Sơn Lộ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hưng Thịnh (huyện Bảo Lạc)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Kim Cúc (huyện Bảo Lạc)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hưng Đạo (huyện Bảo Lạc)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Bảo Lạc",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bảo Lạc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Bảo Toàn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bảo Lạc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hồng Trị",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bảo Lạc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Hạnh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cốc Pàng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cốc Pàng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cốc Pàng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thượng Hà",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cô Ba"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cô Ba",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cô Ba"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Phan Thanh (huyện Bảo Lạc)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Khánh Xuân"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Khánh Xuân (huyện Bảo Lạc)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Khánh Xuân"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hồng An",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Xuân Trường"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Xuân Trường",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Xuân Trường"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đình Phùng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Huy Giáp"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Huy Giáp",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Huy Giáp"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Yên Lạc",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Ca Thành"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ca Thành",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Ca Thành"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Phan Thanh (huyện Nguyên Bình)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Phan Thanh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Mai Long (huyện Nguyên Bình)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Phan Thanh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Thành",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thành Công"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thành Công",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thành Công"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hưng Đạo (huyện Nguyên Bình)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tam Kim"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hoa Thám (huyện Nguyên Bình)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tam Kim"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Tam Kim (huyện Nguyên Bình)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tam Kim"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Nguyên Bình",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nguyên Bình"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thể Dục",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nguyên Bình"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vũ Minh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nguyên Bình"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Tĩnh Túc",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tĩnh Túc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Triệu Nguyên",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tĩnh Túc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vũ Nông",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tĩnh Túc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Trương Lương",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Minh Tâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Minh Tâm",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Minh Tâm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ngọc Động (huyện Hà Quảng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thanh Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Yên Sơn (huyện Hà Quảng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thanh Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thanh Long (huyện Hà Quảng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thanh Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cần Nông",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cần Yên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lương Thông",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cần Yên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cần Yên",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Cần Yên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Thông Nông",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thông Nông"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đa Thông",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thông Nông"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lương Can",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thông Nông"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Xuân Hòa",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trường Hà"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quý Quân",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trường Hà"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Sóc Hà",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trường Hà"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Trường Hà",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trường Hà"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hồng Sỹ",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hà Quảng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ngọc Đào",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hà Quảng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Mã Ba",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hà Quảng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thượng Thôn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lũng Nặm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lũng Nặm",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lũng Nặm"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Nội Thôn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tổng Cọt"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cải Viên",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tổng Cọt"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Tổng Cọt",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Tổng Cọt"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Long (huyện Hòa An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nam Tuấn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Dân Chủ (huyện Hòa An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nam Tuấn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Nam Tuấn (huyện Hòa An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nam Tuấn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Nước Hai",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hòa An"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đại Tiến",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hòa An"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hồng Việt",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hòa An"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thịnh Vượng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bạch Đằng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Bình Dương",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bạch Đằng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Bạch Đằng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bạch Đằng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Trung (huyện Hòa An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nguyễn Huệ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ngũ Lão (huyện Hòa An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nguyễn Huệ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Nguyễn Huệ (huyện Hòa An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Nguyễn Huệ"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Trọng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Minh Khai"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Minh Khai",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Minh Khai"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Thông",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Canh Tân"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Canh Tân",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Canh Tân"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hồng Nam",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Kim Đồng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thái Cường",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Kim Đồng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Kim Đồng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Kim Đồng"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Tiên Thành",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thạch An"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vân Trình",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thạch An"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lê Lai",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Thạch An"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Đông Khê",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đông Khê"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Xuân",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đông Khê"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Trọng Con",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đông Khê"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Long (huyện Thạch An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đức Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thụy Hùng (huyện Thạch An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đức Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lê Lợi (huyện Thạch An)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đức Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Tà Lùng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Phục Hòa"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Hòa Thuận",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Phục Hòa"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Mỹ Hưng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Phục Hòa"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đại Sơn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Phục Hòa"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hồng Quang",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bế Văn Đàn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cách Linh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bế Văn Đàn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Bế Văn Đàn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Bế Văn Đàn"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quảng Hưng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Độc Lập"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cai Bộ",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Độc Lập"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Độc Lập",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Độc Lập"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Quảng Uyên",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quảng Uyên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Phi Hải",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quảng Uyên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Phúc Sen",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quảng Uyên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Chí Thảo",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quảng Uyên"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ngọc Động (huyện Quảng Hòa)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Tự Do (huyện Quảng Hòa)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hạnh Phúc (huyện Quảng Hòa)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Vinh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Hán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Hán",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Hán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Trà Lĩnh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trà Lĩnh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cao Chương",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trà Lĩnh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quốc Toản",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trà Lĩnh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Trung (huyện Trùng Khánh)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Trung"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Tri Phương (huyện Trùng Khánh)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Trung"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Xuân Nội (huyện Trùng Khánh)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Trung"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Trung Phúc",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đoài Dương"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cao Thăng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đoài Dương"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đoài Dương",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đoài Dương"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Trùng Khánh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trùng Khánh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Hồng",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trùng Khánh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lăng Hiếu",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trùng Khánh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Khâm Thành",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Trùng Khánh"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Chí Viễn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đàm Thủy"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Phong Châu",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đàm Thủy"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đàm Thủy",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đàm Thủy"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ngọc Côn",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đình Phong"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Ngọc Khê",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đình Phong"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Phong Nặm",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đình Phong"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đình Phong",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Đình Phong"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Thị trấn Thanh Nhật",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hạ Lang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thống Nhất",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hạ Lang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thị Hoa",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Hạ Lang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Minh Long",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lý Quốc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đồng Loan",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lý Quốc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lý Quốc",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Lý Quốc"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Cô Ngân",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Vinh Quý"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã An Lạc",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Vinh Quý"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Kim Loan",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Vinh Quý"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vinh Quý",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Vinh Quý"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Đức Quang",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Thắng Lợi",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Quang Long",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Xã Quang Long"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Sông Hiến (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Thục Phán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Đề Thám (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Thục Phán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Hợp Giang (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Thục Phán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hưng Đạo (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Thục Phán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Hoàng Tung (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Thục Phán"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Ngọc Xuân (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Nùng Trí Cao"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Sông Bằng (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Nùng Trí Cao"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Vĩnh Quang (thành phố Cao Bằng)",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Nùng Trí Cao"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Tân Giang",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Tân Giang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Duyệt Trung",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Tân Giang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Phường Hòa Chung",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Tân Giang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Chu Trinh",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Tân Giang"
+    },
+    {
+        "tinh_cu": "Cao Bằng",
+        "xa_cu": "Xã Lê Chung",
+        "tinh_moi": "Cao Bằng",
+        "xa_moi": "Phường Tân Giang"
+    }
+]

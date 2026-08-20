@@ -74,6 +74,21 @@ const api = {
     return apiJson("/api/v1/consent", { method: "POST", body: JSON.stringify(body) });
   },
 
+  // ===== Danh mục dùng chung (BE là nguồn duy nhất, extension KHÔNG đóng gói bản sao) =====
+  // Cả hai endpoint đều MỞ (không cần token): panel dựng ô địa chỉ + "Đi đến thủ tục" ngay lúc mở,
+  // trước khi cán bộ đăng nhập. Dùng backendFetch thẳng để khỏi kéo theo luồng refresh token.
+  async locationsCatalog() {
+    const res = await backendFetch("/api/v1/locations/catalog");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json(); // { provinces: [{text, slug, name}], wardsBySlug: {slug: {slug, province, communes}} }
+  },
+
+  async keKhaiLinks() {
+    const res = await backendFetch("/api/v1/procedures/ke-khai-links");
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json(); // { links: [{key, label, url, needsAgencySelect, autoConfirm}] }
+  },
+
   // Rà soát bbox: đọc lại sources (field → vùng ảnh) đã chụp lúc process. null nếu chưa có / hết hạn.
   async getReviewSources(requestId) {
     if (!requestId) return null;

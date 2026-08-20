@@ -1,0 +1,1916 @@
+[
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hồ Bốn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khao Mang"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Khao Mang",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khao Mang"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Mù Cang Chải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mù Cang Chải"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Kim Nọi",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mù Cang Chải"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mồ Dề",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mù Cang Chải"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Chế Cu Nha",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mù Cang Chải"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nậm Khắt",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Púng Luông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã La Pán Tẩn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Púng Luông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Dế Xu Phình",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Púng Luông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Púng Luông",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Púng Luông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Cao Phạ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tú Lệ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tú Lệ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tú Lệ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Pá Lau",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trạm Tấu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Pá Hu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trạm Tấu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Túc Đán",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trạm Tấu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Trạm Tấu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trạm Tấu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Trạm Tấu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Bản Công",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hát Lừu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Xà Hồ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hạnh Phúc"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Làng Nhì",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phình Hồ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Bản Mù",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phình Hồ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phình Hồ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phình Hồ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Nông trường Liên Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Liên Sơn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Sơn A",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Liên Sơn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nghĩa Phúc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Liên Sơn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nậm Búng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Gia Hội"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nậm Lành",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Gia Hội"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Gia Hội",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Gia Hội"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nậm Mười",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sơn Lương"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Sùng Đô",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sơn Lương"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Suối Quyền",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sơn Lương"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Sơn Lương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sơn Lương"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Sơn Thịnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Chấn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đồng Khê",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Chấn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Suối Bu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Chấn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Suối Giàng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Chấn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Nông trường Trần Phú",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thượng Bằng La"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Thượng Bằng La",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thượng Bằng La"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Thịnh (huyện Văn Chấn)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Chấn Thịnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đại Lịch (huyện Văn Chấn)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Chấn Thịnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Chấn Thịnh (huyện Văn Chấn)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Chấn Thịnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Bình Thuận",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nghĩa Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh An",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nghĩa Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nghĩa Tâm",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nghĩa Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Xuân Tầm",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phong Dụ Hạ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phong Dụ Hạ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phong Dụ Hạ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Châu Quế Thượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Châu Quế"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Châu Quế Hạ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Châu Quế"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Lang Thíp",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lâm Giang"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Lâm Giang",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lâm Giang"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Quang Minh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Đông Cuông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã An Bình",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Đông Cuông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đông An",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Đông Cuông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đông Cuông",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Đông Cuông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đại Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Hợp"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nà Hẩu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Hợp"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Hợp",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Hợp"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Mậu A",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mậu A"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Yên Thái",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mậu A"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã An Thịnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mậu A"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mậu Đông",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mậu A"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Ngòi A",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mậu A"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đại Phác",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Yên Phú",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Yên Hợp",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Viễn Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Xuân Ái",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã An Lương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mỏ Vàng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mỏ Vàng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mỏ Vàng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mai Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lâm Thượng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Khánh Thiện",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lâm Thượng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Phượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lâm Thượng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Lâm Thượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lâm Thượng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Yên Thế",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lục Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh Xuân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lục Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Yên Thắng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lục Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Liễu Đô",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lục Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh Chuẩn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Lĩnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Lập",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Lĩnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phan Thanh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Lĩnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Khai Trung",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Lĩnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Lĩnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tân Lĩnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tô Mậu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Hòa"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã An Lạc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Hòa"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Động Quan",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Hòa"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Khánh Hòa",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Hòa"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Trúc Lâu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Trung Tâm",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phúc Lợi",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phúc Lợi"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã An Phú",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Lai"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Vĩnh Lạc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Lai"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh Tiến",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Lai"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mường Lai",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Lai"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Xuân Long",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cảm Nhân"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Ngọc Chấn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cảm Nhân"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Cảm Nhân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cảm Nhân"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phúc Ninh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mỹ Gia",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Xuân Lai",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phúc An",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Yên Thành",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Thác Bà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thác Bà"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Vũ Linh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thác Bà"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Bạch Hà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thác Bà"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hán Đà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thác Bà"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Vĩnh Kiên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thác Bà"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đại Minh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thác Bà"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Yên Bình",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Hương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Thịnh Hưng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Đại Đồng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Cảm Ân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Mông Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Nguyên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Bảo Ái",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Ái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Thị trấn Cổ Phúc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trấn Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Báo Đáp",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trấn Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Đồng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trấn Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Thành Thịnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trấn Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hòa Cuông",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trấn Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh Quán",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trấn Yên"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hồng Ca",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hưng Khánh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hưng Khánh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hưng Khánh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hưng Thịnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lương Thịnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Lương Thịnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lương Thịnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Việt Cường",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Việt Hồng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Vân Hội",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Việt Hồng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Việt Hồng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Việt Hồng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Kiên Thành",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Quy Mông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Y Can",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Quy Mông"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Quy Mông",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Quy Mông"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Đồng Tuyển",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cốc San"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tòng Sành",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cốc San"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cốc San",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cốc San"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Phời",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hợp Thành"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Hợp Thành",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Hợp Thành"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Nông trường Phong Hải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phong Hải"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Cầm",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phong Hải"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Phong Niên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Quang"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Trì Quang",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Quang"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Xuân Quang",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Quang"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Phố Lu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Thắng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Sơn Hà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Thắng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Sơn Hải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Thắng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thái Niên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Thắng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Tằng Loỏng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tằng Loỏng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Phú Nhuận",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tằng Loỏng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Xuân Giao",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Gia Phú"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thống Nhất",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Gia Phú"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Gia Phú",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Gia Phú"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Pung",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Hum"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Trung Lèng Hồ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Hum"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Mường Hum",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Hum"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Dền Thàng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Dền Sáng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Sàng Ma Sáo",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Dền Sáng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Dền Sáng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Dền Sáng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã A Lù",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Y Tý"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Y Tý",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Y Tý"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Chạc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã A Mú Sung"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã A Mú Sung",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã A Mú Sung"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cốc Mỳ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trịnh Tường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Trịnh Tường",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Trịnh Tường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Pa Cheo",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Xèo"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Mường Vi",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Xèo"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Xèo",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Xèo"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Bát Xát",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bát Xát"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Vược",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bát Xát"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Qua",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bát Xát"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Phìn Ngan",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bát Xát"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Quang Kim",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bát Xát"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Mả",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Võ Lao"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Dạng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Võ Lao"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Võ Lao",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Võ Lao"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Khánh Yên Trung",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Liêm Phú",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Khánh Yên Hạ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Khánh Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Khánh Yên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Bàn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Khánh Yên Thượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Bàn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Sơn Thuỷ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Bàn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Làng Giàng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Bàn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Hòa Mạc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Văn Bàn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thẳm Dương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Dương Quỳ"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Dương Quỳ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Dương Quỳ"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Tha",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Chiềng Ken"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Chiềng Ken",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Chiềng Ken"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Xây",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Minh Lương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Minh Lương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Minh Lương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Dần Thàng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nậm Chày"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Chày",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nậm Chày"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Phố Ràng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Yên Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Lương Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Xuân Thượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Yên"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tân Tiến",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Vĩnh Yên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nghĩa Đô",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nghĩa Đô"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Điện Quan",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thượng Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Minh Tân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thượng Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thượng Hà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Thượng Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tân Dương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Xuân Hòa",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Việt Tiến",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phúc Khánh"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Phúc Khánh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phúc Khánh"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Kim Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cam Cọn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tân An",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tân Thượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bảo Hà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Liên Minh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Bo"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Mường Bo",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Bo"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thanh Bình (thị xã Sa Pa)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Hồ"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Hồ (thị xã Sa Pa)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Hồ"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Hoàng Liên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Van"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Mường Hoa",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Van"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Van",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Van"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Trung Chải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Phìn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Phìn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Phìn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Lúc",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cốc Lầu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Cái",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cốc Lầu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cốc Lầu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cốc Lầu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Đét",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Nhai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cốc Ly",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Nhai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bảo Nhai",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bảo Nhai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Khánh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Liền"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Liền",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Liền"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Bắc Hà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bắc Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Na Hối",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bắc Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thải Giàng Phố",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bắc Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Phố",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bắc Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Hoàng Thu Phố",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bắc Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Mòn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bắc Hà"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Lùng Cải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Củ Tỷ"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Củ Tỷ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tả Củ Tỷ"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Van Chư",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lùng Phình"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Lùng Phình",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lùng Phình"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Lùng Thẩn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lùng Phình"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Ngài Chồ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Pha Long"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Dìn Chin",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Pha Long"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Gia Khâu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Pha Long"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Pha Long",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Pha Long"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Mường Khương (huyện Mường Khương)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Khương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thanh Bình (huyện Mường Khương)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Khương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Chảy (huyện Mường Khương)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Khương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tung Chung Phố (huyện Mường Khương)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Khương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nấm Lư (huyện Mường Khương)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Mường Khương"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Sen",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Lầu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Lùng Vai",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Lầu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Lầu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Bản Lầu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Lùng Khấu Nhin",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cao Sơn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Tả Thàng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cao Sơn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã La Pan Tẩn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cao Sơn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cao Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cao Sơn"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Thị trấn Si Ma Cai",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Si Ma Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Sán Chải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Si Ma Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nàn Sán",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Si Ma Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cán Cấu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Si Ma Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Quan Hồ Thẩn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Si Ma Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Mế",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sín Chéng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Thào Chư Phìn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sín Chéng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nàn Sín",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sín Chéng"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Sín Chéng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Sín Chéng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Tân An",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Pú Trạng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nghĩa An",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nghĩa Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nghĩa Lộ"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Trung Tâm",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Trung Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phù Nham",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Trung Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nghĩa Lợi",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Trung Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nghĩa Lộ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Trung Tâm"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Cầu Thia",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cầu Thia"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Thanh Lương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cầu Thia"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Thạch Lương",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cầu Thia"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phúc Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cầu Thia"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Hạnh Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cầu Thia"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Yên Thịnh (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Văn Phú"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tân Thịnh (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Văn Phú"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Văn Phú (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Văn Phú"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phú Thịnh (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Văn Phú"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Đồng Tâm",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Yên Bái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Yên Ninh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Yên Bái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Minh Tân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Yên Bái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Nguyễn Thái Học",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Yên Bái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Hồng Hà",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Yên Bái"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Nam Cường (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nam Cường"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh Bảo (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nam Cường"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tuy Lộc (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nam Cường"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Cường Thịnh (thành phố Yên Bái)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Nam Cường"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Phường Hợp Minh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Âu Lâu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Giới Phiên",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Âu Lâu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Minh Quân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Âu Lâu"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Âu Lâu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Âu Lâu"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Nam Cường (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Xuân Tăng (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Pom Hán (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Bắc Cường (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Bắc Lệnh (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Bình Minh (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Cam Đường (thành phố Lào Cai)",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Cam Đường"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Duyên Hải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Lào Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Cốc Lếu",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Lào Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Kim Tân",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Lào Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Lào Cai",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Lào Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Vạn Hòa",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Lào Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Bản Phiệt",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Lào Cai"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Hàm Rồng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Sa Pa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Ô Quý Hồ",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Sa Pa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Sa Pả",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Sa Pa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Cầu Mây",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Sa Pa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Phan Si Păng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Sa Pa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Phường Sa Pa",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Phường Sa Pa"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Nậm Xé",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nậm Xé"
+    },
+    {
+        "tinh_cu": "Lào Cai",
+        "xa_cu": "Xã Ngũ Chỉ Sơn",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Ngũ Chỉ Sơn"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Chế Tạo",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Chế Tạo"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Lao Chải",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Lao Chải"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Nậm Có",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Nậm Có"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Tà Xi Láng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Tà Xi Láng"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Cát Thịnh",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Cát Thịnh"
+    },
+    {
+        "tinh_cu": "Yên Bái",
+        "xa_cu": "Xã Phong Dụ Thượng",
+        "tinh_moi": "Lào Cai",
+        "xa_moi": "Xã Phong Dụ Thượng"
+    }
+]

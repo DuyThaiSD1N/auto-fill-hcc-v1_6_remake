@@ -1,0 +1,1178 @@
+[
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chi Lăng (huyện Tràng Định)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thất Khê"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chí Minh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thất Khê"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Thất Khê",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thất Khê"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Khánh Long",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đoàn Kết"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Cao Minh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đoàn Kết"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đoàn Kết",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đoàn Kết"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Yên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Kim Đồng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Tiến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đề Thám",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tràng Định"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hùng Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tràng Định"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hùng Việt",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tràng Định"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tri Phương",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quốc Khánh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đội Cấn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quốc Khánh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quốc Khánh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quốc Khánh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Trung Thành",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Kháng Chiến"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Minh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Kháng Chiến"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Kháng Chiến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Kháng Chiến"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đào Viên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quốc Việt"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quốc Việt",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quốc Việt"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hoàng Văn Thụ (huyện Bình Gia)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bình Gia"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Mông Ân",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bình Gia"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Bình Gia",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bình Gia"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hồng Thái (huyện Bình Gia)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Văn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bình La",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Văn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Văn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Văn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hồng Phong (huyện Bình Gia)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hồng Phong"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Minh Khai",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hồng Phong"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hưng Đạo",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoa Thám"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hoa Thám",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoa Thám"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vĩnh Yên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quý Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quý Hòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quý Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Lỗ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thiện Hòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quang Trung",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Thuật"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thiện Thuật",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Thuật"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Bình (huyện Bình Gia)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Long"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Long"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thiện Long",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Long"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Bắc Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bắc Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Long Đống",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bắc Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc Quỳnh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bắc Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Trấn Yên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hưng Vũ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hưng Vũ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hưng Vũ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Hương",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chiêu Vũ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vũ Lăng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Thành (huyện Bắc Sơn)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhất Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Nhất Tiến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhất Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Nhất Hòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhất Hòa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chiến Thắng (huyện Bắc Sơn)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lễ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vũ Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lễ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vũ Lễ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vũ Lễ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đồng Ý",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Tri"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vạn Thủy",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Tri"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Tri",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Tri"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Bình (huyện Văn Quan)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Quan"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tú Xuyên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Quan"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Văn Quan",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Quan"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Trấn Ninh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Điềm He"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Liên Hội",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Điềm He"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Điềm He",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Điềm He"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "An Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Yên Phúc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bình Phúc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Yên Phúc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Phúc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Yên Phúc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Lương Năng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tri Lễ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hữu Lễ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tri Lễ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tri Lễ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tri Lễ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Thành (huyện Cao Lộc)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Đoàn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tràng Phái",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Đoàn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Đoàn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Đoàn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Xuân Long",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Khánh Khê"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bình Trung",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Khánh Khê"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Khánh Khê",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Khánh Khê"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Na Sầm",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Na Sầm"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hoàng Việt",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Na Sầm"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc Hùng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Na Sầm"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hồng Thái (huyện Văn Lãng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoàng Văn Thụ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hoàng Văn Thụ (huyện Văn Lãng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoàng Văn Thụ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Mỹ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoàng Văn Thụ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Nhạc Kỳ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoàng Văn Thụ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Thanh (huyện Văn Lãng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hoàng Văn Thụ"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thụy Hùng (huyện Văn Lãng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thụy Hùng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thanh Long",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thụy Hùng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Trùng Khánh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thụy Hùng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc Việt",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Lãng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc La",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Lãng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Tác",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Lãng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thành Hòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Văn Lãng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Gia Miễn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hội Hoan"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hội Hoan",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hội Hoan"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Lộc Bình",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Lộc Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Khánh Xuân",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Lộc Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đồng Bục",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Lộc Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hữu Khánh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Lộc Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Mẫu Sơn (huyện Lộc Bình)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Mẫu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Khoái",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Mẫu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tú Mịch",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Mẫu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Na Dương",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Na Dương"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đông Quan",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Na Dương"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tú Đoạn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Na Dương"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Sàn Viên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Lợi Bác"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Lợi Bác",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Lợi Bác"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Minh Hiệp",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thống Nhất"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hữu Lân",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thống Nhất"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thống Nhất",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thống Nhất"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Nam Quan",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Xuân Dương"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Ái Quốc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Xuân Dương"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Xuân Dương",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Xuân Dương"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tam Gia",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Khuất Xá"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Khuất Xá",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Khuất Xá"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Đình Lập",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đình Lập"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đình Lập",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đình Lập"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bính Xá (một phần)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đình Lập"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Nông Trường Thái Bình",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thái Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Lâm Ca",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thái Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thái Bình",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thái Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc Lãng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Châu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đồng Thắng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Châu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Cường Lợi",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Châu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Châu Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Châu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Kiên Mộc (một phần)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Châu Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc Xa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Kiên Mộc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bính Xá (phần còn lại)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Kiên Mộc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Kiên Mộc (phần còn lại)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Kiên Mộc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Hữu Lũng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hữu Lũng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đồng Tân",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hữu Lũng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hồ Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hữu Lũng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Minh Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tuấn Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Minh Hòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tuấn Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Thắng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tuấn Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Thành (huyện Hữu Lũng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Lạc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Minh Tiến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vân Nham"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Nhật Tiến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vân Nham"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vân Nham",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vân Nham"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thanh Sơn (huyện Hữu Lũng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Tân"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đồng Tiến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Tân"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thiện Tân",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Thiện Tân"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Bình (huyện Hữu Lũng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quyết Thắng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Bình",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Yên Bình"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Thịnh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hữu Liên"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hữu Liên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Hữu Liên"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Vượng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Cai Kinh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Cai Kinh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Cai Kinh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Cai Kinh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chi Lăng (huyện Chi Lăng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chi Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Chi Lăng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chi Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Đồng Mỏ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chi Lăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hữu Kiên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quan Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quan Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Quan Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chiến Thắng (huyện Chi Lăng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chiến Thắng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vân An",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chiến Thắng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Liên Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chiến Thắng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vân Thủy",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Chiến Thắng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Mai Sao",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhân Lý"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bắc Thủy",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhân Lý"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Lâm Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhân Lý"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Nhân Lý",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Nhân Lý"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Gia Lộc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bằng Mạc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bằng Hữu",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bằng Mạc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thượng Cường",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bằng Mạc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bằng Mạc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Bằng Mạc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Bình (huyện Chi Lăng)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vạn Linh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Y Tịch",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vạn Linh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vạn Linh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Vạn Linh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Đồng Đăng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đồng Đăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thụy Hùng (huyện Cao Lộc)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đồng Đăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Phú Xá",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đồng Đăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hồng Phong (huyện Cao Lộc)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đồng Đăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Bảo Lâm",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Đồng Đăng"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Lộc Yên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Cao Lộc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thanh Lòa",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Cao Lộc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thạch Đạn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Cao Lộc"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hòa Cư",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Công Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hải Yến",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Công Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Công Sơn",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Công Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Mẫu Sơn (huyện Cao Lộc)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Ba Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Cao Lâu",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Ba Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Xuất Lễ",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Xã Ba Sơn"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tam Thanh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Tam Thanh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hoàng Đồng",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Tam Thanh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Chi Lăng (phường)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Lương Văn Tri"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Quảng Lạc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Lương Văn Tri"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hoàng Văn Thụ (phường)",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Kỳ Lừa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Thị trấn Cao Lộc",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Kỳ Lừa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Hợp Thành",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Kỳ Lừa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Tân Liên",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Kỳ Lừa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Gia Cát",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Kỳ Lừa"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Vĩnh Trại",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Đông Kinh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Đông Kinh",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Đông Kinh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Yên Trạch",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Đông Kinh"
+    },
+    {
+        "tinh_cu": "Lạng Sơn",
+        "xa_cu": "Mai Pha",
+        "tinh_moi": "Lạng Sơn",
+        "xa_moi": "Phường Đông Kinh"
+    }
+]

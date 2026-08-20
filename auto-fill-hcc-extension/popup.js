@@ -133,7 +133,7 @@ async function sendToContent(payload) {
       });
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
-        files: ["content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/agency-select.js", "content/review.js"],
+        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/agency-select.js", "content/review.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -2804,8 +2804,12 @@ const keKhaiStatus = document.getElementById("keKhaiStatus");
 
 const KE_KHAI_STORAGE_KEY = "autofill_last_ke_khai_key";
 
+// Danh mục link kê khai do BACKEND giữ (/api/v1/procedures/ke-khai-links) — extension không đóng gói
+// data/procedure-links.js nữa. initKeKhaiPicker() nạp một lần rồi mọi chỗ đọc qua hàm này.
+let keKhaiLinkList = [];
+
 function keKhaiLinks() {
-  return Array.isArray(window.PROCEDURE_KE_KHAI_LINKS) ? window.PROCEDURE_KE_KHAI_LINKS : [];
+  return keKhaiLinkList;
 }
 
 function selectedKeKhaiLink() {
@@ -2835,11 +2839,19 @@ function updateKeKhaiUI() {
 }
 
 async function initKeKhaiPicker() {
+  try {
+    const res = await api.keKhaiLinks();
+    keKhaiLinkList = Array.isArray(res?.links) ? res.links : [];
+  } catch (error) {
+    keKhaiLinkList = [];
+    console.error('[Popup] Không lấy được danh mục link kê khai từ backend:', error);
+  }
+
   const links = keKhaiLinks();
   if (!links.length) {
     keKhaiSection.hidden = true;
     keKhaiSection.dataset.unavailable = "1";   // chế độ "Toàn bộ" không được bật lại mục rỗng
-    console.error('[Popup] Thiếu data/procedure-links.js — không có link kê khai nào');
+    console.error('[Popup] Không có link kê khai nào — kiểm tra /api/v1/procedures/ke-khai-links');
     return;
   }
 

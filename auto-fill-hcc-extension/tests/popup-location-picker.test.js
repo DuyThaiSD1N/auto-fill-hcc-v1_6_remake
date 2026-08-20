@@ -1,7 +1,8 @@
 /**
  * Popup "Địa chỉ thực hiện thủ tục" + "Mở trang kê khai".
  *
- * Chạy popup-locations.js và data/procedure-links.js trong sandbox có chrome/fetch giả để bắt đúng
+ * Danh mục tỉnh/xã và danh mục link kê khai đều nằm ở BACKEND (auto-fill-hcc-backend); extension
+ * không đóng gói bản sao nào nữa. Test chạy popup-locations.js trong sandbox có api giả để bắt đúng
  * lớp lỗi đã gặp: file không được nạp trong popup.html, hoặc popup.js trỏ sai tên global.
  */
 const assert = require("node:assert/strict");
@@ -14,10 +15,13 @@ const read = (rel) => fs.readFileSync(path.join(root, rel), "utf8");
 
 // --- popup.html phải nạp đủ script dữ liệu TRƯỚC popup.js ---
 const html = read("popup.html");
-const order = ["popup-locations.js", "data/procedure-links.js", "popup.js"]
+const order = ["api/endpoints.js", "popup-locations.js", "popup.js"]
   .map((src) => html.indexOf(`src="${src}"`));
-assert.ok(order.every((i) => i >= 0), "popup.html phải nạp popup-locations.js + data/procedure-links.js");
-assert.ok(order[0] < order[2] && order[1] < order[2], "script dữ liệu phải đứng trước popup.js");
+assert.ok(order.every((i) => i >= 0), "popup.html phải nạp api/endpoints.js + popup-locations.js");
+assert.ok(order[0] < order[1] && order[1] < order[2],
+  "api/endpoints.js phải đứng trước popup-locations.js (store gọi window.api) và cả hai trước popup.js");
+assert.ok(!html.includes("data/procedure-links.js"),
+  "danh mục link kê khai đã dồn về backend, popup.html không được nạp file cũ");
 
 for (const id of ["provinceSelect", "wardSelect", "locationStatus", "locationSection",
   "procedureSection", "keKhaiSection", "keKhaiSelect", "keKhaiStatus",
@@ -77,21 +81,52 @@ assert.match(read("content.js"), /getPortalFlowState[\s\S]{0,400}unsupported: tr
 const manifest = JSON.parse(read("manifest.json"));
 const war = manifest.web_accessible_resources[0].resources;
 assert.ok(war.includes("popup-locations.js"), "manifest thiếu popup-locations.js");
-assert.ok(war.includes("data/*"), "manifest thiếu data/*");
+assert.ok(!war.includes("data/*"), "thư mục data/ đã bỏ, manifest không được khai báo nữa");
+// content script cần BACKEND_URL để gọi danh mục qua background (api/config.js phải nạp trước).
+const contentJs = manifest.content_scripts[0].js;
+assert.ok(contentJs.indexOf("api/config.js") >= 0
+  && contentJs.indexOf("api/config.js") < contentJs.indexOf("content/locations.js"),
+  "api/config.js phải là content script và đứng trước content/locations.js");
 
 // --- popup.js phải dùng ĐÚNG global mà popup-locations.js export ---
 assert.match(popupJs, /window\.popupLocationManager/, "popup.js phải đọc window.popupLocationManager");
 
-// --- chạy thật hai file dữ liệu ---
-const dataUrl = path.join(root, "data", "vn_provinces_wards.json");
-const sandbox = {
-  console,
-  chrome: { runtime: { getURL: (p) => path.join(root, p) } },
-  fetch: async (p) => ({ json: async () => JSON.parse(fs.readFileSync(p, "utf8")) }),
-};
+// --- chạy thật: store trong popup phải tiêu hoá ĐÚNG payload backend trả về ---
+// Fixture dựng từ chính file nguồn của backend + phép chuẩn hoá dấu của app/locations/catalog.py,
+// nên nếu backend đổi shape trả về thì test này phải sửa theo — đó là điểm muốn khoá.
+const backendRoot = path.join(root, "..", "auto-fill-hcc-backend");
+const wardsFile = path.join(backendRoot, "app", "locations", "data", "vn_provinces_wards.json");
+assert.ok(fs.existsSync(wardsFile), "danh mục tỉnh/xã phải nằm ở backend");
+assert.ok(!fs.existsSync(path.join(root, "data")),
+  "extension không được giữ lại thư mục data/ (danh mục đã dồn về backend)");
+
+const TONE_O = { "oà": "òa", "oá": "óa", "oả": "ỏa", "oã": "õa", "oạ": "ọa",
+  "oè": "òe", "oé": "óe", "oẻ": "ỏe", "oẽ": "õe", "oẹ": "ọe" };
+const TONE_U = { "uỳ": "ùy", "uý": "úy", "uỷ": "ủy", "uỹ": "ũy", "uỵ": "ụy" };
+function modernTone(text) {
+  let out = String(text || "");
+  for (const [old, modern] of Object.entries(TONE_O)) {
+    out = out.replace(new RegExp(old + "(?!\w)", "g"), modern);
+  }
+  for (const [old, modern] of Object.entries(TONE_U)) {
+    out = out.replace(new RegExp("(?<![qQ])" + old + "(?!\w)", "g"), modern);
+  }
+  return out;
+}
+const rawCatalog = JSON.parse(fs.readFileSync(wardsFile, "utf8"));
+const catalogPayload = { provinces: [], wardsBySlug: {} };
+for (const p of rawCatalog.provinces) {
+  const slug = p.code_name.replace(/_/g, "");
+  const text = modernTone(p.full_name);
+  catalogPayload.provinces.push({ text, slug, name: modernTone(p.name) });
+  catalogPayload.wardsBySlug[slug] = {
+    slug, province: text, communes: p.wards.map((w) => modernTone(w.full_name)),
+  };
+}
+
+const sandbox = { console, api: { locationsCatalog: async () => catalogPayload } };
 sandbox.window = sandbox;
 vm.runInNewContext(read("popup-locations.js"), sandbox, { filename: "popup-locations.js" });
-vm.runInNewContext(read("data/procedure-links.js"), sandbox, { filename: "procedure-links.js" });
 
 (async () => {
   const store = sandbox.window.popupLocationManager;
@@ -109,6 +144,14 @@ vm.runInNewContext(read("data/procedure-links.js"), sandbox, { filename: "proced
   assert.ok(wards.communes.includes("Xã Đơn Dương"), "thiếu Xã Đơn Dương trong Lâm Đồng");
   assert.equal(store.getWards("khong-co-tinh-nay"), null);
 
+  // Backend chết / trả rỗng: store phải để loaded=false để lượt sau còn thử lại, không kẹt danh sách rỗng.
+  const offline = { console, api: { locationsCatalog: async () => { throw new Error("HTTP 502"); } } };
+  offline.window = offline;
+  vm.runInNewContext(read("popup-locations.js"), offline, { filename: "popup-locations.js" });
+  await offline.window.popupLocationManager.load();
+  assert.equal(offline.window.popupLocationManager.loaded, false,
+    "không lấy được danh mục thì KHÔNG được đánh dấu đã nạp");
+
   // --- tỉnh/xã gắn trong tài khoản -> địa chỉ mặc định (cùng hợp đồng location_for bên tro-ly) ---
   assert.deepEqual({ ...store.locationFor("Tỉnh Lâm Đồng", "Xã Đơn Dương") },
     { province: "Tỉnh Lâm Đồng", provinceSlug: lamDong.slug, ward: "Xã Đơn Dương" });
@@ -120,18 +163,14 @@ vm.runInNewContext(read("data/procedure-links.js"), sandbox, { filename: "proced
   assert.equal(store.locationFor("Tỉnh Không Tồn Tại", "Xã Đơn Dương"), null);
   assert.equal(store.locationFor("", ""), null);
 
-  // --- link kê khai: trùng key với registry của tro-ly-nguoi-dan-backend ---
-  const links = sandbox.window.PROCEDURE_KE_KHAI_LINKS;
-  assert.equal(links.length, 13, "phải có đủ 13 thủ tục có keKhaiUrl");
-  const registry = fs.readFileSync(
-    path.join(root, "..", "tro-ly-nguoi-dan-backend", "app", "procedures", "registry.py"), "utf8");
+  // --- danh mục link kê khai: giờ là dữ liệu của backend ---
+  const linksFile = path.join(backendRoot, "app", "procedures", "data", "ke_khai_links.json");
+  assert.ok(fs.existsSync(linksFile), "danh mục link kê khai phải nằm ở backend");
+  const links = JSON.parse(fs.readFileSync(linksFile, "utf8")).links;
+  assert.ok(Array.isArray(links) && links.length, "ke_khai_links.json phải có danh sách links");
   for (const item of links) {
     assert.ok(item.key && item.label && /^https:\/\//.test(item.url), `link hỏng: ${item.key}`);
-    assert.ok(registry.includes(`"${item.url}"`), `URL không khớp registry: ${item.key}`);
-    assert.ok(registry.includes(`"key": "${item.key}"`), `key không có trong registry: ${item.key}`);
-  }
-  // autoConfirm chỉ dành cho nhóm cổng React (needsAgencySelect) — liên thông không có modal này.
-  for (const item of links) {
+    // autoConfirm chỉ dành cho nhóm cổng React (needsAgencySelect) — liên thông không có modal này.
     assert.equal(typeof item.autoConfirm, "boolean", `${item.key} thiếu cờ autoConfirm`);
     if (item.autoConfirm) {
       assert.equal(item.needsAgencySelect, true,
@@ -139,7 +178,14 @@ vm.runInNewContext(read("data/procedure-links.js"), sandbox, { filename: "proced
     }
   }
   const keys = links.map((item) => item.key);
-  assert.equal(new Set(keys).size, keys.length, "key trùng nhau trong procedure-links.js");
+  assert.equal(new Set(keys).size, keys.length, "key trùng nhau trong ke_khai_links.json");
+
+  // popup phải lấy danh mục từ BE, không đọc global do file tĩnh gán nữa.
+  assert.match(popupJs, /await api\.keKhaiLinks\(\)/, "popup.js phải gọi api.keKhaiLinks()");
+  assert.match(read("api/endpoints.js"), /\/api\/v1\/procedures\/ke-khai-links/,
+    "api/endpoints.js thiếu endpoint danh mục link kê khai");
+  assert.match(read("api/endpoints.js"), /\/api\/v1\/locations\/catalog/,
+    "api/endpoints.js thiếu endpoint danh mục tỉnh/xã");
 
   console.log("popup location picker + ke khai links: passed");
 })();

@@ -10,56 +10,18 @@ class PopupLocationManager {
         this.loaded = false;
     }
 
-    _modernTone(text) {
-        if (!text) return '';
-
-        const toneO = {
-            'oà': 'òa', 'oá': 'óa', 'oả': 'ỏa', 'oã': 'õa', 'oạ': 'ọa',
-            'oè': 'òe', 'oé': 'óe', 'oẻ': 'ỏe', 'oẽ': 'õe', 'oẹ': 'ọe'
-        };
-        const toneU = {
-            'uỳ': 'ùy', 'uý': 'úy', 'uỷ': 'ủy', 'uỹ': 'ũy', 'uỵ': 'ụy'
-        };
-
-        Object.entries(toneO).forEach(([old, modern]) => {
-            const regex = new RegExp(old + '(?!\\w)', 'g');
-            text = text.replace(regex, modern);
-        });
-
-        Object.entries(toneU).forEach(([old, modern]) => {
-            const regex = new RegExp('(?<![qQ])' + old + '(?!\\w)', 'g');
-            text = text.replace(regex, modern);
-        });
-
-        return text;
-    }
-
     async load() {
         if (this.loaded) return;
 
         try {
-            const url = chrome.runtime.getURL('data/vn_provinces_wards.json');
-            const response = await fetch(url);
-            const data = await response.json();
+            // Danh mục nằm ở backend (app/locations/data/vn_provinces_wards.json), extension KHÔNG
+            // đóng gói bản sao nữa. BE đã chuẩn hoá dấu kiểu mới nên client khỏi xử lý lại.
+            const data = await window.api.locationsCatalog();
 
-            this.provinces = [];
-            this.wardsBySlug = {};
+            this.provinces = Array.isArray(data?.provinces) ? data.provinces : [];
+            this.wardsBySlug = data?.wardsBySlug || {};
 
-            for (const p of data.provinces) {
-                const slug = p.code_name.replace(/_/g, '');
-                const text = this._modernTone(p.full_name);
-                const name = this._modernTone(p.name);
-
-                this.provinces.push({ text, slug, name });
-
-                this.wardsBySlug[slug] = {
-                    slug,
-                    province: text,
-                    communes: p.wards.map(w => this._modernTone(w.full_name))
-                };
-            }
-
-            this.loaded = true;
+            this.loaded = this.provinces.length > 0;
             console.log('[PopupLocationManager] Loaded', this.provinces.length, 'provinces');
         } catch (error) {
             console.error('[PopupLocationManager] Failed to load data:', error);

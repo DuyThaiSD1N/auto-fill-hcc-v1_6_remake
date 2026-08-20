@@ -1,0 +1,1202 @@
+[
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Chung (thị xã Mộc Châu)",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Đoàn Kết"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Đoàn Kết (thị xã Mộc Châu)",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Đoàn Kết"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khừa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Lóng Sập"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Lóng Sập",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Lóng Sập"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Xuân",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Sơn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Lóng Luông",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Vân Hồ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Yên",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Vân Hồ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Men",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Vân Hồ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Vân Hồ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Vân Hồ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Tè",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Song Khủa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Liên Hòa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Song Khủa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Quang Minh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Song Khủa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Song Khủa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Song Khủa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khoa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tô Múa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Suối Bàng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tô Múa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tô Múa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tô Múa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tân Xuân",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Xuân Nha"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Xuân Nha",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Xuân Nha"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Mường Giàng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Quỳnh Nhai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Bằng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Quỳnh Nhai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khoang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Quỳnh Nhai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Ơn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Quỳnh Nhai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khay",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Chiên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Cà Nàng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Chiên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Chiên",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Chiên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Pá Ma Pha Khinh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Giôn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Giôn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Giôn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nặm Ét",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Sại"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Sại",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Sại"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Thuận Châu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Thuận Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phổng Ly",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Thuận Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Thôm Mòn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Thuận Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tông Lạnh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Thuận Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Pấc",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Thuận Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Ngàm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nong Lay",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tông Cọ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng La",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Bôm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Nậm Lầu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Púng Tra",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Nậm Lầu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nậm Lầu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Nậm Lầu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Bản Lầm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Muổi Nọi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Bon Phặng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Muổi Nọi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Muổi Nọi",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Muổi Nọi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Liệp Tè",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Khiêng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Bó Mười",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Khiêng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Khiêng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Khiêng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Co Tòng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Co Mạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Pá Lông",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Co Mạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Co Mạ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Co Mạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phổng Lái",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bình Thuận"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Pha",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bình Thuận"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phổng Lập",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường É"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường É",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường É"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã É Tòng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Long Hẹ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Long Hẹ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Long Hẹ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Ít Ong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nặm Păm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng San",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Muôn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Trai",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Pi Toong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường La"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nậm Giôn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Lao"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Hua Trai",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Lao"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Lao",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Lao"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Chùm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bú"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tạ Bú",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bú"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Bú",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bú"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Ân",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Hoa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Công",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Hoa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Hoa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Hoa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Bắc Yên",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bắc Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phiêng Ban",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bắc Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Hồng Ngài",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bắc Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Song Pe",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bắc Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Làng Chếu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tà Xùa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Háng Đồng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tà Xùa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tà Xùa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tà Xùa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Khoa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tạ Khoa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Hua Nhàn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tạ Khoa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tạ Khoa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tạ Khoa"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Hang Chú",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Xím Vàng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Xím Vàng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Xím Vàng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chim Vàn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Pắc Ngà"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Pắc Ngà",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Pắc Ngà"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phiêng Côn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sại"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Sại",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sại"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Quang Huy",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phù Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Huy Hạ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phù Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Huy Tường",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phù Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Huy Tân",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phù Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Huy Thượng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phù Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tường Phù",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Gia Phù"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Suối Bau",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Gia Phù"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Sập Xa",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Gia Phù"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Gia Phù",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Gia Phù"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tường Thượng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tường Hạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tường Phong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tường Hạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tường Tiến",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tường Hạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tường Hạ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tường Hạ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Thải",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Cơi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tân Lang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Cơi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Cơi",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Cơi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Do",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bang"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Lang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bang"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Bang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bang"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Bắc Phong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tân Phong"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nam Phong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tân Phong"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tân Phong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tân Phong"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Đá Đỏ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Kim Bon"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Kim Bon",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Kim Bon"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Yên Châu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Đông",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Sàng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Pằn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khoi",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Sặp Vạt",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tú Nang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Hặc"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Lựm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Hặc"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Hặc",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Hặc"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Tương",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Lóng Phiêng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Lóng Phiêng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Lóng Phiêng"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng On",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Yên Sơn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Yên Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Ban",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Kheo",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Dong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Ve",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Mai",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mai"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Hát Lót",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mai Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Hát Lót",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mai Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Cò Nòi",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mai Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nà Ớt",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phiêng Pằn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Lương",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phiêng Pằn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phiêng Pằn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phiêng Pằn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Bằng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Bon",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Mung",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Mung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Nơi",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phiêng Cằm"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phiêng Cằm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phiêng Cằm"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Chung (huyện Mai Sơn)",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Chanh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Chanh (huyện Mai Sơn)",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Chanh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nà Bó",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tà Hộc"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tà Hộc",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tà Hộc"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Chăn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Sung",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Pú Bẩu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bó Sinh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng En",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bó Sinh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Bó Sinh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Bó Sinh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Sai",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Khương"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khương",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Khương"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Cang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Hung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Hung",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Hung"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Cai",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Khoong"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Khoong",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Khoong"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Đứa Mòn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Lầm"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Lầm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Lầm"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Phung",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Nậm Ty"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nậm Ty",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Nậm Ty"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Thị trấn Sông Mã",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Sông Mã"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nà Nghịu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Sông Mã"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nậm Mằn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Huổi Một"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Huổi Một",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Huổi Một"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Yên Hưng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sơ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Sơ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Chiềng Sơ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Và",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Sốp Cộp"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Nậm Lạnh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Sốp Cộp"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Sốp Cộp",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Sốp Cộp"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Dồm Cang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Púng Bánh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Sam Kha",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Púng Bánh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Púng Bánh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Púng Bánh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Quyết Thắng",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Tô Hiệu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Quyết Tâm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Tô Hiệu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Chiềng Lề",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Tô Hiệu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Tô Hiệu",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Tô Hiệu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Chiềng An",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng An"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Xôm",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng An"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Đen",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng An"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Chiềng Cơi",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng Cơi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Hua La",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng Cơi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Cọ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng Cơi"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Chiềng Sinh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng Sinh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Ngần",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Chiềng Sinh"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Mộc Lỵ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Mộc Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Mường Sang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Mộc Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Chiềng Hắc",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Mộc Châu"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Đông Sang",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Mộc Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Mộc Sơn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Mộc Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Bình Minh",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Vân Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Vân Sơn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Vân Sơn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Cờ Đỏ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Thảo Nguyên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Phường Thảo Nguyên",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Phường Thảo Nguyên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Lạn",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Lạn"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Phiêng Khoài",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Phiêng Khoài"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Suối Tọ",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Suối Tọ"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Ngọc Chiến",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Ngọc Chiến"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Tân Yên",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Tân Yên"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Bám",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Bám"
+    },
+    {
+        "tinh_cu": "Sơn La",
+        "xa_cu": "Xã Mường Lèo",
+        "tinh_moi": "Sơn La",
+        "xa_moi": "Xã Mường Lèo"
+    }
+]

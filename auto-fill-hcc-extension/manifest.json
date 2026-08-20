@@ -59,6 +59,7 @@
       ],
       "all_frames": true,
       "js": [
+        "api/config.js",
         "content/locations.js",
         "content/bbox-overlay.js",
         "content.js",
@@ -110,8 +111,7 @@
         "api/*",
         "lib/*",
         "vendor/*",
-        "assets/icons/*",
-        "data/*"
+        "assets/icons/*"
       ],
       "matches": [
         "https://dichvucongnganhtuphap.moj.gov.vn/*",

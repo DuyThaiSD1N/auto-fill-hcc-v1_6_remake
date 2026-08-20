@@ -1,0 +1,284 @@
+{
+  "links": [
+    {
+      "key": "khai-sinh-dang-ky",
+      "label": "Liên thông đăng ký khai sinh, thường trú, BHYT cho trẻ dưới 6 tuổi",
+      "url": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000986",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "ket-hon",
+      "label": "Thủ tục đăng ký kết hôn",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-a15eb239a6fe",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-lai-ket-hon",
+      "label": "Thủ tục đăng ký lại kết hôn",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-f82cb6606242",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "ket-hon-nuoc-ngoai",
+      "label": "Thủ tục đăng ký kết hôn có yếu tố nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e13-728a-a0cd-635811d8432e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "khai-sinh-dang-ky-lai",
+      "label": "Thủ tục đăng ký lại khai sinh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6eac-7598-b88b-15f8a61b366a",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "khai-tu",
+      "label": "Thủ tục đăng ký khai tử",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-9c6c958f2da4",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "khai-tu-dang-ky-lai",
+      "label": "Thủ tục đăng ký lại khai tử",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6ebc-709e-8678-a9f8b66738f2",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-giam-ho",
+      "label": "Thủ tục đăng ký giám hộ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671b-75fa-82fb-8ad05a37f638",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-nhan-cha-me-con",
+      "label": "Thủ tục đăng ký nhận cha, mẹ, con",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fa6-722f-ac1a-e949c8ce3418",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-tinh-trang-hon-nhan",
+      "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "trich-luc-ks",
+      "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-867c-72db-b6a7-dcbd8c763807",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-ban-sao",
+      "label": "Chứng thực bản sao từ bản chính giấy tờ, văn bản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e22-77ef-819f-e49460350904",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-chu-ky",
+      "label": "Chứng thực chữ ký trong các giấy tờ, văn bản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e2e-7359-b42f-d5dc8d74741b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-giao-dich-tai-san",
+      "label": "Chứng thực giao dịch liên quan đến tài sản là động sản, quyền sử dụng đất, nhà ở",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95fa-70ca-93fd-4cab11b87897",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
+      "label": "Chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e59-72ab-ae1a-a2985865d253",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-phan-chia-di-san",
+      "label": "Chứng thực văn bản thỏa thuận phân chia di sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-9daf-70da-8f48-223498332346",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-ban-sao-so-goc",
+      "label": "Cấp bản sao từ sổ gốc",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e5d-72f9-8cf2-c71780251483",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-di-chuc",
+      "label": "Chứng thực di chúc",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95f0-7610-845f-c097f144bd55",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "ho-tro-mai-tang",
+      "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-dinh-muc-do-khuyet-tat",
+      "label": "Xác định, xác định lại mức độ khuyết tật và cấp Giấy xác nhận khuyết tật",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7cd-76e9-b909-bcf437629cb8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-huu-tri-xa-hoi",
+      "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d80-74d8-8515-90f6f61822f0",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "bo-sung-than-nhan-liet-si",
+      "label": "Bổ sung tình hình thân nhân trong hồ sơ liệt sĩ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc36-74e9-9909-551c04aa6c27",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
+      "label": "Cấp giấy phép xây dựng mới công trình cấp III, cấp IV và nhà ở riêng lẻ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9088-744d-aa0a-e846b6dce3d5",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-kinh-doanh",
+      "label": "Đăng ký thành lập hộ kinh doanh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
+      "needsAgencySelect": true,
+      "autoConfirm": false
+    },
+    {
+      "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
+      "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xet-tuyen-cong-chuc",
+      "label": "Thủ tục xét tuyển Công chức",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2326-7367-83e6-f242eef7cbc5",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "thi-tuyen-cong-chuc",
+      "label": "Thủ tục thi tuyển Công chức",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d90b5-0f50-773c-88d5-07d6ef77b613",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
+      "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ef895-259b-72b1-ba55-179108f16bb1",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-doi-ten-hop-dong-nuoc-sach",
+      "label": "Thủ tục chuyển đổi tên trong hợp đồng sử dụng nước sạch",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ef89f-fba4-7698-9dbb-f18e145be976",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giai-quyet-che-do-tro-cap-tho-cung-liet-si",
+      "label": "Giải quyết chế độ trợ cấp thờ cúng liệt sĩ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc0c-7046-b5dc-04303a18608d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-doi-gcn-quyen-su-dung-dat",
+      "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-cap-lai-giay-phep-khai-thac-thuy-san",
+      "label": "Cấp, cấp lại Giấy phép khai thác thủy sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3815-712d-a33f-c571e5d7fdc2",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xoa-dang-ky-tau-ca-tau-phuc-vu-nuoi-trong-thuy-san",
+      "label": "Xóa đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-286c-7701-adcc-2ef71bbbe72e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gcn-co-so-du-dieu-kien-an-toan-thuc-pham-nong-lam-thuy-san",
+      "label": "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm nông, lâm, thủy sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-b57f-73cc-856f-0255333fcb48",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-van-ban-chap-thuan-dong-moi-cai-hoan-thue-mua-tau-ca-viet-nam",
+      "label": "Cấp văn bản chấp thuận đóng mới, cải hoán, thuê, mua tàu cá Việt Nam",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3821-734d-a521-ed615d1b1a97",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-moi-giay-phep-hanh-nghe-giai-doan-chuyen-tiep-bac-sy-y-sy-dieu-duong-ho-sinh-ky-thuat-y-dinh-duong-lam-sang-cap-cuu-vien-ngoai-vien-tam-ly-lam-sang",
+      "label": "Cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db7-73d4-8e28-7b1fd65945b7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-chung-chi-hanh-nghe-duoc-xet-ho-so",
+      "label": "Cấp Chứng chỉ hành nghề dược (bao gồm cả trường hợp cấp Chứng chỉ hành nghề dược cho người bị thu hồi Chứng chỉ hành nghề dược theo quy định tại các khoản 1, 2, 4, 5, 6, 7, 8, 9, 10, 11 Điều 28 của Luật Dược) theo hình thức xét hồ sơ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3538-71fe-8b3b-2fe11f5d68a0",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "sua-doi-bo-sung-thong-tin-ca-nhan-ho-so-nguoi-co-cong",
+      "label": "Sửa đổi, bổ sung thông tin cá nhân trong hồ sơ người có công",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d5-777b-bdc9-f3ccadbd96f8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "di-chuyen-ho-so-nguoi-huong-tro-cap-uu-dai-thay-doi-noi-thuong-tru",
+      "label": "Di chuyển hồ sơ khi người hưởng trợ cấp ưu đãi thay đổi nơi thường trú",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d1-7738-83c0-e5b7b37f5bb0",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-cap-lai-giay-phep-lien-van-viet-nam-lao",
+      "label": "Cấp, cấp lại giấy phép giữa Việt Nam và Lào",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-2aa0-754f-9f94-b2b89ed0f198",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    }
+  ]
+}

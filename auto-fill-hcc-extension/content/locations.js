@@ -3,6 +3,9 @@
  * Ported from tro-ly-nguoi-dan-backend/app/locations/
  */
 
+const LOCATIONS_CACHE_KEY = 'autofill_locations_catalog';
+const LOCATIONS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 class LocationManager {
     constructor() {
         this.provinces = [];
@@ -11,68 +14,56 @@ class LocationManager {
     }
 
     /**
-     * Modernize tone marks from old style to new style
-     * Old: "Hoà", "Thuỵ" → New: "Hòa", "Thụy"
-     */
-    _modernTone(text) {
-        if (!text) return '';
-
-        const toneO = {
-            'oà': 'òa', 'oá': 'óa', 'oả': 'ỏa', 'oã': 'õa', 'oạ': 'ọa',
-            'oè': 'òe', 'oé': 'óe', 'oẻ': 'ỏe', 'oẽ': 'õe', 'oẹ': 'ọe'
-        };
-        const toneU = {
-            'uỳ': 'ùy', 'uý': 'úy', 'uỷ': 'ủy', 'uỹ': 'ũy', 'uỵ': 'ụy'
-        };
-
-        // Replace oa patterns (not followed by word characters)
-        Object.entries(toneO).forEach(([old, modern]) => {
-            const regex = new RegExp(old + '(?!\\w)', 'g');
-            text = text.replace(regex, modern);
-        });
-
-        // Replace uy patterns (not preceded by q/Q)
-        Object.entries(toneU).forEach(([old, modern]) => {
-            const regex = new RegExp('(?<![qQ])' + old + '(?!\\w)', 'g');
-            text = text.replace(regex, modern);
-        });
-
-        return text;
-    }
-
-    /**
-     * Load province and ward data from JSON file
+     * Nạp danh mục tỉnh/xã từ BACKEND (app/locations/data/vn_provinces_wards.json) — extension không
+     * đóng gói bản sao nữa. BE đã chuẩn hoá dấu kiểu mới nên client dùng thẳng.
+     *
+     * Hai điểm bắt buộc phải chiều ở context content script:
+     *  - Fetch đi qua background (action apiFetch): fetch thẳng từ content script dính CSP
+     *    connect-src của trang cổng.
+     *  - Content script chạy ở MỌI frame → cache vào chrome.storage.local để một trang nhiều iframe
+     *    không gọi BE hàng chục lần.
      */
     async load() {
         if (this.loaded) return;
 
+        const data = (await this._readCache()) || (await this._fetchCatalog());
+        if (!data) return;   // BE chưa sẵn sàng: giữ loaded=false để lượt sau thử lại
+
+        this.provinces = Array.isArray(data.provinces) ? data.provinces : [];
+        this.wardsBySlug = data.wardsBySlug || {};
+        this.loaded = this.provinces.length > 0;
+        console.log('[LocationManager] Loaded', this.provinces.length, 'provinces');
+    }
+
+    async _readCache() {
         try {
-            const url = chrome.runtime.getURL('data/vn_provinces_wards.json');
-            const response = await fetch(url);
-            const data = await response.json();
+            const res = await chrome.storage.local.get(LOCATIONS_CACHE_KEY);
+            const hit = res[LOCATIONS_CACHE_KEY];
+            if (!hit || !hit.at || Date.now() - hit.at > LOCATIONS_CACHE_TTL_MS) return null;
+            return hit.data && hit.data.provinces?.length ? hit.data : null;
+        } catch (error) {
+            return null;
+        }
+    }
 
-            this.provinces = [];
-            this.wardsBySlug = {};
-
-            for (const p of data.provinces) {
-                // "bac_ninh" → "bacninh": match with old 9-province manual list
-                const slug = p.code_name.replace(/_/g, '');
-                const text = this._modernTone(p.full_name);
-                const name = this._modernTone(p.name);
-
-                this.provinces.push({ text, slug, name });
-
-                this.wardsBySlug[slug] = {
-                    slug,
-                    province: text,
-                    communes: p.wards.map(w => this._modernTone(w.full_name))
-                };
-            }
-
-            this.loaded = true;
-            console.log('[LocationManager] Loaded', this.provinces.length, 'provinces');
+    async _fetchCatalog() {
+        try {
+            const res = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                    action: 'apiFetch',
+                    url: BACKEND_URL + '/api/v1/locations/catalog',
+                    method: 'GET',
+                    headers: {},
+                }, (out) => resolve(chrome.runtime.lastError ? null : out));
+            });
+            if (!res || !res.ok) throw new Error(res?.error || `HTTP ${res?.status}`);
+            const data = JSON.parse(res.body);
+            try { await chrome.storage.local.set({ [LOCATIONS_CACHE_KEY]: { at: Date.now(), data } }); }
+            catch (error) { /* hết quota: vẫn dùng được, chỉ là lượt sau phải gọi lại */ }
+            return data;
         } catch (error) {
             console.error('[LocationManager] Failed to load data:', error);
+            return null;
         }
     }
 
