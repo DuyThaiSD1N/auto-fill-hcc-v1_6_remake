@@ -143,6 +143,52 @@ def _submitter_is_owner(values: dict[str, Any]) -> bool | None:
 _PERS_SUB_SELF_LABEL = "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
 _PERS_SUB_AUTHORIZED_LABEL = "Người được ủy quyền"
 
+def _delegate_matches_card(delegate: dict[str, Any], card: Any) -> bool:
+    """Bên được ủy quyền và một thẻ căn cước trong hồ sơ có phải CÙNG MỘT NGƯỜI không.
+
+    Số định danh là căn cứ chắc nhất; hai bên đều có số mà khác nhau ⇒ người khác, không so tên nữa
+    (trùng tên là chuyện thường). Thiếu số ở một bên thì mới quay về so họ tên.
+    """
+    if not isinstance(card, dict):
+        return False
+    delegate_id = re.sub(r"\D", "", _compact_text(delegate.get("soDinhDanh")))
+    card_id = re.sub(r"\D", "", _compact_text(card.get("soDinhDanh")))
+    if delegate_id and card_id:
+        return delegate_id == card_id
+    delegate_name = _fold_vi(_proper_name(delegate.get("hoTen")))
+    card_name = _fold_vi(_proper_name(card.get("hoTen")))
+    return bool(delegate_name) and delegate_name == card_name
+
+
+def _delegate_over_card(delegate: dict[str, Any], card: dict[str, Any] | None) -> dict[str, Any]:
+    """Gộp nhân thân người nộp thay: GIẤY ỦY QUYỀN trước, thẻ căn cước chỉ là nguồn BÙ THIẾU.
+
+    Giấy ủy quyền hay thiếu ngày sinh/giới tính/địa chỉ; có thẻ của chính người đó thì lấy nốt các
+    field ấy từ thẻ, nhưng họ tên/số định danh vẫn theo giấy ủy quyền.
+    """
+    if not card:
+        return delegate
+    merged = dict(card)
+    for key, value in delegate.items():
+        if value not in (None, "", {}, []):
+            merged[key] = value
+    return merged
+
+
+def delegate_first(rows: list[Any], values: dict[str, Any]) -> list[Any]:
+    """Đưa BÊN ĐƯỢC ỦY QUYỀN lên ĐẦU danh sách nhân thân, thẻ căn cước của chính họ chỉ để bù thiếu.
+
+    Dùng chung cho mọi luồng HKD (đăng ký mới / thay đổi / chấm dứt) để thứ tự ưu tiên giống nhau ở
+    cả `__identityCandidates` của trang lẫn `businessFlow.identityCandidates`.
+    Không đọc được giấy ủy quyền thì trả nguyên danh sách cũ.
+    """
+    delegate = authorized_person(values)
+    if not delegate:
+        return list(rows)
+    card = next((row for row in rows if _delegate_matches_card(delegate, row)), None)
+    return [_delegate_over_card(delegate, card)] + list(rows)
+
+
 def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
     """Nhân thân đọc từ MỌI thẻ căn cước trong hồ sơ (đã gộp mặt trước/sau của cùng một thẻ).
 
@@ -151,7 +197,13 @@ def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
     hoặc họ tên là ra đúng thẻ của người nộp, rồi ghi nhân thân + địa chỉ đó vào khối người nộp.
     """
     rows = values.get("Cccd_DanhSach")
-    if not isinstance(rows, list):
+    rows = list(rows) if isinstance(rows, list) else []
+    # Người được ủy quyền đứng ĐẦU: GIẤY ỦY QUYỀN là căn cứ pháp lý chỉ định ai được nộp thay, nên khi
+    # hồ sơ có CẢ giấy ủy quyền lẫn thẻ căn cước của cùng một người thì bản đọc từ giấy ủy quyền thắng;
+    # thẻ chỉ BÙ những field giấy ủy quyền bỏ trống (ngày sinh/giới tính/địa chỉ). Bản dựng riêng từ
+    # thẻ sau đó bị dedup loại bỏ vì trùng họ tên + số định danh.
+    rows = delegate_first(rows, values)
+    if not rows:
         return []
 
     out: list[dict[str, Any]] = []
@@ -173,6 +225,50 @@ def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
             "diaChi": _addr(row.get("diaChi")),
         })
     return out
+
+
+# Tên các field ủy quyền được chuyển tiếp nguyên vẹn từ pipeline thay đổi / chấm dứt sang đây.
+AUTHORIZATION_FIELD_NAMES = (
+    "UyQuyen_CoGiayUyQuyen",
+    "UyQuyen_NguoiUyQuyen_HoTen",
+    "UyQuyen_NguoiUyQuyen_SoDinhDanh",
+    "UyQuyen_NguoiDuocUyQuyen_HoTen",
+    "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh",
+    "UyQuyen_NguoiDuocUyQuyen_GioiTinh",
+    "UyQuyen_NguoiDuocUyQuyen_NgaySinh",
+    "UyQuyen_NguoiDuocUyQuyen_DiaChi",
+    "UyQuyen_NguoiDuocUyQuyen_DienThoai",
+)
+
+
+def authorized_person(values: dict[str, Any]) -> dict[str, Any] | None:
+    """Nhân thân BÊN ĐƯỢC ỦY QUYỀN đọc từ Giấy ủy quyền.
+
+    Người nộp thay thường chỉ có tên trong giấy ủy quyền, hồ sơ không kèm CCCD của họ — nếu không
+    dựng nhân thân từ đây thì extension không có gì để đối chiếu với tài khoản đăng nhập.
+    Không có ít nhất họ tên hoặc số định danh thì coi như không đọc được, trả None.
+    """
+    ho_ten = _proper_name(values.get("UyQuyen_NguoiDuocUyQuyen_HoTen"))
+    so_dinh_danh = re.sub(r"\D", "", _compact_text(values.get("UyQuyen_NguoiDuocUyQuyen_SoDinhDanh")))
+    if not ho_ten and not so_dinh_danh:
+        return None
+    return {
+        "hoTen": ho_ten,
+        "gioiTinh": _gender_code(values.get("UyQuyen_NguoiDuocUyQuyen_GioiTinh")),
+        "ngaySinh": normalize_date(values.get("UyQuyen_NguoiDuocUyQuyen_NgaySinh")),
+        "soDinhDanh": so_dinh_danh,
+        "diaChi": _addr(values.get("UyQuyen_NguoiDuocUyQuyen_DiaChi")),
+        "dienThoai": _clean_phone(values.get("UyQuyen_NguoiDuocUyQuyen_DienThoai")),
+        # Đánh dấu nguồn để log/khi soi hồ sơ biết nhân thân này KHÔNG đọc từ thẻ căn cước.
+        "nguon": "uy-quyen",
+    }
+
+
+def authorization_fields(values: dict[str, Any]) -> list[dict]:
+    """Đóng gói lại field ủy quyền cho pipeline khác chuyển tiếp sang enrich()."""
+    return [{"name": name, "comp": "raw", "value": values[name]}
+            for name in AUTHORIZATION_FIELD_NAMES
+            if values.get(name) not in (None, "", {}, [])]
 
 
 def _strip_household_prefix(value: Any) -> str:

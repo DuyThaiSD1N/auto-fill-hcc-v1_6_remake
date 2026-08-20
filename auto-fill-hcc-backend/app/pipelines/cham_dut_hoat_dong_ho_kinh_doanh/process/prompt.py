@@ -41,7 +41,22 @@ QUY TẮC BẮT BUỘC:
    - PHẢI lấy từ "Nơi thường trú / Place of residence" trên CCCD
    - TUYỆT ĐỐI KHÔNG lấy từ "Quê quán / Place of origin"
    - Ví dụ: CCCD có cả "Quê quán: Xã A, Huyện B, Tỉnh C" và "Nơi thường trú: Tổ D, Phường E, Quận F, Thành phố G" → CHỈ lấy địa chỉ Nơi thường trú ("Thành phố G", "Phường E", "Tổ D"), KHÔNG lấy Quê quán ("Tỉnh C").
-7. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
+7. 📄 GIẤY ỦY QUYỀN — NGUỒN NHÂN THÂN CỦA NGƯỜI NỘP THAY:
+  + Nhận diện qua tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN" và hai mục "Bên ủy quyền" / "Bên được ủy quyền".
+  + "Bên ủy quyền" (người giao việc, thường là chủ hộ) → UyQuyen_NguoiUyQuyen_HoTen, UyQuyen_NguoiUyQuyen_SoDinhDanh.
+  + "Bên được ủy quyền" (NGƯỜI ĐI NỘP HỒ SƠ THAY) → UyQuyen_NguoiDuocUyQuyen_HoTen, _SoDinhDanh,
+    _GioiTinh, _NgaySinh, _DienThoai, _DiaChi. Trả UyQuyen_CoGiayUyQuyen = true.
+  + Người nộp thay RẤT HAY chỉ xuất hiện trong giấy ủy quyền, hồ sơ KHÔNG kèm CCCD của họ.
+    Khi đó VẪN PHẢI điền đủ nhóm UyQuyen_NguoiDuocUyQuyen_* từ chính giấy ủy quyền.
+  + Nếu hồ sơ CÓ CCCD của bên được ủy quyền: ưu tiên nhân thân + "Nơi thường trú" trên THẺ;
+    giấy ủy quyền chỉ bù các field thẻ không có (vd số điện thoại).
+  + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
+    căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
+    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → diaChi="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
+  + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
+    đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
+8. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
 
 Không trả tên field UI ctl00$C$...; chỉ trả field compact trong schema.
 """

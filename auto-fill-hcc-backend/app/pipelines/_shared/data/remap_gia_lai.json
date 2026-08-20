@@ -1,0 +1,2258 @@
+[
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Lộc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Nhơn Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Tân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Nhơn Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Ngô Mây",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Cát"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Trinh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Cát"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Tân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Cát"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Nhơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Xuân An"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Tường",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Xuân An"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Hưng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ngô Mây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Thắng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ngô Mây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Chánh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ngô Mây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Cát Tiến",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cát Tiến"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Thành",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cát Tiến"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Hải",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cát Tiến"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Cát Khánh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đề Gi"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Minh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đề Gi"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Tài",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đề Gi"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Hanh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hòa Hội"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Hiệp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hòa Hội"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Lâm",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hội Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Cát Sơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hội Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Phù Mỹ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Quang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Chánh Tây",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Chánh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Lương"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Thành",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Lương"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Cát",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Lương"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Bình Dương",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Dương"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Lợi",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Dương"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Phong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Dương"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Thọ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Thắng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Trinh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Tài",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Hiệp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Đức",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Châu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Mỹ Lộc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phù Mỹ Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Tuy Phước",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Diêu Trì",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Thuận",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Nghĩa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Lộc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Sơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Thắng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Thành",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Hiệp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Hưng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Quang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tuy Phước Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Phú Phong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tây Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây Xuân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tây Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bình Nghi",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tây Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây Giang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Khê"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây Thuận",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Khê"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bình Tường",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bình Thuận",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bình Tân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây Vinh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Tây Bình",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bình Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bình Thành",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Tăng Bạt Hổ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hoài Ân"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Phong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hoài Ân"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Đức",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hoài Ân"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Tường Đông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hoài Ân"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Tường Tây",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ân Tường"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Hữu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ân Tường"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Đak Mang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ân Tường"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Nghĩa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Bok Tới",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Sơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vạn Đức"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Tín",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vạn Đức"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Thạnh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vạn Đức"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Hảo Tây",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ân Hảo"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Hảo Đông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ân Hảo"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Ân Mỹ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ân Hảo"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Vân Canh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vân Canh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Thuận",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vân Canh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vân Canh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Hiệp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vân Canh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Vinh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Canh Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Hiển",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Canh Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Liên",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Canh Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Hiệp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Canh Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Canh Liên",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Canh Liên"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn Vĩnh Thạnh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Hảo",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Hiệp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Thịnh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Thịnh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Thịnh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Thuận",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Quang"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Quang"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Quang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Quang"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Kim",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Vĩnh Sơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Vĩnh Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Hòa"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Quang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Hòa"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Nghĩa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Hòa"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Thị trấn An Lão",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Tân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Hưng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Lão"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Trung (huyện An Lão)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Dũng (huyện An Lão)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Vinh (huyện An Lão)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Vinh"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Toàn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Toàn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã An Nghĩa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã An Toàn"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Nghĩa Hưng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Biển Hồ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Đang Ya",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Biển Hồ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hà Bầu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Biển Hồ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Biển Hồ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Biển Hồ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Kênh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Gào"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Pếch",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Gào"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Gào",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Gào"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Ia Ly",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Ly"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Mơ Nông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Ly"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Kreng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Ly"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Phú Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Păh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Nghĩa Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Păh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hòa Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Păh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Tơ Ver",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Khươl"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hà Tây",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Khươl"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Khươl",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Khươl"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Ka",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Phí"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Nhin",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Phí"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Phí",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Phí"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Chư Prông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Prông"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Phìn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Prông"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Kly",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Prông"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Drang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Prông"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Thăng Hưng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bàu Cạn"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Bình Giáo",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bàu Cạn"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Bàu Cạn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bàu Cạn"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia O (huyện Chư Prông)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Boòng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Me (huyện Chư Prông)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Boòng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Boòng (huyện Chư Prông)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Boòng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Piơr",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Lâu"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Lâu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Lâu"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Ga",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pia"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Vê",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pia"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Pia",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pia"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Băng (huyện Chư Prông)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tôr"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Bang (huyện Chư Prông)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tôr"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Tôr (huyện Chư Prông)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tôr"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Chư Sê",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Sê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Dun",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Sê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Blang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Sê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Pal",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Sê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Glai",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Sê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Bar Măih",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bờ Ngoong"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Tiêm",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bờ Ngoong"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Pơng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bờ Ngoong"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Bờ Ngoong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Bờ Ngoong"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Hlốp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Ko"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Hla",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Ko"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Ko",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Ko"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ayun (huyện Chư Sê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Al Bá"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kông Htok (huyện Chư Sê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Al Bá"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Al Bá (huyện Chư Sê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Al Bá"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Nhơn Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Pưh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Don",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Pưh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Phang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Pưh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Blứ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Le"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Le",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Le"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Dreng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Rong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã HBông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Hrú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Tú An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cửu An"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Xuân An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cửu An"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Song An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cửu An"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Cửu An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Cửu An"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Đak Pơ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Pơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hà Tam",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Pơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã An Thành",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Pơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Yang Bắc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Pơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Phú An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ya Hội"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ya Hội",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ya Hội"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Kbang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kbang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Lơ Ku",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kbang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Smar",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kbang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kông Bơ La"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Nghĩa An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kông Bơ La"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kông Bơ La",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kông Bơ La"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kông Lơng Khơng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tơ Tung"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Tơ Tung",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Tơ Tung"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Sơ Pai",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Sơn Lang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Sơn Lang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Sơn Lang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kon Pne",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Rong"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Rong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Rong"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Kông Chro",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kông Chro"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Yang Trung",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kông Chro"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Yang Nam",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kông Chro"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Tơ Pang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ya Ma"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kông Yang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ya Ma"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ya Ma",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ya Ma"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã An Trung (huyện Kông Chro)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Krey"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Krey (huyện Kông Chro)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư Krey"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Kơ Ning",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã SRó"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã SRó",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã SRó"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Pling",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đăk Song"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Song",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đăk Song"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Pơ Pho",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chơ Long"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chơ GLong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chơ Long"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Băh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Rbol"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Rbol",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Rbol"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Sao (thị xã Ayun Pa)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Sao"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Rtô (thị xã Ayun Pa)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Sao"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Phú Thiện",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Thiện"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Sol",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Thiện"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Piar",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Thiện"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Yeng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Thiện"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ayun Hạ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư A Thai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Ake",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư A Thai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư A Thai",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Chư A Thai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chrôh Pơnan",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hiao"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Peng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hiao"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Hiao",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hiao"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Răng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Pờ Tó"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Pờ Tó",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Pờ Tó"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Mrơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kim Tân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Trôk",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Mố",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tul"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Broăi",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tul"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Kdăm",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tul"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Tul",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Tul"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Phú Túc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Phú Cần",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Ngọc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Mlah",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đất Bằng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Phú Túc"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Rmok",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Dreh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Krông Năng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Dreh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Dreh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Dreh"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư RCăm",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Rsai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Gu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Rsai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Rsai",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Rsai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Rsươm",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Uar"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Drăng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Uar"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Uar",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Uar"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Đak Đoa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Đoa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Tân Bình",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Đoa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Glar",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Đoa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Krong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kon Gang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hneng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kon Gang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Nam Yang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kon Gang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kon Gang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kon Gang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Băng (huyện Đak Đoa)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Băng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Adơk (huyện Đak Đoa)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Băng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Pết (huyện Đak Đoa)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Băng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hnol",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã KDang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Trang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã KDang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã KDang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã KDang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hà Đông",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Sơmei"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Sơmei",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đak Sơmei"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Kon Dơng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Mang Yang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đăk Yă",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Mang Yang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Djrăng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Mang Yang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hải Yang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Mang Yang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đê Ar",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Lơ Pang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kon Thụp",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Lơ Pang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Lơ Pang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Lơ Pang"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Trôi",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kon Chiêng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Kon Chiêng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Kon Chiêng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Ta Ley",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hra"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Hra",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Hra"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Đak Jơ Ta (huyện Mang Yang)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ayun"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ayun (huyện Mang Yang)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ayun"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Ia Kha",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Grai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Bă",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Grai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Grăng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Grai"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Tô",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Krái"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Khai",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Krái"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Krái",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Krái"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Sao (huyện Ia Grai)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrung"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Yok (huyện Ia Grai)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrung"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Dêr (huyện Ia Grai)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrung"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Hrung (huyện Ia Grai)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Hrung"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Thị trấn Chư Ty",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đức Cơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Kriêng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Đức Cơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Kla",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Dơk"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Dơk",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Dơk"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Lang",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Krêl"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Din",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Krêl"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Krêl",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Krêl"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Đống Đa (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hải Cảng (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Thị Nại (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Trần Phú (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Nhơn Bình",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Hội",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Lý",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Hải",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Bùi Thị Xuân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Phước Mỹ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Ngô Mây (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Nguyễn Văn Cừ (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Quang Trung (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Ghềnh Ráng (thành phố Quy Nhơn)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Trần Quang Diệu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Nhơn Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Quy Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Bình Định",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Bình Định"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Khánh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Bình Định"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Phúc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Bình Định"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Đập Đá",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Mỹ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Hậu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Nhơn Hưng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Nhơn Hòa",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Thọ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Nhơn Thành",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Phong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Hạnh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Đức",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Bồng Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Bồng Sơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Bồng Sơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Thanh",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Tam Quan Nam",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Thanh Tây",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Tam Quan",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Tam Quan"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Hoài Châu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Tam Quan"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Hương",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Hoài Hải",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Hoài Mỹ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Đông"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Hảo",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Hoài Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Tây"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Tân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Hoài Xuân",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Nam"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Phường Tam Quan Bắc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Hoài Sơn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Hoài Châu Bắc",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hoài Nhơn Bắc"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Tây Sơn (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Pleiku"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Hội Thương (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Pleiku"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Hoa Lư (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Pleiku"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Phù Đổng (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Pleiku"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Trà Đa (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Pleiku"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Trà Bá",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hội Phú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Chi Lăng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hội Phú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Hội Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Hội Phú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Đống Đa (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Thống Nhất"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Yên Thế (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Thống Nhất"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Thống Nhất (thành phố Pleiku)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Thống Nhất"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Yên Đỗ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Diên Hồng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Ia Kring",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Diên Hồng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Diên Hồng",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Diên Hồng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Diên Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Diên Hồng"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Thắng Lợi",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Phú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Chư Á",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Phú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã An Phú",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Phú"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Ngô Mây (thị xã An Khê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Tây Sơn (thị xã An Khê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường An Phú (thị xã An Khê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường An Phước (thị xã An Khê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường An Tân (thị xã An Khê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Thành An (thị xã An Khê)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Khê"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường An Bình",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Bình"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Tân An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Bình"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Cư An",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường An Bình"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Đoàn Kết",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Ayun Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Sông Bờ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Ayun Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Cheo Reo",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Ayun Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Phường Hòa Bình",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Phường Ayun Pa"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia O (huyện Ia Grai)",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia O (huyện Ia Grai)"
+    },
+    {
+        "tinh_cu": "Bình Định",
+        "xa_cu": "Xã Nhơn Châu",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Nhơn Châu"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Púch",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Púch"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Mơ",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Mơ"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Pnôn",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Pnôn"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Nan",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Nan"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Dom",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Dom"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Ia Chia",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Ia Chia"
+    },
+    {
+        "tinh_cu": "Gia Lai",
+        "xa_cu": "Xã Krong",
+        "tinh_moi": "Gia Lai",
+        "xa_moi": "Xã Krong"
+    }
+]

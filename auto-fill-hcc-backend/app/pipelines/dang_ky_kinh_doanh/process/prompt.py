@@ -33,7 +33,8 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
     tài khoản đang nộp trên cổng.
   + Dữ liệu trong Cccd_DanhSach KHÔNG được dùng thay cho ChuHo_DiaChi / TruSo_DiaChi / NguoiNop_DiaChi
     (các field đó chỉ lấy từ Giấy đề nghị).
-  + Giấy ủy quyền (nếu có) CHỈ dùng để biết hồ sơ nộp thay; KHÔNG lấy nhân thân/địa chỉ từ giấy đó.
+  + Giấy ủy quyền là nguồn HỢP LỆ cho nhân thân người nộp thay, nhưng chỉ qua nhóm UyQuyen_* —
+    KHÔNG dùng nó để sửa ChuHo_DiaChi / TruSo_DiaChi / NguoiNop_DiaChi.
 
 - ⚠️ PHÁT HIỆN NHIỀU CCCD/GIẤY TỜ TÙY THÂN TRONG HỒ SƠ:
 
@@ -126,6 +127,24 @@ NGUỒN DỮ LIỆU VÀ SUY LUẬN:
         "diaChi": "TDP 13 Nhân Mỹ"
       }
     }
+- 📄 GIẤY ỦY QUYỀN — NGUỒN NHÂN THÂN CỦA NGƯỜI NỘP THAY:
+  + Nhận diện qua tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN" và hai mục "Bên ủy quyền" / "Bên được ủy quyền".
+  + "Bên ủy quyền" (người giao việc, thường là chủ hộ) → UyQuyen_NguoiUyQuyen_HoTen, UyQuyen_NguoiUyQuyen_SoDinhDanh.
+  + "Bên được ủy quyền" (NGƯỜI ĐI NỘP HỒ SƠ THAY) → UyQuyen_NguoiDuocUyQuyen_HoTen, _SoDinhDanh,
+    _GioiTinh, _NgaySinh, _DienThoai, _DiaChi. Trả UyQuyen_CoGiayUyQuyen = true.
+  + Người nộp thay RẤT HAY chỉ xuất hiện trong giấy ủy quyền, hồ sơ KHÔNG kèm CCCD của họ.
+    Khi đó VẪN PHẢI điền đủ nhóm UyQuyen_NguoiDuocUyQuyen_* từ chính giấy ủy quyền.
+  + Nếu hồ sơ CÓ CẢ giấy ủy quyền LẪN CCCD của bên được ủy quyền: GIẤY ỦY QUYỀN LÀ NGUỒN CHÍNH —
+    họ tên, số định danh, ngày sinh, giới tính, địa chỉ, điện thoại lấy theo GIẤY ỦY QUYỀN trước.
+    THẺ CĂN CƯỚC chỉ dùng để BÙ những field giấy ủy quyền KHÔNG ghi (giấy ủy quyền hay chỉ có họ tên
+    + số định danh, thiếu ngày sinh/giới tính/địa chỉ → khi đó mới lấy từ thẻ, địa chỉ lấy dòng
+    "Nơi thường trú"). Giấy ủy quyền ghi rõ field nào thì KHÔNG được ghi đè bằng giá trị trên thẻ.
+  + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
+    căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
+    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → diaChi="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
+  + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
+    đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
 - PHÂN BIỆT 3 LOẠI ĐỊA CHỈ:
   + ChuHo_DiaChi/NguoiNop_DiaChi = địa chỉ cá nhân.
   + TruSo_DiaChi = địa chỉ ở mục "2. Trụ sở của hộ kinh doanh".

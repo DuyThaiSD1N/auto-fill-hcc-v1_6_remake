@@ -279,6 +279,55 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-2aa0-754f-9f94-b2b89ed0f198",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "cap-giay-phep-chat-ha-cay-xanh",
+      "label": "Cấp giấy phép chặt hạ, dịch chuyển cây xanh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
+      "needsAgencySelect": true,
+      "autoConfirm": false
+    },
+    {
+      "key": "dang-ky-bien-dong-dat-dai-da-nang",
+      "label": "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất (chuyển nhượng, thừa kế, tặng cho, góp vốn, cho thuê lại)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": false
+    },
+    {
+      "key": "cap-moi-cap-lai-giay-chung-nhan-so-nha",
+      "label": "Cấp mới/cấp lại Giấy chứng nhận số nhà (cấp xã)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019dbd74-6433-769b-880a-b3bbe66d7694",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-ho-so-cap-moi-cap-lai-giay-chung-nhan-bien-so-nha",
+      "label": "Xác nhận hồ sơ cấp mới/cấp lại Giấy chứng nhận biển số nhà",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019dbd70-3f64-7078-a63b-89143648e4ac",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-dat-dai-quang-ninh",
+      "label": "Quảng Ninh - Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; chuyển quyền khai thác khoáng sản theo quy định của pháp luật về địa chất và khoáng sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f6567-3744-7003-ab4b-e4fb4ee54bf8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau-quang-ninh",
+      "label": "Quảng Ninh - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f650b-3d23-7368-83ca-2f9acdc7e4ab",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-muc-dich-su-dung-dat-cap-xa-quang-ninh",
+      "label": "Quảng Ninh - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Cấp xã)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f69dd-996e-75b1-a839-07629a53ce98",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

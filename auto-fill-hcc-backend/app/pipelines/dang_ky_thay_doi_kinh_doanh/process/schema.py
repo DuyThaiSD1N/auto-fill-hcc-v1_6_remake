@@ -103,6 +103,10 @@ FIELDS: list[dict] = [
             "CHỈ điền khi HasMultipleCCCD=true VÀ CCCD thứ 2 KHÁC chủ hộ."
         ),
     },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_DienThoai",
+        "desc": "Số điện thoại bên được ủy quyền nếu Giấy ủy quyền có ghi.",
+    },
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}

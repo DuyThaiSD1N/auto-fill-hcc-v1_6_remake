@@ -1,0 +1,2012 @@
+[
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Khuôn Hà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thượng Lâm"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thượng Lâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thượng Lâm"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Thị trấn Lăng Can",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lâm Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phúc Yên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lâm Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Xuân Lập",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lâm Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phúc Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Quang"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hồng Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Quang"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Minh Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Quang"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thổ Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bình An",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Sinh Long",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Côn Lôn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Côn Lôn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Côn Lôn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Khâu Tinh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Hoa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Yên Hoa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Hoa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thượng Giáp",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thượng Nông"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thượng Nông",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thượng Nông"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đà Vị",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Thái"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Sơn Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Thái"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hồng Thái",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Thái"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Thị trấn Na Hang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nà Hang"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Năng Khả",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nà Hang"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thanh Tương",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nà Hang"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hùng Mỹ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Mỹ"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Mỹ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Mỹ"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bình Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Lập"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Yên Lập",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Lập"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hà Lang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân An",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Thị trấn Vĩnh Lộc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Chiêm Hóa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Xuân Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Chiêm Hóa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phúc Thịnh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Chiêm Hóa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Ngọc Hội",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Chiêm Hóa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Hòa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Chiêm Hóa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Thịnh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hòa An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Nhân Lý",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hòa An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hòa An",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hòa An"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phú Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Kiên Đài"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kiên Đài",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Kiên Đài"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Linh Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tri Phú"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tri Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tri Phú"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Vinh Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Kim Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bình Nhân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Kim Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kim Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Kim Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hòa Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Nguyên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Yên Nguyên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Nguyên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Yên Lâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Phú"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Yên Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Phú"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Yên Thuận",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Xa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Minh Khương",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Xa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bạch Xa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Xa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Minh Dân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phù Lưu"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phù Lưu",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phù Lưu"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Thị trấn Tân Yên (huyện Hàm Yên)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hàm Yên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Thành (huyện Hàm Yên)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hàm Yên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bằng Cốc (huyện Hàm Yên)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hàm Yên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Nhân Mục (huyện Hàm Yên)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hàm Yên"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Minh Hương",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình Xa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bình Xa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình Xa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thành Long",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thái Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đức Ninh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Hòa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thái Hòa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Hòa"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Minh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hùng Lợi"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hùng Lợi",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hùng Lợi"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đạo Viện",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Công Đa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phú Thịnh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tiến Bộ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thái Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thái Bình"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Tiến (huyện Yên Sơn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Long (huyện Yên Sơn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Trực",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xuân Vân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phúc Ninh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xuân Vân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Xuân Vân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xuân Vân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Quý Quân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lực Hành"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Chiêu Yên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lực Hành"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Lực Hành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lực Hành"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Thị trấn Yên Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tứ Quận",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Lang Quán",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Chân Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Nhữ Hán",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nhữ Khê"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đội Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nhữ Khê"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Nhữ Khê",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nhữ Khê"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kim Quan",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Trào"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Yên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Trào"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Trào",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Trào"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Bình Yên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Thanh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Lương Thiện",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Thanh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Minh Thanh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Thanh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Thị trấn Sơn Dương",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Dương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hợp Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Dương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phúc Ứng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Dương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tú Thịnh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Dương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thượng Ấm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình Ca"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Cấp Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình Ca"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Vĩnh Lợi",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bình Ca"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kháng Nhật",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Thanh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hợp Hòa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Thanh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tân Thanh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Thanh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Ninh Lai",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Thủy"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thiện Kế",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Thủy"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Sơn Nam",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Thủy"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đại Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phú Lương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tam Đa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phú Lương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Phú Lương",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phú Lương"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hào Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trường Sinh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đông Lợi",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trường Sinh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trường Sinh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trường Sinh"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Chi Thiết",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Văn Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hồng Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồng Sơn"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đồng Quý",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đông Thọ"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Quyết Thắng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đông Thọ"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Đông Thọ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đông Thọ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Má Lé",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lũng Cú"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Táo",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lũng Cú"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Cú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lũng Cú"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Đồng Văn (huyện Đồng Văn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Lủng (huyện Đồng Văn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Phìn (huyện Đồng Văn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thài Phìn Tủng (huyện Đồng Văn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Pải Lủng (huyện Đồng Văn)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Văn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sủng Là",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sà Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sính Lủng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sà Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sảng Tủng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sà Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sà Phìn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sà Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Phố Bảng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phố Bảng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phố Là",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phố Bảng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phố Cáo",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phố Bảng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Thầu",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phố Bảng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sủng Trái",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lũng Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Hố Quáng Phìn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lũng Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Phìn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lũng Phìn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Chinh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sủng Máng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sủng Trà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sủng Máng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sủng Máng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sủng Máng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thượng Phùng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Vĩ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Xín Cái",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Vĩ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sơn Vĩ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Sơn Vĩ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Mèo Vạc (huyện Mèo Vạc)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mèo Vạc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Lủng (huyện Mèo Vạc)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mèo Vạc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Giàng Chu Phìn (huyện Mèo Vạc)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mèo Vạc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Pả Vi (huyện Mèo Vạc)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mèo Vạc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Cán Chu Phìn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Khâu Vai"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Pù",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Khâu Vai"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Khâu Vai",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Khâu Vai"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Niêm Tòng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Niêm Sơn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Niêm Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Niêm Sơn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nậm Ban",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tát Ngà"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tát Ngà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tát Ngà"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sủng Cháng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thắng Mố"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sủng Thài",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thắng Mố"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thắng Mố",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thắng Mố"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phú Lũng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Đích"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Na Khê",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Đích"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bạch Đích",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Đích"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Yên Minh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Minh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lao Và Chải",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Minh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Hữu Vinh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Minh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đông Minh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Minh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Vần Chải",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Minh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Ngam La",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mậu Duệ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Mậu Long",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mậu Duệ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Mậu Duệ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Mậu Duệ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Du Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Du Già"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Du Già",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Du Già"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lũng Hồ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đường Thượng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đường Thượng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đường Thượng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thái An",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lùng Tám"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đông Hà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lùng Tám"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lùng Tám",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lùng Tám"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bát Đại Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Cán Tỷ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Cán Tỷ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Cán Tỷ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thanh Vân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nghĩa Thuận"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nghĩa Thuận",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nghĩa Thuận"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Tam Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Quản Bạ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Quyết Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Quản Bạ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Quản Bạ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Quản Bạ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Cao Mã Pờ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tùng Vài"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Ván",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tùng Vài"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tùng Vài",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tùng Vài"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phiêng Luông",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Cường"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Yên Cường",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Cường"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đường Âm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đường Hồng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phú Nam",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đường Hồng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đường Hồng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đường Hồng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Yên Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bắc Mê"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Yên Phong",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bắc Mê"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lạc Nông",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bắc Mê"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Minh Ngọc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Ngọc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thượng Tân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Ngọc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Yên Định",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Ngọc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Ngọc Đường",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Ngọc Đường"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Yên Định",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Ngọc Đường"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Xín Chải",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lao Chải"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thanh Đức",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lao Chải"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Lao Chải",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Lao Chải"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phương Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thanh Thủy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thanh Thủy",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thanh Thủy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Kim Thạch",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phú Linh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Kim Linh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phú Linh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phú Linh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Phú Linh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Ngọc Linh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Linh Hồ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Trung Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Linh Hồ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Linh Hồ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Linh Hồ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Ngọc Minh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Ngọc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bạch Ngọc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bạch Ngọc"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Vị Xuyên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vị Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Nông trường Việt Lâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vị Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đạo Đức",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vị Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Việt Lâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vị Xuyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Quảng Ngần",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Việt Lâm"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Việt Lâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Việt Lâm"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Thành (huyện Bắc Quang)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Lập (huyện Bắc Quang)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Quang (huyện Bắc Quang)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đồng Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Tâm"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thượng Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Tâm"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đồng Tâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Tâm"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Hữu Sản",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Liên Hiệp"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đức Xuân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Liên Hiệp"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Liên Hiệp",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Liên Hiệp"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Kim Ngọc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bằng Hành"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Vô Điếm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bằng Hành"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bằng Hành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bằng Hành"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Việt Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bắc Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Quang Minh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bắc Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Việt Vinh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bắc Quang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Việt Hồng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hùng An"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tiên Kiều",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hùng An"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Hùng An",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hùng An"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Vĩnh Tuy",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Vĩnh Hảo",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đông Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Vĩnh Phúc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Yên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đồng Yên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Đồng Yên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Vĩ Thượng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Hương Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tiên Yên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nà Khương",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xuân Giang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Xuân Giang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xuân Giang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Yên Hà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bằng Lang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bằng Lang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bằng Lang"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Rịa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Yên Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Yên Thành"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Yên Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Quang Bình"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Nam",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Quang Bình"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Bắc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Trịnh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Trịnh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Trịnh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Xuân Minh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thông Nguyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thông Nguyên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thông Nguyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nậm Khòa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồ Thầu"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nam Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồ Thầu"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Hồ Thầu",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hồ Thầu"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nậm Ty",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nậm Dịch"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Sử Choóng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nậm Dịch"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nậm Dịch",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nậm Dịch"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tân Tiến (huyện Hoàng Su Phì)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Nhùng (huyện Hoàng Su Phì)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Túng Sán (huyện Hoàng Su Phì)",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tân Tiến"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Vinh Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hoàng Su Phì"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Luốc",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hoàng Su Phì"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Ngàm Đăng Vài",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hoàng Su Phì"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tụ Nhân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hoàng Su Phì"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Đản Ván",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hoàng Su Phì"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Pố Lồ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thàng Tín"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thèn Chu Phìn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thàng Tín"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thàng Tín",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thàng Tín"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Phùng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bản Máy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Chiến Phố",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bản Máy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Máy",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Bản Máy"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Sán Sả Hồ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pờ Ly Ngài"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nàng Đôn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pờ Ly Ngài"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Pờ Ly Ngài",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pờ Ly Ngài"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thèn Phàng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xín Mần"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nàn Xỉn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xín Mần"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Díu",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xín Mần"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Chí Cà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xín Mần"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Xín Mần",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Xín Mần"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Thị trấn Cốc Pài",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pà Vầy Sủ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nàn Ma",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pà Vầy Sủ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Bản Ngò",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pà Vầy Sủ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Pà Vầy Sủ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Pà Vầy Sủ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Chế Là",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nấm Dẩn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tả Nhìu",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nấm Dẩn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nấm Dẩn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Nấm Dẩn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Cốc Rế",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thu Tà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Trung Thịnh",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Thịnh"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Nà Chì",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Khuôn Lùng"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Khuôn Lùng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Khuôn Lùng"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Mỹ Lâm",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Mỹ Lâm"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Mỹ Bằng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Mỹ Lâm"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kim Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Mỹ Lâm"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Ỷ La",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Tân Hà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Phan Thiết",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Minh Xuân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Tân Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Môn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kim Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Minh Xuân"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Nông Tiến",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Nông Tiến"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Tràng Đà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Nông Tiến"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thái Bình",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Nông Tiến"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Hưng Thành",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường An Tường"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường An Tường",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường An Tường"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Lưỡng Vượng",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường An Tường"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã An Khang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường An Tường"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hoàng Khai",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường An Tường"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Phường Đội Cấn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Bình Thuận"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Thái Long",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Bình Thuận"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Phường Nguyễn Trãi",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 1"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phương Thiện",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 1"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phương Độ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 1"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Phường Quang Trung",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 1"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Phường Ngọc Hà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 2"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Phường Trần Phú",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 2"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Phường Minh Khai",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 2"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Phường Quang Trung",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 2"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Phong Quang",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Phường Hà Giang 2"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Trung Hà",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Trung Hà"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Kiến Thiết",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Kiến Thiết"
+    },
+    {
+        "tinh_cu": "Tuyên Quang",
+        "xa_cu": "Xã Hùng Đức",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Hùng Đức"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Minh Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Sơn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Minh Tân",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Minh Tân"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thuận Hòa",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thuận Hòa"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tùng Bá",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tùng Bá"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Thượng Sơn",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Thượng Sơn"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Cao Bồ",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Cao Bồ"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Ngọc Long",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Ngọc Long"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Giáp Trung",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Giáp Trung"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Tiên Nguyên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Tiên Nguyên"
+    },
+    {
+        "tinh_cu": "Hà Giang",
+        "xa_cu": "Xã Quảng Nguyên",
+        "tinh_moi": "Tuyên Quang",
+        "xa_moi": "Xã Quảng Nguyên"
+    }
+]

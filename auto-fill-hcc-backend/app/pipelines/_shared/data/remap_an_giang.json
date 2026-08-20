@@ -1,0 +1,1796 @@
+[
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Phú (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Hội Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Hội (phần)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phước Hưng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Đa Phước (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hậu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Trường",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hậu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Hậu",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hậu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Quốc Thái",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Hội"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Nhơn Hội",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Hội"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phước Hưng (phần)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Hội"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Hội (phần còn lại)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Hội"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Bình (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Khánh Bình"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Khánh An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Khánh Bình"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Khánh Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Khánh Bình"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Hữu",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Hữu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Lộc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Hữu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phước Hưng (phần còn lại)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Hữu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân An (Tân Châu)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Thạnh (Tân Châu)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Vĩnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Phong"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Lê Chánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Phong"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Châu Phong",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Phong"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Hòa (Tân Châu)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Xương"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Lộc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Xương"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Xương",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Xương"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Mỹ (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Tân"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Hòa (Phú Tân)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Tân"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Trung",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Tân"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Hưng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Tân"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Thọ (Phú Tân)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Xuân",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Hiệp Xương",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Thạnh Đông"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Thạnh Đông"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Thạnh Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Thạnh Đông"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Chợ Vàm (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chợ Vàm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Thạnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chợ Vàm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chợ Vàm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Hiệp",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Lạc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Hòa Lạc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Lạc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Long",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Lâm",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Cái Dầu (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Long",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Phú",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Khánh Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Đức"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Đức",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Đức"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Thạnh Trung (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thạnh Trung"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Phú",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thạnh Trung"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Thủy",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Chánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Mỹ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Đào Hữu Cảnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Mỹ Tây"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Ô Long Vĩ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Mỹ Tây"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Thạnh Mỹ Tây",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Mỹ Tây"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Văn Giáo",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Cư"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Trung",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Cư"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Cư",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Cư"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Núi Cấm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Hảo",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Núi Cấm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Ba Chúc (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ba Chúc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Lạc Quới",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ba Chúc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Lê Trì",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ba Chúc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tri Tôn (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tri Tôn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Núi Tô",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tri Tôn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Châu Lăng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tri Tôn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Tức",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ô Lâm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Lương Phi",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ô Lâm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Ô Lâm",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ô Lâm"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Cô Tô (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cô Tô"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tà Đảnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cô Tô"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Tuyến",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cô Tô"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Phước",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Gia"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Lương An Trà",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Gia"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Gia",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Gia"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Châu (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Châu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Hòa Bình Thạnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Châu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Châu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Hòa"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Hòa"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Hòa"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Lợi",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cần Đăng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Cần Đăng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cần Đăng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Nhuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hanh"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Hanh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hanh"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Bình (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Chợ Mới (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chợ Mới"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Kiến An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chợ Mới"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Kiến Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chợ Mới"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tấn Mỹ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cù Lao Giêng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Hiệp",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cù Lao Giêng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Phước Xuân",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Cù Lao Giêng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Hội An (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hội An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Hòa An (Chợ Mới)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hội An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Hòa Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hội An"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Luông (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Điền"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Điền A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Điền"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Điền B",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Điền"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Hội Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Giang",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Nhơn Mỹ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Nhơn Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Thạnh Trung",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Kiến"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Kiến"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Kiến",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Kiến"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Núi Sập (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thoại Sơn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Thoại Giang",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thoại Sơn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thoại Sơn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Óc Eo (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Óc Eo"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vọng Thê",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Óc Eo"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vọng Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Óc Eo"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Phú (Thoại Sơn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Định Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Định Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Định Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Định Mỹ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Định Mỹ"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Hòa (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Hòa"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Phú Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Hòa"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Chánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Hòa"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Khánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Trạch"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Trạch",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Trạch"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tây Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Phú Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tây Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tây Phú",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tây Phú"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Bình Bắc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Bình"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Bình Nam",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Bình"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình Minh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Bình"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thuận (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Phong"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Phong Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Phong"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Phong",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Phong"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Hòa (U Minh Thượng)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Yên A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòa Chánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Yên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "An Minh Bắc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "U Minh Thượng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Minh Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "U Minh Thượng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Thạnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Thạnh (An Minh)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thuận Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vân Khánh Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Hưng A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thứ Mười Một (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Minh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Hưng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Minh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Hưng B",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Minh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vân Khánh Tây",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vân Khánh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vân Khánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vân Khánh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tây Yên A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tây Yên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Nam Yên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tây Yên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tây Yên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tây Yên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Nam Thái",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Thái"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Nam Thái A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Thái"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Thái",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Đông Thái"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thứ Ba (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Biên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Yên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Biên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hưng Yên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "An Biên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thới Quản",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Định Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thủy Liễu",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Định Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Định Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Định Hòa"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Gò Quao (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Gò Quao"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Phước B",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Gò Quao"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Định An",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Gò Quao"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Hòa Hưng Bắc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hòa Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Hòa Hưng Nam",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Hòa Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thắng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Phước A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Tuy",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Tuy"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Giồng Riềng (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giồng Riềng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bàn Tân Định",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giồng Riềng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giồng Riềng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bàn Thạch",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giồng Riềng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giồng Riềng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Lộc (Giồng Riềng)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Phước",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Hưng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Phú (Giồng Riềng)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Thạnh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thạnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Thạnh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Long Thạnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Thạnh"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòa An (Giồng Riềng)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòa Lợi",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòa Hưng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Ngọc Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ngọc Chúc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Ngọc Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ngọc Chúc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Ngọc Chúc",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Ngọc Chúc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Ngọc Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòa Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Hòa (Tân Hiệp)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hội"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân An (Tân Hiệp)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hội"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hội"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Hội",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hội"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Hiệp (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hiệp"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Hiệp B",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hiệp"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Đông B",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hiệp"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Đông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Hiệp"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Hiệp A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Đông"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Trị",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Đông"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Đông A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Đông"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thạnh Lộc (Châu Thành, KG)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Lộc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mong Thọ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Lộc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mong Thọ A",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Lộc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mong Thọ B",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thạnh Lộc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Minh Lương (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Thành"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Minh Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Thành"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Giục Tượng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Thành"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình An (Châu Thành, KG)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình An"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Hòa Hiệp",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình An"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Hòa Phú",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình An"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòn Đất (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòn Đất"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Lình Huỳnh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòn Đất"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thổ Sơn",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòn Đất"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Nam Thái Sơn",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòn Đất"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Sơn Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Sơn Kiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mỹ Thái",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Sơn Kiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Sơn Kiên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Sơn Kiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Sóc Sơn (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mỹ Hiệp Sơn",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mỹ Phước",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mỹ Thuận",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Thuận"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Kiên Bình",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Điền"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòa Điền",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòa Điền"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Kiên Lương (thị trấn)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Kiên Lương"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình An (Kiên Lương)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Kiên Lương"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình Trị",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Kiên Lương"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tân Khánh Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giang Thành"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Phú Lợi",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giang Thành"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Phú Mỹ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Giang Thành"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Phú (Giang Thành)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Điều"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Điều",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Điều"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Bình (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Xuyên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Long (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Xuyên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Xuyên (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Xuyên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Phước (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Xuyên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Quý (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Xuyên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Hòa (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Xuyên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Khánh (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Đức"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Bình Đức (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Đức"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Khánh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Đức"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Thạnh (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Thới"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Thới (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Thới"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Nguơn (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Đốc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Châu Phú A (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Đốc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Châu Phú B (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Đốc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Mỹ (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Đốc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Châu (phần)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Châu Đốc"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Núi Sam (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Tế"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Tế",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Tế"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Vĩnh Châu (phần còn lại)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Tế"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Thạnh (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Châu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Sơn (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tân Châu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Hưng (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Châu (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Long Phú (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Long Phú"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Phú (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tịnh Biên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tịnh Biên (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tịnh Biên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "An Nông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tịnh Biên"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Nhơn Hưng (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thới Sơn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Nhà Bàng (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thới Sơn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Thới Sơn (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thới Sơn"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Núi Voi (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chi Lăng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Chi Lăng (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chi Lăng"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Tân Lợi",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Chi Lăng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thông (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thông"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Phi Thông",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thông"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mỹ Lâm",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Vĩnh Thông"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Quang (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thanh (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Thanh Vân (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Lạc (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "An Hòa (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Hiệp (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "An Bình (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Rạch Sỏi (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Vĩnh Lợi (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Rạch Giá"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Pháo Đài (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hà Tiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình San (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hà Tiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Mỹ Đức (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hà Tiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Đông Hồ (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hà Tiên"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tô Châu (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tô Châu"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thuận Yên",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tô Châu"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Dương Hòa",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tô Châu"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Kiên Hải (huyện)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Kiên Hải"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Dương Đông (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "An Thới (phường)",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Dương Tơ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hàm Ninh",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Cửa Dương",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bãi Thơm",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Gành Dầu",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Cửa Cạn",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Phú Quốc"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Thổ Châu",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Thổ Châu"
+    },
+    {
+        "tinh_cu": "An Giang",
+        "xa_cu": "Mỹ Hòa Hưng",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Mỹ Hòa Hưng"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình Giang",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Giang"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Bình Sơn",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Bình Sơn"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Hòn Nghệ",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Hòn Nghệ"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Sơn Hải",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Sơn Hải"
+    },
+    {
+        "tinh_cu": "Kiên Giang",
+        "xa_cu": "Tiên Hải",
+        "tinh_moi": "An Giang",
+        "xa_moi": "Tiên Hải"
+    }
+]

@@ -94,6 +94,50 @@ FIELDS: list[dict] = [
             "KHÔNG suy vai trò (chủ hộ hay người nộp) từ thứ tự file — cứ liệt kê đủ."
         ),
     },
+    # ===== GIẤY ỦY QUYỀN =====
+    # Người nộp thay có thể CHỈ xuất hiện trong Giấy ủy quyền (hồ sơ không kèm CCCD của họ). Nhóm
+    # field này là nguồn nhân thân cho trường hợp đó; mapper gộp vào __identityCandidates để extension
+    # đối chiếu với tài khoản đang đăng nhập y như đối chiếu CCCD.
+    {
+        "name": "UyQuyen_CoGiayUyQuyen",
+        "desc": "Boolean: true nếu hồ sơ có văn bản GIẤY ỦY QUYỀN riêng (không phải chỉ có 2 CCCD).",
+    },
+    {
+        "name": "UyQuyen_NguoiUyQuyen_HoTen",
+        "desc": 'Họ tên BÊN ỦY QUYỀN (thường là chủ hộ kinh doanh), đọc ở mục "Bên ủy quyền".',
+    },
+    {
+        "name": "UyQuyen_NguoiUyQuyen_SoDinhDanh",
+        "desc": "Số định danh/CCCD của bên ủy quyền.",
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_HoTen",
+        "desc": 'Họ tên BÊN ĐƯỢC ỦY QUYỀN (người đi nộp hồ sơ thay), đọc ở mục "Bên được ủy quyền".',
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh",
+        "desc": "Số định danh/CCCD của bên được ủy quyền.",
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_GioiTinh",
+        "desc": 'Giới tính bên được ủy quyền: "Nam" hoặc "Nữ"; chỉ trả khi giấy tờ ghi rõ.',
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_NgaySinh",
+        "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy; chỉ trả khi giấy tờ ghi rõ.",
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_DiaChi",
+        "desc": (
+            "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,diaChi}; ưu tiên dòng Địa chỉ ghi "
+            "trong GIẤY ỦY QUYỀN, giấy không ghi thì mới lấy 'Nơi thường trú' trên CCCD của người đó. "
+            "BỎ cấp huyện."
+        ),
+    },
+    {
+        "name": "UyQuyen_NguoiDuocUyQuyen_DienThoai",
+        "desc": "Số điện thoại bên được ủy quyền nếu Giấy ủy quyền có ghi.",
+    },
     {
         "name": "HasMultipleCCCD",
         "desc": (
@@ -109,7 +153,9 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in ("TruSo_DiaChi", "ChuHo_DiaChi", "Thue_DiaChiNhanThongBao", "NguoiNop_DiaChi"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
-for _name in ("ChuHo_NgaySinh", "Thue_NgayBatDau", "NguoiNop_NgaySinh"):
+COMPACT_COMP_BY_NAME["UyQuyen_NguoiDuocUyQuyen_DiaChi"] = "x-select-area"
+for _name in ("ChuHo_NgaySinh", "Thue_NgayBatDau", "NguoiNop_NgaySinh",
+              "UyQuyen_NguoiDuocUyQuyen_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in ("NganhNghe_DanhSach", "Cccd_DanhSach"):
     COMPACT_COMP_BY_NAME[_name] = "raw"

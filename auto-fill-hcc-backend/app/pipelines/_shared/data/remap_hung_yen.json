@@ -1,0 +1,2306 @@
+[
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Thủ Sỹ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phương Nam",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Vương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàng Hoa Thám"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hưng Đạo",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàng Hoa Thám"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nhật Tân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàng Hoa Thám"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "An Viên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàng Hoa Thám"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Thiện Phiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Lữ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hải Thắng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Lữ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Thụy Lôi",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Lữ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lệ Xá",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hoa"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Trung Dũng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hoa"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Cương Chính",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hoa"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Trần Cao",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Minh Tân (Phù Cừ)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tống Phan",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Quang Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Hưng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phan Sào Nam",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đoàn Đào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Minh Hoàng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đoàn Đào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đoàn Đào",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đoàn Đào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đình Cao",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Tiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nhật Quang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Tiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tiên Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Tiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tam Đa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tống Trân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nguyên Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tống Trân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tống Trân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tống Trân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lương Bằng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phạm Ngũ Lão",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Chính Nghĩa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Diên Hồng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lương Bằng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đồng Thanh (Kim Động)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Dân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Vĩnh Xá",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Dân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Toàn Thắng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Dân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nghĩa Dân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Dân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Song Mai",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hiệp Cường"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hùng An",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hiệp Cường"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hiệp Cường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hiệp Cường"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Ngọc Thanh (phần)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hiệp Cường"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phú Thọ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đức Hợp"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Mai Động",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đức Hợp"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đức Hợp",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đức Hợp"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Ân Thi (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ân Thi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Quang Vinh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ân Thi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hoàng Hoa Thám (Ân Thi)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ân Thi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Vân Du",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Xuân Trúc"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Quảng Lãng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Xuân Trúc"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Xuân Trúc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Xuân Trúc"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Bắc Sơn (Ân Thi)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phạm Ngũ Lão"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phù Ủng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phạm Ngũ Lão"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đào Dương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phạm Ngũ Lão"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Bãi Sậy",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phạm Ngũ Lão"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đặng Lễ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Cẩm Ninh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đa Lộc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nguyễn Trãi",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Trãi"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hồ Tùng Mậu",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Quang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tiền Phong",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Quang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hạ Lễ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Quang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hồng Quang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Quang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Khoái Châu (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Khoái Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Liên Khê",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Khoái Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phùng Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Khoái Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đông Kết",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Khoái Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phạm Hồng Thái",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Triệu Việt Vương"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Dân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Triệu Việt Vương"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Ông Đình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Triệu Việt Vương"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "An Vĩ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Triệu Việt Vương"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đồng Tiến (Khoái Châu)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Việt Tiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Dân Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Việt Tiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Việt Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Việt Tiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Thuần Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Chí Minh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nguyễn Huệ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Chí Minh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Chí Minh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Chí Minh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đại Tập",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Châu Ninh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tứ Dân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Châu Ninh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Châu",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Châu Ninh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đông Ninh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Châu Ninh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Yên Mỹ (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Yên Mỹ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Lập (Yên Mỹ)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Yên Mỹ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Trung Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Yên Mỹ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Minh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Yên Mỹ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Yên Phú",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Việt Yên"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Thanh Long",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Việt Yên"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Việt Yên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Việt Yên"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đông Tảo",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàn Long"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đồng Than",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàn Long"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hoàn Long",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hoàn Long"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Ngọc Long",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Văn Linh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Liêu Xá",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Văn Linh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nguyễn Văn Linh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Văn Linh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Như Quỳnh (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Như Quỳnh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Quang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Như Quỳnh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lạc Hồng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Như Quỳnh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Trưng Trắc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Như Quỳnh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đình Dù (phần)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Như Quỳnh"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Chỉ Đạo",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lạc Đạo"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Minh Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lạc Đạo"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lạc Đạo (phần)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lạc Đạo"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Việt Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đại Đồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lương Tài",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đại Đồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đại Đồng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đại Đồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Đình Dù (phần còn lại)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đại Đồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lạc Đạo (phần còn lại)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đại Đồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Long Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Trụ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Vĩnh Khúc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Trụ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nghĩa Trụ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nghĩa Trụ"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Xuân Quan",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụng Công"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Cửu Cao",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụng Công"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phụng Công",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụng Công"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Tân Tiến (Văn Giang)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Văn Giang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Liên Nghĩa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Văn Giang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Văn Giang (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Văn Giang"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Bình Minh (Khoái Châu)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mễ Sở"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Thắng Lợi",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mễ Sở"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Mễ Sở",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mễ Sở"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Diêm Điền (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Thụy"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Thụy"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Trình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Thụy"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Bình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Thụy"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Liên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Thụy"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Trường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Xuân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Tân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Dũng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Quỳnh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Văn",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Việt",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Sơn",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Dương Phúc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Thanh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Phong",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Duyên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Phúc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Dương Hồng Thủy",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Hưng (Thái Thụy)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Thượng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hòa An",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Nguyên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Mỹ Lộc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Học",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Đô",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Xuyên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Thọ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Thịnh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thuần Thành",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Sơn Hà",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Giang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Thái Ninh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Chính",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Dân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thụy Ninh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Thụy Anh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tiền Hải (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Ninh (Tiền Hải)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tây Ninh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tây Lương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Lăng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phương Công",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vân Trường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bắc Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tây Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tây Giang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ái Quốc"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Ái Quốc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ái Quốc"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Hoàng (Tiền Hải)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Châu"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Cơ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Châu"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Lâm",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Châu"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Minh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Châu"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Xuyên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Quang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Long",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Trà",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Thịnh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Cường"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Cường"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Chính",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Cường"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Cường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Cường"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Phú",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Phú"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Phú"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Trung",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Phú"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Hồng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Hà",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiền Hải"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Hưng (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nguyên Xá (Đông Hưng)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông La",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Các",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Sơn",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Hợp",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Liên An Đô",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Lô Giang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Mê Linh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phú Lương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phong Dương Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phú Châu",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Hoàng (Đông Hưng)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Xuân Quang Động",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hà Giang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Đông Quan"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Kinh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Đông Quan"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Vinh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Đông Quan"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Cường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Xá",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Phương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bắc Đông Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Á",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Quan"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Tân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Quan"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Quan",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đông Quan"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Liên Hoa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Giang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Trọng Quan",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Phú",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nam Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Tân (Đông Hưng)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Bạch",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thăng Long",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Việt",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Côi (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh Phụ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh Phụ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Hội",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh Phụ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Hồng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh Phụ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Mỹ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh Phụ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Hưng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh Phụ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Hoa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Minh Thọ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Minh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Minh Thọ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Giao",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Minh Thọ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Thọ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Minh Thọ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Châu Sơn",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Du"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Khê",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Du"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Nguyên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Nguyễn Du"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Trang Bảo Xá",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh An"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Vinh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh An"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quỳnh An"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Hoàng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngọc Lâm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Lâm",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngọc Lâm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quỳnh Ngọc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngọc Lâm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Cầu",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Bằng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Ấp",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Bằng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Lễ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Bằng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Quý",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đồng Bằng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Đồng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "A Sào"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Hiệp",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "A Sào"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Thái",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "A Sào"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Khê",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "A Sào"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Bài (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụ Dực"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Ninh (Quỳnh Phụ)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụ Dực"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Vũ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụ Dực"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Mỹ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụ Dực"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Thanh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phụ Dực"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đồng Tiến (Quỳnh Phụ)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Tiến"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Dục",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Tiến"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Tràng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Tiến"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hòa Bình (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Khai (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thống Nhất (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Kim Trung",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Lĩnh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Văn Lang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hưng Hà (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hưng Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Tiến (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên La"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Phương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên La"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đoan Hùng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên La"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phúc Khánh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tiên La"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Tân (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lê Quý Đôn"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Độc Lập",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lê Quý Đôn"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng An",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lê Quý Đôn"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Chí Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Minh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Minh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Minh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Minh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bắc Sơn (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thần Khê"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Đô",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thần Khê"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tây Đô",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thần Khê"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Chi Lăng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thần Khê"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quang Trung (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Diên Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Văn Cẩm",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Diên Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Duyên Hải",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Diên Hà"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Hòa (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngự Thiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Canh Tân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngự Thiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Cộng Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngự Thiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hòa Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Ngự Thiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hưng Nhân (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thái Hưng (Hưng Hà)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Lễ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tiến Đức",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Liên Hiệp",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bình Minh (Kiến Xương)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Kiến Xương"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quang Trung (Kiến Xương)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Kiến Xương"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quang Minh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Kiến Xương"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quang Bình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Kiến Xương"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Kiến Xương (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Kiến Xương"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thống Nhất (Kiến Xương)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lê Lợi"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Lê Lợi",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Lê Lợi"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hòa Bình (Kiến Xương)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Lịch"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Lễ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Lịch"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quang Lịch",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Quang Lịch"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ An",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Quý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Ninh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Quý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Trung",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Quý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Quý",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Quý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Tân (Kiến Xương)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Thanh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Quang (Kiến Xương)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Thanh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bình Thanh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Thanh"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Định"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nam Bình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Định"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bình Định",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Định"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Công",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Vũ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Vũ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Vũ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Thanh Tân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Nguyên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "An Bình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Nguyên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bình Nguyên",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Bình Nguyên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Thái",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Giang"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quốc Tuấn",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Giang"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Trà Giang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Giang"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hòa Bình (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Thư"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Khai (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Thư"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Quang (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Thư"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tam Quang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Thư"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Dũng Nghĩa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Thư"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Thư (thị trấn)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Thư"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Song Lãng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Trì"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hiệp Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Trì"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Minh Lãng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Trì"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Lập (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Thuận"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tự Tân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Thuận"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bách Thuận",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Tân Thuận"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Việt Thuận",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Vũ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Hội",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Vũ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Vinh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Vũ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Vân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thư Vũ"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Đoài",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Tiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Duy Nhất",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Tiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Phong",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Tiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Tiến",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Tiên"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đồng Thanh (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vạn Xuân"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hồng Lý",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vạn Xuân"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Việt Hùng",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vạn Xuân"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Xuân Hòa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vạn Xuân"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "An Tảo (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phố Hiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lê Lợi (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phố Hiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hiến Nam (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phố Hiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Minh Khai (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phố Hiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Trung Nghĩa",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phố Hiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Liên Phương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Phố Hiến"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Lam Sơn (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Sơn Nam"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phú Cường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Sơn Nam"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hùng Cường",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Sơn Nam"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Bảo Khê",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Sơn Nam"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Ngọc Thanh (phần còn lại)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Sơn Nam"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hồng Châu (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Quảng Châu",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hoàng Hanh",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Hồng Châu"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Bần Yên Nhân (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mỹ Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Nhân Hòa (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mỹ Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phan Đình Phùng (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mỹ Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Cẩm Xá",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Mỹ Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Dị Sử (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đường Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Phùng Chí Kiên (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đường Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Xuân Dục",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đường Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hưng Long",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đường Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Ngọc Lâm (Mỹ Hào)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Đường Hào"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Bạch Sam (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Minh Đức (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Dương Quang",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Hưng Yên",
+        "xa_cu": "Hòa Phong",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thượng Hồng"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Lê Hồng Phong (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Bồ Xuyên (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tiền Phong (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Hòa (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phúc Thành",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Phong",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Thái Bình"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Trần Lãm (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Lãm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Kỳ Bá (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Lãm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Đông",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Lãm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Lạc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Lãm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Chính",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Lãm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Tây Sơn",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Lãm"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Trần Hưng Đạo (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đề Thám (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Quang Trung (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phú Xuân",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trần Hưng Đạo"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Hoàng Diệu (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Lý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Mỹ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Lý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Hoà",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Lý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Thọ",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Lý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Đông Dương",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Trà Lý"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Phú Khánh (phường)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Phúc"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Nguyên Xá (Vũ Thư)",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Phúc"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Song An",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Phúc"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Trung An",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Phúc"
+    },
+    {
+        "tinh_cu": "Thái Bình",
+        "xa_cu": "Vũ Phúc",
+        "tinh_moi": "Hưng Yên",
+        "xa_moi": "Vũ Phúc"
+    }
+]

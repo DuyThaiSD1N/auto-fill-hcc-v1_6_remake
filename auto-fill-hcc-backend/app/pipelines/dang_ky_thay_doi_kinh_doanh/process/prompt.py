@@ -79,6 +79,22 @@ QUY TẮC BẮT BUỘC:
 Khi phát hiện HasMultipleCCCD = true, BẮT BUỘC phải:
 1. Xác định CCCD nào là của CHỦ HỘ (so với Thông báo hoặc GCN)
 2. Xác định CCCD còn lại là của ai
+- 📄 GIẤY ỦY QUYỀN — NGUỒN NHÂN THÂN CỦA NGƯỜI NỘP THAY:
+  + Nhận diện qua tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN" và hai mục "Bên ủy quyền" / "Bên được ủy quyền".
+  + "Bên ủy quyền" (người giao việc, thường là chủ hộ) → UyQuyen_NguoiUyQuyen_HoTen, UyQuyen_NguoiUyQuyen_SoDinhDanh.
+  + "Bên được ủy quyền" (NGƯỜI ĐI NỘP HỒ SƠ THAY) → UyQuyen_NguoiDuocUyQuyen_HoTen, _SoDinhDanh,
+    _GioiTinh, _NgaySinh, _DienThoai, _DiaChi. Trả UyQuyen_CoGiayUyQuyen = true.
+  + Người nộp thay RẤT HAY chỉ xuất hiện trong giấy ủy quyền, hồ sơ KHÔNG kèm CCCD của họ.
+    Khi đó VẪN PHẢI điền đủ nhóm UyQuyen_NguoiDuocUyQuyen_* từ chính giấy ủy quyền.
+  + Nếu hồ sơ CÓ CCCD của bên được ủy quyền: ưu tiên nhân thân + "Nơi thường trú" trên THẺ;
+    giấy ủy quyền chỉ bù các field thẻ không có (vd số điện thoại).
+  + ⛔ KHÔNG đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach — danh sách đó CHỈ dành cho thẻ
+    căn cước vật lý. Nhân thân của họ đi qua nhóm UyQuyen_* .
+  + UyQuyen_NguoiDuocUyQuyen_DiaChi tách chuẩn {quocGia,tinh,xa,diaChi} và BỎ cấp huyện:
+    "Thôn Lạc Lâm, Xã Ka Đô, Tỉnh Lâm Đồng" → diaChi="Thôn Lạc Lâm", xa="Ka Đô", tinh="Lâm Đồng".
+  + KHÔNG suy ai đang nộp hồ sơ từ giấy ủy quyền — hệ thống tự đối chiếu nhân thân này với tài khoản
+    đăng nhập trên cổng (khớp số định danh hoặc họ tên) y như cách đối chiếu CCCD.
+
 3. Nếu CCCD còn lại KHÁC chủ hộ (khác cả số và tên) → ĐIỀN ĐẦY ĐỦ các field UyQuyen_*
 4. KHÔNG ĐƯỢC bỏ trống các field UyQuyen_* khi đã xác định có người ủy quyền
 

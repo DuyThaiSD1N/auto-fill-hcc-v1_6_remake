@@ -1345,6 +1345,14 @@
     return norm((input && input.value) || (view && view.textContent) || "");
   }
 
+  /** Giá trị THÔ của control nhân thân — readPersonControl() hạ chữ thường nên chỉ hợp để SO SÁNH,
+   *  ghi ngược lên form phải dùng bản thô này (giữ nguyên hoa/thường và dấu tiếng Việt). */
+  function readPersonControlRaw(baseId) {
+    const input = document.getElementById(baseId);
+    const view = document.getElementById(baseId + "_Vw");
+    return String((input && input.value) || (view && view.textContent) || "").replace(/\s+/g, " ").trim();
+  }
+
   /** Tick radio giới tính: thử value backend ("M"/"F"), rồi value cổng ("1"=Nam/"0"=Nữ), rồi theo label. */
   function setGenderRadio(radioName, wantedValue) {
     const wanted = String(wantedValue || "");
@@ -1592,9 +1600,15 @@
   }
 
   /**
-   * CCCD trong hồ sơ thuộc về CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP (dữ liệu vừa sao chép từ tài khoản).
-   * Khớp số định danh HOẶC họ tên là đủ; ưu tiên số định danh vì chắc hơn.
-   * Không thẻ nào khớp → trả null, KHÔNG lấy đại thẻ đầu tiên (rất dễ vớ phải CCCD của chủ hộ).
+   * Nhân thân trong hồ sơ (thẻ căn cước HOẶC bên được ủy quyền đọc từ Giấy ủy quyền) thuộc về CHÍNH
+   * NGƯỜI ĐANG ĐĂNG NHẬP — đối chiếu với dữ liệu nút "Sao chép thông tin đăng ký tài khoản".
+   *
+   * Khối người nộp trên cổng CHỈ nhận nhân thân của tài khoản đang đăng nhập: ghi nhân thân người
+   * khác vào thì sau khi Lưu cổng đẩy ngược về dữ liệu tài khoản. Vì vậy phép khớp phải chặt:
+   *  - Khớp SỐ ĐỊNH DANH là chắc nhất.
+   *  - Chỉ khớp HỌ TÊN khi KHÔNG có số định danh nào phản chứng. Trùng tên mà số định danh khác thì
+   *    đó là NGƯỜI KHÁC (hoặc OCR sai số) — ghi vào là chắc chắn sai.
+   *  - Không khớp ai → trả null, KHÔNG lấy đại người đầu tiên (rất dễ vớ phải nhân thân chủ hộ).
    */
   function matchSubmitterIdentityCandidate(st, fields) {
     const fromPage = readSubmitterPageField(st, fields, "__identityCandidates");
@@ -1606,13 +1620,50 @@
     const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
     if (!copiedName && !copiedId) return null;
 
-    return candidates.find((item) => {
-      const id = String((item && item.soDinhDanh) || "").replace(/\D/g, "");
-      return id && copiedId && id === copiedId;
-    }) || candidates.find((item) => {
-      const name = foldBusinessPageText((item && item.hoTen) || "");
-      return name && copiedName && name === copiedName;
-    }) || null;
+    const idOf = (item) => String((item && item.soDinhDanh) || "").replace(/\D/g, "");
+    const nameOf = (item) => foldBusinessPageText((item && item.hoTen) || "");
+
+    // Khớp SỐ ĐỊNH DANH là chắc nhất, NHƯNG hồ sơ có thể chứa NHIỀU bản nhân thân của cùng một người
+    // (bản đọc từ Giấy ủy quyền + bản đọc từ thẻ căn cước) và OCR có thể sai họ tên ở một trong hai.
+    // Tài khoản đang đăng nhập là căn cứ đúng nhất → trong các bản cùng số định danh, chọn bản có
+    // HỌ TÊN khớp luôn tên tài khoản; không bản nào khớp tên thì mới đành lấy bản đầu tiên.
+    const idMatches = candidates.filter((item) => idOf(item) && copiedId && idOf(item) === copiedId);
+    if (idMatches.length) {
+      const exact = idMatches.find((item) => copiedName && nameOf(item) === copiedName);
+      if (exact) return exact;
+      if (copiedName && idMatches.length) {
+        console.warn("[FillAll] nhân thân khớp số định danh nhưng LỆCH TÊN tài khoản:",
+          idMatches.map((item) => item.hoTen).join(" / "), "≠", `"${copiedName}"`,
+          "→ nhiều khả năng OCR sai tên, sẽ ghi tên theo tài khoản");
+      }
+      // Cùng số định danh = cùng người. Không bản nào khớp tên thì GỘP thay vì chọn bừa một bản, để
+      // không mất ngày sinh / giới tính / địa chỉ mà chỉ một trong hai bản đọc được. Bản đứng trước
+      // (giấy ủy quyền) vẫn thắng ở những field cả hai cùng có.
+      return idMatches.reduce((acc, item) => {
+        for (const key of Object.keys(item || {})) {
+          const current = acc[key];
+          if (current === undefined || current === null || current === "") acc[key] = item[key];
+        }
+        return acc;
+      }, {});
+    }
+
+    const byName = candidates.find((item) => {
+      if (!copiedName || nameOf(item) !== copiedName) return false;
+      const id = idOf(item);
+      // Cùng tên nhưng số định danh mâu thuẫn với tài khoản ⇒ KHÔNG phải người đang đăng nhập.
+      if (id && copiedId && id !== copiedId) return false;
+      return true;
+    });
+    if (byName) return byName;
+
+    const conflicting = candidates.find((item) => copiedName && nameOf(item) === copiedName);
+    if (conflicting) {
+      console.warn("[FillAll] hồ sơ có người TRÙNG TÊN tài khoản nhưng số định danh khác",
+        `(hồ sơ ${idOf(conflicting)} ≠ tài khoản ${copiedId})`,
+        "→ coi là người khác, giữ nguyên dữ liệu tài khoản");
+    }
+    return null;
   }
 
   /** Nhân thân người nộp lấy từ CCCD của chính người đăng nhập; không khớp thẻ nào thì trả null. */
@@ -1623,7 +1674,18 @@
       return null;
     }
     console.log("[FillAll] người nộp = CCCD khớp tài khoản:", person.hoTen, person.soDinhDanh);
-    return { role: "authorized", ...person };
+    // HỌ TÊN luôn lấy theo TÀI KHOẢN đang đăng nhập, không lấy tên OCR được từ hồ sơ. Khối người nộp
+    // trên cổng chỉ nhận nhân thân của chính tài khoản; tên lệch một dấu (giấy ủy quyền viết tay rất
+    // hay sai dấu) là sau khi Lưu bị đẩy ngược về dữ liệu tài khoản. Lưu ý phép so tên ở trên BỎ DẤU
+    // nên "Thiệt" vẫn khớp "Thiết" — không thể dựa vào nó để phát hiện sai dấu. Hồ sơ chỉ còn nhiệm vụ
+    // cấp ngày sinh / giới tính / địa chỉ, những thứ nút "Sao chép tài khoản" không đổ vào.
+    const accountName = readPersonControlRaw("ctl00_C_PERSCtl_FULL_NAMEFld");
+    if (!accountName) return { role: "authorized", ...person };
+    if (foldBusinessPageText(person.hoTen || "") !== foldBusinessPageText(accountName)) {
+      console.warn("[FillAll] tên trong hồ sơ khác hẳn tên tài khoản:",
+        `"${person.hoTen}"`, "≠", `"${accountName}"`, "→ ghi theo tài khoản");
+    }
+    return { role: "authorized", ...person, hoTen: accountName };
   }
 
   /** Nhân thân trên form đã đúng người nộp chưa — đỡ phải bật "Sửa đổi dữ liệu" một cách vô ích. */
@@ -2284,6 +2346,7 @@
   H.applySubmitterOverride = applySubmitterOverride;
   H.submitterAddressFields = submitterAddressFields;
   H.buildSubmitterOverride = buildSubmitterOverride;
+  H.matchSubmitterIdentityCandidate = matchSubmitterIdentityCandidate;
   H.forceSelfSubmitter = forceSelfSubmitter;
   H.matchAccountWithOwner = matchAccountWithOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;

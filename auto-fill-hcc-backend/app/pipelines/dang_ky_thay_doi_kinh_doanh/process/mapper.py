@@ -147,6 +147,8 @@ def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
     for source in (values.get("NguoiNop"), values.get("DeNghi_ChuHo"), values.get("HienTai_ChuHo")):
         if isinstance(source, dict):
             candidates.append(source)
+    # Giấy ủy quyền là căn cứ chính cho người nộp thay → lên đầu, thẻ căn cước chỉ bù field còn trống.
+    candidates = creation_mapper.delegate_first(candidates, values)
     out: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
     for item in candidates:
@@ -266,6 +268,9 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     # "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh").
     candidates = _identity_candidates(values)
     applicant_compact = _person_fields(applicant, "NguoiNop") + _person_fields(owner, "ChuHo")
+    # Người nộp thay có thể CHỈ có tên trong Giấy ủy quyền → chuyển tiếp nguyên nhóm field ủy quyền
+    # để creation_mapper dựng nhân thân đó vào __identityCandidates.
+    applicant_compact.extend(creation_mapper.authorization_fields(values))
     if isinstance(values.get("Cccd_DanhSach"), list) and values["Cccd_DanhSach"]:
         applicant_compact.append(_compact_field("Cccd_DanhSach", values["Cccd_DanhSach"]))
     # Hồ sơ có từ 2 nhân thân trở lên (kể cả chủ hộ + người ký giấy đề nghị) ⇒ nhiều khả năng có người
