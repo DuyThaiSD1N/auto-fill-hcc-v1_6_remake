@@ -1159,6 +1159,10 @@
     // Nhân thân người nộp = CCCD của CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP trong hồ sơ. Chỉ xác định được sau
     // bước "Sao chép thông tin đăng ký tài khoản" (lúc đó form mới có tên/số định danh của tài khoản).
     let submitterOverride = null;
+    // Chỉ dùng để lấy ĐỊA CHỈ (không ghi đè nhân thân) ở nhánh ép vai trò Đà Nẵng.
+    let submitterAddressCard = null;
+    // null = chưa đối chiếu → bước 3 cứ bám radio thật như cũ.
+    let submitterIsOwnerAccount = null;
 
     // 1. Điền trường CẤU TRÚC (không phải địa chỉ, không phải thông tin cá nhân/liên hệ do copy điền),
     //    vd radio loại chủ thể (OWNER_TYPE) / loại người nộp (PERS_SUBGroup) — 1 lần.
@@ -1227,48 +1231,22 @@
     //  - Ngoại lệ Đà Nẵng: bỏ qua hết phần đối chiếu, luôn giữ "Người có thẩm quyền ký".
     if (targetKey === "nguoi-nop-ho-so" && forceSelfSubmitter(st)) {
       await tickSubmitterSelfRadio();
-      // submitterOverride để null: người nộp = chủ hộ nên KHÔNG ghi đè nhân thân bằng CCCD người
-      // đăng nhập, và địa chỉ lấy nhánh "chủ hộ tự nộp" (__applicantAddress.self) ở bước 3.
+      // Ép vai trò CHỈ ép cái radio. NGƯỜI NỘP vẫn là người đang đăng nhập, nên khi tài khoản KHÔNG
+      // phải chủ hộ thì tuyệt đối không được kéo nhân thân/địa chỉ chủ hộ sang khối người nộp:
+      //  - Nhân thân: giữ nguyên dữ liệu nút "Sao chép tài khoản" vừa đổ vào (submitterOverride để
+      //    null nên bước 2d/4 không ghi đè).
+      //  - Địa chỉ: lấy trên CCCD của chính người đăng nhập; không khớp thẻ nào thì để TRỐNG.
+      const ownerMatch = matchAccountWithOwner(st);
+      submitterIsOwnerAccount = ownerMatch.isOwner || ownerMatch.ownerUnknown;
+      if (!submitterIsOwnerAccount) {
+        submitterAddressCard = matchSubmitterIdentityCandidate(st, fields);
+        console.log("[FillAll] tài khoản Đà Nẵng nhưng KHÁC chủ hộ → giữ tick Người có thẩm quyền ký,",
+          submitterAddressCard
+            ? `địa chỉ lấy trên CCCD của ${submitterAddressCard.hoTen}`
+            : "không có CCCD nào khớp tài khoản → để trống địa chỉ");
+      }
     } else if (targetKey === "nguoi-nop-ho-so") {
-      const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
-      const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
-
-      // Nhân thân chủ hộ để đối chiếu, gom từ MỌI nguồn hồ sơ có:
-      //  - pages["chu-ho-kinh-doanh"]: luồng đăng ký mới, và luồng thay đổi CÓ đổi chủ hộ (chủ hộ MỚI)
-      //  - businessFlow.owner: chủ hộ HIỆN TẠI backend gửi kèm cho luồng thay đổi/chấm dứt (không có
-      //    trang chủ hộ để đọc)
-      //  - search.value khi tra cứu bằng số định danh chủ hộ
-      // Khớp BẤT KỲ nguồn nào cũng là chủ hộ tự nộp: hồ sơ đổi chủ hộ có thể do chủ cũ hoặc chủ mới ký.
-      const ownerIdentities = [];
-      const addOwnerIdentity = (hoTen, soDinhDanh) => {
-        const id = String(soDinhDanh || "").replace(/\D/g, "");
-        const name = foldBusinessPageText(hoTen || "");
-        if (id || name) ownerIdentities.push({ id, name });
-      };
-
-      const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
-      if (ownerFields.length) {
-        const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
-        const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
-        addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
-          (ownerIdField && ownerIdField.value) || "");
-      }
-      const flowOwner = st.businessFlow?.owner || {};
-      addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
-      if (st.businessFlow?.search?.method === "identityNumber") {
-        addOwnerIdentity("", st.businessFlow.search.value);
-      }
-      // KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ —
-      // so với tên tài khoản thì luôn lệch và tick nhầm "Người được ủy quyền".
-
-      // Logic: Chỉ chọn "Người được ủy quyền" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ trong hồ sơ
-      // (Ngược lại: số HOẶC tên KHỚP → là Chủ hộ, không chọn ủy quyền)
-      const idMatches = ownerIdentities.some((o) => copiedId && o.id && copiedId === o.id);
-      const nameMatches = ownerIdentities.some((o) => copiedName && o.name && copiedName === o.name);
-      const isOwner = idMatches || nameMatches;  // Chỉ cần 1 trong 2 đúng
-      // Hồ sơ không cho biết chủ hộ là ai (cả số lẫn tên đều trống) → KHÔNG kết luận là ủy quyền:
-      // giữ nguyên vai trò cổng/backend đã tick ("Người có thẩm quyền ký" là mặc định của cổng).
-      const ownerUnknown = !ownerIdentities.length;
+      const { isOwner, ownerUnknown, idMatches } = matchAccountWithOwner(st);
 
       const authRadio = document.querySelector(
         'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
@@ -1312,7 +1290,8 @@
     // 3. Điền ĐỊA CHỈ từ backend — cascade inline (quốc gia→tỉnh→xã→số nhà).
     let addrFields = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
     if (targetKey === "nguoi-nop-ho-so") {
-      addrFields = submitterAddressFields(st, fields, addrFields, submitterOverride);
+      addrFields = submitterAddressFields(st, fields, addrFields,
+        submitterOverride || submitterAddressCard, submitterIsOwnerAccount);
     }
     try { await fillAddressCascade(addrFields); } catch (e) { /* ignore */ }
 
@@ -1530,6 +1509,48 @@
     return FORCE_SELF_SUBMITTER_WORKFLOWS.has(st.workflow || "create");
   }
 
+  /**
+   * Đối chiếu tài khoản ĐANG ĐĂNG NHẬP (dữ liệu nút "Sao chép thông tin đăng ký tài khoản" vừa đổ vào
+   * khối người nộp) với nhân thân chủ hộ trong hồ sơ. Gom chủ hộ từ MỌI nguồn có:
+   *  - pages["chu-ho-kinh-doanh"]: luồng đăng ký mới, và luồng thay đổi CÓ đổi chủ hộ (chủ hộ MỚI)
+   *  - businessFlow.owner: chủ hộ HIỆN TẠI backend gửi kèm cho luồng thay đổi/chấm dứt (không có
+   *    trang chủ hộ để đọc)
+   *  - search.value khi tra cứu bằng số định danh chủ hộ
+   * Khớp BẤT KỲ nguồn nào cũng là chủ hộ tự nộp: hồ sơ đổi chủ hộ có thể do chủ cũ hoặc chủ mới ký.
+   * KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ — so với
+   * tên tài khoản thì luôn lệch.
+   */
+  function matchAccountWithOwner(st) {
+    const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+    const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+
+    const ownerIdentities = [];
+    const addOwnerIdentity = (hoTen, soDinhDanh) => {
+      const id = String(soDinhDanh || "").replace(/\D/g, "");
+      const name = foldBusinessPageText(hoTen || "");
+      if (id || name) ownerIdentities.push({ id, name });
+    };
+
+    const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
+    if (ownerFields.length) {
+      const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
+      const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
+      addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
+        (ownerIdField && ownerIdField.value) || "");
+    }
+    const flowOwner = st.businessFlow?.owner || {};
+    addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
+    if (st.businessFlow?.search?.method === "identityNumber") {
+      addOwnerIdentity("", st.businessFlow.search.value);
+    }
+
+    // Chỉ kết luận "không phải chủ hộ" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ trong hồ sơ.
+    const idMatches = ownerIdentities.some((o) => copiedId && o.id && copiedId === o.id);
+    const nameMatches = ownerIdentities.some((o) => copiedName && o.name && copiedName === o.name);
+    // Hồ sơ không cho biết chủ hộ là ai (cả số lẫn tên đều trống) → KHÔNG kết luận gì.
+    return { isOwner: idMatches || nameMatches, ownerUnknown: !ownerIdentities.length, idMatches, nameMatches };
+  }
+
   /** Tick "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh" (radio AutoPostBack → phải chờ). */
   async function tickSubmitterSelfRadio() {
     const selfRadio = document.querySelector(
@@ -1615,16 +1636,22 @@
   }
 
   /**
-   * Địa chỉ người nộp hồ sơ theo ĐÚNG vai trò đang chọn trên cổng:
-   *  - Chủ hộ tự nộp ("Người có thẩm quyền ký") → địa chỉ cá nhân ghi trong ĐƠN (Giấy đề nghị),
-   *    backend gửi sẵn trong __applicantAddress.self.
-   *  - Người nộp thay → địa chỉ trên CCCD của chính người đăng nhập (override). Không khớp được thẻ
-   *    nào thì KHÔNG điền gì (thà để trống còn hơn ghi địa chỉ chủ hộ vào người nộp thay).
+   * Địa chỉ người nộp hồ sơ theo ĐÚNG người đang nộp:
+   *  - Tài khoản CHÍNH LÀ chủ hộ → địa chỉ cá nhân ghi trong ĐƠN (Giấy đề nghị), backend gửi sẵn
+   *    trong __applicantAddress.self.
+   *  - Tài khoản KHÁC chủ hộ → địa chỉ trên CCCD của chính người đăng nhập (identityCard). Không
+   *    khớp được thẻ nào thì KHÔNG điền gì (thà để trống còn hơn ghi địa chỉ chủ hộ vào người nộp).
+   *
+   * `isOwnerAccount` là kết quả đối chiếu tài khoản ↔ chủ hộ do caller truyền xuống. Bỏ trống thì
+   * suy từ radio thật trên cổng như cũ — CHỈ đúng khi vai trò được chốt bằng chính phép đối chiếu
+   * đó. Nhánh ép vai trò (tài khoản Đà Nẵng) luôn tick "Người có thẩm quyền ký" kể cả khi tài khoản
+   * không phải chủ hộ, nên ở đó radio KHÔNG còn nói lên ai là người nộp và caller phải truyền cờ.
    */
-  function submitterAddressFields(st, fields, backendAddrFields, override) {
+  function submitterAddressFields(st, fields, backendAddrFields, identityCard, isOwnerAccount) {
     const plan = readSubmitterPageField(st, fields, "__applicantAddress") || {};
+    const isOwner = typeof isOwnerAccount === "boolean" ? isOwnerAccount : !submitterIsAuthorized();
 
-    if (!submitterIsAuthorized()) {
+    if (isOwner) {
       const own = applicantAddressFields(plan.self);
       if (own.length) {
         console.log("[FillAll] người nộp là chủ hộ → địa chỉ trong đơn:", JSON.stringify(plan.self));
@@ -1633,12 +1660,12 @@
       return backendAddrFields;
     }
 
-    const fromIdentity = applicantAddressFields(override && override.diaChi);
+    const fromIdentity = applicantAddressFields(identityCard && identityCard.diaChi);
     if (fromIdentity.length) {
-      console.log("[FillAll] người nộp thay → địa chỉ trên CCCD:", JSON.stringify(override.diaChi));
+      console.log("[FillAll] người nộp khác chủ hộ → địa chỉ trên CCCD:", JSON.stringify(identityCard.diaChi));
       return fromIdentity;
     }
-    console.log("[FillAll] người nộp thay, không có CCCD khớp tài khoản → không điền địa chỉ");
+    console.log("[FillAll] người nộp khác chủ hộ, không có CCCD khớp tài khoản → không điền địa chỉ");
     return [];
   }
 
@@ -2258,6 +2285,7 @@
   H.submitterAddressFields = submitterAddressFields;
   H.buildSubmitterOverride = buildSubmitterOverride;
   H.forceSelfSubmitter = forceSelfSubmitter;
+  H.matchAccountWithOwner = matchAccountWithOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
   H.getFillAllState = getFillAllState;
   H.navigateBusinessRegistrationPage = navigateBusinessRegistrationPage;

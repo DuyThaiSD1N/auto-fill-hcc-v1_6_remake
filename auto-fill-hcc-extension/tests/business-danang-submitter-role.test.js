@@ -49,7 +49,8 @@ vm.runInNewContext(
   sandbox,
   { filename: "business-registration.js" },
 );
-const { forceSelfSubmitter, tickSubmitterSelfRadio } = sandbox.window.__HCC__;
+const { forceSelfSubmitter, tickSubmitterSelfRadio, matchAccountWithOwner, submitterAddressFields }
+  = sandbox.window.__HCC__;
 
 const daNang = { forceSelfSubmitter: true };
 
@@ -88,6 +89,62 @@ const SELF = 'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER
   // Không thấy radio (trang khác) → không nổ.
   selectors.clear();
   await tickSubmitterSelfRadio();
+
+  // === Xung đột đã gặp: hồ sơ có CCCD chủ hộ + giấy đăng ký, tài khoản nộp KHÁC chủ hộ ===
+  // Ép tick "Người có thẩm quyền ký" KHÔNG được kéo nhân thân/địa chỉ chủ hộ sang khối người nộp.
+  const OWNER = { hoTen: "Phan Thị Cúc", soDinhDanh: "048301001234",
+    diaChi: { quocGia: "Việt Nam", tinh: "Đà Nẵng", xa: "Phường Hải Châu", diaChi: "12 Bạch Đằng" } };
+  const CLERK = { hoTen: "Nguyễn Duy Thái", soDinhDanh: "048999005678",
+    diaChi: { quocGia: "Việt Nam", tinh: "Đà Nẵng", xa: "Phường Sơn Trà", diaChi: "99 Ngô Quyền" } };
+
+  const st = {
+    businessDefaults: daNang,
+    pages: {
+      "chu-ho-kinh-doanh": [
+        { name: "ctl00$C$OWN_PCtl$PERSCtl$FULL_NAMEFld", value: OWNER.hoTen },
+        { name: "ctl00$C$OWN_PCtl$PERSCtl$PERS_DOC_NOFld", value: OWNER.soDinhDanh },
+      ],
+      "nguoi-nop-ho-so": [
+        { name: "__applicantAddress", value: { role: "self", self: OWNER.diaChi } },
+        { name: "__identityCandidates", value: [OWNER, CLERK] },
+      ],
+    },
+  };
+
+  // Nút "Sao chép thông tin đăng ký tài khoản" vừa đổ nhân thân TÀI KHOẢN (người nộp) vào form.
+  ids.clear();
+  ids.set("ctl00_C_PERSCtl_FULL_NAMEFld", { value: CLERK.hoTen });
+  ids.set("ctl00_C_PERSCtl_PERS_DOC_NOFld", { value: CLERK.soDinhDanh });
+
+  const match = matchAccountWithOwner(st);
+  assert.equal(match.isOwner, false, "tài khoản khác chủ hộ thì phải nhận ra là khác");
+  assert.equal(match.ownerUnknown, false, "hồ sơ CÓ nhân thân chủ hộ để đối chiếu");
+
+  const nopFields = st.pages["nguoi-nop-ho-so"];
+  const backendAddr = [{ name: "ctl00$C$PERSCtl$ADDRCCtl$CITY_IDFld", comp: "dom-select", value: "Đà Nẵng" }];
+  const chosen = submitterAddressFields(st, nopFields, backendAddr, CLERK, match.isOwner);
+  const value = (suffix) => (chosen.find((f) => f.name.endsWith(suffix)) || {}).value;
+  assert.equal(value("WARD_IDFld"), "Phường Sơn Trà", "phải lấy địa chỉ trên CCCD của người nộp");
+  assert.equal(value("STREET_NUMBERFld"), "99 Ngô Quyền");
+  assert.ok(!chosen.some((f) => String(f.value).includes("Bạch Đằng")),
+    "KHÔNG được điền địa chỉ chủ hộ vào khối người nộp");
+
+  // Không khớp được CCCD nào của người đăng nhập → thà để trống còn hơn ghi nhầm địa chỉ chủ hộ.
+  assert.equal(submitterAddressFields(st, nopFields, backendAddr, null, false).length, 0,
+    "không khớp CCCD nào thì phải để trống địa chỉ");
+
+  // Chính là cơ chế sinh ra lỗi: chỉ nhìn radio (đang tick "Người có thẩm quyền ký" vì BỊ ÉP) thì
+  // hàm tưởng tài khoản là chủ hộ và đổ địa chỉ chủ hộ sang khối người nộp. Nhánh không-ép vẫn phải
+  // giữ hành vi này (ở đó radio là kết quả của chính phép đối chiếu nên suy theo radio là đúng).
+  selectors.clear();
+  selectors.set(SELF, { id: "ctl00_C_PERS_SUBGroup_0", checked: true, click: () => {} });
+  const byRadioOnly = submitterAddressFields(st, nopFields, backendAddr, CLERK);
+  assert.ok(byRadioOnly.some((f) => String(f.value).includes("Bạch Đằng")),
+    "bỏ cờ isOwnerAccount thì hàm suy theo radio — đúng lỗi cũ, nên nhánh ép BẮT BUỘC phải truyền cờ");
+
+  // Tài khoản ĐÚNG là chủ hộ → vẫn lấy địa chỉ trong đơn như cũ.
+  const asOwner = submitterAddressFields(st, nopFields, backendAddr, null, true);
+  assert.equal((asOwner.find((f) => f.name.endsWith("STREET_NUMBERFld")) || {}).value, "12 Bạch Đằng");
 
   console.log("business Đà Nẵng: vai trò người nộp luôn là Người có thẩm quyền ký passed");
 })();
