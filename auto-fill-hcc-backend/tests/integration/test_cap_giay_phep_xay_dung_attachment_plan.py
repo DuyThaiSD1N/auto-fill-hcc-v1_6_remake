@@ -60,7 +60,7 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
                 "Thửa đất số 604, tờ bản đồ số 3."
             ),
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
@@ -133,7 +133,7 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
 
 async def test_cap_giay_phep_xay_dung_filename_fallback_when_ocr_empty(monkeypatch):
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "text": "", "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": "", "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({"documents": [{"index": 0, "type": "other", "title": ""}]})

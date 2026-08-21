@@ -5,8 +5,8 @@
   slot 1  Giấy báo tử / trích lục khai tử                ← giay_bao_tu (chỉ khi đối tượng đã chết)
   slot 2  Bản sao Huân/Huy chương Kháng chiến, Chiến thắng ← huy_chuong
 
-Giấy tờ nguồn khác (CCCD, Sổ BHXH...) không có ô riêng → target "new" (Thêm giấy tờ). Route TẤT ĐỊNH
-theo rule OCR; LLM dự phòng khi rule không chắc.
+Giấy tờ nguồn khác (CCCD, Sổ BHXH...) không có ô riêng → target "new" (Thêm giấy tờ). Mọi file có OCR
+đều được LLM phân loại trước; rule OCR chỉ dự phòng. Riêng file gộp nhiều giấy phải ưu tiên Bản khai.
 """
 
 import time
@@ -69,12 +69,23 @@ def _is_identity_text(text: str) -> bool:
 
 
 def _rule_doc_type(text: str) -> str:
-    """Route TẤT ĐỊNH theo OCR. Nhận Huân/Huy chương và Bản khai TRƯỚC (bản khai cũng nhắc khen thưởng)."""
+    """Rule dự phòng; Bản khai Mẫu 11/12 luôn thắng tài liệu khác trong cùng file."""
     h = _fold(text)
     if not h:
         return ""
-    # Bản khai Mẫu 11 — tiêu đề "BẢN KHAI" + hoạt động kháng chiến.
-    if ("ban khai" in h and ("hoat dong khang chien" in h or "khang chien giai phong" in h)) or "mau so 11" in h:
+    # Mẫu 12 có thể gộp cả trích lục khai tử và CCCD phía sau. Chỉ nhận Mẫu 11/12
+    # khi đồng thời có tiêu đề BẢN KHAI để tránh bắt nhầm biểu mẫu số 12 của thủ tục khác.
+    is_declaration = "ban khai" in h and any(
+        marker in h
+        for marker in (
+            "mau so 11",
+            "mau so 12",
+            "hoat dong khang chien",
+            "khang chien giai phong",
+            "nguoi co cong tu tran",
+        )
+    )
+    if is_declaration:
         return _BAN_KHAI
     # Giấy báo tử / khai tử.
     if "khai tu" in h or "giay bao tu" in h or "giay chung tu" in h:
@@ -95,7 +106,7 @@ def _normalize_doc_type(value: str) -> str:
     text = _fold(value or "")
     if not text or text == "other":
         return _OTHER
-    if "ban khai" in text or "mau so 11" in text:
+    if "ban khai" in text or "mau so 11" in text or "mau so 12" in text:
         return _BAN_KHAI
     if "bao tu" in text or "khai tu" in text or "chung tu" in text:
         return _BAO_TU
@@ -160,19 +171,34 @@ def build_plan_items(
         text = str(by_name.get(file_name, {}).get("text") or "")
         rule_type = _rule_doc_type(text)
         llm_type = llm_types.get(idx, "")
-        doc_type = rule_type or (llm_type if llm_type in _ALLOWED_DOC_TYPES else _OTHER)
+        valid_llm_type = llm_type if llm_type in _ALLOWED_DOC_TYPES else ""
+
+        # LLM là nguồn phân loại đầu tiên. Ngoại lệ nghiệp vụ duy nhất: nếu một
+        # file gộp có Bản khai Mẫu 11/12 thì Bản khai luôn là loại đại diện.
+        if rule_type == _BAN_KHAI:
+            doc_type = _BAN_KHAI
+            source = "llm" if valid_llm_type == _BAN_KHAI else "rule-priority"
+        elif valid_llm_type and valid_llm_type != _OTHER:
+            doc_type = valid_llm_type
+            source = "llm"
+        elif rule_type:
+            doc_type = rule_type
+            source = "rule"
+        else:
+            doc_type = _OTHER
+            source = "llm" if valid_llm_type == _OTHER else "unknown"
 
         if doc_type in _SLOT_BY_KEY:
             items.append(_build_fixed_item(file, idx, doc_type))
-            classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm"})
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
         if doc_type in _SKIP_DOCS:
             # Giấy tờ nguồn (CCCD/BHXH) — chỉ dùng để điền form, KHÔNG thuộc thành phần hồ sơ → bỏ qua.
-            classified.append({"fileName": file_name, "docType": doc_type, "source": "rule" if rule_type else "llm", "skipped": True})
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
             continue
 
         warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": "unknown"})
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
 
     return items, warnings, classified
 
@@ -197,7 +223,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_docs: list[dict[str, Any]] = []
     for idx, file in enumerate(raw_files):
         text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        if text.strip() and not _rule_doc_type(text):
+        if text.strip():
             llm_docs.append({"index": idx, "text": text})
 
     t1 = time.monotonic()

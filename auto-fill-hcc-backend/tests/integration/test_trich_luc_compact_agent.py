@@ -486,8 +486,8 @@ def test_trich_luc_preserves_xuan_huong_ward_prefix_for_form_option():
 @respx.mock
 async def test_trich_luc_compact_agent_derives_ui_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -624,7 +624,8 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
     assert 'không ghi rõ chữ "CCCD"/"Căn cước"' in system_prompt
     assert "HoTich_SoDinhDanh = <12 chữ số>" in system_prompt
     assert "block 2 THỰC SỰ có dòng" in system_prompt
-    assert "Không trả field quan hệ NYC_QuanHe" in system_prompt
+    assert "CopyRequest_QuanHe lấy từ TỜ KHAI" in system_prompt
+    assert "CopyRequest_QuanHe" in field_names
     assert "HoSo_LoaiYeuCau" in system_prompt
     assert "PhuongThucNhanKQ" in system_prompt
     assert "CopyRequest_Quantity=10" in system_prompt
@@ -650,8 +651,8 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
 @respx.mock
 async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -688,8 +689,8 @@ async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
 @respx.mock
 async def test_trich_luc_compact_agent_maps_marriage_extract(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "GIẤY CHỨNG NHẬN KẾT HÔN"}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "GIẤY CHỨNG NHẬN KẾT HÔN"}] * 20})
     )
     out = {
         "fields": {

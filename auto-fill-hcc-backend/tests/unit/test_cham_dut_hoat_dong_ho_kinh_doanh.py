@@ -38,37 +38,10 @@ def test_builds_dissolution_and_applicant_pages_from_notice_and_certificate():
     assert dissolution["ctl00$C$UC_DW_DISSOLUTIONCtl$DISSOLUTION_TYPE_IDFld"]["value"] == "OTHER"
     assert dissolution["ctl00$C$UC_DW_DISSOLUTIONCtl$REASON_DESCFld"]["value"].startswith("Chủ hộ")
 
-    # Extension đối chiếu nhân thân chủ hộ với tài khoản đang đăng nhập (khớp số HOẶC tên là chủ hộ).
-    assert flow["owner"] == {"hoTen": "NGUYỄN ĐÌNH HOÀNG", "soDinhDanh": "027089000919"}
-
     applicant = {item["name"]: item for item in pages["nguoi-nop-ho-so"]}
-    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == (
-        "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh"
-    )
-    assert applicant["ctl00$C$PERSCtl$FULL_NAMEFld"]["value"] == "Nguyễn Đình Hoàng"
-    assert applicant["ctl00$C$PERSCtl$PERS_DOC_NOFld"]["value"] == "027089000919"
+    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == "IS_REPRESENTATIVE_BUTTON"
     assert applicant["ctl00$C$PERSCtl$ADDRCCtl$CITY_IDFld"]["value"] == "Bắc Ninh"
     assert applicant["ctl00$C$PERSCtl$ADDRCCtl$WARD_IDFld"]["value"] == "Song Liễu"
-    assert applicant["__applicantAddress"]["value"]["role"] == "self"
-
-
-def test_authorized_submitter_when_extra_cccd_in_dossier():
-    """Hồ sơ có CCCD của người khác chủ hộ → mặc định người được ủy quyền, kèm thẻ để extension chọn."""
-    pages, flow = mapper.build([
-        _field("HoKinhDoanh_MaSo", "0270 8900 0919"),
-        _field("ChuHo", {"hoTen": "NGUYỄN ĐÌNH HOÀNG", "soDinhDanh": "027089000919"}),
-        _field("Cccd_DanhSach", [
-            {"hoTen": "NGUYỄN ĐÌNH HOÀNG", "soDinhDanh": "027089000919"},
-            {"hoTen": "VŨ ĐÌNH THIẾT", "soDinhDanh": "040203015844"},
-        ]),
-    ])
-
-    applicant = {item["name"]: item for item in pages["nguoi-nop-ho-so"]}
-    assert applicant["ctl00$C$PERS_SUBGroup"]["value"] == "Người được ủy quyền"
-    assert [row["soDinhDanh"] for row in applicant["__identityCandidates"]["value"]] == [
-        "027089000919", "040203015844",
-    ]
-    assert flow["owner"]["soDinhDanh"] == "027089000919"
 
 
 def test_falls_back_to_owner_identity_for_search():

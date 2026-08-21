@@ -22,7 +22,7 @@ async def test_cap_nuoc_sach_compact_agent_derives_dom_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
 
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "type": f["type"], "text": "...", "provider": "raw"} for f in files]
+        return [{"name": f["name"], "type": f["type"], "text": "...", "provider": "tiengnoi"} for f in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     out = {
@@ -104,7 +104,7 @@ async def test_cap_nuoc_sach_falls_back_to_ocr_gcn_serial(monkeypatch):
     ])
 
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "raw"} for f in files]
+        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "tiengnoi"} for f in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     out = {
@@ -143,7 +143,7 @@ async def test_cap_nuoc_sach_maps_enterprise_fields_without_asset_gcn(monkeypatc
     ])
 
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "raw"} for f in files]
+        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "tiengnoi"} for f in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     out = {

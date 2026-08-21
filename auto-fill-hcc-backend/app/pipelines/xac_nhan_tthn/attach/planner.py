@@ -1,3 +1,4 @@
+import asyncio
 import re
 import time
 from typing import Any
@@ -9,6 +10,7 @@ from app.pipelines._shared import normalize_document_name
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.process.schemas import FileItem
+from app.services import ocr
 from app.services.llm import client
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
@@ -100,44 +102,52 @@ def _resolve_document_name(file: dict, doc_type: str, detected: dict, used: set[
     return _unique_document_name(base, used, fallback)
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[str, str]]:
-    if not documents:
-        return {}
+def _coerce_llm_item(item: dict) -> dict[str, str]:
+    return {
+        "type": _canonical_type(str(item.get("type") or "")),
+        "title": str(item.get("title") or "").strip(),
+        "documentName": str(item.get("documentName") or "").strip(),
+    }
 
+
+async def _classify_one_with_llm(
+    document: dict[str, Any],
+) -> tuple[int, dict[str, str] | None, str | None]:
+    """Một file = một prompt attachment; lỗi file này không làm rơi file khác."""
+    index = int(document["index"])
     messages = [
         {"role": "system", "content": prompt.SYSTEM_PROMPT},
-        {"role": "user", "content": prompt.build_user_prompt(documents)},
+        {"role": "user", "content": prompt.build_user_prompt(document)},
     ]
-    raw = await client.chat(messages, max_tokens=700, enable_thinking=settings.agent_reasoning)
-    parsed = client.extract_json_block(raw)
-    parsed_docs = parsed.get("documents", []) or []
+    try:
+        raw = await client.chat(messages, max_tokens=250, enable_thinking=settings.agent_reasoning)
+        parsed = client.extract_json_block(raw)
+        # Chấp nhận shape cũ một phần tử để bền với response/provider cache cũ.
+        old_documents = parsed.get("documents") if isinstance(parsed, dict) else None
+        if isinstance(old_documents, list) and old_documents:
+            parsed = old_documents[0]
+        if not isinstance(parsed, dict):
+            raise ValueError("LLM không trả JSON object")
+        return index, _coerce_llm_item(parsed), None
+    except Exception as exc:  # noqa: BLE001 — fallback riêng đúng file lỗi
+        return index, None, str(exc)
 
-    def _coerce(item: dict) -> dict[str, str]:
-        return {
-            "type": _canonical_type(str(item.get("type") or "")),
-            "title": str(item.get("title") or "").strip(),
-            "documentName": str(item.get("documentName") or "").strip(),
-        }
+
+async def _classify_with_llm(
+    documents: list[dict[str, Any]],
+) -> tuple[dict[int, dict[str, str]], list[str]]:
+    if not documents:
+        return {}, []
 
     out: dict[int, dict[str, str]] = {}
-    # Bền vững: LLM trả đúng số lượng → map theo THỨ TỰ (tránh lệch 0/1-based index gán nhầm file).
-    if len(parsed_docs) == len(documents):
-        for pos, item in enumerate(parsed_docs):
-            out[documents[pos]["index"]] = _coerce(item)
-        return out
-    raw_items: list[tuple[int, dict]] = []
-    for item in parsed_docs:
-        try:
-            raw_items.append((int(item.get("index")), item))
-        except Exception:  # noqa: BLE001
-            continue
-    offset = 0 if any(r == 0 for r, _ in raw_items) else 1
-    valid = {d["index"] for d in documents}
-    for r, item in raw_items:
-        idx = r - offset
-        if idx in valid:
-            out[idx] = _coerce(item)
-    return out
+    errors: list[str] = []
+    results = await asyncio.gather(*(_classify_one_with_llm(item) for item in documents))
+    for index, detected, error in results:
+        if detected is not None:
+            out[index] = detected
+        if error:
+            errors.append(f"attachment_agent fileIndex={index}: {error}")
+    return out, errors
 
 
 def _build_item(file: dict, idx: int, doc_type: str, document_name: str) -> dict:
@@ -163,51 +173,54 @@ async def plan_xac_nhan_tthn_attachments(
     _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
-    ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
-
-    from app.services import ocr
-
+    # fileName có thể trùng hoàn toàn; raw index mới là định danh nội bộ của file.
+    ocr_inputs = [
+        (idx, file) for idx, file in enumerate(raw_files) if file.get("type") in _OCR_TYPES
+    ]
+    ocr_files = [file for _, file in ocr_inputs]
 
     t0 = time.monotonic()
     ocr_results = await ocr.ocr_per_file(ocr_files) if ocr_files else []
     ocr_ms = int((time.monotonic() - t0) * 1000)
-    for r in ocr_results:
-        if r.get("error"):
-            errors.append(f"OCR {r.get('name')}: {r['error']}")
+    ocr_text_by_index: dict[int, str] = {}
+    for position, (raw_index, file) in enumerate(ocr_inputs):
+        result = ocr_results[position] if position < len(ocr_results) else {
+            "text": "", "error": "thiếu kết quả OCR",
+        }
+        ocr_text_by_index[raw_index] = str(result.get("text") or "")
+        if result.get("error"):
+            errors.append(
+                f"OCR fileIndex={raw_index} {file.get('name')}: {result['error']}"
+            )
 
-    ocr_by_name = {r.get("name"): r for r in ocr_results}
     llm_docs = [
         {
             "index": idx,
-            "fileName": file.get("name"),
-            "text": str(ocr_by_name.get(file.get("name"), {}).get("text") or ""),
+            "text": ocr_text_by_index.get(idx, ""),
         }
-        for idx, file in enumerate(raw_files)
+        for idx, _file in enumerate(raw_files)
     ]
 
     t1 = time.monotonic()
     llm_types: dict[int, dict[str, str]] = {}
     if llm_docs:
-        try:
-            llm_types = await _classify_with_llm(llm_docs)
-        except Exception as e:  # noqa: BLE001
-            errors.append(f"attachment_agent: {e}")
+        llm_types, llm_errors = await _classify_with_llm(llm_docs)
+        errors.extend(llm_errors)
     llm_ms = int((time.monotonic() - t1) * 1000)
 
     attachments: list[dict] = []
     classified: list[dict] = []
     used_names: set[str] = set()
-    ocr_text_by_index: dict[int, str] = {}
     identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "title": "", "documentName": ""}
         doc_type = detected["type"]
-        ocr_text_by_index[idx] = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
         if doc_type == "identity":
             identity_indexes.add(idx)
         document_name = _resolve_document_name(file, doc_type, detected, used_names)
         attachments.append(_build_item(file, idx, doc_type, document_name))
         classified.append({
+            "fileIndex": idx,
             "fileName": file.get("name"),
             "type": doc_type,
             "documentName": document_name,
@@ -220,8 +233,11 @@ async def plan_xac_nhan_tthn_attachments(
         "attachments": attachments,
         "extracted": {
             "documents": [f["name"] for f in raw_files],
-            "ocrDocuments": [r.get("name") for r in ocr_results if r.get("text")],
-            "llmDocuments": [doc["fileName"] for doc in llm_docs],
+            "ocrDocuments": [
+                raw_files[idx]["name"] for idx in range(len(raw_files))
+                if ocr_text_by_index.get(idx)
+            ],
+            "llmDocuments": [file["name"] for file in raw_files],
             "sessionId": (session or {}).get("request_id"),
             "classified": classified,
         },

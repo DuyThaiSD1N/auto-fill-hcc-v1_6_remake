@@ -1,9 +1,8 @@
 """Khớp giá trị LLM trích được → vùng ảnh (bounding box) từ tokens OCR.
 
 Port từ chatbot-hcc-base-ts/src/services/bbox-matcher.ts. Toạ độ dùng hệ NORMALIZED
-[0,1] dạng [x, y, w, h] (góc trên-trái + rộng/cao) — ĐÚNG format vnekyc /ocr/raw trả về,
-nên KHÔNG cần verticesToBbox. Ảnh đã bake EXIF trước OCR (xem review qua shared runner)
-nên cũng KHÔNG cần unrotateBbox.
+[0,1] dạng [x, y, w, h] (góc trên-trái + rộng/cao). Ảnh đã bake EXIF trước OCR
+nên KHÔNG cần verticesToBbox hoặc unrotateBbox (xem review qua shared runner).
 
 Token = {"text": str, "bbox": [x,y,w,h], "confidence": float, "page": int}.
 """

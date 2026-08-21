@@ -20,7 +20,6 @@ def _file(name, typ="image/jpeg"):
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    monkeypatch.setattr(settings, "gemini_api_key", "")
 
 
 def test_xac_nhan_tthn_maps_declared_purpose_to_other_detail():
@@ -199,8 +198,8 @@ def test_xac_nhan_tthn_prompt_requires_separate_declaration_residence():
 @respx.mock
 async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "..."})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -270,8 +269,8 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
 @respx.mock
 async def test_xac_nhan_tthn_compact_agent_maps_divorce_decision(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "..."})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -313,8 +312,8 @@ async def test_xac_nhan_tthn_compact_agent_maps_divorce_decision(monkeypatch):
 @respx.mock
 async def test_xac_nhan_tthn_compact_agent_defaults_issuer(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "..."})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {"fields": {"Cccd_HoTen": "NGUYỄN VĂN A", "Cccd_SoDinhDanh": "012345678901"}}
     respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(

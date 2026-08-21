@@ -20,14 +20,13 @@ def _file(name, typ="image/jpeg"):
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    monkeypatch.setattr(settings, "gemini_api_key", "")
 
 
 @respx.mock
 async def test_ket_hon_compact_agent_derives_ui_fields(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "..."})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {

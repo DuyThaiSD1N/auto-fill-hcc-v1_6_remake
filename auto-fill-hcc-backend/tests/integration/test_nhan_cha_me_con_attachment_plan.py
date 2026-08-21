@@ -39,7 +39,7 @@ async def test_nhan_cha_me_con_attachment_routes_adn_and_new_components(monkeypa
             "cccd-rieng.pdf": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 012098005476\nIDVNM098005476",
             "cam-doan.pdf": "VĂN BẢN CAM ĐOAN việc nhận cha con và có người làm chứng",
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
@@ -90,7 +90,7 @@ async def test_nhan_cha_me_con_attachment_uses_commitment_when_no_adn(monkeypatc
             "cam-doan.pdf": "VĂN BẢN CAM ĐOAN của các bên nhận cha, mẹ, con và hai người làm chứng về mối quan hệ.",
             "giay-chung-sinh.pdf": "GIẤY CHỨNG SINH\nMã số GCS: 02020.GCS.12096.25\nDự định đặt tên con là Vũ My An",
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({"documents": []})
@@ -119,7 +119,7 @@ async def test_nhan_cha_me_con_attachment_new_identity_card_not_birth_document(m
                 "Họ, chữ đệm và tên khai sinh / Full name: TRẦN THANH BÌNH\n"
                 "Ngày, tháng, năm sinh / Date of birth: 16/11/1985"
             ),
-            "provider": "gemini",
+            "provider": "tiengnoi",
         }]
 
     async def fake_chat(messages, max_tokens, enable_thinking):

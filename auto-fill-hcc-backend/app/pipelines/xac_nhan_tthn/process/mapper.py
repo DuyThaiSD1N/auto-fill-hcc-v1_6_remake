@@ -119,9 +119,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         seen.add(name)
 
     has_cccd = bool(values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"))
+    # Đây là TỜ KHAI, không phải ảnh CCCD → nhân thân có thể LLM chỉ đặt ở ToKhai_*.
+    # Vẫn coi là có người để không rụng cả khối khi thiếu Cccd_* (xem cổng bên dưới).
+    has_tokhai = bool(values.get("ToKhai_SoDinhDanh") or values.get("ToKhai_HoTen"))
 
-    # --- Thông tin từ CCCD của người đi nộp (hoặc bản thân) ---
-    issuer = values.get("Cccd_NoiCap") or default_issuer(values.get("Cccd_NgayCap"))
+    # --- Thông tin từ CCCD của người đi nộp (hoặc bản thân); thiếu thì lấy từ tờ khai ---
+    issuer = (
+        values.get("Cccd_NoiCap")
+        or values.get("ToKhai_NoiCapGiayTo")
+        or default_issuer(values.get("Cccd_NgayCap") or values.get("ToKhai_NgayCapGiayTo"))
+    )
     nationality = values.get("Cccd_QuocTich") or "Việt Nam"
     # Tờ khai phản ánh nơi cư trú hiện tại; CCCD chỉ là nguồn dự phòng.
     residence = _area(values.get("ToKhai_NoiCuTru") or values.get("Cccd_NoiCuTru"))
@@ -142,7 +149,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # MỤC I & II: chỉ điền khi có CCCD hoặc giấy ủy quyền
     # Không có → bỏ qua thông tin cá nhân, vẫn điền tình trạng hôn nhân bên dưới
     # =========================================================
-    if has_cccd or has_poa:
+    if has_cccd or has_poa or has_tokhai:
 
         # --- MỤC I: Người yêu cầu ---
         if has_poa:
@@ -163,13 +170,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
             add("quanhevoinguoiduocxacminh", "2")
         else:
-            # BẢN THÂN hoặc CCCD-MISMATCH: điền đè từ CCCD upload
-            add("HoVaTenC", values.get("Cccd_HoTen"))
-            add("NgaySinhC", values.get("Cccd_NgaySinh"))
-            add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
+            # BẢN THÂN hoặc CCCD-MISMATCH: điền đè từ CCCD upload; thiếu Cccd_* thì lấy từ tờ khai
+            # (tự làm phổ biến: người yêu cầu = người trên tờ khai).
+            cccd_ten = values.get("Cccd_HoTen") or values.get("ToKhai_HoTen")
+            cccd_ns = values.get("Cccd_NgaySinh") or values.get("ToKhai_NgaySinh")
+            cccd_sdd = values.get("Cccd_SoDinhDanh") or values.get("ToKhai_SoDinhDanh")
+            add("HoVaTenC", cccd_ten)
+            add("NgaySinhC", cccd_ns)
+            add("SoDinhDanhC", cccd_sdd)
             add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", issuer))
-            add("SoGiayToTuyThanC", values.get("Cccd_SoDinhDanh"))
-            add("NgayCapDDC", values.get("Cccd_NgayCap"))
+            add("SoGiayToTuyThanC", cccd_sdd)
+            add("NgayCapDDC", values.get("Cccd_NgayCap") or values.get("ToKhai_NgayCapGiayTo"))
             add("NoiCapDDC", issuer)
             add("nycLoaiCuTru", "Thường trú")
             if residence:

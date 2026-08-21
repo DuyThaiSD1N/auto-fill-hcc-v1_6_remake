@@ -28,7 +28,7 @@ async def test_sua_doi_giao_dich_attachment_groups_draft_and_asset_then_routes_o
             ),
             "cccd.pdf": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 012173002914\nIDVNM173002914",
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
@@ -86,7 +86,7 @@ async def test_sua_doi_giao_dich_old_contract_not_misrouted_as_asset(monkeypatch
                 "Bên tặng cho thửa đất số 10, tờ bản đồ số 2.\n"
                 "LỜI CHỨNG của người thực hiện chứng thực. Số chứng thực 88."
             ),
-            "provider": "gemini",
+            "provider": "tiengnoi",
         }]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
@@ -136,7 +136,7 @@ async def test_sua_doi_giao_dich_user_case_routes_cancellation_asset_and_old_con
                 "Số chứng thực 29 quyển số 01 -SCT/HĐ,GD."
             ),
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
@@ -184,7 +184,7 @@ async def test_sua_doi_giao_dich_user_case_routes_cancellation_asset_and_old_con
 
 async def test_sua_doi_giao_dich_unknown_document_adds_new_component(monkeypatch):
     async def fake_ocr_per_file(files):
-        return [{"name": "phieu-hen.pdf", "text": "PHIẾU HẸN TRẢ KẾT QUẢ", "provider": "gemini"}]
+        return [{"name": "phieu-hen.pdf", "text": "PHIẾU HẸN TRẢ KẾT QUẢ", "provider": "tiengnoi"}]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({"documents": [{"index": 0, "type": "other", "title": "Phiếu hẹn"}]})

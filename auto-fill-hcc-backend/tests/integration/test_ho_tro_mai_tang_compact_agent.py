@@ -21,14 +21,12 @@ def _file(name, typ="image/jpeg"):
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    monkeypatch.setattr(settings, "gemini_api_key", "")
-    monkeypatch.setattr(settings, "ocr_by_tiengnoi", False)
     monkeypatch.setattr(settings, "ocr_cache_enabled", False)
 
 
 def _mock_services(out):
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "OCR TEXT"})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "OCR TEXT"}] * 20})
     )
     respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(

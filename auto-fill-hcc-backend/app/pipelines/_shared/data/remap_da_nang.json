@@ -19,6 +19,18 @@
     },
     {
         "tinh_cu": "Đà Nẵng",
+        "xa_cu": "An Hải Tây",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
+        "xa_cu": "An Hải Đông",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường An Hải"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
         "xa_cu": "Hòa An",
         "tinh_moi": "Đà Nẵng",
         "xa_moi": "Phường An Khê"

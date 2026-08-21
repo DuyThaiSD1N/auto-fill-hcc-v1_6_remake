@@ -164,6 +164,10 @@ FIELDS: list[dict] = [
              "Trong cụm ngay trước từ 'bản', dấu chấm/phẩy xen giữa các chữ số là nhiễu OCR hoặc "
              "đường chấm điền: ghép các chữ số, bỏ số 0 ở đầu và không hiểu là số thập phân. "
              "Không tự mặc định là 3 hoặc bất kỳ số nào khác."},
+    {"name": "CopyRequest_QuanHe",
+     "desc": "Quan hệ của NGƯỜI YÊU CẦU với người được cấp bản sao, đọc ở TỜ KHAI dòng "
+             "'Quan hệ với người được cấp bản sao Trích lục hộ tịch: ...'. Trả đúng chữ ghi trên tờ khai "
+             "(vd 'Mẹ đẻ', 'Bố đẻ', 'Bản thân', 'Con đẻ', 'Vợ', 'Chồng'). Không có dòng này thì bỏ qua."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -214,6 +218,7 @@ UI_COMP_BY_NAME = {
     "HoSo_QuyenSo": "x-input",
     "HoSo_NgayCapSo": "x-date",
     "PhuongThucNhanKQ": "x-radio",
+    "NYC_QuanHe": "x-radio",
     # Số lượng bản sao đọc từ tờ khai; form không có radio Có/Không.
     "SoLuong": "raw",
 }

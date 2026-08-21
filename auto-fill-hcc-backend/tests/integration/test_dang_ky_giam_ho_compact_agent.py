@@ -22,7 +22,7 @@ async def test_dang_ky_giam_ho_derives_iframe_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
 
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "type": f["type"], "text": "OCR text", "provider": "raw"} for f in files]
+        return [{"name": f["name"], "type": f["type"], "text": "OCR text", "provider": "tiengnoi"} for f in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     out = {
@@ -175,7 +175,7 @@ Số lượng: 05 bản
 """
 
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "tiengnoi"} for f in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     out = {
@@ -268,7 +268,7 @@ Lý do đăng ký giám hộ: Bố mẹ đi làm ăn xa, không có khả năng 
 """
 
     async def fake_ocr_per_file(files):
-        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "type": f["type"], "text": ocr_text, "provider": "tiengnoi"} for f in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     out = {

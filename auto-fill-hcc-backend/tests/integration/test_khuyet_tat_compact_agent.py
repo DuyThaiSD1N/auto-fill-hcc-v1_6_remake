@@ -19,14 +19,13 @@ def _file(name, typ="application/pdf"):
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    monkeypatch.setattr(settings, "gemini_api_key", "")
 
 
 @respx.mock
 async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "OCR TEXT"})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "OCR TEXT"}] * 20})
     )
     llm_out = {
         "fields": {
@@ -143,11 +142,8 @@ def test_khuyet_tat_compact_prompt_contract():
     assert "MucDo_HoatDong" in system_prompt
     assert "kt5_1" in system_prompt
     assert "kt5_3" in system_prompt
-    # Bảng dạng khuyết tật phải trả theo TỪNG DÒNG, kèm hai luật chống đọc sai cột.
-    assert "KhuyetTat_BangDanhDau" in system_prompt
-    assert "Có kết luận của cơ sở y tế" in system_prompt
-    assert "làm phẳng bảng" in system_prompt
-    assert "KHÔNG mặc định là \"co\"" in system_prompt
+    assert "vỡ dòng" in system_prompt
+    assert "tách riêng" in system_prompt
     assert "THD" in system_prompt
 
 

@@ -9,7 +9,14 @@ server {
     # lúc request (nginx không crash nếu backend chưa sẵn sàng khi container khởi động).
     resolver 127.0.0.11 valid=10s ipv6=off;
 
-    # SPA: mọi route không phải file tĩnh đều trả về index.html.
+    # BẢNG THỐNG KÊ PHƯỜNG: URL sạch /thong-ke/dashboard → bundle riêng dashboard.html
+    # (single-page, không route con) để tài khoản phường không đụng bundle trang quản trị ở "/".
+    # Asset & API dùng đường dẫn tuyệt đối (/assets, /api) nên không phụ thuộc path này.
+    location = /thong-ke/dashboard {
+        try_files /dashboard.html =404;
+    }
+
+    # SPA trang quản trị: mọi route không phải file tĩnh đều trả về index.html.
     location / {
         try_files $uri $uri/ /index.html;
     }

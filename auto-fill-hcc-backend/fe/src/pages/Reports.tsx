@@ -70,10 +70,12 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
   const [province, setProvince] = useState("");
   const [officialOnly, setOfficialOnly] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [options, setOptions] = useState<ReportOptionsResp>({ provinces: [], accounts: [] });
+  const [options, setOptions] = useState<ReportOptionsResp>({
+    provinces: [], accounts: [], handfreeEnabled: false,
+  });
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState("");
-  const [exporting, setExporting] = useState(false);
+  const [exportMode, setExportMode] = useState<"local" | "combined" | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const exportControllerRef = useRef<AbortController | null>(null);
@@ -131,7 +133,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     && !dateInvalid
     && !selectionInvalid
     && !tooManyAccounts
-    && !exporting;
+    && exportMode === null;
 
   const provinceOptions = options.provinces.map((item) => ({
     value: item.value,
@@ -140,8 +142,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
       : `${item.label} (${item.accountCount.toLocaleString("vi-VN")} tài khoản)`,
   }));
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function runExport(includeHandfree: boolean) {
     setError("");
     setSuccess("");
     if (dateInvalid) {
@@ -164,7 +165,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     const controller = new AbortController();
     exportControllerRef.current?.abort();
     exportControllerRef.current = controller;
-    setExporting(true);
+    setExportMode(includeHandfree ? "combined" : "local");
     try {
       const result = await exportReportExcel({
         dateFrom,
@@ -173,6 +174,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
         province: mode === "province" ? province : undefined,
         officialOnly: mode === "province" ? officialOnly : undefined,
         accountIds: mode === "accounts" ? selectedIds : undefined,
+        includeHandfree,
       }, controller.signal);
       const fallback = `bao_cao_ho_so_${dateFrom}_${dateTo}.xlsx`;
       const filename = result.filename || fallback;
@@ -184,9 +186,14 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     } finally {
       if (exportControllerRef.current === controller) {
         exportControllerRef.current = null;
-        setExporting(false);
+        setExportMode(null);
       }
     }
+  }
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    void runExport(false);
   }
 
   return (
@@ -339,10 +346,27 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
               {dateFrom && dateTo ? ` · ${dateFrom} đến ${dateTo}` : ""}
             </p>
           </div>
-          <button className="btn-primary report-export-btn" type="submit" disabled={!canExport}>
-            {exporting ? "Đang tạo file…" : "Xuất file Excel"}
-          </button>
+          <div className="report-export-actions">
+            <button className="ghost report-export-btn" type="submit" disabled={!canExport}>
+              {exportMode === "local" ? "Đang tạo file…" : "Chỉ xuất no handfree"}
+            </button>
+            <button
+              className="btn-primary report-export-btn"
+              type="button"
+              disabled={!canExport || !options.handfreeEnabled}
+              onClick={() => void runExport(true)}
+              title={options.handfreeEnabled ? undefined : "Backend chưa cấu hình kết nối Handfree"}
+            >
+              {exportMode === "combined" ? "Đang tổng hợp…" : "Tổng hợp cả Handfree"}
+            </button>
+          </div>
         </section>
+
+        {!loadingOptions && !options.handfreeEnabled && (
+          <div className="muted report-integration-note" role="status">
+            Nút tổng hợp Handfree sẽ khả dụng sau khi cấu hình kết nối giữa hai backend.
+          </div>
+        )}
 
         <div className="report-feedback" aria-live="polite">
           {error && <div className="error" role="alert">{error}</div>}

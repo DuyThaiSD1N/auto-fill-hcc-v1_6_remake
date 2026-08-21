@@ -12,8 +12,7 @@ from app.traces.metadata import count_distinct_attachment_sets
 from app.users.roles import OFFICIAL_ACCOUNT_ROLES, normalized_role
 
 # Nhãn hiển thị model OCR theo provider key.
-_OCR_LABELS = {"raw": "RAW", "vintern": "Vintern", "gemini": "Gemini", "both": "BOTH",
-               "tiengnoi": "vintern-v6"}
+_OCR_LABELS = {"tiengnoi": "vintern-v12"}
 _ALL_STATS_ROLES = ("admin", "user", "commune", "province")
 
 
@@ -85,8 +84,8 @@ async def create_trace(
         "total_bytes": total_bytes,  # dung lượng hồ sơ (payload) của lượt
         "procedure": procedure,
         "procedure_label": procedure_label,
-        "ocr_provider": ocr_provider,  # "raw" | "vintern"
-        "ocr_label": ocr_label(ocr_provider),  # "RAW" | "Vintern"
+        "ocr_provider": ocr_provider,  # "tiengnoi" (DOCX có thể kèm nhãn nguồn)
+        "ocr_label": ocr_label(ocr_provider),
         "ocr_text": ocr_text or "",
         "llm_output": llm_output,
         "fields_count": fields_count,
@@ -622,6 +621,33 @@ async def stats_by_user_ids(
         _stats_pipeline(query), allowDiskUse=True
     ).to_list(length=1)
     return _format_stats_facets(rows[0] if rows else {})
+
+
+async def daily_counts_by_user_ids(
+    *,
+    user_ids: list[str],
+    date_from: datetime,
+    date_to: datetime,
+) -> list[dict]:
+    """Số LƯỢT xử lý (mỗi trace = 1 lượt /process) theo ngày cho một tập tài khoản.
+
+    Dùng vẽ biểu đồ diễn biến theo thời gian trên dashboard phường. Gom ngày theo múi giờ
+    Việt Nam để mốc trùng với cách hiển thị khoảng ngày. Khác "hồ sơ riêng biệt" (đã gộp
+    trùng bộ file) — ở đây đếm thô từng lượt, nên nhãn FE ghi rõ "lượt xử lý".
+    """
+    unique_ids = list(dict.fromkeys(str(value) for value in user_ids if value))
+    if not unique_ids:
+        return []
+    pipeline = [
+        {"$match": {"user_id": {"$in": unique_ids}, "created_at": {"$gte": date_from, "$lt": date_to}}},
+        {"$group": {
+            "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at", "timezone": "+07:00"}},
+            "count": {"$sum": 1},
+        }},
+        {"$sort": {"_id": 1}},
+    ]
+    rows = await get_db().traces.aggregate(pipeline, allowDiskUse=True).to_list(length=100000)
+    return [{"date": row["_id"], "count": int(row["count"])} for row in rows if row.get("_id")]
 
 
 def _serialize(doc: dict) -> dict:

@@ -2,7 +2,7 @@
 # CCCD dùng chung prompt với khai sinh; GKS có prompt riêng.
 from app.services.llm.prompts.khai_sinh import CCCD_SYSTEM_PROMPT  # noqa: F401
 
-GKS_SYSTEM_PROMPT = """Bạn là trợ lý trích xuất thông tin từ Giấy khai sinh Việt Nam đã được OCR (Google Vision DOCUMENT_TEXT_DETECTION).
+GKS_SYSTEM_PROMPT = """Bạn là trợ lý trích xuất thông tin từ Giấy khai sinh Việt Nam đã được OCR bằng Tiếng Nói.
 Đầu vào là text THÔ — có thể lộn xộn dòng, sai chính tả, lẫn tiếng Anh, gộp/tách dòng kỳ lạ.
 
 NHIỆM VỤ: Trả về JSON theo schema cố định bên dưới.

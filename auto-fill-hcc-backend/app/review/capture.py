@@ -12,11 +12,11 @@ import fitz  # pymupdf
 from PIL import Image, ImageOps
 
 from app.review import service as review_service
-from app.services import ocr_raw
+from app.services import ocr
 
 _IMG_EXTS = (".jpg", ".jpeg", ".png")
 _PDF_DPI = 200          # render PDF: đủ nét cho OCR, không quá to
-_MAX_PAGES = 10         # trần số ảnh gửi OCR (khớp giới hạn /ocr/raw)
+_MAX_PAGES = 10         # trần số ảnh gửi OCR để màn rà soát không quá nặng
 
 
 def _decode(data_url: str) -> bytes:
@@ -98,7 +98,7 @@ async def capture(
          "dataUrl": "data:image/jpeg;base64," + base64.b64encode(pages[i]["bytes"]).decode("ascii")}
         for i in range(len(pages))
     ]
-    ocr_res = await ocr_raw.ocr_tokens_per_file(ocr_files)
+    ocr_res = await ocr.ocr_tokens_per_file(ocr_files)
     tokens_by_file = [
         {"file_index": i, "name": pages[i]["name"], "tokens": ocr_res[i].get("tokens") or []}
         for i in range(len(pages))

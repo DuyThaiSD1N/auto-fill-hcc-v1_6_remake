@@ -20,8 +20,8 @@ def _file(name, typ="image/jpeg"):
 @respx.mock
 async def test_dang_ky_dat_dai_compact_agent_derives_ui_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -83,8 +83,8 @@ async def test_dang_ky_dat_dai_falls_back_to_ocr_gcn_serial(monkeypatch):
         "Số vào sổ cấp giấy chứng nhận quyền sử dụng đất:",
         "H 0.0.2.0.6..",
     ])
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": ocr_text}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": ocr_text}] * 20})
     )
     out = {
         "fields": {

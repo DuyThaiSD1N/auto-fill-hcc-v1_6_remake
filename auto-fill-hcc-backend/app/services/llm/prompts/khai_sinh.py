@@ -1,6 +1,6 @@
 # Prompts cho thủ tục "Khai sinh". Port nguyên văn từ services/llm/khai-sinh/prompts.js.
 
-CCCD_SYSTEM_PROMPT = """Bạn là trợ lý trích xuất thông tin từ ảnh CCCD/CMND Việt Nam đã được OCR (Google Vision DOCUMENT_TEXT_DETECTION).
+CCCD_SYSTEM_PROMPT = """Bạn là trợ lý trích xuất thông tin từ ảnh CCCD/CMND Việt Nam đã được OCR bằng Tiếng Nói.
 Đầu vào của bạn là text thô — có thể là 1 mặt hoặc cả 2 mặt nối lại bằng "\\n---\\n".
 
 NHIỆM VỤ: Trích xuất các trường thông tin về JSON theo schema cố định bên dưới.
@@ -35,7 +35,7 @@ QUY TẮC NGẶT NGHÈO:
 }
 ```"""
 
-GCS_SYSTEM_PROMPT = """Bạn là trợ lý trích xuất thông tin TRẺ từ Giấy chứng sinh Việt Nam đã được OCR (Google Vision DOCUMENT_TEXT_DETECTION).
+GCS_SYSTEM_PROMPT = """Bạn là trợ lý trích xuất thông tin TRẺ từ Giấy chứng sinh Việt Nam đã được OCR bằng Tiếng Nói.
 Đầu vào là text THÔ — OCR có thể: dòng lộn xộn, sai chính tả từ khóa, gộp/tách dòng kỳ lạ, lẫn tiếng Anh, trùng lặp nội dung.
 
 NHIỆM VỤ: Trả về JSON theo schema cố định bên dưới.

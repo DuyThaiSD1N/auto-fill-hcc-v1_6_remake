@@ -13,6 +13,7 @@ class ExcelExportRequest(BaseModel):
     province: str | None = Field(default=None, max_length=120)
     officialOnly: bool = False
     accountIds: list[str] = Field(default_factory=list, max_length=200)
+    includeHandfree: bool = False
 
     @model_validator(mode="after")
     def validate_selection(self):

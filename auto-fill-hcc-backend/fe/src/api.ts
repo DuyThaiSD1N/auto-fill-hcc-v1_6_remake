@@ -7,6 +7,7 @@ import type {
   ReportOptionsResp,
   Role,
   StatsResp,
+  StatsSource,
   TraceDetail,
   TraceListResp,
   UserCreateBody,
@@ -158,12 +159,14 @@ export function getFacets(): Promise<Facets> {
 }
 
 export function getStats(
+  source: StatsSource,
   scope: "official" | "all",
   dateFrom?: string,
   dateTo?: string,
   signal?: AbortSignal,
 ): Promise<StatsResp> {
   const params = new URLSearchParams();
+  params.set("source", source);
   params.set("scope", scope);
   if (dateFrom) params.set("dateFrom", dateFrom);
   if (dateTo) params.set("dateTo", dateTo);

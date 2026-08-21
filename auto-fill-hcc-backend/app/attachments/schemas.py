@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.process.schemas import FileItem
 
@@ -52,3 +52,27 @@ class AttachmentPlanResp(BaseModel):
     # Mã hỗ trợ (request_id) trả về FE để cán bộ copy. KHÔNG khai báo ở đây thì response_model
     # sẽ LƯỢC MẤT field router gắn vào result → FE không hiện được chip mã hỗ trợ.
     requestId: str | None = None
+
+
+class ClientAttachmentFileMeta(BaseModel):
+    """Metadata file do extension tự đính; tuyệt đối không chứa nội dung file."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1)
+    type: str = "application/octet-stream"
+    role: str = "attachment"
+    size: int = Field(default=0, ge=0)
+
+
+class ClientAttachmentTraceReq(BaseModel):
+    """Ghi trace cho case đính kèm hoàn toàn tại trình duyệt."""
+
+    procedure: str
+    options: dict[str, Any] = Field(default_factory=dict)
+    files: list[ClientAttachmentFileMeta]
+    attachments: list[AttachmentPlanItem]
+
+
+class ClientAttachmentTraceResp(BaseModel):
+    requestId: str

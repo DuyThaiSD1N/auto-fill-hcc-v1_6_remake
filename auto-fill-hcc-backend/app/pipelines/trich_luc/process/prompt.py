@@ -204,6 +204,9 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   ghép các chữ số, bỏ số 0 ở đầu và trả số nguyên dương; KHÔNG diễn giải thành số thập phân.
 - Form điện tử thủ tục này KHÔNG có field Có/Không cấp bản sao: không trả CopyRequest_WantsCopy,
   không trả CapBanSao. Không có số lượng thì bỏ CopyRequest_Quantity; không tự mặc định số lượng 3.
+- CopyRequest_QuanHe lấy từ TỜ KHAI dòng "Quan hệ với người được cấp bản sao Giấy khai sinh/
+  Trích lục hộ tịch: ..." — trả ĐÚNG chữ ghi sau dấu hai chấm (vd "Mẹ đẻ", "Bố đẻ", "Bản thân",
+  "Con đẻ", "Vợ", "Chồng", "Ông", "Bà"). Không có dòng này thì bỏ qua, không suy diễn.
 </copy_request_rules>
 
 <chu_the_giay_to_tuy_than_rules>
@@ -223,7 +226,7 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 </chu_the_giay_to_tuy_than_rules>
 
 <do_not_return>
-- Không trả field quan hệ NYC_QuanHe; thủ tục này để người dùng tự chọn.
+- Không trả trực tiếp field UI NYC_QuanHe; quan hệ chỉ trả qua CopyRequest_QuanHe (mapper tự tick radio).
 - Không trả field UI/default như NYC_HoVaTen, HoVaTenC, NDK_HoVaTen, HoSo_LoaiYeuCau,
   HoSo_TenGiayTo, HoSo_So, HoSo_QuyenSo, HoSo_NgayCapSo, PhuongThucNhanKQ.
 - Không trả loại giấy tờ, loại cư trú, quốc tịch mặc định, radio trong/ngoài nước, hoặc số giấy tờ duplicate.

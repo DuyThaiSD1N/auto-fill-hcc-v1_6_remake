@@ -46,3 +46,27 @@ def normalize_document_name(raw: str, fallback: str = "Tài liệu chứng thự
     if not text:
         text = fallback
     return text[:50].strip() or "Tài liệu chứng thực"
+
+
+def sanitize_wallet_document_label(raw: str, fallback: str = "Tai_lieu") -> str:
+    """Chuẩn hóa NHÃN đưa vào ô 'Tên tài liệu' của ví giấy tờ ở cổng SIẾT CHẶT (Quảng Ninh...).
+
+    KHÁC `normalize_document_name`:
+    - KHÔNG cắt phần mở rộng: tên thành phần hồ sơ có thể chứa "/" (vd "Mẫu số 04/TK-SDDPNN"),
+      Path.stem sẽ cắt nhầm thành "TK-SDDPNN".
+    - Cổng này CHỈ nhận chữ cái/số/gạch dưới/gạch ngang (KHÔNG khoảng trắng) và tối đa 50 ký tự →
+      thay mọi ký tự khác (khoảng trắng, dấu phẩy, "/", ...) bằng "_". GIỮ chữ cái tiếng Việt
+      (thông báo "chữ cái" hàm ý cho phép Unicode letters). NFC để đếm ký tự đúng.
+    """
+    source = unicodedata.normalize("NFC", (raw or "").strip())
+    if not source:
+        source = fallback
+    chars: list[str] = []
+    for ch in source:
+        if unicodedata.category(ch) == "Mn":  # dấu tổ hợp còn sót sau NFC
+            continue
+        chars.append(ch if (ch.isalnum() or ch in {"_", "-"}) else "_")
+    text = re.sub(r"_+", "_", "".join(chars)).strip("_-")
+    if len(text) > 50:
+        text = text[:50].rstrip("_-")
+    return text or fallback

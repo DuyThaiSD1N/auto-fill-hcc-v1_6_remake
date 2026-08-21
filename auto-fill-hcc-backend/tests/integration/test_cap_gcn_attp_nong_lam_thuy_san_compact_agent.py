@@ -18,7 +18,7 @@ async def test_compact_agent_maps_sample_application_and_two_cccd_roles(monkeypa
     monkeypatch.setattr(settings, "openai_api_key", "")
 
     async def fake_ocr_per_file(files):
-        return [{"name": file["name"], "type": file["type"], "text": "OCR sample", "provider": "raw"} for file in files]
+        return [{"name": file["name"], "type": file["type"], "text": "OCR sample", "provider": "tiengnoi"} for file in files]
 
     monkeypatch.setattr("app.services.ocr.ocr_per_file", fake_ocr_per_file)
     compact = {

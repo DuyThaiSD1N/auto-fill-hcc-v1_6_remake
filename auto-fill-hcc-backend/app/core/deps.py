@@ -36,3 +36,19 @@ async def require_admin(user: dict = Depends(require_auth)) -> dict:
     if (user.get("role") or "user") != "admin":
         raise AppError("FORBIDDEN", "Chỉ quản trị viên mới được thực hiện thao tác này", 403)
     return user
+
+
+async def require_ward(user: dict = Depends(require_auth)) -> dict:
+    """Cổng cho BẢNG THỐNG KÊ PHƯỜNG (self-service của tài khoản phường).
+
+    Yêu cầu tài khoản đã được gán tỉnh + xã. Phạm vi số liệu về sau LUÔN khóa theo chính
+    user trong token (dashboard chỉ đếm trace của user_id này), endpoint KHÔNG nhận
+    xã/userId từ client — token phường A không thể đọc phường B dù sửa request tay.
+    """
+    if not (user.get("tinh") and user.get("xa")):
+        raise AppError(
+            "WARD_NOT_ASSIGNED",
+            "Tài khoản chưa được gán phường/xã. Liên hệ quản trị để cập nhật.",
+            403,
+        )
+    return user

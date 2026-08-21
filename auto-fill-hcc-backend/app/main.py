@@ -19,10 +19,12 @@ from app.procedures.router import router as procedures_router
 from app.process.router import router as process_router
 from app.review.router import router as review_router
 from app.reports.router import router as reports_router
+from app.dashboard.router import router as dashboard_router
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
 from app.upload_session.ws import router as upload_ws_router
 from app.users.router import router as users_router
+from app.v2.router import router as v2_router
 
 
 @asynccontextmanager
@@ -87,12 +89,14 @@ app.include_router(process_router)
 app.include_router(review_router)
 app.include_router(attachments_router)
 app.include_router(traces_router)
+app.include_router(dashboard_router)  # bảng thống kê phường (require_ward, khóa theo user_id)
 app.include_router(reports_router)
 app.include_router(users_router)
 app.include_router(locations_router)
 app.include_router(upload_session_router)
 app.include_router(upload_ws_router)
 app.include_router(consent_router)
+app.include_router(v2_router)
 
 # Asset tĩnh cho trang mobile QR:
 #  - /static/scanner/*  : bundle ESM scanner (build từ repo scanic-stream-mask, xem BUILD.md)

@@ -219,7 +219,7 @@ async def run(
         if r.get("text"):
             documents.append({"name": r.get("name"), "text": r["text"], "provider": r.get("provider")})
 
-    # OCR provider hiệu lực cho trace: nhiều provider (viết tay + raw) → "both".
+    # Giữ cách gom tổng quát vì DOCX có thể mang nhãn "docx+tiengnoi"; OCR ảnh/PDF là tiengnoi.
     _provs = {r.get("provider") for r in ocr_results if r.get("provider")}
     effective_provider = "both" if len(_provs) > 1 else (next(iter(_provs)) if _provs else None)
 
@@ -264,7 +264,7 @@ async def run(
         # Trace: gộp OCR text mọi file thành 1 chuỗi (header tên file, ngăn bằng ---)
         # và JSON thô LLM trả về. Dùng cho màn trace, không ảnh hưởng response /process.
         "ocr_text": join_ocr_documents(documents),
-        "ocr_provider": effective_provider,  # "raw" | "vintern" | "both" (theo per-file)
+        "ocr_provider": effective_provider,  # "tiengnoi" hoặc "docx+tiengnoi"
         "llm_output": llm_output,
         "reasoning_context": reasoning_context,
         "stats": {

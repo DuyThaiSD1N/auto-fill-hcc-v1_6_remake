@@ -196,8 +196,8 @@ def test_dang_ky_lai_rejects_unproven_copy_request_source():
 async def test_dang_ky_lai_compact_agent_derives_legacy_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -322,8 +322,8 @@ def test_dang_ky_lai_compact_prompt_instructs_issuer_detection():
 async def test_dang_ky_lai_compact_agent_defaults_cccd_issuer(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -362,8 +362,8 @@ async def test_dang_ky_lai_compact_agent_defaults_cccd_issuer(monkeypatch):
 async def test_dang_ky_lai_compact_agent_rejects_legacy_ui_keys(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -403,8 +403,8 @@ async def test_dang_ky_lai_compact_agent_rejects_legacy_ui_keys(monkeypatch):
 async def test_dang_ky_lai_compact_agent_maps_self_requester_from_paper_declaration(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
     monkeypatch.setattr(reason, "build_context", _no_reasoning_context)
-    respx.post(settings.ocr_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "..."}}]})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {

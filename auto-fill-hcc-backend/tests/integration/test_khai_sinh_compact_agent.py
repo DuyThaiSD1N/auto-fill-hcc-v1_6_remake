@@ -26,7 +26,6 @@ def _fields(values: dict) -> list[dict]:
 
 def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    monkeypatch.setattr(settings, "gemini_api_key", "")
 
 
 async def _fake_ocr_per_file(files):
@@ -37,8 +36,8 @@ async def _fake_ocr_per_file(files):
 async def test_khai_sinh_compact_agent_derives_angular_fields(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
     monkeypatch.setattr(ocr, "ocr_per_file", _fake_ocr_per_file)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "..."})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -430,8 +429,8 @@ def test_birth_place_known_mapping_stays_deterministic_in_mapper():
 async def test_khai_sinh_compact_agent_rejects_direct_ui_keys(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
     monkeypatch.setattr(ocr, "ocr_per_file", _fake_ocr_per_file)
-    respx.post(settings.ocr_raw_base_url.rstrip("/") + "/api/v1/ocr/raw").mock(
-        return_value=httpx.Response(200, json={"fullText": "..."})
+    respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {

@@ -33,7 +33,7 @@ async def test_dang_ky_giam_ho_attachment_routes_rows_and_paper_declaration(monk
             "uy-quyen.pdf": "VĂN BẢN ỦY QUYỀN thực hiện việc đăng ký giám hộ",
             "hon-nhan.pdf": "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN\nHọ tên: LÊ HUY CẬN",
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({"documents": []})

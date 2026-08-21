@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getStats } from "../api";
-import type { Role, StatsResp, StatsScope, StatsWard, User } from "../types";
+import type { Role, StatsResp, StatsScope, StatsSource, StatsWard, User } from "../types";
 import TopBar, { type View } from "../components/TopBar";
 
 type Preset = "all" | "today" | "7" | "30" | "custom";
@@ -24,6 +24,10 @@ const PRESETS: { key: Preset; label: string }[] = [
 const SCOPES: { key: StatsScope; label: string }[] = [
   { key: "official", label: "Hồ sơ thực tế" },
   { key: "all", label: "Tất cả hồ sơ" },
+];
+const SOURCES: { key: StatsSource; label: string }[] = [
+  { key: "autofill", label: "Auto Fill" },
+  { key: "handfree", label: "Handfree" },
 ];
 const ANALYSIS_TABS: { key: AnalysisTab; label: string }[] = [
   { key: "procedure", label: "Theo thủ tục" },
@@ -149,6 +153,7 @@ function presetRange(preset: Preset): { from?: string; to?: string } {
 }
 
 export default function Stats({ user, onLogout, view, onNavigate }: Props) {
+  const [source, setSource] = useState<StatsSource>("autofill");
   const [scope, setScope] = useState<StatsScope>("official");
   const [preset, setPreset] = useState<Preset>("all");
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>("procedure");
@@ -187,7 +192,7 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
     setData(null);
     try {
       // Gửi ngày thuần; BE đổi sang [00:00 ngày đầu, 00:00 ngày kế tiếp) theo giờ Việt Nam.
-      const res = await getStats(scope, range.from, range.to, controller.signal);
+      const res = await getStats(source, scope, range.from, range.to, controller.signal);
       if (sequence !== requestSequenceRef.current) return;
       setData(res);
     } catch (e) {
@@ -196,7 +201,7 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
     } finally {
       if (sequence === requestSequenceRef.current) setLoading(false);
     }
-  }, [range, scope]);
+  }, [range, scope, source]);
 
   useEffect(() => {
     load();
@@ -205,7 +210,7 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
 
   useEffect(() => {
     setProcedurePage(1);
-  }, [scope, preset, dateFrom, dateTo]);
+  }, [source, scope, preset, dateFrom, dateTo]);
 
   useEffect(() => {
     setAccountRoleFilter("all");
@@ -269,11 +274,34 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
       <div className="stats-head">
         <div>
           <h1 className="page-title">Thống kê hồ sơ</h1>
-          <p className="muted page-sub">Số hồ sơ riêng biệt theo tài khoản và thủ tục</p>
+          <p className="muted page-sub">
+            Số hồ sơ riêng biệt theo tài khoản và thủ tục · Nguồn {source === "autofill" ? "Auto Fill" : "Handfree"}
+          </p>
         </div>
       </div>
 
       <section className="stats-toolbar" aria-label="Bộ lọc thống kê">
+        <div className="stats-filter-group source-filter">
+          <span className="filter-label" id="stats-source-label">Nguồn dữ liệu</span>
+          <div className="seg" role="radiogroup" aria-labelledby="stats-source-label">
+            {SOURCES.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                role="radio"
+                aria-checked={source === item.key}
+                className={`seg-btn ${source === item.key ? "active" : ""}`}
+                onClick={() => setSource(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <span className="scope-helper">
+            {source === "autofill" ? "Bản chưa tích hợp giọng nói." : "Bản đã tích hợp giọng nói."}
+          </span>
+        </div>
+
         <div className="stats-filter-group">
           <span className="filter-label" id="stats-scope-label">Phạm vi số liệu</span>
           <div className="seg scope-seg" role="radiogroup" aria-labelledby="stats-scope-label">

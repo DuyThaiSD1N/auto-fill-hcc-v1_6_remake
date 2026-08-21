@@ -12,14 +12,14 @@ import asyncio
 import base64
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.config import settings
 from app.db.mongo import get_db
 
 logger = logging.getLogger(__name__)
 
-_KEY_VERSION = "v1"  # BUMP khi đổi engine/logic OCR để vô hiệu toàn bộ cache cũ
+_KEY_VERSION = "v2-tiengnoi"  # Không tái sử dụng cache từ kiến trúc nhiều provider cũ.
 
 # Giữ tham chiếu task ghi nền để không bị GC dọn giữa chừng.
 _bg_tasks: set[asyncio.Task] = set()
@@ -49,7 +49,13 @@ async def get_many(keys: list[str]) -> dict[str, dict]:
     if not keys or not settings.ocr_cache_enabled:
         return {}
     try:
-        cursor = get_db().ocr_cache.find({"_id": {"$in": keys}}, {"text": 1, "provider": 1})
+        # TTL monitor của Mongo chạy nền nên document có thể còn tồn tại một lúc sau khi hết hạn.
+        # Chặn ngay ở tầng đọc để cache quá TTL tuyệt đối không được tái sử dụng.
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.ocr_cache_ttl_hours)
+        cursor = get_db().ocr_cache.find(
+            {"_id": {"$in": keys}, "created_at": {"$gte": cutoff}},
+            {"text": 1, "provider": 1},
+        )
         return {
             d["_id"]: {"text": d.get("text", ""), "provider": d.get("provider")}
             async for d in cursor

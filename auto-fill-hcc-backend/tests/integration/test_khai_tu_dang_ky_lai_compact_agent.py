@@ -28,7 +28,7 @@ async def test_khai_tu_dang_ky_lai_derives_ui_fields(monkeypatch):
                 "name": f.get("name"),
                 "type": f.get("type"),
                 "text": "OCR text",
-                "provider": "raw",
+                "provider": "tiengnoi",
             }
             for f in files
         ]
@@ -185,7 +185,7 @@ CHAU<<VAN<MINH<<<<<<<<<<<<<<<<
 
     async def fake_ocr_per_file(files):
         return [
-            {"name": f.get("name"), "type": f.get("type"), "text": ocr_text, "provider": "gemini"}
+            {"name": f.get("name"), "type": f.get("type"), "text": ocr_text, "provider": "tiengnoi"}
             for f in files
         ]
 

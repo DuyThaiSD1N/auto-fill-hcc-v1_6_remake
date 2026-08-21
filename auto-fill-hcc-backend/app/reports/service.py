@@ -4,10 +4,12 @@ import re
 import unicodedata
 from datetime import datetime
 
+from app.config import settings
 from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.locations.catalog import canonical_location
 from app.reports.excel import build_excel
+from app.reports.handfree_client import fetch_handfree_stats
 from app.reports.schemas import ExcelExportRequest
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
@@ -81,7 +83,12 @@ def build_options(accounts: list[dict]) -> dict:
 
 
 async def options() -> dict:
-    return build_options(await _all_accounts())
+    result = build_options(await _all_accounts())
+    result["handfreeEnabled"] = bool(
+        settings.handfree_report_base_url.strip()
+        and settings.handfree_report_service_secret
+    )
+    return result
 
 
 def select_accounts(accounts: list[dict], body: ExcelExportRequest) -> list[dict]:
@@ -152,16 +159,26 @@ async def export_excel(body: ExcelExportRequest) -> tuple[bytes, str]:
         raise AppError("REPORT_DATE_REQUIRED", "Vui lòng nhập đầy đủ từ ngày và đến ngày.", 400)
     accounts = select_accounts(await _all_accounts(), body)
     account_ids = [str(account["_id"]) for account in accounts]
-    stats = await traces_repo.stats_by_user_ids(
-        user_ids=account_ids,
-        date_from=date_from,
-        date_to=date_to,
+    local_stats_task = traces_repo.stats_by_user_ids(
+        user_ids=account_ids, date_from=date_from, date_to=date_to,
     )
+    if body.includeHandfree:
+        stats, handfree_stats = await asyncio.gather(
+            local_stats_task,
+            fetch_handfree_stats(accounts, body),
+        )
+    else:
+        stats = await local_stats_task
+        handfree_stats = None
     data = await asyncio.to_thread(
         build_excel,
         accounts=accounts,
         stats=stats,
+        handfree_stats=handfree_stats,
         date_from=date_from,
         date_to=date_to,
     )
-    return data, _filename(body, accounts)
+    filename = _filename(body, accounts)
+    if body.includeHandfree:
+        filename = filename.removesuffix(".xlsx") + "_tong_hop.xlsx"
+    return data, filename

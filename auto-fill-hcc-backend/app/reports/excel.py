@@ -8,11 +8,12 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from app.procedures.registry import PROCEDURES
+from app.reports.integration import canonical_procedure_id, unit_key
 from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.traces.date_range import VIETNAM_TZ
 
 
-_HEADERS = [
+_LOCAL_HEADERS = [
     "STT",
     "Mã thủ tục",
     "Tên thủ tục",
@@ -20,7 +21,18 @@ _HEADERS = [
     "Phạm vi hỗ trợ",
     "Số lượng hồ sơ đã tiếp nhận",
 ]
-_WIDTHS = [6, 13, 62, 17, 34, 15]
+_COMBINED_HEADERS = [
+    "STT",
+    "Mã thủ tục",
+    "Tên thủ tục",
+    "Thủ tục thuộc cấp",
+    "Phạm vi hỗ trợ",
+    "Số lượng hồ sơ đã tiếp nhận (bản chưa tích hợp giọng nói)",
+    "Số lượng hồ sơ đã tiếp nhận (bản đã tích hợp giọng nói)",
+    "TỔNG SỐ HỒ SƠ",
+]
+_LOCAL_WIDTHS = [6, 13, 62, 17, 34, 15]
+_COMBINED_WIDTHS = [6, 13, 62, 17, 34, 22, 22, 16]
 _THIN = Side(style="thin", color="999999")
 _BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
 _HEADER_FILL = PatternFill("solid", fgColor="1F4E79")
@@ -48,23 +60,55 @@ def _display_date_range(date_from: datetime, date_to: datetime) -> str:
     return f"Từ ngày {first} đến hết ngày {last} (giờ Việt Nam)"
 
 
-def _procedure_rows(procedures: list[dict]) -> list[dict]:
+def _procedure_rows(
+    procedures: list[dict],
+    handfree_procedures: list[dict] | None = None,
+) -> list[dict]:
     registry = {item["key"]: item for item in PROCEDURES}
-    rows = []
+    combined = handfree_procedures is not None
+    rows_by_id: dict[str, dict] = {}
     for item in procedures:
         count = int(item.get("count") or 0)
         if count <= 0:
             continue
         key = item.get("key") or "—"
         entry = registry.get(key)
-        rows.append({
+        canonical_id = canonical_procedure_id(key, entry)
+        row = rows_by_id.setdefault(canonical_id, {
             "ma": ma_thu_tuc(entry),
             "ten": (entry or {}).get("label") or item.get("label") or key,
             "cap": cap_thu_tuc(key),
             "pham_vi": pham_vi_ho_tro(entry, key),
-            "count": count,
+            "auto_count": 0,
+            "handfree_count": 0,
         })
-    rows.sort(key=lambda row: (-row["count"], row["ten"]))
+        row["auto_count"] += count
+    for item in handfree_procedures or []:
+        count = int(item.get("count") or 0)
+        if count <= 0:
+            continue
+        key = str(item.get("procedureKey") or "").strip() or "—"
+        entry = registry.get(key)
+        canonical_id = (
+            str(item.get("canonicalProcedureId") or "").strip()
+            or canonical_procedure_id(key, entry)
+        )
+        row = rows_by_id.setdefault(canonical_id, {
+            "ma": item.get("procedureCode") or ma_thu_tuc(entry),
+            "ten": (entry or {}).get("label") or item.get("label") or key,
+            "cap": item.get("level") or cap_thu_tuc(key),
+            "pham_vi": item.get("supportScope") or pham_vi_ho_tro(entry, key),
+            "auto_count": 0,
+            "handfree_count": 0,
+        })
+        row["handfree_count"] += count
+
+    rows = list(rows_by_id.values())
+    for row in rows:
+        row["total"] = row["auto_count"] + row["handfree_count"]
+        if not combined:
+            row["count"] = row["auto_count"]
+    rows.sort(key=lambda row: (-row["total"], row["ten"]))
     return rows
 
 
@@ -73,16 +117,21 @@ def _write_sheet(
     *,
     account: dict,
     procedures: list[dict],
+    handfree_procedures: list[dict] | None,
     date_from: datetime,
     date_to: datetime,
     used_titles: set[str],
 ) -> None:
     worksheet = workbook.create_sheet(title=_sheet_title(account, used_titles))
-    for index, width in enumerate(_WIDTHS, start=1):
+    combined = handfree_procedures is not None
+    headers = _COMBINED_HEADERS if combined else _LOCAL_HEADERS
+    widths = _COMBINED_WIDTHS if combined else _LOCAL_WIDTHS
+    max_column = len(headers)
+    for index, width in enumerate(widths, start=1):
         worksheet.column_dimensions[get_column_letter(index)].width = width
 
     unit = account.get("name") or account.get("xa") or account.get("username") or "—"
-    worksheet.merge_cells("A1:F1")
+    worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_column)
     title = worksheet["A1"]
     title.value = "THỐNG KÊ HỒ SƠ TIẾP NHẬN QUA TRỢ LÝ HỖ TRỢ THỦ TỤC HÀNH CHÍNH"
     title.font = Font(bold=True, size=13)
@@ -95,13 +144,15 @@ def _write_sheet(
         _display_date_range(date_from, date_to),
     ]
     for row_index, value in enumerate(metadata, start=2):
-        worksheet.merge_cells(start_row=row_index, start_column=1, end_row=row_index, end_column=6)
+        worksheet.merge_cells(
+            start_row=row_index, start_column=1, end_row=row_index, end_column=max_column,
+        )
         cell = worksheet.cell(row=row_index, column=1, value=value)
         cell.font = Font(italic=row_index == 4, size=10)
         cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     header_row = 7
-    for column, header in enumerate(_HEADERS, start=1):
+    for column, header in enumerate(headers, start=1):
         cell = worksheet.cell(row=header_row, column=column, value=header)
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = _HEADER_FILL
@@ -110,16 +161,20 @@ def _write_sheet(
     worksheet.row_dimensions[header_row].height = 30
     worksheet.freeze_panes = f"A{header_row + 1}"
 
-    rows = _procedure_rows(procedures)
+    rows = _procedure_rows(procedures, handfree_procedures)
     current_row = header_row
     for index, row in enumerate(rows, start=1):
         current_row = header_row + index
-        values = [index, row["ma"], row["ten"], row["cap"], row["pham_vi"], row["count"]]
+        values = [index, row["ma"], row["ten"], row["cap"], row["pham_vi"]]
+        if combined:
+            values.extend([row["auto_count"], row["handfree_count"], row["total"]])
+        else:
+            values.append(row["count"])
         for column, value in enumerate(values, start=1):
             cell = worksheet.cell(row=current_row, column=column, value=value)
             cell.border = _BORDER
             cell.alignment = Alignment(
-                horizontal="center" if column in (1, 2, 4, 6) else "left",
+                horizontal="center" if column in (1, 2, 4) or column >= 6 else "left",
                 vertical="center",
                 wrap_text=True,
             )
@@ -130,7 +185,7 @@ def _write_sheet(
             start_row=current_row,
             start_column=1,
             end_row=current_row,
-            end_column=6,
+            end_column=max_column,
         )
         cell = worksheet.cell(
             row=current_row,
@@ -145,10 +200,23 @@ def _write_sheet(
     total_label = worksheet.cell(row=total_row, column=1, value="TỔNG CỘNG")
     total_label.font = Font(bold=True)
     total_label.alignment = Alignment(horizontal="center", vertical="center")
-    total_value = worksheet.cell(row=total_row, column=6, value=sum(row["count"] for row in rows))
-    total_value.font = Font(bold=True)
-    total_value.alignment = Alignment(horizontal="center", vertical="center")
-    for column in range(1, 7):
+    if combined:
+        totals = [
+            sum(row["auto_count"] for row in rows),
+            sum(row["handfree_count"] for row in rows),
+            sum(row["total"] for row in rows),
+        ]
+        for column, value in enumerate(totals, start=6):
+            cell = worksheet.cell(row=total_row, column=column, value=value)
+            cell.font = Font(bold=True)
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+    else:
+        total_value = worksheet.cell(
+            row=total_row, column=6, value=sum(row["count"] for row in rows),
+        )
+        total_value.font = Font(bold=True)
+        total_value.alignment = Alignment(horizontal="center", vertical="center")
+    for column in range(1, max_column + 1):
         cell = worksheet.cell(row=total_row, column=column)
         cell.border = _BORDER
         cell.fill = _TOTAL_FILL
@@ -158,6 +226,7 @@ def build_excel(
     *,
     accounts: list[dict],
     stats: dict,
+    handfree_stats: dict | None = None,
     date_from: datetime,
     date_to: datetime,
 ) -> bytes:
@@ -165,13 +234,23 @@ def build_excel(
     workbook = Workbook()
     workbook.remove(workbook.active)
     wards = {item["userId"]: item for item in stats.get("wards") or []}
+    handfree_units = {
+        item.get("unitKey"): item
+        for item in (handfree_stats or {}).get("units") or []
+        if item.get("unitKey")
+    }
     used_titles: set[str] = set()
     for account in accounts:
         account_id = str(account["_id"])
+        handfree_unit = handfree_units.get(unit_key(account.get("tinh"), account.get("xa")))
         _write_sheet(
             workbook,
             account=account,
             procedures=(wards.get(account_id) or {}).get("procedures") or [],
+            handfree_procedures=(
+                (handfree_unit or {}).get("procedures") or []
+                if handfree_stats is not None else None
+            ),
             date_from=date_from,
             date_to=date_to,
             used_titles=used_titles,

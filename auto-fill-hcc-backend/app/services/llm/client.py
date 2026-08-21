@@ -40,7 +40,10 @@ async def _chat_primary(messages: list[dict], temperature: float, max_tokens: in
         "stream": False,
         "chat_template_kwargs": {"enable_thinking": enable_thinking},
     }
-    url = settings.llm_base_url.rstrip("/") + "/v1/chat/completions"
+    # Base có thể kèm sẵn "/v1" (vd https://llm.tiengnoi.vn/qwen35/v1) hoặc không (vd .../llm);
+    # tránh nối "/v1" lần hai gây 404 {"detail":"Not Found"} rồi rơi hết sang OpenAI fallback.
+    base = settings.llm_base_url.rstrip("/")
+    url = base + ("/chat/completions" if base.endswith("/v1") else "/v1/chat/completions")
     async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
         r = await client.post(url, json=payload)
     if r.status_code >= 400:

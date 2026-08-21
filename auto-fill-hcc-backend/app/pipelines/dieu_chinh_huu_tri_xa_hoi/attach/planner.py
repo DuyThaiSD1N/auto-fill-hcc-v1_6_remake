@@ -22,6 +22,20 @@ SLOT = {
     "detectedType": "Văn bản đề nghị trợ cấp hưu trí xã hội",
 }
 
+# CCCD/giấy tờ tùy thân KHÔNG có ô cố định → đính qua nút "Thêm giấy tờ" (modal app-add-form của cổng BYT).
+# componentName phải KHỚP (fold-substring) nhãn option "Giấy tờ" trong autocomplete của modal.
+CCCD_ADD = {
+    "target": "add-document-dialog",
+    "componentName": (
+        "Một trong các giấy tờ có ảnh sau đây: Chứng minh nhân dân; Căn cước công dân; "
+        "Hộ chiếu còn hiệu lực"
+    ),
+    "loaiBan": "Bản chính",
+    "quantity": 1,
+    "documentName": "Giấy tờ tùy thân có ảnh (CCCD/CMND/Hộ chiếu)",
+    "detectedType": "Giấy tờ tùy thân có ảnh",
+}
+
 
 def is_excluded_document(text: str, file_name: str = "") -> bool:
     """Giấy tờ tùy thân không đính ở bước này."""
@@ -119,10 +133,35 @@ def _build_item(file: dict, file_index: int) -> dict:
     }
 
 
+def _build_add_document_item(file: dict, file_index: int) -> dict:
+    """CCCD → tạo hàng qua modal 'Thêm giấy tờ' rồi upload (target add-document-dialog)."""
+    file_name = str(file.get("name") or f"file-{file_index + 1}")
+    return {
+        "fileIndex": file_index,
+        "fileName": file_name,
+        "documentName": CCCD_ADD["documentName"],
+        "componentName": CCCD_ADD["componentName"],
+        "target": CCCD_ADD["target"],
+        "loaiBan": CCCD_ADD["loaiBan"],
+        "quantity": CCCD_ADD["quantity"],
+        "needsAddComponent": True,
+        "detectedType": CCCD_ADD["detectedType"],
+    }
+
+
+def _supports_add_document(options: dict | None) -> bool:
+    """Extension bản mới báo năng lực qua options.attachSupports. Bản CŨ không gửi → False → giữ hành vi cũ
+    (bỏ CCCD) để không phát target 'add-document-dialog' mà extension cũ chưa xử lý được (tránh lỗi 'target
+    chưa hỗ trợ trong luồng hỗn hợp')."""
+    caps = (options or {}).get("attachSupports") or []
+    return isinstance(caps, (list, tuple)) and "add-document-dialog" in caps
+
+
 def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
     llm_slots: dict[int, str] | None = None,
+    support_add_doc: bool = False,
 ) -> tuple[list[dict], list[str]]:
     llm_slots = llm_slots or {}
     by_name = {item.get("name"): item for item in ocr_results}
@@ -137,7 +176,14 @@ def build_plan_items(
             items.append(_build_item(file, idx))
             continue
         if is_excluded_document(text, file_name):
-            warnings.append(f"File '{file_name}' là giấy tờ tùy thân — không đính kèm ở bước này, đã bỏ qua.")
+            if support_add_doc:
+                # Extension mới: CCCD đính qua nút "Thêm giấy tờ" (modal).
+                items.append(_build_add_document_item(file, idx))
+            else:
+                # Extension cũ chưa hỗ trợ modal → giữ hành vi cũ, bỏ qua (không gây lỗi luồng hỗn hợp).
+                warnings.append(
+                    f"File '{file_name}' là giấy tờ tùy thân — không đính kèm ở bước này, đã bỏ qua."
+                )
         else:
             warnings.append(f"Không xác định được file '{file_name}' là văn bản đề nghị hưu trí xã hội — bỏ qua.")
 
@@ -151,7 +197,7 @@ async def plan(
 ) -> dict:
     """Entry point đính kèm cho dieu-chinh-huu-tri-xa-hoi."""
     _ = session
-    _ = options or {}
+    support_add_doc = _supports_add_document(options)
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
@@ -181,7 +227,7 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings = build_plan_items(raw_files, ocr_results, llm_slots)
+    attachments, warnings = build_plan_items(raw_files, ocr_results, llm_slots, support_add_doc)
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
     ocr_text = "\n\n---\n\n".join(

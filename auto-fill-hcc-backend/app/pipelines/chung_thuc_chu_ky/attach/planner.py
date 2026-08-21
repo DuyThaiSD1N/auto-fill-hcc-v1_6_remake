@@ -191,7 +191,7 @@ async def plan(
     from app.services import attach_classify
 
     t0 = time.monotonic()
-    # OCR cho phân loại: cắt 2 trang đầu + provider tiengnoi (thử nghiệm) / fallback raw — module riêng.
+    # OCR cho phân loại: cắt phần đầu rồi gọi Tiếng Nói qua module riêng.
     ocr_results = await attach_classify.ocr_for_classify(ocr_files) if ocr_files else []
     ocr_ms = int((time.monotonic() - t0) * 1000)
     for r in ocr_results:

@@ -4,7 +4,12 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 
-from app.attachments.schemas import AttachmentPlanReq, AttachmentPlanResp
+from app.attachments.schemas import (
+    AttachmentPlanReq,
+    AttachmentPlanResp,
+    ClientAttachmentTraceReq,
+    ClientAttachmentTraceResp,
+)
 from app.config import settings
 from app.core.deps import require_auth
 from app.core.errors import AppError
@@ -96,8 +101,7 @@ async def _save_attach_trace(
         kind="attach",  # bước đính kèm — phân biệt với autofill trên màn trace
         stats=result.get("stats"), total_bytes=total_bytes,
         procedure=body.procedure, procedure_label=proc.get("label"),
-        # Nhãn engine THẬT: OCR_BY_TIENGNOI bật → tiengnoi (vintern-v6); tắt → "raw" (→ Gemini nếu RAW_BY_GEMINI).
-        ocr_provider=ocr.resolved_label(None if settings.ocr_by_tiengnoi else "raw"),
+        ocr_provider=ocr.resolved_label(),
         ocr_text=result.get("ocr_text", ""),
         # Lưu kế hoạch đính kèm để xem chi tiết (file → tài liệu → ô/component đích).
         llm_output={"attachments": plan, "extracted": result.get("extracted")},
@@ -113,9 +117,6 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
         raise AppError("UNKNOWN_ATTACHMENT_PROCEDURE", f"Thủ tục đính kèm không hợp lệ: {body.procedure}", 400)
     if not body.files:
         raise AppError("NO_FILES", "Không có file nào", 400)
-
-    # Bước đính kèm luôn dùng OCR raw vnekyc, không phụ thuộc option "Có bản viết tay".
-    ocr.use_provider("raw")
 
     max_file = settings.max_file_size_mb * 1024 * 1024
     max_total = settings.max_total_payload_mb * 1024 * 1024
@@ -155,3 +156,108 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
         return result
 
     raise AppError("UNSUPPORTED_ATTACHMENT_PROCEDURE", f"Chưa hỗ trợ plan đính kèm cho {body.procedure}", 400)
+
+
+@router.post("/client-trace", response_model=ClientAttachmentTraceResp)
+async def create_client_attachment_trace(
+    body: ClientAttachmentTraceReq,
+    user: dict = Depends(require_auth),
+) -> dict:
+    """Sinh mã hỗ trợ cho case FE tự đính, không nhận/lưu binary hay dataUrl.
+
+    Chỉ thủ tục khai báo ``clientAttachmentCase`` trong registry mới được gọi endpoint
+    này. Guard đó giữ luồng metadata-only cô lập, tránh một thủ tục OCR vô tình bỏ qua
+    pipeline phân loại tài liệu ở backend.
+    """
+    proc = get_procedure(body.procedure)
+    client_case = proc.get("clientAttachmentCase") if proc else None
+    if not proc or not isinstance(client_case, dict):
+        raise AppError(
+            "UNKNOWN_CLIENT_ATTACHMENT_PROCEDURE",
+            f"Thủ tục không hỗ trợ đính kèm cục bộ: {body.procedure}",
+            400,
+        )
+    if not body.files:
+        raise AppError("NO_FILES", "Không có metadata file nào", 400)
+    if len(body.attachments) != len(body.files):
+        raise AppError(
+            "CLIENT_ATTACHMENT_PLAN_MISMATCH",
+            "Số kế hoạch đính kèm phải bằng số file",
+            400,
+        )
+
+    component_name = str(client_case.get("componentName") or "").strip()
+    component_index = int(client_case.get("componentIndex") or 0)
+    plan = [item.model_dump(mode="json") for item in body.attachments]
+    seen_indexes: set[int] = set()
+    for item in plan:
+        file_index = item.get("fileIndex")
+        if not isinstance(file_index, int) or not 0 <= file_index < len(body.files):
+            raise AppError("BAD_CLIENT_ATTACHMENT_INDEX", "Chỉ số file trong kế hoạch không hợp lệ", 400)
+        if file_index in seen_indexes:
+            raise AppError("DUPLICATE_CLIENT_ATTACHMENT_INDEX", "Một file bị khai báo đính kèm nhiều lần", 400)
+        seen_indexes.add(file_index)
+        if (
+            item.get("componentName") != component_name
+            or item.get("componentIndex") != component_index
+            or item.get("target") != "existing"
+            or item.get("needsAddComponent") is not False
+        ):
+            raise AppError(
+                "CLIENT_ATTACHMENT_TARGET_MISMATCH",
+                "Kế hoạch đính kèm không đúng thành phần hồ sơ đã cấu hình",
+                400,
+            )
+
+    request_id = "req_" + uuid.uuid4().hex[:12]
+    created_at = datetime.now(timezone.utc)
+    options = body.options or {}
+    # Case này luôn là N file = N hồ sơ/tab; không tin cờ split từ client.
+    split = client_case.get("type") == "single-row-local-split"
+    files_meta = [
+        {
+            "name": item.name,
+            "type": item.type,
+            "role": item.role,
+            "size": item.size,
+            "sha256": None,
+        }
+        for item in body.files
+    ]
+    attachments, dossier_ids = build_attach_trace_metadata(
+        request_id=request_id,
+        session_id=str(options.get("sessionId") or options.get("requestId") or "").strip() or None,
+        procedure=body.procedure,
+        split=split,
+        plan=plan,
+        files_meta=files_meta,
+    )
+    await traces_repo.create_trace(
+        request_id=request_id,
+        user_id=user["id"],
+        username=user.get("username"),
+        name=user.get("name"),
+        applicant_name=resolve_applicant_name(options, {"attachments": plan}),
+        attachments=attachments,
+        split=split,
+        stats_version=2,
+        dossier_ids=dossier_ids,
+        kind="attach",
+        stats={"ocr_latency_ms": 0, "llm_latency_ms": 0, "total_latency_ms": 0},
+        total_bytes=sum(item.size for item in body.files),
+        procedure=body.procedure,
+        procedure_label=proc.get("label"),
+        ocr_provider=None,
+        ocr_text="",
+        llm_output={
+            "attachments": plan,
+            "extracted": {
+                "documents": [item.name for item in body.files],
+                "clientAttachmentCase": client_case.get("type"),
+            },
+        },
+        fields_count=len(plan),
+        status="done",
+        created_at=created_at,
+    )
+    return {"requestId": request_id}

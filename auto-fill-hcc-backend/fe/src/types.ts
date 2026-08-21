@@ -125,6 +125,7 @@ export interface StatsWard {
 }
 
 export type StatsScope = "official" | "all";
+export type StatsSource = "autofill" | "handfree";
 
 export interface StatsResp {
   scope: StatsScope;
@@ -163,6 +164,7 @@ export interface ReportAccount {
 export interface ReportOptionsResp {
   provinces: ReportProvinceOption[];
   accounts: ReportAccount[];
+  handfreeEnabled?: boolean;
 }
 
 export type ReportSelectionMode = "province" | "accounts";
@@ -174,6 +176,7 @@ export interface ReportExportBody {
   province?: string;
   officialOnly?: boolean;
   accountIds?: string[];
+  includeHandfree?: boolean;
 }
 
 export interface DownloadResult {

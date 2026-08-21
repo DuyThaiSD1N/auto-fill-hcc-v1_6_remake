@@ -110,6 +110,28 @@ def _copy_quantity(value) -> str:
     return str(int(digits)) if digits and int(digits) > 0 else ""
 
 
+# Quan hệ trên tờ khai được chuẩn hóa về đúng nhãn radio trên cổng. Không nhận "ba" trần vì sau
+# khi fold dấu nó có thể là "bà" hoặc cách gọi "bố"; bỏ trống an toàn hơn tick nhầm quan hệ.
+_QUANHE_OPTIONS = {
+    "ban than": "Bản thân", "chinh minh": "Bản thân", "tu khai": "Bản thân",
+    "tu ban than": "Bản thân", "con": "Con Đẻ", "con de": "Con Đẻ",
+    "con ruot": "Con Đẻ", "con nuoi": "Con nuôi", "vo": "Vợ", "chong": "Chồng",
+    "bo": "Bố Đẻ", "cha": "Bố Đẻ", "bo de": "Bố Đẻ", "cha de": "Bố Đẻ",
+    "bo ruot": "Bố Đẻ", "cha ruot": "Bố Đẻ", "bo nuoi": "Bố nuôi",
+    "cha nuoi": "Bố nuôi", "me": "Mẹ đẻ", "me de": "Mẹ đẻ",
+    "me ruot": "Mẹ đẻ", "me nuoi": "Mẹ nuôi", "ba noi": "Bà", "ba ngoai": "Bà",
+    "ong": "Ông", "ong noi": "Ông", "ong ngoai": "Ông", "anh": "Anh ruột",
+    "anh ruot": "Anh ruột", "anh trai": "Anh ruột", "chi": "Chị ruột",
+    "chi ruot": "Chị ruột", "chi gai": "Chị ruột", "chau": "Cháu ruột",
+    "chau ruot": "Cháu ruột", "chau noi": "Cháu ruột", "chau ngoai": "Cháu ruột",
+    "khac": "Khác",
+}
+
+
+def _quanhe_option(value) -> str:
+    return _QUANHE_OPTIONS.get(_fold(value).strip(".:;,- "), "")
+
+
 def _civil_status_document_name(values: dict, event_type: str) -> str:
     """Tờ khai là nguồn yêu cầu, không phải tên giấy hộ tịch cần cấp bản sao."""
     name = str(values.get("HoTich_TenGiayTo") or "").strip()
@@ -647,6 +669,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # Không bịa default cho NYC_*: chỉ phát field đọc được từ tờ khai/CCCD. Có dữ liệu thì extension
     # GHI ĐÈ lên thông tin VNeID điền sẵn; không có thì giữ nguyên phần cổng đã tự điền.
+
+    quanhe = _quanhe_option(values.get("CopyRequest_QuanHe"))
+    if quanhe:
+        add("NYC_QuanHe", quanhe)
 
     # Form chỉ có ô số lượng, không có radio Có/Không cấp bản sao.
     copy_quantity = _copy_quantity(values.get("CopyRequest_Quantity"))

@@ -1,8 +1,7 @@
 """Module RIÊNG cho bước PHÂN LOẠI TÀI LIỆU ĐÍNH KÈM (chỉ path attach, không đụng form-fill).
 
 Gộp 2 tối ưu, tất cả tunable qua settings:
-- OCR nhanh: cắt N trang đầu (pdf_utils) + provider chọn qua cờ `attach_classify_ocr`
-  (tiengnoi batch — thử nghiệm; lỗi → tự fallback về dispatcher raw).
+- OCR nhanh: cắt N trang đầu (pdf_utils) rồi OCR batch bằng Tiếng Nói.
 - LLM classify NÉN: input cắt ngắn + output rút gọn {"d":[{"t","n"}]} (bỏ index, map theo THỨ TỰ).
 
 Thủ tục chỉ cung cấp phần thân prompt (persona + rule + loại giấy tờ); module tự gắn output_contract.
@@ -11,7 +10,7 @@ import json
 import re
 
 from app.config import settings
-from app.services import ocr_raw, ocr_tiengnoi
+from app.services import ocr_tiengnoi
 from app.services.llm import client
 from app.services.pdf_utils import trim_files_for_classify
 
@@ -95,6 +94,7 @@ async def ocr_for_classify(files: list[dict]) -> list[dict]:
             results.append({
                 "name": (f or {}).get("name"), "type": (f or {}).get("type"),
                 "text": cached[k]["text"],
+                "provider": "tiengnoi",
             })
         else:
             results.append(next(fresh_iter))
@@ -102,28 +102,23 @@ async def ocr_for_classify(files: list[dict]) -> list[dict]:
 
 
 async def _ocr_trimmed(files: list[dict]) -> list[dict]:
-    """OCR cắt N trang đầu + chọn MODE (độc lập cờ RAW_BY_GEMINI toàn cục):
-    - "tiengnoi": vintern-v5 (batch 1 request). Lỗi/down → fallback Vision vnekyc.
-    - "vnekyc"/"raw": gọi THẲNG ocr_raw, KHÔNG qua dispatcher nên KHÔNG bị RAW_BY_GEMINI đổi.
-    """
+    """OCR phần đầu tài liệu bằng Tiếng Nói, không fallback provider khác."""
     trimmed = trim_files_for_classify(files, settings.attach_classify_max_pages)
-    if settings.attach_classify_ocr == "tiengnoi":
-        results = None
-        try:
-            results = await ocr_tiengnoi.ocr_per_file(trimmed)
-        except Exception:  # noqa: BLE001 — tiengnoi raise (down/timeout) → fallback toàn bộ sang raw
-            results = None
-        if results is not None:
-            # tiengnoi lúc quá tải trả ok=true nhưng text RỖNG (không raise) → phải fallback raw CHO
-            # TỪNG file rỗng, nếu không cả lô thành generic. Chỉ ghi đè khi raw đọc ra text thật.
-            empty_idx = [i for i, r in enumerate(results) if not (str(r.get("text") or "")).strip()]
-            if empty_idx:
-                try:
-                    raw_res = await ocr_raw.ocr_per_file([trimmed[i] for i in empty_idx])
-                    for j, i in enumerate(empty_idx):
-                        if j < len(raw_res) and str(raw_res[j].get("text") or "").strip():
-                            results[i] = raw_res[j]
-                except Exception:  # noqa: BLE001 — raw cũng lỗi → giữ kết quả tiengnoi (rỗng), không chặn
-                    pass
-            return results
-    return await ocr_raw.ocr_per_file(trimmed)
+    try:
+        results = await ocr_tiengnoi.ocr_per_file(
+            trimmed, max_tokens=settings.ocr_tiengnoi_max_tokens
+        )
+    except Exception as exc:  # noqa: BLE001 — trả lỗi per-file, không fallback
+        return [
+            {
+                "name": item.get("name"),
+                "type": item.get("type"),
+                "text": "",
+                "error": f"OCR Tiếng Nói: {exc}",
+                "provider": "tiengnoi",
+            }
+            for item in trimmed
+        ]
+    for item in results:
+        item["provider"] = "tiengnoi"
+    return results

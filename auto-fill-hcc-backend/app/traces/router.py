@@ -19,6 +19,7 @@ from app.config import settings
 from app.core.deps import require_admin
 from app.core.errors import AppError
 from app.process import requests_repo
+from app.reports.handfree_client import fetch_handfree_dashboard_stats
 from app.traces import repo
 from app.traces.date_range import parse_stats_range
 
@@ -75,8 +76,15 @@ async def stats(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     scope: Literal["all", "official"] = Query("all"),
+    source: Literal["autofill", "handfree"] = Query("autofill"),
 ):
     start, end = _parse_stats_range(dateFrom, dateTo)
+    if source == "handfree":
+        return await fetch_handfree_dashboard_stats(
+            scope=scope,
+            date_from=dateFrom,
+            date_to=dateTo,
+        )
     return await repo.stats(date_from=start, date_to=end, scope=scope)
 
 

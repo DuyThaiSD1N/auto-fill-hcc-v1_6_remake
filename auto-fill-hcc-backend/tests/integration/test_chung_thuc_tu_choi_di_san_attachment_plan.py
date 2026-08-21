@@ -23,7 +23,7 @@ async def test_tu_choi_di_san_routes_draft_and_groups_required_supporting_docs(m
             "cccd.pdf": "CĂN CƯỚC CÔNG DÂN\nSố / No.: 012173002914\nIDVNM173002914",
             "trich-luc-khai-tu.pdf": "TRÍCH LỤC KHAI TỬ\nNgười chết: Nguyễn Văn A\nNgày chết: 24/08/2025",
         }
-        return [{"name": f["name"], "text": texts[f["name"]], "provider": "gemini"} for f in files]
+        return [{"name": f["name"], "text": texts[f["name"]], "provider": "tiengnoi"} for f in files]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({
@@ -71,7 +71,7 @@ async def test_tu_choi_di_san_identity_only_still_goes_to_required_row2(monkeypa
         return [{
             "name": "can-cuoc.pdf",
             "text": "CĂN CƯỚC\nSố định danh cá nhân: 025085013037\nHọ tên: TRẦN THANH BÌNH",
-            "provider": "gemini",
+            "provider": "tiengnoi",
         }]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
@@ -90,7 +90,7 @@ async def test_tu_choi_di_san_identity_only_still_goes_to_required_row2(monkeypa
 
 async def test_tu_choi_di_san_authorization_adds_new_component(monkeypatch):
     async def fake_ocr_per_file(files):
-        return [{"name": "uy-quyen.pdf", "text": "VĂN BẢN ỦY QUYỀN\nBên ủy quyền, bên được ủy quyền.", "provider": "gemini"}]
+        return [{"name": "uy-quyen.pdf", "text": "VĂN BẢN ỦY QUYỀN\nBên ủy quyền, bên được ủy quyền.", "provider": "tiengnoi"}]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
         return json.dumps({"documents": [{"index": 0, "type": "other", "title": "Tài liệu khác"}]})
@@ -137,4 +137,3 @@ def test_tu_choi_di_san_prompt_uses_ocr_text_only():
     assert "VĂN BẢN TỪ CHỐI NHẬN DI SẢN" in user_prompt
     assert "van-ban-tu-choi.pdf" not in user_prompt
     assert "fileName" not in user_prompt
-

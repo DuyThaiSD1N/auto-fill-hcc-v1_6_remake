@@ -86,9 +86,8 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         raise AppError("PAYLOAD_TOO_LARGE",
                        f"Tổng payload vượt quá {settings.max_total_payload_mb}MB", 413)
 
-    # Chọn OCR provider theo option "Có bản viết tay": có -> Vintern, không -> raw (mặc định).
-    ocr_provider = ocr.provider_from_options(body.options)
-    ocr.use_provider(ocr_provider)
+    # Backend chỉ có một provider OCR Tiếng Nói; option viết tay không đổi engine.
+    ocr_provider = ocr.resolved_label()
 
     # Thủ tục bật rà soát bbox → báo pipeline chụp tokens+bbox (Kiểu A, tính lúc process).
     pipeline_options = dict(body.options or {})

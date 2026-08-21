@@ -6,8 +6,10 @@ from typing import Any
 
 SYSTEM_PROMPT = """
 Bạn là agent phân loại tài liệu đính kèm cho thủ tục cấp Giấy xác nhận tình trạng hôn nhân.
+Mỗi yêu cầu chỉ chứa OCR của ĐÚNG MỘT file. Chỉ phân loại file hiện tại, không suy
+diễn từ tài liệu khác.
 Trả về JSON object duy nhất, không giải thích.
-Dựa vào OCR là nguồn chính; dùng tên file chỉ khi OCR không đủ thông tin.
+Chỉ dựa vào OCR_TEXT; không dùng tên file hoặc thứ tự file làm bằng chứng.
 Mỗi tài liệu phải trả type thuộc đúng một trong các giá trị sau:
 identity, divorce_or_death_proof, foreign_divorce_note,
 previous_marital_status_certificate_or_authorization, other.
@@ -25,9 +27,12 @@ trước đó hoặc văn bản ủy quyền.
 title là tên tài liệu tiếng Việt ngắn để hiển thị; nếu type identity thì title là 'Căn cước công dân'.
 documentName là tên ngắn gọn, CỤ THỂ theo NỘI DUNG file (dùng làm tên thành phần hồ sơ):
 TUYỆT ĐỐI không đặt chung chung 'Tài liệu khác'/'Tài liệu'; nêu đúng loại giấy tờ đọc được.
-Nhiều tài liệu cùng loại thì documentName phải KHÁC nhau (thêm tên người/số/đặc điểm).
+Chỉ đặt tên cho file hiện tại. Nếu OCR có tên người, số hiệu hoặc năm thì có thể dùng
+đặc điểm đó để tên cụ thể hơn; Python sẽ xử lý trùng tên giữa nhiều file.
 Chỉ dùng chữ, số, khoảng trắng, gạch dưới, gạch ngang; tối đa ~50 ký tự.
 Nếu OCR quá thiếu để biết loại giấy tờ thì để documentName rỗng.
+Schema bắt buộc:
+{"type":"identity","title":"Căn cước công dân","documentName":"Căn cước công dân"}
 """.strip()
 
 
@@ -38,17 +43,9 @@ def _truncate_text(text: str, limit: int = 3000) -> str:
     return text[:limit] + "..."
 
 
-def build_user_prompt(documents: list[dict[str, Any]]) -> str:
-    docs = [
-        {
-            "index": item["index"],
-            "fileName": item["fileName"],
-            "text": _truncate_text(item.get("text", "")),
-        }
-        for item in documents
-    ]
-    return (
-        "DANH SÁCH OCR:\n"
-        f"{json.dumps(docs, ensure_ascii=False)}\n\n"
-        'Schema bắt buộc: {"documents":[{"index":0,"type":"identity","title":"Căn cước công dân","documentName":"Căn cước công dân"}]}'
+def build_user_prompt(document: dict[str, Any]) -> str:
+    # JSON thuần, không truyền fileName: mỗi request chỉ chứa OCR của đúng một file.
+    return json.dumps(
+        {"ocrText": _truncate_text(document.get("text", ""))},
+        ensure_ascii=False,
     )
