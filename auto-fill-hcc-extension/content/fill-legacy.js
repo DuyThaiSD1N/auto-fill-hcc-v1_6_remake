@@ -69,7 +69,8 @@ async function fillForm(fields) {
   const result = { filled: 0, notFound: [], errors: [] };
   const filledNames = new Set();
 
-  for (const f of fields) {
+  const orderedFields = orderLegacyFields(fields);
+  for (const f of orderedFields) {
     // Tên cần thử: name chính + các alias (form khác phiên bản có thể đổi tên field).
     const candidates = fieldCandidates(f);
 
@@ -104,7 +105,10 @@ async function fillForm(fields) {
         case "x-date-text": ok = fillDateText(container, ff); break;
         case "x-radio":
           ok = fillRadio(container, ff);
-          if (ok) await sleep(200); // chờ vùng phụ thuộc (vd địa danh) render
+          // Ô quan hệ kéo theo cả khối người yêu cầu → chờ cổng đổ xong mới điền đè,
+          // các radio khác chỉ cần đợi vùng phụ thuộc (vd địa danh) render.
+          if (ok && f.name === RELATIONSHIP_RADIO_NAME) await waitRequesterBlockSettled();
+          else if (ok) await sleep(200);
           break;
         case "x-select": ok = await fillSelect(container, ff); break;
         case "x-select-default": ok = await fillSelectDefault(container, ff); break;
@@ -131,6 +135,8 @@ async function fillForm(fields) {
   // xoá mất ô text/date đã điền (vd Họ tên / ngày sinh con). Chờ ổn định rồi điền LẠI ô nào bị trống.
   await sleep(400);
   await reapplyEmptyTextFields(fields);
+  // Khối người yêu cầu: điền đè (không chỉ khi rỗng) vì cổng ghi dữ liệu VNeID của chính nó vào đây.
+  await reapplyRequesterFields(fields);
   await applyLegacyMirrorFields(fields, result, filledNames);
   // Pass 3: x-date-text trong eform render ô con (day/month/year) TRỄ → thử lại có chờ.
   await retryLateDateTextFields(fields, result, filledNames);
@@ -155,6 +161,71 @@ function markLegacyDefaultsYellow(fields) {
     }
     const found = findNamedElement(f.comp, fieldCandidates(f));
     if (found.el) _convertGreenToYellow(found.el);
+  }
+}
+
+// Ô tích "(5) Quan hệ với người được khai sinh" điều khiển cả khối "Thông tin người yêu cầu":
+// đổi ô tích xong, cổng TỰ ĐỔ dữ liệu tài khoản VNeID vào khối này (bất đồng bộ). Vì vậy phải
+// tick trước, chờ cổng đổ xong, rồi mới điền ĐÈ lên — và kiểm lại một lượt ở cuối.
+const RELATIONSHIP_RADIO_NAME = "QuanHe";
+const REQUESTER_SIMPLE_FIELDS = [
+  "HoVaTenC", "SoDinhDanhC", "SoGiayToDinhDanhC", "NgayCapDDC", "NoiCapDDC",
+];
+
+const digitsOnly = (v) => String(v == null ? "" : v).replace(/\D+/g, "");
+
+function legacyValueMatches(comp, current, wanted) {
+  if (comp === "x-date" || comp === "x-date-text") {
+    return digitsOnly(current) === digitsOnly(wanted);
+  }
+  return norm(String(current == null ? "" : current)) === norm(String(wanted == null ? "" : wanted));
+}
+
+// Chờ cổng ngừng ghi vào khối người yêu cầu (ổn định STABLE_MS liên tiếp) rồi mới điền đè.
+async function waitRequesterBlockSettled(timeoutMs = 1500, stableMs = 300) {
+  const snapshot = () =>
+    REQUESTER_SIMPLE_FIELDS.map((n) => findLegacyInputByName(n)?.value || "").join("\u0001");
+  const STEP = 100;
+  let previous = snapshot();
+  let stable = 0;
+  for (let waited = 0; waited < timeoutMs; waited += STEP) {
+    await sleep(STEP);
+    const current = snapshot();
+    if (current === previous) {
+      stable += STEP;
+      if (stable >= stableMs) return;
+    } else {
+      stable = 0;
+      previous = current;
+    }
+  }
+}
+
+// Cổng có thể ghi trễ sau khi ta điền → điền ĐÈ lại ô nào đang khác giá trị mong muốn.
+async function reapplyRequesterFields(fields, rounds = 2) {
+  const targets = fields.filter(
+    (f) => REQUESTER_SIMPLE_FIELDS.includes(f.name) && f.value !== undefined && f.value !== ""
+  );
+  if (!targets.length) return;
+
+  for (let round = 0; round < rounds; round++) {
+    let rewrote = false;
+    for (const f of targets) {
+      const found = findNamedElement(f.comp, fieldCandidates(f));
+      const container = found.el;
+      if (!container) continue;
+      const input = container.querySelector("input");
+      if (input && legacyValueMatches(f.comp, input.value, f.value)) continue;
+
+      const ff = found.usedName === f.name ? f : { ...f, name: found.usedName };
+      if (f.comp === "x-date") fillDate(container, ff);
+      else if (f.comp === "x-date-text") fillDateText(container, ff);
+      else fillInput(container, ff);
+      rewrote = true;
+      console.log(`[AutoFill] Điền đè lại ${f.name} (cổng ghi trễ sau khi tick quan hệ)`);
+    }
+    if (!rewrote) return;
+    await sleep(250);
   }
 }
 
@@ -278,21 +349,55 @@ function fillRadio(container, f) {
   const boxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
   if (!boxes.length) return false;
   const wanted = norm(String(f.value));
-  const target = boxes.find((b) => {
-    if (b.id.toLowerCase().endsWith("-" + String(f.value).toLowerCase())) return true;
-    const label = container.querySelector(`label[for="${CSS.escape(b.id)}"]`);
-    return label && norm(label.textContent) === wanted;
-  });
+  // BE gửi value theo id ("BanThan", "ChaDe"), nhưng vài form chỉ có nhãn tiếng Việt
+  // ("Bản thân", "Cha đẻ") mà id lại đánh số. Khớp thêm bản bỏ dấu + bỏ khoảng trắng.
+  const squash = (v) => foldLegacyChoice(v).replace(/\s+/g, "");
+  const wantedSquashed = squash(f.value);
+  const labelOf = (b) => container.querySelector(`label[for="${CSS.escape(b.id)}"]`);
+  const target =
+    boxes.find((b) => {
+      if (b.id.toLowerCase().endsWith("-" + String(f.value).toLowerCase())) return true;
+      const label = labelOf(b);
+      return label && norm(label.textContent) === wanted;
+    }) ||
+    boxes.find((b) => {
+      if (!wantedSquashed) return false;
+      const label = labelOf(b);
+      return (
+        (label && squash(label.textContent) === wantedSquashed) ||
+        squash(b.id).endsWith("-" + wantedSquashed) ||
+        squash(b.value) === wantedSquashed
+      );
+    });
   if (!target) return false;
-  boxes.forEach((b) => {
-    if (b !== target && b.checked) {
-      b.checked = false;
-      b.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  });
-  if (!target.checked) target.click();
-  target.checked = true;
-  target.dispatchEvent(new Event("change", { bubbles: true }));
+
+  // Không phát change khi option đã đúng. Một số eForm dùng QuanHe làm driver và sẽ xóa
+  // toàn bộ khối con/cha/mẹ sau mỗi change, kể cả giá trị thực tế không đổi.
+  if (target.checked) {
+    const currentLabel = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
+    markFilled(currentLabel || target);
+    return true;
+  }
+
+  const isBirthRelation = legacyFieldHasName(f, LEGACY_BIRTH_RELATION_NAME)
+    && boxes.some((box) => /-(BanThan|ChaDe|MeDe)$/i.test(String(box.id || "")));
+  if (!isBirthRelation) {
+    boxes.forEach((b) => {
+      if (b !== target && b.checked) {
+        b.checked = false;
+        b.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  }
+  // click() đã phát chuỗi click/input/change như thao tác thật; không phát change lần hai.
+  // Riêng QuanHe, chỉ click đúng option như người dùng; chính web-component sẽ bỏ option cũ.
+  // Nếu tự change option cũ trước rồi click option mới, cổng sẽ reset khối nhân thân hai lần.
+  target.click();
+  // Fallback cho bản web-component chặn click tổng hợp nhưng vẫn cho phép cập nhật checkbox.
+  if (!target.checked) {
+    target.checked = true;
+    target.dispatchEvent(new Event("change", { bubbles: true }));
+  }
   const lbl = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
   markFilled(lbl || target);
   return true;

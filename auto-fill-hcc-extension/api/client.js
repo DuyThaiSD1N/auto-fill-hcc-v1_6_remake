@@ -7,9 +7,10 @@
 // vd môi trường cũ BE còn http:// gây mixed-content).
 
 async function backendFetch(path, init = {}) {
-  let bodyStr = init.body;
-  if (bodyStr != null && typeof bodyStr !== "string") {
-    try { bodyStr = JSON.stringify(bodyStr); } catch (_) { bodyStr = String(bodyStr); }
+  let requestBody = init.body;
+  const isMultipart = typeof FormData !== "undefined" && requestBody instanceof FormData;
+  if (requestBody != null && typeof requestBody !== "string" && !isMultipart) {
+    try { requestBody = JSON.stringify(requestBody); } catch (_) { requestBody = String(requestBody); }
   }
   const method = init.method || "GET";
   const headers = init.headers || {};
@@ -18,13 +19,21 @@ async function backendFetch(path, init = {}) {
     const res = await fetch(BACKEND_URL + path, {
       method,
       headers,
-      body: noBody ? undefined : (bodyStr ?? undefined),
+      body: noBody ? undefined : (requestBody ?? undefined),
     });
     // fetch chỉ throw khi LỖI MẠNG; status lỗi (401/5xx) vẫn trả res bình thường để apiCall xử lý.
     return _makeRes(res.ok, res.status, await res.text());
   } catch (_) {
+    // FormData không thể truyền nguyên vẹn qua chrome.runtime.sendMessage. API v2 chạy trên
+    // HTTPS nên luôn fetch trực tiếp; nếu lỗi mạng thì trả lỗi rõ ràng thay vì âm thầm biến
+    // multipart thành "{}" hoặc đẩy base64 qua message có trần 64 MiB.
+    if (isMultipart) {
+      return _makeRes(false, 0, JSON.stringify({
+        message: "Không kết nối được máy chủ để gửi hồ sơ. Vui lòng kiểm tra mạng và thử lại.",
+      }));
+    }
     // Fetch thẳng thất bại (mạng/mixed-content) → quay lại đường background SW cũ.
-    return _backendFetchViaBackground(path, method, headers, bodyStr);
+    return _backendFetchViaBackground(path, method, headers, requestBody);
   }
 }
 
@@ -56,10 +65,13 @@ function _makeRes(ok, status, body) {
 
 async function apiCall(path, opts = {}) {
   const tokens = await AuthStore.getTokens();
-  const baseHeaders = {
-    ...(opts.headers || {}),
-    "Content-Type": "application/json",
-  };
+  const isMultipart = typeof FormData !== "undefined" && opts.body instanceof FormData;
+  const baseHeaders = { ...(opts.headers || {}) };
+  // Với multipart, trình duyệt phải tự gắn boundary; set Content-Type bằng tay sẽ làm FastAPI
+  // không tách được các part. JSON giữ nguyên contract cũ.
+  if (!isMultipart && !Object.keys(baseHeaders).some((key) => key.toLowerCase() === "content-type")) {
+    baseHeaders["Content-Type"] = "application/json";
+  }
   const init = { method: opts.method || "GET", headers: baseHeaders, body: opts.body };
   const withAuth = (token) => ({
     ...init,

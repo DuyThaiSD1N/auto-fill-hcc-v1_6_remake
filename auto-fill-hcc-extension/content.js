@@ -37,7 +37,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.13 · 16/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.14 · 20/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -295,13 +295,25 @@
     return true;
   }
 
+  function requestIframeContentResize() {
+    const iframe = document.getElementById(IFRAME_ID);
+    if (!iframe?.contentWindow) return;
+    const request = () => iframe.contentWindow?.postMessage({ type: "autofill-hcc-request-resize" }, "*");
+    // Nhịp đầu sau khi display:flex để iframe có kích thước; nhịp sau bắt kịp Angular/ảnh/font vừa render.
+    window.requestAnimationFrame(request);
+    setTimeout(request, 100);
+  }
+
   // Bấm bubble → hiện lại panel (tạo mới nếu chưa có) + xoá cờ thu nhỏ.
   function restorePanel() {
     document.getElementById(BUBBLE_ID)?.remove();
     setPanelMinimized(false);
     clearAutoMinState();
     const panel = document.getElementById(PANEL_ID);
-    if (panel) panel.style.display = "flex";
+    if (panel) {
+      panel.style.display = "flex";
+      requestIframeContentResize();
+    }
     else chrome.runtime.sendMessage({ action: "getTabId" }, (res) => createPanel(res?.tabId ?? ""));
   }
 
@@ -686,12 +698,12 @@
     }
     if (msg?.action === "markPanelFillComplete") {
       if (!IS_TOP_FRAME) return;
-      const state = readAutoMinState();
-      if (state) {
-        setAutoMinState({ ...state, phase: "filled" });
-        maybeRestorePanelForAttachment();
-      }
-      sendResponse({ ok: true, armed: !!state });
+      // Theo yêu cầu: fill xong GIỮ NGUYÊN icon (bubble), KHÔNG tự bung panel lại ở bước đính kèm
+      // (trước đây tự mở nhưng iframe chưa fit chiều cao kịp → panel bị cắt ~1/5). Xoá cờ after-fill để
+      // observer đính kèm ngừng theo dõi; panel vẫn ở bubble (qua SS_MIN). Cán bộ bấm icon để mở lại —
+      // đường restorePanel fit đúng chiều cao. Phản hồi "đã điền" đã có page-toast nên không cần bung panel.
+      clearAutoMinState();
+      sendResponse({ ok: true, armed: false });
       return;
     }
     if (msg?.action === "restorePanelAfterFillFailure") {
@@ -1295,11 +1307,56 @@
     );
   }
 
+  const ATTACHMENT_STEP_SNIPPETS = ["thanh phan ho so", "ho so kem theo"];
+
+  // Một số cổng Angular (Ninh Bình...) render SẴN input[type=file] của mọi bước trong DOM.
+  // Vì vậy sự tồn tại của input chỉ đủ cho engine đính kèm, nhưng KHÔNG đủ để tự bung panel sau fill.
+  // Nếu stepper có bước hồ sơ đính kèm thì chỉ tin đúng bước đang aria-selected=true.
+  function activeAttachmentStepState() {
+    const headers = Array.from(document.querySelectorAll(
+      'mat-step-header[role="tab"], [role="tab"][aria-controls^="cdk-step-content-"]'
+    ));
+    const attachmentHeaders = headers.filter((header) => {
+      const text = foldedNodeText(header);
+      return ATTACHMENT_STEP_SNIPPETS.some((snippet) => text.includes(snippet));
+    });
+    if (!attachmentHeaders.length) return null;
+    return attachmentHeaders.some((header) =>
+      header.getAttribute("aria-selected") === "true" && isVisible(header)
+    );
+  }
+
+  function attachmentInputHasVisibleScope(input) {
+    if (!input) return false;
+    if (isVisible(input)) return true;
+    // Native file input thường bị ẩn, còn hàng/nút upload mới là phần cán bộ nhìn thấy.
+    const scope = input.closest?.(
+      "tr, li, .form-group, .input-group, app-upload-flie-multi, [class*='upload']"
+    );
+    return !!scope && isVisible(scope);
+  }
+
+  function hasVisibleAttachmentTarget() {
+    const stepState = activeAttachmentStepState();
+    if (stepState === false) return false;
+    // Bước "Thành phần hồ sơ" đang active là bằng chứng mạnh; native input có thể bị CSS ẩn.
+    if (stepState === true) return hasAttachmentTarget();
+
+    const copyRow = findCopyCertificationAttachmentRow();
+    if (copyRow && isVisible(copyRow)) return true;
+    if (findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"])) return true;
+    const inputs = [
+      ...document.querySelectorAll('input[type="file"][name*="filethanhPhanHoSo"]'),
+      ...fixedSlotUploadInputs(),
+    ];
+    return inputs.some(attachmentInputHasVisibleScope);
+  }
+
   function maybeRestorePanelForAttachment() {
     if (!IS_TOP_FRAME || location.hostname.includes("hokinhdoanh.dkkd.gov.vn")) return false;
     const state = readAutoMinState();
     // phase=filling chặn observer bật panel lại do chính thao tác điền làm DOM thay đổi.
-    if (!state || state.phase !== "filled" || !hasAttachmentTarget()) return false;
+    if (!state || state.phase !== "filled" || !hasVisibleAttachmentTarget()) return false;
     restorePanel(); // đồng thời xoá cờ → chỉ tự mở đúng một lần
     return true;
   }
@@ -1354,23 +1411,33 @@
   // Tín hiệu để popup tự nhận diện thủ tục theo trang: URL + các heading (tên thủ tục).
   function collectProcedureSignals() {
     const headings = [];
+    const visibleHeadings = [];
     const seen = new Set();
-    const push = (raw) => {
+    const push = (raw, visible = false) => {
       const s = String(raw || "").replace(/\s+/g, " ").trim();
       if (s.length >= 6 && s.length <= 250 && !seen.has(s)) {
         seen.add(s);
         headings.push(s);
+        if (visible) visibleHeadings.push(s);
       }
     };
     // Heading chuẩn của eForm hộ tịch/chứng thực (moj) = đúng tên thủ tục; kèm h1/h2 dự phòng.
-    document.querySelectorAll(".text-2xl.font-bold, h1, h2").forEach((el) => push(nodeText(el)));
+    document.querySelectorAll(".text-2xl.font-bold, h1, h2")
+      .forEach((el) => push(nodeText(el), isVisible(el)));
     // Văn bản hiển thị (cắt ngắn) — để nhận diện cổng SPA không có heading (vd laichau): khớp tên thủ tục.
     const bodyText = String(document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 6000);
     // HkdOnline có cùng URL/domain cho nhiều loại hồ sơ. Hint dựa vào marker của ACTIVE wizard step
     // và loại hồ sơ đang hiển thị, tránh suy thủ tục chỉ vì tên option xuất hiện trong body.
     const businessProcedureHint = typeof H.detectBusinessProcedureHint === "function"
       ? H.detectBusinessProcedureHint() : "";
-    return { url: location.href, title: document.title || "", headings, bodyText, businessProcedureHint };
+    return {
+      url: location.href,
+      title: document.title || "",
+      headings,
+      visibleHeadings,
+      bodyText,
+      businessProcedureHint,
+    };
   }
 
   // Danh tính tài khoản VNeID đang đăng nhập TRÊN CỔNG (để gắn consent theo người + thủ tục).
@@ -2724,7 +2791,8 @@
   // Mỗi hồ sơ chỉ 1 file → file khác thuộc hồ sơ/tab khác (popup + background điều phối).
   function forceRow1PlanItem(item) {
     // Chứng thực chữ ký: giấy tùy thân (CCCD/Hộ chiếu...) PHẢI vào STT2, TUYỆT ĐỐI không ép về STT1.
-    if (isIdentityAttachmentItem(item)) {
+    // Case bản dịch đặt forceFirstRow vì tên file có thể chứa chữ "CCCD" nhưng vẫn là tài liệu hàng 1.
+    if (!item?.forceFirstRow && isIdentityAttachmentItem(item)) {
       const row2 = findAttachmentRows()[1] || null;
       const name2 = row2 ? attachmentComponentName(row2) : "";
       return {
@@ -2778,8 +2846,44 @@
     await sleep(150);
   }
 
+  // Fingerprint tên tài liệu: bỏ đuôi file + mọi ký tự KHÔNG phải chữ/số (khoảng trắng, "_", ".", "…",
+  // "/") → chuỗi chữ-số thuần. Nhờ vậy so khớp được bất kể dấu phân cách hay tên bị cắt ngắn khi hiển thị.
+  function attpDocFingerprint(value) {
+    return foldChoiceText(value || "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[^a-z0-9]/g, "");
+  }
+
+  // Đọc fingerprint các file ĐÃ đính trong ô đính kèm của dòng. Ô đính kèm là ô chứa input[type=file]
+  // (ở cổng Đà Nẵng/Bộ Xây dựng là CỘT CUỐI, KHÁC cells[2] = cột "Loại bản") → không dùng rowAttachedFileName.
+  function attpRowAttachedFingerprints(row) {
+    const input = row?.querySelector?.('input[type="file"]');
+    const cell = (input && input.closest('td, th, mat-cell, [role="cell"], [role="gridcell"]')) || row;
+    if (!cell) return [];
+    const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
+    // Mỗi file hiển thị 1 phần tử LÁ chứa đuôi file; loại nút "Chọn tệp tin" (không có đuôi file).
+    const leaves = Array.from(cell.querySelectorAll("*")).filter(
+      (el) => !el.children.length && fileRe.test(el.textContent || "")
+    );
+    const texts = leaves.length ? leaves.map((el) => el.textContent) : [];
+    if (!texts.length) {
+      const whole = nodeText(cell);
+      if (fileRe.test(whole)) texts.push(whole);
+    }
+    return texts.map(attpDocFingerprint).filter((fp) => fp.length >= 6);
+  }
+
+  // Dòng ĐÃ có file trùng tài liệu này chưa? So 24 ký tự đầu (chịu được tên bị cắt "..." khi hiển thị).
+  function attpRowHasDoc(row, item) {
+    const want = attpDocFingerprint(item.documentName || item.fileName || "");
+    if (want.length < 6) return false;
+    const probe = want.slice(0, 24);
+    return attpRowAttachedFingerprints(row).some(
+      (fp) => fp.startsWith(probe) || probe.startsWith(fp.slice(0, 24))
+    );
+  }
+
   async function attachFilesByAttpRow(payloadFiles, attachments) {
     const fileNames = [];
+    const skippedNames = [];
     const errors = [];
     // Gom item theo DÒNG (componentName) — 1 dòng có thể nhận NHIỀU file (vd "sức khỏe" = danh sách + sổ
     // KSK; GCN ATTP = nhiều bản). Set 1 lần với đủ file để không ghi đè lẫn nhau (ô upload là multiple).
@@ -2798,6 +2902,15 @@
       );
       if (!row) { errors.push(`Không tìm thấy dòng "${first.documentName || first.componentName}".`); continue; }
       row.scrollIntoView?.({ block: "center" });
+      // CHỐNG TRÙNG: dòng đã có file trùng tài liệu này (vd bấm "Đính kèm" 2 lần) → bỏ qua, không đính lại.
+      const pending = items.filter((item) => {
+        if (attpRowHasDoc(row, item)) {
+          skippedNames.push(item.documentName || item.fileName || "");
+          return false;
+        }
+        return true;
+      });
+      if (!pending.length) { markAttachmentResult(row, true); continue; }
       await tickAttpRowCheckbox(row);
       await setAttpRowLoaiBan(row, first.loaiBan);
       // Ô upload ở CUỐI dòng (không phải cells[2]) → tìm trong cả dòng.
@@ -2805,7 +2918,7 @@
       if (!input) { errors.push(`Dòng "${first.documentName}" không có ô upload.`); continue; }
       const files = [];
       const names = [];
-      for (const item of items) {
+      for (const item of pending) {
         const payload = payloadForPlanItem(payloadFiles, item);
         if (!payload) { errors.push(`Thiếu file cho "${item.fileName}".`); continue; }
         try { files.push(dataUrlToFile(payload, item.documentName)); names.push(item.fileName); }
@@ -2822,9 +2935,9 @@
       ok: !errors.length,
       method: "attp-row",
       attached: fileNames.length,
-      skipped: 0,
+      skipped: skippedNames.length,
       fileNames,
-      skippedNames: [],
+      skippedNames,
       errors,
       error: errors.length ? errors.join("; ") : undefined,
     };
@@ -2846,22 +2959,65 @@
       const errors = [];
       let errorCode = null;
       const allAttachments = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
+      let remainingAttachments = allAttachments;
 
       // Bảng-checkbox thuần (ATTP cấp lại...) vẫn dùng engine riêng như cũ.
       const attpItems = allAttachments.filter((item) => item.target === "attp-row");
       const addDocumentItems = allAttachments.filter((item) => item.target === "add-document-dialog");
-      if (attpItems.length && !addDocumentItems.length) {
+      const genericNewItems = allAttachments.filter((item) =>
+        item.target !== "add-document-dialog" &&
+        (item.target === "new" || item.needsAddComponent === true)
+      );
+      if (attpItems.length && !addDocumentItems.length && !genericNewItems.length) {
         return await attachFilesByAttpRow(payloadFiles, attpItems);
+      }
+
+      // Cổng Quảng Ninh có thể vừa có các hàng cố định vừa có giấy tờ phải tạo bằng nút
+      // "Thêm thành phần hồ sơ". Không return sau nhóm attp-row: giữ engine bảng đã ổn định cho
+      // các hàng cố định, rồi chuyển riêng nhóm target=new xuống engine tạo hàng generic bên dưới.
+      const onlyAttpAndGenericNew =
+        attpItems.length + genericNewItems.length === allAttachments.length;
+      if (attpItems.length && genericNewItems.length && onlyAttpAndGenericNew) {
+        const fixedRowResult = await attachFilesByAttpRow(payloadFiles, attpItems);
+        attachedNames.push(...(fixedRowResult.fileNames || []));
+        skippedNames.push(...(fixedRowResult.skippedNames || []));
+        if (fixedRowResult.error) {
+          return {
+            error: fixedRowResult.error,
+            attached: attachedNames.length,
+            skipped: skippedNames.length,
+            fileNames: attachedNames,
+            skippedNames,
+          };
+        }
+        remainingAttachments = genericNewItems;
       }
 
       // Cổng NNMT trộn hàng cố định với hàng phải tạo qua modal "Thêm giấy tờ". Chạy hàng cố định
       // trước; sau khi modal tạo xong hàng động, tái sử dụng chính engine attp-row để upload file.
       if (addDocumentItems.length) {
+        // Cho phép kèm cả fixed-slot (ô upload cố định, vd Văn bản đề nghị hưu trí) — chạy TRƯỚC modal.
         const unsupported = allAttachments.filter((item) =>
-          item.target !== "attp-row" && item.target !== "add-document-dialog"
+          item.target !== "attp-row" && item.target !== "add-document-dialog" && item.target !== "fixed-slot"
         );
         if (unsupported.length) {
-          return { error: "Kế hoạch đính kèm NNMT chứa target chưa hỗ trợ trong luồng hỗn hợp." };
+          return { error: "Kế hoạch đính kèm chứa target chưa hỗ trợ trong luồng hỗn hợp Thêm giấy tờ." };
+        }
+
+        const fixedSlotItems = allAttachments.filter((item) => item.target === "fixed-slot");
+        if (fixedSlotItems.length) {
+          const fixedResult = await attachFilesByFixedSlot(payloadFiles, fixedSlotItems);
+          attachedNames.push(...(fixedResult.fileNames || []));
+          skippedNames.push(...(fixedResult.skippedNames || []));
+          if (fixedResult.error) {
+            return {
+              error: fixedResult.error,
+              attached: attachedNames.length,
+              skipped: skippedNames.length,
+              fileNames: attachedNames,
+              skippedNames,
+            };
+          }
         }
 
         if (attpItems.length) {
@@ -2928,8 +3084,8 @@
         };
       }
 
-      const fixedItems = allAttachments.filter((item) => item.target === "fixed-slot");
-      const normalItems = allAttachments.filter((item) => item.target !== "fixed-slot");
+      const fixedItems = remainingAttachments.filter((item) => item.target === "fixed-slot");
+      const normalItems = remainingAttachments.filter((item) => item.target !== "fixed-slot");
 
       // Thủ tục có ô upload cố định vẫn có thể kèm giấy tờ thêm mới (vd cấp nước sạch có CCCD
       // ở "Giấy tờ khác"). Chạy fixed-slot trước rồi tiếp tục xử lý phần còn lại.
@@ -4877,6 +5033,31 @@
     }
   }
 
+  function isOwnerDossierCheckboxField(field) {
+    if (field?.comp !== "dom-checkbox") return false;
+    const candidates = fieldCandidates(field);
+    return candidates.includes("data[isOwnerDossierCheck]") || candidates.includes("data[isOwnerDossier]");
+  }
+
+  function standardCheckboxWantsTrue(field) {
+    return field?.value === true || String(field?.value).toLowerCase() === "true" || String(field?.value) === "1";
+  }
+
+  function orderStandardFields(fields) {
+    const ownerCheckboxes = fields.filter(isOwnerDossierCheckboxField);
+    const regularFields = fields.filter((field) => !isOwnerDossierCheckboxField(field));
+
+    return [
+      // Khi người nộp KHÁC chủ hồ sơ, bỏ tick trước để cổng mở các ô chủ hồ sơ rồi mới điền dữ liệu.
+      ...ownerCheckboxes.filter((field) => !standardCheckboxWantsTrue(field)),
+      ...regularFields.filter((field) => !isPostbackAddressField(field)),
+      ...regularFields.filter((field) => isPostbackAddressField(field)),
+      // Checkbox này tự sao chép người nộp sang chủ hồ sơ. Phải tick SAU KHI người nộp đã được điền,
+      // nếu không cổng sẽ sao chép giá trị cũ đang có trên form và ghi đè chủ hồ sơ vừa bóc tách.
+      ...ownerCheckboxes.filter(standardCheckboxWantsTrue),
+    ];
+  }
+
   async function fillFormStandard(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
@@ -4884,10 +5065,7 @@
     const result = { filled: 0, notFound: [], errors: [] };
     const areaDeadlines = new Map();
     const failedFieldKeys = new Set();
-    const orderedFields = [
-      ...fields.filter((f) => !isPostbackAddressField(f)),
-      ...fields.filter((f) => isPostbackAddressField(f)),
-    ];
+    const orderedFields = orderStandardFields(fields);
 
     for (const f of orderedFields) {
       const candidates = fieldCandidates(f);
@@ -5084,11 +5262,9 @@
     );
     if (ownerCheckField) {
       const checkbox = findStandardCheckbox(fieldCandidates(ownerCheckField));
-      if (checkbox && checkbox.checked) {
-        checkbox.dispatchEvent(new Event("input", { bubbles: true }));
-        checkbox.dispatchEvent(new Event("change", { bubbles: true }));
-        await sleep(300);
-      }
+      // Postback địa chỉ có thể render lại checkbox sau vòng điền chính. Luôn áp lại trạng thái true tại
+      // hook cuối; fillStandardCheckbox cũng re-dispatch change khi checkbox đã tick để copy dữ liệu mới.
+      if (checkbox) await fillStandardCheckbox(checkbox, true);
     }
 
     // (2) Dạng NÚT bấm (comp dom-owner-copy, vd đính chính Lâm Đồng data[BUTTON3]) — bấm SAU khi Phần I
@@ -5183,6 +5359,7 @@
     clearAutofillMarks, _convertGreenToYellow, injectAutofillStyles, markAllEmptyFieldsRed,
     FIELD_NAME_ALIASES, LEGACY_MIRROR_FIELDS,
     fillFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
+    isOwnerDossierCheckboxField, standardCheckboxWantsTrue, orderStandardFields,
     readAcctContact, dataUrlToFile, setFilesOnInput, payloadForPlanItem,
   });
 

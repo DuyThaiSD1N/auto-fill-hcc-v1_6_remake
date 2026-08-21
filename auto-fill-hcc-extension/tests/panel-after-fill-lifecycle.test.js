@@ -54,10 +54,66 @@ assert.doesNotMatch(dispatchSource, /\$\{filled\}\s*\/\s*\$\{allFields\.length\}
 assert.match(contentSource, /const SS_AUTO_MIN = "__af_panel_auto_min"/);
 assert.match(contentSource, /phase: "filling"/);
 assert.match(contentSource, /phase: "filled"/);
-assert.match(contentSource, /state\.phase !== "filled" \|\| !hasAttachmentTarget\(\)/);
+assert.match(contentSource, /state\.phase !== "filled" \|\| !hasVisibleAttachmentTarget\(\)/);
 assert.match(contentSource, /restorePanel\(\); \/\/ đồng thời xoá cờ → chỉ tự mở đúng một lần/);
 assert.match(contentSource, /location\.hostname\.includes\("hokinhdoanh\.dkkd\.gov\.vn"\)/);
 assert.match(contentSource, /minimizePanel\(\{ preserveAuto: true \}\)/);
+assert.match(contentSource, /requestIframeContentResize\(\)/);
+assert.match(contentSource, /type: "autofill-hcc-request-resize"/);
+assert.match(popupSource, /e\.data\?\.type !== "autofill-hcc-request-resize"/);
+assert.match(popupSource, /autofill-hcc-request-resize"\) return;\s*postPanelHeight\(\)/);
+
+const targetGuardStart = contentSource.indexOf("const ATTACHMENT_STEP_SNIPPETS");
+const targetGuardEnd = contentSource.indexOf("\n  function maybeRestorePanelForAttachment", targetGuardStart);
+assert.ok(targetGuardStart >= 0 && targetGuardEnd > targetGuardStart, "Không tách được guard bước đính kèm");
+
+function testVisibleAttachmentGuard() {
+  let headers = [];
+  let rawTarget = true;
+  let visibleButton = null;
+  let fixedInputs = [];
+  const runtime = {
+    document: {
+      querySelectorAll: (selector) => selector.includes("mat-step-header") ? headers : [],
+    },
+    foldedNodeText: (el) => el.text || "",
+    isVisible: (el) => !!el?.visible,
+    hasAttachmentTarget: () => rawTarget,
+    findCopyCertificationAttachmentRow: () => null,
+    findButtonByText: () => visibleButton,
+    fixedSlotUploadInputs: () => fixedInputs,
+  };
+  vm.runInNewContext(`
+    ${contentSource.slice(targetGuardStart, targetGuardEnd)}
+    globalThis.hasVisibleAttachmentTarget = hasVisibleAttachmentTarget;
+  `, runtime);
+
+  const step = (text, selected) => ({
+    text,
+    visible: true,
+    getAttribute: (name) => name === "aria-selected" ? String(selected) : null,
+  });
+
+  headers = [step("thong tin ho so", true), step("thanh phan ho so", false)];
+  assert.equal(runtime.hasVisibleAttachmentTarget(), false, "Input render sẵn ở bước fill không được bung panel");
+
+  headers = [step("thong tin ho so", false), step("thanh phan ho so", true)];
+  assert.equal(runtime.hasVisibleAttachmentTarget(), true, "Bước Thành phần hồ sơ active phải được nhận diện");
+
+  headers = [];
+  rawTarget = false;
+  visibleButton = { visible: true };
+  assert.equal(runtime.hasVisibleAttachmentTarget(), true, "Cổng không có stepper vẫn nhận nút upload hiện hữu");
+
+  visibleButton = null;
+  fixedInputs = [{
+    visible: false,
+    closest: () => ({ visible: false }),
+  }];
+  assert.equal(runtime.hasVisibleAttachmentTarget(), false, "Input và vùng upload đều ẩn không được bung panel");
+}
+
+testVisibleAttachmentGuard();
 
 async function testDispatchRuntime() {
   const events = [];

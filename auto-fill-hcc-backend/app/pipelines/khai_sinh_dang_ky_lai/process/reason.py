@@ -23,6 +23,7 @@ _FULL_NAME_FIELD = {
     "cha": "Father_FullName",
 }
 _ID_FIELD = {
+    "con": "Subject_IdNumber",
     "me": "Mother_IdNumber",
     "cha": "Father_IdNumber",
 }
@@ -40,6 +41,8 @@ _ROLE_TAGS = (
     "me",
     "cha",
     "dang_ky_khai_sinh_truoc_day",
+    "to_khai_dang_ky_lai",
+    "quan_he_nguoi_yeu_cau",
 )
 _IDENTITY_MARKERS = (
     "can cuoc cong dan",
@@ -55,6 +58,7 @@ Bạn là agent PHÂN VAI hồ sơ ĐĂNG KÝ LẠI KHAI SINH. Chỉ xác địn
 - người được đăng ký lại khai sinh (CON);
 - MẸ;
 - CHA;
+- QUAN HỆ giữa người yêu cầu và người được đăng ký lại khai sinh;
 - hồ sơ có hay không có tài liệu ghi nhận ĐĂNG KÝ KHAI SINH trước đây.
 
 Đọc toàn bộ OCR, không trích field biểu mẫu, không trả JSON.
@@ -80,6 +84,21 @@ THỨ TỰ PHÂN VAI:
    của hai người khác nhau.
 8. "Số/ngày đăng ký trước đây" chỉ hợp lệ khi thuộc GIẤY KHAI SINH, TRÍCH LỤC KHAI SINH hoặc
    TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH. Số/ngày trên giấy khai tử, kết hôn, CCCD không hợp lệ.
+
+QUAN HỆ NGƯỜI YÊU CẦU — BẮT BUỘC kết luận, đây là căn cứ để tích ô trên biểu mẫu:
+Đối chiếu HAI người với nhau: NGƯỜI YÊU CẦU và NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI KHAI SINH. Theo thứ tự:
+a. CÓ TỜ KHAI/ĐƠN đăng ký lại khai sinh: lấy đúng dòng "Quan hệ với người được khai sinh" (hoặc
+   "Quan hệ với người được đăng ký lại khai sinh"). Ghi "Bản thân"/"Tự khai"/"Chính mình" → bản thân;
+   ghi cha/bố → cha; ghi mẹ → mẹ; ghi ông/bà/anh/chị/em/con/cháu/người được ủy quyền → khác.
+   Dòng này thắng mọi suy luận khác.
+b. Tờ khai KHÔNG ghi rõ quan hệ nhưng có họ tên người yêu cầu: so họ tên + số định danh của người
+   yêu cầu với <con>, <cha>, <me>. Trùng <con> → bản thân; trùng <cha> → cha; trùng <me> → mẹ;
+   không trùng ai → khác.
+c. KHÔNG CÓ TỜ KHAI/ĐƠN, hồ sơ chỉ có CCCD/CMND (kèm hoặc không kèm giấy khai sinh cũ):
+   KẾT LUẬN "bản thân". Đăng ký lại khai sinh là thủ tục người đã trưởng thành tự đi làm cho chính
+   mình; CCCD của cha/mẹ trong hồ sơ chỉ để chứng minh nhân thân cha/mẹ, KHÔNG biến họ thành người
+   yêu cầu. TUYỆT ĐỐI KHÔNG kết luận cha/mẹ chỉ vì hồ sơ có CCCD của cha/mẹ.
+d. Chỉ ghi "không xác định" khi hồ sơ không có cả tờ khai lẫn nhân thân của <con>.
 
 Chỉ trả TEXT theo đúng năm khối sau, không markdown/code fence và không thêm JSON:
 Mỗi nhãn đúng một dòng; "Căn cứ phân vai" tối đa 20 từ. Chỉ ghi KẾT LUẬN, không trình bày chuỗi suy luận.
@@ -127,6 +146,12 @@ Trạng thái: còn sống|đã chết|không xác định
 Nguồn: ...
 Căn cứ phân vai: ...
 </cha>
+<quan_he_nguoi_yeu_cau>
+Người yêu cầu: ...
+Người được đăng ký lại khai sinh: ...
+Kết luận: bản thân|cha|mẹ|khác|không xác định
+Căn cứ: ...
+</quan_he_nguoi_yeu_cau>
 <dang_ky_khai_sinh_truoc_day>
 Có tài liệu khai sinh hợp lệ: Có|Không
 Nguồn: ...
@@ -390,6 +415,71 @@ def _valid_birth_source_names(documents: list[dict]) -> list[str]:
     return names
 
 
+def _declaration_source_names(documents: list[dict]) -> list[str]:
+    """Chỉ nhận TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH — nguồn duy nhất chốt ô quan hệ người yêu cầu.
+
+    Giấy khai sinh cũ, trích lục và tờ khai cấp bản sao trích lục KHÔNG tính: chúng không có
+    dòng "Quan hệ với người được khai sinh".
+    """
+    names: list[str] = []
+    for document in documents:
+        folded = _fold(document.get("text"))
+        if "to khai" in folded and "dang ky lai khai sinh" in folded:
+            names.append(str(document.get("name") or "(không tên)"))
+    return names
+
+
+_RELATION_LABELS = ("bản thân", "cha", "mẹ", "khác")
+
+
+def _normalized_relation(value: str) -> str:
+    """Quy kết luận quan hệ của agent về đúng một nhãn; không khớp thì trả rỗng."""
+    folded = _fold(value)
+    if not folded or "khong xac dinh" in folded:
+        return ""
+    if "ban than" in folded or "chinh minh" in folded or "tu khai" in folded:
+        return "bản thân"
+    words = folded.split()
+    if "me" in words:
+        return "mẹ"
+    if "cha" in words or "bo" in words:
+        return "cha"
+    if "khac" in words:
+        return "khác"
+    return ""
+
+
+def _validated_relation(raw: str, sections: dict[str, str], has_declaration: bool) -> tuple[str, str]:
+    """Chốt quan hệ người yêu cầu <-> người được đăng ký lại khai sinh.
+
+    Agent đọc và tư duy trước; Python chỉ chặn hai kiểu kết luận không đứng vững:
+      - chọn cha/mẹ trong khi chính khối <cha>/<me> lại Không xác định;
+      - hồ sơ KHÔNG có tờ khai (chỉ CCCD) mà vẫn chọn cha/mẹ/khác — nghiệp vụ đăng ký lại
+        khai sinh mặc định là người trưởng thành tự đi làm cho chính mình.
+    """
+    section = _section(raw, "quan_he_nguoi_yeu_cau")
+    relation = _normalized_relation(_labeled_value(section, "Kết luận"))
+    basis = _labeled_value(section, "Căn cứ") or "Agent không nêu căn cứ."
+
+    if relation in {"cha", "mẹ"}:
+        tag = "cha" if relation == "cha" else "me"
+        if _is_unknown(sections.get(tag, "")):
+            relation, basis = "", f"Agent kết luận {relation} nhưng khối <{tag}> Không xác định."
+
+    if not has_declaration and relation and relation != "bản thân":
+        relation = ""
+        basis = "Hồ sơ không có tờ khai; chỉ giấy tờ tuỳ thân thì không đủ căn cứ chọn cha/mẹ/khác."
+
+    if not relation:
+        if not _is_unknown(sections.get("con", "")):
+            return "bản thân", (
+                f"{basis} Mặc định nghiệp vụ: người được đăng ký lại khai sinh tự đi làm cho chính mình."
+            )
+        return "không xác định", basis
+
+    return relation, basis
+
+
 def _source_hints(documents: list[dict], options: dict | None) -> str:
     requester_name, requester_id = _requester_context(options)
     valid_sources = _valid_birth_source_names(documents)
@@ -496,6 +586,15 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     registration_value = "Có" if valid_sources else "Không"
     source_value = ", ".join(valid_sources) if valid_sources else "Không có"
 
+    # Tờ khai quyết định ô "Quan hệ với người được khai sinh"; Python tự kiểm tra, không tin LLM.
+    declaration_sources = _declaration_source_names(documents)
+    declaration_value = "Có" if declaration_sources else "Không"
+    declaration_source = ", ".join(declaration_sources) if declaration_sources else "Không có"
+
+    relation_value, relation_basis = _validated_relation(
+        raw, sections, bool(declaration_sources)
+    )
+
     return (
         "\n\n<phan_vai_da_xac_dinh>\n"
         "Dùng đúng các vai dưới đây; không tự đổi người giữa Subject/Father/Mother.\n"
@@ -516,9 +615,20 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         f"Nguồn: {source_value}\n"
         "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
         "</dang_ky_khai_sinh_truoc_day>\n"
+        "<quan_he_nguoi_yeu_cau>\n"
+        f"Kết luận: {relation_value}\n"
+        f"Căn cứ: {relation_basis}\n"
+        "</quan_he_nguoi_yeu_cau>\n"
+        "<to_khai_dang_ky_lai>\n"
+        f"Có tờ khai đăng ký lại khai sinh: {declaration_value}\n"
+        f"Nguồn: {declaration_source}\n"
+        "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
+        "</to_khai_dang_ky_lai>\n"
         "Subject_* chỉ thuộc <con>; Mother_* chỉ thuộc <me>; Father_* chỉ thuộc <cha>. "
         "Nếu một khối ghi Không xác định thì bỏ toàn bộ field của vai đó. "
-        "PreviousRegistration_* chỉ được trả khi khối đăng ký khai sinh trước đây ghi Có.\n"
+        "PreviousRegistration_* chỉ được trả khi khối đăng ký khai sinh trước đây ghi Có. "
+        "Requester_* chỉ được trả khi khối tờ khai đăng ký lại ghi Có; khi đó BẮT BUỘC trả "
+        "Requester_RelationToSubject kể cả khi người yêu cầu trùng <con>/<cha>/<me>.\n"
         "</phan_vai_da_xac_dinh>"
     )
 

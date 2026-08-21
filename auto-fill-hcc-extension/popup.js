@@ -81,7 +81,19 @@ const SPLIT_RELOADABLE_WALLET_CODES = new Set([
 let attachSplitMode = false; // hiệu lực từ ô tick (đã khôi phục từ storage)
 
 function isSplitEligibleProcedure() {
-  return isAttachMode() && SPLIT_MODE_PROCEDURES.has(currentConfig().key);
+  return isAttachMode() && (
+    SPLIT_MODE_PROCEDURES.has(currentConfig().key) ||
+    isClientLocalSplitProcedure()
+  );
+}
+
+function clientAttachmentCase(config = currentConfig()) {
+  const value = config?.clientAttachmentCase;
+  return value && typeof value === "object" ? value : null;
+}
+
+function isClientLocalSplitProcedure(config = currentConfig()) {
+  return clientAttachmentCase(config)?.type === "single-row-local-split";
 }
 
 // ===== Embedded (floating panel) =====
@@ -279,6 +291,10 @@ function renderRememberedLoginState(hasSaved) {
 
 function showLogin() {
   currentUser = null;
+  // Mọi lối ĐĂNG XUẤT/hết phiên đều qua đây (nút Đăng xuất, 401, token hỏng) -> quên tỉnh/xã đã chọn tay
+  // để lần đăng nhập sau seed lại TỪ TÀI KHOẢN. Khôi phục phiên còn hạn đi thẳng showMain() nên KHÔNG
+  // reset ở lần mở lại bình thường (lựa chọn tay vẫn giữ khi chưa đăng xuất).
+  void forgetStoredLocation();
   loginScreen.hidden = false;
   mainScreen.hidden = true;
   prefillLogin();
@@ -645,6 +661,19 @@ function shouldResetProcedureWork(nextKey) {
   return !!(previousKey && nextKey && previousKey !== nextKey);
 }
 
+function shouldPreserveProcedureWorkOnAutoDetect(previousKey, nextKey, source, fileCount, confirmedNavigation = false) {
+  // Auto-detect ở bước kế tiếp chỉ là tín hiệu của trang, không phải xác nhận cán bộ đã mở hồ sơ mới.
+  // Một số cổng bỏ mã thủ tục hoặc render text của thủ tục liên quan ở bước đính kèm; nếu tin tín hiệu
+  // đó và reset ngay, toàn bộ file vừa dùng để điền sẽ biến mất. Chỉ thao tác chọn tay/phiên mới được
+  // quyền đổi chủ sở hữu khi hồ sơ hiện tại vẫn còn file.
+  return source === "auto"
+    && !confirmedNavigation
+    && !!previousKey
+    && !!nextKey
+    && previousKey !== nextKey
+    && Number(fileCount || 0) > 0;
+}
+
 function resetProcedureWorkState() {
   // Vô hiệu mọi saveSession cũ đang đọc file lớn; bản lưu đó không được ghi file thủ tục trước trở lại.
   sessionWriteRevision++;
@@ -663,12 +692,27 @@ function resetProcedureWorkState() {
   setStatus("", "");
 }
 
-async function selectProcedure(key, { source = "manual" } = {}) {
+async function selectProcedure(key, { source = "manual", confirmedNavigation = false } = {}) {
   const next = PROCEDURES.find((p) => p.key === key) || PROCEDURES[0];
   if (!next) return;
   if (source === "manual") {
     manualProcedureOverride = true;
     procedureAutoDetected = false;
+  }
+  const previousKey = workProcedureKey || selectedProcedureKey;
+  if (shouldPreserveProcedureWorkOnAutoDetect(
+    previousKey,
+    next.key,
+    source,
+    files.length,
+    confirmedNavigation,
+  )) {
+    console.warn("[Popup] Bỏ qua auto-detect khác thủ tục để giữ hồ sơ đang làm", {
+      previousKey,
+      detectedKey: next.key,
+      fileCount: files.length,
+    });
+    return false;
   }
   const selectionChanged = selectedProcedureKey !== next.key;
   const workOwnerChanged = workProcedureKey !== next.key;
@@ -682,6 +726,24 @@ async function selectProcedure(key, { source = "manual" } = {}) {
   applyFormUI();
   // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
   if (selectionChanged || workOwnerChanged) await saveSession();
+  return true;
+}
+
+function hasStrongProcedureIdentity(key, signals) {
+  const procedure = PROCEDURES.find((item) => item.key === key);
+  if (!procedure?.detect || !signals) return false;
+  const url = String(signals.url || "").toLowerCase();
+  const detect = procedure.detect;
+  if (detectUrlScopeOk(detect, url)) {
+    const urlMatch = (detect.urlIncludes || [])
+      .some((part) => part && url.includes(String(part).toLowerCase()));
+    if (urlMatch) return true;
+  }
+  // Heading đúng toàn bộ tên thủ tục là bằng chứng điều hướng mạnh. Không dùng bodyText vì trang
+  // đính kèm thường liệt kê tên nhiều thủ tục/tài liệu liên quan và dễ gây đổi nhầm pipeline.
+  const expected = normDetect(detect.heading || procedure.label);
+  return expected.length >= 6
+    && (signals.visibleHeadings || []).some((heading) => normDetect(heading) === expected);
 }
 
 function commitProcedureSearch() {
@@ -873,9 +935,12 @@ async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
     }
     const key = detectProcedureKeyFromSignals(res?.signals);
     if (key && PROCEDURES.some((p) => p.key === key)) {
-      await selectProcedure(key, { source: "auto" });
-      setProcedureDetected(true);
-      return true;
+      const applied = await selectProcedure(key, {
+        source: "auto",
+        confirmedNavigation: hasStrongProcedureIdentity(key, res.signals),
+      });
+      setProcedureDetected(applied !== false);
+      return applied !== false;
     }
   } catch (e) {
     /* không nhận diện được → quay về chọn tay */
@@ -897,8 +962,13 @@ async function reDetectProcedureOnNav(run = 0) {
     }
     const key = detectProcedureKeyFromSignals(res?.signals);
     if (key && PROCEDURES.some((p) => p.key === key)) {
-      if (key !== selectedProcedureKey) await selectProcedure(key, { source: "auto" });
-      setProcedureDetected(true);
+      const applied = key === selectedProcedureKey
+        ? true
+        : await selectProcedure(key, {
+          source: "auto",
+          confirmedNavigation: hasStrongProcedureIdentity(key, res.signals),
+        });
+      setProcedureDetected(applied !== false);
     }
   } catch (e) {
     /* không nhận diện được → giữ nguyên trạng thái hiện tại */
@@ -1030,7 +1100,16 @@ async function saveSession() {
       if (revision !== sessionWriteRevision) return;
       await chrome.storage.local.set({ [SESSION_KEY]: snapshot });
     });
-  } catch (e) { /* ignore quota/serialize errors */ }
+    return true;
+  } catch (e) {
+    console.warn("[Popup] Không lưu được phiên thủ tục/file", {
+      sessionKey: SESSION_KEY,
+      procedureKey: workProcedureKey || selectedProcedureKey,
+      fileCount: files.length,
+      error: e,
+    });
+    return false;
+  }
 }
 
 async function clearSession() {
@@ -1048,7 +1127,9 @@ async function restoreSession() {
   try {
     const res = await chrome.storage.local.get(SESSION_KEY);
     saved = res?.[SESSION_KEY];
-  } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.warn("[Popup] Không đọc được phiên thủ tục/file", { sessionKey: SESSION_KEY, error: e });
+  }
   if (!saved) return;
   businessFillSupportCode = String(saved.businessFillSupportCode || "").trim();
   const savedFiles = Array.isArray(saved.files) ? saved.files : [];
@@ -1220,8 +1301,11 @@ function applyFormUI() {
   if (fillAllBtn) fillAllBtn.hidden = !isBusiness;
   // Đính kèm luôn dùng OCR raw → ẩn lựa chọn "Có bản viết tay".
   if (handwritingRow) handwritingRow.style.display = isAttachMode() ? "none" : "";
-  // Ô tick "tách hồ sơ" chỉ hiện với thủ tục chứng thực (bản sao/chữ ký) ở chế độ đính kèm.
-  if (splitModeRow) splitModeRow.style.display = isSplitEligibleProcedure() ? "" : "none";
+  // Case local split bắt buộc N file = N tab nên không cho trạng thái checkbox chung can thiệp.
+  // Checkbox chỉ còn dành cho các thủ tục mà người dùng thực sự được chọn tách/gộp.
+  if (splitModeRow) {
+    splitModeRow.style.display = isSplitEligibleProcedure() && !isClientLocalSplitProcedure() ? "" : "none";
+  }
   if (!currentConfig().hasAttachmentStep) {
     lastProcessSession = null;
   } else if (lastProcessSession?.procedure !== currentConfig().key) {
@@ -1552,6 +1636,37 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   const ctxRes = await sendToContent({ action: "collectAttachmentContext", procedure: cfg.key });
   if (ctxRes?.error) return { error: ctxRes.error };
   if (ctxRes?.attachmentContext) options.attachmentContext = ctxRes.attachmentContext;
+
+  // Case metadata-only: toàn bộ plan + đổi tên + chia tab chạy tại extension.
+  // Backend chỉ nhận tên/type/size để ghi trace, KHÔNG nhận dataUrl hay binary file.
+  if (isClientLocalSplitProcedure(cfg)) {
+    options.splitMode = true;
+    const local = buildClientLocalSplitPlan(payloadFiles, clientAttachmentCase(cfg));
+    if (local.error) return { error: local.error };
+    setStatus("Đang tạo mã hỗ trợ cho lượt đính kèm...", "info");
+    const traceRes = await api.clientAttachmentTrace({
+      procedure: cfg.key,
+      options,
+      files: local.files.map((file) => ({
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        role: file.role || "attachment",
+        size: attachmentPayloadByteSize(file),
+      })),
+      attachments: local.attachments,
+    });
+    const localAttachRes = await attachSplitAcrossTabs(
+      local.files,
+      local.attachments,
+      cfg.key,
+      traceRes,
+    );
+    return {
+      ...localAttachRes,
+      requestId: localAttachRes?.requestId || traceRes?.requestId,
+    };
+  }
+
   // Gửi lựa chọn "tách hồ sơ" về BE để lưu vào trace (phục vụ thống kê tách/gộp).
   // Chỉ gắn với thủ tục có ô tick (chứng thực bản sao/chữ ký) — true/false theo người dùng chọn.
   if (isSplitEligibleProcedure()) options.splitMode = !!attachSplitMode;
@@ -1659,6 +1774,65 @@ function planItemForFile(attachments, origIndex, file, bundleIndex = 0) {
   };
 }
 
+function attachmentPayloadByteSize(file) {
+  const dataUrl = String(file?.dataUrl || "");
+  const comma = dataUrl.indexOf(",");
+  const payload = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  if (!payload) return 0;
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  return Math.max(Math.floor(payload.length * 3 / 4) - padding, 0);
+}
+
+function clientLocalDocumentName(fileName) {
+  const raw = String(fileName || "");
+  const dot = raw.lastIndexOf(".");
+  const stem = dot > 0 ? raw.slice(0, dot) : raw;
+  const normalized = stem
+    .normalize("NFC")
+    .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  // Cổng dùng Zod string.max(50), tức giới hạn theo JS string.length.
+  return (normalized || "Ban_dich_va_giay_to_can_dich").slice(0, 50).trim();
+}
+
+function clientLocalFileExtension(fileName) {
+  const match = String(fileName || "").match(/(\.[^.\s]+)$/);
+  return match ? match[1] : "";
+}
+
+function buildClientLocalSplitPlan(payloadFiles, config) {
+  const componentName = String(config?.componentName || "").trim();
+  const componentIndex = Number(config?.componentIndex);
+  if (!componentName || !Number.isInteger(componentIndex) || componentIndex < 1) {
+    return { error: "Cấu hình thành phần hồ sơ đính kèm cục bộ không hợp lệ." };
+  }
+
+  const files = [];
+  const attachments = [];
+  for (let index = 0; index < payloadFiles.length; index++) {
+    const source = payloadFiles[index];
+    const documentName = clientLocalDocumentName(source?.name);
+    const safeFileName = documentName + clientLocalFileExtension(source?.name);
+    const file = { ...source, name: safeFileName, originalName: source?.name || safeFileName };
+    files.push(file);
+    attachments.push({
+      fileIndex: index,
+      fileName: safeFileName,
+      documentName,
+      componentName,
+      componentIndex,
+      target: "existing",
+      needsAddComponent: false,
+      appendOnOccupied: false,
+      detectedType: componentName,
+      // Nếu tên bản dịch có chữ CCCD vẫn phải vào hàng 1; không được áp heuristic giấy tùy thân.
+      forceFirstRow: true,
+    });
+  }
+  return { files, attachments };
+}
+
 function isSignatureIdentityPlanItem(item) {
   return Number(item?.componentIndex) === 2;
 }
@@ -1697,10 +1871,12 @@ async function buildSignatureSplitBundles(payloadFiles, attachments) {
   }
 
   return {
-    bundles: documentEntries.map((entry) => {
+    bundles: documentEntries.map((entry, bundleIndex) => {
       const files = [entry.file];
       const planItems = [planItemForFile([entry.planItem], 0, entry.file, 0)];
-      if (sharedIdentityFile && sharedIdentityPlan) {
+      // CCCD chỉ thuộc hồ sơ/tab đầu tiên. Các bundle đưa vào queue từ tab thứ hai trở đi
+      // chỉ có đúng một giấy tờ STT1, không lặp giấy tùy thân sang hồ sơ mới.
+      if (bundleIndex === 0 && sharedIdentityFile && sharedIdentityPlan) {
         files.push(sharedIdentityFile);
         planItems.push({
           ...sharedIdentityPlan,
@@ -1725,7 +1901,7 @@ function buildDefaultSplitBundles(payloadFiles, attachments) {
 }
 
 // Tách hồ sơ: bundle[0] → tab hiện tại; bundle[1..] → hàng đợi tuần tự, mỗi lần chỉ 1 tab active.
-// Riêng chứng thực chữ ký: mỗi bundle = 1 tài liệu STT1 + cùng một giấy tùy thân dùng chung ở STT2.
+// Riêng chứng thực chữ ký: bundle đầu = tài liệu STT1 + CCCD STT2; bundle sau chỉ có tài liệu STT1.
 async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planRes) {
   const built = procedure === "chung-thuc-chu-ky"
     ? await buildSignatureSplitBundles(payloadFiles, attachments)
@@ -1813,13 +1989,13 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
 
   let msg =
     (currentTabRecovery
-      ? `Tab hồ sơ hiện tại đang được tải lại để tiếp tục đính bộ tài liệu 1.\n`
-      : `Đã đính kèm bộ tài liệu 1 vào hồ sơ hiện tại.\n`) +
-    `Đã xếp hàng tuần tự ${rest.length} bộ tài liệu còn lại.\n` +
-    `Hệ thống chỉ mở và xử lý một tab active; xong tab này mới chuyển sang tab tiếp theo.`;
+      ? `⏳ Đang tiếp tục hồ sơ đầu tiên.\n`
+      : `✓ Đã xong hồ sơ đầu tiên.\n`) +
+    `⏳ Còn ${rest.length} hồ sơ đang chờ.\n` +
+    `Hệ thống tự xử lý lần lượt; vui lòng không đóng trang đang chạy.`;
   if (planRes?.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   if (!currentTabRecovery) await showPageToast("Đã đính kèm xong hồ sơ hiện tại.", "success");
-  return { ok: true, message: msg };
+  return { ok: true, message: msg, requestId: planRes?.requestId };
 }
 
 // ===== BƯỚC CHẤP THUẬN XỬ LÝ DỮ LIỆU (PDPL) =====
@@ -1873,6 +2049,13 @@ async function resolveConsentContext() {
 let pendingConsentTrigger = null;
 // Chốt chặn PDPL: (người/phiên + thủ tục) này đã đồng ý → cho qua; chưa → nhớ nút + context, mở điều khoản.
 async function requireConsent(triggerEl) {
+  // Một số luồng chỉ xử lý file hoàn toàn tại extension và được registry miễn consent riêng.
+  // Dùng cờ BE để không vô tình miễn consent cho mọi thủ tục đính kèm local về sau.
+  if (currentConfig()?.skipConsent === true) {
+    currentConsentContext = null;
+    pendingConsentTrigger = null;
+    return true;
+  }
   const ctx = await resolveConsentContext();
   currentConsentContext = ctx;
   if (consentGrants[ctx.key]) return true;
@@ -2099,6 +2282,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "xoa-dang-ky-tau-ca" ||
       cfg.key === "xoa-dang-ky-phuong-tien-thuy" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-da-nang" ||
+      cfg.key === "cap-gcn-so-nha-da-nang" ||
+      cfg.key === "xac-nhan-ho-so-so-nha-da-nang" ||
+      cfg.key === "cap-phep-long-duong-via-he" ||
       cfg.key === "cap-giay-phep-chat-ha-cay-xanh" ||
       cfg.key === "cap-ban-sao-van-bang-so-goc" ||
       cfg.key === "chap-thuan-dau-noi-tam"
@@ -2382,6 +2568,15 @@ async function dispatchFill(allFields, errors, page = null) {
   const procedure = currentConfig()?.key || "";
   let panelMinimized = false;
   try {
+    // Trang có thể reload ngay sau khi cán bộ bấm sang bước đính kèm. Chốt session trước khi ẩn
+    // iframe để panel mới luôn dựng lại được đúng file, kể cả lượt save từ input còn đang chạy.
+    const sessionSaved = await saveSession();
+    if (sessionSaved === false) {
+      console.warn("[AutoFill] Điền tiếp nhưng phiên file chưa được lưu bền vững", {
+        procedure,
+        fileCount: files.length,
+      });
+    }
     // Chỉ ẩn SAU khi BE đã trả dữ liệu dùng được, nhưng TRƯỚC khi content bắt đầu điền DOM.
     const panelRes = await sendToContent({ action: "minimizePanelForFill", procedure });
     panelMinimized = !!panelRes?.minimized;
@@ -2536,6 +2731,14 @@ function postPanelHeight() {
   const h = Math.ceil(document.body.scrollHeight) + 2;
   parent.postMessage({ type: "autofill-hcc-resize", height: h }, "*");
 }
+if (IS_EMBEDDED) {
+  // Panel cha có thể bị display:none trong lúc fill, khiến iframe giữ chiều cao tối thiểu.
+  // Khi panel được mở lại ở bước đính kèm, đo lại theo yêu cầu thay vì chờ ResizeObserver tự phát hiện.
+  window.addEventListener("message", (e) => {
+    if (e.source !== window.parent || e.data?.type !== "autofill-hcc-request-resize") return;
+    postPanelHeight();
+  });
+}
 if (IS_EMBEDDED && typeof ResizeObserver !== "undefined") {
   const ro = new ResizeObserver(() => postPanelHeight());
   // Quan sát body (chiều cao nội dung) — đổi thủ tục / mở-đóng khối giấy tờ đều đổi body → báo lại panel.
@@ -2544,7 +2747,9 @@ if (IS_EMBEDDED && typeof ResizeObserver !== "undefined") {
 }
 
 // ===== Khởi động =====
-bootstrap();
+// Các khối UI phía dưới cũng khởi tạo bất đồng bộ. Giữ Promise này để ô "Đi đến thủ tục"
+// không được selectProcedure()/saveSession() trước khi file của tab đã restore xong.
+const popupBootstrapReady = bootstrap();
 
 // ===== Lịch sử cập nhật (changelog) — thuần FE, dữ liệu ở changelog.js =====
 // Trigger là nút "★ Lịch sử" trên HEADER panel (content.js) → gửi postMessage vào iframe này.
@@ -2724,6 +2929,18 @@ async function applyStoredLocation() {
   refreshKeKhaiHint();
 }
 
+/**
+ * Đăng xuất -> QUÊN lựa chọn tỉnh/xã đã lưu (kể cả "manual"). Nhờ vậy phiên đăng nhập SAU (kể cả
+ * cùng tài khoản) sẽ seed lại tỉnh/xã TỪ TÀI KHOẢN (accountLocation) thay vì giữ lựa chọn tay cũ.
+ * Trước đây source="manual" giữ mãi -> đổi tay rồi logout/login vẫn ra chỗ đã đổi, không về theo tài khoản.
+ */
+async function forgetStoredLocation() {
+  try { await chrome.storage.local.remove(LOCATION_STORAGE_KEY); } catch (_) { /* ignore */ }
+  currentLocation = { province: "", provinceSlug: "", ward: "" };
+  if (provinceSelect) provinceSelect.value = "";
+  if (wardSelect) { wardSelect.innerHTML = ""; wardSelect.disabled = true; }
+}
+
 /** Tỉnh/xã gắn trong tài khoản -> địa chỉ mặc định, kèm dấu vết để biết là máy tự điền. */
 function accountLocation(store) {
   const mapped = store?.locationFor?.(currentUser?.tinh, currentUser?.xa);
@@ -2840,6 +3057,11 @@ function updateKeKhaiUI() {
 
 async function initKeKhaiPicker() {
   try {
+    await popupBootstrapReady;
+  } catch (error) {
+    console.warn("[Popup] Khởi tạo chính chưa hoàn tất trước ô Đi đến thủ tục:", error);
+  }
+  try {
     const res = await api.keKhaiLinks();
     keKhaiLinkList = Array.isArray(res?.links) ? res.links : [];
   } catch (error) {
@@ -2874,7 +3096,9 @@ async function initKeKhaiPicker() {
     updateKeKhaiUI();
     void onKeKhaiProcedureChosen();
   });
-  if (preferred) void onKeKhaiProcedureChosen();
+  // savedKey là lựa chọn tiện ích dùng chung để lần sau mở nhanh, KHÔNG phải pipeline của tab này.
+  // Chỉ event change hoặc nút mở trang mới được quyền gọi onKeKhaiProcedureChosen(); nếu gọi ngay
+  // khi init, tab mới chưa có session sẽ kế thừa nhầm tên thủ tục của tab trước.
   syncDestCombos();
   updateKeKhaiUI();
   postPanelHeight();
@@ -2911,6 +3135,8 @@ async function openKeKhaiPage() {
   } else {
     await chrome.storage.local.remove(AGENCY_ARM_KEY);
   }
+  // Điều hướng phá iframe popup hiện tại; chốt file xuống storage trước khi đổi URL.
+  await saveSession();
   const tabId = await getTargetTabId();
   if (tabId) await chrome.tabs.update(tabId, { url: link.url });
   else await chrome.tabs.create({ url: link.url });

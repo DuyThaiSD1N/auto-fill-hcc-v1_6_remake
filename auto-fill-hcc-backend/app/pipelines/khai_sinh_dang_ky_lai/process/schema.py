@@ -5,15 +5,28 @@ extracts role facts; Python maps those facts to legacy UI fields and defaults.
 """
 
 FIELDS: list[dict] = [
-    # Người yêu cầu — CHỈ trích khi tờ khai/đơn ghi rõ thông tin người yêu cầu KHÁC với cha/mẹ,
-    # hoặc khi tờ khai có dòng "Người yêu cầu" / "Họ tên người yêu cầu" với nội dung đầy đủ.
-    # Nếu người yêu cầu chính là cha hoặc mẹ thì KHÔNG trả Requester_* (đã có Father_*/Mother_*).
-    {"name": "Requester_FullName", "desc": "Họ tên người yêu cầu đăng ký lại khai sinh (từ tờ khai/đơn), chỉ trả khi tờ khai ghi rõ và khác với cha/mẹ."},
-    {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu (từ tờ khai/CCCD), chỉ trả khi có."},
+    # Người yêu cầu — ƯU TIÊN TỜ KHAI. Trích khi TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH có dòng
+    # "Họ, chữ đệm, tên người yêu cầu" / "Người yêu cầu", KỂ CẢ khi người đó chính là con/cha/mẹ:
+    # mapper cần biết để tick đúng ô "(5) Quan hệ với người được khai sinh" trước khi điền.
+    # Không có tờ khai → BỎ TRỐNG toàn bộ Requester_* (mapper tự fallback sang CCCD của con).
+    {"name": "Requester_SourceDocumentTitle",
+     "desc": "Tiêu đề NGUYÊN VĂN của tài liệu đã dùng để điền Requester_*. CHỈ trả cùng Requester_* khi "
+             "tiêu đề đó là TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH; không trả cho CCCD, giấy khai sinh cũ hay tờ "
+             "khai cấp bản sao trích lục."},
+    {"name": "Requester_RelationToSubject",
+     "desc": 'Quan hệ của người yêu cầu với NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI KHAI SINH, đọc từ dòng "Quan hệ với '
+             'người được khai sinh" trên TỜ KHAI. BẮT BUỘC quy về ĐÚNG MỘT trong bốn giá trị: '
+             '"Bản thân" (người yêu cầu tự đi làm cho chính mình — tờ khai ghi "Bản thân"/"Tự khai"/'
+             '"Chính mình" hoặc họ tên người yêu cầu trùng người được khai sinh) | "Cha" | "Mẹ" | '
+             '"Khác" (ông, bà, anh, chị, em, con, cháu, người được ủy quyền...). Không có tờ khai thì bỏ field.'},
+    {"name": "Requester_FullName", "desc": "Họ tên người yêu cầu ghi trên TỜ KHAI đăng ký lại khai sinh (dòng 'Họ, chữ đệm, tên người yêu cầu')."},
+    {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu (từ tờ khai/CCCD của chính người yêu cầu), chỉ trả khi có."},
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh người yêu cầu."},
     {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Requester_Relationship", "desc": "Quan hệ người yêu cầu với người được đăng ký lại khai sinh (vd 'Con', 'Anh', 'Em', 'Chị'...)."},
+    {"name": "Requester_Relationship",
+     "desc": "Chữ NGUYÊN VĂN ghi ở dòng quan hệ trên tờ khai khi không quy được về 4 giá trị chuẩn "
+             "(vd 'Con', 'Anh', 'Em', 'Chị', 'Cháu nội'...). Dùng kèm Requester_RelationToSubject=\"Khác\"."},
 
     # Người được đăng ký lại khai sinh.
     {"name": "Subject_FullName", "desc": "Họ tên đầy đủ của người được đăng ký lại khai sinh."},
@@ -31,6 +44,18 @@ FIELDS: list[dict] = [
     {"name": "Subject_HometownDomestic",
      "desc": "Quê quán trong nước của người được đăng ký lại khai sinh, object {quocGia,tinh,xa,diaChi}. "
              "Lấy từ QUÊ QUÁN trên giấy tờ (CCCD/giấy khai sinh); KHÔNG dùng nơi sinh/nơi cư trú làm quê quán."},
+    # Nhân thân trên CCCD/CMND CỦA CHÍNH người được đăng ký lại khai sinh — nguồn fallback để điền
+    # khối "Thông tin người yêu cầu" khi hồ sơ KHÔNG có tờ khai (người lớn tự đi đăng ký lại cho mình).
+    {"name": "Subject_IdNumber",
+     "desc": "Số định danh/CCCD/CMND CỦA CHÍNH người được đăng ký lại khai sinh. CHỈ trả khi hồ sơ có "
+             "CCCD/CMND của chính người đó; KHÔNG lấy số của cha/mẹ, KHÔNG lấy số đăng ký trên giấy khai sinh."},
+    {"name": "Subject_IdIssueDate", "desc": "Ngày cấp CCCD/CMND của chính người được đăng ký lại khai sinh, dd/mm/yyyy."},
+    {"name": "Subject_IdIssuePlace",
+     "desc": "Nơi cấp CCCD/CMND của chính người được đăng ký lại khai sinh — lấy từ mặt sau CCCD; RIÊNG "
+             "Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND."},
+    {"name": "Subject_ResidenceDomestic",
+     "desc": 'Nơi cư trú/thường trú của chính người được đăng ký lại khai sinh, object {quocGia,tinh,xa,diaChi}. '
+             'Ưu tiên "Nơi thường trú" trên CCCD CỦA CHÍNH NGƯỜI ĐÓ; KHÔNG lấy nơi cư trú của cha/mẹ.'},
 
     # Cha của người được đăng ký lại khai sinh.
     {"name": "Father_FullName", "desc": "Họ tên cha của người được đăng ký lại khai sinh. Ưu tiên lấy từ CCCD của cha; nếu cha đã mất và không có CCCD thì lấy từ TRÍCH LỤC KHAI TỬ (dòng 'Họ tên người chết')."},
@@ -131,6 +156,7 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
     "Requester_IdIssueDate",
     "Subject_BirthDate",
+    "Subject_IdIssueDate",
     "Father_IdIssueDate",
     "Mother_IdIssueDate",
     "PreviousRegistration_Date",
@@ -139,6 +165,7 @@ for _name in (
 for _name in (
     "Requester_ResidenceDomestic",
     "Subject_BirthPlaceDomestic",
+    "Subject_ResidenceDomestic",
     "Subject_HometownDomestic",
     "Father_ResidenceDomestic",
     "Father_HometownFromDeathCert",

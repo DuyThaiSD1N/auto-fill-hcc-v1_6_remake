@@ -11,6 +11,7 @@ from app.pipelines.khai_sinh_dang_ky_lai.process import reason as _reason_mod
 
 _COMP_BY_NAME = {
     **UI_COMP_BY_NAME,
+    "QuanHe": "x-radio",
     "LoaiDangKy": "x-radio",
     "nksLoaiKhaiSinh": "x-select-default",
     "DanTocC": "x-select",
@@ -196,6 +197,176 @@ def _issuer_or_default(values: dict, prefix: str) -> str:
     return ""
 
 
+# Ô tích "(5) Quan hệ với người được khai sinh" của biểu mẫu legacy.
+_ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Mother"}
+
+# Thứ tự đọc dân tộc người yêu cầu theo ô tích đã chốt (không có "Khac": người thứ ba
+# không có nguồn dân tộc trong hồ sơ nên để cổng giữ dữ liệu VNeID).
+_ETHNICITY_BY_TICK = {
+    "BanThan": ("Subject_Ethnicity", "Father_Ethnicity", "Mother_Ethnicity"),
+    "ChaDe": ("Father_Ethnicity", "Subject_Ethnicity", "Mother_Ethnicity"),
+    "MeDe": ("Mother_Ethnicity", "Subject_Ethnicity", "Father_Ethnicity"),
+}
+
+
+def _context_flag(context: str, tag: str, label: str) -> str:
+    if not context:
+        return ""
+    return _fold(_reason_mod._labeled_value(_reason_mod._section(context, tag), label))
+
+
+def _has_declaration(values: dict, context: str) -> bool:
+    """Hồ sơ có TỜ KHAI đăng ký lại khai sinh hay không — nguồn ưu tiên số 1 của khối người yêu cầu."""
+    flag = _context_flag(context, "to_khai_dang_ky_lai", "Có tờ khai đăng ký lại khai sinh")
+    if flag:
+        return flag == "co"
+    # reason không dựng được context (LLM phân vai hỏng) → tin bằng chứng tiêu đề tài liệu của LLM.
+    return _is_birth_reregistration_declaration(values.get("Requester_SourceDocumentTitle"))
+
+
+_RELATION_TICKS = {"banthan": "BanThan", "chade": "ChaDe", "mede": "MeDe", "khac": "Khac"}
+
+
+def _canonical_relation(value) -> str:
+    """Quy chữ quan hệ ghi trên tờ khai về đúng giá trị của ô tích: BanThan/ChaDe/MeDe/Khac."""
+    folded = _fold(value)
+    if not folded or "khong xac dinh" in folded:
+        return ""
+    # Agent có thể trả thẳng mã ô tích ("BanThan") thay vì chữ tiếng Việt ("Bản thân").
+    tick = _RELATION_TICKS.get(folded.replace(" ", ""))
+    if tick:
+        return tick
+    if any(kw in folded for kw in ("ban than", "chinh minh", "chinh chu", "tu khai")):
+        return "BanThan"
+    # So khớp theo TỪ: "cháu"/"em" không được nuốt thành "cha"/"mẹ".
+    words = folded.split()
+    if "me" in words:
+        return "MeDe"
+    if "cha" in words or "bo" in words:
+        return "ChaDe"
+    return "Khac"
+
+
+def _same_person(name_a, id_a, name_b, id_b) -> bool:
+    digits_a, digits_b = _digits(id_a), _digits(id_b)
+    if digits_a and digits_b:
+        return digits_a == digits_b
+    folded_a, folded_b = _fold(name_a), _fold(name_b)
+    return bool(folded_a and folded_b and folded_a == folded_b)
+
+
+def _relation_by_identity(values: dict) -> str:
+    """Tờ khai không ghi quan hệ → đối chiếu nhân thân người yêu cầu với từng vai."""
+    req_name = values.get("Requester_FullName")
+    req_id = values.get("Requester_IdNumber")
+    if not req_name and not req_id:
+        return ""
+    for prefix, tick in (("Subject", "BanThan"), ("Father", "ChaDe"), ("Mother", "MeDe")):
+        if _same_person(req_name, req_id, values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber")):
+            return tick
+    return ""
+
+
+def _relation_from_reason(context: str) -> str:
+    """Kết luận quan hệ do agent phân vai ĐỌC VÀ TƯ DUY, đã qua kiểm chứng ở reason.py.
+
+    Đây là căn cứ chính để tích ô (5); reason.py đã ép về "bản thân" khi hồ sơ không có tờ khai.
+    """
+    return _canonical_relation(
+        _context_flag(context, "quan_he_nguoi_yeu_cau", "Kết luận")
+    )
+
+
+def _relation_from_context(context: str) -> str:
+    """Mỏ neo người yêu cầu của cổng (dòng "Vai trò đồng thời" trong reason context)."""
+    role = _context_flag(context, "nguoi_yeu_cau", "Vai trò đồng thời")
+    if not role or "khong xac dinh" in role:
+        return ""
+    if "con" in role:
+        return "BanThan"
+    if "me" in role:
+        return "MeDe"
+    if "cha" in role:
+        return "ChaDe"
+    return ""
+
+
+def _person_from_role(values: dict, prefix: str, context: str) -> dict:
+    """Gom nhân thân của một vai về đúng shape khối người yêu cầu."""
+    if prefix == "Subject":
+        area = values.get("Subject_ResidenceDomestic")
+        area = _normalize_domestic_area(area) if isinstance(area, dict) else None
+    else:
+        area = _resolve_residence(values, prefix, context)
+        # Người đang đi làm thủ tục không thể là người đã chết → không bê marker "Đã chết" sang.
+        if _is_deceased_marker(area):
+            area = None
+    return {
+        "ho_ten": values.get(f"{prefix}_FullName"),
+        "so_dinh_danh": values.get(f"{prefix}_IdNumber"),
+        "ngay_cap": values.get(f"{prefix}_IdIssueDate"),
+        "noi_cap": _issuer_or_default(values, prefix),
+        "noi_cu_tru": area,
+    }
+
+
+def _resolve_requester(values: dict, context: str) -> dict:
+    """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
+
+    Ô tích chốt TRƯỚC, nhân thân điền SAU — thứ tự chốt ô tích:
+      1. TỜ KHAI đăng ký lại khai sinh (ưu tiên tuyệt đối): dòng "Quan hệ với người được khai sinh".
+      2. Kết luận của agent phân vai (<quan_he_nguoi_yeu_cau>) — agent đã đối chiếu người yêu cầu
+         với người được đăng ký lại khai sinh, reason.py đã kiểm chứng và ép "bản thân" khi hồ sơ
+         không có tờ khai.
+      3. Đối chiếu nhân thân người yêu cầu với từng vai, rồi tới mỏ neo người yêu cầu của cổng.
+
+    Nhân thân điền theo đúng vai đã tick, thiếu thì lấy bù từ vai đó (Bản thân ← con, Cha ← cha,
+    Mẹ ← mẹ) vì CCCD của chính người đó sạch hơn chữ viết tay trên tờ khai. Không có tờ khai thì
+    LUÔN fallback CCCD của CON; hồ sơ không có cả nhân thân con mới dùng cha/mẹ theo mỏ neo cổng.
+    """
+    # Agent chỉ được trả Requester_* khi đọc từ tờ khai, nên bản thân việc có Requester_* đã là bằng
+    # chứng; _has_declaration còn bắt được ca tờ khai chỉ tích ô quan hệ mà bỏ trống họ tên.
+    has_requester_facts = any(
+        values.get(name) for name in (
+            "Requester_FullName", "Requester_IdNumber", "Requester_RelationToSubject",
+            "Requester_Relationship", "Requester_ResidenceDomestic",
+        )
+    )
+    if has_requester_facts or _has_declaration(values, context):
+        residence = values.get("Requester_ResidenceDomestic")
+        declared = {
+            "ho_ten": values.get("Requester_FullName"),
+            "so_dinh_danh": values.get("Requester_IdNumber"),
+            "ngay_cap": values.get("Requester_IdIssueDate"),
+            "noi_cap": _issuer_or_default(values, "Requester"),
+            "noi_cu_tru": _normalize_domestic_area(residence) if isinstance(residence, dict) else None,
+        }
+        relation = (
+            _canonical_relation(values.get("Requester_RelationToSubject"))
+            or _relation_from_reason(context)
+            or _canonical_relation(values.get("Requester_Relationship"))
+            or _relation_by_identity(values)
+            or _relation_from_context(context)
+        )
+        role = _ROLE_BY_RELATION_TICK.get(relation)
+        base = _person_from_role(values, role, context) if role else {}
+        person = {key: declared.get(key) or base.get(key) for key in declared}
+        if any(person.values()):
+            return {**person, "quan_he": relation or "Khac", "source": "to_khai"}
+
+    subject = _person_from_role(values, "Subject", context)
+    if subject.get("ho_ten") or subject.get("so_dinh_danh"):
+        return {**subject, "quan_he": "BanThan", "source": "cccd_con"}
+
+    anchored = _relation_from_context(context)
+    if anchored in {"ChaDe", "MeDe"}:
+        person = _person_from_role(values, _ROLE_BY_RELATION_TICK[anchored], context)
+        if person.get("ho_ten") or person.get("so_dinh_danh"):
+            return {**person, "quan_he": anchored, "source": "mo_neo_cong"}
+
+    return {"quan_he": "", "source": ""}
+
+
 def _previous_registration_number(values: dict) -> str:
     number = str(values.get("PreviousRegistration_Number") or "").strip()
     if not number:
@@ -229,88 +400,39 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add(default["name"], default["value"])
 
     # I. Nguoi yeu cau.
-    # Uu tien: (1) Requester_* tu to khai/don ghi ro; (2) Lay tu Father_*/Mother_* neu
-    # reason xac dinh nguoi yeu cau la cha hoac me; (3) Default VNeID.
-    has_requester = bool(values.get("Requester_FullName") or values.get("Requester_IdNumber"))
+    # Buoc 1 BAT BUOC: chot o tich "(5) Quan he voi nguoi duoc khai sinh" TRUOC khi dien nhan than —
+    # bieu mau legacy dung lai ca khoi nguoi yeu cau moi lan doi o tich, dien ho ten/CCCD truoc se bi xoa.
+    requester = _resolve_requester(values, context)
+    quan_he = requester.get("quan_he")
+    add("QuanHe", quan_he or "BanThan", default=not quan_he)
 
-    # Xac dinh nguoi yeu cau la cha hay me tu reason context
-    _nyc_section = _reason_mod._section(context, "nguoi_yeu_cau") if context else ""
-    _nyc_dong_thoi = _fold(_reason_mod._labeled_value(_nyc_section, "Vai trò đồng thời")) if _nyc_section else ""
-    _nyc_is_father = "cha" in _nyc_dong_thoi
-    _nyc_is_mother = "me" in _nyc_dong_thoi or "mẹ" in _nyc_dong_thoi
-
-    if has_requester:
-        # Truong hop 1: co field Requester_* rieng tu to khai/CCCD nguoi yeu cau
-        add("HoVaTenC", values.get("Requester_FullName"))
-        req_id = values.get("Requester_IdNumber")
+    # Buoc 2: dien nhan than theo dung vai da tick.
+    if requester.get("ho_ten") or requester.get("so_dinh_danh"):
+        req_id = requester.get("so_dinh_danh")
+        add("HoVaTenC", requester.get("ho_ten"))
         add("SoDinhDanhC", req_id)
         add("SoGiayToDinhDanhC", req_id)
         if req_id:
             add("LoaiGiayToDinhDanhC", _id_doc_type(req_id))
-        add("NgayCapDDC", values.get("Requester_IdIssueDate"))
-        add("NoiCapDDC", _issuer_or_default(values, "Requester"))
-        req_area = values.get("Requester_ResidenceDomestic")
-        if req_area:
-            add("nycLoaiCuTru", "Thường trú")
-            add("nycNoiCuTru", "1")
-            add("nycNoiCuTru_TrongNuoc", _normalize_domestic_area(req_area))
-        else:
-            add("nycLoaiCuTru", "Thường trú", default=True)
-            add("nycNoiCuTru", "1", default=True)
-            add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+        add("NgayCapDDC", requester.get("ngay_cap"))
+        add("NoiCapDDC", requester.get("noi_cap"))
 
-    elif _nyc_is_father and any(name.startswith("Father_") for name in values):
-        # Truong hop 2a: nguoi yeu cau la CHA -> lay tu Father_*
-        father_id = values.get("Father_IdNumber")
-        add("HoVaTenC", values.get("Father_FullName"))
-        add("SoDinhDanhC", father_id)
-        add("SoGiayToDinhDanhC", father_id)
-        if father_id:
-            add("LoaiGiayToDinhDanhC", _id_doc_type(father_id))
-        add("NgayCapDDC", values.get("Father_IdIssueDate"))
-        add("NoiCapDDC", _issuer_or_default(values, "Father"))
+    req_area = requester.get("noi_cu_tru")
+    if req_area:
         add("nycLoaiCuTru", "Thường trú")
-        father_area = _resolve_residence(values, "Father", context)
-        if father_area:
-            add("nycNoiCuTru", "1")
-            add("nycNoiCuTru_TrongNuoc", father_area)
-        else:
-            add("nycNoiCuTru", "1", default=True)
-            add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
-
-    elif _nyc_is_mother and any(name.startswith("Mother_") for name in values):
-        # Truong hop 2b: nguoi yeu cau la ME -> lay tu Mother_*
-        mother_id = values.get("Mother_IdNumber")
-        add("HoVaTenC", values.get("Mother_FullName"))
-        add("SoDinhDanhC", mother_id)
-        add("SoGiayToDinhDanhC", mother_id)
-        if mother_id:
-            add("LoaiGiayToDinhDanhC", _id_doc_type(mother_id))
-        add("NgayCapDDC", values.get("Mother_IdIssueDate"))
-        add("NoiCapDDC", _issuer_or_default(values, "Mother"))
-        add("nycLoaiCuTru", "Thường trú")
-        mother_area = _resolve_residence(values, "Mother", context)
-        if mother_area:
-            add("nycNoiCuTru", "1")
-            add("nycNoiCuTru_TrongNuoc", mother_area)
-        else:
-            add("nycNoiCuTru", "1", default=True)
-            add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
-
+        add("nycNoiCuTru", "1")
+        add("nycNoiCuTru_TrongNuoc", req_area)
     else:
-        # Truong hop 3: khong xac dinh duoc -> de default VNeID
         add("nycLoaiCuTru", "Thường trú", default=True)
         add("nycNoiCuTru", "1", default=True)
         add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
-    add(
-        "DanTocC",
-        normalize_ethnic(
-            values.get("Father_Ethnicity")
-            or values.get("Subject_Ethnicity")
-            or values.get("Mother_Ethnicity")
-        ),
-    )
+    # Dan toc nguoi yeu cau doc theo dung vai da tick. "Khac" la nguoi thu ba (anh/chi/em/uy quyen)
+    # nen khong co nguon dan toc trong ho so -> de trong cho cong giu du lieu VNeID.
+    for _name in _ETHNICITY_BY_TICK.get(quan_he or "BanThan", ()):
+        if values.get(_name):
+            add("DanTocC", normalize_ethnic(values.get(_name)))
+            break
 
     # II. Nguoi duoc dang ky lai khai sinh.
     has_subject = any(name.startswith("Subject_") for name in values)

@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.14",
+    date: "20/8/2026",
+    items: [
+      "Thêm mục Đi đến thủ tục: mở đúng trang kê khai trên Cổng Dịch vụ công quốc gia, tự chọn Tỉnh và Phường/Xã ở bước Chọn cơ quan thực hiện, rồi bấm Nộp trực tuyến và xác nhận thông tin chung giúp cán bộ.",
+      "Chọn nhanh tỉnh và phường/xã theo danh mục hành chính mới sau sáp nhập ngay trên trợ lý.",
+      "Điền chính xác và đúng thứ tự thông tin Người nộp hồ sơ và Chủ hồ sơ ở các thủ tục có hai vai trò.",
+      "Đăng ký hộ kinh doanh: hoàn thiện luồng điền cho thủ tục Thay đổi nội dung đăng ký và Chấm dứt hoạt động.",
+      "Cải thiện độ ổn định khi điền trên biểu mẫu eForm cũ và nhóm thủ tục chứng thực (tách/gộp hồ sơ).",
+    ],
+  },
+  {
     version: "1.13",
     date: "16/8/2026",
     items: [
@@ -11,6 +22,7 @@ const APP_RELEASES = [
       "Sau khi máy chủ trả dữ liệu, Trợ lý tự thu nhỏ trước khi điền để cán bộ dễ quan sát biểu mẫu; tự mở lại nếu không điền được hoặc khi đến bước đính kèm.",
       "Rút gọn thông báo kết quả điền, bổ sung nút Xem chi tiết khi có trường chưa khớp và không hiển thị lỗi kỹ thuật thô.",
       "Hiển thị thông báo hoàn tất ngay trên trang sau khi điền hoặc đính kèm hồ sơ; cải thiện màu hover, focus và khả năng đọc của ô chọn thủ tục.",
+      "Giảm dung lượng gửi hồ sơ lên máy chủ bằng multipart binary; dùng chung một API cho quét điền và phân tích đính kèm.",
     ],
   },
   {
