@@ -77,7 +77,11 @@ async def process_v2(
     procedure: str = Form(...),
     options: str = Form("{}"),
     fileMetadata: str = Form("[]"),
-    files: list[UploadFile] | None = File(None),
+    # PHẢI khai báo list[UploadFile] TRẦN, không được bọc union `| None`: với union, FastAPI
+    # không nhận ra đây là sequence nên đọc form bằng form.get() (một phần tử) thay vì
+    # form.getlist() → gửi 1 file là 422 "Input should be a valid list". Không có file thì
+    # multipart thiếu hẳn part "files", default [] lo phần đó.
+    files: list[UploadFile] = File(default_factory=list),
     user: dict = Depends(require_auth),
 ):
     """Một endpoint multipart cho cả điền form và lập kế hoạch đính kèm."""

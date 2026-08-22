@@ -581,12 +581,26 @@ function renderBusinessPages() {
   postPanelHeight();
 }
 
+// Mã TTHC dùng CHUNG một nguồn với ô "Đi đến thủ tục": danh mục ke_khai_links.json của backend,
+// khớp theo `key` (cùng hệ key với registry). Không nhân bản mã sang chỗ thứ hai để khỏi lệch nhau.
+function procedureCode(key) {
+  if (!key) return "";
+  const link = keKhaiLinks().find((item) => item.key === key);
+  return (link && link.code) || "";
+}
+
 function getVisibleProcedures(query) {
   const q = normalizeProcedureSearch(query);
   if (!q) return [];  // CHƯA gõ tìm → KHÔNG gợi ý thủ tục nào (không mặc định chung-thuc-ban-sao)
+  // Mã gõ tay hay rơi rụng/thừa dấu chấm ("2000815", "2.000.815") nên so theo phần SỐ. Cần ≥4
+  // chữ số mới coi là đang tra mã, nếu không chữ "2" lẫn trong tên sẽ khớp mọi mã. Mã cũng KHÔNG
+  // trộn vào haystack tên vì đúng lý do đó.
+  const digits = q.replace(/\D+/g, "");
+  const codeNeedle = digits.length >= 4 ? digits : "";
   return PROCEDURES.filter((p) => {
     const haystack = normalizeProcedureSearch(`${p.label || ""} ${p.key || ""}`);
-    return haystack.includes(q);
+    if (haystack.includes(q)) return true;
+    return !!codeNeedle && procedureCode(p.key).replace(/\D+/g, "").includes(codeNeedle);
   }).slice(0, SEARCH_PROCEDURE_LIMIT);
 }
 
@@ -643,7 +657,8 @@ function renderProcedureResults(query = procedureSearchQuery) {
     btn.className = "procedure-option" + (p.key === selected?.key ? " active" : "");
     btn.setAttribute("role", "option");
     btn.setAttribute("aria-selected", p.key === selected?.key ? "true" : "false");
-    btn.title = p.label;
+    const code = procedureCode(p.key);
+    btn.title = code ? `${code} — ${p.label}` : p.label;
 
     const label = document.createElement("span");
     label.className = "procedure-option-label";
@@ -3081,6 +3096,9 @@ async function initKeKhaiPicker() {
     const option = document.createElement('option');
     option.value = item.key;
     option.textContent = item.label;
+    // Mã TTHC (backend khai ở data/ke_khai_links.json) để cán bộ tra bằng mã in trên giấy.
+    // Để ở data-* chứ KHÔNG ghép vào textContent — ghép vào thì gõ "2" trong tên khớp mọi mã.
+    if (item.code) option.dataset.code = item.code;
     keKhaiSelect.appendChild(option);
   }
 
@@ -3205,9 +3223,18 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
 
   function renderList(query) {
     const needle = normalizeProcedureSearch(query);
+    // Mã TTHC gõ tay hay rơi rụng/thừa dấu chấm ("2000815", "2.000.815") nên so theo phần SỐ.
+    // Cần ≥4 chữ số mới coi là đang tra mã — nếu không, chữ "2" lẫn trong tên thủ tục sẽ khớp
+    // mọi mã. Mã cũng KHÔNG nằm trong textContent của <option> vì lý do đó: nó ở data-code,
+    // nên danh sách tỉnh/xã (dùng chung widget này, không khai mã) không bị ảnh hưởng.
+    const digits = needle.replace(/\D+/g, "");
+    const codeNeedle = digits.length >= 4 ? digits : "";
     list.innerHTML = "";
-    const matched = options().filter((opt) =>
-      !needle || normalizeProcedureSearch(opt.textContent).includes(needle));
+    const matched = options().filter((opt) => {
+      if (!needle) return true;
+      if (normalizeProcedureSearch(opt.textContent).includes(needle)) return true;
+      return !!codeNeedle && (opt.dataset.code || "").replace(/\D+/g, "").includes(codeNeedle);
+    });
     if (!matched.length) {
       const empty = document.createElement("div");
       empty.className = "combo-empty";
@@ -3221,6 +3248,8 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
       item.className = "combo-option" + (opt.value === select.value ? " active" : "");
       item.setAttribute("role", "option");
       item.textContent = opt.textContent;
+      // Mã chỉ để tra cứu và xem khi rê chuột, KHÔNG hiện thành dòng riêng cho đỡ rối danh sách.
+      if (opt.dataset.code) item.title = `${opt.dataset.code} — ${opt.textContent}`;
       item.addEventListener("click", () => {
         select.value = opt.value;
         // Phát `change` để handler gốc của select chạy y như người dùng bấm select thật.
@@ -3331,7 +3360,7 @@ async function initDestSection() {
   if (!destSection || !destGoBtn) return;
   destCombos.province = enhanceSelectWithSearch(provinceSelect, { searchPlaceholder: "Tìm tỉnh/thành phố..." });
   destCombos.ward = enhanceSelectWithSearch(wardSelect, { searchPlaceholder: "Tìm phường/xã..." });
-  destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, { searchPlaceholder: "Tìm thủ tục..." });
+  destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, { searchPlaceholder: "Tìm theo tên hoặc mã (vd 2.000815)..." });
 
   destGoBtn.addEventListener("click", () => void onDestGoClick());
   // Ẩn trước, chờ biết đang ở trang nào rồi mới quyết -> không chớp khối sai màn lúc mở panel.

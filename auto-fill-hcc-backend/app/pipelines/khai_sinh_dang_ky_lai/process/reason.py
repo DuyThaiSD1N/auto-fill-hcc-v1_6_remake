@@ -77,7 +77,12 @@ THỨ TỰ PHÂN VAI:
    mơ hồ thì ghi "Không xác định".
 4. CCCD/CMND chỉ cho biết thông tin của chính người trên thẻ. Tên file và thứ tự tải lên chỉ là tín hiệu
    phụ, không đủ để tự gán vai.
-5. Người yêu cầu lấy theo requester_context: khớp chính xác số định danh trước, thiếu số mới khớp họ tên.
+5. Người yêu cầu:
+   - CÓ TỜ KHAI/ĐƠN đăng ký lại khai sinh: lấy ĐÚNG người ghi ở mục người yêu cầu trên tờ khai.
+     TUYỆT ĐỐI KHÔNG lấy theo requester_context — đó chỉ là tài khoản VNeID đang đăng nhập cổng,
+     rất thường là người nộp hộ và KHÁC người ghi trên tờ khai.
+   - KHÔNG có tờ khai: không giấy tờ nào nói ai là người yêu cầu → ghi "Không xác định" cho cả khối
+     <nguoi_yeu_cau>; KHÔNG dựng nhân thân người yêu cầu từ CCCD của con/cha/mẹ trong hồ sơ.
    Người yêu cầu có thể đồng thời là con, cha hoặc mẹ.
 6. Vợ/chồng, người ký, chủ hộ, người nhận công văn không tự động là cha/mẹ/con.
 7. Một người không được đồng thời là con và cha/mẹ. Không ghép tên, số định danh, ngày sinh hoặc nguồn
@@ -95,10 +100,10 @@ b. Tờ khai KHÔNG ghi rõ quan hệ nhưng có họ tên người yêu cầu: 
    yêu cầu với <con>, <cha>, <me>. Trùng <con> → bản thân; trùng <cha> → cha; trùng <me> → mẹ;
    không trùng ai → khác.
 c. KHÔNG CÓ TỜ KHAI/ĐƠN, hồ sơ chỉ có CCCD/CMND (kèm hoặc không kèm giấy khai sinh cũ):
-   KẾT LUẬN "bản thân". Đăng ký lại khai sinh là thủ tục người đã trưởng thành tự đi làm cho chính
-   mình; CCCD của cha/mẹ trong hồ sơ chỉ để chứng minh nhân thân cha/mẹ, KHÔNG biến họ thành người
-   yêu cầu. TUYỆT ĐỐI KHÔNG kết luận cha/mẹ chỉ vì hồ sơ có CCCD của cha/mẹ.
-d. Chỉ ghi "không xác định" khi hồ sơ không có cả tờ khai lẫn nhân thân của <con>.
+   KẾT LUẬN "khác". Không có giấy tờ nào nói ai đang đi nộp hồ sơ, nên không được suy người yêu cầu
+   là con/cha/mẹ. Cổng đã tự điền khối người yêu cầu từ tài khoản VNeID đăng nhập; phần mềm chỉ tích
+   ô "Khác" rồi đổ dữ liệu quét được vào các khối con/cha/mẹ.
+d. Không dùng nhãn "không xác định" khi hồ sơ không có tờ khai — trường hợp đó luôn là "khác".
 
 Chỉ trả TEXT theo đúng năm khối sau, không markdown/code fence và không thêm JSON:
 Mỗi nhãn đúng một dòng; "Căn cứ phân vai" tối đa 20 từ. Chỉ ghi KẾT LUẬN, không trình bày chuỗi suy luận.
@@ -449,14 +454,49 @@ def _normalized_relation(value: str) -> str:
     return ""
 
 
-def _validated_relation(raw: str, sections: dict[str, str], has_declaration: bool) -> tuple[str, str]:
+def _anchor_is_role(applicant: tuple[str, str], section: str) -> bool:
+    """Người đang đăng nhập cổng có đúng là người trong khối vai này không.
+
+    Khớp số định danh trước; chỉ khi một bên thiếu số mới so họ tên (hai người trùng tên là
+    chuyện thường, nhưng số định danh khác nhau thì chắc chắn là hai người).
+    """
+    name, ident = applicant
+    if _is_unknown(section):
+        return False
+    role_id = _role_id(section)
+    if ident and role_id:
+        return ident == role_id
+    role_name = _role_name(section)
+    return bool(name and role_name and _fold(name) == _fold(role_name))
+
+
+def _validated_relation(
+    raw: str,
+    sections: dict[str, str],
+    has_declaration: bool,
+    applicant: tuple[str, str] = ("", ""),
+) -> tuple[str, str]:
     """Chốt quan hệ người yêu cầu <-> người được đăng ký lại khai sinh.
 
-    Agent đọc và tư duy trước; Python chỉ chặn hai kiểu kết luận không đứng vững:
-      - chọn cha/mẹ trong khi chính khối <cha>/<me> lại Không xác định;
-      - hồ sơ KHÔNG có tờ khai (chỉ CCCD) mà vẫn chọn cha/mẹ/khác — nghiệp vụ đăng ký lại
-        khai sinh mặc định là người trưởng thành tự đi làm cho chính mình.
+    KHÔNG CÓ TỜ KHAI thì kết luận tất định theo mỏ neo VNeID của cổng: người đang đăng nhập TRÙNG
+    <con> nghĩa là chính chủ tự đi làm cho mình → "bản thân"; không trùng thì không tài liệu nào
+    nói ai đang đi nộp → "khác", và phần mềm chỉ tích "Khác" để tách khối người yêu cầu (cổng đã
+    điền sẵn từ VNeID) khỏi khối người được đăng ký lại khai sinh.
+
+    CÓ TỜ KHAI thì agent đọc và tư duy trước; Python chỉ chặn kết luận không đứng vững: chọn cha/mẹ
+    trong khi chính khối <cha>/<me> lại Không xác định.
     """
+    if not has_declaration:
+        if _anchor_is_role(applicant, sections.get("con", "")):
+            return "bản thân", (
+                "Hồ sơ không có tờ khai, nhưng người đang đăng nhập cổng trùng người được đăng ký "
+                "lại khai sinh → chính chủ tự đi làm cho mình."
+            )
+        return "khác", (
+            "Hồ sơ không có tờ khai đăng ký lại khai sinh và người đăng nhập cổng không phải người "
+            "được đăng ký lại khai sinh; giữ nguyên khối người yêu cầu do cổng điền từ VNeID."
+        )
+
     section = _section(raw, "quan_he_nguoi_yeu_cau")
     relation = _normalized_relation(_labeled_value(section, "Kết luận"))
     basis = _labeled_value(section, "Căn cứ") or "Agent không nêu căn cứ."
@@ -465,10 +505,6 @@ def _validated_relation(raw: str, sections: dict[str, str], has_declaration: boo
         tag = "cha" if relation == "cha" else "me"
         if _is_unknown(sections.get(tag, "")):
             relation, basis = "", f"Agent kết luận {relation} nhưng khối <{tag}> Không xác định."
-
-    if not has_declaration and relation and relation != "bản thân":
-        relation = ""
-        basis = "Hồ sơ không có tờ khai; chỉ giấy tờ tuỳ thân thì không đủ căn cứ chọn cha/mẹ/khác."
 
     if not relation:
         if not _is_unknown(sections.get("con", "")):
@@ -483,11 +519,19 @@ def _validated_relation(raw: str, sections: dict[str, str], has_declaration: boo
 def _source_hints(documents: list[dict], options: dict | None) -> str:
     requester_name, requester_id = _requester_context(options)
     valid_sources = _valid_birth_source_names(documents)
+    declaration_sources = _declaration_source_names(documents)
     return (
         "<requester_context>\n"
+        "Đây là TÀI KHOẢN VNeID đang đăng nhập cổng, KHÔNG phải kết luận về người yêu cầu: "
+        "hồ sơ CÓ tờ khai thì lấy người ghi trên tờ khai, hồ sơ KHÔNG có tờ khai thì để "
+        "Không xác định.\n"
         f'Họ tên trên cổng: "{requester_name or "không có"}"\n'
         f'Số định danh trên cổng: "{requester_id or "không có"}"\n'
         "</requester_context>\n"
+        "<declaration_source_check>\n"
+        "Tờ khai đăng ký lại khai sinh được Python nhận diện: "
+        + (", ".join(declaration_sources) if declaration_sources else "Không có")
+        + "\n</declaration_source_check>\n"
         "<birth_registration_source_check>\n"
         "Tài liệu khai sinh hợp lệ được Python nhận diện: "
         + (", ".join(valid_sources) if valid_sources else "Không có")
@@ -504,7 +548,19 @@ def _build_user_content(documents: list[dict], options: dict | None) -> str:
     return f"{_source_hints(documents, options)}\n\nOCR hồ sơ:\n\n{body}"
 
 
-def _validated_requester(section: str, options: dict | None) -> str:
+def _validated_requester(section: str, options: dict | None, has_declaration: bool) -> str:
+    """Chốt khối <nguoi_yeu_cau> trước khi ghim vào prompt trích xuất.
+
+    CÓ TỜ KHAI: tờ khai là nguồn duy nhất — giữ nguyên kết quả agent, KHÔNG so với mỏ neo của cổng.
+    Mỏ neo đó là tài khoản VNeID đang đăng nhập (thường là người nộp hộ), so vào sẽ xoá oan người
+    thật ghi trên tờ khai rồi làm khối người yêu cầu bị chắp vá từ nhiều nguồn.
+
+    KHÔNG CÓ TỜ KHAI: không giấy tờ nào nói ai là người yêu cầu, nên chỉ giữ khối này khi nó khớp
+    mỏ neo của cổng; lệch thì trả "Không xác định" để không ai bị gán nhầm vai người yêu cầu.
+    """
+    if has_declaration:
+        return section or _unknown_role_section("Agent không đọc được người yêu cầu trên tờ khai.")
+
     requester_name, requester_id = _requester_context(options)
     if not requester_name and not requester_id:
         return section or _unknown_role_section("Cổng không truyền mỏ neo người yêu cầu.")
@@ -577,22 +633,23 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
 
     sections = _validate_family_sections(sections)
 
-    # Người yêu cầu: kiểm tra khớp mỏ neo cổng.
+    # Tờ khai quyết định CẢ ô "Quan hệ với người được khai sinh" LẪN nhân thân người yêu cầu;
+    # Python tự kiểm tra loại tài liệu, không tin LLM.
+    declaration_sources = _declaration_source_names(documents)
+    declaration_value = "Có" if declaration_sources else "Không"
+    declaration_source = ", ".join(declaration_sources) if declaration_sources else "Không có"
+
+    # Người yêu cầu: có tờ khai thì tờ khai thắng; không có thì mới soi mỏ neo của cổng.
     requester_raw = _section(raw, "nguoi_yeu_cau")
-    requester = _validated_requester(requester_raw, options)
+    requester = _validated_requester(requester_raw, options, bool(declaration_sources))
 
     # Đăng ký khai sinh trước đây: Python tự kiểm tra loại tài liệu (không tin LLM).
     valid_sources = _valid_birth_source_names(documents)
     registration_value = "Có" if valid_sources else "Không"
     source_value = ", ".join(valid_sources) if valid_sources else "Không có"
 
-    # Tờ khai quyết định ô "Quan hệ với người được khai sinh"; Python tự kiểm tra, không tin LLM.
-    declaration_sources = _declaration_source_names(documents)
-    declaration_value = "Có" if declaration_sources else "Không"
-    declaration_source = ", ".join(declaration_sources) if declaration_sources else "Không có"
-
     relation_value, relation_basis = _validated_relation(
-        raw, sections, bool(declaration_sources)
+        raw, sections, bool(declaration_sources), _requester_context(options)
     )
 
     return (
@@ -628,7 +685,9 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "Nếu một khối ghi Không xác định thì bỏ toàn bộ field của vai đó. "
         "PreviousRegistration_* chỉ được trả khi khối đăng ký khai sinh trước đây ghi Có. "
         "Requester_* chỉ được trả khi khối tờ khai đăng ký lại ghi Có; khi đó BẮT BUỘC trả "
-        "Requester_RelationToSubject kể cả khi người yêu cầu trùng <con>/<cha>/<me>.\n"
+        "Requester_RelationToSubject kể cả khi người yêu cầu trùng <con>/<cha>/<me>. "
+        "Khối tờ khai ghi Không thì BỎ TRỐNG toàn bộ Requester_* — cổng giữ nguyên khối người "
+        "yêu cầu đã điền sẵn từ tài khoản VNeID.\n"
         "</phan_vai_da_xac_dinh>"
     )
 

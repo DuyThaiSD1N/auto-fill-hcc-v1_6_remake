@@ -21,7 +21,8 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
 
 0. NẾU có khối <quan_he_nguoi_yeu_cau> trong <phan_vai_da_xac_dinh>: quan hệ ĐÃ ĐƯỢC CHỐT ở bước
    phân vai (agent đã đối chiếu người yêu cầu với người được đăng ký lại khai sinh, Python đã kiểm
-   chứng). Requester_RelationToSubject phải TRẢ ĐÚNG kết luận đó, không tự suy lại:
+   chứng). Requester_RelationToSubject phải TRẢ ĐÚNG kết luận đó, không tự suy lại; riêng khi khối
+   <to_khai_dang_ky_lai> ghi "Không" thì BỎ TRỐNG cả field này:
    "bản thân" → "Bản thân"; "cha" → "Cha"; "mẹ" → "Mẹ"; "khác" → "Khác";
    "không xác định" → bỏ field.
 1. CÓ TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH trong hồ sơ (tiêu đề có đủ "TỜ KHAI" + "ĐĂNG KÝ LẠI" + "KHAI SINH",
@@ -36,16 +37,15 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
      ghi trên tờ khai; thiếu thì lấy tiếp từ CCCD/CMND CỦA CHÍNH người yêu cầu đó. VẪN PHẢI trả kể cả khi
      người yêu cầu chính là con/cha/mẹ (không được bỏ vì "đã có Subject_*/Father_*/Mother_*").
    - Requester_SourceDocumentTitle = tiêu đề NGUYÊN VĂN của tờ khai đó (bằng chứng nguồn là tờ khai).
-2. KHÔNG CÓ TỜ KHAI (hồ sơ chỉ có CCCD/CMND, kèm hoặc không kèm giấy khai sinh cũ): quan hệ LUÔN là
-   "Bản thân" — đăng ký lại khai sinh là thủ tục người đã trưởng thành tự đi làm cho chính mình,
-   CCCD của cha/mẹ chỉ để chứng minh nhân thân cha/mẹ chứ KHÔNG biến họ thành người yêu cầu.
-   BỎ TRỐNG toàn bộ Requester_* (kể cả Requester_RelationToSubject); Python tự tick "Bản thân" và
-   điền khối người yêu cầu từ CCCD của chính người được đăng ký lại khai sinh.
-   TUYỆT ĐỐI KHÔNG bịa Requester_* từ CCCD cha/mẹ hay từ tên trên giấy khai sinh cũ.
+2. KHÔNG CÓ TỜ KHAI (hồ sơ chỉ có CCCD/CMND, kèm hoặc không kèm giấy khai sinh cũ): không tài liệu nào
+   nói ai đang đi nộp hồ sơ → BỎ TRỐNG toàn bộ Requester_* (kể cả Requester_RelationToSubject).
+   Cổng đã tự điền khối người yêu cầu từ tài khoản VNeID đang đăng nhập; Python chỉ tick "Khác" để tách
+   khối đó ra, KHÔNG ghi đè, rồi đổ toàn bộ dữ liệu quét được vào các khối con/cha/mẹ.
+   TUYỆT ĐỐI KHÔNG bịa Requester_* từ CCCD của con/cha/mẹ hay từ tên trên giấy khai sinh cũ.
 3. Vì vậy CCCD/CMND của CHÍNH người được đăng ký lại khai sinh phải được trích đủ vào Subject_IdNumber,
    Subject_IdIssueDate, Subject_IdIssuePlace, Subject_ResidenceDomestic (ngoài họ tên/ngày sinh/giới tính).
-   Đây là nguồn dự phòng bắt buộc cho khối người yêu cầu — thiếu là hỏng cả khối. KHÔNG lấy số định danh
-   hay nơi thường trú của cha/mẹ gán cho Subject_*.
+   Đây là nguồn duy nhất của khối "Người được đăng ký lại khai sinh" — thiếu là hỏng cả khối. KHÔNG lấy
+   số định danh hay nơi thường trú của cha/mẹ gán cho Subject_*.
 </nguoi_yeu_cau>
 
 <mot_nguoi_mot_nguon>

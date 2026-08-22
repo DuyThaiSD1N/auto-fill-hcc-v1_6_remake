@@ -91,6 +91,16 @@ def _positive_copy_quantity(value) -> str:
     return str(quantity) if quantity > 0 else ""
 
 
+def _upper_name(full_name: str | None) -> str:
+    """Họ tên con/cha/mẹ trên biểu mẫu liên thông LUÔN viết HOA toàn bộ.
+
+    Cổng không tự chuẩn hoá nên giấy tờ ghi kiểu gì extension điền y hệt kiểu đó; hồ sơ có ba ô
+    tên viết ba kiểu khác nhau ("Nguyễn Văn A" / "NGUYỄN VĂN B") trông như dữ liệu lấy sai nguồn.
+    str.upper() nhận biết Unicode nên giữ nguyên dấu tiếng Việt ("Nguyễn" -> "NGUYỄN").
+    """
+    return " ".join(str(full_name or "").split()).upper()
+
+
 def _split_name(full_name: str | None) -> tuple[str, str, str]:
     parts = [p for p in str(full_name or "").split() if p]
     if not parts:
@@ -176,7 +186,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         seen.add(name)
 
     def add_name(prefix: str, full_name: str | None) -> None:
-        ho, chu_dem, ten = _split_name(full_name)
+        ho, chu_dem, ten = _split_name(_upper_name(full_name))
         add(f"{prefix}Ho" if prefix else "Ho", ho)
         add(f"{prefix}ChuDem" if prefix else "ChuDem", chu_dem)
         add(f"{prefix}Ten" if prefix else "Ten", ten)
@@ -286,7 +296,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     if has_father:
         add_name("Cha", values.get("ThongTinBo_HoTen"))
         # Form liên thông dùng 1 ô họ tên gộp (ChaHoTen); form cũ dùng 3 ô tách ở trên.
-        add("ChaHoTen", values.get("ThongTinBo_HoTen"))
+        add("ChaHoTen", _upper_name(values.get("ThongTinBo_HoTen")))
         add("ChaNgaySinh", values.get("ThongTinBo_NgaySinh"))
         add("ChaSoGiayTo", values.get("ThongTinBo_SoDinhDanh"))
         dan_toc_cha_select, dan_toc_cha_khac = _ethnicity_for_form(values.get("ThongTinBo_DanToc"))
