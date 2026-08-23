@@ -37,7 +37,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.14 · 20/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.14 · 23/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -1161,6 +1161,15 @@
           if (terminal) return;
           terminal = true;
           if (ok) showPageToast("Đã đính kèm xong hồ sơ.", "success");
+          if (!ok && details.code === "wallet-file-not-persisted") {
+            showPageToast("Cổng chưa nhận file sau 2 lần thử. Hàng đợi đã dừng tại hồ sơ này.", "warn");
+            chrome.runtime.sendMessage({
+              action: "pausePendingAttach",
+              code: details.code,
+              error: details.error || null,
+            });
+            return;
+          }
           chrome.runtime.sendMessage({
             action: ok ? "clearPendingAttach" : "failPendingAttach",
             code: details.code || null,
@@ -1788,23 +1797,25 @@
   }
 
   async function waitForUploadCompletion(dialog, previousText) {
-    await waitFor(() => {
+    const completed = await waitFor(() => {
       const doneButton = findWalletUploadDoneButton(dialog);
       if (!doneButton) return true;
       if (!document.documentElement.contains(dialog)) return true;
       const text = foldedNodeText(doneButton);
       return !text.includes("dang tai len") && !doneButton.disabled && text !== previousText;
     }, 20000, 150);
+    return !!completed;
   }
 
   async function waitForWalletDialogClosed(dialog) {
-    await waitFor(() =>
+    const closed = await waitFor(() =>
       !document.documentElement.contains(dialog) ||
       dialog.getAttribute("data-state") === "closed" ||
       !isVisible(dialog),
       12000,
       100
     );
+    return !!closed;
   }
 
   function findLatestDialog() {
@@ -1934,6 +1945,27 @@
 
   function rowHasAttachedFile(row) {
     return !!rowAttachedFileName(row);
+  }
+
+  function liveAttachmentRowForVerification(row, planItem = {}) {
+    if (row && document.documentElement.contains(row)) return row;
+    const componentName = planItem?.componentName || "";
+    const componentIndex = planItem?.componentIndex || null;
+    return findAttachmentRowByComponent(componentName, componentIndex) ||
+      (Number(componentIndex) === 1 ? findCopyCertificationAttachmentRow() : null) ||
+      null;
+  }
+
+  async function waitForPersistedAttachment(row, planItem = {}, previousName = "") {
+    // Modal đóng chỉ chứng minh thao tác click đã chạy. Cổng React có thể đóng modal nhưng request
+    // lưu file thất bại; chỉ tên file xuất hiện thật trên dòng hồ sơ mới là hậu điều kiện thành công.
+    return await waitFor(() => {
+      const liveRow = liveAttachmentRowForVerification(row, planItem);
+      if (!liveRow) return null;
+      const attachedName = rowAttachedFileName(liveRow);
+      if (!attachedName || attachedName === previousName) return null;
+      return { row: liveRow, fileName: attachedName };
+    }, 12000, 150);
   }
 
   function attachmentTextKey(value) {
@@ -2338,13 +2370,27 @@
 
     const previousText = foldedNodeText(doneButton);
     doneButton.click();
-    await waitForUploadCompletion(dialog, previousText);
-    await waitForWalletDialogClosed(dialog);
+    const uploadCompleted = await waitForUploadCompletion(dialog, previousText);
+    const dialogClosed = await waitForWalletDialogClosed(dialog);
     if (document.documentElement.contains(dialog) && isVisible(dialog)) {
       await closeDocumentWalletDialogs();
     }
-    await sleep(700);
-    markAttachmentResult(row || dialog, true);
+    const persisted = await waitForPersistedAttachment(row, planItem, existingName);
+    if (!persisted) {
+      const liveRow = liveAttachmentRowForVerification(row, planItem) || row;
+      markAttachmentResult(liveRow || dialog, false);
+      return {
+        error: `Cổng chưa ghi nhận file ${file.name} vào dòng hồ sơ; ô vẫn chưa có tên file.`,
+        code: "wallet-file-not-persisted",
+        fileNames: [file.name],
+        debug: {
+          uploadCompleted,
+          dialogClosed,
+          row: describeAttachmentRowForLog(liveRow),
+        },
+      };
+    }
+    markAttachmentResult(persisted.row, true);
     return { ok: true, attached: 1, fileNames: [file.name] };
   }
 
@@ -3176,12 +3222,19 @@
         // trước khi báo lỗi. Đóng modal dở + làm mới dòng hồ sơ giữa các lần thử để reset trạng thái.
         const MAX_ATTACH_ATTEMPTS = 3;
         let result = null;
+        let persistedRetryUsed = false;
         for (let attempt = 1; attempt <= MAX_ATTACH_ATTEMPTS; attempt++) {
           result = await attachOneFileViaDocumentWallet(row, payloadFile, item);
           if (!result?.error) break;
           // Split tab: các trạng thái ví React bị treo không chữa được bằng cách click lại tại chỗ.
           // Trả ngay cho state machine để áp dụng giới hạn reload theo từng trạng thái.
           if (splitMode && isSplitReloadableWalletError(result.code)) break;
+          // Modal đóng nhưng dòng vẫn trống: thử lại đúng MỘT lần. Không để vòng retry chung biến
+          // lỗi này thành ba lượt rồi vẫn tô xanh/chuyển tab như trước.
+          if (result.code === "wallet-file-not-persisted") {
+            if (persistedRetryUsed) break;
+            persistedRetryUsed = true;
+          }
           if (attempt < MAX_ATTACH_ATTEMPTS) {
             console.warn(`[AutoFill-AttachPlan] thử lại đính kèm (${attempt}/${MAX_ATTACH_ATTEMPTS - 1}) do lỗi:`, result.error);
             await closeDocumentWalletDialogs();

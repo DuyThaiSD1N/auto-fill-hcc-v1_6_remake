@@ -20,6 +20,8 @@ chrome.action.onClicked.addListener(async (tab) => {
 const PENDING_ATTACH_KEY = "autofill_pending_attach";
 const SPLIT_ATTACH_QUEUE_KEY = "autofill_split_attach_queue";
 const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
+const SPLIT_ATTACH_PROGRESS_KEY = "autofill_split_attach_progress";
+const SPLIT_ATTACH_PROGRESS_TTL_MS = 24 * 60 * 60 * 1000;
 
 async function getPendingMap() {
   try {
@@ -51,6 +53,53 @@ async function setSplitAttachQueue(state) {
 async function clearSplitAttachQueue() {
   try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_KEY); }
   catch (e) { /* ignore */ }
+}
+
+async function getSplitAttachProgress() {
+  try {
+    const res = await chrome.storage.local.get(SPLIT_ATTACH_PROGRESS_KEY);
+    return res[SPLIT_ATTACH_PROGRESS_KEY] || null;
+  } catch (e) { return null; }
+}
+
+async function setSplitAttachProgress(progress) {
+  try {
+    await chrome.storage.local.set({
+      [SPLIT_ATTACH_PROGRESS_KEY]: {
+        ...progress,
+        updatedAt: Date.now(),
+        expiresAt: Date.now() + SPLIT_ATTACH_PROGRESS_TTL_MS,
+      },
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+async function updateSplitAttachProgress(state, patch = {}) {
+  if (!state?.runId) return false;
+  const current = await getSplitAttachProgress();
+  if (!current || current.runId !== state.runId) return false;
+  return await setSplitAttachProgress({ ...current, ...patch });
+}
+
+async function recordSplitAttachProgressResult(state, result = {}, ordinal = null) {
+  const current = await getSplitAttachProgress();
+  if (!current || !state?.runId || current.runId !== state.runId) return false;
+  const ok = result.ok === true;
+  return await setSplitAttachProgress({
+    ...current,
+    status: "running",
+    completed: Math.min(Number(current.total) || 0, (Number(current.completed) || 0) + 1),
+    succeeded: (Number(current.succeeded) || 0) + (ok ? 1 : 0),
+    failed: (Number(current.failed) || 0) + (ok ? 0 : 1),
+    activeOrdinal: null,
+    lastResult: {
+      ordinal: Number(ordinal) || null,
+      ok,
+      code: result.code || null,
+      error: result.error || null,
+    },
+  });
 }
 
 // Mọi mutation của queue đi qua một chuỗi Promise để clear/đóng tab không thể cùng lúc mở hai tab.
@@ -91,6 +140,11 @@ async function openNextSplitQueueItemUnlocked() {
       state.activeTabId = tab.id;
       state.activeItem = { ordinal: item.ordinal || null };
       if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được trạng thái hàng đợi tách hồ sơ.");
+      await updateSplitAttachProgress(state, {
+        status: "running",
+        activeOrdinal: Number(item.ordinal) || null,
+        paused: null,
+      });
       await chrome.tabs.update(tab.id, { url: item.url, active: true });
       console.log("[AutoFill-SplitQueue] Bắt đầu bundle", item.ordinal || "?", {
         tabId: tab.id,
@@ -107,11 +161,23 @@ async function openNextSplitQueueItemUnlocked() {
       state.activeTabId = null;
       state.activeItem = null;
       state.results = Array.isArray(state.results) ? state.results : [];
-      state.results.push({ ok: false, ordinal: item?.ordinal || null, error: e?.message || String(e) });
+      const failedResult = { ok: false, ordinal: item?.ordinal || null, error: e?.message || String(e) };
+      state.results.push(failedResult);
+      await recordSplitAttachProgressResult(state, failedResult, item?.ordinal || null);
       if (!await setSplitAttachQueue(state)) break;
     }
   }
 
+  const progress = await getSplitAttachProgress();
+  if (progress && state?.runId && progress.runId === state.runId) {
+    await setSplitAttachProgress({
+      ...progress,
+      status: "completed",
+      completed: Number(progress.total) || Number(progress.completed) || 0,
+      activeOrdinal: null,
+      paused: null,
+    });
+  }
   await clearSplitAttachQueue();
   console.log("[AutoFill-SplitQueue] Đã xử lý hết hàng đợi.", state?.results || []);
   return { done: true, results: state?.results || [] };
@@ -129,6 +195,8 @@ async function finishSplitQueueTabUnlocked(tabId, result = {}) {
   });
   state.activeTabId = null;
   state.activeItem = null;
+  delete state.paused;
+  await recordSplitAttachProgressResult(state, result, state.results[state.results.length - 1]?.ordinal || null);
   if (!await setSplitAttachQueue(state)) return { queueAdvanced: false, error: "Không lưu được kết quả tab." };
   console.log("[AutoFill-SplitQueue] Kết thúc bundle", state.results[state.results.length - 1]);
   // Cho cổng giải phóng request/session của tab vừa xong trước khi khởi tạo eForm tiếp theo.
@@ -285,7 +353,27 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             activeItem: waitForTabId ? { ordinal: 1 } : null,
             results: [],
             startedAt: Date.now(),
+            runId: String(msg.runId || `split-${Date.now()}`),
           };
+          const total = Math.max(Number(msg.totalBundles) || 0, items.length + (waitForTabId ? 1 : 0));
+          const initialCompleted = Math.max(0, Math.min(total, Number(msg.initialCompleted) || 0));
+          const initialSucceeded = Math.max(0, Math.min(initialCompleted, Number(msg.initialSucceeded) || 0));
+          if (!await setSplitAttachProgress({
+            runId: state.runId,
+            originTabId: Number(msg.originTabId) || null,
+            procedure: String(msg.procedure || ""),
+            status: "running",
+            total,
+            completed: initialCompleted,
+            succeeded: initialSucceeded,
+            failed: Math.max(0, initialCompleted - initialSucceeded),
+            activeOrdinal: waitForTabId ? 1 : null,
+            startedAt: state.startedAt,
+            paused: null,
+            lastResult: null,
+          })) {
+            throw new Error("Không lưu được tiến độ hàng đợi tách hồ sơ.");
+          }
           if (!await setSplitAttachQueue(state)) throw new Error("Không lưu được hàng đợi tách hồ sơ tuần tự.");
           return waitForTabId
             ? { ok: true, waiting: true, tabId: waitForTabId, remaining: items.length }
@@ -321,6 +409,38 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     })();
     return true;
   }
+  if (msg?.action === "pausePendingAttach") {
+    (async () => {
+      const tabId = msg.tabId ?? sender?.tab?.id;
+      const result = await withSplitQueueLock(async () => {
+        const state = await getSplitAttachQueue();
+        if (!state || Number(state.activeTabId) !== Number(tabId)) {
+          return { paused: false };
+        }
+        // Giữ nguyên pending + activeTabId để không mở tab kế tiếp. Reload thủ công tab này sẽ đọc
+        // lại bundle và chạy lại; đóng tab thì onRemoved mới kết thúc bundle lỗi và chuyển tiếp.
+        state.paused = {
+          tabId,
+          code: msg.code || "attach-failed",
+          error: msg.error || "Đính kèm thất bại.",
+          pausedAt: Date.now(),
+        };
+        await updateSplitAttachProgress(state, {
+          status: "paused",
+          activeOrdinal: Number(state.activeItem?.ordinal) || null,
+          paused: {
+            ordinal: Number(state.activeItem?.ordinal) || null,
+            code: msg.code || "attach-failed",
+            error: msg.error || "Đính kèm thất bại.",
+          },
+        });
+        const saved = await setSplitAttachQueue(state);
+        return { paused: saved, tabId };
+      });
+      sendResponse({ ok: true, ...result });
+    })();
+    return true;
+  }
   if (msg?.action === "failPendingAttach") {
     (async () => {
       const tabId = msg.tabId ?? sender?.tab?.id;
@@ -342,7 +462,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       await withSplitQueueLock(async () => {
         await setPendingMap({});
         await clearSplitAttachQueue();
-        try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_STAGE_KEY); } catch (_) { /* ignore */ }
+        try {
+          await chrome.storage.local.remove([SPLIT_ATTACH_QUEUE_STAGE_KEY, SPLIT_ATTACH_PROGRESS_KEY]);
+        } catch (_) { /* ignore */ }
       });
       sendResponse({ ok: true });
     })();

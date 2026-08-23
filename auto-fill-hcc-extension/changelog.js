@@ -4,12 +4,14 @@
 const APP_RELEASES = [
   {
     version: "1.14",
-    date: "20/8/2026",
+    date: "23/8/2026",
     items: [
       "Thêm mục Đi đến thủ tục: mở đúng trang kê khai trên Cổng Dịch vụ công quốc gia, tự chọn Tỉnh và Phường/Xã ở bước Chọn cơ quan thực hiện, rồi bấm Nộp trực tuyến và xác nhận thông tin chung giúp cán bộ.",
       "Chọn nhanh tỉnh và phường/xã theo danh mục hành chính mới sau sáp nhập ngay trên trợ lý.",
       "Điền chính xác và đúng thứ tự thông tin Người nộp hồ sơ và Chủ hồ sơ ở các thủ tục có hai vai trò.",
       "Đăng ký hộ kinh doanh: hoàn thiện luồng điền cho thủ tục Thay đổi nội dung đăng ký và Chấm dứt hoạt động.",
+      "Hỗ trợ đính kèm cho thủ tục Chứng thực bản sao từ bản chính và Chứng thực chữ ký người dịch là cộng tác viên: mỗi tài liệu được tách thành một hồ sơ riêng, xử lý tuần tự trên từng tab kèm hiển thị tiến độ.",
+      "Ảnh giấy tờ khi đính kèm được chuyển sang PDF giữ nguyên chất lượng (không nén lại); gộp và tách nhiều tài liệu chính xác hơn.",
       "Cải thiện độ ổn định khi điền trên biểu mẫu eForm cũ và nhóm thủ tục chứng thực (tách/gộp hồ sơ).",
     ],
   },

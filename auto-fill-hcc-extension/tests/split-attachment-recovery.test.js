@@ -124,4 +124,23 @@ assert.match(content, /for \(let attempt = 0; attempt < 2; attempt\+\+\)/);
 assert.match(content, /const deviceUpload = await openWalletDeviceUpload\(dialog\)/);
 assert.match(content, /dialog = deviceUpload\.dialog \|\| dialog/);
 
+// Không được coi modal đóng là đã đính file: phải thấy tên file thật trên dòng hồ sơ.
+assert.match(content, /async function waitForPersistedAttachment\(row, planItem = \{\}, previousName = ""\)/);
+assert.match(content, /const attachedName = rowAttachedFileName\(liveRow\)/);
+assert.match(content, /code: "wallet-file-not-persisted"/);
+assert.match(content, /markAttachmentResult\(persisted\.row, true\)/);
+assert.match(content, /let persistedRetryUsed = false/);
+assert.match(content, /if \(persistedRetryUsed\) break/);
+assert.match(content, /action: "pausePendingAttach"/);
+assert.match(background, /msg\?\.action === "pausePendingAttach"/);
+
+// Popup tab đầu phải bám tiến độ background và đổi sang trạng thái hoàn tất, không giữ câu tĩnh.
+assert.match(popup, /const SPLIT_ATTACH_PROGRESS_KEY = "autofill_split_attach_progress"/);
+assert.match(popup, /function splitProgressPresentation\(progress\)/);
+assert.match(popup, /chrome\.storage\?\.onChanged\?\.addListener/);
+assert.match(popup, /Đã đính kèm thành công \$\{succeeded\}\/\$\{total\} hồ sơ/);
+const splitAttachProgressStart = popup.indexOf("async function attachSplitAcrossTabs");
+const splitAttachProgressEnd = popup.indexOf("\n// ===== BƯỚC CHẤP THUẬN", splitAttachProgressStart);
+assert.doesNotMatch(popup.slice(splitAttachProgressStart, splitAttachProgressEnd), /hồ sơ đang chờ/);
+
 console.log("split attachment recovery: sequential active queue, visibility pause and bounded reload passed");

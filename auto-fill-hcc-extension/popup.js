@@ -72,6 +72,7 @@ const SPLIT_MODE_KEY = "autofill_attach_split_mode";
 // Bundle tách hồ sơ chứa dataUrl base64 có thể vượt trần 64 MiB của runtime.sendMessage.
 // Popup ghi vào key cố định này; background nhận key, chuyển sang queue chính rồi xóa staging.
 const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
+const SPLIT_ATTACH_PROGRESS_KEY = "autofill_split_attach_progress";
 const SPLIT_MODE_PROCEDURES = new Set(["chung-thuc-ban-sao", "chung-thuc-chu-ky"]);
 const SPLIT_RELOADABLE_WALLET_CODES = new Set([
   "wallet-stale-modal",
@@ -79,6 +80,8 @@ const SPLIT_RELOADABLE_WALLET_CODES = new Set([
   "wallet-device-upload-not-opened",
 ]);
 let attachSplitMode = false; // hiệu lực từ ô tick (đã khôi phục từ storage)
+let activeSplitRunId = null;
+let splitProgressOriginTabId = null;
 
 function isSplitEligibleProcedure() {
   return isAttachMode() && (
@@ -210,6 +213,74 @@ function setStatus(input, type, details = []) {
   statusEl.className = "status" + (type ? " " + type : "");
   statusEl.setAttribute("role", type === "err" ? "alert" : "status");
 }
+
+function splitProgressPresentation(progress) {
+  const total = Math.max(0, Number(progress?.total) || 0);
+  const completed = Math.max(0, Math.min(total, Number(progress?.completed) || 0));
+  const succeeded = Math.max(0, Math.min(completed, Number(progress?.succeeded) || 0));
+  const failed = Math.max(0, Math.min(completed, Number(progress?.failed) || 0));
+  const activeOrdinal = Math.max(0, Number(progress?.activeOrdinal) || 0);
+
+  if (!total) return null;
+  if (progress?.status === "paused") {
+    const ordinal = Number(progress?.paused?.ordinal) || activeOrdinal || completed + 1;
+    return {
+      type: "warn",
+      message: `Đã đính kèm ${succeeded}/${total} hồ sơ.\nHồ sơ ${ordinal} chưa nhận được file; hàng đợi đang dừng tại tab đó.`,
+    };
+  }
+  if (progress?.status === "completed") {
+    if (failed > 0) {
+      return {
+        type: "warn",
+        message: `Đã xử lý ${completed}/${total} hồ sơ: ${succeeded} thành công, ${failed} chưa thành công.\nVui lòng kiểm tra các tab được báo lỗi.`,
+      };
+    }
+    return { type: "ok", message: `Đã đính kèm thành công ${succeeded}/${total} hồ sơ.` };
+  }
+  if (failed > 0) {
+    return {
+      type: "warn",
+      message: `Đã xử lý ${completed}/${total} hồ sơ: ${succeeded} thành công, ${failed} chưa thành công.` +
+        (activeOrdinal ? `\nĐang xử lý hồ sơ ${activeOrdinal}/${total}…` : ""),
+    };
+  }
+  return {
+    type: "info",
+    message: `Đã đính kèm ${succeeded}/${total} hồ sơ.` +
+      (activeOrdinal ? `\nĐang xử lý hồ sơ ${activeOrdinal}/${total}…` : ""),
+  };
+}
+
+function renderSplitProgress(progress) {
+  if (!progress || (Number(progress.expiresAt) || 0) <= Date.now()) return false;
+  if (activeSplitRunId && progress.runId !== activeSplitRunId) return false;
+  if (splitProgressOriginTabId && Number(progress.originTabId) !== Number(splitProgressOriginTabId)) return false;
+  const presentation = splitProgressPresentation(progress);
+  if (!presentation) return false;
+  activeSplitRunId = progress.runId || activeSplitRunId;
+  setStatus(presentation.message, presentation.type);
+  return true;
+}
+
+async function restoreSplitProgressStatus() {
+  try {
+    splitProgressOriginTabId = splitProgressOriginTabId || await getTargetTabId();
+    const stored = await chrome.storage.local.get(SPLIT_ATTACH_PROGRESS_KEY);
+    const progress = stored?.[SPLIT_ATTACH_PROGRESS_KEY];
+    if (!progress || Number(progress.originTabId) !== Number(splitProgressOriginTabId)) return false;
+    return renderSplitProgress(progress);
+  } catch (_) {
+    return false;
+  }
+}
+
+chrome.storage?.onChanged?.addListener?.((changes, areaName) => {
+  if (areaName !== "local") return;
+  const progress = changes?.[SPLIT_ATTACH_PROGRESS_KEY]?.newValue;
+  if (!progress) return;
+  renderSplitProgress(progress);
+});
 
 async function showPageToast(message, kind = "success") {
   const text = String(message || "").replace(/\s+/g, " ").trim();
@@ -366,6 +437,7 @@ async function bootstrap() {
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
+    await restoreSplitProgressStatus();
   } catch (e) {
     await AuthStore.clearTokens();
     showLogin();
@@ -406,6 +478,7 @@ loginBtn.addEventListener("click", async () => {
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
+    await restoreSplitProgressStatus();
   } catch (e) {
     console.warn("[Popup] Đăng nhập lỗi:", e);
     const invalidRememberedLogin = rememberedLoginLoaded
@@ -1577,25 +1650,44 @@ async function toPdfForAttach(payloadFiles) {
   return out;
 }
 
-// GỘP theo kế hoạch BE: item có sourceFileIndexes>1 → gộp các file gốc thành 1 PDF (đúng thứ tự),
-// rồi viết lại fileIndex. Không có nhóm gộp nào → trả nguyên. Lỗi gộp 1 nhóm → đính file đầu, không chặn.
+// DỰNG file theo kế hoạch BE:
+// - sourceSegments: trích/gộp đúng các trang từ một hoặc nhiều file;
+// - sourceFileIndexes: contract cũ, gộp nguyên các file.
+// Tách trang lỗi phải dừng, không được đính nhầm cả PDF gốc vào một thành phần.
 async function applyMergeGroups(payloadFiles, attachments) {
+  const hasSegments = (attachments || []).some(
+    (a) => Array.isArray(a.sourceSegments) && a.sourceSegments.length > 0
+  );
   const hasMerge = (attachments || []).some(
     (a) => Array.isArray(a.sourceFileIndexes) && a.sourceFileIndexes.length > 1
   );
-  if (!hasMerge || !window.PdfConvert) return { files: payloadFiles, attachments };
+  if (!hasMerge && !hasSegments) return { files: payloadFiles, attachments };
+  if (!window.PdfConvert) throw new Error("Thiếu bộ xử lý PDF để tách hoặc gộp tài liệu.");
 
   const outFiles = [];
   const outAtts = [];
   for (const item of attachments) {
+    const segments = Array.isArray(item.sourceSegments) && item.sourceSegments.length
+      ? item.sourceSegments
+      : null;
     const src = Array.isArray(item.sourceFileIndexes) && item.sourceFileIndexes.length
       ? item.sourceFileIndexes
       : [item.fileIndex];
     const sources = src.map((i) => payloadFiles[i]).filter(Boolean);
-    if (!sources.length) continue;
+    if (!segments && !sources.length) continue;
 
-    let file = sources[0];
-    if (sources.length > 1) {
+    let file = segments
+      ? payloadFiles[Number(segments[0]?.fileIndex)]
+      : sources[0];
+    if (segments) {
+      // Không fallback sang file đầu: làm vậy sẽ đưa toàn bộ PDF hỗn hợp vào sai hàng.
+      const composed = await PdfConvert.composeSegmentsToPdf(
+        payloadFiles,
+        segments,
+        item.documentName || file?.name || "tai-lieu"
+      );
+      file = { ...(file || {}), ...composed };
+    } else if (sources.length > 1) {
       try {
         const merged = await PdfConvert.mergeToPdf(sources, item.documentName || sources[0].name);
         file = { ...sources[0], ...merged }; // giữ role/hasHandwriting, thay name/type/dataUrl
@@ -1606,7 +1698,9 @@ async function applyMergeGroups(payloadFiles, attachments) {
     }
     const newIndex = outFiles.length;
     outFiles.push(file);
-    outAtts.push({ ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex] });
+    const rewritten = { ...item, fileIndex: newIndex, sourceFileIndexes: [newIndex] };
+    delete rewritten.sourceSegments;
+    outAtts.push(rewritten);
   }
   return { files: outFiles, attachments: outAtts };
 }
@@ -1926,6 +2020,9 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
   if (!bundles.length) return { error: "Không có tài liệu để tách hồ sơ." };
   const firstBundle = bundles[0];
   const rest = bundles.slice(1);
+  const originTabId = await getTargetTabId();
+  splitProgressOriginTabId = originTabId || splitProgressOriginTabId;
+  activeSplitRunId = null;
   await sendToBackground({ action: "clearAllPendingAttach" }); // dọn hàng đợi cũ
 
   // URL hồ sơ SẠCH (chỉ giữ maThuTuc/tinhThanhId) — lấy TRƯỚC khi đính để tab mới là hồ sơ MỚI.
@@ -1963,7 +2060,10 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
   // Không mở đồng thời: background chỉ tạo tab kế tiếp sau khi tab active báo thành công/thất bại.
   // Cả bản sao và chữ ký đều đi qua cùng queue này; khác nhau chỉ ở nội dung từng bundle.
   let queueRes = { ok: true, remaining: 0 };
+  let splitRunId = null;
   if (rest.length) {
+    splitRunId = globalThis.crypto?.randomUUID?.() || `split-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    activeSplitRunId = splitRunId;
     const queueItems = rest.map((bundle, index) => ({
       ordinal: index + 2,
       url: dossierUrl,
@@ -1980,6 +2080,12 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
         action: "startSplitAttachQueue",
         waitForTabId: currentTabRecovery?.tabId || null,
         itemsStorageKey: SPLIT_ATTACH_QUEUE_STAGE_KEY,
+        runId: splitRunId,
+        originTabId,
+        procedure,
+        totalBundles: bundles.length,
+        initialCompleted: currentTabRecovery ? 0 : 1,
+        initialSucceeded: currentTabRecovery ? 0 : 1,
       });
     } catch (e) {
       queueRes = { error: `Không lưu được hàng đợi tách hồ sơ: ${e?.message || String(e)}` };
@@ -1987,7 +2093,11 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
       // Background cũng xóa sau khi nhận; popup xóa lần nữa để dọn khi message thất bại giữa chừng.
       try { await chrome.storage.local.remove(SPLIT_ATTACH_QUEUE_STAGE_KEY); } catch (_) { /* ignore */ }
     }
-    if (queueRes?.error) return { error: queueRes.error };
+    if (queueRes?.error) {
+      activeSplitRunId = null;
+      await sendToBackground({ action: "clearAllPendingAttach" });
+      return { error: queueRes.error };
+    }
   }
 
   // Khi tab đầu lỗi modal, queue chờ chính tab đó. Reload xong, content báo terminal thì background
@@ -2002,15 +2112,33 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
     }
   }
 
-  let msg =
-    (currentTabRecovery
-      ? `⏳ Đang tiếp tục hồ sơ đầu tiên.\n`
-      : `✓ Đã xong hồ sơ đầu tiên.\n`) +
-    `⏳ Còn ${rest.length} hồ sơ đang chờ.\n` +
-    `Hệ thống tự xử lý lần lượt; vui lòng không đóng trang đang chạy.`;
+  let msg = `Đã đính kèm thành công 1/1 hồ sơ.`;
+  let msgType = "ok";
+  if (splitRunId) {
+    try {
+      const stored = await chrome.storage.local.get(SPLIT_ATTACH_PROGRESS_KEY);
+      const progress = stored?.[SPLIT_ATTACH_PROGRESS_KEY];
+      const presentation = progress?.runId === splitRunId ? splitProgressPresentation(progress) : null;
+      msg = presentation?.message || (currentTabRecovery
+        ? `Đang xử lý hồ sơ 1/${bundles.length}…`
+        : `Đã đính kèm 1/${bundles.length} hồ sơ.\nĐang xử lý hồ sơ 2/${bundles.length}…`);
+      msgType = presentation?.type || "info";
+    } catch (_) {
+      msg = currentTabRecovery
+        ? `Đang xử lý hồ sơ 1/${bundles.length}…`
+        : `Đã đính kèm 1/${bundles.length} hồ sơ.\nĐang xử lý hồ sơ 2/${bundles.length}…`;
+      msgType = "info";
+    }
+  }
   if (planRes?.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   if (!currentTabRecovery) await showPageToast("Đã đính kèm xong hồ sơ hiện tại.", "success");
-  return { ok: true, message: msg, requestId: planRes?.requestId };
+  return {
+    ok: true,
+    message: msg,
+    warn: msgType === "warn",
+    inProgress: msgType === "info",
+    requestId: planRes?.requestId,
+  };
 }
 
 // ===== BƯỚC CHẤP THUẬN XỬ LÝ DỮ LIỆU (PDPL) =====
@@ -2263,7 +2391,7 @@ ocrBtn.addEventListener("click", async () => {
       const attachRes = await runAttachmentPlanForCurrentFiles(options);
       showSupportCode(attachRes?.requestId);
       if (attachRes?.error) setStatus(attachRes.error, "err");
-      else setStatus(attachRes.message, attachRes.warn ? "warn" : "ok");
+      else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"));
       return;
     }
 
@@ -2288,6 +2416,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "di-chuyen-ho-so-nguoi-huong-tro-cap" ||
       cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
       cfg.key === "tro-cap-xa-hoi-hang-thang" ||
+      cfg.key === "xac-dinh-muc-do-khuyet-tat" ||
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
