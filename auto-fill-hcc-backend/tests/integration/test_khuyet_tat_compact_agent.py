@@ -8,8 +8,10 @@ import respx
 from app.config import settings
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines.khuyet_tat import process as agent
+from app.pipelines.khuyet_tat.process import mapper
+from app.pipelines.khuyet_tat.process import runner as process_runner
 from app.pipelines.khuyet_tat.process.prompt import EXTRA_RULES
-from app.pipelines.khuyet_tat.process.schema import FIELDS
+from app.pipelines.khuyet_tat.process.schema import CONTEXT_FIELDS, FIELDS
 from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
 
 
@@ -21,6 +23,122 @@ def _disable_external_fallbacks(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
 
 
+def _mapped_values(source_fields, options=None):
+    return {
+        field["name"]: field["value"]
+        for field in mapper.enrich(source_fields, options or {})
+    }
+
+
+def test_khuyet_tat_requester_is_omitted_without_ui_context():
+    values = _mapped_values([
+        {"name": "ChuHoSo_HoTen", "value": "LẠI NGỌC MINH"},
+        {"name": "ChuHoSo_SoDinhDanh", "value": "012084000160"},
+    ])
+
+    assert "data[fullname]" not in values
+    assert "data[identityNumber]" not in values
+    assert values["data[isOwnerDossierCheck]"] is False
+    assert values["data[ownerFullname]"] == "LẠI NGỌC MINH"
+    assert values["data[ownerIdentityNumber]"] == "012084000160"
+
+
+def test_khuyet_tat_owner_copy_requires_all_available_ui_anchors_to_match():
+    source = [
+        {"name": "ChuHoSo_HoTen", "value": "LẠI NGỌC MINH"},
+        {"name": "ChuHoSo_SoDinhDanh", "value": "012084000160"},
+    ]
+    mapped = mapper.enrich(source, {
+        "formContext": {
+            "applicantFullname": "LẠI NGỌC MINH",
+            "applicantIdentityNumber": "012084000160",
+        }
+    })
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert mapped[0] == {
+        "name": "data[isOwnerDossierCheck]",
+        "comp": "dom-checkbox",
+        "value": True,
+    }
+    assert values["data[fullname]"] == "LẠI NGỌC MINH"
+    assert values["data[identityNumber]"] == "012084000160"
+    assert values["data[isOwnerDossierCheck]"] is True
+    assert values["data[ownerFullname]"] == "LẠI NGỌC MINH"
+    assert values["data[ownerIdentityNumber]"] == "012084000160"
+
+    mismatch = _mapped_values(source, {
+        "formContext": {
+            "applicantFullname": "NGƯỜI KHÁC",
+            "applicantIdentityNumber": "012084000160",
+        }
+    })
+    assert mismatch["data[isOwnerDossierCheck]"] is False
+    assert mismatch["data[ownerFullname]"] == "LẠI NGỌC MINH"
+
+    identity_mismatch = _mapped_values(source, {
+        "formContext": {
+            "applicantFullname": "LẠI NGỌC MINH",
+            "applicantIdentityNumber": "999999999999",
+        }
+    })
+    assert identity_mismatch["data[isOwnerDossierCheck]"] is False
+    assert identity_mismatch["data[fullname]"] == "LẠI NGỌC MINH"
+    assert identity_mismatch["data[identityNumber]"] == "999999999999"
+    assert identity_mismatch["data[ownerIdentityNumber]"] == "012084000160"
+
+
+def test_khuyet_tat_rejects_requester_details_when_ocr_identity_mismatches_ui():
+    values = _mapped_values([
+        {"name": "NguoiNop_HoTen", "value": "VŨ ĐÌNH THIẾT"},
+        {"name": "NguoiNop_SoDinhDanh", "value": "999999999999"},
+        {"name": "NguoiNop_NgaySinh", "value": "26/04/2003"},
+        {"name": "NguoiNop_GioiTinh", "value": "Nam"},
+        {"name": "ChuHoSo_HoTen", "value": "BÙI THỊ YẾN NGỌC"},
+        {"name": "ChuHoSo_SoDinhDanh", "value": "051197014913"},
+    ], {
+        "formContext": {
+            "applicantFullname": "VŨ ĐÌNH THIẾT",
+            "applicantIdentityNumber": "040203015844",
+        }
+    })
+
+    # Hai mỏ neo UI vẫn được giữ, nhưng dữ liệu OCR sai người không được bù vào.
+    assert values["data[fullname]"] == "VŨ ĐÌNH THIẾT"
+    assert values["data[identityNumber]"] == "040203015844"
+    assert "data[birthday]" not in values
+    assert "data[gender]" not in values
+
+
+def test_khuyet_tat_representative_owner_is_not_copied_to_disabled_person():
+    values = _mapped_values([
+        {"name": "ChuHoSo_HoTen", "value": "NGƯỜI ĐẠI DIỆN"},
+        {"name": "ChuHoSo_SoDinhDanh", "value": "012345678901"},
+        {"name": "ChuHoSo_NgaySinh", "value": "01/01/1980"},
+        {"name": "Nkt_HoTen", "value": "NGƯỜI KHUYẾT TẬT"},
+        {"name": "Ndd_HoTen", "value": "NGƯỜI ĐẠI DIỆN"},
+        {"name": "Ndd_SoDinhDanh", "value": "012345678901"},
+    ])
+
+    assert values["data[ownerFullname]"] == "NGƯỜI ĐẠI DIỆN"
+    assert values["data[NktHoTen]"] == "NGƯỜI KHUYẾT TẬT"
+    assert "data[NktSoDinhdanh]" not in values
+    assert "data[NktNgaySinh]" not in values
+
+
+def test_khuyet_tat_self_applicant_can_fill_missing_nkt_fields_from_owner():
+    values = _mapped_values([
+        {"name": "ChuHoSo_HoTen", "value": "NGƯỜI KHUYẾT TẬT"},
+        {"name": "ChuHoSo_SoDinhDanh", "value": "012345678901"},
+        {"name": "ChuHoSo_NgaySinh", "value": "02/02/1990"},
+        {"name": "Nkt_HoTen", "value": "NGƯỜI KHUYẾT TẬT"},
+    ])
+
+    assert values["data[NktHoTen]"] == "NGƯỜI KHUYẾT TẬT"
+    assert values["data[NktSoDinhdanh]"] == "012345678901"
+    assert values["data[NktNgaySinh]"] == "02/02/1990"
+
+
 @respx.mock
 async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
@@ -29,18 +147,33 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     )
     llm_out = {
         "fields": {
-            "Cccd_HoTen": "LẠI NGỌC MINH",
-            "Cccd_SoDinhDanh": "012084000160",
-            "Cccd_NgaySinh": "01/01/1984",
-            "Cccd_GioiTinh": "Nam",
-            "Cccd_NgayCap": "25/04/2021",
-            "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "Cccd_NoiCuTru": {
+            "NguoiNop_HoTen": "VŨ ĐÌNH THIẾT",
+            "NguoiNop_NgaySinh": "26/04/2003",
+            "NguoiNop_GioiTinh": "Nam",
+            "NguoiNop_SoDinhDanh": "040203015844",
+            "NguoiNop_NgayCap": "02/07/2021",
+            "NguoiNop_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiNop_NoiCuTru": {
+                "quocGia": "Việt Nam",
+                "tinh": "Nghệ An",
+                "xa": "Tam Hợp",
+                "diaChi": "Xóm Long Thành",
+            },
+            "NguoiNop_QuocTich": "Việt Nam",
+            "ChuHoSo_HoTen": "LẠI NGỌC MINH",
+            "ChuHoSo_SoDinhDanh": "012084000160",
+            "ChuHoSo_NgaySinh": "01/01/1984",
+            "ChuHoSo_GioiTinh": "Nam",
+            "ChuHoSo_NgayCap": "25/04/2021",
+            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "ChuHoSo_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Tỉnh Lai Châu",
                 "xa": "Phường Tân Phong",
                 "diaChi": "Số nhà 003, phố Yết Kiêu, Tổ 16",
             },
+            "ChuHoSo_DienThoai": "0984456132",
+            "ChuHoSo_QuocTich": "Việt Nam",
             "DeNghi_NoiDung": "xac_dinh",
             "Nkt_HoTen": "LẠI MINH QUANG",
             "Nkt_NgaySinh": "27/10/2019",
@@ -93,19 +226,45 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
         )
     )
 
-    res = await agent.run({"doc": [_file("khuyết tật quang.pdf"), _file("cccd.pdf")]}, {})
+    res = await agent.run(
+        {"doc": [_file("khuyết tật quang.pdf"), _file("cccd.pdf")]},
+        {
+            "formContext": {
+                "applicantFullname": "VŨ ĐÌNH THIẾT",
+                "applicantIdentityNumber": "040203015844",
+            }
+        },
+    )
     fields = res["fields"]
     d = {f["name"]: f["value"] for f in fields}
 
-    assert fields[0] == {"name": "data[isOwnerDossierCheck]", "comp": "dom-checkbox", "value": True}
-    assert d["data[fullname]"] == "LẠI NGỌC MINH"
-    assert d["data[identityNumber]"] == "012084000160"
-    assert d["data[identityDate]"] == "25/04/2021"
+    assert fields[0] == {
+        "name": "data[isOwnerDossierCheck]",
+        "comp": "dom-checkbox",
+        "value": False,
+    }
+    # UI chốt đúng người; các field còn lại được bóc từ CCCD đã khớp mỏ neo UI.
+    assert d["data[fullname]"] == "VŨ ĐÌNH THIẾT"
+    assert d["data[identityNumber]"] == "040203015844"
+    assert d["data[birthday]"] == "26/04/2003"
+    assert d["data[gender]"] == "Nam"
+    assert d["data[identityDate]"] == "02/07/2021"
     assert d["data[idIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert d["data[province]"] == "Lai Châu"
-    assert d["data[district]"] == "Tân Phong"
-    assert d["data[address]"] == "Số nhà 003, phố Yết Kiêu, Tổ 16"
-    assert d["data[phoneNumber]"] == "0984456132"
+    assert d["data[province]"] == "Nghệ An"
+    assert d["data[district]"] == "Xã Tam Hợp"
+    assert d["data[address]"] == "Xóm Long Thành"
+    assert "data[phoneNumber]" not in d
+
+    assert d["data[isOwnerDossierCheck]"] is False
+    assert d["data[ownerFullname]"] == "LẠI NGỌC MINH"
+    assert d["data[ownerIdentityNumber]"] == "012084000160"
+    assert d["data[ownerIdentityDate]"] == "25/04/2021"
+    assert d["data[ownerIdIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert d["data[ownerProvince]"] == "Lai Châu"
+    assert d["data[ownerDistrict]"] == "Phường Tân Phong"
+    assert d["data[ownerAddress]"] == "Số nhà 003, phố Yết Kiêu, Tổ 16"
+    assert d["data[ownerPhoneNumber]"] == "0984456132"
+    assert d["data[ownerNation]"] == "Việt Nam"
 
     assert d["data[chonNoiDungDeNghi][]"] is True
     assert d["data[NktHoTen]"] == "LẠI MINH QUANG"
@@ -113,7 +272,7 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     assert d["data[NktSoDinhdanh]"] == "012219003077"
     assert d["data[NktGioiTinh]"] == "Nam"
     assert d["data[NktMaTinh]"] == "Lai Châu"
-    assert d["data[NktMaXa]"] == "Tân Phong"
+    assert d["data[NktMaXa]"] == "Phường Tân Phong"
     assert d["data[NktDiachi]"] == "Số nhà 003, phố Yết Kiêu, Tổ 16"
 
     assert d["data[NddHoTen]"] == "LẠI NGỌC MINH"
@@ -121,7 +280,7 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     assert d["data[NddQuanheNkt]"] == "Cha"
     assert d["data[NddSodienthoai]"] == "0984456132"
     assert d["data[NddMaTinh]"] == "Lai Châu"
-    assert d["data[NddMaXa]"] == "Tân Phong"
+    assert d["data[NddMaXa]"] == "Phường Tân Phong"
 
     assert d["data[khuyetTat5Obj][khuyetTatRadio]"] == "co"
     assert d["data[khuyetTat5Obj][khuyetTatRadio1]"] == "co"
@@ -145,6 +304,51 @@ def test_khuyet_tat_compact_prompt_contract():
     assert "vỡ dòng" in system_prompt
     assert "tách riêng" in system_prompt
     assert "THD" in system_prompt
+    assert "ChuHoSo_HoTen" in system_prompt
+    assert "matched_requester_ocr" in system_prompt
+    assert "BẮT BUỘC trả mọi NguoiNop_*" in system_prompt
+    assert "NguoiNop_NgaySinh" in system_prompt
+    assert "CẢ HAI nhóm ChuHoSo_* và Ndd_*" in system_prompt
+    assert "Ndd_NoiCuTru -> ChuHoSo_NoiCuTru" in system_prompt
+    assert "không suy đoán field không có nguồn" in system_prompt
+    assert "Thường người nộp là chủ hồ sơ" not in system_prompt
+    assert "Cccd_HoTen" not in system_prompt
+
+
+def test_khuyet_tat_schema_uses_ui_anchors_to_extract_requester_from_ocr():
+    context_names = {field["name"] for field in CONTEXT_FIELDS}
+    llm_names = {field["name"] for field in FIELDS}
+
+    assert context_names == {"NguoiNop_HoTen", "NguoiNop_SoDinhDanh"}
+    assert context_names <= llm_names
+    assert {
+        "NguoiNop_NgaySinh",
+        "NguoiNop_GioiTinh",
+        "NguoiNop_NgayCap",
+        "NguoiNop_NoiCap",
+        "NguoiNop_NoiCuTru",
+    } <= llm_names
+    assert "ChuHoSo_HoTen" in llm_names
+    assert "ChuHoSo_SoDinhDanh" in llm_names
+    assert not any(name.startswith("Cccd_") for name in llm_names)
+
+
+async def test_khuyet_tat_requester_context_only_marks_matching_document():
+    context = await process_runner._requester_context(
+        [
+            {"name": "don.pdf", "text": "Người đại diện: BÙI THỊ YẾN NGỌC 051197014913"},
+            {"name": "cccd.pdf", "text": "Họ và tên: VŨ ĐÌNH THIẾT Số: 040203015844 Ngày sinh: 26/04/2003"},
+        ],
+        {"formContext": {
+            "applicantFullname": "Vũ Đình Thiết",
+            "applicantIdentityNumber": "040203015844",
+        }},
+    )
+
+    assert 'result="document_match"' in context
+    assert 'document="2"' in context
+    assert 'document="1"' not in context
+    assert "BÙI THỊ YẾN NGỌC" not in context
 
 
 def test_registry_uses_khuyet_tat_process_pipeline():

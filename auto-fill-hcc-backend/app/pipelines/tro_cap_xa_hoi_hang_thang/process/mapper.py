@@ -15,6 +15,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.tro_cap_xa_hoi_hang_thang.process.schema import UI_COMP_BY_NAME
@@ -253,6 +254,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         nop_email = _text(values.get("DoiTuong_Email"))
 
     _complete_missing_provinces(residence, nop_residence)
+
+    # Remap phường/xã theo bảng sáp nhập (_shared/data/remap_*.json); phải chạy SAU
+    # _complete_missing_provinces vì lookup remap cần có tỉnh.
+    residence = remap_area(residence)
+    nop_residence = remap_area(nop_residence)
 
     add("data[chonDoiTuong]", "Cá nhân")
     add("data[fullname]", nop_name)

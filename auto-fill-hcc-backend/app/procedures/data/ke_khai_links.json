@@ -192,6 +192,22 @@
       "autoConfirm": false
     },
     {
+      "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+      "code": "2.000720",
+      "label": "Đăng ký thay đổi nội dung đăng ký hộ kinh doanh",
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "cham-dut-hoat-dong-ho-kinh-doanh",
+      "code": "1.001266",
+      "label": "Chấm dứt hoạt động hộ kinh doanh",
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
       "code": "1.013978",
       "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",

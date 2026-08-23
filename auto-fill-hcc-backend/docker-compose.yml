@@ -24,6 +24,23 @@ services:
     # depends_on:
     #   - mongo
 
+  batch-worker:
+    image: autofill-hcc-be:latest
+    env_file: .env
+    environment:
+      - MONGO_HOST=call_bot_mongo_db
+      - MONGO_PORT=27017
+    command: ["python", "-m", "scripts.run_batch_worker"]
+    volumes:
+      # Phải dùng chung volume với API vì API ghi file, worker mới đọc để OCR/LLM.
+      - ./data:/app/data
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - default
+      - callbot
+
   fe:
     build: ./fe
     image: autofill-hcc-fe:latest

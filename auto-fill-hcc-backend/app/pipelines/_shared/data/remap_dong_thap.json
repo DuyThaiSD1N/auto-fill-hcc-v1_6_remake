@@ -1,0 +1,1952 @@
+[
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Sa Rài",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hồng",
+        "ghi_chu": "Thị trấn Sa Rài"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hồng",
+        "ghi_chu": "huyện Tân Hồng"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Công Chí",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hồng"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thông Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thành A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thành"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thành B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hộ Cơ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Hộ Cơ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hộ Cơ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Phước",
+        "ghi_chu": "huyện Tân Hồng"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Phước"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thường Thới Tiền",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thường Phước",
+        "ghi_chu": "Thị trấn Thường Thới Tiền"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thường Phước 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thường Phước"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thường Phước 2",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thường Phước"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Khánh A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Khánh B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Thuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Phú Thuận"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Thuận A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Phú Thuận"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Thuận B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Phú Thuận",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Thành B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Đức",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tam Nông"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tam Nông"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Thành A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Thọ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Thọ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Thọ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tràm Chim",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tràm Chim",
+        "ghi_chu": "Thị trấn Tràm Chim"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Công Sính",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tràm Chim"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Cường",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Cường",
+        "ghi_chu": "huyện Tam Nông"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hòa Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Cường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Gáo Giồng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Cường",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Phong",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Ninh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Bình",
+        "ghi_chu": "huyện Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Bình",
+        "ghi_chu": "huyện Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thanh Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Bình",
+        "ghi_chu": "Thị trấn Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Bình",
+        "ghi_chu": "huyện Thanh Bình, một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Lợi",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thạnh",
+        "ghi_chu": "huyện Thanh Bình, phần còn lại sau khi sắp xếp vào xã Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Thành",
+        "ghi_chu": "huyện Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Tấn",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Thành"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Long",
+        "ghi_chu": "huyện Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Long",
+        "ghi_chu": "huyện Thanh Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Quới",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Huề",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Thuận B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Long",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Long Phú Thuận"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tháp Mười",
+        "ghi_chu": "Thị trấn Mỹ An"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tháp Mười",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tháp Mười"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Điền",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thanh Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Láng Biển",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Quí"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Quí"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Quí",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Quí"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Kiều",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Đốc Binh Kiều"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Đốc Binh Kiều",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Đốc Binh Kiều"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thạnh Lợi",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Trường Xuân"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Trường Xuân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Trường Xuân"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hưng Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phương Thịnh",
+        "ghi_chu": "huyện Tháp Mười"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phương Thịnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phương Thịnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phong Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phong Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Gáo Giồng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phong Mỹ",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Phú Cường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phương Trà",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Ba Sao"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Ba Sao",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Ba Sao"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Thọ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thọ",
+        "ghi_chu": "Thị trấn Mỹ Thọ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Hội",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thọ",
+        "ghi_chu": "huyện Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Xương",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thọ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Thọ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thọ",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Hội Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Hàng Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Hàng Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Hàng Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Hàng Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Hàng Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Hiệp",
+        "ghi_chu": "huyện Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Hiệp",
+        "ghi_chu": "huyện Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Hiệp"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ An Hưng",
+        "ghi_chu": "huyện Lấp Vò"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hội An Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ An Hưng"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ An Hưng A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ An Hưng"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ An Hưng B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ An Hưng"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Hưng A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Khánh Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Hưng B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Khánh Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Khánh Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Khánh Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Lấp Vò",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lấp Vò",
+        "ghi_chu": "Thị trấn Lấp Vò"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lấp Vò",
+        "ghi_chu": "huyện Lấp Vò"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Vĩnh Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lấp Vò"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Thạnh Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lấp Vò"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lai Vung",
+        "ghi_chu": "huyện Lai Vung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lai Vung",
+        "ghi_chu": "huyện Lai Vung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Định An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lai Vung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Định Yên",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lai Vung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Lai Vung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hòa Long",
+        "ghi_chu": "Thị trấn Lai Vung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Hậu",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hòa Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Long Thắng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hòa Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hòa Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hòa Long"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phong Hòa",
+        "ghi_chu": "huyện Lai Vung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Định Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phong Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Vĩnh Thới",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phong Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phong Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phong Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Phú Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Dương",
+        "ghi_chu": "huyện Châu Thành, tỉnh Đồng Tháp"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hòa Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Dương"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Dương",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Dương"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Cái Tàu Hạ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Hựu",
+        "ghi_chu": "Thị trấn Cái Tàu Hạ"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Phú Thuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Hựu"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Hựu"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Nhơn",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Hựu"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Hựu",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Hựu"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hòa Tân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Nhuận Đông"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Khánh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Nhuận Đông"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Nhuận Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Nhuận Đông"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Trung",
+        "ghi_chu": "huyện Châu Thành, tỉnh Đồng Tháp"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Trung",
+        "ghi_chu": "huyện Châu Thành, tỉnh Đồng Tháp"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phú Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Trung"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Phú Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Trung"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hội",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Hạnh Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Thanh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Hưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hưng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Hưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "An Thái Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thanh Hưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hòa Hưng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Hữu"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Lương",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Hữu"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "An Hữu",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Hữu"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "An Thái Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Lợi"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Lợi A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Lợi"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Lợi B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Lợi"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thiện Trí",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Đức Tây"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Đức Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Đức Tây"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Đức Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Đức Tây"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Tân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thiện",
+        "ghi_chu": "huyện Cái Bè"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thiện"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thiện Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thiện"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hậu Mỹ Bắc A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hậu Mỹ"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hậu Mỹ Bắc B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hậu Mỹ"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hậu Mỹ Trinh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hậu Mỹ"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Hội",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hội Cư",
+        "ghi_chu": "huyện Cái Bè"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "An Cư",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hội Cư"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hậu Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hội Cư"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hậu Mỹ Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hội Cư"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Cái Bè",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Cái Bè",
+        "ghi_chu": "Thị trấn Cái Bè"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Đông Hòa Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Cái Bè"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hòa Khánh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Cái Bè"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Nhuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Thành Bắc",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Thành Nam",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Cường",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thạnh Phú",
+        "ghi_chu": "huyện Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Lộc",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Thạnh Phú"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Phú",
+        "ghi_chu": "Thị trấn Bình Phú"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Cẩm Sơn",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Phú"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Phong",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hiệp Đức"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hội Xuân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hiệp Đức"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hiệp Đức",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hiệp Đức"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Tiên",
+        "ghi_chu": "huyện Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Tiên"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Tiên",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Tiên"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tam Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Ngũ Hiệp"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Ngũ Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Ngũ Hiệp"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 1",
+        "ghi_chu": "Thị trấn Mỹ Phước"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 1"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hòa Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 1"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Tân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 2"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 2"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hòa Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 2"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phước Lập",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 3"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Lập 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 3"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Lập 2",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phước 3"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hưng Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hưng Thạnh",
+        "ghi_chu": "huyện Tân Phước"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hưng Thạnh"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hòa Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Hưng Thạnh"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Lý Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hương"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hội Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hương"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hương",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hương"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Châu Thành",
+        "ghi_chu": "Thị trấn Tân Hiệp"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thân Cửu Nghĩa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tam Hiệp",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Hưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Hưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Hưng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Hưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Nhị Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Định"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Đông Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Định"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Định",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Định"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Điềm Hy",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Trưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Trưng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Trưng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Phong",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Kim"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bàn Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Kim"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Vĩnh Kim",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Kim"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Song Thuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Đức",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Kim Sơn",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Kim Sơn"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Trung Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Tịnh An"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hòa Tịnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Tịnh An"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Bình Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Tịnh An"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Tịnh An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Mỹ Tịnh An"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thanh Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lương Hòa Lạc",
+        "ghi_chu": "huyện Chợ Gạo"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Kiết",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lương Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Lương Hòa Lạc",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Lương Hòa Lạc"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Đăng Hưng Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thuận Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Quơn Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thuận Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Thuận Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thuận Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Chợ Gạo",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Chợ Gạo",
+        "ghi_chu": "Thị trấn Chợ Gạo"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Bình Điền",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Chợ Gạo"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Song Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Chợ Gạo"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Phan",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Thạnh Thủy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Phục Nhứt",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Thạnh Thủy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "An Thạnh Thủy",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã An Thạnh Thủy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Xuân Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Ninh"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Hòa Định",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Ninh"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Ninh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Bình Ninh"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Vĩnh Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Bình",
+        "ghi_chu": "Thị trấn Vĩnh Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Nhựt",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thạnh Trị",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Nhì",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Đồng Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Đồng Sơn",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Đồng Sơn"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Thành",
+        "ghi_chu": "huyện Gò Công Tây"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thành Công",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Yên Luông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Phú Thành"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Tân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Long Bình"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Vĩnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Hựu"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Vĩnh Hựu",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Vĩnh Hựu"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Gò Công Đông",
+        "ghi_chu": "huyện Gò Công Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tăng Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Gò Công Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Ân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Điền"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Điền",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Điền"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hòa",
+        "ghi_chu": "Thị trấn Tân Hòa"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phước Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hòa"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Nghị",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Hòa"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Đông",
+        "ghi_chu": "huyện Gò Công Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Vàm Láng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Gia Thuận",
+        "ghi_chu": "Thị trấn Vàm Láng"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Kiểng Phước",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Gia Thuận"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Gia Thuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Gia Thuận"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thới",
+        "ghi_chu": "huyện Tân Phú Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thới",
+        "ghi_chu": "huyện Tân Phú Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Thới",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Thới"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Tân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Xã Tân Phú Đông"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Tho",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Tho",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Long",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Tho",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Đạo Thạnh",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 5",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Đạo Thạnh",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Đạo Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Đạo Thạnh",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 9",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phong",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Mỹ Chánh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phong"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Phong",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phong"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 6",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thới Sơn",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thới Sơn",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thới Sơn",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 10",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Trung An",
+        "ghi_chu": "thành phố Mỹ Tho"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phước Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Trung An"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Trung An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Trung An"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Gò Công",
+        "ghi_chu": "thành phố Gò Công"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 5",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Gò Công",
+        "ghi_chu": "thành phố Gò Công"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Gò Công",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Long Thuận",
+        "ghi_chu": "thành phố Gò Công"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Thuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Long Thuận",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Chánh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Bình Xuân"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Xuân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Bình Xuân"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Hưng",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sơn Qui",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sơn Qui"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Bình Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sơn Qui"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phước Tây",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phước Tây",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Hạnh Trung",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phước Tây"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Mỹ Phước Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Phước Tây",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thanh Hòa",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thanh Hòa",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Thanh Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thanh Hòa",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cai Lậy",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phường 5",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cai Lậy",
+        "ghi_chu": "thị xã Cai Lậy"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Long Khánh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cai Lậy",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Nhị Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Nhị Quý",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Phú Quý",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Nhị Quý"
+    },
+    {
+        "tinh_cu": "Tiền Giang",
+        "xa_cu": "Nhị Quý",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Nhị Quý",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Lộc",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường An Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Bình A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường An Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Bình B",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường An Bình"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Hồng Ngự",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Hồng Ngự",
+        "ghi_chu": "thành phố Hồng Ngự"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Hội",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Hồng Ngự",
+        "ghi_chu": "thành phố Hồng Ngự"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Lạc",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thường Lạc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thường Thới Hậu A",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thường Lạc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Thường Lạc",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Thường Lạc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh",
+        "ghi_chu": "thành phố Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh",
+        "ghi_chu": "thành phố Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh",
+        "ghi_chu": "thành phố Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 6",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh",
+        "ghi_chu": "thành phố Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hòa Thuận",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Hòa An",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tịnh Thới",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thuận Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Thuận Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Ngãi",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Ngãi",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Tân",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Ngãi",
+        "ghi_chu": "thành phố Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Nghĩa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Ngãi"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Phú",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Trà",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Nhị Mỹ",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Trà"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Bình",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Trà",
+        "ghi_chu": "huyện Cao Lãnh"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Mỹ Trà",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Mỹ Trà"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc",
+        "ghi_chu": "thành phố Sa Đéc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc",
+        "ghi_chu": "thành phố Sa Đéc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc",
+        "ghi_chu": "thành phố Sa Đéc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc",
+        "ghi_chu": "thành phố Sa Đéc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "An Hòa",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Quy Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Khánh Đông",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc"
+    },
+    {
+        "tinh_cu": "Đồng Tháp",
+        "xa_cu": "Tân Quy Tây",
+        "tinh_moi": "Đồng Tháp",
+        "xa_moi": "Phường Sa Đéc"
+    }
+]

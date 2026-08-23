@@ -15,6 +15,7 @@ class UserManaged(BaseModel):
     xa: str | None = None
     tinh: str | None = None
     role: Role = "user"
+    access_disabled: bool = False
     created_at: str | None = None
     last_login_at: str | None = None
 
@@ -49,6 +50,7 @@ class UserUpdate(BaseModel):
     xa: str | None = None
     tinh: str | None = None
     role: Role | None = None
+    access_disabled: bool | None = None
     password: str | None = None
 
     @field_validator("password")

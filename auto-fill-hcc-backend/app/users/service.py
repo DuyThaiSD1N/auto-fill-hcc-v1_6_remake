@@ -5,6 +5,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from pymongo.errors import DuplicateKeyError
 
+from app.auth.access_control import MAINTENANCE_MESSAGE
 from app.core.errors import AppError
 from app.core.security import hash_password
 from app.db.mongo import get_db
@@ -28,6 +29,7 @@ def _public(user: dict) -> dict:
         "xa": user.get("xa"),
         "tinh": user.get("tinh"),
         "role": user.get("role") or "user",
+        "access_disabled": user.get("access_disabled") is True,
         "created_at": _iso(user.get("created_at")),
         "last_login_at": _iso(user.get("last_login_at")),
     }
@@ -74,6 +76,7 @@ async def create_user(body: UserCreate) -> dict:
         "xa": xa,
         "tinh": tinh,
         "role": body.role,
+        "access_disabled": False,
         "created_at": now,
         "updated_at": now,
     }
@@ -85,10 +88,12 @@ async def create_user(body: UserCreate) -> dict:
     return _public(doc)
 
 
-async def update_user(user_id: str, body: UserUpdate) -> dict:
+async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> dict:
     db = get_db()
     oid = _oid(user_id)
-    updates: dict = {"updated_at": _now()}
+    now = _now()
+    updates: dict = {"updated_at": now}
+    unset_fields: dict = {}
     if body.name is not None:
         updates["name"] = body.name
     location_fields = body.model_fields_set & {"tinh", "xa"}
@@ -105,14 +110,33 @@ async def update_user(user_id: str, body: UserUpdate) -> dict:
         updates["xa"] = xa
     if body.role is not None:
         updates["role"] = body.role
+    if body.access_disabled is not None:
+        if body.access_disabled and str(oid) == current_user_id:
+            raise AppError("CANNOT_DISABLE_SELF", "Không thể tự khóa tài khoản của chính mình", 400)
+        updates["access_disabled"] = body.access_disabled
+        if body.access_disabled:
+            updates["access_disabled_reason"] = MAINTENANCE_MESSAGE
+            updates["access_disabled_at"] = now
+        else:
+            unset_fields = {"access_disabled_reason": "", "access_disabled_at": ""}
     if body.password:
         updates["password_hash"] = hash_password(body.password)
 
+    update_doc: dict = {"$set": updates}
+    if unset_fields:
+        update_doc["$unset"] = unset_fields
     result = await db.users.find_one_and_update(
-        {"_id": oid}, {"$set": updates}, return_document=True
+        {"_id": oid}, update_doc, return_document=True
     )
     if not result:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    if body.access_disabled is True:
+        # Access token đang sống bị chặn bởi require_auth; thu hồi refresh token để
+        # phiên cũ không thể tự gia hạn trong lúc bảo trì.
+        await db.refresh_tokens.update_many(
+            {"user_id": str(oid), "revoked_at": None},
+            {"$set": {"revoked_at": now}},
+        )
     return _public(result)
 
 

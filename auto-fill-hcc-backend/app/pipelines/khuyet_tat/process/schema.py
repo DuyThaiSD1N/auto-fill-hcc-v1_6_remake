@@ -1,23 +1,55 @@
 """Compact schema for "Xác định mức độ khuyết tật".
 
-The LLM returns OCR-derived facts only. The mapper derives Form.io DOM actions
-for requester/owner, disabled person, representative, disability type and
-activity-level radios.
+Hai vai trò đầu hồ sơ được tách rõ:
+- ``NguoiNop_*`` là người khớp mỏ neo tên + CCCD trong ``formContext``; LLM
+  vẫn phải trích đầy đủ nhân thân từ đúng giấy tờ của người này.
+- ``ChuHoSo_*`` là người đứng đơn/người đại diện hợp pháp trong hồ sơ.
+
+Các nhóm ``Nkt_*`` và ``Ndd_*`` vẫn là dữ liệu nghiệp vụ của Mẫu số 01, không
+được dùng thay tên cho hai vai trò đầu hồ sơ.
 """
 
+
+# Hai mỏ neo UI dùng để xác định đúng tài liệu của người nộp. Giá trị output
+# cùng tên bên dưới vẫn phải có bằng chứng OCR và được mapper đối chiếu lại.
+CONTEXT_FIELDS: list[dict] = [
+    {
+        "name": "NguoiNop_HoTen",
+        "desc": "Mỏ neo họ tên người nộp do formContext UI cung cấp để đối chiếu OCR.",
+    },
+    {
+        "name": "NguoiNop_SoDinhDanh",
+        "desc": "Mỏ neo số định danh người nộp do formContext UI cung cấp để đối chiếu OCR.",
+    },
+]
+
 FIELDS: list[dict] = [
-    # CCCD/CMND của chủ hồ sơ/người nộp.
-    {"name": "Cccd_HoTen", "desc": "Họ tên trên CCCD/CMND của chủ hồ sơ/người nộp."},
-    {"name": "Cccd_SoDinhDanh", "desc": "Số định danh/CCCD/CMND; có thể đọc từ MRZ mặt sau."},
-    {"name": "Cccd_NgaySinh", "desc": "Ngày sinh trên CCCD/CMND, dd/mm/yyyy."},
-    {"name": "Cccd_GioiTinh", "desc": 'Giới tính trên CCCD/CMND: "Nam" hoặc "Nữ".'},
-    {"name": "Cccd_NgayCap",
-     "desc": "Ngày cấp CCCD/CMND, dd/mm/yyyy. Bắt buộc cố đọc từ mặt sau nếu có."},
-    {"name": "Cccd_NoiCap",
-     "desc": 'Nơi cấp CCCD/CMND. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
+    # Người nộp: chỉ trích từ tài liệu đã được Python khoanh bằng tên + CCCD UI.
+    {"name": "NguoiNop_HoTen", "desc": "Họ tên NGƯỜI NỘP HỒ SƠ từ đúng giấy tờ đã khớp các mỏ neo đang có trong formContext UI."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp, dd/mm/yyyy; ưu tiên mặt trước CCCD đúng người."},
+    {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính người nộp: "Nam" hoặc "Nữ" theo đúng giấy tờ; không suy từ họ tên.'},
+    {"name": "NguoiNop_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người nộp; phải khớp số định danh trong formContext UI."},
+    {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND người nộp, dd/mm/yyyy; lấy từ mặt sau cùng thẻ đúng người."},
+    {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD/CMND người nộp từ mặt sau cùng thẻ; không lấy cơ quan cấp của người khác."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi thường trú người nộp từ đúng giấy tờ, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người nộp nếu đúng tài liệu của người này ghi rõ."},
+    {"name": "NguoiNop_QuocTich", "desc": "Quốc tịch người nộp khi đúng giấy tờ ghi rõ."},
+
+    # Chủ hồ sơ: người đứng đơn/người đại diện hợp pháp, có thể hợp nhất với
+    # CCCD đúng người. Không dùng CCCD bất kỳ hoặc context UI làm nguồn nhóm này.
+    {"name": "ChuHoSo_HoTen", "desc": "Họ tên CHỦ HỒ SƠ: người đứng đơn/người đại diện hợp pháp trong Mẫu số 01. Nếu không có người đại diện và người khuyết tật tự đề nghị thì chủ hồ sơ là người khuyết tật."},
+    {"name": "ChuHoSo_SoDinhDanh", "desc": "Số định danh/CCCD/CMND chủ hồ sơ; chỉ bổ sung từ CCCD khớp đúng họ tên hoặc số định danh của người đứng đơn."},
+    {"name": "ChuHoSo_NgaySinh", "desc": "Ngày sinh chủ hồ sơ, dd/mm/yyyy; ưu tiên CCCD khớp đúng người."},
+    {"name": "ChuHoSo_GioiTinh", "desc": 'Giới tính chủ hồ sơ: "Nam" hoặc "Nữ" khi tài liệu ghi rõ.'},
+    {"name": "ChuHoSo_NgayCap",
+     "desc": "Ngày cấp CCCD/CMND của chủ hồ sơ, dd/mm/yyyy. Bắt buộc cố đọc từ mặt sau đúng thẻ nếu có."},
+    {"name": "ChuHoSo_NoiCap",
+     "desc": 'Nơi cấp CCCD/CMND của chủ hồ sơ. Nếu đúng mặt sau thẻ có "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "Cccd_NoiCuTru",
-     "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "ChuHoSo_NoiCuTru",
+     "desc": "Nơi thường trú/cư trú của chủ hồ sơ, object {quocGia,tinh,xa,diaChi}; ưu tiên đúng mục người đứng đơn trong Mẫu số 01, CCCD chỉ bổ sung khi mục này thiếu."},
+    {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại chủ hồ sơ tại đúng mục người đứng đơn/người đại diện hợp pháp nếu có."},
+    {"name": "ChuHoSo_QuocTich", "desc": "Quốc tịch chủ hồ sơ khi tài liệu đúng người ghi rõ."},
 
     # Đơn đề nghị.
     {"name": "DeNghi_NoiDung",
@@ -54,9 +86,21 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "Nkt_NgaySinh"):
+for _name in (
+    "NguoiNop_NgaySinh",
+    "NguoiNop_NgayCap",
+    "ChuHoSo_NgaySinh",
+    "ChuHoSo_NgayCap",
+    "Nkt_NgaySinh",
+):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("Cccd_NoiCuTru", "Nkt_ThuongTru", "Nkt_NoiOHienNay", "Ndd_NoiCuTru"):
+for _name in (
+    "NguoiNop_NoiCuTru",
+    "ChuHoSo_NoiCuTru",
+    "Nkt_ThuongTru",
+    "Nkt_NoiOHienNay",
+    "Ndd_NoiCuTru",
+):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 for _name in ("KhuyetTat_DanhMuc", "KhuyetTat_ChiTiet", "MucDo_HoatDong"):
     COMPACT_COMP_BY_NAME[_name] = "raw"
@@ -75,7 +119,7 @@ UI_COMP_BY_NAME = {
     "data[address]": "dom-input",
     "data[phoneNumber]": "dom-input",
 
-    # Chủ hồ sơ chỉ dùng khi về sau có ca người nộp khác chủ hồ sơ.
+    # Chủ hồ sơ luôn được phát tường minh sau checkbox, kể cả trường hợp tự nộp.
     "data[ownerFullname]": "dom-input",
     "data[ownerBirthday]": "dom-date",
     "data[ownerGender]": "dom-select",

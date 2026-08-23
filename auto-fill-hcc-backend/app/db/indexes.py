@@ -14,6 +14,19 @@ async def ensure_indexes() -> None:
     await db.process_requests.create_index([("user_id", 1), ("created_at", -1)])
     await db.process_requests.create_index("request_id")
     await db.process_requests.create_index([("procedure", 1), ("created_at", -1)])
+    # Batch extraction: job/item tách khỏi traces để chiến dịch test không làm sai báo cáo hồ sơ thật.
+    await db.batch_jobs.create_index("job_id", unique=True)
+    await db.batch_jobs.create_index([("status", 1), ("created_at", -1)])
+    await db.batch_items.create_index("item_id", unique=True)
+    await db.batch_items.create_index([("job_id", 1), ("client_dossier_id", 1)], unique=True)
+    await db.batch_items.create_index([("job_id", 1), ("input_fingerprint", 1)], unique=True)
+    await db.batch_items.create_index([("status", 1), ("available_at", 1), ("created_at", 1)])
+    await db.batch_items.create_index([("job_id", 1), ("status", 1), ("created_at", 1)])
+    await db.batch_items.create_index(
+        [("job_id", 1), ("idempotency_key", 1)],
+        unique=True,
+        partialFilterExpression={"idempotency_key": {"$type": "string"}},
+    )
     # Trace màn theo dõi /process.
     await db.traces.create_index([("created_at", -1)])
     await db.traces.create_index([("user_id", 1), ("created_at", -1)])

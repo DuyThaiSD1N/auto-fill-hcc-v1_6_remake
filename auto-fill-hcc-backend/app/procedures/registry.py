@@ -525,10 +525,9 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. CCCD của bên nam.\n"
-            "2. CCCD của bên nữ.\n"
-            "Không cần chọn trước giấy tờ là của chồng hay vợ; hệ thống tự phân biệt theo giới tính trên CCCD.\n"
-            "Bước 3: hệ thống có thể đính kèm CCCD bên nam/bên nữ vào thành phần hồ sơ mới."
+            "1. Giấy tờ tùy thân của hai bên (CCCD/CMND/hộ chiếu; có thể tải từng mặt hoặc nhiều file).\n"
+            "2. Nếu có: tờ khai bản giấy, bản cam đoan và giấy tờ liên quan khác.\n"
+            "Hệ thống sẽ gộp các mặt giấy tờ tùy thân vào đúng thành phần hồ sơ và tách tài liệu nếu một PDF chứa nhiều loại giấy tờ."
         ),
     },
     {
@@ -653,11 +652,13 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. CCCD của người yêu cầu.\n"
+            "1. CCCD/CMND/Hộ chiếu có trong hồ sơ; có thể tải riêng từng mặt hoặc nhiều người.\n"
             "2. Giấy báo tử/giấy chứng tử hoặc giấy tờ thay giấy báo tử.\n"
-            "3. Tờ khai đăng ký khai tử bản giấy nếu có.\n"
-            "Không cần chọn trước giấy tờ là CCCD, giấy báo tử hay tờ khai; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Bước 3: hệ thống đính giấy báo tử vào thành phần hồ sơ có sẵn, CCCD và tờ khai bản giấy là thành phần mới."
+            "3. Nếu có: tờ khai bản giấy, văn bản ủy quyền, giấy tờ chứng minh sự kiện chết hoặc nơi chết.\n"
+            "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR, tách tài liệu trong PDF "
+            "và gộp tất cả giấy tờ tùy thân thành một nhóm.\n"
+            "Bước 3: hệ thống đưa giấy tờ vào đúng thành phần hồ sơ có sẵn; giấy tờ tùy thân và tờ khai "
+            "bản giấy được thêm thành phần mới."
         ),
     },
     {
@@ -691,16 +692,15 @@ PROCEDURES: list[dict] = [
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
-            "Giấy tờ cần tải lên (chọn 1 trong 3 trường hợp):\n"
-            "1. Giấy khai sinh → người có nội dung thay đổi là người con (người được khai sinh).\n"
-            "2. Giấy/Trích lục kết hôn + CCCD người yêu cầu và CCCD người có nội dung thay đổi "
-            "(nếu là hai người khác nhau) → hệ thống đối chiếu từng CCCD với chồng/vợ; mọi CCCD khớp "
-            "đều được dùng để chuẩn hóa và bổ sung đủ thông tin người đó.\n"
-            "3. Trích lục khai tử → người có nội dung thay đổi là người đã mất.\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy tờ làm căn cứ thay đổi/cải chính: giấy khai sinh, trích lục hộ tịch, đăng ký kết hôn, "
+            "khai tử, học bạ, bằng cấp, giấy xác nhận, quyết định hoặc giấy tờ liên quan khác.\n"
+            "2. CCCD/CMND/Hộ chiếu có trong hồ sơ; có thể tải riêng từng mặt hoặc nhiều người.\n"
+            "3. Nếu có: tờ khai bản giấy và văn bản ủy quyền.\n"
             "Mục I (người yêu cầu) do cổng tự điền; hệ thống chỉ đặt mặc định cư trú và "
             "phương thức nhận kết quả (viền vàng). Không tự chọn cấp/số lượng bản sao.\n"
-            "Bước 3 (đính kèm): giấy tờ hộ tịch (khai sinh/kết hôn/khai tử) vào ô 'Giấy tờ liên quan'; "
-            "văn bản ủy quyền vào ô ủy quyền; CCCD và giấy tờ khác thêm thành phần hồ sơ mới."
+            "Bước 3: giấy tờ làm căn cứ vào ô 'Giấy tờ liên quan', văn bản ủy quyền vào ô ủy quyền; "
+            "mọi giấy tờ tùy thân được gộp thành một thành phần mới, tờ khai bản giấy thêm thành phần mới."
         ),
     },
     {
@@ -1523,7 +1523,7 @@ PROCEDURES: list[dict] = [
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đề nghị xác định/xác định lại mức độ khuyết tật.\n"
-            "2. CCCD của chủ hồ sơ/người nộp.\n"
+            "2. CCCD của chủ hồ sơ/người đại diện đứng đơn.\n"
             "Bước 3 (đính kèm) — chuẩn bị nếu có:\n"
             "1. Bản sao giấy tờ liên quan đến khuyết tật: bệnh án, giấy khám, điều trị, phẫu thuật.\n"
             "2. Bản sao kết luận của Hội đồng Giám định y khoa/kết luận cơ sở y tế.\n"

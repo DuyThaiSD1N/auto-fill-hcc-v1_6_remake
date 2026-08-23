@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -11,10 +11,24 @@ class AttachmentPlanReq(BaseModel):
     files: list[FileItem]
 
 
+class AttachmentSourceSegment(BaseModel):
+    """Một phần trang lấy từ file gốc để FE dựng lại tài liệu đính kèm.
+
+    `pageIndexes` dùng chỉ số 0-based đúng với pdf-lib. Khi None, FE dùng toàn bộ file.
+    Tách riêng contract này khỏi `sourceFileIndexes` để không đổi nghĩa gộp nguyên file đã có.
+    """
+
+    fileIndex: int = Field(ge=0)
+    pageIndexes: list[Annotated[int, Field(ge=0)]] | None = None
+
+
 class AttachmentPlanItem(BaseModel):
     fileIndex: int
     # Các file gốc (theo thứ tự) FE sẽ GỘP thành 1 PDF cho item này; None/1 phần tử = file lẻ.
     sourceFileIndexes: list[int] | None = None
+    # Các đoạn trang (theo thứ tự) FE sẽ trích rồi gộp thành 1 PDF. Chỉ planner cần tách tài liệu
+    # trong cùng một PDF mới trả field này; planner cũ không bị thay đổi hành vi.
+    sourceSegments: list[AttachmentSourceSegment] | None = None
     fileName: str
     documentName: str
     componentName: str = ""

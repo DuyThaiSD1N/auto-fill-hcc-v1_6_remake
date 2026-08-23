@@ -6,13 +6,12 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends
 
 from app.audit import service as audit
-from app.config import settings
 from app.core.deps import require_auth
 from app.core.errors import AppError
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
+from app.process.service import execute_process, prepare_process
 from app.procedures.registry import get_pipeline, get_procedure
-from app.services import ocr
 from app.storage.files import save_request_files
 from app.traces import repo as traces_repo
 from app.traces.applicant import resolve_applicant_name
@@ -22,31 +21,6 @@ from app.traces.metadata import build_process_trace_attachments
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["process"])
 
-_ALLOWED_TYPES = {
-    "image/jpeg",
-    "image/png",
-    "image/jpg",
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-}
-
-
-def _is_allowed_file_type(file_item) -> bool:
-    if file_item.type in _ALLOWED_TYPES:
-        return True
-    name = (file_item.name or "").lower()
-    return name.endswith(".docx") and file_item.type in {"", "application/octet-stream"}
-
-
-def _data_url_bytes(data_url: str) -> int:
-    """Ước lượng số byte file gốc từ độ dài phần base64."""
-    if "," in data_url:
-        b64 = data_url.split(",", 1)[1]
-    else:
-        b64 = data_url
-    return (len(b64) * 3) // 4
-
-
 @router.post("/process", response_model=ProcessResp)
 async def process(body: ProcessReq, background: BackgroundTasks,
                   user: dict = Depends(require_auth)):
@@ -55,47 +29,17 @@ async def process(body: ProcessReq, background: BackgroundTasks,
 
     proc = get_procedure(body.procedure)
     pipeline = get_pipeline(body.procedure)
-    if not proc or not pipeline:
-        raise AppError("UNKNOWN_PROCEDURE", f"Thủ tục không hợp lệ: {body.procedure}", 400)
-
-    if not body.files:
-        raise AppError("NO_FILES", "Không có file nào", 400)
-
-    max_file = settings.max_file_size_mb * 1024 * 1024
-    max_total = settings.max_total_payload_mb * 1024 * 1024
-    total_bytes = 0
-    is_agent = proc.get("mode") == "agent"  # agent: không gắn role, BE tự suy luận
-    valid_roles = {r["value"] for r in proc["roles"]}
-
-    files_by_role: dict[str, list[dict]] = {}
-    for f in body.files:
-        if not _is_allowed_file_type(f):
-            raise AppError("BAD_FILE_TYPE", f"Loại file không hỗ trợ: {f.type}", 400)
-        if not is_agent and f.role not in valid_roles:
-            raise AppError("BAD_ROLE", f"Role không hợp lệ cho thủ tục: {f.role}", 400)
-        size = _data_url_bytes(f.dataUrl)
-        if size > max_file:
-            raise AppError("FILE_TOO_LARGE", f"File {f.name} vượt quá {settings.max_file_size_mb}MB", 413)
-        total_bytes += size
-        files_by_role.setdefault(f.role, []).append(
-            {"name": f.name, "type": f.type, "dataUrl": f.dataUrl,
-             "hasHandwriting": bool(f.hasHandwriting)}
-        )
-
-    if total_bytes > max_total:
-        raise AppError("PAYLOAD_TOO_LARGE",
-                       f"Tổng payload vượt quá {settings.max_total_payload_mb}MB", 413)
-
-    # Backend chỉ có một provider OCR Tiếng Nói; option viết tay không đổi engine.
-    ocr_provider = ocr.resolved_label()
-
-    # Thủ tục bật rà soát bbox → báo pipeline chụp tokens+bbox (Kiểu A, tính lúc process).
-    pipeline_options = dict(body.options or {})
-    if proc.get("review"):
-        pipeline_options["_review"] = True
+    prepared = prepare_process(
+        body,
+        proc=proc,
+        pipeline=pipeline,
+        include_review=True,
+    )
+    total_bytes = prepared.total_bytes
+    ocr_provider = prepared.ocr_provider
 
     try:
-        result = await pipeline(files_by_role, pipeline_options)
+        result = await execute_process(prepared)
     except AppError:
         raise
     except Exception as e:  # noqa: BLE001

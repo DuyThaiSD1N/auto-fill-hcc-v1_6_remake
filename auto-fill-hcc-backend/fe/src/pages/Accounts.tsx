@@ -23,23 +23,27 @@ interface Props {
 interface FormState {
   id: string | null; // null = tạo mới
   originalRole: Role | null;
+  originalAccessDisabled: boolean;
   username: string;
   password: string;
   name: string;
   xa: string;
   tinh: string;
   role: Role;
+  accessDisabled: boolean;
 }
 
 const EMPTY_FORM: FormState = {
   id: null,
   originalRole: null,
+  originalAccessDisabled: false,
   username: "",
   password: "",
   name: "",
   xa: "",
   tinh: "",
   role: "user",
+  accessDisabled: false,
 };
 
 // Nhãn hiển thị + class badge theo role. commune = "Hành chính công xã" (như user, chỉ khác nhãn).
@@ -232,12 +236,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     setForm({
       id: u.id,
       originalRole: u.role,
+      originalAccessDisabled: u.access_disabled,
       username: u.username,
       password: "",
       name: u.name ?? "",
       xa: u.xa ?? "",
       tinh: u.tinh ?? "",
       role: u.role,
+      accessDisabled: u.access_disabled,
     });
   }
 
@@ -256,6 +262,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
         : "Bỏ vai trò HCC sẽ loại toàn bộ lịch sử của tài khoản này khỏi \"Hồ sơ thực tế\". Dữ liệu vẫn còn trong \"Tất cả hồ sơ\". Bạn có muốn tiếp tục?";
       if (!window.confirm(message)) return;
     }
+    if (
+      form.id !== null &&
+      !form.originalAccessDisabled &&
+      form.accessDisabled &&
+      !window.confirm(
+        `Tạm khóa tài khoản "${form.username}"? Các phiên đang đăng nhập sẽ bị ngắt.`,
+      )
+    ) return;
     setSaving(true);
     try {
       if (form.id === null) {
@@ -273,6 +287,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           xa: form.xa.trim(),
           tinh: form.tinh.trim(),
           role: form.role,
+          access_disabled: form.accessDisabled,
           password: form.password || undefined,
         });
       }
@@ -365,6 +380,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               <th>Xã / Phường</th>
               <th>Tỉnh</th>
               <th className="center">Vai trò</th>
+              <th className="center">Trạng thái</th>
               <th>Đăng nhập gần nhất</th>
               <th className="center">Thao tác</th>
             </tr>
@@ -372,14 +388,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={7} className="center muted">
+                <td colSpan={8} className="center muted">
                   Đang tải…
                 </td>
               </tr>
             )}
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={7} className="center muted">
+                <td colSpan={8} className="center muted">
                   {roleFilter === "all"
                     ? "Chưa có tài khoản nào"
                     : "Không có tài khoản thuộc vai trò đã chọn"}
@@ -399,6 +415,11 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   <td className="center">
                     <span className={`badge ${ROLE_META[u.role]?.cls ?? "role-user"}`}>
                       {ROLE_META[u.role]?.label ?? u.role}
+                    </span>
+                  </td>
+                  <td className="center">
+                    <span className={`badge ${u.access_disabled ? "warn" : "ok"}`}>
+                      {u.access_disabled ? "Tạm khóa" : "Hoạt động"}
                     </span>
                   </td>
                   <td className="muted">
@@ -551,6 +572,20 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                 <option value="admin">Quản trị</option>
               </select>
             </label>
+
+            {!isCreate && (
+              <label>
+                Trạng thái tài khoản
+                <select
+                  value={form.accessDisabled ? "off" : "on"}
+                  disabled={form.id === user.id}
+                  onChange={(e) => setForm({ ...form, accessDisabled: e.target.value === "off" })}
+                >
+                  <option value="on">Đang hoạt động</option>
+                  <option value="off">Tạm khóa</option>
+                </select>
+              </label>
+            )}
 
             {roleChangesOfficialScope && form && (
               <div className="role-impact-note" role="note">

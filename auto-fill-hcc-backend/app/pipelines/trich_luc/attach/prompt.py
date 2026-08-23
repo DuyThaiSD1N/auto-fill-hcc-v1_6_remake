@@ -5,18 +5,23 @@ from typing import Any
 SYSTEM_PROMPT = """
 <persona>
 Bạn là agent phân loại tài liệu đính kèm cho thủ tục Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịch.
-Nhiệm vụ của bạn là đọc OCR_TEXT của từng file và trả về đúng type hồ sơ tương ứng.
+Nhiệm vụ của bạn là đọc OCR_TEXT theo từng trang của TẤT CẢ file, nhận biết ranh giới tài liệu và trả
+về đúng type của từng tài liệu logic. Một file PDF có thể chứa nhiều loại giấy tờ khác nhau.
 </persona>
 
 <critical_rules>
 1. Chỉ phân loại theo OCR_TEXT. Không dùng tên file, thứ tự file, hoặc giả định bên ngoài làm bằng chứng.
-2. Nếu OCR_TEXT rỗng hoặc quá thiếu thông tin để nhận biết loại giấy tờ, trả type là other.
-3. Giấy khai sinh, giấy chứng nhận kết hôn, trích lục kết hôn, trích lục khai tử là giấy tờ hộ tịch chính
+2. Chỉ tách khi nội dung cho thấy rõ một tài liệu mới bắt đầu. Các trang liên tiếp của cùng giấy tờ phải
+   nằm trong cùng một kết quả pageFrom-pageTo.
+3. Mỗi trang đầu vào phải xuất hiện ĐÚNG MỘT LẦN trong kết quả của file đó; không chồng chéo, không bỏ trang.
+4. pageFrom/pageTo là số trang 1-based, bao gồm cả hai đầu và phải thuộc đúng fileIndex đầu vào.
+5. Nếu OCR_TEXT rỗng hoặc quá thiếu thông tin để nhận biết loại giấy tờ, trả type là other.
+6. Giấy khai sinh, giấy chứng nhận kết hôn, trích lục kết hôn, trích lục khai tử là giấy tờ hộ tịch chính
    và phải được phân loại vào nhóm civil_status_* tương ứng để thêm thành phần hồ sơ mới.
-4. CCCD/CMND/Hộ chiếu/Giấy chứng nhận căn cước phải phân loại là identity để đính vào thành phần hồ sơ STT 3.
-5. Văn bản ủy quyền phải phân loại là authorization để đính vào thành phần hồ sơ STT 2.
-6. Giấy tờ chứng minh cư trú phải phân loại là residence_proof để đính vào thành phần hồ sơ STT 4.
-7. Trả về JSON object duy nhất, không giải thích, không markdown.
+7. CCCD/CMND/Hộ chiếu/Giấy chứng nhận căn cước phải phân loại là identity để đính vào thành phần hồ sơ STT 3.
+8. Văn bản ủy quyền phải phân loại là authorization để đính vào thành phần hồ sơ STT 2.
+9. Giấy tờ chứng minh cư trú phải phân loại là residence_proof để đính vào thành phần hồ sơ STT 4.
+10. Trả về JSON object duy nhất, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>
@@ -70,7 +75,7 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
 
 <output_contract>
 Schema bắt buộc:
-{"documents":[{"index":0,"type":"other","title":"Học bạ","documentName":"Học bạ"}]}
+{"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":1,"type":"other","title":"Học bạ","documentName":"Học bạ"}]}
 </output_contract>
 
 <reminder>
@@ -80,15 +85,29 @@ Chỉ dựa vào OCR_TEXT. Không có tên file trong dữ liệu phân loại.
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:
-    ocr_documents = [
-        {
-            "index": item.get("index"),
-            "ocrText": item.get("text", ""),
-        }
-        for item in documents
-    ]
+    # Chỉ whitelist dữ liệu OCR cần cho phân loại. Tên file không được lọt vào prompt dù caller
+    # vô tình truyền thêm metadata; file trùng tên vẫn được neo bằng fileIndex.
+    ocr_documents = []
+    for position, item in enumerate(documents):
+        pages = item.get("pages")
+        if not isinstance(pages, list):
+            pages = [{"pageNumber": 1, "ocrText": item.get("text", "")}]
+        ocr_documents.append({
+            "fileIndex": item.get("fileIndex", item.get("index", position)),
+            "pageCount": item.get("pageCount", len(pages) or 1),
+            "pageBoundariesAvailable": item.get("pageBoundariesAvailable", len(pages) <= 1),
+            "pages": [
+                {
+                    "pageNumber": page.get("pageNumber", page_index + 1),
+                    "pageTo": page.get("pageTo"),
+                    "ocrText": page.get("ocrText", page.get("text", "")),
+                }
+                for page_index, page in enumerate(pages)
+                if isinstance(page, dict)
+            ],
+        })
     return (
-        "DANH SÁCH OCR_TEXT CỦA TỪNG TÀI LIỆU:\n"
+        "DANH SÁCH OCR_TEXT THEO FILE VÀ TRANG:\n"
         f"{json.dumps(ocr_documents, ensure_ascii=False)}\n\n"
-        "Không có tên file trong dữ liệu phân loại. Hãy phân loại từng tài liệu chỉ theo ocrText."
+        "Không có tên file trong dữ liệu phân loại. Hãy phân đoạn và phân loại tất cả trang chỉ theo ocrText."
     )

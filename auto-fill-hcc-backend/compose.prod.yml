@@ -45,6 +45,25 @@ services:
     networks:
       - autofill
 
+  batch-worker:
+    image: autofill-hcc-be:latest
+    env_file: .env
+    environment:
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+    command: ["python", "-m", "scripts.run_batch_worker"]
+    volumes:
+      # API lưu file batch tại /app/data; worker phải dùng đúng volume này để OCR/LLM.
+      - ./data:/app/data
+    depends_on:
+      mongo:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - autofill
+
   fe:
     build: ./fe
     image: autofill-hcc-fe:latest

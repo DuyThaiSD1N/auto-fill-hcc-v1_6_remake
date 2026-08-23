@@ -36,6 +36,8 @@ def test_combined_excel_unions_procedures_zero_fills_and_totals():
         }]},
         handfree_stats={"source": "handfree", "units": [{
             "unitKey": unit_key("Tỉnh Ninh Bình", "Xã Nghĩa Hưng"),
+            "province": "Tỉnh Ninh Bình",
+            "ward": "Xã Nghĩa Hưng",
             "procedures": [
                 {
                     "canonicalProcedureId": "tthc:2.000815",
@@ -68,6 +70,32 @@ def test_combined_excel_unions_procedures_zero_fills_and_totals():
     assert [sheet.cell(row=11, column=column).value for column in (6, 7, 8)] == [8, 32, 40]
 
 
+def test_combined_excel_keeps_auto_account_without_handfree_unit():
+    date_from, date_to = parse_stats_range("2026-08-18", "2026-08-18")
+    account = {
+        "_id": "auto-province",
+        "username": "hccninhbinh",
+        "name": "HCC Tỉnh Ninh Bình",
+        "xa": None,
+        "tinh": "Tỉnh Ninh Bình",
+        "role": "province",
+    }
+    content = build_excel(
+        accounts=[account],
+        stats={"wards": [{
+            "userId": "auto-province",
+            "procedures": [{"key": "khai-tu", "count": 2}],
+        }]},
+        handfree_stats={"source": "handfree", "units": []},
+        date_from=date_from,
+        date_to=date_to,
+    )
+    sheet = load_workbook(io.BytesIO(content)).active
+
+    assert [sheet.cell(row=8, column=column).value for column in (6, 7, 8)] == [2, 0, 2]
+    assert [sheet.cell(row=9, column=column).value for column in (6, 7, 8)] == [2, 0, 2]
+
+
 @pytest.mark.asyncio
 async def test_handfree_client_sends_canonical_units_and_hmac(monkeypatch):
     captured = {}
@@ -97,11 +125,20 @@ async def test_handfree_client_sends_canonical_units_and_hmac(monkeypatch):
         includeHandfree=True,
     )
 
-    result = await handfree_client.fetch_handfree_stats([{
-        "_id": "auto-1",
-        "xa": "Xã Nghĩa Hưng",
-        "tinh": "Ninh Bình",
-    }], body)
+    result = await handfree_client.fetch_handfree_stats([
+        {
+            "_id": "auto-1",
+            "username": "HCCNghiaHung",
+            "xa": "Xã Nghĩa Hưng",
+            "tinh": "Ninh Bình",
+        },
+        {
+            "_id": "auto-province",
+            "username": "HCCNinhBinh",
+            "xa": None,
+            "tinh": "Ninh Bình",
+        },
+    ], body)
 
     payload = json.loads(captured["content"])
     assert result == {"source": "handfree", "units": []}
@@ -111,7 +148,7 @@ async def test_handfree_client_sends_canonical_units_and_hmac(monkeypatch):
         "province": "Tỉnh Ninh Bình",
         "ward": "Xã Nghĩa Hưng",
     }]
-    assert payload["officialOnly"] is True
+    assert "officialOnly" not in payload
     timestamp = captured["headers"]["X-Report-Timestamp"]
     expected = hmac.new(
         b"shared-secret",
@@ -119,3 +156,27 @@ async def test_handfree_client_sends_canonical_units_and_hmac(monkeypatch):
         hashlib.sha256,
     ).hexdigest()
     assert captured["headers"]["X-Report-Signature"] == expected
+
+
+@pytest.mark.asyncio
+async def test_handfree_client_does_not_call_remote_when_no_joinable_unit(monkeypatch):
+    async def fail_if_called(*args, **kwargs):
+        raise AssertionError("Không được gọi Handfree khi không có đơn vị đủ khóa ghép")
+
+    monkeypatch.setattr(handfree_client, "_post_handfree", fail_if_called)
+    body = ExcelExportRequest(
+        dateFrom="2026-08-18",
+        dateTo="2026-08-18",
+        selectionMode="accounts",
+        accountIds=["auto-province"],
+        includeHandfree=True,
+    )
+
+    result = await handfree_client.fetch_handfree_stats([{
+        "_id": "auto-province",
+        "username": "HCCNinhBinh",
+        "xa": None,
+        "tinh": "Ninh Bình",
+    }], body)
+
+    assert result == {"source": "handfree", "units": []}

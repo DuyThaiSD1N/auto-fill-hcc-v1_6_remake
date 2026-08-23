@@ -25,8 +25,8 @@ async def create_user(body: UserCreate, _admin: dict = Depends(require_admin)):
 
 
 @router.patch("/{user_id}")
-async def update_user(user_id: str, body: UserUpdate, _admin: dict = Depends(require_admin)):
-    return await service.update_user(user_id, body)
+async def update_user(user_id: str, body: UserUpdate, admin: dict = Depends(require_admin)):
+    return await service.update_user(user_id, body, admin["id"])
 
 
 @router.delete("/{user_id}")

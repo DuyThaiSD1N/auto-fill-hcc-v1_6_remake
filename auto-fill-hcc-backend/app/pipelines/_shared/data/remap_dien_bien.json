@@ -1,0 +1,794 @@
+[
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Vì",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Nhé"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chung Chải",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Nhé"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Nhé",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Nhé"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sen Thượng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sín Thầu"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Leng Su Sìn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sín Thầu"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sín Thầu",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sín Thầu"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Huổi Lếch",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Toong"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Toong",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Toong"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pá Mỳ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nậm Kè"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Kè",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nậm Kè"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Na Cô Sa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Quảng Lâm"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Quảng Lâm",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Quảng Lâm"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Khoa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Hỳ"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Nhừ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Hỳ"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Chua",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Hỳ"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Hỳ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Hỳ"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chà Cang",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Chà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chà Nưa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Chà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Tin",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Chà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pa Tần",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Chà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Vàng Đán",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Bủng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Bủng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Bủng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Khăn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Chà Tở"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chà Tở",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Chà Tở"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Phìn Hồ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Si Pa Phìn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Si Pa Phìn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Si Pa Phìn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Chà",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Sang",
+        "ghi_chu": "Thị trấn Mường Chà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Ma Thì Hồ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Sang"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sa Lông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Sang"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Na Sang",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Sang"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Huổi Lèng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Tùng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Tùng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Tùng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Hừa Ngài",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pa Ham"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pa Ham",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pa Ham"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Huổi Mí",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nậm Nèn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nậm Nèn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nậm Nèn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Mươn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Pồn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Pồn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Pồn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tủa Chùa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tủa Chùa",
+        "ghi_chu": "Thị trấn Tủa Chùa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Báng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tủa Chùa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Tòng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tủa Chùa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tả Sìn Thàng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sín Chải"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Lao Xả Phình",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sín Chải"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sín Chải",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sín Chải"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Trung Thu",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sính Phình"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tả Phìn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sính Phình"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sính Phình",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sính Phình"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Huổi Só",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tủa Thàng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tủa Thàng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tủa Thàng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Xá Nhè",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sáng Nhè"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Đun",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sáng Nhè"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Phình Sáng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sáng Nhè"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tuần Giáo",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tuần Giáo",
+        "ghi_chu": "Thị trấn Tuần Giáo"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Quài Cang",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tuần Giáo"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Quài Nưa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tuần Giáo"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tỏa Tình",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Quài Tở"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tênh Phông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Quài Tở"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Quài Tở",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Quài Tở"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mùn Chung",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Mùn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pú Xi",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Mùn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Mùn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Mùn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Rạng Đông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pú Nhung"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Ta Ma",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pú Nhung"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pú Nhung",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pú Nhung"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Sáy",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Chiềng Sinh"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Thín",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Chiềng Sinh"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Khong",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Chiềng Sinh"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chiềng Sinh",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Chiềng Sinh"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Ảng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Ảng",
+        "ghi_chu": "Thị trấn Mường Ảng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Ẳng Nưa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Ảng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Ẳng Cang",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Ảng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Đăng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Tấu"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Ngối Cáy",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Tấu"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Tấu",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Nà Tấu"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Ẳng Tở",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Búng Lao"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chiềng Đông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Búng Lao"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Búng Lao",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Búng Lao"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nặm Lịch",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Lạn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Xuân Lao",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Lạn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Lạn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Lạn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nà Nhạn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Phăng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pá Khoang",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Phăng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Phăng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Phăng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Hua Thanh",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Nưa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Luông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Nưa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Hưng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Nưa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Chăn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Nưa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Nưa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Nưa"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Noong Hẹt",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh An"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sam Mứn",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh An"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh An",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh An"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Noong Luống",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Yên"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pa Thơm",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Yên"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Yên",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Thanh Yên"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pom Lót",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sam Mứn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Na Ư",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Sam Mứn"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Hẹ Muông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Núa Ngam"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Na Tông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Núa Ngam"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Núa Ngam",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Núa Ngam"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Lói",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Nhà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Phu Luông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Nhà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Nhà",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Nhà"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Điện Biên Đông",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Son",
+        "ghi_chu": "Thị trấn Điện Biên Đông"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Keo Lôm",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Son"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Na Son",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Na Son"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Phì Nhừ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Xa Dung"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Xa Dung",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Xa Dung"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nong U",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pu Nhi"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pu Nhi",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Pu Nhi"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Chiềng Sơ",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Luân"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Luân Giói",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Luân"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Luân",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Mường Luân"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Háng Lìa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tìa Dình"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tìa Dình",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Tìa Dình"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Pú Hồng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Phình Giàng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Phình Giàng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Xã Phình Giàng"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sông Đà",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Lay",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Na Lay",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Lay",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Lay Nưa",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Lay",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Sá Tổng",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Lay",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Him Lam",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Điện Biên Phủ",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Tân Thanh",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Điện Biên Phủ",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Mường Thanh",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Điện Biên Phủ",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Bình",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Điện Biên Phủ",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Trường",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Điện Biên Phủ",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Minh",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Điện Biên Phủ",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Noong Bua",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Thanh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Nam Thanh",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Thanh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Điện Biên",
+        "xa_cu": "Thanh Xương",
+        "tinh_moi": "Điện Biên",
+        "xa_moi": "Phường Mường Thanh",
+        "ghi_chu": "xã"
+    }
+]

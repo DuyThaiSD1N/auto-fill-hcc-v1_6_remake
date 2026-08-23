@@ -1,182 +1,313 @@
 import json
 
+from app.attachments.schemas import AttachmentPlanResp
 from app.pipelines.xac_nhan_tthn.attach import planner as xac_nhan_tthn
 from app.pipelines.xac_nhan_tthn.attach import prompt
 from app.process.schemas import FileItem
 
 
-def _file(name):
-    return FileItem(name=name, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
-
-
-async def test_tthn_attachment_plan_routes_identity_to_new_component(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [{"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN"}]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        assert json.loads(messages[1]["content"])["ocrText"] == "CĂN CƯỚC CÔNG DÂN"
-        return json.dumps({"type": "identity", "title": "Căn cước công dân"})
-
-    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
-
-    res = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments([_file("cccd.pdf")], {}, None)
-    item = res["attachments"][0]
-
-    assert item["target"] == "new"
-    assert item["componentName"] == "Căn cước công dân"
-    assert item["documentName"] == "Căn cước công dân"
-    assert res["stats"]["llm_latency_ms"] >= 0
-
-
-async def test_tthn_attachment_plan_routes_condition_documents_to_existing_rows(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "ly-hon.pdf", "text": "Quyết định ly hôn"},
-            {"name": "ghi-chu.pdf", "text": "Trích lục ghi chú ly hôn"},
-            {"name": "uy-quyen.pdf", "text": "Văn bản ủy quyền"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        text = json.loads(messages[1]["content"])["ocrText"]
-        if "Quyết định" in text:
-            return json.dumps({"type": "divorce_or_death_proof", "title": "Quyết định ly hôn"})
-        if "ghi chú" in text:
-            return json.dumps({"type": "foreign_divorce_note", "title": "Trích lục ghi chú ly hôn"})
-        return json.dumps({
-            "type": "previous_marital_status_certificate_or_authorization",
-            "title": "Văn bản ủy quyền",
-        })
-
-    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
-
-    res = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments(
-        [_file("ly-hon.pdf"), _file("ghi-chu.pdf"), _file("uy-quyen.pdf")],
-        {},
-        None,
+def _file(name: str) -> FileItem:
+    return FileItem(
+        name=name,
+        type="application/pdf",
+        dataUrl="data:application/pdf;base64,AAA",
+        role="doc",
     )
-    items = res["attachments"]
-
-    assert items[0]["target"] == "existing"
-    assert items[0]["componentIndex"] == 2
-    assert "đã có vợ hoặc chồng" in items[0]["componentName"]
-    assert items[1]["componentIndex"] == 3
-    assert "kết hôn ở nước ngoài" in items[1]["componentName"]
-    assert items[2]["componentIndex"] == 4
-    assert "cấp lại Giấy xác nhận tình trạng hôn nhân" in items[2]["componentName"]
 
 
-def test_tthn_attachment_prompt_contains_one_ocr_and_no_file_name():
-    user_prompt = prompt.build_user_prompt({
-        "index": 0,
-        "fileName": "image.pdf",
-        "text": "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN",
-    })
-    payload = json.loads(user_prompt)
-
-    assert payload == {"ocrText": "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN"}
-    assert "fileName" not in user_prompt
-    assert "không dùng tên file" in prompt.SYSTEM_PROMPT.lower()
-
-
-async def test_tthn_duplicate_names_keep_ocr_by_index_and_merge_cccd(monkeypatch):
-    declaration_text = """
-    TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN
-    Giấy tờ tùy thân CCCD số 051205007090
-    """
-    front_text = """
-    CĂN CƯỚC CÔNG DÂN Citizen Identity Card
-    Số 051205007090 Họ và tên LÊ HOÀNG QUÝ Ngày sinh 07/07/2005
-    """
-    back_text = """
-    Đặc điểm nhận dạng Personal identification
-    IDVNM2050070903051205007090<<9
-    """
-    prompts: list[str] = []
+async def test_tthn_classifies_all_files_with_one_llm_request(monkeypatch):
+    calls: list[str] = []
 
     async def fake_ocr_per_file(_files):
         return [
-            {"name": "image.pdf", "text": declaration_text},
-            {"name": "image.pdf", "text": front_text},
-            {"name": "image.pdf", "text": back_text},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        text = json.loads(messages[1]["content"])["ocrText"]
-        prompts.append(text)
-        if "TỜ KHAI" in text:
-            return json.dumps({
-                "type": "other",
-                "title": "Tờ khai bản giấy",
-                "documentName": "Tờ khai bản giấy",
-            })
-        return json.dumps({
-            "type": "identity",
-            "title": "Căn cước công dân",
-            "documentName": "Căn cước công dân",
-        })
-
-    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
-
-    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments(
-        [_file("image.pdf"), _file("image.pdf"), _file("image.pdf")], {}, None,
-    )
-
-    assert len(prompts) == 3
-    assert prompts == [
-        prompt._truncate_text(declaration_text),
-        prompt._truncate_text(front_text),
-        prompt._truncate_text(back_text),
-    ]
-    assert all(sum(marker in text for marker in ("TỜ KHAI", "Citizen Identity", "IDVNM")) == 1
-               for text in prompts)
-
-    attachments = result["attachments"]
-    assert len(attachments) == 2
-    declaration = next(item for item in attachments if not item.get("sourceFileIndexes"))
-    identity = next(item for item in attachments if item.get("sourceFileIndexes"))
-
-    assert declaration["fileIndex"] == 0
-    assert declaration["documentName"] == "Tờ khai bản giấy"
-    assert declaration["target"] == "new"
-    assert identity["fileIndex"] == 1
-    assert identity["sourceFileIndexes"] == [1, 2]
-    assert identity["documentName"] == "Căn cước công dân"
-    assert identity["target"] == "new"
-    assert [item["fileIndex"] for item in result["extracted"]["classified"]] == [0, 1, 2]
-
-
-async def test_tthn_one_llm_failure_does_not_drop_other_files(monkeypatch):
-    async def fake_ocr_per_file(_files):
-        return [
-            {"name": "image.pdf", "text": "QUYẾT ĐỊNH LY HÔN"},
-            {"name": "image.pdf", "text": "OCR LỖI LLM"},
+            {"name": "image.pdf", "text": "CĂN CƯỚC CÔNG DÂN Citizen Identity"},
             {"name": "image.pdf", "text": "VĂN BẢN ỦY QUYỀN"},
         ]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
-        text = json.loads(messages[1]["content"])["ocrText"]
-        if "LỖI LLM" in text:
-            raise RuntimeError("provider timeout")
-        if "LY HÔN" in text:
-            return json.dumps({"type": "divorce_or_death_proof", "title": "Quyết định ly hôn"})
+        calls.append(messages[1]["content"])
         return json.dumps({
-            "type": "previous_marital_status_certificate_or_authorization",
-            "title": "Văn bản ủy quyền",
+            "documents": [
+                {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+                {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "authorization"},
+            ]
         })
 
     monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
 
     result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments(
-        [_file("image.pdf"), _file("image.pdf"), _file("image.pdf")], {}, None,
+        [_file("image.pdf"), _file("image.pdf")], {}, None,
     )
 
-    assert [item["type"] for item in result["extracted"]["classified"]] == [
-        "divorce_or_death_proof", "other",
-        "previous_marital_status_certificate_or_authorization",
+    assert len(calls) == 1
+    assert "CĂN CƯỚC CÔNG DÂN" in calls[0]
+    assert "VĂN BẢN ỦY QUYỀN" in calls[0]
+    assert "image.pdf" not in calls[0]
+    assert result["attachments"][0]["target"] == "new"
+    assert result["attachments"][0]["componentName"] == "Căn cước công dân"
+    assert result["attachments"][1]["componentIndex"] == 5
+
+
+async def test_tthn_routes_condition_documents_to_rows_two_through_five(monkeypatch):
+    async def fake_ocr_per_file(_files):
+        return [
+            {"name": "ly-hon.pdf", "text": "QUYẾT ĐỊNH CÔNG NHẬN THUẬN TÌNH LY HÔN"},
+            {"name": "ghi-chu.pdf", "text": "TRÍCH LỤC GHI CHÚ LY HÔN Ở NƯỚC NGOÀI"},
+            {"name": "giay-cu.pdf", "text": "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN ĐÃ CẤP"},
+            {"name": "uy-quyen.pdf", "text": "VĂN BẢN ỦY QUYỀN"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0, "pageFrom": 1, "pageTo": 1,
+                    "type": "divorce_or_death_proof", "documentName": "Quyết định ly hôn",
+                },
+                {
+                    "fileIndex": 1, "pageFrom": 1, "pageTo": 1,
+                    "type": "foreign_divorce_note", "documentName": "Trích lục ghi chú ly hôn",
+                },
+                {
+                    "fileIndex": 2, "pageFrom": 1, "pageTo": 1,
+                    "type": "previous_marital_status_certificate",
+                    "documentName": "Giấy xác nhận tình trạng hôn nhân đã cấp",
+                },
+                {
+                    "fileIndex": 3, "pageFrom": 1, "pageTo": 1,
+                    "type": "authorization", "documentName": "Văn bản ủy quyền",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
+
+    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments(
+        [_file("ly-hon.pdf"), _file("ghi-chu.pdf"), _file("giay-cu.pdf"), _file("uy-quyen.pdf")],
+        {},
+        None,
+    )
+    items = result["attachments"]
+
+    assert [item["componentIndex"] for item in items] == [2, 3, 4, 5]
+    assert all(item["target"] == "existing" for item in items)
+    assert all(item["componentIndex"] != 1 for item in items)
+    assert "đã ly hôn hoặc người vợ/chồng đã chết" in items[0]["componentName"]
+    assert "cấp lại Giấy xác nhận tình trạng hôn nhân" in items[2]["componentName"]
+    assert "Văn bản ủy quyền" in items[3]["componentName"]
+
+
+async def test_tthn_routes_death_event_proof_to_row_two(monkeypatch):
+    async def fake_ocr_per_file(_files):
+        return [{"name": "khai-tu.pdf", "text": "TRÍCH LỤC KHAI TỬ\nĐã chết ngày 01/01/2026"}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [{
+                "fileIndex": 0,
+                "pageFrom": 1,
+                "pageTo": 1,
+                "type": "divorce_or_death_proof",
+                "documentName": "Trích lục khai tử",
+            }]
+        })
+
+    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
+
+    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments([_file("khai-tu.pdf")], {}, None)
+
+    assert result["attachments"][0]["componentIndex"] == 2
+    assert result["attachments"][0]["documentName"] == "Trích lục khai tử"
+
+
+async def test_tthn_merges_all_identity_files_and_keeps_paper_declaration_new(monkeypatch):
+    declaration_text = "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN"
+    back_one = "Đặc điểm nhận dạng IDVNM2050070903051205007090<<9"
+    front_one = "CĂN CƯỚC CÔNG DÂN Citizen Identity Số 051205007090 Họ tên NGUYỄN A"
+    front_two = "CĂN CƯỚC CÔNG DÂN Citizen Identity Số 068190002468 Họ tên NGUYỄN B"
+
+    async def fake_ocr_per_file(_files):
+        return [
+            {"name": "image.pdf", "text": declaration_text},
+            {"name": "image.pdf", "text": back_one},
+            {"name": "image.pdf", "text": front_one},
+            {"name": "image.pdf", "text": front_two},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0, "pageFrom": 1, "pageTo": 1,
+                    "type": "paper_declaration", "documentName": "Tờ khai bản giấy",
+                },
+                {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+                {"fileIndex": 2, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+                {"fileIndex": 3, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+            ]
+        })
+
+    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
+
+    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments(
+        [_file("image.pdf") for _ in range(4)], {}, None,
+    )
+
+    assert len(result["attachments"]) == 2
+    declaration, identity = result["attachments"]
+    assert declaration["documentName"] == "Tờ khai bản giấy"
+    assert declaration["target"] == "new"
+    assert identity["documentName"] == "Căn cước công dân"
+    assert identity["target"] == "new"
+    assert identity["sourceSegments"] == [
+        {"fileIndex": 2, "pageIndexes": None},
+        {"fileIndex": 1, "pageIndexes": None},
+        {"fileIndex": 3, "pageIndexes": None},
     ]
-    assert len(result["attachments"]) == 3
-    assert any("fileIndex=1" in error and "provider timeout" in error for error in result["errors"])
+    assert "fileIndex=0 · image.pdf" in result["ocr_text"]
+    assert "fileIndex=3 · image.pdf" in result["ocr_text"]
+
+
+async def test_tthn_splits_mixed_pdf_and_merges_identity_pages(monkeypatch):
+    async def fake_ocr_per_file(_files):
+        return [{
+            "name": "mixed.pdf",
+            "text": (
+                "───── Trang 1/4 ─────\nTỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN\n"
+                "───── Trang 2/4 ─────\nCĂN CƯỚC CÔNG DÂN Citizen Identity Số 051205007090\n"
+                "───── Trang 3/4 ─────\nĐặc điểm nhận dạng IDVNM2050070903051205007090<<9\n"
+                "───── Trang 4/4 ─────\nTRÍCH LỤC KHAI TỬ"
+            ),
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0, "pageFrom": 1, "pageTo": 1,
+                    "type": "paper_declaration", "documentName": "Tờ khai bản giấy",
+                },
+                {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "identity"},
+                {"fileIndex": 0, "pageFrom": 3, "pageTo": 3, "type": "identity"},
+                {
+                    "fileIndex": 0, "pageFrom": 4, "pageTo": 4,
+                    "type": "divorce_or_death_proof", "documentName": "Trích lục khai tử",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
+
+    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments([_file("mixed.pdf")], {}, None)
+    serialized = AttachmentPlanResp.model_validate(result).model_dump(mode="json")
+
+    assert len(serialized["attachments"]) == 3
+    declaration, identity, death = serialized["attachments"]
+    assert declaration["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [0]}]
+    assert identity["sourceSegments"] == [
+        {"fileIndex": 0, "pageIndexes": [1]},
+        {"fileIndex": 0, "pageIndexes": [2]},
+    ]
+    assert death["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [3]}]
+    assert death["componentIndex"] == 2
+    assert [(item["pageFrom"], item["pageTo"]) for item in result["extracted"]["classified"]] == [
+        (1, 1), (2, 2), (3, 3), (4, 4),
+    ]
+
+
+async def test_tthn_splits_cccd_from_citizen_information_check_result(monkeypatch):
+    async def fake_ocr_per_file(_files):
+        return [{
+            "name": "mixed.pdf",
+            "text": (
+                "───── Trang 1/3 ─────\nCĂN CƯỚC CÔNG DÂN\nCitizen Identity Card\n"
+                "Số 024151003879\n"
+                "───── Trang 2/3 ─────\nKẾT QUẢ KIỂM TRA THÔNG TIN CÔNG DÂN\n"
+                "II. Thông tin khai thác cơ sở dữ liệu quốc gia về dân cư\n"
+                "───── Trang 3/3 ─────\n13. Địa chỉ thường trú của công dân\n"
+                "19. Thông tin chủ hộ của công dân"
+            ),
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        assert "KẾT QUẢ KIỂM TRA THÔNG TIN CÔNG DÂN" in messages[1]["content"]
+        return json.dumps({
+            "documents": [
+                {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+                {
+                    "fileIndex": 0,
+                    "pageFrom": 2,
+                    "pageTo": 3,
+                    "type": "other",
+                    "title": "Kết quả kiểm tra thông tin công dân",
+                    "documentName": "Kết quả kiểm tra thông tin công dân",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
+
+    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments([_file("mixed.pdf")], {}, None)
+    serialized = AttachmentPlanResp.model_validate(result).model_dump(mode="json")
+
+    assert len(serialized["attachments"]) == 2
+    identity, citizen_result = serialized["attachments"]
+    assert identity["documentName"] == "Căn cước công dân"
+    assert identity["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [0]}]
+    assert citizen_result["documentName"] == "Kết quả kiểm tra thông tin công dân"
+    assert citizen_result["componentName"] == "Kết quả kiểm tra thông tin công dân"
+    assert citizen_result["target"] == "new"
+    assert citizen_result["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [1, 2]}]
+
+
+async def test_tthn_batch_llm_failure_keeps_every_file_as_new_component(monkeypatch):
+    async def fake_ocr_per_file(_files):
+        return [
+            {"name": "image.pdf", "text": "OCR FILE 1"},
+            {"name": "image.pdf", "text": "OCR FILE 2"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        raise RuntimeError("provider timeout")
+
+    monkeypatch.setattr(xac_nhan_tthn.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(xac_nhan_tthn.client, "chat", fake_chat)
+
+    result = await xac_nhan_tthn.plan_xac_nhan_tthn_attachments(
+        [_file("image.pdf"), _file("image.pdf")], {}, None,
+    )
+
+    assert len(result["attachments"]) == 2
+    assert all(item["target"] == "new" for item in result["attachments"])
+    assert [item["type"] for item in result["extracted"]["classified"]] == ["other", "other"]
+    assert any("provider timeout" in error for error in result["errors"])
+
+
+def test_tthn_prompt_contains_all_ocr_and_excludes_file_names():
+    user_prompt = prompt.build_user_prompt([
+        {
+            "fileIndex": 0,
+            "fileName": "cccd-mat-truoc.pdf",
+            "pages": [{"pageNumber": 1, "ocrText": "CĂN CƯỚC CÔNG DÂN"}],
+        },
+        {
+            "fileIndex": 1,
+            "fileName": "uy-quyen.pdf",
+            "pages": [{"pageNumber": 1, "ocrText": "VĂN BẢN ỦY QUYỀN"}],
+        },
+    ])
+
+    assert "CĂN CƯỚC CÔNG DÂN" in user_prompt
+    assert "VĂN BẢN ỦY QUYỀN" in user_prompt
+    assert "cccd-mat-truoc.pdf" not in user_prompt
+    assert "uy-quyen.pdf" not in user_prompt
+    assert "previous_marital_status_certificate" in prompt.SYSTEM_PROMPT
+    assert "paper_declaration" in prompt.SYSTEM_PROMPT
+    assert "tiêu đề chính rõ ràng" in prompt.SYSTEM_PROMPT
+    assert "KẾT QUẢ KIỂM TRA THÔNG TIN CÔNG DÂN" not in prompt.SYSTEM_PROMPT

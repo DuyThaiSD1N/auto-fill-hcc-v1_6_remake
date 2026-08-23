@@ -29,11 +29,9 @@ def _units(accounts: list[dict]) -> list[dict]:
         province = province_name(account.get("tinh"))
         ward = str(account.get("xa") or "").strip()
         if not province or not ward:
-            raise AppError(
-                "REPORT_HANDFREE_UNIT_MISSING",
-                "Có tài khoản chưa đủ tỉnh và xã/phường nên không thể ghép báo cáo Handfree.",
-                400,
-            )
+            # Tài khoản cấp tỉnh/legacy không có đủ khóa ghép vẫn phải được xuất.
+            # Workbook sẽ giữ số Auto Fill và điền 0 ở cột Handfree cho tài khoản này.
+            continue
         key = unit_key(province, ward)
         units.setdefault(key, {"unitKey": key, "province": province, "ward": ward})
     return list(units.values())
@@ -100,14 +98,18 @@ async def _post_handfree(path: str, payload: dict) -> dict:
 
 
 async def fetch_handfree_stats(accounts: list[dict], body: ExcelExportRequest) -> dict:
+    units = _units(accounts)
+    if not units:
+        # API nội bộ Handfree yêu cầu ít nhất một đơn vị. Không có đơn vị ghép
+        # được không phải lỗi: báo cáo phía Auto Fill vẫn phải xuất bình thường.
+        return {"source": "handfree", "units": []}
+
     result = await _post_handfree("/internal/v1/reports/stats", {
         "requestId": f"report_{uuid.uuid4().hex}",
         "dateFrom": body.dateFrom,
         "dateTo": body.dateTo,
-        "units": _units(accounts),
-        # Không có user_id chung giữa hai Mongo; chỉ lấy tài khoản HCC của đúng đơn vị,
-        # tránh kéo trace từ admin/tài khoản thử nghiệm cùng xã vào báo cáo chính thức.
-        "officialOnly": True,
+        # Hai Mongo không dùng chung user_id; ghép theo tên tỉnh + xã/phường đã chuẩn hóa.
+        "units": units,
     })
     if not isinstance(result.get("units"), list):
         raise AppError(

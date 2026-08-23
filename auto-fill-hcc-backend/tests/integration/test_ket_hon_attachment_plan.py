@@ -1,112 +1,209 @@
+import base64
 import json
+
+import fitz
 
 from app.pipelines.ket_hon.attach import planner as ket_hon
 from app.process.schemas import FileItem
 
 
-def _file(name):
-    return FileItem(name=name, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
+def _file(name: str, mime: str = "application/pdf", data_url: str | None = None) -> FileItem:
+    return FileItem(
+        name=name,
+        type=mime,
+        dataUrl=data_url or f"data:{mime};base64,AAA",
+        role="doc",
+    )
 
 
-def _fake_chat_types(types: list[str]):
-    """Giả lập LLM phân loại loại giấy tờ trả về theo thứ tự file."""
-    async def _chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [{"index": i, "type": t} for i, t in enumerate(types)]})
-    return _chat
+def _pdf_file(name: str, pages: int) -> FileItem:
+    document = fitz.open()
+    try:
+        for _ in range(pages):
+            document.new_page(width=595, height=842)
+        payload = base64.b64encode(document.tobytes()).decode("ascii")
+    finally:
+        document.close()
+    return _file(name, data_url=f"data:application/pdf;base64,{payload}")
 
 
-def _session():
+def _attachment_context(index: int = 2, name: str = "Giấy tờ tùy thân của hai bên") -> dict:
     return {
-        "request_id": "req_test",
-        "procedure": "ket-hon",
-        "fields": [
-            {"name": "SoDinhDanh_BenNam", "value": "040203015844"},
-            {"name": "SoDinhDanh_BenNu", "value": "012193000851"},
-        ],
+        "attachmentContext": {
+            "components": [
+                {"index": 1, "componentName": "Mẫu hộ tịch điện tử", "hasFile": False},
+                {"index": index, "componentName": name, "hasFile": False},
+            ]
+        }
     }
 
 
-async def test_ket_hon_attachment_plan_maps_two_pdf_files_by_identity_number(monkeypatch):
+async def test_ket_hon_uses_one_batch_prompt_and_keeps_duplicate_file_names_by_index(monkeypatch):
+    calls = []
+
     async def fake_ocr_per_file(files):
         return [
-            {"name": "nam.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 040203015844"},
-            {"name": "nu.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 012193000851"},
-        ]
-
-    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(ket_hon.client, "chat", _fake_chat_types(["identity", "identity"]))
-
-    res = await ket_hon.plan_ket_hon_attachments([_file("nam.pdf"), _file("nu.pdf")], {}, _session())
-    items = res["attachments"]
-
-    # componentName có thể kèm hậu tố " - mặt trước/sau" (tính năng ghép 2 mặt mỗi người).
-    assert "CCCD bên nam" in items[0]["componentName"]
-    assert items[0]["target"] == "new"
-    assert "CCCD bên nữ" in items[1]["componentName"]
-    assert items[1]["needsAddComponent"] is True
-
-
-async def test_ket_hon_attachment_plan_uses_combined_label_for_single_file(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [{"name": "cccd-ca-hai.pdf", "text": "040203015844\n012193000851"}]
-
-    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(ket_hon.client, "chat", _fake_chat_types(["identity"]))
-
-    res = await ket_hon.plan_ket_hon_attachments([_file("cccd-ca-hai.pdf")], {}, _session())
-
-    assert res["attachments"][0]["documentName"] == "CCCD của cả bên nam và bên nữ"
-    assert res["attachments"][0]["componentName"] == "CCCD của cả bên nam và bên nữ"
-
-
-async def test_ket_hon_attachment_plan_classifies_declaration_and_commitment(monkeypatch):
-    """Tờ khai/cam đoan KHÔNG bị gán nhầm thành CCCD; CCCD vẫn ghép nam/nữ."""
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "camdoan.pdf", "text": "BẢN CAM ĐOAN ... Sùng A Trung"},
-            {"name": "cccd_nam.pdf", "text": "CĂN CƯỚC CÔNG DÂN Giới tính Sex Nam 040203015844"},
-            {"name": "tokhai.pdf", "text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN bên nam bên nữ"},
-            {"name": "cccd_nu.pdf", "text": "CĂN CƯỚC Giới tính Sex Nữ 012193000851"},
-        ]
-
-    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(
-        ket_hon.client, "chat",
-        _fake_chat_types(["commitment", "identity", "marriage_declaration", "identity"]),
-    )
-
-    res = await ket_hon.plan_ket_hon_attachments(
-        [_file("camdoan.pdf"), _file("cccd_nam.pdf"), _file("tokhai.pdf"), _file("cccd_nu.pdf")],
-        {},
-        _session(),
-    )
-    names = [a["componentName"] for a in res["attachments"]]
-
-    assert names[0] == "Bản cam đoan"
-    assert "CCCD bên nam" in names[1]
-    assert names[2] == "Tờ khai đăng ký kết hôn"
-    assert "CCCD bên nữ" in names[3]
-
-
-async def test_ket_hon_attachment_plan_names_other_by_content(monkeypatch):
-    """Tài liệu 'other' đặt tên CỤ THỂ theo nội dung (không phải 'Tài liệu kết hôn' chung chung)."""
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "a.pdf", "text": "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN"},
-            {"name": "b.pdf", "text": "QUYẾT ĐỊNH LY HÔN"},
+            {"name": "image.pdf", "text": "CĂN CƯỚC CÔNG DÂN NAM-ID 040203015844"},
+            {"name": "image.pdf", "text": "CĂN CƯỚC CÔNG DÂN NU-ID 012193000851"},
         ]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
+        calls.append(messages)
+        prompt = messages[1]["content"]
+        assert "NAM-ID" in prompt
+        assert "NU-ID" in prompt
+        assert "image.pdf" not in prompt
         return json.dumps({"documents": [
-            {"index": 0, "type": "other", "documentName": "Giấy xác nhận tình trạng hôn nhân"},
-            {"index": 1, "type": "other", "documentName": "Quyết định ly hôn"},
+            {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+            {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "identity"},
         ]})
 
     monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(ket_hon.client, "chat", fake_chat)
 
-    res = await ket_hon.plan_ket_hon_attachments([_file("a.pdf"), _file("b.pdf")], {}, _session())
-    names = [a["componentName"] for a in res["attachments"]]
+    options = _attachment_context(4, "Hộ chiếu hoặc Thẻ căn cước của hai bên")
+    result = await ket_hon.plan_ket_hon_attachments(
+        [_file("image.pdf"), _file("image.pdf")], options, {"request_id": "req_test"},
+    )
 
-    assert names[0] == "Giấy xác nhận tình trạng hôn nhân"
-    assert names[1] == "Quyết định ly hôn"
+    assert len(calls) == 1
+    assert len(result["attachments"]) == 1
+    item = result["attachments"][0]
+    assert item["documentName"] == "Căn cước công dân"
+    assert item["target"] == "existing"
+    assert item["componentIndex"] == 4
+    assert item["componentName"] == "Hộ chiếu hoặc Thẻ căn cước của hai bên"
+    assert item["sourceSegments"] == [
+        {"fileIndex": 0, "pageIndexes": None},
+        {"fileIndex": 1, "pageIndexes": None},
+    ]
+
+
+async def test_ket_hon_merges_four_identity_faces_by_person_and_front_before_back(monkeypatch):
+    ocr_texts = [
+        "ĐẶC ĐIỂM NHẬN DẠNG IDVNM 040203015844",
+        "CĂN CƯỚC CÔNG DÂN Số 012193000851",
+        "CĂN CƯỚC CÔNG DÂN Số 040203015844",
+        "ĐẶC ĐIỂM NHẬN DẠNG IDVNM 012193000851",
+    ]
+
+    async def fake_ocr_per_file(files):
+        return [{"name": file["name"], "text": ocr_texts[index]} for index, file in enumerate(files)]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"fileIndex": index, "pageFrom": 1, "pageTo": 1, "type": "identity"}
+            for index in range(4)
+        ]})
+
+    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon.client, "chat", fake_chat)
+
+    result = await ket_hon.plan_ket_hon_attachments(
+        [
+            _file("nam-sau.jpg", "image/jpeg"),
+            _file("nu-truoc.jpg", "image/jpeg"),
+            _file("nam-truoc.jpg", "image/jpeg"),
+            _file("nu-sau.jpg", "image/jpeg"),
+        ],
+        _attachment_context(),
+        {},
+    )
+
+    assert len(result["attachments"]) == 1
+    assert result["attachments"][0]["sourceSegments"] == [
+        {"fileIndex": 2, "pageIndexes": None},
+        {"fileIndex": 0, "pageIndexes": None},
+        {"fileIndex": 1, "pageIndexes": None},
+        {"fileIndex": 3, "pageIndexes": None},
+    ]
+
+
+async def test_ket_hon_splits_mixed_pdf_and_routes_non_identity_as_new_components(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "mixed.pdf",
+            "text": """
+───── Trang 1/3 ─────
+CĂN CƯỚC CÔNG DÂN Số 040203015844
+───── Trang 2/3 ─────
+TỜ KHAI ĐĂNG KÝ KẾT HÔN
+───── Trang 3/3 ─────
+BẢN CAM ĐOAN
+""",
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity"},
+            {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "marriage_declaration"},
+            {"fileIndex": 0, "pageFrom": 3, "pageTo": 3, "type": "commitment"},
+        ]})
+
+    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon.client, "chat", fake_chat)
+
+    result = await ket_hon.plan_ket_hon_attachments(
+        [_pdf_file("mixed.pdf", 3)], _attachment_context(), {},
+    )
+
+    assert [item["documentName"] for item in result["attachments"]] == [
+        "Căn cước công dân",
+        "Tờ khai đăng ký kết hôn",
+        "Bản cam đoan",
+    ]
+    assert result["attachments"][0]["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [0]}]
+    assert result["attachments"][1]["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [1]}]
+    assert result["attachments"][2]["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [2]}]
+    assert result["attachments"][0]["target"] == "existing"
+    assert all(item["target"] == "new" for item in result["attachments"][1:])
+
+
+async def test_ket_hon_keeps_specific_other_names_and_deduplicates(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "a.pdf", "text": "QUYẾT ĐỊNH LY HÔN"},
+            {"name": "b.pdf", "text": "QUYẾT ĐỊNH LY HÔN"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {
+                "fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "other",
+                "documentName": "Quyết định ly hôn",
+            },
+            {
+                "fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "other",
+                "documentName": "Quyết định ly hôn",
+            },
+        ]})
+
+    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon.client, "chat", fake_chat)
+
+    result = await ket_hon.plan_ket_hon_attachments([_file("a.pdf"), _file("b.pdf")], {}, {})
+
+    assert [item["documentName"] for item in result["attachments"]] == [
+        "Quyết định ly hôn",
+        "Quyết định ly hôn 2",
+    ]
+    assert all(item["target"] == "new" for item in result["attachments"])
+
+
+async def test_ket_hon_llm_failure_does_not_turn_divorce_document_into_identity(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{"name": "ly-hon.pdf", "text": "QUYẾT ĐỊNH LY HÔN"}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon.client, "chat", fake_chat)
+
+    result = await ket_hon.plan_ket_hon_attachments([_file("ly-hon.pdf")], {}, {})
+
+    assert len(result["attachments"]) == 1
+    assert result["attachments"][0]["documentName"] == "Quyết định ly hôn"
+    assert result["attachments"][0]["target"] == "new"
+    assert result["attachments"][0]["componentIndex"] is None
+    assert any("attachment_agent" in error for error in result["errors"])

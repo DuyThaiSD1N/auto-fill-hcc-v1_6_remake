@@ -80,6 +80,17 @@ class Settings(BaseSettings):
     # Storage — nơi lưu file/ảnh của mỗi request.
     storage_dir: str = "data/uploads"
 
+    # Batch server-to-server: API chỉ nhận/lưu hồ sơ, worker riêng mới OCR + LLM. Secret để
+    # trống = khóa toàn bộ API batch; không dùng chung JWT người dùng/extension.
+    batch_api_secret: str = ""
+    batch_storage_dir: str = "data/batch"
+    batch_worker_concurrency: int = 2
+    batch_max_pending_items: int = 5000
+    batch_max_attempts: int = 3
+    batch_lease_seconds: int = 600
+    batch_poll_seconds: float = 1.0
+    batch_min_free_disk_mb: int = 1024
+
     # Phiên tải ảnh qua QR: URL công khai điện thoại quét (domain BE) + TTL tự dọn phiên.
     mobile_base_url: str = "https://trolyhoso-hcc-admin.vnekyc.vn"
     upload_session_ttl_minutes: int = 30

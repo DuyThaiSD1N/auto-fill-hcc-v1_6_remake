@@ -57,6 +57,9 @@ def count_distinct_attachment_sets(file_sets: list[frozenset[str]]) -> int:
 
 def _source_indexes(item: dict, count: int) -> list[int]:
     raw = item.get("sourceFileIndexes")
+    if (not isinstance(raw, list) or not raw) and isinstance(item.get("sourceSegments"), list):
+        # Tài liệu được dựng từ các đoạn trang vẫn phải truy được đầy đủ file gốc trong trace.
+        raw = [segment.get("fileIndex") for segment in item["sourceSegments"] if isinstance(segment, dict)]
     if not isinstance(raw, list) or not raw:
         raw = [item.get("fileIndex")]
     indexes: list[int] = []

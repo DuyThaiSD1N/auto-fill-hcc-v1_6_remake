@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
 
+from app.auth.access_control import ensure_account_available
 from app.config import settings
 from app.core.errors import AppError
 from app.core.security import (
@@ -47,6 +48,7 @@ async def login(
     user = await get_db().users.find_one({"username": username.lower()})
     if not user or not verify_password(password, user["password_hash"]):
         raise AppError("INVALID_CREDENTIALS", "Tên đăng nhập hoặc mật khẩu không đúng", 401)
+    ensure_account_available(user)
 
     # Login từ trang quản lý (adminOnly): mật khẩu đúng nhưng không phải admin → CHẶN ngay,
     # không cấp/lưu token. Extension gọi login không kèm cờ này nên tài khoản phường không dính.
@@ -76,6 +78,7 @@ async def refresh(refresh_token: str, device_info: str | None = None) -> dict:
     user = await db.users.find_one({"_id": ObjectId(user_id)})
     if not user:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy người dùng", 401)
+    ensure_account_available(user)
 
     # Rotate: revoke token cũ, cấp cặp mới.
     await db.refresh_tokens.update_one({"_id": stored["_id"]}, {"$set": {"revoked_at": _now()}})

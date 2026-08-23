@@ -1,0 +1,1179 @@
+[
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bằng Cả",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng La"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Dân Chủ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng La"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tân Dân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng La"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng La",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng La"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vũ Oai",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Thống Nhất"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hòa Bình",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Thống Nhất"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thống Nhất",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Thống Nhất",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Lâm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Thống Nhất",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Lạng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Hòa",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Hòa",
+        "ghi_chu": "một phần diện tích tự nhiên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tiên Yên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên",
+        "ghi_chu": "Thị trấn Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Phong Dụ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tiên Lãng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Than",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đại Dực",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đông Ngũ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vô Ngại",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Tiên Yên",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Lâu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Điền Xá"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Điền Xá",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Điền Xá",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Than",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Điền Xá",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đông Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đông Ngũ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đại Dực",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đông Ngũ",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đông Ngũ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đông Ngũ",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Rui",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Lạng"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Lạng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Lạng",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Lạng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Hải Hòa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Lương Minh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Lương Minh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Lương Minh",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thanh Lâm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Kỳ Thượng"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đạp Thanh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Kỳ Thượng"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Kỳ Thượng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Kỳ Thượng",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Ba Chẽ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Ba Chẽ",
+        "ghi_chu": "Thị trấn Ba Chẽ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thanh Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Ba Chẽ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Nam Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Ba Chẽ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồn Đạc",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Ba Chẽ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Lạng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Ba Chẽ",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Hải Hòa và xã Hải Lạng"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng An",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Tân"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Dực Yên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Tân"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Lâm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Tân"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Tân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Tân",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đầm Hà",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đầm Hà",
+        "ghi_chu": "Thị trấn Đầm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đầm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đại Bình",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đầm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đầm Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đầm Hà",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đầm Hà",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Hà",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà",
+        "ghi_chu": "Thị trấn Quảng Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Minh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Chính",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Phong",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Long",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Hà",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đường Hoa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đường Hoa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đường Hoa",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Long",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Đường Hoa",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Quảng Hà"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Thành",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Đức"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Thịnh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Đức"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Đức",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Quảng Đức",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Văn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hoành Mô"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hoành Mô",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hoành Mô",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Tâm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Lục Hồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Lục Hồn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Lục Hồn",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bình Liêu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Bình Liêu",
+        "ghi_chu": "Thị trấn Bình Liêu"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Húc Động",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Bình Liêu"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vô Ngại",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Bình Liêu",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tiên Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bắc Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Sơn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Sơn",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Nghĩa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Tiến",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Hải Ninh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vĩnh Trung",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Vĩnh Thực"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vĩnh Thực",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Vĩnh Thực",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bình Dương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường An Sinh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "An Sinh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường An Sinh",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Việt Dân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường An Sinh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đức Chính",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường An Sinh",
+        "ghi_chu": "phường, một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thủy An",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Triều"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hưng Đạo",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Triều"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hồng Phong",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Triều"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Nguyễn Huệ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Triều"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đức Chính",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Triều",
+        "ghi_chu": "phường, phần còn lại sau khi sắp xếp vào phường An Sinh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tràng An",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Bình Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bình Khê",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Bình Khê",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tràng Lương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Bình Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Xuân Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Mạo Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Kim Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Mạo Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Thọ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Mạo Khê"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Mạo Khê",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Mạo Khê",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Đức",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoàng Quế"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hoàng Quế",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoàng Quế",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hồng Thái Tây",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoàng Quế"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hồng Thái Đông",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoàng Quế"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Phương Đông",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Yên Tử"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Phương Nam",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Yên Tử"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thượng Yên Công",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Yên Tử"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bắc Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Vàng Danh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Nam Khê",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Vàng Danh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vàng Danh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Vàng Danh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Trưng Vương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Vàng Danh",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quang Trung",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Uông Bí"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thanh Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Uông Bí",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Thanh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Uông Bí"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Trưng Vương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Uông Bí",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào phường Vàng Danh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Minh Thành",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Mai"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đông Mai",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Đông Mai",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cộng Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Sông Khoai",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hiệp Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hiệp Hòa",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Giang",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Quảng Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quảng Yên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Quảng Yên",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tiền An",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Quảng Yên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tân An",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà An"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà An",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà An",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hoàng Tân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà An"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Liên Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà An",
+        "ghi_chu": "một phần diện tích tự nhiên"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Nam Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Phong Cốc"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Yên Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Phong Cốc"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Phong Cốc",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Phong Cốc",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm La",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Phong Cốc"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Phong Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Liên Hòa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Liên Vị",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Liên Hòa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tiền Phong",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Liên Hòa"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Liên Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Liên Hòa",
+        "ghi_chu": "xã, phần còn lại sau khi sắp xếp vào phường Hà An"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đại Yên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Tuần Châu"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Tuần Châu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Tuần Châu",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Khẩu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Tuần Châu",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Giếng Đáy",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Việt Hưng"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Việt Hưng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Việt Hưng",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Khẩu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Việt Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào phường Tuần Châu"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hùng Thắng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Bãi Cháy"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bãi Cháy",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Bãi Cháy",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Phong",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà Tu"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Tu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà Tu",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cao Thắng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà Lầm"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Trung",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà Lầm"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Lầm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hà Lầm",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hà Khánh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cao Xanh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cao Xanh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cao Xanh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bạch Đằng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hồng Gai"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Trần Hưng Đạo",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hồng Gai"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hồng Gai",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hồng Gai",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hồng Hà",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hạ Long"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hồng Hải",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hạ Long"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hoành Bồ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoành Bồ",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Sơn Dương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoành Bồ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Lê Lợi",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoành Bồ"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Lâm",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Hoành Bồ",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Thống Nhất"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Mông Dương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Mông Dương",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Dương Huy",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Mông Dương"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Thạch",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Quang Hanh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Thủy",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Quang Hanh"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quang Hanh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Quang Hanh",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Trung",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cẩm Phả"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Thành",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cẩm Phả"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Bình",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cẩm Phả"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Tây",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cẩm Phả"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Đông",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cẩm Phả"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Phú",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cửa Ông"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Thịnh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cửa Ông"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cẩm Sơn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cửa Ông"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cửa Ông",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Cửa Ông",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Trần Phú",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 1",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Hòa",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 1",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bình Ngọc",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 1"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Trà Cổ",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 1"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Xuân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 1"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Ninh Dương",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 2"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Ka Long",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 2"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vạn Ninh",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 2"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Yên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 3"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hải Đông",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Phường Móng Cái 3"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cái Rồng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn",
+        "ghi_chu": "Thị trấn Cái Rồng"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bản Sen",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Bình Dân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đài Xuyên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đoàn Kết",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đông Xá",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Hạ Long",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Minh Châu",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Ngọc Vừng",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Quan Lạn",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thắng Lợi",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Vạn Yên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Vân Đồn"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cô Tô",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Cô Tô",
+        "ghi_chu": "Thị trấn Cô Tô"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Đồng Tiến",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Cô Tô",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Thanh Lân",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Đặc khu Cô Tô"
+    },
+    {
+        "tinh_cu": "Quảng Ninh",
+        "xa_cu": "Cái Chiên",
+        "tinh_moi": "Quảng Ninh",
+        "xa_moi": "Xã Cái Chiên",
+        "ghi_chu": "giữ nguyên, không sắp xếp"
+    }
+]

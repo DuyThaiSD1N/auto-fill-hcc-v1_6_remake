@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.attachments.router import router as attachments_router
 from app.auth.router import router as auth_router
+from app.batch.router import router as batch_router
 from app.config import settings
 from app.consent.router import router as consent_router
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
@@ -41,7 +42,7 @@ app = FastAPI(title="Auto Fill HCC Backend", version="1.0.0", lifespan=lifespan)
 cors_kwargs = dict(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
     expose_headers=["Content-Disposition"],
 )
 # FE web luôn nằm trong allow_origins; extension dùng allow_origins (khi cấu hình id)
@@ -84,6 +85,7 @@ app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth_router)
+app.include_router(batch_router)
 app.include_router(procedures_router)
 app.include_router(process_router)
 app.include_router(review_router)

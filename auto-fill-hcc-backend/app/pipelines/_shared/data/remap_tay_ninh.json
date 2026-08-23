@@ -1,0 +1,1920 @@
+[
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hưng Hà",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hưng Điền"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hưng Điền B",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hưng Điền"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hưng Điền",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hưng Điền"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Thạnh",
+        "ghi_chu": "huyện Tân Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Châu B",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hưng Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hưng",
+        "ghi_chu": "Thị trấn Tân Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Lợi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Đại",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Châu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Bửu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Châu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Châu A",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Châu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tuyên Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tuyên Bình Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Bình",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Bình",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thái Bình Trung",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Bình",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "Thị trấn Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Trị",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thái Trị",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Khánh Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thái Bình Trung",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tuyên Bình"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hưng Điền A",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Khánh Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thái Bình Trung",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Khánh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tuyên Bình và xã Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Trị",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Khánh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thái Trị",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Khánh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Khánh Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Khánh Hưng",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Vĩnh Hưng"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Thạnh",
+        "ghi_chu": "thị xã Kiến Tường"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tuyên Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bắc Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tuyên Thạnh",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Trị",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Tân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hòa Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hiệp",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hiệp"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hòa",
+        "ghi_chu": "huyện Mộc Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hòa Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hòa Trung",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mộc Hóa",
+        "ghi_chu": "huyện Mộc Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mộc Hóa",
+        "ghi_chu": "huyện Mộc Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Phong Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mộc Hóa",
+        "ghi_chu": "Thị trấn Bình Phong Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hậu Thạnh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hậu Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hậu Thạnh Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hậu Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bắc Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hậu Thạnh",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tuyên Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhơn Hòa Lập",
+        "ghi_chu": "huyện Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhơn Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhơn Hòa Lập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhơn Hòa Lập",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhơn Hòa Lập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhơn Ninh",
+        "ghi_chu": "huyện Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Ninh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhơn Ninh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhơn Ninh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhơn Ninh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Thạnh",
+        "ghi_chu": "huyện Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Thạnh",
+        "ghi_chu": "huyện Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Kiến Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Thạnh",
+        "ghi_chu": "Thị trấn Tân Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Hiệp",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Thành",
+        "ghi_chu": "huyện Thạnh Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thuận Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Thành"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hòa Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Thành"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thuận Nghĩa Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Phước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Phước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Phước",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Phước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Hóa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Hóa",
+        "ghi_chu": "Thị trấn Thạnh Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thủy Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh An",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Tây",
+        "ghi_chu": "huyện Thạnh Hóa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thủy Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Tây"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Tây"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thủ Thừa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thủ Thừa",
+        "ghi_chu": "Thị trấn Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thủ Thừa",
+        "ghi_chu": "huyện Thủ Thừa, một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thủ Thừa",
+        "ghi_chu": "huyện Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhị Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ An",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình An",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Lạc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Thạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Thạnh",
+        "ghi_chu": "huyện Thủ Thừa, phần còn lại sau khi sắp xếp vào xã Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Long",
+        "ghi_chu": "huyện Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Long",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Long"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Thạnh Bắc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Quý"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Quý Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Quý"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Quý Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Quý"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đông Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đông Thành",
+        "ghi_chu": "Thị trấn Đông Thành"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Thạnh Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Thạnh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đông Thành"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hòa Bắc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Huệ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Hòa Nam",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Huệ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Huệ",
+        "ghi_chu": "huyện Đức Huệ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Lộc Giang",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã An Ninh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "An Ninh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã An Ninh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "An Ninh Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã An Ninh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hiệp Hòa",
+        "ghi_chu": "huyện Đức Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hiệp Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hiệp Hòa",
+        "ghi_chu": "xã"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hiệp Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hiệp Hòa",
+        "ghi_chu": "Thị trấn Hiệp Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hậu Nghĩa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hậu Nghĩa",
+        "ghi_chu": "Thị trấn Hậu Nghĩa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Lập Thượng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hậu Nghĩa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Mỹ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hậu Nghĩa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hòa Khánh Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hòa Khánh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hòa Khánh Nam",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hòa Khánh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hòa Khánh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hòa Khánh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Lập Hạ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Lập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Hạnh Bắc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Lập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Hòa Thượng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Lập",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Hòa Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Hạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Hạnh Nam",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Hạnh"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Hòa Thượng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Hạnh",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Đức Lập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Hòa",
+        "ghi_chu": "Thị trấn Đức Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hựu Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Hòa Hạ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Đức Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Lợi"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Lương Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Lợi"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Lợi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Lợi"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thạnh Đức",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Đức",
+        "ghi_chu": "huyện Bến Lức"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhựt Chánh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Đức"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Đức",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bình Đức"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Bửu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Lương Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Lương Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Lương Hòa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "An Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Lức",
+        "ghi_chu": "huyện Bến Lức"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thanh Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Lức"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bến Lức",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Lức",
+        "ghi_chu": "Thị trấn Bến Lức"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Hiệp",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Yên"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Lợi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Yên"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Yên",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Yên"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Định",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Cang"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Vân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Cang"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Cang",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Cang"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Trạch",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Rạch Kiến"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Khê",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Rạch Kiến"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Rạch Kiến"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Trạch",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Lệ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Sơn",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Lệ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Lệ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Lệ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Lân",
+        "ghi_chu": "huyện Cần Đước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Lân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Lân"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Cần Đước",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Đước",
+        "ghi_chu": "Thị trấn Cần Đước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Tuy",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Đước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Ân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Đước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Chánh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Đước"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Hựu Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Hựu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Hựu Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Hựu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Thượng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Lý"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Hậu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Lý"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Lý",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Lý"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Lâm",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Lộc"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thuận Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Lộc"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Mỹ Lộc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Mỹ Lộc"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Cần Giuộc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Giuộc",
+        "ghi_chu": "Thị trấn Cần Giuộc"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Lại",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Giuộc"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Hậu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cần Giuộc"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long An",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Vĩnh Tây"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Phụng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Vĩnh Tây"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Vĩnh Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Vĩnh Tây"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đông Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Tập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Vĩnh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Tập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Tập",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Tập"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Phước Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vàm Cỏ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhựt Ninh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vàm Cỏ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Đức Tân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vàm Cỏ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Trụ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Trụ",
+        "ghi_chu": "Thị trấn Tân Trụ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Trinh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Trụ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Lãng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Trụ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Tịnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Trụ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhựt Tảo",
+        "ghi_chu": "huyện Tân Trụ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Quê Mỹ Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhựt Tảo"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Lạc Tấn",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhựt Tảo"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhị Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Nhựt Tảo",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thanh Phú Long",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thuận Mỹ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thanh Vĩnh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thuận Mỹ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Thuận Mỹ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thuận Mỹ"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Dương Xuân Hội",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã An Lục Long"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Long Trì",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã An Lục Long"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "An Lục Long",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã An Lục Long"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tầm Vu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tầm Vu",
+        "ghi_chu": "Thị trấn Tầm Vu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hiệp Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tầm Vu",
+        "ghi_chu": "huyện Châu Thành, tỉnh Long An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phú Ngãi Trị",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tầm Vu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phước Tân Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tầm Vu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hòa Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Công"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Quới",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Công"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Vĩnh Công",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Vĩnh Công"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Chỉ"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Chỉ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Chỉ"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Đôn Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hưng Thuận"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hưng Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hưng Thuận"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thạnh Đức",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Đức",
+        "ghi_chu": "huyện Gò Dầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Cẩm Giang",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Đức"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hiệp Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Thạnh",
+        "ghi_chu": "huyện Gò Dầu, tỉnh Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Trạch",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Thạnh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Thạnh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Bàu Đồn",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Truông Mít"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Truông Mít",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Truông Mít"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Bến Củi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Lộc Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Lộc Ninh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Lộc Ninh",
+        "ghi_chu": "xã, huyện Dương Minh Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Minh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Lộc Ninh",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Ninh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cầu Khởi"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Cầu Khởi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cầu Khởi"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Chà Là",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Cầu Khởi",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Dương Minh Châu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Dương Minh Châu",
+        "ghi_chu": "Thị trấn Dương Minh Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phan",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Dương Minh Châu",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Suối Đá",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Dương Minh Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Minh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Dương Minh Châu",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Lộc Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Đông",
+        "ghi_chu": "huyện Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Hà",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Đông"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Châu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Châu",
+        "ghi_chu": "Thị trấn Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thạnh Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Châu",
+        "ghi_chu": "huyện Tân Châu, một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Suối Dây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "huyện Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Mỏ Công",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trà Vong",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Phong",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Phú",
+        "ghi_chu": "huyện Tân Châu, phần còn lại sau khi sắp xếp vào xã Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Hiệp",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hội",
+        "ghi_chu": "huyện Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Hội",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hội"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Thành",
+        "ghi_chu": "huyện Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Suối Dây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Thành",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hòa",
+        "ghi_chu": "huyện Tân Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Suối Ngô",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Hòa"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Lập",
+        "ghi_chu": "huyện Tân Biên"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thạnh Bắc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Lập"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Biên",
+        "ghi_chu": "huyện Tân Biên"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thạnh Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Biên"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Biên",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Tân Biên",
+        "ghi_chu": "Thị trấn Tân Biên"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thạnh Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Bình"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Phong",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Thạnh Bình",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Mỏ Công",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Trà Vong",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trà Vong",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Trà Vong",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Tân Phú"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hòa Hiệp",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Vinh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Vinh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Phước Vinh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Biên Giới",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hòa Hội"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hòa Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hòa Hội"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hòa Hội",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hòa Hội"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thành Long",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Ninh Điền"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Ninh Điền",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Ninh Điền"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Châu Thành",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Châu Thành",
+        "ghi_chu": "Thị trấn Châu Thành, tỉnh Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Đồng Khởi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "An Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Châu Thành",
+        "ghi_chu": "huyện Châu Thành, tỉnh Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thái Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Châu Thành",
+        "ghi_chu": "một phần diện tích tự nhiên, quy mô dân số"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "An Cơ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hảo Đước"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trí Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hảo Đước"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hảo Đước",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Hảo Đước"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Vĩnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Chữ"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Phước",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Chữ"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Chữ",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Chữ"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Thuận",
+        "ghi_chu": "huyện Bến Cầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Giang",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Thuận"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Khánh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Long Thuận"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Bến Cầu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Cầu",
+        "ghi_chu": "Thị trấn Bến Cầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "An Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Cầu",
+        "ghi_chu": "huyện Bến Cầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tiên Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Cầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Lợi Thuận",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Xã Bến Cầu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Kiến Tường",
+        "ghi_chu": "thị xã Kiến Tường"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Kiến Tường",
+        "ghi_chu": "thị xã Kiến Tường"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Kiến Tường",
+        "ghi_chu": "thị xã Kiến Tường"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An",
+        "ghi_chu": "thành phố Tân An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An",
+        "ghi_chu": "thành phố Tân An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 4",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 5",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 6",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Hướng Thọ Phú",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long An",
+        "ghi_chu": "huyện Thủ Thừa, phần còn lại sau khi sắp xếp vào xã Thủ Thừa"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Phường 7",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Bình Tâm",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Nhơn Thạnh Trung",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "An Vĩnh Ngãi",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân An"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Tân Khánh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Khánh Hậu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Khánh Hậu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Khánh Hậu"
+    },
+    {
+        "tinh_cu": "Long An",
+        "xa_cu": "Lợi Bình Nhơn",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Khánh Hậu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phường 1",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân Ninh",
+        "ghi_chu": "thành phố Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phường 2",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân Ninh",
+        "ghi_chu": "thành phố Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phường 3",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân Ninh",
+        "ghi_chu": "thành phố Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phường IV",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hiệp Ninh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thái Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Tân Ninh",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Châu Thành"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Ninh Sơn",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Bình Minh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Bình Minh",
+        "ghi_chu": "thành phố Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Bình Minh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Bình Minh",
+        "ghi_chu": "phường, thành phố Tây Ninh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thạnh Tân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Bình Minh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Suối Đá",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Bình Minh",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Dương Minh Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phan",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Bình Minh",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Dương Minh Châu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Ninh Thạnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Ninh Thạnh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Bàu Năng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Ninh Thạnh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Chà Là",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Ninh Thạnh",
+        "ghi_chu": "phần còn lại sau khi sắp xếp vào xã Cầu Khởi"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Thành Bắc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long Hoa"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Hoa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long Hoa"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trường Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long Hoa"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trường Tây",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long Hoa"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trường Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Long Hoa"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Thành Trung",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Hòa Thành"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Long Thành Nam",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Hòa Thành"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Hiệp Tân",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Thanh Điền"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thanh Điền",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Thanh Điền"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "An Hòa",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Trảng Bàng"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Trảng Bàng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Trảng Bàng",
+        "ghi_chu": "phường"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Lộc Hưng",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường An Tịnh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "An Tịnh",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường An Tịnh"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Gia Bình",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Gò Dầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Gò Dầu",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Gò Dầu",
+        "ghi_chu": "Thị trấn Gò Dầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Thanh Phước",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Gò Dầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Phước Đông",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Gia Lộc",
+        "ghi_chu": "huyện Gò Dầu"
+    },
+    {
+        "tinh_cu": "Tây Ninh",
+        "xa_cu": "Gia Lộc",
+        "tinh_moi": "Tây Ninh",
+        "xa_moi": "Phường Gia Lộc"
+    }
+]

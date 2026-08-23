@@ -25,6 +25,11 @@ def _first_token(full_name) -> str:
     return parts[0] if parts else ""
 
 
+def _upper_name(value) -> str:
+    """Tên chủ thể trên form hộ tịch phải viết IN HOA, đồng thời gom khoảng trắng OCR."""
+    return " ".join(str(value or "").split()).upper()
+
+
 def _ethnicity_for_form(value) -> tuple[str, str]:
     """Cil/Cill không có option riêng: chọn Khác và giữ nguyên cách ghi vào ô nhập tay."""
     raw = str(value or "").strip()
@@ -170,6 +175,17 @@ def _area(value):
 def enrich(fields: list[dict]) -> list[dict]:
     """Derive deterministic Angular form fields from compact source facts."""
     values = _by_name(fields)
+    for name_field in (
+        "Gcs_HoTenCon",
+        "Tk_HoTenCon",
+        "ThongTinBo_HoTen",
+        "ThongTinMe_HoTen",
+        "CccdNam_HoTen",
+        "CccdNu_HoTen",
+        "Ct01_ChuHoHoTen",
+    ):
+        if name_field in values:
+            values[name_field] = _upper_name(values[name_field])
     out: list[dict] = []
     seen: set[str] = set()
 

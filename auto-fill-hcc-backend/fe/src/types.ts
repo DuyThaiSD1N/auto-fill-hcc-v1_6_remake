@@ -17,6 +17,7 @@ export interface ManagedUser {
   xa?: string | null;
   tinh?: string | null;
   role: Role;
+  access_disabled: boolean;
   created_at?: string | null;
   last_login_at?: string | null;
 }
@@ -42,6 +43,7 @@ export interface UserUpdateBody {
   xa?: string | null;
   tinh?: string | null;
   role?: Role;
+  access_disabled?: boolean;
   password?: string;
 }
 

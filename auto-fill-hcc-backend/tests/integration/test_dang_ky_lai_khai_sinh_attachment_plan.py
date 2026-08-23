@@ -181,7 +181,49 @@ def test_dang_ky_lai_khai_sinh_attachment_prompt_requires_llm_enum():
     assert 'type":"birth_certificate_copy","title":"Bản cam đoan"' in SYSTEM_PROMPT
     assert "Chỉ phân loại theo OCR_TEXT" in SYSTEM_PROMPT
     assert "Không dùng tên file" in SYSTEM_PROMPT
+    assert "Trích lục khai tử" in SYSTEM_PROMPT
+    assert "KHÔNG phải giấy tờ thay thế" in SYSTEM_PROMPT
     assert "Ví dụ sai" in SYSTEM_PROMPT
+
+
+async def test_dang_ky_lai_khai_sinh_death_extract_never_uses_birth_component(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "trich-luc.pdf",
+            "text": (
+                "THÀNH PHỐ ĐÀ NẴNG\nTRÍCH LỤC KHAI TỬ (BẢN SAO)\n"
+                "Họ, chữ đệm, tên: HÀ VĂN SẮT\nĐã chết ngày 02/02/2022"
+            ),
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [{
+                "fileIndex": 0,
+                "pageFrom": 1,
+                "pageTo": 1,
+                "type": "birth_certificate_copy",
+                "title": "Trích lục khai tử",
+                "documentName": "Trích lục khai tử",
+            }]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    res = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("trich-luc.pdf")],
+        {},
+        _session(),
+    )
+
+    item = res["attachments"][0]
+    classified = res["extracted"]["classified"][0]
+    assert item["documentName"] == "Trích lục khai tử"
+    assert item["target"] == "new"
+    assert item["componentIndex"] is None
+    assert item["needsAddComponent"] is True
+    assert classified["type"] == "other"
 
 
 def test_dang_ky_lai_khai_sinh_attachment_user_prompt_uses_ocr_text_only():
@@ -197,3 +239,215 @@ def test_dang_ky_lai_khai_sinh_attachment_user_prompt_uses_ocr_text_only():
     assert "BẢN CAM ĐOAN" in prompt
     assert "ban-cam-doan.pdf" not in prompt
     assert "fileName" not in prompt
+
+
+async def test_dang_ky_lai_khai_sinh_duplicate_file_names_keep_separate_ocr(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {
+                "name": "image.pdf",
+                "text": "CĂN CƯỚC CÔNG DÂN Citizen Identity Card Số 012345678901",
+            },
+            {
+                "name": "image.pdf",
+                "text": "BẢN CAM ĐOAN Tôi cam đoan thông tin đăng ký lại khai sinh là đúng",
+            },
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        user_prompt = messages[-1]["content"]
+        assert "012345678901" in user_prompt
+        assert "BẢN CAM ĐOAN" in user_prompt
+        assert user_prompt.index("012345678901") < user_prompt.index("BẢN CAM ĐOAN")
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0,
+                    "pageFrom": 1,
+                    "pageTo": 1,
+                    "type": "identity",
+                    "documentName": "Căn cước công dân",
+                },
+                {
+                    "fileIndex": 1,
+                    "pageFrom": 1,
+                    "pageTo": 1,
+                    "type": "commitment_statement",
+                    "documentName": "Bản cam đoan",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("image.pdf"), _file("image.pdf")], {}, _session()
+    )
+
+    assert [item["fileIndex"] for item in result["extracted"]["classified"]] == [0, 1]
+    assert result["extracted"]["classified"][0]["type"] == "identity"
+    assert result["extracted"]["classified"][1]["type"] == "commitment_statement"
+    assert "fileIndex=0 · image.pdf" in result["ocr_text"]
+    assert "fileIndex=1 · image.pdf" in result["ocr_text"]
+
+
+async def test_dang_ky_lai_khai_sinh_splits_mixed_pdf_by_page(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "ho-so-gop.pdf",
+            "text": """
+───── Trang 1/3 ─────
+CĂN CƯỚC CÔNG DÂN Citizen Identity Card Số 012345678901
+───── Trang 2/3 ─────
+GIẤY KHAI SINH Họ và tên NGUYỄN VĂN A
+───── Trang 3/3 ─────
+PHẦN GHI CHÚ NHỮNG THÔNG TIN THAY ĐỔI SAU NÀY
+""",
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0,
+                    "pageFrom": 1,
+                    "pageTo": 1,
+                    "type": "identity",
+                    "documentName": "Căn cước công dân",
+                },
+                {
+                    "fileIndex": 0,
+                    "pageFrom": 2,
+                    "pageTo": 3,
+                    "type": "birth_certificate_copy",
+                    "documentName": "Giấy khai sinh",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("ho-so-gop.pdf")], {}, _session()
+    )
+    by_index = {item["componentIndex"]: item for item in result["attachments"]}
+
+    assert by_index[3]["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [0]}]
+    assert by_index[2]["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [1, 2]}]
+    assert [(item["pageFrom"], item["pageTo"]) for item in result["extracted"]["classified"]] == [
+        (1, 1),
+        (2, 3),
+    ]
+
+
+async def test_dang_ky_lai_khai_sinh_merges_all_cccds_without_mixing_faces(monkeypatch):
+    cccd_a = "012345678901"
+    cccd_b = "109876543210"
+
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "image.pdf", "text": f"Citizen Identity Card Số {cccd_a} Họ và tên NGUYỄN A"},
+            {"name": "image.pdf", "text": f"Citizen Identity Card Số {cccd_b} Họ và tên NGUYỄN B"},
+            {"name": "image.pdf", "text": f"Đặc điểm nhận dạng IDVNM{cccd_a}"},
+            {"name": "image.pdf", "text": f"Đặc điểm nhận dạng IDVNM{cccd_b}"},
+        ]
+
+    calls = 0
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        nonlocal calls
+        calls += 1
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": index,
+                    "pageFrom": 1,
+                    "pageTo": 1,
+                    "type": "identity",
+                    "documentName": "Căn cước công dân",
+                }
+                for index in range(4)
+            ]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("image.pdf") for _ in range(4)], {}, _session()
+    )
+
+    assert calls == 1
+    assert len(result["attachments"]) == 1
+    merged = result["attachments"][0]
+    assert merged["componentIndex"] == 3
+    assert merged["documentName"] == "Căn cước công dân"
+    assert [segment["fileIndex"] for segment in merged["sourceSegments"]] == [0, 2, 1, 3]
+
+
+async def test_dang_ky_lai_khai_sinh_cccd_has_priority_over_earlier_supporting_document(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "hoc-ba.pdf", "text": "HỌC BẠ Họ tên NGUYỄN VĂN A"},
+            {
+                "name": "cccd.pdf",
+                "text": "CĂN CƯỚC CÔNG DÂN Citizen Identity Card Số 012345678901",
+            },
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {
+                    "fileIndex": 0,
+                    "pageFrom": 1,
+                    "pageTo": 1,
+                    "type": "personal_supporting_document",
+                    "documentName": "Học bạ",
+                },
+                {
+                    "fileIndex": 1,
+                    "pageFrom": 1,
+                    "pageTo": 1,
+                    "type": "identity",
+                    "documentName": "Căn cước công dân",
+                },
+            ]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("hoc-ba.pdf"), _file("cccd.pdf")], {}, _session()
+    )
+
+    hoc_ba = next(item for item in result["attachments"] if item["documentName"] == "Học bạ")
+    cccd = next(item for item in result["attachments"] if item["documentName"] == "Căn cước công dân")
+    assert hoc_ba["target"] == "new"
+    assert cccd["target"] == "existing"
+    assert cccd["componentIndex"] == 3
+
+
+async def test_dang_ky_lai_khai_sinh_llm_failure_keeps_every_file(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "image.pdf", "text": "Nội dung chưa xác định A"},
+            {"name": "image.pdf", "text": "Nội dung chưa xác định B"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("image.pdf"), _file("image.pdf")], {}, _session()
+    )
+
+    assert len(result["attachments"]) == 2
+    assert len(result["extracted"]["classified"]) == 2
+    assert any("attachment_agent" in error for error in result["errors"])

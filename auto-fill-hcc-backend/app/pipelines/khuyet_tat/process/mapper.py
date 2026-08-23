@@ -3,7 +3,6 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.khuyet_tat.process.schema import (
     DISABILITY_RADIO_FIELDS,
@@ -78,6 +77,23 @@ def _phone(value) -> str:
     return digits if len(digits) in (10, 11) and digits.startswith("0") else ""
 
 
+def _identity(value) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _same_person(context_name, context_identity, owner_name, owner_identity) -> bool:
+    """Chỉ coi hai vai trùng khi mọi mỏ neo UI đang có đều khớp chủ hồ sơ."""
+    ctx_name = _norm_text(context_name)
+    ctx_identity = _identity(context_identity)
+    if not ctx_name and not ctx_identity:
+        return False
+    if ctx_name and ctx_name != _norm_text(owner_name):
+        return False
+    if ctx_identity and ctx_identity != _identity(owner_identity):
+        return False
+    return True
+
+
 def _relation(value) -> str:
     raw = str(value or "").strip()
     folded = _norm_text(raw)
@@ -148,39 +164,110 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(item)
         seen.add(name)
 
-    cccd_area = _area(values.get("Cccd_NoiCuTru"))
-    cccd_issuer = values.get("Cccd_NoiCap") or default_issuer(values.get("Cccd_NgayCap"))
+    context = (options or {}).get("formContext") or {}
+    applicant_name = str(context.get("applicantFullname") or context.get("fullname") or "").strip()
+    applicant_identity = _identity(
+        context.get("applicantIdentityNumber") or context.get("identityNumber")
+    )
 
-    # Theo yêu cầu hiện tại: CCCD upload là của chủ hồ sơ, đa số người nộp là chủ hồ sơ.
-    # Tick checkbox đầu tiên để Form.io tự copy requester -> owner, rồi fill requester từ CCCD.
-    if values.get("Cccd_HoTen") or values.get("Cccd_SoDinhDanh"):
-        add("data[isOwnerDossierCheck]", True)
-        add("data[fullname]", values.get("Cccd_HoTen"))
-        add("data[birthday]", values.get("Cccd_NgaySinh"))
-        add("data[gender]", values.get("Cccd_GioiTinh"))
-        add("data[identityNumber]", values.get("Cccd_SoDinhDanh"))
-        add("data[identityDate]", values.get("Cccd_NgayCap"))
-        add("data[idIssuePlace]", cccd_issuer)
-        if cccd_area:
-            add("data[province]", cccd_area.get("tinh"))
-            add("data[district]", cccd_area.get("xa"))
-            add("data[address]", cccd_area.get("diaChi"))
+    requester_name = values.get("NguoiNop_HoTen")
+    requester_identity = _identity(values.get("NguoiNop_SoDinhDanh"))
+    requester_matches_applicant = _same_person(
+        applicant_name,
+        applicant_identity,
+        requester_name,
+        requester_identity,
+    )
+    requester_area = (
+        _area(values.get("NguoiNop_NoiCuTru"))
+        if requester_matches_applicant
+        else None
+    )
+
+    owner_name = values.get("ChuHoSo_HoTen")
+    owner_identity = _identity(values.get("ChuHoSo_SoDinhDanh"))
+    owner_area = _area(values.get("ChuHoSo_NoiCuTru"))
+    owner_issuer = values.get("ChuHoSo_NoiCap")
+    owner_present = bool(owner_name or owner_identity)
+    owner_matches_applicant = owner_present and _same_person(
+        applicant_name,
+        applicant_identity,
+        owner_name,
+        owner_identity,
+    )
+
+    # Checkbox phải phát trước hai khối. Cổng có side effect copy/reset Chủ hồ sơ
+    # khi đổi checkbox, nên mọi field phụ thuộc luôn được gửi sau action này.
+    if owner_present:
+        add("data[isOwnerDossierCheck]", bool(owner_matches_applicant))
+
+    # Tên + CCCD UI là mỏ neo có thẩm quyền. Các field nhân thân còn lại chỉ
+    # được nhận từ NguoiNop_* sau khi LLM trả lại đúng cả hai mỏ neo OCR.
+    add("data[fullname]", applicant_name or (requester_name if requester_matches_applicant else None))
+    add("data[identityNumber]", applicant_identity or (requester_identity if requester_matches_applicant else None))
+    if requester_matches_applicant:
+        add("data[birthday]", values.get("NguoiNop_NgaySinh"))
+        add("data[gender]", values.get("NguoiNop_GioiTinh"))
+        add("data[identityDate]", values.get("NguoiNop_NgayCap"))
+        add("data[idIssuePlace]", values.get("NguoiNop_NoiCap"))
+        if requester_area:
+            add("data[province]", requester_area.get("tinh"))
+            add("data[district]", requester_area.get("xa"))
+            add("data[address]", requester_area.get("diaChi"))
+        add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
+
+    if owner_present:
+        # Luôn phát Chủ hồ sơ tường minh, kể cả tự nộp. Một số Form.io không copy
+        # ngày sinh/ngày cấp sau khi tick nên không được phụ thuộc vào mirror của cổng.
+        add("data[ownerFullname]", owner_name)
+        add("data[ownerBirthday]", values.get("ChuHoSo_NgaySinh"))
+        add("data[ownerGender]", values.get("ChuHoSo_GioiTinh"))
+        add("data[ownerIdentityNumber]", owner_identity)
+        add("data[ownerIdentityDate]", values.get("ChuHoSo_NgayCap"))
+        add("data[ownerIdIssuePlace]", owner_issuer)
+        if owner_area:
+            add("data[ownerProvince]", owner_area.get("tinh"))
+            add("data[ownerDistrict]", owner_area.get("xa"))
+            add("data[ownerAddress]", owner_area.get("diaChi"))
+        add("data[ownerPhoneNumber]", _phone(values.get("ChuHoSo_DienThoai")))
+        add("data[ownerNation]", values.get("ChuHoSo_QuocTich") or "Việt Nam")
 
     phone = _phone(values.get("Ndd_SoDienThoai"))
-    add("data[phoneNumber]", phone)
 
     if values.get("DeNghi_NoiDung") == "xac_dinh":
         add("data[chonNoiDungDeNghi][]", True, extra={"optionValue": "1"})
     elif values.get("DeNghi_NoiDung") == "xac_dinh_lai":
         add("data[chonNoiDungDeNghi][]", True, extra={"optionValue": "2"})
 
-    # I. Người khuyết tật - ưu tiên tờ đơn, fallback sang CCCD.
-    add("data[NktHoTen]", values.get("Nkt_HoTen") or values.get("Cccd_HoTen"))
-    add("data[NktNgaySinh]", values.get("Nkt_NgaySinh") or values.get("Cccd_NgaySinh"))
-    add("data[NktSoDinhdanh]", values.get("Nkt_SoDinhDanh") or values.get("Cccd_SoDinhDanh"))
-    add("data[NktGioiTinh]", values.get("Nkt_GioiTinh") or values.get("Cccd_GioiTinh"))
+    # I. Người khuyết tật là khối nghiệp vụ riêng. Chỉ dùng Chủ hồ sơ để bù
+    # field khi hai nhóm đã khớp tất định; không đổ CCCD người đại diện vào trẻ.
+    nkt_name = values.get("Nkt_HoTen")
+    nkt_identity = _identity(values.get("Nkt_SoDinhDanh"))
+    owner_is_nkt = owner_present and _same_person(
+        nkt_name,
+        nkt_identity,
+        owner_name,
+        owner_identity,
+    )
+    add("data[NktHoTen]", nkt_name or (owner_name if owner_is_nkt else None))
+    add(
+        "data[NktNgaySinh]",
+        values.get("Nkt_NgaySinh")
+        or (values.get("ChuHoSo_NgaySinh") if owner_is_nkt else None),
+    )
+    add(
+        "data[NktSoDinhdanh]",
+        nkt_identity or (owner_identity if owner_is_nkt else None),
+    )
+    add(
+        "data[NktGioiTinh]",
+        values.get("Nkt_GioiTinh")
+        or (values.get("ChuHoSo_GioiTinh") if owner_is_nkt else None),
+    )
 
-    nkt_tt = _area(values.get("Nkt_ThuongTru")) or cccd_area
+    nkt_tt = _area(values.get("Nkt_ThuongTru"))
+    if not nkt_tt and owner_is_nkt:
+        nkt_tt = owner_area
     if nkt_tt:
         add("data[NktMaTinh]", nkt_tt.get("tinh"))
         add("data[NktMaXa]", nkt_tt.get("xa"))

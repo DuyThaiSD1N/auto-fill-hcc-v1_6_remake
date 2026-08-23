@@ -2,6 +2,7 @@
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.auth.access_control import ensure_account_available
 from app.core.errors import AppError
 from app.core.security import decode_access_token
 from app.db.mongo import get_db
@@ -27,6 +28,7 @@ async def require_auth(
         user = None
     if not user:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy người dùng", 401)
+    ensure_account_available(user)
     user["id"] = str(user["_id"])
     return user
 

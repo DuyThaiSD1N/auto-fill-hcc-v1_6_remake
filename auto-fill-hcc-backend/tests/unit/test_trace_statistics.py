@@ -66,6 +66,29 @@ def test_non_split_attachment_reuses_process_session_as_dossier_id():
     assert attachments[0]["sha256"] == "a" * 64
 
 
+def test_attachment_source_segments_keep_all_original_files_in_trace_hash():
+    files = [_meta("cccd-truoc.pdf", "a" * 64), _meta("cccd-sau.pdf", "b" * 64)]
+    attachments, dossier_ids = build_attach_trace_metadata(
+        request_id="req_segments",
+        session_id=None,
+        procedure="trich-luc-ks",
+        split=False,
+        plan=[{
+            "fileIndex": 0,
+            "fileName": "Căn cước công dân.pdf",
+            "componentName": "Giấy tờ tùy thân",
+            "sourceSegments": [
+                {"fileIndex": 0, "pageIndexes": [0]},
+                {"fileIndex": 1, "pageIndexes": [0]},
+            ],
+        }],
+        files_meta=files,
+    )
+
+    assert dossier_ids == ["req_segments"]
+    assert attachments[0]["sha256"] not in {"a" * 64, "b" * 64}
+
+
 def test_stats_date_only_uses_vietnam_half_open_day():
     date_from, date_to = _parse_stats_range("2026-08-11", "2026-08-11")
 
