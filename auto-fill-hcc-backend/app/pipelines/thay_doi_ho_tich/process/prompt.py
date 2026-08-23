@@ -107,6 +107,12 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
     Nhưng vẫn phải trả mọi CCCD vào DanhSachCccd và được lấy Cccd_HoTen/Cccd_SoDinhDanh của người yêu cầu
     để đối chiếu. (Nếu người yêu cầu = "Bản thân" thì người yêu cầu và người được cải chính là CÙNG một
     người — vẫn trích người đó vào ChuThe_*.)
+  + NguoiYeuCau_QuanHe — ngay dưới khối người yêu cầu (mục I) có dòng ô tích riêng "Quan hệ với người được
+    thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc: Bản thân [ ] Khác [ ]" (KHÁC dòng
+    "Đề nghị cơ quan đăng ký việc..." của mục III). Đọc ô nào có dấu tích/tô đậm/khoanh ("[x]"/"[X]"/"☑"/
+    chấm đen) → trả đúng "Bản thân" hoặc "Khác". Không thấy dòng này, hoặc thấy nhưng không rõ ô nào được
+    tích, thì BỎ field — KHÔNG suy từ việc họ tên người yêu cầu có trùng người được cải chính hay không
+    (Python sẽ tự đối chiếu CCCD/họ tên làm dự phòng khi field này trống).
   + SỰ KIỆN HỘ TỊCH LIÊN QUAN đã đăng ký (vd "Đã đăng ký kết hôn/khai sinh tại <cơ quan> ... số <N> quyển <Q>
     ngày <D>") → HoSo_So=<N>, HoSo_QuyenSo=<Q>, HoSo_NgayDangKy=<D>, HoSo_NoiDangKy=<cơ quan>; LoaiSuKien theo
     sự kiện đó (kết hôn→"marriage", khai sinh→"birth", khai tử→"death").

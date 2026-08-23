@@ -87,6 +87,13 @@ FIELDS: list[dict] = [
              "object {quocGia,tinh,xa,diaChi}. Giữ đúng địa danh của tờ khai, không thay bằng địa chỉ "
              "trên CCCD dù CCCD viết rõ hơn."},
 
+    {"name": "NguoiYeuCau_QuanHe",
+     "desc": "Quan hệ giữa NGƯỜI YÊU CẦU và NGƯỜI CÓ NỘI DUNG thay đổi/cải chính/bổ sung/xác định lại "
+             "dân tộc, đọc Ô TÍCH ở dòng 'Quan hệ với người được thay đổi, cải chính, bổ sung thông tin "
+             "hộ tịch, xác định lại dân tộc: Bản thân / Khác' trên TỜ KHAI. Trả ĐÚNG 'Bản thân' nếu ô "
+             "Bản thân được tích, 'Khác' nếu ô Khác được tích. Không có tờ khai, hoặc có nhưng không xác "
+             "định được ô nào được tích, thì BỎ field — không suy đoán."},
+
     # Các field CCCD người yêu cầu (dùng khi không có tờ khai hoặc làm dự phòng)
     {"name": "Cccd_HoTen", "desc": "Họ tên trên CCCD/CMND của NGƯỜI YÊU CẦU, lấy đúng tài liệu được identity_document_context xác định; không lấy CCCD người khác."},
     {"name": "Cccd_SoDinhDanh", "desc": "Số định danh/CCCD của NGƯỜI YÊU CẦU trên đúng tài liệu được identity_document_context xác định; có thể đọc từ MRZ."},
@@ -144,6 +151,8 @@ UI_COMP_BY_NAME = {
     "nycLoaiCuTru": "x-select",
     "nycNoiCuTru": "x-radio",
     "nycNoiCuTru_TrongNuoc": "x-select-area",
+    # (5) Quan hệ với người được thay đổi/cải chính/bổ sung/xác định lại dân tộc: "Bản thân" | "Khác".
+    "nycQuanHe": "x-radio",
     # Mục II — người có nội dung thay đổi.
     "ntdHoTen": "x-input",
     "ntdNgaySinh": "x-date-text",

@@ -355,6 +355,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     else:
         src = None
 
+    ntd_ho_ten: str | None = None
+    ntd_so_dinh_danh: str | None = None
     if src:
         subject_card = _card_for_subject(values, src)
         has_correction_declaration = bool(
@@ -387,11 +389,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     return subject_card[card_key]
             return values.get(f"{src}_{sub}")
 
-        add("ntdHoTen", _normalize_person_name(g("HoTen")))
-        add("ntdNgaySinh", g("NgaySinh"))
-        add("ntdGioiTinh", g("GioiTinh"))
-        add("ntdDanToc", _normalize_dan_toc(g("DanToc")))
-        add("ntdQuocTich", g("QuocTich") or "Việt Nam")
+        # Tính TRƯỚC giá trị Mục II (không add() vội) để có thể chốt (5) Quan hệ và tick nó TRƯỚC khi
+        # điền Mục II — cổng có thể chỉ nhận input Mục II sau khi đã chọn quan hệ.
+        ntd_ho_ten = _normalize_person_name(g("HoTen"))
 
         # Chủ thể CHÍNH LÀ người trên CCCD đính kèm (tự khai) → dùng CCCD làm nguồn DỰ PHÒNG cho số
         # định danh + ngày/nơi cấp giấy tờ (LLM trích dòng giấy tờ trên tờ khai rất chập chờn).
@@ -403,17 +403,52 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         def cc(cccd_key):
             return values.get(cccd_key) if subject_is_cccd else None
 
-        so_dinh_danh = g("SoDinhDanh") or cc("Cccd_SoDinhDanh")
-        add("ntdSoDDCN", so_dinh_danh)
+        ntd_so_dinh_danh = g("SoDinhDanh") or cc("Cccd_SoDinhDanh")
+
+    # ----- (5) Quan hệ với người có nội dung thay đổi: Bản thân / Khác. -----
+    # BẮT BUỘC đứng TRƯỚC khối add() Mục II bên dưới — cổng có thể chỉ mở/nhận input Mục II sau khi
+    # đã chọn quan hệ, nên field này phải xuất hiện trước ntd* trong danh sách trả về để extension
+    # tick nó trước khi điền Mục II.
+    # Ưu tiên 1: TỜ KHAI đã tự ghi rõ ô nào được tích (NguoiYeuCau_QuanHe) — nguồn đáng tin nhất vì
+    # đây là lời khai chính chủ, không phải suy luận. Chỉ khi tờ khai không có/không đọc được field này
+    # (không có tờ khai, hoặc hồ sơ chỉ có giấy khai sinh/kết hôn/khai tử + CCCD) mới suy luận bằng cách
+    # so khớp người yêu cầu (Mục I: HoVaTenC/SoDinhDanhC) với chủ thể (Mục II) vừa tính ở trên:
+    # ưu tiên số định danh (bằng chứng mạnh), chỉ so tên khi thiếu số định danh ở ít nhất một bên.
+    quan_he_tk = values.get("NguoiYeuCau_QuanHe")
+    if quan_he_tk in ("Bản thân", "Khác"):
+        add("nycQuanHe", quan_he_tk)
+    else:
+        requester_id_digits = _digits(requester_id)
+        ntd_id_digits = _digits(ntd_so_dinh_danh)
+        requester_name_folded = _fold(requester_name)
+        ntd_name_folded = _fold(ntd_ho_ten)
+        if requester_id_digits and ntd_id_digits:
+            add("nycQuanHe", "Bản thân" if requester_id_digits == ntd_id_digits else "Khác")
+        elif requester_name_folded and ntd_name_folded:
+            # So bằng tên (không có số định danh ở ít nhất một bên) — bằng chứng yếu hơn, tick mặc định
+            # để cán bộ soát lại (viền vàng), tránh trùng tên khác người bị nhận nhầm là "Bản thân".
+            add(
+                "nycQuanHe",
+                "Bản thân" if requester_name_folded == ntd_name_folded else "Khác",
+                default=True,
+            )
+
+    if src:
+        add("ntdHoTen", ntd_ho_ten)
+        add("ntdNgaySinh", g("NgaySinh"))
+        add("ntdGioiTinh", g("GioiTinh"))
+        add("ntdDanToc", _normalize_dan_toc(g("DanToc")))
+        add("ntdQuocTich", g("QuocTich") or "Việt Nam")
+        add("ntdSoDDCN", ntd_so_dinh_danh)
 
         ngay_cap = g("NgayCapGiayTo") or cc("Cccd_NgayCap")
         noi_cap = g("NoiCapGiayTo") or cc("Cccd_NoiCap")
         # Trẻ trong GIẤY KHAI SINH chỉ có số định danh, KHÔNG có CCCD → bỏ trống khối giấy tờ tùy thân.
         # NHƯNG người lớn có CCCD (ngày/nơi cấp) → vẫn điền, kể cả khi sự kiện hộ tịch gốc là khai sinh.
         has_id_card = bool(ngay_cap or noi_cap or g("SoGiayTo"))
-        if so_dinh_danh and (event != "birth" or has_id_card):
+        if ntd_so_dinh_danh and (event != "birth" or has_id_card):
             add("ntdLoaiGiayToTuyThan", "Căn cước công dân")
-            add("ntdSoGiayToTuyThan", g("SoGiayTo") or so_dinh_danh)
+            add("ntdSoGiayToTuyThan", g("SoGiayTo") or ntd_so_dinh_danh)
             add("ntdNgayCapGiayToTuyThan", ngay_cap)
             add("ntdNoiCapGiayToTuyThan", noi_cap or default_issuer(ngay_cap))
         residence = _area(g("NoiCuTru"))
