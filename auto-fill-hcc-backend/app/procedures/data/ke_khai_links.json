@@ -32,6 +32,14 @@
       "autoConfirm": true
     },
     {
+      "key": "khai-sinh-dang-ky-thuong",
+      "code": "1.001193",
+      "label": "Thủ tục đăng ký khai sinh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "khai-sinh-dang-ky-lai",
       "code": "1.004884",
       "label": "Thủ tục đăng ký lại khai sinh",
