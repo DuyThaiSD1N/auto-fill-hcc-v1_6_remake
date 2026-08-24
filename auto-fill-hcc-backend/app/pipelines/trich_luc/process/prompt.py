@@ -206,7 +206,9 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   không trả CapBanSao. Không có số lượng thì bỏ CopyRequest_Quantity; không tự mặc định số lượng 3.
 - CopyRequest_QuanHe lấy từ TỜ KHAI dòng "Quan hệ với người được cấp bản sao Giấy khai sinh/
   Trích lục hộ tịch: ..." — trả ĐÚNG chữ ghi sau dấu hai chấm (vd "Mẹ đẻ", "Bố đẻ", "Bản thân",
-  "Con đẻ", "Vợ", "Chồng", "Ông", "Bà"). Không có dòng này thì bỏ qua, không suy diễn.
+  "Con đẻ", "Vợ", "Chồng", "Ông", "Bà"). Không có dòng này thì bỏ qua, KHÔNG suy diễn từ việc người
+  yêu cầu có trùng người được cấp bản sao hay không — Python tự đối chiếu số định danh/họ tên giữa
+  mục I và mục II để tick "Bản thân"/"Khác" khi field này trống.
 </copy_request_rules>
 
 <chu_the_giay_to_tuy_than_rules>

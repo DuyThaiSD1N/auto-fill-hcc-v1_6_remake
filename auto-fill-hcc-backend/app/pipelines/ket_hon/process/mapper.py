@@ -220,6 +220,11 @@ def enrich(fields: list[dict]) -> list[dict]:
             if so_lan:
                 add(f"SoLanKetHon_{dst}", so_lan)
             add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN.get(status_code))
+            # Kết hôn lần 1 = chưa từng đăng ký kết hôn lần nào → tình trạng hôn nhân
+            # chỉ có thể là "Hiện tại chưa đăng ký kết hôn với ai" (suy ra được chắc
+            # chắn từ số lần, nên không tô vàng).
+            if so_lan == "1":
+                add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN["2"])
 
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")

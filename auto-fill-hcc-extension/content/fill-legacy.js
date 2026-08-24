@@ -44,6 +44,9 @@ const LEGACY_REPAIRABLE_COMPS = new Set([
 const LEGACY_DRIVER_COMPS = new Set(["x-radio", "x-select", "x-select-default"]);
 
 const LEGACY_BIRTH_RELATION_NAME = "quanhe";
+// Mọi ô tích "quan hệ với người được ..." đều là driver: eForm dựng lại khối nhân thân sau mỗi lần
+// đổi, nên phải chờ form ổn định trước khi điền tiếp. Trích lục dùng tên NYC_QuanHe.
+const LEGACY_RELATION_NAMES = [LEGACY_BIRTH_RELATION_NAME, "nyc_quanhe", "nycquanhe"];
 const LEGACY_BIRTH_DEPENDENT_NAMES = new Set([
   "hotenks",
   "ngaysinhchon",
@@ -61,6 +64,10 @@ const LEGACY_BIRTH_DEPENDENT_NAMES = new Set([
 function legacyFieldHasName(field, expectedName) {
   const wanted = String(expectedName || "").toLowerCase();
   return fieldCandidates(field).some((name) => String(name || "").toLowerCase() === wanted);
+}
+
+function isLegacyRelationDriver(field) {
+  return LEGACY_RELATION_NAMES.some((name) => legacyFieldHasName(field, name));
 }
 
 function isLegacyBirthDependentField(field) {
@@ -105,14 +112,41 @@ function legacyChoiceMatches(actual, expected) {
   return left === right || left.includes(right) || right.includes(left);
 }
 
+// Ô bọc riêng của MỘT option. Mẫu trích lục dựng option bằng
+// <p class="p_checkbox_custom radio-custom"> chứa input ẩn + text nhãn, KHÔNG có <label for>,
+// nên phải lần ngược lên phần tử cha gần nhất mà chỉ chứa đúng checkbox này.
+function legacyRadioOptionWrap(container, box) {
+  let wrap = null;
+  let node = box?.parentElement || null;
+  // Leo tới ông cha XA NHẤT vẫn chỉ chứa đúng checkbox này: nhãn có thể nằm ở cấp trên input.
+  while (node && node !== container) {
+    if (node.querySelectorAll('input[type="checkbox"]').length !== 1) break;
+    wrap = node;
+    node = node.parentElement;
+  }
+  return wrap;
+}
+
+function legacyRadioOptionLabel(container, box) {
+  const label = container.querySelector(`label[for="${CSS.escape(box.id)}"]`);
+  if (label) return label.textContent;
+  return legacyRadioOptionWrap(container, box)?.textContent || "";
+}
+
+// Phần tử để tô màu: input của mẫu trích lục là display:none nên đánh dấu lên nó sẽ không thấy gì.
+function legacyRadioMarkTarget(container, box) {
+  return container.querySelector(`label[for="${CSS.escape(box.id)}"]`)
+    || legacyRadioOptionWrap(container, box)
+    || box;
+}
+
 function findLegacyRadioTarget(container, value) {
   const wanted = foldLegacyChoice(value);
   return Array.from(container?.querySelectorAll('input[type="checkbox"]') || []).find((box) => {
     if (String(box.id || "").toLowerCase().endsWith("-" + String(value).toLowerCase())) return true;
-    const label = container.querySelector(`label[for="${CSS.escape(box.id)}"]`);
     // BE trả mã option KHÔNG dấu ("Khac") còn nhãn hiển thị CÓ dấu ("Khác") → so sánh bỏ dấu,
     // nếu không ô "Khác" của mục quan hệ chỉ tick được khi id đúng hậu tố "-khac".
-    return label && foldLegacyChoice(label.textContent) === wanted;
+    return !!wanted && foldLegacyChoice(legacyRadioOptionLabel(container, box)) === wanted;
   }) || null;
 }
 
@@ -154,8 +188,8 @@ function legacyFieldState(field) {
   }
   if (field.comp === "x-radio") {
     const target = findLegacyRadioTarget(container, field.value);
-    const label = target ? container.querySelector(`label[for="${CSS.escape(target.id)}"]`) : null;
-    return { supported: true, filled: !!target?.checked, container, target: label || target || container };
+    const mark = target ? legacyRadioMarkTarget(container, target) : null;
+    return { supported: true, filled: !!target?.checked, container, target: mark || target || container };
   }
   if (field.comp === "x-select") {
     const target = container.querySelector(".input-field-select");
@@ -176,7 +210,7 @@ async function fillLegacyComponent(container, field) {
       const ok = fillRadio(container, field);
       // QuanHe làm eForm dựng lại đồng thời ba khối con/cha/mẹ nên cần thêm một nhịp ổn định
       // trước khi vòng fill tiếp tục. Radio thường giữ mức chờ cũ để không làm chậm toàn bộ form.
-      if (ok) await sleep(legacyFieldHasName(field, LEGACY_BIRTH_RELATION_NAME) ? 350 : 200);
+      if (ok) await sleep(isLegacyRelationDriver(field) ? 350 : 200);
       return ok;
     }
     case "x-select": return fillSelect(container, field);
@@ -499,8 +533,7 @@ function fillRadio(container, f) {
   // Không phát change khi option đã đúng. Một số eForm dùng QuanHe làm driver và sẽ xóa
   // toàn bộ khối con/cha/mẹ sau mỗi change, kể cả giá trị thực tế không đổi.
   if (target.checked) {
-    const currentLabel = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
-    markFilled(currentLabel || target);
+    markFilled(legacyRadioMarkTarget(container, target));
     return true;
   }
 
@@ -518,13 +551,15 @@ function fillRadio(container, f) {
   // Riêng QuanHe, chỉ click đúng option như người dùng; chính web-component sẽ bỏ option cũ.
   // Nếu tự change option cũ trước rồi click option mới, cổng sẽ reset khối nhân thân hai lần.
   target.click();
+  // Mẫu trích lục ẩn hẳn input (display:none) và bắt click trên ô bọc: click input không đổi state.
+  const wrap = legacyRadioOptionWrap(container, target);
+  if (!target.checked && wrap && wrap !== target) wrap.click();
   // Fallback cho bản web-component chặn click tổng hợp nhưng vẫn cho phép cập nhật checkbox.
   if (!target.checked) {
     target.checked = true;
     target.dispatchEvent(new Event("change", { bubbles: true }));
   }
-  const lbl = container.querySelector(`label[for="${CSS.escape(target.id)}"]`);
-  markFilled(lbl || target);
+  markFilled(legacyRadioMarkTarget(container, target));
   return true;
 }
 

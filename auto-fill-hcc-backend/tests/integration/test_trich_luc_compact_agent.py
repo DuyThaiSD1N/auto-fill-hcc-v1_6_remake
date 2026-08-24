@@ -569,7 +569,10 @@ async def test_trich_luc_compact_agent_derives_ui_fields(monkeypatch):
     assert d["PhuongThucNhanKQ"] == "2"
 
     assert "NYC_HoVaTen" not in d
-    assert "NYC_QuanHe" not in d
+    # Không có dòng quan hệ trên tờ khai: mapper đối chiếu người yêu cầu với người được đăng ký,
+    # khác người nên tick "Khác" và đánh dấu default để cán bộ soát lại.
+    assert d["NYC_QuanHe"] == "Khác"
+    assert by_name["NYC_QuanHe"].get("default") is True
     assert not res["errors"]
 
 
@@ -682,7 +685,8 @@ async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["NDK_HoVaTen"] == "TRẦN BÉ"
     assert d["HoSo_LoaiYeuCau"].startswith("Giấy khai sinh bản sao")
-    assert "NYC_QuanHe" not in d
+    # Giá trị UI do LLM trả thẳng bị bỏ; ô tích chỉ đến từ suy luận của mapper.
+    assert d["NYC_QuanHe"] == "Khác"
     assert not res["errors"]
 
 

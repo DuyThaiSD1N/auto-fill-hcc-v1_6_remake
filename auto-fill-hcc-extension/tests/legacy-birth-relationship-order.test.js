@@ -66,8 +66,13 @@ assert.doesNotMatch(
 );
 assert.match(
   source,
-  /legacyFieldHasName\(field, LEGACY_BIRTH_RELATION_NAME\) \? 350 : 200/,
-  "QuanHe phải có nhịp chờ riêng trước khi điền con/cha/mẹ",
+  /isLegacyRelationDriver\(field\) \? 350 : 200/,
+  "Ô tích quan hệ phải có nhịp chờ riêng trước khi điền khối nhân thân",
+);
+assert.match(
+  source,
+  /LEGACY_RELATION_NAMES = \[LEGACY_BIRTH_RELATION_NAME, "nyc_quanhe"/,
+  "Ô tích quan hệ của trích lục (NYC_QuanHe) cũng phải được coi là driver",
 );
 assert.match(
   source,

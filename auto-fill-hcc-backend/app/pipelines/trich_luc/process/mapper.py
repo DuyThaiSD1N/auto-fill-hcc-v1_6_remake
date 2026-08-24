@@ -132,6 +132,77 @@ def _quanhe_option(value) -> str:
     return _QUANHE_OPTIONS.get(_fold(value).strip(".:;,- "), "")
 
 
+def _requester_identity(values: dict, options: dict | None) -> tuple[str, str]:
+    """Người yêu cầu là ai: TỜ KHAI trước, rồi CCCD trong hồ sơ, cuối cùng mới tới mỏ neo VNeID."""
+    ctx = (options or {}).get("formContext") or {}
+    number = (
+        _digits(values.get("TkNyc_SoGiayToTuyThan"))
+        or _digits(values.get("Nyc_SoDinhDanh"))
+        or _digits(ctx.get("applicantIdentityNumber"))
+    )
+    name = (
+        _fold(values.get("TkNyc_HoTen"))
+        or _fold(values.get("Nyc_HoTen"))
+        or _fold(ctx.get("applicantFullname"))
+    )
+    return name, number
+
+
+def _subject_identity(values: dict) -> tuple[str, str]:
+    """Người được cấp bản sao là ai. HoTich_* đã được _apply_declaration_precedence phủ tờ khai."""
+    number = _digits(values.get("HoTich_SoDinhDanh")) or _digits(values.get("ChuThe_SoDinhDanh"))
+    name = (
+        _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
+        or _fold(values.get("NguoiDuocCap_HoTen"))
+        or _fold(values.get("ChuThe_HoTen"))
+    )
+    return name, number
+
+
+def _has_declaration(values: dict) -> bool:
+    """Hồ sơ có TỜ KHAI cấp bản sao hay không (chỉ tờ khai mới sinh ra ToKhai_*/TkNyc_*)."""
+    return any(
+        values.get(name) not in (None, "", {}, [])
+        for name in values
+        if name.startswith(("ToKhai_", "TkNyc_", "CopyRequest_"))
+    )
+
+
+def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
+    """Chốt ô tích "(5) Quan hệ với người được cấp bản sao". Trả (nhãn option, là suy đoán).
+
+    Thứ tự nguồn — TỜ KHAI LUÔN ĐỨNG TRƯỚC, giống khai sinh đăng ký lại:
+      1. Dòng "Quan hệ với người được cấp bản sao ..." của chính tờ khai: lời khai chính chủ.
+      2. Đối chiếu NGƯỜI YÊU CẦU (mục I) với NGƯỜI ĐƯỢC ĐĂNG KÝ (mục II): trùng người → "Bản thân".
+         Số định danh cùng độ dài là bằng chứng chắc; so họ tên yếu hơn nên tick viền vàng.
+         CMND 9 số và số định danh 12 số của CÙNG một người vẫn khác chuỗi, nên khác độ dài thì
+         KHÔNG được coi là bằng chứng "khác người".
+      3. Không kết luận được "Bản thân" nhưng hồ sơ CÓ tờ khai → tick "Khác" (viền vàng): an toàn
+         nhất, tách khối người yêu cầu khỏi khối người được đăng ký để cán bộ soát lại.
+      4. Không có tờ khai và không đối chiếu được → BỎ TRỐNG, không tick bừa.
+    """
+    raw_declared = values.get("CopyRequest_QuanHe")
+    declared = _quanhe_option(raw_declared)
+    if declared:
+        return declared, False
+    if str(raw_declared or "").strip():
+        # Tờ khai CÓ ghi quan hệ nhưng chữ đó không khớp option nào (vd "Ba" nhập nhằng bà/bố).
+        # Đè "Khác" lên một lời khai có thật là sai người; để trống cho cán bộ đọc lại tờ khai.
+        return "", False
+
+    req_name, req_id = _requester_identity(values, options)
+    subj_name, subj_id = _subject_identity(values)
+
+    if req_id and subj_id and len(req_id) == len(subj_id):
+        return ("Bản thân" if req_id == subj_id else "Khác"), req_id != subj_id
+    if req_name and subj_name:
+        return ("Bản thân" if req_name == subj_name else "Khác"), True
+    if req_id and subj_id:
+        return ("Bản thân" if req_id == subj_id else "Khác"), True
+
+    return ("Khác", True) if _has_declaration(values) else ("", False)
+
+
 def _civil_status_document_name(values: dict, event_type: str) -> str:
     """Tờ khai là nguồn yêu cầu, không phải tên giấy hộ tịch cần cấp bản sao."""
     name = str(values.get("HoTich_TenGiayTo") or "").strip()
@@ -391,10 +462,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     has_requester = bool(values.get("Nyc_SoDinhDanh") or values.get("Nyc_HoTen"))
     # Tờ khai ghi rõ người yêu cầu → điền khối này bất kể CCCD có khớp tài khoản VNeID hay không
     # (người nộp hộ/tài khoản dịch vụ vẫn phải ra đúng người yêu cầu trên giấy).
-    has_tk_requester = bool(
-        values.get("TkNyc_HoTen")
-        or values.get("TkNyc_SoGiayToTuyThan")
-        or values.get("TkNyc_NoiCuTru")
+    # Bất kỳ dữ kiện TkNyc_* nào cũng là bằng chứng tờ khai đã ghi người yêu cầu — kể cả khi tờ khai
+    # chỉ đọc được ngày/nơi cấp giấy tờ. Có thông tin thì phát đủ field để extension ghi đè khối cổng
+    # đã tự điền từ tài khoản VNeID (người nộp hộ thường KHÁC người ghi trên tờ khai).
+    has_tk_requester = any(
+        values.get(name) not in (None, "", {}, [])
+        for name in values
+        if name.startswith("TkNyc_")
     )
     has_subject_card = bool(values.get("ChuThe_SoDinhDanh") or values.get("ChuThe_HoTen"))
     ctx = (options or {}).get("formContext") or {}
@@ -499,6 +573,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NDK_QuocTich", "Việt Nam")
 
     requester_ready = has_tk_requester or (has_requester and _requester_trusted(values, options))
+
+    # BƯỚC 1 BẮT BUỘC: chốt ô tích "(5) Quan hệ với người được cấp bản sao" TRƯỚC khi điền nhân thân.
+    # eForm legacy dựng lại cả khối người yêu cầu (mục I) lẫn khối người được đăng ký (mục II) mỗi
+    # lần ô tích này đổi, nên điền họ tên/CCCD trước rồi mới tick sẽ bị cổng xóa sạch. Field phải
+    # đứng ĐẦU danh sách trả về để extension tick xong mới đổ dữ liệu đè lên khối cổng tự điền.
+    quanhe, quanhe_guessed = _resolve_quanhe(values, options)
+    if quanhe:
+        add("NYC_QuanHe", quanhe, default=quanhe_guessed)
 
     if has_hotich:
         # Có giấy hộ tịch: khối người yêu cầu lấy tờ khai (CCCD bù thiếu); chủ thể lấy từ HoTich_*
@@ -669,10 +751,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # Không bịa default cho NYC_*: chỉ phát field đọc được từ tờ khai/CCCD. Có dữ liệu thì extension
     # GHI ĐÈ lên thông tin VNeID điền sẵn; không có thì giữ nguyên phần cổng đã tự điền.
-
-    quanhe = _quanhe_option(values.get("CopyRequest_QuanHe"))
-    if quanhe:
-        add("NYC_QuanHe", quanhe)
 
     # Form chỉ có ô số lượng, không có radio Có/Không cấp bản sao.
     copy_quantity = _copy_quantity(values.get("CopyRequest_Quantity"))
