@@ -29,6 +29,54 @@ def _strip_admin_prefix(value):
     text = str(value or "").strip()
     return re.sub(r"^(xã|phường|thị trấn|tt\.?)\s+", "", text, flags=re.IGNORECASE).strip()
 
+
+def _digits(value) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _fold_name(value) -> str:
+    import unicodedata
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+def _same_person(name_a, id_a, name_b, id_b) -> bool:
+    """So khớp CÙNG một người: ưu tiên số định danh, fallback họ tên đã bỏ dấu."""
+    digits_a, digits_b = _digits(id_a), _digits(id_b)
+    if digits_a and digits_b:
+        return digits_a == digits_b
+    folded_a, folded_b = _fold_name(name_a), _fold_name(name_b)
+    return bool(folded_a and folded_b and folded_a == folded_b)
+
+
+# Giá trị ô tích (5) "Quan hệ với người được khai sinh": BanThan/ChaDe/MeDe/Khac.
+_RELATION_TICKS = {"banthan": "BanThan", "chade": "ChaDe", "mede": "MeDe", "khac": "Khac"}
+
+
+def _canonical_relation(value) -> str:
+    """Quy chữ quan hệ ghi trên TỜ KHAI (TkKs_NycQuanHe) về đúng giá trị ô tích (5).
+
+    Trả rỗng khi không đọc được gì rõ ràng — để enrich() rơi xuống bước đối chiếu
+    CCCD/họ tên làm dự phòng, không suy đoán ẩu từ chữ mơ hồ.
+    """
+    folded = _fold_name(value)
+    if not folded or "khong xac dinh" in folded:
+        return ""
+    # Agent có thể trả thẳng mã ô tích ("BanThan") thay vì chữ tiếng Việt ("Bản thân").
+    tick = _RELATION_TICKS.get(folded.replace(" ", ""))
+    if tick:
+        return tick
+    if any(kw in folded for kw in ("ban than", "chinh minh", "chinh chu", "tu khai")):
+        return "BanThan"
+    # So khớp theo TỪ: "cháu"/"em" không được nuốt thành "cha"/"mẹ".
+    words = folded.split()
+    if "me" in words:
+        return "MeDe"
+    if "cha" in words or "bo" in words:
+        return "ChaDe"
+    return "Khac"
+
 _COMP_BY_NAME = {
     **LEGACY_COMP_BY_NAME,
     "LoaiDangKy": "x-radio",
@@ -453,8 +501,34 @@ def enrich(fields: list[dict]) -> list[dict]:
     )
 
     # QuanHe điền SỚM — trước thông tin cha/mẹ để tránh form Angular reset section sau khi
-    # chọn radio. Suy theo nguồn người yêu cầu: CCCD cha → ChaDe, CCCD mẹ → MeDe, còn lại → Khac.
-    add("QuanHe", requester.get("quan_he") or _TAIL_DEFAULTS[0]["value"])
+    # chọn radio. Thứ tự ưu tiên xác định quan hệ:
+    #   1. TỜ KHAI đã tự ghi rõ (TkKs_NycQuanHe) — lời khai chính chủ, đáng tin nhất.
+    #   2. Không có/không đọc được → đối chiếu CCCD/họ tên người yêu cầu với TỪNG vai (chủ thể/
+    #      cha/mẹ) để xác định ĐÚNG quan hệ thật, thay vì suy nhầm theo nguồn dữ liệu (trước đây hễ
+    #      không phải tờ khai/CCCD chủ thể thì mặc định "Khac", kể cả khi người yêu cầu CHÍNH LÀ
+    #      chủ thể tự đăng ký muộn — case CCCD chủ thể trùng cả hai mục vẫn bị tích sai "Khác").
+    #   3. Vẫn không xác định được → "quan_he" do _resolve_requester suy theo nguồn (dự phòng cuối).
+    quan_he = _canonical_relation(values.get("TkKs_NycQuanHe"))
+    if not quan_he and requester:
+        req_name = requester.get("ho_ten")
+        req_id = requester.get("so_dinh_danh")
+        # Chủ thể chỉ có số định danh khi CÒN SỐNG có CCCD (CccdChuThe_*/nu_is_subject); trẻ sơ
+        # sinh (Gcs_*/TkKs_*) không có CCCD nên chỉ so được bằng số định danh ở hai case đầu.
+        subject_id = values.get("CccdChuThe_SoDinhDanh") or (
+            values.get("CccdNu_SoDinhDanh") if nu_is_subject else None
+        )
+        subject_name = subject.get("ho_ten") if has_child else None
+        if _same_person(req_name, req_id, subject_name, subject_id):
+            quan_he = "BanThan"
+        elif has_father_cccd and _same_person(
+            req_name, req_id, values.get("CccdNam_HoTen"), values.get("CccdNam_SoDinhDanh")
+        ):
+            quan_he = "ChaDe"
+        elif has_mother_cccd and _same_person(
+            req_name, req_id, values.get("CccdNu_HoTen"), values.get("CccdNu_SoDinhDanh")
+        ):
+            quan_he = "MeDe"
+    add("QuanHe", quan_he or requester.get("quan_he") or _TAIL_DEFAULTS[0]["value"])
 
     if requester:
         add("HoVaTenC", requester.get("ho_ten"))

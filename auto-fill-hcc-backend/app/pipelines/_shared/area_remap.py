@@ -43,6 +43,18 @@ _DATA_DIR = Path(__file__).parent / "data"
 # Lookup dict: (fold(tinh_cu), fold(xa_cu)) -> {"tinh": ..., "xa": ...}
 _REMAP: dict[tuple[str, str], dict[str, str]] = {}
 
+# Lookup d\u1ef1 ph\u00f2ng: (fold(tinh_cu), fold(xa_cu) \u0111\u00e3 B\u1ece H\u1ebeT kho\u1ea3ng tr\u1eafng) -> {"tinh": ..., "xa": ...}.
+# OCR/LLM \u0111\u00f4i khi tr\u1ea3 t\u00ean x\u00e3 vi\u1ebft d\u00ednh li\u1ec1n (vd "langbiang" thay v\u00ec "Lang Biang") -> exact-fold
+# lookup \u1edf _REMAP tr\u01b0\u1ee3t v\u00ec c\u00f2n kho\u1ea3ng tr\u1eafng kh\u00e1c nhau. Bang nay khop bat chap khoang trang.
+_REMAP_NOSPACE: dict[tuple[str, str], dict[str, str]] = {}
+
+# Lookup CH\u1ec8 THEO T\u1ec8NH: fold(tinh_cu) -> tinh_moi. D\u00f9ng khi x\u00e3 kh\u00f4ng kh\u1edbp \u0111\u01b0\u1ee3c entry n\u00e0o (t\u00ean
+# \u0111\u1ecdc sai/kh\u00f4ng c\u00f3 trong b\u1ea3ng) NH\u01afNG t\u1ec9nh c\u0169 \u0111\u00e3 bi\u1ebft ch\u1eafc \u0111\u1ed5i t\u00ean qua s\u00e1p nh\u1eadp -- v\u1eabn \u0111i\u1ec1n \u0111\u00fang
+# t\u1ec9nh m\u1edbi, kh\u00f4ng gi\u1eef t\u1ec9nh c\u0169 (ch\u1eafc ch\u1eafn kh\u00f4ng c\u00f2n trong danh m\u1ee5c hi\u1ec7n h\u00e0nh -> ch\u1ecdn dropdown s\u1ebd
+# l\u1ed7i). Ch\u1ec9 c\u00f3 entry cho t\u1ec9nh TH\u1ef0C S\u1ef0 xu\u1ea5t hi\u1ec7n trong b\u1ea3ng remap (\u0111\u00e3 \u0111\u1ed5i t\u00ean); t\u1ec9nh ch\u01b0a t\u1eebng \u0111\u1ed5i
+# th\u00ec kh\u00f4ng c\u00f3 \u1edf \u0111\u00e2y -> h\u00e0nh vi gi\u1eef nguy\u00ean nh\u01b0 c\u0169, kh\u00f4ng \u0111\u1ee5ng v\u00e0o x\u00e3 h\u1ee3p l\u1ec7 ch\u01b0a c\u1ea7n remap.
+_TINH_ONLY: dict[str, str] = {}
+
 
 def _fold(text: str) -> str:
     """Bo dau, lowercase, chuan hoa khoang trang -- dung de so sanh key."""
@@ -52,6 +64,11 @@ def _fold(text: str) -> str:
     # Bo tien to loai don vi truoc khi fold (xa/phuong/thi tran/tt)
     t = re.sub(r"^(xa|phuong|thi tran|tt\.?)\s+", "", t, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", t).strip().lower()
+
+
+def _fold_nospace(text: str) -> str:
+    """_fold() roi bo luon khoang trang -- dung de khop ten xa viet dinh lien (vd "langbiang")."""
+    return _fold(text).replace(" ", "")
 
 
 def _expand_abbrev(text: str) -> str:
@@ -95,15 +112,59 @@ def _load_remap_files() -> None:
             if not tinh_cu or not xa_cu:
                 continue
             key = (_fold(tinh_cu), _fold(xa_cu))
+            mapping = {
+                "tinh": entry.get("tinh_moi") or tinh_cu,
+                "xa":   entry.get("xa_moi")   or xa_cu,
+            }
             # Uu tien entry dau tien, khong ghi de
             if key not in _REMAP:
-                _REMAP[key] = {
-                    "tinh": entry.get("tinh_moi") or tinh_cu,
-                    "xa":   entry.get("xa_moi")   or xa_cu,
-                }
+                _REMAP[key] = mapping
+            key_nospace = (_fold(tinh_cu), _fold_nospace(xa_cu))
+            if key_nospace not in _REMAP_NOSPACE:
+                _REMAP_NOSPACE[key_nospace] = mapping
+            tinh_cu_folded = _fold(tinh_cu)
+            if tinh_cu_folded not in _TINH_ONLY:
+                _TINH_ONLY[tinh_cu_folded] = mapping["tinh"]
 
 
 _load_remap_files()  # chay 1 lan luc import
+
+
+# ---------------------------------------------------------------------------
+# Bang tra ten xa/phuong HIEN HANH (khong can remap) da bo khoang trang -- dung khi
+# OCR/LLM tra ten xa dinh lien nhung do CHINH LA ten xa MOI (khong nam trong bang remap
+# o tren, vi khong bi doi ten qua sap nhap). Vd "langbiang" (tinh "Lam Dong") -> "Phường
+# Lang Biang - Đà Lạt". Xay dung tu danh muc hanh chinh hien hanh (app.locations.catalog).
+# ---------------------------------------------------------------------------
+_CURRENT_WARD_NOSPACE: dict[tuple[str, str], str] = {}
+
+
+def _build_current_ward_index() -> None:
+    try:
+        from app.locations.catalog import PROVINCES, WARDS_BY_SLUG
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning(
+            "area_remap: khong nap duoc danh muc hanh chinh hien hanh -- %s", e
+        )
+        return
+    for province in PROVINCES:
+        communes = WARDS_BY_SLUG.get(province["slug"], {}).get("communes") or []
+        for ward_full_name in communes:
+            # Ten day du, vd "Phường Lang Biang - Đà Lạt" -> bo khoang trang toan bo.
+            full_nospace = _fold_nospace(ward_full_name)
+            # Phan "loi" truoc hau to "- <thanh pho>" (mot so phuong sau sap nhap co hau to
+            # nay), vd "lang biang" tu "Phường Lang Biang - Đà Lạt" -> van khop duoc khi
+            # OCR/LLM chi doc "langbiang", khong doc hau to thanh pho.
+            core_nospace = _fold(ward_full_name).split(" - ")[0].strip().replace(" ", "")
+            for tinh_key in (_fold(province["text"]), _fold(province["name"])):
+                for nospace_key in (full_nospace, core_nospace):
+                    key = (tinh_key, nospace_key)
+                    if key not in _CURRENT_WARD_NOSPACE:
+                        _CURRENT_WARD_NOSPACE[key] = ward_full_name
+
+
+_build_current_ward_index()  # chay 1 lan luc import
 
 
 # ---------------------------------------------------------------------------
@@ -179,7 +240,7 @@ def _scan_for_xa(text: str, tinh_folded: str) -> Optional[dict]:
         if folded.isdigit() and original.strip() == folded:
             continue
         key = (tinh_folded, folded)
-        mapping = _REMAP.get(key)
+        mapping = _REMAP.get(key) or _REMAP_NOSPACE.get((tinh_folded, folded.replace(" ", "")))
         if mapping and len(folded) > best_len:
             best_original = original
             best_mapping = mapping
@@ -225,8 +286,32 @@ def _remap_area_cached(
     # Buoc 2: lookup bang sap nhap (tinh, xa)
     key = (tinh_folded, _fold(xa_expanded))
     mapping = _REMAP.get(key)
+    if not mapping and xa_expanded and " " not in xa_expanded.strip():
+        # Ten xa THUC SU viet dinh lien khong dau cach (vd "langbiang" thay vi "Lang Biang") ->
+        # khop bat chap khoang trang. CHI ap dung khi khong co khoang trang, tranh dong nham ten
+        # da co khoang trang dung nhung khac cach viet (vd hau to "- <thanh pho>") vao mot xa khac.
+        mapping = _REMAP_NOSPACE.get((tinh_folded, _fold_nospace(xa_expanded)))
     if mapping:
         return (mapping["tinh"], mapping["xa"], dia_chi)
+
+    # Buoc 2b: ten xa co the DA LA ten hien hanh (khong doi qua sap nhap, khong nam trong
+    # bang remap) nhung OCR/LLM tra dinh lien khong dau cach (vd "langbiang") -> tra ve dung
+    # ten co khoang trang chuan tu danh muc hien hanh. CHI kich hoat khi xa_expanded THUC SU
+    # la MOT TU dinh lien (khong co khoang trang) -- ten da co khoang trang dung (vd "Phường
+    # Xuân Hương", thieu hau to "- Đà Lạt") KHONG duoc dong qua "core" cua phuong khac.
+    if xa_expanded and " " not in xa_expanded.strip():
+        current_ward = _CURRENT_WARD_NOSPACE.get((tinh_folded, _fold_nospace(xa_expanded)))
+        if current_ward:
+            return (tinh, current_ward, dia_chi)
+
+    # Buoc 2c: xa khong khop duoc entry nao, nhung TINH CU DA BIET CHAC doi ten qua sap nhap (co
+    # trong bang remap) -> van dien dung TINH MOI (tinh cu chac chan khong con trong danh muc hien
+    # hanh, giu nguyen se khong chon duoc tren cong), con XA thi BO TRONG de can bo tu chon (khong
+    # du can cu de giu nguyen ten xa cu, vi ca tinh do da to chuc lai). Tinh nao CHUA TUNG doi ten
+    # thi khong co trong _TINH_ONLY -> roi xuong cac nhanh cu, khong dung den xa hop le chua remap.
+    tinh_only_moi = _TINH_ONLY.get(tinh_folded)
+    if tinh_only_moi and _fold(tinh_only_moi) != tinh_folded:
+        return (tinh_only_moi, "", dia_chi)
 
     if xa_has_admin_label:
         return (tinh, xa_expanded, dia_chi)
@@ -291,6 +376,10 @@ def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Opt
 def reload() -> None:
     """Reload tat ca file JSON (dung khi hot-reload trong development)."""
     _REMAP.clear()
+    _REMAP_NOSPACE.clear()
+    _TINH_ONLY.clear()
     _load_remap_files()
+    _CURRENT_WARD_NOSPACE.clear()
+    _build_current_ward_index()
     # Clear cache khi reload data
     _remap_area_cached.cache_clear()
