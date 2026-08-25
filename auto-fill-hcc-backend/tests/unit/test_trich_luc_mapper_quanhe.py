@@ -17,13 +17,15 @@ def test_trich_luc_maps_declaration_relationship_to_radio_label():
 
 
 def test_trich_luc_does_not_guess_ambiguous_ba_relationship():
+    """Chữ mơ hồ trên tờ khai: không đoán vai cụ thể, nhưng cũng không để trống ô tích."""
     result = _by_name(enrich([
         {"name": "ToKhai_LoaiSuKien", "value": "birth"},
         {"name": "ToKhai_HoTenNguoiDuocCap", "value": "TRẦN VĂN TRUNG"},
         {"name": "CopyRequest_QuanHe", "value": "Ba"},
     ]))
 
-    assert "NYC_QuanHe" not in result
+    assert result["NYC_QuanHe"]["value"] == "Khác"
+    assert result["NYC_QuanHe"]["default"] is True
 
 
 def test_trich_luc_ticks_relationship_before_filling_requester_block():
@@ -79,13 +81,15 @@ def test_trich_luc_infers_khac_when_requester_differs_from_subject():
     assert result["NYC_QuanHe"]["default"] is True
 
 
-def test_trich_luc_does_not_tick_relationship_without_any_source():
+def test_trich_luc_ticks_khac_when_no_source_at_all():
+    """Cạn nguồn vẫn phải tick: ô "(5) Quan hệ" không được để trống, mặc định "Khác" (tô vàng)."""
     result = _by_name(enrich([
         {"name": "HoTich_LoaiSuKien", "value": "birth"},
         {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "TRẦN BÉ"},
     ]))
 
-    assert "NYC_QuanHe" not in result
+    assert result["NYC_QuanHe"]["value"] == "Khác"
+    assert result["NYC_QuanHe"]["default"] is True
 
 
 def test_trich_luc_cmnd_and_personal_id_lengths_do_not_force_khac():

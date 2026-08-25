@@ -120,8 +120,21 @@ def test_trich_luc_declaration_allows_matching_document_to_fill_blank_field():
 
 
 def test_trich_luc_runner_does_not_use_number_fallback():
-    """Số hộ tịch phải do LLM chọn đúng nguồn, runner không được quét chéo tài liệu."""
-    assert not hasattr(trich_luc_runner, "_compact_field_fallback")
+    """Số hộ tịch phải do LLM chọn đúng nguồn, runner không được quét chéo tài liệu.
+
+    Runner CÓ chốt chứng cứ sau LLM, nhưng nó chỉ được phép LOẠI field không có nguồn —
+    tuyệt đối không thêm field mới hay sửa giá trị (đó mới là "quét chéo tài liệu").
+    """
+    documents = [{"name": "gks.pdf", "text": "GIẤY KHAI SINH Số: 999/2020 TRẦN BÉ"}]
+    raw = {
+        "HoTich_LoaiSuKien": "birth",
+        "HoTich_HoTenNguoiDuocDangKy": "TRẦN BÉ",
+    }
+
+    kept = trich_luc_runner._compact_field_fallback(dict(raw), documents)
+
+    assert kept == raw
+    assert "HoTich_So" not in kept
 
 
 def test_trich_luc_ignores_copy_choice_without_quantity():
@@ -654,8 +667,12 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
 @respx.mock
 async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
+    # OCR phải có ĐÚNG hai người mà LLM trả về: chốt chứng cứ ở runner loại nhóm thẻ của
+    # người không hề xuất hiện trong hồ sơ.
     respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
-        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
+        return_value=httpx.Response(200, json={"results": [
+            {"text": "CĂN CƯỚC CÔNG DÂN 012345678901 NGUYỄN VĂN A. GIẤY KHAI SINH TRẦN BÉ"}
+        ] * 20})
     )
     out = {
         "fields": {

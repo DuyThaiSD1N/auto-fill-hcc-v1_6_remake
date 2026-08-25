@@ -146,6 +146,13 @@ FIELDS: list[dict] = [
      "desc": "Nơi cư trú của người được đăng ký trên CHÍNH giấy hộ tịch đính kèm, "
              "object {quocGia,tinh,xa,diaChi}; không lấy từ TỜ KHAI; "
              "riêng giấy kết hôn lấy nơi cư trú của người chồng/bên nam."},
+    {"name": "HoTich_NguoiThan",
+     "desc": "Những người thân của NGƯỜI ĐƯỢC ĐĂNG KÝ mà CHÍNH giấy hộ tịch đính kèm có ghi tên, "
+             "array object {quanHe, hoTen, soGiayTo}. quanHe = ĐÚNG vai ghi trên giấy ở dạng danh từ "
+             "quan hệ ('cha', 'mẹ', 'vợ', 'chồng'...), lấy từ chính nhãn của dòng đó; hoTen = họ tên "
+             "đầy đủ của người đó; soGiayTo = số định danh/số giấy tờ tùy thân của người đó CHỈ khi "
+             "giấy ghi rõ, không có thì bỏ. Lấy MỌI dòng người thân giấy có ghi. TUYỆT ĐỐI không suy "
+             "quan hệ từ họ, tuổi hay địa chỉ; giấy không ghi vai thì bỏ dòng đó."},
     {"name": "HoTich_CoQuanDangKy",
      "desc": "Cơ quan đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; không lấy từ TỜ KHAI."},
     {"name": "HoTich_So",

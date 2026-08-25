@@ -1122,6 +1122,8 @@
     return void advanceFillAll(st);
   }
 
+  // Chỉ trang NGƯỜI NỘP mới dùng nút "Sao chép thông tin đăng ký tài khoản": khối đó phải mang
+  // nhân thân của chính người đang đăng nhập. Trang chủ hộ KHÔNG copy (xem handleOwnerPage).
   const COPY_PERSON_CFG = {
     "nguoi-nop-ho-so": {
       copyBtn: 'input[name="ctl00$C$btnIS_SIGNER"], #ctl00_C_btnIS_SIGNER',
@@ -1131,22 +1133,93 @@
       readPhone: () => readAcctContact("ctl00_C_PERSCtl_PHONEFld"),
       readEmail: () => readAcctContact("ctl00_C_PERSCtl_EMAILFld"),
     },
-    "chu-ho-kinh-doanh": {
-      copyBtn: 'input[name="ctl00$C$OWN_PCtl$btnIS_SIGNER"], #ctl00_C_OWN_PCtl_btnIS_SIGNER',
-      // Ô họ tên chủ hộ là INPUT (disabled) chứ không phải span _Vw.
-      nameFilled: () => !!((document.getElementById("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld") || {}).value || "").trim(),
-      addrMatch: /OWN_PCtl\$PERSCtl\$ADDRCCtl/,
-      requireCopiedContact: false,
-    },
   };
 
+  // Trang chủ hộ chỉ cần biết ô nào thuộc khối địa chỉ (điền bằng cascade riêng).
+  const OWNER_PAGE_CFG = { addrMatch: /OWN_PCtl\$PERSCtl\$ADDRCCtl/ };
+
+  // Ô nhân thân + liên hệ của một người: điền bằng hàm riêng, KHÔNG đi qua fillFormStandard chung.
+  const PERSON_CONTROL_RE = /FULL_NAME|GENDER|DATE_OF_BIRTH|PERS_DOC_NO|PHONE|FAX|EMAIL|URL/i;
+
+  // Nhân thân + liên hệ CHỦ HỘ lấy nguyên từ GIẤY ĐỀ NGHỊ. Cổng không có nguồn nào đúng hơn cho
+  // khối này, nên ô nào đơn không kê khai thì XÓA — không giữ lại giá trị lạ của lần chạy trước.
+  const OWNER_PERSON_FIELDS = [
+    { pattern: /FULL_NAMEFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld" },
+    { pattern: /GENDER_IDFld$/i, radioName: "ctl00$C$OWN_PCtl$PERSCtl$GENDER_IDFld" },
+    { pattern: /DATE_OF_BIRTHFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_DATE_OF_BIRTHFld" },
+    { pattern: /PERS_DOC_NOFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_PERS_DOC_NOFld" },
+    { pattern: /PHONEFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_PHONEFld" },
+    { pattern: /FAXFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_FAXFld" },
+    { pattern: /EMAILFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_EMAILFld" },
+    { pattern: /URLFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_URLFld" },
+  ];
+
+  function applyOwnerFromDossier(fields) {
+    for (const { pattern, id, radioName } of OWNER_PERSON_FIELDS) {
+      const source = fields.find((f) => pattern.test(f.name || ""));
+      const value = source ? String(source.value ?? "") : "";
+      if (radioName) { setGenderRadio(radioName, value); continue; }
+      const el = document.getElementById(id);
+      if (!el) continue;
+      // Input disabled/readonly KHÔNG được trình duyệt submit → giá trị vừa ghi sẽ mất sau postback
+      // kế tiếp. Trước đây nút "Sao chép" lo việc mở khóa này; bỏ nút thì phải tự mở.
+      if (el.disabled) el.disabled = false;
+      if (el.readOnly) el.readOnly = false;
+      if (norm(el.value) === norm(value)) continue;
+      setNativeValue(el, value, { typing: false, commit: true });
+    }
+  }
+
+  /**
+   * Trang "Thông tin về chủ hộ kinh doanh" — điền THẲNG từ giấy đề nghị, KHÔNG bấm
+   * "Sao chép thông tin đăng ký tài khoản".
+   *
+   * Chủ hộ là người trên GIẤY ĐỀ NGHỊ, không phải người đang đăng nhập cổng. Nút sao chép đổ nhân
+   * thân + liên hệ của tài khoản vào khối này rồi lại phải ghi đè ngược: thừa một vòng AJAX, và
+   * ghi đè hụt ô nào là hồ sơ mang dữ liệu sai người ở ô đó.
+   */
+  async function handleOwnerPage(st) {
+    ensureConfirmOverride();
+    const cfg = OWNER_PAGE_CFG;
+    const fields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
+    if (st.workflow === "change") return void handleChangeOwnerPage(st, fields, cfg);
+
+    // 1. Radio cấu trúc (OWNER_TYPE = cá nhân) trước: cổng render lại khối nhân thân theo ô này.
+    if (st.filledStep !== st.step) {
+      st.filledStep = st.step;
+      await setFillAllState(st); // persist TRƯỚC khi fill để postback giữa chừng không fill lại
+      const structural = fields.filter((f) => !/^__/.test(f.name || "")
+        && !cfg.addrMatch.test(f.name || "")
+        && !PERSON_CONTROL_RE.test(f.name || ""));
+      if (structural.length) { try { await fillFormStandard(structural); } catch (e) { /* ignore */ } }
+      await sleep(300);
+    }
+
+    // 2. Nhân thân + liên hệ chủ hộ theo đơn.
+    applyOwnerFromDossier(fields);
+
+    // 3. Địa chỉ cá nhân của chủ hộ: cascade quốc gia → tỉnh → xã → số nhà.
+    const address = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
+    try { await fillAddressCascade(address); } catch (e) { /* ignore */ }
+
+    // 4. Mỗi postback của cascade địa chỉ đều render lại khối nhân thân → ghi lại ngay trước khi Lưu.
+    applyOwnerFromDossier(fields);
+
+    const saveBtn = findBusinessSaveButton();
+    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
+    st.phase = "saving";
+    await setFillAllState(st);
+    const reloaded = await clickSaveDetectReload(saveBtn);
+    if (reloaded) return;
+    return void advanceFillAll(st);
+  }
+
+  /** Trang NGƯỜI NỘP HỒ SƠ: khối này phải mang nhân thân của chính người đang đăng nhập nên vẫn
+   *  phải bấm "Sao chép thông tin đăng ký tài khoản". Trang chủ hộ dùng handleOwnerPage. */
   async function handleCopyPersonPage(st, targetKey) {
     ensureConfirmOverride();
     const cfg = COPY_PERSON_CFG[targetKey];
     const fields = (st.pages && st.pages[targetKey]) || [];
-    if (targetKey === "chu-ho-kinh-doanh" && st.workflow === "change") {
-      return void handleChangeOwnerPage(st, fields, cfg);
-    }
 
     if (targetKey === "nguoi-nop-ho-so") {
       // Vì sao vai trò lại ra như vậy — in ngay đầu mỗi lượt để soi được khi cổng tick sai.
@@ -1176,7 +1249,7 @@
         // backend (backend không biết ai đăng nhập; tick "Người được ủy quyền" ở đây là thừa một
         // postback rồi lại phải tick ngược về).
         !(forceSelfSubmitter(st) && /PERS_SUBGroup/.test(f.name || "")) &&
-        !/FULL_NAME|GENDER|DATE_OF_BIRTH|PERS_DOC_NO|PHONE|FAX|EMAIL|URL/i.test(f.name || "")
+        !PERSON_CONTROL_RE.test(f.name || "")
       );
       if (structural.length) { try { await fillFormStandard(structural); } catch (e) { /* ignore */ } }
       await sleep(300);
@@ -1197,30 +1270,6 @@
         try { copyBtn.click(); } catch (e) { /* ignore */ }
         const ok = await waitFor(personReady, 7000, 250);
         if (!ok) return; // đang reload / copy chưa xong → xử lý lần kế
-      }
-    }
-
-    // 2b. Chủ hộ có thông tin riêng trên hồ sơ. Nút copy tài khoản vừa đổ dữ liệu người đăng nhập
-    // vào form; phải ghi đè lại bằng đúng thông tin chủ hộ từ backend (họ tên, giới tính, ngày sinh,
-    // số CCCD, liên hệ). Trường nào backend không kê khai thì xóa để không giữ nhầm dữ liệu tài khoản.
-    if (targetKey === "chu-ho-kinh-doanh") {
-      const PERSONAL_FIELDS = [
-        { pattern: /FULL_NAMEFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld" },
-        { pattern: /GENDER_IDFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_GENDER_IDFld", isRadio: true },
-        { pattern: /DATE_OF_BIRTHFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_DATE_OF_BIRTHFld" },
-        { pattern: /PERS_DOC_NOFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_PERS_DOC_NOFld" },
-        { pattern: /PHONEFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_PHONEFld" },
-        { pattern: /EMAILFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_EMAILFld" },
-      ];
-      for (const { pattern, id, isRadio } of PERSONAL_FIELDS) {
-        const source = fields.find((f) => pattern.test(f.name || ""));
-        const el = document.getElementById(id);
-        if (!el) continue;
-        if (isRadio) {
-          setGenderRadio(el.getAttribute("name") || id.replace(/_/g, "$"), source ? source.value : "");
-        } else {
-          setNativeValue(el, source ? source.value : "", { typing: false, commit: true });
-        }
       }
     }
 
@@ -1965,9 +2014,14 @@
       return void handleReissuePage(st);
     }
 
-    // Trang có nút "Sao chép thông tin đăng ký tài khoản":
-    // người nộp giữ contact tài khoản; chủ hộ được ghi đè contact + địa chỉ riêng từ backend.
-    if (targetKey === "nguoi-nop-ho-so" || targetKey === "chu-ho-kinh-doanh") {
+    // Trang CHỦ HỘ: điền thẳng từ giấy đề nghị, không bấm "Sao chép thông tin đăng ký tài khoản".
+    if (targetKey === "chu-ho-kinh-doanh") {
+      return void handleOwnerPage(st);
+    }
+
+    // Trang NGƯỜI NỘP có nút "Sao chép thông tin đăng ký tài khoản": khối này giữ nhân thân +
+    // contact của chính tài khoản đang đăng nhập.
+    if (targetKey === "nguoi-nop-ho-so") {
       return void handleCopyPersonPage(st, targetKey);
     }
 

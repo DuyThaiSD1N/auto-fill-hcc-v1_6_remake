@@ -692,6 +692,22 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     )
 
 
+def _context_id_is_shared(context: str, tag: str, expected_id: str) -> bool:
+    """Số định danh của vai này còn được gán cho vai gia đình khác trong khối phân vai.
+
+    Tờ khai hay ghi nhầm CCCD của người này sang mục người kia (vd mục "Giấy tờ tùy thân"
+    của MẸ chép đúng số CCCD của CHA) và agent phân vai chép y nguyên. Một người không thể
+    vừa là cha vừa là mẹ/con, nên số bị trùng vai KHÔNG dùng làm mỏ neo nhận dạng được.
+    """
+    if not expected_id:
+        return False
+    return any(
+        _role_id(_section(context, other)) == expected_id
+        for other in _FAMILY_TAGS
+        if other != tag
+    )
+
+
 def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
     section = _section(context, tag)
     if _is_unknown(section):
@@ -702,7 +718,8 @@ def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
     expected_id = _role_id(section)
     actual_id = _digits(fields_by_name.get(_ID_FIELD.get(tag, "")))
 
-    if expected_id and actual_id:
+   
+    if expected_id and actual_id and not _context_id_is_shared(context, tag, expected_id):
         return expected_id == actual_id
     return bool(expected_name and actual_name and expected_name == actual_name)
 

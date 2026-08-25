@@ -333,3 +333,74 @@ async def test_process_runner_sanitizes_before_mapper(monkeypatch):
 
     assert seen["fields"] == [{"name": "Father_FullName", "value": "MAN VĂN QUỲNH"}]
     assert result["fields"] == seen["fields"]
+
+
+def _context_with_shared_parent_id(mother_id: str = "024075019811") -> str:
+    """Tờ khai ghi mục "Giấy tờ tùy thân" của MẸ bằng đúng số CCCD của CHA.
+
+    Agent phân vai chép y nguyên nên <me> và <cha> mang cùng một số định danh.
+    """
+    return (
+        "<phan_vai_da_xac_dinh>\n"
+        "<nguoi_yeu_cau>\n"
+        "Họ tên: Dương Văn Lĩnh\nSố CCCD/CMND: 024075019811\nNgày sinh: 20/8/1975\n"
+        "Giới tính: Nam\nVai trò đồng thời: cha\n"
+        "</nguoi_yeu_cau>\n"
+        "<con>\n"
+        "Họ tên: Dương Văn Ánh\nSố CCCD/CMND: 024200006467\nNgày sinh: 23/4/2000\n"
+        "Giới tính: Nam\nTrạng thái: còn sống\nDân tộc: Kinh\nQuốc tịch: Việt Nam\n"
+        "</con>\n"
+        "<me>\n"
+        f"Họ tên: Hà Thị Thu\nSố CCCD/CMND: {mother_id}\nNgày sinh: 20/8/1975\n"
+        "Giới tính: Nữ\nTrạng thái: còn sống\nDân tộc: Kinh\nQuốc tịch: Việt Nam\n"
+        "</me>\n"
+        "<cha>\n"
+        "Họ tên: Dương Văn Lĩnh\nSố CCCD/CMND: 024075019811\nNgày sinh: 20/8/1975\n"
+        "Giới tính: Nam\nTrạng thái: còn sống\nDân tộc: Kinh\nQuốc tịch: Việt Nam\n"
+        "</cha>\n"
+        "</phan_vai_da_xac_dinh>"
+    )
+
+
+def _mother_fields(full_name: str = "Hà Thị Thư") -> list[dict]:
+    return [
+        {"name": "Subject_FullName", "value": "Dương Văn Ánh"},
+        {"name": "Subject_IdNumber", "value": "024200006467"},
+        {"name": "Father_FullName", "value": "Dương Văn Lĩnh"},
+        {"name": "Father_IdNumber", "value": "024075019811"},
+        {"name": "Mother_FullName", "value": full_name},
+        {"name": "Mother_IdNumber", "value": "024177008469"},
+        {"name": "Mother_BirthDateOrYear", "value": "20/08/1977"},
+    ]
+
+
+def test_sanitizer_keeps_mother_when_role_block_copied_father_id():
+    # Số định danh trong <me> là của CHA nên không dùng làm mỏ neo được; họ tên (bỏ dấu:
+    # "ha thi thu") vẫn khớp nên khối mẹ PHẢI được giữ với số CCCD thật của mẹ.
+    result = reason.sanitize_extracted_fields(
+        _mother_fields(), _context_with_shared_parent_id()
+    )
+    values = {field["name"]: field["value"] for field in result}
+
+    assert values["Mother_FullName"] == "Hà Thị Thư"
+    assert values["Mother_IdNumber"] == "024177008469"
+    assert values["Father_IdNumber"] == "024075019811"
+    assert values["Subject_FullName"] == "Dương Văn Ánh"
+
+
+def test_sanitizer_still_drops_other_person_when_role_id_is_shared():
+    # Số bị dùng chung thì quay về so họ tên — người khác tên vẫn phải bị loại.
+    result = reason.sanitize_extracted_fields(
+        _mother_fields(full_name="Nguyễn Thị Khác"), _context_with_shared_parent_id()
+    )
+
+    assert not any(field["name"].startswith("Mother_") for field in result)
+
+
+def test_sanitizer_keeps_strict_id_check_when_role_id_is_unique():
+    # Số định danh của <me> là riêng của mẹ → vẫn so CHẶT theo số, lệch là loại.
+    result = reason.sanitize_extracted_fields(
+        _mother_fields(), _context_with_shared_parent_id(mother_id="024199999999")
+    )
+
+    assert not any(field["name"].startswith("Mother_") for field in result)

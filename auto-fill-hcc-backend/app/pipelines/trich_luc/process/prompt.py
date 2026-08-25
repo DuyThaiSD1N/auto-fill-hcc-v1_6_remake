@@ -11,6 +11,10 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 <multi_cccd_rules>
 - Nyc_* CHỈ là CCCD/CMND của NGƯỜI YÊU CẦU; ChuThe_* CHỈ là giấy tờ của NGƯỜI ĐƯỢC ĐĂNG KÝ.
 - Nếu CONTEXT có tên/số định danh người yêu cầu: CCCD khớp tên HOẶC số đó → Nyc_*.
+  CONTEXT chỉ để CHỌN thẻ nào là của người yêu cầu, KHÔNG PHẢI nguồn dữ liệu: TUYỆT ĐỐI không
+  lấy tên/số trong CONTEXT làm giá trị field và không bịa ngày sinh/ngày cấp/nơi cư trú cho
+  người đó. MỌI giá trị trả về phải đọc được trong tài liệu; không có thẻ nào khớp CONTEXT thì
+  KHÔNG trả Nyc_* theo CONTEXT.
 - Nếu có đúng 2 CCCD khác nhau và 1 thẻ đã khớp người yêu cầu → thẻ còn lại BẮT BUỘC vào ChuThe_*,
   kể cả hồ sơ không có tờ khai/giấy hộ tịch.
 - Chỉ có 1 CCCD và thẻ đó khớp CONTEXT người yêu cầu → chỉ trả Nyc_*; Python sẽ dùng cùng người đó
@@ -209,6 +213,13 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   "Con đẻ", "Vợ", "Chồng", "Ông", "Bà"). Không có dòng này thì bỏ qua, KHÔNG suy diễn từ việc người
   yêu cầu có trùng người được cấp bản sao hay không — Python tự đối chiếu số định danh/họ tên giữa
   mục I và mục II để tick "Bản thân"/"Khác" khi field này trống.
+- HoTich_NguoiThan: BẮT BUỘC trả khi CHÍNH giấy hộ tịch có dòng ghi tên người thân của người được
+  đăng ký (giấy khai sinh ghi cha/mẹ; giấy chứng nhận kết hôn ghi vợ/chồng; trích lục khai tử ghi
+  người thân nếu có). Mỗi dòng là một object {quanHe, hoTen, soGiayTo}: quanHe lấy ĐÚNG vai ở nhãn
+  của dòng đó, hoTen là họ tên đầy đủ, soGiayTo chỉ điền khi giấy ghi số giấy tờ của chính người đó.
+  Đây là nguồn để Python tick ô "Quan hệ với người được cấp bản sao" khi hồ sơ không có tờ khai:
+  thiếu nó thì ô quan hệ bị tick "Khác" dù giấy đã ghi rõ vai. Nhãn nào giấy không ghi vai thì BỎ
+  dòng đó, KHÔNG suy quan hệ từ họ, tuổi hay địa chỉ.
 </copy_request_rules>
 
 <chu_the_giay_to_tuy_than_rules>

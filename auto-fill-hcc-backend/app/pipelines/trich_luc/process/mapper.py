@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from datetime import date
 
 from app.pipelines.trich_luc.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
@@ -10,6 +11,31 @@ _MARRIAGE_LOAI_YEU_CAU = "Trích lục kết hôn (bản sao)/ Trích lục ghi 
 _DEATH_LOAI_YEU_CAU = "Trích lục khai tử (bản sao)"
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
+
+# Luật Căn cước: dưới 14 tuổi chưa bắt buộc có thẻ căn cước. Số 12 chữ số của các em là
+# SỐ ĐỊNH DANH CÁ NHÂN, không phải số giấy tờ tùy thân.
+_CAN_CUOC_MIN_AGE = 14
+
+
+def _is_under_14(value) -> bool:
+    """Ngày/năm sinh cho thấy người này CHƯA đủ 14 tuổi. Không đọc được → False."""
+    raw = str(value or "").strip()
+    today = date.today()
+    full = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", raw)
+    if full:
+        day, month, year = (int(part) for part in full.groups())
+        try:
+            born = date(year, month, day)
+        except ValueError:
+            return False
+        age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+        return age < _CAN_CUOC_MIN_AGE
+    year_only = re.match(r"^(\d{4})$", raw)
+    if year_only:
+        # Chỉ có năm sinh → chỉ kết luận khi CHẮC CHẮN chưa tới 14 tuổi.
+        return today.year - int(year_only.group(1)) < _CAN_CUOC_MIN_AGE
+    return False
+
 
 _EVENT_TO_OPTION = {
     "birth": _BIRTH_LOAI_YEU_CAU,
@@ -129,7 +155,10 @@ _QUANHE_OPTIONS = {
 
 
 def _quanhe_option(value) -> str:
-    return _QUANHE_OPTIONS.get(_fold(value).strip(".:;,- "), "")
+    key = _fold(value).strip(".:;,- ")
+    # Nhãn trên giấy hộ tịch hay ở dạng "người mẹ"/"người cha" — cùng một vai với "mẹ"/"cha".
+    key = re.sub(r"^nguoi\s+", "", key)
+    return _QUANHE_OPTIONS.get(key, "")
 
 
 def _requester_identity(values: dict, options: dict | None) -> tuple[str, str]:
@@ -159,13 +188,35 @@ def _subject_identity(values: dict) -> tuple[str, str]:
     return name, number
 
 
-def _has_declaration(values: dict) -> bool:
-    """Hồ sơ có TỜ KHAI cấp bản sao hay không (chỉ tờ khai mới sinh ra ToKhai_*/TkNyc_*)."""
-    return any(
-        values.get(name) not in (None, "", {}, [])
-        for name in values
-        if name.startswith(("ToKhai_", "TkNyc_", "CopyRequest_"))
-    )
+def _quanhe_from_record(values: dict, options: dict | None) -> tuple[str, bool]:
+    """Quan hệ đọc từ CHÍNH GIẤY HỘ TỊCH: người yêu cầu có phải người thân nào ghi trên giấy không.
+
+    Giấy hộ tịch tự nó đã ghi vai của những người thân quanh người được đăng ký (giấy khai sinh ghi
+    cha/mẹ, giấy chứng nhận kết hôn ghi vợ/chồng...). Người yêu cầu trùng một trong những người đó
+    thì QUAN HỆ ĐÃ CÓ SẴN TRÊN GIẤY — không được rơi xuống bước đối chiếu nhân thân rồi tick "Khác"
+    chỉ vì người yêu cầu khác người được đăng ký.
+
+    Trả (nhãn option, khớp bằng số giấy tờ). Khớp bằng số là bằng chứng chắc; khớp bằng họ tên yếu
+    hơn (có thể trùng tên) nên caller đánh dấu suy đoán để FE tô vàng cho người dân rà lại.
+    """
+    rows = values.get("HoTich_NguoiThan")
+    if not isinstance(rows, list):
+        return "", False
+
+    req_name, req_id = _requester_identity(values, options)
+    by_name = ""
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        option = _quanhe_option(row.get("quanHe"))
+        if not option:
+            continue
+        row_id = _digits(row.get("soGiayTo"))
+        if req_id and row_id and req_id == row_id:
+            return option, True
+        if req_name and not by_name and _fold(row.get("hoTen")) == req_name:
+            by_name = option
+    return by_name, False
 
 
 def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
@@ -173,6 +224,10 @@ def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
 
     Thứ tự nguồn — TỜ KHAI LUÔN ĐỨNG TRƯỚC, giống khai sinh đăng ký lại:
       1. Dòng "Quan hệ với người được cấp bản sao ..." của chính tờ khai: lời khai chính chủ.
+      1b. VAI GHI TRÊN CHÍNH GIẤY HỘ TỊCH (cha/mẹ của giấy khai sinh, vợ/chồng của giấy kết hôn...):
+         người yêu cầu trùng một người thân ghi trên giấy → lấy đúng vai đó. Phải xét TRƯỚC bước
+         đối chiếu bên dưới, nếu không mọi hồ sơ "người thân đi xin hộ" đều bị tick "Khác" dù giấy
+         đã ghi rõ vai. Khớp bằng số giấy tờ là chắc; khớp bằng họ tên thì tick viền vàng.
       2. Đối chiếu NGƯỜI YÊU CẦU (mục I) với NGƯỜI ĐƯỢC ĐĂNG KÝ (mục II): trùng người → "Bản thân".
          Số định danh cùng độ dài là bằng chứng chắc; so họ tên yếu hơn nên tick viền vàng.
          CMND 9 số và số định danh 12 số của CÙNG một người vẫn khác chuỗi, nên khác độ dài thì
@@ -186,9 +241,13 @@ def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
     if declared:
         return declared, False
     if str(raw_declared or "").strip():
-        # Tờ khai CÓ ghi quan hệ nhưng chữ đó không khớp option nào (vd "Ba" nhập nhằng bà/bố).
-        # Đè "Khác" lên một lời khai có thật là sai người; để trống cho cán bộ đọc lại tờ khai.
-        return "", False
+        # Tờ khai CÓ ghi quan hệ nhưng chữ đó không khớp option nào (vd chữ viết tắt/nhập nhằng).
+        # Không đoán bừa một vai cụ thể, nhưng cũng KHÔNG để trống ô tích: rơi về "Khác" (tô vàng).
+        return "Khác", True
+
+    from_record, matched_by_id = _quanhe_from_record(values, options)
+    if from_record:
+        return from_record, not matched_by_id
 
     req_name, req_id = _requester_identity(values, options)
     subj_name, subj_id = _subject_identity(values)
@@ -200,7 +259,10 @@ def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
     if req_id and subj_id:
         return ("Bản thân" if req_id == subj_id else "Khác"), True
 
-    return ("Khác", True) if _has_declaration(values) else ("", False)
+    # Cạn nguồn: không tờ khai, giấy không ghi vai, không đủ nhân thân để đối chiếu. Vẫn phải tick
+    # để ô "(5) Quan hệ" không bị bỏ trống — "Khác" là lựa chọn an toàn nhất (tách khối mục I khỏi
+    # mục II) và được tô vàng để người dân đổi lại nếu đúng ra là quan hệ khác.
+    return "Khác", True
 
 
 def _civil_status_document_name(values: dict, event_type: str) -> str:
@@ -211,34 +273,49 @@ def _civil_status_document_name(values: dict, event_type: str) -> str:
     return name
 
 
-def _requester_trusted(values: dict, options: dict | None) -> bool:
-    """Nyc_* có đúng là giấy tờ của người yêu cầu không?
+def _requester_trusted(values: dict, options: dict | None = None) -> bool:
+    """Nyc_* có đúng là giấy tờ của NGƯỜI YÊU CẦU không?
 
-    - Có mỏ neo formContext (VNeID): tin khi Nyc_* khớp tên/số định danh người đăng nhập.
-    - Không mỏ neo (fallback): KHÔNG tin nếu Nyc_* trùng CHỦ THỂ hộ tịch (đó là CCCD của người được
-      đăng ký, không phải người yêu cầu — vd CCCD con); ngược lại tin.
+    HỒ SƠ GIẤY là căn cứ, KHÔNG phải tài khoản VNeID đang đăng nhập: thẻ đọc được trong hồ sơ vẫn
+    dùng cho mục I kể cả khi khác người đăng nhập (bố/mẹ mang giấy tờ đi làm hộ, tài khoản là người
+    khác...). Thứ tự chung của mục I: TỜ KHAI đè lên → CCCD đè lên → không có gì thì để im phần cổng
+    đã tự điền từ VNeID.
+
+    Ngoại lệ DUY NHẤT — thẻ trùng CHÍNH người được đăng ký (mục II): lúc đó thẻ có thể là
+      (a) hồ sơ tự xin cho mình  → thẻ đúng là của người yêu cầu, vẫn điền mục I; hoặc
+      (b) thẻ của người được đăng ký (vd CCCD của con) → đắp sang mục I là SAI NGƯỜI.
+    Chỉ mỏ neo VNeID phân biệt được hai ca này, nên riêng ca trùng mới xét tài khoản đăng nhập.
+    """
+    requester_id = _digits(values.get("Nyc_SoDinhDanh"))
+    requester_name = _fold(values.get("Nyc_HoTen"))
+    subj_id = _digits(values.get("HoTich_SoDinhDanh"))
+    subj_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
+    card_is_subject = (
+        bool(requester_id and subj_id and requester_id == subj_id)
+        or bool(requester_name and subj_name and requester_name == subj_name)
+    )
+    if not card_is_subject:
+        return True
+    return _card_matches_login(values, options)
+
+
+def _card_matches_login(values: dict, options: dict | None) -> bool:
+    """Nyc_* có đúng là thẻ của NGƯỜI ĐANG ĐĂNG NHẬP cổng không (mỏ neo VNeID)?
+
+    CHỈ dùng để suy "tự xin cho chính mình": hồ sơ không có giấy hộ tịch, chỉ một thẻ, mà thẻ đó là
+    của người đăng nhập → người yêu cầu cũng chính là người được đăng ký. KHÔNG dùng để quyết định
+    có điền mục I hay không (việc đó theo hồ sơ giấy — xem _requester_trusted).
     """
     ctx = (options or {}).get("formContext") or {}
     applicant_id = _digits(ctx.get("applicantIdentityNumber"))
     applicant_name = _fold(ctx.get("applicantFullname"))
     requester_id = _digits(values.get("Nyc_SoDinhDanh"))
     requester_name = _fold(values.get("Nyc_HoTen"))
-
-    if applicant_id or applicant_name:
-        if applicant_id and requester_id:
-            return applicant_id == requester_id
-        if applicant_name and requester_name:
-            return applicant_name == requester_name
-        return False
-
-    # Không mỏ neo → vẫn chặn nếu model gán nhầm chính thẻ chủ thể vào Nyc_*.
-    subj_id = _digits(values.get("HoTich_SoDinhDanh"))
-    subj_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
-    if requester_id and subj_id and requester_id == subj_id:
-        return False
-    if requester_name and subj_name and requester_name == subj_name:
-        return False
-    return True
+    if applicant_id and requester_id:
+        return applicant_id == requester_id
+    if applicant_name and requester_name:
+        return applicant_name == requester_name
+    return False
 
 
 def _card_is_requester(values: dict, options: dict | None) -> bool:
@@ -471,10 +548,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if name.startswith("TkNyc_")
     )
     has_subject_card = bool(values.get("ChuThe_SoDinhDanh") or values.get("ChuThe_HoTen"))
-    ctx = (options or {}).get("formContext") or {}
-    has_requester_anchor = bool(
-        _digits(ctx.get("applicantIdentityNumber")) or _fold(ctx.get("applicantFullname"))
-    )
     has_hotich = any(
         name in values
         for name in (
@@ -692,28 +765,39 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             
             # Số định danh: Ưu tiên HoTich_SoDinhDanh từ tờ khai, fallback ht_so (giấy tờ tùy thân trong giấy HT), cuối cùng mới CCCD
             add("NDK_SoDinhDanh", values.get("HoTich_SoDinhDanh") or ht_so or ct_so)
-            
-            # Số giấy tờ tùy thân: giống logic trên nhưng loại trừ số định danh khai sinh
-            add(
-                "NDK_SoGiayToTuyThan",
-                (ht_so if not is_birth else None) or values.get("HoTich_SoDinhDanh") or ct_so,
+
+            # Trẻ DƯỚI 14 TUỔI chưa bắt buộc có thẻ căn cước: số 12 chữ số của các em là SỐ ĐỊNH
+            # DANH CÁ NHÂN (đã điền ở trên), KHÔNG phải số giấy tờ tùy thân → bỏ trống cả cụm
+            # giấy tờ tùy thân. Em nào đã có thẻ thật và nộp kèm (ChuThe_*) thì vẫn điền bình thường.
+            ndk_ngay_sinh = (
+                values.get("HoTich_NgaySinh")
+                or values.get("NguoiDuocCap_NgaySinh")
+                or _ct("ChuThe_NgaySinh")
             )
-            
-            # Ngày cấp: Ưu tiên tờ khai trước
-            ndk_ngaycap = ht_ngay or ct_ngay
-            add("NDK_NgayCap", ndk_ngaycap)
-            
-            # Nơi cấp: Ưu tiên tờ khai trước
-            ndk_noicap = normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
-            if not ndk_noicap and ndk_ngaycap:
-                ndk_noicap = default_issuer(ndk_ngaycap)
-            add("NDK_NoiCap", ndk_noicap)
-            
-            # Loại giấy tờ: Ưu tiên tờ khai trước
-            id_hint = ht_loai or ct_loai
-            if not id_hint and (ht_so or ct_so):
-                id_hint = "Căn cước"  # có số nhưng LLM ko trả loại → để nơi cấp quyết
-            add("NDK_LoaiGiayToTuyThan", id_doc_type(id_hint, ndk_noicap or "") if id_hint else None)
+            has_no_id_card = _is_under_14(ndk_ngay_sinh) and not ct_so
+
+            if not has_no_id_card:
+                # Số giấy tờ tùy thân: giống logic trên nhưng loại trừ số định danh khai sinh
+                add(
+                    "NDK_SoGiayToTuyThan",
+                    (ht_so if not is_birth else None) or values.get("HoTich_SoDinhDanh") or ct_so,
+                )
+
+                # Ngày cấp: Ưu tiên tờ khai trước
+                ndk_ngaycap = ht_ngay or ct_ngay
+                add("NDK_NgayCap", ndk_ngaycap)
+
+                # Nơi cấp: Ưu tiên tờ khai trước
+                ndk_noicap = normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
+                if not ndk_noicap and ndk_ngaycap:
+                    ndk_noicap = default_issuer(ndk_ngaycap)
+                add("NDK_NoiCap", ndk_noicap)
+
+                # Loại giấy tờ: Ưu tiên tờ khai trước
+                id_hint = ht_loai or ct_loai
+                if not id_hint and (ht_so or ct_so):
+                    id_hint = "Căn cước"  # có số nhưng LLM ko trả loại → để nơi cấp quyết
+                add("NDK_LoaiGiayToTuyThan", id_doc_type(id_hint, ndk_noicap or "") if id_hint else None)
             add("NDK_LoaiCuTru", "Thường trú")
             ndk_area = _area(values.get("HoTich_NoiCuTru")) or _area(_ct("ChuThe_NoiCuTru"))
             # Fallback nơi cư trú từ Nyc_NoiCuTru khi không có từ giấy hộ tịch/ChuThe
@@ -740,13 +824,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         _fill_ndk_from_support()
     else:
         # Không có giấy hộ tịch: hai nhóm đã được phân vai độc lập trong prompt.
-        requester_trusted = has_requester and _requester_trusted(values, options)
         if requester_ready:
             _fill_requester()
         if has_subject_card:
             _fill_subject_from_card()
-        elif requester_trusted and has_requester_anchor:
+        elif has_requester and _card_matches_login(values, options):
             # Chỉ có một CCCD và thẻ đó khớp người đăng nhập: tự làm cho chính mình.
+            # Ở ĐÂY mới cần mỏ neo VNeID — vì phải chắc chắn người yêu cầu CŨNG là người được đăng ký.
             _fill_subject_from_requester()
 
     # Không bịa default cho NYC_*: chỉ phát field đọc được từ tờ khai/CCCD. Có dữ liệu thì extension
