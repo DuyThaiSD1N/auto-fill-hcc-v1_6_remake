@@ -56,6 +56,12 @@ FIELDS: list[dict] = [
              "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ. tinh chỉ chứa tên tỉnh/thành phố đầy đủ; "
              "xa phải mở rộng P/P. thành Phường, X/X. thành Xã, TT/TT. thành Thị trấn."},
 
+    # Loại đăng ký ghi trên tờ khai (nếu mẫu có mục này); không có thì Python tự suy.
+    {"name": "ToKhai_LoaiDangKy",
+     "desc": 'Loại đăng ký ghi trên TỜ KHAI ĐĂNG KÝ KẾT HÔN nếu tờ khai có mục "Loại đăng ký" '
+             'được tích/ghi rõ (vd "Đăng ký lần đầu", "Đăng ký lại"). Trả đúng nhãn được chọn. '
+             "Không có mục này hoặc không tích ô nào thì BỎ QUA field, không tự mặc định."},
+
     # Yêu cầu cấp bản sao trên chính tờ khai đăng ký kết hôn, không đặt mặc định.
     {"name": "CopyRequest_WantsCopy",
      "desc": '"Có" nếu TỜ KHAI ĐĂNG KÝ KẾT HÔN tích/chọn Có ở mục đề nghị cấp bản sao; '
@@ -124,6 +130,7 @@ UI_COMP_BY_NAME = {
     "NoiCuTru_BenNu_NuocNgoai": "x-select-area",
     "SoLanKetHon_BenNu": "raw",
     "LoaiTinhTrangHonNhan_BenNu": "x-select",
+    "loaiDangKy": "x-radio",
     "CapBanSao": "x-radio",
     "SoLuong": "raw",
 }

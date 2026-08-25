@@ -57,6 +57,20 @@ _TINH_TRANG_HON_NHAN = {
 }
 
 
+# Radio "Loại đăng ký" của cổng khớp theo hậu tố id (loaiDangKy-1) hoặc theo nhãn hiển thị.
+_LOAI_DANG_KY_LAN_DAU = "1"
+
+
+def _loai_dang_ky(value) -> str:
+    """Loại đăng ký ĐỌC TỪ TỜ KHAI → giá trị radio; rỗng nếu tờ khai không ghi."""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    # "Đăng ký lần đầu" dùng mã id để chắc chắn khớp; nhãn khác giữ nguyên cho
+    # extension khớp theo text (vd "Đăng ký lại").
+    return _LOAI_DANG_KY_LAN_DAU if "lan dau" in _fold(text) else text
+
+
 def _normalize_dan_toc(value):
     raw = str(value or "").strip()
     if not raw:
@@ -228,6 +242,16 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")
+
+    # Loại đăng ký: ƯU TIÊN tờ khai ghi rõ (không tô vàng vì đọc được từ giấy tờ); tờ khai
+    # không ghi mới fallback "Đăng ký lần đầu" — form này là tờ khai đăng ký kết hôn MỚI,
+    # đăng ký lại có thủ tục riêng. Tích SAU khi đã điền thông tin hai bên (add ở cuối danh
+    # sách nên extension điền cuối cùng).
+    loai_dang_ky = _loai_dang_ky(values.get("ToKhai_LoaiDangKy"))
+    if loai_dang_ky:
+        add("loaiDangKy", loai_dang_ky)
+    elif out:
+        add("loaiDangKy", _LOAI_DANG_KY_LAN_DAU, default=True)
 
     # Số lượng dương vừa là bằng chứng chọn "Có", vừa được điền vào input raw SoLuong.
     # Không có số lượng thật thì không tự mặc định.

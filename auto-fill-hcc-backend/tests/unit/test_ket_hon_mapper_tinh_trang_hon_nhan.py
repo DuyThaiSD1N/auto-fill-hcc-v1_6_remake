@@ -36,3 +36,59 @@ def test_tinh_trang_ghi_ro_thang_so_lan_ket_hon():
 
     assert out["SoLanKetHon_BenNam"]["value"] == "1"
     assert out["LoaiTinhTrangHonNhan_BenNam"]["value"].startswith("Đã đăng ký kết hôn")
+
+
+def test_ket_hon_tich_dang_ky_lan_dau_sau_khi_dien_thong_tin():
+    out = mapper.enrich([
+        {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
+        {"name": "CccdNam_SoDinhDanh", "value": "079000000001"},
+        {"name": "CccdNu_HoTen", "value": "NGƯỜI NỮ"},
+        {"name": "CccdNu_SoDinhDanh", "value": "079000000002"},
+    ])
+    names = [f["name"] for f in out]
+    loai = next(f for f in out if f["name"] == "loaiDangKy")
+
+    assert loai["value"] == "1"
+    assert loai["comp"] == "x-radio"
+    # Suy diễn (không đọc từ giấy tờ) → FE tô vàng để người dân tự rà.
+    assert loai["default"] is True
+    # Tích sau khi đã điền xong thông tin hai bên.
+    assert names.index("loaiDangKy") > names.index("HoTenBenNam")
+    assert names.index("loaiDangKy") > names.index("HoTenBenNu")
+
+
+def test_ket_hon_khong_tich_loai_dang_ky_khi_khong_co_du_lieu():
+    assert mapper.enrich([]) == []
+
+
+def _base_fields():
+    return [
+        {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
+        {"name": "CccdNam_SoDinhDanh", "value": "079000000001"},
+    ]
+
+
+def test_loai_dang_ky_uu_tien_to_khai_lan_dau():
+    out = {f["name"]: f for f in mapper.enrich(
+        _base_fields() + [{"name": "ToKhai_LoaiDangKy", "value": "Đăng ký lần đầu"}]
+    )}
+
+    # Đọc được từ tờ khai → dùng mã id chắc chắn khớp radio và KHÔNG tô vàng.
+    assert out["loaiDangKy"]["value"] == "1"
+    assert "default" not in out["loaiDangKy"]
+
+
+def test_loai_dang_ky_uu_tien_to_khai_nhan_khac():
+    out = {f["name"]: f for f in mapper.enrich(
+        _base_fields() + [{"name": "ToKhai_LoaiDangKy", "value": "Đăng ký lại"}]
+    )}
+
+    assert out["loaiDangKy"]["value"] == "Đăng ký lại"
+    assert "default" not in out["loaiDangKy"]
+
+
+def test_loai_dang_ky_fallback_khi_to_khai_khong_ghi():
+    out = {f["name"]: f for f in mapper.enrich(_base_fields())}
+
+    assert out["loaiDangKy"]["value"] == "1"
+    assert out["loaiDangKy"]["default"] is True

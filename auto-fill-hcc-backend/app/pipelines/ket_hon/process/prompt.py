@@ -81,6 +81,9 @@ NGUỒN DỮ LIỆU:
   Người có quyết định ly hôn → mã 3 ("Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai").
   Không trả cả câu dài, chỉ trả một mã số duy nhất.
   Không có chứng cứ trực tiếp → bỏ field để mapper xử lý mặc định theo từng bên; không tự suy luận mã từ CCCD.
+- LOẠI ĐĂNG KÝ: nếu TỜ KHAI có mục "Loại đăng ký" được tích/ghi rõ thì trả ToKhai_LoaiDangKy
+  đúng nhãn được chọn (vd "Đăng ký lần đầu", "Đăng ký lại"). Tờ khai không có mục này hoặc không
+  tích ô nào → bỏ field để mapper mặc định "Đăng ký lần đầu"; TUYỆT ĐỐI không tự suy.
 - CẤP BẢN SAO — CHỈ đọc từ mục "Đề nghị cấp bản sao" trên tài liệu có đúng tiêu đề
   "TỜ KHAI ĐĂNG KÝ KẾT HÔN"; không lấy yêu cầu/số lượng bản sao từ giấy tờ khác:
   + Tích/chọn Có -> CopyRequest_WantsCopy = "Có"; tích/chọn Không -> "Không".
@@ -91,8 +94,8 @@ NGUỒN DỮ LIỆU:
   + Không có dấu chọn và không có số lượng thì bỏ cả hai field. TUYỆT ĐỐI không mặc định "Có"
     và không mặc định số lượng.
 - Không trả field UI/default như HoTenBenNam, HoTenBenNu, LoaiGiayToDinhDanh_*, SoGiayToDinhDanh_*,
-  LoaiCuTru_*, NoiCuTru_*, SoLanKetHon_BenNam/BenNu, tình trạng hôn nhân, loại đăng ký,
-  CapBanSao, SoLuong.
+  LoaiCuTru_*, NoiCuTru_*, SoLanKetHon_BenNam/BenNu, tình trạng hôn nhân, loaiDangKy,
+  CapBanSao, SoLuong. Loại đăng ký đọc được từ tờ khai thì trả qua ToKhai_LoaiDangKy.
 - Họ tên/số định danh/ngày sinh/ngày-nơi cấp của mỗi nhóm CccdNam_*/CccdNu_* phải lấy trọn từ
   đúng MỘT CCCD, không trộn giữa hai người. RIÊNG dân tộc được phép lấy từ giấy tờ khác theo quy tắc DÂN TỘC;
   nơi cư trú phải tách riêng từng nguồn theo quy tắc NGUỒN NƠI CƯ TRÚ ở trên.
