@@ -620,6 +620,22 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "trich-luc-khai-tu",
+        "detect": {"urlIncludes": ["1.006714"]},
+        "label": "Trích lục khai tử",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. CCCD của người yêu cầu.\n"
+            "2. Giấy khai tử hoặc trích lục khai tử hiện có (nếu có).\n"
+            "3. Nếu có: văn bản ủy quyền hoặc giấy tờ chứng minh quan hệ với người đã khai tử."
+        ),
+    },
+    {
         "key": "cap-ban-sao-so-goc",
         # Cổng dùng chung layout eForm, nhận diện theo TÊN thủ tục hiển thị trên trang.
         "detect": {
@@ -1695,7 +1711,8 @@ PROCEDURES: list[dict] = [
     {
         "key": "uu-dai-ncc-tu-tran",
         "detect": {
-            "textIncludes": ["Hưởng trợ cấp khi người có công", "hưởng trợ cấp ưu đãi từ trần"],
+            "urlIncludes": ["apply-online/696072f4b066193e95eb9d5e", "process=69706da26cabcb44db2cea08"],
+            "textIncludes": ["Hưởng trợ cấp khi người có công đang hưởng trợ cấp ưu đãi từ trần"],
             "headingDisabled": True,
             "textPriority": True,
         },
@@ -1717,8 +1734,9 @@ PROCEDURES: list[dict] = [
     {
         "key": "giai-quyet-che-do-khang-chien",
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn — Form.io, engine fillFormStandard dom-* + attach MOHA
-        # ("Chọn tệp"). URL SPA không phân biệt được → detect theo cụm tên thủ tục (như MOHA khác).
+        # ("Chọn tệp"). URL SPA khác nhau theo ObjectId và process ID → detect theo urlIncludes + text.
         "detect": {
+            "urlIncludes": ["apply-online/6960726b36973e2430327813", "process=69706a4ce528a8797931839f"],
             "textIncludes": ["hoạt động kháng chiến giải phóng dân tộc", "làm nghĩa vụ quốc tế"],
             "headingDisabled": True,
             "textPriority": True,
@@ -2364,6 +2382,7 @@ _PIPELINE = {
     "dang-ky-giam-ho": dang_ky_giam_ho_process,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_process,
     "trich-luc-ks": trich_luc_process,
+    "trich-luc-khai-tu": trich_luc_process,  # Dùng chung process với trích lục khai sinh
     "khai-tu": khai_tu_process,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_process,
@@ -2479,6 +2498,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-giam-ho": dang_ky_giam_ho_attach,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
     "trich-luc-ks": trich_luc_attach,
+    "trich-luc-khai-tu": trich_luc_attach,  # Dùng chung attachment với trích lục khai sinh
     "khai-tu": khai_tu_attach,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_attach,

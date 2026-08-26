@@ -96,6 +96,14 @@
       "autoConfirm": true
     },
     {
+      "key": "trich-luc-khai-tu",
+      "code": "1.006714",
+      "label": "Trích lục khai tử",
+      "url": "https://lienthong.dichvucong.gov.vn/#/ke-khai/1.006714",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "chung-thuc-ban-sao",
       "code": "2.000815",
       "label": "Chứng thực bản sao từ bản chính giấy tờ, văn bản",
@@ -265,9 +273,9 @@
     },
     {
       "key": "cap-doi-gcn-quyen-su-dung-dat",
-      "code": "1.012783",
+      "code": "1.115464",
       "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12a3-93d3-71ae-8f20-1cfb89cab2b6",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -393,6 +401,22 @@
       "code": "1.013949",
       "label": "Quảng Ninh - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Cấp xã)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f69dd-996e-75b1-a839-07629a53ce98",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "uu-dai-ncc-tu-tran",
+      "code": "1.010824",
+      "label": "Hưởng trợ cấp khi người có công đang hưởng trợ cấp ưu đãi từ trần",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc36-7611-9219-adb6dee5774f",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giai-quyet-che-do-khang-chien",
+      "code": "1.010819",
+      "label": "Giải quyết chế độ người hoạt động kháng chiến giải phóng dân tộc, bảo vệ Tổ quốc và làm nghĩa vụ quốc tế",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc33-7068-b98d-1b1eba21519f",
       "needsAgencySelect": true,
       "autoConfirm": true
     }

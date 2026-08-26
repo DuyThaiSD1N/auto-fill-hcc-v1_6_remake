@@ -94,6 +94,10 @@ def _load_remap_files() -> None:
     """Load tat ca remap_*.json va build lookup dict."""
     if not _DATA_DIR.exists():
         return
+    
+    # Track duplicate keys to mark as ambiguous
+    _duplicate_tracker: dict[tuple[str, str], list[dict]] = {}
+    
     for json_file in sorted(_DATA_DIR.glob("remap_*.json")):
         try:
             with open(json_file, encoding="utf-8-sig") as f:
@@ -116,15 +120,36 @@ def _load_remap_files() -> None:
                 "tinh": entry.get("tinh_moi") or tinh_cu,
                 "xa":   entry.get("xa_moi")   or xa_cu,
             }
-            # Uu tien entry dau tien, khong ghi de
-            if key not in _REMAP:
-                _REMAP[key] = mapping
-            key_nospace = (_fold(tinh_cu), _fold_nospace(xa_cu))
-            if key_nospace not in _REMAP_NOSPACE:
-                _REMAP_NOSPACE[key_nospace] = mapping
-            tinh_cu_folded = _fold(tinh_cu)
-            if tinh_cu_folded not in _TINH_ONLY:
-                _TINH_ONLY[tinh_cu_folded] = mapping["tinh"]
+            
+            # Track all entries for this key to detect duplicates
+            if key not in _duplicate_tracker:
+                _duplicate_tracker[key] = []
+            _duplicate_tracker[key].append(mapping)
+    
+    # Only add entries that are NOT duplicates (or are marked ambiguous)
+    for key, mappings in _duplicate_tracker.items():
+        # If there are multiple different mappings for the same key, skip them all (ambiguous)
+        unique_mappings = {(m["tinh"], m["xa"]) for m in mappings}
+        if len(unique_mappings) > 1:
+            # Multiple different destinations for same source -> ambiguous, skip
+            import logging
+            logging.getLogger(__name__).info(
+                "area_remap: skipping ambiguous entry %s -> %s (multiple mappings found)",
+                key, unique_mappings
+            )
+            continue
+        
+        # Single mapping or all duplicates point to same destination -> safe to use
+        mapping = mappings[0]
+        _REMAP[key] = mapping
+        
+        tinh_cu_folded, xa_cu_folded = key
+        key_nospace = (tinh_cu_folded, xa_cu_folded.replace(" ", ""))
+        if key_nospace not in _REMAP_NOSPACE:
+            _REMAP_NOSPACE[key_nospace] = mapping
+        
+        if tinh_cu_folded not in _TINH_ONLY:
+            _TINH_ONLY[tinh_cu_folded] = mapping["tinh"]
 
 
 _load_remap_files()  # chay 1 lan luc import
@@ -192,7 +217,8 @@ _CITY_TO_PROVINCE: dict[str, str] = {
     "quang tri":     "Quảng Trị",   # thị xã Quảng Trị cũ
     # Thừa Thiên Huế → Thành phố Huế trực thuộc TW (từ 01/01/2026)
     "thua thien hue": "Huế",
-    "hue":           "Huế",
+    "hue":            "Huế",
+    "thanh pho hue":  "Huế",
     # Bắc Ninh
     "bac ninh":      "Bắc Ninh",
     "tu son":        "Bắc Ninh",

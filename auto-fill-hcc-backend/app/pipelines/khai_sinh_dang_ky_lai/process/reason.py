@@ -77,6 +77,10 @@ THỨ TỰ PHÂN VAI:
    mơ hồ thì ghi "Không xác định".
 4. CCCD/CMND chỉ cho biết thông tin của chính người trên thẻ. Tên file và thứ tự tải lên chỉ là tín hiệu
    phụ, không đủ để tự gán vai.
+4b. Hồ sơ chỉ có ĐÚNG MỘT thẻ căn cước/CMND và không tài liệu nào chỉ đích danh người được đăng ký
+   lại khai sinh: người trên thẻ đó CHÍNH LÀ CON (người được đăng ký lại khai sinh) — người lớn tự
+   đi đăng ký lại cho mình. Đổ TOÀN BỘ nhân thân đọc được trên thẻ vào <con>. Từ HAI thẻ trở lên thì
+   KHÔNG áp dụng quy tắc này, phải phân vai theo nhãn hoặc theo thế hệ ở mục 3.
 5. Người yêu cầu:
    - CÓ TỜ KHAI/ĐƠN đăng ký lại khai sinh: lấy ĐÚNG người ghi ở mục người yêu cầu trên tờ khai.
      TUYỆT ĐỐI KHÔNG lấy theo requester_context — đó chỉ là tài khoản VNeID đang đăng nhập cổng,
@@ -325,6 +329,7 @@ def _person_from_document(document: dict) -> dict | None:
         "year": _role_year(section),
         "gender": _fold(gender),
         "score": 10,
+        "is_identity": is_identity,
     }
 
 
@@ -398,6 +403,32 @@ def _repair_family_by_generation(
         "cha": _as_family_section(men[0]["section"], basis),
         "me": _as_family_section(women[0]["section"], basis),
     }
+
+
+def _repair_single_identity_as_subject(
+    sections: dict[str, str],
+    documents: list[dict],
+) -> dict[str, str]:
+    """Hồ sơ chỉ có ĐÚNG MỘT thẻ căn cước/CMND → người trên thẻ là NGƯỜI ĐƯỢC ĐĂNG KÝ LẠI.
+
+    Người lớn tự đi đăng ký lại khai sinh cho chính mình thường chỉ nộp thẻ của họ. Khi đó không có
+    nhãn quan hệ nào để phân vai, quy tắc thế hệ (cần đúng ba người) cũng không chạy được, nên <con>
+    rỗng và CẢ khối "người được đăng ký lại khai sinh" trên biểu mẫu bị bỏ trắng dù hồ sơ có đủ nhân
+    thân của chính người đó.
+
+    CHỈ áp dụng khi có ĐÚNG MỘT thẻ: từ hai thẻ trở lên là hồ sơ có người thân đi nộp hộ, phải phân
+    vai theo nhãn hoặc theo thế hệ chứ không được gán bừa. Caller cũng chỉ gọi khi <con> còn trống —
+    giấy khai sinh cũ/tờ khai đã chỉ đích danh người được đăng ký lại thì giữ nguyên kết quả đó.
+    """
+    cards = [
+        person
+        for document in documents
+        if (person := _person_from_document(document)) and person.get("is_identity")
+    ]
+    if len(cards) != 1:
+        return sections
+    basis = "Hồ sơ chỉ có một thẻ căn cước/CMND và không có vai nào khác được xác định."
+    return {**sections, "con": _as_family_section(cards[0]["section"], basis)}
 
 
 def _valid_birth_source_names(documents: list[dict]) -> list[str]:
@@ -627,6 +658,10 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
     if not any(not _is_unknown(s) for s in sections.values()):
         sections = _repair_family_by_generation(raw, sections, documents)
+
+    # Vẫn chưa có người được đăng ký lại mà hồ sơ chỉ có đúng một thẻ → thẻ đó chính là người đó.
+    if _is_unknown(sections.get("con") or ""):
+        sections = _repair_single_identity_as_subject(sections, documents)
 
     if not any(not _is_unknown(s) for s in sections.values()):
         return ""
