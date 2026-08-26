@@ -19,6 +19,17 @@ def _compact_text(value: Any) -> str:
     return " ".join(str(value or "").replace("\n", " ").split()).strip()
 
 
+def _capitalize_first(value: Any) -> str:
+    """Viết hoa chữ cái đầu tên ngành, nghề; giữ nguyên phần còn lại (OCR/LLM có thể trả toàn
+    chữ thường hoặc hoa/thường lẫn lộn). Bỏ qua ký tự đầu không phải chữ cái (số, dấu ngoặc...)."""
+    text = _compact_text(value)
+    match = re.search(r"[^\W\d_]", text, flags=re.UNICODE)
+    if not match:
+        return text
+    i = match.start()
+    return text[:i] + text[i].upper() + text[i + 1:]
+
+
 def _fold_vi(value: Any) -> str:
     text = _compact_text(value).lower().replace("đ", "d")
     text = unicodedata.normalize("NFD", text)
@@ -363,14 +374,14 @@ def _business_line_text(values: dict[str, Any]) -> str:
                 item = _compact_text(row)
             else:
                 ma = _clean_business_code(row.get("ma"))
-                ten = _compact_text(row.get("ten"))
+                ten = _capitalize_first(row.get("ten"))
                 item = f"{ma} - {ten}" if ma and ten else (ma or ten)
             if item:
                 lines.append(item)
         if lines:
             return "\n".join(lines)
     ma = _clean_business_code(values.get("NganhNghe_MaChinh"))
-    ten = _compact_text(values.get("NganhNghe_TenChinh"))
+    ten = _capitalize_first(values.get("NganhNghe_TenChinh"))
     return f"{ma} - {ten}" if ma and ten else (ma or ten)
 
 
@@ -410,14 +421,14 @@ def _business_line_items(values: dict[str, Any]) -> list[dict[str, Any]]:
                 continue
             item = {
                 "code": code,
-                "name": _compact_text(row.get("ten")),
+                "name": _capitalize_first(row.get("ten")),
                 "main": bool(row.get("chinh")),
             }
             out.append(item)
             by_code[code] = item
 
     direct = _clean_business_code(values.get("NganhNghe_MaChinh"))
-    direct_name = _compact_text(values.get("NganhNghe_TenChinh"))
+    direct_name = _capitalize_first(values.get("NganhNghe_TenChinh"))
     if direct:
         if direct in by_code:
             if direct_name and not by_code[direct].get("name"):

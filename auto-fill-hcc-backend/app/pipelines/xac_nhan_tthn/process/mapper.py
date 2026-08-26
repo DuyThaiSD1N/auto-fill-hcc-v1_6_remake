@@ -61,6 +61,23 @@ def _is_self_request(options: dict | None, cccd_name, cccd_id) -> bool:
     return True
 
 
+_SELF_RELATION_WORDS = ("ban than", "tu khai")
+
+
+def _classify_relation(value) -> str | None:
+    """Quy đổi CHỮ trên tờ khai (dòng "Quan hệ với người được cấp...") sang mã radio cổng.
+
+    "1" = Bản thân, "2" = Khác (bố/mẹ/con/vợ/chồng/anh/chị/em/cháu/... — bất kỳ chữ nào KHÁC
+    "Bản thân"/"Tự khai"). Tờ khai không ghi dòng này thì trả None để caller lùi về so tên/CCCD.
+    """
+    folded = _fold(value)
+    if not folded:
+        return None
+    if any(word in folded for word in _SELF_RELATION_WORDS):
+        return "1"
+    return "2"
+
+
 def _area(value):
     if not isinstance(value, dict):
         return None
@@ -83,7 +100,7 @@ def _area(value):
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields for TTHN.
 
-    Ba trường hợp:
+    Bốn trường hợp:
 
     A. BẢN THÂN (không có giấy ủy quyền, CCCD upload = người đăng nhập):
        - Mục I (người yêu cầu) = CCCD upload.
@@ -95,9 +112,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
        - Người được ủy quyền (Section II giấy ủy quyền) = người ĐI NỘP = CCCD upload → Mục I form.
        - Quan hệ = "2" (Khác).
 
-    C. CCCD-MISMATCH (CCCD upload KHÁC người đăng nhập, KHÔNG có giấy ủy quyền):
-       - Mục I: không đè (để cổng giữ thông tin người đăng nhập), chỉ set default loại cư trú.
-       - Mục II = CCCD upload (người cần giấy).
+    C. THÂN NHÂN NỘP HỘ, KHÔNG giấy ủy quyền (tờ khai ghi RIÊNG khối "người yêu cầu" ở đầu tờ khai
+       khác người ở Section II — vd con đứng khai hộ cha mẹ):
+       - Mục I = khối "người yêu cầu" đầu tờ khai (ToKhaiYeuCau_*), ƯU TIÊN CAO NHẤT — không lấy
+         nhầm sang thông tin người được cấp (ToKhai_*) như trước.
+       - Mục II = người được cấp (ToKhai_*/Cccd_*) như bình thường.
+       - Quan hệ: "1" nếu tên/số định danh trùng người được cấp, ngược lại để trống (user tự chọn).
+
+    D. CCCD-MISMATCH / KHÔNG có nguồn nào cho Mục I (không có khối người yêu cầu riêng, không có
+       CCCD upload nào khớp):
+       - Mục I: không đè (để cổng giữ thông tin người đăng nhập từ VNeID), chỉ set default loại cư trú.
+       - Mục II = CCCD upload/tờ khai (người cần giấy).
        - Quan hệ: để trống (user tự chọn).
     """
     values = _by_name(fields)
@@ -122,6 +147,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # Đây là TỜ KHAI, không phải ảnh CCCD → nhân thân có thể LLM chỉ đặt ở ToKhai_*.
     # Vẫn coi là có người để không rụng cả khối khi thiếu Cccd_* (xem cổng bên dưới).
     has_tokhai = bool(values.get("ToKhai_SoDinhDanh") or values.get("ToKhai_HoTen"))
+    # Khối "người yêu cầu" ghi RIÊNG ở đầu tờ khai — CÓ THỂ khác người được cấp ở Section II
+    # (thân nhân đứng nộp hộ mà không kèm giấy ủy quyền chính thức).
+    has_declared_requester = bool(values.get("ToKhaiYeuCau_HoTen") or values.get("ToKhaiYeuCau_SoDinhDanh"))
 
     # --- Thông tin từ CCCD của người đi nộp (hoặc bản thân); thiếu thì lấy từ tờ khai ---
     issuer = (
@@ -149,11 +177,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # MỤC I & II: chỉ điền khi có CCCD hoặc giấy ủy quyền
     # Không có → bỏ qua thông tin cá nhân, vẫn điền tình trạng hôn nhân bên dưới
     # =========================================================
-    if has_cccd or has_poa or has_tokhai:
+    if has_cccd or has_poa or has_tokhai or has_declared_requester:
 
         # --- MỤC I: Người yêu cầu ---
+        # Ô "Quan hệ với người được xác minh" LUÔN được add() TRƯỚC khối nhân thân (HoVaTenC...):
+        # cổng dựng lại Mục I mỗi khi đổi option quan hệ, tick SAU sẽ xóa mất dữ liệu vừa điền.
         if has_poa:
-            # ỦY QUYỀN: Mục I = người được ủy quyền = CCCD upload (đi nộp hộ)
+            # ỦY QUYỀN: Mục I = người được ủy quyền = CCCD upload (đi nộp hộ). Có giấy ủy quyền
+            # thật thì chắc chắn KHÔNG phải bản thân → luôn "Khác".
+            add("quanhevoinguoiduocxacminh", "2")
             add("HoVaTenC", values.get("Cccd_HoTen"))
             add("NgaySinhC", values.get("Cccd_NgaySinh"))
             add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
@@ -168,29 +200,67 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             else:
                 add("nycNoiCuTru", "1", default=True)
                 add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
-            add("quanhevoinguoiduocxacminh", "2")
         else:
-            # BẢN THÂN hoặc CCCD-MISMATCH: điền đè từ CCCD upload; thiếu Cccd_* thì lấy từ tờ khai
-            # (tự làm phổ biến: người yêu cầu = người trên tờ khai).
-            cccd_ten = values.get("Cccd_HoTen") or values.get("ToKhai_HoTen")
-            cccd_ns = values.get("Cccd_NgaySinh") or values.get("ToKhai_NgaySinh")
-            cccd_sdd = values.get("Cccd_SoDinhDanh") or values.get("ToKhai_SoDinhDanh")
-            add("HoVaTenC", cccd_ten)
-            add("NgaySinhC", cccd_ns)
-            add("SoDinhDanhC", cccd_sdd)
-            add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", issuer))
-            add("SoGiayToTuyThanC", cccd_sdd)
-            add("NgayCapDDC", values.get("Cccd_NgayCap") or values.get("ToKhai_NgayCapGiayTo"))
-            add("NoiCapDDC", issuer)
-            add("nycLoaiCuTru", "Thường trú")
-            if residence:
-                add("nycNoiCuTru", "1")
-                add("nycNoiCuTru_TrongNuoc", residence)
+            # KHÔNG ỦY QUYỀN: Mục I ưu tiên khối "người yêu cầu" ghi RIÊNG ở đầu tờ khai
+            # (ToKhaiYeuCau_*) — người này có thể KHÁC người được cấp (Section II/ToKhai_*), vd
+            # thân nhân đứng khai hộ. Không có khối đó thì mới lùi về CCCD upload. Không có nguồn
+            # nào cả thì KHÔNG đè field — để cổng giữ nguyên dữ liệu VNeID của người đăng nhập.
+            req_ten = values.get("ToKhaiYeuCau_HoTen")
+            req_sdd = values.get("ToKhaiYeuCau_SoDinhDanh")
+            if has_declared_requester:
+                cccd_ten = req_ten or values.get("Cccd_HoTen")
+                cccd_ns = values.get("Cccd_NgaySinh")  # tờ khai không ghi ngày sinh người yêu cầu
+                cccd_sdd = req_sdd or values.get("Cccd_SoDinhDanh")
+                ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo") or values.get("Cccd_NgayCap")
+                noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo") or issuer
+                residence_i = _area(values.get("ToKhaiYeuCau_NoiCuTru")) or residence
+            elif has_cccd:
+                cccd_ten = values.get("Cccd_HoTen")
+                cccd_ns = values.get("Cccd_NgaySinh")
+                cccd_sdd = values.get("Cccd_SoDinhDanh")
+                ngay_cap = values.get("Cccd_NgayCap")
+                noi_cap = issuer
+                residence_i = residence
             else:
-                add("nycNoiCuTru", "1", default=True)
-                add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
-            if is_self or declared_self:
-                add("quanhevoinguoiduocxacminh", "1")
+                cccd_ten = cccd_ns = cccd_sdd = ngay_cap = noi_cap = residence_i = None
+
+            if cccd_ten or cccd_sdd:
+                # Quan hệ: ƯU TIÊN chữ khai trên tờ khai ("Bản thân"/"Tự khai" → "1"; bố/mẹ/con/
+                # vợ/chồng/... → "2"). Tờ khai không ghi dòng quan hệ thì lùi về so tên/số định danh
+                # người yêu cầu với người được cấp; khớp → "1", không khớp/không rõ → để trống
+                # (không đoán bừa mã quan hệ cụ thể).
+                relation_code = None
+                if has_declared_requester:
+                    relation_code = _classify_relation(values.get("ToKhaiYeuCau_QuanHe"))
+                    if relation_code is None:
+                        requester_id = _digits(req_sdd)
+                        subject_id = _digits(values.get("ToKhai_SoDinhDanh"))
+                        requester_name = _fold(req_ten)
+                        subject_name = _fold(values.get("ToKhai_HoTen"))
+                        requester_is_subject = (
+                            (requester_id and subject_id and requester_id == subject_id)
+                            or (not requester_id and not subject_id and requester_name and requester_name == subject_name)
+                        )
+                        relation_code = "1" if requester_is_subject else None
+                elif is_self or declared_self:
+                    relation_code = "1"
+                if relation_code:
+                    add("quanhevoinguoiduocxacminh", relation_code)
+
+                add("HoVaTenC", cccd_ten)
+                add("NgaySinhC", cccd_ns)
+                add("SoDinhDanhC", cccd_sdd)
+                add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", noi_cap or issuer))
+                add("SoGiayToTuyThanC", cccd_sdd)
+                add("NgayCapDDC", ngay_cap)
+                add("NoiCapDDC", noi_cap)
+                add("nycLoaiCuTru", "Thường trú")
+                if residence_i:
+                    add("nycNoiCuTru", "1")
+                    add("nycNoiCuTru_TrongNuoc", residence_i)
+                else:
+                    add("nycNoiCuTru", "1", default=True)
+                    add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
         # --- MỤC II: Người được xác nhận ---
         if has_poa:

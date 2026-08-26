@@ -40,6 +40,14 @@
       "autoConfirm": true
     },
     {
+      "key": "khai-sinh-ket-hop-nhan-cha-me-con",
+      "code": "1.000689",
+      "label": "Thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faf-768a-9224-9cb889436133",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "khai-sinh-dang-ky-lai",
       "code": "1.004884",
       "label": "Thủ tục đăng ký lại khai sinh",

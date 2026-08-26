@@ -186,6 +186,116 @@ def test_xac_nhan_tthn_prefers_declaration_residence_over_identity_card():
     assert values["nxnNoiCuTru_TrongNuoc"] == values["nycNoiCuTru_TrongNuoc"]
 
 
+def test_xac_nhan_tthn_relative_declares_on_behalf_without_poa_fills_requester_from_tokhai():
+    """Con khai hộ cha, không có giấy ủy quyền: Mục I phải lấy khối 'người yêu cầu' đầu tờ khai
+    (Nguyễn Văn Cung), KHÔNG được lấy nhầm sang người được cấp giấy (Nguyễn Văn Hoan, Mục II).
+    Tờ khai ghi rõ quan hệ "là con đẻ" → phải tick "Khác" (2), và ô quan hệ phải được add() TRƯỚC
+    HoVaTenC (cổng dựng lại Mục I khi đổi quan hệ, tick sau sẽ xóa mất dữ liệu vừa điền)."""
+    mapped = mapper.enrich([
+        {"name": "ToKhaiYeuCau_HoTen", "comp": "x-input", "value": "Nguyễn Văn Cung"},
+        {"name": "ToKhaiYeuCau_SoDinhDanh", "comp": "x-input", "value": "027067009711"},
+        {"name": "ToKhaiYeuCau_NgayCapGiayTo", "comp": "x-date", "value": "18/12/2021"},
+        {"name": "ToKhaiYeuCau_NoiCapGiayTo", "comp": "x-input",
+         "value": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"},
+        {
+            "name": "ToKhaiYeuCau_NoiCuTru", "comp": "x-select-area",
+            "value": {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Nam Sơn", "diaChi": "TDP Sơn Tự"},
+        },
+        {"name": "ToKhaiYeuCau_QuanHe", "comp": "x-input", "value": "là con đẻ"},
+        {"name": "ToKhai_HoTen", "comp": "x-input", "value": "Nguyễn Văn Hoan"},
+        {"name": "ToKhai_SoDinhDanh", "comp": "x-input", "value": "027038003070"},
+        {"name": "ToKhai_NgaySinh", "comp": "x-date", "value": "15/07/1938"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+    names = [field["name"] for field in mapped]
+
+    # Mục I (người yêu cầu) = Cung, KHÔNG phải Hoan.
+    assert values["HoVaTenC"] == "Nguyễn Văn Cung"
+    assert values["SoDinhDanhC"] == "027067009711"
+    assert values["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    # Mục II (người được cấp) vẫn đúng là Hoan.
+    assert values["HoVaTenC1"] == "Nguyễn Văn Hoan"
+    assert values["SoDinhDanhC1"] == "027038003070"
+    # Tờ khai ghi rõ "là con đẻ" → quan hệ = "Khác" (2), không phải bỏ trống, không phải "1".
+    assert values["quanhevoinguoiduocxacminh"] == "2"
+    # Ô quan hệ phải đứng TRƯỚC HoVaTenC trong danh sách field phát ra (tick trước, điền đè sau).
+    assert names.index("quanhevoinguoiduocxacminh") < names.index("HoVaTenC")
+
+
+def test_xac_nhan_tthn_self_declares_via_tokhaiyeucau_block_still_marks_self():
+    """Tờ khai ghi quan hệ "Bản thân" → tick "1", đứng TRƯỚC HoVaTenC trong danh sách field."""
+    mapped = mapper.enrich([
+        {"name": "ToKhaiYeuCau_HoTen", "comp": "x-input", "value": "Nguyễn Văn A"},
+        {"name": "ToKhaiYeuCau_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+        {"name": "ToKhaiYeuCau_QuanHe", "comp": "x-input", "value": "Bản thân"},
+        {"name": "ToKhai_HoTen", "comp": "x-input", "value": "Nguyễn Văn A"},
+        {"name": "ToKhai_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+    names = [field["name"] for field in mapped]
+
+    assert values["HoVaTenC"] == "Nguyễn Văn A"
+    assert values["quanhevoinguoiduocxacminh"] == "1"
+    assert names.index("quanhevoinguoiduocxacminh") < names.index("HoVaTenC")
+
+
+def test_xac_nhan_tthn_relation_text_wins_over_name_comparison():
+    """Chữ quan hệ trên tờ khai LUÔN ưu tiên hơn so tên/CCCD: dù người yêu cầu và người được cấp
+    trùng tên/số định danh (OCR ghi cùng), tờ khai ghi rõ "là mẹ đẻ" thì vẫn phải tick "Khác"."""
+    mapped = mapper.enrich([
+        {"name": "ToKhaiYeuCau_HoTen", "comp": "x-input", "value": "Nguyễn Thị B"},
+        {"name": "ToKhaiYeuCau_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+        {"name": "ToKhaiYeuCau_QuanHe", "comp": "x-input", "value": "là mẹ đẻ"},
+        {"name": "ToKhai_HoTen", "comp": "x-input", "value": "Nguyễn Thị B"},
+        {"name": "ToKhai_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["quanhevoinguoiduocxacminh"] == "2"
+
+
+def test_xac_nhan_tthn_falls_back_to_name_match_when_relation_text_missing():
+    """Không có dòng quan hệ trên tờ khai → lùi về so tên/CCCD như cũ (không phải bỏ trống ngay)."""
+    mapped = mapper.enrich([
+        {"name": "ToKhaiYeuCau_HoTen", "comp": "x-input", "value": "Nguyễn Văn A"},
+        {"name": "ToKhaiYeuCau_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+        {"name": "ToKhai_HoTen", "comp": "x-input", "value": "Nguyễn Văn A"},
+        {"name": "ToKhai_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["quanhevoinguoiduocxacminh"] == "1"
+
+
+def test_xac_nhan_tthn_no_requester_no_cccd_does_not_override_muc_i():
+    """Không có khối người yêu cầu riêng, không có CCCD upload → Mục I để trống (giữ VNeID cổng)."""
+    mapped = mapper.enrich([
+        {"name": "ToKhai_HoTen", "comp": "x-input", "value": "Nguyễn Văn Hoan"},
+        {"name": "ToKhai_SoDinhDanh", "comp": "x-input", "value": "027038003070"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert "HoVaTenC" not in values
+    assert "SoDinhDanhC" not in values
+    assert values["HoVaTenC1"] == "Nguyễn Văn Hoan"
+
+
+def test_xac_nhan_tthn_poa_relation_is_khac_and_ticked_before_identity():
+    """Có giấy ủy quyền thật: quan hệ luôn "Khác" (2), và phải add() TRƯỚC HoVaTenC — cổng dựng
+    lại Mục I khi đổi quan hệ, tick sau sẽ xóa mất dữ liệu vừa điền."""
+    mapped = mapper.enrich([
+        {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN B"},
+        {"name": "Cccd_SoDinhDanh", "comp": "x-input", "value": "011122223333"},
+        {"name": "PoA_SubjectName", "comp": "x-input", "value": "Nguyễn Văn A"},
+        {"name": "PoA_SubjectIdNumber", "comp": "x-input", "value": "012345678901"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+    names = [field["name"] for field in mapped]
+
+    assert values["quanhevoinguoiduocxacminh"] == "2"
+    assert names.index("quanhevoinguoiduocxacminh") < names.index("HoVaTenC")
+
+
 def test_xac_nhan_tthn_prompt_requires_separate_declaration_residence():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 

@@ -1,7 +1,7 @@
 """Procedure-specific compact prompt rules for "Xác nhận tình trạng hôn nhân"."""
 
 EXTRA_RULES = """<procedure>
-Thủ tục có HAI TRƯỜNG HỢP:
+Thủ tục có BA TRƯỜNG HỢP:
 
 A. BẢN THÂN: người yêu cầu chính là người cần giấy XNTTHN. Chỉ có CCCD của một người.
    → Chỉ trả Cccd_* (+ giấy tờ hôn nhân nếu có). KHÔNG trả PoA_*.
@@ -10,10 +10,40 @@ B. ỦY QUYỀN: có GIẤY ỦY QUYỀN kèm theo. Người được ủy quy�
    → Trả Cccd_* từ CCCD của người ĐI NỘP (người được ủy quyền - Section II giấy ủy quyền).
    → Trả PoA_* từ GIẤY ỦY QUYỀN của người ỦY QUYỀN (người CẦN giấy - Section I giấy ủy quyền).
 
+C. THÂN NHÂN KHAI HỘ, KHÔNG có giấy ủy quyền riêng: tờ khai có khối "Họ, chữ đệm, tên người yêu
+   cầu" ở ĐẦU tờ khai GHI TÊN KHÁC với người ở phần "Đề nghị cấp Giấy xác nhận... cho người có tên
+   dưới đây" (Section II), thường kèm dòng "Quan hệ với người được cấp Giấy xác nhận...: là con
+   đẻ/cháu/..." — KHÔNG có tài liệu riêng tiêu đề "GIẤY ỦY QUYỀN".
+   → Trả ToKhaiYeuCau_* từ khối "người yêu cầu" đầu tờ khai (xem <nguoi_yeu_cau_extraction>).
+   → Trả ToKhai_* từ Section II như bình thường (người được cấp).
+   → KHÔNG trả PoA_* (không có giấy ủy quyền thật).
+
 Đầu vào thường có CCCD/CMND; có thể có thêm giấy ủy quyền, quyết định/bản án ly hôn,
 giấy chứng tử/trích lục khai tử/giấy báo tử của vợ/chồng đã chết, HOẶC GIẤY XÁC NHẬN TÌNH TRẠNG
 HÔN NHÂN CŨ (đã cấp trước đây).
 </procedure>
+
+<nguoi_yeu_cau_extraction>
+Tờ khai LUÔN có khối "người yêu cầu" RIÊNG ở ĐẦU tờ khai (trước phần "Đề nghị cấp..."), gồm:
+  "Họ, chữ đệm, tên người yêu cầu: <tên>"
+  "Nơi cư trú: <địa chỉ>"
+  "Giấy tờ tùy thân: CCCD/CMND <số> cấp ngày <D> nơi cấp <CQ>"
+
+BẮT BUỘC trả các field sau MỖI KHI tờ khai có khối này, BẤT KỂ người yêu cầu có trùng người được
+cấp ở Section II hay không (Python mapper tự so sánh, KHÔNG phải LLM):
+- ToKhaiYeuCau_HoTen (từ "Họ, chữ đệm, tên người yêu cầu:")
+- ToKhaiYeuCau_SoDinhDanh (từ "Giấy tờ tùy thân" NGAY SAU tên người yêu cầu, KHÔNG lấy nhầm số ở Section II)
+- ToKhaiYeuCau_NgayCapGiayTo (từ "cấp ngày..." của giấy tờ người yêu cầu, dd/mm/yyyy)
+- ToKhaiYeuCau_NoiCapGiayTo (từ "nơi cấp ..." của giấy tờ người yêu cầu)
+- ToKhaiYeuCau_NoiCuTru (từ "Nơi cư trú:" NGAY DƯỚI tên người yêu cầu, object {quocGia,tinh,xa,diaChi};
+  áp quy tắc <noi_cu_tru>)
+- ToKhaiYeuCau_QuanHe (từ dòng "Quan hệ với người được cấp Giấy xác nhận tình trạng hôn nhân:" —
+  BẮT BUỘC trả NGUYÊN VĂN khi tờ khai có dòng này, dù ghi "Bản thân"/"Tự khai" hay bất kỳ quan hệ
+  nào khác như "là con đẻ", "là bố đẻ". Python mapper sẽ tự quy đổi sang mã quan hệ trên cổng.)
+
+TUYỆT ĐỐI KHÔNG gộp thông tin của khối "người yêu cầu" (đầu tờ khai) vào ToKhai_* (khối "người được
+cấp", Section II) hay ngược lại — hai khối này LUÔN tách riêng dù trùng người.
+</nguoi_yeu_cau_extraction>
 
 <critical_tokhai_extraction>
 QUAN TRỌNG: Khi có TỜ KHAI cấp giấy XNTTHN, BẮT BUỘC trả TẤT CẢ các field ToKhai_* tương ứng với thông tin
@@ -28,7 +58,7 @@ trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho
 - ToKhai_NoiCapGiayTo (từ "tại ..." sau "Cấp ngày")
 - ToKhai_NoiCuTru (từ "Nơi cư trú:", object {quocGia,tinh,xa,diaChi})
 
-TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ Cccd_*) 
+TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ Cccd_*)
 đều phải được trả khi đều có thông tin. Python mapper sẽ quyết định ưu tiên nguồn nào, KHÔNG phải LLM.
 </critical_tokhai_extraction>
 

@@ -45,8 +45,10 @@ const LEGACY_DRIVER_COMPS = new Set(["x-radio", "x-select", "x-select-default"])
 
 const LEGACY_BIRTH_RELATION_NAME = "quanhe";
 // Mọi ô tích "quan hệ với người được ..." đều là driver: eForm dựng lại khối nhân thân sau mỗi lần
-// đổi, nên phải chờ form ổn định trước khi điền tiếp. Trích lục dùng tên NYC_QuanHe.
-const LEGACY_RELATION_NAMES = [LEGACY_BIRTH_RELATION_NAME, "nyc_quanhe", "nycquanhe"];
+// đổi, nên phải chờ form ổn định trước khi điền tiếp. Trích lục dùng tên NYC_QuanHe. Xác nhận tình
+// trạng hôn nhân dùng tên quanhevoinguoiduocxacminh — backend đã phát field này TRƯỚC khối nhân
+// thân Mục I (HoVaTenC...) nên chỉ cần thêm nhịp chờ ở đây, không cần logic reorder riêng.
+const LEGACY_RELATION_NAMES = [LEGACY_BIRTH_RELATION_NAME, "nyc_quanhe", "nycquanhe", "quanhevoinguoiduocxacminh"];
 const LEGACY_BIRTH_DEPENDENT_NAMES = new Set([
   "hotenks",
   "ngaysinhchon",

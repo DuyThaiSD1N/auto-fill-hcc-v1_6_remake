@@ -16,6 +16,29 @@ FIELDS: list[dict] = [
     {"name": "Cccd_NoiCap",
      "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội", nếu là Bộ công an... thì trả "Bộ Công An".'},
+    # --- Fields từ TỜ KHAI (thông tin NGƯỜI YÊU CẦU - Section I, ghi ở ĐẦU tờ khai) ---
+    # Tờ khai luôn có HAI khối riêng: "Họ, chữ đệm, tên người yêu cầu" (đầu tờ khai) và "Đề nghị cấp
+    # Giấy xác nhận... cho người có tên dưới đây" (Section II, → ToKhai_*). Hai khối này CÓ THỂ khác
+    # người (thân nhân đứng nộp hộ mà không kèm giấy ủy quyền chính thức) — PHẢI tách riêng, không
+    # gộp vào ToKhai_* của Section II.
+    {"name": "ToKhaiYeuCau_HoTen",
+     "desc": 'Họ tên NGƯỜI YÊU CẦU, lấy từ dòng "Họ, chữ đệm, tên người yêu cầu:" ở ĐẦU tờ khai. '
+             'Đây là người ĐI NỘP đơn, CÓ THỂ KHÁC người được cấp giấy ở Section II — không tự suy '
+             'đoán trùng nhau, lấy đúng tên ghi ở dòng này.'},
+    {"name": "ToKhaiYeuCau_SoDinhDanh",
+     "desc": 'Số CCCD/CMND của NGƯỜI YÊU CẦU, lấy từ dòng "Giấy tờ tùy thân:" NGAY SAU tên người yêu '
+             'cầu ở đầu tờ khai — KHÔNG lấy ở phần "người được cấp" phía dưới.'},
+    {"name": "ToKhaiYeuCau_NgayCapGiayTo",
+     "desc": 'Ngày cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU (khối đầu tờ khai), dd/mm/yyyy.'},
+    {"name": "ToKhaiYeuCau_NoiCapGiayTo",
+     "desc": 'Nơi cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU (khối đầu tờ khai).'},
+    {"name": "ToKhaiYeuCau_NoiCuTru",
+     "desc": 'Nơi cư trú của NGƯỜI YÊU CẦU ghi ở khối đầu tờ khai, object {quocGia,tinh,xa,diaChi}.'},
+    {"name": "ToKhaiYeuCau_QuanHe",
+     "desc": 'Quan hệ giữa NGƯỜI YÊU CẦU và người được cấp giấy, lấy NGUYÊN VĂN dòng "Quan hệ với '
+             'người được cấp Giấy xác nhận tình trạng hôn nhân:" (hoặc biến thể gần đúng). Ví dụ: '
+             '"Bản thân", "Tự khai", "là con đẻ", "là bố đẻ", "là mẹ đẻ", "là vợ", "là chồng", '
+             '"là cháu". Giữ nguyên chữ trên tờ khai, KHÔNG tự diễn giải hay quy đổi.'},
     # --- Fields từ TỜ KHAI (thông tin người được xác nhận - Section II) ---
     {"name": "ToKhai_HoTen",
      "desc": 'Họ tên từ TỜ KHAI cấp giấy XNTTHN, lấy từ dòng "Họ, chữ đệm, tên:" trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (người được cấp).'},
@@ -93,12 +116,13 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo"):
+for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgayCapGiayTo"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["Marriage_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["ToKhai_NoiCuTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["ToKhaiYeuCau_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["Cccd_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["PoA_SubjectAddress"] = "x-select-area"
 COMPACT_COMP_BY_NAME["TinhTrangHonNhanC1"] = "x-select"
