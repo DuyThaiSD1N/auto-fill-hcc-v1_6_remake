@@ -72,7 +72,8 @@ def _normal_money(value: Any) -> str:
 def _normal_address(value: Any) -> str:
     if not isinstance(value, dict):
         return _fold(value)
-    return "|".join(_fold(value.get(key)) for key in ("quocGia", "tinh", "xa", "diaChi"))
+    normalized = creation_mapper._addr(value)
+    return "|".join(_fold(normalized.get(key)) for key in ("quocGia", "tinh", "xa", "diaChi"))
 
 
 def _person_identity(value: Any) -> tuple[str, str]:
@@ -156,7 +157,10 @@ def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
         if key == ("", "") or key in seen:
             continue
         seen.add(key)
-        out.append(item)
+        normalized = dict(item)
+        if item.get("diaChi") not in (None, "", {}, []):
+            normalized["diaChi"] = creation_mapper._addr(item["diaChi"])
+        out.append(normalized)
     return out
 
 
@@ -279,6 +283,27 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         applicant_compact.append(_compact_field("HasMultipleCCCD", True))
 
     pages["nguoi-nop-ho-so"] = creation_mapper.enrich(applicant_compact, page="nguoi-nop-ho-so")
+    
+    # Thêm thông tin ủy quyền KÈM địa chỉ người được ủy quyền (giống logic cấp lại/cấp đổi)
+    authorized_person_info = creation_mapper.authorized_person(values)
+    authorization_info = {
+        "coGiayUyQuyen": bool(values.get("UyQuyen_CoGiayUyQuyen")),
+        "nguoiUyQuyen": {
+            "hoTen": values.get("UyQuyen_NguoiUyQuyen_HoTen") or "",
+            "soDinhDanh": values.get("UyQuyen_NguoiUyQuyen_SoDinhDanh") or "",
+        },
+    }
+    if any(authorization_info["nguoiUyQuyen"].values()):
+        authorization_data = dict(authorization_info)
+        # Thêm địa chỉ người được ủy quyền (đã gộp từ giấy ủy quyền + CCCD nếu có)
+        if authorized_person_info and authorized_person_info.get("diaChi"):
+            authorization_data["nguoiDuocUyQuyen"] = {
+                "hoTen": authorized_person_info.get("hoTen") or "",
+                "soDinhDanh": authorized_person_info.get("soDinhDanh") or "",
+                "diaChi": authorized_person_info.get("diaChi"),  # Đã normalize qua _addr()
+            }
+        pages["nguoi-nop-ho-so"].append(_compact_field("__authorization", authorization_data))
+    
     order.append("nguoi-nop-ho-so")
 
     search_options = [

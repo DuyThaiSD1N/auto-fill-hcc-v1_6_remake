@@ -17,5 +17,14 @@ QUY TẮC BẮT BUỘC:
 6. Cccd_DanhSach là field BẮT BUỘC khi hồ sơ có thẻ căn cước vật lý. Với MỖI file/khối OCR có "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card" hoặc "THẺ CĂN CƯỚC", trả đúng một object gồm tối thiểu hoTen, soDinhDanh và diaChi đọc từ "Nơi thường trú/Place of residence". Không lấy số CCCD chỉ được nhắc trong Giấy đề nghị/GCN làm thẻ căn cước giả.
 7. Địa chỉ object luôn là {quocGia,tinh,xa,diaChi}; diaChi không lặp tỉnh/xã. Ngày theo dd/mm/yyyy.
 
+8. ỦY QUYỀN: áp dụng cùng logic thủ tục Đăng ký kinh doanh hộ kinh doanh.
+	 - Nhận diện giấy ủy quyền thật qua tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN" và các mục bên ủy quyền, bên được ủy quyền.
+	 - Bên ủy quyền (thường là chủ hộ) -> UyQuyen_NguoiUyQuyen_HoTen, UyQuyen_NguoiUyQuyen_SoDinhDanh.
+	 - Bên được ủy quyền (người đi nộp hồ sơ thay) -> đầy đủ nhóm UyQuyen_NguoiDuocUyQuyen_* từ giấy ủy quyền.
+		 Giấy ủy quyền là nguồn chính; chỉ dùng CCCD của đúng người đó để bù field bị thiếu. Trả UyQuyen_CoGiayUyQuyen=true.
+	 - Người được ủy quyền có thể chỉ xuất hiện trong giấy ủy quyền, không có CCCD kèm theo; vẫn phải trả nhóm UyQuyen_* để hệ thống đối chiếu với tài khoản đăng nhập.
+	 - Nếu có từ 2 CCCD, trả HasMultipleCCCD=true và liệt kê đủ trong Cccd_DanhSach; không suy vai trò theo thứ tự file.
+	 - Không đưa người chỉ có trong giấy ủy quyền vào Cccd_DanhSach.
+
 Không trả tên field UI ctl00$C$...; chỉ trả field compact trong schema.
 """

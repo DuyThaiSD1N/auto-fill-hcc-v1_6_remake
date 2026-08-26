@@ -74,6 +74,26 @@ def test_identity_candidates_are_deduplicated_for_runtime_account_match():
     ]
 
 
+def test_change_remaps_old_address_for_form_and_identity_candidates():
+    old_address = {
+        "quocGia": "Việt Nam", "tinh": "Bình Thuận", "xa": "Hàm Kiệm", "diaChi": "Tổ 3",
+    }
+    pages, flow = mapper.build([
+        _field("HienTai_TruSo", old_address),
+        _field("DeNghi_TruSo", old_address),
+        _field("HienTai_ChuHo", {
+            "hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address,
+        }),
+        _field("Cccd_DanhSach", [{
+            "hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address,
+        }]),
+    ])
+
+    assert "dia-chi" not in pages
+    assert flow["identityCandidates"][0]["diaChi"]["tinh"] == "Lâm Đồng"
+    assert flow["identityCandidates"][0]["diaChi"]["xa"] == "Hàm Kiệm"
+
+
 def test_attachment_detection_routes_notice_and_identity():
     assert _detect_type("THÔNG BÁO THAY ĐỔI NỘI DUNG ĐĂNG KÝ HỘ KINH DOANH") == "change_notice"
     assert _detect_type("CĂN CƯỚC CÔNG DÂN Citizen Identity Card") == "personal_legal"

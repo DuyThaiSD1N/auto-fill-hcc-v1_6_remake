@@ -135,6 +135,26 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     if values.get("HasMultipleCCCD") or len(candidates) >= 2:
         applicant_compact.append(_compact_field("HasMultipleCCCD", True))
     applicant_fields = creation_mapper.enrich(applicant_compact, page="nguoi-nop-ho-so")
+    
+    # Thêm thông tin ủy quyền KÈM địa chỉ người được ủy quyền (giống logic cấp lại/thay đổi)
+    authorized_person_info = creation_mapper.authorized_person(values)
+    authorization_info = {
+        "coGiayUyQuyen": bool(values.get("UyQuyen_CoGiayUyQuyen")),
+        "nguoiUyQuyen": {
+            "hoTen": values.get("UyQuyen_NguoiUyQuyen_HoTen") or "",
+            "soDinhDanh": values.get("UyQuyen_NguoiUyQuyen_SoDinhDanh") or "",
+        },
+    }
+    if any(authorization_info["nguoiUyQuyen"].values()):
+        authorization_data = dict(authorization_info)
+        # Thêm địa chỉ người được ủy quyền (đã gộp từ giấy ủy quyền + CCCD nếu có)
+        if authorized_person_info and authorized_person_info.get("diaChi"):
+            authorization_data["nguoiDuocUyQuyen"] = {
+                "hoTen": authorized_person_info.get("hoTen") or "",
+                "soDinhDanh": authorized_person_info.get("soDinhDanh") or "",
+                "diaChi": authorized_person_info.get("diaChi"),  # Đã normalize qua _addr()
+            }
+        applicant_fields.append(_compact_field("__authorization", authorization_data))
 
     pages = {
         "cham-dut-hoat-dong": dissolution_fields,

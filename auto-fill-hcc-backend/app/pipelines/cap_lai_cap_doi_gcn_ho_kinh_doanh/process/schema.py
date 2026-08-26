@@ -10,6 +10,16 @@ FIELDS: list[dict] = [
     {"name": "ChuHo", "desc": "Chủ hộ hiện tại, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,ngayCap,noiCap,diaChi,dienThoai,email}; diaChi là {quocGia,tinh,xa,diaChi}."},
     {"name": "NguoiKy", "desc": "Người ký Giấy đề nghị hoặc người được ủy quyền, object {hoTen,ngaySinh,gioiTinh,soDinhDanh,ngayCap,noiCap,diaChi}; không suy từ tên file."},
     {"name": "Cccd_DanhSach", "desc": "Mọi CCCD/căn cước vật lý trong hồ sơ, array {hoTen,ngaySinh,gioiTinh,soDinhDanh,ngayCap,noiCap,diaChi}; mỗi thẻ một object, không tự gán vai trò."},
+    {"name": "UyQuyen_CoGiayUyQuyen", "desc": "Boolean: true nếu hồ sơ có văn bản giấy ủy quyền riêng."},
+    {"name": "UyQuyen_NguoiUyQuyen_HoTen", "desc": "Họ tên bên ủy quyền, thường là chủ hộ."},
+    {"name": "UyQuyen_NguoiUyQuyen_SoDinhDanh", "desc": "Số định danh/CCCD của bên ủy quyền."},
+    {"name": "UyQuyen_NguoiDuocUyQuyen_HoTen", "desc": "Họ tên bên được ủy quyền, là người đi nộp hồ sơ thay."},
+    {"name": "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh", "desc": "Số định danh/CCCD của bên được ủy quyền."},
+    {"name": "UyQuyen_NguoiDuocUyQuyen_GioiTinh", "desc": "Giới tính bên được ủy quyền: Nam hoặc Nữ."},
+    {"name": "UyQuyen_NguoiDuocUyQuyen_NgaySinh", "desc": "Ngày sinh bên được ủy quyền."},
+    {"name": "UyQuyen_NguoiDuocUyQuyen_DiaChi", "desc": "Địa chỉ bên được ủy quyền, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "UyQuyen_NguoiDuocUyQuyen_DienThoai", "desc": "Số điện thoại bên được ủy quyền nếu có."},
+    {"name": "HasMultipleCCCD", "desc": "Boolean: true nếu hồ sơ có từ 2 CCCD trở lên."},
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}

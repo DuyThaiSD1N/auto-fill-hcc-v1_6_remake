@@ -88,6 +88,14 @@
       "autoConfirm": true
     },
     {
+      "key": "thay-doi-cai-chinh-ho-tich",
+      "code": "1.004859",
+      "label": "Thủ tục thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671e-714b-8fd6-8230c82f7867",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "trich-luc-ks",
       "code": "2.000635",
       "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
