@@ -177,6 +177,18 @@ def _copy_value(value: Any) -> str:
     return _clean(value)
 
 
+def _same_identity(name_a: Any, id_a: Any, name_b: Any, id_b: Any) -> bool:
+    """Hai bộ (họ tên, số định danh) có cùng chỉ về một người không. Số định danh là căn cứ
+    chắc nhất; hai bên đều có số mà khác nhau thì KHÔNG so tên (trùng tên là chuyện thường)."""
+    digits_a = re.sub(r"\D", "", str(id_a or ""))
+    digits_b = re.sub(r"\D", "", str(id_b or ""))
+    if digits_a and digits_b:
+        return digits_a == digits_b
+    folded_a = _fold(name_a)
+    folded_b = _fold(name_b)
+    return bool(folded_a) and folded_a == folded_b
+
+
 def _birth_document_from_info(value: Any) -> dict:
     text = _clean(value)
     if not text:
@@ -216,10 +228,44 @@ def _birth_document_from_info(value: Any) -> dict:
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic iframe UI fields from compact source facts."""
     _ = options or {}
-    values = _by_name(fields)
+    values = dict(_by_name(fields))
     out: list[dict] = []
     seen: set[str] = set()
     has_source_values = bool(values)
+
+    # Tờ khai có cấu trúc "Đề nghị công nhận [A] ... Là <Cha/Mẹ/Con> của [B]"; nhãn "Là ... của"
+    # (không phải vị trí xuất hiện) mới quyết định A/B là Parent_* hay Child_*, nên LLM đôi khi đọc
+    # nhầm hướng — gán cả Parent_* lẫn Child_* cùng trỏ về NGƯỜI CON (trùng tên/số định danh), bỏ
+    # trống hẳn identity thật của cha/mẹ. Khi người yêu cầu tự khai quan hệ là Cha/Mẹ (hoặc Con) mà
+    # khối tương ứng (Parent_*/Child_*) trống hoặc trùng hệt người còn lại, coi như người yêu cầu
+    # CHÍNH LÀ người đó — lấy nguyên nhân thân từ Requester_* (đã ưu tiên đọc từ tờ khai) thay vì để
+    # trống hoặc giữ dữ liệu sai.
+    relationship = _relationship(
+        values.get("Requester_RelationshipToRecognized") or values.get("Relationship_Claim"),
+        values.get("Parent_Gender"),
+    )
+    if relationship in {"Cha", "Mẹ"}:
+        parent_matches_child = _same_identity(
+            values.get("Parent_FullName"), values.get("Parent_IdNumber"),
+            values.get("Child_FullName"), values.get("Child_IdNumber"),
+        )
+        if not values.get("Parent_FullName") or parent_matches_child:
+            for suffix in ("FullName", "BirthDate", "IdNumber", "IdIssueDate", "IdIssuePlace", "ResidenceDomestic"):
+                requester_value = values.get(f"Requester_{suffix}")
+                if requester_value not in (None, "", {}, []):
+                    values[f"Parent_{suffix}"] = requester_value
+            values.setdefault("Parent_Gender", "Nam" if relationship == "Cha" else "Nữ")
+            values.setdefault("Parent_Nationality", "Việt Nam")
+    elif relationship == "Con":
+        child_matches_parent = _same_identity(
+            values.get("Child_FullName"), values.get("Child_IdNumber"),
+            values.get("Parent_FullName"), values.get("Parent_IdNumber"),
+        )
+        if not values.get("Child_FullName") or child_matches_parent:
+            for suffix in ("FullName", "BirthDate", "IdNumber", "IdIssueDate", "IdIssuePlace", "ResidenceDomestic"):
+                requester_value = values.get(f"Requester_{suffix}")
+                if requester_value not in (None, "", {}, []):
+                    values[f"Child_{suffix}"] = requester_value
 
     def add(name: str, value: Any) -> None:
         if name in seen or value in (None, "", {}, []):
@@ -269,10 +315,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("nycSoDienThoai", values.get("Requester_PhoneNumber"))
     add("nycEmail", values.get("Requester_Email"))
 
-    relationship = _relationship(
-        values.get("Requester_RelationshipToRecognized") or values.get("Relationship_Claim"),
-        values.get("Parent_Gender"),
-    )
     add("Quanhe", relationship)
     if has_source_values:
         add("LoaiDangKy", _registration_type(values.get("Registration_Type")))

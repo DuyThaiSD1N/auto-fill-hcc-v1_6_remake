@@ -524,6 +524,82 @@ def test_khai_tu_mapper_preserves_deceased_ethnicity_and_selected_residence_sour
     assert "CapBanSao" not in d
 
 
+def test_khai_tu_mapper_prioritizes_cccd_for_deceased_identity_document_only():
+    """Người mất: số/ngày cấp/cơ quan cấp giấy tờ tùy thân ưu tiên CCCD (số in sẵn trên thẻ đáng
+    tin hơn tờ khai viết tay); họ tên/dân tộc/nơi cư trú vẫn ưu tiên tờ khai như cũ."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiMat_HoTen", "value": "LÒ VĂN MINH"},
+        {"name": "NguoiMat_DanToc", "value": "Thái"},
+        {"name": "NguoiMat_SoDinhDanh", "value": "030099001111"},
+        {"name": "NguoiMat_NgayCapGiayTo", "value": "01/01/2015"},
+        {"name": "NguoiMat_NoiCapGiayTo", "value": "Công an tỉnh Điện Biên (tờ khai)"},
+        {"name": "Cccd_HoTen", "value": "LO VAN MINH"},
+        {"name": "Cccd_SoDinhDanh", "value": "030099002222"},
+        {"name": "Cccd_NgayCap", "value": "12/12/2020"},
+        {"name": "Cccd_NoiCap", "value": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"},
+    ]
+    # Tài khoản VNeID (người yêu cầu) rõ ràng là NGƯỜI KHÁC (Trần Thị B) -> Cccd_* thuộc về người
+    # mất, không phải người yêu cầu (kích hoạt cccd_is_deceased đúng như hồ sơ thực tế: người nộp
+    # thay tải kèm CCCD của người mất).
+    options = {"formContext": {"applicantFullname": "TRẦN THỊ B", "applicantIdentityNumber": "099999999999"}}
+    d = {f["name"]: f["value"] for f in mapper.enrich(fields, options)}
+
+    # Giấy tờ tùy thân: CCCD thắng tờ khai.
+    assert d["SoDinhDanh"] == "030099002222"
+    assert d["NgayCapDD"] == "12/12/2020"
+    assert d["NoiCapDD"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    # Các ô còn lại: tờ khai vẫn thắng CCCD như cũ.
+    assert d["HoTen"] == "LÒ VĂN MINH"
+    assert d["nktDanToc"] == "Thái"
+
+
+def test_khai_tu_mapper_falls_back_to_declaration_id_doc_when_no_cccd():
+    """Không có CCCD của người mất thì giấy tờ tùy thân vẫn lấy được từ tờ khai (không mất field)."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiMat_HoTen", "value": "LÒ VĂN MINH"},
+        {"name": "NguoiMat_SoDinhDanh", "value": "030099001111"},
+        {"name": "NguoiMat_NgayCapGiayTo", "value": "01/01/2015"},
+        {"name": "NguoiMat_NoiCapGiayTo", "value": "Công an tỉnh Điện Biên"},
+    ]
+    d = {f["name"]: f["value"] for f in mapper.enrich(fields)}
+
+    assert d["SoDinhDanh"] == "030099001111"
+    assert d["NgayCapDD"] == "01/01/2015"
+    assert d["NoiCapDD"] == "Công an tỉnh Điện Biên"
+
+
+def test_khai_tu_mapper_prioritizes_cccd_for_requester_identity_document_only():
+    """Người yêu cầu: số/ngày cấp/cơ quan cấp ưu tiên CCCD; họ tên/nơi cư trú vẫn ưu tiên tờ khai."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        # Họ tên fold-khớp với CCCD (khác hoa/thường) để phép so mỏ neo tin tưởng thẻ này đúng
+        # là của người yêu cầu; số định danh CỐ Ý khác nhau để phân biệt nguồn nào thắng.
+        {"name": "NguoiYeuCau_HoTen", "value": "Nguyễn Văn A"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "011111111111"},
+        {"name": "NguoiYeuCau_NgayCap", "value": "01/01/2015"},
+        {"name": "NguoiYeuCau_NoiCap", "value": "Công an tỉnh Cao Bằng (tờ khai)"},
+        {
+            "name": "NguoiYeuCau_NoiCuTru",
+            "value": {"quocGia": "Việt Nam", "tinh": "Cao Bằng", "xa": "Đề Thám", "diaChi": "Số 1"},
+        },
+        {"name": "Cccd_HoTen", "value": "NGUYỄN VĂN A"},
+        {"name": "Cccd_SoDinhDanh", "value": "011111112222"},
+        {"name": "Cccd_NgayCap", "value": "12/12/2020"},
+        {"name": "Cccd_NoiCap", "value": "Bộ Công an"},
+    ]
+    d = {f["name"]: f["value"] for f in mapper.enrich(fields)}
+
+    assert d["SoDinhDanhC"] == "011111112222"
+    assert d["NgayCapDDC"] == "12/12/2020"
+    assert d["NoiCapDDC"] == "Bộ Công an"
+    assert d["HoVaTenC"] == "Nguyễn Văn A"
+
+
 def test_khai_tu_mapper_preserves_provincial_police_issuer_for_cmnd():
     from app.pipelines.khai_tu.process import mapper
 

@@ -1642,5 +1642,11 @@
         "xa_cu": "Ia Đal",
         "tinh_moi": "Quảng Ngãi",
         "xa_moi": "Xã Ia Đal"
+    },
+    {
+        "tinh_cu": "Quảng Ngãi",
+        "xa_cu": "thành phố Quảng Ngãi",
+        "tinh_moi": "Quảng Ngãi",
+        "xa_moi": "Phường Cẩm Thành"
     }
 ]

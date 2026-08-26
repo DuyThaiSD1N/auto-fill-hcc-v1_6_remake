@@ -217,14 +217,23 @@ def enrich(
             return values.get(cccd_key)
         return value
 
+    def requester_id_doc(cccd_key: str, declaration_key: str):
+        """Giấy tờ tùy thân (số/ngày cấp/cơ quan cấp) người yêu cầu: NGƯỢC với các ô còn lại —
+        ưu tiên CCCD trước vì đây là số/ngày/cơ quan IN SẴN trên thẻ, đáng tin hơn chữ viết tay
+        trên tờ khai; tờ khai chỉ bù khi không có thẻ khớp đúng người yêu cầu."""
+        value = values.get(cccd_key) if cccd_usable else None
+        if value in (None, "", {}, []):
+            value = values.get(declaration_key)
+        return value
+
     requester_name = requester("NguoiYeuCau_HoTen", "Cccd_HoTen")
     requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
     requester_id = _identity_number_for_form(
-        requester("NguoiYeuCau_SoDinhDanh", "Cccd_SoDinhDanh"),
+        requester_id_doc("Cccd_SoDinhDanh", "NguoiYeuCau_SoDinhDanh"),
         requester_doc_type,
     )
-    requester_issue_date = requester("NguoiYeuCau_NgayCap", "Cccd_NgayCap")
-    requester_issuer = requester("NguoiYeuCau_NoiCap", "Cccd_NoiCap") or default_issuer(requester_issue_date)
+    requester_issue_date = requester_id_doc("Cccd_NgayCap", "NguoiYeuCau_NgayCap")
+    requester_issuer = requester_id_doc("Cccd_NoiCap", "NguoiYeuCau_NoiCap") or default_issuer(requester_issue_date)
     requester_residence = _area(requester("NguoiYeuCau_NoiCuTru", "Cccd_NoiCuTru"))
     # Tờ khai gọi tên loại giấy tờ ("CCCD số ..."/"CMND số ...") thì tin tên đó; không thì suy
     # từ độ dài số định danh + nơi cấp như cũ.
@@ -285,20 +294,28 @@ def enrich(
             return values.get(cccd_key)
         return val
 
+    def deceased_id_doc(cccd_key: str, person_key: str):
+        """Giấy tờ tùy thân (số/ngày cấp/cơ quan cấp) người mất: NGƯỢC với các ô còn lại — ưu
+        tiên CCCD trước (số/ngày/cơ quan in sẵn trên thẻ), tờ khai chỉ bù khi không có thẻ."""
+        value = values.get(cccd_key) if cccd_is_deceased else None
+        if value in (None, "", {}, []):
+            value = values.get(person_key)
+        return value
+
     if has_deceased or cccd_is_deceased:
         add("HoTen", deceased("NguoiMat_HoTen", "Cccd_HoTen"))
         add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("NguoiMat_NgaySinh", "Cccd_NgaySinh")))
         add("GioiTinh", deceased("NguoiMat_GioiTinh", "Cccd_GioiTinh"))
         add("nktDanToc", deceased("NguoiMat_DanToc", "Cccd_DanToc"))
         add("nktQuocTich", deceased("NguoiMat_QuocTich", "Cccd_QuocTich") or "Việt Nam")
-        so_dinh_danh = deceased("NguoiMat_SoDinhDanh", "Cccd_SoDinhDanh")
+        so_dinh_danh = deceased_id_doc("Cccd_SoDinhDanh", "NguoiMat_SoDinhDanh")
         add("SoDinhDanh", so_dinh_danh)
         add("SoGiayToDinhDanh", so_dinh_danh)
         if so_dinh_danh:
-            _issuer_mat = deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap") or default_issuer(deceased("NguoiMat_NgayCapGiayTo", "Cccd_NgayCap"))
+            _issuer_mat = deceased_id_doc("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo") or default_issuer(deceased_id_doc("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
             add("LoaiGiayToDinhDanh", _doc_type(so_dinh_danh, _issuer_mat))
-        add("NgayCapDD", deceased("NguoiMat_NgayCapGiayTo", "Cccd_NgayCap"))
-        add("NoiCapDD", normalize_issuer(deceased("NguoiMat_NoiCapGiayTo", "Cccd_NoiCap")))
+        add("NgayCapDD", deceased_id_doc("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
+        add("NoiCapDD", normalize_issuer(deceased_id_doc("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo")))
         add("nktLoaiCuTru", "Thường trú")
         residence = _area(deceased("NguoiMat_NoiCuTruCuoiCung", "Cccd_NoiCuTru"))
         if residence:

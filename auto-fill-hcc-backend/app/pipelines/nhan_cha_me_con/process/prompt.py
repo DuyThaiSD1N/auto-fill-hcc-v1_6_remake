@@ -23,10 +23,24 @@ giấy khai sinh/giấy chứng sinh của con; kết quả xét nghiệm ADN ho
 <source_priority_rules>
 - Requester_*: ưu tiên phần "Họ, chữ đệm, tên người yêu cầu" trong tờ khai; CCCD chỉ bổ sung
   số định danh, ngày cấp, nơi cấp, ngày sinh/nơi cư trú nếu cùng người.
-- Parent_*: ưu tiên phần "Đề nghị cơ quan công nhận người có tên dưới đây" hoặc phần cha/mẹ trên tờ khai.
-  CCCD/ADN chỉ bổ sung hoặc kiểm chứng khi cùng tên/số định danh.
-- Child_*: ưu tiên phần "là ... của người có tên dưới đây" trên tờ khai và giấy khai sinh/giấy chứng sinh.
-  Nếu tờ khai ghi tên/ngày sinh con rõ, không lấy nhầm tên mẹ trên giấy chứng sinh làm Child_*.
+
+- Tờ khai luôn có HAI khối liền nhau ngay sau nhãn "Đề nghị cơ quan công nhận người có tên dưới đây":
+    Khối 1: "Họ, chữ đệm, tên: <A>" ... (ngay sau nhãn "Đề nghị công nhận...")
+    Khối 2: "Là <Cha/Mẹ/Con> của người có tên dưới đây: <B>" ...
+  NHÃN "Là <Cha/Mẹ/Con> của" NẰM GIỮA HAI KHỐI mới quyết định khối nào là Parent_*, khối nào là
+  Child_* — TUYỆT ĐỐI KHÔNG mặc định khối 1 (ngay sau "Đề nghị công nhận...") luôn là Parent_*, vì
+  nhiều tờ khai khối 1 lại chính là NGƯỜI CON:
+    + Nhãn "Là CON của" → Khối 1 <A> = Child_*, Khối 2 <B> = Parent_* (Khối 2 chính là cha/mẹ).
+    + Nhãn "Là CHA của" hoặc "Là MẸ của" → Khối 1 <A> = Parent_*, Khối 2 <B> = Child_*.
+  Ví dụ: "Đề nghị cơ quan công nhận người có tên dưới đây: Nguyễn Văn B (...) Là Con của người có
+  tên dưới đây: Nguyễn Văn A (...)" → Nguyễn Văn B = Child_*, Nguyễn Văn A = Parent_* (đọc NGƯỢC
+  với thứ tự xuất hiện, vì nhãn ghi "Là Con của").
+  Khối "Parent_*"/"Child_*" xác định theo nhãn ở TRÊN RẤT HAY trùng dữ liệu với chính Requester_*
+  (người yêu cầu tự nhận là cha/mẹ hoặc tự nhận là con) — vẫn PHẢI trả đủ Parent_*/Child_* dù trùng
+  hệt Requester_*, TUYỆT ĐỐI KHÔNG lấy nhầm identity của người còn lại (con/cha-mẹ) rồi gán cho cả
+  hai vai trò cùng một người.
+  CCCD/ADN chỉ bổ sung hoặc kiểm chứng khi cùng tên/số định danh với khối đã xác định đúng ở trên.
+- Nếu tờ khai ghi tên/ngày sinh con rõ, không lấy nhầm tên mẹ trên giấy chứng sinh làm Child_*.
 - Kết quả ADN là chứng cứ quan hệ. Dùng để kiểm chứng/fallback tên, ngày sinh, số định danh của cha/con
   và Relationship_Claim, nhưng không thay thế tờ khai khi tờ khai rõ vai trò.
 - Giấy chứng sinh: tên mẹ trên giấy chứng sinh KHÔNG phải Child_*. Tên con, ngày sinh, giới tính con,
