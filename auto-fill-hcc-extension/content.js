@@ -37,7 +37,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.14 · 23/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.15 · 27/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -4032,7 +4032,10 @@
     //   remote nạp chưa kịp thì bỏ. Nhận là area-select để được retry + timeout dài như ô Tỉnh.
     // tinhtp/px1/tinhthanhpho/quanhuyen: các ô Tỉnh/Phường-xã ở cổng Bộ GD&ĐT dvc.moet.gov.vn (Cấp bản sao
     //   văn bằng) — field-key riêng, phải nhận là area-select để cascade Tỉnh→Phường/Xã điền đủ.
-    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl/.test(String(name || "").toLowerCase());
+    // change_owner_type_idfld: ô "Lý do thay đổi thông tin chủ hộ kinh doanh" (HkdOnline) là select con
+    //   cascade theo "Loại đăng ký thay đổi" (CHANGE_OWNER_TYPE_TITLE_IDFld) — danh sách lý do nạp lại
+    //   SAU khi đổi Loại, không nhận area-select thì thử 1 lần rồi bỏ, hụt mất "Khác" dù giá trị đúng.
+    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld/.test(String(name || "").toLowerCase());
   }
 
   function isAreaSelectField(f) {

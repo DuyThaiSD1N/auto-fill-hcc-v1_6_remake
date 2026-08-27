@@ -81,6 +81,17 @@ NGUỒN DỮ LIỆU:
   Người có quyết định ly hôn → mã 3 ("Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai").
   Không trả cả câu dài, chỉ trả một mã số duy nhất.
   Không có chứng cứ trực tiếp → bỏ field để mapper xử lý mặc định theo từng bên; không tự suy luận mã từ CCCD.
+- BẢN ÁN/QUYẾT ĐỊNH LY HÔN: khi CccdNam_TinhTrangHonNhan hoặc CccdNu_TinhTrangHonNhan = mã 3 (đúng người đó
+  là đương sự theo điều kiện đối chiếu ở trên), BẮT BUỘC trả thêm từ CHÍNH văn bản bản án/quyết định ly hôn đó:
+  + CccdNam_BanAnLyHon_So / CccdNu_BanAnLyHon_So: số bản án/quyết định (vd "336/2023/QĐST-HNGD"), lấy nguyên
+    văn dòng "Số:" trên văn bản.
+  + CccdNam_BanAnLyHon_Ngay / CccdNu_BanAnLyHon_Ngay: ngày ban hành, dd/mm/yyyy (dòng "..., ngày ... tháng ...
+    năm ..." ở đầu văn bản).
+  + CccdNam_BanAnLyHon_CoQuan / CccdNu_BanAnLyHon_CoQuan: tên cơ quan ban hành ghi ở góc trên văn bản
+    (vd "Tòa án nhân dân thành phố Đà Lạt, tỉnh Lâm Đồng").
+  Mỗi bên lấy đúng số/ngày/cơ quan của văn bản xác định người đó là đương sự; hai bên ly hôn với nhau thì
+  dùng CHUNG một văn bản (số/ngày/cơ quan giống nhau cho cả hai). Không suy diễn hay bịa khi văn bản không
+  ghi rõ; thiếu bất kỳ phần nào thì bỏ field đó, không để trống bằng giá trị đoán.
 - LOẠI ĐĂNG KÝ: nếu TỜ KHAI có mục "Loại đăng ký" được tích/ghi rõ thì trả ToKhai_LoaiDangKy
   đúng nhãn được chọn (vd "Đăng ký lần đầu", "Đăng ký lại"). Tờ khai không có mục này hoặc không
   tích ô nào → bỏ field để mapper mặc định "Đăng ký lần đầu"; TUYỆT ĐỐI không tự suy.

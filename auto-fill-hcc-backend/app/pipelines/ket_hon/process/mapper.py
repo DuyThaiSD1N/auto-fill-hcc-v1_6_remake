@@ -239,6 +239,15 @@ def enrich(fields: list[dict]) -> list[dict]:
             # chắn từ số lần, nên không tô vàng).
             if so_lan == "1":
                 add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN["2"])
+            elif status_code == "3":
+                decision = {
+                    "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
+                    "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
+                    "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
+                }
+                decision = {k: v for k, v in decision.items() if v}
+                if decision:
+                    add(f"TTHN_LyHon{dst}", decision)
 
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")

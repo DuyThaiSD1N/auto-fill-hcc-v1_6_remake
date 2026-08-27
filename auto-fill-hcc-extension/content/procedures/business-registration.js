@@ -1255,6 +1255,12 @@
     const cfg = COPY_PERSON_CFG[targetKey];
     const fields = (st.pages && st.pages[targetKey]) || [];
 
+    // Chưa biết chủ hộ là ai thì chưa chốt được vai trò người nộp → đi đọc chủ hộ trên cổng TRƯỚC khi
+    // bấm "Sao chép tài khoản" (postback điều hướng sẽ xoá dữ liệu vừa sao chép).
+    if (targetKey === "nguoi-nop-ho-so" && needsOwnerProbe(st)) {
+      return void startOwnerProbe(st);
+    }
+
     if (targetKey === "nguoi-nop-ho-so") {
       // Vì sao vai trò lại ra như vậy — in ngay đầu mỗi lượt để soi được khi cổng tick sai.
       console.log("[FillAll] vai trò người nộp — businessDefaults:",
@@ -1329,14 +1335,21 @@
             : "không có CCCD nào khớp tài khoản → để trống địa chỉ");
       }
     } else if (targetKey === "nguoi-nop-ho-so") {
-      const { isOwner, ownerUnknown, idMatches } = matchAccountWithOwner(st);
+      // Hồ sơ thay đổi chỉ có tờ đơn: chốt vai trò bằng HỌ TÊN chủ hộ ghi trong đơn (xem
+      // isChangeFormOnlyDossier) — khác tên tài khoản là người nộp thay, trùng tên là chủ hộ tự nộp.
+      const formOnly = isChangeFormOnlyDossier(st);
+      const { isOwner, ownerUnknown, idMatches } = matchAccountWithOwner(st, { nameOnly: formOnly });
+      if (formOnly) {
+        console.log("[FillAll] hồ sơ thay đổi chỉ có tờ đơn xin thay đổi → đối chiếu HỌ TÊN chủ hộ:",
+          ownerUnknown ? "chưa đối chiếu được (thiếu tên chủ hộ hoặc tên tài khoản)"
+            : isOwner ? "TRÙNG tên tài khoản" : "KHÁC tên tài khoản");
+        // Vai trò ở dưới chốt theo đúng kết quả này nên truyền thẳng xuống bước địa chỉ, không suy
+        // lại từ radio (postback tick lại radio có thể chưa kịp xong).
+        if (!ownerUnknown) submitterIsOwnerAccount = isOwner;
+      }
 
-      const authRadio = document.querySelector(
-        'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
-      );
-      const selfRadio = document.querySelector(
-        'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
-      );
+      const authRadio = findSubmitterRoleRadio(true);
+      const selfRadio = findSubmitterRoleRadio(false);
 
       if (isOwner) {
         console.log("[FillAll] tài khoản khớp chủ hộ",
@@ -1350,8 +1363,9 @@
       } else if (ownerUnknown) {
         console.warn("[FillAll] hồ sơ không có nhân thân chủ hộ để đối chiếu → giữ nguyên vai trò đang tick");
       } else if (authRadio && !authRadio.checked) {
-        // CẢ số VÀ tên đều khác → chọn Người được ủy quyền
-        console.log("[FillAll] tài khoản khác chủ hộ (cả số và tên) → chọn Người được ủy quyền");
+        // Hồ sơ chỉ có tờ đơn: khác HỌ TÊN chủ hộ. Còn lại: CẢ số VÀ tên đều khác → Người được ủy quyền.
+        console.log("[FillAll] tài khoản khác chủ hộ",
+          formOnly ? "(họ tên trong đơn)" : "(cả số và tên)", "→ chọn Người được ủy quyền");
         (document.querySelector(`label[for="${CSS.escape(authRadio.id)}"]`) || authRadio).click();
         // Radio này AutoPostBack: phải CHỜ cổng render lại khối người nộp xong
         await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
@@ -1361,7 +1375,12 @@
       // sơ (khớp số định danh HOẶC họ tên với dữ liệu vừa sao chép) rồi ghi nhân thân + địa chỉ của
       // thẻ đó vào khối người nộp. Không khớp thẻ nào → giữ nguyên dữ liệu tài khoản, không đoán bừa.
       // Xét theo radio THẬT đang tick (đã chốt ở 2c) để không ghi đè khi form đang ở nhánh chủ hộ.
-      if (submitterIsAuthorized()) {
+      // Hồ sơ chỉ có tờ đơn thì trong hồ sơ KHÔNG có nhân thân nào của người nộp thay (không CCCD,
+      // không Giấy ủy quyền) → chỉ tick vai trò, giữ nguyên nhân thân + để trống địa chỉ do nút
+      // "Sao chép thông tin đăng ký tài khoản" đổ vào. Ghi nhân thân chủ hộ vào đây là chắc chắn sai.
+      if (formOnly && submitterIsAuthorized()) {
+        console.log("[FillAll] chỉ có tờ đơn → tick Người được ủy quyền, giữ nguyên nhân thân tài khoản");
+      } else if (submitterIsAuthorized()) {
         submitterOverride = buildSubmitterOverride(st, fields);
         if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
           if (await enableSubmitterEdit(st)) return; // cổng reload → lần chạy kế điền tiếp
@@ -1416,11 +1435,62 @@
       if (reloaded) return;
     }
 
+    // Loại/Lý do LUÔN cố định (xem OWNER_CHANGE_TYPE_FIELDS) — không lấy theo field backend gửi, để
+    // hồ sơ nào cũng ra cùng một kết quả dù có đổi chủ hộ hay không.
+    const [ownerTypeField, ownerReasonField] = OWNER_CHANGE_TYPE_FIELDS;
+    const ownerTypeOk = ownerChangeTypeOk;
+
+    // mapper.py lên "chu-ho-kinh-doanh" HAI LƯỢT liên tiếp trong order khi có đổi chủ hộ: lượt đầu
+    // (còn 1 "chu-ho-kinh-doanh" nữa ngay sau) CHỈ lo chốt "Loại đăng ký thay đổi"/"Lý do" — 2 select
+    // cascade AutoPostBack dễ điền hụt nếu nhồi chung 1 lượt với cả khối nhân thân/địa chỉ; lượt sau
+    // mới điền nhân thân/địa chỉ + Lưu. advanceFillAll() không postback lại menu khi đang đứng đúng
+    // trang nên chuyển lượt không mất dữ liệu chưa Lưu.
+    const isTypePhase = st.order[st.step + 1] === "chu-ho-kinh-doanh";
+    if (isTypePhase) {
+      if (ownerTypeField) {
+        const sel = findStandardSelect(fieldCandidates(ownerTypeField));
+        const current = norm(sel?.options?.[sel.selectedIndex]?.textContent || "");
+        if (sel && current !== norm(ownerTypeField.value)) {
+          try { await fillFormStandard([ownerTypeField]); } catch (e) { /* ignore */ }
+          await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld");
+        }
+      }
+      if (ownerReasonField) {
+        try { await fillFormStandard([ownerReasonField]); } catch (e) { /* ignore */ }
+      }
+      if (!ownerTypeOk()) {
+        st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+        if (st.ownerTypeVerifyTries <= 6) {
+          await setFillAllState(st);
+          // Trang không postback lại (chỉ đổi 1-2 select) → phải TỰ lên lịch bước kế, không có gì
+          // đánh thức lại stepFillAll ngoài sự kiện load trang.
+          return void setTimeout(stepFillAll, 500);
+        }
+        console.warn("[FillAll] Loại/Lý do thay đổi chủ hộ vẫn sai sau nhiều lần thử — sang lượt điền nhân thân để không kẹt luồng.");
+      }
+      return void advanceFillAll(st); // sang lượt 2 (điền nhân thân + Lưu), KHÔNG click menu lại
+    }
+
+    // Lượt 2: nhân thân + địa chỉ. Loại/Lý do đã chốt ở lượt 1 nên loại khỏi "stable" để khỏi bấm
+    // lại 2 select AutoPostBack đó một lần nữa (thừa postback, có thể làm mất lựa chọn vừa chốt).
     const address = fields.filter((field) => cfg.addrMatch.test(field.name || ""));
     const stable = fields.filter((field) => !cfg.addrMatch.test(field.name || "")
-      && !/PERSONChange/.test(field.name || ""));
+      && !/PERSONChange/.test(field.name || "")
+      && !/CHANGE_OWNER_TYPE(_TITLE)?_IDFld$/.test(field.name || ""));
     try { await fillFormStandard(stable); } catch (e) { /* ignore */ }
     try { await fillAddressCascade(address); } catch (e) { /* ignore */ }
+
+    // Chốt lại lần cuối trước khi Lưu — phòng trường hợp hiếm cổng reset lựa chọn giữa 2 lượt.
+    if (!ownerTypeOk()) {
+      st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+      if (st.ownerTypeVerifyTries <= 6) {
+        if (ownerTypeField) { try { await fillFormStandard([ownerTypeField]); } catch (e) { /* ignore */ } await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld"); }
+        if (ownerReasonField) { try { await fillFormStandard([ownerReasonField]); } catch (e) { /* ignore */ } }
+        await setFillAllState(st);
+        return void setTimeout(stepFillAll, 500);
+      }
+      console.warn("[FillAll] Loại/Lý do thay đổi chủ hộ vẫn sai sau nhiều lần thử — Lưu tạm để không kẹt luồng.");
+    }
 
     const save = findBusinessSaveButton();
     if (!save || save.disabled) return void advanceFillAll(st);
@@ -1620,15 +1690,43 @@
    * KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ — so với
    * tên tài khoản thì luôn lệch.
    */
-  function matchAccountWithOwner(st) {
-    const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
-    const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+  /**
+   * Radio "vai trò người nộp hồ sơ" — tên/giá trị control (ctl00$C$PERS_SUBGroup / IS_*_BUTTON) suy
+   * từ trang đăng ký MỚI; trang "thay đổi nội dung" có thể dùng ID/tên khác dù nhãn hiển thị giống
+   * hệt. Dò theo tên/giá trị trước, KHÔNG thấy thì dò theo NHÃN để không giữ nhầm vai trò mặc định
+   * của cổng khi giả định ở trên sai.
+   */
+  function findSubmitterRoleRadio(authorized) {
+    const value = authorized ? "IS_AUTHORIZED_BUTTON" : "IS_SIGNER_BUTTON";
+    const byName = document.querySelector(`input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="${value}"]`);
+    if (byName) return byName;
+    const folded = authorized ? "nguoi duoc uy quyen" : "nguoi co tham quyen ky";
+    return Array.from(document.querySelectorAll('input[type="radio"]')).find((r) => {
+      const label = (r.id && document.querySelector(`label[for="${r.id}"]`)) || r.closest("label") || r.parentElement;
+      return foldBusinessPageText(label ? label.textContent : "").includes(folded);
+    }) || null;
+  }
 
+  /**
+   * Hồ sơ "thay đổi nội dung hộ kinh doanh" CHỈ có tờ đơn xin thay đổi — không kèm CCCD rời, cũng
+   * không có Giấy ủy quyền (backend gắn cờ `formOnly` khi dựng flow). Nhân thân duy nhất trong hồ sơ
+   * là CHỦ HỘ ghi trong đơn ⇒ căn cứ duy nhất để biết người đang đăng nhập có phải chủ hộ không là
+   * HỌ TÊN chủ hộ.
+   */
+  function isChangeFormOnlyDossier(st) {
+    if (!st || st.businessFlow?.formOnly !== true) return false;
+    return st.workflow === "change" || st.businessFlow?.wizardType === "change";
+  }
+
+  /** Mọi nhân thân chủ hộ biết được của hồ sơ này, đã chuẩn hoá {id, name} để đối chiếu. */
+  function collectOwnerIdentities(st) {
     const ownerIdentities = [];
-    const addOwnerIdentity = (hoTen, soDinhDanh) => {
+    // trusted = số định danh do CHÍNH CỔNG cung cấp (dữ liệu đăng ký sẵn có), không phải số OCR/LLM
+    // đọc từ giấy tờ trong hồ sơ.
+    const addOwnerIdentity = (hoTen, soDinhDanh, trusted = false) => {
       const id = String(soDinhDanh || "").replace(/\D/g, "");
       const name = foldBusinessPageText(hoTen || "");
-      if (id || name) ownerIdentities.push({ id, name });
+      if (id || name) ownerIdentities.push({ id, name, trusted });
     };
 
     const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
@@ -1643,19 +1741,175 @@
     if (st.businessFlow?.search?.method === "identityNumber") {
       addOwnerIdentity("", st.businessFlow.search.value);
     }
+    // Chủ hộ ĐỌC THẲNG trên cổng (trang "Thông tin về chủ hộ kinh doanh") khi hồ sơ không kê khai —
+    // xem readPortalOwner/handleOwnerProbe. Đây là nguồn đúng nhất: chính dữ liệu cổng đang giữ.
+    const portalOwner = st.portalOwner || {};
+    addOwnerIdentity(portalOwner.hoTen, portalOwner.soDinhDanh, true);
+    return ownerIdentities;
+  }
 
-    // Chỉ kết luận "không phải chủ hộ" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ trong hồ sơ.
-    const idMatches = ownerIdentities.some((o) => copiedId && o.id && copiedId === o.id);
+  /** Ô nhân thân CHỦ HỘ trên trang "Thông tin về chủ hộ kinh doanh" (ô khoá → cổng render span _Vw). */
+  function readOwnerPageValue(suffix) {
+    const direct = readPersonControlRaw(`ctl00_C_OWN_PCtl_PERSCtl_${suffix}`);
+    if (direct) return direct;
+    const node = document.querySelector(
+      `[id$="OWN_PCtl_PERSCtl_${suffix}"], [id$="OWN_PCtl_PERSCtl_${suffix}_Vw"]`
+    );
+    if (!node) return "";
+    return String(node.value || node.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function readPortalOwner() {
+    return {
+      hoTen: readOwnerPageValue("FULL_NAMEFld"),
+      soDinhDanh: readOwnerPageValue("PERS_DOC_NOFld"),
+    };
+  }
+
+  // Trang "Thông tin về chủ hộ kinh doanh" của luồng thay đổi LUÔN phải có "Loại đăng ký thay đổi" =
+  // "Cập nhật thông tin chủ hộ kinh doanh" và "Lý do" = "Khác" — CỐ ĐỊNH cho MỌI hồ sơ thay đổi, dù
+  // có đổi chủ hộ hay không, và không phụ thuộc dữ liệu LLM/backend gửi sang. Cổng mặc định để "Thay
+  // đổi chủ hộ kinh doanh" + lý do TRỐNG nên trang nào cũng phải sửa lại.
+  // "Lý do" là select con phụ thuộc "Loại": chỉ khi "Loại" là "Cập nhật thông tin chủ hộ kinh doanh"
+  // thì option "Khác" mới có trong danh sách để chọn được.
+  // Dùng ở CẢ hai đường vào trang này: handleChangeOwnerPage (hồ sơ CÓ đổi chủ hộ, trang nằm trong
+  // order) và handleOwnerProbe (hồ sơ KHÔNG đổi chủ hộ, extension tự ghé qua).
+  const OWNER_CHANGE_TYPE_FIELDS = [
+    {
+      name: "ctl00$C$CHANGE_OWNER_TYPE_TITLE_IDFld", comp: "dom-select",
+      value: "Cập nhật thông tin chủ hộ kinh doanh",
+    },
+    { name: "ctl00$C$CHANGE_OWNER_TYPE_IDFld", comp: "dom-select", value: "Khác" },
+  ];
+
+  function ownerChangeTypeOk() {
+    return OWNER_CHANGE_TYPE_FIELDS.every((field) => {
+      const el = findStandardSelect(fieldCandidates(field));
+      return el && norm(el.options[el.selectedIndex]?.textContent || "") === norm(field.value);
+    });
+  }
+
+  async function applyOwnerChangeTypeDefaults() {
+    const [typeField, reasonField] = OWNER_CHANGE_TYPE_FIELDS;
+    const sel = findStandardSelect(fieldCandidates(typeField));
+    if (sel && norm(sel.options[sel.selectedIndex]?.textContent || "") !== norm(typeField.value)) {
+      try { await fillFormStandard([typeField]); } catch (e) { /* ignore */ }
+      // Đổi "Loại" là AutoPostBack: phải CHỜ cổng render lại select "Lý do" mới chọn được "Khác".
+      await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld");
+    }
+    try { await fillFormStandard([reasonField]); } catch (e) { /* ignore */ }
+  }
+
+  /**
+   * Hồ sơ thay đổi KHÔNG đổi chủ hộ thì backend không xếp "chu-ho-kinh-doanh" vào order, nên trang
+   * này chưa ai đụng tới. Extension vẫn phải ghé qua một lượt vì hai việc:
+   *  1. Chốt "Loại đăng ký thay đổi"/"Lý do" mặc định (xem OWNER_CHANGE_TYPE_FIELDS) — cổng để trống
+   *     lý do thì hồ sơ thiếu dữ liệu bắt buộc.
+   *  2. Đọc HỌ TÊN chủ hộ THẬT trên cổng. Đơn xin thay đổi thường chỉ ghi TÊN HỘ KINH DOANH + mã số,
+   *     không kê khai chủ hộ — mà tên hộ kinh doanh KHÔNG phải tên chủ hộ, nên nếu không đọc ở đây
+   *     thì không có gì để đối chiếu với tài khoản đang đăng nhập ở trang người nộp hồ sơ.
+   * Chỉ ĐỌC nhân thân, KHÔNG bật "Sửa đổi dữ liệu" — hồ sơ này không đổi chủ hộ.
+   * Hồ sơ CÓ đổi chủ hộ đã có trang đó trong order và handleChangeOwnerPage lo cả 2 việc trên.
+   */
+  function needsOwnerProbe(st) {
+    if (!st || st.workflow !== "change") return false;
+    if (st.ownerPageVisited) return false;
+    return !(st.order || []).includes("chu-ho-kinh-doanh");
+  }
+
+  async function startOwnerProbe(st) {
+    st.phase = "probing-owner";
+    st.ownerProbeTries = (st.ownerProbeTries || 0) + 1;
+    await setFillAllState(st);
+    console.log("[FillAll] ghé trang chủ hộ kinh doanh: chốt Loại/Lý do thay đổi + đọc họ tên chủ hộ");
+    // Postback điều hướng làm trang reload → nhịp kế do auto-resume gọi. Hẹn giờ chỉ để cứu khi cổng
+    // NUỐT postback (không reload) — lúc đó handleOwnerProbe thấy còn đứng ở trang cũ và bỏ cuộc.
+    if (goToBusinessPageByKey("chu-ho-kinh-doanh")) return void setTimeout(stepFillAll, 1500);
+    await finishOwnerProbe(st); // không có mục chủ hộ trong menu → thôi, chạy tiếp như cũ
+  }
+
+  /** Đóng nhịp ghé trang chủ hộ rồi quay lại trang người nộp hồ sơ. */
+  async function finishOwnerProbe(st) {
+    st.ownerPageVisited = true;      // ghé đúng MỘT lượt cho cả phiên, kể cả khi đọc/điền hụt
+    st.portalOwner = st.portalOwner || {};
+    st.phase = "fill";
+    st.copyTries = 0;    // sang trang khác rồi quay lại → phải bấm "Sao chép tài khoản" lại từ đầu
+    st.filledStep = -1;  // và điền lại các field cấu trúc của trang người nộp
+    await setFillAllState(st);
+    if (detectBusinessPageKey().pageKey === "nguoi-nop-ho-so") return void stepFillAll();
+    if (!goToBusinessPageByKey("nguoi-nop-ho-so")) return void stepFillAll();
+    setTimeout(stepFillAll, 1500); // cổng nuốt postback → nhánh điều hướng chung ở stepFillAll lo tiếp
+  }
+
+  async function handleOwnerProbe(st) {
+    if (detectBusinessPageKey().pageKey !== "chu-ho-kinh-doanh") {
+      // Lưu xong cổng có thể tự nhảy về khối dữ liệu → xong việc rồi, về thẳng trang người nộp.
+      if (st.ownerDefaultsSaved) return void finishOwnerProbe(st);
+      // Chưa tới được trang chủ hộ (postback hụt) → thử lại 1 lần rồi bỏ qua, không để kẹt vòng lặp.
+      if ((st.ownerProbeTries || 0) >= 2) return void finishOwnerProbe(st);
+      return void startOwnerProbe(st);
+    }
+
+    // 1. Đọc chủ hộ TRƯỚC khi đụng vào 2 select (đổi "Loại" là postback, cổng render lại cả trang).
+    if (!st.portalOwner) {
+      const owner = readPortalOwner();
+      if (owner.hoTen || owner.soDinhDanh) {
+        st.portalOwner = owner;
+        console.log("[FillAll] chủ hộ đọc trên cổng:", owner.hoTen || "(trống)", owner.soDinhDanh || "");
+      } else {
+        console.warn("[FillAll] trang chủ hộ không đọc được họ tên → vai trò người nộp giữ nguyên tick");
+      }
+    }
+
+    // 2. Chốt Loại/Lý do mặc định rồi Lưu. Mỗi lượt chỉ làm một nhịp (2 select cascade AutoPostBack),
+    //    trang không tự reload nên phải tự hẹn giờ gọi lại.
+    if (!st.ownerDefaultsSaved) {
+      if (!ownerChangeTypeOk()) {
+        st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+        if (st.ownerTypeVerifyTries <= 6) {
+          await setFillAllState(st);
+          await applyOwnerChangeTypeDefaults();
+          return void setTimeout(stepFillAll, 500);
+        }
+        console.warn("[FillAll] không chốt được Loại/Lý do thay đổi chủ hộ — bỏ qua để không kẹt luồng.");
+      }
+      const save = findBusinessSaveButton();
+      if (save) {
+        // Chỉ đổi 2 select nên cổng có thể chưa bật nút Lưu; giá trị trên DOM đã đúng → cứ bật rồi Lưu.
+        if (save.disabled) { try { save.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+        st.ownerDefaultsSaved = true;
+        await setFillAllState(st);
+        const reloaded = await clickSaveDetectReload(save);
+        if (reloaded) return; // reload xong quay lại đây, lần đó bỏ qua khối này rồi về trang người nộp
+      }
+    }
+
+    return void finishOwnerProbe(st);
+  }
+
+  function matchAccountWithOwner(st, { nameOnly = false } = {}) {
+    const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+    const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+    const ownerIdentities = collectOwnerIdentities(st);
+
+    // Chỉ kết luận "không phải chủ hộ" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ biết được.
+    // nameOnly (hồ sơ chỉ có tờ đơn): số định danh ĐỌC TỪ HỒ SƠ không đủ tin cậy để làm căn cứ — đơn
+    // hay bỏ trống số, hoặc OCR/LLM lẫn số người ký với số chủ hộ, mà lại không có CCCD nào để phản
+    // chứng. Số do CHÍNH CỔNG cung cấp (trusted) thì vẫn dùng bình thường.
+    const idUsable = (o) => !nameOnly || o.trusted;
+    const idMatches = ownerIdentities.some((o) => copiedId && o.id && idUsable(o) && copiedId === o.id);
     const nameMatches = ownerIdentities.some((o) => copiedName && o.name && copiedName === o.name);
-    // Hồ sơ không cho biết chủ hộ là ai (cả số lẫn tên đều trống) → KHÔNG kết luận gì.
-    return { isOwner: idMatches || nameMatches, ownerUnknown: !ownerIdentities.length, idMatches, nameMatches };
+    // Không có cặp nào so được (hồ sơ không cho biết chủ hộ là ai, hoặc chưa sao chép được dữ liệu
+    // tài khoản) → KHÔNG kết luận gì, để nguyên vai trò cổng đang tick.
+    const hasBasis = ownerIdentities.some(
+      (o) => (!!copiedName && !!o.name) || (!!copiedId && !!o.id && idUsable(o))
+    );
+    return { isOwner: idMatches || nameMatches, ownerUnknown: !hasBasis, idMatches, nameMatches };
   }
 
   /** Tick "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh" (radio AutoPostBack → phải chờ). */
   async function tickSubmitterSelfRadio() {
-    const selfRadio = document.querySelector(
-      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
-    );
+    const selfRadio = findSubmitterRoleRadio(false);
     if (!selfRadio) {
       console.warn("[FillAll] tài khoản Đà Nẵng: không thấy radio Người có thẩm quyền ký trên trang");
       return;
@@ -1672,13 +1926,9 @@
 
   /** Vai trò người nộp đang tick THẬT trên cổng (sau bước "Sao chép thông tin đăng ký tài khoản"). */
   function submitterIsAuthorized() {
-    const authRadio = document.querySelector(
-      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
-    );
+    const authRadio = findSubmitterRoleRadio(true);
     if (authRadio) return !!authRadio.checked;
-    const selfRadio = document.querySelector(
-      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
-    );
+    const selfRadio = findSubmitterRoleRadio(false);
     return !!(selfRadio && !selfRadio.checked);
   }
 
@@ -1999,9 +2249,16 @@
     st.nnAdds = 0; st.nnAddTries = {}; st.nnSkippedAddCodes = []; st.nnSkip = [];
     st.nnMainDone = false; st.nnDescriptionsDone = false; st.nnBusinessActDefaultDone = false;
     st.nnRemoveTries = 0; st.nnTextDone = false; st.taxPhase = ""; st.copyTries = 0;
+    st.ownerEnableTries = 0; st.ownerTypeVerifyTries = 0;
     await setFillAllState(st);
     if (st.step >= st.order.length) {
       return void finishFillAllThenAttach(st);
+    }
+    // Bước kế trùng đúng trang đang đứng (vd 2 lượt liên tiếp của "chu-ho-kinh-doanh" khi tách
+    // riêng bước chốt Loại/Lý do) → KHÔNG click lại menu, tránh postback thừa làm mất lựa chọn
+    // vừa điền vì chưa bấm Lưu.
+    if (detectBusinessPageKey().pageKey === st.order[st.step]) {
+      return void stepFillAll();
     }
     goToBusinessPageByKey(st.order[st.step]);
   }
@@ -2012,6 +2269,10 @@
     if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution", "suspension"].includes(st.workflow)) && !st.bootstrapDone) {
       return void stepChangeBootstrap(st);
     }
+    // Đang trong nhịp "mở trang chủ hộ đọc họ tên rồi quay lại": xử lý trước mọi thứ khác, vì trang
+    // đang đứng cố tình KHÁC trang mục tiêu nên nhánh điều hướng chung ở dưới sẽ kéo đi ngay.
+    if (st.phase === "probing-owner") return void handleOwnerProbe(st);
+
     const order = st.order;
 
     const finish = async () => { await finishFillAllThenAttach(st); };
@@ -2534,6 +2795,11 @@
   H.matchSubmitterIdentityCandidate = matchSubmitterIdentityCandidate;
   H.forceSelfSubmitter = forceSelfSubmitter;
   H.matchAccountWithOwner = matchAccountWithOwner;
+  H.isChangeFormOnlyDossier = isChangeFormOnlyDossier;
+  H.collectOwnerIdentities = collectOwnerIdentities;
+  H.needsOwnerProbe = needsOwnerProbe;
+  H.OWNER_CHANGE_TYPE_FIELDS = OWNER_CHANGE_TYPE_FIELDS;
+  H.readPortalOwner = readPortalOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
   H.getFillAllState = getFillAllState;
   H.navigateBusinessRegistrationPage = navigateBusinessRegistrationPage;

@@ -340,6 +340,28 @@ async function applyLegacyMirrorFields(fields, result, filledNames) {
   }
 }
 
+// Fallback khi KHÔNG tìm được container theo name (vd click giả lập vào dropdown "Tình trạng
+// hôn nhân" không kích hoạt render x-select-area con như click thật của người dùng): định vị
+// qua chính Ô INPUT CON đã biết tên thật trên cổng (BenNam_SoBanAn/BenNu_SoBanAn — xác nhận từ
+// DevTools), rồi leo lên container thật bằng closest() — KHÔNG phụ thuộc thuộc tính name của
+// container nữa. Chỉ áp dụng cho field mang dữ liệu bản án/quyết định ly hôn (có
+// soBanAnQuyetDinhLyHon/ngayCap.../coQuanCap...) để tránh áp dụng nhầm sang widget khác.
+function guessDivorceDecisionContainer(field) {
+  const value = field?.value;
+  const looksLikeDivorceDecision = value && typeof value === "object" && (
+    "soBanAnQuyetDinhLyHon" in value ||
+    "ngayCapBanAnQuyetDinhLyHon" in value ||
+    "coQuanCapBanAnQuyetDinhLyHon" in value
+  );
+  if (!looksLikeDivorceDecision) return null;
+  const suffixMatch = /Ben(Nam|Nu)$/.exec(String(field.name || ""));
+  if (!suffixMatch) return null;
+  const inputName = `Ben${suffixMatch[1]}_SoBanAn`;
+  const anchorInput = document.querySelector(`input[name="${CSS.escape(inputName)}"]`);
+  if (!anchorInput) return null;
+  return anchorInput.closest("x-select-area") || anchorInput.closest("div") || anchorInput.parentElement;
+}
+
 async function fillForm(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
@@ -364,7 +386,28 @@ async function fillForm(fields) {
       continue;
     }
     // Tìm container theo name chính rồi tới alias; ghi nhận tên KHỚP để filler dùng đúng.
-    const found = findNamedElement(f.comp, candidates);
+    let found = findNamedElement(f.comp, candidates);
+    // x-select-area động (vd khối "Số bản án/Quyết định ly hôn") chỉ được cổng render SAU KHI
+    // field driver (x-select "Tình trạng hôn nhân") vừa chọn xong — container có thể CHƯA có
+    // trong DOM ngay lúc này, nên chờ thêm thay vì bỏ cuộc ngay ở lần thử đầu.
+    if (!found.el && f.comp === "x-select-area") {
+      await waitFor(() => {
+        found = findNamedElement(f.comp, candidates);
+        return !!found.el;
+      }, 3000, 100);
+    }
+    // Vẫn không thấy theo name → thử fallback định vị qua input con đã biết tên thật
+    // (xem guessDivorceDecisionContainer). Chờ thêm vì input con cũng có thể render trễ.
+    if (!found.el && f.comp === "x-select-area") {
+      let guessed = guessDivorceDecisionContainer(f);
+      if (!guessed) {
+        await waitFor(() => {
+          guessed = guessDivorceDecisionContainer(f);
+          return !!guessed;
+        }, 3000, 100);
+      }
+      if (guessed) found = { el: guessed, usedName: f.name };
+    }
     const container = found.el;
     const usedName = found.usedName;
     if (!container) {
@@ -773,23 +816,30 @@ function fillPlainTextSelectArea(container, f) {
 }
 
 function fillDivorceDecisionAreaByKnownNames(container, data) {
+  const used = new Set();
   let any = false;
   // Area "đang có vợ/chồng" (=2) có thêm ô tên vợ/chồng; area ly hôn/góa (=3/=4) không có ô này.
   const spouseInput = container.querySelector('input[name="voChongHoTen"]');
   if (spouseInput && data.voChongHoTen) {
     setNativeValue(spouseInput, data.voChongHoTen, { typing: true, commit: true });
     markFilled(spouseInput.parentElement || spouseInput);
+    used.add(spouseInput);
     any = true;
   }
-  const numberInput = container.querySelector('input[name="soGiayTo"]');
-  if (numberInput && data.soBanAnQuyetDinhLyHon) {
+  // "soGiayTo" = tên dùng ở thủ tục Xác nhận TTHN; "*_SoBanAn" (vd BenNam_SoBanAn/BenNu_SoBanAn)
+  // = tên thật xác nhận trên cổng cho thủ tục Đăng ký kết hôn — khớp CẢ HAI cho chắc.
+  const numberInput = container.querySelector('input[name="soGiayTo"], input[name$="_SoBanAn"]');
+  const numberHandled = !!(numberInput && data.soBanAnQuyetDinhLyHon);
+  if (numberHandled) {
     setNativeValue(numberInput, data.soBanAnQuyetDinhLyHon, { typing: true, commit: true });
     markFilled(numberInput.parentElement || numberInput);
+    used.add(numberInput);
     any = true;
   }
 
   const dateValue = String(data.ngayCapBanAnQuyetDinhLyHon || "").trim();
   const dateMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  let dateHandled = false;
   if (dateMatch) {
     const dd = dateMatch[1].padStart(2, "0");
     const mm = dateMatch[2].padStart(2, "0");
@@ -798,41 +848,49 @@ function fillDivorceDecisionAreaByKnownNames(container, data) {
     const month = container.querySelector('input[name="ngayCapGiayTo-month"]');
     const year = container.querySelector('input[name="ngayCapGiayTo-year"]');
     const dateInput = container.querySelector('input[name="ngayCapGiayTo-name-date-input"]');
-    if (day) { setNativeValue(day, dd, { typing: true, commit: true }); any = true; }
-    if (month) { setNativeValue(month, mm, { typing: true, commit: true }); any = true; }
-    if (year) { setNativeValue(year, yyyy, { typing: true, commit: true }); any = true; }
-    if (dateInput) { setNativeValue(dateInput, `${yyyy}-${mm}-${dd}`, { typing: true, commit: true }); any = true; }
+    if (day) { setNativeValue(day, dd, { typing: true, commit: true }); used.add(day); any = true; dateHandled = true; }
+    if (month) { setNativeValue(month, mm, { typing: true, commit: true }); used.add(month); any = true; dateHandled = true; }
+    if (year) { setNativeValue(year, yyyy, { typing: true, commit: true }); used.add(year); any = true; dateHandled = true; }
+    if (dateInput) { setNativeValue(dateInput, `${yyyy}-${mm}-${dd}`, { typing: true, commit: true }); used.add(dateInput); any = true; dateHandled = true; }
     if (day || month || year || dateInput) markFilled((day || month || year || dateInput).parentElement || container);
   }
 
   const agencyInput = container.querySelector('input[name="coQuanCapGiayTo"]');
-  if (agencyInput && data.coQuanCapBanAnQuyetDinhLyHon) {
+  const agencyHandled = !!(agencyInput && data.coQuanCapBanAnQuyetDinhLyHon);
+  if (agencyHandled) {
     setNativeValue(agencyInput, data.coQuanCapBanAnQuyetDinhLyHon, { typing: true, commit: true });
     markFilled(agencyInput.parentElement || agencyInput);
+    used.add(agencyInput);
     any = true;
   }
-  return any;
+  return { any, used, numberHandled, dateHandled, agencyHandled };
 }
 
 async function fillDivorceDecisionArea(container, data) {
   await waitFor(() => container.querySelector("x-input, x-date, input, textarea"), 3500);
   const byName = fillDivorceDecisionAreaByKnownNames(container, data);
-  if (byName) return true;
+  let any = byName.any;
 
-  const textControls = selectAreaTextControls(container);
-  const dateControls = selectAreaDateControls(container);
-  let any = false;
+  // Phần nào byName ĐÃ xử lý (khớp tên thật hoặc tên cũ) thì bỏ qua, KHÔNG suy vị trí lại —
+  // tránh ghi đè/lệch ô. Phần còn thiếu mới suy theo thứ tự hiển thị: Số bản án -> Ngày cấp ->
+  // Cơ quan cấp. Loại các input byName đã dùng ra khỏi danh sách để index không bị lệch.
+  const remainingText = selectAreaTextControls(container).filter((el) => !byName.used.has(el));
+  const remainingDate = selectAreaDateControls(container).filter((el) => !byName.used.has(el));
 
-  // Form động của tình trạng hôn nhân render 3 control theo thứ tự:
-  // Số Bản án/Quyết định ly hôn -> Ngày cấp -> Cơ quan cấp.
-  if (data.soBanAnQuyetDinhLyHon) {
-    any = setGenericTextControl(textControls[0], data.soBanAnQuyetDinhLyHon) || any;
+  if (data.soBanAnQuyetDinhLyHon && !byName.numberHandled) {
+    any = setGenericTextControl(remainingText.shift(), data.soBanAnQuyetDinhLyHon) || any;
   }
-  if (data.ngayCapBanAnQuyetDinhLyHon) {
-    any = setGenericDateControl(dateControls[0], data.ngayCapBanAnQuyetDinhLyHon) || any;
+  if (data.ngayCapBanAnQuyetDinhLyHon && !byName.dateHandled) {
+    if (remainingDate.length) {
+      any = setGenericDateControl(remainingDate.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
+    } else {
+      // Không có control ngày dạng x-date/day-input riêng → ô ngày thực chất là input text
+      // thường (đã bị gom vào remainingText), lấy đúng slot kế tiếp.
+      any = setGenericTextControl(remainingText.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
+    }
   }
-  if (data.coQuanCapBanAnQuyetDinhLyHon) {
-    any = setGenericTextControl(textControls[1], data.coQuanCapBanAnQuyetDinhLyHon) || any;
+  if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled) {
+    any = setGenericTextControl(remainingText.shift(), data.coQuanCapBanAnQuyetDinhLyHon) || any;
   }
   return any;
 }

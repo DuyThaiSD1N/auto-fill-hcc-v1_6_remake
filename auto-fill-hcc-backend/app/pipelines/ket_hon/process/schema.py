@@ -24,6 +24,16 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú CHỈ lấy từ CCCD/CMND của bên nam, object {quocGia,tinh,xa,diaChi}; xa BẮT BUỘC giữ tên loại đơn vị đầy đủ: P/P. → Phường, X/X. → Xã, TT/TT. → Thị trấn; không trả dạng viết tắt. tinh chỉ chứa tên tỉnh/thành phố đầy đủ."},
     {"name": "CccdNam_SoLanKetHon", "desc": "Số lần kết hôn của BÊN NAM — CHỈ lấy nếu tờ khai có mục 'Kết hôn lần thứ mấy'/'Số lần kết hôn' ghi rõ số ở cột nam. Trả SỐ NGUYÊN (vd '1', '2'). Không có thì bỏ qua."},
     {"name": "CccdNam_TinhTrangHonNhan", "desc": "Mã tình trạng hôn nhân BÊN NAM. Với bản án/quyết định ly hôn, chỉ trả mã 3 khi họ tên đương sự khớp CHÍNH XÁC sau chuẩn hóa dấu/hoa-thường/khoảng trắng với CccdNam_HoTen, hoặc văn bản có đúng số CCCD của người nam. Không fuzzy tên; lệch bất kỳ chữ nào mà không có CCCD khớp thì bỏ field. Mã: 1=đang có vợ/chồng; 2=chưa đăng ký; 3=đã ly hôn, hiện tại chưa đăng ký; 4=vợ/chồng đã chết; 5=chưa đăng ký trong một khoảng thời gian nhưng hiện đang có vợ/chồng; 6=khác. Chỉ trả mã số."},
+    {"name": "CccdNam_BanAnLyHon_So",
+     "desc": "Số bản án/quyết định ly hôn của BÊN NAM. CHỈ lấy khi văn bản ly hôn thật xác định đúng "
+             "người này là đương sự, cùng điều kiện đối chiếu tên/CCCD như CccdNam_TinhTrangHonNhan mã 3. "
+             "Không khớp đúng người hoặc không có văn bản thì bỏ field."},
+    {"name": "CccdNam_BanAnLyHon_Ngay",
+     "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn của BÊN NAM, dd/mm/yyyy. Cùng điều kiện đối "
+             "chiếu như CccdNam_BanAnLyHon_So."},
+    {"name": "CccdNam_BanAnLyHon_CoQuan",
+     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn của BÊN NAM (vd 'Tòa án nhân dân thành phố "
+             "...'). Cùng điều kiện đối chiếu như CccdNam_BanAnLyHon_So."},
 
     # CCCD/CMND bên nữ.
     {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nữ."},
@@ -43,6 +53,16 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú CHỈ lấy từ CCCD/CMND của bên nữ, object {quocGia,tinh,xa,diaChi}; xa BẮT BUỘC giữ tên loại đơn vị đầy đủ: P/P. → Phường, X/X. → Xã, TT/TT. → Thị trấn; không trả dạng viết tắt. tinh chỉ chứa tên tỉnh/thành phố đầy đủ."},
     {"name": "CccdNu_SoLanKetHon", "desc": "Số lần kết hôn của BÊN NỮ — CHỈ lấy nếu tờ khai có mục 'Kết hôn lần thứ mấy'/'Số lần kết hôn' ghi rõ số ở cột nữ. Trả SỐ NGUYÊN (vd '1', '2'). Không có thì bỏ qua."},
     {"name": "CccdNu_TinhTrangHonNhan", "desc": "Mã tình trạng hôn nhân BÊN NỮ. Với bản án/quyết định ly hôn, chỉ trả mã 3 khi họ tên đương sự khớp CHÍNH XÁC sau chuẩn hóa dấu/hoa-thường/khoảng trắng với CccdNu_HoTen, hoặc văn bản có đúng số CCCD của người nữ. Không fuzzy tên; lệch bất kỳ chữ nào mà không có CCCD khớp thì bỏ field. Mã: 1=đang có vợ/chồng; 2=chưa đăng ký; 3=đã ly hôn, hiện tại chưa đăng ký; 4=vợ/chồng đã chết; 5=chưa đăng ký trong một khoảng thời gian nhưng hiện đang có vợ/chồng; 6=khác. Chỉ trả mã số."},
+    {"name": "CccdNu_BanAnLyHon_So",
+     "desc": "Số bản án/quyết định ly hôn của BÊN NỮ. CHỈ lấy khi văn bản ly hôn thật xác định đúng "
+             "người này là đương sự, cùng điều kiện đối chiếu tên/CCCD như CccdNu_TinhTrangHonNhan mã 3. "
+             "Không khớp đúng người hoặc không có văn bản thì bỏ field."},
+    {"name": "CccdNu_BanAnLyHon_Ngay",
+     "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn của BÊN NỮ, dd/mm/yyyy. Cùng điều kiện đối "
+             "chiếu như CccdNu_BanAnLyHon_So."},
+    {"name": "CccdNu_BanAnLyHon_CoQuan",
+     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn của BÊN NỮ (vd 'Tòa án nhân dân thành phố "
+             "...'). Cùng điều kiện đối chiếu như CccdNu_BanAnLyHon_So."},
 
     # Tách nguồn tờ khai khỏi CCCD để mapper ưu tiên tất định, không phụ thuộc LLM tự chọn nguồn.
     {"name": "ToKhaiNam_NoiCuTru_TrongNuoc",
@@ -82,6 +102,8 @@ for _name in (
     "CccdNam_NgayCap",
     "CccdNu_NgaySinh",
     "CccdNu_NgayCap",
+    "CccdNam_BanAnLyHon_Ngay",
+    "CccdNu_BanAnLyHon_Ngay",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (
@@ -114,6 +136,9 @@ UI_COMP_BY_NAME = {
     "NoiCuTru_BenNam_NuocNgoai": "x-select-area",
     "SoLanKetHon_BenNam": "raw",
     "LoaiTinhTrangHonNhan_BenNam": "x-select",
+    # Widget động khi chọn "Đã ly hôn": tên thật lấy từ DOM cổng dịch vụ công (name="TTHN_LyHonBenNam"),
+    # chứa 3 ô con Số bản án -> Ngày cấp -> Cơ quan cấp theo thứ tự (input name="BenNam_SoBanAn"...).
+    "TTHN_LyHonBenNam": "x-select-area",
     # Bên nữ.
     "HoTenBenNu": "x-input",
     "SoDinhDanh_BenNu": "x-input",
@@ -130,6 +155,7 @@ UI_COMP_BY_NAME = {
     "NoiCuTru_BenNu_NuocNgoai": "x-select-area",
     "SoLanKetHon_BenNu": "raw",
     "LoaiTinhTrangHonNhan_BenNu": "x-select",
+    "TTHN_LyHonBenNu": "x-select-area",  # tương tự TTHN_LyHonBenNam nhưng cho bên nữ
     "loaiDangKy": "x-radio",
     "CapBanSao": "x-radio",
     "SoLuong": "raw",

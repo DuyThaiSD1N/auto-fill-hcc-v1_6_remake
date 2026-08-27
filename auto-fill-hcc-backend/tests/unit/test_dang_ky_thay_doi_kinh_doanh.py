@@ -113,3 +113,32 @@ def test_registry_and_response_contract_expose_change_flow():
         businessFlow={"workflow": "change", "pageOrder": ["nguoi-nop-ho-so"]},
     )
     assert response.businessFlow["workflow"] == "change"
+
+
+def test_form_only_dossier_flag_marks_change_without_identity_papers():
+    """Hồ sơ chỉ có tờ đơn xin thay đổi → extension chốt vai trò người nộp bằng HỌ TÊN chủ hộ."""
+    _, flow = mapper.build([
+        _field("HoKinhDoanh_MaSo", "027200011386"),
+        _field("HienTai_Ten", "HỘ KINH DOANH TRƯƠNG HÀN ĐAN"),
+        _field("HienTai_ChuHo", {"hoTen": "Trương Hàn Đan", "soDinhDanh": "012345678901"}),
+        _field("DeNghi_NganhNgheBoSung", [{"ma": "", "ten": "Tư vấn, tham vấn tâm lý"}]),
+    ])
+
+    assert flow["formOnly"] is True
+
+
+def test_form_only_flag_off_when_dossier_has_identity_papers():
+    for extra in (
+        _field("Cccd_DanhSach", [{"hoTen": "Trần Thị B", "soDinhDanh": "022222222222"}]),
+        _field("HasMultipleCCCD", True),
+        _field("UyQuyen_CoGiayUyQuyen", True),
+        _field("UyQuyen_NguoiDuocUyQuyen_HoTen", "Trần Thị B"),
+    ):
+        _, flow = mapper.build([
+            _field("HoKinhDoanh_MaSo", "027200011386"),
+            _field("HienTai_Ten", "HỘ KINH DOANH TRƯƠNG HÀN ĐAN"),
+            _field("HienTai_ChuHo", {"hoTen": "Trương Hàn Đan", "soDinhDanh": "012345678901"}),
+            _field("DeNghi_NganhNgheBoSung", [{"ma": "", "ten": "Tư vấn, tham vấn tâm lý"}]),
+            extra,
+        ])
+        assert flow["formOnly"] is False, extra["name"]

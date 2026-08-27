@@ -144,6 +144,26 @@ def _person_fields(person: Any, prefix: str) -> list[dict]:
     return [_compact_field(target, person.get(source)) for source, target in mapping.items() if person.get(source) not in (None, "", {}, [])]
 
 
+_AUTHORIZATION_IDENTITY_FIELDS = (
+    "UyQuyen_NguoiUyQuyen_HoTen",
+    "UyQuyen_NguoiUyQuyen_SoDinhDanh",
+    "UyQuyen_NguoiDuocUyQuyen_HoTen",
+    "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh",
+)
+
+
+def _has_identity_documents(values: dict[str, Any]) -> bool:
+    """Hồ sơ có giấy tờ nhân thân ngoài tờ đơn không (CCCD rời hoặc Giấy ủy quyền)."""
+    raw = values.get("Cccd_DanhSach")
+    if isinstance(raw, list) and any(isinstance(item, dict) and item for item in raw):
+        return True
+    if values.get("HasMultipleCCCD"):
+        return True
+    if values.get("UyQuyen_CoGiayUyQuyen"):
+        return True
+    return any(values.get(name) not in (None, "", {}, []) for name in _AUTHORIZATION_IDENTITY_FIELDS)
+
+
 def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
     """Nhân thân đọc từ MỌI thẻ căn cước trong hồ sơ (đã gộp mặt trước/sau của cùng một thẻ).
 
@@ -223,16 +243,23 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         pages["chu-ho-kinh-doanh"].append({
             "name": "ctl00$C$OWN_PCtl$PERSCtl$PERSONChange", "comp": "dom-checkbox", "value": True,
         })
-        if values.get("DeNghi_ChuHo_LoaiThayDoi"):
-            pages["chu-ho-kinh-doanh"].append({
-                "name": "ctl00$C$CHANGE_OWNER_TYPE_TITLE_IDFld", "comp": "dom-select",
-                "value": values["DeNghi_ChuHo_LoaiThayDoi"],
-            })
-        if values.get("DeNghi_ChuHo_LyDo"):
-            pages["chu-ho-kinh-doanh"].append({
-                "name": "ctl00$C$CHANGE_OWNER_TYPE_IDFld", "comp": "dom-select",
-                "value": values["DeNghi_ChuHo_LyDo"],
-            })
+        # Luôn cố định "Cập nhật thông tin chủ hộ kinh doanh" / "Khác" — KHÔNG dùng giá trị LLM
+        # đọc từ Thông báo. "Lý do" là select con phụ thuộc "Loại": chỉ khi "Loại" = "Cập nhật
+        # thông tin chủ hộ kinh doanh" thì "Khác" mới xuất hiện trong danh sách để chọn được;
+        # các "Loại" khác (vd "Thay đổi chủ hộ kinh doanh") không có option "Khác" nên chọn hụt.
+        pages["chu-ho-kinh-doanh"].append({
+            "name": "ctl00$C$CHANGE_OWNER_TYPE_TITLE_IDFld", "comp": "dom-select",
+            "value": "Cập nhật thông tin chủ hộ kinh doanh",
+        })
+        pages["chu-ho-kinh-doanh"].append({
+            "name": "ctl00$C$CHANGE_OWNER_TYPE_IDFld", "comp": "dom-select",
+            "value": "Khác",
+        })
+        # Lên "chu-ho-kinh-doanh" HAI LẦN liên tiếp trong order: lượt 1 chỉ chốt "Loại đăng ký thay
+        # đổi"/"Lý do" (2 select cascade, dễ điền hụt nếu nhồi chung với cả khối nhân thân), lượt 2
+        # mới điền nhân thân/địa chỉ + Lưu. Extension (business-registration.js) tách 2 lượt bằng
+        # cách "nhìn trước" order — thấy còn 1 "chu-ho-kinh-doanh" nữa phía sau là lượt 1.
+        order.append("chu-ho-kinh-doanh")
         order.append("chu-ho-kinh-doanh")
 
     if flags["capital"]:
@@ -281,6 +308,10 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     # bấm "Sao chép thông tin đăng ký tài khoản" (chỉ cần số định danh HOẶC họ tên khớp chủ hộ là tick
     # "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh").
     candidates = _identity_candidates(values)
+    # Hồ sơ CHỈ có tờ đơn xin thay đổi: không kèm CCCD nào, cũng không có Giấy ủy quyền. Khi đó nhân
+    # thân duy nhất đọc được là CHỦ HỘ ghi trong đơn, nên extension không thể đối chiếu tài khoản
+    # đang đăng nhập bằng số định danh (đơn hay thiếu/OCR lẫn số) — chỉ còn HỌ TÊN chủ hộ làm căn cứ.
+    form_only = not _has_identity_documents(values)
     applicant_compact = _person_fields(applicant, "NguoiNop") + _person_fields(owner, "ChuHo")
     # Người nộp thay có thể CHỈ có tên trong Giấy ủy quyền → chuyển tiếp nguyên nhóm field ủy quyền
     # để creation_mapper dựng nhân thân đó vào __identityCandidates.
@@ -361,5 +392,8 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         },
         "industryChanges": {"add": additions, "remove": removals},
         "identityCandidates": candidates,
+        # Chỉ có tờ đơn → extension chốt vai trò người nộp bằng HỌ TÊN chủ hộ (xem
+        # isChangeFormOnlyDossier trong business-registration.js).
+        "formOnly": form_only,
     }
     return pages, flow

@@ -121,6 +121,14 @@
       "autoConfirm": true
     },
     {
+      "key": "khai-tu-nuoc-ngoai",
+      "code": "1.001766",
+      "label": "Thủ tục khai tử có yếu tố nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-47da-7259-b8fe-0d5327727234",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-giam-ho",
       "code": "1.004837",
       "label": "Thủ tục đăng ký giám hộ",
@@ -249,6 +257,14 @@
       "autoConfirm": true
     },
     {
+      "key": "cap-ban-sao-van-bang-chung-chi-tu-so-goc",
+      "code": "3.000465",
+      "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-df63-75bf-8bff-4c9d1f98674c",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "chung-thuc-di-chuc",
       "code": "2.001019",
       "label": "Chứng thực di chúc",
@@ -293,6 +309,14 @@
       "code": "1.014027",
       "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d80-74d8-8515-90f6f61822f0",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "ho-tro-nguoi-cao-tuoi-dang-vien-40-nam-tuoi-dang",
+      "code": "1.014589",
+      "label": "Thủ tục Hỗ trợ cho Người cao tuổi từ đủ 70 tuổi đến dưới 75 tuổi; Người cao tuổi dưới 75 tuổi thường trú trên địa bàn tỉnh, là Đảng viên được tặng huy hiệu 40 năm tuổi đảng trở lên, không có lương hưu, trợ cấp bảo hiểm xã hội, trợ cấp xã hội hàng tháng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7c4f-0f4f-756f-a7db-e8f96edb8171",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -353,6 +377,14 @@
       "autoConfirm": false
     },
     {
+      "key": "cap-lai-cap-doi-gcn-dang-ky-ho-kinh-doanh",
+      "code": "2.000575",
+      "label": "Cấp lại Giấy chứng nhận đăng ký hộ kinh doanh, Cấp đổi sang Giấy chứng nhận đăng ký hộ kinh doanh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfc-d9d1-7475-8e58-1aa4479901eb",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
       "code": "1.013978",
       "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
@@ -365,6 +397,14 @@
       "code": "1.014113",
       "label": "Thủ tục xét tuyển Công chức",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2326-7367-83e6-f242eef7cbc5",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xet-tuyen-vien-chuc",
+      "code": "3.000601",
+      "label": "Thủ tục xét tuyển Viên chức (Nghị định số 85/2023/NĐ-CP)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1834-0004-71bd-abd7-6c634065e005",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -402,9 +442,65 @@
     },
     {
       "key": "cap-doi-gcn-quyen-su-dung-dat",
-      "code": "1.115464",
+      "code": "1.012783",
       "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12a3-93d3-71ae-8f20-1cfb89cab2b6",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-su-dung-dat-khong-dung-muc-dich",
+      "code": "1.115535",
+      "label": "Đăng ký biến động đất đai, tài sản gắn liền với đất trong trường hợp hộ gia đình, cá nhân đang sử dụng đất không đúng mục đích đã được Nhà nước giao đất, cho thuê đất, công nhận quyền sử dụng đất quy định tại điểm b khoản 6 Điều 25 Nghị định số 101/2024/NĐ-CP",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f20ba-5e5f-73ff-a7c5-a85a5caf348c",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-sai-sot",
+      "code": "1.012796",
+      "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap",
+      "code": "1.012790",
+      "label": "Đính chính Giấy chứng nhận đã cấp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh",
+      "code": "1.012818",
+      "label": "Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76e6-7468-b6f2-417e588578f5",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tach-thua-hop-thua-dat",
+      "code": "1.012784",
+      "label": "Tách thửa đất hoặc hợp thửa đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f5d-72e6-9a68-ab8e3ba11c8b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cung-cap-thong-tin-quy-hoach",
+      "code": "1.014159",
+      "label": "Cung cấp thông tin quy hoạch",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9852-71ed-96f2-8110da8fd4f0",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh",
+      "code": "1.116379",
+      "label": "Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, khiếu nại, tố cáo về đất đai; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là quyền sử dụng đất, tài sản gắn liền với đất để đăng ký, bao gồm cả xử lý khoản nợ có bảo đảm đối với khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ffa24-faf6-7561-b1e3-10bf2099cf67",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -425,10 +521,26 @@
       "autoConfirm": true
     },
     {
+      "key": "cap-gcn-dang-ky-tau-ca-tau-phuc-vu-nuoi-trong-thuy-san",
+      "code": "1.003650",
+      "label": "Cấp giấy chứng nhận đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-2864-76fe-9234-7c54e1661f21",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-gcn-co-so-du-dieu-kien-an-toan-thuc-pham-nong-lam-thuy-san",
       "code": "2.001827",
       "label": "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm nông, lâm, thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-b57f-73cc-856f-0255333fcb48",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gcn-attp-co-so-kinh-doanh-dich-vu-an-uong-byt",
+      "code": "1.013855",
+      "label": "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -482,6 +594,7 @@
     },
     {
       "key": "cap-giay-phep-chat-ha-cay-xanh",
+      "code": "1.002693",
       "label": "Cấp giấy phép chặt hạ, dịch chuyển cây xanh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
       "needsAgencySelect": true,
@@ -519,7 +632,7 @@
     },
     {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau-quang-ninh",
-      "code": "1.013978",
+      "code": "1.115820",
       "label": "Quảng Ninh - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f650b-3d23-7368-83ca-2f9acdc7e4ab",
       "needsAgencySelect": true,
@@ -527,7 +640,7 @@
     },
     {
       "key": "chuyen-muc-dich-su-dung-dat-cap-xa-quang-ninh",
-      "code": "1.013949",
+      "code": "1.115860",
       "label": "Quảng Ninh - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Cấp xã)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f69dd-996e-75b1-a839-07629a53ce98",
       "needsAgencySelect": true,
@@ -538,6 +651,30 @@
       "code": "1.010824",
       "label": "Hưởng trợ cấp khi người có công đang hưởng trợ cấp ưu đãi từ trần",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc36-7611-9219-adb6dee5774f",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giai-quyet-che-do-mai-tang-cuu-chien-binh",
+      "code": "1.010456",
+      "label": "Giải quyết chế độ mai táng phí đối với đối tượng cựu chiến binh tham gia kháng chiến chống Pháp, chống Mỹ, chiến tranh bảo vệ Tổ quốc và làm nhiệm vụ quốc tế hưởng trợ cấp theo Quyết định số 49/2015/QĐ-TTg của Thủ tướng Chính phủ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019dbe41-6991-743a-819d-5be7935767c7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giai-quyet-che-do-mai-tang-dan-cong-hoa-tuyen",
+      "code": "1.014359",
+      "label": "Giải quyết chế độ mai táng phí đối với dân công hỏa tuyến tham gia kháng chiến chống Pháp, chống Mỹ, chiến tranh bảo vệ Tổ quốc và làm nhiệm vụ quốc tế",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2b25-777d-a825-2823012ce7ec",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chinh-sach-ho-tro-chi-phi-hoc-tap-hoc-sinh-sinh-vien",
+      "code": "1.014581",
+      "label": "Chính sách hỗ trợ chi phí học tập cho học sinh, sinh viên",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7c57-91bf-778b-92a9-6ebb79f4b009",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -614,10 +751,26 @@
       "autoConfirm": true
     },
     {
+      "key": "kiem-tra-nghiem-thu-hoan-thanh-cong-trinh-xay-dung",
+      "code": "1.009794",
+      "label": "Kiểm tra công tác nghiệm thu hoàn thành công trình xây dựng cơ quan chuyên môn về xây dựng tại địa phương",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-712b-7199-8f22-d5fc91ab8426",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "ho-tro-mai-tang-huu-tri-xa-hoi",
       "code": "1.014028",
       "label": "Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3508-7268-b54b-6ce79a8cbf0e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "ho-tro-chi-phi-hoa-tang-bac-ninh",
+      "code": "1.014582",
+      "label": "Bắc Ninh - Thủ tục hỗ trợ chi phí hỏa táng (bao gồm cả điện táng) trên địa bàn tỉnh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7cdb-1107-74c7-8cd2-ccc4e24b47d1",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -666,6 +819,30 @@
       "code": "1.013949",
       "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-thue-chuyen-muc-dich-dat-lai-chau-lam-dong",
+      "code": "1.013823",
+      "label": "Lai Châu, Lâm Đồng - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ec9-76f0-b9d3-985182762c76",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te-bac-ninh",
+      "code": "1.014076",
+      "label": "Bắc Ninh - Cấp giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở Y tế (Cơ sở bán buôn thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, quầy thuốc, tủ thuốc trạm y tế xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ truyền)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3520-75d8-af1f-89a0f0359cf9",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tham-dinh-bao-cao-nghien-cuu-kha-thi-xay-dung-ninh-binh",
+      "code": "1.013239",
+      "label": "Ninh Bình - Thẩm định báo cáo nghiên cứu khả thi đầu tư xây dựng/Báo cáo nghiên cứu khả thi điều chỉnh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90c2-742a-9dfb-c6d2bdd9aac8",
       "needsAgencySelect": true,
       "autoConfirm": true
     }
