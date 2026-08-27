@@ -345,6 +345,14 @@
       "autoConfirm": false
     },
     {
+      "key": "tam-ngung-kinh-doanh",
+      "code": "1.007042",
+      "label": "Tạm ngừng kinh doanh",
+      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
       "code": "1.013978",
       "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
@@ -482,10 +490,10 @@
     {
       "key": "dang-ky-bien-dong-dat-dai-da-nang",
       "code": "1.013831",
-      "label": "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất (chuyển nhượng, thừa kế, tặng cho, góp vốn, cho thuê lại)",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "label": "Đà Nẵng - Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
       "needsAgencySelect": true,
-      "autoConfirm": false
+      "autoConfirm": true
     },
     {
       "key": "cap-moi-cap-lai-giay-chung-nhan-so-nha",

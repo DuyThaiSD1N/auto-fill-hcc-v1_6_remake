@@ -22,6 +22,7 @@
     "thong-tin-ve-von": "Thông tin về vốn",
     "thong-tin-ve-thue": "Thông tin về thuế",
     "cham-dut-hoat-dong": "Chấm dứt hoạt động",
+    "tam-ngung-hoat-dong": "Tạm ngừng kinh doanh",
     "thong-tin-de-nghi-cap-lai": "Thông tin đề nghị cấp lại GCN/GXNTĐ",
     "nguoi-nop-ho-so": "Người nộp hồ sơ",
   };
@@ -55,6 +56,15 @@
     // dùng "Chấm dứt hoạt động". Đây là cùng một trang Dissolution.aspx theo HTML thực tế.
     if (wanted.includes("thong bao quyet dinh giai the") || wanted.includes("cham dut hoat dong")) {
       return { pageKey: "cham-dut-hoat-dong", label };
+    }
+    // Trang chính của nhánh "Tạm ngừng kinh doanh" (SUSPEN) — nhãn menu trái ĐÃ XÁC NHẬN qua ảnh
+    // chụp cổng thật là "Tạm ngừng kinh doanh" (không phải "Tạm ngừng hoạt động" như suy đoán ban
+    // đầu). Breadcrumb khi mở trang con vẫn CHƯA có ảnh xác nhận nên vẫn khớp thêm hai cụm khả dĩ
+    // ("tam ngung hoat dong"/"thong bao tam ngung"); token-overlap phía dưới là lưới đỡ chung nếu
+    // breadcrumb thật khác các cụm này.
+    if (wanted.includes("tam ngung kinh doanh") || wanted.includes("tam ngung hoat dong")
+      || wanted.includes("thong bao tam ngung")) {
+      return { pageKey: "tam-ngung-hoat-dong", label };
     }
     // Breadcrumb của DW_RE_ISSUANCEEdit.aspx rút gọn khác nhãn menu trái.
     if (wanted.includes("thong tin cap lai gcn gxn") || wanted.includes("de nghi cap lai gcn gxntd")) {
@@ -175,6 +185,9 @@
     if (detected.stage === "main" && detected.pageKey === "cham-dut-hoat-dong") {
       return "dissolution";
     }
+    if (detected.stage === "main" && detected.pageKey === "tam-ngung-hoat-dong") {
+      return "suspension";
+    }
     if (detected.stage === "main" && detected.pageKey === "thong-tin-de-nghi-cap-lai") {
       return "reissue";
     }
@@ -184,6 +197,7 @@
     }
     if (["main", "main-root"].includes(detected.stage) && registrationType.includes("thay doi")) {
       if (findBusinessPageLink("Chấm dứt hoạt động")) return "dissolution";
+      if (findBusinessPageLink("Tạm ngừng kinh doanh")) return "suspension";
       return "change-exact";
     }
     if (detected.stage === "confirm") {
@@ -209,6 +223,9 @@
     // của chính hồ sơ vẫn có mục Chấm dứt hoạt động nên đủ để nhận diện nhánh dissolution.
     if (registrationType.includes("thay doi") && findBusinessPageLink("Chấm dứt hoạt động")) {
       return "dissolution";
+    }
+    if (registrationType.includes("thay doi") && findBusinessPageLink("Tạm ngừng kinh doanh")) {
+      return "suspension";
     }
     if (registrationType.includes("cap lai")) return "reissue";
     if (page.pageKey && registrationType.includes("thay doi")) return "change";
@@ -522,14 +539,15 @@
       const next = document.getElementById("ctl00_C_myWizard_StepNavigationTemplateContainerID_StepNextButton");
       if (!amendment || !next) return void failChangeWorkflow("Thiếu lựa chọn loại đăng ký thay đổi hoặc nút Tiếp theo ở bước 3.");
 
-      // DISSOLU có AutoPostBack ngay khi chọn. Persist trước rồi chờ reload; nếu cổng không reload
-      // thì nhịp hẹn giờ kế tiếp sẽ thấy radio đã checked và bấm Tiếp theo.
-      if (amendmentValue === "DISSOLU" && !amendment.checked) {
+      // DISSOLU và SUSPEN (Tạm ngừng kinh doanh) đều có AutoPostBack ngay khi chọn. Persist trước
+      // rồi chờ reload; nếu cổng không reload thì nhịp hẹn giờ kế tiếp sẽ thấy radio đã checked và
+      // bấm Tiếp theo.
+      if ((amendmentValue === "DISSOLU" || amendmentValue === "SUSPEN") && !amendment.checked) {
         await setFillAllState(st);
         selectNativeRadio(amendment);
         return void setTimeout(stepFillAll, 1200);
       }
-      if (amendmentValue !== "DISSOLU") selectNativeRadio(amendment);
+      if (amendmentValue !== "DISSOLU" && amendmentValue !== "SUSPEN") selectNativeRadio(amendment);
       if (amendmentValue === "CHAPAR") {
         const nameValue = flow.nameChange ? "Y" : "N";
         const nameRadio = document.querySelector(`input[name="ctl00$C$myWizard$NAME_CHANGE_YN_IDFld"][value="${nameValue}"]`);
@@ -1367,7 +1385,16 @@
       applySubmitterOverride(submitterOverride);
     }
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
+    if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
+    if (saveBtn.disabled) {
+      // Cùng rủi ro như trang Tạm ngừng kinh doanh: disabled không có nghĩa "không có gì để lưu"
+      // khi trang này thật sự có field cần điền — chỉ khác là ở đây field còn có thể đến từ
+      // submitterOverride (ghi trực tiếp DOM, không qua fields[]) nên fields.length KHÔNG đủ để
+      // kết luận "không có gì thay đổi".
+      const hadChanges = fields.length > 0 || !!submitterOverride;
+      if (!hadChanges) return void advanceFillAll(st);
+      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+    }
     st.phase = "saving";
     await setFillAllState(st);
     const reloaded = await clickSaveDetectReload(saveBtn);
@@ -1982,7 +2009,7 @@
   async function stepFillAll() {
     const st = await getFillAllState();
     if (!st || !Array.isArray(st.order)) return;
-    if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution"].includes(st.workflow)) && !st.bootstrapDone) {
+    if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution", "suspension"].includes(st.workflow)) && !st.bootstrapDone) {
       return void stepChangeBootstrap(st);
     }
     const order = st.order;
@@ -2068,7 +2095,17 @@
     }
 
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st); // không có gì để lưu → sang trang kế
+    if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
+    if (saveBtn.disabled) {
+      // Nút Lưu mặc định disabled, chỉ bật khi cổng phát hiện form "dirty" qua sự kiện input/change
+      // thật của người dùng. fillFormStandard set value bằng script nên vài control (vd datepicker
+      // "dom-date" ở trang Tạm ngừng kinh doanh) không kích hoạt được cờ dirty đó dù giá trị đã đúng
+      // trên DOM — disabled ở đây KHÔNG có nghĩa "không có gì để lưu". Chỉ coi là "không có gì để lưu"
+      // khi trang này thật sự không có field nào cần điền; còn lại thì tự bật nút rồi vẫn bấm Lưu.
+      const hadFieldsToFill = (((st.pages && st.pages[targetKey]) || []).length) > 0;
+      if (!hadFieldsToFill) return void advanceFillAll(st);
+      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+    }
 
     st.phase = "saving";
     await setFillAllState(st);
@@ -2102,6 +2139,11 @@
     DISSOLUTION_FAMILY_MINUTES: { attId: "", droptyple: "", label: "Bản sao biên bản họp thành viên hộ gia đình" },
     TAX_TERMINATION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc chấm dứt hiệu lực mã số thuế của Cơ quan thuế" },
     DISSOLUTION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc chấm dứt hoạt động hộ kinh doanh" },
+    // Nhãn CATEGORY thật trên cổng (khác tên PHÁP LÝ của văn bản, vốn là "Giấy đề nghị đăng ký tạm
+    // ngừng/tiếp tục kinh doanh trước thời hạn đã đăng ký của hộ kinh doanh" — Mẫu số 3) — đã xác
+    // nhận qua ảnh chụp modal "Văn bản đính kèm" thật, cùng khuôn "Thông báo về việc..." như
+    // DISSOLUTION_NOTICE ở trên.
+    SUSPENSION_NOTICE: { attId: "", droptyple: "", label: "Thông báo về việc tạm ngừng kinh doanh" },
     BUSINESS_REG_CERT_ORIGINAL: { attId: "", droptyple: "", label: "Bản gốc Giấy chứng nhận đăng ký hộ kinh doanh" },
     CPID: { attId: "2_CPID", droptyple: "CPID", label: "Bản sao giấy tờ pháp lý của cá nhân" },
     TRANSFER: { attId: "", droptyple: "", label: "Hợp đồng mua bán hoặc các giấy tờ chứng minh hoàn tất việc mua bán; hợp đồng tặng cho; bản sao văn bản xác nhận quyền thừa kế hợp pháp" },
@@ -2173,8 +2215,17 @@
   // Danh sách LOẠI đã khai, hiện dưới "Văn bản đính kèm" trong container #ctl00_C_BLCtl_CtlAttList
   // (KHÁC #ctl00_C_BLCtl_CtlList = menu 8 trang). Bấm 1 item bất kỳ → điều hướng tới trang tải file.
   function attachTypeLinks() {
-    return Array.from(document.querySelectorAll('#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
+    const scoped = Array.from(document.querySelectorAll('#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
       .filter((a) => /__doPostBack/.test(a.getAttribute("href") || ""));
+    if (scoped.length) return scoped;
+    // #ctl00_C_BLCtl_CtlAttList/"LnkEdit" là ID suy đoán, CHƯA xác nhận đúng trên mọi bản giao diện.
+    // Rỗng không có nghĩa là chưa có mục nào để bấm — sidebar "VĂN BẢN ĐÍNH KÈM" trông giống hệt cấu
+    // trúc "KHỐI DỮ LIỆU" (menu .left-menu dùng chung ở findBusinessPageLink), nên quét toàn bộ
+    // .left-menu rồi khớp THEO CHỮ với đúng nhãn loại đã khai (tránh bấm nhầm mục điều hướng khác
+    // như "Tạm ngừng kinh doanh"/"Người nộp hồ sơ" — những mục đó không trùng nhãn ATTACH_TYPE nào).
+    const labels = Object.values(ATTACH_TYPE).map((t) => foldBusinessPageText(t.label));
+    return Array.from(document.querySelectorAll(".left-menu a"))
+      .filter((a) => labels.includes(foldBusinessPageText(a.textContent)));
   }
   function clickAttachTypeLink(link) {
     const href = link.getAttribute("href") || "";
@@ -2215,21 +2266,36 @@
     sel.dispatchEvent(new Event("change", { bubbles: true }));
     return true;
   }
+  // Danh mục "Loại tài liệu đính kèm" (options thật của #attId) nạp bằng AJAX SAU khi modal mở —
+  // lúc mới mount, select chỉ có đúng 1 option placeholder "-". Nếu chooseOption() chạy trước khi
+  // AJAX đổ options thật xong thì MỌI lần chọn đều thất bại (không phải do nhãn sai — options chưa
+  // kịp có), rồi cứ thế rơi vào fallback/bỏ qua mãi. Phải chờ options.length > 1 mới coi là sẵn sàng.
+  function attachTypeSelectReady(sel) {
+    return !!sel && H.isVisible(sel) && sel.options.length > 1;
+  }
   async function ensureAttachModalOpen() {
     let sel = document.getElementById("attId");
-    if (sel && H.isVisible(sel)) return sel;
+    if (attachTypeSelectReady(sel)) return sel;
     // Icon ⚙ mở modal qua handler jQuery của cổng. click() của content-script LÀ event DOM thật nên
     // handler jQuery vẫn nhận (CSP chỉ chặn INLINE script — không chặn dispatch event; KHÔNG inject nữa).
     const icon = document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings")
       || document.querySelector("img.settings, .right.settings, .settings");
     if (icon) { try { icon.click(); } catch (e) { /* ignore */ } }
-    const ok = await waitFor(() => { const s = document.getElementById("attId"); return s && H.isVisible(s); }, 6000, 250);
-    return ok ? document.getElementById("attId") : null; // null = không mở được (để caller xử lý)
+    const ok = await waitFor(() => attachTypeSelectReady(document.getElementById("attId")), 8000, 250);
+    return ok ? document.getElementById("attId") : null; // null = không mở được / options chưa nạp xong
   }
   function closeAttachModal() {
-    const dlg = document.getElementById("attachment")?.closest(".ui-dialog");
+    // Không giả định modal bọc trong #attachment — vài trang (vd ContactPerson.aspx) mở cùng modal
+    // "Văn bản đính kèm" nhưng khung ngoài có thể mang id khác. Tìm dialog THẬT SỰ đang chứa #attId
+    // (control đã xác nhận là modal đang mở) rồi mới suy ra khung .ui-dialog quanh nó.
+    const sel = document.getElementById("attId");
+    const dlg = sel?.closest(".ui-dialog") || document.getElementById("attachment")?.closest(".ui-dialog");
     const x = dlg?.querySelector(".ui-dialog-titlebar-close");
     if (x) { try { x.click(); return; } catch (e) { /* fallthrough */ } }
+    // Vài biến thể modal chỉ có nút "Đóng" ở footer, không có nút x góc trên.
+    const closeBtn = dlg && Array.from(dlg.querySelectorAll('button, input[type="button"], input[type="submit"], a'))
+      .find((b) => norm(b.textContent || b.value || "") === "đóng");
+    if (closeBtn) { try { closeBtn.click(); return; } catch (e) { /* fallthrough */ } }
     injectMainWorld("try{(window.jQuery||window.$)('#attachment').dialog('close');}catch(e){}");
   }
 
@@ -2241,6 +2307,7 @@
   async function handleDeclarePhase(st) {
     st.declared = st.declared || [];
     const missing = st.declareTypes.filter((c) => !isTypeDeclared(st, c));
+    console.log("[Attach] declare — declareTypes", st.declareTypes, "| missing", missing);
     if (missing.length) {
       const sel = await ensureAttachModalOpen();
       if (!sel) {
@@ -2251,20 +2318,63 @@
         }
         return void setTimeout(stepAttachAll, 800);
       }
+      st.addClicked = st.addClicked || {};
+      st.addClickedFallback = st.addClickedFallback || {};
+      st.declareAttempts = st.declareAttempts || {};
       for (const cat of missing) {
         const t = ATTACH_TYPE[cat];
-        if (!chooseOption(sel, t.attId, foldBusinessPageText(t.label))) continue;
-        // "Số tài liệu" phải là số ≥ 1 (validateItemCount của cổng) → set = số file thuộc loại này.
-        setAttachItemCount((st.declareCounts && st.declareCounts[cat]) || 1);
-        await waitFor(() => { const b = document.getElementById("AddAtt"); return b && !b.disabled; }, 5000, 200);
-        const addBtn = document.getElementById("AddAtt");
-        if (!addBtn) continue;
-        if (addBtn.disabled) { try { addBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
-        try { addBtn.click(); } catch (e) { /* ignore */ }
+        // đếm SỐ LƯỢT xử lý loại này TRƯỚC MỌI early-exit — bug cũ: khi cả nhãn riêng LẪN "Khác"
+        // đều không chọn được option nào (vd "Khác" đã bị loại khác trong CÙNG lượt chiếm mất khỏi
+        // dropdown), code "continue" thẳng mà KHÔNG đếm lượt, nên "giveUp" phía dưới không bao giờ
+        // tới lượt chạy → cat đó kẹt vĩnh viễn trong "missing", declaredAll không bao giờ true,
+        // handleDeclarePhase cứ gọi lại chính nó vô hạn (đúng log "phase upload" lặp mãi + declaredAll
+        // luôn false dù declared đã có đủ các loại chọn được).
+        st.declareAttempts[cat] = (st.declareAttempts[cat] || 0) + 1;
+        const attempt = st.declareAttempts[cat];
+        if (!st.addClicked[cat]) {
+          // Nhãn/attId của vài loại (vd SUSPENSION_NOTICE, BUSINESS_REG_CERT_ORIGINAL) là suy đoán —
+          // cổng thật có thể đặt tên option khác. Khớp thất bại KHÔNG được bỏ qua loại đó hoàn toàn
+          // (bug cũ: "continue" thẳng khiến modal/select bị treo ở "-", không khai được gì và tiến
+          // trình coi như kẹt) — fallback khai tạm vào "Khác" (attId cố định, luôn khớp) để tài liệu
+          // vẫn được đính kèm; người dùng có thể tự sửa lại đúng loại sau qua nút "Sửa đổi".
+          const usedFallback = !chooseOption(sel, t.attId, foldBusinessPageText(t.label));
+          const canSelectFallback = !usedFallback
+            || chooseOption(sel, ATTACH_TYPE.OTHERS.attId, foldBusinessPageText(ATTACH_TYPE.OTHERS.label));
+          if (!canSelectFallback) {
+            console.warn("[Attach] không chọn được option nào (kể cả Khác) cho", cat, "— lượt", attempt);
+            if (attempt < 3) { await sleep(300); continue; }
+            // Hết lượt thử mà dropdown vẫn không còn option nào chọn được cho loại này (rất có thể
+            // "Khác" đã bị một loại khác trong cùng đợt khai chiếm mất) — đành coi là xong để thoát
+            // vòng lặp; tài liệu loại này sẽ KHÔNG được tự đính kèm, cần người dùng tự thêm thủ công.
+            if (!st.declared.includes(cat)) st.declared.push(cat);
+            await sleep(300);
+            continue;
+          }
+          // "Số tài liệu" phải là số ≥ 1 (validateItemCount của cổng) → set = số file thuộc loại này.
+          setAttachItemCount((st.declareCounts && st.declareCounts[cat]) || 1);
+          await waitFor(() => { const b = document.getElementById("AddAtt"); return b && !b.disabled; }, 5000, 200);
+          const addBtn = document.getElementById("AddAtt");
+          if (addBtn) {
+            if (addBtn.disabled) { try { addBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+            try { addBtn.click(); } catch (e) { /* ignore */ }
+            st.addClicked[cat] = true;
+            if (usedFallback) st.addClickedFallback[cat] = true;
+            await setAttachAllState(st);
+          }
+        }
+        const effectiveLabel = st.addClickedFallback[cat] ? ATTACH_TYPE.OTHERS.label : t.label;
         // Khai báo lưu SERVER (AJAX SaveAttachment) → nhớ vào state (không đọc DOM #tblAtt sau khi
         // đóng modal / đổi trang được nữa).
-        const ok = await waitFor(() => hasDeclared(foldBusinessPageText(t.label)), 6000, 300);
-        if (ok && !st.declared.includes(cat)) st.declared.push(cat);
+        const ok = st.addClicked[cat] && await waitFor(() => hasDeclared(foldBusinessPageText(effectiveLabel)), 6000, 300);
+        // "ok" chỉ xác nhận qua DOM trong 6s — AJAX lưu server đôi khi chậm hơn. Đã bấm AddAtt (ở
+        // trên, CHỈ một lần) mà vẫn không thấy dòng sau NHIỀU lượt handleDeclarePhase khác nhau thì
+        // cứ coi là đã khai để không kẹt vĩnh viễn ở gate "!declaredAll" của stepAttachAll.
+        const giveUp = !ok && attempt >= 3;
+        if (ok || giveUp) {
+          if (!st.declared.includes(cat)) st.declared.push(cat);
+          if (st.addClickedFallback[cat]) st.fallbackDeclared = { ...(st.fallbackDeclared || {}), [cat]: true };
+          if (giveUp) console.warn("[Attach] không xác nhận được khai loại qua DOM, vẫn coi là xong sau", attempt, "lần:", cat);
+        }
         await sleep(300);
       }
       closeAttachModal();
@@ -2321,9 +2431,14 @@
       const nameEl = row.querySelector('span[id*="Label22"]') || row.querySelector("td:nth-child(2)");
       const byName = categoryForFileName(st, foldName(nameEl?.textContent || ""));
       const category = sameCount ? (plan[i] && plan[i].category) || byName : byName;
-      const t = ATTACH_TYPE[category] || ATTACH_TYPE.OTHERS;
+      // Loại này đã phải khai báo vào "Khác" ở pha declare (nhãn suy đoán không khớp option thật)
+      // → dropdown "Loại đính kèm" của dòng cũng chỉ có "Khác" cho nó, không còn option gốc để chọn.
+      const usedFallback = !!(st.fallbackDeclared && st.fallbackDeclared[category]);
+      const t = (!usedFallback && ATTACH_TYPE[category]) || ATTACH_TYPE.OTHERS;
       console.log("[Attach] classify row", i, nameEl?.textContent?.trim(), "→", t.droptyple);
-      chooseOption(sel, t.droptyple, foldBusinessPageText(t.label));
+      if (!chooseOption(sel, t.droptyple, foldBusinessPageText(t.label))) {
+        chooseOption(sel, ATTACH_TYPE.OTHERS.droptyple, foldBusinessPageText(ATTACH_TYPE.OTHERS.label));
+      }
     });
     await sleep(400);
     const saveBtn = document.getElementById("ctl00_C_BtnSave");

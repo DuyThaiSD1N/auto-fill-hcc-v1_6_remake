@@ -28,6 +28,16 @@ def _digits(value: Any) -> str:
     return re.sub(r"\D", "", _text(value))
 
 
+def _has_letters(value: Any) -> bool:
+    return bool(re.search(r"[A-Za-z]", _text(value)))
+
+
+def _registration_code(value: Any) -> str:
+    """Mã đăng ký hộ kinh doanh kiểu cũ có lẫn CHỮ CÁI (vd "32A8010625": mã tỉnh + chữ + số).
+    Giữ nguyên chữ + số, bỏ khoảng trắng/dấu chấm/gạch ngang, viết hoa cho khớp định dạng cổng."""
+    return re.sub(r"[^0-9A-Za-z]", "", _text(value)).upper()
+
+
 def _person_identity(value: Any) -> tuple[str, str]:
     if not isinstance(value, dict):
         return ("", "")
@@ -151,9 +161,23 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         "nguoi-nop-ho-so": applicant_fields,
     }
 
+    ma_so = values.get("HoKinhDoanh_MaSo")
+    ma_dang_ky = values.get("HoKinhDoanh_MaDangKy")
+    # "Mã số Hộ kinh doanh" (ô businessNumber, GDT_CODEFld) chỉ nhận mã THUẦN SỐ (dạng MST). Mã có
+    # lẫn CHỮ CÁI (vd "32A8010625" — mã đăng ký hộ kinh doanh kiểu cũ: mã tỉnh + chữ + số) PHẢI vào
+    # đúng ô "Mã số đăng ký hộ kinh doanh" (registrationNumber, IMP_BUSINESS_REG_NUMBERFbl) — điền
+    # nhầm ô businessNumber sẽ tra cứu ra rỗng. OCR/LLM có thể gán mã này vào field HoKinhDoanh_MaSo
+    # theo thói quen nên tự soi lại theo NỘI DUNG (có chữ cái hay không), không tin tuyệt đối tên field.
+    if ma_so and _has_letters(ma_so):
+        business_number = ""
+        registration_number = _registration_code(ma_so)
+    else:
+        business_number = _digits(ma_so)
+        registration_number = _registration_code(ma_dang_ky) if _has_letters(ma_dang_ky) else _digits(ma_dang_ky)
+
     search_options = [
-        ("businessNumber", _digits(values.get("HoKinhDoanh_MaSo"))),
-        ("registrationNumber", _digits(values.get("HoKinhDoanh_MaDangKy"))),
+        ("businessNumber", business_number),
+        ("registrationNumber", registration_number),
         ("internalNumber", _digits(values.get("HoKinhDoanh_MaNoiBo"))),
         ("identityNumber", _digits(owner.get("soDinhDanh") or applicant.get("soDinhDanh"))),
     ]

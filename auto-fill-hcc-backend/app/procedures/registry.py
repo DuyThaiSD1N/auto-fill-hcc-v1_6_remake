@@ -21,6 +21,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_lam_dong.process import run as dang_k
 from app.pipelines.dang_ky_kinh_doanh.attach import plan as dang_ky_kinh_doanh_attach
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.attach import plan as dang_ky_thay_doi_kinh_doanh_attach
 from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.attach import plan as cham_dut_hoat_dong_ho_kinh_doanh_attach
+from app.pipelines.tam_ngung_kinh_doanh.attach import plan as tam_ngung_kinh_doanh_attach
 from app.pipelines.cap_lai_cap_doi_gcn_ho_kinh_doanh.attach import plan as cap_lai_cap_doi_gcn_ho_kinh_doanh_attach
 from app.pipelines.cap_nuoc_sach.attach import plan as cap_nuoc_sach_attach
 from app.pipelines.chung_thuc_ban_sao.attach import plan as chung_thuc_ban_sao_attach
@@ -36,6 +37,7 @@ from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.process import run as dang_ky_thay_doi_kinh_doanh_process
 from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.process import run as cham_dut_hoat_dong_ho_kinh_doanh_process
+from app.pipelines.tam_ngung_kinh_doanh.process import run as tam_ngung_kinh_doanh_process
 from app.pipelines.cap_lai_cap_doi_gcn_ho_kinh_doanh.process import run as cap_lai_cap_doi_gcn_ho_kinh_doanh_process
 from app.pipelines.dieu_chinh_dat_dai.process import run as dieu_chinh_dat_dai_process
 from app.pipelines.dinh_chinh_sai_sot.process import run as dinh_chinh_sai_sot_process
@@ -410,6 +412,32 @@ PROCEDURES: list[dict] = [
         ),
         "pages": [
             {"key": "cham-dut-hoat-dong", "label": "Chấm dứt hoạt động"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+    },
+    {
+        "key": "tam-ngung-kinh-doanh",
+        # Cùng wizard "Chọn loại đăng ký thay đổi" với chấm dứt hoạt động (radio SUSPEN). Trang chính
+        # DW_SUSPENSIONEdit.aspx đã xác nhận field DOM thật qua đặc tả HTML (ngày bắt đầu/kết thúc,
+        # lý do tạm ngừng); trang "Người nộp hồ sơ" dùng chung logic các thủ tục HKD khác. Nhãn menu
+        # trái "Tạm ngừng kinh doanh" đã xác nhận qua ảnh chụp cổng thật (không phải "Tạm ngừng hoạt
+        # động" như suy đoán ban đầu) — extension dùng đúng nhãn này để bấm vào mục trong sidebar.
+        "detect": {"headingDisabled": True},
+        "label": "Tạm ngừng kinh doanh hộ kinh doanh",
+        "mode": "agent",
+        "businessWorkflow": "suspension",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị đăng ký tạm ngừng kinh doanh (ghi rõ thời gian tạm ngừng kể từ ngày ... "
+            "đến hết ngày ..., lý do tạm ngừng).\n"
+            "2. Bản gốc/bản sao Giấy chứng nhận đăng ký hộ kinh doanh.\n"
+            "3. CCCD, ủy quyền hoặc giấy tờ bổ sung khác (đính vào loại Khác)."
+        ),
+        "pages": [
+            {"key": "tam-ngung-hoat-dong", "label": "Tạm ngừng kinh doanh"},
             {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
         ],
     },
@@ -2473,6 +2501,7 @@ _PIPELINE = {
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_process,
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_process,
+    "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_process,
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_process,
 }
 
@@ -2501,6 +2530,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_attach,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_attach,
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_attach,
+    "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_attach,
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_attach,
     "chung-thuc-ban-sao": chung_thuc_ban_sao_attach,
     # Chứng thực chữ ký: module RIÊNG (form 2 ô — STT1 giấy tờ, STT2 giấy tùy thân).

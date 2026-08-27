@@ -124,6 +124,21 @@ assert.deepEqual(JSON.parse(JSON.stringify(detect())), {
 });
 assert.equal(detectHint(), "dissolution");
 
+// Tạm ngừng kinh doanh (SUSPEN) — nhãn MENU đã xác nhận qua ảnh cổng thật; breadcrumb khi mở
+// trang con vẫn CHƯA có ảnh xác nhận nên test khớp theo cụm khả dĩ đã code.
+sitemap.querySelectorAll = () => [node("Thông báo tạm ngừng kinh doanh")];
+assert.deepEqual(JSON.parse(JSON.stringify(detect())), {
+  stage: "main", pageKey: "tam-ngung-hoat-dong", label: "thông báo tạm ngừng kinh doanh",
+});
+assert.equal(detectHint(), "suspension");
+
+sitemap.querySelectorAll = () => [node("Tạm ngừng hoạt động")];
+ids.set("ctl00_C_INFOCtl_DOCUMENT_TYPE_IDFld", node("Đăng ký thay đổi nội dung hộ kinh doanh"));
+assert.deepEqual(JSON.parse(JSON.stringify(detect())), {
+  stage: "main", pageKey: "tam-ngung-hoat-dong", label: "tạm ngừng hoạt động",
+});
+assert.equal(detectHint(), "suspension");
+
 sitemap.querySelectorAll = () => [node("Thông tin cấp lại GCN/GXN")];
 ids.set("ctl00_C_INFOCtl_DOCUMENT_TYPE_IDFld", node("Đăng ký cấp lại Giấy chứng nhận hộ kinh doanh"));
 assert.deepEqual(JSON.parse(JSON.stringify(detect())), {
@@ -238,5 +253,15 @@ assert.match(sourceText, /async function handleReissuePage\(st\)/);
 assert.match(sourceText, /kind === "cap_doi" \? label\.includes\("cap doi"\)/);
 assert.match(sourceText, /Cổng không có lựa chọn \$\{wanted\} tương ứng với hồ sơ; không chọn loại khác thay thế/);
 assert.match(sourceText, /BUSREISSUEFRM/);
+
+// Tạm ngừng kinh doanh (SUSPEN) — cùng cơ chế AutoPostBack với DISSOLU, workflow riêng "suspension".
+// Nhãn menu trái "Tạm ngừng kinh doanh" đã xác nhận qua ảnh chụp cổng thật.
+assert.match(sourceText, /"tam-ngung-hoat-dong": "Tạm ngừng kinh doanh"/);
+assert.match(sourceText, /amendmentValue === "DISSOLU" \|\| amendmentValue === "SUSPEN"/);
+assert.match(sourceText, /amendmentValue !== "DISSOLU" && amendmentValue !== "SUSPEN"/);
+assert.match(sourceText, /"reissue", "dissolution", "suspension"\]\.includes\(st\.workflow\)/);
+assert.match(sourceText, /pageKey === "tam-ngung-hoat-dong"\) \{\s*\n\s*return "suspension";/);
+assert.match(sourceText, /findBusinessPageLink\("Tạm ngừng kinh doanh"\)/);
+assert.match(sourceText, /SUSPENSION_NOTICE/);
 
 console.log("business change workflow: stage selectors, delete confirmation and safety guards passed");

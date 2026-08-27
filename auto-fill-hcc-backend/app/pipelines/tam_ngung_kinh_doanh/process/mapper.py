@@ -1,4 +1,4 @@
-"""Dựng hai trang chấm dứt và người nộp từ facts đã trích xuất."""
+"""Dựng hai trang tạm ngừng và người nộp từ facts đã trích xuất."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import unicodedata
 from typing import Any
 
 from app.pipelines.dang_ky_kinh_doanh.process import mapper as creation_mapper
+from app.pipelines._shared.formatting import normalize_date
 
 
 def _by_name(fields: list[dict]) -> dict[str, Any]:
@@ -32,7 +33,6 @@ def _digits(value: Any) -> str:
 def _business_number(value: Any) -> str:
     """Giữ nguyên dấu - trong mã số hộ kinh doanh/MST vì cần thiết cho việc tìm kiếm."""
     text = _text(value)
-    # Chỉ loại bỏ ký tự không phải số và dấu gạch ngang
     return re.sub(r"[^\d\-]", "", text)
 
 
@@ -114,18 +114,32 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     owner = values.get("ChuHo") if isinstance(values.get("ChuHo"), dict) else {}
     applicant = _merge_person(values.get("NguoiNop"), owner)
 
-    reason = _text(values.get("ChamDut_LyDo"))
-    dissolution_fields = [{
-        "name": "ctl00$C$UC_DW_DISSOLUTIONCtl$DISSOLUTION_TYPE_IDFld",
-        "comp": "dom-select",
-        # HTML mẫu xác nhận option ổn định value=OTHER cho trường hợp không có loại chuyên biệt.
-        "value": _text(values.get("ChamDut_LoaiHinh")) or "OTHER",
-    }]
-    if reason:
-        dissolution_fields.append({
-            "name": "ctl00$C$UC_DW_DISSOLUTIONCtl$REASON_DESCFld",
+    # ==================================================================================
+    # TRANG "TẠM NGỪNG HOẠT ĐỘNG" (DW_SUSPENSIONEdit.aspx) — field DOM đã xác nhận qua bảng đặc tả
+    # HTML thật (sheet "Ta_m_ngu_ng_kinh_doanh"). Checkbox "Áp dụng cho đơn vị trực thuộc" luôn
+    # checked+disabled sẵn trên cổng (không cho đổi) nên KHÔNG cần điền.
+    # ==================================================================================
+    suspension_fields: list[dict] = []
+    tu_ngay = normalize_date(values.get("TamNgung_TuNgay"))
+    den_ngay = normalize_date(values.get("TamNgung_DenNgay"))
+    ly_do = _text(values.get("TamNgung_LyDo"))
+    if tu_ngay:
+        suspension_fields.append({
+            "name": "ctl00$C$UC_DW_SUSPENSIONEdtCtl$SUSPENSION_START_DATEFld",
+            "comp": "dom-date",
+            "value": tu_ngay,
+        })
+    if den_ngay:
+        suspension_fields.append({
+            "name": "ctl00$C$UC_DW_SUSPENSIONEdtCtl$SUSPENSION_END_DATEFld",
+            "comp": "dom-date",
+            "value": den_ngay,
+        })
+    if ly_do:
+        suspension_fields.append({
+            "name": "ctl00$C$UC_DW_SUSPENSIONEdtCtl$SUSPENSION_REASONFld",
             "comp": "dom-input",
-            "value": reason,
+            "value": ly_do,
         })
 
     # Trang người nộp dùng NGUYÊN logic của đăng ký hộ kinh doanh: đưa đủ nhân thân người nộp + chủ hộ
@@ -145,8 +159,8 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     if values.get("HasMultipleCCCD") or len(candidates) >= 2:
         applicant_compact.append(_compact_field("HasMultipleCCCD", True))
     applicant_fields = creation_mapper.enrich(applicant_compact, page="nguoi-nop-ho-so")
-    
-    # Thêm thông tin ủy quyền KÈM địa chỉ người được ủy quyền (giống logic cấp lại/thay đổi)
+
+    # Thêm thông tin ủy quyền KÈM địa chỉ người được ủy quyền (giống logic cấp lại/thay đổi/chấm dứt)
     authorized_person_info = creation_mapper.authorized_person(values)
     authorization_info = {
         "coGiayUyQuyen": bool(values.get("UyQuyen_CoGiayUyQuyen")),
@@ -157,7 +171,6 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     }
     if any(authorization_info["nguoiUyQuyen"].values()):
         authorization_data = dict(authorization_info)
-        # Thêm địa chỉ người được ủy quyền (đã gộp từ giấy ủy quyền + CCCD nếu có)
         if authorized_person_info and authorized_person_info.get("diaChi"):
             authorization_data["nguoiDuocUyQuyen"] = {
                 "hoTen": authorized_person_info.get("hoTen") or "",
@@ -167,7 +180,7 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
         applicant_fields.append(_compact_field("__authorization", authorization_data))
 
     pages = {
-        "cham-dut-hoat-dong": dissolution_fields,
+        "tam-ngung-hoat-dong": suspension_fields,
         "nguoi-nop-ho-so": applicant_fields,
     }
 
@@ -193,9 +206,9 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
     ]
     method, value = next(((method, value) for method, value in search_options if value), ("", ""))
     flow = {
-        "workflow": "dissolution",
+        "workflow": "suspension",
         "wizardType": "change",
-        "amendmentType": "DISSOLU",
+        "amendmentType": "SUSPEN",
         "search": {
             "method": method,
             "value": value,
@@ -203,10 +216,10 @@ def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
             "expectedBusinessNumber": _business_number(values.get("HoKinhDoanh_MaSo")),
         },
         "nameChange": False,
-        "pageOrder": ["cham-dut-hoat-dong", "nguoi-nop-ho-so"],
-        # Luồng chấm dứt KHÔNG có trang chủ hộ để extension đối chiếu → gửi kèm nhân thân chủ hộ.
+        "pageOrder": ["tam-ngung-hoat-dong", "nguoi-nop-ho-so"],
+        # Luồng tạm ngừng KHÔNG có trang chủ hộ để extension đối chiếu → gửi kèm nhân thân chủ hộ.
         # Extension so với tài khoản đang đăng nhập: khớp số định danh HOẶC họ tên ⇒ chủ hộ tự nộp.
-        # Hồ sơ không kê khai riêng chủ hộ thì lấy người ký Thông báo chấm dứt (mặc định là chủ hộ).
+        # Hồ sơ không kê khai riêng chủ hộ thì lấy người ký Thông báo tạm ngừng (mặc định là chủ hộ).
         "owner": {
             "hoTen": _text((owner or applicant).get("hoTen")),
             "soDinhDanh": _digits((owner or applicant).get("soDinhDanh")),

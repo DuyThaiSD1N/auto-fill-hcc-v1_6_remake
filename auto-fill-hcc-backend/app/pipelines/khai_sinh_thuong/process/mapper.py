@@ -190,12 +190,17 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
     """Xác định thông tin người được đăng ký khai sinh theo thứ tự ưu tiên:
 
     1. CccdChuThe_* — CCCD của chính người được đăng ký (đăng ký muộn, còn sống).
+       CHỈ áp dụng khi KHÔNG có giấy chứng sinh: có Gcs_* nghĩa là trẻ sơ sinh, không thể
+       đã có CCCD riêng — prompt.py đã cấm LLM điền đồng thời Gcs_* và CccdChuThe_*, nhưng
+       nếu LLM lỡ vi phạm (vd gán nhầm CCCD của cha/mẹ vào CccdChuThe_* thay vì CccdNam_/CccdNu_),
+       mapper phải tự vệ để không lấy nhầm người lớn làm chủ thể khai sinh.
     2. CccdNu_*     — khi phát hiện LLM nhầm CccdNu_ là người được đăng ký (nu_is_subject=True).
     3. Gcs_*        — Giấy chứng sinh (trẻ sơ sinh).
     4. TkKs_*       — Tờ khai bản giấy (fallback).
     """
+    has_gcs = bool(values.get("Gcs_HoTenCon") or values.get("Gcs_NgaySinhCon"))
     # Ưu tiên 1: CCCD chủ thể (LLM dùng đúng field mới)
-    if values.get("CccdChuThe_HoTen") or values.get("CccdChuThe_NgaySinh"):
+    if not has_gcs and (values.get("CccdChuThe_HoTen") or values.get("CccdChuThe_NgaySinh")):
         return {
             "ho_ten": values.get("CccdChuThe_HoTen"),
             "ngay_sinh": values.get("CccdChuThe_NgaySinh"),
