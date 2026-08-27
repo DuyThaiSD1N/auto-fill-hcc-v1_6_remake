@@ -623,12 +623,26 @@
       .replace(/\b\d{3,6}\b/g, " "));
   }
 
+  // Viết hoa chữ cái đầu tên ngành nghề NGAY TẠI ĐIỂM GHI VÀO FORM — độc lập với backend, để không
+  // phụ thuộc dữ liệu backend gửi lên đã chuẩn hóa hay chưa (cache cũ, lệch bản...). Bỏ qua ký tự
+  // đầu không phải chữ cái (số, dấu ngoặc...).
+  function capitalizeBusinessLineName(value) {
+    const text = String(value || "").trim().replace(/\s+/g, " ");
+    const match = text.match(/[^\W\d_]/);
+    if (!match) return text;
+    const i = match.index;
+    return text.slice(0, i) + text[i].toUpperCase() + text.slice(i + 1);
+  }
+
   function getBusinessLineNameByCode(nn) {
     const byCode = {};
     const rows = Array.isArray(nn && nn.items) ? nn.items : [];
     for (const row of rows) {
       const code = String(row && (row.code || row.ma || "") || "").trim();
-      const name = norm(row && (row.name || row.ten || "") || "");
+      // GIỮ NGUYÊN hoa/thường: norm() hạ toàn bộ chữ thường CHỈ hợp để so sánh (foldBusinessLineName
+      // lo phần đó ở shouldFillBusinessDescription/currentFold bên dưới). Ghi vào ô mô tả phải viết
+      // hoa chữ cái đầu — không dựa vào backend đã chuẩn hóa hay chưa, tự làm luôn tại đây.
+      const name = capitalizeBusinessLineName(row && (row.name || row.ten || "") || "");
       if (code && name && !byCode[code]) byCode[code] = name;
     }
     return byCode;
@@ -698,7 +712,9 @@
       const officialName = getBusinessRowOfficialName(row, code);
       if (!row || !desc || !shouldFillBusinessDescription(officialName, extractedName)) continue;
 
-      const current = norm(desc.value);
+      // GIỮ NGUYÊN hoa/thường của nội dung đã có trong ô (vd tên chính thức cổng tự điền theo mã) —
+      // chỉ dùng bản fold (bỏ dấu + hạ thường) để SO SÁNH, không dùng để GHI LẠI.
+      const current = String(desc.value || "").trim();
       const currentFold = foldBusinessLineName(current);
       const extractedFold = foldBusinessLineName(extractedName);
       if (currentFold && (currentFold === extractedFold || currentFold.includes(extractedFold))) continue;

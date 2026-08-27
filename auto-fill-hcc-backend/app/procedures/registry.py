@@ -621,7 +621,10 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "trich-luc-khai-tu",
-        "detect": {"urlIncludes": ["1.006714"]},
+        # Mã 1.006714 KHÔNG phải Trích lục khai tử — đó là "Liên thông đăng ký khai tử, xóa đăng ký
+        # thường trú, trợ cấp mai táng phí" (lienthong.dichvucong.gov.vn/#/ke-khai/1.006714), một thủ
+        # tục KHÁC chưa có pipeline riêng. Gỡ detect sai này để khỏi nhận diện nhầm; thủ tục chỉ còn
+        # chọn được thủ công cho tới khi xác định đúng mã/URL của Trích lục khai tử.
         "label": "Trích lục khai tử",
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -694,6 +697,28 @@ PROCEDURES: list[dict] = [
             "Hệ thống tự phân biệt người yêu cầu, người đã chết và thông tin đăng ký trước đây theo nội dung OCR.\n"
             "Bước 3: giấy chứng tử/giấy tờ chứng minh sự kiện chết vào ô STT 2; văn bản ủy quyền vào STT 3; "
             "CCCD, tờ khai bản giấy và giấy tờ khác thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "khai-tu-lien-thong",
+        # Cổng riêng lienthong.dichvucong.gov.vn (SPA hash-route), KHÔNG dùng chung eForm legacy
+        # với "khai-tu". Mã 1.006714 từng bị gán nhầm cho "trich-luc-khai-tu" — đã xác nhận qua
+        # breadcrumb trang thật là thủ tục liên thông này.
+        "detect": {"urlIncludes": ["lienthong.dichvucong.gov.vn/#/ke-khai/1.006714"]},
+        "label": "Liên thông đăng ký khai tử, xóa đăng ký thường trú, trợ cấp mai táng phí",
+        # TẠM dùng chung pipeline "khai-tu": DOM trang SPA này khác hẳn form legacy (input/select
+        # HTML thường, không phải web-component x-*) nên bấm điền sẽ CHƯA điền được field nào —
+        # chỉ mới đăng ký để nhận diện đúng thủ tục, không nhận nhầm sang "Trích lục hộ tịch" hay
+        # "Trích lục khai tử". Cần dựng mapper/schema/prompt riêng khớp đúng DOM này để điền thật.
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "⚠️ Thủ tục liên thông này CHƯA hỗ trợ tự động điền — mới nhận diện đúng tên để khỏi lẫn "
+            "với thủ tục khác. Giấy tờ vẫn có thể tải lên để lưu hồ sơ, nhưng cán bộ cần tự điền form.\n"
+            "Giấy tờ cần tải lên (khi có pipeline riêng): CCCD người yêu cầu, giấy báo tử/giấy chứng "
+            "tử, giấy tờ chứng minh nơi thường trú, giấy tờ liên quan đến trợ cấp mai táng phí."
         ),
     },
     {
@@ -2384,6 +2409,7 @@ _PIPELINE = {
     "trich-luc-ks": trich_luc_process,
     "trich-luc-khai-tu": trich_luc_process,  # Dùng chung process với trích lục khai sinh
     "khai-tu": khai_tu_process,
+    "khai-tu-lien-thong": khai_tu_process,  # TẠM: chưa có mapper riêng khớp DOM SPA liên thông
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_process,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_process,
@@ -2500,6 +2526,7 @@ _ATTACH_PIPELINE = {
     "trich-luc-ks": trich_luc_attach,
     "trich-luc-khai-tu": trich_luc_attach,  # Dùng chung attachment với trích lục khai sinh
     "khai-tu": khai_tu_attach,
+    "khai-tu-lien-thong": khai_tu_attach,  # TẠM: chưa có attach plan riêng
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_attach,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,
