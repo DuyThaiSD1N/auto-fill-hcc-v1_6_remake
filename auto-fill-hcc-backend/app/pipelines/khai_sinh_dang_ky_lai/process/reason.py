@@ -189,6 +189,39 @@ def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
+def _syllable_close(a: str, b: str) -> bool:
+    """Hai tiếng chỉ lệch đúng MỘT ký tự (thêm/bớt/thay) — mức sai lệch của OCR chữ viết tay."""
+    if a == b:
+        return True
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = (a, b) if len(a) < len(b) else (b, a)
+    return any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _names_align(a, b) -> bool:
+    """Cùng một người nhưng tên bị ghi lệch nhẹ ở MỘT tiếng.
+
+    Tên trên tờ khai là chữ viết tay, OCR hay rụng/thêm một ký tự so với CCCD
+    ("Vũ Huy Hoà" ↔ "Vũ Huy Hoàn", "Ngô Thị Hồng Thiệu" ↔ "Ngô Thị Hồng Thêu").
+    Bắt buộc phải so khớp lỏng ở mức này, nếu không cả vai cha/mẹ bị coi là hai
+    người khác nhau rồi bị xoá sạch field. Chỉ nới ở tên — mọi nơi gọi hàm này
+    đều còn chốt thêm bằng số định danh hoặc năm sinh.
+    """
+    folded_a, folded_b = _fold(a), _fold(b)
+    if not folded_a or not folded_b:
+        return False
+    if folded_a == folded_b:
+        return True
+    words_a, words_b = folded_a.split(), folded_b.split()
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    return len(diff) == 1 and _syllable_close(*diff[0])
+
+
 def _section(text: str, tag: str) -> str:
     raw = str(text or "")
     opening = re.search(rf"<{tag}>\s*", raw, flags=re.IGNORECASE)
@@ -517,11 +550,19 @@ def _declaration_relation(documents: list[dict]) -> str:
 
 
 def _same_role_person(section: str, person: dict) -> bool:
+    """Khối vai này có đúng là người mà tờ khai đã chốt hay không.
+
+    Không có số định danh hai bên thì so tên — nhưng CHA VÀ CON TRÙNG TÊN LÀ CHUYỆN
+    THƯỜNG, nên tên khớp mà năm sinh lệch nhau thì chắc chắn là hai người khác nhau.
+    """
     section_id, person_id = _role_id(section), str(person.get("id") or "")
     if section_id and len(person_id) in {9, 12}:
         return section_id == person_id
-    role_name = _fold(_role_name(section))
-    return bool(role_name) and role_name == _fold(person["name"])
+    if not _names_align(_role_name(section), person.get("name")):
+        return False
+    section_year = _role_year(section)
+    person_year = _role_year(person.get("section") or "")
+    return not (section_year and person_year and section_year != person_year)
 
 
 _MERGE_PROTECTED_LABELS = {"Họ tên", "Nguồn", "Căn cứ phân vai"}
@@ -896,19 +937,27 @@ def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
     if "da chet" in _fold(_labeled_value(result.get("con", ""), "Trạng thái")):
         result["con"] = _unknown_role_section("Người được đăng ký lại khai sinh không thể là người đã chết.")
 
-    # Một người không thể vừa là con vừa là cha/mẹ.
+    # Một người không thể vừa là con vừa là cha/mẹ. Nhưng CHA VÀ CON TRÙNG TÊN LÀ CHUYỆN
+    # THƯỜNG (tờ khai viết tay còn hay rụng một tiếng: "Vũ Huy Hoàn" → "Vũ Huy Hoà"), nên chỉ
+    # riêng tên trùng thì CHƯA đủ: số định danh hoặc năm sinh khác nhau là bằng chứng chắc chắn
+    # đây là hai người, không được xoá vai cha/mẹ.
     child_id = _role_id(result.get("con", ""))
     child_name = _fold(_role_name(result.get("con", "")))
+    child_year = _role_year(result.get("con", ""))
     for tag in ("cha", "me"):
         parent_id = _role_id(result.get(tag, ""))
         parent_name = _fold(_role_name(result.get(tag, "")))
-        same_id = bool(child_id and parent_id and child_id == parent_id)
-        same_name = bool(child_name and parent_name and child_name == parent_name)
-        if same_id or same_name:
+        parent_year = _role_year(result.get(tag, ""))
+        if child_id and parent_id:
+            same_person = child_id == parent_id
+        else:
+            same_person = bool(child_name and parent_name and child_name == parent_name) and not (
+                child_year and parent_year and child_year != parent_year
+            )
+        if same_person:
             result[tag] = _unknown_role_section("Trùng chính người đã được phân vai là con.")
 
     # Nếu có đủ năm sinh, cha/mẹ phải thuộc thế hệ trước con ít nhất khoảng 15 năm.
-    child_year = _role_year(result.get("con", ""))
     if child_year:
         for tag in ("cha", "me"):
             parent_year = _role_year(result.get(tag, ""))
@@ -1026,15 +1075,15 @@ def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
     if _is_unknown(section):
         return False
 
-    expected_name = _fold(_role_name(section))
-    actual_name = _fold(fields_by_name.get(_FULL_NAME_FIELD[tag]))
     expected_id = _role_id(section)
     actual_id = _digits(fields_by_name.get(_ID_FIELD.get(tag, "")))
-
-   
     if expected_id and actual_id and not _context_id_is_shared(context, tag, expected_id):
         return expected_id == actual_id
-    return bool(expected_name and actual_name and expected_name == actual_name)
+
+    # Không có số định danh để đối chiếu thì so tên. Tên trong khối phân vai có thể đọc từ tờ
+    # khai viết tay còn field trích xuất đọc từ CCCD, nên phải chấp nhận lệch một tiếng do OCR —
+    # bằng không cả vai cha/mẹ bị coi là người lạ rồi bị xoá trắng.
+    return _names_align(_role_name(section), fields_by_name.get(_FULL_NAME_FIELD[tag]))
 
 
 def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:

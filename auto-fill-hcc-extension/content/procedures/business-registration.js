@@ -1156,6 +1156,38 @@
     return void advanceFillAll(st);
   }
 
+  // Ô do NGHIỆP VỤ ĐỊA BÀN chốt, không lấy theo dữ liệu đọc từ hồ sơ. popup.js quyết định tài khoản
+  // nào có default nào (businessDefaults) — ở đây chỉ biết "khóa default nào đổ vào ô nào, trang nào".
+  // Giá trị đã có sẵn từ backend bị GHI ĐÈ; ô backend không trả thì TỰ THÊM (đều là ô bắt buộc).
+  const LOCAL_DEFAULT_FIELDS = {
+    "cham-dut-hoat-dong": [
+      { key: "dissolutionReason", name: "ctl00$C$UC_DW_DISSOLUTIONCtl$REASON_DESCFld", comp: "dom-input" },
+    ],
+    "nguoi-nop-ho-so": [
+      { key: "postalServiceAddress", name: "ctl00$C$POSTAL_SERVICEFld", comp: "dom-input" },
+    ],
+  };
+
+  /** Chèn/ghi đè các ô mặc định theo địa bàn vào danh sách field của một trang. */
+  function applyBusinessLocalDefaults(fields, defaults, pageKey) {
+    const out = Array.isArray(fields) ? fields.slice() : [];
+    const specs = LOCAL_DEFAULT_FIELDS[pageKey] || [];
+    for (const spec of specs) {
+      const value = defaults && defaults[spec.key];
+      if (!value) continue;
+      const idx = out.findIndex((f) => f && f.name === spec.name);
+      if (idx >= 0) out[idx] = { ...out[idx], value };
+      else out.push({ name: spec.name, comp: spec.comp, value });
+      console.log("[FillAll] default theo địa bàn:", spec.name, "=", value);
+    }
+    return out;
+  }
+
+  /** Các ô default của trang này, dạng field sẵn sàng điền (dùng để ghi lại sau postback). */
+  function localDefaultFieldsFor(defaults, pageKey) {
+    return applyBusinessLocalDefaults([], defaults, pageKey);
+  }
+
   // Chỉ trang NGƯỜI NỘP mới dùng nút "Sao chép thông tin đăng ký tài khoản": khối đó phải mang
   // nhân thân của chính người đang đăng nhập. Trang chủ hộ KHÔNG copy (xem handleOwnerPage).
   const COPY_PERSON_CFG = {
@@ -1253,7 +1285,8 @@
   async function handleCopyPersonPage(st, targetKey) {
     ensureConfirmOverride();
     const cfg = COPY_PERSON_CFG[targetKey];
-    const fields = (st.pages && st.pages[targetKey]) || [];
+    const fields = applyBusinessLocalDefaults(
+      (st.pages && st.pages[targetKey]) || [], st.businessDefaults, targetKey);
 
     // Chưa biết chủ hộ là ai thì chưa chốt được vai trò người nộp → đi đọc chủ hộ trên cổng TRƯỚC khi
     // bấm "Sao chép tài khoản" (postback điều hướng sẽ xoá dữ liệu vừa sao chép).
@@ -1402,6 +1435,12 @@
     if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
       if (await enableSubmitterEdit(st)) return;
       applySubmitterOverride(submitterOverride);
+    }
+    // Ô default theo địa bàn (vd "Địa chỉ nhận kết quả") nằm ngoài khối người nộp nhưng vẫn bị các
+    // postback ở trên render lại → điền lại lần cuối ngay trước khi bấm Lưu.
+    const localDefaults = localDefaultFieldsFor(st.businessDefaults, targetKey);
+    if (localDefaults.length) {
+      try { await fillFormStandard(localDefaults); } catch (e) { /* ignore */ }
     }
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
@@ -1664,10 +1703,11 @@
     return out.some((field) => !/COUNTRY_IDFld$/.test(field.name)) ? out : [];
   }
 
-  // Hai thủ tục áp ngoại lệ Đà Nẵng: "Đăng ký hộ kinh doanh" (luồng 8 trang, state không gắn
-  // workflow) và "Chấm dứt hoạt động hộ kinh doanh" (workflow "dissolution"). Thay đổi nội dung /
-  // cấp lại GCN vẫn tự chốt vai trò bằng cách đối chiếu tài khoản với chủ hộ.
-  const FORCE_SELF_SUBMITTER_WORKFLOWS = new Set(["create", "dissolution"]);
+  // Chỉ "Đăng ký hộ kinh doanh" (luồng 8 trang, state không gắn workflow) còn áp ngoại lệ Đà Nẵng.
+  // CHẤM DỨT hoạt động ĐÃ BỎ khỏi danh sách: hồ sơ chấm dứt thường chỉ nộp giấy tờ kinh doanh của
+  // chủ hộ, người mang hồ sơ đi nộp không phải chủ hộ ⇒ phải tick "Người được ủy quyền" như thủ tục
+  // thay đổi nội dung / cấp lại GCN, tức là tự chốt bằng cách đối chiếu tài khoản với chủ hộ.
+  const FORCE_SELF_SUBMITTER_WORKFLOWS = new Set(["create"]);
 
   /**
    * Tài khoản đăng nhập gắn tỉnh Đà Nẵng (popup đọc `tinh` từ /auth/me rồi gắn cờ vào
@@ -2344,13 +2384,16 @@
       return void handleChangeCapitalPage(st);
     }
 
+    // Field của trang + ô default theo địa bàn (vd "Lý do giải thể" của tài khoản Hải Châu).
+    const pageFields = applyBusinessLocalDefaults(
+      (st.pages && st.pages[targetKey]) || [], st.businessDefaults, targetKey);
+
     // Điền field trang này (chỉ 1 lần/step: mid-fill có thể postback như trang ngành nghề).
     if (st.filledStep !== st.step) {
       st.filledStep = st.step;
       await setFillAllState(st); // persist TRƯỚC khi fill để postback giữa chừng không fill lại
-      const fields = (st.pages && st.pages[targetKey]) || [];
-      if (fields.length) {
-        try { await fillFormStandard(fields); } catch (e) { /* ignore */ }
+      if (pageFields.length) {
+        try { await fillFormStandard(pageFields); } catch (e) { /* ignore */ }
       }
       await sleep(800); // để form "dirty" + cascade địa danh xong → nút Lưu bật
     }
@@ -2363,8 +2406,7 @@
       // "dom-date" ở trang Tạm ngừng kinh doanh) không kích hoạt được cờ dirty đó dù giá trị đã đúng
       // trên DOM — disabled ở đây KHÔNG có nghĩa "không có gì để lưu". Chỉ coi là "không có gì để lưu"
       // khi trang này thật sự không có field nào cần điền; còn lại thì tự bật nút rồi vẫn bấm Lưu.
-      const hadFieldsToFill = (((st.pages && st.pages[targetKey]) || []).length) > 0;
-      if (!hadFieldsToFill) return void advanceFillAll(st);
+      if (!pageFields.length) return void advanceFillAll(st);
       try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
     }
 
@@ -2788,6 +2830,7 @@
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
+  H.applyBusinessLocalDefaults = applyBusinessLocalDefaults;
   // Vai trò/địa chỉ người nộp hồ sơ — export để test được không cần cả state machine.
   H.applySubmitterOverride = applySubmitterOverride;
   H.submitterAddressFields = submitterAddressFields;

@@ -345,6 +345,18 @@
       "autoConfirm": false
     },
     {
+      "key": "thanh-lap-cong-ty-co-phan",
+      "label": "Đăng ký thành lập công ty cổ phần",
+      "url": "https://dangkyquamang.dkkd.gov.vn/online/Forms/APP/Registration.aspx",
+      "needsAgencySelect": false,
+      "autoConfirm": false,
+      "enterpriseFlow": {
+        "registrationType": "NEW",
+        "registrationLabel": "Thành lập mới doanh nghiệp",
+        "entityLabel": "Công ty cổ phần"
+      }
+    },
+    {
       "key": "dang-ky-thanh-lap-hop-tac-xa",
       "code": "1.005280",
       "label": "Đăng ký thành lập hợp tác xã, liên hiệp hợp tác xã; đăng ký chuyển đổi tổ hợp tác thành hợp tác xã, liên hiệp hợp tác xã khi hợp tác xã, liên hiệp hợp tác xã chia, tách, hợp nhất",

@@ -404,3 +404,137 @@ def test_sanitizer_keeps_strict_id_check_when_role_id_is_unique():
     )
 
     assert not any(field["name"].startswith("Mother_") for field in result)
+
+
+# ---------------------------------------------------------------------------
+# Tờ khai viết tay ghi tên cha lệch MỘT tiếng so với CCCD ("Vũ Huy Hoàn" → "Vũ Huy Hoà"),
+# lệch xong lại trùng đúng tên con. Trước đây khối <cha> bị coi là "trùng chính người đã
+# được phân vai là con" rồi xoá trắng, kéo theo toàn bộ Father_* bị sanitize loại bỏ →
+# biểu mẫu bỏ trống mục IV (họ tên cha, số định danh, nơi cư trú "Đã chết").
+# ---------------------------------------------------------------------------
+
+_TO_KHAI_CHA_LECH_TEN = """TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH
+Họ, chữ đệm, tên người yêu cầu: VŨ HUY HÒA
+Quan hệ với người được khai sinh: Bản thân
+Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:
+Họ, chữ đệm, tên: VŨ HUY HÒA
+Ngày, tháng, năm sinh: 28/02/1991
+Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam
+Họ, chữ đệm, tên người mẹ: Ngô Thị Hồng Thiệu
+Năm sinh: (5) 1962 Dân tộc: Kinh Quốc tịch: Việt Nam
+Nơi cư trú: (2) TDP Xuân Vũ
+Họ, chữ đệm, tên người cha: Vũ Huy Hoà
+Năm sinh: (5) 1958 Dân tộc: Kinh Quốc tịch: Việt Nam
+Nơi cư trú: (2) Đã chết
+Đã đăng ký khai sinh tại: (6) UBND xã Ninh Vân
+"""
+
+_CCCD_CHA_HOAN = """CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+Số / No.: 037058009458
+Họ và tên / Full name: VŨ HUY HOÀN
+Ngày sinh / Date of birth: 01/01/1958
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam
+"""
+
+_CCCD_CON_HOA = """CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+Số / No.: 037091015133
+Họ và tên / Full name: VŨ HUY HÒA
+Ngày sinh / Date of birth: 28/02/1991
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam
+"""
+
+_RAW_CHA_LECH_TEN = """
+<nguoi_yeu_cau>
+Họ tên: VŨ HUY HÒA
+Số CCCD/CMND: 037091015133
+Ngày sinh: 28/02/1991
+Giới tính: Nam
+Nguồn: to-khai.pdf
+Căn cứ phân vai: Tờ khai ghi quan hệ Bản thân.
+Vai trò đồng thời: con
+</nguoi_yeu_cau>
+<con>
+Họ tên: VŨ HUY HÒA
+Số CCCD/CMND: 037091015133
+Ngày sinh: 28/02/1991
+Giới tính: Nam
+Trạng thái: còn sống
+Nguồn: cccd-con.pdf
+Căn cứ phân vai: Tờ khai chỉ đích danh người được đăng ký lại.
+</con>
+<me>
+Họ tên: NGÔ THỊ HỒNG THÊU
+Số CCCD/CMND: 037162011511
+Ngày sinh: 01/01/1962
+Giới tính: Nữ
+Trạng thái: còn sống
+Nguồn: cccd-me.pdf
+Căn cứ phân vai: Tờ khai ghi tên người mẹ.
+</me>
+<cha>
+Họ tên: VŨ HUY HOÀN
+Số CCCD/CMND: 037058009458
+Ngày sinh: 01/01/1958
+Giới tính: Nam
+Trạng thái: đã chết
+Nguồn: cccd-cha.pdf
+Căn cứ phân vai: Tờ khai ghi tên người cha; trích lục khai tử xác nhận đã chết.
+</cha>
+""".strip()
+
+
+def _documents_cha_lech_ten() -> list[dict]:
+    return [
+        {"name": "to-khai.pdf", "text": _TO_KHAI_CHA_LECH_TEN},
+        {"name": "cccd-cha.pdf", "text": _CCCD_CHA_HOAN},
+        {"name": "cccd-con.pdf", "text": _CCCD_CON_HOA},
+    ]
+
+
+def _context_cha_lech_ten() -> str:
+    return reason._render_context(
+        _RAW_CHA_LECH_TEN, {}, _documents_cha_lech_ten()
+    )
+
+
+def test_names_align_tolerates_one_syllable_ocr_drift():
+    assert reason._names_align("Vũ Huy Hoà", "VŨ HUY HOÀN")
+    assert reason._names_align("Ngô Thị Hồng Thiệu", "NGÔ THỊ HỒNG THÊU")
+    # Lệch quá một tiếng, lệch quá một ký tự, hoặc khác số tiếng thì vẫn là hai người.
+    assert not reason._names_align("Vũ Huy Hoà", "Vũ Văn Hoàn")
+    assert not reason._names_align("Vũ Huy Hoà", "Vũ Huy Hoàng")
+    assert not reason._names_align("Vũ Huy Hoà", "Vũ Huy")
+
+
+def test_cha_survives_when_declaration_name_drifts_into_child_name():
+    section = reason._section(_context_cha_lech_ten(), "cha")
+
+    # Tên tờ khai trùng tên con nhưng năm sinh 1958 ≠ 1991 → KHÔNG được xoá khối cha.
+    assert "Không xác định" not in reason._role_name(section)
+    # CCCD của đúng người cha phải được bù vào, không phải CCCD của con.
+    assert reason._role_id(section) == "037058009458"
+    assert "đã chết" in section
+
+
+def test_sanitizer_keeps_father_when_declaration_name_drifts():
+    fields = [
+        {"name": "Subject_FullName", "value": "VŨ HUY HÒA"},
+        {"name": "Subject_BirthDate", "value": "28/02/1991"},
+        {"name": "Mother_FullName", "value": "NGÔ THỊ HỒNG THÊU"},
+        {"name": "Mother_IdNumber", "value": "037162011511"},
+        {"name": "Father_FullName", "value": "VŨ HUY HOÀN"},
+        {"name": "Father_IdNumber", "value": "037058009458"},
+        {"name": "Father_BirthDateOrYear", "value": "01/01/1958"},
+    ]
+
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields(fields, _context_cha_lech_ten())
+    }
+
+    assert values["Father_FullName"] == "VŨ HUY HOÀN"
+    assert values["Father_IdNumber"] == "037058009458"
+    assert values["Mother_FullName"] == "NGÔ THỊ HỒNG THÊU"
+    assert values["Subject_FullName"] == "VŨ HUY HÒA"

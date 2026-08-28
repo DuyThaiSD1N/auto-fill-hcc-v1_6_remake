@@ -574,6 +574,21 @@ function isDaNangBusinessUser(user) {
   return normalizeProcedureSearch(user?.tinh).includes("da nang");
 }
 
+// ===== Nghiệp vụ riêng phường Hải Châu — thành phố Đà Nẵng (chỉ áp cho tài khoản của địa bàn này) =====
+// 1. Ô "Lý do giải thể" (trang Chấm dứt hoạt động) LUÔN là câu cố định, bất kể Thông báo chấm dứt
+//    trong hồ sơ ghi lý do gì — kể cả khi backend không đọc được lý do nào.
+const HAI_CHAU_DISSOLUTION_REASON = "Chấm dứt hoạt động kinh doanh";
+// 2. Ô "Địa chỉ nhận kết quả" (trang Người nộp hồ sơ) LUÔN là Trung tâm Phục vụ Hành chính công của
+//    phường, cho MỌI thủ tục hộ kinh doanh. Cổng để trống ô này và cán bộ phải gõ tay mỗi hồ sơ.
+const HAI_CHAU_POSTAL_ADDRESS =
+  "Trung tâm Phục vụ Hành chính công phường Hải Châu - 15 Lê Hồng Phong, thành phố Đà Nẵng (Quầy số 5 - khu A)";
+
+/** Tài khoản phường Hải Châu — thành phố Đà Nẵng (/auth/me trả `xa` + `tinh`). */
+function isHaiChauDaNangUser(user) {
+  // Phải khớp CẢ phường lẫn tỉnh/thành: danh mục hành chính còn một "Xã Hải Châu" ở Thanh Hóa.
+  return isDaNangBusinessUser(user) && normalizeProcedureSearch(user?.xa).includes("hai chau");
+}
+
 function buildBusinessDefaults(user) {
   const defaults = {};
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
@@ -581,6 +596,10 @@ function buildBusinessDefaults(user) {
   // kể cả khi nhân thân tài khoản khác chủ hộ (nghiệp vụ địa phương yêu cầu). Chỉ áp cho tài khoản
   // Đà Nẵng — tỉnh khác vẫn tự chốt vai trò theo đối chiếu tài khoản với chủ hộ như cũ.
   if (isDaNangBusinessUser(user)) defaults.forceSelfSubmitter = true;
+  if (isHaiChauDaNangUser(user)) {
+    defaults.dissolutionReason = HAI_CHAU_DISSOLUTION_REASON;
+    defaults.postalServiceAddress = HAI_CHAU_POSTAL_ADDRESS;
+  }
   return Object.keys(defaults).length ? defaults : null;
 }
 
@@ -2731,7 +2750,9 @@ async function dispatchFill(allFields, errors, page = null) {
       fields: allFields,
       procedure,
       businessPage: page?.key || "",
-      businessDefaults: page?.key === "nganh-nghe-kinh-doanh" ? buildBusinessDefaults(currentUser) : null,
+      // Mọi trang HKD đều cần defaults theo địa bàn (ghi chú ngành nghề, lý do giải thể, địa chỉ
+      // nhận kết quả...), không riêng trang ngành nghề như trước.
+      businessDefaults: page?.key ? buildBusinessDefaults(currentUser) : null,
     });
     const filled = Math.max(0, Number(fillRes?.filled || 0));
     const details = buildFillDetails(fillRes, errors, allFields.length);

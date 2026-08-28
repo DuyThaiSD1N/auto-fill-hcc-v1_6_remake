@@ -905,7 +905,13 @@
     // hoặc form HTML thường (input/select[name]) của các thủ tục đất đai.
     const formKind = detectFormKind();
     if (!formKind) return; // frame không chứa form thật
-    const fields = Array.isArray(msg.fields) ? msg.fields : [];
+    let fields = Array.isArray(msg.fields) ? msg.fields : [];
+    // Lượt điền MỘT trang HKD cũng phải áp default theo địa bàn (vd "Lý do giải thể" / "Địa chỉ nhận
+    // kết quả" của tài khoản Hải Châu), giống hệt lượt tự chạy cả luồng.
+    if (msg.businessPage && typeof H.applyBusinessLocalDefaults === "function") {
+      try { fields = H.applyBusinessLocalDefaults(fields, msg.businessDefaults, msg.businessPage); }
+      catch (e) { console.warn("[AutoFill] default theo địa bàn:", e); }
+    }
     if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
     const forceStandard = fields.some((f) =>
       String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[")
