@@ -589,6 +589,8 @@
           signals.title,
           signals.headings,
           signals.businessProcedureHint,
+          signals.enterpriseProcedureHint,
+          signals.enterpriseEntityLabel,
           signals.bodyText,
         ]);
       } catch (_) {
@@ -1445,6 +1447,14 @@
     // và loại hồ sơ đang hiển thị, tránh suy thủ tục chỉ vì tên option xuất hiện trong body.
     const businessProcedureHint = typeof H.detectBusinessProcedureHint === "function"
       ? H.detectBusinessProcedureHint() : "";
+    // Cổng ĐKKD qua mạng (dangkyquamang) cũng dùng chung domain/URL cho mọi loại hình doanh nghiệp.
+    // Hint chỉ nói "đang ở cổng doanh nghiệp, bước nào" để popup không giữ nhầm thủ tục hộ kinh doanh.
+    const enterpriseProcedureHint = typeof H.detectEnterpriseProcedureHint === "function"
+      ? H.detectEnterpriseProcedureHint() : "";
+    // Loại hình đọc từ chính hồ sơ đang mở ("Loại hình doanh nghiệp: Công ty cổ phần") — thứ duy
+    // nhất phân biệt được CTCP với TNHH/DNTN/hợp danh trên cùng domain.
+    const enterpriseEntityLabel = typeof H.detectEnterpriseEntityLabel === "function"
+      ? H.detectEnterpriseEntityLabel() : "";
     return {
       url: location.href,
       title: document.title || "",
@@ -1452,6 +1462,8 @@
       visibleHeadings,
       bodyText,
       businessProcedureHint,
+      enterpriseProcedureHint,
+      enterpriseEntityLabel,
     };
   }
 

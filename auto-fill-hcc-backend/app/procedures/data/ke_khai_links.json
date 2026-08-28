@@ -353,6 +353,7 @@
       "enterpriseFlow": {
         "registrationType": "NEW",
         "registrationLabel": "Thành lập mới doanh nghiệp",
+        "entityValue": "SC",
         "entityLabel": "Công ty cổ phần"
       }
     },

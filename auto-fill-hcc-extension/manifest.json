@@ -41,6 +41,7 @@
         "https://tokhaidientu.moj.gov.vn/*",
         "https://dichvucongbyt.moh.gov.vn/*",
         "https://hokinhdoanh.dkkd.gov.vn/*",
+        "https://dangkyquamang.dkkd.gov.vn/*",
         "https://lienthong.dichvucong.gov.vn/*",
         "https://dichvucong.gov.vn/*",
         "https://*.laichau.gov.vn/*",
@@ -69,6 +70,7 @@
         "content/fill-legacy.js",
         "content/fill-bacninh.js",
         "content/procedures/business-registration.js",
+        "content/procedures/enterprise-registration.js",
         "content/agency-select.js",
         "content/review.js"
       ],
@@ -118,6 +120,7 @@
         "https://tokhaidientu.moj.gov.vn/*",
         "https://dichvucongbyt.moh.gov.vn/*",
         "https://hokinhdoanh.dkkd.gov.vn/*",
+        "https://dangkyquamang.dkkd.gov.vn/*",
         "https://lienthong.dichvucong.gov.vn/*",
         "https://dichvucong.gov.vn/*",
         "https://*.laichau.gov.vn/*",

@@ -148,7 +148,10 @@ async function sendToContent(payload) {
       });
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
-        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/agency-select.js", "content/review.js"],
+        // PHẢI khớp danh sách js của content_scripts trong manifest.json (trừ khối world: MAIN ở
+        // trên). Thiếu một file thì tab vừa re-inject sẽ chạy thiếu tính năng một cách IM LẶNG —
+        // vd thiếu enterprise-registration.js là mất nhận diện + tự tiến bước ở cổng ĐKKD qua mạng.
+        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -912,6 +915,24 @@ function detectProcedureKeyFromSignals(signals) {
   // - choice: màn chọn có nhiều option, không được đoán theo text option;
   // - change/create: loại hồ sơ đã được xác nhận bởi active step hoặc khối thông tin hồ sơ.
   const selected = selectedProcedureConfig();
+
+  // Cổng ĐKKD qua mạng dùng CHUNG Registration.aspx/DW_DOCUMENTEdit.aspx cho MỌI loại hình doanh
+  // nghiệp: URL, heading và body ("ĐĂNG KÝ DOANH NGHIỆP", "Thành lập mới...") không phân biệt được
+  // CTCP với TNHH/DNTN, và các nhánh đoán theo text bên dưới từng trả nhầm thành thủ tục HỘ kinh doanh.
+  if (String(signals.enterpriseProcedureHint || "")) {
+    const entityLabel = normDetect(signals.enterpriseEntityLabel || "");
+    if (entityLabel) {
+      // Hồ sơ đã tạo: cổng in rõ "Loại hình doanh nghiệp" → chốt đúng thủ tục theo loại hình đó.
+      // Loại hình chưa có thủ tục tương ứng (vd TNHH) thì để TRỐNG, không nhận bừa sang CTCP.
+      const matched = PROCEDURES.find((item) => item.enterpriseEntityLabel
+        && normDetect(item.enterpriseEntityLabel) === entityLabel);
+      return matched ? matched.key : "";
+    }
+    // Chưa chốt loại hình (wizard, trang chủ cổng, màn đăng nhập): giữ thủ tục doanh nghiệp đang
+    // chọn nếu có; không thì rơi xuống rule urlIncludes để nhận theo domain — đúng như cổng HKD.
+    if (isEnterprisePortalProcedure(selected)) return selected.key;
+  }
+
   if (url.includes("hokinhdoanh.dkkd.gov.vn")) {
     const hint = String(signals.businessProcedureHint || "");
     const changeProcedure = PROCEDURES.find((item) => item.businessWorkflow === "change");
@@ -1004,9 +1025,23 @@ function detectProcedureKeyFromSignals(signals) {
   return best;
 }
 
+// Cổng ĐKKD qua mạng (dangkyquamang.dkkd.gov.vn) chỉ phục vụ nhóm thủ tục thành lập/thay đổi
+// DOANH NGHIỆP. Thủ tục hộ kinh doanh (cổng hokinhdoanh) không bao giờ đúng ở đây.
+function isEnterprisePortalProcedure(procedure) {
+  return !!procedure?.enterprisePortal;
+}
+
 function setProcedureDetected(detected) {
   procedureAutoDetected = detected;
   renderProcedureResults();
+}
+
+// Đang ở cổng ĐKKD qua mạng mà lựa chọn hiện tại là thủ tục của cổng KHÁC (điển hình: hộ kinh
+// doanh còn lại từ phiên trước) → phải xóa, nếu không panel hiển thị sai tên thủ tục cho cán bộ.
+function shouldClearProcedureOnEnterprisePortal(signals) {
+  if (!String(signals?.enterpriseProcedureHint || "")) return false;
+  if (!selectedProcedureKey) return false;
+  return !isEnterprisePortalProcedure(selectedProcedureConfig());
 }
 
 // Màn "Chọn loại đăng ký trực tuyến" là điểm bắt đầu dùng chung của mọi thủ tục HKD.
@@ -1032,7 +1067,19 @@ async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
     return !!selectedProcedureKey;
   }
   try {
-    const res = await sendToContent({ action: "detectProcedure" });
+    // Cổng WebForms (ĐKKD qua mạng, HkdOnline) tải lại trang ở mỗi bước: lượt hỏi đầu tiên có thể
+    // rơi đúng lúc content script chưa gắn xong listener → res không có `signals`. Trước đây bỏ cuộc
+    // ngay và panel KẸT ở "Đang chọn:" (thay vì "Tự nhận diện:") cho tới khi cán bộ chọn tay, vì
+    // không còn nhịp nào gọi lại. Thử lại vài nhịp ngắn rồi mới chịu thua.
+    let res = null;
+    for (const waitMs of [0, 400, 1200]) {
+      if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+      res = await sendToContent({ action: "detectProcedure" });
+      if (res?.signals) break;
+    }
+    if (!res?.signals) {
+      console.warn("[Popup] Không lấy được tín hiệu trang để nhận diện thủ tục:", res?.error || res);
+    }
     if (res?.signals?.businessProcedureHint === "choice") {
       // Khi vừa mở popup/chuyển URL: bỏ lựa chọn cũ. Khi người dùng đã chọn tay rồi bấm
       // xử lý: giữ lựa chọn đó để engine biết phải bấm loại đăng ký nào trên cổng.
@@ -1048,6 +1095,12 @@ async function autoDetectProcedure({ clearChoiceSelection = true } = {}) {
       });
       setProcedureDetected(applied !== false);
       return applied !== false;
+    }
+    // Không nhận diện được mà đang ở cổng doanh nghiệp: phải XÓA lựa chọn cũ (điển hình là thủ tục
+    // hộ kinh doanh còn lại từ phiên trước), nếu không panel hiển thị sai tên thủ tục cho cán bộ.
+    if (shouldClearProcedureOnEnterprisePortal(res?.signals)) {
+      await enterBusinessProcedureChoiceMode();
+      return false;
     }
   } catch (e) {
     /* không nhận diện được → quay về chọn tay */
@@ -1076,6 +1129,12 @@ async function reDetectProcedureOnNav(run = 0) {
           confirmedNavigation: hasStrongProcedureIdentity(key, res.signals),
         });
       setProcedureDetected(applied !== false);
+      return;
+    }
+    // Không nhận diện được mà đang ở cổng doanh nghiệp: xóa lựa chọn cũ của cổng khác (xem
+    // autoDetectProcedure ở trên).
+    if (shouldClearProcedureOnEnterprisePortal(res?.signals)) {
+      await enterBusinessProcedureChoiceMode();
     }
   } catch (e) {
     /* không nhận diện được → giữ nguyên trạng thái hiện tại */
@@ -2989,6 +3048,10 @@ const LOCATION_STORAGE_KEY = "autofill_user_location";
 // "Chọn cơ quan thực hiện". Chỉ đặt khi người dùng bấm "Mở trang kê khai" → không tự động can
 // thiệp khi cán bộ tự duyệt cổng bằng tay.
 const AGENCY_ARM_KEY = "autofill_agency_autoselect";
+// Cờ tương ứng cho content/procedures/enterprise-registration.js: thủ tục thành lập doanh nghiệp
+// nộp thẳng trên dangkyquamang.dkkd.gov.vn (không qua khối "Chọn cơ quan thực hiện" của cổng QG),
+// nên phần "lên đạn" là loại đăng ký + loại hình cần chọn ở wizard ba bước đầu.
+const ENTERPRISE_ARM_KEY = "autofill_enterprise_autostart";
 let currentLocation = { province: "", provinceSlug: "", ward: "" };
 
 // Popup chạy trong iframe extension, KHÔNG có content/locations.js (đó là bản cho content script).
@@ -3205,6 +3268,13 @@ function updateKeKhaiUI() {
     keKhaiStatus.className = 'status';
     return;
   }
+  // Thủ tục doanh nghiệp nộp thẳng trên cổng ĐKKD qua mạng: không có khối chọn cơ quan, trợ lý đi
+  // tiếp bằng ba bước wizard (loại đăng ký → loại hình → Bắt đầu) để vào khối dữ liệu hồ sơ.
+  if (link.enterpriseFlow) {
+    keKhaiStatus.textContent = `Trợ lý sẽ mở cổng đăng ký doanh nghiệp qua mạng, chọn "Thành lập mới doanh nghiệp" và "${link.enterpriseFlow.entityLabel}" rồi bấm "Bắt đầu" để vào hồ sơ. Cần đăng nhập tài khoản ĐKKD trước.`;
+    keKhaiStatus.className = 'status info';
+    return;
+  }
   // Cổng React mới bắt chọn Tỉnh/Xã trước khi vào biểu mẫu → trợ lý điền hộ nếu đã có địa chỉ.
   if (link.needsAgencySelect && !locationIsComplete()) {
     keKhaiStatus.textContent = 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
@@ -3302,6 +3372,21 @@ async function openKeKhaiPage() {
     });
   } else {
     await chrome.storage.local.remove(AGENCY_ARM_KEY);
+  }
+  // Thủ tục doanh nghiệp: "lên đạn" cho content/procedures/enterprise-registration.js bấm hộ ba
+  // bước wizard trên dangkyquamang.dkkd.gov.vn. Thủ tục khác phải XÓA cờ để lần mở trước bỏ dở
+  // không lỡ tay điều khiển wizard của hồ sơ đang mở.
+  if (link.enterpriseFlow) {
+    await chrome.storage.local.set({
+      [ENTERPRISE_ARM_KEY]: {
+        ...link.enterpriseFlow,
+        procedureKey: link.key,
+        procedureLabel: link.label,
+        at: Date.now(),
+      },
+    });
+  } else {
+    await chrome.storage.local.remove(ENTERPRISE_ARM_KEY);
   }
   // Điều hướng phá iframe popup hiện tại; chốt file xuống storage trước khi đổi URL.
   await saveSession();

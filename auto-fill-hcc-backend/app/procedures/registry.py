@@ -365,6 +365,37 @@ PROCEDURES: list[dict] = [
         ],
     },
     {
+        "key": "thanh-lap-cong-ty-co-phan",
+        # Cổng ĐKKD qua mạng (dangkyquamang.dkkd.gov.vn) là hệ thống RIÊNG, khác cổng hộ kinh doanh
+        # (hokinhdoanh.dkkd.gov.vn). Nhận diện theo domain giống HKD: nhiều trang con .aspx nhưng cùng
+        # domain, còn URL chỉ mang handle phiên (Registration.aspx?h=..., DW_DOCUMENTEdit.aspx?h=...)
+        # nên không suy được thủ tục. Domain mới chỉ chốt "đang ở cổng doanh nghiệp"; khi hồ sơ đã tạo,
+        # extension gửi thêm enterpriseEntityLabel đọc từ dòng "Loại hình doanh nghiệp" trên chính hồ sơ
+        # để phân biệt CTCP với TNHH/DNTN/hợp danh.
+        "detect": {"urlIncludes": ["dangkyquamang.dkkd.gov.vn"], "headingDisabled": True},
+        "label": "Đăng ký thành lập công ty cổ phần",
+        "mode": "agent",
+        # Cờ cho extension: thủ tục thuộc cổng ĐKKD qua mạng. Panel dùng để KHÔNG giữ nhầm thủ tục hộ
+        # kinh doanh của phiên trước khi cán bộ chuyển sang cổng doanh nghiệp.
+        "enterprisePortal": True,
+        # Đối chiếu với dòng "Loại hình doanh nghiệp" in trên hồ sơ (và nhãn radio bước 2 của wizard).
+        # Thêm loại hình khác (TNHH một/hai thành viên, DNTN, hợp danh) = thêm entry tương tự.
+        "enterpriseEntityLabel": "Công ty cổ phần",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị đăng ký doanh nghiệp (công ty cổ phần).\n"
+            "2. Điều lệ công ty.\n"
+            "3. Danh sách cổ đông sáng lập và cổ đông là nhà đầu tư nước ngoài.\n"
+            "4. CCCD/căn cước của người đại diện theo pháp luật và các cổ đông là cá nhân."
+        ),
+        # CHƯA khai "pages" và CHƯA có pipeline trong _PIPELINE/_ATTACH_PIPELINE: bản này mới làm phần
+        # điều hướng + nhận diện ở extension. Bấm "Quét và nhập dữ liệu" sẽ nhận lỗi 400 UNKNOWN_PROCEDURE
+        # (thông báo rõ ràng, không crash) cho tới khi bổ sung app/pipelines/thanh_lap_cong_ty_co_phan.
+    },
+    {
         "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
         # Không nhận diện bằng body text: màn chọn chung cũng chứa label thủ tục này dù người dùng
         # chưa chọn. Extension gửi businessProcedureHint theo active wizard step/loại hồ sơ.
