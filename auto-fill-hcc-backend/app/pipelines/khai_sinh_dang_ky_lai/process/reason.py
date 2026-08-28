@@ -63,8 +63,17 @@ Bạn là agent PHÂN VAI hồ sơ ĐĂNG KÝ LẠI KHAI SINH. Chỉ xác địn
 
 Đọc toàn bộ OCR, không trích field biểu mẫu, không trả JSON.
 
-THỨ TỰ PHÂN VAI:
-1. Ưu tiên nhãn rõ trên tờ khai đăng ký lại khai sinh, giấy khai sinh cũ hoặc trích lục khai sinh:
+THỨ TỰ PHÂN VAI — TỜ KHAI TRƯỚC, GIẤY TỜ KHÁC CHỈ LÀ NGUỒN BÙ:
+0. HỒ SƠ CÓ TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH thì TỜ KHAI CHỐT VAI, không giấy tờ nào lật ngược được:
+   - mục "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây" → <con>;
+   - "Họ, chữ đệm, tên người mẹ" → <me>; "Họ, chữ đệm, tên người cha" → <cha>;
+   - "Họ, chữ đệm, tên người yêu cầu" → <nguoi_yeu_cau>.
+   Lấy ĐÚNG người ghi ở từng mục, kể cả khi tờ khai viết tay/OCR mờ hoặc thiếu số định danh.
+   CCCD/CMND và trích lục khai tử chỉ dùng để BÙ các mục tờ khai bỏ trống (số định danh, ngày-nơi
+   cấp, dân tộc, nơi cư trú) cho CHÍNH người đó, TUYỆT ĐỐI không dùng để đổi người giữa các vai.
+   Quy tắc suy vai theo giới tính/thế hệ ở mục 3, 4b CHỈ áp dụng khi hồ sơ KHÔNG có tờ khai.
+   Tờ khai ghi "Nơi cư trú: Đã chết" cho cha/mẹ → Trạng thái của vai đó là "đã chết".
+1. Không có tờ khai thì mới xét nhãn rõ trên giấy khai sinh cũ hoặc trích lục khai sinh:
    "người được khai sinh/con", "mẹ", "cha".
 2. Giấy khai tử chỉ chứng minh danh tính, năm sinh, giới tính và trạng thái đã chết của người trên giấy.
    KHÔNG mặc định người trong giấy khai tử là cha/mẹ. Chỉ gán cha/mẹ khi có quan hệ rõ hoặc khi quy tắc
@@ -77,8 +86,8 @@ THỨ TỰ PHÂN VAI:
    mơ hồ thì ghi "Không xác định".
 4. CCCD/CMND chỉ cho biết thông tin của chính người trên thẻ. Tên file và thứ tự tải lên chỉ là tín hiệu
    phụ, không đủ để tự gán vai.
-4b. Hồ sơ chỉ có ĐÚNG MỘT thẻ căn cước/CMND và không tài liệu nào chỉ đích danh người được đăng ký
-   lại khai sinh: người trên thẻ đó CHÍNH LÀ CON (người được đăng ký lại khai sinh) — người lớn tự
+4b. Hồ sơ KHÔNG có tờ khai, chỉ có ĐÚNG MỘT thẻ căn cước/CMND và không tài liệu nào chỉ đích danh
+   người được đăng ký lại khai sinh: người trên thẻ đó CHÍNH LÀ CON (người được đăng ký lại khai sinh) — người lớn tự
    đi đăng ký lại cho mình. Đổ TOÀN BỘ nhân thân đọc được trên thẻ vào <con>. Từ HAI thẻ trở lên thì
    KHÔNG áp dụng quy tắc này, phải phân vai theo nhãn hoặc theo thế hệ ở mục 3.
 5. Người yêu cầu:
@@ -333,6 +342,257 @@ def _person_from_document(document: dict) -> dict | None:
     }
 
 
+# ---------------------------------------------------------------------------
+# TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH — NGUỒN SỐ 1 CỦA PHÂN VAI
+#
+# Tờ khai là giấy tờ DUY NHẤT trong hồ sơ ghi thẳng quan hệ ("người mẹ", "người cha",
+# "người được đăng ký lại khai sinh"). CCCD/CMND chỉ nói về CHÍNH người trên thẻ, không
+# nói vai, nên chỉ dùng để BÙ field tờ khai bỏ trống/mờ. Python tự đọc tờ khai để một
+# lượt phân vai hỏng của LLM không làm mất trắng khối con/cha/mẹ — sanitize_extracted_fields
+# xoá sạch field của vai bị ghi "Không xác định".
+# ---------------------------------------------------------------------------
+
+# Mỗi dòng chỉ khớp MỘT nhãn; thứ tự trong tuple là thứ tự thử: nhãn "người yêu cầu"/
+# "người mẹ"/"người cha" phải thử TRƯỚC nhãn trần "Họ, chữ đệm, tên:" của người được đăng ký lại.
+_NAME_LABEL = r"H[oọ][,.]?(?:\s*ch[uữ]\s*[dđ][eệ]m)?[,.]?\s*(?:v[aà]\s+)?t[eê]n"
+_DECLARATION_ANCHORS = (
+    ("nguoi_yeu_cau", rf"^\s*{_NAME_LABEL}\s+(?:c[uủ]a\s+)?(?:ng[uư][oờ]i\s+)?y[eê]u\s*c[aầ]u\s*:\s*(.*)$"),
+    ("me", rf"^\s*{_NAME_LABEL}\s+(?:c[uủ]a\s+)?(?:ng[uư][oờ]i\s+)?m[eẹ]\s*:\s*(.*)$"),
+    ("cha", rf"^\s*{_NAME_LABEL}\s+(?:c[uủ]a\s+)?(?:ng[uư][oờ]i\s+)?(?:cha|b[oố])\s*:\s*(.*)$"),
+    ("con", rf"^\s*{_NAME_LABEL}\s*:\s*(.*)$"),
+)
+# Hết phần khai nhân thân — không để khối cha/mẹ nuốt sang mục đăng ký trước đây/cam đoan.
+_DECLARATION_TERMINATORS = (
+    r"^\s*[DĐ][aã]\s+[dđ][aă]ng\s+k[yý]\s+khai\s+sinh\s+t[aạ]i",
+    r"^\s*T[oô]i\s+cam\s+[dđ]oan",
+    r"^\s*[DĐ][eề]\s+ngh[iị]\s+c[aấ]p\s+b[aả]n\s+sao",
+    r"^\s*Gi[aấ]y\s+khai\s+sinh\s+s[oố]",
+)
+
+
+def _strip_marker(value) -> str:
+    """Bỏ chú thích chân trang "(2)", "(5)" biểu mẫu in sẵn đứng trước giá trị thật."""
+    return re.sub(r"^(?:\s*\(\d+\))+\s*", "", str(value or "")).strip()
+
+
+def _cut_at(value, stops: tuple[str, ...]) -> str:
+    """Một dòng tờ khai thường gộp nhiều nhãn ("Năm sinh: ... Dân tộc: ... Quốc tịch: ...")."""
+    text = str(value or "")
+    for stop in stops:
+        match = re.search(stop, text, flags=re.IGNORECASE)
+        if match:
+            text = text[:match.start()]
+    return text.strip(" .,;:-")
+
+
+def _declaration_documents(documents: list[dict]) -> list[dict]:
+    return [
+        document
+        for document in documents
+        if "to khai" in _fold(document.get("text"))
+        and "dang ky lai khai sinh" in _fold(document.get("text"))
+    ]
+
+
+def _declaration_blocks(text) -> dict[str, str]:
+    """Cắt tờ khai thành từng khối theo nhãn quan hệ in sẵn trên biểu mẫu."""
+    lines = str(text or "").splitlines()
+    anchors: list[tuple[int, str, str]] = []
+    stop_index = len(lines)
+    # "Đề nghị ... đăng ký lại khai sinh cho người có tên dưới đây" mở đầu khối người được đăng ký
+    # lại. Nhãn trần "Họ, chữ đệm, tên:" đứng TRƯỚC dòng này vẫn thuộc người yêu cầu (OCR hay rụng
+    # mất chữ "người yêu cầu"), nên không được nhận nhầm thành <con>.
+    subject_start = next(
+        (
+            index
+            for index, line in enumerate(lines)
+            if re.search(
+                r"[dđ][aă]ng\s+k[yý]\s+l[aạ]i\s+khai\s+sinh\s+cho\s+ng[uư][oờ]i",
+                line,
+                flags=re.IGNORECASE,
+            )
+        ),
+        -1,
+    )
+    for index, line in enumerate(lines):
+        matched = False
+        for tag, pattern in _DECLARATION_ANCHORS:
+            found = re.match(pattern, line, flags=re.IGNORECASE)
+            if found:
+                if tag == "con" and 0 <= subject_start > index:
+                    break
+                anchors.append((index, tag, _strip_marker(found.group(1))))
+                matched = True
+                break
+        if matched or index == 0:
+            continue
+        if any(re.match(pattern, line, flags=re.IGNORECASE) for pattern in _DECLARATION_TERMINATORS):
+            stop_index = min(stop_index, index)
+
+    blocks: dict[str, str] = {}
+    for position, (index, tag, name) in enumerate(anchors):
+        if index >= stop_index or tag in blocks:
+            continue
+        end = anchors[position + 1][0] if position + 1 < len(anchors) else len(lines)
+        blocks[tag] = "\n".join([name, *lines[index + 1:min(end, stop_index)]])
+    return blocks
+
+
+def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | None:
+    head = block.splitlines()[0] if block else ""
+    name = _strip_marker(_cut_at(head, (r"Ng[aà]y[,\s]", r"N[aă]m\s+sinh", r"Sinh\s+ng[aà]y")))
+    if len(_fold(name).split()) < 2:
+        return None
+
+    birth = _cut_at(
+        _strip_marker(_first_match(block, (
+            r"Ng[aà]y,?\s*th[aá]ng,?\s*n[aă]m\s+sinh\s*:\s*([^\n\r]+)",
+            r"Ng[aà]y\s+sinh\s*:\s*([^\n\r]+)",
+            r"N[aă]m\s+sinh\s*:\s*([^\n\r]+)",
+        ))),
+        (r"ghi\s+b[aằ]ng\s+ch[uữ]", r"D[aâ]n\s*t[oộ]c", r"Gi[oớ]i\s*t[ií]nh", r"Qu[oố]c\s*t[iị]ch"),
+    )
+    gender = _first_match(block, (r"Gi[oớ]i\s*t[ií]nh\s*:?\s*(?:\(\d+\))?\s*(Nam|N[uữ])",))
+    ethnicity = _cut_at(
+        _strip_marker(_first_match(block, (r"D[aâ]n\s*t[oộ]c\s*:?\s*([^\n\r]+)",))),
+        (r"Qu[oố]c\s*t[iị]ch",),
+    )
+    nationality = _cut_at(
+        _strip_marker(_first_match(block, (r"Qu[oố]c\s*t[iị]ch\s*:?\s*([^\n\r]+)",))),
+        (r"N[oơ]i\s+sinh", r"D[aâ]n\s*t[oộ]c"),
+    )
+    identity = _digits(_first_match(block, (
+        r"S[oố]\s+[dđ][iị]nh\s+danh[^:\n]*:?\s*([0-9][0-9 ]{8,})",
+        r"(?:CCCD|CMND|C[aă]n\s+c[uư][oớ]c|Ch[uứ]ng\s+minh)[^0-9\n]{0,40}?([0-9][0-9 ]{8,})",
+    )))
+    residence = _strip_marker(_first_match(block, (r"N[oơ]i\s+c[uư]\s+tr[uú]\s*:?\s*([^\n\r]+)",)))
+
+    # "Nơi cư trú: Đã chết" là cách tờ khai ghi cha/mẹ đã mất (biểu mẫu không có ô trạng thái).
+    if tag == "con":
+        status = "còn sống"
+    elif any(keyword in _fold(residence) for keyword in ("da chet", "da mat", "tu tran")):
+        status = "đã chết"
+    else:
+        status = "không xác định"
+
+    section = (
+        f"Họ tên: {name}\n"
+        f"Số CCCD/CMND: {identity or 'Không xác định'}\n"
+        f"Ngày sinh: {birth or 'Không xác định'}\n"
+        f"Giới tính: {gender or 'Không xác định'}\n"
+        f"Dân tộc: {ethnicity or 'Không xác định'}\n"
+        f"Quốc tịch: {nationality or 'Không xác định'}\n"
+        f"Trạng thái: {status}\n"
+        f"Nguồn: {source}\n"
+        "Căn cứ phân vai: Nhãn quan hệ in sẵn trên tờ khai đăng ký lại khai sinh."
+    )
+    return {"section": section, "name": name, "id": identity}
+
+
+def _declaration_roles(documents: list[dict]) -> dict[str, dict]:
+    """Người yêu cầu/con/cha/mẹ đọc TẤT ĐỊNH từ tờ khai — không qua LLM, không phụ thuộc CCCD."""
+    roles: dict[str, dict] = {}
+    for document in _declaration_documents(documents):
+        source = str(document.get("name") or "(không tên)")
+        for tag, block in _declaration_blocks(document.get("text")).items():
+            if tag in roles:
+                continue
+            person = _person_from_declaration_block(tag, block, source)
+            if person:
+                roles[tag] = person
+    return roles
+
+
+def _declaration_relation(documents: list[dict]) -> str:
+    """Dòng "Quan hệ với người được khai sinh" in sẵn trên tờ khai — căn cứ mạnh nhất của ô (5)."""
+    for document in _declaration_documents(documents):
+        value = _first_match(str(document.get("text") or ""), (
+            r"Quan\s*h[eệ]\s+v[oớ]i\s+ng[uư][oờ]i\s+[dđ][uư][oợ]c\s+(?:khai\s+sinh|"
+            r"[dđ][aă]ng\s+k[yý]\s+l[aạ]i[^:\n]*)\s*:\s*([^\n\r]+)",
+        ))
+        relation = _normalized_relation(_strip_marker(value))
+        if relation:
+            return relation
+    return ""
+
+
+def _same_role_person(section: str, person: dict) -> bool:
+    section_id, person_id = _role_id(section), str(person.get("id") or "")
+    if section_id and len(person_id) in {9, 12}:
+        return section_id == person_id
+    role_name = _fold(_role_name(section))
+    return bool(role_name) and role_name == _fold(person["name"])
+
+
+_MERGE_PROTECTED_LABELS = {"Họ tên", "Nguồn", "Căn cứ phân vai"}
+
+
+def _merge_role_section(primary: str, secondary: str) -> str:
+    """Giữ nguyên giá trị tờ khai; chỉ nhãn còn trống mới lấy bù từ nguồn phụ (CCCD/khai tử)."""
+    if not secondary:
+        return primary
+    merged: list[str] = []
+    for line in primary.splitlines():
+        label, separator, value = line.partition(":")
+        label = label.strip()
+        if separator and label not in _MERGE_PROTECTED_LABELS and "khong xac dinh" in _fold(value):
+            fallback = _labeled_value(secondary, label)
+            if fallback and "khong xac dinh" not in _fold(fallback):
+                line = f"{label}: {fallback}"
+        merged.append(line)
+    return "\n".join(merged)
+
+
+def _repair_family_from_declaration(
+    sections: dict[str, str],
+    documents: list[dict],
+) -> dict[str, str]:
+    """Tờ khai thắng; CCCD/trích lục khai tử chỉ bù field còn trống của CHÍNH người đó."""
+    roles = _declaration_roles(documents)
+    if not roles:
+        return sections
+
+    # Nguồn bù: nhân thân LLM đã phân vai + nhân thân Python đọc thẳng từ CCCD/trích lục khai tử.
+    # Chỉ được dùng cho đúng người mà tờ khai đã chốt vai, không dùng để đổi vai.
+    fallbacks = [section for section in sections.values() if section and not _is_unknown(section)]
+    fallbacks += [
+        person["section"]
+        for document in documents
+        if (person := _person_from_document(document))
+    ]
+
+    result = dict(sections)
+    for tag, person in roles.items():
+        if tag not in _FAMILY_TAGS:
+            continue
+        existing = result.get(tag) or ""
+        # Vai đã có sẵn ĐÚNG người thì xếp lên đầu hàng bù; agent gán nhầm người khác vào vai này
+        # thì bỏ hẳn kết quả đó — tờ khai là nguồn số 1.
+        ordered = fallbacks
+        if not _is_unknown(existing) and _same_role_person(existing, person):
+            ordered = [existing, *fallbacks]
+
+        merged = person["section"]
+        for candidate in ordered:
+            if _same_role_person(candidate, person):
+                merged = _merge_role_section(merged, candidate)
+        result[tag] = merged
+    return result
+
+
+def _requester_section(person: dict, sections: dict[str, str]) -> str:
+    """Đổi khối người yêu cầu đọc từ tờ khai sang shape <nguoi_yeu_cau> (có "Vai trò đồng thời")."""
+    role = next(
+        (tag for tag in _FAMILY_TAGS if _same_role_person(sections.get(tag) or "", person)),
+        "",
+    )
+    label = {"con": "con", "cha": "cha", "me": "mẹ"}.get(role, "không xác định")
+    body = "\n".join(
+        line for line in person["section"].splitlines() if not line.startswith("Trạng thái:")
+    )
+    return f"{body}\nVai trò đồng thời: {label}"
+
+
 def _repair_family_by_generation(
     raw: str,
     sections: dict[str, str],
@@ -506,6 +766,7 @@ def _validated_relation(
     sections: dict[str, str],
     has_declaration: bool,
     applicant: tuple[str, str] = ("", ""),
+    documents: list[dict] | None = None,
 ) -> tuple[str, str]:
     """Chốt quan hệ người yêu cầu <-> người được đăng ký lại khai sinh.
 
@@ -529,8 +790,15 @@ def _validated_relation(
         )
 
     section = _section(raw, "quan_he_nguoi_yeu_cau")
-    relation = _normalized_relation(_labeled_value(section, "Kết luận"))
-    basis = _labeled_value(section, "Căn cứ") or "Agent không nêu căn cứ."
+    # Ưu tiên số 1: chính dòng "Quan hệ với người được khai sinh" trên tờ khai, Python tự đọc.
+    # Kết luận của agent chỉ dùng khi tờ khai không đọc được dòng này.
+    declared = _declaration_relation(documents or [])
+    relation = declared or _normalized_relation(_labeled_value(section, "Kết luận"))
+    basis = (
+        'Dòng "Quan hệ với người được khai sinh" trên tờ khai.'
+        if declared
+        else (_labeled_value(section, "Căn cứ") or "Agent không nêu căn cứ.")
+    )
 
     if relation in {"cha", "mẹ"}:
         tag = "cha" if relation == "cha" else "me"
@@ -655,6 +923,10 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     """Kiểm tra tất định kết quả LLM rồi ghim vào prompt trích xuất."""
     sections = {tag: _section(raw, tag) for tag in _FAMILY_TAGS}
 
+    # TỜ KHAI TRƯỚC, CCCD SAU: nhãn quan hệ in sẵn trên tờ khai là căn cứ mạnh nhất và Python
+    # đọc được tất định, nên chốt vai từ đó trước mọi suy luận dựa trên thẻ căn cước bên dưới.
+    sections = _repair_family_from_declaration(sections, documents)
+
     # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
     if not any(not _is_unknown(s) for s in sections.values()):
         sections = _repair_family_by_generation(raw, sections, documents)
@@ -676,6 +948,12 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
 
     # Người yêu cầu: có tờ khai thì tờ khai thắng; không có thì mới soi mỏ neo của cổng.
     requester_raw = _section(raw, "nguoi_yeu_cau")
+    # Agent bỏ trống người yêu cầu nhưng tờ khai có ghi → dựng tất định từ tờ khai (tờ khai trước,
+    # CCCD chỉ bù field trống ở bước trích xuất).
+    if _is_unknown(requester_raw):
+        declared_requester = _declaration_roles(documents).get("nguoi_yeu_cau")
+        if declared_requester:
+            requester_raw = _requester_section(declared_requester, sections)
     requester = _validated_requester(requester_raw, options, bool(declaration_sources))
 
     # Đăng ký khai sinh trước đây: Python tự kiểm tra loại tài liệu (không tin LLM).
@@ -684,7 +962,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     source_value = ", ".join(valid_sources) if valid_sources else "Không có"
 
     relation_value, relation_basis = _validated_relation(
-        raw, sections, bool(declaration_sources), _requester_context(options)
+        raw, sections, bool(declaration_sources), _requester_context(options), documents
     )
 
     return (

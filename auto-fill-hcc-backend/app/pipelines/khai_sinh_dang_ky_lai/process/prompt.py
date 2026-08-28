@@ -48,83 +48,66 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    số định danh hay nơi thường trú của cha/mẹ gán cho Subject_*.
 </nguoi_yeu_cau>
 
+<uu_tien_nguon>
+⚠️ THỨ TỰ NGUỒN — TỜ KHAI TRƯỚC, CCCD SAU. Áp dụng cho MỌI vai (người yêu cầu, con, cha, mẹ):
+
+1. TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH là NGUỒN SỐ 1. Vai của từng người lấy đúng theo nhãn in sẵn:
+   • "Họ, chữ đệm, tên người yêu cầu" → Requester_*
+   • mục "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây" → Subject_*
+   • "Họ, chữ đệm, tên người mẹ" → Mother_*   • "Họ, chữ đệm, tên người cha" → Father_*
+   Mọi mục tờ khai CÓ GHI (ngày sinh, giới tính, dân tộc, quốc tịch, nơi sinh, quê quán, nơi cư trú,
+   giấy tờ tùy thân) đều PHẢI trả theo tờ khai, kể cả khi tờ khai viết tay.
+2. CCCD/CMND, trích lục khai tử/giấy chứng tử, giấy khai sinh cũ là NGUỒN BÙ (fallback): chỉ dùng cho
+   field mà tờ khai BỎ TRỐNG hoặc OCR không đọc nổi, và chỉ của CHÍNH người đó (khớp họ tên hoặc số
+   định danh với người ghi trên tờ khai).
+3. ❌ CẤM dùng CCCD để ĐỔI VAI mà tờ khai đã chốt. Thẻ của mẹ không được đẩy sang vai cha/con dù giới
+   tính hay năm sinh trông "hợp lý" hơn. Tờ khai ghi ai là mẹ thì người đó là mẹ.
+4. Hồ sơ có tờ khai mà một vai KHÔNG có CCCD (vd cha đã mất, chỉ có trích lục khai tử): VẪN PHẢI trả
+   đủ field của vai đó theo tờ khai. Thiếu CCCD KHÔNG phải lý do bỏ trống vai.
+5. Chính tả họ tên: giữ đúng người theo tờ khai, nhưng nếu chính người đó có CCCD/trích lục trong hồ sơ
+   thì viết họ tên theo giấy tờ gốc (bản đánh máy chuẩn hơn chữ viết tay), vd tờ khai "Nguyễn Văn Câu"
+   + trích lục khai tử "NGUYỄN VĂN CẦU" → Father_FullName = "NGUYỄN VĂN CẦU".
+6. Số định danh / ngày cấp / nơi cấp: lệch giữa tờ khai và CCCD của CÙNG một người thì lấy theo CCCD.
+7. HỒ SƠ KHÔNG CÓ TỜ KHAI thì mới dùng khối <phan_vai_khi_khong_co_to_khai> bên dưới.
+</uu_tien_nguon>
+
 <mot_nguoi_mot_nguon>
-Mỗi người lấy thông tin ĐỒNG BỘ từ CCCD/CMND của CHÍNH họ; TUYỆT ĐỐI không trộn ngày sinh/nơi cư trú/số
+Mỗi người lấy thông tin ĐỒNG BỘ từ giấy tờ của CHÍNH họ; TUYỆT ĐỐI không trộn ngày sinh/nơi cư trú/số
 định danh giữa các vai (mỗi thẻ là MỘT người khác nhau).
 
-⚠️⚠️⚠️ QUY TẮC BẮT BUỘC - XÁC ĐỊNH CHA/MẸ DựA VÀO GIỚI TÍNH TRÊN CCCD:
-
-**BƯỚC 1: ĐẾM VÀ PHÂN LOẠI CCCD THEO GIỚI TÍNH**
-- Đọc TẤT CẢ CCCD/CMND trong hồ sơ
-- Mỗi CCCD có field "Giới tính / Sex": "Nam" hoặc "Nữ"
-- Phân loại:
-  * CCCD có "Giới tính: Nam" → Danh sách NAM
-  * CCCD có "Giới tính: Nữ" → Danh sách NỮ
-
-**BƯỚC 2: XÁC ĐỊNH VAI TRÒ - QUY TẮC BẮT BUỘC**
-
-A. Nếu có 2 CCCD (1 Nam + 1 Nữ):
-   - CCCD có tuổi TRẺ HƠN (năm sinh SAU, gần hiện tại hơn) → CON (Subject_*)
-   - CCCD còn lại:
-     * Nếu là NAM → CHA (Father_*)
-     * Nếu là NỮ → MẸ (Mother_*)
-   - ⚠️ BỎ TRỐNG vai còn thiếu:
-     * Nếu không có CCCD Nam nào khác → BỎ TRỐNG TẤT CẢ Father_*
-     * Nếu không có CCCD Nữ nào khác → BỎ TRỐNG TẤT CẢ Mother_*
-
-B. Nếu có 2 CCCD (cùng 2 Nam HOẶC cùng 2 Nữ):
-   - CCCD có tuổi TRẺ HƠN → CON (Subject_*)
-   - CCCD có tuổi LỚN HƠN:
-     * Nếu cả 2 đều NAM → người lớn tuổi là CHA (Father_*), BỎ TRỐNG Mother_*
-     * Nếu cả 2 đều NỮ → người lớn tuổi là MẸ (Mother_*), BỎ TRỐNG Father_*
-
-C. Nếu có 3 CCCD:
-   - Tìm CCCD TRẺ TUỔI NHẤT → CON (Subject_*)
-   - Trong 2 CCCD còn lại:
-     * CCCD có "Giới tính: Nam" → CHA (Father_*)
-     * CCCD có "Giới tính: Nữ" → MẸ (Mother_*)
-
-**BƯỚC 3: ĐIỀN THÔNG TIN - CẤM TUYỆT ĐỐI**
-
-✅ ĐÚNG:
-- Father_* CHỈ lấy từ CCCD có "Giới tính: Nam"
-- Mother_* CHỈ lấy từ CCCD có "Giới tính: Nữ"
-- Mỗi CCCD CHỈ dùng cho MỘT vai (không duplicate)
-
-❌ CẤM TUYỆT ĐỐI:
-- ❌ CẤM lấy CCCD "Giới tính: Nữ" điền vào Father_* 
-  (Father phải là Nam, Mother phải là Nữ)
-- ❌ CẤM lấy CCCD "Giới tính: Nam" điền vào Mother_*
-  (Mother phải là Nữ, Father phải là Nam)
-- ❌ CẤM duplicate: cùng 1 người vào 2 vai khác nhau
-- ❌ CẤM lấy thông tin CON sang CHA/MẸ
-- ❌ CẤM đoán: Nếu không có CCCD Nam (ngoài CON) → BỎ TRỐNG Father_*
-- ❌ CẤM đoán: Nếu không có CCCD Nữ (ngoài CON) → BỎ TRỐNG Mother_*
-- ❌ CẤM tự thêm địa chỉ "Đã chết" khi không có CCCD: nếu thiếu Father/Mother → BỎ TRỐNG, KHÔNG trả Father_ResidenceDomestic hoặc Mother_ResidenceDomestic
-
-**VÍ DỤ CỤ THỂ:**
-
-Có 2 CCCD:
-- CCCD 1: Người A, Giới tính: Nam, Năm sinh: 1984
-- CCCD 2: Người B, Giới tính: Nữ, Năm sinh: 1953
-
-→ Người TRẺ HƠN (1984) = Subject_*
-→ Người LỚN TUỔI (1953) + Nữ = Mother_*
-→ KHÔNG có Father_* (bỏ trống hoàn toàn)
-
-- Subject (con): người lớn tự đăng ký thường nộp CCCD của chính mình → ngày sinh/giới tính/quê quán/nơi
-  sinh lấy TỪ CCCD CỦA CON, không lấy của cha hay mẹ.
-- Cha/mẹ CÓ CCCD/CMND → họ tên, số định danh, ngày-nơi cấp, nơi thường trú, ngày sinh (đủ dd/mm/yyyy),
-  dân tộc lấy TỪ CCCD đó (nguồn sạch); KHÔNG lấy tên/nơi cư trú nhiễu trên giấy khai sinh. Chỉ dùng giấy
-  khai sinh/tờ khai cho cha/mẹ khi người đó KHÔNG có CCCD trong hồ sơ.
 - CẤM lấy "Số định danh cá nhân" của CON in trên giấy khai sinh làm số định danh của cha/mẹ.
 - BẮT BUỘC trả Father_Gender / Mother_Gender = giới tính GHI TRÊN chính giấy tờ đã dùng cho vai đó
   ("Nam"/"Nữ"). Đây là căn cứ để hậu kiểm: thẻ ghi "Nữ" mà điền vào Father_* sẽ bị XÓA sạch vai cha
-  (và ngược lại). Không suy giới tính từ tên người.
-- HỒ SƠ THIẾU MỘT BÊN (chỉ có con + CCCD mẹ, hoặc chỉ có con + CCCD cha): BỎ TRỐNG HOÀN TOÀN vai còn
-  lại — không trả BẤT KỲ field nào của vai đó, kể cả Nationality/Ethnicity/ResidenceDomestic. Thà để
-  cổng trống còn hơn điền dữ liệu của con hoặc của bên kia sang.
+  (và ngược lại). Không suy giới tính từ tên người. Tờ khai không ghi giới tính cha/mẹ thì suy theo
+  chính nhãn quan hệ trên tờ khai: mục "người cha" → "Nam", mục "người mẹ" → "Nữ".
+- HỒ SƠ THIẾU MỘT BÊN (tờ khai không ghi cha, hoặc chỉ có con + CCCD một bên): BỎ TRỐNG HOÀN TOÀN vai
+  còn lại — không trả BẤT KỲ field nào của vai đó, kể cả Nationality/Ethnicity/ResidenceDomestic. Thà
+  để cổng trống còn hơn điền dữ liệu của con hoặc của bên kia sang.
+- ❌ CẤM tự thêm địa chỉ "Đã chết" khi không có căn cứ: chỉ trả *_ResidenceDomestic = {"diaChi":"Đã chết"}
+  khi tờ khai/giấy tờ ghi rõ người đó đã mất.
 </mot_nguoi_mot_nguon>
+
+<phan_vai_khi_khong_co_to_khai>
+CHỈ dùng khối này khi hồ sơ KHÔNG có tờ khai đăng ký lại khai sinh (và không giấy tờ nào chỉ đích danh
+người được đăng ký lại). Khi đó vai phải suy từ CCCD theo giới tính + thế hệ:
+
+**BƯỚC 1: PHÂN LOẠI CCCD THEO GIỚI TÍNH** — mỗi CCCD có field "Giới tính / Sex": "Nam" hoặc "Nữ".
+
+**BƯỚC 2: XÁC ĐỊNH VAI**
+A. 2 CCCD (1 Nam + 1 Nữ): người TRẺ HƠN (năm sinh gần hiện tại hơn) → CON (Subject_*); người còn lại
+   NAM → CHA (Father_*), NỮ → MẸ (Mother_*). Vai không có thẻ nào → BỎ TRỐNG hoàn toàn.
+B. 2 CCCD cùng giới: người TRẺ HƠN → CON; người LỚN HƠN là CHA nếu cả hai Nam (bỏ trống Mother_*),
+   là MẸ nếu cả hai Nữ (bỏ trống Father_*).
+C. 3 CCCD: TRẺ NHẤT → CON; trong hai người còn lại, "Giới tính: Nam" → CHA, "Giới tính: Nữ" → MẸ.
+
+**BƯỚC 3: CẤM TUYỆT ĐỐI**
+- ❌ CẤM điền CCCD "Giới tính: Nữ" vào Father_*, CCCD "Giới tính: Nam" vào Mother_*.
+- ❌ CẤM dùng cùng một người cho hai vai, hoặc lấy thông tin CON sang CHA/MẸ.
+- ❌ CẤM đoán: không có CCCD Nam (ngoài CON) → BỎ TRỐNG Father_*; không có CCCD Nữ → BỎ TRỐNG Mother_*.
+
+VÍ DỤ: CCCD 1 = Người A, Nam, sinh 1984; CCCD 2 = Người B, Nữ, sinh 1953
+→ trẻ hơn (1984) = Subject_*; lớn tuổi + Nữ = Mother_*; KHÔNG có Father_* (bỏ trống hoàn toàn).
+</phan_vai_khi_khong_co_to_khai>
 
 <trich_field>
 1. Subject_BirthDate: ưu tiên đủ dd/mm/yyyy; đọc CẢ phần số lẫn phần "ghi bằng chữ" để khôi phục khi số bị
