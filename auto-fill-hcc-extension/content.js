@@ -71,6 +71,9 @@
   const FILLALL_STATE_KEY = "autofill_fillall_state";
   // Tương tự cho phiên "đính kèm nhiều bước" (đăng ký hộ kinh doanh) — cũng ẩn panel + hiện tiến độ.
   const ATTACHALL_STATE_KEY = "autofill_attachall_state";
+  // Và cho phiên điền 7 trang của cổng ĐKKD qua mạng (content/procedures/enterprise-registration.js).
+  // Khóa riêng vì state machine HkdOnline sẽ tự resume nếu dùng chung FILLALL_STATE_KEY.
+  const ENTERPRISE_FILLALL_STATE_KEY = "autofill_enterprise_fillall";
   function sessSet(k, v) { try { window.sessionStorage.setItem(k, v); } catch (e) { /* ignore */ } }
   function sessGet(k) { try { return window.sessionStorage.getItem(k); } catch (e) { return null; } }
   function sessDel(k) { try { window.sessionStorage.removeItem(k); } catch (e) { /* ignore */ } }
@@ -470,7 +473,9 @@
   // Huỷ toàn bộ tiến trình fill 8 trang + đính kèm: xoá state trong chrome.storage → các state machine
   // (stepFillAll/stepAttachAll) tự dừng ở lần resume kế (không còn state → return sớm).
   function cancelFillAll() {
-    try { chrome.storage.local.remove([FILLALL_STATE_KEY, ATTACHALL_STATE_KEY]); } catch (e) { /* ignore */ }
+    try {
+      chrome.storage.local.remove([FILLALL_STATE_KEY, ATTACHALL_STATE_KEY, ENTERPRISE_FILLALL_STATE_KEY]);
+    } catch (e) { /* ignore */ }
     sessDel(SS_FILLALL);
     sessDel(SS_FILLALL_STEP);
     const banner = document.getElementById(FILLALL_BANNER_ID);
@@ -983,10 +988,11 @@
         // Đọc CẢ cờ panel-open LẪN trạng thái fill-all. Cổng này reload kiểu reset sessionStorage ở nhiều
         // nhịp → SS_FILLALL có thể mất; nhưng FILLALL_STATE_KEY (chrome.storage) sống suốt phiên → dùng nó
         // làm chốt chặn mount panel (nếu chỉ dựa sessionStorage thì nhịp sau panel sẽ hiện lại).
-        chrome.storage.local.get([panelOpenKey(), panelMinKey(), panelAutoMinKey(), FILLALL_STATE_KEY, ATTACHALL_STATE_KEY], (res) => {
+        chrome.storage.local.get([panelOpenKey(), panelMinKey(), panelAutoMinKey(), FILLALL_STATE_KEY,
+          ATTACHALL_STATE_KEY, ENTERPRISE_FILLALL_STATE_KEY], (res) => {
           if (chrome.runtime.lastError) return;
           const fillSt = res && res[FILLALL_STATE_KEY];
-          const attachSt = res && res[ATTACHALL_STATE_KEY];
+          const attachSt = (res && res[ATTACHALL_STATE_KEY]) || (res && res[ENTERPRISE_FILLALL_STATE_KEY]);
           if (sessGet(SS_FILLALL) === "1" || fillSt || attachSt) {
             // Đang chạy fill-all / đính-kèm nhiều bước → không mount panel; giữ cờ sync + banner cho nhịp sau.
             if (fillSt || attachSt) {

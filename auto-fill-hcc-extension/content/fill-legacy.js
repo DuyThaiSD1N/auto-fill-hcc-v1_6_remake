@@ -142,6 +142,59 @@ function legacyRadioMarkTarget(container, box) {
     || box;
 }
 
+// Ô nhập free-text đi kèm option "Khác" của một ô tích. Cổng đổi tên ô này giữa các phiên bản
+// eForm (BE đã gửi kèm alias), nên khi không tên nào khớp thì tìm theo CẤU TRÚC: ô nhập nằm trong
+// hoặc ngay cạnh option đang được tích của ô tích tương ứng.
+const LEGACY_OTHER_TEXT_DRIVERS = {
+  quanhekhac: "quanhevoinguoiduocxacminh",
+};
+
+function isLegacyTextInput(el) {
+  if (!el || el.tagName !== "INPUT") return false;
+  // Thuộc tính .type của input DOM đã chuẩn hóa sẵn ("text" khi thẻ không ghi type).
+  const type = String(el.type || el.getAttribute("type") || "text").toLowerCase();
+  return !["checkbox", "radio", "hidden", "button", "submit"].includes(type);
+}
+
+function hasLegacyOtherTextDriver(field) {
+  return !!LEGACY_OTHER_TEXT_DRIVERS[String(field?.name || "").toLowerCase()];
+}
+
+function findLegacyOtherTextInput(field) {
+  const driverName = LEGACY_OTHER_TEXT_DRIVERS[String(field?.name || "").toLowerCase()];
+  if (!driverName) return null;
+  const container = findNamedElement("x-radio", [driverName]).el
+    || document.querySelector(`x-radio[name="${CSS.escape(driverName)}" i]`)
+    || document.querySelector(`[name="${CSS.escape(driverName)}"]`)?.closest?.("x-radio");
+  if (!container) return null;
+
+  // 1) eForm đặt ô nhập của option "Khác" ngay trong khối x-radio, DÙNG CHUNG name với ô tích và
+  //    chỉ khác ở class input-field-radio (không có thuộc tính type).
+  const byClass = Array.from(container.querySelectorAll("input.input-field-radio")).find(isLegacyTextInput);
+  if (byClass) return byClass;
+  // 2) Ô nhập nằm trong chính ô bọc của option đang tích ("Khác").
+  const checked = Array.from(container.querySelectorAll('input[type="checkbox"]')).find((box) => box.checked);
+  const wrap = checked ? legacyRadioOptionWrap(container, checked) : null;
+  const inWrap = wrap ? Array.from(wrap.querySelectorAll("input")).find(isLegacyTextInput) : null;
+  if (inWrap) return inWrap;
+  // 3) Ô nhập nằm trong khối ô tích nhưng ngoài các option.
+  const inContainer = Array.from(container.querySelectorAll("input")).find(isLegacyTextInput);
+  if (inContainer) return inContainer;
+  // 4) Ô nhập render thành phần tử anh em ngay sau khối ô tích.
+  let node = container.nextElementSibling;
+  for (let step = 0; node && step < 3; step++, node = node.nextElementSibling) {
+    if (isLegacyTextInput(node)) return node;
+    const el = Array.from(node.querySelectorAll?.("input") || []).find(isLegacyTextInput);
+    if (el) return el;
+  }
+  return null;
+}
+
+// "raw" = input trần theo name; fallback theo cấu trúc cho ô "Khác" render động.
+function findLegacyRawInput(field) {
+  return findNamedElement("input", fieldCandidates(field)).el || findLegacyOtherTextInput(field);
+}
+
 function findLegacyRadioTarget(container, value) {
   const wanted = foldLegacyChoice(value);
   return Array.from(container?.querySelectorAll('input[type="checkbox"]') || []).find((box) => {
@@ -156,7 +209,7 @@ function legacyFieldState(field) {
   if (!field || !LEGACY_REPAIRABLE_COMPS.has(field.comp)) return { supported: false, filled: true };
   const names = fieldCandidates(field);
   if (field.comp === "raw") {
-    const input = findNamedElement("input", names).el;
+    const input = findLegacyRawInput(field);
     return { supported: true, filled: !!input && legacyScalarMatches(input.value, field.value), target: input?.parentElement || input };
   }
 
@@ -227,7 +280,8 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
     .filter((field) => field?.value != null && LEGACY_REPAIRABLE_COMPS.has(field.comp))
     // Không retry field đã thất bại ngay từ đầu (vd dropdown không có option): guard chỉ chữa
     // race condition của field đã từng điền thành công rồi bị web-component xóa.
-    .filter((field) => !eligibleNames || eligibleNames.has(field.name))
+    // Ô "Khác" render động: cho phép retry cả khi pass đầu chưa tìm thấy ô nhập.
+    .filter((field) => !eligibleNames || eligibleNames.has(field.name) || hasLegacyOtherTextDriver(field))
     .filter((field) => !legacyFieldState(field).filled)
     // Dropdown/radio có thể render lại cả khối; sửa chúng trước rồi mới chốt input/date.
     .sort((left, right) => Number(LEGACY_DRIVER_COMPS.has(right.comp)) - Number(LEGACY_DRIVER_COMPS.has(left.comp)));
@@ -235,7 +289,7 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
   for (const field of lost) {
     const names = fieldCandidates(field);
     if (field.comp === "raw") {
-      const input = findNamedElement("input", names).el;
+      const input = findLegacyRawInput(field);
       if (!input) continue;
       setNativeValue(input, field.value, { typing: true, commit: true });
       markFilled(input.parentElement || input);
@@ -375,7 +429,15 @@ async function fillForm(fields) {
 
     // "raw": input trần theo name (vd SoLuong nằm trong x-select-area, không có x-input bọc)
     if (f.comp === "raw") {
-      const el = findNamedElement("input", candidates).el;
+      let el = findLegacyRawInput(f);
+      // Ô nhập của option "Khác" chỉ được cổng dựng SAU khi ô tích vừa đổi sang "Khác" → chờ thêm
+      // thay vì bỏ cuộc ngay, vì pass sửa lỗi chỉ retry field đã từng điền được.
+      if (!el && hasLegacyOtherTextDriver(f)) {
+        await waitFor(() => {
+          el = findLegacyRawInput(f);
+          return !!el;
+        }, 3000, 100);
+      }
       if (el) {
         setNativeValue(el, f.value, { typing: true, commit: true });
         markFilled(el.parentElement || el);
@@ -468,7 +530,7 @@ function markLegacyDefaultsYellow(fields) {
     if (!f || !f.default) continue;
     // "raw": input trần theo name → đổi vàng ở parent (đúng phần tử nhánh fill đã tô xanh).
     if (f.comp === "raw") {
-      const el = findNamedElement("input", fieldCandidates(f)).el;
+      const el = findLegacyRawInput(f);
       if (el) _convertGreenToYellow(el.parentElement || el);
       continue;
     }

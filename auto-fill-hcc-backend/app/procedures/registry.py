@@ -35,6 +35,8 @@ from app.pipelines.cap_nuoc_sach.process import run as cap_nuoc_sach_process
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
+from app.pipelines.thanh_lap_ctcp.process import run as thanh_lap_ctcp_process
+from app.pipelines.thanh_lap_ctcp.attach import plan as thanh_lap_ctcp_attach
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.process import run as dang_ky_thay_doi_kinh_doanh_process
 from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.process import run as cham_dut_hoat_dong_ho_kinh_doanh_process
 from app.pipelines.tam_ngung_kinh_doanh.process import run as tam_ngung_kinh_doanh_process
@@ -391,9 +393,20 @@ PROCEDURES: list[dict] = [
             "3. Danh sách cổ đông sáng lập và cổ đông là nhà đầu tư nước ngoài.\n"
             "4. CCCD/căn cước của người đại diện theo pháp luật và các cổ đông là cá nhân."
         ),
-        # CHƯA khai "pages" và CHƯA có pipeline trong _PIPELINE/_ATTACH_PIPELINE: bản này mới làm phần
-        # điều hướng + nhận diện ở extension. Bấm "Quét và nhập dữ liệu" sẽ nhận lỗi 400 UNKNOWN_PROCEDURE
-        # (thông báo rõ ràng, không crash) cho tới khi bổ sung app/pipelines/thanh_lap_cong_ty_co_phan.
+        # CHỈ khai 7 trang ĐÃ CÓ ĐẶC TẢ field (app/pipelines/thanh_lap_ctcp/process/schema.py).
+        # Menu khối dữ liệu của cổng còn: Cổ đông sáng lập, Cổ đông là nhà đầu tư nước ngoài, Người
+        # đại diện theo pháp luật, Chủ sở hữu hưởng lợi, Đại diện của tổ chức, Bảo hiểm xã hội —
+        # chưa có bảng field nên CHƯA khai, tránh điền mò vào hồ sơ thật.
+        "pages": [
+            {"key": "hinh-thuc-dang-ky", "label": "Hình thức đăng ký"},
+            {"key": "dia-chi", "label": "Địa chỉ"},
+            {"key": "nganh-nghe-kinh-doanh", "label": "Ngành nghề kinh doanh"},
+            {"key": "ten-doanh-nghiep", "label": "Tên doanh nghiệp/đơn vị trực thuộc"},
+            {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
+            {"key": "thong-tin-ve-co-phan", "label": "Thông tin về cổ phần"},
+            {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
     },
     {
         "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
@@ -2530,6 +2543,7 @@ _PIPELINE = {
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
+    "thanh-lap-cong-ty-co-phan": thanh_lap_ctcp_process,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_process,
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_process,
     "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_process,
@@ -2559,6 +2573,7 @@ _ATTACH_PIPELINE = {
     "cap-doi-gcn-bac-ninh": cap_doi_gcn_bac_ninh_attach,
     "dinh-chinh-gcn-da-cap-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_attach,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_attach,
+    "thanh-lap-cong-ty-co-phan": thanh_lap_ctcp_attach,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_attach,
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_attach,
     "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_attach,

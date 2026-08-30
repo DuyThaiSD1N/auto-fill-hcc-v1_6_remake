@@ -572,8 +572,8 @@ def test_khai_tu_mapper_falls_back_to_declaration_id_doc_when_no_cccd():
     assert d["NoiCapDD"] == "Công an tỉnh Điện Biên"
 
 
-def test_khai_tu_mapper_prioritizes_cccd_for_requester_identity_document_only():
-    """Người yêu cầu: số/ngày cấp/cơ quan cấp ưu tiên CCCD; họ tên/nơi cư trú vẫn ưu tiên tờ khai."""
+def test_khai_tu_mapper_prioritizes_cccd_for_requester_identity():
+    """Người yêu cầu: họ tên/số/ngày cấp/cơ quan cấp ưu tiên CCCD; chỉ nơi cư trú theo tờ khai."""
     from app.pipelines.khai_tu.process import mapper
 
     fields = [
@@ -597,7 +597,10 @@ def test_khai_tu_mapper_prioritizes_cccd_for_requester_identity_document_only():
     assert d["SoDinhDanhC"] == "011111112222"
     assert d["NgayCapDDC"] == "12/12/2020"
     assert d["NoiCapDDC"] == "Bộ Công an"
-    assert d["HoVaTenC"] == "Nguyễn Văn A"
+    # Họ tên cũng lấy từ thẻ, giữ nguyên văn cách viết in trên thẻ.
+    assert d["HoVaTenC"] == "NGUYỄN VĂN A"
+    # Nơi cư trú vẫn theo tờ khai: địa chỉ trên thẻ là nơi thường trú lúc cấp, hay lạc hậu.
+    assert d["nycNoiCuTru_TrongNuoc"]["diaChi"] == "Số 1"
 
 
 def test_khai_tu_mapper_preserves_provincial_police_issuer_for_cmnd():

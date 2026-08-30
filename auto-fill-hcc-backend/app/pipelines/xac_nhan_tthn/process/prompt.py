@@ -261,7 +261,7 @@ sẽ dùng địa chỉ này trước Cccd_NoiCuTru.
 
 <forbidden_ui_fields>
 - Không trả field UI/default như HoVaTenC, HoVaTenC1, SoDinhDanhC, SoDinhDanhC1,
-  LoaiGiayToDinhDanhC, LoaiGiayToDinhDanhC1, quanhevoinguoiduocxacminh, mucdich, nhapmucdichkhac,
+  LoaiGiayToDinhDanhC, LoaiGiayToDinhDanhC1, quanhevoinguoiduocxacminh, quanhekhac, mucdich, nhapmucdichkhac,
   loại cư trú, radio trong/ngoài nước. (Purpose vẫn TRẢ — Python sẽ điền vào ô Nhập mục đích.)
 - RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ một trong hai trạng thái chuẩn:
   "Hiện tại chưa đăng ký kết hôn với ai" hoặc "Hiện tại đang có vợ/chồng".

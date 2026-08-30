@@ -441,6 +441,8 @@ async function bootstrap() {
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
+    // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
+    await resumeEnterpriseFillIfPending();
   } catch (e) {
     await AuthStore.clearTokens();
     showLogin();
@@ -482,6 +484,8 @@ loginBtn.addEventListener("click", async () => {
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
+    // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
+    await resumeEnterpriseFillIfPending();
   } catch (e) {
     console.warn("[Popup] Đăng nhập lỗi:", e);
     const invalidRememberedLogin = rememberedLoginLoaded
@@ -833,10 +837,119 @@ async function selectProcedure(key, { source = "manual", confirmedNavigation = f
   procedureSelect.value = next.key;
   closeProcedureDropdown();  // đã chọn → đóng combobox, trigger hiện "Đang chọn: X"
   syncKeKhaiSelection(next.key);
+  // KHÔNG tự đặt cờ chạy wizard ở đây: chọn/nhận diện thủ tục là việc của panel, còn việc bấm
+  // radio + Tiếp theo trên cổng phải do CÁN BỘ ra lệnh (nút "Quét và nhập dữ liệu"). Chỉ dọn cờ
+  // khi chuyển sang thủ tục KHÁC, để lần mở dở trước không lỡ tay điều khiển hồ sơ đang mở.
+  if (!next.enterprisePortal) await clearEnterpriseAutostart();
   applyFormUI();
   // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
   if (selectionChanged || workOwnerChanged) await saveSession();
   return true;
+}
+
+async function clearEnterpriseAutostart() {
+  try { await chrome.storage.local.remove(ENTERPRISE_ARM_KEY); } catch (_) { /* ignore */ }
+}
+
+/**
+ * "Lên đạn" cho content/procedures/enterprise-registration.js chạy wizard 3 bước (loại đăng ký →
+ * loại hình → Bắt đầu) vào khối dữ liệu hồ sơ trên cổng ĐKKD qua mạng.
+ *
+ * CHỈ gọi từ hành động CÓ CHỦ Ý của cán bộ (nút "Quét và nhập dữ liệu"), không gọi lúc nhận diện
+ * thủ tục — trợ lý không được tự bấm radio trên trang cán bộ tự mở.
+ *
+ * Dữ liệu wizard lấy từ REGISTRY (enterpriseEntityLabel) nên chạy được cả khi cán bộ vào thẳng cổng
+ * thay vì đi qua ô "Đi đến thủ tục".
+ */
+async function armEnterpriseAutostart(procedure) {
+  if (!procedure?.enterprisePortal) return false;
+  try {
+    const stored = await chrome.storage.local.get(ENTERPRISE_ARM_KEY);
+    const existing = stored?.[ENTERPRISE_ARM_KEY];
+    // Cờ của ĐÚNG thủ tục này đang chạy dở: giữ nguyên để không reset bộ đếm chống lặp (tries) và
+    // không ghi đè entityValue chi tiết hơn mà ô "Đi đến thủ tục" đã đặt.
+    if (existing?.procedureKey === procedure.key) return true;
+    await chrome.storage.local.set({
+      [ENTERPRISE_ARM_KEY]: {
+        registrationType: "NEW",
+        registrationLabel: "Thành lập mới",
+        entityLabel: procedure.enterpriseEntityLabel || "",
+        entityValue: procedure.enterpriseEntityValue || "",
+        procedureKey: procedure.key,
+        procedureLabel: procedure.label,
+        at: Date.now(),
+      },
+    });
+    return true;
+  } catch (error) {
+    console.warn("[Popup] Không đặt được cờ mở hồ sơ doanh nghiệp:", error);
+    return false;
+  }
+}
+
+/**
+ * Xử lý phần "vào hồ sơ" của cổng ĐKKD qua mạng cho nút "Quét và nhập dữ liệu".
+ * Trả TRUE nghĩa là lượt bấm đã được tiêu thụ (đang mở hồ sơ) → người gọi phải dừng, chưa quét.
+ * Trả FALSE khi không liên quan (cổng khác) hoặc đã ở trong khối dữ liệu → quét như bình thường.
+ */
+async function startEnterpriseDossierIfNeeded() {
+  const cfg = currentConfig();
+  if (!cfg.enterprisePortal) return false;
+  // Hỏi THẲNG engine của cổng doanh nghiệp. Trước đây đọc enterpriseProcedureHint trong tín hiệu
+  // detectProcedure của content.js — đường vòng đó phụ thuộc việc namespace đã gắn kịp hay chưa,
+  // hint vắng một nhịp là cả bước "mở hồ sơ" bị bỏ qua im lặng và cán bộ bấm mãi không vào được.
+  const res = await sendToContent({ action: "getEnterpriseStage" });
+  if (!res?.ok) return false;         // không phải cổng doanh nghiệp / engine chưa nạp
+  if (res.inDossier) return false;    // đã ở khối dữ liệu → quét như bình thường
+  console.log("[Popup] Cổng doanh nghiệp đang ở bước:", res.stage);
+  if (!(await armEnterpriseAutostart(cfg))) {
+    setStatus("Không mở được hồ sơ đăng ký. Vui lòng thử lại.", "err");
+    return true;
+  }
+  // Nối liền hai chặng: đánh dấu "vào hồ sơ xong thì quét luôn" để lượt bootstrap của panel trên
+  // trang khối dữ liệu tự chạy tiếp, cán bộ chỉ bấm MỘT lần.
+  await setEnterprisePendingFill(cfg.key);
+  return true;
+}
+
+// Chặng 2 của luồng doanh nghiệp: sau khi wizard đưa tới khối dữ liệu, panel được dựng lại (trang
+// tải lại) và tự bấm tiếp hộ. Cờ sống theo TAB và có hạn để lần mở dở dang không tự chạy về sau.
+const ENTERPRISE_PENDING_FILL_KEY = "autofill_enterprise_pending_fill_" + (EMBEDDED_TAB_ID ?? "popup");
+const ENTERPRISE_PENDING_TTL_MS = 15 * 60 * 1000;
+
+async function setEnterprisePendingFill(procedureKey) {
+  try {
+    await chrome.storage.local.set({
+      [ENTERPRISE_PENDING_FILL_KEY]: { procedureKey, at: Date.now() },
+    });
+  } catch (error) {
+    console.warn("[Popup] Không ghi được cờ quét tiếp sau khi vào hồ sơ:", error);
+  }
+}
+
+async function clearEnterprisePendingFill() {
+  try { await chrome.storage.local.remove(ENTERPRISE_PENDING_FILL_KEY); } catch (_) { /* ignore */ }
+}
+
+/** Bootstrap gọi: đã vào tới khối dữ liệu và đang có cờ chờ → chạy tiếp chặng quét + điền. */
+async function resumeEnterpriseFillIfPending() {
+  let pending = null;
+  try {
+    const stored = await chrome.storage.local.get(ENTERPRISE_PENDING_FILL_KEY);
+    pending = stored?.[ENTERPRISE_PENDING_FILL_KEY] || null;
+  } catch (_) { return; }
+  if (!pending) return;
+  if (Date.now() - Number(pending.at || 0) > ENTERPRISE_PENDING_TTL_MS) return void clearEnterprisePendingFill();
+
+  const cfg = currentConfig();
+  if (!cfg.enterprisePortal || cfg.key !== pending.procedureKey) return;
+  const stage = await sendToContent({ action: "getEnterpriseStage" });
+  if (!stage?.ok) return;
+  if (!stage.inDossier) return;              // wizard còn chạy dở → giữ cờ, chờ lượt tải trang sau
+  await clearEnterprisePendingFill();
+  // Không còn giấy tờ (phiên bị xoá giữa chừng) thì thôi, để cán bộ tự bấm.
+  if (!files.length) return;
+  if (fillAllBtn && !fillAllBtn.hidden && !fillAllBtn.disabled) fillAllBtn.click();
 }
 
 function hasStrongProcedureIdentity(key, signals) {
@@ -2417,6 +2530,10 @@ document.getElementById("consentLegalBack")?.addEventListener("click", () => sho
 // ===== OCR & điền =====
 ocrBtn.addEventListener("click", async () => {
   if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+  // Cổng ĐKKD qua mạng: trước khối dữ liệu hồ sơ còn wizard 3 bước (loại đăng ký → loại hình →
+  // Bắt đầu). Bấm nút này CHÍNH LÀ lệnh vào hồ sơ; chưa vào tới nơi thì mở hồ sơ rồi dừng lượt —
+  // chưa có form để điền nên gọi backend lúc này chỉ tốn lượt OCR.
+  if (await startEnterpriseDossierIfNeeded()) return;
   if (!files.length) {
     setStatus("Chưa có file nào.", "err");
     return;
@@ -2568,6 +2685,9 @@ ocrBtn.addEventListener("click", async () => {
 if (fillAllBtn) {
   fillAllBtn.addEventListener("click", async () => {
     if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+    // Cổng ĐKKD qua mạng: khai "pages" nên panel hiện nút này thay cho "Quét và nhập dữ liệu".
+    // Chưa vào khối dữ liệu thì lượt bấm này là lệnh MỞ HỒ SƠ (wizard 3 bước), chưa quét.
+    if (await startEnterpriseDossierIfNeeded()) return;
     // Chốt chặn PDPL: luồng quét + đính kèm 8 trang cũng xử lý dữ liệu → chưa đồng ý phiên thì hỏi trước.
     if (!(await requireConsent(fillAllBtn))) return;
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
@@ -2649,8 +2769,22 @@ if (fillAllBtn) {
         console.warn("[HKD] Lỗi lấy kế hoạch đính kèm — chỉ điền 8 trang:", e?.message || e);
       }
 
+      // Cổng ĐKKD qua mạng có engine điền RIÊNG (content/procedures/enterprise-registration.js):
+      // menu trang, nút Lưu và id control khác hẳn HkdOnline nên không dùng chung state machine.
       const startRes = await sendToContent({
-        action: isAmendmentWorkflow ? "startChangeBusiness" : "startFillAllBusiness",
+        action: cfg.enterprisePortal
+          ? "startEnterpriseFillAll"
+          : (isAmendmentWorkflow ? "startChangeBusiness" : "startFillAllBusiness"),
+        // Gửi kèm dữ liệu wizard để engine tự mở hồ sơ nếu lượt bấm này rơi vào lúc còn ở wizard
+        // (lưới đỡ cho bước tiền kiểm getEnterpriseStage).
+        enterpriseFlow: cfg.enterprisePortal ? {
+          registrationType: "NEW",
+          registrationLabel: "Thành lập mới",
+          entityLabel: cfg.enterpriseEntityLabel || "",
+          entityValue: cfg.enterpriseEntityValue || "",
+          procedureKey: cfg.key,
+          procedureLabel: cfg.label,
+        } : null,
         pages,
         businessFlow: res.businessFlow || null,
         businessSearch,
@@ -2659,6 +2793,12 @@ if (fillAllBtn) {
       });
       if (startRes?.error) {
         setStatus(startRes.error, "err");
+        return;
+      }
+      if (startRes?.openingDossier) {
+        // Chặng mở hồ sơ đang chạy trên cổng; panel sẽ tự quét tiếp khi tới khối dữ liệu.
+        await setEnterprisePendingFill(cfg.key);
+        setStatus("", "");
         return;
       }
       if (isAmendmentWorkflow) {

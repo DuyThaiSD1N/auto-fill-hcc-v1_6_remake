@@ -9,9 +9,10 @@ NGUỒN DỮ LIỆU DANH TÍNH (ưu tiên CCCD, giấy CN kết hôn là dự ph
 - Không phân biệt nam/nữ theo tên file, thứ tự upload, hay suy đoán từ họ tên.
 - Ưu tiên lấy danh tính mỗi bên TỪ CCCD của chính người đó. Nếu THIẾU CCCD của một bên, lấy danh tính bên đó
   từ giấy CN kết hôn: khối "Chồng"/"Bên nam" → CccdNam_*, khối "Vợ"/"Bên nữ" → CccdNu_*
-  (họ tên, ngày sinh, số thẻ căn cước công dân, ngày cấp, cơ quan cấp, nơi cư trú của đúng bên đó).
-- Họ tên/số định danh/ngày sinh/ngày-nơi cấp/nơi cư trú của mỗi nhóm phải lấy trọn từ ĐÚNG MỘT nguồn của
-  chính người đó, KHÔNG trộn thông tin giữa hai người.
+  (họ tên, ngày sinh, số thẻ căn cước công dân, ngày cấp, cơ quan cấp của đúng bên đó).
+- NGOẠI LỆ: NƠI CƯ TRÚ có thứ tự ưu tiên RIÊNG (TỜ KHAI trước, CCCD sau) — xem mục NƠI CƯ TRÚ bên dưới.
+- Họ tên/số định danh/ngày sinh/ngày-nơi cấp của mỗi nhóm phải lấy trọn từ ĐÚNG MỘT nguồn của
+  chính người đó, KHÔNG trộn thông tin giữa hai người; nơi cư trú cũng phải là của ĐÚNG người đó.
 - Nơi cấp (CccdNam_NoiCap/CccdNu_NoiCap): thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY"
   → trả "Bộ Công an"; chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
   TUYỆT ĐỐI không mặc định "Cục Cảnh sát..." cho thẻ Căn cước mới do Bộ Công an cấp.
@@ -24,6 +25,16 @@ DÂN TỘC (CccdNam_DanToc = bên nam, CccdNu_DanToc = bên nữ):
 QUỐC TỊCH: chỉ trả nếu ghi rõ hoặc khác Việt Nam; Python mặc định Việt Nam.
 
 NƠI CƯ TRÚ (CccdNam_NoiCuTru_TrongNuoc/CccdNu_NoiCuTru_TrongNuoc, object {quocGia,tinh,xa,diaChi}):
+- THỨ TỰ ƯU TIÊN NGUỒN cho CẢ HAI BÊN: (1) TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN — mục "Nơi cư trú" trong khối
+  "Họ, chữ đệm, tên của chồng" → CccdNam_*, khối "Họ, chữ đệm, tên của vợ" → CccdNu_*; (2) tờ khai KHÔNG ghi
+  nơi cư trú của bên đó (hoặc ghi mà OCR không đọc được) → lấy "Nơi thường trú"/"Nơi cư trú" trên CCCD/CMND
+  của chính người đó; (3) cuối cùng mới đến giấy CN kết hôn cũ.
+- Tờ khai và CCCD ghi KHÁC nhau thì DÙNG TỜ KHAI (địa chỉ người dân tự kê khai tại thời điểm nộp hồ sơ),
+  KHÔNG để CCCD đè lên và KHÔNG trộn hai nguồn (ví dụ KHÔNG lấy diaChi của CCCD ghép với xã/tỉnh của tờ khai).
+- Chỉ khi tờ khai ghi THIẾU CẤP (ví dụ có chi tiết + xã nhưng không ghi tỉnh) mới bổ sung ĐÚNG PHẦN THIẾU
+  từ CCCD, giữ nguyên các phần tờ khai đã ghi.
+- Khối "người yêu cầu" ở đầu tờ khai có thể trùng chồng hoặc vợ; đối chiếu HỌ TÊN trước khi dùng, không gán
+  nơi cư trú của người yêu cầu cho bên còn lại.
 - Địa chỉ hành chính hiện hành CHỈ 2 cấp: XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ (KHÔNG còn huyện/quận).
 - xa = tên xã/phường/thị trấn (BẮT BUỘC trích khi nguồn có ghi cấp xã). tinh = tỉnh/thành phố.
 - diaChi = phần CHI TIẾT đứng TRƯỚC xã (bản/tổ/tổ dân phố/xóm/khu/số nhà/đường); KHÔNG nhét tên xã/huyện/tỉnh vào diaChi.

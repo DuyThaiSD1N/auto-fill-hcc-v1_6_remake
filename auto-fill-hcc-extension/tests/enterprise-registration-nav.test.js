@@ -131,7 +131,7 @@ function buttonOf(page, label) {
 }
 
 /** Chạy script một lần trên "trang" đã dựng; trả về danh sách toast để soi thông báo. */
-async function runOnce(page, store) {
+async function runOnce(page, store, session = {}) {
   const toasts = [];
   const nodes = page.nodes;
   const sandbox = {
@@ -163,6 +163,13 @@ async function runOnce(page, store) {
     },
   };
   sandbox.window = sandbox;
+  // sessionStorage sống theo TAB: mỗi lượt runOnce là một lần tải trang trong CÙNG tab nên phải
+  // dùng chung store (tham số `session`), không tạo mới mỗi lượt.
+  sandbox.sessionStorage = {
+    getItem: (k) => (k in session ? session[k] : null),
+    setItem: (k, v) => { session[k] = String(v); },
+    removeItem: (k) => { delete session[k]; },
+  };
   sandbox.location = { hostname: "dangkyquamang.dkkd.gov.vn", pathname: page.pathname };
   sandbox.top = sandbox;
   sandbox.__HCC__ = { showPageToast: (message, kind) => toasts.push({ message, kind }) };
@@ -219,17 +226,39 @@ const ARM = {
   assert.ok(store[ARM_KEY], "Chỉ xóa cờ khi đã vào tới khối dữ liệu, không xóa ngay khi bấm Bắt đầu");
 
   // ---- Vào tới khối dữ liệu: xóa cờ + báo xong ----
+  const dossierSession = {};
   const dossier = buildPage("dossier");
-  const run4 = await runOnce(dossier, store);
+  const run4 = await runOnce(dossier, store, dossierSession);
   assert.equal(run4.hint, "dossier");
   assert.equal(
     run4.entityLabel, "Công ty cổ phần",
     'Trang hồ sơ phải đọc được dòng "Loại hình doanh nghiệp" để popup nhận diện đúng thủ tục',
   );
   assert.equal(store[ARM_KEY], undefined, "Vào tới hồ sơ phải xóa cờ để không chạy lặp");
+  // Hai chặng đã nối liền (panel tự quét tiếp) nên KHÔNG được toast ở đây — thông báo giữa luồng
+  // chỉ là nhiễu, và cán bộ đã yêu cầu bỏ.
+  assert.deepEqual(run4.toasts, [], "Vào tới hồ sơ thì không toast gì cả");
+
+  // ---- Cờ được đặt lại ở trang hồ sơ: vẫn phải dọn sạch và vẫn im lặng ----
+  store[ARM_KEY] = { ...ARM, at: Date.now() };
+  const run5 = await runOnce(buildPage("dossier"), store, dossierSession);
+  assert.equal(store[ARM_KEY], undefined, "Cờ đặt lại ở trang hồ sơ vẫn phải được dọn");
+  assert.deepEqual(run5.toasts, [], "Đã báo mở xong rồi thì không được toast lại");
+
+  // ---- Cán bộ tự chọn loại đăng ký KHÁC: trợ lý phải đứng im ----
+  // Luồng giờ tự chạy, không cần bấm nút, nên đây là lưới an toàn quan trọng nhất: cán bộ đang định
+  // làm "Đăng ký thay đổi nội dung" thì không được kéo họ sang nhánh thành lập mới.
+  const manual = buildPage("registration");
+  radioOf(manual, "CHN").checked = true;
+  const manualStore = { [ARM_KEY]: { ...ARM, at: Date.now() } };
+  const runManual = await runOnce(manual, manualStore);
+  assert.equal(radioOf(manual, "CHN").checked, true, "Không được ghi đè lựa chọn tay của cán bộ");
+  assert.equal(radioOf(manual, "NEW").checked, false, "Không được tự tick lại Thành lập mới");
+  assert.equal(buttonOf(manual, "Tiếp theo").clicks, 0, "Không được tự bấm Tiếp theo khi cán bộ đã chọn khác");
+  assert.equal(manualStore[ARM_KEY], undefined, "Dừng có kiểm soát thì phải dọn cờ");
   assert.ok(
-    run4.toasts.some((t) => t.kind === "success" && t.message.includes("công ty cổ phần")),
-    "Phải báo cho cán bộ là đã mở xong hồ sơ",
+    runManual.toasts.some((t) => t.kind === "warn"),
+    "Phải báo cho cán bộ biết vì sao trợ lý không đi tiếp",
   );
 
   // ---- Không có cờ thì tuyệt đối không đụng vào wizard của cán bộ ----

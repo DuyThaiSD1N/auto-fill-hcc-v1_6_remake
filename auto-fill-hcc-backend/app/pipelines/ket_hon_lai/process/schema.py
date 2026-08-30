@@ -15,7 +15,10 @@ FIELDS: list[dict] = [
              'chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai, đối chiếu đúng người. Không có thì để trống."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch bên nam chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNam_NoiCuTru_TrongNuoc", "desc": "Nơi cư trú bên nam, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CccdNam_NoiCuTru_TrongNuoc",
+     "desc": "Nơi cư trú bên nam, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục 'Nơi cư trú' của khối chồng/bên nam "
+             "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
+             "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
 
     # CCCD/CMND bên nữ (vợ).
     {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nữ (nếu thiếu CCCD nữ thì lấy 'Vợ' trên giấy CN kết hôn)."},
@@ -27,7 +30,10 @@ FIELDS: list[dict] = [
              'chip cũ ghi "CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ. CCCD chip thường không ghi → lấy từ giấy CN kết hôn/tờ khai, đối chiếu đúng người. Không có thì để trống."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch bên nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CccdNu_NoiCuTru_TrongNuoc",
+     "desc": "Nơi cư trú bên nữ, object {quocGia,tinh,xa,diaChi}. ƯU TIÊN mục 'Nơi cư trú' của khối vợ/bên nữ "
+             "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
+             "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
 
     # Lần đăng ký kết hôn TRƯỚC ĐÂY. Chỉ đọc từ tờ khai đăng ký lại hoặc giấy CN kết hôn cũ.
     {"name": "KetHonCu_So",

@@ -140,6 +140,8 @@ UI_COMP_BY_NAME = {
     "nycNoiCuTru": "x-radio",
     "nycNoiCuTru_TrongNuoc": "x-select-area",
     "quanhevoinguoiduocxacminh": "x-radio",
+    # Ô nhập free-text cạnh option "Khác" của mục quan hệ (chỉ render sau khi tick "Khác").
+    "quanhekhac": "raw",
     # Section II: người được xác nhận tình trạng hôn nhân.
     "HoVaTenC1": "x-input",
     "NgaySinhC1": "x-date",
@@ -175,6 +177,15 @@ UI_COMP_BY_NAME = {
 }
 
 UI_ALIASES = {
+    # Tên ô "quan hệ khác" đổi theo phiên bản eForm; extension còn có fallback theo cấu trúc
+    # (ô nhập nằm trong/kề option "Khác" đang tick) nếu không tên nào khớp.
+    "quanhekhac": [
+        "nhapquanhekhac",
+        "quanhevoinguoiduocxacminhkhac",
+        "quanhevoinguoiduocxacminh_khac",
+        "quanhe_khac",
+        "nhapquanhe",
+    ],
     "SoGiayToTuyThanC": ["TenGiayToC", "SoGiayToDinhDanhC"],
     "SoGiayToTuyThanC1": ["SoGiayToDinhDanhC1", "TenGiayToC1"],
     "nxnLoaiTinhTrangHonNhan=3": ["nxnLoaiTinhTrangHonNhan=2"],

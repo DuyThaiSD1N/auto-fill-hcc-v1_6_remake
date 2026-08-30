@@ -78,6 +78,24 @@ def _classify_relation(value) -> str | None:
     return "2"
 
 
+_RELATION_OTHER_PREFIX_RE = re.compile(r"^(?:là|la)\s+", re.IGNORECASE)
+
+
+def _relation_other_text(value) -> str:
+    """Chữ điền vào ô nhập cạnh option "Khác" của mục quan hệ.
+
+    Giữ nguyên chữ trên tờ khai, chỉ dọn nhiễu OCR của dòng kẻ chấm và bỏ tiền tố "là"
+    (nhãn trên cổng đã là "Khác:" nên "là con đẻ" → "Con đẻ"). Quan hệ là bản thân →
+    trả "" để không điền gì vào ô "Khác".
+    """
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    text = re.sub(r"[\s.·•…\-–—]+$", "", text).strip()
+    text = _RELATION_OTHER_PREFIX_RE.sub("", text).strip()
+    if not text or any(word in _fold(text) for word in _SELF_RELATION_WORDS):
+        return ""
+    return text[:1].upper() + text[1:]
+
+
 def _area(value):
     if not isinstance(value, dict):
         return None
@@ -186,6 +204,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # ỦY QUYỀN: Mục I = người được ủy quyền = CCCD upload (đi nộp hộ). Có giấy ủy quyền
             # thật thì chắc chắn KHÔNG phải bản thân → luôn "Khác".
             add("quanhevoinguoiduocxacminh", "2")
+            # Ô nhập cạnh "Khác": chữ quan hệ trên tờ khai (nếu tờ khai có ghi).
+            add("quanhekhac", _relation_other_text(values.get("ToKhaiYeuCau_QuanHe")))
             add("HoVaTenC", values.get("Cccd_HoTen"))
             add("NgaySinhC", values.get("Cccd_NgaySinh"))
             add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
@@ -246,6 +266,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     relation_code = "1"
                 if relation_code:
                     add("quanhevoinguoiduocxacminh", relation_code)
+                # Chọn "Khác" thì cổng mở thêm ô nhập free-text ngay cạnh: điền đúng chữ quan hệ
+                # trên tờ khai ("là con đẻ" → "Con đẻ"). Ô này chỉ tồn tại sau khi tick "Khác" nên
+                # phải phát NGAY SAU radio quan hệ.
+                if relation_code == "2":
+                    add("quanhekhac", _relation_other_text(values.get("ToKhaiYeuCau_QuanHe")))
 
                 add("HoVaTenC", cccd_ten)
                 add("NgaySinhC", cccd_ns)

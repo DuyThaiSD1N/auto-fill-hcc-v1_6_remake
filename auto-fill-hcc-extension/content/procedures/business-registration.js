@@ -164,6 +164,12 @@
     if (isBusinessChangeMainRoot(registrationType, page)) {
       return { stage: "main-root", pageKey: null, label: page.label };
     }
+    // Cảnh báo này chỉ có nghĩa TRÊN CỔNG HKD. Content script chạy ở mọi cổng nên ở cổng ĐKKD qua
+    // mạng (dangkyquamang) nó bắn liên tục "không nhận diện được bước" — đúng về mặt kỹ thuật nhưng
+    // là NHIỄU, và dễ bị đọc nhầm thành lỗi của luồng doanh nghiệp.
+    if (!String(window.location?.hostname || "").includes("hokinhdoanh.dkkd.gov.vn")) {
+      return { stage: "unknown", pageKey: null };
+    }
     console.warn("[ChangeHKD] không nhận diện được bước", {
       pathname: String(window.location?.pathname || ""),
       breadcrumb: currentBusinessPageLabel(),
@@ -2433,6 +2439,15 @@
   // State resume qua chrome.storage (autofill_attachall_state), giữ dataUrl file để nhét ở pha upload.
   const ATTACH_KEY = "autofill_attachall_state";
 
+  /**
+   * Tra control của khối đính kèm theo CẢ HAI kiểu ClientID.
+   * HkdOnline sinh "ctl00_C_X", cổng ĐKKD qua mạng (dangkyquamang) sinh "C_X" — cùng một component
+   * đính kèm nên engine này dùng chung được, chỉ khác tiền tố id.
+   */
+  function attachElById(suffix) {
+    return document.getElementById(`ctl00_C_${suffix}`) || document.getElementById(`C_${suffix}`);
+  }
+
   // category cổng → giá trị option ở modal (#attId) và ở "Loại đính kèm" (droptypleAttach) + nhãn hiển thị.
   const ATTACH_TYPE = {
     BUSREGFRM: { attId: "1_BUSREGFRM", droptyple: "BUSREGFRM", label: "Giấy đề nghị đăng ký hộ kinh doanh" },
@@ -2453,6 +2468,13 @@
     FAMILYMINUTES: { attId: "", droptyple: "", label: "Bản sao biên bản họp thành viên hộ gia đình" },
     FAMILYAUTH: { attId: "", droptyple: "", label: "Bản sao văn bản ủy quyền của thành viên hộ gia đình cho một thành viên làm chủ hộ kinh doanh" },
     OTHERS: { attId: "20_OTHERS", droptyple: "OTHERS", label: "Khác" },
+    // ----- Hồ sơ THÀNH LẬP DOANH NGHIỆP (cổng dangkyquamang, dùng chung engine đính kèm này).
+    // Không khai mã option: chooseOption() khớp theo nhãn, và nhãn là hợp đồng với backend
+    // (app/pipelines/thanh_lap_ctcp/attach/planner.py — _LABEL_BY_CAT).
+    ENTREGFRM: { attId: "", droptyple: "", label: "Giấy đề nghị đăng ký doanh nghiệp" },
+    CHARTER: { attId: "", droptyple: "", label: "Điều lệ công ty" },
+    FOUNDERLIST: { attId: "", droptyple: "", label: "Danh sách cổ đông sáng lập" },
+    AUTHORIZATION: { attId: "", droptyple: "", label: "Văn bản ủy quyền cho người đi nộp hồ sơ" },
   };
 
   function getAttachAllState() {
@@ -2513,12 +2535,13 @@
 
   // ---- helpers DOM ----
   function onUploadPage() {
-    return !!document.getElementById("ctl00_C_FileUploadCtl");
+    return !!attachElById("FileUploadCtl");
   }
   // Danh sách LOẠI đã khai, hiện dưới "Văn bản đính kèm" trong container #ctl00_C_BLCtl_CtlAttList
   // (KHÁC #ctl00_C_BLCtl_CtlList = menu 8 trang). Bấm 1 item bất kỳ → điều hướng tới trang tải file.
   function attachTypeLinks() {
-    const scoped = Array.from(document.querySelectorAll('#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
+    const scoped = Array.from(document.querySelectorAll(
+      '#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"], #C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
       .filter((a) => /__doPostBack/.test(a.getAttribute("href") || ""));
     if (scoped.length) return scoped;
     // #ctl00_C_BLCtl_CtlAttList/"LnkEdit" là ID suy đoán, CHƯA xác nhận đúng trên mọi bản giao diện.
@@ -2537,7 +2560,7 @@
     try { link.click(); return true; } catch (e) { return false; }
   }
   function uploadedRows() {
-    return Array.from(document.querySelectorAll("#ctl00_C_CtlList tr"))
+    return Array.from(document.querySelectorAll("#ctl00_C_CtlList tr, #C_CtlList tr"))
       .filter((tr) => tr.querySelector('select[id*="droptypleAttach"]'));
   }
   function declaredLabelsFold() {
@@ -2581,7 +2604,7 @@
     if (attachTypeSelectReady(sel)) return sel;
     // Icon ⚙ mở modal qua handler jQuery của cổng. click() của content-script LÀ event DOM thật nên
     // handler jQuery vẫn nhận (CSP chỉ chặn INLINE script — không chặn dispatch event; KHÔNG inject nữa).
-    const icon = document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings")
+    const icon = attachElById("BLCtl_ImgAttachmentSettings")
       || document.querySelector("img.settings, .right.settings, .settings");
     if (icon) { try { icon.click(); } catch (e) { /* ignore */ } }
     const ok = await waitFor(() => attachTypeSelectReady(document.getElementById("attId")), 8000, 250);
@@ -2699,8 +2722,8 @@
     const existing = uploadedRows();
     if (existing.length) return void handleClassifyPhase(st, existing);
 
-    const input = document.getElementById("ctl00_C_FileUploadCtl");
-    const btn = document.getElementById("ctl00_C_BtnSaveNoTyple");
+    const input = attachElById("FileUploadCtl");
+    const btn = attachElById("BtnSaveNoTyple");
     if (!input || !btn) return; // trang chưa sẵn
     st.uploadTries = (st.uploadTries || 0) + 1;
     if (st.uploadTries > 3) return void failAttachAll("Tải file lên thất bại (thử lại quá số lần).");
@@ -2744,7 +2767,7 @@
       }
     });
     await sleep(400);
-    const saveBtn = document.getElementById("ctl00_C_BtnSave");
+    const saveBtn = attachElById("BtnSave");
     if (!saveBtn) return void finishAttachAll();
     // Nút "Lưu" mặc định disabled → bật lại sau khi đã gán loại (đổi droptyple làm form "dirty").
     if (saveBtn.disabled) { try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
@@ -2775,12 +2798,12 @@
     st.declared = st.declared || [];
     const declaredAll = st.declareTypes.every((c) => isTypeDeclared(st, c));
     console.log("[Attach] phase", st.phase, "| declared", st.declared, "declaredAll", declaredAll,
-      "| hasGear", !!document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings"),
+      "| hasGear", !!attachElById("BLCtl_ImgAttachmentSettings"),
       "| onUploadPage", onUploadPage(), "| rows", uploadedRows().length);
 
     // B1 — KHAI LOẠI (modal ⚙): icon `.settings` là sidebar, có ở MỌI trang → khai được ở bất cứ đâu.
     // Chưa khai đủ + trang có icon ⚙ → mở modal khai luôn (KHÔNG cần ở trang có ô tải file).
-    if (!declaredAll && (document.getElementById("ctl00_C_BLCtl_ImgAttachmentSettings")
+    if (!declaredAll && (attachElById("BLCtl_ImgAttachmentSettings")
       || document.querySelector(".settings"))) {
       return void handleDeclarePhase(st);
     }
