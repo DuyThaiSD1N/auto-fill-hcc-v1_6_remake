@@ -110,14 +110,23 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
   (dd/mm/yyyy), DeathCert_Agency=<CQ> (bỏ chữ "cấp").
 - Nếu ghi "... đã ly hôn (Bản án/Quyết định ly hôn số <N> ngày <D> của <CQ>)"
   → DivorceDecision_Number/Date/Agency tương ứng.
-- Purpose: lấy từ "Giấy này được sử dụng để: <mục đích>." — BỎ phần chú thích trong ngoặc
-  (vd "(Không có giá trị đăng ký kết hôn)"). Ví dụ → "Làm thủ tục vay vốn ngân hàng".
+- Purpose: lấy NGUYÊN VĂN từ "Giấy này được sử dụng để: <mục đích>", GIỮ TRỌN câu tới hết dòng.
+  Mệnh đề "không có giá trị sử dụng để đăng ký kết hôn" là MỘT PHẦN của mục đích, phải giữ — dù nó
+  nằm trong ngoặc hay nối bằng dấu phẩy. Chỉ bỏ đúng cái nhãn phía trước.
+  vd "Giao dịch nhà, đất, không có giá trị sử dụng để đăng ký kết hôn"
+   -> Purpose = "Giao dịch nhà, đất, không có giá trị sử dụng để đăng ký kết hôn"  (ĐÚNG)
+   -> Purpose = "Giao dịch nhà, đất"                                               (SAI, cắt cụt)
 </giay_xntthn_cu>
 
 <purpose_extraction>
 - BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng Giấy xác nhận tình trạng hôn nhân: ...".
 - Lấy toàn bộ nội dung sau nhãn trên, nối các dòng liên tiếp; dừng trước "Tôi cam đoan", "Làm tại" hoặc
   "Người yêu cầu". Bỏ "(5)" và nhãn, không bỏ field chỉ vì OCR sai nhẹ trong nội dung.
+- TUYỆT ĐỐI KHÔNG cắt ngắn mục đích. Giữ cả những mệnh đề đứng sau dấu phẩy như "không có giá trị
+  đăng ký kết hôn" / "không có giá trị sử dụng để đăng ký kết hôn" — đây là nội dung người dân phải
+  ghi vào ô "Nhập mục đích(*)" của cổng, thiếu là hồ sơ sai.
+  vd "Bổ sung giấy tờ mua bán đất, không có giá trị đăng ký kết hôn"
+   -> giữ NGUYÊN cả cụm, KHÔNG rút thành "Bổ sung giấy tờ mua bán đất".
 - Thứ tự nguồn: TỜ KHAI hiện tại → "Giấy này được sử dụng để: ..." trên giấy XNTTHN cũ.
 </purpose_extraction>
 

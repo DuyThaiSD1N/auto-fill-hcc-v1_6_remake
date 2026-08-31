@@ -200,12 +200,21 @@ def _requester_identity(values: dict, options: dict | None) -> tuple[str, str]:
 
 
 def _subject_identity(values: dict) -> tuple[str, str]:
-    """Người được cấp bản sao là ai. HoTich_* đã được _apply_declaration_precedence phủ tờ khai."""
-    number = _digits(values.get("HoTich_SoDinhDanh")) or _digits(values.get("ChuThe_SoDinhDanh"))
+    """Người được cấp bản sao là ai. HoTich_* đã được _apply_declaration_precedence phủ tờ khai.
+
+    Thẻ ChuThe_* CHỈ được tính khi _chu_the_matches_hotich() gật — đúng cái guard mà enrich() dùng
+    để quyết có đắp thẻ vào mục II hay không, nhờ vậy ô tích và khối mục II luôn nói cùng một chuyện.
+
+    Vì sao phải chặn: chủ thể không có thẻ riêng (trích lục khai tử của người đã mất, trên giấy chỉ
+    còn CMND cũ) thì agent hay gán CÙNG thẻ của NGƯỜI YÊU CẦU vào cả Nyc_* lẫn ChuThe_*. Tin thẳng
+    ChuThe_* thì hai mục "trùng số" một cách giả tạo → tick "Bản thân" cho hồ sơ xin hộ người khác.
+    """
+    card = values if _chu_the_matches_hotich(values) else {}
+    number = _digits(values.get("HoTich_SoDinhDanh")) or _digits(card.get("ChuThe_SoDinhDanh"))
     name = (
         _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
         or _fold(values.get("NguoiDuocCap_HoTen"))
-        or _fold(values.get("ChuThe_HoTen"))
+        or _fold(card.get("ChuThe_HoTen"))
     )
     return name, number
 

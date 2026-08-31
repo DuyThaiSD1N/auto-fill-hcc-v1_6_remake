@@ -253,3 +253,63 @@ def test_trich_luc_the_chu_the_bi_gan_nham_sang_nyc_khong_thanh_ban_than():
     # Mục I phải để nguyên dữ liệu VNeID của cổng — không đắp thẻ của chủ thể sang.
     assert "SoDinhDanhC" not in result
     assert result["NDK_SoDinhDanh"]["value"] == "024308001989"
+
+
+# --- Ca thật: trích lục khai tử, thẻ NGƯỜI YÊU CẦU bị gán nhầm sang ChuThe_* -------------------
+# Bà Vũ Thị Phương xin bản sao trích lục khai tử của bà Nguyễn Thị Ngân (đã mất). Chủ thể KHÔNG có
+# thẻ riêng — trên giấy chỉ còn CMND cũ — nên agent gán CÙNG thẻ của bà Phương vào cả Nyc_* lẫn
+# ChuThe_*. Tin thẳng ChuThe_* thì hai mục "trùng số" giả tạo và ô (5) ra "Bản thân".
+_TRICH_LUC_KHAI_TU_HO = [
+    {"name": "ToKhai_LoaiSuKien", "value": "death"},
+    {"name": "ToKhai_TenGiayTo", "value": "Trích lục khai tử"},
+    {"name": "ToKhai_HoTenNguoiDuocCap", "value": "NGUYỄN THỊ NGÂN"},
+    {"name": "HoTich_LoaiSuKien", "value": "death"},
+    {"name": "HoTich_TenGiayTo", "value": "Trích lục khai tử"},
+    {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "NGUYỄN THỊ NGÂN"},
+    {"name": "HoTich_LoaiGiayToTuyThan", "value": "CMND"},
+    {"name": "HoTich_SoGiayToTuyThan", "value": "120018017"},
+    {"name": "HoTich_CoQuanDangKy", "value": "UBND phường Hoàng Văn Thụ"},
+    {"name": "HoTich_So", "value": "166/TLKT-BS"},
+    {"name": "HoTich_NgayDangKy", "value": "01/06/2022"},
+    {"name": "Nyc_HoTen", "value": "VŨ THỊ PHƯƠNG"},
+    {"name": "Nyc_SoDinhDanh", "value": "020152000758"},
+    {"name": "ChuThe_HoTen", "value": "VŨ THỊ PHƯƠNG"},
+    {"name": "ChuThe_SoDinhDanh", "value": "020152000758"},
+]
+
+
+def test_trich_luc_the_nguoi_yeu_cau_gan_nham_sang_chu_the_khong_thanh_ban_than():
+    result = _by_name(enrich(list(_TRICH_LUC_KHAI_TU_HO)))
+
+    assert result["NYC_QuanHe"]["value"] == "Khác"
+    assert result["NYC_QuanHe"]["default"] is True
+
+
+def test_trich_luc_o_tich_va_muc_ii_phai_noi_cung_mot_chuyen():
+    """Mục II đã bỏ thẻ gán nhầm (dùng CMND trên giấy) thì ô tích phải theo cùng luật đó."""
+    result = _by_name(enrich(list(_TRICH_LUC_KHAI_TU_HO)))
+
+    assert result["NDK_HoVaTen"]["value"] == "NGUYỄN THỊ NGÂN"
+    assert result["NDK_SoDinhDanh"]["value"] == "120018017"
+    assert result["NDK_SoDinhDanh"]["value"] != "020152000758"
+
+
+def test_trich_luc_the_chu_the_that_van_duoc_dung():
+    """Chỉ chặn thẻ TRÙNG người yêu cầu; thẻ đúng của chủ thể vẫn phải nhận diện được chủ thể."""
+    from app.pipelines.trich_luc.process.mapper import _subject_identity
+
+    chung = {"HoTich_HoTenNguoiDuocDangKy": "NGUYỄN THỊ NGÂN", "Nyc_SoDinhDanh": "020152000758"}
+
+    # Thẻ đúng của chủ thể (trùng tên người được đăng ký, khác người yêu cầu) → DÙNG.
+    name, number = _subject_identity({
+        **chung, "ChuThe_HoTen": "NGUYỄN THỊ NGÂN", "ChuThe_SoDinhDanh": "020128009999",
+    })
+    assert number == "020128009999"
+    assert name == "nguyen thi ngan"
+
+    # Thẻ bị gán nhầm (trùng số người yêu cầu) → BỎ, chủ thể chỉ còn họ tên trên giấy.
+    name, number = _subject_identity({
+        **chung, "ChuThe_HoTen": "VŨ THỊ PHƯƠNG", "ChuThe_SoDinhDanh": "020152000758",
+    })
+    assert number == ""
+    assert name == "nguyen thi ngan"
