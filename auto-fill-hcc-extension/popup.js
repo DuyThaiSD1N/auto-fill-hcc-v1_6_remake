@@ -30,10 +30,15 @@ const businessPageButtons = document.getElementById("businessPageButtons");
 const fillAllBtn = document.getElementById("fillAllBtn");
 const fileInput = document.getElementById("fileInput");
 const fileList = document.getElementById("fileList");
-const handwritingToggle = document.getElementById("handwritingToggle");
-const handwritingRow = document.getElementById("handwritingRow");
 const splitModeToggle = document.getElementById("splitModeToggle");
 const splitModeRow = document.getElementById("splitModeRow");
+const settingsBtn = document.getElementById("settingsBtn");
+// Nút ⚙ (footer) mở trang cài đặt extension (settings.html) trong tab mới.
+// Handler này từng bị NUỐT khi merge nhánh → nút thành mồ côi (bấm không phản ứng); thêm lại.
+settingsBtn?.addEventListener("click", () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("settings.html") });
+});
+const proxyFillBtn = document.getElementById("proxyFillBtn");
 const ocrBtn = document.getElementById("ocrBtn");
 const attachStepBtn = document.getElementById("attachStepBtn");
 const dangKyBySelect = document.getElementById("dangKyBy");
@@ -49,6 +54,30 @@ const supportCodeValueEl = document.getElementById("supportCodeValue");
 const uploadLabel = document.querySelector('label[for="fileInput"]');
 
 // Danh sách thủ tục lấy từ BE: [{ key, label, roles:[{value,label}], useDangKyBy }]
+// Các thủ tục Bắc Ninh có khối "Thông tin trong trường hợp được ủy quyền". Mỗi thủ tục chọn một
+// loại đối tượng và một chủ thể nguồn khác nhau; dùng map để thủ tục mới không phải rải if/else.
+const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
+  ["ho-tro-nguoi-cao-tuoi-bac-ninh", {
+    subjectOption: "Người cao tuổi",
+    sourceLabel: "người cao tuổi",
+    missingFilesMessage: "Chưa có CCCD hoặc tờ khai để đọc thông tin người cao tuổi.",
+  }],
+  ["ho-tro-chi-phi-hoa-tang-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người được ủy quyền",
+    missingFilesMessage: "Chưa có Biên bản/Văn bản ủy quyền để đọc thông tin người được ủy quyền.",
+  }],
+]);
+const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
+  "ho-tro-chi-phi-hoa-tang-bac-ninh",
+]);
+const currentBacNinhAuthorizedPersonConfig = () =>
+  BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;
+const isBacNinhAuthorizedPersonProcedure = () =>
+  !!currentBacNinhAuthorizedPersonConfig();
+const isBacNinhThreeStepProcedure = (config = currentConfig()) =>
+  BAC_NINH_THREE_STEP_PROCEDURES.has(config?.key);
+
 let PROCEDURES = [];
 let lastProcessSession = null; // { procedure, sessionId }
 let selectedProcedureKey = "";
@@ -69,6 +98,8 @@ const SEARCH_PROCEDURE_LIMIT = 5;
 
 // Chế độ đính kèm "tách hồ sơ" (split): CHỈ cho chứng thực. Mặc định TẮT = 1 hồ sơ nhiều file (merge).
 const SPLIT_MODE_KEY = "autofill_attach_split_mode";
+// Cài đặt "tách GIẤY TỜ trong 1 file" (bật/tắt ở settings.html) — KHÁC splitMode (tách hồ sơ).
+const SPLIT_DOCUMENTS_SETTING_KEY = "autofill_attach_split_documents";
 // Bundle tách hồ sơ chứa dataUrl base64 có thể vượt trần 64 MiB của runtime.sendMessage.
 // Popup ghi vào key cố định này; background nhận key, chuyển sang queue chính rồi xóa staging.
 const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
@@ -80,6 +111,8 @@ const SPLIT_RELOADABLE_WALLET_CODES = new Set([
   "wallet-device-upload-not-opened",
 ]);
 let attachSplitMode = false; // hiệu lực từ ô tick (đã khôi phục từ storage)
+// Tách GIẤY TỜ bên trong một file (khác splitMode). Cài đặt toàn extension, đọc từ storage (settings.html).
+let attachSplitDocuments = false;
 let activeSplitRunId = null;
 let splitProgressOriginTabId = null;
 
@@ -436,6 +469,7 @@ async function bootstrap() {
     showMain(me);
     await loadProcedures();
     await restoreSplitMode();
+    await restoreSplitDocumentsSetting();
     await restoreSession();
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
@@ -479,6 +513,7 @@ loginBtn.addEventListener("click", async () => {
     showMain(data.user);
     await loadProcedures();
     await restoreSplitMode();
+    await restoreSplitDocumentsSetting();
     await restoreSession();
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
@@ -520,7 +555,6 @@ logoutBtn.addEventListener("click", async () => {
   currentUser = null;
   await clearSession();
   files.length = 0;
-  if (handwritingToggle) handwritingToggle.checked = false;
   lastProcessSession = null;
   renderFiles();
   refreshAttachStepUI();
@@ -534,7 +568,6 @@ if (newSessionBtn) {
   newSessionBtn.addEventListener("click", async () => {
     await clearSession();
     files.length = 0;
-    if (handwritingToggle) handwritingToggle.checked = false;
     lastProcessSession = null;
     // Đưa TẤT CẢ về mặc định: bỏ chọn thủ tục + mở khóa, xoá ô tìm, xoá card rà soát.
     selectedProcedureKey = "";
@@ -794,7 +827,6 @@ function resetProcedureWorkState() {
   files.length = 0;
   lastProcessSession = null;
   businessFillSupportCode = "";
-  if (handwritingToggle) handwritingToggle.checked = false;
   if (fileInput) fileInput.value = "";
   clearReviewCard();
   hideSupportCode();
@@ -1366,13 +1398,11 @@ async function saveSession() {
       procedureKey: selectedProcedureKey,
       workProcedureKey,
       businessFillSupportCode,
-      hasHandwriting: !!(handwritingToggle && handwritingToggle.checked),
       files: files.map((it) => ({
         name: it.file.name,
         type: it.file.type || "image/jpeg",
         dataUrl: it.dataUrl,
         role: it.role || "doc",
-        hasHandwriting: !!it.hasHandwriting,
       })),
     };
     await enqueueSessionWrite(async () => {
@@ -1421,14 +1451,13 @@ async function restoreSession() {
     selectedBusinessPageKey = "";
     procedureSelect.value = saved.procedureKey;
   }
-  if (handwritingToggle) handwritingToggle.checked = !!saved.hasHandwriting;
   files.length = 0;
   for (const f of savedFiles) {
     if (!f?.dataUrl) continue;
     // File khôi phục không có File object thật, nhưng đã có sẵn dataUrl nên đủ để gửi BE.
     files.push({
       file: { name: f.name, type: f.type }, role: f.role || "doc", dataUrl: f.dataUrl,
-      hasHandwriting: !!f.hasHandwriting, restored: true
+      restored: true
     });
   }
   renderProcedureResults();
@@ -1490,23 +1519,6 @@ function renderFiles() {
       });
       li.append(sel);
     }
-    // Tick "viết tay" từng tài liệu (ẩn ở chế độ đính kèm — luôn OCR raw).
-    if (!attach) {
-      const hwLabel = document.createElement("label");
-      hwLabel.className = "hw-file";
-      hwLabel.title = "Tài liệu có viết tay → OCR Vintern";
-      const hwCb = document.createElement("input");
-      hwCb.type = "checkbox";
-      hwCb.checked = !!item.hasHandwriting;
-      hwCb.addEventListener("change", () => {
-        item.hasHandwriting = hwCb.checked;
-        // Đồng bộ tick master: bật khi TẤT CẢ file được tick.
-        if (handwritingToggle) handwritingToggle.checked = files.length > 0 && files.every((it) => it.hasHandwriting);
-        saveSession();
-      });
-      hwLabel.append(hwCb, document.createTextNode(" viết tay"));
-      li.append(hwLabel);
-    }
     const rm = document.createElement("button");
     rm.className = "rm";
     rm.textContent = "×";
@@ -1522,6 +1534,11 @@ function renderFiles() {
 }
 
 function refreshAttachStepUI() {
+  // Cập nhật trạng thái nút ủy quyền theo số file (chạy cả khi thêm/bớt file, trước early-return).
+  if (proxyFillBtn) {
+    proxyFillBtn.hidden = !isBacNinhAuthorizedPersonProcedure();
+    proxyFillBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
+  }
   if (!attachStepBtn) return;
   const cfg = currentConfig();
   // Không bắt buộc process bước 2 trước: chỉ cần thủ tục có bước đính kèm + đã chọn file.
@@ -1578,8 +1595,11 @@ function applyFormUI() {
   }
   // Nút gộp (quét cả 8 trang + tự đính kèm) chỉ hiện cho thủ tục đăng ký kinh doanh.
   if (fillAllBtn) fillAllBtn.hidden = !isBusiness;
-  // Đính kèm luôn dùng OCR raw → ẩn lựa chọn "Có bản viết tay".
-  if (handwritingRow) handwritingRow.style.display = isAttachMode() ? "none" : "";
+  // Nút "Điền thông tin người ủy quyền" chỉ hiện cho thủ tục Bắc Ninh có khối ủy quyền.
+  if (proxyFillBtn) {
+    proxyFillBtn.hidden = !isBacNinhAuthorizedPersonProcedure();
+    proxyFillBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
+  }
   // Case local split bắt buộc N file = N tab nên không cho trạng thái checkbox chung can thiệp.
   // Checkbox chỉ còn dành cho các thủ tục mà người dùng thực sự được chọn tách/gộp.
   if (splitModeRow) {
@@ -1603,6 +1623,52 @@ function applyFormUI() {
   }
   renderFiles();
   refreshAttachStepUI();
+}
+
+// Nút "Điền thông tin người ủy quyền" (Bắc Ninh): đọc file bằng purpose=authorized_person rồi
+// gửi content điền khối "Thông tin trong trường hợp được ủy quyền" trên cổng.
+if (proxyFillBtn) {
+  proxyFillBtn.addEventListener("click", async () => {
+    if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+    const authorizedConfig = currentBacNinhAuthorizedPersonConfig();
+    if (!authorizedConfig) return;
+    if (!(await requireConsent(proxyFillBtn))) return;
+    window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
+    proxyFillBtn.disabled = true;
+    try {
+      await ensureSelectedFilesLoaded();
+      const payloadFiles = buildPayloadFiles();
+      if (!payloadFiles.length) throw new Error(authorizedConfig.missingFilesMessage);
+      setStatus(`Đang đọc thông tin ${authorizedConfig.sourceLabel}...`, "info");
+      const cfg = currentConfig();
+      const res = await api.process({
+        procedure: cfg.key,
+        options: { purpose: "authorized_person" },
+        files: payloadFiles,
+      });
+      if (!Array.isArray(res.fields) || !res.fields.length) {
+        const specific = (Array.isArray(res.errors) ? res.errors : []).find((message) =>
+          /ủy quyền|uy quyen/i.test(String(message || ""))
+        );
+        throw new Error(specific || `Không trích xuất được thông tin ${authorizedConfig.sourceLabel} từ hồ sơ.`);
+      }
+      const fillRes = await sendToContent({
+        action: "fillBacNinhAuthorizedPerson",
+        procedure: cfg.key,
+        subjectOption: authorizedConfig.subjectOption,
+        fields: res.fields,
+      });
+      if (fillRes?.error) throw new Error(fillRes.error);
+      setStatus(`Đã điền ${fillRes?.filled || res.fields.length} trường thông tin ${authorizedConfig.sourceLabel}.`, "ok");
+    } catch (e) {
+      console.warn("[AutoFill-BN] Điền thông tin người ủy quyền lỗi:", e);
+      setStatus(e?.message || String(e), "err");
+    } finally {
+      window.__AUTOFILL_HCC_POPUP_BUSY__ = false;
+      refreshAttachStepUI();
+      if (proxyFillBtn) proxyFillBtn.disabled = !files.length;
+    }
+  });
 }
 
 procedureSelect.addEventListener("change", () => { void selectProcedure(procedureSelect.value); });
@@ -1629,13 +1695,6 @@ if (procedureSearchInput) {
   });
 }
 requestModeSelect.addEventListener("change", applyFormUI);
-if (handwritingToggle) handwritingToggle.addEventListener("change", () => {
-  // Tick trên cùng (master) → tích/bỏ viết tay cho TẤT CẢ tài liệu.
-  const on = !!handwritingToggle.checked;
-  files.forEach((it) => { it.hasHandwriting = on; });
-  renderFiles();
-  saveSession();
-});
 if (splitModeToggle) {
   splitModeToggle.addEventListener("change", () => {
     attachSplitMode = !!splitModeToggle.checked;
@@ -1651,10 +1710,21 @@ async function restoreSplitMode() {
   if (splitModeToggle) splitModeToggle.checked = attachSplitMode;
 }
 
+// Đọc cài đặt "tách giấy tờ trong file" từ storage (do settings.html ghi). Không có ô tick ở popup.
+async function restoreSplitDocumentsSetting() {
+  try {
+    const result = await chrome.storage.local.get(SPLIT_DOCUMENTS_SETTING_KEY);
+    attachSplitDocuments = result[SPLIT_DOCUMENTS_SETTING_KEY] === true;
+  } catch (_) { attachSplitDocuments = false; }
+}
+// settings.html bật/tắt → đồng bộ ngay vào popup đang mở (không cần mở lại popup).
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !changes[SPLIT_DOCUMENTS_SETTING_KEY]) return;
+  attachSplitDocuments = changes[SPLIT_DOCUMENTS_SETTING_KEY].newValue === true;
+});
+
 fileInput.addEventListener("change", () => {
-  // File mới kế thừa trạng thái tick master ("viết tay tất cả").
-  const hw = !!(handwritingToggle && handwritingToggle.checked);
-  for (const f of fileInput.files) files.push({ file: f, role: defaultRoleFor(f), hasHandwriting: hw });
+  for (const f of fileInput.files) files.push({ file: f, role: defaultRoleFor(f) });
   fileInput.value = "";
   renderFiles();
   refreshAttachStepUI();
@@ -1722,7 +1792,7 @@ async function pullPhoneFiles(list) {
     files.push({
       file: { name: r.f.name || "anh-dien-thoai.jpg", type },
       role: defaultRoleFor({ type }), dataUrl: r.res.dataUrl,
-      hasHandwriting: false, fromPhone: true,
+      fromPhone: true,
     });
     added++;
   }
@@ -1816,7 +1886,6 @@ function buildPayloadFiles() {
     type: it.file.type || "image/jpeg",
     dataUrl: it.dataUrl,
     role: it.role || "doc",
-    hasHandwriting: !!it.hasHandwriting,
   }));
 }
 
@@ -1829,7 +1898,7 @@ async function toPdfForAttach(payloadFiles) {
     if (f.dataUrl && PdfConvert.isImage(f.type, f.name)) {
       try {
         const pdf = await PdfConvert.imageToPdf(f.dataUrl, f.name, f.type);
-        out.push({ ...f, ...pdf }); // name/type/dataUrl thành PDF; giữ role/hasHandwriting
+        out.push({ ...f, ...pdf }); // name/type/dataUrl thành PDF; giữ role
       } catch (e) {
         console.warn("[PdfConvert] Không chuyển được ảnh sang PDF, giữ nguyên:", f.name, e);
         out.push(f);
@@ -1881,7 +1950,7 @@ async function applyMergeGroups(payloadFiles, attachments) {
     } else if (sources.length > 1) {
       try {
         const merged = await PdfConvert.mergeToPdf(sources, item.documentName || sources[0].name);
-        file = { ...sources[0], ...merged }; // giữ role/hasHandwriting, thay name/type/dataUrl
+        file = { ...sources[0], ...merged }; // giữ role, thay name/type/dataUrl
       } catch (e) {
         console.warn("[PdfConvert] Gộp PDF thất bại, đính file đầu:", e);
         file = sources[0];
@@ -1970,6 +2039,7 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   // Gửi lựa chọn "tách hồ sơ" về BE để lưu vào trace (phục vụ thống kê tách/gộp).
   // Chỉ gắn với thủ tục có ô tick (chứng thực bản sao/chữ ký) — true/false theo người dùng chọn.
   if (isSplitEligibleProcedure()) options.splitMode = !!attachSplitMode;
+  if (cfg.supportsSplitDocuments) options.splitDocuments = !!attachSplitDocuments;
 
   setStatus("Đang phân tích tài liệu đính kèm...", "info");
   const planRes = await api.attachmentPlan({ procedure: cfg.key, options, files: payloadFiles });
@@ -2563,11 +2633,10 @@ ocrBtn.addEventListener("click", async () => {
     const cfg = currentConfig();
     const payloadFiles = buildPayloadFiles();
     const options = {};
+    // Bắc Ninh 3 bước: bước quét đầu là đọc ĐƠN đăng ký (registration_form).
+    if (isBacNinhThreeStepProcedure(cfg)) options.purpose = "registration_form";
     if (cfg.useDangKyBy) options.dangKyBy = dangKyBySelect.value;
     if (cfg.useRequestMode) options.requestMode = requestModeSelect.value;
-    // Provider chọn theo TỪNG file (payloadFiles[].hasHandwriting). options.hasHandwriting chỉ là
-    // fallback global (BE ưu tiên cờ per-file): bật nếu có bất kỳ tài liệu nào viết tay.
-    options.hasHandwriting = payloadFiles.some((f) => f.hasHandwriting);
     let page = null;
     if (currentBusinessPages().length) {
       // Tự nhận trang đang mở từ breadcrumb (đã bỏ nút chọn trang thủ công).
@@ -2663,7 +2732,7 @@ ocrBtn.addEventListener("click", async () => {
     await dispatchFill(res.fields || [], res.errors || [], page);
 
     // Rà soát bbox: thủ tục bật review → nạp sources + đẩy xuống content + hiện card "Xem trên ảnh".
-    try { await maybeShowReview(res.requestId || res.sessionId); }
+    try { await maybeShowReview(res.requestId || res.sessionId, res.reviewToken); }
     catch (err) { console.warn("[AutoFill] review:", err); }
   } catch (e) {
     if (e.unauthorized) {
@@ -2726,7 +2795,6 @@ if (fillAllBtn) {
         delete options.allPages;
         options.page = `__${cfg.businessWorkflow}__`;
       }
-      options.hasHandwriting = payloadFiles.some((f) => f.hasHandwriting);
 
       setStatus(" Đang phân tích tài liệu...", "info");
       const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
@@ -2850,6 +2918,11 @@ if (attachStepBtn) {
     try {
       setStatus("Đang đọc file...", "info");
       await ensureSelectedFilesLoaded();
+      // Bắc Ninh 3 bước: bước đính kèm phải mở đúng tab "Thành phần hồ sơ" trước.
+      if (isBacNinhThreeStepProcedure(cfg)) {
+        const tabRes = await sendToContent({ action: "openBacNinhTab", tabName: "taithanhphan" });
+        if (tabRes?.error) throw new Error(tabRes.error);
+      }
       // Không bắt buộc đã process bước 2: nếu có session đúng thủ tục thì truyền để backend dùng hint,
       // không có thì vẫn đính kèm bình thường (planner xử lý session=None).
       const sid = lastProcessSession?.procedure === cfg.key ? lastProcessSession.sessionId : null;
@@ -2930,6 +3003,14 @@ async function dispatchFill(allFields, errors, page = null) {
   const procedure = currentConfig()?.key || "";
   let panelMinimized = false;
   try {
+    // Bắc Ninh 3 bước: trước khi điền phải mở đúng tab "Nhập đơn đăng ký".
+    if (BAC_NINH_THREE_STEP_PROCEDURES.has(procedure)) {
+      const tabRes = await sendToContent({ action: "openBacNinhTab", tabName: "nhapdondangky" });
+      if (tabRes?.error) {
+        setStatus(tabRes.error, "err");
+        return { ok: false, reason: "registration-tab-unavailable", filled: 0 };
+      }
+    }
     // Trang có thể reload ngay sau khi cán bộ bấm sang bước đính kèm. Chốt session trước khi ẩn
     // iframe để panel mới luôn dựng lại được đúng file, kể cả lượt save từ input còn đang chạy.
     const sessionSaved = await saveSession();
@@ -3002,10 +3083,10 @@ function clearReviewCard() {
 }
 
 // Nạp sources theo requestId (BE trả 404 nếu thủ tục không bật review) → đẩy xuống content + render card.
-async function maybeShowReview(requestId) {
+async function maybeShowReview(requestId, reviewToken) {
   clearReviewCard();
-  if (!requestId) return;
-  const sources = await api.getReviewSources(requestId);
+  if (!requestId || !reviewToken) return;
+  const sources = await api.getReviewSources(requestId, reviewToken);
   const byName = sources && sources.fields;
   if (!byName || !Object.keys(byName).length) return;
   await sendToContent({
@@ -3013,6 +3094,7 @@ async function maybeShowReview(requestId) {
     sourcesByName: byName,
     baseUrl: window.BACKEND_URL,
     requestId,
+    reviewToken,
   });
   renderReviewCard(byName);
 }
@@ -3750,7 +3832,9 @@ async function initDestSection() {
 
 function refreshOcrButtonLabel() {
   if (!ocrBtn) return;
-  ocrBtn.textContent = isAttachMode() ? "Đính kèm vào hồ sơ" : "Quét và nhập dữ liệu";
+  ocrBtn.textContent = isBacNinhThreeStepProcedure()
+    ? "Nhập đơn đăng ký"
+    : (isAttachMode() ? "Đính kèm vào hồ sơ" : "Quét và nhập dữ liệu");
 }
 
 /**

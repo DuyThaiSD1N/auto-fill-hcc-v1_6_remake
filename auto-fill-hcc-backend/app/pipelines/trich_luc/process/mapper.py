@@ -136,6 +136,18 @@ def _copy_quantity(value) -> str:
     return str(int(digits)) if digits and int(digits) > 0 else ""
 
 
+def _id_doc_type_with_number(number: str, hint, issuer: str = "") -> str:
+    """Loại giấy tờ tùy thân kết hợp độ dài số với hint/issuer.
+
+    Số 9 chữ số là CMND (cũ), bất kể hint nói gì — CCCD/Căn cước luôn có 12 chữ số.
+    Số 12 chữ số → nhường cho id_doc_type() phán theo nơi cấp.
+    """
+    d = _digits(number)
+    if len(d) == 9:
+        return "Chứng minh nhân dân"
+    return id_doc_type(hint or "Căn cước", issuer)
+
+
 # Quan hệ trên tờ khai được chuẩn hóa về đúng nhãn radio trên cổng. Không nhận "ba" trần vì sau
 # khi fold dấu nó có thể là "bà" hoặc cách gọi "bố"; bỏ trống an toàn hơn tick nhầm quan hệ.
 _QUANHE_OPTIONS = {
@@ -656,26 +668,41 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     )
 
     def _fill_requester() -> None:
-        """Khối người yêu cầu: TỜ KHAI trước, CCCD chỉ bù field tờ khai không có.
+        """Khối người yêu cầu: TỜ KHAI trước, CCCD bù field còn thiếu, VNeID là fallback cuối.
 
         Cổng điền sẵn khối này theo tài khoản VNeID đang đăng nhập; hồ sơ giấy mới là căn cứ nên
         mapper luôn phát đủ field để extension GHI ĐÈ lên dữ liệu đăng nhập.
+        Thứ tự ưu tiên mỗi field: tờ khai → CCCD (nếu đúng người) → VNeID (formContext).
+        Kể cả khi field tờ khai/CCCD trống thì vẫn phát field từ VNeID để ghi đè.
         Chỉ dùng CCCD khi thẻ đó đúng là của người yêu cầu (_card_is_requester) — nếu không, thẻ trong
         hồ sơ có thể là của người được đăng ký, ghép vào đây là sai người.
         """
+        ctx = (options or {}).get("formContext") or {}
         card = values if _card_is_requester(values, options) else {}
-        so_giay_to = values.get("TkNyc_SoGiayToTuyThan") or card.get("Nyc_SoDinhDanh")
+        # Họ tên: tờ khai → CCCD → VNeID
+        ho_ten = (
+            values.get("TkNyc_HoTen")
+            or card.get("Nyc_HoTen")
+            or ctx.get("applicantFullname")
+        )
+        # Số giấy tờ: tờ khai → CCCD → VNeID
+        so_giay_to = (
+            values.get("TkNyc_SoGiayToTuyThan")
+            or card.get("Nyc_SoDinhDanh")
+            or ctx.get("applicantIdentityNumber")
+        )
         ngay_cap = values.get("TkNyc_NgayCapGiayToTuyThan") or card.get("Nyc_NgayCap")
         requester_issuer = (
             normalize_issuer(values.get("TkNyc_NoiCapGiayToTuyThan"))
             or normalize_issuer(card.get("Nyc_NoiCap"))
             or default_issuer(ngay_cap)
         )
-        add("HoVaTenC", values.get("TkNyc_HoTen") or card.get("Nyc_HoTen"))
+        loai_hint = values.get("TkNyc_LoaiGiayToTuyThan") or card.get("Nyc_LoaiGiayTo")
+        add("HoVaTenC", ho_ten)
         add("SoDinhDanhC", so_giay_to)
-        # Loại giấy tờ theo nơi cấp: Bộ Công an → "Thẻ Căn cước"; Cục Cảnh sát → "Thẻ căn cước công dân".
+        # Loại giấy tờ: kết hợp số chữ số — 9 số → CMND; 12 số → CCCD/Căn cước theo nơi cấp.
         add("LoaiGiayToDinhDanhC",
-            id_doc_type(values.get("TkNyc_LoaiGiayToTuyThan") or "Căn cước", requester_issuer))
+            _id_doc_type_with_number(so_giay_to or "", loai_hint, requester_issuer))
         add("NYC_SoGiayToTuyThan", so_giay_to)
         add("NgayCapDDC", ngay_cap)
         add("NoiCapDDC", requester_issuer)

@@ -169,6 +169,28 @@ def _requester_card(values: dict, options: dict | None) -> dict | None:
     return None
 
 
+def _requester_id_card(values: dict, options: dict | None) -> dict | None:
+    """Thẻ CCCD/CMND CỦA NGƯỜI YÊU CẦU: khớp formContext trước, rồi tới khối người yêu cầu trên
+    tờ khai (số định danh, sau đó họ tên) — hồ sơ nhiều CCCD thì phải chắc chắn đúng thẻ."""
+    card = _requester_card(values, options)
+    if card:
+        return card
+
+    cards = _identity_cards(values)
+    wanted_id = _digits(values.get("NguoiYeuCau_SoDinhDanh") or values.get("Cccd_SoDinhDanh"))
+    if wanted_id:
+        matches = [c for c in cards if _digits(c.get("SoDinhDanh")) == wanted_id]
+        if len(matches) == 1:
+            return matches[0]
+
+    wanted_name = _fold(values.get("NguoiYeuCau_HoTen") or values.get("Cccd_HoTen"))
+    if wanted_name:
+        matches = [c for c in cards if _fold(c.get("HoTen")) == wanted_name]
+        if len(matches) == 1:
+            return matches[0]
+    return None
+
+
 def _card_for_subject(values: dict, prefix: str) -> dict | None:
     matches = [
         card for card in _identity_cards(values)
@@ -253,98 +275,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
-    # ----- Mục I: người yêu cầu - ưu tiên từ tờ khai, fallback formContext -----
     ctx = (options or {}).get("formContext") or {}
-    
-    # (1) Họ, chữ đệm, tên - ưu tiên NguoiYeuCau_HoTen từ tờ khai
-    requester_name = values.get("NguoiYeuCau_HoTen") or str(ctx.get("applicantFullname") or "").strip()
-    if requester_name:
-        add("HoVaTenC", requester_name)
-    
-    # (2) Số định danh cá nhân - ưu tiên NguoiYeuCau_SoDinhDanh từ tờ khai
-    requester_id = values.get("NguoiYeuCau_SoDinhDanh") or str(ctx.get("applicantIdentityNumber") or "").strip()
-    if requester_id:
-        add("SoDinhDanhC", requester_id)
-        # (3) Số giấy tờ tùy thân (thường trùng với số định danh)
-        requester_id_doc = values.get("NguoiYeuCau_SoDinhDanh") or requester_id
-        add("SoGiayToTuyThanC", requester_id_doc)
-    
-    # (3) Loại giấy tờ tùy thân - từ tờ khai hoặc suy từ độ dài số
-    requester_id_type = values.get("NguoiYeuCau_LoaiGiayTo")
-    if not requester_id_type and requester_id:
-        # Suy từ độ dài: 12 số = CCCD, 9 số = CMND
-        id_len = len(requester_id.replace(" ", ""))
-        if id_len == 12:
-            requester_id_type = "Thẻ căn cước công dân"
-        elif id_len == 9:
-            requester_id_type = "Chứng minh nhân dân"
-    if requester_id_type:
-        add("LoaiGiayToTuyThanC", requester_id_type)
-    
-    # Nơi cư trú: ưu tiên NguoiYeuCau_NoiCuTru từ tờ khai, không có mới điền default.
-    requester_residence = values.get("NguoiYeuCau_NoiCuTru")
-    if requester_residence and isinstance(requester_residence, dict):
-        residence_area = _area(requester_residence)
-        if residence_area:
-            add("nycLoaiCuTru", "Thường trú")
-            add("nycNoiCuTru", "Trong Nước")
-            add("nycNoiCuTru_TrongNuoc", residence_area)
-        else:
-            # Tờ khai có nhưng không parse được → default (viền vàng)
-            add("nycLoaiCuTru", "Thường trú", default=True)
-            add("nycNoiCuTru", "Trong Nước", default=True)
-            add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
-    else:
-        # Không có tờ khai → default (viền vàng)
-        add("nycLoaiCuTru", "Thường trú", default=True)
-        add("nycNoiCuTru", "Trong Nước", default=True)
-        add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
-    # ----- __requesterInfo: Thông tin người yêu cầu để extension tự điền (ưu tiên tờ khai) -----
-    # Giống khai tử: ưu tiên NguoiYeuCau_* từ tờ khai → CCCD từ DanhSachCccd → Cccd_* → formContext
-    requester_info = {}
-    
-    # 1. Ưu tiên TỜ KHAI (NguoiYeuCau_*)
-    if values.get("NguoiYeuCau_HoTen") or values.get("NguoiYeuCau_SoDinhDanh"):
-        requester_info = {
-            "hoTen": values.get("NguoiYeuCau_HoTen"),
-            "ngaySinh": values.get("NguoiYeuCau_NgaySinh"),
-            "soDinhDanh": values.get("NguoiYeuCau_SoDinhDanh"),
-            "loaiGiayTo": values.get("NguoiYeuCau_LoaiGiayTo"),
-            "ngayCap": values.get("NguoiYeuCau_NgayCap"),
-            "noiCap": values.get("NguoiYeuCau_NoiCap"),
-            "noiCuTru": values.get("NguoiYeuCau_NoiCuTru"),
-        }
-    # 2. Nếu không có tờ khai, dùng CCCD từ DanhSachCccd (khớp formContext)
-    elif (requester_card := _requester_card(values, options)):
-        requester_info = {
-            "hoTen": requester_card.get("HoTen"),
-            "ngaySinh": requester_card.get("NgaySinh"),
-            "gioiTinh": requester_card.get("GioiTinh"),
-            "soDinhDanh": requester_card.get("SoDinhDanh"),
-            "ngayCap": requester_card.get("NgayCap"),
-            "noiCap": requester_card.get("NoiCap"),
-            "noiCuTru": requester_card.get("NoiCuTru"),
-        }
-    # 3. Fallback: CCCD người yêu cầu riêng lẻ (Cccd_*)
-    elif values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"):
-        requester_info = {
-            "hoTen": values.get("Cccd_HoTen"),
-            "soDinhDanh": values.get("Cccd_SoDinhDanh"),
-            "ngayCap": values.get("Cccd_NgayCap"),
-            "noiCap": values.get("Cccd_NoiCap"),
-        }
-    
-    # Loại bỏ các key có giá trị None/empty
-    requester_info = {k: v for k, v in requester_info.items() if v not in (None, "", {}, [])}
-    
-    if requester_info:
-        # Chuẩn hóa nơi cư trú nếu có
-        if "noiCuTru" in requester_info:
-            requester_info["noiCuTru"] = _area(requester_info["noiCuTru"])
-        add("__requesterInfo", requester_info)
-
-    # ----- Mục II: người có nội dung thay đổi — chọn chủ thể theo nguồn. -----
+    # ----- Mục II tính TRƯỚC (chỉ TÍNH, chưa add) -----
+    # (5) Quan hệ và (2) Số định danh của người yêu cầu đều phụ thuộc danh tính người có nội dung
+    # thay đổi, nên phải chốt Mục II trước. Thứ tự add() bên dưới VẪN là Mục I → (5) Quan hệ →
+    # Mục II, vì cổng chỉ mở/nhận input Mục II sau khi đã chọn quan hệ.
     # TỜ KHAI cải chính / khai sinh / khai tử: chủ thể là 1 người ở nhóm ChuThe_*.
     # Trích lục KẾT HÔN: chủ thể là chồng HOẶC vợ (theo CCCD người yêu cầu đối chiếu).
     event = _event_type(values)
@@ -357,6 +293,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     ntd_ho_ten: str | None = None
     ntd_so_dinh_danh: str | None = None
+    subject_card: dict | None = None
     if src:
         subject_card = _card_for_subject(values, src)
         has_correction_declaration = bool(
@@ -389,8 +326,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     return subject_card[card_key]
             return values.get(f"{src}_{sub}")
 
-        # Tính TRƯỚC giá trị Mục II (không add() vội) để có thể chốt (5) Quan hệ và tick nó TRƯỚC khi
-        # điền Mục II — cổng có thể chỉ nhận input Mục II sau khi đã chọn quan hệ.
         ntd_ho_ten = _normalize_person_name(g("HoTen"))
 
         # Chủ thể CHÍNH LÀ người trên CCCD đính kèm (tự khai) → dùng CCCD làm nguồn DỰ PHÒNG cho số
@@ -406,33 +341,156 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         ntd_so_dinh_danh = g("SoDinhDanh") or cc("Cccd_SoDinhDanh")
 
     # ----- (5) Quan hệ với người có nội dung thay đổi: Bản thân / Khác. -----
-    # BẮT BUỘC đứng TRƯỚC khối add() Mục II bên dưới — cổng có thể chỉ mở/nhận input Mục II sau khi
-    # đã chọn quan hệ, nên field này phải xuất hiện trước ntd* trong danh sách trả về để extension
-    # tick nó trước khi điền Mục II.
-    # Ưu tiên 1: TỜ KHAI đã tự ghi rõ ô nào được tích (NguoiYeuCau_QuanHe) — nguồn đáng tin nhất vì
-    # đây là lời khai chính chủ, không phải suy luận. Chỉ khi tờ khai không có/không đọc được field này
-    # (không có tờ khai, hoặc hồ sơ chỉ có giấy khai sinh/kết hôn/khai tử + CCCD) mới suy luận bằng cách
-    # so khớp người yêu cầu (Mục I: HoVaTenC/SoDinhDanhC) với chủ thể (Mục II) vừa tính ở trên:
-    # ưu tiên số định danh (bằng chứng mạnh), chỉ so tên khi thiếu số định danh ở ít nhất một bên.
-    quan_he_tk = values.get("NguoiYeuCau_QuanHe")
-    if quan_he_tk in ("Bản thân", "Khác"):
-        add("nycQuanHe", quan_he_tk)
-    else:
-        requester_id_digits = _digits(requester_id)
-        ntd_id_digits = _digits(ntd_so_dinh_danh)
-        requester_name_folded = _fold(requester_name)
-        ntd_name_folded = _fold(ntd_ho_ten)
-        if requester_id_digits and ntd_id_digits:
-            add("nycQuanHe", "Bản thân" if requester_id_digits == ntd_id_digits else "Khác")
-        elif requester_name_folded and ntd_name_folded:
-            # So bằng tên (không có số định danh ở ít nhất một bên) — bằng chứng yếu hơn, tick mặc định
-            # để cán bộ soát lại (viền vàng), tránh trùng tên khác người bị nhận nhầm là "Bản thân".
-            add(
-                "nycQuanHe",
-                "Bản thân" if requester_name_folded == ntd_name_folded else "Khác",
-                default=True,
-            )
+    # Đối chiếu TẤT ĐỊNH số định danh Mục I ↔ Mục II là bằng chứng MẠNH NHẤT: cùng một số thì
+    # không thể là "Khác", khác số thì không thể là "Bản thân" — kể cả khi ô tích trên tờ khai
+    # (NguoiYeuCau_QuanHe, do LLM đọc) nói ngược lại. Người yêu cầu có thể khai CMND cũ trên tờ
+    # khai trong khi thẻ ghi số CCCD mới, nên gom MỌI số định danh biết được của người yêu cầu.
+    # Thiếu số định danh ở một bên mới tin ô tích tờ khai, sau cùng mới so họ tên.
+    requester_name = values.get("NguoiYeuCau_HoTen") or str(ctx.get("applicantFullname") or "").strip()
+    requester_card = _requester_id_card(values, options)
+    declared_id = values.get("NguoiYeuCau_SoDinhDanh") or str(ctx.get("applicantIdentityNumber") or "").strip()
 
+    requester_ids = {
+        _digits(candidate)
+        for candidate in (
+            values.get("NguoiYeuCau_SoDinhDanh"),
+            ctx.get("applicantIdentityNumber"),
+            ctx.get("identityNumber"),
+            values.get("Cccd_SoDinhDanh"),
+            (requester_card or {}).get("SoDinhDanh"),
+        )
+    } - {""}
+    ntd_id_digits = _digits(ntd_so_dinh_danh)
+    requester_name_folded = _fold(requester_name)
+    ntd_name_folded = _fold(ntd_ho_ten)
+    quan_he_tk = values.get("NguoiYeuCau_QuanHe")
+
+    quan_he: str | None = None
+    quan_he_default = False
+    if ntd_id_digits and requester_ids:
+        quan_he = "Bản thân" if ntd_id_digits in requester_ids else "Khác"
+    elif quan_he_tk in ("Bản thân", "Khác"):
+        quan_he = quan_he_tk
+    elif requester_name_folded and ntd_name_folded:
+        # So bằng tên (không có số định danh ở ít nhất một bên) — bằng chứng yếu hơn, tick mặc định
+        # để cán bộ soát lại (viền vàng), tránh trùng tên khác người bị nhận nhầm là "Bản thân".
+        quan_he = "Bản thân" if requester_name_folded == ntd_name_folded else "Khác"
+        quan_he_default = True
+
+    # ----- Mục I: người yêu cầu - ưu tiên từ tờ khai, fallback formContext -----
+
+    # (1) Họ, chữ đệm, tên - ưu tiên NguoiYeuCau_HoTen từ tờ khai
+    if requester_name:
+        add("HoVaTenC", requester_name)
+
+    # (2) Số định danh cá nhân - ưu tiên NguoiYeuCau_SoDinhDanh từ tờ khai.
+    # RIÊNG khi quan hệ = "Bản thân": người yêu cầu CHÍNH LÀ người có nội dung thay đổi, nên số
+    # trên THẺ CCCD mới là số chuẩn (tờ khai hay chép lại CMND cũ hoặc bị OCR sai) → ưu tiên thẻ,
+    # không có thẻ mới quay về tờ khai. CHỈ ô này đảo thứ tự ưu tiên; họ tên / loại giấy tờ /
+    # ngày cấp / nơi cấp / nơi cư trú vẫn ưu tiên tờ khai như cũ.
+    if quan_he == "Bản thân":
+        card_id = (
+            (requester_card or {}).get("SoDinhDanh")
+            or values.get("Cccd_SoDinhDanh")
+            or (subject_card or {}).get("SoDinhDanh")
+        )
+        requester_id = str(card_id or declared_id or "").strip()
+    else:
+        requester_id = declared_id
+
+    if requester_id:
+        add("SoDinhDanhC", requester_id)
+        # (3) Số giấy tờ tùy thân: cùng nguồn với số định danh để hai ô không lệch nhau.
+        requester_id_doc = requester_id if quan_he == "Bản thân" else (
+            values.get("NguoiYeuCau_SoDinhDanh") or requester_id
+        )
+        add("SoGiayToTuyThanC", requester_id_doc)
+
+    # (3) Loại giấy tờ tùy thân - từ tờ khai hoặc suy từ độ dài số
+    requester_id_type = values.get("NguoiYeuCau_LoaiGiayTo")
+    if not requester_id_type and requester_id:
+        # Suy từ độ dài: 12 số = CCCD, 9 số = CMND
+        id_len = len(requester_id.replace(" ", ""))
+        if id_len == 12:
+            requester_id_type = "Thẻ căn cước công dân"
+        elif id_len == 9:
+            requester_id_type = "Chứng minh nhân dân"
+    if requester_id_type:
+        add("LoaiGiayToTuyThanC", requester_id_type)
+
+    # Nơi cư trú: ưu tiên NguoiYeuCau_NoiCuTru từ tờ khai, không có mới điền default.
+    requester_residence = values.get("NguoiYeuCau_NoiCuTru")
+    if requester_residence and isinstance(requester_residence, dict):
+        residence_area = _area(requester_residence)
+        if residence_area:
+            add("nycLoaiCuTru", "Thường trú")
+            add("nycNoiCuTru", "Trong Nước")
+            add("nycNoiCuTru_TrongNuoc", residence_area)
+        else:
+            # Tờ khai có nhưng không parse được → default (viền vàng)
+            add("nycLoaiCuTru", "Thường trú", default=True)
+            add("nycNoiCuTru", "Trong Nước", default=True)
+            add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+    else:
+        # Không có tờ khai → default (viền vàng)
+        add("nycLoaiCuTru", "Thường trú", default=True)
+        add("nycNoiCuTru", "Trong Nước", default=True)
+        add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+
+    # ----- __requesterInfo: Thông tin người yêu cầu để extension tự điền (ưu tiên tờ khai) -----
+    # Giống khai tử: ưu tiên NguoiYeuCau_* từ tờ khai → CCCD từ DanhSachCccd → Cccd_* → formContext
+    requester_info = {}
+
+    # 1. Ưu tiên TỜ KHAI (NguoiYeuCau_*)
+    if values.get("NguoiYeuCau_HoTen") or values.get("NguoiYeuCau_SoDinhDanh"):
+        requester_info = {
+            "hoTen": values.get("NguoiYeuCau_HoTen"),
+            "ngaySinh": values.get("NguoiYeuCau_NgaySinh"),
+            "soDinhDanh": values.get("NguoiYeuCau_SoDinhDanh"),
+            "loaiGiayTo": values.get("NguoiYeuCau_LoaiGiayTo"),
+            "ngayCap": values.get("NguoiYeuCau_NgayCap"),
+            "noiCap": values.get("NguoiYeuCau_NoiCap"),
+            "noiCuTru": values.get("NguoiYeuCau_NoiCuTru"),
+        }
+    # 2. Nếu không có tờ khai, dùng CCCD từ DanhSachCccd (khớp formContext)
+    elif requester_card:
+        requester_info = {
+            "hoTen": requester_card.get("HoTen"),
+            "ngaySinh": requester_card.get("NgaySinh"),
+            "gioiTinh": requester_card.get("GioiTinh"),
+            "soDinhDanh": requester_card.get("SoDinhDanh"),
+            "ngayCap": requester_card.get("NgayCap"),
+            "noiCap": requester_card.get("NoiCap"),
+            "noiCuTru": requester_card.get("NoiCuTru"),
+        }
+    # 3. Fallback: CCCD người yêu cầu riêng lẻ (Cccd_*)
+    elif values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"):
+        requester_info = {
+            "hoTen": values.get("Cccd_HoTen"),
+            "soDinhDanh": values.get("Cccd_SoDinhDanh"),
+            "ngayCap": values.get("Cccd_NgayCap"),
+            "noiCap": values.get("Cccd_NoiCap"),
+        }
+
+    # Số định danh phải khớp đúng ô (2) đã điền ở trên (kể cả khi đã đảo sang thẻ CCCD).
+    if requester_info and requester_id:
+        requester_info["soDinhDanh"] = requester_id
+
+    # Loại bỏ các key có giá trị None/empty
+    requester_info = {k: v for k, v in requester_info.items() if v not in (None, "", {}, [])}
+
+    if requester_info:
+        # Chuẩn hóa nơi cư trú nếu có
+        if "noiCuTru" in requester_info:
+            requester_info["noiCuTru"] = _area(requester_info["noiCuTru"])
+        add("__requesterInfo", requester_info)
+
+    # (5) Quan hệ BẮT BUỘC đứng TRƯỚC khối add() Mục II bên dưới — cổng có thể chỉ mở/nhận input
+    # Mục II sau khi đã chọn quan hệ, nên field này phải xuất hiện trước ntd* trong danh sách trả về.
+    if quan_he:
+        add("nycQuanHe", quan_he, default=quan_he_default)
+
+    # ----- Mục II: người có nội dung thay đổi. -----
     if src:
         add("ntdHoTen", ntd_ho_ten)
         add("ntdNgaySinh", g("NgaySinh"))

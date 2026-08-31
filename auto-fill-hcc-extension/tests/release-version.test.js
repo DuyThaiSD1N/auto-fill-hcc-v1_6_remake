@@ -10,10 +10,10 @@ const changelogSource = fs.readFileSync(path.join(root, "changelog.js"), "utf8")
 const sandbox = {};
 vm.runInNewContext(`${changelogSource}\nglobalThis.releases = APP_RELEASES;`, sandbox);
 
-assert.equal(manifest.version, "1.15");
-assert.match(content, /const APP_VERSION_LABEL = "1\.15 · 27\/8"/);
+assert.equal(manifest.version, "1.14");
+assert.match(content, /const APP_VERSION_LABEL = "1\.14 · 23\/8"/);
 assert.equal(sandbox.releases[0].version, manifest.version);
-assert.equal(sandbox.releases[0].date, "27/8/2026");
-assert.ok(sandbox.releases[0].items.length >= 5, "Changelog 1.15 phải mô tả đủ nhóm thay đổi chính");
+assert.equal(sandbox.releases[0].date, "23/8/2026");
+assert.ok(sandbox.releases[0].items.length >= 5, "Changelog 1.14 phải mô tả đủ nhóm thay đổi chính");
 
-console.log("release version: manifest, panel label and changelog 1.15 are consistent");
+console.log("release version: manifest, panel label and changelog 1.14 are consistent");

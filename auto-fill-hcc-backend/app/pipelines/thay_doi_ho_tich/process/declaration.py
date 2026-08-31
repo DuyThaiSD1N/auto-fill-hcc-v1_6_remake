@@ -30,6 +30,24 @@ _LABELS: tuple[tuple[str, str], ...] = (
     ("noiCap", r"noi\s*cap"),
 )
 
+# Khối NGƯỜI ĐƯỢC thay đổi/cải chính: mở bằng "cho người có tên dưới đây", đóng ở dòng khai
+# sự kiện hộ tịch gốc ("Đã đăng ký ...") hoặc mục "Nội dung:"/"Lý do:". Mọi nhãn trùng tên nằm
+# TRƯỚC câu mở đều thuộc người yêu cầu (mục I) nên không lọt vào khối này.
+_SUBJECT_START = r"cho\s*nguoi\s*co\s*ten\s*duoi\s*day"
+_SUBJECT_END = r"da\s*(?:duoc\s*)?dang\s*ky|noi\s*dung\s*:|ly\s*do\s*:"
+
+_SUBJECT_LABELS: tuple[tuple[str, str], ...] = (
+    ("hoTen", r"ho\s*,?\s*chu\s*dem\s*,?\s*ten"),
+    ("ngaySinh", r"ngay\s*,?\s*thang\s*,?\s*nam\s*sinh"),
+    ("gioiTinh", r"gioi\s*tinh"),
+    ("danToc", r"dan\s*toc"),
+    ("quocTich", r"quoc\s*tich"),
+    ("noiCuTru", r"noi\s*(?:cu\s*tru|thuong\s*tru|dang\s*ky\s*thuong\s*tru)"),
+    ("giayTo", r"(?:so\s*)?giay\s*to\s*tuy\s*than"),
+    ("ngayCap", r"ngay\s*cap"),
+    ("noiCap", r"noi\s*cap"),
+)
+
 # Số định danh: CMND 9 số, CCCD/Căn cước 12 số. OCR có thể chèn khoảng trắng/dấu chấm.
 _ID_NUMBER_RE = re.compile(r"(?<!\d)(\d[\d.\s]{7,16}\d)(?!\d)")
 _ISSUE_DATE_RE = re.compile(r"cap\s*(?:ngay|vao\s*ngay)?\s*:?\s*(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})")
@@ -60,21 +78,21 @@ def _clean(value: str) -> str:
     return "" if _BLANK_RE.match(text) else text.strip()
 
 
-def _requester_block(text: str) -> tuple[str, str]:
-    """Cắt đúng khối người yêu cầu; trả (text gốc, text đã bỏ dấu) cùng độ dài."""
+def _block(text: str, start_pattern: str, end_pattern: str) -> tuple[str, str]:
+    """Cắt một khối của tờ khai; trả (text gốc, text đã bỏ dấu) cùng độ dài."""
     folded = _fold(text)
-    start = re.search(_REQUESTER_START, folded)
+    start = re.search(start_pattern, folded)
     if not start:
         return "", ""
-    end = re.search(_REQUESTER_END, folded[start.start():])
-    stop = start.start() + (end.start() if end else len(folded) - start.start())
+    end = re.search(end_pattern, folded[start.end():])
+    stop = start.end() + end.start() if end else len(folded)
     return text[start.start():stop], folded[start.start():stop]
 
 
-def _labeled_values(block: str, folded_block: str) -> dict[str, str]:
+def _labeled_values(block: str, folded_block: str, labels=_LABELS) -> dict[str, str]:
     """Giá trị của mỗi nhãn = đoạn từ hết nhãn đó tới đầu nhãn kế tiếp theo VỊ TRÍ."""
     hits: list[tuple[int, int, str]] = []
-    for key, pattern in _LABELS:
+    for key, pattern in labels:
         match = re.search(pattern, folded_block)
         if match:
             hits.append((match.start(), match.end(), key))
@@ -171,9 +189,101 @@ def _area(value: str) -> dict | None:
     })
 
 
+def _gender(value: str) -> str:
+    folded = _fold(_clean(value))
+    if re.search(r"\bnu\b", folded):
+        return "Nữ"
+    if re.search(r"\bnam\b", folded):
+        return "Nam"
+    return ""
+
+
+def _birth_date(value: str) -> str:
+    """Ngày sinh dd/mm/yyyy; tờ khai cũ nhiều khi chỉ ghi năm."""
+    match = _ANY_DATE_RE.search(_fold(value))
+    if match:
+        day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+        if 1 <= day <= 31 and 1 <= month <= 12:
+            return f"{day:02d}/{month:02d}/{year}"
+    year_only = re.search(r"(?<!\d)(1[89]\d{2}|20\d{2})(?!\d)", str(value or ""))
+    return year_only.group(1) if year_only else ""
+
+
+def _name_key(value) -> str:
+    return re.sub(r"\s+", " ", _fold(str(value or ""))).strip()
+
+
+def subject_fields(ocr_text: str) -> dict:
+    """Đọc khối NGƯỜI ĐƯỢC thay đổi/cải chính của tờ khai -> dict ChuThe_* (bỏ ô trống)."""
+    block, folded_block = _block(ocr_text or "", _SUBJECT_START, _SUBJECT_END)
+    if not block:
+        return {}
+
+    values = _labeled_values(block, folded_block, _SUBJECT_LABELS)
+    id_line = values.get("giayTo", "")
+    out = {
+        "ChuThe_HoTen": values.get("hoTen", ""),
+        "ChuThe_NgaySinh": _birth_date(values.get("ngaySinh", "")),
+        "ChuThe_GioiTinh": _gender(values.get("gioiTinh", "")),
+        # Dân tộc chỉ nhận khi tờ khai ghi rõ; ô để trống tuyệt đối không suy đoán.
+        "ChuThe_DanToc": _clean(values.get("danToc", "")),
+        "ChuThe_QuocTich": _clean(values.get("quocTich", "")),
+        "ChuThe_SoDinhDanh": _identity_number(id_line),
+        "ChuThe_NgayCapGiayTo": _issue_date(values.get("ngayCap", ""), values.get("noiCap", ""), id_line),
+        "ChuThe_NoiCapGiayTo": _issuer(values.get("noiCap", "")),
+        "ChuThe_NoiCuTru": _area(values.get("noiCuTru", "")),
+    }
+    return {name: value for name, value in out.items() if value}
+
+
+def _same_subject(agent: dict, subject: dict) -> bool:
+    """Nhóm ChuThe_* của agent có đúng là người mà tờ khai nêu đích danh hay không."""
+    decl_id = re.sub(r"\D", "", str(subject.get("ChuThe_SoDinhDanh") or ""))
+    agent_id = re.sub(r"\D", "", str(agent.get("ChuThe_SoDinhDanh") or ""))
+    if decl_id and agent_id:
+        return decl_id == agent_id
+    decl_name = _name_key(subject.get("ChuThe_HoTen"))
+    agent_name = _name_key(agent.get("ChuThe_HoTen"))
+    if decl_name and agent_name:
+        return decl_name == agent_name
+    # Không đủ bằng chứng để kết luận khác người → giữ nguyên agent, chỉ bù ô thiếu.
+    return True
+
+
+def _apply_subject(fields: list[dict], subject: dict, comp_by_name: dict[str, str]) -> list[dict]:
+    """Tờ khai nêu ĐÍCH DANH người được thay đổi/cải chính ở khối "cho người có tên dưới đây".
+
+    Hồ sơ thường kèm cả giấy khai sinh/kết hôn/khai tử của NGƯỜI KHÁC (con, cha, mẹ...) làm giấy
+    tờ chứng minh, và agent hay lấy nhầm chủ thể của giấy đó vào ChuThe_*. Khác người thì THAY
+    TOÀN BỘ nhóm ChuThe_* bằng khối tờ khai; cùng người thì chỉ bù các ô agent bỏ sót.
+    """
+    if not subject.get("ChuThe_HoTen"):
+        return fields
+
+    agent = {
+        field.get("name"): field.get("value")
+        for field in fields
+        if field.get("value") not in (None, "", {}, [])
+    }
+    kept = fields if _same_subject(agent, subject) else [
+        field for field in fields
+        if not str(field.get("name") or "").startswith("ChuThe_")
+    ]
+    present = {
+        field.get("name")
+        for field in kept
+        if field.get("value") not in (None, "", {}, [])
+    }
+    return kept + [
+        {"name": name, "comp": comp_by_name.get(name, "x-input"), "value": value}
+        for name, value in subject.items()
+        if name not in present
+    ]
+
+
 def requester_fields(ocr_text: str) -> dict:
     """Đọc khối người yêu cầu của tờ khai -> dict NguoiYeuCau_* (bỏ ô trống)."""
-    block, folded_block = _requester_block(ocr_text or "")
+    block, folded_block = _block(ocr_text or "", _REQUESTER_START, _REQUESTER_END)
     if not block:
         return {}
 
@@ -193,7 +303,8 @@ def requester_fields(ocr_text: str) -> dict:
 
 
 def fill_missing(fields: list[dict], ocr_text: str, comp_by_name: dict[str, str]) -> list[dict]:
-    """Bù các field người yêu cầu mà agent bỏ sót; KHÔNG ghi đè giá trị agent đã trả."""
+    """Bù field người yêu cầu agent bỏ sót và chốt lại chủ thể theo khối tờ khai."""
+    fields = _apply_subject(fields, subject_fields(ocr_text), comp_by_name)
     present = {
         field.get("name")
         for field in fields

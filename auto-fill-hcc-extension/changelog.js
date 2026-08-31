@@ -3,17 +3,6 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
-    version: "1.15",
-    date: "27/8/2026",
-    items: [
-      "Hộ kinh doanh — Đăng ký thay đổi nội dung: khi đổi chủ hộ, tự chốt \"Loại đăng ký thay đổi\" và \"Lý do thay đổi thông tin chủ hộ kinh doanh\" thành bước riêng, tránh điền hụt do 2 ô này phụ thuộc lẫn nhau.",
-      "Hộ kinh doanh — Người nộp hồ sơ: đối chiếu chính xác hơn tài khoản đang đăng nhập với chủ hộ trên hồ sơ để tự chọn đúng \"Người có thẩm quyền ký\" hay \"Người được ủy quyền\".",
-      "Bổ sung thủ tục Tạm ngừng kinh doanh và nhiều liên kết kê khai còn thiếu cho nhóm thủ tục đất đai, hộ tịch, chính sách xã hội.",
-      "Chuẩn hoá lại một số mã thủ tục đất đai theo phiên bản mới nhất tại Đà Nẵng và Quảng Ninh.",
-      "Cải thiện độ ổn định khi điền các ô chọn có cascade (đổi ô này làm hiện lại danh sách của ô khác) trên biểu mẫu hộ kinh doanh.",
-    ],
-  },
-  {
     version: "1.14",
     date: "23/8/2026",
     items: [

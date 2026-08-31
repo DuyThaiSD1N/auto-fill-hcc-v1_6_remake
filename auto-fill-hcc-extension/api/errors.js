@@ -15,10 +15,7 @@ const ERROR_MESSAGES = {
   PAYLOAD_TOO_LARGE: "Tổng dung lượng các tệp quá lớn.",
   BAD_FILE_TYPE: "Loại tệp này không được hỗ trợ.",
   FILE_NOT_FOUND: "Không tìm thấy tệp.",
-  // BE ném mã này cho CẢ hai trường hợp: key thủ tục lạ, VÀ thủ tục có trong registry nhưng chưa có
-  // pipeline bóc tách (chưa khai ở _PIPELINE). Câu cũ "Thủ tục không hợp lệ." sai bản chất ở vế sau —
-  // cán bộ thấy panel nhận diện đúng tên thủ tục rồi lại báo không hợp lệ nên tưởng hỏng nhận diện.
-  UNKNOWN_PROCEDURE: "Thủ tục này chưa hỗ trợ quét và nhập dữ liệu tự động.",
+  UNKNOWN_PROCEDURE: "Thủ tục không hợp lệ.",
   UNKNOWN_ATTACHMENT_PROCEDURE: "Thủ tục này chưa hỗ trợ đính kèm.",
   UNSUPPORTED_ATTACHMENT_PROCEDURE: "Thủ tục này chưa hỗ trợ đính kèm.",
   SESSION_NOT_FOUND: "Phiên đã hết hạn. Vui lòng tạo phiên/mã QR mới.",

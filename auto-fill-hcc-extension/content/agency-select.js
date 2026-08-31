@@ -452,8 +452,21 @@
     });
   }
 
+  // Trang chi tiết DVCQG đã định danh thủ tục ngay trong route. Không chờ thẻ "Chọn cơ quan
+  // thực hiện" render mới kết luận, vì trong nhịp tải đầu popup sẽ hiểu nhầm đây là trang chủ và
+  // hiện lại màn tìm/chọn thủ tục dù URL đã đủ để auto-detect.
+  function isProcedureDetailPage(rawUrl = location.href) {
+    try {
+      const url = new URL(rawUrl);
+      return url.hostname === "dichvucong.gov.vn"
+        && /^\/thu-tuc-hanh-chinh\/[^/]+\/?$/.test(url.pathname);
+    } catch (_) {
+      return false;
+    }
+  }
+
   function flowState() {
-    const onProcedurePage = !!findAgencyCard();
+    const onProcedurePage = isProcedureDetailPage() || !!findAgencyCard();
     const infoModal = !!findInfoModal();
     const ownerInfo = ownerInfoStep();
     const ready = formReady();

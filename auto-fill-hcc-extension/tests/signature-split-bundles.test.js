@@ -44,16 +44,14 @@ function plain(value) {
   assert.equal(withIdentity.bundles.length, 2, "Số tab phải bằng số tài liệu STT1");
   assert.deepEqual(
     plain(withIdentity.bundles.map((bundle) => bundle.files.map((item) => item.name))),
-    [["TLA.pdf", "CCCD.pdf"], ["TLB.pdf", "CCCD.pdf"]]
+    [["TLA.pdf", "CCCD.pdf"], ["TLB.pdf"]]
   );
   assert.deepEqual(
     plain(withIdentity.bundles.map((bundle) => bundle.planItems.map((item) => item.componentIndex))),
-    [[1, 2], [null, 2]]
+    [[1, 2], [null]]
   );
-  assert.ok(
-    withIdentity.bundles.every((bundle) => bundle.files[1] === cccd),
-    "Mọi tab phải dùng lại đúng cùng file CCCD ở STT2"
-  );
+  assert.equal(withIdentity.bundles[0].files[1], cccd, "CCCD chỉ dùng ở STT2 của tab đầu tiên");
+  assert.equal(withIdentity.bundles[1].files.length, 1, "Tab tiếp theo không được đính lặp CCCD");
 
   const withoutIdentity = await context.buildSignatureSplitBundles(
     [tla, tlb],
@@ -74,7 +72,7 @@ function plain(value) {
   );
   assert.match(identityOnly.error, /STT1/);
 
-  console.log("signature split bundles: shared identity per dossier and no-identity fallback passed");
+  console.log("signature split bundles: identity only on first dossier and no-identity fallback passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

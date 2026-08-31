@@ -277,6 +277,26 @@ input[type="text"] {
 }
 .guide-btn:hover { background: #0d47a1; }
 
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #c7d2df;
+  border-radius: 4px;
+  background: #fff;
+  color: #35516f;
+  font-size: 17px;
+  line-height: 1;
+}
+.settings-btn:hover {
+  background: #edf4fb;
+  border-color: #8faccc;
+  color: #0d47a1;
+}
+
 button {
   width: 100%;
   padding: 7px;
@@ -334,6 +354,10 @@ input, select, textarea { font-family: inherit; }
 }
 
 .secondary-btn:hover { background: #1b5e20; }
+
+/* Trong luồng ba bước Bắc Ninh, nút chính nằm ngay sau nút ủy quyền nên không nhận
+   margin-top của .secondary-btn. Tạo khoảng cách dưới để ba hành động không dính nhau. */
+#proxyFillBtn:not([hidden]) { margin-bottom: 6px; }
 
 /* Trigger thu gọn: 1 dòng, dạng link — mặc định giấy tờ KHÔNG hiện, bấm mới mở. */
 .hint-toggle {
@@ -528,20 +552,6 @@ input, select, textarea { font-family: inherit; }
   margin: 0;
   font-size: 12px;
   padding: 2px 4px;
-}
-
-.file-list .hw-file {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-  color: #555;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.file-list .hw-file input {
-  width: auto;
-  margin: 0;
 }
 
 .file-list .rm {

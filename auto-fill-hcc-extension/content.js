@@ -906,6 +906,27 @@
       attachFilesToRequiredCopyCertification(files).then(sendResponse);
       return true;
     }
+    if (msg?.action === "openBacNinhTab") {
+      if (typeof H.isBacNinhForm === "function" && !H.isBacNinhForm()) return;
+      if (typeof H.activateBacNinhTab !== "function") {
+        sendResponse({ error: "Engine biểu mẫu Bắc Ninh chưa sẵn sàng." });
+        return true;
+      }
+      Promise.resolve(H.activateBacNinhTab(msg.tabName)).then(sendResponse)
+        .catch(() => sendResponse({ error: "Không mở được phần biểu mẫu yêu cầu." }));
+      return true;
+    }
+    if (msg.action === "fillBacNinhAuthorizedPerson") {
+      const fields = Array.isArray(msg.fields) ? msg.fields : [];
+      if (typeof H.isBacNinhForm === "function" && !H.isBacNinhForm()) return;
+      if (!fields.length || typeof H.fillAuthorizedPersonBacNinh !== "function") {
+        sendResponse({ error: "Không có dữ liệu người được ủy quyền hoặc engine Bắc Ninh chưa sẵn sàng." });
+        return;
+      }
+      Promise.resolve().then(() => H.fillAuthorizedPersonBacNinh(fields, msg.subjectOption)).then(sendResponse)
+        .catch(() => sendResponse({ error: "Không điền được thông tin người ủy quyền." }));
+      return true;
+    }
     if (msg.action !== "fillFields") return;
     // Content script chạy trên mọi frame; chỉ frame thật sự chứa form mới xử lý.
     // Phát hiện loại form: Angular mới ([formcontrolname]), web-component cũ (x-*),
@@ -2478,7 +2499,10 @@
       }
     }
 
-    if (procedure === "chung-thuc-ban-sao" && items.length > 1) {
+    // Hotfix STT1 file ảo (Đà Nẵng/Hải Châu): plan đã được BE định hình chủ đích (giấy tờ thật đều
+    // target=new, 1 file ảo vào STT1). KHÔNG chạy heuristic đảo CCCD↔STT1 nữa — nếu chạy sẽ đẩy nhầm
+    // giấy tờ thật lên STT1 và biến file ảo (fileName chứa "CCCD") thành bản trùng của giấy tờ thật → bị bỏ qua.
+    if (procedure === "chung-thuc-ban-sao" && items.length > 1 && !items.some((item) => item.virtualCopy)) {
       const existing = items.find((item) => item.target === "existing" || item.needsAddComponent === false);
       const primary = items.find((item) =>
         !isIdentityAttachmentItem(item) &&

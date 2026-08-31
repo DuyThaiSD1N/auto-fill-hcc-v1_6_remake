@@ -115,10 +115,6 @@
           <option value="father">Cha</option>
           <option value="mother">Mẹ</option>
         </select>
-        <label id="handwritingRow" class="checkbox-row">
-          <input id="handwritingToggle" type="checkbox">
-          <span>Có bản viết tay (tất cả)</span>
-        </label>
         <label for="fileInput" class="upload-label">+ Thêm file ảnh/PDF</label>
         <input id="fileInput" type="file" multiple
           accept="image/*,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -133,6 +129,8 @@
           <input id="splitModeToggle" type="checkbox">
           <span>Mỗi tài liệu 1 hồ sơ riêng (tách hồ sơ)</span>
         </label>
+        <button id="proxyFillBtn" class="secondary-btn" hidden
+          title="Điền khối thông tin trong trường hợp được ủy quyền trên cổng Bắc Ninh">Điền thông tin người ủy quyền</button>
         <button id="ocrBtn">Quét và nhập dữ liệu</button>
         <button id="fillAllBtn" class="secondary-btn" hidden
           title="Đăng ký kinh doanh: quét &amp; điền cả 8 trang rồi tự đính kèm hồ sơ">⚡ Quét nhập thông tin và đính
@@ -249,6 +247,8 @@
     <div class="app-footer">
       <a id="guideBtn" class="guide-btn" href="https://kynguyen.io/huong-dan-van-hanh-bot-hcc" target="_blank"
         rel="noopener" title="Mở hướng dẫn sử dụng">Hướng dẫn</a>
+      <button id="settingsBtn" type="button" class="settings-btn" title="Mở cài đặt extension"
+        aria-label="Mở cài đặt extension">⚙</button>
     </div>
   </div>
 

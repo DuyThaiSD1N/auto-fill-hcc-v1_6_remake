@@ -24,7 +24,7 @@ function dataUrlToBlob(dataUrl, fallbackType) {
 
 // Dựng multipart cho /api/v2/process — DÙNG CHUNG cho fill (điền) và attach (đính kèm).
 // Field khớp app/v2/router.py: action, procedure, options(JSON), fileMetadata(JSON), files[] (binary).
-// Metadata per-file phải có name/type/role/hasHandwriting để BE dựng lại FileItem lõi v1.
+// Metadata per-file phải có name/type/role để BE dựng lại FileItem lõi v1.
 function buildV2ProcessForm(action, body) {
   const form = new FormData();
   form.append("action", action);
@@ -35,7 +35,6 @@ function buildV2ProcessForm(action, body) {
     name: (f && f.name) || "file",
     type: (f && f.type) || "application/octet-stream",
     role: (f && f.role) || "doc",
-    hasHandwriting: !!(f && f.hasHandwriting),
   }));
   form.append("fileMetadata", JSON.stringify(fileMetadata));
   for (const f of files) {
@@ -163,10 +162,12 @@ const api = {
   },
 
   // Rà soát bbox: đọc lại sources (field → vùng ảnh) đã chụp lúc process. null nếu chưa có / hết hạn.
-  async getReviewSources(requestId) {
-    if (!requestId) return null;
+  async getReviewSources(requestId, reviewToken) {
+    if (!requestId || !reviewToken) return null;
     try {
-      return await apiJson(`/api/v1/review/${encodeURIComponent(requestId)}/sources`);
+      return await apiJson(
+        `/api/v1/review/${encodeURIComponent(requestId)}/sources?token=${encodeURIComponent(reviewToken)}`,
+      );
     } catch (_) {
       return null; // 404 (thủ tục không bật review / chưa có) → ẩn card, không lỗi
     }

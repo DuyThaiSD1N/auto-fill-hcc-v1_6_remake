@@ -58,6 +58,25 @@
     return out;
   }
 
+  // Khớp ô eForm theo CLASS NGỮ NGHĨA ỔN ĐỊNH `eform-element-<Key>` (vd KinhGui, 211ThuaDatSo,
+  // CoQuanCapNYC). Bền hơn khớp NHÃN vì nhiều ô trùng title ("Cơ quan cấp"/"cấp ngày"/"Số"). Dùng
+  // attribute selector [class~="..."] để né vấn đề escape với key bắt đầu bằng số (211…, 11…).
+  function findElementByClass(name) {
+    const key = String(name || "").trim();
+    if (!key) return null;
+    let el = null;
+    try {
+      el = document.querySelector(
+        `input[class~="eform-element-${key}"], textarea[class~="eform-element-${key}"]`,
+      );
+    } catch { el = null; }
+    if (el && /^(input|textarea)$/i.test(el.tagName)) {
+      const type = (el.getAttribute("type") || "text").toLowerCase();
+      if (!["file", "checkbox", "radio", "hidden"].includes(type)) return el;
+    }
+    return null;
+  }
+
   // Khớp ô theo NAME cố định (chấp nhận name có hoặc chưa có prefix portlet). Trả input/textarea.
   function findElementByName(name) {
     const raw = String(name || "").trim();
@@ -175,9 +194,9 @@
         continue;
       }
 
-      // Field tên CỐ ĐỊNH của cổng (vd người nhận kết quả `nhanTaiNhahoTen`): khớp theo NAME trước;
-      // ô thân đơn `element_*` không có name kiểu này nên sẽ rơi xuống khớp theo NHÃN.
-      const el = findElementByName(name) || findElementByLabel(elements, name);
+      // Thứ tự khớp: (1) CLASS eform-element-<Key> (ổn định, phân biệt được title trùng) →
+      // (2) NAME cố định của cổng (vd `nhanTaiNhahoTen`) → (3) NHÃN (title) cho ô thân đơn nhãn duy nhất.
+      const el = findElementByClass(name) || findElementByName(name) || findElementByLabel(elements, name);
       if (!el) {
         unmatched.push(name);
         continue;
@@ -201,6 +220,46 @@
     };
   }
 
+  async function activateBacNinhTab(tabName) {
+    const name = String(tabName || "").trim();
+    if (!name) return { error: "Thiếu tên phần biểu mẫu Bắc Ninh." };
+    const tab = document.querySelector(`li[data-tab-name="${CSS.escape(name)}"]`);
+    const link = tab && tab.querySelector("a");
+    if (!tab || !link) return { error: `Không thấy phần "${name}" trên biểu mẫu Bắc Ninh.` };
+    if (!link.classList.contains("active")) {
+      link.click();
+      await sleep(250);
+    }
+    return { ok: true, tabName: name };
+  }
+
+  async function fillAuthorizedPersonBacNinh(fields, subjectOption) {
+    const optionText = String(subjectOption || "").trim();
+    if (!optionText) return { error: "Thiếu loại đối tượng ủy quyền cần chọn." };
+    const checkbox = document.querySelector(
+      `input[type="checkbox"][name="${PFX}boSungDoituongKhac"]`,
+    );
+    if (!checkbox) return { error: "Không thấy khối Thông tin trong trường hợp được ủy quyền." };
+    setChecked(checkbox);
+    const typeSelect = document.querySelector(`select[name="${PFX}loaiDoiTuongKhac"]`);
+    if (!typeSelect || !(await fillSelect2ByTextAsync(typeSelect, optionText))) {
+      return { error: `Không chọn được đối tượng ủy quyền "${optionText}".` };
+    }
+    // Đổi loại đối tượng khiến Liferay nạp khối chi tiết bằng AJAX. Chờ ô đầu tiên xuất hiện trước
+    // khi fill để tránh trạng thái nút đã bấm nhưng toàn bộ field bị unmatched.
+    for (let i = 0; i < 15; i++) {
+      if (document.querySelector(`[name="${PFX}doiTuongKhachoTen"]`)) break;
+      await sleep(200);
+    }
+    if (!document.querySelector(`[name="${PFX}doiTuongKhachoTen"]`)) {
+      return { error: "Cổng chưa tải xong khối thông tin người được ủy quyền. Vui lòng bấm lại." };
+    }
+    return fillFormBacNinh(fields);
+  }
+
+  const fillAuthorizedElderlyBacNinh = (fields) =>
+    fillAuthorizedPersonBacNinh(fields, "Người cao tuổi");
+
   // Nhãn của 1 radio/checkbox: label[for], hoặc text trong .form-check, hoặc text kề ngay sau input.
   function radioLabelText(input) {
     if (input.id) {
@@ -219,23 +278,32 @@
     return acc;
   }
 
-  // Tick các radio/checkbox trên form Bắc Ninh mà NHÃN kề chứa 1 trong các cụm mong muốn.
+  // Tick các radio/checkbox trên form Bắc Ninh mà NHÃN kề khớp cụm mong muốn. Xét TỪNG want:
+  //   - Nếu có ô nhãn TRÙNG KHỚP CHÍNH XÁC (fold(label) === fold(want)) → chỉ tick ô đó. Tránh tick
+  //     nhầm option DÀI chứa cụm này, vd "Bên thế chấp" ⊂ "Người đại diện của bên thế chấp, bên nhận…".
+  //   - Không có exact → giữ hành vi cũ: tick MỌI ô có nhãn CHỨA cụm (cho phép 1 want tick nhiều checkbox).
   function tickRadiosByLabel(wants) {
-    const wantsFold = wants.map(fold).filter(Boolean);
-    if (!wantsFold.length) return false;
+    const wantList = (Array.isArray(wants) ? wants : [wants]).map(fold).filter(Boolean);
+    if (!wantList.length) return false;
     const inputs = document.querySelectorAll(
       `input[type="radio"][name^="${PFX}"], input[type="checkbox"][name^="${PFX}element_"]`,
     );
-    let hit = 0;
+    const labeled = [];
     for (const el of inputs) {
       const lbl = fold(radioLabelText(el));
-      if (!lbl) continue;
-      if (!wantsFold.some((w) => lbl.includes(w))) continue;
-      try {
-        setChecked(el);
-        H.markFilled && H.markFilled(el.closest(".form-check, label, div") || el);
-        hit++;
-      } catch { /* bỏ qua ô lỗi */ }
+      if (lbl) labeled.push({ el, lbl });
+    }
+    let hit = 0;
+    for (const w of wantList) {
+      const exact = labeled.filter((x) => x.lbl === w);
+      const targets = exact.length ? exact : labeled.filter((x) => x.lbl.includes(w));
+      for (const t of targets) {
+        try {
+          setChecked(t.el);
+          H.markFilled && H.markFilled(t.el.closest(".form-check, label, div") || t.el);
+          hit++;
+        } catch { /* bỏ qua ô lỗi */ }
+      }
     }
     return hit > 0;
   }
@@ -453,6 +521,9 @@
   Object.assign(H, {
     isBacNinhForm,
     fillFormBacNinh,
+    activateBacNinhTab,
+    fillAuthorizedPersonBacNinh,
+    fillAuthorizedElderlyBacNinh,
     attachBacNinhByPlan,
   });
 })();

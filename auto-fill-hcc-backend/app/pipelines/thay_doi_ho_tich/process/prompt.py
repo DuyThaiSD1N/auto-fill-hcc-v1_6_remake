@@ -10,15 +10,31 @@ EXTRA_RULES = """
 Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai bên kết hôn) và metadata hồ sơ gốc.
 </procedure>
 
+<source_priority>
+- TỜ KHAI THẮNG TẤT CẢ (QUAN TRỌNG NHẤT): nếu đầu vào CÓ tờ khai đăng ký thay đổi/cải chính/bổ sung
+  thông tin hộ tịch/xác định lại dân tộc, thì CHÍNH TỜ KHAI là nguồn quyết định:
+  + ChuThe_* = người ở khối "cho người có tên dưới đây" của TỜ KHAI.
+  + HoSo_So/HoSo_QuyenSo/HoSo_NgayDangKy/HoSo_NoiDangKy = dòng "Đã đăng ký <sự kiện> tại <cơ quan>
+    ngày <D> số <N> quyển số <Q>" của TỜ KHAI; LoaiSuKien theo đúng sự kiện ghi ở dòng đó.
+  Mọi giấy khai sinh / trích lục kết hôn / trích lục khai tử kèm theo chỉ là GIẤY TỜ CHỨNG MINH và
+  RẤT THƯỜNG là của NGƯỜI KHÁC (con, cha, mẹ, người ủy quyền...). TUYỆT ĐỐI KHÔNG lấy chủ thể hay
+  số/quyển/ngày/nơi đăng ký của những giấy đó khi tờ khai đã ghi rõ — kể cả khi giấy đó là GIẤY KHAI SINH.
+  Chỉ dùng chúng để BỔ SUNG ô mà tờ khai bỏ trống, và chỉ khi giấy đó đúng là của người trong tờ khai
+  (đối chiếu họ tên + ngày sinh + số định danh).
+- KHÔNG có tờ khai thì mới chọn giấy tờ hộ tịch chính theo <event_type> bên dưới.
+</source_priority>
+
 <event_type>
 - Chỉ nhận diện LoaiSuKien từ GIẤY TỜ HỘ TỊCH hoặc TỜ KHAI, tuyệt đối KHÔNG lấy CCCD/CMND làm
   giấy hộ tịch chính. Các dòng "Ngày sinh" trên CCCD không phải căn cứ để chọn LoaiSuKien="birth".
-- ƯU TIÊN GIẤY KHAI SINH (QUAN TRỌNG): nếu đầu vào có NHIỀU giấy tờ hộ tịch cùng lúc (vd vừa có GIẤY KHAI SINH
-  vừa có GIẤY CHỨNG NHẬN KẾT HÔN, hoặc thêm giấy khác), thì LUÔN chọn GIẤY KHAI SINH làm giấy tờ hộ tịch CHÍNH:
+- ƯU TIÊN GIẤY KHAI SINH — CHỈ ÁP DỤNG KHI KHÔNG CÓ TỜ KHAI: nếu đầu vào KHÔNG có tờ khai mà có NHIỀU
+  giấy tờ hộ tịch cùng lúc (vd vừa có GIẤY KHAI SINH vừa có GIẤY CHỨNG NHẬN KẾT HÔN, hoặc thêm giấy khác),
+  thì chọn GIẤY KHAI SINH làm giấy tờ hộ tịch CHÍNH:
   → LoaiSuKien="birth"; TenGiayTo theo giấy khai sinh; trích CHỦ THỂ (người được khai sinh/con) vào nhóm ChuThe_*;
   HoSo_So/HoSo_QuyenSo/HoSo_NgayDangKy/HoSo_NoiDangKy lấy TỪ GIẤY KHAI SINH (số/quyển/ngày/nơi ĐĂNG KÝ KHAI SINH).
-  TUYỆT ĐỐI KHÔNG chọn giấy kết hôn (hay giấy khác) làm nguồn chính khi ĐÃ CÓ giấy khai sinh. Chỉ khi KHÔNG có
+  KHÔNG chọn giấy kết hôn (hay giấy khác) làm nguồn chính khi ĐÃ CÓ giấy khai sinh. Chỉ khi KHÔNG có
   giấy khai sinh mới xét đến kết hôn/khai tử.
+  CÓ TỜ KHAI thì quy tắc này KHÔNG áp dụng — theo <source_priority>.
 - LoaiSuKien = "birth" nếu giấy tờ là Giấy khai sinh/Trích lục khai sinh.
 - LoaiSuKien = "marriage" nếu là Giấy chứng nhận kết hôn/Trích lục kết hôn, hoặc giấy lịch sử có
   tiêu đề/nội dung "HÔN THÚ", "GIẤY CHỨNG NHẬN TẠM THAY HÔN THÚ", "đã kết hôn"
@@ -86,7 +102,9 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
 - TRƯỜNG HỢP đầu vào là TỜ KHAI ĐĂNG KÝ VIỆC THAY ĐỔI/CẢI CHÍNH/BỔ SUNG THÔNG TIN HỘ TỊCH/XÁC ĐỊNH LẠI DÂN TỘC
   (tiêu đề tờ khai, KHÔNG phải giấy khai sinh/trích lục):
   + NGƯỜI ĐƯỢC thay đổi/cải chính nằm ở KHỐI "cho người có tên dưới đây" (ngay sau cụm "Đề nghị cơ quan đăng ký
-    ... cho người có tên dưới đây"). Trích ĐẦY ĐỦ danh tính người này vào nhóm ChuThe_*: ChuThe_HoTen,
+    ... cho người có tên dưới đây"). ĐÂY LÀ NGUỒN DUY NHẤT cho ChuThe_* khi có tờ khai — người ở khối này
+    THƯỜNG KHÁC người yêu cầu và KHÁC chủ thể của giấy khai sinh/kết hôn/khai tử nộp kèm; lấy nhầm sang
+    người của giấy nộp kèm là SAI. Trích ĐẦY ĐỦ danh tính người này vào nhóm ChuThe_*: ChuThe_HoTen,
     ChuThe_NgaySinh (dd/mm/yyyy), ChuThe_GioiTinh, ChuThe_DanToc, ChuThe_QuocTich, ChuThe_SoDinhDanh,
     ChuThe_SoGiayTo, ChuThe_NgayCapGiayTo, ChuThe_NoiCapGiayTo, ChuThe_NoiCuTru.
   + ChuThe_NoiCuTru phải lấy đúng dòng "Nơi cư trú" trong KHỐI NGƯỜI ĐƯỢC thay đổi/cải chính
@@ -116,6 +134,9 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
   + SỰ KIỆN HỘ TỊCH LIÊN QUAN đã đăng ký (vd "Đã đăng ký kết hôn/khai sinh tại <cơ quan> ... số <N> quyển <Q>
     ngày <D>") → HoSo_So=<N>, HoSo_QuyenSo=<Q>, HoSo_NgayDangKy=<D>, HoSo_NoiDangKy=<cơ quan>; LoaiSuKien theo
     sự kiện đó (kết hôn→"marriage", khai sinh→"birth", khai tử→"death").
+    Dòng này của TỜ KHAI ưu tiên hơn số/quyển/ngày/nơi đăng ký in trên giấy khai sinh nộp kèm — giấy kèm
+    thường là của NGƯỜI KHÁC. Chỉ ô nào tờ khai để TRỐNG mới lấy từ giấy kèm, và chỉ khi giấy kèm đúng là
+    của người trong khối "cho người có tên dưới đây".
   + NoiDungThayDoi = mục "Nội dung: ..." (nội dung đề nghị cải chính, vd "Cải chính tên từ X sang Y").
   + LyDo = mục "Lý do: ..." nếu có.
   + ViecDangKy = LOẠI VIỆC đăng ký, đọc ở dòng "Đề nghị cơ quan đăng ký việc <X> ... cho người có tên dưới đây".

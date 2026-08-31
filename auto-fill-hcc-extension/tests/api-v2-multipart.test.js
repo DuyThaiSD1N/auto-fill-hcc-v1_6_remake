@@ -43,7 +43,6 @@ globalThis.testBuildV2ProcessForm = buildV2ProcessForm;
     name: "ho-so.pdf",
     type: "application/pdf",
     role: "doc",
-    hasHandwriting: true,
     dataUrl: `data:application/pdf;base64,${binary.toString("base64")}`,
   };
 
@@ -77,7 +76,7 @@ globalThis.testBuildV2ProcessForm = buildV2ProcessForm;
 
   const metadata = JSON.parse(calls[0].options.body.get("fileMetadata"));
   assert.equal(metadata[0].name, "ho-so.pdf");
-  assert.equal(metadata[0].hasHandwriting, true);
+  assert.equal(metadata[0].role, "doc");
   const blob = calls[0].options.body.getAll("files")[0];
   assert.equal(blob.type, "application/pdf");
   assert.deepEqual(Buffer.from(await blob.arrayBuffer()), binary);

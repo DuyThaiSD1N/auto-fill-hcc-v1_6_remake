@@ -16,7 +16,7 @@ const PdfConvert = {
     return {
       name: `${name}.pdf`,
       type: "application/pdf",
-      dataUrl: `data:application/pdf;base64,${segments.map((item) => item.pageIndexes.join("-")).join("_")}`,
+      dataUrl: `data:application/pdf;base64,${segments.map((item) => (item.pageIndexes || ["all"]).join("-")).join("_")}`,
     };
   },
   async mergeToPdf(files, name) {
@@ -65,7 +65,24 @@ function plain(value) {
   assert.equal(legacy.files.length, 1);
   assert.equal(calls[0].kind, "merge", "Contract sourceFileIndexes cũ vẫn phải dùng mergeToPdf");
 
-  console.log("attachment source segments: split mixed PDF and preserve legacy merge passed");
+  calls.length = 0;
+  const fullFileSegments = await context.applyMergeGroups(
+    [files[0], { ...files[0], name: "hoc-ba-2.pdf" }, { ...files[0], name: "hoc-ba-3.pdf" }],
+    [{
+      fileIndex: 0,
+      documentName: "Học bạ Nguyễn Quốc Việt",
+      sourceSegments: [
+        { fileIndex: 0, pageIndexes: null },
+        { fileIndex: 1, pageIndexes: null },
+        { fileIndex: 2, pageIndexes: null },
+      ],
+    }]
+  );
+  assert.equal(fullFileSegments.files.length, 1, "Ba phần học bạ phải thành một PDF logic");
+  assert.equal(calls[0].kind, "segments");
+  assert.deepEqual(plain(calls[0].segments.map((item) => item.fileIndex)), [0, 1, 2]);
+
+  console.log("attachment source segments: split mixed PDF, merge full files, preserve legacy merge passed");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

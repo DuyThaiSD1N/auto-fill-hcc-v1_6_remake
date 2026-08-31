@@ -84,7 +84,7 @@ assert.match(
 );
 assert.match(
   source,
-  /businessFillSupportCode,\s*\n\s*hasHandwriting:/,
+  /businessFillSupportCode,\s*\n\s*files:/,
   "Mã fill HKD phải sống cùng session theo tab qua các lần WebForms postback",
 );
 assert.ok(

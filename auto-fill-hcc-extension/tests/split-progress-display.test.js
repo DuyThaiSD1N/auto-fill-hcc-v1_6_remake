@@ -48,4 +48,20 @@ assert.deepEqual(
   }
 );
 
+assert.match(
+  popup,
+  /async function clearSplitProgressForCurrentTab\(\)[\s\S]*?progress\.originTabId[\s\S]*?chrome\.storage\.local\.remove\(SPLIT_ATTACH_PROGRESS_KEY\)/,
+  "Chỉ được xóa tiến độ split thuộc đúng tab hiện tại",
+);
+assert.match(
+  popup,
+  /newSessionBtn\.addEventListener\("click", async \(\) => \{[\s\S]*?await clearSession\(\);[\s\S]*?await clearSplitProgressForCurrentTab\(\);/,
+  "Tạo phiên mới phải xóa banner tiến độ cũ",
+);
+assert.match(
+  popup,
+  /if \(shouldResetProcedureWork\(next\.key\)\) \{[\s\S]*?resetProcedureWorkState\(\);[\s\S]*?await clearSplitProgressForCurrentTab\(\);/,
+  "Đổi thủ tục phải xóa banner tiến độ cũ",
+);
+
 console.log("split progress display: running, paused, completed and partial copy passed");

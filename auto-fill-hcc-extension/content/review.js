@@ -10,6 +10,7 @@
   let SRC_BY_NAME = null;
   let SRC_BASE = "";
   let SRC_CONV = ""; // = requestId của phiên process
+  let SRC_TOKEN = ""; // capability ngắn hạn, chỉ đọc ảnh của đúng requestId
   let SRC_ORDER = []; // [name,...] theo thứ tự layout — cho nút Trước/Sau
   let SRC_IDX = -1;
   let HANDLERS_BOUND = false;
@@ -69,7 +70,7 @@
     const nm = host.getAttribute && host.getAttribute("name");
     const idx = nm ? SRC_ORDER.indexOf(nm) : -1;
     if (idx >= 0) SRC_IDX = idx;
-    const imageUrl = `${SRC_BASE}/api/v1/review/${encodeURIComponent(SRC_CONV)}/image?index=${src.imageIndex || 0}`;
+    const imageUrl = `${SRC_BASE}/api/v1/review/${encodeURIComponent(SRC_CONV)}/image?index=${src.imageIndex || 0}&token=${encodeURIComponent(SRC_TOKEN)}`;
     let note = "";
     if (!src.bbox) {
       note = "AI chưa định vị được vùng chính xác trên ảnh — vui lòng tự đối chiếu.";
@@ -136,6 +137,7 @@
       SRC_BY_NAME = msg.sourcesByName || {};
       SRC_BASE = String(msg.baseUrl || "").replace(/\/+$/, "");
       SRC_CONV = msg.requestId || "";
+      SRC_TOKEN = msg.reviewToken || "";
       ensureSourceHandlers();
       buildSrcOrder();
       sendResponse({ ok: true, count: SRC_ORDER.length });
