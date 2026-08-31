@@ -153,6 +153,18 @@ def enrich(fields: list[dict]) -> list[dict]:
         add(f"SoLanKetHon_{dst}", so_lan or None)
         add(f"LoaiTinhTrangHonNhan_{dst}", status_label)
 
+        # Đã ly hôn → cổng hiện thêm khối "Số bản án/Quyết định ly hôn" (số, ngày cấp, cơ quan cấp).
+        # Add SAU dropdown tình trạng hôn nhân vì khối này chỉ được render khi dropdown vừa chọn xong.
+        if status_cat == "ly_hon":
+            decision = {
+                "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
+                "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
+                "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
+            }
+            decision = {k: v for k, v in decision.items() if v}
+            if decision:
+                add(f"TTHN_LyHon{dst}", decision)
+
     add_person("CccdNu", "BenNu")
     add_person("CccdNam", "BenNam")
     return out

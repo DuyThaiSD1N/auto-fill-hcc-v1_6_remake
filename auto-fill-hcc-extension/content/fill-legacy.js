@@ -688,6 +688,20 @@ function foldLegacyChoice(value) {
     .toLowerCase();
 }
 
+// Khớp "lỏng" phải theo RANH GIỚI TỪ, không phải includes() thô: dân tộc "Hán" nằm lọt trong
+// "Kháng" ("k|hán|g") nên includes() chọn nhầm "Kháng" cho người Trung Quốc (lỗi đã gặp ở thủ tục
+// kết hôn có yếu tố nước ngoài). Chỉ chấp nhận khi chuỗi cần tìm đứng trọn vẹn giữa hai ranh giới
+// không phải chữ/số.
+function legacyChoiceHasWord(haystack, needle) {
+  if (!haystack || !needle) return false;
+  const escaped = String(needle).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  try {
+    return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}([^\\p{L}\\p{N}]|$)`, "u").test(haystack);
+  } catch {
+    return haystack.includes(needle);
+  }
+}
+
 async function pickInWidget(root, value) {
   const header = root.querySelector(".input-field-select");
   if (!header) return false;
@@ -698,38 +712,52 @@ async function pickInWidget(root, value) {
     const box = root.querySelector(".input-field-select-options");
     return box ? Array.from(box.querySelectorAll("div")) : [];
   };
-  const match = () => {
-    const opts = getOpts().filter((o) => !isPlaceholderOpt(norm(o.textContent)));
+  const realOpts = () => getOpts().filter((o) => !isPlaceholderOpt(norm(o.textContent)));
+  // Khớp CHÍNH XÁC (nguyên văn hoặc chỉ khác dấu/hoa-thường) — luôn được ưu tiên tuyệt đối.
+  const exactMatch = () => {
+    const opts = realOpts();
     return opts.find((o) => norm(o.textContent) === want) ||
-           opts.find((o) => norm(o.textContent).includes(want)) ||
+           opts.find((o) => foldLegacyChoice(o.textContent) === foldedWant) ||
+           null;
+  };
+  // Khớp lỏng theo ranh giới từ (option chứa trọn cụm cần tìm hoặc ngược lại).
+  const looseMatch = () => {
+    const opts = realOpts();
+    return opts.find((o) => legacyChoiceHasWord(norm(o.textContent), want)) ||
            opts.find((o) => {
              const foldedOption = foldLegacyChoice(o.textContent);
-             return foldedOption === foldedWant ||
-               foldedOption.includes(foldedWant) || foldedWant.includes(foldedOption);
-           });
+             return legacyChoiceHasWord(foldedOption, foldedWant) ||
+               legacyChoiceHasWord(foldedWant, foldedOption);
+           }) ||
+           null;
   };
+  const match = () => exactMatch() || looseMatch();
 
   // Chờ option thật xuất hiện (list có thể load AJAX sau khi mở)
   await waitFor(() => getOpts().some((o) => !isPlaceholderOpt(norm(o.textContent))), 3000);
 
-  // 1) Thử khớp trên danh sách ĐẦY ĐỦ (không gõ search) — quan trọng cho Quốc gia,
-  //    vì bộ lọc của dropdown có thể khắt khe dấu/hoa-thường và lọc sạch hết.
-  let target = match();
+  // 1) Thử khớp CHÍNH XÁC trên danh sách ĐẦY ĐỦ (không gõ search) — quan trọng cho Quốc gia,
+  //    vì bộ lọc của dropdown có thể khắt khe dấu/hoa-thường và lọc sạch hết. CHƯA khớp lỏng ở
+  //    bước này: danh sách đầy đủ (vd 54 dân tộc) dễ có option "chứa" nhầm, phải nhường cho
+  //    option trùng khít tìm được sau khi lọc.
+  let target = exactMatch();
 
   // 2) Nếu chưa thấy và có ô tìm kiếm: lọc rồi khớp; nếu lọc ra rỗng thì xóa search, quét lại.
   if (!target) {
     const search = root.querySelector('input[placeholder="Tìm kiếm..."]');
     if (search) {
       setNativeValue(search, value);
-      await waitFor(() => match() ||
+      await waitFor(() => exactMatch() ||
         getOpts().some((o) => norm(o.textContent).includes("không tìm thấy")), 2000);
-      target = match();
+      target = exactMatch();
       if (!target && foldedWant !== want) {
         setNativeValue(search, foldedWant);
-        await waitFor(() => match() ||
+        await waitFor(() => exactMatch() ||
           getOpts().some((o) => foldLegacyChoice(o.textContent).includes("khong tim thay")), 2000);
-        target = match();
+        target = exactMatch();
       }
+      // Hết cách khớp chính xác mới chấp nhận khớp lỏng: trên list đã lọc trước, rồi list đầy đủ.
+      if (!target) target = looseMatch();
       if (!target) { setNativeValue(search, ""); await sleep(400); target = match(); }
     } else {
       await waitFor(() => match(), 1500);

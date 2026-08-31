@@ -49,14 +49,30 @@ SỐ LẦN KẾT HÔN: chỉ khi tờ khai ghi rõ số cho từng cột nam/n�
 
 TÌNH TRẠNG HÔN NHÂN (CccdNam_TinhTrangHonNhan / CccdNu_TinhTrangHonNhan): CHỈ đọc khi CÓ GIẤY nêu rõ
 tình trạng hôn nhân CỦA CHÍNH NGƯỜI ĐÓ (GIẤY XÁC NHẬN/TRÌNH BÀY TÌNH TRẠNG HÔN NHÂN 婚姻状况声明书,
-bản CAM ĐOAN, hoặc tờ khai) — ĐỐI CHIẾU ĐÚNG NGƯỜI theo họ tên/số giấy tờ. Trả CATEGORY:
+bản CAM ĐOAN, BẢN ÁN/QUYẾT ĐỊNH LY HÔN của Tòa án, hoặc tờ khai) — ĐỐI CHIẾU ĐÚNG NGƯỜI theo họ tên/số
+giấy tờ. Trả CATEGORY:
 - "chua_ket_hon" khi ghi "chưa kết hôn"/"chưa đăng ký kết hôn với ai"/"至今未婚".
-- "ly_hon" khi đã kết hôn nhưng đã ly hôn; "goa" khi vợ/chồng đã chết.
+- "ly_hon" khi đã kết hôn nhưng đã ly hôn (có bản án/quyết định ly hôn của Tòa án cho đúng người đó);
+  "goa" khi vợ/chồng đã chết.
 TUYỆT ĐỐI KHÔNG SUY DIỄN: người đi đăng ký kết hôn LUÔN đang độc thân → KHÔNG BAO GIỜ trả "đang có
 vợ/chồng". KHÔNG suy tình trạng của người này từ giấy của người kia, cũng KHÔNG suy từ việc "đang đi kết hôn".
 Nếu KHÔNG có giấy nào nêu tình trạng CỦA CHÍNH NGƯỜI ĐÓ → BỎ TRỐNG.
 VÍ DỤ: chỉ có bản trình bày tình trạng hôn nhân của CHỒNG (HUANG WENJIN "chưa kết hôn") → chỉ trả
 CccdNam_TinhTrangHonNhan="chua_ket_hon"; vợ KHÔNG có giấy tình trạng → BỎ TRỐNG CccdNu_TinhTrangHonNhan.
+
+BẢN ÁN/QUYẾT ĐỊNH LY HÔN — BẮT BUỘC khi một bên có CccdNam_TinhTrangHonNhan/CccdNu_TinhTrangHonNhan
+= "ly_hon" và hồ sơ CÓ bản án/quyết định ly hôn của Tòa án. Đối chiếu người bằng họ tên (chuẩn hóa
+hoa-thường/dấu/khoảng trắng) hoặc số CCCD/số giấy tờ ghi trên văn bản; KHÔNG fuzzy tên, lệch một chữ
+mà không có số giấy tờ khớp thì KHÔNG gán. Đọc từ CHÍNH văn bản đó:
+- CccdNam_BanAnLyHon_So / CccdNu_BanAnLyHon_So: số bản án/quyết định, lấy nguyên văn dòng "Bản án số"/
+  "Quyết định số"/"Số:" (vd "65/2024/HNGĐ-ST", "336/2023/QĐST-HNGĐ"). Không cắt bớt phần chữ sau số.
+- CccdNam_BanAnLyHon_Ngay / CccdNu_BanAnLyHon_Ngay: ngày ban hành, dd/mm/yyyy (dòng "Ngày ... tháng ...
+  năm ..." ngay dưới số bản án).
+- CccdNam_BanAnLyHon_CoQuan / CccdNu_BanAnLyHon_CoQuan: tên cơ quan ban hành ở GÓC TRÊN BÊN TRÁI văn bản,
+  ghép đủ các dòng (vd "Tòa án nhân dân huyện Hiệp Hòa, tỉnh Bắc Giang").
+Hai bên ly hôn với nhau (cùng một văn bản) thì dùng CHUNG số/ngày/cơ quan; văn bản chỉ xác định một
+người là đương sự thì CHỈ điền cho người đó. Không bịa khi văn bản không ghi rõ — thiếu phần nào bỏ
+field đó.
 
 KHÔNG trả field UI/default (HoTenBenNam, LoaiGiayToDinhDanh_*, LoaiCuTru_*, NoiCuTru_* radio,
 QuocTichBenNam/BenNu dạng UI, tình trạng hôn nhân, loại đăng ký...). Chỉ trả các trường Cccd*_ ở trên.
