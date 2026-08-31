@@ -358,6 +358,19 @@
       }
     },
     {
+      "key": "thanh-lap-cong-ty-tnhh-hai-thanh-vien",
+      "label": "Đăng ký thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên",
+      "url": "https://dangkyquamang.dkkd.gov.vn/online/Forms/APP/Registration.aspx",
+      "needsAgencySelect": false,
+      "autoConfirm": false,
+      "enterpriseFlow": {
+        "registrationType": "NEW",
+        "registrationLabel": "Thành lập mới doanh nghiệp",
+        "entityValue": "LLC2",
+        "entityLabel": "Công ty trách nhiệm hữu hạn hai thành viên trở lên"
+      }
+    },
+    {
       "key": "dang-ky-thanh-lap-hop-tac-xa",
       "code": "1.005280",
       "label": "Đăng ký thành lập hợp tác xã, liên hiệp hợp tác xã; đăng ký chuyển đổi tổ hợp tác thành hợp tác xã, liên hiệp hợp tác xã khi hợp tác xã, liên hiệp hợp tác xã chia, tách, hợp nhất",

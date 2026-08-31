@@ -784,7 +784,11 @@ function hasDivorceDecisionAreaValue(data) {
       data.soBanAnQuyetDinhLyHon ||
       data.ngayCapBanAnQuyetDinhLyHon ||
       data.coQuanCapBanAnQuyetDinhLyHon ||
-      data.voChongHoTen  // area "đang có vợ/chồng" (=2): thêm tên vợ/chồng
+      data.voChongHoTen ||  // area "đang có vợ/chồng" (=2): thêm tên vợ/chồng
+      // area =5 ("Từ ngày… đến ngày… chưa ĐKKH với ai; hiện tại đang có vợ/chồng"): thêm hai mốc
+      // thời gian của khoảng cần xác nhận.
+      data.thoiDiemBatDau ||
+      data.thoiDiemKetThuc
     )
   );
 }
@@ -822,6 +826,31 @@ function selectAreaDateControls(container) {
   const dateInputs = Array.from(container.querySelectorAll('input[type="date"], input[id$="-day"], input[name$="-day"]'))
     .filter((node) => !node.closest("x-input, x-input-number"));
   return dateInputs.map((node) => node.closest("div") || node.parentElement || node);
+}
+
+/**
+ * Tìm ô ngày theo NHÃN dài đứng cạnh nó, thay vì đếm thứ tự.
+ *
+ * Vùng =5 có ba ô ngày ("Ngày cấp giấy chứng nhận kết hôn", "Thời điểm bắt đầu…", "Thời điểm kết
+ * thúc…") nên đếm thứ tự lệch ngay: ô ngày cấp nuốt mất mốc bắt đầu, rồi field raw ngayCapGiayTo-*
+ * ghi đè lên nó, kết quả là mốc bắt đầu biến mất còn mốc kết thúc nhảy vào ô bắt đầu (lỗi đã gặp
+ * trên cổng thật). Nhãn "thời điểm bắt đầu/kết thúc" là chuỗi dài, riêng biệt — khớp chắc hơn hẳn.
+ */
+function findLabelledDateControl(controls, keyword) {
+  const want = norm(keyword);
+  for (const control of controls) {
+    let node = control;
+    for (let up = 0; up < 4 && node; up += 1) {
+      node = node.parentElement;
+      const text = norm(node?.textContent || "");
+      if (!text) continue;
+      // Kiểm tra dừng phải chạy TRƯỚC: leo tới khối bọc cả vùng thì text đã gộp mọi nhãn, khớp ở
+      // đó sẽ trả về đúng ô đầu danh sách (ô "Ngày cấp giấy chứng nhận kết hôn") — sai hoàn toàn.
+      if (text.includes("thời điểm bắt đầu") && text.includes("thời điểm kết thúc")) break;
+      if (text.includes(want)) return control;
+    }
+  }
+  return null;
 }
 
 function setGenericDateControl(control, value) {
@@ -936,8 +965,13 @@ async function fillDivorceDecisionArea(container, data) {
   // Phần nào byName ĐÃ xử lý (khớp tên thật hoặc tên cũ) thì bỏ qua, KHÔNG suy vị trí lại —
   // tránh ghi đè/lệch ô. Phần còn thiếu mới suy theo thứ tự hiển thị: Số bản án -> Ngày cấp ->
   // Cơ quan cấp. Loại các input byName đã dùng ra khỏi danh sách để index không bị lệch.
-  const remainingText = selectAreaTextControls(container).filter((el) => !byName.used.has(el));
-  const remainingDate = selectAreaDateControls(container).filter((el) => !byName.used.has(el));
+  // used chứa các INPUT đã điền theo tên, còn selectAreaDateControls trả về x-date BỌC chúng — nên
+  // phải loại cả control chứa input đã dùng, nếu không ô "Ngày cấp" sẽ bị điền đè lần hai bằng mốc
+  // thời gian và đẩy lệch toàn bộ phần điền theo vị trí bên dưới.
+  const isUsed = (el) => byName.used.has(el)
+    || [...byName.used].some((node) => el?.contains?.(node));
+  const remainingText = selectAreaTextControls(container).filter((el) => !isUsed(el));
+  const remainingDate = selectAreaDateControls(container).filter((el) => !isUsed(el));
 
   if (data.soBanAnQuyetDinhLyHon && !byName.numberHandled) {
     any = setGenericTextControl(remainingText.shift(), data.soBanAnQuyetDinhLyHon) || any;
@@ -953,6 +987,36 @@ async function fillDivorceDecisionArea(container, data) {
   }
   if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled) {
     any = setGenericTextControl(remainingText.shift(), data.coQuanCapBanAnQuyetDinhLyHon) || any;
+  }
+
+  // Vùng =5 có THÊM hai ô ngày: "Thời điểm bắt đầu/kết thúc của khoảng thời gian mong muốn xác nhận
+  // chưa đăng ký kết hôn với ai". Tên DOM của hai ô này chưa được xác nhận trên cổng nên KHÔNG đoán
+  // tên — điền theo VỊ TRÍ, việc này chắc chắn vì ô "Ngày cấp giấy chứng nhận kết hôn" đã bị khớp
+  // theo tên thật (ngayCapGiayTo-*) và loại khỏi danh sách ở trên, chỉ còn đúng [bắt đầu, kết thúc]
+  // theo thứ tự hiển thị.
+  // Ô "Ngày cấp giấy chứng nhận kết hôn" do các field raw ngayCapGiayTo-* điền ở tầng trên nên KHÔNG
+  // nằm trong `used` của vùng này — loại theo cả name lẫn id (eForm đặt tên bằng id ở nhiều ô, xem
+  // chính setGenericDateControl bên dưới cũng phải dò cả hai).
+  const positional = remainingDate.filter(
+    (el) => !el?.querySelector?.('input[name^="ngayCapGiayTo"], input[id^="ngayCapGiayTo"]')
+  );
+  const usedPeriod = new Set();
+  const takePeriodControl = (label) => {
+    const free = remainingDate.filter((el) => !usedPeriod.has(el));
+    const byLabel = findLabelledDateControl(free, label);
+    if (byLabel) { usedPeriod.add(byLabel); return byLabel; }
+    const next = positional.find((el) => !usedPeriod.has(el));
+    if (next) usedPeriod.add(next);
+    return next || null;
+  };
+  for (const [label, value] of [
+    ["thời điểm bắt đầu", data.thoiDiemBatDau],
+    ["thời điểm kết thúc", data.thoiDiemKetThuc],
+  ]) {
+    if (!value) continue;
+    const control = takePeriodControl(label);
+    if (!control) break;
+    any = setGenericDateControl(control, value) || any;
   }
   return any;
 }
@@ -976,17 +1040,33 @@ async function fillSelectArea(container, f) {
     const r = areaRoleOf(w);
     if (r && !byRole[r]) byRole[r] = w;
   }
+  const selectedText = (w) => norm(w.querySelector(".input-field-select")?.textContent || "");
   let any = false;
+  // Tỉnh hoặc xã có thật sự ĐỔI sang địa bàn khác không — quyết định số nhà cũ còn dùng được không.
+  let areaMoved = false;
   for (const role of ["quocGia", "tinh", "xa"]) {
     const w = byRole[role];
     const val = data[role];
     if (!w || !val) continue;
+    const before = selectedText(w);
     const ok = await pickInWidget(w, val);
-    if (ok) { any = true; await sleep(700); } // chờ tầng dưới load qua AJAX
+    if (ok) {
+      any = true;
+      if (role !== "quocGia" && selectedText(w) !== before) areaMoved = true;
+      await sleep(700); // chờ tầng dưới load qua AJAX
+    }
   }
+  const addr = container.querySelector("input.input-field");
   if (data.diaChi) {
-    const addr = container.querySelector("input.input-field");
     if (addr) { setNativeValue(addr, data.diaChi); markFilled(addr.parentElement || addr); any = true; }
+  } else if (areaMoved && addr && String(addr.value || "").trim()) {
+    // Cổng điền sẵn ô "Địa chỉ" (số nhà/đường) theo TÀI KHOẢN VNeID đang đăng nhập. Giấy tờ vừa
+    // kéo tỉnh/xã sang địa bàn KHÁC mà không đọc được số nhà → để nguyên dòng cũ là ghép ra một địa
+    // chỉ lai: tỉnh/xã của giấy + số nhà của người khác. Sai kiểu này trông vẫn "hợp lệ" nên không
+    // ai soát ra và sẽ được nộp đi. Xóa rồi tô đỏ để người dân tự gõ lại: ô trống thì nhìn là thấy.
+    setNativeValue(addr, "");
+    markUnfilled(addr.parentElement || addr);
+    any = true;
   }
   return any;
 }

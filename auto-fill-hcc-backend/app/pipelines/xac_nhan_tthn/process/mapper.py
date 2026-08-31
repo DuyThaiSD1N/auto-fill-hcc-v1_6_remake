@@ -13,6 +13,12 @@ _DIVORCED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng như
 _WIDOWED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại chưa đăng ký kết hôn với ai"
 _MARRIED_STATUS = "Hiện tại đang có vợ/chồng"
 _NEVER_MARRIED_STATUS = "Hiện tại chưa đăng ký kết hôn với ai"
+# Option =5 của cổng: xác nhận CHƯA ĐKKH TRONG MỘT KHOẢNG THỜI GIAN đã qua, dù HIỆN TẠI đã có
+# vợ/chồng. Nhãn lấy nguyên văn từ bảng đã đối chiếu với cổng ở app/pipelines/ket_hon/process/
+# mapper.py (_TINH_TRANG_HON_NHAN["5"]) — kể cả khoảng trắng lạ trước dấu "…" thứ tư.
+_PERIOD_MARRIED_STATUS = (
+    "Từ ngày… tháng… năm… đến ngày… tháng… năm … chưa đăng ký kết hôn với ai; hiện tại đang có vợ/chồng"
+)
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -59,6 +65,22 @@ def _is_self_request(options: dict | None, cccd_name, cccd_id) -> bool:
     if applicant_name and upload_name:
         return applicant_name == upload_name
     return True
+
+
+# Vai HÀNH CHÍNH của cán bộ trên giấy tờ — KHÔNG phải quan hệ nhân thân của người đi xin giấy.
+# Giấy XÁC NHẬN TTHN đã cấp mở đầu bằng "Xét đề nghị của ông/bà: <tên>, là công chức tư pháp hộ
+# tịch..." — đó là CÁN BỘ đề nghị cấp giấy, không phải người yêu cầu. Agent rất hay bắt nhầm dòng
+# này thành ToKhaiYeuCau_*, kéo theo mục I mang tên cán bộ mà số định danh lại của người được cấp.
+_OFFICER_RELATION_MARKERS = (
+    "cong chuc", "can bo", "chuyen vien", "tu phap ho tich", "ho tich",
+    "uy ban nhan dan", "ubnd", "chu tich", "nguoi ky",
+)
+
+
+def _is_officer_relation(value) -> bool:
+    """Chữ ở dòng quan hệ là chức danh cán bộ chứ không phải quan hệ nhân thân."""
+    folded = _fold(value)
+    return bool(folded) and any(marker in folded for marker in _OFFICER_RELATION_MARKERS)
 
 
 _SELF_RELATION_WORDS = ("ban than", "tu khai")
@@ -167,7 +189,31 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     has_tokhai = bool(values.get("ToKhai_SoDinhDanh") or values.get("ToKhai_HoTen"))
     # Khối "người yêu cầu" ghi RIÊNG ở đầu tờ khai — CÓ THỂ khác người được cấp ở Section II
     # (thân nhân đứng nộp hộ mà không kèm giấy ủy quyền chính thức).
-    has_declared_requester = bool(values.get("ToKhaiYeuCau_HoTen") or values.get("ToKhaiYeuCau_SoDinhDanh"))
+    # Khối "người yêu cầu" chỉ đáng tin khi nó THẬT SỰ đến từ tờ khai. TỜ KHAI luôn ghi giấy tờ tùy
+    # thân của người yêu cầu ngay dưới tên ("CC/CCCD số ... cấp ngày ... tại ..."), nên một cái TÊN
+    # TRƠ TRỌI — không số định danh, không ngày/nơi cấp, không cả dòng quan hệ — gần như luôn là tên
+    # bắt nhầm ở tài liệu khác: cán bộ ký giấy XNTTHN cũ, người làm chứng, người ký thay.
+    #
+    # Không chặn thì mục I ra ĐÚNG MỘT CÁI TÊN: nhân thân của thẻ trong hồ sơ đã bị guard bên dưới
+    # giữ lại (thẻ là của người khác), phần còn lại vẫn là dữ liệu VNeID của người đăng nhập → một
+    # mục I lai ba nguồn. Chốt này KHÔNG dựa vào ToKhaiYeuCau_QuanHe vì agent hay bỏ hẳn field đó.
+    declared_requester_evidence = any(
+        values.get(name) for name in (
+            "ToKhaiYeuCau_SoDinhDanh",
+            "ToKhaiYeuCau_NgayCapGiayTo",
+            "ToKhaiYeuCau_NoiCapGiayTo",
+        )
+    ) or bool(
+        values.get("ToKhaiYeuCau_QuanHe")
+        and not _is_officer_relation(values.get("ToKhaiYeuCau_QuanHe"))
+    )
+    # Dòng "Xét đề nghị của ông/bà ..." trên giấy XNTTHN ĐÃ CẤP là cán bộ tư pháp hộ tịch, không phải
+    # người yêu cầu → bỏ hẳn khối này, để mục I lùi về CCCD trong hồ sơ.
+    has_declared_requester = bool(
+        (values.get("ToKhaiYeuCau_HoTen") or values.get("ToKhaiYeuCau_SoDinhDanh"))
+        and not _is_officer_relation(values.get("ToKhaiYeuCau_QuanHe"))
+        and declared_requester_evidence
+    )
 
     # --- Thông tin từ CCCD của người đi nộp (hoặc bản thân); thiếu thì lấy từ tờ khai ---
     issuer = (
@@ -228,12 +274,26 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             req_ten = values.get("ToKhaiYeuCau_HoTen")
             req_sdd = values.get("ToKhaiYeuCau_SoDinhDanh")
             if has_declared_requester:
-                cccd_ten = req_ten or values.get("Cccd_HoTen")
-                cccd_ns = values.get("Cccd_NgaySinh")  # tờ khai không ghi ngày sinh người yêu cầu
-                cccd_sdd = req_sdd or values.get("Cccd_SoDinhDanh")
-                ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo") or values.get("Cccd_NgayCap")
-                noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo") or issuer
-                residence_i = _area(values.get("ToKhaiYeuCau_NoiCuTru")) or residence
+                # Thẻ trong hồ sơ thường là của NGƯỜI ĐƯỢC CẤP, không phải người đứng khai. Mượn bừa
+                # thì mục I ra tên một người ghép với số định danh của người khác — sai kiểu đó trông
+                # vẫn hợp lệ nên không ai soát ra. Chỉ mượn khi thẻ khớp chính người yêu cầu.
+                req_id = _digits(req_sdd)
+                card_id = _digits(values.get("Cccd_SoDinhDanh"))
+                req_name = _fold(req_ten)
+                card_name = _fold(values.get("Cccd_HoTen"))
+                if req_id and card_id:
+                    card_is_requester = req_id == card_id
+                elif req_name and card_name:
+                    card_is_requester = req_name == card_name
+                else:
+                    card_is_requester = True   # không đủ dữ kiện để bác bỏ
+                card = values if card_is_requester else {}
+                cccd_ten = req_ten or card.get("Cccd_HoTen")
+                cccd_ns = card.get("Cccd_NgaySinh")  # tờ khai không ghi ngày sinh người yêu cầu
+                cccd_sdd = req_sdd or card.get("Cccd_SoDinhDanh")
+                ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo") or card.get("Cccd_NgayCap")
+                noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo") or (issuer if card_is_requester else None)
+                residence_i = _area(values.get("ToKhaiYeuCau_NoiCuTru")) or (residence if card_is_requester else None)
             elif has_cccd:
                 cccd_ten = values.get("Cccd_HoTen")
                 cccd_ns = values.get("Cccd_NgaySinh")
@@ -342,14 +402,50 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     divorce_number = values.get("DivorceDecision_Number")
     divorce_date = values.get("DivorceDecision_Date")
     divorce_agency = values.get("DivorceDecision_Agency")
+    def add_marriage_raw_inputs(number, date, agency) -> None:
+        """Ô con của vùng động (=2 và =5) được render sau khi chọn option → phát thêm theo DOM name.
+
+        Cả hai vùng dùng CHUNG bộ ô "Số / Ngày cấp / Cơ quan cấp giấy chứng nhận kết hôn" nên dùng
+        lại y nguyên; chỉ vùng =5 có thêm hai mốc thời gian, extension điền theo vị trí.
+        """
+        add("soGiayTo", number)
+        date_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(date or "").strip())
+        if date_match:
+            day, month, year = date_match.groups()
+            day = day.zfill(2)
+            month = month.zfill(2)
+            add("ngayCapGiayTo-day", day)
+            add("ngayCapGiayTo-month", month)
+            add("ngayCapGiayTo-year", year)
+            add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
+        add("coQuanCapGiayTo", agency)
+
     marriage_spouse = values.get("Marriage_SpouseName")
     marriage_number = values.get("Marriage_Number")
     marriage_date = values.get("Marriage_Date")
     marriage_agency = values.get("Marriage_Agency")
     declared_status = _fold(values.get("TinhTrangHonNhanC1"))
+    period_from = values.get("Period_TuNgay")
+    period_to = values.get("Period_DenNgay")
+    has_marriage = any((marriage_spouse, marriage_number, marriage_date, marriage_agency))
+
+    # Ưu tiên 0: tờ khai xin xác nhận CHƯA ĐKKH TRONG MỘT KHOẢNG THỜI GIAN ĐÃ QUA mà HIỆN TẠI đã có
+    # vợ/chồng (vd bổ sung hồ sơ mua bán đất diễn ra trước khi cưới). Cổng có option RIÊNG cho ca này
+    # (=5); chọn nhầm "Hiện tại đang có vợ/chồng" (=2) là mất sạch khoảng thời gian — đúng cái người
+    # dân cần xác nhận — và form cũng không hiện hai ô mốc thời gian để điền.
+    if period_from and period_to and has_marriage:
+        add("TinhTrangHonNhanC1", _PERIOD_MARRIED_STATUS)
+        period_detail = {
+            "voChongHoTen": marriage_spouse,
+            "thoiDiemBatDau": period_from,
+            "thoiDiemKetThuc": period_to,
+        }
+        period_detail = {key: value for key, value in period_detail.items() if value not in (None, "")}
+        add("nxnLoaiTinhTrangHonNhan=5", period_detail)
+        add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
 
     # Ưu tiên 1: TỜ KHAI khai báo rõ ràng tình trạng hôn nhân
-    if declared_status and declared_status != "":
+    elif declared_status and declared_status != "":
         if declared_status == _fold(_WIDOWED_STATUS):
             # GÓA: từ tờ khai, bổ sung giấy tử nếu có
             add("TinhTrangHonNhanC1", _WIDOWED_STATUS)
@@ -380,18 +476,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
             if marriage_detail:
                 add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
-                # Vùng =2 được render động. Phát thêm đúng DOM name sau field vùng để extension điền raw.
-                add("soGiayTo", marriage_number)
-                date_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(marriage_date or "").strip())
-                if date_match:
-                    day, month, year = date_match.groups()
-                    day = day.zfill(2)
-                    month = month.zfill(2)
-                    add("ngayCapGiayTo-day", day)
-                    add("ngayCapGiayTo-month", month)
-                    add("ngayCapGiayTo-year", year)
-                    add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
-                add("coQuanCapGiayTo", marriage_agency)
+                add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
         elif declared_status == _fold(_NEVER_MARRIED_STATUS):
             # CHƯA KẾT HÔN: từ tờ khai
             add("TinhTrangHonNhanC1", _NEVER_MARRIED_STATUS)
@@ -424,18 +509,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         }
         marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
         add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
-        # Vùng =2 được render động.
-        add("soGiayTo", marriage_number)
-        date_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(marriage_date or "").strip())
-        if date_match:
-            day, month, year = date_match.groups()
-            day = day.zfill(2)
-            month = month.zfill(2)
-            add("ngayCapGiayTo-day", day)
-            add("ngayCapGiayTo-month", month)
-            add("ngayCapGiayTo-year", year)
-            add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
-        add("coQuanCapGiayTo", marriage_agency)
+        add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
 
     # =========================================================
     # MỤC ĐÍCH & TRẢ KẾT QUẢ

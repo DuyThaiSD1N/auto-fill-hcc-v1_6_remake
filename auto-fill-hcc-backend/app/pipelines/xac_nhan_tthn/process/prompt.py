@@ -43,6 +43,16 @@ cấp ở Section II hay không (Python mapper tự so sánh, KHÔNG phải LLM)
 
 TUYỆT ĐỐI KHÔNG gộp thông tin của khối "người yêu cầu" (đầu tờ khai) vào ToKhai_* (khối "người được
 cấp", Section II) hay ngược lại — hai khối này LUÔN tách riêng dù trùng người.
+
+ToKhaiYeuCau_* CHỈ được lấy từ TỜ KHAI (đơn do người dân viết). TUYỆT ĐỐI KHÔNG lấy từ GIẤY XÁC NHẬN
+TÌNH TRẠNG HÔN NHÂN ĐÃ CẤP — đó là KẾT QUẢ do UBND ký, không phải tờ khai. Giấy đã cấp mở đầu bằng:
+  "Xét đề nghị của ông/bà: <TÊN>, là công chức tư pháp hộ tịch
+   về việc cấp Giấy xác nhận tình trạng hôn nhân cho ông/bà <NGƯỜI ĐƯỢC CẤP>"
+<TÊN> ở dòng đó là CÁN BỘ TƯ PHÁP HỘ TỊCH của UBND đề nghị cấp giấy — KHÔNG PHẢI người yêu cầu và
+KHÔNG PHẢI người được cấp. Bỏ qua hoàn toàn: không trả ToKhaiYeuCau_*, không trả ToKhai_* từ tên đó.
+Người của giấy đã cấp là người ghi sau "cho ông/bà ..." và ở khối "XÁC NHẬN: Họ, chữ đệm, tên: ...".
+Tương tự, bỏ qua mọi tên đứng cạnh chức danh (công chức, cán bộ, chuyên viên, Chủ tịch, KT. CHỦ TỊCH,
+PHÓ CHỦ TỊCH, "NGƯỜI KÝ ...") — đó là người ký giấy, không phải đương sự.
 </nguoi_yeu_cau_extraction>
 
 <critical_tokhai_extraction>
@@ -238,6 +248,18 @@ Ví dụ: TỜ KHAI ghi:
   giấy kết hôn. Đoạn tờ khai kết thúc trước "Mục đích sử dụng".
 - Nếu tài liệu là ly hôn/khai tử thì không lấy Marriage_* từ tài liệu đó; ưu tiên trạng thái ly hôn/góa.
 </marriage_extraction>
+
+<khoang_thoi_gian_chua_ket_hon>
+- Dòng "Tình trạng hôn nhân" của tờ khai có thể xin xác nhận CHƯA ĐĂNG KÝ KẾT HÔN TRONG MỘT KHOẢNG
+  THỜI GIAN ĐÃ QUA, kể cả khi HIỆN TẠI người đó đã có vợ/chồng. Dạng thường gặp:
+  "Từ ngày 01 tháng 01 năm 2025 đến ngày 13 tháng 12 năm 2025. Tôi chưa đăng ký kết hôn với ai.
+   Hiện tại đã kết hôn với vợ tên là: ..."
+- Period_TuNgay = ngày sau chữ "Từ ngày"; Period_DenNgay = ngày sau chữ "đến ngày". Cả hai dd/mm/yyyy,
+  ghép đủ ngày + tháng + năm dù tờ khai viết tách chữ ("ngày 1 tháng 1 năm 2025" -> "01/01/2025").
+- HAI ngày này KHÔNG phải ngày đăng ký kết hôn: Marriage_Date vẫn lấy riêng từ giấy chứng nhận kết hôn
+  / cụm "Ngày ... tháng ... năm ..." đứng sau số và nơi đăng ký kết hôn.
+- Không thấy cụm "Từ ngày ... đến ngày ..." thì bỏ trống CẢ HAI, không suy từ ngày khác.
+</khoang_thoi_gian_chua_ket_hon>
 
 <noi_cu_tru>
 - TUYỆT ĐỐI KHÔNG lấy địa chỉ trong đoạn "Tình trạng hôn nhân" làm ToKhai_NoiCuTru; đó là địa chỉ

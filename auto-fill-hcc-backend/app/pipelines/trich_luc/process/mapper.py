@@ -162,16 +162,26 @@ def _quanhe_option(value) -> str:
 
 
 def _requester_identity(values: dict, options: dict | None) -> tuple[str, str]:
-    """Người yêu cầu là ai: TỜ KHAI trước, rồi CCCD trong hồ sơ, cuối cùng mới tới mỏ neo VNeID."""
+    """Người yêu cầu là ai: TỜ KHAI trước, rồi CCCD trong hồ sơ, cuối cùng mới tới mỏ neo VNeID.
+
+    Thẻ Nyc_* CHỈ được tính khi _card_is_requester() gật — đúng cái guard mà enrich() dùng để quyết
+    có ghi đè mục I hay không, nên ô tích và khối mục I luôn nói cùng một chuyện.
+
+    Vì sao phải chặn: hồ sơ chỉ có thẻ của NGƯỜI ĐƯỢC ĐĂNG KÝ thì agent hay gán CÙNG một thẻ vào cả
+    Nyc_* lẫn ChuThe_*. Tin thẳng Nyc_* thì hai bên "trùng số" một cách giả tạo → tick "Bản thân",
+    trong khi mục I vẫn đang là người đăng nhập KHÁC (mapper không ghi đè vì chính guard này chặn).
+    Bỏ thẻ đi thì mỏ neo VNeID lên tiếng, và người đăng nhập mới đúng là người yêu cầu.
+    """
     ctx = (options or {}).get("formContext") or {}
+    card = values if _card_is_requester(values, options) else {}
     number = (
         _digits(values.get("TkNyc_SoGiayToTuyThan"))
-        or _digits(values.get("Nyc_SoDinhDanh"))
+        or _digits(card.get("Nyc_SoDinhDanh"))
         or _digits(ctx.get("applicantIdentityNumber"))
     )
     name = (
         _fold(values.get("TkNyc_HoTen"))
-        or _fold(values.get("Nyc_HoTen"))
+        or _fold(card.get("Nyc_HoTen"))
         or _fold(ctx.get("applicantFullname"))
     )
     return name, number
@@ -219,31 +229,118 @@ def _quanhe_from_record(values: dict, options: dict | None) -> tuple[str, bool]:
     return by_name, False
 
 
+_HOTICH_FACT_NAMES = (
+    "HoTich_LoaiSuKien", "HoTich_TenGiayTo", "HoTich_HoTenNguoiDuocDangKy",
+    "HoTich_CoQuanDangKy", "HoTich_So", "HoTich_NgayDangKy",
+)
+
+
+def _has_hotich_facts(values: dict) -> bool:
+    """Hồ sơ có đọc được GIẤY HỘ TỊCH (hoặc tờ khai đã phủ sang HoTich_*) không."""
+    return any(name in values for name in _HOTICH_FACT_NAMES)
+
+
+def _has_subject_card(values: dict) -> bool:
+    """Có CCCD RIÊNG của người được đăng ký (ChuThe_*) không."""
+    return bool(values.get("ChuThe_SoDinhDanh") or values.get("ChuThe_HoTen"))
+
+
+def _has_requester_card(values: dict) -> bool:
+    """Có CCCD của người yêu cầu (Nyc_*) không."""
+    return bool(values.get("Nyc_SoDinhDanh") or values.get("Nyc_HoTen"))
+
+
+def _subject_is_requester_card(values: dict, options: dict | None) -> bool:
+    """Mục II SẼ ĐƯỢC ĐẮP TỪ CHÍNH THẺ của người yêu cầu → mục I và mục II là MỘT người.
+
+    Soi đúng điều kiện nhánh "tự xin cho chính mình" ở cuối enrich(): không giấy hộ tịch, không thẻ
+    riêng của chủ thể, chỉ MỘT thẻ và thẻ đó khớp tài khoản VNeID đang đăng nhập. Ca này người dân
+    KHÔNG nộp tờ khai lẫn giấy hộ tịch nên chẳng có số/tên nào ở mục II để đối chiếu — thiếu nhánh
+    này thì mọi hồ sơ "tự đi xin bản sao của mình" đều bị tick "Khác" dù mục II vừa được điền bằng
+    đúng thẻ của họ.
+    """
+    if _has_hotich_facts(values) or _has_subject_card(values):
+        return False
+    # Hồ sơ CÓ nêu tên/số người ở mục II (vd giấy tờ bổ trợ) → nhường bước đối chiếu bên dưới,
+    # không vơ thành "Bản thân".
+    subj_name, subj_id = _subject_identity(values)
+    if subj_name or subj_id:
+        return False
+    if not _has_requester_card(values):
+        return False
+    return _card_matches_login(values, options)
+
+
+def _same_person_by_id(values: dict, options: dict | None) -> bool | None:
+    """Người yêu cầu (mục I) và người được cấp bản sao (mục II) có CÙNG số giấy tờ không.
+
+    Trả True/False khi hai số ĐỦ SỨC phân xử, None khi không kết luận được. CMND 9 số và số định
+    danh 12 số của CÙNG một người vẫn là hai chuỗi khác nhau, nên khác độ dài thì không phân xử —
+    để bước so họ tên quyết định thay vì kết luận nhầm "khác người".
+    """
+    _, req_id = _requester_identity(values, options)
+    _, subj_id = _subject_identity(values)
+    if req_id and subj_id and len(req_id) == len(subj_id):
+        return req_id == subj_id
+    return None
+
+
 def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
     """Chốt ô tích "(5) Quan hệ với người được cấp bản sao". Trả (nhãn option, là suy đoán).
 
-    Thứ tự nguồn — TỜ KHAI LUÔN ĐỨNG TRƯỚC, giống khai sinh đăng ký lại:
+    Thứ tự nguồn:
       1. Dòng "Quan hệ với người được cấp bản sao ..." của chính tờ khai: lời khai chính chủ.
-      1b. VAI GHI TRÊN CHÍNH GIẤY HỘ TỊCH (cha/mẹ của giấy khai sinh, vợ/chồng của giấy kết hôn...):
-         người yêu cầu trùng một người thân ghi trên giấy → lấy đúng vai đó. Phải xét TRƯỚC bước
-         đối chiếu bên dưới, nếu không mọi hồ sơ "người thân đi xin hộ" đều bị tick "Khác" dù giấy
-         đã ghi rõ vai. Khớp bằng số giấy tờ là chắc; khớp bằng họ tên thì tick viền vàng.
-      2. Đối chiếu NGƯỜI YÊU CẦU (mục I) với NGƯỜI ĐƯỢC ĐĂNG KÝ (mục II): trùng người → "Bản thân".
-         Số định danh cùng độ dài là bằng chứng chắc; so họ tên yếu hơn nên tick viền vàng.
-         CMND 9 số và số định danh 12 số của CÙNG một người vẫn khác chuỗi, nên khác độ dài thì
-         KHÔNG được coi là bằng chứng "khác người".
-      3. Không kết luận được "Bản thân" nhưng hồ sơ CÓ tờ khai → tick "Khác" (viền vàng): an toàn
-         nhất, tách khối người yêu cầu khỏi khối người được đăng ký để cán bộ soát lại.
-      4. Không có tờ khai và không đối chiếu được → BỎ TRỐNG, không tick bừa.
+      1b. Hồ sơ chỉ có MỘT thẻ và mục II sẽ được đắp từ chính thẻ đó (tự xin cho mình, có mỏ neo
+         VNeID xác nhận) → "Bản thân". Ca này mục II chưa có số/tên nào để bước 2 đối chiếu.
+      2. SỐ ĐỊNH DANH/CCCD của mục I trùng mục II → "Bản thân". Số là bằng chứng chắc nhất nên
+         phải xét TRƯỚC mọi suy đoán khác: người dân tự đi xin bản sao của chính mình là ca phổ
+         biến nhất, không được để nó rơi xuống nhánh "Khác" chỉ vì tờ khai ghi chữ khó đọc hay
+         giấy hộ tịch có ghi kèm cha/mẹ. So số cùng độ dài; khác độ dài thì nhường bước 5.
+      3. Tờ khai CÓ ghi quan hệ nhưng chữ không khớp option nào → "Khác" (viền vàng).
+      4. VAI GHI TRÊN CHÍNH GIẤY HỘ TỊCH (cha/mẹ của giấy khai sinh, vợ/chồng của giấy kết hôn...):
+         người yêu cầu trùng một người thân ghi trên giấy → lấy đúng vai đó, nếu không mọi hồ sơ
+         "người thân đi xin hộ" đều bị tick "Khác" dù giấy đã ghi rõ vai. Khớp bằng số giấy tờ là
+         chắc; khớp bằng họ tên thì tick viền vàng.
+      5. HỌ TÊN mục I trùng mục II → "Bản thân" (viền vàng, vì tên có thể trùng). Chỉ chạy khi số
+         không phân xử được, và xếp sau bước 4 để cha/con trùng tên vẫn ra đúng vai trên giấy.
+      6. Không kết luận được "Bản thân" → tick "Khác" (viền vàng): an toàn nhất, tách khối người
+         yêu cầu khỏi khối người được đăng ký để cán bộ soát lại.
     """
     raw_declared = values.get("CopyRequest_QuanHe")
     declared = _quanhe_option(raw_declared)
     if declared:
         return declared, False
+
+    if _subject_is_requester_card(values, options):
+        return "Bản thân", False
+
+    same_by_id = _same_person_by_id(values, options)
+    if same_by_id is True:
+        return "Bản thân", False
+
     if str(raw_declared or "").strip():
         # Tờ khai CÓ ghi quan hệ nhưng chữ đó không khớp option nào (vd chữ viết tắt/nhập nhằng).
         # Không đoán bừa một vai cụ thể, nhưng cũng KHÔNG để trống ô tích: rơi về "Khác" (tô vàng).
         return "Khác", True
+
+    from_record, matched_by_id = _quanhe_from_record(values, options)
+    if from_record:
+        return from_record, not matched_by_id
+
+    if same_by_id is False:
+        return "Khác", True
+
+    req_name, req_id = _requester_identity(values, options)
+    subj_name, subj_id = _subject_identity(values)
+    if req_name and subj_name:
+        return ("Bản thân" if req_name == subj_name else "Khác"), True
+    if req_id and subj_id:
+        return ("Bản thân" if req_id == subj_id else "Khác"), True
+
+    # Cạn nguồn: không tờ khai, giấy không ghi vai, không đủ nhân thân để đối chiếu. Vẫn phải tick
+    # để ô "(5) Quan hệ" không bị bỏ trống — "Khác" là lựa chọn an toàn nhất (tách khối mục I khỏi
+    # mục II) và được tô vàng để người dân đổi lại nếu đúng ra là quan hệ khác.
+    return "Khác", True
 
     from_record, matched_by_id = _quanhe_from_record(values, options)
     if from_record:
@@ -536,7 +633,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
-    has_requester = bool(values.get("Nyc_SoDinhDanh") or values.get("Nyc_HoTen"))
+    has_requester = _has_requester_card(values)
     # Tờ khai ghi rõ người yêu cầu → điền khối này bất kể CCCD có khớp tài khoản VNeID hay không
     # (người nộp hộ/tài khoản dịch vụ vẫn phải ra đúng người yêu cầu trên giấy).
     # Bất kỳ dữ kiện TkNyc_* nào cũng là bằng chứng tờ khai đã ghi người yêu cầu — kể cả khi tờ khai
@@ -547,18 +644,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         for name in values
         if name.startswith("TkNyc_")
     )
-    has_subject_card = bool(values.get("ChuThe_SoDinhDanh") or values.get("ChuThe_HoTen"))
-    has_hotich = any(
-        name in values
-        for name in (
-            "HoTich_LoaiSuKien",
-            "HoTich_TenGiayTo",
-            "HoTich_HoTenNguoiDuocDangKy",
-            "HoTich_CoQuanDangKy",
-            "HoTich_So",
-            "HoTich_NgayDangKy",
-        )
-    )
+    has_subject_card = _has_subject_card(values)
+    has_hotich = _has_hotich_facts(values)
     has_subject_support = any(
         values.get(name)
         for name in (

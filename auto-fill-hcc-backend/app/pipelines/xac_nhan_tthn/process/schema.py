@@ -91,6 +91,16 @@ FIELDS: list[dict] = [
     {"name": "Marriage_Agency",
      "desc": "Cơ quan đăng ký/cấp Giấy chứng nhận kết hôn, lấy từ giấy kết hôn hoặc TỜ KHAI nếu ghi rõ. "
              "Không lấy cơ quan cấp CCCD của vợ/chồng."},
+    # Tờ khai cho phép xin xác nhận CHƯA ĐĂNG KÝ KẾT HÔN TRONG MỘT KHOẢNG THỜI GIAN đã qua (vd để
+    # bổ sung hồ sơ mua bán đất diễn ra trước khi kết hôn), kể cả khi HIỆN TẠI người đó đã có vợ/chồng.
+    # Không có hai field này thì cả khoảng thời gian bị mất trắng khỏi output.
+    {"name": "Period_TuNgay",
+     "desc": 'Ngày BẮT ĐẦU của khoảng thời gian mong muốn xác nhận chưa đăng ký kết hôn với ai, '
+             'dd/mm/yyyy. Lấy ở dòng "Tình trạng hôn nhân" của TỜ KHAI, sau chữ "Từ ngày ... tháng '
+             '... năm ...". Không có khoảng thời gian thì bỏ trống.'},
+    {"name": "Period_DenNgay",
+     "desc": 'Ngày KẾT THÚC của khoảng thời gian nói trên, dd/mm/yyyy. Lấy sau chữ "đến ngày ... '
+             'tháng ... năm ..." trên cùng dòng. Không có thì bỏ trống.'},
     {"name": "Purpose",
      "desc": 'Mục đích sử dụng giấy XNTTHN.'},
     # --- Fields từ GIẤY ỦY QUYỀN (khi người yêu cầu nhờ người khác nộp thay) ---
@@ -121,6 +131,8 @@ for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdD
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["Marriage_Date"] = "x-date"
+COMPACT_COMP_BY_NAME["Period_TuNgay"] = "x-date"
+COMPACT_COMP_BY_NAME["Period_DenNgay"] = "x-date"
 COMPACT_COMP_BY_NAME["ToKhai_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["ToKhaiYeuCau_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["Cccd_NoiCuTru"] = "x-select-area"

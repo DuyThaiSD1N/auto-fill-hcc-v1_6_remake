@@ -37,6 +37,8 @@ from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
 from app.pipelines.thanh_lap_ctcp.process import run as thanh_lap_ctcp_process
 from app.pipelines.thanh_lap_ctcp.attach import plan as thanh_lap_ctcp_attach
+from app.pipelines.thanh_lap_ctythnn_2_nguoi.process import run as thanh_lap_tnhh2_process
+from app.pipelines.thanh_lap_ctythnn_2_nguoi.attach import plan as thanh_lap_tnhh2_attach
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.process import run as dang_ky_thay_doi_kinh_doanh_process
 from app.pipelines.cham_dut_hoat_dong_ho_kinh_doanh.process import run as cham_dut_hoat_dong_ho_kinh_doanh_process
 from app.pipelines.tam_ngung_kinh_doanh.process import run as tam_ngung_kinh_doanh_process
@@ -404,6 +406,53 @@ PROCEDURES: list[dict] = [
             {"key": "ten-doanh-nghiep", "label": "Tên doanh nghiệp/đơn vị trực thuộc"},
             {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
             {"key": "thong-tin-ve-co-phan", "label": "Thông tin về cổ phần"},
+            {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+    },
+    {
+        "key": "thanh-lap-cong-ty-tnhh-hai-thanh-vien",
+        # CÙNG cổng, CÙNG wizard ba bước với thủ tục công ty cổ phần ở trên: chỉ khác dòng loại hình
+        # phải tick ở bước 2 ("Công ty trách nhiệm hữu hạn hai thành viên trở lên", value LLC2).
+        # Vì vậy phần điều hướng của extension (content/procedures/enterprise-registration.js) KHÔNG
+        # phải sửa gì — nó đọc loại hình từ chính entry này qua cờ "lên đạn" của panel.
+        "detect": {"urlIncludes": ["dangkyquamang.dkkd.gov.vn"], "headingDisabled": True},
+        "label": "Đăng ký thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên",
+        "mode": "agent",
+        "enterprisePortal": True,
+        # Đối chiếu với dòng "Loại hình doanh nghiệp" in trên hồ sơ (và nhãn radio bước 2 của wizard).
+        # Đây là thứ DUY NHẤT phân biệt hồ sơ TNHH hai thành viên với hồ sơ CTCP trên cùng domain.
+        "enterpriseEntityLabel": "Công ty trách nhiệm hữu hạn hai thành viên trở lên",
+        # Lưới đỡ khi cổng đổi chữ nhãn: value radio $CtlEntType của dòng này.
+        "enterpriseEntityValue": "LLC2",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị đăng ký doanh nghiệp (công ty TNHH hai thành viên trở lên).\n"
+            "2. Điều lệ công ty.\n"
+            "3. Danh sách thành viên.\n"
+            "4. Danh sách chủ sở hữu hưởng lợi của doanh nghiệp (nếu có).\n"
+            "5. CCCD/căn cước của người đại diện theo pháp luật và các thành viên là cá nhân.\n"
+            "6. Giấy ủy quyền cho người đi nộp hồ sơ (nếu người nộp không phải người đại diện "
+            "theo pháp luật)."
+        ),
+        # 9 trang khối dữ liệu ĐÃ CÓ ĐẶC TẢ FIELD (app/pipelines/thanh_lap_ctythnn_2_nguoi/process/
+        # schema.py). KHÔNG có "Thông tin về cổ phần" (chỉ CTCP mới có) và KHÔNG khai "Người đại diện
+        # của tổ chức": bước đó chỉ hiện khi thành viên là TỔ CHỨC và bảng đặc tả ghi "không áp dụng"
+        # cho mọi dòng — khai mà không có nguồn dữ liệu là điền mò vào hồ sơ thật.
+        # Hai trang riêng của loại hình này (Thông tin thành viên, Người đại diện theo pháp luật) đã
+        # có mapper ở backend nhưng engine điền của extension CHƯA khai trong PAGE_SPEC — engine bỏ
+        # qua trang lạ nên vô hại, cán bộ điền tay hai trang đó cho tới khi PAGE_SPEC được bổ sung.
+        "pages": [
+            {"key": "hinh-thuc-dang-ky", "label": "Hình thức đăng ký"},
+            {"key": "dia-chi", "label": "Địa chỉ"},
+            {"key": "nganh-nghe-kinh-doanh", "label": "Ngành nghề kinh doanh"},
+            {"key": "ten-doanh-nghiep", "label": "Tên doanh nghiệp/đơn vị trực thuộc"},
+            {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
+            {"key": "thong-tin-thanh-vien", "label": "Thông tin thành viên"},
+            {"key": "nguoi-dai-dien-phap-luat", "label": "Người đại diện theo pháp luật"},
             {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
             {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
         ],
@@ -2544,6 +2593,7 @@ _PIPELINE = {
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
     "thanh-lap-cong-ty-co-phan": thanh_lap_ctcp_process,
+    "thanh-lap-cong-ty-tnhh-hai-thanh-vien": thanh_lap_tnhh2_process,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_process,
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_process,
     "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_process,
@@ -2574,6 +2624,7 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-gcn-da-cap-bac-ninh": dinh_chinh_gcn_da_cap_bac_ninh_attach,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_attach,
     "thanh-lap-cong-ty-co-phan": thanh_lap_ctcp_attach,
+    "thanh-lap-cong-ty-tnhh-hai-thanh-vien": thanh_lap_tnhh2_attach,
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": dang_ky_thay_doi_kinh_doanh_attach,
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_attach,
     "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_attach,

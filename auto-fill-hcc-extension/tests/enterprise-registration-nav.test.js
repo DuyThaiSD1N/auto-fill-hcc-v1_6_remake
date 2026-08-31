@@ -79,7 +79,7 @@ const ENTITY_RADIOS = [
 ];
 
 /** Dựng "trang" theo từng bước wizard; trả { nodes, pathname, bodyText }. */
-function buildPage(stage) {
+function buildPage(stage, entityLabel = "Công ty cổ phần") {
   const nodes = [];
   if (stage === "dossier") {
     // innerText của bảng "Thông tin về hồ sơ": mỗi dòng là "nhãn<TAB>giá trị" (theo ảnh cổng thật).
@@ -94,7 +94,7 @@ function buildPage(stage) {
         "Ngành nghề kinh doanh",
         "Thông tin về hồ sơ",
         "Hình thức đăng ký:\tThành lập mới doanh nghiệp/đơn vị trực thuộc",
-        "Loại hình doanh nghiệp:\tCông ty cổ phần",
+        `Loại hình doanh nghiệp:\t${entityLabel}`,
         "Trạng thái hồ sơ:\tĐã lưu",
       ].join("\n"),
     };
@@ -283,5 +283,39 @@ const ARM = {
   await runOnce(renamed, renamedStore);
   assert.equal(radioOf(renamed, "SC").checked, true, "Nhãn đổi chữ thì value SC phải đỡ được");
 
-  console.log("enterprise-registration: điều hướng 3 bước tới hồ sơ Công ty cổ phần passed");
+  // ---- Loại hình KHÁC dùng chung engine: TNHH hai thành viên trở lên (LLC2) ----
+  // Cùng wizard, chỉ khác dòng phải tick ở B2 — cờ mang loại hình sang nên engine không được
+  // mặc định về công ty cổ phần. Đây là lưới an toàn cho việc thêm loại hình sau này.
+  const LLC2_ARM = {
+    ...ARM,
+    entityValue: "LLC2",
+    entityLabel: "Công ty trách nhiệm hữu hạn hai thành viên trở lên",
+    procedureKey: "thanh-lap-cong-ty-tnhh-hai-thanh-vien",
+    procedureLabel: "Đăng ký thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên",
+  };
+  const llc2Store = { [ARM_KEY]: { ...LLC2_ARM, at: Date.now() } };
+  const llc2Entity = buildPage("entity");
+  await runOnce(llc2Entity, llc2Store);
+  assert.equal(radioOf(llc2Entity, "LLC2").checked, true, "Phải tick dòng TNHH hai thành viên trở lên");
+  assert.equal(radioOf(llc2Entity, "LLC1").checked, false, "Không được giữ dòng TNHH một thành viên tick sẵn");
+  assert.equal(radioOf(llc2Entity, "SC").checked, false, "Không được rơi về công ty cổ phần");
+  assert.equal(buttonOf(llc2Entity, "Tiếp theo").clicks, 1, "B2 của LLC2 phải bấm Tiếp theo đúng một lần");
+
+  const llc2Dossier = buildPage("dossier", "Công ty trách nhiệm hữu hạn hai thành viên trở lên");
+  const runLlc2 = await runOnce(llc2Dossier, llc2Store, {});
+  assert.equal(
+    runLlc2.entityLabel, "Công ty trách nhiệm hữu hạn hai thành viên trở lên",
+    "Trang hồ sơ phải trả đúng loại hình để popup không nhận nhầm sang thủ tục công ty cổ phần",
+  );
+  assert.equal(llc2Store[ARM_KEY], undefined, "Vào tới hồ sơ TNHH cũng phải xóa cờ");
+
+  // ---- Cờ thiếu loại hình: DỪNG, tuyệt đối không đoán bừa sang công ty cổ phần ----
+  const noEntity = buildPage("entity");
+  const noEntityStore = { [ARM_KEY]: { ...ARM, entityValue: "", entityLabel: "", at: Date.now() } };
+  const runNoEntity = await runOnce(noEntity, noEntityStore);
+  assert.equal(radioOf(noEntity, "SC").checked, false, "Thiếu loại hình thì không được tick công ty cổ phần");
+  assert.equal(buttonOf(noEntity, "Tiếp theo").clicks, 0, "Thiếu loại hình thì không được bấm Tiếp theo");
+  assert.ok(runNoEntity.toasts.some((t) => t.kind === "warn"), "Phải báo cho cán bộ chọn tay");
+
+  console.log("enterprise-registration: điều hướng 3 bước tới hồ sơ (CTCP + TNHH hai thành viên) passed");
 })();
