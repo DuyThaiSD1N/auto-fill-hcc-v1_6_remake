@@ -924,7 +924,7 @@ async function armEnterpriseAutostart(procedure) {
  * Trả TRUE nghĩa là lượt bấm đã được tiêu thụ (đang mở hồ sơ) → người gọi phải dừng, chưa quét.
  * Trả FALSE khi không liên quan (cổng khác) hoặc đã ở trong khối dữ liệu → quét như bình thường.
  */
-async function startEnterpriseDossierIfNeeded() {
+async function startEnterpriseDossierIfNeeded(triggerEl) {
   const cfg = currentConfig();
   if (!cfg.enterprisePortal) return false;
   // Hỏi THẲNG engine của cổng doanh nghiệp. Trước đây đọc enterpriseProcedureHint trong tín hiệu
@@ -934,6 +934,16 @@ async function startEnterpriseDossierIfNeeded() {
   if (!res?.ok) return false;         // không phải cổng doanh nghiệp / engine chưa nạp
   if (res.inDossier) return false;    // đã ở khối dữ liệu → quét như bình thường
   console.log("[Popup] Cổng doanh nghiệp đang ở bước:", res.stage);
+  // Hỏi đồng ý NGAY TẠI ĐÂY — trước khi wizard chạy, không phải sau khi đã vào tới form.
+  //
+  // Trước đây gate consent nằm ở dòng SAU lệnh gọi hàm này, nên lượt bấm đầu chỉ "lên đạn" wizard rồi
+  // return, chưa hỏi gì. Wizard đưa tới khối dữ liệu, panel tự bấm lại nút để quét tiếp, và ĐÚNG LÚC
+  // ĐÓ màn điều khoản mới bật lên rồi chặn luôn lượt tự chạy -> đứt mạch, phải bấm thêm mấy nhịp.
+  // Hỏi trước thì cả chuỗi "đồng ý -> wizard -> vào hồ sơ -> quét + điền" chạy một lèo.
+  //
+  // Trả TRUE khi màn điều khoản vừa mở: lượt bấm coi như đã tiêu thụ. Đồng ý xong, consent handler tự
+  // bấm lại đúng nút này (pendingConsentTrigger) và lần đó mới thật sự mở hồ sơ.
+  if (!(await requireConsent(triggerEl))) return true;
   if (!(await armEnterpriseAutostart(cfg))) {
     setStatus("Không mở được hồ sơ đăng ký. Vui lòng thử lại.", "err");
     return true;
@@ -2603,7 +2613,7 @@ ocrBtn.addEventListener("click", async () => {
   // Cổng ĐKKD qua mạng: trước khối dữ liệu hồ sơ còn wizard 3 bước (loại đăng ký → loại hình →
   // Bắt đầu). Bấm nút này CHÍNH LÀ lệnh vào hồ sơ; chưa vào tới nơi thì mở hồ sơ rồi dừng lượt —
   // chưa có form để điền nên gọi backend lúc này chỉ tốn lượt OCR.
-  if (await startEnterpriseDossierIfNeeded()) return;
+  if (await startEnterpriseDossierIfNeeded(ocrBtn)) return;
   if (!files.length) {
     setStatus("Chưa có file nào.", "err");
     return;
@@ -2756,7 +2766,7 @@ if (fillAllBtn) {
     if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
     // Cổng ĐKKD qua mạng: khai "pages" nên panel hiện nút này thay cho "Quét và nhập dữ liệu".
     // Chưa vào khối dữ liệu thì lượt bấm này là lệnh MỞ HỒ SƠ (wizard 3 bước), chưa quét.
-    if (await startEnterpriseDossierIfNeeded()) return;
+    if (await startEnterpriseDossierIfNeeded(fillAllBtn)) return;
     // Chốt chặn PDPL: luồng quét + đính kèm 8 trang cũng xử lý dữ liệu → chưa đồng ý phiên thì hỏi trước.
     if (!(await requireConsent(fillAllBtn))) return;
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;

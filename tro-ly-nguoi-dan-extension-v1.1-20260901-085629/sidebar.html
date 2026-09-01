@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trợ lý người dân</title>
+  <link rel="stylesheet" href="sidebar.css" />
+</head>
+<body class="start-mode">
+  <!-- Khung tổng: KHÔNG đặt class "bot" — trùng với .msg.bot của bubble (msg bot),
+       selector .bot sẽ ép height 100dvh lên mọi bubble. -->
+  <div class="tlnd-app">
+    <!-- Header: avatar + tên + tài khoản/thu gọn/đóng; thanh dưới dành cho voice/chat. -->
+    <header class="bot-h">
+      <div class="bot-h-top">
+        <div class="ava" id="bot-avatar"></div>
+        <div class="ht">
+          <div class="title-line">
+            <div class="t">Trợ lý người dân</div>
+            <span class="release-meta" aria-label="Phiên bản 1.1, phát hành ngày 25 tháng 8 năm 2026">
+              v1.1 · 25/08/2026
+            </span>
+          </div>
+          <div class="s">Hỗ trợ thủ tục hành chính công</div>
+        </div>
+        <div class="sp">
+          <button id="settings-btn" class="ib" type="button" title="Cài đặt" aria-label="Mở cài đặt" hidden>⚙</button>
+          <button id="acc-btn" class="ib" type="button" title="Xem thông tin tài khoản" hidden>👤</button>
+          <button id="min-btn" class="ib" type="button" title="Thu gọn">–</button>
+          <button id="close-btn" class="ib" type="button" title="Thu về biểu tượng">✕</button>
+        </div>
+      </div>
+      <!-- Thanh hành động: nút CÓ CHỮ để người dân biết ngay (không cần rê chuột) -->
+      <div class="tbar">
+        <button id="handsfree-btn" class="tb" type="button"
+                title="Chế độ rảnh tay: em tự đọc và tự nghe">
+          <span class="tbi">🎙️</span><span class="tbl">Rảnh tay</span><span class="tbl-hm hm-only">Tsis siv tes</span>
+        </button>
+        <button id="tts-btn" class="tb" type="button" title="Bật/tắt đọc âm thanh">
+          <span class="tbi">🔊</span><span class="tbl">Âm thanh</span><span class="tbl-hm hm-only">Lub suab</span>
+        </button>
+        <button id="reset-btn" class="tb" type="button" title="Xóa phiên hiện tại, bắt đầu lại từ đầu">
+          <span class="tbi">🔄</span><span class="tbl">Trò chuyện mới</span><span class="tbl-hm hm-only">Tham dua tshiab</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Chế độ tiếng Mông (Hmong) — CHỈ hiện với tài khoản tỉnh Lai Châu + BE bật hmong.
+         Bật: bot hiển thị song ngữ Việt–Mông, đọc và nghe bằng tiếng Mông. -->
+    <div class="lang-bar" id="lang-bar" hidden>
+      <span class="lang-label">Tiếng Mông <i class="lang-sub">(Lus Hmoob)</i></span>
+      <span class="lang-state" id="lang-state">Tắt (Tshum)</span>
+      <button id="lang-switch" class="lang-switch" type="button" role="switch" aria-checked="false"
+              title="Bật/tắt chế độ tiếng Mông"><span class="ls-knob"></span></button>
+    </div>
+
+    <!-- Thanh tiến độ toàn trình: chạy theo progress.step/total BE trả -->
+    <div class="step-meter" aria-hidden="true"><i id="step-meter-bar"></i></div>
+
+    <!-- Cài đặt mở NGAY trong panel để không làm mất ngữ cảnh hội thoại/trang DVC. -->
+    <section class="settings-screen" id="settings-screen" aria-labelledby="settings-title" hidden>
+      <div class="settings-head">
+        <button id="settings-back-btn" class="settings-back" type="button" aria-label="Quay lại hội thoại">←</button>
+        <div>
+          <h1 id="settings-title">Cài đặt</h1>
+          <p>Tùy chỉnh cách Trợ lý xử lý hồ sơ.</p>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-copy">
+          <label id="attach-split-label" for="attach-split-switch">Tách giấy tờ trong file</label>
+          <p id="attach-split-description">
+            Tự tách file có nhiều giấy tờ; hai mặt CCCD cùng người vẫn gộp chung.
+          </p>
+        </div>
+        <button id="attach-split-switch" class="settings-switch" type="button" role="switch"
+                aria-checked="false" aria-labelledby="attach-split-label"
+                aria-describedby="attach-split-description">
+          <span class="settings-switch-knob"></span>
+        </button>
+      </div>
+      <p class="settings-note">Áp dụng từ lượt đính kèm tiếp theo.</p>
+      <p class="settings-saved" id="settings-saved" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Màn chờ tại quầy: chưa tạo conversation cho tới khi người dân chủ động bắt đầu. -->
+    <section class="start-screen" id="start-screen" aria-labelledby="start-title">
+      <div class="start-avatar" id="start-avatar" aria-hidden="true"></div>
+      <div class="start-kicker">Trợ lý hành chính công <i class="hm-only hm-inline">· Tus pab pej xeem</i></div>
+      <h1 id="start-title">Sẵn sàng hỗ trợ công dân</h1>
+      <p class="start-hm hm-only">Npaj pab pej xeem ua ntaub ntawv nom tswv</p>
+      <p class="start-intro">
+        Em hỗ trợ chọn thủ tục, đọc giấy tờ, điền biểu mẫu và đính kèm hồ sơ.
+        Công dân kiểm tra lại thông tin trước khi nộp nhé.
+      </p>
+      <ol class="start-steps" aria-label="Các bước hỗ trợ">
+        <li><b aria-hidden="true">01</b><span>Chọn thủ tục cần làm <i class="hm-only hm-inline">· Xaiv yam xav ua</i></span></li>
+        <li><b aria-hidden="true">02</b><span>Gửi ảnh hoặc bản scan giấy tờ <i class="hm-only hm-inline">· Xa duab ntaub ntawv</i></span></li>
+        <li><b aria-hidden="true">03</b><span>Điền và rà soát hồ sơ <i class="hm-only hm-inline">· Sau thiab xyuas</i></span></li>
+      </ol>
+      <button id="start-btn" class="start-btn" type="button">Bắt đầu làm thủ tục<span class="hm-only start-btn-hm">Pib ua ntaub ntawv</span></button>
+      <p class="start-note">Có thể gõ hoặc nói để trò chuyện. Phiên sẽ tự kết thúc nếu không thao tác trong 10 phút.</p>
+    </section>
+
+    <!-- Popover tài khoản (nút 👤): tên + nơi gắn acc + đăng xuất -->
+    <div class="acc-pop" id="acc-pop" hidden>
+      <div class="acc-name" id="acc-name"></div>
+      <div class="acc-sub" id="acc-sub"></div>
+      <button id="logout-btn" type="button">Đăng xuất</button>
+    </div>
+
+    <!-- Thân chat: tin nhắn / chip / card -->
+    <main class="bot-b" id="messages"></main>
+
+    <!-- Trạng thái nhỏ (lỗi mạng, đang kết nối...) -->
+    <div class="bot-status" id="status" hidden></div>
+
+    <!-- Footer: camera + mic + ô nhập + gửi -->
+    <footer class="bot-f">
+      <button id="doc-btn" class="fi" type="button" title="Gửi ảnh giấy tờ (Bước 5)">📷</button>
+      <button id="mic-btn" class="fi" type="button" title="Nhấn để nói (Bước 4)">🎤</button>
+      <form id="chat-form" class="inp-wrap">
+        <input id="chat-input" type="text" autocomplete="off"
+               placeholder="Công dân gõ hoặc nói câu hỏi…" />
+        <div class="inp-hm hm-only">Pej xeem ntaus los yog hais lus nug…</div>
+      </form>
+      <input id="file-input" type="file"
+        accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" multiple hidden />
+      <button id="send-btn" class="send" type="button" title="Gửi">➤</button>
+    </footer>
+  </div>
+
+  <!-- Danh sách tệp của một loại giấy tờ. Chỉ đọc metadata; nội dung file vẫn nằm ở
+       upload session trên backend cho tới khi engine đính kèm cần tải về. -->
+  <div class="file-list-scrim" id="file-list-scrim" hidden>
+    <section class="file-list-dialog" id="file-list-dialog" role="dialog" aria-modal="true"
+             aria-labelledby="file-list-title" aria-describedby="file-list-summary" tabindex="-1">
+      <header class="file-list-head">
+        <div class="file-list-heading">
+          <span class="file-list-icon" id="file-list-icon" aria-hidden="true">📄</span>
+          <div>
+            <h2 id="file-list-title">Giấy tờ đã nhận</h2>
+            <p id="file-list-summary">Đang tải danh sách…</p>
+          </div>
+        </div>
+        <button class="file-list-close" id="file-list-close" type="button"
+                aria-label="Đóng danh sách tệp">✕</button>
+      </header>
+      <div class="file-list-body" id="file-list-body" aria-live="polite"></div>
+      <div class="file-list-error" id="file-list-error" role="status" hidden></div>
+    </section>
+  </div>
+
+  <!-- Màn đăng nhập (bắt buộc): che toàn khung khi chưa có token. Phiên chat phía sau
+       GIỮ NGUYÊN — token hết hạn giữa chừng chỉ cần đăng nhập lại là làm tiếp. -->
+  <div class="login-scrim" id="login-scrim" hidden>
+    <!-- Header đăng nhập chỉ có thu gọn/đóng — màn login che header chính nên không có 2 nút này. -->
+    <div class="login-top">
+      <button id="login-min-btn" class="ib" type="button" title="Thu gọn">–</button>
+      <button id="login-close-btn" class="ib" type="button" title="Thu về biểu tượng">✕</button>
+    </div>
+    <form class="login-card" id="login-form">
+      <div class="login-ava" id="login-avatar"></div>
+      <h2>Đăng nhập</h2>
+      <p class="login-sub">Tài khoản quầy do quản trị viên cấp</p>
+      <input id="login-user" type="text" placeholder="Tên đăng nhập"
+             autocomplete="username" autocapitalize="off" spellcheck="false" />
+      <input id="login-pass" type="password" placeholder="Mật khẩu" autocomplete="current-password" />
+      <div class="login-remember-actions">
+        <label for="remember-login" class="login-remember-row">
+          <input id="remember-login" type="checkbox" />
+          <span>Ghi nhớ đăng nhập</span>
+        </label>
+        <button id="forget-login-btn" type="button" class="login-forget-btn" hidden>Xóa đã nhớ</button>
+      </div>
+      <div class="login-err" id="login-err" hidden></div>
+      <button type="submit" id="login-btn" class="login-submit">Đăng nhập</button>
+    </form>
+  </div>
+
+  <script src="vendor/pdf-lib.min.js"></script>
+  <script src="lib/imageToPdf.js"></script>
+  <script src="services/render.js"></script>
+  <script src="services/tts.js"></script>
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="api/credentials.js"></script>
+  <script src="api/client.js"></script>
+  <script src="sidebar.js"></script>
+</body>
+</html>

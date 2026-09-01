@@ -364,6 +364,13 @@
       path: "enterprisename.aspx",
       probe: 'input[name="ctl00$C$NAMEFld"]',
       save: "ctl00$C$BtnSave",
+      // Dropdown tiền tố loại hình có AutoPostBack: vừa bắn `change` là cổng tải lại trang NGAY,
+      // cuốn theo mấy ô tên vừa gõ LẪN lệnh ghi state -> lượt sau phải điền lại từ đầu (đúng cái
+      // vòng "điền 3 lượt mới xong"). Trang này KHÔNG có ô nào phụ thuộc kết quả postback (ba ô còn
+      // lại là text thuần) nên đặt giá trị mà KHÔNG bắn `change` là an toàn: postback của nút Lưu
+      // gửi kèm luôn giá trị dropdown. Chỉ khai cho trang NÀY — dropdown địa bàn ở trang Địa chỉ
+      // thì BẮT BUỘC cần postback để nạp danh sách xã/phường.
+      quietFields: ["ctl00$C$DROP_NAME_TYPE"],
     },
     "thong-tin-ve-von": {
       label: "Thông tin về vốn",
@@ -528,6 +535,46 @@
     const match = href.match(/__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/);
     if (match && doAspPostback(match[1], match[2])) return true;
     try { link.click(); return true; } catch (_) { return false; }
+  }
+
+  /**
+   * Đặt giá trị cho select AutoPostBack mà KHÔNG kích postback.
+   *
+   * WebForms gắn postback vào thuộc tính `onchange`, nên chỉ cần KHÔNG bắn `change` là trang đứng
+   * yên. Vẫn bắn `input` để validator phía client thấy form đã đổi (nút Lưu mới bật). Cùng cơ chế
+   * mà content.js dùng cho ô địa bàn postback (`fillStandardInput(..., {change: false})`).
+   */
+  function fillSelectWithoutPostback(field) {
+    const el = document.querySelector(`[name="${field.name}"]`);
+    if (!el || !el.options || !el.options.length) return false;
+    const want = fold(field.value);
+    const options = Array.from(el.options);
+    const target =
+      options.find((o) => String(o.value) === String(field.value)) ||
+      options.find((o) => fold(o.textContent) === want) ||
+      (want ? options.find((o) => fold(o.textContent).includes(want)) : null);
+    if (!target) {
+      console.warn("[EnterpriseFill] không thấy option", field.value, "cho", field.name,
+        options.map((o) => o.textContent.trim()).filter(Boolean).slice(0, 20));
+      return false;
+    }
+    if (String(el.value) !== String(target.value)) {
+      const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+      if (desc && desc.set) desc.set.call(el, target.value);
+      else el.value = target.value;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    H.markFilled?.(el.parentElement || el);
+    return true;
+  }
+
+  /** Điền một trang: ô thường trước, ô AutoPostBack sau cùng và không bắn `change`. */
+  async function fillPageFields(spec, fields) {
+    const quietNames = new Set((spec && spec.quietFields) || []);
+    const quiet = quietNames.size ? fields.filter((f) => quietNames.has(f.name)) : [];
+    const rest = quietNames.size ? fields.filter((f) => !quietNames.has(f.name)) : fields;
+    if (rest.length) await H.fillFormStandard?.(rest);
+    for (const field of quiet) fillSelectWithoutPostback(field);
   }
 
   /** Nút Lưu ĐANG BẬT (bỏ qua nút đang disabled). */
@@ -840,7 +887,7 @@
       }
       if (fields.length) {
         try {
-          await H.fillFormStandard?.(fields);
+          await fillPageFields(spec, fields);
         } catch (error) {
           console.warn("[EnterpriseFill] điền trang lỗi:", spec.label, error);
         }

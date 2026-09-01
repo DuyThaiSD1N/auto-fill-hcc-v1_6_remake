@@ -71,6 +71,34 @@ def _fold_nospace(text: str) -> str:
     return _fold(text).replace(" ", "")
 
 
+_UNIT_PREFIX_RE = re.compile(
+    r"^\s*(xã|xa|phường|phuong|thị trấn|thi tran|tt)\.?\s+", re.IGNORECASE
+)
+
+
+def _fold_accent(text: str) -> str:
+    """Nhu _fold() nhung GIU dau thanh -- chi bo qua VI TRI dat dau.
+
+    _fold() bo het dau nen "Binh Thanh" (Thạnh) va "Binh Thanh" (Thành) trung key. Voi bang remap
+    thi chap nhan duoc (co canh gac ambiguous khi trung dich), nhung TRA DANH MUC HIEN HANH thi
+    khong: no se bien "Bình Thạnh" thanh "Xã Bình Thành" -- mot xa KHAC.
+
+    Cach lam: tach chu cai goc va dau thanh cua tung tu, roi SAP XEP dau. Nho vay "Hòa" (kieu dat
+    dau cu) va "Hoà" (kieu moi) van la MOT, con "Thạnh" (nang) va "Thành" (huyen) thi KHAC nhau.
+    """
+    raw = _UNIT_PREFIX_RE.sub("", str(text or "")).strip().lower()
+    out: list[str] = []
+    for word in re.split(r"\s+", raw):
+        if not word:
+            continue
+        decomposed = unicodedata.normalize("NFD", word)
+        base = "".join(ch for ch in decomposed if unicodedata.category(ch) != "Mn")
+        marks = sorted(ch for ch in decomposed if unicodedata.category(ch) == "Mn")
+        base = base.replace("đ", "d")
+        out.append(base + "".join(marks))
+    return " ".join(out)
+
+
 def _expand_abbrev(text: str) -> str:
     """Mo rong viet tat phuong/xa truoc khi lookup.
 
@@ -163,6 +191,16 @@ _load_remap_files()  # chay 1 lan luc import
 # ---------------------------------------------------------------------------
 _CURRENT_WARD_NOSPACE: dict[tuple[str, str], str] = {}
 
+# Bang tra ten xa/phuong HIEN HANH theo ten da fold (CON khoang trang, da bo tien to
+# "Xa/Phuong/Thi tran"). Dung cho hai ca rat pho bien sau sap nhap 2025:
+#   (a) Giay to ghi TINH CU nhung XA da la ten MOI ("Bac Giang" + "Xa Hiep Hoa").
+#   (b) OCR/LLM tra TEN HUYEN CU lam xa -- ma xa moi lai LAY CHINH TEN HUYEN do
+#       ("huyen Hiep Hoa" -> "Xa Hiep Hoa"). Bang remap chi co key theo XA cu nen tra truot.
+# Ca hai truoc day deu roi xuong nhanh _TINH_ONLY va bi XOA TRANG o Xa/Phuong.
+_CURRENT_WARD: dict[tuple[str, str], str] = {}
+# Ten fold bi TRUNG trong cung mot tinh -> khong du can cu de chon, bo qua thay vi doan bua.
+_CURRENT_WARD_AMBIGUOUS: set[tuple[str, str]] = set()
+
 
 def _build_current_ward_index() -> None:
     try:
@@ -187,6 +225,18 @@ def _build_current_ward_index() -> None:
                     key = (tinh_key, nospace_key)
                     if key not in _CURRENT_WARD_NOSPACE:
                         _CURRENT_WARD_NOSPACE[key] = ward_full_name
+                # CHI index ten DAY DU. Khong index phan "loi" truoc hau to "- <thanh pho>":
+                # lam vay se noi "Phuong Xuan Huong" (dung nhu option tren form) thanh "Phuong Xuan
+                # Huong - Da Lat" -- da co test khoa hanh vi nay.
+                for spaced_key in {_fold_accent(ward_full_name)}:
+                    if not spaced_key:
+                        continue
+                    key = (tinh_key, spaced_key)
+                    existing = _CURRENT_WARD.get(key)
+                    if existing is None:
+                        _CURRENT_WARD[key] = ward_full_name
+                    elif existing != ward_full_name:
+                        _CURRENT_WARD_AMBIGUOUS.add(key)
 
 
 _build_current_ward_index()  # chay 1 lan luc import
@@ -330,13 +380,29 @@ def _remap_area_cached(
         if current_ward:
             return (tinh, current_ward, dia_chi)
 
-    # Buoc 2c: xa khong khop duoc entry nao, nhung TINH CU DA BIET CHAC doi ten qua sap nhap (co
-    # trong bang remap) -> van dien dung TINH MOI (tinh cu chac chan khong con trong danh muc hien
-    # hanh, giu nguyen se khong chon duoc tren cong), con XA thi BO TRONG de can bo tu chon (khong
-    # du can cu de giu nguyen ten xa cu, vi ca tinh do da to chuc lai). Tinh nao CHUA TUNG doi ten
-    # thi khong co trong _TINH_ONLY -> roi xuong cac nhanh cu, khong dung den xa hop le chua remap.
+    # Buoc 2c: xa khong khop entry nao, nhung TINH CU DA BIET CHAC doi ten qua sap nhap (co trong
+    # bang remap) -> phai dien TINH MOI (tinh cu chac chan khong con trong danh muc hien hanh, giu
+    # nguyen se khong chon duoc tren cong). Tinh nao CHUA TUNG doi ten thi khong co trong _TINH_ONLY
+    # -> roi xuong cac nhanh cu, khong dung den xa hop le chua can remap.
     tinh_only_moi = _TINH_ONLY.get(tinh_folded)
     if tinh_only_moi and _fold(tinh_only_moi) != tinh_folded:
+        # Truoc khi BO TRONG xa, thu mot nhip cuoi: ten xa co the DA LA TEN HIEN HANH cua tinh MOI.
+        # Hai duong dan toi day:
+        #   (a) Giay to ghi tinh CU nhung xa da la ten MOI (vd "Bac Giang" + "Xa Hiep Hoa").
+        #   (b) OCR/LLM tra TEN HUYEN CU lam xa -- rat pho bien vi sau sap nhap 2025 nhieu xa moi
+        #       lay chinh ten huyen cu (huyen Hiep Hoa -> "Xa Hiep Hoa"). Bang remap chi co key theo
+        #       ten XA cu nen tra truot.
+        # Dung dung trieu chung "co luc remap duoc co luc khong": ket qua doi theo viec agent tra
+        # ten xa cu hay ten huyen. So ten CO DAU (_fold_accent) de khong dong nham "Binh Thanh"
+        # sang "Binh Thanh"; ten fold trung nhau trong cung tinh thi bo qua, khong doan bua.
+        if xa_expanded:
+            ward_key = (_fold(tinh_only_moi), _fold_accent(xa_expanded))
+            if ward_key not in _CURRENT_WARD_AMBIGUOUS:
+                current_ward_spaced = _CURRENT_WARD.get(ward_key)
+                if current_ward_spaced:
+                    return (tinh_only_moi, current_ward_spaced, dia_chi)
+        # Van khong ra: BO TRONG xa de can bo tu chon (khong du can cu giu ten xa cu, vi ca tinh do
+        # da to chuc lai).
         return (tinh_only_moi, "", dia_chi)
 
     if xa_has_admin_label:
@@ -406,6 +472,8 @@ def reload() -> None:
     _TINH_ONLY.clear()
     _load_remap_files()
     _CURRENT_WARD_NOSPACE.clear()
+    _CURRENT_WARD.clear()
+    _CURRENT_WARD_AMBIGUOUS.clear()
     _build_current_ward_index()
     # Clear cache khi reload data
     _remap_area_cached.cache_clear()
