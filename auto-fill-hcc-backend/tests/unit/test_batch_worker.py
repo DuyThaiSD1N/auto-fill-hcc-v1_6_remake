@@ -57,7 +57,6 @@ async def test_batch_worker_reuses_process_contract_without_writing_trace(tmp_pa
             "name": "ho_so.pdf",
             "type": "application/pdf",
             "role": "doc",
-            "hasHandwriting": False,
             "path": str(stored.relative_to(tmp_path)),
             "sha256": hashlib.sha256(b"pdf-content").hexdigest(),
         }],

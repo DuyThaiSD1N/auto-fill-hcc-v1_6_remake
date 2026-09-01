@@ -22,7 +22,6 @@ class BatchFileMetadata(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=160)
     role: str = Field(default="doc", max_length=120)
-    hasHandwriting: bool = False
 
 
 class BatchItemMetadata(BaseModel):

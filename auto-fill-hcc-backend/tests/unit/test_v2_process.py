@@ -26,7 +26,6 @@ def _multipart(action: str, *, metadata: list[dict] | None = None):
         "name": "ho-so.pdf",
         "type": "application/pdf",
         "role": "doc",
-        "hasHandwriting": False,
     }]
     return {
         "data": {

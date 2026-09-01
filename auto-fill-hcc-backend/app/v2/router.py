@@ -65,7 +65,6 @@ async def _to_file_items(
             type=mime,
             dataUrl=data_url,
             role=str(meta.get("role") or "doc"),
-            hasHandwriting=meta.get("hasHandwriting") is True,
         ))
     return items
 

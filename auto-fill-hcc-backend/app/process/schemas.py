@@ -8,7 +8,6 @@ class FileItem(BaseModel):
     type: str
     dataUrl: str
     role: str
-    hasHandwriting: bool = False  # tài liệu này có viết tay → OCR bằng Vintern; không → raw
 
 
 class ProcessReq(BaseModel):

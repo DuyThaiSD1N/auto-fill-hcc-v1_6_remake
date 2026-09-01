@@ -90,7 +90,6 @@ def prepare_process(
             "name": file_item.name,
             "type": file_item.type,
             "dataUrl": file_item.dataUrl,
-            "hasHandwriting": bool(file_item.hasHandwriting),
         })
 
     if total_bytes > max_total:

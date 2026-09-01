@@ -117,7 +117,6 @@ async def save_uploads(
             original_name = str((meta.name if meta else None) or upload.filename or f"file_{index + 1}")
             media_type = str((meta.type if meta else None) or upload.content_type or "application/octet-stream")
             role = str((meta.role if meta else "doc") or "doc")
-            handwriting = bool(meta.hasHandwriting) if meta else False
             if not _is_allowed(original_name, media_type):
                 raise AppError("BAD_FILE_TYPE", f"Loại file không hỗ trợ: {media_type}", 400)
 
@@ -156,7 +155,6 @@ async def save_uploads(
                 "name": original_name,
                 "type": media_type,
                 "role": role,
-                "hasHandwriting": handwriting,
                 "size": file_bytes,
                 "sha256": digest.hexdigest(),
                 "path": str(path.relative_to(root)),

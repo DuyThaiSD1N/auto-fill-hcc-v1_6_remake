@@ -54,7 +54,6 @@ def _load_file_items(item: dict) -> list[FileItem]:
             name=str(meta.get("name") or path.name),
             type=media_type,
             role=str(meta.get("role") or "doc"),
-            hasHandwriting=meta.get("hasHandwriting") is True,
             dataUrl=f"data:{media_type};base64,{base64.b64encode(raw).decode('ascii')}",
         ))
     return files
