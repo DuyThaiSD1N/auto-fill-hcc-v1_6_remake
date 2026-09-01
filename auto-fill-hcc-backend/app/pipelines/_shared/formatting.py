@@ -41,6 +41,53 @@ def normalize_date(d: str | None) -> str:
     return f"{m.group(1).zfill(2)}/{m.group(2).zfill(2)}/{m.group(3)}"
 
 
+# Comp của ô ngày do extension điền qua ba ô con day/month/year → CHỈ hiểu dd/mm/yyyy.
+# "raw" nằm ngoài danh sách: đó là input trần backend gửi đúng dạng cổng đang chờ, siết vào là hỏng.
+_UI_DATE_COMPS = ("x-date", "x-date-text")
+
+# Agent trả ngày đủ kiểu tùy giấy tờ: "5/3/2024", "16-12-2024", "22.11.2024", "2024-12-16".
+_UI_DATE_DMY = re.compile(r"^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$")
+_UI_DATE_ISO = re.compile(r"^(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$")
+
+
+def normalize_ui_date(value):
+    """Mọi biến thể ngày → "dd/mm/yyyy"; không nhận ra dạng ngày thì GIỮ NGUYÊN.
+
+    Giữ nguyên là bắt buộc: ô "Năm sinh" cha/mẹ chỉ có năm ("1968"), giấy tờ cũ hay ghi
+    "Không rõ" — đoán bừa thành ngày đầy đủ là bịa dữ liệu.
+    """
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return value
+    m = _UI_DATE_DMY.match(text)
+    if m:
+        day, month, year = m.group(1), m.group(2), m.group(3)
+    else:
+        m = _UI_DATE_ISO.match(text)
+        if not m:
+            return value
+        year, month, day = m.group(1), m.group(2), m.group(3)
+    return f"{day.zfill(2)}/{month.zfill(2)}/{year}"
+
+
+def normalize_ui_dates(fields):
+    """Siết mọi ô ngày của một danh sách field UI về dd/mm/yyyy (sửa TẠI CHỖ, trả lại chính nó).
+
+    Chốt chặn CHUNG cho mọi thủ tục: mỗi pipeline chuẩn hóa một kiểu, nhiều pipeline không làm gì
+    cả. Extension gặp dạng lạ là bỏ qua ô đó, mà ô ngày trượt lượt điền đầu thì không được thử
+    lại — ra đúng triệu chứng "lúc điền được, lúc không".
+    """
+    if not isinstance(fields, list):
+        return fields
+    for field in fields:
+        if not isinstance(field, dict) or field.get("comp") not in _UI_DATE_COMPS:
+            continue
+        field["value"] = normalize_ui_date(field.get("value"))
+    return fields
+
+
 def parse_death_time(time: str | None) -> dict:
     """"HH:mm" hoặc "06 giờ 38 phút" → { hour, minute } (2 chữ số)."""
     if not time:

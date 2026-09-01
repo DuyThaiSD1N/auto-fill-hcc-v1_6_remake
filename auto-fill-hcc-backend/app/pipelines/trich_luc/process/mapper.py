@@ -441,16 +441,24 @@ def _card_is_requester(values: dict, options: dict | None) -> bool:
 
     Tờ khai đã ghi rõ người yêu cầu → chỉ nhận thẻ trùng người đó (hồ sơ hay có thêm thẻ của người
     được đăng ký). Tờ khai không ghi → quay về mỏ neo VNeID/chủ thể như trước.
+
+    Khớp MỘT trong hai (số hoặc tên) là đủ: số trên tờ khai là chữ viết tay, OCR sai vài chữ số là
+    chuyện thường. Bắt khớp cả hai thì đúng cái thẻ cần dùng để SỬA số sai lại bị loại, và mục I
+    giữ nguyên số hỏng của tờ khai. Chỉ khi cả số lẫn tên đều so được mà đều lệch mới kết luận thẻ
+    này là của người khác.
     """
     tk_name = _fold(values.get("TkNyc_HoTen"))
     tk_id = _digits(values.get("TkNyc_SoGiayToTuyThan"))
     card_name = _fold(values.get("Nyc_HoTen"))
     card_id = _digits(values.get("Nyc_SoDinhDanh"))
-    if tk_id and card_id:
-        return tk_id == card_id
-    if tk_name and card_name:
-        return tk_name == card_name
-    return _requester_trusted(values, options)
+    if tk_id and card_id and tk_id == card_id:
+        return True
+    if tk_name and card_name and tk_name == card_name:
+        return True
+    # Không có cặp nào so được (tờ khai trống, hoặc thẻ thiếu đúng ô để đối chiếu) → mỏ neo cũ.
+    if not ((tk_id and card_id) or (tk_name and card_name)):
+        return _requester_trusted(values, options)
+    return False
 
 
 def _strip_admin_prefix(value):
@@ -585,6 +593,52 @@ def _apply_declaration_precedence(values: dict) -> dict:
     return merged
 
 
+# Các ô nhân thân của MỘT thẻ căn cước, dùng để đổi vai cả cụm giữa Nyc_* và ChuThe_*.
+_CARD_FIELD_SUFFIXES = (
+    "HoTen", "SoDinhDanh", "NgaySinh", "GioiTinh", "QuocTich",
+    "LoaiGiayTo", "NgayCap", "NoiCap", "NoiCuTru",
+)
+
+
+def _rescue_requester_card(values: dict) -> dict:
+    """Thẻ bị agent gán nhầm vào ChuThe_* trong khi nó là thẻ của NGƯỜI YÊU CẦU → trả lại Nyc_*.
+
+    Ca điển hình: TRÍCH LỤC KHAI TỬ của người đã mất + CCCD của người thân đi xin bản sao, tài khoản
+    VNeID đăng nhập lại là người thứ ba (nộp hộ). Agent không thấy thẻ nào khớp CONTEXT nên rơi vào
+    luật "chỉ có 1 CCCD, không có mỏ neo → giữ ChuThe_*". Hậu quả: mục I không có gì để ghi đè, cổng
+    giữ nguyên người đăng nhập, còn thẻ duy nhất trong hồ sơ thì bị vứt — sai người yêu cầu.
+
+    Chỉ đổi vai khi CHẮC CHẮN: giấy hộ tịch đã nêu rõ chủ thể, thẻ lệch hẳn chủ thể đó (so được ít
+    nhất một cặp số hoặc tên và đều không khớp), và hồ sơ chưa có thẻ người yêu cầu nào để tranh chấp.
+    """
+    if _has_requester_card(values) or not _has_subject_card(values):
+        return values
+
+    subject_ids = {value for value in (
+        _digits(values.get("HoTich_SoDinhDanh")),
+        _digits(values.get("HoTich_SoGiayToTuyThan")),
+    ) if value}
+    subject_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
+    card_id = _digits(values.get("ChuThe_SoDinhDanh"))
+    card_name = _fold(values.get("ChuThe_HoTen"))
+
+    if card_id and card_id in subject_ids:
+        return values  # đúng là thẻ của chủ thể
+    if subject_name and card_name and subject_name == card_name:
+        return values
+    # Không so được cặp nào (giấy hộ tịch không nêu tên/số, hoặc thẻ thiếu đúng ô để đối chiếu)
+    # → không đủ căn cứ đổi vai, giữ nguyên phân vai của agent.
+    if not ((subject_ids and card_id) or (subject_name and card_name)):
+        return values
+
+    moved = {key: value for key, value in values.items() if not key.startswith("ChuThe_")}
+    for suffix in _CARD_FIELD_SUFFIXES:
+        value = values.get(f"ChuThe_{suffix}")
+        if value not in (None, "", {}, []):
+            moved[f"Nyc_{suffix}"] = value
+    return moved
+
+
 def _strip_role_label(text: str) -> str:
     return re.sub(
         r"^\s*(họ[, ]*chữ đệm[, ]*tên\s*)?(chồng|bên nam|nam|người chồng)\s*[:：-]?\s*",
@@ -636,7 +690,7 @@ def _registered_person_name(values: dict, event_type: str) -> str:
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
-    values = _apply_declaration_precedence(_by_name(fields))
+    values = _rescue_requester_card(_apply_declaration_precedence(_by_name(fields)))
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -677,11 +731,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     )
 
     def _fill_requester() -> None:
-        """Khối người yêu cầu: TỜ KHAI trước, CCCD bù field còn thiếu, VNeID là fallback cuối.
+        """Khối người yêu cầu: TỜ KHAI trước (trừ số giấy tờ), CCCD bù, VNeID là fallback cuối.
 
         Cổng điền sẵn khối này theo tài khoản VNeID đang đăng nhập; hồ sơ giấy mới là căn cứ nên
         mapper luôn phát đủ field để extension GHI ĐÈ lên dữ liệu đăng nhập.
         Thứ tự ưu tiên mỗi field: tờ khai → CCCD (nếu đúng người) → VNeID (formContext).
+        NGOẠI LỆ ô SỐ GIẤY TỜ TUỲ THÂN: CCCD đi trước và ghi đè tờ khai (số in sẵn trên thẻ chắc
+        hơn số viết tay bị OCR sai), tờ khai chỉ bù khi không có thẻ khớp người yêu cầu.
         Kể cả khi field tờ khai/CCCD trống thì vẫn phát field từ VNeID để ghi đè.
         Chỉ dùng CCCD khi thẻ đó đúng là của người yêu cầu (_card_is_requester) — nếu không, thẻ trong
         hồ sơ có thể là của người được đăng ký, ghép vào đây là sai người.
@@ -694,10 +750,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             or card.get("Nyc_HoTen")
             or ctx.get("applicantFullname")
         )
-        # Số giấy tờ: tờ khai → CCCD → VNeID
+        # Số giấy tờ: NGOẠI LỆ — CCCD → tờ khai → VNeID. Số trên thẻ là số IN SẴN, còn số trên
+        # tờ khai là chữ viết tay nên OCR hay sai vài chữ số; thẻ đã qua _card_is_requester (đúng
+        # người yêu cầu) thì cứ để nó GHI ĐÈ số của tờ khai.
         so_giay_to = (
-            values.get("TkNyc_SoGiayToTuyThan")
-            or card.get("Nyc_SoDinhDanh")
+            card.get("Nyc_SoDinhDanh")
+            or values.get("TkNyc_SoGiayToTuyThan")
             or ctx.get("applicantIdentityNumber")
         )
         ngay_cap = values.get("TkNyc_NgayCapGiayToTuyThan") or card.get("Nyc_NgayCap")

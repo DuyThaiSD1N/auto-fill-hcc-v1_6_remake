@@ -5,7 +5,8 @@ kết hôn / trích lục khai tử) và mọi CCCD đính kèm. CCCD người y
 CCCD của chủ thể dùng để chuẩn hóa và bổ sung danh tính. Python suy ra field UI mục II + III
 và default mục I.
 
-Mục I (người yêu cầu) cổng tự điền từ VNeID — KHÔNG trích; chỉ đặt 3 default cư trú (viền vàng).
+Mục I (người yêu cầu) lấy từ tờ khai → CCCD → VNeID (họ tên, số định danh, loại/số giấy tờ,
+ngày cấp, cơ quan cấp); thiếu nơi cư trú thì đặt 3 default cư trú (viền vàng).
 """
 
 # Sub-field danh tính dùng chung cho các nhóm người (ChuThe / Chong / Vo).
@@ -148,6 +149,8 @@ UI_COMP_BY_NAME = {
     "SoDinhDanhC": "x-input",  # (2) Số định danh cá nhân
     "LoaiGiayToTuyThanC": "x-select",  # (3) Giấy tờ tùy thân dropdown
     "SoGiayToTuyThanC": "x-input",  # (3) Số giấy tờ (có thể khác số định danh)
+    "NgayCapDDC": "x-date",  # (3) Ngày cấp giấy tờ tùy thân của người yêu cầu
+    "NoiCapDDC": "x-input",  # (3) Cơ quan cấp giấy tờ tùy thân của người yêu cầu
     "nycLoaiCuTru": "x-select",
     "nycNoiCuTru": "x-radio",
     "nycNoiCuTru_TrongNuoc": "x-select-area",
@@ -181,6 +184,16 @@ UI_COMP_BY_NAME = {
     # SoLuong: ô số lượng bản sao (input trần, hiện khi chọn "Có"). Tên xác nhận từ DOM thật.
     "SoLuong": "raw",
     "TraKQ": "x-radio",
+}
+
+
+# Mục I của biểu mẫu hộ tịch legacy đổi tên field giữa các phiên bản form ("...DinhDanhC" và
+# "...TuyThanC" cùng trỏ một ô). Extension thử name chính rồi tới alias nên khai cả hai là an toàn.
+UI_ALIASES = {
+    "LoaiGiayToTuyThanC": ["LoaiGiayToDinhDanhC"],
+    "SoGiayToTuyThanC": ["SoGiayToDinhDanhC"],
+    "NgayCapDDC": ["NgayCapGiayToTuyThanC", "NYC_NgayCap"],
+    "NoiCapDDC": ["NoiCapGiayToTuyThanC", "NYC_NoiCap"],
 }
 
 

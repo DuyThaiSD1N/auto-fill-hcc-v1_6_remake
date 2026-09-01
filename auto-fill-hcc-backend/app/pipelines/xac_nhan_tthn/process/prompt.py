@@ -18,9 +18,12 @@ C. THÂN NHÂN KHAI HỘ, KHÔNG có giấy ủy quyền riêng: tờ khai có k
    → Trả ToKhai_* từ Section II như bình thường (người được cấp).
    → KHÔNG trả PoA_* (không có giấy ủy quyền thật).
 
-Đầu vào thường có CCCD/CMND; có thể có thêm giấy ủy quyền, quyết định/bản án ly hôn,
-giấy chứng tử/trích lục khai tử/giấy báo tử của vợ/chồng đã chết, HOẶC GIẤY XÁC NHẬN TÌNH TRẠNG
-HÔN NHÂN CŨ (đã cấp trước đây).
+Đầu vào thường có CCCD/CMND; có thể có thêm GIẤY KHAI SINH/TRÍCH LỤC KHAI SINH của chính người
+xin giấy, giấy ủy quyền, quyết định/bản án ly hôn, giấy chứng tử/trích lục khai tử/giấy báo tử của
+vợ/chồng đã chết, HOẶC GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ (đã cấp trước đây).
+
+CCCD + GIẤY KHAI SINH của CÙNG MỘT NGƯỜI là trường hợp A (BẢN THÂN), KHÔNG phải C: giấy khai sinh
+có tên cha/mẹ nhưng cha/mẹ KHÔNG đứng ra yêu cầu gì cả. Xem <giay_khai_sinh>.
 </procedure>
 
 <nguoi_yeu_cau_extraction>
@@ -71,6 +74,27 @@ trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho
 TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ Cccd_*)
 đều phải được trả khi đều có thông tin. Python mapper sẽ quyết định ưu tiên nguồn nào, KHÔNG phải LLM.
 </critical_tokhai_extraction>
+
+<giay_khai_sinh>
+NHẬN DẠNG: tài liệu tiêu đề "GIẤY KHAI SINH", "TRÍCH LỤC KHAI SINH" (hoặc bản sao trích lục), có
+khối "Người được khai sinh", "Người cha", "Người mẹ".
+
+Hồ sơ XNTTHN kèm giấy khai sinh là để CHỨNG MINH NHÂN THÂN của chính người xin giấy (nhất là dân
+tộc và ngày sinh, vì thẻ căn cước mẫu mới không in dân tộc). Trên giấy này KHÔNG có ai là "người
+yêu cầu cấp Giấy XNTTHN" cả.
+
+TRẢ:
+- Gks_HoTen, Gks_NgaySinh, Gks_GioiTinh, Gks_DanToc, Gks_QuocTich = của NGƯỜI ĐƯỢC KHAI SINH.
+- Gks_ChaHoTen, Gks_MeHoTen = tên cha, tên mẹ ghi trên giấy (BẮT BUỘC trả khi giấy có ghi).
+
+TUYỆT ĐỐI KHÔNG:
+- KHÔNG đẩy tên CHA, MẸ, NGƯỜI ĐI KHAI SINH hay CÁN BỘ KÝ trên giấy khai sinh vào ToKhaiYeuCau_*
+  (khối "người yêu cầu") hay ToKhai_* (khối "người được cấp"). Giấy khai sinh KHÔNG phải tờ khai.
+- KHÔNG lấy số định danh của cha/mẹ in trên trích lục mẫu mới làm ToKhaiYeuCau_SoDinhDanh hay
+  ToKhai_SoDinhDanh — đó là số của người khác, ghép vào mục I/II là hỏng cả hồ sơ.
+- ToKhaiYeuCau_* CHỈ được trả khi có TỜ KHAI thật (đơn do người dân viết, có dòng "Họ, chữ đệm, tên
+  người yêu cầu"). Chỉ có CCCD + giấy khai sinh thì KHÔNG trả ToKhaiYeuCau_* nào.
+</giay_khai_sinh>
 
 <giay_uy_quyen>
 NHẬN DẠNG GIẤY ỦY QUYỀN: tài liệu có tiêu đề "GIẤY ỦY QUYỀN" hoặc "GIẤY UỶ QUYỀN", có phần

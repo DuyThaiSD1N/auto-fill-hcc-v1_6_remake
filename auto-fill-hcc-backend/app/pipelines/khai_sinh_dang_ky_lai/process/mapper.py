@@ -280,6 +280,46 @@ def _same_person(name_a, id_a, name_b, id_b) -> bool:
     return bool(folded_a and folded_b and folded_a == folded_b)
 
 
+# Ô "Giấy tờ tùy thân" của mục I: số định danh, ngày cấp, nơi cấp. Đây là thuộc tính CỦA TẤM THẺ
+# nên thẻ là nguồn đúng theo định nghĩa. Họ tên KHÔNG nằm trong nhóm này: tên khai sinh cũ có thể
+# khác tên đang dùng, mà mục I phải mang tên hiện tại người yêu cầu tự ghi.
+_ID_DOC_KEYS = frozenset({"so_dinh_danh", "ngay_cap", "noi_cap"})
+
+# Số định danh Việt Nam chỉ có ĐÚNG 9 chữ số (CMND cũ) hoặc 12 chữ số (CCCD/căn cước).
+_VALID_ID_DIGIT_LENGTHS = (9, 12)
+
+
+def _is_valid_id_number(value) -> bool:
+    """Con số này có thể là một số định danh thật không.
+
+    OCR chữ viết tay trên tờ khai hay nuốt hoặc nhân đôi chữ số, ra những con số 10-11 chữ số
+    trông vẫn "hợp lý" nên không ai soát ra bằng mắt — cổng thì báo lỗi đỏ. Điền số sai người
+    còn tệ hơn bỏ trống: ô đỏ thì người dùng gõ lại, còn số sai độ dài trông y như số thật.
+    Chuỗi CÓ CHỮ (hộ chiếu, giấy tờ nước ngoài) không có luật độ dài nào để áp → cho qua.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return False
+    if not text.isdigit():
+        return True
+    return len(text) in _VALID_ID_DIGIT_LENGTHS
+
+
+def _requester_is_subject(values: dict, relation: str) -> bool:
+    """Người yêu cầu và người được đăng ký lại khai sinh có phải MỘT người không.
+
+    Tờ khai đã tự ghi "Bản thân" thì đó là lời khai chính chủ. KHÔNG dùng số định danh để bác lại:
+    chính con số đó mới là thứ hay bị OCR làm hỏng (rụng/thừa chữ số) và là thứ ta đang muốn thay
+    bằng số đọc từ thẻ. Chỉ bác khi HAI BÊN cùng có họ tên mà tên khác hẳn nhau — lúc đó ô quan hệ
+    bị tick nhầm, không được mượn thẻ của người khác sang mục I.
+    """
+    if relation != "BanThan":
+        return False
+    req_name = _fold(values.get("Requester_FullName"))
+    subject_name = _fold(values.get("Subject_FullName"))
+    return not (req_name and subject_name and req_name != subject_name)
+
+
 def _relation_by_identity(values: dict) -> str:
     """Tờ khai không ghi quan hệ → đối chiếu nhân thân người yêu cầu với từng vai."""
     req_name = values.get("Requester_FullName")
@@ -383,7 +423,32 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         )
         role = _ROLE_BY_RELATION_TICK.get(relation)
         base = _person_from_role(values, role, context) if role else {}
-        person = {key: declared.get(key) or base.get(key) for key in declared}
+        # Người yêu cầu CHÍNH LÀ người được đăng ký lại ("Bản thân") → hồ sơ có CCCD của đúng người
+        # đó, và giấy tờ tùy thân đọc từ THẺ luôn sạch hơn dòng viết tay trên tờ khai: số định danh
+        # trên tờ khai hay bị OCR rụng chữ số (vd "0240806368" thay cho "024068006368"), điền vào
+        # mục I là sai người ngay từ ô đầu tiên.
+        # NƠI CƯ TRÚ và HỌ TÊN vẫn ưu tiên tờ khai: tờ khai viết hôm nay, còn thẻ có thể cấp từ
+        # nhiều năm trước và địa giới hành chính đã đổi.
+        card_first = _requester_is_subject(values, relation)
+        # `base` chỉ là NGƯỜI YÊU CẦU khi ô tích đáng tin: vai cha/mẹ thì chính ô tích khẳng định
+        # điều đó, riêng "Bản thân" phải qua thêm phép so tên (ô tích rất hay bị tick nhầm).
+        trust_base = bool(role) and (relation != "BanThan" or card_first)
+        sources = {
+            key: (base.get(key), declared.get(key))
+            if card_first and key in _ID_DOC_KEYS
+            else (declared.get(key), base.get(key)) if trust_base
+            else (declared.get(key),)
+            for key in declared
+        }
+        person = {key: next((v for v in order if v), None) for key, order in sources.items()}
+        # Chốt chặn cuối, KHÔNG phụ thuộc agent: agent được phép bỏ Subject_IdNumber khi nó thấy
+        # hồ sơ không có thẻ, lúc đó phép đảo ưu tiên bên trên không có gì để lấy và số hỏng của
+        # tờ khai lại lọt xuống. Quét lại đúng những nguồn được phép, lấy số ĐÚNG ĐỘ DÀI; không
+        # nguồn nào đạt thì để TRỐNG hẳn cho người dùng gõ, hơn là điền con số sai trông như thật.
+        if not _is_valid_id_number(person.get("so_dinh_danh")):
+            person["so_dinh_danh"] = next(
+                (v for v in sources["so_dinh_danh"] if _is_valid_id_number(v)), None
+            )
         # Tờ khai đọc được nhưng không ra chữ quan hệ nào → tick "Khác" (an toàn nhất, không ép
         # người yêu cầu thành con/cha/mẹ) và đánh dấu default để người dùng soát lại.
         return {

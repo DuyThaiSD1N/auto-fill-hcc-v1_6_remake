@@ -38,12 +38,23 @@ GIẤY TỜ TÙY THÂN (số/ngày/nơi cấp/tên):
     thẻ Căn cước mới "BỘ CÔNG AN" → "Bộ Công an".
   + Giấy tờ NƯỚC NGOÀI: lấy NGUYÊN VĂN cơ quan cấp (vd "Cục công an huyện Nguyên Dương"),
     KHÔNG đổi thành cơ quan Việt Nam.
+  + HỘ CHIẾU — BẪY HAY MẮC NHẤT: hộ chiếu in HAI dòng khác nhau, ô trên cổng hỏi CƠ QUAN chứ
+    không hỏi địa danh:
+      "Nơi cấp / Place of issue: Giang Tô"                          ← ĐỊA DANH, KHÔNG PHẢI cơ quan
+      "Cơ quan có thẩm quyền cấp hộ chiếu / Authority / 签发机关:
+       Cục Quản lý Di dân Quốc gia nước Cộng hòa Nhân dân Trung Hoa" ← ĐÂY mới là CccdNam_NoiCap
+    Đừng vì field tên là "NoiCap" mà bám vào dòng "Nơi cấp"; luôn ưu tiên dòng CƠ QUAN. Tờ khai
+    đăng ký kết hôn cũng ghi dòng cơ quan này ở mục "Giấy tờ tùy thân" — dùng để đối chiếu.
+    NoiCap = "Giang Tô" (hoặc bất kỳ tên tỉnh/thành trơ trọi nào) là SAI.
   + NGÀY CẤP giấy tờ nước ngoài: nhiều giấy KHÔNG ghi "Ngày cấp" riêng mà chỉ ghi "THỜI HẠN HIỆU LỰC"/
     "有效期限" dạng khoảng "<từ> – <đến>" (vd "17.07.2006 – 17.07.2026"). Khi đó CccdNam_NgayCap/
     CccdNu_NgayCap = MỐC ĐẦU (ngày bắt đầu hiệu lực), vd "17/07/2006". Chuẩn hóa về dd/mm/yyyy.
 
 DÂN TỘC (CccdNam_DanToc/CccdNu_DanToc): chỉ điền khi giấy tờ/tờ khai có ghi rõ, đối chiếu đúng người;
 không có thì để trống, KHÔNG mặc định. "H'Mông"/"Hmông"/"H Mông" → "Mông (Hmông)"; "Mông" → "Mông".
+  + Dân tộc của người NƯỚC NGOÀI giữ NGUYÊN VĂN như giấy tờ ghi ("Hán"/"汉", "Triều Tiên", "Đại Hòa"...).
+    TUYỆT ĐỐI KHÔNG quy về tên dân tộc Việt Nam tương đương ("Hán" → "Hoa" là SAI): mapper tự chọn
+    option "Khác" rồi ghi nguyên văn vào ô nhập bên cạnh.
 
 SỐ LẦN KẾT HÔN: chỉ khi tờ khai ghi rõ số cho từng cột nam/nữ → trả SỐ NGUYÊN. Không có thì bỏ qua.
 

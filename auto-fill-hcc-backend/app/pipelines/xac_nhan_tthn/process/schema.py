@@ -59,6 +59,30 @@ FIELDS: list[dict] = [
     {"name": "ToKhai_NoiCuTru",
      "desc": 'Nơi cư trú hiện tại trên TỜ KHAI cấp giấy XNTTHN, object {quocGia,tinh,xa,diaChi}. '
              'Lấy đúng dòng "Nơi cư trú" của người yêu cầu/người được cấp; bắt buộc trả khi tờ khai có.'},
+    # --- Fields từ GIẤY KHAI SINH / TRÍCH LỤC KHAI SINH của chính người xin giấy ---
+    # Hồ sơ hay kèm GKS để chứng minh nhân thân (dân tộc, ngày sinh) khi thẻ căn cước mẫu mới không
+    # in dân tộc. GKS KHÔNG có "người yêu cầu": ngoài người được khai sinh nó chỉ còn cha, mẹ, người
+    # đi khai sinh và cán bộ ký. Không có field riêng cho cha/mẹ thì agent đẩy tên họ sang
+    # ToKhaiYeuCau_*/ToKhai_*, kéo mục I hoặc mục II của form thành tên cha/mẹ.
+    {"name": "Gks_HoTen",
+     "desc": 'Họ tên NGƯỜI ĐƯỢC KHAI SINH trên GIẤY KHAI SINH/TRÍCH LỤC KHAI SINH (dòng "Họ, chữ '
+             'đệm, tên:" ở khối "Người được khai sinh"). KHÔNG lấy tên cha/mẹ/người đi khai sinh.'},
+    {"name": "Gks_NgaySinh",
+     "desc": "Ngày sinh của người được khai sinh trên giấy khai sinh, dd/mm/yyyy."},
+    {"name": "Gks_GioiTinh",
+     "desc": 'Giới tính của người được khai sinh trên giấy khai sinh: "Nam" hoặc "Nữ".'},
+    {"name": "Gks_DanToc",
+     "desc": "Dân tộc của người được khai sinh trên giấy khai sinh. Nguồn quý vì thẻ căn cước mẫu "
+             "mới không in dân tộc."},
+    {"name": "Gks_QuocTich",
+     "desc": "Quốc tịch của người được khai sinh trên giấy khai sinh."},
+    {"name": "Gks_ChaHoTen",
+     "desc": 'Họ tên NGƯỜI CHA ghi trên giấy khai sinh (khối "Người cha"). BẮT BUỘC trả khi giấy có '
+             '— Python mapper dùng để loại tên cha ra khỏi mục người yêu cầu/người được cấp. '
+             'TUYỆT ĐỐI KHÔNG đẩy tên này sang ToKhaiYeuCau_* hay ToKhai_*.'},
+    {"name": "Gks_MeHoTen",
+     "desc": 'Họ tên NGƯỜI MẸ ghi trên giấy khai sinh (khối "Người mẹ"). BẮT BUỘC trả khi giấy có. '
+             'TUYỆT ĐỐI KHÔNG đẩy tên này sang ToKhaiYeuCau_* hay ToKhai_*.'},
     {"name": "Cccd_NoiCuTru",
      "desc": 'Nơi thường trú/cư trú trên CCCD/CMND, object {quocGia,tinh,xa,diaChi}. Chỉ lấy từ thẻ '
              'CCCD/CMND; đây là nguồn dự phòng khi tờ khai không có nơi cư trú.'},
@@ -126,7 +150,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgayCapGiayTo"):
+for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgayCapGiayTo", "Gks_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"

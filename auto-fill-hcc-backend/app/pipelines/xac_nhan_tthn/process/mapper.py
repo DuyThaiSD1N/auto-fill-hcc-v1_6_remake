@@ -100,6 +100,87 @@ def _classify_relation(value) -> str | None:
     return "2"
 
 
+def _id_match(left, right) -> bool | None:
+    """Hai số định danh có cùng một người không; thiếu một bên → None (không kết luận)."""
+    left_digits, right_digits = _digits(left), _digits(right)
+    if left_digits and right_digits:
+        return left_digits == right_digits
+    return None
+
+
+def _name_match(left, right) -> bool | None:
+    """Hai họ tên có trùng không (bỏ dấu, gộp khoảng trắng); thiếu một bên → None."""
+    left_name, right_name = _fold(left), _fold(right)
+    if left_name and right_name:
+        return left_name == right_name
+    return None
+
+
+def _relation_code(req_name, req_id, subject_name, subject_id, declared, fallback_self: bool) -> str | None:
+    """Mã ô tích "(5) Quan hệ với người được cấp Giấy XNTTHN": "1" = Bản thân, "2" = Khác.
+
+    Chốt bằng chính hai người ĐANG được điền vào form: mục I (người yêu cầu) so với mục II
+    (người được cấp). Trùng người → "Bản thân"; khác người → "Khác" (caller điền thêm chữ
+    quan hệ vào ô cạnh option). Thứ tự bằng chứng:
+
+    1. SỐ ĐỊNH DANH — mạnh nhất; hai bên đều có số thì chốt theo số, kể cả khi tên trùng
+       (trùng tên khác số là hai người khác nhau, rất phổ biến với tên Việt).
+    2. CHỮ QUAN HỆ trên tờ khai (chỉ khi khối "người yêu cầu" đáng tin) — dùng khi thiếu số
+       ở một bên, vì lời khai chính chủ đáng tin hơn phép so tên.
+    3. HỌ TÊN — chốt cuối khi không có số lẫn chữ quan hệ.
+    4. Không có dữ kiện nào → "1" nếu người yêu cầu chính là tài khoản VNeID đang đăng nhập
+       (fallback_self), ngược lại None để người dùng tự chọn.
+    """
+    by_id = _id_match(req_id, subject_id)
+    if by_id is not None:
+        return "1" if by_id else "2"
+    declared_code = _classify_relation(declared)
+    if declared_code:
+        return declared_code
+    by_name = _name_match(req_name, subject_name)
+    if by_name is not None:
+        return "1" if by_name else "2"
+    return "1" if fallback_self else None
+
+
+# Tick "Khác" là cổng bắt buộc điền chữ quan hệ vào ô kẻ chấm ngay cạnh. Khi hồ sơ chỉ chứng minh
+# được "hai người khác nhau" mà không nói quan hệ gì (không tờ khai, hoặc OCR rơi mất dòng quan
+# hệ), không có cách nào suy ra quan hệ thật → điền chữ trung tính và đánh dấu default để
+# extension tô VIỀN VÀNG cho người dùng sửa lại.
+_RELATION_OTHER_FALLBACK = "Người thân"
+# Có giấy ủy quyền thì quan hệ suy ra được từ chính tờ giấy, không phải đoán.
+_RELATION_OTHER_POA = "Người được ủy quyền"
+
+
+def _drop_birth_cert_leak(values: dict) -> None:
+    """Bỏ khối ToKhaiYeuCau_*/ToKhai_* thật ra là CHA/MẸ đọc nhầm trên GIẤY KHAI SINH.
+
+    Hồ sơ "CCCD + giấy khai sinh của chính mình" (kèm GKS để chứng minh dân tộc/ngày sinh, thứ thẻ
+    căn cước mẫu mới không in) chỉ nói về MỘT người: người đó vừa là người yêu cầu vừa là người
+    được cấp. Nhưng GKS còn in tên cha, tên mẹ, người đi khai sinh — trích lục mẫu mới in cả SỐ
+    ĐỊNH DANH của cha/mẹ — nên agent hay đẩy họ sang khối "người yêu cầu"; mục I liền mang tên
+    cha/mẹ và ô quan hệ tick "Khác" thay vì "Bản thân".
+
+    Chỉ dọn khi tờ khai KHÔNG ghi dòng quan hệ: có dòng đó nghĩa là hồ sơ có TỜ KHAI thật với người
+    khai hộ thật (trường hợp C), không phải ca này — không được đụng vào.
+    """
+    parents = [values.get("Gks_ChaHoTen"), values.get("Gks_MeHoTen")]
+    if not any(parents) or _classify_relation(values.get("ToKhaiYeuCau_QuanHe")):
+        return
+    subject = values.get("Gks_HoTen")
+    for prefix in ("ToKhaiYeuCau_", "ToKhai_"):
+        name = values.get(f"{prefix}HoTen")
+        # Trùng tên cha/mẹ là chắc chắn đọc nhầm. Ngoài ra, khi người được khai sinh chính là chủ
+        # thẻ trong hồ sơ thì hồ sơ không có người thứ hai — mọi tên lạ lọt vào đây đều của GKS.
+        leaked = any(_name_match(name, parent) for parent in parents) or (
+            _name_match(subject, values.get("Cccd_HoTen")) is True
+            and _name_match(name, subject) is False
+        )
+        if leaked:
+            for key in [k for k in values if k.startswith(prefix)]:
+                values.pop(key)
+
+
 _RELATION_OTHER_PREFIX_RE = re.compile(r"^(?:là|la)\s+", re.IGNORECASE)
 
 
@@ -157,15 +238,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
        - Mục I = khối "người yêu cầu" đầu tờ khai (ToKhaiYeuCau_*), ƯU TIÊN CAO NHẤT — không lấy
          nhầm sang thông tin người được cấp (ToKhai_*) như trước.
        - Mục II = người được cấp (ToKhai_*/Cccd_*) như bình thường.
-       - Quan hệ: "1" nếu tên/số định danh trùng người được cấp, ngược lại để trống (user tự chọn).
+       - Quan hệ: "1" nếu số định danh/tên người yêu cầu trùng người được cấp, ngược lại "2"
+         (Khác) kèm chữ quan hệ điền vào ô kẻ chấm cạnh option.
 
     D. CCCD-MISMATCH / KHÔNG có nguồn nào cho Mục I (không có khối người yêu cầu riêng, không có
        CCCD upload nào khớp):
        - Mục I: không đè (để cổng giữ thông tin người đăng nhập từ VNeID), chỉ set default loại cư trú.
        - Mục II = CCCD upload/tờ khai (người cần giấy).
-       - Quan hệ: để trống (user tự chọn).
+       - Quan hệ: so mục I với mục II như case C ("1" khi cùng người, "2" khi khác người);
+         không đủ dữ kiện cả hai phép so thì để trống (user tự chọn).
     """
     values = _by_name(fields)
+    _drop_birth_cert_leak(values)
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -183,10 +267,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
+    def add_relation_other(declared, fallback: str = _RELATION_OTHER_FALLBACK) -> None:
+        """Ô kẻ chấm cạnh option "Khác": chữ trên tờ khai, thiếu thì chữ trung tính (viền vàng).
+
+        Ô này chỉ được cổng render SAU khi tick "Khác" nên luôn phát ngay sau radio quan hệ.
+        """
+        text = _relation_other_text(declared)
+        add("quanhekhac", text or fallback, default=not text)
+
     has_cccd = bool(values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"))
     # Đây là TỜ KHAI, không phải ảnh CCCD → nhân thân có thể LLM chỉ đặt ở ToKhai_*.
     # Vẫn coi là có người để không rụng cả khối khi thiếu Cccd_* (xem cổng bên dưới).
     has_tokhai = bool(values.get("ToKhai_SoDinhDanh") or values.get("ToKhai_HoTen"))
+    # GIẤY KHAI SINH của chính người xin giấy: nguồn nhân thân hợp lệ cho mục II (dân tộc, giới
+    # tính, ngày sinh) khi hồ sơ chỉ có nó — sau _drop_birth_cert_leak thì đây chắc chắn là người
+    # được cấp, không phải cha/mẹ.
+    has_gks = bool(values.get("Gks_HoTen"))
     # Khối "người yêu cầu" ghi RIÊNG ở đầu tờ khai — CÓ THỂ khác người được cấp ở Section II
     # (thân nhân đứng nộp hộ mà không kèm giấy ủy quyền chính thức).
     # Khối "người yêu cầu" chỉ đáng tin khi nó THẬT SỰ đến từ tờ khai. TỜ KHAI luôn ghi giấy tờ tùy
@@ -241,7 +337,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # MỤC I & II: chỉ điền khi có CCCD hoặc giấy ủy quyền
     # Không có → bỏ qua thông tin cá nhân, vẫn điền tình trạng hôn nhân bên dưới
     # =========================================================
-    if has_cccd or has_poa or has_tokhai or has_declared_requester:
+    if has_cccd or has_poa or has_tokhai or has_declared_requester or has_gks:
 
         # --- MỤC I: Người yêu cầu ---
         # Ô "Quan hệ với người được xác minh" LUÔN được add() TRƯỚC khối nhân thân (HoVaTenC...):
@@ -250,8 +346,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # ỦY QUYỀN: Mục I = người được ủy quyền = CCCD upload (đi nộp hộ). Có giấy ủy quyền
             # thật thì chắc chắn KHÔNG phải bản thân → luôn "Khác".
             add("quanhevoinguoiduocxacminh", "2")
-            # Ô nhập cạnh "Khác": chữ quan hệ trên tờ khai (nếu tờ khai có ghi).
-            add("quanhekhac", _relation_other_text(values.get("ToKhaiYeuCau_QuanHe")))
+            # Ô nhập cạnh "Khác": chữ quan hệ trên tờ khai; tờ khai không ghi thì chính giấy ủy
+            # quyền đã nói rõ vai của người đi nộp.
+            add_relation_other(values.get("ToKhaiYeuCau_QuanHe"), _RELATION_OTHER_POA)
             add("HoVaTenC", values.get("Cccd_HoTen"))
             add("NgaySinhC", values.get("Cccd_NgaySinh"))
             add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
@@ -305,32 +402,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 cccd_ten = cccd_ns = cccd_sdd = ngay_cap = noi_cap = residence_i = None
 
             if cccd_ten or cccd_sdd:
-                # Quan hệ: ƯU TIÊN chữ khai trên tờ khai ("Bản thân"/"Tự khai" → "1"; bố/mẹ/con/
-                # vợ/chồng/... → "2"). Tờ khai không ghi dòng quan hệ thì lùi về so tên/số định danh
-                # người yêu cầu với người được cấp; khớp → "1", không khớp/không rõ → để trống
-                # (không đoán bừa mã quan hệ cụ thể).
-                relation_code = None
-                if has_declared_requester:
-                    relation_code = _classify_relation(values.get("ToKhaiYeuCau_QuanHe"))
-                    if relation_code is None:
-                        requester_id = _digits(req_sdd)
-                        subject_id = _digits(values.get("ToKhai_SoDinhDanh"))
-                        requester_name = _fold(req_ten)
-                        subject_name = _fold(values.get("ToKhai_HoTen"))
-                        requester_is_subject = (
-                            (requester_id and subject_id and requester_id == subject_id)
-                            or (not requester_id and not subject_id and requester_name and requester_name == subject_name)
-                        )
-                        relation_code = "1" if requester_is_subject else None
-                elif is_self or declared_self:
-                    relation_code = "1"
+                # Quan hệ chốt bằng chính hai người sắp được điền: mục I (cccd_*) so với mục II
+                # (ToKhai_*/Cccd_* — đúng biểu thức dùng ở khối mục II bên dưới). Trùng số định
+                # danh hoặc trùng tên → "Bản thân"; khác người → "Khác" + chữ quan hệ ở ô kẻ chấm.
+                # Chữ quan hệ trên tờ khai chỉ được tin khi khối "người yêu cầu" là thật.
+                # Nhân thân mục I có thể đã MƯỢN thẻ trong hồ sơ (card_is_requester) — mượn xong
+                # thì số định danh mục I trùng mục II một cách máy móc. So quan hệ phải dùng đúng
+                # dữ kiện tờ khai tự khai ra, nếu không mọi hồ sơ nộp hộ đều thành "Bản thân".
+                relation_code = _relation_code(
+                    req_ten if has_declared_requester else cccd_ten,
+                    req_sdd if has_declared_requester else cccd_sdd,
+                    values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen"),
+                    values.get("ToKhai_SoDinhDanh") or values.get("Cccd_SoDinhDanh"),
+                    values.get("ToKhaiYeuCau_QuanHe") if has_declared_requester else None,
+                    fallback_self=bool(is_self or declared_self),
+                )
                 if relation_code:
                     add("quanhevoinguoiduocxacminh", relation_code)
                 # Chọn "Khác" thì cổng mở thêm ô nhập free-text ngay cạnh: điền đúng chữ quan hệ
                 # trên tờ khai ("là con đẻ" → "Con đẻ"). Ô này chỉ tồn tại sau khi tick "Khác" nên
                 # phải phát NGAY SAU radio quan hệ.
                 if relation_code == "2":
-                    add("quanhekhac", _relation_other_text(values.get("ToKhaiYeuCau_QuanHe")))
+                    add_relation_other(values.get("ToKhaiYeuCau_QuanHe") if has_declared_requester else None)
 
                 add("HoVaTenC", cccd_ten)
                 add("NgaySinhC", cccd_ns)
@@ -371,11 +464,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         else:
             # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên tờ khai (ưu tiên) hoặc CCCD upload
             # Ưu tiên: ToKhai_* → Cccd_* (từng field riêng lẻ)
-            add("HoVaTenC1", values.get("ToKhai_HoTen") or values.get("Cccd_HoTen"))
-            add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh"))
-            add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh"))
-            add("DanTocC1", values.get("ToKhai_DanToc") or values.get("Cccd_DanToc"))
-            add("QuocTichC1", values.get("ToKhai_QuocTich") or nationality)
+            add("HoVaTenC1", values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen"))
+            add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh") or values.get("Gks_NgaySinh"))
+            add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh") or values.get("Gks_GioiTinh"))
+            # Thẻ căn cước mẫu mới không in dân tộc — giấy khai sinh thường là nguồn DUY NHẤT.
+            add("DanTocC1", values.get("ToKhai_DanToc") or values.get("Cccd_DanToc") or values.get("Gks_DanToc"))
+            add("QuocTichC1", values.get("ToKhai_QuocTich") or values.get("Gks_QuocTich") or nationality)
             # Giấy tờ: ưu tiên tờ khai, fallback CCCD
             so_dinh_danh = values.get("ToKhai_SoDinhDanh") or values.get("Cccd_SoDinhDanh")
             ngay_cap = values.get("ToKhai_NgayCapGiayTo") or values.get("Cccd_NgayCap")

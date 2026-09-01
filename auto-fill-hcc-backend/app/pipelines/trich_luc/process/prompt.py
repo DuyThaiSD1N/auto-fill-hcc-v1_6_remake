@@ -21,7 +21,16 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   cho cả người yêu cầu và người được đăng ký, KHÔNG trả lặp sang ChuThe_*.
 - Ghép mặt trước và mặt sau cùng thẻ bằng số CCCD/MRZ và họ tên; không phụ thuộc tên file hoặc thứ tự upload.
 - Không có CONTEXT: thẻ khớp HoTich_* là ChuThe_*; thẻ khác chủ thể mới có thể là Nyc_*.
-  Chỉ có 1 CCCD và không có mỏ neo nào → giữ vào ChuThe_*, không tự coi là người yêu cầu.
+  Chỉ có 1 CCCD và KHÔNG có mỏ neo nào (không tờ khai, không giấy hộ tịch nêu tên/số chủ thể)
+  → giữ vào ChuThe_*, không tự coi là người yêu cầu.
+- ƯU TIÊN CAO — giấy hộ tịch đã nêu rõ CHỦ THỂ mà thẻ trong hồ sơ là NGƯỜI KHÁC (lệch cả tên lẫn số)
+  → thẻ đó BẮT BUỘC vào Nyc_*, KHÔNG được nhét vào ChuThe_*. Áp dụng kể cả khi thẻ KHÔNG khớp CONTEXT
+  (người đăng nhập thường là người nộp hộ, khác hẳn người yêu cầu ghi trên hồ sơ giấy).
+- TRÍCH LỤC KHAI TỬ: người được đăng ký ĐÃ CHẾT nên KHÔNG BAO GIỜ có thẻ căn cước trong hồ sơ. Mọi
+  CCCD/CMND đi kèm trích lục khai tử là của NGƯỜI YÊU CẦU → Nyc_*. Giấy tờ tùy thân của người chết chỉ
+  tồn tại dưới dạng dòng chữ IN TRÊN trích lục ("Giấy tờ tùy thân: Giấy CMND số ..."), và nó thuộc về
+  HoTich_SoGiayToTuyThan/HoTich_NgayCapGiayToTuyThan/HoTich_NoiCapGiayToTuyThan — TUYỆT ĐỐI không
+  chuyển sang ChuThe_*.
 - Có hơn 2 CCCD mà không đủ mỏ neo phân vai → chỉ trả người chắc chắn; không đoán theo tuổi hoặc tên file.
 </multi_cccd_rules>
 

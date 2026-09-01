@@ -243,6 +243,107 @@ _build_current_ward_index()  # chay 1 lan luc import
 
 
 # ---------------------------------------------------------------------------
+# Tra NGUOC danh muc hien hanh: ten xa/phuong -> tinh dang so huu no.
+#
+# OCR chu viet tay tren to khai doc sai TEN TINH rat de: chi 34 tinh nhung chu viet tay thi
+# "Bac Ninh" ra "lai ninh", "Bac Giang" ra "Ba Ria - Vung Tau". Cap (tinh sai, xa dung) khong
+# chon duoc gi tren cong -- ca hai dropdown do. Ten xa nguoc lai rat dac trung: 2376/2745 ten
+# xa chi ton tai o DUNG MOT tinh, nen khi cap khong hop le ma ten xa lai duy nhat toan quoc thi
+# tinh moi la ve dang sai, khong phai xa.
+# ---------------------------------------------------------------------------
+# fold_accent(ten xa) -> (ten tinh khong tien to, ten xa day du trong danh muc)
+_PROVINCE_BY_WARD: dict[str, tuple[str, str]] = {}
+# Ten xa trung o nhieu tinh -> khong du can cu suy ra tinh, bo qua thay vi doan bua.
+_WARD_NAME_AMBIGUOUS: set[str] = set()
+# (fold(tinh), fold_accent(xa)) co that trong danh muc hien hanh.
+_CURRENT_PAIRS: set[tuple[str, str]] = set()
+# fold(ten tinh, ca dang "Tinh X" lan "X") -> ten tinh khong tien to.
+_CURRENT_PROVINCES: dict[str, str] = {}
+
+
+_PROVINCE_PREFIX_RE = re.compile(r"^(tinh|thanh pho|tp)\.?\s+")
+
+
+def _fold_province(text: str) -> str:
+    """Fold ten tinh, BO tien to loai don vi.
+
+    Danh muc goc ghi "Tinh Bac Ninh"/"Thanh pho Ho Chi Minh", bang remap ghi "TP. Ho Chi Minh",
+    con giay to thi ghi tran "Bac Ninh". Ba cach viet do phai la MOT tinh, neu khong moi dia chi
+    di qua bang remap HCM deu bi cham la "khong con trong danh muc".
+    """
+    return _PROVINCE_PREFIX_RE.sub("", _fold(text)).strip()
+
+
+def _ward_keys(ward_full_name: str) -> set[str]:
+    """Cac cach viet ten mot xa co the gap trong du lieu doc ra.
+
+    Ten day du ("Phuong Lang Biang - Da Lat") va phan loi truoc hau to "- <thanh pho>"
+    ("Lang Biang") deu tro ve cung mot xa.
+    """
+    keys = {_fold_accent(ward_full_name)}
+    core = _fold_accent(ward_full_name).split(" - ")[0].strip()
+    if core:
+        keys.add(core)
+    return {key for key in keys if key}
+
+
+def _build_reverse_catalog_index() -> None:
+    try:
+        from app.locations.catalog import PROVINCES, WARDS_BY_SLUG
+    except Exception as e:  # noqa: BLE001
+        import logging
+        logging.getLogger(__name__).warning(
+            "area_remap: khong nap duoc danh muc hanh chinh de tra nguoc -- %s", e
+        )
+        return
+    for province in PROVINCES:
+        province_name = province["name"]
+        for label in (province["text"], province["name"]):
+            _CURRENT_PROVINCES[_fold_province(label)] = province_name
+        for ward_full_name in WARDS_BY_SLUG.get(province["slug"], {}).get("communes") or []:
+            for key in _ward_keys(ward_full_name):
+                _CURRENT_PAIRS.add((_fold_province(province_name), key))
+                existing = _PROVINCE_BY_WARD.get(key)
+                if existing is None:
+                    _PROVINCE_BY_WARD[key] = (province_name, ward_full_name)
+                elif existing[0] != province_name:
+                    _WARD_NAME_AMBIGUOUS.add(key)
+
+
+_build_reverse_catalog_index()  # chay 1 lan luc import
+
+
+def is_current_area(tinh: str, xa: str) -> bool:
+    """Cap tinh/xa nay co chon duoc tren cong khong (theo danh muc hanh chinh hien hanh).
+
+    Tinh rong -> khong co gi de kiem; xa rong -> chi kiem ten tinh. Danh muc chua nap duoc
+    (import loi) thi coi nhu hop le: tha bo qua con hon xoa du lieu dung.
+    """
+    if not _CURRENT_PROVINCES:
+        return True
+    province_key = _fold_province(tinh)
+    if not province_key:
+        return True
+    if province_key not in _CURRENT_PROVINCES:
+        return False
+    if not str(xa or "").strip():
+        return True
+    return (_fold_province(_CURRENT_PROVINCES[province_key]), _fold_accent(xa)) in _CURRENT_PAIRS
+
+
+def province_for_ward(xa: str) -> Optional[tuple[str, str]]:
+    """Tinh DUY NHAT dang co phuong/xa ten nay -> (ten tinh, ten xa day du).
+
+    Tra None khi ten xa khong co trong danh muc, hoac trung ten o nhieu tinh -- luc do khong
+    du can cu de sua, giu nguyen cho nguoi dung tu chon con hon doi sang tinh khac.
+    """
+    key = _fold_accent(xa)
+    if not key or key in _WARD_NAME_AMBIGUOUS:
+        return None
+    return _PROVINCE_BY_WARD.get(key)
+
+
+# ---------------------------------------------------------------------------
 # Bang: thanh pho/thi xa thuoc tinh -> ten tinh chinh thuc
 # LLM doi khi tra "tinh" = ten thanh pho thuoc tinh (vd "Da Lat") thay vi ten tinh ("Lam Dong").
 # Bang nay normalize truoc khi lookup remap xa.
@@ -475,5 +576,10 @@ def reload() -> None:
     _CURRENT_WARD.clear()
     _CURRENT_WARD_AMBIGUOUS.clear()
     _build_current_ward_index()
+    _PROVINCE_BY_WARD.clear()
+    _WARD_NAME_AMBIGUOUS.clear()
+    _CURRENT_PAIRS.clear()
+    _CURRENT_PROVINCES.clear()
+    _build_reverse_catalog_index()
     # Clear cache khi reload data
     _remap_area_cached.cache_clear()

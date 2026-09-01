@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable
 
 from app.config import settings
 from app.core.errors import AppError
+from app.pipelines._shared.formatting import normalize_ui_dates
 from app.process.schemas import ProcessReq
 from app.services import ocr
 
@@ -115,4 +116,9 @@ def prepare_process(
 
 
 async def execute_process(prepared: PreparedProcess) -> dict:
-    return await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
+    result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
+    # Chốt chặn CHUNG cho mọi thủ tục: mỗi pipeline tự chuẩn hóa ngày một kiểu (nhiều pipeline
+    # không chuẩn hóa gì cả), nên siết một lần ở đây thay vì vá rải rác 90 mapper.
+    if isinstance(result, dict):
+        normalize_ui_dates(result.get("fields"))
+    return result

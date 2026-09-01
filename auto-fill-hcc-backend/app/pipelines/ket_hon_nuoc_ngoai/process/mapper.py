@@ -43,6 +43,26 @@ def _is_vn(value) -> bool:
 
 _DAN_TOC_CANON = {"mong": "Mông", "hmong": "Mông (Hmông)"}
 
+# Option cuối của dropdown dân tộc; chọn nó thì cổng mở ô nhập "Nhập dân tộc:" ngay bên cạnh.
+DAN_TOC_KHAC = "Khác"
+
+# Ô "Cơ quan cấp" hỏi CƠ QUAN, không hỏi địa danh. Hộ chiếu in HAI dòng dễ lẫn: "Nơi cấp"/"Place
+# of issue" chỉ là tỉnh/thành (vd "Giang Tô"), còn "Cơ quan có thẩm quyền cấp hộ chiếu" mới là thứ
+# cần điền (vd "Cục Quản lý Di dân Quốc gia nước Cộng hòa Nhân dân Trung Hoa"). Field tên "NoiCap"
+# kéo agent bám nhầm dòng đầu, nên phải có chốt chặn không phụ thuộc agent.
+#
+# Tên CƠ QUAN ở mọi nước đều mang một từ chỉ VAI TRÒ; một địa danh trơ trọi thì không có từ nào.
+_ISSUER_ROLE_MARKERS = (
+    "cuc", "bo ", "so tu phap", "cong an", "co quan", "uy ban", "canh sat", "vien kiem sat",
+    "ministry", "department", "administration", "authority", "bureau", "immigration", "police",
+)
+
+
+def _looks_like_issuer(value) -> bool:
+    """Chuỗi này là tên CƠ QUAN hay chỉ là một địa danh."""
+    folded = _fold(value)
+    return bool(folded) and any(marker in folded for marker in _ISSUER_ROLE_MARKERS)
+
 
 def _normalize_dan_toc(value):
     raw = str(value or "").strip()
@@ -115,13 +135,30 @@ def enrich(fields: list[dict]) -> list[dict]:
         add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
         add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
-        add(f"DanToc{dst}", _normalize_dan_toc(values.get(f"{src}_DanToc")))
+        # Dropdown dân tộc chỉ có 54 DÂN TỘC VIỆT NAM, nên dân tộc của người mang quốc tịch nước
+        # ngoài không bao giờ có option khớp. Khớp gần đúng còn tệ hơn bỏ trống: "Hán" bị cổng gom
+        # vào option "Hoa" — đúng nghĩa dân tộc học nhưng SAI so với giấy tờ đang cầm. Đúng cách là
+        # chọn "Khác" rồi ghi nguyên văn vào ô nhập kề bên.
+        # Chỉ xét QUỐC TỊCH, không xét `foreign`: người Việt cư trú ở nước ngoài vẫn mang dân tộc
+        # Việt Nam bình thường, phải giữ nguyên option trong dropdown.
+        dan_toc = _normalize_dan_toc(values.get(f"{src}_DanToc"))
+        if quoc_tich and not _is_vn(quoc_tich):
+            # Quốc tịch nước ngoài thì "Khác" LUÔN đúng, kể cả khi hồ sơ không ghi dân tộc — chọn
+            # sẵn để người dùng chỉ còn phải gõ chữ. Ô nhập chỉ được cổng render SAU khi dropdown
+            # chọn "Khác" nên phát ngay sau nó.
+            add(f"DanToc{dst}", DAN_TOC_KHAC)
+            add(f"NhapDanToc{dst}Khac", dan_toc)
+        else:
+            add(f"DanToc{dst}", dan_toc)
 
         if foreign:
             # Giấy tờ nước ngoài: loại = "Giấy tờ khác..." + ô "Nhập tên giấy tờ" = tên giấy tờ thật.
             add(f"LoaiGiayToDinhDanh_{dst}", FOREIGN_DOC_TYPE)
             add(f"NhapTenGiayTo_{dst}", values.get(f"{src}_TenGiayTo") or "Chứng minh thư")
-            add(f"NoiCapDD_{dst}", issuer_raw)  # nơi cấp GIỮ NGUYÊN (không chuẩn hóa VN)
+            # Giữ NGUYÊN VĂN (không chuẩn hóa về cơ quan VN), nhưng chỉ khi đó thật sự là tên
+            # một cơ quan. Đọc nhầm ra địa danh thì để TRỐNG cho người dùng gõ: ô đỏ còn hơn một
+            # cái tên tỉnh nằm chình ình ở ô "Cơ quan cấp" mà người soát hồ sơ dễ cho qua.
+            add(f"NoiCapDD_{dst}", issuer_raw if _looks_like_issuer(issuer_raw) else None)
             add(f"QuocTich{dst}", quoc_tich)  # KHÔNG mặc định
             add(f"LoaiCuTru_{dst}", "Thường trú")  # foreign vẫn mặc định Thường trú
             # Cư trú: radio "2" (Khác) + ô NuocNgoai {quốc gia, địa chỉ đầy đủ}.

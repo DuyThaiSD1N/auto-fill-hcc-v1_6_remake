@@ -3,9 +3,9 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines.thay_doi_ho_tich.process.schema import UI_COMP_BY_NAME
+from app.pipelines.thay_doi_ho_tich.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 
 def _digits(value) -> str:
@@ -270,6 +270,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if not comp:
             return
         field = {"name": name, "comp": comp, "value": value}
+        if name in UI_ALIASES:
+            field["aliases"] = list(UI_ALIASES[name])
         if default:
             field["default"] = True  # extension tô VIỀN VÀNG (giá trị mặc định, không từ giấy tờ)
         out.append(field)
@@ -417,6 +419,42 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             requester_id_type = "Chứng minh nhân dân"
     if requester_id_type:
         add("LoaiGiayToTuyThanC", requester_id_type)
+
+    # (3) Ngày cấp + Cơ quan cấp giấy tờ tùy thân của người yêu cầu. Tờ khai đã đọc tất định ở
+    # declaration.py, nhưng mapper không phát ra ô UI nào nên hai ô này luôn trống trên form.
+    # Ưu tiên tờ khai → thẻ CCCD khớp người yêu cầu → Cccd_* → thẻ của người có nội dung thay đổi
+    # (chỉ khi quan hệ "Bản thân": lúc đó hai người là MỘT nên dùng chung thẻ).
+    def _card_issue(card) -> tuple:
+        """Chỉ nhận ngày/nơi cấp của thẻ ĐÚNG người yêu cầu — lệch số định danh là thẻ người khác."""
+        if not isinstance(card, dict):
+            return None, None
+        card_id = _digits(card.get("SoDinhDanh"))
+        if card_id and requester_id and card_id != _digits(requester_id):
+            return None, None
+        return card.get("NgayCap"), card.get("NoiCap")
+
+    requester_issue_date = values.get("NguoiYeuCau_NgayCap")
+    requester_issuer = normalize_issuer(values.get("NguoiYeuCau_NoiCap"))
+    for card in (
+        requester_card,
+        {
+            "SoDinhDanh": values.get("Cccd_SoDinhDanh"),
+            "NgayCap": values.get("Cccd_NgayCap"),
+            "NoiCap": values.get("Cccd_NoiCap"),
+        },
+        subject_card if quan_he == "Bản thân" else None,
+    ):
+        if requester_issue_date and requester_issuer:
+            break
+        card_date, card_issuer = _card_issue(card)
+        requester_issue_date = requester_issue_date or card_date
+        requester_issuer = requester_issuer or normalize_issuer(card_issuer)
+
+    if requester_issue_date:
+        add("NgayCapDDC", requester_issue_date)
+        add("NoiCapDDC", requester_issuer or default_issuer(requester_issue_date))
+    elif requester_issuer:
+        add("NoiCapDDC", requester_issuer)
 
     # Nơi cư trú: ưu tiên NguoiYeuCau_NoiCuTru từ tờ khai, không có mới điền default.
     requester_residence = values.get("NguoiYeuCau_NoiCuTru")

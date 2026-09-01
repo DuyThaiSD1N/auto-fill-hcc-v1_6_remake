@@ -11,10 +11,12 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh bên nam, dd/mm/yyyy."},
     {"name": "CccdNam_NgayCap", "desc": "Ngày cấp giấy tờ bên nam, dd/mm/yyyy. Giấy nước ngoài chỉ ghi 'Thời hạn hiệu lực'/'有效期限' dạng khoảng thì lấy MỐC ĐẦU (ngày bắt đầu hiệu lực)."},
     {"name": "CccdNam_NoiCap",
-     "desc": 'Nơi cấp/cơ quan cấp giấy tờ bên nam GHI ĐÚNG như trên giấy tờ. CCCD VN mặt sau có '
+     "desc": 'CƠ QUAN cấp giấy tờ bên nam GHI ĐÚNG như trên giấy tờ — ô trên cổng hỏi CƠ QUAN, '
+             'KHÔNG hỏi địa danh. CCCD VN mặt sau có '
              '"CỤC TRƯỞNG CỤC CẢNH SÁT..." → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"; '
              'thẻ Căn cước mới "BỘ CÔNG AN" → "Bộ Công an". Giấy tờ nước ngoài lấy nguyên cơ quan cấp '
-             '(vd "Cục công an huyện Nguyên Dương").'},
+             '(vd "Cục công an huyện Nguyên Dương"). '
+             'RIÊNG HỘ CHIẾU có HAI dòng rất dễ lẫn: "Nơi cấp"/"Place of issue" chỉ là TỈNH/THÀNH (vd "Giang Tô") — TUYỆT ĐỐI KHÔNG lấy dòng đó; phải lấy dòng "Cơ quan có thẩm quyền cấp hộ chiếu"/"Authority"/"签发机关" (vd "Cục Quản lý Di dân Quốc gia nước Cộng hòa Nhân dân Trung Hoa").'},
     {"name": "CccdNam_DanToc", "desc": "Dân tộc BÊN NAM nếu giấy tờ/tờ khai có ghi (đối chiếu đúng người). Không có thì để trống."},
     {"name": "CccdNam_QuocTich", "desc": "Quốc tịch BÊN NAM — BẮT BUỘC đọc, KỂ CẢ nước ngoài (vd 'Trung Quốc', 'Hàn Quốc'). Giấy tờ nước ngoài → quốc tịch nước đó. KHÔNG mặc định 'Việt Nam'."},
     {"name": "CccdNam_TenGiayTo", "desc": "TÊN loại giấy tờ tùy thân bên nam KHI là giấy tờ NƯỚC NGOÀI (đọc theo tiêu đề, vd 'Chứng minh thư' cho thẻ 居民身份证 Trung Quốc, 'Hộ chiếu'). Giấy tờ Việt Nam thì bỏ trống."},
@@ -40,8 +42,10 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh bên nữ, dd/mm/yyyy."},
     {"name": "CccdNu_NgayCap", "desc": "Ngày cấp giấy tờ bên nữ, dd/mm/yyyy. Giấy nước ngoài chỉ ghi 'Thời hạn hiệu lực'/'有效期限' dạng khoảng thì lấy MỐC ĐẦU (ngày bắt đầu hiệu lực)."},
     {"name": "CccdNu_NoiCap",
-     "desc": 'Nơi cấp/cơ quan cấp giấy tờ bên nữ GHI ĐÚNG như trên giấy tờ (VN: "Bộ Công an"/'
-             '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; nước ngoài lấy nguyên cơ quan cấp).'},
+     "desc": 'CƠ QUAN cấp giấy tờ bên nữ GHI ĐÚNG như trên giấy tờ — ô trên cổng hỏi CƠ QUAN, '
+             'KHÔNG hỏi địa danh (VN: "Bộ Công an"/"Cục Cảnh sát quản lý hành chính về trật tự xã '
+             'hội"; nước ngoài lấy nguyên cơ quan cấp). '
+             'RIÊNG HỘ CHIẾU có HAI dòng rất dễ lẫn: "Nơi cấp"/"Place of issue" chỉ là TỈNH/THÀNH (vd "Giang Tô") — TUYỆT ĐỐI KHÔNG lấy dòng đó; phải lấy dòng "Cơ quan có thẩm quyền cấp hộ chiếu"/"Authority"/"签发机关" (vd "Cục Quản lý Di dân Quốc gia nước Cộng hòa Nhân dân Trung Hoa").'},
     {"name": "CccdNu_DanToc", "desc": "Dân tộc BÊN NỮ nếu giấy tờ/tờ khai có ghi. Không có thì để trống."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch BÊN NỮ — BẮT BUỘC đọc, KỂ CẢ nước ngoài. KHÔNG mặc định 'Việt Nam'."},
     {"name": "CccdNu_TenGiayTo", "desc": "TÊN loại giấy tờ tùy thân bên nữ KHI là giấy tờ NƯỚC NGOÀI (vd 'Chứng minh thư', 'Hộ chiếu'). Giấy tờ Việt Nam thì bỏ trống."},
@@ -89,6 +93,11 @@ UI_COMP_BY_NAME = {
     "NgayCapDD_BenNam": "x-date",
     "NoiCapDD_BenNam": "x-input",
     "DanTocBenNam": "x-select",
+    # Dropdown dân tộc chỉ liệt kê 54 dân tộc VIỆT NAM. Chọn "Khác" thì cổng render thêm khối
+    # x-select-area DanTocBenNamKhac, bên trong là ô nhập trần name="NhapDanTocBenNamKhac"
+    # (placeholder "Nhập dân tộc:") — nơi ghi dân tộc của người mang quốc tịch nước ngoài.
+    "DanTocBenNamKhac": "x-select-area",
+    "NhapDanTocBenNamKhac": "raw",
     "QuocTichBenNam": "x-select",
     "LoaiCuTru_BenNam": "x-select",
     "NoiCuTru_BenNam": "x-radio",
@@ -109,6 +118,8 @@ UI_COMP_BY_NAME = {
     "NgayCapDD_BenNu": "x-date",
     "NoiCapDD_BenNu": "x-input",
     "DanTocBenNu": "x-select",
+    "DanTocBenNuKhac": "x-select-area",  # tương tự DanTocBenNamKhac nhưng cho bên nữ
+    "NhapDanTocBenNuKhac": "raw",
     "QuocTichBenNu": "x-select",
     "LoaiCuTru_BenNu": "x-select",
     "NoiCuTru_BenNu": "x-radio",
