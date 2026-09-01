@@ -731,7 +731,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if values.get("ChuThe_SoDinhDanh"):
             add(
                 "NDK_LoaiGiayToTuyThan",
-                id_doc_type(values.get("ChuThe_LoaiGiayTo") or "Căn cước", subject_issuer),
+                _id_doc_type_with_number(
+                    values.get("ChuThe_SoDinhDanh"), values.get("ChuThe_LoaiGiayTo"), subject_issuer),
             )
         add("NDK_SoGiayToTuyThan", values.get("ChuThe_SoDinhDanh"))
         add("NDK_NgayCap", values.get("ChuThe_NgayCap"))
@@ -751,7 +752,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NDK_QuocTich", "Việt Nam")
         add("NDK_SoDinhDanh", values.get("Nyc_SoDinhDanh"))
         if values.get("Nyc_SoDinhDanh"):
-            add("NDK_LoaiGiayToTuyThan", id_doc_type("Căn cước", requester_issuer))
+            add("NDK_LoaiGiayToTuyThan",
+                _id_doc_type_with_number(values.get("Nyc_SoDinhDanh"), None, requester_issuer))
         add("NDK_SoGiayToTuyThan", values.get("Nyc_SoDinhDanh"))
         add("NDK_NgayCap", values.get("Nyc_NgayCap"))
         add("NDK_NoiCap", requester_issuer)
@@ -916,11 +918,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     ndk_noicap = default_issuer(ndk_ngaycap)
                 add("NDK_NoiCap", ndk_noicap)
 
-                # Loại giấy tờ: Ưu tiên tờ khai trước
+                # Loại giấy tờ: Ưu tiên tờ khai trước.
+                #
+                # SỐ CHỮ SỐ là bằng chứng mạnh hơn cả chữ OCR đọc được: căn cước/CCCD LUÔN 12 chữ số,
+                # nên số 9 chữ số chỉ có thể là CMND cũ. Giấy hộ tịch cũ (trích lục khai tử của người
+                # sinh trước 1960...) hay ghi CMND 9 số, mà OCR thì hay rơi mất chữ "CMND" — thiếu
+                # luật này thì id_hint rơi về mặc định "Căn cước" rồi chọn nhầm option "Thẻ Căn cước"
+                # cho một số 9 chữ số, sai hiển nhiên mà nhìn vẫn hợp lệ.
                 id_hint = ht_loai or ct_loai
-                if not id_hint and (ht_so or ct_so):
-                    id_hint = "Căn cước"  # có số nhưng LLM ko trả loại → để nơi cấp quyết
-                add("NDK_LoaiGiayToTuyThan", id_doc_type(id_hint, ndk_noicap or "") if id_hint else None)
+                ndk_so_giay_to = (ht_so if not is_birth else None) or values.get("HoTich_SoDinhDanh") or ct_so
+                if id_hint or ndk_so_giay_to:
+                    add("NDK_LoaiGiayToTuyThan",
+                        _id_doc_type_with_number(ndk_so_giay_to, id_hint, ndk_noicap or ""))
             add("NDK_LoaiCuTru", "Thường trú")
             ndk_area = _area(values.get("HoTich_NoiCuTru")) or _area(_ct("ChuThe_NoiCuTru"))
             # Fallback nơi cư trú từ Nyc_NoiCuTru khi không có từ giấy hộ tịch/ChuThe
