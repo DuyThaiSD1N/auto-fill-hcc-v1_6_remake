@@ -2020,13 +2020,10 @@
       .trim();
   }
 
-  function attachmentKeyMatches(a, b) {
+  function attachmentKeyEquals(a, b) {
     const left = attachmentTextKey(a);
     const right = attachmentTextKey(b);
-    if (!left || !right) return false;
-    if (left === right) return true;
-    if (Math.min(left.length, right.length) < 4) return false;
-    return left.includes(right) || right.includes(left);
+    return !!left && left === right;
   }
 
   function attachmentPlanLabels(planItem = {}, payloadFile = {}) {
@@ -2051,13 +2048,17 @@
       if (!attachedName) return false;
       const componentName = attachmentComponentName(row);
       if (wantsNewComponent) {
-        return componentTextMatches(row, expectedNewComponent) &&
-          labels.some((label) => attachmentKeyMatches(attachedName, label));
+        // Thành phần động do extension tự đặt tên phải khớp chính xác. So kiểu chứa nhau sẽ
+        // nhận nhầm các tên gần giống, ví dụ "CCCD ... HÒA" với "CCCD ... HOÀN".
+        return attachmentKeyEquals(componentName, expectedNewComponent) &&
+          labels.some((label) => attachmentKeyEquals(attachedName, label));
       }
       // Với các dòng cố định, tên thành phần hồ sơ thường là mô tả dài và có thể chứa
       // nhãn của dòng khác (vd dòng 1 có cụm "giao dịch đã được chứng thực"). Nếu dùng
       // componentName để bắt trùng, file của dòng 2 sẽ bị skip nhầm khi dòng 1 đã có file.
-      return labels.some((label) => attachmentKeyMatches(attachedName, label));
+      // Tên file là định danh tài liệu, không phải nhãn component. Phải so chính xác để
+      // "Giấy khai sinh" không nuốt "Giấy khai sinh 2" và HÒA không nuốt HOÀN.
+      return labels.some((label) => attachmentKeyEquals(attachedName, label));
     }) || null;
   }
 
