@@ -30,12 +30,13 @@
   }
 
   async function login(username, password) {
-    const base = await window.tlndBaseUrl();
-    const res = await fetch(`${base}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    // Qua tlndOverBases: chính lỗi hạ tầng → tự thử backend phụ (cần chung JWT secret + tài khoản).
+    const res = await window.tlndOverBases((base) =>
+      window.tlndFetch(`${base}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      }));
     const data = await res.json().catch(() => null);
     if (!res.ok) {
       const error = new Error(data?.message || `Đăng nhập thất bại (HTTP ${res.status})`);
@@ -58,12 +59,13 @@
   async function refresh() {
     if (!state?.refresh) return false;
     try {
-      const base = await window.tlndBaseUrl();
-      const res = await fetch(`${base}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: state.refresh }),
-      });
+      // Refresh cũng phải failover: nếu chính chết mà chỉ refresh vào chính sẽ fail → user bị đá oan.
+      const res = await window.tlndOverBases((base) =>
+        window.tlndFetch(`${base}/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: state.refresh }),
+        }));
       if (!res.ok) return false;
       const data = await res.json();
       state = { access: data.accessToken, refresh: data.refreshToken, user: data.user || state.user };
@@ -107,8 +109,9 @@
   // cho sidebar bật màn đăng nhập (phiên chat GIỮ NGUYÊN — đăng nhập lại là tiếp tục).
   async function authFetch(url, init = {}) {
     await load();
+    // tlndFetch = fetch + timeout; url do caller dựng sẵn với 1 base (thường bọc trong tlndOverBases).
     const doFetch = () =>
-      fetch(url, {
+      window.tlndFetch(url, {
         ...init,
         headers: {
           ...(init.headers || {}),

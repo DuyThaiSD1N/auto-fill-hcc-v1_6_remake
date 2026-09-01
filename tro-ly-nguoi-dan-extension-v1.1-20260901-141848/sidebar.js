@@ -354,7 +354,10 @@
         // đã sang Thành phần hồ sơ, gỡ chúng để không chạy nhầm pipeline kê khai.
         hideStaleDeclarationActions();
       }
-      const data = await api.ask(message, { source, displayText, clientContext });
+      // Phiên MỚI (Bắt đầu / Trò chuyện mới / về trang chủ) sinh ra với đúng ngôn ngữ đang
+      // chọn → câu chào đầu tiên đã là tiếng Mông, không phải chào tiếng Việt rồi mới đổi.
+      const preferredLang = (voiceLang === "hmong" && _hmongAllowed()) ? "hmong" : "";
+      const data = await api.ask(message, { source, displayText, clientContext, preferredLang });
       hideTyping();
       await saveJourney({ touch: userInitiated });
       renderReply(data);
@@ -1880,6 +1883,8 @@
   }
 
   function isSignatureIdentityPlanItem(item) {
+    if (item?.bundleRole === "identity") return true;
+    if (item?.bundleRole === "signature_document") return false;
     const normalize = (value) => String(value || "").normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
     const values = [normalize(item?.detectedType), normalize(item?.documentName)];
@@ -1894,9 +1899,9 @@
         .some((marker) => component.includes(marker));
   }
 
-  // Chứng thực chữ ký: mỗi hồ sơ có đúng một văn bản STT1. Giấy tờ tùy thân đã gộp chỉ
-  // đính STT2 ở hồ sơ/tab ĐẦU TIÊN; các tab sau tuyệt đối không mang lại file dùng chung.
-  // preparePdfPayload đã dựng sourceSegments; nhánh merge dưới đây bảo vệ payload legacy.
+  // Chứng thực chữ ký: mỗi hồ sơ có đúng một văn bản STT1. Plan mới dùng bundleId để identity
+  // matched đi đúng người ký và identity shared chỉ xuất hiện ở bundle đầu. Contract cũ chỉ được
+  // fallback khi có tối đa một identity dùng chung.
   async function buildSignatureSplitBundles(files, attachments) {
     const entries = files.map((file, index) => ({
       file,
@@ -1908,25 +1913,71 @@
       return { error: "Không tìm thấy giấy tờ, văn bản cần chứng thực chữ ký để đính vào STT1." };
     }
 
+    const hasBundleContract = entries.some((entry) =>
+      entry.planItem?.bundleId || entry.planItem?.bundleRole || entry.planItem?.identityScope);
+    if (hasBundleContract) {
+      const invalid = entries.find((entry) =>
+        !entry.planItem?.bundleId ||
+        !["signature_document", "identity"].includes(entry.planItem?.bundleRole));
+      if (invalid) {
+        return {
+          error: `Kế hoạch nhiều hồ sơ thiếu quan hệ bundle cho ${invalid.file?.name || "một tệp"}.`,
+        };
+      }
+
+      const bundleOrder = [];
+      const grouped = new Map();
+      for (const entry of entries) {
+        const bundleId = String(entry.planItem.bundleId);
+        if (!grouped.has(bundleId)) grouped.set(bundleId, []);
+        grouped.get(bundleId).push(entry);
+        if (entry.planItem.bundleRole === "signature_document" && !bundleOrder.includes(bundleId)) {
+          bundleOrder.push(bundleId);
+        }
+      }
+      if (bundleOrder.length !== grouped.size) {
+        return { error: "Có bundle giấy tờ tùy thân nhưng thiếu văn bản cần chứng thực chữ ký." };
+      }
+
+      const bundles = [];
+      for (const bundleId of bundleOrder) {
+        const group = grouped.get(bundleId) || [];
+        const documents = group.filter((entry) => entry.planItem.bundleRole === "signature_document");
+        const identities = group.filter((entry) => entry.planItem.bundleRole === "identity");
+        if (documents.length !== 1) {
+          return { error: `Bundle ${bundleId} phải có đúng một văn bản cần chứng thực chữ ký.` };
+        }
+        if (identities.length > 1) {
+          return { error: `Bundle ${bundleId} có nhiều nhóm giấy tờ tùy thân chưa được backend gộp.` };
+        }
+
+        const ordered = [...documents, ...identities];
+        const bundleFiles = ordered.map((entry) => entry.file);
+        const bundleAttachments = ordered.map((entry, bundleIndex) => ({
+          ...entry.planItem,
+          fileIndex: bundleIndex,
+          sourceFileIndexes: [bundleIndex],
+          fileName: entry.file?.name || entry.planItem.fileName,
+          documentName: entry.planItem.documentName || entry.file?.name,
+          target: "existing",
+          componentIndex: entry.planItem.bundleRole === "identity" ? 2 : 1,
+          needsAddComponent: false,
+          appendOnOccupied: false,
+        }));
+        bundles.push({ files: bundleFiles, attachments: bundleAttachments });
+      }
+      return { bundles };
+    }
+
+    if (identityEntries.length > 1) {
+      return { error: "Backend chưa trả quan hệ ghép hồ sơ cho nhiều giấy tờ tùy thân." };
+    }
+
     let sharedIdentityFile = null;
     let sharedIdentityPlan = null;
     if (identityEntries.length) {
       sharedIdentityFile = identityEntries[0].file;
       sharedIdentityPlan = identityEntries[0].planItem;
-      if (identityEntries.length > 1) {
-        if (!window.PdfConvert) {
-          return { error: "Không thể gộp các tệp giấy tờ tùy thân để dùng chung cho STT2." };
-        }
-        try {
-          const merged = await PdfConvert.mergeToPdf(
-            identityEntries.map((entry) => entry.file),
-            sharedIdentityPlan.documentName || sharedIdentityFile.name
-          );
-          sharedIdentityFile = { ...sharedIdentityFile, ...merged };
-        } catch (e) {
-          return { error: `Không thể gộp các tệp giấy tờ tùy thân cho STT2: ${e?.message || e}` };
-        }
-      }
     }
 
     return {
@@ -2829,21 +2880,36 @@
     setHandsfree(!handsfree);
   });
 
-  // Init voice: lấy base URL cho tts.js/asr + hỏi BE bật kênh nào; tắt thì ẩn nút.
+  // Hỏi BE bật kênh voice nào + có tiếng Mông không. /voice/config YÊU CẦU đăng nhập
+  // (backend gộp), nên chỉ gọi khi ĐÃ có token: gọi lúc chưa login → 401 → tưởng server tắt
+  // voice → ẩn mic/Rảnh tay, không có langs → switch tiếng Mông ẩn, và không fetch lại sau
+  // login → cài lần đầu phải reload trang mới hiện. Gọi lại sau MỖI lần đăng nhập thành công.
+  let voiceCfgLoading = null;
+  function loadVoiceConfig() {
+    if (voiceCfgLoading) return voiceCfgLoading;
+    voiceCfgLoading = (async () => {
+      try {
+        const res = await window.tlndAuth.authFetch(`${BASE_URL}/api/v1/voice/config`);
+        if (res.ok) voiceCfg = await res.json();
+      } catch (_) { /* BE chưa chạy → giữ tắt */ }
+      voiceCfgLoaded = true; // từ giờ updateLangBar mới được phép reset switch tiếng Mông
+      // Hiện/ẩn 2 CHIỀU: lần trước ẩn (server tắt/chưa login) mà giờ bật thì phải hiện lại.
+      const asrOn = !!voiceCfg.asr;
+      if ($micBtn) $micBtn.hidden = !asrOn;
+      if ($hfBtn) $hfBtn.hidden = !asrOn;
+      updateLangBar(); // config về xong mới biết server có tiếng Mông không
+      window.__hccTTS?.setMuted?.(ttsMuted);
+    })().finally(() => { voiceCfgLoading = null; });
+    return voiceCfgLoading;
+  }
+
+  // Init voice: lấy base URL cho tts.js/asr; đã có token thì hỏi config ngay, chưa thì chờ login.
   (async () => {
     BASE_URL = await window.tlndBaseUrl();
     window.HCC_BASE_URL = BASE_URL; // services/tts.js đọc biến này để dựng URL /ws/tts
-    try {
-      const res = await window.tlndAuth.authFetch(`${BASE_URL}/api/v1/voice/config`);
-      if (res.ok) voiceCfg = await res.json();
-    } catch (_) { /* BE chưa chạy → giữ tắt */ }
-    voiceCfgLoaded = true; // từ giờ updateLangBar mới được phép reset switch tiếng Mông
-    if (!voiceCfg.asr) {
-      if ($micBtn) $micBtn.hidden = true;
-      if ($hfBtn) $hfBtn.hidden = true;
-    }
-    updateLangBar(); // config về xong mới biết server có tiếng Mông không
-    window.__hccTTS?.setMuted?.(ttsMuted);
+    const st = await window.tlndAuth.load();
+    if (st?.access) await loadVoiceConfig();
+    else window.__hccTTS?.setMuted?.(ttsMuted);
   })();
 
   // ── Nhập tay ──
@@ -3216,6 +3282,10 @@
       $loginPass.value = "";
       $scrim.hidden = true;
       renderAccount();
+      // BASE_URL có thể chưa sẵn nếu người dùng đăng nhập cực nhanh — chờ init voice xong.
+      if (!BASE_URL) BASE_URL = await window.tlndBaseUrl();
+      window.HCC_BASE_URL = BASE_URL;
+      void loadVoiceConfig(); // /voice/config cần token → mới gọi được từ lúc này
       bootChat();
     } catch (err) {
       const invalidRememberedLogin = rememberedLoginLoaded

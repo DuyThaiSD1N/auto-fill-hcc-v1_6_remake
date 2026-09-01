@@ -19,6 +19,11 @@
       return window.tlndAuth.authFetch(url, init);
     }
 
+    // Gọi có failover: thử backend chính → lỗi hạ tầng → backend phụ. path bắt đầu bằng "/".
+    _fetchApi(path, init) {
+      return window.tlndOverBases((base) => this._fetch(`${base}${path}`, init));
+    }
+
     async _json(res) {
       const text = await res.text();
       let data = null;
@@ -33,7 +38,7 @@
 
     // POST /api/v1/assistant/chat — MỌI tương tác (gõ/nói/chip/sự kiện).
     // displayText: nhãn chip/card cho history (BE lưu nhãn, không lưu lệnh máy "__action:...").
-    async ask(message, { source = "text", clientContext = null, displayText = "" } = {}) {
+    async ask(message, { source = "text", clientContext = null, displayText = "", preferredLang = "" } = {}) {
       const body = {
         conversation_id: this.conversationId || undefined,
         message: String(message ?? ""),
@@ -41,7 +46,9 @@
       };
       if (displayText) body.display_message = String(displayText);
       if (clientContext) body.client_context = clientContext;
-      const res = await this._fetch(`${await this._base()}/api/v1/assistant/chat`, {
+      // BE chỉ dùng khi TẠO conversation mới → câu chào đầu tiên đã đúng tiếng Mông.
+      if (preferredLang) body.preferred_lang = String(preferredLang);
+      const res = await this._fetchApi(`/api/v1/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -55,7 +62,7 @@
     async getConversation(convId) {
       const id = convId || this.conversationId;
       if (!id) return null;
-      const res = await this._fetch(`${await this._base()}/api/v1/assistant/conversations/${id}`);
+      const res = await this._fetchApi(`/api/v1/assistant/conversations/${id}`);
       if (res.status === 404) return null;
       const data = await this._json(res);
       if (data?.conversation_id) this.conversationId = data.conversation_id;
@@ -66,8 +73,7 @@
     async deleteConversation() {
       if (!this.conversationId) return;
       try {
-        await this._fetch(`${await this._base()}/api/v1/assistant/conversations/${this.conversationId}`,
-          { method: "DELETE" });
+        await this._fetchApi(`/api/v1/assistant/conversations/${this.conversationId}`, { method: "DELETE" });
       } catch (_) { /* BE tắt thì thôi — TTL 24h tự dọn */ }
       this.conversationId = null;
     }
@@ -75,7 +81,9 @@
     // GET /api/v1/wards?slug= — danh sách xã của tỉnh (đổ combobox card location).
     async getWards(slug) {
       try {
-        const res = await fetch(`${await this._base()}/api/v1/wards?slug=${encodeURIComponent(slug || "")}`);
+        // Public (không cần Bearer) nhưng vẫn failover qua tlndOverBases + tlndFetch (có timeout).
+        const res = await window.tlndOverBases((base) =>
+          window.tlndFetch(`${base}/api/v1/wards?slug=${encodeURIComponent(slug || "")}`));
         if (!res.ok) return null;
         return await res.json();
       } catch (_) {

@@ -780,12 +780,24 @@
       .replace(/\b\d{3,6}\b/g, " "));
   }
 
+  // Chuẩn hóa ngay tại điểm ghi vào form để không phụ thuộc dữ liệu backend/cache cũ đã viết hoa
+  // hay chưa. Chỉ viết hoa chữ cái đầu tiên, vẫn giữ nguyên phần còn lại của tên ngành nghề.
+  function capitalizeBusinessLineName(value) {
+    const text = String(value || "").trim().replace(/\s+/g, " ");
+    const match = text.match(/[^\W\d_]/);
+    if (!match) return text;
+    const i = match.index;
+    return text.slice(0, i) + text[i].toUpperCase() + text.slice(i + 1);
+  }
+
   function getBusinessLineNameByCode(nn) {
     const byCode = {};
     const rows = Array.isArray(nn && nn.items) ? nn.items : [];
     for (const row of rows) {
       const code = String(row && (row.code || row.ma || "") || "").trim();
-      const name = norm(row && (row.name || row.ten || "") || "");
+      // norm() chỉ dùng để so sánh vì nó hạ toàn bộ chữ thường; không được dùng giá trị norm để ghi
+      // vào textarea mô tả ngành nghề.
+      const name = capitalizeBusinessLineName(row && (row.name || row.ten || "") || "");
       if (code && name && !byCode[code]) byCode[code] = name;
     }
     return byCode;
@@ -855,7 +867,7 @@
       const officialName = getBusinessRowOfficialName(row, code);
       if (!row || !desc || !shouldFillBusinessDescription(officialName, extractedName)) continue;
 
-      const current = norm(desc.value);
+      const current = String(desc.value || "").trim();
       const currentFold = foldBusinessLineName(current);
       const extractedFold = foldBusinessLineName(extractedName);
       if (currentFold && (currentFold === extractedFold || currentFold.includes(extractedFold))) continue;
@@ -1279,6 +1291,32 @@
     return void advanceFillAll(st);
   }
 
+  // Ô mặc định theo địa bàn do backend dùng chung trả trong businessDefaults. Extension chỉ ánh xạ
+  // khóa nghiệp vụ vào control HkdOnline, đồng thời ghi đè field cũ nếu backend đã trả cùng control.
+  const LOCAL_DEFAULT_FIELDS = {
+    "nguoi-nop-ho-so": [
+      { key: "postalServiceAddress", name: "ctl00$C$POSTAL_SERVICEFld", comp: "dom-input" },
+    ],
+  };
+
+  function applyBusinessLocalDefaults(fields, defaults, pageKey) {
+    const out = Array.isArray(fields) ? fields.slice() : [];
+    const specs = LOCAL_DEFAULT_FIELDS[pageKey] || [];
+    for (const spec of specs) {
+      const value = defaults && defaults[spec.key];
+      if (!value) continue;
+      const idx = out.findIndex((f) => f && f.name === spec.name);
+      if (idx >= 0) out[idx] = { ...out[idx], value };
+      else out.push({ name: spec.name, comp: spec.comp, value });
+      console.log("[FillAll] default theo địa bàn:", spec.name, "=", value);
+    }
+    return out;
+  }
+
+  function localDefaultFieldsFor(defaults, pageKey) {
+    return applyBusinessLocalDefaults([], defaults, pageKey);
+  }
+
   // Chỉ trang NGƯỜI NỘP mới dùng nút "Sao chép thông tin đăng ký tài khoản": khối đó phải mang
   // nhân thân của chính người đang đăng nhập. Trang chủ hộ KHÔNG copy (xem handleOwnerPage).
   const COPY_PERSON_CFG = {
@@ -1376,7 +1414,8 @@
   async function handleCopyPersonPage(st, targetKey) {
     ensureConfirmOverride();
     const cfg = COPY_PERSON_CFG[targetKey];
-    const fields = (st.pages && st.pages[targetKey]) || [];
+    const fields = applyBusinessLocalDefaults(
+      (st.pages && st.pages[targetKey]) || [], st.businessDefaults, targetKey);
 
     if (targetKey === "nguoi-nop-ho-so") {
       // Vì sao vai trò lại ra như vậy — in ngay đầu mỗi lượt để soi được khi cổng tick sai.
@@ -1454,12 +1493,8 @@
     } else if (targetKey === "nguoi-nop-ho-so") {
       const { isOwner, ownerUnknown, idMatches } = matchAccountWithOwner(st);
 
-      const authRadio = document.querySelector(
-        'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
-      );
-      const selfRadio = document.querySelector(
-        'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
-      );
+      const authRadio = findSubmitterRoleRadio(true);
+      const selfRadio = findSubmitterRoleRadio(false);
 
       if (isOwner) {
         console.log("[FillAll] tài khoản khớp chủ hộ",
@@ -1507,8 +1542,20 @@
       if (await enableSubmitterEdit(st)) return;
       applySubmitterOverride(submitterOverride);
     }
+    // Cascade địa chỉ có thể render lại cả form; default địa bàn phải được ghi lại ngay trước Lưu.
+    const localDefaults = localDefaultFieldsFor(st.businessDefaults, targetKey);
+    if (localDefaults.length) {
+      try { await fillFormStandard(localDefaults); } catch (e) { /* ignore */ }
+    }
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
+    if (!saveBtn) return void advanceFillAll(st);
+    if (saveBtn.disabled) {
+      // HkdOnline đôi khi không bật cờ dirty khi extension phát input/change bằng script. Nếu trang
+      // thực sự có dữ liệu cần lưu thì vẫn phải mở nút và postback, không được lặng lẽ bỏ qua trang.
+      const hadChanges = fields.length > 0 || !!submitterOverride;
+      if (!hadChanges) return void advanceFillAll(st);
+      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+    }
     st.phase = "saving";
     await setFillAllState(st);
     const reloaded = await clickSaveDetectReload(saveBtn);
@@ -1765,11 +1812,23 @@
     return { isOwner: idMatches || nameMatches, ownerUnknown: !ownerIdentities.length, idMatches, nameMatches };
   }
 
+  // Tên/value chính xác dùng được trên trang đăng ký mới; một số biến thể của trang thay đổi dùng
+  // control khác nhưng giữ nguyên nhãn. Ưu tiên hợp đồng chính xác, rồi mới fallback theo nhãn hiện.
+  function findSubmitterRoleRadio(authorized) {
+    const value = authorized ? "IS_AUTHORIZED_BUTTON" : "IS_SIGNER_BUTTON";
+    const byName = document.querySelector(`input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="${value}"]`);
+    if (byName) return byName;
+    const folded = authorized ? "nguoi duoc uy quyen" : "nguoi co tham quyen ky";
+    return Array.from(document.querySelectorAll('input[type="radio"]')).find((radio) => {
+      const label = (radio.id && document.querySelector(`label[for="${radio.id}"]`))
+        || radio.closest("label") || radio.parentElement;
+      return foldBusinessPageText(label ? label.textContent : "").includes(folded);
+    }) || null;
+  }
+
   /** Tick "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh" (radio AutoPostBack → phải chờ). */
   async function tickSubmitterSelfRadio() {
-    const selfRadio = document.querySelector(
-      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
-    );
+    const selfRadio = findSubmitterRoleRadio(false);
     if (!selfRadio) {
       console.warn("[FillAll] tài khoản Đà Nẵng: không thấy radio Người có thẩm quyền ký trên trang");
       return;
@@ -1786,13 +1845,9 @@
 
   /** Vai trò người nộp đang tick THẬT trên cổng (sau bước "Sao chép thông tin đăng ký tài khoản"). */
   function submitterIsAuthorized() {
-    const authRadio = document.querySelector(
-      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_AUTHORIZED_BUTTON"]'
-    );
+    const authRadio = findSubmitterRoleRadio(true);
     if (authRadio) return !!authRadio.checked;
-    const selfRadio = document.querySelector(
-      'input[type="radio"][name="ctl00$C$PERS_SUBGroup"][value="IS_SIGNER_BUTTON"]'
-    );
+    const selfRadio = findSubmitterRoleRadio(false);
     return !!(selfRadio && !selfRadio.checked);
   }
 
@@ -2202,13 +2257,15 @@
       return void handleChangeCapitalPage(st);
     }
 
+    const pageFields = applyBusinessLocalDefaults(
+      (st.pages && st.pages[targetKey]) || [], st.businessDefaults, targetKey);
+
     // Điền field trang này (chỉ 1 lần/step: mid-fill có thể postback như trang ngành nghề).
     if (st.filledStep !== st.step) {
       st.filledStep = st.step;
       await setFillAllState(st); // persist TRƯỚC khi fill để postback giữa chừng không fill lại
-      const fields = (st.pages && st.pages[targetKey]) || [];
-      if (fields.length) {
-        try { await fillFormStandard(fields); } catch (e) { /* ignore */ }
+      if (pageFields.length) {
+        try { await fillFormStandard(pageFields); } catch (e) { /* ignore */ }
       }
       await sleep(800); // để form "dirty" + cascade địa danh xong → nút Lưu bật
     }
@@ -2216,7 +2273,11 @@
     if (H.isBusinessRunCancelled?.()) return;
 
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st); // không có gì để lưu → sang trang kế
+    if (!saveBtn) return void advanceFillAll(st);
+    if (saveBtn.disabled) {
+      if (!pageFields.length) return void advanceFillAll(st);
+      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+    }
 
     st.phase = "saving";
     await setFillAllState(st);
@@ -2325,8 +2386,15 @@
   // Danh sách LOẠI đã khai, hiện dưới "Văn bản đính kèm" trong container #ctl00_C_BLCtl_CtlAttList
   // (KHÁC #ctl00_C_BLCtl_CtlList = menu 8 trang). Bấm 1 item bất kỳ → điều hướng tới trang tải file.
   function attachTypeLinks() {
-    return Array.from(document.querySelectorAll('#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
+    const scoped = Array.from(document.querySelectorAll(
+      '#ctl00_C_BLCtl_CtlAttList a[id*="LnkEdit"], #C_BLCtl_CtlAttList a[id*="LnkEdit"]'))
       .filter((a) => /__doPostBack/.test(a.getAttribute("href") || ""));
+    if (scoped.length) return scoped;
+    // ID container thay đổi giữa các giao diện; fallback theo đúng nhãn loại tài liệu để tránh bấm
+    // nhầm các mục điều hướng HkdOnline khác cùng nằm trong sidebar.
+    const labels = Object.values(ATTACH_TYPE).map((type) => foldBusinessPageText(type.label));
+    return Array.from(document.querySelectorAll(".left-menu a"))
+      .filter((link) => labels.includes(foldBusinessPageText(link.textContent)));
   }
   function clickAttachTypeLink(link) {
     if (H.isBusinessRunCancelled?.()) return false;
@@ -2680,6 +2748,7 @@
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
+  H.applyBusinessLocalDefaults = applyBusinessLocalDefaults;
   // Vai trò/địa chỉ người nộp hồ sơ — export để test được không cần cả state machine.
   H.applySubmitterOverride = applySubmitterOverride;
   H.submitterAddressFields = submitterAddressFields;
