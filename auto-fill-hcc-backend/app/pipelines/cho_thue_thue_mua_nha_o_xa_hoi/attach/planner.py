@@ -1,12 +1,20 @@
 """Đính kèm bước "Thành phần hồ sơ" cho "Cho thuê, cho thuê mua nhà ở xã hội…" (cổng DVC Bộ Xây dựng
 dvc.moc.gov.vn — Angular mat-table, engine FE `attp-row`, CÙNG cổng #63/#76/#78/#113).
 
-Bảng có 8 dòng (hồ sơ THUÊ chỉ dùng 3 dòng liên quan, đều "Bản chính"):
+Bảng có 8 dòng (hồ sơ THUÊ chỉ dùng 4 dòng liên quan, đều "Bản chính"):
   [5] "Đơn đăng ký thuê nhà ở xã hội theo mẫu"                         ← Tờ đơn (to_don)
-  [1] "Giấy tờ chứng minh điều kiện được hưởng chính sách…nhà ở xã hội" ← giấy CM đối tượng/điều kiện
+  [1] "Giấy tờ chứng minh điều kiện được hưởng chính sách…nhà ở xã hội" ← CM ĐIỀU KIỆN (dieu_kien)
+  [—] "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng, Bộ trưởng Bộ Quốc
+      phòng, Bộ trưởng Bộ Công an và giấy tờ chứng minh thuộc đối tượng được miễn, giảm tiền thuê
+      nhà ở xã hội (nếu có)"                                           ← CM ĐỐI TƯỢNG (doi_tuong)
   [7] "Trường hợp thuê nhà ở xã hội"                                    ← CCCD/giấy tờ tùy thân
 (componentIndex theo thứ tự DOM trang đính kèm mẫu; FE khớp CHÍNH bằng componentName substring fold, index
 chỉ là chốt phụ. Các dòng "thuê MUA" không dùng vì hồ sơ chọn THUÊ.)
+
+Tách ĐỐI TƯỢNG ↔ ĐIỀU KIỆN theo đúng NĐ 100/2024: giấy chứng nhận ĐỐI TƯỢNG chính sách (huân/huy
+chương kháng chiến, bằng khen, thương binh, người có công, quân nhân/công an, miễn-giảm tiền thuê)
+đi dòng "…theo hướng dẫn của Bộ trưởng Bộ Xây dựng…"; giấy chứng minh ĐIỀU KIỆN (thu nhập, hộ
+nghèo/cận nghèo, thực trạng nhà ở, hợp đồng lao động KCN) đi dòng [1].
 
 componentName lấy đoạn text ĐẶC TRƯNG, KHÔNG lồng nhau: "thuê nhà ở xã hội theo mẫu" ≠ "thuê MUA nhà…";
 "Trường hợp thuê nhà ở xã hội" ≠ "Trường hợp thuê mua…". GCN ĐKDN/sổ hộ khẩu → other → bỏ qua.
@@ -26,6 +34,7 @@ from app.services.llm import client
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
 _TO_DON = "to_don"
+_DIEU_KIEN = "dieu_kien"
 _DOI_TUONG = "doi_tuong"
 _CCCD = "cccd"
 _OTHER = "other"
@@ -38,11 +47,24 @@ _ROWS: dict[str, dict[str, Any]] = {
         "loaiBan": "Bản chính",
         "documentName": "Đơn đăng ký thuê nhà ở xã hội theo mẫu",
     },
-    _DOI_TUONG: {
+    _DIEU_KIEN: {
         "componentName": "Giấy tờ chứng minh điều kiện được hưởng chính sách hỗ trợ về nhà ở xã hội",
         "componentIndex": 1,
         "loaiBan": "Bản chính",
         "documentName": "Giấy tờ chứng minh điều kiện được hưởng chính sách hỗ trợ về nhà ở xã hội",
+    },
+    # Dòng "chứng minh ĐỐI TƯỢNG": componentName lấy đoạn ĐẶC TRƯNG, KHÔNG dấu phẩy (FE so chuỗi fold
+    # nguyên văn, dấu phẩy trên cổng dễ lệch) và không lồng vào tên dòng [1]. componentIndex để None
+    # vì chưa chốt được STT DOM của dòng này — FE khớp bằng componentName là đủ (index chỉ là chốt phụ).
+    _DOI_TUONG: {
+        "componentName": "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng",
+        "componentIndex": None,
+        "loaiBan": "Bản chính",
+        "documentName": (
+            "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng, Bộ trưởng Bộ "
+            "Quốc phòng, Bộ trưởng Bộ Công an và giấy tờ chứng minh thuộc đối tượng được miễn, "
+            "giảm tiền thuê nhà ở xã hội (nếu có)"
+        ),
     },
     _CCCD: {
         "componentName": "Trường hợp thuê nhà ở xã hội",
@@ -63,8 +85,24 @@ def _rule_doc_type(text: str) -> str:
         return _TO_DON
     if "can cuoc" in h or "cccd" in h or "chung minh nhan dan" in h:
         return _CCCD
-    if "thuong binh" in h or "liet si" in h or "nguoi co cong" in h or "ho ngheo" in h or "thu nhap" in h:
+    # ĐỐI TƯỢNG kiểm TRƯỚC điều kiện: giấy khen thưởng kháng chiến (huân/huy chương) và giấy tờ
+    # người có công thuộc dòng "…theo hướng dẫn của Bộ trưởng Bộ Xây dựng…", không phải dòng [1].
+    if (
+        "huy chuong" in h
+        or "huan chuong" in h
+        or "khang chien" in h
+        or "hoi dong bo truong" in h
+        or "bang khen" in h
+        or "thuong binh" in h
+        or "liet si" in h
+        or "nguoi co cong" in h
+        or "mien giam tien thue" in h
+        or "quan nhan chuyen nghiep" in h
+        or "cong nhan quoc phong" in h
+    ):
         return _DOI_TUONG
+    if "ho ngheo" in h or "can ngheo" in h or "thu nhap" in h or "thuc trang nha o" in h:
+        return _DIEU_KIEN
     return ""
 
 
@@ -74,10 +112,12 @@ def _normalize_doc_type(value: str) -> str:
         return _OTHER
     if "don" in text and "thue" in text:
         return _TO_DON
-    if "cccd" in text or "can cuoc" in text or "chung minh" in text:
+    if "cccd" in text or "can cuoc" in text or "chung minh nhan dan" in text:
         return _CCCD
-    if "doi tuong" in text or "dieu kien" in text or "chinh sach" in text:
+    if "doi tuong" in text or "huy chuong" in text or "huan chuong" in text or "co cong" in text:
         return _DOI_TUONG
+    if "dieu kien" in text or "chinh sach" in text or "thu nhap" in text:
+        return _DIEU_KIEN
     return value if value in _ALLOWED_DOC_TYPES else _OTHER
 
 

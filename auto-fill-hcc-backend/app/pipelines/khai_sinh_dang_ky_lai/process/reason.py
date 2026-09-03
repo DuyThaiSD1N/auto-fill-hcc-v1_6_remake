@@ -522,6 +522,45 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
     return {"section": section, "name": name, "id": identity}
 
 
+def _blank_identity_line(section: str) -> str:
+    """Trả khối vai với dòng "Số CCCD/CMND" bị xoá về "Không xác định"."""
+    lines = []
+    for line in section.splitlines():
+        label, separator, _ = line.partition(":")
+        if separator and label.strip() == "Số CCCD/CMND":
+            line = "Số CCCD/CMND: Không xác định"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _drop_shared_declaration_ids(roles: dict[str, dict]) -> dict[str, dict]:
+    """Số định danh mà tờ khai ghi cho NHIỀU vai gia đình thì không định danh được ai → bỏ hẳn.
+
+    Người dân rất hay chép số CCCD của CHÍNH MÌNH xuống cả dòng "Giấy tờ tùy thân" của mục
+    người cha và người mẹ. Giữ số đó lại thì <cha>/<me> mang số (và qua bước bù nhân thân là
+    cả GIỚI TÍNH) của con, rồi bị _validate_family_sections xoá trắng vì "trùng con" /
+    "cha có giới tính Nữ" — mất sạch khối cha/mẹ dù hồ sơ có CCCD riêng của họ đọc được.
+    Bỏ số đi thì phần bù theo HỌ TÊN + năm sinh vẫn ghép đúng người từ CCCD thật.
+
+    Chỉ đếm trong _FAMILY_TAGS: một người KHÔNG thể vừa là con vừa là cha/mẹ, nhưng người yêu
+    cầu trùng con/cha/mẹ là chuyện bình thường nên <nguoi_yeu_cau> giữ nguyên số.
+    """
+    counts: dict[str, int] = {}
+    for tag, person in roles.items():
+        if tag in _FAMILY_TAGS and person.get("id"):
+            counts[person["id"]] = counts.get(person["id"], 0) + 1
+    shared = {identity for identity, count in counts.items() if count > 1}
+    if not shared:
+        return roles
+
+    cleaned: dict[str, dict] = {}
+    for tag, person in roles.items():
+        if tag in _FAMILY_TAGS and person.get("id") in shared:
+            person = {**person, "id": "", "section": _blank_identity_line(person["section"])}
+        cleaned[tag] = person
+    return cleaned
+
+
 def _declaration_roles(documents: list[dict]) -> dict[str, dict]:
     """Người yêu cầu/con/cha/mẹ đọc TẤT ĐỊNH từ tờ khai — không qua LLM, không phụ thuộc CCCD."""
     roles: dict[str, dict] = {}
@@ -533,7 +572,7 @@ def _declaration_roles(documents: list[dict]) -> dict[str, dict]:
             person = _person_from_declaration_block(tag, block, source)
             if person:
                 roles[tag] = person
-    return roles
+    return _drop_shared_declaration_ids(roles)
 
 
 def _declaration_relation(documents: list[dict]) -> str:

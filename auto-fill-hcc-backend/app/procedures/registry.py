@@ -3068,7 +3068,8 @@ PROCEDURES: list[dict] = [
         # (CÙNG cổng #76/#78/#113). ⚠ Field-key data[...] TRÙNG giữa Phần I (người nộp) và Phần III (người
         # viết đơn) → mapper gắn OCCURRENCE 0/1. Có DATAGRID thành viên gia đình (dtgrid1, như #76) +
         # checkbox hình thức (mua/thuemua/thue) + thực trạng nhà ở + cam đoan. URL SPA ObjectId → detect
-        # theo cụm tên. Attach 3 dòng (Tờ đơn / chứng minh điều kiện chính sách / CCCD, đều Bản chính).
+        # theo cụm tên. Attach 4 dòng (Tờ đơn / chứng minh ĐỐI TƯỢNG chính sách / chứng minh ĐIỀU KIỆN
+        # nhà ở - thu nhập / CCCD, đều Bản chính).
         "detect": {
             "urlScope": ["dvc.moc.gov.vn"],
             "textIncludes": [
@@ -3089,15 +3090,21 @@ PROCEDURES: list[dict] = [
             "viên gia đình, hình thức đăng ký.\n"
             "2. CCCD/Căn cước người viết đơn — họ tên, ngày sinh, giới tính, số định danh, ngày/nơi cấp, "
             "nơi thường trú.\n"
-            "3. Giấy tờ chứng minh đối tượng/điều kiện hưởng chính sách (Giấy chứng nhận thương binh, Giấy "
-            "báo tử liệt sĩ, xác nhận hộ nghèo/thu nhập/thực trạng nhà ở…) nếu có.\n"
+            "3. Giấy tờ chứng minh ĐỐI TƯỢNG chính sách (Huân/Huy chương kháng chiến, bằng khen, Giấy "
+            "chứng nhận thương binh, Giấy báo tử liệt sĩ, giấy tờ quân nhân/công an, quyết định miễn "
+            "giảm tiền thuê…) nếu có.\n"
+            "4. Giấy tờ chứng minh ĐIỀU KIỆN về nhà ở/thu nhập (xác nhận hộ nghèo, xác nhận thu nhập, "
+            "xác nhận thực trạng nhà ở…) nếu có.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
             "Form điền: Người nộp (Phần I) + Người viết đơn (Phần III: nhân thân, nơi ở hiện tại, thường "
             "trú, nghề nghiệp, đối tượng) + Hình thức (thuê/thuê mua) + Thành viên gia đình + Thực trạng "
             "nhà ở + Cam đoan + Ký.\n"
             "Bước đính kèm: Tờ đơn thuê → dòng 'Đơn đăng ký thuê nhà ở xã hội theo mẫu'; giấy chứng minh "
-            "đối tượng/điều kiện → dòng 'Giấy tờ chứng minh điều kiện được hưởng chính sách'; CCCD → dòng "
-            "'Trường hợp thuê nhà ở xã hội' (đều Bản chính). GCN ĐKDN/sổ hộ khẩu chỉ dùng ở bước thông tin."
+            "ĐỐI TƯỢNG (huân/huy chương, người có công, miễn giảm tiền thuê) → dòng 'Giấy tờ chứng minh "
+            "đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng…'; giấy chứng minh ĐIỀU KIỆN (thu nhập, "
+            "hộ nghèo, thực trạng nhà ở) → dòng 'Giấy tờ chứng minh điều kiện được hưởng chính sách'; "
+            "CCCD → dòng 'Trường hợp thuê nhà ở xã hội' (đều Bản chính). GCN ĐKDN/sổ hộ khẩu chỉ dùng ở "
+            "bước thông tin."
         ),
     },
     {

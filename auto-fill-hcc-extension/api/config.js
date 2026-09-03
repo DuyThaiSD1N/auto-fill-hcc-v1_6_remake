@@ -2,7 +2,7 @@
 //   BACKEND_URL          = "https://trolyhoso-hcc-admin.tiengnoi.vn"
 //   BACKEND_URL_FALLBACK = "https://trolyhoso-hcc-admin.vnekyc.vn"
 //   manifest.json host_permissions = ["https://trolyhoso-hcc-admin.vnekyc.vn/*"]
-const BACKEND_URL = "http://localhost:8000";     // Backend CHÍNH (local dev)
+const BACKEND_URL = "http://localhost:12005";    // Backend CHÍNH (local dev — cổng docker compose, PORT trong .env)
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản,
 // nếu không khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.

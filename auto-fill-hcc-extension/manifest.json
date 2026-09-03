@@ -11,6 +11,7 @@
     "scripting"
   ],
   "host_permissions": [
+    "http://localhost:12005/*",
     "http://localhost:8000/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
