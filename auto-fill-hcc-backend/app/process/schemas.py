@@ -31,6 +31,8 @@ class ProcessResp(BaseModel):
     errors: list[str] = Field(default_factory=list)
     sessionId: str | None = None
     requestId: str | None = None
+    # Capability ngắn hạn để UI tải sources/ảnh review; chỉ có khi pipeline sinh _review.
+    reviewToken: str | None = None
     # Chế độ "fill tất cả trang" (đăng ký kinh doanh): {page_key: [field]} cho cả 8 trang.
     pages: dict[str, list[FieldOut]] | None = None
     # Metadata state machine HkdOnline (wizard tìm HKD + các trang thực sự cần sửa).

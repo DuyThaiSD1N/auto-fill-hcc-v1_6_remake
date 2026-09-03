@@ -133,6 +133,9 @@ def test_khai_sinh_compact_prompt_forbids_ui_fields():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
     assert "Gcs_* lấy từ GIẤY CHỨNG SINH" in system_prompt
+    assert 'dạng "/ NGUYỄN VĂN BÉ" phải trả "NGUYỄN VĂN BÉ"' in system_prompt
+    assert "TOÀN BỘ phần còn lại sau nhãn" in system_prompt
+    assert "phía sau vẫn còn chữ" in system_prompt
     assert "trẻ CHƯA CÓ TÊN: BỎ HẲN Gcs_HoTenCon" in system_prompt
     assert "Nếu ứng viên trùng tên mẹ thì BỎ Gcs_HoTenCon" in system_prompt
     assert "Tân Phong" not in system_prompt

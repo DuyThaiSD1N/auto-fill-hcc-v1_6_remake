@@ -86,15 +86,9 @@ async def test_khai_tu_uses_one_batch_prompt_and_merges_duplicate_named_identiti
     )
 
     assert len(calls) == 1
-    assert len(result["attachments"]) == 1
-    identity = result["attachments"][0]
-    assert identity["documentName"] == "Căn cước công dân"
-    assert identity["target"] == "new"
-    assert identity["componentIndex"] is None
-    assert identity["sourceSegments"] == [
-        {"fileIndex": 0, "pageIndexes": None},
-        {"fileIndex": 1, "pageIndexes": None},
-    ]
+    assert len(result["attachments"]) == 2
+    assert [item["fileIndex"] for item in result["attachments"]] == [0, 1]
+    assert all(item["target"] == "new" for item in result["attachments"])
     assert not any("không khớp" in error for error in result["errors"])
 
 
@@ -129,10 +123,12 @@ async def test_khai_tu_merges_all_identity_people_and_keeps_each_card_faces_toge
         {},
     )
 
-    assert len(result["attachments"]) == 1
+    assert len(result["attachments"]) == 2
     assert result["attachments"][0]["sourceSegments"] == [
         {"fileIndex": 2, "pageIndexes": None},
         {"fileIndex": 0, "pageIndexes": None},
+    ]
+    assert result["attachments"][1]["sourceSegments"] == [
         {"fileIndex": 1, "pageIndexes": None},
         {"fileIndex": 3, "pageIndexes": None},
     ]

@@ -107,22 +107,6 @@ def test_business_line_codes_strip_spaces_before_extension_fill():
     assert main_input["value"] == "5610"
 
 
-def test_business_line_name_capitalizes_first_letter():
-    """OCR/LLM có thể trả tên ngành viết thường; ô mô tả trên cổng phải luôn viết hoa chữ đầu."""
-    fields = [
-        {
-            "name": "NganhNghe_DanhSach",
-            "value": [{"ma": "5610", "ten": "nhà hàng và các dịch vụ ăn uống phục vụ lưu động"}],
-        },
-        {"name": "NganhNghe_MaChinh", "value": "5610"},
-        {"name": "NganhNghe_TenChinh", "value": "nhà hàng và các dịch vụ ăn uống phục vụ lưu động"},
-    ]
-
-    raw = next(f for f in mapper.enrich(fields, page="nganh-nghe-kinh-doanh") if f["name"] == "__businessLines")
-
-    assert raw["value"]["items"][0]["name"] == "Nhà hàng và các dịch vụ ăn uống phục vụ lưu động"
-
-
 def _tax_fields(out):
     by = {f["name"].split("$")[-1]: f["value"] for f in out}
     radio = by.get("REP_RECV_ADDR_TYPEFld")

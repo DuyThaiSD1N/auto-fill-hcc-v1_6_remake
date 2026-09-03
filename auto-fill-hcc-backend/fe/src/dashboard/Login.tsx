@@ -27,8 +27,8 @@ export default function Login({ onLogin }: { onLogin: (u: WardUser) => void }) {
       <div className="login-panel">
         <Seal size={72} bottom="THỐNG KÊ HỒ SƠ" />
         <p className="login-eyebrow">Trợ lý người dân toàn trình</p>
-        <h1 className="login-title">Bảng thống kê phường</h1>
-        <p className="login-sub">Đăng nhập bằng tài khoản phường để xem số liệu hồ sơ của phường mình.</p>
+        <h1 className="login-title">Báo cáo hồ sơ hành chính công</h1>
+        <p className="login-sub">Đăng nhập bằng tài khoản phường/xã hoặc tài khoản Tỉnh để xem số liệu hồ sơ.</p>
 
         <form onSubmit={submit} className="login-form">
           <label className="field">
@@ -57,7 +57,7 @@ export default function Login({ onLogin }: { onLogin: (u: WardUser) => void }) {
           </button>
         </form>
       </div>
-      <p className="login-foot">Chỉ hiển thị số liệu tổng hợp của phường bạn quản lý.</p>
+      <p className="login-foot">Chỉ hiển thị số liệu tổng hợp trong phạm vi tài khoản của bạn.</p>
     </div>
   );
 }

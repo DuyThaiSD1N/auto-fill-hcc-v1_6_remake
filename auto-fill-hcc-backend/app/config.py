@@ -39,10 +39,12 @@ class Settings(BaseSettings):
     jwt_access_ttl: int = 3600
     jwt_refresh_ttl: int = 2592000
 
-    # OCR Tiếng Nói vintern-v12 — provider duy nhất; batch nhiều file, tự tách PDF + xoay ảnh.
+    # OCR Tiếng Nói vintern-v12 — provider chính; batch nhiều file, tự tách PDF + xoay ảnh.
     ocr_tiengnoi_base_url: str = "https://troly-hcc.tiengnoi.vn"
     ocr_tiengnoi_api_key: str = ""
     ocr_tiengnoi_timeout_ms: int = 120000
+    fallback_ocr_tiengnoi_base_url: str = ""
+    fallback_ocr_tiengnoi_api_key: str = ""
     ocr_tiengnoi_max_tokens: int = 1500  # classify không cần dày → giảm cho nhanh
     ocr_tiengnoi_fill_max_tokens: int = 4096  # FILL cần text ĐẦY ĐỦ (nhiều trang) → cao hơn classify
     # Bước phân loại đính kèm vẫn dùng Tiếng Nói nhưng cắt ít trang/token để phản hồi nhanh.
@@ -63,7 +65,11 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     llm_max_tokens: int = 1500
 
-    # LLM fallback — OpenAI (dùng khi primary lỗi). Để trống OPENAI_API_KEY = tắt fallback.
+    # LLM DỰ PHÒNG cấp 1 — mirror vLLM cùng contract (OpenAI-compatible), thử TRƯỚC khi rơi
+    fallback_llm_base_url: str = ""
+    fallback_llm_model: str = ""
+
+    # OPENAI_API_KEY = tắt tầng OpenAI.
     openai_api_key: str = ""
     openai_model: str = "gpt-5.4-mini"
 
@@ -76,6 +82,9 @@ class Settings(BaseSettings):
     # Upload limits
     max_file_size_mb: int = 80
     max_total_payload_mb: int = 100
+    # Capability riêng cho URL QR; để trống chỉ dùng JWT refresh secret làm fallback
+    # tương thích deployment cũ. Production nên cấu hình secret riêng.
+    upload_capability_secret: str = ""
 
     # Storage — nơi lưu file/ảnh của mỗi request.
     storage_dir: str = "data/uploads"
@@ -94,13 +103,28 @@ class Settings(BaseSettings):
     # Phiên tải ảnh qua QR: URL công khai điện thoại quét (domain BE) + TTL tự dọn phiên.
     mobile_base_url: str = "https://trolyhoso-hcc-admin.vnekyc.vn"
     upload_session_ttl_minutes: int = 30
+    upload_session_ttl_hours: int = 24
+    review_capability_ttl_seconds: int = 3600
 
-    # Báo cáo tổng hợp: Auto Fill gọi Handfree bằng HMAC server-to-server.
-    # Để trống URL/secret thì báo cáo Auto Fill riêng vẫn hoạt động như cũ.
-    handfree_report_base_url: str = ""
-    handfree_report_service_secret: str = ""
-    handfree_report_client: str = "autofill"
-    handfree_report_timeout_seconds: float = 60.0
+    # Bật dần channel Handfree sau khi staging đã qua test; Auto Fill không phụ thuộc cờ này.
+    handfree_enabled: bool = False
+
+    # Voice chỉ thuộc channel Handfree. Để trống URI/token tương ứng = tắt tính năng trên
+    # /api/v1/voice/config; extension Auto Fill không dùng các cấu hình này.
+    asr_grpc_uri: str = ""
+    asr_grpc_token: str = ""
+    asr_rate: int = 16000
+    asr_silence_timeout: int = 10
+    asr_speech_timeout: float = 1.8
+    asr_speech_max: int = 30
+    tts_ws_url: str = ""
+    tts_api_key: str = ""
+    tts_voice: str = "phuongnhi-north"
+    tts_resample_rate: int = 16000
+    tts_tempo: float = 0.95
+    asr_grpc_uri_hmong: str = ""
+    tts_ws_url_hmong: str = ""
+    tts_voice_hmong: str = "xi"
 
     # CORS
     allowed_extension_ids: str = ""

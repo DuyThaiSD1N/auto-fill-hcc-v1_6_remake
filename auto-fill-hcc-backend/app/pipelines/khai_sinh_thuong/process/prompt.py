@@ -102,17 +102,11 @@ TkKs_* — Lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH bản giấy khi thiếu gi
     mục CHA cho TkKs_NoiCuTruCha và đúng dòng nằm trong mục MẸ cho TkKs_NoiCuTruMe — TUYỆT ĐỐI
     không lấy chung một địa chỉ cho cả hai nếu tờ khai ghi hai địa chỉ khác nhau, và không
     mượn nơi cư trú của người yêu cầu. Cha và mẹ ở cùng nhà thì hai field giống nhau là đúng.
-  TkKs_NycHoTen, TkKs_NycNgaySinh, TkKs_NycSoDinhDanh, TkKs_NycNgayCapCccd, TkKs_NycNoiCuTru:
-  người yêu cầu theo tờ khai — CHỈ trả khi tờ khai có dòng "Họ, chữ đệm, tên người yêu cầu" VÀ
-  người đó KHÁC với cha/mẹ (vd chị dâu, anh, em, chú, bác...). KHÔNG trả nếu người yêu cầu là
-  cha hoặc mẹ (đã có CCCD tương ứng). Lấy ngày sinh/năm sinh, số CCCD, ngày cấp, nơi cư trú
+  TkKs_NycHoTen, TkKs_NycNgaySinh, TkKs_NycSoDinhDanh, TkKs_NycNgayCapCccd, TkKs_NycNoiCuTru,
+  TkKs_NycQuanHe: người yêu cầu theo tờ khai — CHỈ trả khi tờ khai có dòng "Họ, chữ đệm, tên người
+  yêu cầu" VÀ người đó KHÁC với cha/mẹ (vd chị dâu, anh, em, chú, bác...). KHÔNG trả nếu người
+  yêu cầu là cha hoặc mẹ (đã có CCCD tương ứng). Lấy ngày sinh/năm sinh, số CCCD, ngày cấp, nơi cư trú
   từ đúng dòng người yêu cầu trên tờ khai.
-  TkKs_NycQuanHe: KHÁC với các field trên — đây là Ô TÍCH riêng "(5) Quan hệ với người được khai
-  sinh: Bản Thân / Cha / Mẹ / Khác" trên tờ khai, PHẢI đọc BẤT KỂ người yêu cầu là ai (kể cả khi
-  trùng cha/mẹ hoặc chính là người được khai sinh tự đăng ký muộn) — không bị điều kiện "KHÁC với
-  cha/mẹ" ở trên chi phối. Ô nào có dấu tích/tô đậm ("[x]"/"[X]"/"☑"/chấm đen) → trả đúng "Bản
-  Thân"/"Cha"/"Mẹ"/"Khác". Tích "Khác" mà có ghi chữ kèm theo (vd "Chị dâu") thì lấy nguyên chữ đó.
-  Không thấy dòng này hoặc không rõ ô nào được tích thì bỏ field, không suy đoán.
 
 CHA/MẸ ĐÃ CHẾT: khi tờ khai ghi "đã chết"/"đã mất"/"chết" ở CHỖ nơi cư trú của cha hoặc mẹ,
   trả đúng cụm chữ đó vào diaChi và BỎ TRỐNG tinh/xa — vd TkKs_NoiCuTruCha =

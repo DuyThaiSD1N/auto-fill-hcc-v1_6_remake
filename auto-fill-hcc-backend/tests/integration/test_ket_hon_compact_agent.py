@@ -125,6 +125,13 @@ def test_ket_hon_compact_prompt_instructs_gender_split():
     assert "Nam -> nhóm CccdNam_*" in system_prompt
     assert "Nữ -> nhóm CccdNu_*" in system_prompt
     assert "Không phân biệt nam/nữ theo tên file" in system_prompt
+    assert "CHỈ đọc ở MẶT TRƯỚC" in system_prompt
+    assert "TUYỆT ĐỐI không" in system_prompt and "MRZ/IDVNM ở mặt sau" in system_prompt
+    assert "không dùng MRZ để bù" in system_prompt
+    assert "CHỈ đọc ở MẶT TRƯỚC" in field_desc["CccdNam_SoDinhDanh"]
+    assert "CHỈ đọc ở MẶT TRƯỚC" in field_desc["CccdNu_SoDinhDanh"]
+    assert "không đọc, ghép hoặc suy ra từ MRZ/IDVNM" in field_desc["CccdNam_SoDinhDanh"]
+    assert "không đọc, ghép hoặc suy ra từ MRZ/IDVNM" in field_desc["CccdNu_SoDinhDanh"]
     assert "BẮT BUỘC cố đọc CccdNam_NoiCap/CccdNu_NoiCap" in system_prompt
     assert "Bộ Công an" in system_prompt
     assert "HoTenBenNam" in system_prompt
@@ -245,6 +252,21 @@ def test_ket_hon_copy_request_has_no_default_and_quantity_is_positive_signal():
     ])
     assert with_quantity["CapBanSao"] == "Có"
     assert with_quantity["SoLuong"] == "2"
+
+
+def test_ket_hon_registration_type_has_no_default_but_keeps_explicit_declaration():
+    def mapped(compact_fields):
+        return {field["name"]: field for field in mapper.enrich(compact_fields)}
+
+    without_declaration = mapped([{"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"}])
+    assert "loaiDangKy" not in without_declaration
+
+    explicit = mapped([
+        {"name": "CccdNam_HoTen", "value": "NGƯỜI NAM"},
+        {"name": "ToKhai_LoaiDangKy", "value": "Đăng ký lần đầu"},
+    ])
+    assert explicit["loaiDangKy"]["value"] == "1"
+    assert "default" not in explicit["loaiDangKy"]
 
 
 def test_registry_uses_ket_hon_compact_agent_mode():

@@ -1,5 +1,6 @@
 // "commune"/"province" (Hành chính công xã/tỉnh): như "user" — không vào panel, chỉ khác nhãn.
-export type Role = "admin" | "user" | "commune" | "province";
+// "province_admin": tài khoản Tỉnh CHỈ để xem bảng thống kê đa đơn vị (khác "province" của HCC).
+export type Role = "admin" | "user" | "commune" | "province" | "province_admin";
 
 export interface User {
   id: string;
@@ -73,6 +74,7 @@ export interface TraceListItem {
   ocr_provider?: string | null;
   ocr_label?: string | null;
   fields_count: number;
+  experience?: "autofill" | "handfree" | null;
   kind?: string | null;             // "autofill" | "attach"
   key_fields_total?: number | null;  // tổng trường then chốt (chỉ autofill)
   key_fields_filled?: number | null; // số trường bóc tách được
@@ -127,9 +129,10 @@ export interface StatsWard {
 }
 
 export type StatsScope = "official" | "all";
-export type StatsSource = "autofill" | "handfree";
+export type StatsSource = "all" | "autofill" | "handfree";
 
 export interface StatsResp {
+  source: StatsSource;
   scope: StatsScope;
   accountCount: number;
   includedRoles: Role[];
@@ -170,6 +173,7 @@ export interface ReportOptionsResp {
 }
 
 export type ReportSelectionMode = "province" | "accounts";
+export type ReportLayout = "daily_summary" | "procedure_detail";
 
 export interface ReportExportBody {
   dateFrom: string;
@@ -179,6 +183,7 @@ export interface ReportExportBody {
   officialOnly?: boolean;
   accountIds?: string[];
   includeHandfree?: boolean;
+  reportLayout?: ReportLayout;
 }
 
 export interface DownloadResult {

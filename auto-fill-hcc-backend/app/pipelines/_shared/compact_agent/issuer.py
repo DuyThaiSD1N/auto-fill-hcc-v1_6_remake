@@ -44,6 +44,9 @@ def normalize_issuer(place) -> str:
         or ("qlhc" in compact and "ttxh" in compact)
         or "cucsqlhc" in compact
         or "ccsqlhc" in compact
+        # OCR/LLM hay đọc nhầm viết tắt "CCSQLHC" thành "CCSVLHC"/"CCSGLHC"... (Q↔V/G). Bắt chung chữ
+        # ký: bắt đầu "ccs"/"cs" (Cục Cảnh Sát) + có "lhc" (quản lý hành chính) + "ttxh" (trật tự xã hội).
+        or ("ccs" in compact and "lhc" in compact and "ttxh" in compact)
     ):
         return ISSUER_CUC
     if "bo cong an" in folded or "ministry of public security" in folded:

@@ -9,6 +9,10 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from app.config import settings
+from app.upload_session import store
+from app.upload_session.access import upload_session_experience, verify_upload_capability
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -28,11 +32,45 @@ async def broadcast(sid: str, payload: dict) -> None:
 
 
 @router.websocket("/ws/upload-sessions/{sid}")
+@router.websocket("/ws/assistant/document-sessions/{sid}")
 async def ws_upload_session(ws: WebSocket, sid: str):
-    await ws.accept()
-    _SUBS.setdefault(sid, set()).add(ws)
-    # role=mobile → báo cho popup biết điện thoại đã mở trang (đổi trạng thái "đang chờ quét").
+    # Mobile không có JWT nên capability đi qua WebSocket subprotocol. Token không đặt trong
+    # query string để tránh lọt vào Nginx access log. Route mới còn chặn mở nhầm UI Handfree.
     role = ws.query_params.get("role", "")
+    if ws.url.path.startswith("/ws/assistant/") and not settings.handfree_enabled:
+        await ws.close(code=4404, reason="Kênh Handfree chưa được bật")
+        return
+    accept_subprotocol = None
+    if role == "mobile":
+        protocols = [
+            value.strip()
+            for value in ws.headers.get("sec-websocket-protocol", "").split(",")
+            if value.strip()
+        ]
+        token = next(
+            (
+                value.removeprefix("tlnd-token.")
+                for value in protocols
+                if value.startswith("tlnd-token.")
+            ),
+            "",
+        )
+        if not verify_upload_capability(sid, token):
+            await ws.close(code=4401, reason="Upload capability không hợp lệ")
+            return
+        sess = await store.get(sid)
+        if not sess:
+            await ws.close(code=4404, reason="Phiên không tồn tại hoặc đã hết hạn")
+            return
+        if (ws.url.path.startswith("/ws/assistant/")
+                and upload_session_experience(sess) != "handfree"):
+            await ws.close(code=4409, reason="Phiên không thuộc Handfree")
+            return
+        if "tlnd-upload" in protocols:
+            accept_subprotocol = "tlnd-upload"
+
+    await ws.accept(subprotocol=accept_subprotocol)
+    _SUBS.setdefault(sid, set()).add(ws)
     if role == "mobile":
         await broadcast(sid, {"type": "session_opened"})
     try:

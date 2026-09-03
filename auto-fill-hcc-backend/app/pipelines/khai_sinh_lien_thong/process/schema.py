@@ -6,7 +6,7 @@ fields, and form-specific components are derived in Python.
 
 FIELDS: list[dict] = [
     # Child facts from GIAY CHUNG SINH.
-    {"name": "Gcs_HoTenCon", "desc": 'HỌ TÊN ĐẦY ĐỦ của ĐỨA TRẺ, CHỈ lấy giá trị được ghi rõ ngay tại trường "Dự định đặt tên con là". Nếu trường này trống hoặc chỉ có "/", "-", dấu gạch/điểm, "chưa đặt tên" thì BỎ field. Tuyệt đối không lấy tên mẹ/NND, tên trên CCCD hoặc giấy ra viện thay tên trẻ.'},
+    {"name": "Gcs_HoTenCon", "desc": 'HỌ TÊN ĐẦY ĐỦ của ĐỨA TRẺ, CHỈ lấy giá trị được ghi rõ ngay tại trường "Dự định đặt tên con là". Bỏ các ký hiệu ngăn cách "/", "\\", "-", "_", "." ở ĐẦU giá trị rồi lấy họ tên còn lại; chỉ BỎ field khi TOÀN BỘ phần sau nhãn là rỗng/ký hiệu ngăn cách hoặc ghi "chưa đặt tên". Tuyệt đối không lấy tên mẹ/NND, tên trên CCCD hoặc giấy ra viện thay tên trẻ.'},
     {"name": "Gcs_NgaySinhCon", "desc": "Ngày sinh con trên giấy chứng sinh, dd/mm/yyyy. Nếu là GIẤY CAM ĐOAN: lấy ngày ở cụm 'Vào hồi ... ngày D tháng M năm Y' (ngày SINH, KHÔNG phải ngày làm giấy)."},
     {"name": "Gcs_GioiTinhCon", "desc": 'Giới tính con: "Nam" hoặc "Nữ". Nếu là GIẤY CAM ĐOAN: ô được đánh dấu ở "sinh ra 1 bé Trai/Gái" (Trai→Nam, Gái→Nữ).'},
     {"name": "Gcs_DanTocCon", "desc": "Dân tộc con trên giấy chứng sinh. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả)."},

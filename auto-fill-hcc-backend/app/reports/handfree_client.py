@@ -1,123 +1,138 @@
-"""Client server-to-server lấy thống kê đã tổng hợp từ Handfree."""
-import hashlib
-import hmac
-import json
-import time
-import uuid
+"""Đọc thống kê Handfree ngay trong Mongo dùng chung.
+
+Tên module được giữ để không làm vỡ các import của lớp xuất Excel. Đây không còn là
+HTTP client: Auto Fill và Handfree là hai ``experience`` trên cùng một backend/DB.
+"""
 from typing import Literal
 
-import httpx
-
-from app.config import settings
 from app.core.errors import AppError
-from app.reports.integration import province_name, unit_key
+from app.procedures.registry import PROCEDURES
+from app.reports.integration import canonical_procedure_id, province_name, unit_key
+from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.reports.schemas import ExcelExportRequest
+from app.traces import repo as traces_repo
+from app.traces.date_range import parse_stats_range
 
 
-def _signature(timestamp: str, body: bytes) -> str:
-    message = timestamp.encode("utf-8") + b"." + body
-    return hmac.new(
-        settings.handfree_report_service_secret.encode("utf-8"),
-        message,
-        hashlib.sha256,
-    ).hexdigest()
-
-
-def _units(accounts: list[dict]) -> list[dict]:
+def _units(accounts: list[dict]) -> tuple[list[dict], dict[str, str]]:
+    """Chuẩn hóa đơn vị và ánh xạ user_id trong DB chung sang khóa dòng Excel."""
     units: dict[str, dict] = {}
+    user_to_unit: dict[str, str] = {}
     for account in accounts:
         province = province_name(account.get("tinh"))
         ward = str(account.get("xa") or "").strip()
         if not province or not ward:
-            # Tài khoản cấp tỉnh/legacy không có đủ khóa ghép vẫn phải được xuất.
-            # Workbook sẽ giữ số Auto Fill và điền 0 ở cột Handfree cho tài khoản này.
+            # Tài khoản cấp tỉnh/legacy vẫn được xuất ở phần Auto Fill. Không có đủ
+            # tỉnh + xã thì không thể ghép an toàn vào một dòng Handfree cấp xã.
             continue
         key = unit_key(province, ward)
         units.setdefault(key, {"unitKey": key, "province": province, "ward": ward})
-    return list(units.values())
+        user_to_unit[str(account["_id"])] = key
+    return list(units.values()), user_to_unit
 
 
-async def _post_handfree(path: str, payload: dict) -> dict:
-    base_url = settings.handfree_report_base_url.strip().rstrip("/")
-    if not base_url or not settings.handfree_report_service_secret:
-        raise AppError(
-            "REPORT_HANDFREE_NOT_CONFIGURED",
-            "Chức năng tổng hợp Handfree chưa được cấu hình trên backend Auto Fill.",
-            503,
-        )
-    raw_body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    timestamp = str(int(time.time()))
-    headers = {
-        "Content-Type": "application/json",
-        "X-Report-Client": settings.handfree_report_client,
-        "X-Report-Timestamp": timestamp,
-        "X-Report-Signature": _signature(timestamp, raw_body),
+def _procedure_rows(stats: dict, user_to_unit: dict[str, str]) -> dict[str, list[dict]]:
+    registry = {item["key"]: item for item in PROCEDURES}
+    counts: dict[str, dict[str, dict]] = {
+        key: {} for key in set(user_to_unit.values())
     }
-    timeout = httpx.Timeout(settings.handfree_report_timeout_seconds)
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                f"{base_url}{path}",
-                content=raw_body,
-                headers=headers,
-            )
-    except httpx.TimeoutException as exc:
-        raise AppError(
-            "REPORT_HANDFREE_TIMEOUT",
-            "Handfree phản hồi quá thời gian; chưa thể tải số liệu.",
-            504,
-        ) from exc
-    except httpx.RequestError as exc:
-        raise AppError(
-            "REPORT_HANDFREE_UNAVAILABLE",
-            "Không kết nối được backend Handfree; chưa thể tải số liệu.",
-            502,
-        ) from exc
-
-    if response.status_code != 200:
-        raise AppError(
-            "REPORT_HANDFREE_FAILED",
-            "Backend Handfree từ chối hoặc không xử lý được yêu cầu tổng hợp.",
-            502,
-        )
-    try:
-        result = response.json()
-    except ValueError as exc:
-        raise AppError(
-            "REPORT_HANDFREE_INVALID_RESPONSE",
-            "Backend Handfree trả dữ liệu không hợp lệ.",
-            502,
-        ) from exc
-    if not isinstance(result, dict) or result.get("source") != "handfree":
-        raise AppError(
-            "REPORT_HANDFREE_INVALID_RESPONSE",
-            "Backend Handfree trả dữ liệu không đúng hợp đồng báo cáo.",
-            502,
-        )
-    return result
+    for ward in stats.get("wards") or []:
+        key = user_to_unit.get(str(ward.get("userId") or ""))
+        if not key:
+            continue
+        for procedure in ward.get("procedures") or []:
+            procedure_key = str(procedure.get("key") or "").strip()
+            if not procedure_key:
+                continue
+            entry = registry.get(procedure_key)
+            canonical_id = canonical_procedure_id(procedure_key, entry)
+            bucket = counts[key].setdefault(canonical_id, {
+                "canonicalProcedureId": canonical_id,
+                "procedureKey": procedure_key,
+                "procedureCode": None,
+                "label": (entry or {}).get("label") or procedure.get("label") or procedure_key,
+                "level": cap_thu_tuc(procedure_key),
+                "supportScope": pham_vi_ho_tro(entry, procedure_key),
+                "count": 0,
+            })
+            code = ma_thu_tuc(entry)
+            bucket["procedureCode"] = code if code != "—" else None
+            bucket["count"] += int(procedure.get("count") or 0)
+    return {
+        key: sorted(rows.values(), key=lambda item: (-item["count"], item["label"]))
+        for key, rows in counts.items()
+    }
 
 
 async def fetch_handfree_stats(accounts: list[dict], body: ExcelExportRequest) -> dict:
-    units = _units(accounts)
+    units, user_to_unit = _units(accounts)
     if not units:
-        # API nội bộ Handfree yêu cầu ít nhất một đơn vị. Không có đơn vị ghép
-        # được không phải lỗi: báo cáo phía Auto Fill vẫn phải xuất bình thường.
         return {"source": "handfree", "units": []}
+    date_from, date_to = parse_stats_range(body.dateFrom, body.dateTo)
+    if not date_from or not date_to:
+        raise AppError("REPORT_DATE_REQUIRED", "Vui lòng nhập đầy đủ từ ngày và đến ngày.", 400)
+    stats = await traces_repo.stats_by_user_ids(
+        user_ids=list(user_to_unit),
+        date_from=date_from,
+        date_to=date_to,
+        experience="handfree",
+    )
+    procedures_by_unit = _procedure_rows(stats, user_to_unit)
+    return {
+        "source": "handfree",
+        "units": [
+            {
+                **unit,
+                "matchedAccountCount": sum(
+                    1 for key in user_to_unit.values() if key == unit["unitKey"]
+                ),
+                "procedures": procedures_by_unit.get(unit["unitKey"], []),
+            }
+            for unit in units
+        ],
+    }
 
-    result = await _post_handfree("/internal/v1/reports/stats", {
-        "requestId": f"report_{uuid.uuid4().hex}",
-        "dateFrom": body.dateFrom,
-        "dateTo": body.dateTo,
-        # Hai Mongo không dùng chung user_id; ghép theo tên tỉnh + xã/phường đã chuẩn hóa.
-        "units": units,
-    })
-    if not isinstance(result.get("units"), list):
-        raise AppError(
-            "REPORT_HANDFREE_INVALID_RESPONSE",
-            "Backend Handfree trả dữ liệu không đúng hợp đồng báo cáo.",
-            502,
-        )
-    return result
+
+async def fetch_handfree_daily_stats(
+    accounts: list[dict],
+    body: ExcelExportRequest,
+) -> dict:
+    """Lấy toàn khoảng ngày bằng một aggregation local, không gọi HTTP theo từng ngày."""
+    units, user_to_unit = _units(accounts)
+    if not units:
+        return {"source": "handfree", "units": []}
+    date_from, date_to = parse_stats_range(body.dateFrom, body.dateTo)
+    if not date_from or not date_to:
+        raise AppError("REPORT_DATE_REQUIRED", "Vui lòng nhập đầy đủ từ ngày và đến ngày.", 400)
+    rows = await traces_repo.daily_dossier_counts_by_user_ids(
+        user_ids=list(user_to_unit),
+        date_from=date_from,
+        date_to=date_to,
+        experience="handfree",
+    )
+    daily_by_unit: dict[str, dict[str, int]] = {
+        unit["unitKey"]: {} for unit in units
+    }
+    for row in rows:
+        key = user_to_unit.get(str(row.get("userId") or ""))
+        day = str(row.get("date") or "")
+        if not key or not day:
+            continue
+        daily = daily_by_unit[key]
+        daily[day] = daily.get(day, 0) + int(row.get("count") or 0)
+    return {
+        "source": "handfree",
+        "units": [
+            {
+                **unit,
+                "dailyCounts": [
+                    {"date": day, "count": count}
+                    for day, count in sorted(daily_by_unit[unit["unitKey"]].items())
+                ],
+            }
+            for unit in units
+        ],
+    }
 
 
 async def fetch_handfree_dashboard_stats(
@@ -126,17 +141,10 @@ async def fetch_handfree_dashboard_stats(
     date_from: str | None,
     date_to: str | None,
 ) -> dict:
-    result = await _post_handfree("/internal/v1/reports/dashboard-stats", {
-        "requestId": f"dashboard_{uuid.uuid4().hex}",
-        "dateFrom": date_from,
-        "dateTo": date_to,
-        "scope": scope,
-    })
-    stats = result.get("stats")
-    if not isinstance(stats, dict) or not isinstance(stats.get("wards"), list):
-        raise AppError(
-            "REPORT_HANDFREE_INVALID_RESPONSE",
-            "Backend Handfree trả dữ liệu không đúng hợp đồng thống kê.",
-            502,
-        )
-    return stats
+    parsed_from, parsed_to = parse_stats_range(date_from, date_to)
+    return await traces_repo.stats(
+        date_from=parsed_from,
+        date_to=parsed_to,
+        scope=scope,
+        experience="handfree",
+    )

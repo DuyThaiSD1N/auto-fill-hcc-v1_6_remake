@@ -8,6 +8,7 @@ const ROLE_LABEL: Record<Role, string> = {
   user: "Người dùng",
   commune: "HCC xã",
   province: "HCC tỉnh",
+  province_admin: "Tỉnh (báo cáo)",
 };
 
 function fold(value: string): string {

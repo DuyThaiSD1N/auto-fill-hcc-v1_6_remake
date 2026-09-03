@@ -44,7 +44,12 @@ assert.equal(
   true,
   "Object chỉ có tên vợ/chồng vẫn phải được nhận diện là vùng tình trạng hôn nhân động",
 );
-assert.equal(sandbox.fillStructuredValue(container, value), true);
+// Hàm trả về BÁO CÁO chi tiết (any + used + cờ từng ô) để tầng gọi biết ô nào còn phải
+// khớp theo nhãn / theo vị trí, thay vì một cờ boolean gộp.
+const report = sandbox.fillStructuredValue(container, value);
+assert.equal(report.any, true);
+assert.equal(report.numberHandled, false, "Vùng =2 không có ô số bản án");
+assert.ok(report.used.has(spouseInput), "Ô đã điền phải nằm trong used để tầng sau bỏ qua");
 assert.equal(spouseInput.value, "VŨ HỮU NINH");
 assert.equal(spouseInput.options.typing, true);
 assert.equal(spouseInput.options.commit, true);

@@ -10,7 +10,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/login")
 async def login(body: LoginReq, request: Request):
     ua = request.headers.get("user-agent", "")[:200]
-    return await service.login(body.username, body.password, ua, admin_only=body.adminOnly)
+    return await service.login(
+        body.username,
+        body.password,
+        ua,
+        admin_only=body.adminOnly,
+        super_admin_only=body.superAdminOnly,
+    )
 
 
 @router.post("/refresh")

@@ -31,6 +31,12 @@
     },
     {
         "tinh_cu": "Đà Nẵng",
+        "xa_cu": "Nam Dương",
+        "tinh_moi": "Đà Nẵng",
+        "xa_moi": "Phường Hải Châu"
+    },
+    {
+        "tinh_cu": "Đà Nẵng",
         "xa_cu": "Hòa An",
         "tinh_moi": "Đà Nẵng",
         "xa_moi": "Phường An Khê"

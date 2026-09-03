@@ -51,7 +51,7 @@ export default function TraceDetailPanel({ id, onClose }: { id: string; onClose:
             <dl className="meta">
               <div>
                 <dt>Phường</dt>
-                <dd>{trace.name || trace.username || "—"}</dd>
+                <dd>{trace.name || (trace.experience === "handfree" ? "—" : trace.username) || "—"}</dd>
               </div>
               <div>
                 <dt>Tài khoản</dt>
@@ -75,6 +75,10 @@ export default function TraceDetailPanel({ id, onClose }: { id: string; onClose:
               </div>
               <div>
                 <dt>Loại</dt>
+                <dd>{trace.experience === "handfree" ? "Handfree" : "No handfree"}</dd>
+              </div>
+              <div>
+                <dt>Thao tác</dt>
                 <dd>{trace.kind === "attach" ? "Đính kèm" : "Auto-fill"}</dd>
               </div>
               <div>

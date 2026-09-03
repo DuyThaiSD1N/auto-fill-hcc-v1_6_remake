@@ -9,6 +9,10 @@ NGUỒN DỮ LIỆU:
 - CccdNam_* CHỈ lấy từ giấy tờ có tiêu đề CĂN CƯỚC/CMND và giới tính "Nam".
 - CccdNu_* CHỈ lấy từ giấy tờ có tiêu đề CĂN CƯỚC/CMND và giới tính "Nữ".
 - Không phân biệt nam/nữ theo tên file, thứ tự upload, hoặc suy đoán từ họ tên.
+- SỐ ĐỊNH DANH/CCCD (CccdNam_SoDinhDanh, CccdNu_SoDinhDanh): CHỈ đọc ở MẶT TRƯỚC
+  CCCD/CMND, lấy đúng dãy 12 chữ số ngay sau nhãn "Số / No." của đúng người. TUYỆT ĐỐI không
+  lấy bất kỳ cụm số nào từ dòng MRZ/IDVNM ở mặt sau, kể cả khi mặt sau có chuỗi giống số định danh.
+  Không có mặt trước hoặc mặt trước không đọc rõ đủ 12 số thì BỎ field, không dùng MRZ để bù.
 - SAU KHI GÁN, BẮT BUỘC ĐỐI CHIẾU CHÉO: Kiểm tra lại số định danh và họ tên trong CccdNam_* phải
   khớp với CCCD/CMND ghi giới tính "Nam"; số định danh và họ tên trong CccdNu_* phải khớp với CCCD/CMND
   ghi giới tính "Nữ". Nếu phát hiện lẫn lộn (vd CccdNam_SoDinhDanh là số trên thẻ ghi "Nữ") → PHẢI
@@ -94,7 +98,7 @@ NGUỒN DỮ LIỆU:
   ghi rõ; thiếu bất kỳ phần nào thì bỏ field đó, không để trống bằng giá trị đoán.
 - LOẠI ĐĂNG KÝ: nếu TỜ KHAI có mục "Loại đăng ký" được tích/ghi rõ thì trả ToKhai_LoaiDangKy
   đúng nhãn được chọn (vd "Đăng ký lần đầu", "Đăng ký lại"). Tờ khai không có mục này hoặc không
-  tích ô nào → bỏ field để mapper mặc định "Đăng ký lần đầu"; TUYỆT ĐỐI không tự suy.
+  tích ô nào → bỏ field; TUYỆT ĐỐI không tự suy hoặc yêu cầu mapper mặc định "Đăng ký lần đầu".
 - CẤP BẢN SAO — CHỈ đọc từ mục "Đề nghị cấp bản sao" trên tài liệu có đúng tiêu đề
   "TỜ KHAI ĐĂNG KÝ KẾT HÔN"; không lấy yêu cầu/số lượng bản sao từ giấy tờ khác:
   + Tích/chọn Có -> CopyRequest_WantsCopy = "Có"; tích/chọn Không -> "Không".

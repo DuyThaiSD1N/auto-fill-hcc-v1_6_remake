@@ -14,6 +14,7 @@ async def log_request(
     status: int,
     stats: dict | None = None,
     error_code: str | None = None,
+    experience: str = "autofill",
 ) -> None:
     stats = stats or {}
     try:
@@ -29,6 +30,7 @@ async def log_request(
             "llm_latency_ms": stats.get("llm_latency_ms"),
             "total_latency_ms": stats.get("total_latency_ms"),
             "error_code": error_code,
+            "experience": experience,
             "created_at": datetime.now(timezone.utc),
         })
     except Exception:  # noqa: BLE001 — audit không được phép làm hỏng request

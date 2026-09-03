@@ -117,35 +117,155 @@ export async function loginWard(username: string, password: string): Promise<Log
   return data;
 }
 
-export interface WardProcedure {
+// ── Hợp đồng bảng thống kê (self-service phường + báo cáo cấp Tỉnh) ──────────
+export type ScopeKind = "unit" | "province" | "all";
+
+export interface ScopeUnit {
+  unitId: string;
+  name?: string | null;
+  xa?: string | null;
+  tinh?: string | null;
+}
+
+export interface DashScope {
+  role: string;
+  scopeKind: ScopeKind;
+  province: string | null;
+  canViewUnits: boolean; // true = tài khoản Tỉnh/admin → mở tab "Theo đơn vị"
+  unitCount: number;
+  self: ScopeUnit;
+}
+
+export interface ScopeResp extends DashScope {
+  units: ScopeUnit[];
+}
+
+export interface ProcedureStat {
   key: string;
   label: string;
   count: number;
   requests?: number;
+  units?: number; // số đơn vị có phát sinh thủ tục này (đa đơn vị)
 }
 
-export interface WardDay {
+export interface DayStat {
   date: string; // YYYY-MM-DD
   count: number;
 }
 
-export interface WardSummary {
-  ward: { name?: string | null; xa?: string | null; tinh?: string | null };
+export interface TopProcedure {
+  label: string;
+  count: number;
+}
+
+export interface UnitStat {
+  unitId: string;
+  name?: string | null;
+  xa?: string | null;
+  tinh?: string | null;
+  role?: string | null;
+  dossiers: number;
+  requests: number;
+  procedureTypes: number;
+  topProcedure: TopProcedure | null;
+}
+
+export interface SummaryResp {
+  scope: DashScope;
+  selected: ScopeUnit | null; // null = toàn phạm vi; ngược lại là đơn vị đang lọc
   range: { from?: string | null; to?: string | null };
+  sources: { autofill: boolean; handfree: boolean }; // handfree=false → chưa cộng được Handfree
   kpis: {
     dossiers: number;
     requests: number;
     procedureTypes: number;
-    topProcedure: { label: string; count: number } | null;
+    topProcedure: TopProcedure | null;
   };
-  byProcedure: WardProcedure[];
-  byDay: WardDay[];
+  byProcedure: ProcedureStat[];
+  byDay: DayStat[];
+  units: UnitStat[]; // bảng Theo đơn vị (toàn phạm vi, không phụ thuộc đơn vị đang lọc)
 }
 
-export function getWardSummary(dateFrom?: string, dateTo?: string): Promise<WardSummary> {
+function rangeQuery(dateFrom?: string, dateTo?: string, extra?: Record<string, string>): string {
   const params = new URLSearchParams();
   if (dateFrom) params.set("dateFrom", dateFrom);
   if (dateTo) params.set("dateTo", dateTo);
+  for (const [k, v] of Object.entries(extra ?? {})) if (v) params.set(k, v);
   const qs = params.toString();
-  return request<WardSummary>(`/api/v1/dashboard/summary${qs ? `?${qs}` : ""}`);
+  return qs ? `?${qs}` : "";
+}
+
+export function getScope(): Promise<ScopeResp> {
+  return request<ScopeResp>(`/api/v1/dashboard/scope`);
+}
+
+export function getSummary(dateFrom?: string, dateTo?: string, unit?: string): Promise<SummaryResp> {
+  return request<SummaryResp>(`/api/v1/dashboard/summary${rangeQuery(dateFrom, dateTo, { unit: unit ?? "" })}`);
+}
+
+// ── Nhật ký hồ sơ (mỗi lượt = 1 dòng, Auto Fill, không PII, không thời lượng) ──
+export interface LogItem {
+  requestId: string | null;
+  receivedAt: string | null; // ISO
+  unitId: string;
+  unitName: string;
+  procedure: string | null;
+  procedureLabel: string | null;
+  kind: string; // "autofill" | "attach"
+}
+
+export interface LogsResp {
+  scope: DashScope;
+  range: { from?: string | null; to?: string | null };
+  source: string; // "autofill"
+  items: LogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export function getLogs(
+  dateFrom?: string,
+  dateTo?: string,
+  unit?: string,
+  page = 1,
+  pageSize = 15,
+): Promise<LogsResp> {
+  return request<LogsResp>(
+    `/api/v1/dashboard/logs${rangeQuery(dateFrom, dateTo, {
+      unit: unit ?? "",
+      page: String(page),
+      pageSize: String(pageSize),
+    })}`,
+  );
+}
+
+// Tải Excel: fetch kèm token (không dùng <a href> vì cần Authorization), trả blob + tên file.
+export async function exportExcel(
+  dateFrom?: string,
+  dateTo?: string,
+  unit?: string,
+): Promise<{ blob: Blob; filename: string }> {
+  const url = `${BASE}/api/v1/dashboard/export${rangeQuery(dateFrom, dateTo, { unit: unit ?? "" })}`;
+  const send = () => {
+    const headers = new Headers();
+    if (tokens.access) headers.set("Authorization", `Bearer ${tokens.access}`);
+    return fetch(url, { headers });
+  };
+  let res = await send();
+  if (res.status === 401 && tokens.refresh && (await refreshTokens())) res = await send();
+  if (res.status === 401) forceLogout();
+  if (!res.ok) throw await parseError(res);
+  const blob = await res.blob();
+  let filename = "thong-ke-ho-so.xlsx";
+  const cd = res.headers.get("Content-Disposition") || "";
+  const match = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+  if (match) {
+    try {
+      filename = decodeURIComponent(match[1]);
+    } catch {
+      /* giữ tên mặc định */
+    }
+  }
+  return { blob, filename };
 }

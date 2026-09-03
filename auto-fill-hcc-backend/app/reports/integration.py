@@ -1,4 +1,4 @@
-"""Khóa ghép ổn định cho báo cáo liên thông giữa hai backend."""
+"""Khóa ghép ổn định hai trải nghiệm vào cùng dòng báo cáo đơn vị."""
 import unicodedata
 
 from app.core.errors import AppError
@@ -29,7 +29,7 @@ def province_name(value: str | None) -> str:
 
 
 def unit_key(province: str | None, ward: str | None) -> str:
-    """Không dùng user_id vì hai hệ thống có Mongo và tài khoản độc lập."""
+    """Gộp nhiều tài khoản cùng xã/phường vào một dòng báo cáo hành chính."""
     return f"{fold(province_name(province))}::{fold(ward)}"
 
 

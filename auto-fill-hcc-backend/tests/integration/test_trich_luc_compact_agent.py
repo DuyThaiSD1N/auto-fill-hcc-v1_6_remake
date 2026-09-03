@@ -120,21 +120,8 @@ def test_trich_luc_declaration_allows_matching_document_to_fill_blank_field():
 
 
 def test_trich_luc_runner_does_not_use_number_fallback():
-    """Số hộ tịch phải do LLM chọn đúng nguồn, runner không được quét chéo tài liệu.
-
-    Runner CÓ chốt chứng cứ sau LLM, nhưng nó chỉ được phép LOẠI field không có nguồn —
-    tuyệt đối không thêm field mới hay sửa giá trị (đó mới là "quét chéo tài liệu").
-    """
-    documents = [{"name": "gks.pdf", "text": "GIẤY KHAI SINH Số: 999/2020 TRẦN BÉ"}]
-    raw = {
-        "HoTich_LoaiSuKien": "birth",
-        "HoTich_HoTenNguoiDuocDangKy": "TRẦN BÉ",
-    }
-
-    kept = trich_luc_runner._compact_field_fallback(dict(raw), documents)
-
-    assert kept == raw
-    assert "HoTich_So" not in kept
+    """Số hộ tịch phải do LLM chọn đúng nguồn, runner không được quét chéo tài liệu."""
+    assert not hasattr(trich_luc_runner, "_compact_field_fallback")
 
 
 def test_trich_luc_ignores_copy_choice_without_quantity():
@@ -582,10 +569,7 @@ async def test_trich_luc_compact_agent_derives_ui_fields(monkeypatch):
     assert d["PhuongThucNhanKQ"] == "2"
 
     assert "NYC_HoVaTen" not in d
-    # Không có dòng quan hệ trên tờ khai: mapper đối chiếu người yêu cầu với người được đăng ký,
-    # khác người nên tick "Khác" và đánh dấu default để cán bộ soát lại.
-    assert d["NYC_QuanHe"] == "Khác"
-    assert by_name["NYC_QuanHe"].get("default") is True
+    assert "NYC_QuanHe" not in d
     assert not res["errors"]
 
 
@@ -667,12 +651,8 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
 @respx.mock
 async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")
-    # OCR phải có ĐÚNG hai người mà LLM trả về: chốt chứng cứ ở runner loại nhóm thẻ của
-    # người không hề xuất hiện trong hồ sơ.
     respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
-        return_value=httpx.Response(200, json={"results": [
-            {"text": "CĂN CƯỚC CÔNG DÂN 012345678901 NGUYỄN VĂN A. GIẤY KHAI SINH TRẦN BÉ"}
-        ] * 20})
+        return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
     out = {
         "fields": {
@@ -702,8 +682,7 @@ async def test_trich_luc_compact_agent_ignores_direct_ui_values(monkeypatch):
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["NDK_HoVaTen"] == "TRẦN BÉ"
     assert d["HoSo_LoaiYeuCau"].startswith("Giấy khai sinh bản sao")
-    # Giá trị UI do LLM trả thẳng bị bỏ; ô tích chỉ đến từ suy luận của mapper.
-    assert d["NYC_QuanHe"] == "Khác"
+    assert "NYC_QuanHe" not in d
     assert not res["errors"]
 
 

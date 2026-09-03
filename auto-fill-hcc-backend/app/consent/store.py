@@ -55,6 +55,7 @@ async def save_consent(*, log_id: str, user: dict, procedure: str | None,
         "principal_name": principal_name,  # tên chủ thể dữ liệu (đối chiếu, không dùng làm khóa)
         "pdf_path": str(Path("consent") / fname),
         "client_time": at,                 # thời điểm hiển thị phía client (chuỗi)
+        "experience": "autofill",
         "created_at": created_at,
     }
     res = await get_db().consent_logs.insert_one(doc)

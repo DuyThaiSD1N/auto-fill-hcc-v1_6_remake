@@ -379,25 +379,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         quan_he = "Bản thân" if requester_name_folded == ntd_name_folded else "Khác"
         quan_he_default = True
 
-    # ----- Mục I và Mục II là MỘT người → khối giấy tờ tùy thân Mục II lấy từ THẺ CCCD -----
-    # Quan hệ "Bản thân" nghĩa là người có nội dung thay đổi CHÍNH LÀ người yêu cầu, mà Mục I đã
-    # chốt số định danh theo thẻ. Số/ngày cấp/nơi cấp là chữ IN SẴN trên thẻ, còn tờ khai là chữ
-    # viết tay nên OCR hay rơi chữ số — vd "024078019726" đọc thành "04078019726" (11 số, không
-    # phải độ dài hợp lệ nào). Để tờ khai thắng thì hai mục lệch số nhau ngay trong cùng một hồ sơ.
-    # CHỈ khối giấy tờ tùy thân đảo nguồn; họ tên / ngày sinh / dân tộc / nơi cư trú của Mục II vẫn
-    # ưu tiên tờ khai như cũ (đó là lời khai hiện tại, có thể khác thẻ một cách hợp lệ).
-    subject_id_card: dict | None = None
-    if src and quan_he == "Bản thân":
-        subject_id_card = requester_card or subject_card
-        if not subject_id_card and values.get("Cccd_SoDinhDanh"):
-            subject_id_card = {
-                "SoDinhDanh": values.get("Cccd_SoDinhDanh"),
-                "NgayCap": values.get("Cccd_NgayCap"),
-                "NoiCap": values.get("Cccd_NoiCap"),
-            }
-        if subject_id_card:
-            ntd_so_dinh_danh = subject_id_card.get("SoDinhDanh") or ntd_so_dinh_danh
-
     # ----- Mục I: người yêu cầu - ưu tiên từ tờ khai, fallback formContext -----
 
     # (1) Họ, chữ đệm, tên - ưu tiên NguoiYeuCau_HoTen từ tờ khai
@@ -556,18 +537,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("ntdQuocTich", g("QuocTich") or "Việt Nam")
         add("ntdSoDDCN", ntd_so_dinh_danh)
 
-        # Thẻ của chính người này (ca "Bản thân") đi TRƯỚC tờ khai; các ca còn lại giữ thứ tự cũ.
-        card_issue = subject_id_card or {}
-        ngay_cap = card_issue.get("NgayCap") or g("NgayCapGiayTo") or cc("Cccd_NgayCap")
-        noi_cap = card_issue.get("NoiCap") or g("NoiCapGiayTo") or cc("Cccd_NoiCap")
+        ngay_cap = g("NgayCapGiayTo") or cc("Cccd_NgayCap")
+        noi_cap = g("NoiCapGiayTo") or cc("Cccd_NoiCap")
         # Trẻ trong GIẤY KHAI SINH chỉ có số định danh, KHÔNG có CCCD → bỏ trống khối giấy tờ tùy thân.
         # NHƯNG người lớn có CCCD (ngày/nơi cấp) → vẫn điền, kể cả khi sự kiện hộ tịch gốc là khai sinh.
         has_id_card = bool(ngay_cap or noi_cap or g("SoGiayTo"))
         if ntd_so_dinh_danh and (event != "birth" or has_id_card):
             add("ntdLoaiGiayToTuyThan", "Căn cước công dân")
-            # Số giấy tờ phải bằng ô số định danh vừa điền, nếu không hai ô cạnh nhau lệch số.
-            add("ntdSoGiayToTuyThan",
-                ntd_so_dinh_danh if subject_id_card else (g("SoGiayTo") or ntd_so_dinh_danh))
+            add("ntdSoGiayToTuyThan", g("SoGiayTo") or ntd_so_dinh_danh)
             add("ntdNgayCapGiayToTuyThan", ngay_cap)
             add("ntdNoiCapGiayToTuyThan", noi_cap or default_issuer(ngay_cap))
         residence = _area(g("NoiCuTru"))

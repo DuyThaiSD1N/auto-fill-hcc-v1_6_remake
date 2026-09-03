@@ -6,6 +6,7 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.ket_hon_lai.attach.prompt import SYSTEM_PROMPT, build_user_prompt
 from app.process.schemas import FileItem
 from app.services.llm import client
@@ -328,6 +329,17 @@ async def plan_ket_hon_lai_attachments(
             base = (llm_types.get(idx) or {}).get("documentName") or file.get("name") or ""
             label = _dedup_label(normalize_document_name(base, _OTHER_LABEL), used_labels)
         attachments.append(_build_item(file, idx, label, label))
+
+    # Chỉ ghép mặt trước/mặt sau của cùng một số định danh. CCCD của hai bên
+    # (hoặc chủ thể khác) luôn giữ thành các dòng riêng.
+    attachments = merge_identity_attachments(
+        attachments,
+        {
+            idx: str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+            for idx, file in enumerate(raw_files)
+        },
+        id_indexes,
+    )
 
     return {
         "attachments": attachments,

@@ -56,8 +56,9 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và trả đúng type hồ s�
 - OCR có "ĐƠN ĐỀ NGHỊ CẤP PHÉP XÂY DỰNG", "Mẫu số 1 Phụ lục số II" thì chọn building_permit_application.
 - OCR có "CĂN CƯỚC CÔNG DÂN", "Citizen Identity Card", "Số / No.", "IDVNM", "Số định danh cá nhân" thì chọn identity_document.
 - OCR có "BẢN CAM KẾT", "Đảm bảo an toàn đối với công trình liền kề", "cam kết xây nhà" thì chọn safety_commitment.
-- OCR có "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT", "SỔ ĐỎ", "thửa đất", "tờ bản đồ", "người sử dụng đất" thì chọn land_legal_document, trừ khi tiêu đề chính là đơn đề nghị hoặc bản vẽ.
-- OCR có "BẢN VẼ", "HỒ SƠ XIN CẤP PHÉP XÂY DỰNG", "mặt bằng", "mặt đứng", "mặt cắt", "mặt bằng móng", "cấp nước", "thoát nước", "cấp điện" thì chọn construction_design_drawings.
+- OCR có "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT", "SỔ ĐỎ", "Người sử dụng đất, chủ sở hữu nhà ở", "Thửa đất số ... tờ bản đồ số", "Nguồn gốc sử dụng đất", "Số vào sổ cấp GCN", "Những thay đổi sau khi cấp Giấy chứng nhận" thì chọn land_legal_document — kể cả khi bản OCR bị CẮT/NHIỄU (lặp chữ) chỉ còn vài dấu hiệu này, hoặc tiêu đề đầy đủ nằm ở trang sau.
+- BẪY QUAN TRỌNG: mục "Sơ đồ thửa đất" (thường đánh số "III. Sơ đồ thửa đất...") là MỘT PHẦN CỦA SỔ ĐỎ/GCN, KHÔNG phải bản vẽ thiết kế → vẫn chọn land_legal_document, KHÔNG chọn construction_design_drawings.
+- OCR có "BẢN VẼ", "HỒ SƠ XIN CẤP PHÉP XÂY DỰNG", "mặt bằng", "mặt đứng", "mặt cắt", "mặt bằng móng", "cấp nước", "thoát nước", "cấp điện" thì chọn construction_design_drawings. construction_design_drawings CHỈ dành cho HỒ SƠ THIẾT KẾ thật (có khung tên bản vẽ, tỉ lệ "TL:", mặt bằng/mặt đứng/mặt cắt/móng của công trình); việc file có nhắc "thửa đất số/tờ bản đồ số" KHÔNG biến sổ đỏ thành bản vẽ.
 - OCR có "BẢN KÊ KHAI KINH NGHIỆM CỦA TỔ CHỨC, CÁ NHÂN THIẾT KẾ" thì chọn design_experience_declaration.
 - OCR có "CHỨNG CHỈ NĂNG LỰC HOẠT ĐỘNG XÂY DỰNG" thì chọn construction_capacity_certificate.
 - OCR có "CHỨNG CHỈ HÀNH NGHỀ KIẾN TRÚC", "CHỨNG CHỈ HÀNH NGHỀ", "Cấp cho: Ông/Bà" và lĩnh vực hành nghề cá nhân thì chọn architect_practice_certificate.

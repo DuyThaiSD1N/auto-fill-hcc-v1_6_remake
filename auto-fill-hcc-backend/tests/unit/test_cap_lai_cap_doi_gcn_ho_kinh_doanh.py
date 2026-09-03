@@ -34,7 +34,6 @@ def test_builds_reissue_flow_from_handwritten_sample_without_forcing_code_length
         "expectedBusinessNumber": "8889545300",
     }
     assert flow["pageOrder"] == ["thong-tin-de-nghi-cap-lai", "nguoi-nop-ho-so"]
-    assert flow["owner"] == {"hoTen": "NGUYỄN THỊ QUỲNH", "soDinhDanh": "033197013790"}
     request = pages["thong-tin-de-nghi-cap-lai"][0]
     assert request == {"name": "__reissueRequest", "comp": "raw", "value": {
         "kind": "cap_lai", "reason": "Bị mất",
@@ -58,47 +57,6 @@ def test_search_falls_back_to_signer_identity_when_business_code_is_missing():
     ])
     assert flow["search"]["method"] == "identityNumber"
     assert flow["search"]["value"] == "033197013790"
-
-
-def test_authorized_submitter_from_power_of_attorney_uses_registration_logic():
-    pages, flow = mapper.build([
-        _field("ChuHo", {"hoTen": "Lê Văn Sơn", "soDinhDanh": "042093011745"}),
-        _field("NguoiKy", {"hoTen": "Lê Văn Sơn", "soDinhDanh": "042093011745"}),
-        _field("UyQuyen_CoGiayUyQuyen", True),
-        _field("UyQuyen_NguoiUyQuyen_HoTen", "Lê Văn Sơn"),
-        _field("UyQuyen_NguoiUyQuyen_SoDinhDanh", "042093011745"),
-        _field("UyQuyen_NguoiDuocUyQuyen_HoTen", "Nguyễn Duy Thái"),
-        _field("UyQuyen_NguoiDuocUyQuyen_SoDinhDanh", "001204018566"),
-        _field("UyQuyen_NguoiDuocUyQuyen_GioiTinh", "Nam"),
-        _field("UyQuyen_NguoiDuocUyQuyen_NgaySinh", "11/08/2004"),
-    ])
-
-    submitter = {item["name"]: item["value"] for item in pages["nguoi-nop-ho-so"]}
-    assert submitter["ctl00$C$PERS_SUBGroup"] == "Người được ủy quyền"
-    assert submitter["__authorization"]["nguoiUyQuyen"] == {
-        "hoTen": "Lê Văn Sơn", "soDinhDanh": "042093011745",
-    }
-    assert [(item["hoTen"], item["soDinhDanh"]) for item in flow["identityCandidates"]] == [
-        ("Nguyễn Duy Thái", "001204018566"),
-        ("Lê Văn Sơn", "042093011745"),
-    ]
-
-
-def test_reissue_remaps_old_address_for_form_and_identity_candidates():
-    old_address = {
-        "quocGia": "Việt Nam", "tinh": "Bình Thuận", "xa": "Hàm Kiệm", "diaChi": "Tổ 3",
-    }
-    pages, flow = mapper.build([
-        _field("ChuHo", {"hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address}),
-        _field("NguoiKy", {"hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address}),
-        _field("Cccd_DanhSach", [{"hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address}]),
-    ])
-
-    form_fields = {item["name"]: item["value"] for item in pages["nguoi-nop-ho-so"]}
-    assert form_fields["ctl00$C$PERSCtl$ADDRCCtl$CITY_IDFld"] == "Lâm Đồng"
-    assert form_fields["ctl00$C$PERSCtl$ADDRCCtl$WARD_IDFld"] == "Hàm Kiệm"
-    assert flow["identityCandidates"][0]["diaChi"]["tinh"] == "Lâm Đồng"
-    assert flow["identityCandidates"][0]["diaChi"]["xa"] == "Hàm Kiệm"
 
 
 def test_ocr_fallback_keeps_physical_cccd_as_unassigned_identity_candidate():

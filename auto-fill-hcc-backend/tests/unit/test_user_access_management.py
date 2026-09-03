@@ -107,3 +107,20 @@ async def test_admin_cannot_disable_own_account(monkeypatch):
     assert error.value.error == "CANNOT_DISABLE_SELF"
     assert db.users.update_doc is None
 
+
+@pytest.mark.asyncio
+async def test_admin_cannot_update_super_admin(monkeypatch):
+    target = _user()
+    target["role"] = "super_admin"
+    db = _Db(target)
+    monkeypatch.setattr(service, "get_db", lambda: db)
+
+    with pytest.raises(AppError) as error:
+        await service.update_user(
+            str(target["_id"]),
+            UserUpdate(name="Không được sửa"),
+            str(ObjectId()),
+        )
+
+    assert error.value.error == "PROTECTED_ACCOUNT"
+    assert db.users.update_doc is None

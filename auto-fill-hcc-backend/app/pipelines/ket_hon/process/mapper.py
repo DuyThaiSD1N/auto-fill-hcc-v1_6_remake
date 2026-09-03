@@ -252,15 +252,11 @@ def enrich(fields: list[dict]) -> list[dict]:
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")
 
-    # Loại đăng ký: ƯU TIÊN tờ khai ghi rõ (không tô vàng vì đọc được từ giấy tờ); tờ khai
-    # không ghi mới fallback "Đăng ký lần đầu" — form này là tờ khai đăng ký kết hôn MỚI,
-    # đăng ký lại có thủ tục riêng. Tích SAU khi đã điền thông tin hai bên (add ở cuối danh
-    # sách nên extension điền cuối cùng).
+    # Chỉ tác động radio khi tờ khai ghi rõ loại đăng ký. Không có dữ liệu thì bỏ hẳn;
+    # cổng tự giữ trạng thái của nó, mapper không mặc định "Đăng ký lần đầu".
     loai_dang_ky = _loai_dang_ky(values.get("ToKhai_LoaiDangKy"))
     if loai_dang_ky:
         add("loaiDangKy", loai_dang_ky)
-    elif out:
-        add("loaiDangKy", _LOAI_DANG_KY_LAN_DAU, default=True)
 
     # Số lượng dương vừa là bằng chứng chọn "Có", vừa được điền vào input raw SoLuong.
     # Không có số lượng thật thì không tự mặc định.

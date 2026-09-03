@@ -131,6 +131,7 @@ def render_mobile_page(sid: str) -> str:
 </div>
 <script>
 const SID = {sid!r};
+const UPLOAD_TOKEN = new URLSearchParams(location.hash.slice(1)).get("token") || "";
 const $ = (id) => document.getElementById(id);
 let staged = [];   // {{ id, file, url, isPdf }} — tài liệu ĐANG CHỜ, chưa gửi
 let uid = 0;
@@ -204,7 +205,11 @@ async function send() {{
   const fd = new FormData();
   blobs.forEach((b, i) => fd.append("files", b, items[i].file.name || (items[i].isPdf ? "tai-lieu.pdf" : "anh.jpg")));
   try {{
-    const r = await fetch(`/api/v1/upload-sessions/${{SID}}/files`, {{ method: "POST", body: fd }});
+    const headers = new Headers();
+    if (UPLOAD_TOKEN) headers.set("X-Upload-Token", UPLOAD_TOKEN);
+    const r = await fetch(`/api/v1/upload-sessions/${{SID}}/files`, {{
+      method: "POST", body: fd, headers,
+    }});
     if (!r.ok) {{
       const e = await r.json().catch(() => null);
       $("stat").textContent = "⚠️ " + ((e && e.detail) || "Gửi tài liệu lỗi, bà con thử lại nhé.");
@@ -431,7 +436,10 @@ window.addEventListener("beforeunload", () => {{ if (scanner) scanner.stop(); }}
 
 // Báo popup biết điện thoại đã mở trang (đổi trạng thái "đang chờ quét" → "đã kết nối").
 try {{
-  const ws = new WebSocket(`${{location.protocol === "https:" ? "wss" : "ws"}}://${{location.host}}/ws/upload-sessions/${{SID}}?role=mobile`);
+  const ws = new WebSocket(
+    `${{location.protocol === "https:" ? "wss" : "ws"}}://${{location.host}}/ws/upload-sessions/${{SID}}?role=mobile`,
+    ["tlnd-upload", `tlnd-token.${{UPLOAD_TOKEN}}`],
+  );
   ws.onopen = () => {{}};
 }} catch (_) {{}}
 </script>

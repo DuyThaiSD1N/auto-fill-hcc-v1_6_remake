@@ -52,6 +52,7 @@ const ROLE_META: Record<Role, { label: string; cls: string }> = {
   user: { label: "Người dùng", cls: "role-user" },
   commune: { label: "Hành chính công xã", cls: "role-commune" },
   province: { label: "Hành chính công tỉnh", cls: "role-province" },
+  province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
 };
 
 const PAGE_SIZE = 20;
@@ -63,6 +64,7 @@ const ROLE_FILTER_OPTIONS: { key: RoleFilter; label: string }[] = [
   { key: "user", label: "Người dùng" },
   { key: "commune", label: "Hành chính công xã" },
   { key: "province", label: "Hành chính công tỉnh" },
+  { key: "province_admin", label: "Tỉnh (báo cáo)" },
 ];
 
 const foldLocation = (value: string): string =>
@@ -569,6 +571,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                 <option value="user">Người dùng</option>
                 <option value="commune">Hành chính công xã</option>
                 <option value="province">Hành chính công tỉnh</option>
+                <option value="province_admin">Tỉnh (xem báo cáo thống kê)</option>
                 <option value="admin">Quản trị</option>
               </select>
             </label>

@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends
@@ -12,6 +11,7 @@ from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
 from app.procedures.registry import get_pipeline, get_procedure
+from app.review.access import create_review_capability
 from app.storage.files import save_request_files
 from app.traces import repo as traces_repo
 from app.traces.applicant import resolve_applicant_name
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1", tags=["process"])
 @router.post("/process", response_model=ProcessResp)
 async def process(body: ProcessReq, background: BackgroundTasks,
                   user: dict = Depends(require_auth)):
-    request_id = "req_" + uuid.uuid4().hex[:12]
+    request_id = traces_repo.new_request_id()
     created_at = datetime.now(timezone.utc)
 
     proc = get_procedure(body.procedure)
@@ -50,6 +50,7 @@ async def process(body: ProcessReq, background: BackgroundTasks,
 
     # Pop dữ liệu rà soát khỏi result để không lọt ra FE (lưu ở nền bên dưới).
     review_data = result.pop("_review", None)
+    review_token = create_review_capability(request_id) if review_data else None
 
     # TẤT CẢ việc lưu vết (disk + 4 lượt Mongo) đẩy sang NỀN: fields đã sẵn sàng ngay đây,
     # người dùng KHÔNG cần chờ audit/trace/finish ghi xong. Cắt phần "im lặng" sau OCR+LLM.
@@ -59,6 +60,7 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     return {
         "sessionId": request_id,
         "requestId": request_id,
+        "reviewToken": review_token,
         "fields": result["fields"],
         "extracted": result.get("extracted", {}),
         "stats": result.get("stats", {}),

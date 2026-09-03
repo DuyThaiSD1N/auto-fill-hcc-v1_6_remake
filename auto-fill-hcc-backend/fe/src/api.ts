@@ -129,6 +129,7 @@ export async function login(username: string, password: string): Promise<LoginRe
 }
 
 export interface TraceQuery {
+  source?: "all" | "autofill" | "handfree";
   userId?: string;
   procedure?: string;
   dateFrom?: string;
@@ -140,6 +141,7 @@ export interface TraceQuery {
 
 export function listTraces(q: TraceQuery): Promise<TraceListResp> {
   const params = new URLSearchParams();
+  if (q.source) params.set("source", q.source);
   if (q.userId) params.set("userId", q.userId);
   if (q.procedure) params.set("procedure", q.procedure);
   if (q.dateFrom) params.set("dateFrom", q.dateFrom);
@@ -154,8 +156,8 @@ export function getTrace(id: string): Promise<TraceDetail> {
   return request<TraceDetail>(`/api/v1/traces/${id}`);
 }
 
-export function getFacets(): Promise<Facets> {
-  return request<Facets>(`/api/v1/traces/facets`);
+export function getFacets(source: "all" | "autofill" | "handfree" = "all"): Promise<Facets> {
+  return request<Facets>(`/api/v1/traces/facets?source=${source}`);
 }
 
 export function getStats(
@@ -245,7 +247,19 @@ async function requestDownload(
   }
   if (!res.ok) throw await parseError(res);
   const disposition = res.headers.get("Content-Disposition") || "";
-  const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  const encodedFilename = disposition
+    .match(/filename\*\s*=\s*UTF-8''([^;]+)/i)?.[1]
+    ?.trim()
+    .replace(/^"|"$/g, "");
+  let filename: string | undefined;
+  if (encodedFilename) {
+    try {
+      filename = decodeURIComponent(encodedFilename);
+    } catch {
+      // Header lỗi encoding thì vẫn tải được bằng tên ASCII dự phòng.
+    }
+  }
+  filename ||= disposition.match(/filename="?([^";]+)"?/i)?.[1];
   return { blob: await res.blob(), filename };
 }
 

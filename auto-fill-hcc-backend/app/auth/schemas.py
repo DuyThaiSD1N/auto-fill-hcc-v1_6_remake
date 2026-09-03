@@ -8,6 +8,9 @@ class LoginReq(BaseModel):
     # admin ngay tại login (không chỉ chặn ở UI). Extension login KHÔNG gửi cờ này (mặc định
     # false) nên tài khoản phường vẫn đăng nhập auto-fill bình thường.
     adminOnly: bool = False
+    # Web Monitor là một ứng dụng độc lập và chỉ nhận role nội bộ super_admin. Cờ riêng giữ
+    # nguyên hợp đồng adminOnly của web quản lý cũ, đồng thời chặn trước khi phát token.
+    superAdminOnly: bool = False
 
 
 class RefreshReq(BaseModel):

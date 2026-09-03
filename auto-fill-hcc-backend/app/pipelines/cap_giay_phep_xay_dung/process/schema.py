@@ -79,6 +79,7 @@ FIELDS: list[dict] = [
     # G. Permit content.
     {"name": "CongTrinh_Ten", "desc": "Tên công trình trong đơn/bản vẽ, ví dụ Nhà ở gia đình/Nhà ở riêng lẻ."},
     {"name": "CongTrinh_Loai", "desc": "Loại công trình chi tiết trong đơn, ví dụ Nhà ở riêng lẻ hoặc Dân dụng."},
+    {"name": "CongTrinh_Nhanh", "desc": 'Nhánh form của đơn, chỉ trả đúng một giá trị: "nha_o_rieng_le" nếu đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ" hoặc nội dung có mục "Đối với công trình nhà ở riêng lẻ" được kê khai; "khong_theo_tuyen" nếu đơn thuộc nhóm "Công trình không theo tuyến, tín ngưỡng, tôn giáo". Mẫu đơn dùng chung nhiều loại nhưng có dữ liệu tại mục 4.4 thì vẫn là "nha_o_rieng_le". Nếu không đủ bằng chứng thì để trống.'},
     {"name": "CongTrinh_Cap", "desc": "Cấp công trình, ví dụ Cấp III hoặc Cấp IV."},
     {"name": "CongTrinh_DienTichXayDung", "desc": "Diện tích xây dựng, m2, chỉ trả số."},
     {"name": "CongTrinh_CotXayDung", "desc": "Cốt nền/cốt xây dựng, m, chỉ trả số nếu có."},
@@ -165,6 +166,18 @@ UI_COMP_BY_NAME = {
 
     # Permit content.
     "data[loaiCongTrinh]": "dom-select",
+    # Nhánh nhà ở dùng panel/field riêng, không dùng lại các field KhongTheoTuyen.
+    "data[tenCongTrinhNhaO]": "dom-input",
+    "data[capCongTrinhNhaO]": "dom-select",
+    "data[khoangLuiNhaO]": "dom-input",
+    "data[cotXayDungNhaO]": "dom-input",
+    "data[dienTichXayDungTang1NhaO]": "dom-input",
+    "data[tongDienTichSanNhaO]": "dom-input",
+    "data[chiTietDienTichSanNhaO]": "dom-input",
+    "data[chieuCaoCongTrinhNhaO]": "dom-input",
+    "data[chiTietChieuCaoNhaO]": "dom-input",
+    "data[soTangNhaO]": "dom-input",
+    "data[chiTietSoTangNhaO]": "dom-input",
     "data[tenCongTrinhKhongTheoTuyen]": "dom-input",
     "data[loaiCongTrinhKhongTheoTuyen]": "dom-select",
     "data[capCongTrinhKhongTheoTuyen]": "dom-select",

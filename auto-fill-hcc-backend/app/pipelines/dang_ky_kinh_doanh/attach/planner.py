@@ -164,21 +164,32 @@ async def plan(
     _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
-    ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
+    # Tên file từ mobile/scan có thể giống hệt nhau. Raw index mới là định danh nội bộ;
+    # ghép OCR theo tên sẽ làm mọi file trùng tên nhận nội dung của file cuối cùng.
+    ocr_inputs = [
+        (idx, file) for idx, file in enumerate(raw_files) if file.get("type") in _OCR_TYPES
+    ]
+    ocr_files = [file for _, file in ocr_inputs]
 
     from app.services import ocr
 
     t0 = time.monotonic()
     ocr_results = await ocr.ocr_per_file(ocr_files) if ocr_files else []
     ocr_ms = int((time.monotonic() - t0) * 1000)
-    for r in ocr_results:
-        if r.get("error"):
-            errors.append(f"OCR {r.get('name')}: {r['error']}")
+    ocr_text_by_index: dict[int, str] = {}
+    for position, (raw_index, file) in enumerate(ocr_inputs):
+        result = ocr_results[position] if position < len(ocr_results) else {
+            "text": "", "error": "thiếu kết quả OCR",
+        }
+        ocr_text_by_index[raw_index] = str(result.get("text") or "")
+        if result.get("error"):
+            errors.append(
+                f"OCR fileIndex={raw_index} {file.get('name')}: {result['error']}"
+            )
 
-    ocr_by_name = {r.get("name"): r for r in ocr_results}
     llm_docs = [
-        {"index": idx, "text": str(ocr_by_name.get(file.get("name"), {}).get("text") or "")}
-        for idx, file in enumerate(raw_files)
+        {"index": idx, "text": ocr_text_by_index.get(idx, "")}
+        for idx, _file in enumerate(raw_files)
     ]
 
     t1 = time.monotonic()
@@ -195,7 +206,7 @@ async def plan(
     used_names: set[str] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "", "documentName": ""}
-        ocr_text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+        ocr_text = ocr_text_by_index.get(idx, "")
         # Route TẤT ĐỊNH theo nội dung OCR; LLM chỉ để fallback + documentName.
         category = _detect_category(ocr_text)
         if category is None:

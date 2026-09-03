@@ -42,6 +42,13 @@ class AttachmentPlanItem(BaseModel):
     componentIndex: int | None = None
     needsAddComponent: bool
     detectedType: str | None = None
+    # Quan hệ hồ sơ khi một batch Chứng thực chữ ký được chia thành nhiều tab. Các planner khác
+    # không trả ba field này nên hợp đồng cũ vẫn giữ nguyên.
+    bundleId: str | None = None
+    bundleRole: Literal["signature_document", "identity"] | None = None
+    # shared: một giấy tùy thân dùng chung và chỉ đính ở tab đầu; matched: giấy tùy thân khớp riêng
+    # với người ký của bundle.
+    identityScope: Literal["shared", "matched"] | None = None
     # Dùng cho target "fixed-slot" (vd Hỗ trợ mai táng): chỉ định ô upload cố định trên form.
     slotKey: str | None = None
     slotIndex: int | None = None
@@ -66,6 +73,10 @@ class AttachmentPlanResp(BaseModel):
     # Mã hỗ trợ (request_id) trả về FE để cán bộ copy. KHÔNG khai báo ở đây thì response_model
     # sẽ LƯỢC MẤT field router gắn vào result → FE không hiện được chip mã hỗ trợ.
     requestId: str | None = None
+    # Directive hotfix (chỉ Chứng thực bản sao, tài khoản Đà Nẵng/Hải Châu): yêu cầu extension
+    # chèn 1 file ẢO (copy đổi tên của file thật) vào ô STT1. Không khai ở đây thì response_model
+    # lược mất → extension không nhận được directive. None với mọi trường hợp khác.
+    stt1VirtualCopy: dict[str, Any] | None = None
 
 
 class ClientAttachmentFileMeta(BaseModel):

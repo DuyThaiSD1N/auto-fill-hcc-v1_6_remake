@@ -11,6 +11,7 @@ from app.core.security import hash_password
 from app.db.mongo import get_db
 from app.locations.catalog import canonical_location
 from app.users.schemas import Role, UserCreate, UserUpdate
+from app.users.roles import SUPER_ADMIN_ROLE
 
 
 def _now() -> datetime:
@@ -43,9 +44,9 @@ def _oid(user_id: str) -> ObjectId:
 
 
 def _role_query(role: Role | None) -> dict:
-    """Tài khoản cũ thiếu role vẫn hành xử như user nên phải xuất hiện khi lọc Người dùng."""
+    """Lọc role công khai và luôn giấu tài khoản Monitor khỏi UI quản lý hiện tại."""
     if role is None:
-        return {}
+        return {"role": {"$ne": SUPER_ADMIN_ROLE}}
     if role == "user":
         return {"$or": [
             {"role": "user"},
@@ -92,6 +93,15 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
     db = get_db()
     oid = _oid(user_id)
     now = _now()
+    current = await db.users.find_one({"_id": oid})
+    if not current:
+        raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    if current.get("role") == SUPER_ADMIN_ROLE:
+        raise AppError(
+            "PROTECTED_ACCOUNT",
+            "Tài khoản Monitor được bảo vệ và không thể sửa tại trang quản lý này.",
+            403,
+        )
     updates: dict = {"updated_at": now}
     unset_fields: dict = {}
     if body.name is not None:
@@ -100,9 +110,6 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
     if location_fields:
         # PATCH có thể chỉ gửi một nửa cặp tỉnh-xã. Ghép với dữ liệu đang lưu rồi mới
         # kiểm tra để không cho một xã cũ bị giữ lại dưới tỉnh mới.
-        current = await db.users.find_one({"_id": oid})
-        if not current:
-            raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
         tinh_input = body.tinh if "tinh" in location_fields else current.get("tinh")
         xa_input = body.xa if "xa" in location_fields else current.get("xa")
         tinh, xa = canonical_location(tinh_input, xa_input)
@@ -126,7 +133,9 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
     if unset_fields:
         update_doc["$unset"] = unset_fields
     result = await db.users.find_one_and_update(
-        {"_id": oid}, update_doc, return_document=True
+        {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}},
+        update_doc,
+        return_document=True,
     )
     if not result:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
@@ -144,6 +153,16 @@ async def delete_user(user_id: str, current_user_id: str) -> None:
     oid = _oid(user_id)
     if str(oid) == current_user_id:
         raise AppError("CANNOT_DELETE_SELF", "Không thể tự xóa tài khoản của chính mình", 400)
-    res = await get_db().users.delete_one({"_id": oid})
+    db = get_db()
+    current = await db.users.find_one({"_id": oid})
+    if not current:
+        raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    if current.get("role") == SUPER_ADMIN_ROLE:
+        raise AppError(
+            "PROTECTED_ACCOUNT",
+            "Tài khoản Monitor được bảo vệ và không thể xóa tại trang quản lý này.",
+            403,
+        )
+    res = await db.users.delete_one({"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}})
     if res.deleted_count == 0:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)

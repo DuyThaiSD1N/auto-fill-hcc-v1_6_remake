@@ -594,6 +594,7 @@ def _load_documents(
     procedures: Sequence[str],
     date_from: datetime | None,
     date_to: datetime | None,
+    kind: str | None = None,
 ) -> tuple[list[dict], dict[str, dict], dict[str, dict]]:
     trace_query: dict = {
         "procedure": {"$in": list(procedures)},
@@ -606,6 +607,8 @@ def _load_documents(
         date_query["$lt"] = date_to
     if date_query:
         trace_query["created_at"] = date_query
+    if kind:
+        trace_query["kind"] = kind
 
     projection = {
         "request_id": 1,
@@ -615,6 +618,7 @@ def _load_documents(
         "procedure": 1,
         "procedure_label": 1,
         "dossier_ids": 1,
+        "kind": 1,
         "status": 1,
         "created_at": 1,
     }

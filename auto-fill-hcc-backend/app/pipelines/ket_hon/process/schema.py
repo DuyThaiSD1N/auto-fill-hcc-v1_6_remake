@@ -8,7 +8,7 @@ values are derived in Python.
 FIELDS: list[dict] = [
     # CCCD/CMND bên nam.
     {"name": "CccdNam_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nam."},
-    {"name": "CccdNam_SoDinhDanh", "desc": "Số định danh/CCCD bên nam, 12 số; có thể đọc từ MRZ mặt sau."},
+    {"name": "CccdNam_SoDinhDanh", "desc": "Số định danh/CCCD bên nam, đúng 12 số; CHỈ đọc ở MẶT TRƯỚC CCCD/CMND, từ dãy số ngay sau nhãn 'Số / No.'. TUYỆT ĐỐI không đọc, ghép hoặc suy ra từ MRZ/IDVNM ở mặt sau. Nếu không có mặt trước hoặc mặt trước không đọc rõ đủ 12 số thì bỏ field."},
     {"name": "CccdNam_NgaySinh", "desc": "Ngày sinh bên nam trên CCCD/CMND, dd/mm/yyyy."},
     {"name": "CccdNam_NgayCap", "desc": "Ngày cấp CCCD/CMND bên nam, dd/mm/yyyy."},
     {"name": "CccdNam_NoiCap",
@@ -37,7 +37,7 @@ FIELDS: list[dict] = [
 
     # CCCD/CMND bên nữ.
     {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nữ."},
-    {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh/CCCD bên nữ, 12 số; có thể đọc từ MRZ mặt sau."},
+    {"name": "CccdNu_SoDinhDanh", "desc": "Số định danh/CCCD bên nữ, đúng 12 số; CHỈ đọc ở MẶT TRƯỚC CCCD/CMND, từ dãy số ngay sau nhãn 'Số / No.'. TUYỆT ĐỐI không đọc, ghép hoặc suy ra từ MRZ/IDVNM ở mặt sau. Nếu không có mặt trước hoặc mặt trước không đọc rõ đủ 12 số thì bỏ field."},
     {"name": "CccdNu_NgaySinh", "desc": "Ngày sinh bên nữ trên CCCD/CMND, dd/mm/yyyy."},
     {"name": "CccdNu_NgayCap", "desc": "Ngày cấp CCCD/CMND bên nữ, dd/mm/yyyy."},
     {"name": "CccdNu_NoiCap",
@@ -76,7 +76,7 @@ FIELDS: list[dict] = [
              "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ. tinh chỉ chứa tên tỉnh/thành phố đầy đủ; "
              "xa phải mở rộng P/P. thành Phường, X/X. thành Xã, TT/TT. thành Thị trấn."},
 
-    # Loại đăng ký ghi trên tờ khai (nếu mẫu có mục này); không có thì Python tự suy.
+    # Loại đăng ký chỉ lấy khi tờ khai ghi rõ; không có thì bỏ, không tác động radio trên cổng.
     {"name": "ToKhai_LoaiDangKy",
      "desc": 'Loại đăng ký ghi trên TỜ KHAI ĐĂNG KÝ KẾT HÔN nếu tờ khai có mục "Loại đăng ký" '
              'được tích/ghi rõ (vd "Đăng ký lần đầu", "Đăng ký lại"). Trả đúng nhãn được chọn. '

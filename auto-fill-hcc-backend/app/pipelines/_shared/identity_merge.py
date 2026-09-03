@@ -90,6 +90,113 @@ def _person_of(text: str, persons: list[str]) -> str | None:
     return None
 
 
+def _unique_identity_name(base: str, position: int, used: set[str]) -> str:
+    """Tên component mới phải khác nhau để FE không coi CCCD người sau là file trùng."""
+    stem = str(base or "").strip() or "Căn cước công dân"
+    candidate = stem
+    suffix = max(2, position + 1)
+    while _fold(candidate) in used:
+        candidate = f"{stem} {suffix}"
+        suffix += 1
+    used.add(_fold(candidate))
+    return candidate
+
+
+def merge_identity_records(
+    records: list[dict],
+    *,
+    existing_slot: tuple[int, str] | None = None,
+    default_document_name: str = "Căn cước công dân",
+) -> list[dict]:
+    """Gom record identity theo CHỦ THỂ, hỗ trợ planner dùng ``sourceSegments``.
+
+    ``records`` gồm ``item``, ``ocrText`` và ``order``. Chỉ mặt trước/mặt sau xác định được cùng
+    số định danh mới thành một item. Record không xác định được chủ thể luôn đứng riêng để tránh
+    ghép nhầm. Nếu form có một dòng identity sẵn thì chỉ nhóm đầu dùng dòng đó; các chủ thể sau
+    được thêm component mới.
+    """
+    if not records:
+        return []
+
+    ordered_records = sorted(records, key=lambda record: int(record.get("order", 0)))
+    persons: list[str] = []
+    for record in ordered_records:
+        number = _cccd_number(str(record.get("ocrText") or ""))
+        if number and number not in persons:
+            persons.append(number)
+
+    groups: dict[str, list[dict]] = {person: [] for person in persons}
+    group_order: list[str] = []
+    unknown_counter = 0
+    for record in ordered_records:
+        person = _person_of(str(record.get("ocrText") or ""), persons)
+        if person is None:
+            # Không suy đoán hai mặt sau/ảnh OCR lỗi là cùng người.
+            person = f"unknown:{unknown_counter}"
+            unknown_counter += 1
+            groups[person] = []
+        if person not in group_order:
+            group_order.append(person)
+        groups[person].append(record)
+
+    used_names: set[str] = set()
+    merged: list[dict] = []
+    for position, person in enumerate(group_order):
+        group = sorted(
+            groups[person],
+            key=lambda record: (
+                _face_rank(str(record.get("ocrText") or "")),
+                int(record.get("order", 0)),
+            ),
+        )
+        primary = group[0]["item"]
+        sources: list[dict] = []
+        for record in group:
+            item = record["item"]
+            sources.extend(
+                item.get("sourceSegments")
+                or [{"fileIndex": item["fileIndex"], "pageIndexes": None}]
+            )
+
+        folded_group = _fold("\n".join(str(record.get("ocrText") or "") for record in group))
+        if any(marker in folded_group for marker in ("can cuoc", "citizen identity", "idvnm")):
+            base_name = "Căn cước công dân"
+        elif any(marker in folded_group for marker in ("ho chieu", "passport")):
+            base_name = "Hộ chiếu"
+        elif "chung minh nhan dan" in folded_group or "cmnd" in folded_group:
+            base_name = "Chứng minh nhân dân"
+        else:
+            base_name = str(primary.get("documentName") or default_document_name).strip()
+        document_name = _unique_identity_name(base_name, position, used_names)
+        item = {
+            **primary,
+            "fileIndex": sources[0]["fileIndex"],
+            "documentName": document_name,
+            "detectedType": primary.get("detectedType") or default_document_name,
+        }
+        if existing_slot is not None and position == 0:
+            component_index, component_name = existing_slot
+            item.update({
+                "componentName": component_name,
+                "target": "existing",
+                "componentIndex": component_index,
+                "needsAddComponent": False,
+            })
+        else:
+            item.update({
+                "componentName": document_name,
+                "target": "new",
+                "componentIndex": None,
+                "needsAddComponent": True,
+            })
+        if len(sources) > 1 or sources[0].get("pageIndexes") is not None:
+            item["sourceSegments"] = sources
+        else:
+            item.pop("sourceSegments", None)
+        merged.append(item)
+    return merged
+
+
 def merge_identity_attachments(
     attachments: list[dict],
     ocr_text_by_index: dict[int, str],
@@ -171,4 +278,40 @@ def merge_identity_attachments(
             continue  # đã phát item gộp cho người này
         emitted.add(p)
         out.append(merged_by_person[p])
-    return out
+    # Một input có sẵn chỉ nhận một chủ thể. Planner cũ thường route mọi CCCD về cùng componentIndex;
+    # chủ thể thứ hai trở đi phải thành dòng mới thay vì ghi đè hoặc bị FE gộp nhầm.
+    occupied_slots: set[int] = set()
+    used_names: set[str] = set()
+    normalized: list[dict] = []
+    identity_position = 0
+    for item in out:
+        if item.get("fileIndex") not in id_set:
+            normalized.append(item)
+            continue
+        document_name = _unique_identity_name(
+            str(item.get("documentName") or "Căn cước công dân"),
+            identity_position,
+            used_names,
+        )
+        identity_position += 1
+        current = {**item, "documentName": document_name}
+        component_index = current.get("componentIndex")
+        if current.get("target") == "existing" and isinstance(component_index, int):
+            if component_index in occupied_slots:
+                current.update({
+                    "componentName": document_name,
+                    "target": "new",
+                    "componentIndex": None,
+                    "needsAddComponent": True,
+                })
+            else:
+                occupied_slots.add(component_index)
+        elif current.get("target") != "existing":
+            current.update({
+                "componentName": document_name,
+                "target": "new",
+                "componentIndex": None,
+                "needsAddComponent": True,
+            })
+        normalized.append(current)
+    return normalized

@@ -12,6 +12,7 @@ import unicodedata
 from typing import Any
 
 from app.config import settings
+from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.khai_sinh_thuong.attach import prompt
 from app.process.schemas import FileItem
 from app.services.llm import client
@@ -197,6 +198,7 @@ async def plan_khai_sinh_thuong_attachments(
     used_existing: set[int] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
+    identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "title": ""}
         doc_type = detected["type"]
@@ -250,12 +252,26 @@ async def plan_khai_sinh_thuong_attachments(
                 "detectedType": component_name,
             }
 
+        if doc_type == "identity":
+            identity_indexes.add(idx)
+
         attachments.append(item)
         classified.append({
             "fileName": file["name"], "type": doc_type,
             "target": item["target"], "componentIndex": item["componentIndex"],
             "documentName": item["documentName"], "componentName": item["componentName"],
         })
+
+    # Hai mặt chỉ được ghép khi OCR chứng minh cùng số định danh. Mỗi chủ thể khác nhau
+    # vẫn là một thành phần mới riêng; mặt sau không xác định được chủ thể được giữ lẻ.
+    attachments = merge_identity_attachments(
+        attachments,
+        {
+            idx: str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+            for idx, file in enumerate(raw_files)
+        },
+        identity_indexes,
+    )
 
     return {
         "attachments": attachments,

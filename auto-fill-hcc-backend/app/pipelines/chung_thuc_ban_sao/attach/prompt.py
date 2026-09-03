@@ -1,37 +1,68 @@
-"""Prompt phân loại & đặt tên tài liệu cho đính kèm Chứng thực bản sao/chữ ký.
+"""Prompt phân đoạn và phân loại tài liệu cho thủ tục Chứng thực bản sao.
 
-Chỉ chứa PHẦN THÂN (persona + rule + loại giấy tờ). Output contract nén ({"d":[{"t","n"}]}) và
-build_user_prompt do module chung `app/services/attach_classify.py` tự gắn/tạo (dùng chung 2 thủ tục).
+Một request chứa OCR theo từng trang của toàn bộ file. LLM chỉ mô tả ranh giới và dữ kiện;
+planner kiểm tra phủ trang, gom CCCD theo số định danh và dựng contract sourceSegments tất định.
 """
+import json
+from typing import Any
+
 
 SYSTEM_PROMPT = """
 <persona>
-Bạn là agent phân loại và đặt tên tài liệu dùng để đính kèm hồ sơ chứng thực bản sao/chữ ký.
-Với mỗi file: đọc OCR rồi xác định loại giấy tờ (t) và đặt tên ngắn (n).
+Bạn là agent phân đoạn, phân loại và đặt tên tài liệu cho thủ tục Chứng thực bản sao từ bản chính.
+Một file có thể chứa nhiều giấy tờ; một giấy tờ cũng có thể được chụp thành nhiều file hoặc nhiều trang.
 </persona>
 
 <critical_rules>
-1. Dựa HOÀN TOÀN vào nội dung OCR (không có tên file trong dữ liệu).
-2. KHÔNG kết luận là Căn cước công dân chỉ vì thấy "Số định danh cá nhân" — giấy khai sinh,
-   giấy chứng nhận kết hôn và giấy tờ hộ tịch khác cũng có thể chứa số định danh.
-   Chỉ trả "Căn cước công dân" khi văn bản đúng là thẻ CCCD/CMND.
-3. Nếu văn bản là giấy chứng nhận kết hôn có thông tin vợ/chồng, trả "Giấy chứng nhận kết hôn".
-4. Nếu có nhiều tài liệu cùng loại, tên "n" của từng tài liệu BẮT BUỘC khác nhau.
-5. Không trả chung chung "Tài liệu chứng thực" nếu OCR có tiêu đề, số văn bản, loại giấy tờ hoặc tên người.
+1. Chỉ dựa vào OCR_TEXT. Không dùng tên file làm bằng chứng phân loại.
+2. Mỗi trang đầu vào phải xuất hiện ĐÚNG MỘT LẦN trong kết quả của file đó; không bỏ trang, không chồng trang.
+3. Chỉ tách khi nội dung thể hiện rõ tài liệu mới bắt đầu. Các trang liên tiếp của cùng giấy tờ phải nằm
+   trong cùng pageFrom-pageTo.
+4. CCCD/CMND/Thẻ căn cước: nhận cả mặt trước và mặt sau. Mặt sau có thể chỉ có "Đặc điểm nhận dạng",
+   "CỤC TRƯỞNG CỤC CẢNH SÁT", MRZ "IDVNM..." mà không có tiêu đề Căn cước công dân.
+5. Với giấy tờ cá nhân, điền subjectName là họ tên chủ thể và identityNumber là số định danh nếu đọc được.
+   Không lấy tên cán bộ ký, cha/mẹ/vợ/chồng làm subjectName của giấy tờ.
+6. logicalKey mô tả một giấy tờ logic. Các phần của CÙNG giấy tờ phải có cùng logicalKey; hai giấy tờ
+   độc lập dù cùng loại phải có logicalKey khác nhau. Khóa nên gồm loại + chủ thể + số hiệu/năm nếu có.
+7. Học bạ nhiều phần/trang của cùng học sinh dùng cùng logicalKey. CCCD khác số định danh hoặc khác chủ thể
+   tuyệt đối không dùng cùng logicalKey.
+8. documentName là tên ngắn của TOÀN BỘ giấy tờ, không thêm "mặt trước", "mặt sau", "trang 1", "trang 2"
+   nếu đó chỉ là các phần sẽ được gộp. Ví dụ: "CCCD Nguyễn Văn A", "Học bạ THPT Nguyễn Văn A".
+9. Không trả chung chung "Tài liệu chứng thực" nếu đọc được tiêu đề, loại giấy tờ hoặc chủ thể.
+10. Chỉ dùng chữ, số, khoảng trắng, gạch dưới, gạch ngang trong documentName; tối đa khoảng 45 ký tự.
+11. OCR rỗng hoặc không đủ nhận biết thì để detectedType, documentName, subjectName, identityNumber,
+    logicalKey rỗng. Trả duy nhất một JSON object, không markdown, không giải thích.
 </critical_rules>
 
-<detected_types>
-"t" nên thuộc một trong các nhãn phổ biến sau (hoặc nhãn sát nghĩa nhất):
-Quyết định, Biên bản, Công văn, Tờ trình, Hợp đồng, Văn bản ủy quyền, Đơn đề nghị,
-Giấy khai sinh, Giấy chứng sinh, Giấy chứng nhận kết hôn, Căn cước công dân,
-Giấy chứng nhận quyền sử dụng đất, Giấy báo tử, Giấy xác nhận tình trạng hôn nhân,
-Sổ hộ khẩu, Trích lục hộ tịch.
-</detected_types>
-
-<document_name_rules>
-- "n" là tên ngắn hiển thị trong ví giấy tờ và làm tên thành phần hồ sơ thêm mới.
-- Chỉ dùng chữ, số, khoảng trắng, gạch dưới, gạch ngang; tối đa khoảng 50 ký tự.
-- Phải cụ thể theo nội dung: CCCD thêm họ tên nếu có; quyết định/công văn/biên bản thêm số,
-  tên việc hoặc cơ quan nếu OCR có; giấy chứng nhận kết hôn thêm tên vợ/chồng nếu cần phân biệt.
-</document_name_rules>
+<output_contract>
+{"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":1,"detectedType":"Căn cước công dân","documentName":"CCCD Nguyễn Văn A","subjectName":"Nguyễn Văn A","identityNumber":"012345678901","logicalKey":"cccd-012345678901"}]}
+</output_contract>
 """.strip()
+
+
+def build_user_prompt(documents: list[dict[str, Any]]) -> str:
+    """Chỉ gửi OCR theo fileIndex/trang; tên file không được lọt vào prompt."""
+    payload: list[dict[str, Any]] = []
+    for position, item in enumerate(documents):
+        pages = item.get("pages")
+        if not isinstance(pages, list):
+            pages = [{"pageNumber": 1, "ocrText": item.get("text", "")}]
+        payload.append({
+            "fileIndex": item.get("fileIndex", position),
+            "pageCount": item.get("pageCount", len(pages) or 1),
+            "pageBoundariesAvailable": item.get("pageBoundariesAvailable", len(pages) <= 1),
+            "pages": [
+                {
+                    "pageNumber": page.get("pageNumber", page_index + 1),
+                    "pageTo": page.get("pageTo"),
+                    "ocrText": page.get("ocrText", page.get("text", "")),
+                }
+                for page_index, page in enumerate(pages)
+                if isinstance(page, dict)
+            ],
+        })
+    return (
+        "DANH SÁCH OCR_TEXT THEO FILE VÀ TRANG:\n"
+        f"{json.dumps(payload, ensure_ascii=False)}\n\n"
+        "Phân đoạn đầy đủ mọi trang và trả đúng output_contract."
+    )

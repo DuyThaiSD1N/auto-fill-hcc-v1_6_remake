@@ -1,9 +1,7 @@
 """API trace: danh sách + chi tiết các lần gọi /process (tài khoản, thủ tục, OCR text, JSON LLM).
 
-Toàn bộ gác require_admin: đây là dữ liệu của TRANG QUẢN LÝ (gồm OCR text + tên người làm
-thủ tục của MỌI phường = PII). Tài khoản phường (role user) đăng nhập qua extension chỉ để
-auto-fill, KHÔNG được đọc trace của phường khác — nếu để require_auth thì token phường vẫn
-gọi thẳng API này lấy được PII toàn hệ thống.
+Toàn bộ gác require_trace_reader: chỉ admin của TRANG QUẢN LÝ cũ và super_admin của Monitor
+được đọc. Tài khoản phường đăng nhập qua extension không thể gọi thẳng API lấy PII toàn hệ thống.
 """
 import asyncio
 import io
@@ -16,10 +14,9 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse, Response
 
 from app.config import settings
-from app.core.deps import require_admin
+from app.core.deps import require_trace_reader
 from app.core.errors import AppError
 from app.process import requests_repo
-from app.reports.handfree_client import fetch_handfree_dashboard_stats
 from app.traces import repo
 from app.traces.date_range import parse_stats_range
 
@@ -44,12 +41,13 @@ _parse_stats_range = parse_stats_range
 
 @router.get("")
 async def list_traces(
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_trace_reader),
     userId: str | None = Query(None),
     procedure: str | None = Query(None),
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     requestId: str | None = Query(None),  # "mã hỗ trợ" cán bộ copy từ extension
+    source: Literal["all", "autofill", "handfree"] = Query("all"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
 ):
@@ -59,6 +57,7 @@ async def list_traces(
         date_from=_parse_dt(dateFrom),
         date_to=_parse_dt(dateTo),
         request_id=requestId,
+        experience=None if source == "all" else source,
         skip=(page - 1) * pageSize,
         limit=pageSize,
     )
@@ -66,30 +65,32 @@ async def list_traces(
 
 
 @router.get("/facets")
-async def facets(_: dict = Depends(require_admin)):
-    return await repo.facets()
+async def facets(
+    _: dict = Depends(require_trace_reader),
+    source: Literal["all", "autofill", "handfree"] = Query("all"),
+):
+    return await repo.facets(experience=None if source == "all" else source)
 
 
 @router.get("/stats")
 async def stats(
-    _: dict = Depends(require_admin),
+    _: dict = Depends(require_trace_reader),
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     scope: Literal["all", "official"] = Query("all"),
-    source: Literal["autofill", "handfree"] = Query("autofill"),
+    source: Literal["all", "autofill", "handfree"] = Query("all"),
 ):
     start, end = _parse_stats_range(dateFrom, dateTo)
-    if source == "handfree":
-        return await fetch_handfree_dashboard_stats(
-            scope=scope,
-            date_from=dateFrom,
-            date_to=dateTo,
-        )
-    return await repo.stats(date_from=start, date_to=end, scope=scope)
+    return await repo.stats(
+        date_from=start,
+        date_to=end,
+        scope=scope,
+        experience=None if source == "all" else source,
+    )
 
 
 @router.get("/{trace_id}")
-async def get_trace(trace_id: str, _: dict = Depends(require_admin)):
+async def get_trace(trace_id: str, _: dict = Depends(require_trace_reader)):
     doc = await repo.get_trace(trace_id)
     if not doc:
         raise AppError("TRACE_NOT_FOUND", "Không tìm thấy trace", 404)
@@ -97,7 +98,7 @@ async def get_trace(trace_id: str, _: dict = Depends(require_admin)):
 
 
 @router.get("/{trace_id}/files/{index}")
-async def get_trace_file(trace_id: str, index: int, _: dict = Depends(require_admin)):
+async def get_trace_file(trace_id: str, index: int, _: dict = Depends(require_trace_reader)):
     """Serve nội dung 1 file đã đính kèm để xem trong drawer trace.
 
     File lưu trên disk lúc /process; metadata (path, type) ở process_requests.files,
@@ -131,7 +132,7 @@ async def get_trace_file(trace_id: str, index: int, _: dict = Depends(require_ad
 
 
 @router.get("/{trace_id}/download")
-async def download_all_files(trace_id: str, _: dict = Depends(require_admin)):
+async def download_all_files(trace_id: str, _: dict = Depends(require_trace_reader)):
     """Gom TẤT CẢ tài liệu của trace thành 1 file ZIP để tải một lần.
 
     Cùng nguồn file với /files/{index} (process_requests.files). Nén ở thread riêng để không

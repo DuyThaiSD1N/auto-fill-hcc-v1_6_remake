@@ -1,57 +1,71 @@
-"""Compact schema for mai táng phí dân công hỏa tuyến.
+"""Compact schema cho mai táng phí dân công hỏa tuyến (cổng MOHA — Form.io).
 
-The LLM returns OCR-derived facts only. The mapper decides requester/owner roles
-from the declaration, uploaded CCCD, and current portal form context.
+HAI vai trò tách RIÊNG (không dùng Person1/Person2 mơ hồ):
+- ChuHoSo_* = CHỦ HỒ SƠ = người đứng khai nhận trợ cấp mai táng phí (thân nhân của người từ trần), lấy ở
+  mục 1 Bản khai Mẫu 02-MTP + thẻ CCCD của chính người đó.
+- NguoiNop_* = NGƯỜI NỘP = người có thẻ CCCD KHÁC người đứng khai (nộp thay). LLM trích theo quy tắc giấy
+  tờ (thẻ CCCD ≠ người mục 1); MAPPER mới xác minh khớp tài khoản UI (formContext) và bật/tắt ô "Người
+  nộp là chủ hồ sơ". Nếu mọi thẻ CCCD đều là của người đứng khai → bỏ trống NguoiNop_*.
+
+LLM chỉ TRÍCH FACT hai vai; KHÔNG quyết định ai khớp UI — đó là việc của mapper.
 """
 
-FIELDS: list[dict] = [
-    # CCCD/CMND upload. Usually this is the claimant/requester and dossier owner.
-    {"name": "Person1_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ nhất."},
-    {"name": "Person1_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ nhất; có thể đọc từ MRZ mặt sau."},
-    {"name": "Person1_NgaySinh", "desc": "Ngày sinh người thứ nhất, dd/mm/yyyy."},
-    {"name": "Person1_GioiTinh", "desc": 'Giới tính người thứ nhất: "Nam" hoặc "Nữ".'},
-    {"name": "Person1_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ nhất, dd/mm/yyyy."},
-    {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD/CMND người thứ nhất."},
-    {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
+# --- Nhân thân (template dùng chung cho ChuHoSo_ và NguoiNop_) ---
+_PERSON_FIELDS = [
+    ("HoTen", "Họ và tên {who}. Lấy từ {src}."),
+    ("NgaySinh", "Ngày sinh {who}, dd/mm/yyyy."),
+    ("GioiTinh", 'Giới tính {who}: "Nam" hoặc "Nữ" — đọc từ thẻ CCCD (Bản khai Mẫu 02-MTP KHÔNG ghi giới '
+        "tính thân nhân)."),
+    ("SoDinhDanh", "Số CCCD/CMND/định danh {who}. Chỉ chữ số; ưu tiên 12 số. Đọc thẻ CCCD (mặt trước/MRZ) "
+        "hoặc dòng 'CCCD số' trong {src}."),
+    ("NgayCap", "Ngày cấp CCCD/CMND {who} (mặt sau thẻ CCCD, gần nhãn 'Ngày, tháng, năm' — KHÔNG lấy ngày "
+        "sinh/ngày hết hạn) hoặc dòng 'ngày cấp' trong {src}, dd/mm/yyyy."),
+    ("NoiCap", 'Nơi cấp CCCD/CMND {who}. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → '
+        '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mới ghi "BỘ CÔNG AN" → "Bộ Công '
+        'an".'),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ {who}, object {{quocGia,tinh,xa,diaChi}}. tinh='Tỉnh/Thành phố …', "
+        "xa=phường/xã/thị trấn, diaChi=số nhà/thôn/tổ (KHÔNG kèm xã/huyện/tỉnh). Không lấy quê quán."),
+    ("QuocTich", 'Quốc tịch {who}; thường "Việt Nam".'),
+]
 
-    {"name": "Person2_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ hai, nếu có."},
-    {"name": "Person2_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ hai; có thể đọc từ MRZ mặt sau."},
-    {"name": "Person2_NgaySinh", "desc": "Ngày sinh người thứ hai, dd/mm/yyyy."},
-    {"name": "Person2_GioiTinh", "desc": 'Giới tính người thứ hai: "Nam" hoặc "Nữ".'},
-    {"name": "Person2_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
-    {"name": "Person2_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ hai, dd/mm/yyyy."},
-    {"name": "Person2_NoiCap", "desc": "Nơi cấp CCCD/CMND người thứ hai."},
-    {"name": "Person2_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi} nếu đọc chắc chắn."},
+_CHUHOSO_SRC = "mục 1 Bản khai Mẫu 02-MTP (người đứng khai) và thẻ CCCD của chính người đó"
+_NGUOINOP_SRC = "thẻ CCCD của NGƯỜI NỘP THAY (thẻ có họ tên/số KHÁC người đứng khai ở mục 1)"
 
-    # Bản khai thân nhân theo Quyết định 49/2015/QĐ-TTg. Only extract section 1.
-    {"name": "ToKhai_ThanNhanHoTen", "desc": "Họ tên thân nhân/người đứng khai nhận trợ cấp ở mục 1 của bản khai."},
-    {"name": "ToKhai_ThanNhanNgaySinh", "desc": "Ngày, tháng, năm sinh thân nhân ở mục 1, dd/mm/yyyy."},
-    {"name": "ToKhai_ThanNhanSoDienThoai", "desc": "Số điện thoại thân nhân ở mục 1."},
-    {"name": "ToKhai_ThanNhanTruQuan", "desc": "Trú quán/hiện cư trú của thân nhân ở mục 1, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "ToKhai_QuanHeNguoiTuTran", "desc": "Quan hệ của thân nhân với người từ trần nếu tờ khai ghi rõ."},
+FIELDS: list[dict] = []
+for _name, _tmpl in _PERSON_FIELDS:
+    FIELDS.append({
+        "name": f"ChuHoSo_{_name}",
+        "desc": _tmpl.format(who="CHỦ HỒ SƠ (người đứng khai nhận trợ cấp mai táng phí)", src=_CHUHOSO_SRC),
+    })
+for _name, _tmpl in _PERSON_FIELDS:
+    FIELDS.append({
+        "name": f"NguoiNop_{_name}",
+        "desc": _tmpl.format(who="NGƯỜI NỘP THAY (chỉ khi có thẻ CCCD của người KHÁC người đứng khai)",
+                             src=_NGUOINOP_SRC),
+    })
+
+# --- Field nghiệp vụ riêng (không phải vai trò) ---
+FIELDS += [
+    {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại CHỦ HỒ SƠ ghi ở mục 1 Bản khai Mẫu 02-MTP. Chỉ chữ số."},
+    {"name": "ChuHoSo_QuanHeNguoiTuTran", "desc": "Quan hệ của chủ hồ sơ (người đứng khai) với người từ trần "
+        "ghi ở mục 1 (vd 'Con đẻ', 'Vợ', 'Chồng'). Chỉ trả khi tờ khai ghi rõ."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in (
-    "Person1_NgaySinh",
-    "Person1_NgayCap",
-    "Person2_NgaySinh",
-    "Person2_NgayCap",
-    "ToKhai_ThanNhanNgaySinh",
-):
-    COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("Person1_NoiCuTru", "Person2_NoiCuTru", "ToKhai_ThanNhanTruQuan"):
-    COMPACT_COMP_BY_NAME[_name] = "x-select-area"
+for _p in ("ChuHoSo_", "NguoiNop_"):
+    COMPACT_COMP_BY_NAME[f"{_p}NgaySinh"] = "x-date"
+    COMPACT_COMP_BY_NAME[f"{_p}NgayCap"] = "x-date"
+    COMPACT_COMP_BY_NAME[f"{_p}ThuongTru"] = "x-select-area"
 
+# ---- UI Form.io fields (data[...]) — contact block MOHA chuẩn. ----
 UI_COMP_BY_NAME = {
-    # Checkbox action must be emitted before owner/requester fields.
+    # Ô "Người nộp là chủ hồ sơ" phải phát TRƯỚC các field owner (điều khiển copy Phần I → Phần II).
     "data[isOwnerDossierCheck]": "dom-checkbox",
 
-    # Requester section.
+    # Phần I — NGƯỜI NỘP HỒ SƠ.
     "data[fullname]": "dom-input",
     "data[birthday]": "dom-date",
     "data[gender]": "dom-select",
@@ -64,7 +78,7 @@ UI_COMP_BY_NAME = {
     "data[phoneNumber]": "dom-input",
     "data[email]": "dom-input",
 
-    # Dossier owner section.
+    # Phần II — CHỦ HỒ SƠ (điền tường minh khi nộp thay).
     "data[ownerFullname]": "dom-input",
     "data[ownerBirthday]": "dom-date",
     "data[ownerGender]": "dom-select",
@@ -78,4 +92,3 @@ UI_COMP_BY_NAME = {
     "data[ownerEmail]": "dom-input",
     "data[ownerNation]": "dom-select",
 }
-

@@ -46,6 +46,7 @@ def test_v2_fill_converts_multipart_and_reuses_v1_process(monkeypatch):
         return {
             "sessionId": "req_fill",
             "requestId": "req_fill",
+            "reviewToken": "review-capability",
             "fields": [{"name": "HoTen", "comp": "x-input", "value": "Nguyễn Văn A"}],
             "extracted": {},
             "stats": {},
@@ -60,6 +61,7 @@ def test_v2_fill_converts_multipart_and_reuses_v1_process(monkeypatch):
     assert response.status_code == 200
     assert response.json()["action"] == "fill"
     assert response.json()["fields"][0]["name"] == "HoTen"
+    assert response.json()["reviewToken"] == "review-capability"
     item = captured["body"].files[0]
     assert item.name == "ho-so.pdf"
     assert item.type == "application/pdf"
@@ -117,6 +119,7 @@ def test_v2_rejects_bad_action_and_metadata_count():
 def test_v2_fill_keeps_v1_file_persistence(tmp_path, monkeypatch):
     async def pipeline(files_by_role, _options):
         assert files_by_role["doc"][0]["name"] == "ho-so.pdf"
+        assert "hasHandwriting" not in files_by_role["doc"][0]
         return {
             "fields": [], "extracted": {}, "stats": {}, "errors": [],
             "ocr_text": "", "llm_output": {},

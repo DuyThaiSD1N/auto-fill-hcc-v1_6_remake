@@ -17,6 +17,7 @@ async def create_request(
     procedure: str,
     options: dict,
     files_meta: list[dict],
+    experience: str = "autofill",
 ) -> str:
     doc = {
         "request_id": request_id,
@@ -25,6 +26,7 @@ async def create_request(
         "options": options or {},
         "files": files_meta,
         "status": "processing",
+        "experience": experience,
         "created_at": created_at,
     }
     res = await get_db().process_requests.insert_one(doc)

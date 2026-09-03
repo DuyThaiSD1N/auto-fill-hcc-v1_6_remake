@@ -22,7 +22,7 @@ Một PDF có thể chứa nhiều giấy tờ khác loại.
 6. Ảnh/bản chụp CCCD, CMND, Thẻ căn cước hoặc Hộ chiếu mới là identity. Mặt sau CCCD chỉ có đặc điểm
    nhận dạng, vân tay, cơ quan cấp hoặc MRZ IDVNM vẫn là identity.
 7. Không phân biệt CCCD của người yêu cầu hay người chết. Mọi giấy tờ tùy thân đều dùng type identity;
-   backend sẽ gộp tất cả thành một tài liệu.
+   backend chỉ gộp mặt trước và mặt sau khi xác định cùng một chủ thể; các chủ thể khác nhau phải là tài liệu riêng.
 8. Văn bản/Giấy ủy quyền phải là authorization, tuyệt đối không xếp vào death_event_proof.
 9. Ảnh/bản chụp bia mộ, phần mộ hoặc lăng mộ có thông tin ngày mất/tạ thế/hưởng thọ là
    death_event_proof, không phải other. Không đặt tên tài liệu là "Danh sách mộ".

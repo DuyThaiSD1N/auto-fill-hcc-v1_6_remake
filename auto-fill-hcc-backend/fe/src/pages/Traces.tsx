@@ -9,6 +9,7 @@ import Combobox from "../components/Combobox";
 const PAGE_SIZE = 20;
 
 interface Filters {
+  source: "all" | "autofill" | "handfree";
   userId: string;
   procedure: string;
   dateFrom: string;
@@ -16,7 +17,14 @@ interface Filters {
   requestId: string;
 }
 
-const EMPTY: Filters = { userId: "", procedure: "", dateFrom: "", dateTo: "", requestId: "" };
+const EMPTY: Filters = {
+  source: "all",
+  userId: "",
+  procedure: "",
+  dateFrom: "",
+  dateTo: "",
+  requestId: "",
+};
 
 // Giữ bộ lọc + trang trong sessionStorage để khi xem chi tiết trace rồi bấm Back, danh sách
 // không bị reset (state-preservation). sessionStorage: chỉ trong tab, xóa khi đóng tab.
@@ -51,16 +59,17 @@ export default function Traces({
   const [selected, setSelected] = useState<string | null>(null);
 
   useEffect(() => {
-    getFacets()
+    getFacets(filters.source)
       .then(setFacets)
       .catch(() => {});
-  }, []);
+  }, [filters.source]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const res = await listTraces({
+        source: filters.source,
         userId: filters.userId || undefined,
         procedure: filters.procedure || undefined,
         // input type=date trả YYYY-MM-DD; thêm giờ để bao trọn ngày.
@@ -87,7 +96,7 @@ export default function Traces({
     sessionStorage.setItem(STORE_KEY, JSON.stringify({ filters, page }));
   }, [filters, page]);
 
-  function update<K extends keyof Filters>(key: K, value: string) {
+  function update<K extends keyof Filters>(key: K, value: Filters[K]) {
     setPage(1);
     setFilters((f) => ({ ...f, [key]: value }));
   }
@@ -99,6 +108,17 @@ export default function Traces({
       <TopBar user={user} view={view} onNavigate={onNavigate} onLogout={onLogout} />
 
       <section className="filters">
+        <label>
+          Nguồn
+          <select
+            value={filters.source}
+            onChange={(e) => update("source", e.target.value as Filters["source"])}
+          >
+            <option value="all">Tất cả</option>
+            <option value="autofill">No handfree</option>
+            <option value="handfree">Handfree</option>
+          </select>
+        </label>
         <label className="filter-reqid">
           Mã hỗ trợ
           <input
@@ -159,8 +179,8 @@ export default function Traces({
               <th>Phường</th>
               <th>Thủ tục</th>
               <th>Loại</th>
+              <th>Thao tác</th>
               <th>Người làm thủ tục</th>
-              <th>OCR</th>
               <th className="num">Số file</th>
             </tr>
           </thead>
@@ -172,16 +192,16 @@ export default function Traces({
                 <td>{t.name || "—"}</td>
                 <td>{t.procedure_label || t.procedure}</td>
                 <td>
+                  <span className={`badge source-${t.experience || "autofill"}`}>
+                    {t.experience === "handfree" ? "Handfree" : "No handfree"}
+                  </span>
+                </td>
+                <td>
                   <span className={`badge ${t.kind === "attach" ? "warn" : "ok"}`}>
                     {t.kind === "attach" ? "Đính kèm" : "Auto-fill"}
                   </span>
                 </td>
                 <td>{t.applicant_name || "—"}</td>
-                <td>
-                  {t.ocr_label && (
-                    <span className={`badge ocr-${t.ocr_provider}`}>{t.ocr_label}</span>
-                  )}
-                </td>
                 <td className="num">{t.attachments?.length ?? 0}</td>
               </tr>
             ))}

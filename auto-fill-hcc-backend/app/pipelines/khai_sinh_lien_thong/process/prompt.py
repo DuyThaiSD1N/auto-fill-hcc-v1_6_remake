@@ -24,7 +24,8 @@ EXTRA_RULES = """
   + Phần ĐẦU là khối THÔNG TIN NGƯỜI MẸ: "Họ và tên mẹ/NND", năm sinh, số định danh/CCCD, nơi đăng ký thường trú, dân tộc của mẹ.
   + Phần SAU là khối THÔNG TIN CA SINH của con: giới tính của con, số con trong lần sinh, "Dự định đặt tên con là", "Cân nặng: ... kg", người đỡ đẻ, người ghi phiếu.
   + OCR có thể XÁO TRỘN vị trí, nhưng chỉ trả tên khi có một giá trị họ tên riêng biệt được gắn rõ với nhãn "Dự định đặt tên con là" trong khối ca sinh. Không tự tìm một tên người khác để bù vào field này.
-  + Nếu sau nhãn là rỗng, "/", "\\", "-", "_", chỉ có dấu chấm/gạch, hoặc ghi "chưa đặt tên"/"chưa có tên" → trẻ CHƯA CÓ TÊN: BỎ HẲN Gcs_HoTenCon.
+  + Chuẩn hóa giá trị sau nhãn: bỏ khoảng trắng và các ký hiệu ngăn cách "/", "\\", "-", "_", "." ở ĐẦU, rồi lấy TOÀN BỘ họ tên còn lại. Ví dụ dạng "/ NGUYỄN VĂN BÉ" phải trả "NGUYỄN VĂN BÉ"; KHÔNG được thấy ký tự đầu tiên là "/" rồi bỏ field khi phía sau vẫn còn chữ.
+  + Chỉ khi TOÀN BỘ phần còn lại sau nhãn là rỗng, chỉ gồm các ký hiệu "/", "\\", "-", "_", ".", hoặc ghi "chưa đặt tên"/"chưa có tên" → trẻ CHƯA CÓ TÊN: BỎ HẲN Gcs_HoTenCon.
   + TUYỆT ĐỐI KHÔNG lấy tên ở KHỐI CHỮ KÝ CUỐI giấy (kèm chức danh "BSCKII", "Phó trưởng khoa", "Đại diện cơ sở KBCB", "Người đỡ đẻ", "Thân nhân của trẻ", "Người ghi phiếu").
   + Tên con là MỘT NGƯỜI KHÁC với mẹ → TUYỆT ĐỐI không trả trùng "Họ và tên mẹ/NND". Nếu ứng viên trùng tên mẹ thì BỎ Gcs_HoTenCon, KHÔNG tìm tên khác để thay thế.
   + CCCD và GIẤY RA VIỆN trong hồ sơ là giấy tờ của người lớn/người mẹ; tên người bệnh hoặc tên trên CCCD KHÔNG BAO GIỜ là tên con.
@@ -49,7 +50,7 @@ EXTRA_RULES = """
 ## B5. Thông tin con từ TỜ KHAI ĐĂNG KÝ KHAI SINH (Tk_*)
 Khi hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH (tiêu đề có "TỜ KHAI ĐĂNG KÝ KHAI SINH"), BẮT BUỘC trích thêm các field sau từ khối "NGƯỜI ĐƯỢC KHAI SINH" / "KHAI SINH CHO":
 - Tk_HoTenCon = họ tên đầy đủ người được khai sinh (dòng "Họ, chữ đệm và tên khai sinh" hoặc "Tên khai sinh"). Ưu tiên hơn Gcs_HoTenCon khi có.
-- Tk_NgaySinhCon = ngày sinh, dd/mm/yyyy. Ưu tiên hơn Gcs_NgaySinhCon khi có.
+- Tk_NgaySinhCon = ngày sinh của con , dd/mm/yyyy, trên tờ khai.
 - Tk_GioiTinhCon = "Nam" hoặc "Nữ". Ưu tiên hơn Gcs_GioiTinhCon khi có.
 - Tk_DanTocCon = dân tộc người được khai sinh (dòng "Dân tộc" trong khối CON — KHÔNG phải dòng "Dân tộc" của cha/mẹ). Ưu tiên hơn suy luận từ cha/mẹ.
 Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu tiên Tk_* trước.

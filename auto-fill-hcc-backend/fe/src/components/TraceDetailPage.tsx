@@ -50,6 +50,9 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
           <div className="detail-head">
             <h1 className="detail-title">{trace.procedure_label || trace.procedure}</h1>
             <div className="detail-badges">
+              <span className={`badge source-${trace.experience || "autofill"}`}>
+                {trace.experience === "handfree" ? "Handfree" : "No handfree"}
+              </span>
               <span className={`badge ${trace.kind === "attach" ? "warn" : "ok"}`}>
                 {trace.kind === "attach" ? "Đính kèm" : "Auto-fill"}
               </span>
@@ -69,7 +72,7 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
             <dl className="meta meta-3">
               <div>
                 <dt>Phường</dt>
-                <dd>{trace.name || trace.username || "—"}</dd>
+                <dd>{trace.name || (trace.experience === "handfree" ? "—" : trace.username) || "—"}</dd>
               </div>
               <div>
                 <dt>Tài khoản</dt>
@@ -78,6 +81,14 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
               <div>
                 <dt>Thời gian</dt>
                 <dd>{fmtDateTime(trace.created_at)}</dd>
+              </div>
+              <div>
+                <dt>Loại</dt>
+                <dd>{trace.experience === "handfree" ? "Handfree" : "No handfree"}</dd>
+              </div>
+              <div>
+                <dt>Thao tác</dt>
+                <dd>{trace.kind === "attach" ? "Đính kèm" : "Auto-fill"}</dd>
               </div>
               <div>
                 <dt>Số trường điền</dt>

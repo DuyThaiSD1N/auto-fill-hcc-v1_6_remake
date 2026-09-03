@@ -1,5 +1,4 @@
 import logging
-import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
@@ -14,6 +13,7 @@ from app.config import settings
 from app.core.deps import require_auth
 from app.core.errors import AppError
 from app.process import requests_repo
+from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.procedures.registry import get_attach_pipeline, get_procedure
 from app.services import ocr
 from app.storage.files import save_request_files
@@ -147,8 +147,11 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
     attach_fn = get_attach_pipeline(body.procedure)
     if attach_fn:
         result = await attach_fn(body.files, options, session=session)
+        # Hotfix theo tài khoản (Chứng thực bản sao, Đà Nẵng/Hải Châu): chèn directive file ảo STT1.
+        # Gate ở đây vì router mới có `user` (tinh/xa); no-op với mọi thủ tục/tài khoản khác.
+        result = apply_stt1_virtual_copy(result, user, body.procedure)
         # Mã hỗ trợ: sinh 1 request_id cho lượt đính kèm, trả về FE để cán bộ copy khi báo lỗi.
-        request_id = "req_" + uuid.uuid4().hex[:12]
+        request_id = traces_repo.new_request_id()
         result["requestId"] = request_id
         # Mỗi lượt đính kèm là một hành động riêng trên hồ sơ. Lưu trace kind="attach"
         # cho cả attach-only và thủ tục có hasAttachmentStep để màn trace đối chiếu được.
@@ -209,7 +212,7 @@ async def create_client_attachment_trace(
                 400,
             )
 
-    request_id = "req_" + uuid.uuid4().hex[:12]
+    request_id = traces_repo.new_request_id()
     created_at = datetime.now(timezone.utc)
     options = body.options or {}
     # Case này luôn là N file = N hồ sơ/tab; không tin cờ split từ client.

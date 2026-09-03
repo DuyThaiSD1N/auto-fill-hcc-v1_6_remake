@@ -37,10 +37,19 @@ def _error_results(files: list[dict], exc: Exception) -> list[dict]:
     ]
 
 
-async def _ocr_per_file_uncached(files: list[dict]) -> list[dict]:
+async def _ocr_per_file_uncached(
+    files: list[dict],
+    *,
+    classify: bool = False,
+) -> list[dict]:
+    max_tokens = (
+        settings.ocr_tiengnoi_max_tokens
+        if classify
+        else settings.ocr_tiengnoi_fill_max_tokens
+    )
     try:
         results = await ocr_tiengnoi.ocr_per_file(
-            files, max_tokens=settings.ocr_tiengnoi_fill_max_tokens
+            files, max_tokens=max_tokens
         )
     except Exception as exc:  # noqa: BLE001 — trả lỗi per-file, không fallback provider khác
         return _error_results(files, exc)
@@ -52,12 +61,27 @@ async def _ocr_per_file_uncached(files: list[dict]) -> list[dict]:
     return results
 
 
-async def ocr_per_file(files: list[dict]) -> list[dict]:
-    """OCR từng file, có cache hash nội dung và chỉ lưu kết quả Tiếng Nói có nghĩa."""
+async def _run_uncached(files: list[dict], *, classify: bool) -> list[dict]:
+    """Giữ tương thích với các adapter/mock cũ khi chạy OCR điền biểu mẫu.
+
+    ``classify`` chỉ là contract mới của upload-session. Không truyền keyword này ở luồng
+    mặc định để các adapter nội bộ cũ vẫn dùng được đúng chữ ký một tham số.
+    """
+    if classify:
+        return await _ocr_per_file_uncached(files, classify=True)
+    return await _ocr_per_file_uncached(files)
+
+
+async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dict]:
+    """OCR từng file, có cache hash và giữ giới hạn token riêng cho lúc phân loại.
+
+    Upload-session truyền file bằng ``path`` nên không có dataUrl để tính cache key; trường
+    hợp đó đi thẳng OCR nhưng vẫn không đọc toàn bộ file vào RAM.
+    """
     from app.services import ocr_cache
 
     if not settings.ocr_cache_enabled or not files:
-        return await _ocr_per_file_uncached(files)
+        return await _run_uncached(files, classify=classify)
 
     keys = [ocr_cache.content_key((item or {}).get("dataUrl") or "") for item in files]
     cached = await ocr_cache.get_many([key for key in keys if key])
@@ -69,7 +93,11 @@ async def ocr_per_file(files: list[dict]) -> list[dict]:
     }
 
     miss_files = [item for item, key in zip(files, keys) if not key or key not in cached]
-    fresh = await _ocr_per_file_uncached(miss_files) if miss_files else []
+    fresh = (
+        await _run_uncached(miss_files, classify=classify)
+        if miss_files
+        else []
+    )
 
     results: list[dict] = []
     fresh_iter = iter(fresh)

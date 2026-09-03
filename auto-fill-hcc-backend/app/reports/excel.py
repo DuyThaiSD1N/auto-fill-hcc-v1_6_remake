@@ -41,7 +41,8 @@ _INVALID_SHEET_CHARS = re.compile(r"[\\/*?:\[\]]")
 
 
 def _sheet_title(account: dict, used: set[str]) -> str:
-    raw = account.get("xa") or account.get("name") or account.get("username") or "Tài khoản"
+    # Tên tab đại diện cho đơn vị/tài khoản, không lấy trường địa bàn `xa`.
+    raw = account.get("name") or account.get("username") or "Tài khoản"
     base = _INVALID_SHEET_CHARS.sub("-", str(raw)).strip().strip("'") or "Tài khoản"
     candidate = base[:31]
     index = 2
@@ -255,6 +256,126 @@ def build_excel(
             date_to=date_to,
             used_titles=used_titles,
         )
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def build_daily_excel(
+    *,
+    accounts: list[dict],
+    daily_counts: list[dict],
+    handfree_daily_stats: dict | None = None,
+    date_from: datetime,
+    date_to: datetime,
+) -> bytes:
+    """Một sheet ma trận tài khoản HCC x ngày, cộng Auto Fill và Handfree."""
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Tổng hợp theo ngày"
+
+    first_day = date_from.astimezone(VIETNAM_TZ).date()
+    last_day = (date_to - timedelta(microseconds=1)).astimezone(VIETNAM_TZ).date()
+    days = []
+    current = first_day
+    while current <= last_day:
+        days.append(current)
+        current += timedelta(days=1)
+
+    headers = ["STT", "ĐƠN VỊ"] + [
+        f"NGÀY {day.strftime('%d/%m')}" for day in days
+    ] + ["TỔNG"]
+    max_column = len(headers)
+    worksheet.column_dimensions["A"].width = 7
+    worksheet.column_dimensions["B"].width = 34
+    for column in range(3, max_column):
+        worksheet.column_dimensions[get_column_letter(column)].width = 13
+    worksheet.column_dimensions[get_column_letter(max_column)].width = 14
+
+    worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_column)
+    title = worksheet["A1"]
+    title.value = "BẢNG THEO DÕI HỒ SƠ PHÁT SINH"
+    title.font = Font(bold=True, size=14)
+    title.alignment = Alignment(horizontal="center", vertical="center")
+    worksheet.row_dimensions[1].height = 28
+
+    worksheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=max_column)
+    period = worksheet["A2"]
+    period.value = _display_date_range(date_from, date_to)
+    period.font = Font(italic=True, size=10)
+    period.alignment = Alignment(horizontal="center", vertical="center")
+
+    header_row = 4
+    for column, header in enumerate(headers, start=1):
+        cell = worksheet.cell(row=header_row, column=column, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = _HEADER_FILL
+        cell.border = _BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    worksheet.row_dimensions[header_row].height = 30
+
+    by_account_day = {
+        (str(item.get("userId") or ""), str(item.get("date") or "")): int(item.get("count") or 0)
+        for item in daily_counts
+    }
+    handfree_by_unit_day = {
+        (str(unit.get("unitKey") or ""), str(item.get("date") or "")): int(item.get("count") or 0)
+        for unit in (handfree_daily_stats or {}).get("units") or []
+        for item in unit.get("dailyCounts") or []
+        if unit.get("unitKey") and isinstance(item, dict)
+    }
+    for index, account in enumerate(accounts, start=1):
+        row = header_row + index
+        account_id = str(account["_id"])
+        account_unit_key = unit_key(account.get("tinh"), account.get("xa"))
+        day_values = [
+            by_account_day.get((account_id, day.isoformat()), 0)
+            + handfree_by_unit_day.get((account_unit_key, day.isoformat()), 0)
+            for day in days
+        ]
+        values = [
+            index,
+            account.get("name") or account.get("username") or "—",
+            *day_values,
+            sum(day_values),
+        ]
+        for column, value in enumerate(values, start=1):
+            cell = worksheet.cell(row=row, column=column, value=value)
+            cell.border = _BORDER
+            cell.alignment = Alignment(
+                horizontal="left" if column == 2 else "center",
+                vertical="center",
+                wrap_text=True,
+            )
+
+    total_row = header_row + len(accounts) + 1
+    worksheet.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=2)
+    total_label = worksheet.cell(row=total_row, column=1, value="TỔNG CỘNG")
+    total_label.font = Font(bold=True)
+    total_label.alignment = Alignment(horizontal="center", vertical="center")
+    for column in range(3, max_column + 1):
+        first_data_row = header_row + 1
+        last_data_row = header_row + len(accounts)
+        cell = worksheet.cell(
+            row=total_row,
+            column=column,
+            value=f"=SUM({get_column_letter(column)}{first_data_row}:{get_column_letter(column)}{last_data_row})",
+        )
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+    for column in range(1, max_column + 1):
+        cell = worksheet.cell(row=total_row, column=column)
+        cell.border = _BORDER
+        cell.fill = _TOTAL_FILL
+
+    worksheet.freeze_panes = "C5"
+    worksheet.auto_filter.ref = f"A{header_row}:{get_column_letter(max_column)}{header_row + len(accounts)}"
+    worksheet.print_title_rows = f"1:{header_row}"
+    worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+    worksheet.page_setup.fitToWidth = 1
+    worksheet.page_setup.fitToHeight = 0
+    worksheet.page_orientation = "landscape"
+
     buffer = io.BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()

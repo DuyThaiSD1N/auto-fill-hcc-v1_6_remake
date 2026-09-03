@@ -105,16 +105,7 @@ FIELDS: list[dict] = [
     {"name": "TkKs_NycSoDinhDanh", "desc": "Số CCCD/định danh người yêu cầu trên tờ khai."},
     {"name": "TkKs_NycNgayCapCccd", "desc": "Ngày cấp CCCD người yêu cầu trên tờ khai, dd/mm/yyyy."},
     {"name": "TkKs_NycNoiCuTru", "desc": "Nơi cư trú người yêu cầu trên tờ khai, object {quocGia,tinh,xa,diaChi}."},
-    {
-        "name": "TkKs_NycQuanHe",
-        "desc": (
-            "Đọc Ô TÍCH ở dòng '(5) Quan hệ với người được khai sinh' trên tờ khai: Bản Thân / Cha / "
-            "Mẹ / Khác. Tích Khác thì lấy thêm chữ ghi kèm nếu có (vd 'Chị dâu', 'Anh', 'Em'). Trả "
-            "ĐÚNG MỘT trong 'Bản Thân' | 'Cha' | 'Mẹ' | 'Khác' (hoặc kèm chữ ghi kèm khi tích Khác). "
-            "Đọc dòng này BẤT KỂ người yêu cầu là ai (kể cả khi trùng cha/mẹ/chính người được khai "
-            "sinh) — không suy ra từ chỗ khác, không bỏ field chỉ vì trùng vai cha/mẹ."
-        ),
-    },
+    {"name": "TkKs_NycQuanHe", "desc": "Quan hệ người yêu cầu với người được khai sinh (vd 'Chị dâu', 'Anh', 'Em'...)."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}

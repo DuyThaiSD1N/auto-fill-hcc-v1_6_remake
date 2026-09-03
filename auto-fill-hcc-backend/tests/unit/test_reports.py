@@ -6,7 +6,8 @@ from openpyxl import load_workbook
 
 from app.core.errors import AppError
 from app.reports import service as report_service
-from app.reports.excel import build_excel
+from app.reports.excel import build_daily_excel, build_excel
+from app.reports.router import _content_disposition
 from app.reports.schemas import ExcelExportRequest
 from app.reports.service import build_options, select_accounts
 from app.traces import repo as traces_repo
@@ -141,11 +142,30 @@ def test_official_only_province_reports_clear_error_when_no_hcc_account():
     assert "hành chính công" in exc.value.message
 
 
+def test_daily_summary_rejects_named_non_hcc_accounts():
+    accounts = [
+        _account("u-hcc", "hcc", xa="Bắc Giang", tinh="Bắc Ninh", role="commune"),
+        _account("u-test", "tester", xa="Bắc Giang", tinh="Bắc Ninh", role="user"),
+    ]
+    body = ExcelExportRequest(
+        dateFrom="2026-08-18",
+        dateTo="2026-08-19",
+        selectionMode="accounts",
+        accountIds=["u-hcc", "u-test"],
+        reportLayout="daily_summary",
+    )
+
+    with pytest.raises(AppError) as exc:
+        select_accounts(accounts, body)
+
+    assert exc.value.error == "REPORT_DAILY_OFFICIAL_ONLY"
+
+
 def test_excel_has_one_safe_unique_sheet_per_account_including_empty_account():
     date_from, date_to = parse_stats_range("2026-08-11", "2026-08-11")
     accounts = [
-        _account("u1", "songlieu-a", xa="Song/Liễu", tinh="Bắc Ninh", name="HCC Song Liễu A"),
-        _account("u2", "songlieu-b", xa="Song?Liễu", tinh="Tỉnh Bắc Ninh", name="HCC Song Liễu B"),
+        _account("u1", "songlieu-a", xa="Xã không dùng 1", tinh="Bắc Ninh", name="HCC Song/Liễu"),
+        _account("u2", "songlieu-b", xa="Xã không dùng 2", tinh="Tỉnh Bắc Ninh", name="HCC Song?Liễu"),
     ]
     stats = {
         "wards": [
@@ -164,11 +184,11 @@ def test_excel_has_one_safe_unique_sheet_per_account_including_empty_account():
     )
     workbook = load_workbook(io.BytesIO(content))
 
-    assert workbook.sheetnames == ["Song-Liễu", "Song-Liễu (2)"]
+    assert workbook.sheetnames == ["HCC Song-Liễu", "HCC Song-Liễu (2)"]
     first = workbook[workbook.sheetnames[0]]
     second = workbook[workbook.sheetnames[1]]
-    assert first["A2"].value == "Đơn vị: HCC Song Liễu A"
-    assert first["A3"].value == "Địa bàn: Song/Liễu · Bắc Ninh"
+    assert first["A2"].value == "Đơn vị: HCC Song/Liễu"
+    assert first["A3"].value == "Địa bàn: Xã không dùng 1 · Bắc Ninh"
     assert first["A4"].value == "Từ ngày 11/08/2026 đến hết ngày 11/08/2026 (giờ Việt Nam)"
     assert all("Tài khoản:" not in str(first.cell(row=row, column=1).value) for row in range(1, 8))
     assert first["A7"].value == "STT"
@@ -176,6 +196,48 @@ def test_excel_has_one_safe_unique_sheet_per_account_including_empty_account():
     assert first["F9"].value == 3
     assert second["A8"].value == "Không có hồ sơ trong khoảng thời gian đã chọn."
     assert second["F9"].value == 0
+
+
+def test_daily_excel_has_one_matrix_sheet_with_account_day_and_total_columns():
+    date_from, date_to = parse_stats_range("2026-08-18", "2026-08-19")
+    accounts = [
+        _account(
+            "u1", "hccpbacgiang", xa="Phường Bắc Giang", tinh="Bắc Ninh",
+            name="Phường Bắc Giang",
+        ),
+        _account(
+            "u2", "hiephoa_bacninh", xa="Xã Hiệp Hòa", tinh="Bắc Ninh",
+            name="Xã Hiệp Hoà",
+        ),
+    ]
+    content = build_daily_excel(
+        accounts=accounts,
+        daily_counts=[
+            {"userId": "u1", "date": "2026-08-18", "count": 58},
+            {"userId": "u1", "date": "2026-08-19", "count": 51},
+            {"userId": "u2", "date": "2026-08-18", "count": 26},
+            {"userId": "u2", "date": "2026-08-19", "count": 92},
+        ],
+        date_from=date_from,
+        date_to=date_to,
+    )
+    workbook = load_workbook(io.BytesIO(content), data_only=False)
+    worksheet = workbook["Tổng hợp theo ngày"]
+
+    assert workbook.sheetnames == ["Tổng hợp theo ngày"]
+    assert [worksheet.cell(row=4, column=column).value for column in range(1, 6)] == [
+        "STT", "ĐƠN VỊ", "NGÀY 18/08", "NGÀY 19/08", "TỔNG",
+    ]
+    assert [worksheet.cell(row=5, column=column).value for column in range(1, 6)] == [
+        1, "Phường Bắc Giang", 58, 51, 109,
+    ]
+    assert [worksheet.cell(row=6, column=column).value for column in range(1, 6)] == [
+        2, "Xã Hiệp Hoà", 26, 92, 118,
+    ]
+    assert worksheet["C7"].value == "=SUM(C5:C6)"
+    assert worksheet["E7"].value == "=SUM(E5:E6)"
+    assert worksheet.freeze_panes == "C5"
+    assert worksheet.sheet_view.showGridLines is None
 
 
 @pytest.mark.asyncio
@@ -208,8 +270,17 @@ async def test_report_stats_query_uses_exact_user_ids_and_half_open_date_range(m
 
     assert captured["pipeline"][0] == {
         "$match": {
-            "user_id": {"$in": ["u1", "u2"]},
-            "created_at": {"$gte": start, "$lt": end},
+            "$and": [
+                {
+                    "user_id": {"$in": ["u1", "u2"]},
+                    "created_at": {"$gte": start, "$lt": end},
+                },
+                {"$or": [
+                    {"experience": "autofill"},
+                    {"experience": {"$exists": False}},
+                    {"experience": None},
+                ]},
+            ],
         }
     }
     assert captured["allowDiskUse"] is True
@@ -219,16 +290,21 @@ async def test_report_stats_query_uses_exact_user_ids_and_half_open_date_range(m
 @pytest.mark.asyncio
 async def test_export_service_selects_accounts_queries_stats_and_returns_named_workbook(monkeypatch):
     accounts = [
-        _account("u1", "tanphong", xa="Tân Phong", tinh="Lai Châu"),
-        _account("u2", "taleng", xa="Tả Lèng", tinh="Tỉnh Lai Châu"),
+        _account("u1", "tanphong", xa="Tân Phong", tinh="Lai Châu", name="HCC Phường Tân Phong"),
+        _account("u2", "taleng", xa="Tả Lèng", tinh="Tỉnh Lai Châu", name="HCC Xã Tả Lèng"),
     ]
     captured: dict = {}
 
     async def fake_accounts():
         return accounts
 
-    async def fake_stats(*, user_ids, date_from, date_to):
-        captured.update({"user_ids": user_ids, "date_from": date_from, "date_to": date_to})
+    async def fake_stats(*, user_ids, date_from, date_to, experience):
+        captured.update({
+            "user_ids": user_ids,
+            "date_from": date_from,
+            "date_to": date_to,
+            "experience": experience,
+        })
         return {"wards": []}
 
     monkeypatch.setattr(report_service, "_all_accounts", fake_accounts)
@@ -245,7 +321,107 @@ async def test_export_service_selects_accounts_queries_stats_and_returns_named_w
     workbook = load_workbook(io.BytesIO(content))
 
     assert captured["user_ids"] == ["u1", "u2"]
+    assert captured["experience"] == "autofill"
     assert captured["date_from"] == datetime(2026, 8, 10, 17, tzinfo=timezone.utc)
     assert captured["date_to"] == datetime(2026, 8, 11, 17, tzinfo=timezone.utc)
-    assert workbook.sheetnames == ["Tân Phong", "Tả Lèng"]
-    assert filename == "bao_cao_ho_so_tinh_lai_chau_hcc_2026-08-11_2026-08-11.xlsx"
+    assert workbook.sheetnames == ["HCC Phường Tân Phong", "HCC Xã Tả Lèng"]
+    assert filename == "[Lai Châu] Báo cáo hồ sơ ngày 11-08-2026.xlsx"
+
+
+@pytest.mark.asyncio
+async def test_export_service_builds_daily_summary_without_using_detail_stats(monkeypatch):
+    accounts = [
+        _account(
+            "u1", "hccpbacgiang", xa="Phường Bắc Giang", tinh="Bắc Ninh",
+            name="Phường Bắc Giang",
+        ),
+    ]
+    captured: dict = {}
+
+    async def fake_accounts():
+        return accounts
+
+    async def fake_daily(*, user_ids, date_from, date_to, experience):
+        captured.update({
+            "user_ids": user_ids,
+            "date_from": date_from,
+            "date_to": date_to,
+            "experience": experience,
+        })
+        return [{"userId": "u1", "date": "2026-08-18", "count": 58}]
+
+    async def detail_must_not_run(**_kwargs):
+        raise AssertionError("daily summary must not query detail stats")
+
+    async def fake_handfree_daily(selected_accounts, selected_body):
+        assert selected_accounts == accounts
+        assert selected_body.reportLayout == "daily_summary"
+        return {
+            "source": "handfree",
+            "units": [{
+                "unitKey": "tinh bac ninh::phuong bac giang",
+                "dailyCounts": [{"date": "2026-08-18", "count": 7}],
+            }],
+        }
+
+    monkeypatch.setattr(report_service, "_all_accounts", fake_accounts)
+    monkeypatch.setattr(report_service.traces_repo, "daily_dossier_counts_by_user_ids", fake_daily)
+    monkeypatch.setattr(report_service.traces_repo, "stats_by_user_ids", detail_must_not_run)
+    monkeypatch.setattr(report_service, "fetch_handfree_daily_stats", fake_handfree_daily)
+    body = ExcelExportRequest(
+        dateFrom="2026-08-18",
+        dateTo="2026-08-18",
+        selectionMode="accounts",
+        accountIds=["u1"],
+        reportLayout="daily_summary",
+    )
+
+    content, filename = await report_service.export_excel(body)
+    workbook = load_workbook(io.BytesIO(content))
+
+    assert captured["user_ids"] == ["u1"]
+    assert captured["experience"] == "autofill"
+    assert workbook.sheetnames == ["Tổng hợp theo ngày"]
+    assert workbook["Tổng hợp theo ngày"]["C5"].value == 65
+    assert filename == "[Phường Bắc Giang] Tổng hợp hồ sơ ngày 18-08-2026.xlsx"
+
+
+def test_report_filename_is_clear_for_range_combined_and_account_selection():
+    province_body = ExcelExportRequest(
+        dateFrom="2026-08-20",
+        dateTo="2026-08-25",
+        selectionMode="province",
+        province="Tỉnh Bắc Ninh",
+        includeHandfree=True,
+    )
+    one_account_body = ExcelExportRequest(
+        dateFrom="2026-08-25",
+        dateTo="2026-08-25",
+        selectionMode="accounts",
+        accountIds=["u1"],
+    )
+    multiple_accounts_body = one_account_body.model_copy(
+        update={"accountIds": ["u1", "u2", "u3"]}
+    )
+
+    assert report_service._filename(province_body, []) == (
+        "[Bắc Ninh] Báo cáo hồ sơ tổng hợp từ 20-08-2026 đến 25-08-2026.xlsx"
+    )
+    assert report_service._filename(one_account_body, [{
+        "name": "HCC Phường Hải Châu",
+        "username": "hccphuonghaichau",
+    }]) == "[HCC Phường Hải Châu] Báo cáo hồ sơ ngày 25-08-2026.xlsx"
+    assert report_service._filename(multiple_accounts_body, [{}, {}, {}]) == (
+        "[3 tài khoản] Báo cáo hồ sơ ngày 25-08-2026.xlsx"
+    )
+
+
+def test_report_download_header_carries_utf8_filename_and_ascii_fallback():
+    header = _content_disposition("[Bắc Ninh] Báo cáo hồ sơ ngày 25-08-2026.xlsx")
+
+    assert header.startswith(
+        'attachment; filename="[Bac Ninh] Bao cao ho so ngay 25-08-2026.xlsx"; '
+        "filename*=UTF-8''"
+    )
+    assert "%5BB%E1%BA%AFc%20Ninh%5D%20B%C3%A1o%20c%C3%A1o" in header
+    assert "\r" not in header and "\n" not in header

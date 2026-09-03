@@ -14,6 +14,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.mongo import get_db
+from app.users.roles import SUPER_ADMIN_ROLE
 
 
 def _now() -> datetime:
@@ -43,7 +44,11 @@ async def _store_refresh(user_id: str, refresh_token: str, device_info: str | No
 
 
 async def login(
-    username: str, password: str, device_info: str | None = None, admin_only: bool = False
+    username: str,
+    password: str,
+    device_info: str | None = None,
+    admin_only: bool = False,
+    super_admin_only: bool = False,
 ) -> dict:
     user = await get_db().users.find_one({"username": username.lower()})
     if not user or not verify_password(password, user["password_hash"]):
@@ -52,7 +57,16 @@ async def login(
 
     # Login từ trang quản lý (adminOnly): mật khẩu đúng nhưng không phải admin → CHẶN ngay,
     # không cấp/lưu token. Extension gọi login không kèm cờ này nên tài khoản phường không dính.
-    if admin_only and (user.get("role") or "user") != "admin":
+    role = user.get("role") or "user"
+    # superAdminOnly có độ ưu tiên cao hơn nếu một client lỗi gửi đồng thời cả hai cờ. Không
+    # kiểm hai điều kiện độc lập vì super_admin có chủ ý KHÔNG được đăng nhập web admin cũ.
+    if super_admin_only and role != SUPER_ADMIN_ROLE:
+        raise AppError(
+            "NOT_SUPER_ADMIN",
+            "Tài khoản này không có quyền truy cập trang Monitor.",
+            403,
+        )
+    if not super_admin_only and admin_only and role != "admin":
         raise AppError("NOT_ADMIN", "Tài khoản này không có quyền truy cập trang quản lý.", 403)
 
     user_id = str(user["_id"])

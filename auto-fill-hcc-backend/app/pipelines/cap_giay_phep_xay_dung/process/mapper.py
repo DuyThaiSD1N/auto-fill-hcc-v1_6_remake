@@ -393,6 +393,44 @@ def _construction_subtype_value(values: dict) -> str | None:
     return _text(values.get("CongTrinh_Loai"))
 
 
+def _construction_branch(values: dict, options: dict | None = None) -> str | None:
+    """Xác định panel Form.io từ bằng chứng cụ thể, không dùng default cứng.
+
+    Mẫu số 01 có thể liệt kê tất cả loại công trình ở đầu đơn; vì vậy chỉ cụm tiêu đề
+    "Sử dụng cho công trình: Nhà ở riêng lẻ" hoặc mục 4.4 có dữ liệu mới đủ mạnh.
+    """
+    # ƯU TIÊN CAO NHẤT: biến thể do CỔNG/quy trình quyết định (vd thủ tục sửa chữa có 2 form riêng —
+    # nhà ở riêng lẻ ↔ công trình — dùng bộ element khác nhau). Nhánh phải khớp FORM đang mở, không chỉ
+    # suy từ giấy tờ. options["constructionVariant"] rỗng → auto-detect như cũ (không phá thủ tục cấp mới).
+    forced = _fold((options or {}).get("constructionVariant"))
+    if forced in {"nha_o_rieng_le", "nha o rieng le", "nha o"}:
+        return "nha_o_rieng_le"
+    if forced in {"khong_theo_tuyen", "khong theo tuyen"}:
+        return "khong_theo_tuyen"
+
+    explicit = _fold(values.get("CongTrinh_Nhanh"))
+    if explicit in {"nha_o_rieng_le", "nha o rieng le", "nha o"}:
+        return "nha_o_rieng_le"
+    if explicit in {"khong_theo_tuyen", "khong theo tuyen", "khong theo tuyen tin nguong ton giao"}:
+        return "khong_theo_tuyen"
+
+    kind = _fold(values.get("CongTrinh_Loai"))
+    if "nha o rieng le" in kind or "nha o" in kind:
+        return "nha_o_rieng_le"
+    if any(token in kind for token in ("dan dung", "ton giao", "tin nguong", "khong theo tuyen")):
+        return "khong_theo_tuyen"
+
+    ocr = _fold((options or {}).get("_ocr_text", ""))
+    if re.search(r"su dung cho cong trinh\s*:\s*nha o rieng le", ocr):
+        return "nha_o_rieng_le"
+    # OCR có thể mất dấu/chấm ở "4.4." nhưng vẫn giữ cụm nhãn và giá trị sau đó.
+    if re.search(r"4\s*[.]?\s*4\s*[.]?\s+doi voi cong trinh nha o rieng le", ocr):
+        return "nha_o_rieng_le"
+    if "cong trinh khong theo tuyen" in ocr and "doi voi cong trinh nha o rieng le" not in ocr:
+        return "khong_theo_tuyen"
+    return None
+
+
 _DESIGN_LEAD_UI_RE = re.compile(
     r"^data\[thietKeXayDung\]\[\d+\]\["
     r"(?:boMonChuTriThietKe|hoVaTenChuTriThietKe|maSoChungChiHanhNgheChuTriThietKe)\]$"
@@ -608,20 +646,42 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         # qua được bước sau; nếu để trống radio thì form chặn validate.
         add("data[toChucCaNhanThamTraThietKe]", "caNhan")
 
-    # Top-level "Loại hình công trình": default group for this procedure.
-    add("data[loaiCongTrinh]", "1")
-    add("data[tenCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_Ten")) or "Nhà ở riêng lẻ")
-    add("data[loaiCongTrinhKhongTheoTuyen]", _construction_subtype_value(values))
-    add("data[capCongTrinhKhongTheoTuyen]", _cap(values.get("CongTrinh_Cap")))
-    add("data[dienTichXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_DienTichXayDung")))
-    add("data[cotXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_CotXayDung")))
-    add("data[khoangLuiKhongTheoTuyen]", _number(values.get("CongTrinh_KhoangLui")))
-    add("data[tongDienTichSanKhongTheoTuyen]", _number(values.get("CongTrinh_TongDienTichSan")))
-    add("data[chiTietDienTichSanKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietDienTichSan")))
-    add("data[chieuCaoCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
-    add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietChieuCao")))
-    add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
-    add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    # Top-level "Loại hình công trình" không còn được mặc định. Hai panel có bộ
+    # field khác nhau nên phải xác định nhánh trước khi phát mapping.
+    construction_branch = _construction_branch(values, options)
+    if construction_branch == "nha_o_rieng_le":
+        # Select Choices.js LỌC option theo NHÃN (không theo value): FE gõ vào ô search rồi chọn option
+        # hiện ra. Phát MÃ số ("7") → search "7" không khớp nhãn nào → "No results found". Phải phát ĐÚNG
+        # NHÃN option "Nhà ở riêng lẻ" (value 7) để FE lọc & chọn được.
+        add("data[loaiCongTrinh]", "Nhà ở riêng lẻ")
+        add("data[tenCongTrinhNhaO]", _text(values.get("CongTrinh_Ten")) or "Nhà ở riêng lẻ")
+        add("data[capCongTrinhNhaO]", _cap(values.get("CongTrinh_Cap")))
+        add("data[khoangLuiNhaO]", _number(values.get("CongTrinh_KhoangLui")))
+        add("data[cotXayDungNhaO]", _number(values.get("CongTrinh_CotXayDung")))
+        add("data[dienTichXayDungTang1NhaO]", _number(values.get("CongTrinh_DienTichXayDung")))
+        add("data[tongDienTichSanNhaO]", _number(values.get("CongTrinh_TongDienTichSan")))
+        add("data[chiTietDienTichSanNhaO]", _text(values.get("CongTrinh_ChiTietDienTichSan")))
+        add("data[chieuCaoCongTrinhNhaO]", _number(values.get("CongTrinh_ChieuCao")))
+        add("data[chiTietChieuCaoNhaO]", _text(values.get("CongTrinh_ChiTietChieuCao")))
+        add("data[soTangNhaO]", _text(values.get("CongTrinh_SoTang")))
+        add("data[chiTietSoTangNhaO]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    elif construction_branch == "khong_theo_tuyen":
+        # Phát NHÃN option (value 1) thay vì mã "1" — lý do như nhánh nhà ở riêng lẻ ở trên.
+        add("data[loaiCongTrinh]", "Công trình không theo tuyến, tín ngưỡng, tôn giáo")
+        add("data[tenCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_Ten")))
+        add("data[loaiCongTrinhKhongTheoTuyen]", _construction_subtype_value(values))
+        add("data[capCongTrinhKhongTheoTuyen]", _cap(values.get("CongTrinh_Cap")))
+        add("data[dienTichXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_DienTichXayDung")))
+        add("data[cotXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_CotXayDung")))
+        add("data[khoangLuiKhongTheoTuyen]", _number(values.get("CongTrinh_KhoangLui")))
+        add("data[tongDienTichSanKhongTheoTuyen]", _number(values.get("CongTrinh_TongDienTichSan")))
+        add("data[chiTietDienTichSanKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietDienTichSan")))
+        add("data[chieuCaoCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
+        add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietChieuCao")))
+        add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
+        add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    else:
+        warnings.append("Chưa xác định được nhánh loại hình công trình; không tự chọn mặc định.")
 
     if not owner_name or not owner_identity:
         warnings.append("Thiếu thông tin chủ hộ/người nộp từ đơn hoặc CCCD.")

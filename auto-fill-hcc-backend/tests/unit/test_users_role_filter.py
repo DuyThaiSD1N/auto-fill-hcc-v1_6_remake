@@ -17,4 +17,4 @@ def test_specific_hcc_role_filter_is_exact():
 
 
 def test_all_roles_has_no_mongo_filter():
-    assert _role_query(None) == {}
+    assert _role_query(None) == {"role": {"$ne": "super_admin"}}

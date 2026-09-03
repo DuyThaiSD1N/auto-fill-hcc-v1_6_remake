@@ -9,6 +9,7 @@ from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
 from app.pipelines._shared.documents import join_ocr_documents
+from app.pipelines._shared.identity_merge import merge_identity_records
 from app.process.schemas import FileItem
 from app.services import ocr
 from app.services.llm import client
@@ -483,33 +484,6 @@ def _identity_group_name(records: list[dict]) -> str:
     return _IDENTITY_MIXED_LABEL
 
 
-def _merge_all_identities(identity_records: list[dict]) -> dict:
-    """Theo nghiệp vụ khai tử: gộp tất cả giấy tờ tùy thân, không phân vai chủ thể."""
-    ordered = _ordered_identity_records(identity_records)
-    primary = ordered[0]["item"]
-    segments: list[dict] = []
-    for record in ordered:
-        item = record["item"]
-        segments.extend(item.get("sourceSegments") or [{"fileIndex": item["fileIndex"], "pageIndexes": None}])
-    document_name = _identity_group_name(ordered)
-    merged = {
-        **primary,
-        "fileIndex": segments[0]["fileIndex"],
-        "fileName": f"{document_name}.pdf",
-        "documentName": document_name,
-        "componentName": document_name,
-        "target": "new",
-        "componentIndex": None,
-        "needsAddComponent": True,
-        "detectedType": document_name,
-    }
-    if len(segments) > 1 or segments[0].get("pageIndexes") is not None:
-        merged["sourceSegments"] = segments
-    else:
-        merged.pop("sourceSegments", None)
-    return merged
-
-
 async def plan_khai_tu_attachments(
     files: list[FileItem], options: dict | None = None, session: dict | None = None,
 ) -> dict:
@@ -614,7 +588,12 @@ async def plan_khai_tu_attachments(
         })
 
     if identity_records:
-        attachments.insert(identity_insert_at or 0, _merge_all_identities(identity_records))
+        grouped_identities = merge_identity_records(
+            identity_records,
+            default_document_name=_IDENTITY_LABEL,
+        )
+        insert_at = identity_insert_at or 0
+        attachments[insert_at:insert_at] = grouped_identities
 
     indexed_ocr_results = []
     for file_index, file in enumerate(raw_files):

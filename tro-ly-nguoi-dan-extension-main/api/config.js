@@ -1,14 +1,25 @@
-const TLND_DEFAULT_BASE_URL = "https://trolyhoso-hcc.tiengnoi.vn";  // Backend CHÍNH
+// ⚠ ĐANG TRỎ LOCALHOST ĐỂ THỬ CODE — trước khi build/phát hành phải đổi lại:
+//   TLND_DEFAULT_BASE_URL  = "https://trolyhoso-hcc.tiengnoi.vn"
+//   TLND_FALLBACK_BASE_URL = "https://trolyhoso-hcc.vnekyc.vn"
+//   TLND_LEGACY_BASE_URLS: bỏ 3 dòng migrate localhost
+//   manifest.json: bỏ hai dòng localhost khỏi host_permissions
+const TLND_DEFAULT_BASE_URL = "http://localhost:12005";  // Backend CHÍNH (container local)
 
 const TLND_BASE_URL_KEY = "tlnd_base_url";
 const TLND_LEGACY_BASE_URLS = new Set([
   "https://trolynguoidan-admin.vnekyc.vn",
+  // tlndBaseUrl() ƯU TIÊN giá trị trong chrome.storage, nên đổi hằng số mặc định thôi là CHƯA ĐỦ:
+  // URL cũ đã lưu từ lần chạy trước vẫn thắng. Liệt kê ở đây để storage tự được ghi đè về
+  // localhost, khỏi phải xoá bằng tay. BỎ 3 dòng dưới khi build phát hành.
+  "https://trolyhoso-hcc.tiengnoi.vn",
+  "https://trolyhoso-hcc.vnekyc.vn",
+  "http://localhost:8000",
 ]);
 
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản, nếu không
 // khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
-const TLND_FALLBACK_BASE_URL = "https://trolyhoso-hcc.vnekyc.vn";
+const TLND_FALLBACK_BASE_URL = "";  // tắt failover khi chạy local
 const TLND_API_TIMEOUT_MS = 100000;        // đủ dài cho chat/OCR+LLM; chỉ cắt server TREO thật rồi mới failover
 const TLND_FAILOVER_COOLDOWN_MS = 30000;   // chính vừa lỗi thì ưu tiên phụ trong khoảng này rồi thử lại chính
 

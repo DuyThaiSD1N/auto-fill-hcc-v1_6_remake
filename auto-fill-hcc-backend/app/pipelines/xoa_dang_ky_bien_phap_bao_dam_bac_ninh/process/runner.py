@@ -1,0 +1,26 @@
+"""Compact agent pipeline "[Bắc Ninh] Xóa đăng ký biện pháp bảo đảm bằng QSDĐ, tài sản gắn liền với đất"."""
+
+from app.pipelines._shared.compact_agent import runner
+from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.process import mapper
+from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.process.fallback import apply_ocr_fallback
+from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.process.prompt import EXTRA_RULES
+from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_bac_ninh.process.schema import (
+    ALIASES,
+    ALLOWED,
+    COMPACT_COMP_BY_NAME,
+    FIELDS,
+)
+
+
+async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    res = await runner.run(
+        files_by_role,
+        fields=FIELDS,
+        allowed=ALLOWED,
+        comp_by_name=COMPACT_COMP_BY_NAME,
+        aliases=ALIASES,
+        extra_rules=EXTRA_RULES,
+        compact_field_fallback=apply_ocr_fallback,
+    )
+    res["fields"] = mapper.enrich(res["fields"], options)
+    return res

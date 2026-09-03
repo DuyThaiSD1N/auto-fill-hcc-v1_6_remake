@@ -341,7 +341,27 @@ async function fillForm(fields) {
       continue;
     }
     // Tìm container theo name chính rồi tới alias; ghi nhận tên KHỚP để filler dùng đúng.
-    const found = findNamedElement(f.comp, candidates);
+    let found = findNamedElement(f.comp, candidates);
+    // x-select-area động (vd khối "Số bản án/Quyết định ly hôn") chỉ được cổng render SAU KHI
+    // field driver (x-select "Tình trạng hôn nhân") vừa chọn xong — container có thể CHƯA có
+    // trong DOM ngay lúc này, nên chờ thêm thay vì bỏ cuộc ngay ở lần thử đầu.
+    if (!found.el && f.comp === "x-select-area") {
+      await waitFor(() => {
+        found = findNamedElement(f.comp, candidates);
+        return !!found.el;
+      }, 3000, 100);
+    }
+    // Vẫn không thấy theo name → định vị qua chính ô con (xem guessDivorceDecisionContainer).
+    if (!found.el && f.comp === "x-select-area") {
+      let guessed = guessDivorceDecisionContainer(f);
+      if (!guessed) {
+        await waitFor(() => {
+          guessed = guessDivorceDecisionContainer(f);
+          return !!guessed;
+        }, 3000, 100);
+      }
+      if (guessed) found = { el: guessed, usedName: f.name };
+    }
     const container = found.el;
     const usedName = found.usedName;
     if (!container) {
@@ -683,6 +703,115 @@ function areaRoleOf(widget) {
   return "quocGia";
 }
 
+// Nhãn hiển thị gần nhất của một ô nhập. Leo cha tới khi gặp text không rỗng và còn ĐỦ NGẮN —
+// leo cao hơn thì textContent gộp cả khối và nhãn nào cũng "khớp".
+function nearbyLabelText(node, maxUp = 4, maxLen = 200) {
+  let el = node;
+  for (let up = 0; up < maxUp && el; up += 1) {
+    el = el.parentElement;
+    const text = norm(el?.textContent || "");
+    if (text && text.length <= maxLen) return text;
+  }
+  return "";
+}
+
+function closestCommonAncestor(nodes) {
+  let node = nodes[0]?.parentElement || null;
+  while (node && !nodes.every((n) => node.contains(n))) node = node.parentElement;
+  return node;
+}
+
+// Nới container lên tới khi bọc ĐỦ cả ba ô. closest("div") hay cha của một ô duy nhất thường chỉ
+// bọc RIÊNG dòng đó — điền được ô số rồi bỏ sót ngày cấp và cơ quan cấp. Dừng ngay khi đã thấy ô
+// ngày hoặc đã có từ 3 ô nhập trở lên, để không nới ra ngoài khối.
+function widenToDivorceBlock(container, maxUp = 3) {
+  let node = container;
+  for (let up = 0; up < maxUp && node?.parentElement; up += 1) {
+    const hasDate = node.querySelector('x-date, input[name$="-day"], input[id$="-day"], input[type="date"]');
+    const inputs = node.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea');
+    if (hasDate || inputs.length >= 3) break;
+    node = node.parentElement;
+  }
+  return node || container;
+}
+
+// Ô nhập của khối bản án/quyết định ly hôn thuộc ĐÚNG một bên, tìm theo NHÃN chứ không theo name.
+// Phạm vi của bên được chặn bằng chính dropdown "Tình trạng hôn nhân" của hai bên: khối bản án
+// luôn nằm ngay sau dropdown của bên mình và trước dropdown của bên kia.
+function divorceDecisionInputsByLabel(side) {
+  const other = side === "Nam" ? "Nu" : "Nam";
+  const self = findNamedElement("x-select", [`LoaiTinhTrangHonNhan_Ben${side}`]).el;
+  if (!self) return [];
+  const otherSelect = findNamedElement("x-select", [`LoaiTinhTrangHonNhan_Ben${other}`]).el;
+  // Chỉ dùng dropdown bên kia làm biên khi nó đứng SAU bên này (bên nữ ở mục I, bên nam ở mục II).
+  const boundary = otherSelect && otherSelect !== self
+    && (self.compareDocumentPosition(otherSelect) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ? otherSelect : null;
+
+  return Array.from(document.querySelectorAll("input, textarea")).filter((node) => {
+    const type = String(node.getAttribute("type") || "").toLowerCase();
+    if (type === "hidden" || type === "file" || type === "checkbox" || type === "radio") return false;
+    if (!(self.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+    if (boundary && (boundary.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING)) return false;
+    return nearbyLabelText(node).includes("bản án");
+  });
+}
+
+// Fallback khi KHÔNG tìm được container theo name (cổng không đặt name TTHN_LyHonBenNam/BenNu lên
+// x-select-area, hoặc khối chỉ render sau khi dropdown tình trạng hôn nhân vừa đổi): định vị qua
+// chính ô con. Chỉ áp dụng cho field mang dữ liệu bản án/quyết định ly hôn.
+function guessDivorceDecisionContainer(field) {
+  const value = field?.value;
+  const looksLikeDivorceDecision = value && typeof value === "object" && (
+    "soBanAnQuyetDinhLyHon" in value ||
+    "ngayCapBanAnQuyetDinhLyHon" in value ||
+    "coQuanCapBanAnQuyetDinhLyHon" in value
+  );
+  if (!looksLikeDivorceDecision) return null;
+  const suffixMatch = /Ben(Nam|Nu)$/.exec(String(field.name || ""));
+  if (!suffixMatch) return null;
+  const side = suffixMatch[1];
+
+  // Tên thật xác nhận trên cổng cho thủ tục Đăng ký kết hôn trong nước.
+  const anchorInput = document.querySelector(`input[name="${CSS.escape(`Ben${side}_SoBanAn`)}"]`);
+  if (anchorInput) {
+    const byName = anchorInput.closest("x-select-area")
+      || anchorInput.closest("div")
+      || anchorInput.parentElement;
+    return widenToDivorceBlock(byName);
+  }
+
+  // Tầng CUỐI: neo theo nhãn. Tên input khác nhau giữa các thủ tục (kết hôn trong nước dùng
+  // BenNam_SoBanAn/BenNu_SoBanAn; bản CÓ YẾU TỐ NƯỚC NGOÀI đặt tên khác) nhưng ba nhãn
+  // "Số bản án/Quyết định ly hôn", "Ngày cấp bản án…", "Cơ quan cấp bản án…" thì giữ nguyên.
+  const labelled = divorceDecisionInputsByLabel(side);
+  if (!labelled.length) return null;
+  const container = labelled.length > 1
+    ? closestCommonAncestor(labelled)
+    : labelled[0].parentElement;
+  return widenToDivorceBlock(container || labelled[0].parentElement);
+}
+
+// Khớp TỪNG ô trong khối bản án theo NHÃN. Chắc hơn đếm thứ tự: cổng có thể đổi tên input giữa
+// các thủ tục (kết hôn trong nước vs có yếu tố nước ngoài) hoặc chèn thêm ô, lúc đó đếm là lệch.
+function divorceControlsByLabel(container) {
+  const found = { number: null, date: null, agency: null };
+  for (const node of container.querySelectorAll("input, textarea")) {
+    const type = String(node.getAttribute("type") || "").toLowerCase();
+    if (type === "hidden" || type === "file" || type === "checkbox" || type === "radio") continue;
+    const label = nearbyLabelText(node);
+    if (!label.includes("bản án")) continue;
+    if (label.includes("ngày cấp")) {
+      found.date = found.date || node.closest("x-date") || node.parentElement;
+    } else if (label.includes("cơ quan cấp")) {
+      found.agency = found.agency || node;
+    } else if (label.includes("số bản án")) {
+      found.number = found.number || node;
+    }
+  }
+  return found;
+}
+
 function hasDivorceDecisionAreaValue(data) {
   return !!(
     data &&
@@ -784,23 +913,30 @@ function fillPlainTextSelectArea(container, f) {
 }
 
 function fillDivorceDecisionAreaByKnownNames(container, data) {
+  const used = new Set();
   let any = false;
   // Vùng động =2 có ô này; vùng ly hôn/góa (=3/=4) không có nên selector tự bỏ qua.
   const spouseInput = container.querySelector('input[name="voChongHoTen"]');
   if (spouseInput && data.voChongHoTen) {
     setNativeValue(spouseInput, data.voChongHoTen, { typing: true, commit: true });
     markFilled(spouseInput.parentElement || spouseInput);
+    used.add(spouseInput);
     any = true;
   }
-  const numberInput = container.querySelector('input[name="soGiayTo"]');
-  if (numberInput && data.soBanAnQuyetDinhLyHon) {
+  // "soGiayTo" = tên dùng ở thủ tục Xác nhận TTHN; "*_SoBanAn" (vd BenNam_SoBanAn/BenNu_SoBanAn)
+  // = tên thật trên cổng cho thủ tục Đăng ký kết hôn — khớp CẢ HAI cho chắc.
+  const numberInput = container.querySelector('input[name="soGiayTo"], input[name$="_SoBanAn"]');
+  const numberHandled = !!(numberInput && data.soBanAnQuyetDinhLyHon);
+  if (numberHandled) {
     setNativeValue(numberInput, data.soBanAnQuyetDinhLyHon, { typing: true, commit: true });
     markFilled(numberInput.parentElement || numberInput);
+    used.add(numberInput);
     any = true;
   }
 
   const dateValue = String(data.ngayCapBanAnQuyetDinhLyHon || "").trim();
   const dateMatch = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  let dateHandled = false;
   if (dateMatch) {
     const dd = dateMatch[1].padStart(2, "0");
     const mm = dateMatch[2].padStart(2, "0");
@@ -809,41 +945,74 @@ function fillDivorceDecisionAreaByKnownNames(container, data) {
     const month = container.querySelector('input[name="ngayCapGiayTo-month"]');
     const year = container.querySelector('input[name="ngayCapGiayTo-year"]');
     const dateInput = container.querySelector('input[name="ngayCapGiayTo-name-date-input"]');
-    if (day) { setNativeValue(day, dd, { typing: true, commit: true }); any = true; }
-    if (month) { setNativeValue(month, mm, { typing: true, commit: true }); any = true; }
-    if (year) { setNativeValue(year, yyyy, { typing: true, commit: true }); any = true; }
-    if (dateInput) { setNativeValue(dateInput, `${yyyy}-${mm}-${dd}`, { typing: true, commit: true }); any = true; }
+    if (day) { setNativeValue(day, dd, { typing: true, commit: true }); used.add(day); any = true; dateHandled = true; }
+    if (month) { setNativeValue(month, mm, { typing: true, commit: true }); used.add(month); any = true; dateHandled = true; }
+    if (year) { setNativeValue(year, yyyy, { typing: true, commit: true }); used.add(year); any = true; dateHandled = true; }
+    if (dateInput) { setNativeValue(dateInput, `${yyyy}-${mm}-${dd}`, { typing: true, commit: true }); used.add(dateInput); any = true; dateHandled = true; }
     if (day || month || year || dateInput) markFilled((day || month || year || dateInput).parentElement || container);
   }
 
   const agencyInput = container.querySelector('input[name="coQuanCapGiayTo"]');
-  if (agencyInput && data.coQuanCapBanAnQuyetDinhLyHon) {
+  const agencyHandled = !!(agencyInput && data.coQuanCapBanAnQuyetDinhLyHon);
+  if (agencyHandled) {
     setNativeValue(agencyInput, data.coQuanCapBanAnQuyetDinhLyHon, { typing: true, commit: true });
     markFilled(agencyInput.parentElement || agencyInput);
+    used.add(agencyInput);
     any = true;
   }
-  return any;
+  return { any, used, numberHandled, dateHandled, agencyHandled };
 }
 
 async function fillDivorceDecisionArea(container, data) {
   await waitFor(() => container.querySelector("x-input, x-date, input, textarea"), 3500);
   const byName = fillDivorceDecisionAreaByKnownNames(container, data);
-  if (byName) return true;
+  let any = byName.any;
 
-  const textControls = selectAreaTextControls(container);
-  const dateControls = selectAreaDateControls(container);
-  let any = false;
+  // Tầng 2 — theo NHÃN, chạy trước khi phải suy theo vị trí. Chỉ đụng ô tầng tên chưa xử lý.
+  const labelled = divorceControlsByLabel(container);
+  if (data.soBanAnQuyetDinhLyHon && !byName.numberHandled && labelled.number) {
+    setNativeValue(labelled.number, data.soBanAnQuyetDinhLyHon, { typing: true, commit: true });
+    markFilled(labelled.number.parentElement || labelled.number);
+    byName.used.add(labelled.number);
+    byName.numberHandled = true;
+    any = true;
+  }
+  if (data.ngayCapBanAnQuyetDinhLyHon && !byName.dateHandled && labelled.date) {
+    if (setGenericDateControl(labelled.date, data.ngayCapBanAnQuyetDinhLyHon)) {
+      byName.used.add(labelled.date);
+      byName.dateHandled = true;
+      any = true;
+    }
+  }
+  if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled && labelled.agency) {
+    setNativeValue(labelled.agency, data.coQuanCapBanAnQuyetDinhLyHon, { typing: true, commit: true });
+    markFilled(labelled.agency.parentElement || labelled.agency);
+    byName.used.add(labelled.agency);
+    byName.agencyHandled = true;
+    any = true;
+  }
 
-  // Form động của tình trạng hôn nhân render 3 control theo thứ tự:
-  // Số Bản án/Quyết định ly hôn -> Ngày cấp -> Cơ quan cấp.
-  if (data.soBanAnQuyetDinhLyHon) {
-    any = setGenericTextControl(textControls[0], data.soBanAnQuyetDinhLyHon) || any;
+  // Tầng 3 — suy theo thứ tự hiển thị: Số bản án -> Ngày cấp -> Cơ quan cấp. Ô nào hai tầng trên
+  // ĐÃ xử lý thì loại khỏi danh sách, nếu không index lệch và ô ngày bị điền đè lần hai.
+  const isUsed = (el) => byName.used.has(el)
+    || [...byName.used].some((node) => el?.contains?.(node));
+  const textControls = selectAreaTextControls(container).filter((el) => !isUsed(el));
+  const dateControls = selectAreaDateControls(container).filter((el) => !isUsed(el));
+
+  if (data.soBanAnQuyetDinhLyHon && !byName.numberHandled) {
+    any = setGenericTextControl(textControls.shift(), data.soBanAnQuyetDinhLyHon) || any;
   }
-  if (data.ngayCapBanAnQuyetDinhLyHon) {
-    any = setGenericDateControl(dateControls[0], data.ngayCapBanAnQuyetDinhLyHon) || any;
+  if (data.ngayCapBanAnQuyetDinhLyHon && !byName.dateHandled) {
+    if (dateControls.length) {
+      any = setGenericDateControl(dateControls.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
+    } else {
+      // Không có control ngày riêng → ô ngày thực chất là input text thường (đã nằm trong
+      // textControls), lấy đúng slot kế tiếp.
+      any = setGenericTextControl(textControls.shift(), data.ngayCapBanAnQuyetDinhLyHon) || any;
+    }
   }
-  if (data.coQuanCapBanAnQuyetDinhLyHon) {
-    any = setGenericTextControl(textControls[1], data.coQuanCapBanAnQuyetDinhLyHon) || any;
+  if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled) {
+    any = setGenericTextControl(textControls.shift(), data.coQuanCapBanAnQuyetDinhLyHon) || any;
   }
   return any;
 }

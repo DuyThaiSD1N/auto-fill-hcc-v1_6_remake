@@ -52,6 +52,18 @@ services:
       - app
     restart: unless-stopped
 
+  # Web Monitor chạy cổng riêng, không nằm trong bundle hay menu của web quản lý hiện tại.
+  monitor-fe:
+    build: ./monitor-fe
+    image: autofill-hcc-monitor-fe:latest
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://app:8000}
+    ports:
+      - "12007:12007"
+    depends_on:
+      - app
+    restart: unless-stopped
+
 networks:
   # Network sẵn có của stack callbot (nơi call_bot_mongo_db đang chạy).
   callbot:

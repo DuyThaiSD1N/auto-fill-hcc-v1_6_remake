@@ -12,6 +12,7 @@ from app.auth.router import router as auth_router
 from app.batch.router import router as batch_router
 from app.config import settings
 from app.consent.router import router as consent_router
+from app.consents.router import router as consents_router
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.db.indexes import ensure_indexes
 from app.db.mongo import close, connect
@@ -42,7 +43,7 @@ app = FastAPI(title="Auto Fill HCC Backend", version="1.0.0", lifespan=lifespan)
 cors_kwargs = dict(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "Idempotency-Key"],
+    allow_headers=["Content-Type", "Authorization", "Idempotency-Key", "X-Upload-Token"],
     expose_headers=["Content-Disposition"],
 )
 # FE web luôn nằm trong allow_origins; extension dùng allow_origins (khi cấu hình id)
@@ -98,12 +99,43 @@ app.include_router(locations_router)
 app.include_router(upload_session_router)
 app.include_router(upload_ws_router)
 app.include_router(consent_router)
+app.include_router(consents_router)
 app.include_router(v2_router)
+
+# Handfree là một channel bổ sung trên cùng core procedure/process/attach. Feature flag chỉ
+# đóng/mở entrypoint hội thoại và mobile riêng; toàn bộ API Auto Fill phía trên không đổi.
+if settings.handfree_enabled:
+    from app.channels.handfree.chat.router import router as handfree_chat_router
+    from app.channels.handfree.documents.router import (
+        mobile_router as handfree_mobile_router,
+        router as handfree_document_router,
+    )
+    from app.channels.handfree.voice.router import router as handfree_voice_router
+    from app.channels.handfree.voice.ws_asr import router as handfree_asr_router
+    from app.channels.handfree.voice.ws_tts import router as handfree_tts_router
+
+    app.include_router(handfree_chat_router)
+    app.include_router(handfree_document_router)
+    app.include_router(handfree_mobile_router)
+    app.include_router(handfree_voice_router)
+    app.include_router(handfree_asr_router)
+    app.include_router(handfree_tts_router)
 
 # Asset tĩnh cho trang mobile QR:
 #  - /static/scanner/*  : bundle ESM scanner (build từ repo scanic-stream-mask, xem BUILD.md)
 #  - /static/vendor/*   : thư viện prebuilt (pdf-lib gộp ảnh scan thành 1 PDF)
 # Mount ở thư mục CHA để phục vụ cả hai; model ML vẫn tự tải CDN phía điện thoại.
+if settings.handfree_enabled:
+    _handfree_static_dir = (
+        Path(__file__).parent / "channels" / "handfree" / "documents" / "static"
+    )
+    if _handfree_static_dir.is_dir():
+        app.mount(
+            "/static/mobile/handfree",
+            StaticFiles(directory=_handfree_static_dir),
+            name="handfree-mobile-static",
+        )
+
 _static_dir = Path(__file__).parent / "upload_session" / "static"
 if _static_dir.is_dir():
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")

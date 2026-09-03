@@ -172,152 +172,6 @@ def _normalize_doc_type(value: str) -> str:
     return _DOC_OTHER
 
 
-def _rule_doc_type(text: str, file_name: str = "") -> str:
-    haystack = fold((text or "") + "\n" + (file_name or ""))
-    if not haystack:
-        return ""
-
-    if _has_any(
-        haystack,
-        (
-            "don de nghi cap phep xay dung",
-            "don de nghi cap giay phep xay dung",
-            "don de nghi cap phep xay nha",
-            "mau so 1 phu luc so ii",
-        ),
-    ):
-        return _DOC_APPLICATION
-
-    if _has_any(
-        haystack,
-        (
-            "don de nghi cap giay phep sua chua",
-            "don de nghi cap phep sua chua",
-            "sua chua cai tao cong trinh",
-            "sua chua, cai tao cong trinh",
-        ),
-    ):
-        return _DOC_REPAIR_APPLICATION
-
-    if _has_any(
-        haystack,
-        (
-            "ban cam ket",
-            "dam bao an toan doi voi cong trinh lien ke",
-            "bao dam an toan doi voi cong trinh lien ke",
-            "cam ket xay nha",
-            "cam ket dam bao an toan",
-            "cam ket bao dam an toan",
-        ),
-    ):
-        return _DOC_SAFETY_COMMITMENT
-
-    if _has_any(
-        haystack,
-        (
-            "ban ke khai kinh nghiem cua to chuc ca nhan thiet ke",
-            "ban ke khai kinh nghiem cua to chuc, ca nhan thiet ke",
-            "kinh nghiem thiet ke",
-            "to chuc truc tiep thiet ke",
-            "chu tri thiet ke cac bo mon",
-        ),
-    ):
-        return _DOC_EXPERIENCE
-
-    if _has_any(
-        haystack,
-        (
-            "chung chi nang luc hoat dong xay dung",
-            "pham vi hoat dong xay dung",
-            "giay chung nhan dang ky doanh nghiep quyet dinh thanh lap so",
-            "chung chi nay co gia tri den",
-        ),
-    ):
-        return _DOC_CAPACITY
-
-    if _has_any(
-        haystack,
-        (
-            "chung chi hanh nghe kien truc",
-            "chung chi hanh nghe",
-            "noi dung duoc phep hanh nghe kien truc",
-            "linh vuc hanh nghe",
-            "thiet ke kien truc cong trinh",
-        ),
-    ) and not _has_any(haystack, ("chung chi nang luc hoat dong xay dung", "to chuc thiet ke")):
-        return _DOC_ARCHITECT_CERT
-
-    if _has_any(
-        haystack,
-        (
-            "ho so xin cap phep xay dung",
-            "ban ve xin cap phep xay dung",
-            "ho so thiet ke xay dung",
-            "so do thua dat",
-            "tong mat bang",
-            "mat bang tang",
-            "mat bang mai",
-            "mat bang mong",
-            "mat dung truc",
-            "mat cat",
-            "cap nuoc",
-            "thoat nuoc",
-            "cap dien",
-        ),
-    ):
-        return _DOC_DRAWINGS
-
-    if _has_any(
-        haystack,
-        (
-            "giay chung nhan quyen su dung dat",
-            "quyen so huu nha o",
-            "quyen so huu tai san",
-            "so do",
-            "so hong",
-            "thua dat so",
-            "to ban do so",
-            "nguoi su dung dat",
-            "so vao so cap gcn",
-        ),
-    ):
-        return _DOC_LAND
-
-    if _has_any(
-        haystack,
-        (
-            "can cuoc cong dan",
-            "the can cuoc",
-            "citizen identity card",
-            "identity card",
-            "so / no",
-            "so dinh danh ca nhan",
-            "idvnm",
-            "chung minh nhan dan",
-            "cmnd",
-            "ho chieu",
-        ),
-    ):
-        return _DOC_IDENTITY
-
-    if _has_any(
-        haystack,
-        (
-            "quyet dinh phe duyet du an",
-            "van ban thong bao ket qua tham dinh",
-            "bao cao ket qua tham tra thiet ke",
-            "ket qua thuc hien thu tuc hanh chinh ve phong chay chua chay",
-            "ket qua thuc hien thu tuc ve bao ve moi truong",
-        ),
-    ):
-        return _DOC_PROJECT_APPROVAL
-
-    if _has_any(haystack, ("giay phep xay dung", "co dong dau cua co quan co tham quyen cap giay phep")):
-        return _DOC_OLD_PERMIT
-
-    return ""
-
-
 def _label_for_type(doc_type: str, title: str = "") -> str:
     title = normalize_document_name(title, "") if title else ""
     if title and doc_type not in {_DOC_IDENTITY, _DOC_LAND}:
@@ -404,26 +258,23 @@ def build_plan_items(
     llm_types: dict[int, dict[str, str]] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
-    by_name = {item.get("name"): item for item in ocr_results}
     resolved: list[dict] = []
     warnings: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        text = str(by_name.get(file_name, {}).get("text") or "")
-        rule_type = _rule_doc_type(text, file_name)
+        # Phân loại HOÀN TOÀN bằng LLM (prompt.py). KHÔNG dùng keyword đoán loại từ OCR: keyword dễ
+        # trùng lẫn (vd "Sơ đồ thửa đất" là MỘT MỤC trong SỔ ĐỎ nhưng trùng cụm bản vẽ) và đè SAI kết
+        # quả LLM. LLM đọc toàn văn + ngữ cảnh nên phân loại đúng hơn; quy tắc nghiệp vụ đặt ở prompt.
         detected = llm_types.get(idx) or {}
         llm_type = detected.get("type") or ""
-        doc_type = rule_type or llm_type or _DOC_OTHER
-        if doc_type not in _ALLOWED_DOC_TYPES:
-            doc_type = _DOC_OTHER
-        title = "" if rule_type and llm_type and rule_type != llm_type else detected.get("title", "")
+        doc_type = llm_type if llm_type in _ALLOWED_DOC_TYPES else _DOC_OTHER
         resolved.append({
             "idx": idx,
             "fileName": file_name,
             "docType": doc_type,
-            "title": title,
-            "source": "rule" if rule_type else ("llm" if llm_type else "default"),
+            "title": detected.get("title", ""),
+            "source": "llm" if llm_type else "default",
         })
 
     row1_entries = [entry for entry in resolved if entry["docType"] in _ROW_1_TYPES]

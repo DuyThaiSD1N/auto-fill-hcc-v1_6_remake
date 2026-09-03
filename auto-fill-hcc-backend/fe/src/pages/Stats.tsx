@@ -26,9 +26,15 @@ const SCOPES: { key: StatsScope; label: string }[] = [
   { key: "all", label: "Tất cả hồ sơ" },
 ];
 const SOURCES: { key: StatsSource; label: string }[] = [
-  { key: "autofill", label: "Auto Fill" },
+  { key: "all", label: "Tất cả" },
+  { key: "autofill", label: "No handfree" },
   { key: "handfree", label: "Handfree" },
 ];
+const SOURCE_HELPERS: Record<StatsSource, string> = {
+  all: "Gồm cả No handfree và Handfree.",
+  autofill: "Bản chưa tích hợp giọng nói.",
+  handfree: "Bản đã tích hợp giọng nói.",
+};
 const ANALYSIS_TABS: { key: AnalysisTab; label: string }[] = [
   { key: "procedure", label: "Theo thủ tục" },
   { key: "account", label: "Theo tài khoản" },
@@ -38,6 +44,7 @@ const ROLE_META: Record<Role, { label: string; cls: string }> = {
   user: { label: "Người dùng", cls: "role-user" },
   commune: { label: "HCC xã", cls: "role-commune" },
   province: { label: "HCC tỉnh", cls: "role-province" },
+  province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
 };
 const ACCOUNT_ROLE_OPTIONS: Record<StatsScope, { key: AccountRoleFilter; label: string }[]> = {
   official: [
@@ -153,7 +160,7 @@ function presetRange(preset: Preset): { from?: string; to?: string } {
 }
 
 export default function Stats({ user, onLogout, view, onNavigate }: Props) {
-  const [source, setSource] = useState<StatsSource>("autofill");
+  const [source, setSource] = useState<StatsSource>("all");
   const [scope, setScope] = useState<StatsScope>("official");
   const [preset, setPreset] = useState<Preset>("all");
   const [analysisTab, setAnalysisTab] = useState<AnalysisTab>("procedure");
@@ -275,7 +282,7 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
         <div>
           <h1 className="page-title">Thống kê hồ sơ</h1>
           <p className="muted page-sub">
-            Số hồ sơ riêng biệt theo tài khoản và thủ tục · Nguồn {source === "autofill" ? "Auto Fill" : "Handfree"}
+            Số hồ sơ riêng biệt theo tài khoản và thủ tục · Nguồn {SOURCES.find((item) => item.key === source)?.label}
           </p>
         </div>
       </div>
@@ -298,7 +305,7 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
             ))}
           </div>
           <span className="scope-helper">
-            {source === "autofill" ? "Bản chưa tích hợp giọng nói." : "Bản đã tích hợp giọng nói."}
+            {SOURCE_HELPERS[source]}
           </span>
         </div>
 

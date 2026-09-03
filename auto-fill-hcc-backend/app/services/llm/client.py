@@ -29,11 +29,12 @@ def _get_openai_client():
     return _openai_client
 
 
-async def _chat_primary(messages: list[dict], temperature: float, max_tokens: int,
-                        enable_thinking: bool = False) -> str:
+async def _chat_vllm(messages: list[dict], temperature: float, max_tokens: int,
+                     enable_thinking: bool, *, base_url: str, model: str) -> str:
+    """Gọi 1 endpoint vLLM/Qwen (OpenAI-compatible). Dùng chung cho primary và fallback vLLM."""
     timeout = httpx.Timeout(settings.llm_timeout_ms / 1000)
     payload = {
-        "model": settings.llm_model,
+        "model": model,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -41,8 +42,8 @@ async def _chat_primary(messages: list[dict], temperature: float, max_tokens: in
         "chat_template_kwargs": {"enable_thinking": enable_thinking},
     }
     # Base có thể kèm sẵn "/v1" (vd https://llm.tiengnoi.vn/qwen35/v1) hoặc không (vd .../llm);
-    # tránh nối "/v1" lần hai gây 404 {"detail":"Not Found"} rồi rơi hết sang OpenAI fallback.
-    base = settings.llm_base_url.rstrip("/")
+    # tránh nối "/v1" lần hai gây 404 {"detail":"Not Found"} rồi rơi hết sang fallback.
+    base = base_url.rstrip("/")
     url = base + ("/chat/completions" if base.endswith("/v1") else "/v1/chat/completions")
     async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
         r = await client.post(url, json=payload)
@@ -52,8 +53,40 @@ async def _chat_primary(messages: list[dict], temperature: float, max_tokens: in
     choices = data.get("choices") or []
     content = (choices[0].get("message", {}).get("content", "") if choices else "") or ""
     if not content:
-        raise RuntimeError(f"LLM primary trả content rỗng. raw={str(data)[:300]}")
+        raise RuntimeError(f"LLM trả content rỗng. raw={str(data)[:300]}")
     return content
+
+
+def _vllm_targets() -> list[tuple[str, str, str]]:
+    """Danh sách endpoint vLLM theo thứ tự ưu tiên: primary rồi fallback (nếu cấu hình)."""
+    targets = [(settings.llm_base_url, settings.llm_model, "primary")]
+    if settings.fallback_llm_base_url:
+        targets.append((
+            settings.fallback_llm_base_url,
+            settings.fallback_llm_model or settings.llm_model,
+            "fallback-vllm",
+        ))
+    return targets
+
+
+async def _chat_primary(messages: list[dict], temperature: float, max_tokens: int,
+                        enable_thinking: bool = False) -> str:
+    """Thử lần lượt các endpoint vLLM (primary → fallback vLLM). Ném lỗi cuối nếu tất cả fail.
+
+    Tách khỏi fallback OpenAI (tầng cuối) để giữ nguyên: hết vLLM mới rơi sang OpenAI.
+    """
+    last_exc: Exception | None = None
+    for base_url, model, tag in _vllm_targets():
+        try:
+            out = await _chat_vllm(messages, temperature, max_tokens, enable_thinking,
+                                   base_url=base_url, model=model)
+            if tag != "primary":
+                logger.warning("LLM %s [%s model=%s] OK sau khi primary lỗi", tag, base_url, model)
+            return out
+        except Exception as e:  # noqa: BLE001
+            last_exc = e
+            logger.warning("LLM %s lỗi [%s]: %r", tag, type(e).__name__, e)
+    raise last_exc if last_exc else RuntimeError("Không có endpoint LLM nào khả dụng")
 
 
 async def _chat_openai(messages: list[dict], temperature: float) -> str:

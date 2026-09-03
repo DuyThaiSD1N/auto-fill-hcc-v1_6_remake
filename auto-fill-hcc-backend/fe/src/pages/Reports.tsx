@@ -6,6 +6,7 @@ import Combobox from "../components/Combobox";
 import TopBar, { type View } from "../components/TopBar";
 import type {
   ReportAccount,
+  ReportLayout,
   ReportOptionsResp,
   ReportSelectionMode,
   User,
@@ -62,10 +63,47 @@ function saveDownload(blob: Blob, filename: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
+function reportDate(value: string): string {
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return year && month && day ? `${day}-${month}-${year}` : value;
+}
+
+function filenamePart(value: string, fallback: string): string {
+  const cleaned = value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/\s+/g, " ").trim();
+  return cleaned.replace(/[. ]+$/g, "") || fallback;
+}
+
+function reportFilename(
+  layout: ReportLayout,
+  mode: ReportSelectionMode,
+  province: string,
+  accounts: ReportAccount[],
+  dateFrom: string,
+  dateTo: string,
+  includeHandfree: boolean,
+): string {
+  let scope: string;
+  if (mode === "province") {
+    scope = filenamePart(province.replace(/^(?:Tỉnh|Thành phố)\s+/i, ""), "Tỉnh thành");
+  } else if (accounts.length === 1) {
+    scope = filenamePart(accounts[0].name || accounts[0].username, "Tài khoản");
+  } else {
+    scope = `${accounts.length} tài khoản`;
+  }
+  const first = reportDate(dateFrom);
+  const last = reportDate(dateTo);
+  const reportName = layout === "daily_summary"
+    ? first === last ? "Tổng hợp hồ sơ" : "Tổng hợp hồ sơ theo ngày"
+    : includeHandfree ? "Báo cáo hồ sơ tổng hợp" : "Báo cáo hồ sơ";
+  const period = first === last ? `ngày ${first}` : `từ ${first} đến ${last}`;
+  return `[${scope}] ${reportName} ${period}.xlsx`;
+}
+
 export default function Reports({ user, onLogout, view, onNavigate }: Props) {
   const today = vietnamDay();
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
+  const [layout, setLayout] = useState<ReportLayout>("daily_summary");
   const [mode, setMode] = useState<ReportSelectionMode>("province");
   const [province, setProvince] = useState("");
   const [officialOnly, setOfficialOnly] = useState(true);
@@ -110,6 +148,10 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     () => allProvinceAccounts.filter(isOfficialAccount),
     [allProvinceAccounts],
   );
+  const officialAccounts = useMemo(
+    () => options.accounts.filter(isOfficialAccount),
+    [options.accounts],
+  );
 
   const accountById = useMemo(
     () => new Map(options.accounts.map((account) => [account.id, account])),
@@ -118,11 +160,16 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
   const selectedAccounts = selectedIds
     .map((id) => accountById.get(id))
     .filter((account): account is ReportAccount => Boolean(account));
+  const selectedOfficialAccounts = selectedAccounts.filter(isOfficialAccount);
+  const selectedOfficialIds = selectedOfficialAccounts.map((account) => account.id);
   const provinceAccounts = officialOnly ? officialProvinceAccounts : allProvinceAccounts;
-  const exportAccounts = mode === "province" ? provinceAccounts : selectedAccounts;
+  const effectiveMode: ReportSelectionMode = layout === "daily_summary" ? "accounts" : mode;
+  const exportAccounts = layout === "daily_summary"
+    ? selectedOfficialAccounts
+    : mode === "province" ? provinceAccounts : selectedAccounts;
   const dateInvalid = !dateFrom || !dateTo || dateFrom > dateTo;
   const selectionInvalid = exportAccounts.length === 0;
-  const officialProvinceEmpty = mode === "province"
+  const officialProvinceEmpty = layout === "procedure_detail" && mode === "province"
     && Boolean(province)
     && officialOnly
     && allProvinceAccounts.length > 0
@@ -133,6 +180,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     && !dateInvalid
     && !selectionInvalid
     && !tooManyAccounts
+    && (layout !== "daily_summary" || options.handfreeEnabled)
     && exportMode === null;
 
   const provinceOptions = options.provinces.map((item) => ({
@@ -153,7 +201,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
       if (officialProvinceEmpty) {
         setError("Tỉnh/thành đã chọn chưa có tài khoản HCC xã hoặc HCC tỉnh.");
       } else {
-        setError(mode === "province" ? "Vui lòng chọn một tỉnh có tài khoản." : "Vui lòng chọn ít nhất một tài khoản.");
+        setError(effectiveMode === "province" ? "Vui lòng chọn một tỉnh có tài khoản." : "Vui lòng chọn ít nhất một tài khoản HCC.");
       }
       return;
     }
@@ -170,16 +218,32 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
       const result = await exportReportExcel({
         dateFrom,
         dateTo,
-        selectionMode: mode,
-        province: mode === "province" ? province : undefined,
-        officialOnly: mode === "province" ? officialOnly : undefined,
-        accountIds: mode === "accounts" ? selectedIds : undefined,
+        selectionMode: effectiveMode,
+        province: effectiveMode === "province" ? province : undefined,
+        officialOnly: layout === "daily_summary" || (mode === "province" ? officialOnly : undefined),
+        accountIds: effectiveMode === "accounts"
+          ? layout === "daily_summary" ? selectedOfficialIds : selectedIds
+          : undefined,
         includeHandfree,
+        reportLayout: layout,
       }, controller.signal);
-      const fallback = `bao_cao_ho_so_${dateFrom}_${dateTo}.xlsx`;
-      const filename = result.filename || fallback;
+      const expectedFilename = reportFilename(
+        layout,
+        effectiveMode,
+        province,
+        exportAccounts,
+        dateFrom,
+        dateTo,
+        includeHandfree,
+      );
+      const filename = result.filename?.includes(
+        layout === "daily_summary" ? "Tổng hợp hồ sơ" : "Báo cáo hồ sơ",
+      )
+        ? result.filename
+        : expectedFilename;
       saveDownload(result.blob, filename);
-      setSuccess(`Đã tạo ${filename} với ${exportAccounts.length.toLocaleString("vi-VN")} sheet.`);
+      const sheetCount = layout === "daily_summary" ? 1 : exportAccounts.length;
+      setSuccess(`Đã tạo ${filename} với ${sheetCount.toLocaleString("vi-VN")} sheet.`);
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === "AbortError") return;
       setError(reason instanceof Error ? reason.message : "Không thể tạo file Excel. Vui lòng thử lại.");
@@ -193,7 +257,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    void runExport(false);
+    void runExport(layout === "daily_summary");
   }
 
   return (
@@ -203,8 +267,33 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
       <div className="stats-head report-heading">
         <div>
           <h1 className="page-title">Kết xuất báo cáo Excel</h1>
-          <p className="muted page-sub">Mỗi tài khoản được xuất thành một sheet riêng.</p>
+          <p className="muted page-sub">
+            {layout === "daily_summary"
+              ? "Tổng số hồ sơ Auto Fill và Handfree của các tài khoản HCC được trình bày theo từng ngày."
+              : "Mỗi tài khoản được xuất thành một sheet chi tiết theo thủ tục."}
+          </p>
         </div>
+      </div>
+
+      <div className="report-layout-tabs" role="tablist" aria-label="Loại báo cáo">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={layout === "daily_summary"}
+          className={layout === "daily_summary" ? "active" : ""}
+          onClick={() => setLayout("daily_summary")}
+        >
+          Tổng hợp
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={layout === "procedure_detail"}
+          className={layout === "procedure_detail" ? "active" : ""}
+          onClick={() => setLayout("procedure_detail")}
+        >
+          Chi tiết
+        </button>
       </div>
 
       <form className="report-form" onSubmit={submit}>
@@ -235,34 +324,42 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
           <div className="report-section-head">
             <span className="report-step" aria-hidden="true">2</span>
             <div>
-              <h2 id="report-scope-title">Phạm vi xuất</h2>
-              <p>Chọn toàn bộ tài khoản của một tỉnh hoặc chọn từng tài khoản.</p>
+              <h2 id="report-scope-title">
+                {layout === "daily_summary" ? "Tài khoản HCC" : "Phạm vi xuất"}
+              </h2>
+              <p>
+                {layout === "daily_summary"
+                  ? "Chỉ tài khoản HCC xã và HCC tỉnh được đưa vào bảng tổng hợp."
+                  : "Chọn toàn bộ tài khoản của một tỉnh hoặc chọn từng tài khoản."}
+              </p>
             </div>
           </div>
 
-          <div className="report-mode" role="group" aria-label="Cách chọn phạm vi báo cáo">
-            <button
-              type="button"
-              className={mode === "province" ? "active" : ""}
-              aria-pressed={mode === "province"}
-              onClick={() => setMode("province")}
-            >
-              Theo tỉnh
-            </button>
-            <button
-              type="button"
-              className={mode === "accounts" ? "active" : ""}
-              aria-pressed={mode === "accounts"}
-              onClick={() => setMode("accounts")}
-            >
-              Theo tài khoản
-            </button>
-          </div>
+          {layout === "procedure_detail" && (
+            <div className="report-mode" role="group" aria-label="Cách chọn phạm vi báo cáo">
+              <button
+                type="button"
+                className={mode === "province" ? "active" : ""}
+                aria-pressed={mode === "province"}
+                onClick={() => setMode("province")}
+              >
+                Theo tỉnh
+              </button>
+              <button
+                type="button"
+                className={mode === "accounts" ? "active" : ""}
+                aria-pressed={mode === "accounts"}
+                onClick={() => setMode("accounts")}
+              >
+                Theo tài khoản
+              </button>
+            </div>
+          )}
 
           {loadingOptions && <div className="report-loading" aria-live="polite">Đang tải danh sách tài khoản…</div>}
           {optionsError && <div className="error" role="alert">{optionsError}</div>}
 
-          {!loadingOptions && !optionsError && mode === "province" && (
+          {!loadingOptions && !optionsError && layout === "procedure_detail" && mode === "province" && (
             <div className="province-report-scope">
               <div className="province-report-controls">
                 <Combobox
@@ -324,7 +421,15 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
             </div>
           )}
 
-          {!loadingOptions && !optionsError && mode === "accounts" && (
+          {!loadingOptions && !optionsError && layout === "daily_summary" && (
+            <AccountMultiSelect
+              accounts={officialAccounts}
+              selectedIds={selectedOfficialIds}
+              onChange={setSelectedIds}
+            />
+          )}
+
+          {!loadingOptions && !optionsError && layout === "procedure_detail" && mode === "accounts" && (
             <AccountMultiSelect
               accounts={options.accounts}
               selectedIds={selectedIds}
@@ -342,29 +447,39 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
           <div>
             <h2 id="report-summary-title">Sẵn sàng kết xuất</h2>
             <p>
-              {exportAccounts.length.toLocaleString("vi-VN")} tài khoản · {exportAccounts.length.toLocaleString("vi-VN")} sheet
+              {exportAccounts.length.toLocaleString("vi-VN")} tài khoản · {layout === "daily_summary" ? "1" : exportAccounts.length.toLocaleString("vi-VN")} sheet
               {dateFrom && dateTo ? ` · ${dateFrom} đến ${dateTo}` : ""}
             </p>
           </div>
           <div className="report-export-actions">
-            <button className="ghost report-export-btn" type="submit" disabled={!canExport}>
-              {exportMode === "local" ? "Đang tạo file…" : "Chỉ xuất no handfree"}
-            </button>
-            <button
-              className="btn-primary report-export-btn"
-              type="button"
-              disabled={!canExport || !options.handfreeEnabled}
-              onClick={() => void runExport(true)}
-              title={options.handfreeEnabled ? undefined : "Backend chưa cấu hình kết nối Handfree"}
-            >
-              {exportMode === "combined" ? "Đang tổng hợp…" : "Tổng hợp cả Handfree"}
-            </button>
+            {layout === "daily_summary" ? (
+              <button className="btn-primary report-export-btn" type="submit" disabled={!canExport}>
+                {exportMode === "combined" ? "Đang tổng hợp…" : "Xuất bảng tổng hợp"}
+              </button>
+            ) : (
+              <>
+                <button className="ghost report-export-btn" type="submit" disabled={!canExport}>
+                  {exportMode === "local" ? "Đang tạo file…" : "Chỉ xuất no handfree"}
+                </button>
+                <button
+                  className="btn-primary report-export-btn"
+                  type="button"
+                  disabled={!canExport || !options.handfreeEnabled}
+                  onClick={() => void runExport(true)}
+                  title={options.handfreeEnabled ? undefined : "Kênh Handfree chưa khả dụng"}
+                >
+                  {exportMode === "combined" ? "Đang tổng hợp…" : "Tổng hợp cả Handfree"}
+                </button>
+              </>
+            )}
           </div>
         </section>
 
         {!loadingOptions && !options.handfreeEnabled && (
           <div className="muted report-integration-note" role="status">
-            Nút tổng hợp Handfree sẽ khả dụng sau khi cấu hình kết nối giữa hai backend.
+            {layout === "daily_summary"
+              ? "Bảng tổng hợp cần dữ liệu từ kênh Handfree."
+              : "Nút tổng hợp sẽ khả dụng khi kênh Handfree được bật."}
           </div>
         )}
 

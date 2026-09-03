@@ -114,14 +114,15 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
     assert d["data[thietKeXayDung][3][boMonChuTriThietKe]"] == "Nước"
     assert d["data[thietKeXayDung][3][hoVaTenChuTriThietKe]"] == "Nguyễn Văn An"
     assert d["data[thietKeXayDung][3][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00109462"
-    assert d["data[loaiCongTrinh]"] == "1"
-    assert d["data[loaiCongTrinhKhongTheoTuyen]"] == "Nhà ở riêng lẻ"
-    assert d["data[capCongTrinhKhongTheoTuyen]"] == "III"
-    assert d["data[dienTichXayDungKhongTheoTuyen]"] == "106"
-    assert d["data[cotXayDungKhongTheoTuyen]"] == "0.45"
-    assert d["data[tongDienTichSanKhongTheoTuyen]"] == "214.1"
-    assert d["data[chieuCaoCongTrinhKhongTheoTuyen]"] == "9.6"
-    assert d["data[soTangCongTrinhKhongTheoTuyen]"] == "2"
+    assert d["data[loaiCongTrinh]"] == "Nhà ở riêng lẻ"
+    assert d["data[tenCongTrinhNhaO]"] == "NHÀ Ở GIA ĐÌNH"
+    assert d["data[capCongTrinhNhaO]"] == "III"
+    assert d["data[dienTichXayDungTang1NhaO]"] == "106"
+    assert d["data[cotXayDungNhaO]"] == "0.45"
+    assert d["data[tongDienTichSanNhaO]"] == "214.1"
+    assert d["data[chieuCaoCongTrinhNhaO]"] == "9.6"
+    assert d["data[soTangNhaO]"] == "02 tầng"
+    assert "data[capCongTrinhKhongTheoTuyen]" not in d
     assert d["data[toChucCaNhanThamTraThietKe]"] == "caNhan"
 
 
@@ -217,8 +218,35 @@ def test_cap_giay_phep_xay_dung_maps_explicit_dan_dung_subtype():
     d = _values(out)
 
     assert warnings == ["Chưa đọc được thông số xây dựng chính từ đơn/bản vẽ."]
-    assert d["data[loaiCongTrinh]"] == "1"
+    assert d["data[loaiCongTrinh]"] == "Công trình không theo tuyến, tín ngưỡng, tôn giáo"
     assert d["data[loaiCongTrinhKhongTheoTuyen]"] == "Công trình dân dụng"
+
+
+def test_cap_giay_phep_xay_dung_detects_house_from_shared_form_section():
+    out, warnings = mapper.enrich([
+        _field("CongTrinh_Ten", "NHÀ Ở GIA ĐÌNH"),
+        _field("CongTrinh_Cap", "Cấp III"),
+        _field("CongTrinh_DienTichXayDung", "106 m2"),
+    ], {
+        "_ocr_text": "Mẫu số 01 ... 4.4. Đối với công trình nhà ở riêng lẻ: Cấp công trình III ...",
+    })
+    d = _values(out)
+
+    assert not any("nhánh loại hình công trình" in warning for warning in warnings)
+    assert d["data[loaiCongTrinh]"] == "Nhà ở riêng lẻ"
+    assert d["data[tenCongTrinhNhaO]"] == "NHÀ Ở GIA ĐÌNH"
+    assert d["data[capCongTrinhNhaO]"] == "III"
+    assert "data[tenCongTrinhKhongTheoTuyen]" not in d
+
+
+def test_cap_giay_phep_xay_dung_does_not_default_unknown_construction_branch():
+    out, warnings = mapper.enrich([
+        _field("CongTrinh_Ten", "Công trình chưa rõ loại"),
+    ], {})
+    d = _values(out)
+
+    assert "data[loaiCongTrinh]" not in d
+    assert any("nhánh loại hình công trình" in warning for warning in warnings)
 
 
 def test_compact_runner_extracts_docx_embedded_images():

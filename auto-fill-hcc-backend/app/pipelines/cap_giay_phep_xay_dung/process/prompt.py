@@ -42,8 +42,14 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 </role_rules>
 
 <construction_type_rules>
-- Loại hình công trình top-level của thủ tục này mặc định là
-  "Công trình không theo tuyến, tín ngưỡng, tôn giáo". Không trả field UI top-level.
+- Không được mặc định top-level "Loại hình công trình". Phải phân biệt nhánh form và trả
+  CongTrinh_Nhanh = "nha_o_rieng_le" hoặc "khong_theo_tuyen".
+- Nếu đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ" → "nha_o_rieng_le".
+- Mẫu số 01 có tiêu đề dùng chung nhiều loại công trình; nếu phần nội dung có mục
+  "4.4. Đối với công trình nhà ở riêng lẻ" và mục này có dữ liệu → vẫn chọn "nha_o_rieng_le".
+- Chỉ chọn "khong_theo_tuyen" khi hồ sơ thực sự thuộc nhóm "Công trình không theo tuyến,
+  tín ngưỡng, tôn giáo" và không có bằng chứng nhánh nhà ở riêng lẻ.
+- Nếu không đủ bằng chứng để phân biệt → để trống CongTrinh_Nhanh, không đoán nhánh.
 - CongTrinh_Loai là loại công trình con theo nội dung giấy tờ, ví dụ "Nhà ở riêng lẻ",
   "Công trình dân dụng"/"Dân dụng", "Công trình tôn giáo, tín ngưỡng".
 - CongTrinh_Cap trả "Cấp III" hoặc "Cấp IV" đúng theo đơn/bản vẽ. Không tự đổi cấp.

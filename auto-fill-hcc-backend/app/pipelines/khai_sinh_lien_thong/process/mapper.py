@@ -228,8 +228,10 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     if has_child:
         add_name("", child_name)
-        # Tờ khai ưu tiên hơn giấy chứng sinh cho tất cả thông tin con
-        add("NgaySinh", values.get("Tk_NgaySinhCon") or values.get("Gcs_NgaySinhCon"))
+        # Thông tin con nói chung ưu tiên TỜ KHAI. RIÊNG NGÀY SINH ưu tiên GIẤY CHỨNG SINH:
+        # đó là bản ghi y tế gốc của sự kiện sinh; con số ngày người khai gõ tay ở tờ khai hay
+        # lệch/typo so với ngày sinh thực (vd tờ khai ghi số "28" nhưng chữ + chứng sinh là "20").
+        add("NgaySinh", values.get("Gcs_NgaySinhCon") or values.get("Tk_NgaySinhCon"))
         add("GioiTinh", values.get("Tk_GioiTinhCon") or values.get("Gcs_GioiTinhCon"))
         
         # Xác định nơi sinh + kiểm tra ngoại lệ Lâm Đồng (dùng chung cho dân tộc và quê quán)

@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, model_validator
 
 
 SelectionMode = Literal["province", "accounts"]
+ReportLayout = Literal["procedure_detail", "daily_summary"]
 
 
 class ExcelExportRequest(BaseModel):
@@ -14,6 +15,7 @@ class ExcelExportRequest(BaseModel):
     officialOnly: bool = False
     accountIds: list[str] = Field(default_factory=list, max_length=200)
     includeHandfree: bool = False
+    reportLayout: ReportLayout = "procedure_detail"
 
     @model_validator(mode="after")
     def validate_selection(self):

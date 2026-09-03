@@ -77,6 +77,21 @@ services:
     networks:
       - autofill
 
+  # Web Monitor độc lập: chỉ super_admin đăng nhập được, dùng chung API trace hiện có.
+  # Không gắn link từ web quản lý cũ và có thể deploy/restart riêng service này.
+  monitor-fe:
+    build: ./monitor-fe
+    image: autofill-hcc-monitor-fe:latest
+    environment:
+      - BACKEND_URL=${BACKEND_URL:-http://app:8000}
+    ports:
+      - "12007:12007"
+    depends_on:
+      - app
+    restart: unless-stopped
+    networks:
+      - autofill
+
 networks:
   autofill:
     name: autofill_hcc_net

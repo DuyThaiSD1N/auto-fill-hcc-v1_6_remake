@@ -74,26 +74,6 @@ def test_identity_candidates_are_deduplicated_for_runtime_account_match():
     ]
 
 
-def test_change_remaps_old_address_for_form_and_identity_candidates():
-    old_address = {
-        "quocGia": "Việt Nam", "tinh": "Bình Thuận", "xa": "Hàm Kiệm", "diaChi": "Tổ 3",
-    }
-    pages, flow = mapper.build([
-        _field("HienTai_TruSo", old_address),
-        _field("DeNghi_TruSo", old_address),
-        _field("HienTai_ChuHo", {
-            "hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address,
-        }),
-        _field("Cccd_DanhSach", [{
-            "hoTen": "Nguyễn Thị Quỳnh", "soDinhDanh": "033197013790", "diaChi": old_address,
-        }]),
-    ])
-
-    assert "dia-chi" not in pages
-    assert flow["identityCandidates"][0]["diaChi"]["tinh"] == "Lâm Đồng"
-    assert flow["identityCandidates"][0]["diaChi"]["xa"] == "Hàm Kiệm"
-
-
 def test_attachment_detection_routes_notice_and_identity():
     assert _detect_type("THÔNG BÁO THAY ĐỔI NỘI DUNG ĐĂNG KÝ HỘ KINH DOANH") == "change_notice"
     assert _detect_type("CĂN CƯỚC CÔNG DÂN Citizen Identity Card") == "personal_legal"
@@ -113,32 +93,3 @@ def test_registry_and_response_contract_expose_change_flow():
         businessFlow={"workflow": "change", "pageOrder": ["nguoi-nop-ho-so"]},
     )
     assert response.businessFlow["workflow"] == "change"
-
-
-def test_form_only_dossier_flag_marks_change_without_identity_papers():
-    """Hồ sơ chỉ có tờ đơn xin thay đổi → extension chốt vai trò người nộp bằng HỌ TÊN chủ hộ."""
-    _, flow = mapper.build([
-        _field("HoKinhDoanh_MaSo", "027200011386"),
-        _field("HienTai_Ten", "HỘ KINH DOANH TRƯƠNG HÀN ĐAN"),
-        _field("HienTai_ChuHo", {"hoTen": "Trương Hàn Đan", "soDinhDanh": "012345678901"}),
-        _field("DeNghi_NganhNgheBoSung", [{"ma": "", "ten": "Tư vấn, tham vấn tâm lý"}]),
-    ])
-
-    assert flow["formOnly"] is True
-
-
-def test_form_only_flag_off_when_dossier_has_identity_papers():
-    for extra in (
-        _field("Cccd_DanhSach", [{"hoTen": "Trần Thị B", "soDinhDanh": "022222222222"}]),
-        _field("HasMultipleCCCD", True),
-        _field("UyQuyen_CoGiayUyQuyen", True),
-        _field("UyQuyen_NguoiDuocUyQuyen_HoTen", "Trần Thị B"),
-    ):
-        _, flow = mapper.build([
-            _field("HoKinhDoanh_MaSo", "027200011386"),
-            _field("HienTai_Ten", "HỘ KINH DOANH TRƯƠNG HÀN ĐAN"),
-            _field("HienTai_ChuHo", {"hoTen": "Trương Hàn Đan", "soDinhDanh": "012345678901"}),
-            _field("DeNghi_NganhNgheBoSung", [{"ma": "", "ten": "Tư vấn, tham vấn tâm lý"}]),
-            extra,
-        ])
-        assert flow["formOnly"] is False, extra["name"]

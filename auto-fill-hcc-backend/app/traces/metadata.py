@@ -1,11 +1,10 @@
 """Dựng metadata định danh hồ sơ/tài liệu cho trace thống kê.
 
-Lượt thường giữ tiêu chí cũ theo tập tên file; lượt tách tab dùng ID nghiệp vụ. SHA-256 nhận diện
-tài liệu dùng lại, không tham gia gom hồ sơ.
+Lượt tách tab dùng ID nghiệp vụ. Lượt thường được repo thống kê theo tập tên file;
+SHA-256 chỉ phục vụ thống kê tài liệu dùng lại, không tham gia gom hồ sơ.
 """
 from __future__ import annotations
 
-import hashlib
 import unicodedata
 
 
@@ -69,21 +68,6 @@ def _source_indexes(item: dict, count: int) -> list[int]:
     return indexes
 
 
-def _bundle_hash(indexes: list[int], files_meta: list[dict]) -> str | None:
-    hashes = [str(files_meta[index].get("sha256") or "") for index in indexes]
-    if not hashes or any(len(value) != 64 for value in hashes):
-        return None
-    if len(hashes) == 1:
-        return hashes[0]
-    # Một item FE có thể là PDF ghép từ nhiều file nguồn. Fingerprint bundle có thứ tự giúp
-    # nhận đúng cùng một tài liệu ghép mà không phải dựng lại PDF chỉ để làm thống kê.
-    try:
-        payload = b"hcc-source-bundle-v1\0" + b"".join(bytes.fromhex(value) for value in hashes)
-    except ValueError:
-        return None
-    return hashlib.sha256(payload).hexdigest()
-
-
 def _is_identity_item(item: dict) -> bool:
     haystack = _fold(" ".join(str(item.get(key) or "") for key in (
         "fileName", "documentName", "componentName", "detectedType", "slotName",
@@ -112,6 +96,44 @@ def build_process_trace_attachments(files_meta: list[dict]) -> list[dict]:
     ]
 
 
+def build_attach_trace_attachments(plan: list[dict], files_meta: list[dict]) -> list[dict]:
+    """Metadata trace kiểu Handfree: giữ file gốc và bổ sung vai trò từ attach plan.
+
+    Auto Fill vẫn dùng ``build_attach_trace_metadata`` để tính dossier id. Hàm nhỏ này
+    chỉ là adapter cho channel sidebar, nơi mỗi lượt attach được ghi thành một trace.
+    """
+    attachments = [
+        {
+            "name": item.get("name") or "",
+            "role": item.get("role") or "",
+            "sha256": item.get("sha256"),
+            "uses": 1,
+        }
+        for item in files_meta
+    ]
+    roles_by_index: list[list[str]] = [[] for _ in files_meta]
+    for fallback_index, item in enumerate(plan or []):
+        role = str(
+            item.get("componentName")
+            or item.get("documentName")
+            or item.get("slotName")
+            or ""
+        ).strip()
+        if not role:
+            continue
+        indexes = _source_indexes(item, len(files_meta))
+        if not indexes and 0 <= fallback_index < len(files_meta):
+            indexes = [fallback_index]
+        for index in indexes:
+            if role not in roles_by_index[index]:
+                roles_by_index[index].append(role)
+
+    for index, roles in enumerate(roles_by_index):
+        if roles:
+            attachments[index]["role"] = " · ".join(roles)
+    return attachments
+
+
 def build_attach_trace_metadata(
     *,
     request_id: str,
@@ -121,43 +143,59 @@ def build_attach_trace_metadata(
     plan: list[dict],
     files_meta: list[dict],
 ) -> tuple[list[dict], list[str]]:
-    """Trả attachments có hash/uses và các dossier_id do một lượt plan tạo ra."""
+    """Trả metadata file GỐC và các dossier_id do một lượt plan tạo ra.
+
+    ``plan.fileName`` có thể là tên PDF FE sẽ tạo sau khi tách/gộp. Trace phải giữ đúng
+    ``files_meta`` theo thứ tự upload để tên, số file và endpoint ``/files/{index}`` cùng
+    trỏ vào một tài liệu; kế hoạch đã được lưu riêng trong ``llm_output.attachments``.
+    """
     count = len(files_meta)
-    attachments: list[dict] = []
-    plan_items: list[tuple[dict, dict]] = []
+    attachments = build_process_trace_attachments(files_meta)
+    plan_items: list[tuple[dict, list[int]]] = []
+    roles_by_index: list[list[str]] = [[] for _ in files_meta]
 
     for item in plan:
         indexes = _source_indexes(item, count)
         if not indexes:
             continue
-        primary = files_meta[indexes[0]]
-        trace_item = {
-            "name": item.get("fileName") or item.get("documentName") or primary.get("name") or "",
-            "role": item.get("componentName") or item.get("documentName") or item.get("slotName") or "",
-            "sha256": _bundle_hash(indexes, files_meta),
-            "uses": 1,
-        }
-        attachments.append(trace_item)
-        plan_items.append((item, trace_item))
+        plan_items.append((item, indexes))
+        role = str(
+            item.get("componentName") or item.get("documentName") or item.get("slotName") or ""
+        ).strip()
+        if role:
+            for index in indexes:
+                if role not in roles_by_index[index]:
+                    roles_by_index[index].append(role)
 
-    # Planner lỗi/kiểu cũ không có fileIndex: vẫn giữ trace tài liệu nguồn và ID hồ sơ chính xác.
-    if not attachments:
-        attachments = build_process_trace_attachments(files_meta)
+    for index, roles in enumerate(roles_by_index):
+        if roles:
+            attachments[index]["role"] = " · ".join(roles)
 
     base_id = (session_id or "").strip() or request_id
     if not split:
         return attachments, [base_id]
 
     if procedure == "chung-thuc-chu-ky":
-        primary_items = [(item, trace_item) for item, trace_item in plan_items if not _is_identity_item(item)]
+        primary_items = [
+            (item, indexes) for item, indexes in plan_items if not _is_identity_item(item)
+        ]
         dossier_count = max(len(primary_items), 1)
         # STT2 được extension gắn lại vào từng tab chữ ký; phản ánh số lượt tài liệu
         # thực sự dùng.
-        for item, trace_item in plan_items:
+        for item, indexes in plan_items:
             if _is_identity_item(item):
-                trace_item["uses"] = dossier_count
+                for index in indexes:
+                    attachments[index]["uses"] = dossier_count
     else:
         # Chứng thực bản sao: mọi item của kế hoạch, kể cả CCCD, là một bản cần chứng thực.
         dossier_count = max(len(plan_items), len(attachments), 1)
+        # Một file gốc có thể được tách thành nhiều tài liệu/tab. Vẫn chỉ hiển thị một file
+        # nguồn trong trace nhưng ghi đúng số lần nội dung đó được sử dụng.
+        uses_by_index = [0 for _ in files_meta]
+        for _item, indexes in plan_items:
+            for index in indexes:
+                uses_by_index[index] += 1
+        for index, uses in enumerate(uses_by_index):
+            attachments[index]["uses"] = max(uses, 1)
 
     return attachments, [f"{base_id}:{index}" for index in range(1, dossier_count + 1)]

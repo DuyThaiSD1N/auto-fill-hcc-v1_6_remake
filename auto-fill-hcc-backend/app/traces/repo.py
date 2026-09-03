@@ -2,22 +2,86 @@
 
 Collection: traces. Ghi best-effort (lỗi không được làm hỏng request /process).
 """
+import copy
 import re
+import uuid
 from datetime import datetime, timezone
+from typing import Literal
 
 from bson import ObjectId
 
 from app.db.mongo import get_db
+from app.traces.date_range import VIETNAM_TZ
 from app.traces.metadata import count_distinct_attachment_sets
 from app.users.roles import OFFICIAL_ACCOUNT_ROLES, normalized_role
 
 # Nhãn hiển thị model OCR theo provider key.
 _OCR_LABELS = {"tiengnoi": "vintern-v12"}
 _ALL_STATS_ROLES = ("admin", "user", "commune", "province")
+_FILE_SUFFIX_RE = re.compile(r"\.[^./\\]+$")
+# Mốc migration cố định: 00:00 25/08/2026 giờ Việt Nam.
+# Trước mốc giữ nguyên số lịch sử; từ mốc mới bỏ phần mở rộng khi so tên file.
+_STEM_RULE_CUTOFF = datetime(2026, 8, 24, 17, tzinfo=timezone.utc)
+Experience = Literal["autofill", "handfree"]
+
+
+def new_request_id() -> str:
+    """Sinh mã hỗ trợ dùng chung cho cả Auto Fill và Handfree."""
+    return "req_" + uuid.uuid4().hex[:12]
 
 
 def ocr_label(provider: str | None) -> str:
     return _OCR_LABELS.get(provider or "", provider or "—")
+
+
+async def _apply_current_account_names(db, docs: list[dict]) -> None:
+    """Chuẩn hóa tên hiển thị trace theo tài khoản hiện tại.
+
+    Handfree lịch sử từng ghi ``conv.location`` vào ``name`` nên có thể hiện địa điểm
+    công dân chọn thay vì tài khoản thực hiện. Đối chiếu cả user_id và username giúp
+    sửa cách hiển thị ngay cả với dữ liệu đã import/đổi id mà không sửa ngược trace gốc.
+    """
+    if not docs:
+        return
+
+    object_ids: list[ObjectId] = []
+    usernames: set[str] = set()
+    for doc in docs:
+        user_id = str(doc.get("user_id") or "").strip()
+        if ObjectId.is_valid(user_id):
+            object_ids.append(ObjectId(user_id))
+        username = str(doc.get("username") or "").strip().lower()
+        if username:
+            usernames.add(username)
+
+    clauses: list[dict] = []
+    if object_ids:
+        clauses.append({"_id": {"$in": object_ids}})
+    if usernames:
+        clauses.append({"username": {"$in": list(usernames)}})
+    if not clauses:
+        return
+
+    query = clauses[0] if len(clauses) == 1 else {"$or": clauses}
+    accounts = await db.users.find(
+        query, {"username": 1, "name": 1}
+    ).to_list(length=len(object_ids) + len(usernames))
+    by_id = {str(account["_id"]): account for account in accounts}
+    by_username = {
+        str(account.get("username") or "").strip().lower(): account
+        for account in accounts
+        if account.get("username")
+    }
+
+    for doc in docs:
+        account = by_id.get(str(doc.get("user_id") or ""))
+        if account is None:
+            account = by_username.get(str(doc.get("username") or "").strip().lower())
+        if account is None:
+            continue
+        account_name = str(account.get("name") or account.get("username") or "").strip()
+        if account_name:
+            doc["name"] = account_name
 
 
 def _stats_account_context(accounts: list[dict], scope: str) -> tuple[dict[str, str], list[str]]:
@@ -64,6 +128,7 @@ async def create_trace(
     total_bytes: int | None = None,  # tổng dung lượng file của lượt (payload)
     error_code: str | None = None,
     created_at: datetime | None = None,
+    experience: Experience = "autofill",
 ) -> str | None:
     doc = {
         "request_id": request_id,
@@ -91,6 +156,9 @@ async def create_trace(
         "fields_count": fields_count,
         "status": status,
         "error_code": error_code,
+        # Hai extension dùng chung collection; field này là khóa phân nguồn duy nhất cho
+        # dashboard/báo cáo. Không suy luận từ username/kind vì các giá trị đó có thể trùng.
+        "experience": experience,
         "created_at": created_at or datetime.now(timezone.utc),
     }
     try:
@@ -98,6 +166,14 @@ async def create_trace(
         return str(res.inserted_id)
     except Exception:  # noqa: BLE001 — trace không được phép làm hỏng request
         return None
+
+
+async def set_report(request_id: str, kind: str, report: dict) -> None:
+    """Handfree báo kết quả thao tác DOM thật để gắn vào đúng trace process/attach."""
+    await get_db().traces.update_one(
+        {"request_id": request_id, "kind": kind, "experience": "handfree"},
+        {"$set": {"report": report}},
+    )
 
 
 def _build_query(
@@ -130,6 +206,26 @@ def _build_query(
     return query
 
 
+def with_experience(query: dict, experience: Experience | None) -> dict:
+    """Ghép bộ lọc nguồn mà vẫn đọc đúng dữ liệu Auto Fill legacy chưa backfill.
+
+    Handfree chỉ nhận document được gắn rõ ``handfree``. Document thiếu field thuộc DB
+    Auto Fill lịch sử nên tạm được coi là ``autofill``; script backfill sẽ chuẩn hóa sau.
+    """
+    if experience is None:
+        return query
+    if experience == "handfree":
+        return {**query, "experience": "handfree"}
+    source_filter = {
+        "$or": [
+            {"experience": "autofill"},
+            {"experience": {"$exists": False}},
+            {"experience": None},
+        ]
+    }
+    return {"$and": [query, source_filter]} if query else source_filter
+
+
 async def list_traces(
     *,
     user_id: str | None = None,
@@ -137,14 +233,15 @@ async def list_traces(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     request_id: str | None = None,
+    experience: Experience | None = None,
     skip: int = 0,
     limit: int = 20,
 ) -> dict:
     db = get_db()
-    query = _build_query(
+    query = with_experience(_build_query(
         user_id=user_id, procedure=procedure, date_from=date_from, date_to=date_to,
         request_id=request_id,
-    )
+    ), experience)
     total = await db.traces.count_documents(query)
     # Danh sách: không trả ocr_text/llm_output (nặng) — chỉ trả khi xem chi tiết.
     projection = {"ocr_text": 0, "llm_output": 0}
@@ -154,7 +251,9 @@ async def list_traces(
         .skip(max(skip, 0))
         .limit(max(min(limit, 100), 1))
     )
-    items = [_serialize(d) for d in await cursor.to_list(length=limit)]
+    docs = await cursor.to_list(length=limit)
+    await _apply_current_account_names(db, docs)
+    items = [_serialize(d) for d in docs]
     return {"items": items, "total": total}
 
 
@@ -163,26 +262,37 @@ async def get_trace(trace_id: str) -> dict | None:
         oid = ObjectId(trace_id)
     except Exception:  # noqa: BLE001
         return None
-    doc = await get_db().traces.find_one({"_id": oid})
+    db = get_db()
+    doc = await db.traces.find_one({"_id": oid})
+    if doc:
+        await _apply_current_account_names(db, [doc])
     return _serialize(doc) if doc else None
 
 
-async def facets() -> dict:
+async def facets(experience: Experience | None = None) -> dict:
     """Giá trị phục vụ bộ lọc: danh sách phường (user) và thủ tục đã xuất hiện trong traces."""
     db = get_db()
-    users = await db.traces.aggregate([
+    source_match = [{"$match": with_experience({}, experience)}] if experience else []
+    users = await db.traces.aggregate([*source_match,
         {"$group": {"_id": "$user_id", "username": {"$first": "$username"},
                     "name": {"$first": "$name"}}},
         {"$sort": {"name": 1}},
     ]).to_list(length=500)
-    procedures = await db.traces.aggregate([
+    facet_users = [
+        {"user_id": user["_id"], "username": user.get("username"), "name": user.get("name")}
+        for user in users
+    ]
+    await _apply_current_account_names(db, facet_users)
+    facet_users.sort(key=lambda user: str(user.get("name") or "").casefold())
+    procedures = await db.traces.aggregate([*source_match,
         {"$group": {"_id": "$procedure", "label": {"$first": "$procedure_label"}}},
         {"$sort": {"label": 1}},
     ]).to_list(length=200)
     return {
         "users": [
-            {"userId": u["_id"], "username": u.get("username"), "name": u.get("name")}
-            for u in users
+            {"userId": user["user_id"], "username": user.get("username"),
+             "name": user.get("name")}
+            for user in facet_users
         ],
         "procedures": [
             {"key": p["_id"], "label": p.get("label")} for p in procedures
@@ -273,29 +383,48 @@ def _stats_pipeline(query: dict) -> list[dict]:
             },
         }
     }
-    attachment_name_set = {
-        "$sortArray": {
-            "input": {
-                "$setUnion": [
-                    {
-                        "$filter": {
-                            "input": {
-                                "$map": {
-                                    "input": {"$ifNull": ["$attachments", []]},
-                                    "as": "attachment",
-                                    "in": normalized_attachment_name,
-                                }
-                            },
-                            "as": "name",
-                            "cond": {"$ne": ["$$name", ""]},
-                        }
-                    },
-                    [],
-                ]
-            },
-            "sortBy": 1,
+    def attachment_set(value_expression: dict) -> dict:
+        return {
+            "$sortArray": {
+                "input": {
+                    "$setUnion": [
+                        {
+                            "$filter": {
+                                "input": {
+                                    "$map": {
+                                        "input": {"$ifNull": ["$attachments", []]},
+                                        "as": "attachment",
+                                        "in": value_expression,
+                                    }
+                                },
+                                "as": "name",
+                                "cond": {"$ne": ["$$name", ""]},
+                            }
+                        },
+                        [],
+                    ]
+                },
+                "sortBy": 1,
+            }
         }
-    }
+
+    attachment_name_set = attachment_set(normalized_attachment_name)
+
+    def empty_id(file_set_field: str) -> dict:
+        return {
+            "$cond": [
+                {"$gt": [{"$size": file_set_field}, 0]},
+                None,
+                {
+                    "$cond": [
+                        "$_stats_exact",
+                        {"$arrayElemAt": ["$dossier_ids", 0]},
+                        "$_stats_request_id",
+                    ]
+                },
+            ]
+        }
+
     return [
         {"$match": query},
         {
@@ -307,7 +436,6 @@ def _stats_pipeline(query: dict) -> list[dict]:
                 "_stats_name": {"$ifNull": ["$name", {"$ifNull": ["$username", "—"]}]},
                 "_stats_label": {"$ifNull": ["$procedure_label", {"$ifNull": ["$procedure", "—"]}]},
                 "_stats_is_split": {"$eq": ["$split", True]},
-                "_stats_file_set": attachment_name_set,
             }
         },
         {
@@ -336,25 +464,49 @@ def _stats_pipeline(query: dict) -> list[dict]:
                         },
                     ]
                 },
-                "_stats_empty_id": {
-                    "$cond": [
-                        {"$gt": [{"$size": "$_stats_file_set"}, 0]},
-                        None,
-                        {
-                            "$cond": [
-                                "$_stats_exact",
-                                {"$arrayElemAt": ["$dossier_ids", 0]},
-                                "$_stats_request_id",
-                            ]
-                        },
-                    ]
-                },
             }
         },
         {
             "$facet": {
                 "nonSplitFileSets": [
-                    {"$match": {"_stats_is_split": False}},
+                    {
+                        "$match": {
+                            "_stats_is_split": False,
+                            "$or": [
+                                {"created_at": {"$lt": _STEM_RULE_CUTOFF}},
+                                {"created_at": {"$exists": False}},
+                                {"created_at": None},
+                            ],
+                        }
+                    },
+                    {"$set": {"_stats_file_set": attachment_name_set}},
+                    {"$set": {"_stats_empty_id": empty_id("$_stats_file_set")}},
+                    {
+                        "$group": {
+                            "_id": {
+                                "userId": "$_stats_user_id",
+                                "procedure": "$_stats_procedure",
+                                "fileSet": "$_stats_file_set",
+                                "emptyId": "$_stats_empty_id",
+                            },
+                            "name": {"$first": "$_stats_name"},
+                            "label": {"$first": "$_stats_label"},
+                            "requests": {"$sum": 1},
+                            "estimated": {"$max": {"$cond": ["$_stats_exact", 0, 1]}},
+                        }
+                    },
+                ],
+                "stemNonSplitFileSets": [
+                    {
+                        "$match": {
+                            "_stats_is_split": False,
+                            "created_at": {"$gte": _STEM_RULE_CUTOFF},
+                        }
+                    },
+                    # Mongo chỉ gom theo tập tên đầy đủ. Bỏ đuôi ở Python trên các bucket
+                    # đã rút gọn để tương thích cả MongoDB không có `$regexReplace`.
+                    {"$set": {"_stats_file_set": attachment_name_set}},
+                    {"$set": {"_stats_empty_id": empty_id("$_stats_file_set")}},
                     {
                         "$group": {
                             "_id": {
@@ -448,30 +600,39 @@ def _format_stats_facets(facets: dict) -> dict:
         key = (item["_id"]["userId"], item["_id"]["procedure"])
         bucket_map[key] = dict(item)
 
-    file_sets_by_bucket: dict[tuple[str, str], list[frozenset[str]]] = {}
-    for item in facets.get("nonSplitFileSets", []):
-        uid = item["_id"]["userId"]
-        procedure = item["_id"]["procedure"]
-        key = (uid, procedure)
-        file_set = frozenset(item["_id"].get("fileSet") or [])
-        # Mongo đã gom fileSet trùng nhau. Riêng tập rỗng dùng emptyId để mỗi request cũ
-        # vẫn là một hồ sơ; cùng dossier_id v2 chỉ xuất hiện một lần.
-        file_sets_by_bucket.setdefault(key, []).append(file_set)
-        bucket = bucket_map.setdefault(key, {
-            "_id": {"userId": uid, "procedure": procedure},
-            "name": item.get("name"),
-            "label": item.get("label"),
-            "count": 0,
-            "estimatedCount": 0,
-        })
+    def add_file_set_rows(rows: list[dict], *, strip_suffix: bool = False) -> None:
+        file_sets_by_bucket: dict[tuple[str, str], list[frozenset[str]]] = {}
+        for item in rows:
+            uid = item["_id"]["userId"]
+            procedure = item["_id"]["procedure"]
+            key = (uid, procedure)
+            normalized_names: list[str] = []
+            for value in item["_id"].get("fileSet") or []:
+                name = str(value or "")
+                if strip_suffix:
+                    name = _FILE_SUFFIX_RE.sub("", name)
+                if name:
+                    normalized_names.append(name)
+            file_set = frozenset(normalized_names)
+            file_sets_by_bucket.setdefault(key, []).append(file_set)
+            bucket_map.setdefault(key, {
+                "_id": {"userId": uid, "procedure": procedure},
+                "name": item.get("name"),
+                "label": item.get("label"),
+                "count": 0,
+                "estimatedCount": 0,
+            })
 
-    for key, file_sets in file_sets_by_bucket.items():
-        count = count_distinct_attachment_sets(file_sets)
-        bucket_map[key]["count"] = int(bucket_map[key].get("count") or 0) + count
-        # Tiêu chí tên file là suy luận nghiệp vụ; trường này giữ compatibility API, FE chỉ hiện số.
-        bucket_map[key]["estimatedCount"] = int(
-            bucket_map[key].get("estimatedCount") or 0
-        ) + count
+        for key, file_sets in file_sets_by_bucket.items():
+            count = count_distinct_attachment_sets(file_sets)
+            bucket_map[key]["count"] = int(bucket_map[key].get("count") or 0) + count
+            bucket_map[key]["estimatedCount"] = int(
+                bucket_map[key].get("estimatedCount") or 0
+            ) + count
+
+    # Hai vùng thời gian phải đếm riêng để không gộp hồ sơ xuyên qua mốc migration.
+    add_file_set_rows(facets.get("nonSplitFileSets", []))
+    add_file_set_rows(facets.get("stemNonSplitFileSets", []), strip_suffix=True)
 
     for item in facets.get("splitBuckets", []):
         uid = item["_id"]["userId"]
@@ -574,8 +735,9 @@ async def stats(
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     scope: str = "all",
+    experience: Experience | None = "autofill",
 ) -> dict:
-    """Thống kê theo bộ file như tiêu chí cũ; date_to là mốc loại trừ của khoảng nửa mở."""
+    """Thống kê tên đầy đủ trước mốc, tên bỏ đuôi từ mốc; date_to là mốc loại trừ."""
     db = get_db()
     accounts = [account async for account in db.users.find({}, {"role": 1})]
     roles_by_user, included_user_ids = _stats_account_context(accounts, scope)
@@ -584,6 +746,7 @@ async def stats(
         query["user_id"] = {"$in": included_user_ids}
     if date_to:
         query.setdefault("created_at", {})["$lt"] = date_to
+    query = with_experience(query, experience)
     rows = await db.traces.aggregate(_stats_pipeline(query), allowDiskUse=True).to_list(length=1)
     result = _format_stats_facets(rows[0] if rows else {})
     for ward in result["wards"]:
@@ -593,6 +756,7 @@ async def stats(
     )
     result.update({
         "scope": scope,
+        "source": experience or "all",
         "accountCount": len(included_user_ids),
         "includedRoles": included_roles,
     })
@@ -604,6 +768,7 @@ async def stats_by_user_ids(
     user_ids: list[str],
     date_from: datetime,
     date_to: datetime,
+    experience: Experience = "autofill",
 ) -> dict:
     """Tổng hợp đúng tiêu chí dashboard cho một tập tài khoản xác định.
 
@@ -617,10 +782,191 @@ async def stats_by_user_ids(
         "user_id": {"$in": unique_ids},
         "created_at": {"$gte": date_from, "$lt": date_to},
     }
+    query = with_experience(query, experience)
     rows = await get_db().traces.aggregate(
         _stats_pipeline(query), allowDiskUse=True
     ).to_list(length=1)
     return _format_stats_facets(rows[0] if rows else {})
+
+
+def _daily_stats_pipeline(query: dict) -> list[dict]:
+    """Giữ nguyên rule gom hồ sơ hiện tại nhưng lấy ngày phát sinh đầu tiên.
+
+    Tái sử dụng chính các stage chuẩn hóa của dashboard để hai báo cáo không trôi
+    tiêu chí theo thời gian. Facet theo ngày bỏ phần request/tài liệu không cần thiết,
+    nên Mongo chỉ trả các tập file và dossier_id đã rút gọn.
+    """
+    base = _stats_pipeline(query)
+    source_facets = base[-1]["$facet"]
+
+    legacy = copy.deepcopy(source_facets["nonSplitFileSets"])
+    legacy[-1]["$group"]["firstAt"] = {"$min": "$created_at"}
+
+    stem = copy.deepcopy(source_facets["stemNonSplitFileSets"])
+    stem[-1]["$group"]["firstAt"] = {"$min": "$created_at"}
+
+    # Stage group đầu tiên đã khử trùng theo từng dossier_id; không gộp tiếp theo
+    # user/procedure vì cần giữ ngày đầu của từng hồ sơ tách.
+    split = copy.deepcopy(source_facets["splitBuckets"][:3])
+    split[-1]["$group"]["firstAt"] = {"$min": "$created_at"}
+
+    return [*base[:-1], {"$facet": {
+        "nonSplitFileSets": legacy,
+        "stemNonSplitFileSets": stem,
+        "splitDossiers": split,
+    }}]
+
+
+def _format_daily_dossier_counts(facets: dict) -> list[dict]:
+    counts: dict[tuple[str, str], int] = {}
+
+    def add(user_id: str, created_at: datetime | None) -> None:
+        if not isinstance(created_at, datetime):
+            return
+        # PyMongo có thể trả datetime UTC dạng naive tùy cấu hình codec.
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        date_key = created_at.astimezone(VIETNAM_TZ).strftime("%Y-%m-%d")
+        key = (str(user_id or "—"), date_key)
+        counts[key] = counts.get(key, 0) + 1
+
+    def add_file_set_rows(rows: list[dict], *, strip_suffix: bool) -> None:
+        by_bucket: dict[tuple[str, str], list[tuple[frozenset[str], datetime | None]]] = {}
+        for item in rows:
+            item_id = item.get("_id") or {}
+            names: list[str] = []
+            for value in item_id.get("fileSet") or []:
+                name = str(value or "")
+                if strip_suffix:
+                    name = _FILE_SUFFIX_RE.sub("", name)
+                if name:
+                    names.append(name)
+            by_bucket.setdefault(
+                (str(item_id.get("userId") or "—"), str(item_id.get("procedure") or "—")),
+                [],
+            ).append((frozenset(names), item.get("firstAt")))
+
+        for (user_id, _procedure), occurrences in by_bucket.items():
+            non_empty: dict[frozenset[str], datetime | None] = {}
+            for file_set, first_at in occurrences:
+                if not file_set:
+                    add(user_id, first_at)
+                    continue
+                previous = non_empty.get(file_set)
+                if previous is None or (isinstance(first_at, datetime) and first_at < previous):
+                    non_empty[file_set] = first_at
+
+            file_sets = list(non_empty)
+            parent = list(range(len(file_sets)))
+
+            def find(index: int) -> int:
+                while parent[index] != index:
+                    parent[index] = parent[parent[index]]
+                    index = parent[index]
+                return index
+
+            for left_index, left in enumerate(file_sets):
+                for right_index in range(left_index + 1, len(file_sets)):
+                    right = file_sets[right_index]
+                    if left <= right or right <= left:
+                        parent[find(left_index)] = find(right_index)
+
+            earliest: dict[int, datetime | None] = {}
+            for index, file_set in enumerate(file_sets):
+                root = find(index)
+                first_at = non_empty[file_set]
+                previous = earliest.get(root)
+                if previous is None or (isinstance(first_at, datetime) and first_at < previous):
+                    earliest[root] = first_at
+            for first_at in earliest.values():
+                add(user_id, first_at)
+
+    add_file_set_rows(facets.get("nonSplitFileSets", []), strip_suffix=False)
+    add_file_set_rows(facets.get("stemNonSplitFileSets", []), strip_suffix=True)
+    for item in facets.get("splitDossiers", []):
+        add((item.get("_id") or {}).get("userId"), item.get("firstAt"))
+
+    return [
+        {"userId": user_id, "date": day, "count": count}
+        for (user_id, day), count in sorted(counts.items())
+    ]
+
+
+async def daily_dossier_counts_by_user_ids(
+    *,
+    user_ids: list[str],
+    date_from: datetime,
+    date_to: datetime,
+    experience: Experience = "autofill",
+) -> list[dict]:
+    """Đếm hồ sơ theo ngày đầu phát sinh, không đếm thô từng trace."""
+    unique_ids = list(dict.fromkeys(str(value) for value in user_ids if value))
+    if not unique_ids:
+        return []
+    query = {
+        "user_id": {"$in": unique_ids},
+        "created_at": {"$gte": date_from, "$lt": date_to},
+    }
+    query = with_experience(query, experience)
+    rows = await get_db().traces.aggregate(
+        _daily_stats_pipeline(query), allowDiskUse=True
+    ).to_list(length=1)
+    return _format_daily_dossier_counts(rows[0] if rows else {})
+
+
+async def list_dossier_log(
+    *,
+    user_ids: list[str],
+    date_from: datetime,
+    date_to: datetime,
+    procedure: str | None = None,
+    skip: int = 0,
+    limit: int = 20,
+    experience: Experience = "autofill",
+) -> dict:
+    """Nhật ký hồ sơ cho bảng thống kê: mỗi trace = 1 dòng, KHÔNG PII (không tên/ocr/file).
+
+    Khác list_traces (admin, kèm PII): chỉ trả metadata tối thiểu và khóa theo tập user_id của
+    phạm vi. Mỗi lượt làm việc với Trợ lý (điền/đính kèm) là một dòng.
+    """
+    unique_ids = list(dict.fromkeys(str(value) for value in user_ids if value))
+    if not unique_ids:
+        return {"items": [], "total": 0}
+    query: dict = {
+        "user_id": {"$in": unique_ids},
+        "created_at": {"$gte": date_from, "$lt": date_to},
+    }
+    if procedure:
+        query["procedure"] = procedure
+    query = with_experience(query, experience)
+    db = get_db()
+    total = await db.traces.count_documents(query)
+    projection = {
+        "_id": 0, "request_id": 1, "user_id": 1, "procedure": 1,
+        "procedure_label": 1, "kind": 1, "created_at": 1,
+    }
+    # Trần cao để xuất Excel lấy được nhiều dòng; route /logs vẫn tự giới hạn pageSize <= 100.
+    capped = max(min(limit, 100000), 1)
+    cursor = (
+        db.traces.find(query, projection)
+        .sort("created_at", -1)
+        .skip(max(skip, 0))
+        .limit(capped)
+    )
+    items = []
+    for doc in await cursor.to_list(length=capped):
+        created = doc.get("created_at")
+        if isinstance(created, datetime) and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        items.append({
+            "requestId": doc.get("request_id"),
+            "userId": str(doc.get("user_id") or ""),
+            "procedure": doc.get("procedure"),
+            "procedureLabel": doc.get("procedure_label"),
+            "kind": doc.get("kind") or "autofill",
+            "createdAt": created.isoformat() if isinstance(created, datetime) else None,
+        })
+    return {"items": items, "total": total}
 
 
 async def daily_counts_by_user_ids(
@@ -628,6 +974,7 @@ async def daily_counts_by_user_ids(
     user_ids: list[str],
     date_from: datetime,
     date_to: datetime,
+    experience: Experience = "autofill",
 ) -> list[dict]:
     """Số LƯỢT xử lý (mỗi trace = 1 lượt /process) theo ngày cho một tập tài khoản.
 
@@ -638,8 +985,12 @@ async def daily_counts_by_user_ids(
     unique_ids = list(dict.fromkeys(str(value) for value in user_ids if value))
     if not unique_ids:
         return []
+    query = with_experience({
+        "user_id": {"$in": unique_ids},
+        "created_at": {"$gte": date_from, "$lt": date_to},
+    }, experience)
     pipeline = [
-        {"$match": {"user_id": {"$in": unique_ids}, "created_at": {"$gte": date_from, "$lt": date_to}}},
+        {"$match": query},
         {"$group": {
             "_id": {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at", "timezone": "+07:00"}},
             "count": {"$sum": 1},

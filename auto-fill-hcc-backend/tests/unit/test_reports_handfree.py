@@ -1,14 +1,9 @@
 import io
-import hashlib
-import hmac
-import json
 
-import httpx
 import pytest
 from openpyxl import load_workbook
 
-from app.config import settings
-from app.reports.excel import build_excel
+from app.reports.excel import build_daily_excel, build_excel
 from app.reports import handfree_client
 from app.reports.integration import unit_key
 from app.reports.schemas import ExcelExportRequest
@@ -97,26 +92,22 @@ def test_combined_excel_keeps_auto_account_without_handfree_unit():
 
 
 @pytest.mark.asyncio
-async def test_handfree_client_sends_canonical_units_and_hmac(monkeypatch):
+async def test_handfree_report_reads_shared_db_with_exact_experience(monkeypatch):
     captured = {}
 
-    class FakeClient:
-        def __init__(self, *, timeout):
-            captured["timeout"] = timeout
+    async def fake_stats(*, user_ids, date_from, date_to, experience):
+        captured.update({
+            "user_ids": user_ids,
+            "date_from": date_from,
+            "date_to": date_to,
+            "experience": experience,
+        })
+        return {"wards": [{
+            "userId": "auto-1",
+            "procedures": [{"key": "ket-hon", "count": 3}],
+        }]}
 
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            return None
-
-        async def post(self, url, *, content, headers):
-            captured.update({"url": url, "content": content, "headers": headers})
-            return httpx.Response(200, json={"source": "handfree", "units": []})
-
-    monkeypatch.setattr(settings, "handfree_report_base_url", "https://handfree.example/")
-    monkeypatch.setattr(settings, "handfree_report_service_secret", "shared-secret")
-    monkeypatch.setattr(handfree_client.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(handfree_client.traces_repo, "stats_by_user_ids", fake_stats)
     body = ExcelExportRequest(
         dateFrom="2026-08-18",
         dateTo="2026-08-18",
@@ -140,30 +131,22 @@ async def test_handfree_client_sends_canonical_units_and_hmac(monkeypatch):
         },
     ], body)
 
-    payload = json.loads(captured["content"])
-    assert result == {"source": "handfree", "units": []}
-    assert captured["url"] == "https://handfree.example/internal/v1/reports/stats"
-    assert payload["units"] == [{
-        "unitKey": "tinh ninh binh::xa nghia hung",
-        "province": "Tỉnh Ninh Bình",
-        "ward": "Xã Nghĩa Hưng",
-    }]
-    assert "officialOnly" not in payload
-    timestamp = captured["headers"]["X-Report-Timestamp"]
-    expected = hmac.new(
-        b"shared-secret",
-        timestamp.encode() + b"." + captured["content"],
-        hashlib.sha256,
-    ).hexdigest()
-    assert captured["headers"]["X-Report-Signature"] == expected
+    assert captured["user_ids"] == ["auto-1"]
+    assert captured["experience"] == "handfree"
+    assert captured["date_from"].isoformat() == "2026-08-17T17:00:00+00:00"
+    assert captured["date_to"].isoformat() == "2026-08-18T17:00:00+00:00"
+    assert result["source"] == "handfree"
+    assert result["units"][0]["unitKey"] == "tinh ninh binh::xa nghia hung"
+    assert result["units"][0]["matchedAccountCount"] == 1
+    assert result["units"][0]["procedures"][0]["count"] == 3
 
 
 @pytest.mark.asyncio
-async def test_handfree_client_does_not_call_remote_when_no_joinable_unit(monkeypatch):
+async def test_handfree_report_does_not_query_when_no_joinable_unit(monkeypatch):
     async def fail_if_called(*args, **kwargs):
         raise AssertionError("Không được gọi Handfree khi không có đơn vị đủ khóa ghép")
 
-    monkeypatch.setattr(handfree_client, "_post_handfree", fail_if_called)
+    monkeypatch.setattr(handfree_client.traces_repo, "stats_by_user_ids", fail_if_called)
     body = ExcelExportRequest(
         dateFrom="2026-08-18",
         dateTo="2026-08-18",
@@ -180,3 +163,80 @@ async def test_handfree_client_does_not_call_remote_when_no_joinable_unit(monkey
     }], body)
 
     assert result == {"source": "handfree", "units": []}
+
+
+@pytest.mark.asyncio
+async def test_handfree_daily_report_uses_one_local_aggregation(monkeypatch):
+    calls: list[dict] = []
+
+    async def fake_daily(**kwargs):
+        calls.append(kwargs)
+        return [
+            {"userId": "auto-1", "date": "2026-08-18", "count": 5},
+            {"userId": "auto-1", "date": "2026-08-19", "count": 7},
+        ]
+
+    monkeypatch.setattr(
+        handfree_client.traces_repo,
+        "daily_dossier_counts_by_user_ids",
+        fake_daily,
+    )
+    body = ExcelExportRequest(
+        dateFrom="2026-08-18",
+        dateTo="2026-08-19",
+        selectionMode="accounts",
+        accountIds=["auto-1"],
+        reportLayout="daily_summary",
+        includeHandfree=True,
+    )
+
+    result = await handfree_client.fetch_handfree_daily_stats([{
+        "_id": "auto-1",
+        "username": "hccpbacgiang",
+        "xa": "Phường Bắc Giang",
+        "tinh": "Tỉnh Bắc Ninh",
+    }], body)
+
+    assert len(calls) == 1
+    assert calls[0]["user_ids"] == ["auto-1"]
+    assert calls[0]["experience"] == "handfree"
+    assert result["units"][0]["dailyCounts"] == [
+        {"date": "2026-08-18", "count": 5},
+        {"date": "2026-08-19", "count": 7},
+    ]
+
+
+def test_daily_excel_sums_auto_fill_and_handfree_by_unit_and_day():
+    date_from, date_to = parse_stats_range("2026-08-18", "2026-08-19")
+    key = unit_key("Tỉnh Bắc Ninh", "Phường Bắc Giang")
+    content = build_daily_excel(
+        accounts=[{
+            "_id": "auto-1",
+            "username": "hccpbacgiang",
+            "name": "Phường Bắc Giang",
+            "xa": "Phường Bắc Giang",
+            "tinh": "Tỉnh Bắc Ninh",
+            "role": "commune",
+        }],
+        daily_counts=[
+            {"userId": "auto-1", "date": "2026-08-18", "count": 58},
+            {"userId": "auto-1", "date": "2026-08-19", "count": 51},
+        ],
+        handfree_daily_stats={
+            "source": "handfree",
+            "units": [{
+                "unitKey": key,
+                "dailyCounts": [
+                    {"date": "2026-08-18", "count": 4},
+                    {"date": "2026-08-19", "count": 6},
+                ],
+            }],
+        },
+        date_from=date_from,
+        date_to=date_to,
+    )
+    sheet = load_workbook(io.BytesIO(content)).active
+
+    assert [sheet.cell(row=5, column=column).value for column in range(1, 6)] == [
+        1, "Phường Bắc Giang", 62, 57, 119,
+    ]
