@@ -1,13 +1,9 @@
-// ⚠ ĐANG TRỎ LOCALHOST ĐỂ THỬ CODE — trước khi build/phát hành phải đổi lại:
-//   BACKEND_URL          = "https://trolyhoso-hcc-admin.tiengnoi.vn"
-//   BACKEND_URL_FALLBACK = "https://trolyhoso-hcc-admin.vnekyc.vn"
-//   manifest.json host_permissions = ["https://trolyhoso-hcc-admin.vnekyc.vn/*"]
-const BACKEND_URL = "http://localhost:12005";    // Backend CHÍNH (local dev — cổng docker compose, PORT trong .env)
+const BACKEND_URL = "https://trolyhoso-hcc-admin.tiengnoi.vn";     // Backend CHÍNH
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản,
 // nếu không khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
 
-const BACKEND_URL_FALLBACK = "";  // tắt failover khi chạy local
+const BACKEND_URL_FALLBACK = "https://trolyhoso-hcc-admin.vnekyc.vn";
 // Timeout mỗi request. PHẢI đủ dài cho request nặng (OCR+LLM có thể ~25s+, nhiều file lâu hơn) —
 // đặt ngắn sẽ abort NHẦM khi server vẫn đang xử lý → báo "không kết nối" oan. Chỉ dùng để cắt
 // server TREO thật (không phản hồi trong 100s) rồi mới chuyển sang phụ.

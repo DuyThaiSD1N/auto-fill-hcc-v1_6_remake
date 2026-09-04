@@ -117,7 +117,13 @@ const api = {
   // Tải 1 file của phiên về dataURL, STREAM theo chunk qua Port (fetch vẫn ở background vì
   // CORS/mixed-content). Gửi 1 message cả cục sẽ hụt với file lớn (PDF 65MB → base64 ~87MB >
   // trần ~64MB) → đây là lý do extension "không nhận được". null nếu lỗi.
-  fetchUploadFileDataUrl(sid, fid) {
+  async fetchUploadFileDataUrl(sid, fid) {
+    // GET /files/{fid} yêu cầu Bearer của tài khoản sở hữu phiên (require_upload_session_access).
+    // Background fetch KHÔNG tự có token → phải truyền Authorization qua Port, nếu không sẽ 401
+    // → file rớt âm thầm ("gửi được mà extension không nhận"). Token hết hạn thì lượt poll sau
+    // (getUploadSession qua apiCall) tự refresh rồi lần kéo kế lấy token mới.
+    const tokens = await AuthStore.getTokens();
+    const headers = tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {};
     return new Promise((resolve) => {
       const url = `${BACKEND_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(fid)}`;
       let port;
@@ -135,7 +141,7 @@ const api = {
       });
       // SW bị kill giữa chừng / lỗi kênh → coi như thất bại (pull lại lượt sau).
       port.onDisconnect.addListener(() => finish(null));
-      try { port.postMessage({ url }); }
+      try { port.postMessage({ url, headers }); }
       catch (_) { finish(null); }
     });
   },

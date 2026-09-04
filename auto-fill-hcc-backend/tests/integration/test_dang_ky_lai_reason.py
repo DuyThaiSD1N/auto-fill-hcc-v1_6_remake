@@ -260,6 +260,40 @@ def test_same_person_cannot_be_both_child_and_father():
     assert [field["name"] for field in result] == ["Subject_FullName"]
 
 
+def test_ocr_mangled_declaration_id_does_not_wipe_the_subject_block():
+    """Số định danh trong khối phân vai đọc từ tờ khai viết tay hay bị OCR làm rụng/thừa chữ số.
+
+    Field trích xuất lấy số từ CCCD nên lệch với số đó. Trước đây cả khối <con> bị xoá vì lệch
+    số, làm mục "Thông tin người được đăng ký lại khai sinh" trống trơn dù họ tên khớp.
+    """
+    context = _raw_roles(child_id="027195012144")
+    fields = [
+        {"name": "Subject_FullName", "value": "MAN THỊ HUẾ"},
+        {"name": "Subject_IdNumber", "value": "027195012414"},
+        {"name": "Subject_BirthDate", "value": "18/11/1995"},
+        {"name": "Subject_Gender", "value": "Nữ"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+
+    assert {field["name"] for field in result} == {field["name"] for field in fields}
+
+
+def test_subject_id_belonging_to_another_role_still_wipes_the_subject_block():
+    """Nới lỏng ở trên không được mở đường cho việc bê nhân thân của vai khác sang <con>."""
+    context = _raw_roles()
+    fields = [
+        {"name": "Subject_FullName", "value": "MAN THỊ HUẾ"},
+        {"name": "Subject_IdNumber", "value": "027176001591"},  # số của MẸ
+        {"name": "Mother_FullName", "value": "NGUYỄN THỊ HOÀ"},
+        {"name": "Mother_IdNumber", "value": "027176001591"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+
+    assert {field["name"] for field in result} == {"Mother_FullName", "Mother_IdNumber"}
+
+
 def test_requester_mismatch_does_not_destroy_family_roles():
     context = reason._render_context(
         _raw_roles(requester="NGƯỜI KHÁC", requester_id="012345678901"),

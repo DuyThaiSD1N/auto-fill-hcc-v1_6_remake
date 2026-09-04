@@ -56,6 +56,20 @@ def _area(value):
     return remap_area(out)
 
 
+def _previous_registration_area(values: dict) -> dict | None:
+    """Nơi đăng ký kết hôn trước đây → đơn vị hành chính HIỆN HÀNH (dropdown của cổng).
+
+    Giữ tiền tố loại đơn vị ("Xã/Phường/Thị trấn") vì option trên cổng có tiền tố.
+    Không tra được đơn vị mới thì remap_area trả xã rỗng — chỉ điền tỉnh, để cán bộ tự chọn
+    đơn vị còn hơn chọn nhầm một xã đã giải thể.
+    """
+    tinh = str(values.get("KetHonCu_TinhDangKy") or "").strip()
+    xa = str(values.get("KetHonCu_XaDangKy") or "").strip()
+    if not tinh and not xa:
+        return None
+    return remap_area({"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": ""})
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Suy field UI tất định từ compact facts."""
     values = _by_name(fields)
@@ -107,8 +121,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("quyenDangKyTruocDay", values.get("KetHonCu_QuyenSo"))
     add("ngayDangKyTruocDay", values.get("KetHonCu_NgayDangKy"))
     # Cascading: chọn TỈNH (filter) trước để dropdown đơn vị load, rồi mới chọn đơn vị.
-    add("noiDangKyTruocDay_filter", values.get("KetHonCu_TinhDangKy"))
-    add("noiDangKyTruocDay", values.get("KetHonCu_XaDangKy"))
+    # Cơ quan đăng ký cũ thường ghi theo đơn vị TRƯỚC SÁP NHẬP ("xã Đoan Bái, tỉnh Bắc Giang"),
+    # trong khi dropdown của cổng chỉ liệt kê đơn vị HIỆN HÀNH → phải remap trước, nếu không
+    # cả hai ô đều không khớp option nào và bị bỏ trống.
+    noi_dang_ky_cu = _previous_registration_area(values)
+    if noi_dang_ky_cu:
+        add("noiDangKyTruocDay_filter", noi_dang_ky_cu.get("tinh"))
+        add("noiDangKyTruocDay", noi_dang_ky_cu.get("xa"))
 
     # Đề nghị cấp bản sao: mặc định Có, số lượng 1 bản (bôi vàng).
     add("CapBanSao", "Có", default=True)

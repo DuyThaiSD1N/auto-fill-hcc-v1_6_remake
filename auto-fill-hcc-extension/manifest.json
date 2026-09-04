@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý hỗ trợ người dân hoàn thiện thủ tục hành chính",
-  "version": "1.14",
+  "version": "1.15",
   "description": "Hỗ trợ người dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -11,8 +11,7 @@
     "scripting"
   ],
   "host_permissions": [
-    "http://localhost:12005/*",
-    "http://localhost:8000/*",
+    "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
   "icons": {
@@ -58,7 +57,8 @@
         "https://dichvucongnnmt.mae.gov.vn/*",
         "https://dichvucong.danang.gov.vn/*",
         "https://dvc.moet.gov.vn/*",
-        "https://dichvucong.quangninh.gov.vn/*"
+        "https://dichvucong.quangninh.gov.vn/*",
+        "https://dichvucong.ninhbinh.gov.vn/*"
       ],
       "all_frames": true,
       "js": [
@@ -137,7 +137,8 @@
         "https://dichvucongnnmt.mae.gov.vn/*",
         "https://dichvucong.danang.gov.vn/*",
         "https://dvc.moet.gov.vn/*",
-        "https://dichvucong.quangninh.gov.vn/*"
+        "https://dichvucong.quangninh.gov.vn/*",
+        "https://dichvucong.ninhbinh.gov.vn/*"
       ]
     }
   ]

@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.15",
+    date: "1/9/2026",
+    items: [
+      "Cập nhật kết nối máy chủ mới, giúp trợ lý hoạt động ổn định và liên tục.",
+      "Hỗ trợ thêm nhiều thủ tục đất đai của thành phố Đà Nẵng: giao đất/cho thuê đất, chuyển mục đích sử dụng đất, tách/hợp thửa đất.",
+      "Hỗ trợ thủ tục đăng ký đất đai và cấp Giấy chứng nhận quyền sử dụng đất lần đầu.",
+      "Hỗ trợ thủ tục cấp đổi Giấy chứng nhận và xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất.",
+      "Nhận diện thủ tục chính xác và ổn định hơn theo tên hiển thị trên cổng dịch vụ công (ít bị nhận nhầm hơn).",
+    ],
+  },
+  {
     version: "1.14",
     date: "23/8/2026",
     items: [

@@ -2066,19 +2066,28 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     return await attachSplitAcrossTabs(sendFiles, attachments, cfg.key, planRes);
   }
 
+  // Hotfix Hải Châu (Đà Nẵng) — merge 1 tab: chèn 1 file ẢO vào STT1 (BE đã đẩy giấy tờ thật xuống dòng
+  // "Thêm thành phần"). Directive `stt1VirtualCopy` chỉ có với tài khoản Hải Châu → account khác không đổi.
+  let sendAttachments = attachments;
+  if (planRes.stt1VirtualCopy) {
+    const src = attachments.find((a) => a && Number.isInteger(a.fileIndex) && sendFiles[a.fileIndex]) || attachments[0];
+    const virtual = buildStt1VirtualItem(planRes.stt1VirtualCopy, src, sendFiles);
+    if (virtual) sendAttachments = [virtual, ...attachments];
+  }
+
   setStatus("Đang đính kèm file vào hồ sơ...", "info");
   // File lớn (hợp đồng vài chục MB) → tổng payload base64 vượt giới hạn 64MiB của tabs.sendMessage.
   // Chuyển file qua chrome.storage.local (permission unlimitedStorage — KHÔNG dính giới hạn message),
   // chỉ gửi KEY kèm kế hoạch; content.js đọc lại rồi xoá key.
   const attachMode = attachSplitMode && isSplitEligibleProcedure() ? "split" : "merge";
   const approxBytes = sendFiles.reduce((s, f) => s + String(f?.dataUrl || "").length, 0);
-  let attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, files: sendFiles, attachments, mode: attachMode };
+  let attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, files: sendFiles, attachments: sendAttachments, mode: attachMode };
   let attachFilesKey = "";
   if (approxBytes > 45 * 1024 * 1024) {
     attachFilesKey = "__af_attach_files_" + Date.now();
     try {
       await chrome.storage.local.set({ [attachFilesKey]: { files: sendFiles } });
-      attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, attachments, mode: attachMode, filesStorageKey: attachFilesKey };
+      attachMsg = { action: "attachFilesByPlan", procedure: cfg.key, attachments: sendAttachments, mode: attachMode, filesStorageKey: attachFilesKey };
     } catch (e) {
       attachFilesKey = ""; // ghi storage lỗi → gửi trực tiếp (có thể vẫn vượt nhưng còn cơ hội)
     }
@@ -2314,11 +2323,41 @@ async function buildSignatureSplitBundles(payloadFiles, attachments) {
   };
 }
 
-function buildDefaultSplitBundles(payloadFiles, attachments) {
-  return payloadFiles.map((file, index) => ({
-    files: [file],
-    planItems: [planItemForFile(attachments, index, file, 0)],
-  }));
+// Hotfix Hải Châu (Đà Nẵng) — Chứng thực bản sao: BE ra directive `stt1VirtualCopy` và đã đẩy HẾT giấy tờ
+// thật xuống dòng "Thêm thành phần" (target=new). Ô cố định STT1 cần 1 file ẢO = COPY (DÙNG LẠI byte, đổi
+// tên) của 1 file thật. Trả về plan item ảo (cờ `virtualCopy`) trỏ tới ĐÚNG fileIndex của file nguồn nên
+// KHÔNG tốn payload. No-op (null) cho mọi tài khoản/thủ tục khác (directive không có).
+function buildStt1VirtualItem(directive, source, files) {
+  if (!directive || !source) return null;
+  const idx = Number.isInteger(source.fileIndex) ? source.fileIndex : -1;
+  if (idx < 0 || !Array.isArray(files) || !files[idx]) return null;
+  const srcName = files[idx]?.name || source.documentName || "tai-lieu";
+  return {
+    ...source,
+    virtualCopy: true,
+    target: "existing",
+    componentIndex: directive.componentIndex || 1,
+    componentName: directive.componentName || source.componentName || "",
+    needsAddComponent: false,
+    appendOnOccupied: false,
+    documentName: directive.documentName || srcName,
+    fileIndex: idx,
+    sourceFileIndexes: [idx],
+    fileName: srcName,
+  };
+}
+
+function buildDefaultSplitBundles(payloadFiles, attachments, stt1Virtual = null) {
+  return payloadFiles.map((file, index) => {
+    const real = planItemForFile(attachments, index, file, 0);
+    const planItems = [real];
+    // Hải Châu: mỗi tab thêm 1 file ẢO vào STT1 = copy chính file của tab (real.fileIndex = 0 trong bundle).
+    if (stt1Virtual) {
+      const virtual = buildStt1VirtualItem(stt1Virtual, real, [file]);
+      if (virtual) planItems.push(virtual);
+    }
+    return { files: [file], planItems };
+  });
 }
 
 // Tách hồ sơ: bundle[0] → tab hiện tại; bundle[1..] → hàng đợi tuần tự, mỗi lần chỉ 1 tab active.
@@ -2327,7 +2366,7 @@ function buildDefaultSplitBundles(payloadFiles, attachments) {
 async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planRes) {
   const built = procedure === "chung-thuc-chu-ky"
     ? await buildSignatureSplitBundles(payloadFiles, attachments)
-    : { bundles: buildDefaultSplitBundles(payloadFiles, attachments) };
+    : { bundles: buildDefaultSplitBundles(payloadFiles, attachments, planRes?.stt1VirtualCopy) };
   if (built.error) return built;
   const bundles = built.bundles || [];
   if (!bundles.length) return { error: "Không có tài liệu để tách hồ sơ." };
@@ -2719,7 +2758,6 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
       cfg.key === "xac-nhan-tinh-trang-hon-nhan" ||
       cfg.key === "khai-sinh-dang-ky-lai" ||
-      cfg.key === "khai-sinh-da-co-ho-so" ||
       cfg.key === "khai-sinh-ket-hop-nhan-cha-me-con" ||
       cfg.key === "khai-tu" ||
       cfg.key === "khai-tu-dang-ky-lai" ||
@@ -2748,7 +2786,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-phep-long-duong-via-he" ||
       cfg.key === "cap-giay-phep-chat-ha-cay-xanh" ||
       cfg.key === "cap-ban-sao-van-bang-so-goc" ||
-      cfg.key === "chap-thuan-dau-noi-tam"
+      cfg.key === "chap-thuan-dau-noi-tam" ||
+      // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
+      cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;
@@ -3536,23 +3576,6 @@ function selectedKeKhaiLink() {
   return keKhaiLinks().find((item) => item.key === keKhaiSelect.value) || null;
 }
 
-// Địa bàn dùng luồng "CHỈ chọn Tỉnh/Thành phố" ở khối Chọn cơ quan thực hiện — phải khớp
-// PROVINCE_ONLY_FLOW của content/agency-select.js (nơi thực sự thao tác DOM). Sửa một bên là phải
-// sửa cả bên kia, nếu không câu mô tả ở đây sẽ hứa sai việc trợ lý làm.
-const PROVINCE_ONLY_FLOW = ["da nang"];
-
-function isProvinceOnlyFlow(province) {
-  const folded = normalizeProcedureSearch(province);
-  return PROVINCE_ONLY_FLOW.some((name) => folded.includes(name));
-}
-
-/** Điểm đến trợ lý sẽ chọn hộ: luồng chỉ chọn tỉnh thì KHÔNG nhắc phường/xã cho khỏi hứa sai. */
-function keKhaiDestLabel() {
-  return isProvinceOnlyFlow(currentLocation.province)
-    ? currentLocation.province
-    : `${currentLocation.ward}, ${currentLocation.province}`;
-}
-
 function updateKeKhaiUI() {
   const link = selectedKeKhaiLink();
   if (!link) {
@@ -3573,8 +3596,8 @@ function updateKeKhaiUI() {
     keKhaiStatus.className = 'status warn';
   } else if (link.needsAgencySelect) {
     keKhaiStatus.textContent = link.autoConfirm
-      ? `Trợ lý sẽ chọn ${keKhaiDestLabel()}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
-      : `Trợ lý sẽ tự chọn ${keKhaiDestLabel()} và mở biểu mẫu kê khai.`;
+      ? `Trợ lý sẽ chọn ${currentLocation.ward}, ${currentLocation.province}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
+      : `Trợ lý sẽ tự chọn ${currentLocation.ward}, ${currentLocation.province} và mở biểu mẫu kê khai.`;
     keKhaiStatus.className = 'status info';
   } else {
     keKhaiStatus.textContent = 'Sẽ mở tại tab hiện tại: ' + link.url;
@@ -3902,9 +3925,11 @@ async function initDestSection() {
 
 function refreshOcrButtonLabel() {
   if (!ocrBtn) return;
+  // Nhãn nút riêng theo thủ tục (BE cấu hình fillButtonLabel, vd "Điền thông tin tài khoản").
+  const customLabel = selectedProcedureConfig()?.fillButtonLabel;
   ocrBtn.textContent = isBacNinhThreeStepProcedure()
     ? "Nhập đơn đăng ký"
-    : (isAttachMode() ? "Đính kèm vào hồ sơ" : "Quét và nhập dữ liệu");
+    : (isAttachMode() ? "Đính kèm vào hồ sơ" : (customLabel || "Quét và nhập dữ liệu"));
 }
 
 /**

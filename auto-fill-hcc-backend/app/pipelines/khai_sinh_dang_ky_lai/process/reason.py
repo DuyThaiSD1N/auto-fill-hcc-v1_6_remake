@@ -1117,7 +1117,15 @@ def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
     expected_id = _role_id(section)
     actual_id = _digits(fields_by_name.get(_ID_FIELD.get(tag, "")))
     if expected_id and actual_id and not _context_id_is_shared(context, tag, expected_id):
-        return expected_id == actual_id
+        if expected_id == actual_id:
+            return True
+        # Số LỆCH chưa đủ để xoá vai. Số trong khối phân vai thường đọc từ tờ khai viết tay —
+        # thứ OCR hay rụng/thêm chữ số ("086062010934" ↔ "086063010739") — còn số ở field trích
+        # xuất đọc từ CCCD, tức đúng con số ta muốn giữ. Xoá vai vì lệch số là xoá trắng cả khối
+        # của đúng người đó. Chỉ chốt "người khác" khi số trích được đang thuộc về MỘT VAI KHÁC
+        # trong khối phân vai; ngoài ra để họ tên phân xử.
+        if _context_id_is_shared(context, tag, actual_id):
+            return False
 
     # Không có số định danh để đối chiếu thì so tên. Tên trong khối phân vai có thể đọc từ tờ
     # khai viết tay còn field trích xuất đọc từ CCCD, nên phải chấp nhận lệch một tiếng do OCR —

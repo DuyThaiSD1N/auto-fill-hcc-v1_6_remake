@@ -10,6 +10,9 @@
   const H = window.__HCC__ || (window.__HCC__ = {});
 
   const PFX = "_org_bn_hoso_noptructuyen_";
+  // Portlet KHÁC: trang hoàn thiện tài khoản VNeID SSO (/vneidsso) — ô là input/select portlet THƯỜNG
+  // (`_org_bn_taikhoan_sso_vneid_INSTANCE_<rnd>_<key>`), KHÔNG có eform-element/element_ → khớp NAME suffix.
+  const BN_ACCOUNT_MARK = "_taikhoan_sso_vneid_";
 
   // Fold dấu + hạ chữ thường + gộp khoảng trắng (tự chứa, không phụ thuộc helper chưa export).
   const fold = (s) =>
@@ -163,6 +166,8 @@
 
   // ---- Điền đơn ----
   async function fillFormBacNinh(fields) {
+    // Trang hoàn thiện tài khoản VNeID (/vneidsso) dùng portlet khác → engine khớp NAME suffix riêng.
+    if (isBacNinhAccountForm()) return fillAccountBacNinh(fields);
     const list = Array.isArray(fields) ? fields : [];
     if (!list.length) return { error: "Không có trường nào để điền." };
     // Nạp CSS đánh dấu (xanh = đã điền) — engine bacninh cũng cần, nếu không markFilled vô hình.
@@ -218,6 +223,60 @@
       unmatched,
       total: list.length,
     };
+  }
+
+  // ===== [Bắc Ninh] Điền thông tin tài khoản (portlet _taikhoan_sso_vneid_, khớp NAME suffix) =====
+  function isBacNinhAccountForm() {
+    return document.querySelectorAll(`[name*="${BN_ACCOUNT_MARK}"]`).length >= 3;
+  }
+
+  // Khớp ô form tài khoản theo NAME kết thúc bằng `_<key>` (vd hoTen, soCCCD, thuongTrutinhThanhId).
+  // Bỏ ô hidden/file/checkbox/radio (có 1 ô hidden trùng tên soDinhDanh). Suffix là DUY NHẤT —
+  // `_ngayCap` KHÔNG dính `_ngayCapCCCD`, `_thuongTru` KHÔNG dính `_thuongTrutinhThanhId` (endsWith).
+  function findAccountField(key) {
+    const k = String(key || "").trim();
+    if (!k) return null;
+    let nodes;
+    try { nodes = document.querySelectorAll(`[name$="_${k}"]`); }
+    catch { return null; }
+    for (const el of nodes) {
+      if (!(el.getAttribute("name") || "").includes(BN_ACCOUNT_MARK)) continue;
+      const tag = el.tagName.toLowerCase();
+      if (tag === "select") return el;
+      if (tag !== "input" && tag !== "textarea") continue;
+      const type = (el.getAttribute("type") || "text").toLowerCase();
+      if (["hidden", "file", "checkbox", "radio"].includes(type)) continue;
+      return el;
+    }
+    return null;
+  }
+
+  async function fillAccountBacNinh(fields) {
+    const list = Array.isArray(fields) ? fields : [];
+    if (!list.length) return { error: "Không có trường nào để điền." };
+    H.injectAutofillStyles && H.injectAutofillStyles();
+    const filled = [];
+    const unmatched = [];
+    // Điền TUẦN TỰ: Tỉnh trước Xã (BE phát đúng thứ tự) để select2 cascade nạp option con kịp.
+    for (const f of list) {
+      const name = f && f.name;
+      const value = f && f.value;
+      if (!name || value === "" || value == null) continue;
+      const el = findAccountField(name);
+      if (!el) { unmatched.push(name); continue; }
+      if (String(f.comp || "") === "bn-select" || el.tagName.toLowerCase() === "select") {
+        if (await fillSelect2ByTextAsync(el, value)) { H.markFilled && H.markFilled(el); filled.push(name); }
+        else unmatched.push(name);
+        continue;
+      }
+      try {
+        H.setNativeValue(el, coerceForInput(el, value), { typing: true, commit: true });
+        H.markFilled && H.markFilled(el);
+        filled.push(name);
+      } catch { unmatched.push(name); }
+    }
+    console.log("[AutoFill-BN] điền tài khoản:", { filled, unmatched });
+    return { ok: true, method: "bacninh-account", filled: filled.length, unmatched, total: list.length };
   }
 
   async function activateBacNinhTab(tabName) {
@@ -520,7 +579,9 @@
 
   Object.assign(H, {
     isBacNinhForm,
+    isBacNinhAccountForm,
     fillFormBacNinh,
+    fillAccountBacNinh,
     activateBacNinhTab,
     fillAuthorizedPersonBacNinh,
     fillAuthorizedElderlyBacNinh,

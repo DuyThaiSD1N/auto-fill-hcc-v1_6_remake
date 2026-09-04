@@ -37,7 +37,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.15 · 27/8"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.15 · 1/9"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -1299,6 +1299,9 @@
     // Cổng Bắc Ninh (Liferay) có field portlet đặc trưng `_org_bn_hoso_noptructuyen_*` —
     // prefix chỉ cổng này dùng → nhận diện chắc chắn, ưu tiên trước "standard" (cũng có input[name]).
     if (document.querySelectorAll('[name^="_org_bn_hoso_noptructuyen_"]').length >= 3) return "bacninh";
+    // Trang HOÀN THIỆN TÀI KHOẢN VNeID (/vneidsso) — portlet khác (`_taikhoan_sso_vneid_`), cùng engine
+    // fill-bacninh.js (nhánh fillAccountBacNinh khớp NAME suffix). Cùng "bacninh" để dùng chung dispatch.
+    if (document.querySelectorAll('[name*="_taikhoan_sso_vneid_"]').length >= 3) return "bacninh";
     // Cổng Bộ VHTTDL (dichvucong.bvhttdl.gov.vn) — Angular Material bọc trong custom element `liz-*`,
     // DOM strip HẾT formcontrolname → engine riêng fill-liz.js khớp theo (.group-header, mat-label).
     // Nhận diện bằng liz-form-component (prefix riêng cổng này) + không có formcontrolname → không đụng
@@ -1733,8 +1736,10 @@
   }
 
   function safeAttachmentFileName(payload, documentName) {
-    const base = String(documentName || "").trim() || attachmentDocumentName(payload);
     const ext = fileExtension(payload?.name);
+    let base = String(documentName || "").trim() || attachmentDocumentName(payload);
+    // documentName có thể ĐÃ kèm đuôi (vd "…đất.pdf") → bỏ đuôi trùng để KHÔNG thành "…đất.pdf.pdf".
+    if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length);
     return base + ext;
   }
 
@@ -1761,6 +1766,19 @@
       .replace(/\s+/g, " ")
       .trim();
     return (raw || "tai-lieu").slice(0, 50);
+  }
+
+  // Ô "Tên tài liệu" của Ví cá nhân / Danh sách tài liệu điện tử (cổng Đà Nẵng). Thực nghiệm: DẤU CÁCH và
+  // CHỮ TIẾNG VIỆT CÓ DẤU đều được chấp nhận — chỉ DẤU CHẤM (kể cả đuôi ".pdf") mới gây "Tên tài liệu không
+  // hợp lệ". → GIỮ nguyên chữ (kể cả có dấu), số, dấu cách, "_", "-"; chỉ bỏ đuôi file + loại dấu chấm và
+  // ký tự lạ khác. KHÔNG fold dấu, KHÔNG đổi dấu cách thành "_".
+  function walletSafeDocumentName(name) {
+    const s = String(name || "")
+      .replace(/\.[^.\s]+$/, "")               // bỏ đuôi file (.pdf, .jpg…)
+      .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")   // giữ chữ (mọi ngôn ngữ), số, _, -, dấu cách; bỏ dấu chấm & ký tự khác
+      .replace(/\s+/g, " ")
+      .trim();
+    return s.slice(0, 100) || "Tài liệu";
   }
 
   function setFilesOnInput(input, files, options = {}) {
@@ -1835,7 +1853,9 @@
   async function ensureWalletDocumentName(dialog, documentName) {
     const input = await waitFor(() => dialog.querySelector('input[name="documentName"]'), 8000, 100);
     if (!input) return false;
-    const safeName = String(documentName || "").trim() || "Tài liệu chứng thực";
+    // Ô này chỉ nhận [chữ cái, số, _, -] → phải làm sạch (bỏ đuôi file, khoảng trắng, dấu). Fallback cũ
+    // "Tài liệu chứng thực" có dấu cách nên cũng không hợp lệ → dùng walletSafeDocumentName.
+    const safeName = walletSafeDocumentName(documentName);
     setNativeValue(input, safeName, { typing: true, commit: true });
     await sleep(150);
     return true;
@@ -2316,6 +2336,42 @@
     if (!row) throw new Error(`Không thêm được thành phần hồ sơ "${componentName}".`);
     markAttachmentResult(row, true);
     return row;
+  }
+
+  // SPLIT (cổng Đà Nẵng lưu danh sách "thành phần hồ sơ" theo mẫu per tài khoản/thủ tục): hồ sơ/tab SAU bị
+  // DÍNH các dòng "Thêm thành phần" đã thêm ở tab TRƯỚC (thường RỖNG). Xóa hết dòng ĐÃ THÊM (dòng có nút
+  // trash `img[alt="delete"]`) — dòng CỐ ĐỊNH (STT1 "Bản chính giấy tờ…") KHÔNG có nút xóa nên được giữ.
+  async function clearAddedAttachmentRows() {
+    let removed = 0;
+    for (let guard = 0; guard < 20; guard++) {
+      const rows = findAttachmentRows();
+      const deletable = rows.find((row) =>
+        Array.from(row.querySelectorAll('img[alt="delete"]')).some((img) => isVisible(img.closest("button") || img))
+      );
+      if (!deletable) break;
+      const btn = Array.from(deletable.querySelectorAll('img[alt="delete"]'))
+        .map((img) => img.closest("button"))
+        .find((b) => b && isVisible(b));
+      if (!btn) break;
+      const before = findAttachmentRows().length;
+      btn.click();
+      // Cổng hiện HỘP XÁC NHẬN role="alertdialog" ("Bạn có muốn xóa tệp đính kèm" / nút "Xác nhận") — role
+      // KHÁC "dialog" nên findLatestDialog không bắt được. Đợi alertdialog rồi bấm "Xác nhận".
+      const confirmDlg = await waitFor(() =>
+        Array.from(document.querySelectorAll('[role="alertdialog"], [role="dialog"]'))
+          .filter(isVisible)
+          .find((d) => foldedNodeText(d).includes("xoa")) || null,
+        2000, 100
+      );
+      if (confirmDlg) {
+        const yes = findButtonByText(confirmDlg, ["Xác nhận", "Đồng ý", "Xóa", "Có"]);
+        if (yes) { yes.click(); await sleep(300); }
+      }
+      const shrank = await waitFor(() => findAttachmentRows().length < before, 2500, 100);
+      if (!shrank) break; // không xóa được → dừng, tránh lặp vô hạn
+      removed++;
+    }
+    return removed;
   }
 
   async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
@@ -3063,6 +3119,13 @@
         item.target !== "add-document-dialog" &&
         (item.target === "new" || item.needsAddComponent === true)
       );
+
+      // SPLIT + có dòng phải "Thêm thành phần" (flow file ảo Hải Châu): dọn các dòng đã thêm còn DÍNH từ
+      // tab/hồ sơ trước để mỗi hồ sơ chỉ giữ đúng dòng của nó. No-op ở cổng không có nút xóa dạng này.
+      if (splitMode && genericNewItems.length) {
+        try { await clearAddedAttachmentRows(); } catch (e) { console.warn("[AutoFill-Attach] clear leftover rows:", e); }
+      }
+
       if (attpItems.length && !addDocumentItems.length && !genericNewItems.length) {
         return await attachFilesByAttpRow(payloadFiles, attpItems);
       }
@@ -3209,8 +3272,10 @@
         }
       }
 
-      const plannedAttachments = splitMode
-        ? normalItems.map(forceRow1PlanItem)   // split: mọi file ép về STT1
+      // Hải Châu (Đà Nẵng): bundle split có file ẢO (virtualCopy) → GIỮ nguyên kế hoạch BE (giấy tờ thật
+      // target=new, file ảo target=STT1), KHÔNG ép mọi file về STT1. Split thường vẫn ép hết về STT1.
+      const plannedAttachments = (splitMode && !normalItems.some((it) => it && it.virtualCopy))
+        ? normalItems.map(forceRow1PlanItem)   // split thường: mọi file ép về STT1
         : normalizeAttachmentPlan(normalItems, procedure);
 
       for (let i = 0; i < plannedAttachments.length; i++) {
@@ -3692,6 +3757,19 @@
     return el ? String(el.getAttribute(attrName) || "").trim() : "";
   }
 
+  // [Bắc Ninh] Trang tài khoản VNeID (/vneidsso): đọc ô prefill theo NAME suffix trong portlet
+  // `_taikhoan_sso_vneid_` (bỏ hidden). Mốc để BE chọn ĐÚNG người trong giấy tờ upload.
+  function readBacNinhAccountValue(key) {
+    const nodes = document.querySelectorAll(`[name$="_${key}"]`);
+    for (const el of nodes) {
+      if (!(el.getAttribute("name") || "").includes("_taikhoan_sso_vneid_")) continue;
+      if ((el.getAttribute("type") || "").toLowerCase() === "hidden") continue;
+      const val = (el.value || "").trim();
+      if (val) return val;
+    }
+    return "";
+  }
+
   function collectFormContext() {
     const checkbox = document.querySelector('input[type="checkbox"][name="data[isOwnerDossierCheck]"]');
     const combinedVariant = detectCombinedBirthFormVariant();
@@ -3700,11 +3778,13 @@
         readInputLikeValue("data[fullname]") ||
         readNgReflectValue("ng-reflect-fullname") ||
         // Form eform (vd Xác nhận TTHN, Khai tử): người yêu cầu cổng điền sẵn ở HoVaTenC.
-        readInputLikeValue(["HoVaTenC", "NYC_HoVaTen"]),
+        readInputLikeValue(["HoVaTenC", "NYC_HoVaTen"]) ||
+        readBacNinhAccountValue("hoTen"),
       applicantIdentityNumber:
         readInputLikeValue("data[identityNumber]") ||
         readNgReflectValue("ng-reflect-identity-number") ||
-        readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]),
+        readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]) ||
+        readBacNinhAccountValue("soDinhDanh"),
       ownerFullname: readInputLikeValue("data[ownerFullname]"),
       ownerIdentityNumber: readInputLikeValue("data[ownerIdentityNumber]"),
       ownerDossierChecked: !!checkbox?.checked,
