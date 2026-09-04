@@ -864,10 +864,36 @@ input, select, textarea { font-family: inherit; }
 .cs-legal-clause{ margin:12px 0 6px; color:#193f49; font-weight:800; font-size:12.5px; }
 .cs-legal-point{ margin:5px 0; padding-left:16px; text-indent:-16px; font-size:12px; line-height:1.55; color:#33454f; }
 
-/* ===== Đi đến thủ tục: khối tự hiện/ẩn theo trang, chỉ còn 1 nút mở trang ===== */
+/* ===== Đi đến thủ tục: khối tự hiện/ẩn theo trang + mở tay bằng "Chuyển thủ tục khác" ===== */
 #destPickers { margin-bottom: 8px; }
 .dest-actions { display: flex; flex-direction: column; }
 .dest-actions .secondary-btn { margin-top: 0; }
+
+/* Nút phụ dưới combo "Loại thủ tục": nhỏ, dạng link — không được hút mắt hơn nút hành động chính. */
+.switch-proc-btn {
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 5px 8px;
+  background: #f4f8fe;
+  border: 1px dashed #bcd7f5;
+  border-radius: 4px;
+  color: #1565c0;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.switch-proc-btn:hover { background: #e3f2fd; border-color: #1565c0; }
+
+/* Quay lại màn Giấy tờ: nút phụ, để nhạt hơn "Mở trang thủ tục" cho khỏi bấm nhầm. */
+.dest-actions .dest-back-btn {
+  margin-top: 6px;
+  padding: 6px 7px;
+  background: #fff;
+  border: 1px solid #ccc;
+  color: #444;
+  font-size: 13px;
+}
+.dest-actions .dest-back-btn:hover { background: #f2f4f7; border-color: #999; color: #1a1a1a; }
 
 /* ===== Combobox có ô tìm kiếm (tỉnh/xã/thủ tục) — dùng lại đúng bộ nhìn của .procedure-* ===== */
 .combo-select-hidden { display: none; }

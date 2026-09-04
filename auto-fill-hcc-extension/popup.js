@@ -629,6 +629,15 @@ function isHaiChauDaNangUser(user) {
   return isDaNangBusinessUser(user) && normalizeProcedureSearch(user?.xa).includes("hai chau");
 }
 
+// ===== Nghiệp vụ riêng tỉnh Lâm Đồng (áp cho MỌI tài khoản của tỉnh) =====
+// Ô mô tả của TỪNG DÒNG ngành nghề (textarea trắng ngay dưới tên ngành chính thức, trang "Ngành nghề
+// kinh doanh") phải để TRỐNG. Địa bàn này chỉ nhận đúng tên ngành theo Hệ thống ngành kinh tế Việt Nam
+// do cổng tự điền theo mã; phần chi tiết đọc thêm từ giấy đề nghị (vd "Bán buôn thực phẩm (bán buôn
+// rau, quả)") không được ghi vào đây. Ô "Ngành, nghề chưa khớp mã" ở cuối trang KHÔNG thuộc quy tắc này.
+function isLamDongBusinessUser(user) {
+  return normalizeProcedureSearch(user?.tinh).includes("lam dong");
+}
+
 function buildBusinessDefaults(user) {
   const defaults = {};
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
@@ -636,6 +645,7 @@ function buildBusinessDefaults(user) {
   // kể cả khi nhân thân tài khoản khác chủ hộ (nghiệp vụ địa phương yêu cầu). Chỉ áp cho tài khoản
   // Đà Nẵng — tỉnh khác vẫn tự chốt vai trò theo đối chiếu tài khoản với chủ hộ như cũ.
   if (isDaNangBusinessUser(user)) defaults.forceSelfSubmitter = true;
+  if (isLamDongBusinessUser(user)) defaults.skipBusinessLineDescription = true;
   if (isHaiChauDaNangUser(user)) {
     defaults.dissolutionReason = HAI_CHAU_DISSOLUTION_REASON;
     defaults.postalServiceAddress = HAI_CHAU_POSTAL_ADDRESS;
@@ -3623,6 +3633,8 @@ async function initKeKhaiPicker() {
   if (!links.length) {
     keKhaiSection.hidden = true;
     keKhaiSection.dataset.unavailable = "1";   // chế độ "Toàn bộ" không được bật lại mục rỗng
+    // applyDestOpen() có thể đã chạy trước lúc này và lỡ hiện nút "Chuyển thủ tục khác" -> thu lại.
+    try { refreshSwitchProcBtn(); } catch (_) { /* khối Đi đến thủ tục chưa init xong */ }
     console.error('[Popup] Không có link kê khai nào — kiểm tra /api/v1/procedures/ke-khai-links');
     return;
   }
@@ -3654,6 +3666,8 @@ async function initKeKhaiPicker() {
   // khi init, tab mới chưa có session sẽ kế thừa nhầm tên thủ tục của tab trước.
   syncDestCombos();
   updateKeKhaiUI();
+  // initKeKhaiPicker() chạy async, chốt danh mục SAU applyDestOpen() đầu tiên -> phải chỉnh lại nút.
+  try { refreshSwitchProcBtn(); } catch (_) { /* khối Đi đến thủ tục chưa init xong */ }
   postPanelHeight();
 }
 
@@ -3849,8 +3863,21 @@ function enhanceSelectWithSearch(select, { searchPlaceholder }) {
 const destSection = document.getElementById("destSection");
 const destPickers = document.getElementById("destPickers");
 const destGoBtn = document.getElementById("destGoBtn");
+const destBackBtn = document.getElementById("destBackBtn");
+const switchProcedureBtn = document.getElementById("switchProcedureBtn");
 const procedureSection = document.getElementById("procedureSection");
 const docsSection = document.getElementById("docsSection");
+
+// Cán bộ TỰ bấm "Chuyển thủ tục khác" -> giữ màn "Đi đến thủ tục" mở dù đang đứng trong trang thủ
+// tục (atPortalHome = false). Cờ tắt khi bấm "Quay lại", khi mở trang thủ tục mới, hoặc khi trang
+// về lại trang chủ cổng (lúc đó panel tự mở, không cần cờ tay nữa).
+let destManualOpen = false;
+
+/** Không có danh mục link kê khai (backend lỗi) thì màn "Đi đến thủ tục" vô dụng -> giấu luôn nút. */
+function refreshSwitchProcBtn() {
+  if (!switchProcedureBtn) return;
+  switchProcedureBtn.hidden = keKhaiSection?.dataset.unavailable === "1";
+}
 
 function applyDestOpen(open) {
   if (!destSection || !destPickers) return;
@@ -3862,6 +3889,9 @@ function applyDestOpen(open) {
   // và ẩn khối Giấy tờ — chưa vào form thì chưa có gì để quét.
   if (procedureSection) procedureSection.hidden = showDest;
   if (docsSection) docsSection.hidden = showDest;
+  // Panel tự mở vì đang ở trang chủ cổng thì KHÔNG có màn nào để quay về -> chỉ hiện nút khi mở tay.
+  if (destBackBtn) destBackBtn.hidden = !(showDest && destManualOpen);
+  refreshSwitchProcBtn();
   if (showDest) refreshKeKhaiHint();
   postPanelHeight();
 }
@@ -3869,7 +3899,24 @@ function applyDestOpen(open) {
 /** Hỏi content script đang ở đâu rồi đổi màn cho khớp. */
 async function refreshDestVisibility() {
   const state = await sendToContent({ action: "getPortalFlowState" });
-  applyDestOpen(!!state && !state.unsupported && !!state.atPortalHome);
+  const atPortalHome = !!state && !state.unsupported && !!state.atPortalHome;
+  if (atPortalHome) destManualOpen = false;
+  applyDestOpen(atPortalHome || destManualOpen);
+}
+
+/** "Chuyển thủ tục khác": mở màn chọn Tỉnh/Xã + Thủ tục ngay giữa lúc đang ở trang thủ tục. */
+function onSwitchProcedureClick() {
+  destManualOpen = true;
+  // Vào màn với đúng thủ tục đang chọn ở "Loại thủ tục" cho khỏi phải dò lại từ đầu.
+  syncKeKhaiSelection(selectedProcedureKey);
+  syncDestCombos();
+  applyDestOpen(true);
+}
+
+/** "Quay lại": bỏ cờ mở tay rồi để trạng thái trang quyết định như cũ. */
+function onDestBackClick() {
+  destManualOpen = false;
+  void refreshDestVisibility();
 }
 
 async function onDestGoClick() {
@@ -3887,6 +3934,7 @@ async function onDestGoClick() {
   destGoBtn.disabled = true;
   try {
     await openKeKhaiPage();
+    destManualOpen = false;   // đã đi tới thủ tục mới -> lần sau lại theo trạng thái trang
     keKhaiStatus.textContent = "Đang mở trang thủ tục…";
     keKhaiStatus.className = "status ok";
   } catch (error) {
@@ -3913,6 +3961,8 @@ async function initDestSection() {
   destCombos.keKhai = enhanceSelectWithSearch(keKhaiSelect, { searchPlaceholder: "Tìm theo tên hoặc mã (vd 2.000815)..." });
 
   destGoBtn.addEventListener("click", () => void onDestGoClick());
+  destBackBtn?.addEventListener("click", onDestBackClick);
+  switchProcedureBtn?.addEventListener("click", onSwitchProcedureClick);
   // Ẩn trước, chờ biết đang ở trang nào rồi mới quyết -> không chớp khối sai màn lúc mở panel.
   applyDestOpen(false);
   await refreshDestVisibility();

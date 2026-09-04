@@ -210,7 +210,10 @@ assert.match(sourceText, /row && !isBusinessRowMarkedDeleted\(row\)/);
 assert.doesNotMatch(sourceText, /failChangeWorkflow\("Không bổ sung được mã ngành sau nhiều lần thử\."\)/);
 assert.match(sourceText, /bỏ qua mã ngành bổ sung sau 4 lần thử, tiếp tục luồng/);
 assert.match(sourceText, /không thấy ô\/nút lưu ngành không mã, bỏ qua và tiếp tục luồng/);
-assert.match(sourceText, /fillBusinessLineDescriptions\(\{ items: availableCoded \}\)/);
+// Vẫn phải lọc qua availableCoded, và phải truyền businessDefaults xuống để địa bàn nào chốt
+// bỏ trống ô mô tả (vd Lâm Đồng) thì luồng thay đổi cũng tuân theo — xem
+// tests/business-line-description-lamdong.test.js.
+assert.match(sourceText, /fillBusinessLineDescriptions\(\{ items: availableCoded \}, st\.businessDefaults\)/);
 assert.match(sourceText, /storage\.set timeout — tiếp tục state machine/);
 assert.match(sourceText, /FILLALL_SESSION_MIRROR_KEY/);
 assert.match(sourceText, /newestFillAllState/);

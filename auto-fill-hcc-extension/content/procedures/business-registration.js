@@ -726,7 +726,14 @@
     return !!official && !!extracted && official !== extracted;
   }
 
-  function fillBusinessLineDescriptions(nn) {
+  function fillBusinessLineDescriptions(nn, defaults) {
+    // Địa bàn chốt để TRỐNG ô mô tả từng dòng (vd tài khoản tỉnh Lâm Đồng): chỉ giữ tên ngành chính
+    // thức mà cổng tự điền theo mã VSIC, không ghi thêm chi tiết đọc từ giấy đề nghị. popup.js quyết
+    // định tài khoản nào bật cờ này; ở đây chỉ tuân theo.
+    if (defaults && defaults.skipBusinessLineDescription) {
+      console.log("[FillAll] ngành nghề: địa bàn không dùng ô mô tả từng dòng — bỏ trống.");
+      return 0;
+    }
     const nameByCode = getBusinessLineNameByCode(nn);
     let changed = 0;
     for (const code of Object.keys(nameByCode)) {
@@ -902,7 +909,7 @@
     // Đã thêm hết mã → nếu tên OCR cụ thể hơn/khác tên chính thức portal thì ghi vào ô mô tả của dòng đó.
     if (!st.nnDescriptionsDone) {
       st.nnDescriptionsDone = true;
-      const changed = fillBusinessLineDescriptions(nn);
+      const changed = fillBusinessLineDescriptions(nn, st.businessDefaults);
       await setFillAllState(st);
       if (changed) {
         const upd = findBusinessLineUpdateButton();
@@ -1151,7 +1158,7 @@
 
     if (!st.nnDescriptionsDone && availableCoded.length) {
       st.nnDescriptionsDone = true;
-      const changed = fillBusinessLineDescriptions({ items: availableCoded });
+      const changed = fillBusinessLineDescriptions({ items: availableCoded }, st.businessDefaults);
       await setFillAllState(st);
       if (changed) {
         const update = findBusinessLineUpdateButton();

@@ -59,6 +59,10 @@
             <div id="procedureResults" class="procedure-results" role="listbox" aria-label="Danh sách thủ tục"></div>
           </div>
         </div>
+        <!-- Đổi thủ tục khi ĐANG ở trang thủ tục: mở lại màn "Đi đến thủ tục" (giống trang chủ cổng).
+             Chỉ hiện khi danh mục link kê khai nạp được (popup.js: refreshSwitchProcBtn). -->
+        <button id="switchProcedureBtn" type="button" class="switch-proc-btn" hidden
+          title="Chọn tỉnh/xã và thủ tục khác rồi mở trang thủ tục đó">🔄 Chuyển thủ tục khác</button>
       </section>
 
       <!-- ===== Đi đến thủ tục: TỰ hiện khi đang ở trang chủ/tra cứu DVC, vào trang thủ tục thì ẩn ===== -->
@@ -89,6 +93,9 @@
         </div>
         <div class="dest-actions">
           <button id="destGoBtn" class="secondary-btn">🧭 Mở trang thủ tục</button>
+          <!-- Chỉ hiện khi cán bộ TỰ mở màn này bằng "Chuyển thủ tục khác" — panel tự mở vì đang ở
+               trang chủ cổng thì không có màn nào để quay về. -->
+          <button id="destBackBtn" type="button" class="dest-back-btn" hidden>← Quay lại</button>
         </div>
       </section>
 
