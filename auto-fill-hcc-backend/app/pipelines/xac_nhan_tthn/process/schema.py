@@ -25,6 +25,10 @@ FIELDS: list[dict] = [
      "desc": 'Họ tên NGƯỜI YÊU CẦU, lấy từ dòng "Họ, chữ đệm, tên người yêu cầu:" ở ĐẦU tờ khai. '
              'Đây là người ĐI NỘP đơn, CÓ THỂ KHÁC người được cấp giấy ở Section II — không tự suy '
              'đoán trùng nhau, lấy đúng tên ghi ở dòng này.'},
+    {"name": "ToKhaiYeuCau_NgaySinh",
+     "desc": 'Ngày sinh NGƯỜI YÊU CẦU, lấy từ dòng "Ngày, tháng, năm sinh:" NGAY DƯỚI "Họ, chữ đệm, '
+             'tên người yêu cầu" ở ĐẦU tờ khai, dd/mm/yyyy. KHÔNG lấy ngày sinh ở Section II (người '
+             'được cấp) — hai khối có thể là hai người khác nhau.'},
     {"name": "ToKhaiYeuCau_SoDinhDanh",
      "desc": 'Số CCCD/CMND của NGƯỜI YÊU CẦU, lấy từ dòng "Giấy tờ tùy thân:" NGAY SAU tên người yêu '
              'cầu ở đầu tờ khai — KHÔNG lấy ở phần "người được cấp" phía dưới.'},
@@ -150,7 +154,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgayCapGiayTo", "Gks_NgaySinh"):
+for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgaySinh", "ToKhaiYeuCau_NgayCapGiayTo", "Gks_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"

@@ -138,7 +138,7 @@ def test_registered_procedures_use_their_declared_flow_family():
 
 def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     procedures = public_list()
-    assert len(procedures) == 15
+    assert len(procedures) == 16
 
     for procedure in procedures:
         key = procedure["key"]

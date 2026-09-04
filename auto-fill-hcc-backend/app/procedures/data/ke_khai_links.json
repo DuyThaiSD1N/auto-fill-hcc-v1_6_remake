@@ -257,7 +257,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-ban-sao-van-bang-chung-chi-tu-so-goc",
+      "key": "cap-ban-sao-van-bang-so-goc",
       "code": "3.000465",
       "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-df63-75bf-8bff-4c9d1f98674c",
@@ -412,7 +412,7 @@
     },
     {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
-      "code": "1.013978",
+      "code": "1.115443",
       "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
       "needsAgencySelect": true,
@@ -468,7 +468,7 @@
     },
     {
       "key": "cap-doi-gcn-quyen-su-dung-dat",
-      "code": "1.012783",
+      "code": "1.115464",
       "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
       "needsAgencySelect": true,
@@ -484,7 +484,7 @@
     },
     {
       "key": "dinh-chinh-gcn-sai-sot",
-      "code": "1.012796",
+      "code": "1.115446",
       "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
       "needsAgencySelect": true,
@@ -492,7 +492,7 @@
     },
     {
       "key": "dinh-chinh-gcn-da-cap",
-      "code": "1.012790",
+      "code": "1.115476",
       "label": "Đính chính Giấy chứng nhận đã cấp",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
       "needsAgencySelect": true,
@@ -500,7 +500,7 @@
     },
     {
       "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh",
-      "code": "1.012818",
+      "code": "1.115447",
       "label": "Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76e6-7468-b6f2-417e588578f5",
       "needsAgencySelect": true,
@@ -508,7 +508,7 @@
     },
     {
       "key": "tach-thua-hop-thua-dat",
-      "code": "1.012784",
+      "code": "1.115458",
       "label": "Tách thửa đất hoặc hợp thửa đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f5d-72e6-9a68-ab8e3ba11c8b",
       "needsAgencySelect": true,
@@ -524,14 +524,14 @@
     },
     {
       "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh",
-      "code": "1.116379",
+      "code": "1.115470",
       "label": "Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, khiếu nại, tố cáo về đất đai; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là quyền sử dụng đất, tài sản gắn liền với đất để đăng ký, bao gồm cả xử lý khoản nợ có bảo đảm đối với khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ffa24-faf6-7561-b1e3-10bf2099cf67",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
     {
-      "key": "cap-cap-lai-giay-phep-khai-thac-thuy-san",
+      "key": "cap-giay-phep-khai-thac-thuy-san",
       "code": "1.004359",
       "label": "Cấp, cấp lại Giấy phép khai thác thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3815-712d-a33f-c571e5d7fdc2",
@@ -539,7 +539,7 @@
       "autoConfirm": true
     },
     {
-      "key": "xoa-dang-ky-tau-ca-tau-phuc-vu-nuoi-trong-thuy-san",
+      "key": "xoa-dang-ky-tau-ca",
       "code": "1.003681",
       "label": "Xóa đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-286c-7701-adcc-2ef71bbbe72e",
@@ -555,7 +555,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-gcn-co-so-du-dieu-kien-an-toan-thuc-pham-nong-lam-thuy-san",
+      "key": "cap-gcn-attp-nong-lam-thuy-san",
       "code": "2.001827",
       "label": "Cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm nông, lâm, thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-b57f-73cc-856f-0255333fcb48",
@@ -571,7 +571,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-van-ban-chap-thuan-dong-moi-cai-hoan-thue-mua-tau-ca-viet-nam",
+      "key": "cap-van-ban-chap-thuan-tau-ca",
       "code": "1.004344",
       "label": "Cấp văn bản chấp thuận đóng mới, cải hoán, thuê, mua tàu cá Việt Nam",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3821-734d-a521-ed615d1b1a97",
@@ -579,7 +579,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-moi-giay-phep-hanh-nghe-giai-doan-chuyen-tiep-bac-sy-y-sy-dieu-duong-ho-sinh-ky-thuat-y-dinh-duong-lam-sang-cap-cuu-vien-ngoai-vien-tam-ly-lam-sang",
+      "key": "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
       "code": "1.012289",
       "label": "Cấp mới giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db7-73d4-8e28-7b1fd65945b7",
@@ -587,7 +587,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-chung-chi-hanh-nghe-duoc-xet-ho-so",
+      "key": "cap-chung-chi-hanh-nghe-duoc",
       "code": "1.014092",
       "label": "Cấp Chứng chỉ hành nghề dược (bao gồm cả trường hợp cấp Chứng chỉ hành nghề dược cho người bị thu hồi Chứng chỉ hành nghề dược theo quy định tại các khoản 1, 2, 4, 5, 6, 7, 8, 9, 10, 11 Điều 28 của Luật Dược) theo hình thức xét hồ sơ",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3538-71fe-8b3b-2fe11f5d68a0",
@@ -595,7 +595,7 @@
       "autoConfirm": true
     },
     {
-      "key": "sua-doi-bo-sung-thong-tin-ca-nhan-ho-so-nguoi-co-cong",
+      "key": "sua-doi-thong-tin-ho-so-nguoi-co-cong",
       "code": "1.010826",
       "label": "Sửa đổi, bổ sung thông tin cá nhân trong hồ sơ người có công",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d5-777b-bdc9-f3ccadbd96f8",
@@ -603,7 +603,7 @@
       "autoConfirm": true
     },
     {
-      "key": "di-chuyen-ho-so-nguoi-huong-tro-cap-uu-dai-thay-doi-noi-thuong-tru",
+      "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
       "code": "1.010827",
       "label": "Di chuyển hồ sơ khi người hưởng trợ cấp ưu đãi thay đổi nơi thường trú",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d1-7738-83c0-e5b7b37f5bb0",
@@ -611,7 +611,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-cap-lai-giay-phep-lien-van-viet-nam-lao",
+      "key": "cap-giay-phep-lien-van-viet-lao",
       "code": "1.002856",
       "label": "Cấp, cấp lại giấy phép giữa Việt Nam và Lào",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-2aa0-754f-9f94-b2b89ed0f198",
@@ -714,7 +714,7 @@
     },
     {
       "key": "cap-lai-giay-chung-nhan-do-bi-mat",
-      "code": "1.116258",
+      "code": "1.115465",
       "label": "Cấp lại Giấy chứng nhận do bị mất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff8d0-5bda-720e-b0eb-c829f80b020e",
       "needsAgencySelect": true,
@@ -746,7 +746,7 @@
     },
     {
       "key": "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep",
-      "code": "1.013992",
+      "code": "1.115471",
       "label": "Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép cơ quan nhà nước có thẩm quyền",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8676-77f3-ba25-0b6137011577",
       "needsAgencySelect": true,
@@ -842,9 +842,9 @@
     },
     {
       "key": "giao-thue-chuyen-muc-dich-dat",
-      "code": "1.013949",
+      "code": "1.115438",
       "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f0304-d67f-75ee-8bab-4b9e18b0b9d0",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -865,10 +865,34 @@
       "autoConfirm": true
     },
     {
-      "key": "tham-dinh-bao-cao-nghien-cuu-kha-thi-xay-dung-ninh-binh",
+      "key": "tham-dinh-bcnckt",
       "code": "1.013239",
       "label": "Ninh Bình - Thẩm định báo cáo nghiên cứu khả thi đầu tư xây dựng/Báo cáo nghiên cứu khả thi điều chỉnh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90c2-742a-9dfb-c6d2bdd9aac8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xoa-dang-ky-bien-phap-bao-dam-bac-ninh",
+      "code": "1.011443",
+      "label": "[Bắc Ninh] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xoa-dang-ky-bien-phap-bao-dam-da-nang",
+      "code": "1.011443",
+      "label": "[Đà Nẵng] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "yeu-cau-tro-giup-phap-ly",
+      "code": "2.000829",
+      "label": "Thủ tục yêu cầu trợ giúp pháp lý",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e3d-737e-8aca-295dd1f2ea9f",
       "needsAgencySelect": true,
       "autoConfirm": true
     }

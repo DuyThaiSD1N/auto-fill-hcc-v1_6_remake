@@ -116,6 +116,18 @@ def _name_match(left, right) -> bool | None:
     return None
 
 
+def _same_person(left_name, left_id, right_name, right_id) -> bool:
+    """Hai khối khai có phải CÙNG một người không. Số định danh chốt trước, rồi mới tới tên.
+
+    Thiếu dữ kiện ở một bên → False: chỗ gọi dùng hàm này để MƯỢN dữ liệu từ khối kia, mượn nhầm
+    ra nhân thân lai hai người nên phải im lặng bỏ qua thay vì đoán.
+    """
+    by_id = _id_match(left_id, right_id)
+    if by_id is not None:
+        return by_id
+    return _name_match(left_name, right_name) is True
+
+
 def _relation_code(req_name, req_id, subject_name, subject_id, declared, fallback_self: bool) -> str | None:
     """Mã ô tích "(5) Quan hệ với người được cấp Giấy XNTTHN": "1" = Bản thân, "2" = Khác.
 
@@ -386,7 +398,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     card_is_requester = True   # không đủ dữ kiện để bác bỏ
                 card = values if card_is_requester else {}
                 cccd_ten = req_ten or card.get("Cccd_HoTen")
-                cccd_ns = card.get("Cccd_NgaySinh")  # tờ khai không ghi ngày sinh người yêu cầu
+                # Ngày sinh người yêu cầu: tờ khai CÓ ghi ngay dưới tên (ToKhaiYeuCau_NgaySinh).
+                # Thiếu field đó thì Section II vẫn dùng được KHI hai khối là cùng một người (hồ sơ
+                # tự khai, hoặc nhờ người khác nộp hộ nhưng người yêu cầu vẫn là chính chủ) — lúc
+                # này thẻ trong hồ sơ là của người ĐI NỘP nên không được mượn ngày sinh của nó.
+                if _same_person(
+                    req_ten, req_sdd,
+                    values.get("ToKhai_HoTen"), values.get("ToKhai_SoDinhDanh"),
+                ):
+                    tokhai_ns = values.get("ToKhai_NgaySinh")
+                else:
+                    tokhai_ns = None
+                cccd_ns = (
+                    values.get("ToKhaiYeuCau_NgaySinh")
+                    or tokhai_ns
+                    or card.get("Cccd_NgaySinh")
+                )
                 cccd_sdd = req_sdd or card.get("Cccd_SoDinhDanh")
                 ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo") or card.get("Cccd_NgayCap")
                 noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo") or (issuer if card_is_requester else None)

@@ -104,6 +104,8 @@ from app.pipelines.khai_sinh_lien_thong.attach import plan as khai_sinh_lien_tho
 from app.pipelines.khai_sinh_lien_thong.process import run as khai_sinh_lien_thong_process
 from app.pipelines.khai_sinh_dang_ky_lai.attach import plan as khai_sinh_dang_ky_lai_attach
 from app.pipelines.khai_sinh_dang_ky_lai.process import run as khai_sinh_dang_ky_lai_process
+from app.pipelines.khai_sinh_co_ho_so.attach import plan as khai_sinh_co_ho_so_attach
+from app.pipelines.khai_sinh_co_ho_so.process import run as khai_sinh_co_ho_so_process
 from app.pipelines.khai_sinh_thuong.attach import plan as khai_sinh_thuong_attach
 from app.pipelines.khai_sinh_thuong.process import run as khai_sinh_thuong_process
 from app.pipelines.khai_sinh_ket_hop_nhan_cmc.attach import plan as khai_sinh_ket_hop_nhan_cmc_attach
@@ -679,6 +681,29 @@ PROCEDURES: list[dict] = [
         "uploadHint": (
             "Giấy tờ cần tải lên: CCCD cha, CCCD mẹ, giấy khai sinh cũ/bản sao hoặc giấy tờ thay thế.\n"
             "Nếu có: tờ khai giấy, ủy quyền, học bạ, hộ chiếu, bằng/chứng chỉ."
+        ),
+    },
+    {
+        # Cùng eForm "Tờ khai đăng ký khai sinh" với 1.004884, nhưng người được khai sinh CHƯA TỪNG
+        # đăng ký khai sinh → không có khối "đăng ký trước đây"; nguồn dữ liệu là hồ sơ, giấy tờ cá
+        # nhân đã có (CCCD, BHYT, học bạ, bằng cấp, GCN kết hôn, trích lục khai tử của cha/mẹ…).
+        "key": "khai-sinh-da-co-ho-so",
+        "detect": {"urlIncludes": ["maThuTuc=1.004772"]},
+        "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đăng ký khai sinh (nếu có) — nguồn chính của nơi sinh, quê quán, năm sinh cha/mẹ.\n"
+            "2. Bản cam đoan về việc chưa được đăng ký khai sinh.\n"
+            "3. Hồ sơ, giấy tờ cá nhân đã có: CCCD/CMND, thẻ BHYT, giấy tờ cư trú, học bạ, bằng tốt "
+            "nghiệp, chứng chỉ, giấy chứng nhận kết hôn, trích lục khai tử của cha/mẹ, giấy đề nghị "
+            "xác nhận của cơ quan quản lý.\n"
+            "Bước 3: bản cam đoan vào STT 2; toàn bộ giấy tờ cá nhân dồn chung vào STT 3; văn bản xác "
+            "nhận của cơ quan (cán bộ/CCVC) vào STT 4; ủy quyền vào STT 5. STT 1 do cổng tự sinh."
         ),
     },
     {
@@ -3313,6 +3338,7 @@ _PIPELINE = {
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_process,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_process,
     "khai-sinh-dang-ky-lai": khai_sinh_dang_ky_lai_process,
+    "khai-sinh-da-co-ho-so": khai_sinh_co_ho_so_process,
     "ket-hon": ket_hon_process,
     "ket-hon-nuoc-ngoai": ket_hon_nuoc_ngoai_process,
     "dang-ky-lai-ket-hon": ket_hon_lai_process,
@@ -3461,6 +3487,7 @@ _ATTACH_PIPELINE = {
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_attach,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_attach,
     "khai-sinh-dang-ky-lai": khai_sinh_dang_ky_lai_attach,
+    "khai-sinh-da-co-ho-so": khai_sinh_co_ho_so_attach,
     "ket-hon": ket_hon_attach,
     # Đính kèm RIÊNG: form nhiều ô cố định (y tế/TTHN nước ngoài/hộ chiếu/văn bản ngành/TTHN ĐSQ VN).
     "ket-hon-nuoc-ngoai": ket_hon_nuoc_ngoai_attach,

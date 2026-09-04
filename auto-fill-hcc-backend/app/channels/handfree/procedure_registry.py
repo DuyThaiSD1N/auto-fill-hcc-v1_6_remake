@@ -271,6 +271,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "khai-sinh-da-co-ho-so",
+        "detect": {"urlIncludes": ["maThuTuc=1.004772"]},
+        "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
+        "shortLabel": "Khai sinh cho người đã có giấy tờ",
+        "subtitle": "Chưa từng đăng ký khai sinh nhưng đã có CCCD, học bạ, bằng cấp…",
+        "icon": "🗂️",
+        "flowProfile": "tu-phap",
+        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/khai tử/TTHN/trích lục.
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-fc3d805e70c8",
+        # Ba ô: tờ khai + bản cam đoan + giấy tờ cá nhân (catch-all, repeatable). Pipeline agent tự
+        # suy vai người được khai sinh/cha/mẹ từ toàn bộ giấy tờ (reason.py), không cần tách ô CCCD.
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đăng ký khai sinh", "icon": "📄", "sides": 1,
+             "optional": True},
+            {"key": "cam_doan", "name": "Bản cam đoan về việc chưa được đăng ký khai sinh",
+             "icon": "✍️", "sides": 1, "optional": True},
+            {"key": "khac", "name": "Hồ sơ, giấy tờ cá nhân đã có (CCCD, BHYT, học bạ, bằng cấp…)",
+             "icon": "📎", "sides": 20, "repeatable": True, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,  # TẠM TẮT rà soát bbox (đỡ 1 lượt OCR token — pipeline nhanh hơn); bật lại khi cần
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đăng ký khai sinh (nếu có).\n"
+            "2. Bản cam đoan về việc chưa được đăng ký khai sinh.\n"
+            "3. Hồ sơ, giấy tờ cá nhân đã có: CCCD/CMND, thẻ BHYT, giấy tờ cư trú, học bạ, bằng tốt "
+            "nghiệp, chứng chỉ, giấy chứng nhận kết hôn, trích lục khai tử của cha/mẹ, giấy đề nghị "
+            "xác nhận — công dân đưa hết vào mục Giấy tờ cá nhân.\n"
+            "Hệ thống tự nhận dạng người được khai sinh, cha, mẹ; cha/mẹ đã mất được ghi 'Đã chết'."
+        ),
+    },
+    {
         "key": "khai-tu",
         "detect": {"urlIncludes": ["maThuTuc=1.000656"]},
         "label": "Thủ tục đăng ký khai tử",

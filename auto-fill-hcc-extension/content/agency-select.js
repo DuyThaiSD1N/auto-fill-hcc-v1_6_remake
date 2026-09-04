@@ -25,6 +25,19 @@
   const CARD_TITLE = "chon co quan thuc hien";
   const CONFIRM_LABELS = ["nop ho so", "dong y"];
   const SUBMIT_LABEL = "nop truc tuyen";
+  // Tỉnh/TP dùng LUỒNG CHỈ CHỌN TỈNH: ở khối "Chọn cơ quan thực hiện" chỉ điền Tỉnh/Thành phố rồi
+  // bấm "Đồng ý" luôn — BỎ QUA ô Phường/Xã. Lọc thêm phường sẽ cắt mất thẻ của Sở, trong khi hồ sơ
+  // của địa bàn luôn nộp ở cấp Sở (thẻ ĐẦU danh sách kết quả, xem pickSubmitButton).
+  const PROVINCE_ONLY_FLOW = ["da nang"];
+
+  function provinceOnlyFlow(arm) {
+    return PROVINCE_ONLY_FLOW.includes(foldArea(arm?.province));
+  }
+
+  /** Nhãn điểm đến cho toast: luồng chỉ chọn tỉnh thì KHÔNG nhắc phường/xã cho khỏi sai. */
+  function destLabel(arm) {
+    return provinceOnlyFlow(arm) ? String(arm?.province || "") : `${arm?.ward}, ${arm?.province}`;
+  }
   const COMBO_SELECTOR =
     'button[aria-haspopup="listbox"], input:not([type="radio"]):not([type="checkbox"])';
 
@@ -251,13 +264,33 @@
       .filter((node) => fold(node.textContent) === SUBMIT_LABEL);
   }
 
-  /** Nhiều dịch vụ cùng hiện thì phải chọn ĐÚNG thẻ mang tên thủ tục; không chắc thì trả null. */
-  function pickSubmitButton(procedureLabel) {
+  /**
+   * Tên thủ tục trong danh mục kê khai có khi mang tiền tố địa bàn để cán bộ phân biệt ở ô chọn —
+   * HAI kiểu đang dùng: "[Bắc Ninh] Xóa đăng ký…" và "Ninh Bình - Thẩm định…". Thẻ kết quả trên
+   * cổng KHÔNG có tiền tố đó (cùng một thủ tục quốc gia) nên phải cắt cả hai kiểu trước khi so.
+   */
+  function procedureNeedle(procedureLabel) {
+    return fold(String(procedureLabel || "")
+      .replace(/^\s*\[[^\]]{1,30}\]\s*/, "")
+      .replace(/^[^,\-]{1,20}\s+-\s+/, ""));
+  }
+
+  /**
+   * Nhiều dịch vụ cùng hiện thì phải chọn ĐÚNG thẻ mang tên thủ tục; không chắc thì trả null để
+   * người dùng tự bấm.
+   *
+   * NGOẠI LỆ các tỉnh PROVINCE_ONLY_FLOW (Đà Nẵng): chỉ lọc theo Tỉnh/Thành phố nên trang kết quả
+   * liệt kê CÙNG một thủ tục của nhiều cơ quan (Sở + từng phường/xã), nhiều thẻ TRÙNG TÊN — lọc
+   * theo tên không tách được, và hồ sơ luôn nộp ở thẻ ĐẦU (cổng xếp cấp Sở lên trước).
+   * Nơi khác vẫn giữ nguyên: không chắc thì thôi.
+   */
+  function pickSubmitButton(arm) {
     const all = submitButtons();
     if (all.length <= 1) return all[0] || null;
 
-    const wanted = fold(procedureLabel);
-    if (!wanted) return null;
+    const firstWins = provinceOnlyFlow(arm);
+    const wanted = procedureNeedle(arm?.procedureLabel);
+    if (!wanted) return firstWins ? all[0] : null;
     const narrowed = all.filter((button) => {
       let node = button.parentElement;
       for (let depth = 0; node && depth < 6; depth += 1) {
@@ -267,7 +300,10 @@
       }
       return false;
     });
-    return narrowed.length === 1 ? narrowed[0] : null;
+    if (narrowed.length === 1) return narrowed[0];
+    // Còn trùng: chỉ tỉnh có quy ước "nộp thẻ đầu" mới được đoán. Ưu tiên thẻ đầu trong nhóm đã lọc
+    // đúng tên; tên không khớp thẻ nào (cổng đổi cách viết) thì lấy thẻ đầu của cả trang.
+    return firstWins ? (narrowed[0] || all[0]) : null;
   }
 
   /**
@@ -276,10 +312,10 @@
    * (instance mới đọc cờ stage="submit").
    */
   async function submitStage(arm) {
-    const button = await waitFor(() => pickSubmitButton(arm.procedureLabel), 15000, 300);
+    const button = await waitFor(() => pickSubmitButton(arm), 15000, 300);
     if (!button) {
       await clearArm();
-      return void toast(`Đã chọn ${arm.ward}, ${arm.province}. Mời bấm "Nộp trực tuyến".`, "success");
+      return void toast(`Đã chọn ${destLabel(arm)}. Mời bấm "Nộp trực tuyến".`, "success");
     }
     // Đổi cờ TRƯỚC khi bấm: bấm xong là cổng điều hướng, không được bấm "Nộp trực tuyến" lần hai.
     const next = arm.autoConfirm ? { ...arm, stage: "confirm", at: Date.now() } : null;
@@ -288,7 +324,7 @@
     notifyPopup();
     realClick(button);
     if (!next) {
-      toast(`Đã chọn ${arm.ward}, ${arm.province} và mở biểu mẫu kê khai.`, "success");
+      toast(`Đã chọn ${destLabel(arm)} và mở biểu mẫu kê khai.`, "success");
       return;
     }
     await confirmStage(next);
@@ -336,15 +372,18 @@
     if (Date.now() - Number(arm.at || 0) > ARM_TTL_MS) return void clearArm();
     if (arm.stage === "submit") return void await submitStage(arm);
     if (arm.stage === "confirm") return void await confirmStage(arm);
-    if (!arm.province || !arm.ward) return;
+    if (!arm.province) return;
+    // Luồng thường cần đủ Tỉnh + Xã; luồng chỉ chọn tỉnh thì thiếu xã vẫn chạy được.
+    const provinceOnly = provinceOnlyFlow(arm);
+    if (!arm.ward && !provinceOnly) return;
 
     // Trang thủ tục render bằng React → chờ khối cơ quan xuất hiện; không có thì thôi, giữ nguyên cờ
     // cho lần điều hướng kế (cổng hay chuyển trang trung gian trước khi tới trang chi tiết).
     const card = await waitFor(findAgencyCard, 15000, 300);
     if (!card) return;
 
-    if (comboControls(card).length < 2) {
-      console.warn("[AgencySelect] khối cơ quan chưa đủ 2 ô chọn");
+    if (comboControls(card).length < (provinceOnly ? 1 : 2)) {
+      console.warn("[AgencySelect] khối cơ quan chưa đủ ô chọn");
       return;
     }
 
@@ -354,7 +393,9 @@
     }
     // Chọn tỉnh xong cổng mới nạp danh sách phường/xã.
     await waitFor(() => !isPlaceholder(comboControls(card)[0]), 3000, 150);
-    if (!await pickCombo(card, 1, arm.ward, "Phường/Xã")) {
+    // Đà Nẵng: DỪNG ở đây, để nguyên "-- Chọn Phường/ Xã --" rồi bấm "Đồng ý" — kết quả mới có thẻ
+    // của Sở. Chọn thêm phường là cổng lọc mất thẻ đó.
+    if (!provinceOnly && !await pickCombo(card, 1, arm.ward, "Phường/Xã")) {
       await clearArm();
       return void toast("Không tự chọn được Phường/Xã — mời chọn tay.", "warning");
     }
@@ -366,7 +407,7 @@
     const confirm = findConfirmButton(card);
     if (!confirm || confirm.disabled) {
       await clearArm();
-      return void toast(`Đã chọn ${arm.ward}, ${arm.province}. Mời bấm nút xác nhận.`, "success");
+      return void toast(`Đã chọn ${destLabel(arm)}. Mời bấm nút xác nhận.`, "success");
     }
     realClick(confirm);
     await submitStage(next);

@@ -155,6 +155,8 @@ KEY_FIELDS_BY_PROCEDURE: dict[str, list] = {
     "khai-sinh-dang-ky-thuong": _KHAI_SINH_THUONG,
     "khai-sinh-ket-hop-nhan-cha-me-con": _KHAI_SINH_THUONG,
     "khai-sinh-dang-ky-lai": _DANG_KY_LAI,
+    # Cùng bộ trường then chốt với khai sinh thường: thủ tục này KHÔNG có khối "đăng ký trước đây".
+    "khai-sinh-da-co-ho-so": _KHAI_SINH_THUONG,
     "khai-sinh-dang-ky": _KHAI_SINH_LIEN_THONG,
     "ket-hon": _KET_HON,
     "khai-tu": _KHAI_TU,

@@ -25,33 +25,62 @@ def _fold(value) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
-def _requester_trusted(values: dict, options: dict | None, reasoning_context: str = "") -> bool:
+def _requester_card_match(
+    values: dict, options: dict | None, reasoning_context: str = ""
+) -> tuple[bool, bool]:
     """Thẻ đọc vào Cccd_* có đúng là thẻ của NGƯỜI YÊU CẦU không?
 
-    Thứ tự mỏ neo: TỜ KHAI (NguoiYeuCau_*) → khối phân vai đã chốt (<nguoi_yeu_cau>) →
-    tài khoản cổng (VNeID). Tài khoản cổng đứng cuối vì có thể là người nộp thay: hồ sơ chỉ
-    có 2 thẻ CCCD của hai người khác hẳn tài khoản đăng nhập là case bình thường, và khi đó
-    khối phân vai (đã áp quy tắc tuổi) mới là mỏ neo đúng.
+    Trả về ``(tin thẻ, khớp bằng SỐ ĐỊNH DANH)``. Cờ thứ hai để bên gọi biết mức độ chắc
+    chắn: khớp bằng SỐ là khớp tuyệt đối (cùng một người, không thể nhầm) nên tên IN trên
+    thẻ được ưu tiên hơn tên viết tay trên tờ khai; khớp bằng TÊN thì chỉ đủ để dùng thẻ
+    bù các ô giấy tờ, không đủ để ghi đè họ tên tờ khai.
+
+    Hai vòng, SỐ ĐỊNH DANH đi trước:
+
+    1. SỐ ĐỊNH DANH — mỏ neo ưu tiên đầu. So số trên thẻ với số ở MỌI mỏ neo (tờ khai →
+       khối phân vai → tài khoản cổng); khớp ở bất kỳ mỏ neo nào cũng đủ chốt thẻ là của
+       người yêu cầu, vì số định danh là chuỗi máy đọc, trùng nhau thì không thể là người
+       khác — khi đó lấy họ tên/số/ngày cấp/nơi cấp thẳng từ thẻ.
+    2. HỌ TÊN — chỉ xét khi số không chốt được (tờ khai không ghi số, hoặc OCR sai vài chữ
+       số). Thứ tự mỏ neo: TỜ KHAI (NguoiYeuCau_*) → khối phân vai đã chốt (<nguoi_yeu_cau>)
+       → tài khoản cổng (VNeID). Tài khoản cổng đứng cuối vì có thể là người nộp thay: hồ sơ
+       chỉ có 2 thẻ CCCD của hai người khác hẳn tài khoản đăng nhập là case bình thường, và
+       khi đó khối phân vai (đã áp quy tắc tuổi) mới là mỏ neo đúng.
+
     Không có mỏ neo nào → tin như cũ. Có mỏ neo mà Cccd_* không khớp số lẫn tên → KHÔNG tin
-    (thẻ đó là của người mất hoặc người nộp thay, không phải người yêu cầu).
-    Khớp MỘT trong hai (số hoặc tên) là đủ, vì OCR tờ khai hay sai vài chữ số."""
+    (thẻ đó là của người mất hoặc người nộp thay, không phải người yêu cầu)."""
     ctx = (options or {}).get("formContext") or {}
+    role_id, role_name = (
+        reason.role_anchor(reasoning_context, "nguoi_yeu_cau") if reasoning_context else ("", "")
+    )
+
+    # (1) Vòng số định danh: gom số của cả ba mỏ neo rồi so một lượt.
+    cccd_id = _digits(values.get("Cccd_SoDinhDanh"))
+    id_anchors = {
+        value
+        for value in (
+            _digits(values.get("NguoiYeuCau_SoDinhDanh")),
+            _digits(role_id),
+            _digits(ctx.get("applicantIdentityNumber")),
+        )
+        if value
+    }
+    if cccd_id and cccd_id in id_anchors:
+        return True, True
+
+    # (2) Vòng họ tên: giữ nguyên thứ tự mỏ neo cũ, chọn nguồn đầu tiên có dữ liệu.
     anchor_ids = {value for value in (_digits(values.get("NguoiYeuCau_SoDinhDanh")),) if value}
     anchor_names = {value for value in (_fold(values.get("NguoiYeuCau_HoTen")),) if value}
     if not anchor_ids and not anchor_names and reasoning_context:
-        role_id, role_name = reason.role_anchor(reasoning_context, "nguoi_yeu_cau")
         anchor_ids = {value for value in (_digits(role_id),) if value}
         anchor_names = {value for value in (_fold(role_name),) if value}
     if not anchor_ids and not anchor_names:
         anchor_ids = {value for value in (_digits(ctx.get("applicantIdentityNumber")),) if value}
         anchor_names = {value for value in (_fold(ctx.get("applicantFullname")),) if value}
     if not anchor_ids and not anchor_names:
-        return True
-    cccd_id = _digits(values.get("Cccd_SoDinhDanh"))
+        return True, False
     cccd_name = _fold(values.get("Cccd_HoTen"))
-    if cccd_id and cccd_id in anchor_ids:
-        return True
-    return bool(cccd_name and cccd_name in anchor_names)
+    return bool(cccd_name and cccd_name in anchor_names), False
 
 
 def _ngay_sinh_nguoi_mat(value) -> str:
@@ -207,8 +236,11 @@ def enrich(
     applicant_id = ctx.get("applicantIdentityNumber")
 
     # Thẻ chỉ được dùng cho người yêu cầu khi khớp mỏ neo tờ khai/cổng.
-    requester_trusted = _requester_trusted(values, options, reasoning_context)
+    requester_trusted, requester_id_matched = _requester_card_match(
+        values, options, reasoning_context
+    )
     cccd_usable = has_cccd and requester_trusted
+    requester_id_matched = requester_id_matched and has_cccd
 
     def requester(declaration_key: str, cccd_key: str):
         """Ô người yêu cầu: lấy tờ khai trước, thiếu mới lấy thẻ CCCD của chính người đó."""
@@ -217,23 +249,30 @@ def enrich(
             return values.get(cccd_key)
         return value
 
-    def requester_id_doc(cccd_key: str, declaration_key: str):
-        """Giấy tờ tùy thân (số/ngày cấp/cơ quan cấp) người yêu cầu: NGƯỢC với các ô còn lại —
-        ưu tiên CCCD trước vì đây là số/ngày/cơ quan IN SẴN trên thẻ, đáng tin hơn chữ viết tay
+    def requester_card_first(cccd_key: str, declaration_key: str):
+        """Ô lấy THẺ trước: số/ngày cấp/cơ quan cấp (và họ tên khi số định danh khớp) —
+        NGƯỢC với các ô còn lại, vì đây là dữ liệu IN SẴN trên thẻ, đáng tin hơn chữ viết tay
         trên tờ khai; tờ khai chỉ bù khi không có thẻ khớp đúng người yêu cầu."""
         value = values.get(cccd_key) if cccd_usable else None
         if value in (None, "", {}, []):
             value = values.get(declaration_key)
         return value
 
-    requester_name = requester("NguoiYeuCau_HoTen", "Cccd_HoTen")
+    # Họ tên: số định danh khớp nghĩa là CHẮC CHẮN cùng một người, khi đó tên in trên thẻ
+    # thắng tên trên tờ khai (OCR chữ viết tay hay đọc lệch: "Trần Thị Ngáy" ↔ "TRẦN THỊ
+    # NGỌC"). Khớp bằng tên thì giữ nguyên nếp cũ: tờ khai trước, thẻ chỉ bù khi trống.
+    requester_name = (
+        requester_card_first("Cccd_HoTen", "NguoiYeuCau_HoTen")
+        if requester_id_matched
+        else requester("NguoiYeuCau_HoTen", "Cccd_HoTen")
+    )
     requester_doc_type = values.get("NguoiYeuCau_LoaiGiayTo")
     requester_id = _identity_number_for_form(
-        requester_id_doc("Cccd_SoDinhDanh", "NguoiYeuCau_SoDinhDanh"),
+        requester_card_first("Cccd_SoDinhDanh", "NguoiYeuCau_SoDinhDanh"),
         requester_doc_type,
     )
-    requester_issue_date = requester_id_doc("Cccd_NgayCap", "NguoiYeuCau_NgayCap")
-    requester_issuer = requester_id_doc("Cccd_NoiCap", "NguoiYeuCau_NoiCap") or default_issuer(requester_issue_date)
+    requester_issue_date = requester_card_first("Cccd_NgayCap", "NguoiYeuCau_NgayCap")
+    requester_issuer = requester_card_first("Cccd_NoiCap", "NguoiYeuCau_NoiCap") or default_issuer(requester_issue_date)
     requester_residence = _area(requester("NguoiYeuCau_NoiCuTru", "Cccd_NoiCuTru"))
     # Tờ khai gọi tên loại giấy tờ ("CCCD số ..."/"CMND số ...") thì tin tên đó; không thì suy
     # từ độ dài số định danh + nơi cấp như cũ.
@@ -294,28 +333,39 @@ def enrich(
             return values.get(cccd_key)
         return val
 
-    def deceased_id_doc(cccd_key: str, person_key: str):
-        """Giấy tờ tùy thân (số/ngày cấp/cơ quan cấp) người mất: NGƯỢC với các ô còn lại — ưu
-        tiên CCCD trước (số/ngày/cơ quan in sẵn trên thẻ), tờ khai chỉ bù khi không có thẻ."""
+    def deceased_card_first(cccd_key: str, person_key: str):
+        """Ô lấy THẺ trước cho người mất: số/ngày cấp/cơ quan cấp (và họ tên khi số định danh
+        khớp) — NGƯỢC với các ô còn lại, tờ khai chỉ bù khi không có thẻ."""
         value = values.get(cccd_key) if cccd_is_deceased else None
         if value in (None, "", {}, []):
             value = values.get(person_key)
         return value
 
+    # Thẻ của người mất mà số trùng số ghi ở tờ khai → cùng một người, lấy tên theo thẻ.
+    _cccd_id = _digits(values.get("Cccd_SoDinhDanh"))
+    deceased_id_matched = bool(
+        cccd_is_deceased and _cccd_id and _cccd_id == _digits(values.get("NguoiMat_SoDinhDanh"))
+    )
+
     if has_deceased or cccd_is_deceased:
-        add("HoTen", deceased("NguoiMat_HoTen", "Cccd_HoTen"))
+        add(
+            "HoTen",
+            deceased_card_first("Cccd_HoTen", "NguoiMat_HoTen")
+            if deceased_id_matched
+            else deceased("NguoiMat_HoTen", "Cccd_HoTen"),
+        )
         add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("NguoiMat_NgaySinh", "Cccd_NgaySinh")))
         add("GioiTinh", deceased("NguoiMat_GioiTinh", "Cccd_GioiTinh"))
         add("nktDanToc", deceased("NguoiMat_DanToc", "Cccd_DanToc"))
         add("nktQuocTich", deceased("NguoiMat_QuocTich", "Cccd_QuocTich") or "Việt Nam")
-        so_dinh_danh = deceased_id_doc("Cccd_SoDinhDanh", "NguoiMat_SoDinhDanh")
+        so_dinh_danh = deceased_card_first("Cccd_SoDinhDanh", "NguoiMat_SoDinhDanh")
         add("SoDinhDanh", so_dinh_danh)
         add("SoGiayToDinhDanh", so_dinh_danh)
         if so_dinh_danh:
-            _issuer_mat = deceased_id_doc("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo") or default_issuer(deceased_id_doc("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
+            _issuer_mat = deceased_card_first("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo") or default_issuer(deceased_card_first("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
             add("LoaiGiayToDinhDanh", _doc_type(so_dinh_danh, _issuer_mat))
-        add("NgayCapDD", deceased_id_doc("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
-        add("NoiCapDD", normalize_issuer(deceased_id_doc("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo")))
+        add("NgayCapDD", deceased_card_first("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
+        add("NoiCapDD", normalize_issuer(deceased_card_first("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo")))
         add("nktLoaiCuTru", "Thường trú")
         residence = _area(deceased("NguoiMat_NoiCuTruCuoiCung", "Cccd_NoiCuTru"))
         if residence:

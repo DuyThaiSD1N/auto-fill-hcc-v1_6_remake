@@ -2719,6 +2719,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
       cfg.key === "xac-nhan-tinh-trang-hon-nhan" ||
       cfg.key === "khai-sinh-dang-ky-lai" ||
+      cfg.key === "khai-sinh-da-co-ho-so" ||
       cfg.key === "khai-sinh-ket-hop-nhan-cha-me-con" ||
       cfg.key === "khai-tu" ||
       cfg.key === "khai-tu-dang-ky-lai" ||
@@ -3535,6 +3536,23 @@ function selectedKeKhaiLink() {
   return keKhaiLinks().find((item) => item.key === keKhaiSelect.value) || null;
 }
 
+// Địa bàn dùng luồng "CHỈ chọn Tỉnh/Thành phố" ở khối Chọn cơ quan thực hiện — phải khớp
+// PROVINCE_ONLY_FLOW của content/agency-select.js (nơi thực sự thao tác DOM). Sửa một bên là phải
+// sửa cả bên kia, nếu không câu mô tả ở đây sẽ hứa sai việc trợ lý làm.
+const PROVINCE_ONLY_FLOW = ["da nang"];
+
+function isProvinceOnlyFlow(province) {
+  const folded = normalizeProcedureSearch(province);
+  return PROVINCE_ONLY_FLOW.some((name) => folded.includes(name));
+}
+
+/** Điểm đến trợ lý sẽ chọn hộ: luồng chỉ chọn tỉnh thì KHÔNG nhắc phường/xã cho khỏi hứa sai. */
+function keKhaiDestLabel() {
+  return isProvinceOnlyFlow(currentLocation.province)
+    ? currentLocation.province
+    : `${currentLocation.ward}, ${currentLocation.province}`;
+}
+
 function updateKeKhaiUI() {
   const link = selectedKeKhaiLink();
   if (!link) {
@@ -3555,8 +3573,8 @@ function updateKeKhaiUI() {
     keKhaiStatus.className = 'status warn';
   } else if (link.needsAgencySelect) {
     keKhaiStatus.textContent = link.autoConfirm
-      ? `Trợ lý sẽ chọn ${currentLocation.ward}, ${currentLocation.province}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
-      : `Trợ lý sẽ tự chọn ${currentLocation.ward}, ${currentLocation.province} và mở biểu mẫu kê khai.`;
+      ? `Trợ lý sẽ chọn ${keKhaiDestLabel()}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
+      : `Trợ lý sẽ tự chọn ${keKhaiDestLabel()} và mở biểu mẫu kê khai.`;
     keKhaiStatus.className = 'status info';
   } else {
     keKhaiStatus.textContent = 'Sẽ mở tại tab hiện tại: ' + link.url;

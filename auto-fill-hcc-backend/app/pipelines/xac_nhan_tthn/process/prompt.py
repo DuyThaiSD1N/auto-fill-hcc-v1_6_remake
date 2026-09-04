@@ -29,12 +29,15 @@ có tên cha/mẹ nhưng cha/mẹ KHÔNG đứng ra yêu cầu gì cả. Xem <gi
 <nguoi_yeu_cau_extraction>
 Tờ khai LUÔN có khối "người yêu cầu" RIÊNG ở ĐẦU tờ khai (trước phần "Đề nghị cấp..."), gồm:
   "Họ, chữ đệm, tên người yêu cầu: <tên>"
+  "Ngày, tháng, năm sinh: <ngày sinh>"
   "Nơi cư trú: <địa chỉ>"
   "Giấy tờ tùy thân: CCCD/CMND <số> cấp ngày <D> nơi cấp <CQ>"
 
 BẮT BUỘC trả các field sau MỖI KHI tờ khai có khối này, BẤT KỂ người yêu cầu có trùng người được
 cấp ở Section II hay không (Python mapper tự so sánh, KHÔNG phải LLM):
 - ToKhaiYeuCau_HoTen (từ "Họ, chữ đệm, tên người yêu cầu:")
+- ToKhaiYeuCau_NgaySinh (từ "Ngày, tháng, năm sinh:" NGAY DƯỚI tên người yêu cầu, dd/mm/yyyy —
+  KHÔNG lấy ngày sinh ở Section II)
 - ToKhaiYeuCau_SoDinhDanh (từ "Giấy tờ tùy thân" NGAY SAU tên người yêu cầu, KHÔNG lấy nhầm số ở Section II)
 - ToKhaiYeuCau_NgayCapGiayTo (từ "cấp ngày..." của giấy tờ người yêu cầu, dd/mm/yyyy)
 - ToKhaiYeuCau_NoiCapGiayTo (từ "nơi cấp ..." của giấy tờ người yêu cầu)

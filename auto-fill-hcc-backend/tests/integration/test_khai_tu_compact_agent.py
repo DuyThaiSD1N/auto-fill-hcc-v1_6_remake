@@ -453,6 +453,124 @@ def test_khai_tu_mapper_removes_ocr_separators_from_requester_cccd():
     assert "bỏ khoảng trắng, dấu chấm, dấu gạch hoặc dấu '/'" in field_desc["NguoiYeuCau_SoDinhDanh"]
 
 
+def test_khai_tu_mapper_trusts_card_when_identity_number_matches_declaration():
+    """Số định danh là mỏ neo ưu tiên đầu: số trùng thì lấy giấy tờ từ thẻ, kể cả khi
+    OCR họ tên trên tờ khai sai chính tả."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "NGUYEN THI MY DUNQ"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "068194005165"},
+        {"name": "Cccd_HoTen", "value": "NGUYỄN THỊ MỸ DUNG"},
+        {"name": "Cccd_SoDinhDanh", "value": "068194005165"},
+        {"name": "Cccd_NgayCap", "value": "27/12/2021"},
+        {"name": "Cccd_NoiCap", "value": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["SoDinhDanhC"] == "068194005165"
+    assert values["NgayCapDDC"] == "27/12/2021"
+    assert values["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    # Thẻ đã là của người yêu cầu nên không được hiểu thành thẻ người mất.
+    assert "SoDinhDanh" not in values
+
+
+def test_khai_tu_mapper_takes_requester_name_from_card_when_number_matches():
+    """Số định danh khớp → cùng một người, tên IN trên thẻ thắng tên OCR từ tờ khai."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "Trần Thị Ngáy"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "024134002981"},
+        {"name": "Cccd_HoTen", "value": "TRẦN THỊ NGỌC"},
+        {"name": "Cccd_SoDinhDanh", "value": "024134002981"},
+        {"name": "Cccd_NgayCap", "value": "25/08/2021"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["HoVaTenC"] == "TRẦN THỊ NGỌC"
+    assert values["SoDinhDanhC"] == "024134002981"
+    assert values["NgayCapDDC"] == "25/08/2021"
+
+
+def test_khai_tu_mapper_takes_deceased_name_from_card_when_number_matches():
+    """Thẻ của người mất, số trùng số ghi ở tờ khai → ô họ tên người mất theo thẻ."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "CHU VĂN NAM"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "024062008953"},
+        {"name": "NguoiMat_HoTen", "value": "Trần Thị Ngáy"},
+        {"name": "NguoiMat_SoDinhDanh", "value": "024134002981"},
+        {"name": "Cccd_HoTen", "value": "TRẦN THỊ NGỌC"},
+        {"name": "Cccd_SoDinhDanh", "value": "024134002981"},
+        {"name": "Cccd_NgayCap", "value": "25/08/2021"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["HoTen"] == "TRẦN THỊ NGỌC"
+    assert values["SoDinhDanh"] == "024134002981"
+    assert values["NgayCapDD"] == "25/08/2021"
+
+
+def test_khai_tu_mapper_keeps_declaration_name_when_only_name_matches():
+    """Khớp bằng TÊN (số lệch do OCR) chỉ đủ để bù ô giấy tờ, không ghi đè họ tên tờ khai."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "Chu Văn Nam"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "024062001953"},
+        {"name": "Cccd_HoTen", "value": "CHU VĂN NAM"},
+        {"name": "Cccd_SoDinhDanh", "value": "024062008953"},
+        {"name": "Cccd_NgayCap", "value": "16/08/2021"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["HoVaTenC"] == "Chu Văn Nam"
+    assert values["SoDinhDanhC"] == "024062008953"
+
+
+def test_khai_tu_mapper_trusts_card_when_identity_number_matches_portal_account():
+    """Tờ khai có tên nhưng OCR sai: số thẻ trùng tài khoản cổng vẫn đủ để tin thẻ."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "NGUYEN VAN MIN"},
+        {"name": "Cccd_HoTen", "value": "NGUYỄN VĂN MINH"},
+        {"name": "Cccd_SoDinhDanh", "value": "012345678901"},
+        {"name": "Cccd_NgayCap", "value": "02/07/2021"},
+    ]
+    options = {
+        "formContext": {
+            "applicantFullname": "NGUYỄN VĂN MINH",
+            "applicantIdentityNumber": "012345678901",
+        }
+    }
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields, options)}
+
+    assert values["SoDinhDanhC"] == "012345678901"
+    assert values["NgayCapDDC"] == "02/07/2021"
+
+
+def test_khai_tu_mapper_keeps_rejecting_card_when_number_and_name_differ():
+    """Lệch cả số lẫn tên thì thẻ vẫn là của người mất, không lấp vào ô người yêu cầu."""
+    from app.pipelines.khai_tu.process import mapper
+
+    fields = [
+        {"name": "NguoiYeuCau_HoTen", "value": "NGUYỄN VĂN MINH"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "012345678901"},
+        {"name": "Cccd_HoTen", "value": "TRẦN THỊ HOA"},
+        {"name": "Cccd_SoDinhDanh", "value": "012345678902"},
+        {"name": "Cccd_NgayCap", "value": "06/02/2024"},
+    ]
+    values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert values["SoDinhDanhC"] == "012345678901"
+    assert "NgayCapDDC" not in values
+    assert values["HoTen"] == "TRẦN THỊ HOA"
+    assert values["SoDinhDanh"] == "012345678902"
+
+
 def test_khai_tu_mapper_keeps_alphanumeric_requester_passport():
     from app.pipelines.khai_tu.process import mapper
 
