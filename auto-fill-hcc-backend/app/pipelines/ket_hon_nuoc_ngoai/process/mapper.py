@@ -143,11 +143,13 @@ def enrich(fields: list[dict]) -> list[dict]:
         # Việt Nam bình thường, phải giữ nguyên option trong dropdown.
         dan_toc = _normalize_dan_toc(values.get(f"{src}_DanToc"))
         if quoc_tich and not _is_vn(quoc_tich):
-            # Quốc tịch nước ngoài thì "Khác" LUÔN đúng, kể cả khi hồ sơ không ghi dân tộc — chọn
-            # sẵn để người dùng chỉ còn phải gõ chữ. Ô nhập chỉ được cổng render SAU khi dropdown
-            # chọn "Khác" nên phát ngay sau nó.
-            add(f"DanToc{dst}", DAN_TOC_KHAC)
-            add(f"NhapDanToc{dst}Khac", dan_toc)
+            # Hồ sơ KHÔNG ghi dân tộc thì để TRỐNG cả dropdown: chọn sẵn "Khác" khi không có gì để
+            # gõ vào ô kề bên chỉ tạo ra một lựa chọn không có căn cứ trong giấy tờ. Có ghi mới chọn
+            # "Khác" rồi ghi nguyên văn — ô nhập chỉ được cổng render SAU khi dropdown chọn "Khác"
+            # nên phải phát ngay sau nó.
+            if dan_toc:
+                add(f"DanToc{dst}", DAN_TOC_KHAC)
+                add(f"NhapDanToc{dst}Khac", dan_toc)
         else:
             add(f"DanToc{dst}", dan_toc)
 

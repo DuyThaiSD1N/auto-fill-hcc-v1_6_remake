@@ -347,7 +347,7 @@
     {
       "key": "thanh-lap-cong-ty-co-phan",
       "label": "Đăng ký thành lập công ty cổ phần",
-      "url": "https://dangkyquamang.dkkd.gov.vn/online/Forms/APP/Registration.aspx",
+      "url": "https://dangkyquamang.dkkd.gov.vn/online/Default.aspx",
       "needsAgencySelect": false,
       "autoConfirm": false,
       "enterpriseFlow": {
@@ -360,7 +360,7 @@
     {
       "key": "thanh-lap-cong-ty-tnhh-hai-thanh-vien",
       "label": "Đăng ký thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên",
-      "url": "https://dangkyquamang.dkkd.gov.vn/online/Forms/APP/Registration.aspx",
+      "url": "https://dangkyquamang.dkkd.gov.vn/online/Default.aspx",
       "needsAgencySelect": false,
       "autoConfirm": false,
       "enterpriseFlow": {
