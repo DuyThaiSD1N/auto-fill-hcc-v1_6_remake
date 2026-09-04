@@ -187,7 +187,7 @@ window.PROCEDURE_KE_KHAI_LINKS = [
   {
     key: "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
     label: "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
-    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f0347-7cb9-732a-bce1-a787258e29e1",
     needsAgencySelect: true,
     autoConfirm: true,
   },
@@ -229,7 +229,7 @@ window.PROCEDURE_KE_KHAI_LINKS = [
   {
     key: "cap-doi-gcn-quyen-su-dung-dat",
     label: "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
-    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12a3-93d3-71ae-8f20-1cfb89cab2b6",
     needsAgencySelect: true,
     autoConfirm: true,
   },
