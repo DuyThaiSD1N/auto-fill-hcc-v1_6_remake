@@ -5029,8 +5029,12 @@
     if (folded === "nu") wants.add("f");
     if (folded === "ca nhan") wants.add("p");
     if (folded === "phuong phap ke khai") wants.add("dec");
+    // Nhãn RỖNG (radio không có <label for> và thẻ cha chỉ chứa mỗi input) thì KHÔNG được coi là
+    // khớp: "".includes bất kỳ chuỗi nào cũng đúng, nên một ô nhãn rỗng sẽ nuốt MỌI giá trị và ô
+    // đó bị tick bất kể người ta muốn chọn gì.
     return wants.has(radioValue) ||
-      Array.from(wants).some((want) => label === want || label.includes(want) || want.includes(label));
+      (!!label && Array.from(wants).some(
+        (want) => !!want && (label === want || label.includes(want) || want.includes(label))));
   }
 
   async function fillStandardRadio(el, value) {
@@ -5041,10 +5045,23 @@
       : [el].filter(Boolean);
     const findTarget = () => {
       const group = findGroup();
-      return group.find((radio) => radioValueMatches(radio, value)) || group[0] || null;
+      const matched = group.find((radio) => radioValueMatches(radio, value));
+      if (matched) return matched;
+      // Nhóm chỉ có MỘT ô thì không có gì để chọn nhầm — vẫn tick như cũ.
+      if (group.length === 1) return group[0];
+      return null;
     };
     let target = findTarget();
-    if (!target) return false;
+    if (!target) {
+      // TUYỆT ĐỐI không tick đại ô đầu tiên. Đây là hồ sơ pháp lý: bỏ trống rồi báo "không điền
+      // được" thì cán bộ còn nhìn thấy mà sửa, chứ tick sai một ô là hồ sơ nộp đi mang câu trả lời
+      // mà không ai kê khai. Lỗi thật đã gặp: đơn ghi "Khấu trừ", cổng lại nhận "Không phải nộp
+      // thuế GTGT". In luôn các ô đang có để lần sau biết cổng đặt tên/nhãn thế nào.
+      const group = findGroup();
+      console.warn(`[AutoFill-STD] radio không khớp giá trị ${JSON.stringify(value)} — KHÔNG tick ô nào.`,
+        group.map((radio) => ({ value: radio.value, nhan: radioLabelText(radio) })));
+      return false;
+    }
 
     if (target.disabled) {
       const enabledTarget = await waitFor(() => {

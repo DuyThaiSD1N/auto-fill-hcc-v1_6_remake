@@ -672,9 +672,34 @@
     return byCode;
   }
 
+  // Bảng ngành nghề của HkdOnline có id "ctl00_C_CtlList"; cổng ĐKKD qua mạng render CÙNG component
+  // nhưng ClientID ngắn ("C_CtlList") — cùng lối như attachElById/uploadedRows ở khối đính kèm.
+  const BUSINESS_LINE_ROWS = "#ctl00_C_CtlList tr, #C_CtlList tr";
+  // Bảng kết quả của cổng doanh nghiệp nằm trong panel riêng (DOM thật: <div id="C_PnlListResult">),
+  // KHÔNG mang id CtlList. Đọc hụt bảng này là hỏng cả vòng lặp chứ không chỉ hỏng một lần đọc:
+  // getAddedBusinessCodes() trả rỗng ⇒ mã vừa thêm vẫn bị coi là "chưa có" ⇒ engine thêm đi thêm lại
+  // ĐÚNG MỘT mã cho tới khi hết lượt, các mã sau không bao giờ tới lượt. Đúng triệu chứng "chỉ điền
+  // được 1 ngành nghề" trên cổng thật.
+  const BUSINESS_LINE_RESULT_PANELS = "#C_PnlListResult, #ctl00_C_PnlListResult";
+
+  /** Mọi dòng của bảng ngành nghề, không phụ thuộc cổng đặt id gì cho bảng. */
+  function businessLineRows() {
+    const byId = Array.from(document.querySelectorAll(BUSINESS_LINE_ROWS));
+    if (byId.length) return byId;
+    const panels = Array.from(document.querySelectorAll(BUSINESS_LINE_RESULT_PANELS));
+    for (const panel of panels) {
+      const rows = Array.from(panel.querySelectorAll("tr"));
+      if (rows.length) return rows;
+    }
+    // Lưới đỡ cuối, KHÔNG bám id nào: dòng ngành nghề là dòng duy nhất mang radio "ngành chính".
+    const marked = Array.from(document.querySelectorAll('input[name="ismain"]'))
+      .map((radio) => radio.closest("tr")).filter(Boolean);
+    return Array.from(new Set(marked));
+  }
+
   function getAddedBusinessCodes() {
     const codes = [];
-    const rows = Array.from(document.querySelectorAll("#ctl00_C_CtlList tr"));
+    const rows = businessLineRows();
     for (const r of rows) {
       for (const td of r.querySelectorAll("td")) {
         const t = (td.textContent || "").trim();
@@ -686,7 +711,7 @@
 
   function findBusinessRowByCode(code) {
     const wanted = String(code).trim();
-    const rows = Array.from(document.querySelectorAll("#ctl00_C_CtlList tr"));
+    const rows = businessLineRows();
     return rows.find((r) => Array.from(r.querySelectorAll("td")).some((td) => (td.textContent || "").trim() === wanted)) || null;
   }
 
@@ -832,10 +857,28 @@
     return !!(radio && radio.checked);
   }
 
+  /** Nút bấm khớp ĐÚNG HỆT một trong các nhãn (đã fold) — không dùng "chứa" để khỏi vơ nhầm nút
+   *  "Thêm/xóa ngành nghề trong danh sách" khi đang tìm nút "Thêm". */
+  function findBusinessButtonByExactLabel(labels) {
+    const wanted = labels.map(foldBusinessPageText);
+    return Array.from(document.querySelectorAll('input[type="submit"], input[type="button"], button'))
+      .filter((node) => !node.disabled)
+      .find((node) => wanted.includes(foldBusinessPageText(node.value || node.textContent || ""))) || null;
+  }
+
+  function findBusinessAddLineButton() {
+    // NAME là UniqueID nên giống nhau ở cả hai cổng; id thì mỗi cổng một kiểu. Nhãn là lưới đỡ cuối
+    // cho trường hợp cổng doanh nghiệp đặt tên control khác ("Thêm ngành nghề bằng mã số").
+    return document.querySelector(
+      'input[name="ctl00$C$BtnAddBl"], #ctl00_C_BtnAddBl, #C_BtnAddBl,'
+      + ' input[name$="$BtnAddBl"], input[id$="_BtnAddBl"]'
+    ) || findBusinessButtonByExactLabel(["Thêm ngành nghề bằng mã số", "Thêm"]);
+  }
+
   function addOneBusinessCode(code) {
     const input = findStandardInput(["ctl00$C$newBusinessLineCode"]);
     const hidden = findStandardInput(["ctl00$C$newBusinessLineCodeVal"]);
-    const addBtn = document.querySelector('input[name="ctl00$C$BtnAddBl"], #ctl00_C_BtnAddBl');
+    const addBtn = findBusinessAddLineButton();
     if (!input || !addBtn) {
       console.warn("[FillAll] Ngành nghề: không thấy ô mã / nút Thêm");
       return Promise.resolve(false);
@@ -849,7 +892,10 @@
   function setBusinessMainAndUpdate(code) {
     const row = findBusinessRowByCode(code);
     const radio = row && row.querySelector('input[name="ismain"]');
-    const upd = document.querySelector('input[name="ctl00$C$btnUpdateMain"], #ctl00_C_btnUpdateMain');
+    const upd = document.querySelector(
+      'input[name="ctl00$C$btnUpdateMain"], #ctl00_C_btnUpdateMain, #C_btnUpdateMain,'
+      + ' input[name$="$btnUpdateMain"], input[id$="_btnUpdateMain"]'
+    ) || findBusinessButtonByExactLabel(["Cập nhật chính"]);
     if (!radio || !upd) {
       console.warn("[FillAll] Ngành nghề: không thấy radio chính / nút Cập nhật chính cho mã", code);
       return Promise.resolve(false);
@@ -2860,6 +2906,19 @@
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
+  // Cổng ĐKKD qua mạng dùng CHUNG component ngành nghề với HkdOnline: cùng ô
+  // ctl00$C$newBusinessLineCode, cùng nút thêm mã, cùng bảng danh sách, cùng radio ismain —
+  // chỉ khác tiền tố ClientID (đã xử lý ở BUSINESS_LINE_ROWS/findBusinessAddLineButton).
+  // Xuất nguyên bộ thao tác để engine doanh nghiệp lặp thêm mã mà không chép lại logic này.
+  H.businessLineOps = {
+    getAddedCodes: getAddedBusinessCodes,
+    findRowByCode: findBusinessRowByCode,
+    addOneCode: addOneBusinessCode,
+    isMainSet: isBusinessMainSet,
+    setMainAndUpdate: setBusinessMainAndUpdate,
+    fillDescriptions: fillBusinessLineDescriptions,
+    findUpdateButton: findBusinessLineUpdateButton,
+  };
   H.applyBusinessLocalDefaults = applyBusinessLocalDefaults;
   // Vai trò/địa chỉ người nộp hồ sơ — export để test được không cần cả state machine.
   H.applySubmitterOverride = applySubmitterOverride;

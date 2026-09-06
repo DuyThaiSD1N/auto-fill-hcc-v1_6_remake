@@ -135,11 +135,19 @@ _CAPITAL_SOURCE_ROWS = ["ngan_sach", "tu_nhan", "nuoc_ngoai", "khac"]
 _CAPITAL_ASSET_ROWS = ["dong_vn", "ngoai_te", "vang", "quyen_su_dung_dat", "so_huu_tri_tue", "khac"]
 _SHARE_ROWS = ["pho_thong", "uu_dai_bieu_quyet", "uu_dai_co_tuc", "uu_dai_hoan_lai", "uu_dai_khac"]
 
+# Phương pháp tính thuế GTGT: gửi ĐÚNG NHÃN cổng hiển thị, KHÔNG gửi mã.
+#
+# Bản cũ gửi mã tự đặt ("DED"/"DAT"/"DIR"/"NAT") — không có gì chứng minh cổng dùng đúng bộ mã đó, và
+# trên hồ sơ thật đơn ghi "Khấu trừ" nhưng cổng lại tick "Không phải nộp thuế GTGT": không khớp được
+# mã nào thì bộ điền radio của extension chọn đại một ô, tức là hồ sơ mang câu trả lời BỊA.
+# Pipeline hộ kinh doanh (dang_ky_kinh_doanh) vốn chạy ổn định trên cổng thật cũng gửi nhãn chứ không
+# gửi mã — nhãn là thứ nhìn thấy trên màn hình nên khớp được cả khi value của cổng là mã lạ.
+# Bảng này chỉ để CHUẨN HOÁ cách viết của LLM về đúng chữ cổng dùng.
 _TAX_METHOD_BY_LABEL = {
-    "khau tru": "DED",
-    "truc tiep tren gtgt": "DAT",
-    "truc tiep tren doanh so": "DIR",
-    "khong phai nop thue gtgt": "NAT",
+    "khau tru": "Khấu trừ",
+    "truc tiep tren gtgt": "Trực tiếp trên GTGT",
+    "truc tiep tren doanh so": "Trực tiếp trên doanh số",
+    "khong phai nop thue gtgt": "Không phải nộp thuế GTGT",
 }
 
 _ZONE_FIELD_BY_LABEL = {

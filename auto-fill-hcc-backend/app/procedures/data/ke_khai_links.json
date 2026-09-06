@@ -895,6 +895,78 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e3d-737e-8aca-295dd1f2ea9f",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-chu-ky-nguoi-dich-ctv",
+      "code": "2.000988",
+      "label": "Chứng thực chữ ký người dịch mà người dịch là cộng tác viên dịch thuật của Ủy ban nhân dân cấp xã, tổ chức hành nghề công chứng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d5-737d-8759-ff6dfa85c6b3",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-dat-dai",
+      "code": "1.116531",
+      "label": "Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a04bb7-55c0-7577-a92b-1dbeba80dc45",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-giay-phep-xay-dung",
+      "code": "1.013225",
+      "label": "Cấp điều chỉnh giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Theo giai đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án) và nhà ở riêng lẻ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9088-744d-aa0a-e846b6dce3d5",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "sua-chua-cai-tao-gpxd-cong-trinh",
+      "code": "1.013229",
+      "label": "Cấp giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Theo giai đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-909c-759d-9dc9-416500074f0f",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-phep-long-duong-via-he",
+      "code": "1.013274",
+      "label": "Cấp phép sử dụng tạm thời lòng đường, vỉa hè vào mục đích khác",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90a2-7673-a2f5-9ba3da842499",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chap-thuan-dau-noi-tam",
+      "code": "1.000314",
+      "label": "Chấp thuận vị trí đấu nối tạm vào đường bộ đang khai thác",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-0b6a-755c-859a-4ec09fbd16c7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-nha-o-xa-hoi-bac-ninh",
+      "code": "1.014632",
+      "label": "[Tỉnh Bắc Ninh] Đăng ký mua, thuê mua, thuê nhà ở xã hội, vay vốn để hộ gia đình, cá nhân tự xây dựng hoặc cải tạo, sửa chữa nhà ở",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-985c-732b-822b-460f2199467e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-phap-bao-dam-bac-ninh",
+      "code": "1.011441",
+      "label": "[Tỉnh Bắc Ninh] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-phap-bao-dam-qsdd",
+      "code": "1.011441",
+      "label": "[Đà Nẵng] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

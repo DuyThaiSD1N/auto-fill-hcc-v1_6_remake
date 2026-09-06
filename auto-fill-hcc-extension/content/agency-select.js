@@ -251,14 +251,34 @@
       .filter((node) => fold(node.textContent) === SUBMIT_LABEL);
   }
 
-  /** Nhiều dịch vụ cùng hiện thì phải chọn ĐÚNG thẻ mang tên thủ tục; không chắc thì trả null. */
+  /** Tên cơ quan/thủ tục của thẻ chứa nút nộp — chỉ để in log cho biết đã chọn thẻ nào. */
+  function submitButtonContext(button) {
+    let node = button && button.parentElement;
+    for (let depth = 0; node && depth < 6; depth += 1) {
+      const text = String(node.textContent || "").replace(/\s+/g, " ").trim();
+      if (text.length > 30) return text.slice(0, 160);
+      node = node.parentElement;
+    }
+    return "";
+  }
+
+  /**
+   * Chọn nút "Nộp trực tuyến" trong danh sách kết quả.
+   *
+   * Một thủ tục thường ra NHIỀU thẻ vì cùng một dịch vụ được cả Sở lẫn phường/xã tiếp nhận. Bản cũ
+   * gặp cảnh đó là trả null rồi nhường lại cho người dùng bấm tay — mà đây lại là cảnh THƯỜNG GẶP,
+   * nên trợ lý gần như luôn dừng giữa chừng ở bước này.
+   *
+   * Quy ước chốt theo yêu cầu nghiệp vụ: LUÔN lấy thẻ ĐẦU TIÊN (cấp Sở đứng đầu danh sách).
+   * Vẫn ưu tiên các thẻ mang đúng tên thủ tục; chỉ khi không thẻ nào khớp tên mới lấy thẻ đầu của
+   * cả danh sách — nhãn trên cổng có thể viết gọn hơn nhãn trong danh mục nên khớp hụt là bình thường.
+   */
   function pickSubmitButton(procedureLabel) {
     const all = submitButtons();
     if (all.length <= 1) return all[0] || null;
 
     const wanted = fold(procedureLabel);
-    if (!wanted) return null;
-    const narrowed = all.filter((button) => {
+    const narrowed = !wanted ? [] : all.filter((button) => {
       let node = button.parentElement;
       for (let depth = 0; node && depth < 6; depth += 1) {
         // Thẻ kết quả nhỏ nhất có chứa tên thủ tục, và chỉ chứa ĐÚNG 1 nút nộp.
@@ -267,7 +287,13 @@
       }
       return false;
     });
-    return narrowed.length === 1 ? narrowed[0] : null;
+    // querySelectorAll trả theo THỨ TỰ TÀI LIỆU nên phần tử [0] đúng là thẻ trên cùng màn hình.
+    const chosen = narrowed[0] || all[0] || null;
+    console.log("[AgencySelect] danh sách kết quả:", {
+      soThe: all.length, soTheKhopTen: narrowed.length,
+      chonTheDauTien: submitButtonContext(chosen),
+    });
+    return chosen;
   }
 
   /**
@@ -276,7 +302,21 @@
    * (instance mới đọc cờ stage="submit").
    */
   async function submitStage(arm) {
-    const button = await waitFor(() => pickSubmitButton(arm.procedureLabel), 15000, 300);
+    const found = await waitFor(() => pickSubmitButton(arm.procedureLabel), 15000, 300);
+    // Danh sách kết quả là React render DẦN: thẻ đầu tiên nhìn thấy chưa chắc là thẻ đứng đầu khi
+    // danh sách vẽ xong. Vì quy ước là "luôn lấy thẻ đầu", phải đợi số thẻ đứng yên rồi mới chốt —
+    // bấm sớm là mở nhầm cơ quan tiếp nhận.
+    let button = found;
+    if (found) {
+      let count = submitButtons().length;
+      for (let round = 0; round < 5; round += 1) {
+        await sleep(400);
+        const now = submitButtons().length;
+        if (now === count) break;      // hai nhịp liền không đổi -> danh sách đã vẽ xong
+        count = now;
+      }
+      button = pickSubmitButton(arm.procedureLabel) || found;
+    }
     if (!button) {
       await clearArm();
       return void toast(`Đã chọn ${arm.ward}, ${arm.province}. Mời bấm "Nộp trực tuyến".`, "success");

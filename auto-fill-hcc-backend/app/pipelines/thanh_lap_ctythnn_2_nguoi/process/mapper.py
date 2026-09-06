@@ -145,11 +145,30 @@ def _gender_code(value: Any) -> str:
 _CAPITAL_SOURCE_ROWS = ["ngan_sach", "tu_nhan", "nuoc_ngoai", "khac"]
 _CAPITAL_ASSET_ROWS = ["dong_vn", "ngoai_te", "vang", "quyen_su_dung_dat", "so_huu_tri_tue", "khac"]
 
+# Phương pháp tính thuế GTGT: gửi ĐÚNG NHÃN cổng hiển thị, KHÔNG gửi mã.
+#
+# Bản cũ gửi mã tự đặt ("DED"/"DAT"/"DIR"/"NAT") — không có gì chứng minh cổng dùng đúng bộ mã đó, và
+# trên hồ sơ thật đơn ghi "Khấu trừ" nhưng cổng lại tick "Không phải nộp thuế GTGT": không khớp được
+# mã nào thì bộ điền radio của extension chọn đại một ô, tức là hồ sơ mang câu trả lời BỊA.
+# Pipeline hộ kinh doanh (dang_ky_kinh_doanh) vốn chạy ổn định trên cổng thật cũng gửi nhãn chứ không
+# gửi mã — nhãn là thứ nhìn thấy trên màn hình nên khớp được cả khi value của cổng là mã lạ.
+# Bảng này chỉ để CHUẨN HOÁ cách viết của LLM về đúng chữ cổng dùng.
 _TAX_METHOD_BY_LABEL = {
-    "khau tru": "DED",
-    "truc tiep tren gtgt": "DAT",
-    "truc tiep tren doanh so": "DIR",
-    "khong phai nop thue gtgt": "NAT",
+    "khau tru": "Khấu trừ",
+    "truc tiep tren gtgt": "Trực tiếp trên GTGT",
+    "truc tiep tren doanh so": "Trực tiếp trên doanh số",
+    "khong phai nop thue gtgt": "Không phải nộp thuế GTGT",
+}
+
+# Phương thức đóng BHXH (GĐN mục 10). Cùng lý do với thuế: gửi NHÃN, không gửi mã.
+# Cổng chỉ có ảnh chụp màn hình, chưa biết tên control lẫn value — extension dò radio theo nhãn hiển
+# thị (xem stepSocialInsurance trong content/procedures/enterprise-registration.js).
+_SOCIAL_INSURANCE_BY_LABEL = {
+    "hang thang": "Hàng tháng",
+    "03 thang mot lan": "03 tháng một lần",
+    "3 thang mot lan": "03 tháng một lần",
+    "06 thang mot lan": "06 tháng một lần",
+    "6 thang mot lan": "06 tháng một lần",
 }
 
 _ZONE_FIELD_BY_LABEL = {
@@ -440,8 +459,18 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         if values.get("Thue_DuAnBOT") is True:
             add("ctl00$C$IS_BOT_BT_ID_YESNO_IDId", "dom-checkbox", True,
                 aliases=["ctl00$C$IS_BOT_BT_ID_YESNO_IDIdd"])
-        # Mục 10 (phương thức đóng BHXH) và mục 11 (doanh nghiệp có chủ sở hữu hưởng lợi) có trên
-        # Giấy đề nghị nhưng bảng đặc tả KHÔNG tìm được control tương ứng trong HTML → không map.
+        # Mục 11 (doanh nghiệp có chủ sở hữu hưởng lợi) có trên Giấy đề nghị nhưng bảng đặc tả
+        # KHÔNG tìm được control tương ứng trong HTML → không map. Mục 10 (phương thức đóng BHXH)
+        # nằm ở TRANG RIÊNG "Thông tin về bảo hiểm xã hội", xem nhánh bên dưới.
+
+    elif selected_page == "thong-tin-bao-hiem-xa-hoi":
+        # Trang này chỉ có duy nhất một nhóm radio "Phương thức đóng bảo hiểm xã hội".
+        # Tên control của cổng CHƯA biết (mới có ảnh màn hình, chưa có HTML) nên không phát field
+        # dom-radio theo tên như các trang khác — đoán tên rồi điền trượt thì cổng giữ nguyên mặc
+        # định và không ai biết. Thay vào đó gửi NHÃN dưới dạng field metadata (__ prefix, bộ điền
+        # chung bỏ qua) để extension tự dò radio theo đúng chữ hiển thị trên màn hình.
+        add("__bhxhMethod", "raw",
+            _SOCIAL_INSURANCE_BY_LABEL.get(_fold(values.get("BHXH_PhuongThucDong")), ""))
 
     elif selected_page == "nguoi-nop-ho-so":
         base = "ctl00$C$PERSCtl"

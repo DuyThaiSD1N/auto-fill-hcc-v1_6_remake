@@ -28,6 +28,7 @@ PAGES: list[dict] = [
     {"key": "thong-tin-thanh-vien", "label": "Thông tin thành viên"},
     {"key": "nguoi-dai-dien-phap-luat", "label": "Người đại diện theo pháp luật"},
     {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+    {"key": "thong-tin-bao-hiem-xa-hoi", "label": "Thông tin về bảo hiểm xã hội"},
     {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
 ]
 
@@ -164,6 +165,14 @@ FIELDS: list[dict] = [
                  '"Trực tiếp trên doanh số", "Không phải nộp thuế GTGT".'),
     },
     {"name": "Thue_DuAnBOT", "desc": "Boolean: mục 9.8 có tích hoạt động theo dự án BOT/BTO/BT/BOO/BLT/BTL/O&M không."},
+
+    # ===== TRANG "THÔNG TIN VỀ BẢO HIỂM XÃ HỘI" =====
+    {
+        "name": "BHXH_PhuongThucDong",
+        "desc": ('Ô được tích ở GĐN mục 10 "Phương thức đóng bảo hiểm xã hội", CHỈ một trong: '
+                 '"Hàng tháng", "03 tháng một lần", "06 tháng một lần". Không ô nào được tích thì '
+                 "bỏ field — đây là mục bắt buộc chọn 1 trong 3, đoán hộ là khai sai."),
+    },
 
     # ===== TRANG "NGƯỜI NỘP HỒ SƠ" =====
     {

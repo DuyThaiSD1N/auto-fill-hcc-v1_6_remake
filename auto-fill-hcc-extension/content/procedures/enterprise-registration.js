@@ -339,6 +339,13 @@
   //   <input type="submit" name="ctl00$C$btnNew" value="Tạo mới" id="C_btnNew">
   // Khớp theo NAME/ID trước rồi mới tới chữ trên nút — chữ có thể đổi ("Thêm mới"), name thì không.
   const ADD_BUTTON_SELECTORS = ['input[name$="$btnNew"]', "#C_btnNew", '[id$="_btnNew"]'];
+  // Nút "Trở về" của form chi tiết. DOM thật của cổng:
+  //   <input type="submit" name="ctl00$C$btnBack" value="Trở về" id="C_btnBack">
+  // Bấm Lưu xong cổng GIỮ NGUYÊN form chi tiết chứ không tự quay ra danh sách, nên phải tự bấm nút
+  // này. Không bấm thì nhịp sau vẫn thấy form chi tiết đang mở và điền người kế tiếp ĐÈ LÊN form
+  // của người vừa lưu — đúng lỗi "lặp lại 2 người" trên cổng thật.
+  const BACK_BUTTON_SELECTORS = ['input[name$="$btnBack"]', "#C_btnBack", '[id$="_btnBack"]'];
+  const BACK_BUTTON_LABELS = ["tro ve", "quay lai"];
 
   const PAGE_SPEC = {
     "hinh-thuc-dang-ky": {
@@ -410,6 +417,14 @@
       probe: '[name^="ctl00$C$UC_DW_TAXEditCtl"]',
       save: "ctl00$C$btnSave",
     },
+    "thong-tin-bao-hiem-xa-hoi": {
+      // Trang này mới chỉ có ẢNH CHỤP MÀN HÌNH, chưa có HTML: không biết tên file .aspx lẫn tên
+      // control. Nên nhận trang bằng chính ba lựa chọn in trên đó — bộ ba nhãn này không trang
+      // nào khác của hồ sơ có, mà cổng đổi id/tên control cũng không đổi được chữ hiển thị.
+      label: "Thông tin về bảo hiểm xã hội",
+      probeLabels: ["hang thang", "03 thang mot lan", "06 thang mot lan"],
+      save: "ctl00$C$btnSave",
+    },
     "nguoi-dai-dien-to-chuc": {
       // Backend KHÔNG trả field cho trang này (chỉ dùng khi thành viên là TỔ CHỨC, bảng đặc tả ghi
       // "không áp dụng") nên nó không bao giờ vào order. Khai ở đây để currentFillPage() nhận đúng
@@ -435,9 +450,10 @@
   // cổng tải lại trang ngay giữa lúc đang điền, nên một trang được điền lại vài lượt là BÌNH THƯỜNG
   // — nhưng quá số này là đang quay vòng, phải bỏ qua để cả luồng còn chạy tiếp.
   const MAX_FILL_TRIES = 3;
-  // Trần TỔNG số nhịp của cả phiên điền. Tối đa 9 trang × (điều hướng + điền + lưu), cộng thêm mỗi
-  // thành viên một vòng (mở form + điền + lưu); vượt là đang lặp -> dừng có kiểm soát.
-  const MAX_TOTAL_STEPS = 90;
+  // Trần TỔNG số nhịp của cả phiên điền. Tối đa 9 trang × (điều hướng + điền + lưu), cộng mỗi thành
+  // viên một vòng (mở form + điền + lưu), cộng MỖI MÃ NGÀNH một postback riêng — hồ sơ thật đã gặp
+  // bảng 11 dòng, mà trần cũ (90) không hề tính khoản này; vượt là đang lặp -> dừng có kiểm soát.
+  const MAX_TOTAL_STEPS = 140;
 
   async function readFillState() {
     try {
@@ -466,7 +482,14 @@
       if (spec.path && path.endsWith(spec.path)) return key;
     }
     for (const [key, spec] of Object.entries(PAGE_SPEC)) {
-      if (!document.querySelector(spec.probe)) continue;
+      // Trang chỉ khai `probeLabels`: nhận theo CHỮ của các lựa chọn radio — dùng cho trang
+      // chưa biết tên file .aspx lẫn tên control. Đòi CÓ ĐỦ mọi nhãn khai ở spec mới nhận, để
+      // không vơ nhầm một trang khác tình cờ có một lựa chọn trùng chữ.
+      if (spec.probeLabels) {
+        if (spec.probeLabels.every((wanted) => !!findRadioByLabel(wanted))) return key;
+        continue;
+      }
+      if (!spec.probe || !document.querySelector(spec.probe)) continue;
       // notProbe = "control này có mặt thì KHÔNG phải trang này". Không có nó thì hai form dùng
       // chung khối REPCtl$PERSCtl sẽ nhận nhầm nhau và điền dữ liệu người đại diện pháp luật vào
       // form người đại diện của tổ chức.
@@ -618,6 +641,35 @@
     return findButtonByTexts(spec && spec.addLabels);
   }
 
+  /**
+   * Radio theo NHÃN hiển thị, không cần biết cổng đặt tên control là gì.
+   *
+   * Dùng cho trang mà ta chỉ có ảnh màn hình chứ chưa có HTML. Khớp ĐÚNG HỆT trước rồi mới tới
+   * "chứa cụm chữ": ba lựa chọn BHXH có chữ lồng nhau ("03 tháng một lần" / "06 tháng một lần")
+   * nên khớp lỏng trước là tick nhầm kỳ đóng.
+   */
+  function findRadioByLabel(wanted) {
+    const want = fold(wanted);
+    if (!want) return null;
+    const radios = Array.from(document.querySelectorAll('input[type="radio"]')).filter(visible);
+    return radios.find((radio) => fold(radioLabel(radio)) === want)
+      || radios.find((radio) => {
+        const text = fold(radioLabel(radio));
+        return !!text && text.includes(want);
+      })
+      || null;
+  }
+
+  /** Nút "Trở về" của form chi tiết: NAME/ID trước (chắc), chữ trên nút sau (lưới đỡ). */
+  function findBackButton() {
+    for (const selector of BACK_BUTTON_SELECTORS) {
+      const node = Array.from(document.querySelectorAll(selector))
+        .find((el) => visible(el) && !el.disabled);
+      if (node) return node;
+    }
+    return findButtonByTexts(BACK_BUTTON_LABELS);
+  }
+
   function findButtonByTexts(labels) {
     const wanted = (labels || []).map(fold).filter(Boolean);
     if (!wanted.length) return null;
@@ -632,11 +684,179 @@
       || null;
   }
 
+  // ---------- TRANG "NGÀNH NGHỀ KINH DOANH" (thêm từng mã bằng postback) ----------
+  /**
+   * Bảng ngành nghề là GridView dựng bằng postback: KHÔNG có control tĩnh nào để điền cả danh sách.
+   * Mỗi mã là một lượt "gõ mã → bấm Thêm → cổng tải lại trang", nên trang này phải có state machine
+   * riêng thay vì đi nhánh "điền hết field rồi Lưu" như các trang khác — nhánh chung chỉ gõ được ô
+   * mã rồi bấm Lưu, tức là hồ sơ ra đời với đúng 0 ngành nghề.
+   *
+   * Cổng này dùng CHUNG component ngành nghề với HkdOnline nên thao tác DOM lấy nguyên bộ đã chạy
+   * ổn định bên đó (H.businessLineOps), ở đây chỉ lo trình tự và state.
+   */
+  function businessLinePlan(state) {
+    const raw = (state.pages && state.pages["nganh-nghe-kinh-doanh"]) || [];
+    const value = (raw.find((f) => f.name === "__businessLines") || {}).value;
+    return value && Array.isArray(value.codes) && value.codes.length ? value : null;
+  }
+
+  /** Field tĩnh của trang: BỎ ô mã ngành — ô đó là ô nhập tạm do vòng lặp thêm mã sở hữu. */
+  function businessLineStaticFields(state) {
+    return (state.pages["nganh-nghe-kinh-doanh"] || []).filter((f) => {
+      const name = String(f.name || "");
+      return !name.startsWith("__") && name !== "ctl00$C$newBusinessLineCode";
+    });
+  }
+
+  /** Điền nốt phần tĩnh (ghi chú ngành ngoài Hệ thống VSIC) rồi Lưu, đóng trang ngành nghề. */
+  async function saveBusinessLinePage(state) {
+    const key = "nganh-nghe-kinh-doanh";
+    const spec = PAGE_SPEC[key];
+    const fields = businessLineStaticFields(state);
+    if (fields.length) {
+      try {
+        await H.fillFormStandard?.(fields);
+      } catch (error) {
+        console.warn("[EnterpriseFill] điền ghi chú ngành nghề lỗi:", error);
+      }
+      await sleep(500);
+    }
+    state.done = [...state.done, key];
+    await setFillState(state);
+    const save = await waitForSaveButton(spec);
+    if (!save) return void scheduleStepFill();
+    const reloaded = await clickSaveDetectReload(save);
+    if (!reloaded) scheduleStepFill();
+  }
+
+  async function stepBusinessLines(state) {
+    const key = "nganh-nghe-kinh-doanh";
+    const spec = PAGE_SPEC[key];
+    progress(state, spec.label);
+    const ops = H.businessLineOps;
+    const plan = businessLinePlan(state);
+    // Không có mã VSIC nào (hoặc engine hộ kinh doanh chưa nạp) → trang này chỉ còn phần ghi chú.
+    if (!ops || !plan) {
+      if (!ops) console.warn("[EnterpriseFill] thiếu H.businessLineOps — bỏ vòng lặp thêm mã ngành.");
+      return void await saveBusinessLinePage(state);
+    }
+
+    const added = ops.getAddedCodes();
+    const skipped = Array.isArray(state.blSkip) ? state.blSkip : [];
+    const remaining = plan.codes.filter((code) => !added.includes(code) && !skipped.includes(code));
+    console.log("[EnterpriseFill] ngành nghề:", {
+      canThem: plan.codes, daDocDuocTrenBang: added, conLai: remaining,
+      daBoQua: skipped, chinh: plan.main,
+    });
+
+    if (remaining.length) {
+      const code = remaining[0];
+      // Đếm lượt theo TỪNG MÃ, không dùng một biến đếm chung cho cả trang. Biến đếm chung có một
+      // kiểu chết rất khó thấy: nếu vì lý do gì mà không đọc được mã vừa thêm trong bảng (cổng đổi
+      // id bảng chẳng hạn), mã đó mãi nằm đầu `remaining` nên engine tiêu hết lượt vào ĐÚNG NÓ và
+      // các mã sau không bao giờ được thử. Đếm theo mã thì mã hỏng bị bỏ lại sau vài lượt và vòng
+      // lặp luôn tiến tới mã kế.
+      state.blTries = (state.blTries && typeof state.blTries === "object") ? state.blTries : {};
+      const tries = Number(state.blTries[code] || 0) + 1;
+      state.blTries[code] = tries;
+      if (tries > 2) {
+        state.blSkip = [...skipped, code];
+        console.warn("[EnterpriseFill] bỏ mã ngành không thêm được sau 2 lượt:", code);
+        await setFillState(state);
+        return void scheduleStepFill();
+      }
+      await setFillState(state);
+      const reloaded = await ops.addOneCode(code);
+      if (reloaded) return;                       // postback → nhịp sau xử lý mã kế
+      await setFillState(state);
+      return void scheduleStepFill();
+    }
+    const missed = Array.isArray(state.blSkip) ? state.blSkip : [];
+    if (missed.length) {
+      console.warn("[EnterpriseFill] các mã ngành không thêm được:", missed);
+      toast(`Chưa thêm được ${missed.length} mã ngành (${missed.join(", ")}) — mời thêm tay trên trang Ngành nghề kinh doanh.`, "warn");
+    }
+
+    // Ngành chính: một lượt duy nhất, đánh dấu TRƯỚC vì nút Cập nhật chính cũng là postback.
+    if (plan.main && !state.blMainDone && !ops.isMainSet(plan.main)) {
+      state.blMainDone = true;
+      await setFillState(state);
+      if (await ops.setMainAndUpdate(plan.main)) return;
+    }
+
+    // Tên ngành trên hồ sơ chi tiết hơn tên chính thức theo mã VSIC ("Chi tiết: Kinh doanh vận tải
+    // hàng bằng ôtô") → ghi vào ô mô tả của đúng dòng đó.
+    if (!state.blDescDone) {
+      state.blDescDone = true;
+      let changed = 0;
+      try {
+        changed = ops.fillDescriptions(plan, null);
+      } catch (error) {
+        console.warn("[EnterpriseFill] điền mô tả ngành nghề lỗi:", error);
+      }
+      await setFillState(state);
+      if (changed) {
+        const update = ops.findUpdateButton();
+        if (update && await clickSaveDetectReload(update)) return;
+      }
+    }
+
+    return void await saveBusinessLinePage(state);
+  }
+
   /** Danh sách thành viên backend gửi kèm — mỗi người MỘT bộ field đã dựng sẵn. */
   function memberList(state) {
     const raw = (state.pages && state.pages["thong-tin-thanh-vien"]) || [];
     const value = (raw.find((f) => f.name === "__members") || {}).value;
     return Array.isArray(value) ? value : [];
+  }
+
+  /**
+   * Trang này có DỮ LIỆU THẬT để nhập không (khác "backend có trả khoá cho trang này").
+   *
+   * enrich_all() của backend trả ĐỦ khoá cho MỌI trang, kể cả trang mà lượt đọc hồ sơ không rút được
+   * field nào — mảng rỗng. Với trang thường thì vô hại (không điền gì, nút Lưu không bật). Nhưng với
+   * trang kiểu DANH SÁCH (thành viên, người đại diện theo pháp luật) engine sẽ bấm "Tạo mới" rồi mở
+   * một form TRỐNG, đánh dấu xong và đi tiếp — cán bộ nhận về một bản ghi rỗng mà KHÔNG có lời cảnh
+   * báo nào. Đó đúng là cảnh "Danh sách trống!" ở mục Người đại diện theo pháp luật trên hồ sơ thật.
+   */
+  function pageHasData(pages, key) {
+    const fields = (pages && pages[key]) || [];
+    if (!Array.isArray(fields) || !fields.length) return false;
+    if (key === "thong-tin-thanh-vien") {
+      const members = (fields.find((f) => f && f.name === "__members") || {}).value;
+      return Array.isArray(members) && members.length > 0;
+    }
+    return fields.some((f) => f && !String(f.name || "").startsWith("__"));
+  }
+
+  /**
+   * Những gì lượt đọc hồ sơ THỰC SỰ rút được, tính theo trang — in ra đầu mỗi phiên điền.
+   * Thiếu thành viên hay thiếu người đại diện là chuyện của khâu ĐỌC HỒ SƠ, không phải của engine;
+   * không nói ra thì cán bộ chỉ phát hiện sau khi hồ sơ đã lưu thiếu.
+   */
+  function runSummary(pages) {
+    const all = pages || {};
+    const members = (((all["thong-tin-thanh-vien"] || [])
+      .find((f) => f && f.name === "__members") || {}).value) || [];
+    const lines = (((all["nganh-nghe-kinh-doanh"] || [])
+      .find((f) => f && f.name === "__businessLines") || {}).value) || {};
+    return {
+      businessLines: Array.isArray(lines.codes) ? lines.codes.length : 0,
+      members: Array.isArray(members) ? members.length : 0,
+      hasLegalRep: pageHasData(all, "nguoi-dai-dien-phap-luat"),
+      emptyPages: Object.keys(PAGE_SPEC)
+        .filter((key) => Array.isArray(all[key]) && !pageHasData(all, key)),
+    };
+  }
+
+  /** Trang danh sách mà hồ sơ không có dữ liệu: BÁO cho cán bộ rồi bỏ qua, đừng tạo bản ghi rỗng. */
+  async function skipEmptyListPage(state, key, spec) {
+    console.warn("[EnterpriseFill] không có dữ liệu cho trang danh sách:", spec.label);
+    toast(`Hồ sơ không đọc được dữ liệu cho mục "${spec.label}" — mời nhập tay mục này.`, "warn");
+    if (!state.done.includes(key)) state.done = [...state.done, key];
+    await setFillState(state);
+    scheduleStepFill();
   }
 
   async function skipMemberPage(state) {
@@ -652,6 +872,14 @@
     const spec = PAGE_SPEC["thong-tin-thanh-vien"];
     const members = memberList(state);
     const index = Number(state.memberIndex || 0);
+    // Đã ra tới danh sách thì nhịp "bấm Trở về" coi như xong, dù nó tự về hay do engine bấm.
+    if (state.memberPhase === "back") {
+      state.memberPhase = "fill";
+      await setFillState(state);
+    }
+    // Hồ sơ KHÔNG có thành viên nào (lượt đọc hồ sơ không rút được dòng nào của Danh sách thành
+    // viên): phải BÁO, không lẳng lặng bỏ qua như trường hợp đã nhập xong hết.
+    if (!members.length) return void await skipEmptyListPage(state, "thong-tin-thanh-vien", spec);
     if (index >= members.length) return void await skipMemberPage(state);
 
     progress(state, spec.label);
@@ -670,31 +898,58 @@
     if (!reloaded) scheduleStepFill(800);
   }
 
-  /** FORM CHI TIẾT: điền đúng người thứ `memberIndex` rồi Lưu để quay lại danh sách. */
+  /**
+   * Rời form chi tiết bằng nút "Trở về" để quay ra trang danh sách.
+   *
+   * Đây là bước BẮT BUỘC sau mỗi lần Lưu, không phải cho đẹp: cổng giữ nguyên form chi tiết sau khi
+   * lưu, mà nhánh 0 của stepFillOnce hễ thấy form chi tiết là gọi stepMemberDetail — còn form đang
+   * mở thì người kế tiếp bị điền đè lên form của người vừa lưu.
+   */
+  async function leaveMemberDetail(state, spec) {
+    const back = findBackButton();
+    state.memberPhase = "fill";
+    await setFillState(state);
+    console.log("[EnterpriseFill] rời form thành viên:", { thayNutTroVe: !!back });
+    if (back) {
+      const reloaded = await clickSaveDetectReload(back);
+      if (!reloaded) scheduleStepFill(800);
+      return;
+    }
+    // Không thấy nút Trở về: quay ra danh sách bằng chính mục menu, KHÔNG điền tiếp trên form này.
+    const link = findMenuLink(spec.label);
+    if (!link) {
+      console.warn("[EnterpriseFill] không rời được form thành viên (thiếu cả nút Trở về lẫn mục menu).");
+      toast("Không quay lại được danh sách thành viên — mời kiểm tra tay mục Thông tin về thành viên.", "warn");
+      return void await skipMemberPage(state);
+    }
+    openMenuLink(link);
+    scheduleStepFill(3000);
+  }
+
+  /**
+   * FORM CHI TIẾT: điền ĐÚNG MỘT LƯỢT cho người thứ `memberIndex`, Lưu, rồi Trở về danh sách.
+   *
+   * Mỗi người CHỈ được điền một lượt — không còn vòng thử lại như các trang thường. Trang thường
+   * điền lại thì cùng lắm ghi đè chính nó, còn ở đây mỗi lượt điền là một BẢN GHI trong danh sách:
+   * điền lại là đẻ thêm người trùng, không có cách nào tự dọn.
+   */
   async function stepMemberDetail(state) {
     const spec = PAGE_SPEC["thong-tin-thanh-vien"];
     const members = memberList(state);
     const index = Number(state.memberIndex || 0);
+    // Vừa Lưu xong người trước → việc duy nhất còn lại ở form này là bấm "Trở về".
+    if (state.memberPhase === "back") return void await leaveMemberDetail(state, spec);
+
     const member = members[index];
     // Lạc vào form chi tiết mà không còn ai để nhập: đóng trang này lại, đừng điền đè người cũ.
-    if (!member) return void await skipMemberPage(state);
+    if (!member) return void await leaveMemberDetail(state, spec);
 
     // Tiến độ để NGUYÊN dạng chung "Đang điền trang X/Y — <tên trang>" như thủ tục công ty cổ
     // phần: tên từng người chỉ là nhiễu giữa luồng, cán bộ cần biết đang ở trang nào là đủ.
     progress(state, spec.label);
-    // Cùng lý do với trang chung: đếm TRƯỚC khi điền để postback giữa chừng không đẻ vòng lặp.
-    // Khoá theo từng thành viên, không theo trang — mỗi người là một lượt mở form riêng.
-    const memberKey = `thong-tin-thanh-vien#${index}`;
-    const memberTries = Number(state.fillTries[memberKey] || 0) + 1;
-    state.fillTries[memberKey] = memberTries;
-    await setFillState(state);
-    if (memberTries > MAX_FILL_TRIES) {
-      console.warn("[EnterpriseFill] bỏ qua thành viên điền mãi không xong:", member.fullName);
-      toast(`Không điền xong thành viên "${member.fullName || index + 1}" — mời nhập tay người này.`, "warn");
-      state.memberIndex = index + 1;
-      await setFillState(state);
-      return void scheduleStepFill();
-    }
+    console.log("[EnterpriseFill] điền thành viên:", {
+      thu: index + 1, tong: members.length, hoTen: member.fullName || null,
+    });
 
     const fields = Array.isArray(member.fields) ? member.fields : [];
     if (fields.length) {
@@ -708,12 +963,69 @@
     const save = await waitForSaveButton(spec);
     if (!save) {
       console.warn("[EnterpriseFill] không thấy nút Lưu ở form thành viên:", member.fullName);
-      toast(`Không lưu được thành viên "${member.fullName || index + 1}" — mời kiểm tra tay.`, "warn");
-      return void await skipMemberPage(state);
+      toast(`Không lưu được thành viên "${member.fullName || index + 1}" — mời nhập tay người này.`, "warn");
+      // Vẫn tính là đã xử lý người này rồi Trở về: điền lại chỉ đẻ thêm bản ghi trùng.
+      state.memberIndex = index + 1;
+      return void await leaveMemberDetail(state, spec);
     }
-    // Tăng chỉ số CHỈ khi chắc chắn sắp bấm Lưu: bấm xong là postback, không còn cơ hội ghi state.
+    // Chốt chỉ số VÀ chuyển sang nhịp "Trở về" TRƯỚC khi bấm Lưu: bấm xong là postback, không còn
+    // cơ hội ghi state. Nhờ ghi trước mà dù cổng tải lại trang ngay, nhịp sau vẫn biết người này đã
+    // xong và chỉ còn phải bấm Trở về.
     state.memberIndex = index + 1;
+    state.memberPhase = "back";
     await setFillState(state);
+    const reloaded = await clickSaveDetectReload(save);
+    if (!reloaded) {
+      // Cổng không tải lại = validation chặn, người này CHƯA được lưu. Không điền lại (sẽ trùng),
+      // chỉ báo để cán bộ nhập tay đúng một người.
+      console.warn("[EnterpriseFill] bấm Lưu nhưng cổng không chuyển trang:", member.fullName);
+      toast(`Thành viên "${member.fullName || index + 1}" chưa lưu được — mời kiểm tra tay người này.`, "warn");
+      scheduleStepFill(800);
+    }
+  }
+
+  // ---------- TRANG "THÔNG TIN VỀ BẢO HIỂM XÃ HỘI" ----------
+  /**
+   * Trang chỉ có một nhóm radio "Phương thức đóng bảo hiểm xã hội" (GĐN mục 10).
+   *
+   * Không đi nhánh điền chung vì nhánh đó cần TÊN CONTROL, mà tên control của trang này chưa
+   * biết. Ở đây dò radio theo đúng chữ hiển thị — backend gửi sẵn nhãn chuẩn hoá qua __bhxhMethod.
+   */
+  async function stepSocialInsurance(state) {
+    const key = "thong-tin-bao-hiem-xa-hoi";
+    const spec = PAGE_SPEC[key];
+    const fields = (state.pages && state.pages[key]) || [];
+    const wanted = ((fields.find((f) => f && f.name === "__bhxhMethod") || {}).value || "").trim();
+    progress(state, spec.label);
+
+    // Đánh dấu đã xử lý TRƯỚC mọi thao tác: bấm Lưu là postback, không còn cơ hội ghi state.
+    state.done = [...state.done, key];
+    await setFillState(state);
+
+    if (!wanted) {
+      // Mục 10 là chọn 1 trong 3, hồ sơ không kê khai thì TUYỆT ĐỐI không chọn hộ.
+      console.warn("[EnterpriseFill] hồ sơ không kê khai phương thức đóng BHXH — để trống.");
+      toast("Hồ sơ không ghi phương thức đóng bảo hiểm xã hội — mời chọn tay mục này.", "warn");
+      return void scheduleStepFill();
+    }
+    const radio = findRadioByLabel(wanted);
+    console.log("[EnterpriseFill] bảo hiểm xã hội:", { canChon: wanted, thayO: !!radio });
+    if (!radio) {
+      console.warn("[EnterpriseFill] không thấy ô BHXH mang nhãn:", wanted);
+      toast(`Không thấy lựa chọn "${wanted}" ở trang bảo hiểm xã hội — mời chọn tay.`, "warn");
+      return void scheduleStepFill();
+    }
+    if (!radio.checked) {
+      const label = radio.id ? document.querySelector(`label[for="${CSS.escape(radio.id)}"]`) : null;
+      (label || radio).click();
+      radio.dispatchEvent(new Event("change", { bubbles: true }));
+      await sleep(300);
+    }
+    const save = await waitForSaveButton(spec);
+    if (!save) {
+      console.warn("[EnterpriseFill] trang BHXH: không bấm được Lưu.");
+      return void scheduleStepFill();
+    }
     const reloaded = await clickSaveDetectReload(save);
     if (!reloaded) scheduleStepFill(800);
   }
@@ -808,11 +1120,16 @@
       const spec = PAGE_SPEC[onPage];
       // Trang danh sách thành viên không có ô nào để điền: việc của nó là mở form cho từng người.
       if (onPage === "thong-tin-thanh-vien") return void await stepMemberListing(state);
+      // Ngành nghề cũng không điền một lượt được: mỗi mã là một postback riêng (xem stepBusinessLines).
+      // Trang BHXH cũng không điền theo tên control được (xem stepSocialInsurance).
+      if (onPage === "thong-tin-bao-hiem-xa-hoi") return void await stepSocialInsurance(state);
+      if (onPage === "nganh-nghe-kinh-doanh") return void await stepBusinessLines(state);
       // Vài mục dùng CHUNG một .aspx cho cả DANH SÁCH lẫn form nhập: vào mục là thấy danh sách,
       // phải bấm "Tạo mới" mới hiện form. Nhận ra bằng: ĐÚNG trang (theo đường dẫn) nhưng control
       // của form CHƯA có, mà nút Tạo mới thì có. Không xử lý ở đây thì engine điền vào hư không rồi
       // đánh dấu xong, bỏ luôn cả mục.
       if (spec.addSelectors && !document.querySelector(spec.probe)) {
+        if (!pageHasData(state.pages, onPage)) return void await skipEmptyListPage(state, onPage, spec);
         if (await openAddForm(state, onPage, spec)) return;
       }
       progress(state, spec.label);
@@ -873,14 +1190,22 @@
         ? state.navTarget
         : state.order.find((key) => !state.done.includes(key));
       const targetSpec = target ? PAGE_SPEC[target] : null;
+      // Đòi có DỮ LIỆU THẬT, không chỉ "backend có trả khoá cho trang" — xem pageHasData().
       const canAdd = !!(targetSpec && (targetSpec.addSelectors || targetSpec.addLabels)
-        && Array.isArray(state.pages && state.pages[target]));
+        && pageHasData(state.pages, target));
       // Log KỂ CẢ khi không làm gì: đây là chỗ khó lần nhất (trang lạ, không biết vì sao đứng im).
       console.log("[EnterpriseFill] trang chưa nhận diện được:", {
         duongDan: String(location.pathname || ""),
         mucDangMo: target || null, coNutThemKhaiSan: canAdd,
         navTarget: state.navTarget || null,
       });
+      // Đang đứng ở trang danh sách của một mục mà hồ sơ KHÔNG có dữ liệu: đánh dấu xong kèm cảnh
+      // báo ngay tại đây. Để rơi xuống nhánh mở trang bên dưới thì engine cứ mở lại đúng mục này ba
+      // lượt rồi mới bỏ qua bằng thông báo chung chung "không mở được trang".
+      if (targetSpec && (targetSpec.addSelectors || targetSpec.addLabels)
+        && Array.isArray(state.pages && state.pages[target]) && !pageHasData(state.pages, target)) {
+        return void await skipEmptyListPage(state, target, targetSpec);
+      }
       if (canAdd && await openAddForm(state, target, targetSpec)) return;
     }
 
@@ -1069,10 +1394,27 @@
       start();
       return { ok: true, openingDossier: true };
     }
+    // In NGAY những gì lượt đọc hồ sơ rút được. Hồ sơ thật đã gặp cảnh chỉ ra 1/2 thành viên và
+    // không ra người đại diện theo pháp luật: engine chạy đúng hết nhưng hồ sơ vẫn thiếu, mà không
+    // có dòng nào nói ra nên chỉ phát hiện được sau khi đã lưu lên cổng.
+    const summary = runSummary(pages);
+    console.log("[EnterpriseFill] hồ sơ đọc được:", {
+      maNganhNghe: summary.businessLines,
+      thanhVien: summary.members,
+      coNguoiDaiDienPhapLuat: summary.hasLegalRep,
+      trangKhongCoDuLieu: summary.emptyPages,
+      trangSeDien: order,
+    });
+    if (summary.emptyPages.length) {
+      toast(`Hồ sơ không đọc được dữ liệu cho ${summary.emptyPages.length} mục — trợ lý sẽ báo từng mục khi đi tới.`, "warn");
+    }
+
     // Giữ kế hoạch đính kèm do backend phân loại để dùng ở chặng cuối (khối "VĂN BẢN ĐÍNH KÈM").
     const attachPayload = (message && message.attachPayload) || null;
     await setFillState({
       order, pages, done: [], navTries: {}, fillTries: {}, navTarget: "", memberIndex: 0,
+      // "fill" = đang cần điền người thứ memberIndex; "back" = vừa Lưu xong, chỉ còn bấm Trở về.
+      memberPhase: "fill",
       attachPayload,
     });
     H.beginFillAllUI?.();
@@ -1107,6 +1449,8 @@
   H.startEnterpriseFillAll = startEnterpriseFillAll;
   H.stepEnterpriseFill = stepFill;
   H.currentEnterpriseFillPage = currentFillPage;
+  H.enterprisePageHasData = pageHasData;
+  H.enterpriseRunSummary = runSummary;
   H.isInEnterpriseDossier = inDossier;
 
   // Postback có thể chỉ thay UpdatePanel (không tải lại cả trang) -> rà thêm theo nhịp. Khoá chống

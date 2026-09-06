@@ -488,9 +488,10 @@ PROCEDURES: list[dict] = [
         # schema.py). KHÔNG có "Thông tin về cổ phần" (chỉ CTCP mới có) và KHÔNG khai "Người đại diện
         # của tổ chức": bước đó chỉ hiện khi thành viên là TỔ CHỨC và bảng đặc tả ghi "không áp dụng"
         # cho mọi dòng — khai mà không có nguồn dữ liệu là điền mò vào hồ sơ thật.
-        # Hai trang riêng của loại hình này (Thông tin thành viên, Người đại diện theo pháp luật) đã
-        # có mapper ở backend nhưng engine điền của extension CHƯA khai trong PAGE_SPEC — engine bỏ
-        # qua trang lạ nên vô hại, cán bộ điền tay hai trang đó cho tới khi PAGE_SPEC được bổ sung.
+        # Hai trang riêng của loại hình này (Thông tin thành viên, Người đại diện theo pháp luật) là
+        # trang kiểu DANH SÁCH: engine phải bấm "Tạo mới" cho từng bản ghi. Cả hai đã được khai trong
+        # PAGE_SPEC của content/procedures/enterprise-registration.js. Lượt đọc hồ sơ không rút được
+        # dữ liệu thì engine BÁO cho cán bộ và bỏ qua, không tạo bản ghi rỗng (xem pageHasData).
         "pages": [
             {"key": "hinh-thuc-dang-ky", "label": "Hình thức đăng ký"},
             {"key": "dia-chi", "label": "Địa chỉ"},
@@ -500,6 +501,7 @@ PROCEDURES: list[dict] = [
             {"key": "thong-tin-thanh-vien", "label": "Thông tin thành viên"},
             {"key": "nguoi-dai-dien-phap-luat", "label": "Người đại diện theo pháp luật"},
             {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+            {"key": "thong-tin-bao-hiem-xa-hoi", "label": "Thông tin về bảo hiểm xã hội"},
             {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
         ],
     },
