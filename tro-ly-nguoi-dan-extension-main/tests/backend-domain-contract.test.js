@@ -5,23 +5,37 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 
-test("Trợ lý người dân dùng backend chung và được cấp quyền HTTPS/WSS", () => {
+function readBase(config, name) {
+  const m = config.match(new RegExp(`const ${name} = "([^"]*)"`));
+  assert.ok(m, `không tìm thấy ${name} trong api/config.js`);
+  return m[1].replace(/\/+$/, "");
+}
+
+test("Backend CHÍNH/PHỤ của Trợ lý người dân đều được cấp quyền HTTP/WS trong manifest", () => {
   const config = fs.readFileSync(path.join(root, "api/config.js"), "utf8");
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.json"), "utf8"));
 
-  // Backend CHÍNH (tiengnoi) + backend PHỤ failover (vnekyc): cả hai đều phải được cấp
-  // quyền HTTPS/WSS trong manifest, nếu không extension không gọi được API/WebSocket.
-  assert.match(
-    config,
-    /const TLND_DEFAULT_BASE_URL = "https:\/\/trolyhoso-hcc\.tiengnoi\.vn";/,
-  );
-  assert.match(
-    config,
-    /const TLND_FALLBACK_BASE_URL = "https:\/\/trolyhoso-hcc\.vnekyc\.vn";/,
-  );
-  assert.match(config, /TLND_LEGACY_BASE_URLS\.has\(v\)/);
-  for (const host of ["trolyhoso-hcc.tiengnoi.vn", "trolyhoso-hcc.vnekyc.vn"]) {
-    assert.ok(manifest.host_permissions.includes(`https://${host}/*`), `thiếu https ${host}`);
-    assert.ok(manifest.host_permissions.includes(`wss://${host}/*`), `thiếu wss ${host}`);
+  // Base có thể là prod (https://…) hoặc local khi thử FE (http://localhost:12005); backend PHỤ
+  // để trống = tắt failover. Bất kể trỏ đâu, manifest phải cấp quyền cả HTTP lẫn WS cho origin đó,
+  // nếu không extension không gọi được API/WebSocket.
+  const bases = [
+    readBase(config, "TLND_DEFAULT_BASE_URL"),
+    readBase(config, "TLND_FALLBACK_BASE_URL"),
+  ].filter(Boolean);
+  assert.ok(bases.length >= 1, "phải có backend CHÍNH");
+
+  for (const base of bases) {
+    const u = new URL(base);
+    const wsScheme = u.protocol === "https:" ? "wss" : "ws";
+    assert.ok(
+      manifest.host_permissions.includes(`${u.protocol}//${u.host}/*`),
+      `thiếu quyền ${u.protocol}//${u.host}/*`,
+    );
+    assert.ok(
+      manifest.host_permissions.includes(`${wsScheme}://${u.host}/*`),
+      `thiếu quyền ${wsScheme}://${u.host}/*`,
+    );
   }
+
+  assert.match(config, /TLND_LEGACY_BASE_URLS\.has\(v\)/);
 });
