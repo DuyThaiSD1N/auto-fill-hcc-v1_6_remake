@@ -2,9 +2,9 @@
   "links": [
     {
       "key": "khai-sinh-dang-ky",
-      "code": "2.000986",
-      "label": "Liên thông đăng ký khai sinh, thường trú, BHYT cho trẻ dưới 6 tuổi",
-      "url": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000986",
+      "code": "2.000987",
+      "label": "Liên thông đăng ký khai sinh, thường trú, cấp thẻ căn cước, BHYT cho trẻ dưới 6 tuổi",
+      "url": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000987",
       "needsAgencySelect": false,
       "autoConfirm": false
     },
@@ -973,6 +973,14 @@
       "code": "1.012896",
       "label": "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư xây dựng bằng vốn đầu tư công",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88ac-71f9-b970-b83cf0372841",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho",
+      "code": "1.115468",
+      "label": "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; mua bán nhà ở có thời hạn",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1670-20cd-712b-b05b-59235ae8a21b",
       "needsAgencySelect": true,
       "autoConfirm": true
     }

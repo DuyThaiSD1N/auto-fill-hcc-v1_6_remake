@@ -65,6 +65,7 @@ NGUỒN DỮ LIỆU:
   + Đối chiếu theo HỌ TÊN và/hoặc SỐ ĐỊNH DANH để biết dân tộc đó là của bên nam hay bên nữ; gán dân tộc
     cho ĐÚNG người đó. TUYỆT ĐỐI không lấy dân tộc của người này gán cho người kia.
   + Nếu KHÔNG có nhãn "Dân tộc" ghi rõ giá trị của người đó → BỎ field tương ứng (KHÔNG bịa, KHÔNG mặc định).
+    Ô dân tộc để trống sẽ được tô ĐỎ trên form cho người dùng tự chọn — bỏ trống luôn an toàn hơn đoán sai.
   + VÍ DỤ: nếu CHỈ tờ khai của BÊN NỮ ghi dân tộc, còn bên nam không giấy nào ghi → CHỈ trả CccdNu_DanToc,
     ĐỂ TRỐNG CccdNam_DanToc (TUYỆT ĐỐI KHÔNG copy dân tộc bên nữ sang bên nam và ngược lại).
   + Lưu ý option trên form: dân tộc H'Mông" (gồm các cách"H'Mông"/"H Mông"/"Hmông") PHẢI trả là
@@ -73,7 +74,8 @@ NGUỒN DỮ LIỆU:
 - Quốc tịch chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam; mặc định Việt Nam.
 - SỐ LẦN KẾT HÔN: nếu tờ khai/giấy tờ có mục "Kết hôn lần thứ mấy" (hoặc "Số lần kết hôn") ghi số cho từng bên
   thì trả CccdNam_SoLanKetHon (cột BÊN NAM) và CccdNu_SoLanKetHon (cột BÊN NỮ) là SỐ NGUYÊN (vd "1", "2", "3").
-  Đối chiếu ĐÚNG CỘT nam/nữ theo tiêu đề bảng. Không có mục này → bỏ qua để mapper xử lý mặc định theo từng bên.
+  Đối chiếu ĐÚNG CỘT nam/nữ theo tiêu đề bảng. Không có mục này → bỏ qua; mapper tự suy theo tình trạng hôn
+  nhân của từng bên (đã ly hôn/vợ-chồng đã chết → lần 2, tô vàng để người dùng rà lại).
 - TÌNH TRẠNG HÔN NHÂN: chỉ trả mã số 1–6 cho CccdNam_TinhTrangHonNhan/CccdNu_TinhTrangHonNhan khi tờ khai ghi rõ
   hoặc quyết định/bản án ly hôn thật xác định đúng người đó là đương sự. Với từng quyết định, đối chiếu riêng
   từng đương sự với từng CCCD theo điều kiện CHẶT: (a) họ tên phải khớp chính xác sau khi chỉ chuẩn hóa
@@ -85,17 +87,41 @@ NGUỒN DỮ LIỆU:
   Người có quyết định ly hôn → mã 3 ("Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai").
   Không trả cả câu dài, chỉ trả một mã số duy nhất.
   Không có chứng cứ trực tiếp → bỏ field để mapper xử lý mặc định theo từng bên; không tự suy luận mã từ CCCD.
-- BẢN ÁN/QUYẾT ĐỊNH LY HÔN: khi CccdNam_TinhTrangHonNhan hoặc CccdNu_TinhTrangHonNhan = mã 3 (đúng người đó
-  là đương sự theo điều kiện đối chiếu ở trên), BẮT BUỘC trả thêm từ CHÍNH văn bản bản án/quyết định ly hôn đó:
+- BẢN ÁN/QUYẾT ĐỊNH LY HÔN — MỖI BÊN MỘT VĂN BẢN RIÊNG, GÁN THEO ĐƯƠNG SỰ:
+  Hồ sơ kết hôn RẤT HAY có NHIỀU quyết định ly hôn khác nhau (bên nam ly hôn với người khác, bên nữ ly hôn
+  với người khác), thường nằm liền nhau trong CÙNG một file PDF. BẮT BUỘC duyệt TỪNG văn bản độc lập:
+  B1. Với MỖI văn bản ly hôn, đọc riêng danh sách đương sự (nguyên đơn/bị đơn, "công nhận thuận tình ly hôn
+      giữa ... và ...") và cơ quan ban hành của CHÍNH văn bản đó.
+  B2. So khớp CHẶT họ tên đương sự với CccdNam_HoTen / CccdNu_HoTen (chỉ chuẩn hóa hoa-thường, dấu tiếng Việt,
+      khoảng trắng) hoặc số CCCD ghi trên văn bản. Không fuzzy, không sửa tên để tạo khớp.
+  B3. Chỉ gán số/ngày/cơ quan cho người có tên TRONG CHÍNH văn bản đó.
+  TUYỆT ĐỐI KHÔNG: lấy văn bản của bên này gán cho bên kia; không dùng một văn bản (vd văn bản đọc được sau
+  cùng) điền cho CẢ HAI bên; không thấy hồ sơ có một quyết định ly hôn rồi suy ra cả hai bên cùng văn bản đó.
+  CHỈ khi CẢ HAI họ tên nam và nữ cùng là đương sự TRONG CÙNG MỘT văn bản thì hai bên mới dùng chung
+  số/ngày/cơ quan giống hệt nhau. Người nào không có văn bản nào ghi tên → BỎ TRỐNG cả 4 field ly hôn của
+  người đó, kể cả khi người kia có.
   + CccdNam_BanAnLyHon_So / CccdNu_BanAnLyHon_So: số bản án/quyết định (vd "336/2023/QĐST-HNGD"), lấy nguyên
-    văn dòng "Số:" trên văn bản.
+    văn dòng "Số:" trên ĐÚNG văn bản đã khớp tên người đó.
   + CccdNam_BanAnLyHon_Ngay / CccdNu_BanAnLyHon_Ngay: ngày ban hành, dd/mm/yyyy (dòng "..., ngày ... tháng ...
-    năm ..." ở đầu văn bản).
-  + CccdNam_BanAnLyHon_CoQuan / CccdNu_BanAnLyHon_CoQuan: tên cơ quan ban hành ghi ở góc trên văn bản
-    (vd "Tòa án nhân dân thành phố Đà Lạt, tỉnh Lâm Đồng").
-  Mỗi bên lấy đúng số/ngày/cơ quan của văn bản xác định người đó là đương sự; hai bên ly hôn với nhau thì
-  dùng CHUNG một văn bản (số/ngày/cơ quan giống nhau cho cả hai). Không suy diễn hay bịa khi văn bản không
-  ghi rõ; thiếu bất kỳ phần nào thì bỏ field đó, không để trống bằng giá trị đoán.
+    năm ..." ở đầu ĐÚNG văn bản đó).
+  + CccdNam_BanAnLyHon_CoQuan / CccdNu_BanAnLyHon_CoQuan: tên cơ quan ban hành ghi ở GÓC TRÊN của CHÍNH văn
+    bản đó, gộp đủ các dòng tiêu đề (vd "Tòa án nhân dân huyện An Lão, thành phố Hải Phòng",
+    "Tòa án nhân dân thành phố Sơn La, tỉnh Sơn La").
+  + CccdNam_BanAnLyHon_DuongSu / CccdNu_BanAnLyHon_DuongSu: BẮT BUỘC trả kèm khi có 3 field trên — chép họ tên
+    ĐẦY ĐỦ của TẤT CẢ đương sự ghi trong CHÍNH văn bản đã gán cho người này, nối bằng "; "
+    (vd "Nguyễn Hoàng Hải Thanh; Lưu Hùng Nguyên"). Bỏ chức danh/xưng hô (ông/bà/anh/chị) và năm sinh.
+    Hệ thống dùng field này để tự kiểm tra chéo: nếu họ tên người đó KHÔNG nằm trong danh sách này thì TOÀN BỘ
+    phần ly hôn của người đó sẽ bị loại bỏ.
+  VÍ DỤ hồ sơ có 2 quyết định (rất hay gặp):
+    - "Số 70/2018/QĐST-HNGĐ", Toà án nhân dân huyện An Lão, thành phố Hải Phòng, ngày 09/5/2018, ly hôn giữa
+      chị Nguyễn Hoàng Hải Thanh và anh Lưu Hùng Nguyên → CHỈ gán cho BÊN NỮ Nguyễn Hoàng Hải Thanh
+      (CccdNu_BanAnLyHon_So="70/2018/QĐST-HNGĐ", _Ngay="09/05/2018",
+      _CoQuan="Tòa án nhân dân huyện An Lão, thành phố Hải Phòng",
+      _DuongSu="Nguyễn Hoàng Hải Thanh; Lưu Hùng Nguyên").
+    - "Số: 52/2023/QĐST-HNGĐ", Toà án nhân dân thành phố Sơn La, ngày 17/02/2023, ly hôn giữa chị Lường Thị Ly
+      và anh Mè Minh Tuấn → CHỈ gán cho BÊN NAM Mè Minh Tuấn.
+    SAI NGHIÊM TRỌNG nếu điền 52/2023 (hoặc 70/2018) cho cả hai bên.
+  Không suy diễn hay bịa khi văn bản không ghi rõ; thiếu phần nào thì bỏ field đó, không đoán.
 - LOẠI ĐĂNG KÝ: nếu TỜ KHAI có mục "Loại đăng ký" được tích/ghi rõ thì trả ToKhai_LoaiDangKy
   đúng nhãn được chọn (vd "Đăng ký lần đầu", "Đăng ký lại"). Tờ khai không có mục này hoặc không
   tích ô nào → bỏ field; TUYỆT ĐỐI không tự suy hoặc yêu cầu mapper mặc định "Đăng ký lần đầu".

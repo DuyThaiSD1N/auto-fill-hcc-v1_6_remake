@@ -162,7 +162,7 @@ def test_ket_hon_ethnicity_requires_explicit_labeled_source():
     assert "thiếu nhãn thì bỏ field" in field_desc["CccdNu_DanToc"]
 
     # Hai CCCD không cung cấp dân tộc: compact output không có field dân tộc thì mapper
-    # cũng tuyệt đối không tự tạo giá trị cho form.
+    # cũng tuyệt đối không tự tạo giá trị cho form — để trống cho FE tô đỏ.
     mapped = {
         field["name"]: field["value"]
         for field in mapper.enrich([

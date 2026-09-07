@@ -37,6 +37,12 @@ _ROW_1_COMPONENT = (
 )
 _ROW_2_COMPONENT = "Dự thảo giao dịch"
 
+# Giao dịch/hợp đồng ủy quyền mang đi chứng thực CHÍNH LÀ giao dịch của hồ sơ (hàng 2),
+# không phải văn bản ủy quyền nộp hồ sơ. LLM hay trả authorization/other cho nhóm này.
+_UY_QUYEN_TRANSACTION_TITLES = ("giao dich uy quyen", "hop dong uy quyen")
+_UY_QUYEN_PARTY_MARKERS = ("ben uy quyen", "ben duoc uy quyen")
+_RETYPABLE_TO_TRANSACTION = ("authorization", "other")
+
 
 def _truncate_text(text: str, limit: int = 3000) -> str:
     text = re.sub(r"\s+", " ", text or "").strip()
@@ -145,6 +151,38 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
     return out
 
 
+def _is_uy_quyen_transaction(text: str) -> bool:
+    """OCR cho thấy tài liệu là giao dịch ủy quyền (có hai bên ký kết), không phải giấy ủy quyền nộp hồ sơ."""
+    folded = _fold(text)
+    if not folded:
+        return False
+    if all(marker in folded for marker in _UY_QUYEN_PARTY_MARKERS):
+        return True
+    return any(title in folded for title in _UY_QUYEN_TRANSACTION_TITLES)
+
+
+def _uy_quyen_transaction_title(text: str) -> str:
+    return "Hợp đồng ủy quyền" if "hop dong uy quyen" in _fold(text) else "Giao dịch ủy quyền"
+
+
+def _retype_uy_quyen_transaction(
+    detected_types: dict[int, dict[str, str]],
+    texts: dict[int, str],
+) -> None:
+    """Đưa giao dịch ủy quyền về transaction_draft khi chưa có tài liệu nào là dự thảo giao dịch."""
+    if any(d.get("type") == "transaction_draft" for d in detected_types.values()):
+        return
+    for idx, detected in detected_types.items():
+        if detected.get("type") not in _RETYPABLE_TO_TRANSACTION:
+            continue
+        text = texts.get(idx, "")
+        if not _is_uy_quyen_transaction(text):
+            continue
+        detected["type"] = "transaction_draft"
+        detected["title"] = _uy_quyen_transaction_title(text)
+        return
+
+
 def _route_for_type(doc_type: str, asset_seen: int, transaction_seen: int) -> tuple[str, int | None, str]:
     if doc_type == "asset_ownership_proof" and asset_seen == 0:
         return "existing", 1, _ROW_1_COMPONENT
@@ -217,13 +255,18 @@ async def plan(
             errors.append(f"attachment_agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
+    detected_types: dict[int, dict[str, str]] = {
+        idx: dict(llm_types.get(idx) or {"type": "other", "title": ""}) for idx in range(len(raw_files))
+    }
+    _retype_uy_quyen_transaction(detected_types, {d["index"]: d["text"] for d in llm_docs})
+
     asset_seen = 0
     transaction_seen = 0
     used_names: set[str] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
     for idx, file in enumerate(raw_files):
-        detected = llm_types.get(idx) or {"type": "other", "title": ""}
+        detected = detected_types[idx]
         doc_type = detected["type"]
         item = _build_item(
             file,

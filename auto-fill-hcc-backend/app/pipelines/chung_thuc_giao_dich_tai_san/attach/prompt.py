@@ -14,10 +14,13 @@ Nhiệm vụ của bạn là đọc OCR_TEXT của từng file và trả về đ
 3. Giấy chứng nhận quyền sở hữu, quyền sử dụng hoặc giấy tờ thay thế chứng minh quyền sở hữu/quyền sử dụng tài sản
    phải phân loại là asset_ownership_proof.
 4. Hợp đồng, dự thảo hợp đồng, văn bản giao dịch hoặc dự thảo giao dịch liên quan đến chuyển nhượng, mua bán,
-   tặng cho, thế chấp, cho thuê, góp vốn, phân chia tài sản phải phân loại là transaction_draft.
-5. CCCD/CMND/Hộ chiếu/Giấy chứng nhận căn cước chỉ phân loại là identity_document khi OCR_TEXT thể hiện đó là
+   tặng cho, thế chấp, cho thuê, góp vốn, phân chia tài sản, ủy quyền phải phân loại là transaction_draft.
+5. Giao dịch ủy quyền / hợp đồng ủy quyền là chính giao dịch được đem đi chứng thực nên phải phân loại là
+   transaction_draft, KHÔNG phải authorization. Dấu hiệu: văn bản có "bên ủy quyền" và "bên được ủy quyền",
+   có các điều khoản (phạm vi ủy quyền, thời hạn ủy quyền, quyền và nghĩa vụ các bên) và phần lời chứng thực.
+6. CCCD/CMND/Hộ chiếu/Giấy chứng nhận căn cước chỉ phân loại là identity_document khi OCR_TEXT thể hiện đó là
    giấy tờ tùy thân của cá nhân, không phải chỉ vì văn bản khác có số định danh cá nhân.
-6. Trả về JSON object duy nhất, không giải thích, không markdown.
+7. Trả về JSON object duy nhất, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>
@@ -34,10 +37,12 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
   giấy chứng nhận quyền sở hữu nhà ở/tài sản, giấy chứng nhận quyền sở hữu/quyền sử dụng tài sản,
   hoặc giấy tờ thay thế được pháp luật quy định đối với tài sản phải đăng ký quyền sở hữu/quyền sử dụng.
 - transaction_draft: hợp đồng chuyển nhượng, hợp đồng mua bán, hợp đồng tặng cho, hợp đồng thuê,
-  hợp đồng thế chấp, hợp đồng góp vốn, văn bản thỏa thuận, dự thảo giao dịch hoặc dự thảo hợp đồng.
+  hợp đồng thế chấp, hợp đồng góp vốn, hợp đồng ủy quyền, giao dịch ủy quyền, văn bản thỏa thuận,
+  dự thảo giao dịch hoặc dự thảo hợp đồng.
 - identity_document: CCCD, CMND, Hộ chiếu, Thẻ căn cước, Căn cước điện tử,
   Giấy chứng nhận căn cước hoặc giấy tờ tùy thân có ảnh và thông tin cá nhân.
-- authorization: văn bản ủy quyền hoặc giấy ủy quyền liên quan đến việc thực hiện/chứng thực giao dịch.
+- authorization: CHỈ dùng cho giấy ủy quyền nộp hồ sơ, ủy quyền thực hiện thủ tục hành chính thay người yêu cầu
+  chứng thực. Nếu nội dung ủy quyền chính là giao dịch được chứng thực thì dùng transaction_draft.
 - other: tài liệu khác không thuộc các nhóm trên.
 </type_definitions>
 
@@ -45,7 +50,8 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
 - title là tên tài liệu tiếng Việt ngắn để hiển thị, chỉ gồm chữ, số, khoảng trắng, gạch dưới hoặc gạch ngang.
 - Với asset_ownership_proof, title phải gọi đúng loại tài sản nếu nhận ra:
   "Đăng ký xe", "Giấy chứng nhận quyền sử dụng đất", "Giấy chứng nhận quyền sở hữu nhà ở".
-- Với transaction_draft, title nên là tên hợp đồng/văn bản cụ thể, ví dụ "Hợp đồng chuyển nhượng quyền sở hữu xe mô tô".
+- Với transaction_draft, title nên là tên hợp đồng/văn bản cụ thể, ví dụ "Hợp đồng chuyển nhượng quyền sở hữu xe mô tô",
+  "Giao dịch ủy quyền", "Hợp đồng ủy quyền".
 - Với identity_document, title nên là "Căn cước công dân" nếu OCR là CCCD/Thẻ căn cước.
 - Với authorization, title nên là "Văn bản ủy quyền".
 </title_rules>

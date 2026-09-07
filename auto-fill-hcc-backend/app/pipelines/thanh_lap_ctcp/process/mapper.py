@@ -310,9 +310,10 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         # không kê khai riêng) thì chọn value 1 và KHÔNG điền khối địa chỉ — cổng tự ẩn khối đó.
         tax_addr = values.get("Thue_DiaChiNhanThongBao")
         if not _has_address(tax_addr) or _same_address(tax_addr, values.get("TruSo_DiaChi")):
-            add(f"{base}$REP_RECV_ADDR_TYPEFld", "dom-radio", "1")
+            # Gửi NHÃN chứ không phải mã số — xem chú thích dài ở pipeline hộ kinh doanh.
+            add(f"{base}$REP_RECV_ADDR_TYPEFld", "dom-radio", "Giống địa chỉ trụ sở chính")
         else:
-            add(f"{base}$REP_RECV_ADDR_TYPEFld", "dom-radio", "0")
+            add(f"{base}$REP_RECV_ADDR_TYPEFld", "dom-radio", "Địa chỉ khác")
             add_address(f"{base}$ADDRCtl", tax_addr)
         add(f"{base}$REP_RECEIVER_PHONEFld", "dom-input", _phone(values.get("Thue_DienThoai")))
         add(f"{base}$REP_RECEIVER_FAXFld", "dom-input", _text(values.get("Thue_Fax")))

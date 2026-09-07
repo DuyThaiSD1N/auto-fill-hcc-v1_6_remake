@@ -1062,7 +1062,9 @@ function detectUrlScopeOk(detect, url) {
 // Khớp tín hiệu trang (URL + heading) với rule `detect` của thủ tục từ backend.
 function detectProcedureKeyFromSignals(signals) {
   if (!signals) return "";
-  const detectables = PROCEDURES.filter((p) => p && p.detect);
+  // `detectDisabled` (backend đặt) = thủ tục này CHỈ được chọn tay, không bao giờ tự nhận diện.
+  // Lọc ngay từ đây nên mọi bước nhận diện bên dưới (URL / heading / textIncludes) đều bỏ qua nó.
+  const detectables = PROCEDURES.filter((p) => p && p.detect && !p.detectDisabled);
   const url = String(signals.url || "").toLowerCase();
   const body = normDetect(signals.bodyText || "");
 
@@ -1079,9 +1081,17 @@ function detectProcedureKeyFromSignals(signals) {
     if (entityLabel) {
       // Hồ sơ đã tạo: cổng in rõ "Loại hình doanh nghiệp" → chốt đúng thủ tục theo loại hình đó.
       // Loại hình chưa có thủ tục tương ứng (vd TNHH) thì để TRỐNG, không nhận bừa sang CTCP.
+      // Nhánh này dò THẲNG trong PROCEDURES (không qua `detectables`) nên phải tự loại thủ tục
+      // bật detectDisabled — nếu không, loại hình khớp là nó vẫn tự chọn bất chấp cờ.
       const matched = PROCEDURES.find((item) => item.enterpriseEntityLabel
+        && !item.detectDisabled
         && normDetect(item.enterpriseEntityLabel) === entityLabel);
-      return matched ? matched.key : "";
+      if (matched) return matched.key;
+      // Không nhận diện được (loại hình chưa có thủ tục, hoặc thủ tục đó chỉ cho chọn tay):
+      // GIỮ lựa chọn doanh nghiệp đang có thay vì trả rỗng. Cổng postback ở mọi bước nên trả rỗng
+      // là mỗi lần tải trang lại xoá tên thủ tục cán bộ vừa chọn.
+      if (isEnterprisePortalProcedure(selected)) return selected.key;
+      return "";
     }
     // Chưa chốt loại hình (wizard, trang chủ cổng, màn đăng nhập): giữ thủ tục doanh nghiệp đang
     // chọn nếu có; không thì rơi xuống rule urlIncludes để nhận theo domain — đúng như cổng HKD.

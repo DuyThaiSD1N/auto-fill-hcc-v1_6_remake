@@ -47,6 +47,14 @@ _DAN_TOC_CANON = {
     "hmong": "Mông (Hmông)",   # ghi "H'Mông"/"H Mông"/"Hmông" → option "Mông (Hmông)"
 }
 
+# Không có mục "Kết hôn lần thứ mấy" trên giấy nhưng tình trạng hôn nhân đã cho biết người này
+# TỪNG đăng ký kết hôn (đã ly hôn / vợ-chồng đã chết) → lần đăng ký này ít nhất là lần 2.
+_SO_LAN_KET_HON_THEO_TINH_TRANG = {
+    "2": "1",  # chưa đăng ký kết hôn với ai
+    "3": "2",  # đã ly hôn
+    "4": "2",  # vợ/chồng đã chết
+}
+
 _TINH_TRANG_HON_NHAN = {
     "1": "Hiện tại đang có vợ/chồng",
     "2": "Hiện tại chưa đăng ký kết hôn với ai",
@@ -77,6 +85,21 @@ def _normalize_dan_toc(value):
         return raw
     key = _fold(raw).replace("'", "").replace("’", "").replace(" ", "")
     return _DAN_TOC_CANON.get(key, raw)
+
+
+def _divorce_party_matches(person_name, parties) -> bool:
+    """Người này có thật sự là đương sự của văn bản ly hôn LLM gán cho họ không?
+
+    Hồ sơ kết hôn hay có HAI quyết định ly hôn (mỗi bên một văn bản) nằm cùng một file;
+    LLM từng lấy văn bản của bên này điền cho cả hai bên. LLM phải trả kèm danh sách đương sự
+    đọc trên chính văn bản đó (*_BanAnLyHon_DuongSu) để đối chiếu tất định ở đây.
+    Thiếu dữ liệu đối chiếu → giữ nguyên kết quả LLM (không tự ý bỏ).
+    """
+    person = re.sub(r"[^a-z0-9]+", " ", _fold(person_name)).strip()
+    listed = re.sub(r"[^a-z0-9]+", " ", _fold(parties)).strip()
+    if not person or not listed:
+        return True
+    return f" {person} " in f" {listed} "
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -208,6 +231,8 @@ def enrich(fields: list[dict]) -> list[dict]:
         add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
         add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
         add(f"NoiCapDD_{dst}", issuer)
+        # Không giấy nào ghi dân tộc → KHÔNG đoán, để trống; FE tự tô ĐỎ ô "-- Chọn --"
+        # (markAllEmptyFieldsRed) để cán bộ/người dân biết phải tự chọn.
         add(f"DanToc{dst}", _normalize_dan_toc(values.get(f"{src}_DanToc")))
         add(f"QuocTich{dst}", nationality)
         add(f"LoaiCuTru_{dst}", "Thường trú")
@@ -233,6 +258,11 @@ def enrich(fields: list[dict]) -> list[dict]:
         else:
             if so_lan:
                 add(f"SoLanKetHon_{dst}", so_lan)
+            elif status_code in _SO_LAN_KET_HON_THEO_TINH_TRANG:
+                # Giấy tờ không ghi số lần nhưng tình trạng hôn nhân đã suy ra được;
+                # gắn default để FE tô vàng cho người dùng rà lại (có thể là lần 3+).
+                add(f"SoLanKetHon_{dst}",
+                    _SO_LAN_KET_HON_THEO_TINH_TRANG[status_code], default=True)
             add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN.get(status_code))
             # Kết hôn lần 1 = chưa từng đăng ký kết hôn lần nào → tình trạng hôn nhân
             # chỉ có thể là "Hiện tại chưa đăng ký kết hôn với ai" (suy ra được chắc
@@ -240,14 +270,18 @@ def enrich(fields: list[dict]) -> list[dict]:
             if so_lan == "1":
                 add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN["2"])
             elif status_code == "3":
-                decision = {
-                    "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
-                    "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
-                    "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
-                }
-                decision = {k: v for k, v in decision.items() if v}
-                if decision:
-                    add(f"TTHN_LyHon{dst}", decision)
+                # Chỉ điền khi văn bản ly hôn thật sự ghi tên người này là đương sự — chặn
+                # trường hợp LLM lấy quyết định của bên kia gán sang (số/ngày/cơ quan sai hết).
+                if _divorce_party_matches(values.get(f"{src}_HoTen"),
+                                          values.get(f"{src}_BanAnLyHon_DuongSu")):
+                    decision = {
+                        "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
+                        "ngayCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_Ngay"),
+                        "coQuanCapBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_CoQuan"),
+                    }
+                    decision = {k: v for k, v in decision.items() if v}
+                    if decision:
+                        add(f"TTHN_LyHon{dst}", decision)
 
     add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
     add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")

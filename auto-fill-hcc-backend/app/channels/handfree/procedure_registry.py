@@ -12,9 +12,14 @@ PROCEDURES: list[dict] = [
     {
         "key": "khai-sinh-dang-ky",
         # Liên thông nằm trên cổng riêng (lienthong.dichvucong.gov.vn), không có heading chuẩn
-        # → nhận diện THEO URL (mã thủ tục 2.000986 trên route ke-khai).
+        # → nhận diện THEO URL. Cổng chạy song song hai mã cho cùng biểu mẫu: 2.000986 (bản cũ) và
+        # 2.000987 (bản đang dùng, có thêm bước cấp thẻ căn cước). Giữ CẢ HAI để hồ sơ mở bằng link
+        # cũ vẫn nhận ra được. Giống hệt app/procedures/registry.py — sửa một bên phải sửa cả bên kia.
         "detect": {
-            "urlIncludes": ["lienthong.dichvucong.gov.vn/#/ke-khai/2.000986"],
+            "urlIncludes": [
+                "lienthong.dichvucong.gov.vn/#/ke-khai/2.000986",
+                "lienthong.dichvucong.gov.vn/#/ke-khai/2.000987",
+            ],
             "headingDisabled": True,
         },
         "review": False,  # TẠM TẮT rà soát bbox (đỡ 1 lượt OCR token — pipeline nhanh hơn); bật lại khi cần (cổng Angular — srcHostFor theo formcontrolname)
@@ -26,7 +31,7 @@ PROCEDURES: list[dict] = [
         "shortLabel": "Đăng ký Khai sinh (liên thông)",
         "subtitle": "Khai sinh + thường trú + BHYT cho trẻ dưới 6 tuổi",
         "icon": "👶",
-        "keKhaiUrl": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000986",
+        "keKhaiUrl": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000987",
         # Checklist phiên QR (docs/05): classify.py route ảnh vào đúng ô theo OCR.
         "hideRepeatableHint": True,
         "requiredDocs": [

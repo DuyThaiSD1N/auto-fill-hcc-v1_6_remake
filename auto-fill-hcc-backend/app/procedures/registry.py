@@ -463,6 +463,15 @@ PROCEDURES: list[dict] = [
         # Vì vậy phần điều hướng của extension (content/procedures/enterprise-registration.js) KHÔNG
         # phải sửa gì — nó đọc loại hình từ chính entry này qua cờ "lên đạn" của panel.
         "detect": {"urlIncludes": ["dangkyquamang.dkkd.gov.vn"], "headingDisabled": True},
+        # KHÔNG tự nhận diện thủ tục này: panel phải để cán bộ tự chọn.
+        #
+        # Cổng này tải lại trang ở MỌI bước (postback), mà cờ giữ lựa chọn tay của panel
+        # (manualProcedureOverride) lại reset sau mỗi lần tải trang — nên nhận diện tự động
+        # chạy lại liên tục và có quyền đổi thủ tục ngay giữa lúc đang điền dở. Với loại hình
+        # này thì rủi ro đó không đáng đánh đổi: cứ để cán bộ chọn một lần rồi giữ nguyên.
+        # Vẫn giữ "detect" ở trên để biết thủ tục này thuộc cổng nào; cờ dưới mới là thứ
+        # extension đọc để loại nó khỏi vòng nhận diện.
+        "detectDisabled": True,
         "label": "Đăng ký thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên",
         "mode": "agent",
         "enterprisePortal": True,
@@ -644,9 +653,20 @@ PROCEDURES: list[dict] = [
     {
         "key": "khai-sinh-dang-ky",
         # Liên thông nằm trên cổng riêng (lienthong.dichvucong.gov.vn), không có heading chuẩn
-        # → nhận diện THEO URL (mã thủ tục 2.000986 trên route ke-khai).
+        # → nhận diện THEO URL (mã thủ tục trên route ke-khai). headingDisabled=True nghĩa là URL
+        # là đường DUY NHẤT: mã nào không khai ở đây thì panel không nhận ra thủ tục, không có lưới đỡ.
+        #
+        # Cổng chạy SONG SONG hai mã cho cùng một biểu mẫu liên thông khai sinh:
+        #   2.000986 — khai sinh + thường trú + BHYT
+        #   2.000987 — khai sinh + thường trú + CẤP THẺ CĂN CƯỚC + BHYT (bản mới, thêm thẻ căn cước)
+        # Hai mã, nhưng cùng một form kê khai nên dùng chung pipeline điền. Liệt kê TƯỜNG MINH từng
+        # mã chứ không khớp lỏng theo route "ke-khai/": route đó còn có liên thông KHAI TỬ (1.006714),
+        # khớp lỏng là hai thủ tục nhận nhầm nhau.
         "detect": {
-            "urlIncludes": ["lienthong.dichvucong.gov.vn/#/ke-khai/2.000986"],
+            "urlIncludes": [
+                "lienthong.dichvucong.gov.vn/#/ke-khai/2.000986",
+                "lienthong.dichvucong.gov.vn/#/ke-khai/2.000987",
+            ],
             "headingDisabled": True,
         },
         "review": False,  

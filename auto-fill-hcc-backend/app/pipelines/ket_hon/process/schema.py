@@ -32,8 +32,14 @@ FIELDS: list[dict] = [
      "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn của BÊN NAM, dd/mm/yyyy. Cùng điều kiện đối "
              "chiếu như CccdNam_BanAnLyHon_So."},
     {"name": "CccdNam_BanAnLyHon_CoQuan",
-     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn của BÊN NAM (vd 'Tòa án nhân dân thành phố "
-             "...'). Cùng điều kiện đối chiếu như CccdNam_BanAnLyHon_So."},
+     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn của BÊN NAM (vd 'Tòa án nhân dân huyện An Lão, "
+             "thành phố Hải Phòng'), đọc ở góc trên của CHÍNH văn bản đã khớp tên người này. Cùng điều kiện "
+             "đối chiếu như CccdNam_BanAnLyHon_So."},
+    {"name": "CccdNam_BanAnLyHon_DuongSu",
+     "desc": "Họ tên ĐẦY ĐỦ của TẤT CẢ đương sự ghi trong CHÍNH văn bản ly hôn đã gán cho BÊN NAM, nối bằng "
+             "'; ' (vd 'Nguyễn Hoàng Hải Thanh; Lưu Hùng Nguyên'); bỏ xưng hô ông/bà/anh/chị và năm sinh. "
+             "BẮT BUỘC trả kèm khi có CccdNam_BanAnLyHon_So — hệ thống dùng để kiểm tra chéo, nếu họ tên "
+             "bên NAM không nằm trong danh sách này thì toàn bộ phần ly hôn của bên NAM bị loại bỏ."},
 
     # CCCD/CMND bên nữ.
     {"name": "CccdNu_HoTen", "desc": "Họ tên trên CCCD/CMND có giới tính Nữ."},
@@ -61,8 +67,14 @@ FIELDS: list[dict] = [
      "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn của BÊN NỮ, dd/mm/yyyy. Cùng điều kiện đối "
              "chiếu như CccdNu_BanAnLyHon_So."},
     {"name": "CccdNu_BanAnLyHon_CoQuan",
-     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn của BÊN NỮ (vd 'Tòa án nhân dân thành phố "
-             "...'). Cùng điều kiện đối chiếu như CccdNu_BanAnLyHon_So."},
+     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn của BÊN NỮ (vd 'Tòa án nhân dân huyện An Lão, "
+             "thành phố Hải Phòng'), đọc ở góc trên của CHÍNH văn bản đã khớp tên người này. Cùng điều kiện "
+             "đối chiếu như CccdNu_BanAnLyHon_So."},
+    {"name": "CccdNu_BanAnLyHon_DuongSu",
+     "desc": "Họ tên ĐẦY ĐỦ của TẤT CẢ đương sự ghi trong CHÍNH văn bản ly hôn đã gán cho BÊN NỮ, nối bằng "
+             "'; ' (vd 'Nguyễn Hoàng Hải Thanh; Lưu Hùng Nguyên'); bỏ xưng hô ông/bà/anh/chị và năm sinh. "
+             "BẮT BUỘC trả kèm khi có CccdNu_BanAnLyHon_So — hệ thống dùng để kiểm tra chéo, nếu họ tên "
+             "bên NỮ không nằm trong danh sách này thì toàn bộ phần ly hôn của bên NỮ bị loại bỏ."},
 
     # Tách nguồn tờ khai khỏi CCCD để mapper ưu tiên tất định, không phụ thuộc LLM tự chọn nguồn.
     {"name": "ToKhaiNam_NoiCuTru_TrongNuoc",
