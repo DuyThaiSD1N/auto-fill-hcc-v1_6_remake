@@ -2701,10 +2701,21 @@ document.getElementById("consentLegalBack")?.addEventListener("click", () => sho
 // ===== OCR & điền =====
 ocrBtn.addEventListener("click", async () => {
   if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+  // Chốt chặn PDPL phải đứng TRƯỚC bước mở hồ sơ của cổng doanh nghiệp.
+  //
+  // Bấm nút khi chưa vào khối dữ liệu là lệnh "mở hồ sơ": wizard chạy 3 bước rồi trang tải lại,
+  // panel dựng lại và TỰ bấm nút này lần nữa để quét. Nếu hỏi đồng ý sau bước mở hồ sơ thì màn
+  // điều khoản chỉ hiện ở lượt tự bấm đó — tức là cán bộ đã bị đưa vào hồ sơ rồi mới được hỏi.
+  // Hỏi trước thì trình tự đúng như nghiệp vụ yêu cầu: đồng ý → vào hồ sơ → quét và điền.
+  // Khoá đồng ý là (người/phiên + thủ tục) và restoreConsent() giữ qua reload, nên lượt tự bấm
+  // sau khi vào hồ sơ không bị hỏi lại.
+  if (!(await requireConsent(ocrBtn))) return;
   // Cổng ĐKKD qua mạng: trước khối dữ liệu hồ sơ còn wizard 3 bước (loại đăng ký → loại hình →
   // Bắt đầu). Bấm nút này CHÍNH LÀ lệnh vào hồ sơ; chưa vào tới nơi thì mở hồ sơ rồi dừng lượt —
   // chưa có form để điền nên gọi backend lúc này chỉ tốn lượt OCR.
   if (await startEnterpriseDossierIfNeeded()) return;
+  // Kiểm file SAU bước mở hồ sơ: khi chưa vào khối dữ liệu, lượt bấm này là lệnh MỞ HỒ SƠ nên
+  // vẫn phải chạy được dù cán bộ chưa đính giấy tờ nào.
   if (!files.length) {
     setStatus("Chưa có file nào.", "err");
     return;
@@ -2712,8 +2723,6 @@ ocrBtn.addEventListener("click", async () => {
   // Cổng DVC quốc gia còn chặn một modal "Thông tin chung" trước bước kê khai — bấm hộ rồi mới
   // quét. Chưa qua được thì dừng lượt bấm, KHÔNG gọi backend cho phí lượt OCR.
   if (!(await passInfoModalIfAny())) return;
-  // Chốt chặn PDPL: chưa đồng ý trong phiên này → hiện điều khoản, KHÔNG điền (đồng ý xong tự chạy lại).
-  if (!(await requireConsent(ocrBtn))) return;
   window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
   ocrBtn.disabled = true;
   clearReviewCard(); // xoá card rà soát của lần trước trước khi chạy lại
@@ -2857,11 +2866,12 @@ ocrBtn.addEventListener("click", async () => {
 if (fillAllBtn) {
   fillAllBtn.addEventListener("click", async () => {
     if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+    // Chốt chặn PDPL đứng TRƯỚC bước mở hồ sơ — xem chú thích cùng chỗ ở nút "Quét và nhập dữ liệu":
+    // phải đồng ý điều khoản rồi mới vào hồ sơ, không phải vào hồ sơ rồi mới được hỏi.
+    if (!(await requireConsent(fillAllBtn))) return;
     // Cổng ĐKKD qua mạng: khai "pages" nên panel hiện nút này thay cho "Quét và nhập dữ liệu".
     // Chưa vào khối dữ liệu thì lượt bấm này là lệnh MỞ HỒ SƠ (wizard 3 bước), chưa quét.
     if (await startEnterpriseDossierIfNeeded()) return;
-    // Chốt chặn PDPL: luồng quét + đính kèm 8 trang cũng xử lý dữ liệu → chưa đồng ý phiên thì hỏi trước.
-    if (!(await requireConsent(fillAllBtn))) return;
     window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
     fillAllBtn.disabled = true;
     // Lượt mới phải bỏ mã cũ trước khi gọi BE. Mã mới chỉ lấy từ /process (fill),

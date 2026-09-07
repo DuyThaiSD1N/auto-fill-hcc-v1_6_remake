@@ -315,7 +315,7 @@
     {
       "key": "ho-tro-nguoi-cao-tuoi-dang-vien-40-nam-tuoi-dang",
       "code": "1.014589",
-      "label": "Thủ tục Hỗ trợ cho Người cao tuổi từ đủ 70 tuổi đến dưới 75 tuổi; Người cao tuổi dưới 75 tuổi thường trú trên địa bàn tỉnh, là Đảng viên được tặng huy hiệu 40 năm tuổi đảng trở lên, không có lương hưu, trợ cấp bảo hiểm xã hội, trợ cấp xã hội hàng tháng",
+      "label": "[Bắc Ninh] Thủ tục Hỗ trợ cho Người cao tuổi từ đủ 70 tuổi đến dưới 75 tuổi; Người cao tuổi dưới 75 tuổi thường trú trên địa bàn tỉnh, là Đảng viên được tặng huy hiệu 40 năm tuổi đảng trở lên, không có lương hưu, trợ cấp bảo hiểm xã hội, trợ cấp xã hội hàng tháng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7c4f-0f4f-756f-a7db-e8f96edb8171",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -965,6 +965,14 @@
       "code": "1.011441",
       "label": "[Đà Nẵng] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cho-thue-thue-mua-nha-o-xa-hoi",
+      "code": "1.012896",
+      "label": "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư xây dựng bằng vốn đầu tư công",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88ac-71f9-b970-b83cf0372841",
       "needsAgencySelect": true,
       "autoConfirm": true
     }

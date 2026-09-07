@@ -371,6 +371,13 @@
       path: "enterprisename.aspx",
       probe: 'input[name="ctl00$C$NAMEFld"]',
       save: "ctl00$C$BtnSave",
+      // Trang này LUÔN chạm trần số lượt điền, và đó là chuyện BÌNH THƯỜNG chứ không phải hỏng:
+      // ô "tiền tố loại hình" (ctl00$C$DROP_NAME_TYPE) là dropdown AutoPostBack — cứ đặt giá trị
+      // là cổng tải lại trang ngay, lệnh đánh dấu "đã xong" chạy sau đó chết theo trang. Mỗi lượt
+      // tải lại vẫn điền đủ tên nên kết quả đúng, chỉ là phải đi hết trần mới thoát ra được.
+      // Vì vậy KHÔNG bắn toast đỏ ở trang này — cảnh báo sai làm cán bộ tưởng hồ sơ điền hụt.
+      // Vẫn giữ console.warn để khi cần còn lần được.
+      quietFillCap: true,
     },
     "thong-tin-ve-von": {
       label: "Thông tin về vốn",
@@ -1149,8 +1156,11 @@
       state.fillTries[onPage] = fillTries;
       await setFillState(state);
       if (fillTries > MAX_FILL_TRIES) {
-        console.warn("[EnterpriseFill] bỏ qua trang điền mãi không xong:", spec.label);
-        toast(`Trang "${spec.label}" điền mãi không xong — mời kiểm tra và điền tay trang này.`, "warn");
+        console.warn("[EnterpriseFill] hết lượt điền, chuyển trang:", spec.label,
+          spec.quietFillCap ? "(trang có control AutoPostBack — chạm trần là bình thường)" : "");
+        if (!spec.quietFillCap) {
+          toast(`Trang "${spec.label}" điền mãi không xong — mời kiểm tra và điền tay trang này.`, "warn");
+        }
         state.done = [...state.done, onPage];
         await setFillState(state);
         return void scheduleStepFill();
