@@ -29,6 +29,15 @@ def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
+def _date_key(value) -> tuple | None:
+    """dd/mm/yyyy -> tuple so sánh được; sai định dạng trả None (không kết luận)."""
+    match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(value or "").strip())
+    if not match:
+        return None
+    day, month, year = match.groups()
+    return (int(year), int(month), int(day))
+
+
 def _fold(value) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
@@ -550,6 +559,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     period_to = values.get("Period_DenNgay")
     has_marriage = any((marriage_spouse, marriage_number, marriage_date, marriage_agency))
 
+    # Hôn nhân HIỆN TẠI đăng ký SAU mốc ly hôn/khai tử của cuộc hôn nhân trước → người này đã kết
+    # hôn LẠI. Chỉ kết luận khi cả hai mốc đều đọc được đúng dd/mm/yyyy; thiếu mốc nào thì để False
+    # và giữ nguyên thứ tự ưu tiên cũ.
+    _prior_end_keys = [key for key in (_date_key(divorce_date), _date_key(death_date)) if key]
+    _marriage_key = _date_key(marriage_date)
+    remarried_after_prior = bool(
+        has_marriage and _marriage_key and _prior_end_keys and _marriage_key > max(_prior_end_keys)
+    )
+
     # Ưu tiên 0: tờ khai xin xác nhận CHƯA ĐKKH TRONG MỘT KHOẢNG THỜI GIAN ĐÃ QUA mà HIỆN TẠI đã có
     # vợ/chồng (vd bổ sung hồ sơ mua bán đất diễn ra trước khi cưới). Cổng có option RIÊNG cho ca này
     # (=5); chọn nhầm "Hiện tại đang có vợ/chồng" (=2) là mất sạch khoảng thời gian — đúng cái người
@@ -564,6 +582,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         period_detail = {key: value for key, value in period_detail.items() if value not in (None, "")}
         add("nxnLoaiTinhTrangHonNhan=5", period_detail)
         add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
+
+    # Ưu tiên 0.5: hồ sơ có bản án ly hôn / giấy khai tử của vợ chồng CŨ nhưng giấy kết hôn hiện tại
+    # lại đăng ký SAU mốc đó → đã kết hôn lại. Hai option =3/=4 đều kết thúc bằng "hiện tại chưa
+    # đăng ký kết hôn với ai" nên chọn chúng là khai SAI sự thật; đúng phải là "Hiện tại đang có
+    # vợ/chồng" (=2). Chỉ áp dụng khi tờ khai KHÔNG tự khai trạng thái (có khai thì theo tờ khai).
+    elif remarried_after_prior and not declared_status:
+        add("TinhTrangHonNhanC1", _MARRIED_STATUS)
+        marriage_detail = {
+            "voChongHoTen": marriage_spouse,
+            "soGiayTo": marriage_number,
+            "ngayCapGiayTo": marriage_date,
+            "coQuanCapGiayTo": marriage_agency,
+        }
+        marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
+        if marriage_detail:
+            add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
+            add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
 
     # Ưu tiên 1: TỜ KHAI khai báo rõ ràng tình trạng hôn nhân
     elif declared_status and declared_status != "":
@@ -639,6 +674,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # Mục đích cụ thể từ tờ khai/giấy XNTTHN cũ → ô "Nhập mục đích" free-text.
     add("nhapmucdichkhac", values.get("Purpose"))
     add("TraKQ", "1")
+    # Ô (17) "Số lượng bản sao" là bắt buộc trên cổng nhưng tờ khai giấy không có mục này → mặc
+    # định 1 bản, đánh dấu default để extension tô viền vàng cho cán bộ sửa nếu người dân xin nhiều.
+    add("SoLuong", "1", default=True)
 
     return out
 

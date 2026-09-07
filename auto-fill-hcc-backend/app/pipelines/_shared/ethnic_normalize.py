@@ -24,7 +24,7 @@ def _fold(text: str) -> str:
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
     t = t.replace("\u0110", "D").replace("\u0111", "d")
     # Bo cac ky tu dac biet thuong gap trong OCR viet tat dan toc
-    t = re.sub(r"['.`''\-]", "", t)
+    t = re.sub(r"['.`''\-()[\]]", "", t)
     return re.sub(r"\s+", " ", t).strip().lower()
 
 
@@ -40,8 +40,8 @@ _ETHNIC_MAP: dict[str, str] = {
     "mong": "Mông",
     # H.Mong, H'Mong, HMong, H Mong... -> option "Mong (Hmong)"
     "hmong": "Mông (Hmông)",
-    "hmong": "Mông (Hmông)",
     "h mong": "Mông (Hmông)",
+    "mong hmong": "Mông (Hmông)",
 
     # ===== TAY =====
     "tay": "Tày",
@@ -99,6 +99,10 @@ _ETHNIC_MAP: dict[str, str] = {
     # ===== CO HO =====
     "co ho": "Cơ Ho",
     "coho": "Cơ Ho",
+    "co ho kho": "Cơ Ho",
+    "coho kho": "Cơ Ho",
+    "kho": "Cơ Ho",
+    "k ho": "Cơ Ho",
 
     # ===== XO DANG =====
     "xo dang": "Xơ Đăng",

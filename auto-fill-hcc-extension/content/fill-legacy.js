@@ -210,7 +210,10 @@ function legacyFieldState(field) {
   const names = fieldCandidates(field);
   if (field.comp === "raw") {
     const input = findLegacyRawInput(field);
-    return { supported: true, filled: !!input && legacyScalarMatches(input.value, field.value), target: input?.parentElement || input };
+    const matched = field.clear
+      ? !String(input?.value || "").trim()
+      : legacyScalarMatches(input?.value, field.value);
+    return { supported: true, filled: !!input && matched, target: input?.parentElement || input };
   }
 
   const found = findNamedElement(field.comp, names);
@@ -219,9 +222,11 @@ function legacyFieldState(field) {
 
   if (field.comp === "x-input" || field.comp === "x-input-number") {
     const input = container.querySelector("input");
+    // Field "clear": đạt yêu cầu khi ô đã TRỐNG, không phải khi khớp giá trị.
+    const empty = !String(input?.value || "").trim();
     return {
       supported: true,
-      filled: !!input && legacyScalarMatches(input.value, field.value),
+      filled: !!input && (field.clear ? empty : legacyScalarMatches(input.value, field.value)),
       container,
       target: input?.parentElement || container,
     };
@@ -231,6 +236,10 @@ function legacyFieldState(field) {
     const day = container.querySelector(`input[${suffix}$="-day"]`);
     const month = container.querySelector(`input[${suffix}$="-month"]`);
     const year = container.querySelector(`input[${suffix}$="-year"]`);
+    if (field.clear) {
+      const empty = [day, month, year].every((el) => !String(el?.value || "").trim());
+      return { supported: true, filled: empty, container, target: (day || month || year)?.parentElement || container };
+    }
     const raw = String(field.value || "").trim();
     const full = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
     const yearOnly = raw.match(/^\d{4}$/);
@@ -248,6 +257,10 @@ function legacyFieldState(field) {
   }
   if (field.comp === "x-select") {
     const target = container.querySelector(".input-field-select");
+    if (field.clear) {
+      const empty = isPlaceholderOpt(norm(String(target?.textContent || "").replace(/[▲▼▾▿]/g, "")));
+      return { supported: true, filled: empty, container, target: target || container };
+    }
     return { supported: true, filled: legacyChoiceMatches(target?.textContent, field.value), container, target: target || container };
   }
   const root = container.querySelector('[id^="custom-select-default-"]');
@@ -255,7 +268,66 @@ function legacyFieldState(field) {
   return { supported: true, filled: legacyChoiceMatches(target?.textContent, field.value), container, target: target || container };
 }
 
+// Field mang cờ "clear": cổng đã điền sẵn ô này từ tài khoản VNeID đang đăng nhập, nhưng hồ sơ
+// cho biết đó là dữ liệu của NGƯỜI KHÁC (người nộp hộ). Giữ lại nghĩa là ghép họ tên người này
+// với giấy tờ tùy thân người kia, nên phải xóa cho trống — ô sẽ hiện đỏ để người dùng gõ lại.
+async function clearLegacyComponent(container, field) {
+  switch (field.comp) {
+    case "raw":
+    case "x-input":
+    case "x-input-number": return clearLegacyInput(container, field);
+    case "x-date":
+    case "x-date-text": return clearLegacyDate(container, field);
+    case "x-select": return clearLegacySelect(container);
+    default: return false;
+  }
+}
+
+function clearLegacyInput(container, f) {
+  const escaped = CSS.escape(f.name);
+  const containers = Array.from(document.querySelectorAll(`x-input[name="${escaped}"], x-input-number[name="${escaped}"]`));
+  const targets = containers.length ? containers : [container];
+  let any = false;
+  for (const target of targets) {
+    const el = target.querySelector(`input[name="${escaped}"]`) || target.querySelector("input");
+    if (!el) continue;
+    setNativeValue(el, "", { typing: true, commit: true });
+    any = true;
+  }
+  return any;
+}
+
+function clearLegacyDate(container, f) {
+  // x-date đặt tên ô con qua name, x-date-text qua id (xem legacyFieldState).
+  const suffix = f.comp === "x-date" ? "name" : "id";
+  const parts = ["day", "month", "year"].map((part) => container.querySelector(`input[${suffix}$="-${part}"]`));
+  parts.push(container.querySelector(`input[name$="-name-date-input"]`));
+  let any = false;
+  for (const el of parts) {
+    if (!el) continue;
+    setNativeValue(el, "", { typing: true, commit: true });
+    any = true;
+  }
+  return any;
+}
+
+async function clearLegacySelect(container) {
+  const root = container.querySelector('[id^="custom-select-"]');
+  const header = root?.querySelector(".input-field-select");
+  if (!header) return false;
+  header.click();
+  const options = () => Array.from(root.querySelector(".input-field-select-options")?.querySelectorAll("div") || []);
+  await waitFor(() => options().length > 0, 1500);
+  // Dropdown chỉ về trống được bằng chính option giữ chỗ ("-- Chọn --").
+  const placeholder = options().find((o) => isPlaceholderOpt(norm(o.textContent)));
+  if (!placeholder) { header.click(); return false; }
+  placeholder.click();
+  await sleep(150);
+  return true;
+}
+
 async function fillLegacyComponent(container, field) {
+  if (field.clear) return clearLegacyComponent(container, field);
   switch (field.comp) {
     case "x-input": return fillInput(container, field);
     case "x-input-number": return fillInput(container, field);
@@ -312,7 +384,8 @@ function refreshRequestedLegacyMarks(fields) {
     for (const node of marked) {
       node?.classList?.remove("autofill-filled", "autofill-not-filled", "autofill-default");
     }
-    if (state.filled) {
+    // Ô bị xóa chủ động vẫn là ô TRỐNG người dùng phải tự nhập → luôn đỏ, không tô xanh.
+    if (state.filled && !field.clear) {
       markFilled(state.target);
       if (field.default) _convertGreenToYellow(state.container || state.target);
     } else {
@@ -683,6 +756,10 @@ function foldLegacyChoice(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s*[-–—‐‑]+\s*/g, " ")
+    // Nhãn option của cổng có chỗ viết "…" (một ký tự), chỗ viết "..." (ba dấu chấm), lại hay
+    // kèm khoảng trắng lạ — vd option tình trạng hôn nhân "Từ ngày… tháng… năm… đến ngày…".
+    // Không gộp thì chuỗi ta gửi lên không khớp option nào, dropdown bị bỏ trống.
+    .replace(/\s*(?:…|\.{2,})\s*/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();

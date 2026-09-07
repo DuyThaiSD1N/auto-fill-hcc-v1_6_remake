@@ -253,9 +253,23 @@ function fileExtension(name) {
 }
 
 function safeAttachmentFileName(payload, documentName) {
-  const base = String(documentName || "").trim() || attachmentDocumentName(payload);
   const ext = fileExtension(payload?.name);
+  let base = String(documentName || "").trim() || attachmentDocumentName(payload);
+  // documentName có thể ĐÃ kèm đuôi (vd "…đất.pdf") → bỏ đuôi trùng để KHÔNG thành "…đất.pdf.pdf".
+  if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length);
   return base + ext;
+}
+
+// Ô "Tên tài liệu" (Ví cá nhân / cổng có ký số): thực nghiệm DẤU CÁCH + chữ tiếng Việt có dấu đều OK —
+// chỉ DẤU CHẤM (kể cả đuôi ".pdf") gây "Tên tài liệu không hợp lệ". Giữ chữ/số/dấu cách/_/-, bỏ đuôi
+// file + dấu chấm + ký tự lạ. KHÔNG fold dấu, KHÔNG đổi dấu cách thành "_".
+function walletSafeDocumentName(name) {
+  const s = String(name || "")
+    .replace(/\.[^.\s]+$/, "")               // bỏ đuôi file (.pdf, .jpg…)
+    .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")   // giữ chữ (mọi ngôn ngữ), số, _, -, dấu cách; bỏ dấu chấm & ký tự khác
+    .replace(/\s+/g, " ")
+    .trim();
+  return s.slice(0, 100) || "Tài liệu";
 }
 
 function dataUrlToFile(payload, documentName = "") {
@@ -355,7 +369,8 @@ function findWalletUploadDoneButton(dialog) {
 async function ensureWalletDocumentName(dialog, documentName) {
   const input = await waitFor(() => dialog.querySelector('input[name="documentName"]'), 8000, 100);
   if (!input) return false;
-  const safeName = String(documentName || "").trim() || "Tài liệu chứng thực";
+  // Bỏ đuôi ".pdf" + dấu chấm (giữ dấu cách/chữ có dấu) kẻo cổng báo "Tên tài liệu không hợp lệ".
+  const safeName = walletSafeDocumentName(String(documentName || "").trim() || "Tài liệu chứng thực");
   setNativeValue(input, safeName, { typing: true, commit: true });
   await sleep(150);
   return true;
@@ -943,7 +958,8 @@ function normalizeAttachmentPlan(attachments, procedure = "") {
     }
   }
 
-  if (procedure === "chung-thuc-ban-sao" && items.length > 1) {
+  // 1 file ảo vào STT1). KHÔNG chạy heuristic đảo CCCD↔STT1 nữa kẻo đẩy nhầm giấy tờ thật lên STT1.
+  if (procedure === "chung-thuc-ban-sao" && items.length > 1 && !items.some((it) => it.virtualCopy)) {
     const existing = items.find((item) => item.target === "existing" || item.needsAddComponent === false);
     const primary = items.find((item) =>
       !isIdentityAttachmentItem(item) &&
@@ -1340,6 +1356,39 @@ function forceRow1PlanItem(item, procedure) {
   };
 }
 
+async function clearAddedAttachmentRows() {
+  let removed = 0;
+  for (let guard = 0; guard < 20; guard++) {
+    const rows = findAttachmentRows();
+    const deletable = rows.find((row) =>
+      Array.from(row.querySelectorAll('img[alt="delete"]')).some((img) => isVisible(img.closest("button") || img))
+    );
+    if (!deletable) break;
+    const btn = Array.from(deletable.querySelectorAll('img[alt="delete"]'))
+      .map((img) => img.closest("button"))
+      .find((b) => b && isVisible(b));
+    if (!btn) break;
+    const before = findAttachmentRows().length;
+    btn.click();
+    // Cổng hiện HỘP XÁC NHẬN role="alertdialog" ("Bạn có muốn xóa tệp đính kèm" / nút "Xác nhận") — role
+    // KHÁC "dialog" nên findLatestDialog không bắt được. Đợi alertdialog rồi bấm "Xác nhận".
+    const confirmDlg = await waitFor(() =>
+      Array.from(document.querySelectorAll('[role="alertdialog"], [role="dialog"]'))
+        .filter(isVisible)
+        .find((d) => foldedNodeText(d).includes("xoa")) || null,
+      2000, 100
+    );
+    if (confirmDlg) {
+      const yes = findButtonByText(confirmDlg, ["Xác nhận", "Đồng ý", "Xóa", "Có"]);
+      if (yes) { yes.click(); await sleep(300); }
+    }
+    const shrank = await waitFor(() => findAttachmentRows().length < before, 2500, 100);
+    if (!shrank) break; // không xóa được → dừng, tránh lặp vô hạn
+    removed++;
+  }
+  return removed;
+}
+
 async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
   // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
   if (detectFormKind() === "bacninh" && typeof H.attachBacNinhByPlan === "function") {
@@ -1386,7 +1435,14 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
       }
     }
 
-    const plannedAttachments = splitMode
+    // SPLIT + có dòng phải "Thêm thành phần" (flow file ảo Hải Châu): dọn các dòng đã thêm còn DÍNH từ
+    // tab/hồ sơ TRƯỚC để mỗi hồ sơ chỉ giữ đúng dòng của nó. No-op ở cổng không có nút xóa dạng này.
+    if (splitMode && normalItems.some((it) => it && (it.target === "new" || it.needsAddComponent === true))) {
+      try { await clearAddedAttachmentRows(); } catch (e) { console.warn("[TLND-Attach] clear leftover rows:", e); }
+    }
+
+    // file ảo target=STT1), KHÔNG ép mọi file về STT1. Split thường vẫn ép hết về STT1.
+    const plannedAttachments = (splitMode && !normalItems.some((it) => it && it.virtualCopy))
       ? normalItems.map((item) => forceRow1PlanItem(item, procedure))
       : normalizeAttachmentPlan(normalItems, procedure);
 

@@ -125,10 +125,13 @@ FIELDS: list[dict] = [
     {"name": "Period_TuNgay",
      "desc": 'Ngày BẮT ĐẦU của khoảng thời gian mong muốn xác nhận chưa đăng ký kết hôn với ai, '
              'dd/mm/yyyy. Lấy ở dòng "Tình trạng hôn nhân" của TỜ KHAI, sau chữ "Từ ngày ... tháng '
-             '... năm ...". Không có khoảng thời gian thì bỏ trống.'},
+             '... năm ..." HOẶC dạng viết gọn "Từ ngày 27/4/2016", "Từ 27-4-2016". BẮT BUỘC trả kể '
+             'cả khi ngày này TRÙNG ngày bản án ly hôn (DivorceDecision_Date) — một ngày được phép '
+             'nằm ở cả hai field. Không có khoảng thời gian thì bỏ trống.'},
     {"name": "Period_DenNgay",
      "desc": 'Ngày KẾT THÚC của khoảng thời gian nói trên, dd/mm/yyyy. Lấy sau chữ "đến ngày ... '
-             'tháng ... năm ..." trên cùng dòng. Không có thì bỏ trống.'},
+             'tháng ... năm ..." trên cùng dòng, kể cả khi viết gọn "đến 14/9/2016" hay "tới '
+             '14-9-2016" (chữ "ngày" có thể vắng). Không có thì bỏ trống.'},
     {"name": "Purpose",
      "desc": 'Mục đích sử dụng giấy XNTTHN.'},
     # --- Fields từ GIẤY ỦY QUYỀN (khi người yêu cầu nhờ người khác nộp thay) ---
@@ -214,6 +217,9 @@ UI_COMP_BY_NAME = {
     "mucdichkhac": "x-select-area",    # x-select-area ào mục đích khác (khận với form thực)
     "nhapmucdichkhac": "raw",          # ô nhập mục đích free-text (input trần)
     "TraKQ": "x-radio",
+    # (17) "Số lượng bản sao" — ô BẮT BUỘC của cổng nhưng tờ khai giấy không có mục này, nên Python
+    # điền mặc định 1 (viền vàng để cán bộ rà lại). Tên DOM giống thủ tục Trích lục cùng họ eForm.
+    "SoLuong": "raw",
 }
 
 UI_ALIASES = {

@@ -225,6 +225,20 @@ _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Moth
 # đối chiếu được người đăng nhập chính là người được đăng ký lại khai sinh.
 _REQUESTER_OVERWRITE_SOURCES = frozenset({"to_khai", "cccd_con"})
 
+# Mục I được cổng điền sẵn từ tài khoản VNeID đang đăng nhập. Khi tờ khai chốt người yêu cầu là
+# NGƯỜI KHÁC (người nộp hộ đăng nhập bằng tài khoản của chính họ), mọi ô ta không đọc được vẫn
+# đang mang dữ liệu của tài khoản đó: giữ lại là ghép HỌ TÊN người này với GIẤY TỜ TÙY THÂN người
+# kia — sai người ngay ở mục đầu tiên mà nhìn vào vẫn thấy "đủ dữ liệu" nên không ai soát ra.
+# Xóa trắng thì ô hiện đỏ và người dùng gõ lại.
+_REQUESTER_IDENTITY_FIELDS = (
+    "HoVaTenC",
+    "SoDinhDanhC",
+    "SoGiayToDinhDanhC",
+    "LoaiGiayToDinhDanhC",
+    "NgayCapDDC",
+    "NoiCapDDC",
+)
+
 # Thứ tự đọc dân tộc người yêu cầu theo ô tích đã chốt (không có "Khac": người thứ ba
 # không có nguồn dân tộc trong hồ sơ nên để cổng giữ dữ liệu VNeID).
 _ETHNICITY_BY_TICK = {
@@ -305,7 +319,20 @@ def _is_valid_id_number(value) -> bool:
     return len(text) in _VALID_ID_DIGIT_LENGTHS
 
 
-def _requester_is_subject(values: dict, relation: str) -> bool:
+def _self_full_name(context: str) -> str:
+    """Họ tên đã được reason.py chốt cho ca người yêu cầu tự đi làm cho chính mình.
+
+    Tờ khai viết tay ghi hai lần cùng một người (dòng người yêu cầu + mục người được đăng ký lại)
+    nên OCR đọc lệch một dòng là chuyện thường; reason.py phân xử bằng số tài liệu ghi đúng tên.
+    """
+    if not context:
+        return ""
+    return _reason_mod._labeled_value(
+        _reason_mod._section(context, "quan_he_nguoi_yeu_cau"), "Họ tên thống nhất"
+    )
+
+
+def _requester_is_subject(values: dict, relation: str, context: str = "") -> bool:
     """Người yêu cầu và người được đăng ký lại khai sinh có phải MỘT người không.
 
     Tờ khai đã tự ghi "Bản thân" thì đó là lời khai chính chủ. KHÔNG dùng số định danh để bác lại:
@@ -315,6 +342,9 @@ def _requester_is_subject(values: dict, relation: str) -> bool:
     """
     if relation != "BanThan":
         return False
+    # reason.py đã chốt hai dòng đó là một người (chỉ lệch một tiếng do OCR) → không bác nữa.
+    if _self_full_name(context):
+        return True
     req_name = _fold(values.get("Requester_FullName"))
     subject_name = _fold(values.get("Subject_FullName"))
     return not (req_name and subject_name and req_name != subject_name)
@@ -429,7 +459,7 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         # mục I là sai người ngay từ ô đầu tiên.
         # NƠI CƯ TRÚ và HỌ TÊN vẫn ưu tiên tờ khai: tờ khai viết hôm nay, còn thẻ có thể cấp từ
         # nhiều năm trước và địa giới hành chính đã đổi.
-        card_first = _requester_is_subject(values, relation)
+        card_first = _requester_is_subject(values, relation, context)
         # `base` chỉ là NGƯỜI YÊU CẦU khi ô tích đáng tin: vai cha/mẹ thì chính ô tích khẳng định
         # điều đó, riêng "Bản thân" phải qua thêm phép so tên (ô tích rất hay bị tick nhầm).
         trust_base = bool(role) and (relation != "BanThan" or card_first)
@@ -449,6 +479,10 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             person["so_dinh_danh"] = next(
                 (v for v in sources["so_dinh_danh"] if _is_valid_id_number(v)), None
             )
+        # Hai dòng tờ khai cùng chỉ một người thì phải mang CÙNG một họ tên đã được phân xử.
+        self_name = _self_full_name(context) if relation == "BanThan" else ""
+        if self_name:
+            person["ho_ten"] = self_name
         # Tờ khai đọc được nhưng không ra chữ quan hệ nào → tick "Khác" (an toàn nhất, không ép
         # người yêu cầu thành con/cha/mẹ) và đánh dấu default để người dùng soát lại.
         return {
@@ -468,6 +502,19 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             return {**person, "quan_he": "BanThan", "quan_he_default": False, "source": "cccd_con"}
 
     return {"quan_he": "Khac", "quan_he_default": True, "source": "khong_to_khai"}
+
+
+def _requester_is_portal_account(requester: dict, options: dict | None) -> bool:
+    """Người yêu cầu ta vừa chốt có đúng là tài khoản VNeID đang đăng nhập cổng không.
+
+    Trùng thì dữ liệu cổng điền sẵn ở mục I là của CHÍNH người đó — ô nào ta không đọc được cứ
+    để cổng giữ, xóa đi là mất dữ liệu đúng. Không trùng (hoặc cổng không truyền mỏ neo) thì
+    những ô đó là của người khác.
+    """
+    name, identity = _reason_mod._requester_context(options)
+    if not name and not identity:
+        return False
+    return _same_person(name, identity, requester.get("ho_ten"), requester.get("so_dinh_danh"))
 
 
 def _previous_registration_number(values: dict) -> str:
@@ -499,6 +546,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
+    def clear(name: str) -> None:
+        """Yêu cầu extension XÓA giá trị cổng đã điền sẵn ở ô ta không có dữ liệu."""
+        if name in seen:
+            return
+        comp = _COMP_BY_NAME.get(name)
+        if not comp:
+            return
+        out.append({"name": name, "comp": comp, "value": "", "clear": True})
+        seen.add(name)
+
     for default in _STRUCTURAL_DEFAULTS:
         add(default["name"], default["value"])
 
@@ -523,6 +580,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("NgayCapDDC", requester.get("ngay_cap"))
             add("NoiCapDDC", requester.get("noi_cap"))
 
+            # Đã ghi đè khối này bằng nhân thân người khác thì mọi ô còn lại của mục I vẫn đang
+            # mang dữ liệu tài khoản đang đăng nhập → xóa, không để nửa người này nửa người kia.
+            # (Không đọc được gì thì KHÔNG vào nhánh này: khối cổng điền vẫn là một người trọn vẹn.)
+            if not _requester_is_portal_account(requester, options):
+                for _name in _REQUESTER_IDENTITY_FIELDS:
+                    clear(_name)
+
         req_area = requester.get("noi_cu_tru")
         if req_area:
             add("nycLoaiCuTru", "Thường trú")
@@ -543,7 +607,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # II. Nguoi duoc dang ky lai khai sinh.
     has_subject = any(name.startswith("Subject_") for name in values)
     if has_subject:
-        add("HoTenKS", values.get("Subject_FullName"))
+        # Người yêu cầu tự đi làm cho chính mình: mục I và mục II là MỘT người nên phải cùng một
+        # họ tên đã được reason.py phân xử, không để mỗi mục mang một dòng OCR khác nhau.
+        self_name = _self_full_name(context) if quan_he == "BanThan" else ""
+        add("HoTenKS", self_name or values.get("Subject_FullName"))
         add("NgaySinhChon", values.get("Subject_BirthDate"))
         add("GioiTinhKS", values.get("Subject_Gender"))
         add("DanTocKS", normalize_ethnic(values.get("Subject_Ethnicity")))

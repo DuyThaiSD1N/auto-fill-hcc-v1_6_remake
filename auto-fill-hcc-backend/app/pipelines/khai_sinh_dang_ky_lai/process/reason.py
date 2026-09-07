@@ -222,6 +222,45 @@ def _names_align(a, b) -> bool:
     return len(diff) == 1 and _syllable_close(*diff[0])
 
 
+def _one_syllable_apart(a, b) -> bool:
+    """Hai tên cùng số tiếng và chỉ khác ĐÚNG MỘT tiếng."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if len(words_a) < 2 or len(words_a) != len(words_b):
+        return False
+    return sum(1 for x, y in zip(words_a, words_b) if x != y) == 1
+
+
+def _document_hits(name, documents: list[dict]) -> int:
+    """Số TÀI LIỆU trong hồ sơ có chứa nguyên văn họ tên này."""
+    folded = _fold(name)
+    if not folded:
+        return 0
+    return sum(1 for document in documents if folded in _fold(document.get("text")))
+
+
+def _self_name_consensus(requester_name, subject_name, documents: list[dict]) -> str:
+    """Người yêu cầu CHÍNH LÀ người được đăng ký lại → hai mục trên tờ khai phải cùng một tên.
+
+    Tờ khai viết tay nên OCR đọc hỏng đúng một mục là chuyện thường ("Nguyễn Thị Thu Hà" ở dòng
+    người yêu cầu, "Nguyễn Thị Ha Hà" ở mục người được đăng ký lại). Bản thân tờ khai không phân
+    xử được ai đúng, nên đếm số TÀI LIỆU trong hồ sơ ghi đúng từng tên: tên còn nằm trên CCCD,
+    giấy chứng nhận kết hôn, bản tường trình... là tên thật; tên chỉ xuất hiện ở đúng một dòng
+    của tờ khai là dòng bị đọc hỏng.
+
+    Chỉ nới ở mức LỆCH MỘT TIẾNG: lệch nhiều hơn thì đó là hai cái tên khác nhau (vd tên khai
+    sinh cũ khác tên đang dùng), không được tự ý gộp.
+    """
+    if not _one_syllable_apart(requester_name, subject_name):
+        return ""
+    requester_hits = _document_hits(requester_name, documents)
+    subject_hits = _document_hits(subject_name, documents)
+    if requester_hits > subject_hits:
+        return str(requester_name).strip()
+    if subject_hits > requester_hits:
+        return str(subject_name).strip()
+    return ""
+
+
 def _section(text: str, tag: str) -> str:
     raw = str(text or "")
     opening = re.search(rf"<{tag}>\s*", raw, flags=re.IGNORECASE)
@@ -255,11 +294,16 @@ def _requester_context(options: dict | None) -> tuple[str, str]:
     )
 
 
+# Người dân gạch mục cha/mẹ trống bằng chính chữ "Không có" trên tờ khai. Đó là LỜI KHAI KHÔNG
+# CÓ NGƯỜI, không phải họ tên — không chặn thì cả khối cha/mẹ được dựng cho một người tên "Không có".
+_UNKNOWN_NAME_VALUES = {"khong", "khong co", "khong ro", "chua xac dinh", "khuyet danh"}
+
+
 def _is_unknown(section: str) -> bool:
     if not section:
         return True
     name = _fold(_labeled_value(section, "Họ tên"))
-    return not name or "khong xac dinh" in name
+    return not name or "khong xac dinh" in name or name in _UNKNOWN_NAME_VALUES
 
 
 def _role_name(section: str) -> str:
@@ -968,6 +1012,12 @@ def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
     """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất."""
     result = dict(sections)
 
+    # Mục cha/mẹ bị gạch "Không có" trên tờ khai phải trả về khối Không xác định, nếu không cả vai
+    # đó được dựng cho một người tên "Không có" rồi chảy thẳng ra biểu mẫu.
+    for tag in _FAMILY_TAGS:
+        if _fold(_labeled_value(result.get(tag, ""), "Họ tên")) in _UNKNOWN_NAME_VALUES:
+            result[tag] = _unknown_role_section('Tờ khai ghi mục này là "Không có".')
+
     # Cha/mẹ phải phù hợp giới tính khi OCR đã xác định rõ.
     if _fold(_labeled_value(result.get("cha", ""), "Giới tính")) in {"nu", "female"}:
         result["cha"] = _unknown_role_section("Ứng viên cha có giới tính Nữ.")
@@ -1053,6 +1103,15 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         raw, sections, bool(declaration_sources), _requester_context(options), documents
     )
 
+    # Người yêu cầu và người được đăng ký lại là MỘT người thì chỉ được có MỘT họ tên; tờ khai
+    # viết tay hay để OCR đọc lệch một trong hai dòng nên chốt lại bằng số tài liệu ghi đúng tên.
+    self_name = (
+        _self_name_consensus(_role_name(requester), _role_name(sections.get("con") or ""), documents)
+        if relation_value == "bản thân"
+        else ""
+    )
+    self_name_line = f"Họ tên thống nhất: {self_name}\n" if self_name else ""
+
     return (
         "\n\n<phan_vai_da_xac_dinh>\n"
         "Dùng đúng các vai dưới đây; không tự đổi người giữa Subject/Father/Mother.\n"
@@ -1075,6 +1134,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "</dang_ky_khai_sinh_truoc_day>\n"
         "<quan_he_nguoi_yeu_cau>\n"
         f"Kết luận: {relation_value}\n"
+        f"{self_name_line}"
         f"Căn cứ: {relation_basis}\n"
         "</quan_he_nguoi_yeu_cau>\n"
         "<to_khai_dang_ky_lai>\n"
@@ -1130,7 +1190,15 @@ def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
     # Không có số định danh để đối chiếu thì so tên. Tên trong khối phân vai có thể đọc từ tờ
     # khai viết tay còn field trích xuất đọc từ CCCD, nên phải chấp nhận lệch một tiếng do OCR —
     # bằng không cả vai cha/mẹ bị coi là người lạ rồi bị xoá trắng.
-    return _names_align(_role_name(section), fields_by_name.get(_FULL_NAME_FIELD[tag]))
+    actual_name = fields_by_name.get(_FULL_NAME_FIELD[tag])
+    if _names_align(_role_name(section), actual_name):
+        return True
+    # Khối phân vai đã chốt tên thật của người tự đi đăng ký lại cho mình (xem _self_name_consensus).
+    # Agent trích đúng tên đó thì KHÔNG được coi là người lạ rồi xoá trắng khối con.
+    if tag == "con":
+        unified = _labeled_value(_section(context, "quan_he_nguoi_yeu_cau"), "Họ tên thống nhất")
+        return bool(unified) and _names_align(unified, actual_name)
+    return False
 
 
 def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:

@@ -21,6 +21,8 @@ class FieldOut(BaseModel):
     comp: str
     value: Any  # str | dict (x-select-area)
     default: bool = False  # True = giá trị BE điền mặc định (extension tô viền vàng), không từ giấy tờ
+    # True = XÓA giá trị cổng đã điền sẵn ở ô này (dữ liệu VNeID của người khác), không phải điền.
+    clear: bool = False
     occurrence: int | None = None  # Dùng khi Form.io tái sử dụng cùng name cho nhiều cụm field.
 
 

@@ -170,6 +170,12 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
   + Nếu nội dung bắt đầu bằng "Chưa kết hôn" hoặc CHỈ ghi "hiện tại chưa đăng ký kết hôn với ai"
     (KHÔNG có thông tin về chồng/vợ đã chết hay ly hôn) → TinhTrangHonNhanC1 = "Hiện tại chưa đăng ký kết hôn với ai".
   + Nếu ghi rõ "hiện tại đang có chồng" hoặc "hiện tại đang có vợ" → TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
+- NGOẠI LỆ ĐÈ LÊN HAI GẠCH ĐẦU DÒNG LY HÔN/GÓA Ở TRÊN — ĐÃ LY HÔN (hoặc góa) RỒI KẾT HÔN LẠI:
+  nếu cùng dòng tình trạng hôn nhân còn ghi người đó HIỆN TẠI đã có vợ/chồng ("hiện tại đã kết hôn
+  với ...", "hiện nay đã kết hôn với ...", "hiện tại đang có vợ/chồng là ...") thì BẮT BUỘC trả
+  TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng" (KÈM theo DivorceDecision_*/DeathCert_* và
+  Marriage_*). Ly hôn/góa lúc này chỉ là quá khứ; hai trạng thái "…đã ly hôn/vợ chồng đã chết;
+  hiện tại chưa đăng ký kết hôn với ai" là SAI SỰ THẬT với người đã cưới lại.
 - Trả ToKhai_LaBanThan=true CHỈ khi dòng quan hệ ghi "Tự khai"/"Bản thân" VÀ họ tên người yêu cầu
   trùng họ tên người được cấp.
 </to_khai_status_relation>
@@ -276,24 +282,46 @@ Ví dụ: TỜ KHAI ghi:
 <marriage_extraction>
 - Nguồn ưu tiên Marriage_*: (1) GIẤY CHỨNG NHẬN/ĐĂNG KÝ KẾT HÔN thật; (2) đoạn "Tình trạng hôn nhân"
   trên TỜ KHAI khi ghi rõ người yêu cầu hiện tại đang có vợ/chồng.
-- Marriage_SpouseName = họ tên người vợ/chồng hiện tại. Trên tờ khai lấy sau cụm "đang có chồng là"/
-  "đang có vợ là".
+- Marriage_SpouseName = họ tên người vợ/chồng HIỆN TẠI. Trên tờ khai lấy sau cụm "đang có chồng là"/
+  "đang có vợ là", hoặc sau các cụm "hiện tại đã kết hôn với", "hiện nay đã kết hôn với",
+  "đã kết hôn với ông/bà".
+  BẮT BUỘC trả khi tờ khai có một trong các cụm này, KỂ CẢ khi phía trước còn khai ly hôn/góa.
+  Chỉ lấy HỌ TÊN; ngày sinh, số CCCD, ngày cấp CCCD của vợ/chồng đi kèm thì BỎ, không nhét vào
+  Marriage_Number/Marriage_Date.
 - Marriage_Number/Date/Agency chỉ trả khi giấy kết hôn hoặc tờ khai ghi rõ SỐ, NGÀY đăng ký/cấp và CƠ QUAN
   đăng ký/cấp giấy kết hôn tương ứng; thiếu field nào thì bỏ field đó.
 - Không lấy số CCCD/CMND, ngày sinh, ngày cấp CCCD hoặc cơ quan cấp CCCD của vợ/chồng làm thông tin
   giấy kết hôn. Đoạn tờ khai kết thúc trước "Mục đích sử dụng".
 - Nếu tài liệu là ly hôn/khai tử thì không lấy Marriage_* từ tài liệu đó; ưu tiên trạng thái ly hôn/góa.
+  NGOẠI LỆ: cuộc hôn nhân MỚI đăng ký SAU ngày ly hôn/ngày chết (tờ khai ghi "hiện tại đã kết hôn
+  với ..." hoặc có giấy kết hôn mới) thì VẪN trả Marriage_* — đó là hôn nhân hiện tại, không phải
+  cuộc hôn nhân đã chấm dứt.
 </marriage_extraction>
 
 <khoang_thoi_gian_chua_ket_hon>
 - Dòng "Tình trạng hôn nhân" của tờ khai có thể xin xác nhận CHƯA ĐĂNG KÝ KẾT HÔN TRONG MỘT KHOẢNG
-  THỜI GIAN ĐÃ QUA, kể cả khi HIỆN TẠI người đó đã có vợ/chồng. Dạng thường gặp:
-  "Từ ngày 01 tháng 01 năm 2025 đến ngày 13 tháng 12 năm 2025. Tôi chưa đăng ký kết hôn với ai.
-   Hiện tại đã kết hôn với vợ tên là: ..."
-- Period_TuNgay = ngày sau chữ "Từ ngày"; Period_DenNgay = ngày sau chữ "đến ngày". Cả hai dd/mm/yyyy,
-  ghép đủ ngày + tháng + năm dù tờ khai viết tách chữ ("ngày 1 tháng 1 năm 2025" -> "01/01/2025").
+  THỜI GIAN ĐÃ QUA, kể cả khi HIỆN TẠI người đó đã có vợ/chồng. Các dạng thường gặp:
+  + "Từ ngày 01 tháng 01 năm 2025 đến ngày 13 tháng 12 năm 2025. Tôi chưa đăng ký kết hôn với ai.
+     Hiện tại đã kết hôn với vợ tên là: ..."
+  + "Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với ..."
+  + "Từ 27-4-2016 tới 14-9-2016 chưa đăng ký kết hôn với ai."
+- Period_TuNgay = ngày sau chữ "Từ ngày"/"Từ"; Period_DenNgay = ngày sau chữ "đến ngày"/"đến"/"tới".
+  Cả hai dd/mm/yyyy, ghép đủ ngày + tháng + năm dù tờ khai viết tách chữ ("ngày 1 tháng 1 năm 2025"
+  -> "01/01/2025") hay viết gọn bằng dấu gạch chéo/gạch ngang ("27/4/2016" -> "27/04/2016").
+  CHỮ "ngày" CÓ THỂ VẮNG ở một hoặc cả hai đầu mốc — chỉ cần có cặp "Từ ... đến/tới ..." kèm ý
+  "chưa đăng ký kết hôn với ai" là PHẢI trả cả hai field.
+- BẮT BUỘC trả Period_TuNgay/Period_DenNgay NGAY CẢ KHI cùng dòng đó còn khai ly hôn hoặc vợ/chồng
+  đã chết. Đây là ca phổ biến nhất: "Đã kết hôn, ly hôn theo bản án số 12/2016 ngày 27/4/2016 do
+  Tòa án ... Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với
+  <tên vợ/chồng>" → trả ĐỦ CẢ BA nhóm: DivorceDecision_*, Period_TuNgay/Period_DenNgay VÀ
+  Marriage_* (+ TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng").
+- MỐC BẮT ĐẦU THƯỜNG TRÙNG NGÀY BẢN ÁN LY HÔN (người ta xin xác nhận từ lúc ly hôn tới lúc cưới
+  lại). TUYỆT ĐỐI KHÔNG vì thấy ngày đó đã dùng cho DivorceDecision_Date mà bỏ Period_TuNgay —
+  MỘT NGÀY ĐƯỢC PHÉP xuất hiện ở CẢ HAI field. Bỏ Period_* là mất đúng cái khoảng thời gian người
+  dân cần xác nhận và cổng sẽ chọn nhầm option "đã ly hôn; hiện tại chưa đăng ký kết hôn với ai".
 - HAI ngày này KHÔNG phải ngày đăng ký kết hôn: Marriage_Date vẫn lấy riêng từ giấy chứng nhận kết hôn
-  / cụm "Ngày ... tháng ... năm ..." đứng sau số và nơi đăng ký kết hôn.
+  / cụm "Ngày ... tháng ... năm ..." đứng sau số và nơi đăng ký kết hôn. Mốc kết thúc CÓ THỂ trùng
+  ngày đăng ký kết hôn hiện tại — vẫn trả cả hai field, không gộp.
 - Không thấy cụm "Từ ngày ... đến ngày ..." thì bỏ trống CẢ HAI, không suy từ ngày khác.
 </khoang_thoi_gian_chua_ket_hon>
 
@@ -323,7 +351,9 @@ sẽ dùng địa chỉ này trước Cccd_NoiCuTru.
   loại cư trú, radio trong/ngoài nước. (Purpose vẫn TRẢ — Python sẽ điền vào ô Nhập mục đích.)
 - RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ một trong hai trạng thái chuẩn:
   "Hiện tại chưa đăng ký kết hôn với ai" hoặc "Hiện tại đang có vợ/chồng".
-  Trạng thái GÓA/ĐÃ LY HÔN do Python chọn từ DeathCert_*/DivorceDecision_* và ưu tiên hơn tờ khai.
+  Trạng thái GÓA/ĐÃ LY HÔN do Python chọn từ DeathCert_*/DivorceDecision_* và ưu tiên hơn tờ khai —
+  NHƯNG CHỈ khi người đó HIỆN TẠI CHƯA kết hôn lại. Tờ khai ghi "hiện tại đã kết hôn với ..." thì
+  vẫn PHẢI trả TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng" (xem <to_khai_status_relation>).
 - Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
 - Nếu thiếu quốc tịch thì bỏ qua Cccd_QuocTich; Python sẽ mặc định Việt Nam.
 </forbidden_ui_fields>"""

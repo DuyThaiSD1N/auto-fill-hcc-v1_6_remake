@@ -1862,22 +1862,48 @@
     };
   }
 
-  function buildCopyCertificationSplitBundles(files, attachments) {
+  // giấy tờ thật xuống dòng "Thêm thành phần". Ô cố định STT1 nhận 1 file ẢO = COPY (đổi tên) của 1
+  // file thật (DÙNG LẠI fileIndex → không tốn payload). No-op (null) cho account/thủ tục khác.
+  function buildStt1VirtualItem(directive, source, files) {
+    if (!directive || !source) return null;
+    const idx = Number.isInteger(source.fileIndex) ? source.fileIndex : -1;
+    if (idx < 0 || !Array.isArray(files) || !files[idx]) return null;
+    const srcName = files[idx]?.name || source.documentName || "tai-lieu";
+    return {
+      ...source,
+      virtualCopy: true,
+      target: "existing",
+      componentIndex: directive.componentIndex || 1,
+      componentName: directive.componentName || source.componentName || "",
+      needsAddComponent: false,
+      appendOnOccupied: false,
+      documentName: directive.documentName || srcName,
+      fileIndex: idx,
+      sourceFileIndexes: [idx],
+      fileName: srcName,
+    };
+  }
+
+  function buildCopyCertificationSplitBundles(files, attachments, stt1Virtual = null) {
     const bundles = [];
     for (let index = 0; index < (attachments || []).length; index++) {
       const item = attachments[index] || {};
       const file = Number.isInteger(item.fileIndex) ? files[item.fileIndex] : files[index];
       if (!file) continue;
-      bundles.push({
-        files: [file],
-        attachments: [{
-          ...item,
-          fileIndex: 0,
-          sourceFileIndexes: [0],
-          fileName: file.name || item.fileName,
-          documentName: item.documentName || file.name,
-        }],
-      });
+      const real = {
+        ...item,
+        fileIndex: 0,
+        sourceFileIndexes: [0],
+        fileName: file.name || item.fileName,
+        documentName: item.documentName || file.name,
+      };
+      const bundleAttachments = [real];
+      // Hải Châu: mỗi tab thêm 1 file ẢO vào STT1 = copy chính file của tab (fileIndex 0 trong bundle).
+      if (stt1Virtual) {
+        const virtual = buildStt1VirtualItem(stt1Virtual, real, [file]);
+        if (virtual) bundleAttachments.push(virtual);
+      }
+      bundles.push({ files: [file], attachments: bundleAttachments });
     }
     return bundles;
   }
@@ -2110,7 +2136,7 @@
   async function runSplitAttachPlan(a, files, attachments) {
     const built = a.procedure === "chung-thuc-chu-ky"
       ? await buildSignatureSplitBundles(files, attachments)
-      : { bundles: buildCopyCertificationSplitBundles(files, attachments) };
+      : { bundles: buildCopyCertificationSplitBundles(files, attachments, a.stt1VirtualCopy) };
     if (built.error) return { report: { attached: 0, errors: [built.error], mode: "split" } };
     const bundles = built.bundles || [];
     if (!bundles.length) return { report: { attached: 0, errors: ["Không có tài liệu để tách hồ sơ."], mode: "split" } };
@@ -2264,10 +2290,19 @@
         })}`, "system");
         return;
       }
+      // Hải Châu merge 1 tab: chèn 1 file ẢO vào STT1 (BE đã đẩy giấy tờ thật xuống dòng "Thêm
+      // thành phần"). Directive chỉ có với account đó → account khác giữ nguyên `attachments`.
+      let sendAttachments = attachments;
+      if (a.stt1VirtualCopy) {
+        const src = attachments.find((x) => x && Number.isInteger(x.fileIndex) && files[x.fileIndex])
+          || attachments[0];
+        const virtual = buildStt1VirtualItem(a.stt1VirtualCopy, src, files);
+        if (virtual) sendAttachments = [virtual, ...attachments];
+      }
       const res = await sendToContent({
         action: "attachFilesByPlan",
         files,
-        attachments,
+        attachments: sendAttachments,
         procedure: a.procedure || "",
         mode: a.mode || "merge",
       });
@@ -2551,16 +2586,6 @@
         showProcedurePickerFromTop();
       } else {
         showStartScreen();
-        // "Trò chuyện mới" thủ công: đưa CẢ trang web về trang chủ DVCQG cho lượt công dân
-        // mới (không chỉ màn bắt đầu của sidebar). Đang ở trang chủ rồi (fresh=dvc-home)
-        // thì thôi — navigate nữa chỉ reload thừa. Hết 10 phút (idle) giữ nguyên trang.
-        if (reason === "manual" && !START_FRESH_ON_DVC_HOME) {
-          const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
-          if (!navigation?.ok) {
-            console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
-            setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
-          }
-        }
       }
       if (shouldClearCitizenCookies) {
         const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies" });
@@ -2586,6 +2611,18 @@
         const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
         if (!navigation?.ok) {
           console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
+          setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
+        }
+      }
+      // "Trò chuyện mới" THỦ CÔNG: đưa CẢ trang web về trang chủ DVCQG cho lượt công dân mới
+      // (không chỉ màn bắt đầu của sidebar). Đặt SAU khối xóa cookie theo hợp đồng "dọn phiên
+      // công dân rồi mới điều hướng". Đang ở trang chủ rồi thì thôi (navigate = reload thừa);
+      // hết 10 phút (idle) giữ nguyên trang; "completed" đã tự điều hướng ở khối trên.
+      const alreadyOnDvcHome = START_FRESH_ON_DVC_HOME;
+      if (reason === "manual" && !alreadyOnDvcHome) {
+        const homeNav = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
+        if (!homeNav?.ok) {
+          console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", homeNav);
           setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
         }
       }

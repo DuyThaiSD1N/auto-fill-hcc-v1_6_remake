@@ -13,5 +13,6 @@ test("trợ lý gửi formContext vào chat giống auto-fill", () => {
   assert.match(sidebar, /sendToContent\(\{ action: "collectFormContext" \}\)/);
   assert.match(sidebar, /form_context: formResult\?\.formContext \|\| \{\}/);
   assert.match(sidebar, /attachment_context: attachmentResult\?\.attachmentContext \|\| \{\}/);
-  assert.match(sidebar, /api\.ask\(message, \{ source, displayText, clientContext \}\)/);
+  // preferredLang: ngôn ngữ máy quầy (tiếng Mông) để phiên MỚI chào đúng tiếng ngay lượt đầu.
+  assert.match(sidebar, /api\.ask\(message, \{ source, displayText, clientContext, preferredLang \}\)/);
 });

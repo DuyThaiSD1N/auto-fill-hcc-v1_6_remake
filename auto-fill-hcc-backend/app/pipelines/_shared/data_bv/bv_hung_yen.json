@@ -1,0 +1,167 @@
+[
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Hưng Yên",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Sản - Nhi Hưng Yên",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền Hưng Yên",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Mắt Hưng Yên",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Phổi Hưng Yên",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Phục hồi chức năng Hưng Yên",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hưng Hà (Hưng Yên)",
+        "xa": "Phường Phố Hiến",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Bệnh Nhiệt đới Hưng Yên",
+        "xa": "Xã Yên Mỹ",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Tâm thần kinh Hưng Yên",
+        "xa": "Xã Yên Mỹ",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Phố Nối",
+        "xa": "Phường Mỹ Hào",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Phúc Lâm",
+        "xa": "Phường Mỹ Hào",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa tỉnh Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Trường Đại học Y Dược Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Phụ sản Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Nhi Thái Bình",
+        "xa": "Phường Trần Lãm",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Mắt Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Phổi Thái Bình",
+        "xa": "Phường Trần Lãm",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Y học cổ truyền Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Tâm thần Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Phục hồi chức năng Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Lâm Hoa Thái Bình",
+        "xa": "Phường Thái Bình",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hoàng An",
+        "xa": "Phường Trần Lãm",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Đông Hưng",
+        "xa": "Xã Đông Hưng",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Nam Đông Hưng",
+        "xa": "Xã Đông Quan",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hưng Hà (Thái Bình)",
+        "xa": "Xã Hưng Hà",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Hưng Nhân",
+        "xa": "Xã Tiên La",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Quỳnh Phụ",
+        "xa": "Xã Quỳnh Phụ",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Phụ Dực",
+        "xa": "Xã An Bài",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Thái Thụy",
+        "xa": "Xã Thái Thụy",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Kiến Xương",
+        "xa": "Xã Kiến Xương",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Tiền Hải",
+        "xa": "Xã Tiền Hải",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Nam Tiền Hải",
+        "xa": "Xã Nam Cường",
+        "tinh": "Tỉnh Hưng Yên"
+    },
+    {
+        "ten": "Bệnh viện Đa khoa Vũ Thư",
+        "xa": "Xã Vũ Thư",
+        "tinh": "Tỉnh Hưng Yên"
+    }
+]
