@@ -125,6 +125,23 @@ def _name_match(left, right) -> bool | None:
     return None
 
 
+def _card_name_when_id_matches(values: dict, khai_sdd) -> str | None:
+    """Họ tên lấy theo THẺ CĂN CƯỚC khi số định danh trên tờ khai TRÙNG số trên thẻ.
+
+    Tờ khai là bản VIẾT TAY nên OCR tên rất hay sai: rơi dấu hoặc đọc nhầm chữ ("Thiết" → "Thiệt",
+    "Hoà" → "Hòa", "Nghiêm" → "Nghiem"). Thẻ căn cước là bản IN, đọc gần như chắc chắn đúng — và
+    đây mới là tên phải khớp với CSDLQG về dân cư khi cổng đối chiếu.
+
+    Số định danh trùng nhau là bằng chứng CHẮC CHẮN cùng một người (12 chữ số, không phải phép so
+    tên dễ đụng hàng), nên lúc đó tên in trên thẻ luôn đáng tin hơn tên viết tay. Chỉ khi ấy mới
+    ưu tiên thẻ; thiếu số ở một bên hoặc số khác nhau thì giữ nguyên thứ tự cũ, KHÔNG đoán — số
+    khác nhau nghĩa là hai người khác nhau, mượn tên sang là ghép nhân thân lai.
+    """
+    if _id_match(khai_sdd, values.get("Cccd_SoDinhDanh")) is not True:
+        return None
+    return values.get("Cccd_HoTen") or None
+
+
 def _same_person(left_name, left_id, right_name, right_id) -> bool:
     """Hai khối khai có phải CÙNG một người không. Số định danh chốt trước, rồi mới tới tên.
 
@@ -406,7 +423,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 else:
                     card_is_requester = True   # không đủ dữ kiện để bác bỏ
                 card = values if card_is_requester else {}
-                cccd_ten = req_ten or card.get("Cccd_HoTen")
+                # Cùng lý do như mục II: khối "người yêu cầu" cũng là chữ VIẾT TAY, nên khi số
+                # định danh của họ trùng số trên thẻ trong hồ sơ thì lấy tên IN trên thẻ.
+                cccd_ten = _card_name_when_id_matches(values, req_sdd) or req_ten or card.get("Cccd_HoTen")
                 # Ngày sinh người yêu cầu: tờ khai CÓ ghi ngay dưới tên (ToKhaiYeuCau_NgaySinh).
                 # Thiếu field đó thì Section II vẫn dùng được KHI hai khối là cùng một người (hồ sơ
                 # tự khai, hoặc nhờ người khác nộp hộ nhưng người yêu cầu vẫn là chính chủ) — lúc
@@ -500,7 +519,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         else:
             # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên tờ khai (ưu tiên) hoặc CCCD upload
             # Ưu tiên: ToKhai_* → Cccd_* (từng field riêng lẻ)
-            add("HoVaTenC1", values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen"))
+            # Tên: thẻ căn cước THẮNG tờ khai khi số định danh hai bên trùng nhau (xem
+            # _card_name_when_id_matches) — cùng người thì bản IN đáng tin hơn bản viết tay.
+            # Không trùng số thì giữ nguyên thứ tự cũ: tờ khai → thẻ → giấy khai sinh.
+            add("HoVaTenC1",
+                _card_name_when_id_matches(values, values.get("ToKhai_SoDinhDanh"))
+                or values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen"))
             add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh") or values.get("Gks_NgaySinh"))
             add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh") or values.get("Gks_GioiTinh"))
             # Thẻ căn cước mẫu mới không in dân tộc — giấy khai sinh thường là nguồn DUY NHẤT.

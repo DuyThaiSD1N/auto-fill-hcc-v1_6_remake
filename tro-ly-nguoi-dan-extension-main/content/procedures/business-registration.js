@@ -1417,6 +1417,12 @@
     const fields = applyBusinessLocalDefaults(
       (st.pages && st.pages[targetKey]) || [], st.businessDefaults, targetKey);
 
+    // Chưa biết chủ hộ là ai thì chưa chốt được vai trò người nộp → đi đọc chủ hộ trên cổng TRƯỚC khi
+    // bấm "Sao chép tài khoản" (postback điều hướng sẽ xoá dữ liệu vừa sao chép).
+    if (targetKey === "nguoi-nop-ho-so" && needsOwnerProbe(st)) {
+      return void startOwnerProbe(st);
+    }
+
     if (targetKey === "nguoi-nop-ho-so") {
       // Vì sao vai trò lại ra như vậy — in ngay đầu mỗi lượt để soi được khi cổng tick sai.
       console.log("[FillAll] vai trò người nộp — businessDefaults:",
@@ -1491,7 +1497,18 @@
             : "không có CCCD nào khớp tài khoản → để trống địa chỉ");
       }
     } else if (targetKey === "nguoi-nop-ho-so") {
-      const { isOwner, ownerUnknown, idMatches } = matchAccountWithOwner(st);
+      // Hồ sơ thay đổi chỉ có tờ đơn: chốt vai trò bằng HỌ TÊN chủ hộ ghi trong đơn (xem
+      // isChangeFormOnlyDossier) — khác tên tài khoản là người nộp thay, trùng tên là chủ hộ tự nộp.
+      const formOnly = isChangeFormOnlyDossier(st);
+      const { isOwner, ownerUnknown, idMatches } = matchAccountWithOwner(st, { nameOnly: formOnly });
+      if (formOnly) {
+        console.log("[FillAll] hồ sơ thay đổi chỉ có tờ đơn xin thay đổi → đối chiếu HỌ TÊN chủ hộ:",
+          ownerUnknown ? "chưa đối chiếu được (thiếu tên chủ hộ hoặc tên tài khoản)"
+            : isOwner ? "TRÙNG tên tài khoản" : "KHÁC tên tài khoản");
+        // Vai trò ở dưới chốt theo đúng kết quả này nên truyền thẳng xuống bước địa chỉ, không suy
+        // lại từ radio (postback tick lại radio có thể chưa kịp xong).
+        if (!ownerUnknown) submitterIsOwnerAccount = isOwner;
+      }
 
       const authRadio = findSubmitterRoleRadio(true);
       const selfRadio = findSubmitterRoleRadio(false);
@@ -1508,8 +1525,9 @@
       } else if (ownerUnknown) {
         console.warn("[FillAll] hồ sơ không có nhân thân chủ hộ để đối chiếu → giữ nguyên vai trò đang tick");
       } else if (authRadio && !authRadio.checked) {
-        // CẢ số VÀ tên đều khác → chọn Người được ủy quyền
-        console.log("[FillAll] tài khoản khác chủ hộ (cả số và tên) → chọn Người được ủy quyền");
+        // Hồ sơ chỉ có tờ đơn: khác HỌ TÊN chủ hộ. Còn lại: CẢ số VÀ tên đều khác → Người được ủy quyền.
+        console.log("[FillAll] tài khoản khác chủ hộ",
+          formOnly ? "(họ tên trong đơn)" : "(cả số và tên)", "→ chọn Người được ủy quyền");
         (document.querySelector(`label[for="${CSS.escape(authRadio.id)}"]`) || authRadio).click();
         // Radio này AutoPostBack: phải CHỜ cổng render lại khối người nộp xong
         await waitForPanelSettle("ctl00_C_PERSCtl_FULL_NAMEFld");
@@ -1519,7 +1537,12 @@
       // sơ (khớp số định danh HOẶC họ tên với dữ liệu vừa sao chép) rồi ghi nhân thân + địa chỉ của
       // thẻ đó vào khối người nộp. Không khớp thẻ nào → giữ nguyên dữ liệu tài khoản, không đoán bừa.
       // Xét theo radio THẬT đang tick (đã chốt ở 2c) để không ghi đè khi form đang ở nhánh chủ hộ.
-      if (submitterIsAuthorized()) {
+      // Hồ sơ chỉ có tờ đơn thì trong hồ sơ KHÔNG có nhân thân nào của người nộp thay (không CCCD,
+      // không Giấy ủy quyền) → chỉ tick vai trò, giữ nguyên nhân thân do nút "Sao chép thông tin
+      // đăng ký tài khoản" đổ vào. Ghi nhân thân chủ hộ vào đây là chắc chắn sai.
+      if (formOnly && submitterIsAuthorized()) {
+        console.log("[FillAll] chỉ có tờ đơn → tick Người được ủy quyền, giữ nguyên nhân thân tài khoản");
+      } else if (submitterIsAuthorized()) {
         submitterOverride = buildSubmitterOverride(st, fields);
         if (submitterOverride && submitterNeedsRewrite(submitterOverride)) {
           if (await enableSubmitterEdit(st)) return; // cổng reload → lần chạy kế điền tiếp
@@ -1781,15 +1804,102 @@
    * KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ — so với
    * tên tài khoản thì luôn lệch.
    */
-  function matchAccountWithOwner(st) {
-    const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
-    const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+  /** Ô nhân thân CHỦ HỘ trên trang "Thông tin về chủ hộ kinh doanh" (ô khoá → cổng render span _Vw). */
+  function readOwnerPageValue(suffix) {
+    const direct = readPersonControlRaw(`ctl00_C_OWN_PCtl_PERSCtl_${suffix}`);
+    if (direct) return direct;
+    const node = document.querySelector(
+      `[id$="OWN_PCtl_PERSCtl_${suffix}"], [id$="OWN_PCtl_PERSCtl_${suffix}_Vw"]`
+    );
+    if (!node) return "";
+    return String(node.value || node.textContent || "").replace(/\s+/g, " ").trim();
+  }
 
+  function readPortalOwner() {
+    return {
+      hoTen: readOwnerPageValue("FULL_NAMEFld"),
+      soDinhDanh: readOwnerPageValue("PERS_DOC_NOFld"),
+    };
+  }
+
+  /**
+   * Hồ sơ thay đổi KHÔNG đổi chủ hộ thì backend không xếp "chu-ho-kinh-doanh" vào order, nên trang
+   * này chưa ai đụng tới — và cũng KHÔNG có nhân thân chủ hộ nào trong hồ sơ để đối chiếu với tài
+   * khoản đang đăng nhập. Đơn xin thay đổi thường chỉ ghi TÊN HỘ KINH DOANH + mã số, mà tên hộ kinh
+   * doanh KHÔNG phải tên chủ hộ.
+   *
+   * Không ghé đọc thì matchAccountWithOwner luôn trả ownerUnknown ⇒ nhánh tick "Người được ủy quyền"
+   * KHÔNG BAO GIỜ chạy. Đây đúng là lỗi "mất logic tích người được ủy quyền".
+   * Chỉ ĐỌC nhân thân, KHÔNG bật "Sửa đổi dữ liệu" — hồ sơ này không đổi chủ hộ.
+   */
+  function needsOwnerProbe(st) {
+    if (!st || st.workflow !== "change") return false;
+    if (st.ownerPageVisited) return false;
+    return !(st.order || []).includes("chu-ho-kinh-doanh");
+  }
+
+  async function startOwnerProbe(st) {
+    st.phase = "probing-owner";
+    st.ownerProbeTries = (st.ownerProbeTries || 0) + 1;
+    await setFillAllState(st);
+    console.log("[FillAll] ghé trang chủ hộ kinh doanh để đọc họ tên chủ hộ");
+    // Postback điều hướng làm trang reload → nhịp kế do auto-resume gọi. Hẹn giờ chỉ để cứu khi cổng
+    // NUỐT postback (không reload) — lúc đó handleOwnerProbe thấy còn đứng ở trang cũ và bỏ cuộc.
+    if (goToBusinessPageByKey("chu-ho-kinh-doanh")) return void setTimeout(stepFillAll, 1500);
+    await finishOwnerProbe(st); // không có mục chủ hộ trong menu → thôi, chạy tiếp như cũ
+  }
+
+  /** Đóng nhịp ghé trang chủ hộ rồi quay lại trang người nộp hồ sơ. */
+  async function finishOwnerProbe(st) {
+    st.ownerPageVisited = true;      // ghé đúng MỘT lượt cho cả phiên, kể cả khi đọc hụt
+    st.portalOwner = st.portalOwner || {};
+    st.phase = "fill";
+    st.copyTries = 0;    // sang trang khác rồi quay lại → phải bấm "Sao chép tài khoản" lại từ đầu
+    st.filledStep = -1;  // và điền lại các field cấu trúc của trang người nộp
+    await setFillAllState(st);
+    if (detectBusinessPageKey().pageKey === "nguoi-nop-ho-so") return void stepFillAll();
+    if (!goToBusinessPageByKey("nguoi-nop-ho-so")) return void stepFillAll();
+    setTimeout(stepFillAll, 1500); // cổng nuốt postback → nhánh điều hướng chung ở stepFillAll lo tiếp
+  }
+
+  async function handleOwnerProbe(st) {
+    if (detectBusinessPageKey().pageKey !== "chu-ho-kinh-doanh") {
+      // Chưa tới được trang chủ hộ (postback hụt) → thử lại 1 lần rồi bỏ qua, không để kẹt vòng lặp.
+      if ((st.ownerProbeTries || 0) >= 2) return void finishOwnerProbe(st);
+      return void startOwnerProbe(st);
+    }
+    if (!st.portalOwner) {
+      const owner = readPortalOwner();
+      if (owner.hoTen || owner.soDinhDanh) {
+        st.portalOwner = owner;
+        console.log("[FillAll] chủ hộ đọc trên cổng:", owner.hoTen || "(trống)", owner.soDinhDanh || "");
+      } else {
+        console.warn("[FillAll] trang chủ hộ không đọc được họ tên → vai trò người nộp giữ nguyên tick");
+      }
+    }
+    return void finishOwnerProbe(st);
+  }
+
+  /**
+   * Hồ sơ "thay đổi nội dung hộ kinh doanh" CHỈ có tờ đơn xin thay đổi — không kèm CCCD rời, cũng
+   * không có Giấy ủy quyền (backend gắn cờ `formOnly` khi dựng flow). Nhân thân duy nhất trong hồ sơ
+   * là CHỦ HỘ ghi trong đơn ⇒ căn cứ duy nhất để biết người đang đăng nhập có phải chủ hộ không là
+   * HỌ TÊN chủ hộ.
+   */
+  function isChangeFormOnlyDossier(st) {
+    if (!st || st.businessFlow?.formOnly !== true) return false;
+    return st.workflow === "change" || st.businessFlow?.wizardType === "change";
+  }
+
+  /** Mọi nhân thân chủ hộ biết được của hồ sơ này, đã chuẩn hoá {id, name} để đối chiếu. */
+  function collectOwnerIdentities(st) {
     const ownerIdentities = [];
-    const addOwnerIdentity = (hoTen, soDinhDanh) => {
+    // trusted = số định danh do CHÍNH CỔNG cung cấp (dữ liệu đăng ký sẵn có), không phải số OCR/LLM
+    // đọc từ giấy tờ trong hồ sơ.
+    const addOwnerIdentity = (hoTen, soDinhDanh, trusted = false) => {
       const id = String(soDinhDanh || "").replace(/\D/g, "");
       const name = foldBusinessPageText(hoTen || "");
-      if (id || name) ownerIdentities.push({ id, name });
+      if (id || name) ownerIdentities.push({ id, name, trusted });
     };
 
     const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
@@ -1804,12 +1914,31 @@
     if (st.businessFlow?.search?.method === "identityNumber") {
       addOwnerIdentity("", st.businessFlow.search.value);
     }
+    // Chủ hộ ĐỌC THẲNG trên cổng (trang "Thông tin về chủ hộ kinh doanh") khi hồ sơ không kê khai —
+    // xem readPortalOwner/handleOwnerProbe. Đây là nguồn đúng nhất: chính dữ liệu cổng đang giữ.
+    const portalOwner = st.portalOwner || {};
+    addOwnerIdentity(portalOwner.hoTen, portalOwner.soDinhDanh, true);
+    return ownerIdentities;
+  }
 
-    // Chỉ kết luận "không phải chủ hộ" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ trong hồ sơ.
-    const idMatches = ownerIdentities.some((o) => copiedId && o.id && copiedId === o.id);
+  function matchAccountWithOwner(st, { nameOnly = false } = {}) {
+    const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
+    const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
+    const ownerIdentities = collectOwnerIdentities(st);
+
+    // Chỉ kết luận "không phải chủ hộ" khi CẢ số VÀ tên đều KHÁC MỌI chủ hộ biết được.
+    // nameOnly (hồ sơ chỉ có tờ đơn): số định danh ĐỌC TỪ HỒ SƠ không đủ tin cậy để làm căn cứ — đơn
+    // hay bỏ trống số, hoặc OCR/LLM lẫn số người ký với số chủ hộ, mà lại không có CCCD nào để phản
+    // chứng. Số do CHÍNH CỔNG cung cấp (trusted) thì vẫn dùng bình thường.
+    const idUsable = (o) => !nameOnly || o.trusted;
+    const idMatches = ownerIdentities.some((o) => copiedId && o.id && idUsable(o) && copiedId === o.id);
     const nameMatches = ownerIdentities.some((o) => copiedName && o.name && copiedName === o.name);
-    // Hồ sơ không cho biết chủ hộ là ai (cả số lẫn tên đều trống) → KHÔNG kết luận gì.
-    return { isOwner: idMatches || nameMatches, ownerUnknown: !ownerIdentities.length, idMatches, nameMatches };
+    // Không có cặp nào so được (hồ sơ không cho biết chủ hộ là ai, hoặc chưa sao chép được dữ liệu
+    // tài khoản) → KHÔNG kết luận gì, để nguyên vai trò cổng đang tick.
+    const hasBasis = ownerIdentities.some(
+      (o) => (!!copiedName && !!o.name) || (!!copiedId && !!o.id && idUsable(o))
+    );
+    return { isOwner: idMatches || nameMatches, ownerUnknown: !hasBasis, idMatches, nameMatches };
   }
 
   // Tên/value chính xác dùng được trên trang đăng ký mới; một số biến thể của trang thay đổi dùng
@@ -2186,6 +2315,10 @@
     if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution"].includes(st.workflow)) && !st.bootstrapDone) {
       return void stepChangeBootstrap(st);
     }
+    // Đang trong nhịp "mở trang chủ hộ đọc họ tên rồi quay lại": xử lý trước mọi thứ khác, vì trang
+    // đang đứng cố tình KHÁC trang mục tiêu nên nhánh điều hướng chung ở dưới sẽ kéo đi ngay.
+    if (st.phase === "probing-owner") return void handleOwnerProbe(st);
+
     const order = st.order;
 
     const finish = async () => { await finishFillAllThenAttach(st); };
@@ -2756,6 +2889,10 @@
   H.matchSubmitterIdentityCandidate = matchSubmitterIdentityCandidate;
   H.forceSelfSubmitter = forceSelfSubmitter;
   H.matchAccountWithOwner = matchAccountWithOwner;
+  H.collectOwnerIdentities = collectOwnerIdentities;
+  H.isChangeFormOnlyDossier = isChangeFormOnlyDossier;
+  H.needsOwnerProbe = needsOwnerProbe;
+  H.readPortalOwner = readPortalOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
   H.getFillAllState = getFillAllState;
   H.clearFillAllState = clearFillAllState;

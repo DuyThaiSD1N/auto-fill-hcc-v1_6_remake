@@ -404,9 +404,9 @@
     },
     {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
-      "code": "1.115443",
+      "code": "1.013978",
       "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f0347-7cb9-732a-bce1-a787258e29e1",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -478,8 +478,16 @@
     {
       "key": "dinh-chinh-gcn-sai-sot",
       "code": "1.115446",
-      "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "label": "Quảng Ninh - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f10fb-9fa4-7462-9c30-f264a10e839b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot",
+      "code": "1.012796",
+      "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -1098,7 +1106,7 @@
     {
       "key": "giao-thue-chuyen-muc-dich-dat-lai-chau-lam-dong",
       "code": "1.013823",
-      "label": "Lai Châu, Lâm Đồng - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
+      "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ec9-76f0-b9d3-985182762c76",
       "needsAgencySelect": true,
       "autoConfirm": true

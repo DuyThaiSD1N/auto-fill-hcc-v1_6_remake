@@ -43,6 +43,20 @@ TRẺ QUỐC GIA". Cổng tách thành hai ô nên phải trả RIÊNG:
   đổi cơ quan tiếp nhận hồ sơ (khu công nghệ cao phải nộp tới Ban quản lý).
 </dia_chi_va_khu_vuc>
 
+<nguoi_dai_dien_phap_luat>
+- Người đại diện theo pháp luật đọc ở Mẫu 4-CP mục 8, Điều lệ, và GCN ĐKDN mục "Người đại diện theo
+  pháp luật của công ty" (khối này ghi đủ họ tên / giới tính / ngày sinh / số định danh / chức danh /
+  địa chỉ liên lạc). Người này THƯỜNG đồng thời là một cổ đông sáng lập — vẫn phải trả RIÊNG bộ field
+  NguoiDaiDien_*, không để mapper tự suy từ danh sách cổ đông.
+- Công ty cổ phần được phép có NHIỀU người đại diện theo pháp luật. Hồ sơ ghi nhiều người thì trả
+  người ĐỨNG ĐẦU danh sách (hoặc người được Điều lệ ghi là Giám đốc/Tổng giám đốc); KHÔNG gộp hai
+  người thành một, KHÔNG trộn tên người này với số định danh người kia.
+- NguoiDaiDien_QuyenHan: trả nguyên văn đoạn mô tả quyền hạn/chức danh trong Điều lệ. Không có đoạn
+  nào mô tả thì BỎ field.
+- Điện thoại/Email của người đại diện lấy ở Mẫu 4-CP mục 9.1 (thông tin về Giám đốc/Tổng giám đốc)
+  khi mục 8 không ghi.
+</nguoi_dai_dien_phap_luat>
+
 <thue>
 - Thue_DiaChiNhanThongBao: CHỈ trả khi mục 11.3 kê khai địa chỉ KHÁC trụ sở chính. Mục 11.3 để trống
   (hoặc ghi "như trụ sở chính") → BỎ field; mapper sẽ chọn ô "Giống địa chỉ trụ sở chính".

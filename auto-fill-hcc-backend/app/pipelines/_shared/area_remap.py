@@ -55,6 +55,33 @@ _REMAP_NOSPACE: dict[tuple[str, str], dict[str, str]] = {}
 # th\u00ec kh\u00f4ng c\u00f3 \u1edf \u0111\u00e2y -> h\u00e0nh vi gi\u1eef nguy\u00ean nh\u01b0 c\u0169, kh\u00f4ng \u0111\u1ee5ng v\u00e0o x\u00e3 h\u1ee3p l\u1ec7 ch\u01b0a c\u1ea7n remap.
 _TINH_ONLY: dict[str, str] = {}
 
+# Lookup NGUOC: (fold_province(tinh MOI), fold_accent(xa CU)) -> ten xa MOI.
+#
+# Giay to cap/in LAI sau sap nhap 2025 mang TINH MOI, nhung dong dia chi tren do van con ten XA CU
+# (vd CCCD: "Thon 5 Nghia Trung / Nghia Hung, Ninh Binh" -- "Nghia Trung" la xa cu thuoc tinh cu Nam
+# Dinh). _REMAP key theo (tinh CU, xa cu) nen cap (tinh MOI, xa cu) tra truot hoan toan, dia chi roi
+# xuong pass-through va tra ve mot ten xa KHONG CON trong danh muc -> dropdown Phuong/Xa tren cong
+# bo trong. Bang nay vao dung khe do.
+_REMAP_BY_NEW_PROVINCE: dict[tuple[str, str], str] = {}
+# Cung mot ten xa cu, nhieu tinh cu khac nhau, cung don ve mot tinh moi nhung RA HAI xa moi khac
+# nhau -> khong du can cu de chon, bo qua thay vi doan bua.
+_REMAP_BY_NEW_PROVINCE_AMBIGUOUS: set[tuple[str, str]] = set()
+# (tinh_moi, xa_cu, xa_moi) cua nhung entry da qua duoc vong loc ambiguous o _load_remap_files().
+# Giu tam o day vi index nguoc can _fold_province(), ham do dinh nghia sau _load_remap_files().
+_REMAP_SOURCE_ENTRIES: list[tuple[str, str, str]] = []
+
+# Lookup 3 KHOA: (fold(tinh_cu), fold(xa_cu), fold_district(huyen_cu)) -> {"tinh": ..., "xa": ...}.
+#
+# Go dung cai nut ma canh gac "ambiguous" o _load_remap_files() danh phai bo tay: mot ten xa/phuong
+# ton tai o NHIEU huyen trong cung mot tinh cu, moi cai di ve mot don vi moi khac nhau. Kinh dien
+# nhat la phuong DANH SO -- "Phường 1" co o ca TP Da Lat cu (-> "Phường Xuân Hương - Đà Lạt") lan TP
+# Bao Loc cu (-> "Phường 1 Bảo Lộc"). Chi co (tinh, xa) thi that su khong du can cu, nen bang 2 khoa
+# BO QUA ca hai; nhung khi giay to CO ghi cap huyen thi cai nut do co loi giai chac chan.
+#
+# Bang nay nap TAT CA entry co "huyen_cu" -- KE CA nhung entry bi vong loc ambiguous gat di, vi day
+# chinh la cho dung den chung. Khong co goi y huyen thi khong ai tra bang nay -> hanh vi cu giu nguyen.
+_REMAP_BY_DISTRICT: dict[tuple[str, str, str], dict[str, str]] = {}
+
 
 def _fold(text: str) -> str:
     """Bo dau, lowercase, chuan hoa khoang trang -- dung de so sanh key."""
@@ -99,6 +126,23 @@ def _fold_accent(text: str) -> str:
     return " ".join(out)
 
 
+_DISTRICT_PREFIX_RE = re.compile(
+    r"^(tp|thanh pho|tx|thi xa|q|quan|h|huyen|city of)\.?\s+", re.IGNORECASE
+)
+
+
+def _fold_district(text: str) -> str:
+    """Fold ten cap huyen de so khop: bo tien to loai (TP/TX/Quan/Huyen) va duoi "cu".
+
+    Giay to viet cap huyen du kieu: "Đà Lạt", "TP Đà Lạt", "Thành phố Đà Lạt", "TP. Đà Lạt cũ".
+    Tat ca deu phai quy ve mot khoa, neu khong goi y huyen se tra truot dung luc can nhat.
+    """
+    folded = _fold(text)
+    folded = _DISTRICT_PREFIX_RE.sub("", folded).strip()
+    folded = re.sub(r"\s+cu$", "", folded).strip()
+    return folded
+
+
 def _expand_abbrev(text: str) -> str:
     """Mo rong viet tat phuong/xa truoc khi lookup.
 
@@ -125,6 +169,7 @@ def _load_remap_files() -> None:
     
     # Track duplicate keys to mark as ambiguous
     _duplicate_tracker: dict[tuple[str, str], list[dict]] = {}
+    _source_xa_cu: dict[tuple[str, str], str] = {}
     
     for json_file in sorted(_DATA_DIR.glob("remap_*.json")):
         try:
@@ -148,11 +193,21 @@ def _load_remap_files() -> None:
                 "tinh": entry.get("tinh_moi") or tinh_cu,
                 "xa":   entry.get("xa_moi")   or xa_cu,
             }
+
+            # Index 3 khoa nap TRUOC vong loc ambiguous: entry ghi ro huyen_cu thi cap
+            # (tinh, xa, huyen) la duy nhat, khong con gi de nham. Trung khoa 3 -> du lieu mau
+            # thuan, giu entry dau va bo qua phan sau thay vi ghi de am tham.
+            huyen_cu = entry.get("huyen_cu") or ""
+            if huyen_cu:
+                _REMAP_BY_DISTRICT.setdefault((*key, _fold_district(huyen_cu)), mapping)
             
             # Track all entries for this key to detect duplicates
             if key not in _duplicate_tracker:
                 _duplicate_tracker[key] = []
             _duplicate_tracker[key].append(mapping)
+            # key da fold (mat dau) -- index nguoc can ten xa cu CON DAU de khong dong nham
+            # "Thanh" (Thanh) voi "Thanh" (Thanh).
+            _source_xa_cu.setdefault(key, xa_cu)
     
     # Only add entries that are NOT duplicates (or are marked ambiguous)
     for key, mappings in _duplicate_tracker.items():
@@ -178,6 +233,10 @@ def _load_remap_files() -> None:
         
         if tinh_cu_folded not in _TINH_ONLY:
             _TINH_ONLY[tinh_cu_folded] = mapping["tinh"]
+
+        xa_cu_goc = _source_xa_cu.get(key)
+        if xa_cu_goc:
+            _REMAP_SOURCE_ENTRIES.append((mapping["tinh"], xa_cu_goc, mapping["xa"]))
 
 
 _load_remap_files()  # chay 1 lan luc import
@@ -313,6 +372,40 @@ def _build_reverse_catalog_index() -> None:
 _build_reverse_catalog_index()  # chay 1 lan luc import
 
 
+def _build_new_province_index() -> None:
+    """Dung bang tra (tinh MOI, xa CU) -> xa MOI tu chinh cac entry remap da loc ambiguous."""
+    for tinh_moi, xa_cu, xa_moi in _REMAP_SOURCE_ENTRIES:
+        key = (_fold_province(tinh_moi), _fold_accent(xa_cu))
+        if not key[0] or not key[1]:
+            continue
+        existing = _REMAP_BY_NEW_PROVINCE.get(key)
+        if existing is None:
+            _REMAP_BY_NEW_PROVINCE[key] = xa_moi
+        elif existing != xa_moi:
+            # Hai tinh cu khac nhau cung co xa ten nay, cung don ve mot tinh moi nhung ra hai xa
+            # moi khac nhau -> khong du can cu, bo qua ca hai.
+            _REMAP_BY_NEW_PROVINCE_AMBIGUOUS.add(key)
+
+
+_build_new_province_index()  # chay 1 lan luc import, sau _load_remap_files()
+
+
+def _remap_by_new_province(tinh: str, xa: str) -> Optional[str]:
+    """Ten xa MOI khi giay to ghi TINH MOI nhung xa van la ten CU. None neu khong chac chan.
+
+    Chi tra ket qua khi cap (tinh, xa) hien tai THUC SU khong chon duoc tren cong: dieu kien nay
+    la thu chan quan trong nhat cua ca nhanh -- dia chi dang dung tot khong bao gio bi dong.
+    """
+    if not xa or not tinh:
+        return None
+    if is_current_area(tinh, xa):
+        return None
+    key = (_fold_province(tinh), _fold_accent(xa))
+    if key in _REMAP_BY_NEW_PROVINCE_AMBIGUOUS:
+        return None
+    return _REMAP_BY_NEW_PROVINCE.get(key)
+
+
 def is_current_area(tinh: str, xa: str) -> bool:
     """Cap tinh/xa nay co chon duoc tren cong khong (theo danh muc hanh chinh hien hanh).
 
@@ -432,6 +525,7 @@ def _remap_area_cached(
     xa: str,
     dia_chi: str,
     allow_diachi_fallback: bool,
+    huyen: str = "",
 ) -> tuple[str, str, str]:
     """Cached version of remap logic. Returns (tinh_moi, xa_moi, dia_chi_moi)."""
     # Chặn viết tắt tỉnh (LA, LD, LĐ, L.D...) → xóa xa để tránh điền sai.
@@ -460,6 +554,17 @@ def _remap_area_cached(
 
     tinh_folded = _fold(tinh)
 
+    # Buoc 1b: giay to CO ghi cap huyen -> tra bang 3 khoa truoc. Day la duong DUY NHAT chon dung
+    # duoc mot ten xa/phuong trung o nhieu huyen trong cung tinh cu (vd "Phường 1" cua TP Da Lat cu
+    # va cua TP Bao Loc cu): bang 2 khoa buoc phai bo qua ca hai vi khong du can cu, con cap
+    # (tinh, xa, huyen) thi duy nhat. Tra truot -> roi xuong dung luong cu, khong doi hanh vi.
+    if huyen and xa_expanded:
+        mapping_huyen = _REMAP_BY_DISTRICT.get(
+            (tinh_folded, _fold(xa_expanded), _fold_district(huyen))
+        )
+        if mapping_huyen:
+            return (mapping_huyen["tinh"], mapping_huyen["xa"], dia_chi)
+
     # Buoc 2: lookup bang sap nhap (tinh, xa)
     key = (tinh_folded, _fold(xa_expanded))
     mapping = _REMAP.get(key)
@@ -480,6 +585,17 @@ def _remap_area_cached(
         current_ward = _CURRENT_WARD_NOSPACE.get((tinh_folded, _fold_nospace(xa_expanded)))
         if current_ward:
             return (tinh, current_ward, dia_chi)
+
+    # Buoc 2b2: giay to mang TINH MOI nhung dong dia chi con ten XA CU. Rat pho bien voi giay to
+    # cap/in lai sau sap nhap 2025 (vd CCCD ghi "Thon 5 Nghia Trung / Nghia Hung, Ninh Binh": tinh
+    # da la ten moi "Ninh Binh", con "Nghia Trung" la xa CU cua tinh cu Nam Dinh). _REMAP key theo
+    # (tinh CU, xa cu) nen cap nay tra truot het cac buoc tren, roi xuong pass-through va tra ve mot
+    # ten xa khong con trong danh muc -> dropdown Phuong/Xa tren cong bo trong.
+    # _remap_by_new_province() chi tra ket qua khi cap hien tai THUC SU khong chon duoc tren cong,
+    # nen khong the dong nham mot dia chi dang dung tot.
+    xa_moi_theo_tinh_moi = _remap_by_new_province(tinh, xa_expanded)
+    if xa_moi_theo_tinh_moi:
+        return (tinh, xa_moi_theo_tinh_moi, dia_chi)
 
     # Buoc 2c: xa khong khop entry nao, nhung TINH CU DA BIET CHAC doi ten qua sap nhap (co trong
     # bang remap) -> phai dien TINH MOI (tinh cu chac chan khong con trong danh muc hien hanh, giu
@@ -535,10 +651,17 @@ def _remap_area_cached(
     return (tinh, xa_expanded, dia_chi)
 
 
-def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Optional[dict]:
+def remap_area(
+    area: Optional[dict],
+    allow_diachi_fallback: bool = False,
+    huyen_hint: Optional[str] = None,
+) -> Optional[dict]:
     """Nhan object dia chi {quocGia, tinh, xa, diaChi}, tra ve da normalize.
 
     Buoc 1: neu "tinh" la thanh pho/thi xa thuoc tinh (vd "Da Lat") -> doi sang ten tinh (vd "Lam Dong").
+    Buoc 1b: neu biet CAP HUYEN cu (huyen_hint, hoac khoa "huyen"/"quanHuyen" trong area) -> tra bang
+             3 khoa de chon dung don vi moi khi ten xa trung o nhieu huyen (vd "Phường 1" Da Lat vs
+             Bao Loc). Khoa goi y nay bi BO khoi ket qua tra ve.
     Buoc 2: neu (tinh, xa) co trong bang sap nhap -> thay bang ten don vi moi.
     Buoc 3 (fallback A): neu xa khong khop, thu dung diaChi lam xa de lookup.
     Buoc 4 (fallback B): scan tung token trong xa hoac diaChi de tim xa hop le.
@@ -551,9 +674,13 @@ def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Opt
     tinh_raw: str = area.get("tinh") or ""
     xa_raw:   str = area.get("xa")   or ""
     dia_raw:  str = area.get("diaChi") or ""
+    # "huyen"/"quanHuyen" la khoa GOI Y, khong phai o tren bieu mau (dia chi hien hanh chi con 2
+    # cap). Nhan vao de go nhap nhang ten xa trung, roi BO khoi ket qua -- de lot ra ngoai la them
+    # mot khoa la vao gia tri field ma khong ai doc.
+    huyen_raw: str = huyen_hint or area.get("huyen") or area.get("quanHuyen") or ""
 
     if not tinh_raw and not xa_raw:
-        return area
+        return {k: v for k, v in area.items() if k not in ("huyen", "quanHuyen")} if huyen_raw else area
 
     # Sử dụng cached function để tính toán
     tinh_moi, xa_moi, dia_moi = _remap_area_cached(
@@ -561,9 +688,151 @@ def remap_area(area: Optional[dict], allow_diachi_fallback: bool = False) -> Opt
         xa_raw,
         dia_raw,
         allow_diachi_fallback,
+        huyen_raw,
     )
 
-    return {**area, "tinh": tinh_moi, "xa": xa_moi, "diaChi": dia_moi}
+    out = {**area, "tinh": tinh_moi, "xa": xa_moi, "diaChi": dia_moi}
+    out.pop("huyen", None)
+    out.pop("quanHuyen", None)
+    return out
+
+
+_AREA_DETAIL_KEYS = ("diaChi", "dia_chi", "diachi", "chiTiet")
+_AREA_WARD_KEYS = ("xa", "xã", "phuong", "phường")
+
+
+def _looks_like_area(value: dict) -> bool:
+    """Object nay co phai mot dia chi hanh chinh khong.
+
+    Dat nguong o "co tinh + (xa hoac dia chi)": du chat de khong dung nham mot object bat ky co
+    khoa "tinh", du long de bat het cac bien the dat ten ma cac pipeline dang dung.
+    """
+    if not any(value.get(k) for k in ("tinh", "tỉnh")):
+        return False
+    return any(value.get(k) for k in _AREA_WARD_KEYS + _AREA_DETAIL_KEYS)
+
+
+def remap_area_deep(value, allow_diachi_fallback: bool = False):
+    """Chuan hoa MOI object dia chi long trong mot gia tri field (dict/list long nhau).
+
+    Dung o BUOC CHUNG ngay sau khi LLM tra ket qua, truoc khi mapper cua tung thu tuc dung toi --
+    mot cho duy nhat thay vi 40 mapper moi cho mot dong. Nho vay:
+      * goi y cap huyen ("huyen"/"quanHuyen") duoc TIEU THU dung luc no con trong du lieu; mapper
+        dung sau do co dung lai dict 4 khoa cung khong lam mat no nua;
+      * ten xa/phuong den tay mapper DA LA ten trong danh muc hien hanh, nen remap_area() ma mapper
+        goi lai chi con la no-op.
+
+    Gia tri khong phai dia chi -> tra ve nguyen ven, khong dung toi.
+    """
+    if isinstance(value, list):
+        return [remap_area_deep(item, allow_diachi_fallback) for item in value]
+    if not isinstance(value, dict):
+        return value
+    out = {k: remap_area_deep(v, allow_diachi_fallback) for k, v in value.items()}
+    if _looks_like_area(out):
+        remapped = remap_area(out, allow_diachi_fallback)
+        if isinstance(remapped, dict):
+            return remapped
+    return out
+
+
+_PROVINCE_LABEL_RE = re.compile(r"^(thanh pho|tinh|tp|t\.)\.?\s*", re.IGNORECASE)
+
+
+def _mentioned_in(text_folded: str, name: str) -> bool:
+    """Ten don vi nay co THUC SU xuat hien trong text OCR khong (bo nhan loai, bo dau)."""
+    key = _PROVINCE_LABEL_RE.sub("", _fold(name)).strip()
+    if not key:
+        return True
+    return key in text_folded
+
+
+def drop_fabricated_province(value, ocr_text: str):
+    """Bo ten TINH/HUYEN ma LLM tu bia ra: giay to khong he nhac toi, va cung khong khop voi xa.
+
+    LLM doi khi "dien not" cap tren cho mot dia chi chi ghi den cap xa. Vi du that: to khai chi co
+    "Tổ 3, Phường Nghĩa Lộ" (khong mot chu nao ve tinh) nhung LLM tra ve tinh "Thành phố Hà Nội" va
+    huyen "Quận Hà Đông" -- ca hai deu khong co trong giay. Dien mot tinh bia ra thi nguy hiem hon
+    han bo trong: no trong nhu du lieu that va cong van cho chon.
+
+    HAI dieu kien phai cung dung moi bo, de khong dap nham suy luan DUNG:
+      1. Ten tinh khong xuat hien o bat ky dau trong text OCR;
+      2. cap (tinh, xa) KHONG co trong danh muc hanh chinh hien hanh.
+    Suy luan dung tu ten xa duy nhat (vd doc duoc "Phường Xuân Hương - Đà Lạt" roi tu dien tinh
+    "Lâm Đồng") van thoa dieu kien 1 nhung KHONG thoa dieu kien 2 -> giu nguyen.
+
+    KHONG doi tinh theo ten xa: "Phường Nguyễn Du" (Ha Noi cu) trung khoa voi "Xã Nguyễn Du" cua
+    Hung Yen, sua kieu do la keo ca dia chi sang tinh khac.
+    """
+    if not ocr_text:
+        return value
+    text_folded = _fold(ocr_text)
+    if isinstance(value, list):
+        return [drop_fabricated_province(item, ocr_text) for item in value]
+    if not isinstance(value, dict):
+        return value
+    out = {k: drop_fabricated_province(v, ocr_text) for k, v in value.items()}
+    if not _looks_like_area(out):
+        return out
+    for key in ("huyen", "quanHuyen"):
+        if out.get(key) and not _mentioned_in(text_folded, out[key]):
+            out.pop(key)
+    for key in ("tinh", "tỉnh"):
+        tinh = out.get(key)
+        if not tinh or _mentioned_in(text_folded, tinh):
+            continue
+        xa = next((out.get(k) for k in _AREA_WARD_KEYS if out.get(k)), "")
+        if not is_current_area(tinh, xa):
+            out[key] = ""
+    return out
+
+
+def _blank_unselectable_ward(value) -> bool:
+    """Xoa ten xa/phuong KHONG chon duoc tren cong. True neu co xoa (de danh dau vien vang).
+
+    Sua TAI CHO, di sau vao list/dict long nhau nhu remap_area_deep().
+    """
+    changed = False
+    if isinstance(value, list):
+        for item in value:
+            changed |= _blank_unselectable_ward(item)
+        return changed
+    if not isinstance(value, dict):
+        return False
+    for item in value.values():
+        changed |= _blank_unselectable_ward(item)
+    if not _looks_like_area(value):
+        return changed
+    tinh = value.get("tinh") or value.get("tỉnh") or ""
+    for ward_key in _AREA_WARD_KEYS:
+        xa = value.get(ward_key)
+        if not xa or is_current_area(tinh, xa):
+            continue
+        value[ward_key] = ""
+        changed = True
+    return changed
+
+
+def flag_unselectable_areas(fields):
+    """Chot chan CHUNG: khong giao cho extension mot ten xa/phuong khong co trong danh muc.
+
+    Remap khong phai luc nao cung ra ket qua -- ten xa trung o nhieu huyen (vd "Phường 1" cua ca Da
+    Lat lan Bao Loc), giay to qua cu, OCR doc sai. Nhung luc do backend van tra ten cu nguyen si, va
+    extension KHONG biet do la ten chet: no do lỏng trong dropdown, vo phai option nao chua cum do
+    ("Phường 1 Bảo Lộc") roi to XANH nhu vua dien dung. Sai kieu nay khong ai soat ra.
+
+    Nen: xoa ten xa do va danh dau default -> extension bo trong o phuong/xa va TO VIEN VANG, can bo
+    tu chon. Tinh van duoc giu, cac o khac khong anh huong. Chua nap duoc danh muc thi
+    is_current_area() tra True het -> khong dong gi ca.
+    """
+    if not isinstance(fields, list):
+        return fields
+    for field in fields:
+        if not isinstance(field, dict):
+            continue
+        if _blank_unselectable_ward(field.get("value")):
+            field["default"] = True
+    return fields
 
 
 def reload() -> None:
@@ -571,6 +840,8 @@ def reload() -> None:
     _REMAP.clear()
     _REMAP_NOSPACE.clear()
     _TINH_ONLY.clear()
+    _REMAP_BY_DISTRICT.clear()
+    _REMAP_SOURCE_ENTRIES.clear()
     _load_remap_files()
     _CURRENT_WARD_NOSPACE.clear()
     _CURRENT_WARD.clear()
@@ -581,5 +852,8 @@ def reload() -> None:
     _CURRENT_PAIRS.clear()
     _CURRENT_PROVINCES.clear()
     _build_reverse_catalog_index()
+    _REMAP_BY_NEW_PROVINCE.clear()
+    _REMAP_BY_NEW_PROVINCE_AMBIGUOUS.clear()
+    _build_new_province_index()
     # Clear cache khi reload data
     _remap_area_cached.cache_clear()

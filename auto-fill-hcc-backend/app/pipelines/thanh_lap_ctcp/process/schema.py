@@ -22,6 +22,7 @@ PAGES: list[dict] = [
     {"key": "ten-doanh-nghiep", "label": "Tên doanh nghiệp/đơn vị trực thuộc"},
     {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
     {"key": "thong-tin-ve-co-phan", "label": "Thông tin về cổ phần"},
+    {"key": "nguoi-dai-dien-phap-luat", "label": "Người đại diện theo pháp luật"},
     {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
     {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
 ]
@@ -109,6 +110,28 @@ FIELDS: list[dict] = [
                  "{loai,soLuong}; loai dùng đúng bộ giá trị như CoPhan_DanhSach. BỎ dòng tổng."),
     },
 
+    # ===== TRANG "NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT" =====
+    {"name": "NguoiDaiDien_HoTen", "desc": "Họ tên người đại diện theo pháp luật (Mẫu 4-CP mục 8 / Điều lệ / GCN ĐKDN mục 4)."},
+    {"name": "NguoiDaiDien_GioiTinh", "desc": 'Giới tính người đại diện theo pháp luật: "Nam" hoặc "Nữ".'},
+    {"name": "NguoiDaiDien_NgaySinh", "desc": "Ngày sinh người đại diện theo pháp luật, dd/mm/yyyy."},
+    {"name": "NguoiDaiDien_SoDinhDanh", "desc": "Số định danh cá nhân/số giấy tờ pháp lý của người đại diện theo pháp luật."},
+    {
+        "name": "NguoiDaiDien_DiaChi",
+        "desc": ("Địa chỉ liên lạc của người đại diện theo pháp luật, object {quocGia,tinh,xa,diaChi}; "
+                 "ưu tiên \"Nơi thường trú\" trên CCCD, không có thì lấy địa chỉ liên lạc ở Mẫu 4-CP "
+                 "mục 8 hoặc GCN ĐKDN mục 4."),
+    },
+    {"name": "NguoiDaiDien_DienThoai", "desc": "Điện thoại người đại diện theo pháp luật (Mẫu 4-CP mục 9.1)."},
+    {"name": "NguoiDaiDien_Fax", "desc": "Fax người đại diện theo pháp luật nếu có."},
+    {"name": "NguoiDaiDien_Website", "desc": "Website người đại diện theo pháp luật nếu có."},
+    {"name": "NguoiDaiDien_Email", "desc": "Thư điện tử người đại diện theo pháp luật."},
+    {
+        "name": "NguoiDaiDien_QuyenHan",
+        "desc": ("Quyền hạn/chức danh của người đại diện theo pháp luật, trả NGUYÊN VĂN đoạn mô tả ở "
+                 "Điều lệ (vd \"Giám đốc là người đại diện theo pháp luật của công ty...\") hoặc "
+                 "Mẫu 4-CP. Tối đa 4000 ký tự."),
+    },
+
     # ===== TRANG "THÔNG TIN VỀ THUẾ" =====
     {
         "name": "Thue_DiaChiNhanThongBao",
@@ -176,9 +199,9 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("TruSo_DiaChi", "Thue_DiaChiNhanThongBao", "NguoiNop_DiaChi"):
+for _name in ("TruSo_DiaChi", "Thue_DiaChiNhanThongBao", "NguoiDaiDien_DiaChi", "NguoiNop_DiaChi"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
-for _name in ("Thue_NgayBatDauHoatDong", "NguoiNop_NgaySinh"):
+for _name in ("Thue_NgayBatDauHoatDong", "NguoiDaiDien_NgaySinh", "NguoiNop_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in ("TruSo_KhuVuc", "NganhNghe_DanhSach", "Von_NguonVon", "Von_TaiSanGopVon",
               "CoPhan_DanhSach", "CoPhan_ChaoBan", "Thue_NamTaiChinh", "Cccd_DanhSach"):

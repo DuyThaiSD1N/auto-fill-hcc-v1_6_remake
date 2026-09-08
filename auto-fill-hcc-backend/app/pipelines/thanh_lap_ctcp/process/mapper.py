@@ -216,10 +216,13 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
 
-    def add(name: str, comp: str, value: Any) -> None:
+    def add(name: str, comp: str, value: Any, aliases: list[str] | None = None) -> None:
         if name in seen or value in (None, "", {}, []):
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        item: dict[str, Any] = {"name": name, "comp": comp, "value": value}
+        if aliases:
+            item["aliases"] = aliases
+        out.append(item)
         seen.add(name)
 
     def add_address(prefix: str, value: Any) -> None:
@@ -304,6 +307,27 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
             row = _row_by_kind(sale_rows, kind)
             add(f"{base}$CtlListSales$ctl{index:02d}$QUANTITYFld", "dom-input", _number(row.get("soLuong")))
 
+    elif selected_page == "nguoi-dai-dien-phap-luat":
+        # Cùng khối control với thủ tục TNHH hai thành viên: cả hai loại hình đều dùng trang
+        # Information_of_Legal_representative.aspx của cổng ĐKKD qua mạng.
+        base = "ctl00$C$REPCtl"
+        person = f"{base}$PERSCtl"
+        add(f"{person}$FULL_NAMEFld", "dom-input", _text(values.get("NguoiDaiDien_HoTen")).upper())
+        gender = _fold(values.get("NguoiDaiDien_GioiTinh"))
+        add(f"{person}$GENDER_IDFld", "dom-radio", "M" if gender == "nam" else ("F" if gender == "nu" else ""))
+        add(f"{person}$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("NguoiDaiDien_NgaySinh")))
+        add(f"{person}$PERS_DOC_NOFld", "dom-input", _digits(values.get("NguoiDaiDien_SoDinhDanh")))
+        # $SET_AUTO_ADRESSFld giữ mặc định "Trùng địa chỉ thường trú" của cổng.
+        add_address(f"{person}$ADDRCCtl", values.get("NguoiDaiDien_DiaChi"))
+        add(f"{person}$PHONEFld", "dom-input", _phone(values.get("NguoiDaiDien_DienThoai")))
+        add(f"{person}$FAXFld", "dom-input", _text(values.get("NguoiDaiDien_Fax")))
+        add(f"{person}$URLFld", "dom-input", _text(values.get("NguoiDaiDien_Website")))
+        add(f"{person}$EMAILFld", "dom-input", _email(values.get("NguoiDaiDien_Email")))
+        # Bảng đặc tả ghi id ô Quyền hạn là "C_REPCtl_POWERSId"; khai thêm alias "POWERSFld" theo
+        # lối đặt tên của mọi ô khác trên cổng để không hụt ô nếu bản render khác.
+        add(f"{base}$POWERSId", "dom-input", _text(values.get("NguoiDaiDien_QuyenHan")),
+            aliases=[f"{base}$POWERSFld"])
+
     elif selected_page == "thong-tin-ve-thue":
         base = "ctl00$C$UC_DW_TAXEditCtl"
         # Địa chỉ nhận thông báo thuế: form check sẵn "Địa chỉ khác" (value 0). Giống trụ sở (hoặc
@@ -353,6 +377,16 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add(f"{base}$FAXFld", "dom-input", _text(values.get("NguoiNop_Fax")))
         add(f"{base}$EMAILFld", "dom-input", _email(values.get("NguoiNop_Email")))
         add("ctl00$C$POSTAL_SERVICEFld", "dom-input", _text(values.get("NguoiNop_DiaChiNhanKetQua")))
+        # Nhân thân NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT — để engine đối chiếu với tài khoản ĐKKD đang
+        # đăng nhập: người này là "người có thẩm quyền ký Giấy đề nghị", ai khác đi nộp thì là
+        # "người được ủy quyền". Dữ liệu đọc từ Mẫu 4-CP/Điều lệ nên LUÔN CÓ, không phụ thuộc việc
+        # cán bộ có kèm ảnh CCCD hay không — chính chỗ mà lối đối chiếu theo CCCD bên dưới bị hụt.
+        legal_rep = {
+            "fullName": _text(values.get("NguoiDaiDien_HoTen")),
+            "docNo": _digits(values.get("NguoiDaiDien_SoDinhDanh")),
+        }
+        if legal_rep["fullName"] or legal_rep["docNo"]:
+            add("__legalRep", "raw", legal_rep)
         # Extension đối chiếu với tài khoản ĐKKD đang đăng nhập rồi ghi đè nhân thân + địa chỉ cho
         # đúng người đang nộp (nút "Sao chép thông tin đăng ký tài khoản" của cổng không có địa chỉ).
         candidates = _identity_candidates(values)

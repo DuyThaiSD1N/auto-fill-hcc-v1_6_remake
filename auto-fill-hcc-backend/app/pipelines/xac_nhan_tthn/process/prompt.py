@@ -133,8 +133,8 @@ LƯU Ý QUAN TRỌNG:
 Nếu có GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ (tiêu đề "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN"), giấy này
 NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích → được phép dùng làm NGUỒN:
 - Nếu dòng tình trạng hôn nhân ghi "... chồng/vợ đã chết (theo Giấy chứng tử/Trích lục khai tử số <N> do <CQ>
-  cấp ngày <D>)" → DeathCert_Number=<N> (SỐ ĐĂNG KÝ GỐC, KHÔNG kèm hậu tố TLKT-BS), DeathCert_Date=<D>
-  (dd/mm/yyyy), DeathCert_Agency=<CQ> (bỏ chữ "cấp").
+  cấp ngày <D>)" → DeathCert_Number=<N> (GIỮ NGUYÊN như ghi trên giấy, KỂ CẢ hậu tố "/TLKT-BS"),
+  DeathCert_Date=<D> (dd/mm/yyyy), DeathCert_Agency=<CQ> (bỏ chữ "cấp").
 - Nếu ghi "... đã ly hôn (Bản án/Quyết định ly hôn số <N> ngày <D> của <CQ>)"
   → DivorceDecision_Number/Date/Agency tương ứng.
 - Purpose: lấy NGUYÊN VĂN từ "Giấy này được sử dụng để: <mục đích>", GIỮ TRỌN câu tới hết dòng.
@@ -184,7 +184,7 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
 Khi TỜ KHAI có dòng "Tình trạng hôn nhân" ghi rõ "chồng/vợ đã chết" VÀ có dòng tiếp theo dạng
 "Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>" hoặc "Theo trích lục khai tử số <N> do <CQ> cấp ngày <D>":
 
-- DeathCert_Number = <N> (SỐ ĐĂNG KÝ, có thể có hậu tố như "12", "212/2022", v.v.)
+- DeathCert_Number = <N> (GIỮ NGUYÊN như tờ khai ghi, kể cả hậu tố: "12", "212/2022", "167/TLKT-BS")
 - DeathCert_Date = <D> (dd/mm/yyyy hoặc dd-mm-yyyy, chuẩn hóa thành dd/mm/yyyy)
 - DeathCert_Agency = <CQ> (cơ quan cấp, ví dụ "UBND phường 1 TP Dalat tỉnh Lâm Đồng").
   Chuẩn hóa: "UBND" → "Ủy ban nhân dân", giữ nguyên địa danh phía sau.
@@ -248,19 +248,37 @@ Ví dụ: TỜ KHAI ghi:
 </source_rules>
 
 <death_cert_extraction>
-- DeathCert_Number = SỐ ĐĂNG KÝ KHAI TỬ GỐC (số trong Sổ đăng ký khai tử), KHÔNG phải số của bản sao/trích lục:
-  + TRÍCH LỤC KHAI TỬ (BẢN SAO): số ở mục "Số:" ĐẦU trang là số của CHÍNH BẢN SAO — thường có hậu tố loại
-    ("/TLKT-BS", "/TLKT", "-BS"), vd "212/2022/TLKT-BS". TUYỆT ĐỐI KHÔNG dùng số này. Lấy số GỐC ở dòng thân
-    "Đã được đăng ký khai tử tại: <cơ quan> ... Số: <N> ngày <D>".".
-  + GIẤY CHỨNG TỬ GỐC (không phải bản sao/trích lục): số "Số:" ở đầu chính là số đăng ký → dùng số đó.
-  + Ưu tiên số GỐC KHÔNG kèm hậu tố "TLKT"/"BS".
-- DeathCert_Date = ngày ĐĂNG KÝ KHAI TỬ GỐC:
-  + Trích lục (bản sao): lấy ngày trên CHÍNH dòng "Đã được đăng ký khai tử tại ... Số: <N> ngày <D>" (cùng nguồn với số gốc).
-  + Giấy chứng tử gốc: lấy ngày cấp/lập giấy (dòng địa danh + ngày). KHÔNG lấy ngày chết/ngày sinh của người chết.
-- DeathCert_Agency = cơ quan ĐÃ ĐĂNG KÝ khai tử (dòng "Đã được đăng ký khai tử tại: <cơ quan>"), vd "UBND thị trấn Đạ Tẻh";
-  nếu là giấy chứng tử gốc thì lấy cơ quan cấp/ký giấy. Chuẩn hóa "UBND" → "Ủy ban nhân dân" nếu cần.
+Cổng hỏi "Số / Ngày cấp / Cơ quan cấp Giấy chứng tử/Trích lục khai tử/Bản án" = thông tin của CHÍNH TỜ
+GIẤY ĐANG NỘP, KHÔNG phải số/ngày của lần đăng ký khai tử gốc trong sổ.
+
+- DeathCert_Number = số ở nhãn "Số:" ĐẦU trang của chính tài liệu đang xét, GIỮ NGUYÊN cả hậu tố loại
+  ("/TLKT-BS", "/TLKT", "-BS", "/CT"), vd "167/TLKT-BS", "212/2022/TLKT-BS".
+  + TUYỆT ĐỐI KHÔNG lấy số ở dòng thân "Đã được đăng ký khai tử tại: <cơ quan> ... Số: <N> ngày <D>" —
+    đó là số ĐĂNG KÝ GỐC trong sổ, chỉ là dẫn chiếu, KHÔNG phải số của giấy đang nộp.
+  + CHỈ khi đầu trang KHÔNG có nhãn "Số:" nào đọc được thì mới lùi về số ở dòng đăng ký gốc.
+- DeathCert_Date = NGÀY CẤP/KÝ chính tài liệu đó — dòng địa danh + ngày ở đầu văn bản
+  ("Nghĩa Thương, ngày 07 tháng 11 năm 2024") hoặc ngày ở khối ký cuối văn bản; chuẩn hóa dd/mm/yyyy.
+  + KHÔNG lấy ngày chết, ngày sinh của người chết.
+  + KHÔNG lấy ngày trên dòng "Đã được đăng ký khai tử tại ... Số: <N> ngày <D>" (ngày đăng ký gốc),
+    trừ khi tài liệu không có ngày cấp/ký nào khác.
+  + DeathCert_Number và DeathCert_Date phải CÙNG MỘT NGUỒN: cùng lấy từ đầu trang, hoặc cùng lùi về
+    dòng đăng ký gốc — KHÔNG trộn số của giấy với ngày đăng ký gốc.
+- DeathCert_Agency = cơ quan CẤP/KÝ chính tài liệu đó (khối tiêu đề "UBND XÃ ..." hoặc khối ký
+  "TM. ỦY BAN NHÂN DÂN XÃ"), vd "Ủy ban nhân dân xã Nghĩa Thương". Nếu đầu trang không rõ thì lấy cơ quan
+  ở dòng "Đã được đăng ký khai tử tại: <cơ quan>". Chuẩn hóa "UBND" → "Ủy ban nhân dân" nếu cần.
 - Chỉ trả DeathCert_* khi tài liệu thật sự là giấy khai tử/chứng tử/báo tử/trích lục khai tử có đủ dấu hiệu.
   Nếu chỉ có CCCD thì bỏ qua toàn bộ DeathCert_*.
+
+Ví dụ: TRÍCH LỤC KHAI TỬ (BẢN SAO) của UBND xã Nghĩa Thương:
+  "UBND XÃ NGHĨA THƯƠNG ... Số: 167/TLKT-BS ... Nghĩa Thương, ngày 07 tháng 11 năm 2024
+   TRÍCH LỤC KHAI TỬ (BẢN SAO) ...
+   Đã được đăng ký khai tử tại: UBND xã Nghĩa Thương, huyện Tư Nghĩa, tỉnh Quảng Ngãi
+   Số: 116 ngày 11/12/2009"
+→ Trả:
+  - DeathCert_Number = "167/TLKT-BS"          (ĐÚNG — số của giấy đang nộp)
+  - DeathCert_Date   = "07/11/2024"           (ĐÚNG — ngày cấp giấy đang nộp)
+  - DeathCert_Agency = "Ủy ban nhân dân xã Nghĩa Thương"
+  KHÔNG trả DeathCert_Number = "116" / DeathCert_Date = "11/12/2009" (SAI — đó là đăng ký gốc trong sổ).
 </death_cert_extraction>
 
 <divorce_decision_extraction>

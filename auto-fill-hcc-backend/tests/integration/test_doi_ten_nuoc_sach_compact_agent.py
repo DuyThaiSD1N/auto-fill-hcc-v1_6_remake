@@ -81,7 +81,9 @@ async def test_doi_ten_nuoc_sach_compact_agent_derives_dom_fields(monkeypatch):
     assert d["CongDan_ngayCapCmnd"] == "30/09/2025"
     assert d["CongDan_noiCapCmnd"] == "Bộ Công an"
     assert d["CongDan_maTinhThanh"] == "Lai Châu"
-    assert d["CongDan_maPhuongXa"] == "Sì Lở Lầu"
+    # Bước chuẩn hóa địa chỉ chung trả về ĐÚNG tên trong danh mục hiện hành ("Xã Sì Lở Lầu"),
+    # thay vì tên trần thiếu tiền tố đơn vị.
+    assert d["CongDan_maPhuongXa"] == "Xã Sì Lở Lầu"
     assert d["CongDan_diaChi"] == "Bản Sì Choang"
     assert d["CongDan_diDong"] == "0988618366"
     assert d["CongDan_maDMQuocGia"] == "Việt Nam"
