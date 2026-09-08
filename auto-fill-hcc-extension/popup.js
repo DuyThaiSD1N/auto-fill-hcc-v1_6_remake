@@ -1114,7 +1114,9 @@ function detectUrlScopeOk(detect, url) {
 // Khớp tín hiệu trang (URL + heading) với rule `detect` của thủ tục từ backend.
 function detectProcedureKeyFromSignals(signals) {
   if (!signals) return "";
-  const detectables = PROCEDURES.filter((p) => p && p.detect);
+  // `detectDisabled` (backend đặt) = thủ tục này CHỈ được chọn tay, không bao giờ tự nhận diện.
+  // Lọc ngay từ đây nên mọi bước nhận diện bên dưới (URL / heading / textIncludes) đều bỏ qua nó.
+  const detectables = PROCEDURES.filter((p) => p && p.detect && !p.detectDisabled);
   const url = String(signals.url || "").toLowerCase();
   const body = normDetect(signals.bodyText || "");
 
@@ -1131,9 +1133,17 @@ function detectProcedureKeyFromSignals(signals) {
     if (entityLabel) {
       // Hồ sơ đã tạo: cổng in rõ "Loại hình doanh nghiệp" → chốt đúng thủ tục theo loại hình đó.
       // Loại hình chưa có thủ tục tương ứng (vd TNHH) thì để TRỐNG, không nhận bừa sang CTCP.
+      // Nhánh này dò THẲNG trong PROCEDURES (không qua `detectables`) nên phải tự loại thủ tục
+      // bật detectDisabled — nếu không, loại hình khớp là nó vẫn tự chọn bất chấp cờ.
       const matched = PROCEDURES.find((item) => item.enterpriseEntityLabel
+        && !item.detectDisabled
         && normDetect(item.enterpriseEntityLabel) === entityLabel);
-      return matched ? matched.key : "";
+      if (matched) return matched.key;
+      // Không nhận diện được (loại hình chưa có thủ tục, hoặc thủ tục đó chỉ cho chọn tay):
+      // GIỮ lựa chọn doanh nghiệp đang có thay vì trả rỗng. Cổng postback ở mọi bước nên trả rỗng
+      // là mỗi lần tải trang lại xoá tên thủ tục cán bộ vừa chọn.
+      if (isEnterprisePortalProcedure(selected)) return selected.key;
+      return "";
     }
     // Chưa chốt loại hình (wizard, trang chủ cổng, màn đăng nhập): giữ thủ tục doanh nghiệp đang
     // chọn nếu có; không thì rơi xuống rule urlIncludes để nhận theo domain — đúng như cổng HKD.
@@ -3601,6 +3611,39 @@ function locationIsComplete() {
   return !!(currentLocation.provinceSlug && currentLocation.ward);
 }
 
+/** Đủ địa chỉ để "lên đạn" cho MỘT thủ tục cụ thể.
+ *
+ * Thủ tục cấp tỉnh (link.provinceOnlyAgency) chỉ có ô Tỉnh/Thành phố ở khối "Chọn cơ quan thực
+ * hiện" của cổng, nên bắt cán bộ chọn thêm Phường/Xã là chặn oan — chọn xong cũng không có ô nào
+ * để điền. Thủ tục còn lại vẫn cần đủ tỉnh + xã như cũ.
+ */
+function locationIsCompleteFor(link) {
+  if (link && link.provinceOnlyAgency) return !!currentLocation.provinceSlug;
+  return locationIsComplete();
+}
+
+/**
+ * Thủ tục này có tick radio "Sở" cho ĐỊA BÀN đang chọn không.
+ *
+ * `selectSo` = bật cho mọi tỉnh. `selectSoProvinces` = CHỈ bật ở những tỉnh liệt kê (slug theo
+ * /locations/catalog, vd "danang") — cùng một mã TTHC nhưng tỉnh khác vẫn nộp ở Phường/Xã, bật
+ * tràn cho cả nước là hồ sơ đi lạc cấp tiếp nhận ngay từ bước chọn cơ quan.
+ */
+function selectSoFor(link) {
+  if (!link) return false;
+  if (link.selectSo) return true;
+  const provinces = Array.isArray(link.selectSoProvinces) ? link.selectSoProvinces : [];
+  return provinces.includes(currentLocation.provinceSlug);
+}
+
+/** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
+function agencyAreaLabel(link) {
+  if (link && link.provinceOnlyAgency) return currentLocation.province;
+  // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
+  if (selectSoFor(link)) return `Sở của ${currentLocation.province}`;
+  return `${currentLocation.ward}, ${currentLocation.province}`;
+}
+
 function showLocationSummary() {
   if (locationIsComplete()) {
     locationStatus.textContent = `✓ ${currentLocation.ward}, ${currentLocation.province}`;
@@ -3697,13 +3740,16 @@ function updateKeKhaiUI() {
     return;
   }
   // Cổng React mới bắt chọn Tỉnh/Xã trước khi vào biểu mẫu → trợ lý điền hộ nếu đã có địa chỉ.
-  if (link.needsAgencySelect && !locationIsComplete()) {
-    keKhaiStatus.textContent = 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
+  if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
+    keKhaiStatus.textContent = link.provinceOnlyAgency
+      ? 'Thủ tục này cần chọn Tỉnh/Thành phố trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.'
+      : 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
     keKhaiStatus.className = 'status warn';
   } else if (link.needsAgencySelect) {
+    const area = agencyAreaLabel(link);
     keKhaiStatus.textContent = link.autoConfirm
-      ? `Trợ lý sẽ chọn ${currentLocation.ward}, ${currentLocation.province}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
-      : `Trợ lý sẽ tự chọn ${currentLocation.ward}, ${currentLocation.province} và mở biểu mẫu kê khai.`;
+      ? `Trợ lý sẽ chọn ${area}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
+      : `Trợ lý sẽ tự chọn ${area} và mở biểu mẫu kê khai.`;
     keKhaiStatus.className = 'status info';
   } else {
     keKhaiStatus.textContent = 'Sẽ mở tại tab hiện tại: ' + link.url;
@@ -3782,11 +3828,23 @@ async function openKeKhaiPage() {
   const link = selectedKeKhaiLink();
   if (!link) return false;
   await onKeKhaiProcedureChosen();
-  if (link.needsAgencySelect && locationIsComplete()) {
+  if (link.needsAgencySelect && locationIsCompleteFor(link)) {
     await chrome.storage.local.set({
       [AGENCY_ARM_KEY]: {
         province: currentLocation.province,
         ward: currentLocation.ward,
+        // Thủ tục cấp tỉnh: cổng chỉ render ô Tỉnh/Thành phố -> content script bỏ hẳn bước xã.
+        provinceOnly: !!link.provinceOnlyAgency,
+        // Thủ tục cấp Sở: tick radio "Sở" rồi chọn option đầu tiên trong dropdown thay vì chọn Phường/Xã.
+        // Cờ chốt theo TỈNH đang chọn (xem selectSoFor) nên phải tính ở đây, không đọc thẳng link.
+        selectSo: selectSoFor(link),
+        // Trang kết quả cổng QG ra nhiều thẻ khác nhau ở CƠ QUAN THỰC HIỆN -> chuỗi này chốt đúng
+        // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu".
+        submitCardIncludes: link.submitCardIncludes || "",
+        // Thủ tục đặc thù của tỉnh: sau "Nộp trực tuyến" cổng QG ném sang cổng tỉnh, còn ba việc
+        // nữa (bấm "Nộp hồ sơ" đúng dòng, đăng nhập riêng, chọn cơ quan tiếp nhận) do
+        // content/portal-quangninh.js làm nốt theo đúng cấu hình này.
+        provincePortalFlow: link.provincePortalFlow || null,
         procedureKey: link.key,
         // Trang kết quả có thể liệt kê nhiều dịch vụ -> content script cần tên để bấm đúng thẻ.
         procedureLabel: link.label,
@@ -4022,8 +4080,10 @@ async function onDestGoClick() {
     keKhaiStatus.className = "status err";
     return;
   }
-  if (link.needsAgencySelect && !locationIsComplete()) {
-    locationStatus.textContent = "Chưa chọn đủ Tỉnh/Thành phố và Phường/Xã.";
+  if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
+    locationStatus.textContent = link.provinceOnlyAgency
+      ? "Chưa chọn Tỉnh/Thành phố."
+      : "Chưa chọn đủ Tỉnh/Thành phố và Phường/Xã.";
     locationStatus.className = "status err";
     return;
   }
@@ -4087,6 +4147,14 @@ async function passInfoModalIfAny() {
   const state = await sendToContent({ action: "getPortalFlowState" });
   // Cổng khác (không có wizard này) hoặc đã ở bước kê khai -> quét luôn như cũ.
   if (!state || state.unsupported || state.formReady) return true;
+
+  // Cổng đang chặn ở màn/modal đăng nhập VNeID: chưa đăng nhập thì chưa có bước kê khai nào để
+  // điền, gọi backend lúc này chỉ tốn lượt OCR. content/agency-select.js đã đỗ ở chặng "login" và
+  // sẽ tự vào hồ sơ khi công dân xác thực xong — cán bộ chỉ cần bấm quét lại sau đó.
+  if (state.loginRequired) {
+    setStatus(state.loginHint || "Cổng yêu cầu đăng nhập để vào hồ sơ.", "warn");
+    return false;
+  }
 
   if (state.infoModal) {
     setStatus("Đang xác nhận Thông tin chung…", "info");

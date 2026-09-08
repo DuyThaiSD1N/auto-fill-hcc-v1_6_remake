@@ -798,16 +798,27 @@ async function pickInWidget(root, value) {
            null;
   };
   // Khớp lỏng theo ranh giới từ (option chứa trọn cụm cần tìm hoặc ngược lại).
-  const looseMatch = () => {
-    const opts = realOpts();
-    return opts.find((o) => legacyChoiceHasWord(norm(o.textContent), want)) ||
-           opts.find((o) => {
-             const foldedOption = foldLegacyChoice(o.textContent);
-             return legacyChoiceHasWord(foldedOption, foldedWant) ||
-               legacyChoiceHasWord(foldedWant, foldedOption);
-           }) ||
-           null;
+  //
+  // CHỈ chấp nhận khi ĐÚNG MỘT option khớp. Nhiều option cùng khớp nghĩa là cụm cần tìm không đủ
+  // để chỉ ra một lựa chọn — lấy option đầu danh sách lúc đó là bốc thăm, mà vẫn tô XANH như đã
+  // điền đúng nên không ai soát ra. Thà bỏ trống + viền vàng để cán bộ chọn.
+  const singleLooseMatch = (predicate) => {
+    const hits = realOpts().filter(predicate);
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) {
+      console.warn(`[AutoFill] pickInWidget: "${value}" khớp lỏng ${hits.length} option, bỏ qua:`,
+        hits.map((o) => o.textContent.trim()).slice(0, 8));
+    }
+    return null;
   };
+  const looseMatch = () =>
+    singleLooseMatch((o) => legacyChoiceHasWord(norm(o.textContent), want)) ||
+    singleLooseMatch((o) => {
+      const foldedOption = foldLegacyChoice(o.textContent);
+      return legacyChoiceHasWord(foldedOption, foldedWant) ||
+        legacyChoiceHasWord(foldedWant, foldedOption);
+    }) ||
+    null;
   const match = () => exactMatch() || looseMatch();
 
   // Chờ option thật xuất hiện (list có thể load AJAX sau khi mở)

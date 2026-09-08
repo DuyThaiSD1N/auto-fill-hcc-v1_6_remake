@@ -11,6 +11,7 @@
     "scripting"
   ],
   "host_permissions": [
+    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
@@ -73,7 +74,9 @@
         "content/fill-bacninh.js",
         "content/procedures/business-registration.js",
         "content/procedures/enterprise-registration.js",
+        "content/portal-login.js",
         "content/agency-select.js",
+        "content/portal-quangninh.js",
         "content/review.js"
       ],
       "css": [

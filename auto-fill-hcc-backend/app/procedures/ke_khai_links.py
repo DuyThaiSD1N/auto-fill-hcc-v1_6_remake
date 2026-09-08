@@ -8,6 +8,13 @@ procedure-links.js — đã dồn về backend để extension không phải đ�
 không có ô Phường/Xã (thủ tục do cấp tỉnh tiếp nhận). Thiếu cờ thì popup bắt cán bộ chọn đủ
 tỉnh + xã mới cho đi tiếp, còn agency-select.js chờ đủ 2 ô rồi bỏ cuộc vì cổng chỉ render 1 ô.
 
+`selectSo` / `selectSoProvinces`: thủ tục nộp tại Sở — thay vì chọn Phường/Xã, trợ lý tick radio
+"Sở" ở khối "Chọn cơ quan thực hiện" rồi bấm "Nộp trực tuyến" của thẻ ĐẦU TIÊN. `selectSo: true`
+áp dụng cho mọi tỉnh; `selectSoProvinces: ["danang", ...]` CHỈ áp dụng ở các tỉnh liệt kê (slug lấy
+từ /locations/catalog = `code_name` bỏ dấu gạch dưới) — cùng một mã TTHC nhưng tỉnh khác vẫn nộp ở
+cấp xã, bật tràn cả nước là hồ sơ đi lạc cơ quan tiếp nhận. Extension chốt cờ theo tỉnh đang chọn
+ở popup.js:selectSoFor.
+
 `submitCardIncludes`: trang kết quả của Cổng QG ra NHIỀU thẻ cùng tên thủ tục, khác nhau ở "Cơ quan
 thực hiện" / "Đối tượng". Mặc định trợ lý lấy thẻ ĐẦU; khai chuỗi này thì nó tìm đúng thẻ chứa chuỗi
 đó (vd "Cơ quan thực hiện: Văn phòng Đăng ký đất đai") rồi mới bấm "Nộp trực tuyến" — bấm nhầm thẻ là
