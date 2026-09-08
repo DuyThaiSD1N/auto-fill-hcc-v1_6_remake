@@ -106,6 +106,8 @@ const SEARCH_PROCEDURE_LIMIT = 5;
 const SPLIT_MODE_KEY = "autofill_attach_split_mode";
 // Cài đặt "tách GIẤY TỜ trong 1 file" (bật/tắt ở settings.html) — KHÁC splitMode (tách hồ sơ).
 const SPLIT_DOCUMENTS_SETTING_KEY = "autofill_attach_split_documents";
+// Cài đặt "Người nộp = chủ hồ sơ (bỏ so khớp form)" (settings.html) — gửi BE qua options.submitterMode.
+const SUBMITTER_OWNER_MODE_KEY = "autofill_submitter_owner_mode";
 // Bundle tách hồ sơ chứa dataUrl base64 có thể vượt trần 64 MiB của runtime.sendMessage.
 // Popup ghi vào key cố định này; background nhận key, chuyển sang queue chính rồi xóa staging.
 const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
@@ -119,6 +121,8 @@ const SPLIT_RELOADABLE_WALLET_CODES = new Set([
 let attachSplitMode = false; // hiệu lực từ ô tick (đã khôi phục từ storage)
 // Tách GIẤY TỜ bên trong một file (khác splitMode). Cài đặt toàn extension, đọc từ storage (settings.html).
 let attachSplitDocuments = false;
+// Cài đặt "Người nộp = chủ hồ sơ (bỏ so khớp form)" — gửi BE qua options.submitterMode="owner_as_submitter".
+let submitterOwnerMode = false;
 let activeSplitRunId = null;
 let splitProgressOriginTabId = null;
 
@@ -1068,9 +1072,7 @@ function detectUrlScopeOk(detect, url) {
 // Khớp tín hiệu trang (URL + heading) với rule `detect` của thủ tục từ backend.
 function detectProcedureKeyFromSignals(signals) {
   if (!signals) return "";
-  // `detectDisabled` (backend đặt) = thủ tục này CHỈ được chọn tay, không bao giờ tự nhận diện.
-  // Lọc ngay từ đây nên mọi bước nhận diện bên dưới (URL / heading / textIncludes) đều bỏ qua nó.
-  const detectables = PROCEDURES.filter((p) => p && p.detect && !p.detectDisabled);
+  const detectables = PROCEDURES.filter((p) => p && p.detect);
   const url = String(signals.url || "").toLowerCase();
   const body = normDetect(signals.bodyText || "");
 
@@ -1087,17 +1089,9 @@ function detectProcedureKeyFromSignals(signals) {
     if (entityLabel) {
       // Hồ sơ đã tạo: cổng in rõ "Loại hình doanh nghiệp" → chốt đúng thủ tục theo loại hình đó.
       // Loại hình chưa có thủ tục tương ứng (vd TNHH) thì để TRỐNG, không nhận bừa sang CTCP.
-      // Nhánh này dò THẲNG trong PROCEDURES (không qua `detectables`) nên phải tự loại thủ tục
-      // bật detectDisabled — nếu không, loại hình khớp là nó vẫn tự chọn bất chấp cờ.
       const matched = PROCEDURES.find((item) => item.enterpriseEntityLabel
-        && !item.detectDisabled
         && normDetect(item.enterpriseEntityLabel) === entityLabel);
-      if (matched) return matched.key;
-      // Không nhận diện được (loại hình chưa có thủ tục, hoặc thủ tục đó chỉ cho chọn tay):
-      // GIỮ lựa chọn doanh nghiệp đang có thay vì trả rỗng. Cổng postback ở mọi bước nên trả rỗng
-      // là mỗi lần tải trang lại xoá tên thủ tục cán bộ vừa chọn.
-      if (isEnterprisePortalProcedure(selected)) return selected.key;
-      return "";
+      return matched ? matched.key : "";
     }
     // Chưa chốt loại hình (wizard, trang chủ cổng, màn đăng nhập): giữ thủ tục doanh nghiệp đang
     // chọn nếu có; không thì rơi xuống rule urlIncludes để nhận theo domain — đúng như cổng HKD.
@@ -1765,14 +1759,16 @@ async function restoreSplitMode() {
 // Đọc cài đặt "tách giấy tờ trong file" từ storage (do settings.html ghi). Không có ô tick ở popup.
 async function restoreSplitDocumentsSetting() {
   try {
-    const result = await chrome.storage.local.get(SPLIT_DOCUMENTS_SETTING_KEY);
+    const result = await chrome.storage.local.get([SPLIT_DOCUMENTS_SETTING_KEY, SUBMITTER_OWNER_MODE_KEY]);
     attachSplitDocuments = result[SPLIT_DOCUMENTS_SETTING_KEY] === true;
-  } catch (_) { attachSplitDocuments = false; }
+    submitterOwnerMode = result[SUBMITTER_OWNER_MODE_KEY] === true;
+  } catch (_) { attachSplitDocuments = false; submitterOwnerMode = false; }
 }
 // settings.html bật/tắt → đồng bộ ngay vào popup đang mở (không cần mở lại popup).
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== "local" || !changes[SPLIT_DOCUMENTS_SETTING_KEY]) return;
-  attachSplitDocuments = changes[SPLIT_DOCUMENTS_SETTING_KEY].newValue === true;
+  if (areaName !== "local") return;
+  if (changes[SPLIT_DOCUMENTS_SETTING_KEY]) attachSplitDocuments = changes[SPLIT_DOCUMENTS_SETTING_KEY].newValue === true;
+  if (changes[SUBMITTER_OWNER_MODE_KEY]) submitterOwnerMode = changes[SUBMITTER_OWNER_MODE_KEY].newValue === true;
 });
 
 fileInput.addEventListener("change", () => {
@@ -2874,6 +2870,8 @@ ocrBtn.addEventListener("click", async () => {
       : "Đang xử lý trên máy chủ (OCR + trích trường)...",
       "info"
     );
+    // Toggle "Người nộp = chủ hồ sơ": bỏ so khớp mỏ neo UI (BE thủ tục nào hỗ trợ mới honor).
+    if (submitterOwnerMode) options.submitterMode = "owner_as_submitter";
     if (cfg.hasAttachmentStep) {
       lastProcessSession = null;
       refreshAttachStepUI();
@@ -3557,23 +3555,6 @@ function locationIsComplete() {
   return !!(currentLocation.provinceSlug && currentLocation.ward);
 }
 
-/** Đủ địa chỉ để "lên đạn" cho MỘT thủ tục cụ thể.
- *
- * Thủ tục cấp tỉnh (link.provinceOnlyAgency) chỉ có ô Tỉnh/Thành phố ở khối "Chọn cơ quan thực
- * hiện" của cổng, nên bắt cán bộ chọn thêm Phường/Xã là chặn oan — chọn xong cũng không có ô nào
- * để điền. Thủ tục còn lại vẫn cần đủ tỉnh + xã như cũ.
- */
-function locationIsCompleteFor(link) {
-  if (link && link.provinceOnlyAgency) return !!currentLocation.provinceSlug;
-  return locationIsComplete();
-}
-
-/** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
-function agencyAreaLabel(link) {
-  if (link && link.provinceOnlyAgency) return currentLocation.province;
-  return `${currentLocation.ward}, ${currentLocation.province}`;
-}
-
 function showLocationSummary() {
   if (locationIsComplete()) {
     locationStatus.textContent = `✓ ${currentLocation.ward}, ${currentLocation.province}`;
@@ -3670,16 +3651,13 @@ function updateKeKhaiUI() {
     return;
   }
   // Cổng React mới bắt chọn Tỉnh/Xã trước khi vào biểu mẫu → trợ lý điền hộ nếu đã có địa chỉ.
-  if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
-    keKhaiStatus.textContent = link.provinceOnlyAgency
-      ? 'Thủ tục này cần chọn Tỉnh/Thành phố trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.'
-      : 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
+  if (link.needsAgencySelect && !locationIsComplete()) {
+    keKhaiStatus.textContent = 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
     keKhaiStatus.className = 'status warn';
   } else if (link.needsAgencySelect) {
-    const area = agencyAreaLabel(link);
     keKhaiStatus.textContent = link.autoConfirm
-      ? `Trợ lý sẽ chọn ${area}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
-      : `Trợ lý sẽ tự chọn ${area} và mở biểu mẫu kê khai.`;
+      ? `Trợ lý sẽ chọn ${currentLocation.ward}, ${currentLocation.province}, bấm "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.`
+      : `Trợ lý sẽ tự chọn ${currentLocation.ward}, ${currentLocation.province} và mở biểu mẫu kê khai.`;
     keKhaiStatus.className = 'status info';
   } else {
     keKhaiStatus.textContent = 'Sẽ mở tại tab hiện tại: ' + link.url;
@@ -3758,20 +3736,11 @@ async function openKeKhaiPage() {
   const link = selectedKeKhaiLink();
   if (!link) return false;
   await onKeKhaiProcedureChosen();
-  if (link.needsAgencySelect && locationIsCompleteFor(link)) {
+  if (link.needsAgencySelect && locationIsComplete()) {
     await chrome.storage.local.set({
       [AGENCY_ARM_KEY]: {
         province: currentLocation.province,
         ward: currentLocation.ward,
-        // Thủ tục cấp tỉnh: cổng chỉ render ô Tỉnh/Thành phố -> content script bỏ hẳn bước xã.
-        provinceOnly: !!link.provinceOnlyAgency,
-        // Trang kết quả cổng QG ra nhiều thẻ khác nhau ở CƠ QUAN THỰC HIỆN -> chuỗi này chốt đúng
-        // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu".
-        submitCardIncludes: link.submitCardIncludes || "",
-        // Thủ tục đặc thù của tỉnh: sau "Nộp trực tuyến" cổng QG ném sang cổng tỉnh, còn ba việc
-        // nữa (bấm "Nộp hồ sơ" đúng dòng, đăng nhập riêng, chọn cơ quan tiếp nhận) do
-        // content/portal-quangninh.js làm nốt theo đúng cấu hình này.
-        provincePortalFlow: link.provincePortalFlow || null,
         procedureKey: link.key,
         // Trang kết quả có thể liệt kê nhiều dịch vụ -> content script cần tên để bấm đúng thẻ.
         procedureLabel: link.label,
@@ -4007,10 +3976,8 @@ async function onDestGoClick() {
     keKhaiStatus.className = "status err";
     return;
   }
-  if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
-    locationStatus.textContent = link.provinceOnlyAgency
-      ? "Chưa chọn Tỉnh/Thành phố."
-      : "Chưa chọn đủ Tỉnh/Thành phố và Phường/Xã.";
+  if (link.needsAgencySelect && !locationIsComplete()) {
+    locationStatus.textContent = "Chưa chọn đủ Tỉnh/Thành phố và Phường/Xã.";
     locationStatus.className = "status err";
     return;
   }
@@ -4074,14 +4041,6 @@ async function passInfoModalIfAny() {
   const state = await sendToContent({ action: "getPortalFlowState" });
   // Cổng khác (không có wizard này) hoặc đã ở bước kê khai -> quét luôn như cũ.
   if (!state || state.unsupported || state.formReady) return true;
-
-  // Cổng đang chặn ở màn/modal đăng nhập VNeID: chưa đăng nhập thì chưa có bước kê khai nào để
-  // điền, gọi backend lúc này chỉ tốn lượt OCR. content/agency-select.js đã đỗ ở chặng "login" và
-  // sẽ tự vào hồ sơ khi công dân xác thực xong — cán bộ chỉ cần bấm quét lại sau đó.
-  if (state.loginRequired) {
-    setStatus(state.loginHint || "Cổng yêu cầu đăng nhập để vào hồ sơ.", "warn");
-    return false;
-  }
 
   if (state.infoModal) {
     setStatus("Đang xác nhận Thông tin chung…", "info");

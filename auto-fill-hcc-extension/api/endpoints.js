@@ -164,7 +164,7 @@ const api = {
   async keKhaiLinks() {
     const res = await backendFetch("/api/v1/procedures/ke-khai-links");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json(); // { links: [{key, label, url, needsAgencySelect, autoConfirm}] }
+    return res.json(); // { links: [{key, label, url, needsAgencySelect, provinceOnlyAgency, submitCardIncludes, provincePortalFlow, autoConfirm}] }
   },
 
   // Rà soát bbox: đọc lại sources (field → vùng ảnh) đã chụp lúc process. null nếu chưa có / hết hạn.

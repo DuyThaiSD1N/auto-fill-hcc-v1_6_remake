@@ -41,7 +41,7 @@ function makePage(cards) {
 function load(page) {
   const box = {
     document: page.doc,
-    console: { log() {} },
+    console: { log() {}, warn() {} },
     visible: () => true,
     fold: (s) => String(s || "").replace(/đ/g, "d").replace(/Đ/g, "D")
       .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -103,4 +103,49 @@ const LABEL = "Thủ tục đăng ký kết hôn";
   const box = load(makePage([]));
   assert.strictEqual(box.pick(LABEL), null, "không có nút nào thì phải trả null để nhường người dùng");
   console.log("ok - không có kết quả thì trả null, không bịa");
+}
+
+// ------------------------------------------- 5. Chốt thẻ theo CƠ QUAN THỰC HIỆN (đè quy ước thẻ đầu)
+// Thủ tục đất đai Quảng Ninh ra nhiều thẻ khác nhau ở cơ quan tiếp nhận; thẻ đầu là cơ quan khác
+// thì hồ sơ đi lạc ngay từ bước này.
+const VAN_PHONG = "Cơ quan thực hiện: Văn phòng Đăng ký đất đai";
+{
+  const page = makePage([
+    "Quảng Ninh - Đăng ký biến động Cơ quan thực hiện: Ủy ban nhân dân cấp xã",
+    `Quảng Ninh - Đăng ký biến động ${VAN_PHONG}`,
+    "Quảng Ninh - Đăng ký biến động Cơ quan thực hiện: Sở Nông nghiệp và Môi trường",
+  ]);
+  const box = load(page);
+  const chosen = box.pick("Quảng Ninh - Đăng ký biến động", VAN_PHONG);
+  assert.ok(String(chosen._card).includes("Văn phòng Đăng ký đất đai"),
+    `phải lấy thẻ Văn phòng Đăng ký đất đai, thực tế: ${chosen._card}`);
+  console.log("ok - chốt đúng thẻ theo cơ quan thực hiện, không lấy thẻ đầu");
+}
+
+// ------------------------------------------- 6. Cổng đổi cách ghi cơ quan -> rơi về quy ước thẻ đầu
+{
+  const page = makePage([
+    "Quảng Ninh - Đăng ký biến động Cơ quan thực hiện: Ủy ban nhân dân cấp xã",
+    "Quảng Ninh - Đăng ký biến động Cơ quan thực hiện: Sở Nông nghiệp và Môi trường",
+  ]);
+  const box = load(page);
+  const chosen = box.pick("Quảng Ninh - Đăng ký biến động", VAN_PHONG);
+  assert.ok(chosen, "không khớp cơ quan thì vẫn phải đi tiếp bằng quy ước cũ, không bỏ cuộc");
+  assert.ok(String(chosen._card).includes("Ủy ban nhân dân cấp xã"),
+    `phải rơi về thẻ đầu, thực tế: ${chosen._card}`);
+  console.log("ok - không thấy cơ quan đã khai thì rơi về thẻ đầu");
+}
+
+// ------------------------------------------- 7. Không khai cơ quan -> giữ nguyên hành vi cũ
+{
+  const page = makePage([
+    "Quảng Ninh - Đăng ký biến động Cơ quan thực hiện: Ủy ban nhân dân cấp xã",
+    `Quảng Ninh - Đăng ký biến động ${VAN_PHONG}`,
+  ]);
+  const box = load(page);
+  assert.ok(
+    String(box.pick("Quảng Ninh - Đăng ký biến động")._card).includes("Ủy ban nhân dân cấp xã"),
+    "thủ tục không khai submitCardIncludes phải giữ nguyên quy ước thẻ đầu",
+  );
+  console.log("ok - thủ tục không khai cơ quan vẫn lấy thẻ đầu như cũ");
 }

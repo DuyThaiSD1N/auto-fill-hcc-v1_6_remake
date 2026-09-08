@@ -5,7 +5,7 @@
 // Kích hoạt MỘT LẦN: popup ghi cờ autofill_agency_autoselect khi bấm "Mở trang kê khai"; script
 // đọc cờ, điền hộ rồi XÓA cờ. Người dùng tự duyệt cổng bằng tay sẽ không bị can thiệp.
 //
-// BA ĐẶC ĐIỂM CỦA CỔNG BẮT BUỘC PHẢI CHIỀU:
+// BỐN ĐẶC ĐIỂM CỦA CỔNG BẮT BUỘC PHẢI CHIỀU:
 // 1. Ô chọn ĐỔI DẠNG theo trạng thái: chưa chọn là <button aria-haspopup="listbox"><span>…</span>,
 //    chọn rồi thì React thay bằng <input value="…"> kèm nút x. Giữ tham chiếu node cũ = cầm rác,
 //    nên mọi thao tác đều PHẢI dò lại ô theo THỨ TỰ trong thẻ, không cache node.
@@ -13,6 +13,8 @@
 //    ANH EM của <ul role="listbox">, không nằm trong listbox.
 // 3. Option chốt lựa chọn ở MOUSEDOWN (chạy trước blur) -> .click() đơn thuần KHÔNG ăn, phải bắn
 //    đủ chuỗi pointerdown -> mousedown -> mouseup -> click.
+// 4. Thủ tục do CẤP TỈNH tiếp nhận chỉ render MỘT ô (Tỉnh/Thành phố). Popup gắn cờ arm.provinceOnly
+//    (từ `provinceOnlyAgency` trong ke_khai_links.json của backend) -> bỏ hẳn bước Phường/Xã.
 (() => {
   if (location.hostname !== "dichvucong.gov.vn") return;
   if (window.top !== window) return;  // khối cơ quan chỉ có ở top frame
@@ -22,6 +24,9 @@
 
   const ARM_KEY = "autofill_agency_autoselect";
   const ARM_TTL_MS = 10 * 60 * 1000;   // cờ quá cũ = người dùng đã bỏ giữa chừng
+  // Chặng đăng nhập dài hơn hẳn: công dân phải mở app VNeID, quét QR, nhập passcode. Dùng chung
+  // 10 phút là cờ hết hạn ngay giữa lúc chờ, trợ lý bỏ rơi hồ sơ dù người ta vẫn đang làm.
+  const LOGIN_TTL_MS = 30 * 60 * 1000;
   const CARD_TITLE = "chon co quan thuc hien";
   const CONFIRM_LABELS = ["nop ho so", "dong y"];
   const SUBMIT_LABEL = "nop truc tuyen";
@@ -40,6 +45,15 @@
   /** Bỏ tiền tố cấp hành chính để "Tỉnh Lâm Đồng" khớp "Lâm Đồng" và ngược lại. */
   function foldArea(value) {
     return fold(value).replace(/^(tinh|thanh pho|tp|quan|huyen|thi xa|phuong|xa|thi tran|dac khu)\s+/, "").trim();
+  }
+
+  /**
+   * Nhãn địa bàn để in toast. Thủ tục cấp tỉnh (arm.provinceOnly) không có ô Phường/Xã nên chỉ
+   * đọc tên tỉnh — ghép "undefined, Quảng Ninh" vào toast là báo sai cho cán bộ.
+   */
+  function areaLabel(arm) {
+    if (!arm) return "";
+    return arm.provinceOnly ? String(arm.province || "") : `${arm.ward}, ${arm.province}`;
   }
 
   function visible(node) {
@@ -226,6 +240,24 @@
     try { window.__HCC__?.showPageToast?.(message, kind); } catch (_) { /* panel chưa sẵn */ }
   }
 
+  /**
+   * Trạng thái đăng nhập do content/portal-login.js đọc. Thiếu module (bản đóng gói cũ) thì trả
+   * null -> mọi nhánh dưới coi như KHÔNG bị chặn, luồng chạy y như trước khi có chặng này.
+   */
+  function loginState(fresh = false) {
+    try {
+      return window.__HCC_LOGIN__?.detectLoginState?.(document, fresh ? { maxAgeMs: 0 } : undefined) || null;
+    } catch (_) { return null; }
+  }
+
+  function loginBlocked(fresh = false) {
+    return !!loginState(fresh)?.loginRequired;
+  }
+
+  function loginHint(state) {
+    try { return window.__HCC_LOGIN__?.loginHint?.(state) || ""; } catch (_) { return ""; }
+  }
+
   async function readArm() {
     try {
       const res = await chrome.storage.local.get(ARM_KEY);
@@ -263,6 +295,21 @@
   }
 
   /**
+   * Thẻ kết quả bao quanh một nút nộp: leo lên tới ancestor LỚN NHẤT vẫn chỉ chứa đúng nút đó.
+   * Leo thêm một bậc nữa là ôm luôn nút của thẻ bên cạnh -> đọc nhầm cơ quan của thẻ khác.
+   */
+  function submitCard(button) {
+    let node = button?.parentElement || null;
+    let card = null;
+    for (let depth = 0; node && depth < 8; depth += 1) {
+      if (submitButtons(node).length !== 1) break;
+      card = node;
+      node = node.parentElement;
+    }
+    return card;
+  }
+
+  /**
    * Chọn nút "Nộp trực tuyến" trong danh sách kết quả.
    *
    * Một thủ tục thường ra NHIỀU thẻ vì cùng một dịch vụ được cả Sở lẫn phường/xã tiếp nhận. Bản cũ
@@ -272,10 +319,27 @@
    * Quy ước chốt theo yêu cầu nghiệp vụ: LUÔN lấy thẻ ĐẦU TIÊN (cấp Sở đứng đầu danh sách).
    * Vẫn ưu tiên các thẻ mang đúng tên thủ tục; chỉ khi không thẻ nào khớp tên mới lấy thẻ đầu của
    * cả danh sách — nhãn trên cổng có thể viết gọn hơn nhãn trong danh mục nên khớp hụt là bình thường.
+   *
+   * `cardIncludes` (khai ở ke_khai_links.json) ĐÈ quy ước trên: thủ tục đất đai Quảng Ninh ra nhiều
+   * thẻ khác nhau ở CƠ QUAN THỰC HIỆN, phải vào đúng thẻ "Văn phòng Đăng ký đất đai" — thẻ đầu là
+   * cơ quan khác thì hồ sơ đi lạc ngay từ bước này.
    */
-  function pickSubmitButton(procedureLabel) {
+  function pickSubmitButton(procedureLabel, cardIncludes) {
     const all = submitButtons();
     if (all.length <= 1) return all[0] || null;
+
+    const wantedCard = fold(cardIncludes);
+    if (wantedCard) {
+      const byCard = all.find((button) => fold(submitCard(button)?.textContent).includes(wantedCard));
+      if (byCard) {
+        console.log("[AgencySelect] chọn thẻ theo cơ quan thực hiện:", cardIncludes);
+        return byCard;
+      }
+      console.warn(
+        `[AgencySelect] không thấy thẻ nào chứa "${cardIncludes}" — rơi về quy ước thẻ đầu`,
+        all.map((button) => submitButtonContext(button)),
+      );
+    }
 
     const wanted = fold(procedureLabel);
     const narrowed = !wanted ? [] : all.filter((button) => {
@@ -302,7 +366,7 @@
    * (instance mới đọc cờ stage="submit").
    */
   async function submitStage(arm) {
-    const found = await waitFor(() => pickSubmitButton(arm.procedureLabel), 15000, 300);
+    const found = await waitFor(() => pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes), 15000, 300);
     // Danh sách kết quả là React render DẦN: thẻ đầu tiên nhìn thấy chưa chắc là thẻ đứng đầu khi
     // danh sách vẽ xong. Vì quy ước là "luôn lấy thẻ đầu", phải đợi số thẻ đứng yên rồi mới chốt —
     // bấm sớm là mở nhầm cơ quan tiếp nhận.
@@ -315,11 +379,14 @@
         if (now === count) break;      // hai nhịp liền không đổi -> danh sách đã vẽ xong
         count = now;
       }
-      button = pickSubmitButton(arm.procedureLabel) || found;
+      button = pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes) || found;
     }
     if (!button) {
+      // Chưa đăng nhập thì cổng không dựng danh sách kết quả. Xoá cờ ở đây là bắt cán bộ bấm
+      // "Đi đến thủ tục" lại từ đầu sau khi đăng nhập xong -> đỗ vào chặng login thay vì bỏ cuộc.
+      if (loginBlocked(true)) return void await parkForLogin(arm);
       await clearArm();
-      return void toast(`Đã chọn ${arm.ward}, ${arm.province}. Mời bấm "Nộp trực tuyến".`, "success");
+      return void toast(`Đã chọn ${areaLabel(arm)}. Mời bấm "Nộp trực tuyến".`, "success");
     }
     // Đổi cờ TRƯỚC khi bấm: bấm xong là cổng điều hướng, không được bấm "Nộp trực tuyến" lần hai.
     const next = arm.autoConfirm ? { ...arm, stage: "confirm", at: Date.now() } : null;
@@ -328,7 +395,7 @@
     notifyPopup();
     realClick(button);
     if (!next) {
-      toast(`Đã chọn ${arm.ward}, ${arm.province} và mở biểu mẫu kê khai.`, "success");
+      toast(`Đã chọn ${areaLabel(arm)} và mở biểu mẫu kê khai.`, "success");
       return;
     }
     await confirmStage(next);
@@ -344,17 +411,19 @@
   async function confirmStage(arm) {
     for (let round = 0; round < 3; round += 1) {
       const seen = await waitFor(
-        () => (formReady() ? "form" : (findInfoModal() ? "modal" : null)),
+        () => (formReady() ? "form" : (findInfoModal() ? "modal" : (loginBlocked() ? "login" : null))),
         round === 0 ? 8000 : 4000, 300,
       );
       if (seen === "form") {
         await clearArm();
         return void toast("Đã vào bước kê khai. Mời quét và nhập dữ liệu.", "success");
       }
+      // Cổng đá sang màn/modal VNeID -> sang chặng chờ đăng nhập, KHÔNG chờ mò rồi bỏ cuộc.
+      if (seen === "login") return void await parkForLogin(arm);
       if (seen !== "modal") {
-        // Chưa thấy gì = gần như chắc đang ở trang đăng nhập VNeID. GIỮ NGUYÊN cờ: đăng nhập xong
-        // cổng điều hướng, watcher dưới gọi lại run() và vào đúng chặng này — người dùng KHÔNG
-        // phải bấm "Đi đến thủ tục" lần nữa. Cờ tự hết hạn theo ARM_TTL_MS nếu bỏ giữa chừng.
+        // Không nhận ra đang ở đâu (cổng còn tải, hoặc màn đăng nhập chưa kịp render marker).
+        // GIỮ NGUYÊN cờ: watcher dưới gọi lại run() ở nhịp điều hướng kế — người dùng KHÔNG phải
+        // bấm "Đi đến thủ tục" lần nữa. Cờ tự hết hạn theo ARM_TTL_MS nếu bỏ giữa chừng.
         console.log("[AgencySelect] chưa thấy modal Thông tin chung — chờ lần điều hướng kế");
         return;
       }
@@ -370,21 +439,78 @@
     toast("Đã xác nhận Thông tin chung.", "success");
   }
 
+  /**
+   * Giai đoạn 2.5 — CHỜ ĐĂNG NHẬP. Đây là cầu nối giữa "Nộp trực tuyến" và bước kê khai.
+   *
+   * Cổng chỉ mở modal "Thông tin chung" khi ĐÃ đăng nhập; chưa đăng nhập thì nó đá sang màn VNeID.
+   * Đổi cờ sang stage "login" + đóng lại mốc thời gian: công dân quét QR/nhập passcode bao lâu cũng
+   * được (LOGIN_TTL_MS), xong là watcher gọi lại run() và đi tiếp — không phải chọn lại thủ tục.
+   */
+  async function parkForLogin(arm) {
+    if (arm.stage === "login") {
+      // Đã đỗ sẵn rồi: chỉ gia hạn, đừng bắn toast lần hai cho mỗi nhịp watcher.
+      await setArm({ ...arm, at: Date.now() });
+      return;
+    }
+    await setArm({ ...arm, stage: "login", at: Date.now() });
+    notifyPopup();
+    const hint = loginHint(loginState(true));
+    toast(`${hint || "Cổng yêu cầu đăng nhập."} Xong là trợ lý tự vào hồ sơ.`, "info");
+  }
+
+  /**
+   * Giai đoạn 2.6 — đăng nhập xong thì đi tiếp TỪ ĐÚNG CHỖ cổng trả về. Cổng không nhất quán:
+   * có lúc quay lại thẳng hồ sơ (modal Thông tin chung), có lúc quăng về trang thủ tục và bắt bấm
+   * "Nộp trực tuyến" lại. Nhìn DOM để chọn nhánh thay vì đoán rồi bấm vào khoảng không.
+   */
+  async function loginStage(arm) {
+    if (loginBlocked(true)) {
+      await setArm({ ...arm, at: Date.now() });   // vẫn đang xác thực -> gia hạn, chờ nhịp sau
+      return;
+    }
+    notifyPopup();
+    if (formReady() || findInfoModal()) {
+      const next = { ...arm, stage: "confirm", at: Date.now() };
+      await setArm(next);
+      return void await confirmStage(next);
+    }
+    if (pickSubmitButton(arm.procedureLabel, arm.submitCardIncludes)) {
+      const next = { ...arm, stage: "submit", at: Date.now() };
+      await setArm(next);
+      return void await submitStage(next);
+    }
+    const card = findAgencyCard();
+    if (card && comboControls(card).some(isPlaceholder)) {
+      // Về hẳn trang thủ tục với ô cơ quan trống -> chạy lại từ giai đoạn 1 (chọn Tỉnh/Xã).
+      const next = { ...arm, at: Date.now() };
+      delete next.stage;
+      await setArm(next);
+      return void await run();
+    }
+    console.log("[AgencySelect] đăng nhập xong nhưng chưa nhận ra trang — chờ nhịp điều hướng kế");
+  }
+
   async function run() {
     const arm = await readArm();
     if (!arm) return;
-    if (Date.now() - Number(arm.at || 0) > ARM_TTL_MS) return void clearArm();
+    // Chặng chờ đăng nhập được sống lâu hơn hẳn các chặng bấm nút.
+    const ttl = arm.stage === "login" ? LOGIN_TTL_MS : ARM_TTL_MS;
+    if (Date.now() - Number(arm.at || 0) > ttl) return void clearArm();
     if (arm.stage === "submit") return void await submitStage(arm);
+    if (arm.stage === "login") return void await loginStage(arm);
     if (arm.stage === "confirm") return void await confirmStage(arm);
-    if (!arm.province || !arm.ward) return;
+    // Thủ tục cấp tỉnh chỉ cần tên tỉnh; thủ tục còn lại thiếu xã là không đi tiếp được.
+    if (!arm.province || (!arm.provinceOnly && !arm.ward)) return;
 
     // Trang thủ tục render bằng React → chờ khối cơ quan xuất hiện; không có thì thôi, giữ nguyên cờ
     // cho lần điều hướng kế (cổng hay chuyển trang trung gian trước khi tới trang chi tiết).
     const card = await waitFor(findAgencyCard, 15000, 300);
     if (!card) return;
 
-    if (comboControls(card).length < 2) {
-      console.warn("[AgencySelect] khối cơ quan chưa đủ 2 ô chọn");
+    // Thủ tục cấp tỉnh render ĐÚNG một ô (Tỉnh/Thành phố); chờ đủ 2 ô là chờ vô ích rồi bỏ cuộc.
+    const comboCount = arm.provinceOnly ? 1 : 2;
+    if (comboControls(card).length < comboCount) {
+      console.warn(`[AgencySelect] khối cơ quan chưa đủ ${comboCount} ô chọn`);
       return;
     }
 
@@ -392,11 +518,13 @@
       await clearArm();
       return void toast("Không tự chọn được Tỉnh/Thành phố — mời chọn tay.", "warning");
     }
-    // Chọn tỉnh xong cổng mới nạp danh sách phường/xã.
-    await waitFor(() => !isPlaceholder(comboControls(card)[0]), 3000, 150);
-    if (!await pickCombo(card, 1, arm.ward, "Phường/Xã")) {
-      await clearArm();
-      return void toast("Không tự chọn được Phường/Xã — mời chọn tay.", "warning");
+    if (!arm.provinceOnly) {
+      // Chọn tỉnh xong cổng mới nạp danh sách phường/xã.
+      await waitFor(() => !isPlaceholder(comboControls(card)[0]), 3000, 150);
+      if (!await pickCombo(card, 1, arm.ward, "Phường/Xã")) {
+        await clearArm();
+        return void toast("Không tự chọn được Phường/Xã — mời chọn tay.", "warning");
+      }
     }
 
     // Sang GIAI ĐOẠN 2 trước khi bấm: trang kết quả cũng có khối cơ quan, giữ cờ giai đoạn 1 là
@@ -406,7 +534,7 @@
     const confirm = findConfirmButton(card);
     if (!confirm || confirm.disabled) {
       await clearArm();
-      return void toast(`Đã chọn ${arm.ward}, ${arm.province}. Mời bấm nút xác nhận.`, "success");
+      return void toast(`Đã chọn ${areaLabel(arm)}. Mời bấm nút xác nhận.`, "success");
     }
     realClick(confirm);
     await submitStage(next);
@@ -510,14 +638,20 @@
     const infoModal = !!findInfoModal();
     const ownerInfo = ownerInfoStep();
     const ready = formReady();
+    const login = loginState() || {};
     return {
       onProcedurePage,
       infoModal,
       ownerInfo,
       formReady: ready,
+      loggedIn: !!login.loggedIn,
+      loginRequired: !!login.loginRequired,
+      loginHint: loginHint(login),
       // Chưa dính gì tới một thủ tục cụ thể (trang chủ, tra cứu, danh mục…) -> panel hiện khối
       // chọn điểm đến; vào tới trang thủ tục/hồ sơ rồi thì trả màn về giấy tờ + quét.
-      atPortalHome: !(onProcedurePage || infoModal || ownerInfo || ready),
+      // Màn đăng nhập KHÔNG tính là trang chủ: trả panel về khối "Đi đến thủ tục" giữa lúc công
+      // dân đang quét QR là bắt cán bộ chọn lại thủ tục từ đầu dù luồng vẫn đang chạy.
+      atPortalHome: !(onProcedurePage || infoModal || ownerInfo || ready || login.loginRequired),
       ownerStepHint: OWNER_STEP_HINT,
     };
   }
@@ -556,6 +690,8 @@
 
   let lastUrl = location.href;
   let lastHome = null;
+  let lastLoginRequired = null;
+  let lastFormReady = null;
   setInterval(() => {
     if (location.href !== lastUrl) {
       lastUrl = location.href;
@@ -563,10 +699,24 @@
       return void start();
     }
     // SPA đổi màn mà giữ URL: bám theo chính trạng thái luồng.
-    const home = flowState().atPortalHome;
-    if (home !== lastHome) {
-      lastHome = home;
+    const state = flowState();
+    if (state.atPortalHome !== lastHome) {
+      lastHome = state.atPortalHome;
       notifyPopup();
+    }
+    if (state.loginRequired !== lastLoginRequired) {
+      const wasBlocked = lastLoginRequired;
+      lastLoginRequired = state.loginRequired;
+      notifyPopup();
+      // Vừa qua được màn đăng nhập: đi tiếp NGAY. Cổng hay giữ nguyên URL sau khi xác thực nên
+      // nhánh "đổi URL" ở trên không bắt được nhịp này.
+      if (wasBlocked && !state.loginRequired) return void start();
+    }
+    // Có cổng vào THẲNG bước kê khai sau khi đăng nhập, không qua modal "Thông tin chung" — thiếu
+    // nhánh này thì cờ nằm lại ở chặng login tới lúc hết hạn dù hồ sơ đã mở.
+    if (state.formReady !== lastFormReady) {
+      lastFormReady = state.formReady;
+      if (state.formReady) return void start();
     }
     if (!running && findInfoModal()) start();
   }, 1000);

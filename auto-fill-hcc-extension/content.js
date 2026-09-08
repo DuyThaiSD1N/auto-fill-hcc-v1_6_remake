@@ -730,7 +730,7 @@
       const pages = (msg && msg.pages) || {};
       const st = {
         // Đi đúng thứ tự biểu mẫu từ đầu; đến trang người nộp mới sao chép contact tài khoản tại chỗ.
-        order: [...BUSINESS_PAGE_ORDER],
+        order: withFinalTaxPass([...BUSINESS_PAGE_ORDER], pages),
         pages,
         step: 0,
         retries: 0,
@@ -759,8 +759,8 @@
         sendResponse({ error: "Trang hiện tại không thuộc luồng nghiệp vụ hộ kinh doanh đã chọn. Hãy mở đúng hồ sơ rồi chạy lại." });
         return true;
       }
-      const order = Array.isArray(flow.pageOrder) && flow.pageOrder.length
-        ? [...flow.pageOrder] : ["nguoi-nop-ho-so"];
+      const order = withFinalTaxPass(Array.isArray(flow.pageOrder) && flow.pageOrder.length
+        ? [...flow.pageOrder] : ["nguoi-nop-ho-so"], pages);
       const st = {
         workflow: flow.workflow || "change",
         businessFlow: flow,
@@ -1332,6 +1332,28 @@
     "hinh-thuc-dang-ky", "dia-chi", "nganh-nghe-kinh-doanh", "ten-ho-kinh-doanh",
     "chu-ho-kinh-doanh", "thong-tin-ve-von", "thong-tin-ve-thue", "nguoi-nop-ho-so",
   ];
+
+  /**
+   * Hồ sơ kê "Địa chỉ nhận thông báo thuế" = "Giống địa chỉ trụ sở chính": cổng KHÔNG chép địa chỉ
+   * trụ sở sang khối thuế ở lượt lưu đầu. Xếp thêm một lượt "Thông tin về thuế" ở CUỐI (sau trang
+   * người nộp hồ sơ, ngay trước đính kèm) để quay lại tick "Địa chỉ khác" rồi tick lại "Giống địa
+   * chỉ trụ sở chính" và Lưu — lúc đó cổng mới ghi địa chỉ thật. Hồ sơ kê "Địa chỉ khác" đã điền
+   * cascade tay nên không cần lượt này.
+   */
+  function withFinalTaxPass(order, pages) {
+    const taxKey = H.TAX_PAGE_KEY || "thong-tin-ve-thue";
+    const skip = (why) => {
+      console.log("[FillAll] KHÔNG chèn lượt chốt địa chỉ thuế:", why);
+      return order;
+    };
+    if (typeof H.taxWantsSameAsHeadOffice !== "function") return skip("thiếu business-registration.js");
+    if (!order.includes(taxKey)) return skip("luồng không đi qua trang thuế");
+    if (!H.taxWantsSameAsHeadOffice((pages && pages[taxKey]) || [])) {
+      return skip('hồ sơ không kê "Giống địa chỉ trụ sở chính"');
+    }
+    console.log("[FillAll] chèn lượt chốt địa chỉ thuế vào cuối order");
+    return [...order, taxKey];
+  }
 
   // readAcctContact: đọc sđt/email tài khoản (span _Vw chế độ xem, fallback input). Dùng bởi business-registration.js.
   function readAcctContact(baseId) {

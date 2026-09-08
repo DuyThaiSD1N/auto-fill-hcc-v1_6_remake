@@ -4,6 +4,22 @@ Nguồn dữ liệu: `data/ke_khai_links.json` (trước đây nằm ở auto-fi
 procedure-links.js — đã dồn về backend để extension không phải đóng gói dữ liệu riêng).
 `key` trùng key thủ tục trong registry nên chọn link nào là chọn luôn đúng pipeline điền tự động.
 
+`provinceOnlyAgency`: khối "Chọn cơ quan thực hiện" của thủ tục này CHỈ có ô Tỉnh/Thành phố,
+không có ô Phường/Xã (thủ tục do cấp tỉnh tiếp nhận). Thiếu cờ thì popup bắt cán bộ chọn đủ
+tỉnh + xã mới cho đi tiếp, còn agency-select.js chờ đủ 2 ô rồi bỏ cuộc vì cổng chỉ render 1 ô.
+
+`submitCardIncludes`: trang kết quả của Cổng QG ra NHIỀU thẻ cùng tên thủ tục, khác nhau ở "Cơ quan
+thực hiện" / "Đối tượng". Mặc định trợ lý lấy thẻ ĐẦU; khai chuỗi này thì nó tìm đúng thẻ chứa chuỗi
+đó (vd "Cơ quan thực hiện: Văn phòng Đăng ký đất đai") rồi mới bấm "Nộp trực tuyến" — bấm nhầm thẻ là
+hồ sơ đi lạc cơ quan tiếp nhận ngay từ bước đầu. Không khớp thì cảnh báo và rơi về quy ước thẻ đầu.
+
+`provincePortalFlow`: thủ tục đặc thù của tỉnh — bấm "Nộp trực tuyến" trên cổng quốc gia xong là
+cổng ném sang CỔNG TỈNH, ở đó còn phải bấm "Nộp hồ sơ" đúng dòng, qua đăng nhập riêng của tỉnh rồi
+chọn cơ quan tiếp nhận. `{host, rowIncludes, rowIndex, agency}` do content/portal-quangninh.js đọc:
+`rowIncludes` chọn dòng theo chữ (một mã TTHC ra nhiều biến thể đồng bằng / miền núi, hải đảo),
+`rowIndex` là phương án dự phòng theo vị trí, `agency` là chi nhánh phải chọn trong modal
+"Thông tin chung". Đổi địa bàn tiếp nhận thì sửa `agency` ở đây, KHÔNG sửa engine.
+
 Đọc một lần lúc process khởi động, giống app/locations/catalog.py.
 """
 import json

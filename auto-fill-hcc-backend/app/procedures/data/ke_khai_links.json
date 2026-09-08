@@ -105,14 +105,6 @@
       "autoConfirm": true
     },
     {
-      "key": "khai-tu-lien-thong",
-      "code": "1.006714",
-      "label": "Liên thông đăng ký khai tử, xóa đăng ký thường trú, trợ cấp mai táng phí",
-      "url": "https://lienthong.dichvucong.gov.vn/#/ke-khai/1.006714",
-      "needsAgencySelect": false,
-      "autoConfirm": false
-    },
-    {
       "key": "khai-tu-dang-ky-lai",
       "code": "1.005461",
       "label": "Thủ tục đăng ký lại khai tử",
@@ -382,8 +374,8 @@
       "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
       "code": "2.000720",
       "label": "Đăng ký thay đổi nội dung đăng ký hộ kinh doanh",
-      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
-      "needsAgencySelect": false,
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfc-d9ca-768c-a8f4-cc0dff5f41ed",
+      "needsAgencySelect": true,
       "autoConfirm": false
     },
     {
@@ -396,10 +388,10 @@
     },
     {
       "key": "tam-ngung-kinh-doanh",
-      "code": "1.007042",
+      "code": "1.001570",
       "label": "Tạm ngừng kinh doanh",
-      "url": "https://hokinhdoanh.dkkd.gov.vn/HkdOnline/Default.aspx",
-      "needsAgencySelect": false,
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-ef0b-7208-aa89-3b781441abad",
+      "needsAgencySelect": true,
       "autoConfirm": false
     },
     {
@@ -472,6 +464,7 @@
       "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12a3-93d3-71ae-8f20-1cfb89cab2b6",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -484,9 +477,9 @@
     },
     {
       "key": "dinh-chinh-gcn-sai-sot",
-      "code": "1.012796",
+      "code": "1.115446",
       "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f10fb-9fa4-7462-9c30-f264a10e839b",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -495,6 +488,15 @@
       "code": "1.115476",
       "label": "Đính chính Giấy chứng nhận đã cấp",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f169e-c716-76a7-b47e-269721b1d9c2",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap-cap-tinh",
+      "code": "1.115436",
+      "label": "Đính chính Giấy chứng nhận đã cấp (Cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f02e5-91cd-7697-8bb3-89bd36d1fa8a",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -512,6 +514,7 @@
       "label": "Tách thửa đất hoặc hợp thửa đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1258-75a5-72c7-916e-b0299f0b17c3",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -528,6 +531,7 @@
       "label": "Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, khiếu nại, tố cáo về đất đai; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là quyền sử dụng đất, tài sản gắn liền với đất để đăng ký, bao gồm cả xử lý khoản nợ có bảo đảm đối với khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1681-0ec2-72f9-a55f-b81cd1fb36fd",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -536,6 +540,7 @@
       "label": "Cấp, cấp lại Giấy phép khai thác thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3815-712d-a33f-c571e5d7fdc2",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -544,6 +549,7 @@
       "label": "Xóa đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-286c-7701-adcc-2ef71bbbe72e",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -552,6 +558,34 @@
       "label": "Cấp giấy chứng nhận đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-2864-76fe-9234-7c54e1661f21",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-gcn-dang-ky-tau-ca-tau-phuc-vu-nuoi-trong-thuy-san",
+      "code": "1.003634",
+      "label": "Cấp lại giấy chứng nhận đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-2869-773c-8a80-8ded06a65be6",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gpxd-moi-cong-trinh-cap-dac-biet-cap-i-cap-ii",
+      "code": "1.013236",
+      "label": "Cấp giấy phép xây dựng mới công trình cấp đặc biệt, cấp I, cấp II (Công trình không theo tuyến/Theo tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Theo giai đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-909f-769a-9283-87c608b8028e",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-gpxd-sua-chua-cai-tao-cong-trinh-cap-dac-biet-cap-i-cap-ii",
+      "code": "1.013238",
+      "label": "Cấp giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp đặc biệt, cấp I, cấp II (Công trình không theo tuyến/Theo tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Theo giai đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90aa-7599-84e5-3f631fb4787e",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -650,9 +684,164 @@
     },
     {
       "key": "dang-ky-bien-dong-dat-dai-quang-ninh",
-      "code": "1.013831",
+      "code": "1.115835",
       "label": "Quảng Ninh - Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; chuyển quyền khai thác khoáng sản theo quy định của pháp luật về địa chất và khoáng sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f6567-3744-7003-ab4b-e4fb4ee54bf8",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIncludes": "Miền núi, hải đảo",
+        "rowIndex": 2,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-quang-ninh",
+      "code": "1.115837",
+      "label": "Quảng Ninh - Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất, chủ sở hữu tài sản gắn liền với đất hoặc thay đổi số hiệu hoặc địa chỉ của thửa đất; thay đổi hạn chế quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất hoặc có thay đổi quyền đối với thửa đất liền kề; giảm diện tích thửa đất do sạt lở tự nhiên",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f656f-5ba4-739d-a55d-8dd0fe6d167a",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIncludes": "Miền núi, hải đảo",
+        "rowIndex": 2,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-quang-ninh",
+      "code": "1.115840",
+      "label": "Quảng Ninh - Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận hoặc đăng ký thay đổi về tài sản gắn liền với đất so với nội dung đã đăng ký, gia hạn thời hạn sở hữu nhà ở của tổ chức nước ngoài, cá nhân nước ngoài theo quy định của pháp luật về nhà ở nội dung đã đăng ký",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f657a-a27d-76b8-95e8-cb32f91f6fd2",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 6,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "tach-thua-hop-thua-dat-quang-ninh",
+      "code": "1.115832",
+      "label": "Quảng Ninh - Tách thửa hoặc hợp thửa đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f653e-1a95-7398-92e6-0ded98532d7d",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 4,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-quang-ninh",
+      "code": "1.115839",
+      "label": "Quảng Ninh - Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, khiếu nại, tố cáo về đất đai hoặc bản án, quyết định của Tòa án, quyết định thi hành án của cơ quan thi hành án đã được thi hành; quyết định hoặc phán quyết của Trọng tài thương mại Việt Nam về giải quyết tranh chấp giữa các bên phát sinh từ hoạt động thương mại liên quan đến đất đai; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là quyền sử dụng đất, tài sản gắn liền với đất đã được đăng ký, bao gồm cả xử lý khoản nợ có nguồn gốc từ khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f6577-9b7b-72f6-b29d-a51ecb05373a",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "thu-hoi-gcn-cap-khong-dung-quy-dinh-quang-ninh",
+      "code": "1.115855",
+      "label": "Quảng Ninh - Thu hồi Giấy chứng nhận đã cấp không đúng quy định của pháp luật đất đai do người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau khi thu hồi",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f6935-0ba6-725e-a3fd-22da413b9f86",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 4,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap-quang-ninh",
+      "code": "1.115854",
+      "label": "Quảng Ninh - Đính chính Giấy chứng nhận đã cấp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f6930-9ba4-76f7-923a-7740c26ced69",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 4,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-gcn-do-bi-mat-quang-ninh",
+      "code": "1.115849",
+      "label": "Quảng Ninh - Cấp lại Giấy chứng nhận do bị mất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f68fb-daa9-7444-94c2-987cdd53c1c5",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 6,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-doi-gcn-quyen-su-dung-dat-quang-ninh",
+      "code": "1.115848",
+      "label": "Quảng Ninh - Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f68f5-4176-748a-b391-7be76a4a653f",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-da-chuyen-quyen-truoc-01-8-2024-quang-ninh",
+      "code": "1.115852",
+      "label": "Quảng Ninh - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với trường hợp đã chuyển quyền sử dụng đất trước ngày 01 tháng 8 năm 2024 mà bên chuyển quyền đã được cấp Giấy chứng nhận nhưng chưa thực hiện thủ tục chuyển quyền theo quy định",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f6925-187c-754c-8308-457a21e513c9",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-phan-dien-tich-con-lai-thua-dat",
+      "code": "1.012782",
+      "label": "Đăng ký, cấp Giấy chứng nhận đối với trường hợp cá nhân, hộ gia đình đã được cấp Giấy chứng nhận một phần diện tích vào loại đất ở trước ngày 01 tháng 7 năm 2004, phần diện tích còn lại của thửa đất chưa được cấp Giấy chứng nhận",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f6c-7009-bce8-877375012f82",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-muc-dich-su-dung-dat-quang-ninh",
+      "code": "1.115811",
+      "label": "Quảng Ninh - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f63e9-d882-730e-a951-d443277535ff",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -662,6 +851,10 @@
       "label": "Quảng Ninh - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f650b-3d23-7368-83ca-2f9acdc7e4ab",
       "needsAgencySelect": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2
+      },
       "autoConfirm": true
     },
     {
@@ -670,6 +863,58 @@
       "label": "Quảng Ninh - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Cấp xã)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f69dd-996e-75b1-a839-07629a53ce98",
       "needsAgencySelect": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh",
+      "code": "1.115841",
+      "label": "Quảng Ninh - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với toàn bộ diện tích đất đang sử dụng quy định tại khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP (trường hợp diện tích tăng thêm chưa cấp Giấy chứng nhận)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f685c-cd7f-7499-b2be-38cd916bcc7e",
+      "needsAgencySelect": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-quang-ninh",
+      "code": "1.115831",
+      "label": "Quảng Ninh - Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của pháp luật đất đai do người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau khi thu hồi",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f653d-b31e-77ea-b60f-36154676763a",
+      "needsAgencySelect": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-da-chuyen-quyen-chua-lam-thu-tuc-quang-ninh",
+      "code": "1.115825",
+      "label": "Quảng Ninh - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với trường hợp đã chuyển quyền sử dụng đất nhưng chưa thực hiện thủ tục chuyển quyền theo quy định",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f652a-3c7f-71d2-95f8-8358d8e62912",
+      "needsAgencySelect": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2
+      },
+      "autoConfirm": true
+    },
+    {
+      "key": "giai-quyet-tranh-chap-dat-dai-cap-xa-quang-ninh",
+      "code": "1.013967",
+      "label": "Quảng Ninh - Giải quyết tranh chấp đất đai thuộc thẩm quyền của Chủ tịch Ủy ban nhân dân cấp xã",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8671-7318-8ef7-15304f36d400",
+      "needsAgencySelect": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 2
+      },
       "autoConfirm": true
     },
     {
@@ -718,6 +963,7 @@
       "label": "Cấp lại Giấy chứng nhận do bị mất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12ab-b75f-749c-a476-a987bee58f48",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -750,6 +996,7 @@
       "label": "Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép cơ quan nhà nước có thẩm quyền",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1685-720e-7518-9402-49f74097fd1b",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     },
     {
@@ -889,6 +1136,21 @@
       "autoConfirm": true
     },
     {
+      "key": "xoa-dang-ky-bien-phap-bao-dam-quang-ninh",
+      "code": "1.011443",
+      "label": "Quảng Ninh - Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 1,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
       "key": "yeu-cau-tro-giup-phap-ly",
       "code": "2.000829",
       "label": "Thủ tục yêu cầu trợ giúp pháp lý",
@@ -898,9 +1160,105 @@
     },
     {
       "key": "chung-thuc-chu-ky-nguoi-dich-ctv",
-      "code": "2.000988",
+      "code": "2.000992",
       "label": "Chứng thực chữ ký người dịch mà người dịch là cộng tác viên dịch thuật của Ủy ban nhân dân cấp xã, tổ chức hành nghề công chứng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d5-737d-8759-ff6dfa85c6b3",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-sua-loi-sai-sot-hop-dong-giao-dich",
+      "code": "2.000927",
+      "label": "Sửa lỗi sai sót trong hợp đồng, giao dịch",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e51-721b-8e62-45f804b4bba3",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-ban-sao-chung-thuc-tu-ban-chinh-hop-dong-giao-dich",
+      "code": "2.000942",
+      "label": "Cấp bản sao có chứng thực từ bản chính hợp đồng, giao dịch đã được chứng thực",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d6-778f-889b-e3045003fa5e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chung-thuc-chu-ky-nguoi-dich-khong-ctv",
+      "code": "2.001008",
+      "label": "Chứng thực chữ ký người dịch mà người dịch không phải là cộng tác viên dịch thuật của Ủy ban nhân dân cấp xã",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d4-72d6-be00-ed0e9e5dd66a",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-thay-doi-noi-dung-hop-tac-xa",
+      "code": "1.005277",
+      "label": "Đăng ký thay đổi nội dung đăng ký hợp tác xã, liên hiệp hợp tác xã",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-df1f-73fa-97e4-f60546098f7f",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-mau-con-dau",
+      "code": "2.001428",
+      "label": "Đăng ký mẫu con dấu",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-adfd-753a-8621-335a5395a571",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-bo",
+      "code": "1.012931",
+      "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp bộ)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-137d-74b3-804d-062aff3dd08f",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh",
+      "code": "1.012943",
+      "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-138a-761e-a8e5-014dbed4f2be",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "huong-tro-cap-that-nghiep",
+      "code": "1.014748",
+      "label": "Hưởng trợ cấp thất nghiệp (Cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2b1d-7649-8f76-f5315475eb46",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tam-dung-huong-tro-cap-that-nghiep",
+      "code": "1.014750",
+      "label": "Tạm dừng hưởng trợ cấp thất nghiệp (Cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2b4b-73b8-8b60-f14096c2d16e",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cham-dut-huong-tro-cap-that-nghiep",
+      "code": "1.014752",
+      "label": "Chấm dứt hưởng trợ cấp thất nghiệp (Cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2b43-76d3-9c89-73ad2f7e73cb",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-noi-huong-tro-cap-that-nghiep",
+      "code": "1.014753",
+      "label": "Chuyển nơi hưởng trợ cấp thất nghiệp (Cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-2b4f-77da-923b-f2aea995da2a",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-truong-va-tiep-nhan-hoc-sinh",
+      "code": "2.002854",
+      "label": "Chuyển trường và tiếp nhận học sinh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e4f04-8e6e-72c9-99e6-b2edd45b4a83",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -914,9 +1272,41 @@
     },
     {
       "key": "dieu-chinh-giay-phep-xay-dung",
-      "code": "1.013225",
+      "code": "1.013226",
       "label": "Cấp điều chỉnh giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Theo giai đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án) và nhà ở riêng lẻ",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9088-744d-aa0a-e846b6dce3d5",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9097-7135-94e7-f539d8b0cc19",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "gia-han-giay-phep-xay-dung",
+      "code": "1.013227",
+      "label": "Gia hạn giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Sửa chữa, cải tạo/Theo giai đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án) và nhà ở riêng lẻ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9097-700f-899f-6dfc532f0e6b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "hoa-giai-tranh-chap-dat-dai",
+      "code": "1.012812",
+      "label": "Hòa giải tranh chấp đất đai",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76e6-7468-b6f2-3d412e902b88",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-phuong-tien-vui-choi-giai-tri-duoi-nuoc-lan-dau",
+      "code": "2.001215",
+      "label": "Đăng ký phương tiện hoạt động vui chơi, giải trí dưới nước lần đầu",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-98ac-77de-bb23-6dbc853ac7d4",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tinh-tinh-lai-tien-su-dung-dat",
+      "code": "1.115148",
+      "label": "Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 Nghị định số 50/2026/NĐ-CP ngày 31/01/2026 của Chính phủ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e8732-a3da-753b-85f5-0590fe1e27c7",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -969,6 +1359,21 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-bien-phap-bao-dam-quang-ninh",
+      "code": "1.011441",
+      "label": "Quảng Ninh - Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 1,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
       "key": "cho-thue-thue-mua-nha-o-xa-hoi",
       "code": "1.012896",
       "label": "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư xây dựng bằng vốn đầu tư công",
@@ -982,6 +1387,7 @@
       "label": "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; mua bán nhà ở có thời hạn",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1670-20cd-712b-b05b-59235ae8a21b",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
       "autoConfirm": true
     }
   ]

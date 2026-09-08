@@ -2273,12 +2273,103 @@
     return /REP_RECV_ADDR_TYPEFld/.test(f?.name || "");
   }
 
+  // Radio "Địa chỉ nhận thông báo thuế" — đúng giá trị backend gửi ở pipeline dang_ky_kinh_doanh:
+  // "1" = Giống địa chỉ trụ sở chính, "0" = Địa chỉ khác.
+  const TAX_ADDR_SAME = "1";
+  const TAX_ADDR_OTHER = "0";
+  const TAX_ADDR_WARD_FIELD = "ctl00$C$UC_DW_TAXEditCtl$ADDRCtl$WARD_IDFld";
+
+  function taxWantsSameAsHeadOffice(fields) {
+    return (fields || []).some((f) => isTaxAddressModeField(f)
+      && String(f?.value ?? "").trim() === TAX_ADDR_SAME);
+  }
+
+  /**
+   * Lượt CHỐT địa chỉ thuế: "thong-tin-ve-thue" được xếp thêm một lần nữa ở CUỐI order (sau trang
+   * người nộp hồ sơ, trước đính kèm) cho hồ sơ chọn "Giống địa chỉ trụ sở chính".
+   */
+  function isFinalTaxPass(st) {
+    const order = Array.isArray(st?.order) ? st.order : [];
+    return order.lastIndexOf("thong-tin-ve-thue") === st.step
+      && order.indexOf("thong-tin-ve-thue") !== st.step;
+  }
+
+  /**
+   * Bấm một trong hai radio "Địa chỉ nhận thông báo thuế" rồi chờ cổng dựng lại khối địa chỉ.
+   * Dùng lại fillFormStandard vì nó đã lo tìm radio theo name/nhãn và click THẬT (radio là
+   * AutoPostBack: chỉ set .checked thì __doPostBack không chạy).
+   */
+  async function clickTaxAddressMode(modeFields, value) {
+    const template = modeFields[0];
+    if (!template) return false;
+    const label = value === TAX_ADDR_SAME ? "Giống địa chỉ trụ sở chính" : "Địa chỉ khác";
+    try {
+      const res = await fillFormStandard([{ ...template, value }]);
+      console.log("[FillAll] địa chỉ thuế: tick", label, "->", res && res.filled ? "OK" : "KHÔNG tick được");
+    } catch (e) {
+      console.warn("[FillAll] địa chỉ thuế: lỗi khi tick", label, e?.message || e);
+      return false;
+    }
+    await waitForPanelSettle(TAX_ADDR_WARD_FIELD.replace(/\$/g, "_"), 2500);
+    return true;
+  }
+
+  /**
+   * Chốt lại khối "Địa chỉ nhận thông báo thuế" ở lượt CUỐI cùng.
+   *
+   * Cổng chỉ ghi địa chỉ trụ sở vào khối thuế khi radio "Giống địa chỉ trụ sở chính" được tick LẠI
+   * trên trang đã lưu; tick ngay ở lượt điền rồi Lưu là hồ sơ đi với khối thuế rỗng. Đảo radio
+   * ngay trong lượt điền cũng không cứu được: tick "Địa chỉ khác" là cổng reset khối địa chỉ về
+   * mặc định (Quốc gia/Tỉnh mặc định, Phường/Xã + Số nhà TRỐNG), nên phải để nguyên — KHÔNG điền
+   * gì vào khối đó — rồi tick lại "Giống địa chỉ trụ sở chính" mới ra địa chỉ thật.
+   */
+  async function handleTaxAddressRetoggle(st, modeFields) {
+    console.log("[FillAll] lượt CHỐT địa chỉ thuế, taxPhase =", st.taxPhase || "(mới)");
+    if (!modeFields.length) {
+      console.warn("[FillAll] hồ sơ không có radio địa chỉ thuế — bỏ lượt chốt");
+      return void advanceFillAll(st);
+    }
+
+    // Persist TRƯỚC mỗi click: radio là AutoPostBack, cổng có thể reload cả trang giữa chừng thì
+    // lần load kế còn biết đang dở ở nhịp nào.
+    if (!st.taxPhase) {
+      st.taxPhase = "retoggle_other";
+      await setFillAllState(st);
+    }
+
+    if (st.taxPhase === "retoggle_other") {
+      await clickTaxAddressMode(modeFields, TAX_ADDR_OTHER);
+      st.taxPhase = "retoggle_same";
+      await setFillAllState(st);
+    }
+
+    if (st.taxPhase === "retoggle_same") {
+      await clickTaxAddressMode(modeFields, TAX_ADDR_SAME);
+      st.taxPhase = "retoggled";
+      await setFillAllState(st);
+    }
+
+    const saveBtn = findBusinessSaveButton();
+    if (!saveBtn) return void advanceFillAll(st);
+    // Lượt này không điền field nào nên cổng có thể chưa coi form là "dirty" → tự bật nút Lưu.
+    // Bỏ qua Lưu ở đây là công đảo radio thành vô nghĩa, khối thuế vẫn rỗng như trước.
+    if (saveBtn.disabled) { try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+    st.phase = "saving";
+    await setFillAllState(st);
+    const reloaded = await clickSaveDetectReload(saveBtn);
+    if (reloaded) return;
+    return void advanceFillAll(st);
+  }
+
   async function handleTaxPage(st) {
     ensureConfirmOverride();
     const fields = (st.pages && st.pages["thong-tin-ve-thue"]) || [];
     const stableFields = fields.filter((f) => !isTaxAddressModeField(f) && !isPostbackAddressField(f));
     const modeFields = fields.filter(isTaxAddressModeField);
     const addressFields = fields.filter((f) => isPostbackAddressField(f));
+
+    // Lượt cuối chỉ đảo radio rồi Lưu — không đụng lại field nào của trang.
+    if (isFinalTaxPass(st)) return void handleTaxAddressRetoggle(st, modeFields);
 
     // Trang thuế có radio "Địa chỉ nhận thông báo thuế" gây __doPostBack.
     // Xử lý như state machine nhỏ:
@@ -2328,18 +2419,23 @@
 
   // Điền xong 8 trang → nếu popup gửi kèm kế hoạch đính kèm (nút "Quét nhập thông tin và đính kèm")
   // thì TỰ CHẠY TIẾP state machine đính kèm; không thì kết thúc.
+  // order có thể chứa 2 BƯỚC cùng một trang (lượt chốt địa chỉ thuế) — báo cho cán bộ số TRANG.
+  function businessPageCount(st) {
+    return new Set(Array.isArray(st?.order) ? st.order : []).size;
+  }
+
   async function finishFillAllThenAttach(st) {
     const payload = st && st.attachPayload;
     await clearFillAllState();
     if (payload && Array.isArray(payload.files) && payload.files.length
       && Array.isArray(payload.attachments) && payload.attachments.length
       && typeof H.startAttachAllBusiness === "function") {
-      H.setRunProgressText(`✓ Đã điền xong ${st.order.length} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
+      H.setRunProgressText(`✓ Đã điền xong ${businessPageCount(st)} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
       await H.startAttachAllBusiness(payload.files, payload.attachments);
       setTimeout(H.stepAttachAll, 400);
       return;
     }
-    H.endFillAllUI(`✓ Đã điền xong ${st.order.length} trang. Vui lòng rà soát rồi bấm Nộp.`);
+    H.endFillAllUI(`✓ Đã điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.`);
   }
 
   async function advanceFillAll(st) {
@@ -2359,7 +2455,9 @@
     if (detectBusinessPageKey().pageKey === st.order[st.step]) {
       return void stepFillAll();
     }
-    goToBusinessPageByKey(st.order[st.step]);
+    // Click menu hỏng (cổng vừa đổi màn, breadcrumb chưa dựng) sẽ KHÔNG có page load nào gọi lại
+    // stepFillAll → state machine đứng im. Tự hẹn lại một nhịp để đi qua nhánh navCount có retry.
+    if (!goToBusinessPageByKey(st.order[st.step])) setTimeout(stepFillAll, 600);
   }
 
   async function stepFillAll() {
@@ -2933,6 +3031,10 @@
   H.OWNER_CHANGE_TYPE_FIELDS = OWNER_CHANGE_TYPE_FIELDS;
   H.readPortalOwner = readPortalOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
+  // Trang thuế: export để test được nhịp Lưu → đảo radio → Lưu mà không cần cả state machine.
+  H.handleTaxPage = handleTaxPage;
+  H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
+  H.TAX_PAGE_KEY = "thong-tin-ve-thue";
   H.getFillAllState = getFillAllState;
   H.navigateBusinessRegistrationPage = navigateBusinessRegistrationPage;
   H.setFillAllState = setFillAllState;
