@@ -40,6 +40,34 @@
         </span>
       </label>
 
+      <label class="setting-row" for="submitterOwnerModeSetting">
+        <span class="setting-copy">
+          <strong>Người nộp = chủ hồ sơ (bỏ so khớp form)</strong>
+          <span>
+            TẮT (mặc định): lấy người nộp theo form, phải so khớp đúng người mới điền. BẬT: bỏ so khớp form,
+            luôn lấy chủ hồ sơ làm người nộp. (Chỉ thủ tục đã hỗ trợ.)
+          </span>
+        </span>
+        <span class="switch">
+          <input id="submitterOwnerModeSetting" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <label class="setting-row" for="estateSplitAttachmentsSetting">
+        <span class="setting-copy">
+          <strong>Không gộp giấy tờ — Chứng thực phân chia di sản</strong>
+          <span>
+            Chỉ áp dụng thủ tục Chứng thực phân chia di sản. TẮT (mặc định): gộp mọi giấy tờ vào 1 dòng.
+            BẬT: mỗi giấy tờ 1 dòng riêng (dự thảo luôn tách riêng).
+          </span>
+        </span>
+        <span class="switch">
+          <input id="estateSplitAttachmentsSetting" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
       <p id="saveStatus" class="save-status" role="status" aria-live="polite"></p>
     </section>
   </main>

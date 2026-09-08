@@ -3,6 +3,25 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.17",
+    date: "8/9/2026",
+    items: [
+      "Thêm nút Xem báo cáo ở góc dưới trợ lý: mở thẳng bảng thống kê của đơn vị, tự đăng nhập bằng tài khoản đang dùng.",
+    ],
+  },
+  {
+    version: "1.16",
+    date: "7/9/2026",
+    items: [
+      "Sửa lỗi ảnh giấy tờ chụp từ điện thoại qua mã QR không hiện lên máy tính; nay ảnh về đầy đủ.",
+      "Nhận diện thủ tục: khi chuyển sang trang hoặc thủ tục chưa hỗ trợ nhận diện, tự bỏ chọn thủ tục cũ thay vì kẹt ở thủ tục trước.",
+      "Đăng ký doanh nghiệp: hoàn thiện luồng điền cho thủ tục thành lập doanh nghiệp trên cổng đăng ký kinh doanh.",
+      "Tự điền mô tả ngành nghề kinh doanh khi tờ khai chưa ghi mã ngành.",
+      "Bắc Ninh: điền biểu mẫu ổn định hơn và tự điền nơi cấp giấy tờ tùy thân.",
+      "Đi đến thủ tục và Chọn cơ quan thực hiện: chọn Tỉnh và Phường/Xã chính xác, ổn định hơn.",
+    ],
+  },
+  {
     version: "1.15",
     date: "1/9/2026",
     items: [

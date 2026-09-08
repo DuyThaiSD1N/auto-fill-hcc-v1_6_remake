@@ -172,8 +172,15 @@ async function apiJson(path, opts) {
   return data;
 }
 
+// Base sẽ được thử ĐẦU TIÊN ở lần gọi kế tiếp — dùng để mở đúng trang báo cáo của backend
+// đang chạy (chính hay phụ), vì hai backend có số liệu riêng.
+function activeBackendBase() {
+  return _orderedBackendBases()[0] || BACKEND_URL;
+}
+
 if (typeof window !== "undefined") {
   window.backendFetch = backendFetch;
   window.apiCall = apiCall;
   window.apiJson = apiJson;
+  window.activeBackendBase = activeBackendBase;
 }

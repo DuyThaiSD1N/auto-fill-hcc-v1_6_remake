@@ -37,7 +37,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.15 · 1/9"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.17 · 8/9"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -1372,6 +1372,10 @@
       document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]') || // cổng Bắc Ninh
       findCopyCertificationAttachmentRow() ||
       findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"]) ||
+      // Cổng QN "miền núi hải đảo" (vd ĐK tài sản gắn liền đất): bảng thành phần hồ sơ KHÔNG có dòng
+      // sẵn, chỉ có nút "Thêm thành phần hồ sơ" để tự thêm từng dòng → vẫn là trang đính kèm hợp lệ.
+      // Thiếu nhánh này thì collectAttachmentContext bị gate trượt → không sendResponse → "Không kết nối được trang".
+      findButtonByText(document, ["Thêm thành phần hồ sơ"]) ||
       fixedSlotUploadInputs().length > 0 // cổng Bộ VHTTDL: input file trong <app-upload-flie-multi> (nút icon, không chữ "Chọn tệp")
     );
   }

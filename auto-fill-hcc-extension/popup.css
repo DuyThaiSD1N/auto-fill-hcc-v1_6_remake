@@ -277,6 +277,11 @@ input[type="text"] {
 }
 .guide-btn:hover { background: #0d47a1; }
 
+/* Dùng lại .guide-btn (thẻ <a>) để KHỎI dính rule button{width:100%} bên dưới làm vỡ hàng footer. */
+.report-btn { background: #2e7d32; }
+.report-btn:hover { background: #1b5e20; }
+.report-btn[aria-busy="true"] { opacity: .6; pointer-events: none; }
+
 .settings-btn {
   display: inline-flex;
   align-items: center;
