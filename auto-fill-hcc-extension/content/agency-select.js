@@ -66,7 +66,7 @@
 
   async function waitFor(fn, timeout = 8000, step = 200) {
     const deadline = Date.now() + timeout;
-    for (;;) {
+    for (; ;) {
       let value;
       try { value = fn(); } catch (_) { value = null; }
       if (value) return value;
@@ -490,6 +490,40 @@
     console.log("[AgencySelect] đăng nhập xong nhưng chưa nhận ra trang — chờ nhịp điều hướng kế");
   }
 
+  /**
+   * Thủ tục nộp tại Sở: tick radio "Sở" trong khối "Chọn cơ quan thực hiện", chờ dropdown Sở
+   * render, rồi chọn option đầu tiên (Sở tương ứng tỉnh đã chọn).
+   *
+   * DOM cổng: <input type="radio"> kèm nhãn "Sở" nằm trong card — tick bằng realClick vào label
+   * hoặc trực tiếp vào input. Sau khi tick, cổng React render lại combobox thứ 2 với danh sách
+   * Sở (thay cho danh sách Phường/Xã). Chọn option đầu tiên không phải placeholder.
+   */
+  async function pickRadioAndFirstSo(card) {
+    // Tìm radio "Sở" — nhãn có thể là "Sở", "Cấp Sở", "Sở/Ban ngành"…
+    const SO_LABEL = "so";
+    const radios = Array.from(card.querySelectorAll('input[type="radio"]')).filter(visible);
+    const soRadio = radios.find((r) => {
+      const label = r.closest("label") || (r.id && card.querySelector(`label[for="${CSS.escape(r.id)}"]`));
+      const text = fold(label ? label.textContent : (r.parentElement?.textContent || ""));
+      return text.includes(SO_LABEL) && !text.includes("phuong") && !text.includes("xa");
+    });
+    if (!soRadio) {
+      console.warn("[AgencySelect] không tìm thấy radio Sở trong card");
+      return false;
+    }
+
+    // Tick radio Sở nếu chưa được chọn — cổng tự điền sẵn Sở đầu tiên, không cần chọn thêm.
+    if (!soRadio.checked) {
+      const label = soRadio.closest("label") || (soRadio.id && card.querySelector(`label[for="${CSS.escape(soRadio.id)}"]`));
+      realClick(label || soRadio);
+      // Chờ React re-render để cổng điền sẵn giá trị Sở vào dropdown.
+      await waitFor(() => comboControls(card).length >= 2, 4000, 150);
+    }
+
+    console.log("[AgencySelect] đã tick radio Sở — cổng tự điền sẵn Sở đầu tiên");
+    return true;
+  }
+
   async function run() {
     const arm = await readArm();
     if (!arm) return;
@@ -500,7 +534,7 @@
     if (arm.stage === "login") return void await loginStage(arm);
     if (arm.stage === "confirm") return void await confirmStage(arm);
     // Thủ tục cấp tỉnh chỉ cần tên tỉnh; thủ tục còn lại thiếu xã là không đi tiếp được.
-    if (!arm.province || (!arm.provinceOnly && !arm.ward)) return;
+    if (!arm.province || (!arm.provinceOnly && !arm.selectSo && !arm.ward)) return;
 
     // Trang thủ tục render bằng React → chờ khối cơ quan xuất hiện; không có thì thôi, giữ nguyên cờ
     // cho lần điều hướng kế (cổng hay chuyển trang trung gian trước khi tới trang chi tiết).
@@ -508,7 +542,8 @@
     if (!card) return;
 
     // Thủ tục cấp tỉnh render ĐÚNG một ô (Tỉnh/Thành phố); chờ đủ 2 ô là chờ vô ích rồi bỏ cuộc.
-    const comboCount = arm.provinceOnly ? 1 : 2;
+    // Thủ tục chọn Sở: ban đầu có thể chỉ 1 ô, radio Sở sẽ render thêm dropdown Sở sau khi tick.
+    const comboCount = (arm.provinceOnly || arm.selectSo) ? 1 : 2;
     if (comboControls(card).length < comboCount) {
       console.warn(`[AgencySelect] khối cơ quan chưa đủ ${comboCount} ô chọn`);
       return;
@@ -518,7 +553,14 @@
       await clearArm();
       return void toast("Không tự chọn được Tỉnh/Thành phố — mời chọn tay.", "warning");
     }
-    if (!arm.provinceOnly) {
+    if (arm.selectSo) {
+      // Thủ tục nộp tại Sở: tick radio "Sở" để cổng đổi dropdown từ Phường/Xã sang danh sách Sở,
+      // rồi chọn option đầu tiên (Sở duy nhất hoặc Sở mặc định tương ứng Tỉnh đã chọn).
+      if (!await pickRadioAndFirstSo(card)) {
+        await clearArm();
+        return void toast("Không tự chọn được Sở — mời chọn tay.", "warning");
+      }
+    } else if (!arm.provinceOnly) {
       // Chọn tỉnh xong cổng mới nạp danh sách phường/xã.
       await waitFor(() => !isPlaceholder(comboControls(card)[0]), 3000, 150);
       if (!await pickCombo(card, 1, arm.ward, "Phường/Xã")) {

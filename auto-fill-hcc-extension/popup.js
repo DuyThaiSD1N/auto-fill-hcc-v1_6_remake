@@ -3765,6 +3765,8 @@ async function openKeKhaiPage() {
         ward: currentLocation.ward,
         // Thủ tục cấp tỉnh: cổng chỉ render ô Tỉnh/Thành phố -> content script bỏ hẳn bước xã.
         provinceOnly: !!link.provinceOnlyAgency,
+        // Thủ tục cấp Sở: tick radio "Sở" rồi chọn option đầu tiên trong dropdown thay vì chọn Phường/Xã.
+        selectSo: !!link.selectSo,
         // Trang kết quả cổng QG ra nhiều thẻ khác nhau ở CƠ QUAN THỰC HIỆN -> chuỗi này chốt đúng
         // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu".
         submitCardIncludes: link.submitCardIncludes || "",

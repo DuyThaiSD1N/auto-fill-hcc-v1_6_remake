@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_lai_an_toan_thuc_pham.process.schema import UI_COMP_BY_NAME
@@ -117,7 +118,7 @@ def _area(value: Any) -> dict | None:
             out["diaChi"] = parts[0]
         else:
             out["diaChi"] = parts[0]
-        return out if any(out.values()) else None
+        return remap_area(out, allow_diachi_fallback=True) if any(out.values()) else None
     if not isinstance(value, dict):
         return None
     out = {
@@ -126,7 +127,9 @@ def _area(value: Any) -> dict | None:
         "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
         "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
     }
-    return out if any(out.values()) else None
+    if not any(out.values()):
+        return None
+    return remap_area(out, allow_diachi_fallback=True)
 
 
 def _area_label(value: Any) -> str | None:

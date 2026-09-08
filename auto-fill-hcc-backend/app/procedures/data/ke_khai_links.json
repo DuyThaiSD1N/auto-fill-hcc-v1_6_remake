@@ -465,6 +465,7 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f12a3-93d3-71ae-8f20-1cfb89cab2b6",
       "needsAgencySelect": true,
       "provinceOnlyAgency": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -506,6 +507,7 @@
       "label": "Đính chính Giấy chứng nhận đã cấp (Cấp tỉnh)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f02e5-91cd-7697-8bb3-89bd36d1fa8a",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -523,6 +525,7 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1258-75a5-72c7-916e-b0299f0b17c3",
       "needsAgencySelect": true,
       "provinceOnlyAgency": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -531,6 +534,7 @@
       "label": "Cung cấp thông tin quy hoạch",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9852-71ed-96f2-8110da8fd4f0",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1077,6 +1081,7 @@
       "label": "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm do Sở Công Thương/Sở An toàn thực phẩm/Ban Quản lý an toàn thực phẩm thực hiện",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-32f5-71a9-8925-3524dc3d03fd",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1133,6 +1138,7 @@
       "label": "[Bắc Ninh] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1141,6 +1147,7 @@
       "label": "[Đà Nẵng] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1356,6 +1363,7 @@
       "label": "[Tỉnh Bắc Ninh] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1364,6 +1372,7 @@
       "label": "[Đà Nẵng] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1396,6 +1405,7 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1670-20cd-712b-b05b-59235ae8a21b",
       "needsAgencySelect": true,
       "provinceOnlyAgency": true,
+      "selectSo": true,
       "autoConfirm": true
     }
   ]
