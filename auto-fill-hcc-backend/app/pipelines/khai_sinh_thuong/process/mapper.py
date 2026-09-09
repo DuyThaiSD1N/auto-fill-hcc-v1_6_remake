@@ -5,6 +5,7 @@ import re
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as LEGACY_COMP_BY_NAME
 from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.hospital_lookup import lookup_hospital
 
 # Đổi tên tỉnh/thành theo sắp xếp đơn vị hành chính 2025 (giấy tờ cũ ghi tên cũ → chuẩn hóa tên mới).
@@ -536,7 +537,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     add("QuanHe", quan_he or requester.get("quan_he") or _TAIL_DEFAULTS[0]["value"])
 
     if requester:
-        add("HoVaTenC", requester.get("ho_ten"))
+        add("HoVaTenC", upper_person_name(requester.get("ho_ten")))
         add("SoDinhDanhC", requester.get("so_dinh_danh"))
         add("SoGiayToDinhDanhC", requester.get("so_dinh_danh"))
         if requester.get("so_dinh_danh"):
@@ -549,7 +550,7 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     # ── Người được khai sinh (con) ─────────────────────────────────────────
     if has_child:
-        add("HoTenKS", subject.get("ho_ten"))
+        add("HoTenKS", upper_person_name(subject.get("ho_ten")))
         add("NgaySinhChon", subject.get("ngay_sinh"))
         add("GioiTinhKS", subject.get("gioi_tinh"))
         add("DanTocKS", subject.get("dan_toc"))
@@ -578,7 +579,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     # ── Mẹ ────────────────────────────────────────────────────────────────
     if has_mother_cccd:
         # Ưu tiên tên từ tờ khai (TkKs_HoTenMe) nếu có, fallback CCCD
-        add("HoTenMeKS", values.get("TkKs_HoTenMe") or values.get("CccdNu_HoTen"))
+        add("HoTenMeKS", upper_person_name(values.get("TkKs_HoTenMe") or values.get("CccdNu_HoTen")))
         add("NamSinhMeKS", values.get("CccdNu_NgaySinh"))
         add("SoDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
         add("SoGiayToDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
@@ -590,7 +591,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         _add_residence(add, "Me", mother_residence, mother_deceased)
     elif has_mother_tk:
         # Mẹ chỉ có tên + năm sinh từ tờ khai (đã mất hoặc không có CCCD)
-        add("HoTenMeKS", values.get("TkKs_HoTenMe"))
+        add("HoTenMeKS", upper_person_name(values.get("TkKs_HoTenMe")))
         add("NamSinhMeKS", values.get("TkKs_NamSinhMe"))
         add("DanTocMeKS", values.get("TkKs_DanTocMe"))
         add("QuocTichMeKS", "Việt Nam")
@@ -605,7 +606,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     # ── Cha ───────────────────────────────────────────────────────────────
     if has_father_cccd:
         # Ưu tiên tên từ tờ khai (TkKs_HoTenCha) nếu có, fallback CCCD
-        add("HoTenChaKS", values.get("TkKs_HoTenCha") or values.get("CccdNam_HoTen"))
+        add("HoTenChaKS", upper_person_name(values.get("TkKs_HoTenCha") or values.get("CccdNam_HoTen")))
         add("NamSinhChaKS", values.get("CccdNam_NgaySinh"))
         add("SoDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
         add("SoGiayToDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
@@ -617,7 +618,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         _add_residence(add, "Cha", father_residence, father_deceased)
     elif has_father_tk:
         # Cha chỉ có tên + năm sinh từ tờ khai (đã mất hoặc không có CCCD)
-        add("HoTenChaKS", values.get("TkKs_HoTenCha"))
+        add("HoTenChaKS", upper_person_name(values.get("TkKs_HoTenCha")))
         add("NamSinhChaKS", values.get("TkKs_NamSinhCha"))
         add("DanTocChaKS", values.get("TkKs_DanTocCha"))
         add("QuocTichChaKS", "Việt Nam")

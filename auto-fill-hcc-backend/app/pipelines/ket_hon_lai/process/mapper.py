@@ -5,6 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines.ket_hon_lai.process.schema import UI_COMP_BY_NAME
 
 _TINH_TRANG_HON_NHAN_DEFAULT = "Hiện tại đang có vợ/chồng"
@@ -94,7 +95,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         issuer = normalize_issuer(values.get(f"{src}_NoiCap")) or default_issuer(values.get(f"{src}_NgayCap"))
         area = _area(values.get(f"{src}_NoiCuTru_TrongNuoc"))
 
-        add(f"HoTen{dst}", values.get(f"{src}_HoTen"))
+        add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
         add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"LoaiGiayToDinhDanh_{dst}", "Căn cước công dân")

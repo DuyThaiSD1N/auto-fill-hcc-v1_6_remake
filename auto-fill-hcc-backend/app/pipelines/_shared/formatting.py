@@ -31,6 +31,21 @@ def same_name(a: str | None, b: str | None) -> bool:
     return bool(na) and bool(nb) and na == nb
 
 
+def upper_person_name(value) -> str:
+    """Ô "Họ, chữ đệm, tên" trên eForm hộ tịch: luôn VIẾT HOA — "ĐINH THỊ CHIÊN".
+
+    Nguồn trả về đủ kiểu (tờ khai ghi "Đinh thi chiến", CCCD ghi "Đinh Thị Chiên") nên ép tại
+    mapper thay vì trông chờ OCR/LLM trả đúng. Cũng bỏ gạch nối kiểu giấy hộ tịch cũ
+    ("Nguyễn-Văn-An") và gom khoảng trắng thừa. str.upper() của Python xử lý đúng dấu tiếng Việt.
+
+    Trả "" khi rỗng — mọi add() của mapper đều bỏ qua "" y như None, nên không sinh field rác.
+    """
+    text = str(value or "").strip()
+    text = re.sub(r"\s*[-‐‑–—]+\s*", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text.upper()
+
+
 def normalize_date(d: str | None) -> str:
     """"22/4/2021" → "22/04/2021" (zero-pad ngày & tháng)."""
     if not d:

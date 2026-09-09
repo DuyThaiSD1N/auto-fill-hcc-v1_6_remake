@@ -5,6 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.foreign_id import (
     normalize_nationality,
     normalize_id_type,
@@ -215,7 +216,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         ) else cccd_area_raw
         area = _area(area_raw, nationality)
 
-        add(f"HoTen{dst}", values.get(f"{src}_HoTen"))
+        add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
         add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
 

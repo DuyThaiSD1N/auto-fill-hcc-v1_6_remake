@@ -7,6 +7,7 @@ from app.pipelines.xac_nhan_tthn.process.schema import UI_ALIASES, UI_COMP_BY_NA
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 
 _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
 _DIVORCED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai"
@@ -123,6 +124,37 @@ def _name_match(left, right) -> bool | None:
     if left_name and right_name:
         return left_name == right_name
     return None
+
+
+def _is_foreign_area(area) -> bool:
+    """Dia chi nay o NUOC NGOAI (quoc gia khac Viet Nam)."""
+    if not isinstance(area, dict):
+        return False
+    quoc_gia = _fold(area.get("quocGia"))
+    return bool(quoc_gia) and quoc_gia not in ("viet nam", "vietnam", "vn")
+
+
+def _add_residence(add, prefix: str, area) -> None:
+    """Phat muc "Noi cu tru" cho mot nguoi (prefix = nyc / nxn).
+
+    Dia chi o NUOC NGOAI phai tick "Khac" (radio "2") roi dien vao o nhap tu do, KHONG tick
+    "Trong nuoc": nhanh trong nuoc chi co dropdown Tinh/Xa cua Viet Nam nen "Tokyo"/"Tam A"
+    khong khop option nao -- hai dropdown do giu nguyen gia tri cong tu dien san (vd "Phuong
+    Tu Liem / Ha Noi"), ra mot dia chi lai vua sai vua trong nhu that.
+    """
+    if not area:
+        add(f"{prefix}NoiCuTru", "1", default=True)
+        add(f"{prefix}NoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+        return
+    if _is_foreign_area(area):
+        add(f"{prefix}NoiCuTru", "2")
+        full_addr = ", ".join(
+            part for part in (area.get("diaChi"), area.get("xa"), area.get("tinh")) if part
+        )
+        add(f"{prefix}NoiCuTru_NuocNgoai", {"quocGia": area.get("quocGia"), "diaChi": full_addr})
+        return
+    add(f"{prefix}NoiCuTru", "1")
+    add(f"{prefix}NoiCuTru_TrongNuoc", area)
 
 
 def _card_name_when_id_matches(values: dict, khai_sdd) -> str | None:
@@ -381,26 +413,60 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Ô "Quan hệ với người được xác minh" LUÔN được add() TRƯỚC khối nhân thân (HoVaTenC...):
         # cổng dựng lại Mục I mỗi khi đổi option quan hệ, tick SAU sẽ xóa mất dữ liệu vừa điền.
         if has_poa:
-            # ỦY QUYỀN: Mục I = người được ủy quyền = CCCD upload (đi nộp hộ). Có giấy ủy quyền
-            # thật thì chắc chắn KHÔNG phải bản thân → luôn "Khác".
-            add("quanhevoinguoiduocxacminh", "2")
-            # Ô nhập cạnh "Khác": chữ quan hệ trên tờ khai; tờ khai không ghi thì chính giấy ủy
-            # quyền đã nói rõ vai của người đi nộp.
-            add_relation_other(values.get("ToKhaiYeuCau_QuanHe"), _RELATION_OTHER_POA)
-            add("HoVaTenC", values.get("Cccd_HoTen"))
-            add("NgaySinhC", values.get("Cccd_NgaySinh"))
-            add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
-            add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", issuer))
-            add("SoGiayToTuyThanC", values.get("Cccd_SoDinhDanh"))
-            add("NgayCapDDC", values.get("Cccd_NgayCap"))
-            add("NoiCapDDC", issuer)
-            add("nycLoaiCuTru", "Thường trú")
-            if residence:
-                add("nycNoiCuTru", "1")
-                add("nycNoiCuTru_TrongNuoc", residence)
+            # NGUOI YEU CAU = nguoi GHI TREN TO KHAI, khong phai nguoi cam ho so di nop.
+            #
+            # Giay uy quyen kieu "nop ho + ky thay" KHONG doi vai nguoi yeu cau: to khai van ghi
+            # ten nguoi uy quyen o dong "Ho, chu dem, ten nguoi yeu cau" va quan he "Ban than".
+            # Ban cu luon lay chu the CCCD upload lam muc I va luon tick "Khac", nen moi ho so co
+            # uy quyen deu ra SAI NGUOI o muc I kem o tich sai -- ma nhin van hop le.
+            tk_req_name = values.get("ToKhaiYeuCau_HoTen")
+            req_is_subject = bool(
+                tk_req_name and poa_subject_name
+                and _fold(tk_req_name) == _fold(poa_subject_name)
+            )
+            if tk_req_name:
+                relation_code_poa = _classify_relation(values.get("ToKhaiYeuCau_QuanHe")) or (
+                    "1" if req_is_subject else "2"
+                )
+                add("quanhevoinguoiduocxacminh", relation_code_poa)
+                if relation_code_poa == "2":
+                    add_relation_other(values.get("ToKhaiYeuCau_QuanHe"), _RELATION_OTHER_POA)
+                # Nguoi yeu cau CHINH LA nguoi duoc cap -> dung chung mot bo giay to voi muc II,
+                # khong muon so ho chieu ghi tren to khai roi ghep voi loai giay to the can cuoc.
+                if req_is_subject:
+                    req_id = values.get("PoA_SubjectIdNumber") or values.get("ToKhaiYeuCau_SoDinhDanh")
+                    req_ngay_cap = values.get("PoA_SubjectIdDate")
+                    req_noi_cap = values.get("PoA_SubjectIssuer")
+                else:
+                    req_id = values.get("ToKhaiYeuCau_SoDinhDanh")
+                    req_ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo")
+                    req_noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo")
+                add("HoVaTenC", upper_person_name(
+                    _card_name_when_id_matches(values, req_id) or tk_req_name))
+                add("NgaySinhC", values.get("ToKhaiYeuCau_NgaySinh"))
+                add("SoDinhDanhC", req_id)
+                if req_id:
+                    add("LoaiGiayToDinhDanhC",
+                        id_doc_type("Thẻ căn cước công dân", req_noi_cap or ""))
+                add("SoGiayToTuyThanC", req_id)
+                add("NgayCapDDC", req_ngay_cap)
+                add("NoiCapDDC", req_noi_cap)
+                add("nycLoaiCuTru", "Thường trú")
+                residence_req = _area(values.get("ToKhaiYeuCau_NoiCuTru"))
             else:
-                add("nycNoiCuTru", "1", default=True)
-                add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+                # To khai khong ghi nguoi yeu cau -> nguoi di nop dung ten minh, giu hanh vi cu.
+                add("quanhevoinguoiduocxacminh", "2")
+                add_relation_other(values.get("ToKhaiYeuCau_QuanHe"), _RELATION_OTHER_POA)
+                add("HoVaTenC", upper_person_name(values.get("Cccd_HoTen")))
+                add("NgaySinhC", values.get("Cccd_NgaySinh"))
+                add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
+                add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", issuer))
+                add("SoGiayToTuyThanC", values.get("Cccd_SoDinhDanh"))
+                add("NgayCapDDC", values.get("Cccd_NgayCap"))
+                add("NoiCapDDC", issuer)
+                add("nycLoaiCuTru", "Thường trú")
+                residence_req = _area(values.get("Cccd_NoiCuTru"))
+            _add_residence(add, "nyc", residence_req)
         else:
             # KHÔNG ỦY QUYỀN: Mục I ưu tiên khối "người yêu cầu" ghi RIÊNG ở đầu tờ khai
             # (ToKhaiYeuCau_*) — người này có thể KHÁC người được cấp (Section II/ToKhai_*), vd
@@ -480,7 +546,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 if relation_code == "2":
                     add_relation_other(values.get("ToKhaiYeuCau_QuanHe") if has_declared_requester else None)
 
-                add("HoVaTenC", cccd_ten)
+                add("HoVaTenC", upper_person_name(cccd_ten))
                 add("NgaySinhC", cccd_ns)
                 add("SoDinhDanhC", cccd_sdd)
                 add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", noi_cap or issuer))
@@ -488,21 +554,40 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("NgayCapDDC", ngay_cap)
                 add("NoiCapDDC", noi_cap)
                 add("nycLoaiCuTru", "Thường trú")
-                if residence_i:
-                    add("nycNoiCuTru", "1")
-                    add("nycNoiCuTru_TrongNuoc", residence_i)
-                else:
-                    add("nycNoiCuTru", "1", default=True)
-                    add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+                _add_residence(add, "nyc", residence_i)
 
         # --- MỤC II: Người được xác nhận ---
         if has_poa:
             # ỦY QUYỀN: Mục II = người ủy quyền (người CẦN giấy) từ giấy ủy quyền
             poa_issuer = values.get("PoA_SubjectIssuer") or default_issuer(values.get("PoA_SubjectIdDate"))
             poa_residence = _area(values.get("PoA_SubjectAddress"))
-            add("HoVaTenC1", poa_subject_name)
-            add("NgaySinhC1", values.get("PoA_SubjectDoB"))
-            add("GioiTinhC1", values.get("PoA_SubjectGender"))
+            # Giay uy quyen chi ghi VAN TAT (ten, nam sinh, so CCCD). To khai lai mo ta DAY DU
+            # chinh nguoi uy quyen -> cung mot nguoi thi lay them ngay sinh du ngay/thang, gioi
+            # tinh, dan toc tu do. Bo qua la muc II trong 3 o ma can bo phai go tay.
+            #
+            # KHONG muon khoi GIAY TO cua to khai: ho so ra nuoc ngoai co to khai ghi HO CHIEU
+            # (so + ngay cap) trong khi giay uy quyen ghi so CCCD -> ghep ngay cap ho chieu vao
+            # so the can cuoc la sai giay to ma nhin van hop le.
+            _tk_id = _digits(values.get("ToKhai_SoDinhDanh"))
+            _poa_id = _digits(values.get("PoA_SubjectIdNumber"))
+            tk_is_poa_subject = bool(
+                (_fold(values.get("ToKhai_HoTen"))
+                 and _fold(values.get("ToKhai_HoTen")) == _fold(poa_subject_name))
+                or (_tk_id and _poa_id and _tk_id == _poa_id)
+            )
+
+            def _tk(name):
+                return values.get(name) if tk_is_poa_subject else None
+
+            # Ten: the can cuoc THANG khi so dinh danh trung so tren giay uy quyen (ban IN
+            # dang tin hon ban viet tay, va dung ten CSDLQG se doi chieu).
+            add("HoVaTenC1", upper_person_name(
+                _card_name_when_id_matches(values, values.get("PoA_SubjectIdNumber"))
+                or poa_subject_name))
+            # Giay uy quyen thuong chi ghi NAM sinh; to khai co du ngay/thang -> uu tien to khai.
+            add("NgaySinhC1", _tk("ToKhai_NgaySinh") or values.get("PoA_SubjectDoB"))
+            add("GioiTinhC1", values.get("PoA_SubjectGender") or _tk("ToKhai_GioiTinh"))
+            add("DanTocC1", _tk("ToKhai_DanToc"))
             add("QuocTichC1", "Việt Nam")
             add("SoDinhDanhC1", values.get("PoA_SubjectIdNumber"))
             add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", poa_issuer))
@@ -510,21 +595,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("NgayCapDDC1", values.get("PoA_SubjectIdDate"))
             add("NoiCapDDC1", poa_issuer)
             add("nxnLoaiCuTru", "Thường trú")
-            if poa_residence:
-                add("nxnNoiCuTru", "1")
-                add("nxnNoiCuTru_TrongNuoc", poa_residence)
-            else:
-                add("nxnNoiCuTru", "1", default=True)
-                add("nxnNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+            _add_residence(add, "nxn", poa_residence)
         else:
             # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên tờ khai (ưu tiên) hoặc CCCD upload
             # Ưu tiên: ToKhai_* → Cccd_* (từng field riêng lẻ)
             # Tên: thẻ căn cước THẮNG tờ khai khi số định danh hai bên trùng nhau (xem
             # _card_name_when_id_matches) — cùng người thì bản IN đáng tin hơn bản viết tay.
             # Không trùng số thì giữ nguyên thứ tự cũ: tờ khai → thẻ → giấy khai sinh.
-            add("HoVaTenC1",
+            add("HoVaTenC1", upper_person_name(
                 _card_name_when_id_matches(values, values.get("ToKhai_SoDinhDanh"))
-                or values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen"))
+                or values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen")))
             add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh") or values.get("Gks_NgaySinh"))
             add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh") or values.get("Gks_GioiTinh"))
             # Thẻ căn cước mẫu mới không in dân tộc — giấy khai sinh thường là nguồn DUY NHẤT.
@@ -540,12 +620,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("NgayCapDDC1", ngay_cap)
             add("NoiCapDDC1", noi_cap)
             add("nxnLoaiCuTru", "Thường trú")
-            if residence:
-                add("nxnNoiCuTru", "1")
-                add("nxnNoiCuTru_TrongNuoc", residence)
-            else:
-                add("nxnNoiCuTru", "1", default=True)
-                add("nxnNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
+            _add_residence(add, "nxn", residence)
 
     # =========================================================
     # TÌNH TRẠNG HÔN NHÂN: ưu tiên TỜ KHAI → fallback GIẤY TỜ CHỨNG MINH

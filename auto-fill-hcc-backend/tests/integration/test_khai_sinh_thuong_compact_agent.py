@@ -50,7 +50,7 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
     assert values["GioiTinhKS"] == "Nam"
     assert values["nksNoiSinh"] == "1"
     assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "BỆNH VIỆN ĐA KHOA TỈNH"
-    assert values["nksQueQuan_TrongNuoc"]["xa"] == "Tam Hợp"
+    assert values["nksQueQuan_TrongNuoc"]["xa"] == "Xã Tam Hợp"
 
     assert values["HoTenChaKS"] == "VŨ ĐÌNH THIẾT"
     assert values["SoDinhDanhCha"] == "040203015844"

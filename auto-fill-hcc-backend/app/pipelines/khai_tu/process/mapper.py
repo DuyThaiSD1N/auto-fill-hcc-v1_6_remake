@@ -5,7 +5,7 @@ import unicodedata
 
 from app.pipelines.khai_tu.process import reason
 from app.pipelines.khai_tu.process.schema import UI_COMP_BY_NAME
-from app.pipelines._shared.formatting import parse_death_time
+from app.pipelines._shared.formatting import parse_death_time, upper_person_name
 
 from app.pipelines._shared.compact_agent.issuer import (
     default_issuer,
@@ -278,9 +278,9 @@ def enrich(
     # từ độ dài số định danh + nơi cấp như cũ.
     # Họ tên người yêu cầu.
     if requester_name:
-        add("HoVaTenC", requester_name)
+        add("HoVaTenC", upper_person_name(requester_name))
     elif applicant_name:
-        add("HoVaTenC", applicant_name, default=True)
+        add("HoVaTenC", upper_person_name(applicant_name), default=True)
     else:
         add("HoVaTenC", "NGƯỜI YÊU CẦU", default=True)
 
@@ -350,9 +350,11 @@ def enrich(
     if has_deceased or cccd_is_deceased:
         add(
             "HoTen",
-            deceased_card_first("Cccd_HoTen", "NguoiMat_HoTen")
-            if deceased_id_matched
-            else deceased("NguoiMat_HoTen", "Cccd_HoTen"),
+            upper_person_name(
+                deceased_card_first("Cccd_HoTen", "NguoiMat_HoTen")
+                if deceased_id_matched
+                else deceased("NguoiMat_HoTen", "Cccd_HoTen")
+            ),
         )
         add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("NguoiMat_NgaySinh", "Cccd_NgaySinh")))
         add("GioiTinh", deceased("NguoiMat_GioiTinh", "Cccd_GioiTinh"))

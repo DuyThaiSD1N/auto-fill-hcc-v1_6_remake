@@ -2,7 +2,7 @@
 
 import re
 
-from app.pipelines._shared.formatting import normalize_date, parse_death_time
+from app.pipelines._shared.formatting import normalize_date, parse_death_time, upper_person_name
 from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.khai_tu_dang_ky_lai.process.schema import UI_COMP_BY_NAME
@@ -91,7 +91,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # I. Người yêu cầu.
     requester_id = values.get("Requester_IdNumber")
-    add("HoVaTenC", values.get("Requester_FullName"))
+    add("HoVaTenC", upper_person_name(values.get("Requester_FullName")))
     add("SoDinhDanhC", requester_id)
     add("SoGiayToDinhDanhC", requester_id)
     if requester_id:
@@ -114,7 +114,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # III. Người được đăng ký lại khai tử.
     deceased_id = values.get("Deceased_IdNumber")
-    add("HoTen", values.get("Deceased_FullName"))
+    add("HoTen", upper_person_name(values.get("Deceased_FullName")))
     add("NgaySinh", _date_or_year(values.get("Deceased_BirthDate")))
     add("GioiTinh", values.get("Deceased_Gender"))
     add("nktDanToc", values.get("Deceased_Ethnicity"))

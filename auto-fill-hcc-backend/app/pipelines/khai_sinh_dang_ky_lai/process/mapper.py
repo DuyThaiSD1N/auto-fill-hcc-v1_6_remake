@@ -4,6 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
@@ -572,7 +573,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     if requester.get("source") in _REQUESTER_OVERWRITE_SOURCES:
         if requester.get("ho_ten") or requester.get("so_dinh_danh"):
             req_id = requester.get("so_dinh_danh")
-            add("HoVaTenC", requester.get("ho_ten"))
+            add("HoVaTenC", upper_person_name(requester.get("ho_ten")))
             add("SoDinhDanhC", req_id)
             add("SoGiayToDinhDanhC", req_id)
             if req_id:
@@ -610,7 +611,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Người yêu cầu tự đi làm cho chính mình: mục I và mục II là MỘT người nên phải cùng một
         # họ tên đã được reason.py phân xử, không để mỗi mục mang một dòng OCR khác nhau.
         self_name = _self_full_name(context) if quan_he == "BanThan" else ""
-        add("HoTenKS", self_name or values.get("Subject_FullName"))
+        add("HoTenKS", upper_person_name(self_name or values.get("Subject_FullName")))
         add("NgaySinhChon", values.get("Subject_BirthDate"))
         add("GioiTinhKS", values.get("Subject_Gender"))
         add("DanTocKS", normalize_ethnic(values.get("Subject_Ethnicity")))
@@ -626,7 +627,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # CCCD của một bên thì bên kia phải để TRỐNG, không điền quốc tịch/loại cư trú mặc định.
     has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
     if has_mother:
-        add("HoTenMeKS", values.get("Mother_FullName"))
+        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")))
         add("SoDinhDanhMe", values.get("Mother_IdNumber"))
         add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"))
         if values.get("Mother_IdNumber"):
@@ -641,7 +642,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # IV. Cha. Cùng nguyên tắc với khối mẹ: không có nhân thân thì bỏ trống cả khối.
     has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
     if has_father:
-        add("HoTenChaKS", values.get("Father_FullName"))
+        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")))
         add("SoDinhDanhCha", values.get("Father_IdNumber"))
         add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"))
         if values.get("Father_IdNumber"):

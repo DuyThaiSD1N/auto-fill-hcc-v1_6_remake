@@ -182,6 +182,7 @@ UI_COMP_BY_NAME = {
     "nycLoaiCuTru": "x-select",
     "nycNoiCuTru": "x-radio",
     "nycNoiCuTru_TrongNuoc": "x-select-area",
+    "nycNoiCuTru_NuocNgoai": "x-select-area",
     "quanhevoinguoiduocxacminh": "x-radio",
     # Ô nhập free-text cạnh option "Khác" của mục quan hệ (chỉ render sau khi tick "Khác").
     "quanhekhac": "raw",
@@ -199,6 +200,7 @@ UI_COMP_BY_NAME = {
     "nxnLoaiCuTru": "x-select",
     "nxnNoiCuTru": "x-radio",
     "nxnNoiCuTru_TrongNuoc": "x-select-area",
+    "nxnNoiCuTru_NuocNgoai": "x-select-area",
     "TinhTrangHonNhanC1": "x-select",
     "nxnLoaiTinhTrangHonNhan=2": "x-select-area",  # đang có vợ/chồng (có tên vợ/chồng + GCN kết hôn)
     # Input con của vùng động =2. Backend phát raw sau x-select-area để extension chỉ cần điền theo DOM name.

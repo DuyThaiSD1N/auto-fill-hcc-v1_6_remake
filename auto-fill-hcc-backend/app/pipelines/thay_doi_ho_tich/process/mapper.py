@@ -5,6 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines.thay_doi_ho_tich.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 
@@ -383,7 +384,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # (1) Họ, chữ đệm, tên - ưu tiên NguoiYeuCau_HoTen từ tờ khai
     if requester_name:
-        add("HoVaTenC", requester_name)
+        add("HoVaTenC", upper_person_name(requester_name))
 
     # (2) Số định danh cá nhân - ưu tiên NguoiYeuCau_SoDinhDanh từ tờ khai.
     # RIÊNG khi quan hệ = "Bản thân": người yêu cầu CHÍNH LÀ người có nội dung thay đổi, nên số
@@ -521,6 +522,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Chuẩn hóa nơi cư trú nếu có
         if "noiCuTru" in requester_info:
             requester_info["noiCuTru"] = _area(requester_info["noiCuTru"])
+        # Cùng là "Họ, chữ đệm, tên" của người yêu cầu như ô (1) — để chữ thường ở đây thì hai
+        # chỗ lệch nhau nếu có thứ đọc lại khối này.
+        if "hoTen" in requester_info:
+            requester_info["hoTen"] = upper_person_name(requester_info["hoTen"])
         add("__requesterInfo", requester_info)
 
     # (5) Quan hệ BẮT BUỘC đứng TRƯỚC khối add() Mục II bên dưới — cổng có thể chỉ mở/nhận input
@@ -530,7 +535,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # ----- Mục II: người có nội dung thay đổi. -----
     if src:
-        add("ntdHoTen", ntd_ho_ten)
+        add("ntdHoTen", upper_person_name(ntd_ho_ten))
         add("ntdNgaySinh", g("NgaySinh"))
         add("ntdGioiTinh", g("GioiTinh"))
         add("ntdDanToc", _normalize_dan_toc(g("DanToc")))

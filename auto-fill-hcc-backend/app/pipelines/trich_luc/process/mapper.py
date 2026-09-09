@@ -11,6 +11,7 @@ _MARRIAGE_LOAI_YEU_CAU = "Trích lục kết hôn (bản sao)/ Trích lục ghi 
 _DEATH_LOAI_YEU_CAU = "Trích lục khai tử (bản sao)"
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.formatting import upper_person_name
 
 # Luật Căn cước: dưới 14 tuổi chưa bắt buộc có thẻ căn cước. Số 12 chữ số của các em là
 # SỐ ĐỊNH DANH CÁ NHÂN, không phải số giấy tờ tùy thân.
@@ -765,7 +766,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             or default_issuer(ngay_cap)
         )
         loai_hint = values.get("TkNyc_LoaiGiayToTuyThan") or card.get("Nyc_LoaiGiayTo")
-        add("HoVaTenC", ho_ten)
+        add("HoVaTenC", upper_person_name(ho_ten))
         add("SoDinhDanhC", so_giay_to)
         # Loại giấy tờ: kết hợp số chữ số — 9 số → CMND; 12 số → CCCD/Căn cước theo nơi cấp.
         add("LoaiGiayToDinhDanhC",
@@ -781,7 +782,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     def _fill_subject_from_card() -> None:
         subject_issuer = normalize_issuer(values.get("ChuThe_NoiCap")) or default_issuer(values.get("ChuThe_NgayCap"))
-        add("NDK_HoVaTen", values.get("ChuThe_HoTen"))
+        add("NDK_HoVaTen", upper_person_name(values.get("ChuThe_HoTen")))
         add("NDK_NgaySinh", values.get("ChuThe_NgaySinh"))
         add("NDK_GioiTinh", values.get("ChuThe_GioiTinh"))
         add("NDK_QuocTich", values.get("ChuThe_QuocTich") or "Việt Nam")
@@ -804,7 +805,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     def _fill_subject_from_requester() -> None:
         """Một CCCD khớp formContext và không có chủ thể khác → người yêu cầu tự xin cho mình."""
         requester_issuer = normalize_issuer(values.get("Nyc_NoiCap")) or default_issuer(values.get("Nyc_NgayCap"))
-        add("NDK_HoVaTen", values.get("Nyc_HoTen"))
+        add("NDK_HoVaTen", upper_person_name(values.get("Nyc_HoTen")))
         add("NDK_NgaySinh", values.get("Nyc_NgaySinh"))
         add("NDK_GioiTinh", values.get("Nyc_GioiTinh"))
         add("NDK_QuocTich", "Việt Nam")
@@ -823,7 +824,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     def _fill_ndk_from_support() -> None:
         """Tài liệu bổ trợ chỉ đủ chứng minh ba dữ kiện cơ bản của người ở mục II."""
-        add("NDK_HoVaTen", values.get("NguoiDuocCap_HoTen"))
+        add("NDK_HoVaTen", upper_person_name(values.get("NguoiDuocCap_HoTen")))
         add("NDK_NgaySinh", values.get("NguoiDuocCap_NgaySinh"))
         add("NDK_GioiTinh", values.get("NguoiDuocCap_GioiTinh"))
         add("NDK_QuocTich", "Việt Nam")
@@ -868,9 +869,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
             add(
                 "NDK_HoVaTen",
-                _registered_person_name(values, event_type)
-                or values.get("NguoiDuocCap_HoTen")
-                or _ct("ChuThe_HoTen"),
+                upper_person_name(
+                    _registered_person_name(values, event_type)
+                    or values.get("NguoiDuocCap_HoTen")
+                    or _ct("ChuThe_HoTen")
+                ),
             )
             add(
                 "NDK_NgaySinh",
@@ -961,9 +964,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
             if not has_no_id_card:
                 # Số giấy tờ tùy thân: giống logic trên nhưng loại trừ số định danh khai sinh
+                # Chot cuoi "or ht_so": khi ca ba nguon tren deu rong ma to khai VAN ghi so giay
+                # to tuy than thi dien no. Ho so nay la vi du: so 11 chu so (OCR roi mat 1 so) bi
+                # chan 12-chu-so gat khoi HoTich_SoDinhDanh, con ct_so bi guard "Nyc trung ChuThe"
+                # gat vi nguoi yeu cau CHINH LA chu the -> o (9) trong tron, trong khi o (8) So dinh
+                # danh lai da dien dung so do qua ht_so. Cung mot nguoi, cung mot the: de lech nhu
+                # vay thi can bo phai go tay lai o (9).
                 add(
                     "NDK_SoGiayToTuyThan",
-                    (ht_so if not is_birth else None) or values.get("HoTich_SoDinhDanh") or ct_so,
+                    (ht_so if not is_birth else None)
+                    or values.get("HoTich_SoDinhDanh")
+                    or ct_so
+                    or ht_so,
                 )
 
                 # Ngày cấp: Ưu tiên tờ khai trước
@@ -984,7 +996,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # luật này thì id_hint rơi về mặc định "Căn cước" rồi chọn nhầm option "Thẻ Căn cước"
                 # cho một số 9 chữ số, sai hiển nhiên mà nhìn vẫn hợp lệ.
                 id_hint = ht_loai or ct_loai
-                ndk_so_giay_to = (ht_so if not is_birth else None) or values.get("HoTich_SoDinhDanh") or ct_so
+                ndk_so_giay_to = ((ht_so if not is_birth else None)
+                                  or values.get("HoTich_SoDinhDanh") or ct_so or ht_so)
                 if id_hint or ndk_so_giay_to:
                     add("NDK_LoaiGiayToTuyThan",
                         _id_doc_type_with_number(ndk_so_giay_to, id_hint, ndk_noicap or ""))

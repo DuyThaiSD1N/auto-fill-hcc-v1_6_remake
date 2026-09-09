@@ -43,7 +43,7 @@ def test_birth_subject_is_child_no_identity_doc_block():
         "HoSo_NgayDangKy": "12/02/2020",
         "HoSo_NoiDangKy": "UBND xã Tam Hợp",
     })))
-    assert out["ntdHoTen"]["value"] == "Nguyễn Diệp Chi"
+    assert out["ntdHoTen"]["value"] == "NGUYỄN DIỆP CHI"
     assert out["ntdNgaySinh"]["value"] == "30/07/2021"
     assert out["ntdGioiTinh"]["value"] == "Nữ"
     assert out["ntdSoDDCN"]["value"] == "012321003442"
@@ -165,7 +165,7 @@ def test_death_subject_is_deceased():
         "ChuThe_SoDinhDanh": "040180000999",
         "HoSo_So": "55",
     })))
-    assert out["ntdHoTen"]["value"] == "Trần Thị Mất"
+    assert out["ntdHoTen"]["value"] == "TRẦN THỊ MẤT"
     assert out["ntdSoDDCN"]["value"] == "040180000999"
     assert out["ntdLoaiGiayToTuyThan"]["value"] == "Căn cước công dân"
     assert out["nghiepVuDK"]["value"] == "Hồ sơ khai tử"
@@ -184,7 +184,7 @@ def test_marriage_cccd_matches_husband():
     }
     # CCCD trùng số chồng → người thay đổi là chồng.
     out = _by_name(mapper.enrich(_fields({**base, "Cccd_SoDinhDanh": "040190000111", "Cccd_HoTen": "Lê Văn Chồng"})))
-    assert out["ntdHoTen"]["value"] == "Lê Văn Chồng"
+    assert out["ntdHoTen"]["value"] == "LÊ VĂN CHỒNG"
     assert out["ntdDanToc"]["value"] == "Mông"
     assert out["nghiepVuDK"]["value"] == "Hồ sơ kết hôn"
 
@@ -199,7 +199,7 @@ def test_marriage_requester_cccd_matches_wife():
         "Vo_DanToc": "H'Mông",
     }
     out = _by_name(mapper.enrich(_fields({**base, "Cccd_SoDinhDanh": "040190000222", "Cccd_HoTen": "Phạm Thị Vợ"})))
-    assert out["ntdHoTen"]["value"] == "Phạm Thị Vợ"
+    assert out["ntdHoTen"]["value"] == "PHẠM THỊ VỢ"
     # "H'Mông" → option "Mông (Hmông)"; KHÔNG lấy dân tộc chồng.
     assert out["ntdDanToc"]["value"] == "Mông (Hmông)"
 

@@ -121,8 +121,8 @@ def test_ten_nguoi_dang_ky_lai_lay_theo_ten_duoc_nhieu_giay_to_xac_nhan():
     assert "Họ tên thống nhất: Nguyễn Thị Thu Hà" in context
 
     fields = _enrich(_EXTRACTED, context)
-    assert fields["HoTenKS"]["value"] == "Nguyễn Thị Thu Hà"
-    assert fields["HoVaTenC"]["value"] == "Nguyễn Thị Thu Hà"
+    assert fields["HoTenKS"]["value"] == "NGUYỄN THỊ THU HÀ"
+    assert fields["HoVaTenC"]["value"] == "NGUYỄN THỊ THU HÀ"
 
 
 def test_ten_chi_lech_mot_tieng_moi_duoc_gop():

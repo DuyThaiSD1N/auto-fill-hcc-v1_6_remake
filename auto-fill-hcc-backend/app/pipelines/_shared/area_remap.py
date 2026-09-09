@@ -83,24 +83,30 @@ _REMAP_SOURCE_ENTRIES: list[tuple[str, str, str]] = []
 _REMAP_BY_DISTRICT: dict[tuple[str, str, str], dict[str, str]] = {}
 
 
+_UNIT_PREFIX_RE = re.compile(
+    r"^\s*(xã|xa|phường|phuong|thị trấn|thi tran|tt)\.?\s+", re.IGNORECASE
+)
+
+
 def _fold(text: str) -> str:
-    """Bo dau, lowercase, chuan hoa khoang trang -- dung de so sanh key."""
-    t = unicodedata.normalize("NFD", str(text or ""))
+    """Bo dau, lowercase, chuan hoa khoang trang -- dung de so sanh key.
+
+    Tien to loai don vi phai cat TRUOC khi bo dau. Cat sau thi "Phuong Liet" (TEN THAT cua xa,
+    bo dau ra "phuong liet") bi hieu la tien to "Phuong" + "Liet" -> key con moi "liet", trong khi
+    ban day du "Phuong Phuong Liet" ra "phuong liet": hai ben khong bao gio gap nhau. Danh muc
+    hien hanh co 9 xa dinh bay nay (Phuong Liet, Phuong Duc, Xa Dung, Phuong Son, Xa Phien...),
+    va no con DE RA map mo GIA -- "Phuong Son" cut con "son" roi dung do voi entry khac.
+    """
+    t = _UNIT_PREFIX_RE.sub("", str(text or ""))
+    t = unicodedata.normalize("NFD", t)
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
-    t = t.replace("\u0110", "D").replace("\u0111", "d")
-    # Bo tien to loai don vi truoc khi fold (xa/phuong/thi tran/tt)
-    t = re.sub(r"^(xa|phuong|thi tran|tt\.?)\s+", "", t, flags=re.IGNORECASE)
+    t = t.replace("Đ", "D").replace("đ", "d")
     return re.sub(r"\s+", " ", t).strip().lower()
 
 
 def _fold_nospace(text: str) -> str:
     """_fold() roi bo luon khoang trang -- dung de khop ten xa viet dinh lien (vd "langbiang")."""
     return _fold(text).replace(" ", "")
-
-
-_UNIT_PREFIX_RE = re.compile(
-    r"^\s*(xã|xa|phường|phuong|thị trấn|thi tran|tt)\.?\s+", re.IGNORECASE
-)
 
 
 def _fold_accent(text: str) -> str:
@@ -214,13 +220,26 @@ def _load_remap_files() -> None:
         # If there are multiple different mappings for the same key, skip them all (ambiguous)
         unique_mappings = {(m["tinh"], m["xa"]) for m in mappings}
         if len(unique_mappings) > 1:
-            # Multiple different destinations for same source -> ambiguous, skip
-            import logging
-            logging.getLogger(__name__).info(
-                "area_remap: skipping ambiguous entry %s -> %s (multiple mappings found)",
-                key, unique_mappings
-            )
-            continue
+            # Xa cu tach ra nhieu don vi moi, NHUNG mot trong so do GIU NGUYEN ten cu ->
+            # chon chinh no. Day la truong hop don vi bi cat bot dia gioi ma van giu ten:
+            # giay to ghi "X" thi kha nang cao thuoc "X" moi, khong phai mieng cat sang ten
+            # khac. Bo tay o day nghia la tra ve ten CU -- mot ten khong con trong danh muc,
+            # dropdown Phuong/Xa se do. So sanh bang _fold_accent de "Thanh" (nang) khong
+            # dong nham voi "Thanh" (huyen).
+            xa_cu_goc = _source_xa_cu.get(key) or ""
+            keepers = [m for m in mappings
+                       if _fold_accent(m["xa"]) == _fold_accent(xa_cu_goc)]
+            unique_keepers = {(m["tinh"], m["xa"]) for m in keepers}
+            if len(unique_keepers) == 1:
+                mappings = keepers[:1]
+            else:
+                # Multiple different destinations for same source -> ambiguous, skip
+                import logging
+                logging.getLogger(__name__).info(
+                    "area_remap: skipping ambiguous entry %s -> %s (multiple mappings found)",
+                    key, unique_mappings
+                )
+                continue
         
         # Single mapping or all duplicates point to same destination -> safe to use
         mapping = mappings[0]

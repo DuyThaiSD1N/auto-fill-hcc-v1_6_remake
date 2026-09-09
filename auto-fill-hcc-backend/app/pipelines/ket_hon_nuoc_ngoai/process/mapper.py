@@ -7,6 +7,7 @@ Bên nước ngoài → radio cư trú "2" (Khác) + ô NuocNgoai (quốc gia + 
 import re
 import unicodedata
 
+from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.compact_agent.issuer import (
     ISSUER_BO_CONG_AN,
     ISSUER_CUC,
@@ -130,7 +131,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         if vn_issuer:
             foreign = False
 
-        add(f"HoTen{dst}", values.get(f"{src}_HoTen"))
+        add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
         add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))

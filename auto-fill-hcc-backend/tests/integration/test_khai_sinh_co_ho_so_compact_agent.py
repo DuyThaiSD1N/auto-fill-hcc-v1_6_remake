@@ -229,7 +229,7 @@ def test_subject_block_survives_ocr_typo_in_declaration_id():
     assert {f["name"] for f in kept} == {f["name"] for f in _SUBJECT_FIELDS}
 
     values = _by_name(mapper.enrich(kept, {"_reasoning_context": context}))
-    assert values["HoTenKS"] == "Giàng Thị Sai"
+    assert values["HoTenKS"] == "GIÀNG THỊ SAI"
     assert values["NgaySinhChon"] == "23/06/1998"
     assert values["GioiTinhKS"] == "Nữ"
 

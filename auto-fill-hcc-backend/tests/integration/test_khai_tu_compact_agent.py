@@ -526,7 +526,7 @@ def test_khai_tu_mapper_keeps_declaration_name_when_only_name_matches():
     ]
     values = {field["name"]: field["value"] for field in mapper.enrich(fields)}
 
-    assert values["HoVaTenC"] == "Chu Văn Nam"
+    assert values["HoVaTenC"] == "CHU VĂN NAM"
     assert values["SoDinhDanhC"] == "024062008953"
 
 
