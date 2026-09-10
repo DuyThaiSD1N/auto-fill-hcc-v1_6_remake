@@ -119,7 +119,11 @@ def _area(value):
         "xa": xa,
         "diaChi": dia,
     }
-    return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
+    out = {k: v for k, v in out.items() if v not in (None, "", {}, [])}
+    # Dia chi cha/me tren the can cuoc cu van ghi don vi TRUOC sap nhap ("Phuong 8, Da Lat")
+    # -- khong remap thi dropdown Phuong/Xa khong co option nao khop, o do bo trong. Cac
+    # cho goi khac da tu remap chong len; remap_area() la no-op voi ten da chuan.
+    return remap_area(out) if out else out
 
 
 def _birth_year(ngay_sinh) -> int | None:
@@ -185,6 +189,56 @@ def _cccd_nu_is_subject(values: dict) -> bool:
             return True
 
     return False
+
+
+# Cac o nhan than cua MOT the can cuoc, dung de doi vai ca cum giua CccdChuThe_ va CccdNam_/CccdNu_.
+# Rieng noi cu tru doi ten field: CccdChuThe_NoiCuTru <-> Cccd<Nam|Nu>_NoiCuTru_TrongNuoc.
+_CHUTHE_TO_PARENT = {
+    "HoTen": "HoTen", "SoDinhDanh": "SoDinhDanh", "NgaySinh": "NgaySinh",
+    "GioiTinh": "GioiTinh", "QuocTich": "QuocTich", "DanToc": "DanToc",
+    "QueQuan": "QueQuan", "NgayCap": "NgayCap", "NoiCap": "NoiCap",
+    "NoiDangKyKhaiSinh": "NoiDangKyKhaiSinh",
+    "NoiCuTru": "NoiCuTru_TrongNuoc",
+}
+
+
+def _rescue_parent_card(values: dict) -> dict:
+    """The trong o CccdChuThe_* that ra la the cua CHA/ME -> tra ve dung o CccdNam_/CccdNu_.
+
+    O CccdChuThe_* danh rieng cho NGUOI DUOC KHAI SINH tu di dang ky muon (da co the can cuoc).
+    Ho so co GIAY CHUNG SINH thi chu the la dua tre VUA SINH -- khong the co the rieng -- nen the
+    doc duoc trong ho so chac chan la cua cha hoac me. Agent van hay gan nham vao day.
+
+    Khong dinh tuyen lai thi hong ba cho cung luc, va deu nhin rat "hop le":
+      * muc IV (cha) bo trong vi khong co CccdNam_*;
+      * que quan con bo trong (que quan con lay theo que quan cha);
+      * o (5) tick nham "Ban than" -- vi so dinh danh cua chinh the nay bi dung lam so cua CHU
+        THE, thanh ra nguoi yeu cau "trung" chu the mot cach may moc.
+
+    Phan vai theo GIOI TINH in tren the, va CHI khi o cha/me tuong ung con trong (khong tranh
+    chap voi the that su cua cha/me da doc duoc).
+    """
+    if not (values.get("Gcs_HoTenCon") or values.get("Gcs_NgaySinhCon")):
+        return values
+    if not (values.get("CccdChuThe_HoTen") or values.get("CccdChuThe_SoDinhDanh")):
+        return values
+
+    gioi_tinh = _fold_name(values.get("CccdChuThe_GioiTinh"))
+    if gioi_tinh == "nam":
+        dst = "CccdNam_"
+    elif gioi_tinh in ("nu", "nữ"):
+        dst = "CccdNu_"
+    else:
+        return values   # khong doc duoc gioi tinh -> khong du can cu phan vai
+    if values.get(f"{dst}HoTen") or values.get(f"{dst}SoDinhDanh"):
+        return values   # o do da co the that cua cha/me
+
+    moved = {k: v for k, v in values.items() if not k.startswith("CccdChuThe_")}
+    for src_suffix, dst_suffix in _CHUTHE_TO_PARENT.items():
+        value = values.get(f"CccdChuThe_{src_suffix}")
+        if value not in (None, "", {}, []):
+            moved.setdefault(f"{dst}{dst_suffix}", value)
+    return moved
 
 
 def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
@@ -410,7 +464,7 @@ def _resolve_requester(
 
 def enrich(fields: list[dict]) -> list[dict]:
     """Derive deterministic legacy UI fields while preserving response shape."""
-    values = _by_name(fields)
+    values = _rescue_parent_card(_by_name(fields))
     out: list[dict] = []
     seen: set[str] = set()
 

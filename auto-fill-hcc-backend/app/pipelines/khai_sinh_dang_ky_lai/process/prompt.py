@@ -154,6 +154,13 @@ SỐ TÊN, KHÔNG được đảo:
   C = tinh. VD2: "Thôn Đại Vi, Đại Đồng, Tiên Du, Bắc Ninh" → diaChi="Thôn Đại Vi", xa="Đại Đồng",
   tinh="Bắc Ninh" (XÓA huyện Tiên Du).
 • 2 tên "A, C": A = xa; C = tinh; diaChi rỗng (không có huyện để xóa).
+• ⚠ Ô "Nơi thường trú" trên CCCD RẤT HAY BỊ XUỐNG DÒNG giữa chừng: số nhà/tên đường nằm ở dòng
+  TRÊN, còn xã/huyện/tỉnh ở dòng DƯỚI. PHẢI GHÉP CẢ HAI DÒNG thành MỘT chuỗi rồi mới tách theo
+  dấu phẩy — lấy mỗi dòng đầu là rơi mất tên đường.
+  VD3: dòng 1 "Số Nhà 15/3C" + dòng 2 "Hai Bà Trưng, P.6, Đà Lạt, Lâm Đồng"
+  → ghép: "Số Nhà 15/3C Hai Bà Trưng, P.6, Đà Lạt, Lâm Đồng"
+  → diaChi="Số Nhà 15/3C Hai Bà Trưng", xa="P.6", tinh="Lâm Đồng" (XÓA huyện Đà Lạt).
+  SAI nếu diaChi chỉ còn "Số Nhà 15/3C" (mất đường) hoặc chỉ còn "Hai Bà Trưng" (mất số nhà).
 </dia_chi_cccd>
 
 <chuan_hoa_dac_thu>

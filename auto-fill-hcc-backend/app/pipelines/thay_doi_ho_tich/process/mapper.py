@@ -170,6 +170,69 @@ def _requester_card(values: dict, options: dict | None) -> dict | None:
     return None
 
 
+# src giả cho nhánh "chỉ có CCCD": g() sẽ chỉ đọc từ subject_card vì values.get("__the__ _X") rỗng.
+_CARD_ONLY_SRC = "__the__"
+
+
+def _subject_card_without_declaration(values: dict, options: dict | None) -> dict | None:
+    """Hồ sơ CHỈ có CCCD (không tờ khai, không giấy hộ tịch): suy người có nội dung thay đổi.
+
+    Mục II vốn chỉ nhận nguồn từ ChuThe_* (tờ khai) hoặc nhánh kết hôn, nên hồ sơ chỉ nộp thẻ là
+    Mục II BỎ TRẮNG HOÀN TOÀN — kể cả ca rõ ràng nhất: đúng một thẻ và thẻ đó là của chính người
+    đang đăng nhập.
+
+    Chỉ kết luận khi KHÔNG CÒN chỗ cho phỏng đoán:
+      * thẻ khớp tài khoản đăng nhập + đúng một thẻ khác  -> thẻ kia là chủ thể (nộp hộ);
+      * thẻ khớp tài khoản và không còn thẻ nào khác       -> chính chủ tự làm;
+      * đúng MỘT thẻ trong hồ sơ, không mỏ neo             -> hồ sơ nói về người trên thẻ đó.
+    Nhiều thẻ mà không thẻ nào khớp tài khoản thì KHÔNG đoán: chọn bừa là đặt nhầm người vào Mục
+    II của một hồ sơ có thật, mà nhìn form vẫn thấy "đã điền đủ" nên không ai soát ra.
+    """
+    cards = _identity_cards(values)
+    if not cards:
+        return None
+    requester = _requester_card(values, options)
+    if requester:
+        requester_id = _digits(requester.get("SoDinhDanh"))
+        others = [
+            card for card in cards
+            if _digits(card.get("SoDinhDanh")) != requester_id
+        ]
+        if not others:
+            return requester
+        return others[0] if len(others) == 1 else None
+    return cards[0] if len(cards) == 1 else None
+
+
+def _card_by_person_name(values: dict, person_name_folded: str) -> dict | None:
+    """Thẻ CCCD trong hồ sơ mang ĐÚNG họ tên một người ghi trên tờ khai (Mục I hoặc Mục II).
+
+    Trùng tên = cùng một người, mà thẻ là bản IN còn tờ khai là chữ VIẾT TAY: số định danh trên
+    tờ khai hay bị OCR rụng/đọc sai chữ số, ngày cấp và nơi cấp thì thường bỏ trống hẳn. Lúc đó
+    khối giấy tờ tùy thân phải lấy theo THẺ.
+
+    Nhiều thẻ cùng một tên -> KHÔNG kết luận (trùng tên khác người rất phổ biến với tên Việt).
+    """
+    if not person_name_folded:
+        return None
+    matches = [
+        card for card in _identity_cards(values)
+        if _fold(card.get("HoTen")) == person_name_folded
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        return None
+    if _fold(values.get("Cccd_HoTen")) == person_name_folded:
+        return {
+            "HoTen": values.get("Cccd_HoTen"),
+            "SoDinhDanh": values.get("Cccd_SoDinhDanh"),
+            "NgayCap": values.get("Cccd_NgayCap"),
+            "NoiCap": values.get("Cccd_NoiCap"),
+        }
+    return None
+
+
 def _requester_id_card(values: dict, options: dict | None) -> dict | None:
     """Thẻ CCCD/CMND CỦA NGƯỜI YÊU CẦU: khớp formContext trước, rồi tới khối người yêu cầu trên
     tờ khai (số định danh, sau đó họ tên) — hồ sơ nhiều CCCD thì phải chắc chắn đúng thẻ."""
@@ -294,11 +357,24 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     else:
         src = None
 
+    # Không tờ khai/giấy hộ tịch -> vẫn còn cửa suy chủ thể từ chính CCCD trong hồ sơ.
+    card_only_subject = _subject_card_without_declaration(values, options) if not src else None
+    if card_only_subject:
+        src = _CARD_ONLY_SRC
+
     ntd_ho_ten: str | None = None
     ntd_so_dinh_danh: str | None = None
     subject_card: dict | None = None
     if src:
-        subject_card = _card_for_subject(values, src)
+        # _card_for_subject() chốt bằng SỐ định danh trước, nên số trên tờ khai bị OCR sai là
+        # KHÔNG thẻ nào khớp -> cả khối giấy tờ Mục II rơi về chữ viết tay (ngày cấp trống,
+        # nơi cấp ra "Đà Lạt - Tỉnh Lâm Đồng" thay vì cơ quan cấp thật). Trùng HỌ TÊN cũng là
+        # cùng một người, và chính cái số lệch kia mới là thứ cần thẻ sửa lại.
+        subject_card = (
+            card_only_subject
+            or _card_for_subject(values, src)
+            or _card_by_person_name(values, _fold(values.get(f"{src}_HoTen")))
+        )
         has_correction_declaration = bool(
             values.get("ViecDangKy")
             or values.get("NoiDungThayDoi")
@@ -391,6 +467,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # trên THẺ CCCD mới là số chuẩn (tờ khai hay chép lại CMND cũ hoặc bị OCR sai) → ưu tiên thẻ,
     # không có thẻ mới quay về tờ khai. CHỈ ô này đảo thứ tự ưu tiên; họ tên / loại giấy tờ /
     # ngày cấp / nơi cấp / nơi cư trú vẫn ưu tiên tờ khai như cũ.
+    name_card = _card_by_person_name(values, requester_name_folded)
+
     if quan_he == "Bản thân":
         card_id = (
             (requester_card or {}).get("SoDinhDanh")
@@ -399,12 +477,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         )
         requester_id = str(card_id or declared_id or "").strip()
     else:
-        requester_id = declared_id
+        # Tên tờ khai TRÙNG tên trên thẻ -> lấy số theo THẺ (bản in) thay vì số viết tay.
+        requester_id = str(
+            (name_card or {}).get("SoDinhDanh") or declared_id or ""
+        ).strip()
 
     if requester_id:
         add("SoDinhDanhC", requester_id)
         # (3) Số giấy tờ tùy thân: cùng nguồn với số định danh để hai ô không lệch nhau.
-        requester_id_doc = requester_id if quan_he == "Bản thân" else (
+        requester_id_doc = requester_id if (quan_he == "Bản thân" or name_card) else (
             values.get("NguoiYeuCau_SoDinhDanh") or requester_id
         )
         add("SoGiayToTuyThanC", requester_id_doc)
@@ -434,8 +515,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             return None, None
         return card.get("NgayCap"), card.get("NoiCap")
 
-    requester_issue_date = values.get("NguoiYeuCau_NgayCap")
-    requester_issuer = normalize_issuer(values.get("NguoiYeuCau_NoiCap"))
+    if name_card:
+        # Cùng một người: ngày/nơi cấp IN trên thẻ thắng dòng viết tay của tờ khai.
+        requester_issue_date = name_card.get("NgayCap") or values.get("NguoiYeuCau_NgayCap")
+        requester_issuer = (
+            normalize_issuer(name_card.get("NoiCap"))
+            or normalize_issuer(values.get("NguoiYeuCau_NoiCap"))
+        )
+    else:
+        requester_issue_date = values.get("NguoiYeuCau_NgayCap")
+        requester_issuer = normalize_issuer(values.get("NguoiYeuCau_NoiCap"))
     for card in (
         requester_card,
         {

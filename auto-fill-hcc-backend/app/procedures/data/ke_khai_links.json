@@ -338,6 +338,7 @@
     },
     {
       "key": "thanh-lap-cong-ty-co-phan",
+      "code": "2.002043",
       "label": "Đăng ký thành lập công ty cổ phần",
       "url": "https://dangkyquamang.dkkd.gov.vn/online/Default.aspx",
       "needsAgencySelect": false,
@@ -638,6 +639,7 @@
       "label": "Cấp Chứng chỉ hành nghề dược (bao gồm cả trường hợp cấp Chứng chỉ hành nghề dược cho người bị thu hồi Chứng chỉ hành nghề dược theo quy định tại các khoản 1, 2, 4, 5, 6, 7, 8, 9, 10, 11 Điều 28 của Luật Dược) theo hình thức xét hồ sơ",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3538-71fe-8b3b-2fe11f5d68a0",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
