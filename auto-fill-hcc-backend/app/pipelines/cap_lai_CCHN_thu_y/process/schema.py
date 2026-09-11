@@ -6,7 +6,7 @@ Form bước kê khai có ĐỦ hai khối nhân thân giống #97/#101 rồi m�
           ô số căn cước còn bị khoá. Người trong hồ sơ KHÔNG thuộc khối này — ghi đè vào đây là ghép
           họ tên người này với giấy tờ tùy thân người kia.
   Phần II "THÔNG TIN CHỦ HỒ SƠ"       → data[owner…]: đây mới là NGƯỜI ĐỀ NGHỊ cấp lại chứng chỉ.
-  Panel phuLuc1 (tờ đơn)              → "Kính gửi" + "Nội dung đơn đăng ký".
+  Panel thongTinChung (tờ đơn)        → nhân thân NGƯỜI ĐỨNG ĐƠN; kèm "Kính gửi" + "Nội dung đơn đăng ký".
 Ô tích "Người nộp hồ sơ là chủ hồ sơ" (data[isOwnerDossierCheck]) khoá Phần II; bỏ tích thì mới điền được.
 
 Nhóm field:
@@ -91,7 +91,7 @@ COMPACT_COMP_BY_NAME["NguoiDeNghi_ThuongTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["Don_NgayLamDon"] = "x-date"
 COMPACT_COMP_BY_NAME["CCHNCu_NgayHetHan"] = "x-date"
 
-# ---- UI Form.io fields (data[...]) — comp dom-*, tên đọc từ DOM thật của panel phuLuc1. FE
+# ---- UI Form.io fields (data[...]) — comp dom-*, tên đọc từ DOM thật của tờ đơn. FE
 # standardNameVariants tự thử cả "data[x]" lẫn "x" nên khớp được cả Form.io lẫn Angular reactive form.
 UI_COMP_BY_NAME = {
     "data[kinhGui]": "dom-input",
@@ -147,9 +147,18 @@ UI_COMP_BY_NAME = {
 
 PHAM_VI_FIELD_KEY = "data[deNghi][]"
 
-# Panel bọc toàn bộ tờ đơn 03.HNTY. Extension chỉ điền ô mang scope này khi trang đang mở có panel đó,
-# nhờ vậy field-key trùng tên với Phần I (bước Thông tin chung) không bị điền nhầm sang bước kia.
-DON_SCOPE = ".formio-component-phuLuc1"
+# Panel "Thông tin chung" CỦA TỜ ĐƠN.
+#
+# ⚠ BẪY (đã crawl DOM thật để xác nhận): TRANG CÓ HAI PANEL CÙNG KHOÁ "thongTinChung" — một của khối
+# "THÔNG TIN NGƯỜI NỘP HỒ SƠ" ở đầu trang, một của tờ đơn. Cả hai lại cùng chứa data[fullname],
+# data[identityNumber], data[province], data[district], data[address], data[phoneNumber]. Dùng
+# ".formio-component-thongTinChung" trần thì querySelector trúng cái ĐẦU TIÊN, tức khối người nộp, và
+# nhân thân người đứng đơn ghi đè lên nhân thân tài khoản đăng nhập.
+#
+# Tách bằng :has() — CHỈ panel của tờ đơn mới chứa ô "Bằng cấp chuyên môn"; khối người nộp không có ô
+# này. Selector vì thế trỏ đúng MỘT panel, không phụ thuộc thứ tự render hay các mốc scopeAway.
+# (".formio-component-phuLuc1" là panel BỌC CẢ tờ đơn, gồm cả Kính gửi và Nội dung đơn — quá rộng.)
+DON_SCOPE = ".formio-component-thongTinChung:has(.formio-component-bangCapChuyenMon)"
 
 # Ô neo của tờ đơn: field-key CHỈ có trong tờ đơn, nằm cùng khối "Thông tin chung" với các ô trùng tên.
 # Khi DON_SCOPE trỏ vào panel bọc cả trang, extension leo ngược từ ô neo này để tìm đúng khối tờ đơn.

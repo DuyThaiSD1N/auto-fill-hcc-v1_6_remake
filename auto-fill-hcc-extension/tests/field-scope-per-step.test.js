@@ -232,7 +232,9 @@ function load(page) {
   page.document.querySelector = () => {
     throw new Error("selector hỏng");
   };
-  assert.equal(api.scopeRoot({ name: "data[fullname]", scope: "!!invalid" }), page.document);
+  // Selector hỏng thì BỎ ô, không rơi về cả trang: ô khai scope luôn trùng field-key với khối cấm nên
+  // dò cả trang là ghi đè thẳng lên nhân thân tài khoản đăng nhập.
+  assert.equal(api.scopeRoot({ name: "data[fullname]", scope: "!!invalid" }), null);
   assert.equal(api.scopeRoot(undefined), page.document, "Field rỗng không được ném lỗi");
 }
 

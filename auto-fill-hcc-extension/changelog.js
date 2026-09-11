@@ -3,6 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.18",
+    date: "11/9/2026",
+    items: [
+      "Cấp lại Chứng chỉ hành nghề thú y: nhân thân người đề nghị điền vào mục Thông tin chung của tờ đơn, không còn ghi đè lên khối Thông tin người nộp hồ sơ của tài khoản đăng nhập.",
+      "Điền ổn định hơn với biểu mẫu dựng chậm: chờ khối của tờ đơn hiện ra rồi mới điền, thay vì bỏ trắng ô.",
+      "Thêm chốt chặn: ô nào của khối Thông tin người nộp hồ sơ bị đổi thành dữ liệu trong hồ sơ sẽ được trả lại giá trị cũ.",
+    ],
+  },
+  {
     version: "1.17",
     date: "8/9/2026",
     items: [

@@ -241,6 +241,70 @@ def _rescue_parent_card(values: dict) -> dict:
     return moved
 
 
+# Giấy chứng nhận kết hôn của cha mẹ: khối chồng → mục CHA, khối vợ → mục MẸ.
+_GCKH_ROLES = (("Chong", "Cha", "CccdNam_"), ("Vo", "Me", "CccdNu_"))
+
+
+def _marriage_is_subject(values: dict) -> bool:
+    """Giấy kết hôn là của CHÍNH người được đăng ký khai sinh (đăng ký muộn, đã lập gia đình).
+
+    Khi đó vợ/chồng trên giấy KHÔNG phải cha mẹ — tuyệt đối không lấp vào mục cha/mẹ.
+    """
+    spouses = (values.get("Gckh_HoTenChong"), values.get("Gckh_HoTenVo"))
+    subjects = (
+        values.get("CccdChuThe_HoTen"),
+        values.get("Gcs_HoTenCon"),
+        values.get("TkKs_HoTenCon"),
+    )
+    return any(
+        _same_person(spouse, None, subject, None)
+        for spouse in spouses
+        for subject in subjects
+    )
+
+
+def _apply_marriage_record(values: dict, *, nu_is_subject: bool) -> None:
+    """Giấy chứng nhận kết hôn của cha mẹ → lấp chỗ trống mục cha/mẹ (ghi vào TkKs_*).
+
+    Hồ sơ rất hay gặp: CCCD mẹ + giấy chứng sinh + giấy kết hôn, người cha không nộp CCCD và
+    hồ sơ không có tờ khai. Trước đây cha không có nguồn nào nên mục IV (người cha) bị bỏ
+    trắng hoàn toàn dù giấy kết hôn ghi đủ họ tên, năm sinh, dân tộc, nơi cư trú.
+
+    CCCD và tờ khai LUÔN thắng: chỉ ghi vào field còn trống. Người đã có CCCD trong hồ sơ thì
+    chỉ mượn DÂN TỘC (CCCD gắn chip không in dân tộc) và chỉ khi họ tên khớp đúng người đó.
+    """
+    if not (values.get("Gckh_HoTenChong") or values.get("Gckh_HoTenVo")):
+        return
+    # nu_is_subject: CccdNu_ thực ra là người được đăng ký → cặp vợ chồng trên giấy kết hôn
+    # nhiều khả năng là của chính họ, không đủ chắc để suy ra cha mẹ.
+    if nu_is_subject or _marriage_is_subject(values):
+        return
+
+    def fill(key, value):
+        if value and not values.get(key):
+            values[key] = value
+
+    for src, dst, cccd_prefix in _GCKH_ROLES:
+        name = values.get(f"Gckh_HoTen{src}")
+        if not name:
+            continue
+        cccd_name = values.get(f"{cccd_prefix}HoTen")
+        if cccd_name:
+            # Đã có CCCD của người này → chỉ bổ khuyết dân tộc, và chỉ khi chắc cùng người.
+            if _same_person(name, None, cccd_name, None):
+                fill(f"TkKs_DanToc{dst}", values.get(f"Gckh_DanToc{src}"))
+            continue
+        fill(f"TkKs_HoTen{dst}", name)
+        fill(f"TkKs_NamSinh{dst}", values.get(f"Gckh_NamSinh{src}"))
+        fill(f"TkKs_DanToc{dst}", values.get(f"Gckh_DanToc{src}"))
+        fill(f"TkKs_NoiCuTru{dst}", values.get(f"Gckh_NoiCuTru{src}"))
+        # Giấy kết hôn cũ ghi số CMND 9 số / số giấy tờ dạng "108 QA/TPHT" — ô "Số định danh
+        # cá nhân" trên form chỉ nhận 12 số, nên chỉ điền khi đúng định dạng đó.
+        sdd = _digits(values.get(f"Gckh_SoDinhDanh{src}"))
+        if len(sdd) == 12:
+            fill(f"TkKs_SoDinhDanh{dst}", sdd)
+
+
 def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
     """Xác định thông tin người được đăng ký khai sinh theo thứ tự ưu tiên:
 
@@ -508,6 +572,9 @@ def enrich(fields: list[dict]) -> list[dict]:
             values["TkKs_HoTenMe"] = values.get("CccdNu_HoTen")
             values["TkKs_NamSinhMe"] = values.get("CccdNu_NgaySinh")
             values["TkKs_DanTocMe"] = values.get("CccdNu_DanToc")
+    # Giấy chứng nhận kết hôn của cha mẹ — nguồn cuối cùng cho vai không có CCCD/tờ khai.
+    _apply_marriage_record(values, nu_is_subject=nu_is_subject)
+
     # Cập nhật has_father_tk / has_mother_tk sau khi sync từ CccdNam_/CccdNu_ sang TkKs_
     has_father_tk = bool(values.get("TkKs_HoTenCha"))
     has_mother_tk = bool(values.get("TkKs_HoTenMe"))

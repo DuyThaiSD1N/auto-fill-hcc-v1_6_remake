@@ -37,7 +37,7 @@
   const IFRAME_ID = "autofill-hcc-iframe";
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.17 · 8/9"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  const APP_VERSION_LABEL = "1.18 · 11/9"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -5364,8 +5364,10 @@
       try {
         root = document.querySelector(selector);
       } catch (e) {
-        console.warn(`[AutoFill-STD] scope không hợp lệ "${selector}":`, e);
-        root = document;
+        // Selector hỏng (hoặc trình duyệt quá cũ không hiểu :has) → KHÔNG được rơi về cả trang: ô khai
+        // scope là ô có field-key trùng với khối cấm, dò cả trang là ghi đè thẳng lên khối đó.
+        console.warn(`[AutoFill-STD] scope không hợp lệ "${selector}" → bỏ ô ${field?.name}:`, e);
+        return null;
       }
     }
     if (!away.length) return root;
@@ -5387,7 +5389,11 @@
 
   function standardScopeHasControl(root, names) {
     if (!root) return false;
-    return names.some((name) => {
+    // PHẢI dò theo cùng bộ biến thể tên mà vòng điền dùng (standardNameVariants). Khối người nộp hồ sơ
+    // do Angular dựng nên ô mang name TRẦN "ownerFullname", còn BE gửi khoá Form.io "data[ownerFullname]";
+    // so khớp nguyên văn thì không thấy mốc nào, vùng dò tưởng đã đủ hẹp và ô của tờ đơn rơi thẳng vào
+    // khối người nộp.
+    return standardNameVariants(names).some((name) => {
       try {
         return !!root.querySelector(`[name="${CSS.escape(name)}"]`);
       } catch (e) {
@@ -5416,6 +5422,132 @@
     return root;
   }
 
+  // ---- KHỐI NHÂN THÂN CẤM GHI (vd "Thông tin người nộp hồ sơ" = tài khoản VNeID đang đăng nhập) ----
+  //
+  // BE không phát ô nào của khối này nên MỌI giá trị của ta xuất hiện ở đó đều là ghi đè ngoài ý muốn.
+  // Nguyên nhân có thể là vùng dò trượt sang khối cấm, vòng điền lại, HOẶC chính cổng tự sao chép sang
+  // sau khi ta điền khối khác — scope chỉ chặn được nguyên nhân đầu. Cách chặn không phụ thuộc nguyên
+  // nhân: chụp giá trị khối cấm TRƯỚC khi điền, xong xuôi ô nào đổi thành ĐÚNG dữ liệu ta vừa ghi thì
+  // trả lại giá trị cũ. Giá trị lạ (do cổng tự đổi) không đụng tới.
+  //
+  // Nhận diện khối cấm từ chính payload, không hardcode thủ tục: mốc scopeAway nào KHÔNG phải ô dữ liệu
+  // ta sẽ điền thì chỉ có ở khối cấm. Leo ngược từ mốc đó, dừng ngay trước khi vùng dò chạm ô dữ liệu
+  // của khối ĐƯỢC PHÉP điền (ô không khai scope — vd data[ownerFullname] của khối chủ hồ sơ).
+  const STANDARD_DATA_COMPS = new Set(["dom-input", "dom-date", "dom-datetime", "dom-select", "raw"]);
+
+  function standardUnscopedDataNames(fields) {
+    const names = new Set();
+    for (const f of fields || []) {
+      // Ô khai scope dùng chung field-key với khối cấm (data[fullname] của tờ đơn) → không phải mốc.
+      // Checkbox/radio không phải ô dữ liệu nhân thân: ô tích "Người nộp hồ sơ là chủ hồ sơ" nằm NGAY
+      // trong khối cấm và ta có chạm để mở khoá khối sau, lấy nó làm mốc dừng thì khối cấm hụt mất.
+      if (f?.scope || f?.scopeNear || !STANDARD_DATA_COMPS.has(f?.comp)) continue;
+      for (const n of fieldCandidates(f)) names.add(String(n));
+    }
+    return names;
+  }
+
+  function standardForbiddenRoots(fields) {
+    const allowed = standardUnscopedDataNames(fields);
+    const guards = new Set();
+    for (const f of fields || []) {
+      for (const name of standardScopeAwayNames(f)) {
+        if (!allowed.has(name)) guards.add(name);
+      }
+    }
+    const stop = Array.from(allowed);
+    const roots = [];
+    for (const guard of guards) {
+      let marker = null;
+      try {
+        marker = document.querySelector(`[name="${CSS.escape(guard)}"]`);
+      } catch (e) {
+        marker = null;
+      }
+      if (!marker) continue;
+      let node = marker.parentElement;
+      let root = null;
+      while (node && node !== document.body && node !== document.documentElement) {
+        if (stop.length && standardScopeHasControl(node, stop)) break;
+        root = node;
+        node = node.parentElement;
+      }
+      if (root && !roots.includes(root)) roots.push(root);
+    }
+    return roots;
+  }
+
+  function standardControlText(el) {
+    if (!el) return "";
+    if (String(el.tagName || "").toLowerCase() === "select") {
+      const option = el.options ? el.options[el.selectedIndex] : null;
+      return String((option && option.text) ?? el.value ?? "");
+    }
+    return String(el.value ?? "");
+  }
+
+  function snapshotStandardControls(roots) {
+    const snapshot = [];
+    for (const root of roots || []) {
+      const controls = root.querySelectorAll ? root.querySelectorAll("input, textarea, select") : [];
+      Array.from(controls).forEach((el) => {
+        snapshot.push({ el, value: el.value, text: standardControlText(el) });
+      });
+    }
+    return snapshot;
+  }
+
+  // Khoá so khớp "giá trị này là của ta": bỏ dấu, bỏ khoảng trắng để "Tỉnh Lai Châu" (ta gửi) khớp
+  // được nhãn option "Tỉnh Lai Châu" đang hiển thị trên ô select của khối cấm.
+  function standardValueKey(value) {
+    return foldChoiceText(String(value ?? "")).replace(/\s+/g, "");
+  }
+
+  function standardWrittenValueKeys(fields) {
+    const keys = new Set();
+    const add = (value) => {
+      if (value === true || value === false || value === null || value === undefined) return;
+      const key = standardValueKey(value);
+      if (key.length >= 2) keys.add(key);
+    };
+    for (const f of fields || []) {
+      const value = f?.value;
+      if (value && typeof value === "object") Object.values(value).forEach(add);
+      else add(value);
+    }
+    return keys;
+  }
+
+  function restoreStandardForbidden(snapshot, writtenKeys) {
+    const reverted = [];
+    for (const item of snapshot || []) {
+      const el = item?.el;
+      if (!el || el.isConnected === false) continue;
+      const now = standardControlText(el);
+      if (now === item.text) continue;
+      if (!writtenKeys.has(standardValueKey(now))) continue;
+      try {
+        el.value = item.value;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (e) {
+        continue;
+      }
+      const target = standardMarkTarget(el);
+      if (target && target.classList) target.classList.remove("autofill-filled");
+      reverted.push(el.name || el.id || "(?)");
+    }
+    return reverted;
+  }
+
+  // Vùng dò của ô khai scope, CÓ CHỜ khối render. Xem chú thích ở vòng điền: khối tờ đơn do Form.io
+  // dựng trễ hơn khối Angular đầu trang, không chờ thì ô của tờ đơn bị bỏ trắng oan.
+  async function standardScopeRootWaiting(field) {
+    const root = standardScopeRoot(field);
+    if (root || !field?.scope) return root;
+    return await waitFor(() => standardScopeRoot(field), 3000, 100);
+  }
+
   function orderStandardFields(fields) {
     const ownerCheckboxes = fields.filter(isOwnerDossierCheckboxField);
     const regularFields = fields.filter((field) => !isOwnerDossierCheckboxField(field));
@@ -5431,18 +5563,52 @@
     ];
   }
 
+  // Báo cáo lần điền gần nhất, GHI RA DOM (thuộc tính trên <html>) chứ không phải biến JS: content
+  // script chạy ở "isolated world" nên script dán vào Console của trang KHÔNG đọc được biến của nó,
+  // còn DOM thì dùng chung. Nhờ vậy docs/crawl-eform.js đọc được extension đã quyết định gì cho từng ô:
+  // vùng dò ra khối nào, ô nào bị bỏ, và bản extension nào đang chạy.
+  function publishStandardFillReport(result, scopeLog) {
+    try {
+      const report = {
+        version: APP_VERSION_LABEL,
+        at: new Date().toISOString(),
+        filled: result.filled,
+        notFound: result.notFound,
+        errors: result.errors,
+        scope: scopeLog,
+      };
+      document.documentElement.setAttribute("data-autofill-report", JSON.stringify(report));
+    } catch (e) {
+      console.warn("[AutoFill-STD] Không ghi được báo cáo ra DOM:", e);
+    }
+  }
+
   async function fillFormStandard(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
     await ensureStandardDatagridRows(fields);
+    // Chụp khối nhân thân cấm ghi TRƯỚC khi điền ô nào (xem standardForbiddenRoots).
+    const forbiddenSnapshot = snapshotStandardControls(standardForbiddenRoots(fields));
     const result = { filled: 0, notFound: [], errors: [] };
     const areaDeadlines = new Map();
     const failedFieldKeys = new Set();
+    const scopeLog = [];
     const orderedFields = orderStandardFields(fields);
 
     for (const f of orderedFields) {
       // Ô khai scope mà trang không có khối đó → bỏ qua, không tính notFound (xem standardScopeRoot).
-      const root = standardScopeRoot(f);
+      //
+      // ⚠ Khối khai trong scope render TRỄ: Form.io dựng panel tờ đơn SAU khi khối Angular ở đầu trang
+      // đã hiện. Trước đây vùng dò không thấy khối là bỏ ô NGAY, trong khi ô không khai scope lại có
+      // vòng chờ riêng (waitFor 1s) nên vẫn điền được — kết quả: giữa cùng một panel, ô "Bằng cấp
+      // chuyên môn" và "Kính gửi" có chữ còn Họ tên/Ngày sinh/Nơi cư trú của tờ đơn bị bỏ trắng. Phải
+      // chờ khối xuất hiện rồi mới quyết định bỏ ô.
+      const root = await standardScopeRootWaiting(f);
+      scopeLog.push({
+        name: f.name,
+        scope: f.scope || "",
+        root: root === document ? "ca-trang" : root ? "dung-khoi" : "bo-o",
+      });
       if (f.scope || f.scopeAway) {
         console.log(
           `[AutoFill-STD] scope ${f.name} → "${f.scope || "(theo ô neo)"}": ${root === document ? "dò cả trang" : root ? "thấy khối" : "KHÔNG tách được khối, bỏ qua ô"}`,
@@ -5523,8 +5689,14 @@
     await stabilizeStandardAreaSelects(fields, result, failedFieldKeys);
     await reapplyEmptyStandardTextFields(fields);
     await reapplyOwnerDossierCopy(fields);
+    // Trả lại khối cấm ghi trước khi tô đỏ, để ô vừa hoàn nguyên được đánh dấu đúng là đang trống.
+    const reverted = restoreStandardForbidden(forbiddenSnapshot, standardWrittenValueKeys(fields));
+    if (reverted.length) {
+      console.warn(`[AutoFill-STD] Hoàn nguyên khối không được ghi đè: ${reverted.join(", ")}`);
+    }
     markAllStandardEmptyFieldsRed();
     scheduleBusinessLineCodeSubmit(fields, result);
+    publishStandardFillReport(result, scopeLog);
     console.log("[AutoFill-STD] Kết quả:", result);
     return result;
   }

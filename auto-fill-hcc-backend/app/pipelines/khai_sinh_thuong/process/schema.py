@@ -67,6 +67,22 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_DanToc", "desc": "Dân tộc trên giấy tờ Nữ chỉ khi chính giấy tờ Nữ ghi rõ; CCCD gắn chip thường không có."},
     {"name": "CccdNu_QuocTich", "desc": "Quốc tịch trên CCCD Nữ chỉ trả nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "CccdNu_NoiCuTru_TrongNuoc", "desc": "Địa chỉ cư trú/thường trú trên CCCD Nữ, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CccdNu_QueQuan", "desc": "Quê quán/nguyên quán trên CCCD Nữ, object {quocGia,tinh,xa,diaChi} nếu có."},
+
+    # Giấy chứng nhận kết hôn / trích lục ghi chú kết hôn / màn hình "Thông tin đăng ký kết hôn"
+    # của cha mẹ. Chỉ dùng LẤP CHỖ TRỐNG cho cha hoặc mẹ không nộp CCCD và không có tờ khai.
+    {"name": "Gckh_HoTenChong", "desc": "Họ tên NGƯỜI CHỒNG trên giấy/thông tin đăng ký kết hôn (dòng 'Họ, chữ đệm, tên người chồng')."},
+    {"name": "Gckh_NamSinhChong", "desc": "Ngày hoặc năm sinh người chồng trên giấy kết hôn, dd/mm/yyyy hoặc yyyy."},
+    {"name": "Gckh_DanTocChong", "desc": "Dân tộc người chồng trên giấy kết hôn."},
+    {"name": "Gckh_QuocTichChong", "desc": "Quốc tịch người chồng trên giấy kết hôn."},
+    {"name": "Gckh_SoDinhDanhChong", "desc": "Số giấy tờ tùy thân của người chồng trên giấy kết hôn; chỉ trả đúng con số ghi trên giấy."},
+    {"name": "Gckh_NoiCuTruChong", "desc": "Nơi cư trú người chồng trên giấy kết hôn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "Gckh_HoTenVo", "desc": "Họ tên NGƯỜI VỢ trên giấy/thông tin đăng ký kết hôn (dòng 'Họ, chữ đệm, tên người vợ')."},
+    {"name": "Gckh_NamSinhVo", "desc": "Ngày hoặc năm sinh người vợ trên giấy kết hôn, dd/mm/yyyy hoặc yyyy."},
+    {"name": "Gckh_DanTocVo", "desc": "Dân tộc người vợ trên giấy kết hôn."},
+    {"name": "Gckh_QuocTichVo", "desc": "Quốc tịch người vợ trên giấy kết hôn."},
+    {"name": "Gckh_SoDinhDanhVo", "desc": "Số giấy tờ tùy thân của người vợ trên giấy kết hôn; chỉ trả đúng con số ghi trên giấy."},
+    {"name": "Gckh_NoiCuTruVo", "desc": "Nơi cư trú người vợ trên giấy kết hôn, object {quocGia,tinh,xa,diaChi}."},
 
     # Tờ khai đăng ký khai sinh (bản giấy) — thông tin bổ sung khi không có giấy chứng sinh.
     {"name": "TkKs_HoTenCon", "desc": "Họ tên người được đăng ký khai sinh trên tờ khai, nếu không có giấy chứng sinh."},
@@ -133,6 +149,9 @@ for _name in (
     "CccdNam_NoiDangKyKhaiSinh",
     "CccdNam_NoiCuTru_TrongNuoc",
     "CccdNu_NoiCuTru_TrongNuoc",
+    "CccdNu_QueQuan",
+    "Gckh_NoiCuTruChong",
+    "Gckh_NoiCuTruVo",
     "TkKs_NoiSinh",
     "TkKs_QueQuan",
     "TkKs_NoiCuTruCha",

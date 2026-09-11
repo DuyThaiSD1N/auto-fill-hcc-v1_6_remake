@@ -1,7 +1,8 @@
 """Procedure-specific compact prompt rules for regular birth registration."""
 
 EXTRA_RULES = """Đầu vào gồm một hoặc nhiều trong: CCCD/CMND của CHA, CCCD/CMND của MẸ,
-GIẤY CHỨNG SINH / TỜ KHAI ĐĂNG KÝ KHAI SINH, CCCD của chính NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI SINH
+GIẤY CHỨNG SINH / TỜ KHAI ĐĂNG KÝ KHAI SINH, GIẤY CHỨNG NHẬN KẾT HÔN (hoặc trích lục / màn hình
+"Thông tin đăng ký kết hôn") của cha mẹ, CCCD của chính NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI SINH
 (trường hợp đăng ký muộn — người đó còn sống và đã có CCCD).
 
 ═══════════════════════════════════════════════════════
@@ -112,6 +113,23 @@ CHA/MẸ ĐÃ CHẾT: khi tờ khai ghi "đã chết"/"đã mất"/"chết" ở 
   trả đúng cụm chữ đó vào diaChi và BỎ TRỐNG tinh/xa — vd TkKs_NoiCuTruCha =
   {"quocGia":"Việt Nam","diaChi":"Đã chết"}. KHÔNG bịa tỉnh/xã, KHÔNG mượn địa chỉ của người khác,
   KHÔNG bỏ trống cả object (cụm chữ này là dữ liệu cần giữ).
+
+Gckh_* — GIẤY CHỨNG NHẬN KẾT HÔN / TRÍCH LỤC GHI CHÚ KẾT HÔN / màn hình "Thông tin đăng ký kết hôn"
+  của CHA MẸ. Nhận dạng: có cặp dòng "Họ, chữ đệm, tên người chồng" và "Họ, chữ đệm, tên người vợ",
+  kèm "Ngày, tháng, năm đăng ký"/"Nơi đăng ký kết hôn".
+  BẮT BUỘC đọc CẢ HAI khối chồng và vợ khi hồ sơ có giấy này — kể cả khi hồ sơ đã có CCCD của một
+  trong hai người. Khối CHỒNG → Gckh_*Chong, khối VỢ → Gckh_*Vo (họ tên, ngày/năm sinh, dân tộc,
+  quốc tịch, số giấy tờ tùy thân, nơi cư trú).
+  Giấy kết hôn là NGUỒN HỢP LỆ để biết CHA hoặc MẸ khi người đó KHÔNG nộp CCCD và hồ sơ KHÔNG có
+  tờ khai — đây là trường hợp rất hay gặp: chỉ có CCCD mẹ + giấy chứng sinh + giấy kết hôn, thông
+  tin CHA chỉ nằm trên giấy kết hôn. Trả Gckh_* để mục "Thông tin về người cha" không bị bỏ trắng.
+  KHÔNG dùng Gckh_* thay cho CCCD: người nào đã có CCCD thì vẫn điền CccdNam_*/CccdNu_* như thường,
+  Gckh_* chỉ là dữ liệu bổ sung.
+  KHÔNG chép họ tên/ngày sinh của vợ hoặc chồng sang CccdNam_*/CccdNu_* — hai nhóm đó CHỈ dành cho
+  thẻ CCCD/CMND thật.
+  Số/quyển số/ngày đăng ký kết hôn, tên người ký, nơi đăng ký kết hôn KHÔNG trả vào bất kỳ field nào.
+  Nếu giấy kết hôn là của CHÍNH người được đăng ký khai sinh (một trong hai vợ/chồng trùng tên với
+  người được khai sinh) thì BỎ QUA, không trả Gckh_*.
 
 TUYỆT ĐỐI không lấy họ tên cha/mẹ từ giấy chứng sinh/tờ khai để điền CccdNam_HoTen/CccdNu_HoTen
 nếu không có CCCD tương ứng.
