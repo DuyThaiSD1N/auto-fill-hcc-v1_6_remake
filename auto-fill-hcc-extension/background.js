@@ -135,6 +135,14 @@ async function openNextSplitQueueItemUnlocked() {
         procedure: item.procedure,
         ts: Date.now(),
       };
+      // Tab tách là hồ sơ RIÊNG trên cổng nhưng cùng LƯỢT đính kèm → gieo khóa hồ sơ gốc vào
+      // session của tab để cú bấm "Gửi hồ sơ" ở đây báo về được. Không gieo thì
+      // reportDossierSubmitClick không thấy khóa và bỏ im lặng → mất hết hồ sơ tách.
+      if (item.dossierId) {
+        await chrome.storage.local.set({
+          ["autofill_session_" + tab.id]: { dossierId: item.dossierId },
+        });
+      }
       if (!await setPendingMap(pendingMap)) throw new Error("Không lưu được bundle đính kèm cho tab kế tiếp.");
 
       state.activeTabId = tab.id;
@@ -221,9 +229,50 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   } catch (e) { /* ignore */ }
 });
 
+// Mốc "bấm Gửi hồ sơ" từ content script → BE. Xử ở background chứ không ở popup vì popup có
+// thể đã đóng lúc cán bộ bấm nộp; background thì luôn sống dậy được.
+// SUBMIT_WATCH_KEY khai lại ở đây (service worker không nạp api/config.js) — sửa thì sửa cả hai.
+const SUBMIT_WATCH_KEY = "autofill_submit_watch";
+
+async function reportDossierSubmitClick(tabId, host, ref) {
+  if (!tabId) return;
+  const sessionKey = "autofill_session_" + tabId;
+  const store = await chrome.storage.local.get([sessionKey, SUBMIT_WATCH_KEY, "auth_tokens"]);
+  const session = store?.[sessionKey];
+  const dossierId = String(session?.dossierId || "").trim();
+  // Chưa có khóa = extension chưa điền/đính kèm gì cho hồ sơ này → không có gì để chấm.
+  // Cố ý: báo cáo chỉ tính hồ sơ trợ lý có tham gia.
+  if (!dossierId) return;
+  const base = String(store?.[SUBMIT_WATCH_KEY]?.base || "").replace(/\/+$/, "");
+  const accessToken = store?.auth_tokens?.accessToken;
+  if (!base || !accessToken) return;
+  try {
+    await fetch(base + "/api/v1/dossiers/submit-click", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
+      body: JSON.stringify({ dossierId, portalHost: host || "", portalDossierRef: ref || "" }),
+    });
+  } catch (e) {
+    console.warn("[BG] Không báo được mốc nộp hồ sơ:", e?.message || e);
+    return; // giữ khóa để lần bấm sau còn cơ hội ghi
+  }
+  // GIỮ khóa, chỉ đánh dấu đã nộp: chứng thực tách nhiều tab còn bấm nộp tiếp trên chính khóa
+  // này và mỗi lần là một sự kiện. Khóa mới sinh ở LƯỢT process/đính kèm kế tiếp (popup.js
+  // ensureDossierId), tức khi cán bộ bắt đầu hồ sơ khác.
+  await chrome.storage.local.set({ [sessionKey]: { ...session, dossierSubmitted: true } });
+  try {
+    await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId });
+  } catch (_) { /* popup không mở → bỏ qua */ }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.action === "getTabId") {
     sendResponse({ tabId: sender?.tab?.id ?? null });
+    return true;
+  }
+  if (msg?.action === "dossierSubmitClicked") {
+    void reportDossierSubmitClick(sender?.tab?.id, msg.host, msg.ref);
+    sendResponse?.({ ok: true });
     return true;
   }
   // Proxy fetch: popup-iframe gọi API BE qua background để TRÁNH mixed-content blocking
@@ -479,8 +528,21 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "filePull") return;
   port.onMessage.addListener(async (msg) => {
     try {
-      const res = await fetch(msg.url, { headers: msg.headers || {} });
-      if (!res.ok) { port.postMessage({ error: `HTTP ${res.status}` }); return; }
+      // PHẢI có timeout: fetch trần treo vô hạn thì port không bao giờ settle, popup coi như
+      // đang kéo dở và KHÔNG thử lại → file "gửi rồi mà không thấy". 60s đủ cho PDF scan qua 4G.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 60000);
+      let res;
+      try {
+        res = await fetch(msg.url, { headers: msg.headers || {}, signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+      if (!res.ok) {
+        console.warn("[BG] Kéo tệp phiên QR lỗi:", res.status, msg.url);
+        port.postMessage({ error: `HTTP ${res.status}` });
+        return;
+      }
       const blob = await res.blob();
       const dataUrl = await new Promise((resolve, reject) => {
         const r = new FileReader();

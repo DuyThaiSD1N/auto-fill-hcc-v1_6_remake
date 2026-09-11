@@ -120,6 +120,15 @@ const isBacNinhThreeStepProcedure = (config = currentConfig()) =>
 
 let PROCEDURES = [];
 let lastProcessSession = null; // { procedure, sessionId }
+// Khóa MỘT HỒ SƠ (gửi BE qua options.dossierId → traces.dossier_id + collection dossiers).
+// KHÁC lastProcessSession.sessionId: cái đó là request_id của LƯỢT QUÉT, cố ý đổi mỗi lần quét
+// lại để planner đính kèm bám đúng lượt mới nhất — không phải danh tính hồ sơ.
+// Sinh LƯỜI ở lượt process/đính kèm đầu tiên; sống qua reload nhờ nằm trong session của tab;
+// chết khi: bấm Gửi hồ sơ · đổi thủ tục · Tạo phiên mới · đăng xuất · đóng tab.
+let dossierId = "";
+// Hồ sơ này đã có ít nhất một lần bấm "Gửi hồ sơ". Không xoá khóa ngay lúc đó (chứng thực tách
+// nhiều tab còn nộp tiếp trên cùng khóa) — chỉ đánh dấu để LƯỢT process/đính kèm SAU xoay khóa.
+let dossierSubmitted = false;
 let selectedProcedureKey = "";
 // Thủ tục sở hữu file/kết quả của phiên đang làm. Khác selectedProcedureKey ở màn chọn chung
 // HKD: lúc đó selection tạm rỗng nhưng vẫn phải nhớ file cũ thuộc thủ tục nào để không mang sang hồ sơ khác.
@@ -865,6 +874,37 @@ function renderProcedureResults(query = procedureSearchQuery) {
   postPanelHeight();
 }
 
+// ── Khóa một hồ sơ (dossierId) ─────────────────────────────────────────────────────────
+function newDossierId() {
+  try { return crypto.randomUUID(); } catch (_) {}
+  return "d-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+/** Sinh LƯỜI ở lượt process/đính kèm đầu tiên = đúng mốc "bắt đầu làm hồ sơ" phía BE.
+ *
+ *  Hồ sơ đã có sự kiện nộp thì LƯỢT NÀY là hồ sơ mới → xoay khóa. Cố ý xoay ở đây chứ không
+ *  xoay ngay lúc bấm nộp: chứng thực tách nhiều tab dùng CHUNG một khóa và nộp N lần, xoay
+ *  sớm là mất các lần nộp sau. Luật này đúng cho mọi thủ tục nên không phải khai cấu hình
+ *  riêng cho nhóm đa tab — mà quên khai cấu hình là kiểu lỗi âm thầm, rất lâu sau mới lộ. */
+function ensureDossierId() {
+  if (!dossierId || dossierSubmitted) {
+    dossierId = newDossierId();
+    dossierSubmitted = false;
+    void saveSession(); // phải nằm trong storage trước khi trang reload, nếu không 1 hồ sơ đếm thành 2
+  }
+  return dossierId;
+}
+
+/** Kết thúc hồ sơ (đã nộp hoặc bỏ dở) → lượt sau tự sinh khóa mới.
+ *  Không báo BE: hồ sơ không có submit_clicked_at đã đủ nghĩa "làm dở", và lối "đóng tab"
+ *  thì không gọi được BE nữa nên báo cũng không đầy đủ. */
+function closeDossier(reason) {
+  if (!dossierId) return;
+  console.log("[AutoFill] Kết thúc hồ sơ", { dossierId, reason });
+  dossierId = "";
+  dossierSubmitted = false;
+}
+
 function shouldResetProcedureWork(nextKey) {
   const previousKey = workProcedureKey || selectedProcedureKey;
   return !!(previousKey && nextKey && previousKey !== nextKey);
@@ -888,6 +928,7 @@ function resetProcedureWorkState() {
   sessionWriteRevision++;
   files.length = 0;
   lastProcessSession = null;
+  closeDossier("procedure-change");
   businessFillSupportCode = "";
   if (fileInput) fileInput.value = "";
   clearReviewCard();
@@ -1406,6 +1447,17 @@ async function loadProcedures() {
   try {
     const res = await api.procedures();
     PROCEDURES = res.procedures || [];
+    // Luật nhận nút "Gửi hồ sơ" (BE: portal_submit.py) + base đang chạy → để content script và
+    // background dùng được kể cả khi panel đã đóng. Ghi vào storage vì hai nơi đó không thấy
+    // biến của popup. BE bản cũ không trả portalSubmit → bỏ qua, tính năng tắt lặng lẽ.
+    if (res.portalSubmit && typeof res.portalSubmit === "object") {
+      const base = (typeof activeBackendBase === "function") ? activeBackendBase() : BACKEND_URL;
+      try {
+        await chrome.storage.local.set({
+          [SUBMIT_WATCH_KEY]: { rules: res.portalSubmit, base },
+        });
+      } catch (_) { /* không chặn luồng nạp thủ tục */ }
+    }
   } catch (e) {
     if (e.unauthorized) {
       await AuthStore.clearTokens();
@@ -1496,6 +1548,8 @@ async function saveSession() {
       procedureKey: selectedProcedureKey,
       workProcedureKey,
       businessFillSupportCode,
+      dossierId,
+      dossierSubmitted,
       files: files.map((it) => ({
         name: it.file.name,
         type: it.file.type || "image/jpeg",
@@ -1522,6 +1576,8 @@ async function saveSession() {
 async function clearSession() {
   businessFillSupportCode = "";
   workProcedureKey = "";
+  dossierId = "";
+  dossierSubmitted = false;
   sessionWriteRevision++;
   void sendToContent({ action: "clearPanelAutoRestore" });
   try {
@@ -1539,6 +1595,9 @@ async function restoreSession() {
   }
   if (!saved) return;
   businessFillSupportCode = String(saved.businessFillSupportCode || "").trim();
+  // Khóa hồ sơ phải sống qua reload, nếu không một hồ sơ sẽ bị đếm thành nhiều.
+  dossierId = String(saved.dossierId || "").trim();
+  dossierSubmitted = !!saved.dossierSubmitted;
   const savedFiles = Array.isArray(saved.files) ? saved.files : [];
   workProcedureKey = String(saved.workProcedureKey || saved.procedureKey || "").trim();
   // Session từ bản extension cũ có thể đã giữ file sau khi selection bị đưa về rỗng ở màn HKD.
@@ -1698,10 +1757,11 @@ function applyFormUI() {
     proxyFillBtn.hidden = !isBacNinhAuthorizedPersonProcedure();
     proxyFillBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
   }
-  // Case local split bắt buộc N file = N tab nên không cho trạng thái checkbox chung can thiệp.
-  // Checkbox chỉ còn dành cho các thủ tục mà người dùng thực sự được chọn tách/gộp.
+  // Ô tick "tách hồ sơ" hiện cho MỌI thủ tục split-eligible, gồm cả case local (chứng thực chữ ký
+  // người dịch CTV): tick = đa tab (mỗi file 1 hồ sơ), bỏ tick = 1 tab (gộp vào 1 hồ sơ) — giống
+  // chứng thực bản sao/chữ ký.
   if (splitModeRow) {
-    splitModeRow.style.display = isSplitEligibleProcedure() && !isClientLocalSplitProcedure() ? "" : "none";
+    splitModeRow.style.display = isSplitEligibleProcedure() ? "" : "none";
   }
   if (!currentConfig().hasAttachmentStep) {
     lastProcessSession = null;
@@ -1852,6 +1912,7 @@ let phoneUploadWs = null;
 let phoneReconcile = null;     // poll ĐỐI SOÁT: LUÔN chạy làm lưới an toàn (kể cả khi WS không kết nối/miss event)
 let phone404 = 0;              // đếm 404 liên tiếp → chỉ đóng khi phiên THẬT SỰ hết hạn (không phải chớp mạng)
 const pulledFids = new Set();  // fid đã kéo về files[] → chống trùng (WS và poll dùng chung)
+const pullingFids = new Set(); // fid ĐANG kéo dở — thả ra khi xong/hỏng để còn thử lại
 
 function stopPhoneUploadChannel() {
   if (phoneUploadWs) {
@@ -1879,13 +1940,28 @@ function setQrStatus(text) {
 async function pullPhoneFiles(list) {
   if (!phoneUploadSid) return 0;
   const sid = phoneUploadSid;
-  const fresh = (list || []).filter((f) => f && f.fid && !pulledFids.has(f.fid));
-  fresh.forEach((f) => pulledFids.add(f.fid)); // giữ chỗ trước → lô/poll khác không kéo trùng
-  const results = await Promise.all(fresh.map(async (f) => {
-    const res = await api.fetchUploadFileDataUrl(sid, f.fid);
-    if (!res || !res.dataUrl) { pulledFids.delete(f.fid); return null; } // tải lỗi → cho kéo lại lượt sau
-    return { f, res };
-  }));
+  const fresh = (list || []).filter((f) => f && f.fid && !pulledFids.has(f.fid) && !pullingFids.has(f.fid));
+  // Đánh dấu ĐANG kéo (khác với ĐÃ kéo): lượt poll 2s sau không kéo trùng, nhưng nếu lượt này
+  // hỏng/treo thì fid được thả ra để thử lại. Trước đây đánh dấu thẳng vào pulledFids nên tải
+  // treo là file bị khoá VĨNH VIỄN, không bao giờ kéo lại và không báo gì.
+  fresh.forEach((f) => pullingFids.add(f.fid));
+  // Kéo TUẦN TỰ: mỗi file đi qua service worker (fetch + base64 + cắt mảnh). Kéo song song
+  // nhiều tệp lớn làm SW phình bộ nhớ rồi bị Chrome giết → mất cả lô.
+  const results = [];
+  try {
+    for (const f of fresh) {
+      const res = await api.fetchUploadFileDataUrl(sid, f.fid);
+      if (!res || !res.dataUrl) {
+        console.warn("[AutoFill] Không kéo được tệp từ điện thoại:", f.name || f.fid);
+        setQrStatus("⚠️ Đang tải tài liệu từ điện thoại chậm/lỗi — em thử lại…");
+        continue; // để dành cho lượt poll sau
+      }
+      pulledFids.add(f.fid);
+      results.push({ f, res });
+    }
+  } finally {
+    fresh.forEach((f) => pullingFids.delete(f.fid));
+  }
   if (phoneUploadSid !== sid) return 0; // phiên đã đổi/đóng giữa chừng → bỏ kết quả
   let added = 0;
   for (const r of results) {
@@ -2099,6 +2175,10 @@ async function runBusinessAttach(cfg, options) {
 
 async function runAttachmentPlanForCurrentFiles(options = {}) {
   const cfg = currentConfig();
+  // Gắn ở ĐÂY (không ở từng call site) để mọi nhánh đính kèm — kể cả client-local split và
+  // đăng ký kinh doanh — đều mang cùng một khóa hồ sơ. Thủ tục attach-only không gọi /process
+  // nên đây là chỗ DUY NHẤT chấm được mốc bắt đầu cho nhóm đó.
+  options.dossierId = ensureDossierId();
   if (cfg.key === "dang-ky-kinh-doanh") return await runBusinessAttach(cfg, options);
   const payloadFiles = await toPdfForAttach(buildPayloadFiles());
   if (!payloadFiles.length) return { error: "Chưa có file nào." };
@@ -2111,8 +2191,11 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   // Case metadata-only: toàn bộ plan + đổi tên + chia tab chạy tại extension.
   // Backend chỉ nhận tên/type/size để ghi trace, KHÔNG nhận dataUrl hay binary file.
   if (isClientLocalSplitProcedure(cfg)) {
-    options.splitMode = true;
-    const local = buildClientLocalSplitPlan(payloadFiles, clientAttachmentCase(cfg));
+    // Ô tick "tách hồ sơ" quyết định: đa tab (mỗi file 1 hồ sơ) hay 1 tab (gộp vào hồ sơ hiện tại).
+    // 1 file thì luôn 1 hồ sơ, không cần điều phối đa-tab.
+    const splitOn = !!attachSplitMode && payloadFiles.length > 1;
+    options.splitMode = splitOn;
+    const local = buildClientLocalSplitPlan(payloadFiles, clientAttachmentCase(cfg), { merge: !splitOn });
     if (local.error) return { error: local.error };
     setStatus("Đang tạo mã hỗ trợ cho lượt đính kèm...", "info");
     const traceRes = await api.clientAttachmentTrace({
@@ -2126,15 +2209,26 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
       })),
       attachments: local.attachments,
     });
-    const localAttachRes = await attachSplitAcrossTabs(
-      local.files,
-      local.attachments,
-      cfg.key,
-      traceRes,
-    );
+    if (splitOn) {
+      const localAttachRes = await attachSplitAcrossTabs(
+        local.files,
+        local.attachments,
+        cfg.key,
+        traceRes,
+      );
+      return {
+        ...localAttachRes,
+        requestId: localAttachRes?.requestId || traceRes?.requestId,
+      };
+    }
+    // 1 tab (gộp): đính TẤT CẢ tài liệu vào hồ sơ hiện tại; file thứ 2 trở đi tự thêm thành phần mới.
+    setStatus("Đang đính kèm tài liệu vào hồ sơ...", "info");
+    const mergeMsg = await buildLocalMergeAttachMessage(cfg.key, local.files, local.attachments);
+    const mergeRes = await sendToContent(mergeMsg.message);
+    if (mergeMsg.storageKey) { try { await chrome.storage.local.remove(mergeMsg.storageKey); } catch (_) { /* ignore */ } }
     return {
-      ...localAttachRes,
-      requestId: localAttachRes?.requestId || traceRes?.requestId,
+      ...mergeRes,
+      requestId: mergeRes?.requestId || traceRes?.requestId,
     };
   }
 
@@ -2284,7 +2378,10 @@ function clientLocalFileExtension(fileName) {
   return match ? match[1] : "";
 }
 
-function buildClientLocalSplitPlan(payloadFiles, config) {
+// merge=false (đa tab): mỗi file 1 hồ sơ/tab riêng — appendOnOccupied:false (mỗi tab ô trống, đính 1 file).
+// merge=true (1 tab): tất cả file vào CÙNG hồ sơ hiện tại — appendOnOccupied:true để file thứ 2 trở đi
+// tự thêm thành phần mới trong cùng hồ sơ (giống chứng thực bản sao/chữ ký gộp).
+function buildClientLocalSplitPlan(payloadFiles, config, { merge = false } = {}) {
   const componentName = String(config?.componentName || "").trim();
   const componentIndex = Number(config?.componentIndex);
   if (!componentName || !Number.isInteger(componentIndex) || componentIndex < 1) {
@@ -2307,13 +2404,33 @@ function buildClientLocalSplitPlan(payloadFiles, config) {
       componentIndex,
       target: "existing",
       needsAddComponent: false,
-      appendOnOccupied: false,
+      appendOnOccupied: merge,
       detectedType: componentName,
       // Nếu tên bản dịch có chữ CCCD vẫn phải vào hàng 1; không được áp heuristic giấy tùy thân.
       forceFirstRow: true,
     });
   }
   return { files, attachments };
+}
+
+// Gửi lệnh đính kèm 1 tab (gộp) cho case local (CTV bản dịch). File lớn → chuyển qua
+// chrome.storage.local để tránh vượt trần 64 MiB của tabs.sendMessage (giống nhánh đính kèm thường).
+async function buildLocalMergeAttachMessage(procedure, files, attachments) {
+  const approxBytes = files.reduce((sum, file) => sum + String(file?.dataUrl || "").length, 0);
+  if (approxBytes > 45 * 1024 * 1024) {
+    const storageKey = "__af_attach_files_" + Date.now();
+    try {
+      await chrome.storage.local.set({ [storageKey]: { files } });
+      return {
+        message: { action: "attachFilesByPlan", procedure, attachments, mode: "merge", filesStorageKey: storageKey },
+        storageKey,
+      };
+    } catch (_) { /* ghi storage lỗi → gửi trực tiếp bên dưới */ }
+  }
+  return {
+    message: { action: "attachFilesByPlan", procedure, files, attachments, mode: "merge" },
+    storageKey: "",
+  };
 }
 
 function isSignatureIdentityPlanItem(item) {
@@ -2526,6 +2643,10 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
       files: bundle.files,
       attachments: bundle.planItems,
       procedure,
+      // Tab mới là hồ sơ KHÁC trên cổng nhưng vẫn thuộc cùng LƯỢT đính kèm này → dùng CHUNG
+      // khóa. Số hồ sơ đếm bằng số sự kiện nộp, nên mỗi tab bấm nộp là một sự kiện trên khóa
+      // này. Không mang theo thì tab mới không có session → cú bấm bị bỏ im lặng.
+      dossierId,
     }));
     try {
       await chrome.storage.local.set({
@@ -2890,7 +3011,6 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
       cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
       cfg.key === "cap-giay-phep-khai-thac-thuy-san" ||
-      cfg.key === "cap-lai-chung-chi-hanh-nghe-thu-y" ||
       cfg.key === "dang-ky-bien-phap-bao-dam-qsdd" ||
       cfg.key === "xoa-dang-ky-tau-ca" ||
       cfg.key === "xoa-dang-ky-phuong-tien-thuy" ||
@@ -2933,6 +3053,7 @@ ocrBtn.addEventListener("click", async () => {
       lastProcessSession = null;
       refreshAttachStepUI();
     }
+    options.dossierId = ensureDossierId();
     const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
     console.log("[BE]", { extracted: res.extracted, stats: res.stats });
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;
@@ -3007,6 +3128,7 @@ if (fillAllBtn) {
       }
 
       setStatus(" Đang phân tích tài liệu...", "info");
+      options.dossierId = ensureDossierId();
       const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
       console.log("[BE fill-all]", { extracted: res.extracted, stats: res.stats });
       businessFillSupportCode = String(res.requestId || res.sessionId || "").trim();
@@ -4127,6 +4249,12 @@ async function initDestSection() {
   // content/agency-select.js bắn tin mỗi khi trang cổng đổi (kể cả SPA giữ nguyên URL).
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg?.action === "portalFlowChanged") void refreshDestVisibility();
+    // Background vừa ghi mốc nộp. Đánh dấu vào RAM để lượt process/đính kèm SAU xoay khóa;
+    // nếu chỉ ghi ở storage thì saveSession kế tiếp sẽ đè cờ mất và hồ sơ sau bị gộp vào hồ sơ
+    // đã nộp. KHÔNG xoá khóa ở đây — tab tách còn nộp tiếp trên chính khóa này.
+    if (msg?.action === "dossierSubmitted" && String(msg.tabId ?? "") === String(EMBEDDED_TAB_ID ?? "")) {
+      dossierSubmitted = true;
+    }
   });
 }
 

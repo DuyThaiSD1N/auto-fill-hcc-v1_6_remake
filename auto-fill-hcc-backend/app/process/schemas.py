@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class FileItem(BaseModel):
@@ -17,6 +17,12 @@ class ProcessReq(BaseModel):
 
 
 class FieldOut(BaseModel):
+    # extra="allow": mapper được phép gắn thêm khoá điều khiển mới cho extension mà KHÔNG phải sửa
+    # model này. Trước đây model lọc sạch khoá lạ nên scope/scopeNear/scopeAway/optionLabel do mapper
+    # gắn bị BỎ ÂM THẦM giữa đường: extension nhận field trần, dò cả trang và điền vào khối đầu tiên
+    # trùng tên. Không lỗi, không cảnh báo, nhìn từ hai đầu đều thấy "đúng".
+    model_config = ConfigDict(extra="allow")
+
     name: str
     comp: str
     value: Any  # str | dict (x-select-area)
@@ -24,6 +30,14 @@ class FieldOut(BaseModel):
     # True = XÓA giá trị cổng đã điền sẵn ở ô này (dữ liệu VNeID của người khác), không phải điền.
     clear: bool = False
     occurrence: int | None = None  # Dùng khi Form.io tái sử dụng cùng name cho nhiều cụm field.
+
+    # Khoanh vùng DOM khi nhiều khối trên cùng trang dùng chung field-key (xem mapper cap_lai_CCHN_thu_y).
+    scope: str | None = None        # selector khối được phép điền
+    scopeNear: str | None = None    # ô neo chỉ có trong khối đó, để thu hẹp khi selector còn rộng
+    scopeAway: list[str] | None = None  # mốc của khối CẤM ghi
+    # Chọn đúng option trong nhóm checkbox/selectboxes dùng chung một name.
+    optionLabel: str | None = None
+    optionValue: str | None = None
 
 
 class ProcessResp(BaseModel):

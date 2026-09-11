@@ -125,7 +125,11 @@ const api = {
     const tokens = await AuthStore.getTokens();
     const headers = tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {};
     return new Promise((resolve) => {
-      const url = `${BACKEND_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(fid)}`;
+      // Phải dùng base ĐANG ACTIVE: getUploadSession đi qua apiJson (có failover) nên khi chạy
+      // backend phụ, hardcode BACKEND_URL sẽ kéo file ở server KHÔNG có phiên → 404 im lặng,
+      // poll thử lại vô hạn mà cán bộ không thấy gì.
+      const base = (typeof activeBackendBase === "function") ? activeBackendBase() : BACKEND_URL;
+      const url = `${base}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(fid)}`;
       let port;
       try { port = chrome.runtime.connect({ name: "filePull" }); }
       catch (_) { return resolve(null); }

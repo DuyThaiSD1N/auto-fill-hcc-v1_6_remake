@@ -56,6 +56,20 @@ assert.ok(built.attachments.every((item) => item.componentIndex === 1));
 assert.ok(built.attachments.every((item) => item.target === "existing"));
 assert.ok(built.attachments.every((item) => item.forceFirstRow === true));
 assert.ok(built.attachments.every((item) => item.documentName.length <= 50));
+// Đa tab (mặc định): appendOnOccupied=false (mỗi tab 1 hồ sơ, ô trống → đính 1 file).
+assert.ok(built.attachments.every((item) => item.appendOnOccupied === false),
+  "đa tab: appendOnOccupied phải false");
+
+// 1 tab (gộp): tất cả file vào cùng hồ sơ → appendOnOccupied=true để file sau tự thêm thành phần mới.
+const mergeBuilt = context.buildClientLocalSplitPlan(sourceFiles, {
+  componentName: "Bản dịch và giấy tờ, văn bản cần dịch.",
+  componentIndex: 1,
+}, { merge: true });
+assert.equal(mergeBuilt.error, undefined);
+assert.equal(mergeBuilt.attachments.length, 3);
+assert.ok(mergeBuilt.attachments.every((item) => item.appendOnOccupied === true),
+  "1 tab: appendOnOccupied phải true để gộp vào 1 hồ sơ");
+assert.ok(mergeBuilt.attachments.every((item) => item.componentIndex === 1 && item.forceFirstRow === true));
 
 const bundles = context.buildDefaultSplitBundles(built.files, built.attachments);
 assert.equal(bundles.length, 3, "N file phải tạo đúng N bundle/tab");
@@ -84,6 +98,33 @@ const localBranch = popup.slice(localBranchStart, serverPlanCall);
 assert.match(localBranch, /api\.clientAttachmentTrace/);
 assert.doesNotMatch(localBranch, /dataUrl/);
 assert.match(localBranch, /attachSplitAcrossTabs/);
+// CTV phải có 2 nhánh theo ô tick: đa tab (attachSplitMode) vs 1 tab (gộp vào hồ sơ hiện tại).
+assert.match(localBranch, /attachSplitMode/, "CTV phải nhánh theo ô tick tách/gộp");
+assert.match(localBranch, /buildLocalMergeAttachMessage/, "thiếu nhánh đính 1 tab (gộp)");
+assert.match(localBranch, /merge: !splitOn/, "buildClientLocalSplitPlan phải nhận cờ merge khi 1 tab");
+
+// Ô tick "tách hồ sơ" phải HIỆN cho case local (CTV) — trước đây bị ẩn cứng.
+const splitRowLine = popup.slice(popup.indexOf("if (splitModeRow) {"), popup.indexOf("if (splitModeRow) {") + 200);
+assert.doesNotMatch(splitRowLine, /!isClientLocalSplitProcedure\(\)/,
+  "splitModeRow không được ẩn cứng với case local nữa");
+
+// Gộp 1 tab: các thành phần thêm mới KHÔNG được trùng tên → engine đánh số " 2"/" 3"…
+// Bao cả 2 đường: hàng trống form tự thêm (rowForPlanItem) và nút "Thêm thành phần" (addAttachmentComponent).
+assert.match(content, /function uniqueComponentName\(/,
+  "thiếu helper đánh số tên thành phần trùng");
+assert.match(content, /function ensureUniqueEmptyRowName\(/,
+  "thiếu đánh số cho hàng trống form tự thêm (đường chính của CTV gộp)");
+assert.match(content, /await ensureUniqueEmptyRowName\(emptyExistingRow, componentName\)/,
+  "rowForPlanItem phải đánh số hàng trống trước khi đính");
+assert.match(content, /const uniqueName = uniqueComponentName\(componentName\)/,
+  "addAttachmentComponent phải dùng tên duy nhất");
+// Lượt CHỐT sau khi đính: đánh số vào ô <input> tên của các dòng thêm mới trùng tên (bản dịch CTV).
+assert.match(content, /function renumberDuplicateComponentNameInputs\(/,
+  "thiếu lượt chốt đánh số ô tên input trùng");
+assert.match(content, /await renumberDuplicateComponentNameInputs\(\)/,
+  "attachFilesByPlan phải gọi lượt chốt đánh số sau vòng đính");
+assert.match(content, /await sleep\(650\)/,
+  "phải chờ qua debounce ~500ms để cổng commit tên, tránh React revert");
 
 const consentStart = popup.indexOf("async function requireConsent(triggerEl)");
 const consentEnd = popup.indexOf("\nfunction escapeConsent", consentStart);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý hỗ trợ người dân hoàn thiện thủ tục hành chính",
-  "version": "1.18",
+  "version": "1.17",
   "description": "Hỗ trợ người dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -11,7 +11,6 @@
     "scripting"
   ],
   "host_permissions": [
-    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
@@ -39,6 +38,7 @@
   "content_scripts": [
     {
       "matches": [
+        "https://*.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
         "https://dichvucongbyt.moh.gov.vn/*",
@@ -48,6 +48,7 @@
         "https://dichvucong.gov.vn/*",
         "https://*.laichau.gov.vn/*",
         "https://dichvucongbnv.moha.gov.vn/*",
+        "https://motcua.moha.gov.vn/*",
         "https://dichvucong-tthc.moit.gov.vn/*",
         "https://dvc.moc.gov.vn/*",
         "https://dichvucong.bacninh.gov.vn/*",
@@ -121,6 +122,7 @@
         "assets/icons/*"
       ],
       "matches": [
+        "https://*.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
         "https://dichvucongbyt.moh.gov.vn/*",
@@ -130,6 +132,7 @@
         "https://dichvucong.gov.vn/*",
         "https://*.laichau.gov.vn/*",
         "https://dichvucongbnv.moha.gov.vn/*",
+        "https://motcua.moha.gov.vn/*",
         "https://dichvucong-tthc.moit.gov.vn/*",
         "https://dvc.moc.gov.vn/*",
         "https://dichvucong.bacninh.gov.vn/*",

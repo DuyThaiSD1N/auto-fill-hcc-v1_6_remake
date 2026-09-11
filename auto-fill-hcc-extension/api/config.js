@@ -1,9 +1,9 @@
-const BACKEND_URL = "http://localhost:12005";     // Backend CHÍNH (LOCAL — docker app cổng 12005)
+const BACKEND_URL = "https://trolyhoso-hcc-admin.tiengnoi.vn";     // Backend CHÍNH
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản,
 // nếu không khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
 
-const BACKEND_URL_FALLBACK = "";   // chạy local: TRỐNG = tắt failover
+const BACKEND_URL_FALLBACK = "https://trolyhoso-hcc-admin.vnekyc.vn";
 // Timeout mỗi request. PHẢI đủ dài cho request nặng (OCR+LLM có thể ~25s+, nhiều file lâu hơn) —
 // đặt ngắn sẽ abort NHẦM khi server vẫn đang xử lý → báo "không kết nối" oan. Chỉ dùng để cắt
 // server TREO thật (không phản hồi trong 100s) rồi mới chuyển sang phụ.
@@ -25,11 +25,16 @@ const WS_BASE_FALLBACK = BACKEND_URL_FALLBACK ? BACKEND_URL_FALLBACK.replace(/^h
 // thêm dấu "/" sẽ rơi về SPA quản trị.
 const REPORT_URL_BY_BACKEND = {
   "https://trolyhoso-hcc-admin.tiengnoi.vn": "https://trolyhoso-hcc.tiengnoi.vn/thong-ke/dashboard",
-  // Local: FE thống kê chạy ở container fe (cổng 12006).
-  "http://localhost:12005": "http://localhost:12006/thong-ke/dashboard",
 };
 
+// chrome.storage.local: { rules, base } — luật nhận nút "Gửi hồ sơ" do BE cấp + base đang chạy.
+// popup ghi (sau khi nạp /procedures), content script và background đọc; ba nơi không thấy biến
+// của nhau nên phải đi qua storage. background.js khai lại chuỗi này (service worker không nạp
+// được file cấu hình) — sửa ở đây thì sửa cả bên đó.
+const SUBMIT_WATCH_KEY = "autofill_submit_watch";
+
 if (typeof window !== "undefined") {
+  window.SUBMIT_WATCH_KEY = SUBMIT_WATCH_KEY;
   window.BACKEND_URL = BACKEND_URL;
   window.BACKEND_URL_FALLBACK = BACKEND_URL_FALLBACK;
   window.WS_BASE = WS_BASE;
