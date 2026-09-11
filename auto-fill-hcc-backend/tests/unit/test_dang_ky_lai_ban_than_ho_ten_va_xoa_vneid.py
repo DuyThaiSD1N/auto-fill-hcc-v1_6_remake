@@ -175,7 +175,8 @@ def test_muc_cha_ghi_khong_co_thi_bo_han_vai_cha():
             [{"name": "Father_FullName", "comp": "x-input", "value": "Không có"}], context
         )
     }
-    assert kept == set()
+    # Vai mẹ có CCCD trong hồ sơ nên được dựng lại; vai cha thì phải mất sạch.
+    assert not any(name.startswith("Father_") for name in kept)
 
 
 def test_khong_doc_duoc_nhan_than_nguoi_yeu_cau_thi_khong_xoa_gi():

@@ -2890,6 +2890,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
       cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
       cfg.key === "cap-giay-phep-khai-thac-thuy-san" ||
+      cfg.key === "cap-lai-chung-chi-hanh-nghe-thu-y" ||
       cfg.key === "dang-ky-bien-phap-bao-dam-qsdd" ||
       cfg.key === "xoa-dang-ky-tau-ca" ||
       cfg.key === "xoa-dang-ky-phuong-tien-thuy" ||

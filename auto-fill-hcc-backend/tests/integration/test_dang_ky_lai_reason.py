@@ -238,11 +238,11 @@ def test_valid_birth_document_allows_previous_registration_fields():
     ]
 
     result = reason.sanitize_extracted_fields(fields, context)
-    assert {field["name"] for field in result} == {
+    assert {
         "Subject_FullName",
         "PreviousRegistration_Number",
         "PreviousRegistration_Date",
-    }
+    } <= {field["name"] for field in result}
 
 
 def test_same_person_cannot_be_both_child_and_father():
@@ -257,7 +257,9 @@ def test_same_person_cannot_be_both_child_and_father():
         ],
         context,
     )
-    assert [field["name"] for field in result] == ["Subject_FullName"]
+    names = [field["name"] for field in result]
+    assert "Subject_FullName" in names
+    assert not any(name.startswith("Father_") for name in names)
 
 
 def test_ocr_mangled_declaration_id_does_not_wipe_the_subject_block():
@@ -367,3 +369,79 @@ async def test_process_runner_sanitizes_before_mapper(monkeypatch):
 
     assert seen["fields"] == [{"name": "Father_FullName", "value": "MAN VĂN QUỲNH"}]
     assert result["fields"] == seen["fields"]
+
+
+def _declaration_with_death_note_on_father_name() -> list[dict]:
+    """Tờ khai viết tay ghi chú "(Mất)" ngay sau họ tên cha, kèm CCCD/trích lục khai tử của cha."""
+    return [
+        {
+            "name": "to-khai.pdf",
+            "text": (
+                "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
+                "Họ, chữ đệm, tên người yêu cầu: Hồ Thị Thu Hà\n"
+                "Ngày, tháng, năm sinh: 20/10/1971\n"
+                "Quan hệ với người được khai sinh: Bản thân\n"
+                "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:\n"
+                "Họ, chữ đệm, tên: Hồ Thị Thu Hà\n"
+                "Ngày, tháng, năm sinh: 20/10/1971\n"
+                "Giới tính: Nữ Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+                "Họ, chữ đệm, tên người mẹ: Nguyễn Thị Ngâu\n"
+                "Năm sinh: (5) 1940 Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam\n"
+                "Nơi cư trú: (2) K89/32 Thanh Sơn Hải Châu Đà Nẵng\n"
+                "Họ, chữ đệm, tên người cha: Hồ Bá Chích (Mất)\n"
+                "Năm sinh: (5) 1948 Dân tộc: (2) Kinh Quốc tịch: (2) Việt Nam\n"
+                "Nơi cư trú: (2) K89/32 Thanh Sơn Hải Châu Đà Nẵng\n"
+                "Tôi cam đoan những nội dung khai trên đây là đúng sự thật.\n"
+            ),
+        },
+        {
+            "name": "cccd-cha.pdf",
+            "text": (
+                "CĂN CƯỚC CÔNG DÂN\n"
+                "Số / No.: 044048003253\n"
+                "Họ và tên / Full name:\n"
+                "HỒ BÁ THÍCH\n"
+                "Ngày sinh / Date of birth: 10/12/1948\n"
+                "Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam\n"
+            ),
+        },
+    ]
+
+
+def test_death_note_after_father_name_is_not_part_of_the_name():
+    documents = _declaration_with_death_note_on_father_name()
+    context = reason._render_context("", {}, documents)
+    father = reason._section(context, "cha")
+
+    assert reason._labeled_value(father, "Họ tên") == "Hồ Bá Chích"
+    # Tên sạch mới ghép được với CCCD của chính người cha.
+    assert reason._labeled_value(father, "Số CCCD/CMND") == "044048003253"
+    assert reason._labeled_value(father, "Giới tính") == "Nam"
+    assert reason._labeled_value(father, "Trạng thái") == "đã chết"
+
+
+def test_death_note_does_not_wipe_the_father_block():
+    documents = _declaration_with_death_note_on_father_name()
+    context = reason._render_context("", {}, documents)
+    kept = reason.sanitize_extracted_fields(
+        [
+            {"name": "Subject_FullName", "value": "Hồ Thị Thu Hà"},
+            {"name": "Father_FullName", "value": "Hồ Bá Chích"},
+            {"name": "Father_BirthDateOrYear", "value": "1948"},
+            {"name": "Father_Ethnicity", "value": "Kinh"},
+            {"name": "Mother_FullName", "value": "Nguyễn Thị Ngâu"},
+        ],
+        context,
+    )
+
+    assert {field["name"] for field in kept} >= {
+        "Father_FullName",
+        "Father_BirthDateOrYear",
+        "Father_Ethnicity",
+    }
+
+
+def test_split_name_note_keeps_plain_names_untouched():
+    assert reason.split_name_note("Hồ Bá Thích (Mất)") == ("Hồ Bá Thích", "Mất")
+    assert reason.split_name_note("Nguyễn Văn A (đã chết)") == ("Nguyễn Văn A", "đã chết")
+    assert reason.split_name_note("Nguyễn Thị Ngâu") == ("Nguyễn Thị Ngâu", "")

@@ -172,20 +172,29 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   HoTich_LoaiGiayToTuyThan/HoTich_SoGiayToTuyThan/HoTich_NgayCapGiayToTuyThan/HoTich_NoiCapGiayToTuyThan
   . Nếu GIẤY KHAI SINH chỉ có "Số định danh cá nhân" của trẻ và không có CCCD/Căn cước của chính trẻ
     thì chỉ trả HoTich_SoDinhDanh; bỏ các field GiayToTuyThan.
-- Với giấy kết hôn, HoTich_HoTenNguoiDuocDangKy BẮT BUỘC lấy người chồng/bên nam.
-  Không trả cả hai người, không lấy họ tên vợ/bên nữ.
+- Giấy kết hôn có HAI chủ thể (vợ và chồng). Chọn MỘT người làm HoTich_* theo thứ tự sau:
+  + ƯU TIÊN 1: NGƯỜI ĐANG ĐĂNG NHẬP ở <requester_context> nếu người đó CHÍNH LÀ vợ hoặc chồng ghi
+    trên giấy (trùng họ tên hoặc trùng số giấy tờ tùy thân). Trích lục là của cuộc hôn nhân của chính
+    họ, nên họ vừa là người yêu cầu vừa là NGƯỜI ĐƯỢC ĐĂNG KÝ — lấy CHÍNH họ làm HoTich_*, kể cả khi
+    họ là vợ/bên nữ, và trả CopyRequest_QuanHe = "Bản thân".
+  + ƯU TIÊN 2: người mà TỜ KHAI (ToKhai_HoTenNguoiDuocCap) nêu tên, nếu hồ sơ có tờ khai cấp bản sao.
+  + MẶC ĐỊNH: người chồng/bên nam.
+  Chỉ trả MỘT người, không trả cả hai. Bên còn lại đưa vào HoTich_NguoiThan với quanHe "vợ"/"chồng"
+  đúng vai của họ so với người đã chọn.
 - Với giấy kết hôn, HoTich_NgaySinh/HoTich_DanToc/HoTich_QuocTich/HoTich_SoDinhDanh/HoTich_NoiCuTru
-  cũng lấy theo người chồng/bên nam nếu OCR có nhiều cột vợ/chồng.
-- Với giấy kết hôn, HoTich_GioiTinh của người chồng/bên nam là "Nam" kể cả giấy không in nhãn giới tính riêng.
-- Với giấy kết hôn, nếu block chồng/bên nam có "Giấy tờ tùy thân: Thẻ căn cước công dân số ... cấp ngày ..."
-  thì trả:
+  cũng lấy theo ĐÚNG người đã chọn ở trên khi OCR có nhiều cột vợ/chồng — không trộn cột.
+- Với giấy kết hôn, HoTich_GioiTinh suy ra từ vai của người đã chọn ("Nam" cho chồng/bên nam, "Nữ"
+  cho vợ/bên nữ) kể cả giấy không in nhãn giới tính riêng.
+- Với giấy kết hôn, nếu block của NGƯỜI ĐÃ CHỌN có "Giấy tờ tùy thân: Thẻ căn cước công dân số ...
+  cấp ngày ..." thì trả:
   HoTich_LoaiGiayToTuyThan = "Căn cước công dân",
-  HoTich_SoGiayToTuyThan = số CCCD trong block chồng/bên nam,
+  HoTich_SoGiayToTuyThan = số CCCD trong block người đã chọn,
   HoTich_SoDinhDanh = cùng số đó nếu không có số định danh riêng,
-  HoTich_NgayCapGiayToTuyThan = ngày cấp trong block chồng/bên nam,
-  HoTich_NoiCapGiayToTuyThan = cơ quan cấp trong block chồng/bên nam.
-- Với giấy kết hôn có hai giấy tờ tùy thân, không lấy số/ngày cấp/cơ quan cấp của vợ/bên nữ.
-- Với giấy kết hôn, cố tách HoTich_NoiCuTru của người chồng/bên nam thành object:
+  HoTich_NgayCapGiayToTuyThan = ngày cấp trong block người đã chọn,
+  HoTich_NoiCapGiayToTuyThan = cơ quan cấp trong block người đã chọn.
+- Với giấy kết hôn có hai giấy tờ tùy thân, KHÔNG lấy số/ngày cấp/cơ quan cấp của người còn lại —
+  số của người còn lại chỉ đi vào soGiayTo trong HoTich_NguoiThan.
+- Với giấy kết hôn, cố tách HoTich_NoiCuTru của người đã chọn thành object:
   {"quocGia":"Việt Nam","tinh":"<tỉnh/thành>","xa":"<xã/phường/thị trấn>","diaChi":"<số nhà/tổ/thôn/xóm/bản/tổ dân phố>"}.
   Ví dụ OCR "Tổ dân phố Cư Nhà La, phường Đoàn Kết, tỉnh Lai Châu" thì trả
   tinh="Lai Châu", xa="Đoàn Kết", diaChi="Tổ dân phố Cư Nhà La".

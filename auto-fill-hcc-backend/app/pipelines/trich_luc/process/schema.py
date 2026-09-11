@@ -93,7 +93,7 @@ FIELDS: list[dict] = [
     {"name": "HoTich_TenGiayTo",
      "desc": "Tên của CHÍNH giấy hộ tịch đính kèm đang xét; không lấy tên giấy được yêu cầu trên TỜ KHAI."},
     {"name": "HoTich_HoTenNguoiDuocDangKy",
-     "desc": "Họ tên người được đăng ký trong giấy tờ hộ tịch; riêng giấy kết hôn lấy người chồng/bên nam."},
+     "desc": "Họ tên người được đăng ký trong giấy tờ hộ tịch. Giấy kết hôn có hai chủ thể: lấy người đang đăng nhập nếu họ là vợ/chồng trên giấy, không thì lấy người tờ khai nêu tên, cuối cùng mới mặc định chồng/bên nam."},
     {"name": "HoTich_NgaySinh", "desc": "Ngày sinh người được đăng ký nếu giấy tờ có ghi, dd/mm/yyyy."},
     {"name": "HoTich_GioiTinh", "desc": 'Giới tính người được đăng ký nếu giấy tờ có ghi: "Nam" hoặc "Nữ".'},
     {"name": "HoTich_DanToc",
@@ -117,7 +117,7 @@ FIELDS: list[dict] = [
              'không lấy từ TỜ KHAI. Với TRÍCH LỤC KHAI TỬ, lấy cơ quan '
              'trong dòng giấy tờ tùy thân của NGƯỜI CHẾT; "Cục CS QLHC về trật tự xã hội" chuẩn hóa '
              'thành "Cục Cảnh sát quản lý hành chính về trật tự xã hội", không lấy của người đi khai tử; '
-             "riêng giấy kết hôn lấy của chồng/bên nam."},
+             "riêng giấy kết hôn lấy của chính người được chọn làm người được đăng ký."},
 
     # CCCD/CMND RIÊNG của CHÍNH người được đăng ký, tách biệt hoàn toàn với Nyc_*.
     {"name": "ChuThe_HoTen", "desc": "Họ tên trên CCCD/CMND của chính người được đăng ký."},

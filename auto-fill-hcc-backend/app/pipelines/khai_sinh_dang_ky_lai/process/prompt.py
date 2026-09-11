@@ -67,7 +67,11 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
 5. Chính tả họ tên: giữ đúng người theo tờ khai, nhưng nếu chính người đó có CCCD/trích lục trong hồ sơ
    thì viết họ tên theo giấy tờ gốc (bản đánh máy chuẩn hơn chữ viết tay), vd tờ khai "Nguyễn Văn Câu"
    + trích lục khai tử "NGUYỄN VĂN CẦU" → Father_FullName = "NGUYỄN VĂN CẦU".
-6. Số định danh / ngày cấp / nơi cấp: lệch giữa tờ khai và CCCD của CÙNG một người thì lấy theo CCCD.
+6. Số định danh / ngày cấp / nơi cấp là thuộc tính CỦA TẤM THẺ, không phải chữ chép tay trên tờ khai:
+   hồ sơ có CCCD/CMND mang đúng họ tên người đó thì BA ô này lấy theo CCCD, kể cả khi tờ khai có ghi
+   khác hoặc bỏ trống. Riêng CHA và MẸ, khối <cha>/<me> có dòng "Nguồn giấy tờ tùy thân" thì Số CCCD/CMND,
+   Ngày cấp, Nơi cấp ghi trong khối đó là giá trị BẮT BUỘC của Father_*/Mother_IdNumber, _IdIssueDate,
+   _IdIssuePlace. Họ tên thì KHÔNG theo quy tắc này (xem mục 5).
 7. HỒ SƠ KHÔNG CÓ TỜ KHAI thì mới dùng khối <phan_vai_khi_khong_co_to_khai> bên dưới.
 </uu_tien_nguon>
 

@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
@@ -23,6 +23,16 @@ _COMP_BY_NAME = {
     "ChaNoiCuTru_NuocNgoai": "x-select-area",
     "MeNoiCuTru_NuocNgoai": "x-select-area",
 }
+
+
+def upper_person_name(value) -> str:
+    """Như helper dùng chung, nhưng bỏ chú thích trạng thái tờ khai hay viết kèm họ tên.
+
+    Ô "Họ, chữ đệm, tên" trên eForm chỉ nhận họ tên; "HỒ BÁ THÍCH (MẤT)" là chữ người dân
+    ghi thêm trên tờ khai, không phải tên. Trạng thái đã mất đã có chỗ riêng — mục Nơi cư trú.
+    """
+    return _upper_person_name(_reason_mod.split_name_note(value)[0])
+
 
 _STRUCTURAL_DEFAULTS = [
     {"name": "LoaiDangKy", "comp": "x-radio", "value": "2"},

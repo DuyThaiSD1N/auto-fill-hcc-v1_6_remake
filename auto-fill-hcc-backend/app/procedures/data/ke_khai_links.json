@@ -391,7 +391,7 @@
       "key": "tam-ngung-kinh-doanh",
       "code": "1.001570",
       "label": "Tạm ngừng kinh doanh",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-ef0b-7208-aa89-3b781441abad",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d768-7446-bd77-3bb11051041c",
       "needsAgencySelect": true,
       "autoConfirm": false
     },
@@ -405,9 +405,9 @@
     },
     {
       "key": "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
-      "code": "1.013978",
+      "code": "1.116360",
       "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff942-728b-7758-9aa7-bf989b67791a",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -615,6 +615,7 @@
       "label": "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
       "needsAgencySelect": true,
+      "submitCardIncludes": "Cơ quan thực hiện: UBND",
       "autoConfirm": true
     },
     {
@@ -995,6 +996,8 @@
       "label": "Cấp lại Chứng chỉ hành nghề thú y",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-47c1-71d9-a6f9-c0f5829bb34e",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1410,6 +1413,104 @@
       "needsAgencySelect": true,
       "provinceOnlyAgency": true,
       "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-lan-dau-lam-dong",
+      "code": "1.013978",
+      "label": "[Lâm Đồng] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-doi-gcn-quyen-su-dung-dat-lam-dong",
+      "code": "1.012783",
+      "label": "[Lâm Đồng] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap-lam-dong",
+      "code": "1.012790",
+      "label": "[Lâm Đồng] Đính chính Giấy chứng nhận đã cấp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tach-thua-hop-thua-dat-lam-dong",
+      "code": "1.012784",
+      "label": "[Lâm Đồng] Tách thửa đất hoặc hợp thửa đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f5d-72e6-9a68-ab8e3ba11c8b",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-giay-chung-nhan-do-bi-mat-lam-dong",
+      "code": "1.012786",
+      "label": "[Lâm Đồng] Cấp lại Giấy chứng nhận do bị mất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76c7-75db-b936-ff88fe49d880",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-lam-dong",
+      "code": "1.013992",
+      "label": "[Lâm Đồng] Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép cơ quan nhà nước có thẩm quyền",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8676-77f3-ba25-0b6137011577",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-lam-dong",
+      "code": "1.013980",
+      "label": "[Lâm Đồng] Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là tài sản công theo quy định của pháp luật về quản lý, sử dụng tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải quyết tranh chấp, khiếu nại, tố cáo về đất đai; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp là quyền sử dụng đất, tài sản gắn liền với đất để đăng ký, bao gồm cả xử lý khoản nợ có bảo đảm đối với khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-7030-8757-6ff69db130e3",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-lam-dong",
+      "code": "1.013831",
+      "label": "[Lâm Đồng] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; mua bán nhà ở có thời hạn",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-lam-dong",
+      "code": "1.012818",
+      "label": "[Lâm Đồng] Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76e6-7468-b6f2-417e588578f5",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-thue-chuyen-muc-dich-dat-lam-dong",
+      "code": "1.013823",
+      "label": "[Lâm Đồng] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ec9-76f0-b9d3-985182762c76",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-dat-dai-lam-dong",
+      "code": "1.013826",
+      "label": "[Lâm Đồng] Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ecc-735b-9e4f-6121df9b059d",
+      "needsAgencySelect": true,
       "autoConfirm": true
     }
   ]

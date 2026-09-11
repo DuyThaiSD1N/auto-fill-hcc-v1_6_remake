@@ -640,6 +640,107 @@ def _rescue_requester_card(values: dict) -> dict:
     return moved
 
 
+# Nhân thân của người được đăng ký, đổ từ THẺ/khối người yêu cầu khi đổi vai vợ ↔ chồng.
+_SUBJECT_FROM_REQUESTER = {
+    "HoTich_HoTenNguoiDuocDangKy": "Nyc_HoTen",
+    "HoTich_NgaySinh": "Nyc_NgaySinh",
+    "HoTich_GioiTinh": "Nyc_GioiTinh",
+    "HoTich_SoDinhDanh": "Nyc_SoDinhDanh",
+    "HoTich_SoGiayToTuyThan": "Nyc_SoDinhDanh",
+    "HoTich_NgayCapGiayToTuyThan": "Nyc_NgayCap",
+    "HoTich_NoiCapGiayToTuyThan": "Nyc_NoiCap",
+    "HoTich_NoiCuTru": "Nyc_NoiCuTru",
+}
+_SPOUSE_ROLES = {"vo": "Chồng", "chong": "Vợ"}
+
+
+def _prefer_requester_as_marriage_subject(values: dict, options: dict | None) -> dict:
+    """Giấy kết hôn có HAI chủ thể; người đăng nhập VNeID là một trong hai thì CHÍNH HỌ là mục II.
+
+    Mặc định agent lấy bên nam làm người được đăng ký. Nhưng khi tài khoản VNeID (hoặc thẻ người yêu
+    cầu trong hồ sơ) chính là người vợ ghi trên giấy, người đó vừa là NGƯỜI YÊU CẦU vừa là NGƯỜI ĐƯỢC
+    ĐĂNG KÝ — trích lục là của cuộc hôn nhân của chính họ. Để nguyên bên nam thì mục II ra người khác
+    và ô "(5) Quan hệ" bị tick "Vợ"/"Chồng" thay vì "Bản thân".
+
+    Chỉ đảo khi CHẮC: đúng sự kiện kết hôn, giấy ghi rõ vai vợ/chồng của người yêu cầu, và hồ sơ
+    KHÔNG có tờ khai nêu người được cấp (tờ khai là lời khai chính chủ, nó chỉ định ai thì theo).
+    Field nào không có nguồn cho người mới (vd dân tộc) thì XÓA, không giữ lại của người cũ.
+    """
+    event = str(values.get("HoTich_LoaiSuKien") or "").strip().lower()
+    if not event:
+        event = _event_from_title(values.get("HoTich_TenGiayTo"))
+    if event != "marriage":
+        return values
+
+    # Tờ khai đã nêu người yêu cầu → chính chủ tự khai xin bản sao cho ai, không đoán thay.
+    if any(str(key).startswith("TkNyc_") and values.get(key) not in (None, "", {}, []) for key in values):
+        return values
+
+    rows = values.get("HoTich_NguoiThan")
+    if not isinstance(rows, list):
+        return values
+
+    ctx = (options or {}).get("formContext") or {}
+    req_ids = {value for value in (
+        _digits(values.get("Nyc_SoDinhDanh")),
+        _digits(ctx.get("applicantIdentityNumber")),
+    ) if value}
+    req_names = {value for value in (
+        _fold(values.get("Nyc_HoTen")),
+        _fold(ctx.get("applicantFullname")),
+    ) if value}
+    if not req_ids and not req_names:
+        return values
+
+    matched = None
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        role = _fold(row.get("quanHe")).strip(".:;,- ")
+        role = re.sub(r"^nguoi\s+", "", role)
+        if role not in _SPOUSE_ROLES:
+            continue
+        row_id = _digits(row.get("soGiayTo"))
+        if (row_id and row_id in req_ids) or (_fold(row.get("hoTen")) in req_names and req_names):
+            matched = (row, role)
+            break
+    if not matched:
+        return values
+
+    row, role = matched
+    subject_id = _digits(values.get("HoTich_SoDinhDanh"))
+    if subject_id and subject_id in req_ids:
+        return values  # agent đã lấy đúng người rồi
+
+    swapped = dict(values)
+    # Bên còn lại (người đang bị agent đặt nhầm vào mục II) lùi về danh sách người thân, giữ đúng vai.
+    old_subject = str(values.get("HoTich_HoTenNguoiDuocDangKy") or "").strip()
+    if old_subject:
+        swapped["HoTich_NguoiThan"] = [{
+            "quanHe": _SPOUSE_ROLES[role],
+            "hoTen": old_subject,
+            "soGiayTo": values.get("HoTich_SoGiayToTuyThan") or values.get("HoTich_SoDinhDanh") or "",
+        }]
+    else:
+        swapped["HoTich_NguoiThan"] = []
+
+    for target, source in _SUBJECT_FROM_REQUESTER.items():
+        value = values.get(source)
+        if value in (None, "", {}, []):
+            swapped.pop(target, None)
+        else:
+            swapped[target] = value
+    # Giấy kết hôn ghi "Thẻ căn cước công dân số ..." → suy ra loại giấy tờ; dân tộc thì không có
+    # nguồn nào cho người mới nên phải bỏ, tránh đội dân tộc của người kia sang.
+    swapped.pop("HoTich_DanToc", None)
+    swapped.pop("HoTich_LoaiGiayToTuyThan", None)
+    if len(_digits(values.get("Nyc_SoDinhDanh"))) == 12:
+        swapped["HoTich_LoaiGiayToTuyThan"] = "Căn cước công dân"
+    # Người yêu cầu CHÍNH LÀ người được đăng ký → ô "(5) Quan hệ" phải là "Bản thân".
+    swapped["CopyRequest_QuanHe"] = "Bản thân"
+    return swapped
+
+
 def _strip_role_label(text: str) -> str:
     return re.sub(
         r"^\s*(họ[, ]*chữ đệm[, ]*tên\s*)?(chồng|bên nam|nam|người chồng)\s*[:：-]?\s*",
@@ -691,7 +792,10 @@ def _registered_person_name(values: dict, event_type: str) -> str:
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
-    values = _rescue_requester_card(_apply_declaration_precedence(_by_name(fields)))
+    values = _prefer_requester_as_marriage_subject(
+        _rescue_requester_card(_apply_declaration_precedence(_by_name(fields))),
+        options,
+    )
     out: list[dict] = []
     seen: set[str] = set()
 

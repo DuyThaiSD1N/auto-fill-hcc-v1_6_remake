@@ -160,6 +160,37 @@ _TAX_METHOD_BY_LABEL = {
     "khong phai nop thue gtgt": "Không phải nộp thuế GTGT",
 }
 
+# Khớp TUYỆT ĐỐI theo bảng trên là quá giòn: LLM đọc mục 9.9 rồi trả "Phương pháp khấu trừ",
+# "Khấu trừ thuế GTGT", "Trực tiếp trên doanh số (%)"… đều là ĐÚNG Ý nhưng lệch chữ, mà `add()` bỏ
+# qua giá trị rỗng nên field biến mất KHÔNG một tiếng động — cổng giữ nguyên bốn ô chưa tích và
+# không ai biết hồ sơ thiếu mục 9.9. Vì vậy nhận diện theo TỪ KHOÁ đặc trưng của từng phương án.
+#
+# Thứ tự xét là bắt buộc: "không phải nộp thuế GTGT" chứa luôn chữ "gtgt" nên phải chặn trước
+# "trực tiếp trên GTGT"; "trực tiếp trên doanh số" phải chặn trước mọi nhánh "trực tiếp" còn lại.
+_TAX_METHOD_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Không phải nộp thuế GTGT", ("khong phai nop", "khong nop thue", "khong thuoc dien nop")),
+    ("Trực tiếp trên doanh số", ("doanh so", "doanh thu")),
+    ("Trực tiếp trên GTGT", ("truc tiep",)),
+    ("Khấu trừ", ("khau tru",)),
+)
+
+
+def _tax_method_label(value: Any) -> str:
+    """Chuẩn hoá cách viết của LLM về đúng chữ bốn ô radio trên cổng.
+
+    Trả rỗng khi không nhận ra phương án nào — mục 9.9 chỉ được tích đúng một ô, đoán bừa là ghi
+    vào hồ sơ pháp lý một câu trả lời không ai kê khai.
+    """
+    folded = re.sub(r"\s+", " ", _fold(value)).strip()
+    if not folded:
+        return ""
+    if folded in _TAX_METHOD_BY_LABEL:
+        return _TAX_METHOD_BY_LABEL[folded]
+    for label, markers in _TAX_METHOD_RULES:
+        if any(marker in folded for marker in markers):
+            return label
+    return ""
+
 # Phương thức đóng BHXH (GĐN mục 10). Cùng lý do với thuế: gửi NHÃN, không gửi mã.
 # Cổng chỉ có ảnh chụp màn hình, chưa biết tên control lẫn value — extension dò radio theo nhãn hiển
 # thị (xem stepSocialInsurance trong content/procedures/enterprise-registration.js).
@@ -455,7 +486,7 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
             add(f"{base}$INDZONE_EXPZONE_YESNO_IDId", "dom-checkbox", True,
                 aliases=[f"{base}$INDZONE_EXPZONE_YESNO_IDld"])
         add(f"{base}$TAX_CAL_METHOD_IDRbBox", "dom-radio",
-            _TAX_METHOD_BY_LABEL.get(_fold(values.get("Thue_PhuongPhapGTGT")), ""))
+            _tax_method_label(values.get("Thue_PhuongPhapGTGT")))
         if values.get("Thue_DuAnBOT") is True:
             add("ctl00$C$IS_BOT_BT_ID_YESNO_IDId", "dom-checkbox", True,
                 aliases=["ctl00$C$IS_BOT_BT_ID_YESNO_IDIdd"])
