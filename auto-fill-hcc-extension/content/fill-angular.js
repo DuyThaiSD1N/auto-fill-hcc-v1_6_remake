@@ -39,6 +39,20 @@ async function fillFormAngular(fields) {
       continue;
     }
 
+    // sdt-nguoiyeucau: SĐT đọc trên giấy là số của NGƯỜI KÝ TỜ KHAI. Ô "Số điện thoại" lại nằm
+    // trong khối Thông tin người yêu cầu (cổng đổ theo tài khoản đăng nhập) → chỉ điền khi hai
+    // người là MỘT; khác người thì bỏ qua, không điền số của người khác.
+    if (f.comp === "sdt-nguoiyeucau") {
+      try {
+        const ok = await fillNycSdtIfSameRequester(f);
+        if (ok) result.filled++;
+      } catch (e) {
+        result.errors.push(f.name);
+        console.warn("[AutoFill-NG] Lỗi điền NycSdt:", e);
+      }
+      continue;
+    }
+
     // raw: input trần (vd Số lượng bản sao) — không có type đặc thù, tìm theo formcontrolname
     // hoặc fallback theo placeholder; set value + dispatch input.
     if (f.comp === "raw") {
@@ -332,6 +346,37 @@ async function resolveAndFillNycQuanHe(info) {
     if (el) _convertGreenToYellow(el);
   }
   return ok;
+}
+
+// Bỏ dấu + gộp khoảng trắng để so tên bất chấp OCR viết hoa/thiếu dấu ("ĐĂNG VINH" ~ "Dang Vinh").
+function foldVnName(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Điền SĐT vào ô Người yêu cầu CHỈ KHI tên người yêu cầu trên tờ khai trùng tên người yêu cầu
+// cổng đã đổ sẵn trên form. Khác tên → số điện thoại đó không phải của người nộp → KHÔNG điền.
+async function fillNycSdtIfSameRequester(f) {
+  const info = f.value || {};
+  const req = readRequesterIdentity();
+  const tenForm = foldVnName(req.ten);
+  const tenGiay = foldVnName(info.ten);
+  if (!tenForm || !tenGiay || tenForm !== tenGiay) {
+    console.log(`[AutoFill-NG] NycSdt: bỏ qua — người yêu cầu trên form "${req.ten}" ≠ tờ khai "${info.ten || ""}"`);
+    return false;
+  }
+  const el = findFormControl(fieldCandidates({ name: f.name }));
+  if (!el) {
+    console.warn("[AutoFill-NG] NycSdt: không tìm thấy ô số điện thoại");
+    return false;
+  }
+  return fillNgText(el, info.sdt);
 }
 
 // mat-select (Angular Material) — dùng cho danh mục ngắn (Giới tính, Loại cư trú...).

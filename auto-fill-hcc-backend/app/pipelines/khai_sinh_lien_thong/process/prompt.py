@@ -121,6 +121,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 
 # ═══ H. LIÊN HỆ ═══
 - LienHe_SoDienThoai: CỐ GẮNG đọc số điện thoại liên hệ trong giấy tờ (vd dòng "Số điện thoại:..." trong văn bản/đơn). Trả số di động VN 10 số bắt đầu bằng "0"; sửa lỗi OCR phổ biến (S→5, O→0); nếu thiếu số 0 đứng đầu thì thêm vào. Không bịa nếu không đọc được.
+- Tk_NguoiYeuCau_HoTen: họ tên ở dòng "Họ, chữ đệm, tên người yêu cầu" NGAY ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH (cũng là người ký tên cuối tờ khai). TUYỆT ĐỐI KHÔNG lấy tên con/cha/mẹ ở các khối phía dưới, KHÔNG lấy người kê khai/chủ hộ trên CT01. Không có tờ khai đăng ký khai sinh → bỏ field.
 
 # ═══ H2. ĐỀ NGHỊ CẤP BẢN SAO ═══
 - CopyRequest_Quantity CHỈ lấy từ mục "Đề nghị cấp bản sao"/"Số lượng ... bản" trên tài liệu có đúng

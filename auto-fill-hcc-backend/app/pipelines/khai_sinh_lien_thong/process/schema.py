@@ -46,6 +46,9 @@ FIELDS: list[dict] = [
     # Số điện thoại liên hệ (nếu giấy tờ có ghi).
     {"name": "LienHe_SoDienThoai", "desc": "Số điện thoại liên hệ đọc được trên giấy tờ; số di động VN 10 số bắt đầu bằng 0."},
 
+    # Người ký TỜ KHAI ĐĂNG KÝ KHAI SINH — dùng để xác định số điện thoại trên giấy là của ai.
+    {"name": "Tk_NguoiYeuCau_HoTen", "desc": "Họ tên NGƯỜI YÊU CẦU ở ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Họ, chữ đệm, tên người yêu cầu' (người ký cuối tờ khai). KHÔNG lấy tên con/cha/mẹ ở các khối bên dưới, cũng KHÔNG lấy người kê khai trên CT01. Chỉ trả khi có tờ khai đăng ký khai sinh ghi rõ."},
+
     # Số lượng bản sao trên tờ khai đăng ký khai sinh; không có số lượng thật thì không trả.
     {"name": "CopyRequest_Quantity",
      "desc": "Số lượng bản sao ghi thật ở mục 'Đề nghị cấp bản sao' trên TỜ KHAI ĐĂNG KÝ KHAI SINH, "
@@ -118,8 +121,9 @@ UI_COMP_BY_NAME = {
     "DkttChuHo": "text",
     "DkttChuhoSoGiayTo": "text",
     "DkttMaQuanHe": "select",
-    # Người yêu cầu.
-    "NycSdt": "text",
+    # Người yêu cầu. SĐT chỉ điền khi người đăng nhập đúng là người ký tờ khai → comp riêng để
+    # extension tự so tên với ô NycHoTen readonly mà cổng đổ sẵn.
+    "NycSdt": "sdt-nguoiyeucau",
     # Đề nghị cấp bản sao trên form liên thông Angular.
     "CapBanSao": "radio",
     "BanSaoSoLuong": "raw",

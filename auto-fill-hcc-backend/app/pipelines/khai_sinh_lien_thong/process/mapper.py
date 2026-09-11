@@ -382,6 +382,15 @@ def enrich(fields: list[dict]) -> list[dict]:
             "meTen": values.get("ThongTinMe_HoTen"),
         })
 
+    # Số điện thoại: SĐT ghi trên giấy tờ là của NGƯỜI KÝ TỜ KHAI. Khối "Thông tin người yêu cầu"
+    # trên cổng lại là người ĐANG ĐĂNG NHẬP (readonly, chỉ extension đọc được) → gửi kèm tên người
+    # yêu cầu trên tờ khai để extension so tên; trùng thì mới điền ô SĐT, khác thì bỏ qua vì đó là
+    # số của người khác.
+    phone = _clean_phone(values.get("LienHe_SoDienThoai"))
+    nyc_ten = _upper_name(values.get("Tk_NguoiYeuCau_HoTen"))
+    if phone and nyc_ten:
+        add("NycSdt", {"sdt": phone, "ten": nyc_ten})
+
     # Đăng ký thường trú: nếu hồ sơ có TỜ KHAI CT01 (thay đổi thông tin cư trú) → chọn xác nhận
     # bằng VĂN BẢN GIẤY (LoaiXacNhanVNeID="1") thay cho VNeID, rồi điền "Thông tin chủ hộ" theo CT01.
     # Xác định chủ hộ là bố/mẹ theo SỐ ĐỊNH DANH (chắc chắn), fallback TÊN; khác cả hai → điền tay 3 ô.
