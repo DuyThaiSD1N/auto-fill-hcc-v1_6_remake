@@ -11,10 +11,6 @@
   },
   "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData"],
   "host_permissions": [
-    "http://localhost:12005/*",
-    "ws://localhost:12005/*",
-    "http://127.0.0.1:12005/*",
-    "ws://127.0.0.1:12005/*",
     "https://trolyhoso-hcc.tiengnoi.vn/*",
     "wss://trolyhoso-hcc.tiengnoi.vn/*",
     "https://trolyhoso-hcc.vnekyc.vn/*",
