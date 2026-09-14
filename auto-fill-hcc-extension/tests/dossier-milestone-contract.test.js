@@ -1,5 +1,5 @@
 // Vòng đời MỘT hồ sơ ở Auto Fill: dossierId (khóa) — mốc bắt đầu — mốc bấm Gửi hồ sơ.
-// Khóa này đi vào traces.dossier_id, CÙNG TRƯỜNG với conversation_id của Trợ lý người dân.
+// Khóa này đi vào traces.dossier_id, CÙNG TRƯỜNG với conversation_id của Trợ lý nhân dân.
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");

@@ -35,9 +35,24 @@
   const PANEL_ID = "autofill-hcc-panel";
   const BUBBLE_ID = "autofill-hcc-bubble";
   const IFRAME_ID = "autofill-hcc-iframe";
+  const DROP_MASK_ID = "autofill-hcc-drop-mask"; // mask che kín panel lúc kéo file từ ngoài vào (xem wireExternalFileDrop)
+  const UPDATE_BTN_ID = "autofill-hcc-cap-nhat";               // nút "Cập nhật" trên header (xem veNutCapNhat)
+  const UPDATE_CONFIRM_ID = "autofill-hcc-cap-nhat-xac-nhan";
+  const KHOA_BAN_CHO = "hcc_ban_moi_cho";                      // background (kiemBanMoi) ghi / xoá
   const IS_TOP_FRAME = window === window.top;
   const PANEL_MIN_H = 160; // chiều cao tối thiểu của iframe (px)
-  const APP_VERSION_LABEL = "1.17 · 8/9"; // hiện ở header panel; đổi tay mỗi lần phát hành (kèm ngày để hỗ trợ)
+  // Nhãn phiên bản ở header panel = "<số> · <ngày phát hành>".
+  //
+  // SỐ đọc thẳng từ manifest, không gõ tay: bản trước gõ tay và đã trôi thật —
+  // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
+  // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
+  // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
+  const APP_RELEASE_DATE = "14/9";
+  const APP_VERSION_LABEL = (() => {
+    let v = "?";
+    try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
+    return `${v} · ${APP_RELEASE_DATE}`;
+  })();
   // Trạng thái panel lưu THEO TAB (autofill_panel_open_<tabId>) để mỗi tab là 1 phiên độc lập:
   // reload cùng tab thì tự mở lại, nhưng mở TAB MỚI sẽ không bị kéo panel/phiên của tab cũ sang.
   let CURRENT_TAB_ID = null;
@@ -139,6 +154,7 @@
   }
 
   function removeUI() {
+    goPreview(); // dong panel thi khong de khung xem truoc lo lung tren trang
     document.getElementById(PANEL_ID)?.remove();
     document.getElementById(BUBBLE_ID)?.remove();
     setPanelOpen(false);
@@ -146,11 +162,64 @@
     clearAutoMinState();
   }
 
+  // ---- Trang này có mở được panel không? -----------------------------------
+  //
+  // `web_accessible_resources.matches` trong manifest mới là thứ quyết định,
+  // KHÔNG phải `content_scripts.matches`. Panel là một
+  // <iframe src="chrome-extension://…/popup.html">, và Chromium TỪ CHỐI nạp nó
+  // từ trang không nằm trong danh sách đó.
+  //
+  // Phải kiểm vì có một đường đi vòng: bấm biểu tượng extension thì background
+  // dùng activeTab + chrome.scripting tiêm content.js vào BẤT KỲ trang nào, kể
+  // cả trang ngoài danh sách (xem chrome.action.onClicked). Khi đó content.js
+  // dựng được khung panel nhưng iframe bên trong bị chặn — cán bộ nhận một cái
+  // hộp CHẾT, không một lời giải thích, còn console chỉ có đúng một dòng
+  // "Denying load of chrome-extension://…". Gặp thật 2026-09-11.
+  function khopMauMatch(mau, url) {
+    if (mau === "<all_urls>") return true;
+    const m = /^(\*|https?|file|ftp):\/\/(\*|(?:\*\.)?[^/*]+)?(\/.*)$/.exec(mau);
+    if (!m) return false;
+    const [, giaoThuc, host, duong] = m;
+    let u;
+    try { u = new URL(url); } catch (e) { return false; }
+    if (giaoThuc !== "*" && u.protocol !== giaoThuc + ":") return false;
+    if (host && host !== "*") {
+      if (host.startsWith("*.")) {
+        const goc = host.slice(2);
+        if (u.hostname !== goc && !u.hostname.endsWith("." + goc)) return false;
+      } else if (u.hostname !== host) {
+        return false;
+      }
+    }
+    const re = new RegExp("^" + duong.split("*").map((x) => x.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*") + "$");
+    return re.test(u.pathname + u.search);
+  }
+
+  function trangDuocHoTro(url) {
+    let khoi;
+    try { khoi = chrome.runtime.getManifest().web_accessible_resources || []; }
+    catch (e) { return true; } // không đọc được manifest thì đừng tự chặn
+    const dia = url || location.href;
+    for (const b of khoi) {
+      if (!(b && Array.isArray(b.matches))) continue;
+      if (!(Array.isArray(b.resources) && b.resources.some((r) => r === "popup.html"))) continue;
+      if (b.matches.some((mau) => khopMauMatch(mau, dia))) return true;
+    }
+    return false;
+  }
+
   function togglePanel() {
     if (!IS_TOP_FRAME) return;
     // Đang mở (kể cả đang thu nhỏ) → coi như đóng hẳn.
     if (document.getElementById(PANEL_ID) || document.getElementById(BUBBLE_ID)) {
       removeUI();
+      return;
+    }
+    if (!trangDuocHoTro()) {
+      showPageToast(
+        "Trang này không nằm trong danh sách cổng dịch vụ công được hỗ trợ nên không mở được bảng trợ lý. " +
+        "Hãy mở đúng trang cổng dịch vụ công rồi bấm lại.", "warn");
+      console.warn("[AutoFill] Không mở panel: %s không khớp web_accessible_resources.matches trong manifest.", location.href);
       return;
     }
     // Lấy tabId của frame này (để iframe biết gửi message đúng tab khi user đổi tab khác).
@@ -169,8 +238,127 @@
     return b;
   }
 
+  // ---- Nút "Cập nhật" chủ động ---------------------------------------------
+  // background (kiemBanMoi) ghi "bản mới đang chờ" vào storage mỗi nhịp kiểm; ở đây chỉ vẽ nút và hỏi xác
+  // nhận. Cập nhật = nạp lại extension, mà content script bản mới chỉ được tiêm khi trang tải lại →
+  // background tải lại đúng tab này sau khi nạp. Vì thế PHẢI hỏi: nội dung chưa lưu trên trang có thể mất.
+  function veNutCapNhat() {
+    const btn = document.getElementById(UPDATE_BTN_ID);
+    if (!btn) return;
+    let dangChay = "";
+    try { dangChay = chrome.runtime.getManifest().version; } catch (e) { return; } // context đã mất
+    chrome.storage.local.get(KHOA_BAN_CHO, (res) => {
+      if (chrome.runtime.lastError) return;
+      const v = res?.[KHOA_BAN_CHO]?.version;
+      const hien = typeof v === "string" && !!v && v !== dangChay;
+      btn.style.display = hien ? "inline-flex" : "none";
+      btn.dataset.version = hien ? v : "";
+      btn.title = hien ? `Đã có bản ${v} (đang dùng ${dangChay}) — bấm để cập nhật ngay` : "";
+      // Header chỉ rộng 360px: đang có nút Cập nhật thì tạm cất "★ Lịch sử" cho khỏi tràn.
+      const lichSu = btn.previousElementSibling;
+      if (lichSu && lichSu.tagName === "BUTTON") lichSu.style.display = hien ? "none" : "";
+      if (hien) {
+        batNhapNhay(btn);
+      } else {
+        btn.__nhay?.cancel();
+        btn.__nhay = null;
+        document.getElementById(UPDATE_CONFIRM_ID)?.remove();
+      }
+    });
+  }
+
+  function batNhapNhay(btn) {
+    if (btn.__nhay) return;
+    // Máy bật "giảm chuyển động" thì chỉ giữ màu nổi, không nhấp nháy.
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    btn.__nhay = btn.animate(
+      [
+        { boxShadow: "0 0 0 0 rgba(255, 193, 7, .95)", transform: "scale(1)" },
+        { boxShadow: "0 0 0 7px rgba(255, 193, 7, 0)", transform: "scale(1.06)" },
+      ],
+      { duration: 1300, iterations: Infinity, easing: "ease-out" },
+    );
+  }
+
+  function moXacNhanCapNhat() {
+    const btn = document.getElementById(UPDATE_BTN_ID);
+    const root = document.getElementById(PANEL_ID);
+    const version = btn?.dataset.version;
+    if (!root || !version) return;
+    document.getElementById(UPDATE_CONFIRM_ID)?.remove();
+    const header = root.firstElementChild;
+    const hop = document.createElement("div");
+    hop.id = UPDATE_CONFIRM_ID;
+    hop.setAttribute("role", "alertdialog");
+    Object.assign(hop.style, {
+      position: "absolute", left: "8px", right: "8px", top: `${(header?.offsetHeight || 32) + 6}px`,
+      zIndex: "3", background: "#fff", color: "#1f2937", border: "1px solid #f4c04e",
+      borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,.2)", padding: "10px 12px",
+      font: "12.5px/1.45 system-ui, 'Segoe UI', sans-serif", cursor: "default",
+    });
+    const tieuDe = document.createElement("div");
+    tieuDe.textContent = `Cập nhật Trợ lý lên bản ${version}?`;
+    Object.assign(tieuDe.style, { fontWeight: "700", marginBottom: "4px" });
+    const moTa = document.createElement("div");
+    moTa.textContent = "Trang sẽ tải lại để nạp bản mới. Nội dung đang nhập trên trang mà chưa lưu có thể mất.";
+    const canhBao = document.createElement("div");
+    canhBao.dataset.vai = "canh-bao-ban";
+    canhBao.textContent = "⚠️ Trợ lý đang xử lý dở (điền / đính kèm) — nên bấm Để sau, chờ xong rồi cập nhật.";
+    Object.assign(canhBao.style, { display: "none", marginTop: "6px", color: "#92400e", fontWeight: "600" });
+    const hang = document.createElement("div");
+    Object.assign(hang.style, { display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "10px" });
+    const kieuNut = { borderRadius: "6px", padding: "6px 12px", fontSize: "12px", fontWeight: "700", cursor: "pointer" };
+    const deSau = document.createElement("button");
+    deSau.type = "button";
+    deSau.textContent = "Để sau";
+    Object.assign(deSau.style, kieuNut, { border: "1px solid #d1d5db", background: "#fff", color: "#1f2937" });
+    deSau.addEventListener("click", (e) => { e.stopPropagation(); hop.remove(); });
+    const ngay = document.createElement("button");
+    ngay.type = "button";
+    ngay.textContent = "Cập nhật ngay";
+    Object.assign(ngay.style, kieuNut, { border: "0", background: "#d97706", color: "#fff" });
+    ngay.addEventListener("click", (e) => { e.stopPropagation(); capNhatNgay(ngay, hop); });
+    hang.append(deSau, ngay);
+    hop.append(tieuDe, moTa, canhBao, hang);
+    root.appendChild(hop);
+    // Hỏi panel có đang xử lý dở không — cờ bận nằm trong iframe popup, trang này không đọc được.
+    document.getElementById(IFRAME_ID)?.contentWindow?.postMessage({ type: "autofill-hcc-hoi-ban" }, "*");
+  }
+
+  function hienCanhBaoBan(ban) {
+    const el = document.querySelector(`#${UPDATE_CONFIRM_ID} [data-vai="canh-bao-ban"]`);
+    if (el) el.style.display = ban ? "block" : "none";
+  }
+
+  function capNhatNgay(nut, hop) {
+    nut.disabled = true;
+    nut.textContent = "Đang cập nhật…";
+    const loi = (chu) => { hop.remove(); showPageToast(chu, "warn"); veNutCapNhat(); };
+    try {
+      chrome.runtime.sendMessage({ action: "hccCapNhatNgay", tabId: CURRENT_TAB_ID }, (res) => {
+        if (chrome.runtime.lastError) { loi("Không gửi được lệnh cập nhật — thử lại sau."); return; }
+        if (res?.ok) return; // extension sắp nạp lại: panel bị gỡ rồi trang tự tải lại
+        if (res?.lyDo === "da-moi-nhat") {
+          hop.remove();
+          showPageToast("Trợ lý đã ở bản mới nhất.", "success");
+          veNutCapNhat();
+          return;
+        }
+        loi("Chưa kết nối được agent — thử lại sau.");
+      });
+    } catch (e) {
+      loi("Không gửi được lệnh cập nhật — thử lại sau.");
+    }
+  }
+
   function createPanel(tabId) {
     if (document.getElementById(PANEL_ID)) return;
+    // Chốt chặn cuối: dựng khung panel trên trang không được phép nạp iframe chỉ
+    // tạo ra một cái hộp chết. Thà không dựng gì.
+    if (!trangDuocHoTro()) {
+      console.warn("[AutoFill] Bỏ dựng panel: %s không khớp web_accessible_resources.matches.", location.href);
+      return;
+    }
     if (tabId != null && tabId !== "") { CURRENT_TAB_ID = tabId; sessSet(SS_TAB, String(tabId)); } // nhớ tab
     const root = document.createElement("div");
     root.id = PANEL_ID;
@@ -196,10 +384,13 @@
     logo.src = chrome.runtime.getURL("assets/icons/hcc-48.png");
     Object.assign(logo.style, { width: "18px", height: "18px", borderRadius: "3px", background: "#fff" });
     const titleText = document.createElement("span");
-    titleText.textContent = "Trợ lý hồ sơ HCC";
+    titleText.textContent = "Trợ lý nhân dân";
     // Pill version mờ ngay sau tiêu đề — nhận biết nhanh phiên bản khi hỗ trợ, không chiếm dòng riêng.
     const ver = document.createElement("span");
     ver.textContent = "v" + APP_VERSION_LABEL;
+    // Tooltip cho lúc hỗ trợ từ xa: ID extension cho biết Chrome đang nạp đúng
+    // bản nào (bản tự host và bản trên store có ID khác nhau).
+    try { ver.title = "Phiên bản " + APP_VERSION_LABEL + " · ID " + chrome.runtime.id; } catch (e) { /* ignore */ }
     Object.assign(ver.style, {
       flex: "0 0 auto", fontSize: "10px", fontWeight: "600", lineHeight: "1",
       padding: "2px 6px", borderRadius: "999px", whiteSpace: "nowrap",
@@ -220,7 +411,19 @@
       const f = document.getElementById(IFRAME_ID);
       if (f && f.contentWindow) f.contentWindow.postMessage({ type: "autofill-hcc-open-history" }, "*");
     });
-    title.append(logo, titleText, ver, histBtn);
+    // Nút "Cập nhật" — chỉ hiện khi agent đã tải bản MỚI về máy mà extension chưa nạp (cán bộ đang làm nên
+    // cơ chế tự nạp lại lúc máy rảnh chưa chạy). Nhấp nháy để cán bộ để ý. Xem veNutCapNhat.
+    const capNhatBtn = document.createElement("button");
+    capNhatBtn.type = "button";
+    capNhatBtn.id = UPDATE_BTN_ID;
+    capNhatBtn.textContent = "⬆ Cập nhật";
+    Object.assign(capNhatBtn.style, {
+      display: "none", flex: "0 0 auto", fontSize: "10px", fontWeight: "800", lineHeight: "1",
+      padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap", cursor: "pointer",
+      background: "#ffc107", color: "#3b2a00", border: "1px solid #ffe08a",
+    });
+    capNhatBtn.addEventListener("click", (e) => { e.stopPropagation(); moXacNhanCapNhat(); });
+    title.append(logo, titleText, ver, histBtn, capNhatBtn);
     const btns = document.createElement("div");
     const minBtn = _headerBtn("–");
     minBtn.title = "Thu nhỏ";
@@ -231,6 +434,7 @@
     btns.append(minBtn, closeBtn);
     header.append(title, btns);
     root.appendChild(header);
+    setTimeout(veNutCapNhat, 0); // chờ panel gắn vào trang xong mới tìm được nút theo id
 
     // Iframe load popup.html với param đánh dấu embedded + tabId.
     // Chiều cao auto-fit theo nội dung qua postMessage (xem listener bên dưới).
@@ -248,11 +452,430 @@
     setTimeout(reveal, 1500);
     root.appendChild(iframe);
 
+    // Mask kéo-thả phía TRANG GỐC. Phải trông GIỐNG HỆT `.drop-overlay` trong popup.css: hai lớp
+    // phủ nằm ở hai document khác nhau (bắt buộc — sự kiện kéo-thả không qua được biên iframe, mỗi
+    // bên phải tự vẽ lấy), nhưng cán bộ chỉ nhìn thấy MỘT panel nên phải ra đúng một hình.
+    //
+    // Kéo file vào từ header → chỉ content.js thấy sự kiện → mask này hiện. Kéo thẳng vào giữa
+    // iframe → chỉ popup.js thấy → lớp phủ của popup hiện. Trước đây hai lớp lệch nhau cả KIỂU
+    // (viền 1px/2px, bo 5px/8px, nền .88/.92, đậm 600/700, icon 26px/28px, chỉ bên này có blur) lẫn
+    // KHUNG (mask cũ `inset: 6px` tính theo CẢ panel nên trùm luôn header, còn lớp phủ trong iframe
+    // chỉ trùm phần iframe) — nên tuỳ đường con trỏ đi vào mà hiện ra hai overlay trông khác hẳn
+    // nhau. Giờ khung mask khớp đúng khung iframe (top đặt lại theo iframe.offsetTop trong
+    // showMask) và kiểu chép đúng popup.css. Sửa kiểu ở đây thì phải sửa kèm bên popup.css.
+    //
+    // Tông XANH DƯƠNG trùng màu header panel (#1565c0) — không dùng xanh lá vì màu đó đã có nghĩa
+    // riêng "đã kết nối máy quét" trong popup.js. Ẩn mặc định, KHÔNG chặn click (pointer-events
+    // none) khi ẩn để không cản thao tác bình thường trên panel/iframe.
+    const dropMask = document.createElement("div");
+    dropMask.id = DROP_MASK_ID;
+    const dropMaskIcon = document.createElement("div");
+    dropMaskIcon.textContent = "📥";
+    Object.assign(dropMaskIcon.style, { fontSize: "28px", lineHeight: "1" });
+    const dropMaskText = document.createElement("div");
+    dropMaskText.textContent = "Thả file vào đây để đính kèm";
+    dropMask.append(dropMaskIcon, dropMaskText);
+    Object.assign(dropMask.style, {
+      // top là giá trị tạm — showMask() đặt lại theo mép trên iframe trước mỗi lần hiện.
+      position: "absolute", left: "6px", right: "6px", bottom: "6px", top: "6px", zIndex: "1",
+      display: "none", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: "6px",
+      background: "rgba(255,255,255,.92)", border: "2px dashed #1565c0", borderRadius: "5px",
+      color: "#1565c0", fontSize: "13px", fontWeight: "700", lineHeight: "1.35", textAlign: "center",
+      padding: "12px", pointerEvents: "none",
+      backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+      opacity: "0", transition: "opacity 140ms ease",
+    });
+    root.appendChild(dropMask);
+    console.log("[AutoFill][DnD] mask kéo-thả đã dựng:", DROP_MASK_ID, dropMask);
+    wireExternalFileDrop(root, iframe, dropMask);
+
     document.documentElement.appendChild(root);
     enableDrag(root, header);
     setPanelOpen(true);
     setPanelMinimized(false); // dựng panel FULL → không còn ở trạng thái thu nhỏ
     clearAutoMinState();
+  }
+
+  // ===== Kéo-thả file từ NGOÀI (Finder/Explorer) vào thẳng panel =====
+  // CHỈ gắn trên chính panel (root = #autofill-hcc-panel), KHÔNG gắn trên document/trang gốc —
+  // gắn ở document sẽ preventDefault() MỌI kéo-file trên cả trang, kể cả lúc cán bộ không hề định
+  // thả vào extension (có thể phá luôn ô tải file khác của chính trang cổng dịch vụ công).
+  //
+  // Panel chứa iframe (popup.html) chiếm gần hết diện tích — nếu con trỏ rơi ĐÚNG vào vùng iframe
+  // ngay từ đầu thì `content.js` không thấy được (iframe là document riêng, sự kiện kéo-thả không
+  // tự nổi bọt qua biên iframe) — NHƯNG lúc đó bản thân iframe (popup.js) mới là nơi nhận đúng sự
+  // kiện, không cần content.js can thiệp. `root` chỉ cần lo phần diện tích THẬT SỰ thuộc trang gốc
+  // (header, viền quanh iframe) — đúng những gì con trỏ phải đi qua để vào tới panel từ ngoài.
+  //
+  // Gọi lại MỖI LẦN tạo panel (createPanel tạo `root` mới mỗi lần) — không dùng cờ dedup trên
+  // window nữa vì listener giờ gắn trên phần tử `root` cụ thể (bị gỡ khỏi DOM cùng lúc panel đóng),
+  // không phải trên document sống mãi suốt trang.
+  function isFileDrag(e) {
+    const types = e.dataTransfer?.types;
+    return !!types && Array.from(types).includes("Files");
+  }
+  function wireExternalFileDrop(root, iframe, mask) {
+    console.log("[AutoFill][DnD] wireExternalFileDrop: đã gắn listener trên #" + PANEL_ID + ".");
+    let dragCount = 0;
+    const showMask = () => {
+      // Khớp khung với lớp phủ BÊN TRONG iframe (`.drop-overlay`, popup.css): cùng lùi 6px so với
+      // mép iframe, nên kéo vào từ header hay kéo thẳng vào iframe đều ra đúng một hình ở đúng một
+      // chỗ — không còn cảnh "hiện thêm một overlay mới" khi con trỏ đi qua biên iframe. Đọc lại
+      // offsetTop mỗi lần hiện chứ không đo một lần lúc dựng: header cao thấp khác nhau tuỳ tiêu đề
+      // có xuống dòng hay không, và panel dựng xong mới biết chiều cao thật.
+      mask.style.top = (iframe.offsetTop + 6) + "px";
+      mask.style.display = "flex";
+      mask.style.pointerEvents = "auto";
+      // display:none -> flex rồi đổi opacity NGAY trong cùng 1 nhịp sẽ không transition (trình
+      // duyệt gộp 2 thay đổi cùng frame) — chờ 1 frame để "flex" áp dụng xong mới bật opacity.
+      requestAnimationFrame(() => { mask.style.opacity = "1"; });
+    };
+    const hideMask = () => {
+      dragCount = 0;
+      mask.style.opacity = "0";
+      mask.style.pointerEvents = "none";
+      setTimeout(() => { if (mask.style.opacity === "0") mask.style.display = "none"; }, 150);
+    };
+    root.addEventListener("dragenter", (e) => {
+      const fileDrag = isFileDrag(e);
+      console.log("[AutoFill][DnD] dragenter (trên panel)", { fileDrag, types: e.dataTransfer?.types });
+      if (!fileDrag) return;
+      dragCount++;
+      showMask();
+    });
+    root.addEventListener("dragover", (e) => {
+      if (isFileDrag(e)) e.preventDefault(); // bat buoc de "drop" ban ra dung vi tri
+    });
+    root.addEventListener("dragleave", (e) => {
+      if (!isFileDrag(e)) return;
+      dragCount = Math.max(0, dragCount - 1);
+      console.log("[AutoFill][DnD] dragleave (trên panel), dragCount còn:", dragCount);
+      if (dragCount === 0) hideMask();
+    });
+    root.addEventListener("drop", (e) => {
+      const fileDrag = isFileDrag(e);
+      console.log("[AutoFill][DnD] drop (trên panel)", {
+        fileDrag, maskDisplay: mask.style.display,
+        target: e.target, isMaskTarget: e.target === mask,
+        fileCount: e.dataTransfer?.files?.length,
+      });
+      if (!fileDrag) return;
+      e.preventDefault(); // rơi trong root la chac chan thuoc panel - luon nhan, khong can kiem target === mask
+      hideMask();
+      const files = e.dataTransfer?.files;
+      if (!files || !files.length) return;
+      console.log("[AutoFill][DnD] gửi", files.length, "file sang iframe, iframe tồn tại:", !!iframe?.contentWindow);
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.postMessage({ type: "autofill-hcc-drop-files", files: [...files] }, "*");
+      }
+    });
+  }
+
+  // ===== Xem trước giấy tờ TRÊN TRANG GỐC =====
+  // Panel chỉ rộng 360px, không xem nổi một tờ A4 — nên khung xem trước phải nằm ngoài panel,
+  // trên chính trang gốc, mới đủ chỗ.
+  //
+  // Nội dung là một iframe trỏ tới trang CỦA EXTENSION (preview.html) chứ không phải blob PDF
+  // nhét thẳng vào trang gốc: cách sau phụ thuộc frame-src/object-src trong CSP của từng cổng
+  // dịch vụ công, cổng nào siết là hỏng im lặng. Nhúng iframe chrome-extension:// thì đã được
+  // chứng minh chạy trên cả 21 cổng — chính panel này là một iframe như vậy.
+  const PREVIEW_ID = "autofill-hcc-preview";
+  // Ân hạn sau khi rời DÒNG FILE: chuyển động trong khoảng này không tính là "đã đi chỗ khác", vì
+  // con trỏ còn đang vượt khe từ panel sang khung (xem choChuotRoiDi).
+  const PREVIEW_AN_HAN_MS = 500;
+  let previewBox = null;      // khung noi tren trang goc
+  let previewFrame = null;    // iframe preview.html ben trong
+  let previewSanSang = false; // preview.js da bao ready chua
+  let previewChoVe = null;    // du lieu xep hang cho toi khi iframe san sang
+  let previewChoRoiDi = false; // đang xem tạm, con trỏ đã rời dòng file — chờ bằng chứng nó đi chỗ khác
+  let previewTinTuLuc = 0;      // mốc hết ân hạn
+  // Key file ĐANG GHIM ("" = không ghim). Cán bộ nhấn vào dòng file → ghim: khung không tự tắt khi
+  // rời chuột nữa, chỉ đóng bằng ✕ / bấm ra ngoài / Esc (xem dongPreview).
+  let previewGhimKey = "";
+  const previewCache = new Map(); // key -> {name, mime, dataUrl}, khoi gui lai megabyte moi lan hover
+
+  function dungPreview() {
+    if (previewBox) return previewBox;
+    const box = document.createElement("div");
+    box.id = PREVIEW_ID;
+    Object.assign(box.style, {
+      position: "fixed", display: "none", zIndex: "2147483645", // duoi panel 1 bac, khong che panel
+      background: "#fff", border: "1px solid #ccc", borderRadius: "8px", overflow: "hidden",
+      boxShadow: "0 8px 32px rgba(0,0,0,.22)",
+    });
+    const f = document.createElement("iframe");
+    f.id = PREVIEW_ID + "-iframe";
+    f.src = chrome.runtime.getURL("preview.html");
+    Object.assign(f.style, { border: "0", width: "100%", height: "100%", display: "block", background: "#f4f6f9" });
+    box.appendChild(f);
+    document.documentElement.appendChild(box);
+    previewBox = box;
+    previewFrame = f;
+    return box;
+  }
+
+  // Đặt khung xem trước vào KHOẢNG TRỐNG LỚN NHẤT quanh panel.
+  //
+  // Bản đầu chốt CỠ trước (0.48vw × 0.7vh) rồi mới tìm chỗ — sai gốc: khi không đủ chỗ hai bên,
+  // nhánh dự phòng kẹp khung về `vw - w` tức là đặt ĐÈ LÊN PANEL. Màn hẹp (<735px) luôn rơi vào
+  // nhánh đó, và panel kéo ra giữa màn cũng vậy. Giờ làm ngược lại: đo 4 khoảng trống quanh panel
+  // trước, chọn ô dùng được lớn nhất, rồi mới co khung cho vừa ô đó — không bao giờ đè lên panel.
+  const PREVIEW_LE = 10;      // le voi mep man hinh
+  const PREVIEW_KHE = 10;     // khe giua khung va panel
+  const PREVIEW_W_MAX = 720, PREVIEW_H_MAX = 900;
+  const PREVIEW_W_MIN = 260, PREVIEW_H_MIN = 200; // duoi muc nay thi xem cung khong ra gi
+
+  function oTrongQuanhPanel(p, vw, vh) {
+    return [
+      { ten: "trai", x: PREVIEW_LE, y: PREVIEW_LE, w: p.left - PREVIEW_KHE - PREVIEW_LE, h: vh - 2 * PREVIEW_LE },
+      { ten: "phai", x: p.right + PREVIEW_KHE, y: PREVIEW_LE, w: vw - PREVIEW_LE - (p.right + PREVIEW_KHE), h: vh - 2 * PREVIEW_LE },
+      { ten: "tren", x: PREVIEW_LE, y: PREVIEW_LE, w: vw - 2 * PREVIEW_LE, h: p.top - PREVIEW_KHE - PREVIEW_LE },
+      { ten: "duoi", x: PREVIEW_LE, y: p.bottom + PREVIEW_KHE, w: vw - 2 * PREVIEW_LE, h: vh - PREVIEW_LE - (p.bottom + PREVIEW_KHE) },
+    ];
+  }
+
+  // Trả {x,y,w,h,deLen}. deLen=true nghĩa là không còn ô nào dùng được (màn quá bé / panel quá to)
+  // nên đành phủ cả màn và nâng lên TRÊN panel — thà che panel còn hơn hiện một khung 100px vô dụng.
+  function tinhChoPreview(vw, vh, p) {
+    const caMan = { x: PREVIEW_LE, y: PREVIEW_LE, w: vw - 2 * PREVIEW_LE, h: vh - 2 * PREVIEW_LE };
+    let o = null;
+    if (p) {
+      // Diện tích DÙNG ĐƯỢC (đã chặn trần theo cỡ tối đa): một ô rộng mênh mông nhưng cao 150px
+      // không hơn gì ô 700x800 — chặn trần rồi mới so mới ra đúng thứ tự ưu tiên.
+      const dienTich = (c) => Math.min(c.w, PREVIEW_W_MAX) * Math.min(c.h, PREVIEW_H_MAX);
+      const hopLe = oTrongQuanhPanel(p, vw, vh).filter((c) => c.w >= PREVIEW_W_MIN && c.h >= PREVIEW_H_MIN);
+      if (hopLe.length) o = hopLe.reduce((a, b) => (dienTich(b) > dienTich(a) ? b : a));
+    } else {
+      o = caMan; // panel dang thu nho/dong -> ca man hinh la cua minh
+    }
+    const deLen = !o;
+    if (!o) o = caMan;
+    const w = Math.max(1, Math.min(o.w, PREVIEW_W_MAX));
+    const h = Math.max(1, Math.min(o.h, PREVIEW_H_MAX));
+    // ÁP SÁT PANEL, không canh giữa ô trống. Canh giữa nhìn cân nhưng đẩy khung ra xa: màn 1920,
+    // panel left=1548 → ô trái rộng 1528, khung 720 canh giữa nằm ở x=414, mép phải 1134, tức
+    // CÁCH PANEL 414px — rê chuột từ dòng file sang khung không kịp trước khi hết giờ ẩn.
+    // Áp sát thì khoảng phải vượt luôn đúng bằng PREVIEW_KHE (10px).
+    const kep = (v, min, max) => Math.max(min, Math.min(v, max));
+    let x, y;
+    if (o.ten === "trai") { x = o.x + o.w - w; y = kep(p ? p.top : o.y, PREVIEW_LE, vh - PREVIEW_LE - h); }
+    else if (o.ten === "phai") { x = o.x; y = kep(p ? p.top : o.y, PREVIEW_LE, vh - PREVIEW_LE - h); }
+    else if (o.ten === "tren") { y = o.y + o.h - h; x = kep(p ? p.left : o.x, PREVIEW_LE, vw - PREVIEW_LE - w); }
+    else if (o.ten === "duoi") { y = o.y; x = kep(p ? p.left : o.x, PREVIEW_LE, vw - PREVIEW_LE - w); }
+    else { x = Math.round(o.x + (o.w - w) / 2); y = Math.round(o.y + (o.h - h) / 2); } // ca man / de len
+    return { w, h, x: Math.round(x), y: Math.round(y), deLen, phia: o.ten || "caman" };
+  }
+
+  function rectPanelHienTai() {
+    const panel = document.getElementById(PANEL_ID);
+    if (!panel || panel.style.display === "none") return null; // dang thu nho -> coi nhu khong co
+    const r = panel.getBoundingClientRect();
+    return r.width && r.height ? r : null;
+  }
+
+  function datChoPreview(box) {
+    const c = tinhChoPreview(window.innerWidth, window.innerHeight, rectPanelHienTai());
+    Object.assign(box.style, {
+      width: c.w + "px", height: c.h + "px", left: c.x + "px", top: c.y + "px",
+      zIndex: c.deLen ? "2147483647" : "2147483645",
+    });
+  }
+
+  function guiChoPreview(payload) {
+    if (!previewSanSang) { previewChoVe = payload; return; } // xep hang, gui khi iframe bao ready
+    previewFrame?.contentWindow?.postMessage({ type: "autofill-hcc-preview-render", ...payload }, "*");
+  }
+
+  function hienPreview(dl) {
+    const box = dungPreview();
+    previewChoRoiDi = false;
+    datChoPreview(box);
+    box.style.display = "block";
+    guiChoPreview({ ...dl, ghim: !!previewGhimKey });
+  }
+
+  // Đóng HẲN. Khác chuotDaRoiDi: hàm kia là "xem tạm mà con trỏ đã đi chỗ khác" và bị bỏ qua khi
+  // đang ghim; hàm này là quyết định của cán bộ (✕, bấm ra ngoài, Esc) nên luôn đóng và bỏ ghim.
+  function dongPreview() {
+    previewChoRoiDi = false;
+    previewGhimKey = "";
+    if (!previewBox || previewBox.style.display === "none") return;
+    previewBox.style.display = "none";
+    baoPanelDaAnPreview();
+  }
+
+  // Rời DÒNG file (chưa ghim) thì CHƯA ẩn — con trỏ có thể đang đi sang khung để cuộn xem trang 2, 3.
+  // Chỉ ẩn khi có BẰNG CHỨNG con trỏ đã đi chỗ khác: trang gốc hoặc panel nhận lại mousemove.
+  //
+  // Vì sao không dựa vào mouseenter của khung như bản trước: khung chứa iframe KHÁC TIẾN TRÌNH
+  // (preview.html, trong đó lồng trình xem PDF). Đo 2026-09-13 bằng sự kiện chuột của chính trình
+  // duyệt: rê từ trang vào khung KHÔNG bắn một mouseenter nào lên khung ở trang cha — chỉ viền 1px là
+  // của trang cha, đường rê bình thường nhảy qua. Hẹn giờ ẩn cũ vì thế luôn nổ và khung tắt ngay dưới
+  // tay cán bộ. Còn khi con trỏ nằm trên khung thì trang cha và panel đều im lặng — tín hiệu đáng tin.
+  function choChuotRoiDi() {
+    if (previewGhimKey || !previewBox || previewBox.style.display === "none") return;
+    previewChoRoiDi = true;
+    previewTinTuLuc = Date.now() + PREVIEW_AN_HAN_MS;
+  }
+
+  function chuotDaRoiDi() {
+    if (!previewChoRoiDi || previewGhimKey || Date.now() < previewTinTuLuc) return;
+    previewChoRoiDi = false;
+    if (!previewBox || previewBox.style.display === "none") return;
+    previewBox.style.display = "none";
+    baoPanelDaAnPreview();
+  }
+
+  // Đổi cỡ cửa sổ / zoom / kéo panel trong lúc đang xem: ô trống quanh panel đổi theo, phải tính
+  // lại chứ không để khung nằm sai chỗ (hoặc đè lên panel) cho tới lần hover sau.
+  window.addEventListener("resize", () => {
+    // Thu nhỏ cửa sổ cũng đẩy panel ra ngoài y như kéo quá tay — kẹp lại. Chỉ áp cho panel ĐÃ
+    // được kéo (có `left` tường minh); panel chưa kéo vẫn neo theo `right`, trình duyệt tự lo.
+    const panel = document.getElementById(PANEL_ID);
+    if (panel && panel.style.left && panel.style.right === "auto") {
+      const v = kepPanelTrongMan(panel, parseFloat(panel.style.left) || 0, parseFloat(panel.style.top) || 0);
+      panel.style.left = v.left + "px";
+      panel.style.top = v.top + "px";
+    }
+    if (previewBox && previewBox.style.display !== "none") datChoPreview(previewBox);
+  });
+
+  // Panel tự tô sáng dòng file đang xem, nhưng nó KHÔNG biết lúc nào khung tắt (khung do
+  // content.js quản, còn giữ mở khi con trỏ rê lên khung). Phải báo ngược thì panel mới bỏ
+  // tô đúng lúc — không thì dòng sáng mãi dù khung đã tắt từ đời nào.
+  // ---- Báo hoạt động của TRANG GỐC cho panel ------------------------------
+  //
+  // Panel nằm trong iframe nên nó mù với mọi thứ xảy ra ngoài khung: cán bộ gõ
+  // vào form trên cổng thì `document.hasFocus()` của panel trả false và panel
+  // tưởng cán bộ đã bỏ đi. Hai tín hiệu dưới đây vá đúng chỗ mù đó.
+  //
+  // `document.hasFocus()` gọi ở ĐÂY (document của trang gốc) mới đúng: theo
+  // spec nó trả true khi focus nằm ở tài liệu này HOẶC bất kỳ frame con nào —
+  // tức là "cửa sổ này có đang được dùng không", đúng thứ cần biết.
+  const NHIP_BAO_HOAT_DONG_MS = 2000;
+  let lucBaoHoatDongCuoi = 0;
+  let lucHoatDongTrangCuoi = Date.now(); // dùng cho câu hỏi "tab này có đang được dùng không"
+
+  function guiToiPanel(msg) {
+    const f = document.getElementById(IFRAME_ID);
+    f?.contentWindow?.postMessage(msg, "*");
+  }
+
+  function baoHoatDongTrang() {
+    const gio = Date.now();
+    lucHoatDongTrangCuoi = gio;
+    if (gio - lucBaoHoatDongCuoi < NHIP_BAO_HOAT_DONG_MS) return; // gom bớt: mousemove bắn liên tục
+    lucBaoHoatDongCuoi = gio;
+    guiToiPanel({ type: "autofill-hcc-hoat-dong" });
+  }
+
+  function baoTrangThaiTrang() {
+    guiToiPanel({
+      type: "autofill-hcc-trang-thai-trang",
+      focus: document.hasFocus(),
+      an: document.visibilityState === "hidden",
+    });
+  }
+
+  if (IS_TOP_FRAME) {
+    for (const ev of ["mousemove", "mousedown", "keydown", "wheel", "touchstart", "click", "scroll"]) {
+      document.addEventListener(ev, baoHoatDongTrang, { passive: true, capture: true });
+    }
+    window.addEventListener("focus", baoTrangThaiTrang);
+    window.addEventListener("blur", baoTrangThaiTrang);
+    document.addEventListener("visibilitychange", baoTrangThaiTrang);
+    // Nhịp đều: panel có thể được dựng SAU khi trang đã mất/được focus từ lâu,
+    // lúc đó không còn event nào để nó bám vào.
+    setInterval(baoTrangThaiTrang, 3000);
+  }
+
+  function baoPanelDaAnPreview() {
+    const f = document.getElementById(IFRAME_ID);
+    f?.contentWindow?.postMessage({ type: "autofill-hcc-preview-hidden" }, "*");
+  }
+
+  function goPreview() {
+    baoPanelDaAnPreview();
+    previewChoRoiDi = false;
+    previewBox?.remove();
+    previewBox = null;
+    previewFrame = null;
+    previewSanSang = false;
+    previewChoVe = null;
+    previewGhimKey = "";
+  }
+
+  window.addEventListener("message", (e) => {
+    const d = e.data;
+    if (!d || typeof d.type !== "string") return;
+    // preview.js (iframe con): bấm ✕ hoặc Esc trong khung.
+    if (d.type === "autofill-hcc-preview-close" && previewFrame && e.source === previewFrame.contentWindow) {
+      dongPreview();
+      return;
+    }
+    // preview.js (iframe con) bao da san sang nhan du lieu.
+    if (d.type === "autofill-hcc-preview-ready" && previewFrame && e.source === previewFrame.contentWindow) {
+      previewSanSang = true;
+      if (previewChoVe) { const tmp = previewChoVe; previewChoVe = null; guiChoPreview(tmp); }
+      return;
+    }
+    // popup.js (panel) yeu cau hien/an. Chi nhan tu dung iframe panel.
+    const panelFrame = document.getElementById(IFRAME_ID);
+    if (!panelFrame || e.source !== panelFrame.contentWindow) return;
+    if (d.type === "autofill-hcc-tra-loi-ban") { hienCanhBaoBan(!!d.ban); return; }
+    if (d.type === "autofill-hcc-preview-show") {
+      // Co dataUrl thi cache lai; lan sau popup chi gui `key` (PDF 3MB ~ 4MB base64, gui moi
+      // lan hover la phi bang thua).
+      if (d.dataUrl) previewCache.set(d.key, { name: d.name, mime: d.mime, dataUrl: d.dataUrl });
+      const dl = previewCache.get(d.key);
+      // Sửa tên file xong thì panel gửi lại `preview-show` với tên MỚI nhưng KHÔNG kèm dataUrl
+      // (nội dung có đổi đâu, gửi lại megabyte làm gì). Phải vá tên vào bản cache, không thì
+      // khung vẫn treo tên cũ cho tới lúc rê sang file khác rồi rê về.
+      if (dl && d.name && d.name !== dl.name) dl.name = d.name;
+      // Ghim: nhấn dòng file (ghim=true) thì chuyển ghim sang file đó. Rê chuột qua file KHÁC trong
+      // lúc đang ghim thì bỏ qua — ghim là để đọc lâu, khung không được giật theo con trỏ.
+      // Cache ở trên vẫn phải chạy trước: lần sau nhấn vào file đó thì khỏi gửi lại megabyte.
+      if (d.ghim) previewGhimKey = d.key;
+      else if (previewGhimKey && d.key !== previewGhimKey) return;
+      if (!dl) { previewFrame && guiChoPreview({ name: d.name, mime: d.mime, dataUrl: "" }); return; }
+      hienPreview(dl);
+    } else if (d.type === "autofill-hcc-preview-hide") {
+      choChuotRoiDi(); // rời dòng file: CHƯA ẩn, chờ bằng chứng con trỏ đi chỗ khác
+    } else if (d.type === "autofill-hcc-preview-chuot-o-panel") {
+      chuotDaRoiDi();  // con trỏ đang ở chỗ khác trong panel
+    } else if (d.type === "autofill-hcc-preview-close") {
+      dongPreview(); // panel: bấm ra ngoài dòng file / Esc trong panel
+    }
+  });
+
+  // Bấm ra ngoài khung xem trước trên TRANG GỐC, hoặc Esc → đóng. Bấm vào panel thì không xử lý ở
+  // đây: bấm TRONG iframe panel không tới được document này, còn bấm vào viền/tay kéo panel là
+  // đang thao tác với panel chứ không phải "bỏ đi" — popup.js tự quyết phần bên trong.
+  if (IS_TOP_FRAME) {
+    document.addEventListener("pointerdown", (e) => {
+      if (!previewBox || previewBox.style.display === "none" || previewBox.contains(e.target)) return;
+      const panel = document.getElementById(PANEL_ID);
+      if (panel && panel.contains(e.target)) return;
+      dongPreview();
+    }, true);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && previewBox && previewBox.style.display !== "none") dongPreview();
+    }, true);
+    // Bằng chứng "con trỏ đã đi chỗ khác" cho khung đang xem tạm (xem choChuotRoiDi). Trên viền khung
+    // hay viền/tay kéo panel thì chưa tính — phần bên trong panel do popup.js tự báo.
+    document.addEventListener("mousemove", (e) => {
+      if (!previewChoRoiDi || !previewBox || previewBox.contains(e.target)) return;
+      const panel = document.getElementById(PANEL_ID);
+      if (panel && panel.contains(e.target)) return;
+      chuotDaRoiDi();
+    }, { capture: true, passive: true });
+    // background ghi / xoá "bản mới đang chờ" → vẽ lại nút Cập nhật trên header panel.
+    try {
+      chrome.storage.onChanged.addListener((thayDoi, vung) => {
+        if (vung === "local" && KHOA_BAN_CHO in thayDoi) veNutCapNhat();
+      });
+    } catch (e) { /* context mất */ }
   }
 
   // Dựng bubble góc phải trên (nếu chưa có). Tách riêng để nhánh khôi phục sau reload gọi được mà
@@ -261,7 +884,7 @@
     if (document.getElementById(BUBBLE_ID)) return;
     const bubble = document.createElement("div");
     bubble.id = BUBBLE_ID;
-    bubble.title = "Mở Trợ lý hồ sơ HCC";
+    bubble.title = "Mở Trợ lý nhân dân";
     Object.assign(bubble.style, {
       position: "fixed", top: "12px", right: "12px",
       width: "48px", height: "48px", borderRadius: "50%",
@@ -656,6 +1279,20 @@
     });
   }
 
+  // Kẹp panel nằm TRỌN trong màn hình. Bản cũ chỉ kẹp `Math.max(0, ...)` — chặn được mép trái và
+  // mép trên, bỏ ngỏ mép phải/dưới: kéo quá tay là panel ra hẳn ngoài màn và KHÔNG CÓ CÁCH NÀO
+  // kéo lại (thanh tiêu đề để nắm cũng ra ngoài luôn), chỉ còn nước đóng mở lại hoặc F5.
+  function kepPanelTrongMan(root, left, top) {
+    const r = root.getBoundingClientRect();
+    // Panel cao hơn cả màn (danh sách file dài) thì maxTop = 0 — cho dính mép trên, không âm.
+    const maxLeft = Math.max(0, window.innerWidth - r.width);
+    const maxTop = Math.max(0, window.innerHeight - r.height);
+    return {
+      left: Math.min(Math.max(0, left), maxLeft),
+      top: Math.min(Math.max(0, top), maxTop),
+    };
+  }
+
   function enableDrag(root, handle) {
     let dragging = false, startX = 0, startY = 0, startTop = 0, startLeft = 0;
     handle.addEventListener("mousedown", (e) => {
@@ -670,8 +1307,9 @@
     });
     document.addEventListener("mousemove", (e) => {
       if (!dragging) return;
-      root.style.top = Math.max(0, startTop + e.clientY - startY) + "px";
-      root.style.left = Math.max(0, startLeft + e.clientX - startX) + "px";
+      const v = kepPanelTrongMan(root, startLeft + e.clientX - startX, startTop + e.clientY - startY);
+      root.style.left = v.left + "px";
+      root.style.top = v.top + "px";
     });
     document.addEventListener("mouseup", () => { dragging = false; });
   }
@@ -688,6 +1326,43 @@
       "detectBusinessChangeStage",
     ].includes(msg?.action)) return;
     if (msg?.action === "togglePanel") { togglePanel(); sendResponse({ ok: true }); return; }
+    // Trả lời cho background trước khi extension tự nạp lại (xem popup.js khối
+    // extUpdate*). Nạp lại giữa lúc panel đang mở KHÔNG làm panel biến mất —
+    // đo 2026-09-11: iframe vẫn hiển thị y nguyên, nhưng mọi chrome.* bên trong
+    // ném "Extension context invalidated" và content script này thành mồ côi.
+    // Cán bộ bấm nút mà không có gì xảy ra, không một dấu hiệu nào. Vì vậy còn
+    // panel mở là KHÔNG được nạp lại.
+    // Tab này có đang được dùng không — dùng để quyết định lúc nào được nạp lại
+    // extension. Chỉ frame chính trả lời: iframe con không có panel, mà cũng
+    // không đại diện cho "cửa sổ có đang được dùng".
+    if (msg?.action === "hccTabDangLamViec") {
+      if (!IS_TOP_FRAME) return;
+      const gio = Date.now();
+      sendResponse({
+        coPanel: !!document.getElementById(PANEL_ID) || !!document.getElementById(BUBBLE_ID),
+        focus: document.hasFocus(),
+        an: document.visibilityState === "hidden",
+        imLangMs: gio - (lucHoatDongTrangCuoi || 0),
+      });
+      return;
+    }
+    // Gỡ panel NGAY TRƯỚC khi extension nạp lại.
+    //
+    // Đo 2026-09-11: nạp lại KHÔNG làm panel biến mất — nó ở nguyên đó nhưng mọi
+    // chrome.* bên trong ném "Extension context invalidated". Cán bộ bấm nút mà
+    // không có gì xảy ra, không một dấu hiệu nào. Gỡ đi thì hỏng trở nên NHÌN
+    // THẤY ĐƯỢC, mà lại tự lành: cờ "panel đang mở" trong chrome.storage được
+    // GIỮ NGUYÊN, nên lần điều hướng kế tiếp content script mới được tiêm vào và
+    // tự mở lại panel (xem nhánh đọc panelOpenKey lúc khởi tạo).
+    if (msg?.action === "hccGoPanelTruocKhiNapLai") {
+      if (!IS_TOP_FRAME) { sendResponse({ ok: true }); return; }
+      try {
+        document.getElementById(PANEL_ID)?.remove();
+        document.getElementById(BUBBLE_ID)?.remove();
+      } catch (e) { /* ignore */ }
+      sendResponse({ ok: true });
+      return;
+    }
     if (msg?.action === "showPageToast") {
       if (!IS_TOP_FRAME) return;
       sendResponse({ ok: true, shown: showPageToast(msg.message, msg.kind) });
@@ -1431,11 +2106,6 @@
     return !!detectFormKind();
   }
 
-  // Nút thêm một dòng thành phần hồ sơ. Mỗi cổng gọi một kiểu: bảng cũ ghi "Thêm thành phần hồ sơ",
-  // các eForm mới trên Cổng DVC quốc gia ghi "Thêm giấy tờ" ngay dưới bảng Bước 2. Thiếu nhãn nào là
-  // mọi giấy tờ không có dòng sẵn (vd trích lục khai tử) đều báo không tìm thấy nút.
-  const ADD_COMPONENT_BUTTON_LABELS = ["Thêm thành phần hồ sơ", "Thêm giấy tờ"];
-
   function hasAttachmentTarget() {
     return !!(
       document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]') || // cổng Bắc Ninh
@@ -1444,7 +2114,7 @@
       // Cổng QN "miền núi hải đảo" (vd ĐK tài sản gắn liền đất): bảng thành phần hồ sơ KHÔNG có dòng
       // sẵn, chỉ có nút "Thêm thành phần hồ sơ" để tự thêm từng dòng → vẫn là trang đính kèm hợp lệ.
       // Thiếu nhánh này thì collectAttachmentContext bị gate trượt → không sendResponse → "Không kết nối được trang".
-      findButtonByText(document, ADD_COMPONENT_BUTTON_LABELS) ||
+      findButtonByText(document, ["Thêm thành phần hồ sơ"]) ||
       fixedSlotUploadInputs().length > 0 // cổng Bộ VHTTDL: input file trong <app-upload-flie-multi> (nút icon, không chữ "Chọn tệp")
     );
   }
@@ -1705,12 +2375,8 @@
     };
   }
 
-  // Hộp thoại của cổng không phải lúc nào cũng khai role="dialog": có eForm dùng thẻ <dialog>, có
-  // cổng chỉ đặt aria-modal. Dò thiếu dạng nào là modal mở rồi mà engine vẫn báo không mở được.
-  const DIALOG_SELECTOR = "[role='dialog'], [role='alertdialog'], [aria-modal='true'], dialog";
-
   function visibleDialogSnapshot() {
-    return Array.from(document.querySelectorAll(DIALOG_SELECTOR)).map((dialog, index) => ({
+    return Array.from(document.querySelectorAll("[role='dialog']")).map((dialog, index) => ({
       index,
       visible: isVisible(dialog),
       state: dialog.getAttribute("data-state") || "",
@@ -1722,48 +2388,16 @@
     console.log(`[AutoFill-AttachPlan][debug] ${label}`, data);
   }
 
-  // Ảnh chụp MỌI thứ trông giống lớp phủ, rộng hơn hẳn DIALOG_SELECTOR mà engine thật sự dùng. Chỉ
-  // để chẩn đoán khi bấm nút chọn tệp mà không thấy modal: cổng mới có thể mở menu thả xuống, hộp
-  // thoại khác chuẩn, hoặc bắn thẳng vào ô chọn tệp ẩn — ba đường sửa khác nhau, phải nhìn mới biết.
-  const OVERLAY_PROBE_SELECTOR = [
-    DIALOG_SELECTOR,
-    ".modal",
-    ".ant-modal",
-    ".MuiDialog-root",
-    ".cdk-overlay-container > *",
-    ".mat-menu-panel",
-    ".mat-mdc-menu-panel",
-    "[role='menu']",
-    "[data-radix-popper-content-wrapper]",
-  ].join(", ");
-
-  function overlayProbeSnapshot() {
-    const describe = (node) => ({
-      tag: String(node.tagName || "").toLowerCase(),
-      id: node.id || "",
-      cls: shortText(node.getAttribute("class") || "", 120),
-      role: node.getAttribute("role") || "",
-      name: node.getAttribute("name") || "",
-      visible: isVisible(node),
-      text: shortText(nodeText(node), 200),
-    });
-    return {
-      overlays: Array.from(document.querySelectorAll(OVERLAY_PROBE_SELECTOR)).map(describe),
-      fileInputs: Array.from(document.querySelectorAll("input[type='file']")).map(describe),
-      bodyChildren: Array.from(document.body.children).slice(-8).map(describe),
-    };
-  }
-
   function findDialogByText(label) {
     const want = foldChoiceText(label);
-    return Array.from(document.querySelectorAll(DIALOG_SELECTOR)).find((dialog) =>
+    return Array.from(document.querySelectorAll("[role='dialog']")).find((dialog) =>
       foldedNodeText(dialog).includes(want)
     ) || null;
   }
 
   function findDialogsByText(label) {
     const want = foldChoiceText(label);
-    return Array.from(document.querySelectorAll(DIALOG_SELECTOR)).filter((dialog) =>
+    return Array.from(document.querySelectorAll("[role='dialog']")).filter((dialog) =>
       foldedNodeText(dialog).includes(want)
     );
   }
@@ -1786,7 +2420,7 @@
   }
 
   function isAddAttachmentRow(row) {
-    return !!findButtonByText(row, ADD_COMPONENT_BUTTON_LABELS);
+    return !!findButtonByText(row, ["Thêm thành phần hồ sơ"]);
   }
 
   function attachmentComponentName(row) {
@@ -1856,9 +2490,7 @@
         index: index + 1,
         componentName: attachmentComponentName(row),
         required: foldedNodeText(row).includes("bat buoc"),
-        // Dùng chung cách đọc với rowAttachedFileName: đọc thẳng cột 3 thì cột "Loại bản" của eForm
-        // mới bị tính là đã có file, BE nhận attachmentContext sai rồi lập kế hoạch theo dữ liệu sai.
-        hasFile: !!rowAttachedFileName(row),
+        hasFile: !!nodeText(row.cells?.[2] || "").trim(),
       })),
     };
   }
@@ -2017,7 +2649,7 @@
   }
 
   function findLatestDialog() {
-    const dialogs = Array.from(document.querySelectorAll(DIALOG_SELECTOR)).filter(isVisible);
+    const dialogs = Array.from(document.querySelectorAll("[role='dialog']")).filter(isVisible);
     return dialogs[dialogs.length - 1] || null;
   }
 
@@ -2093,24 +2725,9 @@
           nodeText(box),
         ].filter(Boolean).join(" ")
       );
-      return (
-        text.includes("thanh phan") ||
-        text.includes("ten ho so") ||
-        text.includes("ten tai lieu") ||
-        // Modal "Thêm giấy tờ" của eForm mới đặt nhãn là "Tên giấy tờ".
-        text.includes("ten giay to")
-      );
+      return text.includes("thanh phan") || text.includes("ten ho so") || text.includes("ten tai lieu");
     });
     return preferred || controls[0] || null;
-  }
-
-  // Điền ĐÚNG một ô tên. Hộp thoại thêm giấy tờ còn có Loại bản, Số bản — đổ tên vào mọi ô như khi
-  // điền một DÒNG (ô tên bị lặp giữa các cell) sẽ ghi đè các ô đó.
-  async function fillComponentNameInput(input, componentName) {
-    if (!input) return false;
-    setNativeValue(input, componentName, { typing: true, commit: true });
-    await sleep(250);
-    return true;
   }
 
   function findComponentNameInputs(root) {
@@ -2144,30 +2761,12 @@
     return foldChoiceText(value || "").includes("ban chinh giay to");
   }
 
-  // Link tải MẪU giấy tờ ("Mau so 01.doc") cổng phát cho người dân — KHÔNG phải tệp đã đính kèm.
-  // Mẫu luôn là file soạn thảo (.doc/.xls); giấy tờ người dân nộp là PDF/ảnh nên không đụng nhau.
-  const TEMPLATE_LINK_RE = /\.(docx?|xlsx?)(\?|#|$)/i;
-
-  function isTemplateDownloadLink(node) {
-    const href = String(node?.getAttribute?.("href") || "");
-    if (!href || /^(#|javascript:)/i.test(href)) return false;
-    return TEMPLATE_LINK_RE.test(href) || TEMPLATE_LINK_RE.test(nodeText(node));
-  }
-
   function rowAttachedFileName(row) {
     if (!row) return "";
-    const attachCell = attachmentFileCell(row);
+    const cells = Array.from(row?.cells || []);
+    const attachCell = cells[2] || row;
     if (!attachCell) return "";
     const clone = attachCell.cloneNode(true);
-    // Cột "Loại bản" (radio Bản chính/Bản sao) có thể nằm chung ô với nút chọn tệp. Xoá mỗi thẻ
-    // <input> thì phần CHỮ của option ở lại, đọc ra "1 Bản chính 1 Bản sao" — mọi dòng đều bị coi
-    // là ĐÃ CÓ FILE, thành ra dòng nào cũng rẽ sang nhánh thêm thành phần hồ sơ rồi gãy. Phải xoá
-    // cả thẻ bọc của radio/checkbox.
-    clone.querySelectorAll("input[type='radio'], input[type='checkbox']").forEach((node) => {
-      const holder = (node.closest && node.closest("label")) || node.parentElement || node;
-      holder.remove();
-    });
-    Array.from(clone.querySelectorAll("a[href]")).filter(isTemplateDownloadLink).forEach((node) => node.remove());
     clone.querySelectorAll("button, svg, input, textarea, select").forEach((node) => node.remove());
     const text = nodeText(clone);
     if (!text || foldChoiceText(text).includes("chon tep")) return "";
@@ -2185,6 +2784,21 @@
     return findAttachmentRowByComponent(componentName, componentIndex) ||
       (Number(componentIndex) === 1 ? findCopyCertificationAttachmentRow() : null) ||
       null;
+  }
+
+  /** Lý do THẬT từ cổng (toast/alert), vd "Upload thất bại (File Service): Upload failed: 500".
+   *  Không có dòng này thì cán bộ chỉ thấy "cổng chưa ghi nhận" — đúng nhưng không đủ để biết
+   *  nên thử lại hay báo quản trị cổng. Cắt 200 ký tự: toast dài thường là nội dung trang. */
+  function readPortalUploadError() {
+    const nodes = Array.from(document.querySelectorAll(
+      '[role="alert"], [role="status"], [class*="toast" i], [class*="notification" i], [class*="snackbar" i]'
+    )).filter((node) => isVisible(node));
+    for (const node of nodes) {
+      const text = String(node.innerText || node.textContent || "").replace(/\s+/g, " ").trim();
+      if (!text || text.length > 300) continue;
+      if (/that bai|failed|loi|error|500|502|503|504/.test(foldChoiceText(text))) return text.slice(0, 200);
+    }
+    return "";
   }
 
   async function waitForPersistedAttachment(row, planItem = {}, previousName = "") {
@@ -2254,21 +2868,9 @@
     ) || null;
   }
 
-  // Ô chứa tệp của một dòng hồ sơ. Bố cục cũ để tệp ở cột thứ 3, nhưng nhiều eForm trên Cổng DVC
-  // quốc gia chèn thêm cột "Loại bản" nên cột 3 là radio còn nút "Chọn tệp tin" nằm ở cột sau. Dò
-  // theo CHÍNH ô upload/nút chọn tệp; không thấy thì mới lùi về quy ước cột 3 như cũ.
-  function cellHasAttachmentControl(cell) {
-    if (!cell || !cell.querySelectorAll) return false;
-    if (cell.querySelector?.("input[type='file']")) return true;
-    const want = foldChoiceText("Chọn tệp");
-    return Array.from(cell.querySelectorAll("button")).some((button) =>
-      foldedNodeText(button).includes(want)
-    );
-  }
-
   function attachmentFileCell(row) {
     const cells = Array.from(row?.cells || []);
-    return cells.find(cellHasAttachmentControl) || cells[2] || row || null;
+    return cells[2] || row || null;
   }
 
   function findAttachmentFileInput(row) {
@@ -2379,8 +2981,6 @@
           activeAfter: describeElementForLog(document.activeElement),
           dialogsAfter: visibleDialogSnapshot(),
           bodyHasWalletTitle: foldedNodeText(document.body).includes("danh sach tai lieu dien tu"),
-          // Bấm rồi mà không thấy modal: chụp rộng để biết cổng mở menu, hộp thoại khác chuẩn, hay không gì cả.
-          probe: overlayProbeSnapshot(),
         });
       }
     }
@@ -2394,7 +2994,6 @@
         buttonCount: buttons.length,
         buttons: buttons.map(describeElementForLog),
         dialogs: visibleDialogSnapshot(),
-        probe: overlayProbeSnapshot(),
       },
     };
   }
@@ -2487,44 +3086,37 @@
         ) || null;
       }, 3000, 100);
       if (row) {
-        markAttachmentResult(row, true);
+        // KHÔNG tô xanh ở đây: mới thêm được DÒNG TRỐNG, chưa có tệp nào vào. Bước đính sau đó
+        // hỏng thì dòng vẫn giữ màu xanh cũ và cán bộ tưởng đã xong.
         return row;
       }
     }
 
     const beforeRows = findAttachmentCandidateRows();
     const beforeCount = beforeRows.length;
-    const addButton = findButtonByText(document, ADD_COMPONENT_BUTTON_LABELS);
-    if (!addButton) throw new Error("Không tìm thấy nút Thêm thành phần hồ sơ / Thêm giấy tờ.");
+    const addButton = findButtonByText(document, ["Thêm thành phần hồ sơ"]);
+    if (!addButton) throw new Error("Không tìm thấy nút Thêm thành phần hồ sơ.");
 
     addButton.click();
+    await sleep(350);
 
-    // Cổng phản ứng theo hai kiểu: dựng HỘP THOẠI hỏi tên giấy tờ, hoặc chèn thẳng một DÒNG trống.
-    // Chờ cứng 350ms rồi mới dò hộp thoại là hụt với React dựng modal chậm: lúc đó nhánh "dòng mới"
-    // chạy trong khi modal còn chưa hiện, không ai điền tên, và dòng mới thì không bao giờ tới.
-    const appeared = await waitFor(() => {
-      const dialog = findLatestDialog();
-      if (dialog && !foldedNodeText(dialog).includes("danh sach tai lieu dien tu")) return { dialog };
-      const rows = findAttachmentCandidateRows();
-      if (rows.length > beforeCount) return { newRow: rows[rows.length - 1] };
-      return null;
-    }, 5000, 120);
-
-    attachDebug("add-component after click", {
-      uniqueName,
-      via: appeared?.dialog ? "dialog" : appeared?.newRow ? "row" : "none",
-      button: describeElementForLog(addButton),
-      dialog: appeared?.dialog ? shortText(nodeText(appeared.dialog), 300) : "",
-    });
-
-    if (appeared?.dialog) {
-      const input = findComponentNameInput(appeared.dialog);
-      if (input) await fillComponentNameInput(input, uniqueName);
-      await submitComponentName(appeared.dialog);
-      await waitFor(() => !document.documentElement.contains(appeared.dialog) || !isVisible(appeared.dialog), 4000, 120);
-    } else if (appeared?.newRow && findComponentNameInput(appeared.newRow)) {
-      await fillAttachmentComponentName(appeared.newRow, uniqueName);
-      await submitComponentName(appeared.newRow);
+    const dialog = findLatestDialog();
+    if (dialog && !foldedNodeText(dialog).includes("danh sach tai lieu dien tu")) {
+      const input = findComponentNameInput(dialog);
+      if (input) {
+        await fillAttachmentComponentName(dialog, uniqueName);
+        await submitComponentName(dialog);
+      }
+    } else {
+      const newRow = await waitFor(() => {
+        const rows = findAttachmentCandidateRows();
+        if (rows.length > beforeCount) return rows[rows.length - 1];
+        return null;
+      }, 1500, 100);
+      if (newRow && findComponentNameInput(newRow)) {
+        await fillAttachmentComponentName(newRow, uniqueName);
+        await submitComponentName(newRow);
+      }
     }
 
     const row = await waitFor(() => {
@@ -2542,7 +3134,8 @@
     }, 4000, 120);
 
     if (!row) throw new Error(`Không thêm được thành phần hồ sơ "${uniqueName}".`);
-    markAttachmentResult(row, true);
+    // Như trên: tạo được dòng CHƯA PHẢI là đính xong. Màu xanh chỉ được đặt sau khi
+    // waitForPersistedAttachment thấy tên tệp hiện thật trên dòng.
     return row;
   }
 
@@ -2580,53 +3173,6 @@
       removed++;
     }
     return removed;
-  }
-
-  // eForm mới trên Cổng DVC quốc gia tách làm hai nút: mỗi dòng có "Chọn tệp tin" bắn thẳng vào ô
-  // chọn tệp ẩn, còn ví tài liệu dời xuống nút "Lấy giấy tờ từ kho" ở cuối bảng. Nhận ra dạng này
-  // theo CHỮ trên nút để không đổi hành vi của các eForm cũ (nút ghi "Chọn tệp đính kèm").
-  function rowUsesDeviceFilePicker(row) {
-    const button = findAttachmentChooseButton(row);
-    return !!button && foldedNodeText(button).includes(foldChoiceText("Chọn tệp tin"));
-  }
-
-  function rowUploadInput(row) {
-    const inRow = findAttachmentFileInput(row) || row?.querySelector?.("input[type='file']");
-    if (inRow) return inRow;
-    // Cổng có thể treo ô chọn tệp ngay ngoài thẻ bọc của nút thay vì trong dòng.
-    let node = findAttachmentChooseButton(row)?.parentElement;
-    for (let level = 0; node && level < 3; level += 1, node = node.parentElement) {
-      const found = node.querySelector?.("input[type='file']");
-      if (found) return found;
-    }
-    return null;
-  }
-
-  // Bơm thẳng file vào ô chọn tệp ẩn của chính dòng hồ sơ, không qua ví tài liệu.
-  async function attachOneFileToRowFileInput(row, payloadFile, planItem = {}) {
-    if (!row) return { error: "Không có dòng hồ sơ để bơm file." };
-    const input = rowUploadInput(row);
-    if (!input) return { error: "Dòng hồ sơ không có ô chọn tệp ẩn." };
-
-    const intendedDocumentName = planItem.documentName || attachmentDocumentName(payloadFile);
-    const previousName = rowAttachedFileName(row);
-    const file = dataUrlToFile(payloadFile, intendedDocumentName);
-    // Cổng có thể đọc xong rồi reset input.files → assumeConsumed để không báo hụt.
-    if (!setFilesOnInput(input, [file], { allowMultiple: false, assumeConsumed: true })) {
-      return { error: `Không gắn được file ${file.name} vào ô chọn tệp của dòng hồ sơ.` };
-    }
-
-    const persisted = await waitForPersistedAttachment(row, planItem, previousName);
-    if (!persisted) {
-      markAttachmentResult(row, false);
-      return { error: `Đã gắn file ${file.name} nhưng dòng hồ sơ không hiện tên file.` };
-    }
-    attachDebug("attached via row file input", {
-      fileName: persisted.fileName,
-      row: describeAttachmentRowForLog(persisted.row || row),
-    });
-    markAttachmentResult(persisted.row || row, true);
-    return { ok: true, method: "row-file-input", attached: 1, fileNames: [persisted.fileName || file.name] };
   }
 
   async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
@@ -2674,23 +3220,11 @@
       });
     }
 
-    // Dòng dùng nút "Chọn tệp tin": bấm nút là bung hộp chọn tệp của máy, trợ lý không thao tác được
-    // và người dùng phải tự bấm Hủy. Bơm thẳng vào ô ẩn TRƯỚC, chỉ khi không ăn mới quay lại đường ví.
-    if (rowUsesDeviceFilePicker(row)) {
-      const direct = await attachOneFileToRowFileInput(row, payloadFile, planItem);
-      if (direct?.ok) return direct;
-      attachDebug("row file input first attempt failed", { error: direct?.error, row: describeAttachmentRowForLog(row) });
-    }
-
     const openResult = await openDocumentWalletForRow(row, planItem);
     if (openResult?.error) {
-      // Không mở được modal thì thử lại đường bơm thẳng cho các dòng nút ghi chữ khác.
-      const direct = await attachOneFileToRowFileInput(openResult.row || row, payloadFile, planItem);
-      if (direct?.ok) return direct;
       console.warn("[AutoFill-AttachPlan] Không mở được modal upload", {
         error: openResult.error,
         debug: openResult.debug,
-        directFallback: direct?.error || "không có ô chọn tệp ẩn trong dòng",
         planItem,
         payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
       });
@@ -2747,14 +3281,18 @@
     const persisted = await waitForPersistedAttachment(row, planItem, existingName);
     if (!persisted) {
       const liveRow = liveAttachmentRowForVerification(row, planItem) || row;
+      const portalError = readPortalUploadError();
       markAttachmentResult(liveRow || dialog, false);
       return {
-        error: `Cổng chưa ghi nhận file ${file.name} vào dòng hồ sơ; ô vẫn chưa có tên file.`,
+        error: `Cổng chưa ghi nhận file ${file.name} vào dòng hồ sơ; ô vẫn chưa có tên file`
+          + (portalError ? ` — cổng báo: ${portalError}` : "."),
         code: "wallet-file-not-persisted",
+        portalError,
         fileNames: [file.name],
         debug: {
           uploadCompleted,
           dialogClosed,
+          portalError,
           row: describeAttachmentRowForLog(liveRow),
         },
       };
@@ -3615,102 +4153,115 @@
         ? normalItems.map(forceRow1PlanItem)   // split thường: mọi file ép về STT1
         : normalizeAttachmentPlan(normalItems, procedure);
 
-      for (let i = 0; i < plannedAttachments.length; i++) {
-        const item = plannedAttachments[i] || {};
-        const payloadFile = payloadForPlanItem(payloadFiles, item, i);
-        if (!payloadFile) {
-          errors.push(`Không tìm thấy file ${item.fileName || i + 1} trong payload.`);
-          break;
-        }
-        console.log("[AutoFill-AttachPlan] attaching", {
-          fileIndex: item.fileIndex,
-          payloadName: payloadFile.name,
-          documentName: item.documentName,
-          componentName: item.componentName,
-          target: item.target,
-        });
+      // ROUND-ROBIN: hỏng thì HOÃN lại rồi đi tiếp, hết lượt mới quay lại thử phần hoãn.
+      // Thay cho vòng thử-lại-tại-chỗ cũ, vì (1) cổng vừa trả 500 thì thử ngay cũng 500,
+      // (2) sleep(2000*attempt) tại chỗ là thời gian chết, (3) quan trọng nhất: `break` cũ làm
+      // MỘT tệp hỏng chặn hết các tệp còn lại — lô 4 tệp gặp 500 xen kẽ thì chỉ vào được 2-3.
+      // Khoảng cách giữa hai lần thử của cùng một tệp giờ = thời gian đính các tệp khác, giãn
+      // hơn nhiều so với sleep cũ.
+      const MAX_ROUNDS = 2;
+      const lastErrorByIndex = new Map();
+      let queue = plannedAttachments.map((item, index) => ({ item: item || {}, index }));
+      // Split tab: ví React treo thì click lại tại chỗ không chữa được — dừng cả lượt và trả
+      // ngay cho state machine để nó áp giới hạn reload theo từng trạng thái.
+      let splitAbort = false;
 
-        const existingRow = findExistingAttachedRowForPlanItem(item, payloadFile);
-        if (existingRow) {
-          const existingName = rowAttachedFileName(existingRow);
-          attachDebug("skip duplicate attachment", {
-            existingName,
-            item,
-            payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
-            row: describeAttachmentRowForLog(existingRow),
+      for (let round = 1; round <= MAX_ROUNDS && queue.length && !splitAbort; round++) {
+        const deferred = [];
+        if (round > 1) {
+          console.warn(`[AutoFill-AttachPlan] lượt ${round}: thử lại ${queue.length} tệp bị hoãn`);
+          await closeDocumentWalletDialogs();
+        }
+        for (const { item, index: i } of queue) {
+          const payloadFile = payloadForPlanItem(payloadFiles, item, i);
+          if (!payloadFile) {
+            // Thiếu file trong payload là lỗi dữ liệu, thử lại vòng sau cũng vậy → báo luôn.
+            errors.push(`Không tìm thấy file ${item.fileName || i + 1} trong payload.`);
+            continue;
+          }
+          console.log("[AutoFill-AttachPlan] attaching", {
+            fileIndex: item.fileIndex,
+            payloadName: payloadFile.name,
+            documentName: item.documentName,
+            componentName: item.componentName,
+            target: item.target,
           });
-          skippedNames.push(existingName || item.documentName || payloadFile.name);
-          markAttachmentResult(existingRow, true);
-          await sleep(150);
-          continue;
-        }
 
-        if ((item.target === "new" || item.needsAddComponent) && hasOtherListFileAttachment()) {
-          const result = await attachOneFileToOtherListFile(payloadFile, item);
+          const existingRow = findExistingAttachedRowForPlanItem(item, payloadFile);
+          if (existingRow) {
+            const existingName = rowAttachedFileName(existingRow);
+            attachDebug("skip duplicate attachment", {
+              existingName,
+              item,
+              payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
+              row: describeAttachmentRowForLog(existingRow),
+            });
+            skippedNames.push(existingName || item.documentName || payloadFile.name);
+            markAttachmentResult(existingRow, true);
+            await sleep(150);
+            continue;
+          }
+
+          if ((item.target === "new" || item.needsAddComponent) && hasOtherListFileAttachment()) {
+            const result = await attachOneFileToOtherListFile(payloadFile, item);
+            if (result?.error) {
+              lastErrorByIndex.set(i, result.error);
+              deferred.push({ item, index: i });
+              continue;
+            }
+            lastErrorByIndex.delete(i);
+            attachedNames.push(...(result.fileNames || []));
+            await sleep(400);
+            continue;
+          }
+
+          let row;
+          try {
+            row = await rowForPlanItem(item);
+          } catch (e) {
+            console.warn("[AutoFill-Attach] Tìm dòng hồ sơ lỗi:", e);
+            lastErrorByIndex.set(i, `Không mở được dòng hồ sơ "${item.componentName || ""}".`);
+            deferred.push({ item, index: i });
+            continue;
+          }
+          if (!row) {
+            lastErrorByIndex.set(i, `Không tìm thấy dòng hồ sơ "${item.componentName || ""}".`);
+            deferred.push({ item, index: i });
+            continue;
+          }
+
+          const result = await attachOneFileViaDocumentWallet(row, payloadFile, item);
           if (result?.error) {
-            errors.push(result.error);
-            break;
-          }
-          attachedNames.push(...(result.fileNames || []));
-          await sleep(400);
-          continue;
-        }
-
-        let row;
-        try {
-          row = await rowForPlanItem(item);
-        } catch (e) {
-          console.warn("[AutoFill-Attach] Tìm dòng hồ sơ lỗi:", e);
-          // Kèm nguyên văn lý do: "không tìm thấy nút" và "thêm rồi mà dòng không hiện" là hai lỗi
-          // khác hẳn nhau, gộp thành một câu chung thì mỗi lần lỗi lại phải mở Console mới biết.
-          const reason = String(e?.message || "").trim();
-          errors.push(
-            `Không mở được dòng hồ sơ "${item.componentName || ""}"${reason ? `: ${reason}` : "."}`
-          );
-          break;
-        }
-        if (!row) {
-          errors.push(`Không tìm thấy dòng hồ sơ "${item.componentName || ""}".`);
-          break;
-        }
-
-        // Cổng moj đôi khi trả 504/timeout khi lưu vào ví giấy tờ → tự thử lại vài lần (backoff)
-        // trước khi báo lỗi. Đóng modal dở + làm mới dòng hồ sơ giữa các lần thử để reset trạng thái.
-        const MAX_ATTACH_ATTEMPTS = 3;
-        let result = null;
-        let persistedRetryUsed = false;
-        for (let attempt = 1; attempt <= MAX_ATTACH_ATTEMPTS; attempt++) {
-          result = await attachOneFileViaDocumentWallet(row, payloadFile, item);
-          if (!result?.error) break;
-          // Split tab: các trạng thái ví React bị treo không chữa được bằng cách click lại tại chỗ.
-          // Trả ngay cho state machine để áp dụng giới hạn reload theo từng trạng thái.
-          if (splitMode && isSplitReloadableWalletError(result.code)) break;
-          // Modal đóng nhưng dòng vẫn trống: thử lại đúng MỘT lần. Không để vòng retry chung biến
-          // lỗi này thành ba lượt rồi vẫn tô xanh/chuyển tab như trước.
-          if (result.code === "wallet-file-not-persisted") {
-            if (persistedRetryUsed) break;
-            persistedRetryUsed = true;
-          }
-          if (attempt < MAX_ATTACH_ATTEMPTS) {
-            console.warn(`[AutoFill-AttachPlan] thử lại đính kèm (${attempt}/${MAX_ATTACH_ATTEMPTS - 1}) do lỗi:`, result.error);
+            errorCode = errorCode || result.code || null;
+            console.warn("[AutoFill-AttachPlan] attach item failed", {
+              round,
+              error: result.error,
+              portalError: result.portalError || null,
+              debug: result.debug,
+              item,
+              payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
+            });
+            lastErrorByIndex.set(i, result.error);
+            deferred.push({ item, index: i });
+            if (splitMode && isSplitReloadableWalletError(result.code)) {
+              splitAbort = true;
+              break;
+            }
             await closeDocumentWalletDialogs();
-            await sleep(2000 * attempt); // backoff tăng dần để cổng kịp hồi (504 thường transient)
-            try { row = (await rowForPlanItem(item)) || row; } catch (_) { /* giữ row cũ */ }
+            continue;
           }
+          lastErrorByIndex.delete(i);
+          attachedNames.push(...(result.fileNames || []));
+          await sleep(600);
         }
-        if (result?.error) {
-          errorCode = errorCode || result.code || null;
-          console.warn("[AutoFill-AttachPlan] attach item failed", {
-            error: result.error,
-            debug: result.debug,
-            item,
-            payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
-          });
-          errors.push(result.error);
-          break;
-        }
-        attachedNames.push(...(result.fileNames || []));
-        await sleep(600);
+        queue = deferred;
+      }
+
+      // Hết lượt mà còn hoãn = hỏng thật. Báo TỪNG tệp để cán bộ biết phải đính tay ô nào,
+      // thay vì một câu lỗi chung rồi im lặng bỏ qua phần còn lại như trước.
+      for (const { index } of queue) {
+        const message = lastErrorByIndex.get(index);
+        if (message) errors.push(message);
       }
 
       // Lượt chốt: đánh số các dòng thành phần thêm mới trùng tên (vd bản dịch CTV nhiều dòng →
@@ -5615,6 +6166,26 @@
     return null;
   }
 
+  // Panel Form.io "collapsible" (vd khối "Địa chỉ thửa đất/ địa chỉ xây dựng" của cổng Quảng Ngãi) mặc
+  // định ĐÓNG: header có aria-expanded="false" và phần thân chưa mở nên các ô bên trong không điền
+  // được (BE trả field nhưng FE báo notFound). Bấm header để mở TRƯỚC khi điền. Chỉ nhắm panel của
+  // Form.io (.formio-component-panel) nên không đụng accordion khác của trang.
+  async function expandCollapsedFormioPanels() {
+    const headers = Array.from(
+      document.querySelectorAll('.formio-component-panel [aria-expanded="false"][role="button"]')
+    ).filter((el) => el.querySelector?.(".formio-collapse-icon") || el.classList?.contains("card-header"));
+    let opened = 0;
+    for (const header of headers) {
+      try {
+        header.click();
+        opened += 1;
+      } catch { /* panel lỗi không được chặn cả lượt điền */ }
+    }
+    // Form.io render thân panel sau một nhịp; chờ ngắn để querySelector thấy ô bên trong.
+    if (opened) await sleep(300);
+    return opened;
+  }
+
   async function ensureStandardDatagridRows(fields) {
     const maxByGrid = new Map();
     for (const f of fields || []) {
@@ -5912,6 +6483,7 @@
   async function fillFormStandard(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
+    await expandCollapsedFormioPanels();
     await ensureStandardDatagridRows(fields);
     // Chụp khối nhân thân cấm ghi TRƯỚC khi điền ô nào (xem standardForbiddenRoots).
     const forbiddenRoots = standardForbiddenRoots(fields);

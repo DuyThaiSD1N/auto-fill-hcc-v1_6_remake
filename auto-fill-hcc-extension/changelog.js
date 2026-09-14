@@ -3,6 +3,28 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.18.1",
+    date: "14/9/2026",
+    items: [
+      "Báo phiên bản đang chạy cho máy quét tại quầy để quản trị thấy từng máy dùng bản nào.",
+    ],
+  },
+  {
+    version: "1.18",
+    date: "12/9/2026",
+    items: [
+      "Trợ lý đổi tên thành “Trợ lý nhân dân”.",
+      "Thêm bước đánh giá trải nghiệm sau khi bấm Gửi hồ sơ; không bắt buộc.",
+      "Ghi nhận thời điểm nộp hồ sơ: báo cáo hiện giờ nộp, số lần nộp và thời gian làm.",
+      "Đính kèm: một tài liệu lỗi không còn chặn các tài liệu còn lại.",
+      "Đính kèm chỉ báo thành công khi cổng thật sự ghi nhận; cổng lỗi thì hiện rõ lý do.",
+      "Sửa lỗi một số ảnh chụp từ điện thoại không gộp được vào PDF.",
+      "Khắc phục trường hợp điện thoại báo đã gửi ảnh nhưng máy tính không nhận được.",
+      "Chứng thực chữ ký người dịch: tự đánh số thành phần hồ sơ trùng tên.",
+      "Hỗ trợ thêm cổng Một cửa Bộ Nội vụ và cổng dịch vụ công Quảng Ninh.",
+    ],
+  },
+  {
     version: "1.17",
     date: "8/9/2026",
     items: [

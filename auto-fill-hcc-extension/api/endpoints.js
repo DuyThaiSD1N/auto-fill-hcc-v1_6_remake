@@ -70,6 +70,16 @@ const api = {
     return apiJson("/api/v1/procedures");
   },
 
+  // Phiếu đánh giá trải nghiệm. Gọi được NHIỀU lần cho cùng hồ sơ, lần sau ghi đè: bước 1 gửi
+  // mỗi mức (ghi ngay khi công dân chạm, để bỏ dở vẫn còn số), bước 2 gửi kèm lý do/ý kiến.
+  dossierRating(body) {
+    return apiJson("/api/v1/dossiers/rating", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  },
+
   process(body) {
     // v2 multipart (action=fill): binary đi thẳng, không base64-JSON phình payload. Dùng chung
     // endpoint với attach; BE tái dùng lõi v1 nên kết quả (fields/extracted/...) giữ nguyên.

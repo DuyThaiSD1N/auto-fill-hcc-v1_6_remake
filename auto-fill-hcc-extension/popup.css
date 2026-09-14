@@ -518,6 +518,130 @@ input, select, textarea { font-family: inherit; }
 /* Nhãn 📱 cho ảnh tải từ điện thoại trong danh sách file */
 .file-list .from-phone { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }
 
+/* Trạng thái kết nối máy quét (scan-bridge agent) — chỉ hiện khi có gì để nói,
+   xem setScanAgentStatus trong popup.js. */
+.scan-agent-status { font-size: 11.5px; color: #0d7d52; margin: 8px 0; }
+
+/* Nhãn 🖨️ cho file tự về từ máy quét trong danh sách file */
+.file-list .from-scan { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }
+
+/* Danh sách fallback khi không tự tin gom được batch quét gần nhất (xem
+   attemptBatchImport/renderScanRecentList trong popup.js) — cán bộ tự chọn
+   thay vì để hệ thống đoán liều. */
+.scan-recent-list {
+  border: 1px solid #f0c36d;
+  background: #fff8e6;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.scan-recent-hint { color: #8a5a00; margin-bottom: 4px; }
+.scan-recent-add-all {
+  width: auto;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  background: #8a5a00;
+}
+.scan-recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 0;
+}
+.scan-recent-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-recent-row button {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  font-size: 13px;
+  background: #0d7d52;
+}
+
+/* Lời đề nghị dùng lại giấy tờ của hồ sơ trước (xem renderPrevSessionOffer trong popup.js).
+   Tông xanh dương nhạt — là GỢI Ý tiện lợi, không phải cảnh báo; khác hẳn tông hổ phách của
+   .scan-recent-list (chỗ đó là "hệ thống không chắc, cán bộ phải tự quyết"). */
+.prev-session-offer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #bcd4ef;
+  background: #f2f7fd;
+  border-radius: 4px;
+  padding: 5px 6px 5px 8px;
+  margin: 8px 0;
+  font-size: 11.5px;
+}
+.prev-session-offer[hidden] { display: none; }
+.prev-session-offer .prev-offer-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #23486e;
+}
+.prev-session-offer .prev-offer-use {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #1565c0;
+}
+
+/* Mask phủ TOÀN BỘ nội dung popup (kể cả ngoài #fileList — nhãn, nút, khối
+   khác trong "Giấy tờ") lúc đang kéo file qua — vẫn CHỈ nằm trong document
+   của popup.html (extension), không đụng gì tới trang gốc. Ẩn mặc định,
+   không chặn click khi ẩn (pointer-events none).
+
+   PHẢI GIỐNG HỆT mask trong content.js (hàm createPanel, #autofill-hcc-drop-mask)
+   — từng thuộc tính một, kể cả blur: ở panel nổi, kéo file vào từ header thì
+   content.js vẽ, kéo thẳng vào giữa iframe thì khối này vẽ (sự kiện kéo-thả
+   không qua được biên iframe nên mỗi document phải tự lo phần của mình), mà
+   cán bộ chỉ thấy MỘT panel. Hai bên lệch nhau là hiện ra hai overlay trông
+   khác hẳn tuỳ đường con trỏ đi vào — đúng lỗi đã sửa 2026-09-09. Khung cũng
+   phải khớp: content.js đặt top của mask theo mép trên iframe để cùng lùi 6px
+   như `inset: 6px` ở đây. Sửa một bên thì sửa luôn bên kia. */
+.drop-overlay {
+  position: fixed;
+  inset: 6px;
+  z-index: 999;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, .92);
+  border: 2px dashed #1565c0;
+  border-radius: 5px;
+  color: #1565c0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  padding: 12px;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+.drop-overlay .drop-overlay-icon { font-size: 28px; line-height: 1; }
+
+/* File vừa được thêm bằng kéo-thả — flash ngắn để cán bộ thấy rõ đã "vào
+   khung" đúng, không phải thả hụt ra ngoài. Tự hết sau ~1.5s (setTimeout gỡ
+   class trong renderFiles). */
+.file-list .fname.fname-just-added {
+  animation: fname-just-added-flash 1.5s ease-out;
+}
+@keyframes fname-just-added-flash {
+  0% { background: #baf1d3; }
+  100% { background: transparent; }
+}
+
 .checkbox-row {
   display: flex;
   align-items: center;
@@ -537,6 +661,22 @@ input, select, textarea { font-family: inherit; }
   overflow-y: auto;
 }
 
+/* Gợi ý TĨNH khi danh sách file đang rỗng — thuần hiển thị, không còn liên
+   quan gì tới việc bắt sự kiện kéo-thả (nghe trên document của popup.js,
+   không phải trên #fileList — xem #dropOverlay bên dưới). */
+.file-list:empty {
+  border: 1px dashed #b7c8de;
+  text-align: center;
+  border-radius: 4px;
+  padding: 7px;
+}
+.file-list:empty::before {
+  content: "📎  Kéo-thả file vào đây để đính kèm";
+  font-size: 12px;
+  color: #6d7f98;
+  transition: color 120ms ease;
+}
+
 .file-list li {
   display: flex;
   align-items: center;
@@ -544,6 +684,12 @@ input, select, textarea { font-family: inherit; }
   padding: 4px 0;
   font-size: 12px;
 }
+
+/* File kéo từ máy quét mà đối soát thấy NỘI DUNG trên đĩa đã đổi (xem
+   reconcileScanAgentFiles trong popup.js) — cùng tông xanh với .status.ok.
+   Không còn .fname-xoa: nhãn "Đã xoá" đã bỏ, file biến mất khỏi thư mục quét
+   là chuyện bình thường sau khi nộp xong, cảnh báo chỉ gây nhiễu. */
+.file-list .fname.fname-capnhat { color: #2e7d32; }
 
 .file-list .fname {
   flex: 1;
@@ -557,6 +703,56 @@ input, select, textarea { font-family: inherit; }
   margin: 0;
   font-size: 12px;
   padding: 2px 4px;
+}
+
+/* Rê chuột lên dòng file: phản hồi nhẹ để biết dòng có tương tác được.
+   `.dang-xem` mới là dấu THẬT — đánh đúng file đang hiện trên khung xem trước (mục 4.14),
+   và giữ nguyên cả khi con trỏ đã rời dòng để rê sang khung cuộn xem. */
+.file-list li {
+  border-radius: 4px;
+  /* 9px = vạch đánh dấu 3px (li.dang-xem) + 6px thở. Đặt cho MỌI dòng chứ không riêng dòng đang
+     xem: để riêng thì chữ nhảy ngang mỗi lần đổi dòng preview. */
+  padding-left: 9px;
+  padding-right: 4px;
+  transition: background-color 120ms ease;
+}
+.file-list li:hover { background: #f2f7fd; }
+.file-list li.dang-xem {
+  background: #e3f0ff;
+  box-shadow: inset 3px 0 0 #1565c0;  /* vach xanh ben trai: nhin la biet ngay dong nao */
+}
+.file-list li.dang-xem .fname { font-weight: 600; color: #0d47a1; }
+/* Nhấn vào dòng = GHIM khung xem trước (không tự tắt khi rời chuột). Vạch đậm + ghim nhỏ để
+   phân biệt với "đang xem tạm lúc rê chuột". */
+.file-list li { cursor: pointer; }
+.file-list li.dang-ghim {
+  background: #d4e6ff;
+  box-shadow: inset 4px 0 0 #0d47a1;
+}
+.file-list li.dang-ghim .fname::before { content: "📌 "; }
+
+/* Nút sửa tên + ô nhập tại chỗ (xem batDauSuaTen/ketThucSuaTen trong popup.js).
+   Với file máy quét, nút này chỉ hiện khi agent khai caps "rename". */
+.file-list .rename {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  font-size: 12px;
+  line-height: 1;
+  color: #35516f;
+  background: transparent;
+  border: 1px solid #c7d2df;
+}
+.file-list .rename:hover { background: #edf4fb; border-color: #8faccc; color: #0d47a1; }
+.file-list .rename-input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  margin: 0;
+  padding: 2px 5px;
+  font-size: 12px;
+  border: 1px solid #1565c0;
+  border-radius: 3px;
 }
 
 .file-list .rm {
@@ -973,3 +1169,82 @@ input, select, textarea { font-family: inherit; }
   font-size: 12px;
   text-align: center;
 }
+
+/* ═══ Đánh giá trải nghiệm sau khi bấm nộp hồ sơ ═══
+   Panel chỉ rộng 360px nên 5 mức xếp DỌC (như Handfree) chứ không dàn ngang: vùng chạm rộng
+   hết bề ngang, người lớn tuổi bấm không trượt, và thứ tự cao→thấp giống hệt bên Handfree để
+   cán bộ quen một lần dùng được cả hai. */
+/* KHÔNG kế thừa max-height:340px của .cs-scroll. Khung panel tự cao theo nội dung
+   (ResizeObserver → postPanelHeight → content.js nới iframe), nên cắt ở 340px chỉ đẻ ra một
+   thanh cuộn thừa và đẩy hai nút "Bỏ qua / Gửi đánh giá" xuống dưới tầm nhìn — cán bộ không
+   thấy nút mà bấm. Màn hình quá thấp thì content.js vẫn kẹp iframe ở innerHeight-120 và iframe
+   tự cuộn, cộng thêm .rt-actions dính đáy bên dưới nên nút luôn với tới được. */
+.rt-scroll{ padding:6px 2px 2px; max-height:none; overflow:visible; }
+.rt-title{ font-size:14.5px; font-weight:800; color:#193a72; line-height:1.34; }
+.rt-sub{ margin-top:3px; font-size:11.5px; color:#5d6b7d; line-height:1.4; }
+.rt-scale{ display:grid; gap:6px; margin:11px 0 10px; }
+.rt-opt{
+  display:flex; align-items:center; gap:10px; width:100%; padding:9px 11px; cursor:pointer;
+  border:1.5px solid #dbe3ec; border-radius:11px; background:#fff; text-align:left;
+  font:inherit; color:#2a3a4b; transition:border-color .12s, background .12s, transform .08s;
+}
+.rt-opt:hover{ border-color:var(--rc); background:#fbfdff; }
+.rt-opt:active{ transform:scale(.985); }
+.rt-opt:focus-visible{ outline:2px solid var(--rc); outline-offset:1px; }
+.rt-face{ flex:0 0 auto; width:26px; height:26px; color:var(--rc); }
+.rt-face svg{ width:100%; height:100%; display:block; }
+.rt-nm{ font-size:12.5px; font-weight:700; }
+.rt-privacy{ font-size:10.5px; color:#7b8796; line-height:1.45; }
+/* Dính đáy: bình thường không có gì để cuộn nên nằm yên như thường; chỉ khi cửa sổ trình duyệt
+   quá thấp làm nội dung tràn thì hai nút mới bám lại đáy thay vì trôi khỏi màn hình. */
+.rt-actions{
+  display:flex; gap:8px; align-items:center; margin-top:10px;
+  position:sticky; bottom:0; background:#fff; padding-bottom:2px;
+}
+.rt-skip{
+  flex:1; padding:9px; border:0; background:none; cursor:pointer; font:inherit;
+  font-size:11.5px; color:#6b7787; text-decoration:underline; text-underline-offset:2px;
+}
+.rt-skip:hover{ color:#3d4957; }
+.rt-send{
+  flex:1.4; padding:11px; border:0; border-radius:10px; cursor:pointer; font:inherit;
+  font-size:12.5px; font-weight:800; color:#fff; background:var(--cs-blue);
+}
+.rt-send:hover{ background:var(--cs-blue-dark); }
+
+/* Bước 2 */
+.rt-picked{
+  display:flex; align-items:center; gap:9px; padding:7px 11px; margin-bottom:8px;
+  border:1.5px solid var(--rc); border-radius:11px; background:#fbfdff;
+}
+.rt-picked-nm{ flex:1; font-size:12.5px; font-weight:800; color:var(--rc); }
+.rt-change{
+  border:0; background:none; cursor:pointer; font:inherit; font-size:11px; color:#6b7787;
+  text-decoration:underline; text-underline-offset:2px; padding:2px 0;
+}
+.rt-reason-h{ font-size:12.5px; font-weight:800; color:#2a3a4b; }
+.rt-chips{ display:flex; flex-wrap:wrap; gap:5px; margin:7px 0 8px; }
+.rt-chip{
+  display:inline-flex; align-items:center; gap:6px; padding:6px 10px; cursor:pointer;
+  border:1.5px solid #dbe3ec; border-radius:999px; background:#fff; font:inherit;
+  font-size:11.5px; color:#3b4d60; line-height:1.25;
+}
+.rt-chip:hover{ border-color:#b9cbe4; }
+.rt-chip.sel{ border-color:var(--cs-blue); background:var(--cs-blue-soft); color:#1f3f86; font-weight:700; }
+.rt-bx{
+  display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px;
+  border:1.5px solid #c2cede; border-radius:4px; font-size:9px; color:#fff; line-height:1;
+}
+.rt-chip.sel .rt-bx{ border-color:var(--cs-blue); background:var(--cs-blue); }
+.rt-note{
+  width:100%; box-sizing:border-box; padding:8px 10px; border:1.5px solid #dbe3ec;
+  border-radius:9px; font:inherit; font-size:12px; color:#2a3a4b; resize:vertical;
+}
+.rt-note:focus{ outline:none; border-color:var(--cs-blue); }
+
+/* Cảm ơn — hiện ngay trong khung rồi tự về màn chính, không bắt bấm thêm nút nào */
+.rt-thanks{ text-align:center; padding:26px 10px; }
+.rt-thanks-face{ display:block; width:44px; height:44px; margin:0 auto 10px; color:#12a06a; }
+.rt-thanks-face svg{ width:100%; height:100%; display:block; }
+.rt-thanks-tt{ font-size:14px; font-weight:800; color:#193a72; }
+.rt-thanks-sub{ margin-top:4px; font-size:11.5px; color:#5d6b7d; }

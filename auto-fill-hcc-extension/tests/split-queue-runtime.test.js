@@ -9,7 +9,10 @@ const storage = {};
 const createdTabs = [];
 const updatedTabs = [];
 let nextTabId = 100;
-let runtimeListener = null;
+// Chrome gọi MỌI listener onMessage, kênh trả lời giữ mở nếu một listener trả true. Background có
+// nhiều listener (scan-bridge thêm vài cái) → không được chỉ giữ listener đăng ký sau cùng.
+const runtimeListeners = [];
+const runtimeListener = (...args) => runtimeListeners.map((listener) => listener(...args)).includes(true);
 
 const chrome = {
   action: { onClicked: { addListener() {} } },
@@ -44,10 +47,15 @@ const chrome = {
   },
   runtime: {
     onMessage: {
-      addListener(listener) { runtimeListener = listener; },
+      addListener(listener) { runtimeListeners.push(listener); },
     },
     onConnect: { addListener() {} },
+    // Tự cập nhật (scan-bridge): background đặt lịch kiểm bản mới và đọc version lúc nạp.
+    onInstalled: { addListener() {} },
+    onStartup: { addListener() {} },
+    getManifest() { return { version: "0.0.0-test" }; },
   },
+  alarms: { onAlarm: { addListener() {} }, async create() {} },
 };
 
 vm.runInNewContext(source, {

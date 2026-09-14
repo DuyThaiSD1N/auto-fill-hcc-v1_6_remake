@@ -16,11 +16,16 @@ vm.runInNewContext(`${changelogSource}\nglobalThis.releases = APP_RELEASES;`, sa
 const latest = sandbox.releases[0];
 assert.equal(latest.version, manifest.version, "Mục changelog đầu tiên phải là phiên bản trong manifest");
 
-// Nhãn panel dạng "<version> · <ngày/tháng>"; ngày phải trùng phần ngày/tháng của changelog.
-const labelMatch = /const APP_VERSION_LABEL = "([^"]+)"/.exec(content);
-assert.ok(labelMatch, "content.js phải khai báo APP_VERSION_LABEL");
-const [labelVersion, labelDate] = labelMatch[1].split("·").map((s) => s.trim());
-assert.equal(labelVersion, manifest.version, "Nhãn phiên bản ở header panel lệch manifest");
+// Nhãn panel dạng "<version> · <ngày/tháng>". Số đọc từ manifest LÚC CHẠY (gõ tay từng trôi thật) nên
+// không thể lệch; chỉ còn ngày ghi tay — phải trùng phần ngày/tháng của changelog.
+assert.match(
+  content,
+  /const APP_VERSION_LABEL = [\s\S]{0,300}?chrome\.runtime\.getManifest\(\)\.version/,
+  "Nhãn phiên bản ở header panel phải đọc số từ manifest",
+);
+const dateMatch = /const APP_RELEASE_DATE = "([^"]+)"/.exec(content);
+assert.ok(dateMatch, "content.js phải khai báo APP_RELEASE_DATE");
+const labelDate = dateMatch[1];
 
 const [d, m] = latest.date.split("/");
 assert.equal(labelDate, `${d}/${m}`, "Ngày trên header panel lệch ngày changelog");

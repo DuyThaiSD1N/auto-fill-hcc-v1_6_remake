@@ -1,8 +1,8 @@
-# Chính sách quyền riêng tư — Trợ lý hồ sơ Dịch vụ công
+# Chính sách quyền riêng tư — Trợ lý nhân dân
 
-**Cập nhật lần cuối:** 12/08/2026
+**Cập nhật lần cuối:** 12/09/2026
 
-Tiện ích mở rộng **"Trợ lý hồ sơ Dịch vụ công"** (sau đây gọi là "Tiện ích") hỗ trợ người dùng điền nhanh thông tin từ giấy tờ vào các biểu mẫu trên cổng Dịch vụ công. Chính sách này mô tả rõ Tiện ích thu thập dữ liệu gì, dùng để làm gì, lưu ở đâu và được bảo vệ ra sao.
+Tiện ích mở rộng **"Trợ lý nhân dân"** (sau đây gọi là "Tiện ích") hỗ trợ người dùng điền nhanh thông tin từ giấy tờ vào các biểu mẫu trên cổng Dịch vụ công. Chính sách này mô tả rõ Tiện ích thu thập dữ liệu gì, dùng để làm gì, lưu ở đâu và được bảo vệ ra sao.
 
 > **Cam kết cốt lõi:** Chúng tôi **không bán, không cho thuê, không chia sẻ** dữ liệu của bạn cho bất kỳ bên thứ ba nào. Toàn bộ xử lý OCR và trích xuất thông tin diễn ra **trên máy chủ riêng của chúng tôi**, không gửi sang dịch vụ bên ngoài.
 

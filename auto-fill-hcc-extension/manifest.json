@@ -1,17 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Trợ lý hỗ trợ người dân hoàn thiện thủ tục hành chính",
-  "version": "1.17",
-  "description": "Hỗ trợ người dân hoàn thiện thủ tục hành chính công",
+  "name": "Trợ lý nhân dân",
+  "version": "1.18.1",
+  "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
     "activeTab",
     "storage",
     "unlimitedStorage",
-    "scripting"
+    "scripting",
+    "alarms",
+    "idle"
   ],
   "host_permissions": [
-    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
@@ -22,7 +23,7 @@
     "128": "assets/icons/hcc-128.png"
   },
   "action": {
-    "default_title": "Trợ lý hỗ trợ người dân hoàn thiện thủ tục về Hành chính công",
+    "default_title": "Trợ lý nhân dân — bấm để mở trợ lý trên trang",
     "default_icon": {
       "16": "assets/icons/hcc-16.png",
       "32": "assets/icons/hcc-32.png",
@@ -115,6 +116,8 @@
         "popup.html",
         "popup.css",
         "popup.js",
+        "preview.html",
+        "preview.js",
         "popup-locations.js",
         "changelog.js",
         "api/*",

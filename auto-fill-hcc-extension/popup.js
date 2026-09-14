@@ -202,21 +202,6 @@ async function getTargetTabId() {
   return tab?.id;
 }
 
-// Danh sách file content script isolated world, LẤY TỪ MANIFEST. background.js có bản sao cùng
-// logic vì service worker và popup không dùng chung scope; nguồn dữ liệu vẫn là manifest nên thêm
-// file mới chỉ cần khai ở manifest.json.
-function isolatedContentFiles() {
-  const groups = chrome.runtime.getManifest()?.content_scripts || [];
-  const files = [];
-  for (const group of groups) {
-    if (group.world === "MAIN") continue;
-    for (const file of group.js || []) {
-      if (!files.includes(file)) files.push(file);
-    }
-  }
-  return files.length ? files : ["api/config.js", "content.js"];
-}
-
 async function sendToContent(payload) {
   const tabId = await getTargetTabId();
   if (!tabId) return { error: "Không xác định được tab form." };
@@ -254,10 +239,10 @@ async function sendToContent(payload) {
       });
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
-        // Đọc thẳng từ manifest (trừ khối world: MAIN inject ở trên). Danh sách chép tay trước đây
-        // đã trôi khỏi manifest — thiếu portal-login.js và portal-quangninh.js — nên tab vừa
-        // re-inject chạy thiếu tính năng một cách IM LẶNG.
-        files: isolatedContentFiles(),
+        // PHẢI khớp danh sách js của content_scripts trong manifest.json (trừ khối world: MAIN ở
+        // trên). Thiếu một file thì tab vừa re-inject sẽ chạy thiếu tính năng một cách IM LẶNG —
+        // vd thiếu enterprise-registration.js là mất nhận diện + tự tiến bước ở cổng ĐKKD qua mạng.
+        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -547,12 +532,19 @@ async function bootstrap() {
     await restoreSplitMode();
     await restoreSplitDocumentsSetting();
     await restoreSession();
+    await restoreScanWatermark(); // mốc "giấy tờ này của công dân trước" phải sống qua redirect
+    await restoreScanDaGo();      // file cán bộ đã gỡ tay cũng phải sống qua redirect
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
+    // Dựng lại lời đề nghị "dùng lại hồ sơ trước" — cổng dịch vụ công redirect/postback liên tục,
+    // panel bị dựng lại thường xuyên, phải hiện lại được sau mỗi lần đó chứ không mất theo RAM.
+    await renderPrevSessionOffer();
     // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
     await resumeEnterpriseFillIfPending();
+    // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
+    await resumePendingRating();
   } catch (e) {
     await AuthStore.clearTokens();
     showLogin();
@@ -591,12 +583,19 @@ loginBtn.addEventListener("click", async () => {
     await restoreSplitMode();
     await restoreSplitDocumentsSetting();
     await restoreSession();
+    await restoreScanWatermark(); // mốc "giấy tờ này của công dân trước" phải sống qua redirect
+    await restoreScanDaGo();      // file cán bộ đã gỡ tay cũng phải sống qua redirect
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
+    // Dựng lại lời đề nghị "dùng lại hồ sơ trước" — cổng dịch vụ công redirect/postback liên tục,
+    // panel bị dựng lại thường xuyên, phải hiện lại được sau mỗi lần đó chứ không mất theo RAM.
+    await renderPrevSessionOffer();
     // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
     await resumeEnterpriseFillIfPending();
+    // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
+    await resumePendingRating();
   } catch (e) {
     console.warn("[Popup] Đăng nhập lỗi:", e);
     const invalidRememberedLogin = rememberedLoginLoaded
@@ -630,6 +629,7 @@ logoutBtn.addEventListener("click", async () => {
   await AuthStore.clearTokens();
   currentUser = null;
   await clearSession();
+  await clearPrevSession(); // rời phiên làm việc → không để giấy tờ công dân nằm lại trên máy
   files.length = 0;
   lastProcessSession = null;
   renderFiles();
@@ -642,9 +642,13 @@ logoutBtn.addEventListener("click", async () => {
 // Tạo phiên mới: xoá file + kết quả + sessionId của TAB hiện tại (giữ đăng nhập, giữ thủ tục đã chọn).
 if (newSessionBtn) {
   newSessionBtn.addEventListener("click", async () => {
+    // Cất giấy tờ hồ sơ vừa xong sang ngăn "hồ sơ trước" TRƯỚC khi xoá bất cứ thứ gì — đây là
+    // nguồn duy nhất để mời dùng lại khi cùng công dân làm thủ tục tiếp theo.
+    archiveCurrentSessionAsPrev();
     await clearSession();
     files.length = 0;
     lastProcessSession = null;
+    resetScanBatchImportState(); // cong dan tiep theo, cung popup dang mo -> phai thu gom batch lai tu dau
     // Đưa TẤT CẢ về mặc định: bỏ chọn thủ tục + mở khóa, xoá ô tìm, xoá card rà soát.
     selectedProcedureKey = "";
     selectedBusinessPageKey = "";
@@ -660,6 +664,7 @@ if (newSessionBtn) {
     renderFiles();
     applyFormUI();
     refreshAttachStepUI();
+    void renderPrevSessionOffer(); // mời dùng lại giấy tờ vừa cất, nếu vẫn là cùng công dân
     // Nhận diện lại theo TRANG HIỆN TẠI (giống lúc mới mở): trang form → tự chọn+khóa; không → để trống.
     await autoDetectProcedure();
     setStatus("Đã tạo phiên mới — sẵn sàng cho hồ sơ tiếp theo.", "ok");
@@ -939,6 +944,9 @@ function shouldPreserveProcedureWorkOnAutoDetect(previousKey, nextKey, source, f
 }
 
 function resetProcedureWorkState() {
+  // Cất giấy tờ của hồ sơ đang đóng vào ngăn "hồ sơ trước" TRƯỚC khi xoá files[] — để còn mời
+  // dùng lại được nếu vẫn là cùng công dân (xem archiveCurrentSessionAsPrev).
+  archiveCurrentSessionAsPrev();
   // Vô hiệu mọi saveSession cũ đang đọc file lớn; bản lưu đó không được ghi file thủ tục trước trở lại.
   sessionWriteRevision++;
   files.length = 0;
@@ -951,6 +959,7 @@ function resetProcedureWorkState() {
   closePhoneUpload();
   currentConsentContext = null;
   pendingConsentTrigger = null;
+  resetScanBatchImportState(); // phien lam viec moi -> phai thu gom batch lai tu dau (xem gan ensureScanAgentConnected)
   void sendToContent({ action: "clearPanelAutoRestore" });
   showView("main");
   setStatus("", "");
@@ -992,6 +1001,12 @@ async function selectProcedure(key, { source = "manual", confirmedNavigation = f
   // khi chuyển sang thủ tục KHÁC, để lần mở dở trước không lỡ tay điều khiển hồ sơ đang mở.
   if (!next.enterprisePortal) await clearEnterpriseAutostart();
   applyFormUI();
+  // Có thủ tục đang làm việc (tự nhận diện hay chọn tay đều tính) → dò máy quét, không đợi
+  // cán bộ bấm gì. Hàm tự bỏ qua nếu đã kết nối từ lần chọn trước.
+  ensureScanAgentConnected();
+  // Agent có thể đã kết nối sẵn từ trước (vd đổi thủ tục, hoặc "Phiên mới" trong cùng popup) →
+  // thử gom batch quét gần nhất ngay, không đợi onConnected (chỉ bắn 1 lần lúc SSE mở).
+  void attemptBatchImport();
   // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
   if (selectionChanged || workOwnerChanged) await saveSession();
   return true;
@@ -1473,6 +1488,10 @@ async function loadProcedures() {
         });
       } catch (_) { /* không chặn luồng nạp thủ tục */ }
     }
+    // Câu chữ phiếu đánh giá do BE giữ (app/dossiers/rating_card.py) — CÙNG bộ với Handfree.
+    // Không chép cứng nhãn nào vào extension: sửa câu chữ hay đổi danh sách lý do chỉ cần
+    // deploy BE. BE bản cũ không trả → màn đánh giá tắt lặng lẽ, không vỡ gì.
+    if (res.ratingCard && Array.isArray(res.ratingCard.scale)) RATING_CARD = res.ratingCard;
   } catch (e) {
     if (e.unauthorized) {
       await AuthStore.clearTokens();
@@ -1545,6 +1564,14 @@ const files = []; // { file, role, dataUrl?, restored? }
 // Session lưu THEO TAB (autofill_session_<tabId>) → mỗi tab 1 phiên; tab mới không bị
 // kéo thủ tục/file của tab cũ sang. Bản popup đứng riêng (không nhúng) dùng key "popup".
 const SESSION_KEY = "autofill_session_" + (EMBEDDED_TAB_ID ?? "popup");
+// Ngăn "hồ sơ trước": snapshot của phiên vừa đóng, GIỮ LẠI (không xoá) để cán bộ dùng lại được
+// bằng 1 chạm khi CÙNG một công dân làm thủ tục thứ hai (vd khai sinh liên thông + cấp bản sao).
+// PHẢI nằm trong chrome.storage.local chứ không phải biến trong RAM: cổng dịch vụ công
+// postback/redirect liên tục, panel bị dựng lại thường xuyên — giữ trong RAM là mất ngay lời đề
+// nghị, cán bộ lại phải thêm tay từng file. Mỗi lần tạo phiên mới thì GHI ĐÈ ngăn này, nên tối đa
+// luôn chỉ 2 bản/tab (hiện tại + trước đó), không phình theo số lượt tiếp dân.
+const PREV_SESSION_KEY = "autofill_prev_session_" + (EMBEDDED_TAB_ID ?? "popup");
+const PREV_SESSION_TTL_MS = 30 * 60 * 1000; // quá 30 phút thì không còn là "hồ sơ vừa xong" nữa
 const UNKNOWN_WORK_PROCEDURE_KEY = "__legacy_unknown__";
 let sessionWriteRevision = 0;
 let sessionWriteQueue = Promise.resolve();
@@ -1552,6 +1579,34 @@ let sessionWriteQueue = Promise.resolve();
 function enqueueSessionWrite(operation) {
   sessionWriteQueue = sessionWriteQueue.catch(() => { }).then(operation);
   return sessionWriteQueue;
+}
+
+// Hai hàm ánh xạ item files[] ↔ snapshot lưu trữ. Dùng CHUNG cho cả saveSession/restoreSession
+// lẫn ngăn "hồ sơ trước" (archiveCurrentSessionAsPrev/reusePrevSession) — bộ field
+// fromScan/rel/hash/canhBaoScan từng bị sót một lần khi chép tay, không chép lần hai.
+function fileItemToSnapshot(it) {
+  return {
+    name: it.file.name,
+    type: it.file.type || "image/jpeg",
+    dataUrl: it.dataUrl,
+    role: it.role || "doc",
+    fromScan: it.fromScan || false,
+    rel: it.rel || null,
+    hash: it.hash || null,
+    canhBaoScan: it.canhBaoScan || null,
+  };
+}
+function fileItemFromSnapshot(f) {
+  // File khôi phục không có File object thật, nhưng đã có sẵn dataUrl nên đủ để gửi BE.
+  // rel/hash/canhBaoScan phục hồi lại để reconcileScanAgentFiles còn đối soát tiếp được.
+  return {
+    file: { name: f.name, type: f.type }, role: f.role || "doc", dataUrl: f.dataUrl,
+    restored: true,
+    fromScan: !!f.fromScan,
+    rel: f.rel || null,
+    hash: f.hash || null,
+    canhBaoScan: f.canhBaoScan || null,
+  };
 }
 
 async function saveSession() {
@@ -1565,12 +1620,7 @@ async function saveSession() {
       businessFillSupportCode,
       dossierId,
       dossierSubmitted,
-      files: files.map((it) => ({
-        name: it.file.name,
-        type: it.file.type || "image/jpeg",
-        dataUrl: it.dataUrl,
-        role: it.role || "doc",
-      })),
+      files: files.map(fileItemToSnapshot),
     };
     await enqueueSessionWrite(async () => {
       if (revision !== sessionWriteRevision) return;
@@ -1626,14 +1676,119 @@ async function restoreSession() {
   files.length = 0;
   for (const f of savedFiles) {
     if (!f?.dataUrl) continue;
-    // File khôi phục không có File object thật, nhưng đã có sẵn dataUrl nên đủ để gửi BE.
-    files.push({
-      file: { name: f.name, type: f.type }, role: f.role || "doc", dataUrl: f.dataUrl,
-      restored: true
-    });
+    files.push(fileItemFromSnapshot(f));
   }
   renderProcedureResults();
   applyFormUI();
+}
+
+// ===== Ngăn "hồ sơ trước" — dùng lại giấy tờ bằng 1 chạm =====
+// Bài toán: watermark (xem attemptBatchImport) chặn được việc pin nhầm giấy tờ của công dân
+// TRƯỚC vào hồ sơ công dân MỚI — nhưng lại chặn luôn ca hợp lệ "cùng một công dân làm thủ tục
+// thứ hai" (khai sinh liên thông + cấp bản sao), khiến cán bộ phải thêm tay từng file.
+//
+// Không giải bằng cách thêm nút "giữ lại giấy tờ": nút bắt cán bộ quyết định TRƯỚC khi bấm, mà
+// bấm nhầm thì hỏng im lặng (đúng nhược điểm của mọi phương án 2-nút). Thay vào đó: sau khi tạo
+// phiên mới, hiện MỘT lời đề nghị kèm TÊN công dân của hồ sơ trước — quyết định trở thành phép
+// so bằng mắt "người ngồi trước mặt có phải người này không", và mặc định luôn an toàn
+// (không bấm = không có giấy tờ người khác lọt vào).
+function archiveCurrentSessionAsPrev() {
+  // Dựng snapshot ĐỒNG BỘ từ files[] ngay tại đây, KHÔNG đọc lại SESSION_KEY từ storage: bên gọi
+  // xoá files[]/ghi đè session ngay sau lệnh này, đọc storage (bất đồng bộ) dễ vớ phải bản đã bị
+  // dọn rỗng. File chưa kịp có dataUrl thì bỏ qua — khôi phục ra file rỗng còn tệ hơn là thiếu.
+  const snapFiles = files.filter((it) => it.dataUrl).map(fileItemToSnapshot);
+  if (!snapFiles.length) return; // không có giấy tờ nào thì không có gì để mời dùng lại
+  const p = currentConsentContext?.principal; // {cccd, name} đọc từ VNeID trên trang, có thì mới có nhãn tên
+  const snap = {
+    files: snapFiles,
+    procedureKey: selectedProcedureKey,
+    workProcedureKey,
+    archivedAt: Date.now(),
+    principalName: p?.name || null,
+    principalCccd: p?.cccd || null,
+  };
+  try {
+    void chrome.storage.local.set({ [PREV_SESSION_KEY]: snap });
+  } catch (e) {
+    console.warn("[Popup] Không lưu được hồ sơ trước để dùng lại:", e);
+  }
+}
+
+async function clearPrevSession() {
+  try {
+    await chrome.storage.local.remove(PREV_SESSION_KEY);
+  } catch (e) { /* ignore */ }
+}
+
+async function readPrevSession() {
+  let snap = null;
+  try {
+    const res = await chrome.storage.local.get(PREV_SESSION_KEY);
+    snap = res?.[PREV_SESSION_KEY];
+  } catch (e) { /* ignore */ }
+  if (!snap || !Array.isArray(snap.files) || !snap.files.length) return null;
+  if (Date.now() - Number(snap.archivedAt || 0) > PREV_SESSION_TTL_MS) {
+    void clearPrevSession(); // quá hạn - dọn luôn, không giữ giấy tờ công dân trên máy lâu hơn cần thiết
+    return null;
+  }
+  return snap;
+}
+
+const prevSessionOfferEl = document.getElementById("prevSessionOffer");
+
+async function renderPrevSessionOffer() {
+  if (!prevSessionOfferEl) return;
+  // Lời đề nghị CHỈ có nghĩa khi hồ sơ đang trống: đã có giấy tờ nào đó (quét ra, thêm tay, hay
+  // vừa bấm dùng lại) nghĩa là cán bộ đang làm hồ sơ cụ thể rồi — dọn luôn cả ngăn lưu để giấy tờ
+  // của công dân trước không nằm lại trên máy.
+  if (files.length) {
+    if (!prevSessionOfferEl.hidden) {
+      prevSessionOfferEl.hidden = true;
+      void clearPrevSession();
+    }
+    return;
+  }
+  const snap = await readPrevSession();
+  if (!snap) {
+    prevSessionOfferEl.hidden = true;
+    return;
+  }
+  const gio = new Date(snap.archivedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+  // Nhãn nhận diện: có tên VNeID thì hiện tên (cán bộ nhìn là biết ngay có đúng người đang ngồi
+  // trước mặt không); không có thì còn số file + giờ, vẫn đủ để phân biệt lượt.
+  const moTa = (snap.principalName ? `${snap.principalName} · ` : "")
+    + `${snap.files.length} giấy tờ · ${gio}`;
+
+  prevSessionOfferEl.textContent = "";
+  const label = document.createElement("span");
+  label.className = "prev-offer-label";
+  label.textContent = `📎 Hồ sơ trước — ${moTa}`;
+  label.title = snap.principalCccd ? "CCCD: " + snap.principalCccd : "";
+  const dungLaiBtn = document.createElement("button");
+  dungLaiBtn.type = "button";
+  dungLaiBtn.className = "prev-offer-use";
+  dungLaiBtn.textContent = "Dùng lại";
+  dungLaiBtn.title = "Đưa lại toàn bộ giấy tờ của hồ sơ trước vào danh sách (dùng khi CÙNG công dân làm thủ tục tiếp theo)";
+  dungLaiBtn.addEventListener("click", () => void reusePrevSession());
+  // CỐ Ý KHÔNG có nút "×" bỏ qua: nó xoá vĩnh viễn ngăn "hồ sơ trước", bấm nhầm
+  // là mất hẳn giấy tờ không lấy lại được — trong khi lời đề nghị vốn đã tự ẩn
+  // và tự dọn ngay khi có file mới vào danh sách. Một nút chỉ có mặt hại.
+  prevSessionOfferEl.append(label, dungLaiBtn);
+  prevSessionOfferEl.hidden = false;
+}
+
+async function reusePrevSession() {
+  const snap = await readPrevSession();
+  if (!snap) { void renderPrevSessionOffer(); return; }
+  await clearPrevSession(); // dùng rồi thì thôi, không mời lại lần nữa
+  for (const f of snap.files) {
+    if (f?.dataUrl) files.push(fileItemFromSnapshot(f));
+  }
+  renderFiles();
+  refreshAttachStepUI();
+  saveSession();
+  void renderPrevSessionOffer();
+  setStatus(`Đã dùng lại ${snap.files.length} giấy tờ của hồ sơ trước.`, "ok");
 }
 
 function restoreBusinessFillSupportCode() {
@@ -1657,17 +1812,245 @@ function defaultRoleFor(file) {
   return roles[0]?.value;
 }
 
+// ===== Sửa tên file ngay trong danh sách =====
+// File máy quét: đổi luôn tên THẬT trên đĩa qua agent (POST /v1/files/rename),
+// rồi cập nhật item TẠI CHỖ — không xoá-thêm lại, để giữ nguyên vị trí trong
+// danh sách và loại giấy tờ (role) cán bộ đã chọn.
+//
+// Đổi tên trên đĩa làm watcher bắn ra cặp `file.removed` (tên cũ) +
+// `file.added` (tên mới). Cặp đó TỰ TIÊU nếu item đã kịp mang `rel` mới: handler
+// xoá không tìm thấy rel cũ, handler thêm thấy trùng rel + trùng hash nên bỏ
+// qua. Nhưng event có thể về TRƯỚC phản hồi API — nên đánh dấu rel vào
+// `scanDangDoiTen` trước khi gọi, handler xoá thấy dấu này thì không gỡ item.
+const scanDangDoiTen = new Set();
+
+function batDauSuaTen(item, li, nameEl) {
+  if (li.querySelector(".rename-input")) return; // dang sua roi
+  const o = document.createElement("input");
+  o.type = "text";
+  o.className = "rename-input";
+  o.value = item.file.name;
+  o.setAttribute("aria-label", "Tên file mới");
+  let xong = false;
+  const huy = () => { if (!xong) { xong = true; renderFiles(); } };
+  o.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); if (!xong) { xong = true; void ketThucSuaTen(item, o.value); } }
+    else if (e.key === "Escape") { e.preventDefault(); huy(); }
+  });
+  o.addEventListener("blur", huy); // bấm ra ngoài = huỷ, không tự lưu (tránh sửa nhầm mà không hay)
+  nameEl.replaceWith(o);
+  o.focus();
+  // Bôi đen phần tên, chừa đuôi file — đuôi gần như không bao giờ cần sửa.
+  const cham = item.file.name.lastIndexOf(".");
+  o.setSelectionRange(0, cham > 0 ? cham : item.file.name.length);
+}
+
+async function ketThucSuaTen(item, tenNhap) {
+  const ten = String(tenNhap || "").trim();
+  if (!ten || ten === item.file.name) { renderFiles(); return; }
+  // File thêm tay/ảnh điện thoại: không có gì trên đĩa để đụng, chỉ đổi tên gửi lên BE.
+  if (!item.fromScan || !item.rel) {
+    item.file = { name: ten, type: item.file.type };
+    renderFiles();
+    capNhatTenTrenPreview(item);
+    saveSession();
+    return;
+  }
+  if (!scanAgentHelpers?.renameFile) {
+    setStatus("Chưa kết nối được máy quét nên chưa đổi tên file trên đĩa được.", "err");
+    renderFiles();
+    return;
+  }
+  const relCu = item.rel;
+  scanDangDoiTen.add(relCu);
+  try {
+    const res = await scanAgentHelpers.renameFile(relCu, ten);
+    const relMoi = res?.rel || ten;
+    scanDangDoiTen.add(relMoi); // chan luon event `file.added` cua chinh minh
+    item.rel = relMoi;
+    item.file = { name: String(relMoi).split("/").pop(), type: item.file.type };
+    renderFiles();
+    capNhatTenTrenPreview(item);
+    saveSession();
+    setStatus(`Đã đổi tên thành "${item.file.name}" (cả trên đĩa).`, "ok");
+  } catch (e) {
+    // Phân biệt đúng lý do để cán bộ biết phải làm gì, không nuốt thành "lỗi chung".
+    const msg = e?.code === "NAME_EXISTS"
+      ? `Trong thư mục quét đã có file tên "${ten}" rồi — đặt tên khác.`
+      : e?.code === "BAD_NAME"
+        ? "Tên không hợp lệ: phải là tên file trần và giữ đuôi .pdf."
+        : `Không đổi tên được trên đĩa: ${e?.message || e}`;
+    console.warn("[Popup] Đổi tên file máy quét lỗi:", relCu, e);
+    setStatus(msg, "err");
+    renderFiles();
+  } finally {
+    // Nới sau một nhịp để cặp event do chính lần đổi tên này sinh ra kịp đi qua.
+    const cu = relCu, moi = item.rel;
+    setTimeout(() => { scanDangDoiTen.delete(cu); scanDangDoiTen.delete(moi); }, 5000);
+  }
+}
+
+// ===== Xem trước giấy tờ khi rê chuột =====
+// Khung xem trước nằm TRÊN TRANG GỐC (content.js dựng) chứ không trong panel: panel chỉ rộng
+// 360px, không xem nổi một tờ A4. Ở đây chỉ phát hiện hover rồi báo sang, không tự vẽ gì.
+//
+// Chỉ chạy ở chế độ panel nhúng (IS_EMBEDDED). Mở dạng popup toolbar thì không có "trang gốc"
+// nào để vẽ lên, mà bản thân popup cũng tự đóng khi mất focus.
+const PREVIEW_TRE_MS = 350; // re chuot luot qua danh sach thi khong nhay preview lien tuc
+let previewHenHien = null;
+let previewKeySeq = 0;
+// Key của file ĐANG hiện trên khung xem trước. Theo dõi bằng KEY chứ không phải phần tử <li>:
+// renderFiles() dựng lại toàn bộ danh sách nên tham chiếu <li> cũ thành rác ngay sau lần render
+// kế tiếp, còn key thì sống theo item.
+let previewKeyDangXem = "";
+// Key file ĐANG GHIM ("" = không). Nhấn vào dòng file = ghim; content.js giữ trạng thái thật,
+// đây chỉ là bản sao để tô dòng và để rê chuột không gửi lệnh đổi file vô ích.
+let previewKeyGhim = "";
+const previewDaGui = new Set(); // key da gui kem dataUrl -> lan sau chi gui key
+
+function previewKeyCua(item) {
+  // Khoá tạm trong bộ nhớ: saveSession() liệt kê field tường minh nên `_previewKey` không bị
+  // ghi vào storage; mở lại popup thì sinh khoá mới, content.js cache lại — không sao.
+  if (!item._previewKey) item._previewKey = "p" + (++previewKeySeq);
+  return item._previewKey;
+}
+
+function batDauHoverPreview(item) {
+  if (!IS_EMBEDDED) return;
+  // Đang ghim file KHÁC → rê chuột không đổi khung (content.js cũng chặn, đây là để khỏi gửi).
+  if (previewKeyGhim && item._previewKey !== previewKeyGhim) return;
+  huyHenHienPreview();
+  // VÀO LẠI ĐÚNG FILE ĐANG XEM → gửi NGAY, không đợi 350ms.
+  // Vì sao cần: renderFiles() dựng lại toàn bộ <ul> (đổi tên, file quét mới về, đối soát...),
+  // phá luôn <li> đang nằm dưới con trỏ → trình duyệt tự bắn mouseleave + mouseenter. Nếu vẫn
+  // đợi 350ms thì lệnh ẩn (hẹn 300ms từ mouseleave) kịp nổ trước → khung TẮT rồi BẬT lại, kèm
+  // dựng lại trình xem PDF từ đầu. Gửi ngay thì `hienPreview` bên content.js huỷ luôn lệnh ẩn
+  // đang chờ, không có nhịp tắt nào cả.
+  if (item._previewKey && previewKeyDangXem === item._previewKey) {
+    parent.postMessage({
+      type: "autofill-hcc-preview-show",
+      key: item._previewKey, name: item.file.name, mime: item.file.type || "",
+    }, "*");
+    danhDauDongDangXem();
+    return;
+  }
+  previewHenHien = setTimeout(() => {
+    previewHenHien = null;
+    void guiPreview(item, false);
+  }, PREVIEW_TRE_MS);
+}
+
+// Gửi file sang content.js để hiện. Dùng chung cho rê chuột (ghim=false) và nhấn dòng (ghim=true).
+async function guiPreview(item, ghim) {
+  const key = previewKeyCua(item);
+  // File vừa thêm bằng "+ Thêm file"/kéo-thả mới chỉ có File object, dataUrl phải đọc ra đã —
+  // không đọc thì khung xem trước hiện trắng đúng lúc cán bộ cần kiểm tra nhất.
+  if (!item.dataUrl && item.file instanceof Blob) {
+    try { item.dataUrl = await readAsDataUrl(item.file); }
+    catch (e) { console.warn("[Popup] Không đọc được file để xem trước:", e); }
+  }
+  const goi = { type: "autofill-hcc-preview-show", key, name: item.file.name, mime: item.file.type || "", ghim };
+  if (!previewDaGui.has(key)) {
+    goi.dataUrl = item.dataUrl || "";
+    if (item.dataUrl) previewDaGui.add(key);
+  }
+  parent.postMessage(goi, "*");
+  previewKeyDangXem = key;
+  if (ghim) previewKeyGhim = key;
+  danhDauDongDangXem();
+}
+
+// Nhấn vào dòng file → GHIM khung xem trước. Nhấn dòng khác khi đang ghim → chuyển ghim sang đó.
+function ghimPreview(item) {
+  if (!IS_EMBEDDED) return;
+  huyHenHienPreview();
+  void guiPreview(item, true);
+}
+
+// Xin content.js đóng hẳn (bỏ ghim). Nó báo lại "preview-hidden" → mới bỏ tô dòng.
+function xinDongPreview() {
+  if (!IS_EMBEDDED || !previewKeyDangXem) return;
+  huyHenHienPreview();
+  parent.postMessage({ type: "autofill-hcc-preview-close" }, "*");
+}
+
+// Sửa tên file trong lúc khung xem trước đang hiện chính file đó → đẩy tên mới sang ngay.
+// Không gửi kèm dataUrl: nội dung không đổi, content.js đã cache rồi (xem preview-show ở đó).
+function capNhatTenTrenPreview(item) {
+  if (!IS_EMBEDDED || !item._previewKey || previewKeyDangXem !== item._previewKey) return;
+  parent.postMessage({
+    type: "autofill-hcc-preview-show",
+    key: item._previewKey, name: item.file.name, mime: item.file.type || "",
+  }, "*");
+}
+
+function huyHenHienPreview() {
+  if (previewHenHien) { clearTimeout(previewHenHien); previewHenHien = null; }
+}
+
+// Tô sáng đúng dòng đang hiện trên khung xem trước. Gọi lại sau mỗi renderFiles() vì danh sách
+// được dựng lại từ đầu, class cũ mất theo.
+function danhDauDongDangXem() {
+  if (!fileList) return;
+  fileList.querySelectorAll("li.dang-xem, li.dang-ghim")
+    .forEach((li) => li.classList.remove("dang-xem", "dang-ghim"));
+  if (!previewKeyDangXem) return;
+  const i = files.findIndex((it) => it._previewKey === previewKeyDangXem);
+  const li = i >= 0 ? fileList.children[i] : null;
+  li?.classList.add("dang-xem");
+  if (li && previewKeyGhim === previewKeyDangXem) li.classList.add("dang-ghim");
+}
+
+function ketThucHoverPreview() {
+  if (!IS_EMBEDDED) return;
+  huyHenHienPreview();
+  // Chỉ XIN ẩn — content.js mới là bên quyết định, vì nó biết con trỏ có đang ở trên khung
+  // xem trước hay không (rê từ dòng file sang khung thì phải giữ nguyên để còn cuộn xem).
+  // Cũng vì thế KHÔNG bỏ tô sáng ở đây: rê chuột sang khung để cuộn thì khung vẫn đang hiện
+  // file đó, bỏ tô là mất luôn thông tin "đang xem file nào". Đợi content.js báo đã tắt hẳn.
+  parent.postMessage({ type: "autofill-hcc-preview-hide" }, "*");
+}
+
 function renderFiles() {
   const roles = effectiveRoles();
   const agent = isAgentMode();
   const attach = isAttachMode();
+  // Danh sách vừa đổi → xét lại lời đề nghị "dùng lại hồ sơ trước" (có file thì tự ẩn + dọn ngăn).
+  // Rẻ: nhánh có-file thoát ngay, chỉ khi danh sách trống mới đọc storage.
+  void renderPrevSessionOffer();
   fileList.innerHTML = "";
   files.forEach((item, i) => {
     const li = document.createElement("li");
+    li.addEventListener("mouseenter", () => batDauHoverPreview(item));
+    li.addEventListener("mouseleave", ketThucHoverPreview);
+    li.addEventListener("click", (e) => {
+      // Nút sửa tên / xoá, ô chọn vai trò, ô nhập tên có việc riêng — bấm vào chúng không ghim.
+      if (e.target.closest("button, select, input, a, label")) return;
+      ghimPreview(item);
+    });
     const name = document.createElement("span");
     name.className = "fname";
-    name.textContent = item.file.name;
-    name.title = item.file.name;
+    // Chỉ còn MỘT loại cảnh báo: nội dung file trên đĩa đã đổi so với bản đang
+    // kẹp (reconcileScanAgentFiles). Nhãn "Đã xoá" đã bỏ — file biến mất khỏi
+    // thư mục quét là chuyện bình thường sau khi nộp xong, cảnh báo chỉ gây nhiễu.
+    // `canhBaoScan === "xoa"` còn sót trong session cũ sẽ rơi xuống nhánh else,
+    // hiện tên trơn — không cần dọn dữ liệu cũ.
+    if (item.canhBaoScan === "capNhat") {
+      name.textContent = `Cập nhật — ${item.file.name}`;
+      name.classList.add("fname-capnhat");
+      name.title = "Nội dung file trên đĩa đã đổi — đã tự lấy lại bản mới nhất.";
+    } else {
+      name.textContent = item.file.name;
+      name.title = item.file.name;
+    }
+    if (item._justAdded) {
+      // Vừa kéo-thả vào khung xong — flash ngắn để cán bộ thấy rõ đã "vào khung"
+      // thật, không phải thả hụt ra ngoài. Tự gỡ cờ + class sau khi hiệu ứng chạy
+      // xong, không gọi lại renderFiles() (đỡ vẽ lại toàn bộ danh sách chỉ vì việc này).
+      name.classList.add("fname-just-added");
+      delete item._justAdded;
+      setTimeout(() => name.classList.remove("fname-just-added"), 1500);
+    }
     li.append(name);
     if (item.fromPhone) {
       const badge = document.createElement("span");
@@ -1675,6 +2058,27 @@ function renderFiles() {
       badge.textContent = "📱";
       badge.title = "Ảnh tải từ điện thoại";
       li.append(badge);
+    }
+    if (item.fromScan) {
+      const badge = document.createElement("span");
+      badge.className = "from-scan";
+      badge.textContent = "🖨️";
+      badge.title = "File tự về từ máy quét";
+      li.append(badge);
+    }
+    // Nút sửa tên. File máy quét chỉ hiện khi agent CÓ khả năng "rename" — agent
+    // bản cũ chưa có endpoint thì ẩn hẳn, đỡ để cán bộ bấm rồi mới ăn 404.
+    // File thêm tay/ảnh điện thoại không có file trên đĩa để đụng tới nên luôn sửa được.
+    if (!item.fromScan || scanAgentCaps.includes("rename")) {
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "rename";
+      edit.textContent = "✎";
+      edit.title = item.fromScan
+        ? "Sửa tên file (đổi luôn tên trên đĩa trong thư mục quét)"
+        : "Sửa tên file";
+      edit.addEventListener("click", () => batDauSuaTen(item, li, name));
+      li.append(edit);
     }
     // Agent: không hiện dropdown role (BE tự suy luận).
     if (!agent && !attach) {
@@ -1695,6 +2099,7 @@ function renderFiles() {
     rm.className = "rm";
     rm.textContent = "×";
     rm.addEventListener("click", () => {
+      ghiNhanDaGo(item); // gỡ là một QUYẾT ĐỊNH — đừng tự pin lại ở lượt gom sau
       files.splice(i, 1);
       renderFiles();
       refreshAttachStepUI();
@@ -1703,6 +2108,7 @@ function renderFiles() {
     li.append(rm);
     fileList.appendChild(li);
   });
+  danhDauDongDangXem(); // danh sach vua dung lai -> to sang lai dong dang xem
 }
 
 function refreshAttachStepUI() {
@@ -1908,6 +2314,125 @@ fileInput.addEventListener("change", () => {
   saveSession();
 });
 
+// Kéo-thả file từ NGOÀI vào TOÀN BỘ nội dung popup — lối vào thủ công SONG
+// SONG với nút "+ Thêm file" ở trên. ĐỘC LẬP với cơ chế tự pin file máy quét
+// (attemptBatchImport phía dưới) — không liên quan, không phụ thuộc nhau.
+//
+// Nghe trên document CỦA CHÍNH popup.html (dù chạy độc lập hay nhúng trong
+// iframe panel nổi) — vẫn là "ở extension", KHÔNG đụng gì tới trang gốc. Xem
+// content.js (wireExternalFileDrop): tầng đó CHỈ nghe trên chính
+// #autofill-hcc-panel (không nghe trên document trang gốc, cùng lý do) — lo
+// phần diện tích thật sự thuộc trang gốc (header, viền quanh iframe); phần
+// còn lại (toàn bộ nội dung bên trong iframe) do khối này lo, và khi rơi
+// đúng vào #autofill-hcc-panel (ngoài iframe) thì content.js postMessage
+// file sang đây (mục dưới) thay vì tự thêm được — file[] chỉ có ở đây.
+function isFileDrag(e) {
+  const types = e.dataTransfer?.types;
+  return !!types && Array.from(types).includes("Files");
+}
+
+// Thêm file kéo-thả/nhận qua postMessage vào files[] — dùng chung cho cả 2 đường.
+function addDroppedFiles(fileListLike) {
+  const list = Array.from(fileListLike || []);
+  console.log("[Popup][DnD] addDroppedFiles nhận", list.length, "file:", list.map((f) => f.name));
+  if (!list.length) return;
+  for (const f of list) files.push({ file: f, role: defaultRoleFor(f), _justAdded: true });
+  renderFiles();
+  refreshAttachStepUI();
+  saveSession();
+}
+
+const dropOverlayEl = document.getElementById("dropOverlay");
+if (dropOverlayEl) {
+  let dragDepth = 0; // dragenter/dragleave long nhau khi re qua cac phan tu con - dem thay vi bat/tat theo 1 su kien
+  // BUG ĐÃ SỬA: chỉ gỡ attribute `hidden` KHÔNG đủ để hiện — `.drop-overlay` trong popup.css có
+  // sẵn `display: none` như một rule CSS thường (không gắn với [hidden]), nên gỡ `hidden` xong
+  // phần tử vẫn `display:none` y nguyên, không bao giờ hiện. Phải tự set `style.display` (giống
+  // hệt cách content.js làm với mask của nó).
+  const showOverlay = () => {
+    dropOverlayEl.hidden = false;
+    dropOverlayEl.style.display = "flex";
+    requestAnimationFrame(() => { dropOverlayEl.style.opacity = "1"; });
+  };
+  const hideOverlay = () => {
+    dragDepth = 0;
+    dropOverlayEl.style.opacity = "0";
+    setTimeout(() => {
+      if (dropOverlayEl.style.opacity === "0") { dropOverlayEl.style.display = "none"; dropOverlayEl.hidden = true; }
+    }, 150);
+  };
+  document.addEventListener("dragenter", (e) => {
+    if (!isFileDrag(e)) return;
+    dragDepth++;
+    showOverlay();
+  });
+  document.addEventListener("dragover", (e) => {
+    if (isFileDrag(e)) e.preventDefault(); // bat buoc phai preventDefault thi drop moi ban ra
+  });
+  document.addEventListener("dragleave", (e) => {
+    if (!isFileDrag(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) hideOverlay();
+  });
+  document.addEventListener("drop", (e) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    hideOverlay();
+    addDroppedFiles(e.dataTransfer?.files);
+  });
+}
+
+// Panel nổi (embedded, xem content.js hàm wireExternalFileDrop): file rơi
+// đúng vào #autofill-hcc-panel nhưng NGOÀI iframe (header, viền quanh) thì
+// content.js postMessage file sang đây — files[] chỉ có ở popup.js, content.js
+// không tự thêm được. `e.data.files` là mảng File thật (File/Blob clone được
+// nguyên vẹn qua postMessage, không cần serialize).
+console.log("[Popup][DnD] khởi tạo — IS_EMBEDDED:", IS_EMBEDDED, "dropOverlay:", !!dropOverlayEl);
+if (IS_EMBEDDED) {
+  // content.js báo khung xem trước đã tắt hẳn → bỏ tô sáng dòng file.
+  window.addEventListener("message", (e) => {
+    if (e.source !== window.parent || e.data?.type !== "autofill-hcc-preview-hidden") return;
+    previewKeyDangXem = "";
+    previewKeyGhim = "";
+    danhDauDongDangXem();
+  });
+  // Bấm ra ngoài khung xem trước — kể cả bấm chỗ khác TRONG panel — là đóng. Trừ bấm vào một dòng
+  // file: đó là ghim / chuyển ghim (xem renderFiles). Bắt ở pha capture để nút nào tự
+  // stopPropagation cũng không nuốt mất.
+  document.addEventListener("pointerdown", (e) => {
+    if (!previewKeyDangXem || e.target.closest?.(".file-list li")) return;
+    xinDongPreview();
+  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") xinDongPreview();
+  });
+  // Con trỏ TRONG panel nhưng ngoài dòng file → báo content.js: bằng chứng đã rời khung xem tạm (khi
+  // con trỏ nằm trên khung, panel không nhận được mousemove nào). Xem choChuotRoiDi bên content.js.
+  let lucBaoChuotORaNgoai = 0;
+  document.addEventListener("mousemove", (e) => {
+    if (!previewKeyDangXem || previewKeyGhim || e.target.closest?.(".file-list li")) return;
+    const gio = Date.now();
+    if (gio - lucBaoChuotORaNgoai < 150) return; // mousemove bắn liên tục — gom bớt
+    lucBaoChuotORaNgoai = gio;
+    parent.postMessage({ type: "autofill-hcc-preview-chuot-o-panel" }, "*");
+  }, { capture: true, passive: true });
+  // content.js hỏi trước khi hiện hộp xác nhận "Cập nhật": panel có đang xử lý dở không. Cờ bận và bộ đếm
+  // request chỉ sống trong iframe này, trang gốc không đọc được.
+  window.addEventListener("message", (e) => {
+    if (e.source !== window.parent || e.data?.type !== "autofill-hcc-hoi-ban") return;
+    const ban = !!window.__AUTOFILL_HCC_POPUP_BUSY__
+      || (window.HccTrangThai?.soRequestDangChay?.() || 0) > 0;
+    parent.postMessage({ type: "autofill-hcc-tra-loi-ban", ban }, "*");
+  });
+  console.log("[Popup][DnD] đã gắn listener message (chờ content.js gửi autofill-hcc-drop-files).");
+  window.addEventListener("message", (e) => {
+    if (e.source !== window.parent) return; // khong phai tu trang cha (content.js) - bo qua
+    if (e.data?.type !== "autofill-hcc-drop-files") return; // message khac (resize, page-changed...) khong phai viec o day
+    console.log("[Popup][DnD] nhận message autofill-hcc-drop-files từ parent:", e.data);
+    addDroppedFiles(e.data.files);
+  });
+}
+
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -1915,6 +2440,14 @@ function readAsDataUrl(file) {
     r.onerror = () => reject(r.error);
     r.readAsDataURL(file);
   });
+}
+
+// Hash toàn vẹn nội dung file (hex) — dùng để đối soát file kéo về từ máy
+// quét với đúng nội dung đang nằm thật trên đĩa (xem reconcileScanAgentFiles).
+async function sha256Hex(blob) {
+  const buf = await blob.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // ===== Thêm ảnh từ điện thoại qua QR =====
@@ -2068,6 +2601,677 @@ function subscribePhoneUpload(sid) {
 }
 
 if (phoneUploadBtn) phoneUploadBtn.addEventListener("click", openPhoneUpload);
+
+// ===== Đính kèm tự động từ máy quét (scan-bridge agent chạy trên máy cán bộ) =====
+// Khi có một thủ tục đang được làm việc (nhận diện tự động hoặc chọn tay), dò agent
+// chạy cục bộ (xem lib/scanAgent.js); nếu có, nghe SSE và kéo file MỚI quét ra về
+// files[] y hệt ảnh chọn tay/ảnh điện thoại — cán bộ không phải bấm "Thêm file" nữa.
+// Máy không cài scan-bridge (đa số) thì dò mãi không thấy, không hiện gì, không ảnh
+// hưởng luồng cũ.
+const scanAgentStatusEl = document.getElementById("scanAgentStatus");
+const scanRecentListEl = document.getElementById("scanRecentList");
+let scanAgentConn = null; // giữ ĐÚNG MỘT kết nối suốt phiên popup, không dò lại mỗi lần detect
+
+function setScanAgentStatus(state) {
+  if (!scanAgentStatusEl) return;
+  const TEXT = {
+    da_ket_noi: "🖨️ Đã kết nối — file quét ra sẽ tự thêm vào danh sách.",
+    mat_ket_noi: "🖨️ Mất kết nối, đang thử lại…",
+    chua_chon_thu_muc: "🖨️ Đã thấy máy quét nhưng chưa chọn thư mục quét — mở icon agent ở khay hệ thống để chọn.",
+  };
+  // "dang_do": đa số máy không cài scan-bridge nên phần lớn thời gian sẽ dừng ở
+  // trạng thái này — im lặng, không hiện gì, đỡ rối cho người không dùng tính năng.
+  const text = TEXT[state] || "";
+  scanAgentStatusEl.textContent = text;
+  scanAgentStatusEl.hidden = !text;
+}
+
+// Tải + hash + thêm/cập nhật MỘT file quét vào files[] — dùng chung cho cả
+// đường sống (SSE, handleScanAgentFile) lẫn đường batch-import (xem
+// attemptBatchImport/addScanRecentItems bên dưới). KHÔNG tự renderFiles/
+// saveSession ở đây: bên gọi tự quyết định gọi 1 lần sau khi xử lý xong cả
+// loạt, tránh vẽ lại/ghi session nhiều lần khi thêm nhiều file liên tiếp.
+// Trả true nếu files[] thực sự đổi (thêm mới hoặc cập nhật nội dung khác).
+// tuDong=true: lượt thêm do MÁY quyết định (gom batch, hoặc event file.added của
+// agent). Chỉ những lượt đó mới bị bộ nhớ "đã gỡ thủ công" chặn — cán bộ tự bấm
+// thêm lại thì phải được, và lúc đó dấu cũ bị gỡ luôn (họ đã đổi ý).
+async function importOneScanFile(evt, fetchBlob, { tuDong = false } = {}) {
+  // CHỐT CHẶN TUỔI — đặt ở đây vì đây là chỗ DUY NHẤT cả ba đường thêm file
+  // quét đều đi qua (gom batch, event file.added, và cán bộ bấm thêm tay).
+  // Trước đây phép kiểm nằm ở nơi gọi: `attemptBatchImport` có, đường SSE thì
+  // không — hôm nay chưa gây hại vì SSE lấy *thời điểm sự kiện* làm bằng chứng
+  // "vừa xuất hiện" (nên không gửi mtimeMs, và phép kiểm dưới đây tự bỏ qua),
+  // nhưng người viết đường thứ tư sẽ không có gì nhắc họ.
+  //
+  // Kiểm TRƯỚC khi tải: file cũ thì không việc gì phải kéo cả 6MB về rồi mới bỏ.
+  const mtimeMs = Number(evt.mtimeMs) || 0;
+  if (tuDong && mtimeMs && Date.now() - mtimeMs > BATCH_AUTO_MAX_AGE_MS) {
+    console.info("[Popup] Không tự pin %s: file quét lúc %s, quá %d phút.",
+      evt.rel, new Date(mtimeMs).toLocaleString(), Math.round(BATCH_AUTO_MAX_AGE_MS / 60000));
+    return false;
+  }
+  // Chốt mốc thứ tự TRƯỚC await đầu tiên: nếu trong lúc đang tải mà có event xoá đúng rel này
+  // (rất hay xảy ra khi đổi tên hàng loạt, và file 3MB tải mất cả giây) thì bỏ luôn kết quả —
+  // không được push một file vừa bị xoá khỏi đĩa trở vào danh sách chờ gửi lên server.
+  const seqBatDau = scanEventSeq;
+  const blob = await fetchBlob();
+  const dataUrl = await readAsDataUrl(blob);
+  const hash = await sha256Hex(blob); // toan ven noi dung luc keo ve, dung de doi soat sau nay
+  const seqXoa = scanRemovedAt.get(evt.rel);
+  if (seqXoa != null && seqXoa > seqBatDau) return false; // da bi xoa/doi ten giua chung - bo qua
+  // Đã bị cán bộ gỡ thủ công → không tự đưa lại vào. Kiểm SAU khi có hash vì
+  // bộ nhớ này khoá theo nội dung, không theo tên.
+  if (tuDong) {
+    if (scanDaGo.has(hash)) return false;
+  } else if (scanDaGo.delete(hash)) {
+    luuScanDaGo(); // cán bộ chủ động thêm lại → bỏ dấu, lần sau tự pin bình thường
+  }
+  const name = String(evt.rel || "scan").split("/").pop();
+  const type = blob.type || "application/pdf";
+  // Ghi nhận mốc thời gian quét mới nhất mà PHIÊN NÀY đã nhận — dùng làm watermark cho phiên sau
+  // (xem resetScanBatchImportState/attemptBatchImport). Batch-import có sẵn `mtimeMs`; đường SSE
+  // sống chỉ có `at` (thời điểm agent phát event, xem watcher.go type Event).
+  const ts = Number(evt.mtimeMs) || Date.parse(evt.at || "") || 0;
+  if (ts > scanNewestMs) scanNewestMs = ts;
+
+  const cu = files.find((it) => it.fromScan && it.rel === evt.rel);
+  if (cu) {
+    if (cu.hash === hash) return false; // dung noi dung, khong co gi de cap nhat
+    cu.dataUrl = dataUrl;
+    cu.hash = hash;
+    cu.file = { name, type };
+    cu.canhBaoScan = "capNhat";
+  } else {
+    files.push({
+      file: { name, type }, role: defaultRoleFor({ type }), dataUrl, fromScan: true,
+      rel: evt.rel || null, hash, canhBaoScan: null,
+    });
+  }
+  return true;
+}
+
+// Agent bắn "file.added" cho CẢ file mới lẫn file đã có `rel` nhưng vừa bị
+// ghi đè nội dung khác (không có event "file.changed" riêng — xem
+// lib/scanAgent.js). Vì vậy PHẢI tự kiểm rel đã có trong files[] chưa: có
+// rồi thì CẬP NHẬT lại đúng item đó (dataUrl/hash mới), không được thêm một
+// dòng mới rồi bỏ mặc dòng cũ mang nội dung sai. (Việc kiểm/cập nhật nằm
+// trong importOneScanFile ở trên.)
+async function handleScanAgentFile(evt, fetchBlob) {
+  try {
+    const changed = await importOneScanFile(evt, fetchBlob, { tuDong: true });
+    if (!changed) return;
+    renderFiles();
+    refreshAttachStepUI();
+    saveSession();
+  } catch (e) {
+    console.warn("[Popup] Không tải được file từ máy quét:", e);
+  }
+}
+
+// File quét biến mất khỏi thư mục sau khi đã kéo về: CỐ Ý KHÔNG báo gì.
+// File quét biến mất khỏi thư mục → GỠ HẲN khỏi files[], không phải gắn nhãn.
+//
+// Nguy hiểm nếu không gỡ: file đã bị xoá/đổi tên vẫn nằm chờ và VẪN ĐƯỢC GỬI
+// LÊN SERVER khi đính kèm — mà lý do nó bị xoá thường chính là vì nó sai
+// (quét lỗi, quét nhầm người). Đây là hỏng SAI DỮ LIỆU, nặng hơn nhiều so với
+// phiền phức "mất file đang muốn giữ".
+//
+// Đổi tên = một cặp `file.added` (tên mới) + `file.removed` (tên cũ), trùng
+// `size` và trùng `at` — agent không có event "renamed" riêng. Xử lý gỡ theo
+// `rel` là tự khớp luôn ca này: tên mới được thêm vào, tên cũ bị gỡ đi.
+function handleScanAgentFileRemoved(evt) {
+  if (!evt?.rel) return;
+  // Cặp event do CHÍNH TA gây ra khi đổi tên: item đã được cập nhật tại chỗ rồi,
+  // gỡ nó đi là xoá oan đúng file vừa đổi tên (xem ketThucSuaTen).
+  if (scanDangDoiTen.has(evt.rel)) return;
+  // Ghi mốc thứ tự để chặn ĐUA với lượt tải đang dở: importOneScanFile chạy
+  // bất đồng bộ (fetch + hash + đọc dataUrl), file 3MB mất cả giây. Nếu event
+  // xoá tới giữa chừng mà chỉ gỡ trong files[] thì lượt tải xong sau đó lại
+  // push bản vừa bị xoá trở vào — đúng cái bug đang sửa, chỉ khó thấy hơn.
+  scanRemovedAt.set(evt.rel, ++scanEventSeq);
+  const truoc = files.length;
+  for (let i = files.length - 1; i >= 0; i--) {
+    const it = files[i];
+    if (it.fromScan && it.rel === evt.rel) files.splice(i, 1);
+  }
+  if (files.length === truoc) return;
+  // Gỡ im lặng, KHÔNG báo status: đổi tên hàng loạt sinh ra một loạt event xoá,
+  // báo từng cái là đúng kiểu nhiễu vừa bỏ đi. Danh sách tự ngắn lại là phản hồi.
+  renderFiles();
+  refreshAttachStepUI();
+  saveSession();
+}
+
+// Đối soát 1 LẦN mỗi phiên popup (không phải mỗi lần EventSource tự nối lại)
+// giữa file đã kéo về (fromScan, còn rel) với trạng thái THẬT trên đĩa — bắt
+// đúng ca "đã đính kèm rồi nhưng bị xoá/ghi đè thủ công trong lúc popup đóng",
+// thứ mà riêng sự kiện sống (SSE) không thấy được vì lúc đó popup chưa mở.
+let scanAgentReconciled = false;
+async function reconcileScanAgentFiles({ listFiles, fetchBlob }) {
+  if (scanAgentReconciled) return;
+  scanAgentReconciled = true;
+  const targets = files.filter((it) => it.fromScan && it.rel);
+  if (!targets.length) return;
+  let current;
+  try {
+    current = await listFiles();
+  } catch (e) {
+    console.warn("[Popup] Không đối soát được file máy quét (đọc /v1/files lỗi):", e);
+    scanAgentReconciled = false; // loi tam thoi - lan noi lai ke tiep thu lai, khong coi la xong
+    return;
+  }
+  // Chốt chặn XOÁ OAN: listFiles() của scanAgent.js trả `{files: []}` KHÔNG kèm `folder` khi
+  // request hỏng (agent chưa chọn thư mục, 500, ổ mạng rớt...). Tin vào danh sách rỗng đó mà gỡ
+  // là quét sạch mọi giấy tờ đang chờ của cán bộ. Chỉ gỡ khi chắc chắn đọc được thư mục thật.
+  const listDangTinCay = typeof current?.folder === "string";
+  const conThat = new Set((current.files || []).map((f) => f?.rel).filter(Boolean));
+  let changed = false;
+  for (const it of targets) {
+    // Không còn trên đĩa → GỠ khỏi files[] (cùng chính sách với handleScanAgentFileRemoved):
+    // file đã bị xoá/đổi tên trong lúc popup đóng thì không được lặng lẽ gửi lên server.
+    if (!conThat.has(it.rel)) {
+      if (!listDangTinCay) continue;
+      const i = files.indexOf(it);
+      if (i >= 0) { files.splice(i, 1); changed = true; }
+      continue;
+    }
+    // Rel còn tồn tại — tải lại NỘI DUNG THẬT để so hash, không suy từ size/mtime
+    // (đúng yêu cầu toàn vẹn: kích thước trùng không có nghĩa nội dung không đổi).
+    try {
+      const blob = await fetchBlob(it.rel);
+      const hash = await sha256Hex(blob);
+      if (hash !== it.hash) {
+        it.hash = hash;
+        it.dataUrl = await readAsDataUrl(blob); // dinh kem phai gui dung noi dung MOI, khong phai ban cu
+        it.canhBaoScan = "capNhat";
+        changed = true;
+      } else if (it.canhBaoScan) {
+        it.canhBaoScan = null; // xac nhan lai van con nguyen -> bo canh bao cu (vd tung bao xoa nham)
+        changed = true;
+      }
+    } catch (e) {
+      console.warn("[Popup] Không đối soát được nội dung file máy quét:", it.rel, e);
+    }
+  }
+  if (changed) {
+    renderFiles();
+    refreshAttachStepUI(); // doi soat gio co the GO file -> trang thai nut dinh kem phai theo
+    saveSession();
+  }
+}
+
+// ===== Gom batch quét ra TRƯỚC lúc popup mở ("quét trước, mở extension
+// sau" — luồng thực tế ở hành chính công, khác giả định ban đầu là mở popup
+// rồi mới quét) =====
+// Thiết kế đầy đủ: docs/superpowers/specs/2026-09-09-tu-dong-pin-file-quet-design.md
+// (repo scan-bridge). Không dùng một ngưỡng thời gian cố định để tách "loạt
+// quét công dân này" khỏi "loạt quét công dân khác" — ~70 máy, mỗi cán bộ
+// thao tác một kiểu, không đoán được độ trễ mở popup sau khi quét xong. Thay
+// vào đó so khoảng cách TƯƠNG ĐỐI giữa các lần quét: quét cách đợt trước rõ
+// ràng → tự tin, tự pin thẳng; quét dồn dập đều đặn không có ranh giới rõ
+// (vd quét dồn nhiều công dân liên tiếp, ca hiếm) → KHÔNG đoán liều, chỉ hiện
+// danh sách để cán bộ tự chọn (mục "Kéo-thả" trong spec là tính năng RIÊNG,
+// không liên quan cơ chế này).
+const BATCH_SINGLE_FLOOR_MS = 5 * 60 * 1000; // file dung 1 minh: can cach file ke >= 5 phut moi tu tin
+const BATCH_GAP_RATIO = 4; // ranh gioi phai >= 4 lan khoang cach noi bo lon nhat da thay
+const BATCH_GAP_FLOOR_MS = 20 * 1000; // duoi 20s khong tinh la ranh gioi, chi la nhieu quet lien tuc
+const BATCH_MAX_FILES = 30; // qua so nay ma chua thay ranh gioi -> khong doan, coi la khong tu tin
+const BATCH_MAX_SPAN_MS = 30 * 60 * 1000; // qua 30 phut ma chua thay ranh gioi -> khong tu tin
+const RECENT_LIST_WINDOW_MS = 2 * 60 * 60 * 1000; // cua so hien danh sach fallback: 2 gio gan nhat
+// Trần tuổi cho lượt TỰ pin. Watermark chỉ chặn được "cũ hơn phiên trước" — lần
+// đầu dùng trên một máy/tab nó bằng 0 nên KHÔNG chặn gì cả, mà thuật toán gom
+// batch thì chỉ nhìn khoảng cách TƯƠNG ĐỐI: một thư mục có file cũ ba ngày vẫn
+// cho ra "ranh giới rõ ràng" → tự tin → pin nguyên giấy tờ ba ngày trước vào hồ
+// sơ đang làm. Đã gặp thật (thư mục Downloads, file 2026-09-08 lẫn 2026-07-30).
+//
+// Chặt hơn cửa sổ danh sách chọn tay (2 giờ) là CỐ Ý: tự động thì không có ai
+// kiểm, còn danh sách thì cán bộ nhìn rồi mới bấm.
+const BATCH_AUTO_MAX_AGE_MS = 30 * 60 * 1000;
+const RECENT_LIST_MAX = 30; // toi da so dong hien trong danh sach fallback
+
+// Đi ngược từ file mới nhất, mở rộng "batch" từng file, so khoảng cách tới
+// file kế với các khoảng cách nội bộ đã thấy trong batch. Trả
+// {confident, batch}: confident=true thì batch là danh sách nên tự pin;
+// confident=false thì không có ranh giới rõ ràng, batch luôn rỗng.
+function phanTichBatchGanNhat(chuaXuLy) {
+  if (!chuaXuLy.length) return { confident: true, batch: [] }; // khong co gi moi - xong viec
+  const list = [...chuaXuLy].sort((a, b) => b.mtimeMs - a.mtimeMs);
+  const batch = [list[0]];
+  let maxGapNoiBo = 0;
+  for (let i = 1; i < list.length; i++) {
+    const gap = list[i - 1].mtimeMs - list[i].mtimeMs;
+    const nguong = batch.length === 1
+      ? BATCH_SINGLE_FLOOR_MS
+      : Math.max(BATCH_GAP_FLOOR_MS, BATCH_GAP_RATIO * maxGapNoiBo);
+    if (gap >= nguong) break; // tim thay ranh gioi ro rang -> dung mo rong, tu tin voi batch hien tai
+    batch.push(list[i]);
+    maxGapNoiBo = Math.max(maxGapNoiBo, gap);
+    if (batch.length >= BATCH_MAX_FILES ||
+        (list[0].mtimeMs - list[i].mtimeMs) >= BATCH_MAX_SPAN_MS) {
+      return { confident: false, batch: [] }; // qua dai ma chua thay ranh gioi -> khong doan
+    }
+  }
+  return { confident: true, batch };
+}
+
+function formatRelativeTime(mtimeMs) {
+  const diffMin = Math.max(0, Math.round((Date.now() - mtimeMs) / 60000));
+  if (diffMin < 1) return "vừa xong";
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  return `${Math.round(diffMin / 60)} giờ trước`;
+}
+
+let scanAgentHelpers = null; // cache {listFiles, fetchBlob, renameFile} tu lan onConnected gan nhat
+let scanAgentCaps = []; // kha nang agent tu khai qua /v1/ping (agent ban cu -> rong -> an chuc nang)
+let batchImportAttempted = false; // rieng theo PHIEN LAM VIEC (reset cung "files.length = 0"),
+                                   // KHAC voi scanAgentReconciled o tren (rieng theo POPUP)
+let scanRecentPending = []; // danh sach cho fallback khi KHONG tu tin: [{rel, name, mtimeMs}]
+
+// Mốc thứ tự sự kiện xoá, dùng để chặn đua với lượt tải đang dở (xem
+// handleScanAgentFileRemoved/importOneScanFile). Chỉ tăng, không bao giờ reset trong phiên.
+let scanEventSeq = 0;
+const scanRemovedAt = new Map(); // rel -> seq cua lan xoa gan nhat
+
+// ===== Watermark: chặn tự pin giấy tờ của CÔNG DÂN TRƯỚC vào hồ sơ mới =====
+// Bug thật: bấm "Tạo phiên mới" xong, files[] rỗng nên không còn gì để loại trừ, mà loạt file mới
+// nhất trên đĩa VẪN LÀ của công dân vừa xong (người mới chưa quét gì) → thuật toán gom batch thấy
+// ranh giới rõ ràng → tự tin → pin nguyên hồ sơ người trước sang người mới. Sai người, im lặng,
+// nhìn không ra (tên file toàn dạng 2026xxxx.pdf).
+//
+// Cách chặn: nhớ mốc thời gian quét mới nhất mà phiên trước đã dùng; phiên sau chỉ xét file MỚI
+// HƠN mốc đó. Ưu điểm so với bắt cán bộ nhớ thứ tự thao tác: cả hai thứ tự đều đúng — quét người
+// mới TRƯỚC rồi mới bấm tạo phiên (file mới hơn mốc → vẫn gom đúng), hay bấm tạo phiên trước rồi
+// mới quét (SSE sống tự đưa vào) đều ra kết quả đúng, không phải nhớ gì.
+const SCAN_WATERMARK_KEY = "autofill_scan_watermark_" + (EMBEDDED_TAB_ID ?? "popup");
+let scanWatermarkMs = 0; // file co mtime <= moc nay da thuoc mot phien TRUOC
+let scanNewestMs = 0;    // mtime moi nhat ma PHIEN NAY da nhan tu may quet
+
+// Reset lại ở đúng 2 chỗ đang reset "files.length = 0" (resetProcedureWorkState
+// + nút "Phiên mới") — công dân tiếp theo, kể cả trong cùng một popup đang mở,
+// phải được thử gom batch lại từ đầu.
+function resetScanBatchImportState() {
+  // Đẩy watermark lên tới file quét mới nhất mà phiên vừa đóng đã nhận: từ giờ những file cũ hơn
+  // hoặc bằng mốc này là giấy tờ của CÔNG DÂN TRƯỚC, không được tự pin vào hồ sơ mới nữa.
+  // Giữ trong biến (không đọc lại storage lúc cần) vì attemptBatchImport chạy ngay sau đây vài
+  // mili giây — đợi storage ghi xong mới đọc là vớ phải mốc cũ.
+  if (scanNewestMs > scanWatermarkMs) scanWatermarkMs = scanNewestMs;
+  scanNewestMs = 0;
+  try {
+    void chrome.storage.local.set({ [SCAN_WATERMARK_KEY]: scanWatermarkMs });
+  } catch (e) { /* ignore - mat watermark chi lam mat loc, khong lam hong gi */ }
+  batchImportAttempted = false;
+  scanRecentPending = [];
+  renderScanRecentList();
+}
+
+// ===== Nhớ file cán bộ đã GỠ THỦ CÔNG: không bao giờ tự pin lại =====
+//
+// Gỡ một dòng khỏi danh sách đính kèm là một QUYẾT ĐỊNH, không phải thao tác
+// tạm. Trước đây nút × chỉ `files.splice()`: panel dựng lại sau redirect là
+// attemptBatchImport chạy lại, thấy file đó "chưa có trong files[]" nên gom vào
+// lần nữa — cán bộ gỡ xong quay lại thấy nó nằm đó, và nếu không để ý thì file
+// vừa loại vẫn đi lên server.
+//
+// Nhớ theo HASH NỘI DUNG chứ không theo `rel`: quét đè lên đúng tên file cũ ra
+// nội dung KHÁC thì đó là giấy tờ khác, phải được đưa vào bình thường — đúng
+// với logic đối soát checksum đang có. Cùng nội dung, dù đổi tên hay nhân bản
+// sang rel khác, vẫn là thứ đã bị loại.
+const SCAN_DA_GO_KEY = "autofill_scan_da_go_" + (EMBEDDED_TAB_ID ?? "popup");
+const SCAN_DA_GO_MAX = 200;                     // trần số bản ghi giữ lại
+const SCAN_DA_GO_TTL_MS = 24 * 60 * 60 * 1000;  // quá một ngày thì không còn ý nghĩa
+let scanDaGo = new Map(); // hash -> {rel, luc}
+
+async function restoreScanDaGo() {
+  try {
+    const res = await chrome.storage.local.get(SCAN_DA_GO_KEY);
+    const ds = Array.isArray(res?.[SCAN_DA_GO_KEY]) ? res[SCAN_DA_GO_KEY] : [];
+    const now = Date.now();
+    scanDaGo = new Map(
+      ds.filter((e) => e && typeof e.hash === "string" && now - Number(e.luc || 0) < SCAN_DA_GO_TTL_MS)
+        .map((e) => [e.hash, { rel: e.rel || null, luc: Number(e.luc) || now }])
+    );
+  } catch (e) { /* mất bộ nhớ này chỉ làm mất phép chặn, không làm hỏng gì */ }
+}
+
+function luuScanDaGo() {
+  try {
+    const ds = [...scanDaGo.entries()]
+      .map(([hash, v]) => ({ hash, rel: v.rel, luc: v.luc }))
+      .sort((a, b) => b.luc - a.luc)
+      .slice(0, SCAN_DA_GO_MAX);
+    scanDaGo = new Map(ds.map((e) => [e.hash, { rel: e.rel, luc: e.luc }]));
+    void chrome.storage.local.set({ [SCAN_DA_GO_KEY]: ds });
+  } catch (e) { /* ignore */ }
+}
+
+// Gọi từ nút × trên từng dòng. File kéo-thả không có hash/rel máy quét → bỏ qua.
+function ghiNhanDaGo(item) {
+  if (!item?.fromScan || !item.hash) return;
+  scanDaGo.set(item.hash, { rel: item.rel || null, luc: Date.now() });
+  luuScanDaGo();
+}
+
+// Đọc lại watermark lúc mở popup: panel bị dựng lại liên tục sau redirect/postback, mất mốc là
+// quay lại đúng bug "bấm tạo phiên mới xong tự pin giấy tờ của công dân trước".
+async function restoreScanWatermark() {
+  try {
+    const res = await chrome.storage.local.get(SCAN_WATERMARK_KEY);
+    const ms = Number(res?.[SCAN_WATERMARK_KEY] || 0);
+    if (Number.isFinite(ms) && ms > scanWatermarkMs) scanWatermarkMs = ms;
+  } catch (e) { /* ignore */ }
+}
+
+function renderScanRecentList() {
+  if (!scanRecentListEl) return;
+  scanRecentListEl.textContent = "";
+  if (!scanRecentPending.length) {
+    scanRecentListEl.hidden = true;
+    return;
+  }
+  scanRecentListEl.hidden = false;
+  const hint = document.createElement("div");
+  hint.className = "scan-recent-hint";
+  hint.textContent = "Máy quét có nhiều file gần đây, chưa chắc cùng một người — chọn đúng file cần đính kèm:";
+  scanRecentListEl.appendChild(hint);
+  const addAllBtn = document.createElement("button");
+  addAllBtn.type = "button";
+  addAllBtn.className = "scan-recent-add-all";
+  addAllBtn.textContent = "+ Thêm tất cả";
+  addAllBtn.addEventListener("click", () => void addScanRecentItems([...scanRecentPending]));
+  scanRecentListEl.appendChild(addAllBtn);
+  for (const item of scanRecentPending) {
+    const row = document.createElement("div");
+    row.className = "scan-recent-row";
+    const label = document.createElement("span");
+    label.textContent = `${item.name} — ${formatRelativeTime(item.mtimeMs)}`;
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.textContent = "+";
+    addBtn.title = "Thêm file này vào danh sách đính kèm";
+    addBtn.addEventListener("click", () => void addScanRecentItems([item]));
+    row.append(label, addBtn);
+    scanRecentListEl.appendChild(row);
+  }
+}
+
+async function addScanRecentItems(items) {
+  if (!scanAgentHelpers) return;
+  let any = false;
+  for (const item of items) {
+    try {
+      const changed = await importOneScanFile({ rel: item.rel, mtimeMs: item.mtimeMs }, () => scanAgentHelpers.fetchBlob(item.rel));
+      if (changed) any = true;
+    } catch (e) {
+      console.warn("[Popup] Không thêm được file từ danh sách gần đây:", item.rel, e);
+    }
+    scanRecentPending = scanRecentPending.filter((it) => it.rel !== item.rel);
+  }
+  renderScanRecentList();
+  if (any) {
+    renderFiles();
+    refreshAttachStepUI();
+    saveSession();
+  }
+}
+
+// Thử gom + tự pin batch quét gần nhất — gọi 1 lần/phiên làm việc, từ 2 điểm:
+// selectProcedure() (agent có thể đã kết nối từ trước) và onConnected của
+// ScanAgent.connect() (agent kết nối muộn hơn, sau lúc khoá thủ tục). Guard
+// "batchImportAttempted" PHẢI được set TRƯỚC await đầu tiên để 2 điểm gọi
+// gần như đồng thời không chạy đúp (JS đơn luồng).
+async function attemptBatchImport() {
+  if (batchImportAttempted) return;
+  if (!scanAgentHelpers) return; // agent chua ket noi kip - onConnected se tu goi lai
+  batchImportAttempted = true;
+
+  let current;
+  try {
+    current = await scanAgentHelpers.listFiles();
+  } catch (e) {
+    console.warn("[Popup] Không đọc được /v1/files để gom batch gần nhất:", e);
+    batchImportAttempted = false; // loi tam thoi - lan sau thu lai, khong coi la xong
+    return;
+  }
+  const daCo = new Set(files.filter((it) => it.fromScan && it.rel).map((it) => it.rel));
+  const tren0Dia = (current.files || [])
+    .filter((f) => f?.rel)
+    .map((f) => ({ rel: f.rel, name: f.name || String(f.rel).split("/").pop(), mtimeMs: new Date(f.mtime).getTime() }))
+    .filter((f) => Number.isFinite(f.mtimeMs));
+  const chuaCo = tren0Dia.filter((f) => !daCo.has(f.rel));
+  // Watermark: bỏ mọi file cũ hơn/bằng mốc phiên trước đã dùng — đây là chốt chặn "pin nhầm
+  // giấy tờ công dân trước sang hồ sơ mới". File bị ghi đè (cùng rel, nội dung mới) có mtime
+  // mới hơn mốc nên vẫn lọt qua, đúng với logic checksum đang có.
+  const chuaXuLy = chuaCo.filter((f) => f.mtimeMs > scanWatermarkMs);
+
+  // Nhật ký quyết định. Có nó thì câu "vì sao file này bị/không bị tự pin" trả
+  // lời được bằng một dòng console, thay vì phải dựng lại cả môi trường để đoán
+  // — đúng thứ đã ngốn cả buổi ngày 2026-09-11.
+  console.info("[Popup] Gom batch quét:", {
+    tren_dia: tren0Dia.length,
+    da_co_trong_danh_sach: tren0Dia.length - chuaCo.length,
+    bi_watermark_chan: chuaCo.length - chuaXuLy.length,
+    con_ung_vien: chuaXuLy.length,
+    watermark: scanWatermarkMs ? new Date(scanWatermarkMs).toLocaleString() : "chưa có",
+  });
+  if (!chuaXuLy.length) return;
+
+  const { confident, batch } = phanTichBatchGanNhat(chuaXuLy);
+  if (confident && !batch.length) return;
+  // Lô "tự tin" nhưng đã quá cũ thì KHÔNG tự pin — rơi xuống danh sách chọn tay
+  // để cán bộ nhìn rồi quyết. Xét file MỚI NHẤT của lô: lô đã liền mạch về thời
+  // gian (BATCH_MAX_SPAN_MS), nên file mới nhất cũ thì cả lô đều cũ.
+  const loQuaCu = batch.length > 0 && Date.now() - batch[0].mtimeMs > BATCH_AUTO_MAX_AGE_MS;
+  console.info("[Popup] Quyết định:", !confident
+    ? "không tự tin về ranh giới lô → để cán bộ chọn tay"
+    : loQuaCu
+      ? `lô mới nhất quét lúc ${new Date(batch[0].mtimeMs).toLocaleString()} — quá ${Math.round(BATCH_AUTO_MAX_AGE_MS / 60000)} phút → KHÔNG tự pin`
+      : `tự pin ${batch.length} file`);
+  if (confident && !loQuaCu) {
+    let any = false;
+    for (const item of batch) {
+      try {
+        const changed = await importOneScanFile(
+          { rel: item.rel, mtimeMs: item.mtimeMs },
+          () => scanAgentHelpers.fetchBlob(item.rel),
+          { tuDong: true },
+        );
+        if (changed) any = true;
+      } catch (e) {
+        console.warn("[Popup] Không tự thêm được file từ batch gần nhất:", item.rel, e);
+      }
+    }
+    if (any) {
+      renderFiles();
+      refreshAttachStepUI();
+      saveSession();
+    }
+  } else {
+    const now = Date.now();
+    scanRecentPending = chuaXuLy
+      .filter((f) => now - f.mtimeMs <= RECENT_LIST_WINDOW_MS)
+      .sort((a, b) => b.mtimeMs - a.mtimeMs)
+      .slice(0, RECENT_LIST_MAX);
+    renderScanRecentList();
+  }
+}
+
+// ---- Tự nạp lại khi agent đã đặt bản extension mới lên đĩa ----------------
+//
+// Vì sao extension phải tự làm: máy trạm không join domain nên Chrome TỪ CHỐI
+// tự cập nhật extension tự host (đo 2026-09-11 — Chrome gắn nhãn [BLOCKED] cho
+// chính sách tự host trên máy không được quản trị tập trung). Đường còn lại là
+// chạy dạng unpacked: agent ghi đè thư mục, và chrome.runtime.reload() là thứ
+// DUY NHẤT khiến Chrome đọc lại thư mục đó. Xem
+// docs/superpowers/specs/2026-09-11-tu-cap-nhat-extension-qua-agent-design.md
+// Nhịp kiểm lại khi đang bận. Ngắn lúc đầu (cán bộ vừa bấm xong một việc là
+// rảnh ngay), rồi giãn ra: lý do bận phổ biến nhất là "panel đang mở" — thứ có
+// thể kéo dài cả buổi, hỏi mỗi 2 giây suốt buổi chỉ tổ đánh thức service worker
+// liên tục mà không được gì.
+const EXT_UPDATE_CHU_KY_CHO_MS = 2000;
+const EXT_UPDATE_CHU_KY_CHO_DAI_MS = 30000;
+const EXT_UPDATE_SO_LUOT_NHANH = 10;
+const EXT_UPDATE_THU_KEY = "autofill_ext_update_thu";
+// Trần số lần thử cho CÙNG một version. Van an toàn: nếu vì lý do nào đó nạp
+// lại xong mà version đang chạy vẫn không đổi (thư mục Chrome nạp KHÁC thư mục
+// agent ghi — cán bộ trỏ nhầm chỗ), thì không có trần nghĩa là extension nạp
+// lại vô tận và không dùng được nữa.
+const EXT_UPDATE_TRAN_THU = 3;
+let extUpdateChoSan = "";
+let extUpdateHenGio = null;
+let extUpdateSoLuotCho = 0;
+
+function extUpdateVersionDangChay() {
+  try { return chrome.runtime.getManifest()?.version || ""; } catch (_) { return ""; }
+}
+
+// Khởi động bộ theo dõi trạng thái. Cờ bận NGOÀI (luồng điền/đính kèm đang
+// chạy) do popup.js tự khai, vì lib/trangThai.js không biết gì về nghiệp vụ.
+if (window.HccTrangThai) {
+  window.HccTrangThai.batDau({
+    layCoBanNgoai: () => !!window.__AUTOFILL_HCC_POPUP_BUSY__,
+  });
+}
+
+// Bận = nạp lại lúc này sẽ cắt ngang việc cán bộ đang làm dở.
+//
+// Ba tầng, cố ý tách rời:
+//   1. Trạng thái của CHÍNH panel này — lib/trangThai.js gộp request đang chạy,
+//      thao tác chuột/phím trên panel LẪN trên trang gốc, con trỏ trong ô nhập,
+//      tab ẩn, cửa sổ mất focus.
+//   2. Hàng đợi tách hồ sơ — sống trong chrome.storage, không thuộc panel nào.
+//   3. Các TAB KHÁC — panel ở tab khác cũng bị giết khi nạp lại, nên phải hỏi.
+async function extUpdateDangBanRon() {
+  // Thiếu module (nạp lỗi) thì coi như bận vĩnh viễn: thà không bao giờ tự cập
+  // nhật còn hơn nạp lại giữa lúc cán bộ đang làm.
+  const tt = window.HccTrangThai ? window.HccTrangThai.hienTai() : "dang-lam-viec";
+  if (tt === "dang-lam-viec") return true;
+
+  try {
+    const o = await chrome.storage.local.get("autofill_split_attach_queue");
+    if (o && o.autofill_split_attach_queue) return true; // hàng đợi tách hồ sơ đang chạy
+  } catch (_) { /* không đọc được storage thì coi như rảnh */ }
+
+  try {
+    const res = await chrome.runtime.sendMessage({ action: "hccCoTabNaoDangLamViec" });
+    // Đòi câu trả lời RÕ RÀNG. `res` là undefined trên trình duyệt cũ (sendMessage
+    // chưa trả Promise) mà KHÔNG ném lỗi; đọc `res?.co` rồi coi falsy là "rảnh"
+    // nghĩa là ở đúng những máy đó extension sẽ nạp lại bất kể cán bộ đang làm gì.
+    if (!res || typeof res.co !== "boolean") return true;
+    if (res.co) return true;
+  } catch (_) {
+    return true; // không hỏi được background thì coi như bận
+  }
+  return false;
+}
+
+async function extUpdateDocSoLanThu(version) {
+  try {
+    const o = await chrome.storage.local.get(EXT_UPDATE_THU_KEY);
+    const d = o?.[EXT_UPDATE_THU_KEY];
+    return d && d.version === version ? Number(d.so) || 0 : 0;
+  } catch (_) { return 0; }
+}
+
+async function extUpdateGhiSoLanThu(version, so) {
+  try { await chrome.storage.local.set({ [EXT_UPDATE_THU_KEY]: { version, so, luc: Date.now() } }); }
+  catch (_) { /* ghi hỏng thì mất van an toàn, không đáng chặn cập nhật */ }
+}
+
+async function extUpdateThuNapLai() {
+  if (!extUpdateChoSan) return;
+  if (await extUpdateDangBanRon()) { extUpdateHenLaiSau(); return; }
+  extUpdateSoLuotCho = 0;
+
+  const soDaThu = await extUpdateDocSoLanThu(extUpdateChoSan);
+  if (soDaThu >= EXT_UPDATE_TRAN_THU) {
+    console.warn("[Popup] Đã thử nạp lại", soDaThu, "lần mà vẫn chưa lên được bản",
+      extUpdateChoSan, "— dừng lại. Kiểm tra thư mục Chrome đang nạp có đúng thư mục agent quản không.");
+    extUpdateChoSan = "";
+    return;
+  }
+  await extUpdateGhiSoLanThu(extUpdateChoSan, soDaThu + 1);
+
+  // Ghi phiên xuống đĩa TRƯỚC khi nạp lại: reload dựng lại cả trang, files[]
+  // chỉ sống sót nhờ restoreSession(). Không chờ ghi xong là mất đúng file vừa ghim.
+  try { await saveSession(); } catch (_) { /* vẫn nạp lại: phiên cũ còn hơn kẹt bản cũ */ }
+
+  // Gỡ panel ở MỌI tab trước khi nạp lại. Đo 2026-09-11: nạp lại KHÔNG làm panel
+  // biến mất — nó ở nguyên đó nhưng mọi chrome.* bên trong ném "Extension
+  // context invalidated", cán bộ bấm nút mà không có gì xảy ra. Gỡ đi thì hỏng
+  // trở nên NHÌN THẤY ĐƯỢC, và tự lành: cờ "panel đang mở" được giữ nên lần
+  // điều hướng kế tiếp content script mới tự mở lại panel.
+  try { await chrome.runtime.sendMessage({ action: "hccGoPanelMoiTab" }); } catch (_) { /* ignore */ }
+
+  console.info("[Popup] Nạp lại extension để lên bản", extUpdateChoSan);
+  chrome.runtime.reload();
+}
+
+function extUpdateHenLaiSau() {
+  extUpdateSoLuotCho++;
+  const nhip = extUpdateSoLuotCho <= EXT_UPDATE_SO_LUOT_NHANH
+    ? EXT_UPDATE_CHU_KY_CHO_MS
+    : EXT_UPDATE_CHU_KY_CHO_DAI_MS;
+  // Đang hẹn ĐÚNG nhịp cần thì thôi; đổi nhịp thì đặt lại đồng hồ.
+  if (extUpdateHenGio && extUpdateHenGio.nhip === nhip) return;
+  if (extUpdateHenGio) clearInterval(extUpdateHenGio.id);
+  const id = setInterval(() => {
+    if (!extUpdateChoSan) {
+      clearInterval(id);
+      extUpdateHenGio = null;
+      return;
+    }
+    void extUpdateThuNapLai();
+  }, nhip);
+  extUpdateHenGio = { id, nhip };
+}
+
+// Gọi khi biết version đang nằm TRÊN ĐĨA — lúc SSE mở (onConnected) và khi agent
+// báo vừa tráo xong (event extension.updated).
+function extUpdateGhiNhan(versionTrenDia) {
+  if (!versionTrenDia) return;
+  const dangChay = extUpdateVersionDangChay();
+  if (!dangChay) return;
+  if (versionTrenDia === dangChay) {
+    // Đã lên đúng bản: xoá bộ đếm để lần cập nhật SAU lại có đủ 3 lượt thử.
+    extUpdateChoSan = "";
+    extUpdateSoLuotCho = 0;
+    chrome.storage.local.remove(EXT_UPDATE_THU_KEY).catch(() => {});
+    return;
+  }
+  // So KHÁC chứ không so LỚN HƠN: hạ cấp (CMS lùi về bản cũ để chữa cháy) cũng
+  // phải tới được máy trạm — đó đúng là lúc cần nó nhất.
+  extUpdateChoSan = versionTrenDia;
+  // Nhờ background kiểm ngay: nó ghi "bản mới đang chờ" để header hiện nút Cập nhật, khỏi chờ nhịp 1 phút.
+  // Bắt cả hai kiểu hỏng: ném đồng bộ (context đã mất) và Promise bị reject (trình duyệt trả Promise dù có
+  // callback) — reject không ai bắt là lỗi "unhandled rejection" nổi lên ngoài.
+  try {
+    const p = chrome.runtime.sendMessage({ action: "hccKiemBanMoiNgay" }, () => void chrome.runtime.lastError);
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  } catch (_) { /* ignore */ }
+  void extUpdateThuNapLai();
+}
+
+function ensureScanAgentConnected() {
+  if (scanAgentConn || typeof ScanAgent === "undefined") return;
+  scanAgentConn = ScanAgent.connect({
+    onStatus: setScanAgentStatus,
+    onFile: handleScanAgentFile,
+    onFileRemoved: handleScanAgentFileRemoved, // GỠ khỏi files[], xem hàm đó
+    onExtensionVersion: extUpdateGhiNhan, // bắn cả lúc dò thấy agent lẫn lúc agent tráo xong
+    onConnected: (helpers) => {
+      scanAgentHelpers = helpers;
+      // Agent bản cũ không khai `caps` → mảng rỗng → nút sửa tên bị ẩn (xem renderFiles).
+      const capsMoi = Array.isArray(helpers?.caps) ? helpers.caps : [];
+      const doiCaps = capsMoi.join() !== scanAgentCaps.join();
+      scanAgentCaps = capsMoi;
+      if (doiCaps) renderFiles(); // vua biet agent ho tro gi -> ve lai de hien/an nut sua ten
+      void (async () => {
+        await reconcileScanAgentFiles(helpers);
+        await attemptBatchImport();
+      })();
+    },
+  });
+}
 
 async function ensureSelectedFilesLoaded() {
   for (const it of files) if (!it.dataUrl) it.dataUrl = await readAsDataUrl(it.file);
@@ -2349,6 +3553,25 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     : "Đã đính kèm xong hồ sơ.";
   await showPageToast(toastMessage, warn ? "warn" : "success");
   return { ok: true, message: msg, warn, requestId: planRes.requestId };
+}
+
+// Đính kèm XONG TRỌN VẸN → dọn danh sách giấy tờ. Giấy tờ đã nộp lên cổng rồi thì để lại trong
+// khung "Giấy tờ" chỉ tổ rối, và nguy hiểm hơn là dễ nộp trùng sang thủ tục/hồ sơ kế tiếp.
+//
+// Cất sang ngăn "hồ sơ trước" TRƯỚC khi dọn (không thì dọn xong là mất hẳn): cùng công dân làm
+// thủ tục thứ hai thì lời đề nghị "Dùng lại" hiện ra ngay — vì dọn xong files[] rỗng, đúng điều
+// kiện renderPrevSessionOffer() cần. Xem mục 4.11 trong docs/tich-hop-scan-bridge.md.
+//
+// KHÔNG dọn khi warn/inProgress: còn nhóm chưa đính được hoặc luồng nhiều bước đang chạy dở —
+// dọn đi là mất dấu việc còn dang dở, cán bộ không biết còn thiếu gì.
+async function clearFilesAfterAttach(res) {
+  if (!res || res.error || res.warn || res.inProgress) return;
+  if (!files.length) return;
+  archiveCurrentSessionAsPrev();
+  files.length = 0;
+  renderFiles();
+  refreshAttachStepUI();
+  await saveSession();
 }
 
 // Lấy plan item của BE cho file thứ `origIndex`, rồi đổi sang vị trí của file trong bundle gửi cho tab.
@@ -2736,13 +3959,15 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
 // ===== BƯỚC CHẤP THUẬN XỬ LÝ DỮ LIỆU (PDPL) =====
 // Mỗi PHIÊN đồng ý 1 lần: gate ở ocrBtn/attachStepBtn. Đồng ý → BE lưu bằng chứng PDF → view-result
 // (CHƯA fill) → "Về màn hình" → bấm lại mới điền thật. Reset khi "Tạo phiên mới".
+// v1.1 (12/09/2026): đổi tên hệ thống trong lời xin phép thành "Trợ lý nhân dân".
+// Đổi số khi SỬA nội dung xin phép (phạm vi/lời cam kết) — bằng chứng đã ký giữ số cũ.
 const CONSENT_VERSION = "v1.1";
 // 2 kho grants: (1) theo PHIÊN/tab — reset khi "Tạo phiên mới"; (2) theo NGƯỜI (CCCD) — TOÀN CỤC, BỀN
 // qua phiên vì consent gắn theo (người + thủ tục): cùng CCCD làm lại đúng thủ tục thì không hỏi lại.
 const CONSENT_KEY = "autofill_consent_" + (EMBEDDED_TAB_ID ?? "popup");
 const CONSENT_CCCD_KEY = "autofill_consent_cccd";
 const CONSENT_STATEMENTS = [
-  "Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin được xử lý và mục đích nêu trên; đồng ý cho Trợ lý hồ sơ HCC đọc, xử lý và tự động điền dữ liệu vào biểu mẫu.",
+  "Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin được xử lý và mục đích nêu trên; đồng ý cho Trợ lý nhân dân đọc, xử lý và tự động điền dữ liệu vào biểu mẫu.",
   "Tôi xác nhận tự chịu trách nhiệm về tính chính xác, hợp pháp của các thông tin nêu trên và về việc thực hiện thủ tục hành chính của mình.",
 ];
 // Mục TÙY CHỌN (không chặn nút Đồng ý): xin lưu data lần xử lý khi điền lỗi để tối ưu hệ thống.
@@ -2763,9 +3988,183 @@ const csViews = {
   consent: document.getElementById("view-consent"),
   result: document.getElementById("view-result"),
   legal: document.getElementById("view-legal"),
+  rating: document.getElementById("view-rating"),
 };
 function showView(which) {
   for (const [k, el] of Object.entries(csViews)) if (el) el.hidden = k !== which;
+}
+
+// ── Đánh giá trải nghiệm sau khi bấm nộp hồ sơ ─────────────────────────────────────────────
+// Câu chữ do BE cấp (dùng chung Handfree); BE bản cũ không trả → RATING_CARD rỗng → tắt lặng lẽ.
+let RATING_CARD = null;
+const RATING_PENDING_KEY = "autofill_rating_pending";
+const RATING_DONE_KEY = "autofill_rating_done";
+const RATING_DONE_MAX = 200;
+// Mặt cười theo mức: 5 → 1. Vẽ bằng SVG thay vì emoji để cùng nét trên mọi máy cán bộ.
+const RATING_FACE_COLOR = { 5: "#12a06a", 4: "#4aa96c", 3: "#c79a2b", 2: "#d97036", 1: "#cf4b3f" };
+function ratingFaceSvg(v) {
+  const mouth = v >= 4 ? "M8.5 14.5c1 1.6 2.2 2.4 3.5 2.4s2.5-.8 3.5-2.4"
+    : v === 3 ? "M8.5 15h7"
+      : "M8.5 16.6c1-1.6 2.2-2.4 3.5-2.4s2.5.8 3.5 2.4";
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.2"/>
+    <circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/>
+    <circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/><path d="${mouth}"/></svg>`;
+}
+function ratingEsc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+/** Hồ sơ đã hỏi rồi → không hỏi lại. Đánh dấu theo dossierId (không theo tab) vì chứng thực
+ *  tách nhiều tab dùng CHUNG một khóa và tab nào cũng bấm nộp. */
+async function markRatingDone(dossierId) {
+  try {
+    const store = await chrome.storage.local.get([RATING_PENDING_KEY, RATING_DONE_KEY]);
+    const done = Array.isArray(store?.[RATING_DONE_KEY]) ? store[RATING_DONE_KEY] : [];
+    if (dossierId && !done.includes(dossierId)) done.push(dossierId);
+    await chrome.storage.local.set({
+      [RATING_DONE_KEY]: done.slice(-RATING_DONE_MAX),
+      [RATING_PENDING_KEY]: null,
+    });
+  } catch (_) { /* không chặn luồng */ }
+}
+
+/** Gửi phiếu. Lỗi mạng KHÔNG được chặn UI: cán bộ đã đánh giá xong thì không có gì để họ làm
+ *  lại, và giữ màn hình lại chỉ khiến họ không quay về làm hồ sơ tiếp được. */
+async function postRating(dossierId, payload) {
+  try {
+    await api.dossierRating({ dossierId, ...payload });
+    return true;
+  } catch (e) {
+    console.warn("[AutoFill] Không gửi được đánh giá:", e?.message || e);
+    return false;
+  }
+}
+
+let ratingState = null; // { dossierId, level, reasons:Set, note }
+
+function renderRatingView() {
+  const card = RATING_CARD;
+  const box = document.getElementById("ratingInner");
+  if (!card || !box || !ratingState) return;
+  const st = ratingState;
+
+  const close = async (done) => {
+    await markRatingDone(st.dossierId);
+    ratingState = null;
+    if (done) {
+      // Cảm ơn hiện NGAY trong khung rồi tự về màn chính — cán bộ không phải bấm thêm nút nào.
+      box.innerHTML = `<div class="rt-thanks"><span class="rt-thanks-face">${ratingFaceSvg(st.level || 5)}</span>
+        <div class="rt-thanks-tt">${ratingEsc(card.thanks || "Cảm ơn đã đánh giá!")}</div>
+        <div class="rt-thanks-sub">${ratingEsc(card.thanksSub || "")}</div></div>`;
+      setTimeout(() => { if (!ratingState) showView("main"); }, 2600);
+    } else {
+      showView("main");
+    }
+  };
+
+  // ── Bước 1: chọn mức ──
+  if (!st.level) {
+    box.innerHTML = `
+      <div class="rt-title">${ratingEsc(card.title || "")}</div>
+      <div class="rt-sub">${ratingEsc(card.subtitle || "")}</div>
+      <div class="rt-scale">
+        ${(card.scale || []).map((m) => `
+          <button type="button" class="rt-opt" data-lv="${m.value}"
+                  style="--rc:${RATING_FACE_COLOR[m.value] || "#12a06a"}">
+            <span class="rt-face">${ratingFaceSvg(m.value)}</span>
+            <span class="rt-nm">${ratingEsc(m.label)}</span>
+          </button>`).join("")}
+      </div>
+      <div class="rt-privacy">🔒 ${ratingEsc(card.privacy || "")}</div>
+      <div class="rt-actions"><button type="button" class="rt-skip">${ratingEsc(card.skipLabel || "Bỏ qua")}</button></div>`;
+
+    box.querySelectorAll(".rt-opt").forEach((b) => b.addEventListener("click", () => {
+      st.level = Number(b.dataset.lv);
+      // GHI NGAY, không chờ bấm "Gửi đánh giá". Bước 2 là bước hay bị bỏ dở nhất; gom lại chờ
+      // nó là mất phần lớn phiếu. Giống hệt rate_level của Handfree.
+      void postRating(st.dossierId, { level: st.level });
+      renderRatingView();
+    }));
+    box.querySelector(".rt-skip")?.addEventListener("click", () => {
+      void postRating(st.dossierId, { skipped: true });
+      void close(false);
+    });
+    return;
+  }
+
+  // ── Bước 2: lý do + ý kiến ──
+  const good = st.level >= (Number(card.goodThreshold) || 4);
+  const list = (good ? card.reasonsGood : card.reasonsBad) || [];
+  const picked = (card.scale || []).find((m) => m.value === st.level);
+  box.innerHTML = `
+    <div class="rt-picked" style="--rc:${RATING_FACE_COLOR[st.level] || "#12a06a"}">
+      <span class="rt-face">${ratingFaceSvg(st.level)}</span>
+      <span class="rt-picked-nm">${ratingEsc(picked ? picked.label : "")}</span>
+      <button type="button" class="rt-change">Chọn lại</button>
+    </div>
+    <div class="rt-reason-h">${ratingEsc(good ? (card.reasonPromptGood || "") : (card.reasonPromptBad || ""))}</div>
+    <div class="rt-sub">${ratingEsc(card.reasonHint || "")}</div>
+    <div class="rt-chips">
+      ${list.map((t, k) => `<button type="button" class="rt-chip${st.reasons.has(t) ? " sel" : ""}" data-rs="${k}">
+        <span class="rt-bx">${st.reasons.has(t) ? "✓" : ""}</span><span>${ratingEsc(t)}</span></button>`).join("")}
+    </div>
+    <textarea class="rt-note" rows="2" placeholder="${ratingEsc(card.notePlaceholder || "")}">${ratingEsc(st.note)}</textarea>
+    <div class="rt-actions">
+      <button type="button" class="rt-skip">${ratingEsc(card.skipLabel || "Bỏ qua")}</button>
+      <button type="button" class="rt-send">${ratingEsc(card.submitLabel || "Gửi đánh giá")}</button>
+    </div>`;
+
+  const readNote = () => { st.note = box.querySelector(".rt-note")?.value || ""; };
+  box.querySelector(".rt-change")?.addEventListener("click", () => {
+    readNote(); st.level = 0; renderRatingView();
+  });
+  box.querySelectorAll(".rt-chip").forEach((b) => b.addEventListener("click", () => {
+    readNote();
+    const t = list[Number(b.dataset.rs)];
+    if (st.reasons.has(t)) st.reasons.delete(t); else st.reasons.add(t);
+    renderRatingView();
+  }));
+  box.querySelector(".rt-send")?.addEventListener("click", () => {
+    readNote();
+    void postRating(st.dossierId, {
+      level: st.level, reasons: [...st.reasons], note: st.note.trim(),
+    });
+    void close(true);
+  });
+  // "Bỏ qua" ở bước 2 KHÔNG gửi skipped: mức đã chọn ở bước 1 vẫn là ý kiến thật, gửi
+  // skipped=true sẽ ghi đè phiếu đó thành "bỏ qua" và xóa mất con số.
+  box.querySelector(".rt-skip")?.addEventListener("click", () => { void close(false); });
+}
+
+/** Mở màn đánh giá cho một hồ sơ, nếu hồ sơ đó chưa từng được hỏi. */
+function openRating(dossierId) {
+  if (!dossierId || !RATING_CARD || ratingState) return;
+  ratingState = { dossierId, level: 0, reasons: new Set(), note: "" };
+  showView("rating");
+  renderRatingView();
+}
+
+/** Đọc cờ ở storage rồi mở màn đánh giá. Gọi lúc panel dựng xong — bấm nộp thường kéo theo
+ *  điều hướng/postback làm panel nạp lại, nên cờ ở storage mới là đường sống sót, không phải
+ *  message runtime (message đó bắn lúc panel còn chưa tồn tại). */
+async function resumePendingRating() {
+  if (!RATING_CARD || ratingState) return;
+  try {
+    const store = await chrome.storage.local.get([RATING_PENDING_KEY, RATING_DONE_KEY]);
+    const pending = store?.[RATING_PENDING_KEY];
+    const dossierId = String(pending?.dossierId || "").trim();
+    if (!dossierId) return;
+    const done = Array.isArray(store?.[RATING_DONE_KEY]) ? store[RATING_DONE_KEY] : [];
+    if (done.includes(dossierId)) return;
+    // Cờ quá cũ (cán bộ đóng trình duyệt rồi mở lại hôm sau) thì bỏ — hỏi lúc đó là vô nghĩa.
+    if (pending.at && Date.now() - Number(pending.at) > 30 * 60 * 1000) {
+      await markRatingDone(dossierId);
+      return;
+    }
+    openRating(dossierId);
+  } catch (_) { /* không chặn luồng */ }
 }
 // Đọc danh tính tài khoản VNeID trên cổng → dựng consent key (người + thủ tục). Đọc không ra CCCD →
 // key theo phiên. Không throw: cổng lạ/không có content script → principal null → fallback phiên.
@@ -2996,13 +4395,13 @@ ocrBtn.addEventListener("click", async () => {
       showSupportCode(attachRes?.requestId);
       if (attachRes?.error) setStatus(attachRes.error, "err");
       else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"));
+      await clearFilesAfterAttach(attachRes);
       return;
     }
 
     // Các thủ tục cần đối chiếu người yêu cầu cổng đã điền sẵn (VNeID) với CCCD upload.
     if (
       cfg.key === "ho-tro-mai-tang" ||
-      cfg.key === "ho-tro-chi-phi-hoa-tang" ||
       cfg.key === "ho-tro-mai-tang-huu-tri-xa-hoi" ||
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
@@ -3282,6 +4681,7 @@ if (attachStepBtn) {
         setStatus(res.error, "err");
       } else {
         setStatus(res.message, res.warn ? "warn" : "ok");
+        await clearFilesAfterAttach(res);
       }
     } catch (e) {
       if (e.unauthorized) {
@@ -4271,6 +5671,9 @@ async function initDestSection() {
     // đã nộp. KHÔNG xoá khóa ở đây — tab tách còn nộp tiếp trên chính khóa này.
     if (msg?.action === "dossierSubmitted" && String(msg.tabId ?? "") === String(EMBEDDED_TAB_ID ?? "")) {
       dossierSubmitted = true;
+      // Panel còn sống → mở màn đánh giá ngay. Trang điều hướng làm panel nạp lại thì message
+      // này mất, nhưng cờ ở storage vẫn còn và resumePendingRating() sẽ mở.
+      void resumePendingRating();
     }
   });
 }

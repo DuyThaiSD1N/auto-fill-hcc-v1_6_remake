@@ -7,9 +7,8 @@ const source = fs.readFileSync(path.join(__dirname, "..", "content.js"), "utf8")
 
 assert.doesNotMatch(source, /_areaSelectDeadline|_areaBudgetLeft/);
 assert.match(source, /const STANDARD_AREA_FIELD_BUDGET_MS = 5000;/);
-// Ngân sách phải được truyền xuyên suốt; đối số sau deadline là scope (xem standardScopeRoot).
-assert.match(source, /fillStandardSelectAll\(candidates, f\.value, occurrence, deadline[,)]/);
-assert.match(source, /fillStandardSelectAny\(sel, value, names, occurrence, deadline[,)]/);
+assert.match(source, /fillStandardSelectAll\(candidates, f\.value, occurrence, deadline\)/);
+assert.match(source, /fillStandardSelectAny\(sel, value, names, occurrence, deadline\)/);
 assert.match(source, /fillFormioSelectComponent\(el, value, names, deadline\)/);
 assert.match(source, /pickChoicesItem\(el, value, deadline\)/);
 

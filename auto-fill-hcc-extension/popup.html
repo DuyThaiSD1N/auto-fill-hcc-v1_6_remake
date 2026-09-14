@@ -7,7 +7,15 @@
 </head>
 
 <body>
-  <h1>Trợ lý tự động điền hồ sơ Dịch vụ công</h1>
+  <!-- Mask kéo-thả phủ TOÀN BỘ nội dung popup — xem khối "Kéo-thả file" trong popup.js.
+       PHẢI nằm TRƯỚC thẻ script nạp popup.js (đặt ở cuối body trước đây là BUG THẬT: script
+       chặn parse HTML, chạy document.getElementById("dropOverlay") trước khi div này được
+       parse ra → luôn trả null → toàn bộ nghe kéo-thả trong popup.js im lặng không chạy). -->
+  <div id="dropOverlay" class="drop-overlay" hidden>
+    <span class="drop-overlay-icon">📥</span>
+    <span>Thả file vào đây để đính kèm</span>
+  </div>
+  <h1>Trợ lý nhân dân</h1>
 
   <!-- ===== Màn hình đăng nhập ===== -->
   <section id="loginScreen" class="block" hidden>
@@ -130,7 +138,12 @@
           title="Tạo mã QR để chụp/chọn ảnh từ điện thoại — ảnh tự về danh sách này">📱 Thêm ảnh từ điện thoại
           (QR)</button>
         <div id="qrCard" class="qr-card" hidden></div>
+        <!-- Lời đề nghị dùng lại giấy tờ của hồ sơ trước (cùng công dân làm thủ tục tiếp theo).
+             Nội dung do popup.js dựng — xem renderPrevSessionOffer. -->
         <ul id="fileList" class="file-list"></ul>
+        <div id="prevSessionOffer" class="prev-session-offer" hidden></div>
+        <div id="scanRecentList" class="scan-recent-list" hidden></div>
+        <div id="scanAgentStatus" class="scan-agent-status" hidden></div>
         <label id="splitModeRow" class="checkbox-row" style="display:none"
           title="Chỉ áp dụng cho chứng thực. Bật: mỗi tài liệu tạo 1 hồ sơ riêng (mở tab mới cho từng file).">
           <input id="splitModeToggle" type="checkbox">
@@ -164,9 +177,9 @@
     <!-- ===== VIEW: CHẤP THUẬN XỬ LÝ DỮ LIỆU ===== -->
     <div id="view-consent" class="cs-view" hidden>
       <div class="cs-scroll">
-        <span class="cs-badge">Xác nhận trên Trợ lý hồ sơ HCC</span>
+        <span class="cs-badge">Xác nhận trên Trợ lý nhân dân</span>
         <h2 class="cs-title">Cho phép Trợ lý đọc giấy tờ và tự động điền biểu mẫu</h2>
-        <p class="cs-lead">Chỉ khi bạn chọn <b>“Đồng ý và tự động điền”</b>, hệ thống <b>Trợ lý hồ sơ HCC</b> mới đọc,
+        <p class="cs-lead">Chỉ khi bạn chọn <b>“Đồng ý và tự động điền”</b>, hệ thống <b>Trợ lý nhân dân</b> mới đọc,
           trích xuất và xử lý thông tin cần thiết từ các giấy tờ dưới đây, sau đó tự động điền vào biểu mẫu <b
             id="consentProcName">của thủ tục này</b>.</p>
         <p class="cs-list-title">Giấy tờ Trợ lý sẽ đọc trong thủ tục này:</p>
@@ -181,7 +194,7 @@
       <div class="cs-actions">
         <div class="cs-select-all"><button type="button" id="consentSelectAll">Chọn tất cả</button></div>
         <label class="cs-check"><input type="checkbox" id="consentC0"><span>Tôi đã đọc, hiểu phạm vi giấy tờ, thông tin
-            được xử lý và mục đích nêu trên; đồng ý cho Trợ lý hồ sơ HCC đọc, xử lý và tự động điền dữ liệu vào biểu
+            được xử lý và mục đích nêu trên; đồng ý cho Trợ lý nhân dân đọc, xử lý và tự động điền dữ liệu vào biểu
             mẫu.</span></label>
         <label class="cs-check"><input type="checkbox" id="consentC1"><span>Tôi xác nhận tự chịu trách nhiệm về tính
             chính xác, hợp pháp của các thông tin nêu trên và về việc thực hiện thủ tục hành chính của
@@ -202,6 +215,13 @@
       <div class="cs-view-foot">
         <button type="button" class="cs-btn-blue" id="consentBackBtn">← Về màn hình chính</button>
       </div>
+    </div>
+
+    <!-- ===== VIEW: ĐÁNH GIÁ TRẢI NGHIỆM (sau khi bấm nộp hồ sơ) =====
+         Toàn bộ câu chữ do BE cấp (app/dossiers/rating_card.py, dùng chung với Handfree) —
+         popup.js dựng vào đây, KHÔNG chép cứng nhãn nào vào HTML. -->
+    <div id="view-rating" class="cs-view" hidden>
+      <div class="cs-scroll rt-scroll" id="ratingInner"></div>
     </div>
 
     <!-- ===== VIEW: QUYỀN & NGHĨA VỤ (toàn màn hình) ===== -->
@@ -263,6 +283,8 @@
 
   <script src="vendor/pdf-lib.min.js"></script>
   <script src="lib/imageToPdf.js"></script>
+  <script src="lib/scanAgent.js"></script>
+  <script src="lib/trangThai.js"></script>
   <script src="api/config.js"></script>
   <script src="api/errors.js"></script>
   <script src="api/auth.js"></script>

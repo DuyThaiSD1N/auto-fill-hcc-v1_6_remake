@@ -15,6 +15,78 @@ chrome.action.onClicked.addListener(async (tab) => {
   }
 });
 
+// Ngưỡng "cán bộ đã rời đi": cửa sổ mất focus VÀ không thao tác gì suốt ngần
+// này thì coi như tab đó không còn được dùng. Khớp với NGUONG_NEN_MS bên
+// lib/trangThai.js — hai chỗ nói về cùng một thứ, lệch nhau là ra hai kết luận
+// khác nhau cho cùng một khoảnh khắc.
+const NGUONG_ROI_DI_MS = 15 * 1000;
+
+// Trình duyệt này có trả Promise cho `chrome.*` không? Hỏi thẳng thay vì suy từ
+// một giá trị `undefined` mơ hồ. `chrome.tabs.query({})` không tham số callback:
+// bản mới trả Promise, bản cũ trả undefined.
+function hoTroPromise() {
+  try {
+    const r = chrome.tabs.query({});
+    return !!(r && typeof r.then === "function");
+  } catch (e) {
+    return false;
+  }
+}
+
+// Tab nào còn ĐANG ĐƯỢC DÙNG không?
+//
+// Thay cho phép kiểm cũ "có panel nào đang mở không" — phép đó quá chặt: panel
+// mở suốt buổi nên không bao giờ nạp lại được bản mới. Ở đây hỏi thêm trang gốc
+// xem cửa sổ có focus, tab có bị ẩn, và im lặng bao lâu rồi.
+//
+// Tab không trả lời (chưa có content script, hoặc content script đã mồ côi từ
+// lần nạp lại trước) coi như KHÔNG được dùng: nó vốn đã hỏng sẵn, nạp lại không
+// làm nó tệ thêm, mà cú bấm icon sẽ tự tiêm lại (xem chrome.action.onClicked).
+async function coTabNaoDangLamViec() {
+  let tabs;
+  try { tabs = await chrome.tabs.query({}); } catch (e) { return true; } // không biết thì coi như CÓ
+  // Trình duyệt CŨ không trả Promise cho chrome.tabs.query — nó trả `undefined`
+  // và KHÔNG ném lỗi. Không chặn ở đây thì `tabs.map` mới ném, ở ngoài try, và
+  // cả hàm hỏng theo một đường khó lần. Quan trọng hơn: không biết gì về các tab
+  // thì câu trả lời đúng là "coi như đang bận", không phải "rảnh".
+  if (!Array.isArray(tabs)) return true;
+  const kq = await Promise.all(tabs.map(async (t) => {
+    if (!t?.id) return false;
+    let r;
+    try { r = await chrome.tabs.sendMessage(t.id, { action: "hccTabDangLamViec" }); }
+    catch (e) { return false; } // tab không có content script — không có gì để mất
+    // `undefined` có HAI nghĩa khác hẳn nhau, phải phân biệt:
+    //
+    //   - Trình duyệt CŨ (sendMessage chưa trả Promise): mọi tab đều trả
+    //     undefined mà không ném lỗi. Không biết gì ⇒ coi là bận.
+    //   - Trình duyệt MỚI: undefined nghĩa là tab có người nhận message nhưng
+    //     không ai trả lời — ví dụ một TRANG EXTENSION mở dạng tab (popup.html).
+    //     Đó không phải panel trên trang cổng, không có gì để mất ⇒ rảnh.
+    //
+    // Gộp hai ca này lại là chặn vĩnh viễn: chỉ cần mở popup.html thành một tab
+    // là không bao giờ tự cập nhật được nữa. Đã gặp thật khi trình diễn.
+    if (r === undefined || r === null) return !hoTroPromise();
+    if (!r.coPanel) return false;          // không có panel thì không có gì để mất
+    if (r.an) return false;                 // tab bị ẩn
+    if (!r.focus && Number(r.imLangMs) >= NGUONG_ROI_DI_MS) return false; // đã rời đi
+    return true;
+  }));
+  return kq.some(Boolean);
+}
+
+// Gỡ panel ở MỌI tab ngay trước khi nạp lại. Cờ "panel đang mở" trong
+// chrome.storage được giữ nguyên nên lần điều hướng kế tiếp panel tự mọc lại.
+async function goPanelMoiTab() {
+  let tabs = [];
+  try { tabs = await chrome.tabs.query({}); } catch (e) { return; }
+  await Promise.all(tabs.map(async (t) => {
+    if (!t?.id) return;
+    try { await chrome.tabs.sendMessage(t.id, { action: "hccGoPanelTruocKhiNapLai" }); }
+    catch (e) { /* tab khong co content script - khong sao */ }
+  }));
+}
+
+
 // ===== Tách hồ sơ (split KPI): hàng đợi file chờ đính, keyed theo tabId =====
 // Mỗi tab hồ sơ mới giữ một bundle riêng; chữ ký có thể gồm tài liệu STT1 + CCCD dùng chung ở STT2.
 const PENDING_ATTACH_KEY = "autofill_pending_attach";
@@ -234,6 +306,30 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
 // SUBMIT_WATCH_KEY khai lại ở đây (service worker không nạp api/config.js) — sửa thì sửa cả hai.
 const SUBMIT_WATCH_KEY = "autofill_submit_watch";
 
+// Cờ "cần hỏi đánh giá", theo KHÓA HỒ SƠ chứ không theo tab.
+// - theo hồ sơ: chứng thực tách nhiều tab dùng CHUNG một dossierId và tab nào cũng bấm nộp —
+//   đánh dấu theo tab thì cán bộ bị hỏi 4 lần cho 1 hồ sơ.
+// - vào storage chứ không giữ trong RAM của popup: bấm nộp xong trang thường điều hướng/postback
+//   ngay (HkdOnline là full postback), panel dựng lại là mất sạch trạng thái trong RAM.
+const RATING_PENDING_KEY = "autofill_rating_pending";
+const RATING_DONE_KEY = "autofill_rating_done";
+// Trần danh sách hồ sơ ĐÃ hỏi: chỉ để chống hỏi lại, không phải dữ liệu cần giữ lâu.
+const RATING_DONE_MAX = 200;
+
+async function markRatingPending(dossierId, tabId) {
+  if (!dossierId) return false;
+  const store = await chrome.storage.local.get([RATING_PENDING_KEY, RATING_DONE_KEY]);
+  const done = Array.isArray(store?.[RATING_DONE_KEY]) ? store[RATING_DONE_KEY] : [];
+  // Đã hỏi rồi thì thôi — kể cả khi cán bộ bấm nộp thêm lần nữa trên chính hồ sơ đó.
+  if (done.includes(dossierId)) return false;
+  const pending = store?.[RATING_PENDING_KEY];
+  if (pending?.dossierId === dossierId) return true; // đã chờ sẵn, không ghi đè mốc cũ
+  await chrome.storage.local.set({
+    [RATING_PENDING_KEY]: { dossierId, tabId: tabId ?? null, at: Date.now() },
+  });
+  return true;
+}
+
 async function reportDossierSubmitClick(tabId, host, ref) {
   if (!tabId) return;
   const sessionKey = "autofill_session_" + tabId;
@@ -260,12 +356,24 @@ async function reportDossierSubmitClick(tabId, host, ref) {
   // này và mỗi lần là một sự kiện. Khóa mới sinh ở LƯỢT process/đính kèm kế tiếp (popup.js
   // ensureDossierId), tức khi cán bộ bắt đầu hồ sơ khác.
   await chrome.storage.local.set({ [sessionKey]: { ...session, dossierSubmitted: true } });
+  // Bấm nộp = coi như đã nộp. Không chờ cổng báo "thành công": câu chữ đó khác nhau theo cổng
+  // và chỉ thu thập được bằng cách nộp hồ sơ thật, nên chờ nó là không bao giờ hỏi được ở
+  // phần lớn cổng. Đổi lại: có thể hỏi cả khi cổng báo thiếu giấy tờ — chấp nhận.
+  await markRatingPending(dossierId, tabId);
   try {
-    await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId });
-  } catch (_) { /* popup không mở → bỏ qua */ }
+    await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId, dossierId });
+  } catch (_) { /* panel chưa dựng lại sau điều hướng → cờ ở storage lo tiếp */ }
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.action === "hccCoTabNaoDangLamViec") {
+    coTabNaoDangLamViec().then((co) => sendResponse({ co }));
+    return true;
+  }
+  if (msg?.action === "hccGoPanelMoiTab") {
+    goPanelMoiTab().then(() => sendResponse({ ok: true }));
+    return true;
+  }
   if (msg?.action === "getTabId") {
     sendResponse({ tabId: sender?.tab?.id ?? null });
     return true;
@@ -561,3 +669,159 @@ chrome.runtime.onConnect.addListener((port) => {
     }
   });
 });
+
+// ===== Tự cập nhật: kiểm tra ở BACKGROUND, không phụ thuộc panel =====
+//
+// Bản đầu đặt phép kiểm trong panel (`popup.js`), mà panel chỉ nối tới agent khi
+// cán bộ đã mở nó và chọn thủ tục trên trang cổng (`ensureScanAgentConnected`
+// chỉ được gọi từ `selectProcedure`). Máy nào cài xong rồi để đó thì extension
+// KHÔNG BAO GIỜ biết có bản mới — đo 2026-09-12: đĩa đã có 1.17.0.16 mà trình
+// duyệt vẫn đứng ở 1.17.0.15 sau 45 giây.
+//
+// Service worker thì luôn được `chrome.alarms` đánh thức, không cần ai mở gì.
+const ALARM_CAP_NHAT = "hcc-kiem-ban-moi";
+const NHIP_KIEM_PHUT = 1;
+// Máy không có thao tác nào suốt ngần này thì coi là rảnh. Đây chính là "chờ nó
+// không hoạt động bao lâu rồi mới cập nhật" — nạp lại giữa lúc cán bộ đang làm
+// là cắt ngang công việc, mà thứ đang chờ chỉ là một bản vá.
+const NGUONG_RANH_GIAY = 60;
+const CONG_AGENT = [28147, 28148, 28149, 28150, 28151];
+
+function datLichKiemBanMoi() {
+  try { chrome.alarms.create(ALARM_CAP_NHAT, { periodInMinutes: NHIP_KIEM_PHUT }); }
+  catch (e) { console.warn("[BG] khong dat duoc lich kiem ban moi:", e); }
+}
+chrome.runtime.onInstalled.addListener(datLichKiemBanMoi);
+chrome.runtime.onStartup.addListener(datLichKiemBanMoi);
+datLichKiemBanMoi(); // và ngay khi service worker vừa dậy
+
+chrome.alarms.onAlarm.addListener((a) => {
+  if (a?.name === ALARM_CAP_NHAT) void kiemBanMoi();
+});
+
+// ── Nút "Cập nhật" chủ động trên panel ──────────────────────────────────────
+// Mặc định vẫn là tự nạp lại khi máy rảnh NGUONG_RANH_GIAY giây (kiemBanMoi) — bao được đa số ca. Cán bộ
+// ngồi làm liên tục thì có khi cả buổi không rảnh, nên mỗi nhịp kiểm ghi "bản mới đang chờ" vào storage;
+// panel đọc + nghe storage.onChanged để hiện nút cho cán bộ tự chọn lúc cập nhật.
+const KHOA_BAN_CHO = "hcc_ban_moi_cho";                  // { version, luc }
+const KHOA_TAI_LAI_TAB = "hcc_tai_lai_tab_sau_cap_nhat"; // { tabId, luc }
+const TUOI_TAI_LAI_TAB_MS = 2 * 60 * 1000;
+
+async function ghiBanCho(version) {
+  try {
+    const cu = (await chrome.storage.local.get(KHOA_BAN_CHO))?.[KHOA_BAN_CHO];
+    // Cùng bản thì khỏi ghi lại mỗi phút — mỗi lần ghi là một storage.onChanged bắn tới mọi panel.
+    if (cu && cu.version === version) return;
+    await chrome.storage.local.set({ [KHOA_BAN_CHO]: { version, luc: Date.now() } });
+  } catch (e) { /* mất nút thì chỉ là chờ tới lúc máy rảnh như cũ */ }
+}
+
+async function boBanCho() {
+  try { await chrome.storage.local.remove(KHOA_BAN_CHO); } catch (e) { /* ignore */ }
+}
+
+// Panel vừa nghe agent báo có bản mới trên đĩa → kiểm NGAY, khỏi chờ nhịp 1 phút. kiemBanMoi tự giữ mọi
+// luật "chỉ nạp lại khi rảnh", nên gọi thêm lần nào cũng an toàn.
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.action === "hccKiemBanMoiNgay") void kiemBanMoi();
+});
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.action !== "hccCapNhatNgay") return;
+  (async () => {
+    const d = await hoiAgent();
+    const trenDia = d?.ext_versions?.[chrome.runtime.id];
+    // Chỉ nạp lại khi trên đĩa THẬT SỰ có bản khác. Nút còn treo sau khi đã lên bản rồi thì thôi — nạp lại
+    // vô ích là tải lại trang cổng oan.
+    if (typeof trenDia !== "string" || !trenDia || trenDia === chrome.runtime.getManifest().version) {
+      if (d) await boBanCho();
+      sendResponse({ ok: false, lyDo: d ? "da-moi-nhat" : "khong-thay-agent" });
+      return;
+    }
+    const tabId = Number(msg.tabId) || sender?.tab?.id || 0;
+    if (tabId) {
+      try { await chrome.storage.local.set({ [KHOA_TAI_LAI_TAB]: { tabId, luc: Date.now() } }); }
+      catch (e) { /* không tải lại được tab thì panel mọc lại ở lần điều hướng kế tiếp */ }
+    }
+    sendResponse({ ok: true, version: trenDia });
+    // Cán bộ đã xác nhận nên KHÔNG hỏi mayDangRanh / coTabNaoDangLamViec nữa. Gỡ panel khắp nơi trước (nạp
+    // lại không làm panel biến mất, chỉ làm nó chết bên trong), rồi nạp lại.
+    await goPanelMoiTab();
+    console.info("[BG] Can bo bam Cap nhat - nap lai de len ban", trenDia);
+    setTimeout(() => chrome.runtime.reload(), 150); // để câu trả lời kịp về panel
+  })();
+  return true;
+});
+
+// Service worker MỚI sau khi nạp lại: tải lại đúng tab cán bộ vừa bấm "Cập nhật". Content script bản mới
+// chỉ được tiêm khi trang tải lại; cờ "panel đang mở" vẫn giữ nên panel mọc lại như trước. Chỉ tin mốc còn
+// mới — mốc sót lại (trình duyệt tắt ngang) không được tải lại trang oan lúc mở máy hôm sau.
+(async () => {
+  try {
+    const kho = await chrome.storage.local.get([KHOA_TAI_LAI_TAB, KHOA_BAN_CHO]);
+    if (kho?.[KHOA_BAN_CHO]?.version === chrome.runtime.getManifest().version) await boBanCho();
+    const r = kho?.[KHOA_TAI_LAI_TAB];
+    if (!r) return;
+    await chrome.storage.local.remove(KHOA_TAI_LAI_TAB);
+    if (Date.now() - Number(r.luc || 0) > TUOI_TAI_LAI_TAB_MS) return;
+    await chrome.tabs.reload(Number(r.tabId));
+  } catch (e) {
+    console.warn("[BG] Khong tai lai duoc tab sau khi cap nhat:", e?.message || e);
+  }
+})();
+
+// Dò agent trên dải cổng của nó. KHÔNG cần token: /v1/ping là endpoint duy nhất
+// không xác thực, và agent trả Access-Control-Allow-Origin: * nên service worker
+// gọi được bằng CORS thường, không cần host_permissions cho 127.0.0.1.
+async function hoiAgent() {
+  // Kèm version ĐANG CHẠY của chính mình: agent chuyển lên CMS để trang Máy biết
+  // Chrome đang chạy bản nào (khác bản trên đĩa khi chưa nạp lại). Agent bản cũ
+  // bỏ qua query lạ, phản hồi ping không đổi (scan-bridge docs/local-api.md §1).
+  const truyVan = `ext_id=${encodeURIComponent(chrome.runtime.id)}` +
+    `&ext_ver=${encodeURIComponent(chrome.runtime.getManifest().version)}`;
+  for (const cong of CONG_AGENT) {
+    try {
+      const ctrl = new AbortController();
+      const hen = setTimeout(() => ctrl.abort(), 800);
+      const res = await fetch(`http://127.0.0.1:${cong}/v1/ping?${truyVan}`, { signal: ctrl.signal });
+      clearTimeout(hen);
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (d && d.app === "scan-bridge-agent") return d;
+    } catch (e) { /* cổng này không có agent — thử cổng sau */ }
+  }
+  return null;
+}
+
+// Máy có đang rảnh không — theo thao tác chuột/phím của CẢ MÁY, không chỉ tab này.
+async function mayDangRanh() {
+  try {
+    const tt = await chrome.idle.queryState(NGUONG_RANH_GIAY);
+    return tt === "idle" || tt === "locked";
+  } catch (e) {
+    return false; // hỏi không được thì coi như đang dùng
+  }
+}
+
+async function kiemBanMoi() {
+  const d = await hoiAgent();
+  if (!d) return;
+  // Tra version CỦA CHÍNH MÌNH bằng chrome.runtime.id — agent giữ nhiều
+  // extension, mỗi cái một version.
+  const trenDia = d.ext_versions && d.ext_versions[chrome.runtime.id];
+  if (typeof trenDia !== "string" || !trenDia) return;
+  if (trenDia === chrome.runtime.getManifest().version) { await boBanCho(); return; }
+  // Có bản mới đang chờ → panel hiện nút "Cập nhật" (cán bộ đang làm thì còn lâu mới tới lúc máy rảnh).
+  await ghiBanCho(trenDia);
+
+  if (!(await mayDangRanh())) return;
+  if (await coTabNaoDangLamViec()) return;
+
+  // Gỡ panel khắp nơi trước khi nạp lại: nạp lại KHÔNG làm panel biến mất, nó
+  // chỉ chết bên trong (xem coTabNaoDangLamViec). Gỡ đi thì hỏng thành nhìn
+  // thấy được, và cờ panelOpenKey được giữ nên panel tự mọc lại ở lần điều
+  // hướng kế tiếp.
+  await goPanelMoiTab();
+  console.info("[BG] Nap lai de len ban", trenDia);
+  chrome.runtime.reload();
+}

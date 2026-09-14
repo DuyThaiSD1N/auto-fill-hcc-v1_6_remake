@@ -76,6 +76,15 @@ function dataUrlToBytes(dataUrl) {
     /không hợp lệ/
   );
 
+  // Fix "The input is not a PNG file!": chọn embedPng/embedJpg theo CHỮ KÝ BYTES thật, không
+  // theo tên/mime (điện thoại hay đặt .png cho ảnh JPG → embedPng ném lỗi PNG).
+  const sniff = context.window.PdfConvert._sniffImageType.bind(context.window.PdfConvert);
+  assert.equal(sniff(Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), "png");
+  assert.equal(sniff(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0])), "jpg");
+  assert.equal(sniff(Uint8Array.from([0x00, 0x01, 0x02])), "other");
+  assert.match(source, /_embedImage\([\s\S]*_sniffImageType\(bytes\)/);
+  assert.match(source, /_reencodeToJpeg[\s\S]*toDataURL\("image\/jpeg"/); // phao canvas khi embed lỗi
+
   console.log("pdf segment engine: heterogeneous pages normalized to A4, uniform pages preserved");
 })().catch((error) => {
   console.error(error);
