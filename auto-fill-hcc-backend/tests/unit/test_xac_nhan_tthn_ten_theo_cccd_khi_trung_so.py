@@ -101,3 +101,75 @@ def test_muc_i_the_la_cua_nguoi_khac_thi_khong_muon_ten():
         Cccd_SoDinhDanh="036301012326",
     )
     assert out["HoVaTenC"] == "PHAM TRUONG GIANG"
+
+
+# --------------------------------------------------------------------------------------
+# OCR RƠI CHỮ SỐ — tờ khai viết tay, số định danh đọc thiếu một chữ số
+# --------------------------------------------------------------------------------------
+
+def test_ocr_roi_mot_chu_so_van_la_cung_nguoi():
+    """"046175013623" bị OCR nuốt mất chữ "1" → "04617503623".
+
+    Chuỗi 11 chữ số không phải số định danh hợp lệ của bất kỳ ai, nên coi nó là "người khác" thì
+    mục I giữ lại tên viết tay sai, tick "Khác", và điền vào cổng một số chắc chắn bị từ chối.
+    """
+    out = _run(
+        ToKhaiYeuCau_HoTen="NGÔ THỊ TÍ QUYÊN",      # OCR đọc nhầm "TÚ"
+        ToKhaiYeuCau_SoDinhDanh="04617503623",      # thiếu 1 chữ số
+        ToKhaiYeuCau_NgayCapGiayTo="10/05/2021",
+        ToKhaiYeuCau_QuanHe="bản thân",
+        ToKhai_HoTen="NGÔ THỊ TÍ QUYÊN",
+        ToKhai_SoDinhDanh="046175013623",
+        Cccd_HoTen="NGÔ THỊ TÚ QUYÊN",
+        Cccd_SoDinhDanh="046175013623",
+    )
+    assert out["HoVaTenC"] == "NGÔ THỊ TÚ QUYÊN"
+    assert out["SoDinhDanhC"] == "046175013623"     # số 12 chữ số của thẻ, không phải 11 chữ số
+    assert out["SoGiayToTuyThanC"] == "046175013623"
+    assert out["quanhevoinguoiduocxacminh"] == "1"  # cùng một người
+    assert out["HoVaTenC1"] == "NGÔ THỊ TÚ QUYÊN"
+
+
+def test_ocr_roi_chu_so_o_muc_ii():
+    out = _run(
+        ToKhai_HoTen="NGUYEN THI HOA",
+        ToKhai_SoDinhDanh="03630101236",           # thiếu chữ "2" áp chót
+        Cccd_HoTen="NGUYỄN THỊ HOÀ",
+        Cccd_SoDinhDanh="036301012326",
+    )
+    assert out["HoVaTenC1"] == "NGUYỄN THỊ HOÀ"
+    assert out["SoDinhDanhC1"] == "036301012326"
+
+
+def test_ocr_doc_nham_chu_so_van_la_hai_nguoi_khac_nhau():
+    """Đọc NHẦM chữ số (đủ 12 chữ số nhưng khác) KHÔNG được nới — đó là số của người khác."""
+    out = _run(
+        ToKhai_HoTen="TRẦN VĂN NAM",
+        ToKhai_SoDinhDanh="036301012327",          # đúng 12 chữ số, lệch chữ cuối
+        Cccd_HoTen="NGUYỄN THỊ HOÀ",
+        Cccd_SoDinhDanh="036301012326",
+    )
+    assert out["HoVaTenC1"] == "TRẦN VĂN NAM"
+    assert out["SoDinhDanhC1"] == "036301012327"
+
+
+def test_lech_qua_hai_chu_so_thi_khong_ghep():
+    """Rơi 3 chữ số trở lên là quá xa để dám kết luận cùng người."""
+    out = _run(
+        ToKhai_HoTen="TRẦN VĂN NAM",
+        ToKhai_SoDinhDanh="036301012",             # 9 chữ số
+        Cccd_HoTen="NGUYỄN THỊ HOÀ",
+        Cccd_SoDinhDanh="036301012326",
+    )
+    assert out["HoVaTenC1"] == "TRẦN VĂN NAM"
+
+
+def test_chu_so_dung_nhung_sai_thu_tu_thi_khong_ghep():
+    """Chỉ chấp nhận XÓA chữ số, giữ nguyên thứ tự — đảo chữ số là số khác."""
+    out = _run(
+        ToKhai_HoTen="TRẦN VĂN NAM",
+        ToKhai_SoDinhDanh="03630101263",           # "26" đảo thành "63"
+        Cccd_HoTen="NGUYỄN THỊ HOÀ",
+        Cccd_SoDinhDanh="036301012326",
+    )
+    assert out["HoVaTenC1"] == "TRẦN VĂN NAM"

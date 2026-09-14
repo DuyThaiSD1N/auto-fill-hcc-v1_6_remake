@@ -1431,6 +1431,11 @@
     return !!detectFormKind();
   }
 
+  // Nút thêm một dòng thành phần hồ sơ. Mỗi cổng gọi một kiểu: bảng cũ ghi "Thêm thành phần hồ sơ",
+  // các eForm mới trên Cổng DVC quốc gia ghi "Thêm giấy tờ" ngay dưới bảng Bước 2. Thiếu nhãn nào là
+  // mọi giấy tờ không có dòng sẵn (vd trích lục khai tử) đều báo không tìm thấy nút.
+  const ADD_COMPONENT_BUTTON_LABELS = ["Thêm thành phần hồ sơ", "Thêm giấy tờ"];
+
   function hasAttachmentTarget() {
     return !!(
       document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]') || // cổng Bắc Ninh
@@ -1439,7 +1444,7 @@
       // Cổng QN "miền núi hải đảo" (vd ĐK tài sản gắn liền đất): bảng thành phần hồ sơ KHÔNG có dòng
       // sẵn, chỉ có nút "Thêm thành phần hồ sơ" để tự thêm từng dòng → vẫn là trang đính kèm hợp lệ.
       // Thiếu nhánh này thì collectAttachmentContext bị gate trượt → không sendResponse → "Không kết nối được trang".
-      findButtonByText(document, ["Thêm thành phần hồ sơ"]) ||
+      findButtonByText(document, ADD_COMPONENT_BUTTON_LABELS) ||
       fixedSlotUploadInputs().length > 0 // cổng Bộ VHTTDL: input file trong <app-upload-flie-multi> (nút icon, không chữ "Chọn tệp")
     );
   }
@@ -1700,8 +1705,12 @@
     };
   }
 
+  // Hộp thoại của cổng không phải lúc nào cũng khai role="dialog": có eForm dùng thẻ <dialog>, có
+  // cổng chỉ đặt aria-modal. Dò thiếu dạng nào là modal mở rồi mà engine vẫn báo không mở được.
+  const DIALOG_SELECTOR = "[role='dialog'], [role='alertdialog'], [aria-modal='true'], dialog";
+
   function visibleDialogSnapshot() {
-    return Array.from(document.querySelectorAll("[role='dialog']")).map((dialog, index) => ({
+    return Array.from(document.querySelectorAll(DIALOG_SELECTOR)).map((dialog, index) => ({
       index,
       visible: isVisible(dialog),
       state: dialog.getAttribute("data-state") || "",
@@ -1713,16 +1722,48 @@
     console.log(`[AutoFill-AttachPlan][debug] ${label}`, data);
   }
 
+  // Ảnh chụp MỌI thứ trông giống lớp phủ, rộng hơn hẳn DIALOG_SELECTOR mà engine thật sự dùng. Chỉ
+  // để chẩn đoán khi bấm nút chọn tệp mà không thấy modal: cổng mới có thể mở menu thả xuống, hộp
+  // thoại khác chuẩn, hoặc bắn thẳng vào ô chọn tệp ẩn — ba đường sửa khác nhau, phải nhìn mới biết.
+  const OVERLAY_PROBE_SELECTOR = [
+    DIALOG_SELECTOR,
+    ".modal",
+    ".ant-modal",
+    ".MuiDialog-root",
+    ".cdk-overlay-container > *",
+    ".mat-menu-panel",
+    ".mat-mdc-menu-panel",
+    "[role='menu']",
+    "[data-radix-popper-content-wrapper]",
+  ].join(", ");
+
+  function overlayProbeSnapshot() {
+    const describe = (node) => ({
+      tag: String(node.tagName || "").toLowerCase(),
+      id: node.id || "",
+      cls: shortText(node.getAttribute("class") || "", 120),
+      role: node.getAttribute("role") || "",
+      name: node.getAttribute("name") || "",
+      visible: isVisible(node),
+      text: shortText(nodeText(node), 200),
+    });
+    return {
+      overlays: Array.from(document.querySelectorAll(OVERLAY_PROBE_SELECTOR)).map(describe),
+      fileInputs: Array.from(document.querySelectorAll("input[type='file']")).map(describe),
+      bodyChildren: Array.from(document.body.children).slice(-8).map(describe),
+    };
+  }
+
   function findDialogByText(label) {
     const want = foldChoiceText(label);
-    return Array.from(document.querySelectorAll("[role='dialog']")).find((dialog) =>
+    return Array.from(document.querySelectorAll(DIALOG_SELECTOR)).find((dialog) =>
       foldedNodeText(dialog).includes(want)
     ) || null;
   }
 
   function findDialogsByText(label) {
     const want = foldChoiceText(label);
-    return Array.from(document.querySelectorAll("[role='dialog']")).filter((dialog) =>
+    return Array.from(document.querySelectorAll(DIALOG_SELECTOR)).filter((dialog) =>
       foldedNodeText(dialog).includes(want)
     );
   }
@@ -1745,7 +1786,7 @@
   }
 
   function isAddAttachmentRow(row) {
-    return !!findButtonByText(row, ["Thêm thành phần hồ sơ"]);
+    return !!findButtonByText(row, ADD_COMPONENT_BUTTON_LABELS);
   }
 
   function attachmentComponentName(row) {
@@ -1815,7 +1856,9 @@
         index: index + 1,
         componentName: attachmentComponentName(row),
         required: foldedNodeText(row).includes("bat buoc"),
-        hasFile: !!nodeText(row.cells?.[2] || "").trim(),
+        // Dùng chung cách đọc với rowAttachedFileName: đọc thẳng cột 3 thì cột "Loại bản" của eForm
+        // mới bị tính là đã có file, BE nhận attachmentContext sai rồi lập kế hoạch theo dữ liệu sai.
+        hasFile: !!rowAttachedFileName(row),
       })),
     };
   }
@@ -1974,7 +2017,7 @@
   }
 
   function findLatestDialog() {
-    const dialogs = Array.from(document.querySelectorAll("[role='dialog']")).filter(isVisible);
+    const dialogs = Array.from(document.querySelectorAll(DIALOG_SELECTOR)).filter(isVisible);
     return dialogs[dialogs.length - 1] || null;
   }
 
@@ -2050,9 +2093,24 @@
           nodeText(box),
         ].filter(Boolean).join(" ")
       );
-      return text.includes("thanh phan") || text.includes("ten ho so") || text.includes("ten tai lieu");
+      return (
+        text.includes("thanh phan") ||
+        text.includes("ten ho so") ||
+        text.includes("ten tai lieu") ||
+        // Modal "Thêm giấy tờ" của eForm mới đặt nhãn là "Tên giấy tờ".
+        text.includes("ten giay to")
+      );
     });
     return preferred || controls[0] || null;
+  }
+
+  // Điền ĐÚNG một ô tên. Hộp thoại thêm giấy tờ còn có Loại bản, Số bản — đổ tên vào mọi ô như khi
+  // điền một DÒNG (ô tên bị lặp giữa các cell) sẽ ghi đè các ô đó.
+  async function fillComponentNameInput(input, componentName) {
+    if (!input) return false;
+    setNativeValue(input, componentName, { typing: true, commit: true });
+    await sleep(250);
+    return true;
   }
 
   function findComponentNameInputs(root) {
@@ -2086,12 +2144,30 @@
     return foldChoiceText(value || "").includes("ban chinh giay to");
   }
 
+  // Link tải MẪU giấy tờ ("Mau so 01.doc") cổng phát cho người dân — KHÔNG phải tệp đã đính kèm.
+  // Mẫu luôn là file soạn thảo (.doc/.xls); giấy tờ người dân nộp là PDF/ảnh nên không đụng nhau.
+  const TEMPLATE_LINK_RE = /\.(docx?|xlsx?)(\?|#|$)/i;
+
+  function isTemplateDownloadLink(node) {
+    const href = String(node?.getAttribute?.("href") || "");
+    if (!href || /^(#|javascript:)/i.test(href)) return false;
+    return TEMPLATE_LINK_RE.test(href) || TEMPLATE_LINK_RE.test(nodeText(node));
+  }
+
   function rowAttachedFileName(row) {
     if (!row) return "";
-    const cells = Array.from(row?.cells || []);
-    const attachCell = cells[2] || row;
+    const attachCell = attachmentFileCell(row);
     if (!attachCell) return "";
     const clone = attachCell.cloneNode(true);
+    // Cột "Loại bản" (radio Bản chính/Bản sao) có thể nằm chung ô với nút chọn tệp. Xoá mỗi thẻ
+    // <input> thì phần CHỮ của option ở lại, đọc ra "1 Bản chính 1 Bản sao" — mọi dòng đều bị coi
+    // là ĐÃ CÓ FILE, thành ra dòng nào cũng rẽ sang nhánh thêm thành phần hồ sơ rồi gãy. Phải xoá
+    // cả thẻ bọc của radio/checkbox.
+    clone.querySelectorAll("input[type='radio'], input[type='checkbox']").forEach((node) => {
+      const holder = (node.closest && node.closest("label")) || node.parentElement || node;
+      holder.remove();
+    });
+    Array.from(clone.querySelectorAll("a[href]")).filter(isTemplateDownloadLink).forEach((node) => node.remove());
     clone.querySelectorAll("button, svg, input, textarea, select").forEach((node) => node.remove());
     const text = nodeText(clone);
     if (!text || foldChoiceText(text).includes("chon tep")) return "";
@@ -2178,9 +2254,21 @@
     ) || null;
   }
 
+  // Ô chứa tệp của một dòng hồ sơ. Bố cục cũ để tệp ở cột thứ 3, nhưng nhiều eForm trên Cổng DVC
+  // quốc gia chèn thêm cột "Loại bản" nên cột 3 là radio còn nút "Chọn tệp tin" nằm ở cột sau. Dò
+  // theo CHÍNH ô upload/nút chọn tệp; không thấy thì mới lùi về quy ước cột 3 như cũ.
+  function cellHasAttachmentControl(cell) {
+    if (!cell || !cell.querySelectorAll) return false;
+    if (cell.querySelector?.("input[type='file']")) return true;
+    const want = foldChoiceText("Chọn tệp");
+    return Array.from(cell.querySelectorAll("button")).some((button) =>
+      foldedNodeText(button).includes(want)
+    );
+  }
+
   function attachmentFileCell(row) {
     const cells = Array.from(row?.cells || []);
-    return cells[2] || row || null;
+    return cells.find(cellHasAttachmentControl) || cells[2] || row || null;
   }
 
   function findAttachmentFileInput(row) {
@@ -2291,6 +2379,8 @@
           activeAfter: describeElementForLog(document.activeElement),
           dialogsAfter: visibleDialogSnapshot(),
           bodyHasWalletTitle: foldedNodeText(document.body).includes("danh sach tai lieu dien tu"),
+          // Bấm rồi mà không thấy modal: chụp rộng để biết cổng mở menu, hộp thoại khác chuẩn, hay không gì cả.
+          probe: overlayProbeSnapshot(),
         });
       }
     }
@@ -2304,6 +2394,7 @@
         buttonCount: buttons.length,
         buttons: buttons.map(describeElementForLog),
         dialogs: visibleDialogSnapshot(),
+        probe: overlayProbeSnapshot(),
       },
     };
   }
@@ -2403,29 +2494,37 @@
 
     const beforeRows = findAttachmentCandidateRows();
     const beforeCount = beforeRows.length;
-    const addButton = findButtonByText(document, ["Thêm thành phần hồ sơ"]);
-    if (!addButton) throw new Error("Không tìm thấy nút Thêm thành phần hồ sơ.");
+    const addButton = findButtonByText(document, ADD_COMPONENT_BUTTON_LABELS);
+    if (!addButton) throw new Error("Không tìm thấy nút Thêm thành phần hồ sơ / Thêm giấy tờ.");
 
     addButton.click();
-    await sleep(350);
 
-    const dialog = findLatestDialog();
-    if (dialog && !foldedNodeText(dialog).includes("danh sach tai lieu dien tu")) {
-      const input = findComponentNameInput(dialog);
-      if (input) {
-        await fillAttachmentComponentName(dialog, uniqueName);
-        await submitComponentName(dialog);
-      }
-    } else {
-      const newRow = await waitFor(() => {
-        const rows = findAttachmentCandidateRows();
-        if (rows.length > beforeCount) return rows[rows.length - 1];
-        return null;
-      }, 1500, 100);
-      if (newRow && findComponentNameInput(newRow)) {
-        await fillAttachmentComponentName(newRow, uniqueName);
-        await submitComponentName(newRow);
-      }
+    // Cổng phản ứng theo hai kiểu: dựng HỘP THOẠI hỏi tên giấy tờ, hoặc chèn thẳng một DÒNG trống.
+    // Chờ cứng 350ms rồi mới dò hộp thoại là hụt với React dựng modal chậm: lúc đó nhánh "dòng mới"
+    // chạy trong khi modal còn chưa hiện, không ai điền tên, và dòng mới thì không bao giờ tới.
+    const appeared = await waitFor(() => {
+      const dialog = findLatestDialog();
+      if (dialog && !foldedNodeText(dialog).includes("danh sach tai lieu dien tu")) return { dialog };
+      const rows = findAttachmentCandidateRows();
+      if (rows.length > beforeCount) return { newRow: rows[rows.length - 1] };
+      return null;
+    }, 5000, 120);
+
+    attachDebug("add-component after click", {
+      uniqueName,
+      via: appeared?.dialog ? "dialog" : appeared?.newRow ? "row" : "none",
+      button: describeElementForLog(addButton),
+      dialog: appeared?.dialog ? shortText(nodeText(appeared.dialog), 300) : "",
+    });
+
+    if (appeared?.dialog) {
+      const input = findComponentNameInput(appeared.dialog);
+      if (input) await fillComponentNameInput(input, uniqueName);
+      await submitComponentName(appeared.dialog);
+      await waitFor(() => !document.documentElement.contains(appeared.dialog) || !isVisible(appeared.dialog), 4000, 120);
+    } else if (appeared?.newRow && findComponentNameInput(appeared.newRow)) {
+      await fillAttachmentComponentName(appeared.newRow, uniqueName);
+      await submitComponentName(appeared.newRow);
     }
 
     const row = await waitFor(() => {
@@ -2483,6 +2582,53 @@
     return removed;
   }
 
+  // eForm mới trên Cổng DVC quốc gia tách làm hai nút: mỗi dòng có "Chọn tệp tin" bắn thẳng vào ô
+  // chọn tệp ẩn, còn ví tài liệu dời xuống nút "Lấy giấy tờ từ kho" ở cuối bảng. Nhận ra dạng này
+  // theo CHỮ trên nút để không đổi hành vi của các eForm cũ (nút ghi "Chọn tệp đính kèm").
+  function rowUsesDeviceFilePicker(row) {
+    const button = findAttachmentChooseButton(row);
+    return !!button && foldedNodeText(button).includes(foldChoiceText("Chọn tệp tin"));
+  }
+
+  function rowUploadInput(row) {
+    const inRow = findAttachmentFileInput(row) || row?.querySelector?.("input[type='file']");
+    if (inRow) return inRow;
+    // Cổng có thể treo ô chọn tệp ngay ngoài thẻ bọc của nút thay vì trong dòng.
+    let node = findAttachmentChooseButton(row)?.parentElement;
+    for (let level = 0; node && level < 3; level += 1, node = node.parentElement) {
+      const found = node.querySelector?.("input[type='file']");
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // Bơm thẳng file vào ô chọn tệp ẩn của chính dòng hồ sơ, không qua ví tài liệu.
+  async function attachOneFileToRowFileInput(row, payloadFile, planItem = {}) {
+    if (!row) return { error: "Không có dòng hồ sơ để bơm file." };
+    const input = rowUploadInput(row);
+    if (!input) return { error: "Dòng hồ sơ không có ô chọn tệp ẩn." };
+
+    const intendedDocumentName = planItem.documentName || attachmentDocumentName(payloadFile);
+    const previousName = rowAttachedFileName(row);
+    const file = dataUrlToFile(payloadFile, intendedDocumentName);
+    // Cổng có thể đọc xong rồi reset input.files → assumeConsumed để không báo hụt.
+    if (!setFilesOnInput(input, [file], { allowMultiple: false, assumeConsumed: true })) {
+      return { error: `Không gắn được file ${file.name} vào ô chọn tệp của dòng hồ sơ.` };
+    }
+
+    const persisted = await waitForPersistedAttachment(row, planItem, previousName);
+    if (!persisted) {
+      markAttachmentResult(row, false);
+      return { error: `Đã gắn file ${file.name} nhưng dòng hồ sơ không hiện tên file.` };
+    }
+    attachDebug("attached via row file input", {
+      fileName: persisted.fileName,
+      row: describeAttachmentRowForLog(persisted.row || row),
+    });
+    markAttachmentResult(persisted.row || row, true);
+    return { ok: true, method: "row-file-input", attached: 1, fileNames: [persisted.fileName || file.name] };
+  }
+
   async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
     const intendedDocumentName = planItem.documentName || attachmentDocumentName(payloadFile);
     row = await resolveLiveAttachmentRow(row, planItem);
@@ -2528,11 +2674,23 @@
       });
     }
 
+    // Dòng dùng nút "Chọn tệp tin": bấm nút là bung hộp chọn tệp của máy, trợ lý không thao tác được
+    // và người dùng phải tự bấm Hủy. Bơm thẳng vào ô ẩn TRƯỚC, chỉ khi không ăn mới quay lại đường ví.
+    if (rowUsesDeviceFilePicker(row)) {
+      const direct = await attachOneFileToRowFileInput(row, payloadFile, planItem);
+      if (direct?.ok) return direct;
+      attachDebug("row file input first attempt failed", { error: direct?.error, row: describeAttachmentRowForLog(row) });
+    }
+
     const openResult = await openDocumentWalletForRow(row, planItem);
     if (openResult?.error) {
+      // Không mở được modal thì thử lại đường bơm thẳng cho các dòng nút ghi chữ khác.
+      const direct = await attachOneFileToRowFileInput(openResult.row || row, payloadFile, planItem);
+      if (direct?.ok) return direct;
       console.warn("[AutoFill-AttachPlan] Không mở được modal upload", {
         error: openResult.error,
         debug: openResult.debug,
+        directFallback: direct?.error || "không có ô chọn tệp ẩn trong dòng",
         planItem,
         payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
       });
@@ -3503,7 +3661,12 @@
           row = await rowForPlanItem(item);
         } catch (e) {
           console.warn("[AutoFill-Attach] Tìm dòng hồ sơ lỗi:", e);
-          errors.push(`Không mở được dòng hồ sơ "${item.componentName || ""}".`);
+          // Kèm nguyên văn lý do: "không tìm thấy nút" và "thêm rồi mà dòng không hiện" là hai lỗi
+          // khác hẳn nhau, gộp thành một câu chung thì mỗi lần lỗi lại phải mở Console mới biết.
+          const reason = String(e?.message || "").trim();
+          errors.push(
+            `Không mở được dòng hồ sơ "${item.componentName || ""}"${reason ? `: ${reason}` : "."}`
+          );
           break;
         }
         if (!row) {

@@ -202,6 +202,21 @@ async function getTargetTabId() {
   return tab?.id;
 }
 
+// Danh sách file content script isolated world, LẤY TỪ MANIFEST. background.js có bản sao cùng
+// logic vì service worker và popup không dùng chung scope; nguồn dữ liệu vẫn là manifest nên thêm
+// file mới chỉ cần khai ở manifest.json.
+function isolatedContentFiles() {
+  const groups = chrome.runtime.getManifest()?.content_scripts || [];
+  const files = [];
+  for (const group of groups) {
+    if (group.world === "MAIN") continue;
+    for (const file of group.js || []) {
+      if (!files.includes(file)) files.push(file);
+    }
+  }
+  return files.length ? files : ["api/config.js", "content.js"];
+}
+
 async function sendToContent(payload) {
   const tabId = await getTargetTabId();
   if (!tabId) return { error: "Không xác định được tab form." };
@@ -239,10 +254,10 @@ async function sendToContent(payload) {
       });
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
-        // PHẢI khớp danh sách js của content_scripts trong manifest.json (trừ khối world: MAIN ở
-        // trên). Thiếu một file thì tab vừa re-inject sẽ chạy thiếu tính năng một cách IM LẶNG —
-        // vd thiếu enterprise-registration.js là mất nhận diện + tự tiến bước ở cổng ĐKKD qua mạng.
-        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js"],
+        // Đọc thẳng từ manifest (trừ khối world: MAIN inject ở trên). Danh sách chép tay trước đây
+        // đã trôi khỏi manifest — thiếu portal-login.js và portal-quangninh.js — nên tab vừa
+        // re-inject chạy thiếu tính năng một cách IM LẶNG.
+        files: isolatedContentFiles(),
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -2987,6 +3002,7 @@ ocrBtn.addEventListener("click", async () => {
     // Các thủ tục cần đối chiếu người yêu cầu cổng đã điền sẵn (VNeID) với CCCD upload.
     if (
       cfg.key === "ho-tro-mai-tang" ||
+      cfg.key === "ho-tro-chi-phi-hoa-tang" ||
       cfg.key === "ho-tro-mai-tang-huu-tri-xa-hoi" ||
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||

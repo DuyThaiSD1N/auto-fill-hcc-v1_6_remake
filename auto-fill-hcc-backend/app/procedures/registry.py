@@ -84,6 +84,8 @@ from app.pipelines.ho_tro_nguoi_cao_tuoi_bac_ninh.attach import plan as ho_tro_n
 from app.pipelines.ho_tro_nguoi_cao_tuoi_bac_ninh.process import run as ho_tro_nguoi_cao_tuoi_bac_ninh_process
 from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.attach import plan as ho_tro_chi_phi_hoa_tang_bac_ninh_attach
 from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.process import run as ho_tro_chi_phi_hoa_tang_bac_ninh_process
+from app.pipelines.ho_tro_chi_phi_hoa_tang.attach import plan as ho_tro_chi_phi_hoa_tang_attach
+from app.pipelines.ho_tro_chi_phi_hoa_tang.process import run as ho_tro_chi_phi_hoa_tang_process
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.attach import plan as dang_ky_nha_o_xa_hoi_bac_ninh_attach
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.process import run as dang_ky_nha_o_xa_hoi_bac_ninh_process
 from app.pipelines.cap_hoc_tap_bac_ninh.attach import plan as cap_hoc_tap_bac_ninh_attach
@@ -2075,6 +2077,36 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "ho-tro-chi-phi-hoa-tang",
+        # Cổng DVC quốc gia, eForm Form.io. KHÁC "ho-tro-chi-phi-hoa-tang-bac-ninh" (eForm riêng của
+        # tỉnh, field element_757xx): bản này nộp tại UBND cấp xã theo khối "Chọn cơ quan thực hiện".
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.012749"],
+            "textIncludes": ["Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng"],
+            "headingDisabled": True,
+        },
+        "label": "Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng "
+            "(Mẫu số 01 cho cá nhân, Mẫu số 02 cho cơ quan, tổ chức).\n"
+            "2. Hợp đồng dịch vụ hỏa táng và Hóa đơn tài chính của cơ sở hỏa táng (đủ CẢ HAI).\n"
+            "3. Trích lục khai tử/giấy chứng tử của người chết.\n"
+            "4. Nếu nộp thay: Văn bản ủy quyền đã chứng thực (hoặc giấy giới thiệu của cơ quan, tổ chức).\n"
+            "5. CCCD của người nộp hồ sơ (chỉ dùng để đọc nhân thân, không đính kèm).\n"
+            "Form điền: Thông tin chung (họ tên chủ hồ sơ, ngày sinh, giới tính, điện thoại, điện thoại "
+            "ủy quyền) + Thông tin người nộp (họ tên, số định danh, ngày cấp, nơi cấp, ghi chú ủy quyền) "
+            "+ Nội dung yêu cầu giải quyết + Địa chỉ người nộp. Panel Địa chỉ thửa đất KHÔNG áp dụng.\n"
+            "Bước đính kèm: Mẫu 01 → dòng 1, Mẫu 02 → dòng 2, Hợp đồng và Hóa đơn → cùng dòng 3, "
+            "Văn bản ủy quyền → dòng 4; Trích lục khai tử được thêm thành một thành phần hồ sơ mới.\n"
+            "Mã xác nhận (captcha) và ô cam kết ở bước cuối vẫn phải tự nhập."
+        ),
+    },
+    {
         "key": "ho-tro-mai-tang-huu-tri-xa-hoi",
         "detect": {
             "textIncludes": ["Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội"],
@@ -3482,6 +3514,7 @@ _PIPELINE = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_process,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_process,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_process,
+    "ho-tro-chi-phi-hoa-tang": ho_tro_chi_phi_hoa_tang_process,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_process,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_process,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_process,
@@ -3576,6 +3609,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_attach,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_attach,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_attach,
+    "ho-tro-chi-phi-hoa-tang": ho_tro_chi_phi_hoa_tang_attach,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_attach,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_attach,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_attach,

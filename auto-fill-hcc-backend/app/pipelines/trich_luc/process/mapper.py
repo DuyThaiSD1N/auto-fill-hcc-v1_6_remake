@@ -132,6 +132,76 @@ def _fold(value) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
+_CCCD_LEN = 12          # số định danh cá nhân luôn đúng 12 chữ số
+_ID_OCR_SLIP_MAX = 2    # số chữ số OCR được phép đọc thừa/thiếu so với thẻ
+
+
+def _is_subsequence(short: str, long: str) -> bool:
+    """`short` có phải `long` sau khi XÓA bớt vài ký tự (giữ nguyên thứ tự) không."""
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _is_ocr_slip_of_card(left_digits: str, right_digits: str) -> bool:
+    """Hai chuỗi số là CÙNG một số trên thẻ, chỉ khác vì OCR đọc RƠI (hoặc nhân đôi) vài chữ số.
+
+    Giấy viết tay hay bị OCR nuốt mất một chữ số: "046175013623" ra "04617503623". Chuỗi thiếu số
+    đó không phải số định danh hợp lệ của BẤT KỲ ai (không đủ 12 chữ số), nên coi nó là số của một
+    người khác là vô nghĩa — nhưng so bằng `==` thì nó vẫn "khác số", và cả khối nhân thân đi theo:
+    tên viết tay sai được giữ lại, ô quan hệ tick "Khác", và ô số định danh nhận một chuỗi thiếu số
+    mà cổng chắc chắn từ chối.
+
+    Chỉ nhận khi một bên là số thẻ ĐỦ 12 chữ số và chuỗi ngắn hơn nằm gọn trong nó theo đúng thứ tự
+    (chỉ XÓA, không đổi chữ số nào) — lệch tối đa 2 chữ số. Ràng buộc này rất chặt: một số 11 chữ số
+    ngẫu nhiên chỉ có cỡ 12 phần 10^11 cơ hội lọt qua, nên không thể vô tình ghép nhân thân của hai
+    người khác nhau. OCR đọc NHẦM chữ số (5 thành 6) vẫn bị coi là khác người như cũ.
+    """
+    short, long = sorted((left_digits, right_digits), key=len)
+    if len(long) != _CCCD_LEN or len(short) == _CCCD_LEN:
+        return False
+    if not 0 < len(long) - len(short) <= _ID_OCR_SLIP_MAX:
+        return False
+    return _is_subsequence(short, long)
+
+
+def id_match(left, right) -> bool | None:
+    """Hai số định danh có cùng một người không; thiếu một bên → None (không kết luận)."""
+    left_digits, right_digits = _digits(left), _digits(right)
+    if not (left_digits and right_digits):
+        return None
+    if left_digits == right_digits:
+        return True
+    return True if _is_ocr_slip_of_card(left_digits, right_digits) else False
+
+
+def card_name_when_id_matches(card_name, card_id, khai_id):
+    """Họ tên lấy theo THẺ CĂN CƯỚC khi số định danh trên giấy viết tay KHỚP số trên thẻ.
+
+    OCR chữ viết tay rất hay sai tên: rơi dấu hoặc đọc nhầm chữ ("Thiết" → "Thiệt", "Tú" → "Tí").
+    Thẻ là bản IN, đọc gần như chắc chắn đúng — và đây mới là tên phải khớp với CSDLQG về dân cư.
+
+    Khớp số định danh là bằng chứng CHẮC CHẮN cùng một người (12 chữ số, không phải phép so tên dễ
+    đụng hàng), nên lúc đó tên in trên thẻ luôn đáng tin hơn. Thiếu số ở một bên hoặc số của hai
+    người khác nhau thì trả None để caller giữ nguyên thứ tự nguồn cũ — KHÔNG đoán, vì mượn tên của
+    người khác sang là ghép ra một nhân thân lai.
+    """
+    if id_match(khai_id, card_id) is not True:
+        return None
+    return card_name or None
+
+
+def card_id_when_id_matches(card_id, khai_id):
+    """Số định danh điền vào form: số 12 chữ số IN trên thẻ thắng số đọc từ giấy viết tay.
+
+    Cùng lý do như `card_name_when_id_matches`, và ở đây còn bắt buộc: số đọc từ giấy chỉ khác số
+    trên thẻ khi OCR rơi mất chữ số (xem `_is_ocr_slip_of_card`), tức là một chuỗi KHÔNG đủ 12 chữ
+    số — điền vào cổng là chắc chắn bị chặn. Không khớp thẻ thì giữ nguyên số đọc từ giấy.
+    """
+    if id_match(khai_id, card_id) is not True:
+        return khai_id
+    return card_id or khai_id
+
+
 def _copy_quantity(value) -> str:
     digits = _digits(value)
     return str(int(digits)) if digits and int(digits) > 0 else ""
@@ -244,7 +314,7 @@ def _quanhe_from_record(values: dict, options: dict | None) -> tuple[str, bool]:
         if not option:
             continue
         row_id = _digits(row.get("soGiayTo"))
-        if req_id and row_id and req_id == row_id:
+        if id_match(req_id, row_id) is True:
             return option, True
         if req_name and not by_name and _fold(row.get("hoTen")) == req_name:
             by_name = option
@@ -302,6 +372,10 @@ def _same_person_by_id(values: dict, options: dict | None) -> bool | None:
     """
     _, req_id = _requester_identity(values, options)
     _, subj_id = _subject_identity(values)
+    # OCR rơi chữ số vẫn là cùng một người — phải xét trước phép so độ dài bên dưới, nếu không
+    # chuỗi thiếu số sẽ bị coi là "khác độ dài" rồi rơi xuống bước so tên viết tay vốn cũng sai.
+    if id_match(req_id, subj_id) is True:
+        return True
     if req_id and subj_id and len(req_id) == len(subj_id):
         return req_id == subj_id
     return None
@@ -410,7 +484,7 @@ def _requester_trusted(values: dict, options: dict | None = None) -> bool:
     subj_id = _digits(values.get("HoTich_SoDinhDanh"))
     subj_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
     card_is_subject = (
-        bool(requester_id and subj_id and requester_id == subj_id)
+        id_match(requester_id, subj_id) is True
         or bool(requester_name and subj_name and requester_name == subj_name)
     )
     if not card_is_subject:
@@ -452,7 +526,7 @@ def _card_is_requester(values: dict, options: dict | None) -> bool:
     tk_id = _digits(values.get("TkNyc_SoGiayToTuyThan"))
     card_name = _fold(values.get("Nyc_HoTen"))
     card_id = _digits(values.get("Nyc_SoDinhDanh"))
-    if tk_id and card_id and tk_id == card_id:
+    if id_match(tk_id, card_id) is True:
         return True
     if tk_name and card_name and tk_name == card_name:
         return True
@@ -496,10 +570,10 @@ def _chu_the_matches_hotich(values: dict) -> bool:
     subj_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
     requester_id = _digits(values.get("Nyc_SoDinhDanh"))
 
-    if subject_card_id and requester_id and subject_card_id == requester_id:
+    if id_match(subject_card_id, requester_id) is True:
         return False
     if subject_card_id and subj_id:
-        return subject_card_id == subj_id
+        return id_match(subject_card_id, subj_id) is True
     if subject_card_name and subj_name:
         return subject_card_name == subj_name
     # Không có mỏ neo chủ thể trong giấy hộ tịch: vẫn giữ ChuThe_* đã được prompt phân vai
@@ -623,7 +697,7 @@ def _rescue_requester_card(values: dict) -> dict:
     card_id = _digits(values.get("ChuThe_SoDinhDanh"))
     card_name = _fold(values.get("ChuThe_HoTen"))
 
-    if card_id and card_id in subject_ids:
+    if card_id and any(id_match(card_id, subject_id) is True for subject_id in subject_ids):
         return values  # đúng là thẻ của chủ thể
     if subject_name and card_name and subject_name == card_name:
         return values
@@ -849,9 +923,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         """
         ctx = (options or {}).get("formContext") or {}
         card = values if _card_is_requester(values, options) else {}
-        # Họ tên: tờ khai → CCCD → VNeID
+        # Họ tên: tờ khai → CCCD → VNeID. NGOẠI LỆ cùng lý do với ô số giấy tờ ngay bên dưới —
+        # số trên tờ khai khớp số trên thẻ là bằng chứng chắc chắn cùng một người, lúc đó tên IN
+        # trên thẻ thắng tên viết tay (xem card_name_when_id_matches).
         ho_ten = (
-            values.get("TkNyc_HoTen")
+            card_name_when_id_matches(
+                card.get("Nyc_HoTen"),
+                card.get("Nyc_SoDinhDanh"),
+                values.get("TkNyc_SoGiayToTuyThan"),
+            )
+            or values.get("TkNyc_HoTen")
             or card.get("Nyc_HoTen")
             or ctx.get("applicantFullname")
         )
@@ -971,10 +1052,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             def _ct(name):
                 return values.get(name) if subject_card else None
 
+            # Tên người được đăng ký: THẺ CĂN CƯỚC của chính họ thắng tờ khai/giấy hộ tịch khi số
+            # định danh hai bên khớp nhau — cùng người thì bản IN đáng tin hơn bản viết tay, và đó
+            # mới là tên cổng đối chiếu với CSDLQG về dân cư. Khác số thì giữ nguyên thứ tự cũ.
             add(
                 "NDK_HoVaTen",
                 upper_person_name(
-                    _registered_person_name(values, event_type)
+                    card_name_when_id_matches(
+                        _ct("ChuThe_HoTen"),
+                        _ct("ChuThe_SoDinhDanh"),
+                        values.get("HoTich_SoDinhDanh") or values.get("HoTich_SoGiayToTuyThan"),
+                    )
+                    or _registered_person_name(values, event_type)
                     or values.get("NguoiDuocCap_HoTen")
                     or _ct("ChuThe_HoTen")
                 ),
@@ -1007,7 +1096,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # Guard hẹp cho giấy khai sinh cũ: nếu giấy tờ tùy thân không trùng số định
             # danh của trẻ thì đó có thể là giấy tờ người đi khai sinh, không được dùng.
             if is_birth and ht_so and values.get("HoTich_SoDinhDanh"):
-                if _digits(ht_so) != _digits(values.get("HoTich_SoDinhDanh")):
+                if id_match(ht_so, values.get("HoTich_SoDinhDanh")) is False:
                     ht_loai = ht_so = ht_ngay = ht_noi = None
 
             # Giấy tờ tùy thân RIÊNG của chính người được đăng ký (thẻ căn cước/CCCD của họ) —
@@ -1022,7 +1111,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             _subj_d = _digits(values.get("HoTich_SoDinhDanh"))
             _req_d = _digits(values.get("Nyc_SoDinhDanh"))
             _ct_valid = bool(_ct_d) and (
-                _ct_d == _subj_d if _subj_d else _ct_d != _req_d
+                id_match(_ct_d, _subj_d) is True if _subj_d else id_match(_ct_d, _req_d) is not True
             )
             if not _ct_valid:
                 ct_loai = ct_so = ct_ngay = ct_noi = None
@@ -1039,7 +1128,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 if nyc_name and subj_name and nyc_name == subj_name:
                     nyc_matches_subject = True
                 # Hoặc nếu có số định danh ở cả 2 bên
-                if nyc_id and _subj_d and _digits(nyc_id) == _subj_d:
+                if id_match(nyc_id, _subj_d) is True:
                     nyc_matches_subject = True
                 
                 # Nếu khớp → fallback Nyc_* cho giấy tờ của NDK
@@ -1054,7 +1143,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # 2. Thẻ căn cước của chủ thể (ct_*) - fallback khi tờ khai thiếu
             
             # Số định danh: Ưu tiên HoTich_SoDinhDanh từ tờ khai, fallback ht_so (giấy tờ tùy thân trong giấy HT), cuối cùng mới CCCD
-            add("NDK_SoDinhDanh", values.get("HoTich_SoDinhDanh") or ht_so or ct_so)
+            add(
+                "NDK_SoDinhDanh",
+                card_id_when_id_matches(ct_so, values.get("HoTich_SoDinhDanh")) or ht_so or ct_so,
+            )
 
             # Trẻ DƯỚI 14 TUỔI chưa bắt buộc có thẻ căn cước: số 12 chữ số của các em là SỐ ĐỊNH
             # DANH CÁ NHÂN (đã điền ở trên), KHÔNG phải số giấy tờ tùy thân → bỏ trống cả cụm

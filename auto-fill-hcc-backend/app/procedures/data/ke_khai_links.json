@@ -610,6 +610,15 @@
       "autoConfirm": true
     },
     {
+      "key": "ho-tro-chi-phi-hoa-tang",
+      "code": "1.012749",
+      "label": "Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019da601-350c-755b-9393-18754910591d",
+      "needsAgencySelect": true,
+      "submitCardIncludes": "Cơ quan thực hiện: UBND",
+      "autoConfirm": true
+    },
+    {
       "key": "cap-gcn-attp-co-so-kinh-doanh-dich-vu-an-uong-byt",
       "code": "1.013855",
       "label": "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế",
@@ -1502,6 +1511,38 @@
       "code": "1.013823",
       "label": "[Lâm Đồng] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư có sử dụng đất; trường hợp thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; cho thuê đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ec9-76f0-b9d3-985182762c76",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
+      "code": "1.013949",
+      "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-giay-chung-nhan-lan-dau",
+      "code": "1.013978",
+      "label": "Cấp giấy chứng nhận lần đầu",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
+      "code": "1.012817",
+      "label": "Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76ef-752f-a5e5-ff4ce5737bb1",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-lan-dau-lai-chau",
+      "code": "1.115583",
+      "label": "[Lai Châu] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f36d6-3b80-76db-b702-3c16cbf30bb6",
       "needsAgencySelect": true,
       "autoConfirm": true
     },

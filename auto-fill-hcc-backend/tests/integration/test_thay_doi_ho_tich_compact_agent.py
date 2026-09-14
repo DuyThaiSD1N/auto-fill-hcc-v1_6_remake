@@ -348,3 +348,107 @@ def test_procedure_registered_agent_mode():
     proc = get_procedure("thay-doi-cai-chinh-ho-tich")
     assert proc["mode"] == "agent"
     assert proc["detect"]["urlIncludes"] == ["maThuTuc=1.004859"]
+
+
+def _ho_so_cha_nop_ho_con() -> dict:
+    """Cha nộp cải chính cho con: hồ sơ CHỈ có thẻ căn cước của con.
+
+    LLM không có thẻ nào khác nên đổ luôn thẻ của con vào khối Cccd_* (schema khai khối này là
+    thẻ của NGƯỜI YÊU CẦU). Mục I phải bám tờ khai, không được lấy số của con.
+    """
+    return {
+        "DanhSachCccd": [{
+            "HoTen": "TẠ VY BẢO KHANG",
+            "SoDinhDanh": "068219002570",
+            "NgaySinh": "26/01/2019",
+            "GioiTinh": "Nam",
+            "QuocTich": "Việt Nam",
+            "NgayCap": "19/09/2025",
+            "NoiCap": "Bộ Công an",
+            "NoiCuTru": {
+                "quocGia": "Việt Nam",
+                "tinh": "Lâm Đồng",
+                "xa": "Xuân Trường",
+                "diaChi": "Tổ 10 Lâm Văn Thanh",
+            },
+        }],
+        "NguoiYeuCau_HoTen": "TẠ QUANG TOÀN",
+        "NguoiYeuCau_NgaySinh": "17/06/1992",
+        "NguoiYeuCau_SoDinhDanh": "068092000215",
+        "NguoiYeuCau_LoaiGiayTo": "Thẻ căn cước công dân",
+        "NguoiYeuCau_NgayCap": "21/02/2021",
+        "NguoiYeuCau_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+        "NguoiYeuCau_NoiCuTru": {
+            "quocGia": "Việt Nam",
+            "tinh": "Lâm Đồng",
+            "xa": "Xuân Trường",
+            "diaChi": "TDP Sào Nam",
+        },
+        "NguoiYeuCau_QuanHe": "Khác",
+        "Cccd_HoTen": "TẠ VY BẢO KHANG",
+        "Cccd_SoDinhDanh": "068219002570",
+        "Cccd_NgayCap": "19/09/2025",
+        "Cccd_NoiCap": "Bộ Công an",
+        "LoaiSuKien": "birth",
+        "TenGiayTo": "GIẤY KHAI SINH",
+        "HoSo_So": "32",
+        "HoSo_NgayDangKy": "14/02/2019",
+        "HoSo_NoiDangKy": "UBND Phường 11, Thành phố Đà Lạt, Tỉnh Lâm Đồng",
+        "NoiDungThayDoi": "Thay đổi phần họ và tên từ TẠ VY BẢO KHANG thành TẠ QUANG BẢO KHANG",
+        "LyDo": "Chữ VY dễ liên tưởng đến giới tính nữ",
+        "ViecDangKy": "Cải chính",
+        "ChuThe_HoTen": "TẠ VY BẢO KHANG",
+        "ChuThe_NgaySinh": "26/01/2019",
+        "ChuThe_GioiTinh": "Nam",
+        "ChuThe_DanToc": "Kinh",
+        "ChuThe_QuocTich": "Việt Nam",
+        "ChuThe_SoDinhDanh": "068219002570",
+        "ChuThe_NgayCapGiayTo": "19/09/2025",
+        "ChuThe_NoiCapGiayTo": "Bộ Công an",
+        "ChuThe_NoiCuTru": {
+            "quocGia": "Việt Nam",
+            "tinh": "Lâm Đồng",
+            "xa": "Xuân Trường",
+            "diaChi": "TDP Sào Nam",
+        },
+    }
+
+
+def test_cha_nop_ho_con_muc_i_khong_lay_so_dinh_danh_cua_con():
+    out = _by_name(mapper.enrich(_fields(_ho_so_cha_nop_ho_con())))
+
+    assert out["HoVaTenC"]["value"] == "TẠ QUANG TOÀN"
+    assert out["SoDinhDanhC"]["value"] == "068092000215"
+    assert out["SoGiayToTuyThanC"]["value"] == "068092000215"
+    assert out["NgayCapDDC"]["value"] == "21/02/2021"
+    assert out["NoiCapDDC"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert out["nycQuanHe"]["value"] == "Khác"
+    assert out["__requesterInfo"]["value"]["soDinhDanh"] == "068092000215"
+    # Mục II vẫn là con.
+    assert out["ntdHoTen"]["value"] == "TẠ VY BẢO KHANG"
+    assert out["ntdSoDDCN"]["value"] == "068219002570"
+
+
+def test_viec_dang_ky_theo_noi_dung_de_nghi():
+    """Nội dung 'Thay đổi phần họ và tên...' thắng dòng 'đăng ký việc Cải chính' viết sai."""
+    out = _by_name(mapper.enrich(_fields(_ho_so_cha_nop_ho_con())))
+    assert out["viecDangKy"]["value"] == "Thay đổi"
+
+    # Nội dung là cải chính thật thì vẫn ra "Cải chính".
+    out = _by_name(mapper.enrich(_fields({
+        **_ho_so_cha_nop_ho_con(),
+        "NoiDungThayDoi": "Cải chính ngày sinh từ 26/01/2019 thành 26/10/2019",
+    })))
+    assert out["viecDangKy"]["value"] == "Cải chính"
+
+    # Không có nội dung thì quay về dòng "Đề nghị cơ quan đăng ký việc <X>".
+    payload = _ho_so_cha_nop_ho_con()
+    payload.pop("NoiDungThayDoi")
+    assert _by_name(mapper.enrich(_fields(payload)))["viecDangKy"]["value"] == "Cải chính"
+
+    # Động từ nằm giữa câu thì không lật ngược lời khai.
+    out = _by_name(mapper.enrich(_fields({
+        **_ho_so_cha_nop_ho_con(),
+        "NoiDungThayDoi": "Bổ sung thông tin sau khi thay đổi họ",
+    })))
+    assert out["viecDangKy"]["value"] == "Bổ sung hộ tịch"

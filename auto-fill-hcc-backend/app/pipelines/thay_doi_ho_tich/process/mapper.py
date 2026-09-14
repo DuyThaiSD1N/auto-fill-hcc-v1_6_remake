@@ -101,19 +101,49 @@ def _event_type(values: dict) -> str:
     return ""
 
 
+# Thứ tự quan trọng: "xác định lại dân tộc" phải xét trước "thay đổi"/"cải chính".
+_VIEC_KEYWORDS = (
+    ("xac dinh lai dan toc", "Xác định lại dân tộc"),
+    ("dan toc", "Xác định lại dân tộc"),
+    ("cai chinh", "Cải chính"),
+    ("bo sung", "Bổ sung hộ tịch"),
+    ("thay doi", "Thay đổi"),
+)
+
+# Nội dung hay mở đầu bằng lời đề nghị trước khi tới động từ chỉ loại việc.
+_NOI_DUNG_PREFIX = re.compile(r"^(kinh de nghi|nay de nghi|de nghi|yeu cau|xin)\s+")
+
+
+def _viec_tu_noi_dung(values: dict) -> str | None:
+    """Loại việc suy từ dòng 'Nội dung: ...' trên tờ khai.
+
+    Dòng "Đề nghị cơ quan đăng ký việc <X>" do người dân tự viết nên rất hay ghi sai loại việc
+    (vd ghi "Cải chính giấy khai sinh" trong khi nội dung là "Thay đổi phần họ và tên từ A thành
+    B" — đổi họ/tên là THAY ĐỔI hộ tịch, không phải cải chính). Dòng "Nội dung" mô tả đúng việc
+    đang làm nên được ưu tiên, nhưng CHỈ khi động từ đứng NGAY ĐẦU nội dung; nằm giữa câu thì
+    không đủ chắc để lật ngược lời khai.
+    """
+    text = _NOI_DUNG_PREFIX.sub("", _fold(values.get("NoiDungThayDoi")))
+    if not text:
+        return None
+    for key, label in _VIEC_KEYWORDS:
+        if text.startswith(key):
+            return label
+    return None
+
+
 def _viec_dang_ky(values: dict) -> str | None:
-    """Map cụm 'Đề nghị cơ quan đăng ký việc <X>' → 1 trong 4 option của select viecDangKy."""
+    """Map loại việc → 1 trong 4 option của select viecDangKy: nội dung đề nghị trước, sau đó
+    mới tới cụm 'Đề nghị cơ quan đăng ký việc <X>'."""
+    from_noi_dung = _viec_tu_noi_dung(values)
+    if from_noi_dung:
+        return from_noi_dung
     text = _fold(values.get("ViecDangKy"))
     if not text:
         return None
-    if "dan toc" in text:
-        return "Xác định lại dân tộc"
-    if "cai chinh" in text:
-        return "Cải chính"
-    if "bo sung" in text:
-        return "Bổ sung hộ tịch"
-    if "thay doi" in text:
-        return "Thay đổi"
+    for key, label in _VIEC_KEYWORDS:
+        if key in text:
+            return label
     return None
 
 
@@ -233,6 +263,28 @@ def _card_by_person_name(values: dict, person_name_folded: str) -> dict | None:
     return None
 
 
+def _requester_name(values: dict, options: dict | None) -> str:
+    ctx = (options or {}).get("formContext") or {}
+    return str(values.get("NguoiYeuCau_HoTen") or ctx.get("applicantFullname") or "").strip()
+
+
+def _cccd_block_is_requester(values: dict, requester_name_folded: str) -> bool:
+    """Khối Cccd_* CÓ ĐÚNG là CCCD của người yêu cầu không?
+
+    Schema khai Cccd_* là thẻ của NGƯỜI YÊU CẦU, nhưng hồ sơ nộp hộ (cha nộp cho con) thường chỉ
+    đính kèm thẻ của người có nội dung thay đổi; LLM không có thẻ nào khác nên đổ luôn thẻ đó vào
+    Cccd_*. Tin nhầm khối này thì số định danh của con bị coi là số của cha: ô (2) Mục I ra sai
+    số và (5) Quan hệ bị chốt "Bản thân" trong khi tờ khai ghi "Khác".
+
+    Họ tên lệch với người yêu cầu = thẻ người khác. Thiếu tên ở một trong hai phía thì không có
+    mỏ neo để bác bỏ -> giữ nguyên giả định của schema.
+    """
+    card_name = _fold(values.get("Cccd_HoTen"))
+    if not card_name or not requester_name_folded:
+        return True
+    return card_name == requester_name_folded
+
+
 def _requester_id_card(values: dict, options: dict | None) -> dict | None:
     """Thẻ CCCD/CMND CỦA NGƯỜI YÊU CẦU: khớp formContext trước, rồi tới khối người yêu cầu trên
     tờ khai (số định danh, sau đó họ tên) — hồ sơ nhiều CCCD thì phải chắc chắn đúng thẻ."""
@@ -240,14 +292,21 @@ def _requester_id_card(values: dict, options: dict | None) -> dict | None:
     if card:
         return card
 
+    own_cccd = _cccd_block_is_requester(values, _fold(_requester_name(values, options)))
     cards = _identity_cards(values)
-    wanted_id = _digits(values.get("NguoiYeuCau_SoDinhDanh") or values.get("Cccd_SoDinhDanh"))
+    wanted_id = _digits(
+        values.get("NguoiYeuCau_SoDinhDanh")
+        or (values.get("Cccd_SoDinhDanh") if own_cccd else "")
+    )
     if wanted_id:
         matches = [c for c in cards if _digits(c.get("SoDinhDanh")) == wanted_id]
         if len(matches) == 1:
             return matches[0]
 
-    wanted_name = _fold(values.get("NguoiYeuCau_HoTen") or values.get("Cccd_HoTen"))
+    wanted_name = _fold(
+        values.get("NguoiYeuCau_HoTen")
+        or (values.get("Cccd_HoTen") if own_cccd else "")
+    )
     if wanted_name:
         matches = [c for c in cards if _fold(c.get("HoTen")) == wanted_name]
         if len(matches) == 1:
@@ -425,9 +484,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # (NguoiYeuCau_QuanHe, do LLM đọc) nói ngược lại. Người yêu cầu có thể khai CMND cũ trên tờ
     # khai trong khi thẻ ghi số CCCD mới, nên gom MỌI số định danh biết được của người yêu cầu.
     # Thiếu số định danh ở một bên mới tin ô tích tờ khai, sau cùng mới so họ tên.
-    requester_name = values.get("NguoiYeuCau_HoTen") or str(ctx.get("applicantFullname") or "").strip()
+    requester_name = _requester_name(values, options)
+    requester_name_folded = _fold(requester_name)
     requester_card = _requester_id_card(values, options)
     declared_id = values.get("NguoiYeuCau_SoDinhDanh") or str(ctx.get("applicantIdentityNumber") or "").strip()
+    # Cccd_* chỉ được tính là số của người yêu cầu khi thẻ đó đúng là của họ (xem
+    # _cccd_block_is_requester): hồ sơ nộp hộ chỉ có thẻ của người được cải chính, gom vào đây
+    # thì ntd_id trùng requester_ids và quan hệ luôn ra "Bản thân".
+    own_cccd_id = values.get("Cccd_SoDinhDanh") if _cccd_block_is_requester(
+        values, requester_name_folded
+    ) else None
 
     requester_ids = {
         _digits(candidate)
@@ -435,12 +501,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             values.get("NguoiYeuCau_SoDinhDanh"),
             ctx.get("applicantIdentityNumber"),
             ctx.get("identityNumber"),
-            values.get("Cccd_SoDinhDanh"),
+            own_cccd_id,
             (requester_card or {}).get("SoDinhDanh"),
         )
     } - {""}
     ntd_id_digits = _digits(ntd_so_dinh_danh)
-    requester_name_folded = _fold(requester_name)
     ntd_name_folded = _fold(ntd_ho_ten)
     quan_he_tk = values.get("NguoiYeuCau_QuanHe")
 
@@ -472,7 +537,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     if quan_he == "Bản thân":
         card_id = (
             (requester_card or {}).get("SoDinhDanh")
-            or values.get("Cccd_SoDinhDanh")
+            or own_cccd_id
             or (subject_card or {}).get("SoDinhDanh")
         )
         requester_id = str(card_id or declared_id or "").strip()
@@ -592,7 +657,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             "noiCuTru": requester_card.get("NoiCuTru"),
         }
     # 3. Fallback: CCCD người yêu cầu riêng lẻ (Cccd_*)
-    elif values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen"):
+    elif (values.get("Cccd_SoDinhDanh") or values.get("Cccd_HoTen")) and _cccd_block_is_requester(
+        values, requester_name_folded
+    ):
         requester_info = {
             "hoTen": values.get("Cccd_HoTen"),
             "soDinhDanh": values.get("Cccd_SoDinhDanh"),

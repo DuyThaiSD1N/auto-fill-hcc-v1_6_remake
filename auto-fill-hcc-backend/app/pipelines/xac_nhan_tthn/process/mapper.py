@@ -110,12 +110,46 @@ def _classify_relation(value) -> str | None:
     return "2"
 
 
+_CCCD_LEN = 12          # số định danh cá nhân luôn đúng 12 chữ số
+_ID_OCR_SLIP_MAX = 2    # số chữ số OCR được phép đọc thừa/thiếu so với thẻ
+
+
+def _is_subsequence(short: str, long: str) -> bool:
+    """`short` có phải `long` sau khi XÓA bớt vài ký tự (giữ nguyên thứ tự) không."""
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _is_ocr_slip_of_card(left_digits: str, right_digits: str) -> bool:
+    """Hai chuỗi số là CÙNG một số trên thẻ, chỉ khác vì OCR đọc RƠI (hoặc nhân đôi) vài chữ số.
+
+    Tờ khai viết tay hay bị OCR nuốt mất một chữ số: "046175013623" ra "04617503623". Chuỗi thiếu
+    số đó không phải số định danh hợp lệ của BẤT KỲ ai (không đủ 12 chữ số), nên coi nó là số của
+    một người khác là vô nghĩa — nhưng so bằng `==` thì nó vẫn "khác số" và kéo theo cả mục I:
+    tên viết tay sai được giữ lại, ô quan hệ tick "Khác", và ô số định danh nhận 11 chữ số mà cổng
+    chắc chắn từ chối.
+
+    Chỉ nhận khi một bên là số thẻ ĐỦ 12 chữ số và chuỗi ngắn hơn nằm gọn trong nó theo đúng thứ
+    tự (chỉ XÓA, không đổi chữ số nào) — lệch tối đa 2 chữ số. Ràng buộc này rất chặt: một số 11
+    chữ số ngẫu nhiên chỉ có cỡ 12 phần 10^11 cơ hội lọt qua, nên không thể vô tình ghép nhân thân
+    của hai người khác nhau. OCR đọc NHẦM chữ số (5 thành 6) vẫn bị coi là khác người như cũ.
+    """
+    short, long = sorted((left_digits, right_digits), key=len)
+    if len(long) != _CCCD_LEN or len(short) == _CCCD_LEN:
+        return False
+    if not 0 < len(long) - len(short) <= _ID_OCR_SLIP_MAX:
+        return False
+    return _is_subsequence(short, long)
+
+
 def _id_match(left, right) -> bool | None:
     """Hai số định danh có cùng một người không; thiếu một bên → None (không kết luận)."""
     left_digits, right_digits = _digits(left), _digits(right)
-    if left_digits and right_digits:
-        return left_digits == right_digits
-    return None
+    if not (left_digits and right_digits):
+        return None
+    if left_digits == right_digits:
+        return True
+    return True if _is_ocr_slip_of_card(left_digits, right_digits) else False
 
 
 def _name_match(left, right) -> bool | None:
@@ -157,21 +191,36 @@ def _add_residence(add, prefix: str, area) -> None:
     add(f"{prefix}NoiCuTru_TrongNuoc", area)
 
 
-def _card_name_when_id_matches(values: dict, khai_sdd) -> str | None:
-    """Họ tên lấy theo THẺ CĂN CƯỚC khi số định danh trên tờ khai TRÙNG số trên thẻ.
+def _card_name_when_same_person(values: dict, khai_sdd, khai_ten=None) -> str | None:
+    """Họ tên lấy theo THẺ CĂN CƯỚC khi tờ khai và thẻ nói về CÙNG MỘT CÁI TÊN.
 
     Tờ khai là bản VIẾT TAY nên OCR tên rất hay sai: rơi dấu hoặc đọc nhầm chữ ("Thiết" → "Thiệt",
-    "Hoà" → "Hòa", "Nghiêm" → "Nghiem"). Thẻ căn cước là bản IN, đọc gần như chắc chắn đúng — và
-    đây mới là tên phải khớp với CSDLQG về dân cư khi cổng đối chiếu.
+    "Phượng" → "Phương", "Tú" → "Tí"). Thẻ căn cước là bản IN, đọc gần như chắc chắn đúng — và đây
+    mới là tên phải khớp với CSDLQG về dân cư khi cổng đối chiếu.
 
-    Số định danh trùng nhau là bằng chứng CHẮC CHẮN cùng một người (12 chữ số, không phải phép so
-    tên dễ đụng hàng), nên lúc đó tên in trên thẻ luôn đáng tin hơn tên viết tay. Chỉ khi ấy mới
-    ưu tiên thẻ; thiếu số ở một bên hoặc số khác nhau thì giữ nguyên thứ tự cũ, KHÔNG đoán — số
-    khác nhau nghĩa là hai người khác nhau, mượn tên sang là ghép nhân thân lai.
+    Bằng chứng duy nhất được chấp nhận là SỐ ĐỊNH DANH khớp — 12 chữ số, không phải phép so tên
+    dễ đụng hàng. Thiếu số ở một bên hoặc số của hai người khác nhau thì giữ nguyên thứ tự nguồn
+    cũ, KHÔNG đoán: mượn tên của người khác sang là ghép ra một nhân thân lai.
+
+    Tên hai bên CHỈ KHÁC DẤU cũng là cùng một cái tên, nhưng KHÔNG dùng làm căn cứ ở đây: bản scan
+    mờ thì OCR của chính tấm thẻ cũng đọc sai dấu, mà mapper chỉ thấy field đã trích, không còn tài
+    liệu gốc nào để kiểm chứng bản nào mới đúng.
     """
     if _id_match(khai_sdd, values.get("Cccd_SoDinhDanh")) is not True:
         return None
     return values.get("Cccd_HoTen") or None
+
+
+def _card_id_when_id_matches(values: dict, khai_sdd):
+    """Số định danh điền vào form: số 12 chữ số IN trên thẻ thắng số đọc từ tờ khai.
+
+    Cùng lý do như `_card_name_when_same_person`, và ở đây còn bắt buộc: số đọc từ tờ khai chỉ khác
+    số trên thẻ khi OCR rơi mất chữ số (xem `_is_ocr_slip_of_card`), tức là một chuỗi KHÔNG đủ 12
+    chữ số — điền vào cổng là chắc chắn bị chặn. Không khớp thẻ thì giữ nguyên số trên tờ khai.
+    """
+    if _id_match(khai_sdd, values.get("Cccd_SoDinhDanh")) is not True:
+        return khai_sdd
+    return values.get("Cccd_SoDinhDanh") or khai_sdd
 
 
 def _same_person(left_name, left_id, right_name, right_id) -> bool:
@@ -442,8 +491,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     req_ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo")
                     req_noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo")
                 add("HoVaTenC", upper_person_name(
-                    _card_name_when_id_matches(values, req_id) or tk_req_name))
+                    _card_name_when_same_person(values, req_id, tk_req_name) or tk_req_name))
                 add("NgaySinhC", values.get("ToKhaiYeuCau_NgaySinh"))
+                req_id = _card_id_when_id_matches(values, req_id)
                 add("SoDinhDanhC", req_id)
                 if req_id:
                     add("LoaiGiayToDinhDanhC",
@@ -478,20 +528,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Thẻ trong hồ sơ thường là của NGƯỜI ĐƯỢC CẤP, không phải người đứng khai. Mượn bừa
                 # thì mục I ra tên một người ghép với số định danh của người khác — sai kiểu đó trông
                 # vẫn hợp lệ nên không ai soát ra. Chỉ mượn khi thẻ khớp chính người yêu cầu.
-                req_id = _digits(req_sdd)
-                card_id = _digits(values.get("Cccd_SoDinhDanh"))
-                req_name = _fold(req_ten)
-                card_name = _fold(values.get("Cccd_HoTen"))
-                if req_id and card_id:
-                    card_is_requester = req_id == card_id
-                elif req_name and card_name:
-                    card_is_requester = req_name == card_name
+                by_id = _id_match(req_sdd, values.get("Cccd_SoDinhDanh"))
+                by_name = _name_match(req_ten, values.get("Cccd_HoTen"))
+                if by_id is not None:
+                    card_is_requester = by_id
+                elif by_name is not None:
+                    card_is_requester = by_name
                 else:
                     card_is_requester = True   # không đủ dữ kiện để bác bỏ
                 card = values if card_is_requester else {}
                 # Cùng lý do như mục II: khối "người yêu cầu" cũng là chữ VIẾT TAY, nên khi số
                 # định danh của họ trùng số trên thẻ trong hồ sơ thì lấy tên IN trên thẻ.
-                cccd_ten = _card_name_when_id_matches(values, req_sdd) or req_ten or card.get("Cccd_HoTen")
+                cccd_ten = (_card_name_when_same_person(values, req_sdd, req_ten)
+                            or req_ten or card.get("Cccd_HoTen"))
                 # Ngày sinh người yêu cầu: tờ khai CÓ ghi ngay dưới tên (ToKhaiYeuCau_NgaySinh).
                 # Thiếu field đó thì Section II vẫn dùng được KHI hai khối là cùng một người (hồ sơ
                 # tự khai, hoặc nhờ người khác nộp hộ nhưng người yêu cầu vẫn là chính chủ) — lúc
@@ -508,7 +557,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     or tokhai_ns
                     or card.get("Cccd_NgaySinh")
                 )
-                cccd_sdd = req_sdd or card.get("Cccd_SoDinhDanh")
+                cccd_sdd = _card_id_when_id_matches(values, req_sdd) or card.get("Cccd_SoDinhDanh")
                 ngay_cap = values.get("ToKhaiYeuCau_NgayCapGiayTo") or card.get("Cccd_NgayCap")
                 noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo") or (issuer if card_is_requester else None)
                 residence_i = _area(values.get("ToKhaiYeuCau_NoiCuTru")) or (residence if card_is_requester else None)
@@ -582,7 +631,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # Ten: the can cuoc THANG khi so dinh danh trung so tren giay uy quyen (ban IN
             # dang tin hon ban viet tay, va dung ten CSDLQG se doi chieu).
             add("HoVaTenC1", upper_person_name(
-                _card_name_when_id_matches(values, values.get("PoA_SubjectIdNumber"))
+                _card_name_when_same_person(
+                    values, values.get("PoA_SubjectIdNumber"), poa_subject_name)
                 or poa_subject_name))
             # Giay uy quyen thuong chi ghi NAM sinh; to khai co du ngay/thang -> uu tien to khai.
             add("NgaySinhC1", _tk("ToKhai_NgaySinh") or values.get("PoA_SubjectDoB"))
@@ -600,10 +650,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên tờ khai (ưu tiên) hoặc CCCD upload
             # Ưu tiên: ToKhai_* → Cccd_* (từng field riêng lẻ)
             # Tên: thẻ căn cước THẮNG tờ khai khi số định danh hai bên trùng nhau (xem
-            # _card_name_when_id_matches) — cùng người thì bản IN đáng tin hơn bản viết tay.
+            # _card_name_when_same_person) — cùng người thì bản IN đáng tin hơn bản viết tay.
             # Không trùng số thì giữ nguyên thứ tự cũ: tờ khai → thẻ → giấy khai sinh.
             add("HoVaTenC1", upper_person_name(
-                _card_name_when_id_matches(values, values.get("ToKhai_SoDinhDanh"))
+                _card_name_when_same_person(
+                    values, values.get("ToKhai_SoDinhDanh"), values.get("ToKhai_HoTen"))
                 or values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen")))
             add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh") or values.get("Gks_NgaySinh"))
             add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh") or values.get("Gks_GioiTinh"))
@@ -611,7 +662,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("DanTocC1", values.get("ToKhai_DanToc") or values.get("Cccd_DanToc") or values.get("Gks_DanToc"))
             add("QuocTichC1", values.get("ToKhai_QuocTich") or values.get("Gks_QuocTich") or nationality)
             # Giấy tờ: ưu tiên tờ khai, fallback CCCD
-            so_dinh_danh = values.get("ToKhai_SoDinhDanh") or values.get("Cccd_SoDinhDanh")
+            so_dinh_danh = (
+                _card_id_when_id_matches(values, values.get("ToKhai_SoDinhDanh"))
+                or values.get("Cccd_SoDinhDanh")
+            )
             ngay_cap = values.get("ToKhai_NgayCapGiayTo") or values.get("Cccd_NgayCap")
             noi_cap = values.get("ToKhai_NoiCapGiayTo") or issuer
             add("SoDinhDanhC1", so_dinh_danh)
