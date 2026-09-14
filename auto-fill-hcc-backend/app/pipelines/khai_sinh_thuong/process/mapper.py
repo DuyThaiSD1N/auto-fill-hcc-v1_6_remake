@@ -126,6 +126,27 @@ def _area(value):
     return remap_area(out) if out else out
 
 
+def _birth_place(values: dict, primary: str, secondary: str):
+    """Nơi sinh lấy từ nguồn ưu tiên, nhưng mượn diaChi ĐẦY ĐỦ hơn của nguồn kia nếu cùng cơ sở.
+
+    Giấy chứng sinh hay chỉ trả tên bệnh viện ("Bệnh viện Đa Khoa Hoàn Mỹ Đà Lạt") trong khi tờ khai
+    ghi thêm địa chỉ trụ sở ("..., Đồi Long Thọ"). Chỉ mượn khi diaChi nguồn kia BẮT ĐẦU bằng đúng
+    tên cơ sở của nguồn ưu tiên, tránh ghép nhầm hai nơi sinh khác nhau.
+    """
+    main = _area(values.get(primary))
+    other = _area(values.get(secondary))
+    if not main:
+        return other
+    if not other:
+        return main
+    main_dia = (main.get("diaChi") or "").strip()
+    other_dia = (other.get("diaChi") or "").strip()
+    norm = lambda s: " ".join(s.split()).casefold()  # noqa: E731
+    if main_dia and len(other_dia) > len(main_dia) and norm(other_dia).startswith(norm(main_dia)):
+        return {**main, "diaChi": other_dia}
+    return main
+
+
 def _birth_year(ngay_sinh) -> int | None:
     """Trích năm sinh từ chuỗi dd/mm/yyyy hoặc yyyy."""
     text = str(ngay_sinh or "").strip()
@@ -342,7 +363,7 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
             ),
             "gioi_tinh": "Nữ",
             "dan_toc": values.get("Gcs_DanTocCon") or values.get("CccdNu_DanToc"),
-            "noi_sinh": _area(values.get("Gcs_NoiSinh")) or _area(values.get("TkKs_NoiSinh")),
+            "noi_sinh": _birth_place(values, "Gcs_NoiSinh", "TkKs_NoiSinh"),
             "que_quan": _area(values.get("CccdNu_QueQuan") or values.get("CccdNam_QueQuan")),
             "source": "cccd_nu_is_subject",
         }
@@ -359,6 +380,8 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
         
         # Nơi sinh: áp dụng lookup_hospital để bổ sung xã/phường cho bệnh viện
         noi_sinh_raw = _area(values.get("Gcs_NoiSinh"))
+        if noi_sinh_raw:
+            noi_sinh_raw = _birth_place(values, "Gcs_NoiSinh", "TkKs_NoiSinh")
         noi_sinh = noi_sinh_raw
         if noi_sinh_raw and not noi_sinh_raw.get("xa"):
             dia_chi = noi_sinh_raw.get("diaChi") or ""
@@ -384,7 +407,7 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
             "ngay_sinh": values.get("TkKs_NgaySinhCon"),
             "gioi_tinh": values.get("TkKs_GioiTinhCon"),
             "dan_toc": values.get("TkKs_DanTocCon"),
-            "noi_sinh": _area(values.get("TkKs_NoiSinh")),
+            "noi_sinh": _birth_place(values, "TkKs_NoiSinh", "Gcs_NoiSinh"),
             "que_quan": _area(values.get("TkKs_QueQuan")),
             "source": "tk",
         }
@@ -680,8 +703,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         # Nơi sinh: lấy từ subject nếu có, fallback Gcs_ hoặc TkKs_
         noi_sinh = (
             subject.get("noi_sinh")
-            or _area(values.get("Gcs_NoiSinh"))
-            or _area(values.get("TkKs_NoiSinh"))
+            or _birth_place(values, "Gcs_NoiSinh", "TkKs_NoiSinh")
         )
         if noi_sinh:
             add("nksNoiSinh", "1")

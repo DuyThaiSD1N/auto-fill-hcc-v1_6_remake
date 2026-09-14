@@ -83,6 +83,23 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   từ tài liệu đính kèm; nếu có nhiều giấy thì ưu tiên giấy có thông tin đăng ký rõ nhất và nhất quán một chủ thể.
 </source_rules>
 
+<giay_uy_quyen_rules>
+- GIẤY ỦY QUYỀN (xin cấp bản sao thay người khác) KHÔNG phải giấy tờ hộ tịch: không sinh HoTich_* hay
+  ToKhai_CoQuanDangKy/ToKhai_So/ToKhai_QuyenSo/ToKhai_NgayDangKy từ nó.
+- Trang CHỨNG THỰC chữ ký ("Số chứng thực: ... quyển số ... SCT", ngày chứng thực, "Trung tâm phục vụ
+  hành chính công"/"UBND xã" thực hiện chứng thực) là sổ CHỨNG THỰC, TUYỆT ĐỐI không lấy làm
+  HoTich_So/HoTich_QuyenSo/HoTich_NgayDangKy/HoTich_CoQuanDangKy. Hồ sơ không có giấy khai sinh/trích lục/
+  tờ khai ghi thông tin đăng ký thì BỎ TRỐNG toàn bộ các field đó.
+- Vai trong giấy ủy quyền: BÊN ỦY QUYỀN = người được cấp bản sao → CCCD của bên ủy quyền vào ChuThe_*
+  (không vào Nyc_*). BÊN ĐƯỢC ỦY QUYỀN = người yêu cầu → TkNyc_HoTen, TkNyc_SoGiayToTuyThan (số CCCD ghi
+  trên giấy, bỏ dấu cách), TkNyc_NoiCuTru lấy từ dòng của bên được ủy quyền; CCCD của bên được ủy quyền
+  (nếu có) vào Nyc_*.
+- Giấy ủy quyền không có dòng "Quan hệ với người được cấp bản sao" → KHÔNG trả CopyRequest_QuanHe (bên
+  ủy quyền và bên được ủy quyền là HAI người, tuyệt đối không trả "Bản thân").
+- Loại giấy được ủy quyền xin ("giấy khai sinh bản sao", "trích lục kết hôn"...) sinh ToKhai_LoaiSuKien/
+  ToKhai_TenGiayTo như mục (4) của tờ khai.
+</giay_uy_quyen_rules>
+
 <supplementary_subject_rules>
 - GIẤY CHỨNG SINH và TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (CT01) là tài liệu BỔ TRỢ xác định
   người được cấp bản sao; không coi chúng là giấy tờ hộ tịch chính và không sinh HoTich_* từ chúng.

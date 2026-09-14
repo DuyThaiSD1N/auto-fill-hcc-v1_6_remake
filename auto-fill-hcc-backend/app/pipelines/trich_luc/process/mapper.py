@@ -404,6 +404,10 @@ def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
     """
     raw_declared = values.get("CopyRequest_QuanHe")
     declared = _quanhe_option(raw_declared)
+    # "Bản thân" mà số giấy tờ hai mục khác nhau là tự mâu thuẫn (vd giấy ủy quyền không có dòng quan
+    # hệ, agent tự điền) → không tin, để các bước đối chiếu bên dưới quyết định.
+    if declared == "Bản thân" and _same_person_by_id(values, options) is False:
+        declared = ""
     if declared:
         return declared, False
 
@@ -559,7 +563,19 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    return remap_area(out)
+    remapped = remap_area(dict(out))
+    # CCCD in địa chỉ không nhãn "Phúc Thắng / Danh Thắng, Hiệp Hòa, Bắc Giang" hay bị agent đảo thôn
+    # với xã. Xã trả về không khớp danh mục mà phần chi tiết là một TÊN trần (không số, không phẩy)
+    # khớp được xã → đảo lại. Không khớp thì giữ nguyên kết quả cũ.
+    dia_chi = str(out["diaChi"] or "").strip()
+    if (
+        out["xa"] and isinstance(remapped, dict) and not remapped.get("xa")
+        and dia_chi and not re.search(r"[\d,;/]", dia_chi)
+    ):
+        swapped = remap_area({**out, "xa": dia_chi, "diaChi": out["xa"]})
+        if isinstance(swapped, dict) and swapped.get("xa"):
+            return swapped
+    return remapped
 
 
 def _chu_the_matches_hotich(values: dict) -> bool:
@@ -711,6 +727,36 @@ def _rescue_requester_card(values: dict) -> dict:
         value = values.get(f"ChuThe_{suffix}")
         if value not in (None, "", {}, []):
             moved[f"Nyc_{suffix}"] = value
+    return moved
+
+
+def _rescue_subject_card(values: dict) -> dict:
+    """Thẻ bị agent gán vào Nyc_* nhưng giấy (tờ khai/giấy ủy quyền) đã ghi người yêu cầu là NGƯỜI KHÁC
+    → đó là thẻ của người được cấp bản sao, chuyển sang ChuThe_*.
+
+    Ca điển hình: giấy ủy quyền + CCCD của BÊN ỦY QUYỀN. Người yêu cầu (bên được ủy quyền) đã có ở
+    TkNyc_*, còn thẻ duy nhất lại nằm ở Nyc_*. Mapper loại thẻ vì lệch người yêu cầu → mục II trống,
+    cổng giữ nguyên dữ liệu tài khoản VNeID đang đăng nhập.
+
+    Chỉ đổi khi CHẮC: chưa có thẻ chủ thể, và so được ít nhất một cặp số/tên mà mọi cặp đều lệch.
+    """
+    if _has_subject_card(values) or not _has_requester_card(values):
+        return values
+    tk_name = _fold(values.get("TkNyc_HoTen"))
+    tk_id = _digits(values.get("TkNyc_SoGiayToTuyThan"))
+    card_name = _fold(values.get("Nyc_HoTen"))
+    card_id = _digits(values.get("Nyc_SoDinhDanh"))
+    comparable = bool((tk_id and card_id) or (tk_name and card_name))
+    if not comparable:
+        return values
+    if id_match(tk_id, card_id) is True or (tk_name and card_name and tk_name == card_name):
+        return values
+
+    moved = {key: value for key, value in values.items() if not key.startswith("Nyc_")}
+    for suffix in _CARD_FIELD_SUFFIXES:
+        value = values.get(f"Nyc_{suffix}")
+        if value not in (None, "", {}, []):
+            moved[f"ChuThe_{suffix}"] = value
     return moved
 
 
@@ -867,7 +913,7 @@ def _registered_person_name(values: dict, event_type: str) -> str:
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
     values = _prefer_requester_as_marriage_subject(
-        _rescue_requester_card(_apply_declaration_precedence(_by_name(fields))),
+        _rescue_subject_card(_rescue_requester_card(_apply_declaration_precedence(_by_name(fields)))),
         options,
     )
     out: list[dict] = []

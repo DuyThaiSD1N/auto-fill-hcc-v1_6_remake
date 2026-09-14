@@ -147,6 +147,10 @@ TÁCH ĐỊA CHỈ (object {quocGia,tinh,xa,diaChi}):
   tỉnh nếu là CẤP HUYỆN thì BỎ HẲN; phần trước đó = xã. Tên xã vùng cao có thể bắt đầu bằng
   "Bản"/"Nậm"/"Mường"/"Pa" — VỊ TRÍ mới quyết định là xã, không phải tiền tố.
 - XÃ BẮT BUỘC: không được bỏ trống xa khi giấy tờ có thông tin phường/xã.
-- Gcs_NoiSinh / TkKs_NoiSinh là CƠ SỞ Y TẾ hoặc địa danh: diaChi = tên đầy đủ cơ sở (nếu có),
-  tinh = tỉnh của cơ sở, xa = phường/xã nếu xác định được."""
+- Gcs_NoiSinh / TkKs_NoiSinh là CƠ SỞ Y TẾ hoặc địa danh: diaChi = tên đầy đủ cơ sở (nếu có)
+  NỐI THÊM ", " + phần địa chỉ chi tiết của cơ sở đứng TRƯỚC phường/xã (số nhà, đường, đồi, tổ...),
+  lấy HẾT cụm đó cho tới dấu "," ngay trước phường/xã; tinh = tỉnh của cơ sở, xa = phường/xã nếu
+  xác định được. Ví dụ "Tại: Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt / Đồi Long Thọ, Phường Xuân Hương -
+  Đà Lạt, Lâm Đồng" -> diaChi="Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ", xa="Xuân Hương",
+  tinh="Lâm Đồng". Không có địa chỉ chi tiết thì diaChi chỉ là tên cơ sở."""
 

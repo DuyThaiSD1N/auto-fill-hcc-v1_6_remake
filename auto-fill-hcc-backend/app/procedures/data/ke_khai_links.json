@@ -610,15 +610,6 @@
       "autoConfirm": true
     },
     {
-      "key": "ho-tro-chi-phi-hoa-tang",
-      "code": "1.012749",
-      "label": "Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019da601-350c-755b-9393-18754910591d",
-      "needsAgencySelect": true,
-      "submitCardIncludes": "Cơ quan thực hiện: UBND",
-      "autoConfirm": true
-    },
-    {
       "key": "cap-gcn-attp-co-so-kinh-doanh-dich-vu-an-uong-byt",
       "code": "1.013855",
       "label": "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế",
@@ -997,6 +988,16 @@
       "label": "Gia hạn Chứng chỉ hành nghề thú y",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-a5c7-766f-af92-cdc33555359c",
       "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-hanh-nghe",
+      "code": "1.012275",
+      "label": "Đăng ký hành nghề",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db1-707d-ab58-f95681fb13f2",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {

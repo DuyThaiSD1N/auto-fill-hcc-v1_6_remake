@@ -538,6 +538,27 @@ def _previous_registration_number(values: dict) -> str:
     return number
 
 
+_AGENCY_PREFIX_RE = re.compile(r"^\s*(?:ủy\s+ban\s+nhân\s+dân|uỷ\s+ban\s+nhân\s+dân|ubnd)\s*[.:,-]?\s*", re.IGNORECASE)
+
+
+def _previous_registration_commune(values: dict) -> str:
+    """Xã/phường của cơ quan đăng ký khai sinh trước đây, dạng khớp ô chọn của cổng.
+
+    Tờ khai hay ghi "Ủy ban nhân dân phường X" — bỏ phần "UBND", mở rộng "P."/"X." và đổi tên xã
+    cũ sang tên sau sáp nhập (cùng quy tắc với các ô địa bàn khác) để ô chọn khớp được option.
+    """
+    commune = str(values.get("PreviousRegistration_AgencyCommune") or "").strip()
+    commune = _AGENCY_PREFIX_RE.sub("", commune).strip()
+    if not commune:
+        return ""
+    area = _normalize_domestic_area({
+        "quocGia": "Việt Nam",
+        "tinh": str(values.get("PreviousRegistration_AgencyProvince") or "").strip(),
+        "xa": commune,
+    })
+    return str((area or {}).get("xa") or commune).strip()
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields while preserving the extension response shape."""
     values = _by_name(fields)
@@ -666,6 +687,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # Thong tin dang ky truoc day.
     add("coQuanDKTruocDay_filter", values.get("PreviousRegistration_AgencyProvince"))
+    # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh.
+    add("coQuanDKTruocDay", _previous_registration_commune(values))
     add("soDKTruocDay", _previous_registration_number(values))
     add("quyenSoDKTruocDay", values.get("PreviousRegistration_BookNumber"))
     add("ngayDKTruocDay", values.get("PreviousRegistration_Date"))

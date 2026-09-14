@@ -331,8 +331,161 @@ def deceased_fields(ocr_text: str) -> dict:
     return {name: value for name, value in out.items() if value}
 
 
+# ---------------------------------------------------------------------------------------------
+# ẢNH THẺ CCCD/CĂN CƯỚC: chỉ đọc 4 ô họ tên, số, ngày cấp, nơi cấp.
+# ---------------------------------------------------------------------------------------------
+_CARD_ID_LABEL = r"^\s*so(?:\s*dinh\s*danh\s*ca\s*nhan)?\s*/\s*(?:no\b|personal\s*identification\s*number)"
+_CARD_NAME_LABEL = r"^\s*ho\s*,?\s*(?:va|chu\s*dem\s*va)\s*ten(?:\s*khai\s*sinh)?\s*/\s*full\s*name"
+_CARD_ISSUE_LABEL = r"^\s*ngay\s*,?\s*thang\s*,?\s*nam(?:\s*cap)?\s*/\s*(?:date\s*,?\s*month\s*,?\s*year|date\s*of\s*issue)"
+# Dòng MRZ mặt sau: IDVNM + 9 số seri + 1 số kiểm tra + 12 số định danh.
+_CARD_MRZ_RE = re.compile(r"IDVNM\d{9}[\dA-Z<](\d{12})")
+_CARD_LABEL_TAIL = r"^[\s:/.]*"
+
+
+def _card_value(lines: list[str], index: int, label_pattern: str) -> str:
+    """Giá trị của nhãn: phần sau nhãn trên cùng dòng, trống thì lấy dòng kế tiếp."""
+    folded = _fold(lines[index])
+    match = re.search(label_pattern, folded)
+    tail = re.sub(_CARD_LABEL_TAIL, "", lines[index][match.end():]).strip() if match else ""
+    if tail:
+        return tail
+    return lines[index + 1].strip() if index + 1 < len(lines) else ""
+
+
+def _card_issuer(text: str) -> str:
+    folded = _fold(text)
+    # CCCD cũ ký "CỤC TRƯỞNG CỤC CẢNH SÁT..." (con dấu có thể in thêm BỘ CÔNG AN); thẻ Căn cước mới
+    # chỉ ghi "BỘ CÔNG AN".
+    if re.search(r"cuc\s*canh\s*sat", folded):
+        return "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    if re.search(r"bo\s*cong\s*an|ministry\s*of\s*public\s*security", folded):
+        return "Bộ Công an"
+    return ""
+
+
+def identity_cards(ocr_text: str) -> dict[str, dict]:
+    """Họ tên/số/ngày cấp/nơi cấp của mọi thẻ đọc được trong OCR, gom theo số định danh 12 chữ số.
+
+    Mặt trước cho số + họ tên. Mặt sau cho ngày cấp + nơi cấp và được ghép về đúng thẻ bằng số
+    định danh trong dòng MRZ, không dựa vào thứ tự file (một PDF hay chứa nhiều mặt trước rồi mới
+    tới các mặt sau).
+    """
+    cards: dict[str, dict] = {}
+    lines = str(ocr_text or "").splitlines()
+    front_id = ""
+    back_date = ""
+    back_text: list[str] = []
+    for index, line in enumerate(lines):
+        folded = _fold(line)
+        if re.search(_CARD_ID_LABEL, folded):
+            digits = re.sub(r"\D", "", _card_value(lines, index, _CARD_ID_LABEL))
+            front_id = digits if len(digits) == 12 else ""
+            if front_id:
+                cards.setdefault(front_id, {"SoDinhDanh": front_id})
+            continue
+        if front_id and re.search(_CARD_NAME_LABEL, folded):
+            name = re.sub(r"\s+", " ", _card_value(lines, index, _CARD_NAME_LABEL)).strip(" .:")
+            if name and not re.search(r"\d", name):
+                cards[front_id].setdefault("HoTen", name)
+            front_id = ""
+            continue
+        if re.search(_CARD_ISSUE_LABEL, folded):
+            back_date = _issue_date(_card_value(lines, index, _CARD_ISSUE_LABEL))
+            back_text = []
+            continue
+        mrz = _CARD_MRZ_RE.search(line.replace(" ", ""))
+        if mrz:
+            card = cards.setdefault(mrz.group(1), {"SoDinhDanh": mrz.group(1)})
+            if back_date:
+                card.setdefault("NgayCap", back_date)
+                # Nơi cấp nằm giữa dòng ngày cấp và MRZ của CHÍNH mặt sau này.
+                issuer = _card_issuer("\n".join(back_text))
+                if issuer:
+                    card.setdefault("NoiCap", issuer)
+            back_date, back_text = "", []
+            continue
+        back_text.append(line)
+    return cards
+
+
+_CARD_ROLE_FIELDS = {
+    # vai -> (field số trên tờ khai, {ô trên thẻ -> field ghi đè})
+    "requester": ("NguoiYeuCau_SoDinhDanh", {
+        "HoTen": "NguoiYeuCau_HoTen",
+        "SoDinhDanh": "NguoiYeuCau_SoDinhDanh",
+        "NgayCap": "NguoiYeuCau_NgayCap",
+        "NoiCap": "NguoiYeuCau_NoiCap",
+    }),
+    "deceased": ("NguoiMat_SoDinhDanh", {
+        "HoTen": "NguoiMat_HoTen",
+        "SoDinhDanh": "NguoiMat_SoDinhDanh",
+        "NgayCap": "NguoiMat_NgayCapGiayTo",
+        "NoiCap": "NguoiMat_NoiCapGiayTo",
+    }),
+}
+_REQUESTER_CARD_GROUP = {
+    "HoTen": "Cccd_HoTen",
+    "SoDinhDanh": "Cccd_SoDinhDanh",
+    "NgayCap": "Cccd_NgayCap",
+    "NoiCap": "Cccd_NoiCap",
+}
+
+
+def prefer_identity_cards(fields: list[dict], ocr_text: str, comp_by_name: dict[str, str]) -> list[dict]:
+    """Số giấy tờ trên tờ khai KHỚP số in trên ảnh thẻ → cùng một người: họ tên, số, ngày cấp, nơi cấp
+    lấy theo THẺ (bản in), không theo chữ viết tay trên tờ khai. Áp dụng cho người yêu cầu và người mất.
+
+    Chạy tất định trên OCR vì agent không đáng tin ở điểm này: có thẻ in "ĐÀO THỊ TĨNH" cùng số với
+    tờ khai mà agent vẫn điền "ĐÀO THỊ TÍNH" theo tờ khai.
+    """
+    from app.pipelines.khai_tu.process.mapper import _same_id
+
+    cards = identity_cards(ocr_text)
+    if not cards:
+        return fields
+    values = {field.get("name"): field.get("value") for field in fields}
+
+    def matching_card(number) -> dict | None:
+        hits = [card for card_id, card in cards.items() if _same_id(card_id, number)]
+        return hits[0] if len(hits) == 1 else None
+
+    matched = {role: matching_card(values.get(id_field)) for role, (id_field, _) in _CARD_ROLE_FIELDS.items()}
+    if matched["requester"] is not None and matched["requester"] is matched["deceased"]:
+        return fields  # một thẻ không thể vừa là người yêu cầu vừa là người mất — không đoán
+
+    updates: dict[str, object] = {}
+    for role, (_, mapping) in _CARD_ROLE_FIELDS.items():
+        card = matched[role]
+        if not card:
+            continue
+        for key, name in mapping.items():
+            if card.get(key):
+                updates[name] = card[key]
+        # Nhóm Cccd_* là thẻ agent đọc; cùng thẻ này thì cũng chép bản đọc tất định cho khớp.
+        if _same_id(card["SoDinhDanh"], values.get("Cccd_SoDinhDanh")):
+            for key, name in _REQUESTER_CARD_GROUP.items():
+                if card.get(key):
+                    updates[name] = card[key]
+
+    if not updates:
+        return fields
+    out = [
+        {**field, "value": updates.pop(field.get("name"))} if field.get("name") in updates else field
+        for field in fields
+    ]
+    out.extend(
+        {"name": name, "comp": comp_by_name.get(name, "x-input"), "value": value}
+        for name, value in updates.items()
+    )
+    return out
+
+
 def fill_missing(fields: list[dict], ocr_text: str, comp_by_name: dict[str, str]) -> list[dict]:
-    """Bù các field tờ khai mà agent bỏ sót; KHÔNG ghi đè giá trị agent đã trả."""
+    """Bù các field tờ khai mà agent bỏ sót; KHÔNG ghi đè giá trị agent đã trả.
+
+    Riêng 4 ô họ tên/số/ngày cấp/nơi cấp: vai nào có số trên tờ khai khớp số một ảnh thẻ thì ghi đè
+    theo thẻ (xem prefer_identity_cards).
+    """
     present = {
         field.get("name")
         for field in fields
@@ -344,4 +497,4 @@ def fill_missing(fields: list[dict], ocr_text: str, comp_by_name: dict[str, str]
         for name, value in backfill.items()
         if name not in present
     ]
-    return fields + extra
+    return prefer_identity_cards(fields + extra, ocr_text, comp_by_name)

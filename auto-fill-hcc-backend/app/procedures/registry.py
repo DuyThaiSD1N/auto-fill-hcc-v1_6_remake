@@ -84,8 +84,6 @@ from app.pipelines.ho_tro_nguoi_cao_tuoi_bac_ninh.attach import plan as ho_tro_n
 from app.pipelines.ho_tro_nguoi_cao_tuoi_bac_ninh.process import run as ho_tro_nguoi_cao_tuoi_bac_ninh_process
 from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.attach import plan as ho_tro_chi_phi_hoa_tang_bac_ninh_attach
 from app.pipelines.ho_tro_chi_phi_hoa_tang_bac_ninh.process import run as ho_tro_chi_phi_hoa_tang_bac_ninh_process
-from app.pipelines.ho_tro_chi_phi_hoa_tang.attach import plan as ho_tro_chi_phi_hoa_tang_attach
-from app.pipelines.ho_tro_chi_phi_hoa_tang.process import run as ho_tro_chi_phi_hoa_tang_process
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.attach import plan as dang_ky_nha_o_xa_hoi_bac_ninh_attach
 from app.pipelines.dang_ky_nha_o_xa_hoi_bac_ninh.process import run as dang_ky_nha_o_xa_hoi_bac_ninh_process
 from app.pipelines.cap_hoc_tap_bac_ninh.attach import plan as cap_hoc_tap_bac_ninh_attach
@@ -175,6 +173,8 @@ from app.pipelines.cap_van_ban_chap_thuan_tau_ca.process import run as cap_vb_ch
 from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import plan as cap_gp_khai_thac_ts_attach
 from app.pipelines.cap_giay_phep_khai_thac_thuy_san.process import run as cap_gp_khai_thac_ts_process
 from app.pipelines.cap_lai_CCHN_thu_y.attach import plan as cap_lai_cchn_thu_y_attach
+from app.pipelines.dang_ky_hanh_nghe.attach import plan as dang_ky_hanh_nghe_attach
+from app.pipelines.dang_ky_hanh_nghe.process import run as dang_ky_hanh_nghe_process
 from app.pipelines.cap_lai_CCHN_thu_y.process import run as cap_lai_cchn_thu_y_process
 from app.pipelines.cap_gcn_dang_ky_tau_ca.attach import plan as cap_gcn_dang_ky_tau_ca_attach
 from app.pipelines.cap_gcn_dang_ky_tau_ca.process import run as cap_gcn_dang_ky_tau_ca_process
@@ -1060,13 +1060,14 @@ PROCEDURES: list[dict] = [
         "key": "dang-ky-dat-dai-lan-dau-lam-dong",
         # Cổng dichvucong.lamdong.gov.vn (Form.io apply-online) — CÙNG form đính chính lamdong. URL chỉ có
         # ObjectId THEO PHƯỜNG (đổi mỗi phường) → KHÔNG dùng urlIncludes. Detect theo VĂN BẢN: tiêu đề +
-        # MÃ THỦ TỤC "1.013978.H36" (H36 = mã tỉnh Lâm Đồng, giống mọi phường; mã duy nhất). Phần IV GCN
-        # "không cần điền".
+        # MÃ QUY TRÌNH in trên trang. Phần IV GCN "không cần điền".
+        # Mã đã đổi 1.013978.H36 -> 1.116360 (trang in "Quy trình: 1.116360 - Phường/Xã"). Cổng chỉ còn
+        # phát mã mới nên chỉ bắt mã mới, giống bản Bắc Ninh.
         # urlScope = cổng gate Lâm Đồng (xem thủ tục đính chính lamdong ở trên): URL chỉ có ObjectId
-        # theo phường nên cần chắc đúng cổng trước khi tin cụm text + mã "1.013978.H36".
+        # theo phường nên cần chắc đúng cổng trước khi tin cụm text + mã.
         "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [
             "đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận",
-            "1.013978.H36",
+            "1.116360",
         ]},
         "label": (
             "[Tỉnh Lâm Đồng] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng "
@@ -2077,36 +2078,6 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
-        "key": "ho-tro-chi-phi-hoa-tang",
-        # Cổng DVC quốc gia, eForm Form.io. KHÁC "ho-tro-chi-phi-hoa-tang-bac-ninh" (eForm riêng của
-        # tỉnh, field element_757xx): bản này nộp tại UBND cấp xã theo khối "Chọn cơ quan thực hiện".
-        "detect": {
-            "urlIncludes": ["maThuTuc=1.012749"],
-            "textIncludes": ["Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng"],
-            "headingDisabled": True,
-        },
-        "label": "Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên để tự động điền:\n"
-            "1. Tờ khai đề nghị hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng "
-            "(Mẫu số 01 cho cá nhân, Mẫu số 02 cho cơ quan, tổ chức).\n"
-            "2. Hợp đồng dịch vụ hỏa táng và Hóa đơn tài chính của cơ sở hỏa táng (đủ CẢ HAI).\n"
-            "3. Trích lục khai tử/giấy chứng tử của người chết.\n"
-            "4. Nếu nộp thay: Văn bản ủy quyền đã chứng thực (hoặc giấy giới thiệu của cơ quan, tổ chức).\n"
-            "5. CCCD của người nộp hồ sơ (chỉ dùng để đọc nhân thân, không đính kèm).\n"
-            "Form điền: Thông tin chung (họ tên chủ hồ sơ, ngày sinh, giới tính, điện thoại, điện thoại "
-            "ủy quyền) + Thông tin người nộp (họ tên, số định danh, ngày cấp, nơi cấp, ghi chú ủy quyền) "
-            "+ Nội dung yêu cầu giải quyết + Địa chỉ người nộp. Panel Địa chỉ thửa đất KHÔNG áp dụng.\n"
-            "Bước đính kèm: Mẫu 01 → dòng 1, Mẫu 02 → dòng 2, Hợp đồng và Hóa đơn → cùng dòng 3, "
-            "Văn bản ủy quyền → dòng 4; Trích lục khai tử được thêm thành một thành phần hồ sơ mới.\n"
-            "Mã xác nhận (captcha) và ô cam kết ở bước cuối vẫn phải tự nhập."
-        ),
-    },
-    {
         "key": "ho-tro-mai-tang-huu-tri-xa-hoi",
         "detect": {
             "textIncludes": ["Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội"],
@@ -2650,6 +2621,41 @@ PROCEDURES: list[dict] = [
             "và Phần 2 (chủ tàu) riêng.\n"
             "Bước đính kèm: Đơn Mẫu 04 (cấp mới) hoặc Mẫu 05 (cấp lại) được tick vào đúng dòng thành phần "
             "hồ sơ và chọn 'Scan tệp tin' (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
+        "key": "dang-ky-hanh-nghe",
+        # Mã TTHC 1.012275 (khám bệnh, chữa bệnh — QĐ 2976/QĐ-BYT), nộp tại SỞ Y tế: ke_khai_links đặt
+        # selectSo, phải tích "Sở" ở khối "Chọn cơ quan thực hiện" mới vào được form. URL trang chi tiết
+        # DVCQG được with_ke_khai_detect_urls ghép thêm vào urlIncludes. Cụm tên ngắn và dễ trùng
+        # ("đăng ký hành nghề công chứng"...) nên KHÔNG bật textPriority và tắt heading (heading so
+        # startsWith sẽ ăn nhầm tên dài hơn). Form.io: Phần II chủ hồ sơ = cơ sở khám bệnh, chữa bệnh;
+        # attach attp-row 4 dòng (danh sách lần đầu / đã thay đổi / báo cáo / đã bổ sung).
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.012275"],
+            "textIncludes": ["Đăng ký hành nghề"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký hành nghề",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Danh sách đăng ký người hành nghề (Mẫu 01 Phụ lục II NĐ 96/2023/NĐ-CP) của cơ sở khám bệnh, "
+            "chữa bệnh — PDF/ảnh scan có ký tên, đóng dấu (hoặc file .docx).\n"
+            "2. CCCD / thẻ Căn cước (mặt trước + mặt sau) của người đại diện / người chịu trách nhiệm chuyên "
+            "môn của cơ sở — để lấy ngày sinh, giới tính, số CCCD của chủ hồ sơ.\n"
+            "3. Nếu có: Báo cáo; danh sách ĐÃ THAY ĐỔI hoặc ĐÃ BỔ SUNG người hành nghề.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Mục 'Thông tin người nộp hồ sơ' cổng tự đổ từ tài khoản VNeID nên KHÔNG điền; extension bỏ tích "
+            "'Người nộp hồ sơ là chủ hồ sơ' rồi điền mục 'Thông tin chủ hồ sơ' = tên + địa chỉ cơ sở (từ danh "
+            "sách) và nhân thân người đại diện (từ CCCD). Số điện thoại, email, fax phải tự nhập.\n"
+            "Bước đính kèm: danh sách → dòng 1 'Danh sách đăng ký hành nghề' (nhiều cơ sở thì cùng dòng 1), "
+            "danh sách đã thay đổi → dòng 2, Báo cáo → dòng 3, danh sách đã bổ sung → dòng 4; chọn '1 Bản "
+            "chính'. CCCD chỉ dùng ở bước thông tin.\n"
+            "Hình thức nhận kết quả, ô cam kết và mã xác nhận (captcha) vẫn phải tự làm."
         ),
     },
     {
@@ -3514,7 +3520,6 @@ _PIPELINE = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_process,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_process,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_process,
-    "ho-tro-chi-phi-hoa-tang": ho_tro_chi_phi_hoa_tang_process,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_process,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_process,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_process,
@@ -3556,6 +3561,7 @@ _PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_process,
+    "dang-ky-hanh-nghe": dang_ky_hanh_nghe_process,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_process,
     "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_process,
     "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_process,
@@ -3609,7 +3615,6 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-phap-bao-dam-bac-ninh": dang_ky_bpbd_bac_ninh_attach,
     "ho-tro-nguoi-cao-tuoi-bac-ninh": ho_tro_nguoi_cao_tuoi_bac_ninh_attach,
     "ho-tro-chi-phi-hoa-tang-bac-ninh": ho_tro_chi_phi_hoa_tang_bac_ninh_attach,
-    "ho-tro-chi-phi-hoa-tang": ho_tro_chi_phi_hoa_tang_attach,
     "dang-ky-nha-o-xa-hoi-bac-ninh": dang_ky_nha_o_xa_hoi_bac_ninh_attach,
     "cap-hoc-tap-bac-ninh": cap_hoc_tap_bac_ninh_attach,
     "tach-hop-thua-dat-bac-ninh": tach_hop_thua_dat_bac_ninh_attach,
@@ -3670,6 +3675,7 @@ _ATTACH_PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_attach,
+    "dang-ky-hanh-nghe": dang_ky_hanh_nghe_attach,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_attach,
     "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_attach,
     "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_attach,

@@ -67,6 +67,27 @@ def test_xa_khong_nhap_nhang_khong_bi_anh_huong():
     assert _remap("Phường 7")["xa"] == "Phường Lang Biang - Đà Lạt"
 
 
+def test_huyen_ghi_trong_ngoac_cua_xa_cu_van_go_duoc_nhap_nhang():
+    """Bảng Lạng Sơn ghi "Tân Thành (huyện Bắc Sơn)" thay vì khóa huyen_cu.
+
+    Ca báo lỗi: CCCD "Tân Thành, Bắc Sơn, Lạng Sơn" ra "Tân Thành" (xã khác ở Hữu Lũng) thay vì
+    "Xã Nhất Hòa".
+    """
+    assert _remap("Tân Thành", "Bắc Sơn", tinh="Lạng Sơn", dia="")["xa"] == "Xã Nhất Hòa"
+    assert _remap("Tân Thành", "huyện Cao Lộc", tinh="Lạng Sơn", dia="")["xa"] == "Xã Tân Đoàn"
+    assert _remap("Tân Thành", "Hữu Lũng", tinh="Lạng Sơn", dia="")["xa"] == "Xã Tân Thành"
+    # Không có gợi ý huyện → giữ nguyên hành vi cũ, không tự chọn một bên.
+    assert _remap("Tân Thành", tinh="Lạng Sơn", dia="")["xa"] == "Tân Thành"
+
+
+def test_ngoac_ghi_chu_khong_bi_hieu_la_huyen():
+    from app.pipelines._shared.area_remap import _split_xa_cu_district
+
+    for xa_cu in ("Phú Hội (phần còn lại)", "Ea Bia (một phần)", "An Phú (thị trấn)", "Kiên Hải (huyện)"):
+        assert _split_xa_cu_district(xa_cu) == (xa_cu, "")
+    assert _split_xa_cu_district("Thạnh Lộc (Châu Thành, KG)") == ("Thạnh Lộc", "Châu Thành")
+
+
 def test_cap_tinh_khac_van_go_duoc_nhap_nhang():
     """Tân Hà (Bình Thuận cũ) có ở cả huyện Hàm Tân và huyện Đức Linh, về hai xã mới khác nhau."""
     assert _remap("Tân Hà", "Hàm Tân", tinh="Bình Thuận", dia="")["xa"] == "Xã Hàm Tân"

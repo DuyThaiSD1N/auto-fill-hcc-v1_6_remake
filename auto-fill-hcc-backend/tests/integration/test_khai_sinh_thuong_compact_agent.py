@@ -101,6 +101,38 @@ def test_khai_sinh_thuong_marriage_record_fills_father_section():
     assert values["DanTocMeKS"] == "Lach"
 
 
+def test_khai_sinh_thuong_birth_place_keeps_facility_street_detail():
+    """Giấy chứng sinh chỉ trả tên bệnh viện, tờ khai có thêm "Đồi Long Thọ" → lấy bản đầy đủ."""
+    compact_fields = [
+        {"name": "Gcs_HoTenCon", "value": "Trần Nguyễn Gia Bảo"},
+        {"name": "Gcs_NgaySinhCon", "value": "12/08/2026"},
+        {"name": "Gcs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Xuân Hương",
+                                           "diaChi": "Bệnh viện Đa Khoa Hoàn Mỹ Đà Lạt"}},
+        {"name": "TkKs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Xuân Hương",
+                                            "diaChi": "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ"}},
+    ]
+
+    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
+
+    assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ"
+
+
+def test_khai_sinh_thuong_birth_place_not_merged_from_other_facility():
+    compact_fields = [
+        {"name": "Gcs_HoTenCon", "value": "A"},
+        {"name": "Gcs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "diaChi": "Bệnh viện Đa khoa Lâm Đồng"}},
+        {"name": "TkKs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "diaChi": "Trạm y tế xã Tà Nung, Thôn 1"}},
+    ]
+
+    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
+
+    assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "Bệnh viện Đa khoa Lâm Đồng"
+
+
+def test_khai_sinh_thuong_prompt_keeps_facility_address_detail():
+    assert "Đồi Long Thọ" in compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+
 def test_khai_sinh_thuong_ignores_subject_own_marriage_record():
     """Đăng ký muộn: giấy kết hôn của CHÍNH người được khai sinh → không dùng làm cha/mẹ."""
     compact_fields = [

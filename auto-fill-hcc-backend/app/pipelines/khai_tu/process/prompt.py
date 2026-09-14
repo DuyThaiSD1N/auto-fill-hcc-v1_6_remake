@@ -124,13 +124,22 @@ Chỉ chuyển xuống nguồn sau khi nguồn trước không có, để trốn
   Việc ưu tiên tờ khai trước ảnh thẻ do Python thực hiện sau, nên KHÔNG được tự lược một bộ
   vì cho rằng bộ kia đã đủ.
 
-- Họ tên, ngày sinh, giới tính, quốc tịch, số định danh người chết:
+- NGOẠI LỆ ƯU TIÊN ẢNH THẺ — số CCCD/CMND ghi trên Tờ khai KHỚP số in trên ảnh thẻ (deceased_identity)
+  của người chết: đó chắc chắn là cùng một người, bản IN trên thẻ đáng tin hơn chữ viết tay. Khi đó
+  BẮT BUỘC lấy theo ẢNH THẺ 4 field: NguoiMat_HoTen, NguoiMat_SoDinhDanh, NguoiMat_NgayCapGiayTo,
+  NguoiMat_NoiCapGiayTo (vd tờ khai "NGUYỄN CHỈ THỨC, CCCD số 0680911000907" + thẻ "NGUYỄN CHÍ THỨC,
+  Số 068091000907" → trả "NGUYỄN CHÍ THỨC", "068091000907" và ngày/nơi cấp mặt sau thẻ).
+  Coi là KHỚP cả khi OCR tờ khai chỉ THỪA/THIẾU 1–2 chữ số, các chữ số còn lại giữ nguyên thứ tự;
+  đọc NHẦM chữ số (khác chữ số) thì KHÔNG khớp → giữ thứ tự nguồn bên dưới.
+  Các field khác của người chết vẫn theo thứ tự nguồn bên dưới.
+
+- Họ tên, ngày sinh, giới tính, quốc tịch, số định danh người chết (khi không thuộc ngoại lệ trên):
   1. paper_declaration (Tờ khai đăng ký khai tử);
   2. death_notice/giấy tờ thay thế;
   3. deceased_identity (CCCD/giấy tờ tùy thân người chết);
   4. death_event_proof hoặc death_registration_correspondence có ghi rõ.
 
-- Ngày cấp và nơi cấp giấy tờ tùy thân người chết:
+- Ngày cấp và nơi cấp giấy tờ tùy thân người chết (khi không thuộc ngoại lệ trên):
   1. dòng giấy tờ tùy thân của người chết trên paper_declaration (Tờ khai);
   2. chính deceased_identity (CCCD/giấy tờ tùy thân);
   3. dòng giấy tờ tùy thân của người chết trên death_notice.

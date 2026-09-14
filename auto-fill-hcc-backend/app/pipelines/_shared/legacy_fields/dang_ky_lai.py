@@ -60,6 +60,8 @@ FIELDS: list[dict] = [
     {"name": "coQuanDKTruocDay_filter", "comp": "x-select",
      "desc": "Tỉnh/Thành phố của cơ quan đăng ký khai sinh trước đây = phần TỈNH trong "
              "'Nơi đăng ký khai sinh' trên giấy khai sinh cũ (vd 'Lai Châu')."},
+    {"name": "coQuanDKTruocDay", "comp": "x-select",
+     "desc": "Xã/Phường của cơ quan đăng ký khai sinh trước đây (ô chọn phụ thuộc coQuanDKTruocDay_filter)."},
     {"name": "soDKTruocDay", "comp": "x-input", "desc": "Số đăng ký khai sinh trước đây."},
     {"name": "quyenSoDKTruocDay", "comp": "x-input", "desc": "Quyển số đăng ký khai sinh trước đây."},
     {"name": "ngayDKTruocDay", "comp": "x-date-text", "desc": "Ngày đăng ký khai sinh trước đây (dd/mm/yyyy)."},

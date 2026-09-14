@@ -533,7 +533,7 @@
     if (arm.stage === "submit") return void await submitStage(arm);
     if (arm.stage === "login") return void await loginStage(arm);
     if (arm.stage === "confirm") return void await confirmStage(arm);
-    // Thủ tục cấp tỉnh chỉ cần tên tỉnh; thủ tục còn lại thiếu xã là không đi tiếp được.
+    // Chỉ cần tên tỉnh: popup gắn provinceOnly khi thủ tục cấp tỉnh HOẶC cán bộ không chọn xã.
     if (!arm.province || (!arm.provinceOnly && !arm.selectSo && !arm.ward)) return;
 
     // Trang thủ tục render bằng React → chờ khối cơ quan xuất hiện; không có thì thôi, giữ nguyên cờ

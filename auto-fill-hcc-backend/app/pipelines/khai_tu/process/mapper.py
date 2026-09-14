@@ -25,6 +25,29 @@ def _fold(value) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
+_CCCD_LEN = 12
+_ID_OCR_SLIP_MAX = 2
+
+
+def _same_id(card_number, declared_number) -> bool:
+    """Số in trên thẻ và số viết tay trên tờ khai có phải CÙNG một thẻ không.
+
+    Trùng khít là chắc chắn. Ngoài ra nhận trường hợp OCR tờ khai đọc THỪA/THIẾU tối đa 2 chữ số
+    so với số 12 chữ số trên thẻ mà các chữ số còn lại giữ nguyên thứ tự ("0680911000907" ↔
+    "068091000907"). Đọc NHẦM chữ số (5 thành 6) vẫn là khác người — không đoán.
+    """
+    card, declared = _digits(card_number), _digits(declared_number)
+    if not card or not declared:
+        return False
+    if card == declared:
+        return True
+    short, long = sorted((card, declared), key=len)
+    if _CCCD_LEN not in (len(short), len(long)) or not 0 < len(long) - len(short) <= _ID_OCR_SLIP_MAX:
+        return False
+    remaining = iter(long)
+    return all(digit in remaining for digit in short)
+
+
 def _requester_card_match(
     values: dict, options: dict | None, reasoning_context: str = ""
 ) -> tuple[bool, bool]:
@@ -65,7 +88,7 @@ def _requester_card_match(
         )
         if value
     }
-    if cccd_id and cccd_id in id_anchors:
+    if cccd_id and any(_same_id(cccd_id, anchor) for anchor in id_anchors):
         return True, True
 
     # (2) Vòng họ tên: giữ nguyên thứ tự mỏ neo cũ, chọn nguồn đầu tiên có dữ liệu.
@@ -341,10 +364,10 @@ def enrich(
             value = values.get(person_key)
         return value
 
-    # Thẻ của người mất mà số trùng số ghi ở tờ khai → cùng một người, lấy tên theo thẻ.
-    _cccd_id = _digits(values.get("Cccd_SoDinhDanh"))
+    # Thẻ của người mất mà số khớp số ghi ở tờ khai → cùng một người, lấy tên theo thẻ.
     deceased_id_matched = bool(
-        cccd_is_deceased and _cccd_id and _cccd_id == _digits(values.get("NguoiMat_SoDinhDanh"))
+        cccd_is_deceased
+        and _same_id(values.get("Cccd_SoDinhDanh"), values.get("NguoiMat_SoDinhDanh"))
     )
 
     if has_deceased or cccd_is_deceased:

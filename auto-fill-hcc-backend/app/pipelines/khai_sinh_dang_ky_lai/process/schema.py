@@ -125,6 +125,12 @@ FIELDS: list[dict] = [
     {"name": "PreviousRegistration_AgencyProvince",
      "desc": "Tỉnh/thành phố của cơ quan ĐĂNG KÝ KHAI SINH trước đây, CHỈ từ giấy khai sinh cũ/trích lục "
              "khai sinh/tờ khai đăng ký lại. KHÔNG lấy tỉnh trên giấy kết hôn/khai tử/CCCD. Ví dụ Lai Châu."},
+    {"name": "PreviousRegistration_AgencyCommune",
+     "desc": 'Xã/phường/thị trấn của cơ quan ĐĂNG KÝ KHAI SINH trước đây, CHỈ từ giấy khai sinh cũ/trích lục '
+             'khai sinh/tờ khai đăng ký lại (dòng "Đã đăng ký khai sinh tại", "Nơi đăng ký khai sinh" hoặc '
+             'phần UBND xã/phường ở đầu giấy khai sinh cũ). Trả kèm cấp hành chính, bỏ chữ "Ủy ban nhân dân"/'
+             '"UBND": "Ủy ban nhân dân phường Điện Bàn Đông" → "Phường Điện Bàn Đông". KHÔNG lấy xã/phường '
+             "trên giấy kết hôn/khai tử/CCCD."},
     {"name": "PreviousRegistration_Number",
      "desc": 'Số ĐĂNG KÝ KHAI SINH trước đây — CHỈ từ GIẤY KHAI SINH CŨ/TRÍCH LỤC KHAI SINH/TỜ KHAI đăng ký lại '
              'Không có giấy khai sinh cũ/tờ khai đăng ký lại thì bỏ trống. KHÔNG lấy số thứ tự mục "(7)", "(10)".'},

@@ -168,6 +168,30 @@ def _expand_abbrev(text: str) -> str:
     return t
 
 
+# Ghi chu trong ngoac o cuoi xa_cu KHONG phai ten cap huyen: "(phan)", "(mot phan)", "(thi tran)"...
+_XA_CU_NOTES = {"phan", "mot phan", "phan con lai", "thi tran", "phuong", "xa", "huyen", "quan", "cu"}
+_XA_CU_DISTRICT_RE = re.compile(r"^(.*\S)\s*\(([^()]+)\)\s*$")
+
+
+def _split_xa_cu_district(xa_cu: str) -> tuple[str, str]:
+    """Tach cap huyen ma bang remap nhet vao ngoac sau ten xa cu.
+
+    Nhieu file remap khong dung khoa "huyen_cu" ma viet "Tân Thành (huyện Bắc Sơn)",
+    "Phường 1 (TP Bạc Liêu)", "Tân An (Tân Châu)". De nguyen chuoi do lam khoa thi khong giay to
+    nao khop duoc -- ca bang 2 khoa lan 3 khoa -- va xa cu roi xuong pass-through: CCCD ghi
+    "Tân Thành, Bắc Sơn, Lạng Sơn" ra "Tân Thành" (mot xa KHAC o Huu Lung) thay vi "Xã Nhất Hòa".
+
+    Tra (ten xa, ten huyen). Ngoac chi la ghi chu ("(phần)", "(thị trấn)") thi giu nguyen xa_cu.
+    """
+    m = _XA_CU_DISTRICT_RE.match(xa_cu)
+    if not m:
+        return xa_cu, ""
+    inner = m.group(2).split(",")[0].strip()  # "Châu Thành, KG" -> "Châu Thành"
+    if not _fold_district(inner) or _fold(inner) in _XA_CU_NOTES:
+        return xa_cu, ""
+    return m.group(1), inner
+
+
 def _load_remap_files() -> None:
     """Load tat ca remap_*.json va build lookup dict."""
     if not _DATA_DIR.exists():
@@ -203,9 +227,17 @@ def _load_remap_files() -> None:
             # Index 3 khoa nap TRUOC vong loc ambiguous: entry ghi ro huyen_cu thi cap
             # (tinh, xa, huyen) la duy nhat, khong con gi de nham. Trung khoa 3 -> du lieu mau
             # thuan, giu entry dau va bo qua phan sau thay vi ghi de am tham.
+            # Huyen ghi trong ngoac ("Tân Thành (huyện Bắc Sơn)") CHI vao bang 3 khoa: ngoac do
+            # co mat chinh vi ten xa trung, thieu goi y huyen thi van khong du can cu -> bang 2
+            # khoa giu nguyen nhu cu.
             huyen_cu = entry.get("huyen_cu") or ""
+            xa_cu_district = xa_cu
+            if not huyen_cu:
+                xa_cu_district, huyen_cu = _split_xa_cu_district(xa_cu)
             if huyen_cu:
-                _REMAP_BY_DISTRICT.setdefault((*key, _fold_district(huyen_cu)), mapping)
+                _REMAP_BY_DISTRICT.setdefault(
+                    (key[0], _fold(xa_cu_district), _fold_district(huyen_cu)), mapping
+                )
             
             # Track all entries for this key to detect duplicates
             if key not in _duplicate_tracker:

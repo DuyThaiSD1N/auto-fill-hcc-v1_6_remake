@@ -136,6 +136,9 @@ VÍ DỤ: CCCD 1 = Người A, Nam, sinh 1984; CCCD 2 = Người B, Nữ, sinh 1
      "TLKT") rất giống nhưng KHÔNG phải khai sinh → không lấy. Không lấy số thứ tự mục "(7)"/"(10)".
    - PreviousRegistration_Number dạng "NN" hoặc "NN/YYYY". BookNumber chỉ lấy khi có nhãn "Quyển số" rõ,
      KHÔNG suy từ Number/ngày. Date = ngày đăng ký ghi trên chính giấy khai sinh đó.
+   - AgencyProvince + AgencyCommune = tỉnh + xã/phường của cơ quan đã đăng ký khai sinh. VD tờ khai ghi
+     "Đã đăng ký khai sinh tại: Ủy ban nhân dân phường Điện Bàn Đông" (nơi sinh TP Đà Nẵng) →
+     AgencyProvince="Đà Nẵng", AgencyCommune="Phường Điện Bàn Đông". Có xã/phường thì PHẢI trả AgencyCommune.
 </trich_field>
 
 <copy_request>

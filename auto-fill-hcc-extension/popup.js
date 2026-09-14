@@ -710,15 +710,6 @@ function isHaiChauDaNangUser(user) {
   return isDaNangBusinessUser(user) && normalizeProcedureSearch(user?.xa).includes("hai chau");
 }
 
-// ===== Nghiệp vụ riêng tỉnh Lâm Đồng (áp cho MỌI tài khoản của tỉnh) =====
-// Ô mô tả của TỪNG DÒNG ngành nghề (textarea trắng ngay dưới tên ngành chính thức, trang "Ngành nghề
-// kinh doanh") phải để TRỐNG. Địa bàn này chỉ nhận đúng tên ngành theo Hệ thống ngành kinh tế Việt Nam
-// do cổng tự điền theo mã; phần chi tiết đọc thêm từ giấy đề nghị (vd "Bán buôn thực phẩm (bán buôn
-// rau, quả)") không được ghi vào đây. Ô "Ngành, nghề chưa khớp mã" ở cuối trang KHÔNG thuộc quy tắc này.
-function isLamDongBusinessUser(user) {
-  return normalizeProcedureSearch(user?.tinh).includes("lam dong");
-}
-
 function buildBusinessDefaults(user) {
   const defaults = {};
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
@@ -726,7 +717,6 @@ function buildBusinessDefaults(user) {
   // kể cả khi nhân thân tài khoản khác chủ hộ (nghiệp vụ địa phương yêu cầu). Chỉ áp cho tài khoản
   // Đà Nẵng — tỉnh khác vẫn tự chốt vai trò theo đối chiếu tài khoản với chủ hộ như cũ.
   if (isDaNangBusinessUser(user)) defaults.forceSelfSubmitter = true;
-  if (isLamDongBusinessUser(user)) defaults.skipBusinessLineDescription = true;
   if (isHaiChauDaNangUser(user)) {
     defaults.dissolutionReason = HAI_CHAU_DISSOLUTION_REASON;
     defaults.postalServiceAddress = HAI_CHAU_POSTAL_ADDRESS;
@@ -5153,13 +5143,16 @@ function locationIsComplete() {
 
 /** Đủ địa chỉ để "lên đạn" cho MỘT thủ tục cụ thể.
  *
- * Thủ tục cấp tỉnh (link.provinceOnlyAgency) chỉ có ô Tỉnh/Thành phố ở khối "Chọn cơ quan thực
- * hiện" của cổng, nên bắt cán bộ chọn thêm Phường/Xã là chặn oan — chọn xong cũng không có ô nào
- * để điền. Thủ tục còn lại vẫn cần đủ tỉnh + xã như cũ.
+ * Chỉ cần Tỉnh/Thành phố: cổng cho tìm cơ quan khi mới chọn tỉnh, Phường/Xã là tuỳ chọn. Có xã thì
+ * trợ lý chọn luôn xã, không có thì chỉ chọn tỉnh rồi bấm tìm.
  */
-function locationIsCompleteFor(link) {
-  if (link && link.provinceOnlyAgency) return !!currentLocation.provinceSlug;
-  return locationIsComplete();
+function locationIsCompleteFor(_link) {
+  return !!currentLocation.provinceSlug;
+}
+
+/** Chưa chọn xã (hoặc thủ tục cấp tỉnh) -> trợ lý chỉ chọn ô Tỉnh/Thành phố trên cổng. */
+function agencyProvinceOnly(link) {
+  return !!(link && link.provinceOnlyAgency) || !currentLocation.ward;
 }
 
 /**
@@ -5178,9 +5171,9 @@ function selectSoFor(link) {
 
 /** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
 function agencyAreaLabel(link) {
-  if (link && link.provinceOnlyAgency) return currentLocation.province;
   // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
   if (selectSoFor(link)) return `Sở của ${currentLocation.province}`;
+  if (agencyProvinceOnly(link)) return currentLocation.province;
   return `${currentLocation.ward}, ${currentLocation.province}`;
 }
 
@@ -5189,8 +5182,8 @@ function showLocationSummary() {
     locationStatus.textContent = `✓ ${currentLocation.ward}, ${currentLocation.province}`;
     locationStatus.className = 'status ok';
   } else if (currentLocation.provinceSlug) {
-    locationStatus.textContent = 'Chọn tiếp Phường/Xã để trợ lý điền hộ trên cổng.';
-    locationStatus.className = 'status warn';
+    locationStatus.textContent = `✓ ${currentLocation.province} (có thể chọn thêm Phường/Xã)`;
+    locationStatus.className = 'status ok';
   } else {
     locationStatus.textContent = '';
     locationStatus.className = 'status';
@@ -5281,9 +5274,8 @@ function updateKeKhaiUI() {
   }
   // Cổng React mới bắt chọn Tỉnh/Xã trước khi vào biểu mẫu → trợ lý điền hộ nếu đã có địa chỉ.
   if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
-    keKhaiStatus.textContent = link.provinceOnlyAgency
-      ? 'Thủ tục này cần chọn Tỉnh/Thành phố trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.'
-      : 'Thủ tục này cần chọn Tỉnh/Xã trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
+    keKhaiStatus.textContent =
+      'Thủ tục này cần chọn Tỉnh/Thành phố trên cổng — chọn địa chỉ ở mục trên để trợ lý điền hộ.';
     keKhaiStatus.className = 'status warn';
   } else if (link.needsAgencySelect) {
     const area = agencyAreaLabel(link);
@@ -5374,7 +5366,8 @@ async function openKeKhaiPage() {
         province: currentLocation.province,
         ward: currentLocation.ward,
         // Thủ tục cấp tỉnh: cổng chỉ render ô Tỉnh/Thành phố -> content script bỏ hẳn bước xã.
-        provinceOnly: !!link.provinceOnlyAgency,
+        // Chưa chọn xã cũng đi theo nhánh này: chỉ chọn tỉnh rồi bấm tìm cơ quan.
+        provinceOnly: agencyProvinceOnly(link),
         // Thủ tục cấp Sở: tick radio "Sở" rồi chọn option đầu tiên trong dropdown thay vì chọn Phường/Xã.
         // Cờ chốt theo TỈNH đang chọn (xem selectSoFor) nên phải tính ở đây, không đọc thẳng link.
         selectSo: selectSoFor(link),
@@ -5621,9 +5614,7 @@ async function onDestGoClick() {
     return;
   }
   if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
-    locationStatus.textContent = link.provinceOnlyAgency
-      ? "Chưa chọn Tỉnh/Thành phố."
-      : "Chưa chọn đủ Tỉnh/Thành phố và Phường/Xã.";
+    locationStatus.textContent = "Chưa chọn Tỉnh/Thành phố.";
     locationStatus.className = "status err";
     return;
   }
