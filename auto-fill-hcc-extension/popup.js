@@ -5189,7 +5189,6 @@ function showLocationSummary() {
     locationStatus.textContent = '';
     locationStatus.className = 'status';
   }
-  notifyDestPicker();
 }
 
 /** Địa chỉ đổi -> cập nhật lại gợi ý ở mục "Mở trang kê khai" (mục đó init sau, có thể chưa sẵn). */
@@ -5261,10 +5260,6 @@ function selectedKeKhaiLink() {
 }
 
 function updateKeKhaiUI() {
-  try { renderKeKhaiStatus(); } finally { notifyDestPicker(); }
-}
-
-function renderKeKhaiStatus() {
   const link = selectedKeKhaiLink();
   if (!link) {
     keKhaiStatus.textContent = '';
@@ -5339,9 +5334,6 @@ async function initKeKhaiPicker() {
 
   keKhaiSelect.addEventListener('change', () => {
     updateKeKhaiUI();
-    // Đang chọn ở khung "Chuyển thủ tục khác": chỉ xem thử, CHƯA đổi thủ tục đang điền —
-    // openKeKhaiPage() mới chốt khi bấm "Mở trang thủ tục".
-    if (destPickerOpen()) return;
     void onKeKhaiProcedureChosen();
   });
   // savedKey là lựa chọn tiện ích dùng chung để lần sau mở nhanh, KHÔNG phải pipeline của tab này.
@@ -5596,134 +5588,78 @@ function applyDestOpen(open) {
 async function refreshDestVisibility() {
   const state = await sendToContent({ action: "getPortalFlowState" });
   const atPortalHome = !!state && !state.unsupported && !!state.atPortalHome;
-  if (atPortalHome) {
-    destManualOpen = false;
-    // Về trang chủ cổng thì khối chọn đã hiện ngay trong panel -> khung bên cạnh thừa.
-    closeDestPicker({ revert: false });
-  }
+  if (atPortalHome) destManualOpen = false;
   applyDestOpen(atPortalHome || destManualOpen);
 }
 
-/** "Chuyển thủ tục khác": mở khung chọn Tỉnh/Xã + Thủ tục BÊN CẠNH panel; khung không lên được
- *  (content script cũ chưa nạp lại trang…) thì mở ngay trong panel như trước. */
+// ===== "Chuyển thủ tục khác": picker thả xuống ngay dưới nút =====
+// Chỉ chọn THỦ TỤC — Tỉnh/Xã dùng luôn địa chỉ đang lưu. Chọn xong là mở trang thủ tục đó ngay.
+// Thủ tục cần chọn cơ quan mà chưa có Tỉnh thì mới mở màn "Đi đến thủ tục" đầy đủ để chọn địa chỉ.
+const switchProcDropdown = document.getElementById("switchProcDropdown");
+const switchProcSearch = document.getElementById("switchProcSearch");
+const switchProcList = document.getElementById("switchProcList");
+
+function renderSwitchProcList(query) {
+  const needle = normalizeProcedureSearch(query);
+  // Mã TTHC gõ tay hay rơi rụng/thừa dấu chấm -> so theo phần số, cần ≥4 chữ số mới coi là tra mã.
+  const digits = needle.replace(/\D+/g, "");
+  const codeNeedle = digits.length >= 4 ? digits : "";
+  switchProcList.innerHTML = "";
+  const matched = keKhaiLinks().filter((link) => {
+    if (!needle) return true;
+    if (normalizeProcedureSearch(link.label).includes(needle)) return true;
+    return !!codeNeedle && String(link.code || "").replace(/\D+/g, "").includes(codeNeedle);
+  });
+  if (!matched.length) {
+    const empty = document.createElement("div");
+    empty.className = "combo-empty";
+    empty.textContent = "Không tìm thấy";
+    switchProcList.appendChild(empty);
+    return;
+  }
+  for (const link of matched) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "combo-option" + (link.key === selectedProcedureKey ? " active" : "");
+    item.setAttribute("role", "option");
+    item.textContent = link.label;
+    if (link.code) item.title = `${link.code} — ${link.label}`;
+    item.addEventListener("click", () => void onSwitchProcedurePicked(link.key));
+    switchProcList.appendChild(item);
+  }
+}
+
+function setSwitchProcOpen(open) {
+  if (!switchProcDropdown || !switchProcedureBtn) return;
+  switchProcDropdown.hidden = !open;
+  switchProcedureBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) {
+    switchProcSearch.value = "";
+    renderSwitchProcList("");
+    switchProcSearch.focus();
+  }
+  postPanelHeight();
+}
+
 function onSwitchProcedureClick() {
-  // Vào màn với đúng thủ tục đang chọn ở "Loại thủ tục" cho khỏi phải dò lại từ đầu.
-  syncKeKhaiSelection(selectedProcedureKey);
-  syncDestCombos();
-  if (IS_EMBEDDED && openDestPicker()) return;
-  openDestInPanel();
+  setSwitchProcOpen(switchProcDropdown?.hidden !== false);
 }
 
-function openDestInPanel() {
-  destManualOpen = true;
-  applyDestOpen(true);
-}
-
-// ===== Khung "Chuyển thủ tục khác" BÊN CẠNH panel (dest-picker.html) =====
-// Không đè lên màn Giấy tờ đang làm dở: content.js nhúng khung ra ngoài panel, khung chỉ là lớp nhìn
-// và điều khiển đúng các <select> tỉnh/xã/thủ tục ẩn ở trên qua BroadcastChannel tên riêng.
-// Trong lúc khung mở, chọn thủ tục KHÔNG đổi "Loại thủ tục" đang điền; chỉ khi bấm "Mở trang thủ
-// tục" mới áp. Bấm Huỷ thì trả lại cả địa chỉ như trước lúc mở.
-const DEST_PICKER_READY_MS = 2500;
-let destPicker = null;   // { channel, location, ready, timer } khi khung đang mở
-
-function destPickerOpen() {
-  return !!destPicker;
-}
-
-function destSelectState(select) {
-  const first = select.options[0];
-  return {
-    options: Array.from(select.options)
-      .filter((opt) => opt.value !== "")
-      .map((opt) => ({ value: opt.value, text: opt.textContent, code: opt.dataset.code || "" })),
-    value: select.value,
-    placeholder: first && first.value === "" ? first.textContent : "-- Chọn --",
-    disabled: select.disabled,
-  };
-}
-
-function destStatusState(el) {
-  return { text: el.textContent, cls: el.className.replace(/\bstatus\b/, "").trim() };
-}
-
-let destPushTimer = 0;
-/** Gom các lần đổi liên tiếp (loadWards + showLocationSummary + updateKeKhaiUI) thành một lần gửi. */
-function notifyDestPicker() {
-  try {
-    if (!destPicker || destPushTimer) return;
-    destPushTimer = setTimeout(() => {
-      destPushTimer = 0;
-      destPicker?.channel.postMessage({
-        type: "state",
-        province: destSelectState(provinceSelect),
-        ward: destSelectState(wardSelect),
-        procedure: destSelectState(keKhaiSelect),
-        locationStatus: destStatusState(locationStatus),
-        keKhaiStatus: destStatusState(keKhaiStatus),
-        busy: destGoBtn.disabled,
-      });
-    }, 0);
-  } catch (_) { /* khối Đi đến thủ tục chưa khởi tạo xong */ }
-}
-
-function onDestPickerMessage(msg) {
-  if (!destPicker) return;
-  if (msg?.type === "ready") {
-    destPicker.ready = true;
-    clearTimeout(destPicker.timer);
-    notifyDestPicker();
-  } else if (msg?.type === "pick") {
-    const select = { province: provinceSelect, ward: wardSelect, procedure: keKhaiSelect }[msg.field];
-    if (!select || !Array.from(select.options).some((opt) => opt.value === msg.value)) return;
-    select.value = msg.value;
-    // Phát `change` để handler gốc (persistLocation, loadWards, updateKeKhaiUI) chạy như bấm tay.
-    select.dispatchEvent(new Event("change", { bubbles: true }));
+async function onSwitchProcedurePicked(key) {
+  setSwitchProcOpen(false);
+  keKhaiSelect.value = key;
+  updateKeKhaiUI();
+  const link = selectedKeKhaiLink();
+  // Thiếu Tỉnh cho thủ tục phải chọn cơ quan -> mở màn đầy đủ để chọn địa chỉ rồi bấm mở trang.
+  if (link?.needsAgencySelect && !locationIsCompleteFor(link)) {
+    destManualOpen = true;
     syncDestCombos();
-  } else if (msg?.type === "go") {
-    void onDestGoClick();
-  } else if (msg?.type === "cancel") {
-    closeDestPicker({ revert: true });
+    applyDestOpen(true);
+    return;
   }
-}
-
-function openDestPicker() {
-  if (destPicker) return true;
-  let channel;
-  try {
-    channel = new BroadcastChannel(`autofill-hcc-dest-${crypto.randomUUID()}`);
-  } catch (error) {
-    console.warn("[Popup] Không mở được kênh khung chọn thủ tục:", error);
-    return false;
-  }
-  destPicker = { channel, location: { ...currentLocation }, ready: false, timer: 0 };
-  channel.onmessage = (e) => onDestPickerMessage(e.data);
-  // Khung không báo "ready" kịp (content script của trang chưa có bản mới) -> mở trong panel.
-  destPicker.timer = setTimeout(() => {
-    if (!destPicker || destPicker.ready) return;
-    console.warn("[Popup] Khung chọn thủ tục bên cạnh không phản hồi -> mở trong panel");
-    closeDestPicker({ revert: false });
-    openDestInPanel();
-  }, DEST_PICKER_READY_MS);
-  parent.postMessage({ type: "autofill-hcc-dest-show", channel: channel.name }, "*");
-  return true;
-}
-
-/** Đóng khung. revert: Huỷ -> trả địa chỉ về như lúc mở (chọn thử rồi thôi thì không được lưu). */
-function closeDestPicker({ revert }) {
-  if (!destPicker) return;
-  const { channel, location, timer } = destPicker;
-  destPicker = null;
-  clearTimeout(timer);
-  channel.close();
-  parent.postMessage({ type: "autofill-hcc-dest-hide" }, "*");
-  syncKeKhaiSelection(selectedProcedureKey);
-  if (revert && (location.provinceSlug !== currentLocation.provinceSlug || location.ward !== currentLocation.ward)) {
-    currentLocation = { ...location };
-    provinceSelect.value = currentLocation.provinceSlug || "";
-    loadWards(currentLocation.provinceSlug, currentLocation.ward);
-    void persistLocation();
-  }
+  await onDestGoClick();
+  // Mở trang lỗi thì thông báo nằm ở khối đang ẩn -> đưa ra dòng trạng thái chính.
+  if (keKhaiStatus.classList.contains("err")) setStatus(keKhaiStatus.textContent, "err");
 }
 
 /** "Quay lại": bỏ cờ mở tay rồi để trạng thái trang quyết định như cũ. */
@@ -5737,31 +5673,25 @@ async function onDestGoClick() {
   if (!link) {
     keKhaiStatus.textContent = "Chưa chọn thủ tục.";
     keKhaiStatus.className = "status err";
-    notifyDestPicker();
     return;
   }
   if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
     locationStatus.textContent = "Chưa chọn Tỉnh/Thành phố.";
     locationStatus.className = "status err";
-    notifyDestPicker();
     return;
   }
   destGoBtn.disabled = true;
-  notifyDestPicker();
   try {
     await openKeKhaiPage();
     destManualOpen = false;   // đã đi tới thủ tục mới -> lần sau lại theo trạng thái trang
     keKhaiStatus.textContent = "Đang mở trang thủ tục…";
     keKhaiStatus.className = "status ok";
-    // Đã chốt thủ tục + địa chỉ mới -> khung bên cạnh xong việc (giữ nguyên lựa chọn, không trả lại).
-    closeDestPicker({ revert: false });
   } catch (error) {
     keKhaiStatus.textContent = "✗ Không mở được trang thủ tục";
     keKhaiStatus.className = "status err";
     console.error("[Popup] Mở trang thủ tục lỗi:", error);
   } finally {
     destGoBtn.disabled = false;
-    notifyDestPicker();
   }
 }
 
@@ -5771,7 +5701,6 @@ const destCombos = {};
  *  -> nhãn trigger phải được đồng bộ tay sau mỗi lần đổi danh sách. */
 function syncDestCombos() {
   for (const combo of Object.values(destCombos)) combo?.syncTrigger();
-  notifyDestPicker();
 }
 
 async function initDestSection() {
@@ -5782,11 +5711,15 @@ async function initDestSection() {
 
   destGoBtn.addEventListener("click", () => void onDestGoClick());
   destBackBtn?.addEventListener("click", onDestBackClick);
-  // content.js tự đóng khung bên cạnh (thu nhỏ/đóng panel) -> coi như Huỷ.
-  window.addEventListener("message", (e) => {
-    if (e.source === window.parent && e.data?.type === "autofill-hcc-dest-closed") closeDestPicker({ revert: true });
-  });
   switchProcedureBtn?.addEventListener("click", onSwitchProcedureClick);
+  switchProcSearch?.addEventListener("input", () => renderSwitchProcList(switchProcSearch.value));
+  switchProcSearch?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { setSwitchProcOpen(false); switchProcedureBtn.focus(); }
+  });
+  document.addEventListener("click", (e) => {
+    if (switchProcDropdown && !switchProcDropdown.hidden
+      && !switchProcDropdown.contains(e.target) && !switchProcedureBtn.contains(e.target)) setSwitchProcOpen(false);
+  });
   // Ẩn trước, chờ biết đang ở trang nào rồi mới quyết -> không chớp khối sai màn lúc mở panel.
   applyDestOpen(false);
   await refreshDestVisibility();

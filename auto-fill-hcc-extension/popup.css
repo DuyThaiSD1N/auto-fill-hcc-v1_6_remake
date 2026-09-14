@@ -1084,6 +1084,7 @@ input, select, textarea { font-family: inherit; }
   cursor: pointer;
 }
 .switch-proc-btn:hover { background: #e3f2fd; border-color: #1565c0; }
+.switch-proc-picker { position: relative; }  /* mốc cho dropdown chọn thủ tục */
 
 /* Quay lại màn Giấy tờ: nút phụ, để nhạt hơn "Mở trang thủ tục" cho khỏi bấm nhầm. */
 .dest-actions .dest-back-btn {

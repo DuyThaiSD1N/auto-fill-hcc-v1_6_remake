@@ -155,7 +155,6 @@
 
   function removeUI() {
     goPreview(); // dong panel thi khong de khung xem truoc lo lung tren trang
-    dongDestVaBaoPanel();
     document.getElementById(PANEL_ID)?.remove();
     document.getElementById(BUBBLE_ID)?.remove();
     setPanelOpen(false);
@@ -850,82 +849,6 @@
     }
   });
 
-  // ---- Khung "Chuyển thủ tục khác" (dest-picker.html) BÊN CẠNH panel ---------------------------
-  // Trước đây khối chọn Tỉnh/Xã + Thủ tục mở ngay trong panel, che mất màn Giấy tờ đang làm dở. Giờ
-  // popup.js xin content.js dựng một iframe riêng áp sát panel; hai iframe nói chuyện thẳng với nhau
-  // qua BroadcastChannel (tên truyền trong #hash), content.js chỉ lo chỗ đứng và chiều cao.
-  const DEST_ID = "autofill-hcc-dest";
-  const DEST_W = 300;
-  const DEST_KHE = 10, DEST_LE = 10;
-  let destBox = null;
-  let destFrame = null;
-  let destCao = 360; // chiều cao nội dung khung báo lên, trước khi có số thật thì tạm chừng này
-
-  function datChoDest() {
-    if (!destBox) return;
-    const vw = window.innerWidth, vh = window.innerHeight;
-    const p = rectPanelHienTai();
-    const h = Math.max(120, Math.min(destCao, vh - 2 * DEST_LE));
-    const w = Math.min(DEST_W, vw - 2 * DEST_LE);
-    let x, deLen = false;
-    if (p && p.left - DEST_KHE - DEST_LE >= w) x = p.left - DEST_KHE - w;            // trái panel
-    else if (p && vw - DEST_LE - (p.right + DEST_KHE) >= w) x = p.right + DEST_KHE;  // phải panel
-    else { x = p ? p.left + Math.max(0, (p.width - w) / 2) : (vw - w) / 2; deLen = true; } // hết chỗ: đè lên panel
-    const y = Math.max(DEST_LE, Math.min(p ? p.top : DEST_LE, vh - DEST_LE - h));
-    Object.assign(destBox.style, {
-      width: w + "px", height: h + "px", left: Math.round(x) + "px", top: Math.round(y) + "px",
-      zIndex: deLen ? "2147483647" : "2147483645",
-    });
-  }
-
-  function hienDest(tenKenh) {
-    goDest();
-    const box = document.createElement("div");
-    box.id = DEST_ID;
-    Object.assign(box.style, {
-      position: "fixed", zIndex: "2147483645", background: "#fff",
-      border: "1px solid #c9d3df", borderRadius: "8px", overflow: "hidden",
-      boxShadow: "0 8px 32px rgba(0,0,0,.22)",
-    });
-    const f = document.createElement("iframe");
-    f.src = chrome.runtime.getURL("dest-picker.html") + "#" + encodeURIComponent(tenKenh);
-    Object.assign(f.style, { border: "0", width: "100%", height: "100%", display: "block", background: "#fff" });
-    box.appendChild(f);
-    document.documentElement.appendChild(box);
-    destBox = box;
-    destFrame = f;
-    destCao = 360;
-    datChoDest();
-  }
-
-  function goDest() {
-    destBox?.remove();
-    destBox = null;
-    destFrame = null;
-  }
-
-  // content.js tự đóng (thu nhỏ/đóng panel) thì phải báo panel, không nó tưởng khung vẫn mở.
-  function dongDestVaBaoPanel() {
-    if (!destBox) return;
-    goDest();
-    guiToiPanel({ type: "autofill-hcc-dest-closed" });
-  }
-
-  window.addEventListener("resize", datChoDest);
-  window.addEventListener("message", (e) => {
-    const d = e.data;
-    if (!d || typeof d.type !== "string") return;
-    if (d.type === "autofill-hcc-dest-resize" && destFrame && e.source === destFrame.contentWindow) {
-      destCao = Math.max(0, Number(d.height) || 0) + 2;
-      datChoDest();
-      return;
-    }
-    const panelFrame = document.getElementById(IFRAME_ID);
-    if (!panelFrame || e.source !== panelFrame.contentWindow) return;
-    if (d.type === "autofill-hcc-dest-show" && typeof d.channel === "string" && d.channel) hienDest(d.channel);
-    else if (d.type === "autofill-hcc-dest-hide") goDest();
-  });
-
   // Bấm ra ngoài khung xem trước trên TRANG GỐC, hoặc Esc → đóng. Bấm vào panel thì không xử lý ở
   // đây: bấm TRONG iframe panel không tới được document này, còn bấm vào viền/tay kéo panel là
   // đang thao tác với panel chứ không phải "bỏ đi" — popup.js tự quyết phần bên trong.
@@ -983,7 +906,6 @@
     const panel = document.getElementById(PANEL_ID);
     if (requirePanel && !panel) return false;
     if (panel) panel.style.display = "none";
-    dongDestVaBaoPanel(); // panel thu nhỏ thì khung chọn thủ tục bên cạnh cũng không còn chỗ neo
     showBubble();
     setPanelMinimized(true);
     if (reason === "after-fill") {
@@ -1388,7 +1310,6 @@
       const v = kepPanelTrongMan(root, startLeft + e.clientX - startX, startTop + e.clientY - startY);
       root.style.left = v.left + "px";
       root.style.top = v.top + "px";
-      datChoDest(); // khung chọn thủ tục đi theo panel
     });
     document.addEventListener("mouseup", () => { dragging = false; });
   }
