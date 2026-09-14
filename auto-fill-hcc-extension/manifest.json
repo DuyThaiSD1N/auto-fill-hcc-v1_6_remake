@@ -119,6 +119,8 @@
         "popup.js",
         "preview.html",
         "preview.js",
+        "dest-picker.html",
+        "dest-picker.js",
         "popup-locations.js",
         "changelog.js",
         "api/*",

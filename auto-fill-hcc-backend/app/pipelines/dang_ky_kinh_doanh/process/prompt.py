@@ -162,10 +162,14 @@ QUY TẮC TRÍCH XUẤT:
   + Nếu sau "HỘ KINH DOANH" không có tên riêng rõ ràng (bị mờ/cụt), thì tên hộ kinh doanh thường chính là TÊN CHỦ HỘ — trả HoKinhDoanh_Ten bằng họ tên chủ hộ (ChuHo_HoTen) viết IN HOA.
   + Bỏ nhãn "Tên hộ kinh doanh:" và cụm "HỘ KINH DOANH" ở đầu nếu có; chỉ giữ phần tên thật.
 - Địa chỉ object luôn có dạng {quocGia,tinh,xa,diaChi}; diaChi chỉ là số nhà/tổ/xóm/thôn/đường hoặc phần chi tiết còn lại, không lặp tỉnh/xã.
-- ĐỊA CHỈ DẠNG THỬA ĐẤT: nếu diaChi chỉ vị trí thửa đất/bản đồ thì CHUẨN HÓA về đúng khuôn
-  "Thửa đất số <N>, tờ bản đồ số <M>". OCR chữ viết tay hay đọc nhiễu các cụm này ("Phía/Thừa đất",
-  "tổ bản đồ", "bàn đổ"...) → chỉ giữ 2 con số rồi dựng lại theo khuôn chuẩn, bỏ mọi chữ nhiễu.
-  Ví dụ "Phía đất số 5, tổ bản đồ số 11" -> "Thửa đất số 5, tờ bản đồ số 11".
+- ĐỊA CHỈ DẠNG THỬA ĐẤT: diaChi lấy ĐẦY ĐỦ NGUYÊN VĂN như giấy ghi, CHỈ sửa tại chỗ các chữ OCR đọc
+  sai của cụm thửa/bản đồ ("Phía/Thừa" -> "Thửa", "tổ bản đồ"/"bàn đổ" -> "tờ bản đồ", "TBD" -> "TBĐ").
+  TUYỆT ĐỐI KHÔNG rút gọn, KHÔNG viết lại theo khuôn, KHÔNG mở rộng viết tắt ("Thửa 674" giữ nguyên,
+  không đổi thành "Thửa đất số 674"; "TBĐ 15" không đổi thành "tờ bản đồ số 15"), KHÔNG bỏ phần trong
+  ngoặc ("(gốc 671)", "(45g)") và KHÔNG bỏ số nhà/hẻm/đường đi kèm sau đó.
+  Ví dụ "Thừa 674 (gốc 671) TBD 15 (45g), 28/1 Xô Viết Nghệ Tĩnh"
+  -> "Thửa 674 (gốc 671) TBĐ 15 (45g), 28/1 Xô Viết Nghệ Tĩnh";
+  "Phía đất số 5, tổ bản đồ số 11" -> "Thửa đất số 5, tờ bản đồ số 11".
 - CHỌN diaChi CHÍNH XÁC NHẤT khi có nhiều dòng "Số nhà, đường phố/tổ/xóm/ấp/thôn" na ná nhau:
   + Cùng một người, địa chỉ ở "Địa chỉ thường trú" và "Địa chỉ liên lạc" thường là CÙNG MỘT NƠI; hãy chọn bản đọc được ĐẦY ĐỦ và RÕ NGHĨA nhất.
   + Ưu tiên bản có đủ "Tổ <số>"/số nhà; loại bỏ bản bị cụt (kết thúc bằng "Tổ" mà thiếu số) hoặc nhiễu vô nghĩa (vd "S.CN 300 Tổ" là OCR lỗi của "SN 300 Tổ 11").
@@ -202,6 +206,12 @@ QUY TẮC TRÍCH XUẤT:
     hoặc "56.10" thì trả ma="5610".
   + Cột "Mã ngành" trên tờ khai (nhất là viết tay) THƯỜNG ĐỂ TRỐNG → khi đó ma="" và VẪN PHẢI trả ten.
     TUYỆT ĐỐI KHÔNG được bỏ trống NganhNghe_DanhSach chỉ vì thiếu mã ngành.
+  + ten = NGUYÊN VĂN ĐẦY ĐỦ nội dung ô "Tên ngành" của dòng đó, dùng làm mô tả CHI TIẾT ngành nghề trên
+    cổng: giữ mọi phần ghi rõ như "Chi tiết: ...", liệt kê mặt hàng/dịch vụ, phần trong ngoặc, phần
+    "(trừ ...)", kể cả khi ô bị OCR ngắt sang dòng sau (nối lại bằng dấu cách). KHÔNG rút gọn, KHÔNG
+    thay bằng tên chuẩn theo mã VSIC, KHÔNG lấy lẫn mã ngành/STT/dấu X vào ten.
+    Ví dụ ô ghi "Bán lẻ đồ uống / Chi tiết: bán lẻ cà phê, nước giải khát" → ten="Bán lẻ đồ uống. Chi tiết:
+    bán lẻ cà phê, nước giải khát".
   + Bỏ các dòng trống (không có tên ngành). Giữ nguyên thứ tự xuất hiện.
   + Nếu cột "Ngành nghề kinh doanh chính" đánh dấu ở dòng nào thì chinh=true cho dòng đó (và NganhNghe_TenChinh = tên đó).
 - Vốn kinh doanh: trả số tiền bằng chữ số đơn vị đồng. Nếu OCR có cả số và chữ, ưu tiên số ghi ở ô vốn; nếu chỉ có chữ thì chuyển thành số khi chắc chắn.

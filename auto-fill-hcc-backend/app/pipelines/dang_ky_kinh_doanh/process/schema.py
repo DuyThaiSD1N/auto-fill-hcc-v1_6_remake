@@ -37,7 +37,9 @@ FIELDS: list[dict] = [
         "name": "NganhNghe_DanhSach",
         "desc": ("Danh sách ngành nghề, array object {ma,ten,chinh}. LẤY MỌI dòng có tên ngành KỂ CẢ khi cột "
                  "mã ngành trống (ma=\"\", vẫn phải có ten). Nếu có mã ngành thì ma phải là đúng 4 chữ số liền nhau, "
-                 "không có dấu cách/dấu chấm. chinh=true nếu là ngành nghề kinh doanh chính."),
+                 "không có dấu cách/dấu chấm. ten là NGUYÊN VĂN ĐẦY ĐỦ ô tên ngành (giữ cả phần \"Chi tiết: ...\", "
+                 "ngoặc, liệt kê mặt hàng), không rút gọn về tên chuẩn VSIC. "
+                 "chinh=true nếu là ngành nghề kinh doanh chính."),
     },
     {"name": "NganhNghe_MaChinh", "desc": "Mã ngành nghề kinh doanh chính nếu đọc được; đúng 4 chữ số liền nhau, không có dấu cách/dấu chấm."},
     {"name": "NganhNghe_TenChinh", "desc": "Tên ngành nghề kinh doanh chính nếu đọc được."},
