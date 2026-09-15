@@ -7,7 +7,14 @@ chrome.action.onClicked.addListener(async (tab) => {
   } catch (e) {
     // Content script chưa có / mồ côi sau reload extension → inject lại rồi thử lại.
     try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
+      // PHẢI inject ĐỦ bộ file theo đúng thứ tự manifest. Inject mỗi content.js sẽ thiếu
+      // api/config.js (nơi khai SUBMIT_WATCH_KEY) → content.js ném ReferenceError ngay ở top-level,
+      // IIFE dừng giữa chừng nên các const phía sau (sleep, FIELD_NAME_ALIASES...) không kịp khởi
+      // tạo → mọi lần điền sau đó đều lỗi "Cannot access ... before initialization".
+      // Đọc thẳng từ manifest để danh sách không lệch khi thêm/bớt file.
+      const files = chrome.runtime.getManifest()?.content_scripts?.[0]?.js
+        || ["api/config.js", "content/locations.js", "content.js"];
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files });
       await chrome.tabs.sendMessage(tab.id, { action: "togglePanel" });
     } catch (e2) {
       console.warn("[BG] Không mở được panel:", e2?.message || e2);

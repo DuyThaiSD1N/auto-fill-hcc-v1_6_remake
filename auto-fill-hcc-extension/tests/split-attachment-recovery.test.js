@@ -125,15 +125,17 @@ assert.match(content, /const deviceUpload = await openWalletDeviceUpload\(dialog
 assert.match(content, /dialog = deviceUpload\.dialog \|\| dialog/);
 
 // Không được coi modal đóng là đã đính file: phải thấy tên file thật trên dòng hồ sơ.
-assert.match(content, /async function waitForPersistedAttachment\(row, planItem = \{\}, previousName = ""\)/);
+assert.match(content, /async function waitForPersistedAttachment\(row, planItem = \{\}, previousName = "", timeout = 25000\)/);
 assert.match(content, /const attachedName = rowAttachedFileName\(liveRow\)/);
+// Poll bền với cổng ĐƠ: check LẦN CUỐI sau vòng lặp (Date.now vượt hạn ngay trong lúc đơ).
+assert.match(content, /while \(Date\.now\(\) - start < timeout\)[\s\S]{0,200}?\n\s*return probe\(\);/);
 assert.match(content, /code: "wallet-file-not-persisted"/);
 assert.match(content, /markAttachmentResult\(persisted\.row, true\)/);
 // Số lần thử lại của MỘT tệp giờ do vòng round-robin khống chế (tối đa MAX_ROUNDS lượt), thay
 // cho cặp cờ persistedRetryUsed cũ. Vẫn đúng cam kết gốc: không để tệp này bị thử ba lượt liên
 // tiếp rồi vẫn tô xanh — nhưng lần thử sau được giãn ra sau khi đã đính các tệp khác, và hỏng
 // một tệp không còn chặn phần còn lại.
-assert.match(content, /const MAX_ROUNDS = 2/);
+assert.match(content, /const MAX_ROUNDS = 3/);
 assert.match(content, /for \(let round = 1; round <= MAX_ROUNDS && queue\.length && !splitAbort/);
 assert.match(content, /action: "pausePendingAttach"/);
 assert.match(background, /msg\?\.action === "pausePendingAttach"/);

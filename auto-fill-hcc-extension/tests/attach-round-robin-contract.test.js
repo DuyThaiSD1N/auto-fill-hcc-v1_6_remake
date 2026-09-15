@@ -13,8 +13,10 @@ const root = path.join(__dirname, "..");
 const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
 
 test("hỏng một tệp thì HOÃN rồi đi tiếp, không chặn các tệp sau", () => {
-  assert.match(content, /const MAX_ROUNDS = 2/);
+  assert.match(content, /const MAX_ROUNDS = 3/);
   assert.match(content, /for \(let round = 1; round <= MAX_ROUNDS && queue\.length/);
+  // Backoff TĂNG DẦN trước retry: cổng 500/đơ cần thời gian hồi; tệp cuối/duy nhất chờ lâu hơn.
+  assert.match(content, /const backoffMs = \(round - 1\) \* 3000 \+ \(queue\.length <= 1 \? 2500 : 0\)/);
   assert.match(content, /deferred\.push\(\{ item, index: i \}\);\s*\n\s*continue;/);
   assert.match(content, /queue = deferred;/);
 });

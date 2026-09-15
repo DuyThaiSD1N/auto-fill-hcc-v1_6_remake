@@ -1415,10 +1415,6 @@
         businessDefaults: (msg && msg.businessDefaults) || null,
         // Gộp đính kèm: điền xong 8 trang → tự chạy state machine đính kèm (nếu popup gửi kèm).
         attachPayload: (msg && msg.attachPayload) || null,
-        // Còn đứng ở wizard (Chọn loại đăng ký / Xác nhận) thì tự bấm Thành lập mới → Tiếp theo → Bắt đầu
-        // trước khi điền; đã ở trong hồ sơ thì bước này tự đánh dấu xong ngay lượt đầu.
-        createBootstrap: true,
-        bootstrapDone: false,
       };
       sessSet(SS_FILLALL, "1"); // đánh dấu SỚM (đồng bộ) để reload đầu không kịp mount lại panel
       H.setFillAllState(st).then(() => {
@@ -1620,20 +1616,9 @@
       catch (e) { console.warn("[AutoFill] default theo địa bàn:", e); }
     }
     if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
-    const isStandardField = (f) =>
-      String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[");
-    const isLegacyField = (f) => String(f?.comp || "").startsWith("x-");
-    // Một thủ tục có thể trả HAI bộ ô cho hai frame (vd Xác nhận thông tin hộ tịch: trang cổng Form.io
-    // data[...] + eForm hộ tịch x-* trong iframe tokhaidientu). Không tách thì ô data[...] ép frame eForm
-    // sang engine standard và toàn bộ ô x-* bị bỏ. Frame nào chỉ giữ bộ của mình; không còn ô nào thì im
-    // lặng để frame kia trả lời popup.
-    if (fields.some(isStandardField) && fields.some(isLegacyField)) {
-      fields = formKind === "legacy"
-        ? fields.filter((f) => !isStandardField(f))
-        : fields.filter((f) => !isLegacyField(f));
-      if (!fields.length) return;
-    }
-    const forceStandard = fields.some(isStandardField);
+    const forceStandard = fields.some((f) =>
+      String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[")
+    );
     // Form Bắc Ninh dùng engine riêng (khớp ô theo NHÃN, comp bn-*) — ưu tiên trước mọi nhánh khác.
     const filler = formKind === "bacninh"
       ? H.fillFormBacNinh
@@ -1672,6 +1657,12 @@
   if (IS_TOP_FRAME) {
     let submitRules = null;
     let lastSubmitClickAt = 0;
+    // SUBMIT_WATCH_KEY vốn do api/config.js cấp. Nếu content.js bị inject THIẾU file đó, tham chiếu
+    // trần sẽ ném ReferenceError ngay tại top-level → IIFE dừng giữa chừng, các const phía sau
+    // (sleep, FIELD_NAME_ALIASES...) không kịp khởi tạo và MỌI lần điền sau đó đều hỏng. Đọc qua
+    // window + fallback hằng để một file thiếu không giết cả content script.
+    const SUBMIT_WATCH_KEY = (typeof window !== "undefined" && window.SUBMIT_WATCH_KEY)
+      || "autofill_submit_watch";
     const SUBMIT_CLICKABLE = 'button, a, input[type="submit"], input[type="button"]';
 
     const foldSubmitLabel = (s) => String(s || "")
@@ -2816,16 +2807,26 @@
     return "";
   }
 
-  async function waitForPersistedAttachment(row, planItem = {}, previousName = "") {
+  async function waitForPersistedAttachment(row, planItem = {}, previousName = "", timeout = 25000) {
     // Modal đóng chỉ chứng minh thao tác click đã chạy. Cổng React có thể đóng modal nhưng request
     // lưu file thất bại; chỉ tên file xuất hiện thật trên dòng hồ sơ mới là hậu điều kiện thành công.
-    return await waitFor(() => {
+    // Cổng moj hay ĐƠ (block main thread) rất lâu sau "Thêm vào ví & Chọn": nới thời gian (freeze
+    // có thể >12s) VÀ CHECK LẦN CUỐI sau khi hết đơ (Date.now vượt hạn ngay trong lúc đơ; thoát mà
+    // không kiểm lại là bỏ sót đúng lúc dòng vừa gắn xong → báo "chưa ghi nhận" oan).
+    const start = Date.now();
+    const probe = () => {
       const liveRow = liveAttachmentRowForVerification(row, planItem);
       if (!liveRow) return null;
       const attachedName = rowAttachedFileName(liveRow);
       if (!attachedName || attachedName === previousName) return null;
       return { row: liveRow, fileName: attachedName };
-    }, 12000, 150);
+    };
+    while (Date.now() - start < timeout) {
+      const hit = probe();
+      if (hit) return hit;
+      await sleep(150);
+    }
+    return probe(); // lần cuối: dòng có thể vừa cập nhật ngay khi cổng hết đơ
   }
 
   function attachmentTextKey(value) {
@@ -4174,7 +4175,10 @@
       // MỘT tệp hỏng chặn hết các tệp còn lại — lô 4 tệp gặp 500 xen kẽ thì chỉ vào được 2-3.
       // Khoảng cách giữa hai lần thử của cùng một tệp giờ = thời gian đính các tệp khác, giãn
       // hơn nhiều so với sleep cũ.
-      const MAX_ROUNDS = 2;
+      // 3 lượt: File Service của cổng hay trả 500/đơ ở bước "Thêm vào ví" — 2 lượt quá ít cho lỗi
+      // TẠM THỜI. Không thử lại TẠI CHỖ (cổng vừa 500 thì thử ngay cũng 500); round-robin giãn cách
+      // bằng thời gian đính tệp khác + backoff tăng dần để server kịp hồi. Hỏng 1 tệp không chặn tệp khác.
+      const MAX_ROUNDS = 3;
       const lastErrorByIndex = new Map();
       let queue = plannedAttachments.map((item, index) => ({ item: item || {}, index }));
       // Split tab: ví React treo thì click lại tại chỗ không chữa được — dừng cả lượt và trả
@@ -4186,6 +4190,10 @@
         if (round > 1) {
           console.warn(`[AutoFill-AttachPlan] lượt ${round}: thử lại ${queue.length} tệp bị hoãn`);
           await closeDocumentWalletDialogs();
+          // BACKOFF TĂNG DẦN: cổng 500/đơ cần thời gian hồi (thử lại ngay cũng 500). Tệp CUỐI/DUY NHẤT
+          // chờ lâu hơn vì round-robin không có tệp khác chen vào tạo khoảng nghỉ. Lượt sau chờ lâu hơn.
+          const backoffMs = (round - 1) * 3000 + (queue.length <= 1 ? 2500 : 0);
+          await sleep(backoffMs);
         }
         for (const { item, index: i } of queue) {
           const payloadFile = payloadForPlanItem(payloadFiles, item, i);

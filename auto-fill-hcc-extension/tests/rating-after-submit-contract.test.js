@@ -100,6 +100,32 @@ test("nút Gửi đánh giá không được nằm ngoài tầm nhìn", () => {
   assert.match(css, /\.rt-actions\{[^}]*position:sticky[^}]*bottom:0/s);
 });
 
+test("mọi nút của màn đánh giá phải tự đặt nền khi hover", () => {
+  // popup.css có button:hover{background:#0d47a1} dùng chung cho cả panel. Nút nào không tự
+  // đặt nền khi hover sẽ bị tô XANH ĐẬM, cộng với chữ màu tối ở trạng thái thường là không
+  // đọc được chữ gì — đã gặp thật ở chip lý do.
+  // Bỏ comment trước khi khớp: lời giải thích có nhắc "button{width:100%}", dấu } trong đó
+  // cắt ngang phép khớp khối.
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(bare, /button:hover\s*\{\s*background:\s*#0d47a1/, "quy tắc nền chung vẫn còn → vẫn phải đè");
+  for (const name of ["rt-opt", "rt-skip", "rt-send", "rt-change", "rt-chip", "rt-chip\\.sel"]) {
+    const hover = new RegExp(`\\.${name}:hover\\s*\\{([^}]*)\\}`).exec(bare);
+    assert.ok(hover, `.${name}:hover phải được khai báo`);
+    assert.match(hover[1], /background\s*:/, `.${name}:hover phải tự đặt nền, nếu không sẽ bị xanh đậm`);
+  }
+  // Hover phải SÁNG chứ không tối: chip dùng nền xanh rất nhạt, chữ đậm lên cho nổi.
+  assert.match(bare, /\.rt-chip:hover\{[^}]*background:#eaf3ff[^}]*color:#12356f/);
+});
+
+test("chip lý do và nút Chọn lại không được ăn hết bề ngang", () => {
+  // button{width:100%} của panel biến chip thành thanh dài, và nút "Chọn lại" bóp nhãn mức
+  // ("Rất hài lòng") xuống 3 dòng.
+  const bare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.match(bare, /\.rt-chip\{[^}]*width:auto/);
+  assert.match(bare, /\.rt-change\{[^}]*width:auto/);
+  assert.match(bare, /\.rt-change\{[^}]*flex:0 0 auto/);
+});
+
 test("có endpoint gửi phiếu", () => {
   assert.match(endpoints, /dossierRating\(body\)[\s\S]{0,220}?\/api\/v1\/dossiers\/rating/);
 });

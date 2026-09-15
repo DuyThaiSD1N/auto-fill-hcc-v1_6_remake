@@ -3,6 +3,35 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.18.5",
+    date: "14/9/2026",
+    items: [
+      "Sửa lỗi đính kèm giấy tờ vào hồ sơ.",
+    ],
+  },
+  {
+    version: "1.18.4",
+    date: "14/9/2026",
+    items: [
+      "Mở được thủ tục Đăng ký mua, thuê mua, thuê nhà ở xã hội (Bắc Ninh) từ ô Đi đến thủ tục: trợ lý đi qua cổng dịch vụ công quốc gia rồi tự chuyển sang đúng thủ tục trên cổng Bắc Ninh.",
+    ],
+  },
+  {
+    version: "1.18.3",
+    date: "14/9/2026",
+    items: [
+      "Chỉ cần chọn Tỉnh/Thành phố là trợ lý tìm được cơ quan thực hiện; Phường/Xã không còn bắt buộc.",
+      "Thẻ đánh giá sau khi gửi hồ sơ dễ đọc hơn khi rê chuột và khi đã chọn lý do.",
+    ],
+  },
+  {
+    version: "1.18.2",
+    date: "14/9/2026",
+    items: [
+      "Sửa lỗi sau khi trợ lý tự cập nhật, bấm biểu tượng mở lại bảng thì các lần điền hồ sơ báo lỗi.",
+    ],
+  },
+  {
     version: "1.18.1",
     date: "14/9/2026",
     items: [

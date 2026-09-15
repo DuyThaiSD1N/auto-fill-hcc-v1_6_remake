@@ -493,15 +493,6 @@
     if (!arm) {
       return standDown('chưa có cờ "Đi đến thủ tục". Mở panel, chọn thủ tục rồi bấm nút đi tới.');
     }
-    // Cờ CHƯA có stage = popup vừa ghi, cổng quốc gia chưa chọn Tỉnh/Xã. agency-select.js luôn gắn
-    // stage trước khi bấm "Nộp trực tuyến", nên cờ tới được cổng tỉnh chắc chắn đã có stage.
-    // Thiếu chốt này thì bấm "Chuyển thủ tục khác" ngay trên cổng tỉnh: trang cũ nhận onChanged,
-    // thấy đang ở form -> stop() XOÁ cờ mới trước khi tab kịp sang dichvucong.gov.vn.
-    if (!arm.stage) {
-      lastStandDownReason = "";   // không phải lỗi cấu hình -> đừng toast cảnh báo lên trang
-      log("đứng ngoài — cờ mới chưa qua cổng quốc gia");
-      return null;
-    }
     const flow = arm.provincePortalFlow;
     if (!flow) {
       return standDown(
