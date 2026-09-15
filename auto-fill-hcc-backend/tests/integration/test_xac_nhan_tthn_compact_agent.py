@@ -359,3 +359,56 @@ def test_registry_uses_xac_nhan_tthn_compact_agent_mode():
     assert proc["roles"] == []
     assert "useRequestMode" not in proc
     assert "Mặc định người yêu cầu là bản thân" in proc["uploadHint"]
+
+
+# --- Loại giấy tờ theo số: 9 chữ số = CMND, 12 chữ số = CCCD ---
+
+def _tthn_out(**kv):
+    return {f["name"]: f["value"] for f in mapper.enrich([{"name": k, "value": v} for k, v in kv.items()])}
+
+
+def test_so_9_chu_so_thi_chon_chung_minh_nhan_dan():
+    out = _tthn_out(
+        ToKhai_HoTen="TRẦN VĂN NAM",
+        ToKhai_SoDinhDanh="245123456",
+        ToKhaiYeuCau_HoTen="TRẦN VĂN NAM",
+        ToKhaiYeuCau_SoDinhDanh="245123456",
+        ToKhaiYeuCau_QuanHe="Bản thân",
+    )
+    assert out["LoaiGiayToDinhDanhC1"] == "Chứng minh nhân dân"
+    assert out["LoaiGiayToDinhDanhC"] == "Chứng minh nhân dân"
+
+
+def test_so_12_chu_so_van_la_can_cuoc():
+    out = _tthn_out(
+        ToKhai_HoTen="NGUYỄN THỊ HOÀ",
+        ToKhai_SoDinhDanh="036301012326",
+        ToKhai_NoiCapGiayTo="Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    )
+    assert out["LoaiGiayToDinhDanhC1"] == "Thẻ căn cước công dân"
+
+
+# --- LLM bỏ sót Cccd_HoTen: đọc lại tên in trên đúng thẻ theo số định danh ---
+
+_OCR_CCCD_NHUNG = [
+    {"name": "CCCD mặt sau.jpg", "text": "IDVNM1930052419036193005241<<4\nNGUYEN<<THI<BICH<NHUNG"},
+    {"name": "CCCD mặt trước.jpg", "text": (
+        "CĂN CƯỚC CÔNG DÂN\nSố / No.: 036193005241\nHọ và tên / Full name:\n"
+        "NGUYỄN THỊ BÍCH NHUNG\nNgày sinh / Date of birth: 26/10/1993"
+    )},
+    {"name": "Đăng ký kết hôn.jpg", "text": "Họ, chữ đệm, tên chồng: VŨ HỮU NINH"},
+]
+
+
+def test_llm_bo_sot_ten_thi_doc_lai_ten_tren_the():
+    from app.pipelines.xac_nhan_tthn.process.runner import _compact_field_fallback
+
+    fields = _compact_field_fallback({"Cccd_SoDinhDanh": "036193005241"}, _OCR_CCCD_NHUNG)
+    assert fields["Cccd_HoTen"] == "NGUYỄN THỊ BÍCH NHUNG"
+
+
+def test_so_khong_khop_the_thi_khong_muon_ten():
+    from app.pipelines.xac_nhan_tthn.process.runner import _compact_field_fallback
+
+    fields = _compact_field_fallback({"Cccd_SoDinhDanh": "001099000111"}, _OCR_CCCD_NHUNG)
+    assert "Cccd_HoTen" not in fields

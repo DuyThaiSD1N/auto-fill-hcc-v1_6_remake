@@ -72,6 +72,9 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    khác hoặc bỏ trống. Riêng CHA và MẸ, khối <cha>/<me> có dòng "Nguồn giấy tờ tùy thân" thì Số CCCD/CMND,
    Ngày cấp, Nơi cấp ghi trong khối đó là giá trị BẮT BUỘC của Father_*/Mother_IdNumber, _IdIssueDate,
    _IdIssuePlace. Họ tên thì KHÔNG theo quy tắc này (xem mục 5).
+   NGÀY SINH và GIỚI TÍNH cũng là thông tin IN trên thẻ: chính người đó (con, cha, mẹ) có CCCD/CMND
+   trong hồ sơ thì lấy NGÀY SINH + GIỚI TÍNH theo CCCD, kể cả khi tờ khai ghi khác (chữ viết tay hay bị
+   OCR đọc sai). Tờ khai/giấy khác chỉ bù khi thẻ không có hoặc không đọc được.
 7. HỒ SƠ KHÔNG CÓ TỜ KHAI thì mới dùng khối <phan_vai_khi_khong_co_to_khai> bên dưới.
 </uu_tien_nguon>
 

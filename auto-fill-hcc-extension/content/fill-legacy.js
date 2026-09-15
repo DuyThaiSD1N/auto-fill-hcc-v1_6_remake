@@ -33,6 +33,8 @@ function removeResultName(list, name) {
 
 const LEGACY_REPAIRABLE_COMPS = new Set([
   "raw",
+  // Ô ghi tay "Khác" và địa chỉ Tỉnh/Phường: eForm có thể dựng lại khối và xóa sau khi đã điền.
+  "x-select-area",
   "x-input",
   "x-input-number",
   "x-date",
@@ -207,6 +209,39 @@ function findLegacyRadioTarget(container, value) {
   }) || null;
 }
 
+// Trạng thái THẬT của một x-select-area sau khi điền. eForm hộ tịch có lúc dựng lại cả khối một nhịp
+// SAU khi dropdown đi trước đổi giá trị (vd Dân tộc → "Khác" dựng lại khối bên nữ): ô ghi tay "Khác"
+// và Tỉnh/Phường vừa điền bị xóa trắng (req_8b71d6a7265b). Phải đọc lại được để pass sửa lỗi điền bù.
+// Chỉ xét hai dạng đã biết cấu trúc: chuỗi ghi tay và địa chỉ {tinh, xa, diaChi}; dạng khác (bản án ly
+// hôn, khoảng thời gian...) coi như đã đạt để không điền lại lung tung.
+function legacySelectAreaState(container, usedName, field) {
+  if (isPlainSelectAreaValue(field.value)) {
+    const input = selectAreaPlainTextInput(container, usedName);
+    return {
+      supported: true,
+      filled: !!input && legacyScalarMatches(input.value, field.value),
+      container,
+      target: input?.parentElement || container,
+    };
+  }
+  const data = normalizeAreaValue(field.value);
+  if (!data || typeof data !== "object" || hasDivorceDecisionAreaValue(data) || (!data.tinh && !data.xa)) {
+    return { supported: false, filled: true };
+  }
+  const byRole = {};
+  for (const widget of container.querySelectorAll('[id^="custom-select-"]')) {
+    const role = areaRoleOf(widget);
+    if (role && !byRole[role]) byRole[role] = widget;
+  }
+  const picked = (role) => byRole[role]?.querySelector(".input-field-select")?.textContent || "";
+  let filled = true;
+  if (data.tinh && byRole.tinh) filled = filled && legacyChoiceMatches(picked("tinh"), data.tinh);
+  if (data.xa && byRole.xa) filled = filled && legacyChoiceMatches(picked("xa"), data.xa);
+  const addr = container.querySelector("input.input-field");
+  if (data.diaChi && addr) filled = filled && legacyScalarMatches(addr.value, data.diaChi);
+  return { supported: true, filled, container, target: container };
+}
+
 function legacyFieldState(field) {
   if (!field || !LEGACY_REPAIRABLE_COMPS.has(field.comp)) return { supported: false, filled: true };
   const names = fieldCandidates(field);
@@ -251,6 +286,9 @@ function legacyFieldState(field) {
         legacyScalarMatches(year?.value, full[3])
       : !!yearOnly && legacyScalarMatches(year?.value, raw);
     return { supported: true, filled, container, target: (day || month || year)?.parentElement || container };
+  }
+  if (field.comp === "x-select-area") {
+    return legacySelectAreaState(container, found.usedName, field);
   }
   if (field.comp === "x-radio") {
     const target = findLegacyRadioTarget(container, field.value);
@@ -355,7 +393,8 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
     // Không retry field đã thất bại ngay từ đầu (vd dropdown không có option): guard chỉ chữa
     // race condition của field đã từng điền thành công rồi bị web-component xóa.
     // Ô "Khác" render động: cho phép retry cả khi pass đầu chưa tìm thấy ô nhập.
-    .filter((field) => !eligibleNames || eligibleNames.has(field.name) || hasLegacyOtherTextDriver(field))
+    // Ô ghi tay "Khác" của dropdown (otherOf) cũng vậy: ô chỉ hiện sau khi dropdown đổi nên lượt đầu hay hụt.
+    .filter((field) => !eligibleNames || eligibleNames.has(field.name) || hasLegacyOtherTextDriver(field) || !!field.otherOf)
     .filter((field) => !legacyFieldState(field).filled)
     // Dropdown/radio có thể render lại cả khối; sửa chúng trước rồi mới chốt input/date.
     .sort((left, right) => Number(LEGACY_DRIVER_COMPS.has(right.comp)) - Number(LEGACY_DRIVER_COMPS.has(left.comp)));
@@ -1048,12 +1087,26 @@ function selectAreaPlainTextInput(container, name) {
   );
 }
 
-function fillPlainTextSelectArea(container, f) {
+// Ô nhập của vùng "Khác" (vd NhapDanTocBenNuKhac) được eForm để display:none cho tới khi dropdown đi
+// trước đổi sang "Khác". Ghi vào lúc ô còn ẩn thì eForm bật hiện ô là XÓA giá trị → ô trống viền đỏ
+// (req_8b71d6a7265b). Chờ ô hiện rồi mới ghi, và ghi lại nếu vừa ghi xong đã bị xóa.
+async function fillPlainTextSelectArea(container, f) {
   const text = String(f.value ?? "").trim();
   if (!text) return false;
-  const input = selectAreaPlainTextInput(container, f.name);
-  if (!input) return false;
-  setNativeValue(input, text, { typing: true, commit: true });
+  const liveInput = () => selectAreaPlainTextInput(container, f.name);
+  if (!liveInput()) return false;
+  await waitFor(() => {
+    const el = liveInput();
+    return el && isVisible(el);
+  }, 2500, 100);
+  let input = liveInput();
+  for (let attempt = 0; attempt < 3 && input; attempt++) {
+    setNativeValue(input, text, { typing: true, commit: true });
+    await sleep(250);
+    input = liveInput();
+    if (input && String(input.value || "").trim() === text) break;
+  }
+  if (!input || String(input.value || "").trim() !== text) return false;
   const display = input.parentElement?.querySelector(".hidden");
   if (display) display.textContent = text;
   markFilled(input.parentElement || input);

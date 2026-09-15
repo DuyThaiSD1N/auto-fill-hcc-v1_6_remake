@@ -58,6 +58,18 @@ def _normalize_commune_label(value) -> str:
     return text
 
 
+def _id_doc_type_for(number, issuer) -> str:
+    """Loại giấy tờ tùy thân theo SỐ: 9 chữ số là CMND cũ, CCCD/Căn cước luôn 12 chữ số.
+
+    Số 12 chữ số (hoặc chưa rõ) mới phân loại tiếp theo nơi cấp (Bộ Công an → Thẻ Căn cước,
+    Cục Cảnh sát → Thẻ căn cước công dân). Nhãn "Chứng minh nhân dân" giống option của eForm hộ tịch
+    đang dùng ở trích lục.
+    """
+    if len(_digits(number)) == 9:
+        return "Chứng minh nhân dân"
+    return id_doc_type("Thẻ căn cước công dân", issuer or "")
+
+
 def _is_self_request(options: dict | None, cccd_name, cccd_id) -> bool:
     """Người yêu cầu có TRÙNG người trên CCCD upload không?
 
@@ -580,7 +592,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("SoDinhDanhC", req_id)
                 if req_id:
                     add("LoaiGiayToDinhDanhC",
-                        id_doc_type("Thẻ căn cước công dân", req_noi_cap or ""))
+                        _id_doc_type_for(req_id, req_noi_cap))
                 add("SoGiayToTuyThanC", req_id)
                 add("NgayCapDDC", req_ngay_cap)
                 add("NoiCapDDC", req_noi_cap)
@@ -593,7 +605,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("HoVaTenC", upper_person_name(values.get("Cccd_HoTen")))
                 add("NgaySinhC", values.get("Cccd_NgaySinh"))
                 add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
-                add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", issuer))
+                add("LoaiGiayToDinhDanhC", _id_doc_type_for(values.get("Cccd_SoDinhDanh"), issuer))
                 add("SoGiayToTuyThanC", values.get("Cccd_SoDinhDanh"))
                 add("NgayCapDDC", values.get("Cccd_NgayCap"))
                 add("NoiCapDDC", issuer)
@@ -682,7 +694,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("HoVaTenC", upper_person_name(cccd_ten))
                 add("NgaySinhC", cccd_ns)
                 add("SoDinhDanhC", cccd_sdd)
-                add("LoaiGiayToDinhDanhC", id_doc_type("Thẻ căn cước công dân", noi_cap or issuer))
+                add("LoaiGiayToDinhDanhC", _id_doc_type_for(cccd_sdd, noi_cap or issuer))
                 add("SoGiayToTuyThanC", cccd_sdd)
                 add("NgayCapDDC", ngay_cap)
                 add("NoiCapDDC", noi_cap)
@@ -758,7 +770,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             subject_id = card.get("SoDinhDanh") or values.get("PoA_SubjectIdNumber")
             subject_issuer = card.get("NoiCap") or poa_issuer
             add("SoDinhDanhC1", subject_id)
-            add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", subject_issuer))
+            add("LoaiGiayToDinhDanhC1", _id_doc_type_for(subject_id, subject_issuer))
             add("SoGiayToTuyThanC1", subject_id)
             add("NgayCapDDC1", card.get("NgayCap") or values.get("PoA_SubjectIdDate"))
             add("NoiCapDDC1", subject_issuer)
@@ -805,7 +817,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             ngay_cap = values.get("ToKhai_NgayCapGiayTo") or values.get("Cccd_NgayCap")
             noi_cap = values.get("ToKhai_NoiCapGiayTo") or issuer
             add("SoDinhDanhC1", so_dinh_danh)
-            add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", noi_cap))
+            add("LoaiGiayToDinhDanhC1", _id_doc_type_for(so_dinh_danh, noi_cap))
             add("SoGiayToTuyThanC1", so_dinh_danh)
             add("NgayCapDDC1", ngay_cap)
             add("NoiCapDDC1", noi_cap)

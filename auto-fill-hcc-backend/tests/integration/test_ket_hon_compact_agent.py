@@ -278,3 +278,20 @@ def test_registry_uses_ket_hon_compact_agent_mode():
     assert proc["hasAttachmentStep"] is True
     assert proc["roles"] == []
     assert "tự phân biệt theo giới tính" in proc["uploadHint"]
+
+
+def test_api_response_giu_khoa_phu_cua_field_cho_extension():
+    """req_9445a75c7ade: FieldOut từng lọc sạch khoá lạ → extension mất alias "DanTocBenNuKhac",
+    không tìm thấy ô ghi tay dân tộc "Khác"."""
+    from app.process.schemas import ProcessResp
+
+    resp = ProcessResp(
+        fields=[{
+            "name": "DanTocKhacBenNu", "comp": "x-select-area", "value": "Cill",
+            "otherOf": "DanTocBenNu", "aliases": ["DanTocBenNuKhac"],
+        }],
+        extracted={}, stats={},
+    ).model_dump()
+    field = resp["fields"][0]
+    assert field["aliases"] == ["DanTocBenNuKhac"]
+    assert field["otherOf"] == "DanTocBenNu"

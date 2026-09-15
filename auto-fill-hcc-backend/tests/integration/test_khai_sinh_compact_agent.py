@@ -468,3 +468,9 @@ async def test_khai_sinh_compact_agent_rejects_direct_ui_keys(monkeypatch):
 def test_registry_uses_compact_birth_pipelines():
     assert get_pipeline("khai-sinh-dang-ky") is agent.run
     assert get_pipeline("khai-sinh-dang-ky-lai") is dang_ky_lai_process.run
+
+
+def test_prompt_dang_ky_lai_khai_sinh_uu_tien_ngay_sinh_gioi_tinh_theo_cccd():
+    from app.pipelines.khai_sinh_dang_ky_lai.process.prompt import EXTRA_RULES as dang_ky_lai
+
+    assert "NGÀY SINH + GIỚI TÍNH theo CCCD" in dang_ky_lai
