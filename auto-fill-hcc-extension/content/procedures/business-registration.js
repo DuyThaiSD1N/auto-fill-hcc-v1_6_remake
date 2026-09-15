@@ -582,6 +582,69 @@
     }
   }
 
+  // Thành lập mới HKD: cán bộ bấm quét khi còn đứng ở wizard Registration.aspx → trợ lý tự tích
+  // "Thành lập mới hộ kinh doanh" → Tiếp theo → (xác nhận) Bắt đầu, rồi điền 8 trang như thường.
+  // State fill-all đã persist nên sống qua từng postback; mỗi lượt tải trang chỉ làm đúng một bước.
+  const CREATE_BOOTSTRAP_MAX_TRIES = 6;
+
+  async function stepCreateBootstrap(st) {
+    const detected = detectBusinessChangeStage();
+    H.setRunProgressText(`Đăng ký thành lập HKD — đang mở hồ sơ\n(đừng thao tác tới khi xong)`);
+
+    // Wizard phải xét TRƯỚC: breadcrumb "Đăng ký Hộ kinh doanh" của Registration.aspx trùng từ với
+    // nhãn trang "Tên hộ kinh doanh" nên detectBusinessPageKey() có thể nhận nhầm là đã vào hồ sơ.
+    const onWizard = ["select-registration", "search-business", "select-change", "confirm"].includes(detected.stage);
+    if (!onWizard) {
+      const inDossier = /\/DW_DOCUMENTEdit\.aspx$/i.test(String(location.pathname || ""))
+        || !!detectBusinessPageKey().pageKey;
+      if (!inDossier) {
+        return void failChangeWorkflow("Trang hiện tại không thuộc luồng Đăng ký thành lập HKD. Hãy mở trang Đăng ký hộ kinh doanh rồi chạy lại.");
+      }
+      st.bootstrapDone = true;
+      await setFillAllState(st);
+      return void stepFillAll();
+    }
+
+    st.bootstrapTries = (st.bootstrapTries || 0) + 1;
+    if (st.bootstrapTries > CREATE_BOOTSTRAP_MAX_TRIES) {
+      return void failChangeWorkflow("Đã thử mở hồ sơ thành lập mới nhiều lần nhưng cổng chưa chuyển bước — mời thao tác tay.");
+    }
+    ensureConfirmOverride();
+
+    if (detected.stage === "select-registration") {
+      const radio = document.querySelector('input[name="ctl00$C$myWizard$CtlType"][value="NEW"]')
+        || document.getElementById("ctl00_C_myWizard_CtlType_0");
+      const next = document.getElementById("ctl00_C_myWizard_StepNavigationTemplateContainerID_StepNextButton");
+      if (!radio || !next) {
+        return void failChangeWorkflow("Không tìm thấy lựa chọn Thành lập mới hộ kinh doanh hoặc nút Tiếp theo.");
+      }
+      selectNativeRadio(radio);
+      await setFillAllState(st);
+      clickBusinessWizardButton(next);
+      return;
+    }
+
+    if (detected.stage === "confirm") {
+      const begin = document.getElementById("ctl00_C_myWizard_FinishNavigationTemplateContainerID_FinishButton");
+      if (!begin) return void failChangeWorkflow("Không tìm thấy nút Bắt đầu ở bước xác nhận.");
+      // Chỉ bấm Bắt đầu khi màn xác nhận đúng là THÀNH LẬP MỚI — bấm nhầm là tạo hồ sơ thay đổi/cấp lại.
+      const confirmedType = foldBusinessPageText(
+        document.getElementById("ctl00_C_myWizard_InfoChnType")?.textContent
+        || begin.closest("table")?.closest("td")?.textContent
+        || document.body?.innerText || ""
+      );
+      if (!confirmedType.includes("thanh lap moi")) {
+        return void failChangeWorkflow("Bước xác nhận không phải Thành lập mới hộ kinh doanh; không bấm Bắt đầu để tránh mở nhầm hồ sơ.");
+      }
+      await setFillAllState(st);
+      clickBusinessWizardButton(begin);
+      return;
+    }
+
+    // search-business / select-change = cán bộ đang ở nhánh thay đổi/cấp lại.
+    return void failChangeWorkflow("Cổng đang ở nhánh Đăng ký thay đổi/Cấp lại, không phải Thành lập mới. Hãy quay lại màn Chọn loại đăng ký.");
+  }
+
   function reissueCheckboxLabel(node) {
     if (!node) return "";
     const explicit = node.id ? document.querySelector(`label[for="${node.id}"]`) : null;
@@ -2468,6 +2531,9 @@
     if (!st || !Array.isArray(st.order)) return;
     if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution", "suspension"].includes(st.workflow)) && !st.bootstrapDone) {
       return void stepChangeBootstrap(st);
+    }
+    if (st.createBootstrap && !st.bootstrapDone) {
+      return void stepCreateBootstrap(st);
     }
     // Đang trong nhịp "mở trang chủ hộ đọc họ tên rồi quay lại": xử lý trước mọi thứ khác, vì trang
     // đang đứng cố tình KHÁC trang mục tiêu nên nhánh điều hướng chung ở dưới sẽ kéo đi ngay.

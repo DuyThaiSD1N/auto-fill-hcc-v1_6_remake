@@ -147,6 +147,8 @@ function legacyRadioMarkTarget(container, box) {
 // hoặc ngay cạnh option đang được tích của ô tích tương ứng.
 const LEGACY_OTHER_TEXT_DRIVERS = {
   quanhekhac: "quanhevoinguoiduocxacminh",
+  // Xác nhận thông tin hộ tịch: ô ghi quan hệ ("Con đẻ") cạnh option "Khác" dùng chung name nycQuanHe.
+  nycquanhekhac: "nycQuanHe",
 };
 
 function isLegacyTextInput(el) {

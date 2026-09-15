@@ -4402,6 +4402,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "khai-tu-dang-ky-lai" ||
       cfg.key === "thay-doi-cai-chinh-ho-tich" ||
       cfg.key === "trich-luc-ks" ||
+      cfg.key === "xac-nhan-thong-tin-ho-tich" ||
       cfg.key === "xet-tuyen-vien-chuc" ||
       cfg.key === "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" ||
       cfg.key === "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham" ||
@@ -5141,18 +5142,39 @@ function locationIsComplete() {
   return !!(currentLocation.provinceSlug && currentLocation.ward);
 }
 
+/**
+ * Tỉnh mà thủ tục ĐẶC THÙ của địa phương bắt buộc phải chọn, đọc từ tiền tố nhãn trong
+ * ke_khai_links.json ("Quảng Ninh - Tách thửa…"). Thủ tục chung trả null.
+ */
+function procedureProvinceFor(link) {
+  const match = /^(.+?)\s+-\s+/.exec(String(link?.label || "").normalize("NFC"));
+  if (!match) return null;
+  return locationStore()?.findProvince?.(match[1]) || null;
+}
+
+/**
+ * Địa bàn trợ lý sẽ chọn cho thủ tục này. Thủ tục riêng của một tỉnh (vd Quảng Ninh) LUÔN chọn
+ * đúng tỉnh đó dù địa chỉ đang lưu là tỉnh khác — chọn tỉnh khác thì cổng không ra thẻ/biểu mẫu
+ * của tỉnh. Xã chỉ giữ khi địa chỉ đang lưu thuộc chính tỉnh đó.
+ */
+function agencyLocationFor(link) {
+  const forced = procedureProvinceFor(link);
+  if (!forced || forced.slug === currentLocation.provinceSlug) return currentLocation;
+  return { province: forced.text, provinceSlug: forced.slug, ward: "" };
+}
+
 /** Đủ địa chỉ để "lên đạn" cho MỘT thủ tục cụ thể.
  *
  * Chỉ cần Tỉnh/Thành phố: cổng cho tìm cơ quan khi mới chọn tỉnh, Phường/Xã là tuỳ chọn. Có xã thì
  * trợ lý chọn luôn xã, không có thì chỉ chọn tỉnh rồi bấm tìm.
  */
-function locationIsCompleteFor(_link) {
-  return !!currentLocation.provinceSlug;
+function locationIsCompleteFor(link) {
+  return !!agencyLocationFor(link).provinceSlug;
 }
 
 /** Chưa chọn xã (hoặc thủ tục cấp tỉnh) -> trợ lý chỉ chọn ô Tỉnh/Thành phố trên cổng. */
 function agencyProvinceOnly(link) {
-  return !!(link && link.provinceOnlyAgency) || !currentLocation.ward;
+  return !!(link && link.provinceOnlyAgency) || !agencyLocationFor(link).ward;
 }
 
 /**
@@ -5166,15 +5188,16 @@ function selectSoFor(link) {
   if (!link) return false;
   if (link.selectSo) return true;
   const provinces = Array.isArray(link.selectSoProvinces) ? link.selectSoProvinces : [];
-  return provinces.includes(currentLocation.provinceSlug);
+  return provinces.includes(agencyLocationFor(link).provinceSlug);
 }
 
 /** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
 function agencyAreaLabel(link) {
+  const area = agencyLocationFor(link);
   // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
-  if (selectSoFor(link)) return `Sở của ${currentLocation.province}`;
-  if (agencyProvinceOnly(link)) return currentLocation.province;
-  return `${currentLocation.ward}, ${currentLocation.province}`;
+  if (selectSoFor(link)) return `Sở của ${area.province}`;
+  if (agencyProvinceOnly(link)) return area.province;
+  return `${area.ward}, ${area.province}`;
 }
 
 function showLocationSummary() {
@@ -5364,10 +5387,11 @@ async function openKeKhaiPage() {
   if (!link) return false;
   await onKeKhaiProcedureChosen();
   if (link.needsAgencySelect && locationIsCompleteFor(link)) {
+    const area = agencyLocationFor(link);
     await chrome.storage.local.set({
       [AGENCY_ARM_KEY]: {
-        province: currentLocation.province,
-        ward: currentLocation.ward,
+        province: area.province,
+        ward: area.ward,
         // Thủ tục cấp tỉnh: cổng chỉ render ô Tỉnh/Thành phố -> content script bỏ hẳn bước xã.
         // Chưa chọn xã cũng đi theo nhánh này: chỉ chọn tỉnh rồi bấm tìm cơ quan.
         provinceOnly: agencyProvinceOnly(link),
@@ -5560,6 +5584,7 @@ const destPickers = document.getElementById("destPickers");
 const destGoBtn = document.getElementById("destGoBtn");
 const destBackBtn = document.getElementById("destBackBtn");
 const switchProcedureBtn = document.getElementById("switchProcedureBtn");
+const switchProcSection = document.getElementById("switchProcSection");
 const procedureSection = document.getElementById("procedureSection");
 const docsSection = document.getElementById("docsSection");
 
@@ -5570,8 +5595,9 @@ let destManualOpen = false;
 
 /** Không có danh mục link kê khai (backend lỗi) thì màn "Đi đến thủ tục" vô dụng -> giấu luôn nút. */
 function refreshSwitchProcBtn() {
-  if (!switchProcedureBtn) return;
-  switchProcedureBtn.hidden = keKhaiSection?.dataset.unavailable === "1";
+  if (!switchProcSection) return;
+  // Đang ở màn "Đi đến thủ tục" thì đã có ô chọn thủ tục đầy đủ -> giấu khối này như "Loại thủ tục".
+  switchProcSection.hidden = keKhaiSection?.dataset.unavailable === "1" || !destSection?.hidden;
 }
 
 function applyDestOpen(open) {
@@ -5599,13 +5625,74 @@ async function refreshDestVisibility() {
   applyDestOpen(atPortalHome || destManualOpen);
 }
 
-/** "Chuyển thủ tục khác": mở màn chọn Tỉnh/Xã + Thủ tục ngay giữa lúc đang ở trang thủ tục. */
+// ===== "Chuyển thủ tục khác": picker thả xuống ngay dưới nút =====
+// Chỉ chọn THỦ TỤC — Tỉnh/Xã dùng luôn địa chỉ đang lưu. Chọn xong là mở trang thủ tục đó ngay.
+// Thủ tục cần chọn cơ quan mà chưa có Tỉnh thì mới mở màn "Đi đến thủ tục" đầy đủ để chọn địa chỉ.
+const switchProcDropdown = document.getElementById("switchProcDropdown");
+const switchProcSearch = document.getElementById("switchProcSearch");
+const switchProcList = document.getElementById("switchProcList");
+
+function renderSwitchProcList(query) {
+  const needle = normalizeProcedureSearch(query);
+  // Mã TTHC gõ tay hay rơi rụng/thừa dấu chấm -> so theo phần số, cần ≥4 chữ số mới coi là tra mã.
+  const digits = needle.replace(/\D+/g, "");
+  const codeNeedle = digits.length >= 4 ? digits : "";
+  switchProcList.innerHTML = "";
+  const matched = keKhaiLinks().filter((link) => {
+    if (!needle) return true;
+    if (normalizeProcedureSearch(link.label).includes(needle)) return true;
+    return !!codeNeedle && String(link.code || "").replace(/\D+/g, "").includes(codeNeedle);
+  });
+  if (!matched.length) {
+    const empty = document.createElement("div");
+    empty.className = "combo-empty";
+    empty.textContent = "Không tìm thấy";
+    switchProcList.appendChild(empty);
+    return;
+  }
+  for (const link of matched) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "combo-option" + (link.key === selectedProcedureKey ? " active" : "");
+    item.setAttribute("role", "option");
+    item.textContent = link.label;
+    if (link.code) item.title = `${link.code} — ${link.label}`;
+    item.addEventListener("click", () => void onSwitchProcedurePicked(link.key));
+    switchProcList.appendChild(item);
+  }
+}
+
+function setSwitchProcOpen(open) {
+  if (!switchProcDropdown || !switchProcedureBtn) return;
+  switchProcDropdown.hidden = !open;
+  switchProcedureBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) {
+    switchProcSearch.value = "";
+    renderSwitchProcList("");
+    switchProcSearch.focus();
+  }
+  postPanelHeight();
+}
+
 function onSwitchProcedureClick() {
-  destManualOpen = true;
-  // Vào màn với đúng thủ tục đang chọn ở "Loại thủ tục" cho khỏi phải dò lại từ đầu.
-  syncKeKhaiSelection(selectedProcedureKey);
-  syncDestCombos();
-  applyDestOpen(true);
+  setSwitchProcOpen(switchProcDropdown?.hidden !== false);
+}
+
+async function onSwitchProcedurePicked(key) {
+  setSwitchProcOpen(false);
+  keKhaiSelect.value = key;
+  updateKeKhaiUI();
+  const link = selectedKeKhaiLink();
+  // Thiếu Tỉnh cho thủ tục phải chọn cơ quan -> mở màn đầy đủ để chọn địa chỉ rồi bấm mở trang.
+  if (link?.needsAgencySelect && !locationIsCompleteFor(link)) {
+    destManualOpen = true;
+    syncDestCombos();
+    applyDestOpen(true);
+    return;
+  }
+  await onDestGoClick();
+  // Mở trang lỗi thì thông báo nằm ở khối đang ẩn -> đưa ra dòng trạng thái chính.
+  if (keKhaiStatus.classList.contains("err")) setStatus(keKhaiStatus.textContent, "err");
 }
 
 /** "Quay lại": bỏ cờ mở tay rồi để trạng thái trang quyết định như cũ. */
@@ -5658,6 +5745,14 @@ async function initDestSection() {
   destGoBtn.addEventListener("click", () => void onDestGoClick());
   destBackBtn?.addEventListener("click", onDestBackClick);
   switchProcedureBtn?.addEventListener("click", onSwitchProcedureClick);
+  switchProcSearch?.addEventListener("input", () => renderSwitchProcList(switchProcSearch.value));
+  switchProcSearch?.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { setSwitchProcOpen(false); switchProcedureBtn.focus(); }
+  });
+  document.addEventListener("click", (e) => {
+    if (switchProcDropdown && !switchProcDropdown.hidden
+      && !switchProcDropdown.contains(e.target) && !switchProcedureBtn.contains(e.target)) setSwitchProcOpen(false);
+  });
   // Ẩn trước, chờ biết đang ở trang nào rồi mới quyết -> không chớp khối sai màn lúc mở panel.
   applyDestOpen(false);
   await refreshDestVisibility();

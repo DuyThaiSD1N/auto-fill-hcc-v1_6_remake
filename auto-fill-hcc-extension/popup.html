@@ -67,10 +67,23 @@
             <div id="procedureResults" class="procedure-results" role="listbox" aria-label="Danh sách thủ tục"></div>
           </div>
         </div>
-        <!-- Đổi thủ tục khi ĐANG ở trang thủ tục: mở lại màn "Đi đến thủ tục" (giống trang chủ cổng).
-             Chỉ hiện khi danh mục link kê khai nạp được (popup.js: refreshSwitchProcBtn). -->
-        <button id="switchProcedureBtn" type="button" class="switch-proc-btn" hidden
-          title="Chọn tỉnh/xã và thủ tục khác rồi mở trang thủ tục đó">🔄 Chuyển thủ tục khác</button>
+      </section>
+
+      <!-- Đổi thủ tục khi ĐANG ở trang thủ tục: picker thả xuống chỉ chọn thủ tục, chọn là mở trang.
+           Khối riêng dưới "Loại thủ tục"; chỉ hiện khi danh mục link kê khai nạp được
+           (popup.js: refreshSwitchProcBtn). -->
+      <section class="block switch-proc-section" id="switchProcSection" hidden>
+        <div class="block-title switch-proc-title">Tìm kiếm và chuyển thủ tục</div>
+        <div class="switch-proc-picker">
+          <button id="switchProcedureBtn" type="button" class="switch-proc-btn" aria-haspopup="listbox"
+            aria-expanded="false" title="Chọn thủ tục khác — mở ngay trang thủ tục đó">🔍 Tìm thủ tục khác để chuyển</button>
+          <!-- Chọn xong là mở trang ngay, Tỉnh/Xã lấy theo địa chỉ đang lưu (popup.js: onSwitchProcedurePicked). -->
+          <div id="switchProcDropdown" class="combo-dropdown" hidden>
+            <input id="switchProcSearch" type="text" class="combo-search" autocomplete="off"
+              placeholder="Tìm theo tên hoặc mã (vd 2.000815)...">
+            <div id="switchProcList" class="combo-list" role="listbox" aria-label="Chọn thủ tục để chuyển"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ===== Đi đến thủ tục: TỰ hiện khi đang ở trang chủ/tra cứu DVC, vào trang thủ tục thì ẩn ===== -->

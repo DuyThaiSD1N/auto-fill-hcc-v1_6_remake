@@ -1415,6 +1415,10 @@
         businessDefaults: (msg && msg.businessDefaults) || null,
         // Gộp đính kèm: điền xong 8 trang → tự chạy state machine đính kèm (nếu popup gửi kèm).
         attachPayload: (msg && msg.attachPayload) || null,
+        // Còn đứng ở wizard (Chọn loại đăng ký / Xác nhận) thì tự bấm Thành lập mới → Tiếp theo → Bắt đầu
+        // trước khi điền; đã ở trong hồ sơ thì bước này tự đánh dấu xong ngay lượt đầu.
+        createBootstrap: true,
+        bootstrapDone: false,
       };
       sessSet(SS_FILLALL, "1"); // đánh dấu SỚM (đồng bộ) để reload đầu không kịp mount lại panel
       H.setFillAllState(st).then(() => {
@@ -1616,9 +1620,20 @@
       catch (e) { console.warn("[AutoFill] default theo địa bàn:", e); }
     }
     if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
-    const forceStandard = fields.some((f) =>
-      String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[")
-    );
+    const isStandardField = (f) =>
+      String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[");
+    const isLegacyField = (f) => String(f?.comp || "").startsWith("x-");
+    // Một thủ tục có thể trả HAI bộ ô cho hai frame (vd Xác nhận thông tin hộ tịch: trang cổng Form.io
+    // data[...] + eForm hộ tịch x-* trong iframe tokhaidientu). Không tách thì ô data[...] ép frame eForm
+    // sang engine standard và toàn bộ ô x-* bị bỏ. Frame nào chỉ giữ bộ của mình; không còn ô nào thì im
+    // lặng để frame kia trả lời popup.
+    if (fields.some(isStandardField) && fields.some(isLegacyField)) {
+      fields = formKind === "legacy"
+        ? fields.filter((f) => !isStandardField(f))
+        : fields.filter((f) => !isLegacyField(f));
+      if (!fields.length) return;
+    }
+    const forceStandard = fields.some(isStandardField);
     // Form Bắc Ninh dùng engine riêng (khớp ô theo NHÃN, comp bn-*) — ưu tiên trước mọi nhánh khác.
     const filler = formKind === "bacninh"
       ? H.fillFormBacNinh
