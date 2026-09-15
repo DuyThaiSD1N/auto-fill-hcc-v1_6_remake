@@ -1070,20 +1070,30 @@ input, select, textarea { font-family: inherit; }
 .dest-actions { display: flex; flex-direction: column; }
 .dest-actions .secondary-btn { margin-top: 0; }
 
-/* Nút phụ dưới combo "Loại thủ tục": nhỏ, dạng link — không được hút mắt hơn nút hành động chính. */
+/* Khối "Tìm kiếm và chuyển thủ tục": tách riêng dưới "Loại thủ tục", tô nền + chữ nghiêng cho nổi. */
+.switch-proc-section {
+  background: #fff8e1;
+  border-color: #ffca28;
+  border-left: 4px solid #f9a825;
+}
+.switch-proc-title {
+  font-style: italic;
+  color: #e65100;
+}
 .switch-proc-btn {
   width: 100%;
-  margin: 6px 0 0;
-  padding: 5px 8px;
-  background: #f4f8fe;
-  border: 1px dashed #bcd7f5;
+  margin: 0;
+  padding: 6px 8px;
+  background: #fff;
+  border: 1px dashed #f9a825;
   border-radius: 4px;
-  color: #1565c0;
-  font-size: 11.5px;
+  color: #e65100;
+  font-size: 12px;
+  font-style: italic;
   font-weight: 600;
   cursor: pointer;
 }
-.switch-proc-btn:hover { background: #e3f2fd; border-color: #1565c0; }
+.switch-proc-btn:hover { background: #ffecb3; border-color: #e65100; }
 .switch-proc-picker { position: relative; }  /* mốc cho dropdown chọn thủ tục */
 
 /* Quay lại màn Giấy tờ: nút phụ, để nhạt hơn "Mở trang thủ tục" cho khỏi bấm nhầm. */

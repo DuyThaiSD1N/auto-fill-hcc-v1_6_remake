@@ -5142,18 +5142,39 @@ function locationIsComplete() {
   return !!(currentLocation.provinceSlug && currentLocation.ward);
 }
 
+/**
+ * Tỉnh mà thủ tục ĐẶC THÙ của địa phương bắt buộc phải chọn, đọc từ tiền tố nhãn trong
+ * ke_khai_links.json ("Quảng Ninh - Tách thửa…"). Thủ tục chung trả null.
+ */
+function procedureProvinceFor(link) {
+  const match = /^(.+?)\s+-\s+/.exec(String(link?.label || "").normalize("NFC"));
+  if (!match) return null;
+  return locationStore()?.findProvince?.(match[1]) || null;
+}
+
+/**
+ * Địa bàn trợ lý sẽ chọn cho thủ tục này. Thủ tục riêng của một tỉnh (vd Quảng Ninh) LUÔN chọn
+ * đúng tỉnh đó dù địa chỉ đang lưu là tỉnh khác — chọn tỉnh khác thì cổng không ra thẻ/biểu mẫu
+ * của tỉnh. Xã chỉ giữ khi địa chỉ đang lưu thuộc chính tỉnh đó.
+ */
+function agencyLocationFor(link) {
+  const forced = procedureProvinceFor(link);
+  if (!forced || forced.slug === currentLocation.provinceSlug) return currentLocation;
+  return { province: forced.text, provinceSlug: forced.slug, ward: "" };
+}
+
 /** Đủ địa chỉ để "lên đạn" cho MỘT thủ tục cụ thể.
  *
  * Chỉ cần Tỉnh/Thành phố: cổng cho tìm cơ quan khi mới chọn tỉnh, Phường/Xã là tuỳ chọn. Có xã thì
  * trợ lý chọn luôn xã, không có thì chỉ chọn tỉnh rồi bấm tìm.
  */
-function locationIsCompleteFor(_link) {
-  return !!currentLocation.provinceSlug;
+function locationIsCompleteFor(link) {
+  return !!agencyLocationFor(link).provinceSlug;
 }
 
 /** Chưa chọn xã (hoặc thủ tục cấp tỉnh) -> trợ lý chỉ chọn ô Tỉnh/Thành phố trên cổng. */
 function agencyProvinceOnly(link) {
-  return !!(link && link.provinceOnlyAgency) || !currentLocation.ward;
+  return !!(link && link.provinceOnlyAgency) || !agencyLocationFor(link).ward;
 }
 
 /**
@@ -5167,15 +5188,16 @@ function selectSoFor(link) {
   if (!link) return false;
   if (link.selectSo) return true;
   const provinces = Array.isArray(link.selectSoProvinces) ? link.selectSoProvinces : [];
-  return provinces.includes(currentLocation.provinceSlug);
+  return provinces.includes(agencyLocationFor(link).provinceSlug);
 }
 
 /** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
 function agencyAreaLabel(link) {
+  const area = agencyLocationFor(link);
   // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
-  if (selectSoFor(link)) return `Sở của ${currentLocation.province}`;
-  if (agencyProvinceOnly(link)) return currentLocation.province;
-  return `${currentLocation.ward}, ${currentLocation.province}`;
+  if (selectSoFor(link)) return `Sở của ${area.province}`;
+  if (agencyProvinceOnly(link)) return area.province;
+  return `${area.ward}, ${area.province}`;
 }
 
 function showLocationSummary() {
@@ -5362,10 +5384,11 @@ async function openKeKhaiPage() {
   if (!link) return false;
   await onKeKhaiProcedureChosen();
   if (link.needsAgencySelect && locationIsCompleteFor(link)) {
+    const area = agencyLocationFor(link);
     await chrome.storage.local.set({
       [AGENCY_ARM_KEY]: {
-        province: currentLocation.province,
-        ward: currentLocation.ward,
+        province: area.province,
+        ward: area.ward,
         // Thủ tục cấp tỉnh: cổng chỉ render ô Tỉnh/Thành phố -> content script bỏ hẳn bước xã.
         // Chưa chọn xã cũng đi theo nhánh này: chỉ chọn tỉnh rồi bấm tìm cơ quan.
         provinceOnly: agencyProvinceOnly(link),
@@ -5553,6 +5576,7 @@ const destPickers = document.getElementById("destPickers");
 const destGoBtn = document.getElementById("destGoBtn");
 const destBackBtn = document.getElementById("destBackBtn");
 const switchProcedureBtn = document.getElementById("switchProcedureBtn");
+const switchProcSection = document.getElementById("switchProcSection");
 const procedureSection = document.getElementById("procedureSection");
 const docsSection = document.getElementById("docsSection");
 
@@ -5563,8 +5587,9 @@ let destManualOpen = false;
 
 /** Không có danh mục link kê khai (backend lỗi) thì màn "Đi đến thủ tục" vô dụng -> giấu luôn nút. */
 function refreshSwitchProcBtn() {
-  if (!switchProcedureBtn) return;
-  switchProcedureBtn.hidden = keKhaiSection?.dataset.unavailable === "1";
+  if (!switchProcSection) return;
+  // Đang ở màn "Đi đến thủ tục" thì đã có ô chọn thủ tục đầy đủ -> giấu khối này như "Loại thủ tục".
+  switchProcSection.hidden = keKhaiSection?.dataset.unavailable === "1" || !destSection?.hidden;
 }
 
 function applyDestOpen(open) {

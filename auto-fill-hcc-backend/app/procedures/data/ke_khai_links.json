@@ -1076,6 +1076,14 @@
       "autoConfirm": true
     },
     {
+      "key": "ho-tro-chi-phi-khuyen-khich-hoa-tang",
+      "code": "1.012749",
+      "label": "Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019da601-350c-755b-9393-18754910591d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-phep-nhap-khau-di-vat-co-vat",
       "code": "1.013456",
       "label": "Thủ tục cấp phép nhập khẩu di vật, cổ vật không nhằm mục đích kinh doanh cấp tỉnh",
