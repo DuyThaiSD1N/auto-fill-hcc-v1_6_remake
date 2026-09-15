@@ -226,6 +226,15 @@ def enrich(fields: list[dict]) -> list[dict]:
     has_father = bool(values.get("ThongTinBo_SoDinhDanh") or values.get("ThongTinBo_HoTen"))
     has_mother = bool(values.get("ThongTinMe_SoDinhDanh") or values.get("ThongTinMe_HoTen"))
 
+    # Ngoại lệ Lâm Đồng dùng ở HAI nơi: dân tộc con (trong khối has_child) và quê quán con
+    # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
+    # lẫn tờ khai — has_child = False — chạy tới phần quê quán là nổ UnboundLocalError
+    # "cannot access local variable 'is_lam_dong'", công dân chỉ thấy "Xử lý giấy tờ chưa xong".
+    ns_raw = values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh")
+    ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
+    birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
+    is_lam_dong = "lam dong" in birth_province
+
     if has_child:
         add_name("", child_name)
         # Thông tin con nói chung ưu tiên TỜ KHAI. RIÊNG NGÀY SINH ưu tiên GIẤY CHỨNG SINH:
@@ -234,12 +243,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("NgaySinh", values.get("Gcs_NgaySinhCon") or values.get("Tk_NgaySinhCon"))
         add("GioiTinh", values.get("Tk_GioiTinhCon") or values.get("Gcs_GioiTinhCon"))
         
-        # Xác định nơi sinh + kiểm tra ngoại lệ Lâm Đồng (dùng chung cho dân tộc và quê quán)
-        ns_raw = values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh")
-        ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
-        birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
-        is_lam_dong = "lam dong" in birth_province
-        
+        # ns_area / is_lam_dong đã tính TRƯỚC khối này (xem chú thích ở trên).
         # Dân tộc con: ưu tiên tờ khai, rồi giấy chứng sinh; nếu không có thì SUY LUẬN theo cha/mẹ (bôi vàng):
         #  1) Tờ khai ghi rõ dân tộc con → dùng (chính xác nhất).
         #  2) Giấy chứng sinh ghi rõ dân tộc con → dùng.
@@ -340,7 +344,8 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("QqMaQuocGia", "Việt Nam")
         add("QqDiaChi", tk_que_quan)
     else:
-        # Sử dụng is_lam_dong đã tính ở trên (khi xử lý dân tộc con)
+        # is_lam_dong tính ở đầu hàm — NGOÀI khối has_child, vì nhánh này chạy cả khi hồ sơ
+        # chưa có thông tin con.
         if is_lam_dong and has_mother:
             # Lâm Đồng lấy đúng QUÊ QUÁN MẸ. Không có field này thì để trống; nơi cư trú là một
             # khái niệm khác và không được dùng làm fallback cho quê quán của con.

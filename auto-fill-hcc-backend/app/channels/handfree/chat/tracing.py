@@ -108,6 +108,7 @@ async def record_process(
             ocr_text=result.get("ocr_text", ""), llm_output=result.get("llm_output"),
             fields_count=len(result.get("fields", [])), status="done",
             stats=stats, created_at=created_at, experience="handfree",
+            dossier_id=conv.get("_id"),  # 1 conversation = 1 hồ sơ (khóa chung 2 kênh)
         )
         return request_id
     except Exception as e:  # noqa: BLE001 — ghi vết là phụ, không chặn luồng điền
@@ -146,6 +147,7 @@ async def record_attach(conv: dict, procedure_key: str, proc: dict, files: list[
                         "attachments": plan, "extracted": result.get("extracted")},
             fields_count=len(plan), status="done", stats=stats, split=split,
             created_at=created_at, experience="handfree",
+            dossier_id=conv.get("_id"),  # 1 conversation = 1 hồ sơ (khóa chung 2 kênh)
         )
         return request_id
     except Exception as e:  # noqa: BLE001
@@ -166,6 +168,7 @@ async def record_error(conv: dict, procedure_key: str, kind: str, error: str) ->
             ocr_provider=_ocr_label(), ocr_text="", llm_output=None,
             fields_count=0, status="error", error_code=error_code,
             created_at=datetime.now(timezone.utc), experience="handfree",
+            dossier_id=conv.get("_id"),  # 1 conversation = 1 hồ sơ (khóa chung 2 kênh)
         )
     except Exception as e:  # noqa: BLE001
         logger.warning("[tracing] ghi trace lỗi-của-lỗi (%s): %s", conv.get("_id"), e)

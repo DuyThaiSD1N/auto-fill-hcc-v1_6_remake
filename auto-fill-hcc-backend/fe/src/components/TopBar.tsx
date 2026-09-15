@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { User } from "../types";
 import Logo from "./Logo";
 
-export type View = "traces" | "stats" | "reports" | "accounts";
+export type View = "traces" | "dossiers" | "stats" | "reports" | "accounts";
 
 interface Props {
   user: User;
@@ -16,12 +16,13 @@ interface NavItem {
   key: View;
   label: string;
   description: string;
-  icon: "journal" | "chart" | "report" | "users";
+  icon: "journal" | "folder" | "chart" | "report" | "users";
   adminOnly?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { key: "traces", label: "Nhật ký xử lý", description: "Tra cứu từng lượt", icon: "journal" },
+  { key: "dossiers", label: "Hồ sơ", description: "Vòng đời từng hồ sơ", icon: "folder", adminOnly: true },
   { key: "stats", label: "Thống kê hồ sơ", description: "Theo dõi số liệu", icon: "chart" },
   { key: "reports", label: "Xuất báo cáo", description: "Kết xuất Excel", icon: "report", adminOnly: true },
   { key: "accounts", label: "Tài khoản", description: "Quản lý truy cập", icon: "users", adminOnly: true },
@@ -40,6 +41,7 @@ function Icon({ name, size = 19 }: { name: NavItem["icon"] | "menu" | "close" | 
     "aria-hidden": true,
   };
   if (name === "journal") return <svg {...common}><path d="M5 4.5h12.5A1.5 1.5 0 0 1 19 6v13H6.5A2.5 2.5 0 0 1 4 16.5V5.5a1 1 0 0 1 1-1Z" /><path d="M4 16.5A2.5 2.5 0 0 1 6.5 14H19M8 8h7M8 11h5" /></svg>;
+  if (name === "folder") return <svg {...common}><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 17.5v-10Z" /><path d="M8 13h7" /></svg>;
   if (name === "chart") return <svg {...common}><path d="M4 19.5V10m6 9.5V4.5m6 15v-6m4 6H2" /></svg>;
   if (name === "report") return <svg {...common}><path d="M6 3.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" /><path d="M14 3.5v4h4M8 12h7M8 15.5h7" /></svg>;
   if (name === "users") return <svg {...common}><path d="M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20M9.5 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 11a3 3 0 0 0 0-5.8M21 20v-1.5a4 4 0 0 0-3-3.85" /></svg>;
@@ -109,7 +111,7 @@ export default function TopBar({ user, view, onNavigate, onLogout }: Props) {
         <div className="sidebar-brand">
           <Logo size={36} />
           <div className="sidebar-brand-copy">
-            <strong>Trợ lý hồ sơ</strong>
+            <strong>Trợ lý nhân dân</strong>
             <span>Quản trị hồ sơ</span>
           </div>
           <button

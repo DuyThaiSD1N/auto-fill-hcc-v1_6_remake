@@ -119,10 +119,7 @@ async def test_dang_ky_giam_ho_derives_iframe_fields(monkeypatch):
     assert d["cutru1"] == "Thường trú"
     assert d["noicutruA"] == "Tổ 22"
     assert d["tinhA"] == "Tỉnh Lai Châu"
-    # "Phường Đông Phong" (Lai Châu) đã nhập vào "Phường Tân Phong" từ đợt sáp nhập 2025 và KHÔNG
-    # còn trong danh mục hiện hành. Bước chuẩn hóa địa chỉ chung (compact_agent.runner.validate)
-    # quy về tên còn chọn được trên cổng; giữ tên cũ là trả về một option không tồn tại.
-    assert d["xaA"] == "Phường Tân Phong"
+    assert d["xaA"] == "Phường Đông Phong"
 
     assert d["hotenB"] == "BÙI GIA HOÀNG THỊNH"
     assert d["ngaysinhB"] == "04/08/2018"

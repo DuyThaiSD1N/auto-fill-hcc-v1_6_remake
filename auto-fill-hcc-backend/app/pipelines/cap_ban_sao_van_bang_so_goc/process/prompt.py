@@ -38,4 +38,12 @@ ChuHoSo_TenToChuc + ChuHoSo_MaSoThue. Đa số là Cá nhân.
 ⚠ DẤU CHẤM CHỖ TRỐNG: ô để trống hiện dưới dạng dòng dấu chấm ("......") — BỎ QUA, để field RỖNG, không
 lấy chuỗi dấu chấm làm giá trị.
 
+PHIẾU ĐỀ NGHỊ BM04 (Phieu_*) — chép GẦN NGUYÊN VĂN theo phiếu, KHÔNG bịa; phiếu không ghi thì bỏ trống:
+- Phieu_KinhGui = cơ quan sau 'Kính gửi'. Phieu_TenVanBang = cụm sau 'Đã được cấp (tên văn bằng, chứng
+  chỉ)' (vd 'BẰNG THPT'). Phieu_CoQuanCapVanBang = cơ quan sau 'Do … cấp'. Phieu_SoHieu = 'Số hiệu/số vào sổ gốc'.
+- Phieu_SoLuongBanSao = số ở 'Đề nghị cấp … bản sao'. Phieu_LyDo = dòng 'lý do cấp lại/chỉnh sửa'.
+- Phieu_ThongTinKhac = nguyên dòng 'Thông tin khác' (thường 'tên trường, năm tốt nghiệp').
+- Phieu_LienHe = nguyên cụm 'Số điện thoại, E-mail, địa chỉ liên hệ'. Phieu_NgayLap = ngày ở dòng cuối
+  '…, ngày … tháng … năm …'. Phieu_NguoiViet = họ tên người đề nghị ký cuối phiếu.
+
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa thông tin; giấy tờ không có thì bỏ field."""

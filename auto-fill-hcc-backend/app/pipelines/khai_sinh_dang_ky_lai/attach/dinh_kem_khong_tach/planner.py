@@ -86,12 +86,6 @@ _FACE_BACK_MARKERS = (
 _CCCD_FRONT_TITLES = ("citizen identity", "identity card")
 _CCCD_BACK_TITLES = ("idvnm", "dac diem nhan dang", "personal identification")
 _CCCD_DOCUMENT_NAMES = ("can cuoc cong dan", "the can cuoc", "cccd")
-_DEATH_DOCUMENT_MARKERS = (
-    "trich luc khai tu",
-    "giay bao tu",
-    "giay chung tu",
-    "giay khai tu",
-)
 _CCCD_VIETNAMESE_HEADER_RE = re.compile(
     r"(?im)^\s*(?:CĂN CƯỚC CÔNG DÂN|THẺ CĂN CƯỚC|CĂN CƯỚC)\s*$"
 )
@@ -102,7 +96,8 @@ def _truncate_text(text: str, limit: int = 1800) -> str:
     return value if len(value) <= limit else value[:limit] + "..."
 
 
-def _canonical_type(raw_type: Any, item: dict | None = None) -> str:
+def _canonical_type(raw_type: Any) -> str:
+    """Chỉ chuẩn hoá TỪ ĐỒNG NGHĨA type do LLM trả về đúng enum cho phép; KHÔNG dò OCR để đổi phân loại."""
     raw = re.sub(r"[\s-]+", "_", str(raw_type or "").strip().lower())
     aliases = {
         "cccd": "identity",
@@ -114,11 +109,6 @@ def _canonical_type(raw_type: Any, item: dict | None = None) -> str:
         "education_document": "personal_supporting_document",
     }
     raw = aliases.get(raw, raw)
-    if raw == "personal_supporting_document" and item:
-        evidence = _fold(f"{item.get('title', '')} {item.get('documentName', '')}")
-        identity_names = (*_CCCD_DOCUMENT_NAMES, "chung minh nhan dan", "ho chieu")
-        if any(marker in evidence for marker in identity_names):
-            raw = "identity"
     return raw if raw in _ALLOWED_LLM_TYPES else "other"
 
 
@@ -130,7 +120,7 @@ def _types_from_llm_item(item: dict) -> list[str]:
         raw_types = [item.get("type")]
     types: list[str] = []
     for raw_type in raw_types:
-        doc_type = _canonical_type(raw_type, item)
+        doc_type = _canonical_type(raw_type)
         if doc_type not in types:
             types.append(doc_type)
     return types or ["other"]
@@ -289,20 +279,6 @@ def _looks_like_cccd(text: str, document_name: str = "") -> bool:
         or has_back
         or any(marker in folded_name for marker in _CCCD_DOCUMENT_NAMES)
     )
-
-
-def _death_document_name(text: str, document_name: str = "") -> str:
-    """Sự kiện chết không được đi vào dòng giấy tờ thay thế Giấy khai sinh."""
-    evidence = f"{_fold(document_name)} {_fold(text)[:1200]}"
-    if not any(marker in evidence for marker in _DEATH_DOCUMENT_MARKERS):
-        return ""
-    if "trich luc khai tu" in evidence:
-        return "Trích lục khai tử"
-    if "giay bao tu" in evidence:
-        return "Giấy báo tử"
-    if "giay chung tu" in evidence or "giay khai tu" in evidence:
-        return "Giấy chứng tử"
-    return ""
 
 
 def _face_rank(text: str) -> int:
@@ -467,24 +443,9 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
         llm_name = classification["documentName"]
         types = list(classification["types"])
         page_count = page_count_by_file[file_index]
-        ocr_death_name = _death_document_name(text)
-        death_name = ocr_death_name or _death_document_name("", llm_name)
-        if ocr_death_name and page_count == 1:
-            # Tiêu đề khai tử rõ trên file một trang là bằng chứng tất định, không giữ type bị LLM gán lệch.
-            types = ["other"]
-            llm_name = ocr_death_name
-        elif death_name:
-            types = [doc_type for doc_type in types if doc_type != "birth_certificate_copy"]
-            if "other" not in types:
-                types.append("other")
+        # LLM-first: KHÔNG có lưới keyword nào đè lên types/documentName mà LLM đã phân loại.
+        # is_cccd chỉ để GHÉP hai mặt của cùng một thẻ CCCD thành một đính kèm (không đổi phân loại).
         is_cccd = _looks_like_cccd(text, llm_name)
-        if is_cccd and page_count == 1 and set(types) <= {"identity", "other"}:
-            # File CCCD độc lập không trở thành hỗn hợp chỉ vì LLM trả thêm other.
-            types = ["identity"]
-            if not any(marker in _fold(llm_name) for marker in _CCCD_DOCUMENT_NAMES):
-                llm_name = _IDENTITY_LABEL
-        elif is_cccd and "identity" not in types:
-            types.insert(0, "identity")
         if not types:
             types = ["other"]
         document_name = _aggregate_document_name(

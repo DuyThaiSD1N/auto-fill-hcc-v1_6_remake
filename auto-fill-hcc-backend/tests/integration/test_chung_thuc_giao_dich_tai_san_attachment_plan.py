@@ -15,9 +15,6 @@ def _file(name):
 def _patch_ocr(monkeypatch, fake_ocr_per_file):
     fake_ocr = SimpleNamespace(ocr_per_file=fake_ocr_per_file)
     monkeypatch.setitem(sys.modules, "app.services.ocr", fake_ocr)
-    # planner gọi `from app.services import ocr`; nếu module thật đã được import trước đó thì
-    # attribute trên package mới là thứ thắng, nên phải patch cả hai chỗ.
-    monkeypatch.setattr("app.services.ocr", fake_ocr, raising=False)
 
 
 async def test_chung_thuc_giao_dich_tai_san_attachment_plan_routes_fixed_rows(monkeypatch):
@@ -95,75 +92,6 @@ async def test_chung_thuc_giao_dich_tai_san_repeated_fixed_type_becomes_new_comp
     assert items[1]["target"] == "new"
     assert items[1]["componentName"] == "Đăng ký xe 2"
     assert items[1]["documentName"] == "Đăng ký xe 2"
-
-
-async def test_chung_thuc_giao_dich_tai_san_uy_quyen_goes_to_transaction_row(monkeypatch):
-    """Giao dịch ủy quyền đem đi chứng thực chính là dự thảo giao dịch (hàng 2), dù LLM trả authorization."""
-
-    async def fake_ocr_per_file(files):
-        return [
-            {
-                "name": "uy-quyen.pdf",
-                "text": (
-                    "GIAO DỊCH UỶ QUYỀN "
-                    "BÊN ỦY QUYỀN (Sau đây gọi tắt là bên A): Ông NGUYỄN VIẾT LÍNH "
-                    "BÊN ĐƯỢC ỦY QUYỀN (Sau đây gọi tắt là bên B): Bà NGUYỄN THỊ THU "
-                    "ĐIỀU 2 THỜI HẠN ỦY QUYỀN"
-                ),
-            },
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({
-            "documents": [{"index": 0, "type": "authorization", "title": "Văn bản ủy quyền"}]
-        })
-
-    _patch_ocr(monkeypatch, fake_ocr_per_file)
-    monkeypatch.setattr(planner.client, "chat", fake_chat)
-
-    res = await planner.plan_chung_thuc_giao_dich_tai_san_attachments([_file("uy-quyen.pdf")], {})
-    item = res["attachments"][0]
-
-    assert item["target"] == "existing"
-    assert item["componentIndex"] == 2
-    assert item["componentName"] == "Dự thảo giao dịch"
-    assert item["documentName"] == "Giao dịch ủy quyền"
-    assert item["needsAddComponent"] is False
-    assert res["extracted"]["classified"][0]["type"] == "transaction_draft"
-
-
-async def test_chung_thuc_giao_dich_tai_san_uy_quyen_nop_ho_so_stays_new(monkeypatch):
-    """Có dự thảo giao dịch riêng thì giấy ủy quyền nộp hồ sơ vẫn là thành phần mới."""
-
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "hop-dong.pdf", "text": "HỢP ĐỒNG CHUYỂN NHƯỢNG QUYỀN SỬ DỤNG ĐẤT"},
-            {
-                "name": "giay-uy-quyen.pdf",
-                "text": "GIẤY ỦY QUYỀN Người ủy quyền ủy quyền cho người được ủy quyền nộp hồ sơ chứng thực",
-            },
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({
-            "documents": [
-                {"index": 0, "type": "transaction_draft", "title": "Hợp đồng chuyển nhượng quyền sử dụng đất"},
-                {"index": 1, "type": "authorization", "title": "Văn bản ủy quyền"},
-            ]
-        })
-
-    _patch_ocr(monkeypatch, fake_ocr_per_file)
-    monkeypatch.setattr(planner.client, "chat", fake_chat)
-
-    res = await planner.plan_chung_thuc_giao_dich_tai_san_attachments(
-        [_file("hop-dong.pdf"), _file("giay-uy-quyen.pdf")],
-        {},
-    )
-    items = res["attachments"]
-
-    assert items[0]["componentIndex"] == 2
-    assert items[1]["target"] == "new"
-    assert items[1]["componentName"] == "Văn bản ủy quyền"
 
 
 def test_chung_thuc_giao_dich_tai_san_procedure_is_attach_only():

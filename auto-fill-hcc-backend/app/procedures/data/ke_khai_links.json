@@ -673,7 +673,9 @@
       "label": "Cấp giấy phép chặt hạ, dịch chuyển cây xanh",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
       "needsAgencySelect": true,
-      "selectSoProvinces": ["danang"],
+      "selectSoProvinces": [
+        "danang"
+      ],
       "autoConfirm": false
     },
     {
@@ -1420,7 +1422,9 @@
       "label": "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư xây dựng bằng vốn đầu tư công",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88ac-71f9-b970-b83cf0372841",
       "needsAgencySelect": true,
-      "selectSoProvinces": ["danang"],
+      "selectSoProvinces": [
+        "danang"
+      ],
       "autoConfirm": true
     },
     {

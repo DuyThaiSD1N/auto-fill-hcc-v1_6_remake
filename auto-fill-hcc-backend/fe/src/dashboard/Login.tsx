@@ -26,7 +26,7 @@ export default function Login({ onLogin }: { onLogin: (u: WardUser) => void }) {
     <div className="login-scene">
       <div className="login-panel">
         <Seal size={72} bottom="THỐNG KÊ HỒ SƠ" />
-        <p className="login-eyebrow">Trợ lý người dân toàn trình</p>
+        <p className="login-eyebrow">Trợ lý nhân dân toàn trình</p>
         <h1 className="login-title">Báo cáo hồ sơ hành chính công</h1>
         <p className="login-sub">Đăng nhập bằng tài khoản phường/xã hoặc tài khoản Tỉnh để xem số liệu hồ sơ.</p>
 

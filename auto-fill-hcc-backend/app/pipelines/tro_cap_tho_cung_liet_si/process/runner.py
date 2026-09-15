@@ -178,7 +178,51 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
     return "\n\n" + "\n".join(parts)
 
 
+async def _owner_only_context(documents: list[dict], options: dict) -> str:
+    """Mode owner_as_submitter: KHÔNG dùng mỏ neo UI (gắn missing_ui_anchor để prompt tự bỏ NguoiNop);
+    vẫn khoanh mục 1 Mẫu 18 + BÊN ĐƯỢC ỦY QUYỀN cho ChuHoSo_* và Mẫu 18."""
+    _ = options
+    proposal_scopes: list[tuple[int, str]] = []
+    authorization_scopes: list[tuple[int, str]] = []
+    for index, document in enumerate(documents, start=1):
+        text = str(document.get("text") or "")
+        if proposal := _proposal_section(text):
+            proposal_scopes.append((index, proposal))
+        for authorization in _authorization_sections(text):
+            authorization_scopes.append((index, authorization))
+
+    parts = [
+        '<requester_context result="missing_ui_anchor">\n'
+        "Chế độ điền người nộp = chủ hồ sơ: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích "
+        "ChuHoSo_* và Mẫu 18.\n"
+        "</requester_context>"
+    ]
+    if proposal_scopes:
+        parts.append("\n".join(
+            (
+                f'<owner_proposal_ocr document="{index}">\n'
+                "Đây là mục 1 Mẫu 18, nguồn xác định ChuHoSo_* và dữ liệu nghiệp vụ.\n"
+                f"{scope}\n"
+                "</owner_proposal_ocr>"
+            )
+            for index, scope in proposal_scopes
+        ))
+    if authorization_scopes:
+        parts.append("\n".join(
+            (
+                f'<owner_authorization_ocr document="{index}">\n'
+                "Đây chỉ là BÊN ĐƯỢC ỦY QUYỀN; dùng bổ sung ChuHoSo_* khi tương ứng người đề nghị.\n"
+                f"{scope}\n"
+                "</owner_authorization_ocr>"
+            )
+            for index, scope in authorization_scopes
+        ))
+    return "\n\n" + "\n".join(parts)
+
+
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -187,7 +231,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_requester_context,
+        context_builder=_owner_only_context if owner_mode else _requester_context,
     )
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     res["fields"] = mapped_fields

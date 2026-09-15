@@ -6,6 +6,7 @@ sở hữu bản sao pipeline nghiệp vụ.
 """
 from app.channels.handfree.owner_info import run as tu_phap_owner_info
 from app.channels.handfree.flow_profiles import resolve_flow_profile
+from app.procedures import portal_submit as core_portal_submit
 from app.procedures import registry as core_registry
 
 PROCEDURES: list[dict] = [
@@ -65,6 +66,9 @@ PROCEDURES: list[dict] = [
             {"name": "CqdkttIsDkks", "comp": "checkbox", "value": True},
             {"name": "DkttTruongHop", "comp": "select",
              "value": "Con về với cha, mẹ; cha, mẹ là chủ sở hữu chỗ ở hợp pháp"},
+            # Mặc định tích "Cấp thẻ căn cước" cho trẻ — tick xong cổng TỰ điền khối con
+            # (cơ quan cấp mặc định Xã/Phường, địa chỉ + tên cơ quan tự suy) nên chỉ cần tick.
+            {"name": "IsCapTheCanCuoc", "comp": "checkbox", "value": True},
         ],
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
@@ -229,6 +233,10 @@ PROCEDURES: list[dict] = [
             {"key": "ho_tich", "name": "Bản sao Giấy chứng nhận kết hôn cũ", "icon": "📜", "sides": 1},
             {"key": "to_khai", "name": "Tờ khai đăng ký lại kết hôn (nếu có)", "icon": "📄", "sides": 1,
              "optional": True},
+            # Catch-all: bản cam đoan/ly hôn/giấy tờ liên quan không có ô riêng → xếp vào đây
+            # thay vì "chưa nhận ra loại" (route_to_slot ưu tiên slot "khac" khi không khớp).
+            {"key": "khac", "name": "Các giấy tờ khác (bản cam đoan, giấy tờ liên quan…)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
         ],
         "mode": "agent",
         "review": False,  # TẠM TẮT rà soát bbox (đỡ 1 lượt OCR token — pipeline nhanh hơn); bật lại khi cần
@@ -273,40 +281,6 @@ PROCEDURES: list[dict] = [
             "2. Các giấy tờ khác: CCCD của cha/mẹ, bản sao/trích lục giấy khai sinh cũ, "
             "giấy tờ thay thế (học bạ, hộ chiếu…) — công dân đưa hết vào mục Giấy tờ khác.\n"
             "Hệ thống tự nhận dạng người được đăng ký, cha, mẹ và số/ngày/nơi đăng ký khai sinh trước đây."
-        ),
-    },
-    {
-        "key": "khai-sinh-da-co-ho-so",
-        "detect": {"urlIncludes": ["maThuTuc=1.004772"]},
-        "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
-        "shortLabel": "Khai sinh cho người đã có giấy tờ",
-        "subtitle": "Chưa từng đăng ký khai sinh nhưng đã có CCCD, học bạ, bằng cấp…",
-        "icon": "🗂️",
-        "flowProfile": "tu-phap",
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/khai tử/TTHN/trích lục.
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-fc3d805e70c8",
-        # Ba ô: tờ khai + bản cam đoan + giấy tờ cá nhân (catch-all, repeatable). Pipeline agent tự
-        # suy vai người được khai sinh/cha/mẹ từ toàn bộ giấy tờ (reason.py), không cần tách ô CCCD.
-        "requiredDocs": [
-            {"key": "to_khai", "name": "Tờ khai đăng ký khai sinh", "icon": "📄", "sides": 1,
-             "optional": True},
-            {"key": "cam_doan", "name": "Bản cam đoan về việc chưa được đăng ký khai sinh",
-             "icon": "✍️", "sides": 1, "optional": True},
-            {"key": "khac", "name": "Hồ sơ, giấy tờ cá nhân đã có (CCCD, BHYT, học bạ, bằng cấp…)",
-             "icon": "📎", "sides": 20, "repeatable": True, "optional": True},
-        ],
-        "mode": "agent",
-        "review": False,  # TẠM TẮT rà soát bbox (đỡ 1 lượt OCR token — pipeline nhanh hơn); bật lại khi cần
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Tờ khai đăng ký khai sinh (nếu có).\n"
-            "2. Bản cam đoan về việc chưa được đăng ký khai sinh.\n"
-            "3. Hồ sơ, giấy tờ cá nhân đã có: CCCD/CMND, thẻ BHYT, giấy tờ cư trú, học bạ, bằng tốt "
-            "nghiệp, chứng chỉ, giấy chứng nhận kết hôn, trích lục khai tử của cha/mẹ, giấy đề nghị "
-            "xác nhận — công dân đưa hết vào mục Giấy tờ cá nhân.\n"
-            "Hệ thống tự nhận dạng người được khai sinh, cha, mẹ; cha/mẹ đã mất được ghi 'Đã chết'."
         ),
     },
     {
@@ -617,6 +591,354 @@ PROCEDURES: list[dict] = [
             "2. Căn cước công dân của người yêu cầu."
         ),
     },
+    {
+        "key": "cap-giay-phep-khai-thac-thuy-san",
+        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng: chỉ account tỉnh này thấy + gọi được
+        # Cổng Bộ Nông nghiệp & Môi trường (dichvucongnnmt.mae.gov.vn) — LUỒNG KHÁC hẳn tư pháp:
+        # (1) DVCQG "Chọn cơ quan thực hiện": CHỈ chọn Tỉnh (bỏ xã) → Đồng ý → kết quả ĐẦU
+        #     TIÊN "Nộp trực tuyến" chính là Sở NN&MT (agencyProvinceOnly).
+        # (2) Trang MAE "chọn nơi và loại" (Angular Material, form#ngSelectAgencyForm1): bot điền
+        #     Tỉnh + radio "Sở/Ban ngành" + chọn Sở NN&MT + "Trường hợp giải quyết" theo variant
+        #     người dân đã chọn ở bước choose_variant, rồi bấm "Đồng ý và tiếp tục" (maePortal).
+        # (3) Kê khai = wizard MAE bước 1 (Form.io data[...]), Thành phần hồ sơ = bước 2 (bảng
+        #     mat-table, engine attp-row) → wizard KHÁC mặc định tu-phap 1/2/3.
+        "detect": {
+            "textIncludes": ["cấp, cấp lại giấy phép khai thác thủy sản"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp, cấp lại Giấy phép khai thác thủy sản",
+        "shortLabel": "Giấy phép khai thác thủy sản",
+        "subtitle": "Cấp mới / cấp lại giấy phép khai thác thủy sản cho tàu cá",
+        "icon": "🐟",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3815-712d-a33f-c571e5d7fdc2",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nông nghiệp và Môi trường",
+        # Người dân chọn 1 trong 2 trường hợp NGAY sau khi xác nhận thủ tục (state choose_variant);
+        # portalMatch/portalAvoid là token fold để FE khớp option "Trường hợp giải quyết" trên cổng
+        # (mỗi tỉnh đặt tên khác nhau: "Trường hợp 1: Cấp mới..." / "TH1 - Cấp Giấy phép...").
+        "variants": {
+            "options": [
+                {"key": "cap_moi", "label": "Cấp mới giấy phép", "chip": "🆕 Cấp mới giấy phép",
+                 "portalMatch": "cap moi", "portalAvoid": "cap lai",
+                 "desc": "chưa có giấy phép, xin cấp lần đầu"},
+                {"key": "cap_lai", "label": "Cấp lại giấy phép", "chip": "🔁 Cấp lại giấy phép",
+                 "portalMatch": "cap lai",
+                 "desc": "đã có giấy phép nhưng bị mất, hư hỏng, hết hạn hoặc thay đổi thông tin"},
+            ],
+        },
+        # Wizard MAE: bước 1 = Thông tin hồ sơ (kê khai Form.io), bước 2 = Thành phần hồ sơ
+        # (đính kèm), bước 3 = phí/captcha, bước 4 = nộp. Không có bước "chủ hồ sơ" riêng
+        # (ownerStep=5 là giá trị không bao giờ khớp — FE chỉ phát wizardStep 1-4).
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp hoặc cấp lại Giấy phép khai thác thủy sản", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ tàu, thêm CCCD người nộp nếu "
+             "nộp thay", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "giay_phep_cu", "name": "Giấy phép khai thác thủy sản cũ (nếu cấp lại)",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp Giấy phép khai thác thủy sản (Mẫu 04.KT — cấp mới) HOẶC đơn đề "
+            "nghị cấp lại (Mẫu 05.KT — cấp lại), đã ký.\n"
+            "2. Căn cước công dân của chủ tàu (2 mặt); nếu người khác nộp thay thì thêm CCCD "
+            "người nộp.\n"
+            "3. Nếu cấp lại: tờ Giấy phép khai thác thủy sản cũ (để lấy số, ngày cấp, ngày hết hạn).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-ban-sao-van-bang-so-goc",
+        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng: chỉ account tỉnh này thấy + gọi được
+        # Cổng Bộ GD&ĐT dvc.moet.gov.vn — CÙNG nền iGate với cổng NN&MT (wizard 4 bước:
+        # 1 Thông tin hồ sơ = kê khai Form.io, 2 Thành phần hồ sơ = attp-row) nhưng KHÔNG có
+        # trang "chọn nơi và loại": Nộp trực tuyến trên DVCQG → thẳng trang kê khai.
+        # DVCQG "Chọn cơ quan thực hiện": chọn Tỉnh → chuyển toggle sang "Sở" (KHÔNG chọn sở
+        # cụ thể trong combo) → Đồng ý → danh sách hiện ra, bấm "Nộp trực tuyến" kết quả ĐẦU
+        # TIÊN (mặc định là Sở GD&ĐT) — agencySoFirst.
+        "detect": {
+            "urlScope": ["dvc.moet.gov.vn"],
+            "textIncludes": ["cấp bản sao văn bằng, chứng chỉ từ sổ gốc"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
+        "shortLabel": "Bản sao văn bằng, chứng chỉ",
+        "subtitle": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc (Sở Giáo dục và Đào tạo)",
+        "icon": "🎓",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-df63-75bf-8bff-4c9d1f98674c",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Giáo dục và Đào tạo",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Phiếu yêu cầu cấp bản sao văn bằng, chứng chỉ (Mẫu BM04) "
+             "— đã điền, đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ văn bằng (thêm CCCD người yêu "
+             "cầu nếu làm thay)", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "van_bang", "name": "Bản photo văn bằng / chứng chỉ cần cấp bản sao",
+             "icon": "🎓", "sides": 1, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền / giấy tờ chứng minh quan hệ (nếu làm "
+             "thay)", "icon": "🖋️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu yêu cầu cấp bản sao văn bằng, chứng chỉ (Mẫu BM04) đã điền, đã ký.\n"
+            "2. Căn cước công dân của chủ văn bằng.\n"
+            "3. Bản photo văn bằng / chứng chỉ cần cấp bản sao.\n"
+            "4. Nếu người khác yêu cầu thay: giấy ủy quyền hoặc giấy tờ chứng minh quan hệ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cho-thue-thue-mua-nha-o-xa-hoi",
+        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng: chỉ account tỉnh này thấy + gọi được
+        # Cổng Bộ Xây dựng dvc.moc.gov.vn — CÙNG nền iGate với MAE/moet (wizard 1 kê khai,
+        # 2 đính kèm; Form.io dom-* + attach attp-row 4 dòng). KHÔNG trang "chọn nơi và loại".
+        # DVCQG "Chọn cơ quan thực hiện": chọn Tỉnh → gạt toggle sang "Sở" (KHÔNG chọn sở
+        # cụ thể) → Đồng ý → "Nộp trực tuyến" kết quả ĐẦU TIÊN (Sở Xây dựng) — agencySoFirst.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "textIncludes": [
+                "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư xây dựng bằng vốn đầu tư công",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cho thuê, cho thuê mua nhà ở xã hội do Nhà nước đầu tư xây dựng bằng vốn đầu tư công",
+        "shortLabel": "Thuê / thuê mua nhà ở xã hội",
+        "subtitle": "Đăng ký thuê, thuê mua nhà ở xã hội vốn đầu tư công (Sở Xây dựng)",
+        "icon": "🏠",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88ac-71f9-b970-b83cf0372841",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Tờ đơn đăng ký thuê (hoặc thuê mua) nhà ở xã hội theo mẫu "
+             "— đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người viết đơn", "icon": "🪪",
+             "sides": 2, "repeatable": True},
+            {"key": "doi_tuong", "name": "Giấy tờ chứng minh ĐỐI TƯỢNG chính sách (huân/huy "
+             "chương, thương binh, thân nhân liệt sĩ, quân nhân... nếu có)", "icon": "🎖️",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "dieu_kien", "name": "Giấy tờ chứng minh ĐIỀU KIỆN nhà ở / thu nhập (xác "
+             "nhận hộ nghèo, thu nhập, thực trạng nhà ở... nếu có)", "icon": "🧾",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ đơn đăng ký thuê (hoặc thuê mua) nhà ở xã hội theo mẫu, đã ký.\n"
+            "2. Căn cước công dân của người viết đơn.\n"
+            "3. Nếu có: giấy tờ chứng minh đối tượng chính sách (huân/huy chương, giấy chứng "
+            "nhận thương binh, giấy báo tử liệt sĩ, giấy tờ quân nhân/công an...).\n"
+            "4. Nếu có: giấy tờ chứng minh điều kiện nhà ở/thu nhập (xác nhận hộ nghèo, xác "
+            "nhận thu nhập, thực trạng nhà ở...).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+        # HkdOnline (cùng cổng thành lập mới) — businessWorkflow "change": wizard 4 bước
+        # (chọn CHN → TRA CỨU hộ KD theo mã số → chọn CHAPAR + hỏi đổi tên → Bắt đầu), trang
+        # điền ĐỘNG theo businessFlow.pageOrder (pipeline so GCN cũ vs Thông báo, chỉ dựng
+        # trang cần sửa + Người nộp hồ sơ). Bootstrap pha 1 dừng ở màn tra cứu để nhận giấy
+        # tờ TRƯỚC (mã số nằm trong Thông báo/GCN) — xem flow._guide_login_on_page.
+        "detect": {
+            "urlIncludes": ["hokinhdoanh.dkkd.gov.vn"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký thay đổi nội dung đăng ký hộ kinh doanh",
+        "shortLabel": "Thay đổi nội dung hộ kinh doanh",
+        "subtitle": "Đổi tên, địa chỉ, ngành nghề, chủ hộ, vốn... của hộ kinh doanh đang hoạt động",
+        "icon": "🔁",
+        # Cùng điểm vào DVCQG với thành lập mới (đích là HkdOnline); rẽ nhánh ở wizard chọn loại.
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
+        "needsAgencySelect": True,
+        "businessWorkflow": "change",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Thông báo thay đổi nội dung đăng ký hộ kinh doanh "
+             "— đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn_cu", "name": "Giấy chứng nhận đăng ký hộ kinh doanh hiện tại (để lấy "
+             "mã số và nội dung cũ)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ hộ / người nộp", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu có)", "icon": "📝",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "bien_ban", "name": "Biên bản họp thành viên hộ gia đình (nếu có)",
+             "icon": "📋", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Hợp đồng mua bán/tặng cho, giấy tờ thừa kế hoặc giấy tờ "
+             "khác (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # 7 trang (không có "Hình thức đăng ký"); thực tế điền theo pageOrder động của pipeline.
+        "pages": [
+            {"key": "dia-chi", "label": "Địa chỉ"},
+            {"key": "nganh-nghe-kinh-doanh", "label": "Ngành nghề kinh doanh"},
+            {"key": "ten-ho-kinh-doanh", "label": "Tên hộ kinh doanh"},
+            {"key": "chu-ho-kinh-doanh", "label": "Thông tin về chủ hộ kinh doanh"},
+            {"key": "thong-tin-ve-von", "label": "Thông tin về vốn"},
+            {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo thay đổi nội dung đăng ký hộ kinh doanh (đã ký).\n"
+            "2. Giấy chứng nhận đăng ký hộ kinh doanh hiện tại — QUAN TRỌNG: hệ thống lấy mã "
+            "số hộ kinh doanh từ đây để tra cứu.\n"
+            "3. Căn cước công dân của chủ hộ / người nộp.\n"
+            "4. Nếu có: văn bản ủy quyền, biên bản họp thành viên hộ gia đình, hợp đồng mua "
+            "bán/tặng cho/thừa kế.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-phap-bao-dam-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm 01a) — key TRÙNG auto-fill nên pipeline
+        # process/attach tự nối qua core_registry. Đường vào: DVCQG chọn TỈNH BẮC NINH (cố định,
+        # agencyProvince — thủ tục của riêng tỉnh, KHÔNG lấy tỉnh tài khoản) → gạt toggle "Sở"
+        # (KHÔNG chọn sở cụ thể) → Đồng ý → "Nộp trực tuyến" kết quả ĐẦU TIÊN (Văn phòng ĐK đất
+        # đai Bắc Ninh) — agencySoFirst. Trang eForm BN có 2 tab CÙNG TRANG (Nhập đơn đăng ký /
+        # Tải thành phần hồ sơ, không wizard) → samePageAttach: điền xong bot tự lập kế hoạch và
+        # đính kèm luôn, không chờ công dân chuyển bước; FE tự bấm tab trước khi điền/đính.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.011441"],
+            "textIncludes": ["đăng ký biện pháp bảo đảm bằng quyền sử dụng đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Tỉnh Bắc Ninh] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "shortLabel": "Đăng ký biện pháp bảo đảm đất đai (Bắc Ninh)",
+        "subtitle": "Đăng ký thế chấp quyền sử dụng đất, tài sản gắn liền với đất tại Bắc Ninh",
+        "icon": "🏦",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5d-7318-a451-84198f210213",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Phiếu yêu cầu đăng ký biện pháp bảo đảm (Mẫu 01a) — đã kê "
+             "khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng thế chấp / bảo đảm (kèm lời chứng công chứng "
+             "nếu có)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (sổ đỏ / sổ hồng)",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của bên bảo đảm / bên nhận bảo đảm",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "GCN đăng ký doanh nghiệp, giấy giới thiệu / ủy quyền hoặc "
+             "giấy tờ khác", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu yêu cầu đăng ký biện pháp bảo đảm (Mẫu số 01a) đã kê khai, ký — nguồn "
+            "chính điền đơn.\n"
+            "2. Hợp đồng thế chấp/bảo đảm (kèm lời chứng công chứng nếu có).\n"
+            "3. Giấy chứng nhận quyền sử dụng đất (sổ đỏ/sổ hồng).\n"
+            "4. Căn cước công dân của bên bảo đảm/bên nhận; nếu nộp thay: giấy giới thiệu hoặc "
+            "văn bản ủy quyền; tổ chức: Giấy chứng nhận đăng ký doanh nghiệp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "xoa-dang-ky-bien-phap-bao-dam-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Cổng dichvucong.bacninh.gov.vn (Liferay eForm 03a) — anh em với đăng ký (1.011441),
+        # cùng nền tảng 2 tab CÙNG TRANG → samePageAttach + agencyProvince cố định Bắc Ninh +
+        # agencySoFirst. Key TRÙNG auto-fill → pipeline process/attach tự nối. ⚠ maTTHC=1.011443
+        # TRÙNG trang hoàn thiện tài khoản VNeID (/vneidsso) nhưng trang đó detect theo PATH,
+        # còn đây neo thêm textIncludes tên thủ tục → không nhầm.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.011443"],
+            "textIncludes": ["xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Tỉnh Bắc Ninh] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        "shortLabel": "Xóa đăng ký biện pháp bảo đảm đất đai (Bắc Ninh)",
+        "subtitle": "Xóa thế chấp quyền sử dụng đất, tài sản gắn liền với đất tại Bắc Ninh",
+        "icon": "🏦",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu 03a) — "
+             "đã ký, có xác nhận của bên nhận bảo đảm (ngân hàng)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (bản gốc, gồm cả trang "
+             "mục IV 'Những thay đổi sau khi cấp')", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng thế chấp / văn bản xóa thế chấp (nếu có)",
+             "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người yêu cầu (bên bảo đảm)",
+             "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Giấy giới thiệu / văn bản ủy quyền hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu số 03a) đã ký, có chữ ký & con "
+            "dấu bên nhận bảo đảm (ngân hàng) — nguồn chính điền phiếu.\n"
+            "2. Bản gốc Giấy chứng nhận QSDĐ (sổ đỏ/sổ hồng), GỒM cả trang mục IV 'Những thay "
+            "đổi sau khi cấp'.\n"
+            "3. Căn cước công dân của người yêu cầu (bên bảo đảm); Hợp đồng thế chấp nếu có.\n"
+            "4. Nếu nộp thay: Giấy giới thiệu / văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
 ]
 
 # Materialize reusable flow capabilities once. Runtime and extension continue consuming
@@ -640,6 +962,9 @@ _BY_KEY = {p["key"]: p for p in PROCEDURES}
 _PUBLIC_PRIORITY_KEYS = (
     "ket-hon",
     "khai-sinh-dang-ky",
+    # Chứng thực bản sao dùng nhiều tại quầy → kéo lên vị trí 3 (yêu cầu 09/09/2026);
+    # chứng thực chữ ký vẫn nằm cuối danh sách.
+    "chung-thuc-ban-sao",
     "trich-luc-ks",
     "xac-nhan-tinh-trang-hon-nhan",
     "khai-sinh-dang-ky-lai",
@@ -647,8 +972,22 @@ _PUBLIC_PRIORITY_KEYS = (
     "dang-ky-kinh-doanh",
 )
 _PUBLIC_TRAILING_KEYS = (
+    "chung-thuc-chu-ky",
+)
+
+# Thủ tục "hay dùng" hiện dạng ô (tile) ngay màn chào — phần còn lại nằm trong sheet "Xem tất
+# cả". THỨ TỰ ở đây = thứ tự ô trái→phải, trên→dưới (FE xếp theo frequentOrder, độc lập thứ tự
+# public_list). Đổi danh sách/thứ tự ô chỉ cần sửa tuple này (cấu hình BE, KHÔNG phát hành lại
+# extension). Thủ tục vắng ở đây vẫn có trong sheet.
+_HOME_FREQUENT_KEYS = (
+    "ket-hon",
     "chung-thuc-ban-sao",
     "chung-thuc-chu-ky",
+    "khai-sinh-dang-ky",
+    "trich-luc-ks",
+    "khai-sinh-dang-ky-lai",
+    "xac-nhan-tinh-trang-hon-nhan",
+    "dang-ky-kinh-doanh",
 )
 
 
@@ -672,8 +1011,16 @@ def get_attach_pipeline(key: str):
     return core_registry.get_attach_pipeline(key)
 
 
+def portal_submit_rules() -> dict[str, dict]:
+    """Nhận diện nút "Gửi hồ sơ" theo CỔNG — khai một chỗ duy nhất ở app/procedures/portal_submit.py."""
+    return core_portal_submit.portal_submit_rules()
+
+
 def _validate_profile_dispatch() -> None:
     """Fail fast when a profiled procedure is missing one of its backend engines."""
+    for key in _HOME_FREQUENT_KEYS:
+        if key not in _BY_KEY:
+            raise RuntimeError(f"_HOME_FREQUENT_KEYS có key không tồn tại: {key}")
     for procedure in PROCEDURES:
         if not procedure.get("flowProfile"):
             continue
@@ -695,3 +1042,33 @@ def public_list() -> list[dict]:
     middle = [procedure for procedure in PROCEDURES if procedure["key"] not in reserved]
     trailing = [_BY_KEY[key] for key in _PUBLIC_TRAILING_KEYS if key in _BY_KEY]
     return [*leading, *middle, *trailing]
+
+
+def frequent_order(key: str) -> int | None:
+    """Vị trí ô "hay dùng" (0-based) hoặc None nếu thủ tục không lên ô. FE xếp ô theo số này."""
+    try:
+        return _HOME_FREQUENT_KEYS.index(key)
+    except ValueError:
+        return None
+
+
+def is_allowed_in_province(proc: dict | None, province_slug: str | None) -> bool:
+    """Thủ tục có được hiện/chạy cho tài khoản tỉnh `province_slug` không.
+
+    `provinceOnly` (list slug tỉnh) trên entry = KHÓA theo tỉnh. Vắng field → mọi tỉnh (mặc
+    định, không đổi thủ tục cũ). `province_slug` rỗng (account thiếu tỉnh) → KHÔNG khóa, tránh
+    ẩn nhầm hết.
+    """
+    if not proc:
+        return False
+    only = proc.get("provinceOnly")
+    if not only:
+        return True
+    if not province_slug:
+        return True
+    return province_slug in only
+
+
+def public_list_for(province_slug: str | None) -> list[dict]:
+    """public_list() đã lọc theo tỉnh account — thủ tục khóa tỉnh khác bị bỏ khỏi màn chào."""
+    return [p for p in public_list() if is_allowed_in_province(p, province_slug)]

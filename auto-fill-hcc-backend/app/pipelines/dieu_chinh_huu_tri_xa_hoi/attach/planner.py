@@ -1,7 +1,15 @@
-"""Attachment planner for "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội".
+"""Đính kèm cho thủ tục "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội" (cổng BYT).
 
-The form has a fixed upload row for the request document. CCCD is used for
-process/fill context only and must not be attached to this fixed slot.
+⚑ BẢNG THÀNH PHẦN HỒ SƠ CHỈ CÒN **ĐÚNG MỘT DÒNG** (chốt user 2026-09-15): "Văn bản đề nghị hưởng trợ
+cấp hưu trí xã hội (theo Mẫu số 01 ban hành kèm theo Nghị định số 176/2025/NĐ-CP)". Cổng đã bỏ các
+thành phần phụ và bỏ luôn nút "Thêm giấy tờ" → **MỌI FILE đều đính vào dòng 1** (fixed-slot,
+slotIndex 0). Không còn nhánh `add-document-dialog` nào ở thủ tục này.
+
+Phân loại LLM **chỉ còn để đặt TÊN HIỂN THỊ + cảnh báo**, không còn quyết định đích đến. (Với
+target `fixed-slot`, FE upload bằng TÊN FILE GỐC — `documentName` chỉ hiện trong kế hoạch/trace.)
+
+⚠ TUYỆT ĐỐI KHÔNG dùng lưới keyword để phân loại (chốt user 2026-09-15). Hai hàm
+`is_excluded_document` / `detect_slot_key` bên dưới CHỈ còn để đối chứng, không nằm trong luồng.
 """
 
 import time
@@ -15,30 +23,31 @@ from app.services.llm import client
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
+_TYPE_GIAY_TO_TUY_THAN = "giay_to_tuy_than"
+
 SLOT = {
     "slotKey": "van_ban_de_nghi_huu_tri",
     "slotIndex": 0,
-    "slotName": "Văn bản đề nghị thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
+    # Text VERBATIM dòng duy nhất của cổng (đã đổi theo Nghị định 176/2025/NĐ-CP). FE dùng slotIndex
+    # (slotKey không nằm trong FIXED_SLOT_KEYWORDS) nên đây chủ yếu để hiển thị/đối chiếu trace.
+    "slotName": (
+        "Văn bản đề nghị hưởng trợ cấp hưu trí xã hội "
+        "(theo Mẫu số 01 ban hành kèm theo Nghị định số 176/2025/NĐ-CP)"
+    ),
     "detectedType": "Văn bản đề nghị trợ cấp hưu trí xã hội",
 }
 
-# CCCD/giấy tờ tùy thân KHÔNG có ô cố định → đính qua nút "Thêm giấy tờ" (modal app-add-form của cổng BYT).
-# componentName phải KHỚP (fold-substring) nhãn option "Giấy tờ" trong autocomplete của modal.
-CCCD_ADD = {
-    "target": "add-document-dialog",
-    "componentName": (
-        "Một trong các giấy tờ có ảnh sau đây: Chứng minh nhân dân; Căn cước công dân; "
-        "Hộ chiếu còn hiệu lực"
-    ),
-    "loaiBan": "Bản chính",
-    "quantity": 1,
-    "documentName": "Giấy tờ tùy thân có ảnh (CCCD/CMND/Hộ chiếu)",
-    "detectedType": "Giấy tờ tùy thân có ảnh",
-}
 
 
 def is_excluded_document(text: str, file_name: str = "") -> bool:
-    """Giấy tờ tùy thân không đính ở bước này."""
+    """⚠ KHÔNG CÒN DÙNG TRONG LUỒNG QUYẾT ĐỊNH — giữ lại chỉ để tham chiếu/đối chứng.
+
+    Lưới keyword này từng quét OCR tìm "can cuoc cong dan"/"the can cuoc"… để coi file là giấy tờ tùy
+    thân. Nó SAI ở mọi giấy tờ hành chính có NHẮC số căn cước của người khác: hồ sơ thật
+    (req_1d66e02a4271) nộp TRÍCH LỤC KHAI TỬ có dòng "Giấy tờ tùy thân: Thẻ căn cước công dân số …"
+    → bị xếp thành CCCD và đính vào dòng "Một trong các giấy tờ có ảnh…". Việc phân loại giờ do LLM
+    đảm nhiệm hoàn toàn (prompt.py có type giay_to_tuy_than + khối <traps>).
+    """
     _ = file_name
     haystack = _fold(text or "")
     if not haystack:
@@ -59,7 +68,12 @@ def is_excluded_document(text: str, file_name: str = "") -> bool:
 
 
 def detect_slot_key(text: str, file_name: str = "") -> str:
-    """Rule fallback: nhận diện văn bản đề nghị từ OCR text."""
+    """⚠ KHÔNG CÒN DÙNG TRONG LUỒNG QUYẾT ĐỊNH — giữ lại chỉ để tham chiếu/đối chứng.
+
+    Lưới keyword nhận diện văn bản đề nghị từ OCR text. Đã gỡ khỏi `build_plan_items` (chốt user
+    2026-09-15: "đừng dùng keyword, dùng LLM"). Phân loại giờ do LLM đảm nhiệm 100%; LLM im lặng thì
+    file rơi về dòng Văn bản đề nghị kèm cảnh báo, KHÔNG đoán bằng keyword.
+    """
     _ = file_name
     haystack = _fold(text or "")
     if not haystack:
@@ -87,14 +101,19 @@ def detect_slot_key(text: str, file_name: str = "") -> str:
 
 
 def _slot_from_llm_type(value: str) -> str:
+    """Chuẩn hoá type LLM → "" (other) | slotKey văn bản đề nghị | giay_to_tuy_than."""
     raw = str(value or "").strip()
     if raw == SLOT["slotKey"]:
         return SLOT["slotKey"]
+    if raw == _TYPE_GIAY_TO_TUY_THAN:
+        return _TYPE_GIAY_TO_TUY_THAN
     text = _fold(raw)
     if "van ban de nghi" in text and "huu tri" in text:
         return SLOT["slotKey"]
     if "tro cap huu tri" in text and "de nghi" in text:
         return SLOT["slotKey"]
+    if "giay to tuy than" in text or "can cuoc" in text or "ho chieu" in text:
+        return _TYPE_GIAY_TO_TUY_THAN
     return ""
 
 
@@ -117,75 +136,61 @@ async def _classify_documents_with_llm(documents: list[dict[str, Any]]) -> dict[
     return out
 
 
-def _build_item(file: dict, file_index: int) -> dict:
+def _build_item(file: dict, file_index: int, document_name: str = "") -> dict:
     file_name = str(file.get("name") or f"file-{file_index + 1}")
+    label = document_name or SLOT["detectedType"]
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        "documentName": SLOT["detectedType"],
+        "documentName": label,
         "componentName": SLOT["slotName"],
         "target": "fixed-slot",
         "needsAddComponent": False,
-        "detectedType": SLOT["detectedType"],
+        "detectedType": label,
         "slotKey": SLOT["slotKey"],
         "slotIndex": SLOT["slotIndex"],
         "slotName": SLOT["slotName"],
     }
 
 
-def _build_add_document_item(file: dict, file_index: int) -> dict:
-    """CCCD → tạo hàng qua modal 'Thêm giấy tờ' rồi upload (target add-document-dialog)."""
-    file_name = str(file.get("name") or f"file-{file_index + 1}")
-    return {
-        "fileIndex": file_index,
-        "fileName": file_name,
-        "documentName": CCCD_ADD["documentName"],
-        "componentName": CCCD_ADD["componentName"],
-        "target": CCCD_ADD["target"],
-        "loaiBan": CCCD_ADD["loaiBan"],
-        "quantity": CCCD_ADD["quantity"],
-        "needsAddComponent": True,
-        "detectedType": CCCD_ADD["detectedType"],
-    }
-
-
-def _supports_add_document(options: dict | None) -> bool:
-    """Extension bản mới báo năng lực qua options.attachSupports. Bản CŨ không gửi → False → giữ hành vi cũ
-    (bỏ CCCD) để không phát target 'add-document-dialog' mà extension cũ chưa xử lý được (tránh lỗi 'target
-    chưa hỗ trợ trong luồng hỗn hợp')."""
-    caps = (options or {}).get("attachSupports") or []
-    return isinstance(caps, (list, tuple)) and "add-document-dialog" in caps
 
 
 def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
     llm_slots: dict[int, str] | None = None,
-    support_add_doc: bool = False,
 ) -> tuple[list[dict], list[str]]:
+    """MỌI FILE đều đính vào dòng 1 — bảng của thủ tục này chỉ còn đúng một dòng.
+
+    LLM chỉ dùng để đặt tên hiển thị và cảnh báo giấy tờ không phải Văn bản đề nghị; nó KHÔNG còn
+    quyết định đích đến, và KHÔNG có lưới keyword nào tham gia.
+    """
     llm_slots = llm_slots or {}
-    by_name = {item.get("name"): item for item in ocr_results}
+    del ocr_results  # OCR text không còn được dùng để suy loại (LLM-first tuyệt đối).
     items: list[dict] = []
     warnings: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        text = str(by_name.get(file_name, {}).get("text") or "")
-        slot_key = llm_slots.get(idx, "") or detect_slot_key(text, file_name)
-        if slot_key == SLOT["slotKey"]:
+        doc_type = llm_slots.get(idx, "")
+
+        if doc_type == SLOT["slotKey"]:
             items.append(_build_item(file, idx))
             continue
-        if is_excluded_document(text, file_name):
-            if support_add_doc:
-                # Extension mới: CCCD đính qua nút "Thêm giấy tờ" (modal).
-                items.append(_build_add_document_item(file, idx))
-            else:
-                # Extension cũ chưa hỗ trợ modal → giữ hành vi cũ, bỏ qua (không gây lỗi luồng hỗn hợp).
-                warnings.append(
-                    f"File '{file_name}' là giấy tờ tùy thân — không đính kèm ở bước này, đã bỏ qua."
-                )
+
+        # Không phải Văn bản đề nghị nhưng VẪN đính (dòng 1 là chỗ duy nhất) — tuyệt đối không bỏ sót
+        # file. Tên hiển thị giữ khác nhau để cán bộ soát được trong danh sách kế hoạch.
+        if doc_type == _TYPE_GIAY_TO_TUY_THAN:
+            label = "Giấy tờ tùy thân có ảnh (CCCD/CMND/Hộ chiếu)"
+            reason = "là giấy tờ tùy thân"
         else:
-            warnings.append(f"Không xác định được file '{file_name}' là văn bản đề nghị hưu trí xã hội — bỏ qua.")
+            label = f"Tài liệu khác - {file_name}"
+            reason = "chưa nhận diện chắc loại giấy tờ"
+        items.append(_build_item(file, idx, label))
+        warnings.append(
+            f"File '{file_name}' {reason}, không phải Văn bản đề nghị (Mẫu số 01) — vẫn đính vào dòng "
+            "duy nhất của thủ tục; cán bộ kiểm tra lại."
+        )
 
     return items, warnings
 
@@ -197,7 +202,6 @@ async def plan(
 ) -> dict:
     """Entry point đính kèm cho dieu-chinh-huu-tri-xa-hoi."""
     _ = session
-    support_add_doc = _supports_add_document(options)
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
@@ -227,7 +231,7 @@ async def plan(
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings = build_plan_items(raw_files, ocr_results, llm_slots, support_add_doc)
+    attachments, warnings = build_plan_items(raw_files, ocr_results, llm_slots)
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
     ocr_text = "\n\n---\n\n".join(

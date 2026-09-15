@@ -384,6 +384,25 @@ def _fold_province(text: str) -> str:
     return _PROVINCE_PREFIX_RE.sub("", _fold(text)).strip()
 
 
+# Thành phố trực thuộc trung ương (sau sắp xếp 2025): nhãn đúng là "Thành phố X", tỉnh còn lại "Tỉnh X".
+# Nhiều cổng Form.io chọn option theo ĐÚNG chuỗi nhãn → "Tỉnh Đà Nẵng" sẽ TRƯỢT option "Thành phố Đà Nẵng".
+_CENTRAL_CITIES = frozenset({"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"})
+
+
+def province_label(value: object) -> Optional[str]:
+    """Nhãn tỉnh/thành chuẩn: 'Thành phố X' cho TP trực thuộc TW, 'Tỉnh X' cho tỉnh còn lại.
+
+    Bỏ tiền tố loại đơn vị ở đầu (nếu có) để lấy tên trần rồi gắn lại đúng loại. Trả None khi rỗng.
+    """
+    text = " ".join(str(value or "").split()).strip()
+    if not text:
+        return None
+    bare = re.sub(r"^(tỉnh|thành phố|tp\.?)\s+", "", text, flags=re.IGNORECASE).strip()
+    if not bare:
+        return None
+    return f"{'Thành phố' if _fold(bare) in _CENTRAL_CITIES else 'Tỉnh'} {bare}"
+
+
 def _ward_keys(ward_full_name: str) -> set[str]:
     """Cac cach viet ten mot xa co the gap trong du lieu doc ra.
 

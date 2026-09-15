@@ -13,14 +13,27 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và trả đúng type hồ s�
 <critical_rules>
 1. Chỉ dựa vào OCR_TEXT. Không dùng tên file, thứ tự file, hoặc giả định bên ngoài để phân loại.
 2. Mỗi tài liệu trả đúng một type trong allowed_types.
-3. Hồ sơ mẫu nhà ở riêng lẻ của cá nhân chỉ cần 3 nhóm chính, downstream sẽ bơm từng file riêng vào hàng upload có sẵn, không thêm thành phần hồ sơ mới:
-   - Dòng 1: Đơn đề nghị cấp giấy phép xây dựng, CCCD/chứng minh định danh của chủ hộ/người nộp, bản cam kết an toàn xây dựng/liền kề.
-   - Dòng 11: Giấy tờ hợp pháp về đất đai, sổ đỏ, giấy chứng nhận quyền sử dụng đất.
-   - Dòng 27: Hồ sơ thiết kế xây dựng, bản vẽ xin cấp phép, bản kê khai kinh nghiệm thiết kế, chứng chỉ năng lực tổ chức thiết kế, chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế.
+3. Downstream gom kết quả về 3 NHÓM và bơm từng file vào hàng upload có sẵn (không thêm thành phần mới):
+   - Nhóm ĐƠN: Đơn đề nghị cấp giấy phép xây dựng, CCCD/giấy tờ định danh của chủ hộ/người nộp, bản cam kết an toàn xây dựng/liền kề.
+   - Nhóm ĐẤT ĐAI: giấy tờ hợp pháp về đất đai, sổ đỏ, giấy chứng nhận quyền sử dụng đất.
+   - Nhóm THIẾT KẾ: bản vẽ xin cấp phép, bản kê khai kinh nghiệm thiết kế, chứng chỉ năng lực tổ chức thiết kế, chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế.
 4. Nếu một file là "Đơn đề nghị cấp giấy phép xây dựng" và có phần "Gửi kèm theo đơn này..." thì vẫn chọn building_permit_application, không chọn land_legal_document hay design_document.
 5. Nếu một file là bản vẽ/hồ sơ thiết kế và có tên/mã số doanh nghiệp thiết kế trong khung tên bản vẽ thì chọn construction_design_drawings, không chọn construction_capacity_certificate.
 6. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
+
+<multi_doc_rule>
+⚠ MỘT TỆP PDF THƯỜNG LÀ BẢN QUÉT GỘP NHIỀU GIẤY TỜ (vd trang 1 là Đơn, trang 2 là CCCD; hoặc Đơn +
+bản cam kết + sổ đỏ trong cùng một tệp). Mỗi tệp CHỈ ĐƯỢC TRẢ ĐÚNG MỘT type — đọc hết các trang rồi
+chọn theo THỨ TỰ ƯU TIÊN sau, dừng ở mục khớp đầu tiên:
+1. ⚑ CÓ ĐƠN/TỜ KHAI trong tệp → LUÔN trả "building_permit_application". Đơn đề nghị cấp giấy phép xây
+   dựng là giấy tờ CHÍNH của hồ sơ; dù nó chỉ chiếm 1 trang còn các giấy kèm theo chiếm nhiều trang
+   hơn thì vẫn ưu tiên Đơn. (Tệp "Đơn + CCCD + bản cam kết" → building_permit_application.)
+2. Không có Đơn nhưng có GIẤY TỜ ĐẤT ĐAI (sổ đỏ/GCN QSDĐ) → "land_legal_document".
+3. Không có cả hai nhưng có BẢN VẼ THIẾT KẾ → "construction_design_drawings".
+4. Còn lại: chọn theo giấy tờ chiếm PHẦN LỚN SỐ TRANG; số trang ngang nhau thì lấy giấy ở TRANG ĐẦU.
+TUYỆT ĐỐI KHÔNG trả hai type cho một tệp, không tách một tệp thành nhiều mục.
+</multi_doc_rule>
 
 <allowed_types>
 - building_permit_application
@@ -64,15 +77,25 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và trả đúng type hồ s�
 - OCR có "CHỨNG CHỈ HÀNH NGHỀ KIẾN TRÚC", "CHỨNG CHỈ HÀNH NGHỀ", "Cấp cho: Ông/Bà" và lĩnh vực hành nghề cá nhân thì chọn architect_practice_certificate.
 </classification_hints>
 
+<cong_trinh_nhanh>
+⚑ NGOÀI việc phân loại từng tài liệu, hãy trả thêm MỘT trường ở mức HỒ SƠ: "congTrinhNhanh".
+Bảng thành phần hồ sơ của cổng chia theo LOẠI CÔNG TRÌNH, mỗi loại một khối dòng riêng, nên chọn sai
+khối là đính nhầm chỗ hết.
+- "nha_o_rieng_le": nhà ở riêng lẻ / nhà ở gia đình của hộ gia đình, cá nhân (MẶC ĐỊNH — phần lớn hồ sơ).
+- "tin_nguong_ton_giao": công trình tín ngưỡng, tôn giáo — chùa, nhà thờ, đình, đền, miếu, thánh thất,
+  nhà nguyện, tịnh xá…; hoặc hồ sơ có văn bản chấp thuận của cơ quan chuyên môn về tín ngưỡng, tôn giáo.
+Căn cứ vào TÊN CÔNG TRÌNH và CHỦ ĐẦU TƯ trong đơn/bản vẽ. Không chắc → trả "nha_o_rieng_le".
+</cong_trinh_nhanh>
+
 <output_contract>
 Output đúng 1 JSON object, không bọc code fence.
 Sau JSON không output thêm ký tự nào.
 
 Schema:
-{"documents":[{"index":0,"type":"building_permit_application","title":"Đơn đề nghị cấp giấy phép xây dựng"}]}
+{"congTrinhNhanh":"nha_o_rieng_le","documents":[{"index":0,"type":"building_permit_application","title":"Đơn đề nghị cấp giấy phép xây dựng"}]}
 
 Ví dụ đúng:
-{"documents":[{"index":0,"type":"identity_document","title":"Căn cước công dân"},{"index":1,"type":"building_permit_application","title":"Đơn đề nghị cấp giấy phép xây dựng"},{"index":2,"type":"safety_commitment","title":"Bản cam kết xây nhà"},{"index":3,"type":"construction_design_drawings","title":"Bản vẽ xin cấp phép xây dựng"}]}
+{"congTrinhNhanh":"nha_o_rieng_le","documents":[{"index":0,"type":"identity_document","title":"Căn cước công dân"},{"index":1,"type":"building_permit_application","title":"Đơn đề nghị cấp giấy phép xây dựng"},{"index":2,"type":"safety_commitment","title":"Bản cam kết xây nhà"},{"index":3,"type":"construction_design_drawings","title":"Bản vẽ xin cấp phép xây dựng"}]}
 
 Ví dụ sai:
 ```json

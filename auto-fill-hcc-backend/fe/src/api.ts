@@ -1,4 +1,6 @@
 import type {
+  DossierDetail,
+  DossierListResp,
   Facets,
   LoginResp,
   ManagedUser,
@@ -289,3 +291,32 @@ export function exportReportExcel(
 }
 
 export { ApiError };
+
+// --- Vòng đời hồ sơ (danh sách + chi tiết) ---
+export interface DossierQuery {
+  source?: "all" | "autofill" | "handfree";
+  status?: "all" | "submitted" | "unsubmitted";
+  userId?: string;
+  procedure?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export function listDossiers(q: DossierQuery, signal?: AbortSignal): Promise<DossierListResp> {
+  const params = new URLSearchParams();
+  if (q.source) params.set("source", q.source);
+  if (q.status) params.set("status", q.status);
+  if (q.userId) params.set("userId", q.userId);
+  if (q.procedure) params.set("procedure", q.procedure);
+  if (q.dateFrom) params.set("dateFrom", q.dateFrom);
+  if (q.dateTo) params.set("dateTo", q.dateTo);
+  params.set("page", String(q.page ?? 1));
+  params.set("pageSize", String(q.pageSize ?? 20));
+  return request<DossierListResp>(`/api/v1/dossiers?${params.toString()}`, { signal });
+}
+
+export function getDossier(id: string): Promise<DossierDetail> {
+  return request<DossierDetail>(`/api/v1/dossiers/${encodeURIComponent(id)}`);
+}

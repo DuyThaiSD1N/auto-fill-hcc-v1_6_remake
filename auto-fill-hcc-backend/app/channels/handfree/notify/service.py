@@ -36,7 +36,7 @@ async def subscribe(conv: dict, phone: str) -> bool:
         upsert=True,
     )
     conv["phone"] = p
-    send(p, f"Trợ lý người dân: đã ghi nhận hồ sơ {conv.get('procedure_key') or ''} của công dân. "
+    send(p, f"Trợ lý nhân dân: đã ghi nhận hồ sơ {conv.get('procedure_key') or ''} của công dân. "
             "Có tiến độ mới chúng tôi sẽ nhắn ngay.")
     return True
 

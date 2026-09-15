@@ -6,7 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 
@@ -29,6 +29,16 @@ def _fold(value: Any) -> str:
     text = "".join(char for char in text if unicodedata.category(char) != "Mn")
     text = text.replace("Đ", "D").replace("đ", "d")
     return re.sub(r"\s+", " ", text).strip().lower()
+
+# Chủ hồ sơ là TỔ CHỨC → điền thêm ô "Cơ quan/Tổ chức" (data[organization]). Nhận diện theo tên.
+_ORG_MARKERS = (
+    "cong ty", "doanh nghiep", "tong cong ty", "hop tac xa", "htx",
+    "chi nhanh", "xi nghiep", "tap doan", "nha may",
+)
+
+
+def _is_org_name(name: Any) -> bool:
+    return any(marker in _fold(name) for marker in _ORG_MARKERS)
 
 
 def _identity(value: Any) -> str | None:
@@ -68,7 +78,7 @@ def _province_label(value: Any) -> str | None:
     if not text:
         return None
     bare = re.sub(r"^(tỉnh|thành phố|tp\.?)\s+", "", text, flags=re.IGNORECASE).strip()
-    return f"Tỉnh {bare}"
+    return province_label(bare)
 
 
 def _full_address(area: dict | None) -> str | None:
@@ -106,6 +116,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     applicant_id = _identity(values.get(f"{source_prefix}_SoDinhDanh"))
 
     add("data[ownerFullname]", owner_name)
+    # Chủ hồ sơ là TỔ CHỨC (Công ty/HTX…): điền thêm ô "Cơ quan/Tổ chức" = tên tổ chức (option b).
+    if _is_org_name(owner_name):
+        add("data[organization]", owner_name)
     add("data[isOwnerDossier]", not authorized)
     add("data[fullname]", applicant_name)
     add("data[birthday]", _date(values.get(f"{source_prefix}_NgaySinh")))

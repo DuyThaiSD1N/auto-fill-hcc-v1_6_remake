@@ -4,6 +4,7 @@ Module được giữ riêng với ``app.consent``: số ít là API ghi nhận 
 là API quản trị dùng chung để xem log/PDF do channel Handfree sinh ra.
 """
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -16,6 +17,14 @@ from app.db.mongo import get_db
 router = APIRouter(prefix="/api/v1/consents", tags=["consents"])
 
 _LOG_ID = re.compile(r"^[A-Za-z0-9_-]{1,60}$")
+
+
+def _iso(value) -> str | None:
+    """ISO có KÈM offset UTC — Mongo trả datetime NAIVE (driver không bật tz_aware) nên thiếu
+    offset là trình duyệt hiểu thành giờ địa phương và hiện lệch 7 tiếng."""
+    if not isinstance(value, datetime):
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
 
 
 @router.get("")
@@ -40,7 +49,7 @@ async def list_consents(
     async for document in cursor:
         items.append({
             "id": document["_id"],
-            "at": document["at"].isoformat() if document.get("at") else None,
+            "at": _iso(document.get("at")),
             "at_display": document.get("at_display", ""),
             "procedure_key": document.get("procedure_key", ""),
             "procedure_label": document.get("procedure_label", ""),

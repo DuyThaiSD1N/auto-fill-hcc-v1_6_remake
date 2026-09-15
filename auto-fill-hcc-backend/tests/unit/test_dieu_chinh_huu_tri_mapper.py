@@ -23,6 +23,68 @@ def _context(name: str, identity: str) -> dict:
     }
 
 
+def _run_owner_mode(values: dict, form_context: dict | None = None):
+    options = {"submitterMode": "owner_as_submitter"}
+    if form_context is not None:
+        options["formContext"] = form_context
+    fields, warnings = mapper.enrich(_fields(values), options)
+    return {field["name"]: field["value"] for field in fields}, warnings
+
+
+def test_owner_mode_submitter_is_owner_and_ticks():
+    """Toggle owner_as_submitter, bỏ mỏ neo UI → người nộp = chủ hồ sơ + tick; không lặp khối chủ hồ sơ."""
+    data, warnings = _run_owner_mode({
+        "ChuHoSo_HoTen": "HOÀNG THỊ A",
+        "ChuHoSo_SoDinhDanh": "031050000001",
+        "ChuHoSo_NgaySinh": "20/10/1950",
+        "ChuHoSo_NoiCuTru": {"tinh": "Lai Châu", "xa": "Phường Đoàn Kết", "diaChi": "Tổ 2"},
+        "ChuHoSo_DienThoai": "0367000001",
+    })
+    assert data["data[isOwnerDossierCheck]"] is True
+    assert data["data[fullname]"] == "HOÀNG THỊ A"
+    assert data["data[identityNumber]"] == "031050000001"
+    assert data["data[province]"] == "Lai Châu"
+    assert "data[ownerFullname]" not in data
+    assert not warnings
+
+
+def test_owner_mode_ignores_ui_anchor_even_if_other_person():
+    """Owner mode bỏ mỏ neo UI: dù form có người KHÁC vẫn chủ hồ sơ = người nộp, không cảnh báo."""
+    data, warnings = _run_owner_mode(
+        {"ChuHoSo_HoTen": "HOÀNG THỊ A", "ChuHoSo_SoDinhDanh": "031050000001"},
+        {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"},
+    )
+    assert data["data[isOwnerDossierCheck]"] is True
+    assert data["data[fullname]"] == "HOÀNG THỊ A"
+    assert not any("người nộp" in w for w in warnings)
+
+
+def test_owner_mode_falls_back_to_requester_when_owner_absent():
+    """Chỉ đọc được NguoiNop (không có ChuHoSo) → vẫn lấy người đó làm người nộp + tick."""
+    data, _ = _run_owner_mode({
+        "NguoiNop_HoTen": "LÙ LÝ TÀI",
+        "NguoiNop_SoDinhDanh": "012053002962",
+    })
+    assert data["data[isOwnerDossierCheck]"] is True
+    assert data["data[fullname]"] == "LÙ LÝ TÀI"
+
+
+def test_owner_only_context_marks_missing_ui_anchor_and_keeps_owner_scope():
+    form_text = """Mẫu số 01
+I. Thông tin người đề nghị trợ cấp hưu trí xã hội
+1. Họ tên: PHÀN A TỎN
+4. Nơi cư trú: Bản Sì Thàng, xã Tả Lèng, tỉnh Lai Châu
+5. Địa chỉ liên lạc: Bản Sì Thàng, xã Tả Lèng, tỉnh Lai Châu
+7. Chế độ đang hưởng: Không
+II. Thông tin người giám hộ, người được ủy quyền
+Tôi xin cam đoan nội dung đúng."""
+    context = asyncio.run(runner._owner_only_context([{"text": form_text}], {}))
+    assert 'result="missing_ui_anchor"' in context
+    assert "Không trả bất kỳ NguoiNop_*" in context
+    assert "<owner_primary_ocr>" in context
+    assert "Bản Sì Thàng, xã Tả Lèng, tỉnh Lai Châu" in context
+
+
 def test_schema_has_exactly_two_subject_namespaces():
     assert schema.ALLOWED
     assert all(

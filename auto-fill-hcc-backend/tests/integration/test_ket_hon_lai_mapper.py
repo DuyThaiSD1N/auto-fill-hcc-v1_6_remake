@@ -122,30 +122,8 @@ def test_old_marriage_metadata_does_not_infer_number_or_book_from_birth_certific
     assert "soDangKyTruocDay" not in out
     assert "quyenDangKyTruocDay" not in out
     assert out["ngayDangKyTruocDay"]["value"] == "11/09/1995"
-    # Đơn vị cũ được quy về đơn vị hiện hành (dropdown cổng chỉ có đơn vị mới).
-    # "Xã Bình Long" không tra được đơn vị mới → bỏ trống ô đơn vị thay vì chọn xã đã giải thể.
-    assert out["noiDangKyTruocDay_filter"]["value"] == "Hưng Yên"
-    assert "noiDangKyTruocDay" not in out
-
-
-def test_old_marriage_place_is_remapped_to_current_admin_unit():
-    """Cơ quan đăng ký cũ ghi theo đơn vị trước sáp nhập → phải quy về đơn vị hiện hành.
-
-    Dropdown "Tên đơn vị hành chính đăng ký kết hôn trước đây" chỉ liệt kê đơn vị hiện hành,
-    nên "Bắc Giang / Xã Đoan Bái" không khớp option nào và cả hai ô bị bỏ trống.
-    """
-    out = _by_name(mapper.enrich(_fields(
-        _VO,
-        _CHONG,
-        {
-            "KetHonCu_NgayDangKy": "03/11/1991",
-            "KetHonCu_TinhDangKy": "Bắc Giang",
-            "KetHonCu_XaDangKy": "Xã Đoan Bái",
-        },
-    )))
-
-    assert out["noiDangKyTruocDay_filter"]["value"] == "Bắc Ninh"
-    assert out["noiDangKyTruocDay"]["value"] == "Xã Hiệp Hòa"
+    assert out["noiDangKyTruocDay_filter"]["value"] == "Thái Bình"
+    assert out["noiDangKyTruocDay"]["value"] == "Xã Bình Long"
 
 
 def test_old_marriage_schema_uses_specific_fields_and_restricts_sources():

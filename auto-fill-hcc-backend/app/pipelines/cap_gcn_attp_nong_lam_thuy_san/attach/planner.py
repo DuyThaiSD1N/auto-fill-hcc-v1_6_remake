@@ -5,7 +5,6 @@ CCCD không có dòng cố định nên dùng modal "Thêm giấy tờ"; Giấy 
 eForm và không được gắn nhầm vào hai dòng Phụ lục I/II.
 """
 
-import re
 import time
 from typing import Any
 
@@ -104,57 +103,31 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str) -> dict:
+def _build_row_item(file: dict, file_index: int, doc_type: str, detected_type: str | None = None) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        "documentName": row["documentName"],
+        # GIỮ NGUYÊN tên file gốc — engine attp-row đặt tên file theo documentName (content.js dataUrlToFile).
+        "documentName": file_name,
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
         "needsAddComponent": False,
-        "detectedType": doc_type,
+        "detectedType": detected_type or doc_type,
     }
 
 
-def _cccd_holder_name(text: str, file_name: str) -> str:
-    """Tạo tên tài liệu riêng theo chủ thẻ; không dùng tên này để suy luận vai trò hồ sơ."""
-    lines = [re.sub(r"\s+", " ", line).strip() for line in str(text or "").splitlines()]
-    for index, line in enumerate(lines):
-        folded = _fold(line)
-        if not any(label in folded for label in ("ho va ten", "ho ten", "full name")):
-            continue
-        inline = re.sub(
-            r"^.*(?:họ\s*(?:và\s*)?tên|full\s*name)\s*:?[\s/]*",
-            "",
-            line,
-            flags=re.IGNORECASE,
-        ).strip(" :-/")
-        candidates = [inline] if inline else []
-        candidates.extend(lines[index + 1:index + 3])
-        for candidate in candidates:
-            candidate = re.sub(r"\s+", " ", candidate).strip(" :-/")
-            words = candidate.split()
-            if 2 <= len(words) <= 8 and not any(char.isdigit() for char in candidate):
-                return candidate.title()
-
-    stem = re.sub(r"\.[^.]+$", "", file_name).strip()
-    suffix = re.sub(r"(?i)^.*?(?:cccd|cmnd|can[-_ ]?cuoc)[-_ ]*", "", stem).strip("-_ ")
-    if suffix:
-        suffix = re.sub(r"(?<=[a-zà-ỹ])(?=[A-ZĐ])", " ", suffix)
-        return re.sub(r"[-_]+", " ", suffix).strip().title()
-    return stem
-
-
-def _build_cccd_item(file: dict, file_index: int, text: str) -> dict:
-    file_name = str(file.get("name") or f"file-{file_index + 1}")
-    holder = _cccd_holder_name(text, file_name)
-    return {
-        "fileIndex": file_index,
-        "fileName": file_name,
-        "documentName": f"Căn cước công dân_{holder}" if holder else "Căn cước công dân",
+def _build_cccd_item(cccd_group: list[tuple[int, dict]]) -> dict:
+    """1 item CCCD cho modal 'Thêm giấy tờ'. Nếu ≥2 file (2 MẶT CCCD) → gộp thành 1 PDF qua
+    sourceFileIndexes (FE applyMergeGroups.mergeToPdf). Giữ NGUYÊN tên file gốc (file đầu)."""
+    first_index, first_file = cccd_group[0]
+    first_name = str(first_file.get("name") or f"file-{first_index + 1}")
+    item = {
+        "fileIndex": first_index,
+        "fileName": first_name,
+        "documentName": first_name,
         "componentName": _CCCD_COMPONENT,
         "loaiBan": _LOAI_BAN,
         "quantity": 1,
@@ -162,6 +135,9 @@ def _build_cccd_item(file: dict, file_index: int, text: str) -> dict:
         "needsAddComponent": True,
         "detectedType": _CCCD,
     }
+    if len(cccd_group) > 1:
+        item["sourceFileIndexes"] = [idx for idx, _ in cccd_group]
+    return item
 
 
 def build_plan_items(
@@ -174,6 +150,7 @@ def build_plan_items(
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    cccd_group: list[tuple[int, dict]] = []   # gom mọi file CCCD để gộp 2 mặt thành 1 PDF
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -191,19 +168,20 @@ def build_plan_items(
             attachments.append(_build_row_item(file, index, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
         elif doc_type == _CCCD:
-            item = _build_cccd_item(file, index, text)
-            attachments.append(item)
-            classified.append({
-                "fileName": file_name,
-                "docType": doc_type,
-                "source": source,
-                "documentName": item["documentName"],
-            })
+            cccd_group.append((index, file))
+            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
         elif doc_type in _SKIP_DOCS:
+            # Giấy ĐKKD/ĐKDN chỉ là nguồn điền eForm — KHÔNG đính (tránh gắn nhầm vào hàng Phụ lục).
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
         else:
-            warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-            classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+            # Giấy tờ ngoài 2 loại đã định nghĩa (other) → ĐÍNH CHUNG vào HÀNG TỜ KHAI (Đơn Phụ lục I),
+            # KHÔNG bỏ qua; giữ nguyên tên file gốc (attp-row nhận nhiều file/1 dòng).
+            attachments.append(_build_row_item(file, index, _DON, detected_type=_OTHER))
+            classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
+
+    # 2 mặt CCCD (hoặc nhiều ảnh CCCD lẻ) → gộp thành 1 PDF rồi vào modal "Thêm giấy tờ".
+    if cccd_group:
+        attachments.append(_build_cccd_item(cccd_group))
 
     return attachments, warnings, classified
 

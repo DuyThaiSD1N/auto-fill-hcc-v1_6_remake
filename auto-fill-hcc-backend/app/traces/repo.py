@@ -22,6 +22,13 @@ _FILE_SUFFIX_RE = re.compile(r"\.[^./\\]+$")
 # Mốc migration cố định: 00:00 25/08/2026 giờ Việt Nam.
 # Trước mốc giữ nguyên số lịch sử; từ mốc mới bỏ phần mở rộng khi so tên file.
 _STEM_RULE_CUTOFF = datetime(2026, 8, 24, 17, tzinfo=timezone.utc)
+# Mốc 00:00 14/09/2026 giờ Việt Nam: chứng thực bản sao tách nhiều tab chỉ còn tính MỘT hồ sơ.
+# Đến hết 13/09 mỗi tab vẫn là một hồ sơ — số đã xuất Excel nộp tỉnh phải bất động.
+# ĐỪNG nhầm với mốc 15/09 đổi hẳn sang đếm hồ sơ đã nộp (app/stats/cutover.py): hai mốc khác
+# nhau, và mốc này nằm gọn TRONG cách đếm cũ.
+_CERT_SINGLE_DOSSIER_FROM = datetime(2026, 9, 13, 17, tzinfo=timezone.utc)
+_CERT_SINGLE_DOSSIER_PROCEDURES = ("chung-thuc-ban-sao",)
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 Experience = Literal["autofill", "handfree"]
 
 
@@ -102,6 +109,17 @@ def _stats_account_context(accounts: list[dict], scope: str) -> tuple[dict[str, 
     return roles, included_ids
 
 
+async def stats_scope_user_ids(scope: str) -> list[str]:
+    """Tập tài khoản mà `stats(scope=...)` đang tính.
+
+    Cách đếm hồ sơ từ 15/9/2026 (app/stats/cutover.py) đọc collection khác nhưng phải phủ
+    ĐÚNG tập tài khoản này, nếu không hai bên mốc sẽ nói về hai phạm vi khác nhau.
+    """
+    accounts = [account async for account in get_db().users.find({}, {"role": 1})]
+    _roles, included_ids = _stats_account_context(accounts, scope)
+    return included_ids
+
+
 async def create_trace(
     *,
     request_id: str,
@@ -129,9 +147,18 @@ async def create_trace(
     error_code: str | None = None,
     created_at: datetime | None = None,
     experience: Experience = "autofill",
+    # Khóa HỒ SƠ — CHUNG cho cả hai kênh, trỏ thẳng tới dossiers._id:
+    #   Handfree : conversation_id (1 conversation = 1 hồ sơ)
+    #   Auto Fill: dossierId sinh trong autofill_session_<tabId>
+    # Cùng một trường để dashboard/báo cáo chỉ có MỘT đường nối, không phải rẽ theo kênh.
+    # ⚠ ĐỪNG NHẦM với `dossier_ids` (số nhiều) ngay dưới: đó là id TỔNG HỢP của lượt tách
+    # hồ sơ, phục vụ cách đếm cũ — hai thứ hoàn toàn khác nhau.
+    dossier_id: str | None = None,
 ) -> str | None:
     doc = {
         "request_id": request_id,
+        # Khóa hồ sơ dùng chung 2 kênh (= dossiers._id). KHÁC `dossier_ids` bên dưới.
+        "dossier_id": dossier_id,
         "user_id": user_id,
         "username": username,
         "name": name,  # tên hiển thị theo phường (vd "Phường Tân Phong")
@@ -466,6 +493,32 @@ def _stats_pipeline(query: dict) -> list[dict]:
                 },
             }
         },
+        # Chứng thực bản sao từ 14/09/2026: cả lượt tách nhiều tab thu về MỘT hồ sơ. Giữ phần
+        # tử ĐẦU thay vì dựng id mới để hai lượt đính kèm của cùng một phiên vẫn ra cùng một
+        # id và bị $group khử trùng — dựng id theo request_id thì mỗi lượt lại thành một hồ sơ.
+        # Trace thiếu created_at coi như thuộc về thời trước mốc: thà giữ số cũ còn hơn sửa
+        # ngược lịch sử của bản ghi không rõ thời điểm.
+        {
+            "$set": {
+                "_stats_dossier_ids": {
+                    "$cond": [
+                        {
+                            "$and": [
+                                {"$in": ["$procedure", list(_CERT_SINGLE_DOSSIER_PROCEDURES)]},
+                                {
+                                    "$gte": [
+                                        {"$ifNull": ["$created_at", _EPOCH]},
+                                        _CERT_SINGLE_DOSSIER_FROM,
+                                    ]
+                                },
+                            ]
+                        },
+                        {"$slice": ["$_stats_dossier_ids", 1]},
+                        "$_stats_dossier_ids",
+                    ]
+                }
+            }
+        },
         {
             "$facet": {
                 "nonSplitFileSets": [
@@ -790,25 +843,27 @@ async def stats_by_user_ids(
 
 
 def _daily_stats_pipeline(query: dict) -> list[dict]:
-    """Giữ nguyên rule gom hồ sơ hiện tại nhưng lấy ngày phát sinh đầu tiên.
+    """Giữ nguyên rule gom hồ sơ hiện tại nhưng CHIA THEO TỪNG NGÀY (múi giờ VN).
 
-    Tái sử dụng chính các stage chuẩn hóa của dashboard để hai báo cáo không trôi
-    tiêu chí theo thời gian. Facet theo ngày bỏ phần request/tài liệu không cần thiết,
-    nên Mongo chỉ trả các tập file và dossier_id đã rút gọn.
+    Tái sử dụng các stage chuẩn hóa của dashboard để không trôi tiêu chí, nhưng THÊM `day`
+    (ngày created_at theo giờ VN) vào khóa gộp → mỗi hồ sơ được khử trùng TRONG PHẠM VI 1 NGÀY,
+    độc lập với khoảng lọc. Nhờ vậy cột 1 ngày (vd hôm nay) cho ra CÙNG con số ở mọi bộ lọc
+    (7 ngày / 30 ngày / tất cả) — khác cách cũ gom theo "ngày đầu trong range" nên bị lệch.
     """
     base = _stats_pipeline(query)
     source_facets = base[-1]["$facet"]
+    day_expr = {"$dateToString": {"format": "%Y-%m-%d", "date": "$created_at", "timezone": "+07:00"}}
 
     legacy = copy.deepcopy(source_facets["nonSplitFileSets"])
-    legacy[-1]["$group"]["firstAt"] = {"$min": "$created_at"}
+    legacy[-1]["$group"]["_id"]["day"] = day_expr
 
     stem = copy.deepcopy(source_facets["stemNonSplitFileSets"])
-    stem[-1]["$group"]["firstAt"] = {"$min": "$created_at"}
+    stem[-1]["$group"]["_id"]["day"] = day_expr
 
-    # Stage group đầu tiên đã khử trùng theo từng dossier_id; không gộp tiếp theo
-    # user/procedure vì cần giữ ngày đầu của từng hồ sơ tách.
+    # Chỉ giữ 3 stage đầu ($match → $unwind dossier_id → $group): mỗi dossier_id một dòng, thêm
+    # `day` để đếm hồ sơ tách theo đúng ngày phát sinh của nó.
     split = copy.deepcopy(source_facets["splitBuckets"][:3])
-    split[-1]["$group"]["firstAt"] = {"$min": "$created_at"}
+    split[-1]["$group"]["_id"]["day"] = day_expr
 
     return [*base[:-1], {"$facet": {
         "nonSplitFileSets": legacy,
@@ -820,18 +875,16 @@ def _daily_stats_pipeline(query: dict) -> list[dict]:
 def _format_daily_dossier_counts(facets: dict) -> list[dict]:
     counts: dict[tuple[str, str], int] = {}
 
-    def add(user_id: str, created_at: datetime | None) -> None:
-        if not isinstance(created_at, datetime):
+    def add(user_id: str, day: str | None) -> None:
+        if not day:
             return
-        # PyMongo có thể trả datetime UTC dạng naive tùy cấu hình codec.
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        date_key = created_at.astimezone(VIETNAM_TZ).strftime("%Y-%m-%d")
-        key = (str(user_id or "—"), date_key)
+        key = (str(user_id or "—"), str(day))
         counts[key] = counts.get(key, 0) + 1
 
     def add_file_set_rows(rows: list[dict], *, strip_suffix: bool) -> None:
-        by_bucket: dict[tuple[str, str], list[tuple[frozenset[str], datetime | None]]] = {}
+        # Khử trùng file set TRONG TỪNG NGÀY (khóa gộp đã kèm `day`) → hồ sơ hoạt động nhiều ngày
+        # đếm ở mỗi ngày nó phát sinh; con số 1 ngày độc lập với khoảng lọc.
+        by_bucket: dict[tuple[str, str, str], list[frozenset[str]]] = {}
         for item in rows:
             item_id = item.get("_id") or {}
             names: list[str] = []
@@ -842,19 +895,21 @@ def _format_daily_dossier_counts(facets: dict) -> list[dict]:
                 if name:
                     names.append(name)
             by_bucket.setdefault(
-                (str(item_id.get("userId") or "—"), str(item_id.get("procedure") or "—")),
+                (
+                    str(item_id.get("userId") or "—"),
+                    str(item_id.get("procedure") or "—"),
+                    str(item_id.get("day") or ""),
+                ),
                 [],
-            ).append((frozenset(names), item.get("firstAt")))
+            ).append(frozenset(names))
 
-        for (user_id, _procedure), occurrences in by_bucket.items():
-            non_empty: dict[frozenset[str], datetime | None] = {}
-            for file_set, first_at in occurrences:
+        for (user_id, _procedure, day), occurrences in by_bucket.items():
+            non_empty: set[frozenset[str]] = set()
+            for file_set in occurrences:
                 if not file_set:
-                    add(user_id, first_at)
+                    add(user_id, day)  # lượt không có tên file → mỗi lượt là 1 hồ sơ
                     continue
-                previous = non_empty.get(file_set)
-                if previous is None or (isinstance(first_at, datetime) and first_at < previous):
-                    non_empty[file_set] = first_at
+                non_empty.add(file_set)
 
             file_sets = list(non_empty)
             parent = list(range(len(file_sets)))
@@ -871,20 +926,16 @@ def _format_daily_dossier_counts(facets: dict) -> list[dict]:
                     if left <= right or right <= left:
                         parent[find(left_index)] = find(right_index)
 
-            earliest: dict[int, datetime | None] = {}
-            for index, file_set in enumerate(file_sets):
-                root = find(index)
-                first_at = non_empty[file_set]
-                previous = earliest.get(root)
-                if previous is None or (isinstance(first_at, datetime) and first_at < previous):
-                    earliest[root] = first_at
-            for first_at in earliest.values():
-                add(user_id, first_at)
+            # Mỗi cụm file set chồng nhau (trong ngày) = 1 hồ sơ.
+            roots = {find(index) for index in range(len(file_sets))}
+            for _root in roots:
+                add(user_id, day)
 
     add_file_set_rows(facets.get("nonSplitFileSets", []), strip_suffix=False)
     add_file_set_rows(facets.get("stemNonSplitFileSets", []), strip_suffix=True)
     for item in facets.get("splitDossiers", []):
-        add((item.get("_id") or {}).get("userId"), item.get("firstAt"))
+        item_id = item.get("_id") or {}
+        add(item_id.get("userId"), item_id.get("day"))
 
     return [
         {"userId": user_id, "date": day, "count": count}
@@ -924,7 +975,12 @@ async def list_dossier_log(
     limit: int = 20,
     experience: Experience = "autofill",
 ) -> dict:
-    """Nhật ký hồ sơ cho bảng thống kê: mỗi trace = 1 dòng, KHÔNG PII (không tên/ocr/file).
+    """Nhật ký theo LƯỢT trace, KHÔNG PII (không tên/ocr/file).
+
+    ⚠️ KHÔNG CÒN DÙNG cho bảng "Nhật ký hồ sơ" của dashboard — màn đó đã chuyển sang
+    `dossiers.repo.list_for_dashboard` để mỗi HỒ SƠ là một dòng (kèm mốc nộp + đánh giá).
+    Giữ lại vì đây là cách duy nhất liệt kê theo lượt trong phạm vi dashboard; xoá đi thì
+    sau này cần lại phải viết lại từ đầu.
 
     Khác list_traces (admin, kèm PII): chỉ trả metadata tối thiểu và khóa theo tập user_id của
     phạm vi. Mỗi lượt làm việc với Trợ lý (điền/đính kèm) là một dòng.
@@ -1006,5 +1062,30 @@ def _serialize(doc: dict) -> dict:
     doc["id"] = str(doc.pop("_id"))
     created = doc.get("created_at")
     if isinstance(created, datetime):
-        doc["created_at"] = created.astimezone(timezone.utc).isoformat()
+        # replace() chứ KHÔNG astimezone(): driver không bật tz_aware nên Mongo trả datetime
+        # NAIVE mà giá trị đã là UTC (mọi chỗ ghi đều dùng datetime.now(timezone.utc)).
+        # astimezone() coi naive là giờ MÁY CHỦ — chỉ tình cờ đúng khi máy chủ chạy UTC, dời
+        # máy chủ sang múi khác là lệch âm thầm. Giống app/dossiers/repo.py::_iso.
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        doc["created_at"] = created.isoformat()
     return doc
+
+
+async def list_by_dossier(dossier_id: str, limit: int = 100) -> list[dict]:
+    """Nhật ký lượt điền/đính kèm của MỘT hồ sơ (màn chi tiết trang quản trị).
+
+    Bỏ ocr_text/llm_output như list_traces — hai trường đó rất nặng và màn chi tiết trace
+    riêng (#/trace/<id>) mới cần đến.
+    """
+    if not dossier_id:
+        return []
+    db = get_db()
+    cursor = (
+        db.traces.find({"dossier_id": dossier_id}, {"ocr_text": 0, "llm_output": 0})
+        .sort("created_at", 1)  # thứ tự thời gian: đọc nhật ký từ trên xuống
+        .limit(max(min(limit, 200), 1))
+    )
+    docs = await cursor.to_list(length=limit)
+    await _apply_current_account_names(db, docs)
+    return [_serialize(d) for d in docs]

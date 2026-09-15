@@ -14,8 +14,6 @@ from app.traces.date_range import VIETNAM_TZ
 
 logger = logging.getLogger(__name__)
 _REGISTRY = {p["key"]: p for p in PROCEDURES}
-# Giới hạn khoảng biểu đồ để response không quá dày; truy vấn Handfree hiện là một aggregation.
-_HF_DAILY_MAX_DAYS = 92
 
 
 def _af_canon(item: dict) -> tuple[str, str]:
@@ -96,7 +94,10 @@ async def fetch_handfree(
         ok = False
         logger.warning("Handfree stats không khả dụng cho dashboard: %s", exc)
 
-    if want_daily and ok and (date_to - date_from).days <= _HF_DAILY_MAX_DAYS:
+    # LUÔN gộp Handfree theo ngày (không giới hạn 92 ngày nữa): biểu đồ byDay phải khớp KPI tổng —
+    # KPI đếm cả Auto Fill + Handfree, nếu cắt HF ở range dài ("Tất cả") thì cột theo ngày thiếu HF
+    # (vd hôm nay hiện 9 thay vì 49). Auto Fill daily vốn không bị cắt nên HF cũng phải phủ đủ range.
+    if want_daily and ok:
         try:
             daily = await fetch_handfree_daily_stats(accounts, body)
             for unit in daily.get("units") or []:
@@ -117,7 +118,7 @@ async def fetch_handfree_daily(units: list[dict], date_from: datetime, date_to: 
         for u in units
         if u.get("unitId") and u.get("xa")
     ]
-    if not accounts or (date_to - date_from).days > _HF_DAILY_MAX_DAYS:
+    if not accounts:
         return {}
     daily_by_date: dict[str, int] = {}
     try:

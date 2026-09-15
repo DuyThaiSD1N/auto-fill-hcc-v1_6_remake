@@ -12,8 +12,9 @@ hai eForm liên tiếp nhưng lần trích xuất này chỉ trả các SOURCE F
 - Tờ khai đăng ký nhận cha, mẹ, con: nguồn chính để xác định ai nhận ai, vai trò cha/con và tên
   dự kiến của trẻ.
 - Giấy chứng sinh: nguồn chính cho ngày sinh, giới tính, nơi sinh, số giấy chứng sinh và tên người mẹ.
-- CCCD/Căn cước: nguồn chính cho số định danh, ngày sinh, ngày cấp, nơi cấp và nơi cư trú của
-  đúng người mang thẻ.
+- CCCD/Căn cước: nguồn chính cho số định danh, ngày sinh, GIỚI TÍNH, ngày cấp, nơi cấp và nơi cư trú
+  của đúng người mang thẻ. Ngày sinh/giới tính trên thẻ THẮNG tờ khai khi hai nơi ghi khác nhau (chữ
+  viết tay hay bị OCR đọc sai); tờ khai chỉ bù khi người đó không có thẻ trong hồ sơ.
 - Kết quả ADN/giám định: chứng cứ quan hệ và nguồn đối chiếu tên/số định danh của các bên.
 - Giấy chứng tử/quyết định ly hôn: chứng cứ tình trạng hôn nhân, không biến người trên giấy đó
   thành Requester/Father/Mother/Child nếu tờ khai không xác lập vai trò.

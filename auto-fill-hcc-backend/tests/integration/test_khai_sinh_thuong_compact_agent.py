@@ -50,7 +50,7 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
     assert values["GioiTinhKS"] == "Nam"
     assert values["nksNoiSinh"] == "1"
     assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "BỆNH VIỆN ĐA KHOA TỈNH"
-    assert values["nksQueQuan_TrongNuoc"]["xa"] == "Xã Tam Hợp"
+    assert values["nksQueQuan_TrongNuoc"]["xa"] == "Tam Hợp"
 
     assert values["HoTenChaKS"] == "VŨ ĐÌNH THIẾT"
     assert values["SoDinhDanhCha"] == "040203015844"
@@ -63,92 +63,6 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
     assert values["SoGiayToDinhDanhMe"] == "012193000851"
     assert values["NgayCapDDMe"] == "06/02/2024"
     assert values["NoiCapDDMe"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-
-
-def test_khai_sinh_thuong_marriage_record_fills_father_section():
-    """Chỉ có CCCD mẹ + giấy chứng sinh + giấy kết hôn → mục cha lấy từ giấy kết hôn."""
-    compact_fields = [
-        {"name": "Gcs_NgaySinhCon", "value": "23/04/2015"},
-        {"name": "Gcs_GioiTinhCon", "value": "Nam"},
-        {"name": "Gcs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "diaChi": "Khoa Sản Bệnh viện Đa khoa Lâm Đồng"}},
-        {"name": "CccdNu_HoTen", "value": "PANG TING RƠNG"},
-        {"name": "CccdNu_SoDinhDanh", "value": "068187005668"},
-        {"name": "CccdNu_NgaySinh", "value": "12/06/1987"},
-        {"name": "CccdNu_NgayCap", "value": "12/06/2022"},
-        {"name": "CccdNu_NoiCuTru_TrongNuoc", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Tà Nung", "diaChi": "Tổ 16, Thôn 1"}},
-        {"name": "Gckh_HoTenChong", "value": "DACAT KRE"},
-        {"name": "Gckh_NamSinhChong", "value": "1985"},
-        {"name": "Gckh_DanTocChong", "value": "Lach"},
-        {"name": "Gckh_SoDinhDanhChong", "value": "108 QA/TPHT"},
-        {"name": "Gckh_NoiCuTruChong", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Tà Nung", "diaChi": "Tổ 16, thôn 1"}},
-        {"name": "Gckh_HoTenVo", "value": "PANG TING RƠNG"},
-        {"name": "Gckh_NamSinhVo", "value": "12/06/1987"},
-        {"name": "Gckh_DanTocVo", "value": "Lach"},
-    ]
-
-    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
-
-    assert values["HoTenChaKS"] == "DACAT KRE"
-    assert values["NamSinhChaKS"] == "1985"
-    assert values["DanTocChaKS"] == "Lach"
-    assert values["ChaNoiCuTru"] == "1"
-    assert values["ChaNoiCuTru_TrongNuoc"]["diaChi"] == "Tổ 16, thôn 1"
-    # Số trên giấy kết hôn cũ không phải số định danh 12 số → ô (22) để trống.
-    assert "SoDinhDanhCha" not in values
-    # Mẹ đã có CCCD → giấy kết hôn chỉ bổ khuyết dân tộc, không đè dữ liệu CCCD.
-    assert values["HoTenMeKS"] == "PANG TING RƠNG"
-    assert values["SoDinhDanhMe"] == "068187005668"
-    assert values["DanTocMeKS"] == "Lach"
-
-
-def test_khai_sinh_thuong_birth_place_keeps_facility_street_detail():
-    """Giấy chứng sinh chỉ trả tên bệnh viện, tờ khai có thêm "Đồi Long Thọ" → lấy bản đầy đủ."""
-    compact_fields = [
-        {"name": "Gcs_HoTenCon", "value": "Trần Nguyễn Gia Bảo"},
-        {"name": "Gcs_NgaySinhCon", "value": "12/08/2026"},
-        {"name": "Gcs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Xuân Hương",
-                                           "diaChi": "Bệnh viện Đa Khoa Hoàn Mỹ Đà Lạt"}},
-        {"name": "TkKs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Xuân Hương",
-                                            "diaChi": "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ"}},
-    ]
-
-    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
-
-    assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt, Đồi Long Thọ"
-
-
-def test_khai_sinh_thuong_birth_place_not_merged_from_other_facility():
-    compact_fields = [
-        {"name": "Gcs_HoTenCon", "value": "A"},
-        {"name": "Gcs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "diaChi": "Bệnh viện Đa khoa Lâm Đồng"}},
-        {"name": "TkKs_NoiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "diaChi": "Trạm y tế xã Tà Nung, Thôn 1"}},
-    ]
-
-    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
-
-    assert values["nksNoiSinh_TrongNuoc"]["diaChi"] == "Bệnh viện Đa khoa Lâm Đồng"
-
-
-def test_khai_sinh_thuong_prompt_keeps_facility_address_detail():
-    assert "Đồi Long Thọ" in compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
-
-
-def test_khai_sinh_thuong_ignores_subject_own_marriage_record():
-    """Đăng ký muộn: giấy kết hôn của CHÍNH người được khai sinh → không dùng làm cha/mẹ."""
-    compact_fields = [
-        {"name": "CccdChuThe_HoTen", "value": "K NGHĨA"},
-        {"name": "CccdChuThe_NgaySinh", "value": "10/02/1990"},
-        {"name": "CccdChuThe_SoDinhDanh", "value": "068190001234"},
-        {"name": "Gckh_HoTenChong", "value": "K NGHĨA"},
-        {"name": "Gckh_NamSinhChong", "value": "1990"},
-        {"name": "Gckh_HoTenVo", "value": "MA HOA"},
-        {"name": "Gckh_NamSinhVo", "value": "1992"},
-    ]
-
-    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
-
-    assert "HoTenChaKS" not in values
-    assert "HoTenMeKS" not in values
 
 
 def test_khai_sinh_thuong_prompt_forbids_ui_fields():

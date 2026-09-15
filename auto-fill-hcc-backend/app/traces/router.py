@@ -17,6 +17,7 @@ from app.config import settings
 from app.core.deps import require_trace_reader
 from app.core.errors import AppError
 from app.process import requests_repo
+from app.stats import cutover
 from app.traces import repo
 from app.traces.date_range import parse_stats_range
 
@@ -81,12 +82,15 @@ async def stats(
     source: Literal["all", "autofill", "handfree"] = Query("all"),
 ):
     start, end = _parse_stats_range(dateFrom, dateTo)
-    return await repo.stats(
+    # Qua app/stats/cutover.py: đến hết 14/9/2026 đếm theo cách cũ (suy từ trace), từ 15/9
+    # đếm hồ sơ ĐÃ NỘP — cùng con số với bảng thống kê phường và báo cáo Excel.
+    result = await cutover.admin_stats(
         date_from=start,
         date_to=end,
         scope=scope,
         experience=None if source == "all" else source,
     )
+    return {**result, "counting": cutover.counting_info(start, end)}
 
 
 @router.get("/{trace_id}")

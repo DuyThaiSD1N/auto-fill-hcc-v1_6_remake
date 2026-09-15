@@ -42,7 +42,10 @@ async def test_get_many_rejects_documents_older_than_configured_ttl(monkeypatch)
     result = await ocr_cache.get_many(["v2-tiengnoi:key"])
     after = datetime.now(timezone.utc) - timedelta(hours=12)
 
-    assert result == {"v2-tiengnoi:key": {"text": "OCR", "provider": "tiengnoi"}}
+    # max_tokens=None: bản ghi từ bản cũ chưa ghi trần token — người gọi tự quyết có dùng được không.
+    assert result == {
+        "v2-tiengnoi:key": {"text": "OCR", "provider": "tiengnoi", "max_tokens": None},
+    }
     assert collection.query["_id"] == {"$in": ["v2-tiengnoi:key"]}
     assert before <= collection.query["created_at"]["$gte"] <= after
-    assert collection.projection == {"text": 1, "provider": 1}
+    assert collection.projection == {"text": 1, "provider": 1, "max_tokens": 1}

@@ -60,10 +60,21 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 - Số đo diện tích/chiều cao/cốt/khoảng lùi chỉ trả số, giữ dấu phẩy hoặc dấu chấm đều được; Python sẽ chuẩn hóa.
 - "Cốt nền xây dựng: + 0,45 m" -> CongTrinh_CotXayDung = "0,45".
 - "Tổng diện tích sàn: 214,1 m²" -> CongTrinh_TongDienTichSan = "214,1".
-- "Trong đó: Tầng 1: 106 m²; tầng 2: 101,7 m², mái: 112,4m²" -> trả nguyên cụm vào
-  CongTrinh_ChiTietDienTichSan.
 - "Chiều cao công trình: 9,6 m..." -> CongTrinh_ChieuCao = "9,6".
 - "Số tầng: 02 tầng + mái" -> CongTrinh_SoTang = "2"; CongTrinh_ChiTietSoTang = "02 tầng + mái".
+
+⚑ MỖI THÔNG SỐ CÓ HAI FIELD: một field SỐ (một con số duy nhất) và một field CHI TIẾT (phần liệt kê
+  theo tầng). Đọc được phần liệt kê thì BẮT BUỘC trả cả field chi tiết — đừng bỏ trống chỉ vì đã trả
+  field số. Phần liệt kê xuất hiện theo 3 kiểu, kiểu nào cũng phải lấy:
+    · sau chữ "Trong đó:"        -> "Trong đó: Tầng 1: 106 m²; tầng 2: 101,7 m²"
+    · trong NGOẶC ĐƠN cùng dòng  -> "Chiều cao công trình: 11,9m (tầng 1: 3,4m, tầng 2: 3m, tum: 2,5m)"
+    · nối tiếp ngay trên cùng dòng, ngăn bằng dấu phẩy
+      -> "Diện tích xây dựng tầng 1: 30m², tầng 2: 43,2 m², tầng 3: 43,2 m²"
+  Cụ thể: phần liệt kê diện tích các tầng -> CongTrinh_ChiTietDienTichSan; phần liệt kê chiều cao các
+  tầng -> CongTrinh_ChiTietChieuCao; cách ghi số tầng -> CongTrinh_ChiTietSoTang.
+  Trả NGUYÊN VĂN phần liệt kê (giữ nguyên số của đơn, KHÔNG tự cộng/sửa kể cả khi thấy số vô lý).
+⚠ Lưu ý: quy tắc "không lấy số ở dòng Chiều cao / Tổng diện tích sàn" chỉ áp cho field SỐ
+  CongTrinh_DienTichXayDung. Các field CHI TIẾT thì VẪN lấy đúng từ những dòng đó.
 - "Thời gian dự kiến: 06 tháng" -> CongTrinh_ThoiGianDuKienHoanThanh = "06 tháng".
 </technical_data_rules>
 
@@ -89,9 +100,18 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 - ThietKe_ToChuc_MaSo CHỈ là MÃ SỐ DOANH NGHIỆP (10 chữ số, hoặc mã chi nhánh 10 số-3 số). KHÔNG lấy
   mã chứng chỉ NĂNG LỰC/hành nghề (vd "LAD 00038424") — đó không phải mã số doanh nghiệp, form validate
   sẽ báo sai định dạng. Nếu giấy tờ không có MSDN hợp lệ thì BỎ TRỐNG field này.
-- ThietKe_ChuNhiem_* lấy từ dòng chủ nhiệm thiết kế trong đơn/bản kê khai/chứng chỉ hành nghề.
+- VAI TRÒ NẰM Ở CUỐI DÒNG: mục "Tên và mã số chứng chỉ hành nghề của các chủ nhiệm, chủ trì thiết kế"
+  kê mỗi người MỘT DÒNG theo dạng "<học vị>.<Họ tên>, Mã số: <mã> — <VAI TRÒ>: <bộ môn>;". Phải đọc
+  ĐẾN HẾT dòng mới biết người đó là chủ nhiệm hay chỉ chủ trì — vai trò đứng SAU mã số, không phải
+  đầu dòng.
+- ThietKe_ChuNhiem_* = người mà vai trò TRÊN CHÍNH DÒNG ĐÓ có chữ "Chủ nhiệm" (vd "Chủ nhiệm/Chủ trì:
+  Kết cấu"). Người chỉ ghi "Chủ trì: ..." KHÔNG phải chủ nhiệm, dù đứng trước hay là bộ môn Kiến trúc.
+  Không dòng nào ghi "Chủ nhiệm" → BỎ TRỐNG ThietKe_ChuNhiem_HoTen và ThietKe_ChuNhiem_ChungChi.
+- Họ tên và mã số chứng chỉ phải lấy trên CÙNG MỘT DÒNG. Cấm ghép tên người này với mã số người kia.
 - ThietKe_ChuTri_DanhSach phải chứa TẤT CẢ các dòng tại mục "Chủ trì thiết kế các bộ môn", mỗi dòng là
   {"boMon":"<bộ môn>","hoTen":"<họ tên>","chungChi":"<số chứng chỉ>"}; một bộ môn vẫn trả mảng.
+  Thứ tự phần tử = thứ tự dòng trong ĐƠN (dòng đầu → phần tử đầu). Người vừa là chủ nhiệm vừa chủ trì
+  một bộ môn thì có mặt ở CẢ ThietKe_ChuNhiem_* LẪN mảng này.
 - Ưu tiên danh sách ghi rõ trong bản kê khai kinh nghiệm thiết kế; sau đó mới dùng dòng chủ trì ghi rõ trong
   đơn/chứng chỉ để bổ sung đúng người. Không tạo dòng chỉ vì một tên xuất hiện rời rạc trong bản vẽ nhiễu.
 - Giữ thứ tự kê khai, không bỏ các bộ môn sau Kiến trúc và không trả dòng trùng. Không tự đưa chủ nhiệm thiết

@@ -266,25 +266,37 @@ def _fmt_received(iso: str | None) -> str:
 def _sheet_logs(wb: Workbook, logs: list[dict]) -> None:
     ws = wb.create_sheet("Nhật ký hồ sơ")
     ws.sheet_view.showGridLines = False
+    # Mỗi dòng là một HỒ SƠ (không còn là một lượt điền/đính kèm) → bỏ cột "Bước", thêm mốc
+    # nộp và phiếu đánh giá. Giữ đúng thứ tự cột của bảng trên màn hình.
     _write_header(ws, 1, [
         ("Mã hồ sơ", "l", 22),
         ("Thời gian tiếp nhận", "c", 20),
+        ("Thời gian nộp hồ sơ", "c", 20),
         ("Đơn vị tiếp nhận", "l", 28),
         ("Thủ tục", "l", 52),
-        ("Bước", "c", 13),
+        ("Đánh giá", "c", 16),
     ])
     if not logs:
         cell = ws.cell(row=2, column=1, value="Chưa có hồ sơ nào trong kỳ.")
         cell.alignment = _LEFT
-        ws.merge_cells("A2:E2")
+        ws.merge_cells("A2:F2")
         return
     r = 2
     for it in logs:
-        _body_cell(ws, r, 1, it.get("requestId") or "—", "l")
+        rating = it.get("rating") or {}
+        # Phân biệt ba trạng thái: chưa từng được hỏi (—), hỏi mà bỏ qua, và có mức thật.
+        if not rating:
+            rating_text = "—"
+        elif rating.get("level") is None:
+            rating_text = "Bỏ qua"
+        else:
+            rating_text = rating.get("levelLabel") or str(rating.get("level"))
+        _body_cell(ws, r, 1, it.get("dossierId") or "—", "l")
         _body_cell(ws, r, 2, _fmt_received(it.get("receivedAt")), "c")
-        _body_cell(ws, r, 3, it.get("unitName") or "—", "l")
-        _body_cell(ws, r, 4, it.get("procedureLabel") or "—", "l")
-        _body_cell(ws, r, 5, "Đính kèm" if it.get("kind") == "attach" else "Điền form", "c")
+        _body_cell(ws, r, 3, _fmt_received(it.get("submittedAt")) if it.get("submittedAt") else "chưa nộp", "c")
+        _body_cell(ws, r, 4, it.get("unitName") or "—", "l")
+        _body_cell(ws, r, 5, it.get("procedureLabel") or "—", "l")
+        _body_cell(ws, r, 6, rating_text, "c")
         r += 1
 
 

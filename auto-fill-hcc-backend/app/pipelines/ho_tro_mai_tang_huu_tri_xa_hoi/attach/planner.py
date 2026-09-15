@@ -1,9 +1,16 @@
-"""Đính kèm cho thủ tục mai táng hưu trí xã hội.
+"""Đính kèm cho thủ tục "Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội".
 
-Khác với chứng thực (ví giấy tờ + thêm thành phần mới), thủ tục này có 3 THÀNH PHẦN
-HỒ SƠ CỐ ĐỊNH sẵn trên form, mỗi thành phần 1 ô upload riêng. Nhiệm vụ ở đây là OCR +
-phân loại mỗi file vào ĐÚNG 1 trong 3 ô (hoặc bỏ qua nếu không khớp) rồi trả "fixed-slot"
-plan để extension bơm file vào input của đúng hàng.
+⚑ BẢNG THÀNH PHẦN HỒ SƠ CHỈ CÒN **ĐÚNG MỘT DÒNG** (chốt user 2026-09-15): "Thành phần hồ sơ gồm: Tờ
+khai đề nghị hỗ trợ chi phí mai táng (theo Mẫu số 02 ban hành kèm theo Nghị định số 176/2025/NĐ-CP)."
+Cổng đã bỏ 2 dòng cũ (giấy chứng tử, quyết định thôi hưởng) và không có nút thêm thành phần → **MỌI
+FILE đều đính vào dòng 1** (fixed-slot, slotIndex 0), tuyệt đối không bỏ sót.
+
+Phân loại LLM **chỉ còn để đặt TÊN HIỂN THỊ + cảnh báo**, không còn quyết định đích đến. (Với target
+`fixed-slot`, FE upload bằng TÊN FILE GỐC — `documentName` chỉ hiện trong kế hoạch/trace.)
+
+⚠ TUYỆT ĐỐI KHÔNG dùng lưới keyword để phân loại (chốt user 2026-09-15). Trước đây `detect_slot_key`
+chạy TRƯỚC cả LLM và `is_excluded_document` quét "the can cuoc" để bỏ file — cả hai đã bị GỠ khỏi
+luồng, chỉ giữ lại để đối chứng. Xem [[luoi-keyword-cccd-nuot-trich-luc-khai-tu]].
 """
 import time
 from typing import Any
@@ -16,32 +23,33 @@ from app.services.llm import client
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
-# 3 thành phần hồ sơ cố định (đúng thứ tự hiển thị trên form bước 3).
-SLOTS: list[dict] = [
-    {
-        "slotKey": "to_khai_mai_tang",
-        "slotIndex": 0,
-        "slotName": "Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 04)",
-        "detectedType": "Tờ khai đề nghị hỗ trợ chi phí mai táng",
-    },
-    {
-        "slotKey": "giay_chung_tu",
-        "slotIndex": 1,
-        "slotName": "Bản sao giấy chứng tử hoặc giấy báo tử của đối tượng",
-        "detectedType": "Giấy chứng tử/Trích lục khai tử",
-    },
-    {
-        "slotKey": "quyet_dinh_thoi_huong",
-        "slotIndex": 2,
-        "slotName": "Bản sao quyết định/danh sách thôi hưởng trợ cấp BHXH",
-        "detectedType": "Quyết định thôi hưởng trợ cấp",
-    },
-]
-_SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
+# Dòng DUY NHẤT của cổng. slotName lấy VERBATIM (cổng đã đổi sang Mẫu số 02 / NĐ 176/2025, trước
+# planner ghi "Mẫu số 04" là tên cũ). FE tìm ô bằng slotIndex nên đây chủ yếu để hiển thị/đối chiếu.
+SLOT = {
+    "slotKey": "to_khai_mai_tang",
+    "slotIndex": 0,
+    "slotName": (
+        "Thành phần hồ sơ gồm: Tờ khai đề nghị hỗ trợ chi phí mai táng "
+        "(theo Mẫu số 02 ban hành kèm theo Nghị định số 176/2025/NĐ-CP)."
+    ),
+    "detectedType": "Tờ khai đề nghị hỗ trợ chi phí mai táng",
+}
+SLOTS: list[dict] = [SLOT]  # giữ tên cũ cho chỗ đọc `extracted.slots`.
+
+# Nhãn hiển thị theo loại LLM nhận ra (chỉ để cán bộ soát trong kế hoạch, không đổi đích đến).
+_LABELS = {
+    "to_khai_mai_tang": "Tờ khai đề nghị hỗ trợ chi phí mai táng",
+    "giay_chung_tu": "Giấy chứng tử/Trích lục khai tử",
+    "quyet_dinh_thoi_huong": "Quyết định thôi hưởng trợ cấp",
+}
 
 
 def is_excluded_document(text: str, file_name: str = "") -> bool:
-    """CCCD/CMND/hộ chiếu — KHÔNG nằm trong 3 thành phần hồ sơ, không đính kèm ở bước này.
+    """⚠ KHÔNG CÒN DÙNG TRONG LUỒNG QUYẾT ĐỊNH — giữ lại chỉ để tham chiếu/đối chứng.
+
+    Lưới keyword quét OCR tìm "can cuoc"/"the can cuoc"… để BỎ file. Nó sai ở mọi giấy tờ hành chính
+    có NHẮC số căn cước của người khác (trích lục khai tử ghi "Giấy tờ tùy thân: Thẻ căn cước công
+    dân số …") và vi phạm nguyên tắc không-bỏ-sót-file. Đã gỡ khỏi `build_plan_items`.
 
     Chỉ tính khi chính tài liệu LÀ giấy tùy thân (tiêu đề), không tính các giấy tờ chỉ
     *nhắc tới* số căn cước (vd trích lục khai tử có dòng "Thẻ căn cước công dân số...").
@@ -59,7 +67,10 @@ def is_excluded_document(text: str, file_name: str = "") -> bool:
 
 
 def detect_slot_key(text: str, file_name: str = "") -> str:
-    """Phân loại nhanh bằng rule trên OCR text; trả slotKey hoặc "" nếu không chắc.
+    """⚠ KHÔNG CÒN DÙNG TRONG LUỒNG QUYẾT ĐỊNH — giữ lại chỉ để tham chiếu/đối chứng.
+
+    Trước đây hàm này chạy TRƯỚC cả LLM nên keyword đè hoàn toàn kết quả phân loại. Đã gỡ khỏi
+    `build_plan_items` (chốt user 2026-09-15: "đừng dùng keyword, dùng LLM").
 
     Thứ tự ưu tiên QUAN TRỌNG: tờ khai Mẫu 04 thường liệt kê "giấy chứng tử" trong phần
     hồ sơ kèm theo, nên phải nhận diện tờ khai (theo tiêu đề riêng) TRƯỚC giấy chứng tử,
@@ -100,7 +111,7 @@ def _slot_from_llm_type(value: str) -> str:
         return "quyet_dinh_thoi_huong"
     if "mai tang" in text or "to khai" in text:
         return "to_khai_mai_tang"
-    return _SLOT_BY_KEY.get(value, {}).get("slotKey", "") if value in _SLOT_BY_KEY else ""
+    return ""
 
 
 async def _classify_documents_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
@@ -127,44 +138,44 @@ def build_plan_items(
     ocr_results: list[dict],
     llm_slots: dict[int, str] | None = None,
 ) -> tuple[list[dict], list[str]]:
+    """MỌI FILE đều đính vào dòng 1 — bảng của thủ tục này chỉ còn đúng một dòng.
+
+    LLM chỉ dùng để đặt tên hiển thị và cảnh báo giấy tờ không phải Tờ khai; nó KHÔNG còn quyết định
+    đích đến, và KHÔNG có lưới keyword nào tham gia.
+    """
     llm_slots = llm_slots or {}
-    by_name = {item.get("name"): item for item in ocr_results}
+    del ocr_results  # OCR text không còn được dùng để suy loại (LLM-first tuyệt đối).
     items: list[dict] = []
     warnings: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        ocr_item = by_name.get(file_name, {})
-        text = str(ocr_item.get("text") or "")
-        rule_slot = detect_slot_key(text, file_name)
-        if rule_slot:
-            slot_key = rule_slot
-        elif is_excluded_document(text, file_name):
-            # CCCD/giấy tùy thân không thuộc 3 thành phần hồ sơ — bỏ qua, KHÔNG hỏi LLM.
-            warnings.append(f"File '{file_name}' là giấy tùy thân (CCCD) — không cần đính kèm ở bước này, đã bỏ qua.")
-            continue
-        else:
-            slot_key = llm_slots.get(idx, "")
-        slot = _SLOT_BY_KEY.get(slot_key)
-        if not slot:
-            warnings.append(
-                f"Không xác định được loại giấy tờ cho file '{file_name}' — bỏ qua, vui lòng đính kèm thủ công."
+        doc_type = llm_slots.get(idx, "")
+        label = _LABELS.get(doc_type) or f"Tài liệu khác - {file_name}"
+
+        items.append({
+            "fileIndex": idx,
+            "fileName": file_name,
+            "documentName": label,
+            "componentName": SLOT["slotName"],
+            "target": "fixed-slot",
+            "needsAddComponent": False,
+            "detectedType": label,
+            "slotKey": SLOT["slotKey"],
+            "slotIndex": SLOT["slotIndex"],
+            "slotName": SLOT["slotName"],
+        })
+
+        # Không bỏ sót file nào; chỉ cảnh báo để cán bộ soát khi không phải Tờ khai Mẫu số 02.
+        if doc_type != SLOT["slotKey"]:
+            reason = (
+                f"được nhận là '{_LABELS[doc_type]}'" if doc_type in _LABELS
+                else "chưa nhận diện chắc loại giấy tờ"
             )
-            continue
-        items.append(
-            {
-                "fileIndex": idx,
-                "fileName": file_name,
-                "documentName": slot["detectedType"],
-                "componentName": slot["slotName"],
-                "target": "fixed-slot",
-                "needsAddComponent": False,
-                "detectedType": slot["detectedType"],
-                "slotKey": slot["slotKey"],
-                "slotIndex": slot["slotIndex"],
-                "slotName": slot["slotName"],
-            }
-        )
+            warnings.append(
+                f"File '{file_name}' {reason}, không phải Tờ khai đề nghị hỗ trợ chi phí mai táng "
+                "(Mẫu số 02) — vẫn đính vào dòng duy nhất của thủ tục; cán bộ kiểm tra lại."
+            )
 
     return items, warnings
 

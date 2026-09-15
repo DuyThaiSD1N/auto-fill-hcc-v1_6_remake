@@ -34,6 +34,44 @@ _DANG_VAN_LAM = {
 }
 
 
+def _run_mode(values: dict, mode: str = "owner_as_submitter"):
+    compact = [{"name": name, "value": value} for name, value in values.items()]
+    fields, warnings = mapper.enrich(compact, {"submitterMode": mode})
+    return {field["name"]: field["value"] for field in fields}, warnings
+
+
+def test_owner_mode_no_uyquyen_self_submit():
+    """Toggle owner_as_submitter, KHÔNG có ủy quyền → chủ hồ sơ = người nộp (tick), bỏ qua mỏ neo UI."""
+    got, _ = _run_mode(_DANG_VAN_LAM)
+    assert got["data[isOwnerDossierCheck]"] is True
+    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"          # người nộp = chủ hồ sơ
+    assert got["data[identityNumber]"] == "068080000292"
+    assert got["data[ownerBirthday]"] == "03/03/1980"       # portal bỏ sót khi tick
+    assert "data[ownerFullname]" not in got                 # tự nộp: không lặp khối chủ hồ sơ
+
+
+def test_owner_mode_always_owner_even_with_extra_person():
+    """Mode 2 = LUÔN chủ hồ sơ làm người nộp, kể cả nếu OCR lỡ trích NguoiNop (thủ tục này không có ủy quyền)."""
+    values = dict(_DANG_VAN_LAM)
+    values.update({"NguoiNop_HoTen": "Phan Mỹ Dung", "NguoiNop_SoDinhDanh": "024193003267"})
+    got, _ = _run_mode(values)
+    assert got["data[isOwnerDossierCheck]"] is True
+    assert got["data[fullname]"] == "ĐẶNG VĂN LÂM"          # người nộp = chủ hồ sơ (bỏ qua NguoiNop)
+    assert "data[ownerFullname]" not in got                 # tự nộp: không lặp khối chủ hồ sơ
+    assert "Phan Mỹ Dung" not in str(list(got.values()))    # người phụ bị bỏ qua
+
+
+def test_owner_mode_ignores_ui_anchor():
+    """Owner mode KHÔNG so khớp mỏ neo UI: dù formContext có người khác vẫn owner=submitter."""
+    compact = [{"name": k, "value": v} for k, v in _DANG_VAN_LAM.items()]
+    fields, _ = mapper.enrich(compact, {
+        "submitterMode": "owner_as_submitter",
+        "formContext": {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"},
+    })
+    got = {f["name"]: f["value"] for f in fields}
+    assert got["data[isOwnerDossierCheck]"] is True and got["data[fullname]"] == "ĐẶNG VĂN LÂM"
+
+
 def test_schema_only_exposes_owner_and_requester_roles():
     assert "ChuHoSo_HoTen" in ALLOWED
     assert "NguoiNop_HoTen" in ALLOWED

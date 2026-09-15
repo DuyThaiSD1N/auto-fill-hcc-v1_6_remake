@@ -51,6 +51,36 @@ _OWNER = {
 }
 
 
+def _run_owner_mode(values: dict, form_context: dict | None = None):
+    compact = [{"name": name, "value": value} for name, value in values.items()]
+    opts = {"submitterMode": "owner_as_submitter"}
+    if form_context is not None:
+        opts["formContext"] = form_context
+    fields, warnings = mapper.enrich(compact, opts)
+    return {(f["name"], f.get("occurrence")): f["value"] for f in fields}, warnings
+
+
+def test_owner_mode_submitter_is_owner_and_ticks():
+    """Toggle owner_as_submitter, không mỏ neo UI → occ0 (người nộp) = chủ hồ sơ + tick; phần còn lại giữ nguyên."""
+    mapped, _ = _run_owner_mode(_OWNER)
+    assert mapped[("data[isOwnerDossierCheck]", None)] is True
+    assert mapped[("data[fullname]", 0)] == "Vũ Đình Tuyến"          # người nộp = chủ hồ sơ
+    assert mapped[("data[fullname]", 1)] == "Vũ Đình Tuyến"          # Mẫu 18 chi tiết (luôn owner)
+    assert mapped[("data[ownerFullname]", None)] == "Vũ Đình Tuyến"  # khối chủ hồ sơ (luôn owner)
+    assert mapped[("data[MqhVls1]", None)] == "Con trai"             # nghiệp vụ liệt sĩ vẫn điền
+    assert mapped[("data[UqTcLs]", None)] == "Vũ Đình Soang"
+
+
+def test_owner_mode_ignores_ui_anchor_no_warning():
+    """Owner mode bỏ mỏ neo UI: dù form có người KHÁC vẫn owner=submitter, KHÔNG cảnh báo lệch người nộp."""
+    mapped, warnings = _run_owner_mode(
+        _OWNER, {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"}
+    )
+    assert mapped[("data[isOwnerDossierCheck]", None)] is True
+    assert mapped[("data[fullname]", 0)] == "Vũ Đình Tuyến"
+    assert not any("người nộp" in w for w in warnings)
+
+
 def test_schema_has_two_identity_roles_and_keeps_business_fields():
     assert "ChuHoSo_HoTen" in ALLOWED
     assert "NguoiNop_HoTen" in ALLOWED

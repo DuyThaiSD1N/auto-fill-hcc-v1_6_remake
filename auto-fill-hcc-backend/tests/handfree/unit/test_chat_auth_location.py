@@ -45,7 +45,11 @@ def test_phien_moi_lay_noi_tu_acc(monkeypatch):
     assert r.status_code == 200
     loc = r.json()["location"]
     assert loc == {"province": "Tỉnh Lai Châu", "province_slug": "laichau", "ward": "Phường Tân Phong"}
-    assert saved["auth_user"] == {"id": "u1", "username": "hcctanphong", "name": "Phường Tân Phong"}
+    # province_slug = tỉnh account → khóa thủ tục đặc thù tỉnh (độc lập location picker).
+    assert saved["auth_user"] == {
+        "id": "u1", "username": "hcctanphong", "name": "Phường Tân Phong",
+        "province_slug": "laichau",
+    }
 
 
 def test_phien_moi_acc_cu_ten_tran(monkeypatch):

@@ -143,3 +143,57 @@ async def test_runner_does_not_pass_submitter_context_builder(monkeypatch):
 
     assert "context_builder" not in captured
     assert "options" not in captured
+
+
+# ── Đính kèm (attp-row): form KHÔNG có dòng "Giấy tờ khác" nên file chưa nhận diện được PHẢI
+# route về dòng Tờ khai (Mẫu 1a-1d), tuyệt đối KHÔNG trả plan rỗng (FE báo "chưa có kế hoạch"). ──
+from app.pipelines.tro_cap_xa_hoi_hang_thang.attach import planner as attach_planner
+
+
+def test_attach_unknown_file_routes_to_declaration_row_not_empty():
+    files = [{"name": "Scan_0029.pdf", "type": "application/pdf", "dataUrl": ""}]
+    ocr = [{"name": "Scan_0029.pdf", "text": "noi dung khong ro rang khong khop mau nao"}]
+    items, warnings, classified = attach_planner.build_plan_items(files, ocr, {})
+    assert len(items) == 1, "file chưa nhận diện vẫn phải sinh 1 item (không rớt → không plan rỗng)"
+    assert items[0]["componentName"] == "Mẫu số 1a, 1b, 1c, 1d"
+    assert items[0]["target"] == "attp-row"
+    assert classified[0]["docType"] == "other" and classified[0]["routedTo"] == "to_khai_doi_tuong"
+    assert warnings and "Tờ khai" in warnings[0]
+
+
+def test_attach_known_file_still_routes_to_its_own_row():
+    files = [{"name": "ks.pdf", "type": "application/pdf", "dataUrl": ""}]
+    ocr = [{"name": "ks.pdf", "text": "GIẤY KHAI SINH họ tên trẻ em ngày sinh"}]
+    items, _warnings, classified = attach_planner.build_plan_items(files, ocr, {})
+    assert len(items) == 1
+    assert items[0]["componentName"] == "Giấy khai sinh của trẻ em"
+    assert classified[0]["docType"] == "khai_sinh"
+    # GIỮ NGUYÊN tên file gốc: documentName = tên file (BE-only) → engine attp-row FE đặt tên File =
+    # documentName nên file giữ đúng tên tải lên; loại giấy tờ vẫn ở componentName/detectedType.
+    assert items[0]["documentName"] == "ks.pdf"
+    assert items[0]["fileName"] == "ks.pdf"
+    assert items[0]["detectedType"] == "khai_sinh"
+
+
+async def test_attach_plan_never_empty_even_if_all_files_skip(monkeypatch):
+    """1 PDF gộp mà trang đầu là Giấy ủy quyền → cả file bị xếp uy_quyen (skip). Plan KHÔNG được
+    rỗng (FE sẽ báo 'chưa có kế hoạch') → lưới cuối đính file đầu vào dòng Tờ khai."""
+    from app.pipelines.tro_cap_xa_hoi_hang_thang.attach import planner as ap
+    from app.process.schemas import FileItem
+    from app.services import ocr as ocr_service
+
+    async def fake_ocr(_files):
+        return [{"name": "Scan_0029.pdf", "text": "GIẤY ỦY QUYỀN NỘP HỒ SƠ TRỰC TUYẾN"}]
+
+    async def fake_classify(_docs):
+        return {0: ap._UY_QUYEN}  # cả file bị LLM xếp ủy quyền (thuộc _SKIP_DOCS)
+
+    monkeypatch.setattr(ocr_service, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(ap, "_classify_with_llm", fake_classify)
+
+    files = [FileItem(name="Scan_0029.pdf", type="application/pdf",
+                      dataUrl="data:application/pdf;base64,QUJD", role="attachment")]
+    result = await ap.plan(files, {}, None)
+    assert len(result["attachments"]) == 1, "plan không được rỗng dù file bị xếp skip"
+    assert result["attachments"][0]["componentName"] == "Mẫu số 1a, 1b, 1c, 1d"
+    assert result["attachments"][0]["target"] == "attp-row"

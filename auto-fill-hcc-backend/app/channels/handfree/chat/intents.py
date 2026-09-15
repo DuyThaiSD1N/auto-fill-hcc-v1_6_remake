@@ -49,6 +49,32 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
     "xac-nhan-tinh-trang-hon-nhan": ["xác nhận độc thân", "xác nhận tình trạng hôn nhân"],
     "dang-ky-kinh-doanh": ["đăng ký thành lập hộ kinh doanh", "mở hộ kinh doanh",
                             "thành lập hộ kinh doanh"],
+    # Dân hay gọi "công chứng" thay cho "chứng thực" + gọi kèm tên giấy tờ cụ thể.
+    "chung-thuc-ban-sao": ["công chứng căn cước công dân", "công chứng giấy tờ",
+                           "chứng thực bản sao căn cước công dân từ bản chính",
+                           "photo công chứng", "sao y bản chính",
+                           "công chứng sổ đỏ / bằng cấp / giấy khai sinh"],
+    "chung-thuc-chu-ky": ["công chứng chữ ký", "xác nhận chữ ký", "chứng thực điểm chỉ"],
+    "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
+                                         "cấp lại giấy phép khai thác", "giấy phép tàu cá",
+                                         "giấy phép đánh bắt hải sản"],
+    "cap-ban-sao-van-bang-so-goc": ["bản sao văn bằng", "bản sao chứng chỉ", "bản sao bằng tốt nghiệp",
+                                    "mất bằng tốt nghiệp", "xin lại bằng cấp ba", "trích lục văn bằng"],
+    "cho-thue-thue-mua-nha-o-xa-hoi": ["thuê nhà ở xã hội", "thuê mua nhà ở xã hội",
+                                       "đăng ký nhà ở xã hội", "xin thuê nhà xã hội",
+                                       "mua nhà ở xã hội của nhà nước"],
+    "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": ["thay đổi nội dung đăng ký kinh doanh",
+                                                "đổi ngành nghề kinh doanh", "đổi tên hộ kinh doanh",
+                                                "thay đổi chủ hộ kinh doanh", "đổi địa chỉ hộ kinh doanh",
+                                                "sửa thông tin hộ kinh doanh"],
+    "dang-ky-bien-phap-bao-dam-bac-ninh": ["đăng ký biện pháp bảo đảm", "đăng ký thế chấp sổ đỏ",
+                                           "thế chấp quyền sử dụng đất", "thế chấp đất vay ngân hàng",
+                                           "đăng ký giao dịch bảo đảm đất đai",
+                                           "thế chấp nhà đất ở bắc ninh"],
+    "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": ["xóa đăng ký biện pháp bảo đảm", "xóa thế chấp sổ đỏ",
+                                               "giải chấp quyền sử dụng đất", "xóa thế chấp đất đai",
+                                               "xóa đăng ký giao dịch bảo đảm",
+                                               "giải chấp sổ đỏ ngân hàng"],
 }
 
 # "profile" (Lấy dữ liệu đã lưu) tạm ẨN khỏi UI + LLM (xem _doc_options_card). Để bật lại: thêm
@@ -73,6 +99,12 @@ def _doc_method_block() -> str:
 # LLM chỉ được trả value liệt kê ở đây; parse xong validate lại, không cho bịa lệnh.
 # delete_data CỐ TÌNH vắng mặt: lệnh xóa dữ liệu chỉ đi qua chip bấm tường minh.
 _STATE_INTENTS: dict[str, list[dict]] = {
+    "choose_variant": [
+        {"kind": "action", "value": "variant_cap_moi",
+         "desc": "muốn CẤP MỚI giấy phép (chưa có giấy phép, xin cấp lần đầu)"},
+        {"kind": "action", "value": "variant_cap_lai",
+         "desc": "muốn CẤP LẠI giấy phép (đã có nhưng bị mất, hư hỏng, hết hạn hoặc đổi thông tin)"},
+    ],
     "guide_login": [
         {"kind": "event", "value": "sso_success",
          "desc": "báo đã đăng nhập xong / đã vào được trang kê khai"},
@@ -226,6 +258,8 @@ Người dân đang ở bước "{state}". Đọc câu của họ và trả DUY 
 - pick_procedure: người dân muốn LÀM một thủ tục → value = ĐÚNG MỘT key trong DANH SÁCH THỦ TỤC.
   PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả: đăng ký kết hôn (trong nước) vs kết hôn
   CÓ YẾU TỐ NƯỚC NGOÀI vs ĐĂNG KÝ LẠI kết hôn; khai sinh vs cấp bản sao/trích lục khai sinh...
+  Người dân hay nói "CÔNG CHỨNG" thay cho "chứng thực": "công chứng <tên giấy tờ>" (căn cước,
+  sổ đỏ, bằng cấp...) = chứng thực BẢN SAO; "công chứng chữ ký/điểm chỉ" = chứng thực CHỮ KÝ.
   Chỉ chọn khi câu thể hiện MUỐN LÀM thủ tục. Không chắc thuộc key nào → kind="unknown".
 - pick_doc_method: khi người dân CHỌN hoặc ĐỔI cách cung cấp giấy tờ — kể cả đang ở bước chụp/quét QR
   mà muốn ĐỔI sang cách kia (vd đang QR nói "scan đi", đang scan nói "chụp bằng điện thoại") →

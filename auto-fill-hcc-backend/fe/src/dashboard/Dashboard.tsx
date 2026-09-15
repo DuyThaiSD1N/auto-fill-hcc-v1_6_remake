@@ -9,7 +9,11 @@ import {
   type ScopeResp,
   type SummaryResp,
   type LogsResp,
+  type LogRating,
+  type LogStatus,
 } from "./api";
+import { RATING_FACE } from "../rating";
+import { dayMonthYear } from "../format";
 import { DonutMini, BarDays, WeekColumns, buildSlices, PAL, PALBG, fmt } from "./charts";
 
 type View = "tq" | "dv" | "tt" | "nk";
@@ -23,17 +27,30 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: "custom", label: "Tùy chỉnh" },
 ];
 
-// Ngày theo LỊCH ĐỊA PHƯƠNG (giờ VN của người dùng), KHÔNG dùng toISOString (UTC) — nếu không
-// "Hôm nay" lúc rạng sáng sẽ lệch sang hôm qua và backend (đếm theo giờ VN) trả sai ngày.
-const isoDay = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// Ngày theo LỊCH VIỆT NAM, không theo lịch của máy đang mở trang và cũng không dùng
+// toISOString (UTC): backend đếm theo "+07:00", nên máy đặt lệch múi giờ (hoặc rạng sáng ở
+// múi khác) sẽ hỏi sai ngày và bảng số trông như mất dữ liệu.
+export const VIETNAM_TZ = "Asia/Ho_Chi_Minh";
+const isoDay = (d: Date) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: VIETNAM_TZ, year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(d);
+  const v = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return `${v.year}-${v.month}-${v.day}`;
+};
+// Lùi ngày trên CHUỖI đã quy về giờ VN (dùng UTC thuần để cộng trừ) — lùi trên Date của máy
+// rồi mới quy đổi có thể lệch một ngày ở biên nửa đêm.
+const shiftDay = (iso: string, days: number): string => {
+  const [year, month, day] = iso.split("-").map(Number);
+  const value = new Date(Date.UTC(year, month - 1, day));
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+};
 function presetRange(preset: Preset): { from?: string; to?: string } {
   if (preset === "all" || preset === "custom") return {};
-  const now = new Date();
-  if (preset === "today") return { from: isoDay(now), to: isoDay(now) };
-  const from = new Date(now);
-  from.setDate(from.getDate() - (preset === "7" ? 6 : 29));
-  return { from: isoDay(from), to: isoDay(now) };
+  const today = isoDay(new Date());
+  if (preset === "today") return { from: today, to: today };
+  return { from: shiftDay(today, preset === "7" ? -6 : -29), to: today };
 }
 
 // Cấp đơn vị suy từ tên xã/phường (chỉ để gắn nhãn, không ảnh hưởng số liệu).
@@ -63,6 +80,22 @@ const ICON: Record<string, string> = {
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
   info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.2"/><path d="M12 11v5.5M12 7.6v.1"/></svg>',
 };
+
+// Phiếu đánh giá trong bảng nhật ký. Dùng chung RATING_FACE với trang quản trị để hai màn
+// không bao giờ vẽ mặt cười lệch nhau; phần khung thì theo ngôn ngữ "công báo" của dashboard.
+// BA trạng thái phải phân biệt được: chưa từng được hỏi (—) · đã hỏi mà bỏ qua · có mức thật.
+function RatingChip({ rating }: { rating: LogRating | null }) {
+  if (!rating) return <span className="none">—</span>;
+  if (rating.level == null) return <span className="none">Bỏ qua</span>;
+  const face = RATING_FACE[rating.level] || RATING_FACE[3];
+  const title = rating.reasons.length ? rating.reasons.join(", ") : rating.note || "";
+  return (
+    <span title={title} style={{ color: face.color, fontWeight: 600, whiteSpace: "nowrap" }}>
+      <span aria-hidden="true" style={{ fontSize: 15, marginRight: 5 }}>{face.emoji}</span>
+      {rating.levelLabel || rating.level}
+    </span>
+  );
+}
 
 function Ic({ n }: { n: string }) {
   return <span style={{ display: "contents" }} dangerouslySetInnerHTML={{ __html: ICON[n] || "" }} />;
@@ -150,6 +183,7 @@ export default function Dashboard({ user, onLogout }: Props) {
   const [logs, setLogs] = useState<LogsResp | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
   const [nkPage, setNkPage] = useState(1);
+  const [nkStatus, setNkStatus] = useState<LogStatus>("all");
   const [exporting, setExporting] = useState(false);
   const [showExport, setShowExport] = useState(false);
 
@@ -186,7 +220,9 @@ export default function Dashboard({ user, onLogout }: Props) {
       const sum = await getSummary(range.from, range.to, unitParam);
       setSummary(sum);
       setUpdatedAt(
-        new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        new Date().toLocaleTimeString("vi-VN", {
+          timeZone: VIETNAM_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit",
+        }),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không tải được số liệu.");
@@ -202,21 +238,21 @@ export default function Dashboard({ user, onLogout }: Props) {
   // Đổi khoảng/đơn vị → nhật ký về trang 1.
   useEffect(() => {
     setNkPage(1);
-  }, [range, selectedUnit]);
+  }, [range, selectedUnit, nkStatus]);
 
   const loadLogs = useCallback(async () => {
     if (!scope || notAssigned) return;
     setLogsLoading(true);
     try {
       const unitParam = scope.canViewUnits ? selectedUnit : "all";
-      const res = await getLogs(range.from, range.to, unitParam, nkPage, 15);
+      const res = await getLogs(range.from, range.to, unitParam, nkPage, 15, nkStatus);
       setLogs(res);
     } catch {
       /* giữ trang cũ nếu lỗi tạm thời */
     } finally {
       setLogsLoading(false);
     }
-  }, [scope, notAssigned, range, selectedUnit, nkPage, reloadKey]);
+  }, [scope, notAssigned, range, selectedUnit, nkPage, nkStatus, reloadKey]);
 
   useEffect(() => {
     if (view === "nk") loadLogs();
@@ -261,6 +297,13 @@ export default function Dashboard({ user, onLogout }: Props) {
   const byDay = summary?.byDay ?? [];
   const units = summary?.units ?? [];
   const handfreeMissing = summary != null && summary.sources?.handfree === false;
+  // Mốc 14/9/2026 đổi cách đếm hồ sơ. CHỈ nói khi khoảng vắt qua mốc — lúc đó con số là hai
+  // cách đếm cộng lại nên trông như tụt. Kỳ nằm trọn một bên thì số nhất quán, khỏi chú thích.
+  const counting = summary?.counting;
+  const countingNote =
+    counting?.mode === "mixed"
+      ? `Khoảng này vắt qua ngày ${dayMonthYear(counting.submittedFrom)}: trước đó là số ước tính theo lượt xử lý, từ đó trở đi đếm theo hồ sơ đã bấm nộp.`
+      : "";
   const scopeTotal = units.reduce((a, b) => a + b.dossiers, 0);
   const unitsWithData = units.filter((u) => u.dossiers > 0).length;
   const slices = useMemo(() => buildSlices(byProc), [byProc]);
@@ -343,7 +386,7 @@ export default function Dashboard({ user, onLogout }: Props) {
             <Ic n="shield" />
           </div>
           <div className="tx">
-            <div className="t1">TRỢ LÝ NGƯỜI DÂN</div>
+            <div className="t1">TRỢ LÝ NHÂN DÂN</div>
             <div className="t2">Thống kê hồ sơ hành chính công</div>
           </div>
           <button className="sb-collapse" onClick={() => setCollapsed((c) => !c)} title="Thu gọn">
@@ -507,6 +550,13 @@ export default function Dashboard({ user, onLogout }: Props) {
               </button>
             </div>
           </div>
+
+          {countingNote && (
+            <div className="hf-note count-note">
+              <Ic n="doc" />
+              <span>{countingNote}</span>
+            </div>
+          )}
 
           {handfreeMissing && (
             <div className="hf-note">
@@ -1105,27 +1155,60 @@ export default function Dashboard({ user, onLogout }: Props) {
     return (
       <Card
         title="Nhật ký hồ sơ"
-        sub={`${fmt(total)} lượt · mỗi dòng là một lần hồ sơ chạy qua Trợ lý · chỉ hồ sơ Auto Fill`}
+        sub={
+          nkStatus === "submitted"
+            ? `${fmt(total)} hồ sơ đã hoàn thành · đây đúng là tập được tính vào thống kê`
+            : nkStatus === "unsubmitted"
+              ? `${fmt(total)} hồ sơ làm dở · chưa bấm nộp nên không tính vào thống kê`
+              : `${fmt(total)} hồ sơ · mỗi dòng là một hồ sơ · chỉ hồ sơ Auto Fill`
+        }
+        right={
+          <div className="nk-filter">
+            <label htmlFor="nk-status">Trạng thái</label>
+            <select
+              id="nk-status"
+              className="ctl"
+              value={nkStatus}
+              onChange={(e) => setNkStatus(e.target.value as LogStatus)}
+            >
+              <option value="all">Tất cả</option>
+              <option value="submitted">Đã hoàn thành (đã nộp)</option>
+              <option value="unsubmitted">Làm dở (chưa nộp)</option>
+            </select>
+          </div>
+        }
       >
         <div className="tw">
           <table>
             <thead>
               <tr>
                 <th style={{ width: 150 }}>Mã hồ sơ</th>
-                <th style={{ width: 168 }}>Thời gian tiếp nhận</th>
+                <th style={{ width: 158 }}>Thời gian tiếp nhận</th>
+                <th style={{ width: 158 }}>Thời gian nộp hồ sơ</th>
                 <th>Đơn vị tiếp nhận</th>
                 <th>Thủ tục</th>
-                <th className="c" style={{ width: 128 }}>Bước</th>
+                <th className="c" style={{ width: 150 }}>Đánh giá</th>
               </tr>
             </thead>
             <tbody>
               {items.length ? (
                 items.map((it, i) => (
-                  <tr key={`${it.requestId || "row"}-${i}`}>
+                  <tr key={`${it.dossierId || "row"}-${i}`}>
                     <td>
-                      <span className="sid">{it.requestId || "—"}</span>
+                      <span className="sid">{it.dossierId || "—"}</span>
                     </td>
                     <td className="num">{fmtDateTime(it.receivedAt)}</td>
+                    <td className="num">
+                      {it.submittedAt ? (
+                        <>
+                          {fmtDateTime(it.submittedAt)}
+                          {/* Chứng thực tách nhiều tab: một hồ sơ nộp nhiều lần trên cổng. */}
+                          {it.submitCount > 1 && <span className="chip ok"> ×{it.submitCount}</span>}
+                        </>
+                      ) : (
+                        <span className="none">chưa nộp</span>
+                      )}
+                    </td>
                     <td>
                       <span className="tnm" title={it.unitName}>
                         {it.unitName}
@@ -1136,16 +1219,12 @@ export default function Dashboard({ user, onLogout }: Props) {
                         {it.procedureLabel || "—"}
                       </span>
                     </td>
-                    <td className="c">
-                      <span className={`chip ${it.kind === "attach" ? "help" : "ok"}`}>
-                        {it.kind === "attach" ? "Đính kèm" : "Điền form"}
-                      </span>
-                    </td>
+                    <td className="c"><RatingChip rating={it.rating} /></td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="none">
+                  <td colSpan={6} className="none">
                     {logsLoading ? "Đang tải nhật ký…" : "Chưa có hồ sơ nào trong kỳ."}
                   </td>
                 </tr>
@@ -1155,7 +1234,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         </div>
         <div className="tfoot">
           <span>
-            Trang <b>{nkPage}</b>/{pages} · tổng <b>{fmt(total)}</b> lượt
+            Trang <b>{nkPage}</b>/{pages} · tổng <b>{fmt(total)}</b> hồ sơ
           </span>
           <div className="pager">
             <button disabled={nkPage <= 1} onClick={() => setNkPage((p) => Math.max(1, p - 1))}>
@@ -1274,6 +1353,7 @@ function fmtDateTime(iso: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("vi-VN", {
+    timeZone: VIETNAM_TZ,
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",

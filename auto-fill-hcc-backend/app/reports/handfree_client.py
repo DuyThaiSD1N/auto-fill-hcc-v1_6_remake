@@ -10,6 +10,7 @@ from app.procedures.registry import PROCEDURES
 from app.reports.integration import canonical_procedure_id, province_name, unit_key
 from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.reports.schemas import ExcelExportRequest
+from app.stats import cutover
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
 
@@ -71,7 +72,7 @@ async def fetch_handfree_stats(accounts: list[dict], body: ExcelExportRequest) -
     date_from, date_to = parse_stats_range(body.dateFrom, body.dateTo)
     if not date_from or not date_to:
         raise AppError("REPORT_DATE_REQUIRED", "Vui lòng nhập đầy đủ từ ngày và đến ngày.", 400)
-    stats = await traces_repo.stats_by_user_ids(
+    stats = await cutover.dossier_stats(
         user_ids=list(user_to_unit),
         date_from=date_from,
         date_to=date_to,
@@ -104,7 +105,7 @@ async def fetch_handfree_daily_stats(
     date_from, date_to = parse_stats_range(body.dateFrom, body.dateTo)
     if not date_from or not date_to:
         raise AppError("REPORT_DATE_REQUIRED", "Vui lòng nhập đầy đủ từ ngày và đến ngày.", 400)
-    rows = await traces_repo.daily_dossier_counts_by_user_ids(
+    rows = await cutover.daily_dossier_counts(
         user_ids=list(user_to_unit),
         date_from=date_from,
         date_to=date_to,

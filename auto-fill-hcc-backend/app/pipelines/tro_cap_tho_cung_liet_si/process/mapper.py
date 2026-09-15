@@ -353,45 +353,41 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(field)
         seen.add(seen_key)
 
+    # Toggle "Người nộp = chủ hồ sơ" (owner_as_submitter): LUÔN lấy chủ hồ sơ cho occ0, tick, bỏ mỏ neo UI.
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     owner_matches = bool(owner and _matches_context(owner, context))
     requester_matches = bool(requester and _matches_context(requester, context))
 
-    # Checkbox phải phát trước để portal render/clear đúng khối chủ hồ sơ;
-    # các giá trị xác thực được điền sau nên không phụ thuộc cơ chế tự sao chép.
-    if owner or requester:
-        add("data[isOwnerDossierCheck]", owner_matches)
-
-    if owner_matches and owner:
-        add("data[chonDoiTuong]", "Cá nhân")
-        _add_person_block(
-            add,
-            "",
-            name=owner.get("name"),
-            birthday=owner.get("birthday"),
-            gender=owner.get("gender"),
-            identity=owner.get("identity"),
-            issue_date=owner.get("issue_date"),
-            issue_place=owner.get("issue_place"),
-            residence=owner.get("residence"),
-            phone=owner.get("phone"),
-            occurrence=0,
-        )
+    # occ0 = NGƯỜI NỘP. Chọn ai + trạng thái checkbox theo mode.
+    if owner_mode:
+        submitter, is_owner = (owner or requester), True
+    elif owner_matches and owner:
+        submitter, is_owner = owner, True
     elif requester_matches and requester:
+        submitter, is_owner = requester, False
+    else:
+        submitter, is_owner = None, False
+
+    # Checkbox phải phát trước để portal render/clear đúng khối chủ hồ sơ.
+    if owner or requester:
+        add("data[isOwnerDossierCheck]", is_owner)
+
+    if submitter:
         add("data[chonDoiTuong]", "Cá nhân")
         _add_person_block(
             add,
             "",
-            name=requester.get("name"),
-            birthday=requester.get("birthday"),
-            gender=requester.get("gender"),
-            identity=requester.get("identity"),
-            issue_date=requester.get("issue_date"),
-            issue_place=requester.get("issue_place"),
-            residence=requester.get("residence"),
-            phone=requester.get("phone"),
+            name=submitter.get("name"),
+            birthday=submitter.get("birthday"),
+            gender=submitter.get("gender"),
+            identity=submitter.get("identity"),
+            issue_date=submitter.get("issue_date"),
+            issue_place=submitter.get("issue_place"),
+            residence=submitter.get("residence"),
+            phone=submitter.get("phone"),
             occurrence=0,
         )
-    elif _has_context_anchor(context) and owner:
+    elif not owner_mode and _has_context_anchor(context) and owner:
         anchor = context.get("applicant_identity") or context.get("applicant_name")
         warnings.append(
             "Không xác định được người nộp khớp thông tin trên form "

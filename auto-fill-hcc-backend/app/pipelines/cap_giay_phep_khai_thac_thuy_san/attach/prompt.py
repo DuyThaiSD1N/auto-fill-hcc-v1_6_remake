@@ -21,6 +21,7 @@ OCR_TEXT của từng file và xếp vào đúng MỘT loại giấy tờ tươn
 <allowed_types>
 - don_cap_moi
 - don_cap_lai
+- giay_phep_cu
 - cccd
 - other
 </allowed_types>
@@ -32,6 +33,9 @@ OCR_TEXT của từng file và xếp vào đúng MỘT loại giấy tờ tươn
 - don_cap_lai: ĐƠN ĐỀ NGHỊ CẤP LẠI Giấy phép khai thác thủy sản (Mẫu số 05.KT). Tiêu đề có chữ "CẤP LẠI",
   có mục "Lý do cấp lại" (mất / hư hỏng / thay đổi thông tin trong giấy phép; cảng cá đăng ký...), tham
   chiếu số Giấy phép cũ.
+- giay_phep_cu: tờ GIẤY PHÉP KHAI THÁC THỦY SẢN đã được CẤP (không phải đơn đề nghị) — tiêu đề
+  "GIẤY PHÉP KHAI THÁC THỦY SẢN", có số giấy phép, cơ quan cấp, thời hạn/có giá trị đến; KHÔNG có
+  chữ "ĐƠN ĐỀ NGHỊ". Chỉ đối chiếu, KHÔNG có dòng riêng ở bảng.
 - cccd: Thẻ Căn cước công dân / Căn cước / CMND / hộ chiếu (chỉ đối chiếu, KHÔNG có dòng riêng ở bảng).
 - other: tài liệu khác hoặc không đủ bằng chứng.
 </type_definitions>

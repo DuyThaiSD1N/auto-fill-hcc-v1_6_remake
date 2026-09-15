@@ -72,36 +72,56 @@ async def _run_uncached(files: list[dict], *, classify: bool) -> list[dict]:
     return await _ocr_per_file_uncached(files)
 
 
-async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dict]:
-    """OCR từng file, có cache hash và giữ giới hạn token riêng cho lúc phân loại.
+def _cache_key(item: dict):
+    """Khóa cache của MỘT file, dù nó đến bằng dataUrl (pipeline) hay path (upload-session).
 
-    Upload-session truyền file bằng ``path`` nên không có dataUrl để tính cache key; trường
-    hợp đó đi thẳng OCR nhưng vẫn không đọc toàn bộ file vào RAM.
+    Hai đường phải ra CÙNG một khóa: có vậy lượt OCR lúc nhận tệp mới dùng lại được cho lượt
+    trích xuất sau khi cán bộ bấm "đủ giấy tờ" — trước đây upload-session không có khóa nên mỗi
+    tệp bị OCR hai lần, và lượt thứ hai rơi đúng vào khoảng chờ mà cán bộ cảm nhận được.
+    """
+    from app.services import ocr_cache
+
+    data_url = (item or {}).get("dataUrl") or ""
+    if data_url:
+        return ocr_cache.content_key(data_url)
+    return ocr_cache.content_key_from_path((item or {}).get("path") or "")
+
+
+async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dict]:
+    """OCR từng file, có cache theo hash nội dung.
+
+    Khi cache bật, phân loại và trích xuất DÙNG CHUNG một lượt OCR ở trần token của trích xuất:
+    text cắt ở trần phân loại (thấp hơn) không đủ dày cho trích xuất nên cache nó là bẫy — lượt
+    sau vẫn phải OCR lại mà lại tưởng là đã có. ``classify`` chỉ còn tác dụng khi cache tắt.
     """
     from app.services import ocr_cache
 
     if not settings.ocr_cache_enabled or not files:
         return await _run_uncached(files, classify=classify)
 
-    keys = [ocr_cache.content_key((item or {}).get("dataUrl") or "") for item in files]
+    need_tokens = settings.ocr_tiengnoi_fill_max_tokens
+    keys = [_cache_key(item) for item in files]
     cached = await ocr_cache.get_many([key for key in keys if key])
     cached = {
         key: value
         for key, value in cached.items()
         if value.get("provider") == "tiengnoi"
         and _has_meaningful_ocr_text(value.get("text"))
+        # Bản ghi cũ chưa có max_tokens đều do luồng fill ghi (chỉ upload-session dùng trần
+        # phân loại, mà đường đó trước đây không ghi cache được) → coi như đã đủ dày.
+        and (value.get("max_tokens") or need_tokens) >= need_tokens
     }
 
     miss_files = [item for item, key in zip(files, keys) if not key or key not in cached]
     fresh = (
-        await _run_uncached(miss_files, classify=classify)
+        await _run_uncached(miss_files, classify=False)
         if miss_files
         else []
     )
 
     results: list[dict] = []
     fresh_iter = iter(fresh)
-    to_cache: list[tuple[str, str, str | None]] = []
+    to_cache: list[tuple[str, str, str | None, int | None]] = []
     for item, key in zip(files, keys):
         if key and key in cached:
             results.append({
@@ -116,7 +136,7 @@ async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dic
         result = next(fresh_iter)
         results.append(result)
         if key and not result.get("error") and _has_meaningful_ocr_text(result.get("text")):
-            to_cache.append((key, result["text"], "tiengnoi"))
+            to_cache.append((key, result["text"], "tiengnoi", need_tokens))
 
     ocr_cache.put_many_bg(to_cache)
     return results

@@ -178,7 +178,37 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
     return "\n\n" + "\n".join(parts)
 
 
+async def _owner_only_context(documents: list[dict], options: dict) -> str:
+    """Mode owner_as_submitter: KHÔNG đưa mỏ neo UI vào prompt. Gắn result="missing_ui_anchor" để prompt
+    sẵn có tự bỏ NguoiNop_* (mapper luôn lấy chủ hồ sơ làm người nộp); chỉ khoanh mục II.2 cho ChuHoSo_*."""
+    _ = options
+    owner_scopes = [
+        (index, scope)
+        for index, document in enumerate(documents, start=1)
+        if (scope := _owner_section(str(document.get("text") or "")))
+    ]
+    requester_context = (
+        '<requester_context result="missing_ui_anchor">\n'
+        "Chế độ điền người nộp = chủ hồ sơ: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích ChuHoSo_*.\n"
+        "</requester_context>"
+    )
+    parts = [requester_context]
+    if owner_scopes:
+        parts.append("\n".join(
+            (
+                f'<owner_ocr document="{index}">\n'
+                "Đây là mục II.2 Mẫu số 04, nguồn bắt buộc cho ChuHoSo_*.\n"
+                f"{scope}\n"
+                "</owner_ocr>"
+            )
+            for index, scope in owner_scopes
+        ))
+    return "\n\n" + "\n".join(parts)
+
+
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -187,7 +217,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_requester_context,
+        context_builder=_owner_only_context if owner_mode else _requester_context,
     )
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     res["fields"] = mapped_fields

@@ -24,7 +24,7 @@ _PRIVACY_HTML = """<!DOCTYPE html>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="index, follow" />
-<title>Chính sách quyền riêng tư — Trợ lý người dân</title>
+<title>Chính sách quyền riêng tư — Trợ lý nhân dân</title>
 <style>
   :root {
     --bg: #f4f6f9; --card: #ffffff; --ink: #1f2933; --muted: #52606d;
@@ -83,13 +83,13 @@ _PRIVACY_HTML = """<!DOCTYPE html>
   <div class="wrap">
     <header class="doc">
       <p class="kicker">Chính sách quyền riêng tư</p>
-      <h1>Tiện ích &ldquo;Trợ lý người dân&rdquo;</h1>
+      <h1>Tiện ích &ldquo;Trợ lý nhân dân&rdquo;</h1>
       <p class="meta">Đơn vị phát triển: __ORG__ &middot; Cập nhật lần cuối: __UPDATED__</p>
     </header>
 
     <main>
       <p class="lead">
-        Chính sách này áp dụng cho tiện ích mở rộng &ldquo;Trợ lý người dân&rdquo; (sau đây gọi là
+        Chính sách này áp dụng cho tiện ích mở rộng &ldquo;Trợ lý nhân dân&rdquo; (sau đây gọi là
         &ldquo;Tiện ích&rdquo;) — công cụ hỗ trợ cán bộ hoặc người dùng được cấp tài khoản trích xuất
         thông tin từ giấy tờ hành chính, tự động điền vào biểu mẫu và được trợ lý hỏi–đáp bằng giọng nói
         và chat trên các cổng Dịch vụ công. Chúng tôi chỉ thu thập, sử dụng, lưu trữ dữ liệu trong phạm
@@ -295,7 +295,7 @@ _PRIVACY_HTML = """<!DOCTYPE html>
       </div>
     </main>
 
-    <footer>&copy; __ORG__ — Chính sách quyền riêng tư tiện ích &ldquo;Trợ lý người dân&rdquo;.</footer>
+    <footer>&copy; __ORG__ — Chính sách quyền riêng tư tiện ích &ldquo;Trợ lý nhân dân&rdquo;.</footer>
   </div>
 </body>
 </html>"""

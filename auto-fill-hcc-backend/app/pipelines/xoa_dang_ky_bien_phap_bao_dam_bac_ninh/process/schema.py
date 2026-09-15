@@ -12,17 +12,22 @@ KHỚP Ô (fill-bacninh.js): ô eForm có class ỔN ĐỊNH `eform-element-<Key
 FIELDS: list[dict] = [
     # ---- Người yêu cầu xóa đăng ký = BÊN BẢO ĐẢM (bên thế chấp). Có thể ĐỒNG bảo đảm (vợ chồng). ----
     {"name": "NguoiYeuCau_HoTen",
-     "desc": "Họ và tên NGƯỜI YÊU CẦU chính (bên bảo đảm/bên thế chấp — người đứng đơn đầu tiên), IN HOA. "
-             "Lấy ở Phiếu yêu cầu xóa đăng ký (Mẫu 03a) mục 1, hoặc mục IV của GCN (bên nhận chuyển nhượng/"
-             "chủ hiện tại), hoặc CCCD. KHÔNG lấy chủ CŨ ở trang 1 GCN."},
+     "desc": "Họ và tên NGƯỜI YÊU CẦU chính (bên bảo đảm/bên thế chấp = chủ sử dụng đất HIỆN TẠI đang xóa "
+             "thế chấp), IN HOA. Nếu ĐỒNG bảo đảm nhiều người (vd vợ chồng) và xác định được NGƯỜI TRỰC TIẾP "
+             "NỘP hồ sơ (Giấy tiếp nhận hồ sơ ghi 'Người nộp hồ sơ: …' / 'Tiếp nhận hồ sơ của: …', hoặc "
+             "người đại diện đi nộp) thì lấy ĐÚNG người đó; nếu KHÔNG có căn cứ ai nộp thì lấy người đứng "
+             "đầu phiếu. Nguồn: Phiếu 03a mục 1, mục IV của GCN (chủ hiện tại), CCCD. KHÔNG lấy chủ CŨ ở "
+             "trang 1 GCN."},
     {"name": "NguoiYeuCau_TenDayDu",
      "desc": "Chuỗi TÊN ĐẦY ĐỦ ghi vào ô '1.1. Tên đầy đủ' — nếu biện pháp bảo đảm có 2 chủ thể ĐỒNG bảo "
              "đảm (vợ chồng) thì ghi CẢ HAI đúng như phiếu, vd 'ÔNG: TAO VĂN GIÓT VÀ BÀ: LÒ THỊ HOA' "
              "(IN HOA). Nếu chỉ 1 người thì bằng NguoiYeuCau_HoTen. Bỏ nếu không xác định."},
     {"name": "NguoiYeuCau_SoDinhDanh",
-     "desc": "Số định danh/CCCD của người yêu cầu CHÍNH. Từ CCCD, hoặc 'CCCD số' ở mục IV của GCN, hoặc "
-             "phiếu 03a. Chỉ chữ số, ưu tiên 12 số."},
-    {"name": "NguoiYeuCau_NgayCap", "desc": "Ngày cấp CCCD người yêu cầu, dd/mm/yyyy. Bỏ nếu không có."},
+     "desc": "Số định danh/CCCD của CHÍNH người ở NguoiYeuCau_HoTen (người trực tiếp nộp khi đồng bảo đảm). "
+             "Từ CCCD, hoặc 'CCCD số' ở mục IV của GCN, hoặc phiếu 03a. Chỉ chữ số, ưu tiên 12 số. Nếu phiếu "
+             "kê nhiều số của nhiều người, lấy ĐÚNG số của người này, KHÔNG trộn số của người kia."},
+    {"name": "NguoiYeuCau_NgayCap", "desc": "Ngày cấp CCCD của CHÍNH người ở NguoiYeuCau_HoTen, dd/mm/yyyy. "
+             "Bỏ nếu không có."},
     {"name": "NguoiYeuCau_NoiCap",
      "desc": 'Nơi cấp CCCD người yêu cầu. CCCD gắn chip cấp tập trung → "Cục Cảnh sát quản lý hành chính '
              'về trật tự xã hội"; thẻ mới ghi "BỘ CÔNG AN" → "Bộ Công an". Bỏ nếu không có.'},
@@ -66,11 +71,16 @@ FIELDS: list[dict] = [
 
     # ---- Biện pháp bảo đảm / thế chấp (mục 3) ----
     {"name": "TheChap_SoHopDong",
-     "desc": "Số hợp đồng thế chấp (nếu có Hợp đồng thế chấp). Nếu không có HĐ, tạm dùng số hồ sơ đăng ký "
-             "thế chấp ghi ở mục IV của GCN (vd '03412.TC.003'). Bỏ nếu không có."},
+     "desc": "Số hợp đồng thế chấp đang xóa. Nguồn ưu tiên: (1) TRANG BỔ SUNG GCN — dòng 'Thế chấp … theo "
+             "hợp đồng thế chấp số <SỐ HĐ> ngày …'; (2) Phiếu 03a mục 2 'Căn cứ xóa đăng ký' (ghi 'Hợp đồng "
+             "thế chấp … số … ngày …'); (3) bản gốc Hợp đồng thế chấp nếu có. ⚠ TUYỆT ĐỐI KHÔNG lấy số Hợp "
+             "đồng CHUYỂN NHƯỢNG ghi ở mục IV GCN (đó là căn cứ chuyển quyền, KHÔNG phải thế chấp). Bỏ nếu "
+             "không có."},
     {"name": "TheChap_NgayKy",
-     "desc": "Ngày ký hợp đồng thế chấp, dd/mm/yyyy. Nếu không có HĐ, dùng ngày ĐĂNG KÝ thế chấp ở mục IV "
-             "GCN (vd '05/11/2025'). Bỏ nếu không có."},
+     "desc": "Ngày KÝ hợp đồng thế chấp, dd/mm/yyyy — là ngày đứng NGAY SAU số hợp đồng ('… số … ngày "
+             "<dd/mm/yyyy>'). ⚠ PHÂN BIỆT với ngày ĐĂNG KÝ thế chấp (ngày đứng ĐẦU dòng ghi chú ở Trang bổ "
+             "sung GCN, thường lệch vài ngày) — ô này lấy ngày KÝ, KHÔNG lấy ngày đăng ký. KHÔNG lấy ngày "
+             "Hợp đồng chuyển nhượng ở mục IV. Bỏ nếu không có."},
 
     # ---- Khối NGƯỜI ĐƯỢC ỦY QUYỀN (nút "Điền thông tin người ủy quyền") — chỉ khi có Văn bản ủy quyền ----
     {"name": "UyQuyen_CoVanBan",

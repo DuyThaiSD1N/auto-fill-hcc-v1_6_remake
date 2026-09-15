@@ -199,6 +199,19 @@ def enrich(
     if not owner and not requester:
         return out, ["Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."]
 
+    # === MODE "owner_as_submitter" (toggle extension): KHÔNG dùng mỏ neo UI. LUÔN lấy CHỦ HỒ SƠ làm người
+    # nộp (tự nộp, tick checkbox) — thủ tục này thực tế không có giấy ủy quyền. ===
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        person = owner or requester
+        if person is owner:
+            add("data[isOwnerDossierCheck]", True)
+            _add_requester(add, person)      # người nộp = chủ hồ sơ
+            add("data[ownerBirthday]", person.birthday)  # portal bỏ sót khi tick
+        else:
+            add("data[isOwnerDossierCheck]", False)
+            _add_requester(add, person)
+        return out, warnings
+
     # Người đứng ra mai táng trùng mỏ neo UI: tự nộp, tích checkbox và dùng
     # chính chủ hồ sơ cho khối người nộp. Ngày sinh UI cũ không tham gia khớp.
     if owner and _matches_applicant(owner, context):

@@ -24,12 +24,14 @@ Thủ tục có các thành phần hồ sơ:
 4. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu nhà ở / tài sản gắn liền với đất
    (sổ đỏ/sổ hồng) → type = land_certificate.
 5. Văn bản/giấy ủy quyền → type = authorization.
-6. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
+6. Tài liệu KHÔNG thuộc 4 nhóm trên (vd mảnh trích đo địa chính, giấy tờ hộ tịch...) hoặc OCR quá thiếu
+   để chắc chắn → type = other. KHÔNG ép về một trong 4 nhóm khi không chắc.
+7. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>
 Mỗi tài liệu phải trả type thuộc đúng một trong:
-identity | application | land_certificate | authorization
+identity | application | land_certificate | authorization | other
 </allowed_types>
 
 <document_name_rules>

@@ -27,6 +27,7 @@ _LOAI_BAN = "Scan tệp tin"
 _CAP_MOI = "don_cap_moi"
 _CAP_LAI = "don_cap_lai"
 _CCCD = "cccd"
+_GIAY_PHEP_CU = "giay_phep_cu"
 _OTHER = "other"
 
 _ROWS: dict[str, dict[str, str]] = {
@@ -41,8 +42,9 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "Đơn đề nghị cấp lại Giấy phép khai thác thủy sản (Mẫu số 05.KT)",
     },
 }
-# CCCD chỉ đối chiếu, KHÔNG có dòng riêng trên bảng → bỏ qua.
-_SKIP_DOCS = {_CCCD}
+# CCCD + tờ GIẤY PHÉP cũ chỉ đối chiếu (nguồn số/ngày cấp cho pipeline điền),
+# KHÔNG có dòng riêng trên bảng → bỏ qua, không sinh cảnh báo "đính thủ công".
+_SKIP_DOCS = {_CCCD, _GIAY_PHEP_CU}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
 
@@ -62,6 +64,9 @@ def _rule_doc_type(text: str) -> str:
     # Đơn cấp mới (Mẫu 04).
     if "mau so 04" in h or ("de nghi cap" in h and "giay phep khai thac thuy san" in h):
         return _CAP_MOI
+    # Tờ GIẤY PHÉP đã cấp (không phải đơn) — sau 2 nhánh đơn nên "de nghi" đã bị loại.
+    if "giay phep khai thac thuy san" in h and "de nghi" not in h:
+        return _GIAY_PHEP_CU
     # CCCD/CMND (bỏ qua).
     if _is_identity_text(h):
         return _CCCD
@@ -72,6 +77,10 @@ def _normalize_doc_type(value: str) -> str:
     text = _fold(value or "")
     if not text or text == "other":
         return _OTHER
+    # Token của LLM ("giay_phep_cu") phải nhận TRƯỚC nhánh "cap lai" (giấy phép cũ hay bị
+    # LLM mô tả kèm chữ "cấp lại").
+    if "giay_phep" in text or "giay phep cu" in text:
+        return _GIAY_PHEP_CU
     if "cap lai" in text or "05" in text:
         return _CAP_LAI
     if "cap moi" in text or "04" in text:

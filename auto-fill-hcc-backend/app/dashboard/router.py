@@ -12,6 +12,7 @@ import io
 import logging
 import urllib.parse
 from datetime import datetime, timedelta, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -26,8 +27,9 @@ from app.dashboard.combine import (
 )
 from app.dashboard.export import build_dashboard_workbook, export_filename
 from app.dashboard.scope import resolve_dashboard_scope
+from app.dossiers import repo as dossiers_repo
 from app.reports.integration import unit_key
-from app.traces import repo
+from app.stats import cutover
 from app.traces.date_range import parse_stats_range
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -87,8 +89,10 @@ async def summary(
     sel_units = [selected] if selected else all_units
 
     # Auto Fill: MỘT aggregation cho toàn phạm vi → wards per-đơn-vị + procedures + total.
+    # Qua app/stats/cutover.py: đến hết 14/9/2026 đếm theo cách cũ (suy từ trace), từ 15/9
+    # đếm hồ sơ ĐÃ NỘP.
     af = (
-        await repo.stats_by_user_ids(
+        await cutover.dossier_stats(
             user_ids=all_ids,
             date_from=date_from,
             date_to=date_to,
@@ -150,7 +154,7 @@ async def summary(
 
     # Biểu đồ theo ngày = hồ sơ/ngày Auto Fill + Handfree (chỉ gộp HF khi khoảng đủ ngắn).
     af_daily = (
-        await repo.daily_dossier_counts_by_user_ids(
+        await cutover.daily_dossier_counts(
             user_ids=ids,
             date_from=date_from,
             date_to=date_to,
@@ -166,6 +170,8 @@ async def summary(
         "selected": selected,
         "range": {"from": dateFrom, "to": dateTo},
         "sources": {"autofill": True, "handfree": hf_ok},
+        # Cách đếm hồ sơ đang áp cho khoảng đang xem (đổi mốc 15/9/2026) — FE hiện chú thích.
+        "counting": cutover.counting_info(date_from, date_to),
         "kpis": {
             "dossiers": total,
             "requests": af_requests,
@@ -184,10 +190,15 @@ async def logs(
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
+    status: Literal["all", "submitted", "unsubmitted"] = Query("all"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(15, ge=1, le=100),
 ):
-    """Nhật ký hồ sơ (mỗi lượt làm việc với Trợ lý = 1 dòng). Auto Fill; KHÔNG PII, không thời lượng.
+    """Nhật ký hồ sơ (mỗi HỒ SƠ = 1 dòng). Auto Fill; KHÔNG PII, không thời lượng.
+
+    Trước đây mỗi *lượt* điền/đính kèm là một dòng, nên một hồ sơ làm hai bước hiện thành hai
+    dòng trùng tên thủ tục — số ở đầu bảng là số lượt chứ không phải số hồ sơ. Giờ đọc thẳng
+    collection `dossiers`, nhờ đó có thêm mốc NỘP và phiếu đánh giá (hai thứ tầng trace không có).
 
     Nhật ký này chủ đích chỉ gồm Auto Fill; màn quản lý trace có bộ lọc nguồn riêng.
     """
@@ -196,26 +207,31 @@ async def logs(
     ids, _selected = _resolve_user_ids(resolved, unit)
     unit_by_id = {u["unitId"]: u for u in resolved["units"]}
 
-    result = await repo.list_dossier_log(
+    result = await dossiers_repo.list_for_dashboard(
         user_ids=ids, date_from=date_from, date_to=date_to,
         skip=(page - 1) * pageSize, limit=pageSize, experience="autofill",
+        # "Đã hoàn thành" = đã bấm nộp — đúng tập mà thống kê đếm từ 15/9/2026.
+        submitted=None if status == "all" else (status == "submitted"),
     )
     items = []
     for row in result["items"]:
         unit_meta = unit_by_id.get(row["userId"]) or {}
         items.append({
-            "requestId": row["requestId"],
-            "receivedAt": row["createdAt"],
+            "dossierId": row["dossierId"],
+            "receivedAt": row["startedAt"],
+            "submittedAt": row["submittedAt"],
+            "submitCount": row["submitCount"],
             "unitId": row["userId"],
             "unitName": unit_meta.get("xa") or unit_meta.get("name") or "—",
             "procedure": row["procedure"],
             "procedureLabel": row["procedureLabel"] or row["procedure"],
-            "kind": row["kind"],
+            "rating": row["rating"],
         })
     return {
         "scope": _scope_summary(resolved),
         "range": {"from": dateFrom, "to": dateTo},
         "source": "autofill",
+        "status": status,
         "items": items,
         "total": result["total"],
         "page": page,
@@ -242,7 +258,8 @@ async def export(
     ids = [selected["unitId"]] if selected else [u["unitId"] for u in units]
     date_from, date_to = _range(dateFrom, dateTo)
     unit_by_id = {u["unitId"]: u for u in units}
-    log_res = await repo.list_dossier_log(
+    # Cùng nguồn với /logs — file xuất ra phải khớp đúng thứ cán bộ đang nhìn trên màn hình.
+    log_res = await dossiers_repo.list_for_dashboard(
         user_ids=ids,
         date_from=date_from,
         date_to=date_to,
@@ -252,13 +269,14 @@ async def export(
     )
     logs = [
         {
-            "requestId": row["requestId"],
-            "receivedAt": row["createdAt"],
+            "dossierId": row["dossierId"],
+            "receivedAt": row["startedAt"],
+            "submittedAt": row["submittedAt"],
             "unitName": (unit_by_id.get(row["userId"]) or {}).get("xa")
             or (unit_by_id.get(row["userId"]) or {}).get("name")
             or "—",
             "procedureLabel": row["procedureLabel"] or row["procedure"],
-            "kind": row["kind"],
+            "rating": row["rating"],
         }
         for row in log_res["items"]
     ]

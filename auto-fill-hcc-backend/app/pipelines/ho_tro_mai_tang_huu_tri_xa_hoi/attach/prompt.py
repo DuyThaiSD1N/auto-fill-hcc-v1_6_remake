@@ -28,11 +28,16 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
 </allowed_types>
 
 <type_definitions>
-- to_khai_mai_tang: tờ khai/đơn đề nghị hỗ trợ chi phí mai táng (Mẫu số 04), có nội dung đề nghị hỗ trợ
-  chi phí mai táng cho đối tượng hưởng trợ cấp hưu trí xã hội.
+- to_khai_mai_tang: tờ khai/đơn đề nghị hỗ trợ chi phí mai táng (Mẫu số 02 ban hành kèm theo Nghị định
+  số 176/2025/NĐ-CP; hồ sơ cũ có thể ghi Mẫu số 04), có nội dung đề nghị hỗ trợ chi phí mai táng cho
+  đối tượng hưởng trợ cấp hưu trí xã hội.
 - giay_chung_tu: giấy chứng tử, giấy báo tử, hoặc trích lục khai tử ghi nhận việc đối tượng đã chết.
 - quyet_dinh_thoi_huong: quyết định/danh sách thôi hưởng trợ cấp bảo hiểm xã hội hoặc trợ cấp khác.
 - other: tài liệu khác không thuộc các nhóm trên (vd CCCD, sổ hộ khẩu...).
+
+⚠ BẪY: nhiều giấy tờ hành chính NHẮC số căn cước của người khác trong phần thông tin, vd trích lục
+khai tử ghi "Giấy tờ tùy thân: Thẻ căn cước công dân số …". ĐÓ CHỈ LÀ MỘT DÒNG THÔNG TIN — tài liệu
+đó vẫn là giay_chung_tu, KHÔNG phải other/CCCD. Phân loại theo TIÊU ĐỀ + BẢN CHẤT tài liệu.
 </type_definitions>
 
 <title_rules>

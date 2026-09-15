@@ -36,7 +36,7 @@ async def test_ket_hon_uses_shared_tiengnoi_ocr_but_one_llm_prompt_per_file(monk
         }
         return json.dumps({"doc_key": mapping[payload["ocrText"]]})
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(
@@ -71,7 +71,7 @@ async def test_ket_hon_llm_failure_falls_back_only_for_that_file(monkeypatch):
             raise RuntimeError("LLM lỗi riêng tệp nam")
         return '{"doc_key":"cccd_nu"}'
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(

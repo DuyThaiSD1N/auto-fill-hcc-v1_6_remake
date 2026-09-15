@@ -7,6 +7,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from app.audit import service as audit
 from app.core.deps import require_auth
 from app.core.errors import AppError
+from app.dossiers import repo as dossiers_repo
+from app.dossiers.options import dossier_id_from_options
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
@@ -70,12 +72,26 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     }
 
 
+async def _touch_dossier(dossier_id, user, procedure, proc, created_at, applicant_name=None) -> None:
+    """Ghi/cập nhật hồ sơ Auto Fill trong `dossiers`. Không có dossierId (bản cũ) → bỏ qua."""
+    if not dossier_id:
+        return
+    await dossiers_repo.upsert_started(
+        dossier_id=dossier_id, user_id=str(user.get("id") or ""),
+        username=user.get("username"), name=user.get("name"),
+        procedure=procedure, procedure_label=proc.get("label"),
+        province=user.get("tinh"), ward=user.get("xa"),
+        started_at=created_at, experience="autofill", applicant_name=applicant_name,
+    )
+
+
 async def _persist_success(request_id, created_at, user, body, proc, total_bytes,
                            ocr_provider, result, review_data) -> None:
     """Lưu vết 1 request thành công — chạy NỀN sau khi đã trả response.
 
     Toàn bộ best-effort: lỗi lưu KHÔNG ảnh hưởng kết quả người dùng đã nhận.
     """
+    dossier_id = dossier_id_from_options(body.options)
     # 1) Dữ liệu rà soát bbox (nếu có) → LƯU ĐẦU TIÊN: FE gọi /review ngay sau khi điền xong form,
     #    ưu tiên ghi trước để card "Xem trên ảnh" kịp có dữ liệu (né đua với FE).
     if review_data:
@@ -130,7 +146,11 @@ async def _persist_success(request_id, created_at, user, body, proc, total_bytes
             ocr_text=result.get("ocr_text", ""), llm_output=result.get("llm_output"),
             fields_count=len(result.get("fields", [])), status="done",
             created_at=created_at,
+            dossier_id=dossier_id,
         )
+        # Mốc BẮT ĐẦU hồ sơ của Auto Fill = lượt process/đính kèm ĐẦU TIÊN (upsert_started chỉ
+        # ghi started_at lần đầu). Extension bản cũ không gửi dossierId → bỏ qua, không vỡ.
+        await _touch_dossier(dossier_id, user, body.procedure, proc, created_at, applicant_name)
     except Exception as e:  # noqa: BLE001
         logger.warning("Nền: ghi audit/trace thất bại (%s): %s", request_id, e)
 

@@ -29,6 +29,53 @@ _KA_TUI = {
 }
 
 
+def _run_mode(values: dict, mode: str = "owner_as_submitter"):
+    compact = [{"name": name, "value": value} for name, value in values.items()]
+    fields, warnings = mapper.enrich(compact, {"submitterMode": mode})
+    return {field["name"]: field["value"] for field in fields}, warnings
+
+
+def test_owner_mode_no_uyquyen_self_submit():
+    """Toggle owner_as_submitter (Nghĩa Hưng): người nộp = chủ hồ sơ theo Tờ khai, bỏ so khớp mỏ neo UI."""
+    got, warnings = _run_mode(_KA_TUI)
+    assert got["data[isOwnerDossierCheck]"] is True
+    assert got["data[fullname]"] == "KA TUI"                 # người nộp = chủ hồ sơ (tờ khai)
+    assert got["data[identityNumber]"] == "068175007976"
+    assert got["data[ownerBirthday]"] == "01/01/1975"        # portal bỏ sót khi tick
+    assert "data[ownerFullname]" not in got                  # tự nộp: không lặp khối chủ hồ sơ
+    assert not warnings
+
+
+def test_owner_mode_ignores_ui_anchor():
+    """Owner mode KHÔNG so khớp mỏ neo UI: dù formContext có người khác, người nộp vẫn = chủ hồ sơ."""
+    compact = [{"name": k, "value": v} for k, v in _KA_TUI.items()]
+    fields, _ = mapper.enrich(compact, {
+        "submitterMode": "owner_as_submitter",
+        "formContext": {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"},
+    })
+    got = {f["name"]: f["value"] for f in fields}
+    assert got["data[isOwnerDossierCheck]"] is True
+    assert got["data[fullname]"] == "KA TUI"
+
+
+def test_owner_mode_always_owner_even_with_extra_person():
+    """LUÔN chủ hồ sơ làm người nộp, kể cả khi OCR lỡ trích NguoiNop (thủ tục này không có ủy quyền)."""
+    values = dict(_KA_TUI)
+    values.update({"NguoiNop_HoTen": "Phan Mỹ Dung", "NguoiNop_SoDinhDanh": "024193003267"})
+    got, _ = _run_mode(values)
+    assert got["data[isOwnerDossierCheck]"] is True
+    assert got["data[fullname]"] == "KA TUI"
+    assert "Phan Mỹ Dung" not in str(list(got.values()))
+
+
+def test_default_without_toggle_still_matches_ui_anchor():
+    """KHÔNG bật toggle: hành vi CŨ y nguyên (chỉ điền người nộp khi khớp mỏ neo UI)."""
+    got, warnings = _run(_KA_TUI, {"applicantFullname": "Người Khác", "applicantIdentityNumber": "999999999999"})
+    assert got["data[isOwnerDossierCheck]"] is False        # không khớp UI -> không tự nộp
+    assert "data[ownerFullname]" in got                     # trả khối chủ hồ sơ
+    assert warnings                                          # có cảnh báo không khớp người nộp
+
+
 def test_owner_matching_ui_is_requester_and_ticks_checkbox():
     fields, warnings = _run(
         _KA_TUI,

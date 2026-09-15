@@ -43,6 +43,29 @@ def content_key(data_url: str) -> str | None:
     return f"{_KEY_VERSION}:{hashlib.sha256(raw).hexdigest()}"
 
 
+def content_key_from_path(path: str) -> str | None:
+    """Khóa cache cho file nằm trên ĐĨA — cùng một khóa với ``content_key`` của chính file đó.
+
+    Upload-session truyền file bằng ``path`` (không dựng dataUrl để khỏi nạp cả file vào RAM),
+    nên trước đây lượt OCR lúc nhận tệp không có khóa và KHÔNG vào được cache; lượt trích xuất
+    sau đó gửi dataUrl của ĐÚNG file ấy lại thành cache miss và OCR lần hai.
+
+    ``file_to_data_url`` base64 hóa đúng bytes đọc từ đĩa, nên băm bytes ở đây ra cùng sha256.
+    Đọc theo khối để file lớn không nằm trọn trong RAM.
+    """
+    if not path:
+        return None
+    try:
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return f"{_KEY_VERSION}:{digest.hexdigest()}"
+    except OSError as e:
+        logger.warning("ocr_cache.content_key_from_path lỗi (bỏ qua): %s", e)
+        return None
+
+
 async def get_many(keys: list[str]) -> dict[str, dict]:
     """{key: {text, provider}} cho các key CÓ trong cache. 1 query $in. Lỗi/disabled -> {}."""
     keys = [k for k in keys if k]
@@ -54,10 +77,16 @@ async def get_many(keys: list[str]) -> dict[str, dict]:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.ocr_cache_ttl_hours)
         cursor = get_db().ocr_cache.find(
             {"_id": {"$in": keys}, "created_at": {"$gte": cutoff}},
-            {"text": 1, "provider": 1},
+            {"text": 1, "provider": 1, "max_tokens": 1},
         )
+        # `max_tokens` = trần sinh chữ của lượt OCR đã ghi. Text ghi ở trần THẤP có thể bị cắt
+        # giữa chừng nên không dùng lại được cho lượt cần trần cao hơn — người gọi tự so.
         return {
-            d["_id"]: {"text": d.get("text", ""), "provider": d.get("provider")}
+            d["_id"]: {
+                "text": d.get("text", ""),
+                "provider": d.get("provider"),
+                "max_tokens": d.get("max_tokens"),
+            }
             async for d in cursor
         }
     except Exception as e:  # noqa: BLE001 — cache lỗi không được làm hỏng OCR
@@ -65,17 +94,18 @@ async def get_many(keys: list[str]) -> dict[str, dict]:
         return {}
 
 
-async def _bulk_upsert(items: list[tuple[str, str, str | None]]) -> None:
+async def _bulk_upsert(items: list[tuple[str, str, str | None, int | None]]) -> None:
     from pymongo import UpdateOne
 
     now = datetime.now(timezone.utc)
     ops = [
         UpdateOne(
             {"_id": key},
-            {"$set": {"text": text, "provider": provider, "created_at": now}},
+            {"$set": {"text": text, "provider": provider,
+                      "max_tokens": max_tokens, "created_at": now}},
             upsert=True,
         )
-        for key, text, provider in items
+        for key, text, provider, max_tokens in items
     ]
     try:
         await get_db().ocr_cache.bulk_write(ops, ordered=False)
@@ -83,11 +113,15 @@ async def _bulk_upsert(items: list[tuple[str, str, str | None]]) -> None:
         logger.warning("ocr_cache.bulk_write lỗi (bỏ qua): %s", e)
 
 
-def put_many_bg(items: list[tuple[str, str, str | None]]) -> None:
-    """Ghi cache CHẠY NỀN. Chỉ lưu item có text thật (bỏ rỗng/lỗi). Không có event loop -> bỏ qua."""
+def put_many_bg(items: list[tuple[str, str, str | None, int | None]]) -> None:
+    """Ghi cache CHẠY NỀN. Chỉ lưu item có text thật (bỏ rỗng/lỗi). Không có event loop -> bỏ qua.
+
+    Mỗi item là ``(key, text, provider, max_tokens)`` — ghi kèm trần sinh chữ để lượt sau biết
+    text này có đủ dày cho nhu cầu của nó hay không.
+    """
     if not settings.ocr_cache_enabled:
         return
-    items = [(k, t, p) for k, t, p in items if k and (t or "").strip()]
+    items = [(k, t, p, m) for k, t, p, m in items if k and (t or "").strip()]
     if not items:
         return
     try:

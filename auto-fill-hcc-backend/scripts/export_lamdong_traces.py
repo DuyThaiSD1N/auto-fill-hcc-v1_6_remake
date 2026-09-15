@@ -1,18 +1,20 @@
-"""Xuất JSON: mọi request_id trace thuộc các tỉnh mục tiêu (mặc định Lai Châu, Bắc Ninh, Lâm Đồng).
+"""Xuất JSON: danh sách request_id DUY NHẤT (không trùng) của trace thuộc tỉnh mục tiêu.
 
+MẶC ĐỊNH: tỉnh Lâm Đồng, trong THÁNG 8/2026 (01/08 → 31/08, giờ VN). Đã dedupe theo request_id.
 Cách xác định tỉnh: trace.user_id -> users.tinh (fold dấu so khớp danh sách tỉnh).
-Chạy:
+Chạy (mặc định đã là Lâm Đồng + tháng 8, không cần set gì thêm ngoài kết nối Mongo):
   MONGO_URI="mongodb://root:callbot@localhost:11004/?authSource=admin" \
-  MONGO_DB=autofill_hcc TINH="Lai Châu, Bắc Ninh, Lâm Đồng" \
+  MONGO_DB=autofill_hcc \
   .venv/bin/python export_lamdong_traces.py > lamdong_traces.json
 Nếu không set MONGO_URI, script tự dựng từ MONGO_HOST/PORT/USERNAME/PASSWORD/AUTH_SOURCE.
 Đổi/thêm tỉnh: set TINH="A, B, C" (phân tách bằng dấu phẩy) hoặc sửa DEFAULT_TINH.
 
-Lọc theo NGÀY (tùy chọn, theo giờ Việt Nam UTC+7, bao trọn ngày):
+Đổi khoảng NGÀY (ghi đè mặc định tháng 8; giờ Việt Nam UTC+7, bao trọn ngày):
   FROM_DATE=2026-08-01 TO_DATE=2026-08-06   # nhận YYYY-MM-DD hoặc DD/MM/YYYY; đặt 1 trong 2 cũng được.
 """
 import json
 import os
+import re
 import sys
 import unicodedata
 from datetime import datetime, timedelta, timezone
@@ -20,7 +22,10 @@ from urllib.parse import quote_plus
 
 import pymongo
 
-DEFAULT_TINH = "Lai Châu, Bắc Ninh, Lâm Đồng"
+DEFAULT_TINH = "Lâm Đồng"
+# Mặc định lấy request_id trong THÁNG 8/2026 (giờ VN, bao trọn 31/08). Ghi đè bằng FROM_DATE/TO_DATE.
+DEFAULT_FROM_DATE = "2026-08-01"
+DEFAULT_TO_DATE = "2026-08-31"
 VN_TZ = timezone(timedelta(hours=7))  # Việt Nam UTC+7 (không có DST) — người dùng nhập ngày theo giờ này
 
 
@@ -38,8 +43,12 @@ def parse_date(value: str | None) -> datetime | None:
 
 
 def fold(s: str) -> str:
+    """So khớp theo TRƯỜNG tỉnh: bỏ dấu + bỏ tiền tố đơn vị hành chính ("Tỉnh"/"Thành phố"/"TP")
+    rồi so BẰNG NHAU. Nhờ vậy 'Tỉnh Lâm Đồng' và 'Lâm Đồng' đều ra 'lam dong' và cùng khớp; KHÔNG phải
+    so kiểu chuỗi-chứa (tên xã/thôn có chữ 'lâm đồng' sẽ không dính vì đây là giá trị trường tỉnh)."""
     s = unicodedata.normalize("NFD", str(s or "").lower()).replace("đ", "d")
-    return "".join(c for c in s if not unicodedata.combining(c)).strip()
+    s = "".join(c for c in s if not unicodedata.combining(c)).strip()
+    return re.sub(r"^(tinh|thanh pho|tp)\.?\s+", "", s).strip()
 
 
 def build_uri() -> str:
@@ -59,8 +68,8 @@ def main() -> None:
     targets = {fold(t) for t in os.getenv("TINH", DEFAULT_TINH).split(",") if fold(t)}
     db_name = os.getenv("MONGO_DB", "autofill_hcc")
     # Lọc ngày (giờ VN → UTC-aware cho query; created_at lưu UTC). TO bao TRỌN ngày: dùng < (TO + 1 ngày).
-    from_dt = parse_date(os.getenv("FROM_DATE") or os.getenv("FROM"))
-    to_dt = parse_date(os.getenv("TO_DATE") or os.getenv("TO"))
+    from_dt = parse_date(os.getenv("FROM_DATE") or os.getenv("FROM") or DEFAULT_FROM_DATE)
+    to_dt = parse_date(os.getenv("TO_DATE") or os.getenv("TO") or DEFAULT_TO_DATE)
     date_query: dict = {}
     if from_dt:
         date_query["$gte"] = from_dt
@@ -96,11 +105,12 @@ def main() -> None:
             continue
         seen.setdefault(rid, {"id": rid, "tinh": tinh_by_uid.get(str(t.get("user_id")))})
 
-    result = list(seen.values())
+    # Xuất DANH SÁCH request_id PHẲNG, đã dedupe theo request_id, sắp xếp cho ổn định (không trùng).
+    result = sorted(seen)
 
     # Chẩn đoán ra stderr (không lẫn vào JSON stdout): tổng + breakdown theo tỉnh.
     by_tinh: dict[str, int] = {}
-    for r in result:
+    for r in seen.values():
         by_tinh[r["tinh"]] = by_tinh.get(r["tinh"], 0) + 1
     date_desc = "tất cả" if not date_query else (
         f"{from_dt.date() if from_dt else '...'} → {to_dt.date() if to_dt else '...'} (giờ VN)"

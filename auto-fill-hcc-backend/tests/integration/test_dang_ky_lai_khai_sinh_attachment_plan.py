@@ -177,6 +177,49 @@ async def test_dang_ky_lai_khai_sinh_attachment_plan_adds_commitment_statement(m
     assert items[1]["detectedType"] == "Bản cam đoan"
 
 
+async def test_dang_ky_lai_khai_sinh_commitment_listing_death_record_is_not_renamed(monkeypatch):
+    """Bug: Bản cam đoan LIỆT KÊ 'trích lục khai tử của Cha' trong thân từng bị lưới keyword quét-thân
+    đổi tên thành 'Trích lục khai tử'. LLM-first: đã bỏ mọi lưới đè phân loại -> GIỮ NGUYÊN phân loại
+    commitment_statement + tên 'Bản cam đoan' mà LLM trả về."""
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "ban-cam-doan.pdf",
+            "text": (
+                "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\n"
+                "BẢN CAM ĐOAN\n"
+                "Tôi xin gửi kèm các giấy tờ có thông tin cá nhân của bản thân, gồm: căn cước công dân "
+                "của bản thân, bằng tốt nghiệp Đại học, căn cước công dân của Mẹ, trích lục khai tử của "
+                "Cha, xác nhận của nơi công tác.\n"
+                "Tôi xin cam đoan nội dung trên là đúng sự thật."
+            ),
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({
+            "documents": [
+                {"index": 0, "type": "commitment_statement", "documentName": "Bản cam đoan"},
+            ]
+        })
+
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
+
+    res = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
+        [_file("ban-cam-doan.pdf")],
+        {},
+        _session(),
+    )
+    item = res["attachments"][0]
+    classified = res["extracted"]["classified"][0]
+
+    assert item["documentName"] == "Bản cam đoan"
+    assert item["documentName"] != "Trích lục khai tử"
+    assert item["detectedType"] == "Bản cam đoan"
+    # LLM phân loại commitment_statement được GIỮ NGUYÊN, không bị ép về other.
+    assert classified["type"] == "commitment_statement"
+    assert item["target"] == "new"
+
+
 def test_dang_ky_lai_khai_sinh_procedure_has_attachment_step():
     proc = get_procedure("khai-sinh-dang-ky-lai")
 
@@ -208,6 +251,8 @@ def test_dang_ky_lai_khai_sinh_attachment_prompt_requires_llm_enum():
 
 
 async def test_dang_ky_lai_khai_sinh_death_extract_never_uses_birth_component(monkeypatch):
+    # LLM-first: prompt buộc Trích lục khai tử là type "other" (không phải birth_certificate_copy).
+    # Planner KHÔNG còn lưới keyword đè phân loại; chỉ định tuyến theo type LLM trả -> "other" -> "new".
     async def fake_ocr_per_file(files):
         return [{
             "name": "trich-luc.pdf",
@@ -223,7 +268,7 @@ async def test_dang_ky_lai_khai_sinh_death_extract_never_uses_birth_component(mo
                 "fileIndex": 0,
                 "pageFrom": 1,
                 "pageTo": 1,
-                "type": "birth_certificate_copy",
+                "type": "other",
                 "title": "Trích lục khai tử",
                 "documentName": "Trích lục khai tử",
             }]

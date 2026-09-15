@@ -5,8 +5,10 @@ Form bước đính kèm có thể có tới 2 ô (2 dòng):
                   giấy cam đoan về việc sinh.
   STT2 (tùy trường hợp): Tờ khai thay đổi thông tin cư trú (mẫu CT01) — khi trẻ không ở cùng
                   bố/mẹ/người giám hộ.
-OCR + phân loại để tìm ĐÚNG từng file trong số file người dùng tải lên (có thể kèm CCCD
-cha/mẹ), rồi gắn vào đúng ô theo vị trí (slotIndex 0 = chứng sinh, slotIndex 1 = tờ khai cư trú).
+OCR + phân loại để tìm ĐÚNG từng file trong số file người dùng tải lên, rồi gắn vào đúng ô theo
+vị trí (slotIndex 0 = chứng sinh, slotIndex 1 = tờ khai cư trú). Các giấy tờ "other" (CCCD cha/mẹ,
+giấy kết hôn…) KHÔNG bị bỏ qua và KHÔNG gộp thành 1 PDF: mỗi tệp là một item repeatUpload cùng
+trỏ ô STT1 để FE đính NHIỀU TỆP RỜI vào cùng hàng giấy chứng sinh (trang cho phép nhiều tệp/hàng).
 """
 import re
 import time
@@ -191,22 +193,41 @@ async def plan_khai_sinh_attachments(
             continue
 
     attachments: list[dict] = []
-    matched = {i for i in (birth_index, residence_index) if i is not None}
+    other_indices: list[int] = []
 
+    # STT1 nhận giấy chứng sinh + mọi giấy tờ khác (CCCD cha/mẹ, giấy kết hôn… = "other").
+    # Trang liên thông CHO ĐÍNH NHIỀU FILE vào 1 hàng: input #fileDinhKem KHÔNG có `multiple`
+    # (change handler chỉ đọc files[0] rồi `dsFile.push` — tích lũy từng file, chặn trùng TÊN)
+    # → KHÔNG gộp thành 1 PDF nữa. Phát MỖI file MỘT item `repeatUpload` cùng trỏ ô STT1 để FE
+    # mở menu "Chọn tệp tin" nhiều lần, thêm từng tệp RỜI vào cùng hàng chứng sinh.
     if birth_index is not None:
-        f = raw_files[birth_index]
-        attachments.append({
-            "fileIndex": birth_index,
-            "fileName": f["name"],
-            "documentName": _BIRTH_PROOF_LABEL,
-            "componentName": _BIRTH_PROOF_LABEL,
-            "target": "fixed-slot",
-            "slotIndex": 0,            # STT1: giấy chứng sinh
-            "slotKey": "birth_proof",  # FE khớp đúng dòng theo text tên giấy tờ
-            "slotName": _BIRTH_PROOF_LABEL,
-            "needsAddComponent": False,
-            "detectedType": _BIRTH_PROOF_LABEL,
-        })
+        other_indices = [
+            i for i in range(len(raw_files)) if i not in (birth_index, residence_index)
+        ]
+        for idx in (birth_index, *other_indices):  # chứng sinh trước, rồi các giấy tờ khác
+            f = raw_files[idx]
+            item = {
+                "fileIndex": idx,
+                "fileName": f["name"],
+                "documentName": _BIRTH_PROOF_LABEL,
+                "componentName": _BIRTH_PROOF_LABEL,
+                "target": "fixed-slot",
+                "slotIndex": 0,            # STT1: giấy chứng sinh (nhận nhiều tệp rời)
+                "slotKey": "birth_proof",  # FE khớp đúng dòng theo text tên giấy tờ
+                "slotName": _BIRTH_PROOF_LABEL,
+                "needsAddComponent": False,
+                "repeatUpload": True,      # FE mở menu lại cho từng tệp, không gộp
+                "detectedType": _BIRTH_PROOF_LABEL if idx == birth_index else _DOC_OTHER,
+            }
+            # Cổng chặn TỔNG dung lượng mỗi loại giấy tờ ("không được quá 2.6MB"), nên dồn hết
+            # giấy tờ khác vào STT1 sẽ vỡ hạn mức khi hồ sơ có nhiều tệp. Chỉ giấy tờ KHÁC mới
+            # được phép rơi sang STT2 — giấy chứng sinh phải nằm đúng ô của nó, không bao giờ
+            # được dời. FE chỉ dùng ô này KHI cổng thật sự báo quá dung lượng.
+            if idx != birth_index:
+                item["fallbackSlotIndex"] = 1
+                item["fallbackSlotKey"] = "residence_form"
+                item["fallbackSlotName"] = _RESIDENCE_FORM_LABEL
+            attachments.append(item)
     else:
         errors.append(
             "Không tìm thấy giấy chứng sinh (hoặc văn bản người làm chứng/giấy cam đoan về việc sinh) "
@@ -228,10 +249,13 @@ async def plan_khai_sinh_attachments(
             "detectedType": _RESIDENCE_FORM_LABEL,
         })
 
+    # "other" nay đã gộp vào STT1 → matched. Chỉ còn skip khi KHÔNG có chứng sinh (không có ô để gộp).
+    matched = {i for i in (birth_index, residence_index) if i is not None}
+    matched.update(other_indices)
     skipped_names = [rf["name"] for i, rf in enumerate(raw_files) if i not in matched]
     if skipped_names:
         errors.append(
-            "Bỏ qua file không thuộc giấy tờ cần nộp (chứng sinh / tờ khai cư trú): "
+            "Bỏ qua file (chưa có giấy chứng sinh làm ô đính kèm): "
             + ", ".join(skipped_names)
         )
 

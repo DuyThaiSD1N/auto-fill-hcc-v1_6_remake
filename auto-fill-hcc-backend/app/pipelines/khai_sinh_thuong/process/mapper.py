@@ -343,8 +343,9 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
     if not has_gcs and (values.get("CccdChuThe_HoTen") or values.get("CccdChuThe_NgaySinh")):
         return {
             "ho_ten": values.get("CccdChuThe_HoTen"),
-            "ngay_sinh": values.get("CccdChuThe_NgaySinh"),
-            "gioi_tinh": values.get("CccdChuThe_GioiTinh"),
+            # Ngày sinh / giới tính: bản IN trên thẻ; thẻ không đọc được mới lấy tờ khai.
+            "ngay_sinh": values.get("CccdChuThe_NgaySinh") or values.get("TkKs_NgaySinhCon"),
+            "gioi_tinh": values.get("CccdChuThe_GioiTinh") or values.get("TkKs_GioiTinhCon"),
             "dan_toc": values.get("CccdChuThe_DanToc"),
             "noi_sinh": None,
             "que_quan": _area(values.get("CccdChuThe_QueQuan")),
@@ -356,10 +357,11 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
     if nu_is_subject:
         return {
             "ho_ten": values.get("Gcs_HoTenCon") or values.get("TkKs_HoTenCon") or values.get("CccdNu_HoTen"),
+            # Ngày sinh theo CCCD (bản in) như mọi thủ tục hộ tịch khác; giấy chứng sinh/tờ khai chỉ bù.
             "ngay_sinh": (
-                values.get("Gcs_NgaySinhCon")
+                values.get("CccdNu_NgaySinh")
+                or values.get("Gcs_NgaySinhCon")
                 or values.get("TkKs_NgaySinhCon")
-                or values.get("CccdNu_NgaySinh")
             ),
             "gioi_tinh": "Nữ",
             "dan_toc": values.get("Gcs_DanTocCon") or values.get("CccdNu_DanToc"),

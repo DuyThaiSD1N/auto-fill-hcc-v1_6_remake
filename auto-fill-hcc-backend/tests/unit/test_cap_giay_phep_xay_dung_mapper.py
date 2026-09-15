@@ -267,3 +267,142 @@ def test_compact_runner_extracts_docx_embedded_images():
     assert files[0]["type"] == "image/jpeg"
     assert files[1]["type"] == "image/png"
     assert files[0]["_sourceDocxName"] == "cccd.docx"
+
+
+# ---------------------------------------------------------------------------
+# Hồ sơ thật req_c7ff7df997f2 (Ninh Bình, bà V.T.N — CCCD 12 số, đơn không ghi ngày sinh)
+# ---------------------------------------------------------------------------
+def _comps(mapped: list[dict]) -> dict:
+    return {f["name"]: f["comp"] for f in mapped}
+
+
+def test_chi_biet_nam_sinh_thi_khong_bia_ngay_thang():
+    """CCCD 12 số mã hoá NĂM sinh + giới tính, nhưng KHÔNG có ngày/tháng. Trước đây mapper ghép
+    '01/01/<năm>' → form hiện ngày sinh BỊA. Giờ phải bỏ trống và tô đỏ cho cán bộ tự nhập."""
+    mapped, _ = mapper.enrich(
+        [_field("Applicant_HoTen", "Nguyễn Thị A"), _field("Applicant_SoDinhDanh", "037160002966")],
+        {},
+    )
+
+    assert _values(mapped)["data[birthday]"] == ""
+    assert _comps(mapped)["data[birthday]"] == "dom-expect"
+    # Giới tính thì VẪN điền được: chữ số thứ 4 của CCCD mã hoá giới tính, đây là suy ra tất định.
+    assert _values(mapped)["data[gender]"] == "Nữ"
+
+
+def test_chi_co_nam_sinh_roi_cung_khong_dung_de_ghep_ngay():
+    mapped, _ = mapper.enrich(
+        [_field("Applicant_HoTen", "Nguyễn Thị A"), _field("Applicant_NamSinh", "1960")],
+        {},
+    )
+
+    assert _values(mapped)["data[birthday]"] == ""
+    assert _comps(mapped)["data[birthday]"] == "dom-expect"
+
+
+def test_ngay_sinh_day_du_van_duoc_dien_va_van_chuan_nam_theo_cccd():
+    """Có ngày/tháng thật thì vẫn điền; năm lệch với CCCD thì chỉ sửa NĂM, giữ nguyên ngày/tháng."""
+    mapped, _ = mapper.enrich(
+        [
+            _field("Applicant_HoTen", "Nguyễn Thị A"),
+            _field("Applicant_SoDinhDanh", "037160002966"),
+            _field("Applicant_NgaySinh", "23/05/1968"),
+        ],
+        {},
+    )
+
+    assert _values(mapped)["data[birthday]"] == "23/05/1960"
+
+
+def _design_fields(chu_nhiem_name, chu_nhiem_chung_chi):
+    return [
+        _field("Applicant_HoTen", "Nguyễn Thị A"),
+        _field("LapThietKe_Loai", "Tổ chức"),
+        _field("ThietKe_ToChuc_Ten", "Công ty TNHH Tư vấn Xây dựng M"),
+        _field("ThietKe_ChuNhiem_HoTen", chu_nhiem_name),
+        _field("ThietKe_ChuNhiem_ChungChi", chu_nhiem_chung_chi),
+        _field("ThietKe_ChuTri_DanhSach", [
+            {"boMon": "Kết Cấu", "hoTen": "Trần Văn B", "chungChi": "NIB-00169422"},
+            {"boMon": "Kiến Trúc", "hoTen": "Lê Văn C", "chungChi": "NIB-00000033"},
+        ]),
+    ]
+
+
+def test_chung_chi_chu_nhiem_khop_theo_ten_khong_ghep_cheo_dong():
+    """Đơn kê mỗi người một dòng '<tên>, Mã số: <mã> — <vai trò>' nên LLM hay ghép tên dòng này với mã
+    dòng kia. Mapper khớp TẤT ĐỊNH theo họ tên trong danh sách chủ trì để lấy đúng mã."""
+    mapped, _ = mapper.enrich(_design_fields("Trần Văn B", "NIB-00000033"), {})
+
+    values = _values(mapped)
+    assert values["data[tenChuNhiemThietKe]"] == "Trần Văn B"
+    assert values["data[maSoChungChiChuNhiemThietKe]"] == "NIB-00169422"
+
+
+def test_chu_nhiem_khong_co_trong_danh_sach_chu_tri_thi_giu_gia_tri_llm():
+    mapped, _ = mapper.enrich(_design_fields("Phạm Văn D", "NIB-00123456"), {})
+
+    assert _values(mapped)["data[maSoChungChiChuNhiemThietKe]"] == "NIB-00123456"
+
+
+def test_thu_tu_chu_tri_giu_dung_thu_tu_ke_khai():
+    mapped, _ = mapper.enrich(_design_fields("Trần Văn B", "NIB-00169422"), {})
+
+    values = _values(mapped)
+    assert values["data[thietKeXayDung][0][boMonChuTriThietKe]"] == "Kết Cấu"
+    assert values["data[thietKeXayDung][0][hoVaTenChuTriThietKe]"] == "Trần Văn B"
+    assert values["data[thietKeXayDung][1][boMonChuTriThietKe]"] == "Kiến Trúc"
+
+
+def test_prompt_day_du_quy_tac_vai_tro_cuoi_dong():
+    assert "VAI TRÒ NẰM Ở CUỐI DÒNG" in EXTRA_RULES
+    assert 'Người chỉ ghi "Chủ trì: ..." KHÔNG phải chủ nhiệm' in EXTRA_RULES
+    assert "Cấm ghép tên người này với mã số người kia." in EXTRA_RULES
+    chu_nhiem = next(f for f in FIELDS if f["name"] == "ThietKe_ChuNhiem_HoTen")
+    assert "BỎ TRỐNG" in chu_nhiem["desc"]
+
+
+def test_desc_dien_tich_xay_dung_chot_la_tang_1_va_cam_lay_o_dong_chieu_cao():
+    """Hồ sơ mẫu: đơn ghi 'Diện tích xây dựng tầng 1: 30m²' nhưng form bị điền 116.4 — con số đó nằm ở
+    dòng 'Chiều cao công trình (tầng 1: 116.4m...)'. Desc phải chặn đúng cái nhầm này."""
+    desc = next(f for f in FIELDS if f["name"] == "CongTrinh_DienTichXayDung")["desc"]
+
+    assert "TẦNG 1" in desc
+    assert "Chiều cao công trình" in desc
+    assert "Tổng diện tích sàn" in desc
+
+
+def test_ba_o_trong_do_van_duoc_map_khi_llm_tra_chi_tiet():
+    """3 ô 'Trong đó' của nhà ở riêng lẻ phải ra đủ khi LLM đọc được phần liệt kê theo tầng."""
+    mapped, _ = mapper.enrich(
+        [
+            _field("Applicant_HoTen", "Nguyễn Thị A"),
+            _field("CongTrinh_Nhanh", "nha_o_rieng_le"),
+            _field("CongTrinh_TongDienTichSan", "393"),
+            _field("CongTrinh_ChiTietDienTichSan", "tầng 1: 30m², tầng 2: 43,2 m², tầng 3: 43,2 m²"),
+            _field("CongTrinh_ChieuCao", "11,9"),
+            _field("CongTrinh_ChiTietChieuCao", "tầng 1: 3,4m, tầng 2: 3m, tầng tum: 2,5m"),
+            _field("CongTrinh_SoTang", "3"),
+            _field("CongTrinh_ChiTietSoTang", "3 tầng"),
+        ],
+        {},
+    )
+
+    values = _values(mapped)
+    assert values["data[chiTietDienTichSanNhaO]"].startswith("tầng 1: 30m²")
+    assert values["data[chiTietChieuCaoNhaO]"].startswith("tầng 1: 3,4m")
+    assert values["data[chiTietSoTangNhaO]"] == "3 tầng"
+
+
+def test_desc_chi_tiet_nhan_ca_3_kieu_trinh_bay_va_bat_buoc_tra():
+    """Đơn thật viết phần liệt kê theo 3 kiểu (sau 'Trong đó:', trong ngoặc, nối tiếp cùng dòng).
+    Prompt/desc phải phủ cả ba, và phải nói rõ ĐÃ trả field số thì VẪN trả field chi tiết —
+    nếu không LLM hay bỏ trống 3 ô 'Trong đó'."""
+    by_name = {f["name"]: f["desc"] for f in FIELDS}
+
+    for name in ("CongTrinh_ChiTietDienTichSan", "CongTrinh_ChiTietChieuCao", "CongTrinh_ChiTietSoTang"):
+        assert "BẮT BUỘC trả" in by_name[name], name
+
+    assert "MỖI THÔNG SỐ CÓ HAI FIELD" in EXTRA_RULES
+    assert "trong NGOẶC ĐƠN cùng dòng" in EXTRA_RULES
+    # Cảnh báo "không lấy số ở dòng chiều cao" phải được giới hạn cho field SỐ, không chặn field chi tiết.
+    assert "chỉ áp cho field SỐ" in EXTRA_RULES

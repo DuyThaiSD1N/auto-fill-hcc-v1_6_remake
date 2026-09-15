@@ -1,4 +1,4 @@
-/* Bảng thống kê Trợ lý người dân — thiết kế công báo (adapt từ dashboard-bao-cao-tro-ly.html).
+/* Bảng thống kê Trợ lý nhân dân — thiết kế công báo (adapt từ dashboard-bao-cao-tro-ly.html).
    Nguồn thiết kế: palette xanh #1256C7 + Inter, layout sidebar. Chỉ THỐNG KÊ (bỏ thời lượng/nhật ký). */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -450,6 +450,18 @@ td.n{font-weight:750;font-size:14px}
  color:#8A5A05;border-radius:12px;padding:11px 14px;margin-bottom:16px;font-size:12.5px;line-height:1.5}
 .hf-note svg{width:15px;height:15px;flex:none;margin-top:1px;color:var(--amb)}
 .hf-note b{color:#7A5410;font-weight:750}
+
+/* Chú thích cách đếm hồ sơ (mốc 14/9/2026). Là THÔNG TIN, không phải cảnh báo → tông xanh
+   chủ đạo, khác hẳn nền hổ phách của .hf-note để cán bộ không tưởng hệ thống đang lỗi. */
+.count-note{background:var(--pri-bg);border-color:var(--pri-line);color:#0E3E90}
+.count-note svg{color:var(--pri)}
+
+/* Lọc trạng thái ở đầu bảng Nhật ký hồ sơ. Ô chọn thấp hơn .ctl mặc định để không đẩy cao
+   dòng tiêu đề thẻ; nhãn thu nhỏ vì đứng cạnh tên thẻ đã đủ ngữ cảnh. */
+.nk-filter{display:flex;align-items:center;gap:8px}
+.nk-filter label{font-size:12.5px;color:var(--ink3);font-weight:600;white-space:nowrap}
+.nk-filter select.ctl{height:34px;font-size:12.5px}
+@media (max-width:640px){.nk-filter label{display:none}}
 
 /* Xoay biểu tượng "Làm mới" khi đang tải để người dùng thấy phản hồi */
 @keyframes af-spin{to{transform:rotate(360deg)}}

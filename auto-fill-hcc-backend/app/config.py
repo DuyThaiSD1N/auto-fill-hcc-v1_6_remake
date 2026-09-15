@@ -106,8 +106,19 @@ class Settings(BaseSettings):
     upload_session_ttl_hours: int = 24
     review_capability_ttl_seconds: int = 3600
 
+    # Scan tài liệu HOSTED của scanic (Trường) — bộ quét CHÍNH trên trang mobile autofill; scanner
+    # local là fallback tự động. Để TRỐNG base = tắt hosted, dùng local (đặt qua env SCANIC_BASE_URL).
+    # scanic_enabled=false = kill-switch ép local kể cả khi base đã set (khỏi build lại FE/extension).
+    scanic_base_url: str = ""
+    scanic_enabled: bool = True
+
     # Bật dần channel Handfree sau khi staging đã qua test; Auto Fill không phụ thuộc cờ này.
     handfree_enabled: bool = False
+
+    # Rate-limit endpoint chat handfree — theo TÀI KHOẢN (endpoint đã đăng nhập), KHÔNG theo IP để
+    # tránh proxy gộp mọi người dùng về 1 IP rồi chặn tập thể. 0 = TẮT hẳn (cao điểm/demo có thể set 0).
+    chat_rate_max: int = 120        # số request tối đa / cửa sổ / tài khoản
+    chat_rate_window: float = 60.0  # độ dài cửa sổ (giây)
 
     # Voice chỉ thuộc channel Handfree. Để trống URI/token tương ứng = tắt tính năng trên
     # /api/v1/voice/config; extension Auto Fill không dùng các cấu hình này.

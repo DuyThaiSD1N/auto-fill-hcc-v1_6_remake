@@ -10,6 +10,7 @@ from app.locations.catalog import canonical_location
 from app.reports.excel import build_daily_excel, build_excel
 from app.reports.handfree_client import fetch_handfree_daily_stats, fetch_handfree_stats
 from app.reports.schemas import ExcelExportRequest
+from app.stats import cutover
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
 from app.users.roles import is_official_account_role, normalized_role
@@ -194,7 +195,7 @@ async def export_excel(body: ExcelExportRequest) -> tuple[bytes, str]:
     account_ids = [str(account["_id"]) for account in accounts]
     if body.reportLayout == "daily_summary":
         daily_counts, handfree_daily_stats = await asyncio.gather(
-            traces_repo.daily_dossier_counts_by_user_ids(
+            cutover.daily_dossier_counts(
                 user_ids=account_ids,
                 date_from=date_from,
                 date_to=date_to,
@@ -214,7 +215,7 @@ async def export_excel(body: ExcelExportRequest) -> tuple[bytes, str]:
         )
         return data, _filename(body, accounts)
 
-    local_stats_task = traces_repo.stats_by_user_ids(
+    local_stats_task = cutover.dossier_stats(
         user_ids=account_ids,
         date_from=date_from,
         date_to=date_to,

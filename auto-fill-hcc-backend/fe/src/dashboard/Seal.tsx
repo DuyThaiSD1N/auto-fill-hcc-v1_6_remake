@@ -11,7 +11,7 @@ interface Props {
 
 export default function Seal({
   size = 64,
-  top = "TRỢ LÝ NGƯỜI DÂN",
+  top = "TRỢ LÝ NHÂN DÂN",
   bottom = "HÀNH CHÍNH CÔNG",
   tone = "gold",
   className,
@@ -28,7 +28,7 @@ export default function Seal({
       height={size}
       viewBox="0 0 100 100"
       role="img"
-      aria-label="Trợ lý người dân"
+      aria-label="Trợ lý nhân dân"
       style={{ color: stroke }}
     >
       <defs>

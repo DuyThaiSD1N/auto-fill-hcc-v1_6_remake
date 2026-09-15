@@ -6,8 +6,18 @@ chạy cả HTTP; không cần getUserMedia/HTTPS). Ảnh nén canvas ~2000px tr
 """
 
 
+# DPI khai cho trang PDF gộp từ ảnh scan. Vintern đọc chuẩn nhất quanh 200 DPI (250/300 đọc
+# SAI SỐ) — khai đúng con số này để dịch vụ OCR render lại gần 1:1 pixel gốc, không phóng to.
+PDF_DPI = 200
+
+
 def render_mobile_page(sid: str) -> str:
     # {sid} nhúng thẳng; API cùng origin nên fetch dùng đường dẫn tương đối.
+    from app.config import settings
+
+    # Bộ quét CHÍNH = scanic hosted khi bật cờ + có base; ngược lại scanner local (fallback).
+    scanic_base = (settings.scanic_base_url or "").rstrip("/")
+    scanic_on = "true" if (settings.scanic_enabled and scanic_base) else "false"
     return f"""<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -131,6 +141,8 @@ def render_mobile_page(sid: str) -> str:
 </div>
 <script>
 const SID = {sid!r};
+const SCANIC_ON = {scanic_on};          // bộ quét CHÍNH = scanic hosted của Trường
+const SCANIC_BASE = {scanic_base!r};    // gốc scanic (vd https://scanic.tiengnoi.vn); rỗng = tắt
 const UPLOAD_TOKEN = new URLSearchParams(location.hash.slice(1)).get("token") || "";
 const $ = (id) => document.getElementById(id);
 let staged = [];   // {{ id, file, url, isPdf }} — tài liệu ĐANG CHỜ, chưa gửi
@@ -207,12 +219,35 @@ async function send() {{
   try {{
     const headers = new Headers();
     if (UPLOAD_TOKEN) headers.set("X-Upload-Token", UPLOAD_TOKEN);
-    const r = await fetch(`/api/v1/upload-sessions/${{SID}}/files`, {{
-      method: "POST", body: fd, headers,
-    }});
-    if (!r.ok) {{
-      const e = await r.json().catch(() => null);
-      $("stat").textContent = "⚠️ " + ((e && e.detail) || "Gửi tài liệu lỗi, bà con thử lại nhé.");
+    // THỬ LẠI khi lỗi MẠNG hoặc 5xx: 4G ở quầy hay chớp, cổng cũng có lúc 5xx nhất thời.
+    // KHÔNG thử lại với 4xx (tệp quá nặng, phiên hết hạn) — thử lại cũng hỏng y vậy.
+    // Khay `staged` GIỮ NGUYÊN cho tới khi máy chủ trả 200, hỏng thì bà con bấm Gửi lại được
+    // ngay, không phải chụp lại từ đầu.
+    const MAX_TRIES = 3;
+    let r = null, lastDetail = "";
+    for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {{
+      try {{
+        r = await fetch(`/api/v1/upload-sessions/${{SID}}/files`, {{
+          method: "POST", body: fd, headers,
+        }});
+      }} catch (_) {{
+        r = null;   // lỗi mạng
+      }}
+      if (r && r.ok) break;
+      if (r && r.status >= 400 && r.status < 500) {{
+        const e = await r.json().catch(() => null);
+        $("stat").textContent = "⚠️ " + ((e && e.detail) || "Gửi tài liệu lỗi, bà con thử lại nhé.");
+        $("sendBtn").disabled = false;
+        return;
+      }}
+      lastDetail = r ? `máy chủ báo lỗi ${{r.status}}` : "mất mạng";
+      if (attempt < MAX_TRIES) {{
+        $("stat").textContent = `⏳ ${{lastDetail}} — em đang gửi lại (${{attempt}}/${{MAX_TRIES - 1}})…`;
+        await new Promise((ok) => setTimeout(ok, 1500 * attempt));
+      }}
+    }}
+    if (!r || !r.ok) {{
+      $("stat").textContent = `⚠️ Chưa gửi được (${{lastDetail}}) — tài liệu vẫn còn đây, bà con bấm Gửi lại giúp em.`;
       $("sendBtn").disabled = false;
       return;
     }}
@@ -223,7 +258,8 @@ async function send() {{
     renderStaged();
     $("stat").textContent = "✅ Đã gửi! Bà con gửi thêm hoặc quay lại máy tính ạ.";
   }} catch (err) {{
-    $("stat").textContent = "⚠️ Mất mạng khi gửi, bà con thử lại nhé.";
+    // Lỗi ngoài vòng gửi (nén ảnh, dựng FormData) — phần mạng đã có vòng thử lại ở trên.
+    $("stat").textContent = "⚠️ Chưa chuẩn bị được tài liệu để gửi, bà con thử lại nhé.";
     $("sendBtn").disabled = false;
   }}
 }}
@@ -254,6 +290,7 @@ let pdfLibLoading = null; // promise nạp pdf-lib 1 lần
 
 if (window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {{
   $("scanBtn").style.display = "";
+  loadScanic();   // nạp widget scanic hosted (nếu bật) → bộ quét CHÍNH; lỗi thì rơi về local
 }}
 
 // Nạp pdf-lib (gộp ảnh → PDF) 1 lần, lazy — không phạt người không dùng scan.
@@ -414,8 +451,14 @@ async function imagesToPdf(blobs) {{
   for (const b of blobs) {{
     const bytes = new Uint8Array(await b.arrayBuffer());
     const img = (b.type || "").includes("png") ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
-    const page = doc.addPage([img.width, img.height]);
-    page.drawImage(img, {{ x: 0, y: 0, width: img.width, height: img.height }});
+    // Khổ trang tính theo ĐIỂM (1pt = 1/72 inch), KHÔNG phải pixel. Đặt thẳng số pixel làm khổ
+    // trang = khai ảnh ở 72 DPI; OCR render 200 DPI sẽ PHÓNG TO ~2,8 lần từ dữ liệu không có
+    // thêm chi tiết — vừa phí, vừa đẩy cỡ chữ ra xa vùng 200 DPI mà Vintern đọc chuẩn nhất.
+    // Đo trên 3 hồ sơ chứng thực thật: sửa xong 2 file giữ nguyên từng ký tự, 1 file đọc RA
+    // THÊM số giấy tờ và ngày mà bản cũ bỏ sót. Không tốn thêm byte nào.
+    const pw = img.width / {PDF_DPI} * 72, ph = img.height / {PDF_DPI} * 72;
+    const page = doc.addPage([pw, ph]);
+    page.drawImage(img, {{ x: 0, y: 0, width: pw, height: ph }});
   }}
   return new Blob([await doc.save()], {{ type: "application/pdf" }});
 }}
@@ -425,7 +468,74 @@ function closeScanner() {{
   $("scanWrap").classList.remove("on");
 }}
 
-$("scanBtn").addEventListener("click", openScanner);
+// ===== Scanic HOSTED (bộ quét CHÍNH của Trường) — nạp widget; tắt/lỗi thì fallback scanner local =====
+let scanReady = false;        // widget nạp xong + window.ScanicCam sẵn sàng
+let scanicSeq = 0;            // mỗi lượt quét = 1 clientRef riêng → không lẫn ảnh giữa các lần
+let scanicCollecting = false; // chỉ gom sự kiện enhanced trong lúc đang mở widget
+const scanicEnh = new Map();  // id ảnh -> Blob đã ENHANCE (từ sự kiện)
+
+// Nạp scanic-cam.js 1 lần (chỉ khi bật + HTTPS). ?t= phá cache CDN. Timeout 6s → coi như không có.
+function loadScanic() {{
+  if (!SCANIC_ON || !SCANIC_BASE || !window.isSecureContext) return;
+  const s = document.createElement("script");
+  s.src = SCANIC_BASE + "/embed/scanic-cam.js?t=" + Date.now();
+  s.onload = () => {{
+    if (!window.ScanicCam) return;
+    scanReady = true;
+    // Đăng ký TRƯỚC open(): enhanced thường tới SAU khi bấm Xong. Gom theo id ảnh, giữ thứ tự trang.
+    try {{
+      window.ScanicCam.listener({{
+        enhanced: (e) => {{ if (scanicCollecting && e && e.blob && e.id) scanicEnh.set(e.id, e.blob); }},
+      }});
+    }} catch (_) {{}}
+  }};
+  s.onerror = () => {{ scanReady = false; }};
+  document.head.appendChild(s);
+  setTimeout(() => {{ if (!window.ScanicCam) scanReady = false; }}, 6000);
+}}
+
+// PRIMARY: mở widget Trường → chờ ảnh enhanced → gộp 1 PDF → vào khay chờ gửi (giữ nguyên send()/WS).
+async function openScanicWidget() {{
+  scanicSeq += 1;
+  const ref = SID + "-" + scanicSeq;   // phiên scanic riêng cho lượt quét này
+  scanicEnh.clear();
+  scanicCollecting = true;
+  let images = [];
+  try {{
+    const res = await window.ScanicCam.open({{ apiUrl: SCANIC_BASE + "/api", clientRef: ref }});
+    images = (res && res.images) || [];
+  }} catch (e) {{
+    scanicCollecting = false;
+    console.warn("[scan] scanic mở lỗi → dùng bộ quét local", e);
+    return openScanner();               // fallback ngay
+  }}
+  if (!images.length) {{ scanicCollecting = false; return; }}  // bấm Xong mà chưa chụp
+  $("stat").textContent = "⏳ Đang xử lý ảnh…";
+  // Chờ enhanced cho các ảnh xác định được id (tối đa 15s); id nào thiếu thì dùng bản cropped của open().
+  const ids = images.map((im) => im && im.id).filter(Boolean);
+  const t0 = Date.now();
+  while (ids.length && ids.some((id) => !scanicEnh.has(id)) && Date.now() - t0 < 15000) {{
+    await new Promise((r) => setTimeout(r, 300));
+  }}
+  scanicCollecting = false;
+  // Theo THỨ TỰ trang: ưu tiên enhanced (theo id); thiếu → ảnh cropped im.blob của open().
+  const blobs = images.map((im) => (im && im.id && scanicEnh.get(im.id)) || (im && im.blob)).filter(Boolean);
+  if (!blobs.length) {{ $("stat").textContent = "⚠️ Chưa lấy được ảnh scan, bà con thử lại nhé."; return; }}
+  try {{
+    const pdfBlob = await imagesToPdf(blobs);
+    addFiles([new File([pdfBlob], `scan-${{Date.now()}}.pdf`, {{ type: "application/pdf" }})], true);
+    $("stat").textContent = "✓ Đã thêm bản scan — bà con bấm Gửi ạ.";
+  }} catch (e) {{
+    console.warn("[scan] gộp PDF lỗi → đính từng ảnh", e);
+    blobs.forEach((b, i) => addFiles([new File([b], `scan-${{Date.now()}}-${{i + 1}}.jpg`, {{ type: b.type || "image/jpeg" }})], false));
+  }}
+}}
+
+// Bấm Scan: có scanic hosted sẵn sàng → dùng CHÍNH; ngược lại → scanner local (fallback).
+$("scanBtn").addEventListener("click", () => {{
+  if (scanReady && window.ScanicCam) openScanicWidget();
+  else openScanner();
+}});
 $("scanShot").addEventListener("click", takeShot);
 $("scanUse").addEventListener("click", useShot);
 $("scanRetake").addEventListener("click", closePreview);

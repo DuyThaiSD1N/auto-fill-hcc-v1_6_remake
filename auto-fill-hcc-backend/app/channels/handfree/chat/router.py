@@ -16,8 +16,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.channels.handfree.chat import access, flow, intents, store
+from app.channels.handfree.procedure_registry import get_procedure
+from app.procedures.registry import get_procedure as get_core_procedure
 from app.config import settings
 from app.core.deps import require_auth
+from app.dossiers import repo as dossiers_repo
 from app.locations.lookup import location_for
 
 logger = logging.getLogger(__name__)
@@ -26,16 +29,18 @@ router = APIRouter(prefix="/api/v1/assistant", tags=["assistant"])
 
 # Rate-limit theo IP (mirror pattern public-autofill của chatbot TS): 60 lượt/phút là quá đủ
 # cho hội thoại người thật; chống script spam.
+# Key theo TÀI KHOẢN (không phải IP) → mỗi quầy có hạn mức riêng, miễn nhiễm proxy/NAT gộp IP.
 _RATE: dict[str, list[float]] = defaultdict(list)
-_RATE_MAX, _RATE_WINDOW = 60, 60.0
 
 
-def _rate_ok(ip: str) -> bool:
+def _rate_ok(key: str) -> bool:
+    if settings.chat_rate_max <= 0:
+        return True  # 0 = tắt rate-limit (cấu hình qua .env, không cần build lại)
     now = time.monotonic()
-    bucket = [t for t in _RATE[ip] if now - t < _RATE_WINDOW]
+    bucket = [t for t in _RATE[key] if now - t < settings.chat_rate_window]
     bucket.append(now)
-    _RATE[ip] = bucket
-    return len(bucket) <= _RATE_MAX
+    _RATE[key] = bucket
+    return len(bucket) <= settings.chat_rate_max
 
 
 class ClientContext(BaseModel):
@@ -110,10 +115,17 @@ def _bounded_int(value: object, default: int = 0) -> int:
 
 
 def _clean_attachment_preferences(raw: dict[str, object]) -> dict[str, object]:
-    """Chỉ nhận boolean tường minh; chuỗi "true" không được phép tự bật tách tài liệu."""
-    if not isinstance(raw, dict) or not isinstance(raw.get("splitDocuments"), bool):
+    """Whitelist tường minh: splitDocuments phải là boolean thật (chuỗi "true" không được
+    tự bật tách tài liệu); attachMode chỉ nhận đúng "merge"/"split" (cài đặt máy quầy —
+    gộp/tách hồ sơ chứng thực, thay cho câu hỏi giữa luồng)."""
+    if not isinstance(raw, dict):
         return {}
-    return {"splitDocuments": raw["splitDocuments"]}
+    result: dict[str, object] = {}
+    if isinstance(raw.get("splitDocuments"), bool):
+        result["splitDocuments"] = raw["splitDocuments"]
+    if raw.get("attachMode") in ("merge", "split"):
+        result["attachMode"] = raw["attachMode"]
+    return result
 
 
 def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
@@ -124,6 +136,10 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsAttachmentContext": raw.get("supportsAttachmentContext") is True,
         "supportsPageBoundDocsComplete": raw.get("supportsPageBoundDocsComplete") is True,
         "supportsAttachActionLease": raw.get("supportsAttachActionLease") is True,
+        "supportsScanAutoRun": raw.get("supportsScanAutoRun") is True,
+        # Bản extension mới hiểu card "rating" (đánh giá trước đăng xuất). Client cũ không khai
+        # → BE giữ nguyên luồng cũ (hiện thẳng 2 nút đăng xuất/nộp thêm), không vỡ.
+        "supportsRating": raw.get("supportsRating") is True,
     }
 
 
@@ -185,8 +201,9 @@ def _last_reply_for_restore(conv: dict) -> dict | None:
 
 @router.post("/chat")
 async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depends(require_auth)):
-    ip = request.client.host if request.client else "?"
-    if not _rate_ok(ip):
+    # Giới hạn theo TÀI KHOẢN quầy (đã đăng nhập) — không theo IP để tránh proxy gộp mọi người dùng.
+    rate_key = str(user.get("id") or (request.client.host if request.client else "?"))
+    if not _rate_ok(rate_key):
         raise HTTPException(status_code=429, detail="Quá nhiều yêu cầu, công dân chờ chút rồi thử lại nhé.")
 
     conv = await store.get(req.conversation_id or "")
@@ -199,10 +216,15 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         access.ensure_conversation_owner(conv, user)
     # Đồng bộ lại theo tài khoản hiện tại ở mọi lượt. Nhờ vậy trace Handfree dùng cùng
     # tên tài khoản với Auto Fill kể cả khi admin vừa đổi tên hiển thị của tài khoản.
+    # province_slug = tỉnh CỦA TÀI KHOẢN (độc lập location picker) → khóa thủ tục đặc thù tỉnh
+    # (provinceOnly ở registry). Lấy riêng qua location_for(tinh) để không dính _default_location
+    # khi acc thiếu tỉnh; đồng bộ mỗi lượt như các field auth_user khác.
+    account_slug = (location_for(user.get("tinh"), None) or {}).get("province_slug") or ""
     conv["auth_user"] = {
         "id": user["id"],
         "username": user["username"],
         "name": user.get("name") or "",
+        "province_slug": account_slug,
     }
 
     # Giữ mỏ neo người yêu cầu trong conversation để lượt "Đã đưa đủ" chạy nền vẫn nhận được
@@ -259,18 +281,94 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             k: payload[k] for k in ("display_md", "tts_text", "tts_lang", "chips", "cards", "state")
         }
     await store.save(conv)
+    await _sync_dossier(conv)
 
     if settings.llm_debug:
         logger.info("[assistant] %s src=%s state=%s msg=%r", conv["_id"], req.source, conv["state"], message[:120])
     return payload
 
 
+def core_procedure_label(procedure_key: str) -> str | None:
+    """Tên HÀNH CHÍNH thật của thủ tục (registry lõi).
+
+    Registry Handfree có `shortLabel` riêng để hiển thị card chọn thủ tục ("Chứng thực chữ ký");
+    báo cáo phải dùng tên đầy đủ ("Chứng thực chữ ký trong các giấy tờ, văn bản (áp dụng cho
+    cả trường hợp...)"). Hai registry dùng CHUNG khóa nên tra thẳng bằng key.
+    """
+    return (get_core_procedure(procedure_key or "") or {}).get("label")
+
+
+async def _sync_dossier(conv: dict) -> None:
+    """Đổ mốc vòng đời hồ sơ sang collection `dossiers` (không TTL).
+
+    `conversations` tự xoá sau 24h nên mọi mốc thời gian phải được sao ra ngoài ngay trong
+    lượt chat, chứ không đợi lúc kết thúc. Chỉ chạy khi hồ sơ đã thực sự bắt đầu
+    (_start_guide_login đã chấm mốc); phiên mới chào hỏi chưa chọn thủ tục thì bỏ qua.
+    """
+    started_at = conv.get("dossier_started_at")
+    if not started_at:
+        return
+    # Chỉ vào sổ khi hồ sơ đã CÓ VIỆC THẬT (điền / đính kèm / bấm nộp). Mốc bắt đầu của
+    # Handfree chấm ngay lúc xác nhận thủ tục (_start_guide_login), nên chọn thủ tục rồi bỏ
+    # giữa chừng cũng đẻ ra một dòng rỗng trong danh sách quản trị — Auto Fill không có
+    # chuyện đó vì nó chỉ upsert ở lượt /process và /attachments/plan.
+    #
+    # `started_at` KHÔNG đổi: upsert_started dùng $setOnInsert, nên hồ sơ vẫn mang đúng mốc
+    # lúc xác nhận thủ tục, "Thời gian làm" không bị ngắn đi.
+    if not conv.get("dossier_has_activity"):
+        if not (conv.get("trace_request_id") or conv.get("attach_trace_request_id")
+                or conv.get("submit_clicked_at") or conv.get("attach_done")):
+            return
+        # Dính luôn: bước "bổ sung giấy tờ" reset trace_request_id về None, mất cờ thì các
+        # lượt sau ngừng cập nhật tên công dân/nhãn thủ tục cho hồ sơ đã có trong sổ.
+        conv["dossier_has_activity"] = True
+    auth_user = conv.get("auth_user") or {}
+    loc = conv.get("location") or {}
+    procedure_key = conv.get("procedure_key") or ""
+    proc = get_procedure(procedure_key) or {}
+    await dossiers_repo.upsert_started(
+        dossier_id=str(conv["_id"]),
+        user_id=str(auth_user.get("id") or ""),
+        username=auth_user.get("username"),
+        name=auth_user.get("name") or None,
+        procedure=procedure_key or None,
+        # Tên HÀNH CHÍNH thật cho báo cáo, không phải shortLabel dùng ở card chọn thủ tục.
+        procedure_label=core_procedure_label(procedure_key),
+        province=loc.get("province"),
+        ward=loc.get("ward"),
+        started_at=started_at,
+        # Tên công dân cho danh sách hồ sơ. Ưu tiên chủ hồ sơ đọc từ cổng; chưa có thì lấy
+        # người yêu cầu trong form context. Rỗng thì repo bỏ qua, không xoá tên đã lưu.
+        applicant_name=(
+            (conv.get("owner_context") or {}).get("fullName")
+            or (conv.get("form_context") or {}).get("applicantFullname")
+        ),
+    )
+    clicked_at = conv.get("submit_clicked_at")
+    if clicked_at and conv.get("submit_clicked_synced_at") != clicked_at:
+        await dossiers_repo.add_submit_event(
+            dossier_id=str(conv["_id"]),
+            clicked_at=clicked_at,
+            portal_host=conv.get("submit_portal_host"),
+            portal_dossier_ref=conv.get("submit_dossier_ref"),
+        )
+        # Chống ghi lặp CHO CÙNG MỘT cú bấm: watcher/reload có thể phát lại. Mỗi cú bấm MỚI
+        # có mốc thời gian mới nên vẫn vào nhật ký thành một sự kiện riêng — số hồ sơ đếm
+        # theo số sự kiện, không được nuốt.
+        conv["submit_clicked_synced_at"] = clicked_at
+        await store.save(conv)
+
+
 @router.delete("/conversations/{conv_id}")
-async def delete_conversation(conv_id: str, user: dict = Depends(require_auth)):
+async def delete_conversation(conv_id: str, reason: str = "", user: dict = Depends(require_auth)):
     """Người dân bấm 'Cuộc trò chuyện mới' / 'Xóa dữ liệu' — xoá NGAY, không chờ TTL."""
     from app.db.mongo import get_db
 
     await access.get_owned_conversation(conv_id, user)
+    # Đóng sổ hồ sơ TRƯỚC khi xoá phiên: hồ sơ không có submit_clicked_at = làm dở, và
+    # closed_at cho biết bỏ dở lúc nào. `reason` do FE bản mới gửi (manual/idle/dvc-home/
+    # continue); bản cũ không gửi thì để rỗng.
+    await dossiers_repo.mark_closed(conv_id, reason)
     await get_db().conversations.delete_one({
         "_id": conv_id,
         "auth_user.id": str(user.get("id") or ""),

@@ -148,6 +148,9 @@ export interface StatsResp {
   totalDocumentUses: number;
   reusedDocumentUses: number;
   documentDataQuality: "exact" | "partial";
+  // Cách đếm hồ sơ của khoảng đang xem. "legacy" = ước tính theo lượt xử lý (đến hết
+  // 14/9/2026); "submitted" = đếm hồ sơ đã nộp; "mixed" = khoảng vắt qua mốc nên gồm cả hai.
+  counting?: { mode: "legacy" | "submitted" | "mixed"; submittedFrom: string };
 }
 
 export interface ReportProvinceOption {
@@ -189,4 +192,59 @@ export interface ReportExportBody {
 export interface DownloadResult {
   blob: Blob;
   filename?: string;
+}
+
+// ── Vòng đời hồ sơ (collection `dossiers`) ────────────────────────────────────────────────
+// Một hồ sơ = một khóa `dossier_id`, chung cho cả hai extension. KHÁC trace: trace là từng
+// LƯỢT gọi API, còn đây là cả hồ sơ từ lúc bắt đầu tới lúc bấm nộp.
+export interface SubmitEvent {
+  at: string;
+  host?: string | null;
+  ref?: string | null;
+}
+
+// Phiếu đánh giá trải nghiệm của công dân (ẩn danh) — BE trả trong dossier.rating.
+export interface Rating {
+  level: number | null;      // 1..5 (5 = rất hài lòng); null = bỏ qua
+  levelLabel: string;
+  reasons: string[];
+  note: string;
+  skipped: boolean;
+  at: string | null;
+}
+
+export interface DossierListItem {
+  id: string;
+  experience?: "autofill" | "handfree" | null;
+  userId?: string | null;
+  username?: string | null;
+  name?: string | null;          // tài khoản thực hiện (phường)
+  applicantName?: string | null; // công dân làm thủ tục
+  procedure?: string | null;
+  procedureLabel?: string | null;
+  province?: string | null;
+  ward?: string | null;
+  startedAt: string;
+  submittedAt?: string | null;
+  // Chứng thực tách nhiều tab dùng chung một khóa và nộp nhiều lần → đây mới là SỐ HỒ SƠ thật
+  // của lượt đó, không phải 1.
+  submitCount: number;
+  closedAt?: string | null;
+  closeReason?: string | null;
+  portalHost?: string | null;
+  portalDossierRef?: string | null;
+  durationMs?: number | null;
+  rating?: Rating | null;         // đánh giá trải nghiệm (CẢ hai kênh); null = chưa/không có
+}
+
+export interface DossierDetail extends DossierListItem {
+  submitEvents: SubmitEvent[];
+  traces: TraceListItem[];
+}
+
+export interface DossierListResp {
+  items: DossierListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

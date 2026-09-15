@@ -22,17 +22,40 @@ async def test_fill_ocr_always_uses_tiengnoi(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_classify_ocr_uses_short_tiengnoi_limit(monkeypatch):
+async def test_classify_ocr_uses_short_tiengnoi_limit_when_cache_is_off(monkeypatch):
+    """Cache tắt: phân loại không dùng lại được nên vẫn chạy trần token ngắn cho nhanh."""
     captured = {}
 
     async def fake_tiengnoi(files, max_tokens=None):
         captured["max_tokens"] = max_tokens
         return [{"name": "a.jpg", "text": "căn cước"}]
 
+    monkeypatch.setattr(settings, "ocr_cache_enabled", False)
     monkeypatch.setattr(ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     result = await ocr.ocr_per_file([{"name": "a.jpg"}], classify=True)
 
     assert captured["max_tokens"] == settings.ocr_tiengnoi_max_tokens
+    assert result[0]["provider"] == "tiengnoi"
+
+
+@pytest.mark.asyncio
+async def test_classify_ocr_uses_fill_limit_when_cache_is_on(monkeypatch):
+    """Cache bật: phân loại và trích xuất DÙNG CHUNG một lượt OCR nên phải chạy trần đầy đủ.
+
+    Chạy trần ngắn rồi cache lại là bẫy: text bị cắt giữa chừng, lượt trích xuất dùng vào sẽ
+    mất chữ ở những trang cuối mà không ai biết.
+    """
+    captured = {}
+
+    async def fake_tiengnoi(files, max_tokens=None):
+        captured["max_tokens"] = max_tokens
+        return [{"name": "a.jpg", "text": "căn cước"}]
+
+    monkeypatch.setattr(settings, "ocr_cache_enabled", True)
+    monkeypatch.setattr(ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    result = await ocr.ocr_per_file([{"name": "a.jpg"}], classify=True)
+
+    assert captured["max_tokens"] == settings.ocr_tiengnoi_fill_max_tokens
     assert result[0]["provider"] == "tiengnoi"
 
 

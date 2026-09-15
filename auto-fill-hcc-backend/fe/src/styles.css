@@ -378,6 +378,18 @@ tbody tr:last-child td {
   margin-bottom: 12px;
 }
 
+/* Chú thích cách đếm hồ sơ (mốc 14/9/2026). Là THÔNG TIN chứ không phải cảnh báo nên dùng
+   tông chủ đạo, không mượn nền đỏ của .error. */
+.count-bar {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ok-fg);
+  background: var(--ok-bg);
+  border: 1px solid rgba(17, 97, 73, 0.14);
+}
+
 /* ---------- Drawer (detail) ---------- */
 .drawer-backdrop {
   position: fixed;
@@ -2425,6 +2437,47 @@ a:focus-visible,
   }
 }
 
+/* ===== Nhật ký vòng đời hồ sơ (drawer trang Hồ sơ) ===== */
+/* Một dòng = một mốc: lượt điền/đính kèm hoặc một lần bấm "Gửi hồ sơ". Mốc nộp tô đậm hơn
+   vì đó mới là thứ quyết định hồ sơ có thật hay không. */
+.timeline {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.timeline-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line, #e6ecf3);
+  font-size: 13px;
+}
+.timeline-item:last-child { border-bottom: 0; }
+.timeline-time {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: #5b6b7c;
+}
+.timeline-label { flex: 0 0 auto; font-weight: 600; }
+.timeline-item.submit .timeline-label { color: #1b5e20; }
+/* Mốc mở/đóng phiên là khung cảnh, không phải hành động → làm nhạt hơn. */
+.timeline-item.start .timeline-label,
+.timeline-item.close .timeline-label { color: #5b6b7c; font-weight: 500; }
+
+.link-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #1565c0;
+  font-size: 12px;
+  cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2433,3 +2486,15 @@ a:focus-visible,
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Đánh giá trải nghiệm (cột/ô trong danh sách & chi tiết hồ sơ) ── */
+.rating-cell { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; white-space: nowrap; }
+.rating-emoji { font-size: 15px; line-height: 1; }
+.rating-lv { font-size: 13px; }
+.rating-detail { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.rating-reasons { display: flex; flex-wrap: wrap; gap: 5px; }
+.rating-tag {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px;
+  padding: 2px 9px; font-size: 12px; color: var(--text);
+}
+.rating-note-text { font-style: italic; color: var(--muted); font-size: 13px; }

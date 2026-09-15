@@ -64,7 +64,7 @@ async def test_xac_nhan_tthn_uses_one_tiengnoi_batch_and_one_llm_prompt_per_file
     prompts: list[dict] = []
     system_prompts: list[str] = []
 
-    async def fake_tiengnoi(batch):
+    async def fake_tiengnoi(batch, max_tokens=None):
         ocr_calls.append([item["name"] for item in batch])
         return [{"name": item["name"], "text": text} for item, text in zip(batch, texts)]
 
@@ -81,7 +81,7 @@ async def test_xac_nhan_tthn_uses_one_tiengnoi_batch_and_one_llm_prompt_per_file
         }
         return json.dumps({"doc_key": mapping[payload["ocrText"]]})
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(
@@ -111,7 +111,7 @@ async def test_xac_nhan_tthn_llm_failure_falls_back_per_file_without_mistaking_d
         _file("cccd.jpg"), _file("khong-ro.jpg"),
     ]
 
-    async def fake_tiengnoi(_batch):
+    async def fake_tiengnoi(_batch, max_tokens=None):
         return [
             {"text": "TỜ KHAI CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CCCD số 012345678901"},
             {"text": "BẢN ÁN LY HÔN có ghi căn cước công dân của đương sự"},
@@ -126,7 +126,7 @@ async def test_xac_nhan_tthn_llm_failure_falls_back_per_file_without_mistaking_d
             raise RuntimeError("LLM lỗi riêng tệp")
         return '{"doc_key":"unknown"}'
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(
@@ -145,13 +145,13 @@ async def test_xac_nhan_tthn_llm_failure_falls_back_per_file_without_mistaking_d
 
 @pytest.mark.asyncio
 async def test_xac_nhan_tthn_old_session_routes_new_evidence_group_to_old_other_slot(monkeypatch):
-    async def fake_tiengnoi(_batch):
+    async def fake_tiengnoi(_batch, max_tokens=None):
         return [{"text": "TRÍCH LỤC KHAI TỬ"}]
 
     async def fake_chat(_messages, **_kwargs):
         return '{"doc_key":"chung_minh_tthn"}'
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     old_docs = [

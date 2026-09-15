@@ -67,7 +67,7 @@ async def test_uses_one_tiengnoi_batch_and_one_llm_prompt_per_file(monkeypatch):
     ocr_calls: list[list[str]] = []
     prompts: list[dict] = []
 
-    async def fake_tiengnoi(batch):
+    async def fake_tiengnoi(batch, max_tokens=None):
         ocr_calls.append([item["name"] for item in batch])
         return [{"name": item["name"], "text": text} for item, text in zip(batch, texts)]
 
@@ -83,7 +83,7 @@ async def test_uses_one_tiengnoi_batch_and_one_llm_prompt_per_file(monkeypatch):
         }
         return json.dumps({"doc_key": mapping[payload["ocrText"]]})
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(
@@ -111,7 +111,7 @@ async def test_llm_failure_falls_back_without_mistaking_mentions_for_identity(mo
         _file("cccd.jpg"), _file("ho-chieu.jpg"), _file("khong-ro.jpg"),
     ]
 
-    async def fake_tiengnoi(_batch):
+    async def fake_tiengnoi(_batch, max_tokens=None):
         return [
             {"text": "TỜ KHAI ĐĂNG KÝ LẠI KHAI TỬ kèm Giấy chứng tử, CCCD số 012345678901"},
             {"text": "GIẤY CHỨNG TỬ Người yêu cầu dùng hộ chiếu số B1234567"},
@@ -124,7 +124,7 @@ async def test_llm_failure_falls_back_without_mistaking_mentions_for_identity(mo
     async def fake_chat(_messages, **_kwargs):
         raise RuntimeError("LLM lỗi riêng tệp")
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(

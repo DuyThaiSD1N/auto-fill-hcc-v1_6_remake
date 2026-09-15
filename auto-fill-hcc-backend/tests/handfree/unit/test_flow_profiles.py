@@ -116,6 +116,47 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert business.get("flowProfile") is None
     assert business["businessWorkflow"] == "create"
     assert len(business["pages"]) == 8
+    # Cổng Bộ NN&MT: không dùng profile tư pháp — wizard riêng (kê khai 1, đính kèm 2)
+    # + luồng chọn cơ quan 2 tầng (DVCQG chỉ tỉnh → trang MAE chọn Sở + trường hợp).
+    mae_fishing = procedures.pop("cap-giay-phep-khai-thac-thuy-san")
+    assert mae_fishing.get("flowProfile") is None
+    assert mae_fishing["agencyProvinceOnly"] is True
+    assert mae_fishing["maePortal"] is True
+    assert mae_fishing["wizard"]["declarationStep"] == 1
+    assert mae_fishing["wizard"]["attachmentStep"] == 2
+    # Bộ GD&ĐT: cùng nền iGate (wizard 1/2) nhưng KHÔNG có trang chọn nơi/loại;
+    # DVCQG chọn Tỉnh + toggle "Sở" rồi lấy Sở đầu tiên (agencySoFirst).
+    moet_diploma = procedures.pop("cap-ban-sao-van-bang-so-goc")
+    assert moet_diploma.get("flowProfile") is None
+    assert moet_diploma["agencyProvinceOnly"] is True
+    assert moet_diploma["agencySoFirst"] is True
+    assert "maePortal" not in moet_diploma
+    assert moet_diploma["wizard"]["declarationStep"] == 1
+    assert moet_diploma["wizard"]["attachmentStep"] == 2
+    # Bộ Xây dựng (NOXH): cùng khuôn agencySoFirst + wizard iGate như văn bằng.
+    moc_housing = procedures.pop("cho-thue-thue-mua-nha-o-xa-hoi")
+    assert moc_housing.get("flowProfile") is None
+    assert moc_housing["agencyProvinceOnly"] is True
+    assert moc_housing["agencySoFirst"] is True
+    assert "maePortal" not in moc_housing
+    assert moc_housing["wizard"]["declarationStep"] == 1
+    assert moc_housing["wizard"]["attachmentStep"] == 2
+    # HkdOnline nhánh THAY ĐỔI: cùng cổng với thành lập mới nhưng workflow "change"
+    # (wizard 4 bước + pageOrder động), không dùng profile tư pháp.
+    business_change = procedures.pop("dang-ky-thay-doi-noi-dung-ho-kinh-doanh")
+    assert business_change.get("flowProfile") is None
+    assert business_change["businessWorkflow"] == "change"
+    assert len(business_change["pages"]) == 7
+    # Cổng tỉnh Bắc Ninh (Liferay eForm 2 tab cùng trang): không profile tư pháp, không wizard;
+    # tỉnh chọn cố định Bắc Ninh + toggle "Sở" (agencySoFirst), điền xong tự đính kèm ngay.
+    for bn_key in ("dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh"):
+        bn_secured = procedures.pop(bn_key)
+        assert bn_secured.get("flowProfile") is None
+        assert bn_secured["samePageAttach"] is True
+        assert bn_secured["agencyProvince"] == "Bắc Ninh"
+        assert bn_secured["agencyProvinceOnly"] is True
+        assert bn_secured["agencySoFirst"] is True
+        assert "wizard" not in bn_secured and "maePortal" not in bn_secured
 
     assert procedures
     assert {
@@ -138,7 +179,7 @@ def test_registered_procedures_use_their_declared_flow_family():
 
 def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     procedures = public_list()
-    assert len(procedures) == 16
+    assert len(procedures) == 21
 
     for procedure in procedures:
         key = procedure["key"]

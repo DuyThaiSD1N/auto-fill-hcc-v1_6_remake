@@ -19,7 +19,8 @@ from app.db.mongo import get_db
 
 logger = logging.getLogger(__name__)
 
-# v1.3 (2026-08-19): thêm đối chiếu và tự động điền trang Thông tin chủ hồ sơ.
+# v1.3 (2026-09-12): thêm đối chiếu và tự động điền trang Thông tin chủ hồ sơ; đổi tên hệ thống
+# trong lời xin phép thành "Trợ lý nhân dân".
 # v1.2 (2026-08-07): "Mục đích xử lý" → "Mục đích chia sẻ, xử lý dữ liệu" + nói rõ dữ liệu
 # chia sẻ lên Cổng DVC để nộp hồ sơ. v1.1: thêm phạm vi LƯU TRỮ hồ sơ phục vụ đối soát.
 VERSION = "1.3"  # đổi khi SỬA nội dung xin phép (scope/checks) — log cũ giữ version cũ

@@ -1,5 +1,6 @@
-"""Consent v1.3: entry tự đủ nghĩa (statements/location/acc), lượt đồng ý sinh PDF
+"""Consent: entry tự đủ nghĩa (statements/location/acc), lượt đồng ý sinh PDF
 biên bản ra {storage_dir}/consent/, endpoint admin tải PDF."""
+import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import fitz
@@ -22,7 +23,10 @@ PROC = {"label": "Đăng ký khai sinh", "requiredDocs": [{"name": "CCCD"}, {"na
 
 def test_entry_tu_du_nghia():
     e = consent.build_entry(CONV, PROC, accepted=True, checks=[True, True])
-    assert e["version"] == "1.3"
+    # Đóng dấu ĐÚNG phiên bản đang hiệu lực. Không ghim số cụ thể: nội dung xin phép còn sửa
+    # nhiều lần, ghim số chỉ khiến mỗi lần bump là một test đỏ chứ không bắt được lỗi thật.
+    assert e["version"] == consent.VERSION
+    assert re.fullmatch(r"\d+\.\d+", consent.VERSION), "version phải dạng x.y để đối soát log cũ"
     assert len(e["statements"]) == 2 and "đồng ý" in e["statements"][0].lower()
     assert e["location"]["ward"] == "Phường Tân Phong"
     assert e["auth_username"] == "hcctanphong"

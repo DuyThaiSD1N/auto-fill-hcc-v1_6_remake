@@ -53,6 +53,12 @@ class AttachmentPlanItem(BaseModel):
     slotKey: str | None = None
     slotIndex: int | None = None
     slotName: str | None = None
+    # Ô DỰ PHÒNG khi cổng chặn tổng dung lượng của một loại giấy tờ (khai sinh liên thông:
+    # "không được quá 2.6MB"). FE chỉ dùng khi cổng THẬT SỰ báo quá dung lượng — không phải
+    # đường đi mặc định. Planner chỉ gắn cho giấy tờ được phép dời ô.
+    fallbackSlotKey: str | None = None
+    fallbackSlotIndex: int | None = None
+    fallbackSlotName: str | None = None
     # Với một số cổng, cùng một dòng giấy tờ chỉ nhận một file mỗi lần bấm "Chọn tệp tin".
     # FE sẽ mở lại đúng slot và upload từng file thay vì gộp nhiều file vào một input.
     repeatUpload: bool | None = None

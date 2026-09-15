@@ -447,6 +447,14 @@ def enrich(
             "Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."
         ]
 
+    # Toggle extension "Người nộp = chủ hồ sơ (bỏ so khớp form)": BỎ mỏ neo UI, LUÔN lấy chủ hồ sơ
+    # (ưu tiên) hoặc người nộp làm người nộp — tick tự nộp, điền Phần I, form tự copy sang chủ hồ sơ.
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        submitter = owner or requester
+        add("data[isOwnerDossierCheck]", True)
+        _add_requester(add, submitter)
+        return out, warnings
+
     # Trường hợp tự nộp: agent chỉ cần trả ChuHoSo. Mapper dùng chính chủ hồ sơ
     # để điền phần người nộp và không tạo khối owner trùng lặp.
     if (

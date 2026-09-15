@@ -162,20 +162,33 @@ def _area(value: Any) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def _infer_tot_nghiep(ocr_text: str) -> str:
-    """Suy loại tốt nghiệp TẤT ĐỊNH từ TÊN văn bằng trong OCR (dự phòng khi LLM bỏ sót)."""
-    h = _fold(ocr_text)
-    if not h:
-        return ""
-    if ("tot nghiep" in h) and ("bo tuc" in h or "giao duc thuong xuyen" in h) and (
-        "trung hoc pho thong" in h or "thpt" in h
-    ):
-        return "Bổ túc THPT"
-    if "tot nghiep trung hoc pho thong" in h:
-        return "THPT"
-    if "tot nghiep trung hoc co so" in h:
-        return "THCS"
-    return ""
+def _ten_van_bang(loai: Any) -> str | None:
+    """Tên văn bằng cho ô 'Đã được cấp' khi Phiếu không ghi rõ — suy từ loại tốt nghiệp."""
+    lf = _fold(loai)
+    if not lf:
+        return None
+    if "bo tuc" in lf:
+        return "Bằng tốt nghiệp bổ túc THPT"
+    if "thpt" in lf or "trung hoc pho thong" in lf:
+        return "Bằng tốt nghiệp THPT"
+    if "thcs" in lf or "trung hoc co so" in lf:
+        return "Bằng tốt nghiệp THCS"
+    return _text(loai)
+
+
+def _thong_tin_khac(values: dict) -> str | None:
+    """Dòng 'Thông tin khác' = tên trường + năm tốt nghiệp (khi Phiếu không có sẵn cụm này)."""
+    truong = _text(values.get("VanBang_Truong"))
+    nam = _year(values.get("VanBang_KhoaThi")) or _year(values.get("VanBang_NamSinh"))
+    parts = [p for p in (truong, nam) if p]
+    return ", ".join(parts) or None
+
+
+def _lien_he(phone: Any, tt: Any) -> str | None:
+    """Cụm 'SĐT, email, địa chỉ' khi Phiếu không có sẵn — ghép điện thoại + địa chỉ thường trú."""
+    addr = _text(tt)
+    parts = [p for p in (_text(phone), addr) if p]
+    return ", ".join(parts) or None
 
 
 def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") -> tuple[list[dict], list[str]]:
@@ -315,37 +328,21 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     add("data[ownerDistrict]", chu_xa)
     add("data[ownerAddress]", chu_diachi)
 
-    # ===== Phần VIII: NỘI DUNG KÊ KHAI (của CHỦ VĂN BẰNG) =====
+    # ===== Panel "Phieu" (Phiếu đề nghị BM04) — chép gần nguyên văn phiếu =====
+    # Form ĐÃ ĐỔI (2026-09): panel granular "Thongtincanhan" cũ bị thay bằng panel "Phieu".
+    add("data[Kinhgui]", _text(values.get("Phieu_KinhGui")))
     add("data[ToiTen]", chu_name or org_name)
-    check("data[Nam]", chu_gender == "Nam")
-    check("data[Nu]", chu_gender == "Nữ")
-    add("data[ngaySinh]", chu_dob)
-    add("data[sinhNam]", _year(values.get("VanBang_NamSinh")) or _year(chu_dob))
-    add("data[NoiSinh]", _text(values.get("VanBang_NoiSinh")))
-    add("data[DanTocKhaiSinh1]", _text(values.get("VanBang_DanToc")))
-    add("data[DaHocLop12]", _text(values.get("VanBang_Truong")))
-    truong = _area(values.get("VanBang_TruongDiaChi"))
-    add("data[TinhTP]", _province_label(truong.get("tinh") or truong.get("tinhThanh")))
-    add("data[PX1]", _text(truong.get("xa") or truong.get("phuong")))
-
-    # Loại tốt nghiệp: LLM → thiếu thì suy TẤT ĐỊNH từ TÊN văn bằng trong OCR.
-    tot_nghiep = _fold(values.get("VanBang_LoaiTotNghiep")) or _fold(_infer_tot_nghiep(ocr_text))
-    check("data[THPT1]", "bo tuc" in tot_nghiep)
-    check("data[THCS]", "trung hoc co so" in tot_nghiep or tot_nghiep.startswith("thcs"))
-    check("data[THPT]", "thpt" in tot_nghiep and "bo tuc" not in tot_nghiep and "co so" not in tot_nghiep)
-
-    add("data[KhoaThi]", _text(values.get("VanBang_KhoaThi")))
-    add("data[HoiDongThi]", _text(values.get("VanBang_HoiDongThi")))
-    add("data[LoaiGiayTo]", chu_loai_gt or None)  # trống nếu không xác định được (không đoán bừa từ nhãn).
-    add("data[SoGiayTo]", chu_id)
-    add("data[NgayCap]", chu_ngaycap)
-    add("data[identityAgency]", chu_noicap)
-    add("data[TinhThanhPho]", chu_tinh)
-    add("data[QuanHuyen]", chu_xa)
-    add("data[SoNhaDuong]", chu_diachi)
-    add("data[DienThoai]", chu_phone)
+    add("data[sinhNam]", chu_dob)                          # ô hidden "Sinh ngày" = ngày sinh chủ
+    add("data[Sodinhdanh]", chu_id)
+    add("data[Duoccap]", _text(values.get("Phieu_TenVanBang")) or _ten_van_bang(values.get("VanBang_LoaiTotNghiep")))
+    add("data[do]", _text(values.get("Phieu_CoQuanCapVanBang")))
+    add("data[Sohieu]", _text(values.get("Phieu_SoHieu")))
     add("data[requestQty]", _identity(values.get("Phieu_SoLuongBanSao")) or "1")
-    add("data[select]", _province_label(values.get("Phieu_NoiLap")))
-    add("data[ten1]", _text(values.get("Phieu_NguoiViet")) or chu_name)
+    check("data[sogoc]", True)                             # thủ tục = cấp BẢN SAO TỪ SỔ GỐC
+    add("data[lydo]", _text(values.get("Phieu_LyDo")))
+    add("data[thongtinkhac]", _text(values.get("Phieu_ThongTinKhac")) or _thong_tin_khac(values))
+    add("data[lienhe]", _text(values.get("Phieu_LienHe")) or _lien_he(chu_phone, chu_tt))
+    add("data[ngay]", _date(values.get("Phieu_NgayLap")))
+    add("data[nguoidenghi]", _text(values.get("Phieu_NguoiViet")) or chu_name or org_name)
 
     return out, warnings

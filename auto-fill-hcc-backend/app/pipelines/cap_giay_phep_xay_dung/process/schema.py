@@ -59,11 +59,22 @@ FIELDS: list[dict] = [
         "số (hoặc mã chi nhánh: 10 số - 3 số). TUYỆT ĐỐI KHÔNG lấy mã CHỨNG CHỈ NĂNG LỰC/hành nghề (vd "
         "'LAD 00038424') vào đây — đó KHÔNG phải mã số doanh nghiệp, form sẽ báo sai định dạng. Không có MSDN "
         "hợp lệ thì bỏ trống."},
-    {"name": "ThietKe_ChuNhiem_HoTen", "desc": "Họ tên chủ nhiệm thiết kế."},
-    {"name": "ThietKe_ChuNhiem_ChungChi", "desc": "Số chứng chỉ hành nghề của chủ nhiệm thiết kế."},
+    {"name": "ThietKe_ChuNhiem_HoTen",
+     "desc": "Họ tên CHỦ NHIỆM thiết kế. Trong đơn, mỗi người được kê một dòng dạng "
+             "'<học vị>.<Họ tên>, Mã số: <mã> — <VAI TRÒ>: <bộ môn>;' — VAI TRÒ nằm ở CUỐI dòng, SAU mã "
+             "số. Chủ nhiệm là người mà vai trò TRÊN CHÍNH DÒNG ĐÓ có chữ 'Chủ nhiệm' (vd 'Chủ "
+             "nhiệm/Chủ trì: <bộ môn>'). Người chỉ ghi 'Chủ trì' KHÔNG phải chủ nhiệm. Nếu không dòng "
+             "nào ghi 'Chủ nhiệm' thì BỎ TRỐNG — tuyệt đối không lấy người đứng đầu danh sách, người "
+             "chủ trì Kiến trúc hay giám đốc công ty làm chủ nhiệm. Bỏ tiền tố học vị (KS./KTS./ThS.)."},
+    {"name": "ThietKe_ChuNhiem_ChungChi",
+     "desc": "Số chứng chỉ hành nghề của CHỦ NHIỆM thiết kế — lấy mã số nằm TRÊN CÙNG MỘT DÒNG với "
+             "người đó. TUYỆT ĐỐI không ghép mã số của dòng khác (mỗi người một mã riêng). Không xác "
+             "định được chủ nhiệm thì bỏ trống field này luôn."},
     {"name": "ThietKe_ChuTri_DanhSach", "desc": "Mảng TẤT CẢ người chủ trì các bộ môn thiết kế, mỗi phần tử "
         "có dạng {boMon,hoTen,chungChi}. Một dòng/bộ môn trên giấy tờ tương ứng một phần tử; kể cả chỉ có "
-        "một bộ môn vẫn trả mảng một phần tử. Giữ đúng thứ tự kê khai, không chỉ lấy bộ môn Kiến trúc."},
+        "một bộ môn vẫn trả mảng một phần tử. GIỮ ĐÚNG THỨ TỰ các dòng như kê trong ĐƠN (dòng đầu → phần "
+        "tử đầu), không chỉ lấy bộ môn Kiến trúc. hoTen/chungChi phải lấy trên CÙNG MỘT DÒNG. Người vừa "
+        "là chủ nhiệm vừa chủ trì một bộ môn ('Chủ nhiệm/Chủ trì: <bộ môn>') thì VẪN có mặt trong mảng này."},
     {"name": "ThietKe_CaNhan_HoTen", "desc": "Tên cá nhân lập thiết kế nếu không có tổ chức."},
     {"name": "ThietKe_CaNhan_ChungChi", "desc": "Số chứng chỉ cá nhân lập thiết kế nếu không có tổ chức."},
 
@@ -81,15 +92,33 @@ FIELDS: list[dict] = [
     {"name": "CongTrinh_Loai", "desc": "Loại công trình chi tiết trong đơn, ví dụ Nhà ở riêng lẻ hoặc Dân dụng."},
     {"name": "CongTrinh_Nhanh", "desc": 'Nhánh form của đơn, chỉ trả đúng một giá trị: "nha_o_rieng_le" nếu đầu đơn ghi "Sử dụng cho công trình: Nhà ở riêng lẻ" hoặc nội dung có mục "Đối với công trình nhà ở riêng lẻ" được kê khai; "khong_theo_tuyen" nếu đơn thuộc nhóm "Công trình không theo tuyến, tín ngưỡng, tôn giáo". Mẫu đơn dùng chung nhiều loại nhưng có dữ liệu tại mục 4.4 thì vẫn là "nha_o_rieng_le". Nếu không đủ bằng chứng thì để trống.'},
     {"name": "CongTrinh_Cap", "desc": "Cấp công trình, ví dụ Cấp III hoặc Cấp IV."},
-    {"name": "CongTrinh_DienTichXayDung", "desc": "Diện tích xây dựng, m2, chỉ trả số."},
+    {"name": "CongTrinh_DienTichXayDung",
+     "desc": "Diện tích xây dựng TẦNG 1 (diện tích chiếm đất của công trình), m2, chỉ trả số. Lấy ở "
+             "dòng 'Diện tích xây dựng tầng 1: …' trong mục 'Nội dung đề nghị cấp phép' của đơn. ⚠ Dòng "
+             "này thường liệt kê nhiều tầng ('tầng 1: … , tầng 2: … , tầng 3: …') — CHỈ lấy số của TẦNG "
+             "1, KHÔNG cộng các tầng lại. ⚠ TUYỆT ĐỐI không lấy số ở dòng 'Chiều cao công trình' (đơn vị "
+             "m, không phải m2) hay ở 'Tổng diện tích sàn' — ba dòng này nằm sát nhau và rất dễ nhầm."},
     {"name": "CongTrinh_CotXayDung", "desc": "Cốt nền/cốt xây dựng, m, chỉ trả số nếu có."},
     {"name": "CongTrinh_KhoangLui", "desc": "Khoảng lùi, m, chỉ trả số nếu có."},
     {"name": "CongTrinh_TongDienTichSan", "desc": "Tổng diện tích sàn, m2, chỉ trả số."},
-    {"name": "CongTrinh_ChiTietDienTichSan", "desc": "Chi tiết diện tích sàn các tầng, giữ dạng mô tả ngắn."},
+    {"name": "CongTrinh_ChiTietDienTichSan",
+     "desc": "Phần LIỆT KÊ diện tích sàn TỪNG TẦNG (ô 'Trong đó' dưới Tổng diện tích sàn). Đọc được thì "
+             "BẮT BUỘC trả, kể cả khi đã trả CongTrinh_TongDienTichSan. Nhận cả 3 kiểu trình bày: sau chữ "
+             "'Trong đó:', trong ngoặc đơn cùng dòng, hoặc nối tiếp trên cùng dòng ngăn bằng dấu phẩy "
+             "(vd 'Diện tích xây dựng tầng 1: 30m², tầng 2: 43,2 m², tầng 3: 43,2 m²'). Chép NGUYÊN VĂN, "
+             "không tự cộng/sửa số."},
     {"name": "CongTrinh_ChieuCao", "desc": "Chiều cao công trình, m, chỉ trả số."},
-    {"name": "CongTrinh_ChiTietChieuCao", "desc": "Chi tiết chiều cao các tầng, giữ dạng mô tả ngắn."},
+    {"name": "CongTrinh_ChiTietChieuCao",
+     "desc": "Phần LIỆT KÊ chiều cao TỪNG TẦNG (ô 'Trong đó' dưới Chiều cao công trình), thường nằm "
+             "TRONG NGOẶC ĐƠN ngay sau chiều cao tổng — vd 'Chiều cao công trình: 11,9m (tầng 1: 3,4m, "
+             "tầng 2: 3m, tầng tum: 2,5m)'. Đọc được thì BẮT BUỘC trả, kể cả khi đã trả "
+             "CongTrinh_ChieuCao. Chép NGUYÊN VĂN phần trong ngoặc, giữ nguyên số của đơn kể cả khi số "
+             "trông vô lý (đó là lỗi của người khai, không phải việc của ta sửa)."},
     {"name": "CongTrinh_SoTang", "desc": "Số tầng chính, chỉ trả số nếu có thể."},
-    {"name": "CongTrinh_ChiTietSoTang", "desc": "Chi tiết số tầng, ví dụ 02 tầng + mái."},
+    {"name": "CongTrinh_ChiTietSoTang",
+     "desc": "Cách ghi số tầng NGUYÊN VĂN trên đơn (ô 'Trong đó' dưới Số tầng) — vd '02 tầng + mái', "
+             "'3 tầng', '2 tầng + 1 tum'. Đọc được thì BẮT BUỘC trả, kể cả khi đã trả CongTrinh_SoTang "
+             "và kể cả khi nội dung gần như trùng."},
     {"name": "CongTrinh_ThoiGianDuKienHoanThanh", "desc": "Thời gian dự kiến hoàn thành nếu hồ sơ ghi rõ."},
     {"name": "Don_NgayLamDon", "desc": "Ngày lập đơn/cam kết nếu cần tham chiếu, dd/mm/yyyy."},
 ]

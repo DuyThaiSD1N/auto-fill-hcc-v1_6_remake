@@ -19,7 +19,15 @@ def _now() -> datetime:
 
 
 def _iso(value) -> str | None:
-    return value.isoformat() if isinstance(value, datetime) else None
+    """ISO có KÈM offset UTC.
+
+    Driver không bật tz_aware nên Mongo trả datetime NAIVE (giá trị là UTC vì mọi chỗ ghi đều
+    dùng datetime.now(timezone.utc)). Trả naive ra API thì chuỗi không có offset, trình duyệt
+    hiểu là giờ ĐỊA PHƯƠNG → cột "Đăng nhập lần cuối" hiện sớm 7 tiếng.
+    """
+    if not isinstance(value, datetime):
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
 
 
 def _public(user: dict) -> dict:

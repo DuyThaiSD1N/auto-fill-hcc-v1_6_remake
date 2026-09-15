@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, Header, Query, UploadFile, status
@@ -26,7 +26,11 @@ _ITEM_STATUSES = {"staged", "queued", "running", "paused", "done", "failed", "ca
 
 
 def _iso(value) -> str | None:
-    return value.isoformat() if isinstance(value, datetime) else None
+    """ISO có KÈM offset UTC — Mongo trả datetime NAIVE (driver không bật tz_aware) nên thiếu
+    offset là trình duyệt hiểu thành giờ địa phương và hiện lệch 7 tiếng."""
+    if not isinstance(value, datetime):
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
 
 
 def _public_job(job: dict, counts: dict[str, int] | None = None) -> dict:

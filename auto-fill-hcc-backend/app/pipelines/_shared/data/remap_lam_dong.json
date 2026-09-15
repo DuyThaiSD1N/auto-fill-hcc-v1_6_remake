@@ -107,7 +107,6 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Tân Thành",
-        "huyen_cu": "Đức Trọng",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Xã Tân Hội",
         "ghi_chu": "Xã Tân Thành huyện Đức Trọng — khác Tân Thành huyện Hàm Thuận Nam (Bình Thuận) và Tân Thành huyện Krông Nô (Đắk Nông)"
@@ -808,7 +807,6 @@
     {
         "tinh_cu": "Bình Thuận",
         "xa_cu": "Bình Tân",
-        "huyen_cu": "Bắc Bình",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Xã Sông Lũy",
         "ghi_chu": "Xã Bình Tân huyện Bắc Bình — khác phường Bình Tân (TX La Gi cũ)"
@@ -1044,7 +1042,6 @@
     {
         "tinh_cu": "Bình Thuận",
         "xa_cu": "Tân Hà",
-        "huyen_cu": "Hàm Tân",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Xã Hàm Tân",
         "ghi_chu": "Xã Tân Hà huyện Hàm Tân — khác Tân Hà huyện Lâm Hà (Lâm Đồng cũ) và Tân Hà huyện Đức Linh (Bình Thuận cũ)"
@@ -1230,7 +1227,6 @@
     {
         "tinh_cu": "Bình Thuận",
         "xa_cu": "Tân Hà",
-        "huyen_cu": "Đức Linh",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Xã Trà Tân",
         "ghi_chu": "Xã Tân Hà huyện Đức Linh — khác Tân Hà huyện Lâm Hà (Lâm Đồng cũ) và Tân Hà huyện Hàm Tân (Bình Thuận cũ)"
@@ -1610,7 +1606,6 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 1",
-        "huyen_cu": "Đà Lạt",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường Xuân Hương - Đà Lạt",
         "ghi_chu": "Phường 1 (TP Đà Lạt cũ) — khác Phường 1 (TP Bảo Lộc cũ)"
@@ -1618,7 +1613,6 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 2",
-        "huyen_cu": "Đà Lạt",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường Xuân Hương - Đà Lạt",
         "ghi_chu": "Phường 2 (TP Đà Lạt cũ) — khác Phường 2 (TP Bảo Lộc cũ)"
@@ -1733,7 +1727,6 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 1",
-        "huyen_cu": "Bảo Lộc",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường 1 Bảo Lộc",
         "ghi_chu": "Phường 1 (TP Bảo Lộc cũ) — khác Phường 1 (TP Đà Lạt cũ)"
@@ -1754,7 +1747,6 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 2",
-        "huyen_cu": "Bảo Lộc",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường 2 Bảo Lộc",
         "ghi_chu": "Phường 2 (TP Bảo Lộc cũ) — khác Phường 2 (TP Đà Lạt cũ)"
@@ -1934,7 +1926,6 @@
     {
         "tinh_cu": "Bình Thuận",
         "xa_cu": "Bình Tân",
-        "huyen_cu": "La Gi",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường La Gi",
         "ghi_chu": "Phường Bình Tân (TX La Gi cũ) — khác xã Bình Tân huyện Bắc Bình"

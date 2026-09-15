@@ -192,40 +192,43 @@ def _extract_info_from_cccd(identity_num: str | None) -> dict[str, str]:
 
 
 def _birthday_from_year(ngay_sinh_val: Any, nam_sinh_val: Any, identity_val: Any = None) -> str | None:
-    """Trả ngày sinh để điền vào form:
+    """Trả ngày sinh để điền vào form — CHỈ khi đọc được NGÀY/THÁNG/NĂM đầy đủ trên giấy tờ.
 
-    - Ưu tiên ngày sinh đầy đủ (dd/mm/yyyy) từ Applicant_NgaySinh (kiểm tra đối chiếu năm với CCCD 12 số nếu có).
-    - Nếu năm trong ngay_sinh_val bị sai/lệch so với CCCD 12 số → tự động điều chỉnh năm theo CCCD.
-    - Fallback: dùng Applicant_NamSinh hoặc năm trích xuất từ CCCD 12 số (ghép 01/01/YYYY).
+    - Ưu tiên ngày sinh đầy đủ (dd/mm/yyyy) từ Applicant_NgaySinh; nếu năm lệch với năm mã hoá trong
+      CCCD 12 số thì giữ ngày/tháng đã đọc và chỉnh lại NĂM theo CCCD (năm là dữ liệu tất định trong
+      số định danh, không phải suy đoán).
+    - ⚠ TUYỆT ĐỐI KHÔNG ghép "01/01/<năm>" khi chỉ biết NĂM SINH (từ Applicant_NamSinh hoặc từ 3 chữ số
+      đầu của CCCD). Ngày và tháng lúc đó là BỊA — hồ sơ mẫu 037160002966 từng bị điền "01/01/1960"
+      trong khi không giấy tờ nào ghi ngày sinh. Chỉ biết năm → trả None, mapper phát "dom-expect" để
+      extension tô đỏ ô Ngày sinh cho cán bộ tự nhập.
     """
-    cccd_info = _extract_info_from_cccd(_identity(identity_val))
-    cccd_year = cccd_info.get("year")
+    cccd_year = _extract_info_from_cccd(_identity(identity_val)).get("year")
 
     full = _date(ngay_sinh_val)
-    if full:
-        m_year = re.search(r"\b(19|20)\d{2}\b", full)
-        if m_year and cccd_year:
-            if m_year.group(0) == cccd_year:
-                return full
-            else:
-                # Đọc nhầm năm sinh từ tài liệu khác → thay bằng năm chuẩn trích từ CCCD
-                parts = full.split("/")
-                if len(parts) == 3:
-                    return normalize_date(f"{parts[0]}/{parts[1]}/{cccd_year}")
-                return normalize_date(f"01/01/{cccd_year}")
-        return full
+    if not full:
+        return None
 
-    # Fallback 1: chỉ có năm sinh Applicant_NamSinh
-    nam_text = _text(nam_sinh_val)
-    if nam_text:
-        m = re.search(r"\b(19|20)\d{2}\b", nam_text)
-        if m:
-            return normalize_date(f"01/01/{m.group(0)}")
+    parts = full.split("/")
+    m_year = re.search(r"\b(19|20)\d{2}\b", full)
+    if m_year and cccd_year and m_year.group(0) != cccd_year and len(parts) == 3:
+        # Đọc nhầm năm sinh từ tài liệu khác → thay bằng năm chuẩn trích từ CCCD, GIỮ NGUYÊN ngày/tháng.
+        return normalize_date(f"{parts[0]}/{parts[1]}/{cccd_year}")
+    return full
 
-    # Fallback 2: trích năm sinh trực tiếp từ CCCD 12 số
-    if cccd_year:
-        return normalize_date(f"01/01/{cccd_year}")
 
+def _chung_chi_cua_chu_nhiem(chu_nhiem_name: Any, design_leads: list[dict]) -> str | None:
+    """Mã chứng chỉ của ĐÚNG người chủ nhiệm, khớp tất định theo họ tên trong danh sách chủ trì.
+
+    Đơn kê mỗi người một dòng "<tên>, Mã số: <mã> — <vai trò>: <bộ môn>" nên LLM hay ghép tên dòng
+    này với mã dòng kia. Chủ nhiệm hầu như luôn đồng thời chủ trì một bộ môn, nên danh sách chủ trì
+    là nguồn đối chiếu chắc chắn. Không khớp được tên nào → trả None (để mapper dùng giá trị LLM).
+    """
+    want = _fold(chu_nhiem_name)
+    if not want:
+        return None
+    for lead in design_leads:
+        if _fold(lead.get("hoTen")) == want:
+            return _text(lead.get("chungChi"))
     return None
 
 
@@ -615,9 +618,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[tenDoanhNghiepLapThietKe]", _text(values.get("ThietKe_ToChuc_Ten")))
         # Chỉ điền nếu là MSDN hợp lệ (10 số / 10-3); mã năng lực "LAD…" → bỏ, ô bắt buộc sẽ tô đỏ.
         add("data[maSoDoanhNghiepLapThietKe]", _ma_so_doanh_nghiep(values.get("ThietKe_ToChuc_MaSo")))
-        add("data[tenChuNhiemThietKe]", _text(values.get("ThietKe_ChuNhiem_HoTen")))
-        add("data[maSoChungChiChuNhiemThietKe]", _text(values.get("ThietKe_ChuNhiem_ChungChi")))
-        for index, lead in enumerate(_design_leads(values)):
+        design_leads = _design_leads(values)
+        chu_nhiem_name = _text(values.get("ThietKe_ChuNhiem_HoTen"))
+        add("data[tenChuNhiemThietKe]", chu_nhiem_name)
+        # Chứng chỉ chủ nhiệm phải là chứng chỉ CỦA CHÍNH NGƯỜI ĐÓ. Trong đơn, mỗi người một dòng
+        # "<tên>, Mã số: <mã> — <vai trò>" nên LLM dễ ghép chéo tên dòng này với mã dòng kia. Chủ nhiệm
+        # thường đồng thời chủ trì một bộ môn → khớp TẤT ĐỊNH theo họ tên trong danh sách chủ trì và
+        # lấy đúng mã của dòng đó; chỉ khi không khớp được ai mới tin giá trị LLM trả rời.
+        add(
+            "data[maSoChungChiChuNhiemThietKe]",
+            _chung_chi_cua_chu_nhiem(chu_nhiem_name, design_leads)
+            or _text(values.get("ThietKe_ChuNhiem_ChungChi")),
+        )
+        for index, lead in enumerate(design_leads):
             add(f"data[thietKeXayDung][{index}][boMonChuTriThietKe]", lead.get("boMon"))
             add(f"data[thietKeXayDung][{index}][hoVaTenChuTriThietKe]", lead.get("hoTen"))
             add(

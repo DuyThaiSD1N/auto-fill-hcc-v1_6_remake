@@ -9,8 +9,11 @@ chấp. Lấy tên ở phiếu 03a mục 1 và ở mục IV của GCN (bên nh�
 ⚠ TUYỆT ĐỐI KHÔNG lấy tên CHỦ CŨ in ở TRANG 1 của GCN (mục 'I. Người sử dụng đất') — chủ cũ đã chuyển
 nhượng; chủ hiện tại CHỈ xuất hiện ở mục IV.
 
-ĐỒNG BẢO ĐẢM (vợ chồng): nếu phiếu/GCN mục IV ghi 2 chủ thể ('ông … và vợ là bà …'):
-- NguoiYeuCau_HoTen = người CHÍNH (chồng / người đứng đầu) — dùng cho nhân thân (CCCD/nhận kết quả).
+ĐỒNG BẢO ĐẢM (nhiều người, vd vợ chồng): nếu phiếu/GCN mục IV ghi 2 chủ thể ('ông … và bà …'):
+- NguoiYeuCau_HoTen + số định danh + ngày/nơi cấp = NGƯỜI TRỰC TIẾP NỘP hồ sơ nếu xác định được (Giấy tiếp
+  nhận hồ sơ ghi 'Người nộp hồ sơ: …' / 'Tiếp nhận hồ sơ của: …', hoặc người đứng ra đại diện đi nộp).
+  Nếu KHÔNG có căn cứ ai nộp → lấy người đứng đầu phiếu. Nhân thân (CCCD, ngày/nơi cấp) phải khớp ĐÚNG
+  người này, KHÔNG trộn số của người kia.
 - NguoiYeuCau_TenDayDu = ghi CẢ HAI đúng như phiếu ('ÔNG: … VÀ BÀ: …', IN HOA) — cho ô '1.1. Tên đầy đủ'.
 
 PHÂN BIỆT 2 ĐỊA CHỈ (đừng nhầm):
@@ -21,8 +24,14 @@ PHÂN BIỆT 2 ĐỊA CHỈ (đừng nhầm):
 TÀI SẢN: chỉ khai QUYỀN SỬ DỤNG ĐẤT (Gcn_*). Nếu GCN ghi Nhà ở '-/-', Công trình xây dựng '-/-' → KHÔNG
 có tài sản gắn liền với đất, bỏ qua (mapper không phát các field đó).
 
-THẾ CHẤP: TheChap_SoHopDong / TheChap_NgayKy ưu tiên Hợp đồng thế chấp; nếu không có HĐ, lấy số hồ sơ +
-ngày ĐĂNG KÝ thế chấp ghi ở mục IV của GCN.
+THẾ CHẤP (xóa thế chấp) — TheChap_SoHopDong / TheChap_NgayKy:
+- Nguồn ưu tiên: TRANG BỔ SUNG GCN (dòng 'Thế chấp … theo hợp đồng thế chấp số … ngày …') → Phiếu 03a
+  mục 2 'Căn cứ xóa đăng ký' → bản gốc Hợp đồng thế chấp (nếu có). Bản gốc HĐ thế chấp thường KHÔNG có
+  trong hồ sơ nhưng số + ngày đã đủ ở Trang bổ sung GCN / Phiếu 03a mục 2.
+- TheChap_NgayKy = ngày KÝ hợp đồng = ngày đứng NGAY SAU số hợp đồng ('… số … ngày <dd/mm/yyyy>').
+  ⚠ KHÔNG lấy ngày ĐĂNG KÝ thế chấp (ngày đứng ĐẦU dòng ghi chú Trang bổ sung GCN, thường lệch vài ngày).
+- ⚠ KHÔNG nhầm Hợp đồng CHUYỂN NHƯỢNG (mục IV GCN, vd 'Hợp đồng chuyển nhượng … số … ngày …') vào ô hợp
+  đồng thế chấp — chuyển nhượng chỉ để xác định chủ hiện tại, KHÔNG phải thế chấp.
 
 NGÀY dd/mm/yyyy: NguoiYeuCau_NgayCap, Gcn_NgayCap, TheChap_NgayKy. Đọc đúng, KHÔNG bịa.
 

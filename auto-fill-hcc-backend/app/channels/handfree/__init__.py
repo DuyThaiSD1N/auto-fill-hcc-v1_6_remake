@@ -1,2 +1,2 @@
-"""Kênh Trợ lý người dân (Handfree)."""
+"""Kênh Trợ lý nhân dân (Handfree)."""
 

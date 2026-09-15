@@ -68,7 +68,7 @@ async def test_trich_luc_uses_one_tiengnoi_batch_and_one_llm_prompt_per_file(mon
     prompts: list[dict] = []
     system_prompts: list[str] = []
 
-    async def fake_tiengnoi(batch):
+    async def fake_tiengnoi(batch, max_tokens=None):
         ocr_calls.append([item["name"] for item in batch])
         return [{"name": item["name"], "text": text} for item, text in zip(batch, texts)]
 
@@ -86,7 +86,7 @@ async def test_trich_luc_uses_one_tiengnoi_batch_and_one_llm_prompt_per_file(mon
         }
         return json.dumps({"doc_key": mapping[payload["ocrText"]]})
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(
@@ -115,7 +115,7 @@ async def test_trich_luc_llm_failure_falls_back_without_mistaking_mentions_for_c
         _file("cccd.jpg"), _file("khong-ro.jpg"),
     ]
 
-    async def fake_tiengnoi(_batch):
+    async def fake_tiengnoi(_batch, max_tokens=None):
         return [
             {"text": "TỜ KHAI CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH CCCD số 012345678901"},
             {"text": "GIẤY KHAI SINH Giấy tờ tùy thân của cha là căn cước công dân"},
@@ -130,7 +130,7 @@ async def test_trich_luc_llm_failure_falls_back_without_mistaking_mentions_for_c
             raise RuntimeError("LLM lỗi riêng tệp")
         return '{"doc_key":"unknown"}'
 
-    monkeypatch.setattr(llm_classifier.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
+    monkeypatch.setattr(llm_classifier.ocr.ocr_tiengnoi, "ocr_per_file", fake_tiengnoi)
     monkeypatch.setattr(llm_classifier.client, "chat", fake_chat)
 
     result = await classify.classify_files(

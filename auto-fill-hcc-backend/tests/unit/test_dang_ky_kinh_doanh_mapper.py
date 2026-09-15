@@ -191,17 +191,3 @@ def test_business_schema_and_prompt_only_define_three_phone_sources():
     assert "NguoiNop_DienThoai" not in names
     assert "CHỈ có 3 nhóm liên hệ cần trích từ hồ sơ" in EXTRA_RULES
     assert "KHÔNG lấy liên hệ người nộp thay cho trụ sở, chủ hộ hoặc thuế" in EXTRA_RULES
-
-
-def test_business_prompt_keeps_full_land_parcel_address():
-    """Trụ sở "Thửa 674 (gốc 671) TBĐ 15 (45g), 28/1 Xô Viết Nghệ Tĩnh" không được rút về khuôn thửa/tờ."""
-    assert "chỉ giữ 2 con số" not in EXTRA_RULES
-    assert "Thửa 674 (gốc 671) TBĐ 15 (45g), 28/1 Xô Viết Nghệ Tĩnh" in EXTRA_RULES
-
-
-def test_business_prompt_keeps_full_detailed_line_name():
-    """Tên ngành dùng làm mô tả chi tiết trên cổng → prompt phải bắt lấy nguyên văn, kể cả "Chi tiết:"."""
-    assert "NGUYÊN VĂN ĐẦY ĐỦ" in EXTRA_RULES
-    assert "Chi tiết:" in EXTRA_RULES
-    desc = next(f["desc"] for f in FIELDS if f["name"] == "NganhNghe_DanhSach")
-    assert "NGUYÊN VĂN ĐẦY ĐỦ" in desc

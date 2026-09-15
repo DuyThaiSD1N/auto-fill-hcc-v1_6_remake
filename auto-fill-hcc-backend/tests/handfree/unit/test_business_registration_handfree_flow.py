@@ -40,7 +40,9 @@ def test_hkdonline_home_starts_bootstrap_once():
     first = flow._guide_login_on_page(conv, proc, conv["location"], context)
     second = flow._guide_login_on_page(conv, proc, conv["location"], context)
 
-    assert first.actions == [{"type": "prepare_business_registration"}]
+    assert first.actions == [
+        {"type": "prepare_business_registration", "workflow": "create"}
+    ]
     assert "Thành lập mới hộ kinh doanh" in first.display_md
     assert second.actions == []
     assert second.display_md == ""

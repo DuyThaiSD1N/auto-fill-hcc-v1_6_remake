@@ -117,6 +117,28 @@ export async function loginWard(username: string, password: string): Promise<Log
   return data;
 }
 
+// Nhận access token do extension Auto Fill trao qua fragment (#hcc=...). Fetch TRẦN, không đi
+// qua request() vì lúc này token chưa nằm trong store. Tự gọi /auth/me để DỰNG hcc_ward_user ở
+// đây — không nhận sẵn object từ extension: getUser() JSON.parse không bắt lỗi, dữ liệu méo là
+// trắng trang. KHÔNG lưu refresh token: extension chỉ đưa access, /auth/refresh xoay vòng sẽ
+// thu hồi refresh của extension và đá cán bộ ra giữa lúc đang làm hồ sơ.
+export async function adoptAccessToken(access: string): Promise<WardUser | null> {
+  try {
+    const res = await fetch(`${BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${access}` },
+    });
+    if (!res.ok) return null;
+    const user = (await res.json()) as WardUser;
+    if (!user || !user.id) return null;
+    localStorage.setItem(ACCESS_KEY, access);
+    localStorage.removeItem(REFRESH_KEY);
+    tokens.saveUser(user);
+    return user;
+  } catch {
+    return null;
+  }
+}
+
 // ── Hợp đồng bảng thống kê (self-service phường + báo cáo cấp Tỉnh) ──────────
 export type ScopeKind = "unit" | "province" | "all";
 
@@ -175,6 +197,9 @@ export interface SummaryResp {
   selected: ScopeUnit | null; // null = toàn phạm vi; ngược lại là đơn vị đang lọc
   range: { from?: string | null; to?: string | null };
   sources: { autofill: boolean; handfree: boolean }; // handfree=false → chưa cộng được Handfree
+  // Cách đếm hồ sơ của khoảng đang xem. "legacy" = ước tính theo lượt xử lý (đến hết 14/9/2026);
+  // "submitted" = đếm hồ sơ đã nộp; "mixed" = khoảng vắt qua mốc nên gồm cả hai.
+  counting?: { mode: "legacy" | "submitted" | "mixed"; submittedFrom: string };
   kpis: {
     dossiers: number;
     requests: number;
@@ -204,20 +229,38 @@ export function getSummary(dateFrom?: string, dateTo?: string, unit?: string): P
 }
 
 // ── Nhật ký hồ sơ (mỗi lượt = 1 dòng, Auto Fill, không PII, không thời lượng) ──
+// Phiếu đánh giá trải nghiệm (ẩn danh). null = hồ sơ chưa từng được hỏi;
+// level = null = đã hỏi nhưng công dân bỏ qua. Hai thứ khác nhau, đừng gộp.
+export interface LogRating {
+  level: number | null;
+  levelLabel: string;
+  reasons: string[];
+  note: string;
+  skipped: boolean;
+  at: string | null;
+}
+
+// Một dòng = một HỒ SƠ (trước đây là một lượt điền/đính kèm).
 export interface LogItem {
-  requestId: string | null;
-  receivedAt: string | null; // ISO
+  dossierId: string | null;
+  receivedAt: string | null;  // ISO — lúc bắt đầu hồ sơ
+  submittedAt: string | null; // ISO — lúc bấm nộp; null = chưa nộp
+  submitCount: number;        // chứng thực tách nhiều tab: một hồ sơ nộp nhiều lần
   unitId: string;
   unitName: string;
   procedure: string | null;
   procedureLabel: string | null;
-  kind: string; // "autofill" | "attach"
+  rating: LogRating | null;
 }
+
+// "submitted" = hồ sơ đã hoàn thành (đã bấm nộp) — đúng tập mà thống kê đếm từ 14/9/2026.
+export type LogStatus = "all" | "submitted" | "unsubmitted";
 
 export interface LogsResp {
   scope: DashScope;
   range: { from?: string | null; to?: string | null };
   source: string; // "autofill"
+  status: LogStatus;
   items: LogItem[];
   total: number;
   page: number;
@@ -230,12 +273,15 @@ export function getLogs(
   unit?: string,
   page = 1,
   pageSize = 15,
+  status: LogStatus = "all",
 ): Promise<LogsResp> {
   return request<LogsResp>(
     `/api/v1/dashboard/logs${rangeQuery(dateFrom, dateTo, {
       unit: unit ?? "",
       page: String(page),
       pageSize: String(pageSize),
+      // "all" là mặc định của BE → không gửi cho URL gọn.
+      status: status === "all" ? "" : status,
     })}`,
   );
 }

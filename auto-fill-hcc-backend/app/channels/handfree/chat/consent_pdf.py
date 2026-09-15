@@ -43,7 +43,7 @@ def build_consent_pdf(entry: dict) -> bytes:
 
     body = f"""
     <div style="font-family:sans-serif;color:#1f2d3d">
-      <div style="font-size:11px;color:#0d7d52;font-weight:bold;letter-spacing:.03em">TRỢ LÝ NGƯỜI DÂN TOÀN TRÌNH</div>
+      <div style="font-size:11px;color:#0d7d52;font-weight:bold;letter-spacing:.03em">TRỢ LÝ NHÂN DÂN TOÀN TRÌNH</div>
       <h2 style="font-size:16px;margin:6px 0 2px">BIÊN BẢN GHI NHẬN CHẤP THUẬN XỬ LÝ DỮ LIỆU CÁ NHÂN</h2>
       <div style="font-size:11px;color:#64748b;margin-bottom:12px">Lập tự động khi người dân xác nhận đồng ý trên Trợ lý (thẻ xin phép hiển thị trước khi nhận giấy tờ).</div>
 

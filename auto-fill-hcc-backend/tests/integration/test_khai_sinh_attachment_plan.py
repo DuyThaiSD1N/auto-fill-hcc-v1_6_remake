@@ -14,7 +14,7 @@ def _session():
 
 
 async def test_khai_sinh_attach_picks_birth_proof_into_single_slot(monkeypatch):
-    """Chỉ có giấy chứng sinh: đính vào ô STT1, bỏ qua CCCD cha/mẹ."""
+    """Giấy chứng sinh + CCCD cha/mẹ: tất cả vào STT1 dưới dạng NHIỀU TỆP RỜI (không gộp PDF)."""
     async def fake_ocr_per_file(files):
         return [
             {"name": "cccd-bo.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nSố: 040203015844"},
@@ -37,14 +37,18 @@ async def test_khai_sinh_attach_picks_birth_proof_into_single_slot(monkeypatch):
     )
     items = res["attachments"]
 
-    assert len(items) == 1
-    assert items[0]["target"] == "fixed-slot"
-    assert items[0]["slotIndex"] == 0
-    assert items[0]["fileName"] == "chung-sinh.pdf"
-    assert items[0]["documentName"] == "Giấy chứng sinh"
+    # Trang cho nhiều tệp/hàng → chứng sinh + 2 CCCD là 3 item RỜI cùng ô STT1, KHÔNG gộp PDF.
+    assert len(items) == 3
+    assert all(it["target"] == "fixed-slot" and it["slotIndex"] == 0 for it in items)
+    assert all(it["repeatUpload"] is True for it in items)
+    assert all("sourceFileIndexes" not in it for it in items)
+    assert all(it["documentName"] == "Giấy chứng sinh" for it in items)
+    # Chứng sinh trước, rồi các "other" (CCCD cha/mẹ) theo thứ tự file.
+    assert [it["fileIndex"] for it in items] == [1, 0, 2]
+    assert [it["fileName"] for it in items] == ["chung-sinh.pdf", "cccd-bo.pdf", "cccd-me.pdf"]
     assert res["extracted"]["birthProof"] == "chung-sinh.pdf"
     assert res["extracted"]["residenceForm"] is None
-    assert set(res["extracted"]["skipped"]) == {"cccd-bo.pdf", "cccd-me.pdf"}
+    assert res["extracted"]["skipped"] == []
 
 
 async def test_khai_sinh_attach_two_slots_with_residence_form(monkeypatch):
@@ -71,16 +75,21 @@ async def test_khai_sinh_attach_two_slots_with_residence_form(monkeypatch):
     )
     items = res["attachments"]
 
-    assert len(items) == 2
-    by_slot = {it["slotIndex"]: it for it in items}
-    assert by_slot[0]["fileName"] == "chung-sinh.pdf"
-    assert by_slot[0]["documentName"] == "Giấy chứng sinh"
-    assert by_slot[1]["fileName"] == "cu-tru.pdf"
-    assert by_slot[1]["documentName"] == "Tờ khai thay đổi thông tin cư trú"
+    # STT1 nhận chứng sinh + CCCD bố (2 tệp RỜI, repeatUpload); STT2 tách riêng tờ khai cư trú.
+    assert len(items) == 3
+    stt1 = [it for it in items if it["slotIndex"] == 0]
+    stt2 = [it for it in items if it["slotIndex"] == 1]
+    assert [it["fileIndex"] for it in stt1] == [0, 2]   # chứng sinh trước, rồi CCCD bố
+    assert all(it["repeatUpload"] is True and "sourceFileIndexes" not in it for it in stt1)
+    assert all(it["documentName"] == "Giấy chứng sinh" for it in stt1)
+    assert len(stt2) == 1
+    assert stt2[0]["fileName"] == "cu-tru.pdf"
+    assert stt2[0]["documentName"] == "Tờ khai thay đổi thông tin cư trú"
+    assert "repeatUpload" not in stt2[0]   # STT2 chỉ 1 tệp, không cần lặp menu
     assert all(it["target"] == "fixed-slot" for it in items)
     assert res["extracted"]["birthProof"] == "chung-sinh.pdf"
     assert res["extracted"]["residenceForm"] == "cu-tru.pdf"
-    assert res["extracted"]["skipped"] == ["cccd-bo.pdf"]
+    assert res["extracted"]["skipped"] == []
 
 
 async def test_khai_sinh_attach_residence_form_rule_fallback(monkeypatch):
@@ -190,10 +199,15 @@ async def test_khai_sinh_attach_keeps_identity_and_marriage_as_other(monkeypatch
         _session(),
     )
 
-    by_slot = {item["slotIndex"]: item for item in res["attachments"]}
-    assert by_slot[0]["fileName"] == "chung-sinh.pdf"
-    assert by_slot[1]["fileName"] == "ct01.pdf"
-    assert res["extracted"]["skipped"] == ["cccd-kiet.pdf", "cccd-vi.pdf", "ket-hon.pdf"]
+    items = res["attachments"]
+    stt1 = [it for it in items if it["slotIndex"] == 0]
+    stt2 = [it for it in items if it["slotIndex"] == 1]
+    # chứng sinh (idx3) trước, rồi CCCD×2 + kết hôn (idx0,1,2 = "other") — mỗi tệp RỜI vào STT1.
+    assert [it["fileIndex"] for it in stt1] == [3, 0, 1, 2]
+    assert all(it["repeatUpload"] is True and "sourceFileIndexes" not in it for it in stt1)
+    assert stt1[0]["fileName"] == "chung-sinh.pdf"
+    assert len(stt2) == 1 and stt2[0]["fileName"] == "ct01.pdf"
+    assert res["extracted"]["skipped"] == []
     by_name = {item["fileName"]: item["docType"] for item in res["extracted"]["classified"]}
     assert by_name["cccd-kiet.pdf"] == "other"
     assert by_name["cccd-vi.pdf"] == "other"

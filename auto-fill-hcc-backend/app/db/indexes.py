@@ -98,6 +98,8 @@ async def ensure_indexes() -> None:
     # Thống kê v2: dossier_ids là multikey; hash nằm trên từng attachment. Hai index này
     # phục vụ đối soát/tra cứu riêng, còn lọc dashboard dùng procedure + created_at ở trên.
     await db.traces.create_index("dossier_ids")
+    # Khóa hồ sơ dùng chung 2 kênh (= dossiers._id) — tra mọi lượt điền/đính kèm của 1 hồ sơ.
+    await db.traces.create_index("dossier_id")
     await db.traces.create_index("attachments.sha256")
     # Cache OCR (_id = hash nội dung, tra bằng index primary). TTL tự dọn text OCR cũ.
     await db.ocr_cache.create_index(
@@ -108,6 +110,22 @@ async def ensure_indexes() -> None:
     await _ensure_ttl(db, "upload_sessions", "expires_at", 0)
     # Hội thoại Handfree gia hạn theo mỗi lượt chat.
     await _ensure_ttl(db, "conversations", "updated_at", 24 * 3600)
+    # Vòng đời hồ sơ Handfree (_id = conversation_id) — KHÔNG TTL: conversations tự xoá sau
+    # 24h, mốc bắt đầu/nộp phải sống lâu hơn thế thì báo cáo mới dùng được.
+    await db.dossiers.create_index([("user_id", 1), ("started_at", -1)])
+    await db.dossiers.create_index([("procedure", 1), ("started_at", -1)])
+    # Lọc nhanh "hồ sơ đã nộp" (submit_clicked_at tồn tại) theo thời gian.
+    await db.dossiers.create_index([("submit_clicked_at", -1)])
+    # Cách đếm hồ sơ từ 15/9/2026 (app/stats/cutover.py) quét theo đúng ba khóa này: nguồn
+    # kênh, tập đơn vị trong phạm vi tài khoản, rồi mốc nộp.
+    await db.dossiers.create_index([("experience", 1), ("user_id", 1), ("submit_clicked_at", -1)])
+    # Nhật ký phiên tải ảnh QR (_id = sid) — KHÔNG TTL. `upload_sessions` tự xoá sau 30 phút
+    # (Auto Fill) / 24h (Handfree); nhật ký phải sống lâu hơn thì mới điều tra được ca
+    # "điện thoại báo đã gửi mà máy tính không thấy".
+    await db.upload_session_logs.create_index([("user_id", 1), ("created_at", -1)])
+    await db.upload_session_logs.create_index([("experience", 1), ("created_at", -1)])
+    # Lọc nhanh phiên có gửi lên mà máy tính chưa lấy hết.
+    await db.upload_session_logs.create_index([("delivered", 1), ("received", 1)])
     # Bằng chứng chấp thuận PDPL — KHÔNG TTL (phải giữ lâu dài để đối soát).
     await db.consent_logs.create_index("log_id")
     await db.consent_logs.create_index([("user_id", 1), ("created_at", -1)])

@@ -6,6 +6,7 @@ Extension xác thực bằng Bearer JWT; điện thoại dùng capability HMAC c
 """
 import base64
 import io
+import logging
 
 import qrcode
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
@@ -14,7 +15,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.core.deps import require_auth
-from app.upload_session import store
+from app.upload_session import audit, store
 from app.upload_session.access import (
     create_upload_capability,
     ensure_upload_session_experience,
@@ -30,6 +31,7 @@ from app.upload_session.streaming import (
 from app.upload_session.ws import broadcast
 
 router = APIRouter(tags=["upload-session"])
+logger = logging.getLogger(__name__)
 
 
 def _require_handfree_enabled() -> None:
@@ -63,6 +65,10 @@ async def create_session(user: dict = Depends(require_auth)):
     sess = store.new_session(user["id"])
     await store.save(sess)
     url = mobile_session_url(sess["_id"])
+    # Mốc MỞ phiên: có nó mới tra ngược được "phiên này sống bao lâu, ai mở, có ai gửi gì không".
+    logger.info("[phien-tai-anh] %s ⊕ mở phiên — tài khoản %s", sess["_id"], user.get("username") or user["id"])
+    await audit.log_opened(sess["_id"], user_id=user["id"],
+                           username=user.get("username"), experience="autofill")
     return {"session_id": sess["_id"], "mobile_url": url,
             "qr_png_base64": _qr_png_base64(url), "received": 0}
 
@@ -90,7 +96,10 @@ async def get_session(
     ensure_upload_session_experience(sess, "autofill")
     return {"session_id": sid,
             "files": [{k: f.get(k) for k in ("fid", "name", "type", "size")} for f in sess["files"]],
-            "received": len(sess["files"])}
+            "received": len(sess["files"]),
+            # Số file MÁY TÍNH đã lấy được. Trang điện thoại đọc mốc này để báo "đã nhận N/N"
+            # thay vì "đã gửi" — "server nhận 200" không đồng nghĩa cán bộ đã thấy file.
+            "delivered": store.delivered_count(sess)}
 
 
 @router.get("/api/v1/upload-sessions/{sid}/files/{fid}")
@@ -111,7 +120,20 @@ async def get_file(sid: str, fid: str):
     meta = next((f for f in sess.get("files", []) if f["fid"] == fid), None)
     raw = store.read_file_bytes(sid, fid) if meta else None
     if raw is None:
+        logger.warning("[phien-tai-anh] %s ✗ máy tính đòi tệp KHÔNG CÓ fid=%s", sid, fid)
+        await audit.log_missing(sid, fid=fid)
         raise HTTPException(status_code=404, detail="File không tồn tại.")
+    # Chính request này LÀ bằng chứng máy tính lấy được tệp — không cần extension báo thêm,
+    # nên bản extension đang chạy trên chợ cũng được ghi nhận. Ghi vết chạy nền để không
+    # làm chậm việc trả bytes.
+    updated = await store.mark_delivered(sid, [fid])
+    got = store.delivered_count(updated or sess)
+    total = len(sess.get("files", []))
+    logger.info("[phien-tai-anh] %s ← máy tính lấy %s (%s, %.2fMB) — đã lấy %d/%d",
+                sid, meta.get("name") or fid, meta.get("type") or "?",
+                len(raw) / 1e6, got, total)
+    await audit.log_delivered(sid, name=str(meta.get("name") or fid),
+                              nbytes=len(raw), delivered=got, received=total)
     return Response(content=raw, media_type=meta.get("type") or "image/jpeg")
 
 
@@ -197,6 +219,11 @@ async def upload_files(
                 store.delete_file_bytes(sid, fid)
 
     received = len(updated.get("files", []))
+    logger.info("[phien-tai-anh] %s → điện thoại gửi %d tệp (%.2fMB): %s — trên máy chủ: %d",
+                sid, len(accepted), incoming_bytes / 1e6,
+                ", ".join(str(a["name"]) for a in accepted), received)
+    await audit.log_uploaded(sid, names=[str(a["name"]) for a in accepted],
+                             nbytes=incoming_bytes, received=received)
     await broadcast(sid, {"type": "files_added", "files": accepted, "received": received})
     return {"accepted": accepted, "received": received}
 

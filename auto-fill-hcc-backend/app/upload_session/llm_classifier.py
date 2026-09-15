@@ -8,7 +8,7 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from app.services import ocr_tiengnoi
+from app.services import ocr
 from app.services.llm import client
 
 
@@ -56,7 +56,10 @@ async def classify_files(
     """OCR batch dùng chung, LLM từng tệp, giữ nguyên shape kết quả upload-session."""
     try:
         # Tiếng Nói hỗ trợ multipart batch: dùng chung một lượt OCR để giảm thời gian chờ.
-        ocr_results = await ocr_tiengnoi.ocr_per_file(payload_files)
+        # Đi qua `ocr.ocr_per_file` (KHÔNG gọi thẳng adapter) để lượt OCR này VÀO CACHE theo
+        # hash nội dung — bước trích xuất sau khi cán bộ bấm "đủ giấy tờ" dùng lại ngay, thay vì
+        # OCR lần hai đúng vào khoảng chờ mà cán bộ cảm nhận được.
+        ocr_results = await ocr.ocr_per_file(payload_files)
     except Exception as exc:  # noqa: BLE001 — OCR lỗi vẫn cho công dân tải tệp
         logger.warning("OCR Tiếng Nói phân loại upload lỗi: %s", exc)
         ocr_results = [

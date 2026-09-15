@@ -19,9 +19,29 @@ from app.channels.handfree.procedure_registry import (
     get_pipeline,
     get_procedure,
 )
+from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
 from app.upload_session.ws import broadcast
+
+
+async def _load_owner_user(conv: dict | None, sess: dict | None) -> dict | None:
+    """Load tài khoản chủ phiên để lấy tỉnh/xã cho STT1 ảo.
+
+    Best-effort: thiếu id / lỗi query → None → apply_stt1_virtual_copy no-op (giữ hành vi cũ).
+    """
+    uid = str(((conv or {}).get("auth_user") or {}).get("id")
+              or (sess or {}).get("owner_user_id") or "").strip()
+    if not uid:
+        return None
+    try:
+        from bson import ObjectId
+
+        from app.db.mongo import get_db
+
+        return await get_db().users.find_one({"_id": ObjectId(uid)})
+    except Exception:  # noqa: BLE001
+        return None
 
 logger = logging.getLogger(__name__)
 
@@ -140,8 +160,12 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str) 
         if not raw_files:
             raise RuntimeError("Phiên không còn file nào.")
 
+        # Thành lập mới: dựng đủ 8 trang. Thay đổi nội dung (page="__change__"): pipeline
+        # so "hiện tại vs đề nghị" rồi chỉ dựng trang cần sửa + businessFlow (khóa tra cứu).
+        workflow = str(proc.get("businessWorkflow") or "create")
+        process_options = {"allPages": True} if workflow == "create" else {"page": f"__{workflow}__"}
         t_process = time.monotonic()
-        process_result = await pipeline({"": raw_files}, {"allPages": True})
+        process_result = await pipeline({"": raw_files}, process_options)
         process_ms = int((time.monotonic() - t_process) * 1000)
 
         file_items = [FileItem(**item) for item in raw_files]
@@ -153,6 +177,7 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str) 
         pages = process_result.get("pages") or {}
         conv["fields"] = process_result.get("fields", [])
         conv["business_pages"] = pages
+        conv["business_flow"] = process_result.get("businessFlow") or {}
         conv["extracted"] = process_result.get("extracted", {})
         conv["attach_plan"] = attach_result.get("attachments", [])
         conv["attach_errors"] = attach_result.get("errors", [])
@@ -262,7 +287,12 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         conv = await conv_store.get(conv_id)
         if not conv:
             return
+        # STT1 nhận 1 file ẢO. HTTP router auto-fill gọi sẵn; handfree đi qua chat pipeline nên
+        # phải gọi Ở ĐÂY. Account/thủ tục khác → no-op (directive None), plan giữ nguyên.
+        owner_user = await _load_owner_user(conv, sess)
+        result = apply_stt1_virtual_copy(result, owner_user, procedure_key)
         conv["attach_plan"] = result.get("attachments", [])
+        conv["attach_plan_stt1_virtual"] = result.get("stt1VirtualCopy")
         conv["attach_errors"] = result.get("errors", [])
         conv["attach_action_in_progress"] = False
         conv["attach_action_dispatch_id"] = ""

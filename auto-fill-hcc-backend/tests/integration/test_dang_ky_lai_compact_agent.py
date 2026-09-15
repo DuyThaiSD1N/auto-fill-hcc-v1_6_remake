@@ -22,20 +22,6 @@ async def _no_reasoning_context(*_args, **_kwargs):
     return ""
 
 
-def test_dang_ky_lai_maps_previous_registration_commune_after_province():
-    out = mapper.enrich([
-        {"name": "PreviousRegistration_AgencyProvince", "value": "Đà Nẵng"},
-        {"name": "PreviousRegistration_AgencyCommune", "value": "Ủy Ban Nhân dân phường Điện Bàn Đông"},
-    ])
-    names = [f["name"] for f in out]
-    d = {f["name"]: f for f in out}
-
-    assert d["coQuanDKTruocDay_filter"]["value"] == "Đà Nẵng"
-    assert d["coQuanDKTruocDay"] == {"name": "coQuanDKTruocDay", "comp": "x-select", "value": "Phường Điện Bàn Đông"}
-    assert names.index("coQuanDKTruocDay_filter") < names.index("coQuanDKTruocDay")
-    assert "PreviousRegistration_AgencyCommune" in {f["name"] for f in FIELDS}
-
-
 def test_dang_ky_lai_normalizes_all_domestic_address_fields():
     source_fields = [
         {

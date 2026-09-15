@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Login from "./pages/Login";
 import Traces from "./pages/Traces";
+import Dossiers from "./pages/Dossiers";
 import Stats from "./pages/Stats";
 import Accounts from "./pages/Accounts";
 import Reports from "./pages/Reports";
@@ -58,12 +59,13 @@ export default function App() {
   }
 
   // Chỉ admin mới vào được trang quản lý tài khoản; user thường bị đẩy về Nhật ký.
-  const adminOnlyView = view === "accounts" || view === "reports";
+  const adminOnlyView = view === "accounts" || view === "reports" || view === "dossiers";
   const effectiveView: View = adminOnlyView && user.role !== "admin" ? "traces" : view;
   const shared = { user, onLogout: handleLogout, view: effectiveView, onNavigate: navigate };
 
   if (effectiveView === "accounts") return <Accounts {...shared} />;
   if (effectiveView === "reports") return <Reports {...shared} />;
   if (effectiveView === "stats") return <Stats {...shared} />;
+  if (effectiveView === "dossiers") return <Dossiers {...shared} />;
   return <Traces {...shared} />;
 }

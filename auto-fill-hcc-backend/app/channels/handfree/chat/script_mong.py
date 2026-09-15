@@ -33,6 +33,18 @@ PROCEDURE_HMONG = {
     "dang-ky-nhan-cha-me-con": "Cuv npe lees txiv, niam, me nyuam",
     "chung-thuc-ban-sao": "Lees paub daim ntawv theej",
     "chung-thuc-chu-ky": "Lees paub kos npe",
+    # BẢN NHÁP chờ anh Dư soát (thủ tục Bộ NN&MT — cấp/cấp lại giấy phép đánh bắt cá).
+    "cap-giay-phep-khai-thac-thuy-san": "Ntawv tso cai nuv ntses (muab tshiab / muab dua)",
+    # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
+    "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
+    "cho-thue-thue-mua-nha-o-xa-hoi": "Cuv npe xauj / xauj yuav tsev nyob pab pej xeem",
+    # BẢN NHÁP chờ anh Dư soát (thay đổi nội dung đăng ký hộ kinh doanh).
+    "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": "Hloov lub ntsiab lus lag luam tsev neeg",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — đăng ký biện pháp bảo đảm bằng QSDĐ/thế chấp đất).
+    "dang-ky-bien-phap-bao-dam-bac-ninh": "Cuv npe siv daim av ua puav pheej (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát (Bắc Ninh — xóa đăng ký biện pháp bảo đảm/giải chấp đất).
+    "xoa-dang-ky-bien-phap-bao-dam-bac-ninh": "Rho npe siv daim av ua puav pheej (Bắc Ninh)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

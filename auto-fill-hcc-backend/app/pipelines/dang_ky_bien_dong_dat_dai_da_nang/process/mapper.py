@@ -1,11 +1,19 @@
 """Map compact source facts → Form.io data[...] fields cho "Đăng ký biến động QSDĐ..." (cổng Đà Nẵng).
 
-HAI vai trong 1 panel:
+HAI vai trong 1 panel (form CHỈ có 1 khối "Người nộp hồ sơ" + tên chủ hồ sơ ở trên):
 - CHỦ HỒ SƠ (subject) → data[ownerFullname] (+ data[organization] khi tổ chức).
-- NGƯỜI NỘP           → data[fullname]/birthday/gender/identityNumber/.../province/district/address,
-  data[chonDoiTuong] (loại người nộp), data[taxCode] (khi người nộp là tổ chức).
-- data[isOwnerDossier]: True khi chủ hồ sơ = người nộp (tự nộp) → cổng tự đổ; False khi ỦY QUYỀN (điền cả 2).
-- data[noidungyeucaugiaiquyet] = "{tên chủ hồ sơ} ĐỀ NGHỊ GIẢI QUYẾT {tên thủ tục}".
+- NHÂN THÂN người nộp  → data[fullname]/birthday/gender/identityNumber/identityDate/identityAgency,
+  data[chonDoiTuong] (loại người nộp).
+- THÔNG TIN LIÊN HỆ CỦA HỒ SƠ (ưu tiên CHỦ HỒ SƠ): data[phoneNumber], data[province]/district/address,
+  data[taxCode] = "Mã định danh tổ chức, doanh nghiệp" (MST/mã số DN của chủ hồ sơ khi là tổ chức).
+- data[isOwnerDossier]: True khi chủ hồ sơ = người nộp (tự nộp); False khi ỦY QUYỀN hoặc tổ chức-để-trống.
+- data[noidungyeucaugiaiquyet] = Nội dung biến động LẤY TỪ ĐƠN Mẫu 18 (mục 2) — KHÔNG mặc định.
+
+Nhân thân người nộp — 3 nhánh:
+1. ỦY QUYỀN (người nộp là cá nhân KHÁC chủ hồ sơ, có CCCD từ giấy ủy quyền) → điền cả 2 vai.
+2. TỰ NỘP (chủ hồ sơ CÁ NHÂN = người nộp) → tick isOwnerDossier, điền nhân thân = chủ hồ sơ.
+3. CHỦ HỒ SƠ TỔ CHỨC không có ủy quyền-kèm-CCCD → ĐỂ TRỐNG nhân thân người nộp (chỉ điền chủ hồ sơ +
+   liên hệ); KHÔNG suy đoán người đại diện pháp luật/người ký đơn (chốt user 05/09/2026).
 """
 
 from __future__ import annotations
@@ -17,16 +25,6 @@ from typing import Any
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.process.schema import UI_COMP_BY_NAME
-
-# Văn bản "Nội dung yêu cầu giải quyết" ghép: "{tên chủ hồ sơ} ĐỀ NGHỊ GIẢI QUYẾT {tên thủ tục}".
-_PROC_TITLE = (
-    "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp "
-    "chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, "
-    "thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử "
-    "dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án "
-    "xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn "
-    "liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm"
-)
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -190,59 +188,75 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(district_name, _commune_label(area.get("xa")))
         add(address_name, _text(area.get("diaChi")))
 
-    # --- CHỦ HỒ SƠ (subject) ---
+    # --- CHỦ HỒ SƠ (subject) — nguồn cho thông tin liên hệ của hồ sơ (SĐT/địa chỉ/mã số DN) ---
     owner_name = _text(values.get("ChuHoSo_HoTen"))
     owner_is_tc = _is_to_chuc(values.get("ChuHoSo_LoaiChuThe"), owner_name)
+    owner_id = _identity(values.get("ChuHoSo_SoDinhDanh"))   # tổ chức=mã số DN/MST, cá nhân=CCCD.
+    owner_area = _area(values.get("ChuHoSo_DiaChi"))
+    owner_phone = _phone(values.get("ChuHoSo_DienThoai"))
 
-    # --- NGƯỜI NỘP ---
+    # --- NGƯỜI NỘP (nhân thân người trực tiếp nộp; có thể ủy quyền) ---
     nop_name = _text(values.get("NguoiNop_HoTen"))
     nop_is_tc = _is_to_chuc(values.get("NguoiNop_LoaiDoiTuong"), nop_name)
     nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
     nop_mst = _identity(values.get("NguoiNop_MaSoThue"))
     nop_area = _area(values.get("NguoiNop_DiaChi"))
+    nop_phone = _phone(values.get("NguoiNop_DienThoai"))
+
+    # Nội dung yêu cầu giải quyết: LẤY TỪ ĐƠN (mục 2 "Nội dung biến động"), KHÔNG mặc định/ghép cứng.
+    noi_dung = _text(values.get("NoiDungBienDong"))
 
     if not owner_name:
         warnings.append("Thiếu tên chủ hồ sơ (bên nhận chuyển nhượng/chủ đăng ký).")
 
-    # ỦY QUYỀN nếu người nộp KHÁC chủ hồ sơ; TỰ NỘP nếu trùng (hoặc thiếu người nộp).
+    # ỦY QUYỀN nếu người nộp là 1 CÁ NHÂN KHÁC chủ hồ sơ và CÓ CCCD (từ giấy ủy quyền).
     is_uy_quyen = bool(nop_name and owner_name and _fold(nop_name) != _fold(owner_name))
+    person_is_uy_quyen = is_uy_quyen and bool(nop_id)
 
     # --- Chủ hồ sơ (luôn điền) ---
     add("data[ownerFullname]", owner_name)
     if owner_is_tc:
         add("data[organization]", owner_name)
-    if owner_name:
-        add("data[noidungyeucaugiaiquyet]", f"{owner_name} ĐỀ NGHỊ GIẢI QUYẾT {_PROC_TITLE}")
+    if noi_dung:
+        add("data[noidungyeucaugiaiquyet]", noi_dung)
+    elif owner_name:
+        warnings.append("Thiếu 'Nội dung biến động' trong Đơn Mẫu 18 — không điền Nội dung yêu cầu giải quyết.")
 
-    if is_uy_quyen:
+    def _fill_nguoi_nop() -> None:
+        add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
+        add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
+        add("data[identityNumber]", nop_id)
+        add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
+        add("data[identityAgency]", _issuer(values.get("NguoiNop_NoiCap")))
+
+    # --- Nhân thân người nộp — 3 nhánh ---
+    if owner_is_tc and not person_is_uy_quyen:
+        # === CHỦ HỒ SƠ TỔ CHỨC, KHÔNG có người được ủy quyền (kèm CCCD) → ĐỂ TRỐNG nhân thân người nộp.
+        # Không suy đoán người đại diện pháp luật/người ký đơn; user tự nhập. Chỉ điền chủ hồ sơ + liên hệ. ===
+        add("data[isOwnerDossier]", False)
+        if nop_name or nop_id:
+            warnings.append("Chủ hồ sơ là tổ chức, không có giấy ủy quyền kèm CCCD → để trống nhân thân người nộp (tránh ghép chéo danh tính).")
+    elif person_is_uy_quyen:
         # === ỦY QUYỀN: chủ hồ sơ ≠ người nộp → BỎ TÍCH, điền cả 2 vai. ===
         add("data[isOwnerDossier]", False)
         add("data[fullname]", nop_name)
-        add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
-        add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
-        add("data[identityNumber]", nop_id)
-        add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
-        add("data[identityAgency]", _issuer(values.get("NguoiNop_NoiCap")))
-        add_area("data[province]", "data[district]", "data[address]", nop_area)
-        add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
-        add("data[email]", _text(values.get("NguoiNop_Email")))
         add("data[chonDoiTuong]", "Tổ chức" if nop_is_tc else "Cá nhân")
-        if nop_is_tc:
-            add("data[taxCode]", nop_mst)
+        _fill_nguoi_nop()
     else:
-        # === TỰ NỘP: người nộp = chủ hồ sơ → TICH, điền phần người nộp bằng chính chủ hồ sơ. ===
+        # === TỰ NỘP: người nộp = chủ hồ sơ (cá nhân) → TICH, điền nhân thân bằng chính chủ hồ sơ. ===
         add("data[isOwnerDossier]", True)
         add("data[fullname]", nop_name or owner_name)
-        add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
-        add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
-        add("data[identityNumber]", nop_id)
-        add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
-        add("data[identityAgency]", _issuer(values.get("NguoiNop_NoiCap")))
-        add_area("data[province]", "data[district]", "data[address]", nop_area)
-        add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
-        add("data[email]", _text(values.get("NguoiNop_Email")))
         add("data[chonDoiTuong]", "Tổ chức" if (nop_is_tc or owner_is_tc) else "Cá nhân")
-        if nop_is_tc or owner_is_tc:
-            add("data[taxCode]", nop_mst)
+        _fill_nguoi_nop()
+
+    # --- Thông tin liên hệ của HỒ SƠ: ưu tiên CHỦ HỒ SƠ (SĐT + địa chỉ), fallback người nộp ---
+    add("data[phoneNumber]", owner_phone or nop_phone)
+    add_area("data[province]", "data[district]", "data[address]", owner_area or nop_area)
+    add("data[email]", _text(values.get("NguoiNop_Email")))
+    # Mã định danh tổ chức, doanh nghiệp: MST/mã số DN của chủ hồ sơ (nếu tổ chức); nếu không thì của người nộp.
+    if owner_is_tc:
+        add("data[taxCode]", owner_id)
+    elif nop_is_tc:
+        add("data[taxCode]", nop_mst)
 
     return out, warnings

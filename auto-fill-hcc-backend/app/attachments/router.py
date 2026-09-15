@@ -12,6 +12,8 @@ from app.attachments.schemas import (
 from app.config import settings
 from app.core.deps import require_auth
 from app.core.errors import AppError
+from app.dossiers import repo as dossiers_repo
+from app.dossiers.options import dossier_id_from_options
 from app.process import requests_repo
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.procedures.registry import get_attach_pipeline, get_procedure
@@ -107,7 +109,20 @@ async def _save_attach_trace(
         llm_output={"attachments": plan, "extracted": result.get("extracted")},
         fields_count=len(plan), status="done",
         created_at=created_at,
+        dossier_id=dossier_id_from_options(options),
     )
+    # Mốc BẮT ĐẦU hồ sơ Auto Fill = lượt process/đính kèm ĐẦU TIÊN. Đường này là DUY NHẤT với
+    # thủ tục attach-only (chứng thực bản sao/chữ ký) — nhóm nhiều lượt nhất mà không hề gọi
+    # /process, nên thiếu chỗ này là mất hẳn nhóm đó khỏi thống kê.
+    dossier_id = dossier_id_from_options(options)
+    if dossier_id:
+        await dossiers_repo.upsert_started(
+            dossier_id=dossier_id, user_id=str(user.get("id") or ""),
+            username=user.get("username"), name=user.get("name"),
+            procedure=body.procedure, procedure_label=proc.get("label"),
+            province=user.get("tinh"), ward=user.get("xa"),
+            started_at=created_at, experience="autofill", applicant_name=applicant_name,
+        )
 
 
 @router.post("/plan", response_model=AttachmentPlanResp)
@@ -235,12 +250,13 @@ async def create_client_attachment_trace(
         plan=plan,
         files_meta=files_meta,
     )
+    applicant_name = resolve_applicant_name(options, {"attachments": plan})
     await traces_repo.create_trace(
         request_id=request_id,
         user_id=user["id"],
         username=user.get("username"),
         name=user.get("name"),
-        applicant_name=resolve_applicant_name(options, {"attachments": plan}),
+        applicant_name=applicant_name,
         attachments=attachments,
         split=split,
         stats_version=2,
@@ -262,5 +278,17 @@ async def create_client_attachment_trace(
         fields_count=len(plan),
         status="done",
         created_at=created_at,
+        dossier_id=dossier_id_from_options(options),
     )
+    # Đính kèm phía client (không qua planner) vẫn là một lượt làm việc trên hồ sơ đó →
+    # cũng phải chấm mốc, nếu không hồ sơ tách-tab sẽ không có started_at.
+    dossier_id = dossier_id_from_options(options)
+    if dossier_id:
+        await dossiers_repo.upsert_started(
+            dossier_id=dossier_id, user_id=str(user.get("id") or ""),
+            username=user.get("username"), name=user.get("name"),
+            procedure=body.procedure, procedure_label=proc.get("label"),
+            province=user.get("tinh"), ward=user.get("xa"),
+            started_at=created_at, experience="autofill", applicant_name=applicant_name,
+        )
     return {"requestId": request_id}

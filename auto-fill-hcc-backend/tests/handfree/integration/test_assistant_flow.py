@@ -1163,7 +1163,8 @@ async def test_bo_sung_giay_to_mo_lai_cung_phien_va_lap_plan_toan_bo(monkeypatch
     choose = await _turn(conv, "scan tại quầy")
     assert conv["state"] == "collecting_docs"
     assert conv["upload_session_id"] == "HS-OLD"
-    assert choose.actions == [{"type": "pick_files", "session_id": "HS-OLD"}]
+    # Lượt điều chỉnh giữ CHỐT TAY: auto_run=False (scan lượt thường mới tự chốt sau đợt tệp).
+    assert choose.actions == [{"type": "pick_files", "session_id": "HS-OLD", "auto_run": False}]
 
     attach_calls = []
 

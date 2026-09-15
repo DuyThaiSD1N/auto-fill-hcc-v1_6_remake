@@ -281,3 +281,4 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
 - Nếu giấy tờ hộ tịch không ghi quốc tịch người được đăng ký thì bỏ qua HoTich_QuocTich; Python sẽ mặc định Việt Nam khi cần.
 - Mỗi nhóm Nyc_*, ChuThe_* và HoTich_* phải lấy đúng người/đúng tài liệu; không trộn dữ liệu giữa hai thẻ.
 </do_not_return>"""
+  

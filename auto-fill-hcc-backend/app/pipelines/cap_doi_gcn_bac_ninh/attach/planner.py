@@ -4,12 +4,16 @@ E-form Bắc Ninh (Liferay) có 2 nhóm thành phần hồ sơ cho thủ tục n
 Bản chính / Bản sao. FE khớp NHÓM theo `componentName` (substring nhãn đã fold dấu), tick checkbox
 nhóm rồi gán file vào ô Bản chính.
 
-Gom file theo chú giải hồ sơ mẫu:
-- Đơn Mẫu 18 + CCCD người yêu cầu → nhóm "Đơn đăng ký biến động đất đai... Mẫu số 18".
-- Bản gốc GCN → nhóm "Bản gốc Giấy chứng nhận đã cấp".
+Khớp thành phần hồ sơ theo MÃ TP-H05 (in trong dòng tiêu đề mỗi thành phần → FE khớp substring đã
+fold, BỀN hơn khớp nhãn tiếng Việt hay đổi; vd form ghi "Giấy chứng nhận đã cấp, trừ trường hợp…"
+KHÔNG có chữ "Bản gốc" nên khớp theo nhãn cũ sẽ TRƯỢT):
+- Đơn đăng ký biến động (Mẫu 18) → TP-H05.000026.
+- Bản gốc GCN đã cấp → TP-H05.000040.
+- CCCD / văn bản ủy quyền / giấy tờ khác: form cấp đổi (1.012783) KHÔNG có ô riêng → ô "File đính kèm
+  khác" (target "supplementary"). Tránh dồn nhiều file vào 1 ô Bản chính (chỉ nhận 1 file → mất file).
 
-Route TẤT ĐỊNH theo nội dung OCR; LLM chỉ dùng để đặt documentName hiển thị. File không rõ → gộp vào
-nhóm Đơn Mẫu 18 (nhóm chính của thủ tục này — cấp đổi không có nhóm "chứng minh sai sót").
+Phân loại LLM-FIRST (LLM đọc OCR → type; KHÔNG dùng rule keyword — giòn, dễ nhận nhầm). Type không rõ
+→ "other" → "File đính kèm khác" ⇒ ĐÍNH ĐỦ, không rớt file nào. Mọi file luôn sinh 1 attachment item.
 """
 import re
 import time
@@ -18,6 +22,7 @@ from typing import Any
 from app.config import settings
 from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
+from app.pipelines._shared.documents import join_ocr_documents
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -25,19 +30,19 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _ALLOWED_LLM_TYPES = {"identity", "application", "land_certificate", "authorization"}
-_CONFIDENT_LLM_TYPES = {"identity", "application", "land_certificate", "authorization"}
 
-# Nhãn nhận dạng NHÓM thành phần hồ sơ (FE khớp theo substring đã fold dấu).
-_COMP_APPLICATION = "Đơn đăng ký biến động đất đai"
-_COMP_LAND_CERT = "Bản gốc Giấy chứng nhận đã cấp"
+# componentName = MÃ TP-H05 (FE khớp substring đã fold: "tp h05.000040" nằm trong dòng tiêu đề thành phần).
+_COMP_APPLICATION = "TP-H05.000026"   # Đơn đăng ký biến động đất đai (Mẫu số 18)
+_COMP_LAND_CERT = "TP-H05.000040"     # Bản gốc Giấy chứng nhận đã cấp
 
-# type → (componentName, nhãn hiển thị mặc định). Cấp đổi CHỈ có 2 nhóm; ủy quyền/không rõ → gộp Đơn.
+# type → (target, componentName, nhãn hiển thị mặc định).
+# Form cấp đổi chỉ có ô riêng cho Đơn (000026) + GCN (000040); CCCD/ủy quyền/khác → "File đính kèm khác".
 _ROUTE = {
-    "application": (_COMP_APPLICATION, "Đơn đăng ký biến động Mẫu số 18"),
-    "identity": (_COMP_APPLICATION, "Căn cước công dân"),
-    "land_certificate": (_COMP_LAND_CERT, "Bản gốc Giấy chứng nhận QSDĐ"),
-    "authorization": (_COMP_APPLICATION, "Văn bản ủy quyền"),
-    "other": (_COMP_APPLICATION, "Giấy tờ kèm theo đơn"),
+    "application": ("existing", _COMP_APPLICATION, "Đơn đăng ký biến động Mẫu số 18"),
+    "land_certificate": ("existing", _COMP_LAND_CERT, "Bản gốc Giấy chứng nhận QSDĐ"),
+    "identity": ("supplementary", "", "Căn cước công dân"),
+    "authorization": ("supplementary", "", "Văn bản ủy quyền"),
+    "other": ("supplementary", "", "Giấy tờ kèm theo đơn"),
 }
 
 
@@ -49,51 +54,6 @@ def _truncate_text(text: str, limit: int = 3000) -> str:
 def _canonical_type(value: str) -> str:
     doc_type = re.sub(r"[\s-]+", "_", str(value or "").strip().lower())
     return doc_type if doc_type in _ALLOWED_LLM_TYPES else "other"
-
-
-def _looks_like_identity(haystack: str) -> bool:
-    if any(k in haystack for k in (
-        "can cuoc cong dan", "the can cuoc", "cccd", "chung minh nhan dan", "ho chieu", "passport",
-    )):
-        return True
-    if "so dinh danh ca nhan" not in haystack:
-        return False
-    markers = ("co gia tri den", "date of expiry", "noi thuong tru", "place of residence",
-               "que quan", "place of origin", "dac diem nhan dang")
-    return sum(1 for m in markers if m in haystack) >= 2
-
-
-def _detect_route_type(ocr_text: str) -> str | None:
-    """Route TẤT ĐỊNH theo nội dung OCR. None = không rõ (để LLM/mặc định quyết)."""
-    haystack = _fold(ocr_text or "")
-    if not haystack.strip():
-        return None
-    # Đơn Mẫu 18 (ưu tiên trước identity: đơn cũng ghi số định danh người khai).
-    if "mau so 18" in haystack or "dang ky bien dong" in haystack:
-        return "application"
-    if "giay uy quyen" in haystack or "van ban uy quyen" in haystack or "hop dong uy quyen" in haystack:
-        return "authorization"
-    if ("quyen su dung dat" in haystack or "quyen so huu" in haystack) and "giay chung nhan" in haystack:
-        return "land_certificate"
-    if _looks_like_identity(haystack):
-        return "identity"
-    return None
-
-
-def _detect_route_by_filename(name: str) -> str | None:
-    """Fallback CUỐI khi OCR rỗng: đoán theo TÊN FILE. Nội dung OCR vẫn ưu tiên trước."""
-    h = _fold(name or "")
-    if not h.strip():
-        return None
-    if "uy quyen" in h:
-        return "authorization"
-    if "mau so 18" in h or ("don" in h and ("bien dong" in h or "dang ky" in h or "dki" in h or "dkbd" in h)):
-        return "application"
-    if "can cuoc" in h or "cccd" in h or "cmnd" in h or "cmt" in h or "the cc" in h:
-        return "identity"
-    if any(k in h for k in ("so dat", "so do", "so hong", "gcn", "qsdd", "quyen su dung dat", "giay chung nhan")):
-        return "land_certificate"
-    return None
 
 
 def _unique_document_name(base: str, used: set[str], fallback: str) -> str:
@@ -152,17 +112,19 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
 
 
 def _build_item(file: dict, idx: int, doc_type: str, document_name: str) -> dict:
-    component_name, _ = _ROUTE.get(doc_type, _ROUTE["other"])
-    return {
+    target, component_name, _ = _ROUTE.get(doc_type, _ROUTE["other"])
+    item = {
         "fileIndex": idx,
         "fileName": str(file.get("name") or f"file-{idx + 1}"),
         "documentName": document_name,
         "componentName": component_name,
-        "target": "existing",
-        "slotKey": "banChinh",  # gán vào ô Bản chính (không ký số) của nhóm
+        "target": target,
         "needsAddComponent": False,
         "detectedType": document_name,
     }
+    if target == "existing":
+        item["slotKey"] = "banChinh"  # gán vào ô Bản chính (không ký số) của nhóm
+    return item
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
@@ -200,27 +162,18 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     used_names: set[str] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "", "documentName": ""}
-        ocr_text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        doc_type = _detect_route_type(ocr_text)
-        route_src = "ocr" if doc_type else None
-        if doc_type is None:
-            llm_type = detected.get("type") or ""
-            if llm_type in _CONFIDENT_LLM_TYPES:
-                doc_type = llm_type
-                route_src = "llm"
-        if doc_type is None:
-            doc_type = _detect_route_by_filename(file.get("name"))
-            if doc_type:
-                route_src = "filename"
-        if doc_type is None:
+        # LLM-FIRST: type do LLM quyết. Không hợp lệ/không rõ → "other" → "File đính kèm khác"
+        # (ĐÍNH ĐỦ, KHÔNG rớt file). KHÔNG dùng rule keyword để phân loại.
+        llm_type = detected.get("type") or ""
+        if llm_type in _ALLOWED_LLM_TYPES:
+            doc_type = llm_type
+            route_src = "llm"
+        else:
             doc_type = "other"
             route_src = "default"
 
-        _, fallback_label = _ROUTE.get(doc_type, _ROUTE["other"])
-        if route_src in ("ocr", "llm"):
-            base_name = detected.get("documentName") or fallback_label
-        else:
-            base_name = fallback_label
+        _, _, fallback_label = _ROUTE.get(doc_type, _ROUTE["other"])
+        base_name = (detected.get("documentName") if route_src == "llm" else "") or fallback_label
         document_name = _unique_document_name(base_name, used_names, fallback_label)
 
         item = _build_item(file, idx, doc_type, document_name)
@@ -228,6 +181,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         classified.append({
             "fileName": file.get("name"),
             "type": doc_type,
+            "routeSrc": route_src,
             "documentName": document_name,
             "componentName": item["componentName"],
         })
@@ -246,5 +200,6 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             "llm_latency_ms": llm_ms,
             "total_latency_ms": ocr_ms + llm_ms,
         },
+        "ocr_text": join_ocr_documents(ocr_results),
         "errors": errors,
     }

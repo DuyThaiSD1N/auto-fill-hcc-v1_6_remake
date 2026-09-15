@@ -18,7 +18,10 @@ Cấu trúc form:
   Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) checkbox — KHÔNG tick.
 - Phần II  data[ChuHS] = loại chủ hồ sơ.
 - Phần III-V data[owner...] : chủ văn bằng (cá nhân owner*; tổ chức/DN ownerOrganizationFullname/ownerTaxCode).
-- Phần VIII data[ToiTen…ten1] : nội dung kê khai theo Phiếu BM04 (checkbox Nam/Nu, THPT/THPT1/THCS).
+- Panel "Phieu" (data[Kinhgui]/[ToiTen]/[Sodinhdanh]/[Duoccap]/[do]/[Sohieu]/[requestQty]/[sogoc]/
+  [lydo]/[thongtinkhac]/[lienhe]/[ngay]/[nguoidenghi]) : chép gần NGUYÊN VĂN Phiếu đề nghị BM04.
+  ⚠ Form đã ĐỔI (2026-09): panel này thay panel "Thongtincanhan" cũ (data[Nam]/[DaHocLop12]/[THPT]/
+  [KhoaThi]/[SoGiayTo]/[select]… đã BỎ). Xem field-key thật bằng probe DOM panel formio-component-Phieu.
 """
 
 # --- Nhân thân + học vấn CHỦ VĂN BẰNG (nguồn: VĂN BẰNG / Phiếu BM04) ---
@@ -100,14 +103,28 @@ _NOP_FIELDS = [
 
 FIELDS += [{"name": f"NguoiNop_{n}", "desc": d} for n, d in _NOP_FIELDS]
 
-# --- Phiếu yêu cầu (Phần VIII cuối) ---
+# --- Phiếu đề nghị BM04 (panel "Phieu" trên form) — trích gần NGUYÊN VĂN theo phiếu ---
 FIELDS += [
-    {"name": "Phieu_SoLuongBanSao", "desc": "Số lượng bản sao xin cấp — Phiếu BM04 'Số lượng bản sao xin "
-        "cấp'. Chỉ chữ số. Không ghi → bỏ (mapper mặc định 1)."},
-    {"name": "Phieu_NoiLap", "desc": "Địa danh nơi lập phiếu — dòng '..., ngày … tháng … năm …' cuối Phiếu "
-        "BM04 (tên tỉnh/thành phố, vd 'Đà Nẵng')."},
-    {"name": "Phieu_NguoiViet", "desc": "Họ tên người viết/ký phiếu — cuối Phiếu BM04 'Người viết phiếu'. "
-        "Thường trùng chủ văn bằng (hoặc người nộp thay nếu nộp thay)."},
+    {"name": "Phieu_KinhGui", "desc": "Cơ quan ở dòng 'Kính gửi' đầu Phiếu BM04 (vd 'SỞ GIÁO DỤC VÀ ĐÀO "
+        "TẠO ĐÀ NẴNG'). Chép nguyên văn."},
+    {"name": "Phieu_TenVanBang", "desc": "Nội dung dòng 'Đã được cấp (tên văn bằng, chứng chỉ)' trên Phiếu "
+        "BM04 (vd 'BẰNG THPT', 'Bằng tốt nghiệp THPT'). Chép nguyên văn."},
+    {"name": "Phieu_CoQuanCapVanBang", "desc": "Cơ quan ở dòng 'Do … cấp' trên Phiếu BM04 (nơi ĐÃ cấp văn "
+        "bằng, vd 'Sở Giáo dục và Đào tạo Đà Nẵng'). Chép nguyên văn."},
+    {"name": "Phieu_SoHieu", "desc": "Nội dung 'Số hiệu/hoặc số vào sổ gốc' trên Phiếu BM04/văn bằng. "
+        "Không ghi → bỏ."},
+    {"name": "Phieu_SoLuongBanSao", "desc": "Số lượng bản sao xin cấp — Phiếu BM04 'Đề nghị cấp … bản sao'. "
+        "Chỉ chữ số. Không ghi → bỏ (mapper mặc định 1)."},
+    {"name": "Phieu_LyDo", "desc": "Nội dung dòng 'Ghi rõ lý do cấp lại/nội dung đề nghị chỉnh sửa' trên "
+        "Phiếu BM04. Không ghi → bỏ."},
+    {"name": "Phieu_ThongTinKhac", "desc": "Nội dung dòng 'Thông tin khác' trên Phiếu BM04 (thường là tên "
+        "trường + năm tốt nghiệp, vd 'THPT Ngô Quyền, 2020'). Chép nguyên văn."},
+    {"name": "Phieu_LienHe", "desc": "Nội dung dòng 'Số điện thoại, E-mail, địa chỉ liên hệ' trên Phiếu "
+        "BM04 — chép nguyên văn CẢ cụm (SĐT, email, địa chỉ)."},
+    {"name": "Phieu_NgayLap", "desc": "Ngày lập phiếu, dd/mm/yyyy — dòng '…, ngày … tháng … năm …' cuối "
+        "Phiếu BM04."},
+    {"name": "Phieu_NguoiViet", "desc": "Họ tên người đề nghị/ký cuối Phiếu BM04. Thường trùng chủ văn "
+        "bằng (hoặc người nộp thay nếu nộp thay)."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -124,6 +141,7 @@ COMPACT_COMP_BY_NAME["ChuHoSo_ThuongTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["NguoiNop_NgaySinh"] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiNop_NgayCap"] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiNop_ThuongTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["Phieu_NgayLap"] = "x-date"
 
 # ---- UI Form.io fields (data[...]) — comp dom-*. Field-key lấy CHUẨN từ HTML thật (fill.html). ----
 UI_COMP_BY_NAME = {
@@ -162,31 +180,22 @@ UI_COMP_BY_NAME = {
     "data[ownerOrganizationFullname]": "dom-input",
     "data[ownerTaxCode]": "dom-input",
 
-    # ----- Phần VIII: NỘI DUNG KÊ KHAI (Phiếu BM04 + Văn bằng) -----
+    # ----- Panel "Phieu" (Phiếu đề nghị BM04) — chép gần nguyên văn phiếu -----
+    "data[Kinhgui]": "dom-input",
     "data[ToiTen]": "dom-input",
-    "data[Nam]": "dom-checkbox",
-    "data[Nu]": "dom-checkbox",
-    "data[ngaySinh]": "dom-date",
-    "data[sinhNam]": "dom-input",
-    "data[NoiSinh]": "dom-input",
-    "data[DanTocKhaiSinh1]": "dom-select",
-    "data[DaHocLop12]": "dom-input",
-    "data[TinhTP]": "dom-select",
-    "data[PX1]": "dom-select",
-    "data[THPT]": "dom-checkbox",
-    "data[THPT1]": "dom-checkbox",
-    "data[THCS]": "dom-checkbox",
-    "data[KhoaThi]": "dom-input",
-    "data[HoiDongThi]": "dom-input",
-    "data[LoaiGiayTo]": "dom-select",
-    "data[SoGiayTo]": "dom-input",
-    "data[NgayCap]": "dom-date",
-    "data[identityAgency]": "dom-input",
-    "data[TinhThanhPho]": "dom-select",
-    "data[QuanHuyen]": "dom-select",
-    "data[SoNhaDuong]": "dom-input",
-    "data[DienThoai]": "dom-input",
-    "data[requestQty]": "dom-input",
-    "data[select]": "dom-select",
-    "data[ten1]": "dom-input",
+    "data[sinhNam]": "dom-input",        # hidden "Sinh ngày" = ngày sinh chủ văn bằng
+    "data[Sodinhdanh]": "dom-input",
+    "data[Duoccap]": "dom-input",        # "Đã được cấp (tên văn bằng)"
+    "data[do]": "dom-input",             # "Do … cấp" (cơ quan cấp văn bằng)
+    "data[Sohieu]": "dom-input",
+    "data[requestQty]": "dom-input",     # "Đề nghị cấp … bản sao"
+    "data[sogoc]": "dom-checkbox",       # "Bản sao từ sổ gốc" — thủ tục này → tick
+    "data[caplai]": "dom-checkbox",
+    "data[chinhsua]": "dom-checkbox",
+    "data[lydo]": "dom-input",           # textarea (dom-input xử lý được)
+    "data[hoso]": "dom-input",
+    "data[thongtinkhac]": "dom-input",   # "Thông tin khác (tên trường, năm TN)"
+    "data[lienhe]": "dom-input",         # "SĐT, E-mail, địa chỉ liên hệ"
+    "data[ngay]": "dom-input",           # hidden ngày lập phiếu
+    "data[nguoidenghi]": "dom-input",    # "Họ tên người đề nghị"
 }

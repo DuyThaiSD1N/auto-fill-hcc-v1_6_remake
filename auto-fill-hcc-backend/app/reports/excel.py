@@ -134,7 +134,7 @@ def _write_sheet(
     unit = account.get("name") or account.get("xa") or account.get("username") or "—"
     worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_column)
     title = worksheet["A1"]
-    title.value = "THỐNG KÊ HỒ SƠ TIẾP NHẬN QUA TRỢ LÝ HỖ TRỢ THỦ TỤC HÀNH CHÍNH"
+    title.value = "THỐNG KÊ HỒ SƠ TIẾP NHẬN QUA TRỢ LÝ NHÂN DÂN"
     title.font = Font(bold=True, size=13)
     title.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     worksheet.row_dimensions[1].height = 32

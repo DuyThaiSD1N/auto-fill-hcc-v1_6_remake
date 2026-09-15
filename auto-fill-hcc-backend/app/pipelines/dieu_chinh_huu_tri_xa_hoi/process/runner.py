@@ -171,7 +171,38 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
     )
 
 
+async def _owner_only_context(documents: list[dict], options: dict) -> str:
+    """Mode owner_as_submitter: KHÔNG dùng mỏ neo UI (gắn missing_ui_anchor để prompt tự bỏ NguoiNop);
+    vẫn giữ owner_primary_ocr (mục I) cho nơi cư trú/điện thoại chủ hồ sơ."""
+    _ = options
+    owner_sections: list[str] = []
+    for document in documents:
+        section_one, _ = _extract_form_sections(str(document.get("text") or ""))
+        if section_one:
+            owner_contact = _owner_contact_scope(section_one)
+            if owner_contact:
+                owner_sections.append(owner_contact)
+    owner_context = ""
+    if owner_sections:
+        owner_context = (
+            "\n<owner_primary_ocr>\n"
+            "Nguồn BẮT BUỘC ưu tiên cho ChuHoSo_NoiCuTru và "
+            "ChuHoSo_DienThoai khi các dòng này có giá trị:\n"
+            + "\n\n".join(owner_sections)
+            + "\n</owner_primary_ocr>\n"
+        )
+    return (
+        "\n\n<requester_context result=\"missing_ui_anchor\">\n"
+        "Chế độ điền người nộp = chủ hồ sơ: KHÔNG dùng mỏ neo UI. Không trả bất kỳ NguoiNop_* nào; "
+        "vẫn trích ChuHoSo_*.\n"
+        "</requester_context>"
+        + owner_context
+    )
+
+
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Toggle extension "owner_as_submitter": bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -180,7 +211,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_requester_context,
+        context_builder=_owner_only_context if owner_mode else _requester_context,
     )
     # Mapper cần OCR gộp để chỉ nhận ngày cấp trên tờ khai khi chuỗi ngày có bằng
     # chứng nguyên văn, tránh LLM tự đảo ngày/tháng từ chữ viết tay mơ hồ.

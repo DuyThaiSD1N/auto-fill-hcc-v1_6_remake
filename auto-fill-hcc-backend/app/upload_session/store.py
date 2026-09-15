@@ -113,6 +113,28 @@ async def append_files(sid: str, metas: list[dict]) -> dict | None:
     )
 
 
+async def mark_delivered(sid: str, fids: list[str]) -> dict | None:
+    """Đánh dấu các file MÁY TÍNH ĐÃ LẤY ĐƯỢC (extension gọi sau khi kéo bytes xong).
+
+    Điện thoại chỉ biết "server nhận HTTP 200" — chưa chắc máy tính đã có. Không có mốc này thì
+    trang mobile báo "đã gửi" trong khi cán bộ vẫn chưa thấy gì, đúng tình huống đã gặp ở
+    Chứng thực bản sao. $addToSet để gọi lại nhiều lần không cộng trùng.
+    """
+    if not sid or not fids:
+        return await get(sid) if sid else None
+    return await get_db().upload_sessions.find_one_and_update(
+        {"_id": sid},
+        {"$addToSet": {"delivered_fids": {"$each": list(fids)}}, "$set": {"updated_at": _now()}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+def delivered_count(sess: dict) -> int:
+    """Số file đã tới máy tính. Chỉ đếm fid CÒN trong phiên (file bị xoá không tính)."""
+    alive = {str(f.get("fid")) for f in (sess.get("files") or [])}
+    return len(alive & {str(x) for x in (sess.get("delivered_fids") or [])})
+
+
 def total_file_bytes(sess: dict) -> int:
     """Tổng byte đã được chốt vào phiên; metadata cũ thiếu size được tính là 0."""
     return sum(max(0, int(item.get("size") or 0)) for item in sess.get("files", []))

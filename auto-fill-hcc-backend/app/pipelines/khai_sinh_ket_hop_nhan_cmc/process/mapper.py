@@ -7,7 +7,6 @@ import unicodedata
 from typing import Any
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer
-from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines.khai_sinh_thuong.process import mapper as birth_mapper
 from app.pipelines.nhan_cha_me_con.process import mapper as recognition_mapper
 
@@ -77,9 +76,7 @@ def map_birth(fields: list[dict]) -> list[dict]:
     requester_id = values.get("Requester_IdNumber")
     requester_issue_date = values.get("Requester_IdIssueDate")
     requester_issuer = values.get("Requester_IdIssuePlace") or default_issuer(requester_issue_date)
-    # Ten con/cha/me da duoc birth_mapper.enrich() ep hoa; rieng o nay _replace ghi de sau do
-    # nen phai tu ep, khong thi muc I lech kieu chu voi phan con lai cua form.
-    _replace(output, "HoVaTenC", "x-input", upper_person_name(values.get("Requester_FullName")))
+    _replace(output, "HoVaTenC", "x-input", values.get("Requester_FullName"))
     _replace(output, "SoDinhDanhC", "x-input", requester_id)
     _replace(output, "SoGiayToDinhDanhC", "x-input", requester_id)
     if requester_id:

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getStats } from "../api";
+import { dayMonthYear } from "../format";
 import type { Role, StatsResp, StatsScope, StatsSource, StatsWard, User } from "../types";
 import TopBar, { type View } from "../components/TopBar";
 
@@ -246,6 +247,13 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
 
   const procs = data?.procedures ?? [];
   const wards = data?.wards ?? [];
+  // Mốc 14/9/2026 đổi cách đếm hồ sơ. CHỈ nói khi khoảng vắt qua mốc — lúc đó con số là hai
+  // cách đếm cộng lại nên trông như tụt. Kỳ nằm trọn một bên thì số nhất quán, khỏi chú thích.
+  const counting = data?.counting;
+  const countingNote =
+    counting?.mode === "mixed"
+      ? `Khoảng này vắt qua ngày ${dayMonthYear(counting.submittedFrom)}: trước đó là số ước tính theo lượt xử lý, từ đó trở đi đếm theo hồ sơ đã bấm nộp.`
+      : "";
   const totalProcedurePages = Math.max(1, Math.ceil(procs.length / PROCEDURE_PAGE_SIZE));
   const procedurePageStart = procs.length ? (procedurePage - 1) * PROCEDURE_PAGE_SIZE + 1 : 0;
   const procedurePageEnd = Math.min(procedurePage * PROCEDURE_PAGE_SIZE, procs.length);
@@ -365,6 +373,8 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
       )}
 
       {error && <div className="error bar">{error}</div>}
+
+      {countingNote && <div className="count-bar">{countingNote}</div>}
 
       <section className="kpi-grid" aria-busy={loading}>
         <div className="kpi-card accent-primary">

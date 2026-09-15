@@ -107,14 +107,12 @@ Ví dụ `metadata`:
     {
       "name": "to-khai.pdf",
       "type": "application/pdf",
-      "role": "doc",
-      "hasHandwriting": false
+      "role": "doc"
     },
     {
       "name": "cccd.pdf",
       "type": "application/pdf",
-      "role": "doc",
-      "hasHandwriting": false
+      "role": "doc"
     }
   ]
 }
@@ -126,7 +124,6 @@ Lưu ý quan trọng:
 - Thứ tự phần tử trong `metadata.files` phải giống thứ tự các multipart field `files`.
 - `options` truyền cùng cấu trúc context đang dùng khi gọi `/api/v1/process`; không có thì gửi `{}`.
 - `role` thường là `doc`; nếu thủ tục có role riêng thì truyền đúng role từ danh mục thủ tục.
-- `hasHandwriting=true` khi tài liệu có nội dung viết tay.
 - Chỉ hỗ trợ JPG, PNG, PDF và DOCX.
 - Giới hạn mặc định: 80 MB mỗi file và 100 MB cho toàn bộ một hồ sơ.
 
@@ -137,7 +134,7 @@ curl -X POST \
   'https://trolyhoso-hcc-admin.vnekyc.vn/api/v1/batch/jobs/job_50e402cfbc924761/items' \
   -H 'Authorization: Bearer <BATCH_API_SECRET>' \
   -H 'Idempotency-Key: campaign-20260822-hoso-0001' \
-  -F 'metadata={"clientDossierId":"hoso-0001","options":{},"files":[{"name":"to-khai.pdf","type":"application/pdf","role":"doc","hasHandwriting":false},{"name":"cccd.pdf","type":"application/pdf","role":"doc","hasHandwriting":false}]}' \
+  -F 'metadata={"clientDossierId":"hoso-0001","options":{},"files":[{"name":"to-khai.pdf","type":"application/pdf","role":"doc"},{"name":"cccd.pdf","type":"application/pdf","role":"doc"}]}' \
   -F 'files=@/data/hoso-0001/to-khai.pdf;type=application/pdf' \
   -F 'files=@/data/hoso-0001/cccd.pdf;type=application/pdf'
 ```

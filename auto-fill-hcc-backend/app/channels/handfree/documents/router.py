@@ -18,7 +18,7 @@ from app.core.deps import require_auth
 from app.core.errors import AppError
 from app.channels.handfree.chat.access import get_owned_conversation
 from app.channels.handfree.procedure_registry import get_procedure
-from app.upload_session import classify, store
+from app.upload_session import audit, classify, store
 from app.upload_session.access import (
     create_upload_capability,
     ensure_upload_session_experience,
@@ -213,7 +213,10 @@ async def upload_files(
                     "name": payload["name"], "type": payload["type"],
                     "size": staged_item["size"], "note": res["note"]}
             metas.append(meta)
-            accepted.append({**{k: meta[k] for k in ("fid", "doc_key", "side", "note")}})
+            # `name` để sidebar ĐỐI CHIẾU khi ghép fid với đúng tệp đang cầm trên tay (cache
+            # bytes tại chỗ, khỏi tải ngược từ máy chủ). Ghép nhầm = đính NHẦM giấy tờ, nên
+            # không được tin mỗi thứ tự mảng.
+            accepted.append({**{k: meta[k] for k in ("fid", "doc_key", "side", "note", "name")}})
 
         # Quota được kiểm tra LẠI ngay trong thao tác $push nguyên tử. Hai request đồng thời có
         # thể cùng vượt qua kiểm tra snapshot, nhưng chỉ request còn nằm trong 100MB được ghi.
@@ -245,6 +248,11 @@ async def upload_files(
             and not sess.get("complete")):
         sess = await store.set_complete(sid, True) or sess
         prog = store.progress(sess)
+    # Cùng nhật ký phiên với Auto Fill: hai kênh khác mobile page nhưng chung một bài toán
+    # "gửi lên được mà máy tính chưa lấy về".
+    await audit.log_uploaded(sid, names=[str(m["name"]) for m in metas],
+                             nbytes=sum(int(i.get("size") or 0) for i in staged),
+                             received=len(updated.get("files", [])))
     await broadcast(sid, {"type": "progress", **prog})
     if sess.get("complete"):
         await broadcast(sid, {"type": "complete", **prog})
