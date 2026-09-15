@@ -10,7 +10,7 @@ from app.procedures.registry import _ATTACH_PIPELINE
 
 _CAP_RULES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"^chung-thuc|^cap-ban-sao-so-goc"), "Cấp xã"),
-    (re.compile(r"khai-sinh|ket-hon|khai-tu|trich-luc|ho-tich|hon-nhan|giam-ho|nhan-cha-me-con"), "Cấp xã"),
+    (re.compile(r"khai-sinh|ket-hon|khai-tu|trich-luc|ho-tich|hon-nhan|giam-ho|nhan-cha-me-con|nuoi-con-nuoi"), "Cấp xã"),
     (re.compile(r"ho-kinh-doanh|^dang-ky-kinh-doanh"), "Cấp xã"),
     (re.compile(r"mai-tang|huu-tri-xa-hoi|tro-cap-xa-hoi"), "Cấp xã"),
     (re.compile(r"tro-choi-dien-tu"), "Cấp xã"),

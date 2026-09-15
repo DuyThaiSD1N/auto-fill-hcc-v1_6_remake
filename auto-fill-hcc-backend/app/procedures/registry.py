@@ -152,6 +152,7 @@ from app.pipelines.dang_ky_giam_ho.attach import plan as dang_ky_giam_ho_attach
 from app.pipelines.dang_ky_giam_ho.process import run as dang_ky_giam_ho_process
 from app.pipelines.nhan_cha_me_con.attach import plan as nhan_cha_me_con_attach
 from app.pipelines.nhan_cha_me_con.process import run as nhan_cha_me_con_process
+from app.pipelines.nuoi_con_nuoi_trong_nuoc.attach import plan as nuoi_con_nuoi_trong_nuoc_attach
 from app.pipelines.khai_tu.attach import plan as khai_tu_attach
 from app.pipelines.khai_tu.process import run as khai_tu_process
 from app.pipelines.khai_tu_dang_ky_lai.attach import plan as khai_tu_dang_ky_lai_attach
@@ -863,6 +864,29 @@ PROCEDURES: list[dict] = [
             "\nBước 3: eForm online ở STT 1 bỏ qua; kết quả ADN/văn bản y tế/giám định vào STT 2; "
             "nếu không có văn bản xác nhận quan hệ thì văn bản cam đoan + người làm chứng vào STT 3; "
             "tờ khai bản giấy, CCCD/căn cước và giấy khai sinh/giấy chứng sinh thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "dang-ky-nuoi-con-nuoi-trong-nuoc",
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.001263"],
+            "textIncludes": ["đăng ký việc nuôi con nuôi trong nước"],
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký việc nuôi con nuôi trong nước",
+        # Chỉ đính kèm: Đơn xin nhận con nuôi (STT 5/6) là tờ khai online, không điền bước Kê khai.
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. CCCD/hộ chiếu của cha mẹ nuôi.\n"
+            "2. Giấy khám sức khỏe của cha mẹ nuôi.\n"
+            "3. Văn bản xác nhận hoàn cảnh gia đình, chỗ ở, điều kiện kinh tế.\n"
+            "4. Giấy chứng nhận kết hôn/xác nhận tình trạng hôn nhân của cha mẹ nuôi.\n"
+            "5. Nếu có: giấy khai sinh, giấy khám sức khỏe, ảnh của trẻ; CCCD và giấy tờ của mẹ đẻ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR, gộp giấy tờ "
+            "cùng loại của hai vợ chồng vào đúng ô STT 1-4, giấy tờ của trẻ và mẹ đẻ thêm thành phần mới."
         ),
     },
     {
@@ -4485,6 +4509,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-lai-ket-hon": ket_hon_lai_attach,
     "dang-ky-giam-ho": dang_ky_giam_ho_attach,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": nuoi_con_nuoi_trong_nuoc_attach,
     "trich-luc-ks": trich_luc_attach,
     "khai-tu": khai_tu_attach,
     "khai-tu-lien-thong": khai_tu_attach,  # TẠM: chưa có attach plan riêng
