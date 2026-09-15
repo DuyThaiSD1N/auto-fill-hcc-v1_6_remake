@@ -5,14 +5,15 @@ import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.ethnic_normalize import ethnicity_for_form
+from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 from app.pipelines._shared.foreign_id import (
     normalize_nationality,
     normalize_id_type,
     normalize_foreign_tinh,
     is_foreign,
 )
-from app.pipelines.ket_hon.process.schema import UI_COMP_BY_NAME
+from app.pipelines.ket_hon.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 
 def _fold(value) -> str:
@@ -103,6 +104,29 @@ def _divorce_party_matches(person_name, parties) -> bool:
     return f" {person} " in f" {listed} "
 
 
+def _digits(value) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _declaration_contradicts_card(card_id, declared_id) -> bool:
+    """Số trên tờ khai KHÁC hẳn số trên thẻ của cùng cột nam/nữ.
+
+    Cùng cột nên gần như luôn là OCR đọc sai chữ viết tay; chỉ coi là "khớp" khi trùng hẳn, lệch
+    đúng một chữ số, hoặc tờ khai rơi 1–2 chữ số. Còn lại → giá trị tờ khai bù vào vẫn điền nhưng
+    tô viền vàng để soát (không chắc thẻ và tờ khai là cùng người).
+    """
+    card, declared = _digits(card_id), _digits(declared_id)
+    if not card or not declared or card == declared:
+        return False
+    if len(card) == len(declared):
+        return sum(a != b for a, b in zip(card, declared)) != 1
+    short, long = sorted((card, declared), key=len)
+    if not 0 < len(long) - len(short) <= 2:
+        return True
+    it = iter(long)
+    return not all(ch in it for ch in short)
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -179,7 +203,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
 
-    def add(name: str, value, default: bool = False) -> None:
+    def add(name: str, value, default: bool = False, **extra) -> None:
         # default=True: giá trị suy diễn/mặc định (không đọc từ giấy tờ) — FE tô viền VÀNG
         # để người dân tự rà và sửa nếu không đúng hoàn cảnh của mình.
         if name in seen or value in (None, "", {}, []):
@@ -187,17 +211,40 @@ def enrich(fields: list[dict]) -> list[dict]:
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        item = {"name": name, "comp": comp, "value": value}
+        item = {"name": name, "comp": comp, "value": value, **extra}
+        if name in UI_ALIASES:
+            item["aliases"] = UI_ALIASES[name]
         if default:
             item["default"] = True
         out.append(item)
         seen.add(name)
 
-    def add_person(src: str, dst: str, declaration_area_name: str) -> None:
-        has_person = bool(values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen"))
+    def add_person(src: str, dst: str, declaration: str) -> None:
+        declaration_area_name = f"{declaration}_NoiCuTru_TrongNuoc"
+        has_person = bool(
+            values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen")
+            or values.get(f"{declaration}_SoDinhDanh") or values.get(f"{declaration}_HoTen")
+        )
         if not has_person:
             return
-        issuer = values.get(f"{src}_NoiCap") or default_issuer(values.get(f"{src}_NgayCap"))
+        # Nhân thân: THẺ CĂN CƯỚC (bản IN) trước — họ tên, số, ngày sinh, ngày cấp, nơi cấp; tờ khai
+        # chỉ bù ô thẻ thiếu. Số tờ khai trái hẳn số thẻ → vẫn bù nhưng viền vàng để soát.
+        unsure = _declaration_contradicts_card(
+            values.get(f"{src}_SoDinhDanh"), values.get(f"{declaration}_SoDinhDanh"))
+
+        def identity(name: str) -> tuple:
+            card_value = values.get(f"{src}_{name}")
+            if card_value:
+                return card_value, False
+            declared = values.get(f"{declaration}_{name}")
+            return declared, bool(declared) and unsure
+
+        ho_ten, ho_ten_default = identity("HoTen")
+        so_dinh_danh, so_default = identity("SoDinhDanh")
+        ngay_sinh, ngay_sinh_default = identity("NgaySinh")
+        ngay_cap, ngay_cap_default = identity("NgayCap")
+        noi_cap, noi_cap_default = identity("NoiCap")
+        issuer = noi_cap or default_issuer(ngay_cap)
 
         # Suy nationality: ưu tiên field QuocTich, fallback từ quocGia trong địa chỉ
         # v2: thêm fallback quocGia để xử lý khi LLM bỏ sót QuocTich
@@ -215,10 +262,12 @@ def enrich(fields: list[dict]) -> list[dict]:
             to_khai_area_raw.get("tinh") or to_khai_area_raw.get("xa") or to_khai_area_raw.get("diaChi")
         ) else cccd_area_raw
         area = _area(area_raw, nationality)
+        # Tên đường viết tay trên tờ khai sửa theo địa chỉ IN trên thẻ của chính người đó.
+        area = prefer_printed_street(area, _area(cccd_area_raw, nationality))
 
-        add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
-        add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
-        add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
+        add(f"HoTen{dst}", upper_person_name(ho_ten), default=ho_ten_default)
+        add(f"SoDinhDanh_{dst}", so_dinh_danh, default=so_default)
+        add(f"SoGiayToDinhDanh_{dst}", so_dinh_danh, default=so_default)
 
         # Loại giấy tờ: người nước ngoài dùng foreign_id_map, người VN dùng issuer
         if is_foreign(nationality):
@@ -229,12 +278,18 @@ def enrich(fields: list[dict]) -> list[dict]:
             id_type = id_doc_type("Thẻ căn cước công dân", issuer)
         add(f"LoaiGiayToDinhDanh_{dst}", id_type)
 
-        add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
-        add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
-        add(f"NoiCapDD_{dst}", issuer)
+        add(f"NgaySinh{dst}", ngay_sinh, default=ngay_sinh_default)
+        add(f"NgayCapDD_{dst}", ngay_cap, default=ngay_cap_default)
+        add(f"NoiCapDD_{dst}", issuer, default=noi_cap_default)
         # Không giấy nào ghi dân tộc → KHÔNG đoán, để trống; FE tự tô ĐỎ ô "-- Chọn --"
         # (markAllEmptyFieldsRed) để cán bộ/người dân biết phải tự chọn.
-        add(f"DanToc{dst}", _normalize_dan_toc(values.get(f"{src}_DanToc")))
+        # Dân tộc: CCCD chip không in dân tộc nên nguồn thật gần như luôn là cột tờ khai. Tên có trong
+        # dropdown thì chọn thẳng (biến thể như "K'Ho" → "Cơ Ho"); tên ngoài danh sách (vd "Cill") thì
+        # chọn "Khác" và ghi nguyên văn vào ô bên cạnh — ô đó chỉ render sau khi chọn nên phát ngay sau.
+        dan_toc, dan_toc_khac = ethnicity_for_form(
+            values.get(f"{src}_DanToc") or values.get(f"{declaration}_DanToc"))
+        add(f"DanToc{dst}", _normalize_dan_toc(dan_toc))
+        add(f"DanTocKhac{dst}", dan_toc_khac, otherOf=f"DanToc{dst}")
         add(f"QuocTich{dst}", nationality)
         add(f"LoaiCuTru_{dst}", "Thường trú")
         if area:
@@ -273,7 +328,7 @@ def enrich(fields: list[dict]) -> list[dict]:
             elif status_code == "3":
                 # Chỉ điền khi văn bản ly hôn thật sự ghi tên người này là đương sự — chặn
                 # trường hợp LLM lấy quyết định của bên kia gán sang (số/ngày/cơ quan sai hết).
-                if _divorce_party_matches(values.get(f"{src}_HoTen"),
+                if _divorce_party_matches(ho_ten,
                                           values.get(f"{src}_BanAnLyHon_DuongSu")):
                     decision = {
                         "soBanAnQuyetDinhLyHon": values.get(f"{src}_BanAnLyHon_So"),
@@ -284,8 +339,8 @@ def enrich(fields: list[dict]) -> list[dict]:
                     if decision:
                         add(f"TTHN_LyHon{dst}", decision)
 
-    add_person("CccdNu", "BenNu", "ToKhaiNu_NoiCuTru_TrongNuoc")
-    add_person("CccdNam", "BenNam", "ToKhaiNam_NoiCuTru_TrongNuoc")
+    add_person("CccdNu", "BenNu", "ToKhaiNu")
+    add_person("CccdNam", "BenNam", "ToKhaiNam")
 
     # Chỉ tác động radio khi tờ khai ghi rõ loại đăng ký. Không có dữ liệu thì bỏ hẳn;
     # cổng tự giữ trạng thái của nó, mapper không mặc định "Đăng ký lần đầu".

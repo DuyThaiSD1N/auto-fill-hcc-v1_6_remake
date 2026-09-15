@@ -99,3 +99,66 @@ def test_dan_toc_doc_duoc_tren_giay_thi_khong_to_vang():
     )))
     assert out["DanTocBenNam"]["value"] == "Thái" and "default" not in out["DanTocBenNam"]
     assert out["DanTocBenNu"]["value"] == "Mông (Hmông)"
+
+
+# --- Nhân thân: CCCD trước, tờ khai chỉ bù phần thẻ thiếu ---
+
+def test_thieu_cccd_mot_ben_thi_lay_nhan_than_tu_to_khai():
+    out = _by_name(enrich(_fields(
+        CccdNam_HoTen="MÈ MINH TUẤN", CccdNam_SoDinhDanh="014090014602", CccdNam_NgaySinh="01/01/1990",
+        ToKhaiNu_HoTen="Nguyễn Hoàng Hải Thanh", ToKhaiNu_SoDinhDanh="068190007436",
+        ToKhaiNu_NgaySinh="02/02/1990", ToKhaiNu_NgayCap="06/08/2022",
+    )))
+    assert out["HoTenBenNu"]["value"] == "NGUYỄN HOÀNG HẢI THANH"
+    assert out["SoDinhDanh_BenNu"]["value"] == "068190007436"
+    assert out["NgaySinhBenNu"]["value"] == "02/02/1990"
+    assert out["NgayCapDD_BenNu"]["value"] == "06/08/2022"
+    assert not out["HoTenBenNu"].get("default")
+
+
+def test_cccd_thang_to_khai_va_to_khai_chi_bu_o_the_thieu():
+    out = _by_name(enrich(_fields(
+        CccdNam_HoTen="MÈ MINH TUẤN", CccdNam_SoDinhDanh="014090014602", CccdNam_NgaySinh="01/01/1990",
+        ToKhaiNam_HoTen="Mè Minh Tuân", ToKhaiNam_SoDinhDanh="014090014602",
+        ToKhaiNam_NgaySinh="10/01/1990", ToKhaiNam_NgayCap="06/08/2022",
+    )))
+    assert out["HoTenBenNam"]["value"] == "MÈ MINH TUẤN"
+    assert out["NgaySinhBenNam"]["value"] == "01/01/1990"
+    assert out["NgayCapDD_BenNam"]["value"] == "06/08/2022"      # thẻ thiếu → tờ khai bù
+    assert not out["NgayCapDD_BenNam"].get("default")
+
+
+def test_so_to_khai_trai_han_so_the_thi_o_bu_vien_vang():
+    out = _by_name(enrich(_fields(
+        CccdNam_HoTen="MÈ MINH TUẤN", CccdNam_SoDinhDanh="014090014602",
+        ToKhaiNam_SoDinhDanh="001099000111", ToKhaiNam_NgayCap="06/08/2022",
+    )))
+    assert out["SoDinhDanh_BenNam"]["value"] == "014090014602"
+    assert out["NgayCapDD_BenNam"]["default"] is True
+
+
+def test_ten_duong_to_khai_sua_theo_the():
+    out = _by_name(enrich(_fields(
+        CccdNu_HoTen="NGUYỄN HOÀNG HẢI THANH", CccdNu_SoDinhDanh="068190007436",
+        CccdNu_NoiCuTru_TrongNuoc={"tinh": "Lâm Đồng", "xa": "Phường 1", "diaChi": "64, Nguyễn Thị Minh Khai"},
+        ToKhaiNu_NoiCuTru_TrongNuoc={"tinh": "Lâm Đồng", "xa": "Phường Xuân Hương", "diaChi": "64 Nguyễn Thế Oan Khai"},
+    )))
+    assert out["NoiCuTru_BenNu_TrongNuoc"]["value"]["diaChi"] == "64 Nguyễn Thị Minh Khai"
+
+
+def test_dan_toc_lay_tu_cot_to_khai_ngoai_danh_sach_thi_chon_khac():
+    """req_3c3718e5f110: tờ khai ghi "K'Ho" (→ Cơ Ho) và "Cill" (không có trong dropdown → Khác + ghi tay)."""
+    out = _by_name(enrich(_fields(
+        CccdNam_HoTen="BON KHÔ K THUYẾT", CccdNam_SoDinhDanh="068202002277",
+        CccdNu_HoTen="CIL MỤP KA DẠI", CccdNu_SoDinhDanh="068306010463",
+        ToKhaiNam_DanToc="K'Ho", ToKhaiNu_DanToc="Cill",
+    )))
+    assert out["DanTocBenNam"]["value"] == "Cơ Ho"
+    assert "DanTocKhacBenNam" not in out
+    assert out["DanTocBenNu"]["value"] == "Khác"
+    khac = out["DanTocKhacBenNu"]
+    assert khac["value"] == "Cill"
+    assert khac["otherOf"] == "DanTocBenNu"
+    # Thứ tự: chọn "Khác" trước rồi mới tới ô ghi tay (ô này chỉ render sau khi chọn).
+    names = list(out)
+    assert names.index("DanTocBenNu") < names.index("DanTocKhacBenNu")

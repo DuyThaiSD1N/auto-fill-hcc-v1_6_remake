@@ -491,6 +491,19 @@ function guessDivorceDecisionContainer(field) {
   return anchorInput.closest("x-select-area") || anchorInput.closest("div") || anchorInput.parentElement;
 }
 
+// Ô ghi tay đi kèm option "Khác" của một DROPDOWN (vd dân tộc "Khác" → ghi "Cill"). BE gửi
+// `otherOf` = name dropdown gốc. Tên ô ghi tay đổi theo eForm ("DanTocKhacBenNu", "DanTocBenNuKhac",
+// "DanTocBenNu_Khac"...) nên khớp theo quy tắc: bỏ chữ "khac" và gạch nối thì phải TRÙNG name dropdown.
+// Chỉ nhận ô có chữ "khac" trong name → không bao giờ ghi nhầm vào ô khác của form.
+function guessOtherTextOfSelect(field) {
+  const driverKey = String(field?.otherOf || "").toLowerCase().replace(/[_-]/g, "");
+  if (!driverKey) return null;
+  return Array.from(document.querySelectorAll("x-select-area[name], x-input[name], input[name]")).find((node) => {
+    const name = String(node.getAttribute("name") || "").toLowerCase().replace(/[_-]/g, "");
+    return name.includes("khac") && name.replace("khac", "") === driverKey;
+  }) || null;
+}
+
 async function fillForm(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
@@ -545,6 +558,28 @@ async function fillForm(fields) {
       }
       if (guessed) found = { el: guessed, usedName: f.name };
     }
+    // Ô ghi tay của option "Khác" trong dropdown (render sau khi chọn "Khác") — tìm theo dropdown gốc.
+    let compOverride = null;
+    if (!found.el && f.otherOf) {
+      let other = guessOtherTextOfSelect(f);
+      if (!other) {
+        await waitFor(() => {
+          other = guessOtherTextOfSelect(f);
+          return !!other;
+        }, 3000, 100);
+      }
+      if (other && other.tagName === "INPUT") {
+        setNativeValue(other, f.value, { typing: true, commit: true });
+        markFilled(other.parentElement || other);
+        result.filled++;
+        filledNames.add(f.name);
+        continue;
+      }
+      if (other) {
+        found = { el: other, usedName: other.getAttribute("name") || f.name };
+        if (other.tagName === "X-INPUT") compOverride = "x-input";
+      }
+    }
     const container = found.el;
     const usedName = found.usedName;
     if (!container) {
@@ -552,7 +587,8 @@ async function fillForm(fields) {
       console.warn(`[AutoFill] Không tìm thấy ${f.comp}[name="${f.name}"] (kể cả alias)`);
       continue;
     }
-    const ff = usedName === f.name ? f : { ...f, name: usedName };
+    const renamed = usedName === f.name ? f : { ...f, name: usedName };
+    const ff = compOverride ? { ...renamed, comp: compOverride } : renamed;
     try {
       const ok = await fillLegacyComponent(container, ff);
       // Việc đánh dấu xanh giờ do từng filler tự làm cho element thực sự nhận giá trị,

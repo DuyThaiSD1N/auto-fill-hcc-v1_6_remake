@@ -116,6 +116,15 @@ Section I — NGƯỜI ỦY QUYỀN (người CẦN giấy XNTTHN) → các fiel
   + Nếu thấy "Bộ Công an" → "Bộ Công an"
 - PoA_SubjectAddress  = nơi cư trú người ủy quyền ("Nơi cư trú / Địa chỉ: ..."), object {tinh, xa, diaChi}
   (áp quy tắc <noi_cu_tru> để tách tinh/xa/diaChi)
+- PoA_SubjectDanToc = dân tộc người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh")
+
+THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (nếu hồ sơ kèm; số thẻ trùng hoặc gần trùng PoA_SubjectIdNumber,
+họ tên trùng người ủy quyền) → các field PoA_SubjectCccd*, đọc từ BẢN IN trên thẻ:
+- PoA_SubjectCccdHoTen, PoA_SubjectCccdSoDinhDanh, PoA_SubjectCccdNgaySinh, PoA_SubjectCccdGioiTinh
+- PoA_SubjectCccdNgayCap, PoA_SubjectCccdNoiCap (mặt sau)
+- PoA_SubjectCccdNoiCuTru = "Nơi thường trú" in trên thẻ, object {quocGia, tinh, xa, diaChi}
+Hồ sơ có HAI thẻ (người ủy quyền + người đi nộp) thì thẻ người đi nộp vào Cccd_*, thẻ người ủy
+quyền vào PoA_SubjectCccd* — KHÔNG bỏ sót thẻ thứ hai, KHÔNG trộn hai thẻ.
 
 Section II — NGƯỜI ĐƯỢC ỦY QUYỀN (người ĐI NỘP hộ) → CCCD của người này thường được upload kèm.
 Thông tin từ CCCD upload → điền vào Cccd_* như bình thường.

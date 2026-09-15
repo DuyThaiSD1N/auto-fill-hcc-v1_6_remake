@@ -11,7 +11,7 @@ _MARRIAGE_LOAI_YEU_CAU = "Trích lục kết hôn (bản sao)/ Trích lục ghi 
 _DEATH_LOAI_YEU_CAU = "Trích lục khai tử (bản sao)"
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 
 # Luật Căn cước: dưới 14 tuổi chưa bắt buộc có thẻ căn cước. Số 12 chữ số của các em là
 # SỐ ĐỊNH DANH CÁ NHÂN, không phải số giấy tờ tùy thân.
@@ -990,9 +990,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             or values.get("TkNyc_SoGiayToTuyThan")
             or ctx.get("applicantIdentityNumber")
         )
-        ngay_cap = values.get("TkNyc_NgayCapGiayToTuyThan") or card.get("Nyc_NgayCap")
+        # Ngày cấp / nơi cấp: cùng quy tắc với họ tên — số trên tờ khai khớp số trên thẻ thì bản IN
+        # trên thẻ thắng chữ viết tay; không khớp thì tờ khai → thẻ như cũ.
+        card_same_as_tk = id_match(values.get("TkNyc_SoGiayToTuyThan"), card.get("Nyc_SoDinhDanh")) is True
+        ngay_cap = (
+            (card.get("Nyc_NgayCap") if card_same_as_tk else None)
+            or values.get("TkNyc_NgayCapGiayToTuyThan")
+            or card.get("Nyc_NgayCap")
+        )
         requester_issuer = (
-            normalize_issuer(values.get("TkNyc_NoiCapGiayToTuyThan"))
+            (normalize_issuer(card.get("Nyc_NoiCap")) if card_same_as_tk else None)
+            or normalize_issuer(values.get("TkNyc_NoiCapGiayToTuyThan"))
             or normalize_issuer(card.get("Nyc_NoiCap"))
             or default_issuer(ngay_cap)
         )
@@ -1006,7 +1014,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("NgayCapDDC", ngay_cap)
         add("NoiCapDDC", requester_issuer)
         add("NYC_LoaiCuTru", "Thường trú")
+        # Nơi cư trú: tờ khai → thẻ; tên đường viết tay sửa theo địa chỉ IN trên thẻ của chính người đó.
         area = _area(values.get("TkNyc_NoiCuTru")) or _area(card.get("Nyc_NoiCuTru"))
+        if card:
+            area = prefer_printed_street(area, _area(card.get("Nyc_NoiCuTru")))
         if area:
             add("NYC_NoiCuTru", "1")
             add("NYC_NoiCuTru_TrongNuoc", area)
@@ -1098,6 +1109,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             def _ct(name):
                 return values.get(name) if subject_card else None
 
+            # Thẻ căn cước của chính người được đăng ký khớp SỐ với tờ khai/giấy hộ tịch → ngày sinh,
+            # giới tính, ngày/nơi cấp lấy bản IN trên thẻ (cùng quy tắc với họ tên, số định danh).
+            card_same_as_record = id_match(
+                _ct("ChuThe_SoDinhDanh"),
+                values.get("HoTich_SoDinhDanh") or values.get("HoTich_SoGiayToTuyThan"),
+            ) is True
+
+            def _ct_same(name):
+                return _ct(name) if card_same_as_record else None
+
             # Tên người được đăng ký: THẺ CĂN CƯỚC của chính họ thắng tờ khai/giấy hộ tịch khi số
             # định danh hai bên khớp nhau — cùng người thì bản IN đáng tin hơn bản viết tay, và đó
             # mới là tên cổng đối chiếu với CSDLQG về dân cư. Khác số thì giữ nguyên thứ tự cũ.
@@ -1116,13 +1137,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             )
             add(
                 "NDK_NgaySinh",
-                values.get("HoTich_NgaySinh")
+                _ct_same("ChuThe_NgaySinh")
+                or values.get("HoTich_NgaySinh")
                 or values.get("NguoiDuocCap_NgaySinh")
                 or _ct("ChuThe_NgaySinh"),
             )
             add(
                 "NDK_GioiTinh",
-                values.get("HoTich_GioiTinh")
+                _ct_same("ChuThe_GioiTinh")
+                or values.get("HoTich_GioiTinh")
                 or values.get("NguoiDuocCap_GioiTinh")
                 or _ct("ChuThe_GioiTinh")
                 or ("Nam" if event_type == "marriage" else None),
@@ -1198,7 +1221,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # DANH CÁ NHÂN (đã điền ở trên), KHÔNG phải số giấy tờ tùy thân → bỏ trống cả cụm
             # giấy tờ tùy thân. Em nào đã có thẻ thật và nộp kèm (ChuThe_*) thì vẫn điền bình thường.
             ndk_ngay_sinh = (
-                values.get("HoTich_NgaySinh")
+                _ct_same("ChuThe_NgaySinh")
+                or values.get("HoTich_NgaySinh")
                 or values.get("NguoiDuocCap_NgaySinh")
                 or _ct("ChuThe_NgaySinh")
             )
@@ -1221,11 +1245,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 )
 
                 # Ngày cấp: Ưu tiên tờ khai trước
-                ndk_ngaycap = ht_ngay or ct_ngay
+                # Ngày/nơi cấp: thẻ khớp số thì bản IN thắng; không thì tờ khai/giấy hộ tịch trước.
+                ndk_ngaycap = ((ct_ngay if card_same_as_record else None) or ht_ngay or ct_ngay)
                 add("NDK_NgayCap", ndk_ngaycap)
 
                 # Nơi cấp: Ưu tiên tờ khai trước
-                ndk_noicap = normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
+                ndk_noicap = (
+                    (normalize_issuer(ct_noi) if card_same_as_record else None)
+                    or normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
+                )
                 if not ndk_noicap and ndk_ngaycap:
                     ndk_noicap = default_issuer(ndk_ngaycap)
                 add("NDK_NoiCap", ndk_noicap)
@@ -1251,6 +1279,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Kiểm tra nếu đã có fallback từ Nyc_* (ct_so mà không phải từ ChuThe_*)
                 if ct_so and not _ct("ChuThe_SoDinhDanh"):
                     ndk_area = _area(values.get("Nyc_NoiCuTru"))
+            if card_same_as_record:
+                ndk_area = prefer_printed_street(ndk_area, _area(_ct("ChuThe_NoiCuTru")))
             if ndk_area:
                 add("NDK_NoiCuTru", "1")
                 add("NDK_NoiCuTru_TrongNuoc", ndk_area)

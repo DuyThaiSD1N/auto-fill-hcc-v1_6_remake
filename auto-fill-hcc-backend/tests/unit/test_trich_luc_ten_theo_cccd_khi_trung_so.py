@@ -112,3 +112,59 @@ def test_muc_ii_khong_co_so_thi_giu_thu_tu_cu():
         ChuThe_SoDinhDanh="036301012326",
     )
     assert out["NDK_HoVaTen"] == "LE VAN BINH"
+
+
+# --------------------------------------------------------------------------------------
+# Ngày sinh / giới tính / ngày-nơi cấp / tên đường cũng theo thẻ khi trùng số
+# --------------------------------------------------------------------------------------
+
+def test_muc_i_trung_so_thi_ngay_noi_cap_theo_the_va_sua_ten_duong():
+    out = _run(
+        TkNyc_HoTen="NGUYEN THI HOA",
+        TkNyc_SoGiayToTuyThan="036301012326",
+        TkNyc_NgayCapGiayToTuyThan="01/09/2022",   # OCR tờ khai sai
+        TkNyc_NoiCuTru={"tinh": "Lâm Đồng", "xa": "Phường Xuân Hương", "diaChi": "64 Nguyễn Thế Oan Khai"},
+        Nyc_HoTen="NGUYỄN THỊ HOÀ",
+        Nyc_SoDinhDanh="036301012326",
+        Nyc_NgayCap="06/08/2022",
+        Nyc_NoiCuTru={"tinh": "Lâm Đồng", "xa": "Phường 1", "diaChi": "64, Nguyễn Thị Minh Khai"},
+        HoTich_LoaiSuKien="birth",
+        HoTich_HoTenNguoiDuocDangKy="TRẦN MINH KHOA",
+        HoTich_SoDinhDanh="001210004567",
+    )
+    assert out["NgayCapDDC"] == "06/08/2022"
+    assert out["NYC_NoiCuTru_TrongNuoc"]["diaChi"] == "64 Nguyễn Thị Minh Khai"
+
+
+def test_muc_i_khac_so_thi_ngay_cap_giu_to_khai():
+    out = _run(
+        TkNyc_HoTen="TRẦN VĂN NAM",
+        TkNyc_SoGiayToTuyThan="001099000111",
+        TkNyc_NgayCapGiayToTuyThan="01/09/2022",
+        Nyc_HoTen="NGUYỄN THỊ HOÀ",
+        Nyc_SoDinhDanh="036301012326",
+        Nyc_NgayCap="06/08/2022",
+        HoTich_LoaiSuKien="birth",
+        HoTich_HoTenNguoiDuocDangKy="TRẦN MINH KHOA",
+        HoTich_SoDinhDanh="001210004567",
+    )
+    assert out["NgayCapDDC"] == "01/09/2022"
+
+
+def test_muc_ii_trung_so_thi_ngay_sinh_gioi_tinh_ngay_cap_theo_the():
+    out = _run(
+        HoTich_LoaiSuKien="marriage",
+        HoTich_HoTenNguoiDuocDangKy="LE VAN BINH",
+        HoTich_SoDinhDanh="036301012326",
+        HoTich_NgaySinh="12/03/2001",              # OCR giấy hộ tịch sai
+        HoTich_GioiTinh="Nữ",
+        HoTich_NgayCapGiayToTuyThan="01/01/2020",
+        ChuThe_HoTen="LÊ VĂN BÌNH",
+        ChuThe_SoDinhDanh="036301012326",
+        ChuThe_NgaySinh="21/03/2001",
+        ChuThe_GioiTinh="Nam",
+        ChuThe_NgayCap="06/08/2022",
+    )
+    assert out["NDK_NgaySinh"] == "21/03/2001"
+    assert out["NDK_GioiTinh"] == "Nam"
+    assert out["NDK_NgayCap"] == "06/08/2022"

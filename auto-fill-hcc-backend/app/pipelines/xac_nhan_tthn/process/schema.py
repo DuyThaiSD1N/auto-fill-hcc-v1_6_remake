@@ -151,13 +151,35 @@ FIELDS: list[dict] = [
      "desc": "Nơi cấp CCCD/CMND của người ủy quyền (Section I giấy ủy quyền)."},
     {"name": "PoA_SubjectAddress",
      "desc": "Nơi cư trú của người ủy quyền (Section I giấy ủy quyền), object {tinh, xa, diaChi}."},
+    {"name": "PoA_SubjectDanToc",
+     "desc": 'Dân tộc của người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh").'},
+    # --- THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (nếu hồ sơ kèm) — bản IN, ưu tiên hơn giấy ủy quyền/tờ khai ---
+    {"name": "PoA_SubjectCccdHoTen",
+     "desc": "Họ tên IN trên THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (thẻ có số trùng/gần trùng PoA_SubjectIdNumber). "
+             "KHÔNG lấy thẻ của người đi nộp (thẻ đó thuộc Cccd_*)."},
+    {"name": "PoA_SubjectCccdSoDinhDanh",
+     "desc": "Số định danh IN trên thẻ CCCD/CMND của người ủy quyền; có thể đọc từ MRZ mặt sau."},
+    {"name": "PoA_SubjectCccdNgaySinh",
+     "desc": "Ngày sinh IN trên thẻ CCCD/CMND của người ủy quyền, dd/mm/yyyy."},
+    {"name": "PoA_SubjectCccdGioiTinh",
+     "desc": 'Giới tính IN trên thẻ CCCD/CMND của người ủy quyền: "Nam" hoặc "Nữ".'},
+    {"name": "PoA_SubjectCccdNgayCap",
+     "desc": "Ngày cấp trên thẻ CCCD/CMND của người ủy quyền (mặt sau), dd/mm/yyyy."},
+    {"name": "PoA_SubjectCccdNoiCap",
+     "desc": 'Nơi cấp thẻ CCCD/CMND của người ủy quyền (mặt sau). "CỤC TRƯỞNG CỤC CẢNH SÁT..." → '
+             '"Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
+    {"name": "PoA_SubjectCccdNoiCuTru",
+     "desc": 'Nơi thường trú IN trên THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (thẻ có số trùng PoA_SubjectIdNumber) '
+             'nếu hồ sơ có kèm thẻ đó, object {quocGia,tinh,xa,diaChi}. KHÔNG lấy từ giấy ủy quyền, '
+             'KHÔNG lấy thẻ của người đi nộp (thẻ đó thuộc Cccd_*).'},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgaySinh", "ToKhaiYeuCau_NgayCapGiayTo", "Gks_NgaySinh"):
+for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate",
+              "PoA_SubjectCccdNgaySinh", "PoA_SubjectCccdNgayCap", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgaySinh", "ToKhaiYeuCau_NgayCapGiayTo", "Gks_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
@@ -168,6 +190,7 @@ COMPACT_COMP_BY_NAME["ToKhai_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["ToKhaiYeuCau_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["Cccd_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["PoA_SubjectAddress"] = "x-select-area"
+COMPACT_COMP_BY_NAME["PoA_SubjectCccdNoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["TinhTrangHonNhanC1"] = "x-select"
 
 UI_COMP_BY_NAME = {

@@ -261,3 +261,37 @@ def normalize_ethnic(value: str | None) -> str:
         return raw
     key = _fold(raw)
     return _ETHNIC_MAP.get(key, raw)
+
+
+# 54 dân tộc có trong dropdown eForm hộ tịch (khóa đã bỏ dấu, lowercase). Cùng danh sách với
+# trich_luc/process/mapper.py (_FORM_ETHNICITIES). Ngoài danh sách thì phải chọn "Khác" + ghi nguyên văn.
+FORM_ETHNICITIES = frozenset({
+    "ba na", "bo y", "brau", "bru-van kieu", "cham", "cho ro", "chu ru", "chut", "co", "co ho",
+    "co lao", "co tu", "cong", "dao", "e de", "gia rai", "giay", "gie trieng", "ha nhi", "hoa",
+    "hre", "khang", "khmer", "kho mu", "kinh", "la chi", "la ha", "la hu", "lao", "lo lo", "lu",
+    "ma", "mang", "mnong", "mong", "mong (hmong)", "muong", "ngai", "nung", "o du", "pa then",
+    "phu la", "pu peo", "ra glai", "ro mam", "san chay", "san diu", "si la", "ta oi", "tay",
+    "thai", "tho", "xo dang", "xtieng",
+})
+
+
+def _fold_option(text: str) -> str:
+    t = unicodedata.normalize("NFD", str(text or ""))
+    t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", t.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+def ethnicity_for_form(value: str | None) -> tuple[str, str]:
+    """(giá trị dropdown, chữ ghi vào ô "Khác").
+
+    Chuẩn hóa biến thể trước (K'Ho → Cơ Ho, H'Mông → Mông (Hmông)). Tên KHÔNG có trong dropdown
+    (vd nhóm địa phương "Cill") thì chọn "Khác" và ghi NGUYÊN VĂN chữ trên giấy — không ép sang một
+    dân tộc chuẩn mà giấy tờ không ghi.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return "", ""
+    normalized = normalize_ethnic(raw)
+    if _fold_option(normalized) in FORM_ETHNICITIES:
+        return normalized, ""
+    return "Khác", raw

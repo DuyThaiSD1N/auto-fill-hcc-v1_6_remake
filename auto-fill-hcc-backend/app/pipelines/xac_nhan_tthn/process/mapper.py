@@ -7,7 +7,7 @@ from app.pipelines.xac_nhan_tthn.process.schema import UI_ALIASES, UI_COMP_BY_NA
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 
 _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
 _DIVORCED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai"
@@ -152,6 +152,31 @@ def _id_match(left, right) -> bool | None:
     return True if _is_ocr_slip_of_card(left_digits, right_digits) else False
 
 
+def _is_one_digit_misread(left, right) -> bool:
+    """Hai số 12 chữ số chỉ lệch ĐÚNG MỘT vị trí — dấu hiệu OCR đọc nhầm một chữ số viết tay.
+
+    Cố ý KHÔNG gộp vào `_id_match`: ở đó đọc nhầm chữ số vẫn tính là khác người (quyết định quan
+    hệ, mượn tên). Hàm này chỉ dùng kèm một bằng chứng độc lập khác (năm sinh / họ) ở chỗ gọi.
+    """
+    left_digits, right_digits = _digits(left), _digits(right)
+    if len(left_digits) != _CCCD_LEN or len(right_digits) != _CCCD_LEN:
+        return False
+    return sum(a != b for a, b in zip(left_digits, right_digits)) == 1
+
+
+def _birth_year(value) -> int | None:
+    key = _date_key(value)
+    if key:
+        return key[0]
+    match = re.search(r"\b(19|20)\d{2}\b", str(value or ""))
+    return int(match.group(0)) if match else None
+
+
+def _family_name(value) -> str:
+    parts = _fold(value).split()
+    return parts[0] if parts else ""
+
+
 def _name_match(left, right) -> bool | None:
     """Hai họ tên có trùng không (bỏ dấu, gộp khoảng trắng); thiếu một bên → None."""
     left_name, right_name = _fold(left), _fold(right)
@@ -168,7 +193,51 @@ def _is_foreign_area(area) -> bool:
     return bool(quoc_gia) and quoc_gia not in ("viet nam", "vietnam", "vn")
 
 
-def _add_residence(add, prefix: str, area) -> None:
+def _poa_subject_card(values: dict) -> dict:
+    """Thẻ căn cước CỦA NGƯỜI ỦY QUYỀN (người cần giấy), gom từ PoA_SubjectCccd* hoặc Cccd_*.
+
+    Chỉ nhận thẻ khi số trên thẻ khớp số trên giấy ủy quyền (trùng hẳn, hoặc OCR rơi/đọc nhầm một
+    chữ số), hoặc giấy ủy quyền không ghi số. Số khác hẳn = thẻ của người khác → bỏ, không ghép
+    nhân thân hai người.
+    """
+    poa_id = values.get("PoA_SubjectIdNumber")
+
+    def belongs(card_id) -> bool:
+        if not _digits(card_id):
+            return False
+        if not _digits(poa_id):
+            return True
+        return _id_match(card_id, poa_id) is True or _is_one_digit_misread(card_id, poa_id)
+
+    if values.get("PoA_SubjectCccdSoDinhDanh") and belongs(values.get("PoA_SubjectCccdSoDinhDanh")):
+        return {
+            "HoTen": values.get("PoA_SubjectCccdHoTen"),
+            "SoDinhDanh": values.get("PoA_SubjectCccdSoDinhDanh"),
+            "NgaySinh": values.get("PoA_SubjectCccdNgaySinh"),
+            "GioiTinh": values.get("PoA_SubjectCccdGioiTinh"),
+            "NgayCap": values.get("PoA_SubjectCccdNgayCap"),
+            "NoiCap": values.get("PoA_SubjectCccdNoiCap") or (
+                default_issuer(values.get("PoA_SubjectCccdNgayCap"))
+                if values.get("PoA_SubjectCccdNgayCap") else None),
+            "NoiCuTru": _area(values.get("PoA_SubjectCccdNoiCuTru")),
+        }
+    # Agent đôi khi đặt thẻ người ủy quyền vào Cccd_* (vd hồ sơ chỉ kèm đúng một thẻ): số trùng hẳn
+    # số trên giấy ủy quyền mới nhận — thẻ người đi nộp cũng nằm ở Cccd_*.
+    if _digits(poa_id) and _id_match(values.get("Cccd_SoDinhDanh"), poa_id) is True:
+        return {
+            "HoTen": values.get("Cccd_HoTen"),
+            "SoDinhDanh": values.get("Cccd_SoDinhDanh"),
+            "NgaySinh": values.get("Cccd_NgaySinh"),
+            "GioiTinh": values.get("Cccd_GioiTinh"),
+            "NgayCap": values.get("Cccd_NgayCap"),
+            "NoiCap": values.get("Cccd_NoiCap"),
+            "NoiCuTru": _area(values.get("Cccd_NoiCuTru")),
+        }
+    # Không có thẻ người ủy quyền: vẫn dùng địa chỉ in trên thẻ nếu agent chỉ trả riêng field đó.
+    return {"NoiCuTru": _area(values.get("PoA_SubjectCccdNoiCuTru"))}
+
+
+def _add_residence(add, prefix: str, area, default: bool = False) -> None:
     """Phat muc "Noi cu tru" cho mot nguoi (prefix = nyc / nxn).
 
     Dia chi o NUOC NGOAI phai tick "Khac" (radio "2") roi dien vao o nhap tu do, KHONG tick
@@ -185,10 +254,11 @@ def _add_residence(add, prefix: str, area) -> None:
         full_addr = ", ".join(
             part for part in (area.get("diaChi"), area.get("xa"), area.get("tinh")) if part
         )
-        add(f"{prefix}NoiCuTru_NuocNgoai", {"quocGia": area.get("quocGia"), "diaChi": full_addr})
+        add(f"{prefix}NoiCuTru_NuocNgoai", {"quocGia": area.get("quocGia"), "diaChi": full_addr},
+            default=default)
         return
     add(f"{prefix}NoiCuTru", "1")
-    add(f"{prefix}NoiCuTru_TrongNuoc", area)
+    add(f"{prefix}NoiCuTru_TrongNuoc", area, default=default)
 
 
 def _card_name_when_same_person(values: dict, khai_sdd, khai_ten=None) -> str | None:
@@ -209,6 +279,17 @@ def _card_name_when_same_person(values: dict, khai_sdd, khai_ten=None) -> str | 
     if _id_match(khai_sdd, values.get("Cccd_SoDinhDanh")) is not True:
         return None
     return values.get("Cccd_HoTen") or None
+
+
+def _card_value_when_same_person(values: dict, khai_sdd, card_field: str):
+    """Giá trị IN trên thẻ (ngày sinh, giới tính…) khi số định danh tờ khai trùng số trên thẻ.
+
+    Cùng căn cứ với `_card_name_when_same_person`: chữ viết tay hay bị OCR đọc sai ("02/05" →
+    "21/05"), còn thẻ là bản in đúng CSDLQG. Không trùng số → None, caller giữ thứ tự nguồn cũ.
+    """
+    if _id_match(khai_sdd, values.get("Cccd_SoDinhDanh")) is not True:
+        return None
+    return values.get(card_field) or None
 
 
 def _card_id_when_id_matches(values: dict, khai_sdd):
@@ -492,7 +573,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     req_noi_cap = values.get("ToKhaiYeuCau_NoiCapGiayTo")
                 add("HoVaTenC", upper_person_name(
                     _card_name_when_same_person(values, req_id, tk_req_name) or tk_req_name))
-                add("NgaySinhC", values.get("ToKhaiYeuCau_NgaySinh"))
+                add("NgaySinhC",
+                    _card_value_when_same_person(values, req_id, "Cccd_NgaySinh")
+                    or values.get("ToKhaiYeuCau_NgaySinh"))
                 req_id = _card_id_when_id_matches(values, req_id)
                 add("SoDinhDanhC", req_id)
                 if req_id:
@@ -553,7 +636,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 else:
                     tokhai_ns = None
                 cccd_ns = (
-                    values.get("ToKhaiYeuCau_NgaySinh")
+                    _card_value_when_same_person(values, req_sdd, "Cccd_NgaySinh")
+                    or values.get("ToKhaiYeuCau_NgaySinh")
                     or tokhai_ns
                     or card.get("Cccd_NgaySinh")
                 )
@@ -609,7 +693,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if has_poa:
             # ỦY QUYỀN: Mục II = người ủy quyền (người CẦN giấy) từ giấy ủy quyền
             poa_issuer = values.get("PoA_SubjectIssuer") or default_issuer(values.get("PoA_SubjectIdDate"))
-            poa_residence = _area(values.get("PoA_SubjectAddress"))
             # Giay uy quyen chi ghi VAN TAT (ten, nam sinh, so CCCD). To khai lai mo ta DAY DU
             # chinh nguoi uy quyen -> cung mot nguoi thi lay them ngay sinh du ngay/thang, gioi
             # tinh, dan toc tu do. Bo qua la muc II trong 3 o ma can bo phai go tay.
@@ -619,33 +702,78 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # so the can cuoc la sai giay to ma nhin van hop le.
             _tk_id = _digits(values.get("ToKhai_SoDinhDanh"))
             _poa_id = _digits(values.get("PoA_SubjectIdNumber"))
+            # Tờ khai viết tay: OCR hay đọc nhầm MỘT chữ số CCCD ("…3446" → "…3466") và cả tên
+            # ("Phạm Minh Kha" → "Phạm Nhung Khae"). Lệch đúng một chữ số chỉ được coi là cùng người
+            # khi có thêm bằng chứng độc lập: cùng năm sinh hoặc cùng họ.
+            _tk_year = _birth_year(values.get("ToKhai_NgaySinh"))
+            _poa_year = _birth_year(values.get("PoA_SubjectDoB"))
+            tk_misread_poa_id = _is_one_digit_misread(_tk_id, _poa_id) and bool(
+                (_tk_year and _poa_year and _tk_year == _poa_year)
+                or (_family_name(values.get("ToKhai_HoTen"))
+                    and _family_name(values.get("ToKhai_HoTen")) == _family_name(poa_subject_name))
+            )
             tk_is_poa_subject = bool(
                 (_fold(values.get("ToKhai_HoTen"))
                  and _fold(values.get("ToKhai_HoTen")) == _fold(poa_subject_name))
                 or (_tk_id and _poa_id and _tk_id == _poa_id)
+                or tk_misread_poa_id
             )
+
+            card = _poa_subject_card(values)
 
             def _tk(name):
                 return values.get(name) if tk_is_poa_subject else None
 
-            # Ten: the can cuoc THANG khi so dinh danh trung so tren giay uy quyen (ban IN
-            # dang tin hon ban viet tay, va dung ten CSDLQG se doi chieu).
+            def add_with_declaration_fallback(ui_name, primary, declared_name) -> None:
+                """Nguồn chắc chắn (thẻ / giấy ủy quyền) trước; thiếu thì lấy TỜ KHAI.
+
+                Tờ khai mục II vốn chính là người cần giấy, nên "không khớp" gần như luôn là OCR đọc sai
+                chữ viết tay. Vẫn điền để cán bộ khỏi gõ tay, nhưng chưa xác nhận được cùng người thì
+                đánh dấu default → extension tô viền vàng để soát lại.
+                """
+                if primary:
+                    add(ui_name, primary)
+                    return
+                declared = values.get(declared_name)
+                add(ui_name, declared, default=not tk_is_poa_subject)
+
+            # Họ tên / số / ngày cấp / nơi cấp / giới tính: THẺ CĂN CƯỚC của người ủy quyền (bản IN,
+            # đúng dữ liệu CSDLQG đối chiếu) → giấy ủy quyền → tờ khai.
             add("HoVaTenC1", upper_person_name(
-                _card_name_when_same_person(
+                card.get("HoTen")
+                or _card_name_when_same_person(
                     values, values.get("PoA_SubjectIdNumber"), poa_subject_name)
                 or poa_subject_name))
-            # Giay uy quyen thuong chi ghi NAM sinh; to khai co du ngay/thang -> uu tien to khai.
-            add("NgaySinhC1", _tk("ToKhai_NgaySinh") or values.get("PoA_SubjectDoB"))
-            add("GioiTinhC1", values.get("PoA_SubjectGender") or _tk("ToKhai_GioiTinh"))
-            add("DanTocC1", _tk("ToKhai_DanToc"))
+            # Giấy ủy quyền thường chỉ ghi NĂM sinh; tờ khai (cùng người) có đủ ngày/tháng.
+            add_with_declaration_fallback(
+                "NgaySinhC1",
+                card.get("NgaySinh") or _tk("ToKhai_NgaySinh") or values.get("PoA_SubjectDoB"),
+                "ToKhai_NgaySinh",
+            )
+            add_with_declaration_fallback(
+                "GioiTinhC1", card.get("GioiTinh") or values.get("PoA_SubjectGender"), "ToKhai_GioiTinh")
+            add_with_declaration_fallback(
+                "DanTocC1", _tk("ToKhai_DanToc") or values.get("PoA_SubjectDanToc"), "ToKhai_DanToc")
             add("QuocTichC1", "Việt Nam")
-            add("SoDinhDanhC1", values.get("PoA_SubjectIdNumber"))
-            add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", poa_issuer))
-            add("SoGiayToTuyThanC1", values.get("PoA_SubjectIdNumber"))
-            add("NgayCapDDC1", values.get("PoA_SubjectIdDate"))
-            add("NoiCapDDC1", poa_issuer)
+            subject_id = card.get("SoDinhDanh") or values.get("PoA_SubjectIdNumber")
+            subject_issuer = card.get("NoiCap") or poa_issuer
+            add("SoDinhDanhC1", subject_id)
+            add("LoaiGiayToDinhDanhC1", id_doc_type("Thẻ căn cước công dân", subject_issuer))
+            add("SoGiayToTuyThanC1", subject_id)
+            add("NgayCapDDC1", card.get("NgayCap") or values.get("PoA_SubjectIdDate"))
+            add("NoiCapDDC1", subject_issuer)
             add("nxnLoaiCuTru", "Thường trú")
-            _add_residence(add, "nxn", poa_residence)
+            # Nơi cư trú: TỜ KHAI (đúng mẫu đang điền) thắng "chỗ ở hiện tại" trên giấy ủy quyền — giấy
+            # ủy quyền hay ghi nơi tạm trú lúc ký (vd người ở TP HCM ủy quyền về Đà Lạt), không phải nơi
+            # cư trú khai cho giấy XNTTHN, và thường khác tỉnh nên tỉnh/xã không khớp option. Chưa chắc
+            # cùng người thì vẫn lấy tờ khai nhưng viền vàng.
+            declared_residence = _area(values.get("ToKhai_NoiCuTru"))
+            poa_residence = declared_residence or _area(values.get("PoA_SubjectAddress"))
+            poa_residence = prefer_printed_street(poa_residence, card.get("NoiCuTru"))
+            _add_residence(
+                add, "nxn", poa_residence,
+                default=bool(declared_residence) and not tk_is_poa_subject,
+            )
         else:
             # BẢN THÂN hoặc CCCD-MISMATCH: Mục II = người trên tờ khai (ưu tiên) hoặc CCCD upload
             # Ưu tiên: ToKhai_* → Cccd_* (từng field riêng lẻ)
@@ -656,8 +784,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 _card_name_when_same_person(
                     values, values.get("ToKhai_SoDinhDanh"), values.get("ToKhai_HoTen"))
                 or values.get("ToKhai_HoTen") or values.get("Cccd_HoTen") or values.get("Gks_HoTen")))
-            add("NgaySinhC1", values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh") or values.get("Gks_NgaySinh"))
-            add("GioiTinhC1", values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh") or values.get("Gks_GioiTinh"))
+            # Ngày sinh + giới tính: cùng quy tắc với họ tên — thẻ căn cước trùng số với tờ khai thì lấy
+            # bản IN trên thẻ; không trùng số thì giữ thứ tự tờ khai → thẻ → giấy khai sinh.
+            tk_sdd = values.get("ToKhai_SoDinhDanh")
+            card_is_subject = _id_match(tk_sdd, values.get("Cccd_SoDinhDanh")) is True
+            add("NgaySinhC1",
+                _card_value_when_same_person(values, tk_sdd, "Cccd_NgaySinh")
+                or values.get("ToKhai_NgaySinh") or values.get("Cccd_NgaySinh") or values.get("Gks_NgaySinh"))
+            add("GioiTinhC1",
+                _card_value_when_same_person(values, tk_sdd, "Cccd_GioiTinh")
+                or values.get("ToKhai_GioiTinh") or values.get("Cccd_GioiTinh") or values.get("Gks_GioiTinh"))
             # Thẻ căn cước mẫu mới không in dân tộc — giấy khai sinh thường là nguồn DUY NHẤT.
             add("DanTocC1", values.get("ToKhai_DanToc") or values.get("Cccd_DanToc") or values.get("Gks_DanToc"))
             add("QuocTichC1", values.get("ToKhai_QuocTich") or values.get("Gks_QuocTich") or nationality)
@@ -674,6 +810,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("NgayCapDDC1", ngay_cap)
             add("NoiCapDDC1", noi_cap)
             add("nxnLoaiCuTru", "Thường trú")
+            # Thẻ căn cước trong hồ sơ là của CHÍNH người được cấp (trùng số) → sửa tên đường đọc sai
+            # từ chữ viết tay theo bản in trên thẻ.
+            if card_is_subject:
+                residence = prefer_printed_street(residence, _area(values.get("Cccd_NoiCuTru")))
             _add_residence(add, "nxn", residence)
 
     # =========================================================

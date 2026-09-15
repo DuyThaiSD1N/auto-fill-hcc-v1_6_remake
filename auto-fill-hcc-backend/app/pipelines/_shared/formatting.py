@@ -1,4 +1,5 @@
 """Helper dùng chung cho mapping OCR → fields."""
+import difflib
 import re
 import unicodedata
 
@@ -119,3 +120,45 @@ def parse_death_time(time: str | None) -> dict:
 
 def area_value(tinh: str | None, dia_chi: str | None, quoc_gia: str = "Việt Nam") -> dict:
     return {"quocGia": quoc_gia, "tinh": tinh or "", "diaChi": dia_chi or ""}
+
+
+def _fold_street(value) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+_HOUSE_NUMBER_RE = re.compile(r"^\s*(?:số\s+|so\s+)?([0-9]+[a-z]?(?:/[0-9a-z]+)*)[\s,]+(.+)$", re.IGNORECASE)
+_STREET_SIMILARITY_MIN = 0.7
+
+
+def _split_house_number(address) -> tuple[str, str] | None:
+    match = _HOUSE_NUMBER_RE.match(str(address or ""))
+    if not match:
+        return None
+    return match.group(1).lower(), match.group(2).strip(" ,")
+
+
+def prefer_printed_street(area, card_area):
+    """Địa chỉ viết tay trên tờ khai hay bị OCR đọc sai tên đường ("Nguyễn Thị Minh Khai" →
+    "Nguyễn Thế Oan Khai"). Thẻ căn cước CỦA CHÍNH NGƯỜI ĐÓ in cùng địa chỉ → lấy tên đường in.
+
+    Chỉ thay khi chắc là CÙNG một địa chỉ: cùng số nhà, cùng tỉnh, tên đường giống nhau ≥ 70%.
+    Giữ nguyên tỉnh/xã của tờ khai (thẻ cũ còn in đơn vị hành chính trước sáp nhập, vd "P1").
+    """
+    if not isinstance(area, dict) or not isinstance(card_area, dict):
+        return area
+    declared = _split_house_number(area.get("diaChi"))
+    printed = _split_house_number(card_area.get("diaChi"))
+    if not declared or not printed or declared[0] != printed[0]:
+        return area
+    card_tinh = _fold_street(card_area.get("tinh")).replace("tinh ", "").replace("thanh pho ", "")
+    area_tinh = _fold_street(area.get("tinh")).replace("tinh ", "").replace("thanh pho ", "")
+    if card_tinh and area_tinh and card_tinh != area_tinh:
+        return area
+    if declared[1] == printed[1]:
+        return area
+    ratio = difflib.SequenceMatcher(None, _fold_street(declared[1]), _fold_street(printed[1])).ratio()
+    if ratio < _STREET_SIMILARITY_MIN:
+        return area
+    return {**area, "diaChi": f"{declared[0]} {printed[1]}"}

@@ -23,6 +23,12 @@ NGUỒN DỮ LIỆU:
   + Thẻ CĂN CƯỚC CÔNG DÂN gắn chip cũ: nếu thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ
     XÃ HỘI" -> trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".
   + TUYỆT ĐỐI không mặc định "Cục Cảnh sát..." cho thẻ Căn cước mới do Bộ Công an cấp.
+- NHÂN THÂN TRÊN TỜ KHAI (ToKhaiNam_* / ToKhaiNu_*: HoTen, NgaySinh, SoDinhDanh, NgayCap, NoiCap, DanToc):
+  + ToKhaiNam_DanToc / ToKhaiNu_DanToc: hàng "Dân tộc" ở đúng cột, chép NGUYÊN VĂN kể cả khi là tên nhóm
+    địa phương lạ (K'Ho, Cil, Chil, Xrê...) — KHÔNG bỏ field chỉ vì không chắc là tên dân tộc chuẩn.
+  + CHỈ lấy ở đúng cột Bên nam/Bên nữ của TỜ KHAI ĐĂNG KÝ KẾT HÔN; KHÔNG chép từ CCCD sang.
+  + Có tờ khai thì BẮT BUỘC trả, KỂ CẢ khi đã có CCCD: mapper ưu tiên CCCD (bản in), tờ khai chỉ bù
+    phần thẻ thiếu (vd hồ sơ thiếu CCCD một bên, hoặc chỉ có mặt trước nên thiếu ngày/nơi cấp).
 - NGUỒN NƠI CƯ TRÚ — PHẢI TRÍCH RIÊNG TỪNG NGUỒN, KHÔNG TỰ CHỌN NGUỒN:
   + ToKhaiNam_NoiCuTru_TrongNuoc / ToKhaiNu_NoiCuTru_TrongNuoc CHỈ lấy từ hàng "Nơi cư trú" ở đúng
     cột Bên nam/Bên nữ của TỜ KHAI ĐĂNG KÝ KẾT HÔN. Đối chiếu đúng cột theo tiêu đề, họ tên và/hoặc số định danh.

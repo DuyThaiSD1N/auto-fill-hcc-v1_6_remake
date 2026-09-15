@@ -92,3 +92,19 @@ def test_cap_tinh_khac_van_go_duoc_nhap_nhang():
     """Tân Hà (Bình Thuận cũ) có ở cả huyện Hàm Tân và huyện Đức Linh, về hai xã mới khác nhau."""
     assert _remap("Tân Hà", "Hàm Tân", tinh="Bình Thuận", dia="")["xa"] == "Xã Hàm Tân"
     assert _remap("Tân Hà", "Đức Linh", tinh="Bình Thuận", dia="")["xa"] == "Xã Trà Tân"
+
+
+# --- Thôn/tổ bị đặt nhầm vào ô xã, tên xã thật nằm ở gợi ý cấp huyện (req_3c3718e5f110) ---
+
+def test_thon_trong_o_xa_tra_ve_dia_chi_va_lay_xa_tu_goi_y_huyen():
+    out = remap_area({"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "huyen": "Đơn Dương",
+                      "xa": "Thôn M’Lọn", "diaChi": ""})
+    assert out["xa"] == "Xã Đơn Dương"
+    assert out["diaChi"] == "Thôn M’Lọn"
+    assert "huyen" not in out
+
+
+def test_thon_trong_o_xa_khong_co_goi_y_thi_de_trong_xa_nhung_giu_dia_chi():
+    out = remap_area({"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Tổ dân phố 5", "diaChi": "12 Lê Lợi"})
+    assert out["xa"] == ""
+    assert "Tổ dân phố 5" in out["diaChi"] and "12 Lê Lợi" in out["diaChi"]

@@ -88,6 +88,35 @@ FIELDS: list[dict] = [
              "tình trạng hôn nhân, giấy phép lái xe hoặc giấy tờ phụ. tinh chỉ chứa tên tỉnh/thành phố đầy đủ; "
              "xa phải mở rộng P/P. thành Phường, X/X. thành Xã, TT/TT. thành Thị trấn."},
 
+    # Nhân thân ghi ở cột BÊN NAM của TỜ KHAI — CHỈ là nguồn DỰ PHÒNG khi thiếu CCCD/không đọc được trên thẻ.
+    {"name": "ToKhaiNam_HoTen",
+     "desc": "Họ tên ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
+    {"name": "ToKhaiNam_NgaySinh",
+     "desc": "Ngày sinh ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN, dd/mm/yyyy."},
+    {"name": "ToKhaiNam_SoDinhDanh",
+     "desc": "Số định danh/giấy tờ tùy thân ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN."},
+    {"name": "ToKhaiNam_NgayCap",
+     "desc": "Ngày cấp giấy tờ tùy thân ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN, dd/mm/yyyy."},
+    {"name": "ToKhaiNam_NoiCap",
+     "desc": "Nơi cấp giấy tờ tùy thân ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN."},
+    # Nhân thân ghi ở cột BÊN NỮ của TỜ KHAI — CHỈ là nguồn DỰ PHÒNG khi thiếu CCCD/không đọc được trên thẻ.
+    {"name": "ToKhaiNu_HoTen",
+     "desc": "Họ tên ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
+    {"name": "ToKhaiNu_NgaySinh",
+     "desc": "Ngày sinh ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN, dd/mm/yyyy."},
+    {"name": "ToKhaiNu_SoDinhDanh",
+     "desc": "Số định danh/giấy tờ tùy thân ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN."},
+    {"name": "ToKhaiNu_NgayCap",
+     "desc": "Ngày cấp giấy tờ tùy thân ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN, dd/mm/yyyy."},
+    {"name": "ToKhaiNu_NoiCap",
+     "desc": "Nơi cấp giấy tờ tùy thân ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN."},
+    {"name": "ToKhaiNam_DanToc",
+     "desc": "Dân tộc ở đúng cột BÊN NAM của TỜ KHAI ĐĂNG KÝ KẾT HÔN, chép NGUYÊN VĂN chữ trên tờ khai "
+             "(kể cả tên nhóm địa phương như K'Ho, Cil, Chil). Python tự chuẩn hóa về option. Tờ khai không ghi thì bỏ."},
+    {"name": "ToKhaiNu_DanToc",
+     "desc": "Dân tộc ở đúng cột BÊN NỮ của TỜ KHAI ĐĂNG KÝ KẾT HÔN, chép NGUYÊN VĂN chữ trên tờ khai "
+             "(kể cả tên nhóm địa phương như K'Ho, Cil, Chil). Python tự chuẩn hóa về option. Tờ khai không ghi thì bỏ."},
+
     # Loại đăng ký chỉ lấy khi tờ khai ghi rõ; không có thì bỏ, không tác động radio trên cổng.
     {"name": "ToKhai_LoaiDangKy",
      "desc": 'Loại đăng ký ghi trên TỜ KHAI ĐĂNG KÝ KẾT HÔN nếu tờ khai có mục "Loại đăng ký" '
@@ -116,6 +145,10 @@ for _name in (
     "CccdNu_NgayCap",
     "CccdNam_BanAnLyHon_Ngay",
     "CccdNu_BanAnLyHon_Ngay",
+    "ToKhaiNam_NgaySinh",
+    "ToKhaiNam_NgayCap",
+    "ToKhaiNu_NgaySinh",
+    "ToKhaiNu_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (
@@ -141,6 +174,8 @@ UI_COMP_BY_NAME = {
     "NgayCapDD_BenNam": "x-date",
     "NoiCapDD_BenNam": "x-input",
     "DanTocBenNam": "x-select",
+    # Ô ghi tay khi dropdown dân tộc chọn "Khác" (tên ngoài danh sách, vd nhóm địa phương "Cill").
+    "DanTocKhacBenNam": "x-select-area",
     "QuocTichBenNam": "x-select",
     "LoaiCuTru_BenNam": "x-select",
     "NoiCuTru_BenNam": "x-radio",
@@ -160,6 +195,7 @@ UI_COMP_BY_NAME = {
     "NgayCapDD_BenNu": "x-date",
     "NoiCapDD_BenNu": "x-input",
     "DanTocBenNu": "x-select",
+    "DanTocKhacBenNu": "x-select-area",
     "QuocTichBenNu": "x-select",
     "LoaiCuTru_BenNu": "x-select",
     "NoiCuTru_BenNu": "x-radio",
@@ -171,6 +207,13 @@ UI_COMP_BY_NAME = {
     "loaiDangKy": "x-radio",
     "CapBanSao": "x-radio",
     "SoLuong": "raw",
+}
+
+# Tên DOM ô "dân tộc khác" chưa đối chiếu được trên cổng → gửi kèm các biến thể đặt tên của eForm;
+# extension còn tìm theo ô dropdown gốc (otherOf) nếu không tên nào khớp.
+UI_ALIASES = {
+    "DanTocKhacBenNam": ["DanTocBenNamKhac", "DanTocKhac_BenNam", "DanTocBenNam_Khac"],
+    "DanTocKhacBenNu": ["DanTocBenNuKhac", "DanTocKhac_BenNu", "DanTocBenNu_Khac"],
 }
 
 # Field ĐÁNG rà soát bbox (name → nhãn hiển thị). CHỈ các ô đọc TỪ GIẤY TỜ, có thể khoanh

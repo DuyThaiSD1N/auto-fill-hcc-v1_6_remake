@@ -702,6 +702,13 @@ def _remap_area_cached(
     return (tinh, xa_expanded, dia_chi)
 
 
+# Đơn vị DƯỚI cấp xã — không bao giờ là tên xã/phường. Cố ý KHÔNG có "bản"/"làng": tên xã vùng cao
+# hay bắt đầu bằng "Bản ..." nên đoán theo tiền tố đó là xoá nhầm xã thật.
+_VILLAGE_PREFIX_RE = re.compile(
+    r"^(thon|xom|ap|buon|khom|soc|to dan pho|tdp|to|khu pho|kp|khu dan cu|kdc)\b[\s.]"
+)
+
+
 def remap_area(
     area: Optional[dict],
     allow_diachi_fallback: bool = False,
@@ -729,6 +736,22 @@ def remap_area(
     # cap). Nhan vao de go nhap nhang ten xa trung, roi BO khoi ket qua -- de lot ra ngoai la them
     # mot khoa la vao gia tri field ma khong ai doc.
     huyen_raw: str = huyen_hint or area.get("huyen") or area.get("quanHuyen") or ""
+
+    # LLM hay đặt đơn vị DƯỚI cấp xã ("Thôn M'Lọn", "Tổ dân phố 3") vào ô xã rồi đẩy tên xã thật
+    # sang "huyen" (địa chỉ "Thôn M'Lọn, xã Đơn Dương, tỉnh Lâm Đồng" ra xa="Thôn M'Lọn",
+    # huyen="Đơn Dương"). Ô xã khi đó không khớp option nào → cổng bỏ trống cả xã lẫn địa chỉ chi
+    # tiết. Trả thôn/tổ về diaChi; nếu gợi ý cấp huyện LÀ một xã/phường hiện hành của tỉnh thì dùng
+    # nó làm xã (sau sáp nhập nhiều xã mang tên huyện cũ). Không khớp danh mục thì để trống xã.
+    if xa_raw and _VILLAGE_PREFIX_RE.match(_fold(xa_raw)):
+        if _fold(xa_raw) not in _fold(dia_raw):
+            dia_raw = f"{dia_raw}, {xa_raw}" if dia_raw else xa_raw
+        xa_raw = ""
+        if huyen_raw and tinh_raw and is_current_area(tinh_raw, huyen_raw):
+            # Lấy đủ nhãn trong danh mục ("Xã Đơn Dương") để khớp option trên cổng.
+            found = province_for_ward(huyen_raw)
+            same_province = bool(found) and _fold_province(found[0]) == _fold_province(tinh_raw)
+            xa_raw = found[1] if same_province else huyen_raw
+            huyen_raw = ""
 
     if not tinh_raw and not xa_raw:
         return {k: v for k, v in area.items() if k not in ("huyen", "quanHuyen")} if huyen_raw else area
