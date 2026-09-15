@@ -80,9 +80,6 @@ Nguồn duy nhất để chốt ô này là TỜ KHAI ĐĂNG KÝ KHAI SINH.
 5. Chính tả họ tên: giữ đúng người theo tờ khai, nhưng nếu chính người đó có CCCD/trích lục trong hồ sơ
    thì viết họ tên theo giấy tờ gốc (bản đánh máy chuẩn hơn chữ viết tay).
 6. Số định danh / ngày cấp / nơi cấp: lệch giữa tờ khai và CCCD của CÙNG một người thì lấy theo CCCD.
-   NGÀY SINH và GIỚI TÍNH cũng là thông tin IN trên thẻ: chính người đó (con, cha, mẹ) có CCCD/CMND
-   trong hồ sơ thì lấy NGÀY SINH + GIỚI TÍNH theo CCCD, kể cả khi tờ khai ghi khác (chữ viết tay hay bị
-   OCR đọc sai). Tờ khai/giấy khác chỉ bù khi thẻ không có hoặc không đọc được.
 7. HỒ SƠ KHÔNG CÓ TỜ KHAI thì mới dùng khối <phan_vai_khi_khong_co_to_khai> bên dưới.
 </uu_tien_nguon>
 
@@ -126,8 +123,7 @@ D. 3 CCCD: TRẺ NHẤT → Subject_*; trong hai người còn lại, "Giới t�
 <trich_field>
 1. Subject_BirthDate: ưu tiên đủ dd/mm/yyyy; đọc CẢ phần số lẫn phần "ghi bằng chữ" để khôi phục khi số bị
    nhiễu (vd "mùng chín tháng mười một năm một nghìn chín trăm bảy mươi ba" → "09/11/1973").
-   Chỉ trả "yyyy" khi không rõ ngày/tháng. Người được khai sinh có CCCD/CMND trong hồ sơ thì Subject_BirthDate
-   và Subject_Gender lấy theo thẻ (xem <uu_tien_nguon> mục 6); Subject_BirthDateInWords vẫn chép từ tờ khai.
+   Chỉ trả "yyyy" khi không rõ ngày/tháng.
 2. Subject_BirthDateInWords: CHÉP NGUYÊN VĂN cụm chữ ghi ngày sinh trên tờ khai (thường trong ngoặc ngay
    sau ngày sinh). KHÔNG tự chuyển số sang chữ, KHÔNG viết lại theo ý mình. Tờ khai không ghi → bỏ field.
 3. NĂM SINH CHA/MẸ: tờ khai của thủ tục này thường CHỈ GHI NĂM (vd "1952", "1953"). Khi đó trả đúng

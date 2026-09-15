@@ -61,8 +61,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
   (2) **GIẤY CHỨNG NHẬN KẾT HÔN** (block "chồng"/"bên nam") — ưu tiên cao khi có
   (3) **GIẤY KHAI SINH** (bản sao/trích lục của con khác trong hồ sơ, có khối "người cha") — lấy khi không có nguồn (1)(2)
   (4) CCCD/CMND được đối chiếu là của đúng người bố — chỉ dùng khi các nguồn trên không có
-- ThongTinBo_HoTen, ThongTinBo_SoDinhDanh, ThongTinBo_QuocTich, ThongTinBo_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, sau đó mới xét CCCD/CMND đúng người bố
-- ThongTinBo_NgaySinh: NGOẠI LỆ — có CCCD/CMND đúng người bố thì lấy NGÀY SINH IN TRÊN THẺ (đủ dd/mm/yyyy, bản in chắc hơn); không có thẻ mới lấy giấy chứng sinh/kết hôn/khai sinh (có thể chỉ năm sinh)
+- ThongTinBo_HoTen, ThongTinBo_NgaySinh, ThongTinBo_SoDinhDanh, ThongTinBo_QuocTich, ThongTinBo_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, sau đó mới xét CCCD/CMND đúng người bố
 - ThongTinBo_DanToc: áp dụng rule riêng tại mục E; hai nguồn chính bắt buộc soát là tờ khai đăng ký khai sinh (khối bố đẻ/cha) > giấy chứng nhận kết hôn (khối chồng/bên nam).
 - ThongTinBo_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
 - ThongTinBo_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
@@ -76,7 +75,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
   (4) CCCD/CMND được đối chiếu là của đúng người mẹ — chỉ dùng khi các nguồn trên không đủ
 - ThongTinMe_HoTen: lấy từ giấy chứng sinh (khối mẹ), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
 - ThongTinMe_SoDinhDanh: lấy từ giấy chứng sinh (Số ĐDCN/Hộ chiếu), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
-- ThongTinMe_NgaySinh: NGOẠI LỆ — có CCCD/CMND đúng người mẹ thì lấy NGÀY SINH IN TRÊN THẺ (đủ dd/mm/yyyy); không có thẻ mới lấy giấy chứng sinh (có thể chỉ năm sinh), giấy khai sinh, giấy kết hôn
+- ThongTinMe_NgaySinh: ưu tiên giấy chứng sinh (có thể chỉ năm sinh), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
 - ThongTinMe_DanToc: BẮT BUỘC lấy theo đúng thứ tự: giấy chứng sinh (dòng "Dân tộc" trong khối mẹ) > giấy chứng nhận kết hôn (khối vợ/bên nữ) > tờ khai đăng ký khai sinh (khối người mẹ). Có nguồn ưu tiên cao hơn thì không thay bằng nguồn thấp hơn.
 - ThongTinMe_QueQuan: BẮT BUỘC trích độc lập từ dòng "Quê quán / Place of origin:" trên CCCD mẹ, dù giống quê quán bố. Nếu chỉ có huyện và tỉnh thì không được gán tên huyện vào `xa`, nhưng vẫn phải trả field với tối thiểu `tinh`; không được bỏ field.
 - ThongTinMe_NoiCuTru: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD
