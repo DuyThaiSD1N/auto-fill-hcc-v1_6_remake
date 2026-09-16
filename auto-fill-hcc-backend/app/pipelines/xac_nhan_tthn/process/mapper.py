@@ -1,5 +1,6 @@
 """Map compact TTHN facts to legacy x-* UI fields."""
 
+import logging
 import re
 import unicodedata
 
@@ -10,17 +11,23 @@ from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 
 _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
-_DIVORCED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai"
-_WIDOWED_STATUS = "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại chưa đăng ký kết hôn với ai"
-_MARRIED_STATUS = "Hiện tại đang có vợ/chồng"
-_NEVER_MARRIED_STATUS = "Hiện tại chưa đăng ký kết hôn với ai"
-# Option =5 của cổng: xác nhận CHƯA ĐKKH TRONG MỘT KHOẢNG THỜI GIAN đã qua, dù HIỆN TẠI đã có
-# vợ/chồng. Nhãn lấy nguyên văn từ bảng đã đối chiếu với cổng ở app/pipelines/ket_hon/process/
-# mapper.py (_TINH_TRANG_HON_NHAN["5"]) — kể cả khoảng trắng lạ trước dấu "…" thứ tư.
-_PERIOD_MARRIED_STATUS = (
-    "Từ ngày… tháng… năm… đến ngày… tháng… năm … chưa đăng ký kết hôn với ai; hiện tại đang có vợ/chồng"
-)
 
+# Nhãn nguyên văn 6 option "Tình trạng hôn nhân" của cổng, khoá theo MÃ option. Cùng bảng với
+# app/pipelines/ket_hon/process/mapper.py (_TINH_TRANG_HON_NHAN) — kể cả khoảng trắng lạ trước
+# dấu "…" thứ tư của option 5, đã đối chiếu với DOM thật; sửa cho "gọn" là không khớp option nữa.
+_TINH_TRANG_HON_NHAN: dict[str, str] = {
+    "1": "Hiện tại đang có vợ/chồng",
+    "2": "Hiện tại chưa đăng ký kết hôn với ai",
+    "3": "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; hiện tại chưa đăng ký kết hôn với ai",
+    "4": "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại chưa đăng ký kết hôn với ai",
+    "5": "Từ ngày… tháng… năm… đến ngày… tháng… năm … chưa đăng ký kết hôn với ai; hiện tại đang có vợ/chồng",
+    "6": "Khác",
+}
+_MARRIED = "1"
+_NEVER_MARRIED = "2"
+_DIVORCED = "3"
+_WIDOWED = "4"
+_PERIOD_MARRIED = "5"
 
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
@@ -43,6 +50,67 @@ def _fold(value) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+# Option "6 = Khác" CỐ Ý không nằm trong bảng tra ngược: chọn nó thì cổng bắt điền thêm ô mô tả
+# mà ta không có gì để điền → dropdown đã chọn kèm ô trống bắt buộc, tệ hơn là để trống cho cán
+# bộ tự chọn. Không nhận ra thì trả None để còn cơ hội suy từ bản án/giấy chứng tử.
+_STATUS_CODE_BY_LABEL = {
+    _fold(label): code for code, label in _TINH_TRANG_HON_NHAN.items() if code != "6"
+}
+# "hiện tại" là chữ chốt: nhãn option 3/4 cũng có cụm "đã có vợ/chồng" nhưng nói về QUÁ KHỨ.
+_NOW_MARRIED_MARKERS = (
+    "hien tai dang co", "hien tai co vo", "hien tai co chong", "hien tai da ket hon",
+    "hien nay dang co", "hien nay co vo", "hien nay co chong", "hien nay da ket hon",
+    "dang co vo", "dang co chong",
+)
+_WIDOW_MARKERS = ("da chet", "da qua doi", "da mat", "goa")
+_NEVER_MARRIED_MARKERS = (
+    "chua dang ky ket hon", "chua ket hon", "chua co vo", "chua co chong", "doc than",
+)
+
+
+def _status_code(value) -> str | None:
+    """Chữ tình trạng hôn nhân (LLM đọc từ tờ khai) -> MÃ option "1".."5"; không chắc -> None.
+
+    VÌ SAO KHÔNG SO BẰNG `==` VỚI NHÃN: bản cũ so nguyên văn với bốn nhãn dài của cổng, nên LLM
+    trả rút gọn ("Đã ly hôn"), thừa một dấu chấm cuối, hay đổi cách diễn đạt là phép so trượt —
+    mà khối phát field lại xếp `if/elif` nên lượt đó bị "ăn" luôn, không rơi xuống được nhánh
+    đọc từ bản án/giấy chứng tử: ô tình trạng hôn nhân LẪN số bản án cùng trắng, không một dòng
+    log. Quy về MÃ trước rồi mới phát, và trả None khi không chắc để chỗ gọi đi tiếp xuống fallback.
+
+    Khớp nguyên văn nhãn cổng trước, rồi mới tới từ khoá. Thứ tự từ khoá KHÔNG được đảo: nhãn
+    option 3 và 4 đều kết thúc bằng "hiện tại chưa đăng ký kết hôn với ai" nên phải xét "ly
+    hôn"/"đã chết" trước "chưa đăng ký"; còn ca "đã ly hôn RỒI CƯỚI LẠI" phải ra mã 1 nên dấu
+    hiệu "hiện tại đang có vợ/chồng" xét trước cả hai.
+    """
+    folded = _fold(value)
+    if not folded:
+        return None
+    exact = _STATUS_CODE_BY_LABEL.get(folded)
+    if exact:
+        return exact
+
+    now_married = any(marker in folded for marker in _NOW_MARRIED_MARKERS)
+    if now_married and "tu ngay" in folded and "den" in folded:
+        return _PERIOD_MARRIED
+    if now_married:
+        return _MARRIED
+    if "ly hon" in folded:
+        return _DIVORCED
+    if any(marker in folded for marker in _WIDOW_MARKERS):
+        return _WIDOWED
+    if any(marker in folded for marker in _NEVER_MARRIED_MARKERS):
+        return _NEVER_MARRIED
+
+    logging.getLogger(__name__).warning(
+        "xac_nhan_tthn: khong nhan ra tinh trang hon nhan %r -- bo qua de suy tu giay to", value)
+    return None
+
+
+def _drop_empty(detail: dict) -> dict:
+    """Bỏ khoá rỗng của một vùng x-select-area: điền được mảnh nào hay mảnh đó."""
+    return {key: value for key, value in detail.items() if value not in (None, "")}
 
 
 def _normalize_commune_label(value) -> str:
@@ -855,14 +923,33 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("ngayCapGiayTo-name-date-input", f"{year}-{month}-{day}")
         add("coQuanCapGiayTo", agency)
 
+    def decision_detail(number, date, agency) -> dict:
+        """Ô con của vùng =3 (bản án ly hôn) và =4 (giấy chứng tử), bỏ phần đọc không ra.
+
+        OCR quyết định ly hôn rất hay mất ĐÚNG dòng địa danh + ngày ban hành (dấu treo đè lên,
+        trang scan lệch) trong khi số quyết định và tên tòa vẫn rõ. Đòi đủ cả ba thì cả tình
+        trạng hôn nhân lẫn số bản án đều rụng, cán bộ phải gõ tay toàn bộ — trong khi giấy tờ
+        đã chứng minh thừa đủ là người này ĐÃ LY HÔN. Điền phần đọc được, ô thiếu để trống cho
+        cán bộ bổ sung.
+        """
+        return _drop_empty({
+            "soBanAnQuyetDinhLyHon": number,
+            "ngayCapBanAnQuyetDinhLyHon": date,
+            "coQuanCapBanAnQuyetDinhLyHon": agency,
+        })
+
     marriage_spouse = values.get("Marriage_SpouseName")
     marriage_number = values.get("Marriage_Number")
     marriage_date = values.get("Marriage_Date")
     marriage_agency = values.get("Marriage_Agency")
-    declared_status = _fold(values.get("TinhTrangHonNhanC1"))
+    declared_code = _status_code(values.get("TinhTrangHonNhanC1"))
     period_from = values.get("Period_TuNgay")
     period_to = values.get("Period_DenNgay")
     has_marriage = any((marriage_spouse, marriage_number, marriage_date, marriage_agency))
+    # Đủ căn cứ kết luận ly hôn/góa khi đọc được BẤT KỲ mảnh nào của bản án/giấy tử: chỉ tài liệu
+    # ly hôn/khai tử thật mới sinh ra các field này (xem prompt), nên một mảnh cũng đã là bằng chứng.
+    has_divorce = any((divorce_number, divorce_date, divorce_agency))
+    has_death = any((death_number, death_date, death_agency))
 
     # Hôn nhân HIỆN TẠI đăng ký SAU mốc ly hôn/khai tử của cuộc hôn nhân trước → người này đã kết
     # hôn LẠI. Chỉ kết luận khi cả hai mốc đều đọc được đúng dd/mm/yyyy; thiếu mốc nào thì để False
@@ -873,104 +960,60 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         has_marriage and _marriage_key and _prior_end_keys and _marriage_key > max(_prior_end_keys)
     )
 
-    # Ưu tiên 0: tờ khai xin xác nhận CHƯA ĐKKH TRONG MỘT KHOẢNG THỜI GIAN ĐÃ QUA mà HIỆN TẠI đã có
-    # vợ/chồng (vd bổ sung hồ sơ mua bán đất diễn ra trước khi cưới). Cổng có option RIÊNG cho ca này
-    # (=5); chọn nhầm "Hiện tại đang có vợ/chồng" (=2) là mất sạch khoảng thời gian — đúng cái người
-    # dân cần xác nhận — và form cũng không hiện hai ô mốc thời gian để điền.
+    # ---------------------------------------------------------
+    # BƯỚC 1 — CHỐT MÃ OPTION. Tách hẳn khỏi bước phát field: bản cũ vừa xét điều kiện vừa phát
+    # trong cùng một chuỗi `if/elif`, nên một nhánh khớp điều kiện ngoài mà không khớp nhánh con
+    # nào bên trong là "ăn" mất lượt — không phát gì và cũng chặn luôn fallback. Ở đây mọi nhánh
+    # đều PHẢI cho ra một mã (hoặc None), không nhánh nào kết thúc mà chưa quyết định.
+    # ---------------------------------------------------------
     if period_from and period_to and has_marriage:
-        add("TinhTrangHonNhanC1", _PERIOD_MARRIED_STATUS)
-        period_detail = {
+        # Tờ khai xin xác nhận CHƯA ĐKKH TRONG MỘT KHOẢNG THỜI GIAN ĐÃ QUA mà HIỆN TẠI đã có
+        # vợ/chồng (vd bổ sung hồ sơ mua bán đất diễn ra trước khi cưới). Cổng có option RIÊNG cho
+        # ca này (=5); chọn nhầm "Hiện tại đang có vợ/chồng" (=2) là mất sạch khoảng thời gian —
+        # đúng cái người dân cần xác nhận — và form cũng không hiện hai ô mốc thời gian để điền.
+        status = _PERIOD_MARRIED
+    elif remarried_after_prior and not declared_code:
+        # Hồ sơ có bản án ly hôn / giấy khai tử của vợ chồng CŨ nhưng giấy kết hôn hiện tại lại
+        # đăng ký SAU mốc đó → đã kết hôn lại. Hai option =3/=4 đều kết thúc bằng "hiện tại chưa
+        # đăng ký kết hôn với ai" nên chọn chúng là khai SAI sự thật. Chỉ áp dụng khi tờ khai
+        # KHÔNG tự khai trạng thái (có khai thì theo tờ khai).
+        status = _MARRIED
+    elif declared_code:
+        status = declared_code                  # tờ khai tự khai → tin tờ khai
+    elif has_death:
+        status = _WIDOWED                       # fallback: suy từ giấy chứng tử
+    elif has_divorce:
+        status = _DIVORCED                      # fallback: suy từ bản án/quyết định ly hôn
+    elif marriage_number and marriage_date:
+        status = _MARRIED                       # fallback: suy từ giấy chứng nhận kết hôn
+    else:
+        status = None
+
+    # ---------------------------------------------------------
+    # BƯỚC 2 — PHÁT FIELD theo mã đã chốt. add() tự bỏ qua dict rỗng/None nên không cần guard
+    # "có đủ dữ liệu chưa": thiếu giấy tờ thì chỉ mất vùng chi tiết, ô tình trạng hôn nhân vẫn
+    # được chọn — đúng thứ cán bộ cần nhất và không tự suy ra được.
+    # ---------------------------------------------------------
+    add("TinhTrangHonNhanC1", _TINH_TRANG_HON_NHAN.get(status, ""))
+    if status == _PERIOD_MARRIED:
+        add("nxnLoaiTinhTrangHonNhan=5", _drop_empty({
             "voChongHoTen": marriage_spouse,
             "thoiDiemBatDau": period_from,
             "thoiDiemKetThuc": period_to,
-        }
-        period_detail = {key: value for key, value in period_detail.items() if value not in (None, "")}
-        add("nxnLoaiTinhTrangHonNhan=5", period_detail)
+        }))
         add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
-
-    # Ưu tiên 0.5: hồ sơ có bản án ly hôn / giấy khai tử của vợ chồng CŨ nhưng giấy kết hôn hiện tại
-    # lại đăng ký SAU mốc đó → đã kết hôn lại. Hai option =3/=4 đều kết thúc bằng "hiện tại chưa
-    # đăng ký kết hôn với ai" nên chọn chúng là khai SAI sự thật; đúng phải là "Hiện tại đang có
-    # vợ/chồng" (=2). Chỉ áp dụng khi tờ khai KHÔNG tự khai trạng thái (có khai thì theo tờ khai).
-    elif remarried_after_prior and not declared_status:
-        add("TinhTrangHonNhanC1", _MARRIED_STATUS)
-        marriage_detail = {
+    elif status == _MARRIED:
+        add("nxnLoaiTinhTrangHonNhan=2", _drop_empty({
             "voChongHoTen": marriage_spouse,
             "soGiayTo": marriage_number,
             "ngayCapGiayTo": marriage_date,
             "coQuanCapGiayTo": marriage_agency,
-        }
-        marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
-        if marriage_detail:
-            add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
-            add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
-
-    # Ưu tiên 1: TỜ KHAI khai báo rõ ràng tình trạng hôn nhân
-    elif declared_status and declared_status != "":
-        if declared_status == _fold(_WIDOWED_STATUS):
-            # GÓA: từ tờ khai, bổ sung giấy tử nếu có
-            add("TinhTrangHonNhanC1", _WIDOWED_STATUS)
-            if death_number and death_date and death_agency:
-                add("nxnLoaiTinhTrangHonNhan=4", {
-                    "soBanAnQuyetDinhLyHon": death_number,
-                    "ngayCapBanAnQuyetDinhLyHon": death_date,
-                    "coQuanCapBanAnQuyetDinhLyHon": death_agency,
-                })
-        elif declared_status == _fold(_DIVORCED_STATUS):
-            # ĐÃ LY HÔN: từ tờ khai, bổ sung giấy ly hôn nếu có
-            add("TinhTrangHonNhanC1", _DIVORCED_STATUS)
-            if divorce_number and divorce_date and divorce_agency:
-                add("nxnLoaiTinhTrangHonNhan=3", {
-                    "soBanAnQuyetDinhLyHon": divorce_number,
-                    "ngayCapBanAnQuyetDinhLyHon": divorce_date,
-                    "coQuanCapBanAnQuyetDinhLyHon": divorce_agency,
-                })
-        elif declared_status == _fold(_MARRIED_STATUS):
-            # HIỆN ĐANG CÓ VỢ/CHỒNG: từ tờ khai, bổ sung giấy kết hôn nếu có
-            add("TinhTrangHonNhanC1", _MARRIED_STATUS)
-            marriage_detail = {
-                "voChongHoTen": marriage_spouse,
-                "soGiayTo": marriage_number,
-                "ngayCapGiayTo": marriage_date,
-                "coQuanCapGiayTo": marriage_agency,
-            }
-            marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
-            if marriage_detail:
-                add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
-                add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
-        elif declared_status == _fold(_NEVER_MARRIED_STATUS):
-            # CHƯA KẾT HÔN: từ tờ khai
-            add("TinhTrangHonNhanC1", _NEVER_MARRIED_STATUS)
-    
-    # Ưu tiên 2: FALLBACK sang GIẤY TỜ CHỨNG MINH khi tờ khai không có
-    elif death_number and death_date and death_agency:
-        # GÓA: vợ/chồng đã chết (từ giấy tử)
-        add("TinhTrangHonNhanC1", _WIDOWED_STATUS)
-        add("nxnLoaiTinhTrangHonNhan=4", {
-            "soBanAnQuyetDinhLyHon": death_number,
-            "ngayCapBanAnQuyetDinhLyHon": death_date,
-            "coQuanCapBanAnQuyetDinhLyHon": death_agency,
-        })
-    elif divorce_number and divorce_date and divorce_agency:
-        # ĐÃ LY HÔN (từ giấy ly hôn)
-        add("TinhTrangHonNhanC1", _DIVORCED_STATUS)
-        add("nxnLoaiTinhTrangHonNhan=3", {
-            "soBanAnQuyetDinhLyHon": divorce_number,
-            "ngayCapBanAnQuyetDinhLyHon": divorce_date,
-            "coQuanCapBanAnQuyetDinhLyHon": divorce_agency,
-        })
-    elif marriage_number and marriage_date:
-        # HIỆN ĐANG CÓ VỢ/CHỒNG (từ giấy kết hôn)
-        add("TinhTrangHonNhanC1", _MARRIED_STATUS)
-        marriage_detail = {
-            "voChongHoTen": marriage_spouse,
-            "soGiayTo": marriage_number,
-            "ngayCapGiayTo": marriage_date,
-            "coQuanCapGiayTo": marriage_agency,
-        }
-        marriage_detail = {key: value for key, value in marriage_detail.items() if value not in (None, "")}
-        add("nxnLoaiTinhTrangHonNhan=2", marriage_detail)
+        }))
         add_marriage_raw_inputs(marriage_number, marriage_date, marriage_agency)
+    elif status == _DIVORCED:
+        add("nxnLoaiTinhTrangHonNhan=3", decision_detail(divorce_number, divorce_date, divorce_agency))
+    elif status == _WIDOWED:
+        add("nxnLoaiTinhTrangHonNhan=4", decision_detail(death_number, death_date, death_agency))
 
     # =========================================================
     # MỤC ĐÍCH & TRẢ KẾT QUẢ

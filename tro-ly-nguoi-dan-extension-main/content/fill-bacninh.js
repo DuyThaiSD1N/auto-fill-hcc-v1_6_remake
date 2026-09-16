@@ -10,6 +10,9 @@
   const H = window.__TLND__ || (window.__TLND__ = {});
 
   const PFX = "_org_bn_hoso_noptructuyen_";
+  // Portlet KHÁC: trang hoàn thiện tài khoản VNeID SSO (/vneidsso) — ô là input/select portlet THƯỜNG
+  // (`_org_bn_taikhoan_sso_vneid_INSTANCE_<rnd>_<key>`), KHÔNG có eform-element/element_ → khớp NAME suffix.
+  const BN_ACCOUNT_MARK = "_taikhoan_sso_vneid_";
 
   // Fold dấu + hạ chữ thường + gộp khoảng trắng (tự chứa, không phụ thuộc helper chưa export).
   const fold = (s) =>
@@ -18,9 +21,14 @@
       .replace(/đ/g, "d")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
+      // Đồng nhất mọi dấu gạch (–—‐‑-) → space: tên xã sáp nhập "Phường X – Đà Lạt" (OCR
+      // ra en-dash) vs option "… - …" (hyphen) mới khớp được ở select cascade Tỉnh/Xã.
+      .replace(/\s*[-–—‐‑]+\s*/g, " ")
       .trim()
       .toLowerCase()
       .replace(/\s+/g, " ");
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // Nhận diện form Bắc Ninh: có field portlet đặc trưng (chỉ cổng này dùng prefix đó).
   function isBacNinhForm() {
@@ -51,6 +59,25 @@
       out.push({ el, labelFold: fold(elementLabel(el)) });
     }
     return out;
+  }
+
+  // Khớp ô eForm theo CLASS NGỮ NGHĨA ỔN ĐỊNH `eform-element-<Key>` (vd KinhGui, 211ThuaDatSo,
+  // CoQuanCapNYC). Bền hơn khớp NHÃN vì nhiều ô trùng title ("Cơ quan cấp"/"cấp ngày"/"Số"). Dùng
+  // attribute selector [class~="..."] để né vấn đề escape với key bắt đầu bằng số (211…, 11…).
+  function findElementByClass(name) {
+    const key = String(name || "").trim();
+    if (!key) return null;
+    let el = null;
+    try {
+      el = document.querySelector(
+        `input[class~="eform-element-${key}"], textarea[class~="eform-element-${key}"]`,
+      );
+    } catch { el = null; }
+    if (el && /^(input|textarea)$/i.test(el.tagName)) {
+      const type = (el.getAttribute("type") || "text").toLowerCase();
+      if (!["file", "checkbox", "radio", "hidden"].includes(type)) return el;
+    }
+    return null;
   }
 
   // Khớp ô theo NAME cố định (chấp nhận name có hoặc chưa có prefix portlet). Trả input/textarea.
@@ -117,6 +144,18 @@
     return true;
   }
 
+  // Điền select CÓ CASCADE (vd Xã phụ thuộc Tỉnh): option con nạp qua AJAX sau khi đổi Tỉnh nên
+  // có thể CHƯA có ngay. Thử ngay; nếu chưa khớp → chờ và thử lại tới ~2.4s cho tới khi option xuất hiện.
+  async function fillSelect2ByTextAsync(selectEl, value, tries = 12, delay = 200) {
+    if (!selectEl) return false;
+    if (fillSelect2ByText(selectEl, value)) return true;
+    for (let i = 0; i < tries; i++) {
+      await sleep(delay);
+      if (fillSelect2ByText(selectEl, value)) return true;
+    }
+    return false;
+  }
+
   // Chuẩn hóa giá trị theo KIỂU ô: input type=number chỉ nhận chữ số → bỏ dấu chấm/khoảng trắng
   // (vd SĐT "0395.792.788" → "0395792788"; nếu để nguyên, number input từ chối thành rỗng).
   function coerceForInput(el, value) {
@@ -127,6 +166,8 @@
 
   // ---- Điền đơn ----
   async function fillFormBacNinh(fields) {
+    // Trang hoàn thiện tài khoản VNeID (/vneidsso) dùng portlet khác → engine khớp NAME suffix riêng.
+    if (isBacNinhAccountForm()) return fillAccountBacNinh(fields);
     const list = Array.isArray(fields) ? fields : [];
     if (!list.length) return { error: "Không có trường nào để điền." };
     // Nạp CSS đánh dấu (xanh = đã điền) — engine bacninh cũng cần, nếu không markFilled vô hình.
@@ -142,9 +183,10 @@
       const comp = String(f.comp || "");
 
       if (comp === "bn-select") {
-        // bn-select hiếm dùng (cơ quan/địa chỉ): tìm <select> theo cốt name rồi lái select2.
+        // Địa chỉ Tỉnh/Xã: tìm <select> theo class eform-element-* (ổn định) hoặc cốt name, rồi
+        // lái select2. Xã cascade theo Tỉnh → điền BẤT ĐỒNG BỘ (chờ option con nạp xong).
         const target = findSelectForField(name);
-        if (target && fillSelect2ByText(target, value)) filled.push(name);
+        if (target && (await fillSelect2ByTextAsync(target, value))) filled.push(name);
         else unmatched.push(name);
         continue;
       }
@@ -157,9 +199,9 @@
         continue;
       }
 
-      // Field tên CỐ ĐỊNH của cổng (vd người nhận kết quả `nhanTaiNhahoTen`): khớp theo NAME trước;
-      // ô thân đơn `element_*` không có name kiểu này nên sẽ rơi xuống khớp theo NHÃN.
-      const el = findElementByName(name) || findElementByLabel(elements, name);
+      // Thứ tự khớp: (1) CLASS eform-element-<Key> (ổn định, phân biệt được title trùng) →
+      // (2) NAME cố định của cổng (vd `nhanTaiNhahoTen`) → (3) NHÃN (title) cho ô thân đơn nhãn duy nhất.
+      const el = findElementByClass(name) || findElementByName(name) || findElementByLabel(elements, name);
       if (!el) {
         unmatched.push(name);
         continue;
@@ -183,6 +225,129 @@
     };
   }
 
+  // ===== [Bắc Ninh] Điền thông tin tài khoản (portlet _taikhoan_sso_vneid_, khớp NAME suffix) =====
+  function isBacNinhAccountForm() {
+    return document.querySelectorAll(`[name*="${BN_ACCOUNT_MARK}"]`).length >= 3;
+  }
+
+  // Khớp ô form tài khoản theo NAME kết thúc bằng `_<key>` (vd hoTen, soCCCD, thuongTrutinhThanhId).
+  // Bỏ ô hidden/file/checkbox/radio (có 1 ô hidden trùng tên soDinhDanh). Suffix là DUY NHẤT —
+  // `_ngayCap` KHÔNG dính `_ngayCapCCCD`, `_thuongTru` KHÔNG dính `_thuongTrutinhThanhId` (endsWith).
+  function findAccountField(key) {
+    const k = String(key || "").trim();
+    if (!k) return null;
+    let nodes;
+    try { nodes = document.querySelectorAll(`[name$="_${k}"]`); }
+    catch { return null; }
+    for (const el of nodes) {
+      if (!(el.getAttribute("name") || "").includes(BN_ACCOUNT_MARK)) continue;
+      const tag = el.tagName.toLowerCase();
+      if (tag === "select") return el;
+      if (tag !== "input" && tag !== "textarea") continue;
+      const type = (el.getAttribute("type") || "text").toLowerCase();
+      if (["hidden", "file", "checkbox", "radio"].includes(type)) continue;
+      return el;
+    }
+    return null;
+  }
+
+  async function fillAccountBacNinh(fields) {
+    const list = Array.isArray(fields) ? fields : [];
+    if (!list.length) return { error: "Không có trường nào để điền." };
+    H.injectAutofillStyles && H.injectAutofillStyles();
+    const filled = [];
+    const unmatched = [];
+    // Điền TUẦN TỰ: Tỉnh trước Xã (BE phát đúng thứ tự) để select2 cascade nạp option con kịp.
+    for (const f of list) {
+      const name = f && f.name;
+      const value = f && f.value;
+      if (!name || value === "" || value == null) continue;
+      const el = findAccountField(name);
+      if (!el) { unmatched.push(name); continue; }
+      if (String(f.comp || "") === "bn-select" || el.tagName.toLowerCase() === "select") {
+        if (await fillSelect2ByTextAsync(el, value)) { H.markFilled && H.markFilled(el); filled.push(name); }
+        else unmatched.push(name);
+        continue;
+      }
+      try {
+        H.setNativeValue(el, coerceForInput(el, value), { typing: true, commit: true });
+        H.markFilled && H.markFilled(el);
+        filled.push(name);
+      } catch { unmatched.push(name); }
+    }
+    console.log("[AutoFill-BN] điền tài khoản:", { filled, unmatched });
+    return { ok: true, method: "bacninh-account", filled: filled.length, unmatched, total: list.length };
+  }
+
+  // Pane của 1 tab: <li id="..._nhapTab<code>TabsId"> ↔ <div id="..._nhapTab<code>TabsSection">.
+  // Liferay ẩn pane bằng class "hide" (pane hiện class rỗng), nút <a> active bằng class "active".
+  function bacNinhTabSection(li) {
+    const id = li && li.id ? String(li.id) : "";
+    if (!id.endsWith("TabsId")) return null;
+    return document.getElementById(id.slice(0, -"TabsId".length) + "TabsSection");
+  }
+
+  async function activateBacNinhTab(tabName) {
+    const name = String(tabName || "").trim();
+    if (!name) return { error: "Thiếu tên phần biểu mẫu Bắc Ninh." };
+    const tab = document.querySelector(`li[data-tab-name="${CSS.escape(name)}"]`);
+    const link = tab && tab.querySelector("a");
+    if (!tab || !link) return { error: `Không thấy phần "${name}" trên biểu mẫu Bắc Ninh.` };
+
+    const targetSection = bacNinhTabSection(tab);
+    const isShown = () =>
+      link.classList.contains("active") && (!targetSection || !targetSection.classList.contains("hide"));
+
+    if (!isShown()) {
+      // Ưu tiên hàm thật của cổng: <a href="javascript:Liferay.Portal.Tabs.show(...)"> chạy trong
+      // main-world (nơi có Liferay). click() đủ khi cổng KHÔNG chặn điều hướng javascript:.
+      try { link.click(); } catch { /* href hỏng → dùng fallback bên dưới */ }
+      await sleep(250);
+    }
+    if (!isShown()) {
+      // CSP cổng chặn điều hướng javascript: → click "im lặng", tab không đổi. Tự bật/tắt
+      // class "hide"/"active" đúng như Liferay.Portal.Tabs.show làm — mọi pane đã render sẵn
+      // trong DOM nên toggle class là đủ để chuyển hiển thị.
+      const group = tab.closest("ul") || document;
+      for (const li of group.querySelectorAll("li[data-tab-name]")) {
+        const a = li.querySelector("a");
+        const sec = bacNinhTabSection(li);
+        const isTarget = li === tab;
+        if (a) a.classList.toggle("active", isTarget);
+        if (sec) sec.classList.toggle("hide", !isTarget);
+      }
+      await sleep(150);
+    }
+    return { ok: true, tabName: name, shown: isShown() };
+  }
+
+  async function fillAuthorizedPersonBacNinh(fields, subjectOption) {
+    const optionText = String(subjectOption || "").trim();
+    if (!optionText) return { error: "Thiếu loại đối tượng ủy quyền cần chọn." };
+    const checkbox = document.querySelector(
+      `input[type="checkbox"][name="${PFX}boSungDoituongKhac"]`,
+    );
+    if (!checkbox) return { error: "Không thấy khối Thông tin trong trường hợp được ủy quyền." };
+    setChecked(checkbox);
+    const typeSelect = document.querySelector(`select[name="${PFX}loaiDoiTuongKhac"]`);
+    if (!typeSelect || !(await fillSelect2ByTextAsync(typeSelect, optionText))) {
+      return { error: `Không chọn được đối tượng ủy quyền "${optionText}".` };
+    }
+    // Đổi loại đối tượng khiến Liferay nạp khối chi tiết bằng AJAX. Chờ ô đầu tiên xuất hiện trước
+    // khi fill để tránh trạng thái nút đã bấm nhưng toàn bộ field bị unmatched.
+    for (let i = 0; i < 15; i++) {
+      if (document.querySelector(`[name="${PFX}doiTuongKhachoTen"]`)) break;
+      await sleep(200);
+    }
+    if (!document.querySelector(`[name="${PFX}doiTuongKhachoTen"]`)) {
+      return { error: "Cổng chưa tải xong khối thông tin người được ủy quyền. Vui lòng bấm lại." };
+    }
+    return fillFormBacNinh(fields);
+  }
+
+  const fillAuthorizedElderlyBacNinh = (fields) =>
+    fillAuthorizedPersonBacNinh(fields, "Người cao tuổi");
+
   // Nhãn của 1 radio/checkbox: label[for], hoặc text trong .form-check, hoặc text kề ngay sau input.
   function radioLabelText(input) {
     if (input.id) {
@@ -201,29 +366,45 @@
     return acc;
   }
 
-  // Tick các radio/checkbox trên form Bắc Ninh mà NHÃN kề chứa 1 trong các cụm mong muốn.
+  // Tick các radio/checkbox trên form Bắc Ninh mà NHÃN kề khớp cụm mong muốn. Xét TỪNG want:
+  //   - Nếu có ô nhãn TRÙNG KHỚP CHÍNH XÁC (fold(label) === fold(want)) → chỉ tick ô đó. Tránh tick
+  //     nhầm option DÀI chứa cụm này, vd "Bên thế chấp" ⊂ "Người đại diện của bên thế chấp, bên nhận…".
+  //   - Không có exact → giữ hành vi cũ: tick MỌI ô có nhãn CHỨA cụm (cho phép 1 want tick nhiều checkbox).
   function tickRadiosByLabel(wants) {
-    const wantsFold = wants.map(fold).filter(Boolean);
-    if (!wantsFold.length) return false;
+    const wantList = (Array.isArray(wants) ? wants : [wants]).map(fold).filter(Boolean);
+    if (!wantList.length) return false;
     const inputs = document.querySelectorAll(
       `input[type="radio"][name^="${PFX}"], input[type="checkbox"][name^="${PFX}element_"]`,
     );
-    let hit = 0;
+    const labeled = [];
     for (const el of inputs) {
       const lbl = fold(radioLabelText(el));
-      if (!lbl) continue;
-      if (!wantsFold.some((w) => lbl.includes(w))) continue;
-      try {
-        setChecked(el);
-        H.markFilled && H.markFilled(el.closest(".form-check, label, div") || el);
-        hit++;
-      } catch { /* bỏ qua ô lỗi */ }
+      if (lbl) labeled.push({ el, lbl });
+    }
+    let hit = 0;
+    for (const w of wantList) {
+      const exact = labeled.filter((x) => x.lbl === w);
+      const targets = exact.length ? exact : labeled.filter((x) => x.lbl.includes(w));
+      for (const t of targets) {
+        try {
+          setChecked(t.el);
+          H.markFilled && H.markFilled(t.el.closest(".form-check, label, div") || t.el);
+          hit++;
+        } catch { /* bỏ qua ô lỗi */ }
+      }
     }
     return hit > 0;
   }
 
-  // Tìm <select> Bắc Ninh theo cốt name (dùng cho bn-select tương lai: cơ quan/địa chỉ).
+  // Tìm <select> Bắc Ninh theo:
+  //   (1) class ngữ nghĩa `eform-element-<name>` (vd TinhThuongTru/XaThuongTru) — ỔN ĐỊNH, không
+  //       đổi theo eform (khác id/name element_<số>);
+  //   (2) fallback: cốt name / title chứa key (dùng cho field tên cố định như nhanTaiNhatinhThanhId).
   function findSelectForField(name) {
+    try {
+      const byClass = document.querySelector(`select.eform-element-${CSS.escape(name)}`);
+      if (byClass) return byClass;
+    } catch { /* name có ký tự lạ → bỏ, dùng fallback */ }
     const key = fold(name);
     const selects = document.querySelectorAll(`select[name^="${PFX}"]`);
     for (const s of selects) {
@@ -427,7 +608,12 @@
 
   Object.assign(H, {
     isBacNinhForm,
+    isBacNinhAccountForm,
     fillFormBacNinh,
+    fillAccountBacNinh,
+    activateBacNinhTab,
+    fillAuthorizedPersonBacNinh,
+    fillAuthorizedElderlyBacNinh,
     attachBacNinhByPlan,
   });
 })();

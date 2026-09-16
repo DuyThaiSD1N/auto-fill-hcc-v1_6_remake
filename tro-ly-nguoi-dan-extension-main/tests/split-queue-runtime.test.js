@@ -15,6 +15,7 @@ let nextTabId = 100;
 const chrome = {
   action: { onClicked: { addListener() {} } },
   storage: {
+    onChanged: { addListener() {} },
     local: {
       async get(keys) {
         if (typeof keys === "string") return { [keys]: storage[keys] };
@@ -30,6 +31,7 @@ const chrome = {
   },
   tabs: {
     onRemoved: { addListener(fn) { removedListeners.push(fn); } },
+    onCreated: { addListener() {} },
     async create(options) {
       const tab = { id: nextTabId++, ...options };
       createdTabs.push(tab);
@@ -47,11 +49,16 @@ const chrome = {
     onConnect: { addListener() {} },
     lastError: null,
     sendMessage() {},
+    // Tự cập nhật + công tắc khung (scan-bridge): background đăng ký thêm các sự kiện này lúc nạp.
+    onInstalled: { addListener() {} },
+    onStartup: { addListener() {} },
+    getManifest() { return { version: "0.0.0-test" }; },
   },
+  alarms: { onAlarm: { addListener() {} }, async create() {} },
   offscreen: { async hasDocument() { return false; }, async createDocument() {}, async closeDocument() {} },
 };
 
-vm.runInNewContext(source, {
+const context = {
   chrome,
   console,
   setTimeout(callback) { callback(); return 0; },
@@ -62,7 +69,12 @@ vm.runInNewContext(source, {
   Array,
   String,
   fetch: async () => { throw new Error("unexpected fetch"); },
-});
+};
+// background.js nạp lib bằng importScripts như service worker thật → chạy file đó trong CÙNG context.
+context.importScripts = (...files) => {
+  for (const file of files) vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context);
+};
+vm.runInNewContext(source, context);
 
 function dispatch(message, tabId = null) {
   return new Promise((resolve, reject) => {

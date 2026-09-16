@@ -111,6 +111,14 @@
   // Wizard thay đổi dùng chung Registration.aspx nhưng mỗi bước có một marker riêng. Không dựa URL
   // vì URL không đổi qua bốn postback và các trang nội dung lại dùng chung với luồng thành lập mới.
   function detectBusinessChangeStage() {
+    // Handfree điều hướng từ DVCQG → đáp xuống TRANG CHỦ HkdOnline (khác auto-fill popup
+    // vốn bắt cán bộ tự đứng ở Registration.aspx) → luồng thay đổi cũng phải nhận stage home.
+    const pathname = String(window.location?.pathname || "");
+    if (/\/HkdOnline\/?$/i.test(pathname) || /\/HkdOnline\/Default\.aspx$/i.test(pathname)) {
+      const homeLink = Array.from(document.querySelectorAll("a.AspNet-Menu-Link, .PrettyMenu a"))
+        .find((node) => foldBusinessPageText(node.textContent) === "dang ky ho kinh doanh");
+      if (homeLink) return { stage: "home", pageKey: null };
+    }
     const markers = [
       ["select-registration", "ctl00_C_myWizard_LblQuestion1", "chon loai dang ky truc tuyen"],
       ["search-business", "ctl00_C_myWizard_Label2", "tim kiem ho kinh doanh de tien hanh dang ky thay doi"],
@@ -622,17 +630,59 @@
     const workflowLabel = flow.wizardType === "reissue" ? "Cấp lại/cấp đổi GCN HKD" : "Đăng ký thay đổi HKD";
     H.setRunProgressText(`${workflowLabel} — ${detected.stage}\n(đừng thao tác tới khi xong)`);
 
+    // Handfree pha 1 (prepare): chỉ lái tới màn chỉ định (thường "search-business" — bước
+    // Tìm kiếm hộ KD) rồi DỪNG nhận giấy tờ; mã số tra cứu nằm trong Thông báo/GCN nên
+    // phải có pipeline xong mới điền tiếp được.
+    if (st.stopAtStage && detected.stage === st.stopAtStage) {
+      await clearFillAllState();
+      H.businessDraftReady?.();
+      return;
+    }
+
     if (detected.stage === "unknown") {
+      // Vừa postback từ home/DVCQG: DOM có thể chưa dựng xong marker — thử lại có giới hạn
+      // như luồng thành lập mới thay vì fail ngay.
+      st.bootstrapTries = Number(st.bootstrapTries || 0) + 1;
+      await setFillAllState(st);
+      if (st.bootstrapTries <= 6) return void setTimeout(stepFillAll, 700);
       return void failChangeWorkflow(`Trang hiện tại không thuộc luồng ${workflowLabel}. Hãy mở đúng hồ sơ rồi chạy lại.`);
     }
+    st.bootstrapTries = 0;
     if (detected.stage === "main" || detected.stage === "main-root") {
       st.bootstrapDone = true;
       st.phase = "fill";
       await setFillAllState(st);
+      // Vừa qua trọn wizard vào "Khối dữ liệu": báo rồi NGHỈ ~5 giây cho trang ổn định
+      // (và người dân kịp nghe) trước khi bắt đầu điền các khối cần sửa.
+      H.setRunProgressText("Đã vào Khối dữ liệu ✓ Em bắt đầu điền các khối cần sửa sau ít giây…");
+      await sleep(5000);
       return void stepFillAll();
     }
 
     ensureConfirmOverride();
+
+    if (detected.stage === "home") {
+      const link = Array.from(document.querySelectorAll("a.AspNet-Menu-Link, .PrettyMenu a"))
+        .find((node) => foldBusinessPageText(node.textContent) === "dang ky ho kinh doanh");
+      if (!link) return void failChangeWorkflow("Không tìm thấy menu Đăng ký Hộ kinh doanh.");
+      st.homeTries = Number(st.homeTries || 0) + 1;
+      if (st.homeTries > 3) {
+        return void failChangeWorkflow(
+          "Đã chọn Đăng ký Hộ kinh doanh nhưng cổng vẫn chưa mở trang chọn loại đăng ký."
+        );
+      }
+      await setFillAllState(st);
+      const href = link.getAttribute("href") || "";
+      const postback = href.match(
+        /__doPostBack\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]*)['"]\s*\)/
+      );
+      const submitted = postback
+        ? doAspPostback(postback[1], postback[2])
+        : doAspPostback("ctl00$LV3$mCon", "bĐăng ký Hộ kinh doanh");
+      if (!submitted) return void failChangeWorkflow("Không gửi được lệnh mở Đăng ký Hộ kinh doanh.");
+      setTimeout(stepFillAll, 1600);
+      return;
+    }
     if (detected.stage === "select-registration") {
       const registrationOption = flow.registrationOption || (flow.wizardType === "reissue" ? "REI" : "CHN");
       const radio = document.querySelector(
@@ -1280,7 +1330,7 @@
 
     if (!st.nnDescriptionsDone && availableCoded.length) {
       st.nnDescriptionsDone = true;
-      const changed = fillBusinessLineDescriptions({ items: availableCoded });
+      const changed = fillBusinessLineDescriptions({ items: availableCoded }, st.businessDefaults);
       await setFillAllState(st);
       if (changed) {
         const update = findBusinessLineUpdateButton();
@@ -1538,8 +1588,8 @@
       // thẻ đó vào khối người nộp. Không khớp thẻ nào → giữ nguyên dữ liệu tài khoản, không đoán bừa.
       // Xét theo radio THẬT đang tick (đã chốt ở 2c) để không ghi đè khi form đang ở nhánh chủ hộ.
       // Hồ sơ chỉ có tờ đơn thì trong hồ sơ KHÔNG có nhân thân nào của người nộp thay (không CCCD,
-      // không Giấy ủy quyền) → chỉ tick vai trò, giữ nguyên nhân thân do nút "Sao chép thông tin
-      // đăng ký tài khoản" đổ vào. Ghi nhân thân chủ hộ vào đây là chắc chắn sai.
+      // không Giấy ủy quyền) → chỉ tick vai trò, giữ nguyên nhân thân + để trống địa chỉ do nút
+      // "Sao chép thông tin đăng ký tài khoản" đổ vào. Ghi nhân thân chủ hộ vào đây là chắc chắn sai.
       if (formOnly && submitterIsAuthorized()) {
         console.log("[FillAll] chỉ có tờ đơn → tick Người được ủy quyền, giữ nguyên nhân thân tài khoản");
       } else if (submitterIsAuthorized()) {
@@ -1565,16 +1615,19 @@
       if (await enableSubmitterEdit(st)) return;
       applySubmitterOverride(submitterOverride);
     }
-    // Cascade địa chỉ có thể render lại cả form; default địa bàn phải được ghi lại ngay trước Lưu.
+    // Ô default theo địa bàn (vd "Địa chỉ nhận kết quả") nằm ngoài khối người nộp nhưng vẫn bị các
+    // postback ở trên render lại → điền lại lần cuối ngay trước khi bấm Lưu.
     const localDefaults = localDefaultFieldsFor(st.businessDefaults, targetKey);
     if (localDefaults.length) {
       try { await fillFormStandard(localDefaults); } catch (e) { /* ignore */ }
     }
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn) return void advanceFillAll(st);
+    if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
     if (saveBtn.disabled) {
-      // HkdOnline đôi khi không bật cờ dirty khi extension phát input/change bằng script. Nếu trang
-      // thực sự có dữ liệu cần lưu thì vẫn phải mở nút và postback, không được lặng lẽ bỏ qua trang.
+      // Cùng rủi ro như trang Tạm ngừng kinh doanh: disabled không có nghĩa "không có gì để lưu"
+      // khi trang này thật sự có field cần điền — chỉ khác là ở đây field còn có thể đến từ
+      // submitterOverride (ghi trực tiếp DOM, không qua fields[]) nên fields.length KHÔNG đủ để
+      // kết luận "không có gì thay đổi".
       const hadChanges = fields.length > 0 || !!submitterOverride;
       if (!hadChanges) return void advanceFillAll(st);
       try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
@@ -1585,6 +1638,22 @@
     if (reloaded) return;
     return void advanceFillAll(st);
   }
+
+  // Trang "Thông tin về chủ hộ kinh doanh" của luồng thay đổi LUÔN phải có "Loại đăng ký thay đổi" =
+  // "Cập nhật thông tin chủ hộ kinh doanh" và "Lý do" = "Khác" — CỐ ĐỊNH cho MỌI hồ sơ thay đổi, dù
+  // có đổi chủ hộ hay không, và không phụ thuộc dữ liệu LLM/backend gửi sang. Cổng mặc định để "Thay
+  // đổi chủ hộ kinh doanh" + lý do TRỐNG nên trang nào cũng phải sửa lại.
+  // "Lý do" là select con phụ thuộc "Loại": chỉ khi "Loại" là "Cập nhật thông tin chủ hộ kinh doanh"
+  // thì option "Khác" mới có trong danh sách để chọn được.
+  // Dùng ở CẢ hai đường vào trang này: handleChangeOwnerPage (hồ sơ CÓ đổi chủ hộ, trang nằm trong
+  // order) và handleOwnerProbe (hồ sơ KHÔNG đổi chủ hộ, extension tự ghé qua).
+  const OWNER_CHANGE_TYPE_FIELDS = [
+    {
+      name: "ctl00$C$CHANGE_OWNER_TYPE_TITLE_IDFld", comp: "dom-select",
+      value: "Cập nhật thông tin chủ hộ kinh doanh",
+    },
+    { name: "ctl00$C$CHANGE_OWNER_TYPE_IDFld", comp: "dom-select", value: "Khác" },
+  ];
 
   async function handleChangeOwnerPage(st, fields, cfg) {
     // Chủ hộ mới là dữ liệu của hồ sơ, không mặc định là tài khoản đang nộp. Bật Sửa đổi dữ liệu
@@ -1600,11 +1669,62 @@
       if (reloaded) return;
     }
 
+    // Loại/Lý do LUÔN cố định (xem OWNER_CHANGE_TYPE_FIELDS) — không lấy theo field backend gửi, để
+    // hồ sơ nào cũng ra cùng một kết quả dù có đổi chủ hộ hay không.
+    const [ownerTypeField, ownerReasonField] = OWNER_CHANGE_TYPE_FIELDS;
+    const ownerTypeOk = ownerChangeTypeOk;
+
+    // mapper.py lên "chu-ho-kinh-doanh" HAI LƯỢT liên tiếp trong order khi có đổi chủ hộ: lượt đầu
+    // (còn 1 "chu-ho-kinh-doanh" nữa ngay sau) CHỈ lo chốt "Loại đăng ký thay đổi"/"Lý do" — 2 select
+    // cascade AutoPostBack dễ điền hụt nếu nhồi chung 1 lượt với cả khối nhân thân/địa chỉ; lượt sau
+    // mới điền nhân thân/địa chỉ + Lưu. advanceFillAll() không postback lại menu khi đang đứng đúng
+    // trang nên chuyển lượt không mất dữ liệu chưa Lưu.
+    const isTypePhase = st.order[st.step + 1] === "chu-ho-kinh-doanh";
+    if (isTypePhase) {
+      if (ownerTypeField) {
+        const sel = findStandardSelect(fieldCandidates(ownerTypeField));
+        const current = norm(sel?.options?.[sel.selectedIndex]?.textContent || "");
+        if (sel && current !== norm(ownerTypeField.value)) {
+          try { await fillFormStandard([ownerTypeField]); } catch (e) { /* ignore */ }
+          await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld");
+        }
+      }
+      if (ownerReasonField) {
+        try { await fillFormStandard([ownerReasonField]); } catch (e) { /* ignore */ }
+      }
+      if (!ownerTypeOk()) {
+        st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+        if (st.ownerTypeVerifyTries <= 6) {
+          await setFillAllState(st);
+          // Trang không postback lại (chỉ đổi 1-2 select) → phải TỰ lên lịch bước kế, không có gì
+          // đánh thức lại stepFillAll ngoài sự kiện load trang.
+          return void setTimeout(stepFillAll, 500);
+        }
+        console.warn("[FillAll] Loại/Lý do thay đổi chủ hộ vẫn sai sau nhiều lần thử — sang lượt điền nhân thân để không kẹt luồng.");
+      }
+      return void advanceFillAll(st); // sang lượt 2 (điền nhân thân + Lưu), KHÔNG click menu lại
+    }
+
+    // Lượt 2: nhân thân + địa chỉ. Loại/Lý do đã chốt ở lượt 1 nên loại khỏi "stable" để khỏi bấm
+    // lại 2 select AutoPostBack đó một lần nữa (thừa postback, có thể làm mất lựa chọn vừa chốt).
     const address = fields.filter((field) => cfg.addrMatch.test(field.name || ""));
     const stable = fields.filter((field) => !cfg.addrMatch.test(field.name || "")
-      && !/PERSONChange/.test(field.name || ""));
+      && !/PERSONChange/.test(field.name || "")
+      && !/CHANGE_OWNER_TYPE(_TITLE)?_IDFld$/.test(field.name || ""));
     try { await fillFormStandard(stable); } catch (e) { /* ignore */ }
     try { await fillAddressCascade(address); } catch (e) { /* ignore */ }
+
+    // Chốt lại lần cuối trước khi Lưu — phòng trường hợp hiếm cổng reset lựa chọn giữa 2 lượt.
+    if (!ownerTypeOk()) {
+      st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+      if (st.ownerTypeVerifyTries <= 6) {
+        if (ownerTypeField) { try { await fillFormStandard([ownerTypeField]); } catch (e) { /* ignore */ } await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld"); }
+        if (ownerReasonField) { try { await fillFormStandard([ownerReasonField]); } catch (e) { /* ignore */ } }
+        await setFillAllState(st);
+        return void setTimeout(stepFillAll, 500);
+      }
+      console.warn("[FillAll] Loại/Lý do thay đổi chủ hộ vẫn sai sau nhiều lần thử — Lưu tạm để không kẹt luồng.");
+    }
 
     const save = findBusinessSaveButton();
     if (!save || save.disabled) return void advanceFillAll(st);
@@ -1804,123 +1924,6 @@
    * KHÔNG fallback về search.expectedName: đó là TÊN HỘ KINH DOANH, không phải tên chủ hộ — so với
    * tên tài khoản thì luôn lệch.
    */
-  /** Ô nhân thân CHỦ HỘ trên trang "Thông tin về chủ hộ kinh doanh" (ô khoá → cổng render span _Vw). */
-  function readOwnerPageValue(suffix) {
-    const direct = readPersonControlRaw(`ctl00_C_OWN_PCtl_PERSCtl_${suffix}`);
-    if (direct) return direct;
-    const node = document.querySelector(
-      `[id$="OWN_PCtl_PERSCtl_${suffix}"], [id$="OWN_PCtl_PERSCtl_${suffix}_Vw"]`
-    );
-    if (!node) return "";
-    return String(node.value || node.textContent || "").replace(/\s+/g, " ").trim();
-  }
-
-  function readPortalOwner() {
-    return {
-      hoTen: readOwnerPageValue("FULL_NAMEFld"),
-      soDinhDanh: readOwnerPageValue("PERS_DOC_NOFld"),
-    };
-  }
-
-  /**
-   * Hồ sơ thay đổi KHÔNG đổi chủ hộ thì backend không xếp "chu-ho-kinh-doanh" vào order, nên trang
-   * này chưa ai đụng tới — và cũng KHÔNG có nhân thân chủ hộ nào trong hồ sơ để đối chiếu với tài
-   * khoản đang đăng nhập. Đơn xin thay đổi thường chỉ ghi TÊN HỘ KINH DOANH + mã số, mà tên hộ kinh
-   * doanh KHÔNG phải tên chủ hộ.
-   *
-   * Không ghé đọc thì matchAccountWithOwner luôn trả ownerUnknown ⇒ nhánh tick "Người được ủy quyền"
-   * KHÔNG BAO GIỜ chạy. Đây đúng là lỗi "mất logic tích người được ủy quyền".
-   * Chỉ ĐỌC nhân thân, KHÔNG bật "Sửa đổi dữ liệu" — hồ sơ này không đổi chủ hộ.
-   */
-  function needsOwnerProbe(st) {
-    if (!st || st.workflow !== "change") return false;
-    if (st.ownerPageVisited) return false;
-    return !(st.order || []).includes("chu-ho-kinh-doanh");
-  }
-
-  async function startOwnerProbe(st) {
-    st.phase = "probing-owner";
-    st.ownerProbeTries = (st.ownerProbeTries || 0) + 1;
-    await setFillAllState(st);
-    console.log("[FillAll] ghé trang chủ hộ kinh doanh để đọc họ tên chủ hộ");
-    // Postback điều hướng làm trang reload → nhịp kế do auto-resume gọi. Hẹn giờ chỉ để cứu khi cổng
-    // NUỐT postback (không reload) — lúc đó handleOwnerProbe thấy còn đứng ở trang cũ và bỏ cuộc.
-    if (goToBusinessPageByKey("chu-ho-kinh-doanh")) return void setTimeout(stepFillAll, 1500);
-    await finishOwnerProbe(st); // không có mục chủ hộ trong menu → thôi, chạy tiếp như cũ
-  }
-
-  /** Đóng nhịp ghé trang chủ hộ rồi quay lại trang người nộp hồ sơ. */
-  async function finishOwnerProbe(st) {
-    st.ownerPageVisited = true;      // ghé đúng MỘT lượt cho cả phiên, kể cả khi đọc hụt
-    st.portalOwner = st.portalOwner || {};
-    st.phase = "fill";
-    st.copyTries = 0;    // sang trang khác rồi quay lại → phải bấm "Sao chép tài khoản" lại từ đầu
-    st.filledStep = -1;  // và điền lại các field cấu trúc của trang người nộp
-    await setFillAllState(st);
-    if (detectBusinessPageKey().pageKey === "nguoi-nop-ho-so") return void stepFillAll();
-    if (!goToBusinessPageByKey("nguoi-nop-ho-so")) return void stepFillAll();
-    setTimeout(stepFillAll, 1500); // cổng nuốt postback → nhánh điều hướng chung ở stepFillAll lo tiếp
-  }
-
-  async function handleOwnerProbe(st) {
-    if (detectBusinessPageKey().pageKey !== "chu-ho-kinh-doanh") {
-      // Chưa tới được trang chủ hộ (postback hụt) → thử lại 1 lần rồi bỏ qua, không để kẹt vòng lặp.
-      if ((st.ownerProbeTries || 0) >= 2) return void finishOwnerProbe(st);
-      return void startOwnerProbe(st);
-    }
-    if (!st.portalOwner) {
-      const owner = readPortalOwner();
-      if (owner.hoTen || owner.soDinhDanh) {
-        st.portalOwner = owner;
-        console.log("[FillAll] chủ hộ đọc trên cổng:", owner.hoTen || "(trống)", owner.soDinhDanh || "");
-      } else {
-        console.warn("[FillAll] trang chủ hộ không đọc được họ tên → vai trò người nộp giữ nguyên tick");
-      }
-    }
-    return void finishOwnerProbe(st);
-  }
-
-  /**
-   * Hồ sơ "thay đổi nội dung hộ kinh doanh" CHỈ có tờ đơn xin thay đổi — không kèm CCCD rời, cũng
-   * không có Giấy ủy quyền (backend gắn cờ `formOnly` khi dựng flow). Nhân thân duy nhất trong hồ sơ
-   * là CHỦ HỘ ghi trong đơn ⇒ căn cứ duy nhất để biết người đang đăng nhập có phải chủ hộ không là
-   * HỌ TÊN chủ hộ.
-   */
-  function isChangeFormOnlyDossier(st) {
-    if (!st || st.businessFlow?.formOnly !== true) return false;
-    return st.workflow === "change" || st.businessFlow?.wizardType === "change";
-  }
-
-  /** Mọi nhân thân chủ hộ biết được của hồ sơ này, đã chuẩn hoá {id, name} để đối chiếu. */
-  function collectOwnerIdentities(st) {
-    const ownerIdentities = [];
-    // trusted = số định danh do CHÍNH CỔNG cung cấp (dữ liệu đăng ký sẵn có), không phải số OCR/LLM
-    // đọc từ giấy tờ trong hồ sơ.
-    const addOwnerIdentity = (hoTen, soDinhDanh, trusted = false) => {
-      const id = String(soDinhDanh || "").replace(/\D/g, "");
-      const name = foldBusinessPageText(hoTen || "");
-      if (id || name) ownerIdentities.push({ id, name, trusted });
-    };
-
-    const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
-    if (ownerFields.length) {
-      const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
-      const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
-      addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
-        (ownerIdField && ownerIdField.value) || "");
-    }
-    const flowOwner = st.businessFlow?.owner || {};
-    addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
-    if (st.businessFlow?.search?.method === "identityNumber") {
-      addOwnerIdentity("", st.businessFlow.search.value);
-    }
-    // Chủ hộ ĐỌC THẲNG trên cổng (trang "Thông tin về chủ hộ kinh doanh") khi hồ sơ không kê khai —
-    // xem readPortalOwner/handleOwnerProbe. Đây là nguồn đúng nhất: chính dữ liệu cổng đang giữ.
-    const portalOwner = st.portalOwner || {};
-    addOwnerIdentity(portalOwner.hoTen, portalOwner.soDinhDanh, true);
-    return ownerIdentities;
-  }
-
   function matchAccountWithOwner(st, { nameOnly = false } = {}) {
     const copiedId = readPersonControl("ctl00_C_PERSCtl_PERS_DOC_NOFld").replace(/\D/g, "");
     const copiedName = foldBusinessPageText(readPersonControl("ctl00_C_PERSCtl_FULL_NAMEFld"));
@@ -2229,6 +2232,9 @@
     const modeFields = fields.filter(isTaxAddressModeField);
     const addressFields = fields.filter((f) => isPostbackAddressField(f));
 
+    // Lượt cuối chỉ đảo radio rồi Lưu — không đụng lại field nào của trang.
+    if (isFinalTaxPass(st)) return void handleTaxAddressRetoggle(st, modeFields);
+
     // Trang thuế có radio "Địa chỉ nhận thông báo thuế" gây __doPostBack.
     // Xử lý như state machine nhỏ:
     // 1) stable: điền field không postback để người dùng thấy ngay.
@@ -2283,12 +2289,12 @@
     if (payload && Array.isArray(payload.files) && payload.files.length
       && Array.isArray(payload.attachments) && payload.attachments.length
       && typeof H.startAttachAllBusiness === "function") {
-      H.setRunProgressText(`✓ Đã điền xong ${st.order.length} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
+      H.setRunProgressText(`✓ Đã điền xong ${businessPageCount(st)} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
       await H.startAttachAllBusiness(payload.files, payload.attachments);
       setTimeout(H.stepAttachAll, 400);
       return;
     }
-    H.endFillAllUI(`✓ Đã điền xong ${st.order.length} trang. Vui lòng rà soát rồi bấm Nộp.`);
+    H.endFillAllUI(`✓ Đã điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.`);
   }
 
   async function advanceFillAll(st) {
@@ -2298,21 +2304,30 @@
     st.nnAdds = 0; st.nnAddTries = {}; st.nnSkippedAddCodes = []; st.nnSkip = [];
     st.nnMainDone = false; st.nnDescriptionsDone = false; st.nnBusinessActDefaultDone = false;
     st.nnRemoveTries = 0; st.nnTextDone = false; st.taxPhase = ""; st.copyTries = 0;
+    st.ownerEnableTries = 0; st.ownerTypeVerifyTries = 0;
     await setFillAllState(st);
     if (st.step >= st.order.length) {
       return void finishFillAllThenAttach(st);
     }
-    goToBusinessPageByKey(st.order[st.step]);
+    // Bước kế trùng đúng trang đang đứng (vd 2 lượt liên tiếp của "chu-ho-kinh-doanh" khi tách
+    // riêng bước chốt Loại/Lý do) → KHÔNG click lại menu, tránh postback thừa làm mất lựa chọn
+    // vừa điền vì chưa bấm Lưu.
+    if (detectBusinessPageKey().pageKey === st.order[st.step]) {
+      return void stepFillAll();
+    }
+    // Click menu hỏng (cổng vừa đổi màn, breadcrumb chưa dựng) sẽ KHÔNG có page load nào gọi lại
+    // stepFillAll → state machine đứng im. Tự hẹn lại một nhịp để đi qua nhánh navCount có retry.
+    if (!goToBusinessPageByKey(st.order[st.step])) setTimeout(stepFillAll, 600);
   }
 
   async function stepFillAll() {
-    if (H.isBusinessRunCancelled?.()) return;
     const st = await getFillAllState();
     if (!st || !Array.isArray(st.order)) return;
+    if (H.isBusinessRunCancelled?.()) return;
     if (st.workflow === "create" && !st.bootstrapDone) {
       return void stepCreateBootstrap(st);
     }
-    if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution"].includes(st.workflow)) && !st.bootstrapDone) {
+    if ((["change", "reissue"].includes(st.businessFlow?.wizardType) || ["change", "reissue", "dissolution", "suspension"].includes(st.workflow)) && !st.bootstrapDone) {
       return void stepChangeBootstrap(st);
     }
     // Đang trong nhịp "mở trang chủ hộ đọc họ tên rồi quay lại": xử lý trước mọi thứ khác, vì trang
@@ -2390,6 +2405,7 @@
       return void handleChangeCapitalPage(st);
     }
 
+    // Field của trang + ô default theo địa bàn (vd "Lý do giải thể" của tài khoản Hải Châu).
     const pageFields = applyBusinessLocalDefaults(
       (st.pages && st.pages[targetKey]) || [], st.businessDefaults, targetKey);
 
@@ -2403,11 +2419,14 @@
       await sleep(800); // để form "dirty" + cascade địa danh xong → nút Lưu bật
     }
 
-    if (H.isBusinessRunCancelled?.()) return;
-
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn) return void advanceFillAll(st);
+    if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
     if (saveBtn.disabled) {
+      // Nút Lưu mặc định disabled, chỉ bật khi cổng phát hiện form "dirty" qua sự kiện input/change
+      // thật của người dùng. fillFormStandard set value bằng script nên vài control (vd datepicker
+      // "dom-date" ở trang Tạm ngừng kinh doanh) không kích hoạt được cờ dirty đó dù giá trị đã đúng
+      // trên DOM — disabled ở đây KHÔNG có nghĩa "không có gì để lưu". Chỉ coi là "không có gì để lưu"
+      // khi trang này thật sự không có field nào cần điền; còn lại thì tự bật nút rồi vẫn bấm Lưu.
       if (!pageFields.length) return void advanceFillAll(st);
       try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
     }
@@ -2874,9 +2893,279 @@
     return void handleUploadPhase(st);
   }
 
+  // Const đi kèm các hàm đồng bộ từ auto-fill (thiếu là ReferenceError lúc GỌI hàm —
+  // bài học fill-core: máy quét lời-gọi không bắt được tham chiếu const trần).
+  const BUSINESS_LINE_ROWS = "#ctl00_C_CtlList tr, #C_CtlList tr";
+  const BUSINESS_LINE_RESULT_PANELS = "#C_PnlListResult, #ctl00_C_PnlListResult";
+  const TAX_ADDR_SAME = "1";
+  const TAX_ADDR_OTHER = "0";
+  const TAX_ADDR_WARD_FIELD = "ctl00$C$UC_DW_TAXEditCtl$ADDRCtl$WARD_IDFld";
+
+  // ── Đồng bộ từ auto-fill business-registration.js: owner-probe (chốt Loại/Lý do thay
+  // đổi + đọc tên chủ hộ thật), chốt lại địa chỉ thuế "giống trụ sở", helper ngành nghề. ──
+  function businessLineRows() {
+    const byId = Array.from(document.querySelectorAll(BUSINESS_LINE_ROWS));
+    if (byId.length) return byId;
+    const panels = Array.from(document.querySelectorAll(BUSINESS_LINE_RESULT_PANELS));
+    for (const panel of panels) {
+      const rows = Array.from(panel.querySelectorAll("tr"));
+      if (rows.length) return rows;
+    }
+    // Lưới đỡ cuối, KHÔNG bám id nào: dòng ngành nghề là dòng duy nhất mang radio "ngành chính".
+    const marked = Array.from(document.querySelectorAll('input[name="ismain"]'))
+      .map((radio) => radio.closest("tr")).filter(Boolean);
+    return Array.from(new Set(marked));
+  }
+
+  function findBusinessButtonByExactLabel(labels) {
+    const wanted = labels.map(foldBusinessPageText);
+    return Array.from(document.querySelectorAll('input[type="submit"], input[type="button"], button'))
+      .filter((node) => !node.disabled)
+      .find((node) => wanted.includes(foldBusinessPageText(node.value || node.textContent || ""))) || null;
+  }
+
+  function findBusinessAddLineButton() {
+    // NAME là UniqueID nên giống nhau ở cả hai cổng; id thì mỗi cổng một kiểu. Nhãn là lưới đỡ cuối
+    // cho trường hợp cổng doanh nghiệp đặt tên control khác ("Thêm ngành nghề bằng mã số").
+    return document.querySelector(
+      'input[name="ctl00$C$BtnAddBl"], #ctl00_C_BtnAddBl, #C_BtnAddBl,'
+      + ' input[name$="$BtnAddBl"], input[id$="_BtnAddBl"]'
+    ) || findBusinessButtonByExactLabel(["Thêm ngành nghề bằng mã số", "Thêm"]);
+  }
+
+  function isChangeFormOnlyDossier(st) {
+    if (!st || st.businessFlow?.formOnly !== true) return false;
+    return st.workflow === "change" || st.businessFlow?.wizardType === "change";
+  }
+
+  function collectOwnerIdentities(st) {
+    const ownerIdentities = [];
+    // trusted = số định danh do CHÍNH CỔNG cung cấp (dữ liệu đăng ký sẵn có), không phải số OCR/LLM
+    // đọc từ giấy tờ trong hồ sơ.
+    const addOwnerIdentity = (hoTen, soDinhDanh, trusted = false) => {
+      const id = String(soDinhDanh || "").replace(/\D/g, "");
+      const name = foldBusinessPageText(hoTen || "");
+      if (id || name) ownerIdentities.push({ id, name, trusted });
+    };
+
+    const ownerFields = (st.pages && st.pages["chu-ho-kinh-doanh"]) || [];
+    if (ownerFields.length) {
+      const ownerIdField = ownerFields.find((f) => /PERS_DOC_NOFld$/i.test(f.name || ""));
+      const ownerNameField = ownerFields.find((f) => /FULL_NAMEFld$/i.test(f.name || ""));
+      addOwnerIdentity((ownerNameField && ownerNameField.value) || "",
+        (ownerIdField && ownerIdField.value) || "");
+    }
+    const flowOwner = st.businessFlow?.owner || {};
+    addOwnerIdentity(flowOwner.hoTen, flowOwner.soDinhDanh);
+    if (st.businessFlow?.search?.method === "identityNumber") {
+      addOwnerIdentity("", st.businessFlow.search.value);
+    }
+    // Chủ hộ ĐỌC THẲNG trên cổng (trang "Thông tin về chủ hộ kinh doanh") khi hồ sơ không kê khai —
+    // xem readPortalOwner/handleOwnerProbe. Đây là nguồn đúng nhất: chính dữ liệu cổng đang giữ.
+    const portalOwner = st.portalOwner || {};
+    addOwnerIdentity(portalOwner.hoTen, portalOwner.soDinhDanh, true);
+    return ownerIdentities;
+  }
+
+  function readOwnerPageValue(suffix) {
+    const direct = readPersonControlRaw(`ctl00_C_OWN_PCtl_PERSCtl_${suffix}`);
+    if (direct) return direct;
+    const node = document.querySelector(
+      `[id$="OWN_PCtl_PERSCtl_${suffix}"], [id$="OWN_PCtl_PERSCtl_${suffix}_Vw"]`
+    );
+    if (!node) return "";
+    return String(node.value || node.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function readPortalOwner() {
+    return {
+      hoTen: readOwnerPageValue("FULL_NAMEFld"),
+      soDinhDanh: readOwnerPageValue("PERS_DOC_NOFld"),
+    };
+  }
+
+  function ownerChangeTypeOk() {
+    return OWNER_CHANGE_TYPE_FIELDS.every((field) => {
+      const el = findStandardSelect(fieldCandidates(field));
+      return el && norm(el.options[el.selectedIndex]?.textContent || "") === norm(field.value);
+    });
+  }
+
+  async function applyOwnerChangeTypeDefaults() {
+    const [typeField, reasonField] = OWNER_CHANGE_TYPE_FIELDS;
+    const sel = findStandardSelect(fieldCandidates(typeField));
+    if (sel && norm(sel.options[sel.selectedIndex]?.textContent || "") !== norm(typeField.value)) {
+      try { await fillFormStandard([typeField]); } catch (e) { /* ignore */ }
+      // Đổi "Loại" là AutoPostBack: phải CHỜ cổng render lại select "Lý do" mới chọn được "Khác".
+      await waitForPanelSettle("ctl00_C_CHANGE_OWNER_TYPE_IDFld");
+    }
+    try { await fillFormStandard([reasonField]); } catch (e) { /* ignore */ }
+  }
+
+  function needsOwnerProbe(st) {
+    if (!st || st.workflow !== "change") return false;
+    if (st.ownerPageVisited) return false;
+    return !(st.order || []).includes("chu-ho-kinh-doanh");
+  }
+
+  async function startOwnerProbe(st) {
+    st.phase = "probing-owner";
+    st.ownerProbeTries = (st.ownerProbeTries || 0) + 1;
+    await setFillAllState(st);
+    console.log("[FillAll] ghé trang chủ hộ kinh doanh: chốt Loại/Lý do thay đổi + đọc họ tên chủ hộ");
+    // Postback điều hướng làm trang reload → nhịp kế do auto-resume gọi. Hẹn giờ chỉ để cứu khi cổng
+    // NUỐT postback (không reload) — lúc đó handleOwnerProbe thấy còn đứng ở trang cũ và bỏ cuộc.
+    if (goToBusinessPageByKey("chu-ho-kinh-doanh")) return void setTimeout(stepFillAll, 1500);
+    await finishOwnerProbe(st); // không có mục chủ hộ trong menu → thôi, chạy tiếp như cũ
+  }
+
+  async function finishOwnerProbe(st) {
+    st.ownerPageVisited = true;      // ghé đúng MỘT lượt cho cả phiên, kể cả khi đọc/điền hụt
+    st.portalOwner = st.portalOwner || {};
+    st.phase = "fill";
+    st.copyTries = 0;    // sang trang khác rồi quay lại → phải bấm "Sao chép tài khoản" lại từ đầu
+    st.filledStep = -1;  // và điền lại các field cấu trúc của trang người nộp
+    await setFillAllState(st);
+    if (detectBusinessPageKey().pageKey === "nguoi-nop-ho-so") return void stepFillAll();
+    if (!goToBusinessPageByKey("nguoi-nop-ho-so")) return void stepFillAll();
+    setTimeout(stepFillAll, 1500); // cổng nuốt postback → nhánh điều hướng chung ở stepFillAll lo tiếp
+  }
+
+  async function handleOwnerProbe(st) {
+    if (detectBusinessPageKey().pageKey !== "chu-ho-kinh-doanh") {
+      // Lưu xong cổng có thể tự nhảy về khối dữ liệu → xong việc rồi, về thẳng trang người nộp.
+      if (st.ownerDefaultsSaved) return void finishOwnerProbe(st);
+      // Chưa tới được trang chủ hộ (postback hụt) → thử lại 1 lần rồi bỏ qua, không để kẹt vòng lặp.
+      if ((st.ownerProbeTries || 0) >= 2) return void finishOwnerProbe(st);
+      return void startOwnerProbe(st);
+    }
+
+    // 1. Đọc chủ hộ TRƯỚC khi đụng vào 2 select (đổi "Loại" là postback, cổng render lại cả trang).
+    if (!st.portalOwner) {
+      const owner = readPortalOwner();
+      if (owner.hoTen || owner.soDinhDanh) {
+        st.portalOwner = owner;
+        console.log("[FillAll] chủ hộ đọc trên cổng:", owner.hoTen || "(trống)", owner.soDinhDanh || "");
+      } else {
+        console.warn("[FillAll] trang chủ hộ không đọc được họ tên → vai trò người nộp giữ nguyên tick");
+      }
+    }
+
+    // 2. Chốt Loại/Lý do mặc định rồi Lưu. Mỗi lượt chỉ làm một nhịp (2 select cascade AutoPostBack),
+    //    trang không tự reload nên phải tự hẹn giờ gọi lại.
+    if (!st.ownerDefaultsSaved) {
+      if (!ownerChangeTypeOk()) {
+        st.ownerTypeVerifyTries = (st.ownerTypeVerifyTries || 0) + 1;
+        if (st.ownerTypeVerifyTries <= 6) {
+          await setFillAllState(st);
+          await applyOwnerChangeTypeDefaults();
+          return void setTimeout(stepFillAll, 500);
+        }
+        console.warn("[FillAll] không chốt được Loại/Lý do thay đổi chủ hộ — bỏ qua để không kẹt luồng.");
+      }
+      const save = findBusinessSaveButton();
+      if (save) {
+        // Chỉ đổi 2 select nên cổng có thể chưa bật nút Lưu; giá trị trên DOM đã đúng → cứ bật rồi Lưu.
+        if (save.disabled) { try { save.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+        st.ownerDefaultsSaved = true;
+        await setFillAllState(st);
+        const reloaded = await clickSaveDetectReload(save);
+        if (reloaded) return; // reload xong quay lại đây, lần đó bỏ qua khối này rồi về trang người nộp
+      }
+    }
+
+    return void finishOwnerProbe(st);
+  }
+
+  function taxWantsSameAsHeadOffice(fields) {
+    return (fields || []).some((f) => isTaxAddressModeField(f)
+      && String(f?.value ?? "").trim() === TAX_ADDR_SAME);
+  }
+
+  function isFinalTaxPass(st) {
+    const order = Array.isArray(st?.order) ? st.order : [];
+    return order.lastIndexOf("thong-tin-ve-thue") === st.step
+      && order.indexOf("thong-tin-ve-thue") !== st.step;
+  }
+
+  async function clickTaxAddressMode(modeFields, value) {
+    const template = modeFields[0];
+    if (!template) return false;
+    const label = value === TAX_ADDR_SAME ? "Giống địa chỉ trụ sở chính" : "Địa chỉ khác";
+    try {
+      const res = await fillFormStandard([{ ...template, value }]);
+      console.log("[FillAll] địa chỉ thuế: tick", label, "->", res && res.filled ? "OK" : "KHÔNG tick được");
+    } catch (e) {
+      console.warn("[FillAll] địa chỉ thuế: lỗi khi tick", label, e?.message || e);
+      return false;
+    }
+    await waitForPanelSettle(TAX_ADDR_WARD_FIELD.replace(/\$/g, "_"), 2500);
+    return true;
+  }
+
+  async function handleTaxAddressRetoggle(st, modeFields) {
+    console.log("[FillAll] lượt CHỐT địa chỉ thuế, taxPhase =", st.taxPhase || "(mới)");
+    if (!modeFields.length) {
+      console.warn("[FillAll] hồ sơ không có radio địa chỉ thuế — bỏ lượt chốt");
+      return void advanceFillAll(st);
+    }
+
+    // Persist TRƯỚC mỗi click: radio là AutoPostBack, cổng có thể reload cả trang giữa chừng thì
+    // lần load kế còn biết đang dở ở nhịp nào.
+    if (!st.taxPhase) {
+      st.taxPhase = "retoggle_other";
+      await setFillAllState(st);
+    }
+
+    if (st.taxPhase === "retoggle_other") {
+      await clickTaxAddressMode(modeFields, TAX_ADDR_OTHER);
+      st.taxPhase = "retoggle_same";
+      await setFillAllState(st);
+    }
+
+    if (st.taxPhase === "retoggle_same") {
+      await clickTaxAddressMode(modeFields, TAX_ADDR_SAME);
+      st.taxPhase = "retoggled";
+      await setFillAllState(st);
+    }
+
+    const saveBtn = findBusinessSaveButton();
+    if (!saveBtn) return void advanceFillAll(st);
+    // Lượt này không điền field nào nên cổng có thể chưa coi form là "dirty" → tự bật nút Lưu.
+    // Bỏ qua Lưu ở đây là công đảo radio thành vô nghĩa, khối thuế vẫn rỗng như trước.
+    if (saveBtn.disabled) { try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ } }
+    st.phase = "saving";
+    await setFillAllState(st);
+    const reloaded = await clickSaveDetectReload(saveBtn);
+    if (reloaded) return;
+    return void advanceFillAll(st);
+  }
+
+  function businessPageCount(st) {
+    return new Set(Array.isArray(st?.order) ? st.order : []).size;
+  }
+
+  function attachElById(suffix) {
+    return document.getElementById(`ctl00_C_${suffix}`) || document.getElementById(`C_${suffix}`);
+  }
+
+  function attachTypeSelectReady(sel) {
+    return !!sel && H.isVisible(sel) && sel.options.length > 1;
+  }
+
   H.detectBusinessPageKey = detectBusinessPageKey;
   H.detectBusinessChangeStage = detectBusinessChangeStage;
   H.detectBusinessCreateStage = detectBusinessCreateStage;
+  // Cho adapter chèn "lượt chốt địa chỉ thuế" cuối order (hồ sơ kê "giống trụ sở chính").
+  H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
+  H.TAX_PAGE_KEY = "thong-tin-ve-thue";
+  // Stage GỘP cho page_status: thử luồng thành lập mới trước (home/select-registration/confirm
+  // trùng marker), không ra thì thử luồng thay đổi (search-business/select-change/main thay đổi).
+  H.detectBusinessAnyStage = function detectBusinessAnyStage() {
+    const create = detectBusinessCreateStage();
+    if (create.stage !== "unknown") return create;
+    return detectBusinessChangeStage();
+  };
   H.detectBusinessProcedureHint = detectBusinessProcedureHint;
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
@@ -2889,10 +3178,6 @@
   H.matchSubmitterIdentityCandidate = matchSubmitterIdentityCandidate;
   H.forceSelfSubmitter = forceSelfSubmitter;
   H.matchAccountWithOwner = matchAccountWithOwner;
-  H.collectOwnerIdentities = collectOwnerIdentities;
-  H.isChangeFormOnlyDossier = isChangeFormOnlyDossier;
-  H.needsOwnerProbe = needsOwnerProbe;
-  H.readPortalOwner = readPortalOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
   H.getFillAllState = getFillAllState;
   H.clearFillAllState = clearFillAllState;

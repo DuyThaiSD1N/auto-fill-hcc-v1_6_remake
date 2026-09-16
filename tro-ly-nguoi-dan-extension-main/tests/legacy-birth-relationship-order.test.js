@@ -11,7 +11,7 @@ assert.ok(helperStart >= 0 && helperEnd > helperStart, "Không tách được he
 assert.match(
   source,
   /window\.__TLND__\s*\|\|\s*\(window\.__TLND__\s*=\s*\{\}\)/,
-  "Engine legacy phải đăng ký đúng namespace của Trợ lý người dân",
+  "Engine legacy phải đăng ký đúng namespace của Trợ lý nhân dân",
 );
 
 const sandbox = {

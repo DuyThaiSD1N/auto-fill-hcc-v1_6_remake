@@ -78,7 +78,9 @@ async def test_cap_nuoc_sach_compact_agent_derives_dom_fields(monkeypatch):
     assert d["CongDan_ngayCapCmnd"] == "16/04/2021"
     assert d["CongDan_noiCapCmnd"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["CongDan_maTinhThanh"] == "Hải Phòng"
-    assert d["CongDan_maPhuongXa"] == "Vĩnh Bảo"
+    # Bước chuẩn hóa địa chỉ chung trả về ĐÚNG nhãn trong danh mục hiện hành ("Xã Vĩnh Bảo"):
+    # cổng chọn option theo ĐÚNG chuỗi nhãn nên tên trần thiếu tiền tố đơn vị sẽ không khớp option nào.
+    assert d["CongDan_maPhuongXa"] == "Xã Vĩnh Bảo"
     assert d["CongDan_diaChi"] == "Trung Lập"
     assert d["CongDan_diDong"] == "0975754384"
     assert d["CongDan_maDMQuocGia"] == "Việt Nam"
@@ -196,7 +198,8 @@ async def test_cap_nuoc_sach_maps_enterprise_fields_without_asset_gcn(monkeypatc
     assert d["CongDan_soCCCD"] == "012301005867"
     assert d["CongDan_ngayCapCmnd"] == "21/01/2026"
     assert d["CongDan_maTinhThanh"] == "Hưng Yên"
-    assert d["CongDan_maPhuongXa"] == "Đông Hưng"
+    # Nhãn đầy đủ trong danh mục hiện hành; xem ghi chú ở test dom_fields.
+    assert d["CongDan_maPhuongXa"] == "Xã Đông Hưng"
     assert d["CongDan_diaChi"] == "Minh Tân"
     assert d["CongDan_diDong"] == "0393273913"
     assert d["CongDan_noiOHienTai"] == "Bản Đông Phong, Thèn Sin, Tam Đường, Lai Châu"

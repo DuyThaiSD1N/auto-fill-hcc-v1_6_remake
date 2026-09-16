@@ -196,6 +196,70 @@
     if (blur) input.dispatchEvent(new Event("blur", { bubbles: true }));
   }
 
+  // ── Ô ngày cổng React MỚI (comp "owner-date") ─────────────────────────────────────────
+  // Input MASK từng segment (placeholder "dd/MM/yyyy") do React kiểm soát CHẶT: gán .value +
+  // bắn input/change đều bị revert về "dd/MM/yyyy" (đã kiểm trực tiếp trên cổng). CHỈ mô phỏng
+  // GÕ PHÍM mới ăn — mask tự dựng từng segment trong onKeyDown và KHÔNG chặn event tổng hợp
+  // (isTrusted). Ba điều bắt buộc, thiếu cái nào là sai:
+  //   1) XOÁ SẠCH trước (End + Backspace nhiều lần) — giá trị cũ làm segment NĂM bị dồn lệch;
+  //   2) đưa con trỏ về segment đầu (Home + ArrowLeft) — nếu không, số dồn hết vào segment đang chọn;
+  //   3) gõ CÓ ĐỘ TRỄ giữa các phím — React nhảy segment ở lần render kế; gõ đồng bộ thì kẹt 1 segment.
+  const DATE_KEYCODE = { ArrowLeft: 37, ArrowRight: 39, Home: 36, End: 35, Backspace: 8, Delete: 46 };
+  function dispatchDateKey(input, type, k) {
+    const code = DATE_KEYCODE[k] ?? k.charCodeAt(0);
+    const ev = new KeyboardEvent(type, {
+      bubbles: true, cancelable: true, key: k, code: k.length === 1 ? `Digit${k}` : k,
+    });
+    // KeyboardEvent constructor bỏ qua keyCode/which → ép qua getter (mask đọc keyCode/which,
+    // thiếu thì onKeyDown bỏ luôn phím — đây là lý do bản gõ phím thiếu keyCode trước đó câm).
+    Object.defineProperty(ev, "keyCode", { get: () => code });
+    Object.defineProperty(ev, "which", { get: () => code });
+    input.dispatchEvent(ev);
+  }
+  async function tapDateKey(input, k, wait) {
+    dispatchDateKey(input, "keydown", k);
+    if (k.length === 1) dispatchDateKey(input, "keypress", k);
+    dispatchDateKey(input, "keyup", k);
+    await sleep(wait);
+  }
+  // Trả về "ddMMyyyy" (8 số) từ giá trị BE gửi ("d/m/yyyy" hoặc ISO "yyyy-m-d"); null nếu không phải ngày.
+  function ownerDateDigits(value) {
+    const raw = ownerScalarValue(value);
+    let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return m[1].padStart(2, "0") + m[2].padStart(2, "0") + m[3];
+    m = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) return m[3].padStart(2, "0") + m[2].padStart(2, "0") + m[1];
+    return null;
+  }
+  async function fillOwnerDate(input, value) {
+    // Guard: nếu control là wrapper (vd sau này gắn data-e2e lên div bọc) thì lấy input bên trong.
+    if (input && !input.matches?.("input, textarea")) {
+      input = input.querySelector?.("input:not([type=hidden])") || input;
+    }
+    const digits = ownerDateDigits(value);
+    if (!digits) { ownerWarn("owner-date:bad-format", { value: ownerScalarValue(value) }); return false; }
+    const typeSequence = async () => {
+      input.focus();
+      try { input.click(); } catch (_) {}
+      await sleep(60);
+      await tapDateKey(input, "End", 40);                                   // 1) xoá sạch
+      for (let i = 0; i < 12; i++) await tapDateKey(input, "Backspace", 30);
+      await tapDateKey(input, "Home", 40);                                  // 2) về segment ngày
+      for (let i = 0; i < 4; i++) await tapDateKey(input, "ArrowLeft", 20);
+      for (const ch of digits) await tapDateKey(input, ch, 55);             // 3) gõ ddMMyyyy
+      input.dispatchEvent(new Event("blur", { bubbles: true }));
+      await sleep(80);
+      return /^\d{2}\/\d{2}\/\d{4}$/.test(String(input.value || "").trim());
+    };
+    // Thử lại 1 lần: đôi khi lần đầu con trỏ chưa về đúng segment (component vừa mount).
+    let ok = await typeSequence();
+    if (!ok) ok = await typeSequence();
+    ownerLog("owner-date:result", {
+      want: `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`, got: input.value, ok,
+    });
+    return ok;
+  }
+
   function comboDisplayedValue(scope) {
     const displayed = scope?.querySelector('[class*="singleValue"]');
     return nodeText(displayed);
@@ -418,8 +482,12 @@
           notFound.push(label);
           markCurrentOwnerField(field, control, scope, false);
         } else {
-          setReactValue(control, field.value);
-          if (usableOwnerValue(control.value)) {
+          // Ô ngày (owner-date) là input mask React — setReactValue/bắn event bị revert;
+          // phải mô phỏng gõ phím. Field thường vẫn dùng setReactValue như cũ.
+          const ok = field.comp === "owner-date"
+            ? await fillOwnerDate(control, field.value)
+            : (setReactValue(control, field.value), usableOwnerValue(control.value));
+          if (ok) {
             filled += 1;
             filledLabels.push(label);
             // Date component cập nhật state sau blur; chờ render xong rồi đánh
@@ -575,6 +643,19 @@
     return { ok: true };
   }
 
+  // Cổng bộ ngành (GD&ĐT...): khối cơ quan có toggle "Phường/Xã | Sở" — CHỈ cần chuyển
+  // sang "Sở", KHÔNG chọn sở cụ thể trong combo. Bấm Đồng ý xong danh sách dịch vụ công
+  // hiện ra và nút "Nộp trực tuyến" ĐẦU TIÊN (mặc định là Sở chuyên ngành của thủ tục)
+  // được bấm ở clickNopTrucTuyen như luồng chung.
+  async function switchToSoToggle(block) {
+    const target = Array.from(block.querySelectorAll("label, button, span, div"))
+      .find((el) => el.children.length === 0 && isVisible(el) && fold(el.textContent) === "so");
+    if (!target) return { error: 'Không thấy lựa chọn "Sở" trong khối chọn cơ quan.' };
+    clickLikeUser(target.closest("label, button") || target);
+    await sleep(700); // React nạp lại khối theo loại cơ quan vừa chọn
+    return { ok: true };
+  }
+
   // Sau "Đồng ý" trang hiện danh sách cơ quan/dịch vụ → tự bấm luôn "Nộp trực tuyến",
   // không dừng giữa chừng bắt người dân bấm.
   async function clickNopTrucTuyen() {
@@ -589,7 +670,7 @@
     return true;
   }
 
-  async function selectAgency({ province, ward }) {
+  async function selectAgency({ province, ward, soMode = false }) {
     const block = await waitFor(agencyBlock, 6000);
     if (!block) return { error: 'Không thấy khối "Chọn cơ quan thực hiện" trên trang.' };
 
@@ -601,9 +682,17 @@
     if (!provRes.ok) return { error: `Tỉnh: ${provRes.error}` };
     await sleep(800); // chờ danh sách xã nạp theo tỉnh vừa chọn
 
-    // XÃ: danh sách nạp async → chờ dài hơn.
-    const wardRes = await pickCombo(combos[1], ward, { force: true, timeout: 8000 });
-    if (!wardRes.ok) return { error: `Xã: ${wardRes.error}` };
+    if (soMode) {
+      // Cổng bộ ngành: chỉ chuyển toggle "Sở" rồi Đồng ý — KHÔNG chọn sở trong combo
+      // (kết quả đầu tiên của danh sách sau Đồng ý mới là Sở chuyên ngành cần nộp).
+      const toggle = await switchToSoToggle(block);
+      if (toggle.error) return toggle;
+    } else {
+      // XÃ: danh sách nạp async → chờ dài hơn. ward RỖNG thì pickCombo tự bỏ qua
+      // (thủ tục bộ ngành chỉ cần tỉnh).
+      const wardRes = await pickCombo(combos[1], ward, { force: true, timeout: 8000 });
+      if (!wardRes.ok) return { error: `Xã: ${wardRes.error}` };
+    }
 
     // Nút chốt trong block: "Đồng ý" (chưa đăng nhập) HOẶC "Nộp hồ sơ" (đã đăng nhập).
     // Khớp text fold, không tin class.
@@ -631,7 +720,11 @@
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "selectAgency") return;
     if (!agencyBlock()) return; // frame không chứa khối → để frame đúng trả lời
-    selectAgency({ province: msg.province || "", ward: msg.ward || "" })
+    selectAgency({
+      province: msg.province || "",
+      ward: msg.ward || "",
+      soMode: msg.soMode === true,
+    })
       .then(sendResponse)
       .catch((e) => sendResponse({ error: String(e?.message || e) }));
     return true; // async

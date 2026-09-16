@@ -1,16 +1,17 @@
 {
   "manifest_version": 3,
-  "name": "Trợ lý người dân",
-  "version": "1.2",
-  "description": "Trợ lý toàn trình hỗ trợ người dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
+  "name": "Trợ lý nhân dân",
+  "version": "1.3.3",
+  "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
   "icons": {
     "16": "assets/icons/icon-16.png",
     "32": "assets/icons/icon-32.png",
     "48": "assets/icons/icon-48.png",
     "128": "assets/icons/icon-128.png"
   },
-  "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData"],
+  "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData", "alarms", "idle", "sidePanel", "scripting"],
   "host_permissions": [
+    "https://*.gov.vn/*",
     "https://trolyhoso-hcc.tiengnoi.vn/*",
     "wss://trolyhoso-hcc.tiengnoi.vn/*",
     "https://trolyhoso-hcc.vnekyc.vn/*",
@@ -26,10 +27,14 @@
     "https://sso.dancuquocgia.gov.vn/*",
     "https://dichvucongnganhtuphap.moj.gov.vn/*",
     "https://tokhaidientu.moj.gov.vn/*",
-    "https://hokinhdoanh.dkkd.gov.vn/*"
+    "https://hokinhdoanh.dkkd.gov.vn/*",
+    "https://dichvucongnnmt.mae.gov.vn/*",
+    "https://dvc.moet.gov.vn/*",
+    "https://dvc.moc.gov.vn/*",
+    "https://dichvucong.bacninh.gov.vn/*"
   ],
   "action": {
-    "default_title": "Trợ lý người dân — bấm để mở trợ lý trên trang",
+    "default_title": "Trợ lý nhân dân — bấm để mở trợ lý trên trang",
     "default_icon": {
       "16": "assets/icons/icon-16.png",
       "32": "assets/icons/icon-32.png",
@@ -43,6 +48,7 @@
   "content_scripts": [
     {
       "matches": [
+        "https://*.gov.vn/*",
         "https://sso.dancuquocgia.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
@@ -76,6 +82,7 @@
         "content/business-registration-adapter.js",
         "content/procedures/business-registration.js",
         "content/portal-dvc.js",
+        "content/portal-mae.js",
         "content/review.js",
         "content/vneid-sso.js",
         "content.js",
@@ -87,11 +94,12 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "sidebar.html", "sidebar.css", "sidebar.js",
+        "sidebar.html", "sidebar.css", "sidebar.js", "preview.html", "preview.js",
         "services/*", "api/*", "lib/*", "vendor/*", "assets/*",
         "permission.html", "permission.js"
       ],
       "matches": [
+        "https://*.gov.vn/*",
         "https://sso.dancuquocgia.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",

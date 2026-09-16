@@ -131,3 +131,21 @@ test("địa chỉ object chỉ lấy phần diaChi và không giữ literal obj
 test("date placeholder của khối ủy quyền không được coi là giá trị đã có", () => {
   assert.match(portal, /normalized !== "dd\/mm\/yyyy"/);
 });
+
+test("owner-date là input mask React nên phải mô phỏng gõ phím, không gán value", () => {
+  // Nhánh riêng cho comp owner-date, KHÔNG dùng setReactValue (bị revert về dd/MM/yyyy).
+  assert.match(portal, /field\.comp === "owner-date"[\s\S]*?fillOwnerDate\(control, field\.value\)/);
+  assert.match(portal, /async function fillOwnerDate/);
+  // Gõ phím thật qua KeyboardEvent, ép keyCode/which vì constructor bỏ qua (thiếu thì mask câm).
+  assert.match(portal, /new KeyboardEvent\(type/);
+  assert.match(portal, /Object\.defineProperty\(ev, "keyCode"/);
+  assert.match(portal, /Object\.defineProperty\(ev, "which"/);
+  // Ba điều bắt buộc: xoá sạch (Backspace) → về đầu (Home/ArrowLeft) → gõ ddMMyyyy có delay.
+  assert.match(portal, /"Backspace"/);
+  assert.match(portal, /"Home"/);
+  assert.match(portal, /"ArrowLeft"/);
+  // Chấp nhận cả dd/mm/yyyy lẫn ISO yyyy-mm-dd, trả ddMMyyyy 8 số.
+  assert.match(portal, /function ownerDateDigits/);
+  // Xác thực kết quả đúng dạng dd/mm/yyyy trước khi báo điền thành công.
+  assert.match(portal, /\\d\{2\}\\\/\\d\{2\}\\\/\\d\{4\}/);
+});

@@ -21,7 +21,7 @@ test("launcher dùng logo HCC lớn và nằm phía trên", () => {
   assert.match(content, /right: "18px", top: "22px"/);
   assert.match(content, /width: "80px", height: "80px"/);
   assert.match(content, /createElement\("button"\)/);
-  assert.match(content, /aria-label", "Mở Trợ lý người dân"/);
+  assert.match(content, /aria-label", "Mở Trợ lý nhân dân"/);
 });
 
 test("header và màn hình bắt đầu dùng chung logo mới của extension", () => {
@@ -50,7 +50,7 @@ test("về đúng trang chủ DVC tạo lượt trò chuyện mới", () => {
   assert.match(content, /if \(IS_DVC_HOME\) sidebarQuery\.set\("fresh", "dvc-home"\)/);
   assert.match(content, /sidebar\.html\?\$\{sidebarQuery\.toString\(\)\}/);
   assert.match(sidebar, /START_FRESH_ON_DVC_HOME = params\.get\("fresh"\) === "dvc-home"/);
-  assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*await api\.deleteConversation\(\)/);
+  assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*await api\.deleteConversation\("dvc-home"\)/);
   assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*await clearJourney\(\)/);
   assert.match(sidebar, /if \(START_FRESH_ON_DVC_HOME\)[\s\S]*showStartScreen\(\)/);
   assert.doesNotMatch(sidebar, /START_FRESH_ON_DVC_HOME[\s\S]{0,800}clearCitizenDvcCookies/);

@@ -44,7 +44,8 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_NoiLamViec", "desc": "Nơi làm việc người viết đơn — Tờ đơn (nếu có). Bỏ nếu không có."},
     {"name": "NguoiNop_ThuongTru", "desc": "NƠI THƯỜNG TRÚ (đăng ký thường trú), object {quocGia,tinh,xa,"
         "diaChi}. CCCD (Nơi thường trú) / Tờ đơn mục 6 'Đăng ký thường trú (hoặc tạm trú) tại'. tinh='Tỉnh/"
-        "Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ (KHÔNG kèm phường/xã/tỉnh)."},
+        "Thành phố …', xa=phường/xã, diaChi=số nhà/đường/tổ (KHÔNG kèm phường/xã/tỉnh). Đơn để trống mục 6 "
+        "và không có CCCD thì bỏ field — mapper lấy nơi ở hiện tại thay."},
     {"name": "NguoiNop_NoiOHienTai", "desc": "NƠI Ở HIỆN TẠI (KHÁC thường trú), object {quocGia,tinh,xa,"
         "diaChi}. Tờ đơn mục 5 'Nơi ở hiện tại'. Nếu đơn không tách riêng, để trống (mapper sẽ suy)."},
     {"name": "NguoiNop_ThuocDoiTuong", "desc": "Đối tượng chính sách được hưởng NOXH — Tờ đơn mục 7 'Thuộc "

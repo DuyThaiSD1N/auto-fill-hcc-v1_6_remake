@@ -1,4 +1,4 @@
-# Trợ lý người dân — Extension
+# Trợ lý nhân dân — Extension
 
 Chrome MV3, **vanilla JS, KHÔNG framework, KHÔNG build step**. Sidebar trợ lý toàn trình
 (giọng nói + chat) cắm cạnh phải trang cổng dịch vụ công, **đẩy trang sang trái** —

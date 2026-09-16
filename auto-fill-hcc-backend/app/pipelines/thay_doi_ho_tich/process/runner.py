@@ -128,7 +128,12 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         res.get("ocr_text") or "",
         COMPACT_COMP_BY_NAME,
     )
-    res["fields"] = mapper.enrich(res["fields"], options)
+    # _ocrText: mapper cần chính văn bản OCR để chốt chồng/vợ là người được cải chính khi hồ sơ
+    # không có tờ khai và cả hai bên đều nộp CCCD (xem mapper._subject_from_evidence).
+    res["fields"] = mapper.enrich(
+        res["fields"],
+        {**(options or {}), "_ocrText": res.get("ocr_text") or ""},
+    )
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
     if (options or {}).get("_review"):

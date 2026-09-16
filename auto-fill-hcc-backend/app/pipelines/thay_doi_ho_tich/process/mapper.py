@@ -322,6 +322,60 @@ def _card_for_subject(values: dict, prefix: str) -> dict | None:
     return matches[0] if len(matches) == 1 else None
 
 
+# Tài liệu KHÔNG phân biệt được chồng/vợ, vì hồ sơ cải chính hộ tịch kết hôn nào cũng có:
+#   - CCCD/CMND: cả hai bên đều nộp thẻ;
+#   - chính giấy kết hôn/hôn thú đang được cải chính: luôn ghi tên CẢ HAI.
+# Mọi tài liệu CÒN LẠI là GIẤY TỜ CHỨNG MINH cho việc cải chính (học bạ, giấy khai sinh, giấy biên
+# nhận CMND, quyết định...) — theo nghiệp vụ, chúng là giấy của ĐÚNG người được cải chính.
+_NEUTRAL_DOC_MARKERS = (
+    "can cuoc cong dan", "citizen identity card", "chung minh nhan dan", "identity card",
+    "the can cuoc",
+    "chung nhan ket hon", "trich luc ket hon", "giay ket hon", "hon thu",
+)
+
+# ocr_text ghép các file bằng documents.join_ocr_documents(): mỗi khối mở đầu bằng dòng
+# "===== <tên file> =====". TÊN FILE do cán bộ đặt, hay chứa tên cả hai bên ("CCCD liên thành.pdf")
+# → phải CẮT dòng header trước khi dò tên, nếu không mọi tài liệu đều "nhắc" cả hai người.
+_DOC_SEPARATOR = "\n\n---\n\n"
+_DOC_HEADER_RE = re.compile(r"^=====.*?=====[^\n]*\n?")
+
+
+def _evidence_documents(ocr_text: str) -> list[str]:
+    """Các khối OCR có thể chỉ đích danh MỘT bên — đã loại CCCD và chính giấy kết hôn."""
+    out: list[str] = []
+    for block in str(ocr_text or "").split(_DOC_SEPARATOR):
+        body = _DOC_HEADER_RE.sub("", block, count=1)
+        folded = _fold(body)
+        if not folded or any(marker in folded for marker in _NEUTRAL_DOC_MARKERS):
+            continue
+        out.append(folded)
+    return out
+
+
+def _subject_from_evidence(values: dict, options: dict | None) -> str | None:
+    """Chồng hay vợ là người được cải chính, suy từ GIẤY TỜ CHỨNG MINH nộp kèm.
+
+    Hồ sơ không có tờ khai và cả hai bên đều nộp CCCD thì mọi mỏ neo theo THẺ đều hòa (thẻ nào
+    cũng khớp đúng một bên) → Mục II bỏ trắng hoàn toàn, cán bộ nhìn như extension không điền gì.
+    Nhưng hồ sơ vẫn còn một dấu hiệu chắc chắn: giấy tờ chứng minh đi kèm chỉ nói về người được
+    cải chính (vd học bạ + giấy biên nhận CMND mang tên người vợ, không giấy nào mang tên chồng).
+
+    CHỈ kết luận khi tên MỘT bên xuất hiện trong giấy chứng minh còn bên kia KHÔNG xuất hiện ở bất
+    kỳ giấy nào. Cả hai cùng được nhắc (vd sổ hộ khẩu) hoặc không bên nào được nhắc -> trả None:
+    chọn bừa là đặt nhầm người vào Mục II mà form vẫn trông như đã điền đủ.
+    """
+    documents = _evidence_documents((options or {}).get("_ocrText"))
+    if not documents:
+        return None
+    named = [
+        prefix
+        for prefix in ("Chong", "Vo")
+        if (name := _fold(values.get(f"{prefix}_HoTen")))
+        and any(name in doc for doc in documents)
+    ]
+    return named[0] if len(named) == 1 else None
+
+
 def _marriage_subject(values: dict, options: dict | None = None) -> str | None:
     """Chọn chồng/vợ bằng khớp CCCD, không dùng fallback "không chồng thì vợ"."""
     requester_card = _requester_card(values, options)
@@ -377,7 +431,11 @@ def _marriage_subject(values: dict, options: dict | None = None) -> str | None:
         for prefix in ("Chong", "Vo")
         if has_attached_identity(prefix)
     ]
-    return enriched_matches[0] if len(enriched_matches) == 1 else None
+    if len(enriched_matches) == 1:
+        return enriched_matches[0]
+
+    # Mọi mỏ neo theo THẺ đều hòa (hồ sơ nộp CCCD của cả hai bên) -> hỏi tới giấy tờ chứng minh.
+    return _subject_from_evidence(values, options)
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:

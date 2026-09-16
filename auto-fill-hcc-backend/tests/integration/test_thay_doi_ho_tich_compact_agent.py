@@ -357,3 +357,81 @@ def test_procedure_registered_agent_mode():
     proc = get_procedure("thay-doi-cai-chinh-ho-tich")
     assert proc["mode"] == "agent"
     assert proc["detect"]["urlIncludes"] == ["maThuTuc=1.004859"]
+
+
+# ---------------------------------------------------------------------------
+# Chồng/vợ là người được cải chính, suy từ GIẤY TỜ CHỨNG MINH khi hồ sơ không có tờ khai
+# và CẢ HAI bên đều nộp CCCD (mọi mỏ neo theo thẻ đều hòa).
+# ---------------------------------------------------------------------------
+
+_MARRIAGE_BOTH_CARDS = {
+    "LoaiSuKien": "marriage",
+    "DanhSachCccd": [
+        {"HoTen": "BÙI THỊ KIM LIÊN", "SoDinhDanh": "033169004917", "NgaySinh": "13/11/1969",
+         "GioiTinh": "Nữ", "NgayCap": "05/04/2021", "NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"},
+        {"HoTen": "LÊ VĂN THÀNH", "SoDinhDanh": "038067008684", "NgaySinh": "07/03/1967",
+         "GioiTinh": "Nam", "NgayCap": "05/04/2021", "NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"},
+    ],
+    "Chong_HoTen": "LÊ VĂN THÀNH",
+    "Chong_SoDinhDanh": "038067008684",
+    "Chong_NgayCapGiayTo": "05/04/2021",
+    "Vo_HoTen": "BÙI THỊ KIM LIÊN",
+    "Vo_SoDinhDanh": "033169004917",
+    "Vo_NgayCapGiayTo": "05/04/2021",
+}
+
+# Tên file trong header CỐ Ý chứa tên CẢ HAI bên: header phải bị cắt trước khi dò tên.
+_OCR_HEADER_BOTH = "===== CCCD lien thanh_0001.pdf (tiengnoi) =====\n"
+
+
+def _ocr(*blocks: str) -> str:
+    return "\n\n---\n\n".join(blocks)
+
+
+def test_marriage_subject_from_evidence_document():
+    """Học bạ chỉ mang tên người vợ → vợ là người được cải chính."""
+    ocr = _ocr(
+        _OCR_HEADER_BOTH + "CĂN CƯỚC CÔNG DÂN\nBÙI THỊ KIM LIÊN\nLÊ VĂN THÀNH",
+        "===== CNKH.pdf =====\nGIẤY CHỨNG NHẬN KẾT HÔN\nHọ tên vợ BÙI THỊ KIM LIÊN\nHọ tên chồng LÊ VĂN THÀNH",
+        "===== hoc ba.pdf =====\nHỌC BẠ\nHọ và tên học sinh: Bùi Thị Kim Liên\nNgày sinh: 13-11-1969",
+    )
+    out = _by_name(mapper.enrich(_fields(_MARRIAGE_BOTH_CARDS), {"_ocrText": ocr}))
+
+    assert out["ntdHoTen"]["value"] == "BÙI THỊ KIM LIÊN"
+    assert out["ntdSoDDCN"]["value"] == "033169004917"
+    assert out["ntdNgayCapGiayToTuyThan"]["value"] == "05/04/2021"
+
+
+def test_marriage_subject_blank_when_evidence_names_both_spouses():
+    """Giấy chứng minh nhắc CẢ HAI bên → không đủ căn cứ, thà bỏ trắng còn hơn đặt nhầm người."""
+    ocr = _ocr(
+        _OCR_HEADER_BOTH + "CĂN CƯỚC CÔNG DÂN\nBÙI THỊ KIM LIÊN\nLÊ VĂN THÀNH",
+        "===== so ho khau.pdf =====\nSỔ HỘ KHẨU\nChủ hộ: LÊ VĂN THÀNH\nVợ: BÙI THỊ KIM LIÊN",
+    )
+    out = _by_name(mapper.enrich(_fields(_MARRIAGE_BOTH_CARDS), {"_ocrText": ocr}))
+
+    assert "ntdHoTen" not in out
+    assert "ntdSoDDCN" not in out
+
+
+def test_marriage_subject_blank_without_evidence_document():
+    """Chỉ có CCCD hai bên + giấy kết hôn: không giấy nào chỉ đích danh một bên → bỏ trắng."""
+    ocr = _ocr(
+        _OCR_HEADER_BOTH + "CĂN CƯỚC CÔNG DÂN\nBÙI THỊ KIM LIÊN\nLÊ VĂN THÀNH",
+        "===== CNKH.pdf =====\nGIẤY CHỨNG NHẬN KẾT HÔN\nHọ tên vợ BÙI THỊ KIM LIÊN\nHọ tên chồng LÊ VĂN THÀNH",
+    )
+    out = _by_name(mapper.enrich(_fields(_MARRIAGE_BOTH_CARDS), {"_ocrText": ocr}))
+
+    assert "ntdHoTen" not in out
+
+
+def test_marriage_subject_evidence_ignores_filename_header():
+    """Tên file chứa tên cả hai bên nhưng NỘI DUNG chỉ nói về chồng → chọn chồng, không hòa."""
+    ocr = _ocr(
+        _OCR_HEADER_BOTH + "CĂN CƯỚC CÔNG DÂN\nBÙI THỊ KIM LIÊN\nLÊ VĂN THÀNH",
+        "===== ho so lien thanh - BÙI THỊ KIM LIÊN.pdf =====\nQUYẾT ĐỊNH\nÔng LÊ VĂN THÀNH, sinh 1967",
+    )
+    out = _by_name(mapper.enrich(_fields(_MARRIAGE_BOTH_CARDS), {"_ocrText": ocr}))
+
+    assert out["ntdHoTen"]["value"] == "LÊ VĂN THÀNH"
+    assert out["ntdSoDDCN"]["value"] == "038067008684"

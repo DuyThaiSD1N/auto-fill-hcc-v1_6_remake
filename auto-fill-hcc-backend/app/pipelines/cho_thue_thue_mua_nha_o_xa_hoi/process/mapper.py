@@ -12,6 +12,9 @@ Bộ Xây dựng). Field-key data[...] FLAT, nhưng NHIỀU key TRÙNG giữa Ph
 
 ⚠ 7 key trùng (fullname/identityNumber/identityDate/identityAgency/province/district/address): Phần I
 điền occurrence=0, Phần III điền occurrence=1. FE fillFormStandard chọn ô thứ N (ưu tiên visible).
+
+Hai địa chỉ suy lẫn nhau khi đơn chỉ ghi một: thiếu nơi ở hiện tại → dùng thường trú; thiếu thường trú →
+dùng nơi ở hiện tại. Không suy thì địa chỉ trống hàng loạt vì cả Phần I lẫn province1 đều lấy thường trú.
 """
 
 from __future__ import annotations
@@ -250,11 +253,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     phone = _phone(values.get("NguoiNop_DienThoai"))
     thuong_tru = _area(values.get("NguoiNop_ThuongTru"))
     noi_o_hien_tai = _area(values.get("NguoiNop_NoiOHienTai"))
+    # Đơn viết tay RẤT hay bỏ trống mục 6 (đăng ký thường trú) mà chỉ ghi mục 5 (nơi ở hiện tại), và hồ sơ
+    # nhiều khi không kèm bản scan CCCD → NguoiNop_ThuongTru rỗng. Không có fallback thì CẢ HAI nhóm địa chỉ
+    # lấy từ thường trú (Phần I province/district/address occ0 và Phần III province1/district1/address1) bỏ
+    # trống — nhìn như "không điền được địa chỉ". Suy ngược từ nơi ở hiện tại (đối xứng với fallback occ1).
+    if not thuong_tru:
+        thuong_tru = noi_o_hien_tai
 
     if not name:
         warnings.append("Thiếu họ tên người viết đơn.")
     if not identity:
         warnings.append("Thiếu số CCCD/định danh người viết đơn.")
+    if not thuong_tru:
+        warnings.append("Thiếu địa chỉ (thường trú và nơi ở hiện tại đều không đọc được).")
 
     org_name = _text(values.get("DoanhNghiep_Ten"))
     is_to_chuc = _is_to_chuc(values.get("ChonDoiTuong"), org_name) or bool(org_name)

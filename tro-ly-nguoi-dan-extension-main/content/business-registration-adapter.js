@@ -120,7 +120,8 @@
       const run = await storageGet(RUN_KEY);
       if (!run) return;
       run.progressText = progressText;
-      if (run.mode === "prepare" || /—\s*(home|select-registration|confirm|unknown)\b/i.test(progressText)) {
+      if (run.mode === "prepare"
+          || /—\s*(home|select-registration|search-business|select-change|confirm|unknown)\b/i.test(progressText)) {
         run.progressPhase = "bootstrap";
         run.progressLabel = "";
         run.currentPage = 0;
@@ -200,11 +201,23 @@
     notify({ type: "businessFlowFinished", report });
   };
 
-  async function startPrepare() {
+  // Workflow lấy từ action BE (create mặc định — tương thích BE cũ không gửi).
+  function workflowOf(msg) {
+    const value = String(msg?.workflow || "").trim().toLowerCase();
+    return value || "create";
+  }
+
+  function detectStageFor(workflow) {
+    if (workflow === "create") return H.detectBusinessCreateStage?.() || { stage: "unknown" };
+    return H.detectBusinessChangeStage?.() || { stage: "unknown" };
+  }
+
+  async function startPrepare(msg) {
     if (!isBusinessHost()) return { error: "Chưa ở Hệ thống Đăng ký Hộ kinh doanh." };
     if (typeof H.setFillAllState !== "function" || typeof H.stepFillAll !== "function") {
       return { error: "Chưa nạp được lõi HkdOnline." };
     }
+    const workflow = workflowOf(msg);
     await storageRemove(RESULT_KEY);
     touchBusinessActivity();
     businessRunCancelled = false;
@@ -218,8 +231,11 @@
       updatedAt: Date.now(),
     });
     await H.setFillAllState({
-      workflow: "create",
-      bootstrapOnly: true,
+      workflow,
+      // Luồng thay đổi pha 1 dừng ở màn BE chỉ định (search-business) để nhận giấy tờ;
+      // luồng thành lập mới giữ bootstrapOnly (đi hết wizard tạo hồ sơ nháp rồi dừng).
+      bootstrapOnly: workflow === "create",
+      stopAtStage: String(msg?.stop_at || "") || null,
       bootstrapDone: false,
       order: [],
       pages: {},
@@ -229,7 +245,7 @@
       filledStep: -1,
     });
     setTimeout(() => { H.beginFillAllUI(); H.stepFillAll(); }, 60);
-    return { ok: true, started: true };
+    return { ok: true, started: true, workflow };
   }
 
   async function startFullRun(msg) {
@@ -238,10 +254,27 @@
       return { error: "Chưa nạp được lõi HkdOnline." };
     }
     const pages = msg?.pages || {};
-    if (!Object.keys(pages).length) return { error: "Backend chưa trả dữ liệu 8 khối hồ sơ." };
+    if (!Object.keys(pages).length) return { error: "Backend chưa trả dữ liệu các khối hồ sơ." };
+    const workflow = workflowOf(msg);
+    const businessFlow = msg?.businessFlow && typeof msg.businessFlow === "object" ? msg.businessFlow : null;
+    // Thay đổi nội dung: thứ tự trang ĐỘNG từ pipeline (chỉ trang cần sửa + Người nộp hồ sơ);
+    // thành lập mới giữ 8 trang cố định.
+    let order = Array.isArray(businessFlow?.pageOrder) && businessFlow.pageOrder.length
+      ? [...businessFlow.pageOrder]
+      : [...PAGE_ORDER];
+    // Hồ sơ kê "Địa chỉ nhận thông báo thuế = giống trụ sở chính": cổng không chép địa chỉ
+    // ở lượt lưu đầu → chèn thêm 1 lượt trang thuế cuối order để tick lại rồi Lưu (đồng bộ
+    // hành vi withFinalTaxPass của auto-fill).
+    const taxKey = H.TAX_PAGE_KEY || "thong-tin-ve-thue";
+    if (typeof H.taxWantsSameAsHeadOffice === "function"
+        && order.includes(taxKey)
+        && order[order.length - 1] !== taxKey
+        && H.taxWantsSameAsHeadOffice((pages && pages[taxKey]) || [])) {
+      order = [...order, taxKey];
+    }
     const files = Array.isArray(msg?.files) ? msg.files : [];
     const attachments = Array.isArray(msg?.attachments) ? msg.attachments : [];
-    const detected = H.detectBusinessCreateStage?.() || { stage: "unknown" };
+    const detected = detectStageFor(workflow);
     await storageRemove(RESULT_KEY);
     touchBusinessActivity();
     businessRunCancelled = false;
@@ -249,15 +282,17 @@
     businessProgressPhaseHint = ["main", "main-root"].includes(detected.stage) ? "fill" : "bootstrap";
     await storageSet(RUN_KEY, {
       mode: "full",
-      totalPages: PAGE_ORDER.length,
+      totalPages: order.length,
       currentPage: 0,
       attachmentsCount: attachments.length,
       progressPhase: businessProgressPhaseHint,
       updatedAt: Date.now(),
     });
     await H.setFillAllState({
-      workflow: "create",
-      order: [...PAGE_ORDER],
+      workflow,
+      businessFlow,
+      businessSearch: businessFlow?.search || null,
+      order,
       pages,
       step: 0,
       retries: 0,
@@ -269,7 +304,7 @@
       attachPayload: files.length && attachments.length ? { files, attachments } : null,
     });
     setTimeout(() => { H.beginFillAllUI(); H.stepFillAll(); }, 60);
-    return { ok: true, started: true, stage: detected.stage, pages: PAGE_ORDER.length };
+    return { ok: true, started: true, workflow, stage: detected.stage, pages: order.length };
   }
 
   async function clearBusinessRun({ preserveResult = false } = {}) {
@@ -308,11 +343,17 @@
   if (IS_TOP_FRAME) {
     chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       if (msg?.action === "prepareBusinessRegistration") {
-        startPrepare().then(sendResponse);
+        // Exception phải trả về dạng {error} — reject âm thầm làm sidebar báo mù
+        // "Trang HkdOnline chưa nhận lệnh tự điền" và luồng đứng im.
+        startPrepare(msg)
+          .catch((e) => ({ error: `Lỗi khởi động HkdOnline: ${e?.message || e}` }))
+          .then(sendResponse);
         return true;
       }
       if (msg?.action === "startBusinessRegistration") {
-        startFullRun(msg).then(sendResponse);
+        startFullRun(msg)
+          .catch((e) => ({ error: `Lỗi khởi động HkdOnline: ${e?.message || e}` }))
+          .then(sendResponse);
         return true;
       }
       if (msg?.action === "getBusinessRuntimeContext") {
@@ -322,7 +363,9 @@
           sendResponse({
             ok: true,
             businessHost: isBusinessHost(),
-            businessStage: isBusinessHost() ? (H.detectBusinessCreateStage?.().stage || "unknown") : "",
+            businessStage: isBusinessHost()
+              ? ((H.detectBusinessAnyStage?.() || H.detectBusinessCreateStage?.())?.stage || "unknown")
+              : "",
             businessProcedureHint: isBusinessHost() ? (H.detectBusinessProcedureHint?.() || "") : "",
             businessActive: !!run,
             businessResult: freshResult,

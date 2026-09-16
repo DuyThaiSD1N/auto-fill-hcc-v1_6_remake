@@ -1219,6 +1219,20 @@
     },
     {
         "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Tiến",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đại Hoàng",
+        "ghi_chu": "Gia Tiến + Gia Thắng → xã Tiến Thắng (NQ 1318/NQ-UBTVQH15, 01/01/2025) → xã Đại Hoàng (NQ 1674/NQ-UBTVQH15, 01/7/2025). Giấy tờ cũ vẫn ghi tên trước đợt 2024."
+    },
+    {
+        "tinh_cu": "Ninh Bình",
+        "xa_cu": "Gia Thắng",
+        "tinh_moi": "Ninh Bình",
+        "xa_moi": "Xã Đại Hoàng",
+        "ghi_chu": "Gia Tiến + Gia Thắng → xã Tiến Thắng (NQ 1318/NQ-UBTVQH15, 01/01/2025) → xã Đại Hoàng (NQ 1674/NQ-UBTVQH15, 01/7/2025). Giấy tờ cũ vẫn ghi tên trước đợt 2024."
+    },
+    {
+        "tinh_cu": "Ninh Bình",
         "xa_cu": "Gia Phương",
         "tinh_moi": "Ninh Bình",
         "xa_moi": "Xã Đại Hoàng"

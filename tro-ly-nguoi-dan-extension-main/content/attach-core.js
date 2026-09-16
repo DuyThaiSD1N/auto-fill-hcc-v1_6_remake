@@ -150,6 +150,30 @@ function findLatestDialogByText(label) {
   return dialogs[dialogs.length - 1] || null;
 }
 
+const WALLET_DIALOG_TITLE = "Danh sách tài liệu điện tử";
+
+function visibleWalletDialogs() {
+  return findDialogsByText(WALLET_DIALOG_TITLE).filter(isVisible);
+}
+
+/** Modal ví tài liệu MỚI hiện ra so với `before` — thứ duy nhất chứng minh cú click của TA
+ *  đã mở được modal.
+ *
+ *  "Có modal mang tiêu đề đó" là KHÔNG đủ: cổng vừa 502 thì modal của tệp trước có thể chưa
+ *  kịp đóng, và ta sẽ thao tác trên đúng cái modal cũ đó — nút "Thêm vào ví" còn disabled từ
+ *  lần tải hỏng, ô Tên tài liệu còn tên cũ → tệp lành cũng chờ hết hạn rồi báo hỏng.
+ *
+ *  So theo NODE nhưng chỉ tính node ĐANG HIỆN: Radix giữ modal trong DOM với data-state
+ *  ="closed", mở lại thì dùng lại chính node đó. Đóng đúng cách → node không nằm trong
+ *  `before` (vì lúc đó nó vô hình) → mở lại vẫn được nhận là mới. */
+function findNewWalletDialog(before) {
+  const dialogs = visibleWalletDialogs();
+  for (let index = dialogs.length - 1; index >= 0; index--) {
+    if (!before.has(dialogs[index])) return dialogs[index];
+  }
+  return null;
+}
+
 function findCopyCertificationAttachmentRow() {
   const rows = Array.from(document.querySelectorAll("tr"));
   const matched = rows.find((row) =>
@@ -231,7 +255,14 @@ function collectAttachmentContext() {
   const rows = findAttachmentRows();
   const tables = Array.from(new Set(rows.map((row) => row.closest?.("table")).filter(Boolean)));
   const hasAttachmentTableHeader = tables.some((table) =>
-    isVisible(table) && textContainsAll(table, ["ten thanh phan ho so", "dinh kem tep tin"])
+    isVisible(table) && (
+      textContainsAll(table, ["ten thanh phan ho so", "dinh kem tep tin"])  // cổng cũ
+      // Cổng liên thông (Angular) đổi tên cột: "Tên giấy tờ" + "Số bản" + "Tệp tin" — dùng 3 cột
+      // đặc trưng để không nhầm với bảng ở trang kê khai.
+      || textContainsAll(table, ["ten giay to", "so ban", "tep tin"])
+      // Cổng Bộ NN&MT (MAE): "Tên giấy tờ" + "Loại bản" + "Đính kèm giấy tờ".
+      || textContainsAll(table, ["ten giay to", "dinh kem giay to"])
+    )
   );
   return {
     // Hai cờ này chỉ dùng làm bằng chứng trang đính kèm khi stepper React không đọc được.
@@ -367,7 +398,7 @@ function findWalletUploadDoneButton(dialog) {
 }
 
 async function ensureWalletDocumentName(dialog, documentName) {
-  const input = await waitFor(() => dialog.querySelector('input[name="documentName"]'), 8000, 100);
+  const input = await waitFor(() => dialog.querySelector('input[name="documentName"]'), 4000, 100);
   if (!input) return false;
   // Bỏ đuôi ".pdf" + dấu chấm (giữ dấu cách/chữ có dấu) kẻo cổng báo "Tên tài liệu không hợp lệ".
   const safeName = walletSafeDocumentName(String(documentName || "").trim() || "Tài liệu chứng thực");
@@ -383,7 +414,7 @@ async function waitForUploadCompletion(dialog, previousText) {
     if (!document.documentElement.contains(dialog)) return true;
     const text = foldedNodeText(doneButton);
     return !text.includes("dang tai len") && !doneButton.disabled && text !== previousText;
-  }, 20000, 150);
+  }, 6000, 150);
 }
 
 async function waitForWalletDialogClosed(dialog) {
@@ -391,7 +422,7 @@ async function waitForWalletDialogClosed(dialog) {
     !document.documentElement.contains(dialog) ||
     dialog.getAttribute("data-state") === "closed" ||
     !isVisible(dialog),
-    12000,
+    2500,
     100
   );
 }
@@ -491,15 +522,6 @@ function attachmentTextKey(value) {
     .trim();
 }
 
-function attachmentKeyMatches(a, b) {
-  const left = attachmentTextKey(a);
-  const right = attachmentTextKey(b);
-  if (!left || !right) return false;
-  if (left === right) return true;
-  if (Math.min(left.length, right.length) < 4) return false;
-  return left.includes(right) || right.includes(left);
-}
-
 function attachmentKeyEquals(a, b) {
   const left = attachmentTextKey(a);
   const right = attachmentTextKey(b);
@@ -536,7 +558,11 @@ function findExistingAttachedRowForPlanItem(planItem = {}, payloadFile = {}) {
     // Với các dòng cố định, tên thành phần hồ sơ thường là mô tả dài và có thể chứa
     // nhãn của dòng khác (vd dòng 1 có cụm "giao dịch đã được chứng thực"). Nếu dùng
     // componentName để bắt trùng, file của dòng 2 sẽ bị skip nhầm khi dòng 1 đã có file.
-    return labels.some((label) => attachmentKeyMatches(attachedName, label));
+    // Tên file là định danh tài liệu, không phải nhãn component. Phải so CHÍNH XÁC để
+    // "Bảng điểm Đại học Duy Tân" không bị "Bảng điểm Đại học Duy Tân 2" nuốt, và HÒA
+    // không nuốt HOÀN. Đã gặp thật: lượt đính đầu hỏng, lượt hai bị coi là trùng với bản
+    // tự đánh số "… 2" của tài liệu khác → bỏ retry và tô xanh, dòng bắt buộc vẫn trống.
+    return labels.some((label) => attachmentKeyEquals(attachedName, label));
   }) || null;
 }
 
@@ -590,6 +616,69 @@ function clickLikeUser(el) {
   el.click?.();
 }
 
+// Toast lỗi của cổng, vd "Upload thất bại (File Service): Upload failed: 500 Internal Server Error".
+// Đọc được câu này thì log ghi RÕ LÝ DO thay vì chỉ "ô vẫn trống", và lời nhắn cho cán bộ cũng
+// nói đúng chuyện gì xảy ra. Không thấy toast → trả rỗng, không bịa.
+function portalUploadErrorNodes() {
+  return Array.from(document.querySelectorAll(
+    '[role="alert"], [role="status"], [class*="toast" i], [class*="notification" i], [class*="snackbar" i]'
+  )).filter(isVisible).map((node) => {
+    const text = nodeText(node).replace(/\s+/g, " ").trim();
+    if (!text || text.length > 300) return null;
+    // Khớp trên chữ CÓ DẤU. Fold dấu là hỏng: "lỗi", "lời", "lợi" đều thành "loi" nên
+    // "Lời nhắn…" và "Quyền lợi…" bị coi là lỗi. Cũng KHÔNG dò số mã HTTP trần: "500" khớp
+    // cả "1.500.000 đồng"; câu lỗi thật luôn kèm chữ ("Error 500", "Upload failed: 502").
+    if (!/lỗi|thất bại|không thành công|failed|error/.test(text.toLowerCase())) return null;
+    return { node, text: text.slice(0, 200) };
+  }).filter(Boolean);
+}
+
+/** Ảnh chụp toast lỗi CÒN SÓT sau khi đã dọn — lưới thứ hai cho toast không đóng được.
+ *
+ *  Chụp theo NỘI DUNG, không theo node: thư viện toast React hay dựng lại node mới cho cùng
+ *  một lời than, so theo node là lại tưởng lỗi mới. */
+function snapshotPortalUploadErrors() {
+  return portalUploadErrorNodes().map((hit) => foldChoiceText(hit.text));
+}
+
+/** Toast lỗi MỚI so với `before` (danh sách nội dung đã thấy trước lượt này).
+ *
+ *  Đánh đổi cố ý: hai tệp liên tiếp hỏng với lời than Y HỆT thì tệp sau không được bỏ cuộc
+ *  sớm — nó chờ hết hạn rồi mới báo. CHẬM còn hơn KHAI HỎNG OAN một tệp lành: chậm thì cán bộ
+ *  chờ thêm vài giây, còn khai oan thì tệp không bao giờ được đính. */
+function newPortalUploadError(before = []) {
+  const seen = new Set(before);
+  for (const hit of portalUploadErrorNodes()) {
+    if (!seen.has(foldChoiceText(hit.text))) return hit.text;
+  }
+  return "";
+}
+
+// Modal đóng CHỈ chứng minh cú click đã chạy. Cổng moj có thể đóng modal trong khi File Service
+// trả 500 → dòng vẫn trống mà ta đã tô xanh và báo ok (đã gặp thật: 4 tệp chỉ vào được 2-3).
+// Hậu điều kiện DUY NHẤT đáng tin: TÊN FILE xuất hiện thật trên dòng, và khác tên cũ.
+// Poll bằng vòng lặp RIÊNG, KHÔNG dùng waitFor: waitFor không `await` callback nên với hàm async
+// nó nhận về Promise (luôn truthy) và thoát ngay lần đầu → verify chỉ chạy 1 LẦN, không poll thật.
+// Ngoài ra cổng moj hay ĐƠ (block main thread) rất lâu sau "Thêm vào ví & Chọn": phải nới thời gian
+// (freeze có thể >12s) VÀ CHECK LẦN CUỐI sau khi hết đơ (Date.now vượt hạn ngay trong lúc đơ; thoát
+// mà không check là bỏ sót đúng lúc dòng vừa gắn xong → báo "chưa ghi nhận" oan).
+async function waitForPersistedAttachment(row, planItem = {}, previousName = "", timeout = 8000) {
+  const start = Date.now();
+  const probe = async () => {
+    const liveRow = await resolveLiveAttachmentRow(row, planItem);
+    if (!liveRow) return null;
+    const attachedName = rowAttachedFileName(liveRow);
+    if (!attachedName || attachedName === previousName) return null;
+    return { row: liveRow, fileName: attachedName };
+  };
+  while (Date.now() - start < timeout) {
+    const hit = await probe();
+    if (hit) return hit;
+    await sleep(300);
+  }
+  return await probe(); // lần cuối: dòng có thể vừa cập nhật ngay khi cổng hết đơ
+}
+
 async function resolveLiveAttachmentRow(row, planItem = {}) {
   if (row && document.documentElement.contains(row)) return row;
   const componentName = planItem?.componentName || "";
@@ -608,6 +697,12 @@ async function resolveLiveAttachmentRow(row, planItem = {}) {
 async function openDocumentWalletForRow(row, planItem = {}) {
   const liveRow = await resolveLiveAttachmentRow(row, planItem);
   if (!liveRow) return { error: "Không tìm thấy dòng hồ sơ để chọn tệp." };
+
+  // Dọn tàn dư của tệp TRƯỚC trước khi click: modal cũ còn mở là cú click này thành vô nghĩa,
+  // và ta sẽ làm việc trên đúng cái modal hỏng đó. Cổng vừa 502 thì nó rất hay chưa kịp đóng.
+  if (visibleWalletDialogs().length) await closeDocumentWalletDialogs();
+  // Mốc so sánh: modal nào ĐANG hiện lúc này là của tệp trước, không phải do ta mở.
+  const dialogsBefore = new Set(visibleWalletDialogs());
 
   const preciseButtons = findAttachmentChooseButtons(liveRow);
   const legacyRowButton = findButtonByText(liveRow, ["Chọn tệp đính kèm", "Chọn tệp"]);
@@ -647,7 +742,8 @@ async function openDocumentWalletForRow(row, planItem = {}) {
         activeBefore: describeElementForLog(document.activeElement),
       });
       clickLikeUser(button);
-      const dialog = await waitFor(() => findLatestDialogByText("Danh sách tài liệu điện tử"), 6000, 120);
+      // ĐÒI MODAL MỚI, không nhận modal "đang có sẵn": xem findNewWalletDialog.
+      const dialog = await waitFor(() => findNewWalletDialog(dialogsBefore), 2500, 120);
       if (dialog) return { ok: true, dialog, row: liveRow };
       attachDebug("open-modal no-dialog-after-click", {
         index,
@@ -660,15 +756,22 @@ async function openDocumentWalletForRow(row, planItem = {}) {
     }
   }
 
+  // Phân biệt hai ca hỏng KHÁC HẲN nhau:
+  //  - modal cũ vẫn treo trên màn: trang đang kẹt, tải lại trang mới gỡ được (mã reloadable);
+  //  - màn sạch mà click không ra modal: nút/dòng có vấn đề, reload vô ích.
+  const stuckDialog = dialogsBefore.size && visibleWalletDialogs().some((d) => dialogsBefore.has(d));
   return {
-    code: "wallet-modal-not-opened",
-    error: "Không mở được modal Danh sách tài liệu điện tử.",
+    code: stuckDialog ? "wallet-stale-modal" : "wallet-modal-not-opened",
+    error: stuckDialog
+      ? "Modal Danh sách tài liệu điện tử của tệp trước còn treo, không mở được modal mới."
+      : "Không mở được modal Danh sách tài liệu điện tử.",
     row: liveRow,
     debug: {
       row: describeAttachmentRowForLog(liveRow),
       buttonCount: buttons.length,
       buttons: buttons.map(describeElementForLog),
       dialogs: visibleDialogSnapshot(),
+      stuckDialog,
     },
   };
 }
@@ -742,7 +845,8 @@ async function addAttachmentComponent(componentName) {
       ) || null;
     }, 3000, 100);
     if (row) {
-      markAttachmentResult(row, true);
+      // KHÔNG tô xanh ở đây: mới tạo được DÒNG, chưa có FILE nào. Tô xanh sớm thì dù bước
+      // đính sau đó hỏng, dòng vẫn giữ màu xanh từ trước → cán bộ tưởng đã xong.
       return row;
     }
   }
@@ -789,7 +893,7 @@ async function addAttachmentComponent(componentName) {
   }, 4000, 120);
 
   if (!row) throw new Error(`Không thêm được thành phần hồ sơ "${componentName}".`);
-  markAttachmentResult(row, true);
+  // KHÔNG tô xanh: xem chú thích ở nhánh dùng lại dòng trống phía trên.
   return row;
 }
 
@@ -797,7 +901,8 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   const intendedDocumentName = planItem.documentName || attachmentDocumentName(payloadFile);
   row = await resolveLiveAttachmentRow(row, planItem);
   if (!row) return { error: `Không tìm thấy dòng hồ sơ "${planItem.componentName || ""}".`, fileNames: [payloadFile.name] };
-  await closeDocumentWalletDialogs();
+  // Không đóng modal ở đây: openDocumentWalletForRow đã dọn ngay trước khi chụp mốc, đóng ba
+  // lần cho một tệp là mỗi lần hỏng phải trả thêm vài giây vô ích.
   row = await resolveLiveAttachmentRow(row, planItem);
   if (!row) return { error: `Không tìm thấy dòng hồ sơ "${planItem.componentName || ""}".`, fileNames: [payloadFile.name] };
   const existingName = rowAttachedFileName(row);
@@ -853,7 +958,7 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   const uploadInput = await waitFor(() =>
     dialog.querySelector("#upload-container input[type='file']") ||
     dialog.querySelector("input[type='file']"),
-    12000,
+    2500,
     100
   );
   if (!uploadInput) return {
@@ -862,12 +967,20 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   };
 
   const file = dataUrlToFile(payloadFile, intendedDocumentName);
+  // Mốc toast chỉ để SOẠN CÂU BÁO LỖI cho đúng tệp này — KHÔNG dùng để phán quyết thành/bại.
+  const errorsBefore = snapshotPortalUploadErrors();
   if (!setFilesOnInput(uploadInput, [file], { allowMultiple: false })) {
     markAttachmentResult(dialog, false);
     return { error: `Không gắn được file ${file.name} vào input tải tệp.`, fileNames: [file.name] };
   }
 
-  await waitFor(() => dialog.querySelector('input[name="documentName"]') || findWalletUploadDoneButton(dialog), 12000, 100);
+  // Cổng 502 ở bước tải tệp → dừng NGAY, trả câu cổng báo. Chờ hết hạn ở đây chỉ làm các tệp
+  // còn lại phải xếp hàng; việc thử lại đã có vòng round-robin lo.
+  await waitFor(
+    () => dialog.querySelector('input[name="documentName"]') || findWalletUploadDoneButton(dialog),
+    4000,
+    100,
+  );
   const nameOk = await ensureWalletDocumentName(dialog, intendedDocumentName);
   if (!nameOk) {
     markAttachmentResult(dialog, false);
@@ -878,10 +991,16 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
     const button = findWalletUploadDoneButton(dialog);
     if (button && !button.disabled) return button;
     return null;
-  }, 20000, 100);
+  }, 6000, 100);
   if (!doneButton) {
     markAttachmentResult(dialog, false);
-    return { error: "Không tìm thấy nút Thêm vào ví & Chọn sau khi tải file.", fileNames: [file.name] };
+    const portalError = newPortalUploadError(errorsBefore);
+    return {
+      code: "wallet-upload-rejected",
+      error: `Cổng chưa tải xong ${file.name}${portalError ? ` — cổng báo: ${portalError}` : ""}.`,
+      portalError,
+      fileNames: [file.name],
+    };
   }
 
   const previousText = foldedNodeText(doneButton);
@@ -891,8 +1010,19 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   if (document.documentElement.contains(dialog) && isVisible(dialog)) {
     await closeDocumentWalletDialogs();
   }
-  await sleep(700);
-  markAttachmentResult(row || dialog, true);
+  const persisted = await waitForPersistedAttachment(row, planItem, existingName);
+  if (!persisted) {
+    const liveRow = (await resolveLiveAttachmentRow(row, planItem)) || row;
+    markAttachmentResult(liveRow || dialog, false);
+    const portalError = newPortalUploadError(errorsBefore);
+    return {
+      code: "wallet-file-not-persisted",
+      error: `Cổng chưa ghi nhận ${file.name} vào dòng hồ sơ${portalError ? ` — cổng báo: ${portalError}` : ""}.`,
+      fileNames: [file.name],
+      portalError,
+    };
+  }
+  markAttachmentResult(persisted.row, true);
   return { ok: true, attached: 1, fileNames: [file.name] };
 }
 
@@ -930,6 +1060,135 @@ function payloadForPlanItem(payloadFiles, planItem, index) {
   const byIndex = Number.isInteger(planItem?.fileIndex) ? payloadFiles[planItem.fileIndex] : null;
   if (byIndex) return byIndex;
   return payloadFiles.find((file) => file.name === planItem.fileName) || payloadFiles[index] || null;
+}
+
+// ===== Engine đính kèm bảng-checkbox "attp-row" (port từ auto-fill-hcc-extension/content.js) =====
+// Bảng mat-table/CDK: mỗi dòng giấy tờ có mat-checkbox (chọn) + radio rdo_File "Bản chính/Bản
+// sao" (có cổng KHÔNG render radio, vd MAE — bỏ qua) + ô upload input[type=file] ở CUỐI dòng
+// (KHÔNG phải cells[2] như findAttachmentFileInput mặc định). Khớp dòng bằng componentName
+// (substring fold). Dùng cho cổng Bộ NN&MT (thủy sản) và các bảng cùng dạng.
+async function tickAttpRowCheckbox(row) {
+  const cell = row.cells?.[1] || row.cells?.[0] || row;
+  const cb = cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
+  if (!cb || cb.checked) return;
+  const clickable = cb.closest("mat-checkbox") || cb.closest("label") || cb;
+  clickable.click();
+  await sleep(200);
+  if (!cb.checked) {
+    cb.checked = true;
+    cb.dispatchEvent(new Event("input", { bubbles: true }));
+    cb.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+
+async function setAttpRowLoaiBan(row, loaiBan) {
+  const want = foldChoiceText(loaiBan || ""); // "ban chinh" | "ban sao" | "scan tep tin"
+  if (!want) return;
+  const radios = Array.from(row.querySelectorAll("mat-radio-button"));
+  const target = radios.find((r) => foldChoiceText(nodeText(r)).includes(want));
+  if (!target) return; // cổng không render radio loại bản (MAE) → không có gì để chọn
+  const input = target.querySelector('input[type="radio"]');
+  if (input?.checked || target.classList.contains("mat-radio-checked")) return;
+  (target.querySelector("label") || target).click();
+  await sleep(150);
+}
+
+// Fingerprint tên tài liệu: bỏ đuôi file + mọi ký tự không phải chữ/số → chịu được dấu phân
+// cách khác nhau hoặc tên bị cắt ngắn khi hiển thị.
+function attpDocFingerprint(value) {
+  return foldChoiceText(value || "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[^a-z0-9]/g, "");
+}
+
+// Fingerprint các file ĐÃ đính trong ô upload của dòng (ô chứa input[type=file] — cột CUỐI,
+// KHÁC cells[2] = cột "Loại bản") → không dùng rowAttachedFileName.
+function attpRowAttachedFingerprints(row) {
+  const input = row?.querySelector?.('input[type="file"]');
+  const cell = (input && input.closest('td, th, mat-cell, [role="cell"], [role="gridcell"]')) || row;
+  if (!cell) return [];
+  const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
+  const leaves = Array.from(cell.querySelectorAll("*")).filter(
+    (el) => !el.children.length && fileRe.test(el.textContent || "")
+  );
+  const texts = leaves.length ? leaves.map((el) => el.textContent) : [];
+  if (!texts.length) {
+    const whole = nodeText(cell);
+    if (fileRe.test(whole)) texts.push(whole);
+  }
+  return texts.map(attpDocFingerprint).filter((fp) => fp.length >= 6);
+}
+
+// CHỐNG TRÙNG: dòng đã có file trùng tài liệu này chưa? So 24 ký tự đầu (chịu tên bị cắt "...").
+function attpRowHasDoc(row, item) {
+  const want = attpDocFingerprint(item.documentName || item.fileName || "");
+  if (want.length < 6) return false;
+  const probe = want.slice(0, 24);
+  return attpRowAttachedFingerprints(row).some(
+    (fp) => fp.startsWith(probe) || probe.startsWith(fp.slice(0, 24))
+  );
+}
+
+async function attachFilesByAttpRow(payloadFiles, attachments) {
+  const fileNames = [];
+  const skippedNames = [];
+  const errors = [];
+  // Gom item theo DÒNG (componentName) — 1 dòng có thể nhận NHIỀU file; set 1 lần với đủ
+  // file để không ghi đè lẫn nhau (ô upload là multiple).
+  const groups = new Map();
+  for (const item of attachments) {
+    const key = foldChoiceText(item.componentName || item.documentName || item.fileName || "");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  for (const items of groups.values()) {
+    const first = items[0];
+    const row = await waitFor(
+      () => findAttachmentRowByComponent(first.componentName, first.componentIndex),
+      2500,
+      120
+    );
+    if (!row) { errors.push(`Không tìm thấy dòng "${first.documentName || first.componentName}".`); continue; }
+    row.scrollIntoView?.({ block: "center" });
+    const pending = items.filter((item) => {
+      if (attpRowHasDoc(row, item)) {
+        skippedNames.push(item.documentName || item.fileName || "");
+        return false;
+      }
+      return true;
+    });
+    if (!pending.length) { markAttachmentResult(row, true); continue; }
+    await tickAttpRowCheckbox(row);
+    await setAttpRowLoaiBan(row, first.loaiBan);
+    // Ô upload ở CUỐI dòng (không phải cells[2]) → tìm trong cả dòng.
+    const input = row.querySelector('input[type="file"]');
+    if (!input) { errors.push(`Dòng "${first.documentName}" không có ô upload.`); continue; }
+    const files = [];
+    const names = [];
+    for (const item of pending) {
+      const payload = payloadForPlanItem(payloadFiles, item);
+      if (!payload) { errors.push(`Thiếu file cho "${item.fileName}".`); continue; }
+      try { files.push(dataUrlToFile(payload, item.documentName)); names.push(item.fileName); }
+      catch (e) {
+        console.warn("[TLND-Attach] Đọc file lỗi:", item.fileName, e);
+        errors.push(`Không đọc được tệp "${item.fileName}".`);
+      }
+    }
+    if (!files.length) continue;
+    const ok = setFilesOnInput(input, files, { assumeConsumed: true });
+    markAttachmentResult(row, ok);
+    if (ok) fileNames.push(...names);
+    else errors.push(`Đính file thất bại cho "${first.documentName}".`);
+    await sleep(500);
+  }
+  return {
+    ok: !errors.length,
+    method: "attp-row",
+    attached: fileNames.length,
+    skipped: skippedNames.length,
+    fileNames,
+    skippedNames,
+    errors,
+    error: errors.length ? errors.join("; ") : undefined,
+  };
 }
 
 function isIdentityAttachmentItem(item) {
@@ -1177,6 +1436,56 @@ function menuSlotRowText(trigger) {
   return foldChoiceText(nodeText(row || trigger));
 }
 
+/** Lời cổng báo VƯỢT DUNG LƯỢNG, vd "Tổng dung lượng file của 1 loại giấy tờ không được quá 2.6MB".
+ *  Tách riêng khỏi portalUploadErrorNodes: câu này KHÔNG chứa "lỗi/thất bại/500" nên bộ lọc lỗi
+ *  chung không bắt được, mà đây lại là tín hiệu cần xử lý khác hẳn — dời sang ô khác, không phải
+ *  thử lại cùng chỗ (thử lại bao nhiêu lần cũng vẫn quá dung lượng). */
+function sizeLimitToastNodes() {
+  return Array.from(document.querySelectorAll(
+    '[role="alert"], [role="status"], [class*="toast" i], [class*="notification" i],'
+    + ' [class*="snackbar" i], [class*="message" i]'
+  )).filter(isVisible).map((node) => {
+    const text = nodeText(node).replace(/\s+/g, " ").trim();
+    if (!text || text.length > 300) return null;
+    const folded = foldChoiceText(text);
+    if (!folded.includes("dung luong")) return null;
+    if (!/khong duoc qua|vuot qua|toi da|khong vuot|gioi han/.test(folded)) return null;
+    return { node, text: text.slice(0, 200) };
+  }).filter(Boolean);
+}
+
+/** Ảnh chụp toast quá-dung-lượng ĐANG hiện, để lượt sau phân biệt được cái MỚI với cái còn sót.
+ *  Toast của cổng sống vài giây; lần thử ô dự phòng diễn ra ngay sau lần thử ô chính nên toast
+ *  cũ gần như chắc chắn còn trên màn hình. Không chụp trước thì lần thử thứ hai đọc lại đúng
+ *  câu cũ và báo hỏng oan — đã gặp thật: tệp VÀO ĐƯỢC dòng 2 nhưng vẫn bị báo không đính được. */
+function snapshotSizeLimitToasts() {
+  return sizeLimitToastNodes().map((hit) => foldChoiceText(hit.text));
+}
+
+/** Toast quá dung lượng MỚI so với `before` (danh sách nội dung đã thấy trước lượt này).
+ *
+ *  So theo NỘI DUNG, không theo node: thư viện toast React hay dựng node mới cho cùng một lời
+ *  than, so theo node là lại tưởng toast mới — đúng cái bẫy đã làm hỏng đường toast lỗi tải tệp. */
+function newSizeLimitError(before = []) {
+  const seen = new Set(before);
+  for (const hit of sizeLimitToastNodes()) {
+    if (!seen.has(foldChoiceText(hit.text))) return hit.text;
+  }
+  return "";
+}
+
+/** Chờ toast quá dung lượng MỚI xuất hiện sau `before`. Ngắn thôi: toast hiện gần như tức thì,
+ *  chờ lâu là làm chậm mọi tệp đính THÀNH CÔNG (đường đi thường xuyên nhất). */
+async function waitPortalSizeLimitError(before = [], ms = 1200) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const text = newSizeLimitError(before);
+    if (text) return text;
+    await sleep(150);
+  }
+  return "";
+}
+
 function findMenuSlotTrigger(item, usedTriggers) {
   const all = menuSlotTriggers();
   if (!all.length) return null;
@@ -1283,23 +1592,83 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
     }
 
     // (2) Ô kiểu bảng + menu: mở "Chọn tệp tin" → input ẩn trong overlay (vd khai sinh liên thông).
-    const trigger = findMenuSlotTrigger(item, usedTriggers);
-    if (trigger) {
-      if (!item.repeatUpload) usedTriggers.add(trigger);
-      console.log("[AutoFill-FixedSlot] attaching (menu)", { slotIndex: item.slotIndex, slotName: slotLabel, fileNames });
+    // Gắn vào MỘT ô, trả về lý do cổng chặn (nếu có) để người gọi quyết định dời ô.
+    const tryMenuSlot = async (slotItem, label) => {
+      const trigger = findMenuSlotTrigger(slotItem, usedTriggers);
+      if (!trigger) return { found: false };
+      if (!slotItem.repeatUpload) usedTriggers.add(trigger);
+      console.log("[AutoFill-FixedSlot] attaching (menu)", {
+        slotIndex: slotItem.slotIndex, slotName: label, fileNames,
+      });
       const menuInput = await openMenuGetFileInput(trigger);
       if (!menuInput) {
         await closeOpenMenu();
-        errors.push(`Không mở được ô đính kèm "${slotLabel}".`);
-        continue;
+        return { found: true, ok: false, error: `Không mở được ô đính kèm "${label}".` };
       }
+      // Chụp toast ĐANG hiện TRƯỚC khi gắn: lần thử ô dự phòng chạy ngay sau lần thử ô chính
+      // nên toast cũ còn nguyên trên màn hình, không chụp trước là đọc lại chính nó.
+      const toastsBefore = snapshotSizeLimitToasts();
       const ok = setFilesOnInput(menuInput, files, { assumeConsumed: true });
-      await sleep(600);
+      await sleep(500);
       await closeOpenMenu();
       const markTarget = trigger.closest("tr") || trigger.closest("td") || trigger.parentElement || trigger;
-      markAttachmentResult(markTarget, ok);
-      if (ok) attachedNames.push(...fileNames);
-      else errors.push(`Không gắn được file vào ô "${slotLabel}".`);
+      // THÀNH CÔNG = BẰNG CHỨNG DƯƠNG: tên tệp hiện thật trong dòng. POLL tới ~7s vì cổng cập nhật
+      // bất đồng bộ; song song canh toast "quá dung lượng". Hết giờ mà tên CHƯA hiện = ô KHÔNG nhận
+      // (tổng dung lượng 1 loại giấy tờ vượt ngưỡng, hoặc ô 1-tệp đã đầy) → coi là HỎNG để dời ô dự
+      // phòng. TRƯỚC ĐÂY coi "vắng toast" là thành công → toast lỡ nhịp (chỉ chờ 1.2s) thành "thành
+      // công giả": tệp không vào mà cũng không dời sang ô khác.
+      let landed = false, sizeError = "";
+      if (ok) {
+        const deadline = Date.now() + 7000;
+        while (Date.now() < deadline) {
+          if (fileNames.every((name) => menuSlotRowText(trigger).includes(foldChoiceText(name)))) { landed = true; break; }
+          const t = newSizeLimitError(toastsBefore);
+          if (t) { sizeError = t; break; }
+          await sleep(200);
+        }
+      }
+      if (!ok || !landed) {
+        markAttachmentResult(markTarget, false);
+        return { found: true, ok: false, sizeError, row: markTarget,
+          error: sizeError || `Ô "${label}" không nhận thêm tệp.` };
+      }
+      markAttachmentResult(markTarget, true);
+      return { found: true, ok: true };
+    };
+
+    const first = await tryMenuSlot(item, slotLabel);
+    if (first.found) {
+      if (first.ok) {
+        attachedNames.push(...fileNames);
+        continue;
+      }
+      // Ô chính KHÔNG nhận tệp (quá dung lượng, ô 1-tệp đã đầy…) → thử ô DỰ PHÒNG do BE chỉ định
+      // (chỉ giấy tờ được phép dời mới có). Trước đây chỉ dời khi bắt được toast size; giờ dời khi
+      // ô chính HỎNG bất kể lý do — vì tệp đằng nào cũng không vào được ô chính, dời còn hơn bỏ sót.
+      const fallbackLabel = item.fallbackSlotName || "";
+      if (item.fallbackSlotKey || Number.isInteger(item.fallbackSlotIndex)) {
+        console.warn("[AutoFill-FixedSlot] ô chính không nhận → chuyển sang ô dự phòng", {
+          from: slotLabel, to: fallbackLabel, sizeError: first.sizeError, error: first.error, fileNames,
+        });
+        const second = await tryMenuSlot({
+          ...item,
+          slotKey: item.fallbackSlotKey,
+          slotIndex: item.fallbackSlotIndex,
+          slotName: fallbackLabel,
+        }, fallbackLabel || `ô ${Number(item.fallbackSlotIndex) + 1}`);
+        if (second.found && second.ok) {
+          attachedNames.push(...fileNames);
+          continue;
+        }
+        // Cả hai ô đều không nhận → nói RÕ tệp nào để cán bộ tự đính, kèm nguyên văn cổng báo (nếu có).
+        const reason = second.sizeError || first.sizeError || second.error || first.error || "cổng từ chối";
+        errors.push(
+          `Không đính được ${fileNames.join(", ")}: ô "${slotLabel}" và ô "${fallbackLabel}" đều `
+          + `không nhận thêm — ${reason}`
+        );
+        continue;
+      }
+      errors.push(first.error);
       continue;
     }
 
@@ -1391,7 +1760,12 @@ async function clearAddedAttachmentRows() {
 
 async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
   // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
+  // Ô đính kèm nằm ở tab "Tải thành phần hồ sơ" CÙNG TRANG với đơn (Liferay Tabs) — mở đúng
+  // tab trước để công dân nhìn thấy bot thao tác và trạng thái file hiển thị đúng pane.
   if (detectFormKind() === "bacninh" && typeof H.attachBacNinhByPlan === "function") {
+    if (typeof H.activateBacNinhTab === "function") {
+      try { await H.activateBacNinhTab("taithanhphan"); } catch (_) { /* pane vẫn trong DOM */ }
+    }
     return H.attachBacNinhByPlan(payloadFiles, attachments, opts);
   }
   if (window.__AUTOFILL_HCC_ATTACH_BUSY__) {
@@ -1405,6 +1779,14 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     const errors = [];
     let terminalCode = null;
     const allAttachments = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
+
+    // Bảng-checkbox "attp-row" (cổng Bộ NN&MT — thủy sản): toàn bộ plan là dòng cố định
+    // → engine riêng, không đi qua ví giấy tờ/thêm thành phần.
+    const attpItems = allAttachments.filter((item) => item.target === "attp-row");
+    if (attpItems.length && attpItems.length === allAttachments.length) {
+      return await attachFilesByAttpRow(payloadFiles, attpItems);
+    }
+
     const fixedItems = allAttachments.filter((item) => item.target === "fixed-slot");
     const normalItems = allAttachments.filter((item) => item.target !== "fixed-slot");
 
@@ -1446,86 +1828,136 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
       ? normalItems.map((item) => forceRow1PlanItem(item, procedure))
       : normalizeAttachmentPlan(normalItems, procedure);
 
-    for (let i = 0; i < plannedAttachments.length; i++) {
-      const item = plannedAttachments[i] || {};
-      const payloadFile = payloadForPlanItem(payloadFiles, item, i);
-      if (!payloadFile) {
-        errors.push(`Không tìm thấy file ${item.fileName || i + 1} trong payload.`);
-        break;
-      }
-      console.log("[AutoFill-AttachPlan] attaching", {
-        fileIndex: item.fileIndex,
-        payloadName: payloadFile.name,
-        documentName: item.documentName,
-        componentName: item.componentName,
-        target: item.target,
-      });
+    // ROUND-ROBIN: hỏng thì HOÃN lại rồi đi tiếp, hết lượt mới quay lại thử phần hoãn.
+    // Không thử lại tại chỗ vì (1) cổng vừa trả 500 thì thử ngay cũng 500, (2) sleep tại chỗ là
+    // thời gian chết, (3) hỏng một tệp không được chặn các tệp còn lại. Khoảng cách giữa hai
+    // lần thử của cùng một tệp = thời gian đính các tệp khác, giãn hơn nhiều so với sleep(2000).
+    // 3 lượt: File Service của cổng hay trả 500/đơ ở bước "Thêm vào ví" — 2 lượt quá ít cho lỗi
+    // TẠM THỜI. Không thử lại TẠI CHỖ vì cổng vừa 500 thì thử ngay cũng 500; round-robin giãn cách
+    // bằng thời gian đính tệp khác + backoff tăng dần để server kịp hồi. Hỏng 1 tệp không chặn tệp khác.
+    const MAX_ROUNDS = 3;
+    const lastErrorByIndex = new Map();
+    let queue = plannedAttachments.map((item, index) => ({ item: item || {}, index }));
 
-      const existingRow = findExistingAttachedRowForPlanItem(item, payloadFile);
-      if (existingRow) {
-        const existingName = rowAttachedFileName(existingRow);
-        attachDebug("skip duplicate attachment", {
-          existingName,
-          item,
-          payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
-          row: describeAttachmentRowForLog(existingRow),
+    for (let round = 1; round <= MAX_ROUNDS && queue.length; round++) {
+      const deferred = [];
+      if (round > 1) {
+        console.warn(`[AutoFill-AttachPlan] lượt ${round}: thử lại ${queue.length} tệp bị hoãn`);
+        await closeDocumentWalletDialogs();
+        // BACKOFF TĂNG DẦN: cổng 500/đơ cần thời gian hồi (thử lại ngay cũng 500). Tệp CUỐI/DUY NHẤT
+        // chờ lâu hơn vì round-robin không có tệp khác chen vào tạo khoảng nghỉ. Lượt càng sau chờ càng lâu.
+        const backoffMs = (round - 1) * 3000 + (queue.length <= 1 ? 2500 : 0);
+        await sleep(backoffMs);
+      }
+      for (const { item, index: i } of queue) {
+        const payloadFile = payloadForPlanItem(payloadFiles, item, i);
+        if (!payloadFile) {
+          errors.push(`Không tìm thấy file ${item.fileName || i + 1} trong payload.`);
+          continue;
+        }
+        console.log("[AutoFill-AttachPlan] attaching", {
+          fileIndex: item.fileIndex,
+          payloadName: payloadFile.name,
+          documentName: item.documentName,
+          componentName: item.componentName,
+          target: item.target,
         });
-        skippedNames.push(existingName || item.documentName || payloadFile.name);
-        markAttachmentResult(existingRow, true);
-        await sleep(150);
-        continue;
-      }
 
-      if ((item.target === "new" || item.needsAddComponent) && hasOtherListFileAttachment()) {
-        const result = await attachOneFileToOtherListFile(payloadFile, item);
+        const existingRow = findExistingAttachedRowForPlanItem(item, payloadFile);
+        if (existingRow) {
+          const existingName = rowAttachedFileName(existingRow);
+          attachDebug("skip duplicate attachment", {
+            existingName,
+            item,
+            payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
+            row: describeAttachmentRowForLog(existingRow),
+          });
+          skippedNames.push(existingName || item.documentName || payloadFile.name);
+          // Lượt trước có thể đã ghi lỗi cho chính tệp này; giờ nó nằm sẵn trên trang thì
+          // lỗi đó hết hiệu lực, không được đem ra than ở cuối.
+          lastErrorByIndex.delete(i);
+          markAttachmentResult(existingRow, true);
+          await sleep(150);
+          continue;
+        }
+
+        if ((item.target === "new" || item.needsAddComponent) && hasOtherListFileAttachment()) {
+          const result = await attachOneFileToOtherListFile(payloadFile, item);
+          if (result?.error) {
+            lastErrorByIndex.set(i, result.error);
+            deferred.push({ item, index: i });
+            continue;
+          }
+          attachedNames.push(...(result.fileNames || []));
+          await sleep(400);
+          continue;
+        }
+
+        let row;
+        try {
+          row = await rowForPlanItem(item);
+        } catch (e) {
+          lastErrorByIndex.set(i, e?.message || String(e));
+          deferred.push({ item, index: i });
+          continue;
+        }
+        if (!row) {
+          lastErrorByIndex.set(i, `Không tìm thấy dòng hồ sơ "${item.componentName || ""}".`);
+          deferred.push({ item, index: i });
+          continue;
+        }
+
+        const result = await attachOneFileViaDocumentWallet(row, payloadFile, item);
         if (result?.error) {
-          errors.push(result.error);
-          break;
+          console.warn("[AutoFill-AttachPlan] attach item failed", {
+            round,
+            error: result.error,
+            portalError: result.portalError || null,
+            debug: result.debug,
+            item,
+            payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
+          });
+          terminalCode = result.code || terminalCode;
+          lastErrorByIndex.set(i, result.error);
+          deferred.push({ item, index: i });
+          continue;
         }
+        lastErrorByIndex.delete(i);
         attachedNames.push(...(result.fileNames || []));
-        await sleep(400);
-        continue;
+        await sleep(600);
       }
+      queue = deferred;
+    }
 
-      let row;
-      try {
-        row = await rowForPlanItem(item);
-      } catch (e) {
-        errors.push(e?.message || String(e));
-        break;
-      }
-      if (!row) {
-        errors.push(`Không tìm thấy dòng hồ sơ "${item.componentName || ""}".`);
-        break;
-      }
-
-      // Cổng moj đôi khi trả 504/timeout khi lưu vào ví giấy tờ → tự thử lại vài lần (backoff)
-      // trước khi báo lỗi. Đóng modal dở + làm mới dòng hồ sơ giữa các lần thử để reset trạng thái.
-      const MAX_ATTACH_ATTEMPTS = 3;
-      let result = null;
-      for (let attempt = 1; attempt <= MAX_ATTACH_ATTEMPTS; attempt++) {
-        result = await attachOneFileViaDocumentWallet(row, payloadFile, item);
-        if (!result?.error) break;
-        if (attempt < MAX_ATTACH_ATTEMPTS) {
-          console.warn(`[AutoFill-AttachPlan] thử lại đính kèm (${attempt}/${MAX_ATTACH_ATTEMPTS - 1}) do lỗi:`, result.error);
-          await closeDocumentWalletDialogs();
-          await sleep(2000 * attempt); // backoff tăng dần để cổng kịp hồi (504 thường transient)
-          try { row = (await rowForPlanItem(item)) || row; } catch (_) { /* giữ row cũ */ }
+    // TRƯỚC KHI THAN, SOI LẠI BẢNG. Cổng moj ghi nhận CHẬM và báo lỗi TRỄ: tệp ta đã bỏ cuộc
+    // vẫn có thể nằm sẵn trên dòng vài giây sau đó. Đã gặp thật — 8/8 dòng có file mà trợ lý
+    // vẫn báo "đính được 6, còn lỗi", bắt cán bộ đi tìm thứ không hề thiếu.
+    if (queue.length) {
+      await sleep(1500); // ân hạn cho lượt ghi nhận cuối cùng của cổng
+      const stillMissing = [];
+      for (const { item, index } of queue) {
+        const payloadFile = payloadForPlanItem(payloadFiles, item, index);
+        const landedRow = payloadFile ? findExistingAttachedRowForPlanItem(item, payloadFile) : null;
+        if (!landedRow) {
+          stillMissing.push({ item, index });
+          continue;
         }
-      }
-      if (result?.error) {
-        console.warn("[AutoFill-AttachPlan] attach item failed", {
-          error: result.error,
-          debug: result.debug,
-          item,
-          payloadFile: { name: payloadFile?.name, type: payloadFile?.type },
+        attachDebug("tệp đã lên trang sau khi bỏ cuộc", {
+          index,
+          fileName: rowAttachedFileName(landedRow),
+          row: describeAttachmentRowForLog(landedRow),
         });
-        terminalCode = result.code || terminalCode;
-        errors.push(result.error);
-        break;
+        markAttachmentResult(landedRow, true);
+        attachedNames.push(rowAttachedFileName(landedRow) || payloadFile?.name || "");
+        lastErrorByIndex.delete(index);
       }
-      attachedNames.push(...(result.fileNames || []));
-      await sleep(600);
+      queue = stillMissing;
+    }
+
+    // Hết lượt mà còn hoãn = hỏng thật. Báo TỪNG tệp để cán bộ biết đính tay ô nào.
+    for (const { index } of queue) {
+      const message = lastErrorByIndex.get(index);
+      if (message) errors.push(message);
     }
 
     if (errors.length) {

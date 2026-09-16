@@ -75,5 +75,5 @@ test("đổi hoặc kết thúc phiên đóng modal và xóa state cũ", () => {
   assert.match(sidebar, /function resetUploadFileListState\(\)/);
   assert.match(sidebar, /if \(uploadSid !== sid\) resetUploadFileListState\(\)/);
   assert.match(sidebar, /uploadSid = sid;[\s\S]*return loadUploadSessionFiles\(\)\.catch/);
-  assert.match(sidebar, /resetUploadFileListState\(\);\s*\n\s*await api\.deleteConversation/);
+  assert.match(sidebar, /resetUploadFileListState\(\);[\s\S]{0,600}?await api\.deleteConversation\(reason/);
 });

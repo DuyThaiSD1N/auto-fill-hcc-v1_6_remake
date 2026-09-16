@@ -15,7 +15,8 @@ viên gia đình, hình thức đăng ký.
 - NguoiNop_ThuongTru = NƠI THƯỜNG TRÚ / đăng ký thường trú (Tờ đơn mục 6 / CCCD Nơi thường trú).
 - NguoiNop_NoiOHienTai = NƠI Ở HIỆN TẠI (Tờ đơn mục 5) — thường KHÁC thường trú (vd thường trú "KP 5/13
   Trần Xuân Lê" nhưng nơi ở hiện tại "123/16 Trần Xuân Lê"). Nếu đơn KHÔNG tách riêng nơi ở hiện tại, để
-  trống field này.
+  trống field này. Ngược lại, đơn để trống mục 6 và hồ sơ không có CCCD thì bỏ NguoiNop_ThuongTru — đừng
+  copy nơi ở hiện tại sang, mapper tự suy.
 Tách mỗi địa chỉ thành object {quocGia,tinh,xa,diaChi}: tinh='Tỉnh/Thành phố …', xa=phường/xã,
 diaChi=số nhà/đường (KHÔNG kèm phường/xã/tỉnh).
 

@@ -1,4 +1,4 @@
-// api/client.js — client "1 cửa" gọi BE Trợ lý người dân (docs/03 §2.3).
+// api/client.js — client "1 cửa" gọi BE Trợ lý nhân dân (docs/03 §2.3).
 // Extension CHỈ dùng: POST /assistant/chat · GET /assistant/conversations/{id}
 // · GET /provinces /wards · (WS voice + upload-session ở Bước 4-5).
 // Chat đòi JWT (đăng nhập quầy — api/auth.js); wards/voice/upload giữ public.
@@ -70,10 +70,13 @@
     }
 
     // DELETE /api/v1/assistant/conversations/{id} — xoá phiên ngay (nút 🔄). Best-effort.
-    async deleteConversation() {
+    // `reason` (manual/idle/dvc-home/continue) chỉ để BE đóng sổ hồ sơ dở dang; BE bản cũ
+    // bỏ qua query lạ nên gửi kèm là an toàn.
+    async deleteConversation(reason = "") {
       if (!this.conversationId) return;
+      const q = reason ? `?reason=${encodeURIComponent(reason)}` : "";
       try {
-        await this._fetchApi(`/api/v1/assistant/conversations/${this.conversationId}`, { method: "DELETE" });
+        await this._fetchApi(`/api/v1/assistant/conversations/${this.conversationId}${q}`, { method: "DELETE" });
       } catch (_) { /* BE tắt thì thôi — TTL 24h tự dọn */ }
       this.conversationId = null;
     }

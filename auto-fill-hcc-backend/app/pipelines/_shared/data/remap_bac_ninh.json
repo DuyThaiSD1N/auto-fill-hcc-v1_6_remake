@@ -363,25 +363,25 @@
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Nội Hoàng",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tiên Phong"
+        "xa_moi": "Phường Tiền Phong"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Song Khê",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tiên Phong"
+        "xa_moi": "Phường Tiền Phong"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Đồng Sơn",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tiên Phong"
+        "xa_moi": "Phường Tiền Phong"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Tiên Phong",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tiên Phong"
+        "xa_moi": "Phường Tiền Phong"
     },
     {
         "tinh_cu": "Bắc Ninh",
@@ -483,25 +483,25 @@
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Tư Lan",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tư Lan"
+        "xa_moi": "Phường Tự Lạn"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Việt Tiến",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tư Lan"
+        "xa_moi": "Phường Tự Lạn"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Thương Lan",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tư Lan"
+        "xa_moi": "Phường Tự Lạn"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Hương Mai",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Phường Tư Lan"
+        "xa_moi": "Phường Tự Lạn"
     },
     {
         "tinh_cu": "Bắc Giang",
@@ -1013,19 +1013,19 @@
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Bình Định",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Lãm Thao"
+        "xa_moi": "Xã Lâm Thao"
     },
     {
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Quảng Phú",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Lãm Thao"
+        "xa_moi": "Xã Lâm Thao"
     },
     {
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Lãm Thao",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Lãm Thao"
+        "xa_moi": "Xã Lâm Thao"
     },
     {
         "tinh_cu": "Bắc Ninh",
@@ -1791,31 +1791,31 @@
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Giang Sơn",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Cửu"
+        "xa_moi": "Xã Đông Cứu"
     },
     {
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Lãng Ngâm",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Cửu"
+        "xa_moi": "Xã Đông Cứu"
     },
     {
         "tinh_cu": "Bắc Ninh",
         "xa_cu": "Đồng Cửu",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Cửu"
+        "xa_moi": "Xã Đông Cứu"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Đồng Hưng",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Phú"
+        "xa_moi": "Xã Đông Phú"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Đồng Phú",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Phú"
+        "xa_moi": "Xã Đông Phú"
     },
     {
         "tinh_cu": "Bắc Ninh",
@@ -1869,19 +1869,19 @@
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Đồng Hưu",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Kỵ"
+        "xa_moi": "Xã Đồng Kỳ"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Đồng Vương",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Kỵ"
+        "xa_moi": "Xã Đồng Kỳ"
     },
     {
         "tinh_cu": "Bắc Giang",
         "xa_cu": "Đồng Kỵ",
         "tinh_moi": "Bắc Ninh",
-        "xa_moi": "Xã Đồng Kỵ"
+        "xa_moi": "Xã Đồng Kỳ"
     },
     {
         "tinh_cu": "Bắc Giang",

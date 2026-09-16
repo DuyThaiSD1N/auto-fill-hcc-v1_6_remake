@@ -12,6 +12,48 @@ const PdfConvert = {
     return String(type || "").toLowerCase().includes("png") || /\.png$/i.test(String(name || ""));
   },
 
+  // Nhận diện định dạng theo BYTES thật — KHÔNG tin tên/mime (điện thoại hay đặt .png cho ảnh
+  // JPG, và ngược lại). Chọn sai embedPng/embedJpg là ra "The input is not a PNG file!".
+  _sniffImageType(bytes) {
+    if (bytes && bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50
+        && bytes[2] === 0x4e && bytes[3] === 0x47) return "png";
+    if (bytes && bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpg";
+    return "other";
+  },
+
+  // Chuẩn hóa ảnh pdf-lib KHÔNG nhúng được (PNG interlaced/16-bit/grayscale+alpha, webp, mime
+  // sai…) → vẽ lên canvas rồi xuất JPEG. Chỉ dùng làm PHAO khi embed gốc lỗi; đường thường vẫn
+  // nhúng nguyên bytes (lossless).
+  async _reencodeToJpeg(dataUrl) {
+    if (typeof document === "undefined") throw new Error("Không chuẩn hóa được ảnh (thiếu canvas).");
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error("Không đọc được ảnh để chuẩn hóa."));
+      im.src = dataUrl;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    if (!canvas.width || !canvas.height) throw new Error("Ảnh không có kích thước hợp lệ.");
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    return this._dataUrlToBytes(canvas.toDataURL("image/jpeg", 0.92));
+  },
+
+  // Nhúng ảnh vào PDF theo BYTES thật; embed lỗi (định dạng lạ / pdf-lib không đọc được) → phao
+  // canvas→JPEG. Fix "The input is not a PNG file!" cho PNG bị nhận nhầm hoặc PNG biến thể lạ.
+  async _embedImage(pdf, bytes, dataUrl, name, type) {
+    const sniff = this._sniffImageType(bytes);
+    try {
+      if (sniff === "jpg") return await pdf.embedJpg(bytes);
+      if (sniff === "png") return await pdf.embedPng(bytes);
+      return this._isPng(type, name) ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    } catch (e) {
+      const jpegBytes = await this._reencodeToJpeg(dataUrl);
+      return await pdf.embedJpg(jpegBytes);
+    }
+  },
+
   _dataUrlToBytes(dataUrl) {
     const comma = String(dataUrl || "").indexOf(",");
     const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : "";
@@ -37,7 +79,7 @@ const PdfConvert = {
     const { PDFDocument } = window.PDFLib;
     const bytes = this._dataUrlToBytes(dataUrl);
     const pdf = await PDFDocument.create();
-    const img = this._isPng(type, name) ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+    const img = await this._embedImage(pdf, bytes, dataUrl, name, type);
     const page = pdf.addPage([img.width, img.height]);
     page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
     const out = await pdf.save();
@@ -114,9 +156,7 @@ const PdfConvert = {
         if (Array.isArray(indexes) && (indexes.length !== 1 || Number(indexes[0]) !== 0)) {
           throw new Error(`Ảnh ${source.name || sourceIndex} chỉ có một trang.`);
         }
-        const img = this._isPng(source.type, source.name)
-          ? await out.embedPng(bytes)
-          : await out.embedJpg(bytes);
+        const img = await this._embedImage(out, bytes, source.dataUrl, source.name, source.type);
         sourcePages.push({ kind: "image", embedded: img, width: img.width, height: img.height });
         continue;
       }

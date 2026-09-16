@@ -3,6 +3,7 @@
 import json
 
 import httpx
+import pytest
 import respx
 
 from app.config import settings
@@ -307,6 +308,136 @@ async def test_xac_nhan_tthn_compact_agent_maps_divorce_decision(monkeypatch):
     assert divorce_detail["soBanAnQuyetDinhLyHon"] == "16/2012/QĐST-HNGĐ"
     assert divorce_detail["ngayCapBanAnQuyetDinhLyHon"] == "03/05/2012"
     assert divorce_detail["coQuanCapBanAnQuyetDinhLyHon"] == "Tòa án nhân dân thị xã Lai Châu, tỉnh Lai Châu"
+
+
+def test_xac_nhan_tthn_maps_divorce_without_decision_date():
+    """OCR quyết định ly hôn mất dòng ngày ban hành -> vẫn phải chọn "đã ly hôn" + điền số bản án.
+
+    Ca thật: dấu treo đè lên dòng "Đà Lạt, ngày ... tháng ... năm ...", OCR chỉ còn số quyết định
+    và tên tòa. Trước đây mapper đòi đủ cả ba nên bỏ trắng cả ô tình trạng hôn nhân lẫn số bản án.
+    """
+    mapped = mapper.enrich([
+        {"name": "Cccd_HoTen", "value": "LÊ MINH TUYÊN"},
+        {"name": "Cccd_SoDinhDanh", "value": "068094003777"},
+        {"name": "DivorceDecision_Number", "value": "87/2022/QĐST-HNGD"},
+        {"name": "DivorceDecision_Agency", "value": "Tòa án nhân dân thành phố Đà Lạt, tỉnh Lâm Đồng"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["TinhTrangHonNhanC1"] == (
+        "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; "
+        "hiện tại chưa đăng ký kết hôn với ai"
+    )
+    detail = values["nxnLoaiTinhTrangHonNhan=3"]
+    assert detail["soBanAnQuyetDinhLyHon"] == "87/2022/QĐST-HNGD"
+    assert detail["coQuanCapBanAnQuyetDinhLyHon"] == "Tòa án nhân dân thành phố Đà Lạt, tỉnh Lâm Đồng"
+    assert "ngayCapBanAnQuyetDinhLyHon" not in detail
+
+
+def test_xac_nhan_tthn_maps_death_cert_without_date():
+    """Cùng luật với ly hôn: giấy chứng tử đọc thiếu ngày vẫn phải chốt trạng thái GÓA."""
+    mapped = mapper.enrich([
+        {"name": "Cccd_HoTen", "value": "NGUYỄN VĂN A"},
+        {"name": "DeathCert_Number", "value": "123"},
+        {"name": "DeathCert_Agency", "value": "UBND phường Hải Châu"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["TinhTrangHonNhanC1"] == (
+        "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; "
+        "hiện tại chưa đăng ký kết hôn với ai"
+    )
+    assert values["nxnLoaiTinhTrangHonNhan=4"]["soBanAnQuyetDinhLyHon"] == "123"
+
+
+_DIVORCED_LABEL = (
+    "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng đã ly hôn; "
+    "hiện tại chưa đăng ký kết hôn với ai"
+)
+
+
+def _status_of(extra):
+    base = [
+        {"name": "Cccd_HoTen", "value": "LÊ MINH TUYÊN"},
+        {"name": "Cccd_SoDinhDanh", "value": "068094003777"},
+    ]
+    mapped = mapper.enrich(base + [{"name": k, "value": v} for k, v in extra.items()])
+    return {field["name"]: field["value"] for field in mapped}
+
+
+_DIVORCE_DOC = {
+    "DivorceDecision_Number": "87/2022/QĐST-HNGD",
+    "DivorceDecision_Date": "20/03/2022",
+    "DivorceDecision_Agency": "Tòa án nhân dân thành phố Đà Lạt",
+}
+
+
+@pytest.mark.parametrize("declared", [
+    "Đã ly hôn",                                   # LLM rút gọn
+    "đã ly hôn.",                                  # thừa dấu chấm cuối
+    _DIVORCED_LABEL,                               # nguyên văn nhãn cổng
+    _DIVORCED_LABEL + ".",                         # nguyên văn + dấu chấm
+])
+def test_xac_nhan_tthn_accepts_declared_divorce_wording_variants(declared):
+    """Tờ khai khai ly hôn bằng chữ nào cũng phải ra đúng option + số bản án.
+
+    Bản cũ so `==` với nguyên văn nhãn cổng: lệch một chữ là không phát gì, mà chuỗi `if/elif`
+    còn chặn luôn fallback đọc từ quyết định ly hôn → trắng cả hai ô.
+    """
+    values = _status_of({**_DIVORCE_DOC, "TinhTrangHonNhanC1": declared})
+
+    assert values["TinhTrangHonNhanC1"] == _DIVORCED_LABEL
+    assert values["nxnLoaiTinhTrangHonNhan=3"]["soBanAnQuyetDinhLyHon"] == "87/2022/QĐST-HNGD"
+
+
+def test_xac_nhan_tthn_unreadable_declared_status_falls_back_to_documents():
+    """Chữ tình trạng hôn nhân không hiểu được thì BỎ QUA, không được nuốt lượt của giấy tờ."""
+    values = _status_of({**_DIVORCE_DOC, "TinhTrangHonNhanC1": "khong doc duoc"})
+
+    assert values["TinhTrangHonNhanC1"] == _DIVORCED_LABEL
+    assert values["nxnLoaiTinhTrangHonNhan=3"]["coQuanCapBanAnQuyetDinhLyHon"] == (
+        "Tòa án nhân dân thành phố Đà Lạt"
+    )
+
+
+@pytest.mark.parametrize("declared", ["Độc thân", "Chưa kết hôn"])
+def test_xac_nhan_tthn_accepts_never_married_wording_variants(declared):
+    values = _status_of({"TinhTrangHonNhanC1": declared})
+
+    assert values["TinhTrangHonNhanC1"] == "Hiện tại chưa đăng ký kết hôn với ai"
+
+
+def test_xac_nhan_tthn_declared_remarriage_beats_past_divorce():
+    """Tờ khai ghi gộp "đã ly hôn, hiện tại đã kết hôn với..." → phải là ĐANG CÓ VỢ/CHỒNG.
+
+    Hai option ly hôn/góa đều kết thúc bằng "hiện tại chưa đăng ký kết hôn với ai" nên chọn
+    chúng cho người đã cưới lại là khai sai sự thật.
+    """
+    values = _status_of({
+        **_DIVORCE_DOC,
+        "Marriage_SpouseName": "Trần Thị B",
+        "Marriage_Number": "55",
+        "Marriage_Date": "01/06/2023",
+        "TinhTrangHonNhanC1": "Đã ly hôn, hiện tại đã kết hôn với bà Trần Thị B",
+    })
+
+    assert values["TinhTrangHonNhanC1"] == "Hiện tại đang có vợ/chồng"
+    assert values["nxnLoaiTinhTrangHonNhan=2"]["voChongHoTen"] == "Trần Thị B"
+
+
+def test_xac_nhan_tthn_period_option_survives_declared_status():
+    """Xác nhận chưa ĐKKH trong một KHOẢNG đã qua (option 5) vẫn thắng chữ tự khai."""
+    values = _status_of({
+        "Marriage_SpouseName": "Trần Thị B",
+        "Marriage_Number": "55",
+        "Marriage_Date": "01/06/2023",
+        "Period_TuNgay": "27/04/2016",
+        "Period_DenNgay": "14/09/2016",
+        "TinhTrangHonNhanC1": "Hiện tại đang có vợ/chồng",
+    })
+
+    assert values["TinhTrangHonNhanC1"].startswith("Từ ngày…")
+    assert values["nxnLoaiTinhTrangHonNhan=5"]["thoiDiemBatDau"] == "27/04/2016"
 
 
 @respx.mock

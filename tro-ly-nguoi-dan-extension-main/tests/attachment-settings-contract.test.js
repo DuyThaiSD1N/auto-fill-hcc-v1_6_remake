@@ -26,11 +26,27 @@ test("cài đặt mở trong panel và bánh răng đứng cạnh tài khoản",
 test("tùy chọn lưu theo máy và đi xuyên client context dưới dạng boolean riêng", () => {
   assert.match(sidebar, /ATTACH_SPLIT_DOCUMENTS_KEY = "tlnd_attach_split_documents"/);
   assert.match(sidebar, /let attachSplitDocuments = false/);
-  assert.match(sidebar, /attachment_preferences:\s*\{ splitDocuments: attachSplitDocuments \}/);
+  assert.match(sidebar, /attachment_preferences:\s*\{ splitDocuments: attachSplitDocuments, attachMode \}/);
   assert.match(sidebar, /chrome\.storage\.local\.set\([\s\S]*ATTACH_SPLIT_DOCUMENTS_KEY/);
   assert.match(sidebar, /chrome\.storage\?\.onChanged\?\.addListener/);
   assert.match(sidebar, /await restoreAttachmentSettings\(\)/);
   assert.doesNotMatch(sidebar, /attachment_preferences:\s*\{\s*splitMode:/);
+});
+
+test("cách đính kèm chứng thực chọn sẵn ở Cài đặt: 2 option, mặc định merge, lưu theo máy", () => {
+  // UI: card riêng + segmented 2 nút (radio) — không còn bắt buộc trả lời chip giữa luồng.
+  assert.match(html, /Đính kèm chứng thực/);
+  assert.match(html, /id="attach-mode-merge"[\s\S]{0,200}Trong 1 hồ sơ/);
+  assert.match(html, /id="attach-mode-split"[\s\S]{0,200}Mỗi tài liệu 1 hồ sơ/);
+  assert.match(html, /id="attach-mode-group" role="radiogroup"/);
+  assert.match(css, /\.settings-seg \{/);
+  // State: mặc định "merge" (giữ hành vi cũ), chỉ nhận đúng "split" làm giá trị thứ hai.
+  assert.match(sidebar, /ATTACH_MODE_KEY = "tlnd_attach_mode"/);
+  assert.match(sidebar, /let attachMode = "merge"/);
+  assert.match(sidebar, /attachMode = res\?\.\[ATTACH_MODE_KEY\] === "split" \? "split" : "merge"/);
+  assert.match(sidebar, /function saveAttachMode\(value\)/);
+  // Sync đa tab qua storage.onChanged cho cả hai key cài đặt.
+  assert.match(sidebar, /changes\[ATTACH_MODE_KEY\]/);
 });
 
 test("mở cài đặt tạm dừng giọng nói nhưng không tắt chế độ rảnh tay", () => {

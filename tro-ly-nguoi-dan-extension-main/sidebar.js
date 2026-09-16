@@ -1,4 +1,4 @@
-// sidebar.js — UI chat "Trợ lý người dân" (Bước 3: hội thoại server-driven thật).
+// sidebar.js — UI chat "Trợ lý nhân dân" (Bước 3: hội thoại server-driven thật).
 // Vòng lặp: ask(message, source) → BE trả {display_md, tts_text, chips, cards, actions, progress}
 // → render + THI HÀNH actions. FE không quyết flow — chips[0] luôn là bước tốt nhất do BE chọn.
 (() => {
@@ -7,10 +7,26 @@
   // ── Ngữ cảnh nhúng: content.js nạp sidebar.html?embedded=1&tabId=<id> ──
   const params = new URLSearchParams(location.search);
   const TAB_ID = params.get("tabId") || "";
+  // embedded=0 → đang chạy trong KHUNG BÊN của trình duyệt, không có iframe cha.
+  // Ba nút thu gọn/đóng gửi lệnh lên window.parent nên vô nghĩa ở đó (xem panelMode).
+  const EMBEDDED = params.get("embedded") !== "0";
   const START_FRESH_ON_DVC_HOME = params.get("fresh") === "dvc-home";
   const DVC_HOME_URL = "https://dichvucong.gov.vn/";
 
   const $messages = document.getElementById("messages");
+  // Nhãn phiên bản đọc từ manifest (bản cũ ghi cứng "v1.2 · 01/09/2026").
+  try {
+    const v = chrome.runtime.getManifest().version;
+    const $rm = document.getElementById("release-meta");
+    if ($rm && v) {
+      const ngay = $rm.dataset.ngay || ""; // dd/mm/yyyy, ghi tay trong sidebar.html
+      const [d, m, y] = ngay.split("/");
+      $rm.textContent = ngay ? `v${v} · ${ngay}` : `v${v}`;
+      $rm.setAttribute("aria-label", ngay
+        ? `Phiên bản ${v}, phát hành ngày ${Number(d)} tháng ${Number(m)} năm ${y}`
+        : `Phiên bản ${v}`);
+    }
+  } catch (_) { /* context mất — để trống còn hơn ghi sai */ }
   const $status = document.getElementById("status");
   const $form = document.getElementById("chat-form");
   const $input = document.getElementById("chat-input");
@@ -27,17 +43,34 @@
   const COMPLETION_LOGOUT_STORAGE_KEY = TAB_ID ? `${COMPLETION_LOGOUT_KEY_PREFIX}${TAB_ID}` : "";
   const ACTIVE_SPLIT_KEY = "tlnd_active_split_by_tab";
   const SPLIT_STAGE_KEY = "tro_ly_split_attach_queue_stage";
-  const IDLE_TIMEOUT_MS = 10 * 60 * 1000;
+  // phiên tự kết thúc giữa chừng là mất cả hồ sơ đang làm dở.
+  const IDLE_TIMEOUT_MS = 20 * 60 * 1000;
   const IDLE_WARNING_MS = 30 * 1000;
   const IDLE_WARNING_TEXT = "⏳ Phiên sẽ tự kết thúc sau 30 giây nếu công dân không thao tác.";
   const ATTACH_SPLIT_DOCUMENTS_KEY = "tlnd_attach_split_documents";
   let attachSplitDocuments = false;
+  // Cách đính kèm chứng thực (merge = 1 hồ sơ, split = mỗi tài liệu 1 hồ sơ) — chọn sẵn ở
+  // màn Cài đặt thay cho câu hỏi giữa luồng; BE cũ không đọc key này thì vẫn hỏi chip như cũ.
+  const ATTACH_MODE_KEY = "tlnd_attach_mode";
+  let attachMode = "merge";
+  // Ưu tiên Scan tại quầy: bật → bước tải giấy tự vào Scan (bỏ hỏi QR/Scan). Mặc định tắt.
+  const PREFER_SCAN_KEY = "tlnd_prefer_scan";
+  let preferScan = false;
+  // Reply đang render có phải LIVE (không phải khôi phục phiên noTts) — để renderDocOptions chỉ
+  // TỰ chọn Scan khi là lượt thật, khôi phục phiên thì không tự bấm lại.
+  let renderingLiveReply = true;
   const CLIENT_CAPABILITIES = Object.freeze({
     attachmentEngineVersion: 2,
     supportsSourceSegments: true,
     supportsAttachmentContext: true,
     supportsPageBoundDocsComplete: true,
     supportsAttachActionLease: true,
+    // Scan tại quầy tự chốt sau đợt chọn tệp — BE chỉ bật pick_files.auto_run (+ câu "em tự
+    // xử lý luôn") khi client khai cờ này; extension cũ không khai → BE giữ luồng bấm tay.
+    supportsScanAutoRun: true,
+    // Hiểu card "rating" (đánh giá trải nghiệm trước đăng xuất). BE chỉ chèn bước đánh giá khi
+    // client khai cờ này; extension cũ không khai → BE ra thẳng 2 nút đăng xuất như trước.
+    supportsRating: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -71,10 +104,10 @@
     $messages.appendChild(el);
     $messages.scrollTop = $messages.scrollHeight;
   }
-  function showProcedurePickerFromTop() {
-    // Danh sách thủ tục dài nên các hàm render chung sẽ cuộn tới phần tử cuối. Riêng màn
-    // chào phải đưa công dân về đầu để đọc lời giới thiệu và kiểm tra tỉnh/xã trước.
-    requestAnimationFrame(() => { $messages.scrollTop = 0; });
+  function showProcedurePicker() {
+    // Màn chọn thủ tục: cuộn XUỐNG ĐÁY để người dân thấy đủ lưới ô + nút "NÓI" + thanh
+    // "Xem tất cả" (các nút hành động nằm dưới cùng khối, cuộn lên đầu sẽ bị khuất).
+    requestAnimationFrame(() => { $messages.scrollTop = $messages.scrollHeight; });
   }
   function setStatus(msg, isErr) {
     if (!msg) { $status.hidden = true; return; }
@@ -172,7 +205,7 @@
     }
   }
 
-  // ── Hết phiên sau 10 phút không có hoạt động thật ──
+  // ── Hết phiên sau 20 phút không có hoạt động thật ──
   // Activity từ trang cổng được content.js ghi cùng last_activity_at; sidebar đọc lại mỗi nhịp.
   let sessionActive = false;
   let lastActivityAt = 0;
@@ -246,6 +279,37 @@
       } catch (_) { resolve(null); }
     });
   }
+
+  // ── Mốc "công dân bấm Gửi hồ sơ" ──
+  // Luật nhận diện nút do BE gửi (action arm_submit_watch, nguồn registry.PORTAL_SUBMIT).
+  // Cache lại vì chuyển trang sẽ dựng lại content script và mất luật; boot sau đó nạp lại
+  // ngay, không phải chờ hết một hồ sơ mới có.
+  const SUBMIT_RULES_KEY = "tlnd_submit_rules";
+
+  async function armSubmitWatch(rules) {
+    if (!rules || typeof rules !== "object") return;
+    try { await chrome.storage.local.set({ [SUBMIT_RULES_KEY]: rules }); } catch (_) {}
+    await sendToContent({ action: "setSubmitRules", rules });
+  }
+
+  async function restoreSubmitWatch() {
+    try {
+      const res = await chrome.storage.local.get([SUBMIT_RULES_KEY]);
+      const rules = res?.[SUBMIT_RULES_KEY];
+      if (rules) await sendToContent({ action: "setSubmitRules", rules });
+    } catch (_) {}
+  }
+
+  // Content script bắn cú bấm về ĐÂY. Dùng chrome.runtime (không phải postMessage): trang web
+  // không gửi được runtime message vào extension nên số liệu không bị trang giả mạo.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (msg?.__tlnd !== "submitClicked") return;
+    if (String(sender?.tab?.id || "") !== String(TAB_ID)) return; // tab khác → kệ
+    if (!api.conversationId) return;                              // chưa có hồ sơ nào để chấm
+    void ask(`__event:submit_clicked:${JSON.stringify({
+      host: String(msg.host || ""), ref: String(msg.ref || ""),
+    })}`, "system");
+  });
 
   function sendToBackground(payload) {
     return new Promise((resolve) => {
@@ -345,7 +409,7 @@
         attachment_context: attachmentResult?.attachmentContext || {},
         // Đây là tùy chọn tách giấy tờ BÊN TRONG một file, độc lập với splitMode của
         // hai thủ tục chứng thực (splitMode mở nhiều hồ sơ/tab).
-        attachment_preferences: { splitDocuments: attachSplitDocuments },
+        attachment_preferences: { splitDocuments: attachSplitDocuments, attachMode },
         capabilities: CLIENT_CAPABILITIES,
       };
       if (clientContext.page_context.attachmentTarget
@@ -533,10 +597,17 @@
   }
   function renderReply(d, opts) {
     lastReplyData = d;
+    renderingLiveReply = !opts?.noTts; // khôi phục phiên (noTts) → renderDocOptions không tự chọn Scan
     if (d.lang) syncLangUI(d.lang); // BE là nguồn sự thật về chế độ tiếng Mông
     maybeRestoreHmongLang(d); // phiên MỚI (lang=vi) + máy đã lưu tiếng Mông → khôi phục im lặng
     const prevState = lastState;
     if (d.state) { lastState = d.state; schedulePageWatcher(); }
+    // Đã vào chặng làm việc (đã chốt thủ tục) → nối máy quét ở quầy để sẵn sàng bắt tệp. Gọi
+    // lại nhiều lần không mở kết nối trùng (connectScanAgent tự canh). Bước chọn/đăng nhập/kết
+    // thúc thì không cần theo dõi máy quét.
+    if (["guide_login", "ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState)) {
+      connectScanAgent();
+    }
     const hasLogoutChoice = (d.chips || []).some((chip) => [
       "__action:logout_citizen", "__action:continue_dossiers",
     ].includes(chip.send));
@@ -671,6 +742,7 @@
     c.formKind || c.declarationTarget || c.agencyBlock || c.loginPage || c.vneidLoginCodePrompt
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
+      || c.maeAgencyBlock
   ));
   let lastVneidSidebarDebugSignature = "";
   async function readPageContext() {
@@ -752,6 +824,8 @@
       vneidPasscodePrompt: !!c.vneidPasscodePrompt,
       infoModal: !!c.infoModal, wizardStep: c.wizardStep || 0,
       attachmentTarget: !!c.attachmentTarget,
+      // Trang "chọn nơi và loại" của cổng Bộ NN&MT — BE phát lệnh fill_mae_agency.
+      maeAgencyBlock: !!c.maeAgencyBlock,
       businessHost: !!c.businessHost,
       businessStage: c.businessStage || "",
       businessProcedureHint: c.businessProcedureHint || "",
@@ -827,7 +901,7 @@
       // (loggedIn không tính: trang chi tiết cũng có user-dropdown khi đã đăng nhập).
       const businessResultSig = ctx.businessResult
         ? `${ctx.businessResult.createdAt || 0}:${ctx.businessResult.ok ? 1 : 0}` : "";
-      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}`;
+      const sig = `${ctx.formKind}|${ctx.wizardStep || 0}|${ctx.declarationTarget ? 1 : 0}|${ctx.infoModal ? 1 : 0}|${ctx.agencyBlock ? 1 : 0}|${ctx.attachmentTarget ? 1 : 0}|${ctx.vneidLoginCodePrompt ? 1 : 0}|${ctx.vneidDataSharingPrompt ? 1 : 0}|${ctx.vneidPasscodePrompt ? 1 : 0}|${ctx.businessStage || ""}|${ctx.businessActive ? 1 : 0}|${businessResultSig}|${ctx.maeAgencyBlock ? 1 : 0}`;
       const watchesDocsTarget = ["ask_doc_method", "qr_waiting", "collecting_docs"].includes(lastState);
       // Trong bước đính kèm, probe lại định kỳ kể cả chữ ký DOM không đổi. Đây là đường
       // phục hồi bền nếu attach_ready/pipeline_error bị mất lúc WebSocket rớt.
@@ -875,7 +949,173 @@
     // còn sót trong last_reply của phiên được tạo trước khi extension cập nhật.
     if (card.kind === "phone_form") return;
     if (card.kind === "consent_form") return renderConsentForm(card);
+    if (card.kind === "rating") return renderRatingCard(card);
     console.warn("[TLND] card chưa hỗ trợ:", card.kind);
+  }
+
+  // Card đánh giá trải nghiệm (mockup 5) — hiện sau khi nộp thành công, TRƯỚC 2 nút đăng xuất.
+  // 2 bước làm TRỌN trong card: chọn 1/5 mức → hiện chip lý do (nhánh theo mức) + ô ý kiến +
+  // nút NÓI (ASR). Gửi/Bỏ qua → 1 action về BE. Ẩn danh, không bắt buộc.
+  const RATING_FACE_COLOR = { 5: "#12a06a", 4: "#5da76a", 3: "#c2941f", 2: "#c4702f", 1: "#bd3b2e" };
+  function ratingFaceSvg(v) {
+    const c = RATING_FACE_COLOR[v] || "#12a06a";
+    const mouth = v === 5
+      ? `<path d="M17 37 Q32 59 47 37 Z" fill="${c}"/>`
+      : `<path d="${{ 4: "M21 41 Q32 51 43 41", 3: "M22 44 L42 44", 2: "M22 48 Q32 41 42 48", 1: "M19 51 Q32 37 45 51" }[v]}" stroke="${c}" stroke-width="3.8" stroke-linecap="round" fill="none"/>`;
+    const eye = v === 5
+      ? `<path d="M17 29 Q22.5 23 28 29 M36 29 Q41.5 23 47 29" stroke="${c}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`
+      : v <= 2
+        ? `<path d="M18 26 L27 30 M46 26 L37 30" stroke="${c}" stroke-width="3.4" stroke-linecap="round" fill="none"/>`
+        : `<circle cx="22.5" cy="28" r="3.6" fill="${c}"/><circle cx="41.5" cy="28" r="3.6" fill="${c}"/>`;
+    return `<svg viewBox="0 0 64 64" aria-hidden="true">${eye}${mouth}</svg>`;
+  }
+  function renderRatingCard(card) {
+    const scale = card.scale || [];
+    const goodThreshold = card.goodThreshold || 4;
+    const esc = window.escapeHtml;
+    let level = null;
+    const reasons = new Set();
+    let note = "";
+    let capturing = false;
+    let thanked = false;
+    let curReasons = [];
+
+    const el = document.createElement("div");
+    el.className = "rating-card";
+    addNode(el);
+
+    const syncNote = () => { const ta = el.querySelector(".rating-note"); if (ta) note = ta.value; };
+    const stopCapture = () => {
+      if (!capturing) return;
+      capturing = false; ratingNoteSink = null;
+      try { stopVoice(); } catch (_) { /* bỏ qua */ }
+    };
+    const finish = (action, label) => {
+      stopCapture();
+      // Đổi NGAY TRONG card sang trạng thái "cảm ơn" (không đẻ bong bóng echo/cảm ơn) rồi mới
+      // gửi action. Card vẫn là 1 khối tự morph.
+      thanked = true;
+      draw();
+      ask(action, "chip", label);
+    };
+
+    // Sau mỗi lần card ĐỔI nội dung, đưa phần mới vào tầm nhìn (cuộn xuống đáy khung chat) —
+    // card nằm cuối trong lúc đánh giá nên cuộn đáy là thấy đúng nút vừa hiện.
+    const scrollDown = () => requestAnimationFrame(() => {
+      $messages.scrollTop = $messages.scrollHeight;
+    });
+
+    function draw() {
+      // Trạng thái cuối: cảm ơn — thay TOÀN BỘ nội dung (thang mức đã biến mất).
+      if (thanked) {
+        el.innerHTML = `<div class="rating-thanks">
+          <span class="rating-thanks-face">${ratingFaceSvg(level || 5)}</span>
+          <div class="rating-thanks-tt">${esc(card.thanks || "Cảm ơn công dân đã đánh giá!")}</div>
+          <div class="rating-thanks-sub">${esc(card.thanksSub || "")}</div></div>`;
+        scrollDown();
+        return;
+      }
+      // BƯỚC 1 — chọn mức (thái độ). Chưa chọn thì CHỈ hiện thang mức.
+      if (level == null) {
+        el.innerHTML = `
+          <div class="rating-title">${esc(card.title || "")}</div>
+          <div class="rating-sub">${esc(card.subtitle || "")}</div>
+          <div class="rating-scale">
+            ${scale.map((m) => `
+              <button type="button" class="rating-opt" data-lv="${m.value}" style="--rc:${RATING_FACE_COLOR[m.value] || "#12a06a"}">
+                <span class="rating-face">${ratingFaceSvg(m.value)}</span>
+                <span class="rating-nm">${esc(m.label)}</span>
+                <span class="rating-chk">✓</span></button>`).join("")}
+          </div>
+          <div class="rating-privacy">🔒 ${esc(card.privacy || "")}</div>
+          <div class="rating-actions">
+            <button type="button" class="rating-skip" data-skip="1">${esc(card.skipLabel || "Bỏ qua")}</button>
+          </div>`;
+        scrollDown();
+        return;
+      }
+      // BƯỚC 2 — lý do. Thang mức BIẾN MẤT, chỉ còn tóm tắt mức đã chọn (+ Chọn lại) và phần lý do.
+      const good = level >= goodThreshold;
+      curReasons = good ? (card.reasonsGood || []) : (card.reasonsBad || []);
+      const showMic = !!(voiceCfg && voiceCfg.asr);
+      const picked = scale.find((s) => s.value === level);
+      el.innerHTML = `
+        <div class="rating-picked" style="--rc:${RATING_FACE_COLOR[level] || "#12a06a"}">
+          <span class="rating-face">${ratingFaceSvg(level)}</span>
+          <span class="rating-picked-nm">${esc(picked ? picked.label : "")}</span>
+          <button type="button" class="rating-change" data-change="1">Chọn lại</button>
+        </div>
+        <div class="rating-reason-h">${esc(good ? (card.reasonPromptGood || "") : (card.reasonPromptBad || ""))}</div>
+        <div class="rating-sub">${esc(card.reasonHint || "")}</div>
+        <div class="rating-chips">
+          ${curReasons.map((t, k) => `<button type="button" class="rating-chip${reasons.has(t) ? " sel" : ""}" data-rs="${k}">
+            <span class="rating-bx">${reasons.has(t) ? "✓" : ""}</span><span>${esc(t)}</span></button>`).join("")}
+        </div>
+        <textarea class="rating-note" rows="2" placeholder="${esc(card.notePlaceholder || "")}">${esc(note)}</textarea>
+        ${showMic ? `<button type="button" class="rating-mic${capturing ? " on" : ""}" data-mic="1">🎤 ${esc(capturing ? "Đang nghe… bấm để dừng" : (card.voiceHint || "Nói ý kiến"))}</button>` : ""}
+        <div class="rating-privacy">🔒 ${esc(card.privacy || "")}</div>
+        <div class="rating-actions">
+          <button type="button" class="rating-skip" data-skip="1">${esc(card.skipLabel || "Bỏ qua")}</button>
+          <button type="button" class="rating-submit" data-submit="1">${esc(card.submitLabel || "Gửi")} ➤</button>
+        </div>`;
+      scrollDown();
+    }
+
+    function toggleMic() {
+      if (!voiceCfg || !voiceCfg.asr) return;
+      if (capturing) { stopCapture(); draw(); return; }
+      syncNote();
+      capturing = true;
+      ratingNoteSink = (text, isFinal) => {
+        const ta = el.querySelector(".rating-note");
+        if (!ta) return;
+        if (isFinal) {
+          note = (note ? `${note} ` : "") + text;
+          ta.value = note;
+          capturing = false; ratingNoteSink = null; draw();
+        } else {
+          ta.value = (note ? `${note} ` : "") + text; // xem trước phần đang nghe
+        }
+      };
+      draw();
+      startVoice();
+    }
+
+    // Chốt đánh giá đầy đủ (mức + lý do + ý kiến) — dùng cho cả nút Gửi và Bỏ-qua-ở-bước-2.
+    const submitRating = () => {
+      syncNote();
+      const label = scale.find((s) => s.value === level)?.label || "Đã đánh giá";
+      finish(`__action:rate:${JSON.stringify({ level, reasons: [...reasons], note: note.trim() })}`, `Đánh giá: ${label}`);
+    };
+
+    el.addEventListener("click", (e) => {
+      const opt = e.target.closest("[data-lv]");
+      if (opt) {
+        level = Number(opt.getAttribute("data-lv")); reasons.clear(); draw();
+        // LOG mức NGAY (bước 1), chạy nền — dù công dân bỏ dở bước 2 thì mức vẫn được ghi.
+        // Gọi thẳng api.ask (không qua ask() UI) để không nháy typing / không kéo cuộn.
+        void api.ask(`__action:rate_level:${JSON.stringify({ level })}`, {
+          source: "chip", clientContext: { capabilities: CLIENT_CAPABILITIES },
+        }).catch(() => {});
+        return;
+      }
+      if (e.target.closest("[data-change]")) { // Chọn lại → về BƯỚC 1 (thang mức)
+        stopCapture(); syncNote(); level = null; reasons.clear(); draw(); return;
+      }
+      const chip = e.target.closest("[data-rs]");
+      if (chip) { const t = curReasons[Number(chip.getAttribute("data-rs"))]; if (t) { reasons.has(t) ? reasons.delete(t) : reasons.add(t); draw(); } return; }
+      if (e.target.closest("[data-mic]")) { toggleMic(); return; }
+      if (e.target.closest("[data-skip]")) {
+        // Bước 2 (đã chọn mức) → Bỏ qua = chốt GIỮ mức, không lý do. Bước 1 → bỏ qua hẳn.
+        if (level == null) finish("__action:rate_skip", "Bỏ qua đánh giá");
+        else submitRating();
+        return;
+      }
+      if (e.target.closest("[data-submit]")) submitRating();
+    });
+    el.addEventListener("input", (e) => { if (e.target.classList.contains("rating-note")) note = e.target.value; });
+
+    draw();
   }
 
   // Card xin phép xử lý dữ liệu cá nhân (Luật 91/2025) — chữ nghĩa 100% server-driven,
@@ -898,7 +1138,7 @@
         <span>${window.escapeHtml(t)}${hm?.checks?.[i]
           ? `<i class="cn-hm">${window.escapeHtml(hm.checks[i])}</i>` : ""}</span></label>`).join("");
     el.innerHTML = `
-      <span class="cbadge">🔒 Xác nhận trên Trợ lý người dân</span>
+      <span class="cbadge">🔒 Xác nhận trên Trợ lý nhân dân</span>
       <div class="ctitle">Cho phép em đọc giấy tờ và tự động điền biểu mẫu</div>
       ${hmDiv(hm?.title, "ctitle-hm")}
       <div class="ctext">${window.renderMarkdown(card.intro_md || "")}${hmDiv(hm?.intro_md)}</div>
@@ -944,22 +1184,146 @@
     addNode(el);
   }
 
+  // Bỏ dấu để lọc tìm kiếm (khớp cả khi gõ không dấu). Dùng chung cho sheet "tất cả thủ tục".
+  function foldVi(s) {
+    return String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d")
+      .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  }
+
+  // Chọn 1 thủ tục — dùng chung cho ô (tile) và dòng trong sheet.
+  function pickProcedure(it) {
+    addUserText(it.title, it.titleHmong);
+    ask(`__action:pick_procedure:${JSON.stringify({ key: it.key })}`, "chip", it.title);
+  }
+
+  // Màn chọn thủ tục kiểu mockup: 8 ô "hay dùng" (grid) + thanh "Xem tất cả" mở sheet có ô
+  // tìm kiếm. BE gắn frequent/frequentOrder; phần cấu hình (8 ô, khóa tỉnh) nằm ở registry BE
+  // nên đổi về sau KHÔNG phải phát hành lại extension.
   function renderServiceList(card) {
-    (card.items || []).forEach((it) => {
-      const el = document.createElement("div");
-      el.className = "svc2";
+    const all = card.items || [];
+    if (!all.length) return;
+    // Ô hay dùng: theo frequentOrder BE trả; nếu BE cũ chưa gắn frequent → lấy tối đa 8 đầu.
+    let tiles = all.filter((it) => it.frequent)
+      .sort((a, b) => (a.frequentOrder ?? 99) - (b.frequentOrder ?? 99));
+    if (!tiles.length) tiles = all.slice(0, 8);
+
+    const el = document.createElement("div");
+    el.className = "svc-block";
+
+    const grid = document.createElement("div");
+    grid.className = "svc-grid";
+    tiles.forEach((it) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "tl";
       // Chế độ tiếng Mông: BE gắn titleHmong → dòng nghiêng dưới tên tiếng Việt (mockup).
       const hmongLine = it.titleHmong
-        ? `<div class="tt-hm">${window.escapeHtml(it.titleHmong)}</div>` : "";
-      el.innerHTML = `<div class="ico">${window.escapeHtml(it.icon || "📄")}</div>
-        <div class="st"><div class="tt">${window.escapeHtml(it.title)}</div>${hmongLine}
-        <div class="ss">${window.escapeHtml(it.subtitle || "")}</div></div><div class="arr">›</div>`;
-      el.addEventListener("click", () => {
-        addUserText(it.title, it.titleHmong);
-        ask(`__action:pick_procedure:${JSON.stringify({ key: it.key })}`, "chip", it.title);
-      });
-      addNode(el);
+        ? `<span class="tl-hm">${window.escapeHtml(it.titleHmong)}</span>` : "";
+      b.innerHTML = `<span class="tl-ic">${window.escapeHtml(it.icon || "📄")}</span>
+        <span class="tl-tn">${window.escapeHtml(it.title)}</span>${hmongLine}`;
+      b.addEventListener("click", () => pickProcedure(it));
+      grid.appendChild(b);
     });
+    el.appendChild(grid);
+
+    // Nút NÓI to, hiện ngay bước chọn thủ tục cho người dân dễ thấy (mockup). Dùng chung
+    // hành vi với nút mic ở footer: bấm là bật/tắt nghe; server tắt ASR thì tự báo toast.
+    const voiceBtn = document.createElement("button");
+    voiceBtn.type = "button";
+    voiceBtn.className = "svc-voice";
+    voiceBtn.innerHTML = `<span class="svc-voice-ic">🎤</span>
+      <span class="svc-voice-tx">Hoặc bấm vào đây rồi <b>NÓI</b> tên thủ tục</span>`;
+    voiceBtn.addEventListener("click", () => { $micBtn?.click(); });
+    el.appendChild(voiceBtn);
+
+    // Thanh mở danh sách đầy đủ (có ô tìm kiếm) — chỉ hiện khi còn thủ tục ngoài các ô.
+    if (all.length > tiles.length) {
+      const bar = document.createElement("button");
+      bar.type = "button";
+      bar.className = "allbar";
+      bar.innerHTML = `<span class="allbar-ic">📋</span>
+        <span class="allbar-tx"><span class="allbar-tn">Xem tất cả ${all.length} thủ tục</span>
+          <span class="allbar-ss">Có ô tìm kiếm · chạm vào tên để chọn</span></span>
+        <span class="allbar-ch">›</span>`;
+      bar.addEventListener("click", () => openServiceSheet(all));
+      el.appendChild(bar);
+    }
+    addNode(el);
+  }
+
+  // ── Sheet "Tất cả thủ tục" (singleton trong sidebar.html) ──
+  let serviceSheetItems = [];
+  let serviceSheetWired = false;
+  function ensureServiceSheetWired() {
+    if (serviceSheetWired) return;
+    serviceSheetWired = true;
+    const scrim = document.getElementById("svc-sheet-scrim");
+    const closeBtn = document.getElementById("svc-sheet-close");
+    const input = document.getElementById("svc-search-input");
+    if (!scrim) return;
+    closeBtn?.addEventListener("click", closeServiceSheet);
+    scrim.addEventListener("click", (e) => { if (e.target === scrim) closeServiceSheet(); });
+    input?.addEventListener("input", () => renderServiceSheetList(input.value));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !scrim.hidden) closeServiceSheet();
+    });
+  }
+  function openServiceSheet(items) {
+    ensureServiceSheetWired();
+    const scrim = document.getElementById("svc-sheet-scrim");
+    const input = document.getElementById("svc-search-input");
+    if (!scrim) return;
+    serviceSheetItems = items || [];
+    if (input) input.value = "";
+    renderServiceSheetList("");
+    scrim.hidden = false;
+    requestAnimationFrame(() => input?.focus());
+  }
+  function closeServiceSheet() {
+    const scrim = document.getElementById("svc-sheet-scrim");
+    if (scrim) scrim.hidden = true;
+  }
+  function renderServiceSheetList(query) {
+    const list = document.getElementById("svc-slist");
+    if (!list) return;
+    const ql = foldVi(query).trim();
+    const subset = serviceSheetItems.filter((it) => !ql || foldVi(it.title).includes(ql)
+      || foldVi(it.subtitle).includes(ql));
+    list.innerHTML = "";
+    if (!subset.length) {
+      const none = document.createElement("div");
+      none.className = "snone";
+      none.textContent = "Không tìm thấy thủ tục phù hợp. Công dân thử từ khoá khác nhé.";
+      list.appendChild(none);
+      return;
+    }
+    subset.forEach((it) => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "srow";
+      const hmongLine = it.titleHmong
+        ? `<span class="srow-hm">${window.escapeHtml(it.titleHmong)}</span>` : "";
+      const sub = it.subtitle
+        ? `<span class="srow-sd">${window.escapeHtml(it.subtitle)}</span>` : "";
+      row.innerHTML = `<span class="srow-ic">${window.escapeHtml(it.icon || "📄")}</span>
+        <span class="srow-tx"><span class="srow-tn">${highlightMatch(it.title, query)}</span>${hmongLine}${sub}</span>
+        <span class="srow-ch">›</span>`;
+      row.addEventListener("click", () => { closeServiceSheet(); pickProcedure(it); });
+      list.appendChild(row);
+    });
+  }
+  // Tô vàng đoạn khớp khi gõ CÓ dấu (khớp trực tiếp); gõ không dấu vẫn lọc ra nhưng không tô
+  // (map vị trí qua bỏ dấu dễ lệch) — an toàn hơn là tô sai.
+  function highlightMatch(title, query) {
+    const q = String(query || "").trim();
+    const esc = window.escapeHtml(title);
+    if (!q) return esc;
+    const i = title.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return esc;
+    const a = window.escapeHtml(title.slice(0, i));
+    const b = window.escapeHtml(title.slice(i, i + q.length));
+    const c = window.escapeHtml(title.slice(i + q.length));
+    return `${a}<mark>${b}</mark>${c}`;
   }
 
   // Combobox tìm kiếm cho danh sách dài (34 tỉnh / cả trăm xã): gõ để lọc (không dấu vẫn
@@ -1123,7 +1487,25 @@
     profile: { icon: "📁", title: "Lấy dữ liệu đã lưu", desc: "Đã từng làm và lưu hồ sơ → không cần cung cấp lại." },
   };
   function renderDocOptions(card) {
-    (card.options || []).forEach((key) => {
+    const options = card.options || [];
+    // Cài đặt "Ưu tiên Scan tại quầy": lượt LIVE + có option scan → TỰ chọn Scan, bỏ câu hỏi.
+    // Khôi phục phiên (noTts) thì KHÔNG tự bấm (tránh lặp lệnh).
+    if (preferScan && renderingLiveReply && options.includes("scan")) {
+      const el = document.createElement("div");
+      el.className = "doc-auto-scan";
+      const hasQr = options.includes("qr");
+      el.innerHTML = `<span>⚙️ Theo cài đặt, em dùng <b>Scan tại quầy</b> ạ.</span>${
+        hasQr ? '<button type="button" class="doc-auto-qr" data-qr="1">📱 Đổi sang chụp điện thoại (QR)</button>' : ""}`;
+      if (hasQr) el.querySelector("[data-qr]")?.addEventListener("click", () => {
+        addUserText("Đổi sang chụp điện thoại (QR)");
+        ask(`__action:doc_method:${JSON.stringify({ value: "qr" })}`, "chip", "Chụp bằng điện thoại (quét QR)");
+      });
+      addNode(el);
+      renderScanGuideCard();
+      ask(`__action:doc_method:${JSON.stringify({ value: "scan" })}`, "chip", "Scan tại quầy");
+      return;
+    }
+    options.forEach((key) => {
       const meta = DOC_OPTIONS[key];
       if (!meta) return;
       // Chế độ tiếng Mông: BE gắn card.hmong[key] → dòng nghiêng dưới tên lựa chọn.
@@ -1136,6 +1518,9 @@
         <div class="od">${window.escapeHtml(meta.desc)}</div></div>`;
       el.addEventListener("click", () => {
         addUserText(meta.title, hmTitle);
+        // Chọn Scan tại quầy → dựng thẻ hướng dẫn (ảnh + lời) NGAY, TRƯỚC khi BE trả checklist/nút
+        // → thẻ nằm TRÊN, danh sách giấy tờ + nút "Đã đưa đủ" nằm DƯỚI CÙNG.
+        if (key === "scan") renderScanGuideCard();
         ask(`__action:doc_method:${JSON.stringify({ value: key })}`, "chip", meta.title);
       });
       addNode(el);
@@ -1256,6 +1641,10 @@
   let uploadSid = null; // phiên đang mở — dùng cho nhánh "Scan tại quầy" (upload từ máy tính)
   // Cổng cho nút "Đã đưa đủ giấy tờ, xử lý đi": chỉ mở khi phiên đã nhận ≥1 tệp.
   let docsReceived = false;
+  // Phiên scan tại quầy được BE cho phép TỰ CHỐT sau mỗi đợt chọn tệp (pick_files.auto_run):
+  // đợt tệp đã phân loại xong ngay trong request /files → gửi docs_complete như bấm nút
+  // "Đã đưa đủ", khỏi bắt công dân bấm tay. QR / lượt Điều chỉnh giấy tờ: rỗng = chốt tay.
+  let uploadAutoRunSid = "";
   let $docsDoneChip = null;
   const $fileListScrim = document.getElementById("file-list-scrim");
   const $fileListDialog = document.getElementById("file-list-dialog");
@@ -1271,6 +1660,475 @@
   let fileListReturnFocus = null;
   let fileListLoadSeq = 0;
   const deletingFileIds = new Set();
+  // rel trên đĩa ↔ fid trên phiên cho tệp từ máy quét. Xem lib/scanDongBo.js: chuyển file vào thư
+  // mục con bắn CẶP removed+added; bản cũ xoá theo TÊN nên để lại hai bản hoặc xoá nhầm tệp trùng
+  // tên của công dân.
+  const scanDongBo = window.TLNDScanDongBo ? window.TLNDScanDongBo.tao() : null;
+  // Xem trước: nội dung lấy từ BE, chỉ tệp ĐANG XEM (xem preview.js). fid -> Promise<{mime,dataUrl}>.
+  const previewDuLieu = new Map();
+  let previewDangMo = false;
+  let previewGhim = false;          // khung đang GHIM (mở bằng nhấn) hay chỉ xem tạm lúc rê chuột
+  let previewHenHien = null;
+  const PREVIEW_TRE_MS = 350;        // rê lướt qua danh sách thì không nháy khung liên tục
+
+  // Rê chuột lên dòng tệp trong sheet → xem tạm (giống autofill). Đang ghim thì không đổi khung.
+  function batDauRePreview(nhom, chiSo) {
+    if (previewGhim) return;
+    if (previewHenHien) clearTimeout(previewHenHien);
+    previewHenHien = setTimeout(() => {
+      previewHenHien = null;
+      void moPreviewNhom(nhom, chiSo, { ghim: false });
+    }, PREVIEW_TRE_MS);
+  }
+  function ketThucRePreview() {
+    if (previewHenHien) { clearTimeout(previewHenHien); previewHenHien = null; }
+    // Chỉ XIN ẩn: content.js biết con trỏ có đang ở trên khung không (rê sang để cuộn thì giữ).
+    if (previewDangMo && !previewGhim) void sendToContent({ action: "tlndPreviewHide" });
+  }
+
+  // ── Tên tệp đã sửa (theo phiên) ──
+  // BE không có API đổi tên tệp trong phiên → giữ tên mới ở đây và áp vào MỌI chỗ tên đó đi ra:
+  // danh sách, khung xem trước, và payload đính kèm lên cổng (fetchSessionFilesAsPayload).
+  const KHOA_TEN_SUA = "tlnd_ten_tep_sua"; // { [sid]: { luc, ten: { [fid]: name } } }
+  let tenSuaTheoFid = new Map();
+  function tenHienThi(file) {
+    return tenSuaTheoFid.get(file?.fid) || file?.name || "";
+  }
+  async function napTenSua(sid) {
+    try {
+      const res = await chrome.storage.local.get(KHOA_TEN_SUA);
+      if (sid !== uploadSid) return;
+      const m = res?.[KHOA_TEN_SUA]?.[sid]?.ten;
+      if (!m || typeof m !== "object") return;
+      for (const [fid, ten] of Object.entries(m)) {
+        if (typeof ten === "string" && ten && !tenSuaTheoFid.has(fid)) tenSuaTheoFid.set(fid, ten);
+      }
+      if (activeFileGroup) renderUploadFileList();
+    } catch (_) { /* mất tên đã sửa chỉ làm hiện lại tên gốc */ }
+  }
+  async function luuTenSua() {
+    const sid = uploadSid;
+    if (!sid) return;
+    try {
+      const res = await chrome.storage.local.get(KHOA_TEN_SUA);
+      const m = res?.[KHOA_TEN_SUA] || {};
+      const gio = Date.now();
+      for (const k of Object.keys(m)) if (gio - Number(m[k]?.luc || 0) > 24 * 60 * 60 * 1000) delete m[k];
+      m[sid] = { luc: gio, ten: Object.fromEntries(tenSuaTheoFid) };
+      await chrome.storage.local.set({ [KHOA_TEN_SUA]: m });
+    } catch (_) { /* ignore */ }
+  }
+
+  // ── Sổ sách tệp quét: sống qua lần dựng lại iframe ──
+  // Ở chế độ đẩy trang, iframe sidebar bị dựng lại MỖI LẦN chuyển trang. Sổ rel→fid chỉ nằm trong bộ
+  // nhớ thì sau một lần điều hướng, file.removed không tìm được fid để gỡ → trùng bản quay lại. Cùng
+  // lý do, watermark và bộ nhớ "đã gỡ tay" cũng phải xuống storage (autofill cũng làm vậy).
+  const KHOA_SO_SACH_SCAN = "tlnd_scan_so_sach";                     // { [sid]: { luc, tep } }
+  const KHOA_WATERMARK_SCAN = `tlnd_scan_watermark_${TAB_ID || "khong-tab"}`;
+  const KHOA_DA_GO_SCAN = "tlnd_scan_da_go";                         // [{ hash, rel, luc }]
+  const SCAN_DA_GO_MAX = 200;
+  const SCAN_TTL_MS = 24 * 60 * 60 * 1000;
+  let scanDaGo = new Map();            // hash -> { rel, luc }: nội dung đã bị GỠ TAY
+  let scanAgentHelpers = null;         // { listFiles, fetchBlob, renameFile, caps } từ onConnected
+  let scanAgentCaps = [];
+  let scanLoDaThuSid = "";             // mỗi phiên chỉ gom lô một lần
+  let scanDoiSoatSid = "";             // mỗi phiên chỉ đối soát một lần
+  let scanRecentPending = [];          // [{ rel, name, mtimeMs }] chờ cán bộ chọn tay
+  const scanDangDoiTen = new Set();    // rel cũ/mới của lần đổi tên do CHÍNH mình — bỏ qua cặp event
+  const $scanRecent = document.getElementById("scan-recent-list");
+  const $hoSoTruoc = document.getElementById("prev-session-offer");
+
+  async function napSoSachScan(sid) {
+    if (!scanDongBo || !sid) return;
+    try {
+      const res = await chrome.storage.local.get(KHOA_SO_SACH_SCAN);
+      if (sid !== uploadSid) return;
+      scanDongBo.nap(res?.[KHOA_SO_SACH_SCAN]?.[sid]?.tep);
+    } catch (_) { /* mất sổ chỉ làm mất khả năng gỡ tệp đã chuyển đi */ }
+  }
+  async function luuSoSachScan() {
+    const sid = uploadSid;
+    if (!scanDongBo || !sid) return;
+    try {
+      const res = await chrome.storage.local.get(KHOA_SO_SACH_SCAN);
+      const m = res?.[KHOA_SO_SACH_SCAN] || {};
+      const gio = Date.now();
+      for (const k of Object.keys(m)) if (gio - Number(m[k]?.luc || 0) > SCAN_TTL_MS) delete m[k];
+      m[sid] = { luc: gio, tep: scanDongBo.xuat() };
+      await chrome.storage.local.set({ [KHOA_SO_SACH_SCAN]: m });
+    } catch (_) { /* ignore */ }
+  }
+  async function napWatermarkScan() {
+    try {
+      const res = await chrome.storage.local.get(KHOA_WATERMARK_SCAN);
+      const ms = Number(res?.[KHOA_WATERMARK_SCAN] || 0);
+      if (Number.isFinite(ms) && ms > scanWatermarkMs) scanWatermarkMs = ms;
+    } catch (_) { /* ignore */ }
+  }
+  async function napDaGoScan() {
+    try {
+      const res = await chrome.storage.local.get(KHOA_DA_GO_SCAN);
+      const ds = Array.isArray(res?.[KHOA_DA_GO_SCAN]) ? res[KHOA_DA_GO_SCAN] : [];
+      const gio = Date.now();
+      for (const e of ds) {
+        if (e && typeof e.hash === "string" && gio - Number(e.luc || 0) < SCAN_TTL_MS && !scanDaGo.has(e.hash)) {
+          scanDaGo.set(e.hash, { rel: e.rel || null, luc: Number(e.luc) || gio });
+        }
+      }
+    } catch (_) { /* mất bộ nhớ này chỉ làm mất phép chặn, không làm hỏng gì */ }
+  }
+  function luuDaGoScan() {
+    try {
+      const ds = [...scanDaGo.entries()]
+        .map(([hash, v]) => ({ hash, rel: v.rel, luc: v.luc }))
+        .sort((a, b) => b.luc - a.luc)
+        .slice(0, SCAN_DA_GO_MAX);
+      scanDaGo = new Map(ds.map((e) => [e.hash, { rel: e.rel, luc: e.luc }]));
+      void chrome.storage.local.set({ [KHOA_DA_GO_SCAN]: ds });
+    } catch (_) { /* ignore */ }
+  }
+  // Gỡ tay là một QUYẾT ĐỊNH: nhớ theo NỘI DUNG để lô gom / đối soát sau không tự đưa lại.
+  function ghiNhanDaGo(hash, rel) {
+    if (!hash) return;
+    scanDaGo.set(hash, { rel: rel || null, luc: Date.now() });
+    luuDaGoScan();
+  }
+
+  async function sha256Hex(blob) {
+    const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  function formatRelativeTime(ms) {
+    const phut = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (phut < 1) return "vừa xong";
+    if (phut < 60) return `${phut} phút trước`;
+    return `${Math.round(phut / 60)} giờ trước`;
+  }
+
+  // ── Tệp quét gần đây: cán bộ chọn tay ──
+  // Hiện khi KHÔNG tự tin gom lô (không rõ ranh giới giữa hai công dân) hoặc lô đã quá cũ — hệ thống
+  // không đoán liều, cán bộ nhìn tên + giờ rồi quyết.
+  function hienDanhSachGanDay() {
+    if (!$scanRecent) return;
+    $scanRecent.replaceChildren();
+    if (!scanRecentPending.length || !uploadSid) { $scanRecent.hidden = true; return; }
+    const dau = document.createElement("div");
+    dau.className = "scan-recent-head";
+    const goiY = document.createElement("span");
+    goiY.className = "scan-recent-hint";
+    goiY.textContent = "🖨️ Máy quét có tệp gần đây, chưa chắc của công dân này — chọn đúng tệp cần tải lên:";
+    const tatCa = document.createElement("button");
+    tatCa.type = "button";
+    tatCa.className = "scan-recent-add-all";
+    tatCa.textContent = "+ Thêm tất cả";
+    tatCa.addEventListener("click", () => void themTuDanhSachGanDay([...scanRecentPending]));
+    dau.append(goiY, tatCa);
+    $scanRecent.appendChild(dau);
+    for (const f of scanRecentPending) {
+      const row = document.createElement("div");
+      row.className = "scan-recent-row";
+      const nhan = document.createElement("span");
+      nhan.textContent = `${f.name} — ${formatRelativeTime(f.mtimeMs)}`;
+      nhan.title = f.rel;
+      const them = document.createElement("button");
+      them.type = "button";
+      them.textContent = "+";
+      them.title = "Tải tệp này lên hồ sơ";
+      them.setAttribute("aria-label", `Tải lên ${f.name}`);
+      them.addEventListener("click", () => void themTuDanhSachGanDay([f]));
+      row.append(nhan, them);
+      $scanRecent.appendChild(row);
+    }
+    $scanRecent.hidden = false;
+  }
+
+  async function themTuDanhSachGanDay(ds) {
+    markActivity();
+    for (const f of ds) {
+      scanRecentPending = scanRecentPending.filter((x) => x.rel !== f.rel);
+      hienDanhSachGanDay();
+      if (!scanAgentHelpers) break;
+      // tuDong=false: quyết định của cán bộ — không bị watermark / trần tuổi / "đã gỡ tay" chặn.
+      await onScanFile({ rel: f.rel, mtimeMs: f.mtimeMs }, () => scanAgentHelpers.fetchBlob(f.rel), { tuDong: false });
+    }
+  }
+
+  // Gom LÔ tệp quét đã có sẵn trong thư mục lúc vừa nối máy quét / vừa vào bước tải giấy tờ (cán bộ
+  // quét trước rồi mới mở Trợ lý). Quyết định ở lib/scanLo.js (chép từ autofill).
+  async function thuGomLoQuet() {
+    const sid = uploadSid;
+    if (!sid || !scanAgentHelpers || !window.TLNDScanLo || scanLoDaThuSid === sid) return;
+    if (uploadSessionProgress?.complete) return;
+    scanLoDaThuSid = sid; // chốt TRƯỚC await: onConnected và setUploadSession gọi gần như cùng lúc
+    let trenDia;
+    try {
+      trenDia = await scanAgentHelpers.listFiles();
+    } catch (e) {
+      console.warn("[TLND] Không đọc được /v1/files để gom lô quét:", e?.message || e);
+      scanLoDaThuSid = ""; // lỗi tạm thời — lần sau thử lại
+      return;
+    }
+    if (sid !== uploadSid) return;
+    const daCo = new Set((scanDongBo?.danhSach() || []).map((x) => x.rel));
+    const kq = window.TLNDScanLo.quyetDinh({ trenDia, daCo, watermarkMs: scanWatermarkMs });
+    // Nhật ký quyết định: "vì sao tệp này bị/không bị tự tải" trả lời được bằng một dòng console.
+    console.info("[TLND] Gom lô quét:", {
+      ...kq.nhatKy,
+      watermark: scanWatermarkMs ? new Date(scanWatermarkMs).toLocaleString() : "chưa có",
+      quyet_dinh: kq.lyDo || kq.hanhDong,
+    });
+    if (kq.hanhDong === "tu-them") {
+      for (const f of kq.tuThem) {
+        if (sid !== uploadSid) return;
+        await onScanFile({ rel: f.rel, mtimeMs: f.mtimeMs }, () => scanAgentHelpers.fetchBlob(f.rel));
+      }
+    } else if (kq.hanhDong === "chon-tay") {
+      scanRecentPending = kq.chonTay;
+      hienDanhSachGanDay();
+    }
+  }
+
+  // Đối soát MỘT LẦN mỗi phiên: tệp đã tải lên (sổ rel→fid) với trạng thái THẬT trên đĩa — bắt đúng ca
+  // "bị xoá/ghi đè trong lúc Trợ lý đóng", thứ SSE sống không thấy được.
+  async function doiSoatTepQuet() {
+    const sid = uploadSid;
+    if (!sid || !scanAgentHelpers || !scanDongBo || scanDoiSoatSid === sid) return;
+    const ds = scanDongBo.danhSach();
+    if (!ds.length) return;
+    scanDoiSoatSid = sid;
+    let trenDia;
+    try {
+      trenDia = await scanAgentHelpers.listFiles();
+    } catch (_) {
+      scanDoiSoatSid = "";
+      return;
+    }
+    // Chốt chặn XOÁ OAN: listFiles() trả {files: []} KHÔNG kèm folder khi request hỏng (chưa chọn
+    // thư mục, ổ mạng rớt…). Tin danh sách rỗng đó là gỡ sạch giấy tờ của công dân.
+    if (typeof trenDia?.folder !== "string" || sid !== uploadSid) { scanDoiSoatSid = ""; return; }
+    const con = new Set((trenDia.files || []).map((f) => f?.rel).filter(Boolean));
+    for (const muc of ds) {
+      if (sid !== uploadSid || uploadSessionProgress?.complete) return;
+      if (!con.has(muc.rel)) {
+        const fid = scanDongBo.daXoa(muc.rel);
+        if (fid) await deleteUploadSessionFile({ fid, name: scanBaseName(muc.rel) });
+        continue;
+      }
+      // Còn trên đĩa: onScanFile tự so hash — trùng thì bỏ qua, khác thì tải bản mới rồi gỡ bản cũ.
+      await onScanFile({ rel: muc.rel }, () => scanAgentHelpers.fetchBlob(muc.rel));
+    }
+    void luuSoSachScan();
+  }
+
+  // ── "Hồ sơ trước": dùng lại giấy tờ bằng một chạm ──
+  // Cùng bài toán với autofill (mục 4.11): watermark chặn đúng việc kéo giấy người trước sang hồ sơ
+  // người sau, nhưng chặn luôn ca hợp lệ "cùng công dân làm thủ tục thứ hai".
+  // KHÁC autofill: chỉ cất THAM CHIẾU (sid + fid), không chép nội dung giấy tờ vào extension. BE giữ
+  // phiên 24 giờ (upload_session_ttl_hours) — dùng lại thì tải từ phiên cũ sang phiên mới.
+  const KHOA_HO_SO_TRUOC = `tlnd_ho_so_truoc_${TAB_ID || "khong-tab"}`;
+  const HO_SO_TRUOC_TTL_MS = 30 * 60 * 1000;
+
+  function catHoSoTruoc() {
+    // Chụp ĐỒNG BỘ trước mọi await: bên gọi dọn danh sách tệp ngay sau lệnh này.
+    const sid = uploadSid;
+    const tep = (uploadSessionFiles || []).filter((f) => f?.fid).map((f) => ({ fid: f.fid, name: tenHienThi(f) }));
+    if (!sid || !tep.length) return;
+    void (async () => {
+      let ten = null;
+      try { ten = (await readPageContext())?.principal?.name || null; } catch (_) { /* còn số tệp + giờ */ }
+      try { await chrome.storage.local.set({ [KHOA_HO_SO_TRUOC]: { sid, tep, luc: Date.now(), ten } }); }
+      catch (_) { /* ignore */ }
+    })();
+  }
+  async function docHoSoTruoc() {
+    try {
+      const res = await chrome.storage.local.get(KHOA_HO_SO_TRUOC);
+      const snap = res?.[KHOA_HO_SO_TRUOC];
+      if (!snap?.sid || !Array.isArray(snap.tep) || !snap.tep.length) return null;
+      if (Date.now() - Number(snap.luc || 0) > HO_SO_TRUOC_TTL_MS) { void boHoSoTruoc(); return null; }
+      return snap;
+    } catch (_) { return null; }
+  }
+  async function boHoSoTruoc() {
+    try { await chrome.storage.local.remove(KHOA_HO_SO_TRUOC); } catch (_) { /* ignore */ }
+  }
+  async function hienLoiMoiHoSoTruoc(soTepGoi) {
+    if (!$hoSoTruoc) return;
+    const sid = uploadSid;
+    if (!sid || uploadSessionProgress?.complete) { $hoSoTruoc.hidden = true; return; }
+    const soTep = Number.isFinite(soTepGoi) ? soTepGoi
+      : ((uploadSessionFiles || []).length || Number(uploadSessionProgress?.files_count) || 0);
+    // Lời mời CHỈ có nghĩa khi phiên mới còn trống. Đã có tệp = đang làm hồ sơ cụ thể rồi → dọn luôn
+    // ngăn lưu, không để tham chiếu giấy của công dân trước nằm lại.
+    if (soTep > 0) {
+      if (!$hoSoTruoc.hidden) { $hoSoTruoc.hidden = true; void boHoSoTruoc(); }
+      return;
+    }
+    const snap = await docHoSoTruoc();
+    if (!snap || snap.sid === sid || sid !== uploadSid) { $hoSoTruoc.hidden = true; return; }
+    const gio = new Date(snap.luc).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+    const nhan = document.createElement("span");
+    nhan.className = "prev-offer-label";
+    nhan.textContent = `📎 Hồ sơ trước — ${snap.ten ? `${snap.ten} · ` : ""}${snap.tep.length} giấy tờ · ${gio}`;
+    const nut = document.createElement("button");
+    nut.type = "button";
+    nut.className = "prev-offer-use";
+    nut.textContent = "Dùng lại";
+    nut.title = "Tải lại toàn bộ giấy tờ của hồ sơ trước vào phiên này (khi CÙNG công dân làm thủ tục tiếp theo)";
+    nut.addEventListener("click", () => void dungLaiHoSoTruoc());
+    // CỐ Ý không có nút "×": bấm nhầm là mất hẳn lời mời, mà nó vốn tự ẩn khi phiên có tệp.
+    $hoSoTruoc.replaceChildren(nhan, nut);
+    $hoSoTruoc.hidden = false;
+  }
+  async function dungLaiHoSoTruoc() {
+    markActivity();
+    const sid = uploadSid;
+    const snap = await docHoSoTruoc();
+    if (!snap || !sid) { void hienLoiMoiHoSoTruoc(); return; }
+    if ($hoSoTruoc) $hoSoTruoc.hidden = true;
+    await boHoSoTruoc(); // dùng rồi thì thôi, không mời lại
+    setStatus(`⏳ Đang lấy lại ${snap.tep.length} giấy tờ của hồ sơ trước…`);
+    const tepMoi = [];
+    let hong = 0;
+    for (const t of snap.tep) {
+      try {
+        const res = await uploadSessionFetch(
+          `${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(snap.sid)}/files/${encodeURIComponent(t.fid)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        tepMoi.push(new File([blob], t.name || "giay-to", { type: blob.type || "application/octet-stream" }));
+      } catch (e) {
+        hong += 1;
+        console.warn("[TLND] Không lấy lại được tệp của hồ sơ trước", t.fid, e?.message || e);
+      }
+    }
+    if (sid !== uploadSid) return;
+    if (!tepMoi.length) {
+      setStatus("⚠️ Không lấy lại được giấy tờ của hồ sơ trước — phiên cũ có thể đã hết hạn.", true);
+      return;
+    }
+    setStatus("");
+    const data = await uploadFilesToSession(tepMoi, { source: "reuse" });
+    if (data) {
+      showToast(`📎 Đã dùng lại ${tepMoi.length} giấy tờ của hồ sơ trước${hong ? ` (${hong} tệp không lấy được)` : ""}.`, { ms: 4000 });
+    }
+  }
+
+  // ── Sửa tên tệp ngay trong danh sách ──
+  // Tệp từ máy quét: đổi luôn tên trên đĩa qua agent (caps "rename") — giống autofill mục 4.13.
+  function batDauSuaTen(file, nameEl) {
+    if (nameEl.parentElement?.querySelector(".file-list-rename-input")) return;
+    const o = document.createElement("input");
+    o.type = "text";
+    o.className = "file-list-rename-input";
+    o.value = tenHienThi(file);
+    o.setAttribute("aria-label", "Tên tệp mới");
+    let xong = false;
+    const huy = () => { if (!xong) { xong = true; renderUploadFileList(); } };
+    o.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (!xong) { xong = true; void ketThucSuaTen(file, o.value); }
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation(); // Esc chỉ huỷ sửa tên, không đóng luôn danh sách
+        huy();
+      }
+    });
+    o.addEventListener("blur", huy); // bấm ra ngoài = huỷ, không tự lưu (tránh sửa nhầm mà không hay)
+    nameEl.replaceWith(o);
+    o.focus();
+    const cham = o.value.lastIndexOf(".");
+    o.setSelectionRange(0, cham > 0 ? cham : o.value.length);
+  }
+
+  async function ketThucSuaTen(file, tenNhap) {
+    const ten = String(tenNhap || "").trim();
+    if (!ten || ten === tenHienThi(file)) { renderUploadFileList(); return; }
+    const goc = scanDongBo?.timTheoFid(file.fid);
+    if (goc) {
+      if (!scanAgentHelpers?.renameFile) {
+        setStatus("⚠️ Chưa kết nối được máy quét nên chưa đổi tên tệp trên đĩa được.", true);
+        renderUploadFileList();
+        return;
+      }
+      const relCu = goc.rel;
+      let relMoi = relCu;
+      scanDangDoiTen.add(relCu);
+      try {
+        const res = await scanAgentHelpers.renameFile(relCu, ten);
+        relMoi = res?.rel || relCu.replace(/[^/]*$/, ten);
+        scanDangDoiTen.add(relMoi); // chặn luôn cặp removed+added do chính lần đổi tên này sinh ra
+        scanDongBo.doiRel(relCu, relMoi);
+        void luuSoSachScan();
+      } catch (e) {
+        const msg = e?.code === "NAME_EXISTS"
+          ? `Trong thư mục quét đã có tệp tên "${ten}" rồi — đặt tên khác ạ.`
+          : e?.code === "BAD_NAME"
+            ? "Tên không hợp lệ: phải là tên tệp trần và giữ đuôi .pdf."
+            : `Không đổi tên được trên đĩa: ${e?.message || e}`;
+        console.warn("[TLND] Đổi tên tệp máy quét lỗi:", relCu, e);
+        setStatus(`⚠️ ${msg}`, true);
+        renderUploadFileList();
+        return;
+      } finally {
+        // Nới sau một nhịp để cặp event do chính lần đổi tên này sinh ra kịp đi qua.
+        setTimeout(() => { scanDangDoiTen.delete(relCu); scanDangDoiTen.delete(relMoi); }, 5000);
+      }
+    }
+    tenSuaTheoFid.set(file.fid, ten);
+    void luuTenSua();
+    renderUploadFileList();
+    showToast(goc ? `✎ Đã đổi tên thành "${ten}" (cả trên đĩa).` : `✎ Đã đổi tên thành "${ten}".`);
+  }
+
+  // ── Kéo-thả tệp vào Trợ lý ──
+  // Lối vào thủ công SONG SONG với nút 📷 chọn tệp — đi đúng một đường tải lên (uploadFilesToSession).
+  // Nghe trên document CỦA CHÍNH sidebar (iframe đẩy trang hoặc khung bên), không nghe trên trang
+  // cổng: nghe ở trang là preventDefault luôn ô tải tệp của chính cổng dịch vụ công.
+  // Khác autofill: không cần tầng content.js — khung đẩy trang của handfree là iframe phủ kín, không
+  // có tiêu đề/viền thuộc trang gốc mà con trỏ phải đi qua.
+  const $dropOverlay = document.getElementById("drop-overlay");
+  if ($dropOverlay) {
+    let doSau = 0; // dragenter/dragleave lồng nhau khi rê qua phần tử con — đếm thay vì bật/tắt
+    const laKeoTep = (e) => Array.from(e.dataTransfer?.types || []).includes("Files");
+    const hienLop = () => {
+      $dropOverlay.hidden = false;
+      requestAnimationFrame(() => $dropOverlay.classList.add("hien"));
+    };
+    const anLop = () => {
+      doSau = 0;
+      $dropOverlay.classList.remove("hien");
+      setTimeout(() => { if (!$dropOverlay.classList.contains("hien")) $dropOverlay.hidden = true; }, 150);
+    };
+    document.addEventListener("dragenter", (e) => {
+      if (!laKeoTep(e)) return;
+      e.preventDefault();
+      doSau += 1;
+      hienLop();
+    });
+    document.addEventListener("dragover", (e) => { if (laKeoTep(e)) e.preventDefault(); });
+    document.addEventListener("dragleave", (e) => {
+      if (!laKeoTep(e)) return;
+      doSau = Math.max(0, doSau - 1);
+      if (!doSau) anLop();
+    });
+    document.addEventListener("drop", (e) => {
+      if (!laKeoTep(e)) return;
+      e.preventDefault();
+      anLop();
+      const ds = [...(e.dataTransfer?.files || [])];
+      if (!ds.length) return;
+      markActivity();
+      if (!uploadSid || uploadSessionProgress?.complete) {
+        setStatus("⚠️ Chưa tới bước tải giấy tờ — chọn thủ tục và cách nộp giấy tờ trước rồi kéo tệp vào ạ.", true);
+        setTimeout(() => setStatus(""), 5000);
+        return;
+      }
+      void uploadFilesToSession(ds, { source: "drop" });
+    });
+  }
 
   function updateDocsDoneChipLabel(label, labelHmong) {
     if (!$docsDoneChip || !label) return;
@@ -1293,12 +2151,101 @@
     return "📎";
   }
 
-  function filesInActiveGroup() {
-    if (!activeFileGroup) return [];
-    return uploadSessionFiles.filter((file) => activeFileGroup.unknown
+  function filesInGroup(group) {
+    if (!group) return [];
+    return uploadSessionFiles.filter((file) => group.unknown
       ? !file.doc_key
-      : file.doc_key === activeFileGroup.docKey);
+      : file.doc_key === group.docKey);
   }
+
+  function filesInActiveGroup() {
+    return filesInGroup(activeFileGroup);
+  }
+
+  // ── Xem trước giấy tờ: khung nổi TRÊN TRANG do content.js dựng ──
+  async function moPreviewNhom(group, chiSo = 0, { ghim = true } = {}) {
+    if (!uploadSid || !group) return;
+    markActivity();
+    let tep = filesInGroup(group);
+    // Doc-row dựng từ progress (WS) có thể tới trước danh sách tệp (REST) → nạp rồi thử lại.
+    if (!tep.length) {
+      try { await loadUploadSessionFiles(); } catch (_) { /* báo ngay dưới */ }
+      tep = filesInGroup(group);
+    }
+    if (!tep.length) {
+      setStatus("⚠️ Chưa tải được danh sách tệp để xem trước.", true);
+      return;
+    }
+    previewDangMo = true;
+    previewGhim = ghim;
+    await sendToContent({
+      action: "tlndPreviewOpen",
+      ghim,
+      tieuDe: group.name || "Giấy tờ",
+      bieuTuong: group.icon || "📄",
+      tep: tep.map((f) => ({ fid: f.fid, name: tenHienThi(f) })),
+      chiSo: Math.max(0, Math.min(Number(chiSo) || 0, tep.length - 1)),
+    });
+  }
+
+  function taiDuLieuPreview(fid) {
+    if (!previewDuLieu.has(fid)) {
+      const sid = uploadSid;
+      const p = (async () => {
+        const res = await uploadSessionFetch(
+          `${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(fid)}`);
+        if (!res.ok) throw new Error(`Không tải được tệp (HTTP ${res.status}).`);
+        const blob = await res.blob();
+        return { mime: blob.type || "", dataUrl: await blobToDataUrl(blob) };
+      })();
+      // Lỗi thì không giữ trong bộ nhớ — lần xem sau thử lại, không kẹt lỗi cũ.
+      p.catch(() => previewDuLieu.delete(fid));
+      previewDuLieu.set(fid, p);
+    }
+    return previewDuLieu.get(fid);
+  }
+
+  function dongPreviewTuSidebar() {
+    if (previewHenHien) { clearTimeout(previewHenHien); previewHenHien = null; }
+    if (!previewDangMo) return;
+    previewDangMo = false;
+    previewGhim = false;
+    void sendToContent({ action: "tlndPreviewClose" });
+  }
+
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return; // tab khác → kệ
+    if (msg?.action === "tlndPreviewCan") {
+      const fid = String(msg.fid || "");
+      if (!fid || !uploadSid) return;
+      taiDuLieuPreview(fid)
+        .then((d) => sendToContent({ action: "tlndPreviewData", fid, ...d }))
+        .catch((e) => sendToContent({ action: "tlndPreviewData", fid, loi: e?.message || "Không tải được tệp." }));
+    } else if (msg?.action === "tlndPreviewDaDong") {
+      previewDangMo = false;
+      previewGhim = false;
+    }
+  });
+
+  // Bấm ra ngoài khung xem trước — kể cả chỗ khác TRONG Trợ lý — là đóng. Trừ bấm vào doc-row /
+  // dòng tệp: đó là mở hoặc chuyển xem trước. Capture để nút nào tự chặn lan truyền cũng không nuốt.
+  document.addEventListener("pointerdown", (e) => {
+    if (!previewDangMo || e.target.closest?.(".doc-row.co-xem, .file-list-name.co-xem")) return;
+    dongPreviewTuSidebar();
+  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") dongPreviewTuSidebar();
+  });
+  // Con trỏ TRONG Trợ lý nhưng ngoài dòng tệp → bằng chứng đã rời khung xem tạm (khi con trỏ nằm trên
+  // khung, sidebar không nhận được mousemove nào). Xem choChuotRoiDi trong content.js.
+  let lucBaoChuotORaNgoai = 0;
+  document.addEventListener("mousemove", (e) => {
+    if (!previewDangMo || previewGhim || e.target.closest?.(".file-list-row")) return;
+    const gio = Date.now();
+    if (gio - lucBaoChuotORaNgoai < 150) return; // mousemove bắn liên tục — gom bớt
+    lucBaoChuotORaNgoai = gio;
+    void sendToContent({ action: "tlndPreviewChuotOSidebar" });
+  }, { capture: true, passive: true });
 
   function setFileListError(message = "") {
     if (!$fileListError) return;
@@ -1343,8 +2290,22 @@
 
       const name = document.createElement("span");
       name.className = "file-list-name";
-      name.textContent = file.name || "Tệp không có tên";
-      name.title = file.name || "Tệp không có tên";
+      name.textContent = tenHienThi(file) || "Tệp không có tên";
+      name.title = `Xem trước ${tenHienThi(file) || "tệp không có tên"}`;
+      name.classList.add("co-xem");
+      name.setAttribute("role", "button");
+      name.tabIndex = 0;
+      const nhom = activeFileGroup;
+      const chiSo = files.indexOf(file);
+      const moXem = () => void moPreviewNhom(nhom, chiSo);
+      row.addEventListener("mouseenter", () => batDauRePreview(nhom, chiSo));
+      row.addEventListener("mouseleave", ketThucRePreview);
+      name.addEventListener("click", moXem);
+      name.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        moXem();
+      });
 
       row.append(icon, name);
       if (locked) {
@@ -1353,6 +2314,18 @@
         lock.textContent = "Đã chốt";
         row.appendChild(lock);
       } else {
+        const goc = scanDongBo?.timTheoFid(file.fid);
+        // Tệp máy quét: chỉ sửa được khi agent khai caps "rename" (agent bản cũ trả 404 cho route đó).
+        if (!goc || scanAgentCaps.includes("rename")) {
+          const sua = document.createElement("button");
+          sua.className = "file-list-rename";
+          sua.type = "button";
+          sua.textContent = "✎";
+          sua.title = goc ? "Sửa tên tệp (đổi luôn tên trên đĩa trong thư mục quét)" : "Sửa tên tệp";
+          sua.setAttribute("aria-label", `Sửa tên tệp ${tenHienThi(file) || ""}`);
+          sua.addEventListener("click", () => batDauSuaTen(file, name));
+          row.appendChild(sua);
+        }
         const remove = document.createElement("button");
         remove.className = "file-list-delete";
         remove.type = "button";
@@ -1360,7 +2333,7 @@
         remove.title = `Xóa ${file.name || "tệp"}`;
         remove.setAttribute("aria-label", `Xóa tệp ${file.name || "không có tên"}`);
         remove.disabled = deletingFileIds.has(file.fid);
-        remove.addEventListener("click", () => void deleteUploadSessionFile(file));
+        remove.addEventListener("click", () => void deleteUploadSessionFile(file, { thuCong: true }));
         row.appendChild(remove);
       }
       $fileListBody.appendChild(row);
@@ -1410,7 +2383,7 @@
     }
   }
 
-  async function deleteUploadSessionFile(file) {
+  async function deleteUploadSessionFile(file, { thuCong = false } = {}) {
     const sid = uploadSid;
     if (!sid || !file?.fid || uploadSessionProgress?.complete || deletingFileIds.has(file.fid)) return;
     deletingFileIds.add(file.fid);
@@ -1423,6 +2396,14 @@
       if (!res.ok) throw new Error(data?.detail || `Không xóa được tệp (HTTP ${res.status}).`);
       if (sid !== uploadSid) return;
       uploadSessionFiles = uploadSessionFiles.filter((item) => item.fid !== file.fid);
+      if (thuCong) {
+        // Gỡ TAY tệp từ máy quét → nhớ nội dung, lô gom / đối soát sau không tự đưa lại.
+        const goc = scanDongBo?.timTheoFid(file.fid);
+        if (goc?.hash) ghiNhanDaGo(goc.hash, goc.rel);
+      }
+      scanDongBo?.quenFid(file.fid);
+      void luuSoSachScan();
+      previewDuLieu.delete(file.fid);
       renderUploadFileList();
       await loadUploadSessionFiles();
     } catch (error) {
@@ -1441,11 +2422,28 @@
     uploadSessionFiles = [];
     uploadSessionProgress = null;
     deletingFileIds.clear();
+    scanDongBo?.datLai();
+    previewDuLieu.clear();
+    dongPreviewTuSidebar(); // không để giấy của công dân trước treo trên màn hình
+    tenSuaTheoFid = new Map();
+    scanRecentPending = [];
+    hienDanhSachGanDay();
+    scanLoDaThuSid = "";
+    scanDoiSoatSid = "";
+    if ($hoSoTruoc) $hoSoTruoc.hidden = true;
   }
 
   function setUploadSession(sid) {
     if (uploadSid !== sid) resetUploadFileListState();
     uploadSid = sid;
+    // Sổ rel→fid + tên đã sửa của phiên này sống qua lần dựng lại iframe. Nạp xong MỚI đối soát và
+    // gom lô, để lô không tải lại những tệp đã có.
+    void napTenSua(sid);
+    void napSoSachScan(sid).then(async () => {
+      await doiSoatTepQuet();
+      await thuGomLoQuet();
+      void hienLoiMoiHoSoTruoc();
+    });
     // Khi sidebar được dựng lại giữa phiên, WS không phát lại tiến trình cũ. Đọc snapshot
     // ngay để checklist và nút xem file vẫn khôi phục đủ, không chờ công dân tải thêm tệp.
     return loadUploadSessionFiles().catch((error) => {
@@ -1508,16 +2506,15 @@
 
   // Nhánh SCAN: chọn tệp từ máy tính → upload thẳng vào phiên (cùng endpoint với mobile).
   const $fileInput = document.getElementById("file-input");
-  $fileInput?.addEventListener("change", async (e) => {
-    const files = [...(e.target.files || [])];
-    e.target.value = "";
-    if (!files.length || !uploadSid) return;
+  // Tải MỘT đợt tệp lên upload session — DÙNG CHUNG cho: chọn tệp tay (#file-input) và máy quét
+  // tự động (scan-bridge, source="scan"). Chỉ chặng truyền/lưu; phân loại OCR/LLM chạy ở chặng
+  // xử lý sau khi bấm "Đã đưa đủ".
+  async function uploadFilesToSession(files, { source = "picker" } = {}) {
+    files = [...(files || [])];
+    if (!files.length || !uploadSid) return null;
     markActivity();
     const totalBytes = files.reduce((sum, file) => sum + Number(file.size || 0), 0);
-    const totalMb = totalBytes / (1024 * 1024);
     const uploadStartedAt = performance.now();
-    // Đây chỉ là chặng truyền/lưu file. Phân loại OCR/LLM (nếu thủ tục cần) chạy ở chặng
-    // xử lý sau khi người dân bấm "Đã đưa đủ", không được làm chậm cửa sổ chọn tệp.
     setStatus(`⏳ Đang tải ${files.length} tệp lên hệ thống…`);
     try {
       const fd = new FormData();
@@ -1527,21 +2524,393 @@
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
       console.log("[TLND] upload session files", {
+        source,
         fileCount: files.length,
         totalBytes,
         elapsedMs: Math.round(performance.now() - uploadStartedAt),
         accepted: (data?.accepted || []).map((item) => item.doc_key || null),
       });
       setStatus("");
+      // Bytes vừa upload VẪN ĐANG trong tay → giữ lại, lúc đính khỏi tải ngược từ máy chủ.
+      // CHỜ xong ở đây (không bắn-rồi-quên): giữ Blob là thao tác tức thời, mà nếu để chạy
+      // nền thì cán bộ bấm "Đã đưa đủ" ngay là cache chưa kịp ghi → vẫn phải tải.
+      await cacheUploadedBlobs(uploadSid, files, data?.accepted);
       if (data?.progress) renderDocProgress(data.progress, { preserveScroll: !$fileListScrim?.hidden });
       if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
       const unknown = (data?.accepted || []).filter((a) => !a.doc_key).length;
       if (unknown) addBotMd(`⚠️ **${unknown} tệp** em chưa nhận ra loại — công dân scan lại rõ hơn hoặc cứ bấm "Đã đưa đủ" để em xử lý phần nhận được ạ.`);
+      // Scan tại quầy (BE bật auto_run): đợt tệp đã tải + PHÂN LOẠI xong ngay trong request
+      // này → tự chốt như bấm "Đã đưa đủ" (submitDocsComplete kèm page context để BE chọn
+      // đúng bước: điền chủ hồ sơ / điền tờ khai / đính kèm). Guard theo state nên đợt tệp
+      // sau đó (pipeline đang chạy, state đã rời collecting_docs) không bắn trùng.
+      // MÁY QUÉT (source="scan") tệp về LẺ TẺ → KHÔNG tự chốt, để công dân bấm "Đã đưa đủ".
+      const sessionFiles = Number(data?.progress?.files_count) || 0;
+      if (source !== "scan" && source !== "reuse" && uploadSid && uploadSid === uploadAutoRunSid
+          && lastState === "collecting_docs" && sessionFiles > 0) {
+        setStatus("⏳ Đã nhận đợt tệp — em xử lý luôn ạ…");
+        // __action:docs_done = đúng lệnh của nút "Đã đưa đủ" (BE chốt phiên rồi chạy pipeline).
+        void submitDocsComplete("__action:docs_done", "system");
+      }
+      return data;
     } catch (err) {
       setStatus(`⚠️ Tải tệp lỗi: ${err?.message || err}`, true);
       setTimeout(() => setStatus(""), 5000);
+      return null;
+    }
+  }
+  $fileInput?.addEventListener("change", async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = "";
+    await uploadFilesToSession(files, { source: "picker" });
+  });
+
+  // ── Máy quét tại quầy (scan-bridge agent) ──
+  // Agent Go chạy nền trên máy cán bộ, theo dõi thư mục máy quét, bắn SSE khi có tệp mới. Ta nối
+  // agent → tải tệp về → đổ vào CÙNG upload session (như chọn tệp tay) mà không cần bấm chọn.
+  const $scanStatus = document.getElementById("scan-agent-status");
+  let scanConn = null;               // { stop() } — 1 kết nối/sidebar
+  let scanAgentConnected = false;    // đã handshake SSE + đã chọn thư mục
+  let scanPickerTimer = null;        // hẹn bật hộp chọn tệp NẾU không có agent
+  let scanWatermarkMs = 0;           // mốc chặn: chỉ nhận tệp MỚI HƠN (không kéo giấy người trước)
+  let scanNewestMs = 0;              // mtime mới nhất phiên này đã nhận
+  const scanUploadingRel = new Set(); // chặn tải trùng cùng rel đang bay
+  let scanGuideShown = false;        // thẻ hướng dẫn đặt giấy (ảnh + lời) đã dựng chưa
+  let scanReceivedCount = 0;         // số tệp máy quét đã nhận phiên này (để báo "đã nhận N tệp")
+  void napWatermarkScan();
+  void napDaGoScan();
+
+  // ── Trạng thái panel (lib/trangThai.js — dùng chung với autofill) ──
+  // "Đang làm việc" = request đang chạy + thao tác trên panel/trang gốc + con trỏ trong ô nhập + cờ bận
+  // nghiệp vụ. Background không hỏi thẳng được iframe/khung bên, nên panel tự ghi nhịp theo TAB vào
+  // storage — kiemBanMoi đọc để không nạp lại giữa lúc đang tải tệp quét lên.
+  if (window.HccTrangThai && TAB_ID) {
+    window.HccTrangThai.batDau({
+      layCoBanNgoai: () => busy || scanUploadingRel.size > 0 || deletingFileIds.size > 0,
+    });
+    const khoTrangThai = chrome.storage?.session || chrome.storage?.local;
+    const khoaTrangThai = `tlnd_trang_thai_panel:${TAB_ID}`;
+    const ghiNhip = () => {
+      try {
+        khoTrangThai?.set({ [khoaTrangThai]: { tt: window.HccTrangThai.hienTai(), luc: Date.now() } },
+          () => void chrome.runtime.lastError);
+      } catch (_) { /* context mất — background coi nhịp cũ là hết hạn */ }
+    };
+    window.HccTrangThai.theoDoi(ghiNhip);
+    setInterval(ghiNhip, 3000);
+    ghiNhip();
+  }
+
+  // ── Nút "Cập nhật" chủ động ──
+  // background (kiemBanMoi) ghi "bản mới đang chờ" vào storage mỗi nhịp kiểm; ở đây chỉ vẽ nút và hỏi xác
+  // nhận. Cập nhật = nạp lại extension, mà content script bản mới chỉ được tiêm khi trang tải lại →
+  // background tải lại đúng tab này sau khi nạp. Vì thế PHẢI hỏi: nội dung chưa lưu trên trang có thể mất.
+  // Mặc định vẫn là tự nạp lại khi máy rảnh 60 giây — nút chỉ dành cho lúc cán bộ đang làm liên tục.
+  const KHOA_BAN_CHO = "hcc_ban_moi_cho";
+  const $capNhatBtn = document.getElementById("cap-nhat-btn");
+  const $capNhatXn = document.getElementById("cap-nhat-xac-nhan");
+  const $capNhatTieuDe = document.getElementById("cap-nhat-tieu-de");
+  const $capNhatCanhBao = document.getElementById("cap-nhat-canh-bao");
+  const $capNhatNgay = document.getElementById("cap-nhat-ngay");
+  let banMoiCho = "";
+
+  function veNutCapNhat() {
+    let dangChay = "";
+    try { dangChay = chrome.runtime.getManifest().version; } catch (_) { return; } // context đã mất
+    chrome.storage.local.get(KHOA_BAN_CHO, (res) => {
+      if (chrome.runtime.lastError) return;
+      const v = res?.[KHOA_BAN_CHO]?.version;
+      banMoiCho = typeof v === "string" && v && v !== dangChay ? v : "";
+      if ($capNhatBtn) {
+        $capNhatBtn.hidden = !banMoiCho;
+        $capNhatBtn.title = banMoiCho ? `Đã có bản ${banMoiCho} (đang dùng ${dangChay}) — bấm để cập nhật ngay` : "";
+      }
+      if (!banMoiCho && $capNhatXn) $capNhatXn.hidden = true;
+    });
+  }
+
+  function dangXuLyDo() {
+    return busy || scanUploadingRel.size > 0 || deletingFileIds.size > 0
+      || (window.HccTrangThai?.soRequestDangChay?.() || 0) > 0;
+  }
+
+  $capNhatBtn?.addEventListener("click", () => {
+    if (!banMoiCho || !$capNhatXn) return;
+    markActivity();
+    $capNhatTieuDe.textContent = `Cập nhật Trợ lý lên bản ${banMoiCho}?`;
+    $capNhatCanhBao.hidden = !dangXuLyDo();
+    $capNhatNgay.disabled = false;
+    $capNhatNgay.textContent = "Cập nhật ngay";
+    $capNhatXn.hidden = false;
+  });
+  document.getElementById("cap-nhat-de-sau")?.addEventListener("click", () => {
+    if ($capNhatXn) $capNhatXn.hidden = true;
+  });
+  $capNhatNgay?.addEventListener("click", () => {
+    $capNhatNgay.disabled = true;
+    $capNhatNgay.textContent = "Đang cập nhật…";
+    const loi = (chu) => {
+      $capNhatXn.hidden = true;
+      setStatus(chu, true);
+      setTimeout(() => setStatus(""), 5000);
+      veNutCapNhat();
+    };
+    try {
+      chrome.runtime.sendMessage({ action: "hccCapNhatNgay", tabId: Number(TAB_ID) || 0 }, (res) => {
+        if (chrome.runtime.lastError) { loi("⚠️ Không gửi được lệnh cập nhật — thử lại sau."); return; }
+        if (res?.ok) return; // extension sắp nạp lại: panel bị gỡ rồi trang tự tải lại
+        if (res?.lyDo === "da-moi-nhat") {
+          $capNhatXn.hidden = true;
+          showToast("Trợ lý đã ở bản mới nhất.");
+          veNutCapNhat();
+          return;
+        }
+        loi("⚠️ Chưa kết nối được agent — thử lại sau.");
+      });
+    } catch (_) {
+      loi("⚠️ Không gửi được lệnh cập nhật — thử lại sau.");
     }
   });
+  chrome.storage.onChanged.addListener((thayDoi, vung) => {
+    if (vung === "local" && KHOA_BAN_CHO in thayDoi) veNutCapNhat();
+  });
+  veNutCapNhat();
+
+  // Thẻ hướng dẫn đặt giấy lên máy quét (ảnh + lời) — dựng MỘT lần khi máy quét sẵn sàng, đúng
+  // như mockup panelScan. Ảnh là asset của chính extension (assets/scan-guide.jpg).
+  const SCAN_GUIDE_ALT = "Hướng dẫn scan: đặt giấy úp mặt cần scan xuống rồi ấn nút Scan";
+  function renderScanGuideCard() {
+    if (scanGuideShown) return;
+    scanGuideShown = true;
+    const el = document.createElement("div");
+    el.className = "scan-guide";
+    const img = chrome.runtime.getURL("assets/scan-guide.jpg");
+    el.innerHTML = `
+      <div class="scan-guide-h">🖨️ Đặt giấy tờ lên máy quét ở quầy</div>
+      <div class="scan-guide-p">Công dân đặt giấy lên máy scan <b>theo hướng dẫn trong hình</b> rồi
+        ấn nút <b>Scan</b> ạ.</div>
+      <div class="scan-guide-pic" data-zoom="1" title="Bấm để xem hình to">
+        <img class="scan-guide-img" src="${img}" alt="${SCAN_GUIDE_ALT}">
+        <span class="scan-guide-zoom">🔍 Bấm để xem hình to</span>
+      </div>
+      <div class="scan-guide-note">Chỉ đặt <b>từng tờ một</b> — máy tự kéo giấy vào. Xong hết thì bấm
+        <b>"Đã đưa đủ"</b> giúp em.</div>`;
+    el.querySelector("[data-zoom]")?.addEventListener("click", () => openImageZoom(img, SCAN_GUIDE_ALT));
+    addNode(el);
+  }
+
+  // Toast thoáng qua (tự biến mất) — mount 1 container vào body của sidebar.
+  let $toastWrap = null;
+  function showToast(text, { ms = 2600 } = {}) {
+    if (!$toastWrap) {
+      $toastWrap = document.createElement("div");
+      $toastWrap.className = "tlnd-toasts";
+      $toastWrap.setAttribute("aria-live", "polite");
+      document.body.appendChild($toastWrap);
+    }
+    const t = document.createElement("div");
+    t.className = "tlnd-toast";
+    t.textContent = text;
+    $toastWrap.appendChild(t);
+    requestAnimationFrame(() => t.classList.add("show"));
+    setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 250); }, ms);
+  }
+
+  // Thông báo mỗi lần máy quét trả tệp: TEXT (chèn NGAY TRÊN danh sách giấy tờ, luôn thấy gần
+  // nút "Đã đưa đủ") + VOICE (đọc hướng dẫn). Một node duy nhất, cập nhật tại chỗ theo tổng số tệp.
+  function renderScanFeedback() {
+    const n = scanReceivedCount;
+    const md = `🖨️ Em đã nhận **${n} tệp** giấy tờ từ máy quét.\n\n`
+      + "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
+      + "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ.";
+    let el = document.getElementById("scan-feedback-card");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "scan-feedback-card";
+      el.className = "scan-feedback";
+      const anchor = document.getElementById("doc-progress-card"); // chèn NGAY TRÊN danh sách
+      if (anchor?.parentNode) anchor.parentNode.insertBefore(el, anchor);
+      else addNode(el);
+    }
+    el.innerHTML = window.renderMarkdown ? window.renderMarkdown(md) : md;
+    $messages.scrollTop = $messages.scrollHeight;
+    // Đọc thành tiếng (rảnh tay). Tệp đầu đọc đủ hướng dẫn; các tệp sau đọc gọn để đỡ rườm.
+    const tts = n <= 1
+      ? "Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan, em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ."
+      : `Em đã nhận thêm một tệp, tổng cộng ${n} tệp. Còn nữa thì công dân đặt tiếp vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ.`;
+    if (voiceCfg?.tts && !ttsMuted) { try { stopReplyTts(); } catch (_) { /* ignore */ } window.__hccTTS?.speak?.(tts, "vi"); }
+  }
+
+  // Lightbox phóng to ảnh — click nền hoặc Esc để đóng.
+  function openImageZoom(src, alt) {
+    const scrim = document.createElement("div");
+    scrim.className = "img-zoom-scrim";
+    scrim.innerHTML = `<img class="img-zoom-img" src="${src}" alt="${window.escapeHtml(alt || "")}">
+      <button class="img-zoom-close" type="button" aria-label="Đóng">✕</button>`;
+    const close = () => { scrim.remove(); document.removeEventListener("keydown", onKey); };
+    const onKey = (e) => { if (e.key === "Escape") close(); };
+    scrim.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(scrim);
+  }
+
+  function setScanAgentStatus(state) {
+    if (!$scanStatus) return;
+    // da_ket_noi: KHÔNG hiện dòng "đang theo dõi" (thẻ hướng dẫn + thông báo mỗi tệp đã lo).
+    // Chỉ hiện khi cần cán bộ thao tác: chưa chọn thư mục quét.
+    const text = state === "chua_chon_thu_muc"
+      ? "🖨️ Máy quét chưa chọn thư mục lưu ảnh — mở agent ở khay hệ thống chọn giúp em ạ."
+      : "";
+    $scanStatus.textContent = text;
+    $scanStatus.hidden = !text;
+  }
+  const scanFileMtimeMs = (evt) => Number(evt?.mtimeMs) || Date.parse(evt?.at || "") || 0;
+  const scanBaseName = (rel) => String(rel || "").split(/[\\/]/).pop() || "tep-quet";
+
+  // MỘT chỗ duy nhất cho mọi đường đưa tệp quét lên phiên: event file.added, lô gom lúc nối máy quét,
+  // đối soát, và cán bộ bấm "+" ở danh sách gần đây (tuDong=false). Chốt chặn đặt ở đây để đường
+  // thêm về sau không quên — cùng lý do với importOneScanFile bên autofill. Trả true khi phiên thật
+  // sự có thêm/đổi tệp.
+  async function onScanFile(evt, fetchBlob, { tuDong = true } = {}) {
+    const rel = evt?.rel;
+    if (!rel || !uploadSid || scanUploadingRel.has(rel) || scanDangDoiTen.has(rel)) return false;
+    const mtime = scanFileMtimeMs(evt);
+    // Watermark: bỏ tệp cũ hơn mốc (giấy của công dân TRƯỚC). Cán bộ tự chọn tay thì không chặn.
+    if (tuDong && scanWatermarkMs && mtime && mtime <= scanWatermarkMs) return false;
+    // Trần tuổi — CHỈ khi có mtimeMs (lô gom từ /v1/files). Event SSE không mang mtimeMs: chính sự
+    // kiện là bằng chứng "vừa xuất hiện", siết theo mtime sẽ chặn nhầm tệp cũ vừa được chép vào.
+    const tuoiToiDa = window.TLNDScanLo?.BATCH_AUTO_MAX_AGE_MS || 30 * 60 * 1000;
+    if (tuDong && Number(evt.mtimeMs) && Date.now() - Number(evt.mtimeMs) > tuoiToiDa) return false;
+    scanUploadingRel.add(rel);
+    const sid = uploadSid;
+    const ve = scanDongBo?.batDauTai(rel); // chốt TRƯỚC await đầu tiên — xem scanDongBo.taiXong
+    try {
+      if (uploadSessionProgress?.complete) return false;   // phiên đã chốt → không nhận thêm
+      const blob = await fetchBlob();
+      if (!blob || !blob.size) return false;               // bỏ tệp 0 byte (máy đang ghi dở)
+      const hash = await sha256Hex(blob);
+      if (tuDong) {
+        // Nội dung này đã bị GỠ TAY → không tự đưa lại (gỡ là một quyết định, không phải thao tác tạm).
+        if (scanDaGo.has(hash)) {
+          console.info("[TLND] scan: bỏ qua tệp đã bị gỡ tay", rel);
+          return false;
+        }
+      } else if (scanDaGo.delete(hash)) {
+        luuDaGoScan(); // chủ động thêm lại → bỏ dấu, lần sau tự tải bình thường
+      }
+      // Cùng rel, cùng nội dung đã nằm trên phiên (agent bắn lại added khi mtime đổi mà nội dung y
+      // nguyên, hoặc đối soát) → không tải lại.
+      if (scanDongBo?.hashCua(rel) === hash) return false;
+      const file = new File([blob], scanBaseName(rel), { type: blob.type || "application/octet-stream" });
+      const data = await uploadFilesToSession([file], { source: "scan" });
+      if (mtime > scanNewestMs) scanNewestMs = mtime;
+      // BE trả `accepted` theo đúng thứ tự tệp gửi lên (router.upload_files) → gửi 1 tệp là accepted[0].
+      const fid = data?.accepted?.[0]?.fid;
+      let biGoNgay = false;
+      let laCapNhat = false;
+      if (scanDongBo && fid && sid === uploadSid) {
+        for (const phaiXoa of scanDongBo.taiXong(ve, fid, hash)) {
+          if (phaiXoa === fid) biGoNgay = true;      // tệp đã bị xoá khỏi đĩa trong lúc đang tải
+          else laCapNhat = true;                     // máy quét ghi đè cùng tên → gỡ bản cũ
+          await deleteUploadSessionFile({ fid: phaiXoa, name: scanBaseName(rel) });
+        }
+        void luuSoSachScan();
+      }
+      if (!data || biGoNgay) return false;
+      if (scanRecentPending.some((f) => f.rel === rel)) {
+        scanRecentPending = scanRecentPending.filter((f) => f.rel !== rel);
+        hienDanhSachGanDay();
+      }
+      if (laCapNhat) {
+        showToast(`🖨️ Đã cập nhật bản mới: ${scanBaseName(rel)}`);
+      } else {
+        scanReceivedCount += 1;
+        showToast(`🖨️ Đã nhận: ${scanBaseName(rel)}`);
+        renderScanFeedback(); // text (trên danh sách) + voice hướng dẫn, cập nhật tổng số tệp
+      }
+      return true;
+    } catch (err) {
+      console.warn("[TLND] scan: không tải được tệp từ máy quét", rel, err?.message || err);
+      return false;
+    } finally {
+      scanUploadingRel.delete(rel);
+    }
+  }
+  async function onScanFileRemoved(evt) {
+    const rel = evt?.rel;
+    if (!rel) return;
+    // Cặp event do CHÍNH mình đổi tên — tệp vẫn là tệp đó, sổ đã dời sang rel mới (ketThucSuaTen).
+    if (scanDangDoiTen.has(rel)) return;
+    if (scanRecentPending.some((f) => f.rel === rel)) {
+      scanRecentPending = scanRecentPending.filter((f) => f.rel !== rel);
+      hienDanhSachGanDay();
+    }
+    if (!uploadSid || uploadSessionProgress?.complete) return;
+    // Gỡ ĐÚNG tệp mình đã tải lên cho rel này. Không đoán theo tên như bản cũ: tệp trùng tên có thể là
+    // giấy công dân tự tải từ điện thoại. rel không do mình tải lên → daXoa trả null → không gỡ.
+    const fid = scanDongBo?.daXoa(rel);
+    void luuSoSachScan();
+    if (fid) await deleteUploadSessionFile({ fid, name: scanBaseName(rel) });
+  }
+  function connectScanAgent() {
+    if (scanConn || !window.ScanAgent) return;
+    scanConn = window.ScanAgent.connect({
+      onStatus: (state) => {
+        scanAgentConnected = state === "da_ket_noi";
+        if (scanAgentConnected && scanPickerTimer) { clearTimeout(scanPickerTimer); scanPickerTimer = null; }
+        setScanAgentStatus(state);
+      },
+      onFile: (evt, fetchBlob) => { void onScanFile(evt, fetchBlob); },
+      onFileRemoved: (evt) => { void onScanFileRemoved(evt); },
+      // Agent báo bản extension trên đĩa ≠ bản đang chạy → nhờ background kiểm NGAY. Background giữ
+      // mọi luật "chỉ nạp lại khi rảnh" và gỡ panel trước khi nạp; thiếu đường này thì chờ nhịp 1 phút.
+      onExtensionVersion: (v) => {
+        try {
+          if (v && v !== chrome.runtime.getManifest().version) {
+            const p = chrome.runtime.sendMessage({ action: "hccKiemBanMoiNgay" }, () => void chrome.runtime.lastError);
+            if (p && typeof p.catch === "function") p.catch(() => {}); // trình duyệt trả Promise dù có callback
+          }
+        } catch (_) { /* context mất — background tự lo theo nhịp */ }
+      },
+      onConnected: (helpers) => {
+        scanAgentHelpers = helpers;
+        // Agent bản cũ không khai caps → mảng rỗng → nút sửa tên tệp quét bị ẩn (khỏi bấm rồi ăn 404).
+        const caps = Array.isArray(helpers?.caps) ? helpers.caps : [];
+        const doiCaps = caps.join() !== scanAgentCaps.join();
+        scanAgentCaps = caps;
+        if (doiCaps && activeFileGroup) renderUploadFileList();
+        void (async () => {
+          await doiSoatTepQuet();
+          await thuGomLoQuet();
+        })();
+      },
+    });
+  }
+  function disconnectScanAgent() {
+    if (scanPickerTimer) { clearTimeout(scanPickerTimer); scanPickerTimer = null; }
+    try { scanConn?.stop(); } catch (_) { /* ignore */ }
+    scanConn = null;
+    scanAgentConnected = false;
+    scanUploadingRel.clear();
+    scanAgentHelpers = null;
+    scanAgentCaps = [];
+    scanLoDaThuSid = "";
+    scanDoiSoatSid = "";
+    scanGuideShown = false;
+    scanReceivedCount = 0;
+    setScanAgentStatus("");
+  }
+  // Nâng mốc khi bắt đầu phục vụ CÔNG DÂN MỚI (trò chuyện mới / thủ tục khác / logout) → không
+  // tự kéo lại giấy tờ đã quét của người trước.
+  function bumpScanWatermark() {
+    if (scanNewestMs > scanWatermarkMs) scanWatermarkMs = scanNewestMs;
+    scanNewestMs = 0;
+    scanUploadingRel.clear();
+    scanDongBo?.datLai();
+    scanRecentPending = [];
+    hienDanhSachGanDay();
+    // Lưu mốc: iframe dựng lại sau điều hướng mà mất mốc là quay lại đúng lỗi "kéo giấy người trước".
+    try { void chrome.storage.local.set({ [KHOA_WATERMARK_SCAN]: scanWatermarkMs }); } catch (_) { /* ignore */ }
+  }
 
   function renderQrCard(a) {
     const el = document.createElement("div");
@@ -1556,7 +2925,25 @@
     $docProgress = el; // progress bar + status cập nhật qua WS
   }
 
+  // Doc-row có tệp: nhấn CẢ DÒNG để xem trước (nút "Đã nhận N tệp ›" vẫn mở danh sách như cũ).
+  function batXemTruocChoDong(row, group) {
+    row.classList.add("co-xem");
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.title = "Nhấn để xem trước các tệp đã nhận";
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      void moPreviewNhom(group, 0);
+    });
+    row.addEventListener("keydown", (e) => {
+      if (e.target !== row || (e.key !== "Enter" && e.key !== " ")) return;
+      e.preventDefault();
+      void moPreviewNhom(group, 0);
+    });
+  }
+
   function renderDocProgress(p, { preserveScroll = false } = {}) {
+    queueMicrotask(() => void hienLoiMoiHoSoTruoc(Number(p?.files_count)));
     const preservedScrollTop = preserveScroll ? $messages.scrollTop : null;
     uploadSessionProgress = p || uploadSessionProgress;
     // Nhận được tệp ĐẦU TIÊN (kể cả tệp chưa nhận ra loại / slot tuỳ chọn) → mở khoá nút
@@ -1599,6 +2986,9 @@
       row.append(icon, name);
 
       if (count > 0) {
+        batXemTruocChoDong(row, {
+          docKey: d.key, name: d.name || "Giấy tờ đã nhận", icon: d.icon || "📄", unknown: false,
+        });
         const view = document.createElement("button");
         view.type = "button";
         view.className = "doc-files-btn";
@@ -1639,6 +3029,9 @@
         docKey: null, name: "Tệp chưa nhận ra loại", icon: "⚠️", unknown: true,
       }, view));
       row.append(icon, name, view);
+      batXemTruocChoDong(row, {
+        docKey: null, name: "Tệp chưa nhận ra loại", icon: "⚠️", unknown: true,
+      });
       rows.push(row);
     }
     wrap.replaceChildren(...rows);
@@ -1727,6 +3120,9 @@
         } else if (d.type === "progress") {
           renderDocProgress(d, { preserveScroll: !$fileListScrim?.hidden });
           if (!$fileListScrim?.hidden) void loadUploadSessionFiles();
+          // Kéo ngầm NGAY khi tệp về, trong lúc công dân còn đang chụp tệp sau → tới bước đính
+          // thì phần lớn đã nằm sẵn trên máy, không phải ngồi chờ tải.
+          void prefetchSessionFiles(uploadSid);
         } else if (d.type === "complete" && !completeSent) {
           // Lưới chắn đua /complete vs /files: nếu BE lỡ phát complete lúc phiên CHƯA có file
           // nào (upload còn đang bay), KHÔNG bắn docs_complete — tránh xử lý phiên rỗng "0 file,
@@ -1769,24 +3165,181 @@
   // ── Đính kèm tự động (Bước 6b — docs/06 §3.3) ──
   // Lấy file từ PHIÊN upload (đúng THỨ TỰ như pipeline đã thấy — fileIndex khớp),
   // chuyển thành dataUrl rồi giao engine attach-core thao tác DOM.
+  // ===== Kho bytes tại chỗ =====
+  // Đính kèm từng phải TẢI LẠI toàn bộ giấy tờ từ máy chủ, trong khi:
+  //   - Scan/chọn tệp: bytes VỐN nằm trong sidebar trước khi upload → tải lại là phí 100%.
+  //   - QR: tệp về từ lúc công dân còn đang chụp → kéo sẵn thì tới lúc đính đã có ở máy.
+  //
+  // Cache giữ BLOB chứ không giữ dataUrl: Blob là tham chiếu, trình duyệt tự đẩy xuống đĩa khi
+  // cần → không phình heap, nhờ vậy KHÔNG cần trần dung lượng và đường scan mới dám nói là
+  // không tải lại lần nào. Base64 để tới lúc đính mới làm (≈50-150ms cho 9MB, chạy song song).
+  let fileCache = new Map();        // fid -> { name, type, blob }
+  let fileCacheSid = "";
+  const fileInFlight = new Map();   // fid -> Promise — gộp prefetch với lần tải lúc đính
+
+  function resetFileCache(sid) {
+    if (fileCacheSid === sid) return;
+    fileCacheSid = sid || "";
+    fileCache = new Map();
+    fileInFlight.clear();
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      // FileReader.error là DOMException (NotReadableError / NotFoundError…). PHẢI reject NÓ, KHÔNG
+      // reject cái ProgressEvent (onerror nhận event) — String(event) = "[object ProgressEvent]"
+      // nuốt mất lý do thật, khiến trợ lý báo "[object ProgressEvent]" vô nghĩa.
+      r.onerror = () => reject(r.error || new Error("Không đọc được nội dung tệp."));
+      try { r.readAsDataURL(blob); }
+      catch (e) { reject(e instanceof Error ? e : new Error("Không đọc được nội dung tệp.")); }
+    });
+  }
+
+  /** Tải 1 tệp, thử lại khi chớp mạng. Không có retry thì một cú 502 giết cả lượt đính kèm. */
+  async function downloadSessionFile(sid, fid, name) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const fr = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}/files/${fid}`);
+        if (fr.ok) {
+          const blob = await fr.blob();
+          return { name, type: blob.type || "image/jpeg", blob };
+        }
+        // 4xx = tệp không còn/không có quyền → thử lại vô ích.
+        if (fr.status >= 400 && fr.status < 500) throw new Error(`HTTP ${fr.status}`);
+        lastError = new Error(`HTTP ${fr.status}`);
+      } catch (e) {
+        lastError = e;
+        if (String(e?.message || "").startsWith("HTTP 4")) break;
+      }
+      if (attempt < 3) await new Promise((ok) => setTimeout(ok, 800 * attempt));
+    }
+    throw new Error(`Không tải được tệp ${name}${lastError ? ` (${lastError.message})` : ""}.`);
+  }
+
+  /** Một fid chỉ tải ĐÚNG MỘT LẦN dù prefetch và bước đính cùng hỏi. */
+  function ensureFileBytes(sid, fid, name) {
+    resetFileCache(sid);
+    const hit = fileCache.get(fid);
+    if (hit) return Promise.resolve(hit);
+    const flying = fileInFlight.get(fid);
+    if (flying) return flying;
+    const job = downloadSessionFile(sid, fid, name)
+      .then((entry) => { fileCache.set(fid, entry); return entry; })
+      .finally(() => fileInFlight.delete(fid));
+    fileInFlight.set(fid, job);
+    return job;
+  }
+
+  /** Giữ lại bytes ĐANG cầm trên tay (scan/chọn tệp) — đường này không tải về lần nào. */
+  async function cacheUploadedBlobs(sid, files, accepted) {
+    resetFileCache(sid);
+    // Ghép fid với tệp theo THỨ TỰ; lệch độ dài thì BỎ cache hẳn. Ghép nhầm sẽ đính NHẦM
+    // giấy tờ — hậu quả nặng hơn nhiều so với việc phải tải lại.
+    if (!Array.isArray(accepted) || accepted.length !== files.length) {
+      console.warn("[TLND] accepted lệch số tệp, bỏ cache bytes", {
+        accepted: accepted?.length, files: files.length,
+      });
+      return;
+    }
+    for (let i = 0; i < accepted.length; i++) {
+      const fid = accepted[i]?.fid;
+      if (!fid || fileCache.has(fid)) continue;
+      // BE trả kèm `name` → đối chiếu được, không tin mù vào thứ tự.
+      const serverName = accepted[i]?.name;
+      if (serverName && files[i]?.name && serverName !== files[i].name) {
+        console.warn("[TLND] tên tệp lệch, bỏ cache bytes", { serverName, local: files[i].name });
+        return;
+      }
+      fileCache.set(fid, {
+        name: files[i].name,
+        type: files[i].type || "application/octet-stream",
+        blob: files[i],
+      });
+    }
+  }
+
+  /** Kéo ngầm tệp vừa về (QR) để lúc đính đã có sẵn. Lỗi thì im lặng — lúc đính tải lại. */
+  async function prefetchSessionFiles(sid) {
+    if (!sid) return;
+    try {
+      const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}`);
+      if (!res.ok) return;
+      const sess = await res.json();
+      resetFileCache(sid);
+      await Promise.all((sess.files || [])
+        .filter((f) => f?.fid && !fileCache.has(f.fid))
+        .map((f) => ensureFileBytes(sid, f.fid, f.name).catch(() => null)));
+    } catch (_) { /* prefetch hỏng không ảnh hưởng luồng chính */ }
+  }
+
+  /** Đọc MỘT tệp thành dataUrl BỀN BỈ. Blob đang cầm (cache cục bộ/scan) có thể không đọc được
+   *  (tệp trên đĩa đã đổi/mất, blob rỗng/hỏng, hoặc RAM dồn). Server LUÔN giữ bản đã nhận hợp lệ
+   *  → hỏng thì tải lại từ phiên rồi đọc lại, thử vài vòng. Chỉ khi cạn mọi cách mới ném lỗi
+   *  TIẾNG VIỆT nêu rõ tệp nào để cán bộ quét/chọn lại. Nhờ vậy hầu như không bao giờ đính hụt. */
+  async function readEntryToDataUrl(sid, f, entry) {
+    if (entry?.blob && entry.blob.size) {
+      try { return { entry, dataUrl: await blobToDataUrl(entry.blob) }; }
+      catch (e) { console.warn("[TLND] đọc blob cục bộ lỗi, sẽ tải lại từ phiên:", f?.name, e?.name || e?.message || e); }
+    }
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        fileCache.delete(f.fid);
+        const fresh = await downloadSessionFile(sid, f.fid, f.name);   // đã tự retry mạng 3 lần
+        if (!fresh?.blob || !fresh.blob.size) throw new Error("tệp rỗng từ hệ thống");
+        const dataUrl = await blobToDataUrl(fresh.blob);
+        fileCache.set(f.fid, fresh);
+        return { entry: fresh, dataUrl };
+      } catch (e) {
+        console.warn(`[TLND] tải lại+đọc tệp lỗi (vòng ${attempt}):`, f?.name, e?.name || e?.message || e);
+        await new Promise((ok) => setTimeout(ok, 600 * attempt));
+      }
+    }
+    throw new Error(
+      `Không đọc được tệp "${f?.name || "giấy tờ"}" (đã thử lấy lại từ hệ thống nhiều lần). `
+      + `Công dân vui lòng quét hoặc chọn lại tệp này rồi bấm đính kèm lại giúp em ạ.`
+    );
+  }
+
   async function fetchSessionFilesAsPayload(sid) {
     const res = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}`);
-    if (!res.ok) throw new Error(`Không đọc được phiên giấy tờ (HTTP ${res.status}).`);
+    if (!res.ok) throw new Error(`Không lấy được danh sách giấy tờ của phiên (mã ${res.status}). Vui lòng thử lại.`);
     const sess = await res.json();
+    resetFileCache(sid);
+    const list = sess.files || [];
+    // ĐỌC TUẦN TỰ (KHÔNG Promise.all): đọc nhiều tệp lớn thành base64 CÙNG LÚC làm dồn RAM →
+    // FileReader lỗi. Tuần tự chậm hơn chút nhưng không bao giờ vỡ vì bộ nhớ.
     const out = [];
-    for (const f of sess.files || []) {
-      const fr = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${sid}/files/${f.fid}`);
-      if (!fr.ok) throw new Error(`Không tải được tệp ${f.name}.`);
-      const blob = await fr.blob();
-      const dataUrl = await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(blob);
-      });
-      out.push({ name: f.name, type: blob.type || "image/jpeg", dataUrl });
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      setStatus(`📥 Đang chuẩn bị giấy tờ ${i + 1}/${list.length}…`);
+      const entry = await ensureFileBytes(sid, f.fid, f.name);
+      const { entry: readEntry, dataUrl } = await readEntryToDataUrl(sid, f, entry);
+      // Tên cán bộ đã sửa (tenHienThi) phải đi vào payload đính kèm, không chỉ hiện trên danh sách.
+      out.push({ name: tenHienThi(f) || readEntry.name, type: readEntry.type, dataUrl });
     }
+    setStatus("");
     return out;
+  }
+
+  /** Đổi MỌI lỗi (kể cả DOMException tiếng Anh của trình duyệt) thành câu TIẾNG VIỆT người dân
+   *  hiểu được, đúng tình huống. Câu ta tự ném (đã có dấu tiếng Việt) thì giữ nguyên. */
+  function viAttachError(e) {
+    const raw = String(e?.message ?? e ?? "").trim();
+    if (!raw) return "Chưa chuẩn bị được giấy tờ để đính kèm. Công dân vui lòng thử đính kèm lại ạ.";
+    if (/[^\x00-\x7F]/.test(raw)) return raw; // có ký tự tiếng Việt = câu của mình → giữ nguyên
+    const low = raw.toLowerCase();
+    if (/notreadable|could not be read|not be read/.test(low))
+      return "Không đọc được nội dung một tệp giấy tờ (tệp có thể đã bị di chuyển hoặc thay đổi trên máy). Công dân vui lòng quét/chọn lại tệp rồi đính kèm lại ạ.";
+    if (/notfound|no such file|not found/.test(low))
+      return "Một tệp giấy tờ không còn tìm thấy trên máy. Công dân vui lòng quét/chọn lại tệp rồi đính kèm lại ạ.";
+    if (/network|failed to fetch|load failed|http [45]\d\d|timeout|timed out/.test(low))
+      return "Mất kết nối khi lấy giấy tờ từ hệ thống. Công dân kiểm tra mạng rồi bấm đính kèm lại giúp em ạ.";
+    if (/quota|memory|allocation/.test(low))
+      return "Giấy tờ quá lớn nên máy xử lý chưa xong. Công dân thử đính lại từng tệp giúp em ạ.";
+    return "Chưa đính được giấy tờ do sự cố kỹ thuật. Công dân vui lòng bấm đính kèm lại giúp em ạ.";
   }
 
   // Dựng payload theo hợp đồng BE: sourceSegments trích đúng trang; sourceFileIndexes là
@@ -2243,8 +3796,11 @@
       // Wizard hồ sơ: trang còn ở bước kê khai (chưa sang "Thành phần hồ sơ") mà chạy
       // engine sẽ ra "0 tệp" vô nghĩa → báo BE dặn người dân chuyển bước, watcher thấy
       // đúng bước sẽ tự đính lại. Trang không phải wizard (wizardStep=0) chạy như thường.
+      // Bước "Thành phần hồ sơ" KHÁC nhau theo cổng (tư pháp = 3, MAE = 2) → BE gửi kèm
+      // attach_step theo wizard của thủ tục; thiếu thì giữ mặc định 3 như trước.
+      const attachStep = Number(a.attach_step) || 3;
       const pre = await sendToContent({ action: "getPageContext" });
-      if (pre?.ok && pre.wizardStep && pre.wizardStep !== 3) {
+      if (pre?.ok && pre.wizardStep && pre.wizardStep !== attachStep) {
         ask(`__event:attach_blocked:${JSON.stringify({
           wizardStep: pre.wizardStep, ...(dispatchId ? { dispatch_id: dispatchId } : {}),
         })}`, "system");
@@ -2321,9 +3877,11 @@
     } catch (e) {
       setStatus("");
       await heartbeatPromise;
+      // Lỗi ra cho người dân PHẢI là tiếng Việt, đúng tình huống — không để lọt "[object …]" hay
+      // câu lỗi tiếng Anh của trình duyệt.
       ask(`__action:attach_report:${JSON.stringify({
         attached: 0,
-        errors: [String(e?.message || e)],
+        errors: [viAttachError(e)],
         ...(dispatchId ? { dispatch_id: dispatchId } : {}),
       })}`, "system");
     } finally {
@@ -2334,7 +3892,14 @@
   // ── Thi hành actions từ BE (tuần tự) ──
   async function runActions(actions) {
     for (const a of actions) {
-      if (a.type === "navigate" && a.url) {
+      if (a.type === "arm_submit_watch") {
+        await armSubmitWatch(a.rules);
+      } else if (a.type === "new_conversation") {
+        // Công dân NÓI "làm thủ tục khác" (chip đã tự xử ở renderChips). Một conversation =
+        // một hồ sơ, nên đi đúng luồng của chip: xoá phiên rồi mở phiên mới.
+        await returnToStart("manual");
+        return;
+      } else if (a.type === "navigate" && a.url) {
         // Phải chờ storage ghi xong trước khi điều hướng; nếu iframe bị hủy sớm ở lượt đầu,
         // trang đích không thấy journey và sẽ chỉ hiện launcher.
         await saveJourney();
@@ -2345,15 +3910,21 @@
         // page_status không bị xếp hàng rồi chờ ngược chính request hiện tại.
         setTimeout(() => { void verifyPortalState(); }, 0);
       } else if (a.type === "prepare_business_registration") {
-        setStatus("Đang mở trang kê khai Thành lập mới hộ kinh doanh…");
-        const res = await sendToContent({ action: "prepareBusinessRegistration" });
+        setStatus(a.workflow === "change"
+          ? "Đang mở luồng Đăng ký thay đổi hộ kinh doanh…"
+          : "Đang mở trang kê khai Thành lập mới hộ kinh doanh…");
+        const res = await sendToContent({
+          action: "prepareBusinessRegistration",
+          workflow: a.workflow || "",
+          stop_at: a.stop_at || "",
+        });
         if (res?.error) {
           setStatus("", false);
           addBotMd(`⚠️ ${res.error}`);
         }
       } else if (a.type === "start_business_registration" && a.pages) {
         pipeDone();
-        setStatus("Đang chuẩn bị 8 khối dữ liệu và giấy tờ đính kèm…");
+        setStatus("Đang chuẩn bị các khối dữ liệu và giấy tờ đính kèm…");
         try {
           const rawFiles = a.session_id
             ? await fetchSessionFilesAsPayload(a.session_id || uploadSid) : [];
@@ -2366,6 +3937,10 @@
             files: prepared.files,
             attachments: prepared.attachments,
             businessDefaults: a.businessDefaults || null,
+            // Luồng thay đổi HKD: adapter cần workflow + businessFlow (khóa tra cứu hộ KD,
+            // pageOrder động) — thiếu là nó bootstrap nhầm CREATE rồi đứng im ở màn tra cứu.
+            workflow: a.workflow || "",
+            businessFlow: a.businessFlow || null,
           });
           if (res?.error || !res?.ok) {
             setStatus("");
@@ -2378,7 +3953,7 @@
           setStatus("");
           ask(`__action:business_report:${JSON.stringify({
             ok: false, filledPages: 0, attached: 0, phase: "start",
-            errors: [String(e?.message || e)],
+            errors: [viAttachError(e)],
           })}`, "system");
         }
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
@@ -2424,7 +3999,13 @@
         // Không chụp trạng thái đăng nhập trước khi bấm: phiên trên DVCQG không chứng minh
         // cổng đích sẽ bỏ qua SSO. Watcher sẽ đọc chính trang đích để quyết định tiếp.
         setStatus("Đang chọn cơ quan thực hiện…");
-        const res = await sendToContent({ action: "selectAgency", province: a.province, ward: a.ward });
+        const res = await sendToContent({
+          action: "selectAgency",
+          province: a.province,
+          ward: a.ward,
+          // Cổng bộ ngành (GD&ĐT...): chuyển toggle "Sở" (không chọn sở cụ thể) rồi Đồng ý.
+          soMode: a.soMode === true,
+        });
         setStatus("");
         if (res?.ok) ask("__event:agency_selected", "system");
         else ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
@@ -2473,20 +4054,33 @@
       } else if (a.type === "attach_plan" && Array.isArray(a.attachments)) {
         await runAttachPlan(a);
       } else if (a.type === "show_qr") {
+        uploadAutoRunSid = ""; // QR: ảnh về lần lượt từ điện thoại — không tự chốt theo đợt
         setUploadSession(a.session_id);
         renderQrCard(a);
         subscribeUploadSession(a.session_id);
       } else if (a.type === "resume_upload_session" && a.session_id) {
         // Điều chỉnh giấy tờ: dựng ngay checklist của CHÍNH phiên cũ. QR/Scan chỉ là
         // lựa chọn thêm tệp; công dân có thể chỉ xóa rồi bấm hoàn tất điều chỉnh.
+        uploadAutoRunSid = "";
         const snapshotPromise = setUploadSession(a.session_id);
         subscribeUploadSession(a.session_id);
         await snapshotPromise;
       } else if (a.type === "pick_files" && a.session_id) {
-        // Scan tại quầy: mở hộp chọn tệp của máy tính, kết quả đổ vào cùng phiên upload.
+        // Scan tại quầy: ưu tiên MÁY QUÉT (scan-bridge) — file quét ra tự vào cùng phiên upload,
+        // không cần bấm. Nếu máy CHƯA cài agent (không kết nối trong ~1.5s) thì mở hộp chọn tệp
+        // như cũ để vẫn dùng được. Agent đã kết nối sẵn (nối từ chặng trước) → bỏ qua hộp chọn.
+        uploadAutoRunSid = a.auto_run === true ? a.session_id : "";
         setUploadSession(a.session_id);
         subscribeUploadSession(a.session_id);
-        $fileInput?.click();
+        connectScanAgent();
+        // Thẻ hướng dẫn đã dựng lúc chọn "Scan tại quầy" (renderDocOptions) — ở trên checklist.
+        renderScanGuideCard(); // guard scanGuideShown → no-op nếu đã dựng; cứu ca khôi phục phiên
+        if (scanPickerTimer) clearTimeout(scanPickerTimer);
+        if (scanAgentConnected) { /* đang theo dõi máy quét → không bật hộp chọn tệp */ }
+        else scanPickerTimer = setTimeout(() => {
+          scanPickerTimer = null;
+          if (!scanAgentConnected) $fileInput?.click();
+        }, 1500);
       } else if (a.type === "update_docs_done_chip" && a.label) {
         updateDocsDoneChipLabel(a.label, a.labelHmong);
       } else if (a.type === "collapse_after_tts") {
@@ -2507,6 +4101,26 @@
       } else if (a.type === "continue_dossiers") {
         await resolveCompletionLogout("chosen_continue");
         returnToStart("continue");
+      } else if (a.type === "fill_mae_agency") {
+        // Cổng Bộ NN&MT: engine content/portal-mae.js điền Tỉnh + Sở + Trường hợp giải quyết
+        // rồi bấm "Đồng ý và tiếp tục". Thành công thì SPA tự chuyển trang kê khai — im lặng
+        // để watcher đọc page_status; chỉ báo BE khi LỖI (BE dặn chọn tay).
+        setStatus("Đang chọn cơ quan và trường hợp giải quyết…");
+        const res = await sendToContent({
+          action: "fillMaeAgency",
+          province: a.province || "",
+          agency: a.agency || "",
+          variant: a.variant || "",
+          variantMatch: a.variantMatch || "",
+          variantAvoid: a.variantAvoid || "",
+        });
+        if (res?.ok) {
+          setStatus("Đã chọn cơ quan và trường hợp xong ✓");
+          setTimeout(() => setStatus(""), 4000);
+        } else {
+          setStatus("");
+          ask(`__event:mae_agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+        }
       } else {
         console.warn("[TLND] action chưa hỗ trợ:", a.type);
       }
@@ -2518,10 +4132,33 @@
   const minimizePanel = () => window.parent.postMessage({ __tlnd: "minimizePanel" }, "*");
   const restorePanel = () => window.parent.postMessage({ __tlnd: "restorePanel" }, "*");
   const closePanel = () => window.parent.postMessage({ __tlnd: "closePanel" }, "*");
-  document.getElementById("min-btn")?.addEventListener("click", minimizePanel);
-  document.getElementById("close-btn")?.addEventListener("click", closePanel);
-  document.getElementById("login-min-btn")?.addEventListener("click", minimizePanel);
-  document.getElementById("login-close-btn")?.addEventListener("click", closePanel);
+  if (EMBEDDED) {
+    document.getElementById("min-btn")?.addEventListener("click", minimizePanel);
+    document.getElementById("close-btn")?.addEventListener("click", closePanel);
+    document.getElementById("login-min-btn")?.addEventListener("click", minimizePanel);
+    document.getElementById("login-close-btn")?.addEventListener("click", closePanel);
+  } else {
+    // Khung bên do trình duyệt sở hữu: đóng/thu gọn là việc của nó. Để nút ở đó mà
+    // bấm không ăn gì còn tệ hơn không có nút.
+    for (const id of ["min-btn", "close-btn", "login-min-btn", "login-close-btn"]) {
+      const b = document.getElementById(id);
+      if (b) b.hidden = true;
+    }
+    // Giữ một port tới background suốt đời khung bên: port đứt = khung đã đóng → background báo
+    // content.js hiện lại nút tròn. Chrome dọn service worker cũng làm đứt port trong khi khung vẫn
+    // mở → tự nối lại để background dựng lại trạng thái "đang mở".
+    const noiKhungBen = () => {
+      if (!TAB_ID || !chrome.runtime?.id) return; // extension vừa được nạp lại — dừng hẳn
+      try {
+        const port = chrome.runtime.connect({ name: `tlnd-khung-ben:${TAB_ID}` });
+        port.onDisconnect.addListener(() => {
+          void chrome.runtime.lastError;
+          setTimeout(noiKhungBen, 1000);
+        });
+      } catch (_) { setTimeout(noiKhungBen, 3000); }
+    };
+    noiKhungBen();
+  }
 
   function showStartScreen() {
     stopIdleTracking();
@@ -2539,13 +4176,45 @@
     startIdleTracking(activityAt);
   }
 
+  // Xóa phiên đăng nhập của công dân rồi đưa trang về DVCQG cho lượt tiếp theo.
+  // Tách khỏi returnToStart và gọi trong finally: đây là việc KHÔNG được phép lỡ — lỡ một lần
+  // là công dân sau ngồi vào máy còn nguyên đăng nhập của người trước. Trước đây khối này nằm
+  // CUỐI một try…finally không có catch, nên bất kỳ bước dọn nào ở trên ném lỗi là nó bị bỏ
+  // qua hoàn toàn, không một dòng cảnh báo.
+  async function clearCitizenSessionAndGoHome() {
+    const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies" });
+    if (!cookieCleanup?.ok) {
+      console.warn("[TLND] Chưa xóa hết phiên công dân", {
+        found: Number(cookieCleanup?.found) || 0,
+        removed: Number(cookieCleanup?.removed) || 0,
+        failed: Number(cookieCleanup?.failed) || 0,
+        failedQueries: Number(cookieCleanup?.failedQueries) || 0,
+        storageCleared: cookieCleanup?.storageCleared === true,
+        storageError: cookieCleanup?.storageError || "",
+        failedTabs: Number(cookieCleanup?.failedTabs) || 0,
+      });
+      setStatus("⚠️ Chưa xóa hết phiên đăng nhập DVC/VNeID/Bộ Tư pháp. Cán bộ vui lòng kiểm tra trước khi tiếp nhận công dân tiếp theo.", true);
+    } else {
+      console.log(
+        `[TLND] Đã xóa ${Number(cookieCleanup.removed) || 0} cookie và dữ liệu phiên web trên `
+        + `${Number(cookieCleanup.clearedTabs) || 0} tab công dân.`,
+      );
+    }
+    // Dọn xong phiên công dân rồi mới điều hướng CHÍNH tab đang làm thủ tục. Action
+    // navigate đã phản hồi trước khi location.assign nên không làm đóng message channel.
+    const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
+    if (!navigation?.ok) {
+      console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
+      setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
+    }
+  }
+
   // Một đường dọn phiên dùng chung cho: hoàn thành, timeout và nút Trò chuyện mới.
   async function returnToStart(reason = "manual") {
     if (endingSession) return;
     if (busy) { pendingReturnReason = reason; return; }
     endingSession = true;
     try {
-      const shouldClearCitizenCookies = reason === "completed";
       const shouldOpenProcedurePicker = reason === "continue";
       stopCompletionLogoutRuntime();
       completionLogoutState = null;
@@ -2560,8 +4229,16 @@
       // HkdOnline là WebForms full-postback và có state machine sống qua reload. Dọn nó
       // trước khi xóa conversation để phiên cũ không tự điền tiếp sau "Trò chuyện mới".
       await sendToContent({ action: "clearBusinessRegistrationState" });
+      // Kết thúc CÓ CHỦ ĐÍCH một hồ sơ (bấm Trò chuyện mới / nộp xong) → cất tham chiếu giấy tờ để cùng
+      // công dân làm thủ tục tiếp dùng lại. Hết giờ vì bỏ đi (idle) thì không mời.
+      if (reason === "manual" || reason === "completed") catHoSoTruoc();
       resetUploadFileListState();
-      await api.deleteConversation();
+      // Công dân MỚI: nâng mốc watermark (chặn kéo lại giấy người trước) + ngắt máy quét để
+      // chặng sau nối lại sạch.
+      bumpScanWatermark();
+      disconnectScanAgent();
+      // Lý do kết thúc đi kèm để BE đóng sổ hồ sơ dở dang đúng nguyên nhân.
+      await api.deleteConversation(reason || "manual");
       await clearJourney();
       await writeActiveSplit(null);
       $messages.innerHTML = "";
@@ -2583,41 +4260,13 @@
         // cán bộ chọn thủ tục tiếp theo — không bắt quay qua màn giới thiệu.
         showChatScreen(Date.now());
         await ask("", "system");
-        showProcedurePickerFromTop();
+        showProcedurePicker();
       } else {
         showStartScreen();
       }
-      if (shouldClearCitizenCookies) {
-        const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies" });
-        if (!cookieCleanup?.ok) {
-          console.warn("[TLND] Chưa xóa hết phiên công dân", {
-            found: Number(cookieCleanup?.found) || 0,
-            removed: Number(cookieCleanup?.removed) || 0,
-            failed: Number(cookieCleanup?.failed) || 0,
-            failedQueries: Number(cookieCleanup?.failedQueries) || 0,
-            storageCleared: cookieCleanup?.storageCleared === true,
-            storageError: cookieCleanup?.storageError || "",
-            failedTabs: Number(cookieCleanup?.failedTabs) || 0,
-          });
-          setStatus("⚠️ Chưa xóa hết phiên đăng nhập DVC/VNeID/Bộ Tư pháp. Cán bộ vui lòng kiểm tra trước khi tiếp nhận công dân tiếp theo.", true);
-        } else {
-          console.log(
-            `[TLND] Đã xóa ${Number(cookieCleanup.removed) || 0} cookie và dữ liệu phiên web trên `
-            + `${Number(cookieCleanup.clearedTabs) || 0} tab công dân.`,
-          );
-        }
-        // Dọn xong phiên công dân rồi mới điều hướng CHÍNH tab đang làm thủ tục. Action
-        // navigate đã phản hồi trước khi location.assign nên không làm đóng message channel.
-        const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
-        if (!navigation?.ok) {
-          console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
-          setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
-        }
-      }
       // "Trò chuyện mới" THỦ CÔNG: đưa CẢ trang web về trang chủ DVCQG cho lượt công dân mới
-      // (không chỉ màn bắt đầu của sidebar). Đặt SAU khối xóa cookie theo hợp đồng "dọn phiên
-      // công dân rồi mới điều hướng". Đang ở trang chủ rồi thì thôi (navigate = reload thừa);
-      // hết 10 phút (idle) giữ nguyên trang; "completed" đã tự điều hướng ở khối trên.
+      // (không chỉ màn bắt đầu của sidebar). Đang ở trang chủ rồi thì thôi (navigate = reload
+      // thừa); hết 20 phút (idle) giữ nguyên trang; "completed" điều hướng ở finally bên dưới.
       const alreadyOnDvcHome = START_FRESH_ON_DVC_HOME;
       if (reason === "manual" && !alreadyOnDvcHome) {
         const homeNav = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
@@ -2626,7 +4275,22 @@
           setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp em ạ.", true);
         }
       }
+    } catch (error) {
+      // Không nuốt im: returnToStart được gọi không await ở nhiều nơi nên lỗi ở đây từng biến
+      // thành unhandled rejection lẫn trong console của trang, rất khó lần ra.
+      console.error(`[TLND] Lỗi khi kết thúc phiên (reason=${reason})`, error);
     } finally {
+      // finally chứ không phải cuối thân try: một bước dọn ở trên ném lỗi cũng KHÔNG được
+      // phép làm lỡ việc xóa phiên công dân. Vẫn giữ đúng thứ tự "dọn phiên rồi mới điều
+      // hướng" vì cả hai nằm trong clearCitizenSessionAndGoHome.
+      if (reason === "completed") {
+        try {
+          await clearCitizenSessionAndGoHome();
+        } catch (error) {
+          console.error("[TLND] Lỗi khi xóa phiên công dân", error);
+          setStatus("⚠️ Chưa xóa được phiên đăng nhập của công dân. Cán bộ vui lòng đăng xuất thủ công trên cổng trước khi tiếp nhận người tiếp theo.", true);
+        }
+      }
       endingSession = false;
     }
   }
@@ -2645,7 +4309,7 @@
     showChatScreen(Date.now());
     markActivity();
     await ask("", "system"); // chỉ lúc này mới tạo conversation và phát câu chào hiện tại
-    showProcedurePickerFromTop();
+    showProcedurePicker();
     $startBtn.disabled = false;
   });
 
@@ -2686,6 +4350,9 @@
   let voiceCfg = { asr: false, tts: true };
   let voiceListening = false;
   let handsfree = false;
+  // Khi card đánh giá bật ghi âm ý kiến: ASR đổ transcript vào ĐÂY (ô ý kiến) thay vì gửi chat.
+  // (text, isFinal) => void; null = ASR chạy như bình thường (câu hỏi hội thoại).
+  let ratingNoteSink = null;
   let emptyTurns = 0; // rảnh tay: 2 lượt liên tiếp không nghe thấy gì → tự tắt
   let BASE_URL = "";
   const $micBtn = document.getElementById("mic-btn");
@@ -2694,7 +4361,7 @@
   // ── Chế độ tiếng Mông (Hmong) — BE quyết định qua conv.lang; sidebar chỉ mirror ──
   // Switch CHỈ hiện khi: BE bật hmong (/voice/config.langs) VÀ tài khoản thuộc tỉnh Lai Châu.
   // Lựa chọn LƯU THEO MÁY QUẦY (chrome.storage tlnd_lang): phiên chat bị tạo mới (reload
-  // trang chủ DVC, hết 10 phút, "Trò chuyện mới") thì tự khôi phục lặng lẽ — trước đây
+  // trang chủ DVC, hết 20 phút, "Trò chuyện mới") thì tự khôi phục lặng lẽ — trước đây
   // trạng thái chỉ sống trong conversation nên reload là switch tắt.
   let voiceLang = "vi"; // "vi" | "hmong" — dùng cho ASR (asr-start) + fallback giọng đọc
   let voiceCfgLoaded = false; // chưa fetch xong /voice/config thì KHÔNG được reset switch
@@ -2854,6 +4521,21 @@
       return;
     }
     if (msg?.type !== "asr-event") return;
+    // Card đánh giá đang ghi âm ý kiến → đổ transcript vào ô ý kiến, KHÔNG gửi thành câu hội
+    // thoại (tách hẳn khỏi vòng rảnh tay để không kích hoạt gửi chat / auto-nghe lại).
+    if (ratingNoteSink) {
+      if (msg.event === "partial") ratingNoteSink(msg.text || "", false);
+      else if (msg.event === "final") { setMicUI(false); ratingNoteSink((msg.text || "").trim(), true); }
+      else if (msg.event === "state") {
+        if (msg.state === "listening") setMicUI(true, "🎤 Đang nghe ý kiến…");
+        else if (msg.state === "stopped") setMicUI(false);
+      } else if (msg.event === "error") {
+        setMicUI(false);
+        setStatus("⚠️ Không ghi được ý kiến — công dân gõ giúp em nhé.", true);
+        setTimeout(() => setStatus(""), 3000);
+      }
+      return;
+    }
     if (msg.event === "state") {
       if (msg.state === "listening") setMicUI(true, "🎤 Đang lắng nghe… công dân nói đi ạ");
       else if (msg.state === "stopped") {
@@ -2960,38 +4642,55 @@
   $form?.addEventListener("submit", (e) => { e.preventDefault(); submitText(); });
   document.getElementById("send-btn")?.addEventListener("click", submitText);
 
-  // ── Khởi động: journey còn hoạt động → khôi phục; không có/hết 10 phút → màn bắt đầu ──
+  // ── Khởi động: journey còn hoạt động → khôi phục; không có/hết 20 phút → màn bắt đầu ──
   // Chỉ chạy SAU khi đã đăng nhập; token chết giữa chừng đăng nhập lại thì
   // KHÔNG boot lại (khung chat + phiên đang dở giữ nguyên phía sau màn login).
+  // Quay về đúng trang chủ DVC = bắt đầu lượt công dân mới. Xóa cả conversation BE và
+  // con trỏ journey của tab; KHÔNG xóa cookie DVC vì đây không phải tín hiệu nộp thành công.
+  async function lamMoiVeTrangChuDVC(j) {
+    if (j?.conversation_id) {
+      api.conversationId = j.conversation_id;
+      await api.deleteConversation("dvc-home");
+    }
+    await clearJourney();
+    await writeCompletionLogoutState(null);
+    await writeActiveSplit(null);
+    showStartScreen();
+    console.log("[TLND] về trang chủ DVC → làm mới cuộc trò chuyện");
+  }
+
+  // Khung ĐẨY TRANG bị dựng lại ở mỗi lần điều hướng nên đọc được ?fresh=dvc-home.
+  // Khung BÊN thì sống xuyên điều hướng — không có lần dựng lại nào để đọc tham số
+  // đó, nên content.js báo bằng message. Thiếu đường này, công dân về trang chủ DVC
+  // ở chế độ khung bên vẫn dính nguyên hồ sơ của người trước.
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    if (EMBEDDED || msg?.action !== "dvcHomeReached") return;
+    if (Number(sender?.tab?.id) !== Number(TAB_ID)) return;
+    void (async () => {
+      const j = await loadJourney();
+      if (!j?.conversation_id) return;   // chưa có hồ sơ nào để làm mới
+      await lamMoiVeTrangChuDVC(j);
+    })();
+  });
+
   async function bootChat() {
     if (chatBootStarted) return;
     chatBootStarted = true;
+    // Chuyển trang dựng lại content script → nạp lại luật nhận nút nộp NGAY, không chờ hồ sơ mới.
+    void restoreSubmitWatch();
     try {
       const j = await loadJourney();
       let storedCompletionLogout = await readCompletionLogoutState();
-      if (START_FRESH_ON_DVC_HOME) {
-        // Quay về đúng trang chủ DVC = bắt đầu lượt công dân mới. Xóa cả conversation BE và
-        // con trỏ journey của tab; KHÔNG xóa cookie DVC vì đây không phải tín hiệu nộp thành công.
-        if (j?.conversation_id) {
-          api.conversationId = j.conversation_id;
-          await api.deleteConversation();
-        }
-        await clearJourney();
-        await writeCompletionLogoutState(null);
-        await writeActiveSplit(null);
-        showStartScreen();
-        console.log("[TLND] về trang chủ DVC → làm mới cuộc trò chuyện");
-        return;
-      }
+      if (START_FRESH_ON_DVC_HOME) { await lamMoiVeTrangChuDVC(j); return; }
       if (j?.conversation_id) {
         const activityAt = Number(j.last_activity_at || j.ts || 0);
         if (!activityAt || Date.now() - activityAt >= IDLE_TIMEOUT_MS) {
           api.conversationId = j.conversation_id;
-          await api.deleteConversation();
+          await api.deleteConversation("idle");
           await clearJourney();
           await writeCompletionLogoutState(null);
           showStartScreen();
-          console.log(`[TLND] phiên ${j.conversation_id} đã quá 10 phút → màn bắt đầu`);
+          console.log(`[TLND] phiên ${j.conversation_id} đã quá 20 phút → màn bắt đầu`);
           return;
         }
         const conv = await api.getConversation(j.conversation_id).catch(() => null);
@@ -3011,7 +4710,7 @@
           if (conv.state === "greet") {
             lastState = "greet";
             if (conv.last_reply) renderReply(conv.last_reply, {});
-            showProcedurePickerFromTop();
+            showProcedurePicker();
             setProgress(conv.progress);
             console.log(`[TLND] mở lại ở màn chào ${conv.conversation_id} → chào lại`);
             return;
@@ -3093,6 +4792,12 @@
   const $settingsScreen = document.getElementById("settings-screen");
   const $settingsBackBtn = document.getElementById("settings-back-btn");
   const $attachSplitSwitch = document.getElementById("attach-split-switch");
+  const $preferScanSwitch = document.getElementById("prefer-scan-switch");
+  const $attachModeMerge = document.getElementById("attach-mode-merge");
+  const $attachModeSplit = document.getElementById("attach-mode-split");
+  const $panelModePush = document.getElementById("panel-mode-push");
+  const $panelModeSide = document.getElementById("panel-mode-side");
+  const $panelModeNote = document.getElementById("panel-mode-note");
   const $settingsSaved = document.getElementById("settings-saved");
   const $accBtn = document.getElementById("acc-btn");
   const $accPop = document.getElementById("acc-pop");
@@ -3163,13 +4868,22 @@
   function renderAttachmentSettings() {
     $attachSplitSwitch?.classList.toggle("on", attachSplitDocuments);
     $attachSplitSwitch?.setAttribute("aria-checked", attachSplitDocuments ? "true" : "false");
+    $preferScanSwitch?.classList.toggle("on", preferScan);
+    $preferScanSwitch?.setAttribute("aria-checked", preferScan ? "true" : "false");
+    const split = attachMode === "split";
+    $attachModeMerge?.classList.toggle("on", !split);
+    $attachModeMerge?.setAttribute("aria-checked", split ? "false" : "true");
+    $attachModeSplit?.classList.toggle("on", split);
+    $attachModeSplit?.setAttribute("aria-checked", split ? "true" : "false");
   }
 
   function restoreAttachmentSettings() {
     return new Promise((resolve) => {
-      chrome.storage.local.get([ATTACH_SPLIT_DOCUMENTS_KEY], (res) => {
+      chrome.storage.local.get([ATTACH_SPLIT_DOCUMENTS_KEY, ATTACH_MODE_KEY, PREFER_SCAN_KEY], (res) => {
         if (!chrome.runtime.lastError) {
           attachSplitDocuments = res?.[ATTACH_SPLIT_DOCUMENTS_KEY] === true;
+          attachMode = res?.[ATTACH_MODE_KEY] === "split" ? "split" : "merge";
+          preferScan = res?.[PREFER_SCAN_KEY] === true;
         }
         renderAttachmentSettings();
         resolve();
@@ -3198,6 +4912,126 @@
       },
     );
   }
+
+  function savePreferScan(value) {
+    preferScan = value === true;
+    renderAttachmentSettings();
+    chrome.storage.local.set(
+      { [PREFER_SCAN_KEY]: preferScan },
+      () => {
+        if (chrome.runtime.lastError) {
+          if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+          return;
+        }
+        announceAttachmentSettingsSaved();
+      },
+    );
+  }
+
+  function saveAttachMode(value) {
+    attachMode = value === "split" ? "split" : "merge";
+    renderAttachmentSettings();
+    chrome.storage.local.set(
+      { [ATTACH_MODE_KEY]: attachMode },
+      () => {
+        if (chrome.runtime.lastError) {
+          if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+          return;
+        }
+        announceAttachmentSettingsSaved();
+      },
+    );
+  }
+
+  // ── Vị trí khung: đẩy trang ↔ khung bên trình duyệt ──
+  // Nguồn sự thật là lib/panelMode.js (nạp trước file này). Ở đây chỉ vẽ và lưu.
+  const PM = globalThis.__TLND_PANEL_MODE__ || null;
+  let panelMode = "push";
+
+  function renderPanelMode() {
+    if (!$panelModePush || !$panelModeSide) return;
+    const hoTro = !!PM && PM.hoTroKhungBen();
+    const ben = panelMode === "sidepanel";
+    $panelModePush.classList.toggle("on", !ben);
+    $panelModePush.setAttribute("aria-checked", ben ? "false" : "true");
+    $panelModeSide.classList.toggle("on", ben);
+    $panelModeSide.setAttribute("aria-checked", ben ? "true" : "false");
+    $panelModeSide.disabled = !hoTro;
+    if ($panelModeNote) {
+      $panelModeNote.hidden = hoTro;
+      if (!hoTro) {
+        $panelModeNote.textContent =
+          "Trình duyệt này chưa có khung bên (cần Chrome/Edge 114 trở lên). "
+          + "Trợ lý sẽ luôn dùng chế độ đẩy trang.";
+      }
+    }
+  }
+
+  async function restorePanelMode() {
+    if (!PM) return;
+    panelMode = await PM.cheDoHieuLuc();
+    renderPanelMode();
+  }
+
+  async function chuyenCheDo(value, daMoKhungBen) {
+    if (!PM) return;
+    const truoc = panelMode;
+    if (value === truoc) return;
+    panelMode = value;
+    renderPanelMode();
+    try {
+      await PM.ghiCheDo(value);
+    } catch (_) {
+      panelMode = truoc;
+      renderPanelMode();
+      if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+      return;
+    }
+    announceAttachmentSettingsSaved();
+    // background nghe storage.onChanged rồi đặt openPanelOnActionClick, đường sidebar
+    // cho từng tab, VÀ báo panelModeChanged cho mọi tab. Đường riêng dưới đây chỉ thêm
+    // moKhung cho đúng tab công dân vừa bấm — tab đó phải thấy khung mở ra ngay.
+    await sendToContent({ action: "panelModeChanged", mode: value, moKhung: value === "push" });
+    if (value === "sidepanel") {
+      // Khung đẩy trang (chính là cái đang chạy đoạn code này) sắp bị content.js gỡ.
+      if (EMBEDDED && !daMoKhungBen) {
+        setStatus("Đã chuyển sang khung bên. Bấm biểu tượng Trợ lý trên thanh công cụ để mở.", true);
+      }
+      return;
+    }
+    if (!EMBEDDED) {
+      // Đang Ở TRONG khung bên mà chọn đẩy trang: content.js vừa dựng khung trên
+      // trang, đóng khung bên này lại — để cả hai cùng sống là hai bản sidebar
+      // cùng thao tác trên một hồ sơ.
+      setTimeout(() => { try { window.close(); } catch (_) {} }, 150);
+    }
+  }
+
+  $panelModePush?.addEventListener("click", () => {
+    markActivity();
+    void chuyenCheDo("push", false);
+  });
+
+  $panelModeSide?.addEventListener("click", () => {
+    markActivity();
+    if (!PM || panelMode === "sidepanel" || $panelModeSide.disabled) return;
+    // sidePanel.open() phải nằm TRONG cú bấm: mọi await phía trước đều làm mất user
+    // gesture và Chrome từ chối thẳng. Vì thế mở trước, ghi cài đặt sau — ngược lại
+    // thứ tự thông thường, nhưng đây là ràng buộc của trình duyệt chứ không phải
+    // lựa chọn. Chrome < 116 không có open() → daMo=false và báo cách mở bằng tay.
+    let daMo = false;
+    const tab = Number(TAB_ID);
+    if (EMBEDDED && PM.hoTroMoNgay() && tab) {
+      try {
+        chrome.sidePanel
+          .setOptions({ tabId: tab, path: PM.duongSidebar(tab), enabled: true })
+          .catch(() => {});
+        chrome.sidePanel.open({ tabId: tab }).catch(() => {});
+        daMo = true;
+      } catch (_) { daMo = false; }
+    }
+    void chuyenCheDo("sidepanel", daMo);
+  });
 
   function openSettingsScreen() {
     if (!$settingsScreen || !$scrim?.hidden) return;
@@ -3239,14 +5073,33 @@
     else closeSettingsScreen();
   });
   $settingsBackBtn?.addEventListener("click", () => closeSettingsScreen());
+  $preferScanSwitch?.addEventListener("click", () => {
+    savePreferScan(!preferScan);
+  });
   $attachSplitSwitch?.addEventListener("click", () => {
     markActivity();
     saveAttachmentSettings(!attachSplitDocuments);
   });
+  $attachModeMerge?.addEventListener("click", () => {
+    markActivity();
+    saveAttachMode("merge");
+  });
+  $attachModeSplit?.addEventListener("click", () => {
+    markActivity();
+    saveAttachMode("split");
+  });
   chrome.storage?.onChanged?.addListener((changes, areaName) => {
-    if (areaName !== "local" || !changes[ATTACH_SPLIT_DOCUMENTS_KEY]) return;
-    attachSplitDocuments = changes[ATTACH_SPLIT_DOCUMENTS_KEY].newValue === true;
-    renderAttachmentSettings();
+    if (areaName !== "local") return;
+    let dirty = false;
+    if (changes[ATTACH_SPLIT_DOCUMENTS_KEY]) {
+      attachSplitDocuments = changes[ATTACH_SPLIT_DOCUMENTS_KEY].newValue === true;
+      dirty = true;
+    }
+    if (changes[ATTACH_MODE_KEY]) {
+      attachMode = changes[ATTACH_MODE_KEY].newValue === "split" ? "split" : "merge";
+      dirty = true;
+    }
+    if (dirty) renderAttachmentSettings();
   });
 
   function showLogin() {
@@ -3292,6 +5145,10 @@
     }
   });
   document.getElementById("logout-btn")?.addEventListener("click", async () => {
+    // Rời phiên → ngừng theo dõi máy quét + nâng mốc (không kéo lại giấy đã quét sau khi
+    // đăng nhập lại).
+    bumpScanWatermark();
+    disconnectScanAgent();
     await window.tlndAuth.logout();
     showLogin();
   });
@@ -3353,6 +5210,7 @@
 
   (async () => {
     await restoreAttachmentSettings();
+    await restorePanelMode();
     const st = await window.tlndAuth.load();
     if (st?.access) { renderAccount(); bootChat(); }
     else showLogin();

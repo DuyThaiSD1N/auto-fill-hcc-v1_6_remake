@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trợ lý người dân</title>
+  <title>Trợ lý nhân dân</title>
   <link rel="stylesheet" href="sidebar.css" />
 </head>
 <body class="start-mode">
+  <!-- Lớp phủ kéo-thả tệp — xem khối "Kéo-thả tệp" trong sidebar.js. Đặt TRƯỚC script: script chạy
+       lúc parse, phần tử nằm sau thì getElementById trả null và cả khối im lặng không chạy (lỗi thật
+       đã gặp ở autofill). -->
+  <div id="drop-overlay" class="drop-overlay" hidden>
+    <span class="drop-overlay-icon" aria-hidden="true">📥</span>
+    <span>Thả tệp vào đây để tải lên hồ sơ</span>
+  </div>
   <!-- Khung tổng: KHÔNG đặt class "bot" — trùng với .msg.bot của bubble (msg bot),
        selector .bot sẽ ép height 100dvh lên mọi bubble. -->
   <div class="tlnd-app">
@@ -16,10 +23,13 @@
         <div class="ava" id="bot-avatar"></div>
         <div class="ht">
           <div class="title-line">
-            <div class="t">Trợ lý người dân</div>
-            <span class="release-meta" aria-label="Phiên bản 1.2, phát hành ngày 1 tháng 9 năm 2026">
-              v1.2 · 01/09/2026
-            </span>
+            <div class="t">Trợ lý nhân dân</div>
+            <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
+                 extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
+                 Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
+            <span class="release-meta" id="release-meta" data-ngay="14/09/2026"></span>
+            <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
+            <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
           <div class="s">Hỗ trợ thủ tục hành chính công</div>
         </div>
@@ -45,6 +55,17 @@
       </div>
     </header>
 
+    <!-- Hộp xác nhận cập nhật: nạp lại extension bắt buộc tải lại trang để panel sống lại. -->
+    <div class="cap-nhat-xac-nhan" id="cap-nhat-xac-nhan" role="alertdialog" aria-labelledby="cap-nhat-tieu-de" hidden>
+      <div class="cap-nhat-tieu-de" id="cap-nhat-tieu-de"></div>
+      <div>Trang sẽ tải lại để nạp bản mới. Nội dung đang nhập trên trang mà chưa lưu có thể mất.</div>
+      <div class="cap-nhat-canh-bao" id="cap-nhat-canh-bao" hidden>⚠️ Trợ lý đang xử lý dở (tải tệp / gọi hệ thống) — nên bấm Để sau, chờ xong rồi cập nhật.</div>
+      <div class="cap-nhat-hang">
+        <button id="cap-nhat-de-sau" type="button" class="cap-nhat-phu">Để sau</button>
+        <button id="cap-nhat-ngay" type="button" class="cap-nhat-chinh">Cập nhật ngay</button>
+      </div>
+    </div>
+
     <!-- Chế độ tiếng Mông (Hmong) — CHỈ hiện với tài khoản tỉnh Lai Châu + BE bật hmong.
          Bật: bot hiển thị song ngữ Việt–Mông, đọc và nghe bằng tiếng Mông. -->
     <div class="lang-bar" id="lang-bar" hidden>
@@ -67,6 +88,30 @@
         </div>
       </div>
 
+      <!-- Khung hiển thị: đẩy trang (mặc định, chạy trên MỌI trình duyệt) hay khung bên
+           của chính trình duyệt. Ô khung bên bị khoá trên máy thiếu chrome.sidePanel
+           (Chrome/Edge < 114, Cốc Cốc cũ) — xem panelMode trong sidebar.js. -->
+      <div class="settings-card settings-card-col">
+        <div class="settings-copy">
+          <label id="panel-mode-label">Vị trí khung Trợ lý</label>
+          <p id="panel-mode-description">
+            Đẩy trang: khung nằm trong trang web, trang co lại nhường chỗ.
+            Khung bên: dùng khung bên sẵn có của trình duyệt, mở bằng biểu tượng Trợ lý
+            trên thanh công cụ.
+          </p>
+        </div>
+        <div class="settings-seg" id="panel-mode-group" role="radiogroup"
+             aria-labelledby="panel-mode-label" aria-describedby="panel-mode-description">
+          <button id="panel-mode-push" type="button" role="radio" aria-checked="true">
+            ↔️ Đẩy trang
+          </button>
+          <button id="panel-mode-side" type="button" role="radio" aria-checked="false">
+            🗔 Khung bên trình duyệt
+          </button>
+        </div>
+        <p class="settings-note" id="panel-mode-note" hidden></p>
+      </div>
+
       <div class="settings-card">
         <div class="settings-copy">
           <label id="attach-split-label" for="attach-split-switch">Tách giấy tờ trong file</label>
@@ -79,6 +124,43 @@
                 aria-describedby="attach-split-description">
           <span class="settings-switch-knob"></span>
         </button>
+      </div>
+
+      <!-- Ưu tiên Scan tại quầy: bật thì bước tải giấy TỰ vào Scan tại quầy (bỏ câu hỏi QR/Scan).
+           FE-only — xem preferScan trong sidebar.js. -->
+      <div class="settings-card">
+        <div class="settings-copy">
+          <label id="prefer-scan-label" for="prefer-scan-switch">Ưu tiên Scan tại quầy</label>
+          <p id="prefer-scan-description">
+            Khi tải giấy tờ, tự chọn Scan tại quầy — không hỏi QR/Scan nữa. Bỏ chọn thì vẫn hỏi như thường.
+          </p>
+        </div>
+        <button id="prefer-scan-switch" class="settings-switch" type="button" role="switch"
+                aria-checked="false" aria-labelledby="prefer-scan-label"
+                aria-describedby="prefer-scan-description">
+          <span class="settings-switch-knob"></span>
+        </button>
+      </div>
+
+      <!-- Cách đính kèm CHỨNG THỰC: chọn sẵn ở đây thay cho câu hỏi "1 hồ sơ hay nhiều
+           hồ sơ" giữa luồng (BE đọc attachment_preferences.attachMode; BE cũ vẫn hỏi chip). -->
+      <div class="settings-card settings-card-col">
+        <div class="settings-copy">
+          <label id="attach-mode-label">Đính kèm chứng thực</label>
+          <p id="attach-mode-description">
+            Chứng thực bản sao / chữ ký: đưa tất cả tài liệu vào một hồ sơ,
+            hoặc tách mỗi tài liệu một hồ sơ riêng.
+          </p>
+        </div>
+        <div class="settings-seg" id="attach-mode-group" role="radiogroup"
+             aria-labelledby="attach-mode-label" aria-describedby="attach-mode-description">
+          <button id="attach-mode-merge" type="button" role="radio" aria-checked="true">
+            📎 Trong 1 hồ sơ
+          </button>
+          <button id="attach-mode-split" type="button" role="radio" aria-checked="false">
+            🗂️ Mỗi tài liệu 1 hồ sơ
+          </button>
+        </div>
       </div>
       <p class="settings-note">Áp dụng từ lượt đính kèm tiếp theo.</p>
       <p class="settings-saved" id="settings-saved" role="status" aria-live="polite"></p>
@@ -116,6 +198,16 @@
     <!-- Trạng thái nhỏ (lỗi mạng, đang kết nối...) -->
     <div class="bot-status" id="status" hidden></div>
 
+    <!-- Trạng thái máy quét tại quầy (scan-bridge agent) — chỉ hiện khi có gì để nói.
+         Xem setScanAgentStatus trong sidebar.js. -->
+    <div class="scan-agent-status" id="scan-agent-status" hidden></div>
+    <!-- Tệp quét gần đây KHÔNG tự tải được (không chắc cùng một công dân, hoặc lô đã cũ) — cán bộ
+         chọn tay. Xem hienDanhSachGanDay trong sidebar.js. -->
+    <div class="scan-recent-list" id="scan-recent-list" hidden></div>
+    <!-- Lời mời dùng lại giấy tờ của hồ sơ vừa xong (cùng công dân làm thủ tục tiếp theo).
+         Xem hienLoiMoiHoSoTruoc trong sidebar.js. -->
+    <div class="prev-session-offer" id="prev-session-offer" hidden></div>
+
     <!-- Footer: camera + mic + ô nhập + gửi -->
     <footer class="bot-f">
       <button id="doc-btn" class="fi" type="button" title="Gửi ảnh giấy tờ (Bước 5)">📷</button>
@@ -152,6 +244,24 @@
     </section>
   </div>
 
+  <!-- Sheet "Tất cả thủ tục": trượt lên từ đáy, có ô tìm kiếm. Mở từ thanh "Xem tất cả" ở
+       màn chào; danh sách .svc-slist dựng lại mỗi lần mở (không double-inject). -->
+  <div class="svc-sheet-scrim" id="svc-sheet-scrim" hidden>
+    <section class="svc-sheet" role="dialog" aria-modal="true" aria-labelledby="svc-sheet-title">
+      <header class="svc-sheet-head">
+        <h2 id="svc-sheet-title">Tất cả thủ tục</h2>
+        <button class="svc-sheet-close" id="svc-sheet-close" type="button"
+                aria-label="Đóng danh sách thủ tục">✕</button>
+      </header>
+      <div class="svc-search">
+        <span class="svc-search-ic" aria-hidden="true">🔍</span>
+        <input id="svc-search-input" type="text" autocomplete="off" spellcheck="false"
+               placeholder="Tìm thủ tục… (gõ không dấu cũng được)" />
+      </div>
+      <div class="svc-slist" id="svc-slist" aria-live="polite"></div>
+    </section>
+  </div>
+
   <!-- Màn đăng nhập (bắt buộc): che toàn khung khi chưa có token. Phiên chat phía sau
        GIỮ NGUYÊN — token hết hạn giữa chừng chỉ cần đăng nhập lại là làm tiếp. -->
   <div class="login-scrim" id="login-scrim" hidden>
@@ -181,6 +291,13 @@
 
   <script src="vendor/pdf-lib.min.js"></script>
   <script src="lib/imageToPdf.js"></script>
+  <!-- Cầu nối máy quét tại quầy (scan-bridge agent) — phải nạp TRƯỚC sidebar.js (định nghĩa
+       window.ScanAgent mà sidebar.js dùng). Xem lib/scanAgent.js. -->
+  <script src="lib/scanAgent.js"></script>
+  <script src="lib/panelMode.js"></script>
+  <script src="lib/scanDongBo.js"></script>
+  <script src="lib/scanLo.js"></script>
+  <script src="lib/trangThai.js"></script>
   <script src="services/render.js"></script>
   <script src="services/tts.js"></script>
   <script src="api/config.js"></script>

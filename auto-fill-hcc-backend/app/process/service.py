@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable
 
 from app.config import settings
 from app.core.errors import AppError
+from app.pipelines._shared.area_remap import flag_unselectable_areas
 from app.pipelines._shared.formatting import normalize_ui_dates
 from app.process.schemas import ProcessReq
 from app.services import ocr
@@ -120,4 +121,7 @@ async def execute_process(prepared: PreparedProcess) -> dict:
     # không chuẩn hóa gì cả), nên siết một lần ở đây thay vì vá rải rác 90 mapper.
     if isinstance(result, dict):
         normalize_ui_dates(result.get("fields"))
+        # Cùng lý do: không giao cho extension một tên phường/xã không có trong danh mục hiện hành —
+        # nó sẽ dò lỏng trong dropdown rồi chọn nhầm một option khác mà vẫn tô xanh như đã đúng.
+        flag_unselectable_areas(result.get("fields"))
     return result

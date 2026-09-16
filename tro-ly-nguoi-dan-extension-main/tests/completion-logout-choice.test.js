@@ -41,7 +41,7 @@ test("Có logout, Không và Trò chuyện mới giữ phiên; nhóm nút có gi
   assert.match(sidebar, /returnToStart\("continue"\)/);
   assert.match(sidebar, /completionLogoutState \? "continue" : "manual"/);
   assert.match(sidebar, /shouldOpenProcedurePicker = reason === "continue"/);
-  assert.match(sidebar, /shouldOpenProcedurePicker[\s\S]*showChatScreen\(Date\.now\(\)\)[\s\S]*await ask\("", "system"\)[\s\S]*showProcedurePickerFromTop\(\)/);
+  assert.match(sidebar, /shouldOpenProcedurePicker[\s\S]*showChatScreen\(Date\.now\(\)\)[\s\S]*await ask\("", "system"\)[\s\S]*showProcedurePicker\(\)/);
   assert.match(css, /\.chips\.logout-choice \{ flex-wrap: nowrap;/);
   assert.match(css, /\.chips\.logout-choice \.chip/);
 });
