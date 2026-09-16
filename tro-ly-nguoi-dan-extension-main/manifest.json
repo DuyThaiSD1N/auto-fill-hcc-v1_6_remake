@@ -12,6 +12,8 @@
   "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData", "alarms", "idle", "sidePanel", "scripting"],
   "host_permissions": [
     "https://*.gov.vn/*",
+    "http://localhost:12005/*",
+    "ws://localhost:12005/*",
     "https://trolyhoso-hcc.tiengnoi.vn/*",
     "wss://trolyhoso-hcc.tiengnoi.vn/*",
     "https://trolyhoso-hcc.vnekyc.vn/*",

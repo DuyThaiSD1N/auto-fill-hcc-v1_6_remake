@@ -54,7 +54,12 @@ async function fillFormAngular(fields) {
     }
 
     const candidates = fieldCandidates(f);
-    const el = findFormControl(candidates);
+    let el = findFormControl(candidates);
+    // Các ô "Dân tộc khác" chỉ xuất hiện sau khi dropdown dân tộc chọn "Khác".
+    // Chờ Angular render thay vì kết luận không khớp ngay trong cùng vòng fill.
+    if (!el && ["DantocKhac", "MeDantocKhac", "ChaDantocKhac"].includes(f.name)) {
+      el = await waitFor(() => findFormControl(candidates), 4000, 50);
+    }
     if (!el) {
       if (f.comp === "select") {
         try {

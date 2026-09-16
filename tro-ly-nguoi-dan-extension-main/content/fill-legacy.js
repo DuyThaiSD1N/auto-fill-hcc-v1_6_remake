@@ -201,7 +201,9 @@ async function repairLostLegacyFields(fields, eligibleNames = null) {
     .filter((field) => field?.value != null && LEGACY_REPAIRABLE_COMPS.has(field.comp))
     // Không retry field đã thất bại ngay từ đầu (vd dropdown không có option): guard chỉ chữa
     // race condition của field đã từng điền thành công rồi bị web-component xóa.
-    .filter((field) => !eligibleNames || eligibleNames.has(field.name))
+    // Ô ghi tay "Khác" của dropdown (otherOf) render động: ô chỉ hiện sau khi dropdown đổi sang
+    // "Khác" nên lượt đầu hay hụt — cho retry cả khi pass đầu chưa tìm thấy ô nhập.
+    .filter((field) => !eligibleNames || eligibleNames.has(field.name) || !!field.otherOf)
     .filter((field) => !legacyFieldState(field).filled)
     // Dropdown/radio có thể render lại cả khối; sửa chúng trước rồi mới chốt input/date.
     .sort((left, right) => Number(LEGACY_DRIVER_COMPS.has(right.comp)) - Number(LEGACY_DRIVER_COMPS.has(left.comp)));
@@ -316,6 +318,20 @@ async function applyLegacyMirrorFields(fields, result, filledNames) {
   }
 }
 
+// Ô ghi tay đi kèm option "Khác" của một DROPDOWN (vd dân tộc "Khác" → ghi "Cill"). BE gửi
+// `otherOf` = name dropdown gốc. Tên ô ghi tay đổi theo eForm ("DanTocKhacBenNu", "DanTocBenNuKhac",
+// "DanTocBenNu_Khac"...) nên khớp theo quy tắc: bỏ chữ "khac" và gạch nối thì phải TRÙNG name dropdown.
+// Chỉ nhận ô có chữ "khac" trong name → không bao giờ ghi nhầm vào ô khác của form.
+function guessOtherTextOfSelect(field) {
+  const driverKey = String(field?.otherOf || "").toLowerCase().replace(/[_-]/g, "");
+  if (!driverKey) return null;
+  return Array.from(document.querySelectorAll("x-select-area[name], x-input[name], input[name]")).find((node) => {
+    const name = String(node.getAttribute("name") || "").toLowerCase().replace(/[_-]/g, "");
+    return name.includes("khac") && name.replace("khac", "") === driverKey;
+  }) || null;
+}
+
+
 async function fillForm(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
@@ -362,6 +378,28 @@ async function fillForm(fields) {
       }
       if (guessed) found = { el: guessed, usedName: f.name };
     }
+    // Ô ghi tay của option "Khác" trong dropdown (render sau khi chọn "Khác") — tìm theo dropdown gốc.
+    let compOverride = null;
+    if (!found.el && f.otherOf) {
+      let other = guessOtherTextOfSelect(f);
+      if (!other) {
+        await waitFor(() => {
+          other = guessOtherTextOfSelect(f);
+          return !!other;
+        }, 3000, 100);
+      }
+      if (other && other.tagName === "INPUT") {
+        setNativeValue(other, f.value, { typing: true, commit: true });
+        markFilled(other.parentElement || other);
+        result.filled++;
+        filledNames.add(f.name);
+        continue;
+      }
+      if (other) {
+        found = { el: other, usedName: other.getAttribute("name") || f.name };
+        if (other.tagName === "X-INPUT") compOverride = "x-input";
+      }
+    }
     const container = found.el;
     const usedName = found.usedName;
     if (!container) {
@@ -369,7 +407,10 @@ async function fillForm(fields) {
       console.warn(`[AutoFill] Không tìm thấy ${f.comp}[name="${f.name}"] (kể cả alias)`);
       continue;
     }
-    const ff = usedName === f.name ? f : { ...f, name: usedName };
+    const renamed = usedName === f.name ? f : { ...f, name: usedName };
+    // compOverride: ô tìm được qua dropdown gốc là x-input, không còn là comp gốc (x-select-area)
+    // mà BE gửi — không đổi comp thì filler chạy sai nhánh và trượt.
+    const ff = compOverride ? { ...renamed, comp: compOverride } : renamed;
     try {
       const ok = await fillLegacyComponent(container, ff, { birthRelationshipForm: isBirthRelationshipForm });
       // Việc đánh dấu xanh giờ do từng filler tự làm cho element thực sự nhận giá trị,
@@ -819,7 +860,11 @@ function hasDivorceDecisionAreaValue(data) {
       data.soBanAnQuyetDinhLyHon ||
       data.ngayCapBanAnQuyetDinhLyHon ||
       data.coQuanCapBanAnQuyetDinhLyHon ||
-      data.voChongHoTen  // vùng "đang có vợ/chồng" (=2) có thêm tên vợ/chồng
+      data.voChongHoTen ||  // vùng "đang có vợ/chồng" (=2) có thêm tên vợ/chồng
+      // vùng =5 ("Từ ngày… đến ngày… chưa ĐKKH với ai; hiện tại đang có vợ/chồng"): thêm hai mốc
+      // thời gian của khoảng cần xác nhận.
+      data.thoiDiemBatDau ||
+      data.thoiDiemKetThuc
     )
   );
 }
@@ -858,6 +903,32 @@ function selectAreaDateControls(container) {
     .filter((node) => !node.closest("x-input, x-input-number"));
   return dateInputs.map((node) => node.closest("div") || node.parentElement || node);
 }
+
+/**
+ * Tìm ô ngày theo NHÃN dài đứng cạnh nó, thay vì đếm thứ tự.
+ *
+ * Vùng =5 có ba ô ngày ("Ngày cấp giấy chứng nhận kết hôn", "Thời điểm bắt đầu…", "Thời điểm kết
+ * thúc…") nên đếm thứ tự lệch ngay: ô ngày cấp nuốt mất mốc bắt đầu, rồi field raw ngayCapGiayTo-*
+ * ghi đè lên nó, kết quả là mốc bắt đầu biến mất còn mốc kết thúc nhảy vào ô bắt đầu. Nhãn "thời
+ * điểm bắt đầu/kết thúc" là chuỗi dài, riêng biệt — khớp chắc hơn hẳn.
+ */
+function findLabelledDateControl(controls, keyword) {
+  const want = norm(keyword);
+  for (const control of controls) {
+    let node = control;
+    for (let up = 0; up < 4 && node; up += 1) {
+      node = node.parentElement;
+      const text = norm(node?.textContent || "");
+      if (!text) continue;
+      // Kiểm tra dừng phải chạy TRƯỚC: leo tới khối bọc cả vùng thì text đã gộp mọi nhãn, khớp ở
+      // đó sẽ trả về đúng ô đầu danh sách (ô "Ngày cấp giấy chứng nhận kết hôn") — sai hoàn toàn.
+      if (text.includes("thời điểm bắt đầu") && text.includes("thời điểm kết thúc")) break;
+      if (text.includes(want)) return control;
+    }
+  }
+  return null;
+}
+
 
 function setGenericDateControl(control, value) {
   const raw = String(value || "").trim();
@@ -900,12 +971,26 @@ function selectAreaPlainTextInput(container, name) {
   );
 }
 
-function fillPlainTextSelectArea(container, f) {
+// Ô nhập của vùng "Khác" (vd NhapDanTocBenNuKhac) được eForm để display:none cho tới khi dropdown đi
+// trước đổi sang "Khác". Ghi vào lúc ô còn ẩn thì eForm bật hiện ô là XÓA giá trị → ô trống viền đỏ.
+// Chờ ô hiện rồi mới ghi, và ghi lại nếu vừa ghi xong đã bị xóa.
+async function fillPlainTextSelectArea(container, f) {
   const text = String(f.value ?? "").trim();
   if (!text) return false;
-  const input = selectAreaPlainTextInput(container, f.name);
-  if (!input) return false;
-  setNativeValue(input, text, { typing: true, commit: true });
+  const liveInput = () => selectAreaPlainTextInput(container, f.name);
+  if (!liveInput()) return false;
+  await waitFor(() => {
+    const el = liveInput();
+    return el && isVisible(el);
+  }, 2500, 100);
+  let input = liveInput();
+  for (let attempt = 0; attempt < 3 && input; attempt++) {
+    setNativeValue(input, text, { typing: true, commit: true });
+    await sleep(250);
+    input = liveInput();
+    if (input && String(input.value || "").trim() === text) break;
+  }
+  if (!input || String(input.value || "").trim() !== text) return false;
   const display = input.parentElement?.querySelector(".hidden");
   if (display) display.textContent = text;
   markFilled(input.parentElement || input);
@@ -1013,6 +1098,33 @@ async function fillDivorceDecisionArea(container, data) {
   }
   if (data.coQuanCapBanAnQuyetDinhLyHon && !byName.agencyHandled) {
     any = setGenericTextControl(textControls.shift(), data.coQuanCapBanAnQuyetDinhLyHon) || any;
+  }
+
+  // Vùng =5 có THÊM hai ô ngày: "Thời điểm bắt đầu/kết thúc của khoảng thời gian mong muốn xác nhận
+  // chưa đăng ký kết hôn với ai". Tên DOM của hai ô này chưa được xác nhận trên cổng nên KHÔNG đoán
+  // tên — ưu tiên khớp theo NHÃN, hụt mới suy theo VỊ TRÍ.
+  // Ô "Ngày cấp giấy chứng nhận kết hôn" do các field raw ngayCapGiayTo-* điền ở tầng trên nên KHÔNG
+  // nằm trong `used` của vùng này — loại theo cả name lẫn id (eForm đặt tên bằng id ở nhiều ô).
+  const positional = dateControls.filter(
+    (el) => !el?.querySelector?.('input[name^="ngayCapGiayTo"], input[id^="ngayCapGiayTo"]')
+  );
+  const usedPeriod = new Set();
+  const takePeriodControl = (label) => {
+    const free = dateControls.filter((el) => !usedPeriod.has(el));
+    const byLabel = findLabelledDateControl(free, label);
+    if (byLabel) { usedPeriod.add(byLabel); return byLabel; }
+    const next = positional.find((el) => !usedPeriod.has(el));
+    if (next) usedPeriod.add(next);
+    return next || null;
+  };
+  for (const [label, value] of [
+    ["thời điểm bắt đầu", data.thoiDiemBatDau],
+    ["thời điểm kết thúc", data.thoiDiemKetThuc],
+  ]) {
+    if (!value) continue;
+    const control = takePeriodControl(label);
+    if (!control) break;
+    any = setGenericDateControl(control, value) || any;
   }
   return any;
 }
