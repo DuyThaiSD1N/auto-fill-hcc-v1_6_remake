@@ -1566,6 +1566,15 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ecc-735b-9e4f-6121df9b059d",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "cong-bo-co-so-du-dieu-kien-tiem-chung",
+      "code": "2.000655",
+      "label": "Công bố cơ sở đủ điều kiện tiêm chủng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-44df-7439-be21-a60e2bb7c9b8",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }

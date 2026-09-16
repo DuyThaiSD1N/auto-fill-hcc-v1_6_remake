@@ -202,6 +202,44 @@ def card_id_when_id_matches(card_id, khai_id):
     return card_id or khai_id
 
 
+# Số nhân thân LUÔN là một DÃY SỐ của con người: số định danh 12 chữ số (giấy cũ có thể ghi CMND
+# 9 chữ số), hộ chiếu thì chữ + 7 chữ số. Số của CHÍNH tờ giấy hộ tịch ("Số: 51/2020" in ở đầu giấy
+# khai sinh) không phải số nhân thân, nhưng LLM rất hay chép nó vào ô số định danh khi dòng "Số định
+# danh cá nhân" trên giấy bỏ trống — ô vẫn tô xanh nên cán bộ khó soát ra. Dấu "/" và độ dài là hai
+# bằng chứng tất định để loại: không có số thì để TRỐNG, không đoán.
+_PERSONAL_ID_MIN_DIGITS = {
+    "Nyc_SoDinhDanh": 9,
+    "ChuThe_SoDinhDanh": 9,
+    "HoTich_SoDinhDanh": 9,
+    "ToKhai_SoDinhDanh": 9,
+    "HoTich_SoGiayToTuyThan": 7,   # hộ chiếu: 1 chữ cái + 7 chữ số
+    "ToKhai_SoGiayToTuyThan": 7,
+    "TkNyc_SoGiayToTuyThan": 7,
+}
+_DOCUMENT_NUMBER_FIELDS = ("HoTich_So", "HoTich_QuyenSo", "ToKhai_So", "ToKhai_QuyenSo")
+
+
+def _looks_like_person_number(value, min_digits: int) -> bool:
+    raw = str(value or "").strip()
+    if not raw or "/" in raw:
+        return False
+    return len(_digits(raw)) >= min_digits
+
+
+def _drop_document_numbers_from_id_fields(values: dict) -> dict:
+    """Bỏ ô số nhân thân đang giữ số của tờ giấy (số đăng ký/quyển số) hoặc một chuỗi không phải số."""
+    document_numbers = {_fold(values.get(name)) for name in _DOCUMENT_NUMBER_FIELDS}
+    document_numbers.discard("")
+    cleaned = dict(values)
+    for name, min_digits in _PERSONAL_ID_MIN_DIGITS.items():
+        value = cleaned.get(name)
+        if value in (None, "", {}, []):
+            continue
+        if not _looks_like_person_number(value, min_digits) or _fold(value) in document_numbers:
+            cleaned.pop(name)
+    return cleaned
+
+
 def _copy_quantity(value) -> str:
     digits = _digits(value)
     return str(int(digits)) if digits and int(digits) > 0 else ""
@@ -912,8 +950,9 @@ def _registered_person_name(values: dict, event_type: str) -> str:
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
+    facts = _drop_document_numbers_from_id_fields(_by_name(fields))
     values = _prefer_requester_as_marriage_subject(
-        _rescue_subject_card(_rescue_requester_card(_apply_declaration_precedence(_by_name(fields)))),
+        _rescue_subject_card(_rescue_requester_card(_apply_declaration_precedence(facts))),
         options,
     )
     out: list[dict] = []

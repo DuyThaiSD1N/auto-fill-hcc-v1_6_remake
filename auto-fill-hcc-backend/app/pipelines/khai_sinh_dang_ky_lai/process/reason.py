@@ -269,6 +269,27 @@ def _self_name_consensus(requester_name, subject_name, documents: list[dict]) ->
     return ""
 
 
+def _self_card_name(requester_section: str, subject_section: str, documents: list[dict]) -> str:
+    """Người tự đi đăng ký lại cho mình: họ tên lấy theo CCCD của CHÍNH người đó.
+
+    Tờ khai viết tay hay bị OCR đọc lệch tên ("Tôn chủ Kim nhung" ↔ thẻ "TÔN NỮ KIM NHUNG"), lệch
+    quá một ký tự thì phép so tên lỏng không bắt được. SỐ ĐỊNH DANH trùng với tấm thẻ mới là bằng
+    chứng chắc chắn cùng người, và tên IN trên thẻ là tên chuẩn cho cả người yêu cầu lẫn người được
+    đăng ký lại. Nhiều thẻ khác tên cùng khớp số thì không chốt.
+    """
+    ids = {_role_id(requester_section), _role_id(subject_section)} - {""}
+    if not ids:
+        return ""
+    names = {
+        _fold(person["name"]): str(person["name"]).strip()
+        for document in _identity_units(documents)
+        if (person := _person_from_document(document))
+        and person.get("is_identity")
+        and person.get("id") in ids
+    }
+    return next(iter(names.values())) if len(names) == 1 else ""
+
+
 def _section(text: str, tag: str) -> str:
     raw = str(text or "")
     opening = re.search(rf"<{tag}>\s*", raw, flags=re.IGNORECASE)
@@ -1403,7 +1424,8 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     # Người yêu cầu và người được đăng ký lại là MỘT người thì chỉ được có MỘT họ tên; tờ khai
     # viết tay hay để OCR đọc lệch một trong hai dòng nên chốt lại bằng số tài liệu ghi đúng tên.
     self_name = (
-        _self_name_consensus(_role_name(requester), _role_name(sections.get("con") or ""), documents)
+        _self_card_name(requester, sections.get("con") or "", documents)
+        or _self_name_consensus(_role_name(requester), _role_name(sections.get("con") or ""), documents)
         if relation_value == "bản thân"
         else ""
     )

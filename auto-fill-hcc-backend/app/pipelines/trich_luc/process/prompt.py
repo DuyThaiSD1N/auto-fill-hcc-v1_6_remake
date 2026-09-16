@@ -147,6 +147,11 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   Dòng "Số: <mã>/<năm>" ở phần đầu, ngay trước hoặc sát tiêu đề "GIẤY KHAI SINH"/"TRÍCH LỤC..."
   chính là HoTich_So; giữ nguyên toàn bộ mã và năm. Không lấy số CCCD, số định danh, số mục,
   số trang hoặc số điện thoại làm HoTich_So.
+- HoTich_SoDinhDanh CHỈ là dãy SỐ ghi ở dòng "Số định danh cá nhân" của CHÍNH người được đăng ký
+  (12 chữ số; giấy hộ tịch cũ có thể ghi CMND 9 chữ số). Dòng "Số: <mã>/<năm>" ở đầu giấy là
+  HoTich_So: TUYỆT ĐỐI không dùng nó (hay quyển số, số hồ sơ, số trang) làm HoTich_SoDinhDanh hoặc
+  HoTich_SoGiayToTuyThan. Giấy in nhãn "Số định danh cá nhân:" nhưng BỎ TRỐNG (chưa cấp số cho trẻ)
+  thì BỎ HẲN HoTich_SoDinhDanh — để cổng trống, không suy ra từ bất kỳ số nào khác.
 - HoTich_QuyenSo chỉ trả khi OCR có nhãn "Quyển số"/"Quyển" VÀ có giá trị thật ngay sau nhãn.
   Nếu tờ khai ghi "Giấy khai sinh số: 123, quyển số ngày 01/02/1990" thì quyển số đang để TRỐNG:
   HoTich_So="123" và BỎ HoTich_QuyenSo. "Số bộ 123", "sổ bộ số 123", "bộ số 123", "số hiệu 123"

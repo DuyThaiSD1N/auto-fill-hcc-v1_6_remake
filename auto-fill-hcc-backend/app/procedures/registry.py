@@ -250,6 +250,8 @@ from app.pipelines.cap_ban_sao_van_bang_so_goc.attach import plan as cap_ban_sao
 from app.pipelines.cap_ban_sao_van_bang_so_goc.process import run as cap_ban_sao_van_bang_process
 from app.pipelines.chap_thuan_dau_noi_tam.attach import plan as chap_thuan_dau_noi_tam_attach
 from app.pipelines.chap_thuan_dau_noi_tam.process import run as chap_thuan_dau_noi_tam_process
+from app.pipelines.cong_bo_du_dk_tiem_chung.attach import plan as cong_bo_du_dk_tiem_chung_attach
+from app.pipelines.cong_bo_du_dk_tiem_chung.process import run as cong_bo_du_dk_tiem_chung_process
 
 PROCEDURES: list[dict] = [
     {
@@ -3428,6 +3430,38 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
     },
     {
+        "key": "cong-bo-co-so-du-dieu-kien-tiem-chung",
+        # Mã TTHC 2.000655, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Form.io trên hệ thống TTHC Bộ Y tế,
+        # engine fillFormStandard dom-* + attach attp-row (bảng 1 dòng Văn bản thông báo). Phần I chỉ bổ sung
+        # khi có CCCD khớp tài khoản đăng nhập (extension gửi formContext); Phần II theo tờ Thông báo.
+        "detect": {
+            "textIncludes": [
+                "công bố cơ sở đủ điều kiện tiêm chủng",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Công bố cơ sở đủ điều kiện tiêm chủng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Thông báo cơ sở đủ điều kiện tiêm chủng (mẫu Phụ lục NĐ 104/2016/NĐ-CP) — đã ký, đóng dấu. Có "
+            "thể tải cả file gộp Tờ trình + Danh sách cơ sở + Thông báo.\n"
+            "2. CCCD của NGƯỜI NỘP (tài khoản VNeID đang đăng nhập) — có thẻ này mới bổ sung được ngày sinh, "
+            "giới tính, ngày cấp ở mục Thông tin người nộp hồ sơ.\n"
+            "3. CCCD của NGƯỜI ĐỨNG ĐẦU CƠ SỞ ghi trên Thông báo (bỏ qua nếu trùng người nộp) — để điền ngày "
+            "sinh, giới tính, số CCCD ở mục Thông tin chủ hồ sơ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension bỏ tích 'Người nộp hồ sơ là chủ hồ sơ' và điền chủ hồ sơ theo Thông báo (người đứng "
+            "đầu, địa chỉ, điện thoại, email của cơ sở).\n"
+            "Bước đính kèm: Thông báo (kèm Tờ trình/Danh sách nếu có) được tick vào dòng 'Văn bản thông báo đủ "
+            "điều kiện tiêm chủng', loại '1 Bản chính' (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
         "key": "cap-lai-chung-chi-hanh-nghe-thu-y",
         # Mã TTHC 1.005319 — nộp tại SỞ Nông nghiệp và Môi trường (ke_khai_links đặt selectSo). Form.io,
         # engine fillFormStandard dom-* + attach attp-row (bảng 1 dòng Đơn 03.HNTY). Field-key nhân thân
@@ -4375,6 +4409,7 @@ _PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_process,
+    "cong-bo-co-so-du-dieu-kien-tiem-chung": cong_bo_du_dk_tiem_chung_process,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_process,
     "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_process,
     "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_process,
@@ -4511,6 +4546,7 @@ _ATTACH_PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_attach,
+    "cong-bo-co-so-du-dieu-kien-tiem-chung": cong_bo_du_dk_tiem_chung_attach,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_attach,
     "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_attach,
     "xoa-dang-ky-phuong-tien-thuy": xoa_dk_phuong_tien_thuy_attach,

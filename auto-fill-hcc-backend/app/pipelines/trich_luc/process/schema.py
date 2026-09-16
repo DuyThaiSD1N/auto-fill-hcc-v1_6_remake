@@ -102,7 +102,9 @@ FIELDS: list[dict] = [
     {"name": "HoTich_QuocTich", "desc": "Quốc tịch người được đăng ký nếu giấy tờ có ghi hoặc khác Việt Nam."},
     {"name": "HoTich_SoDinhDanh",
      "desc": "Số định danh cá nhân của người được đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; "
-             "không lấy từ TỜ KHAI."},
+             "không lấy từ TỜ KHAI. CHỈ là dãy SỐ ở dòng 'Số định danh cá nhân' (12 chữ số; giấy cũ "
+             "có thể ghi CMND 9 chữ số). Dòng 'Số: <mã>/<năm>' ở đầu giấy là HoTich_So, không phải "
+             "số định danh. Dòng 'Số định danh cá nhân' để trống thì BỎ HẲN field này."},
     {"name": "HoTich_LoaiGiayToTuyThan",
      "desc": "Loại giấy tờ tùy thân của người được đăng ký ghi trên CHÍNH giấy hộ tịch đính kèm; "
              "không lấy từ TỜ KHAI."},

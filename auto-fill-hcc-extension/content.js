@@ -4965,6 +4965,55 @@
     return isNaN(obj.getTime()) ? null : obj;
   }
 
+  // Chọn ngày trên LỊCH flatpickr như người dùng: mở lịch → gõ năm → chọn tháng → bấm ô ngày. Instance
+  // `el._flatpickr` do script TRANG gắn nên content script (isolated world) KHÔNG đọc được, còn inline script
+  // bị CSP cổng chặn; nhưng sự kiện DOM thì tới được listener của flatpickr → flatpickr tự setDate (điền đủ
+  // ô ẩn + ô hiển thị theo format riêng của form, bắn onChange cho Form.io). Mọi bước flatpickr xử lý đồng bộ.
+  // Trả false khi không mở được lịch / lịch không có dropdown tháng / ngày bị khoá → để fallback gõ chữ.
+  function pickFlatpickrCalendarDate(el, dateObj) {
+    if (!el || !dateObj) return false;
+    const container = el.closest?.(".formio-component-datetime") || el.closest?.(".formio-component") || standardMarkTarget(el);
+    const inputs = container ? Array.from(container.querySelectorAll("input")) : [el];
+    const visible = inputs.find((n) => n.type !== "hidden" && n.classList.contains("input")) ||
+      inputs.find((n) => n.type !== "hidden") || el;
+    if (visible.disabled) return false;
+
+    const openBefore = new Set(document.querySelectorAll(".flatpickr-calendar.open"));
+    visible.dispatchEvent(new FocusEvent("focus"));
+    visible.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    // CHỈ nhận lịch của CHÍNH ô này: lịch nằm trong component, hoặc lịch VỪA mở sau cú bấm. Lấy bừa
+    // ".flatpickr-calendar.open" đầu trang là bấm ngày vào lịch của ô KHÁC → ghi sai ngày sang ô đó.
+    const calendar = container?.querySelector(".flatpickr-calendar.open") ||
+      Array.from(document.querySelectorAll(".flatpickr-calendar.open")).find((c) => !openBefore.has(c));
+    if (!calendar) return false;
+
+    const close = () => document.body?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    const year = calendar.querySelector(".cur-year");
+    const month = calendar.querySelector("select.flatpickr-monthDropdown-months");
+    if (!year || !month) {
+      close();
+      return false;
+    }
+    setNativeValue(year, String(dateObj.getFullYear()), { change: false });
+    year.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
+    month.value = String(dateObj.getMonth());
+    month.dispatchEvent(new Event("change", { bubbles: true }));
+
+    const day = Array.from(calendar.querySelectorAll(".dayContainer .flatpickr-day")).find((node) =>
+      !node.classList.contains("prevMonthDay") &&
+      !node.classList.contains("nextMonthDay") &&
+      node.textContent.trim() === String(dateObj.getDate())
+    );
+    if (!day || day.classList.contains("flatpickr-disabled")) {
+      close();
+      return false;
+    }
+    day.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (calendar.classList.contains("open")) close();
+    // flatpickr ghi ngày vào ô ẩn gốc theo dateFormat của form (d/m/Y, ISO...) → chỉ cần thấy đúng năm.
+    return String(el.value || visible.value || "").includes(String(dateObj.getFullYear()));
+  }
+
   function fillStandardDate(el, value, opts = {}) {
     if (!el) return false;
     const text = String(value ?? "").trim();
@@ -4972,31 +5021,14 @@
     const group = standardMarkTarget(el);
 
     // Form.io datetime dùng flatpickr: set .value trực tiếp vào ô bị flatpickr GHI ĐÈ lại rỗng (→ báo
-    // "bắt buộc"). Cách ổn định DUY NHẤT là gọi instance flatpickr `setDate` (tự set cả ô ẩn + ô hiển thị
-    // theo dateFormat riêng của form, không quan trọng d/m/Y hay ISO, + bắn onChange cho Form.io/Angular).
-    // Instance có thể nằm trên input ẩn HOẶC ô hiển thị (altInput) trong cùng component → tìm rộng.
-    const dtContainer = el.closest?.(".formio-component-datetime") || el.closest?.(".formio-component") || group;
-    const fpHost = el._flatpickr
-      ? el
-      : (dtContainer && Array.from(dtContainer.querySelectorAll("input")).find((n) => n._flatpickr))
-      || (el.closest?.(".flatpickr-input")?._flatpickr && el.closest(".flatpickr-input"))
-      || null;
-    const fp = fpHost?._flatpickr;
+    // "bắt buộc"). Chọn trên lịch để chính flatpickr setDate — không phụ thuộc d/m/Y hay ISO của form.
     const dateObj = parseDmyDate(text);
-    if (fp && dateObj) {
-      // setDate GÁN giá trị (ô ẩn + ô hiển thị) TRƯỚC khi bắn onChange. Nếu onChange của TRANG lỗi sẵn
-      // (vd cổng này custom-function "thongTinChung" throw liên tục) thì exception xảy ra SAU khi giá trị
-      // đã set → vẫn coi là THÀNH CÔNG, KHÔNG rơi xuống gõ text (gõ dd/mm/yyyy vào ô format Y-m-d sẽ sai).
-      try {
-        fp.setDate(dateObj, true);   // triggerChange=true
-      } catch (e) {
-        console.warn("[AutoFill-STD] flatpickr.setDate onChange trang lỗi (giá trị vẫn được set):", e);
-      }
+    if (dateObj && el.classList?.contains("flatpickr-input") && pickFlatpickrCalendarDate(el, dateObj)) {
       markFilled(group);
       return true;
     }
 
-    // Không lấy được instance flatpickr → fallback GÕ giá trị. Định dạng theo LOẠI ô (BE báo qua opts.iso):
+    // Không chọn được trên lịch → fallback GÕ giá trị. Định dạng theo LOẠI ô (BE báo qua opts.iso):
     // - opts.iso=true (ô datetime lưu ISO "Y-m-dTH:i:S", vd tuNgay/denNgay): set ISO + hiển thị "Y-m-d
     //   12:00 AM" (giờ mặc định 00:00). KHÔNG gõ dd/mm/yyyy (ô format Y-m-d sẽ parse sai → 2008-08-26).
     // - mặc định (ô lưu dd/MM/yyyy, vd birthday/identityDate): gõ dd/mm/yyyy như cũ.
@@ -6596,16 +6628,14 @@
           }
         } else if (f.comp === "dom-date" || f.comp === "dom-datetime") {
           const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);
-          // Ô flatpickr trong panel render ĐỘNG: instance _flatpickr gắn TRỄ (có thể ở input ẩn HOẶC ô
-          // hiển thị trong cùng component) → chờ đến khi có instance để dùng setDate (điền đủ ẩn+hiển thị,
-          // format-agnostic). Nếu chờ theo mỗi el._flatpickr sẽ hụt vì instance nằm ở ô khác → dò RỘNG.
+          // Ô flatpickr trong panel render ĐỘNG: lịch (.flatpickr-calendar) dựng TRỄ sau input → chờ lịch có
+          // trong DOM rồi mới chọn ngày trên lịch (xem pickFlatpickrCalendarDate).
           if (el && el.classList?.contains("flatpickr-input")) {
-            const dc = el.closest(".formio-component-datetime") || el.closest(".formio-component");
-            const hasFp = () => el._flatpickr || (dc && Array.from(dc.querySelectorAll("input")).some((n) => n._flatpickr));
-            if (!hasFp()) await waitFor(hasFp, 1500, 80);
+            const hasCalendar = () => !!document.querySelector(".flatpickr-calendar");
+            if (!hasCalendar()) await waitFor(hasCalendar, 1500, 80);
           }
           // dom-datetime: ô lưu ISO có giờ (vd tuNgay/denNgay) → fallback set ISO 00:00:00; dom-date: ô
-          // dd/MM/yyyy (vd birthday) → fallback gõ dd/mm/yyyy. setDate (khi có instance) đúng cho cả hai.
+          // dd/MM/yyyy (vd birthday) → fallback gõ dd/mm/yyyy. Chọn trên lịch đúng cho cả hai.
           ok = fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
         } else if (f.comp === "dom-input" || f.comp === "raw") {
           const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);

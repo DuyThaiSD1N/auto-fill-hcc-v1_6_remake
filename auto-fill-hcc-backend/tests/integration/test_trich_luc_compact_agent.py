@@ -239,6 +239,42 @@ def test_trich_luc_birth_certificate_with_only_personal_id_does_not_invent_id_do
         assert name not in result
 
 
+def test_trich_luc_does_not_fill_personal_id_with_certificate_number():
+    """Giấy khai sinh cũ: dòng "Số định danh cá nhân" bỏ trống, LLM chép "Số: 51/2020" ở đầu giấy."""
+    source_fields = [
+        {"name": "HoTich_LoaiSuKien", "value": "birth"},
+        {"name": "HoTich_TenGiayTo", "value": "Giấy khai sinh"},
+        {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "ĐÀM BẢO KHANG"},
+        {"name": "HoTich_NgaySinh", "value": "02/06/2020"},
+        {"name": "HoTich_SoDinhDanh", "value": "51/2020"},
+        {"name": "HoTich_So", "value": "51/2020"},
+        {"name": "HoTich_NgayDangKy", "value": "10/06/2020"},
+    ]
+
+    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
+
+    assert "NDK_SoDinhDanh" not in result
+    assert "NDK_SoGiayToTuyThan" not in result
+    assert "NDK_LoaiGiayToTuyThan" not in result
+    # Số của tờ giấy vẫn về đúng ô hồ sơ đăng ký trước đây.
+    assert result["HoSo_So"] == "51/2020"
+    assert result["NDK_HoVaTen"] == "ĐÀM BẢO KHANG"
+
+
+def test_trich_luc_keeps_old_cmnd_as_personal_id():
+    """Giấy hộ tịch cũ ghi CMND 9 chữ số ở ô số định danh: vẫn là số của con người, không được loại."""
+    source_fields = [
+        {"name": "HoTich_LoaiSuKien", "value": "marriage"},
+        {"name": "HoTich_HoTenNguoiDuocDangKy", "value": "NGƯỜI ĐƯỢC CẤP"},
+        {"name": "HoTich_SoDinhDanh", "value": "221373946"},
+        {"name": "HoTich_So", "value": "51/2020"},
+    ]
+
+    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
+
+    assert result["NDK_SoDinhDanh"] == "221373946"
+
+
 def test_trich_luc_subject_card_identity_has_priority_over_declaration_identity():
     source_fields = [
         {"name": "HoTich_LoaiSuKien", "value": "birth"},

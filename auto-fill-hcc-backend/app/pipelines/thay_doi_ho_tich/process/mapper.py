@@ -715,7 +715,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("ntdNoiCuTru_TrongNuoc", residence)
 
     # ----- Mục III: nội dung đề nghị. -----
-    add("viecDangKy", _viec_dang_ky(values))
+    # Hồ sơ không có tờ khai (chỉ giấy hộ tịch + CCCD) thì không đọc được loại việc; trường hợp
+    # này gần như luôn là cải chính giấy hộ tịch cho khớp giấy tờ tùy thân → mặc định "Cải chính".
+    viec_dang_ky = _viec_dang_ky(values)
+    add("viecDangKy", viec_dang_ky or "Cải chính", default=not viec_dang_ky)
     add("nghiepVuDK", _NGHIEP_VU.get(event))
     add("soDangKyHSGoc", values.get("HoSo_So"))
     # Quyển số chỉ điền khi giấy tờ ghi rõ; không suy ra từ số đăng ký.

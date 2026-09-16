@@ -27,6 +27,15 @@ def test_defaults_yellow_always_present():
     assert out["nycNoiCuTru_TrongNuoc"]["default"] is True
     assert "CapBanSao" not in out
     assert "SoLuong" not in out
+    # Không có tờ khai → việc đăng ký mặc định "Cải chính" (viền vàng).
+    assert out["viecDangKy"]["value"] == "Cải chính"
+    assert out["viecDangKy"]["default"] is True
+
+
+def test_viec_dang_ky_from_declaration_not_default():
+    out = _by_name(mapper.enrich(_fields({"ViecDangKy": "Thay đổi"})))
+    assert out["viecDangKy"]["value"] == "Thay đổi"
+    assert "default" not in out["viecDangKy"]
 
 
 def test_birth_subject_is_child_no_identity_doc_block():
