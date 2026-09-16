@@ -46,6 +46,10 @@ from app.pipelines.cap_nuoc_sach.process import run as cap_nuoc_sach_process
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
+from app.pipelines.cap_GCN_nhan_chuyen_nhuong.attach import plan as cap_gcn_nhan_chuyen_nhuong_attach
+from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process import run as cap_gcn_nhan_chuyen_nhuong_process
+from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.attach import plan as dang_ky_quyen_su_dung_dat_lao_cai_attach
+from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.process import run as dang_ky_quyen_su_dung_dat_lao_cai_process
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
 from app.pipelines.thanh_lap_ctcp.process import run as thanh_lap_ctcp_process
 from app.pipelines.thanh_lap_ctcp.attach import plan as thanh_lap_ctcp_attach
@@ -2676,6 +2680,82 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — engine dom-* chuẩn, khớp ô
+        # theo name CongDan_*/ChuHoSo_*. Map bước 2 "Thông tin người nộp" + đính kèm bảng Thành phần hồ sơ
+        # (fixed-slot theo nhánh a/b — attach/catalog.py); eForm Mẫu 24 chưa có DOM nên chưa điền. Key trùng
+        # mục ke_khai_links để popup tự
+        # nhận cả trang chi tiết thủ tục trên Cổng DVC quốc gia.
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": [
+                "cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng "
+                "trong dự án bất động sản",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với "
+            "đất cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng "
+            "trong dự án bất động sản"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24).\n"
+            "2. Hợp đồng chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở/công trình đã công chứng.\n"
+            "3. CCCD/thẻ căn cước của người nhận chuyển nhượng (chủ hồ sơ) và của người nộp hồ sơ.\n"
+            "4. Nếu có: Giấy chứng nhận của dự án, biên bản bàn giao/kiểm tra hiện trạng, biên bản nghiệm thu.\n"
+            "Trợ lý điền bước Thông tin người nộp và Thông tin chủ hồ sơ; hai vợ chồng cùng nhận chuyển "
+            "nhượng thì điền theo người đứng tên đầu trên Đơn.\n"
+            "Thành phần hồ sơ: tự tích + đính kèm vào nhánh b) (người nhận chuyển nhượng tự nộp), hoặc nhánh "
+            "a) khi chủ đầu tư nộp; GCN của chủ đầu tư được đính kèm cả dòng Sơ đồ tài sản. CCCD không có "
+            "dòng riêng nên không đính kèm."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-dat-dai-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
+        # với 1.115667 (engine dom-*), đính kèm fixed-slot theo nhánh a/b + "Giấy tờ khác" (attach/catalog.py).
+        # Cụm "dồn điền" cũng có ở bản Đà Nẵng/Ninh Bình/Bắc Ninh → urlScope khóa host Lào Cai. Trang 1.115667
+        # không chứa cụm này và ngược lại. Key trùng mục ke_khai_links (1.115668).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các "
+            "trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; "
+            "chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn "
+            "bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng "
+            "đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn "
+            "bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; chuyển "
+            "nhượng quyền khai thác khoáng sản"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24).\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp.\n"
+            "3. Hợp đồng/văn bản chuyển quyền (chuyển nhượng, mua bán tài sản đấu giá, thừa kế, tặng cho, góp "
+            "vốn) đã công chứng.\n"
+            "4. Nếu có: Giấy ủy quyền, GCN đăng ký doanh nghiệp (chủ hồ sơ là tổ chức), hóa đơn, tờ khai thuế.\n"
+            "5. CCCD của chủ hồ sơ (cá nhân) và của người nộp hồ sơ.\n"
+            "Chủ hồ sơ = bên NHẬN quyền đứng tên Đơn (cá nhân hoặc tổ chức). Người nộp: chỉ bổ sung nhân thân "
+            "từ CCCD của chính người nộp; số điện thoại/email trên Đơn điền cho chủ hồ sơ.\n"
+            "Thành phần hồ sơ: tự tích + đính kèm theo dòng nhánh a) (hoặc b) khi tặng cho QSDĐ cho Nhà nước/"
+            "cộng đồng); Giấy ủy quyền + GCN ĐKDN vào dòng 'Văn bản về việc đại diện'; hóa đơn, tờ khai thuế, "
+            "giấy tờ khác vào 'Thành phần hồ sơ khác'. CCCD không đính kèm."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -4385,6 +4465,8 @@ _PIPELINE = {
     "dieu-chinh-dat-dai": dieu_chinh_dat_dai_process,
     "dang-ky-dat-dai-lan-dau": dang_ky_dat_dai_process,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_process,
+    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
+    "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
@@ -4446,6 +4528,8 @@ _PIPELINE = {
 _ATTACH_PIPELINE = {
     "cap-ban-sao-so-goc": cap_ban_sao_so_goc_attach,
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_attach,
+    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_attach,
+    "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,

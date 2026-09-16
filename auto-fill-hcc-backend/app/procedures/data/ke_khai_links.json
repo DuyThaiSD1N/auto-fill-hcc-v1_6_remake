@@ -1575,6 +1575,56 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "giao-dat-cho-thue-dat-lao-cai",
+      "code": "1.115650",
+      "label": "Lào Cai - Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất và trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f44ba-ee77-70dc-aa57-c9fefb1f91e0",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-quyet-dinh-giao-dat-cho-thue-dat-lao-cai",
+      "code": "1.115652",
+      "label": "Lào Cai - Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f44dc-7945-77c8-94b3-ccfd97844c37",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai",
+      "code": "1.115667",
+      "label": "Lào Cai - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng trong dự án bất động sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f49f4-7bd3-734d-9a21-3459aaa8d6f7",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-dat-dai-lao-cai",
+      "code": "1.115668",
+      "label": "Lào Cai - Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm; chuyển nhượng quyền khai thác khoáng sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f49f7-b529-757c-ab2c-e6bfa0e5ce00",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chuyen-muc-dich-su-dung-dat-lao-cai",
+      "code": "1.115651",
+      "label": "Lào Cai - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư đối với trường hợp quy định tại khoản 1 Điều 175 Luật Đất đai năm 2024",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f44d9-18fe-757d-a5bb-d49cd5d653c3",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }

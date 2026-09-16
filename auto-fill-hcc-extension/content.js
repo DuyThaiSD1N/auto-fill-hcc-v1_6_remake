@@ -3589,7 +3589,84 @@
     return true;
   }
 
+  // Bảng thành phần chia NHÁNH ("a) Đối với trường hợp…", "b) Đối với trường hợp…", vd Lào Cai 1.115667):
+  // các nhánh lặp lại cùng tên giấy tờ → chỉ giữ input thuộc các dòng nằm giữa tiêu đề nhánh của item và
+  // tiêu đề nhánh kế tiếp. Không thấy tiêu đề → rỗng (không đoán sang nhánh khác).
+  const FIXED_SLOT_SECTION_RE = /(^|\s)[a-z]\) doi voi truong hop/;
+
+  function fixedSlotSectionInputs(inputs, sectionHeader) {
+    const header = foldChoiceText(sectionHeader);
+    const rows = Array.from(document.querySelectorAll("tr"));
+    // Lấy dòng tiêu đề TRONG CÙNG (text ngắn nhất): bảng lồng trong <tr> layout thì dòng ngoài cũng chứa header.
+    let start = -1;
+    rows.forEach((row, i) => {
+      const text = foldChoiceText(nodeText(row));
+      if (text.includes(header) && (start < 0 || text.length < foldChoiceText(nodeText(rows[start])).length)) start = i;
+    });
+    if (start < 0) return [];
+    let end = rows.length;
+    for (let i = start + 1; i < rows.length; i++) {
+      if (FIXED_SLOT_SECTION_RE.test(foldChoiceText(nodeText(rows[i])))) {
+        end = i;
+        break;
+      }
+    }
+    const sectionRows = new Set(rows.slice(start + 1, end));
+    return inputs.filter((el) => sectionRows.has(el.closest("tr")));
+  }
+
+  // Tích checkbox chọn giấy tờ của dòng (cổng iGate VNPT bọc bằng iCheck: input ẩn, click vào lớp phủ).
+  async function tickFixedSlotRow(row) {
+    const cb = row?.querySelector?.('input[type="checkbox"]');
+    if (!cb || cb.checked) return;
+    const helper = cb.parentElement?.querySelector?.("ins.iCheck-helper");
+    clickLikeUser(helper || cb.closest("label") || cb);
+    await sleep(150);
+    if (!cb.checked) {
+      cb.checked = true;
+      cb.dispatchEvent(new Event("click", { bubbles: true }));
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+      if (helper) cb.parentElement.classList.add("checked");
+      await sleep(100);
+    }
+  }
+
+  // Dự phòng: khoanh nhánh trên CHÍNH danh sách dòng thành phần mà findAttachmentRows() nhận ra (cùng nguồn với
+  // attachmentContext gửi BE), khớp tên dòng theo từ khóa rồi lấy input file bất kỳ trong dòng.
+  function findSectionAttachmentRow(item) {
+    const header = foldChoiceText(item.sectionHeader);
+    const keywords = (item.slotKeywords || []).map(foldChoiceText).filter(Boolean);
+    const rows = findAttachmentRows();
+    const names = rows.map((row) => foldChoiceText(attachmentComponentName(row)));
+    const start = names.findIndex((name) => name.includes(header));
+    if (start < 0 || !keywords.length) return null;
+    for (let i = start + 1; i < rows.length; i++) {
+      if (FIXED_SLOT_SECTION_RE.test(names[i])) break;
+      if (keywords.some((kw) => names[i].includes(kw))) return rows[i];
+    }
+    return null;
+  }
+
   function findFixedSlotInput(item, usedInputs) {
+    if (item.sectionHeader) {
+      const scoped = fixedSlotSectionInputs(fixedSlotUploadInputs(), item.sectionHeader)
+        .filter((el) => !usedInputs.has(el));
+      const keywords = (item.slotKeywords || []).map(foldChoiceText).filter(Boolean);
+      if (!keywords.length) return null;
+      const byScope = scoped.find((el) => keywords.some((kw) => fixedSlotRowText(el).includes(kw)));
+      if (byScope) return byScope;
+      const row = findSectionAttachmentRow(item);
+      const rowInputs = row ? Array.from(row.querySelectorAll('input[type="file"]')) : [];
+      const input = rowInputs.find((el) => !usedInputs.has(el)) || null;
+      console.log("[AutoFill-FixedSlot] tra ô theo nhánh", {
+        slot: item.slotName,
+        scopedInputs: scoped.length,
+        rowFound: !!row,
+        rowInputs: rowInputs.length,
+        rowHtml: row && !input ? row.outerHTML.slice(0, 4000) : undefined,
+      });
+      return input;
+    }
     const inputs = fixedSlotUploadInputs();
     const free = inputs.filter((el) => !usedInputs.has(el));
     const keywords = FIXED_SLOT_KEYWORDS[item.slotKey] || [];
@@ -3665,8 +3742,13 @@
       return { error: `Không tìm thấy input file Giấy tờ khác cho "${componentName}".`, fileNames: [] };
     }
     const file = dataUrlToFile(payloadFile, planItem.documentName || componentName);
-    await chooseBootstrapFileOptionForInput(input);
-    const ok = setFilesOnInput(input, [file], { assumeConsumed: true });
+    // GÁN THẲNG trước: trên cổng iGate VNPT (Lai Châu/Lào Cai) bấm option "Chọn tệp tin" MỞ HỘP THOẠI FILE
+    // của hệ điều hành (chặn UI). Chỉ bấm khi gán hụt, và không bao giờ bấm với bảng chia nhánh.
+    let ok = setFilesOnInput(input, [file], { assumeConsumed: true });
+    if (!ok && !planItem.noChooserClick) {
+      await chooseBootstrapFileOptionForInput(input);
+      ok = setFilesOnInput(input, [file], { assumeConsumed: true });
+    }
     await sleep(500);
     markAttachmentResult(row, ok);
     if (!ok) return { error: `Không gắn được file vào Giấy tờ khác "${componentName}".`, fileNames: [file.name] };
@@ -3757,6 +3839,12 @@
     const errors = [];
     const usedInputs = new Set();
     const usedTriggers = new Set();
+    const failedSlots = [];
+    const fail = (item, message) => {
+      errors.push(message);
+      const label = String(item.slotName || item.componentName || "");
+      failedSlots.push((label.match(/^[a-z]-\d+/) || [])[0] || label.slice(0, 40));
+    };
 
     const bySlot = new Map();
     attachments.forEach((item, i) => {
@@ -3774,13 +3862,21 @@
         .filter(Boolean)
         .map((payload) => dataUrlToFile(payload));
       if (!files.length) {
-        errors.push(`Không tìm thấy file cho ô "${slotLabel}".`);
+        fail(item, `Không tìm thấy file cho ô "${slotLabel}".`);
         continue;
       }
       const fileNames = files.map((f) => f.name);
 
       // (1) Ô upload trực tiếp: input ẩn cạnh .btn_upload (vd mai táng).
-      const input = findFixedSlotInput(item, usedInputs);
+      let input = findFixedSlotInput(item, usedInputs);
+      if (input && item.tickRow) {
+        const row = input.closest("tr");
+        await tickFixedSlotRow(row);
+        // Tích có thể làm cổng dựng lại ô upload của dòng → lấy lại input còn gắn trong DOM.
+        if (!input.isConnected && row?.isConnected) {
+          input = Array.from(row.querySelectorAll('input[type="file"]')).find(isUploadSlotInput) || null;
+        }
+      }
       if (input) {
         if (!item.repeatUpload) usedInputs.add(input);
         console.log("[AutoFill-FixedSlot] attaching (input)", { slotIndex: item.slotIndex, slotName: slotLabel, fileNames });
@@ -3789,7 +3885,7 @@
         // (cổng chỉ nhận file sau khi mở dropdown, vd mai táng) mới click rồi thử lại.
         // assumeConsumed: form mai táng reset input.files sau khi đọc → lấy kết quả gán trước dispatch.
         let ok = setFilesOnInput(input, files, { assumeConsumed: true });
-        if (!ok) {
+        if (!ok && !item.sectionHeader && !item.noChooserClick) {
           await chooseBootstrapFileOptionForInput(input);
           ok = setFilesOnInput(input, files, { assumeConsumed: true });
         }
@@ -3797,7 +3893,14 @@
         const markTarget = input.closest("tr") || input.closest("td") || input.parentElement || input;
         markAttachmentResult(markTarget, ok);
         if (ok) attachedNames.push(...fileNames);
-        else errors.push(`Không gắn được file vào ô "${slotLabel}".`);
+        else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
+        continue;
+      }
+
+      // Dòng khoanh theo nhánh: không có input trong nhánh thì báo lỗi, KHÔNG rơi xuống menu (fallback
+      // "ô trống đầu tiên" sẽ đính nhầm sang nhánh khác).
+      if (item.sectionHeader) {
+        fail(item, `Không tìm thấy ô đính kèm "${slotLabel}".`);
         continue;
       }
 
@@ -3809,7 +3912,7 @@
         const menuInput = await openMenuGetFileInput(trigger);
         if (!menuInput) {
           await closeOpenMenu();
-          errors.push(`Không mở được ô đính kèm "${slotLabel}".`);
+          fail(item, `Không mở được ô đính kèm "${slotLabel}".`);
           continue;
         }
         const ok = setFilesOnInput(menuInput, files, { assumeConsumed: true });
@@ -3818,16 +3921,33 @@
         const markTarget = trigger.closest("tr") || trigger.closest("td") || trigger.parentElement || trigger;
         markAttachmentResult(markTarget, ok);
         if (ok) attachedNames.push(...fileNames);
-        else errors.push(`Không gắn được file vào ô "${slotLabel}".`);
+        else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
         continue;
       }
 
-      errors.push(`Không tìm thấy ô đính kèm "${slotLabel}".`);
+      fail(item, `Không tìm thấy ô đính kèm "${slotLabel}".`);
     }
 
     if (errors.length) {
+      console.warn("[AutoFill-FixedSlot] lỗi đính kèm", errors);
+      // Bảng chia nhánh: ô nào không đính được thì BỎ QUA, vẫn tính là xong nếu có ít nhất một tệp vào được.
+      if (attachments.some((it) => it.sectionHeader) && attachedNames.length) {
+        return {
+          ok: true,
+          method: "fixed-slot",
+          attached: attachedNames.length,
+          skipped: 0,
+          fileNames: attachedNames,
+          skippedNames: [],
+          failedNames: failedSlots.map((label) => `ô ${label}`),
+        };
+      }
       return {
-        error: errors.join("; "),
+        // Bảng chia nhánh (Lào Cai): nhiều lỗi nối dài > 160 ký tự sẽ bị friendlyError thay bằng câu chung
+        // → báo gọn các ô hỏng, chi tiết để console.
+        error: attachments.some((it) => it.sectionHeader)
+          ? `Chưa đính kèm được ô: ${failedSlots.join(", ")}.`
+          : errors.join("; "),
         attached: attachedNames.length,
         skipped: 0,
         fileNames: attachedNames,
@@ -4013,6 +4133,8 @@
     try {
       const attachedNames = [];
       const skippedNames = [];
+      // Tệp KHÔNG đính được nhưng kế hoạch cho phép bỏ qua (Lào Cai) — khác skippedNames (= đã có sẵn).
+      const failedNames = [];
       const errors = [];
       let errorCode = null;
       const allAttachments = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
@@ -4156,6 +4278,8 @@
       if (fixedItems.length) {
         const fixedResult = await attachFilesByFixedSlot(payloadFiles, fixedItems);
         attachedNames.push(...(fixedResult.fileNames || []));
+        skippedNames.push(...(fixedResult.skippedNames || []));
+        failedNames.push(...(fixedResult.failedNames || []));
         if (fixedResult.error) errors.push(fixedResult.error);
         if (!normalItems.length) {
           if (errors.length) {
@@ -4241,7 +4365,19 @@
           }
 
           if ((item.target === "new" || item.needsAddComponent) && hasOtherListFileAttachment()) {
-            const result = await attachOneFileToOtherListFile(payloadFile, item);
+            let result;
+            try {
+              result = await attachOneFileToOtherListFile(payloadFile, item);
+            } catch (e) {
+              console.warn("[AutoFill-AttachPlan] Giấy tờ khác lỗi:", e);
+              result = { error: `Không thêm được Giấy tờ khác "${item.documentName || payloadFile.name}".` };
+            }
+            if (result?.error && item.noChooserClick) {
+              // Kế hoạch cho phép bỏ qua (Lào Cai): không thử lại, không chặn các tệp khác.
+              console.warn("[AutoFill-AttachPlan] bỏ qua tệp Giấy tờ khác", result.error);
+              failedNames.push(item.documentName || payloadFile.name);
+              continue;
+            }
             if (result?.error) {
               lastErrorByIndex.set(i, result.error);
               deferred.push({ item, index: i });
@@ -4250,6 +4386,12 @@
             lastErrorByIndex.delete(i);
             attachedNames.push(...(result.fileNames || []));
             await sleep(400);
+            continue;
+          }
+          if ((item.target === "new" || item.needsAddComponent) && item.noChooserClick) {
+            // Cổng iGate VNPT không có luồng "ví giấy tờ": rơi xuống đó chỉ bấm lung tung (mở hộp thoại file).
+            console.warn("[AutoFill-AttachPlan] không có mục Giấy tờ khác → bỏ qua", item.documentName);
+            failedNames.push(item.documentName || payloadFile.name);
             continue;
           }
 
@@ -4317,9 +4459,20 @@
           skippedNames,
         };
       }
+      if (!attachedNames.length && failedNames.length) {
+        return {
+          error: "Không đính kèm được tệp nào vào bảng thành phần hồ sơ.",
+          attached: 0,
+          skipped: skippedNames.length,
+          fileNames: [],
+          skippedNames,
+          failedNames,
+        };
+      }
       return {
         ok: true,
         method: "wallet-plan",
+        failedNames,
         attached: attachedNames.length,
         skipped: skippedNames.length,
         fileNames: attachedNames,
@@ -4719,11 +4872,14 @@
         readNgReflectValue("ng-reflect-fullname") ||
         // Form eform (vd Xác nhận TTHN, Khai tử): người yêu cầu cổng điền sẵn ở HoVaTenC.
         readInputLikeValue(["HoVaTenC", "NYC_HoVaTen"]) ||
+        // Cổng iGate VNPT (Nth.FormBuilder, vd Lào Cai): khối người nộp prefill từ tài khoản định danh.
+        readInputLikeValue("CongDan_tenCongDan") ||
         readBacNinhAccountValue("hoTen"),
       applicantIdentityNumber:
         readInputLikeValue("data[identityNumber]") ||
         readNgReflectValue("ng-reflect-identity-number") ||
         readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]) ||
+        readInputLikeValue("CongDan_soCmnd") ||
         readBacNinhAccountValue("soDinhDanh"),
       ownerFullname: readInputLikeValue("data[ownerFullname]"),
       ownerIdentityNumber: readInputLikeValue("data[ownerIdentityNumber]"),

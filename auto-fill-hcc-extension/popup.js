@@ -3534,6 +3534,8 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   }
   if (skippedCount) msg += `\nBỏ qua ${skippedCount} file đã có trong hồ sơ.`;
   if (skippedNames) msg += `\nĐã có: ${skippedNames}`;
+  const failedNames = (attachRes?.failedNames || []).join(", ");
+  if (failedNames) msg += `\nKhông đính kèm được, đã bỏ qua: ${failedNames}`;
   // errors[] từ BE có thể chứa chi tiết kỹ thuật → chỉ log, KHÔNG nối thô vào thông báo thành công.
   if (planRes.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   // Đính chưa đủ (attachedCount < số nhóm) → cảnh báo (warn) thay vì báo thành công trọn vẹn.
@@ -4429,6 +4431,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-giay-phep-chat-ha-cay-xanh" ||
       cfg.key === "cap-ban-sao-van-bang-so-goc" ||
       cfg.key === "chap-thuan-dau-noi-tam" ||
+      // [Lào Cai] 1.115667: tài khoản prefill CongDan_tenCongDan/CongDan_soCmnd → mốc chọn CCCD người nộp.
+      cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
+      cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
