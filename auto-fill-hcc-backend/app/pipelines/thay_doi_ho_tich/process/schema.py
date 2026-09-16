@@ -15,8 +15,11 @@ _PERSON_SUB = {
     "NgaySinh": "Ngày sinh dd/mm/yyyy; nếu chỉ có năm thì trả yyyy. Ưu tiên CCCD khớp người này.",
     "GioiTinh": 'Giới tính: "Nam" hoặc "Nữ". Ưu tiên CCCD khớp người này.',
     "DanToc": "Chỉ trả dân tộc khi OCR ghi rõ cho đúng người này; không suy từ CCCD, họ tên, quê quán hay địa bàn.",
-    "QuocTich": "Quốc tịch nếu giấy tờ có ghi. CCCD khớp người này đã được upload thì BẮT BUỘC trả quốc tịch trên CCCD.",
-    "SoDinhDanh": "Số định danh cá nhân/CCCD nếu có. CCCD khớp người này đã được upload thì BẮT BUỘC trả.",
+    "QuocTich": "Quốc tịch nếu giấy tờ có ghi. Thứ tự ưu tiên: khối người được thay đổi trên TỜ KHAI "
+                "> CCCD khớp người này > giấy tờ hộ tịch gốc — KHÔNG để CCCD ghi đè quốc tịch đã khai.",
+    "SoDinhDanh": "Số định danh cá nhân/CCCD nếu có. CCCD khớp người này đã được upload thì BẮT BUỘC trả. "
+                  "Không có CCCD riêng (vd trẻ em) nhưng GIẤY KHAI SINH/trích lục hộ tịch nộp kèm có dòng "
+                  "'Số định danh cá nhân' của đúng người này (trùng họ tên + ngày sinh) thì cũng BẮT BUỘC trả.",
     "SoGiayTo": "Số giấy tờ tùy thân nếu khác số định danh.",
     "NgayCapGiayTo": "Ngày cấp giấy tờ tùy thân, dd/mm/yyyy. CCCD khớp người này đã được upload thì BẮT BUỘC trả.",
     "NoiCapGiayTo": "Nơi cấp/cơ quan cấp giấy tờ tùy thân. CCCD khớp người này đã được upload thì BẮT BUỘC trả.",

@@ -203,6 +203,9 @@ def _requester_card(values: dict, options: dict | None) -> dict | None:
 # src giả cho nhánh "chỉ có CCCD": g() sẽ chỉ đọc từ subject_card vì values.get("__the__ _X") rỗng.
 _CARD_ONLY_SRC = "__the__"
 
+# Ô mà LỜI KHAI trên tờ khai thắng CCCD đính kèm (xem g() trong enrich()).
+_DECLARATION_WINS_OVER_CARD = ("NoiCuTru", "QuocTich")
+
 
 def _subject_card_without_declaration(values: dict, options: dict | None) -> dict | None:
     """Hồ sơ CHỈ có CCCD (không tờ khai, không giấy hộ tịch): suy người có nội dung thay đổi.
@@ -352,6 +355,87 @@ def _evidence_documents(ocr_text: str) -> list[str]:
     return out
 
 
+# ---------------------------------------------------------------------------------------------
+# Đối chiếu chéo OCR: bù ô Mục II mà lời khai bỏ trống.
+# ---------------------------------------------------------------------------------------------
+# Tờ khai thay đổi/cải chính rất hay để TRỐNG dòng "Giấy tờ tùy thân" của người được thay đổi,
+# trong khi GIẤY KHAI SINH nộp kèm lại in rõ "Số định danh cá nhân" của chính người đó. Agent coi
+# giấy kèm là của NGƯỜI KHÁC (đúng với đa số hồ sơ) nên bỏ qua -> ô số định danh Mục II trống.
+# Ở đây đọc thẳng OCR để bù, nhưng chỉ nhận khối OCR chứng minh được là nói về ĐÚNG chủ thể.
+_SUBJECT_NAME_RE = re.compile(
+    r"ho,? chu dem,? ten\s*[:\-]\s*(.{3,60}?)\s*(?:ngay|gioi tinh|so dinh danh|dan toc|quoc tich)"
+)
+# Giấy hộ tịch liệt kê chủ thể trước rồi mới tới cha/mẹ/người đi khai; cắt ở đây để không nhặt
+# nhầm số định danh hay ngày sinh của người kế tiếp trong cùng tờ giấy.
+_NEXT_PERSON_RE = re.compile(r"ten nguoi (?:me|cha|di khai|yeu cau|ky)")
+_OCR_ID_RE = re.compile(r"so dinh danh(?: ca nhan)?\s*[:\-]?\s*(\d{9,12})")
+_OCR_DOB_RE = re.compile(r"ngay,? thang,? nam sinh\s*[:\-]?\s*(\d{1,2}/\d{1,2}/\d{4})")
+_OCR_GENDER_RE = re.compile(r"gioi tinh\s*[:\-]?\s*(nam|nu)")
+_GENDER_LABEL = {"nam": "Nam", "nu": "Nữ"}
+
+
+def _subject_ocr_window(block: str, anchors: str, subject_name: str) -> str | None:
+    """Đoạn OCR nói về chủ thể: mở đầu ở tên chủ thể, dừng trước khối người kế tiếp."""
+    starts = []
+    if subject_name and subject_name in block:
+        starts.append(block.index(subject_name))
+    for match in _SUBJECT_NAME_RE.finditer(block):
+        # Chiều NGƯỢC LẠI: tên IN trên giấy tờ phải nằm trong những gì ta đã biết về chủ thể.
+        # Nhờ vậy bắt được cả TÊN CŨ mà tờ khai chỉ nhắc ở dòng "Nội dung" — agent có lúc trả
+        # tên MỚI vào ChuThe_HoTen, lúc đó so xuôi theo tên chủ thể sẽ trượt sạch.
+        if match.group(1) and match.group(1) in anchors:
+            starts.append(match.start(1))
+    if not starts:
+        return None
+    window = block[min(starts):]
+    stop = _NEXT_PERSON_RE.search(window)
+    return window[: stop.start()] if stop else window
+
+
+def _subject_ocr_supplement(
+    values: dict, options: dict | None, subject_name, subject_dob
+) -> dict:
+    """Ô Mục II còn thiếu, đọc lại từ giấy tờ nộp kèm khi giấy đó nói về đúng chủ thể.
+
+    Chỉ nhận khi khối OCR mang HỌ TÊN chủ thể (kể cả tên cũ nêu trong dòng "Nội dung") và ngày
+    sinh KHÔNG mâu thuẫn — trùng tên khác ngày sinh là người khác. Số định danh đã biết là của
+    người khác trong hồ sơ (người yêu cầu, các CCCD đính kèm) cũng bị loại.
+
+    Chỉ bù field không dấu hoặc chuẩn hóa được (số định danh, ngày sinh, giới tính): OCR đã bị
+    bỏ dấu để so khớp nên không thể khôi phục "Mường"/"Ê Đê" cho dân tộc.
+    """
+    ocr_text = (options or {}).get("_ocrText")
+    if not ocr_text:
+        return {}
+    name = _fold(subject_name)
+    anchors = " ".join(part for part in (name, _fold(values.get("NoiDungThayDoi"))) if part)
+    if not anchors.strip():
+        return {}
+    other_ids = {_digits(card.get("SoDinhDanh")) for card in _identity_cards(values)}
+    other_ids.add(_digits(values.get("NguoiYeuCau_SoDinhDanh")))
+    other_ids.add(_digits(values.get("Cccd_SoDinhDanh")))
+    want_dob = _digits(subject_dob)
+
+    found: dict = {}
+    for block in str(ocr_text).split(_DOC_SEPARATOR):
+        folded = _fold(_DOC_HEADER_RE.sub("", block, count=1))
+        window = _subject_ocr_window(folded, anchors, name)
+        if not window:
+            continue
+        dob = _OCR_DOB_RE.search(window)
+        if dob and want_dob and _digits(dob.group(1)) != want_dob:
+            continue
+        identity = _OCR_ID_RE.search(window)
+        if identity and identity.group(1) not in other_ids:
+            found.setdefault("SoDinhDanh", identity.group(1))
+        if dob:
+            found.setdefault("NgaySinh", dob.group(1))
+        gender = _OCR_GENDER_RE.search(window)
+        if gender:
+            found.setdefault("GioiTinh", _GENDER_LABEL[gender.group(1)])
+    return found
+
+
 def _subject_from_evidence(values: dict, options: dict | None) -> str | None:
     """Chồng hay vợ là người được cải chính, suy từ GIẤY TỜ CHỨNG MINH nộp kèm.
 
@@ -499,14 +583,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         )
 
         def g(sub: str):
-            # Tờ khai là lời khai cư trú hiện tại của người được cải chính, nên ưu tiên hơn CCCD.
+            # Tờ khai là lời khai HIỆN TẠI của người được cải chính nên thắng CCCD ở hai ô:
+            #   * NoiCuTru — CCCD in địa chỉ lúc cấp thẻ, có thể đã cũ vài năm;
+            #   * QuocTich — thẻ CCCD Việt Nam luôn in "Việt Nam", nên lấy theo thẻ là tự tay xóa
+            #     quốc tịch nước ngoài mà người dân đã khai (người song tịch, người mới nhập tịch).
             if (
                 src == "ChuThe"
-                and sub == "NoiCuTru"
+                and sub in _DECLARATION_WINS_OVER_CARD
                 and has_correction_declaration
-                and values.get("ChuThe_NoiCuTru") not in (None, "", {}, [])
+                and values.get(f"ChuThe_{sub}") not in (None, "", {}, [])
             ):
-                return values["ChuThe_NoiCuTru"]
+                return values[f"ChuThe_{sub}"]
             if subject_card:
                 card_key = {
                     "HoTen": "HoTen",
@@ -534,7 +621,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         def cc(cccd_key):
             return values.get(cccd_key) if subject_is_cccd else None
 
-        ntd_so_dinh_danh = g("SoDinhDanh") or cc("Cccd_SoDinhDanh")
+        # Lời khai thiếu ô nào thì hỏi lại chính giấy tờ nộp kèm (khớp họ tên + ngày sinh).
+        ocr_extra = _subject_ocr_supplement(values, options, ntd_ho_ten, g("NgaySinh"))
+
+        ntd_so_dinh_danh = g("SoDinhDanh") or cc("Cccd_SoDinhDanh") or ocr_extra.get("SoDinhDanh")
 
     # ----- (5) Quan hệ với người có nội dung thay đổi: Bản thân / Khác. -----
     # Đối chiếu TẤT ĐỊNH số định danh Mục I ↔ Mục II là bằng chứng MẠNH NHẤT: cùng một số thì
@@ -750,8 +840,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # ----- Mục II: người có nội dung thay đổi. -----
     if src:
         add("ntdHoTen", upper_person_name(ntd_ho_ten))
-        add("ntdNgaySinh", g("NgaySinh"))
-        add("ntdGioiTinh", g("GioiTinh"))
+        add("ntdNgaySinh", g("NgaySinh") or ocr_extra.get("NgaySinh"))
+        add("ntdGioiTinh", g("GioiTinh") or ocr_extra.get("GioiTinh"))
         add("ntdDanToc", _normalize_dan_toc(g("DanToc")))
         add("ntdQuocTich", g("QuocTich") or "Việt Nam")
         add("ntdSoDDCN", ntd_so_dinh_danh)

@@ -295,3 +295,52 @@ def test_api_response_giu_khoa_phu_cua_field_cho_extension():
     field = resp["fields"][0]
     assert field["aliases"] == ["DanTocBenNuKhac"]
     assert field["otherOf"] == "DanTocBenNu"
+
+
+def _ui(values: dict) -> dict:
+    out = mapper.enrich([{"name": k, "value": v} for k, v in values.items()])
+    return {f["name"]: f["value"] for f in out}
+
+
+_KH_BASE = {
+    "CccdNam_HoTen": "LƯƠNG NGỌC HIẾU",
+    "CccdNam_SoDinhDanh": "015205010519",
+    "CccdNam_NoiCuTru_TrongNuoc": {
+        "quocGia": "Việt Nam", "tinh": "Yên Bái", "xa": "Tân Hương",
+        "diaChi": "Loan Thượng", "huyen": "Yên Bình",
+    },
+    "ToKhaiNam_HoTen": "Lương Ngọc Hiếu",
+}
+
+
+def test_declaration_address_read_as_three_levels_is_repaired():
+    """Tờ khai 2 cấp bị đọc lệch ("Việt Thành 3" là thôn) vẫn ra đúng Xã Trấn Yên."""
+    out = _ui({**_KH_BASE, "ToKhaiNam_NoiCuTru_TrongNuoc": {
+        "quocGia": "Việt Nam", "tinh": "Lào Cai", "xa": "Việt Thành 3",
+        "diaChi": "", "huyen": "Trấn Yên",
+    }})
+
+    assert out["NoiCuTru_BenNam_TrongNuoc"] == {
+        "quocGia": "Việt Nam", "tinh": "Lào Cai",
+        "xa": "Xã Trấn Yên", "diaChi": "Việt Thành 3",
+    }
+
+
+def test_unusable_declaration_address_falls_back_to_card():
+    """Xã trên tờ khai không có trong danh mục và không cứu được → dùng địa chỉ in trên CCCD."""
+    out = _ui({**_KH_BASE, "ToKhaiNam_NoiCuTru_TrongNuoc": {
+        "quocGia": "Việt Nam", "tinh": "Lào Cai", "xa": "Việt Thành 3", "diaChi": "",
+    }})
+
+    assert out["NoiCuTru_BenNam_TrongNuoc"]["xa"] == "Xã Yên Bình"
+    assert out["NoiCuTru_BenNam_TrongNuoc"]["diaChi"] == "Loan Thượng"
+
+
+def test_usable_declaration_address_still_beats_card():
+    """Tờ khai ra được xã có thật thì vẫn thắng CCCD như cũ."""
+    out = _ui({**_KH_BASE, "ToKhaiNam_NoiCuTru_TrongNuoc": {
+        "quocGia": "Việt Nam", "tinh": "Lào Cai", "xa": "Xã Trấn Yên", "diaChi": "Thôn 5",
+    }})
+
+    assert out["NoiCuTru_BenNam_TrongNuoc"]["xa"] == "Xã Trấn Yên"
+    assert out["NoiCuTru_BenNam_TrongNuoc"]["diaChi"] == "Thôn 5"

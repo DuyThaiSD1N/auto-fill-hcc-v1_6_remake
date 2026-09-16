@@ -92,3 +92,47 @@ def test_genuine_old_ward_still_remaps_even_when_detail_mentions_it():
 
     assert result["xa"] == "Phường Ngũ Hành Sơn"
     assert result["diaChi"] == "Tổ 5"
+
+
+def test_ward_level_shift_repaired_when_catalogue_proves_it():
+    """Tờ khai 2 cấp bị đọc theo nếp 3 cấp: thôn rơi vào ô xã, xã thật bị đẩy sang "huyen"."""
+    out = area_remap.remap_area({
+        "quocGia": "Việt Nam",
+        "tinh": "Lào Cai",
+        "xa": "Việt Thành 3",   # thực ra là tên THÔN
+        "huyen": "Trấn Yên",    # thực ra là XÃ hiện hành của Lào Cai
+        "diaChi": "",
+    })
+
+    assert out["xa"] == "Xã Trấn Yên"
+    assert out["diaChi"] == "Việt Thành 3"
+    assert out["tinh"] == "Lào Cai"
+    assert "huyen" not in out
+
+
+def test_old_three_level_address_is_left_alone():
+    """Địa chỉ CŨ 3 cấp hợp lệ không được đảo: ô xã remap ra được nên không phải lỗi lệch cấp."""
+    out = area_remap.remap_area({
+        "quocGia": "Việt Nam",
+        "tinh": "Bình Thuận",
+        "xa": "Hàm Kiệm",
+        "huyen": "Hàm Thuận Nam",
+        "diaChi": "Tổ 3",
+    })
+
+    assert out["xa"] == "Xã Hàm Kiệm"
+    assert out["diaChi"] == "Tổ 3"
+
+
+def test_ward_level_shift_needs_catalogue_evidence():
+    """Gợi ý cấp huyện KHÔNG phải xã hiện hành của tỉnh đó → không đảo, tránh đoán bừa."""
+    out = area_remap.remap_area({
+        "quocGia": "Việt Nam",
+        "tinh": "Lào Cai",
+        "xa": "Việt Thành 3",
+        "huyen": "Một Huyện Không Có Thật",
+        "diaChi": "",
+    })
+
+    assert out["xa"] == "Việt Thành 3"
+    assert out["diaChi"] == ""

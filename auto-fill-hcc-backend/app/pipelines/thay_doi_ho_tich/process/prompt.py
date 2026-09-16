@@ -61,11 +61,13 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
   ChuThe/Chong/Vo. Nếu khớp người nào thì hợp nhất dữ liệu thẻ vào đúng nhóm người đó; KHÔNG được bỏ qua
   CCCD chỉ vì thẻ đó không phải của người yêu cầu.
 - Khi đã có CCCD khớp người:
-  + HoTen, NgaySinh, GioiTinh, QuocTich, SoDinhDanh, NgayCapGiayTo, NoiCapGiayTo của người đó
+  + HoTen, NgaySinh, GioiTinh, SoDinhDanh, NgayCapGiayTo, NoiCapGiayTo của người đó
     BẮT BUỘC lấy từ CCCD; giấy hộ tịch chỉ bổ sung field CCCD không có.
-  + RIÊNG ChuThe_NoiCuTru: nếu có TỜ KHAI cải chính và khối "cho người có tên dưới đây" ghi nơi cư trú
-    thì BẮT BUỘC ưu tiên nơi cư trú trên TỜ KHAI; chỉ khi khối này không có mới lấy CCCD, sau cùng mới
-    lấy giấy tờ hộ tịch gốc. CCCD không được ghi đè nơi cư trú hiện tại đã khai trên tờ khai.
+  + RIÊNG ChuThe_NoiCuTru và ChuThe_QuocTich: nếu có TỜ KHAI cải chính và khối "cho người có tên dưới
+    đây" ghi hai mục này thì BẮT BUỘC ưu tiên giá trị trên TỜ KHAI; chỉ khi khối này không có mới lấy
+    CCCD, sau cùng mới lấy giấy tờ hộ tịch gốc. CCCD không được ghi đè nơi cư trú hiện tại và quốc tịch
+    đã khai trên tờ khai — thẻ CCCD Việt Nam luôn in "Việt Nam" nên lấy theo thẻ là xóa mất quốc tịch
+    nước ngoài mà người dân tự khai.
   + Họ tên trên giấy cũ có dấu gạch nối giữa các tiếng nhưng CCCD không có thì trả tên chuẩn theo CCCD.
   + Nếu nơi cư trú trên giấy hộ tịch cũ khác nơi thường trú trên CCCD thì PHẢI trả nơi trên CCCD.
     Không được giữ địa chỉ cũ của giấy kết hôn/hôn thú.
@@ -107,6 +109,15 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
     người của giấy nộp kèm là SAI. Trích ĐẦY ĐỦ danh tính người này vào nhóm ChuThe_*: ChuThe_HoTen,
     ChuThe_NgaySinh (dd/mm/yyyy), ChuThe_GioiTinh, ChuThe_DanToc, ChuThe_QuocTich, ChuThe_SoDinhDanh,
     ChuThe_SoGiayTo, ChuThe_NgayCapGiayTo, ChuThe_NoiCapGiayTo, ChuThe_NoiCuTru.
+  + ChuThe_HoTen là TÊN ĐANG CÓ trong sổ hộ tịch — đúng như khối "cho người có tên dưới đây" ghi.
+    TUYỆT ĐỐI KHÔNG thay bằng TÊN MỚI nêu ở dòng "Nội dung" (vd "Thay đổi tên cho cháu thành LÊ MINH HY
+    từ tên cũ là Lê Minh Khang" → ChuThe_HoTen = "Lê Minh Khang", KHÔNG phải "LÊ MINH HY").
+    Mục II của form khai người ĐANG được thay đổi; tên mới chỉ thuộc về mục Nội dung (NoiDungThayDoi).
+  + TỜ KHAI BỎ TRỐNG dòng "Giấy tờ tùy thân" của người được thay đổi (rất hay gặp với TRẺ EM) thì
+    BẮT BUỘC lấy "Số định danh cá nhân" từ GIẤY KHAI SINH / trích lục hộ tịch nộp kèm, miễn là giấy đó
+    đúng là của người này (trùng HỌ TÊN — đối chiếu bằng TÊN CŨ nếu đang đổi tên — và trùng NGÀY SINH).
+    → ChuThe_SoDinhDanh. Đây là ngoại lệ hợp lệ của <source_priority>: tờ khai để trống thì giấy kèm
+    được phép bổ sung. KHÔNG lấy số định danh của cha/mẹ/người đi khai in trên cùng tờ giấy đó.
   + ChuThe_NoiCuTru phải lấy đúng dòng "Nơi cư trú" trong KHỐI NGƯỜI ĐƯỢC thay đổi/cải chính
     (sau cụm "cho người có tên dưới đây"), KHÔNG lấy dòng nơi cư trú ở khối người yêu cầu phía trên.
     Nguồn này ưu tiên hơn nơi thường trú trên CCCD của chủ thể.

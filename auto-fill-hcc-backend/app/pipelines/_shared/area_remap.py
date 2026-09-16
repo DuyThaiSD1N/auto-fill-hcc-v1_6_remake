@@ -851,6 +851,22 @@ _VILLAGE_PREFIX_RE = re.compile(
 )
 
 
+def _shifted_ward_level(tinh: str, xa: str, huyen: str) -> bool:
+    """LLM có đặt nhầm đơn vị DƯỚI cấp xã vào ô xã, đẩy tên xã thật sang ô "huyen" không?
+
+    Chỉ True khi DANH MỤC tự chứng minh, không suy đoán:
+      * ô xã không ra được xã/phường nào chọn được của tỉnh đó — kể cả sau remap;
+      * gợi ý cấp huyện lại ĐÚNG là một xã/phường hiện hành của CHÍNH tỉnh đó.
+
+    Địa chỉ CŨ 3 cấp hợp lệ không lọt vào đây: "Hàm Kiệm, Hàm Thuận Nam, Bình Thuận" có ô xã remap
+    ra được ("Xã Hàm Kiệm, Lâm Đồng") nên trượt điều kiện 1; mà tỉnh cũ cũng không còn trong danh
+    mục nên "Hàm Thuận Nam" trượt luôn điều kiện 2.
+    """
+    if not (tinh and xa and huyen):
+        return False
+    return not _area_is_usable(tinh, xa) and is_current_area(tinh, huyen)
+
+
 def remap_area(
     area: Optional[dict],
     allow_diachi_fallback: bool = False,
@@ -896,6 +912,17 @@ def remap_area(
             same_province = bool(found) and _fold_province(found[0]) == _fold_province(tinh_raw)
             xa_raw = found[1] if same_province else huyen_raw
             huyen_raw = ""
+    elif _shifted_ward_level(tinh_raw, xa_raw, huyen_raw):
+        # Cùng lỗi lệch cấp nhưng tên thôn KHÔNG mang tiền tố để nhận ra. Địa chỉ hiện hành chỉ
+        # còn 2 cấp, nên "Việt Thành 3 - Trấn Yên, Lào Cai" là thôn + xã + tỉnh; LLM quen nếp cũ
+        # đếm từ cuối ra tỉnh/huyện/xã nên trả xa="Việt Thành 3", huyen="Trấn Yên" — ô xã khi đó
+        # không khớp option nào và cổng bỏ trống cả xã lẫn địa chỉ chi tiết.
+        if _fold(xa_raw) not in _fold(dia_raw):
+            dia_raw = f"{dia_raw}, {xa_raw}" if dia_raw else xa_raw
+        found = province_for_ward(huyen_raw)
+        same_province = bool(found) and _fold_province(found[0]) == _fold_province(tinh_raw)
+        xa_raw = found[1] if same_province else huyen_raw
+        huyen_raw = ""
 
     if not tinh_raw and not xa_raw:
         return {k: v for k, v in area.items() if k not in ("huyen", "quanHuyen")} if huyen_raw else area

@@ -435,3 +435,105 @@ def test_marriage_subject_evidence_ignores_filename_header():
 
     assert out["ntdHoTen"]["value"] == "LÊ VĂN THÀNH"
     assert out["ntdSoDDCN"]["value"] == "038067008684"
+
+
+_BIRTH_KHAI_SINH_OCR = """===== khai sinh.pdf =====
+GIẤY KHAI SINH
+Họ, chữ đệm, tên: LÊ MINH KHANG
+Ngày, tháng, năm sinh: 24/07/2026
+Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam
+Số định danh cá nhân: 068226013070
+Họ, chữ đệm, tên người mẹ: NGÔ NGUYỄN KIM DUY
+Nơi cư trú: phường Cam Ly - Đà Lạt, tỉnh Lâm Đồng
+Họ, chữ đệm, tên người cha: LÊ DUY THỊNH
+Họ, chữ đệm, tên người đi khai sinh: LÊ DUY THỊNH
+Giấy tờ tùy thân: Thẻ căn cước công dân số 068088009145 cấp ngày 12/08/2021"""
+
+_BIRTH_DECLARATION = {
+    "LoaiSuKien": "birth",
+    "TenGiayTo": "GIẤY KHAI SINH",
+    "ViecDangKy": "Thay đổi",
+    "NoiDungThayDoi": "Thay đổi tên cho cháu thành LÊ MINH HY từ tên cũ là Lê Minh Khang",
+    "NguoiYeuCau_HoTen": "LÊ DUY THỊNH",
+    "NguoiYeuCau_SoDinhDanh": "068088009145",
+    "ChuThe_HoTen": "Lê Minh Khang",
+    "ChuThe_NgaySinh": "24/07/2026",
+}
+
+
+def test_subject_id_supplemented_from_birth_certificate():
+    """Tờ khai bỏ trống giấy tờ tùy thân của trẻ → lấy số định danh trên giấy khai sinh kèm theo."""
+    out = _by_name(mapper.enrich(
+        _fields(_BIRTH_DECLARATION), {"_ocrText": _BIRTH_KHAI_SINH_OCR}
+    ))
+
+    assert out["ntdSoDDCN"]["value"] == "068226013070"
+    # Trẻ chỉ có số định danh, không có CCCD → khối giấy tờ tùy thân vẫn bỏ trống.
+    assert "ntdNgayCapGiayToTuyThan" not in out
+    assert "ntdLoaiGiayToTuyThan" not in out
+
+
+def test_subject_id_supplemented_when_agent_returns_new_name():
+    """Agent trả TÊN MỚI vào ChuThe_HoTen: vẫn khớp được giấy khai sinh qua tên cũ ở dòng Nội dung."""
+    values = dict(_BIRTH_DECLARATION, ChuThe_HoTen="LÊ MINH HY")
+    out = _by_name(mapper.enrich(_fields(values), {"_ocrText": _BIRTH_KHAI_SINH_OCR}))
+
+    assert out["ntdSoDDCN"]["value"] == "068226013070"
+
+
+def test_subject_id_not_taken_from_namesake_with_other_birthday():
+    """Trùng họ tên nhưng khác ngày sinh là người khác → không mượn số định danh."""
+    values = dict(_BIRTH_DECLARATION, ChuThe_NgaySinh="24/07/2019")
+    out = _by_name(mapper.enrich(_fields(values), {"_ocrText": _BIRTH_KHAI_SINH_OCR}))
+
+    assert "ntdSoDDCN" not in out
+
+
+def test_subject_id_never_borrows_requester_number():
+    """Số định danh của người yêu cầu in trên cùng tờ giấy không được nhảy sang Mục II."""
+    values = dict(_BIRTH_DECLARATION)
+    values.pop("NoiDungThayDoi")
+    values["ChuThe_HoTen"] = "LÊ DUY THỊNH"
+    out = _by_name(mapper.enrich(_fields(values), {"_ocrText": _BIRTH_KHAI_SINH_OCR}))
+
+    assert out.get("ntdSoDDCN", {}).get("value") != "068088009145"
+
+
+def test_declaration_nationality_beats_attached_cccd():
+    """CCCD Việt Nam không được xóa quốc tịch nước ngoài mà tờ khai đã khai."""
+    out = _by_name(mapper.enrich(_fields({
+        "LoaiSuKien": "birth",
+        "TenGiayTo": "GIẤY KHAI SINH",
+        "ViecDangKy": "Cải chính",
+        "NoiDungThayDoi": "Cải chính họ tên",
+        "DanhSachCccd": [{
+            "HoTen": "TRẦN THỊ HOA",
+            "SoDinhDanh": "068200111222",
+            "QuocTich": "Việt Nam",
+            "NgayCap": "05/05/2022",
+        }],
+        "ChuThe_HoTen": "TRẦN THỊ HOA",
+        "ChuThe_SoDinhDanh": "068200111222",
+        "ChuThe_QuocTich": "Hàn Quốc",
+    })))
+
+    assert out["ntdQuocTich"]["value"] == "Hàn Quốc"
+    # Các ô còn lại vẫn theo thẻ.
+    assert out["ntdNgayCapGiayToTuyThan"]["value"] == "05/05/2022"
+
+
+def test_nationality_falls_back_to_card_when_declaration_silent():
+    """Tờ khai không khai quốc tịch thì vẫn lấy theo CCCD như cũ."""
+    out = _by_name(mapper.enrich(_fields({
+        "LoaiSuKien": "birth",
+        "ViecDangKy": "Cải chính",
+        "DanhSachCccd": [{
+            "HoTen": "TRẦN THỊ HOA",
+            "SoDinhDanh": "068200111222",
+            "QuocTich": "Nhật Bản",
+        }],
+        "ChuThe_HoTen": "TRẦN THỊ HOA",
+        "ChuThe_SoDinhDanh": "068200111222",
+    })))
+
+    assert out["ntdQuocTich"]["value"] == "Nhật Bản"
