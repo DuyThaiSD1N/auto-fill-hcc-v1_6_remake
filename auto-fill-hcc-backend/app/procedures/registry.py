@@ -48,6 +48,8 @@ from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.attach import plan as cap_gcn_nhan_chuyen_nhuong_attach
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process import run as cap_gcn_nhan_chuyen_nhuong_process
+from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.attach import plan as chuyen_doi_md_sd_dat_lao_cai_attach
+from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.process import run as chuyen_doi_md_sd_dat_lao_cai_process
 from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.attach import plan as dang_ky_quyen_su_dung_dat_lao_cai_attach
 from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.process import run as dang_ky_quyen_su_dung_dat_lao_cai_process
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
@@ -2756,6 +2758,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chuyen-muc-dich-su-dung-dat-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
+        # với 1.115667/1.115668. Đính kèm fixed-slot theo 4 nhóm "(1)…(4) Hồ sơ đề nghị…" chọn theo mẫu đơn
+        # (attach/catalog.py) + "Giấy tờ khác". Cụm tên cũng có ở Lâm Đồng/Quảng Ninh → urlScope khóa host Lào Cai.
+        # Key trùng mục ke_khai_links (1.115651).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời "
+            "hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư đối với trường hợp quy định tại khoản "
+            "1 Điều 175 Luật Đất đai năm 2024"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị: Mẫu số 02 (chuyển mục đích), 03 (chuyển hình thức), 17 (gia hạn) hoặc 18 (điều chỉnh "
+            "thời hạn dự án).\n"
+            "2. Giấy chứng nhận quyền sử dụng đất; quyết định giao đất/cho thuê đất/cho phép chuyển mục đích (nếu có).\n"
+            "3. Nếu có: mảnh đo đạc chỉnh lý bản đồ địa chính, văn bản về thời hạn dự án đầu tư, GCN đăng ký doanh "
+            "nghiệp, giấy ủy quyền.\n"
+            "4. CCCD của người nộp hồ sơ (và của chủ hồ sơ nếu là cá nhân).\n"
+            "Chủ hồ sơ = người sử dụng đất đứng tên Đơn (tổ chức: tên + mã số thuế). Người nộp: chỉ bổ sung nhân thân "
+            "từ CCCD của chính người nộp; số điện thoại/email trên Đơn điền cho chủ hồ sơ.\n"
+            "Thành phần hồ sơ: tự chọn nhóm (1)-(4) theo mẫu đơn, tích + đính kèm từng dòng; bản đồ riêng, GCN đăng "
+            "ký doanh nghiệp, giấy ủy quyền vào 'Giấy tờ khác'. Tệp không đính được sẽ được bỏ qua. CCCD không đính kèm."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -4467,6 +4503,7 @@ _PIPELINE = {
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
+    "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
@@ -4530,6 +4567,7 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_attach,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
+    "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,

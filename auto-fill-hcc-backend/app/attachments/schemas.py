@@ -53,6 +53,14 @@ class AttachmentPlanItem(BaseModel):
     slotKey: str | None = None
     slotIndex: int | None = None
     slotName: str | None = None
+    # Bảng thành phần chia NHÁNH/NHÓM (cổng iGate VNPT Lào Cai: "a) Đối với trường hợp…", "(1) Hồ sơ đề nghị…"):
+    # FE khoanh các dòng dưới tiêu đề nhóm (sectionHeader, đã fold) rồi khớp dòng theo slotKeywords (đã fold),
+    # tick checkbox dòng khi tickRow. KHÔNG khai ở đây thì response_model lược mất → FE không tìm được ô.
+    sectionHeader: str | None = None
+    slotKeywords: list[str] | None = None
+    tickRow: bool | None = None
+    # FE chỉ gán thẳng file vào input, KHÔNG bấm option "Chọn tệp tin" (cổng iGate VNPT mở hộp thoại file OS).
+    noChooserClick: bool | None = None
     # Ô DỰ PHÒNG khi cổng chặn tổng dung lượng của một loại giấy tờ (khai sinh liên thông:
     # "không được quá 2.6MB"). FE chỉ dùng khi cổng THẬT SỰ báo quá dung lượng — không phải
     # đường đi mặc định. Planner chỉ gắn cho giấy tờ được phép dời ô.

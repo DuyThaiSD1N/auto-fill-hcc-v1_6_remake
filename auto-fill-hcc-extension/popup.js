@@ -886,7 +886,7 @@ function renderProcedureResults(query = procedureSearchQuery) {
 
 // ── Khóa một hồ sơ (dossierId) ─────────────────────────────────────────────────────────
 function newDossierId() {
-  try { return crypto.randomUUID(); } catch (_) {}
+  try { return crypto.randomUUID(); } catch (_) { }
   return "d-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
 }
 
@@ -2837,7 +2837,7 @@ function phanTichBatchGanNhat(chuaXuLy) {
     batch.push(list[i]);
     maxGapNoiBo = Math.max(maxGapNoiBo, gap);
     if (batch.length >= BATCH_MAX_FILES ||
-        (list[0].mtimeMs - list[i].mtimeMs) >= BATCH_MAX_SPAN_MS) {
+      (list[0].mtimeMs - list[i].mtimeMs) >= BATCH_MAX_SPAN_MS) {
       return { confident: false, batch: [] }; // qua dai ma chua thay ranh gioi -> khong doan
     }
   }
@@ -2854,7 +2854,7 @@ function formatRelativeTime(mtimeMs) {
 let scanAgentHelpers = null; // cache {listFiles, fetchBlob, renameFile} tu lan onConnected gan nhat
 let scanAgentCaps = []; // kha nang agent tu khai qua /v1/ping (agent ban cu -> rong -> an chuc nang)
 let batchImportAttempted = false; // rieng theo PHIEN LAM VIEC (reset cung "files.length = 0"),
-                                   // KHAC voi scanAgentReconciled o tren (rieng theo POPUP)
+// KHAC voi scanAgentReconciled o tren (rieng theo POPUP)
 let scanRecentPending = []; // danh sach cho fallback khi KHONG tu tin: [{rel, name, mtimeMs}]
 
 // Mốc thứ tự sự kiện xoá, dùng để chặn đua với lượt tải đang dở (xem
@@ -3225,7 +3225,7 @@ function extUpdateGhiNhan(versionTrenDia) {
     // Đã lên đúng bản: xoá bộ đếm để lần cập nhật SAU lại có đủ 3 lượt thử.
     extUpdateChoSan = "";
     extUpdateSoLuotCho = 0;
-    chrome.storage.local.remove(EXT_UPDATE_THU_KEY).catch(() => {});
+    chrome.storage.local.remove(EXT_UPDATE_THU_KEY).catch(() => { });
     return;
   }
   // So KHÁC chứ không so LỚN HƠN: hạ cấp (CMS lùi về bản cũ để chữa cháy) cũng
@@ -3236,7 +3236,7 @@ function extUpdateGhiNhan(versionTrenDia) {
   // callback) — reject không ai bắt là lỗi "unhandled rejection" nổi lên ngoài.
   try {
     const p = chrome.runtime.sendMessage({ action: "hccKiemBanMoiNgay" }, () => void chrome.runtime.lastError);
-    if (p && typeof p.catch === "function") p.catch(() => {});
+    if (p && typeof p.catch === "function") p.catch(() => { });
   } catch (_) { /* ignore */ }
   void extUpdateThuNapLai();
 }
@@ -4434,6 +4434,7 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.115667: tài khoản prefill CongDan_tenCongDan/CongDan_soCmnd → mốc chọn CCCD người nộp.
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
+      cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {

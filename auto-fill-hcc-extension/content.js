@@ -3592,7 +3592,8 @@
   // Bảng thành phần chia NHÁNH ("a) Đối với trường hợp…", "b) Đối với trường hợp…", vd Lào Cai 1.115667):
   // các nhánh lặp lại cùng tên giấy tờ → chỉ giữ input thuộc các dòng nằm giữa tiêu đề nhánh của item và
   // tiêu đề nhánh kế tiếp. Không thấy tiêu đề → rỗng (không đoán sang nhánh khác).
-  const FIXED_SLOT_SECTION_RE = /(^|\s)[a-z]\) doi voi truong hop/;
+  // Hai kiểu tiêu đề nhóm đã gặp: "a) Đối với trường hợp…" (1.115667/1.115668), "(1) Hồ sơ đề nghị…" (1.115651).
+  const FIXED_SLOT_SECTION_RE = /(^|\s)(?:[a-z]\) doi voi truong hop|\(\d+\) ho so de nghi)/;
 
   function fixedSlotSectionInputs(inputs, sectionHeader) {
     const header = foldChoiceText(sectionHeader);
