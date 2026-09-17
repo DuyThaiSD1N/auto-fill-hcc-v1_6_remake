@@ -61,7 +61,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
   (2) **GIẤY CHỨNG NHẬN KẾT HÔN** (block "chồng"/"bên nam") — ưu tiên cao khi có
   (3) **GIẤY KHAI SINH** (bản sao/trích lục của con khác trong hồ sơ, có khối "người cha") — lấy khi không có nguồn (1)(2)
   (4) CCCD/CMND được đối chiếu là của đúng người bố — chỉ dùng khi các nguồn trên không có
-- ThongTinBo_HoTen, ThongTinBo_NgaySinh, ThongTinBo_SoDinhDanh, ThongTinBo_QuocTich, ThongTinBo_NoiCuTru: ưu tiên giấy chứng sinh/kết hôn/khai sinh, sau đó mới xét CCCD/CMND đúng người bố
+- ThongTinBo_HoTen, ThongTinBo_NgaySinh, ThongTinBo_SoDinhDanh, ThongTinBo_QuocTich: ưu tiên giấy chứng sinh/kết hôn/khai sinh, sau đó mới xét CCCD/CMND đúng người bố
 - ThongTinBo_DanToc: áp dụng rule riêng tại mục E; hai nguồn chính bắt buộc soát là tờ khai đăng ký khai sinh (khối bố đẻ/cha) > giấy chứng nhận kết hôn (khối chồng/bên nam).
 - ThongTinBo_QueQuan: lấy từ CCCD cũ (có dòng "Quê quán") nếu có
 - ThongTinBo_NoiDangKyKhaiSinh: lấy từ thẻ CĂN CƯỚC mới (dòng "Nơi đăng ký khai sinh") nếu có
@@ -78,7 +78,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 - ThongTinMe_NgaySinh: ưu tiên giấy chứng sinh (có thể chỉ năm sinh), sau đó giấy khai sinh, giấy kết hôn, cuối cùng CCCD/CMND đúng người mẹ
 - ThongTinMe_DanToc: BẮT BUỘC lấy theo đúng thứ tự: giấy chứng sinh (dòng "Dân tộc" trong khối mẹ) > giấy chứng nhận kết hôn (khối vợ/bên nữ) > tờ khai đăng ký khai sinh (khối người mẹ). Có nguồn ưu tiên cao hơn thì không thay bằng nguồn thấp hơn.
 - ThongTinMe_QueQuan: BẮT BUỘC trích độc lập từ dòng "Quê quán / Place of origin:" trên CCCD mẹ, dù giống quê quán bố. Nếu chỉ có huyện và tỉnh thì không được gán tên huyện vào `xa`, nhưng vẫn phải trả field với tối thiểu `tinh`; không được bỏ field.
-- ThongTinMe_NoiCuTru: ưu tiên giấy kết hôn > giấy chứng sinh > giấy khai sinh > CCCD
+- NƠI CƯ TRÚ CHA/MẸ (ngoại lệ của thứ tự nguồn trên): TỜ KHAI ĐĂNG KÝ KHAI SINH trước, rồi mới tới CCCD. Dòng 'Nơi cư trú' trong khối cha của tờ khai → Tk_NoiCuTruCha; khối mẹ → Tk_NoiCuTruMe. ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru lấy từ nguồn KHÁC tờ khai theo thứ tự: CCCD/CMND đúng người > giấy kết hôn > giấy chứng sinh > giấy khai sinh. Hồ sơ có cả tờ khai và CCCD thì trích CẢ HAI field, hệ thống tự ưu tiên tờ khai.
 
 # ═══ E. DÂN TỘC CHA/MẸ (ThongTinBo_DanToc = CHA, ThongTinMe_DanToc = MẸ) ═══
 - Thẻ CCCD/Căn cước gắn chip (mẫu mới) thường KHÔNG in dân tộc → PHẢI lấy dân tộc từ giấy tờ khác CÓ ghi, đối chiếu ĐÚNG NGƯỜI theo họ tên/số định danh. BẮT BUỘC điền dân tộc cho CẢ cha VÀ mẹ nếu bất kỳ giấy nào ghi — KỂ CẢ khi người đó ĐÃ CÓ CCCD (ĐỪNG vì cha/mẹ đã có CCCD mà bỏ qua dân tộc của họ).
@@ -109,7 +109,7 @@ Trích cả hai nguồn (Gcs_* và Tk_*) khi có; hệ thống tự chọn ưu t
 ## LƯU Ý QUAN TRỌNG
 - ĐỊA CHỈ MỘT NGƯỜI PHẢI LẤY TRỌN TỪ MỘT GIẤY: diaChi, xa, tinh của CÙNG một người phải CÙNG đến từ MỘT giấy. TUYỆT ĐỐI KHÔNG ghép diaChi (bản/tổ/thôn/số nhà) của giấy này với xa của giấy khác — nếu hai giấy ghi HAI ĐỊA CHỈ KHÁC NHAU (xã khác nhau) mà ghép như vậy sẽ tạo ra địa chỉ KHÔNG CÓ THẬT.
 - BÙ TRƯỜNG THIẾU (CHỈ khi CÙNG một địa chỉ): nếu một giấy THIẾU xã nhưng giấy khác của CHÍNH người đó ghi rõ xã của CÙNG nơi đó (cùng phần chi tiết/tỉnh) thì ĐƯỢC lấy xã bù vào. Chỉ bù khi chắc chắn là CÙNG một địa chỉ; KHÔNG bù khi hai giấy là hai nơi khác nhau.
-- KHI HAI GIẤY MÂU THUẪN (ghi XÃ KHÁC NHAU cho cùng người): chọn TRỌN địa chỉ từ MỘT nguồn theo ưu tiên — nơi cư trú MẸ: giấy CHỨNG NHẬN KẾT HÔN (block vợ) > giấy CHỨNG SINH > CCCD (xem mục D); nơi cư trú CHA: ưu tiên CCCD, rồi tới giấy kết hôn (block chồng). Lấy trọn diaChi+xa+tinh từ nguồn được ưu tiên đó, không trộn với nguồn kia.
+- KHI HAI GIẤY MÂU THUẪN (ghi XÃ KHÁC NHAU cho cùng người): chọn TRỌN địa chỉ từ MỘT nguồn theo ưu tiên — tờ khai tách riêng vào Tk_NoiCuTruCha/Tk_NoiCuTruMe; với ThongTinBo_NoiCuTru/ThongTinMe_NoiCuTru: CCCD đúng người > giấy kết hôn > giấy chứng sinh > giấy khai sinh (xem mục D). Lấy trọn diaChi+xa+tinh từ nguồn được ưu tiên đó, không trộn với nguồn kia.
 
 # ═══ G. GIẤY CHỨNG NHẬN KẾT HÔN (GcnKetHon_*) ═══
 - GcnKetHon_* CHỈ lấy từ tài liệu là GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ.

@@ -263,6 +263,42 @@ def test_mapper_does_not_fallback_to_mother_residence_when_hometown_missing():
     assert "QqMaQuocGia" not in values
 
 
+def test_mapper_parent_residence_prefers_birth_form_then_card():
+    tk_cha = {"tinh": "Lai Châu", "xa": "Tân Uyên", "diaChi": "Bản Nà Ban"}
+    tk_me = {"tinh": "Lai Châu", "xa": "Tân Uyên", "diaChi": "Bản Nà Ban"}
+    cccd_cha = {"tinh": "Lai Châu", "xa": "Mường Khoa", "diaChi": "Bản Phiêng Phát"}
+    cccd_me = {"tinh": "Lai Châu", "xa": "Pắc Ta", "diaChi": "Bản Nậm Bon"}
+    base = {"ThongTinBo_HoTen": "NGƯỜI CHA", "ThongTinMe_HoTen": "NGƯỜI MẸ"}
+
+    out = mapper.enrich(_fields({
+        **base,
+        "Tk_NoiCuTruCha": tk_cha,
+        "Tk_NoiCuTruMe": tk_me,
+        "ThongTinBo_NoiCuTru": cccd_cha,
+        "ThongTinMe_NoiCuTru": cccd_me,
+    }))
+    values = {field["name"]: field["value"] for field in out}
+    assert values["ChaDiaChi"]["diaChi"] == "Bản Nà Ban"  # tờ khai thắng CCCD
+    assert values["MeDiaChi"]["diaChi"] == "Bản Nà Ban"
+
+    # Không có tờ khai → dùng nguồn còn lại (CCCD đứng đầu thứ tự ở ThongTin*_NoiCuTru).
+    out = mapper.enrich(_fields({**base, "ThongTinBo_NoiCuTru": cccd_cha, "ThongTinMe_NoiCuTru": cccd_me}))
+    values = {field["name"]: field["value"] for field in out}
+    assert values["ChaDiaChi"]["diaChi"] == "Bản Phiêng Phát"
+    assert values["MeDiaChi"]["diaChi"] == "Bản Nậm Bon"
+
+
+def test_prompt_puts_birth_form_before_card_for_parent_residence():
+    from app.pipelines.khai_sinh_lien_thong.process.schema import FIELDS as SCHEMA_FIELDS
+
+    names = {field["name"] for field in SCHEMA_FIELDS}
+    assert {"Tk_NoiCuTruCha", "Tk_NoiCuTruMe"} <= names
+    desc = {field["name"]: field["desc"] for field in SCHEMA_FIELDS}
+    for name in ("ThongTinBo_NoiCuTru", "ThongTinMe_NoiCuTru"):
+        assert desc[name].index("CCCD") < desc[name].index("giấy chứng sinh")
+    assert "TỜ KHAI ĐĂNG KÝ KHAI SINH trước, rồi mới tới CCCD" in EXTRA_RULES
+
+
 def test_mapper_only_emits_copy_quantity_when_present():
     base = {
         "Gcs_HoTenCon": "ĐÀO NGỌC TUỆ KHÍ",

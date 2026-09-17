@@ -313,7 +313,8 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("MeMaQuocTich", values.get("ThongTinMe_QuocTich") or "Việt Nam")
         add("MeLoaiCuTru", "Thường trú")
         add("MeMaQuocGia", "Việt Nam")
-        add("MeDiaChi", _area(values.get("ThongTinMe_NoiCuTru")))
+        # Nơi cư trú mẹ: TỜ KHAI trước, rồi mới tới nguồn khác (ThongTinMe_NoiCuTru — CCCD đứng đầu).
+        add("MeDiaChi", _area(values.get("Tk_NoiCuTruMe")) or _area(values.get("ThongTinMe_NoiCuTru")))
 
     if has_father:
         add_name("Cha", values.get("ThongTinBo_HoTen"))
@@ -327,7 +328,8 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("ChaMaQuocTich", values.get("ThongTinBo_QuocTich") or "Việt Nam")
         add("ChaLoaiCuTru", "Thường trú")
         add("ChaMaQuocGia", "Việt Nam")
-        add("ChaDiaChi", _area(values.get("ThongTinBo_NoiCuTru")))
+        # Nơi cư trú cha: TỜ KHAI trước, rồi mới tới nguồn khác (ThongTinBo_NoiCuTru — CCCD đứng đầu).
+        add("ChaDiaChi", _area(values.get("Tk_NoiCuTruCha")) or _area(values.get("ThongTinBo_NoiCuTru")))
 
     # Quê quán CON (QqDiaChi) — lấy theo thứ tự ưu tiên:
     #  1) TỜ KHAI có ghi quê quán con riêng → ưu tiên (chính xác nhất).
@@ -358,6 +360,7 @@ def enrich(fields: list[dict]) -> list[dict]:
             que_quan_cha = (
                 _area(values.get("ThongTinBo_QueQuan"))
                 or _area(values.get("ThongTinBo_NoiDangKyKhaiSinh"))
+                or _area(values.get("Tk_NoiCuTruCha"))
                 or _area(values.get("ThongTinBo_NoiCuTru"))
             )
             if que_quan_cha:
