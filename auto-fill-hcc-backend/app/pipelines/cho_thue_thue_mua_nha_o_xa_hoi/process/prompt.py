@@ -30,8 +30,13 @@ Don_ThucTrangNhaO: thực trạng nhà ở của người viết đơn (mục th
 trên form, vd "Chưa có nhà ở thuộc sở hữu của mình".
 
 ThanhVienGiaDinh (mảng): trích các thành viên hộ gia đình (mục 9 đơn) — mỗi dòng {hoTen, soCccd, ngayCap,
-noiCap, quanHe}. quanHe là mối quan hệ với người viết đơn (Vợ/Chồng/Con gái/Con trai…), ghi kèm tên trong
-đơn. Ô nào đơn để trống thì BỎ (đừng bịa số CCCD/ngày cấp).
+noiCap, quanHe}. quanHe = đúng chữ NGƯỜI DÂN TỰ VIẾT trước họ tên (Con, Con dâu, Con rể, Cháu…). Ô nào
+đơn để trống thì BỎ (đừng bịa số CCCD/ngày cấp).
+
+⚑ DÒNG (a) "Họ và tên vợ (hoặc chồng)": cụm "vợ (hoặc chồng)" là NHÃN IN SẴN trên mẫu đơn, không phải
+thông tin người dân khai. Không có gì trong đơn nói người đó là vợ hay là chồng, và TÊN ĐỆM
+("Văn"/"Thị") KHÔNG phải bằng chứng. → quanHe của dòng này trả đúng chuỗi "Vợ (hoặc chồng)".
+Downstream tự chốt lại bằng số định danh. Các dòng (b)(c)(d) giữ nguyên chữ người dân viết.
 
 NGÀY (dd/mm/yyyy): NguoiNop_NgaySinh, NguoiNop_NgayCap, Don_NgayKy, và ngayCap của từng thành viên. Đọc
 đúng, KHÔNG bịa. Nếu đơn chỉ ghi năm sinh, lấy ngày/tháng đầy đủ theo CCCD.

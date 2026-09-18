@@ -36,24 +36,47 @@ def test_registry_entry_du_pipeline_va_wizard_mae():
 
 
 def test_choose_variant_intents_khai_bao_dung_handler():
+    # Danh sách là HỢP của mọi thủ tục có "trường hợp giải quyết" (thuỷ sản, cấp phép xây
+    # dựng...) nên chỉ kiểm phải CHỨA đủ hai value của thuỷ sản, không khoá cứng bằng nhau.
     entries = {e["value"] for e in intents._STATE_INTENTS["choose_variant"]}
-    assert entries == {"variant_cap_moi", "variant_cap_lai"}
+    assert {"variant_cap_moi", "variant_cap_lai"} <= entries
     assert KEY in intents._PROCEDURE_HINTS
 
 
-async def test_confirm_hoi_truong_hop_roi_moi_navigate():
+async def test_confirm_mo_trang_ngay_khong_hoi_truong_hop_tu_dau():
+    """Xác nhận thủ tục là điều hướng LUÔN — trường hợp giải quyết để hỏi lúc tới màn đó."""
     conv = _conv()
     await flow.handle_turn(conv, intents.Intent("action", "pick_procedure", {"key": KEY}))
     assert conv["state"] == "confirm_procedure"
     r = await flow.handle_turn(conv, intents.Intent("confirm"))
+    assert conv["state"] == "guide_login" and not conv.get("procedure_variant")
+    assert r.actions and r.actions[0]["type"] == "navigate"
+
+
+async def test_hoi_truong_hop_khi_toi_man_chon_roi_dien_tai_cho():
+    """Tới màn "chọn nơi và loại" mà chưa chốt trường hợp → hỏi; chọn xong điền NGAY tại đó."""
+    conv = _conv(state="guide_login", procedure_key=KEY, procedure_variant="",
+                 milestones=[], agency_done=True)
+    r = await flow.handle_turn(conv, intents.Intent("event", "page_status", {"maeAgencyBlock": True}))
     assert conv["state"] == "choose_variant"
-    assert len(r.chips) == 2 and not r.actions, "phải hỏi cấp mới/cấp lại TRƯỚC khi mở trang"
+    assert len(r.chips) == 2 and not r.actions, "đang ở màn chọn thì hỏi trước, chưa điền"
 
     r2 = await flow.handle_turn(
         conv, intents.Intent("action", "set_variant", {"value": "cap_lai"}))
     assert conv["state"] == "guide_login" and conv["procedure_variant"] == "cap_lai"
-    assert r2.actions and r2.actions[0]["type"] == "navigate"
+    # KHÔNG điều hướng lại: đang đứng sẵn trên trang đó rồi.
+    assert r2.actions and r2.actions[0]["type"] == "fill_mae_agency"
+    assert r2.actions[0]["variant"] == "cap_lai"
     assert "Sở Nông nghiệp và Môi trường" in r2.display_md
+
+
+async def test_tu_bam_sang_trang_ke_khai_thi_khong_hoi_truong_hop():
+    """Công dân tự qua trang kê khai → vào thẳng bước nhận giấy tờ, không hỏi trường hợp nữa."""
+    conv = _conv(state="guide_login", procedure_key=KEY, procedure_variant="",
+                 milestones=[], agency_done=True)
+    await flow.handle_turn(conv, intents.Intent(
+        "event", "page_status", {"formKind": "declaration", "wizardStep": 1}))
+    assert conv["state"] != "choose_variant"
 
 
 async def test_choose_variant_hieu_cau_noi_llm():

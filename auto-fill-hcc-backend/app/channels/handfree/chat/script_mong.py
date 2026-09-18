@@ -484,6 +484,17 @@ DOCS_COMPLETE_NEXT_STEP = {
     "tts": "Kuv txais tau ntaub ntawv lawm. Kuv tab tom nyeem thiab npaj sau rau daim foos, tos kuv ib pliag.",
 }
 
+ATTACH_MODE_PRESET_SPLIT = {
+    "md": "\n\nRaws li **Cài đặt**, kuv yuav faib **ib daim ib phau** ntaub ntawv.",
+    "tts": " Raws li Cài đặt, kuv yuav faib ib daim ib phau ntaub ntawv.",
+}
+
+WAIT_ATTACHMENT_SAME_PAGE = {
+    "md": ("\n\nTam sim no kuv hloov mus rau **Thành phần hồ sơ** ces muab ntaub ntawv "
+           "tso rau phau ntaub ntawv — pej xeem tos ib pliag."),
+    "tts": " Tam sim no kuv hloov mus rau Thành phần hồ sơ ces muab ntaub ntawv tso. Pej xeem tos ib pliag.",
+}
+
 DOCS_COMPLETE_ATTACH = {
     "md": "Kuv txais tau {files_count} daim lawm. Kuv tab tom npaj muab tag nrho tso rau tib phau ntaub ntawv, tos ib pliag…",
     "tts": "Kuv txais tau ntaub ntawv lawm. Kuv npaj muab tso rau tib phau, tos ib pliag.",
@@ -617,6 +628,12 @@ ATTACH_NONE = {
     "tts": "Kuv muab tsis tau. Pej xeem xyuas nplooj ces nias muab tso dua.",
 }
 
+SAME_PAGE_TWO_STEP_SUMMARY = {
+    "md": ("\n\n📋 **Nhập đơn đăng ký** — sau tau {filled} lub thawv ✓ · "
+           "**Tải thành phần hồ sơ** — muab tau {attached} daim ✓"),
+    "tts": " Kuv sau tau cov thawv ntawm daim foos, thiab muab tau cov daim ntaub ntawv tso.",
+}
+
 ATTACH_DONE = {
     "md": "Kuv muab {attached} daim tso tiav lawm. Pej xeem xyuas zaum kawg ces nias Nộp hồ sơ — kauj ruam xa kuv cia pej xeem nias.",
     "tts": "Kuv muab tso tiav lawm. Pej xeem xyuas zaum kawg ces nias xa ntaub ntawv.",
@@ -674,6 +691,13 @@ SCAN_PICK = {
     "tts": "Pej xeem muab ntaub ntawv tso rau lub maiv scan los sis xaiv file hauv maiv teev. Xaiv ntau daim ib zaug los tau, kuv paub thiab faib tsheej yam.",
 }
 
+# Nối vào cuối SCAN_PICK (xem vi.SCAN_AUTO_RUN_NOTE). Trích ĐÚNG nhãn chip tiếng Mông
+# "Muab txaus lawm, ua mus" để công dân dò ra nút trên màn hình.
+SCAN_AUTO_RUN_NOTE = {
+    "md": " Muab tag lawm, pej xeem nias **\"Muab txaus lawm, ua mus\"** hauv qab kom kuv pib ua.",
+    "tts": " Muab tag lawm ces pej xeem nias lub pob Muab txaus lawm ua mus, kuv pib ua kiag.",
+}
+
 SCAN_PICK_ATTACH = {
     "md": (
         "Pej xeem muab ntaub ntawv tso rau lub tshuab scan los yog xaiv duab/PDF hauv computer. "
@@ -723,4 +747,151 @@ OFF_SCOPE = {
 FALLBACK_CLARIFY = {
     "md": "Pej xeem hais meej me ntsis — pej xeem xav {hint}, puas yog?",
     "tts": "Pej xeem hais meej me ntsis.",
+}
+
+# BẢN NHÁP chờ anh Dư soát. Hiện thành dòng nghiêng ngay dưới từng dòng tiếng Việt của thẻ.
+# Nút chốt giấy tờ gọi đúng nhãn Mông trong CHIP_HMONG để công dân dò khớp chữ trên nút thật.
+SCAN_GUIDE = {
+    "heading": "Muab ntaub ntawv tso rau lub maiv scan",
+    "body": ("Pej xeem muab ntawv tso rau lub maiv scan raws li daim duab qhia, ces nias "
+             "lub pob **Scan**."),
+    "alt": "Qhia scan: muab sab ntawv yuav scan tso rau hauv qab ces nias lub pob Scan.",
+    "zoom": "🔍 Nias saib daim duab",
+    "note": ("Muab **ib daim ib zaug** xwb — lub maiv txais kiag. Muab tag lawm ces nias "
+             "**\"Muab txaus lawm, ua mus\"**."),
+}
+
+# BẢN NHÁP chờ anh Dư soát. "md" phải là MỘT đoạn (không gạch đầu dòng, không xuống dòng
+# kép): extension bọc *nghiêng* nguyên đoạn như khối Mông của câu chat, mà markdown không
+# in nghiêng qua nhiều dòng. Emoji để ở dòng Việt phía trên, không lặp lại.
+SCAN_FEEDBACK = {
+    "md": ("Kuv txais tau {count} daim ntawm lub maiv scan. Tseem muaj ntaub ntawv ces pej xeem "
+           "muab ib daim ntxiv rau lub maiv, kuv txais kiag. Txaus lawm ces nias "
+           "\"Muab txaus lawm, ua mus\" hauv qab kom kuv pib ua."),
+    "tts": ("Kuv txais tau ib daim lawm. Tseem muaj ntaub ntawv ces pej xeem muab ntxiv rau lub "
+            "maiv scan, kuv txais kiag. Txaus lawm ces nias lub pob Muab txaus lawm ua mus."),
+    "ttsMore": ("Kuv txais tau ib daim ntxiv, tag nrho {count} daim. Tseem muaj ces muab ntxiv rau "
+                "lub maiv scan; txaus lawm ces nias lub pob Muab txaus lawm ua mus kom kuv pib ua."),
+}
+
+# Không có LANG_OFF: chuyển VỀ tiếng Việt thì câu xác nhận phải bằng tiếng Việt.
+LANG_ON = {
+    "md": "Kuv qhib hais lus Hmoob lawm — kuv yuav hais thiab mloog lus Hmoob.",
+    "tts": "Kuv qhib hais lus Hmoob lawm. Kuv yuav hais thiab mloog lus Hmoob.",
+}
+
+# Tên thủ tục và tên giấy tờ GIỮ NGUYÊN tiếng Việt: đó là chữ in trên giấy và trên cổng,
+# công dân phải đối chiếu được. Chỉ phần dẫn dắt dịch sang tiếng Mông.
+# KHÔNG nhắc lại {step}: nhãn bước có hai bản (STEP_LABELS / STEP_LABELS_HMONG) nhưng _fmt
+# format md Việt và md Mông bằng CÙNG một bộ kwargs, nên nhét vào là một trong hai bản sai
+# ngôn ngữ. Thanh tiến độ phía trên đã hiện cả hai bản rồi.
+PROCEDURE_IN_PROGRESS = {
+    "md": "Peb tab tom ua {procedure} lawm. Pej xeem ua raws kuv qhia mus ntxiv.",
+    "tts": "Peb tab tom ua {procedure} lawm. Pej xeem ua raws kuv qhia mus ntxiv.",
+}
+
+# {documents_md}/{documents_tts} là tên giấy tờ tiếng Việt lấy từ registry — theo quy ước đầu
+# file KHÔNG nhét vào bản Mông (đọc bằng giọng Mông thì công dân nghe không ra). Khối tiếng
+# Việt ngay phía trên đã liệt kê đủ, bản Mông chỉ trỏ lên đó.
+DOC_LIST_ANSWER = {
+    "md": "Ua {procedure} pej xeem npaj cov ntaub ntawv teev saum npo.",
+    "tts": "Pej xeem npaj cov ntaub ntawv teev saum npo.",
+}
+
+ANSWER_ONLY_DOCS_AND_STEPS = {
+    "md": ("Txog {procedure}: kuv paub cov ntaub ntawv npaj thiab cov kauj ruam xa ntaub ntawv. "
+           "Lwm yam pej xeem saib hauv nplooj ntawv."),
+    "tts": "Lwm yam pej xeem saib hauv nplooj ntawv.",
+}
+
+PICK_FILES_AGAIN = {
+    "md": "Kuv qhib qhov xaiv ntaub ntawv lawm. Pej xeem xaiv ntaub ntawv ntxiv.",
+    "tts": "Kuv qhib qhov xaiv ntaub ntawv lawm. Pej xeem xaiv ntxiv.",
+}
+
+BUSINESS_STILL_PROCESSING = {
+    "md": "Kuv tab tom ua phau ntaub ntawv lag luam, tos ib pliag…",
+    "tts": "Kuv tab tom ua phau ntaub ntawv lag luam, tos ib pliag.",
+}
+
+STILL_READING_DOCUMENTS = {
+    "md": "Kuv tab tom nyeem ntaub ntawv, yuav tas lawm, tos ib pliag…",
+    "tts": "Kuv tab tom nyeem ntaub ntawv, yuav tas lawm, tos ib pliag.",
+}
+
+# ── BẢN NHÁP chờ anh Dư soát ────────────────────────────────────────────────────────────
+# Các template flow.py đang gọi qua _fmt nhưng trước đây thiếu twin → _fmt rơi về tiếng Việt
+# và đọc bằng giọng Việt giữa phiên tiếng Mông.
+#
+# {options_md}/{options_tts}/{error} chứa sẵn chữ tiếng Việt lấy từ registry và từ cổng, nên
+# theo quy ước đầu file KHÔNG nhét vào bản Mông — chỉ trỏ "nyob saum npo" (trên màn hình),
+# nơi khối tiếng Việt ngay phía trên đã liệt kê đầy đủ. Nhãn nút của cổng (Đồng ý, Kê khai
+# thông tin…) giữ nguyên tiếng Việt: công dân phải dò đúng chữ trên nút.
+CHOOSE_VARIANT = {
+    "md": "{procedure} txog kauj ruam xaiv qhov ua. Muaj {count} qho nyob saum npo — pej xeem xaiv ib qho.",
+    "tts": "Muaj {count} qho ua. Pej xeem xaiv ib qho nyob saum npo.",
+}
+
+CHOOSE_VARIANT_REMIND = {
+    "md": "Pej xeem xaiv ib qho nyob saum npo kom kuv ua tau ntxiv.",
+    "tts": "Pej xeem xaiv ib qho nyob saum npo kom kuv ua tau ntxiv.",
+}
+
+VARIANT_DIALOG_AUTOFILL_GUIDE = {
+    "md": "Kuv xaiv qhov {variant_label} ces nias Đồng ý kom mus rau nplooj sau ntawv.",
+    "tts": "Kuv xaiv qhov {variant_label} ces nias Đồng ý kom mus rau nplooj sau ntawv.",
+}
+
+GUIDE_AGENCY_SELECT_PROVINCE = {
+    "md": ("Kuv tab tom qhib nplooj ntawv {procedure}. Kuv yuav xaiv xeev {province}, "
+           "nias Đồng ý ces xaiv {agency} kom xa tau ntaub ntawv."),
+    "tts": ("Kuv tab tom qhib nplooj ntawv. Kuv yuav xaiv xeev {province} ces xaiv {agency} "
+            "kom xa tau ntaub ntawv."),
+}
+
+MAE_AGENCY_AUTOFILL_GUIDE = {
+    "md": ("Kuv xaiv xeev {province} thiab {agency}, kuv xaiv qhov {variant_label} ces nias "
+           "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+    "tts": ("Kuv xaiv xeev {province} thiab {agency}, xaiv qhov {variant_label} ces nias "
+            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+}
+
+MAE_AGENCY_FAILED = {
+    "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv: Xeev {province}, ces Sở/Ban ngành "
+           "xaiv {agency}, ces qhov {variant_label}, ces nias Đồng ý và tiếp tục."),
+    "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv xeev {province}, xaiv {agency}, xaiv qhov "
+            "{variant_label}, ces nias Đồng ý và tiếp tục."),
+}
+
+PROCEDURE_PROVINCE_LOCKED = {
+    "md": ("{procedure} tsuas ua tau nyob {provinces} xwb. Pej xeem nyob lwm xeev, ua tsis tau "
+           "yam no. Pej xeem xaiv lwm yam hauv qab no."),
+    "tts": ("{procedure} tsuas ua tau nyob {provinces} xwb. Pej xeem nyob lwm xeev, ua tsis tau "
+            "yam no. Pej xeem xaiv lwm yam hauv qab no."),
+}
+
+RATE_INVITE = {
+    "md": ("Pej xeem xa tau ntaub ntawv lawm. Ua ntej tas, pej xeem qhia kuv hnub no kuv pab "
+           "zoo li cas? Nias ib qho xwb, tsis yuam."),
+    "tts": ("Pej xeem xa tau ntaub ntawv lawm. Ua ntej tas, pej xeem qhia kuv hnub no kuv pab "
+            "zoo li cas? Nias ib qho xwb, tsis yuam."),
+}
+
+REFILL_ALREADY_RUNNING = {
+    "md": "Kuv tab tom sau dua cov ntaub ntawv lawm. Pej xeem tos ib pliag.",
+    "tts": "Kuv tab tom sau dua cov ntaub ntawv lawm. Pej xeem tos ib pliag.",
+}
+
+REFILL_PROCESSING = {
+    "md": ("Kuv tab tom nyeem dua ntaub ntawv thiab sau dua daim foos. Pej xeem nyob hauv nplooj "
+           "no, tos ib pliag…"),
+    "tts": ("Kuv tab tom nyeem dua ntaub ntawv thiab sau dua daim foos. Pej xeem nyob hauv nplooj "
+            "no, tos ib pliag."),
+}
+
+REFILL_WRONG_PAGE = {
+    "md": ("Nplooj ntawv tsis yog nplooj Kê khai thông tin. Pej xeem rov mus rau nplooj Kê khai "
+           "ces nias Điền lại thông tin."),
+    "tts": ("Nplooj ntawv tsis yog nplooj Kê khai thông tin. Pej xeem rov mus rau nplooj Kê khai "
+            "ces nias Điền lại thông tin."),
 }

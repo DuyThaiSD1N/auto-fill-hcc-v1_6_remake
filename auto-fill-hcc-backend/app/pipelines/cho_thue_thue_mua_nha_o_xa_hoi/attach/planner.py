@@ -2,14 +2,25 @@
 dvc.moc.gov.vn — Angular mat-table, engine FE `attp-row`, CÙNG cổng #63/#76/#78/#113).
 
 Bảng có 8 dòng (hồ sơ THUÊ chỉ dùng 4 dòng liên quan, đều "Bản chính"):
-  [5] "Đơn đăng ký thuê nhà ở xã hội theo mẫu"                         ← Tờ đơn (to_don)
-  [1] "Giấy tờ chứng minh điều kiện được hưởng chính sách…nhà ở xã hội" ← CM ĐIỀU KIỆN (dieu_kien)
-  [—] "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng, Bộ trưởng Bộ Quốc
-      phòng, Bộ trưởng Bộ Công an và giấy tờ chứng minh thuộc đối tượng được miễn, giảm tiền thuê
-      nhà ở xã hội (nếu có)"                                           ← CM ĐỐI TƯỢNG (doi_tuong)
-  [7] "Trường hợp thuê nhà ở xã hội"                                    ← CCCD/giấy tờ tùy thân
-(componentIndex theo thứ tự DOM trang đính kèm mẫu; FE khớp CHÍNH bằng componentName substring fold, index
-chỉ là chốt phụ. Các dòng "thuê MUA" không dùng vì hồ sơ chọn THUÊ.)
+  "Đơn đăng ký thuê nhà ở xã hội theo mẫu"                             ← Tờ đơn (to_don)
+  "Giấy tờ chứng minh điều kiện được hưởng chính sách…nhà ở xã hội"     ← CM ĐIỀU KIỆN (dieu_kien)
+  "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng, Bộ trưởng Bộ Quốc phòng,
+   Bộ trưởng Bộ Công an VÀ giấy tờ chứng minh thuộc đối tượng được MIỄN, GIẢM tiền thuê nhà ở xã hội
+   (nếu có)"                                                           ← CM ĐỐI TƯỢNG (doi_tuong)
+  "Trường hợp thuê nhà ở xã hội"                                       ← CCCD/giấy tờ tùy thân
+
+⚑ KHÔNG dùng componentIndex: thứ tự dòng trên cổng KHÔNG ổn định (đã quan sát 2 thứ tự khác nhau cho
+cùng thủ tục). FE (`findAttachmentRowByComponent`) chỉ tin index khi nó ĐỒNG THỜI khớp text, nên bỏ hẳn
+index và khớp bằng componentName là đường an toàn duy nhất.
+
+⚑ BẢNG CÓ HAI DÒNG "chứng minh đối tượng" GẦN TRÙNG NHAU:
+  (a) "…Bộ trưởng Bộ Công an VÀ giấy tờ chứng minh thuộc đối tượng được miễn, giảm tiền thuê…(nếu có)"
+  (b) "…Bộ trưởng Bộ Công an."  ← ngắn hơn, là TIỀN TỐ của (a)
+`componentTextMatches` so substring HAI CHIỀU, nên componentName cắt ở "…Bộ trưởng Bộ Xây dựng" khớp CẢ
+HAI dòng và rơi vào dòng nào đứng trước trong DOM. Phải lấy đoạn CHỈ CÓ Ở (a) — cụm "miễn, giảm tiền
+thuê nhà ở xã hội" — thì mới chốt đúng dòng (a) theo yêu cầu nghiệp vụ.
+
+Các dòng "thuê MUA" không dùng vì hồ sơ chọn THUÊ.
 
 Tách ĐỐI TƯỢNG ↔ ĐIỀU KIỆN theo đúng NĐ 100/2024: giấy chứng nhận ĐỐI TƯỢNG chính sách (huân/huy
 chương kháng chiến, bằng khen, thương binh, người có công, quân nhân/công an, miễn-giảm tiền thuê)
@@ -17,9 +28,11 @@ chương kháng chiến, bằng khen, thương binh, người có công, quân n
 nghèo/cận nghèo, thực trạng nhà ở, hợp đồng lao động KCN) đi dòng [1].
 
 componentName lấy đoạn text ĐẶC TRƯNG, KHÔNG lồng nhau: "thuê nhà ở xã hội theo mẫu" ≠ "thuê MUA nhà…";
-"Trường hợp thuê nhà ở xã hội" ≠ "Trường hợp thuê mua…". GCN ĐKDN/sổ hộ khẩu → other → bỏ qua.
+"Trường hợp thuê nhà ở xã hội" ≠ "Trường hợp thuê mua…".
 
-Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG.
+Phân loại **THUẦN LLM** (không còn lưới keyword quét OCR). Tài liệu không nhận ra loại KHÔNG bị bỏ qua:
+mọi file đều được đính, file chưa rõ loại về dòng "chứng minh đối tượng…miễn, giảm…(nếu có)" — dòng rộng
+nhất của bảng — kèm cảnh báo cho cán bộ soát. Tuyệt đối không bỏ sót file nào.
 """
 
 import time
@@ -39,71 +52,38 @@ _DOI_TUONG = "doi_tuong"
 _CCCD = "cccd"
 _OTHER = "other"
 
-# componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng (FE khớp substring fold); componentIndex = STT dòng (1-based).
+# componentName = ĐOẠN TEXT ĐẶC TRƯNG của dòng, FE khớp substring đã fold dấu (componentTextMatches).
 _ROWS: dict[str, dict[str, Any]] = {
     _TO_DON: {
         "componentName": "Đơn đăng ký thuê nhà ở xã hội theo mẫu",
-        "componentIndex": 5,
         "loaiBan": "Bản chính",
         "documentName": "Đơn đăng ký thuê nhà ở xã hội theo mẫu",
     },
     _DIEU_KIEN: {
         "componentName": "Giấy tờ chứng minh điều kiện được hưởng chính sách hỗ trợ về nhà ở xã hội",
-        "componentIndex": 1,
         "loaiBan": "Bản chính",
         "documentName": "Giấy tờ chứng minh điều kiện được hưởng chính sách hỗ trợ về nhà ở xã hội",
     },
-    # Dòng "chứng minh ĐỐI TƯỢNG": componentName lấy đoạn ĐẶC TRƯNG, KHÔNG dấu phẩy (FE so chuỗi fold
-    # nguyên văn, dấu phẩy trên cổng dễ lệch) và không lồng vào tên dòng [1]. componentIndex để None
-    # vì chưa chốt được STT DOM của dòng này — FE khớp bằng componentName là đủ (index chỉ là chốt phụ).
+    # componentName PHẢI chứa cụm "miễn, giảm tiền thuê nhà ở xã hội" — đó là phần DUY NHẤT phân biệt
+    # dòng này với dòng "…Bộ trưởng Bộ Công an." đứng ngay cạnh (xem khối ⚑ ở docstring).
     _DOI_TUONG: {
-        "componentName": "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng",
-        "componentIndex": None,
+        "componentName": "giấy tờ chứng minh thuộc đối tượng được miễn, giảm tiền thuê nhà ở xã hội",
         "loaiBan": "Bản chính",
-        "documentName": (
-            "Giấy tờ chứng minh đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng, Bộ trưởng Bộ "
-            "Quốc phòng, Bộ trưởng Bộ Công an và giấy tờ chứng minh thuộc đối tượng được miễn, "
-            "giảm tiền thuê nhà ở xã hội (nếu có)"
-        ),
+        # documentName TRỞ THÀNH TÊN TỆP tải lên → giữ ngắn: tên dòng đầy đủ dài ~200 ký tự, cộng hậu tố
+        # đánh số và đuôi file là chạm trần 255 byte của filesystem.
+        "documentName": "Giấy tờ chứng minh đối tượng được miễn, giảm tiền thuê nhà ở xã hội",
     },
     _CCCD: {
         "componentName": "Trường hợp thuê nhà ở xã hội",
-        "componentIndex": 7,
         "loaiBan": "Bản chính",
         "documentName": "Giấy tờ chứng minh đối tượng - trường hợp thuê nhà ở xã hội (CCCD/tùy thân)",
     },
 }
 _ALLOWED_DOC_TYPES = set(_ROWS) | {_OTHER}
 
-
-def _rule_doc_type(text: str) -> str:
-    """Route TẤT ĐỊNH theo OCR (dự phòng cho LLM)."""
-    h = _fold(text)
-    if not h:
-        return ""
-    if "don dang ky thue" in h and "nha o xa hoi" in h:
-        return _TO_DON
-    if "can cuoc" in h or "cccd" in h or "chung minh nhan dan" in h:
-        return _CCCD
-    # ĐỐI TƯỢNG kiểm TRƯỚC điều kiện: giấy khen thưởng kháng chiến (huân/huy chương) và giấy tờ
-    # người có công thuộc dòng "…theo hướng dẫn của Bộ trưởng Bộ Xây dựng…", không phải dòng [1].
-    if (
-        "huy chuong" in h
-        or "huan chuong" in h
-        or "khang chien" in h
-        or "hoi dong bo truong" in h
-        or "bang khen" in h
-        or "thuong binh" in h
-        or "liet si" in h
-        or "nguoi co cong" in h
-        or "mien giam tien thue" in h
-        or "quan nhan chuyen nghiep" in h
-        or "cong nhan quoc phong" in h
-    ):
-        return _DOI_TUONG
-    if "ho ngheo" in h or "can ngheo" in h or "thu nhap" in h or "thuc trang nha o" in h:
-        return _DIEU_KIEN
-    return ""
+# Dòng nhận tài liệu chưa nhận ra loại: rộng nhất bảng ("…và giấy tờ chứng minh thuộc đối tượng được
+# miễn, giảm…(nếu có)") nên nhận được mọi giấy tờ chứng minh đối tượng mà OCR đọc không rõ.
+_FALLBACK_ROW = _DOI_TUONG
 
 
 def _normalize_doc_type(value: str) -> str:
@@ -130,30 +110,62 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     ]
     raw = await client.chat(messages, max_tokens=500, enable_thinking=settings.agent_reasoning)
     parsed = client.extract_json_block(raw)
+    parsed_docs = parsed.get("documents", []) or []
     out: dict[int, str] = {}
-    for item in parsed.get("documents", []) or []:
+
+    def _type_of(item: dict) -> str:
+        return _normalize_doc_type(str(item.get("docType") or item.get("type") or ""))
+
+    # Đủ số phần tử → map theo THỨ TỰ MẢNG. Field "index" do LLM tự đánh hay lệch một nhịp, nhất là khi
+    # danh sách gửi đi bị khuyết index (file không có OCR text thì không được gửi cho LLM).
+    if len(parsed_docs) == len(documents):
+        for pos, item in enumerate(parsed_docs):
+            out[int(documents[pos]["index"])] = _type_of(item)
+        return out
+    valid = {int(doc["index"]) for doc in documents}
+    for item in parsed_docs:
         try:
             idx = int(item.get("index"))
         except Exception:  # noqa: BLE001
             continue
-        out[idx] = _normalize_doc_type(str(item.get("docType") or item.get("type") or ""))
+        if idx in valid:
+            out[idx] = _type_of(item)
     return out
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str) -> dict:
-    row = _ROWS[doc_type]
+def _build_row_item(file: dict, file_index: int, row_key: str, detected_type: str) -> dict:
+    row = _ROWS[row_key]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
         "documentName": row["documentName"],
         "componentName": row["componentName"],
-        "componentIndex": row["componentIndex"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
         "needsAddComponent": False,
-        "detectedType": doc_type,
+        "detectedType": detected_type,
     }
+
+
+def _dedupe_document_names(items: list[dict]) -> None:
+    """Đánh số các documentName trùng nhau trong cùng một dòng.
+
+    Engine attp-row đặt TÊN TỆP TẢI LÊN theo documentName (`dataUrlToFile(payload, item.documentName)`)
+    và chống trùng bằng chính tên đó (`attpRowHasDoc`). Nhiều file cùng một dòng mà trùng tên sẽ đè lên
+    nhau ở cổng, và lần đính lại sẽ bị coi là "đã có" rồi bỏ qua hết.
+    """
+    seen: dict[str, int] = {}
+    for item in items:
+        name = item["documentName"]
+        seen[name] = seen.get(name, 0) + 1
+    counter: dict[str, int] = {}
+    for item in items:
+        name = item["documentName"]
+        if seen[name] < 2:
+            continue
+        counter[name] = counter.get(name, 0) + 1
+        item["documentName"] = f"{name} ({counter[name]})"
 
 
 def build_plan_items(
@@ -161,32 +173,34 @@ def build_plan_items(
     ocr_results: list[dict],
     llm_types: dict[int, str] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
+    _ = ocr_results  # OCR chỉ để nuôi LLM; planner KHÔNG tự đọc text để đoán loại.
     llm_types = llm_types or {}
-    by_name = {item.get("name"): item for item in ocr_results}
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    unknown: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        text = str(by_name.get(file_name, {}).get("text") or "")
         llm_type = llm_types.get(idx, "")
-        rule_type = _rule_doc_type(text)
-        # LLM-primary: ưu tiên phán đoán LLM; rule keyword chỉ dự phòng khi LLM trả other/không hợp lệ.
-        if llm_type in _ROWS:
-            doc_type, source = llm_type, "llm"
-        elif rule_type:
-            doc_type, source = rule_type, "rule"
-        else:
-            doc_type, source = _OTHER, "unknown"
+        doc_type = llm_type if llm_type in _ROWS else _OTHER
+        source = "llm" if llm_type in _ROWS else ("llm" if idx in llm_types else "unknown")
+        row_key = doc_type if doc_type in _ROWS else _FALLBACK_ROW
+        items.append(_build_row_item(file, idx, row_key, doc_type))
+        classified.append({
+            "fileName": file_name, "docType": doc_type, "source": source,
+            "componentName": _ROWS[row_key]["componentName"],
+        })
+        if doc_type == _OTHER:
+            unknown.append(file_name)
 
-        if doc_type in _ROWS:
-            items.append(_build_row_item(file, idx, doc_type))
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source})
-            continue
-        # other = giấy tờ chỉ trích thông tin (GCN ĐKDN, sổ hộ khẩu…) → bỏ qua, KHÔNG cảnh báo.
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
-
+    _dedupe_document_names(items)
+    if unknown:
+        warnings.append(
+            "Chưa nhận ra loại giấy tờ, đã tạm đính vào dòng \"Giấy tờ chứng minh đối tượng… được "
+            f"miễn, giảm tiền thuê nhà ở xã hội (nếu có)\" để không bỏ sót — cán bộ kiểm tra lại: "
+            f"{', '.join(unknown)}."
+        )
     return items, warnings, classified
 
 

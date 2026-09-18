@@ -19,7 +19,6 @@ class ProcessReq(BaseModel):
 class FieldOut(BaseModel):
     # extra="allow": mapper gắn thêm khoá điều khiển cho extension (aliases, otherOf, scope, clear...)
     # mà KHÔNG phải khai báo ở đây. Thiếu dòng này pydantic lọc sạch khoá lạ → extension nhận field trần:
-    # vd ô "dân tộc khác" kết hôn mất alias "DanTocBenNuKhac" nên không tìm thấy ô (req_9445a75c7ade).
     model_config = ConfigDict(extra="allow")
 
     name: str

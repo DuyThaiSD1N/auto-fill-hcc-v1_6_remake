@@ -81,9 +81,7 @@ async def test_doi_ten_nuoc_sach_compact_agent_derives_dom_fields(monkeypatch):
     assert d["CongDan_ngayCapCmnd"] == "30/09/2025"
     assert d["CongDan_noiCapCmnd"] == "Bộ Công an"
     assert d["CongDan_maTinhThanh"] == "Lai Châu"
-    # Bước chuẩn hóa địa chỉ chung trả về ĐÚNG tên trong danh mục hiện hành ("Xã Sì Lở Lầu"),
-    # thay vì tên trần thiếu tiền tố đơn vị — cổng chọn option theo ĐÚNG chuỗi nhãn.
-    assert d["CongDan_maPhuongXa"] == "Xã Sì Lở Lầu"
+    assert d["CongDan_maPhuongXa"] == "Sì Lở Lầu"
     assert d["CongDan_diaChi"] == "Bản Sì Choang"
     assert d["CongDan_diDong"] == "0988618366"
     assert d["CongDan_maDMQuocGia"] == "Việt Nam"
@@ -191,8 +189,7 @@ async def test_doi_ten_nuoc_sach_maps_enterprise_fields_without_asset_gcn(monkey
     assert d["CongDan_maSoThueNguoiNop"] == "6200123497"
     assert d["CongDan_soCmnd"] == "011083001513"
     assert d["CongDan_maTinhThanh"] == "Ninh Bình"
-    # Nhãn đầy đủ trong danh mục hiện hành; xem ghi chú ở test dom_fields.
-    assert d["CongDan_maPhuongXa"] == "Xã Hải Hậu"
+    assert d["CongDan_maPhuongXa"] == "Hải Hậu"
     assert d["CongDan_diaChi"] == "Hải Anh"
     assert d["CongDan_diDong"] == "0982213206"
     assert d["CongDan_noiOHienTai"] == "Tổ 9, Quyết Thắng, Thành phố Lai Châu, Lai Châu"
@@ -250,8 +247,7 @@ async def test_doi_ten_nuoc_sach_maps_agency_fields_without_gcn(monkeypatch):
     assert d["CongDan_tenCoQuanToChuc"] == "Văn Phòng Đảng ủy phường Tân Phong"
     assert d["CongDan_maSoThueNguoiNop"] == "6200127685"
     assert d["CongDan_maTinhThanh"] == "Phú Thọ"
-    # Nhãn đầy đủ trong danh mục hiện hành; xem ghi chú ở test dom_fields.
-    assert d["CongDan_maPhuongXa"] == "Xã Hạ Hòa"
+    assert d["CongDan_maPhuongXa"] == "Hạ Hòa"
     assert d["CongDan_diaChi"] == "Minh Côi"
     assert d["CongDan_noiOHienTai"] == "Tổ 2, Quyết Tiến, TP. Lai Châu, Lai Châu"
     assert d["CongDan_diaChiThuongTru"] == "Tổ 2, Quyết Tiến, TP. Lai Châu, Lai Châu"

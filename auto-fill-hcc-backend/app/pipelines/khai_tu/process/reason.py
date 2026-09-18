@@ -402,6 +402,28 @@ def _role_identity_number(context: str, tag: str) -> str:
     return digits if len(digits) in {9, 12} else ""
 
 
+# Một dòng bị loại theo đúng mẫu prompt: "- Họ tên — Số CCCD/CMND — lý do loại".
+_REJECT_SEPARATOR_RE = re.compile(r"\s+[—–-]\s+")
+_REJECT_REASON_RE = re.compile(r"\bl[ýy]\s*do\b", re.IGNORECASE)
+_IDENTITY_NUMBER_RE = re.compile(r"(?<!\d)\d[\d.\s]{7,16}\d(?!\d)")
+
+
+def _rejected_identity_head(line: str) -> str:
+    """Phần ĐỊNH DANH của một dòng bị loại, bỏ câu lý do.
+
+    Lý do loại là văn xuôi và agent hay nhắc lại số của chính hai vai trong đó
+    ("Số CCCD này không khớp với CCCD nào trong hồ sơ (015156000753 và 036133004502)").
+    Quét cả dòng thì số của người mất lọt vào danh sách bị loại, và
+    ``sanitize_identity_fields`` xoá mất số định danh/ngày cấp/nơi cấp của người mất.
+    """
+    text = line.strip().lstrip("-*•").strip()
+    reason_start = _REJECT_REASON_RE.search(text)
+    if reason_start:
+        text = text[: reason_start.start()]
+    # Hai mảnh đầu là họ tên và số giấy tờ; từ mảnh thứ ba trở đi là lý do.
+    return " ".join(_REJECT_SEPARATOR_RE.split(text)[:2])
+
+
 def _rejected_identity_numbers(context: str) -> set[str]:
     """Số giấy tờ mà agent phân vai đã loại khỏi cả hai vai.
 
@@ -410,11 +432,18 @@ def _rejected_identity_numbers(context: str) -> set[str]:
     (tờ khai không kèm ảnh thẻ), không có nghĩa dữ liệu giấy tờ người chết là sai.
     """
     section = _section(context, "giay_to_khong_thuoc_hai_vai")
-    return {
+    rejected = {
         digits
-        for digits in re.findall(r"(?<!\d)\d[\d.\s]{7,16}\d(?!\d)", section)
-        for digits in (_digits(digits),)
+        for line in section.splitlines()
+        for raw in _IDENTITY_NUMBER_RE.findall(_rejected_identity_head(line))
+        for digits in (_digits(raw),)
         if len(digits) in {9, 12}
+    }
+    # Số đã được chính context gán cho một vai thì không thể là giấy tờ người thứ ba:
+    # agent tự mâu thuẫn thì tin khối phân vai, đừng xoá giấy tờ của hai vai.
+    return rejected - {
+        _role_identity_number(context, "nguoi_yeu_cau"),
+        _role_identity_number(context, "nguoi_mat"),
     }
 
 

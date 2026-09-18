@@ -6,9 +6,14 @@ một hồ sơ là một document trong `dossiers` — có vòng đời bắt đ
 CHỈ hồ sơ đã có mốc nộp mới được tính. Hồ sơ làm dở không vào số liệu (vẫn còn ở Nhật ký
 hồ sơ để nhìn tỷ lệ bỏ dở).
 
-MỘT HỒ SƠ = MỘT, kể cả bấm nộp nhiều lần. Chứng thực bản sao tách nhiều tab dùng CHUNG một
-khóa hồ sơ và bấm nộp N lần; cách cũ tính N hồ sơ, từ nay tính 1. Vì vậy ở đây đếm số
-DOCUMENT chứ không đếm số phần tử `submit_events` — đừng đổi thành $sum submit_count.
+MỘT HỒ SƠ = MỘT, kể cả bấm nộp nhiều lần — bấm hụt rồi bấm lại vẫn là một hồ sơ.
+
+NGOẠI LỆ DUY NHẤT: ba thủ tục CHỨNG THỰC (bản sao · chữ ký · chữ ký người dịch CTV). Mỗi lần
+bấm nộp ở đó là một hồ sơ riêng trên cổng, có mã riêng — nên số hồ sơ = SỐ LẦN NỘP.
+
+Đánh đổi đã biết và đã chấp nhận: ở ba thủ tục này, bấm nộp hụt rồi bấm lại cũng thành hai hồ
+sơ. Content script đã chặn bấm dồn trong 3 giây; ngoài ngưỡng đó thì không có cách nào phân
+biệt "nộp bản thứ hai" với "nộp lại bản cũ" từ phía extension.
 
 Mốc ngày của hồ sơ = LẦN NỘP ĐẦU TIÊN, không phải lần cuối. `submit_clicked_at` bị ghi đè
 mỗi lần bấm, nên lấy nó làm mốc thì một hồ sơ đã chốt của hôm qua có thể nhảy sang hôm nay
@@ -17,6 +22,10 @@ chỉ vì cán bộ bấm nộp lại — con số của ngày cũ không đư�
 from datetime import datetime
 
 from app.db.mongo import get_db
+
+# Ba thủ tục chứng thực: mỗi lần bấm nộp là MỘT hồ sơ trên cổng (cán bộ thường làm nhiều bản
+# chứng thực trong cùng một phiên, tách tab hoặc không). Thủ tục khác vẫn là một hồ sơ một lần.
+_SUBMIT_IS_A_DOSSIER = ("chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-chu-ky-nguoi-dich-ctv")
 
 # Mốc nộp sớm nhất của hồ sơ. `submit_events` có từ bản 1.18; document cũ hơn (nếu có) chỉ
 # mang `submit_clicked_at` nên phải dự phòng, không thì rơi mất khỏi thống kê.
@@ -27,6 +36,38 @@ _FIRST_SUBMIT = {
         }
     }
 }
+
+
+def _dossier_count(date_from: datetime, date_to: datetime) -> dict:
+    """Một document đáng mấy hồ sơ.
+
+    Mặc định 1. Riêng ba thủ tục chứng thực: mỗi lần nộp là một hồ sơ trên cổng, nên đếm số
+    sự kiện nộp RƠI TRONG KHOẢNG — không phải `submit_count`, vì trường đó cộng dồn cả đời hồ
+    sơ, lấy nó là lần nộp của kỳ trước cũng bị tính vào kỳ này.
+
+    Hồ sơ chứng thực chưa kịp nộp lần nào thì `$max` với 1 giữ ở mức 1 — vẫn là một hồ sơ.
+    """
+    events_in_range = {
+        "$size": {
+            "$filter": {
+                "input": {"$ifNull": ["$submit_events", []]},
+                "as": "event",
+                "cond": {
+                    "$and": [
+                        {"$gte": ["$$event.at", date_from]},
+                        {"$lt": ["$$event.at", date_to]},
+                    ]
+                },
+            }
+        }
+    }
+    return {
+        "$cond": [
+            {"$in": ["$procedure", list(_SUBMIT_IS_A_DOSSIER)]},
+            {"$max": [1, events_in_range]},
+            1,
+        ]
+    }
 
 
 def _match(user_ids: list[str] | None, date_from: datetime, experience: str | None) -> dict:
@@ -70,6 +111,7 @@ async def submitted_counts(
         {"$match": _match(ids, date_from, experience)},
         _FIRST_SUBMIT,
         {"$match": {"_first_submit": {"$gte": date_from, "$lt": date_to}}},
+        {"$set": {"_count": _dossier_count(date_from, date_to)}},
         {
             "$group": {
                 "_id": {
@@ -78,7 +120,7 @@ async def submitted_counts(
                 },
                 "name": {"$first": {"$ifNull": ["$name", {"$ifNull": ["$username", "—"]}]}},
                 "label": {"$first": {"$ifNull": ["$procedure_label", "$procedure"]}},
-                "count": {"$sum": 1},
+                "count": {"$sum": "$_count"},
             }
         },
     ]
@@ -114,6 +156,7 @@ async def submitted_daily_counts(
         {"$match": _match(ids, date_from, experience)},
         _FIRST_SUBMIT,
         {"$match": {"_first_submit": {"$gte": date_from, "$lt": date_to}}},
+        {"$set": {"_count": _dossier_count(date_from, date_to)}},
         {
             "$group": {
                 "_id": {
@@ -126,7 +169,7 @@ async def submitted_daily_counts(
                         }
                     },
                 },
-                "count": {"$sum": 1},
+                "count": {"$sum": "$_count"},
             }
         },
         {"$sort": {"_id.userId": 1, "_id.day": 1}},

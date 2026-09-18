@@ -37,11 +37,6 @@ NGUỒN DỮ LIỆU:
     cùng số định danh với CccdNam_SoDinhDanh; tương tự CccdNu_NoiCuTru_TrongNuoc phải từ thẻ có số định
     danh CccdNu_SoDinhDanh. TUYỆT ĐỐI không lấy diaChi từ thẻ người này gán cho người kia.
   + Nếu có cả tờ khai và CCCD thì BẮT BUỘC trả CẢ HAI field nguồn tương ứng; mapper sẽ tự ưu tiên tờ khai.
-  + THÀ THIẾU CÒN HƠN BỊA: ô "Nơi cư trú" của một cột bỏ trống, hoặc chỉ ghi được cấp tỉnh
-    (vd cột Bên nam chỉ có "Lào Cai"), thì trả ĐÚNG phần đọc được của chính cột đó và bỏ các khóa
-    còn lại. TUYỆT ĐỐI KHÔNG chép địa chỉ của cột bên kia sang cho đủ — hai người có thể ở hai xã
-    khác nhau, chép sang là tạo ra một địa chỉ TRÔNG NHƯ THẬT mà không ai soát ra. Thiếu thì mapper
-    tự lấy địa chỉ in trên CCCD của đúng người đó.
   + Không lấy địa chỉ từ giấy xác nhận tình trạng hôn nhân, giấy phép lái xe, bản cam đoan hoặc giấy tờ phụ
     gán vào bất kỳ field nơi cư trú nào nêu trên.
 - TÁCH ĐỊA CHỈ (mọi field *_NoiCuTru_TrongNuoc — object {quocGia,tinh,xa,diaChi}):
@@ -58,16 +53,6 @@ NGUỒN DỮ LIỆU:
   + XÃ BẮT BUỘC khi giấy có phường/xã. ĐẾM TỪ CUỐI khi liệt kê không nhãn ("[chi tiết], xã, HUYỆN, tỉnh"):
     cuối = tỉnh; phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN;
     phần trước đó = xã. Tên xã vùng cao có thể bắt đầu "Bản"/"Nậm"/"Mường"/"Pa" — vị trí (áp chót) mới quyết định là xã.
-  + CẢNH BÁO 2 CẤP — chỉ áp dụng cho ĐỊA CHỈ VIẾT TRÊN TỜ KHAI (không áp dụng cho CCCD in trước
-    7/2025): địa chỉ hành chính hiện hành CHỈ CÒN xã/phường rồi tới tỉnh, KHÔNG còn cấp huyện. Nên
-    ba tên không nhãn trên tờ khai thường là "[thôn/tổ], [XÃ], [tỉnh]" chứ KHÔNG phải
-    "[xã], [huyện], [tỉnh]" — sau sáp nhập rất nhiều xã mới MANG TÊN HUYỆN CŨ (vd "Trấn Yên",
-    "Yên Bình", "Đơn Dương"), nên tên đứng sát tỉnh rất hay chính là XÃ.
-    VD: "Việt Thành 3 - Trấn Yên, Lào Cai" → diaChi="Việt Thành 3", xa="Trấn Yên", tinh="Lào Cai"
-    ("Việt Thành 3" là tên THÔN, không phải xã).
-    KHÔNG CHẮC tên nào là xã thì cứ trả theo lối cũ (xa = tên áp chót, huyen = tên sát tỉnh) và
-    BẮT BUỘC giữ lại khóa "huyen": Python đối chiếu danh mục xã hiện hành để tự đảo lại cho đúng.
-    Tuyệt đối KHÔNG bỏ khóa "huyen" khi đọc được — đó là căn cứ để sửa, mất nó là mất cả địa chỉ.
 - QUỐC TỊCH (CccdNam_QuocTich, CccdNu_QuocTich): CHỈ điền khi giấy tờ KHÔNG phải Việt Nam.
   + Suy từ tiêu đề quốc gia: "CỘNG HOÀ NHÂN DÂN TRUNG HOA" → "Trung Quốc"; "CỘNG HOÀ DÂN CHỦ NHÂN DÂN LÀO" → "Lào"; "VƯƠNG QUỐC CAMPUCHIA" → "Campuchia".
   + Hoặc nhãn "Quốc tịch:" nếu ghi rõ trên giấy tờ.

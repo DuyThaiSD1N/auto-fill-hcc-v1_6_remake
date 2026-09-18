@@ -201,3 +201,36 @@ async def test_client_cu_khong_khai_co_thi_bam_nut_van_im_lang(mock_save):
 
     assert r.cards == [] and r.display_md == ""
     assert conv.get("submit_clicked_at"), "bản cũ vẫn phải chấm được mốc nộp"
+
+
+# ── Nút đăng xuất phải BẤM ĐƯỢC ở MỌI state (không chỉ "done") ─────────────────────────────
+# 2 nút hiện ngay sau đánh giá, lúc đó cổng thường chưa phát `submitted` nên state vẫn "attaching".
+# Handler logout/continue TRƯỚC ĐÂY kẹt trong _handle_done → bấm nút rơi vào fallback "chưa nhận rõ".
+
+async def test_bam_dang_xuat_khi_state_attaching_van_chay(mock_save):
+    conv = {"_id": "c-lo", "state": "attaching", "client_capabilities": {"supportsRating": True},
+            "submitted_logout_decision": "pending"}
+    r = await flow.handle_turn(conv, Intent("action", "logout_citizen"))
+    assert [a["type"] for a in r.actions] == ["logout_citizen"]
+    assert conv["submitted_logout_decision"] == "logout"
+
+
+async def test_bam_nop_them_khi_state_attaching_van_chay(mock_save):
+    conv = {"_id": "c-lo2", "state": "attaching", "client_capabilities": {"supportsRating": True},
+            "submitted_logout_decision": "pending"}
+    r = await flow.handle_turn(conv, Intent("action", "continue_dossiers"))
+    assert [a["type"] for a in r.actions] == ["continue_dossiers"]
+    assert conv["submitted_logout_decision"] == "continue"
+
+
+def test_nhan_dien_giong_noi_dang_xuat_khi_dang_cho_chon():
+    # Rảnh tay gửi giọng nói dạng text tự do → phải bắt tất định (LLM hay trả unknown).
+    from app.channels.handfree.chat.intents import resolve_logout_choice as R
+    assert R("đăng xuất") == "logout_citizen"
+    assert R("Có, hãy đăng xuất") == "logout_citizen"
+    assert R("có") == "logout_citizen"
+    assert R("đăng xuất tài khoản") == "logout_citizen"
+    assert R("không, nộp thêm hồ sơ") == "continue_dossiers"
+    assert R("nộp thêm") == "continue_dossiers"
+    # Câu KHÁC (không phải trả lời đăng xuất) → None, để không cướp intent khác.
+    assert R("đính kèm giấy tờ") is None

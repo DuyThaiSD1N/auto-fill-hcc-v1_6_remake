@@ -19,6 +19,10 @@ Mỗi file có thể chứa một hoặc nhiều giấy tờ, nhưng tuyệt đ�
 3. Phải xem toàn bộ các trang trong file trước khi đặt tên. Không tạo object riêng cho từng giấy tờ,
    từng trang, mặt trước/mặt sau hoặc từng người.
 4. Nếu file chỉ chứa một giấy tờ, detectedType và documentName theo đúng loại/tiêu đề giấy tờ đó.
+   Căn cứ để đếm là SỐ GIẤY TỜ, không phải số trang hay số người có tên trong đó. Một quyển/biểu
+   mẫu có tiêu đề in sẵn (SỔ HỘ KHẨU, SỔ BẢO HIỂM XÃ HỘI, HỌC BẠ, SỔ ĐỎ...) dù dài nhiều trang và
+   liệt kê nhiều nhân khẩu/nhiều năm học vẫn là MỘT giấy tờ: lấy NGUYÊN TIÊU ĐỀ in trên giấy làm
+   documentName ("Sổ hộ khẩu"), tuyệt đối không diễn giải thành "Hồ sơ ...".
 5. Nếu file chứa nhiều giấy tờ khác nhau nhưng cùng phục vụ một nghiệp vụ/sự kiện:
    - detectedType là "Hồ sơ tổng hợp";
    - documentName phải là TÊN NHÓM BAO QUÁT theo mẫu "Hồ sơ + nghiệp vụ", không liệt kê hoặc nối

@@ -803,3 +803,37 @@ def test_registry_uses_khai_tu_compact_agent_mode():
     assert proc["hasAttachmentStep"] is True
     assert proc["roles"] == []
     assert "tự phân biệt theo nội dung OCR" in proc["uploadHint"]
+
+
+def test_khai_tu_sanitize_bo_qua_so_cccd_nhac_trong_ly_do_loai():
+    """Lý do loại là văn xuôi: agent hay nhắc lại số của chính hai vai trong đó.
+
+    Quét cả câu lý do sẽ đưa số của người mất vào danh sách bị loại, rồi xoá mất
+    số định danh/ngày cấp/nơi cấp của người mất (hồ sơ thật debug-4, 2026-09-16).
+    """
+    context = (
+        "<phan_vai_da_xac_dinh>\n"
+        "<nguoi_yeu_cau>\n"
+        "Họ tên: TRẦN THỊ HOA\nSố CCCD/CMND: 012345678901\n"
+        "</nguoi_yeu_cau>\n"
+        "<nguoi_mat>\n"
+        "Họ tên: NGUYỄN VĂN MINH\nSố CCCD/CMND: 012345678902\n"
+        "</nguoi_mat>\n"
+        "<giay_to_khong_thuoc_hai_vai>\n"
+        "- LÊ VĂN TRUNG — 068063001858 — Lý do loại: người này chỉ được nhắc trên "
+        "giấy báo tử. Số CCCD này không khớp với bất kỳ CCCD nào trong hồ sơ "
+        "(012345678901 và 012345678902).\n"
+        "</giay_to_khong_thuoc_hai_vai>\n"
+        "</phan_vai_da_xac_dinh>"
+    )
+    fields = [
+        {"name": "Cccd_SoDinhDanh", "comp": "x-input", "value": "012345678901"},
+        {"name": "Cccd_NoiCap", "comp": "x-input", "value": "Cục CSQLHC"},
+        {"name": "NguoiMat_SoDinhDanh", "comp": "x-input", "value": "012345678902"},
+        {"name": "NguoiMat_NgayCapGiayTo", "comp": "x-date", "value": "21/12/2022"},
+        {"name": "NguoiMat_NoiCapGiayTo", "comp": "x-input", "value": "Cục CSQLHC"},
+    ]
+
+    assert reason._rejected_identity_numbers(context) == {"068063001858"}
+    kept = {field["name"] for field in reason.sanitize_identity_fields(fields, context)}
+    assert kept == {field["name"] for field in fields}

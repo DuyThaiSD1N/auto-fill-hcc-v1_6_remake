@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
-from app.pipelines._shared.area_remap import is_current_area, remap_area
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.ethnic_normalize import ethnicity_for_form
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 from app.pipelines._shared.foreign_id import (
@@ -165,31 +165,6 @@ def _normalize_admin_unit(value):
     return text
 
 
-def _has_usable_ward(area) -> bool:
-    """Địa chỉ này có ra được một xã/phường CHỌN ĐƯỢC trên cổng không (đã qua remap)."""
-    if not isinstance(area, dict):
-        return False
-    xa = area.get("xa") or ""
-    return bool(xa) and is_current_area(area.get("tinh") or "", xa)
-
-
-def _pick_residence(declared, printed, nationality: str):
-    """Nơi cư trú: TỜ KHAI trước, nhưng chỉ khi nó ra được một xã có thật.
-
-    Tờ khai là chữ viết tay, hay ghi tắt hoặc thiếu cấp, và LLM có lúc điền bừa cho ô bỏ trống
-    (chép luôn địa chỉ của bên kia). Khi đó ô xã không khớp option nào trên cổng — giữ tờ khai là
-    vứt mất địa chỉ ĐÚNG đã in trên thẻ căn cước của chính người đó, đổi một địa chỉ sai lấy một
-    ô trống. Địa chỉ nước ngoài không có trong danh mục xã nên giữ nguyên thứ tự ưu tiên cũ.
-    """
-    if is_foreign(nationality):
-        return declared or printed
-    if _has_usable_ward(declared):
-        return declared
-    if _has_usable_ward(printed):
-        return printed
-    return declared or printed
-
-
 def _area(value, nationality: str = "Việt Nam"):
     if not isinstance(value, dict):
         return None
@@ -218,10 +193,7 @@ def _area(value, nationality: str = "Việt Nam"):
         return None
     # Chỉ remap địa chỉ Việt Nam (bảng remap_lam_dong không có địa danh nước ngoài)
     if not is_foreign(quoc_gia):
-        # "huyen" là khóa GỢI Ý, không phải ô trên biểu mẫu — nhưng phải chuyển tiếp cho remap:
-        # nó gỡ nhập nhằng tên xã trùng ở nhiều huyện, và là bằng chứng để phát hiện LLM đọc lệch
-        # cấp (đặt tên thôn vào ô xã, đẩy tên xã thật sang "huyen"). Bỏ ở đây thì remap mù.
-        return remap_area(out, huyen_hint=value.get("huyen") or value.get("quanHuyen") or "")
+        return remap_area(out)
     return out
 
 
@@ -283,14 +255,13 @@ def enrich(fields: list[dict]) -> list[dict]:
             if isinstance(addr_raw, dict):
                 raw_quoc_tich = addr_raw.get("quocGia") or addr_raw.get("quoc_gia")
         nationality = normalize_nationality(raw_quoc_tich)
-        # Nơi cư trú: TỜ KHAI trước (khai hiện tại), thẻ căn cước đỡ khi tờ khai không dùng được.
+        # Ưu tiên nơi cư trú từ TỜ KHAI (chính xác hơn), fallback CCCD.
         to_khai_area_raw = values.get(declaration_area_name)
         cccd_area_raw = values.get(f"{src}_NoiCuTru_TrongNuoc")
-        declared_area = _area(to_khai_area_raw, nationality) if isinstance(to_khai_area_raw, dict) and (
+        area_raw = to_khai_area_raw if isinstance(to_khai_area_raw, dict) and (
             to_khai_area_raw.get("tinh") or to_khai_area_raw.get("xa") or to_khai_area_raw.get("diaChi")
-        ) else None
-        printed_area = _area(cccd_area_raw, nationality)
-        area = _pick_residence(declared_area, printed_area, nationality)
+        ) else cccd_area_raw
+        area = _area(area_raw, nationality)
         # Tên đường viết tay trên tờ khai sửa theo địa chỉ IN trên thẻ của chính người đó.
         area = prefer_printed_street(area, _area(cccd_area_raw, nationality))
 

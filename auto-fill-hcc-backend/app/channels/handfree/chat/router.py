@@ -265,7 +265,16 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
     if not message and not conv["history"]:
         reply = flow.first_greet(conv)  # lối vào chào chuẩn — đi qua bọc ngôn ngữ (tiếng Mông)
     else:
-        intent = await intents.resolve(message, conv.get("state", "greet"))
+        intent = None
+        # Đang chờ công dân chọn ĐĂNG XUẤT / NỘP THÊM (2 nút sau đánh giá): bắt câu nói/gõ tương
+        # đương NGAY, không qua LLM. Chế độ rảnh tay gửi giọng nói dạng text tự do → LLM hay trả
+        # unknown → trợ lý báo "chưa nhận rõ yêu cầu" dù công dân đã nói "đăng xuất".
+        if conv.get("submitted_logout_decision") == "pending" and message and not message.startswith("__"):
+            decided = intents.resolve_logout_choice(message)
+            if decided:
+                intent = intents.Intent("action", decided)
+        if intent is None:
+            intent = await intents.resolve(message, conv.get("state", "greet"))
         reply = await flow.handle_turn(
             conv,
             intent,

@@ -40,6 +40,14 @@ _FORMIO = {
     # captcha của bước cuối.
     # KHÔNG khớp theo class btn_next — class đó dùng chung với nút "Tiếp tục" của các bước trước
     # (snapshot Bộ Y tế/MAE có tới 4 nút btn_next, chỉ 1 nút mang form="captchaForm").
+    #
+    # BẪY TÊN BƯỚC — đừng "sửa" luật cho khớp muộn hơn. Stepper 4 bước:
+    #     1 Thông tin hồ sơ · 2 Thành phần hồ sơ
+    #     3 Phí, lệ phí / Hình thức nhận kết quả  ← captcha + NÚT NỘP nằm ở ĐÂY
+    #     4 "Nộp hồ sơ"                           ← màn BÁO KẾT QUẢ, KHÔNG có nút nào
+    # Bước 4 mang tên "Nộp hồ sơ" nhưng là bước ĐÃ nộp xong, không phải bước ĐỂ nộp: đã soi
+    # panel cdk-step-content-0-3 của cả 10 snapshot — 0 nút, nội dung là "Nộp hồ sơ thành công
+    # / Hồ sơ đang chờ tiếp nhận". Nút captchaForm nằm ở panel bước 3 và KHÔNG bị ẩn.
     "urlPattern": r"^/vi/padsvc/apply-online/[0-9a-f]{24}$",
     "buttonSelector": 'button[form="captchaForm"]',
     # LƯỚI THỨ HAI cho ngày cổng nâng cấp Angular và bỏ mất thuộc tính form= — mất nó là

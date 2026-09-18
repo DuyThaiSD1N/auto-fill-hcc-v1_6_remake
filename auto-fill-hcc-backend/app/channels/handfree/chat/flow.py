@@ -30,9 +30,12 @@ from app.dossiers import repo as dossiers_repo
 from app.upload_session import store as up_store
 
 
-# Hai thủ tục chứng thực đều cho phép chọn gộp một hồ sơ hoặc tách nhiều hồ sơ.
+# Các thủ tục chứng thực đều cho phép chọn gộp một hồ sơ hoặc tách nhiều hồ sơ.
 # Riêng chữ ký, giấy tờ tùy thân STT2 chỉ đi cùng hồ sơ đầu tiên.
-_ATTACH_MODE_PROCEDURES = {"chung-thuc-ban-sao", "chung-thuc-chu-ky"}
+# Chữ ký người dịch (CTV): mỗi bản dịch có thể là một hồ sơ riêng nên cũng cho chọn.
+_ATTACH_MODE_PROCEDURES = {
+    "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-chu-ky-nguoi-dich-ctv",
+}
 _ATTACH_ACTION_LEASE_SECONDS = 30
 
 
@@ -223,19 +226,36 @@ def _hmong_twin(tpl: dict) -> dict | None:
     return twin if isinstance(twin, dict) and twin.get("tts") else None
 
 
-def _fmt(tpl: dict, **kw) -> tuple[str, str]:
+def _fmt(tpl: dict, *, note: dict | None = None, **kw) -> tuple[str, str]:
+    """Dựng (markdown, lời đọc) cho MỘT lượt, kèm câu phụ tuỳ chọn.
+
+    `note` phải đi qua ĐÂY chứ không được nối sau bằng `r.display_md += ...`:
+      - ở chế độ Mông, _fmt trả về CẢ khối Việt lẫn khối Mông, nối thẳng ra Việt–Mông–Việt–Mông;
+      - và nối vào tts là bắt GIỌNG MÔNG ĐỌC CHỮ VIỆT — nghe không ra tiếng gì.
+        Đã gặp thật: câu "Xong hết, công dân bấm Đã đưa đủ giấy tờ…" lọt vào cuối lời đọc Mông.
+    """
     md, tts = tpl["md"].format(**kw), tpl["tts"].format(**kw)
+    note_md = note["md"].format(**kw) if note else ""
+    note_tts = note["tts"].format(**kw) if note else ""
     if _TURN_LANG.get() != "hmong":
-        return md, tts
+        return md + note_md, tts + note_tts
     twin = _hmong_twin(tpl)
     if not twin:
-        return md, tts  # chưa có bản dịch → hiển thị + đọc tiếng Việt
+        return md + note_md, tts + note_tts  # chưa có bản dịch → hiển thị + đọc tiếng Việt
     # Song ngữ như mockup: giữ nguyên đoạn Việt, thêm dòng Mông in nghiêng bên dưới.
     hmong_md = str(twin.get("md") or "").format(**kw).strip()
+    hmong_tts = twin["tts"].format(**kw)
+    note_twin = _hmong_twin(note) if note else None
+    if note_twin:
+        hmong_md = (hmong_md + str(note_twin.get("md") or "").format(**kw)).strip()
+        hmong_tts += note_twin["tts"].format(**kw)
+    # Câu phụ CHƯA có bản Mông: vẫn hiện ở khối Việt để không mất thông tin, nhưng TUYỆT ĐỐI
+    # không nối vào lời đọc — thà nói ít hơn là nói thứ công dân không nghe ra.
+    md = (md + note_md).strip()
     if hmong_md:
-        md = f"{md}\n\n*{hmong_md}*" if md.strip() else f"*{hmong_md}*"
+        md = f"{md}\n\n*{hmong_md}*" if md else f"*{hmong_md}*"
     _TURN_HMONG_TTS.set(True)
-    return md, twin["tts"].format(**kw)
+    return md, hmong_tts
 
 
 def _attachment_plan_line(item: dict) -> str:
@@ -764,11 +784,9 @@ async def _handle_turn_inner(
         # Nhắc lại ĐÚNG thủ tục đang làm dở giữa chừng → không reset, chỉ trấn an.
         mid_flow = state not in ("greet", "confirm_procedure")
         if mid_flow and intent.value == conv.get("procedure_key"):
-            return Reply(
-                f"Dạ mình đang làm **{_proc_label(conv)}** rồi ạ — đến bước "
-                f"**{vi.STEP_LABELS.get(state, state)}**. Công dân cứ tiếp tục theo hướng dẫn nhé.",
-                f"Dạ mình đang làm {_proc_label(conv)} rồi ạ, công dân cứ tiếp tục theo hướng dẫn nhé.",
-            )
+            return Reply(*_fmt(vi.PROCEDURE_IN_PROGRESS,
+                               procedure=_proc_label(conv),
+                               step=vi.STEP_LABELS.get(state, state)))
         return _to_confirm_procedure(conv, intent.value)
     if intent.kind == "event" and intent.value == "submit_clicked":
         return _record_submit_click(conv, intent.payload)
@@ -837,6 +855,22 @@ async def _handle_turn_inner(
         conv["submitted_logout_decision"] = "pending"
         return _logout_choice_reply(arm_timer=bool(conv.get("submitted_completed")))
 
+    # Chọn "đăng xuất" / "nộp thêm hồ sơ" — Ở TẦNG TOÀN CỤC (như rate/rate_skip). 2 nút này hiện
+    # ngay sau khi đánh giá xong, lúc đó state có thể VẪN là "attaching" (cổng chưa phát event
+    # `submitted`). Nếu chỉ để trong _handle_done (state="done") thì bấm nút rơi vào fallback "Em
+    # chưa nhận rõ yêu cầu". Đặt ở đây để bấm được ở MỌI state.
+    if intent.kind == "action" and intent.value == "logout_citizen":
+        conv["submitted_logout_decision"] = "logout"
+        r = Reply()
+        r.actions = [{"type": "logout_citizen"}]
+        return r
+
+    if intent.kind == "action" and intent.value == "continue_dossiers":
+        conv["submitted_logout_decision"] = "continue"
+        r = Reply()
+        r.actions = [{"type": "continue_dossiers"}]
+        return r
+
     if intent.kind == "action" and intent.value == "new_procedure":
         # Bấm CHIP "Làm thủ tục khác" không bao giờ tới đây: sidebar.js chặn trước và chạy
         # returnToStart() → xoá phiên, tạo phiên mới. Nhánh này chỉ chạy khi công dân NÓI
@@ -882,17 +916,8 @@ def _apply_lang(conv: dict, payload: dict) -> Reply:
         # chủ, hết hạn, trò chuyện mới) — đổi lang lặng lẽ, không sinh bubble/không đọc.
         return Reply()
     if lang == "hmong":
-        r = Reply(
-            "Dạ, em bật **chế độ tiếng Mông** rồi ạ — em sẽ đọc và nghe bằng tiếng Mông.\n\n"
-            "*Kuv qhib hais lus Hmoob lawm — kuv yuav hais thiab mloog lus Hmoob.*",
-            "Kuv qhib hais lus Hmoob lawm. Kuv yuav hais thiab mloog lus Hmoob.",
-        )
-        r.tts_lang = "hmong"
-        return r
-    return Reply(
-        "Dạ, em chuyển về **tiếng Việt** rồi ạ.",
-        "Dạ, em chuyển về tiếng Việt rồi ạ.",
-    )
+        return Reply(*_fmt(vi.LANG_ON))
+    return Reply(*_fmt(vi.LANG_OFF))
 
 
 def _apply_location(conv: dict, payload: dict) -> Reply:
@@ -990,16 +1015,10 @@ def _answer_question(conv: dict, question: str, mentioned_key: str | None = None
     label = (proc.get("shortLabel") or proc["label"]) if proc else ""
     if proc and any(k in folded for k in ("giay to", "can gi", "chuan bi", "ho so gom")):
         md, tts_list = _doc_list(proc)
-        r = Reply(
-            f"Dạ, để làm **{label}** công dân cần:\n\n{md}",
-            f"Dạ, công dân cần chuẩn bị: {tts_list}.",
-        )
+        r = Reply(*_fmt(vi.DOC_LIST_ANSWER, procedure=label,
+                        documents_md=md, documents_tts=tts_list))
     elif proc:
-        r = Reply(
-            f"Dạ, về **{label}**: em nắm chắc nhất phần **giấy tờ cần chuẩn bị** "
-            f"và các bước nộp trực tuyến; chi tiết khác (lệ phí, thời hạn) công dân xem trên trang thủ tục giúp em ạ.",
-            "Dạ, chi tiết này công dân xem thêm trên trang thủ tục giúp em ạ.",
-        )
+        r = Reply(*_fmt(vi.ANSWER_ONLY_DOCS_AND_STEPS, procedure=label))
     else:
         visible = public_list_for(_account_province_slug(conv))
         names = ", ".join((p.get("shortLabel") or p["label"]) for p in visible)
@@ -1142,21 +1161,71 @@ def _arm_submit_watch_action() -> dict:
     return {"type": "arm_submit_watch", "rules": portal_submit_rules()}
 
 
+_VARIANT_COUNT_WORDS = {2: "hai", 3: "ba", 4: "bốn"}
+
+
+def _variant_default_key(proc: dict) -> str:
+    """Trường hợp mặc định = option ĐẦU trong registry (trước đây hardcode "cap_moi")."""
+    options = _variant_options(proc)
+    return str(options[0].get("key") or "") if options else ""
+
+
+def _variant_chips(proc: dict) -> list[dict]:
+    default_key = _variant_default_key(proc)
+    return [
+        {"label": option.get("chip") or option.get("label", ""),
+         "send": f'__action:set_variant:{{"value":"{option.get("key", "")}"}}',
+         "solid": option.get("key") == default_key}
+        for option in _variant_options(proc)
+    ]
+
+
+def _variant_lists(proc: dict) -> tuple[str, str]:
+    """Dựng danh sách trường hợp để nhét vào câu thoại — nội dung lấy TỪ REGISTRY của thủ tục."""
+    md_lines, tts_parts = [], []
+    for index, option in enumerate(_variant_options(proc), start=1):
+        label = str(option.get("label") or "")
+        desc = str(option.get("desc") or "").strip()
+        md_lines.append(f"{index}. **{label}**" + (f" — {desc}." if desc else "."))
+        tts_parts.append(f"trường hợp {index}, {label}" + (f", {desc}" if desc else ""))
+    return "\n".join(md_lines), "; ".join(tts_parts)
+
+
+def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
+    """Lệnh FE chọn Trường hợp giải quyết (kèm Tỉnh/Sở nếu cổng có) rồi bấm Đồng ý.
+
+    Dùng chung cho hai đường vào: page_status thấy màn đó khi đã có sẵn lựa chọn, và ngay sau
+    khi công dân vừa chọn trường hợp. `agencyDeptLabel` rỗng = cổng chỉ có hộp thoại Trường hợp
+    giải quyết (Bộ Xây dựng) → câu thoại không nhắc tỉnh/sở cho khỏi sai.
+    """
+    variant = _variant_option(proc, conv.get("procedure_variant") or _variant_default_key(proc))
+    province = loc.get("province") or ""
+    agency = str(proc.get("agencyDeptLabel") or "")
+    variant_label = variant.get("label") or ""
+    if agency:
+        r = Reply(*_fmt(vi.MAE_AGENCY_AUTOFILL_GUIDE, province=province, agency=agency,
+                        variant_label=variant_label))
+    else:
+        r = Reply(*_fmt(vi.VARIANT_DIALOG_AUTOFILL_GUIDE, variant_label=variant_label))
+    r.actions = [{"type": "fill_mae_agency",
+                  "province": province,
+                  "agency": agency,
+                  "variant": variant.get("key") or "",
+                  "variantMatch": variant.get("portalMatch") or "",
+                  "variantAvoid": variant.get("portalAvoid") or ""}]
+    return r
+
+
 def _to_choose_variant(conv: dict) -> Reply:
     conv["state"] = "choose_variant"
     conv["awaiting_events"] = []
     proc = get_procedure(conv["procedure_key"]) or {}
-    cap_moi = _variant_option(proc, "cap_moi")
-    cap_lai = _variant_option(proc, "cap_lai")
+    options_md, options_tts = _variant_lists(proc)
+    count = len(_variant_options(proc))
     r = Reply(*_fmt(vi.CHOOSE_VARIANT, procedure=_proc_label(conv),
-                    cap_moi_desc=cap_moi.get("desc") or "xin cấp lần đầu",
-                    cap_lai_desc=cap_lai.get("desc") or "giấy phép bị mất, hư hỏng, hết hạn"))
-    r.chips = [
-        {"label": option.get("chip") or option.get("label", ""),
-         "send": f'__action:set_variant:{{"value":"{option.get("key", "")}"}}',
-         "solid": option.get("key") == "cap_moi"}
-        for option in _variant_options(proc)
-    ]
+                    count=_VARIANT_COUNT_WORDS.get(count, str(count)),
+                    options_md=options_md, options_tts=options_tts))
+    r.chips = _variant_chips(proc)
     return r
 
 
@@ -1171,7 +1240,11 @@ def _handle_choose_variant(conv: dict, intent: Intent) -> Reply:
         picked = intent.value[len("variant_"):]
     if picked in valid_keys:
         conv["procedure_variant"] = picked
-        return _start_guide_login(conv)
+        # Câu hỏi này chỉ bật khi ĐANG đứng ở màn chọn trường hợp → chọn xong là điền ngay tại
+        # chỗ, KHÔNG điều hướng lại. Đánh dấu mốc để page_status kế tiếp không bắn lệnh lần hai.
+        conv["state"] = "guide_login"
+        _say_once(conv, "mae_agency_fill")
+        return _variant_fill_agency_reply(conv, proc, conv.get("location") or {})
     if intent.kind == "deny":
         conv["state"] = "greet"
         conv["procedure_key"] = None
@@ -1179,23 +1252,17 @@ def _handle_choose_variant(conv: dict, intent: Intent) -> Reply:
         r = Reply(*_fmt(vi.CHANGED_PROCEDURE_RESET))
         r.cards = [_service_list_card(conv)]
         return r
-    r = Reply(*_fmt(vi.CHOOSE_VARIANT_REMIND))
-    r.chips = [
-        {"label": option.get("chip") or option.get("label", ""),
-         "send": f'__action:set_variant:{{"value":"{option.get("key", "")}"}}',
-         "solid": option.get("key") == "cap_moi"}
-        for option in _variant_options(proc)
-    ]
+    options_md, options_tts = _variant_lists(proc)
+    r = Reply(*_fmt(vi.CHOOSE_VARIANT_REMIND, options_md=options_md, options_tts=options_tts))
+    r.chips = _variant_chips(proc)
     return r
 
 
 def _handle_confirm_procedure(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "confirm" or (intent.kind == "action" and intent.value == "goto_login"):
-        proc = get_procedure(conv["procedure_key"]) or {}
-        # Thủ tục có "Trường hợp giải quyết" (cấp mới/cấp lại...): chốt lựa chọn TRƯỚC khi
-        # mở trang — cổng MAE cần nó để chọn đúng option ở bước chọn cơ quan.
-        if _variant_options(proc) and not conv.get("procedure_variant"):
-            return _to_choose_variant(conv)
+        # "Trường hợp giải quyết" KHÔNG hỏi ở đây nữa: hỏi đúng lúc công dân tới màn đó trên
+        # cổng (xem nhánh maeAgencyBlock trong _guide_login_on_page). Hỏi từ đầu khiến công dân
+        # phải chọn khi chưa thấy màn hình, và ai tự bấm sang trang kê khai vẫn bị hỏi thừa.
         return _start_guide_login(conv)
     if intent.kind == "deny":
         conv["state"] = "greet"
@@ -1416,22 +1483,14 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         r.actions = [action]
         return r
     if proc.get("maePortal") and ctx.get("maeAgencyBlock"):
-        # Trang MAE "chọn nơi và loại" (form#ngSelectAgencyForm1): bot điền Tỉnh + radio Sở
-        # + Sở NN&MT + Trường hợp giải quyết (variant đã chốt ở choose_variant) rồi bấm
-        # "Đồng ý và tiếp tục". Thành công thì trang tự chuyển bước — im lặng chờ page_status.
+        # Trang/hộp thoại "chọn nơi và loại": bot điền Tỉnh + radio Sở + Sở chuyên ngành (nếu
+        # cổng có) + Trường hợp giải quyết rồi bấm Đồng ý. Trang tự chuyển bước — im lặng chờ
+        # page_status. HỎI TRƯỜNG HỢP NGAY TẠI ĐÂY (không hỏi từ đầu): công dân chỉ phải chọn
+        # đúng lúc màn đó đang mở; ai tự bấm sang trang kê khai thì không bao giờ bị hỏi.
+        if _variant_options(proc) and not conv.get("procedure_variant"):
+            return _to_choose_variant(conv)
         if _say_once(conv, "mae_agency_fill"):
-            variant = _variant_option(proc, conv.get("procedure_variant") or "cap_moi")
-            r = Reply(*_fmt(vi.MAE_AGENCY_AUTOFILL_GUIDE,
-                            province=loc.get("province") or "",
-                            agency=str(proc.get("agencyDeptLabel") or "Sở chuyên ngành"),
-                            variant_label=variant.get("label") or "cấp mới"))
-            r.actions = [{"type": "fill_mae_agency",
-                          "province": loc.get("province") or "",
-                          "agency": str(proc.get("agencyDeptLabel") or ""),
-                          "variant": variant.get("key") or "cap_moi",
-                          "variantMatch": variant.get("portalMatch") or "",
-                          "variantAvoid": variant.get("portalAvoid") or ""}]
-            return r
+            return _variant_fill_agency_reply(conv, proc, loc)
         return Reply()
     if ctx.get("agencyBlock") and not ctx.get("formKind") and not proc.get("needsAgencySelect"):
         # Liên thông: trang CHỌN CƠ QUAN — có agencyBlock nhưng CHƯA có form kê khai (content.js
@@ -1513,9 +1572,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             return _to_ask_doc_method(conv)
         # Các thủ tục chưa bật capability vẫn giữ hướng dẫn thủ công cũ.
         if _say_once(conv, "owner_info"):
-            pmd, ptts = _login_ok_prefix(conv)
+            _login_ok_prefix(conv)  # chỉ đánh dấu đã qua đăng nhập, không sinh chữ
             template = vi.OWNER_INFO_ATTACH_GUIDE if proc.get("mode") == "attach" else vi.OWNER_INFO_GUIDE
-            return Reply(pmd + template["md"], ptts + template["tts"])
+            return Reply(*_fmt(template))
         return Reply()
     if ctx.get("loginPage") and not ctx.get("loggedIn"):
         conv["needed_login"] = True
@@ -1561,12 +1620,12 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "event" and intent.value == "mae_agency_failed":
         # Trang MAE không tự điền được → dặn chọn tay đầy đủ (tỉnh, sở, trường hợp) rồi chờ
         # page_status của trang kê khai; chip phao cho công dân yêu cầu kiểm tra lại.
-        variant = _variant_option(proc, conv.get("procedure_variant") or "cap_moi")
+        variant = _variant_option(proc, conv.get("procedure_variant") or _variant_default_key(proc))
         r = Reply(*_fmt(vi.MAE_AGENCY_FAILED,
                         error=intent.payload.get("value") or "không rõ",
                         province=loc.get("province") or "",
                         agency=str(proc.get("agencyDeptLabel") or "Sở chuyên ngành"),
-                        variant_label=variant.get("label") or "cấp mới"))
+                        variant_label=variant.get("label") or "trường hợp đã chọn"))
         r.chips = [{"label": "Kiểm tra lại trang hiện tại", "send": "__event:sso_success", "solid": True}]
         return r
     if intent.kind == "event" and intent.value == "sso_success":
@@ -1620,17 +1679,13 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
             await upload_service.create_for_conversation(conv)
         proc = get_procedure(conv.get("procedure_key") or "") or {}
         template = vi.SCAN_PICK_ATTACH if proc.get("mode") == "attach" else vi.SCAN_PICK
-        r = Reply(*_fmt(template))
         # Scan tại quầy: cả đợt tệp đi trong 1 request và đã phân loại xong khi request trả
         # về → FE tự chốt (docs_done) ngay sau đợt chọn, không bắt bấm "Đã đưa đủ".
         # CHỈ bật (kèm câu "em tự xử lý luôn") khi client khai supportsScanAutoRun — extension
         # cũ trên chợ không khai → giữ luồng bấm tay, không hứa điều nó không làm.
         # RIÊNG lượt Điều chỉnh giấy tờ giữ chốt tay (có thể chỉ xóa tệp rồi bấm hoàn tất).
         auto_run = _supports_scan_auto_run(conv) and not bool(conv.get("supplementing_documents"))
-        if auto_run:
-            note_md, note_tts = _fmt(vi.SCAN_AUTO_RUN_NOTE)
-            r.display_md += note_md
-            r.tts_text += note_tts
+        r = Reply(*_fmt(template, note=vi.SCAN_AUTO_RUN_NOTE if auto_run else None))
         r.actions = [{
             "type": "pick_files",
             "session_id": conv["upload_session_id"],
@@ -1860,11 +1915,8 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
     else:
         conv["pipeline_status"] = "waiting_attachment_page"
     r = Reply(*_fmt(vi.DOCS_COMPLETE_ATTACH, files_count=files_count,
-                    sid=conv.get("upload_session_id", "")))
-    if preset_split_note:
-        note_md, note_tts = _fmt(vi.ATTACH_MODE_PRESET_SPLIT)
-        r.display_md += note_md
-        r.tts_text += note_tts
+                    sid=conv.get("upload_session_id", ""),
+                    note=vi.ATTACH_MODE_PRESET_SPLIT if preset_split_note else None))
     return r
 
 
@@ -2043,7 +2095,7 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
         await upload_service.complete_session(conv.get("upload_session_id") or "")
         return await _docs_complete(conv, intent.payload)
     if intent.kind == "action" and intent.value == "pick_files_again":
-        r = Reply("Dạ, công dân chọn thêm tệp trong cửa sổ vừa mở ạ.", "Công dân chọn thêm tệp nhé.")
+        r = Reply(*_fmt(vi.PICK_FILES_AGAIN))
         r.actions = [{
             "type": "pick_files",
             "session_id": conv["upload_session_id"],
@@ -2369,10 +2421,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             r.chips = [{"label": "🔁 Thử lại", "send": "__event:docs_complete", "solid": True}]
             conv["state"] = "collecting_docs"
             return r
-        return Reply(
-            "Dạ em vẫn đang xử lý hồ sơ hộ kinh doanh, công dân chờ em chút ạ…",
-            "Dạ em vẫn đang xử lý hồ sơ hộ kinh doanh, công dân chờ em chút ạ.",
-        )
+        return Reply(*_fmt(vi.BUSINESS_STILL_PROCESSING))
     if (intent.kind == "action" and intent.value == "request_attach"
             and conv.get("docs_target") == "declaration"):
         # Không đổi state: pipeline kê khai vẫn phải nhận fields_ready/fill_report. Khi xong,
@@ -2419,29 +2468,28 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         await tracing.set_report(conv.get("trace_request_id"), "autofill", rep)
         missing = rep["notFound"]
         note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
-        r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note))
+        # Câu đuôi đi qua note= của _fmt: nối tay sẽ lẫn khối Việt–Mông và bắt giọng Mông
+        # đọc chữ Việt (xem chú thích ở _fmt).
+        tail = (
+            (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
+            if auto_wait_attachment else vi.REVIEW_ATTACHMENT_ACTION
+        )
+        r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note, note=tail))
         # Một lượt điều chỉnh kê khai kết thúc ở report thật từ extension. Xóa target tạm
         # trước khi render để lần sau nút Điều chỉnh mở một lượt mới độc lập.
         _clear_documents_adjustment(conv)
         if auto_wait_attachment:
-            tail_md, tail_tts = _fmt(
-                vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
-            r.display_md += tail_md
-            r.tts_text += tail_tts
             r.chips = [
                 {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                 _supplement_documents_chip(),
             ]
         else:
-            tail_md, tail_tts = _fmt(vi.REVIEW_ATTACHMENT_ACTION)
-            r.display_md += tail_md
-            r.tts_text += tail_tts
             r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
                        {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip()]
         return r
     # Đang chạy pipeline mà user hỏi/gõ → trấn an.
-    return Reply("Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ…", "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ.")
+    return Reply(*_fmt(vi.STILL_READING_DOCUMENTS))
 
 
 async def _restart_declaration_pipeline(conv: dict) -> Reply:
@@ -2624,6 +2672,19 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         conv["attach_done"] = True
         conv["state"] = "done"
         _clear_documents_adjustment(conv)
+        # Cổng 2-tab cùng trang: cả hai bước chạy liền một mạch không nghỉ → chốt lại kết quả
+        # từng bước (điền đơn + đính kèm) trong một câu cho công dân nắm được toàn cảnh.
+        # Tính TRƯỚC để đi qua note= của _fmt; nối tay vào r sẽ lẫn khối Việt–Mông và bắt
+        # giọng Mông đọc chữ Việt (xem chú thích ở _fmt).
+        proc_done = get_procedure(conv.get("procedure_key") or "") or {}
+        fill_rep = conv.get("fill_report") or {}
+        filled_count = int(fill_rep.get("filled") or 0)
+        recap = (
+            vi.SAME_PAGE_TWO_STEP_SUMMARY
+            if proc_done.get("samePageAttach") and filled_count > 0 and attached > 0
+            else None
+        )
+        recap_kw = {"filled": filled_count, "attached": attached} if recap else {}
         if conv.get("attach_mode") == "split":
             total = int(intent.payload.get("dossiersTotal") or len(conv.get("attach_plan") or []))
             succeeded = int(intent.payload.get("dossiersSucceeded") or attached)
@@ -2631,25 +2692,18 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             if failed or errors:
                 err_list = "\n".join(f"- {e}" for e in errors[:5]) or f"- {failed} hồ sơ chưa đính kèm được"
                 r = Reply(*_fmt(vi.ATTACH_SPLIT_DONE_WITH_ERRORS, succeeded=succeeded,
-                                total=total, error_list=err_list))
+                                total=total, error_list=err_list, note=recap, **recap_kw))
             else:
-                r = Reply(*_fmt(vi.ATTACH_SPLIT_DONE, succeeded=succeeded, total=total))
+                r = Reply(*_fmt(vi.ATTACH_SPLIT_DONE, succeeded=succeeded, total=total,
+                                note=recap, **recap_kw))
         elif attached == 0 and skipped > 0:
-            r = Reply(*_fmt(vi.ATTACH_ALL_FILES_EXIST))
+            r = Reply(*_fmt(vi.ATTACH_ALL_FILES_EXIST, note=recap, **recap_kw))
         elif errors:
             err_list = "\n".join(f"- {e}" for e in errors[:5])
-            r = Reply(*_fmt(vi.ATTACH_DONE_WITH_ERRORS, attached=attached, error_list=err_list))
+            r = Reply(*_fmt(vi.ATTACH_DONE_WITH_ERRORS, attached=attached, error_list=err_list,
+                            note=recap, **recap_kw))
         else:
-            r = Reply(*_fmt(vi.ATTACH_DONE, attached=attached))
-        # Cổng 2-tab cùng trang: cả hai bước chạy liền một mạch không nghỉ → chốt lại kết quả
-        # từng bước (điền đơn + đính kèm) trong một câu cho công dân nắm được toàn cảnh.
-        proc_done = get_procedure(conv.get("procedure_key") or "") or {}
-        fill_rep = conv.get("fill_report") or {}
-        if proc_done.get("samePageAttach") and int(fill_rep.get("filled") or 0) > 0 and attached > 0:
-            recap_md, recap_tts = _fmt(vi.SAME_PAGE_TWO_STEP_SUMMARY,
-                                       filled=int(fill_rep.get("filled") or 0), attached=attached)
-            r.display_md += recap_md
-            r.tts_text += recap_tts
+            r = Reply(*_fmt(vi.ATTACH_DONE, attached=attached, note=recap, **recap_kw))
         r.chips = [_supplement_documents_chip()]
         # Không bắt công dân bấm thêm nút hoàn thành. state=done bật watcher; khi cổng báo
         # nộp thành công, event submitted sẽ hiển thị lời chốt rồi tự về màn bắt đầu.

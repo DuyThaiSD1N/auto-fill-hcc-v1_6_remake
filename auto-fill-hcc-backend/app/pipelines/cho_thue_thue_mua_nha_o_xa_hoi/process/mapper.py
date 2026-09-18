@@ -137,6 +137,48 @@ def _identity(value: Any) -> str | None:
     return digits or None
 
 
+def _gender_from_cccd(value: Any) -> str | None:
+    """Giới tính suy từ CCCD 12 số (chữ số thứ 4 mã hoá thế kỷ + giới tính: chẵn=Nam, lẻ=Nữ).
+
+    Đây là DỮ LIỆU TẤT ĐỊNH nằm sẵn trong số định danh, không phải suy đoán từ tên.
+    """
+    digits = _identity(value) or ""
+    if len(digits) != 12:
+        return None
+    return "Nam" if int(digits[3]) % 2 == 0 else "Nữ"
+
+
+# Dòng (a) mục 9 của đơn in sẵn nhãn "Họ và tên vợ (hoặc chồng)" — người dân KHÔNG viết quan hệ ở dòng
+# này, nên mọi giá trị "Vợ"/"Chồng" đọc ra chỉ là một nửa nhãn in sẵn, không phải bằng chứng.
+_QUANHE_VO_CHONG_MO_HO = {"vo", "chong", "vo (hoac chong)", "vo hoac chong", "vo/chong", "vo chong"}
+_QUANHE_LABEL_GOC = "Vợ (hoặc chồng)"
+
+
+def _quan_he_vo_chong(member_identity: Any, applicant_identity: Any) -> str:
+    """Chốt "Vợ" hay "Chồng" cho dòng (a) bằng CCCD, không đoán theo tên đệm.
+
+    Ưu tiên CCCD của CHÍNH thành viên đó; không đọc được thì lấy CCCD người viết đơn rồi đảo vai. Cả hai
+    đều không có → trả nguyên nhãn in trên đơn để cán bộ tự chọn, TUYỆT ĐỐI không mặc định "Vợ".
+    """
+    gender = _gender_from_cccd(member_identity)
+    if gender:
+        return "Chồng" if gender == "Nam" else "Vợ"
+    applicant_gender = _gender_from_cccd(applicant_identity)
+    if applicant_gender:
+        return "Vợ" if applicant_gender == "Nam" else "Chồng"
+    return _QUANHE_LABEL_GOC
+
+
+def _resolve_quan_he(raw: str | None, member_identity: Any, applicant_identity: Any) -> str | None:
+    """Chỉ can thiệp dòng vợ/chồng; "Con", "Con dâu", "Cháu"… do người dân tự viết nên giữ nguyên."""
+    text = _text(raw)
+    if not text:
+        return None
+    if _fold(text) in _QUANHE_VO_CHONG_MO_HO:
+        return _quan_he_vo_chong(member_identity, applicant_identity)
+    return text
+
+
 def _phone(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -309,11 +351,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if isinstance(tv_list, list):
         for idx, tv in enumerate(tv_list[:_MAX_TV]):
             base = f"data[dtgrid1][{idx}]"
+            tv_identity = _identity(_item_text(tv, "soCccd", "identityNumber", "cccd"))
             add(f"{base}[fullname1]", _item_text(tv, "hoTen", "fullname", "hoVaTen"))
-            add(f"{base}[identityNumber1]", _identity(_item_text(tv, "soCccd", "identityNumber", "cccd")))
+            add(f"{base}[identityNumber1]", tv_identity)
             add(f"{base}[identityDate]", _date(_item_text(tv, "ngayCap", "identityDate")))
             add(f"{base}[namsanxuat]", _item_text(tv, "noiCap", "namsanxuat"))         # ⚠ = Nơi cấp.
-            add(f"{base}[namsanxuat1]", _item_text(tv, "quanHe", "moiQuanHe", "namsanxuat1"))  # ⚠ = Quan hệ.
+            # ⚠ = Quan hệ. Dòng vợ/chồng chốt lại bằng CCCD (xem _quan_he_vo_chong).
+            add(f"{base}[namsanxuat1]", _resolve_quan_he(
+                _item_text(tv, "quanHe", "moiQuanHe", "namsanxuat1"), tv_identity, identity
+            ))
 
     # === Phần III.2: thực trạng nhà ở + cam đoan ===
     add("data[thucTrang]", _thuc_trang(values.get("Don_ThucTrangNhaO")))

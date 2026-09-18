@@ -37,6 +37,9 @@ from app.pipelines.cap_lai_cap_doi_gcn_ho_kinh_doanh.attach import plan as cap_l
 from app.pipelines.cap_nuoc_sach.attach import plan as cap_nuoc_sach_attach
 from app.pipelines.chung_thuc_ban_sao.attach import plan as chung_thuc_ban_sao_attach
 from app.pipelines.chung_thuc_chu_ky.attach import plan as chung_thuc_chu_ky_attach
+from app.pipelines.chung_thuc_chu_ky_nguoi_dich_ctv.attach import (
+    plan as chung_thuc_chu_ky_nguoi_dich_ctv_attach,
+)
 from app.pipelines.chung_thuc_di_chuc.attach import plan as chung_thuc_di_chuc_attach
 from app.pipelines.chung_thuc_giao_dich_tai_san.attach import plan as chung_thuc_giao_dich_tai_san_attach
 from app.pipelines.chung_thuc_phan_chia_di_san.attach import plan as chung_thuc_phan_chia_di_san_attach
@@ -102,6 +105,11 @@ from app.pipelines.cap_doi_gcn_do_do_dac_khong_nvtc_quang_ninh_mien_nui_hai_dao.
 from app.pipelines.tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao.attach import plan as tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach
+from app.pipelines.dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as dang_ky_bien_phap_bao_dam_quang_ninh_attach
+from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_giao_dat_lao_cai_attach
+from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
+from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
+from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
@@ -160,6 +168,8 @@ from app.pipelines.nhan_cha_me_con.attach import plan as nhan_cha_me_con_attach
 from app.pipelines.nhan_cha_me_con.process import run as nhan_cha_me_con_process
 from app.pipelines.khai_tu.attach import plan as khai_tu_attach
 from app.pipelines.khai_tu.process import run as khai_tu_process
+from app.pipelines.khai_tu_lien_thong.attach import plan as khai_tu_lien_thong_attach
+from app.pipelines.khai_tu_lien_thong.process import run as khai_tu_lien_thong_process
 from app.pipelines.khai_tu_dang_ky_lai.attach import plan as khai_tu_dang_ky_lai_attach
 from app.pipelines.khai_tu_dang_ky_lai.process import run as khai_tu_dang_ky_lai_process
 from app.pipelines.khuyet_tat.attach import plan as khuyet_tat_attach
@@ -959,19 +969,23 @@ PROCEDURES: list[dict] = [
         # với "khai-tu". Mã 1.006714 đã được xác nhận qua breadcrumb trang thật là thủ tục này.
         "detect": {"urlIncludes": ["lienthong.dichvucong.gov.vn/#/ke-khai/1.006714"]},
         "label": "Liên thông đăng ký khai tử, xóa đăng ký thường trú, trợ cấp mai táng phí",
-        # TẠM dùng chung pipeline "khai-tu": DOM trang SPA này khác hẳn form legacy (input/select
-        # HTML thường, không phải web-component x-*) nên bấm điền sẽ CHƯA điền được field nào —
-        # chỉ mới đăng ký để nhận diện đúng thủ tục, không nhận nhầm sang "Trích lục hộ tịch" hay
-        # "Trích lục khai tử". Cần dựng mapper/schema/prompt riêng khớp đúng DOM này để điền thật.
+        # Form Angular (app-input formcontrolname) như liên thông khai sinh. Trích xuất dùng chung agent
+        # "khai-tu" (cùng bộ giấy tờ), mapper riêng khớp DOM liên thông. Phạm vi theo mapping BA
+        # "126_Liên thông khai tử": điền người được khai tử, nơi cư trú cuối cùng, thời gian/nơi chết,
+        # giấy báo tử, bản sao. Người yêu cầu do cổng đổ từ VNeID; chủ hộ và mai táng phí để cán bộ
+        # chọn (nhánh "Hưởng theo luật BHXH" BA đã bỏ ngày 2026-09-14).
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
-            "⚠️ Thủ tục liên thông này CHƯA hỗ trợ tự động điền — mới nhận diện đúng tên để khỏi lẫn "
-            "với thủ tục khác. Giấy tờ vẫn có thể tải lên để lưu hồ sơ, nhưng cán bộ cần tự điền form.\n"
-            "Giấy tờ cần tải lên (khi có pipeline riêng): CCCD người yêu cầu, giấy báo tử/giấy chứng "
-            "tử, giấy tờ chứng minh nơi thường trú, giấy tờ liên quan đến trợ cấp mai táng phí."
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đăng ký khai tử (bản giấy nếu có).\n"
+            "2. Giấy báo tử hoặc giấy tờ thay thế Giấy báo tử.\n"
+            "3. CCCD của người yêu cầu và người được khai tử nếu có (chỉ để đọc thông tin, không đính kèm).\n"
+            "Người yêu cầu do cổng điền sẵn từ VNeID; thông tin chủ hộ và mai táng phí cán bộ tự chọn.\n"
+            "Bước đính kèm: giấy báo tử và tờ khai vào dòng 1; chứng cứ thay thế giấy báo tử "
+            "(người chết đã lâu) vào dòng 2."
         ),
     },
     {
@@ -1136,14 +1150,20 @@ PROCEDURES: list[dict] = [
             "3. Sơ đồ ranh giới sử dụng đất, Trích lục bản đồ địa chính, Mảnh đo đạc chỉnh lý, Bản mô tả "
             "ranh giới mốc giới (Phụ lục 12).\n"
             "4. Giấy tờ nguồn gốc: đơn xác nhận nguồn gốc, giấy xác nhận UBND, sổ hộ khẩu, hợp đồng nước...\n"
-            "5. Biên lai thu thuế/phí (chứng từ nghĩa vụ tài chính) nếu có.\n"
+            "5. Văn bản xác nhận tài sản riêng/chung của vợ chồng, văn bản xác định thành viên có chung "
+            "quyền sử dụng đất của hộ (nếu có).\n"
+            "6. Biên lai thu thuế/phí (chứng từ nghĩa vụ tài chính) nếu có.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
             "Điền đơn (Form.io): Phần I Người nộp, Phần II Thửa đất, Phần III Chủ hồ sơ. Phần IV 'Thông tin "
             "chi tiết' (GCN) KHÔNG cần điền (đăng ký lần đầu). Nếu nộp thay qua ủy quyền: Phần I là người "
             "đại diện, Phần III là chủ hộ.\n"
-            "Đính kèm: hệ thống GỘP file thành 1 PDF cho mỗi nhóm — Đơn+CCCD+ủy quyền → 'Đơn đăng ký đất "
-            "đai'; mô tả ranh giới+đo đạc+trích lục → 'Mảnh trích đo bản đồ'; biên lai → 'Chứng từ nghĩa vụ "
-            "tài chính'; giấy tờ nguồn gốc → 'Một trong các loại giấy tờ (Điều 137, khoản 1,5)'.\n"
+            "Đính kèm (bảng 20 dòng theo QĐ 40/2026/QĐ-UBND, KHÔNG gộp PDF — nhiều file vào chung 1 ô): "
+            "Đơn Mẫu 15 + CCCD + tài liệu chưa rõ loại → STT 19 'Đơn đăng ký đất đai, tài sản gắn liền "
+            "với đất, Mẫu số 15'; Giấy ủy quyền → STT 18 'Văn bản về việc đại diện... thông qua người "
+            "đại diện'; văn bản xác nhận tài sản riêng/thành viên chung quyền → "
+            "STT 8; mảnh trích đo + trích lục + mô tả ranh giới → STT 14 'Mảnh trích đo bản đồ địa chính "
+            "thửa đất'; biên lai → STT 16 'Chứng từ nghĩa vụ tài chính'; giấy tờ nguồn gốc → STT 1 'Một "
+            "trong các loại giấy tờ (Điều 137, khoản 1...)'.\n"
             "Tỉnh/Phường (3 khối địa chỉ) là select cascade — extension tự chọn."
         ),
     },
@@ -2027,6 +2047,79 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "giao-thue-dat-lao-cai",
+        # TỈNH MỚI: dichvucong.laocai.gov.vn — eForm iGate legacy (ô CongDan_*/ChuHoSo_*), CÙNG nền tảng
+        # với các thủ tục Lai Châu nên dùng lại engine fill-legacy.js và engine đính kèm fixed-slot.
+        # Cổng là SPA, URL có ?sid=<phiên> đổi mỗi lần nộp → khóa host + cụm tên thủ tục (như Lai Châu).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu "
+            "giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất và "
+            "trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có "
+            "sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn xin giao đất/thuê đất (Mẫu số 01) — dùng để điền thân đơn.\n"
+            "2. Quyết định chấp thuận chủ trương đầu tư và CÁC quyết định điều chỉnh chủ trương (tất cả "
+            "vào cùng một dòng).\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp (hồ sơ tổ chức) — lấy tên công ty, mã số doanh "
+            "nghiệp, địa chỉ trụ sở, người đại diện.\n"
+            "4. Nếu có: phương án sử dụng đất, giấy phép khai thác khoáng sản, hồ sơ giao/thuê rừng, "
+            "giấy tờ miễn giảm tiền sử dụng đất.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR. Giấy tờ chưa "
+            "rõ loại vẫn được đính vào dòng 'Giấy tờ khác' — không bỏ sót tệp nào.\n"
+            "⚠ ĐIỀN FORM: nút/checkbox 'Người nộp là chủ hồ sơ' của cổng chỉ sao chép sang khối chủ hồ sơ "
+            "tới Nơi cấp/Ngày cấp căn cước, KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ. Hệ thống vì vậy luôn "
+            "điền đầy đủ cả khối chủ hồ sơ kể cả khi người nộp trùng chủ hồ sơ."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-phap-bao-dam-quang-ninh",
+        # URL /nop-ho-so/141946 (thủ tục XÓA là /141949) — id đổi theo cấu hình cổng → khóa domain +
+        # tiêu đề. ⚠ Cụm "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất" là CHUỖI CON của tiêu đề
+        # thủ tục XÓA ("Xóa đăng ký biện pháp bảo đảm bằng…") nên TRANG XÓA khớp CẢ HAI entry. FE
+        # (popup.js detectProcedure, nhánh textPriority) chọn entry có TỔNG ĐỘ DÀI CỤM LỚN NHẤT, nên
+        # trang xóa vẫn về đúng thủ tục xóa nhờ cụm dài hơn — KHÔNG phụ thuộc thứ tự entry. Hệ quả:
+        # đừng rút ngắn textIncludes của thủ tục XÓA xuống ngắn hơn cụm này (có test chặn).
+        "detect": {
+            "urlScope": ["dichvucong.quangninh.gov.vn"],
+            "textIncludes": [
+                "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Tỉnh Quảng Ninh] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+        # Trang chỉ có bước thành phần hồ sơ; engine wallet-modal (React/Radix), không chạy process.
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục này CÓ SẴN các dòng thành phần hồ sơ; hệ thống tự phân loại (LLM) để đính đúng dòng. "
+            "Giấy tờ ngoài danh mục sẽ được thêm thành một thành phần hồ sơ mới, đặt tên theo tệp.\n"
+            "Giấy tờ nên tải lên:\n"
+            "1. Phiếu yêu cầu đăng ký biện pháp bảo đảm (theo mẫu Phụ lục NĐ 99/2022/NĐ-CP) → dòng 2.\n"
+            "2. Hợp đồng thế chấp quyền sử dụng đất, tài sản gắn liền với đất (đã công chứng) → thêm "
+            "thành phần hồ sơ mới (form không có dòng sẵn cho hợp đồng gốc).\n"
+            "3. Giấy chứng nhận (bản gốc) — nếu tài sản bảo đảm có Giấy chứng nhận → dòng 1.\n"
+            "4. Văn bản ủy quyền/đại diện khi nộp thay → thêm thành phần hồ sơ mới.\n"
+            "Lưu ý: nếu Phiếu yêu cầu và Hợp đồng thế chấp nằm CHUNG 1 file PDF, hệ thống phân theo tài "
+            "liệu chính (phiếu) → đính dòng 2; muốn tách riêng thì tải lên 2 tệp."
+        ),
+    },
+    {
         "key": "dang-ky-dat-dai-lan-dau-bac-ninh",
         # Cổng dichvucong.bacninh.gov.vn (Liferay + select2) — dùng engine fill-bacninh.js.
         #
@@ -2404,16 +2497,19 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Đơn đề nghị tách thửa/hợp thửa đất (Mẫu số 21) chủ đất đã khai — dùng để điền thân đơn.\n"
+            "1. Đơn đề nghị tách thửa/hợp thửa đất (Mẫu số 22) chủ đất đã khai — dùng để điền thân đơn.\n"
             "2. Giấy chứng nhận QSDĐ (sổ đỏ/sổ hồng) đã cấp.\n"
-            "3. Bản vẽ tách thửa/hợp thửa (Mẫu số 22).\n"
-            "4. CCCD/giấy tờ tùy thân của chủ đất; nếu có: văn bản của cơ quan thẩm quyền về tách/hợp thửa.\n"
+            "3. Bản vẽ tách thửa/hợp thửa (Mẫu số 22a).\n"
+            "4. CCCD/giấy tờ tùy thân của chủ đất; nếu có: văn bản của cơ quan thẩm quyền về tách/hợp "
+            "thửa, giấy ủy quyền, giấy phép hoạt động đo đạc và bản đồ của đơn vị lập bản vẽ.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
             "Điền đơn (chỉ nhánh TÁCH THỬA): khớp ô theo NHÃN (Kính gửi, a) Tên, b) Giấy tờ nhân thân, thửa "
             "đất số/tờ bản đồ/diện tích/loại đất/địa chỉ thửa/số vào sổ GCN/ngày cấp, diện tích thửa mới, lý "
             "do, giấy tờ kèm, đề nghị cấp GCN) + khối người nhận kết quả (họ tên, CCCD, SĐT, địa chỉ).\n"
-            "Đính kèm: Đơn Mẫu 21→KQ006017, GCN→KQ004751, Văn bản cơ quan→KQ004752, Bản vẽ Mẫu 22→KQ006018; "
-            "CCCD/khác→ô đính kèm bổ sung.\n"
+            "Đính kèm (khớp theo MÃ THÀNH PHẦN in trong dòng tiêu đề trên cổng): Đơn Mẫu 22→TP-H05.000032, "
+            "Bản vẽ Mẫu 22a→TP-H05.000033, GCN đã cấp→TP-H05.000040, Văn bản cơ quan có thẩm quyền→"
+            "TP-H05.000047; CCCD, giấy ủy quyền, giấy phép đo đạc và giấy tờ chưa rõ loại→ô 'File đính kèm "
+            "khác' (không bỏ sót tệp nào).\n"
             "Để user tự làm: Tỉnh/Xã (địa chỉ thường trú) là select cascade; nhánh HỢP THỬA (nếu có); cơ quan "
             "tiếp nhận và tỉnh/phường người nhận."
         ),
@@ -2489,7 +2585,14 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-dat-dai",
+        # ⚠ TẠM ẨN KHỎI TỰ NHẬN DIỆN (detectDisabled) — vẫn chọn tay được.
+        # detect cũ chỉ có 2 cụm ngắn ["điều chỉnh", "giao đất"] và KHÔNG khóa cổng nào: đây là rule
+        # lỏng nhất toàn registry nên mọi trang đất đai có 2 chữ đó đều bị nó nhận, đã cướp trang của
+        # thủ tục giao/thuê đất Lào Cai. Bản gắn đúng cổng Lào Cai nằm ở entry
+        # "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ngay dưới; khi xác định được cổng gốc của entry này
+        # thì khóa urlScope cho nó rồi bỏ detectDisabled.
         "detect": {"textIncludes": ["điều chỉnh", "giao đất"], "headingDisabled": True},
+        "detectDisabled": True,
         "label": "Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất",
         "mode": "agent",
         "roles": [],
@@ -2498,6 +2601,46 @@ PROCEDURES: list[dict] = [
             "Giấy tờ cần tải lên:\n"
             "1. CCCD của người nộp hồ sơ.\n"
             "2. Giấy chứng nhận quyền sử dụng đất/quyền sở hữu tài sản gắn liền với đất."
+        ),
+    },
+    {
+        "key": "dieu-chinh-quyet-dinh-giao-dat-lao-cai",
+        # Cùng nghiệp vụ với "dieu-chinh-dat-dai" nhưng KHÓA ĐÚNG CỔNG Lào Cai và khớp bằng CỤM TÊN
+        # THỦ TỤC ĐẦY ĐỦ thay vì 2 chữ rời, nên không cướp trang của thủ tục khác. Dùng lại pipeline
+        # process sẵn có (app/pipelines/dieu_chinh_dat_dai).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            # Mã thủ tục in trên trang ổn định hơn ?sid= (đổi mỗi phiên nộp).
+            "urlIncludes": ["1.115652"],
+            "textIncludes": [
+                "điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích "
+            "sử dụng đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị điều chỉnh (Mẫu số 04 kèm QĐ 47/2026/QĐ-UBND) → dòng 1.\n"
+            "2. Quyết định giao đất/cho thuê đất/cho phép chuyển mục đích ĐANG ĐỀ NGHỊ ĐIỀU CHỈNH, Giấy "
+            "chứng nhận QSDĐ, hồ sơ bản đồ kèm theo → dòng 2.\n"
+            "3. Văn bản làm THAY ĐỔI CĂN CỨ: quyết định phê duyệt/điều chỉnh quy hoạch chi tiết, quyết "
+            "định chấp thuận (điều chỉnh) chủ trương đầu tư các lần → dòng 3.\n"
+            "4. Giấy tờ khác (ĐKKD, ủy quyền…) sẽ được thêm thành dòng 'Giấy tờ khác' kèm tên tài liệu.\n"
+            "Một dòng nhận được NHIỀU tệp; nếu một tệp gộp nhiều quyết định thì ghi rõ danh mục văn bản "
+            "vào ô 'Ghi chú'.\n"
+            "⚠ ĐIỀN FORM: ô 'Về việc' (*) ở bước Thành phần hồ sơ được cổng điền sẵn TÊN THỦ TỤC — hệ "
+            "thống ghi đè bằng trích yếu thật của Đơn (số/ngày quyết định bị điều chỉnh + tên dự án).\n"
+            "⚠ Nút 'Người nộp là chủ hồ sơ' của cổng KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ, nên hệ thống "
+            "luôn điền đầy đủ khối chủ hồ sơ. Địa chỉ ghi theo đơn vị hành chính CŨ (trước sáp nhập) sẽ "
+            "được chuẩn hoá; xã/phường cũ không còn thì hệ thống báo để cán bộ chọn tay."
         ),
     },
     {
@@ -4198,11 +4341,12 @@ PROCEDURES: list[dict] = [
             "trú, nghề nghiệp, đối tượng) + Hình thức (thuê/thuê mua) + Thành viên gia đình + Thực trạng "
             "nhà ở + Cam đoan + Ký.\n"
             "Bước đính kèm: Tờ đơn thuê → dòng 'Đơn đăng ký thuê nhà ở xã hội theo mẫu'; giấy chứng minh "
-            "ĐỐI TƯỢNG (huân/huy chương, người có công, miễn giảm tiền thuê) → dòng 'Giấy tờ chứng minh "
-            "đối tượng theo hướng dẫn của Bộ trưởng Bộ Xây dựng…'; giấy chứng minh ĐIỀU KIỆN (thu nhập, "
+            "ĐỐI TƯỢNG (huân/huy chương, kỷ niệm chương, thẻ hội viên hội chính sách, người có công, "
+            "miễn giảm tiền thuê) → dòng 'Giấy tờ chứng minh đối tượng… và giấy tờ chứng minh thuộc đối "
+            "tượng được miễn, giảm tiền thuê nhà ở xã hội (nếu có)'; giấy chứng minh ĐIỀU KIỆN (thu nhập, "
             "hộ nghèo, thực trạng nhà ở) → dòng 'Giấy tờ chứng minh điều kiện được hưởng chính sách'; "
-            "CCCD → dòng 'Trường hợp thuê nhà ở xã hội' (đều Bản chính). GCN ĐKDN/sổ hộ khẩu chỉ dùng ở "
-            "bước thông tin."
+            "CCCD → dòng 'Trường hợp thuê nhà ở xã hội' (đều Bản chính). Tài liệu chưa nhận ra loại cũng "
+            "được đính vào dòng 'chứng minh đối tượng… (nếu có)' kèm cảnh báo — không bỏ sót tệp nào."
         ),
     },
     {
@@ -4450,13 +4594,14 @@ _PIPELINE = {
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_process,
     "trich-luc-ks": trich_luc_process,
     "khai-tu": khai_tu_process,
-    "khai-tu-lien-thong": khai_tu_process,  # TẠM: chưa có mapper riêng khớp DOM SPA liên thông
+    "khai-tu-lien-thong": khai_tu_lien_thong_process,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_process,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_process,
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_process,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_process,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_process,
+    "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_process,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_process,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_process,
@@ -4499,6 +4644,7 @@ _PIPELINE = {
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_nha_o_process,
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_cong_trinh_process,
     "dieu-chinh-dat-dai": dieu_chinh_dat_dai_process,
+    "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_process,
     "dang-ky-dat-dai-lan-dau": dang_ky_dat_dai_process,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
@@ -4597,6 +4743,9 @@ _ATTACH_PIPELINE = {
     "tach-hop-thua-dat-quang-ninh-mien-nui-hai-dao": tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
+    "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
+    "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
+    "dang-ky-bien-phap-bao-dam-quang-ninh": dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "dang-ky-dat-dai-lan-dau-bac-ninh": dang_ky_dat_dai_lan_dau_bac_ninh_attach,
     "thu-hoi-gcn-cap-sai-bac-ninh": thu_hoi_gcn_cap_sai_bac_ninh_attach,
@@ -4622,6 +4771,9 @@ _ATTACH_PIPELINE = {
     "chung-thuc-ban-sao": chung_thuc_ban_sao_attach,
     # Chứng thực chữ ký: module RIÊNG (form 2 ô — STT1 giấy tờ, STT2 giấy tùy thân).
     "chung-thuc-chu-ky": chung_thuc_chu_ky_attach,
+    # Kênh popup KHÔNG dùng planner này (nó tự đính cục bộ theo clientAttachmentCase, rẽ nhánh
+    # trước khi gọi backend); đăng ký ở đây để kênh Handfree có kế hoạch đính kèm.
+    "chung-thuc-chu-ky-nguoi-dich-ctv": chung_thuc_chu_ky_nguoi_dich_ctv_attach,
     "chung-thuc-di-chuc": chung_thuc_di_chuc_attach,
     "chung-thuc-giao-dich-tai-san": chung_thuc_giao_dich_tai_san_attach,
     "chung-thuc-phan-chia-di-san": chung_thuc_phan_chia_di_san_attach,
@@ -4644,7 +4796,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
     "trich-luc-ks": trich_luc_attach,
     "khai-tu": khai_tu_attach,
-    "khai-tu-lien-thong": khai_tu_attach,  # TẠM: chưa có attach plan riêng
+    "khai-tu-lien-thong": khai_tu_lien_thong_attach,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_attach,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,

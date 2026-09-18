@@ -141,12 +141,44 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "maePortal" not in moc_housing
     assert moc_housing["wizard"]["declarationStep"] == 1
     assert moc_housing["wizard"]["attachmentStep"] == 2
+    # Bộ Y tế (trợ cấp hưu trí xã hội): CÙNG wizard iGate 1 kê khai / 2 đính kèm, nhưng bước
+    # chọn cơ quan lại giống tư pháp — DVCQG chọn ĐỦ Tỉnh + Xã rồi vào thẳng trang kê khai,
+    # KHÔNG gạt toggle "Sở". Đây là điểm phân biệt với ba cổng bộ ở trên.
+    # Bộ Xây dựng (cấp phép xây dựng mới): cũng wizard iGate 1/2 + chọn cơ quan Tỉnh+Xã, nhưng
+    # cổng còn chèn HỘP THOẠI "Chọn trường hợp giải quyết" → maePortal + variants. Trợ lý hỏi
+    # trường hợp ngay tại hộp thoại đó, nên variants phải có ít nhất 2 option kèm token khớp.
+    moc_permit = procedures.pop("cap-giay-phep-xay-dung-moi-nha-o-rieng-le")
+    assert moc_permit.get("flowProfile") is None
+    assert moc_permit["needsAgencySelect"] is True
+    assert moc_permit["maePortal"] is True
+    assert "agencyProvinceOnly" not in moc_permit
+    assert "agencySoFirst" not in moc_permit
+    assert moc_permit["wizard"]["declarationStep"] == 1
+    assert moc_permit["wizard"]["attachmentStep"] == 2
+    variant_options = moc_permit["variants"]["options"]
+    assert [o["key"] for o in variant_options] == ["nha_o_rieng_le", "cong_trinh"]
+    assert all(o.get("label") and o.get("portalMatch") for o in variant_options)
+
+    byt_pension = procedures.pop("dieu-chinh-huu-tri-xa-hoi")
+    assert byt_pension.get("flowProfile") is None
+    assert byt_pension["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in byt_pension
+    assert "agencySoFirst" not in byt_pension
+    assert "maePortal" not in byt_pension
+    assert byt_pension["wizard"]["declarationStep"] == 1
+    assert byt_pension["wizard"]["attachmentStep"] == 2
     # HkdOnline nhánh THAY ĐỔI: cùng cổng với thành lập mới nhưng workflow "change"
     # (wizard 4 bước + pageOrder động), không dùng profile tư pháp.
     business_change = procedures.pop("dang-ky-thay-doi-noi-dung-ho-kinh-doanh")
     assert business_change.get("flowProfile") is None
     assert business_change["businessWorkflow"] == "change"
     assert len(business_change["pages"]) == 7
+    # Chấm dứt hoạt động: CÙNG wizard "Chọn loại đăng ký thay đổi" với nhánh thay đổi (radio
+    # DISSOLU) nên cũng dừng ở màn tra cứu mã số; chỉ khác workflow + chỉ có 2 trang phải điền.
+    business_dissolution = procedures.pop("cham-dut-hoat-dong-ho-kinh-doanh")
+    assert business_dissolution.get("flowProfile") is None
+    assert business_dissolution["businessWorkflow"] == "dissolution"
+    assert len(business_dissolution["pages"]) == 2
     # Cổng tỉnh Bắc Ninh (Liferay eForm 2 tab cùng trang): không profile tư pháp, không wizard;
     # tỉnh chọn cố định Bắc Ninh + toggle "Sở" (agencySoFirst), điền xong tự đính kèm ngay.
     for bn_key in ("dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh"):
@@ -164,7 +196,10 @@ def test_registered_procedures_use_their_declared_flow_family():
         if procedure.get("flowProfile") != "tu-phap"
     } == set()
 
-    attach_only = {"chung-thuc-ban-sao", "chung-thuc-chu-ky"}
+    attach_only = {
+        "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san",
+        "chung-thuc-chu-ky-nguoi-dich-ctv",
+    }
     for key, procedure in procedures.items():
         owner_enabled = procedure["ownerInfo"]["enabled"]
         assert owner_enabled is (key not in attach_only)
@@ -179,7 +214,11 @@ def test_registered_procedures_use_their_declared_flow_family():
 
 def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     procedures = public_list()
-    assert len(procedures) == 21
+    # So với mốc 21 ban đầu: +1 "khai-sinh-dang-ky-thuong" (khai sinh đơn lẻ),
+    # +1 "chung-thuc-giao-dich-tai-san", +1 "chung-thuc-chu-ky-nguoi-dich-ctv" (attach-only)
+    # +1 "dieu-chinh-huu-tri-xa-hoi" (Bộ Y tế), +1 "cham-dut-hoat-dong-ho-kinh-doanh"
+    # và +1 "cap-giay-phep-xay-dung-moi-nha-o-rieng-le" (Bộ Xây dựng).
+    assert len(procedures) == 27
 
     for procedure in procedures:
         key = procedure["key"]

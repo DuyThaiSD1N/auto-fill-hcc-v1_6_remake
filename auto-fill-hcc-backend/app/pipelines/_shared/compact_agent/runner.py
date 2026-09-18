@@ -8,7 +8,6 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 from app.config import settings
-from app.pipelines._shared.area_remap import drop_fabricated_province, remap_area_deep
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.formatting import normalize_date
@@ -120,11 +119,8 @@ def _extract_docx_images(file: dict) -> list[dict]:
 
 
 def validate(raw_fields, allowed: set[str], comp_by_name: dict[str, str],
-             aliases: dict[str, list[str]] | None = None, ocr_text: str = "") -> list[dict]:
-    """Accept compact {name: value}; keep array format compatibility during rollout.
-
-    ocr_text dung de doi chieu dia chi voi chinh giay to -- xem drop_fabricated_province().
-    """
+             aliases: dict[str, list[str]] | None = None) -> list[dict]:
+    """Accept compact {name: value}; keep array format compatibility during rollout."""
     aliases = aliases or {}
     out: list[dict] = []
     seen: set[str] = set()
@@ -147,15 +143,6 @@ def validate(raw_fields, allowed: set[str], comp_by_name: dict[str, str],
         comp = comp_by_name[name]
         if comp in _DATE_COMPS and isinstance(value, str):
             value = normalize_date(value)
-        # Chuan hoa dia chi o DUNG MOT CHO cho moi thu tuc: sap nhap xa/phuong theo danh muc hien
-        # hanh, va tieu thu goi y cap huyen ("huyen") ngay khi no con trong du lieu LLM tra ve.
-        # Lam o day thay vi trong tung mapper vi mapper hay dung lai dict 4 khoa {quocGia, tinh, xa,
-        # diaChi} -- goi y bi rot ngay truoc khi remap_area() nhin thay, va moi thu tuc lai rot mot
-        # kieu. Sau buoc nay, remap_area() ma mapper goi lai chi con la no-op.
-        # Bỏ tên tỉnh/huyện LLM tự bịa (giấy tờ không nhắc tới VÀ không khớp xã) TRƯỚC khi remap:
-        # remap chạy trên một tỉnh bịa sẽ ra một địa chỉ sai trông rất thật.
-        value = drop_fabricated_province(value, ocr_text)
-        value = remap_area_deep(value)
         field = {"name": name, "comp": comp, "value": value}
         if name in aliases:
             field["aliases"] = aliases[name]
@@ -265,10 +252,7 @@ async def run(
             raw_fields = parsed.get("fields")
             if compact_field_fallback:
                 raw_fields = compact_field_fallback(raw_fields, documents)
-            result_fields = validate(
-                raw_fields, allowed, comp_by_name, aliases,
-                ocr_text=join_ocr_documents(documents),
-            )
+            result_fields = validate(raw_fields, allowed, comp_by_name, aliases)
         except Exception as e:  # noqa: BLE001
             errors.append(f"agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)

@@ -40,9 +40,13 @@ def test_registry_exposes_metadata_only_local_split_case():
         "componentIndex": 1,
         "normalizeDocumentName": True,
     }
-    # Không có planner/process server: extension tự lập kế hoạch và tự đính file.
+    # Không trích xuất phía server: kênh popup tự lập kế hoạch và tự đính file cục bộ, chỉ gửi
+    # metadata. `clientAttachmentCase` ở trên là thứ giữ hành vi đó — popup rẽ nhánh theo nó
+    # TRƯỚC khi gọi backend nên không bao giờ chạm vào attach pipeline.
     assert get_pipeline(PROCEDURE) is None
-    assert get_attach_pipeline(PROCEDURE) is None
+    # Có attach pipeline, nhưng dành cho kênh Handfree: ở đó tệp vốn đã nằm trên backend
+    # (upload_session) nên phải lập kế hoạch đính kèm ở backend như mọi thủ tục khác.
+    assert get_attach_pipeline(PROCEDURE) is not None
 
 
 def test_client_trace_file_metadata_forbids_data_url():

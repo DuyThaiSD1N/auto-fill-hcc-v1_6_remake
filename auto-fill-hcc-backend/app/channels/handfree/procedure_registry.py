@@ -82,6 +82,50 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Đăng ký khai sinh ĐƠN LẺ (chỉ khai sinh) — KHÁC "khai-sinh-dang-ky" ở trên là liên
+        # thông (khai sinh + thường trú + BHYT trên cổng lienthong.dichvucong.gov.vn Angular).
+        # Thủ tục này chạy trên cổng React mới của Bộ Tư pháp, cùng wizard với kết hôn/khai tử.
+        "key": "khai-sinh-dang-ky-thuong",
+        "detect": {"urlIncludes": ["maThuTuc=1.001193"]},
+        "label": "Thủ tục đăng ký khai sinh",
+        "shortLabel": "Đăng ký Khai sinh",
+        "subtitle": "Chỉ đăng ký khai sinh (không kèm thường trú, BHYT)",
+        "icon": "👶",
+        "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
+        # URL kê khai đã xác minh trong ke_khai_links.json (mã TTHC 1.001193).
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7",
+        # Mỗi slot tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            # Gộp CCCD cha/mẹ/con vào MỘT slot (mode agent tự suy vai theo OCR, không cần
+            # tách ô theo cha/mẹ); classify dồn mọi CCCD vào đây như khai tử/trích lục.
+            {"key": "cccd", "name": "Căn cước công dân của cha, mẹ, con", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_sinh", "name": "Giấy chứng sinh", "icon": "📃",
+             "sides": 1, "repeatable": True},
+            # Thay thế CCCD cha/mẹ khi không có: hệ thống lấy thông tin cha/mẹ từ giấy kết hôn.
+            {"key": "ket_hon_cha_me", "name": "Giấy chứng nhận kết hôn của cha mẹ",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Các giấy tờ khác liên quan",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Căn cước công dân cha (cả 2 mặt).\n"
+            "2. Căn cước công dân mẹ (cả 2 mặt).\n"
+            "3. Giấy chứng sinh của con.\n"
+            "4. Giấy chứng nhận kết hôn của cha mẹ (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt cha/mẹ/con theo nội dung.\n"
+            "Bước 3: hệ thống có thể đính giấy chứng sinh vào thành phần hồ sơ có sẵn, "
+            "hoặc thêm thành phần CCCD bố/mẹ nếu cần."
+        ),
+    },
+    {
         "key": "ket-hon",
         "detect": {"urlIncludes": ["maThuTuc=1.000894"]},
         "label": "Thủ tục đăng ký kết hôn",
@@ -402,14 +446,25 @@ PROCEDURES: list[dict] = [
         "subtitle": "Thay đổi, bổ sung thông tin hộ tịch",
         "icon": "📝",
         "flowProfile": "tu-phap",
-        # Chưa có URL định danh mới đã được xác minh nên không tạo card điều hướng hỏng.
-        # Gọi tên thủ tục hoặc nhận diện URL cũ vẫn dispatch đúng pipeline.
-        "hiddenFromList": True,
+        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/khai tử/TTHN. URL kê khai
+        # đã xác minh trong ke_khai_links.json (mã TTHC 1.004859).
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671e-714b-8fd6-8230c82f7867",
         "review": False,
         "mode": "agent",
-        "hasAttachmentStep": True,
         # Client cũ không gửi option sẽ giữ nguyên từng file; chỉ boolean True mới tách theo trang.
         "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "cccd", "name": "Căn cước công dân của người làm giấy tờ",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "ho_tich", "name": "Giấy tờ làm căn cứ thay đổi/cải chính (giấy khai sinh, "
+             "trích lục hộ tịch, đăng ký kết hôn, khai tử, học bạ, bằng cấp, quyết định…)",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đăng ký thay đổi, cải chính, bổ sung hộ tịch (nếu có)",
+             "icon": "📄", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền và các giấy tờ khác (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -550,6 +605,86 @@ PROCEDURES: list[dict] = [
             "Giấy tờ cần tải lên:\n"
             "1. Giấy tờ cần chứng thực bản sao (không giới hạn số lượng tệp).\n"
             "Tất cả tệp được đính kèm trong cùng một hồ sơ; hệ thống không phân loại nội dung."
+        ),
+    },
+    {
+        "key": "chung-thuc-giao-dich-tai-san",
+        # Cổng React mới (Bộ Tư pháp). detect kèm cả UUID trang + maThuTuc như nhóm chứng thực.
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-95fa-70ca-93fd-4cab11b87897",
+                "maThuTuc=2.001035",
+            ],
+        },
+        "label": "Chứng thực giao dịch liên quan đến tài sản là động sản, quyền sử dụng đất, nhà ở",
+        "shortLabel": "Chứng thực giao dịch tài sản",
+        "subtitle": "Chứng thực hợp đồng, giao dịch về động sản, đất đai, nhà ở",
+        "icon": "🏘️",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95fa-70ca-93fd-4cab11b87897",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) giấy chứng nhận sở hữu/sử dụng → STT1, (2) dự thảo giao
+        # dịch (bắt buộc) → STT2. Planner attach (core) tự phân loại lại theo OCR; CCCD/ủy quyền/
+        # giấy khác thêm thành phần hồ sơ mới. Slot so_huu/du_thao khớp qua chụp-theo-dòng; chụp
+        # chung không nhận ra loại thì rơi vào "khac" — planner vẫn tách đúng lúc đính.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "so_huu", "name": "Giấy chứng nhận quyền sở hữu/sử dụng tài sản (sổ đỏ, đăng ký xe…)",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "du_thao", "name": "Dự thảo giao dịch/hợp đồng", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân (nếu có)", "icon": "🪪",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền và giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận quyền sở hữu/sử dụng hoặc giấy tờ thay thế của tài sản "
+            "(sổ đỏ, đăng ký xe…).\n"
+            "2. Dự thảo giao dịch/hợp đồng (bắt buộc).\n"
+            "3. Nếu có: CCCD, văn bản ủy quyền hoặc tài liệu khác; hệ thống sẽ thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "chung-thuc-chu-ky-nguoi-dich-ctv",
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-95d3-7258-b613-a71dbf432f07",
+                "maThuTuc=2.000992",
+            ],
+        },
+        "label": (
+            "Chứng thực chữ ký người dịch mà người dịch là cộng tác viên dịch thuật của "
+            "Ủy ban nhân dân cấp xã, tổ chức hành nghề công chứng"
+        ),
+        "shortLabel": "Chứng thực chữ ký người dịch (CTV)",
+        "subtitle": "Chứng thực chữ ký người dịch là cộng tác viên dịch thuật",
+        "icon": "🌐",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-95d3-7258-b613-a71dbf432f07",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng chỉ có MỘT dòng cố định "Bản dịch và giấy tờ, văn bản cần dịch." → một loại giấy
+        # duy nhất, không phân loại. Gộp: tệp đầu vào dòng đó, tệp sau thêm thành phần mới (tên
+        # do planner đánh số sẵn). Tách: mỗi bản dịch thành một hồ sơ riêng trên một tab riêng.
+        "requiredDocs": [
+            {"key": "khac", "name": "Bản dịch và giấy tờ, văn bản cần dịch", "icon": "📄",
+             "sides": 1, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản dịch và giấy tờ, văn bản cần dịch (không giới hạn số lượng tệp).\n"
+            "Có thể gộp tất cả vào một hồ sơ, hoặc tách mỗi bản dịch thành một hồ sơ riêng."
         ),
     },
     {
@@ -767,6 +902,131 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dieu-chinh-huu-tri-xa-hoi",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — CÙNG nền iGate/Form.io với MAE/moet/moc:
+        # wizard 1 "Thông tin hồ sơ" (kê khai dom-*) → 2 "Thành phần hồ sơ" (đính kèm) →
+        # 3 phí/lệ phí + captcha (NÚT NỘP nằm ở đây) → 4 màn báo kết quả.
+        # KHÁC ba cổng bộ kia ở bước chọn cơ quan: DVCQG chọn ĐỦ Tỉnh + Xã rồi vào THẲNG trang
+        # kê khai — KHÔNG có toggle "Sở", KHÔNG có trang "chọn nơi và loại" của MAE. Vì vậy chỉ
+        # đặt needsAgencySelect (bot tự chọn Tỉnh/Xã + Nộp trực tuyến), KHÔNG agencyProvinceOnly
+        # / agencySoFirst. Luật nhận nút "Nộp hồ sơ" đã khai sẵn ở portal_submit (_FORMIO).
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.014027",
+                "019d2bff-2d80-74d8-8515-90f6f61822f0",
+            ],
+            "textIncludes": ["Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
+        "shortLabel": "Trợ cấp hưu trí xã hội",
+        "subtitle": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
+        "icon": "👴",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d80-74d8-8515-90f6f61822f0",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bảng thành phần hồ sơ của cổng CHỈ CÒN ĐÚNG MỘT DÒNG (Nghị định 176/2025/NĐ-CP) và đã
+        # bỏ nút "Thêm giấy tờ" → planner dồn MỌI tệp vào dòng đó; các ô dưới đây chỉ để công dân
+        # biết cần mang gì, không phải đích đến riêng.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Văn bản đề nghị hưởng trợ cấp hưu trí xã hội "
+             "(Mẫu số 01, Nghị định 176/2025/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị hưởng trợ cấp hưu trí xã hội (Mẫu số 01 ban hành kèm theo "
+            "Nghị định số 176/2025/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người đề nghị.\n"
+            "Hệ thống lấy chủ hồ sơ từ mục thông tin người đề nghị hưởng trợ cấp hưu trí xã hội.\n"
+            "Bước Thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng nên mọi tệp đều được đính vào "
+            "dòng đó; tệp không phải Văn bản đề nghị vẫn đính được nhưng có cảnh báo để cán bộ soát."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
+        # Cổng Bộ Xây dựng dvc.moc.gov.vn (cùng nền iGate/Form.io với NOXH). KHÁC NOXH: DVCQG
+        # chọn ĐỦ Tỉnh + Xã (ke_khai_links KHÔNG khai selectSoProvinces) rồi cổng mở HỘP THOẠI
+        # "Chọn trường hợp giải quyết" TRƯỚC trang kê khai. maePortal bật để vào nhánh
+        # maeAgencyBlock — trợ lý hỏi công dân chọn trường hợp ĐÚNG LÚC hộp thoại đang mở,
+        # rồi tự chọn + bấm "Đồng ý". Ai tự bấm sang trang kê khai thì không bị hỏi.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.013225",
+                "019d2bfe-9088-744d-aa0a-e846b6dce3d5",
+            ],
+            "textIncludes": ["cấp giấy phép xây dựng mới"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Cấp giấy phép xây dựng mới đối với công trình cấp III, cấp IV và nhà ở riêng lẻ"
+        ),
+        "shortLabel": "Cấp phép xây dựng mới",
+        "subtitle": "Giấy phép xây dựng nhà ở riêng lẻ hoặc công trình cấp III, cấp IV",
+        "icon": "🏗️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9088-744d-aa0a-e846b6dce3d5",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        # portalMatch/portalAvoid là token ĐÃ FOLD DẤU để khớp option trong ô "Trường hợp giải
+        # quyết" — tên option do cổng đặt, không cố định, nên khớp theo cụm đặc trưng thay vì
+        # nguyên văn. Option ĐẦU là mặc định (chip tô đậm).
+        "variants": {
+            "options": [
+                {"key": "nha_o_rieng_le", "label": "Nhà ở riêng lẻ",
+                 "chip": "🏠 Nhà ở riêng lẻ", "portalMatch": "nha o rieng le",
+                 "desc": "xây nhà ở của hộ gia đình, cá nhân"},
+                {"key": "cong_trinh", "label": "Công trình cấp III, cấp IV",
+                 "chip": "🏢 Công trình cấp III, cấp IV",
+                 "portalMatch": "cong trinh", "portalAvoid": "nha o rieng le",
+                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ"},
+            ],
+        },
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp giấy phép xây dựng — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (sổ đỏ) hoặc giấy tờ về "
+             "quyền sử dụng đất", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "ban_ve", "name": "Bản vẽ xin cấp phép xây dựng (kèm chứng chỉ năng lực / "
+             "chứng chỉ hành nghề thiết kế nếu có)", "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ hộ / người nộp", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp giấy phép xây dựng, đã ký.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất hoặc giấy tờ về quyền sử dụng đất.\n"
+            "3. Bản vẽ xin cấp phép xây dựng; kèm bản kê khai/chứng chỉ năng lực thiết kế, "
+            "chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế nếu có.\n"
+            "4. Căn cước công dân của chủ hộ / người nộp.\n"
+            "Bước Thành phần hồ sơ: bảng của cổng chia thành nhiều KHỐI theo LOẠI CÔNG TRÌNH, "
+            "mỗi khối lặp lại gần như y hệt bộ giấy tờ — hệ thống tự nhận loại công trình từ "
+            "đơn/bản vẽ để đính đúng khối."
+        ),
+    },
+    {
         "key": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
         # HkdOnline (cùng cổng thành lập mới) — businessWorkflow "change": wizard 4 bước
         # (chọn CHN → TRA CỨU hộ KD theo mã số → chọn CHAPAR + hỏi đổi tên → Bắt đầu), trang
@@ -823,6 +1083,62 @@ PROCEDURES: list[dict] = [
             "3. Căn cước công dân của chủ hộ / người nộp.\n"
             "4. Nếu có: văn bản ủy quyền, biên bản họp thành viên hộ gia đình, hợp đồng mua "
             "bán/tặng cho/thừa kế.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cham-dut-hoat-dong-ho-kinh-doanh",
+        # HkdOnline, businessWorkflow "dissolution" — ĐI CHUNG wizard với nhánh thay đổi: cổng
+        # gộp cả hai vào màn "Chọn loại đăng ký thay đổi" (radio DISSOLU, có AutoPostBack). Vì
+        # workflow != "create" nên flow tự đặt stop_at="search-business": bootstrap dừng ở màn
+        # TRA CỨU hộ kinh doanh để nhận giấy tờ TRƯỚC (mã số nằm trong GCN), chạy pipeline xong
+        # FE mới đi nốt wizard. Engine FE đã có sẵn nhánh dissolution (trang Dissolution.aspx).
+        "detect": {
+            "urlIncludes": [
+                "hokinhdoanh.dkkd.gov.vn",
+                "019d2bfb-d748-72d1-848f-3607bc86e647",
+            ],
+            "headingDisabled": True,
+        },
+        "label": "Chấm dứt hoạt động hộ kinh doanh",
+        "shortLabel": "Chấm dứt hộ kinh doanh",
+        "subtitle": "Đóng, chấm dứt hoạt động hộ kinh doanh đang hoạt động",
+        "icon": "🛑",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d748-72d1-848f-3607bc86e647",
+        "needsAgencySelect": True,
+        "businessWorkflow": "dissolution",
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thong_bao", "name": "Thông báo về việc chấm dứt hoạt động hộ kinh doanh "
+             "(Mẫu số 1) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn_cu", "name": "Bản gốc Giấy chứng nhận đăng ký hộ kinh doanh (để lấy mã "
+             "số tra cứu)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "thue", "name": "Thông báo của cơ quan thuế về chấm dứt hiệu lực mã số thuế "
+             "/ hoàn thành nghĩa vụ thuế", "icon": "🧾", "sides": 1, "repeatable": True},
+            {"key": "bien_ban", "name": "Biên bản họp thành viên hộ gia đình (nếu hộ gia đình "
+             "cùng thành lập)", "icon": "📋", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # Chỉ 2 trang: nội dung chấm dứt + người nộp hồ sơ (khớp registry lõi).
+        "pages": [
+            {"key": "cham-dut-hoat-dong", "label": "Chấm dứt hoạt động"},
+            {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Thông báo về việc chấm dứt hoạt động hộ kinh doanh (Mẫu số 1), đã ký.\n"
+            "2. Bản gốc Giấy chứng nhận đăng ký hộ kinh doanh — QUAN TRỌNG: hệ thống lấy mã số "
+            "hộ kinh doanh từ đây để tra cứu.\n"
+            "3. Thông báo của cơ quan thuế về chấm dứt hiệu lực mã số thuế hoặc hoàn thành nghĩa "
+            "vụ thuế.\n"
+            "4. Nếu hộ gia đình cùng thành lập: biên bản họp thành viên hộ gia đình.\n"
+            "5. Nếu có: căn cước công dân, văn bản ủy quyền hoặc giấy tờ khác.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },

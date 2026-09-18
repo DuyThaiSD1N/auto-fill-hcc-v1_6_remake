@@ -62,10 +62,13 @@ def test_dom_expect_cho_o_nhan_than_thieu():
     d, _ = _run(_CA_NHAN)
     assert d["data[identityDate]"]["comp"] == "dom-expect"
     assert d["data[identityAgency]"]["comp"] == "dom-expect"
-    # Ô suy được từ CCCD 12 số (ngày sinh/giới tính) vẫn điền bình thường.
     assert d["data[fullname]"]["comp"] == "dom-input"
-    assert d["data[birthday]"]["comp"] == "dom-date"
+    # GIỚI TÍNH suy được tất định từ chữ số thứ 4 của CCCD 12 số → vẫn điền.
     assert d["data[gender]"]["value"] == "Nam"
+    # NGÀY SINH thì KHÔNG: CCCD chỉ mã hoá NĂM, ghép "01/01/<năm>" là bịa ngày/tháng.
+    # Fixture này không có Applicant_NgaySinh → phải tô đỏ để cán bộ tự nhập.
+    assert d["data[birthday]"]["comp"] == "dom-expect"
+    assert d["data[birthday]"]["value"] == ""
 
 
 def test_noi_dung_dieu_chinh_giu_xuong_dong():
@@ -123,3 +126,47 @@ def test_dia_diem_khac_noi_cu_tru():
     assert len(provinces) == 2
     assert provinces[0].get("occurrence") == 0
     assert provinces[1].get("occurrence") == 1
+
+
+# ---------------------------------------------------------------------------
+# Hồ sơ thật (CCCD 026077005820): form bị điền ngày sinh 01/01/1977 trong khi KHÔNG giấy tờ nào ghi
+# ngày sinh — mapper tự ghép "01/01/" + năm mã hoá trong CCCD. Cùng lỗi đã vá ở cap_giay_phep_xay_dung.
+# ---------------------------------------------------------------------------
+_NGUOI_NOP = {"Applicant_HoTen": "Bùi Trọng N.", "Applicant_SoDinhDanh": "026077005820"}
+
+
+def test_chi_biet_nam_sinh_tu_cccd_thi_khong_bia_ngay_thang():
+    by, _ = _run(_NGUOI_NOP)
+
+    assert by["data[birthday]"]["value"] == ""
+    assert by["data[birthday]"]["comp"] == "dom-expect"
+    # Giới tính thì VẪN suy được: chữ số thứ 4 của CCCD mã hoá giới tính — tất định, không phải đoán.
+    assert by["data[gender]"]["value"] == "Nam"
+
+
+def test_chi_co_nam_sinh_roi_cung_khong_ghep_thanh_ngay():
+    by, _ = _run({**_NGUOI_NOP, "Applicant_NamSinh": "1977"})
+
+    assert by["data[birthday]"]["value"] == ""
+    assert by["data[birthday]"]["comp"] == "dom-expect"
+
+
+def test_co_ngay_sinh_day_du_thi_van_dien_binh_thuong():
+    by, _ = _run({**_NGUOI_NOP, "Applicant_NgaySinh": "23/05/1977"})
+
+    assert by["data[birthday]"]["value"] == "23/05/1977"
+
+
+def test_nam_lech_cccd_thi_chi_sua_nam_giu_nguyen_ngay_thang():
+    by, _ = _run({**_NGUOI_NOP, "Applicant_NgaySinh": "23/05/1968"})
+
+    assert by["data[birthday]"]["value"] == "23/05/1977"
+
+
+def test_mapper_khong_con_ghep_01_01_trong_code():
+    """Chặn việc ghép lại '01/01/<năm>' — chỉ được phép xuất hiện trong docstring giải thích."""
+    import inspect
+
+    src = inspect.getsource(mapper._birthday_from_year)
+    body = src.split('"""')[-1]  # phần sau docstring
+    assert "01/01/" not in body

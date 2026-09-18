@@ -1,29 +1,38 @@
-"""Đính kèm bước "Thành phần hồ sơ" cho [Lâm Đồng] đăng ký đất đai cấp GCN lần đầu.
+"""Đính kèm bước "Thành phần hồ sơ" cho [Lâm Đồng] đăng ký đất đai cấp GCN lần đầu (1.116360).
 
 Cổng Lâm Đồng (Form.io/Angular apply-online) — CÙNG nền tảng đính kèm GPXD/đính chính lamdong.
 Mỗi ô "Chọn tệp tin" NHẬN NHIỀU FILE → KHÔNG gộp PDF: phát 1 attachment/file, các file cùng slotKey
-được FE (`attachFilesByFixedSlot`) tự gom rồi bơm cả loạt vào đúng ô (khớp theo slotIndex — FE fallback
-vị trí, không cần sửa extension). Tên hiển thị = tên giấy tờ thật của từng file.
+được FE (`attachFilesByFixedSlot`) tự gom rồi bơm cả loạt vào đúng ô. Tên hiển thị = tên giấy tờ thật.
 
-4 nhóm cố định (slotIndex = trigger 'Chọn tệp tin' đầu tiên của nhóm trên form):
-  slot 0  "Đơn đăng ký đất đai, tài sản gắn liền với đất" ← Đơn Mẫu 15 + CCCD + Giấy ủy quyền.
-  slot 2  "Một trong các loại giấy tờ quy định tại Điều 137, khoản 1, khoản 5..." (hộ gia đình/cá nhân)
-          ← Đơn xác nhận nguồn gốc + Giấy xác nhận UBND + Đơn cho đất + Sổ hộ khẩu + Hợp đồng nước +
-            Sơ đồ ranh giới + (GCN cũ nếu có).
-  slot 9  "Mảnh trích đo bản đồ địa chính thửa đất" ← Phụ lục 12 mô tả ranh giới + Mảnh đo đạc chỉnh lý +
-            Trích lục bản đồ địa chính.
-  slot 12 "Chứng từ thực hiện nghĩa vụ tài chính..." ← Biên lai thu thuế/phí.
-(Bỏ nhóm "Điều 137 khoản 4,5" cho người gốc VN định cư nước ngoài — slot 16.)
+⚑ BẢNG ĐÃ ĐỔI (Quyết định 40/2026/QĐ-UBND) — 20 dòng, `slotIndex = STT − 1` (thứ tự DOM của
+`input[type=file]`, xem `fixedSlotUploadInputs` trong content.js). Bảng CŨ chỉ có ~17 dòng và Đơn Mẫu 15
+nằm ở đầu bảng; nay Đơn xuống gần CUỐI (STT 19) nên mọi slotIndex cũ đều lệch. Bảng hiện tại:
 
-Route TẤT ĐỊNH theo nội dung OCR; LLM chỉ đặt documentName hiển thị. File không rõ → nhóm Điều 137
-(nhóm "một trong các loại giấy tờ" nguồn gốc — catch-all).
+| STT | slotIndex | Dòng dùng tới                                                        |
+|-----|-----------|----------------------------------------------------------------------|
+| 1   | 0         | Một trong các loại giấy tờ … Điều 137, **khoản 1**, khoản 5 Điều 148… |
+| 8   | 7         | Văn bản xác định các thành viên có chung quyền sử dụng đất của hộ GĐ  |
+| 14  | 13        | Mảnh trích đo bản đồ địa chính thửa đất                              |
+| 16  | 15        | Chứng từ thực hiện nghĩa vụ tài chính                                |
+| 18  | 17        | Văn bản về việc **đại diện** … thông qua người đại diện (← Giấy ủy quyền) |
+| 19  | 18        | Đơn đăng ký đất đai, tài sản gắn liền với đất, **Mẫu số 15** Phụ lục VI |
+
+⚠ ĐỪNG khớp dòng bằng keyword: text "Một trong các loại giấy tờ quy định tại Điều 137…" lặp ở STT 1 và
+STT 12 (chỉ khác "khoản 1" / "khoản 4"), text "Giấy tờ về việc nhận thừa kế…" lặp ở STT 5 và 13. slotKey
+của package này CỐ Ý không nằm trong `FIXED_SLOT_KEYWORDS` (content.js) → FE bỏ bước keyword, dùng
+thẳng slotIndex. Nhờ vậy sửa được HOÀN TOÀN Ở BACKEND, không phải phát hành lại extension.
+
+Giấy ủy quyền đi vào **STT 18 "Văn bản về việc đại diện theo quy định của pháp luật về dân sự…"** —
+KHÔNG chung ô với Đơn, cũng KHÔNG qua nút "+ Thêm giấy tờ": cổng có sẵn dòng dành riêng cho nó.
+
+Phân loại THUẦN LLM (không còn lưới keyword nào — xem prompt.py). Không nhận ra loại → "other" và vẫn
+đính vào ô Đơn: tuyệt đối không bỏ sót file nào.
 """
 import re
 import time
 from typing import Any
 
 from app.config import settings
-from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
 from app.process.schemas import FileItem
 from app.services.llm import client
@@ -33,72 +42,91 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
 # --- Loại giấy tờ ---
-_T_APPLICATION = "application"        # Đơn đăng ký đất đai (Mẫu 15/ĐK)
+_T_APPLICATION = "application"        # Đơn đăng ký đất đai (Mẫu 15)
 _T_IDENTITY = "identity"              # CCCD
 _T_AUTHORIZATION = "authorization"    # Giấy ủy quyền
+_T_HOUSEHOLD_RIGHTS = "household_rights"  # Văn bản xác định thành viên chung quyền SDĐ / tài sản riêng-chung
 _T_BOUNDARY_DESC = "boundary_desc"    # Phụ lục 12 bản mô tả ranh giới, mốc giới
-_T_SURVEY_ADJUST = "survey_adjust"    # Mảnh đo đạc chỉnh lý thửa đất
+_T_SURVEY_ADJUST = "survey_adjust"    # Mảnh trích đo / mảnh đo đạc chỉnh lý thửa đất
 _T_MAP_EXTRACT = "map_extract"        # Trích lục bản đồ địa chính
 _T_TAX = "tax_receipt"                # Biên lai thuế/phí
-_T_ORIGIN = "origin_doc"              # Giấy tờ nguồn gốc (Điều 137): xác nhận nguồn gốc, UBND, sổ hộ khẩu, hợp đồng nước, sơ đồ ranh giới, GCN...
+_T_ORIGIN = "origin_doc"              # Giấy tờ nguồn gốc (Điều 137 khoản 1)
 _T_OTHER = "other"
 
 _ALLOWED_LLM_TYPES = {
-    _T_APPLICATION, _T_IDENTITY, _T_AUTHORIZATION, _T_BOUNDARY_DESC,
-    _T_SURVEY_ADJUST, _T_MAP_EXTRACT, _T_TAX, _T_ORIGIN,
+    _T_APPLICATION, _T_IDENTITY, _T_AUTHORIZATION, _T_HOUSEHOLD_RIGHTS,
+    _T_BOUNDARY_DESC, _T_SURVEY_ADJUST, _T_MAP_EXTRACT, _T_TAX, _T_ORIGIN,
 }
-_CONFIDENT_LLM_TYPES = set(_ALLOWED_LLM_TYPES)
 
-# --- Nhóm (component) trên form ---
-_G_APPLICATION = "g_application"
+# --- Nhóm (ô upload) trên form ---
 _G_ORIGIN = "g_origin"
+_G_HOUSEHOLD = "g_household"
 _G_SURVEY = "g_survey"
 _G_FINANCE = "g_finance"
+_G_REPRESENTATION = "g_representation"
+_G_APPLICATION = "g_application"
 
-_COMP_APPLICATION = "Đơn đăng ký đất đai, tài sản gắn liền với đất"
-_COMP_ORIGIN = "Một trong các loại giấy tờ quy định tại Điều 137, khoản 1"
+# componentName = text VERBATIM (rút gọn phần đầu, đủ phân biệt) của đúng dòng trên cổng.
+_COMP_ORIGIN = (
+    "Một trong các loại giấy tờ quy định tại Điều 137, khoản 1, khoản 5 Điều 148, khoản 1, "
+    "khoản 5 Điều 149 Luật Đất đai"
+)
+_COMP_HOUSEHOLD = (
+    "Văn bản xác định các thành viên có chung quyền sử dụng đất của hộ gia đình đang sử dụng đất"
+)
 _COMP_SURVEY = "Mảnh trích đo bản đồ địa chính thửa đất"
 _COMP_FINANCE = "Chứng từ thực hiện nghĩa vụ tài chính"
+_COMP_REPRESENTATION = (
+    "Văn bản về việc đại diện theo quy định của pháp luật về dân sự đối với trường hợp thực hiện "
+    "thủ tục đăng ký đất đai, tài sản gắn liền với đất thông qua người đại diện"
+)
+_COMP_APPLICATION = "Đơn đăng ký đất đai, tài sản gắn liền với đất, Mẫu số 15"
 
-# nhóm → (slotIndex trigger đầu, componentName, nhãn hiển thị nhóm)
+# nhóm → (slotIndex = STT − 1, componentName, nhãn hiển thị nhóm). Xếp theo thứ tự dòng trên form.
 _GROUPS: dict[str, dict[str, Any]] = {
-    _G_APPLICATION: {"slotIndex": 0, "componentName": _COMP_APPLICATION, "label": "Đơn đăng ký đất đai + CCCD"},
-    _G_ORIGIN: {"slotIndex": 2, "componentName": _COMP_ORIGIN, "label": "Giấy tờ nguồn gốc sử dụng đất"},
-    _G_SURVEY: {"slotIndex": 9, "componentName": _COMP_SURVEY, "label": "Mảnh trích đo / trích lục bản đồ"},
-    _G_FINANCE: {"slotIndex": 12, "componentName": _COMP_FINANCE, "label": "Chứng từ nghĩa vụ tài chính"},
+    _G_ORIGIN: {"slotIndex": 0, "componentName": _COMP_ORIGIN, "label": "Giấy tờ nguồn gốc sử dụng đất (STT 1)"},
+    _G_HOUSEHOLD: {"slotIndex": 7, "componentName": _COMP_HOUSEHOLD, "label": "Văn bản xác định thành viên chung quyền SDĐ (STT 8)"},
+    _G_SURVEY: {"slotIndex": 13, "componentName": _COMP_SURVEY, "label": "Mảnh trích đo bản đồ địa chính (STT 14)"},
+    _G_FINANCE: {"slotIndex": 15, "componentName": _COMP_FINANCE, "label": "Chứng từ nghĩa vụ tài chính (STT 16)"},
+    _G_REPRESENTATION: {"slotIndex": 17, "componentName": _COMP_REPRESENTATION, "label": "Văn bản về việc đại diện / Giấy ủy quyền (STT 18)"},
+    _G_APPLICATION: {"slotIndex": 18, "componentName": _COMP_APPLICATION, "label": "Đơn đăng ký đất đai Mẫu 15 (STT 19)"},
 }
 
 # loại giấy tờ → nhóm
 _TYPE_TO_GROUP = {
     _T_APPLICATION: _G_APPLICATION,
     _T_IDENTITY: _G_APPLICATION,
-    _T_AUTHORIZATION: _G_APPLICATION,
+    _T_AUTHORIZATION: _G_REPRESENTATION,  # cổng có dòng riêng cho văn bản đại diện (STT 18)
+    _T_HOUSEHOLD_RIGHTS: _G_HOUSEHOLD,
     _T_BOUNDARY_DESC: _G_SURVEY,
     _T_SURVEY_ADJUST: _G_SURVEY,
     _T_MAP_EXTRACT: _G_SURVEY,
     _T_TAX: _G_FINANCE,
     _T_ORIGIN: _G_ORIGIN,
-    _T_OTHER: _G_ORIGIN,  # không rõ → nhóm "một trong các loại giấy tờ" (catch-all)
+    _T_OTHER: _G_APPLICATION,  # không rõ → "Tài liệu khác" đính vào ô Đơn, KHÔNG bỏ sót
 }
 
-# thứ tự ưu tiên khi gộp trong 1 nhóm (số nhỏ lên trước)
+# thứ tự ưu tiên khi nhiều file vào cùng 1 ô (số nhỏ lên trước)
 _TYPE_PRIORITY = {
-    _T_APPLICATION: 10, _T_IDENTITY: 20, _T_AUTHORIZATION: 30,
-    _T_BOUNDARY_DESC: 10, _T_SURVEY_ADJUST: 20, _T_MAP_EXTRACT: 30,
+    _T_APPLICATION: 10, _T_IDENTITY: 20, _T_OTHER: 90,
+    _T_AUTHORIZATION: 10,
+    _T_HOUSEHOLD_RIGHTS: 10,
+    _T_SURVEY_ADJUST: 10, _T_MAP_EXTRACT: 20, _T_BOUNDARY_DESC: 30,
     _T_TAX: 10,
-    _T_ORIGIN: 10, _T_OTHER: 90,
+    _T_ORIGIN: 10,
 }
 
 _LABELS = {
     _T_APPLICATION: "Đơn đăng ký đất đai Mẫu 15",
     _T_IDENTITY: "Căn cước công dân",
     _T_AUTHORIZATION: "Giấy ủy quyền",
+    _T_HOUSEHOLD_RIGHTS: "Văn bản xác định quyền sử dụng đất của hộ gia đình",
     _T_BOUNDARY_DESC: "Bản mô tả ranh giới, mốc giới thửa đất",
-    _T_SURVEY_ADJUST: "Mảnh đo đạc chỉnh lý thửa đất",
+    _T_SURVEY_ADJUST: "Mảnh trích đo bản đồ địa chính thửa đất",
     _T_MAP_EXTRACT: "Trích lục bản đồ địa chính",
     _T_TAX: "Biên lai thực hiện nghĩa vụ tài chính",
     _T_ORIGIN: "Giấy tờ chứng minh nguồn gốc sử dụng đất",
-    _T_OTHER: "Giấy tờ kèm theo hồ sơ",
+    _T_OTHER: "Tài liệu khác",
 }
 
 
@@ -107,61 +135,18 @@ def _truncate_text(text: str, limit: int = 3000) -> str:
     return text if len(text) <= limit else text[:limit] + "..."
 
 
-def _has_any(haystack: str, needles: tuple[str, ...]) -> bool:
-    return any(n in haystack for n in needles)
-
-
 def _canonical_type(value: str) -> str:
     raw = re.sub(r"[\s-]+", "_", str(value or "").strip().lower())
     return raw if raw in _ALLOWED_LLM_TYPES else _T_OTHER
 
 
-def _looks_like_identity(h: str) -> bool:
-    if _has_any(h, ("can cuoc cong dan", "the can cuoc", "cccd", "chung minh nhan dan", "ho chieu", "citizen identity")):
-        return True
-    if "so dinh danh ca nhan" not in h:
-        return False
-    markers = ("co gia tri den", "date of expiry", "noi thuong tru", "place of residence", "que quan", "dac diem nhan dang")
-    return sum(1 for m in markers if m in h) >= 2
-
-
-def _rule_doc_type(ocr_text: str, file_name: str = "") -> str | None:
-    """Route TẤT ĐỊNH theo nội dung OCR (+ tên file). None = không rõ."""
-    h = _fold((ocr_text or "") + "\n" + (file_name or ""))
-    if not h.strip():
-        return None
-    if _has_any(h, ("giay uy quyen", "van ban uy quyen", "hop dong uy quyen", "ben duoc uy quyen", "nguoi duoc uy quyen")):
-        return _T_AUTHORIZATION
-    # Chứng từ tài chính: DẤU HIỆU RIÊNG là "biên lai"/"chứng từ nộp" — KHÔNG bắt bare "thuế" vì giấy tờ
-    # nguồn gốc cũng bàn về nghĩa vụ thuế của thửa đất (dễ nhận nhầm).
-    if _has_any(h, ("bien lai", "chung tu nop tien", "thong bao nop le phi", "thong bao nop thue",
-                    "chung tu thu", "le phi truoc ba", "thong bao nop tien")):
-        return _T_TAX
-    # Đơn ĐĂNG KÝ đất đai (Mẫu 15/ĐK) — tiêu đề bắt đầu bằng "ĐƠN ĐĂNG KÝ". KHÁC "đăng ký biến động"
-    # (Mẫu 18) và KHÁC Giấy chứng nhận (bắt đầu "GIẤY CHỨNG NHẬN") → không dùng keyword chung "cấp GCN".
-    if _has_any(h, ("don dang ky dat dai", "don dang ky, cap giay chung nhan", "don dang ky cap giay chung nhan", "mau so 15", "15/dk", "mau 15")):
-        return _T_APPLICATION
-    if _has_any(h, ("trich luc ban do dia chinh", "trich luc thua dat", "trich luc")):
-        return _T_MAP_EXTRACT
-    if _has_any(h, ("manh do dac chinh ly", "do dac chinh ly thua dat", "manh trich do", "trich do dia chinh")):
-        return _T_SURVEY_ADJUST
-    if _has_any(h, ("ban mo ta ranh gioi", "mo ta ranh gioi, moc gioi", "phu luc so 12", "moc gioi thua dat")):
-        return _T_BOUNDARY_DESC
-    # Nguồn gốc sử dụng đất (Điều 137): các giấy xác nhận + sổ hộ khẩu + hợp đồng nước + sơ đồ ranh giới + GCN.
-    if _has_any(h, (
-        "xac nhan nguon goc", "giay xac nhan cua ubnd", "xac nhan cho dat", "don xin xac nhan",
-        "so ho khau", "hop dong dich vu cap nuoc", "cung cap va su dung nuoc", "hop dong nuoc",
-        "so do ranh gioi su dung dat", "giay chung nhan quyen su dung dat", "nguon goc su dung dat",
-    )):
-        return _T_ORIGIN
-    if _looks_like_identity(h):
-        return _T_IDENTITY
-    return None
-
-
-def _label_for_type(doc_type: str, title: str = "") -> str:
+def _label_for_type(doc_type: str, title: str = "", file_name: str = "") -> str:
+    """Tên hiển thị trong kế hoạch/trace (FE upload vẫn dùng tên file GỐC ở nhánh fixed-slot)."""
     title = normalize_document_name(title, "") if title else ""
-    if title and doc_type not in {_T_IDENTITY}:
+    if doc_type == _T_OTHER:
+        # Ghi rõ là tài liệu KHÔNG nhận ra loại để cán bộ soát lại đúng file nào.
+        return f"Tài liệu khác - {title or file_name}".strip(" -")
+    if title and doc_type != _T_IDENTITY:
         return title
     return _LABELS.get(doc_type, _LABELS[_T_OTHER])
 
@@ -185,6 +170,7 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[
         }
 
     out: dict[int, dict[str, str]] = {}
+    # Đủ số phần tử → map theo THỨ TỰ MẢNG, không tin field "index" LLM tự đánh (hay lệch 1 nhịp).
     if len(parsed_docs) == len(documents):
         for pos, item in enumerate(parsed_docs):
             out[documents[pos]["index"]] = _coerce(item)
@@ -209,66 +195,70 @@ def build_plan_items(
     ocr_results: list[dict],
     llm_types: dict[int, dict[str, str]] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
+    _ = ocr_results  # OCR chỉ để nuôi LLM; planner KHÔNG tự đọc text để đoán loại.
     llm_types = llm_types or {}
-    by_name = {r.get("name"): r for r in ocr_results}
     resolved: list[dict] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        text = str(by_name.get(file_name, {}).get("text") or "")
         detected = llm_types.get(idx) or {}
-        llm_type = detected.get("type") or ""
-        llm_ok = llm_type in _CONFIDENT_LLM_TYPES
-        # LLM PHÂN LOẠI CHÍNH (đọc đủ OCR, phân biệt tốt các loại giấy đất dùng chung từ vựng). Rule chỉ
-        # DỰ PHÒNG khi LLM trả "other"/không chắc hoặc LLM lỗi. Không để keyword tham đè quyết định LLM.
-        rule_type = "" if llm_ok else (_rule_doc_type(text, file_name) or "")
-        doc_type = (llm_type if llm_ok else "") or rule_type or _T_OTHER
+        # THUẦN LLM: không có lưới keyword nào tham gia quyết định. LLM im lặng/lỗi → "other" và file
+        # vẫn được đính (vào ô Đơn) kèm cảnh báo, thay vì bị bỏ rơi.
+        doc_type = _canonical_type(detected.get("type") or "")
         resolved.append({
             "idx": idx, "fileName": file_name, "docType": doc_type,
-            "title": detected.get("title") or detected.get("documentName", ""),
-            "source": "llm" if llm_ok else ("rule" if rule_type else "default"),
+            "title": detected.get("documentName", ""),
+            "source": "llm" if idx in llm_types else "default",
         })
 
-    # Gom theo nhóm, giữ thứ tự ưu tiên trong nhóm.
     groups: dict[str, list[dict]] = {g: [] for g in _GROUPS}
     for entry in resolved:
-        group_key = _TYPE_TO_GROUP.get(entry["docType"], _G_ORIGIN)
-        groups[group_key].append(entry)
+        groups[_TYPE_TO_GROUP.get(entry["docType"], _G_APPLICATION)].append(entry)
 
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
 
-    for group_key, meta in _GROUPS.items():
-        entries = sorted(groups[group_key], key=lambda e: (_TYPE_PRIORITY.get(e["docType"], 99), e["idx"]))
-        if not entries:
-            continue
-        # KHÔNG GỘP: mỗi file 1 attachment riêng, cùng slotKey → FE (attachFilesByFixedSlot) tự gom mọi
-        # file cùng slotKey rồi bơm cả loạt vào 1 ô (input multiple). Nhờ vậy tên hiển thị = tên giấy
-        # tờ THẬT của từng file (không còn nhãn nhóm cứng "Đơn đăng ký đất đai + CCCD" gây hiểu nhầm).
-        for e in entries:
-            document_name = _label_for_type(e["docType"], e.get("title", ""))
-            attachments.append({
-                "fileIndex": e["idx"],
-                "sourceFileIndexes": [e["idx"]],   # chỉ chính nó → FE KHÔNG gộp PDF
-                "fileName": e["fileName"],
-                "documentName": document_name,
-                "componentName": meta["componentName"],
-                "target": "fixed-slot",
-                "needsAddComponent": False,
-                "detectedType": document_name,
-                "slotKey": group_key,
-                "slotIndex": meta["slotIndex"],
-                "slotName": meta["componentName"],
-            })
-            classified.append({
-                "fileName": e["fileName"], "docType": e["docType"],
-                "documentName": document_name,
-                "group": group_key, "slotIndex": meta["slotIndex"], "source": e["source"],
-            })
+    def _emit(entry: dict, group_key: str) -> None:
+        meta = _GROUPS[group_key]
+        document_name = _label_for_type(entry["docType"], entry.get("title", ""), entry["fileName"])
+        attachments.append({
+            "fileIndex": entry["idx"],
+            "sourceFileIndexes": [entry["idx"]],   # chỉ chính nó → FE KHÔNG gộp PDF
+            "fileName": entry["fileName"],
+            "documentName": document_name,
+            "componentName": meta["componentName"],
+            "target": "fixed-slot",
+            "needsAddComponent": False,
+            "detectedType": document_name,
+            "slotKey": group_key,
+            "slotIndex": meta["slotIndex"],
+            "slotName": meta["componentName"],
+        })
+        classified.append({
+            "fileName": entry["fileName"], "docType": entry["docType"],
+            "documentName": document_name,
+            "group": group_key, "slotIndex": meta["slotIndex"], "source": entry["source"],
+        })
 
+    for group_key in _GROUPS:
+        for entry in sorted(groups[group_key], key=lambda e: (_TYPE_PRIORITY.get(e["docType"], 99), e["idx"])):
+            _emit(entry, group_key)
+
+    # LƯỚI AN TOÀN cuối hàm: mọi file đều phải có mặt trong kế hoạch (kể cả khi logic phía trên đổi).
+    planned = {item["fileIndex"] for item in attachments}
+    for entry in resolved:
+        if entry["idx"] not in planned:
+            _emit(entry, _G_APPLICATION)
+
+    unknown = [e["fileName"] for e in resolved if e["docType"] == _T_OTHER]
+    if unknown:
+        warnings.append(
+            "Chưa nhận ra loại giấy tờ, đã tạm đính vào ô Đơn đăng ký (STT 19) để không bỏ sót — "
+            f"cán bộ kiểm tra lại: {', '.join(unknown)}."
+        )
     if not attachments:
-        warnings.append("Không phân loại được tài liệu nào vào 4 nhóm thành phần hồ sơ đăng ký đất đai.")
+        warnings.append("Không có tài liệu nào để đính kèm.")
     return attachments, warnings, classified
 
 

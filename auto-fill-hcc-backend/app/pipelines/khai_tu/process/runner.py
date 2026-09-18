@@ -186,7 +186,12 @@ def _requester_hint(options: dict) -> str:
     )
 
 
-async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+async def extract(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    """OCR + agent trích compact facts khai tử, đã phân vai và bù từ tờ khai; CHƯA map sang UI.
+
+    Tách khỏi `run` để biểu mẫu khác của cùng bộ giấy tờ (liên thông khai tử trên
+    lienthong.dichvucong.gov.vn) dùng lại nguyên phần trích xuất, chỉ thay mapper.
+    """
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -214,10 +219,15 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         res.get("ocr_text") or "",
         COMPACT_COMP_BY_NAME,
     )
+    return res
+
+
+async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    res = await extract(files_by_role, options)
     res["fields"] = mapper.enrich(
         res["fields"],
         options,
-        reasoning_context=reasoning_context,
+        reasoning_context=res.get("reasoning_context") or "",
     )
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).

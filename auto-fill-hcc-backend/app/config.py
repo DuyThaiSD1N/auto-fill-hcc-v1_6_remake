@@ -130,12 +130,15 @@ class Settings(BaseSettings):
     asr_speech_max: int = 30
     tts_ws_url: str = ""
     tts_api_key: str = ""
-    tts_voice: str = "phuongnhi-north"
+    # Giọng MẶC ĐỊNH cho máy quầy chưa chọn gì. Danh mục giọng nằm ở
+    # app/channels/handfree/voice/catalog.py, không rải thêm biến env cho từng giọng.
+    tts_voice: str = "phuongnhi-north"          # nữ, tiếng Việt
+    tts_voice_vi_male: str = ""                 # nam, tiếng Việt — CHƯA có id; trống = không hiện
     tts_resample_rate: int = 16000
     tts_tempo: float = 0.95
     asr_grpc_uri_hmong: str = ""
     tts_ws_url_hmong: str = ""
-    tts_voice_hmong: str = "xi"
+    tts_voice_hmong: str = "vuado"              # Anh Dơ (giọng nữ tiếng Mông là "xi" — Cô Xi)
 
     # CORS
     allowed_extension_ids: str = ""

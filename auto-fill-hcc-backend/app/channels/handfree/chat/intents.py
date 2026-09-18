@@ -37,7 +37,13 @@ def fold(s: str) -> str:
 # Gợi ý cách người dân hay gọi từng thủ tục — CHỈ dùng làm ngữ cảnh cho LLM (không phải bộ
 # khớp keyword). Giúp LLM chọn đúng key cho các cách nói dân dã ("lấy vợ nước ngoài"...).
 _PROCEDURE_HINTS: dict[str, list[str]] = {
-    "khai-sinh-dang-ky": ["khai sinh cho con", "làm giấy khai sinh"],
+    # Liên thông = khai sinh KÈM đăng ký thường trú + thẻ BHYT cho trẻ dưới 6 tuổi. Câu nói
+    # chung chung "đăng ký khai sinh" nay trỏ về bản đơn lẻ bên dưới; chỉ khi công dân nêu rõ
+    # liên thông / kèm hộ khẩu / bảo hiểm mới chọn thẻ này.
+    "khai-sinh-dang-ky": ["khai sinh liên thông", "làm khai sinh kèm đăng ký thường trú và thẻ bảo hiểm y tế",
+                          "khai sinh và nhập hộ khẩu cho trẻ sơ sinh", "liên thông đăng ký khai sinh"],
+    "khai-sinh-dang-ky-thuong": ["đăng ký khai sinh", "làm giấy khai sinh cho con", "làm khai sinh",
+                                 "khai sinh cho con", "đăng ký khai sinh cho con"],
     "ket-hon": ["đăng ký kết hôn trong nước", "cưới"],
     "khai-tu": ["làm giấy khai tử", "giấy chứng tử", "giấy báo tử"],
     "ket-hon-nuoc-ngoai": ["kết hôn với người nước ngoài", "lấy chồng/vợ nước ngoài",
@@ -47,6 +53,10 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
     "dang-ky-giam-ho": ["đăng ký giám hộ"],
     "trich-luc-ks": ["cấp bản sao giấy khai sinh", "bản sao trích lục hộ tịch"],
     "xac-nhan-tinh-trang-hon-nhan": ["xác nhận độc thân", "xác nhận tình trạng hôn nhân"],
+    "thay-doi-cai-chinh-ho-tich": ["cải chính hộ tịch", "thay đổi thông tin hộ tịch",
+                                   "sửa thông tin trên giấy khai sinh", "cải chính giấy khai sinh",
+                                   "đổi tên trong giấy khai sinh", "xác định lại dân tộc",
+                                   "bổ sung thông tin hộ tịch"],
     "dang-ky-kinh-doanh": ["đăng ký thành lập hộ kinh doanh", "mở hộ kinh doanh",
                             "thành lập hộ kinh doanh"],
     # Dân hay gọi "công chứng" thay cho "chứng thực" + gọi kèm tên giấy tờ cụ thể.
@@ -55,14 +65,34 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
                            "photo công chứng", "sao y bản chính",
                            "công chứng sổ đỏ / bằng cấp / giấy khai sinh"],
     "chung-thuc-chu-ky": ["công chứng chữ ký", "xác nhận chữ ký", "chứng thực điểm chỉ"],
+    # Chữ ký NGƯỜI DỊCH (bản dịch giấy tờ) — KHÁC chứng thực chữ ký thường của chính công dân.
+    "chung-thuc-chu-ky-nguoi-dich-ctv": ["chứng thực chữ ký người dịch", "chứng thực bản dịch",
+                                         "công chứng bản dịch", "dịch thuật công chứng",
+                                         "chứng thực giấy tờ đã dịch", "cộng tác viên dịch thuật"],
+    "chung-thuc-giao-dich-tai-san": ["chứng thực hợp đồng", "chứng thực giao dịch",
+                                     "công chứng hợp đồng mua bán", "công chứng hợp đồng tặng cho",
+                                     "công chứng hợp đồng thế chấp", "chứng thực hợp đồng mua bán nhà đất",
+                                     "chứng thực giao dịch mua bán xe / nhà / đất"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],
+    "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": ["cấp phép xây dựng", "xin giấy phép xây dựng",
+                                                  "xin phép xây nhà", "giấy phép xây nhà ở riêng lẻ",
+                                                  "xin phép xây dựng công trình cấp 3 cấp 4",
+                                                  "xin giấy phép xây mới"],
+    "dieu-chinh-huu-tri-xa-hoi": ["trợ cấp hưu trí xã hội", "hưởng trợ cấp hưu trí",
+                                  "xin trợ cấp hưu trí cho người già", "điều chỉnh trợ cấp hưu trí",
+                                  "thôi hưởng trợ cấp hưu trí", "chế độ hưu trí xã hội",
+                                  "trợ cấp cho người cao tuổi không có lương hưu"],
     "cap-ban-sao-van-bang-so-goc": ["bản sao văn bằng", "bản sao chứng chỉ", "bản sao bằng tốt nghiệp",
                                     "mất bằng tốt nghiệp", "xin lại bằng cấp ba", "trích lục văn bằng"],
     "cho-thue-thue-mua-nha-o-xa-hoi": ["thuê nhà ở xã hội", "thuê mua nhà ở xã hội",
                                        "đăng ký nhà ở xã hội", "xin thuê nhà xã hội",
                                        "mua nhà ở xã hội của nhà nước"],
+    "cham-dut-hoat-dong-ho-kinh-doanh": ["chấm dứt hoạt động hộ kinh doanh", "đóng hộ kinh doanh",
+                                         "giải thể hộ kinh doanh", "nghỉ kinh doanh hẳn",
+                                         "bỏ hộ kinh doanh", "trả giấy phép kinh doanh",
+                                         "không kinh doanh nữa"],
     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh": ["thay đổi nội dung đăng ký kinh doanh",
                                                 "đổi ngành nghề kinh doanh", "đổi tên hộ kinh doanh",
                                                 "thay đổi chủ hộ kinh doanh", "đổi địa chỉ hộ kinh doanh",
@@ -99,11 +129,18 @@ def _doc_method_block() -> str:
 # LLM chỉ được trả value liệt kê ở đây; parse xong validate lại, không cho bịa lệnh.
 # delete_data CỐ TÌNH vắng mặt: lệnh xóa dữ liệu chỉ đi qua chip bấm tường minh.
 _STATE_INTENTS: dict[str, list[dict]] = {
+    # Mỗi thủ tục khai "trường hợp giải quyết" riêng trong registry (variants.options) nên danh
+    # sách này là HỢP của mọi biến thể đang dùng; flow còn validate lại theo đúng thủ tục hiện
+    # tại nên value của thủ tục khác lọt vào cũng bị loại. Đường chính vẫn là bấm chip (tất định).
     "choose_variant": [
         {"kind": "action", "value": "variant_cap_moi",
          "desc": "muốn CẤP MỚI giấy phép (chưa có giấy phép, xin cấp lần đầu)"},
         {"kind": "action", "value": "variant_cap_lai",
          "desc": "muốn CẤP LẠI giấy phép (đã có nhưng bị mất, hư hỏng, hết hạn hoặc đổi thông tin)"},
+        {"kind": "action", "value": "variant_nha_o_rieng_le",
+         "desc": "xin phép xây NHÀ Ở RIÊNG LẺ của hộ gia đình, cá nhân"},
+        {"kind": "action", "value": "variant_cong_trinh",
+         "desc": "xin phép xây CÔNG TRÌNH cấp III, cấp IV (không phải nhà ở riêng lẻ)"},
     ],
     "guide_login": [
         {"kind": "event", "value": "sso_success",
@@ -229,6 +266,33 @@ def resolve_deterministic(message: str, state: str | None = None) -> Intent | No
     return _resolve_machine(message)
 
 
+def resolve_logout_choice(message: str) -> str | None:
+    """Khi ĐANG hỏi "đăng xuất / nộp thêm hồ sơ" (2 nút sau đánh giá): công dân NÓI/GÕ câu tương
+    đương thì nhận diện tất định, trả "logout_citizen" / "continue_dossiers" / None.
+
+    Cần vì chế độ rảnh tay gửi GIỌNG NÓI dạng text tự do — LLM hay trả unknown → trợ lý báo "chưa
+    nhận rõ yêu cầu" dù công dân đã nói "đăng xuất". CHỈ gọi khi đang chờ lựa chọn nên "có" đứng một
+    mình cũng hiểu là đồng ý đăng xuất; "không"/"nộp thêm" là ở lại nộp tiếp."""
+    t = fold(message)
+    if not t:
+        return None
+    # Phủ định / nộp thêm — kiểm TRƯỚC vì "không đăng xuất" cũng chứa "dang xuat".
+    if any(k in t for k in (
+        "nop them", "khong", "chua", "o lai", "tiep tuc", "lam tiep", "con ho so", "them ho so", "van lam",
+    )):
+        return "continue_dossiers"
+    # Đồng ý đăng xuất / kết thúc.
+    if any(k in t for k in (
+        "dang xuat", "dang xuat tai khoan", "thoat", "log out", "logout", "ket thuc", "xong roi", "roi di",
+        "dong y", "dung vay", "dung roi",
+    )):
+        return "logout_citizen"
+    # "Có"/"ừ"/"vâng" đứng một mình = đồng ý (đang trả lời đúng câu hỏi đăng xuất).
+    if t in ("co", "co a", "co.", "u", "um", "vang", "vang a", "ok, dang xuat", "ok"):
+        return "logout_citizen"
+    return None
+
+
 def _procedure_catalog() -> str:
     """Danh sách thủ tục (key | nhãn | mô tả | cách gọi) đưa vào prompt LLM chọn thủ tục."""
     lines = []
@@ -257,9 +321,16 @@ Người dân đang ở bước "{state}". Đọc câu của họ và trả DUY 
 
 - pick_procedure: người dân muốn LÀM một thủ tục → value = ĐÚNG MỘT key trong DANH SÁCH THỦ TỤC.
   PHÂN BIỆT KỸ các thủ tục gần giống nhau theo mô tả: đăng ký kết hôn (trong nước) vs kết hôn
-  CÓ YẾU TỐ NƯỚC NGOÀI vs ĐĂNG KÝ LẠI kết hôn; khai sinh vs cấp bản sao/trích lục khai sinh...
+  CÓ YẾU TỐ NƯỚC NGOÀI vs ĐĂNG KÝ LẠI kết hôn; đăng ký khai sinh (đơn lẻ) vs khai sinh LIÊN THÔNG
+  (kèm thường trú + BHYT cho trẻ dưới 6 tuổi) vs ĐĂNG KÝ LẠI khai sinh vs cấp bản sao/trích lục
+  khai sinh vs CẢI CHÍNH/thay đổi/bổ sung hộ tịch (sửa thông tin đã đăng ký). Câu chung chung
+  "đăng ký khai sinh" không nêu liên thông/hộ khẩu/bảo hiểm → chọn bản đơn lẻ...
   Người dân hay nói "CÔNG CHỨNG" thay cho "chứng thực": "công chứng <tên giấy tờ>" (căn cước,
-  sổ đỏ, bằng cấp...) = chứng thực BẢN SAO; "công chứng chữ ký/điểm chỉ" = chứng thực CHỮ KÝ.
+  sổ đỏ, bằng cấp...) = chứng thực BẢN SAO; "công chứng chữ ký/điểm chỉ" = chứng thực CHỮ KÝ;
+  "công chứng/chứng thực HỢP ĐỒNG, GIAO DỊCH" (mua bán, tặng cho, thế chấp nhà/đất/xe) =
+  chứng thực GIAO DỊCH TÀI SẢN (KHÁC hẳn chứng thực bản sao một tờ giấy); "công chứng BẢN DỊCH",
+  "chứng thực chữ ký NGƯỜI DỊCH", "dịch thuật công chứng" = chứng thực chữ ký NGƯỜI DỊCH
+  (KHÁC chứng thực chữ ký thường — cái đó là chữ ký của chính người yêu cầu).
   Chỉ chọn khi câu thể hiện MUỐN LÀM thủ tục. Không chắc thuộc key nào → kind="unknown".
 - pick_doc_method: khi người dân CHỌN hoặc ĐỔI cách cung cấp giấy tờ — kể cả đang ở bước chụp/quét QR
   mà muốn ĐỔI sang cách kia (vd đang QR nói "scan đi", đang scan nói "chụp bằng điện thoại") →

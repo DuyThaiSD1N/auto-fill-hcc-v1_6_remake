@@ -15,6 +15,7 @@ import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.config import settings
+from app.channels.handfree.voice import catalog
 from app.channels.handfree.voice.access import authenticate_voice_websocket
 
 logger = logging.getLogger(__name__)
@@ -22,16 +23,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _voice_for(lang: str) -> str:
-    # lang="hmong" → giọng tiếng Mông (TTS_VOICE_HMONG, vd "xi"); còn lại giọng Việt.
-    return settings.tts_voice_hmong if lang == "hmong" else settings.tts_voice
-
-
-def _config_frame(lang: str = "vi") -> str:
+def _config_frame(lang: str = "vi", voice: str = "") -> str:
     return json.dumps({
         "text": " ",
         "voice_settings": {
-            "voiceId": _voice_for(lang),
+            "voiceId": voice,
             "resample_rate": settings.tts_resample_rate,
             "tempo": settings.tts_tempo,
             "stability": 0.5,
@@ -43,12 +39,15 @@ def _config_frame(lang: str = "vi") -> str:
 
 
 @router.websocket("/ws/tts")
-async def ws_tts(ws: WebSocket, lang: str = "vi"):
+async def ws_tts(ws: WebSocket, lang: str = "vi", voice: str = ""):
     user, subprotocol = await authenticate_voice_websocket(ws)
     if not user:
         return
     await ws.accept(subprotocol=subprotocol)
     lang = str(lang or "vi").lower()
+    # Máy quầy chọn giọng trong Cài đặt và gửi kèm ?voice=. catalog lọc qua allowlist: id lạ
+    # rơi về mặc định, không cho query string bơm voiceId tuỳ ý lên server TTS.
+    voice = catalog.resolve_voice(lang, voice)
     # Tiếng Mông có thể ở server riêng (TTS_WS_URL_HMONG); rỗng = cùng server, chỉ khác voice.
     upstream_url = (
         settings.tts_ws_url_hmong
@@ -69,7 +68,7 @@ async def ws_tts(ws: WebSocket, lang: str = "vi"):
         return
 
     try:
-        await upstream.send(_config_frame(lang))
+        await upstream.send(_config_frame(lang, voice))
         await ws.send_json({"ready": True})
     except WebSocketDisconnect:
         # FE có thể hủy lượt đọc trong lúc upstream vừa kết nối; đây là teardown bình thường,
@@ -79,7 +78,7 @@ async def ws_tts(ws: WebSocket, lang: str = "vi"):
         except Exception:  # noqa: BLE001
             pass
         return
-    logger.info("[tts] upstream opened (voice=%s lang=%s)", _voice_for(lang), lang)
+    logger.info("[tts] upstream opened (voice=%s lang=%s)", voice, lang)
 
     async def client_to_upstream():
         while True:

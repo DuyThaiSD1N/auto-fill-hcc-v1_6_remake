@@ -9,6 +9,14 @@
       "autoConfirm": false
     },
     {
+      "key": "khai-tu-lien-thong",
+      "code": "1.006714",
+      "label": "Liên thông đăng ký khai tử, xóa đăng ký thường trú, trợ cấp mai táng phí",
+      "url": "https://lienthong.dichvucong.gov.vn/#/ke-khai/1.006714",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
       "key": "ket-hon",
       "code": "1.000894",
       "label": "Thủ tục đăng ký kết hôn",

@@ -74,7 +74,10 @@ FIELDS += [
     {"name": "ThanhVienGiaDinh", "desc": "MẢNG các thành viên trong hộ gia đình (Tờ đơn mục 9). Mỗi phần "
         "tử: {hoTen, soCccd, ngayCap, noiCap, quanHe}. hoTen=họ tên thành viên; soCccd=số căn cước (bỏ nếu "
         "trống); ngayCap=ngày cấp CCCD dd/mm/yyyy (bỏ nếu trống); noiCap=nơi cấp (bỏ nếu trống); "
-        "quanHe=mối quan hệ với người viết đơn (Vợ/Chồng/Con gái/Con trai/…). Trích ĐÚNG số dòng có trong đơn."},
+        "quanHe=mối quan hệ với người viết đơn, chỉ lấy CHỮ NGƯỜI DÂN TỰ VIẾT trước họ tên (Con, Con dâu, "
+        "Con rể, Cháu, Mẹ, Bố…). ⚠ Dòng (a) có nhãn IN SẴN \"Họ và tên vợ (hoặc chồng)\": người dân KHÔNG "
+        "viết quan hệ ở dòng này, nên KHÔNG được tự chọn \"Vợ\" hay \"Chồng\" — trả đúng chuỗi "
+        "\"Vợ (hoặc chồng)\". Trích ĐÚNG số dòng có trong đơn."},
 ]
 
 # --- Doanh nghiệp (chỉ khi Tổ chức — hiếm) ---

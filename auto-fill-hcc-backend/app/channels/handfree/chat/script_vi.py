@@ -56,10 +56,12 @@ GUIDE_LOGIN = {
         "trên điện thoại → chọn **Quét QR** → quét mã trên màn hình để đăng nhập ạ.\n\n"
         "Đăng nhập xong em sẽ tự nhận ra và hướng dẫn tiếp 😊"
     ),
-    "tts": (
-        "Công dân mở app VNeID trên điện thoại chọn Quét QR, rồi quét mã trên màn hình để đăng nhập. "
-        "Đăng nhập xong em sẽ hướng dẫn tiếp ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Công dân mở app VNeID trên điện thoại chọn Quét QR, rồi quét mã trên màn hình để đăng nhập. "
+    # "Đăng nhập xong em sẽ hướng dẫn tiếp ạ."
+    # ),
+    "tts": "Công dân mở app vi en ai đi trên điện thoại chọn Quét quy rờ, rồi quét mã trên màn hình để đăng nhập. Đăng nhập xong em sẽ hướng dẫn tiếp ạ.",
 }
 
 # Máy quét trả tệp lẻ tẻ (scan-bridge) → công dân chủ động bấm "Đã đưa đủ" khi xong. Câu này NỐI
@@ -92,22 +94,34 @@ GUIDE_AGENCY_SELECT_PROVINCE = {
 
 # Hỏi "Trường hợp giải quyết" (cấp mới / cấp lại) NGAY sau khi xác nhận thủ tục — lựa chọn
 # này quyết định option trên cổng MAE nên phải chốt trước khi mở trang.
+# Danh sách trường hợp do REGISTRY của từng thủ tục quyết định (variants.options) — dựng sẵn
+# thành {options_md}/{options_tts} rồi mới nhét vào đây, nên câu này dùng chung cho mọi thủ tục
+# có bước "Chọn trường hợp giải quyết", không riêng cấp mới/cấp lại.
 CHOOSE_VARIANT = {
     "md": (
-        "Dạ, thủ tục **{procedure}** có hai trường hợp ạ:\n\n"
-        "- 🆕 **Cấp mới** — {cap_moi_desc}.\n"
-        "- 🔁 **Cấp lại** — {cap_lai_desc}.\n\n"
-        "Công dân cần trường hợp nào ạ?"
+        "Dạ, thủ tục **{procedure}** đang ở bước **Chọn trường hợp giải quyết** ạ. "
+        "Có {count} trường hợp:\n\n{options_md}\n\nCông dân chọn trường hợp nào ạ?"
     ),
     "tts": (
-        "Dạ, thủ tục này có hai trường hợp ạ: cấp mới khi {cap_moi_desc}, và cấp lại khi "
-        "{cap_lai_desc}. Công dân cần trường hợp nào ạ?"
+        "Dạ, mình đang ở bước chọn trường hợp giải quyết. Có {count} trường hợp: {options_tts}. "
+        "Công dân chọn trường hợp nào ạ?"
     ),
 }
 
 CHOOSE_VARIANT_REMIND = {
-    "md": "Dạ, công dân chọn giúp em **Cấp mới** hay **Cấp lại** giấy phép để em làm tiếp ạ.",
-    "tts": "Dạ, công dân chọn giúp em cấp mới hay cấp lại giấy phép để em làm tiếp ạ.",
+    "md": "Dạ, công dân chọn giúp em một trường hợp bên dưới để em làm tiếp ạ:\n\n{options_md}",
+    "tts": "Dạ, công dân chọn giúp em một trường hợp để em làm tiếp ạ: {options_tts}.",
+}
+
+# Bước "Chọn trường hợp giải quyết" ở dạng HỘP THOẠI chỉ có Đơn vị thực hiện + Trường hợp giải
+# quyết (cổng Bộ Xây dựng) — không có ô Tỉnh/radio Sở như trang MAE nên không nhắc tới chúng.
+VARIANT_DIALOG_AUTOFILL_GUIDE = {
+    "md": (
+        "Dạ, em chọn trường hợp **{variant_label}** rồi ấn **Đồng ý** để sang trang kê khai nhé ạ."
+    ),
+    "tts": (
+        "Dạ, em chọn trường hợp {variant_label} rồi ấn đồng ý để sang trang kê khai nhé ạ."
+    ),
 }
 
 # Trang MAE "chọn nơi và loại": bot tự điền Tỉnh + Sở + Trường hợp giải quyết rồi bấm
@@ -170,10 +184,12 @@ QR_LOGIN_GUIDE = {
         "Công dân mở app **VNeID** trên điện thoại → chọn **Quét QR** → quét mã trên màn hình "
         "để đăng nhập ạ. Xong em hướng dẫn tiếp ngay 😊"
     ),
-    "tts": (
-        "Em đã chọn cơ quan {ward}, {province} và mở bước đăng nhập ạ. "
-        "Công dân mở app VNeID chọn Quét QR rồi quét mã trên màn hình để đăng nhập. Xong em hướng dẫn tiếp ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã chọn cơ quan {ward}, {province} và mở bước đăng nhập ạ. "
+    # "Công dân mở app VNeID chọn Quét QR rồi quét mã trên màn hình để đăng nhập. Xong em hướng dẫn tiếp ạ."
+    # ),
+    "tts": "Em đã chọn cơ quan {ward}, {province} và mở bước đăng nhập ạ. Công dân mở app vi en ai đi chọn Quét quy rờ rồi quét mã trên màn hình để đăng nhập. Xong em hướng dẫn tiếp ạ.",
 }
 
 # Các modal xác thực nối tiếp dùng chung URL SSO. Extension chỉ nhận diện trạng thái trang;
@@ -195,11 +211,13 @@ VNEID_DATA_SHARING_GUIDE = {
         "của chủ thể dữ liệu và đồng ý với các nội dung này”**, sau đó bấm "
         "**Xác nhận chia sẻ**, rồi nhập **passcode 6 số của ứng dụng VNeID** để tiếp tục ạ."
     ),
-    "tts": (
-        "Công dân tích vào ô Tôi đã đọc và hiểu rõ nội dung mục đích, quyền và nghĩa vụ "
-        "của chủ thể dữ liệu, và đồng ý với các nội dung này. Sau đó bấm Xác nhận chia sẻ "
-        "rồi nhập passcode 6 số của ứng dụng VNeID để tiếp tục ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Công dân tích vào ô Tôi đã đọc và hiểu rõ nội dung mục đích, quyền và nghĩa vụ "
+    # "của chủ thể dữ liệu, và đồng ý với các nội dung này. Sau đó bấm Xác nhận chia sẻ "
+    # "rồi nhập passcode 6 số của ứng dụng VNeID để tiếp tục ạ."
+    # ),
+    "tts": "Công dân tích vào ô Tôi đã đọc và hiểu rõ nội dung mục đích, quyền và nghĩa vụ của chủ thể dữ liệu, và đồng ý với các nội dung này. Sau đó bấm Xác nhận chia sẻ rồi nhập passcode 6 số của ứng dụng vi en ai đi để tiếp tục ạ.",
 }
 
 VNEID_PASSCODE_GUIDE = {
@@ -207,10 +225,12 @@ VNEID_PASSCODE_GUIDE = {
         "Công dân vui lòng nhập **passcode VNeID gồm 6 chữ số** vào màn hình, "
         "sau đó bấm **Xác nhận** để tiếp tục ạ."
     ),
-    "tts": (
-        "Công dân vui lòng nhập passcode VNeID gồm 6 chữ số vào màn hình, "
-        "sau đó bấm Xác nhận để tiếp tục ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Công dân vui lòng nhập passcode VNeID gồm 6 chữ số vào màn hình, "
+    # "sau đó bấm Xác nhận để tiếp tục ạ."
+    # ),
+    "tts": "Công dân vui lòng nhập passcode vi en ai đi gồm 6 chữ số vào màn hình, sau đó bấm Xác nhận để tiếp tục ạ.",
 }
 
 # Người dân gõ/nói giữa lúc chờ — nhắc NGẮN theo đúng việc đang chờ, kèm nút phao.
@@ -229,10 +249,12 @@ LOGIN_STILL_REQUIRED = {
         "Trang hiện tại vẫn đang ở bước **đăng nhập VNeID**. Công dân hoàn tất đăng nhập "
         "giúp em; khi vào trang làm hồ sơ em sẽ tự nhận ra ạ."
     ),
-    "tts": (
-        "Trang hiện tại vẫn đang ở bước đăng nhập VNeID. Công dân hoàn tất đăng nhập "
-        "giúp em. Khi vào trang làm hồ sơ em sẽ tự nhận ra ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Trang hiện tại vẫn đang ở bước đăng nhập VNeID. Công dân hoàn tất đăng nhập "
+    # "giúp em. Khi vào trang làm hồ sơ em sẽ tự nhận ra ạ."
+    # ),
+    "tts": "Trang hiện tại vẫn đang ở bước đăng nhập vi en ai đi. Công dân hoàn tất đăng nhập giúp em. Khi vào trang làm hồ sơ em sẽ tự nhận ra ạ.",
 }
 
 PORTAL_NOT_READY = {
@@ -422,10 +444,12 @@ SAME_PAGE_TWO_STEP_SUMMARY = {
         "\n\n📋 Tóm tắt: **Nhập đơn đăng ký** — điền {filled} ô ✓ · "
         "**Tải thành phần hồ sơ** — đính kèm {attached} tệp ✓"
     ),
-    "tts": (
-        " Tóm tắt lại: phần nhập đơn đăng ký em đã điền {filled} ô, phần thành phần hồ sơ "
-        "em đã đính kèm {attached} tệp ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # " Tóm tắt lại: phần nhập đơn đăng ký em đã điền {filled} ô, phần thành phần hồ sơ "
+    # "em đã đính kèm {attached} tệp ạ."
+    # ),
+    "tts": " Tóm tắt lại: phần nhập đơn đăng ký em đã điền các ô, phần thành phần hồ sơ em đã đính kèm các tệp ạ.",
 }
 REFILL_PROCESSING = {
     "md": (
@@ -616,7 +640,9 @@ QR_WAITING = {
         "Mời công dân mở **camera điện thoại**, quét **mã QR** dưới đây — "
         "điện thoại sẽ hiện trang chụp ảnh giấy tờ ạ."
     ),
-    "tts": "Mời công dân mở camera điện thoại rồi quét mã QR trên màn hình để tải ảnh giấy tờ lên ạ.",
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": "Mời công dân mở camera điện thoại rồi quét mã QR trên màn hình để tải ảnh giấy tờ lên ạ.",
+    "tts": "Mời công dân mở camera điện thoại rồi quét mã quy rờ trên màn hình để tải ảnh giấy tờ lên ạ.",
 }
 
 MOBILE_CONNECTED = {
@@ -649,10 +675,12 @@ DOCS_COMPLETE_NEXT_STEP = {
         "Em đang **tự đọc (OCR)** và chuẩn bị điền vào form bên trái — "
         "khoảng nửa phút, công dân chờ em chút nhé…"
     ),
-    "tts": (
-        "Em đã nhận {files_count} tệp giấy tờ. "
-        "Em đang tự đọc và chuẩn bị điền vào form bên trái, khoảng nửa phút, công dân chờ em chút nhé."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã nhận {files_count} tệp giấy tờ. "
+    # "Em đang tự đọc và chuẩn bị điền vào form bên trái, khoảng nửa phút, công dân chờ em chút nhé."
+    # ),
+    "tts": "Em đã nhận các tệp giấy tờ. Em đang tự đọc và chuẩn bị điền vào form bên trái, khoảng nửa phút, công dân chờ em chút nhé.",
 }
 
 DOCS_COMPLETE_ATTACH = {
@@ -660,10 +688,12 @@ DOCS_COMPLETE_ATTACH = {
         "✅ Em đã nhận **{files_count} tệp giấy tờ** theo phiên **{sid}**.\n\n"
         "Em đang chuẩn bị đính tất cả tệp vào **cùng một hồ sơ**, công dân chờ em chút ạ…"
     ),
-    "tts": (
-        "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị đính tất cả tệp vào cùng một hồ sơ, "
-        "công dân chờ em chút ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị đính tất cả tệp vào cùng một hồ sơ, "
+    # "công dân chờ em chút ạ."
+    # ),
+    "tts": "Em đã nhận các tệp giấy tờ. Em đang chuẩn bị đính tất cả tệp vào cùng một hồ sơ, công dân chờ em chút ạ.",
 }
 
 DOCS_TARGET_UNKNOWN = {
@@ -712,10 +742,12 @@ BUSINESS_DOCS_COMPLETE_CHANGE = {
         "nghị thay đổi và phân loại giấy tờ đính kèm. Xong em sẽ tự tra cứu và điền, công dân "
         "chờ em chút ạ…"
     ),
-    "tts": (
-        "Em đã nhận {files_count} tệp giấy tờ. Em đang đọc hồ sơ để lấy mã số hộ kinh doanh "
-        "và so sánh nội dung thay đổi. Công dân chờ em chút ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã nhận {files_count} tệp giấy tờ. Em đang đọc hồ sơ để lấy mã số hộ kinh doanh "
+    # "và so sánh nội dung thay đổi. Công dân chờ em chút ạ."
+    # ),
+    "tts": "Em đã nhận các tệp giấy tờ. Em đang đọc hồ sơ để lấy mã số hộ kinh doanh và so sánh nội dung thay đổi. Công dân chờ em chút ạ.",
 }
 
 BUSINESS_READY_CHANGE = {
@@ -737,10 +769,12 @@ BUSINESS_DOCS_COMPLETE = {
         "Em đang đọc hồ sơ, chuẩn bị dữ liệu cho **8 khối thông tin** và phân loại giấy tờ "
         "đính kèm. Xong em sẽ tự điền lần lượt, công dân chờ em chút ạ…"
     ),
-    "tts": (
-        "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị dữ liệu cho tám khối thông tin "
-        "và phân loại giấy tờ đính kèm. Công dân chờ em chút ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị dữ liệu cho tám khối thông tin "
+    # "và phân loại giấy tờ đính kèm. Công dân chờ em chút ạ."
+    # ),
+    "tts": "Em đã nhận các tệp giấy tờ. Em đang chuẩn bị dữ liệu cho tám khối thông tin và phân loại giấy tờ đính kèm. Công dân chờ em chút ạ.",
 }
 
 BUSINESS_READY = {
@@ -760,11 +794,13 @@ BUSINESS_DONE = {
         "Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. "
         "Sau khi kiểm tra xong, công dân tự bấm **Nộp hồ sơ** trên trang giúp em."
     ),
-    "tts": (
-        "Em đã điền đủ {filled_pages} trên {total_pages} khối dữ liệu và đính kèm {attached} tệp. "
-        "Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. "
-        "Sau khi kiểm tra xong, công dân tự bấm nộp hồ sơ trên trang giúp em."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã điền đủ {filled_pages} trên {total_pages} khối dữ liệu và đính kèm {attached} tệp. "
+    # "Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. "
+    # "Sau khi kiểm tra xong, công dân tự bấm nộp hồ sơ trên trang giúp em."
+    # ),
+    "tts": "Em đã điền đủ các khối dữ liệu và đính kèm các tệp. Công dân rà soát các thông tin đã điền ở từng khối và các tệp đã đính kèm giúp em nhé ạ. Sau khi kiểm tra xong, công dân tự bấm nộp hồ sơ trên trang giúp em.",
 }
 
 BUSINESS_STOPPED = {
@@ -810,10 +846,12 @@ DOCS_FORCED_MISSING = {
         "Dạ công dân chốt gửi với **{files_count} tệp**. Em vẫn đọc và điền phần có được; "
         "thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý, công dân chờ chút…"
     ),
-    "tts": (
-        "Dạ công dân chốt gửi với {files_count} tệp. Em vẫn đọc và điền phần có được, "
-        "thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý công dân chờ chút nhé."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Dạ công dân chốt gửi với {files_count} tệp. Em vẫn đọc và điền phần có được, "
+    # "thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý công dân chờ chút nhé."
+    # ),
+    "tts": "Dạ công dân chốt gửi với các tệp hiện có. Em vẫn đọc và điền phần có được, thiếu thông tin nào em sẽ hỏi lại ạ. Đang xử lý công dân chờ chút nhé.",
 }
 
 FILL_READY = {
@@ -822,11 +860,13 @@ FILL_READY = {
         "Công dân nhìn sang form **kiểm tra lại** giúp em nhé — ô viền **vàng** là em đặt mặc định, "
         "ô viền **đỏ** là còn thiếu."
     ),
-    "tts": (
-        "Em đã đọc được {count} trường thông tin và đang điền vào form bên trái. "
-        "Công dân nhìn sang form kiểm tra lại giúp em nhé. Ô viền vàng là em đặt mặc định, "
-        "ô viền đỏ là còn thiếu ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã đọc được {count} trường thông tin và đang điền vào form bên trái. "
+    # "Công dân nhìn sang form kiểm tra lại giúp em nhé. Ô viền vàng là em đặt mặc định, "
+    # "ô viền đỏ là còn thiếu ạ."
+    # ),
+    "tts": "Em đã đọc được các trường thông tin và đang điền vào form bên trái. Công dân nhìn sang form kiểm tra lại giúp em nhé. Ô viền vàng là em đặt mặc định, ô viền đỏ là còn thiếu ạ.",
 }
 
 FILL_REPORT_REVIEW = {
@@ -834,10 +874,12 @@ FILL_REPORT_REVIEW = {
         "Em điền được **{filled} ô** ✓{missing_note}\n\n"
         "Công dân rà lại trên form và sửa trực tiếp ô nào chưa đúng."
     ),
-    "tts": (
-        "Em điền xong {filled} ô rồi ạ. Công dân rà lại trên form và sửa trực tiếp "
-        "ô nào chưa đúng giúp em ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em điền xong {filled} ô rồi ạ. Công dân rà lại trên form và sửa trực tiếp "
+    # "ô nào chưa đúng giúp em ạ."
+    # ),
+    "tts": "Em điền xong các ô rồi ạ. Công dân rà lại trên form và sửa trực tiếp ô nào chưa đúng giúp em ạ.",
 }
 
 PIPELINE_ERROR = {
@@ -916,7 +958,9 @@ ATTACH_PLAN_READY = {
         "📎 Kế hoạch đính kèm đã xong — **{count} mục**:\n\n{plan_list}\n\n"
         "Em đang **tự đính từng tệp** vào thành phần hồ sơ trên trang, công dân chờ chút ạ…"
     ),
-    "tts": "Kế hoạch đính kèm xong rồi, {count} mục. Em đang tự đính từng tệp vào hồ sơ, công dân chờ chút ạ.",
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": "Kế hoạch đính kèm xong rồi, {count} mục. Em đang tự đính từng tệp vào hồ sơ, công dân chờ chút ạ.",
+    "tts": "Kế hoạch đính kèm xong rồi ạ. Em đang tự đính từng tệp vào hồ sơ, công dân chờ chút ạ.",
 }
 
 ATTACH_PLAN_READY_SPLIT = {
@@ -924,10 +968,12 @@ ATTACH_PLAN_READY_SPLIT = {
         "📎 Kế hoạch đính kèm đã xong — **{count} tài liệu**:\n\n{plan_list}\n\n"
         "Em sẽ đưa **mỗi tài liệu vào một hồ sơ riêng** và xử lý lần lượt từng tab ạ…"
     ),
-    "tts": (
-        "Kế hoạch đính kèm xong rồi, {count} tài liệu. "
-        "Em sẽ đưa mỗi tài liệu vào một hồ sơ riêng và xử lý lần lượt từng tab ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Kế hoạch đính kèm xong rồi, {count} tài liệu. "
+    # "Em sẽ đưa mỗi tài liệu vào một hồ sơ riêng và xử lý lần lượt từng tab ạ."
+    # ),
+    "tts": "Kế hoạch đính kèm xong rồi ạ. Em sẽ đưa mỗi tài liệu vào một hồ sơ riêng và xử lý lần lượt từng tab ạ.",
 }
 
 ATTACH_PLAN_READY_SIGNATURE_SPLIT = {
@@ -936,11 +982,13 @@ ATTACH_PLAN_READY_SIGNATURE_SPLIT = {
         "Mỗi hồ sơ có **một giấy tờ cần chứng thực chữ ký ở STT 1**; riêng hồ sơ đầu tiên "
         "có thêm **giấy tờ tùy thân ở STT 2**. Em sẽ xử lý lần lượt từng tab ạ…"
     ),
-    "tts": (
-        "Kế hoạch đính kèm xong rồi, {count} hồ sơ. Mỗi hồ sơ có một giấy tờ cần chứng thực "
-        "chữ ký ở mục một; hồ sơ đầu tiên có thêm giấy tờ tùy thân ở mục hai. "
-        "Em sẽ xử lý lần lượt từng tab ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Kế hoạch đính kèm xong rồi, {count} hồ sơ. Mỗi hồ sơ có một giấy tờ cần chứng thực "
+    # "chữ ký ở mục một; hồ sơ đầu tiên có thêm giấy tờ tùy thân ở mục hai. "
+    # "Em sẽ xử lý lần lượt từng tab ạ."
+    # ),
+    "tts": "Kế hoạch đính kèm xong rồi ạ. Mỗi hồ sơ có một giấy tờ cần chứng thực chữ ký ở mục một; hồ sơ đầu tiên có thêm giấy tờ tùy thân ở mục hai. Em sẽ xử lý lần lượt từng tab ạ.",
 }
 
 # Đòi đính kèm khi trang còn ở bước kê khai (wizard chưa sang "Thành phần hồ sơ") —
@@ -978,10 +1026,12 @@ ATTACH_DONE = {
         "Công dân **rà lại lần cuối** trên trang rồi bấm **Nộp hồ sơ / Gửi hồ sơ** giúp em ạ — "
         "bước nộp cuối em để công dân tự bấm cho chắc chắn."
     ),
-    "tts": (
-        "Em đã đính xong {attached} tệp vào hồ sơ rồi ạ. "
-        "Công dân rà lại lần cuối rồi bấm nộp hồ sơ giúp em nhé."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Em đã đính xong {attached} tệp vào hồ sơ rồi ạ. "
+    # "Công dân rà lại lần cuối rồi bấm nộp hồ sơ giúp em nhé."
+    # ),
+    "tts": "Em đã đính xong các tệp vào hồ sơ rồi ạ. Công dân rà lại lần cuối rồi bấm nộp hồ sơ giúp em nhé.",
 }
 
 ATTACH_DONE_WITH_ERRORS = {
@@ -989,7 +1039,9 @@ ATTACH_DONE_WITH_ERRORS = {
         "⚠️ Em đính được **{attached} tệp**, còn lỗi:\n\n{error_list}\n\n"
         "Công dân đính tay phần còn thiếu (nút *Chọn tệp đính kèm* trên trang) rồi bấm **Nộp hồ sơ** giúp em ạ."
     ),
-    "tts": "Em đính được {attached} tệp, còn vài mục lỗi. Công dân đính tay phần còn thiếu rồi nộp hồ sơ giúp em ạ.",
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": "Em đính được {attached} tệp, còn vài mục lỗi. Công dân đính tay phần còn thiếu rồi nộp hồ sơ giúp em ạ.",
+    "tts": "Em đính được một số tệp, còn vài mục lỗi. Công dân đính tay phần còn thiếu rồi nộp hồ sơ giúp em ạ.",
 }
 
 ATTACH_SUPPLEMENT_ASK = {
@@ -999,10 +1051,12 @@ ATTACH_SUPPLEMENT_ASK = {
         "Nếu muốn thêm tệp, công dân chọn **Chụp bằng điện thoại** hoặc **Scan tại quầy** "
         "bên dưới. Xong rồi bấm **{finish_action}**; {finish_detail} ạ."
     ),
-    "tts": (
-        "Dạ, em đã mở lại toàn bộ danh sách giấy tờ. Công dân có thể xem, xóa hoặc thêm "
-        "tệp nếu cần, rồi bấm {finish_action} ạ."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Dạ, em đã mở lại toàn bộ danh sách giấy tờ. Công dân có thể xem, xóa hoặc thêm "
+    # "tệp nếu cần, rồi bấm {finish_action} ạ."
+    # ),
+    "tts": "Dạ, em đã mở lại toàn bộ danh sách giấy tờ. Công dân có thể xem, xóa hoặc thêm tệp nếu cần, rồi bấm nút xác nhận bên dưới ạ.",
 }
 
 ATTACH_SUPPLEMENT_SESSION_EXPIRED = {
@@ -1123,11 +1177,13 @@ DONE_SUBMITTED = {
         "Công dân có muốn em đăng xuất tài khoản **VNeID** giúp mình luôn không ạ?\n\n"
         "Nếu chưa chọn, em sẽ tự đăng xuất sau **2 phút** để bảo vệ tài khoản."
     ),
-    "tts": (
-        "Công dân đã hoàn thành việc nộp hồ sơ lên Cổng Dịch vụ công. Công dân có muốn "
-        "em đăng xuất tài khoản VNeID giúp mình luôn không ạ? Nếu chưa chọn, em sẽ tự "
-        "đăng xuất sau hai phút để bảo vệ tài khoản."
-    ),
+    # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
+    # "tts": (
+    # "Công dân đã hoàn thành việc nộp hồ sơ lên Cổng Dịch vụ công. Công dân có muốn "
+    # "em đăng xuất tài khoản VNeID giúp mình luôn không ạ? Nếu chưa chọn, em sẽ tự "
+    # "đăng xuất sau hai phút để bảo vệ tài khoản."
+    # ),
+    "tts": "Công dân đã hoàn thành việc nộp hồ sơ lên Cổng Dịch vụ công. Công dân có muốn em đăng xuất tài khoản vi en ai đi giúp mình luôn không ạ? Nếu chưa chọn, em sẽ tự đăng xuất sau hai phút để bảo vệ tài khoản.",
 }
 
 # Lời mời đánh giá (đọc khi hiện card đánh giá NGAY sau nộp thành công, trước 2 nút đăng xuất).
@@ -1193,6 +1249,78 @@ OFF_SCOPE = {
 FALLBACK_CLARIFY = {
     "md": "Dạ công dân nói rõ hơn giúp em với ạ — công dân muốn **{hint}** phải không ạ?",
     "tts": "Dạ công dân nói rõ hơn giúp em với ạ.",
+}
+
+# Thẻ hướng dẫn đặt giấy lên máy quét (ảnh + lời), extension DỰNG như SCAN_FEEDBACK.
+# TEXT THUẦN, không thẻ HTML: extension escape trước rồi mới đổi **…** thành in đậm, nên chữ
+# ở đây không chèn được markup vào trang. "alt" là mô tả ảnh cho trình đọc màn hình.
+SCAN_GUIDE = {
+    "heading": "🖨️ Đặt giấy tờ lên máy quét ở quầy",
+    "body": "Công dân đặt giấy lên máy scan **theo hướng dẫn trong hình** rồi ấn nút **Scan** ạ.",
+    "alt": "Hướng dẫn scan: đặt giấy úp mặt cần scan xuống rồi ấn nút Scan",
+    "zoom": "🔍 Bấm để xem hình to",
+    "note": ("Chỉ đặt **từng tờ một** — máy tự kéo giấy vào. "
+             "Xong hết thì bấm **\"Đã đưa đủ\"** giúp em."),
+}
+
+# Thẻ phản hồi máy quét — extension DỰNG, không đi qua handle_turn (sự kiện scan là của máy
+# quầy, không phải một lượt chat). Chữ vẫn để ở đây để bản Mông nằm cùng chỗ với lời thoại
+# còn lại; /voice/config đẩy cả cụm xuống extension.
+# {count} là số tệp đã nhận. "tts" đọc ở tệp ĐẦU (nói đủ hướng dẫn), "ttsMore" cho các tệp sau.
+SCAN_FEEDBACK = {
+    "md": ("🖨️ Em đã nhận **{count} tệp** giấy tờ từ máy quét.\n\n"
+           "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
+           "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ."),
+    "tts": ("Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan, "
+            "em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ."),
+    "ttsMore": ("Em đã nhận thêm một tệp, tổng cộng {count} tệp. Còn nữa thì công dân đặt tiếp "
+                "vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ."),
+}
+
+# Xác nhận đổi ngôn ngữ. LANG_OFF cố tình CHỈ có tiếng Việt: lượt này _TURN_LANG đã là "vi".
+LANG_ON = {
+    "md": "Dạ, em bật **chế độ tiếng Mông** rồi ạ — em sẽ đọc và nghe bằng tiếng Mông.",
+    "tts": "Dạ, em bật chế độ tiếng Mông rồi ạ.",
+}
+
+LANG_OFF = {
+    "md": "Dạ, em chuyển về **tiếng Việt** rồi ạ.",
+    "tts": "Dạ, em chuyển về tiếng Việt rồi ạ.",
+}
+
+# Câu trả lời hỏi-tự-do và các câu trấn an. Trước đây dựng thẳng bằng f-string trong flow.py
+# nên KHÔNG có bản Mông nào — quầy Lai Châu bật tiếng Mông vẫn nghe tiếng phổ thông.
+PROCEDURE_IN_PROGRESS = {
+    "md": ("Dạ mình đang làm **{procedure}** rồi ạ — đến bước **{step}**. "
+           "Công dân cứ tiếp tục theo hướng dẫn nhé."),
+    "tts": "Dạ mình đang làm {procedure} rồi ạ, công dân cứ tiếp tục theo hướng dẫn nhé.",
+}
+
+DOC_LIST_ANSWER = {
+    "md": "Dạ, để làm **{procedure}** công dân cần:\n\n{documents_md}",
+    "tts": "Dạ, công dân cần chuẩn bị: {documents_tts}.",
+}
+
+ANSWER_ONLY_DOCS_AND_STEPS = {
+    "md": ("Dạ, về **{procedure}**: em nắm chắc nhất phần **giấy tờ cần chuẩn bị** và các bước "
+           "nộp trực tuyến; chi tiết khác (lệ phí, thời hạn) công dân xem trên trang thủ tục "
+           "giúp em ạ."),
+    "tts": "Dạ, chi tiết này công dân xem thêm trên trang thủ tục giúp em ạ.",
+}
+
+PICK_FILES_AGAIN = {
+    "md": "Dạ, công dân chọn thêm tệp trong cửa sổ vừa mở ạ.",
+    "tts": "Công dân chọn thêm tệp nhé.",
+}
+
+BUSINESS_STILL_PROCESSING = {
+    "md": "Dạ em vẫn đang xử lý hồ sơ hộ kinh doanh, công dân chờ em chút ạ…",
+    "tts": "Dạ em vẫn đang xử lý hồ sơ hộ kinh doanh, công dân chờ em chút ạ.",
+}
+
+STILL_READING_DOCUMENTS = {
+    "md": "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ…",
+    "tts": "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ.",
 }
 
 # Nhãn bước hiển thị trên thanh tiến trình (progress.label) — khớp docs/03a §3.

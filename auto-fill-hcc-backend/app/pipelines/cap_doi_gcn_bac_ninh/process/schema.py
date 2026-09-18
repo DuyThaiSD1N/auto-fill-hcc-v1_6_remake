@@ -37,7 +37,18 @@ FIELDS: list[dict] = [
      "desc": 'Giấy tờ liên quan (2) liệt kê ở mục 3 Đơn Mẫu 18 (dòng "(2) ..."). Bỏ nếu trống. KHÔNG lấy '
              "dòng (1) Giấy chứng nhận đã cấp (dòng in sẵn)."},
     {"name": "Don_GiayTo3",
-     "desc": 'Giấy tờ liên quan (3) liệt kê ở mục 3 Đơn Mẫu 18 (dòng "(3) ..."). Bỏ nếu trống.'},
+     "desc": 'Giấy tờ liên quan (3) liệt kê ở mục IV Đơn Mẫu 18 (dòng "(3) ..."). Bỏ nếu trống.'},
+    {"name": "Don_MaSoThue", "desc": "Mã số thuế ghi trên Đơn Mẫu 18 (mục '- Mã số thuế (nếu có)'). "
+        "Chỉ chữ số. Bỏ nếu đơn để trống."},
+    {"name": "Don_Email", "desc": "Hộp thư điện tử ghi trên Đơn Mẫu 18. Bỏ nếu đơn để trống."},
+    {"name": "Don_ThanhVienHo",
+     "desc": 'Mục V(1) "Thành viên hộ gia đình" của Đơn Mẫu 18 — chép NGUYÊN VĂN họ tên người dân viết '
+             '(nhiều người thì giữ nguyên cách liệt kê). Bỏ nếu trống.'},
+    {"name": "Don_TinhTrangTranhChap",
+     "desc": 'Mục V(2) "Tình trạng tranh chấp đất đai" — chép NGUYÊN VĂN (vd "không"). Bỏ nếu trống.'},
+    {"name": "Don_ThayDoiRanhGioi",
+     "desc": 'Mục V(3) "Sự thay đổi ranh giới so với ranh giới được cấp Giấy chứng nhận" — chép NGUYÊN '
+             'VĂN. Bỏ nếu trống.'},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -46,17 +57,28 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 COMPACT_COMP_BY_NAME["Cccd_NgayCap"] = "x-date"
 
-# ---- UI thân đơn (khớp NHÃN — title đã fold) ----
-L_KINHGUI = "Kính gửi"
-L_TEN = "a) Tên"
-L_GIAYTO = "b) Giấy tờ nhân thân/pháp nhân"
-L_DIACHI = "c) Địa chỉ"
-L_DIENTHOAI = "d) Điện thoại liên hệ"
-L_NOIDUNG = "2. Nội dung biến động"
-# Mục 3 giấy tờ liên quan: nhãn ô chỉ là "(2)"/"(3)" → engine khớp CHÍNH XÁC (exact) để không dính
-# nhầm hậu tố "(2):" của các nhãn khác.
+# ---- UI thân đơn (khớp NHÃN = thuộc tính `title` của chính input, đã fold dấu) ----
+# ⚠ Cổng ĐÃ ĐỔI BIỂU MẪU Đơn Mẫu 18: nhãn cũ đánh số "a) b) c) d)" và "2. Nội dung biến động" KHÔNG
+# còn; nhãn mới dùng gạch đầu dòng và số La Mã. Các hằng dưới đây là title NGUYÊN VĂN lấy từ trang
+# thật (thongtin/cấp đổi bắc ninh) — FE `findElementByLabel` ưu tiên khớp CHÍNH XÁC nên sai một ký tự
+# là trượt cả ô. Ô đơn ở thủ tục này KHÔNG có class `eform-element-<Key>` ngữ nghĩa (chỉ có
+# `eform-element-text`) nên nhãn là đường khớp duy nhất.
+L_KINHGUI = "kính"
+L_TEN = "- Tên(2)"
+L_GIAYTO = "- Giấy tờ nhân thân/pháp nhân"
+L_DIACHI = "- Địa chỉ"
+L_MST = "- Mã số thuế (nếu có)"
+L_DIENTHOAI = "- Điện thoại liên hệ (nếu có)"
+L_EMAIL = "Hộp thư điện tử (nếu có)"
+L_NOIDUNG = "II. Nội dung biến động(3)"
+# Mục IV giấy tờ liên quan: nhãn ô chỉ là "(2)"/"(3)" → engine khớp CHÍNH XÁC (exact) nên không dính
+# nhầm "(2) Tình trạng tranh chấp đất đai" / "(3) Sự thay đổi ranh giới…" của mục V.
 L_GIAYTO2 = "(2)"
 L_GIAYTO3 = "(3)"
+# Mục V - Cam kết của chủ sử dụng đất.
+L_THANHVIEN = "(1) Thành viên hộ gia đình (5)"
+L_TRANHCHAP = "(2) Tình trạng tranh chấp đất đai"
+L_RANHGIOI = "(3) Sự thay đổi ranh giới so với ranh giới được cấp Giấy chứng nhận"
 
 # ---- Người nhận kết quả (khớp NAME — id DOM là _org_bn_hoso_noptructuyen_<name>) ----
 N_HOTEN = "nhanTaiNhahoTen"
@@ -70,10 +92,15 @@ UI_COMP_BY_NAME = {
     L_TEN: "bn-input",
     L_GIAYTO: "bn-input",
     L_DIACHI: "bn-input",
+    L_MST: "bn-input",
     L_DIENTHOAI: "bn-input",
+    L_EMAIL: "bn-input",
     L_NOIDUNG: "bn-textarea",
     L_GIAYTO2: "bn-input",
     L_GIAYTO3: "bn-input",
+    L_THANHVIEN: "bn-input",
+    L_TRANHCHAP: "bn-input",
+    L_RANHGIOI: "bn-input",
     N_HOTEN: "bn-input",
     N_CCCD: "bn-input",
     N_SDT: "bn-input",

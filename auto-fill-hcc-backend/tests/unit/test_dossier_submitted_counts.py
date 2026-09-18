@@ -1,8 +1,8 @@
 """Đếm hồ sơ ĐÃ NỘP (cách đếm từ 14/9/2026).
 
 Hai cam kết phải giữ bằng mọi giá:
-  1. MỘT hồ sơ = MỘT, kể cả bấm nộp nhiều lần. Chứng thực bản sao tách 4 tab bấm nộp 4 lần
-     trên cùng một khóa hồ sơ; cách cũ tính 4, từ nay tính 1.
+  1. MỘT hồ sơ = MỘT, kể cả bấm nộp nhiều lần — với MỌI thủ tục trừ ba thủ tục chứng thực.
+     Ngoại lệ chứng thực nằm ở test_chung_thuc_moi_lan_nop_la_mot_ho_so.py.
   2. Mốc ngày = lần nộp ĐẦU. `submit_clicked_at` bị ghi đè mỗi lần bấm nên nếu lấy nó thì một
      hồ sơ đã chốt của hôm qua nhảy sang hôm nay chỉ vì cán bộ bấm nộp lại.
 """
@@ -50,14 +50,23 @@ def _stages(pipeline, name):
 
 
 async def test_dem_so_ho_so_khong_dem_so_lan_nop(dossiers):
-    """$sum: 1 trên document. Đổi thành $sum submit_count là chứng thực đa tab lại thành 4."""
+    """Cộng theo `_count` — mỗi document tự khai mình đáng mấy hồ sơ (mặc định 1).
+
+    Hai thứ vẫn bị cấm tuyệt đối:
+      - `submit_count`: trường cộng dồn cả đời hồ sơ, lấy nó là lần nộp kỳ trước lọt vào kỳ này;
+      - `$unwind submit_events`: biến MỌI thủ tục thành "mỗi lần nộp một hồ sơ", tức hồ sơ bấm
+        nộp hụt rồi bấm lại bị đếm thành nhiều.
+    """
     await dossiers_stats.submitted_counts(user_ids=["u1"], date_from=_FROM, date_to=_TO)
     group = _stages(dossiers.pipeline, "$group")[0]["$group"]
-    assert group["count"] == {"$sum": 1}
+    assert group["count"] == {"$sum": "$_count"}
     assert "submit_count" not in str(dossiers.pipeline), "không được đếm theo số lần bấm nộp"
     assert not any("$unwind" in stage for stage in dossiers.pipeline), (
-        "unwind submit_events là quay lại cách đếm mỗi lần nộp một hồ sơ"
+        "unwind submit_events là quay lại cách đếm mỗi lần nộp một hồ sơ cho MỌI thủ tục"
     )
+    # Mặc định phải là 1: chỉ thủ tục nằm trong danh sách ngoại lệ mới được nhiều hơn.
+    count_expr = _stages(dossiers.pipeline, "$set")[-1]["$set"]["_count"]
+    assert count_expr["$cond"][2] == 1
 
 
 async def test_moc_ngay_la_lan_nop_dau_tien(dossiers):

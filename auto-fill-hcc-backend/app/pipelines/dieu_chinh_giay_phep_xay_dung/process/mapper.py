@@ -192,25 +192,27 @@ def _extract_info_from_cccd(identity_num: str | None) -> dict[str, str]:
 
 
 def _birthday_from_year(ngay_sinh_val: Any, nam_sinh_val: Any, identity_val: Any = None) -> str | None:
-    cccd_info = _extract_info_from_cccd(_identity(identity_val))
-    cccd_year = cccd_info.get("year")
+    """Ngày sinh để điền vào form — CHỈ khi đọc được NGÀY/THÁNG/NĂM đầy đủ trên giấy tờ.
+
+    - Có ngày đầy đủ: nếu năm lệch với năm mã hoá trong CCCD 12 số thì giữ ngày/tháng đã đọc và chỉnh
+      lại NĂM theo CCCD (năm là dữ liệu tất định trong số định danh, không phải suy đoán).
+    - ⚠ TUYỆT ĐỐI KHÔNG ghép "01/01/<năm>" khi chỉ biết NĂM SINH (từ Applicant_NamSinh hoặc từ 3 chữ
+      số đầu của CCCD): ngày và tháng lúc đó là BỊA. Hồ sơ thật CCCD 026077005820 từng bị điền
+      "01/01/1977" trong khi không giấy tờ nào ghi ngày sinh. Chỉ biết năm → trả None, mapper phát
+      "dom-expect" để extension tô đỏ ô Ngày sinh cho cán bộ tự nhập.
+      (Cùng fix đã áp cho cap_giay_phep_xay_dung — xem [[gpxd-khong-bia-ngay-sinh-va-chu-nhiem-thiet-ke]].)
+    """
+    cccd_year = _extract_info_from_cccd(_identity(identity_val)).get("year")
+
     full = _date(ngay_sinh_val)
-    if full:
-        m_year = re.search(r"\b(19|20)\d{2}\b", full)
-        if m_year and cccd_year and m_year.group(0) != cccd_year:
-            parts = full.split("/")
-            if len(parts) == 3:
-                return normalize_date(f"{parts[0]}/{parts[1]}/{cccd_year}")
-            return normalize_date(f"01/01/{cccd_year}")
-        return full
-    nam_text = _text(nam_sinh_val)
-    if nam_text:
-        m = re.search(r"\b(19|20)\d{2}\b", nam_text)
-        if m:
-            return normalize_date(f"01/01/{m.group(0)}")
-    if cccd_year:
-        return normalize_date(f"01/01/{cccd_year}")
-    return None
+    if not full:
+        return None
+
+    parts = full.split("/")
+    m_year = re.search(r"\b(19|20)\d{2}\b", full)
+    if m_year and cccd_year and m_year.group(0) != cccd_year and len(parts) == 3:
+        return normalize_date(f"{parts[0]}/{parts[1]}/{cccd_year}")
+    return full
 
 
 def _number(value: Any) -> str | None:

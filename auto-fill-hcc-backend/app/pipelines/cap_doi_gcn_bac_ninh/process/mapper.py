@@ -59,10 +59,16 @@ def enrich(fields: list[dict]) -> list[dict]:
     add(S.L_TEN, ho_ten)
     add(S.L_GIAYTO, _giay_to_nhan_than(so_dd, v.get("Cccd_NgayCap"), v.get("Cccd_NoiCap")))
     add(S.L_DIACHI, dia_chi)
+    add(S.L_MST, v.get("Don_MaSoThue"))
     add(S.L_DIENTHOAI, phone)
+    add(S.L_EMAIL, v.get("Don_Email"))
     add(S.L_NOIDUNG, v.get("Don_NoiDungBienDong"))
     add(S.L_GIAYTO2, v.get("Don_GiayTo2"))
     add(S.L_GIAYTO3, v.get("Don_GiayTo3"))
+    # Mục V - Cam kết của chủ sử dụng đất.
+    add(S.L_THANHVIEN, v.get("Don_ThanhVienHo"))
+    add(S.L_TRANHCHAP, v.get("Don_TinhTrangTranhChap"))
+    add(S.L_RANHGIOI, v.get("Don_ThayDoiRanhGioi"))
 
     # Người nhận kết quả (tự nộp → cùng người đứng đơn). Tỉnh/phường người nhận là select cascade,
     # để user chọn tay theo địa bàn.
