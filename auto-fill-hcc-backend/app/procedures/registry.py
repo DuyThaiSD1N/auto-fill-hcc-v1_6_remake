@@ -2722,11 +2722,25 @@ PROCEDURES: list[dict] = [
         "key": "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
         # Cổng Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row.
         # TÁI SỬ DỤNG process của cap_giay_phep_xay_dung (giống ~95%), nhánh nhà ở riêng lẻ (element ...NhaO).
-        # HAI biến thể sửa chữa DÙNG CHUNG apply-online id, KHÁC process= → detect CHỈ theo process= (urlIncludes
-        # là OR, nếu thêm apply-online id sẽ khớp cả 2). Quy trình 15 ngày = nhà ở riêng lẻ.
+        # process= ĐỔI THEO TỪNG ĐƠN VỊ (mỗi phường/xã sinh một quy trình riêng) nên KHÔNG thể chỉ dựa vào
+        # URL. Nhận diện chính = dòng "Quy trình: Cấp giấy phép xây dựng sửa chữa, cải tạo đối với nhà ở
+        # riêng lẻ" in ngay dưới h2 tên thủ tục — đây là chỗ DUY NHẤT trên trang nói rõ biến thể nhà ở riêng
+        # lẻ (h2 luôn là tên thủ tục gộp cả hai loại). Cụm tên thủ tục đi kèm để không dính trang thủ tục
+        # khác. urlIncludes giữ lại process= đã biết: rule URL chạy TRƯỚC rule text nên vẫn là đường tắt.
+        # KHÔNG khai urlScope: cùng hệ thống Bộ Xây dựng nhưng địa phương vào bằng host khác nhau, mà
+        # urlScope chặn CẢ rule text → chỉ cần lệch host là thủ tục chết lặng. Hai cụm dưới đây đủ đặc
+        # trưng (tên thủ tục + tên quy trình) nên không cần hàng rào host.
         "detect": {
-            "urlScope": ["dvc.moc.gov.vn"],
             "urlIncludes": ["process=696899ffadf251292a49d6cb"],
+            "textIncludes": [
+                "giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV",
+                "sửa chữa, cải tạo đối với nhà ở riêng lẻ",
+            ],
+            # textPriority: rule text của entry này phải chạy TRƯỚC rule heading của entry "…-chung"
+            # (h2 giống nhau ở cả ba quy trình), nếu không trang nhà ở riêng lẻ sẽ rơi vào entry chung
+            # và mất phần ép đúng bộ element ...NhaO.
+            "textPriority": True,
+            "headingDisabled": True,
         },
         "label": (
             "Cấp giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV và nhà ở riêng lẻ "
@@ -2754,9 +2768,25 @@ PROCEDURES: list[dict] = [
     {
         "key": "sua-chua-cai-tao-gpxd-cong-trinh",
         # Như trên nhưng nhánh CÔNG TRÌNH (element ...KhongTheoTuyen + data[loaiCongTrinh]). Quy trình 10 ngày.
+        # Đây là entry mang MÃ QG 1.013229 (xem ke_khai_links.json) → nhận diện CHUNG cho cả thủ tục:
+        # process= đổi theo từng phường/xã nên KHÔNG bám vào nó; bám vào (1) apply-online id = id THỦ TỤC,
+        # dùng chung mọi đơn vị, (2) H2 TÊN THỦ TỤC in trên trang. Trang nào ghi rõ "Quy trình: … đối với
+        # nhà ở riêng lẻ" thì entry nhà ở riêng lẻ ở trên đã chặn trước bằng textPriority, nên rơi xuống
+        # đây nghĩa là quy trình công trình → ép ...KhongTheoTuyen là đúng.
+        # KHÔNG khai urlScope: địa phương vào hệ thống Bộ Xây dựng bằng host khác nhau, mà urlScope chặn
+        # CẢ rule text lẫn URL kê khai DVCQG mà with_ke_khai_detect_urls() ghép thêm vào urlIncludes.
+        # heading: h2 trang cổng là tên thủ tục ĐẦY ĐỦ (có thêm "và nhà ở riêng lẻ" + dấu ":"), label của
+        # entry này là phần đầu của nó → popup khớp bằng startsWith. textIncludes là lớp dự phòng khi h2
+        # không vào được mảng headings (content.js chỉ nhặt heading <= 250 ký tự, h2 này ~305).
         "detect": {
-            "urlScope": ["dvc.moc.gov.vn"],
-            "urlIncludes": ["process=696899ffadf251292a49d6ca"],
+            "urlIncludes": [
+                "apply-online/69440eb769ebc10b31e81dba",
+                "process=696899ffadf251292a49d6ca",
+            ],
+            "textIncludes": [
+                "giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV",
+                "và nhà ở riêng lẻ",
+            ],
         },
         "label": (
             "Cấp giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV (công trình Không "
