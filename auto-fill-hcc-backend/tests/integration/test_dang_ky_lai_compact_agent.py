@@ -192,6 +192,50 @@ def test_dang_ky_lai_rejects_unproven_copy_request_source():
     assert "SoLuong" not in result
 
 
+def test_dang_ky_lai_subject_birth_date_is_single_text_input():
+    # eForm render ô (7) là <x-input> "dd/mm/yyyy", không phải bộ ba ngày/tháng/năm: khai sai comp
+    # thì extension không tìm thấy ô và để nguyên dữ liệu cổng điền sẵn (req_6c001ed89615).
+    result = {f["name"]: f for f in mapper.enrich([
+        {"name": "Subject_FullName", "value": "Hoàng Thị Hiểu"},
+        {"name": "Subject_BirthDate", "value": "25/05/1971"},
+    ])}
+
+    assert result["NgaySinhChon"]["comp"] == "x-input"
+    assert result["NgaySinhChon"]["value"] == "25/05/1971"
+
+
+def test_dang_ky_lai_subject_birth_date_prefers_id_card_over_declaration():
+    # Tờ khai viết tay đọc lệch, thẻ in sẵn thì đúng -> ô ngày sinh mục II phải theo thẻ.
+    result = {f["name"]: f for f in mapper.enrich([
+        {"name": "Subject_FullName", "value": "Hoàng Thị Hiểu"},
+        {"name": "Subject_BirthDate", "value": "25/05/1970"},
+        {"name": "Subject_BirthDateFromId", "value": "25/05/1971"},
+    ])}
+
+    assert result["NgaySinhChon"]["value"] == "25/05/1971"
+
+
+def test_dang_ky_lai_subject_birth_date_ignores_year_only_id_card():
+    # Thẻ chỉ đọc được năm thì không hơn gì tờ khai -> giữ ngày đủ của tờ khai.
+    result = {f["name"]: f for f in mapper.enrich([
+        {"name": "Subject_FullName", "value": "Hoàng Thị Hiểu"},
+        {"name": "Subject_BirthDate", "value": "25/05/1971"},
+        {"name": "Subject_BirthDateFromId", "value": "1971"},
+    ])}
+
+    assert result["NgaySinhChon"]["value"] == "25/05/1971"
+
+
+def test_dang_ky_lai_subject_birth_date_keeps_year_only_fallback():
+    # Hồ sơ cũ thật sự chỉ xác định được năm sinh: vẫn điền, không bỏ trống.
+    result = {f["name"]: f for f in mapper.enrich([
+        {"name": "Subject_FullName", "value": "Hoàng Thị Hiểu"},
+        {"name": "Subject_BirthDate", "value": "1971"},
+    ])}
+
+    assert result["NgaySinhChon"]["value"] == "1971"
+
+
 @respx.mock
 async def test_dang_ky_lai_compact_agent_derives_legacy_fields(monkeypatch):
     monkeypatch.setattr(settings, "openai_api_key", "")

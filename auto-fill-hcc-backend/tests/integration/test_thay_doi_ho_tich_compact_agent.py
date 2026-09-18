@@ -300,6 +300,78 @@ def test_marriage_unrelated_requester_without_subject_cccd_stays_blank():
     assert "ntdSoDDCN" not in out
 
 
+def test_requester_card_wins_over_declaration_when_identity_matches():
+    """req_52677f3a47bb: tờ khai viết tay đọc ra "Nguyễn Thanh Việt" trong khi thẻ ghi "NGUYỄN
+    THANH KIỆT" — CÙNG số định danh, nên tên/ngày cấp/nơi cấp phải lấy theo thẻ (bản in)."""
+    out = _by_name(mapper.enrich(_fields({
+        "DanhSachCccd": [{
+            "HoTen": "NGUYỄN THANH KIỆT",
+            "SoDinhDanh": "068082009771",
+            "NgaySinh": "20/04/1982",
+            "GioiTinh": "Nam",
+            "NgayCap": "31/10/2024",
+            "NoiCap": "Bộ Công an",
+        }],
+        "NguoiYeuCau_HoTen": "Nguyễn Thanh Việt",
+        "NguoiYeuCau_SoDinhDanh": "068082009771",
+        "NguoiYeuCau_NgayCap": "31/10/2024",
+        "NguoiYeuCau_NoiCap": "NDC BCA",
+        "LoaiSuKien": "death",
+        "ChuThe_HoTen": "Nguyễn Anh",
+        "ChuThe_SoDinhDanh": "250025075009",
+    })))
+
+    assert out["HoVaTenC"]["value"] == "NGUYỄN THANH KIỆT"
+    assert out["SoDinhDanhC"]["value"] == "068082009771"
+    assert out["NoiCapDDC"]["value"] == "Bộ Công an"
+    assert out["NgayCapDDC"]["value"] == "31/10/2024"
+    # Số định danh người yêu cầu KHÁC người có nội dung thay đổi → vẫn là "Khác".
+    assert out["nycQuanHe"]["value"] == "Khác"
+    info = out["__requesterInfo"]["value"]
+    assert info["hoTen"] == "NGUYỄN THANH KIỆT"
+    assert info["noiCap"] == "Bộ Công an"
+    assert info["ngaySinh"] == "20/04/1982"
+    assert info["gioiTinh"] == "Nam"
+
+
+def test_requester_card_by_identity_used_when_two_cards_share_a_name():
+    """Hai thẻ trùng tên nên không khớp được theo tên; khớp theo SỐ vẫn phải ra đúng thẻ."""
+    out = _by_name(mapper.enrich(_fields({
+        "DanhSachCccd": [
+            {"HoTen": "TRẦN VĂN A", "SoDinhDanh": "001199000111", "NgaySinh": "01/02/1990",
+             "GioiTinh": "Nam", "NgayCap": "05/06/2021", "NoiCap": "Bộ Công an"},
+            {"HoTen": "TRẦN VĂN A", "SoDinhDanh": "001199000222", "NgaySinh": "03/04/1991"},
+        ],
+        "NguoiYeuCau_HoTen": "Trần Văn Aa",
+        "NguoiYeuCau_SoDinhDanh": "001199000111",
+        "NguoiYeuCau_NgayCap": "05/06/2020",
+        "NguoiYeuCau_NoiCap": "CCS",
+        "LoaiSuKien": "birth",
+        "ChuThe_HoTen": "Lê Thị B",
+        "ChuThe_SoDinhDanh": "001299000333",
+    })))
+
+    assert out["HoVaTenC"]["value"] == "TRẦN VĂN A"
+    assert out["NgayCapDDC"]["value"] == "05/06/2021"
+    assert out["NoiCapDDC"]["value"] == "Bộ Công an"
+
+
+def test_requester_name_kept_when_no_card_matches_identity():
+    """Không thẻ nào khớp số định danh → giữ nguyên tên tờ khai, không mượn tên thẻ người khác."""
+    out = _by_name(mapper.enrich(_fields({
+        "DanhSachCccd": [{"HoTen": "LÊ VĂN KHÁC", "SoDinhDanh": "001199000999",
+                          "NgayCap": "01/01/2022", "NoiCap": "Bộ Công an"}],
+        "NguoiYeuCau_HoTen": "Nguyễn Thị Yêu Cầu",
+        "NguoiYeuCau_SoDinhDanh": "068082009771",
+        "LoaiSuKien": "birth",
+        "ChuThe_HoTen": "Nguyễn Văn Con",
+        "ChuThe_SoDinhDanh": "001299000333",
+    })))
+
+    assert out["HoVaTenC"]["value"] == "NGUYỄN THỊ YÊU CẦU"
+    assert "NoiCapDDC" not in out
+
+
 def test_identity_context_separates_requester_and_other_cccd():
     context = asyncio.run(runner._identity_context(
         [

@@ -2257,8 +2257,19 @@
       || (t.length > 2 ? opts.find((o) => areaFold(o.textContent).includes(t)) : null);
   }
 
-  function areaIsAt(sel, target) {
-    return !!target && areaFold(areaSelectedText(sel)) === areaFold(target);
+  /**
+   * Ô địa bàn ĐANG ĐỨNG ở đúng option mà ta sẽ chọn cho `target` hay chưa.
+   *
+   * Phải nới theo CÙNG luật với areaFindOption (khớp lỏng "chứa"): danh sách của cổng ghi
+   * "Huyện Hòa Vang" trong khi hồ sơ ghi "Hòa Vang" — so khớp tuyệt đối thì option ta vừa chọn
+   * đúng lại bị đọc là "chưa chọn được", rồi cấp Phường/Xã bị bỏ oan vì tưởng Tỉnh chưa vào.
+   */
+  function areaAccepts(sel, target) {
+    const t = areaFold(target);
+    if (!t) return false;
+    const cur = areaFold(areaSelectedText(sel));
+    if (!cur) return false;
+    return cur === t || (t.length > 2 && cur.includes(t));
   }
 
   function areaChoose(sel, target) {
@@ -2270,44 +2281,209 @@
     return true;
   }
 
+  // ----- Cascade địa chỉ: Quốc gia → Tỉnh/Thành → Phường/Xã → Số nhà -----------------------
+  //
+  // Mỗi cấp là <select> AutoPostBack: đổi giá trị là cổng chạy MỘT AJAX partial postback rồi dựng
+  // LẠI node <select> của cấp dưới. Điền nhanh hơn postback chính là lỗi "hay hụt Phường/Xã":
+  //   1. Chọn Tỉnh xong đọc NGAY ô Phường/Xã thì đọc phải node CŨ — danh sách còn là của tỉnh
+  //      trước (hoặc rỗng). Không thấy option đích là bỏ luôn cấp xã; thấy (tên xã trùng bên tỉnh
+  //      cũ) thì chọn vào node sắp bị thay, postback về là ô xã trắng.
+  //   2. Chọn xã xong đợi cứng 900ms rồi bấm Lưu: postback của chính ô xã chưa về thì cổng lưu hồ
+  //      sơ với xã rỗng, và ô "Số nhà" vừa gõ cũng bị khối dựng lại xoá.
+  // Nên mỗi cấp đi đủ ba nhịp: CHỜ postback của cấp đó về → XÁC MINH ô còn nguyên giá trị vừa
+  // chọn → bị xóa thì chọn LẠI trên node MỚI. Cách chờ khác nhau theo cấp, xem từng hàm dưới.
+
+  const AREA_OPTION_TIMEOUT = 9000;  // chờ danh sách option của cấp dưới được nạp
+  const AREA_OPTION_QUIET_MS = 1200; // ...nhưng danh sách đã nạp & đứng yên thì chốt luôn là không có
+  const AREA_CHILD_TIMEOUT = 5000;   // một postback cascade trên cổng thật ~1-4s
+  const AREA_SELF_TIMEOUT = 3000;    // cấp cuối: chờ chính nó lắng
+  const AREA_SELF_MIN_MS = 1200;     // ...nhưng không dưới một nhịp postback
+  const AREA_LEVEL_TRIES = 3;
+  const AREA_SETTLE_STEP = 200;
+
+  // Dấu vết một <select>: đủ để biết cổng đã nạp lại danh sách option hay chưa.
+  function areaSelectFingerprint(sel) {
+    if (!sel) return "(khong-co)";
+    const opts = Array.from(sel.options || []);
+    return `${opts.length}:${opts.map((o) => o.value).join(",")}=${sel.value || ""}`;
+  }
+
+  // Chụp cả NODE và danh sách option: postback có thể thay node mà giữ nguyên danh sách (khi đó
+  // fingerprint không đổi) và ngược lại — bỏ một trong hai là có lúc không nhận ra postback.
+  function areaWatchSnapshot(field) {
+    const el = findStandardSelect(fieldCandidates(field));
+    return { el, fp: areaSelectFingerprint(el) };
+  }
+
+  function areaWatchSame(a, b) {
+    return a.el === b.el && a.fp === b.fp;
+  }
+
+  // Ô canh đã ĐỨNG YÊN: hai nhịp liền không đổi node lẫn danh sách option.
+  async function waitAreaQuiet(watchField, from, timeout) {
+    const deadline = Date.now() + timeout;
+    let prev = from;
+    while (Date.now() < deadline) {
+      await sleep(AREA_SETTLE_STEP);
+      const now = areaWatchSnapshot(watchField);
+      if (areaWatchSame(now, prev)) return true;
+      prev = now;
+    }
+    return false;
+  }
+
+  /**
+   * Cấp có cấp DƯỚI (Quốc gia, Tỉnh): chờ danh sách cấp dưới thật sự được nạp lại — khác dấu vết
+   * chụp TRƯỚC khi ta đổi cấp này — rồi đứng yên.
+   *
+   * Chụp TRƯỚC khi chọn là điểm mấu chốt: chụp sau thì không phân biệt được "ô Phường/Xã còn danh
+   * sách của tỉnh cũ" với "đã nạp lại theo tỉnh mới". Mà lẫn hai cái đó chính là lỗi hay gặp: tên
+   * xã cần điền tình cờ có trong danh sách tỉnh cũ → chọn vào node sắp bị thay → postback về là ô
+   * xã trắng, hồ sơ đi thiếu phường/xã.
+   */
+  async function waitAreaChildReload(watchField, beforeChoose) {
+    let last = beforeChoose;
+    await waitFor(() => {
+      const now = areaWatchSnapshot(watchField);
+      if (areaWatchSame(now, beforeChoose)) return false;
+      last = now;
+      return true;
+    }, AREA_CHILD_TIMEOUT, 150);
+    return waitAreaQuiet(watchField, last, AREA_CHILD_TIMEOUT);
+  }
+
+  /**
+   * Cấp CUỐI (Phường/Xã): không có cấp dưới để canh nên canh chính nó, và phải chờ TỐI THIỂU một
+   * nhịp postback — lúc postback đang bay thì DOM chưa đổi gì cả, "đứng yên" ở nhịp đầu không phân
+   * biệt được với "đã xong". Về sớm ở đây là lượt sau bấm Lưu giữa lúc cổng đang dựng lại khối.
+   */
+  async function waitAreaSelfSettle(watchField) {
+    const minUntil = Date.now() + AREA_SELF_MIN_MS;
+    const deadline = Date.now() + AREA_SELF_TIMEOUT;
+    let prev = areaWatchSnapshot(watchField);
+    while (Date.now() < deadline) {
+      await sleep(AREA_SETTLE_STEP);
+      const now = areaWatchSnapshot(watchField);
+      const quiet = areaWatchSame(now, prev);
+      prev = now;
+      if (quiet && Date.now() >= minUntil) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Chờ option đích xuất hiện trong danh sách của một cấp (danh sách này do postback cấp TRÊN nạp).
+   *
+   * Thoát sớm khi danh sách ĐÃ CÓ option và ĐỨNG YÊN một lúc: lúc đó cổng đã nạp xong và đơn giản
+   * là không có địa bàn hồ sơ ghi (tên cũ trước sáp nhập, sai chính tả...). Treo thêm 9 giây rồi
+   * cũng vậy, mà cán bộ phải ngồi đợi hai lần (vòng 1 + vòng 2).
+   */
+  async function waitAreaOption(info) {
+    const deadline = Date.now() + AREA_OPTION_TIMEOUT;
+    let prev = areaWatchSnapshot(info.f);
+    let quietFor = 0;
+    while (Date.now() < deadline) {
+      await sleep(AREA_SETTLE_STEP);
+      const live = findStandardSelect(fieldCandidates(info.f));
+      if (live && areaFindOption(live, info.target)) return live;
+      const now = areaWatchSnapshot(info.f);
+      quietFor = areaWatchSame(now, prev) ? quietFor + AREA_SETTLE_STEP : 0;
+      prev = now;
+      const loaded = !!live && Array.from(live.options || []).some((o) => o.value);
+      if (loaded && quietFor >= AREA_OPTION_QUIET_MS) return null;
+    }
+    return null;
+  }
+
+  /**
+   * Chọn MỘT cấp địa bàn và chỉ trả true khi ô ĐÃ ĐỨNG ở giá trị hồ sơ sau khi postback về.
+   * `childInfo` là cấp dưới (nếu hồ sơ có) - dùng để canh đúng postback của cấp này.
+   */
+  async function chooseAreaLevel(info, childInfo) {
+    if (!info) return true; // hồ sơ không có dữ liệu cấp này -> không tính là trượt
+    const label = info.f.name || "";
+    for (let attempt = 1; attempt <= AREA_LEVEL_TRIES; attempt += 1) {
+      // Khối địa chỉ có thể đang được postback của cấp TRÊN dựng lại -> chờ node xuất hiện.
+      let el = findStandardSelect(fieldCandidates(info.f))
+        || await waitFor(() => findStandardSelect(fieldCandidates(info.f)), 3000, 150);
+      if (!el) {
+        console.warn(`[FillAll] địa chỉ: không thấy ô ${label}`);
+        return false;
+      }
+      if (areaAccepts(el, info.target)) return true;
+
+      // Danh sách option của cấp này do postback cấp TRÊN nạp: chưa có option đích thì CHỜ, tuyệt
+      // đối không bỏ cấp ngay - bỏ ngay chính là lỗi "extension nhập nhanh nên hụt phường/xã".
+      if (!areaFindOption(el, info.target)) {
+        const ready = await waitAreaOption(info);
+        if (!ready) {
+          console.warn(`[FillAll] địa chỉ: danh sách ${label} không có option "${info.target}"`);
+          return false;
+        }
+        el = ready;
+      }
+
+      const watchField = (childInfo && childInfo.f) || info.f;
+      const beforeChoose = areaWatchSnapshot(watchField);
+      if (!areaChoose(el, info.target)) return false;
+      console.log(`[FillAll] địa chỉ chọn: ${info.target} (${label}, lần ${attempt})`);
+      if (childInfo) await waitAreaChildReload(watchField, beforeChoose);
+      else await waitAreaSelfSettle(watchField);
+
+      const live = findStandardSelect(fieldCandidates(info.f));
+      if (live && areaAccepts(live, info.target)) return true;
+      console.warn(`[FillAll] địa chỉ: postback xoá mất "${info.target}" ở ${label} -> chọn lại (${attempt}/${AREA_LEVEL_TRIES})`);
+    }
+    return false;
+  }
+
+  // Số nhà điền SAU CÙNG: mọi postback cascade ở trên đều dựng lại khối và xoá ô này.
+  // Set value KHÔNG kích onchange (tránh thêm 1 postback thừa); nút Lưu sẽ submit giá trị này.
+  function fillAreaStreetNumber(fields) {
+    const sf = fields.find((x) => /STREET_NUMBER/.test(x.name || ""));
+    if (!sf || !sf.value) return;
+    const el = findStandardInput(fieldCandidates(sf));
+    if (!el || norm(el.value) === norm(String(sf.value))) return;
+    setNativeValue(el, sf.value, { typing: false, change: false, commit: false });
+    console.log("[FillAll] địa chỉ số nhà:", sf.value);
+  }
+
   async function fillAddressCascade(fields) {
     const selInfo = (key) => {
       const f = fields.find((x) => new RegExp(key).test(x.name || ""));
       return f && f.value ? { f, target: String(f.value) } : null;
     };
-    const chooseAndWait = async (info, waitReady) => {
-      if (!info) return;
-      const el = findStandardSelect(fieldCandidates(info.f));
-      if (!el || areaIsAt(el, info.target)) return;
-      if (!areaFindOption(el, info.target)) { console.warn("[FillAll] địa chỉ: chưa có option", info.target); return; }
-      areaChoose(el, info.target); // dispatch change → onchange __doPostBack (AJAX partial)
-      console.log("[FillAll] địa chỉ chọn:", info.target);
-      if (waitReady) await waitFor(waitReady, 8000, 250);
-      else await sleep(900);
-    };
-
     const country = selInfo("COUNTRY_IDFld");
     const city = selInfo("CITY_IDFld");
     const ward = selInfo("WARD_IDFld");
+    const atTarget = (info) => {
+      if (!info) return true;
+      const el = findStandardSelect(fieldCandidates(info.f));
+      return !!el && areaAccepts(el, info.target);
+    };
 
-    await chooseAndWait(country);
-    // Chọn tỉnh xong → CHỜ danh sách xã nạp lại đến khi có option đích.
-    await chooseAndWait(city, () => {
-      if (!ward) return true;
-      const w = findStandardSelect(fieldCandidates(ward.f));
-      return w && !!areaFindOption(w, ward.target);
-    });
-    await chooseAndWait(ward);
-
-    // Số nhà: set value KHÔNG kích onchange (tránh thêm 1 postback thừa); nút Lưu sẽ submit giá trị này.
-    const sf = fields.find((x) => /STREET_NUMBER/.test(x.name || ""));
-    if (sf && sf.value) {
-      const el = findStandardInput(fieldCandidates(sf));
-      if (el && norm(el.value) !== norm(String(sf.value))) {
-        setNativeValue(el, sf.value, { typing: false, change: false, commit: false });
-        console.log("[FillAll] địa chỉ số nhà:", sf.value);
+    // Tối đa HAI vòng: vòng 2 chỉ chạy khi còn cấp chưa vào (thường là xã bị postback của cấp trên
+    // xoá đúng lúc). Cấp nào đã đúng thì vòng 2 nhận ra ngay và bỏ qua, không chọn lại.
+    for (let round = 1; round <= 2; round += 1) {
+      const okCountry = await chooseAreaLevel(country, city || ward);
+      const okCity = okCountry && await chooseAreaLevel(city, ward);
+      if (okCity) {
+        await chooseAreaLevel(ward, null);
+      } else if (ward) {
+        // Chưa chốt được Tỉnh thì danh sách xã không bao giờ là của tỉnh đúng -> chọn được cũng là
+        // xã của tỉnh khác. Thà để trống cho cán bộ chọn tay còn hơn ghi sai địa bàn vào hồ sơ.
+        console.warn(`[FillAll] địa chỉ: chưa chọn được Tỉnh${city ? ` "${city.target}"` : ""} -> BỎ Phường/Xã "${ward.target}", cán bộ chọn tay`);
+      }
+      if (atTarget(country) && atTarget(city) && atTarget(ward)) break;
+      if (round === 2) {
+        console.warn("[FillAll] địa chỉ: hết 2 vòng vẫn chưa đủ -", {
+          tinh: city ? `${city.target}: ${atTarget(city) ? "OK" : "THIẾU"}` : "(hồ sơ không có)",
+          phuongXa: ward ? `${ward.target}: ${atTarget(ward) ? "OK" : "THIẾU"}` : "(hồ sơ không có)",
+        });
       }
     }
+
+    fillAreaStreetNumber(fields);
   }
 
   async function handleAddressCascadePage(st, targetKey) {
@@ -3101,6 +3277,7 @@
   H.readPortalOwner = readPortalOwner;
   H.tickSubmitterSelfRadio = tickSubmitterSelfRadio;
   // Trang thuế: export để test được nhịp Lưu → đảo radio → Lưu mà không cần cả state machine.
+  H.fillAddressCascade = fillAddressCascade;   // test cascade Tinh/Phuong-Xa
   H.handleTaxPage = handleTaxPage;
   H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
   H.TAX_PAGE_KEY = "thong-tin-ve-thue";

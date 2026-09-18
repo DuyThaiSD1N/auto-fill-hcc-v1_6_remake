@@ -398,8 +398,7 @@ async function fillMatSelect(ms, value, wrapper) {
   if (!target) {
     console.warn(`[AutoFill-NG] mat-select [${fcn}] không khớp "${value}". Option:`,
       list.map((o) => o.textContent.trim()).filter(Boolean).slice(0, 25));
-    const bd = document.querySelector(".cdk-overlay-backdrop");
-    if (bd) bd.click();
+    await ngAbortCombobox(null);
     return false;
   }
   target.click();
@@ -460,10 +459,7 @@ async function fillNgSelect(el, value) {
     lastOptions = options;
     const target = options.find((option) => norm(option.textContent) === want)
       || options.find((option) => ngOptMatch(option.textContent, want));
-    if (!target) {
-      if (search) setNativeValue(search, "");
-      break;
-    }
+    if (!target) break;
 
     target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
     target.click();
@@ -481,6 +477,8 @@ async function fillNgSelect(el, value) {
   const current = (ng.querySelector(".ng-value-label, .ng-value") || {}).textContent || "";
   console.warn(`[AutoFill-NG] ng-select [${fcn}] không commit "${value}" (đang là "${current.trim()}"). Option:`,
     lastOptions.map((option) => option.textContent.trim()).filter(Boolean).slice(0, 25));
+  // Bỏ dở: phải xoá chữ đã gõ + đóng panel, nếu không ô này chặn luôn thao tác tay của cán bộ.
+  await ngAbortCombobox(ng.querySelector("input[type=text]"));
   return false;
 }
 
@@ -493,24 +491,89 @@ function ngFindInput(el, keywords) {
   });
 }
 
+// Trả ô combobox về trạng thái CÁN BỘ BẤM ĐƯỢC sau khi bỏ dở: xoá chữ đã gõ + đóng dropdown.
+//
+// Phải làm, vì bỏ dở mà để nguyên thì cán bộ không chọn tay được nữa (gặp thật ở khối địa chỉ
+// liên thông khai sinh — "treo, không bấm vào chọn hẳn tỉnh và phường/xã"):
+//   1. Panel mat-autocomplete/ng-select đang mở là một lớp overlay phủ lên form — bấm vào ô
+//      Tỉnh/Phường-Xã chỉ trúng lớp overlay đó;
+//   2. Chữ ta gõ còn nằm trong ô lọc nên danh sách mở ra rỗng ("không có dữ liệu"), trông như
+//      dropdown chết.
+async function ngAbortCombobox(input, restore = "") {
+  if (input) {
+    try {
+      // Trả về ĐÚNG chữ của cổng TRƯỚC khi ta gõ vào (thường là rỗng, nhưng có hồ sơ cổng đã
+      // đổ sẵn tỉnh/xã từ VNeID) — xoá trắng vô điều kiện là tự tay phá dữ liệu đúng của cổng.
+      setNativeValue(input, restore); // đã tự bắn input/change → Angular cập nhật lại chữ lọc
+      for (const type of ["keydown", "keyup"]) {
+        input.dispatchEvent(new KeyboardEvent(type, {
+          key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true, cancelable: true,
+        }));
+      }
+      if (typeof input.blur === "function") input.blur();
+    } catch (e) { /* ô có thể đã bị Angular thay */ }
+  }
+  // mat-* đóng theo backdrop; ng-select không có backdrop nên phải "bấm ra ngoài".
+  document.querySelectorAll(".cdk-overlay-backdrop").forEach((bd) => {
+    try { bd.click(); } catch (e) { /* ignore */ }
+  });
+  if (document.querySelector("ng-dropdown-panel")) {
+    for (const type of ["mousedown", "click"]) {
+      document.body.dispatchEvent(new MouseEvent(type, { bubbles: true }));
+    }
+  }
+  await sleep(120);
+}
+
 // Chọn 1 option mat-autocomplete (overlay) sau khi gõ vào input.
+// Ô Tỉnh/Phường-Xã trên các form Angular có nơi là mat-autocomplete, nơi là ng-select, nên quét
+// option ở CẢ HAI loại panel thay vì chỉ .mat-autocomplete-panel (chỉ quét một loại thì bên kia
+// luôn trượt: hết 2,5 giây không thấy option nào rồi bỏ dở với dropdown còn mở).
 async function ngPickAutocomplete(input, value) {
   if (!input || !value) return false;
+  const before = String(input.value || "");
   input.focus();
   setNativeValue(input, String(value));
   input.dispatchEvent(new Event("input", { bubbles: true }));
-  const panelOpt = () => Array.from(document.querySelectorAll(".mat-autocomplete-panel mat-option, .cdk-overlay-pane mat-option"));
-  await waitFor(() => panelOpt().length > 0, 2500);
+  const panelOpt = () => [
+    ...document.querySelectorAll(".mat-autocomplete-panel mat-option, .cdk-overlay-pane mat-option"),
+    ...panelOptions(),
+  ];
+  const realOpt = () => panelOpt().filter((o) => {
+    const text = norm(o.textContent);
+    return text && !text.includes("không có") && !text.includes("đang tải");
+  });
+  await waitFor(() => realOpt().length > 0, 2500);
   const want = norm(value);
-  const opts = panelOpt();
+  const opts = realOpt();
   let t = opts.find((o) => norm(o.textContent) === want) || opts.find((o) => norm(o.textContent).includes(want));
   if (!t) {
     console.warn(`[AutoFill-NG] autocomplete không khớp "${value}". Có:`, opts.map((o) => o.textContent.trim()).slice(0, 15));
+    await ngAbortCombobox(input, before);
     return false;
   }
+  t.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
   t.click();
   await sleep(600); // chờ cấp dưới (xã) render
   return true;
+}
+
+// Chọn một cấp địa bàn (Tỉnh hoặc Phường/Xã) trong khối địa chỉ.
+// Ô đó là ng-select thì đi đường fillNgSelect (có VERIFY nhãn đã commit + tự dọn dẹp), còn lại
+// mới coi là mat-autocomplete. Trượt cấp nào thì ô cấp đó phải sạch chữ + đóng dropdown để cán
+// bộ chọn tay được, và tô đỏ cho thấy chỗ còn thiếu.
+async function fillNgAreaLevel(el, input, wanted) {
+  if (!input || !wanted) return false;
+  const host = input.closest("ng-select");
+  const ok = host
+    ? await fillNgSelect(host, wanted)
+    : await ngPickAutocomplete(input, wanted);
+  if (!ok) {
+    // Hai nhánh trên đã tự trả ô về chữ cũ; đây chỉ là lượt chốt đóng dropdown còn sót.
+    await ngAbortCombobox(null);
+    markUnfilled(input.closest("mat-form-field") || host || input);
+  }
+  return ok;
 }
 
 // diachi: value { tinh, xa, diaChi }. Cascade Tỉnh → Xã → ô địa chỉ.
@@ -519,14 +582,15 @@ async function fillNgDiaChi(el, value) {
   let any = false;
 
   const tinhInput = ngFindInput(el, ["tỉnh", "thành phố"]);
-  if (tinhInput && data.tinh) {
-    if (await ngPickAutocomplete(tinhInput, data.tinh)) any = true;
-  }
-  // Xã/phường xuất hiện sau khi chọn tỉnh.
-  await waitFor(() => ngFindInput(el, ["xã", "phường"]), 1500);
-  const xaInput = ngFindInput(el, ["xã", "phường"]);
-  if (xaInput && data.xa) {
-    if (await ngPickAutocomplete(xaInput, data.xa)) any = true;
+  const tinhOk = await fillNgAreaLevel(el, tinhInput, data.tinh);
+  if (tinhOk) any = true;
+  // Xã/phường xuất hiện sau khi chọn tỉnh — chưa chọn được tỉnh thì danh sách xã không bao giờ
+  // nạp, gõ vào chỉ để lại chữ lọc rác trong ô. Bỏ hẳn cấp xã, để cán bộ chọn tay cả hai cấp.
+  if (data.xa && (tinhOk || !data.tinh)) {
+    await waitFor(() => ngFindInput(el, ["xã", "phường"]), 1500);
+    if (await fillNgAreaLevel(el, ngFindInput(el, ["xã", "phường"]), data.xa)) any = true;
+  } else if (data.xa) {
+    console.warn(`[AutoFill-NG] Bỏ qua Phường/Xã "${data.xa}": chưa chọn được Tỉnh "${data.tinh}".`);
   }
   // Ô địa chỉ chi tiết (không phải combobox).
   const addrInput = ngFindInput(el, ["địa chỉ", "số nhà", "chi tiết", "thôn"]);

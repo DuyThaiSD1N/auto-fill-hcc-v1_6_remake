@@ -165,7 +165,7 @@ def _resolve_residence(values: dict, prefix: str, context: str = ""):
     return None
 
 
-def _add_residence(add, prefix: str, residence) -> None:
+def _add_residence(add, prefix: str, residence, default: bool = False) -> None:
     """Phát mục "Nơi cư trú" của cha/mẹ (prefix = "Cha" | "Me").
 
     Cha/mẹ ĐÃ CHẾT: giấy tờ ghi "Đã chết" thay cho địa chỉ. Nhánh "Trong nước" chỉ có dropdown
@@ -173,13 +173,13 @@ def _add_residence(add, prefix: str, residence) -> None:
     chữ vào đó. Cũng không đặt *LoaiCuTru vì người đã mất không còn loại cư trú.
     """
     if residence and _is_deceased_marker(residence):
-        add(f"{prefix}NoiCuTru", "Khác")
-        add(f"{prefix}NoiCuTru_NuocNgoai", residence.get("diaChi"))
+        add(f"{prefix}NoiCuTru", "Khác", default)
+        add(f"{prefix}NoiCuTru_NuocNgoai", residence.get("diaChi"), default)
         return
-    add(f"{prefix}LoaiCuTru", "Thường trú")
+    add(f"{prefix}LoaiCuTru", "Thường trú", default)
     if residence:
-        add(f"{prefix}NoiCuTru", "1")
-        add(f"{prefix}NoiCuTru_TrongNuoc", residence)
+        add(f"{prefix}NoiCuTru", "1", default)
+        add(f"{prefix}NoiCuTru_TrongNuoc", residence, default)
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -309,6 +309,32 @@ def _same_person(name_a, id_a, name_b, id_b) -> bool:
 # nên thẻ là nguồn đúng theo định nghĩa. Họ tên KHÔNG nằm trong nhóm này: tên khai sinh cũ có thể
 # khác tên đang dùng, mà mục I phải mang tên hiện tại người yêu cầu tự ghi.
 _ID_DOC_KEYS = frozenset({"so_dinh_danh", "ngay_cap", "noi_cap"})
+
+_FULL_DATE_RE = re.compile(r"^\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*$")
+
+
+def _full_date(value) -> str:
+    """Chỉ nhận chuỗi ĐỦ ngày/tháng/năm; năm trơ trọi ("1971") thì trả rỗng."""
+    if not isinstance(value, str) or not _FULL_DATE_RE.match(value):
+        return ""
+    return value.strip()
+
+
+def _subject_birth_date(values: dict):
+    """Ngày sinh mục II — ƯU TIÊN ngày in trên CCCD/CMND CỦA CHÍNH người được đăng ký lại.
+
+    Tờ khai đăng ký lại là chữ VIẾT TAY nên cả dòng số lẫn dòng "ghi bằng chữ" đều hay bị OCR đọc
+    lệch (req_6c001ed89615: phần chữ ra "một ngàn chín trăm bảy mươi" trong khi số ghi 25/5/1971),
+    còn ngày trên thẻ thì in sẵn. Chỉ nhận thẻ khi đọc được ĐỦ ngày/tháng/năm — thẻ chỉ ra năm thì
+    không hơn gì tờ khai. Hết đường mới trả nguyên giá trị thô (có thể chỉ là năm) để không mất dữ
+    liệu với hồ sơ cũ thật sự chỉ xác định được năm sinh.
+    """
+    return (
+        _full_date(values.get("Subject_BirthDateFromId"))
+        or _full_date(values.get("Subject_BirthDate"))
+        or values.get("Subject_BirthDate")
+    )
+
 
 # Số định danh Việt Nam chỉ có ĐÚNG 9 chữ số (CMND cũ) hoặc 12 chữ số (CCCD/căn cước).
 _VALID_ID_DIGIT_LENGTHS = (9, 12)
@@ -562,6 +588,9 @@ def _previous_registration_commune(values: dict) -> str:
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields while preserving the extension response shape."""
     values = _by_name(fields)
+    # Vai cha/mẹ mà reason.py dựng lại từ tờ khai được đánh dấu default — hồ sơ đang có hai tên
+    # cho cùng một vai. Cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
+    default_names = {f.get("name") for f in fields if f.get("default")}
     context: str = (options or {}).get("_reasoning_context") or ""
     out: list[dict] = []
     seen: set[str] = set()
@@ -643,7 +672,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # họ tên đã được reason.py phân xử, không để mỗi mục mang một dòng OCR khác nhau.
         self_name = _self_full_name(context) if quan_he == "BanThan" else ""
         add("HoTenKS", upper_person_name(self_name or values.get("Subject_FullName")))
-        add("NgaySinhChon", values.get("Subject_BirthDate"))
+        add("NgaySinhChon", _subject_birth_date(values))
         add("GioiTinhKS", values.get("Subject_Gender"))
         add("DanTocKS", normalize_ethnic(values.get("Subject_Ethnicity")))
         add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
@@ -658,32 +687,34 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # CCCD của một bên thì bên kia phải để TRỐNG, không điền quốc tịch/loại cư trú mặc định.
     has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
     if has_mother:
-        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")))
-        add("SoDinhDanhMe", values.get("Mother_IdNumber"))
-        add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"))
+        me_default = "Mother_FullName" in default_names
+        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
+        add("SoDinhDanhMe", values.get("Mother_IdNumber"), me_default)
+        add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"), me_default)
         if values.get("Mother_IdNumber"):
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber")))
-        add("NgayCapDDMe", values.get("Mother_IdIssueDate"))
-        add("NoiCapDDMe", _issuer_or_default(values, "Mother"))
-        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"))
-        add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")))
-        add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam")
-        _add_residence(add, "Me", _resolve_residence(values, "Mother", context))
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber")), me_default)
+        add("NgayCapDDMe", values.get("Mother_IdIssueDate"), me_default)
+        add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_default)
+        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default)
+        add("DanTocMeKS", normalize_ethnic(values.get("Mother_Ethnicity")), me_default)
+        add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
+        _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default)
 
     # IV. Cha. Cùng nguyên tắc với khối mẹ: không có nhân thân thì bỏ trống cả khối.
     has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
     if has_father:
-        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")))
-        add("SoDinhDanhCha", values.get("Father_IdNumber"))
-        add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"))
+        cha_default = "Father_FullName" in default_names
+        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
+        add("SoDinhDanhCha", values.get("Father_IdNumber"), cha_default)
+        add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"), cha_default)
         if values.get("Father_IdNumber"):
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber")))
-        add("NgayCapDDCha", values.get("Father_IdIssueDate"))
-        add("NoiCapDDCha", _issuer_or_default(values, "Father"))
-        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"))
-        add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")))
-        add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam")
-        _add_residence(add, "Cha", _resolve_residence(values, "Father", context))
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber")), cha_default)
+        add("NgayCapDDCha", values.get("Father_IdIssueDate"), cha_default)
+        add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_default)
+        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default)
+        add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default)
+        add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
+        _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default)
 
     # Thong tin dang ky truoc day.
     add("coQuanDKTruocDay_filter", values.get("PreviousRegistration_AgencyProvince"))

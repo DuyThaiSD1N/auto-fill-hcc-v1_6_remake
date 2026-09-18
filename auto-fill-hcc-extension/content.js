@@ -6882,6 +6882,47 @@
     }
   }
 
+  // Cổng ASP.NET (dkkd.gov.vn: hộ kinh doanh, đăng ký doanh nghiệp qua mạng) để select địa bàn ở
+  // AutoPostBack: mỗi lần đổi Tỉnh/Phường-Xã là một AJAX partial postback dựng LẠI node select và
+  // xoá các ô đã điền bằng script. NGAY sau khi ta chọn, ô vẫn đang đúng giá trị nhưng postback
+  // CHƯA về — kết luận "đã ổn định" ở khoảnh khắc đó là lượt sau bấm Lưu giữa lúc postback đang
+  // chạy, cổng dựng lại khối và hồ sơ đi với Phường/Xã rỗng (đúng lỗi "điền nhanh nên hụt xã").
+  // Form Form.io (moha/moet/Lai Châu) không có __VIEWSTATE và không postback → giữ nguyên đường
+  // thoát nhanh như cũ, không ngủ thêm giây nào.
+  function isAspNetPostbackForm() {
+    return !!document.querySelector('input[name="__VIEWSTATE"], #__VIEWSTATE');
+  }
+
+  function standardAreaFingerprint(fields) {
+    return fields.map((f) => {
+      const root = standardScopeRoot(f);
+      if (!root) return "-";
+      return findStandardSelects(fieldCandidates(f), standardOccurrence(f.occurrence), root)
+        .map((sel) => `${sel.options?.length || 0}/${sel.value || ""}`)
+        .join("|");
+    }).join(";");
+  }
+
+  // Chờ khối địa bàn đứng yên: danh sách option + giá trị không đổi qua hai nhịp liền, VÀ không
+  // thoát trước STANDARD_AREA_POSTBACK_MIN_MS. Chờ tối thiểu là bắt buộc: lúc postback đang bay
+  // thì DOM chưa đổi gì cả, "đứng yên" ở nhịp đầu không phân biệt được với "đã xong".
+  const STANDARD_AREA_POSTBACK_MIN_MS = 1500;
+  const STANDARD_AREA_POSTBACK_MAX_MS = 6000;
+
+  async function waitStandardAreaQuiet(fields) {
+    const minUntil = Date.now() + STANDARD_AREA_POSTBACK_MIN_MS;
+    const maxUntil = Date.now() + STANDARD_AREA_POSTBACK_MAX_MS;
+    let last = standardAreaFingerprint(fields);
+    while (Date.now() < maxUntil) {
+      await sleep(250);
+      const now = standardAreaFingerprint(fields);
+      const quiet = now === last;
+      last = now;
+      if (quiet && Date.now() >= minUntil) return true;
+    }
+    return false;
+  }
+
   async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
     const targets = fields.filter((f) =>
       isAreaSelectField(f) && !failedFieldKeys.has(standardFieldIdentity(f))
@@ -6895,6 +6936,11 @@
       const selects = findStandardSelects(fieldCandidates(f), standardOccurrence(f.occurrence), root);
       return selects.length && selects.every((sel) => currentStandardSelectMatches(sel, f.value));
     };
+
+    // Cổng ASP.NET: chờ postback cuối cùng của cascade về TRƯỚC khi kết luận gì (xem
+    // waitStandardAreaQuiet) — không thì vòng dưới thấy ô còn đúng giá trị ta vừa set và thoát
+    // ngay, trong khi postback đang bay và sẽ xoá mất Phường/Xã.
+    if (isAspNetPostbackForm()) await waitStandardAreaQuiet(targets);
 
     for (const delay of [800, 1600]) {
       // Kiểm TRƯỚC: nếu mọi ô địa chỉ đã đúng thì thoát ngay, không ngủ (form moha không postback

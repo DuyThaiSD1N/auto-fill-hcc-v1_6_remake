@@ -43,7 +43,9 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    khối đó ra, KHÔNG ghi đè, rồi đổ toàn bộ dữ liệu quét được vào các khối con/cha/mẹ.
    TUYỆT ĐỐI KHÔNG bịa Requester_* từ CCCD của con/cha/mẹ hay từ tên trên giấy khai sinh cũ.
 3. Vì vậy CCCD/CMND của CHÍNH người được đăng ký lại khai sinh phải được trích đủ vào Subject_IdNumber,
-   Subject_IdIssueDate, Subject_IdIssuePlace, Subject_ResidenceDomestic (ngoài họ tên/ngày sinh/giới tính).
+   Subject_IdIssueDate, Subject_IdIssuePlace, Subject_BirthDateFromId, Subject_ResidenceDomestic (ngoài
+   họ tên/ngày sinh/giới tính). Subject_BirthDateFromId là ngày sinh IN TRÊN THẺ, đọc thẳng từ thẻ và
+   trả kể cả khi trùng Subject_BirthDate — ô ngày sinh mục II lấy nguồn này TRƯỚC tờ khai viết tay.
    Đây là nguồn duy nhất của khối "Người được đăng ký lại khai sinh" — thiếu là hỏng cả khối. KHÔNG lấy
    số định danh hay nơi thường trú của cha/mẹ gán cho Subject_*.
 </nguoi_yeu_cau>

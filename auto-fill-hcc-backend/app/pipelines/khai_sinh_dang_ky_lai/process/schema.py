@@ -49,6 +49,11 @@ FIELDS: list[dict] = [
     {"name": "Subject_IdNumber",
      "desc": "Số định danh/CCCD/CMND CỦA CHÍNH người được đăng ký lại khai sinh. CHỈ trả khi hồ sơ có "
              "CCCD/CMND của chính người đó; KHÔNG lấy số của cha/mẹ, KHÔNG lấy số đăng ký trên giấy khai sinh."},
+    {"name": "Subject_BirthDateFromId",
+     "desc": "Ngày sinh IN TRÊN CCCD/CMND CỦA CHÍNH người được đăng ký lại khai sinh, dd/mm/yyyy. CHỈ trả khi "
+             "hồ sơ có CCCD/CMND của chính người đó, và đọc thẳng từ THẺ — KHÔNG chép lại từ tờ khai. Trả kể "
+             "cả khi trùng Subject_BirthDate: đây là nguồn ưu tiên của ô ngày sinh mục II vì thẻ in sẵn, còn "
+             "tờ khai là chữ viết tay. KHÔNG lấy ngày sinh trên thẻ của cha/mẹ/người nộp hộ."},
     {"name": "Subject_IdIssueDate", "desc": "Ngày cấp CCCD/CMND của chính người được đăng ký lại khai sinh, dd/mm/yyyy."},
     {"name": "Subject_IdIssuePlace",
      "desc": "Nơi cấp CCCD/CMND của chính người được đăng ký lại khai sinh — lấy từ mặt sau CCCD; RIÊNG "
@@ -162,6 +167,7 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
     "Requester_IdIssueDate",
     "Subject_BirthDate",
+    "Subject_BirthDateFromId",
     "Subject_IdIssueDate",
     "Father_IdIssueDate",
     "Mother_IdIssueDate",

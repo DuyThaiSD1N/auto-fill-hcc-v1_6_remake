@@ -1060,7 +1060,7 @@ PROCEDURES: list[dict] = [
     {
         "key": "dinh-chinh-sai-sot-bac-ninh",
         # Cổng dichvucong.bacninh.gov.vn (Liferay + select2) — nền tảng RIÊNG, engine fill-bacninh.js.
-        # maThuTucHanhChinh=1.012796 là duy nhất → nhận diện chắc chắn theo URL.
+        # maThuTucHanhChinh là duy nhất → nhận diện chắc chắn theo URL.
         # Mã thủ tục đã đổi 1.012796 -> 1.115446 theo danh mục đất đai của Sở Nông nghiệp và
         # Môi trường (thông báo 1283/TB-SNNMT ngày 04/8/2026). Cổng chỉ còn phát mã mới.
         # urlScope khoá host: 1.115446 là mã QUỐC GIA, cổng iGate tỉnh khác cũng dùng đúng mã đó —
@@ -1091,14 +1091,15 @@ PROCEDURES: list[dict] = [
         "key": "dinh-chinh-sai-sot-lam-dong",
         # Cổng dichvucong.lamdong.gov.vn (Form.io/Angular apply-online) — CÙNG nền tảng GPXD lamdong,
         # engine fill standard dom-*. URL chỉ có ObjectId THEO PHƯỜNG (đổi theo mỗi phường/xã) → KHÔNG
-        # dùng urlIncludes được. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.012796.H36" (H36 = mã tỉnh
+        # dùng urlIncludes được. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.115446.H36" (H36 = mã tỉnh
         # Lâm Đồng, giống mọi phường). Mã H36 KHÔNG có ở trang Lai Châu (tiêu đề trùng) → tách được 2 tỉnh;
         # tổng cụm dài hơn rule Lai Châu ("đính chính"+"sai sót") nên thắng điểm trên trang Lâm Đồng.
         # urlScope = cổng gate: chỉ tin text khi URL đúng cổng Lâm Đồng (URL chỉ có ObjectId theo
         # phường, không định danh thủ tục) → tránh dương tính giả nếu trang khác trùng cụm text.
         "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [
             "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
-            "1.012796.H36",
+            # Mã đổi 1.012796 -> 1.115446 (thông báo 1283/TB-SNNMT ngày 04/8/2026), giống Bắc Ninh ở trên.
+            "1.115446.H36",
         ]},
         "label": "[Tỉnh Lâm Đồng] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
@@ -1172,7 +1173,7 @@ PROCEDURES: list[dict] = [
         # Cổng dichvucong.lamdong.gov.vn (Form.io apply) — CÙNG form/nền tảng 2 thủ tục Lâm Đồng ở trên,
         # có THÊM ô "Cơ quan/ tổ chức" (data[organization]). URL /vi/padsvc/apply chỉ mang ObjectId theo
         # phường → KHÔNG dùng urlIncludes. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.116365".
-        # ⚠ Mã này hiển thị KHÔNG có hậu tố ".H36" (khác 1.012796.H36 / 1.013978.H36 của 2 thủ tục trên)
+        # ⚠ Mã này hiển thị KHÔNG có hậu tố ".H36" (khác 1.115446.H36 / 1.013978.H36 của 2 thủ tục trên)
         # nên là mã QUỐC GIA có thể dùng chung nhiều cổng → urlScope Lâm Đồng là bắt buộc để khỏi cướp
         # trang cùng mã ở tỉnh khác. Cả 2 cụm nằm trong ~600 ký tự đầu của innerText (extension cắt 6.000).
         "detect": {"urlScope": ["lamdong.gov.vn"], "textIncludes": [

@@ -47,7 +47,9 @@ FIELDS: list[dict] = [
 
     # ===== II. Người được khai sinh (CON) — từ GIẤY KHAI SINH CŨ =====
     {"name": "HoTenKS", "comp": "x-input", "desc": "Họ tên đầy đủ của con (trên giấy khai sinh cũ)."},
-    {"name": "NgaySinhChon", "comp": "x-date", "desc": "Ngày sinh con (dd/mm/yyyy)."},
+    {"name": "NgaySinhChon", "comp": "x-input",
+     "desc": "Ngày sinh người được đăng ký lại khai sinh — MỘT ô text 'dd/mm/yyyy' (eForm render "
+             "<x-input>, không phải bộ ba ngày/tháng/năm như các ô ngày khác)."},
     {"name": "GioiTinhKS", "comp": "x-select", "desc": 'Giới tính con: "Nam"/"Nữ".'},
     {"name": "DanTocKS", "comp": "x-select", "desc": "Dân tộc con."},
     {"name": "QuocTichKS", "comp": "x-select", "desc": 'Quốc tịch con. Mặc định "Việt Nam".'},

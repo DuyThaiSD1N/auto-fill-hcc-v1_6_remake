@@ -673,6 +673,11 @@ def _declaration_blocks(text) -> dict[str, str]:
     return blocks
 
 
+# Câu "Căn cứ phân vai" của khối vai dựng TẤT ĐỊNH từ tờ khai. Dùng làm dấu nhận biết: chỉ khối
+# mang đúng căn cứ này mới đủ chắc để dựng lại vai khi bước lọc đã xoá trắng field trích xuất.
+_DECLARATION_ROLE_BASIS = "Nhãn quan hệ in sẵn trên tờ khai đăng ký lại khai sinh."
+
+
 def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | None:
     head = block.splitlines()[0] if block else ""
     name, name_note = split_name_note(
@@ -724,7 +729,7 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
         f"Quốc tịch: {nationality or 'Không xác định'}\n"
         f"Trạng thái: {status}\n"
         f"Nguồn: {source}\n"
-        "Căn cứ phân vai: Nhãn quan hệ in sẵn trên tờ khai đăng ký lại khai sinh."
+        f"Căn cứ phân vai: {_DECLARATION_ROLE_BASIS}"
     )
     return {"section": section, "name": name, "id": identity}
 
@@ -1338,6 +1343,35 @@ def _identity_card_overrides(context: str, tag: str, rebuild: bool = False) -> d
     return overrides
 
 
+def _declaration_role_rebuild(context: str, tag: str) -> dict:
+    """Nhân thân cha/mẹ dựng lại từ khối phân vai, CHỈ khi khối đó đọc tất định từ tờ khai.
+
+    Dùng cho vai bị loại vì lệch tên: agent hay lấy tên cha/mẹ từ giấy tờ phụ trong hồ sơ
+    (bản cam đoan, trích lục khai tử) trong khi tờ khai — thứ CHỐT VAI — ghi tên khác. Xoá
+    trắng cả vai khi đó là mất nhiều hơn được, vì tờ khai vẫn đủ dữ liệu điền khối cha/mẹ.
+    Khối phân vai suy ra từ nguồn khác (giấy khai tử, suy theo thế hệ) KHÔNG đủ chắc để
+    lật lại kết quả trích xuất nên hàm này bỏ qua.
+    """
+    section = _section(context, tag)
+    if not section or _is_unknown(section):
+        return {}
+    if _DECLARATION_ROLE_BASIS not in _labeled_value(section, "Căn cứ phân vai"):
+        return {}
+    prefix = _ROLE_PREFIX[tag]
+    labels = list(_ROLE_CONTEXT_FIELDS)
+    if _labeled_value(section, _ID_CARD_SOURCE_LABEL):
+        labels += [(label, suffix) for label, _key, suffix in _ID_CARD_LABELS]
+    values: dict[str, str] = {}
+    for label, suffix in labels:
+        value = _labeled_value(section, label)
+        if value and "khong xac dinh" not in _fold(value):
+            values[prefix + suffix] = value
+    # Thiếu họ tên thì khối dựng lại chỉ là mảnh vụn (quốc tịch/dân tộc trơ trọi) — thà bỏ trống.
+    if not values.get(prefix + "FullName"):
+        return {}
+    return values
+
+
 def _apply_identity_card_overrides(
     fields: list[dict],
     context: str,
@@ -1614,9 +1648,14 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
             empty_prefixes.add(prefix)
     
     # ===== BƯỚC 3: KIỂM TRA CONTEXT MATCHING (logic cũ) =====
+    # Vai bị loại ở ĐÂY (người trích ra khác người khối phân vai đã chốt) còn cứu được ở BƯỚC 4B;
+    # vai bị loại ở các bước trên là dữ liệu hỏng thật nên phải nhớ riêng để không dựng lại.
+    broken_prefixes = set(invalid_prefixes)
+    mismatched_prefixes: set[str] = set()
     if context:
         for tag in _FAMILY_TAGS:
             if not _identity_matches(values, context, tag):
+                mismatched_prefixes.add(_ROLE_PREFIX[tag])
                 invalid_prefixes.add(_ROLE_PREFIX[tag])
     
     has_birth_source = bool(context) and _fold(
@@ -1652,6 +1691,29 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
         if context and name.startswith("PreviousRegistration_") and not has_birth_source:
             continue
         result.append(field)
+
+    # ===== BƯỚC 4B: DỰNG LẠI CHA/MẸ BỊ LOẠI VÌ LỆCH TÊN =====
+    # Chỉ vai mà tờ khai đã chốt tất định mới được dựng lại, và chỉ khi lý do loại duy nhất là
+    # lệch tên. Đánh dấu default để extension tô vàng: hồ sơ đang có hai tên cho cùng một vai,
+    # cán bộ phải soát lại chứ không nhận nguyên.
+    rebuilt_prefixes: set[str] = set()
+    if context:
+        from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+        for tag in ("cha", "me"):
+            prefix = _ROLE_PREFIX[tag]
+            if prefix not in mismatched_prefixes or prefix in broken_prefixes:
+                continue
+            rebuilt = _declaration_role_rebuild(context, tag)
+            if not rebuilt:
+                continue
+            for name, value in rebuilt.items():
+                comp = COMPACT_COMP_BY_NAME.get(name)
+                if comp:
+                    result.append({"name": name, "comp": comp, "value": value, "default": True})
+            rebuilt_prefixes.add(prefix)
+    invalid_prefixes -= rebuilt_prefixes
+    empty_prefixes |= rebuilt_prefixes
 
     # ===== BƯỚC 5: GIẤY TỜ TÙY THÂN CHA/MẸ LẤY THEO CCCD =====
     # Chạy CUỐI CÙNG để giá trị đọc thẳng từ tấm thẻ không bị bước lọc nào phía trên ghi đè.

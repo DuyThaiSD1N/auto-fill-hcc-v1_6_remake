@@ -266,9 +266,48 @@ def _card_by_person_name(values: dict, person_name_folded: str) -> dict | None:
     return None
 
 
+def _card_by_identity_number(values: dict, wanted) -> dict | None:
+    """Thẻ CCCD/CMND trong hồ sơ có số định danh TRÙNG KHÍT `wanted`.
+
+    Số định danh khớp là bằng chứng TẤT ĐỊNH "cùng một người" — mạnh hơn khớp theo tên
+    (xem _card_by_person_name). Nhiều thẻ cùng số -> không kết luận (hồ sơ lỗi).
+    """
+    digits = _digits(wanted)
+    if not digits:
+        return None
+    matches = [
+        card for card in _identity_cards(values)
+        if _digits(card.get("SoDinhDanh")) == digits
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if matches:
+        return None
+    if _digits(values.get("Cccd_SoDinhDanh")) == digits and values.get("Cccd_HoTen"):
+        return {
+            "HoTen": values.get("Cccd_HoTen"),
+            "SoDinhDanh": values.get("Cccd_SoDinhDanh"),
+            "NgayCap": values.get("Cccd_NgayCap"),
+            "NoiCap": values.get("Cccd_NoiCap"),
+        }
+    return None
+
+
 def _requester_name(values: dict, options: dict | None) -> str:
+    """Họ tên người yêu cầu (Mục I).
+
+    Số định danh trên tờ khai KHỚP số trên thẻ nghĩa là chắc chắn cùng một người, khi đó tên IN
+    trên thẻ thắng tên VIẾT TAY trên tờ khai: OCR chữ tay hay đọc lệch tên
+    ("Nguyễn Thanh Việt" trong khi thẻ ghi "NGUYỄN THANH KIỆT" — req_52677f3a47bb).
+    Đây đúng nếp đã áp cho khai tử (xem khai_tu/process/mapper.py: requester_card_first).
+    Không có thẻ nào khớp số thì giữ nguyên tên tờ khai, rồi tới tên tài khoản trên cổng.
+    """
     ctx = (options or {}).get("formContext") or {}
-    return str(values.get("NguoiYeuCau_HoTen") or ctx.get("applicantFullname") or "").strip()
+    card = _card_by_identity_number(values, values.get("NguoiYeuCau_SoDinhDanh"))
+    card_name = str((card or {}).get("HoTen") or "").strip()
+    return card_name or str(
+        values.get("NguoiYeuCau_HoTen") or ctx.get("applicantFullname") or ""
+    ).strip()
 
 
 def _cccd_block_is_requester(values: dict, requester_name_folded: str) -> bool:
@@ -728,11 +767,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             return None, None
         return card.get("NgayCap"), card.get("NoiCap")
 
-    if name_card:
+    # Thẻ khớp SỐ ĐỊNH DANH đứng TRƯỚC thẻ khớp họ tên: số trùng là bằng chứng tất định cùng một
+    # người, còn tên thì tờ khai viết tay hay bị OCR lệch (và nhiều thẻ trùng tên thì
+    # _card_by_person_name cố tình không kết luận) — xem thêm _requester_name.
+    printed_card = _card_by_identity_number(
+        values, values.get("NguoiYeuCau_SoDinhDanh")
+    ) or name_card
+    if printed_card:
         # Cùng một người: ngày/nơi cấp IN trên thẻ thắng dòng viết tay của tờ khai.
-        requester_issue_date = name_card.get("NgayCap") or values.get("NguoiYeuCau_NgayCap")
+        requester_issue_date = printed_card.get("NgayCap") or values.get("NguoiYeuCau_NgayCap")
         requester_issuer = (
-            normalize_issuer(name_card.get("NoiCap"))
+            normalize_issuer(printed_card.get("NoiCap"))
             or normalize_issuer(values.get("NguoiYeuCau_NoiCap"))
         )
     else:
@@ -818,6 +863,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # Số định danh phải khớp đúng ô (2) đã điền ở trên (kể cả khi đã đảo sang thẻ CCCD).
     if requester_info and requester_id:
         requester_info["soDinhDanh"] = requester_id
+    # Họ tên cũng vậy: nhánh (1) đọc thẳng NguoiYeuCau_HoTen nên vẫn mang tên viết tay kể cả khi
+    # ô (1) đã đảo sang tên in trên thẻ (số định danh khớp) → đồng bộ để hai chỗ không lệch nhau.
+    if requester_info and requester_name:
+        requester_info["hoTen"] = requester_name
+    # Ngày sinh + giới tính: eForm Mục I KHÔNG có hai ô này (chỉ họ tên, số định danh, giấy tờ tùy
+    # thân, cư trú, quan hệ), nên chúng chỉ đi theo khối này — vẫn lấy theo thẻ khớp số định danh
+    # để không phát ra dữ liệu viết tay lệch với các ô đã điền.
+    if requester_info and printed_card:
+        for key, card_key in (("ngaySinh", "NgaySinh"), ("gioiTinh", "GioiTinh")):
+            if printed_card.get(card_key) not in (None, "", {}, []):
+                requester_info[key] = printed_card[card_key]
+    # Ngày/nơi cấp: đồng bộ đúng giá trị đã điền ở ô (3) (đã ưu tiên thẻ).
+    if requester_info and requester_issue_date:
+        requester_info["ngayCap"] = requester_issue_date
+    if requester_info and requester_issuer:
+        requester_info["noiCap"] = requester_issuer
 
     # Loại bỏ các key có giá trị None/empty
     requester_info = {k: v for k, v in requester_info.items() if v not in (None, "", {}, [])}
