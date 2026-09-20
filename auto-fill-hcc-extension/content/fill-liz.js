@@ -61,7 +61,10 @@
   }
 
   function inputOf(matField) {
-    return matField.querySelector("input.mat-input-element, input[matinput], input");
+    // Có form dùng <textarea> cho ô nội dung dài (tóm tắt tài liệu, ghi chú) — cùng cách gõ như input.
+    return matField.querySelector(
+      "input.mat-input-element, textarea.mat-input-element, input[matinput], textarea[matinput], input, textarea"
+    );
   }
 
   // Ô text / ngày: gõ trực tiếp (ngày dạng dd/mm/yyyy). Bỏ qua ô disabled (cổng tự điền từ tài khoản).

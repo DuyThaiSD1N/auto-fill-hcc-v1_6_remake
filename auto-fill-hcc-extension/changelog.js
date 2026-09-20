@@ -3,6 +3,42 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.19",
+    date: "19/9/2026",
+    items: [
+      "Cổng dịch vụ công báo lỗi tải tệp (\"…thất bại\"): trợ lý không còn đứng chờ lâu mà đính tiếp các tệp khác rồi tự đính lại tệp lỗi, kèm thông báo \"Dịch vụ công đang lỗi — em đang đính kèm lại\".",
+      "Hộ kinh doanh, đăng ký doanh nghiệp (dkkd.gov.vn): điền Tỉnh và Phường/Xã không còn bị hụt Phường/Xã khi cổng tải lại danh sách địa bàn; sửa điền địa chỉ kinh doanh.",
+      "Liên thông khai sinh: ô Tỉnh, Phường/Xã không còn bị treo — trợ lý không chọn được thì trả ô lại để cán bộ chọn tay bình thường.",
+    ],
+  },
+  {
+    version: "1.18.8",
+    date: "17/9/2026",
+    items: [
+      "Bảng thành phần hồ sơ chia nhánh (\"a) Đối với trường hợp…\"): trợ lý chỉ đính vào đúng nhánh của giấy tờ, không lẫn sang nhánh khác.",
+      "Cổng iGate VNPT: tích được ô chọn giấy tờ ở từng dòng thành phần hồ sơ.",
+    ],
+  },
+  {
+    version: "1.18.7",
+    date: "16/9/2026",
+    items: [
+      "Chuẩn bị cho thủ tục liên thông đăng ký khai tử: ô thời gian chết điền được cả giờ và phút, giấy tờ chỉ ghi tháng/năm hoặc năm cũng điền được.",
+      "Những ô mà cổng đã có sẵn thông tin người yêu cầu thì lấy thẳng từ đó, không gõ lại từ giấy tờ.",
+    ],
+  },
+  {
+    version: "1.18.6",
+    date: "16/9/2026",
+    items: [
+      "Panel có nút Chuyển thủ tục khác: chọn thủ tục là mở trang ngay, dùng tỉnh/xã đã lưu.",
+      "Đính kèm: lỗi của một tệp không còn kéo theo tệp khác, và khớp đúng những tên tài liệu gần giống nhau.",
+      "Biểu mẫu hộ tịch dựng lại khối sau khi điền (ô Khác, Tỉnh/Phường bị xoá trắng) nay được điền bù.",
+      "Đăng ký hộ kinh doanh: bấm quét khi đang ở màn đăng ký thì trợ lý tự vào đúng luồng Thành lập mới rồi điền tiếp.",
+      "Cổng tỉnh Quảng Ninh: bấm Chuyển thủ tục khác không còn làm mất lệnh mở thủ tục.",
+    ],
+  },
+  {
     version: "1.18.5",
     date: "14/9/2026",
     items: [

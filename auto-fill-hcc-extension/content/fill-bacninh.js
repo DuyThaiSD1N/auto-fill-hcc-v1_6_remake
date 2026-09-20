@@ -427,6 +427,48 @@
     );
   }
 
+  function componentCheckbox(id) {
+    return document.querySelector(`input[type="checkbox"][name="${PFX}thanhPhanHoSo${id}"]`);
+  }
+
+  // Ô upload của cổng KHÔNG giữ file trong form: handler `change` gọi vgcaCommand.uploadMulti() đẩy
+  // file LÊN SERVER, rồi callback _callBackUploadTPHSMulti xoá sạch input.files và append vào container
+  // `#<PFX><inputFileId>` một <div class="tphsItem"> chứa link tên file + <input hidden ...fileId>.
+  // ⇒ input.files rỗng KHÔNG có nghĩa là hỏng, và gán xong KHÔNG có nghĩa là đã lên. Đếm .tphsItem
+  // trong container mới là bằng chứng file thực sự nằm trên hồ sơ.
+  function landedContainer(id, slotKey) {
+    const slot = slotKey === "banSao" ? "banSao" : "banChinh";
+    // getElementById: id có dấu gạch dưới + số, không cần escape như selector CSS.
+    return document.getElementById(`${PFX}thanhPhanHoSo${slot}${id}`);
+  }
+
+  // Dòng thành phần: callback append <div class="tphsItem">. Ô đính kèm bổ sung là <ul> và callback
+  // append <li class="list-group-item">. Cả hai đều kèm <input type=hidden> giữ fileId.
+  function landedCount(container) {
+    if (!container) return 0;
+    const items = container.querySelectorAll(".tphsItem, li.list-group-item");
+    if (items.length) return items.length;
+    return container.querySelectorAll('input[type="hidden"][name^="' + PFX + '"]').length;
+  }
+
+  // Ô "File đính kèm khác": handler gọi uploadMulti('filethanhPhanHoSofileDinhKem', …) rồi
+  // callBackUploadMulti append vào <ul id="<PFX>filethanhPhanHoSofileDinhKem"> một
+  // <li class="list-group-item"> KÈM <input type="hidden" name="<PFX>filethanhPhanHoSofileDinhKem">.
+  // Đếm INPUT HIDDEN trên TOÀN TRANG: tên này do chính cổng đặt nên chắc chắn, không phụ thuộc việc
+  // mình đoán đúng id/kiểu phần tử của danh sách (id danh sách có thể khác giữa các thủ tục).
+  const SUPP_FILE_KEY = "filethanhPhanHoSofileDinhKem";
+
+  function suppLandedCount() {
+    const byHidden = document.querySelectorAll(
+      `input[type="hidden"][name="${PFX}${SUPP_FILE_KEY}"]`
+    ).length;
+    if (byHidden) return byHidden;
+    const list = document.getElementById(`${PFX}${SUPP_FILE_KEY}`)
+      || document.querySelector(`[id*="${SUPP_FILE_KEY}"]:not(input)`);
+    if (!list) return 0;
+    return list.querySelectorAll("li, .tphsItem").length;
+  }
+
   // Tên file đã tải (vd "Giấy chứng nhận QSDĐ.pdf"); loại trừ dòng gợi ý "cho phép .pdf,.docx…".
   const FILENAME_RE = /[^\s,\/\\]{2,}\.(pdf|docx?|xlsx?|pptx?|jpe?g|png|gif)\b/i;
 
@@ -461,6 +503,79 @@
 
   function ensureChecked(cb) {
     setChecked(cb);
+  }
+
+  const UPLOAD_POLL_MS = 250;
+  const UPLOAD_MAX_TRIES = 2;
+
+  // Upload lên server nên thời gian phụ thuộc dung lượng. Hào phóng để KHÔNG thử lại nhầm khi cổng chỉ
+  // chậm — thử lại nhầm là đính TRÙNG, tệ hơn là chờ lâu.
+  function uploadTimeoutMs(files) {
+    const mb = files.reduce((sum, f) => sum + (f.size || 0), 0) / (1024 * 1024);
+    return Math.min(90000, 15000 + Math.round(mb * 4000));
+  }
+
+  // Gán file rồi CHỜ cổng xác nhận đã lên (đếm .tphsItem trong container), chưa lên thì thử lại.
+  // Trả về SỐ TỆP thực sự lên — không đếm theo số tệp đã gán.
+  async function uploadAndConfirm(id, slot, files, label, errors) {
+    const timeout = uploadTimeoutMs(files);
+    const container = landedContainer(id, slot);
+
+    // Không xác định được container thì KHÔNG có bằng chứng để phán → gán một lượt, chờ rồi soi tên
+    // file trên dòng. Tuyệt đối không thử lại mù, vì mỗi lần thử lại là một lần upload trùng.
+    if (!container) {
+      ensureChecked(componentCheckbox(id));
+      const input = fileInputForSlot(id, slot);
+      if (!input) {
+        errors.push(`Không thấy ô ${slot} của thành phần "${label}".`);
+        return 0;
+      }
+      const multiple = !!(input.multiple || input.hasAttribute("multiple"));
+      if (!H.setFilesOnInput(input, files, { allowMultiple: multiple, assumeConsumed: true })) {
+        errors.push(`Gán file thất bại cho "${label}".`);
+        return 0;
+      }
+      await H.waitFor(() => slotHasFile(input), timeout, UPLOAD_POLL_MS);
+      return files.length;
+    }
+
+    const before = landedCount(container);
+    for (let attempt = 1; attempt <= UPLOAD_MAX_TRIES; attempt++) {
+      // Tick checkbox TRƯỚC rồi mới lấy ô upload, và lấy node SỐNG mỗi lượt: cổng re-render bảng sau
+      // mỗi lần tick/upload nên node cache từ đầu lượt có thể đã bị gỡ khỏi DOM.
+      ensureChecked(componentCheckbox(id));
+      const input = fileInputForSlot(id, slot);
+      if (!input) {
+        errors.push(`Không thấy ô ${slot} của thành phần "${label}".`);
+        return 0;
+      }
+      const multiple = !!(input.multiple || input.hasAttribute("multiple"));
+      const assigned = H.setFilesOnInput(input, files, { allowMultiple: multiple, assumeConsumed: true });
+      if (!assigned) {
+        if (attempt === UPLOAD_MAX_TRIES) {
+          errors.push(`Gán file thất bại cho "${label}".`);
+          return 0;
+        }
+        await H.sleep(500 * attempt);
+        continue;
+      }
+
+      // Upload là request bất đồng bộ lên server → đợi callback render xong, không đoán bằng sleep.
+      const live = landedContainer(id, slot) || container;
+      const done = await H.waitFor(
+        () => landedCount(live) >= before + files.length,
+        timeout,
+        UPLOAD_POLL_MS
+      );
+      if (done) return files.length;
+
+      // Lên được một phần → DỪNG, phần đã lên mà thử lại sẽ thành bản trùng.
+      const got = Math.max(0, landedCount(live) - before);
+      if (got > 0) return got;
+      console.warn("[AutoFill-BacNinh] Chưa lên, thử lại", { label, attempt, timeout });
+      await H.sleep(500 * attempt);
+    }
+    return Math.max(0, landedCount(landedContainer(id, slot) || container) - before);
   }
 
   async function attachBacNinhByPlan(payloadFiles, attachments, opts = {}) {
@@ -506,54 +621,80 @@
           errors.push(`Không khớp thành phần "${g.componentName}".`);
           continue;
         }
-        const input = fileInputForSlot(comp.id, g.slot);
-        if (!input) {
-          errors.push(`Không thấy ô ${g.slot} của thành phần "${g.componentName}".`);
-          continue;
-        }
+        const label = g.entries[0]?.item?.documentName || g.componentName;
         // Đã có file ở ô này rồi → BỎ QUA, không đính lại (tránh trùng khi chạy lại).
-        if (slotHasFile(input)) {
+        const probe = fileInputForSlot(comp.id, g.slot);
+        if (probe && slotHasFile(probe)) {
           skippedNames.push(...g.entries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
           continue;
         }
-        ensureChecked(comp.checkbox);
         const files = [];
         for (const e of g.entries) {
-          const file = H.dataUrlToFile
-            ? H.dataUrlToFile(e.payload, e.item.documentName || "")
-            : e.payload;
-          if (file) files.push(file);
+          try {
+            const file = H.dataUrlToFile ? H.dataUrlToFile(e.payload, e.item.documentName || "") : e.payload;
+            if (file) files.push(file);
+          } catch (err) {
+            // Một tệp hỏng KHÔNG được làm sập cả lượt đính kèm (các nhóm sau vẫn phải chạy).
+            console.warn("[AutoFill-BacNinh] Đọc file lỗi:", e.item.fileName, err);
+            errors.push(`Không đọc được tệp "${e.item.fileName}".`);
+          }
         }
         if (!files.length) continue;
-        const multiple = !!(input.multiple || input.hasAttribute("multiple"));
-        const ok = H.setFilesOnInput(input, files, {
-          allowMultiple: multiple,
-          assumeConsumed: true,
-        });
-        if (ok) attachedNames.push(...files.map((f) => f.name));
-        else errors.push(`Gán file thất bại cho "${g.componentName}".`);
-        await H.sleep(150);
+
+        const landed = await uploadAndConfirm(comp.id, g.slot, files, label, errors);
+        attachedNames.push(...files.slice(0, landed).map((f) => f.name));
+        if (landed < files.length) {
+          errors.push(`Chỉ lên được ${landed}/${files.length} tệp ở thành phần "${g.componentName}".`);
+        }
       }
 
       // Ô ĐÍNH KÈM BỔ SUNG (ngoài danh mục) — CCCD/ủy quyền/đơn... vào input fsfile...fileDinhKem.
       if (suppEntries.length) {
         const suppInput = document.querySelector(`input[type="file"][name*="fsfilethanhPhanHoSofileDinhKem"]`)
           || document.querySelector(`input[type="file"][name*="fileDinhKem"]`);
+        // Ô bổ sung nằm ngoài bảng thành phần → không dùng slotHasFile (nó quét theo <tr>).
+        const suppBefore = suppLandedCount();
         if (!suppInput) {
           errors.push("Không thấy ô đính kèm bổ sung (fileDinhKem).");
-        } else if (slotHasFile(suppInput)) {
+        } else if (suppBefore > 0) {
           skippedNames.push(...suppEntries.map((e) => e.item.documentName || e.item.fileName).filter(Boolean));
         } else {
           const files = [];
           for (const e of suppEntries) {
-            const file = H.dataUrlToFile ? H.dataUrlToFile(e.payload, e.item.documentName || "") : e.payload;
-            if (file) files.push(file);
+            try {
+              const file = H.dataUrlToFile ? H.dataUrlToFile(e.payload, e.item.documentName || "") : e.payload;
+              if (file) files.push(file);
+            } catch (err) {
+              console.warn("[AutoFill-BacNinh] Đọc file lỗi:", e.item.fileName, err);
+              errors.push(`Không đọc được tệp "${e.item.fileName}".`);
+            }
           }
           if (files.length) {
-            const ok = H.setFilesOnInput(suppInput, files, { allowMultiple: true, assumeConsumed: true });
-            if (ok) attachedNames.push(...files.map((f) => f.name));
-            else errors.push("Gán file thất bại cho ô đính kèm bổ sung.");
-            await H.sleep(150);
+            // Ô bổ sung cũng upload bất đồng bộ như các dòng thành phần → cũng phải chờ xác nhận,
+            // và cũng phải THỬ LẠI nếu lượt đầu rơi (plugin VGCA dùng chung cho mọi ô).
+            const timeout = uploadTimeoutMs(files);
+            let landed = 0;
+            for (let attempt = 1; attempt <= UPLOAD_MAX_TRIES; attempt++) {
+              if (!H.setFilesOnInput(suppInput, files, { allowMultiple: true, assumeConsumed: true })) {
+                if (attempt === UPLOAD_MAX_TRIES) errors.push("Gán file thất bại cho ô đính kèm bổ sung.");
+                await H.sleep(500 * attempt);
+                continue;
+              }
+              await H.waitFor(() => suppLandedCount() >= files.length, timeout, UPLOAD_POLL_MS);
+              landed = Math.max(0, suppLandedCount());
+              if (landed > 0) break;
+              console.warn("[AutoFill-BacNinh] Ô bổ sung chưa lên, thử lại", { attempt, can: files.length });
+              await H.sleep(500 * attempt);
+            }
+            attachedNames.push(...files.slice(0, landed).map((f) => f.name));
+            if (landed < files.length) {
+              errors.push(`Chỉ lên được ${landed}/${files.length} tệp ở ô "File đính kèm khác".`);
+              console.warn("[AutoFill-BacNinh] Ô bổ sung:", {
+                inputName: suppInput.name,
+                danhSachTimThay: !!document.getElementById(`${PFX}${SUPP_FILE_KEY}`),
+                soHiddenDemDuoc: document.querySelectorAll(`input[type="hidden"][name="${PFX}${SUPP_FILE_KEY}"]`).length,
+              });
+            }
           }
         }
       }

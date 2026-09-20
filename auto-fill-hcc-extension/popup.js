@@ -3536,43 +3536,22 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   if (skippedNames) msg += `\nĐã có: ${skippedNames}`;
   const failedNames = (attachRes?.failedNames || []).join(", ");
   if (failedNames) msg += `\nKhông đính kèm được, đã bỏ qua: ${failedNames}`;
-  // Tệp BỊ LOẠI TỪ ĐẦU: planner bỏ tệp vượt trần dung lượng của cổng (Lào Cai 6 MB) TRƯỚC khi OCR nên
-  // nó không có mặt trong kế hoạch, và số "đã đính kèm x/x" vẫn đẹp. Trước đây chỉ ghi console →
-  // cán bộ đọc "Đã đính kèm 9/9 file" rồi bấm nộp, trong khi hồ sơ thiếu hẳn Giấy chứng nhận.
-  // Nhận ra bằng cách soi tệp nào KHÔNG được mục kế hoạch nào tham chiếu. Tệp bị bỏ có chủ đích
-  // (CCCD — planner ghi vào extracted.classified) thì không tính, để hồ sơ bình thường vẫn dọn được.
-  const droppedNames = (() => {
-    const used = new Set();
-    for (const item of rawAttachments) {
-      const src = Array.isArray(item?.sourceFileIndexes) && item.sourceFileIndexes.length
-        ? item.sourceFileIndexes
-        : [item?.fileIndex];
-      for (const i of src) if (Number.isInteger(i)) used.add(i);
-    }
-    const classified = planRes.extracted?.classified;
-    // Pipeline không khai classified → không phân biệt được "bỏ có chủ đích" với "bị loại" → im lặng
-    // như cũ, không làm phiền các thủ tục khác.
-    if (!Array.isArray(classified)) return [];
-    const known = new Set(classified.map((c) => String(c?.fileName || "")));
-    return payloadFiles
-      .map((file, i) => (used.has(i) || known.has(String(file?.name || "")) ? "" : file?.name || ""))
-      .filter(Boolean);
-  })();
-  if (droppedNames.length) {
-    msg += `\n⚠ CHƯA vào hồ sơ ${droppedNames.length} tệp (thường do vượt dung lượng cổng cho phép):`
-      + `\n${droppedNames.join(", ")}`
-      + "\nHãy giảm DPI/quét lại cho nhẹ bớt rồi đính kèm lại — cổng cũng không nhận tệp quá nặng.";
-  }
-  // errors[] từ BE có thể chứa chi tiết kỹ thuật → đưa xuống "Xem chi tiết", KHÔNG nối thô vào câu chính.
+  // errors[] từ BE có thể chứa chi tiết kỹ thuật → chỉ log, KHÔNG nối thô vào thông báo thành công.
   if (planRes.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
-  // Đính chưa đủ (attachedCount < số nhóm) hoặc có tệp bị loại → cảnh báo (warn) thay vì báo thành công
-  // trọn vẹn. warn cũng giữ lại danh sách giấy tờ (clearFilesAfterAttach) để cán bộ còn tệp mà xử lý.
-  const warn = attachedCount < sendFiles.length || droppedNames.length > 0;
+  // Đính chưa đủ (attachedCount < số nhóm) → cảnh báo (warn) thay vì báo thành công trọn vẹn.
+  const warn = attachedCount < sendFiles.length;
+  // errors[] của ENGINE đính kèm nói rõ dòng nào trượt ("Không khớp thành phần …", "Chỉ lên được 0/1
+  // tệp …"). Trước đây bị nuốt hoàn toàn nên cán bộ thấy "đã đính kèm" mà hồ sơ vẫn thiếu.
+  const attachErrors = (attachRes?.errors || []).filter(Boolean);
+  if (attachErrors.length) {
+    console.warn("[AutoFill-Attach] Lỗi khi gắn file vào trang:", attachErrors);
+    if (warn) msg += `\nChưa xong: ${attachErrors.join("; ")}`;
+  }
   const toastMessage = warn
     ? "Đã xử lý xong bước đính kèm. Vui lòng rà soát hồ sơ."
     : "Đã đính kèm xong hồ sơ.";
   await showPageToast(toastMessage, warn ? "warn" : "success");
-  return { ok: true, message: msg, warn, requestId: planRes.requestId, details: planRes.errors || [] };
+  return { ok: true, message: msg, warn, requestId: planRes.requestId };
 }
 
 // Đính kèm XONG TRỌN VẸN → dọn danh sách giấy tờ. Giấy tờ đã nộp lên cổng rồi thì để lại trong
@@ -4414,7 +4393,7 @@ ocrBtn.addEventListener("click", async () => {
       const attachRes = await runAttachmentPlanForCurrentFiles(options);
       showSupportCode(attachRes?.requestId);
       if (attachRes?.error) setStatus(attachRes.error, "err");
-      else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"), attachRes.details);
+      else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"));
       await clearFilesAfterAttach(attachRes);
       return;
     }
@@ -4463,13 +4442,6 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
       cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
-      // [Lào Cai] 1.115671: người nộp thường là NGƯỜI ĐẠI DIỆN ký thay tổ chức → phải có mốc tài
-      // khoản mới tách được nhân thân người nộp khỏi nhân thân chủ hồ sơ là tổ chức.
-      cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||
-      // [Lào Cai] 1.115694: bắt buộc có mốc tài khoản, nếu không BE sẽ bỏ trống khối người nộp.
-      cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua" ||
-      // [Lào Cai] 1.115677: Mẫu 39 hay do vợ/chồng ký nộp thay → phải có mốc tài khoản mới biết ai đi nộp.
-      cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
@@ -4713,7 +4685,7 @@ if (attachStepBtn) {
         console.warn("[Popup] Attach step failed", res);
         setStatus(res.error, "err");
       } else {
-        setStatus(res.message, res.warn ? "warn" : "ok", res.details);
+        setStatus(res.message, res.warn ? "warn" : "ok");
         await clearFilesAfterAttach(res);
       }
     } catch (e) {

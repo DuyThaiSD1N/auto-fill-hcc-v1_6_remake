@@ -84,8 +84,9 @@ assert.match(poller, /finishPendingAttach\(true\)/);
 assert.match(poller, /action: ok \? "clearPendingAttach" : "failPendingAttach"/);
 
 // Mỗi trạng thái ví tài liệu bị treo được reload tối đa 3 lần và guard phải sống qua reload cùng tab.
-assert.match(content, /code: "wallet-stale-modal"/);
-assert.match(content, /code: "wallet-modal-not-opened"/);
+// Hai ca modal hỏng nay phân biệt được ngay tại chỗ mở: modal CŨ còn treo (reload chữa được)
+// vs màn sạch mà click không ra modal (reload vô ích).
+assert.match(content, /code: stuckDialog \? "wallet-stale-modal" : "wallet-modal-not-opened"/);
 assert.match(content, /code: "wallet-device-upload-not-opened"/);
 assert.match(content, /function isSplitReloadableWalletError\(code\)/);
 assert.match(content, /const SPLIT_MAX_RELOADS_PER_WALLET_CODE = 3;/);
@@ -125,7 +126,10 @@ assert.match(content, /const deviceUpload = await openWalletDeviceUpload\(dialog
 assert.match(content, /dialog = deviceUpload\.dialog \|\| dialog/);
 
 // Không được coi modal đóng là đã đính file: phải thấy tên file thật trên dòng hồ sơ.
-assert.match(content, /async function waitForPersistedAttachment\(row, planItem = \{\}, previousName = "", timeout = 25000\)/);
+// Hạn chờ 25s → 8s. Bỏ cuộc sớm giờ RẺ: hoãn lại, đính tệp khác, lượt sau quay lại — mà lượt
+// sau phần so-tên sẽ nhận ra tệp đã lên trang nên không đính trùng. Chờ 25s thì mỗi tệp hỏng
+// bắt tất cả tệp còn lại xếp hàng.
+assert.match(content, /async function waitForPersistedAttachment\(row, planItem = \{\}, previousName = "", timeout = 8000,\n\s*uploadFailed = null\)/);
 assert.match(content, /const attachedName = rowAttachedFileName\(liveRow\)/);
 // Poll bền với cổng ĐƠ: check LẦN CUỐI sau vòng lặp (Date.now vượt hạn ngay trong lúc đơ).
 assert.match(content, /while \(Date\.now\(\) - start < timeout\)[\s\S]{0,200}?\n\s*return probe\(\);/);

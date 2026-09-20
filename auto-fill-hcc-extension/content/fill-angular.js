@@ -97,6 +97,8 @@ async function fillFormAngular(fields) {
       let ok = false;
       if (el.tagName.toLowerCase() === "mat-radio-group" || type === "radio") ok = fillNgRadio(el, f.value);
       else if (type === "checkbox") ok = await fillNgCheckbox(el, f.value);
+      else if (type === "sao-tu-o") ok = await fillNgSaoTuO(el, f.value);
+      else if (type === "ngaysinh") ok = await fillNgNgaySinh(el, f.value);
       else if (type === "date") ok = fillNgDate(el, f.value);
       else if (type === "select") ok = await fillNgSelect(el, f.value);
       else if (type === "diachi") ok = await fillNgDiaChi(el, f.value);
@@ -206,6 +208,84 @@ function fillNgDate(el, value) {
   setNativeValue(inp, String(value));
   inp.dispatchEvent(new Event("blur", { bubbles: true }));
   markFilled(inp.parentElement || inp);
+  return true;
+}
+
+// Sao giá trị từ một ô KHÁC đang có sẵn trên trang (vd khối "Thông tin người yêu cầu" do cổng đổ từ
+// VNeID) sang ô đích. Dùng cho các ô mà giấy tờ không có nhưng biểu mẫu khai là "cùng người":
+// backend gửi { tu: "<formcontrolname nguồn>" } thay cho giá trị.
+function docGiaTriO(fcn) {
+  const el = document.querySelector(`[formcontrolname="${fcn}"]`);
+  if (!el) return "";
+  const ng = el.querySelector(".ng-value-label, .ng-value");
+  if (ng && ng.textContent.trim()) return ng.textContent.trim();
+  const ms = el.querySelector(".mat-select-value-text");
+  if (ms && ms.textContent.trim()) return ms.textContent.trim();
+  const inp = Array.from(el.querySelectorAll("input")).find((i) => i.style.display !== "none" && i.value);
+  return inp ? String(inp.value).trim() : "";
+}
+
+async function fillNgSaoTuO(el, info) {
+  const nguon = (info || {}).tu;
+  const giaTri = nguon ? docGiaTriO(nguon) : "";
+  if (!giaTri) {
+    console.warn(`[AutoFill-NG] sao-tu-o: ô nguồn [${nguon}] chưa có giá trị`);
+    return false;
+  }
+  const kieu = el.getAttribute("type") || "text";
+  if (kieu === "ngaysinh") return await fillNgNgaySinh(el, giaTri);
+  if (kieu === "select") return await fillNgSelect(el, giaTri);
+  if (kieu === "date") return fillNgDate(el, giaTri);
+  return fillNgText(el, giaTri);
+}
+
+// Ô app-input type="ngaysinh" của cổng liên thông: một mat-select ĐỊNH DẠNG + ô ngày. Định dạng có
+// 4 lựa chọn (Ngày/Tháng/Năm · Ngày/Tháng/Năm giờ:phút · Tháng/Năm · Năm); chọn loại có giờ thì cổng
+// mới render <bhxh-time-input> gồm 2 ô hours/minutes. Nhờ vậy giấy tờ chỉ ghi năm vẫn điền được.
+// Tách phần đọc chuỗi ra hàm THUẦN để test không cần DOM.
+function phanTichNgayGio(value) {
+  const raw = String(value == null ? "" : value).trim();
+  const hai = (x) => String(x).padStart(2, "0");
+  let m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[\s,]+(\d{1,2}):(\d{1,2}))?$/);
+  if (m) {
+    const ngay = `${hai(m[1])}/${hai(m[2])}/${m[3]}`;
+    if (m[4] != null) return { dinhDang: "Ngày/Tháng/Năm giờ:phút", ngay, gio: hai(m[4]), phut: hai(m[5]) };
+    return { dinhDang: "Ngày/Tháng/Năm", ngay };
+  }
+  m = raw.match(/^(\d{1,2})\/(\d{4})$/);
+  if (m) return { dinhDang: "Tháng/Năm", ngay: `${hai(m[1])}/${m[2]}` };
+  m = raw.match(/^(\d{4})$/);
+  if (m) return { dinhDang: "Năm", ngay: m[1] };
+  return null;
+}
+
+async function fillNgNgaySinh(el, value) {
+  const d = phanTichNgayGio(value);
+  if (!d) return fillNgDate(el, value); // dạng lạ: giữ nếp cũ, gõ thẳng vào ô ngày
+
+  // 1) Định dạng trước, vì ô giờ:phút chỉ xuất hiện sau khi chọn.
+  const dinhDang = el.querySelector("mat-select");
+  if (dinhDang) await fillMatSelect(dinhDang, d.dinhDang, el);
+
+  // 2) Giờ/phút: 2 ô riêng trong <bhxh-time-input>, không phải mat-input.
+  if (d.gio) {
+    await waitFor(() => el.querySelector('input[formcontrolname="hours"]'), 1500);
+    const gio = el.querySelector('input[formcontrolname="hours"]');
+    const phut = el.querySelector('input[formcontrolname="minutes"]');
+    if (gio && phut) {
+      setNativeValue(gio, d.gio, { commit: true });
+      setNativeValue(phut, d.phut, { commit: true });
+    } else {
+      console.warn("[AutoFill-NG] ngaysinh: chọn định dạng giờ:phút nhưng không thấy ô giờ/phút");
+    }
+  }
+
+  // 3) Ô ngày: input matinput đang HIỆN (ô datepicker đi kèm luôn display:none).
+  const oNgay = Array.from(el.querySelectorAll("input.mat-input-element"))
+    .find((i) => i.style.display !== "none");
+  if (!oNgay) return false;
+  setNativeValue(oNgay, d.ngay, { commit: true });
+  markFilled(oNgay.closest("mat-form-field") || oNgay.parentElement || oNgay);
   return true;
 }
 
@@ -668,5 +748,6 @@ function fillNgRadio(el, value) {
 }
 
   H.fillFormAngular = fillFormAngular;
+  H.phanTichNgayGio = phanTichNgayGio; // test dùng (tests/test-ngay-gio-lien-thong.js)
   H.resolveAltNameGroups = resolveAltNameGroups; // dùng chung: legacy engine (content.js) cũng gọi
 })();

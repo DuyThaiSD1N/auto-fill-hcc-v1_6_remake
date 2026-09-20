@@ -20,10 +20,6 @@ assert.match(
   "Chỉ retry field từng điền thành công để không tốn thời gian với option không tồn tại"
 );
 assert.match(source, /refreshRequestedLegacyMarks\(fields\)/, "Màu phải được tính lại từ giá trị cuối");
-// req_8b71d6a7265b: eForm dựng lại khối sau khi Dân tộc → "Khác", xóa ô ghi tay và Tỉnh/Phường vừa điền.
-assert.match(source, /const LEGACY_REPAIRABLE_COMPS = new Set\(\[[^\]]*"x-select-area"/, "x-select-area phải được sửa lại khi bị xóa");
-assert.match(source, /function legacySelectAreaState\(container, usedName, field\)/);
-assert.match(source, /hasLegacyOtherTextDriver\(field\) \|\| !!field\.otherOf/, "Ô ghi tay \"Khác\" của dropdown được thử lại dù lượt đầu hụt");
 
 const helperStart = source.indexOf("const LEGACY_REPAIRABLE_COMPS");
 const helperEnd = source.indexOf("\nfunction findLegacyRadioTarget", helperStart);

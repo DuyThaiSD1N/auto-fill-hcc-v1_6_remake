@@ -21,7 +21,7 @@ const lateRelation = [
   { name: "LoaiDangKy", comp: "x-radio" },
   { name: "HoVaTenC", comp: "x-input" },
   { name: "HoTenKS", comp: "x-input" },
-  { name: "NgaySinhChon", comp: "x-input" },
+  { name: "NgaySinhChon", comp: "x-date" },
   { name: "HoTenMeKS", comp: "x-input" },
   { name: "QuanHe", comp: "x-radio", value: "ChaDe" },
   { name: "HoTenChaKS", comp: "x-input" },

@@ -15,8 +15,9 @@ const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
 test("hỏng một tệp thì HOÃN rồi đi tiếp, không chặn các tệp sau", () => {
   assert.match(content, /const MAX_ROUNDS = 3/);
   assert.match(content, /for \(let round = 1; round <= MAX_ROUNDS && queue\.length/);
-  // Backoff TĂNG DẦN trước retry: cổng 500/đơ cần thời gian hồi; tệp cuối/duy nhất chờ lâu hơn.
-  assert.match(content, /const backoffMs = \(round - 1\) \* 3000 \+ \(queue\.length <= 1 \? 2500 : 0\)/);
+  // Trước retry chỉ chờ PHẦN CÒN THIẾU kể từ lần hỏng gần nhất: đính các tệp sau đã là khoảng nghỉ.
+  assert.match(content, /const minGapMs = round === 2 \? 500 : 1000;/);
+  assert.match(content, /const backoffMs = Math\.max\(0, minGapMs - \(Date\.now\(\) - lastFailAt\)\)/);
   assert.match(content, /deferred\.push\(\{ item, index: i \}\);\s*\n\s*continue;/);
   assert.match(content, /queue = deferred;/);
 });
@@ -46,7 +47,7 @@ test("tạo được DÒNG chưa phải là đính xong", () => {
 
 test("chỉ tô xanh khi TÊN TỆP hiện thật trên dòng", () => {
   assert.match(content, /async function waitForPersistedAttachment/);
-  assert.match(content, /const persisted = await waitForPersistedAttachment\(row, planItem, existingName\)/);
+  assert.match(content, /const persisted = await waitForPersistedAttachment\(row, planItem, existingName, 8000, uploadFailed\)/);
   assert.match(content, /if \(!persisted\)[\s\S]{0,360}?markAttachmentResult\(liveRow \|\| dialog, false\)/);
   assert.match(content, /markAttachmentResult\(persisted\.row, true\)/);
 });
