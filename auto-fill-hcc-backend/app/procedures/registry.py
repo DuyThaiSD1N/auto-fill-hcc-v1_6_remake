@@ -127,6 +127,12 @@ from app.pipelines.xac_nhan_tiep_tuc_dat_nong_nghiep.attach import (
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
+from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.attach import (
+    plan as thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
+)
+from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.process import (
+    run as thu_hoi_gcn_cap_lan_dau_lao_cai_process,
+)
 from app.pipelines.thu_hoi_gcn_cap_sai_bac_ninh.process import run as thu_hoi_gcn_cap_sai_bac_ninh_process
 from app.pipelines.thu_hoi_gcn_cap_sai_bac_ninh.attach import plan as thu_hoi_gcn_cap_sai_bac_ninh_attach
 from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_bac_ninh.process import run as dang_ky_bien_dong_chuyen_nhuong_bac_ninh_process
@@ -2946,6 +2952,59 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT) — CÙNG form bước 2 CongDan_*/ChuHoSo_* với
+        # 1.115651/1.115667/1.115668/1.115671 (engine dom-*), mapping theo
+        # "mapping_thu_hoi_huy_GCN_laocai.xlsx". Khác các thủ tục anh em: ba ô địa chỉ của khối NGƯỜI NỘP là
+        # bắt buộc (*) và cổng để TRỐNG → pipeline điền thêm CongDan_maTinhThanh/maPhuongXa/diaChi.
+        # Bước 3 "Thành phần hồ sơ" là bảng PHẲNG đúng 2 dòng (văn bản kiến nghị + GCN đã cấp) + "Giấy tờ khác".
+        # 1.115687 là mã QUỐC GIA, bản Bắc Ninh (thu-hoi-gcn-cap-sai-bac-ninh) là DOM khác hẳn (Liferay) →
+        # urlScope khóa host Lào Cai. Key trùng mục ke_khai_links (1.115687).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": [
+                "thu hồi giấy chứng nhận đã cấp lần đầu không đúng quy định",
+                "do người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của pháp luật đất đai do "
+            "người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau "
+            "khi thu hồi"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị thu hồi/hủy Giấy chứng nhận quyền sử dụng đất (văn bản kiến nghị việc cấp Giấy "
+            "chứng nhận không đúng quy định) — BẢN CHÍNH, có chữ ký/điểm chỉ của chủ sử dụng đất → dòng 1.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất ĐÃ CẤP (bản gốc) — quét đủ trang bìa (có số phát hành) và "
+            "trang ghi số vào sổ, thửa đất, sơ đồ → dòng 2. Nhiều trang rời đều vào chung dòng này.\n"
+            "3. Nếu người khác đi nộp thay: Giấy ủy quyền có công chứng/chứng thực.\n"
+            "4. Nếu có: văn bản rà soát của Chi nhánh Văn phòng đăng ký đất đai, giấy tờ của người cùng đứng "
+            "tên trên Giấy chứng nhận (văn bản đồng ý, giấy báo tử, đăng ký kết hôn), bản sao Giấy chứng nhận "
+            "bị cấp trùng — trợ lý đưa hết xuống 'Giấy tờ khác'.\n"
+            "5. CCCD của chủ hồ sơ và của người nộp hồ sơ — KHÔNG đính kèm, chỉ dùng để đọc nhân thân.\n"
+            "⚠ MỖI TỆP KHÔNG QUÁ 6 MB — đây là trần của chính cổng Lào Cai, tệp nặng hơn thì cả trợ lý lẫn cán "
+            "bộ đính tay đều không đưa lên được. Bản scan màu sổ đỏ rất hay vượt: quét lại ở DPI thấp hơn / "
+            "chuyển xám, hoặc tách theo từng trang trước khi tải lên.\n"
+            "Chủ hồ sơ = người ĐỨNG ĐƠN (khi nộp thay là Bên A của Giấy ủy quyền), KHÔNG phải người đi nộp và "
+            "cũng KHÔNG phải người đang đứng tên trên Giấy chứng nhận bị cấp sai.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản định "
+            "danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Tỉnh/Phường-Xã/Số nhà của khối này là bắt "
+            "buộc và cổng để trống: trợ lý điền theo nơi thường trú của chính người đi nộp đọc được từ CCCD "
+            "hoặc Giấy ủy quyền; Di động/Email phải gõ tay.\n"
+            "Ô 'Người nộp là chủ hồ sơ' trợ lý KHÔNG tích (tích là cổng chép khối người nộp đè lên khối chủ "
+            "hồ sơ) — thông tin chủ hồ sơ đã được điền thẳng từ giấy tờ.\n"
+            "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè.\n"
+            "Lưu ý số liệu hay lệch giữa các giấy tờ (số thửa, số CCCD, năm sinh ghi trên Giấy chứng nhận cũ) "
+            "— cán bộ rà lại Đơn trước khi ký số và nộp."
+        ),
+    },
+    {
         "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667/1.115668/1.115651 (engine dom-*), mapping theo
@@ -4859,6 +4918,7 @@ _PIPELINE = {
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_process,
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
@@ -4927,6 +4987,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_attach,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_attach,
+    "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
