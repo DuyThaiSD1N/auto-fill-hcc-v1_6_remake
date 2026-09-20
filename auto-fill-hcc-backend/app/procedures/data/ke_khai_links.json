@@ -1680,6 +1680,24 @@
       "autoConfirm": true
     },
     {
+      "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai",
+      "code": "1.115687",
+      "label": "Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của pháp luật đất đai do người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau khi thu hồi",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4aff-a31b-7705-8c6a-d3f67dda92cb",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc",
+      "code": "1.115688",
+      "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4b03-9c73-71ae-8de9-38ebf0433622",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh",
       "code": "1.003868",
       "label": "Thủ tục cấp giấy phép xuất bản tài liệu không kinh doanh",

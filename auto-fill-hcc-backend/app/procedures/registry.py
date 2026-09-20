@@ -53,6 +53,8 @@ from app.pipelines.cap_GCN_nhan_chuyen_nhuong.attach import plan as cap_gcn_nhan
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process import run as cap_gcn_nhan_chuyen_nhuong_process
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.attach import plan as chuyen_doi_md_sd_dat_lao_cai_attach
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.process import run as chuyen_doi_md_sd_dat_lao_cai_process
+from app.pipelines.dang_ky_bien_dong_lao_cai.attach import plan as dang_ky_bien_dong_lao_cai_attach
+from app.pipelines.dang_ky_bien_dong_lao_cai.process import run as dang_ky_bien_dong_lao_cai_process
 from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.attach import plan as dang_ky_quyen_su_dung_dat_lao_cai_attach
 from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.process import run as dang_ky_quyen_su_dung_dat_lao_cai_process
 from app.pipelines.dang_ky_kinh_doanh.process import run as dang_ky_kinh_doanh_process
@@ -2944,6 +2946,71 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
+        # với 1.115667/1.115668/1.115651 (engine dom-*), mapping theo
+        # "mapping_dang-ky-bien-dong_1.115671_LaoCai_MTTQ.xlsx".
+        # Bước 3 "Thành phần hồ sơ" chia 5 NHÓM "(1)…(5) Đối với trường hợp…", chọn nhóm theo VĂN BẢN CĂN CỨ
+        # (attach/catalog.py) + "Giấy tờ khác"; nhóm (1) không có dòng tiêu đề nên neo vào dòng tiêu đề cột.
+        # Cụm tên thủ tục dùng chung với bản Quảng Ninh/Lâm Đồng (1.115839/1.013980) → urlScope khóa host Lào Cai.
+        # Cụm "theo thỏa thuận của các thành viên hộ gia đình" KHÔNG có ở trang 1.115668 và ngược lại.
+        # Key trùng mục ke_khai_links (1.115671).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký biến động đối với trường hợp thay đổi quyền sử dụng đất, quyền sở hữu tài sản "
+            "gắn liền với đất theo thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; quyền sử "
+            "dụng đất xây dựng công trình trên mặt đất phục vụ cho việc vận hành, khai thác sử dụng công trình "
+            "ngầm, quyền sở hữu công trình ngầm; bán tài sản, điều chuyển, chuyển nhượng quyền sử dụng đất là "
+            "tài sản công; nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất theo kết quả giải "
+            "quyết tranh chấp, khiếu nại, tố cáo về đất đai hoặc bản án, quyết định của Tòa án, quyết định thi "
+            "hành án, quyết định hoặc phán quyết của Trọng tài thương mại Việt Nam; nhận quyền sử dụng đất, "
+            "quyền sở hữu tài sản gắn liền với đất do xử lý tài sản thế chấp đã được đăng ký, bao gồm cả xử lý "
+            "khoản nợ có nguồn gốc từ khoản nợ xấu của tổ chức tín dụng, chi nhánh ngân hàng nước ngoài"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24 ban hành kèm theo Quyết "
+            "định số 47/2026/QĐ-UBND) → dòng 1 của nhóm.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất ĐÃ CẤP → dòng 2. Quyết định giao đất/cấp Giấy chứng nhận "
+            "của chính thửa đất đó cũng đính chung vào dòng này (Đơn mục 3 liệt kê chung một gạch đầu dòng).\n"
+            "3. VĂN BẢN CĂN CỨ — đây là thứ quyết định trợ lý tích vào nhóm nào trong 5 nhóm, nên phải có:\n"
+            "   • (1) Văn bản thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng;\n"
+            "   • (2) Văn bản cho phép thay đổi QSDĐ xây dựng công trình trên mặt đất phục vụ công trình ngầm;\n"
+            "   • (3) Quyết định/thông báo cho phép bán, ĐIỀU CHUYỂN, chuyển nhượng QSDĐ là tài sản công, biên "
+            "bản bàn giao tiếp nhận tài sản công (kèm hợp đồng mua bán tài sản công nếu là trường hợp bán);\n"
+            "   • (4) Bản án, quyết định của Tòa án, quyết định thi hành án, biên bản hòa giải thành, phán "
+            "quyết của Trọng tài thương mại;\n"
+            "   • (5) Hợp đồng thế chấp/chuyển nhượng do xử lý tài sản thế chấp, hợp đồng mua bán tài sản đấu giá.\n"
+            "4. Nếu có: bản vẽ tách thửa/hợp thửa (Mẫu số 28), mảnh trích đo bản đồ địa chính, giấy ủy quyền, "
+            "GCN đăng ký doanh nghiệp hoặc quyết định về chức năng, nhiệm vụ (chứng minh tư cách pháp nhân).\n"
+            "5. CCCD của chủ hồ sơ (cá nhân) và của người nộp hồ sơ — KHÔNG đính kèm, chỉ dùng để đọc nhân thân.\n"
+            "⚠ MỖI TỆP KHÔNG QUÁ 6 MB — đây là trần của chính cổng Lào Cai, tệp nặng hơn thì cả trợ lý lẫn "
+            "cán bộ đính tay đều không đưa lên được. Bản scan màu Giấy chứng nhận (có sơ đồ thửa đất) và văn "
+            "bản nhiều trang rất hay vượt: quét lại ở DPI thấp hơn / chuyển xám, hoặc tách nhỏ theo từng "
+            "giấy tờ trước khi tải lên.\n"
+            "Chủ hồ sơ = bên ĐỨNG TÊN SAU BIẾN ĐỘNG ở mục 1.a của Đơn (với hồ sơ điều chuyển tài sản công là "
+            "cơ quan/tổ chức TIẾP NHẬN trên biên bản bàn giao, không phải tên cũ trên Giấy chứng nhận). Người "
+            "ký 'TM. Cơ quan' chỉ là người đại diện.\n"
+            "Ô 'Đối tượng nộp hồ sơ' có 4 lựa chọn: Mặt trận Tổ quốc/hội/đoàn thể → 'Tổ chức khác'; UBND, sở, "
+            "ban, ngành, đơn vị sự nghiệp → 'Cơ quan nhà nước'; công ty, hợp tác xã, ngân hàng → 'Doanh "
+            "nghiệp'. Mã số thuế thường không có trong hồ sơ dạng này, để trống cho cán bộ nhập.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản định "
+            "danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Ngày/nơi cấp căn cước lấy được từ mục 1.d "
+            "của Đơn khi hồ sơ chưa có bản sao CCCD; ngày sinh/giới tính/dân tộc thì phải có CCCD mới điền.\n"
+            "Thành phần hồ sơ: trợ lý tự tích checkbox + đính kèm từng dòng trong ĐÚNG MỘT nhóm; giấy tờ không "
+            "có dòng trong nhóm đó (vd mảnh trích đo khi hồ sơ thuộc nhóm (3)) xuống 'Giấy tờ khác'.\n"
+            "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè."
+        ),
+    },
+    {
         "key": "chuyen-muc-dich-su-dung-dat-lao-cai",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667/1.115668. Đính kèm fixed-slot theo 4 nhóm "(1)…(4) Hồ sơ đề nghị…" chọn theo mẫu đơn
@@ -4791,6 +4858,7 @@ _PIPELINE = {
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
+    "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
@@ -4858,6 +4926,7 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_attach,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
+    "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
