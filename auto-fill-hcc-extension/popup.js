@@ -4435,6 +4435,8 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
       cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
+      // [Lào Cai] 1.115694: bắt buộc có mốc tài khoản, nếu không BE sẽ bỏ trống khối người nộp.
+      cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {

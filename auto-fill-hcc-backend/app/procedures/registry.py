@@ -110,6 +110,12 @@ from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
 from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
+from app.pipelines.dk_giay_cn_thua_dat_dien_tich_tang_them.process import (
+    run as dk_giay_cn_thua_dat_dien_tich_tang_them_process,
+)
+from app.pipelines.dk_giay_cn_thua_dat_dien_tich_tang_them.attach import (
+    plan as dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
+)
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
@@ -2966,6 +2972,62 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — bước 2 dùng CÙNG bộ ô
+        # CongDan_*/ChuHoSo_* với 1.115667/1.115668 (engine dom-*), mapping theo
+        # "Mapping_DVC_LaoCai_Buoc2_TranThiMinhHue.xlsx".
+        # Bước 3 "Thành phần hồ sơ" là bảng PHẲNG 5 dòng (attach/planner.py), khớp ô theo slotIndex +
+        # tích checkbox từng dòng; giấy tờ không có dòng riêng xuống "Giấy tờ khác".
+        # Cụm "diện tích tăng thêm do thay đổi ranh giới…" cũng có ở bản Lâm Đồng (1.116356, form
+        # Form.io hoàn toàn khác) → urlScope khóa host Lào Cai; cụm thứ hai ("nhận chuyển quyền sử
+        # dụng một phần thửa đất…") là phần CHỈ 1.115694 có, không trùng thủ tục Lào Cai nào khác.
+        # Key trùng mục ke_khai_links (1.115694).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": [
+                "diện tích tăng thêm do thay đổi ranh giới so với giấy chứng nhận đã cấp",
+                "nhận chuyển quyền sử dụng một phần thửa đất đã được cấp giấy chứng nhận",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi "
+            "ranh giới so với Giấy chứng nhận đã cấp đối với trường hợp thửa đất gốc đã có Giấy chứng "
+            "nhận, phần diện tích đất tăng thêm do nhận chuyển quyền sử dụng một phần thửa đất đã được "
+            "cấp Giấy chứng nhận"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24) → dòng 1.\n"
+            "2. Giấy chứng nhận đã cấp cho thửa đất GỐC → dòng 2.\n"
+            "3. Hợp đồng/văn bản chuyển quyền phần diện tích tăng thêm đã công chứng, kèm phụ lục và "
+            "biên bản bàn giao; hóa đơn, văn bản xác nhận đã thanh toán → cùng dòng 3.\n"
+            "4. Mảnh trích đo/chỉnh lý bản đồ địa chính thửa đất → dòng 4.\n"
+            "5. Giấy ủy quyền/văn bản về việc đại diện (nếu nộp thay) → dòng 5.\n"
+            "6. CCCD của chủ hồ sơ và của người nộp; nếu có: giấy chứng nhận kết hôn, GCN đăng ký doanh "
+            "nghiệp, tờ khai lệ phí trước bạ, tờ khai thuế → xuống 'Giấy tờ khác'.\n"
+            "Chủ hồ sơ = bên NHẬN chuyển quyền đứng tên mục 1 của Đơn, KHÔNG phải người đứng tên trên "
+            "Giấy chứng nhận đã cấp (GCN có thể vẫn mang tên chủ đầu tư/bên chuyển quyền). Hai vợ chồng "
+            "cùng nhận thì điền theo người đứng tên đầu trên Đơn — bước 2 không có ô cho đồng sở hữu.\n"
+            "Ngày sinh/số căn cước/ngày cấp lấy theo CCCD khi đơn hoặc hợp đồng ghi lệch.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản "
+            "định danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Trợ lý chỉ điền nhân thân người "
+            "nộp khi hồ sơ có giấy tờ của CHÍNH người đó (khớp số căn cước, hoặc khớp họ tên tài khoản); "
+            "Tỉnh/Phường-Xã/Địa chỉ/Di động còn thiếu sẽ được cảnh báo để cán bộ nhập tay, KHÔNG lấy của "
+            "chủ hồ sơ.\n"
+            "Đính kèm: trợ lý tự tích dòng và bơm tệp theo loại giấy tờ CHÍNH của từng tệp; MỖI TỆP chỉ "
+            "vào ĐÚNG MỘT dòng. Hồ sơ quét gộp (tờ khai thuế nằm chung file với Đơn, CCCD nằm chung file "
+            "với Giấy ủy quyền) thì phần đi kèm nằm cùng dòng với giấy tờ chính — trợ lý cảnh báo để cán "
+            "bộ đề nghị tách tệp nếu nơi tiếp nhận yêu cầu. Dòng 'Mảnh trích đo' thường không có trong "
+            "hồ sơ dân nộp; trợ lý nhắc chứ không tự tích.\n"
+            "Ô 'Về việc' (*) ở bước Thành phần hồ sơ do cổng điền sẵn tên thủ tục — trợ lý KHÔNG ghi đè."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -4681,6 +4743,8 @@ _PIPELINE = {
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
+    "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
+        dk_giay_cn_thua_dat_dien_tich_tang_them_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
@@ -4745,6 +4809,8 @@ _ATTACH_PIPELINE = {
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_attach,
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
+    "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
+        dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,

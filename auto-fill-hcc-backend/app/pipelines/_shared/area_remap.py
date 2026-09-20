@@ -369,9 +369,16 @@ _WARD_NAME_AMBIGUOUS: set[str] = set()
 _CURRENT_PAIRS: set[tuple[str, str]] = set()
 # fold(ten tinh, ca dang "Tinh X" lan "X") -> ten tinh khong tien to.
 _CURRENT_PROVINCES: dict[str, str] = {}
+# Nhu tren nhung da bo moi ky tu khong phai chu/so -- de bat cach viet dinh lien ("TP.HoChiMinh").
+_PROVINCE_NOSPACE: dict[str, str] = {}
+# fold() cua MOI cach viet danh muc chap nhan: nhan day du va ten tran.
+_PROVINCE_LABELS_FOLD: set[str] = set()
 
 
 _PROVINCE_PREFIX_RE = re.compile(r"^(tinh|thanh pho|tp)\.?\s+")
+
+# Nhan loai don vi cap xa dung o dau ten ("Xa Vinh Loc", "Phuong 1", "TT. Dat Do").
+_WARD_LABEL_RE = re.compile(r"^\s*(xã|phường|thị trấn|tt\.?)\b", re.IGNORECASE)
 
 
 def _fold_province(text: str) -> str:
@@ -429,6 +436,8 @@ def _build_reverse_catalog_index() -> None:
         province_name = province["name"]
         for label in (province["text"], province["name"]):
             _CURRENT_PROVINCES[_fold_province(label)] = province_name
+            _PROVINCE_NOSPACE[re.sub(r"[^a-z0-9]+", "", _fold_province(label))] = province_name
+            _PROVINCE_LABELS_FOLD.add(_fold(label))
         for ward_full_name in WARDS_BY_SLUG.get(province["slug"], {}).get("communes") or []:
             for key in _ward_keys(ward_full_name):
                 _CURRENT_PAIRS.add((_fold_province(province_name), key))
@@ -474,6 +483,67 @@ def _remap_by_new_province(tinh: str, xa: str) -> Optional[str]:
     if key in _REMAP_BY_NEW_PROVINCE_AMBIGUOUS:
         return None
     return _REMAP_BY_NEW_PROVINCE.get(key)
+
+
+# Viet tat cap tinh khong nam trong danh muc: khoa = fold da bo moi ky tu khong phai chu/so.
+# ket_hon va trich_luc moi noi giu mot ban sao cua danh sach nay; gio chung mot cho.
+_PROVINCE_ALIASES = {
+    "hcm": "Hồ Chí Minh",
+    "tphcm": "Hồ Chí Minh",
+    "thanhphohcm": "Hồ Chí Minh",
+}
+
+
+def canonical_province(value: object) -> Optional[str]:
+    """Ten tinh/thanh nhu DANH MUC ghi, bo moi tien to loai don vi. Khong nhan ra -> None.
+
+    Giay to viet ten tinh moi kieu: "TP Ho Chi Minh", "TP. Ho Chi Minh", "Thanh pho Ho Chi Minh",
+    "Tinh Bac Ninh", hay tran "Ho Chi Minh" -- LLM tra lai nguyen van cach viet no doc duoc. Dropdown
+    tren cong chi co MOT nhan ("Thanh pho Ho Chi Minh"), con extension khop option theo ranh gioi tu:
+    "Ho Chi Minh" nam tron trong nhan do nen chon duoc, "TP Ho Chi Minh" thi khong nam trong ma cung
+    khong chua nhan -> truot ca hai chieu, o tinh bo trong (req_dd367e1e8712).
+
+    Tra ten TRAN cua danh muc ("Ho Chi Minh", "Bac Ninh") -- dung cach viet ma phan lon du lieu
+    dang chay van chon duoc, va nam tron trong nhan day du nen cong liet ke kieu nao cung khop.
+    """
+    key = _fold_province(str(value or ""))
+    if not key:
+        return None
+    name = _CURRENT_PROVINCES.get(key)
+    if not name:
+        # Viet tat dinh lien khong co khoang trang sau tien to ("TP.HCM", "TPHCM", "HCM") -- _fold_province
+        # chi cat duoc tien to CO khoang trang nen cac dang nay roi het xuong day.
+        compact = re.sub(r"[^a-z0-9]+", "", key)
+        # Tien to dinh lien vao ten, khong co khoang trang de _fold_province cat ("TP.Hồ Chí Minh").
+        bare = re.sub(r"^(tinh|thanhpho|tp)", "", compact)
+        name = (
+            _PROVINCE_NOSPACE.get(compact)
+            or _PROVINCE_ALIASES.get(compact)
+            or _PROVINCE_NOSPACE.get(bare)
+            or _PROVINCE_ALIASES.get(bare)
+        )
+    if not name:
+        return None
+    return name
+
+
+def canonical_ward(tinh: object, xa: object) -> Optional[str]:
+    """Ten phuong/xa DAY DU trong danh muc ("Vinh Loc" -> "Xa Vinh Loc"). Khong chac -> None.
+
+    Ten TRAN khong co nhan loai la mo ho voi chinh danh muc: HCM co ca "Xa Vinh Loc" lan "Xa Tan
+    Vinh Loc", ma "Vinh Loc" nam tron trong ca hai -> extension thay 2 option cung khop long va BO
+    QUA (khong doan bua), o Phuong/Xa bo trong. Dan ve ten day du thi khop CHINH XAC dung mot option.
+
+    Chi tra khi ten fold (GIU dau thanh) ung voi DUNG MOT xa cua tinh do.
+    """
+    province = canonical_province(tinh)
+    ward = str(xa or "").strip()
+    if not province or not ward:
+        return None
+    key = (_fold(province), _fold_accent(ward))
+    if key in _CURRENT_WARD_AMBIGUOUS:
+        return None
+    return _CURRENT_WARD.get(key)
 
 
 def is_current_area(tinh: str, xa: str) -> bool:
@@ -608,7 +678,7 @@ def _remap_area_cached(
     xa_expanded = _expand_abbrev(xa) if xa else xa
 
     # Khi xa đã có nhãn hành chính rõ, diaChi chỉ là chi tiết địa chỉ.
-    xa_has_admin_label = bool(re.match(r"^\s*(xã|phường|thị trấn|tt\.?)\b", xa_expanded, flags=re.IGNORECASE)) if xa_expanded else False
+    xa_has_admin_label = bool(_WARD_LABEL_RE.match(xa_expanded)) if xa_expanded else False
 
     # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
     tinh_for_lookup = re.sub(
@@ -728,6 +798,20 @@ _VILLAGE_PREFIX_RE = re.compile(
 )
 
 
+def _canonical_tinh(value: object) -> str:
+    """Chi sua cach viet ten tinh khi no KHONG phai mot cach viet hop le cua danh muc.
+
+    Danh muc chap nhan hai cach: nhan day du ("Thanh pho Ho Chi Minh") va ten tran ("Ho Chi Minh").
+    Gia tri da la mot trong hai thi de yen -- mot so pipeline (ket_hon, trich_luc) da chot nhan day
+    du va co test khoa, sua tiep la dap len quyet dinh cua ho. Chi cac cach viet NGOAI danh muc
+    ("TP Ho Chi Minh", "TP.HCM", "Tinh Bac Ninh") moi duoc dan ve ten tran.
+    """
+    text = str(value or "")
+    if _fold(text) in _PROVINCE_LABELS_FOLD:
+        return text
+    return canonical_province(text) or text
+
+
 def remap_area(
     area: Optional[dict],
     allow_diachi_fallback: bool = False,
@@ -748,7 +832,10 @@ def remap_area(
     if not area or not isinstance(area, dict):
         return area
 
-    tinh_raw: str = area.get("tinh") or ""
+    # Dua ten tinh ve dung cach viet trong danh muc TRUOC moi buoc tra cuu: cac bang ben duoi deu
+    # fold bo tien to nen ket qua tra cuu khong doi, nhung gia tri DI RA thi het "TP "/"Tinh " -- do
+    # moi la thu cong dung de chon option.
+    tinh_raw: str = _canonical_tinh(area.get("tinh"))
     xa_raw:   str = area.get("xa")   or ""
     dia_raw:  str = area.get("diaChi") or ""
     # "huyen"/"quanHuyen" la khoa GOI Y, khong phai o tren bieu mau (dia chi hien hanh chi con 2
@@ -785,6 +872,11 @@ def remap_area(
     )
 
     out = {**area, "tinh": tinh_moi, "xa": xa_moi, "diaChi": dia_moi}
+    # Ten xa tran ("Vinh Loc") van con mo ho voi danh muc -> dan ve ten day du ("Xa Vinh Loc").
+    # Chi cham vao ten CHUA co nhan loai: ten da co nhan ("Phuong Xuan Huong") la dung nguyen van
+    # option tren cong roi, noi them hau to se lam truot.
+    if out.get("xa") and not _WARD_LABEL_RE.match(str(out["xa"])):
+        out["xa"] = canonical_ward(out.get("tinh"), out["xa"]) or out["xa"]
     out.pop("huyen", None)
     out.pop("quanHuyen", None)
     return out
@@ -942,6 +1034,8 @@ def reload() -> None:
     _build_current_ward_index()
     _PROVINCE_BY_WARD.clear()
     _WARD_NAME_AMBIGUOUS.clear()
+    _PROVINCE_NOSPACE.clear()
+    _PROVINCE_LABELS_FOLD.clear()
     _CURRENT_PAIRS.clear()
     _CURRENT_PROVINCES.clear()
     _build_reverse_catalog_index()
