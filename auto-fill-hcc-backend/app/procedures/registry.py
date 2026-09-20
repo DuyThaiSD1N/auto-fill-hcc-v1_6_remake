@@ -116,6 +116,12 @@ from app.pipelines.dk_giay_cn_thua_dat_dien_tich_tang_them.process import (
 from app.pipelines.dk_giay_cn_thua_dat_dien_tich_tang_them.attach import (
     plan as dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
 )
+from app.pipelines.xac_nhan_tiep_tuc_dat_nong_nghiep.process import (
+    run as xac_nhan_tiep_tuc_dat_nong_nghiep_process,
+)
+from app.pipelines.xac_nhan_tiep_tuc_dat_nong_nghiep.attach import (
+    plan as xac_nhan_tiep_tuc_dat_nong_nghiep_attach,
+)
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
@@ -3028,6 +3034,49 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT, Nth.FormBuilder) — bước 2 dùng CÙNG bộ ô
+        # CongDan_*/ChuHoSo_* với 1.115667/1.115668/1.115694 (engine dom-*), mapping theo
+        # "Mapping_XN_thoi_han_SDD_nong_nghiep_LaoCai.xlsx".
+        # Bước 3 "Thành phần hồ sơ" là bảng PHẲNG 2 dòng (attach/planner.py), khớp ô theo slotIndex +
+        # tích checkbox từng dòng; giấy tờ không có dòng riêng xuống "Giấy tờ khác".
+        # urlScope khóa host Lào Cai vì mã QG 1.115677 dùng chung cho nhiều cổng iGate tỉnh khác.
+        # Key trùng mục ke_khai_links (1.115677).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["xác nhận tiếp tục sử dụng đất nông nghiệp"],
+            "headingDisabled": True,
+        },
+        "label": "[Lào Cai] Xác nhận tiếp tục sử dụng đất nông nghiệp",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị xác nhận lại thời hạn sử dụng đất nông nghiệp (Mẫu số 39 ban hành kèm theo "
+            "Quyết định số 47/2026/QĐ-UBND) → dòng 1.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất ĐÃ CẤP → dòng 2. File này thường quét gộp luôn mảnh "
+            "trích đo địa chính ở trang cuối — cứ để nguyên một tệp, trợ lý nhắc để cán bộ tự quyết có "
+            "cần tách hay không.\n"
+            "3. Nếu có: mảnh trích đo nộp riêng, giấy ủy quyền, CCCD/giấy chứng nhận kết hôn → xuống "
+            "'Giấy tờ khác'. CCCD không thuộc thành phần hồ sơ của thủ tục này, chỉ đính khi nơi tiếp "
+            "nhận yêu cầu.\n"
+            "Chủ hồ sơ = người sử dụng đất đứng tên ĐẦU TIÊN ở mục 1 của Đơn Mẫu số 39. Hai vợ chồng "
+            "cùng sử dụng đất thì điền theo người đứng tên đầu — bước 2 không có ô cho đồng sử dụng "
+            "đất; việc VỢ/CHỒNG ký mục 'Người làm đơn' KHÔNG làm đổi chủ hồ sơ.\n"
+            "Ngày sinh/số căn cước/ngày cấp lấy theo CCCD. Giấy chứng nhận cũ chỉ in số CMND 9 số — "
+            "trợ lý luôn chọn số căn cước 12 số. Đơn Mẫu số 39 không có ngày sinh/giới tính/dân tộc, "
+            "không nộp kèm CCCD thì các ô đó để trống cho cán bộ nhập.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản "
+            "định danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Trợ lý chỉ điền nhân thân "
+            "người nộp khi hồ sơ có giấy tờ của CHÍNH người đó. Địa chỉ/điện thoại ở mục 2 của Đơn là "
+            "của cả hộ nên chỉ dùng lại cho người nộp khi người đăng nhập có tên ở mục 1; ô (*) còn "
+            "thiếu sẽ được cảnh báo để cán bộ nhập tay.\n"
+            "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè."
+        ),
+    },
+    {
         "key": "dang-ky-lap-dat-su-dung-nuoc-sach",
         "detect": {"textIncludes": ["đăng ký lắp đặt sử dụng nước sạch"], "headingDisabled": True},
         "label": "Thủ tục đăng ký lắp đặt sử dụng nước sạch",
@@ -4745,6 +4794,7 @@ _PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
@@ -4811,6 +4861,7 @@ _ATTACH_PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_attach,

@@ -4437,6 +4437,8 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
       // [Lào Cai] 1.115694: bắt buộc có mốc tài khoản, nếu không BE sẽ bỏ trống khối người nộp.
       cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua" ||
+      // [Lào Cai] 1.115677: Mẫu 39 hay do vợ/chồng ký nộp thay → phải có mốc tài khoản mới biết ai đi nộp.
+      cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
