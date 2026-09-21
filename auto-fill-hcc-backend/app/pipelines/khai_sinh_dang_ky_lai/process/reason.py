@@ -352,6 +352,57 @@ def _role_year(section: str) -> int | None:
     return int(years[-1]) if years else None
 
 
+def _year_of(value) -> int | None:
+    """Năm sinh đọc từ một giá trị field thô ("1970", "10/05/2000", "Không xác định")."""
+    years = re.findall(r"(?<!\d)(?:18|19|20)\d{2}(?!\d)", str(value or ""))
+    return int(years[-1]) if years else None
+
+
+def _role_is_subject(values: dict, prefix: str) -> bool:
+    """Vai cha/mẹ vừa trích ra có ĐÚNG LÀ chính người con hay không.
+
+    CHA VÀ CON TRÙNG TÊN LÀ CHUYỆN THƯỜNG ở hồ sơ hộ tịch (con trai đặt trùng tên bố), nên chỉ
+    riêng tên trùng thì CHƯA đủ để kết luận agent chép nhầm dữ liệu con sang vai cha — xoá theo
+    tên trùng là mất trắng toàn bộ Father_*/Mother_* của một người có thật. Đúng luật đang dùng ở
+    bước phân vai (_validate_family_sections): số định danh, năm sinh hoặc giới tính khác nhau là
+    bằng chứng chắc chắn đây là hai người, phải giữ vai lại.
+    """
+    subject_name = _fold(str(values.get("Subject_FullName") or ""))
+    role_name = _fold(str(values.get(f"{prefix}FullName") or ""))
+    if not subject_name or not role_name or role_name != subject_name:
+        return False
+
+    subject_id = _digits(values.get("Subject_IdNumber"))
+    role_id = _digits(values.get(f"{prefix}IdNumber"))
+    if subject_id and role_id:
+        return subject_id == role_id
+
+    subject_year = _year_of(values.get("Subject_BirthDate")) or _year_of(
+        values.get("Subject_BirthDateFromId")
+    )
+    role_year = _year_of(values.get(f"{prefix}BirthDateOrYear"))
+    if subject_year and role_year and subject_year != role_year:
+        return False
+
+    subject_gender = _fold(values.get("Subject_Gender"))
+    role_gender = _fold(values.get(f"{prefix}Gender"))
+    if subject_gender and role_gender and subject_gender != role_gender:
+        return False
+
+    # Không có gì phân biệt được hai người: giữ nguyên cách xử lý thận trọng cũ.
+    return True
+
+
+# Khối vai dựng từ nhãn quan hệ IN SẴN trên tờ khai ("Người cha:", "Người mẹ:"). Cả hai pipeline
+# khai sinh đều ghi câu căn cứ bắt đầu bằng cụm này.
+_DECLARATION_BASIS_PREFIX = "Nhãn quan hệ in sẵn trên tờ khai"
+
+
+def _from_declaration_label(section: str) -> bool:
+    """Vai này có được chốt từ một nhãn quan hệ in sẵn trên tờ khai hay không."""
+    return _labeled_value(section, "Căn cứ phân vai").startswith(_DECLARATION_BASIS_PREFIX)
+
+
 def _unknown_role_section(reason: str) -> str:
     return (
         "Họ tên: Không xác định\n"
@@ -675,7 +726,7 @@ def _declaration_blocks(text) -> dict[str, str]:
 
 # Câu "Căn cứ phân vai" của khối vai dựng TẤT ĐỊNH từ tờ khai. Dùng làm dấu nhận biết: chỉ khối
 # mang đúng căn cứ này mới đủ chắc để dựng lại vai khi bước lọc đã xoá trắng field trích xuất.
-_DECLARATION_ROLE_BASIS = "Nhãn quan hệ in sẵn trên tờ khai đăng ký lại khai sinh."
+_DECLARATION_ROLE_BASIS = f"{_DECLARATION_BASIS_PREFIX} đăng ký lại khai sinh."
 
 
 def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | None:
@@ -734,15 +785,20 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
     return {"section": section, "name": name, "id": identity}
 
 
-def _blank_identity_line(section: str) -> str:
-    """Trả khối vai với dòng "Số CCCD/CMND" bị xoá về "Không xác định"."""
+def _set_role_label(section: str, label: str, value: str) -> str:
+    """Trả khối vai với MỘT nhãn được đặt lại, giữ nguyên các nhãn còn lại."""
     lines = []
     for line in section.splitlines():
-        label, separator, _ = line.partition(":")
-        if separator and label.strip() == "Số CCCD/CMND":
-            line = "Số CCCD/CMND: Không xác định"
+        name, separator, _ = line.partition(":")
+        if separator and name.strip() == label:
+            line = f"{label}: {value}"
         lines.append(line)
     return "\n".join(lines)
+
+
+def _blank_identity_line(section: str) -> str:
+    """Trả khối vai với dòng "Số CCCD/CMND" bị xoá về "Không xác định"."""
+    return _set_role_label(section, "Số CCCD/CMND", "Không xác định")
 
 
 def _drop_shared_declaration_ids(roles: dict[str, dict]) -> dict[str, dict]:
@@ -1176,7 +1232,33 @@ def _validated_requester(section: str, options: dict | None, has_declaration: bo
     )
 
 
-def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
+def _parent_birth_from_documents(section: str, documents, child_year: int) -> str:
+    """Ngày/năm sinh của CHÍNH người này đọc từ một giấy tờ khác trong hồ sơ.
+
+    Chỉ gọi khi năm sinh trên tờ khai phi lý (cha/mẹ trẻ hơn con). Dòng năm sinh cha/mẹ là chữ
+    VIẾT TAY nên OCR đọc lệch một chữ số là chuyện thường ("1938" → "1981"), trong khi trích lục
+    khai tử/CCCD là chữ IN. Nhãn quan hệ in sẵn trên tờ khai đã chốt AI là cha/mẹ, nên gặp đúng
+    một giấy mang họ tên đó với năm sinh hợp thế hệ thì lấy năm sinh ấy, thay vì xoá trắng vai và
+    mất luôn họ tên, dân tộc, quốc tịch, trạng thái đã chết mà tờ khai ghi rõ.
+    """
+    if not _from_declaration_label(section):
+        return ""
+    name = _role_name(section)
+    if not name:
+        return ""
+    found = set()
+    for document in _identity_units(documents):
+        person = _person_from_document(document)
+        if not person or not _names_align(name, person.get("name")):
+            continue
+        year = person.get("year")
+        birth = _labeled_value(person.get("section") or "", "Ngày sinh")
+        if year and birth and child_year - year >= 15:
+            found.add(birth)
+    return found.pop() if len(found) == 1 else ""
+
+
+def _validate_family_sections(sections: dict[str, str], documents=()) -> dict[str, str]:
     """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất."""
     result = dict(sections)
 
@@ -1202,15 +1284,29 @@ def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
     child_id = _role_id(result.get("con", ""))
     child_name = _fold(_role_name(result.get("con", "")))
     child_year = _role_year(result.get("con", ""))
+    child_gender = _fold(_labeled_value(result.get("con", ""), "Giới tính"))
+    child_declared = _from_declaration_label(result.get("con", ""))
     for tag in ("cha", "me"):
         parent_id = _role_id(result.get(tag, ""))
         parent_name = _fold(_role_name(result.get(tag, "")))
         parent_year = _role_year(result.get(tag, ""))
+        parent_gender = _fold(_labeled_value(result.get(tag, ""), "Giới tính"))
         if child_id and parent_id:
             same_person = child_id == parent_id
+        elif child_declared and _from_declaration_label(result.get(tag, "")):
+            # Tờ khai in sẵn HAI nhãn quan hệ khác nhau cho hai khối này, nên đây là hai người
+            # kể cả khi trùng tên — con trai đặt trùng tên bố là chuyện thường. Xoá vai ở đây là
+            # mất trắng khối cha/mẹ mà chính tờ khai đã ghi rõ.
+            same_person = False
         else:
             same_person = bool(child_name and parent_name and child_name == parent_name) and not (
                 child_year and parent_year and child_year != parent_year
+            ) and not (
+                child_gender
+                and parent_gender
+                and "khong xac dinh" not in child_gender
+                and "khong xac dinh" not in parent_gender
+                and child_gender != parent_gender
             )
         if same_person:
             result[tag] = _unknown_role_section("Trùng chính người đã được phân vai là con.")
@@ -1218,11 +1314,21 @@ def _validate_family_sections(sections: dict[str, str]) -> dict[str, str]:
     # Nếu có đủ năm sinh, cha/mẹ phải thuộc thế hệ trước con ít nhất khoảng 15 năm.
     if child_year:
         for tag in ("cha", "me"):
-            parent_year = _role_year(result.get(tag, ""))
-            if parent_year and child_year - parent_year < 15:
-                result[tag] = _unknown_role_section(
-                    "Năm sinh không tạo được khoảng cách thế hệ cha/mẹ - con hợp lý."
-                )
+            section = result.get(tag, "")
+            parent_year = _role_year(section)
+            if not parent_year or child_year - parent_year >= 15:
+                continue
+            birth = _parent_birth_from_documents(section, documents, child_year)
+            if birth:
+                # Giấy tờ khác của chính người đó chốt được năm sinh hợp lý: sửa mỗi dòng năm
+                # sinh, giữ nguyên cả khối để biểu mẫu vẫn có đủ mục cha/mẹ.
+                result[tag] = _set_role_label(section, "Ngày sinh", birth)
+                continue
+            # Không giấy nào cứu được năm sinh thì vẫn xoá vai: khối cha/mẹ sai thế hệ mà không
+            # có nguồn nào xác nhận là dữ liệu hỏng, điền ra biểu mẫu còn tệ hơn bỏ trống.
+            result[tag] = _unknown_role_section(
+                "Năm sinh không tạo được khoảng cách thế hệ cha/mẹ - con hợp lý."
+            )
     return result
 
 
@@ -1283,13 +1389,17 @@ def _apply_identity_card_facts(
     Điều kiện áp dụng đúng như nghiệp vụ yêu cầu: họ tên đọc được ở khối vai (nguồn số 1 là
     tờ khai) khớp với họ tên in trên một tấm CCCD/CMND trong hồ sơ. Khớp nhiều hơn một thẻ
     thì không thẻ nào chốt được người, để nguyên tờ khai còn hơn điền nhầm thẻ người khác.
+
+    TRÍCH LỤC KHAI TỬ cũng là giấy tờ nói về CHÍNH người đó, chỉ không cấp số giấy tờ tùy thân.
+    Cha/mẹ đã mất thì tờ khai thường bỏ trống hoặc ghi mờ năm sinh, dân tộc, giới tính — những
+    nhãn đó phải được bù từ trích lục, bằng không khối cha/mẹ ra biểu mẫu chỉ còn mỗi họ tên.
     """
-    cards = [
+    people = [
         person
         for document in _identity_units(documents)
-        if (person := _person_from_document(document)) and person.get("is_identity")
+        if (person := _person_from_document(document))
     ]
-    if not cards:
+    if not people:
         return sections
 
     result = dict(sections)
@@ -1297,15 +1407,19 @@ def _apply_identity_card_facts(
         section = result.get(tag) or ""
         if not section or _is_unknown(section):
             continue
-        matched = [card for card in cards if _card_belongs_to_role(section, card)]
-        if len(matched) != 1:
+        matched = [person for person in people if _card_belongs_to_role(section, person)]
+        if not matched:
             continue
-        # Đã chốt được đúng tấm thẻ của người này thì mọi nhãn tờ khai bỏ trống đều lấy bù từ
-        # thẻ (giới tính, dân tộc, quốc tịch...) — tờ khai vẫn thắng ở nhãn nào nó có ghi.
-        result[tag] = _stamp_identity_card(
-            _merge_role_section(section, matched[0]["section"]),
-            matched[0],
-        )
+        # Nhân thân: hồ sơ chốt được DUY NHẤT một người khớp vai này thì mọi nhãn tờ khai bỏ
+        # trống đều lấy bù (năm sinh, giới tính, dân tộc, quốc tịch...) — tờ khai vẫn thắng ở
+        # nhãn nào nó có ghi. Khớp nhiều người thì không ai chốt được, giữ nguyên tờ khai.
+        if len(matched) == 1:
+            section = _merge_role_section(section, matched[0]["section"])
+        # Ba ô giấy tờ tùy thân chỉ CCCD/CMND mới cấp được; trích lục khai tử không chen vào.
+        cards = [person for person in matched if person.get("is_identity")]
+        if len(cards) == 1:
+            section = _stamp_identity_card(_merge_role_section(section, cards[0]["section"]), cards[0])
+        result[tag] = section
     return result
 
 
@@ -1425,7 +1539,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     if not any(not _is_unknown(s) for s in sections.values()):
         return ""
 
-    sections = _validate_family_sections(sections)
+    sections = _validate_family_sections(sections, documents)
 
     # Tờ khai chốt AI là cha/mẹ; tấm CCCD của chính người đó chốt SỐ ĐỊNH DANH, NGÀY CẤP, NƠI CẤP.
     sections = _apply_identity_card_facts(sections, documents)
@@ -1577,7 +1691,6 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     mother_name = _fold(str(values.get("Mother_FullName") or ""))
     father_id = _digits(values.get("Father_IdNumber"))
     mother_id = _digits(values.get("Mother_IdNumber"))
-    subject_name = _fold(str(values.get("Subject_FullName") or ""))
     subject_birth = _fold(str(values.get("Subject_BirthDate") or ""))
     
     # ĐỌC GIỚI TÍNH TRỰC TIẾP TỪ EXTRACTED FIELDS (LLM output)
@@ -1619,12 +1732,13 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     if mother_gender_extracted in {"nam", "male"} and mother_name and "Mother_" not in invalid_prefixes:
         invalid_prefixes.add("Mother_")
     
-    # KIỂM TRA 2: Father/Mother trùng với Subject (con)
-    if subject_name and "Father_" not in invalid_prefixes and "Mother_" not in invalid_prefixes:
-        if father_name and father_name == subject_name:
-            invalid_prefixes.add("Father_")
-        if mother_name and mother_name == subject_name:
-            invalid_prefixes.add("Mother_")
+    # KIỂM TRA 2: Father/Mother CHÍNH LÀ Subject (con) — agent chép nhầm dữ liệu con sang vai đó.
+    # Xét TỪNG VAI độc lập (trước đây chỉ cần một vai đã bị loại ở bước trên là cả phép kiểm tra
+    # này bị bỏ qua) và chỉ loại khi KHÔNG có bằng chứng nào cho thấy đây là hai người khác nhau
+    # — xem _role_is_subject.
+    for prefix in ("Father_", "Mother_"):
+        if prefix not in invalid_prefixes and _role_is_subject(values, prefix):
+            invalid_prefixes.add(prefix)
     
     # KIỂM TRA 2B: cha/mẹ CÙNG ngày sinh với con → chắc chắn là dữ liệu của con bị chép sang vai đó.
     if subject_birth:

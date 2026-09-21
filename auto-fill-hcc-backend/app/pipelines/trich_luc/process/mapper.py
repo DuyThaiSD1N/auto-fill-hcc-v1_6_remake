@@ -257,6 +257,63 @@ def _id_doc_type_with_number(number: str, hint, issuer: str = "") -> str:
     return id_doc_type(hint or "Căn cước", issuer)
 
 
+def _id_doc_rank(number) -> int:
+    """Thứ hạng giấy tờ tùy thân theo số: CCCD/Căn cước (12 số) > CMND (9 số) > không đọc được."""
+    length = len(_digits(number))
+    if length == 12:
+        return 2
+    if length == 9:
+        return 1
+    return 0
+
+
+def _id_document_source(card_number, declaration_number) -> str:
+    """Cụm giấy tờ tùy thân của mục I lấy từ THẺ trong hồ sơ hay từ ĐƠN — trả "card"/"declaration".
+
+    MỘT NGƯỜI CÓ CẢ CCCD LẪN CMND thì CCCD thắng: số 12 chữ số là giấy tờ đang có hiệu lực và là
+    số phải khớp Cơ sở dữ liệu quốc gia về dân cư, còn CMND 9 số chỉ là giấy tờ cũ người dân ghi
+    theo thói quen. Hai nguồn CÙNG HẠNG (hoặc chỉ thẻ đọc được số) thì thẻ thắng: số/ngày/nơi cấp
+    trên thẻ là bản IN, còn trên đơn là chữ viết tay nên OCR hay sai.
+
+    Caller lấy CẢ CỤM (số, ngày cấp, nơi cấp, loại) từ nguồn thắng — trộn số của CCCD với ngày cấp
+    của CMND là dựng ra một giấy tờ không tồn tại.
+    """
+    if _id_doc_rank(declaration_number) > _id_doc_rank(card_number):
+        return "declaration"
+    return "card"
+
+
+def _prefer_cccd_between_cards(values: dict) -> dict:
+    """Hồ sơ có cả CCCD lẫn CMND CỦA CÙNG MỘT NGƯỜI thì chỉ giữ CCCD, ở vai người yêu cầu.
+
+    Người dân hay nộp kèm cả thẻ căn cước mới lẫn chứng minh nhân dân cũ. Hai thẻ khác số nên agent
+    tưởng là hai người rồi đẩy thẻ thừa sang vai NGƯỜI ĐƯỢC ĐĂNG KÝ (ChuThe_*) theo đúng luật "hai
+    thẻ thì thẻ còn lại là chủ thể" — mục II bị điền bằng chính giấy tờ cũ của người yêu cầu.
+
+    Cùng HỌ TÊN mà một thẻ 12 số, một thẻ 9 số thì chắc chắn là một người (không phải phép so tên
+    dễ đụng hàng: CMND 9 số chỉ tồn tại như bản cũ của chính chủ thẻ căn cước). Giữ CCCD ở Nyc_*,
+    bỏ hẳn CMND để không vai nào bị điền bằng giấy tờ đã hết hiệu lực.
+    """
+    requester_name = _fold(values.get("Nyc_HoTen"))
+    subject_name = _fold(values.get("ChuThe_HoTen"))
+    if not (requester_name and subject_name and requester_name == subject_name):
+        return values
+
+    requester_rank = _id_doc_rank(values.get("Nyc_SoDinhDanh"))
+    subject_rank = _id_doc_rank(values.get("ChuThe_SoDinhDanh"))
+    if {requester_rank, subject_rank} != {1, 2}:
+        return values
+
+    cleaned = {key: value for key, value in values.items() if not key.startswith("ChuThe_")}
+    if subject_rank == 2:
+        # CCCD đang nằm ở vai chủ thể, CMND ở vai người yêu cầu → đổi cụm thẻ lấy CCCD.
+        for suffix in _CARD_FIELD_SUFFIXES:
+            value = values.get(f"ChuThe_{suffix}")
+            if value not in (None, "", {}, []):
+                cleaned[f"Nyc_{suffix}"] = value
+    return cleaned
+
+
 # Quan hệ trên tờ khai được chuẩn hóa về đúng nhãn radio trên cổng. Không nhận "ba" trần vì sau
 # khi fold dấu nó có thể là "bà" hoặc cách gọi "bố"; bỏ trống an toàn hơn tick nhầm quan hệ.
 _QUANHE_OPTIONS = {
@@ -952,7 +1009,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
     facts = _drop_document_numbers_from_id_fields(_by_name(fields))
     values = _prefer_requester_as_marriage_subject(
-        _rescue_subject_card(_rescue_requester_card(_apply_declaration_precedence(facts))),
+        _rescue_subject_card(
+            _rescue_requester_card(
+                # Bỏ CMND cũ TRƯỚC hai bước cứu vai: hai bước đó đọc "có thẻ chủ thể hay không",
+                # mà thẻ thừa của chính người yêu cầu lại đang chiếm đúng ô đó.
+                _prefer_cccd_between_cards(_apply_declaration_precedence(facts))
+            )
+        ),
         options,
     )
     out: list[dict] = []
@@ -1008,42 +1071,43 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         """
         ctx = (options or {}).get("formContext") or {}
         card = values if _card_is_requester(values, options) else {}
-        # Họ tên: tờ khai → CCCD → VNeID. NGOẠI LỆ cùng lý do với ô số giấy tờ ngay bên dưới —
-        # số trên tờ khai khớp số trên thẻ là bằng chứng chắc chắn cùng một người, lúc đó tên IN
-        # trên thẻ thắng tên viết tay (xem card_name_when_id_matches).
+        # Họ tên: THẺ → tờ khai → VNeID. Thẻ chỉ tới được đây sau _card_is_requester (đã khớp số
+        # hoặc khớp tên với người yêu cầu trên tờ khai) nên chắc chắn cùng một người, mà tên IN
+        # trên thẻ mới là tên phải khớp CSDLQG về dân cư — tên viết tay trên đơn hay bị OCR rơi dấu.
         ho_ten = (
-            card_name_when_id_matches(
-                card.get("Nyc_HoTen"),
-                card.get("Nyc_SoDinhDanh"),
-                values.get("TkNyc_SoGiayToTuyThan"),
-            )
+            card.get("Nyc_HoTen")
             or values.get("TkNyc_HoTen")
-            or card.get("Nyc_HoTen")
             or ctx.get("applicantFullname")
         )
-        # Số giấy tờ: NGOẠI LỆ — CCCD → tờ khai → VNeID. Số trên thẻ là số IN SẴN, còn số trên
-        # tờ khai là chữ viết tay nên OCR hay sai vài chữ số; thẻ đã qua _card_is_requester (đúng
-        # người yêu cầu) thì cứ để nó GHI ĐÈ số của tờ khai.
-        so_giay_to = (
-            card.get("Nyc_SoDinhDanh")
-            or values.get("TkNyc_SoGiayToTuyThan")
-            or ctx.get("applicantIdentityNumber")
+
+        # Cụm GIẤY TỜ TÙY THÂN (loại, số, ngày cấp, nơi cấp) phải đi NGUYÊN KHỐI từ MỘT giấy tờ.
+        # Trộn nguồn là dựng ra giấy tờ không tồn tại: số của thẻ căn cước mới đi kèm ngày/nơi cấp
+        # của chứng minh nhân dân cũ ghi trên đơn.
+        card_number = card.get("Nyc_SoDinhDanh")
+        declaration_number = values.get("TkNyc_SoGiayToTuyThan")
+        # Gộp hai nguồn khi KHÔNG có bằng chứng chúng là hai giấy tờ khác nhau: số khớp nhau, hoặc
+        # cả hai bên đều không đọc được số (tờ khai chỉ còn ngày/nơi cấp). Lúc đó thẻ thắng từng ô,
+        # đơn bù ô nào thẻ không đọc được.
+        merge_sources = id_match(card_number, declaration_number) is True or not (
+            _id_doc_rank(card_number) or _id_doc_rank(declaration_number)
         )
-        # Ngày cấp / nơi cấp: cùng quy tắc với họ tên — số trên tờ khai khớp số trên thẻ thì bản IN
-        # trên thẻ thắng chữ viết tay; không khớp thì tờ khai → thẻ như cũ.
-        card_same_as_tk = id_match(values.get("TkNyc_SoGiayToTuyThan"), card.get("Nyc_SoDinhDanh")) is True
-        ngay_cap = (
-            (card.get("Nyc_NgayCap") if card_same_as_tk else None)
-            or values.get("TkNyc_NgayCapGiayToTuyThan")
-            or card.get("Nyc_NgayCap")
-        )
-        requester_issuer = (
-            (normalize_issuer(card.get("Nyc_NoiCap")) if card_same_as_tk else None)
-            or normalize_issuer(values.get("TkNyc_NoiCapGiayToTuyThan"))
-            or normalize_issuer(card.get("Nyc_NoiCap"))
-            or default_issuer(ngay_cap)
-        )
-        loai_hint = values.get("TkNyc_LoaiGiayToTuyThan") or card.get("Nyc_LoaiGiayTo")
+        if merge_sources or _id_document_source(card_number, declaration_number) == "card":
+            so_giay_to = card_number or (declaration_number if merge_sources else None)
+            ngay_cap = card.get("Nyc_NgayCap")
+            noi_cap = card.get("Nyc_NoiCap")
+            loai_hint = card.get("Nyc_LoaiGiayTo")
+            if merge_sources:
+                ngay_cap = ngay_cap or values.get("TkNyc_NgayCapGiayToTuyThan")
+                noi_cap = noi_cap or values.get("TkNyc_NoiCapGiayToTuyThan")
+                loai_hint = loai_hint or values.get("TkNyc_LoaiGiayToTuyThan")
+        else:
+            # Đơn ghi CCCD trong khi thẻ trong hồ sơ chỉ là CMND cũ → cả cụm lấy theo đơn.
+            so_giay_to = declaration_number
+            ngay_cap = values.get("TkNyc_NgayCapGiayToTuyThan")
+            noi_cap = values.get("TkNyc_NoiCapGiayToTuyThan")
+            loai_hint = values.get("TkNyc_LoaiGiayToTuyThan")
+        so_giay_to = so_giay_to or ctx.get("applicantIdentityNumber")
+        requester_issuer = normalize_issuer(noi_cap) or default_issuer(ngay_cap)
         add("HoVaTenC", upper_person_name(ho_ten))
         add("SoDinhDanhC", so_giay_to)
         # Loại giấy tờ: kết hợp số chữ số — 9 số → CMND; 12 số → CCCD/Căn cước theo nơi cấp.
@@ -1226,7 +1290,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             
             # FALLBACK: Khi không có ChuThe_* hợp lệ VÀ không có tờ khai giấy tờ,
             # kiểm tra Nyc_* (người yêu cầu) có TRÙNG chủ thể → fallback Nyc_* cho NDK_*
-            if not ct_so and not ht_so:
+            #
+            # Mở rộng cho ca NGƯỜI TỰ XIN BẢN SAO CỦA MÌNH: tờ khai ghi CMND 9 số cũ (người dân
+            # chép theo thói quen) trong khi hồ sơ có thẻ căn cước 12 số của đúng người đó ở Nyc_*.
+            # Không xét thẻ ở đây thì cả mục II bị điền bằng CMND đã hết hiệu lực.
+            if not ct_so and (
+                not ht_so
+                or (_id_doc_rank(values.get("Nyc_SoDinhDanh")) == 2 and _id_doc_rank(ht_so) == 1)
+            ):
                 nyc_id = values.get("Nyc_SoDinhDanh")
                 nyc_name = _fold(values.get("Nyc_HoTen"))
                 subj_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
@@ -1242,18 +1313,43 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # Nếu khớp → fallback Nyc_* cho giấy tờ của NDK
                 if nyc_matches_subject and nyc_id:
                     ct_so = nyc_id
-                    ct_loai = "Căn cước"  # Fallback từ CCCD người yêu cầu
+                    # KHÔNG chốt cứng "Căn cước": các cụ nhiều người chỉ có CMND 9 số, gán nhãn
+                    # căn cước cho số đó là dựng ra một tấm thẻ không tồn tại. Để trống thì
+                    # _id_doc_type_with_number tự suy theo SỐ CHỮ SỐ (9 → CMND, 12 → căn cước
+                    # theo nơi cấp), đúng cho cả hai loại.
+                    ct_loai = None
                     ct_ngay = values.get("Nyc_NgayCap")
                     ct_noi = values.get("Nyc_NoiCap")
 
-            # THỨ TỰ ƯU TIÊN: 
+            # THỨ TỰ ƯU TIÊN:
             # 1. Tờ khai/giấy hộ tịch (ht_*) - nguồn CHÍNH
             # 2. Thẻ căn cước của chủ thể (ct_*) - fallback khi tờ khai thiếu
-            
+            #
+            # NGOẠI LỆ — MỘT NGƯỜI CÓ CẢ CCCD LẪN CMND: thẻ 12 số thắng số 9 số ghi trên tờ khai/
+            # giấy hộ tịch, và thắng CẢ CỤM (số, ngày cấp, nơi cấp, loại). CMND chỉ là giấy tờ cũ
+            # của chính người đó; trộn số thẻ với ngày/nơi cấp của CMND là dựng ra giấy tờ không
+            # tồn tại. Chỉ so LỆCH HẠNG, hai nguồn cùng hạng vẫn giữ nguyên thứ tự cũ.
+            card_beats_record = _id_doc_rank(ct_so) == 2 and _id_doc_rank(ht_so) == 1
+
+            # SỐ ĐỊNH DANH CÁ NHÂN (12 số in trên giấy hộ tịch) VÀ CMND (9 số trên thẻ) LÀ HAI THỨ
+            # KHÁC NHAU, không phải hai phiên bản của một giấy tờ. Rất nhiều cụ đã có số định danh
+            # nhưng chưa đi làm thẻ căn cước, giấy tờ tùy thân duy nhất vẫn là CMND cũ. Lúc đó ô
+            # "số định danh" lấy số 12 chữ số, còn CẢ CỤM giấy tờ tùy thân (số, ngày cấp, nơi cấp,
+            # loại) phải lấy theo tấm CMND — nếu không sẽ ra số căn cước 12 số đi kèm ngày/nơi cấp
+            # của CMND, một giấy tờ không tồn tại.
+            card_is_cmnd_beside_personal_id = (
+                _id_doc_rank(ct_so) == 1
+                and _id_doc_rank(values.get("HoTich_SoDinhDanh")) == 2
+            )
+            card_wins_id_block = card_beats_record or card_is_cmnd_beside_personal_id
+
             # Số định danh: Ưu tiên HoTich_SoDinhDanh từ tờ khai, fallback ht_so (giấy tờ tùy thân trong giấy HT), cuối cùng mới CCCD
             add(
                 "NDK_SoDinhDanh",
-                card_id_when_id_matches(ct_so, values.get("HoTich_SoDinhDanh")) or ht_so or ct_so,
+                card_id_when_id_matches(ct_so, values.get("HoTich_SoDinhDanh"))
+                or (ct_so if card_beats_record else None)
+                or ht_so
+                or ct_so,
             )
 
             # Trẻ DƯỚI 14 TUỔI chưa bắt buộc có thẻ căn cước: số 12 chữ số của các em là SỐ ĐỊNH
@@ -1277,20 +1373,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # vay thi can bo phai go tay lai o (9).
                 add(
                     "NDK_SoGiayToTuyThan",
-                    (ht_so if not is_birth else None)
+                    (ct_so if card_wins_id_block else None)
+                    or (ht_so if not is_birth else None)
                     or values.get("HoTich_SoDinhDanh")
                     or ct_so
                     or ht_so,
                 )
 
                 # Ngày cấp: Ưu tiên tờ khai trước
-                # Ngày/nơi cấp: thẻ khớp số thì bản IN thắng; không thì tờ khai/giấy hộ tịch trước.
-                ndk_ngaycap = ((ct_ngay if card_same_as_record else None) or ht_ngay or ct_ngay)
+                # Ngày/nơi cấp: thẻ khớp số (hoặc thẻ là CCCD còn tờ khai ghi CMND cũ) thì bản IN
+                # trên thẻ thắng; không thì tờ khai/giấy hộ tịch trước.
+                card_wins_issue = card_same_as_record or card_wins_id_block
+                ndk_ngaycap = ((ct_ngay if card_wins_issue else None) or ht_ngay or ct_ngay)
                 add("NDK_NgayCap", ndk_ngaycap)
 
                 # Nơi cấp: Ưu tiên tờ khai trước
                 ndk_noicap = (
-                    (normalize_issuer(ct_noi) if card_same_as_record else None)
+                    (normalize_issuer(ct_noi) if card_wins_issue else None)
                     or normalize_issuer(ht_noi) or normalize_issuer(ct_noi)
                 )
                 if not ndk_noicap and ndk_ngaycap:
@@ -1304,8 +1403,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # sinh trước 1960...) hay ghi CMND 9 số, mà OCR thì hay rơi mất chữ "CMND" — thiếu
                 # luật này thì id_hint rơi về mặc định "Căn cước" rồi chọn nhầm option "Thẻ Căn cước"
                 # cho một số 9 chữ số, sai hiển nhiên mà nhìn vẫn hợp lệ.
-                id_hint = ht_loai or ct_loai
-                ndk_so_giay_to = ((ht_so if not is_birth else None)
+                id_hint = (ct_loai if card_wins_id_block else None) or ht_loai or ct_loai
+                ndk_so_giay_to = ((ct_so if card_wins_id_block else None)
+                                  or (ht_so if not is_birth else None)
                                   or values.get("HoTich_SoDinhDanh") or ct_so or ht_so)
                 if id_hint or ndk_so_giay_to:
                     add("NDK_LoaiGiayToTuyThan",

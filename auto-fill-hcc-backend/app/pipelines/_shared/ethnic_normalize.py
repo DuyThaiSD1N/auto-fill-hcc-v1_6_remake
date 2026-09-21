@@ -103,6 +103,9 @@ _ETHNIC_MAP: dict[str, str] = {
     "coho kho": "Cơ Ho",
     "kho": "Cơ Ho",
     "k ho": "Cơ Ho",
+    "k'ho": "Cơ Ho",
+    "kho": "Cơ Ho",
+    "ho": "Cơ Ho",  # LLM thường chỉ đọc được "Ho" khi chữ "K'" bị mờ/nhiễu
 
     # ===== XO DANG =====
     "xo dang": "Xơ Đăng",

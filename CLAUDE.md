@@ -63,3 +63,6 @@ Script build image, `docker save` rồi `scp` sang đích. Sau đó phải vào 
 Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree` lỗi collect sẵn, bỏ qua.
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
+
+## Lưu ý
+Không bao giờ được phép tự ý dùng git để merge code hay đẩy lên github

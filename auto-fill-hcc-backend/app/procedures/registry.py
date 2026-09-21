@@ -53,6 +53,12 @@ from app.pipelines.cap_GCN_nhan_chuyen_nhuong.attach import plan as cap_gcn_nhan
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process import run as cap_gcn_nhan_chuyen_nhuong_process
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.attach import plan as chuyen_doi_md_sd_dat_lao_cai_attach
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.process import run as chuyen_doi_md_sd_dat_lao_cai_process
+from app.pipelines.chuyen_md_sd_dat_phuong_xa_lao_cai.attach import (
+    plan as chuyen_md_sd_dat_phuong_xa_lao_cai_attach,
+)
+from app.pipelines.chuyen_md_sd_dat_phuong_xa_lao_cai.process import (
+    run as chuyen_md_sd_dat_phuong_xa_lao_cai_process,
+)
 from app.pipelines.dang_ky_bien_dong_lao_cai.attach import plan as dang_ky_bien_dong_lao_cai_attach
 from app.pipelines.dang_ky_bien_dong_lao_cai.process import run as dang_ky_bien_dong_lao_cai_process
 from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.attach import plan as dang_ky_quyen_su_dung_dat_lao_cai_attach
@@ -3379,6 +3385,80 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175",
+        # Cổng dichvucong.laocai.gov.vn (Nth.FormBuilder — iGate VNPT) — bản nộp ở PHƯỜNG/XÃ của cụm thủ tục
+        # "chuyển mục đích / chuyển hình thức / gia hạn / điều chỉnh thời hạn". TÊN TRÙNG Y HỆT 1.115651
+        # (bản nộp ở Sở, key chuyen-muc-dich-su-dung-dat-lao-cai) nên nhãn ghi kèm MÃ 1.115679 để cán bộ tìm
+        # và phân biệt được; hai thủ tục để hai pipeline riêng vì bảng bước 3 khác cấu trúc.
+        # Bước 2 dùng CÙNG bộ ô CongDan_*/ChuHoSo_* với 1.115651/1.115667/1.115671/1.115687/1.115688 (engine
+        # dom-*), mapping theo "Mapping_CMDSDD_1.115679_LaoCai_CaNhan_ToChuc.xlsx"; khác 1.115651 ở chỗ SÁU ô
+        # của khối NGƯỜI NỘP là (*) mà cổng chỉ đổ theo tài khoản → pipeline điền thêm giới tính, dân tộc,
+        # cụm địa chỉ và di động.
+        # Bước 3 "Thành phần hồ sơ" in MỘT LẦN cả bốn nhóm, tiêu đề nhóm đánh CHỮ CÁI "a) b) c) d)" (1.115651
+        # đánh "(1)…(4)") → attach/catalog.py khớp dòng theo từ khóa, neo vùng bằng tiêu đề cột hoặc tiêu đề
+        # nhóm d).
+        # NHẬN DIỆN THEO MÃ THỦ TỤC. Tên thủ tục trùng y hệt 1.115651 nên không tách được bằng tên; nhưng
+        # cổng in MÃ ngay trong banner "thủ tục đã chọn" của cả luồng nộp hồ sơ:
+        #     <section id="thu-tuc-da-chon-wrapper"><h4><span class="label label-warning">Một phần</span>
+        #       1.115679 - Lào Cai - Chuyển mục đích sử dụng đất; … Khoản 1 Điều 175 Luật Đất đai năm 2024
+        # <h4> là chữ HIỂN THỊ nên nằm trong document.body.innerText (nguồn của signals.bodyText), và banner
+        # này có ở MỌI bước của luồng — nhờ vậy bước 2 (nhập thông tin) lẫn bước 3 (thành phần hồ sơ) đều
+        # nhận đúng, không phải dựa vào cấu trúc bảng đính kèm nữa. URL chỉ có sid nên không dùng urlIncludes
+        # được. textPriority để thắng rule theo TÊN của 1.115651 (không có textPriority) ngay ở vòng ưu tiên.
+        # Mã là chuỗi ngắn nên urlScope khoá host Lào Cai vẫn bắt buộc.
+        # Key trùng mục ke_khai_links (1.115679).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": ["1.115679"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi "
+            "hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư đối với trường hợp "
+            "quy định tại Khoản 1 Điều 175 Luật Đất đai năm 2024 (1.115679 - cho Phường/Xã)"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục này nộp tại UBND PHƯỜNG/XÃ (mã 1.115679). Bản cùng tên nộp ở Sở là mã 1.115651 — chọn "
+            "nhầm là sai cơ quan tiếp nhận.\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị: Mẫu số 02 (chuyển mục đích), Mẫu số 03 (chuyển hình thức) hoặc Mẫu số 17 (gia "
+            "hạn) ban hành kèm Quyết định số 47/2026/QĐ-UBND — nguồn chính để điền thân đơn.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất (sổ đỏ/sổ hồng) của thửa đất xin chuyển mục đích.\n"
+            "3. Quyết định giao đất/cho thuê đất/cho phép chuyển mục đích và quyết định điều chỉnh (nếu có).\n"
+            "4. Nếu có: Giấy uỷ quyền khi người khác đi nộp thay, hồ sơ nghĩa vụ tài chính (phiếu chuyển "
+            "thông tin, thông báo thuế, giấy nộp tiền), hồ sơ đo đạc chỉnh lý thửa đất, văn bản về thời hạn "
+            "hoạt động của dự án đầu tư.\n"
+            "5. CCCD của chủ hồ sơ và của người đi nộp — KHÔNG đính kèm, chỉ dùng để đọc nhân thân.\n"
+            "⚠ MỖI TỆP KHÔNG QUÁ 6 MB — trần của chính cổng Lào Cai. Cụm nghĩa vụ tài chính + đo đạc quét "
+            "gộp rất hay vượt (hồ sơ mẫu 14 trang nặng 6,33 MB): tách làm hai tệp hoặc quét lại ở DPI thấp "
+            "hơn, tệp vượt trần thì cả trợ lý lẫn cán bộ đính tay đều không đưa lên được.\n"
+            "Chủ hồ sơ = NGƯỜI SỬ DỤNG ĐẤT đứng tên mục 1 của Đơn, KHÔNG phải người đi nộp thay. Hai vợ "
+            "chồng cùng đứng tên thì form chỉ có một ô họ tên — nhập người đứng đầu mục 1, người còn lại đã "
+            "có trong Đơn và Giấy chứng nhận đính kèm.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản định "
+            "danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Giới tính, Dân tộc, Tỉnh/Phường-Xã, Số "
+            "nhà và Di động của khối này là (*) mà cổng để trống: trợ lý điền theo giấy tờ của chính người "
+            "đi nộp, không có thì cán bộ gõ tay. Riêng ô Giới tính không có lựa chọn trống nên luôn hiện "
+            "sẵn 'Nữ' — hồ sơ của nam giới phải kiểm lại ô này trước khi nộp.\n"
+            "Ô 'Người nộp là chủ hồ sơ' trợ lý KHÔNG tích (tích là cổng ép Đối tượng = Cá nhân rồi chép khối "
+            "người nộp đè lên khối chủ hồ sơ) — thông tin chủ hồ sơ đã được điền thẳng từ giấy tờ.\n"
+            "Thành phần hồ sơ: trợ lý tích và đính Đơn Mẫu số 02 vào dòng của nhóm a); Giấy chứng nhận và "
+            "Quyết định cho phép chuyển mục đích vào hai dòng CUỐI BẢNG theo ảnh hướng dẫn của bộ phận một "
+            "cửa; giấy uỷ quyền, hồ sơ nghĩa vụ tài chính, hồ sơ đo đạc xuống 'Giấy tờ khác'. Mỗi giấy tờ "
+            "chỉ tải ở MỘT dòng.\n"
+            "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè.\n"
+            "Lưu ý số liệu hay lệch giữa các giấy tờ (Đơn ghi 'Tổ 39', Giấy uỷ quyền ghi 'Tổ dân phố số 9 "
+            "Xuân Tăng', Giấy chứng nhận 2018 còn địa danh cũ 'Tổ 24, phường Bình Minh'; Giấy chứng nhận cũ "
+            "ghi CMND 9 số khác số CCCD hiện tại) — cán bộ đối chiếu CCCD/CSDLQG về dân cư trước khi ký số "
+            "và nộp."
+        ),
+    },
+    {
         "key": "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — bước 2 dùng CÙNG bộ ô
         # CongDan_*/ChuHoSo_* với 1.115667/1.115668 (engine dom-*), mapping theo
@@ -5201,6 +5281,7 @@ _PIPELINE = {
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_process,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
+    "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175": chuyen_md_sd_dat_phuong_xa_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_process,
@@ -5271,6 +5352,7 @@ _ATTACH_PIPELINE = {
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
+    "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175": chuyen_md_sd_dat_phuong_xa_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_attach,

@@ -9,6 +9,7 @@ from app.pipelines.xac_nhan_tthn.process.schema import UI_ALIASES, UI_COMP_BY_NA
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
+from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 
 _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
 
@@ -833,7 +834,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add_with_declaration_fallback(
                 "GioiTinhC1", card.get("GioiTinh") or values.get("PoA_SubjectGender"), "ToKhai_GioiTinh")
             add_with_declaration_fallback(
-                "DanTocC1", _tk("ToKhai_DanToc") or values.get("PoA_SubjectDanToc"), "ToKhai_DanToc")
+                "DanTocC1", normalize_ethnic(_tk("ToKhai_DanToc") or values.get("PoA_SubjectDanToc")), "ToKhai_DanToc")
             add("QuocTichC1", "Việt Nam")
             subject_id = card.get("SoDinhDanh") or values.get("PoA_SubjectIdNumber")
             subject_issuer = card.get("NoiCap") or poa_issuer

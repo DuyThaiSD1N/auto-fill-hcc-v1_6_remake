@@ -583,8 +583,11 @@ def test_trich_luc_compact_prompt_rejects_ui_fields():
     assert "áp cuối = huyện và PHẢI BỎ" in system_prompt
     assert "vị trí áp cuối vẫn là cấp huyện, KHÔNG được chọn làm xa" in system_prompt
     assert 'xa="Tân Phú", tinh="Vĩnh Phúc"' in system_prompt
-    assert "Nếu có đúng 2 CCCD khác nhau" in system_prompt
+    assert "Nếu có đúng 2 CCCD của HAI NGƯỜI KHÁC NHAU" in system_prompt
     assert "thẻ còn lại BẮT BUỘC vào ChuThe_*" in system_prompt
+    # Cặp CCCD + CMND cùng tên là MỘT người: luật "thẻ còn lại là chủ thể" không được áp vào đây.
+    assert "CMND (9 số) CÙNG MỘT HỌ TÊN LÀ MỘT NGƯỜI" in system_prompt
+    assert "BỎ HẲN CMND" in system_prompt
     assert not any(name.startswith("Cccd_") for name in field_names)
     assert {
         "Nyc_HoTen",

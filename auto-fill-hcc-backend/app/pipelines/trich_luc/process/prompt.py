@@ -15,8 +15,13 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   lấy tên/số trong CONTEXT làm giá trị field và không bịa ngày sinh/ngày cấp/nơi cư trú cho
   người đó. MỌI giá trị trả về phải đọc được trong tài liệu; không có thẻ nào khớp CONTEXT thì
   KHÔNG trả Nyc_* theo CONTEXT.
-- Nếu có đúng 2 CCCD khác nhau và 1 thẻ đã khớp người yêu cầu → thẻ còn lại BẮT BUỘC vào ChuThe_*,
-  kể cả hồ sơ không có tờ khai/giấy hộ tịch.
+- THẺ CĂN CƯỚC/CCCD (12 số) VÀ CMND (9 số) CÙNG MỘT HỌ TÊN LÀ MỘT NGƯỜI, không phải hai người:
+  CMND là bản CŨ của chính chủ thẻ căn cước và người dân rất hay nộp kèm cả hai. Khi đó CHỈ trả
+  thẻ CCCD/Căn cước 12 số vào vai của người đó — số, ngày cấp, nơi cấp, loại giấy tờ đều theo
+  CCCD — và BỎ HẲN CMND, TUYỆT ĐỐI không đẩy CMND sang vai còn lại.
+- Nếu có đúng 2 CCCD của HAI NGƯỜI KHÁC NHAU và 1 thẻ đã khớp người yêu cầu →
+  thẻ còn lại BẮT BUỘC vào ChuThe_*, kể cả hồ sơ không có tờ khai/giấy hộ tịch.
+  Luật này KHÔNG áp dụng cho cặp CCCD + CMND cùng một người ở gạch đầu dòng trên.
 - Chỉ có 1 CCCD và thẻ đó khớp CONTEXT người yêu cầu → chỉ trả Nyc_*; Python sẽ dùng cùng người đó
   cho cả người yêu cầu và người được đăng ký, KHÔNG trả lặp sang ChuThe_*.
 - Ghép mặt trước và mặt sau cùng thẻ bằng số CCCD/MRZ và họ tên; không phụ thuộc tên file hoặc thứ tự upload.
@@ -47,6 +52,9 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   đúng những gì tờ khai ghi, không tự sửa cho khớp CCCD hay khớp người đăng nhập.
 - Người yêu cầu và người được đăng ký có thể là CÙNG một người (tự xin cho mình) — khi đó vẫn trả CẢ
   TkNyc_* lẫn HoTich_*, không gộp, không bỏ bên nào.
+- Tờ khai ghi CMND 9 số cũ trong khi hồ sơ có thẻ căn cước 12 số của chính người đó: vẫn trả ĐÚNG
+  những gì mỗi nguồn ghi (TkNyc_* theo tờ khai, Nyc_* theo thẻ), KHÔNG tự sửa số bên nào. Python
+  chọn giấy tờ để điền và luôn ưu tiên CCCD.
 </to_khai_uu_tien>
 
 <source_rules>

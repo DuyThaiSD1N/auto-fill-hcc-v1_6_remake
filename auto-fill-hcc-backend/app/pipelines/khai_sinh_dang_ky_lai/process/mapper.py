@@ -703,16 +703,26 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("nksQueQuan", "1")
             add("nksQueQuan_TrongNuoc", _normalize_domestic_area(values.get("Subject_HometownDomestic")))
 
-    # III. Me. Chỉ dựng khối khi có NHÂN THÂN thật (họ tên hoặc số định danh) — hồ sơ chỉ có con +
-    # CCCD của một bên thì bên kia phải để TRỐNG, không điền quốc tịch/loại cư trú mặc định.
-    has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
-    if has_mother:
+    # III. Me. LUÔN ghi đè thông tin mẹ lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
+    # mà cổng có thể đã điền sẵn. Chỉ bỏ qua hoàn toàn khi KHÔNG có bất kỳ thông tin Mother_* nào.
+    has_mother_info = any(key.startswith("Mother_") and values.get(key) for key in values)
+    if has_mother_info:
         me_default = "Mother_FullName" in default_names
-        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
-        add("SoDinhDanhMe", values.get("Mother_IdNumber"), me_default)
-        add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"), me_default)
-        if values.get("Mother_IdNumber"):
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber")), me_default)
+        # Ghi đè họ tên mẹ, nếu có
+        if values.get("Mother_FullName"):
+            add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
+        # Ghi đè số định danh mẹ (nếu không có thì clear để xóa dữ liệu cũ)
+        mother_id = values.get("Mother_IdNumber")
+        if mother_id:
+            add("SoDinhDanhMe", mother_id, me_default)
+            add("SoGiayToDinhDanhMe", mother_id, me_default)
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id), me_default)
+        else:
+            # Không có số CCCD mẹ -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
+            clear("SoDinhDanhMe")
+            clear("SoGiayToDinhDanhMe")
+            clear("LoaiGiayToDinhDanhMe")
+        # Các thông tin khác của mẹ
         add("NgayCapDDMe", values.get("Mother_IdIssueDate"), me_default)
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_default)
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default)
@@ -720,15 +730,26 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
         _add_residence(add, "Me", _resolve_residence(values, "Mother", context), me_default)
 
-    # IV. Cha. Cùng nguyên tắc với khối mẹ: không có nhân thân thì bỏ trống cả khối.
-    has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
-    if has_father:
+    # IV. Cha. LUÔN ghi đè thông tin cha lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
+    # mà cổng có thể đã điền sẵn. Chỉ bỏ qua hoàn toàn khi KHÔNG có bất kỳ thông tin Father_* nào.
+    has_father_info = any(key.startswith("Father_") and values.get(key) for key in values)
+    if has_father_info:
         cha_default = "Father_FullName" in default_names
-        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
-        add("SoDinhDanhCha", values.get("Father_IdNumber"), cha_default)
-        add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"), cha_default)
-        if values.get("Father_IdNumber"):
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber")), cha_default)
+        # Ghi đè họ tên cha, nếu có
+        if values.get("Father_FullName"):
+            add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
+        # Ghi đè số định danh cha (nếu không có thì clear để xóa dữ liệu cũ)
+        father_id = values.get("Father_IdNumber")
+        if father_id:
+            add("SoDinhDanhCha", father_id, cha_default)
+            add("SoGiayToDinhDanhCha", father_id, cha_default)
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id), cha_default)
+        else:
+            # Không có số CCCD cha -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
+            clear("SoDinhDanhCha")
+            clear("SoGiayToDinhDanhCha")
+            clear("LoaiGiayToDinhDanhCha")
+        # Các thông tin khác của cha
         add("NgayCapDDCha", values.get("Father_IdIssueDate"), cha_default)
         add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_default)
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default)
