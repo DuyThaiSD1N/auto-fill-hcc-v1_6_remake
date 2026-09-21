@@ -127,6 +127,12 @@ from app.pipelines.xac_nhan_tiep_tuc_dat_nong_nghiep.attach import (
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process import run as dang_ky_dat_dai_lan_dau_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.attach import plan as dang_ky_dat_dai_lan_dau_bac_ninh_attach
+from app.pipelines.dk_dat_dai_gan_tai_san_lao_cai.attach import (
+    plan as dk_dat_dai_gan_tai_san_lao_cai_attach,
+)
+from app.pipelines.dk_dat_dai_gan_tai_san_lao_cai.process import (
+    run as dk_dat_dai_gan_tai_san_lao_cai_process,
+)
 from app.pipelines.thu_hoi_gcn_cap_lan_dau_khong_dung_quy_dinh_cap_lai.attach import (
     plan as thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
 )
@@ -3005,6 +3011,65 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc",
+        # Cổng dichvucong.laocai.gov.vn (Nth.FormBuilder — iGate VNPT) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
+        # với 1.115651/1.115667/1.115668/1.115671/1.115687 (engine dom-*), mapping theo
+        # "Mapping_1.115688_DangKyDatDai_LanDau_LaoCai.xlsx" (2 file HTML: biến thể tổ chức và cá nhân của
+        # ô "Đối tượng nộp hồ sơ"). Khác 1.115687: Tỉnh/Phường-Xã khối NGƯỜI NỘP được cổng đổ sẵn theo tài
+        # khoản, chỉ "Số nhà/Đường/Tổ/Thôn" và "Di động" là (*) mà để trống.
+        # Bước 3 "Thành phần hồ sơ" là bảng PHẲNG nhiều dòng cố định + "Giấy tờ khác" (khớp theo TỪ KHÓA dòng
+        # vì cổng render số dòng khác nhau giữa biến thể tổ chức và cá nhân).
+        # 1.115688 là mã QUỐC GIA, cổng iGate tỉnh khác cũng dùng đúng mã/đúng tên đó → urlScope khóa host
+        # Lào Cai. Key trùng mục ke_khai_links (1.115688).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "textIncludes": [
+                "đăng ký đất đai, tài sản gắn liền với đất, cấp giấy chứng nhận",
+                "lần đầu đối với tổ chức đang sử dụng đất",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+            "quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15, bản mới ghi Mẫu số 21) — nguồn "
+            "chính để điền thân đơn, kèm Danh sách người sử dụng chung thửa đất (Mẫu 15a) hoặc Danh sách "
+            "các thửa đất (Mẫu 15b) nếu có.\n"
+            "2. Trích lục/mảnh trích đo bản đồ địa chính thửa đất, bản đồ ranh giới - mốc giới sử dụng đất.\n"
+            "3. Hồ sơ TỔ CHỨC: Báo cáo kết quả rà soát hiện trạng sử dụng đất (Mẫu 15d/21d), Quyết định "
+            "thành lập tổ chức, Quyết định phê duyệt phương án sử dụng đất.\n"
+            "4. Hồ sơ HỘ GIA ĐÌNH, CÁ NHÂN: giấy tờ về quyền sử dụng đất theo Điều 137 Luật Đất đai, giấy tờ "
+            "nhận thừa kế, Đơn đề nghị xác nhận các thành viên có chung quyền sử dụng đất.\n"
+            "5. Nếu có: chứng từ thực hiện nghĩa vụ tài chính, hồ sơ thiết kế/nghiệm thu công trình, Giấy ủy "
+            "quyền khi người khác đi nộp thay.\n"
+            "6. CCCD của chủ hồ sơ và của người nộp hồ sơ — KHÔNG đính kèm, chỉ dùng để đọc nhân thân.\n"
+            "⚠ MỖI TỆP KHÔNG QUÁ 6 MB — trần của chính cổng Lào Cai, tệp nặng hơn thì cả trợ lý lẫn cán bộ "
+            "đính tay đều không đưa lên được; bản scan màu bản đồ địa chính rất hay vượt, nên quét lại ở DPI "
+            "thấp hơn hoặc tách theo từng giấy tờ.\n"
+            "⚠ MỖI TỆP CHỈ ĐÍNH ĐƯỢC VÀO MỘT DÒNG. Hồ sơ thủ tục này hay quét gộp cả Đơn + Danh sách 15a/15b "
+            "+ Báo cáo rà soát + Trích lục vào một PDF: trợ lý xếp tệp theo giấy tờ CHÍNH (dòng Đơn đăng ký) "
+            "rồi cảnh báo những dòng còn trống — muốn đính đủ từng dòng thì tách tệp theo từng giấy tờ.\n"
+            "Chủ hồ sơ = NGƯỜI SỬ DỤNG ĐẤT ở mục 1 Đơn Mẫu 15 (tổ chức thì lấy tên theo Quyết định thành "
+            "lập/Trích lục, không lấy tên cũ trước sáp nhập), KHÔNG phải người đi nộp thay. Nhiều người cùng "
+            "sử dụng đất thì form chỉ nhận một chủ hồ sơ — người còn lại kê ở Mẫu 15a.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản định "
+            "danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Ô 'Số nhà/Đường/Tổ/Thôn' và 'Di động' "
+            "của khối này là bắt buộc mà cổng để trống: trợ lý điền theo giấy tờ của chính người đi nộp, "
+            "không có thì cán bộ gõ tay.\n"
+            "Ô 'Người nộp là chủ hồ sơ' trợ lý KHÔNG tích (tích là cổng ép Đối tượng = Cá nhân rồi chép khối "
+            "người nộp đè lên khối chủ hồ sơ) — thông tin chủ hồ sơ đã được điền thẳng từ giấy tờ.\n"
+            "Lưu ý số liệu hay lệch giữa các giấy tờ (ngày sinh trên Đơn khác Mẫu 15a, số CCCD lệch một chữ "
+            "số) — cán bộ đối chiếu CCCD/CSDLQG về dân cư trước khi ký số và nộp."
+        ),
+    },
+    {
         "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667/1.115668/1.115651 (engine dom-*), mapping theo
@@ -4919,6 +4984,7 @@ _PIPELINE = {
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_process,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_process,
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_process,
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
@@ -4988,6 +5054,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-dat-dai-lao-cai": dang_ky_quyen_su_dung_dat_lao_cai_attach,
     "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an": dang_ky_bien_dong_lao_cai_attach,
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
+    "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,

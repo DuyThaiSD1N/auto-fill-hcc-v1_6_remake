@@ -1703,6 +1703,14 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175",
+      "code": "1.115679",
+      "label": "Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư đối với trường hợp quy định tại Khoản 1 Điều 175 Luật Đất đai năm 2024",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4a2f-4f11-760f-8170-7d1627c95536",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }
