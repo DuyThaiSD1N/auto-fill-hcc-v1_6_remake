@@ -53,12 +53,6 @@ from app.pipelines.cap_GCN_nhan_chuyen_nhuong.attach import plan as cap_gcn_nhan
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process import run as cap_gcn_nhan_chuyen_nhuong_process
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.attach import plan as chuyen_doi_md_sd_dat_lao_cai_attach
 from app.pipelines.chuyen_doi_md_sd_dat_lao_cai.process import run as chuyen_doi_md_sd_dat_lao_cai_process
-from app.pipelines.chuyen_md_sd_dat_phuong_xa_lao_cai.attach import (
-    plan as chuyen_md_sd_dat_phuong_xa_lao_cai_attach,
-)
-from app.pipelines.chuyen_md_sd_dat_phuong_xa_lao_cai.process import (
-    run as chuyen_md_sd_dat_phuong_xa_lao_cai_process,
-)
 from app.pipelines.dang_ky_bien_dong_lao_cai.attach import plan as dang_ky_bien_dong_lao_cai_attach
 from app.pipelines.dang_ky_bien_dong_lao_cai.process import run as dang_ky_bien_dong_lao_cai_process
 from app.pipelines.dang_ky_quyen_su_dung_dat_lao_cai.attach import plan as dang_ky_quyen_su_dung_dat_lao_cai_attach
@@ -83,6 +77,8 @@ from app.pipelines.cung_cap_thong_tin_quy_hoach.process import run as cung_cap_t
 from app.pipelines.cung_cap_thong_tin_quy_hoach.attach import plan as cung_cap_thong_tin_quy_hoach_attach
 from app.pipelines.cap_gcn_diem_tro_choi_dien_tu.process import run as cap_gcn_diem_tro_choi_dien_tu_process
 from app.pipelines.cap_gcn_diem_tro_choi_dien_tu.attach import plan as cap_gcn_diem_tro_choi_dien_tu_attach
+from app.pipelines.cap_giay_phep_xuat_ban_tai_lieu_khong_kinh_doanh.process import run as cap_giay_phep_xuat_ban_process
+from app.pipelines.cap_giay_phep_xuat_ban_tai_lieu_khong_kinh_doanh.attach import plan as cap_giay_phep_xuat_ban_attach
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_bac_ninh.process import run as giao_thue_chuyen_muc_dich_dat_bac_ninh_process
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_bac_ninh.attach import plan as giao_thue_chuyen_muc_dich_dat_bac_ninh_attach
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_ninh_binh.process import run as giao_thue_chuyen_muc_dich_dat_ninh_binh_process
@@ -114,6 +110,14 @@ from app.pipelines.tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao.attach import p
 from app.pipelines.dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as dang_ky_bien_phap_bao_dam_quang_ninh_attach
+from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.attach import plan as dang_ky_gcn_chuyen_quyen_lao_cai_attach
+from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.process import run as dang_ky_gcn_chuyen_quyen_lao_cai_process
+from app.pipelines.dang_ky_bien_dong_chia_tach_to_chuc_lao_cai.attach import plan as dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach
+from app.pipelines.dang_ky_bien_dong_chia_tach_to_chuc_lao_cai.process import run as dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_process
+from app.pipelines.dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai.attach import plan as dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_attach
+from app.pipelines.dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai.process import run as dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_process
+from app.pipelines.dinh_chinh_gcn_da_cap_lao_cai.attach import plan as dinh_chinh_gcn_da_cap_lao_cai_attach
+from app.pipelines.dinh_chinh_gcn_da_cap_lao_cai.process import run as dinh_chinh_gcn_da_cap_lao_cai_process
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_giao_dat_lao_cai_attach
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
 from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
@@ -1341,6 +1345,34 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh",
+        # Cùng cổng Bộ VHTTDL với thủ tục trò chơi điện tử ở trên (Angular Material `liz-*`, engine
+        # content/fill-liz.js khớp theo (.group-header, <mat-label>)). Form VÀ bảng thành phần hồ sơ
+        # nằm CHUNG trang /nop-ho-so nên một lượt fill + một lượt đính kèm là xong.
+        "detect": {"urlIncludes": ["matthc=1.003868"]},
+        "label": "Cấp giấy phép xuất bản tài liệu không kinh doanh",
+        "mode": "agent",
+        # Bảng style_table 4 dòng, mỗi dòng input file trong <app-upload-flie-multi> → engine fixed-slot
+        # theo slotIndex 0..3.
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Đơn đề nghị cấp giấy phép xuất bản tài liệu không kinh doanh (Mẫu số 04).\n"
+            "2. Bản thảo tài liệu sẽ xuất bản.\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp và Giấy phép hoạt động in CỦA CƠ SỞ IN (dùng để "
+            "điền khối 'Thông tin doanh nghiệp').\n"
+            "4. Nếu có: bản dịch tiếng Việt, văn bản nêu ý kiến của cơ quan có thẩm quyền.\n"
+            "⚠ Khối 'Thông tin doanh nghiệp' là của CƠ SỞ IN, không phải cơ quan/tổ chức đề nghị cấp "
+            "phép — hệ thống điền tách bạch hai bên.\n"
+            "⚠ Bảng thành phần hồ sơ chỉ có 4 dòng, KHÔNG có dòng 'Giấy tờ khác': giấy tờ ngoài danh "
+            "mục được đưa vào dòng (4) kèm cảnh báo để cán bộ đối chiếu.\n"
+            "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', "
+            "chưa tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
+        ),
+    },
+    {
         "key": "giao-thue-chuyen-muc-dich-dat-bac-ninh",
         # maThuTucHanhChinh=1.013949 là mã QG dùng chung nhiều cổng iGate (Lâm Đồng cũng có mã này) → PHẢI
         # khóa host bacninh, nếu không sẽ nhận nhầm trên cổng tỉnh khác.
@@ -2077,6 +2109,178 @@ PROCEDURES: list[dict] = [
             "3. Văn bản của bên nhận bảo đảm (ngân hàng) đồng ý/xác nhận xóa đăng ký thế chấp → dòng 5.\n"
             "Lưu ý: nếu Phiếu yêu cầu và Công văn ngân hàng nằm CHUNG 1 file PDF, hệ thống phân theo tài "
             "liệu chính (phiếu) → đính dòng 2; cần đính công văn vào dòng 5 thì tách file riêng."
+        ),
+    },
+    {
+        "key": "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG form bước 2 CongDan_*/ChuHoSo_* với các
+        # thủ tục Lào Cai khác.
+        # ⚠ URL mọi bước của cổng này là …/tiep-nhan-online/nhap-thong-tin-ho-so?sid=<phiên> — DÙNG
+        # CHUNG cho mọi thủ tục của tỉnh và không chứa mã thủ tục, nên đường dẫn đó chỉ được khai ở
+        # urlScope (giới hạn phạm vi); đưa vào urlIncludes là cướp trang của thủ tục Lào Cai khác.
+        # Mã 1.115666 in ở tiêu đề trang ("Một phần 1.115666 - Lào Cai Đăng ký, cấp Giấy chứng
+        # nhận…") nên khoá bằng mã phải nằm ở textIncludes; urlIncludes giữ mã cho trang chi tiết
+        # thủ tục trên Cổng DVC quốc gia.
+        # ⚠ Cụm tên gần giống thủ tục 1.115667 ("…cho người nhận chuyển nhượng… trong dự án bất động
+        # sản") nên textIncludes phải lấy đoạn ĐẶC TRƯNG "trước ngày 01 tháng 8 năm 2024".
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "urlIncludes": ["1.115666"],
+            "textIncludes": [
+                "1.115666",
+                "đã chuyển quyền sử dụng đất trước ngày 01 tháng 8 năm 2024",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Đăng ký, cấp Giấy chứng nhận đối với trường hợp đã chuyển quyền sử dụng đất "
+            "trước ngày 01 tháng 8 năm 2024 mà bên chuyển quyền đã được cấp Giấy chứng nhận nhưng chưa "
+            "thực hiện thủ tục chuyển quyền theo quy định"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 24 kèm QĐ 47/2026/QĐ-UBND).\n"
+            "2. Hợp đồng/giấy tờ về việc chuyển quyền sử dụng đất (kể cả giấy bán nhượng viết tay có "
+            "chữ ký hai bên, người làm chứng, xác nhận của UBND xã).\n"
+            "3. Bản gốc Giấy chứng nhận đã cấp — mang tên BÊN CHUYỂN QUYỀN, đó là đúng bản chất thủ tục.\n"
+            "4. Giấy tờ khác sẽ được thêm thành dòng 'Giấy tờ khác' KÈM TÊN TÀI LIỆU.\n"
+            "⚠ Bảng thành phần chia HAI TRƯỜNG HỢP a) và b) LOẠI TRỪ NHAU: có văn bản chuyển quyền → "
+            "trường hợp a); chỉ có Giấy chứng nhận của bên chuyển quyền → trường hợp b). Hệ thống tự "
+            "xếp theo giấy tờ đọc được và báo rõ, cán bộ bỏ tick các dòng của trường hợp còn lại.\n"
+            "⚠ Một tệp PDF có thể gộp đơn của NHIỀU người khác nhau — phần không thuộc hồ sơ nên tách "
+            "sang 'Giấy tờ khác' và ghi rõ vào ô 'Ghi chú'.\n"
+            "⚠ Ô 'Về việc' (*) được cổng điền sẵn TÊN THỦ TỤC — hệ thống ghi đè bằng nội dung thật của "
+            "Đơn (thửa đất, tờ bản đồ, địa chỉ khu đất)."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-da-cap-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
+        # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cả tỉnh nên chỉ khai host ở
+        # urlScope (xem entry 1.115666).
+        # ⚠ Tên thủ tục TRÙNG NGUYÊN VĂN với bản đính chính của Lai Châu/Bắc Ninh/Lâm Đồng/Ninh Bình/
+        # Quảng Ngãi/Đà Nẵng và tiêu đề trang KHÔNG có tiền tố "Lào Cai" → chỉ mã 1.115686 phân biệt
+        # được, bắt buộc có trong textIncludes.
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "urlIncludes": ["1.115686"],
+            "textIncludes": [
+                "1.115686",
+                "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Tỉnh Lào Cai] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24) — ghi rõ nội dung "
+            "đề nghị đính chính (thông tin sai và thông tin đúng).\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp.\n"
+            "3. Căn cước công dân của người có thông tin bị sai — đính vào dòng \"Giấy tờ chứng minh "
+            "sai sót\"; bắt buộc khi cơ quan không khai thác được Cơ sở dữ liệu quốc gia về dân cư.\n"
+            "4. Nếu nộp thay hoặc người đồng sử dụng đất không ký đơn: văn bản ủy quyền.\n"
+            "⚠ Một tệp scan có thể gộp NHIỀU Giấy chứng nhận — hệ thống đính vào một dòng, cán bộ sửa "
+            "ô \"Số bản\" cho đúng số Giấy chứng nhận và ghi danh mục vào ô \"Ghi chú\".\n"
+            "⚠ Mỗi tệp tối đa 6 MB, nặng hơn phải nén hoặc giảm DPI.\n"
+            "⚠ Ô \"Về việc\" giữ câu mặc định của cổng, hệ thống nối thêm nội dung đính chính cụ thể."
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
+        # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cả tỉnh nên chỉ khai host ở
+        # urlScope (xem entry 1.115666).
+        # ⚠ Tên thủ tục trùng gần hết với bản "lần đầu" của Lâm Đồng/Ninh Bình/Đà Nẵng/Lai Châu VÀ với
+        # bản dành cho TỔ CHỨC đang sử dụng đất của chính Lào Cai → khoá bằng MÃ + cụm đối tượng
+        # "hộ gia đình, cá nhân, cộng đồng dân cư" (bản tổ chức không có cụm này).
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "urlIncludes": ["1.115689"],
+            "textIncludes": [
+                "1.115689",
+                "lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử "
+            "dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, "
+            "cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 21 kèm QĐ 47/2026/QĐ-UBND).\n"
+            "2. Giấy tờ về quyền sử dụng đất theo Điều 137 Luật Đất đai, hoặc giấy tờ chuyển quyền có "
+            "chữ ký hai bên (kể cả giấy mua bán viết tay).\n"
+            "3. Mảnh trích đo bản đồ địa chính, hoặc Bản mô tả ranh giới - mốc giới thửa đất.\n"
+            "4. Nếu có: giấy tờ thừa kế, văn bản xác định thành viên hộ gia đình, chứng từ nghĩa vụ "
+            "tài chính, văn bản ủy quyền.\n"
+            "⚠ Bảng thành phần hồ sơ chia BA NHÓM LOẠI TRỪ NHAU: a) hộ gia đình, cá nhân, cộng đồng "
+            "dân cư · b) người gốc Việt Nam định cư ở nước ngoài · c) đã có Thông báo xác nhận kết quả "
+            "đăng ký đất đai. Hệ thống xếp nhóm a) (hoặc c) khi có Thông báo), cán bộ bỏ tích các dòng "
+            "của nhóm còn lại; thuộc nhóm b) thì tự chuyển.\n"
+            "⚠ Bản mô tả ranh giới được đính THAY THẾ vào dòng \"Mảnh trích đo\" — phải ghi rõ việc "
+            "này vào ô \"Ghi chú\".\n"
+            "⚠ Ô \"Về việc\" giữ nguyên nội dung cổng điền sẵn, không sửa."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
+        # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cho cả tỉnh nên chỉ khai host ở
+        # urlScope (xem entry 1.115666 ngay trên).
+        # ⚠ Tên thủ tục rất dài và chứa nhiều cụm dùng chung ("đăng ký biến động", "điều chỉnh quy
+        # hoạch xây dựng chi tiết") → khoá bằng MÃ + cụm đặc trưng "chuyển đổi loại hình doanh nghiệp".
+        "detect": {
+            "urlScope": ["laocai.gov.vn"],
+            "urlIncludes": ["1.115670"],
+            "textIncludes": [
+                "1.115670",
+                "chia, tách, hợp nhất, sáp nhập tổ chức hoặc chuyển đổi mô hình tổ chức",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Đăng ký biến động thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền "
+            "với đất do chia, tách, hợp nhất, sáp nhập tổ chức hoặc chuyển đổi mô hình tổ chức, chuyển "
+            "đổi loại hình doanh nghiệp theo quy định của pháp luật về doanh nghiệp; điều chỉnh quy "
+            "hoạch xây dựng chi tiết; cấp Giấy chứng nhận cho từng thửa đất theo quy hoạch xây dựng chi "
+            "tiết cho chủ đầu tư dự án có nhu cầu"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 24 kèm QĐ 47/2026/QĐ-UBND).\n"
+            "2. Quyết định/văn bản về việc chia, tách, hợp nhất, sáp nhập, tổ chức lại, chuyển đổi mô "
+            "hình tổ chức hoặc loại hình doanh nghiệp (kể cả quyết định giao tài sản kèm phụ biểu).\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp, hoặc quyết định thành lập tổ chức sau khi thay đổi "
+            "— đơn vị sự nghiệp công lập không có ĐKDN thì nộp quyết định thành lập.\n"
+            "4. Giấy chứng nhận đã cấp (mang tên TỔ CHỨC CŨ là đúng bản chất thủ tục).\n"
+            "5. Nếu có: mảnh trích đo bản đồ địa chính, bản vẽ tách/hợp thửa (Mẫu số 28), quyết định phê "
+            "duyệt điều chỉnh quy hoạch xây dựng chi tiết, văn bản ủy quyền/đại diện.\n"
+            "⚠ Một tệp scan GỘP nhiều giấy tờ sẽ được đính vào TỪNG dòng tương ứng (cùng tệp, nhiều "
+            "dòng); hãy ghi rõ tệp nào chứa văn bản nào kèm số trang vào ô 'Ghi chú'.\n"
+            "⚠ Ô 'Về việc' (*) được cổng điền sẵn TÊN THỦ TỤC — hệ thống ghi đè bằng nội dung thật của "
+            "Đơn. Chủ hồ sơ là tổ chức thì chọn đối tượng 'Tổ chức' trước, cổng sẽ ẩn các ô cá nhân."
         ),
     },
     {
@@ -3172,80 +3376,6 @@ PROCEDURES: list[dict] = [
             "từ CCCD của chính người nộp; số điện thoại/email trên Đơn điền cho chủ hồ sơ.\n"
             "Thành phần hồ sơ: tự chọn nhóm (1)-(4) theo mẫu đơn, tích + đính kèm từng dòng; bản đồ riêng, GCN đăng "
             "ký doanh nghiệp, giấy ủy quyền vào 'Giấy tờ khác'. Tệp không đính được sẽ được bỏ qua. CCCD không đính kèm."
-        ),
-    },
-    {
-        "key": "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175",
-        # Cổng dichvucong.laocai.gov.vn (Nth.FormBuilder — iGate VNPT) — bản nộp ở PHƯỜNG/XÃ của cụm thủ tục
-        # "chuyển mục đích / chuyển hình thức / gia hạn / điều chỉnh thời hạn". TÊN TRÙNG Y HỆT 1.115651
-        # (bản nộp ở Sở, key chuyen-muc-dich-su-dung-dat-lao-cai) nên nhãn ghi kèm MÃ 1.115679 để cán bộ tìm
-        # và phân biệt được; hai thủ tục để hai pipeline riêng vì bảng bước 3 khác cấu trúc.
-        # Bước 2 dùng CÙNG bộ ô CongDan_*/ChuHoSo_* với 1.115651/1.115667/1.115671/1.115687/1.115688 (engine
-        # dom-*), mapping theo "Mapping_CMDSDD_1.115679_LaoCai_CaNhan_ToChuc.xlsx"; khác 1.115651 ở chỗ SÁU ô
-        # của khối NGƯỜI NỘP là (*) mà cổng chỉ đổ theo tài khoản → pipeline điền thêm giới tính, dân tộc,
-        # cụm địa chỉ và di động.
-        # Bước 3 "Thành phần hồ sơ" in MỘT LẦN cả bốn nhóm, tiêu đề nhóm đánh CHỮ CÁI "a) b) c) d)" (1.115651
-        # đánh "(1)…(4)") → attach/catalog.py khớp dòng theo từ khóa, neo vùng bằng tiêu đề cột hoặc tiêu đề
-        # nhóm d).
-        # NHẬN DIỆN THEO MÃ THỦ TỤC. Tên thủ tục trùng y hệt 1.115651 nên không tách được bằng tên; nhưng
-        # cổng in MÃ ngay trong banner "thủ tục đã chọn" của cả luồng nộp hồ sơ:
-        #     <section id="thu-tuc-da-chon-wrapper"><h4><span class="label label-warning">Một phần</span>
-        #       1.115679 - Lào Cai - Chuyển mục đích sử dụng đất; … Khoản 1 Điều 175 Luật Đất đai năm 2024
-        # <h4> là chữ HIỂN THỊ nên nằm trong document.body.innerText (nguồn của signals.bodyText), và banner
-        # này có ở MỌI bước của luồng — nhờ vậy bước 2 (nhập thông tin) lẫn bước 3 (thành phần hồ sơ) đều
-        # nhận đúng, không phải dựa vào cấu trúc bảng đính kèm nữa. URL chỉ có sid nên không dùng urlIncludes
-        # được. textPriority để thắng rule theo TÊN của 1.115651 (không có textPriority) ngay ở vòng ưu tiên.
-        # Mã là chuỗi ngắn nên urlScope khoá host Lào Cai vẫn bắt buộc.
-        # Key trùng mục ke_khai_links (1.115679).
-        "detect": {
-            "urlScope": ["laocai.gov.vn"],
-            "textIncludes": ["1.115679"],
-            "textPriority": True,
-            "headingDisabled": True,
-        },
-        "label": (
-            "[Lào Cai] Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi "
-            "hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư đối với trường hợp "
-            "quy định tại Khoản 1 Điều 175 Luật Đất đai năm 2024 (1.115679 - cho Phường/Xã)"
-        ),
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Thủ tục này nộp tại UBND PHƯỜNG/XÃ (mã 1.115679). Bản cùng tên nộp ở Sở là mã 1.115651 — chọn "
-            "nhầm là sai cơ quan tiếp nhận.\n"
-            "Giấy tờ cần tải lên:\n"
-            "1. Đơn đề nghị: Mẫu số 02 (chuyển mục đích), Mẫu số 03 (chuyển hình thức) hoặc Mẫu số 17 (gia "
-            "hạn) ban hành kèm Quyết định số 47/2026/QĐ-UBND — nguồn chính để điền thân đơn.\n"
-            "2. Giấy chứng nhận quyền sử dụng đất (sổ đỏ/sổ hồng) của thửa đất xin chuyển mục đích.\n"
-            "3. Quyết định giao đất/cho thuê đất/cho phép chuyển mục đích và quyết định điều chỉnh (nếu có).\n"
-            "4. Nếu có: Giấy uỷ quyền khi người khác đi nộp thay, hồ sơ nghĩa vụ tài chính (phiếu chuyển "
-            "thông tin, thông báo thuế, giấy nộp tiền), hồ sơ đo đạc chỉnh lý thửa đất, văn bản về thời hạn "
-            "hoạt động của dự án đầu tư.\n"
-            "5. CCCD của chủ hồ sơ và của người đi nộp — KHÔNG đính kèm, chỉ dùng để đọc nhân thân.\n"
-            "⚠ MỖI TỆP KHÔNG QUÁ 6 MB — trần của chính cổng Lào Cai. Cụm nghĩa vụ tài chính + đo đạc quét "
-            "gộp rất hay vượt (hồ sơ mẫu 14 trang nặng 6,33 MB): tách làm hai tệp hoặc quét lại ở DPI thấp "
-            "hơn, tệp vượt trần thì cả trợ lý lẫn cán bộ đính tay đều không đưa lên được.\n"
-            "Chủ hồ sơ = NGƯỜI SỬ DỤNG ĐẤT đứng tên mục 1 của Đơn, KHÔNG phải người đi nộp thay. Hai vợ "
-            "chồng cùng đứng tên thì form chỉ có một ô họ tên — nhập người đứng đầu mục 1, người còn lại đã "
-            "có trong Đơn và Giấy chứng nhận đính kèm.\n"
-            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản định "
-            "danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Giới tính, Dân tộc, Tỉnh/Phường-Xã, Số "
-            "nhà và Di động của khối này là (*) mà cổng để trống: trợ lý điền theo giấy tờ của chính người "
-            "đi nộp, không có thì cán bộ gõ tay. Riêng ô Giới tính không có lựa chọn trống nên luôn hiện "
-            "sẵn 'Nữ' — hồ sơ của nam giới phải kiểm lại ô này trước khi nộp.\n"
-            "Ô 'Người nộp là chủ hồ sơ' trợ lý KHÔNG tích (tích là cổng ép Đối tượng = Cá nhân rồi chép khối "
-            "người nộp đè lên khối chủ hồ sơ) — thông tin chủ hồ sơ đã được điền thẳng từ giấy tờ.\n"
-            "Thành phần hồ sơ: trợ lý tích và đính Đơn Mẫu số 02 vào dòng của nhóm a); Giấy chứng nhận và "
-            "Quyết định cho phép chuyển mục đích vào hai dòng CUỐI BẢNG theo ảnh hướng dẫn của bộ phận một "
-            "cửa; giấy uỷ quyền, hồ sơ nghĩa vụ tài chính, hồ sơ đo đạc xuống 'Giấy tờ khác'. Mỗi giấy tờ "
-            "chỉ tải ở MỘT dòng.\n"
-            "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè.\n"
-            "Lưu ý số liệu hay lệch giữa các giấy tờ (Đơn ghi 'Tổ 39', Giấy uỷ quyền ghi 'Tổ dân phố số 9 "
-            "Xuân Tăng', Giấy chứng nhận 2018 còn địa danh cũ 'Tổ 24, phường Bình Minh'; Giấy chứng nhận cũ "
-            "ghi CMND 9 số khác số CCCD hiện tại) — cán bộ đối chiếu CCCD/CSDLQG về dân cư trước khi ký số "
-            "và nộp."
         ),
     },
     {
@@ -5014,12 +5144,17 @@ _PIPELINE = {
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_process,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_process,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_process,
+    "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai": dang_ky_gcn_chuyen_quyen_lao_cai_process,
+    "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai": dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_process,
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_process,
+    "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_process,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_process,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_process,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_process,
     "cung-cap-thong-tin-quy-hoach": cung_cap_thong_tin_quy_hoach_process,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": cap_gcn_diem_tro_choi_dien_tu_process,
+    "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": cap_giay_phep_xuat_ban_process,
     "giao-thue-chuyen-muc-dich-dat-bac-ninh": giao_thue_chuyen_muc_dich_dat_bac_ninh_process,
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_process,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_process,
@@ -5066,7 +5201,6 @@ _PIPELINE = {
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_process,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_process,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_process,
-    "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175": chuyen_md_sd_dat_phuong_xa_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_process,
@@ -5137,7 +5271,6 @@ _ATTACH_PIPELINE = {
     "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai": thu_hoi_gcn_cap_lan_dau_lao_cai_attach,
     "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc": dk_dat_dai_gan_tai_san_lao_cai_attach,
     "chuyen-muc-dich-su-dung-dat-lao-cai": chuyen_doi_md_sd_dat_lao_cai_attach,
-    "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175": chuyen_md_sd_dat_phuong_xa_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_attach,
@@ -5149,6 +5282,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_attach,
     "cung-cap-thong-tin-quy-hoach": cung_cap_thong_tin_quy_hoach_attach,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": cap_gcn_diem_tro_choi_dien_tu_attach,
+    "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": cap_giay_phep_xuat_ban_attach,
     "giao-thue-chuyen-muc-dich-dat-bac-ninh": giao_thue_chuyen_muc_dich_dat_bac_ninh_attach,
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_attach,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_attach,
@@ -5171,6 +5305,10 @@ _ATTACH_PIPELINE = {
     "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
+    "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai": dang_ky_gcn_chuyen_quyen_lao_cai_attach,
+    "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai": dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach,
+    "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_attach,
+    "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_attach,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
     "dang-ky-bien-phap-bao-dam-quang-ninh": dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach,

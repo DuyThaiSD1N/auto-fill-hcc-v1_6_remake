@@ -127,6 +127,8 @@ async def summary(
             "xa": u.get("xa"),
             "tinh": u.get("tinh"),
             "role": u.get("role"),
+            # Đơn vị tạm khóa vẫn nằm trong bảng và vẫn cộng vào tổng; FE gắn nhãn "Tạm khóa".
+            "accessDisabled": bool(u.get("accessDisabled")),
             "dossiers": dossiers,
             "requests": int((af_wards.get(u["unitId"]) or {}).get("requests") or 0),
             "procedureTypes": len(procs),
@@ -191,16 +193,20 @@ async def logs(
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
     status: Literal["all", "submitted", "unsubmitted"] = Query("all"),
+    source: Literal["all", "autofill", "handfree"] = Query("all"),
     page: int = Query(1, ge=1),
     pageSize: int = Query(15, ge=1, le=100),
 ):
-    """Nhật ký hồ sơ (mỗi HỒ SƠ = 1 dòng). Auto Fill; KHÔNG PII, không thời lượng.
+    """Nhật ký hồ sơ (mỗi HỒ SƠ = 1 dòng). KHÔNG PII, không thời lượng.
 
     Trước đây mỗi *lượt* điền/đính kèm là một dòng, nên một hồ sơ làm hai bước hiện thành hai
     dòng trùng tên thủ tục — số ở đầu bảng là số lượt chứ không phải số hồ sơ. Giờ đọc thẳng
     collection `dossiers`, nhờ đó có thêm mốc NỘP và phiếu đánh giá (hai thứ tầng trace không có).
 
-    Nhật ký này chủ đích chỉ gồm Auto Fill; màn quản lý trace có bộ lọc nguồn riêng.
+    Gộp CẢ HAI trải nghiệm. Trước đây khóa cứng experience="autofill" từ thời Handfree còn nằm
+    ở một backend riêng; giờ hai bên dùng chung Mongo nên khóa như vậy là nhật ký thiếu hẳn
+    phần Trợ lý người dân, trong khi KPI ngay phía trên lại cộng cả hai — cùng một màn hình
+    mà hai con số không khớp nhau.
     """
     resolved = await resolve_dashboard_scope(user)
     date_from, date_to = _range(dateFrom, dateTo)
@@ -209,7 +215,8 @@ async def logs(
 
     result = await dossiers_repo.list_for_dashboard(
         user_ids=ids, date_from=date_from, date_to=date_to,
-        skip=(page - 1) * pageSize, limit=pageSize, experience="autofill",
+        skip=(page - 1) * pageSize, limit=pageSize,
+        experience=None if source == "all" else source,
         # "Đã hoàn thành" = đã bấm nộp — đúng tập mà thống kê đếm từ 15/9/2026.
         submitted=None if status == "all" else (status == "submitted"),
     )
@@ -226,11 +233,12 @@ async def logs(
             "procedure": row["procedure"],
             "procedureLabel": row["procedureLabel"] or row["procedure"],
             "rating": row["rating"],
+            "experience": row["experience"],
         })
     return {
         "scope": _scope_summary(resolved),
         "range": {"from": dateFrom, "to": dateTo},
-        "source": "autofill",
+        "source": source,
         "status": status,
         "items": items,
         "total": result["total"],
@@ -248,7 +256,8 @@ async def export(
 ):
     """Xuất Excel thống kê từ dữ liệu đã gộp AF+HF. Tỉnh: 4 sheet (kèm Theo đơn vị); xã/phường: 3 sheet.
 
-    Nhật ký hồ sơ (Auto Fill) đưa vào sheet cuối. Ghi log mỗi lượt xuất để phục vụ audit.
+    Nhật ký hồ sơ (cả Auto Fill lẫn Handfree) đưa vào sheet cuối. Ghi log mỗi lượt xuất để
+    phục vụ audit.
     """
     data = await summary(user=user, dateFrom=dateFrom, dateTo=dateTo, unit=unit)
 
@@ -265,7 +274,7 @@ async def export(
         date_to=date_to,
         skip=0,
         limit=_EXPORT_LOG_CAP,
-        experience="autofill",
+        experience=None,  # gộp cả hai nguồn, khớp đúng bảng trên màn hình
     )
     logs = [
         {
@@ -277,6 +286,7 @@ async def export(
             or "—",
             "procedureLabel": row["procedureLabel"] or row["procedure"],
             "rating": row["rating"],
+            "experience": row["experience"],
         }
         for row in log_res["items"]
     ]

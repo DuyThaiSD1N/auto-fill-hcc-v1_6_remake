@@ -230,8 +230,12 @@ async def create_client_attachment_trace(
     request_id = traces_repo.new_request_id()
     created_at = datetime.now(timezone.utc)
     options = body.options or {}
-    # Case này luôn là N file = N hồ sơ/tab; không tin cờ split từ client.
-    split = client_case.get("type") == "single-row-local-split"
+    # CTV cho chọn: tách (mỗi file 1 hồ sơ/tab) hoặc gộp 1 tab. Extension gửi lựa chọn ở
+    # options.splitMode; bản extension cũ không gửi thì trước đây luôn tách → mặc định tách.
+    # Ghi sai cờ này là gộp 4 tệp vào 1 hồ sơ vẫn bị thống kê đếm thành 4.
+    client_split = options.get("splitMode")
+    split = (client_case.get("type") == "single-row-local-split"
+             and (client_split if isinstance(client_split, bool) else True))
     files_meta = [
         {
             "name": item.name,

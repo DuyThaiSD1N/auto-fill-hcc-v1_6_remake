@@ -10,6 +10,7 @@ import {
   type SummaryResp,
   type LogsResp,
   type LogRating,
+  type LogSource,
   type LogStatus,
 } from "./api";
 import { RATING_FACE } from "../rating";
@@ -184,6 +185,7 @@ export default function Dashboard({ user, onLogout }: Props) {
   const [logsLoading, setLogsLoading] = useState(false);
   const [nkPage, setNkPage] = useState(1);
   const [nkStatus, setNkStatus] = useState<LogStatus>("all");
+  const [nkSource, setNkSource] = useState<LogSource>("all");
   const [exporting, setExporting] = useState(false);
   const [showExport, setShowExport] = useState(false);
 
@@ -238,21 +240,21 @@ export default function Dashboard({ user, onLogout }: Props) {
   // Đổi khoảng/đơn vị → nhật ký về trang 1.
   useEffect(() => {
     setNkPage(1);
-  }, [range, selectedUnit, nkStatus]);
+  }, [range, selectedUnit, nkStatus, nkSource]);
 
   const loadLogs = useCallback(async () => {
     if (!scope || notAssigned) return;
     setLogsLoading(true);
     try {
       const unitParam = scope.canViewUnits ? selectedUnit : "all";
-      const res = await getLogs(range.from, range.to, unitParam, nkPage, 15, nkStatus);
+      const res = await getLogs(range.from, range.to, unitParam, nkPage, 15, nkStatus, nkSource);
       setLogs(res);
     } catch {
       /* giữ trang cũ nếu lỗi tạm thời */
     } finally {
       setLogsLoading(false);
     }
-  }, [scope, notAssigned, range, selectedUnit, nkPage, nkStatus, reloadKey]);
+  }, [scope, notAssigned, range, selectedUnit, nkPage, nkStatus, nkSource, reloadKey]);
 
   useEffect(() => {
     if (view === "nk") loadLogs();
@@ -956,6 +958,9 @@ export default function Dashboard({ user, onLogout }: Props) {
                       <td>
                         <div className="uname">
                           <span>{u.name}</span>
+                          {/* Tạm khóa = không đăng nhập được, nhưng hồ sơ đã làm vẫn tính.
+                              Ẩn dòng đi thì tổng của tỉnh không khớp tổng các dòng. */}
+                          {u.accessDisabled && <i className="ulock" title="Tài khoản đang tạm khóa">Tạm khóa</i>}
                           {u.unitId === meId && <em>Đơn vị của bạn</em>}
                         </div>
                       </td>
@@ -1160,10 +1165,21 @@ export default function Dashboard({ user, onLogout }: Props) {
             ? `${fmt(total)} hồ sơ đã hoàn thành · đây đúng là tập được tính vào thống kê`
             : nkStatus === "unsubmitted"
               ? `${fmt(total)} hồ sơ làm dở · chưa bấm nộp nên không tính vào thống kê`
-              : `${fmt(total)} hồ sơ · mỗi dòng là một hồ sơ · chỉ hồ sơ Auto Fill`
+              : `${fmt(total)} hồ sơ · mỗi dòng là một hồ sơ · gồm cả Auto Fill và Trợ lý người dân`
         }
         right={
           <div className="nk-filter">
+            <label htmlFor="nk-source">Nguồn</label>
+            <select
+              id="nk-source"
+              className="ctl"
+              value={nkSource}
+              onChange={(e) => setNkSource(e.target.value as LogSource)}
+            >
+              <option value="all">Tất cả</option>
+              <option value="autofill">No handfree</option>
+              <option value="handfree">Handfree</option>
+            </select>
             <label htmlFor="nk-status">Trạng thái</label>
             <select
               id="nk-status"
@@ -1187,6 +1203,7 @@ export default function Dashboard({ user, onLogout }: Props) {
                 <th style={{ width: 158 }}>Thời gian nộp hồ sơ</th>
                 <th>Đơn vị tiếp nhận</th>
                 <th>Thủ tục</th>
+                <th className="c" style={{ width: 118 }}>Nguồn</th>
                 <th className="c" style={{ width: 150 }}>Đánh giá</th>
               </tr>
             </thead>
@@ -1219,12 +1236,19 @@ export default function Dashboard({ user, onLogout }: Props) {
                         {it.procedureLabel || "—"}
                       </span>
                     </td>
+                    <td className="c">
+                      {/* Cùng cách gọi tên với trang quản trị hồ sơ, để cán bộ đọc hai màn
+                          không phải dịch lại trong đầu. */}
+                      <span className={`chip ${it.experience === "handfree" ? "hf" : ""}`}>
+                        {it.experience === "handfree" ? "Handfree" : "No handfree"}
+                      </span>
+                    </td>
                     <td className="c"><RatingChip rating={it.rating} /></td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="none">
+                  <td colSpan={7} className="none">
                     {logsLoading ? "Đang tải nhật ký…" : "Chưa có hồ sơ nào trong kỳ."}
                   </td>
                 </tr>

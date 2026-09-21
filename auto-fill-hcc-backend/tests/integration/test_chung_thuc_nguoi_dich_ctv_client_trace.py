@@ -69,7 +69,7 @@ async def test_client_trace_records_n_files_as_n_dossiers_without_file_content(m
     monkeypatch.setattr("app.attachments.router.traces_repo.create_trace", fake_create_trace)
     body = ClientAttachmentTraceReq(
         procedure=PROCEDURE,
-        options={"splitMode": False},  # backend phải cưỡng chế split theo registry
+        options={},  # extension cũ (trước khi CTV cho gộp) không gửi cờ → mặc định tách
         files=[
             ClientAttachmentFileMeta(name="Ban_dich_1.pdf", type="application/pdf", size=120),
             ClientAttachmentFileMeta(name="Ban_dich_2.pdf", type="application/pdf", size=230),
@@ -101,3 +101,31 @@ async def test_client_trace_records_n_files_as_n_dossiers_without_file_content(m
     assert captured["llm_output"]["extracted"]["clientAttachmentCase"] == "single-row-local-split"
     # Contract metadata-only không có field dataUrl/binary để server có thể nhận nội dung file.
     assert all("dataUrl" not in item.model_dump() for item in body.files)
+
+
+async def test_client_trace_gop_mot_tab_ghi_split_false(monkeypatch):
+    """Cán bộ bỏ tick "tách hồ sơ" → 3 bản dịch vào CÙNG 1 hồ sơ: không được ghi là đa tab,
+    nếu không trang quản trị hiện "(đa tab)" sai và thống kê đếm thành 3 hồ sơ."""
+    captured = {}
+
+    async def fake_create_trace(**kwargs):
+        captured.update(kwargs)
+        return "mongo-id"
+
+    monkeypatch.setattr("app.attachments.router.traces_repo.create_trace", fake_create_trace)
+    body = ClientAttachmentTraceReq(
+        procedure=PROCEDURE,
+        options={"splitMode": False},
+        files=[
+            ClientAttachmentFileMeta(name=f"Ban_dich_{i}.pdf", type="application/pdf", size=100)
+            for i in range(1, 4)
+        ],
+        attachments=[_attachment(i, f"Ban_dich_{i + 1}.pdf") for i in range(3)],
+    )
+
+    await create_client_attachment_trace(
+        body, user={"id": "user-id", "username": "tester", "name": "Tester"},
+    )
+
+    assert captured["split"] is False
+    assert len(captured["dossier_ids"]) == 1

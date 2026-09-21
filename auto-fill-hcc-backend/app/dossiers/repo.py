@@ -342,7 +342,7 @@ async def list_for_dashboard(
     date_to: datetime,
     skip: int = 0,
     limit: int = 15,
-    experience: str = "autofill",
+    experience: str | None = "autofill",
     submitted: bool | None = None,
 ) -> dict:
     """Nhật ký hồ sơ cho bảng thống kê: mỗi HỒ SƠ = 1 dòng, KHÔNG PII.
@@ -379,6 +379,7 @@ async def list_for_dashboard(
         db.dossiers.find(query, {
             "_id": 1, "user_id": 1, "procedure": 1, "procedure_label": 1,
             "started_at": 1, "submit_clicked_at": 1, "submit_count": 1, "rating": 1,
+            "experience": 1,
         })
         .sort("started_at", -1)
         .skip(max(skip, 0))
@@ -394,6 +395,9 @@ async def list_for_dashboard(
             "submittedAt": _iso(doc.get("submit_clicked_at")),
             "submitCount": int(doc.get("submit_count") or 0),
             "rating": _serialize_rating(doc.get("rating")),
+            # Hai trải nghiệm dùng chung collection này; nhật ký gộp cả hai nên phải nói rõ
+            # từng dòng đến từ đâu.
+            "experience": doc.get("experience") or "autofill",
         }
         async for doc in cursor
     ]

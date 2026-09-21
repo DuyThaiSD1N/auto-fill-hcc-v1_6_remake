@@ -263,6 +263,11 @@ def _fmt_received(iso: str | None) -> str:
         return str(iso)
 
 
+# Nhãn nguồn dùng chung với trang quản trị hồ sơ (fe/src/pages/Dossiers.tsx) để cán bộ đọc
+# hai màn không phải dịch lại trong đầu.
+SOURCE_LABELS = {"autofill": "No handfree", "handfree": "Handfree"}
+
+
 def _sheet_logs(wb: Workbook, logs: list[dict]) -> None:
     ws = wb.create_sheet("Nhật ký hồ sơ")
     ws.sheet_view.showGridLines = False
@@ -274,12 +279,13 @@ def _sheet_logs(wb: Workbook, logs: list[dict]) -> None:
         ("Thời gian nộp hồ sơ", "c", 20),
         ("Đơn vị tiếp nhận", "l", 28),
         ("Thủ tục", "l", 52),
+        ("Nguồn", "c", 16),
         ("Đánh giá", "c", 16),
     ])
     if not logs:
         cell = ws.cell(row=2, column=1, value="Chưa có hồ sơ nào trong kỳ.")
         cell.alignment = _LEFT
-        ws.merge_cells("A2:F2")
+        ws.merge_cells("A2:G2")
         return
     r = 2
     for it in logs:
@@ -296,7 +302,9 @@ def _sheet_logs(wb: Workbook, logs: list[dict]) -> None:
         _body_cell(ws, r, 3, _fmt_received(it.get("submittedAt")) if it.get("submittedAt") else "chưa nộp", "c")
         _body_cell(ws, r, 4, it.get("unitName") or "—", "l")
         _body_cell(ws, r, 5, it.get("procedureLabel") or "—", "l")
-        _body_cell(ws, r, 6, rating_text, "c")
+        # Nhật ký gộp hai trải nghiệm nên phải nói rõ từng dòng đến từ đâu.
+        _body_cell(ws, r, 6, SOURCE_LABELS.get(it.get("experience"), "—"), "c")
+        _body_cell(ws, r, 7, rating_text, "c")
         r += 1
 
 

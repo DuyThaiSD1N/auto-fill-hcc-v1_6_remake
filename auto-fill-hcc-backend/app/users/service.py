@@ -1,4 +1,5 @@
 """Nghiệp vụ quản lý tài khoản xã/phường (chỉ admin)."""
+import re
 from datetime import datetime, timezone
 
 from bson import ObjectId
@@ -9,9 +10,9 @@ from app.auth.access_control import MAINTENANCE_MESSAGE
 from app.core.errors import AppError
 from app.core.security import hash_password
 from app.db.mongo import get_db
-from app.locations.catalog import canonical_location
+from app.locations.catalog import canonical_location, province_name_variants
 from app.users.schemas import Role, UserCreate, UserUpdate
-from app.users.roles import SUPER_ADMIN_ROLE
+from app.users.roles import NOT_DELETED, SUPER_ADMIN_ROLE
 
 
 def _now() -> datetime:
@@ -41,6 +42,9 @@ def _public(user: dict) -> dict:
         "access_disabled": user.get("access_disabled") is True,
         "created_at": _iso(user.get("created_at")),
         "last_login_at": _iso(user.get("last_login_at")),
+        # Có giá trị = đã xóa mềm. FE dựa vào đây để đổi hàng sang trạng thái "Đã xóa" kèm
+        # nút Khôi phục thay cho Sửa/Xóa.
+        "deleted_at": _iso(user.get("deleted_at")),
     }
 
 
@@ -64,9 +68,82 @@ def _role_query(role: Role | None) -> dict:
     return {"role": role}
 
 
-async def list_users(*, skip: int = 0, limit: int = 20, role: Role | None = None) -> dict:
+async def _ensure_not_last_admin(db, oid: ObjectId) -> None:
+    """Chặn thao tác làm hệ thống không còn quản trị viên nào dùng được.
+
+    Áp cho cả ba đường ra: hạ vai trò admin, tạm khóa admin, xóa admin. Mất hết admin thì
+    không ai vào được trang quản trị nữa — phải chạy scripts/seed_user.py trên server để cứu.
+
+    Giới hạn đã biết: hai quản trị viên thao tác cùng lúc vẫn có thể lọt qua khe giữa lần đếm
+    này và lần ghi. Chặn tuyệt đối cần transaction; cái giá đó không tương xứng với xác suất.
+    """
+    remaining = await db.users.count_documents({
+        **NOT_DELETED,
+        "role": "admin",
+        "access_disabled": {"$ne": True},
+        "_id": {"$ne": oid},
+    })
+    if remaining == 0:
+        raise AppError(
+            "LAST_ADMIN",
+            "Đây là quản trị viên hoạt động cuối cùng. Hãy cấp quyền quản trị cho một tài "
+            "khoản khác trước khi đổi vai trò, tạm khóa hoặc xóa tài khoản này.",
+            409,
+        )
+
+
+def _search_query(keyword: str | None) -> dict:
+    """Khớp tên đăng nhập HOẶC tên hiển thị.
+
+    re.escape là bắt buộc: quản trị viên gõ "." hay "(" mà ném thẳng vào $regex thì hoặc ra
+    kết quả sai, hoặc Mongo ném lỗi cú pháp regex.
+    """
+    text = (keyword or "").strip()
+    if not text:
+        return {}
+    pattern = {"$regex": re.escape(text), "$options": "i"}
+    return {"$or": [{"username": pattern}, {"name": pattern}]}
+
+
+def _province_query(tinh: str | None) -> dict:
+    """Lọc theo tỉnh, chịu được mọi cách ghi tên đang có trong DB.
+
+    Tài khoản cũ lưu "Đà Nẵng", bản mới lưu "Thành phố Đà Nẵng" — so chuỗi thẳng thì sót một
+    nửa. Dựng sẵn các biến thể từ danh mục rồi $in: chính xác hơn regex và còn dùng được index.
+    """
+    text = (tinh or "").strip()
+    if not text:
+        return {}
+    return {"tinh": {"$in": province_name_variants(text)}}
+
+
+def _status_query(status: str) -> dict:
+    """`deleted` là cửa DUY NHẤT nhìn thấy tài khoản đã xóa mềm (để khôi phục)."""
+    if status == "deleted":
+        return {"deleted_at": {"$ne": None}}
+    if status == "active":
+        return {**NOT_DELETED, "access_disabled": {"$ne": True}}
+    if status == "disabled":
+        return {**NOT_DELETED, "access_disabled": True}
+    return dict(NOT_DELETED)
+
+
+async def list_users(
+    *,
+    skip: int = 0,
+    limit: int = 20,
+    role: Role | None = None,
+    keyword: str | None = None,
+    tinh: str | None = None,
+    status: str = "all",
+) -> dict:
     db = get_db()
-    query = _role_query(role)
+    query = {
+        **_role_query(role),
+        **_status_query(status),
+        **_province_query(tinh),
+        **_search_query(keyword),
+    }
     total = await db.users.count_documents(query)
     cursor = (
         db.users.find(query).sort("username", 1).skip(max(skip, 0)).limit(max(min(limit, 100), 1))
@@ -110,6 +187,10 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
             "Tài khoản Monitor được bảo vệ và không thể sửa tại trang quản lý này.",
             403,
         )
+    is_self = str(oid) == current_user_id
+    was_active_admin = (
+        current.get("role") == "admin" and current.get("access_disabled") is not True
+    )
     updates: dict = {"updated_at": now}
     unset_fields: dict = {}
     if body.name is not None:
@@ -123,11 +204,25 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
         tinh, xa = canonical_location(tinh_input, xa_input)
         updates["tinh"] = tinh
         updates["xa"] = xa
+    if body.role is not None and body.role != (current.get("role") or "user"):
+        # require_admin đọc lại user từ DB mỗi request, nên tự hạ quyền là mất trang quản trị
+        # NGAY, không đợi token hết hạn. Đứng cạnh CANNOT_DISABLE_SELF bên dưới vì cùng một
+        # loại tai nạn: tự khóa chính mình ra ngoài.
+        if is_self:
+            raise AppError(
+                "CANNOT_CHANGE_OWN_ROLE",
+                "Không thể tự đổi vai trò của chính mình. Hãy nhờ một quản trị viên khác.",
+                400,
+            )
+        if was_active_admin:
+            await _ensure_not_last_admin(db, oid)
     if body.role is not None:
         updates["role"] = body.role
     if body.access_disabled is not None:
         if body.access_disabled and str(oid) == current_user_id:
             raise AppError("CANNOT_DISABLE_SELF", "Không thể tự khóa tài khoản của chính mình", 400)
+        if body.access_disabled and was_active_admin:
+            await _ensure_not_last_admin(db, oid)
         updates["access_disabled"] = body.access_disabled
         if body.access_disabled:
             updates["access_disabled_reason"] = MAINTENANCE_MESSAGE
@@ -141,7 +236,7 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
     if unset_fields:
         update_doc["$unset"] = unset_fields
     result = await db.users.find_one_and_update(
-        {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}},
+        {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}, **NOT_DELETED},
         update_doc,
         return_document=True,
     )
@@ -171,6 +266,35 @@ async def delete_user(user_id: str, current_user_id: str) -> None:
             "Tài khoản Monitor được bảo vệ và không thể xóa tại trang quản lý này.",
             403,
         )
-    res = await db.users.delete_one({"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}})
-    if res.deleted_count == 0:
+    if current.get("deleted_at") is not None:
+        return  # đã xóa rồi, coi như thành công (bấm hai lần không báo lỗi)
+    if current.get("role") == "admin" and current.get("access_disabled") is not True:
+        await _ensure_not_last_admin(db, oid)
+
+    now = _now()
+    res = await db.users.update_one(
+        {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}, **NOT_DELETED},
+        {"$set": {"deleted_at": now, "deleted_by": current_user_id, "updated_at": now}},
+    )
+    if res.matched_count == 0:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    # Access token đang sống bị ensure_account_available chặn; thu hồi refresh token để phiên
+    # cũ không tự gia hạn được.
+    await db.refresh_tokens.update_many(
+        {"user_id": str(oid), "revoked_at": None},
+        {"$set": {"revoked_at": now}},
+    )
+
+
+async def restore_user(user_id: str) -> dict:
+    """Bỏ dấu xóa mềm. Không có đường này thì xóa mềm chỉ là giấu đi, không cứu được gì."""
+    db = get_db()
+    oid = _oid(user_id)
+    result = await db.users.find_one_and_update(
+        {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}, "deleted_at": {"$ne": None}},
+        {"$set": {"updated_at": _now()}, "$unset": {"deleted_at": "", "deleted_by": ""}},
+        return_document=True,
+    )
+    if not result:
+        raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản đã xóa", 404)
+    return _public(result)

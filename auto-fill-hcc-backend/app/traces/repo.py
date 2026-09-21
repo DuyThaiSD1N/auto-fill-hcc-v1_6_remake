@@ -13,7 +13,7 @@ from bson import ObjectId
 from app.db.mongo import get_db
 from app.traces.date_range import VIETNAM_TZ
 from app.traces.metadata import count_distinct_attachment_sets
-from app.users.roles import OFFICIAL_ACCOUNT_ROLES, normalized_role
+from app.users.roles import NOT_DELETED, OFFICIAL_ACCOUNT_ROLES, normalized_role
 
 # Nhãn hiển thị model OCR theo provider key.
 _OCR_LABELS = {"tiengnoi": "vintern-v12"}
@@ -115,7 +115,7 @@ async def stats_scope_user_ids(scope: str) -> list[str]:
     Cách đếm hồ sơ từ 15/9/2026 (app/stats/cutover.py) đọc collection khác nhưng phải phủ
     ĐÚNG tập tài khoản này, nếu không hai bên mốc sẽ nói về hai phạm vi khác nhau.
     """
-    accounts = [account async for account in get_db().users.find({}, {"role": 1})]
+    accounts = [account async for account in get_db().users.find(NOT_DELETED, {"role": 1})]
     _roles, included_ids = _stats_account_context(accounts, scope)
     return included_ids
 
@@ -792,7 +792,7 @@ async def stats(
 ) -> dict:
     """Thống kê tên đầy đủ trước mốc, tên bỏ đuôi từ mốc; date_to là mốc loại trừ."""
     db = get_db()
-    accounts = [account async for account in db.users.find({}, {"role": 1})]
+    accounts = [account async for account in db.users.find(NOT_DELETED, {"role": 1})]
     roles_by_user, included_user_ids = _stats_account_context(accounts, scope)
     query = _build_query(user_id=None, procedure=None, date_from=date_from, date_to=None)
     if scope == "official":

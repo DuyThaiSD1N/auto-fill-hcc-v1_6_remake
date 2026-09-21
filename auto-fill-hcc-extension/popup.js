@@ -5099,9 +5099,7 @@ async function initLocationManager() {
   for (const prov of store.getProvinces()) {
     const option = document.createElement('option');
     option.value = prov.slug;
-    // Nhãn đọc cho cán bộ (BE trả "label", vd "Thành phố Bắc Ninh"); tên khớp option trên cổng
-    // DVC vẫn là prov.text và chỉ lấy theo slug ở handler 'change' bên dưới.
-    option.textContent = prov.label || prov.text;
+    option.textContent = prov.text;
     provinceSelect.appendChild(option);
   }
   await applyStoredLocation();
@@ -5110,11 +5108,7 @@ async function initLocationManager() {
   provinceSelect.addEventListener('change', (e) => {
     const slug = e.target.value;
     currentLocation.provinceSlug = slug;
-    // Tên tỉnh lưu lại phải là tên trong danh mục (khớp option trên cổng DVC), KHÔNG phải nhãn
-    // đang hiển thị — nhãn có thể khác ("Thành phố Bắc Ninh") thì cổng không tìm ra option.
-    currentLocation.province = slug
-      ? (locationStore()?.getProvinces?.().find((p) => p.slug === slug)?.text || '')
-      : '';
+    currentLocation.province = slug ? (e.target.options[e.target.selectedIndex]?.textContent || '') : '';
     currentLocation.ward = '';
     currentLocation.source = "manual";   // đã tự chọn -> đừng để mặc định tài khoản ghi đè nữa
     loadWards(slug, '');
@@ -5250,28 +5244,21 @@ function selectSoFor(link) {
   return provinces.includes(agencyLocationFor(link).provinceSlug);
 }
 
-/** Tên tỉnh để IN RA cho cán bộ đọc; chỗ điền hộ trên cổng vẫn dùng area.province. */
-function provinceLabel(provinceText) {
-  return locationStore()?.labelFor?.(provinceText) || provinceText;
-}
-
 /** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
 function agencyAreaLabel(link) {
   const area = agencyLocationFor(link);
-  const prov = provinceLabel(area.province);
   // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
-  if (selectSoFor(link)) return `Sở của ${prov}`;
-  if (agencyProvinceOnly(link)) return prov;
-  return `${area.ward}, ${prov}`;
+  if (selectSoFor(link)) return `Sở của ${area.province}`;
+  if (agencyProvinceOnly(link)) return area.province;
+  return `${area.ward}, ${area.province}`;
 }
 
 function showLocationSummary() {
-  const prov = provinceLabel(currentLocation.province);
   if (locationIsComplete()) {
-    locationStatus.textContent = `✓ ${currentLocation.ward}, ${prov}`;
+    locationStatus.textContent = `✓ ${currentLocation.ward}, ${currentLocation.province}`;
     locationStatus.className = 'status ok';
   } else if (currentLocation.provinceSlug) {
-    locationStatus.textContent = `✓ ${prov} (có thể chọn thêm Phường/Xã)`;
+    locationStatus.textContent = `✓ ${currentLocation.province} (có thể chọn thêm Phường/Xã)`;
     locationStatus.className = 'status ok';
   } else {
     locationStatus.textContent = '';

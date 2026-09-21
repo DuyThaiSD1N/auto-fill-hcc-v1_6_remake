@@ -1124,7 +1124,7 @@ ATTACH_SPLIT_DONE_WITH_ERRORS = {
 
 SCAN_PICK = {
     "md": (
-        "Dạ công dân chọn **📷 Scan tại quầy** ✓\n\n"
+        "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
         "Công dân **đặt giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan** — scan tới đâu "
         "em **tự nhận** tới đó vào hồ sơ, công dân không phải chọn tệp ạ."
     ),
@@ -1136,7 +1136,7 @@ SCAN_PICK = {
 
 SCAN_PICK_ATTACH = {
     "md": (
-        "Dạ công dân chọn **📷 Scan tại quầy** ✓\n\n"
+        "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
         "Công dân **đặt giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan**. Scan tới đâu em "
         "**tự nhận** tới đó — tất cả nhận thẳng là **Giấy tờ cần chứng thực bản sao**, "
         "không phân loại ở bước này ạ."

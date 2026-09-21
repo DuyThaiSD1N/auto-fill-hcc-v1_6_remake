@@ -23,11 +23,6 @@ _RE_TONE_O = re.compile("(" + "|".join(_TONE_O) + r")(?!\w)")
 _RE_TONE_U = re.compile("(?<![qQ])(" + "|".join(_TONE_U) + r")(?!\w)")
 _WARD_TYPE = re.compile(r"^(Phường|Xã|Đặc khu)\s+", re.IGNORECASE)
 
-# Tên HIỂN THỊ khác tên trong danh mục. Chỉ đổi nhãn đọc cho cán bộ ("label"); "text" vẫn là tên
-# đúng như option trên cổng DVC nên mọi chỗ khớp/điền hộ (chọn cơ quan thực hiện, lưu tài khoản)
-# không bị lệch. Đổi thẳng "text" là trợ lý không tìm ra option "Tỉnh Bắc Ninh" trên cổng nữa.
-_DISPLAY_LABEL = {"Tỉnh Bắc Ninh": "Thành phố Bắc Ninh"}
-
 
 def _modern_tone(value: str) -> str:
     value = _RE_TONE_O.sub(lambda match: _TONE_O[match.group(1)], value)
@@ -49,12 +44,7 @@ def _load() -> tuple[list[dict], dict[str, dict]]:
     for item in raw["provinces"]:
         slug = item["code_name"].replace("_", "")
         text = _modern_tone(item["full_name"])
-        province = {
-            "text": text,
-            "slug": slug,
-            "name": _modern_tone(item["name"]),
-            "label": _DISPLAY_LABEL.get(text, text),
-        }
+        province = {"text": text, "slug": slug, "name": _modern_tone(item["name"])}
         communes = [_modern_tone(ward["full_name"]) for ward in item["wards"]]
         provinces.append(province)
         wards_by_slug[slug] = {"slug": slug, "province": text, "communes": communes}
@@ -78,6 +68,24 @@ def _find_province(value: str) -> dict | None:
         ),
         None,
     )
+
+
+def province_name_variants(value: str) -> list[str]:
+    """Mọi cách ghi tên một tỉnh đang có thể nằm trong DB, để lọc bằng $in thay vì $regex.
+
+    Tài khoản cũ lưu tên trần ("Đà Nẵng"), bản mới lưu tên đầy đủ ("Thành phố Đà Nẵng"). So
+    chuỗi thẳng thì sót một nửa; fold dấu thì Mongo không fold hộ được. Liệt kê sẵn là cách
+    duy nhất vừa đúng vừa còn dùng được index trên `tinh`.
+
+    Tỉnh không có trong danh mục (dữ liệu rác) → trả chính chuỗi đó, lọc ra đúng nó.
+    """
+    text = (value or "").strip()
+    if not text:
+        return []
+    province = _find_province(text)
+    if not province:
+        return [text]
+    return sorted({text, province["text"], province["name"]})
 
 
 def canonical_location(

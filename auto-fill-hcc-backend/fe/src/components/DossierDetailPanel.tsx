@@ -31,7 +31,9 @@ function buildTimeline(d: DossierDetail): Entry[] {
       kind: "trace" as const,
       traceId: t.id,
       label: t.kind === "attach" ? "Đính kèm" : "Điền biểu mẫu",
-      note: `${t.attachments?.length ?? 0} tệp${t.status === "error" ? " · lỗi" : ""}`,
+      // Đa tab: mỗi tệp thành một hồ sơ riêng trên cổng → một dòng đính kèm ở đây ứng với NHIỀU
+      // lần nộp, nên phải nói rõ để người đọc không tưởng hồ sơ bị đếm thiếu.
+      note: `${t.split === true ? "(đa tab) " : ""}${t.attachments?.length ?? 0} tệp${t.status === "error" ? " · lỗi" : ""}`,
     })),
     ...d.submitEvents.map((e) => ({
       at: e.at,

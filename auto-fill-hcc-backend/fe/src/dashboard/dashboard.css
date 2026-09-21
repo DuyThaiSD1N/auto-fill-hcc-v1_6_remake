@@ -344,6 +344,10 @@ td.n{font-weight:750;font-size:14px}
 .uname>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .uname em{flex:none;font-style:normal;font-size:11px;color:var(--pri);font-weight:750;white-space:nowrap;
  background:var(--pri-bg);border:1px solid var(--pri-line);padding:1px 7px;border-radius:6px}
+/* Đơn vị tạm khóa — cùng khuôn với .uname em nhưng màu cảnh báo, để phân biệt ngay với
+   nhãn "Đơn vị của bạn" vốn là thông tin trung tính. */
+.uname i.ulock{flex:none;font-style:normal;font-size:11px;font-weight:750;white-space:nowrap;
+ color:#8A5300;background:#FFF4E0;border:1px solid #F0D49A;padding:1px 7px;border-radius:6px}
 .usub{font-size:11.5px;color:var(--ink3);margin-top:2px;font-weight:600}
 .tnm{display:block;max-width:460px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mbar{height:7px;border-radius:4px;background:#F0F3F8;overflow:hidden;min-width:80px}
@@ -362,6 +366,10 @@ td.n{font-weight:750;font-size:14px}
 .chip.ok{background:var(--grn-bg);color:var(--grn)}
 .chip.help{background:var(--amb-bg);color:var(--amb)}
 .chip.drop{background:#F1F4F9;color:var(--ink2)}
+/* Nguồn hồ sơ trong nhật ký: mặc định (No handfree) trung tính, Handfree tô màu chính
+   để lướt mắt nhận ra ngay dòng nào đến từ Trợ lý người dân. */
+.chip.hf{background:var(--pri-bg);color:var(--pri)}
+td .chip:not(.ok):not(.help):not(.drop):not(.hf){background:#F1F4F9;color:var(--ink2)}
 .kenh{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink2);font-weight:650}
 .kenh svg{width:14px;height:14px;color:var(--ink3)}
 .sid{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ink2);font-weight:650}

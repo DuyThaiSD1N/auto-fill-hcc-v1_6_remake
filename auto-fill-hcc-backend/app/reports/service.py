@@ -13,7 +13,7 @@ from app.reports.schemas import ExcelExportRequest
 from app.stats import cutover
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
-from app.users.roles import is_official_account_role, normalized_role
+from app.users.roles import NOT_DELETED, is_official_account_role, normalized_role
 
 
 MAX_EXPORT_ACCOUNTS = 200
@@ -56,7 +56,7 @@ def _public_account(account: dict) -> dict:
 
 async def _all_accounts() -> list[dict]:
     projection = {"username": 1, "name": 1, "xa": 1, "tinh": 1, "role": 1}
-    cursor = get_db().users.find({}, projection).sort("username", 1)
+    cursor = get_db().users.find(NOT_DELETED, projection).sort("username", 1)
     return [account async for account in cursor]
 
 

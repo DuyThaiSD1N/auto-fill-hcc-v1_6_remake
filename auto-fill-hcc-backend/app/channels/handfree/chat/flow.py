@@ -1692,7 +1692,7 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
             "auto_run": auto_run,
         }]
         r.chips = [
-            {"label": "📁 Chọn thêm tệp", "send": "__action:pick_files_again"},
+            {"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again"},
             _switch_to_qr_chip(),
             _docs_done_chip(conv),
         ]
@@ -2042,7 +2042,7 @@ async def _start_documents_adjustment(conv: dict, target: str) -> Reply:
 # đường lệnh máy tất định có sẵn, KHÔNG cần sửa FE. Đổi qua lại GIỮ nguyên phiên upload (QR & scan
 # cùng đẩy vào /upload/{sid}) → file đã tải không mất.
 def _switch_to_scan_chip() -> dict:
-    return {"label": "📷 Đổi sang Scan tại quầy", "send": '__action:doc_method:{"value":"scan"}'}
+    return {"label": "🖨️ Đổi sang Scan tại quầy", "send": '__action:doc_method:{"value":"scan"}'}
 
 
 def _switch_to_qr_chip() -> dict:
@@ -2112,7 +2112,7 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
         template = vi.SCAN_PICK_ATTACH if proc.get("mode") == "attach" else vi.SCAN_PICK
         r = Reply(*_fmt(template))
         r.chips = [
-            {"label": "📁 Chọn thêm tệp", "send": "__action:pick_files_again"},
+            {"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again"},
             _switch_to_qr_chip(),
             _docs_done_chip(conv),
         ]

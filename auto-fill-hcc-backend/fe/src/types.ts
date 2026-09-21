@@ -21,6 +21,18 @@ export interface ManagedUser {
   access_disabled: boolean;
   created_at?: string | null;
   last_login_at?: string | null;
+  /** Có giá trị = đã xóa mềm (document vẫn còn trong Mongo, khôi phục được). */
+  deleted_at?: string | null;
+}
+
+/** Trạng thái lọc ở trang Quản lý tài khoản. "deleted" là cửa duy nhất thấy tài khoản đã xóa. */
+export type UserStatusFilter = "all" | "active" | "disabled" | "deleted";
+
+export interface UserListFilters {
+  role?: Role;
+  q?: string;
+  tinh?: string;
+  status?: UserStatusFilter;
 }
 
 export interface UserListResp {
@@ -78,6 +90,9 @@ export interface TraceListItem {
   kind?: string | null;             // "autofill" | "attach"
   key_fields_total?: number | null;  // tổng trường then chốt (chỉ autofill)
   key_fields_filled?: number | null; // số trường bóc tách được
+  // Chứng thực tách mỗi tài liệu thành một hồ sơ riêng (mở nhiều tab). true = tách, false = gộp,
+  // null = không rõ (trace cũ trước khi có trường này).
+  split?: boolean | null;
   status: string;
   error_code?: string | null;
   created_at: string;

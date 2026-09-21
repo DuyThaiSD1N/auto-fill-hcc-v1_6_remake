@@ -36,24 +36,13 @@ class PopupLocationManager {
         return this.wardsBySlug[slug] || null;
     }
 
-    /** Tìm tỉnh theo tên đầy đủ ("Tỉnh Lâm Đồng"), nhãn hiển thị hoặc tên ngắn ("Lâm Đồng"). */
+    /** Tìm tỉnh theo tên đầy đủ ("Tỉnh Lâm Đồng") hoặc tên ngắn ("Lâm Đồng"). */
     findProvince(provinceName) {
         const name = String(provinceName || '').trim();
         if (!name) return null;
         return this.provinces.find(p => p.text === name)
-            || this.provinces.find(p => p.label === name)
             || this.provinces.find(p => p.name === name)
             || null;
-    }
-
-    /**
-     * Nhãn ĐỌC CHO NGƯỜI của một tỉnh (BE trả kèm "label", vd "Tỉnh Bắc Ninh" -> "Thành phố Bắc
-     * Ninh"). Chỉ dùng để in ra màn hình; chỗ nào phải khớp option trên cổng DVC hay lưu vào tài
-     * khoản thì vẫn dùng `text`.
-     */
-    labelFor(provinceName) {
-        const name = String(provinceName || '').trim();
-        return this.findProvince(name)?.label || name;
     }
 
     /** Tên xã/phường ĐẦY ĐỦ trong tỉnh; chấp nhận cả tên ngắn (bỏ tiền tố Phường/Xã/Đặc khu). */

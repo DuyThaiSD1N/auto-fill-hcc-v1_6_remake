@@ -21,9 +21,11 @@ def _logs_sheet(rows):
 
 def test_cot_dung_thu_tu_va_bo_cot_buoc():
     header = _logs_sheet([])[0]
+    # "Nguồn" xen vào trước "Đánh giá": nhật ký giờ gộp cả Auto Fill lẫn Handfree nên file
+    # xuất ra phải nói rõ từng dòng đến từ đâu, y như bảng trên màn hình.
     assert header == (
         "Mã hồ sơ", "Thời gian tiếp nhận", "Thời gian nộp hồ sơ",
-        "Đơn vị tiếp nhận", "Thủ tục", "Đánh giá",
+        "Đơn vị tiếp nhận", "Thủ tục", "Nguồn", "Đánh giá",
     )
     assert "Bước" not in header, "một dòng là một hồ sơ → không còn khái niệm bước"
 
@@ -43,7 +45,7 @@ def test_ba_trang_thai_danh_gia_phai_phan_biet_duoc():
          "rating": {"level": None, "levelLabel": "", "reasons": [], "note": "",
                     "skipped": True, "at": None}},
     ])
-    assert [r[5] for r in rows[1:]] == ["Rất hài lòng", "—", "Bỏ qua"]
+    assert [r[6] for r in rows[1:]] == ["Rất hài lòng", "—", "Bỏ qua"]
 
 
 def test_chua_nop_ghi_ro_chu_khong_de_trong():
@@ -60,3 +62,18 @@ def test_chua_nop_ghi_ro_chu_khong_de_trong():
 def test_ky_rong_van_gop_du_6_cot():
     rows = _logs_sheet([])
     assert rows[1][0] == "Chưa có hồ sơ nào trong kỳ."
+
+
+def test_cot_nguon_noi_ro_tung_dong_den_tu_dau():
+    """Nhật ký gộp hai trải nghiệm. Thiếu cột này thì hai hồ sơ cùng thủ tục, cùng đơn vị
+    nhìn y hệt nhau dù một cái làm bằng extension, một cái bằng Trợ lý người dân."""
+    rows = _logs_sheet([
+        {"dossierId": "d-1", "receivedAt": _STARTED, "submittedAt": None,
+         "unitName": "u", "procedureLabel": "p", "rating": None, "experience": "handfree"},
+        {"dossierId": "d-2", "receivedAt": _STARTED, "submittedAt": None,
+         "unitName": "u", "procedureLabel": "p", "rating": None, "experience": "autofill"},
+        # Hồ sơ cũ chưa có trường experience → không được ghi bừa một nguồn nào.
+        {"dossierId": "d-3", "receivedAt": _STARTED, "submittedAt": None,
+         "unitName": "u", "procedureLabel": "p", "rating": None},
+    ])
+    assert [r[5] for r in rows[1:]] == ["Handfree", "No handfree", "—"]

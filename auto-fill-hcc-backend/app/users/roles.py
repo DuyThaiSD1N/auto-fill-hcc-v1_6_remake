@@ -1,6 +1,18 @@
 """Định nghĩa role tài khoản dùng chung cho thống kê và báo cáo."""
 
 
+# Tài khoản CHƯA bị xóa mềm. Xóa tài khoản chỉ đóng dấu `users.deleted_at`, document vẫn nằm
+# nguyên trong Mongo — mọi nơi liệt kê tài khoản phải lọc bằng cái này, nếu không tài khoản
+# đã xóa vẫn hiện ra như chưa có chuyện gì.
+#
+# `{"deleted_at": None}` khớp CẢ document chưa từng có trường này (toàn bộ tài khoản tạo
+# trước khi có xóa mềm), nên không phải migrate dữ liệu cũ.
+#
+# NGOẠI LỆ: chỗ tra TÊN để hiển thị lịch sử (traces) KHÔNG được lọc — hồ sơ cũ của một tài
+# khoản đã xóa vẫn phải hiện đúng tên người làm.
+NOT_DELETED = {"deleted_at": None}
+
+
 OFFICIAL_ACCOUNT_ROLES = frozenset({"commune", "province"})
 
 # Role CHỈ dùng để XEM báo cáo cấp tỉnh trên bảng thống kê (KHÁC "province" của HCC — role đó là

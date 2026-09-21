@@ -1254,6 +1254,30 @@ tbody tr:last-child td {
   display: flex;
   align-items: flex-end;
   gap: 12px;
+  /* Bốn bộ lọc + nút thêm: màn hẹp phải xuống dòng, không đẩy nút ra ngoài khung. */
+  flex-wrap: wrap;
+}
+/* Ô tìm kiếm dùng chung khuôn với các select lọc bên cạnh để một hàng thẳng đều. */
+.accounts-search input {
+  min-width: 240px;
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+.accounts-search input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+/* Dòng giải thích dưới một ô trong form (mô tả vai trò, nhắc vì sao ô xã bị ẩn). */
+.form-hint {
+  margin: -4px 2px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 .accounts-role-filter {
   display: flex;
@@ -1301,6 +1325,14 @@ tbody tr:last-child td {
 .ghost.danger {
   color: var(--warn-fg);
   border-color: #f0c9c4;
+}
+/* Nút chính mang nghĩa phá hủy (xóa tài khoản trong hộp thoại xác nhận). */
+.btn-primary.danger {
+  background: var(--warn-fg);
+  border-color: var(--warn-fg);
+}
+.btn-primary.danger:hover:not(:disabled) {
+  filter: brightness(0.93);
 }
 .ghost.danger:hover:not(:disabled) {
   background: var(--warn-bg);

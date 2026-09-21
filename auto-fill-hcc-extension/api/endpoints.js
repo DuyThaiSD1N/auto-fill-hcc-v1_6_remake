@@ -172,8 +172,7 @@ const api = {
   async locationsCatalog() {
     const res = await backendFetch("/api/v1/locations/catalog");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    // `text` = tên khớp option trên cổng DVC (dùng để điền hộ); `label` = nhãn hiển thị cho cán bộ.
-    return res.json(); // { provinces: [{text, slug, name, label}], wardsBySlug: {slug: {slug, province, communes}} }
+    return res.json(); // { provinces: [{text, slug, name}], wardsBySlug: {slug: {slug, province, communes}} }
   },
 
   async keKhaiLinks() {

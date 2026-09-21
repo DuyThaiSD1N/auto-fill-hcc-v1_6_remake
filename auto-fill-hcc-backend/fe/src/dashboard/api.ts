@@ -186,6 +186,8 @@ export interface UnitStat {
   xa?: string | null;
   tinh?: string | null;
   role?: string | null;
+  /** Đơn vị đang tạm khóa: VẪN nằm trong bảng và vẫn cộng vào tổng, chỉ gắn thêm nhãn. */
+  accessDisabled?: boolean;
   dossiers: number;
   requests: number;
   procedureTypes: number;
@@ -251,15 +253,19 @@ export interface LogItem {
   procedure: string | null;
   procedureLabel: string | null;
   rating: LogRating | null;
+  /** Nguồn của hồ sơ — nhật ký gộp cả hai trải nghiệm nên phải phân biệt từng dòng. */
+  experience: "autofill" | "handfree";
 }
 
 // "submitted" = hồ sơ đã hoàn thành (đã bấm nộp) — đúng tập mà thống kê đếm từ 14/9/2026.
 export type LogStatus = "all" | "submitted" | "unsubmitted";
 
+export type LogSource = "all" | "autofill" | "handfree";
+
 export interface LogsResp {
   scope: DashScope;
   range: { from?: string | null; to?: string | null };
-  source: string; // "autofill"
+  source: LogSource;
   status: LogStatus;
   items: LogItem[];
   total: number;
@@ -274,6 +280,7 @@ export function getLogs(
   page = 1,
   pageSize = 15,
   status: LogStatus = "all",
+  source: LogSource = "all",
 ): Promise<LogsResp> {
   return request<LogsResp>(
     `/api/v1/dashboard/logs${rangeQuery(dateFrom, dateTo, {
@@ -282,6 +289,7 @@ export function getLogs(
       pageSize: String(pageSize),
       // "all" là mặc định của BE → không gửi cho URL gọn.
       status: status === "all" ? "" : status,
+      source: source === "all" ? "" : source,
     })}`,
   );
 }

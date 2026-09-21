@@ -3,7 +3,7 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import is_current_area, near_match_ward, remap_area
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
@@ -567,42 +567,22 @@ def _previous_registration_number(values: dict) -> str:
 _AGENCY_PREFIX_RE = re.compile(r"^\s*(?:ủy\s+ban\s+nhân\s+dân|uỷ\s+ban\s+nhân\s+dân|ubnd)\s*[.:,-]?\s*", re.IGNORECASE)
 
 
-def _previous_registration_agency(values: dict) -> tuple[str, str, bool]:
-    """Tỉnh + xã/phường của cơ quan đăng ký khai sinh trước đây, dạng khớp ô chọn của cổng.
+def _previous_registration_commune(values: dict) -> str:
+    """Xã/phường của cơ quan đăng ký khai sinh trước đây, dạng khớp ô chọn của cổng.
 
     Tờ khai hay ghi "Ủy ban nhân dân phường X" — bỏ phần "UBND", mở rộng "P."/"X." và đổi tên xã
     cũ sang tên sau sáp nhập (cùng quy tắc với các ô địa bàn khác) để ô chọn khớp được option.
-
-    TỈNH phải đi qua đúng phép remap đó chứ không lấy thẳng giá trị agent đọc được: giấy khai sinh
-    cũ ghi tỉnh TRƯỚC sáp nhập (vd "Bắc Giang"), mà ô chọn trên cổng chỉ còn danh mục hiện hành
-    ("Bắc Ninh"). Trả tỉnh cũ thì ô tỉnh không khớp option nào, ô Xã/Phường nạp theo tỉnh cũng
-    trống theo — cả khối cơ quan đăng ký trước đây bỏ trắng dù hồ sơ ghi đủ.
-
-    Trả kèm cờ cho biết tên xã là PHỎNG ĐOÁN từ phép dò gần đúng chứ không phải chữ đọc được.
     """
-    province = str(values.get("PreviousRegistration_AgencyProvince") or "").strip()
     commune = str(values.get("PreviousRegistration_AgencyCommune") or "").strip()
     commune = _AGENCY_PREFIX_RE.sub("", commune).strip()
-    if not province and not commune:
-        return "", "", False
+    if not commune:
+        return ""
     area = _normalize_domestic_area({
         "quocGia": "Việt Nam",
-        "tinh": province,
+        "tinh": str(values.get("PreviousRegistration_AgencyProvince") or "").strip(),
         "xa": commune,
-    }) or {}
-    out_province = str(area.get("tinh") or province).strip()
-    out_commune = str(area.get("xa") or "").strip()
-    if out_commune and is_current_area(out_province, out_commune):
-        return out_province, out_commune, False
-
-    # Đến đây là ô Xã/Phường KHÔNG chọn được trên cổng: hoặc bảng remap không có tên này, hoặc
-    # cả tỉnh đã tổ chức lại nên remap_area() chủ động bỏ trống. Thử gỡ đúng một lỗi đọc dấu
-    # của OCR trước khi chịu bỏ trắng — giấy viết tay ghi "xã Đông Lỗ" ra "xã Đông lễ" là đủ
-    # để mọi bảng tra trượt. Dò cả theo tỉnh mới (đã remap) lẫn tỉnh nguyên văn trên giấy.
-    guess = near_match_ward(out_province, commune) or near_match_ward(province, commune)
-    if guess:
-        return out_province, guess, True
-    return out_province, out_commune, False
+    })
+    return str((area or {}).get("xa") or commune).strip()
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
@@ -737,11 +717,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default)
 
     # Thong tin dang ky truoc day.
-    agency_province, agency_commune, agency_guessed = _previous_registration_agency(values)
-    add("coQuanDKTruocDay_filter", agency_province)
-    # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh. Tên suy ra từ phép dò gần đúng
-    # là phỏng đoán, không phải chữ đọc được -> đánh dấu default để extension tô vàng.
-    add("coQuanDKTruocDay", agency_commune, agency_guessed)
+    add("coQuanDKTruocDay_filter", values.get("PreviousRegistration_AgencyProvince"))
+    # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh.
+    add("coQuanDKTruocDay", _previous_registration_commune(values))
     add("soDKTruocDay", _previous_registration_number(values))
     add("quyenSoDKTruocDay", values.get("PreviousRegistration_BookNumber"))
     add("ngayDKTruocDay", values.get("PreviousRegistration_Date"))

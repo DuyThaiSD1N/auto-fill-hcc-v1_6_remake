@@ -5,10 +5,11 @@ import {
   getProvinces,
   getWards,
   listUsers,
+  restoreUser,
   updateUser,
   type Province,
 } from "../api";
-import type { ManagedUser, Role, User } from "../types";
+import type { ManagedUser, Role, User, UserStatusFilter } from "../types";
 import { fmtDateTime } from "../format";
 import Combobox from "../components/Combobox";
 import TopBar, { type View } from "../components/TopBar";
@@ -55,6 +56,28 @@ const ROLE_META: Record<Role, { label: string; cls: string }> = {
   province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
 };
 
+// Vai trò quyết định địa bàn cần nhập. Tài khoản cấp tỉnh KHÔNG có xã/phường — ép nhập là
+// sinh ra một "xã" không có thật trong báo cáo hành chính; để trống mà vẫn hiện ô thì cán bộ
+// tưởng mình quên điền. Nên ẩn hẳn.
+const ROLE_LOCATION: Record<Role, { tinh: "required" | "optional"; xa: "required" | "optional" | "hidden" }> = {
+  admin: { tinh: "optional", xa: "optional" },
+  user: { tinh: "optional", xa: "optional" },
+  commune: { tinh: "required", xa: "required" },
+  province: { tinh: "required", xa: "hidden" },
+  province_admin: { tinh: "required", xa: "hidden" },
+};
+
+// Hai vai trò "tỉnh" nghe gần giống nhau nhưng hậu quả ngược nhau — một cái là ĐƠN VỊ được
+// tính số liệu, một cái chỉ xem. Chọn nhầm là tự đẻ thêm một dòng 0 hồ sơ vào bảng báo cáo.
+const ROLE_HINT: Record<Role, string> = {
+  admin: "Toàn quyền: quản lý tài khoản, xem thống kê và xuất báo cáo.",
+  user: "Chỉ dùng extension để điền và đính kèm hồ sơ. Không vào được trang quản trị.",
+  commune: "Là một ĐƠN VỊ cấp xã/phường. Hồ sơ của tài khoản này được tính vào số liệu đơn vị.",
+  province: "Là một ĐƠN VỊ cấp tỉnh. Hồ sơ của tài khoản này được tính vào số liệu đơn vị.",
+  province_admin:
+    "Chỉ XEM báo cáo của mọi xã/phường trong tỉnh. Không xử lý hồ sơ, không tính vào số liệu đơn vị.",
+};
+
 const PAGE_SIZE = 20;
 const isOfficialRole = (role: Role | null): boolean => role === "commune" || role === "province";
 type RoleFilter = "all" | Role;
@@ -65,6 +88,13 @@ const ROLE_FILTER_OPTIONS: { key: RoleFilter; label: string }[] = [
   { key: "commune", label: "Hành chính công xã" },
   { key: "province", label: "Hành chính công tỉnh" },
   { key: "province_admin", label: "Tỉnh (báo cáo)" },
+];
+
+const STATUS_FILTER_OPTIONS: { key: UserStatusFilter; label: string }[] = [
+  { key: "all", label: "Đang dùng" },
+  { key: "active", label: "Hoạt động" },
+  { key: "disabled", label: "Tạm khóa" },
+  { key: "deleted", label: "Đã xóa" },
 ];
 
 const foldLocation = (value: string): string =>
@@ -102,6 +132,13 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<UserStatusFilter>("all");
+  const [tinhFilter, setTinhFilter] = useState("");
+  const [search, setSearch] = useState("");      // giá trị đang gõ
+  const [keyword, setKeyword] = useState("");    // giá trị đã chốt (debounce) → mới gọi API
+  const [confirmDelete, setConfirmDelete] = useState<ManagedUser | null>(null);
+  const [deleteTyped, setDeleteTyped] = useState("");
+  const [busyRow, setBusyRow] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<FormState | null>(null);
@@ -120,7 +157,12 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     setLoading(true);
     setError("");
     try {
-      const res = await listUsers(page, PAGE_SIZE, roleFilter === "all" ? undefined : roleFilter);
+      const res = await listUsers(page, PAGE_SIZE, {
+        role: roleFilter === "all" ? undefined : roleFilter,
+        status: statusFilter,
+        tinh: tinhFilter || undefined,
+        q: keyword,
+      });
       const lastPage = Math.max(1, Math.ceil(res.total / PAGE_SIZE));
       if (page > lastPage) {
         setPage(lastPage);
@@ -133,11 +175,22 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [page, roleFilter]);
+  }, [page, roleFilter, statusFilter, tinhFilter, keyword]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Gõ tới đâu gọi API tới đó là mỗi phím một request. Chốt sau 300ms ngừng gõ.
+  useEffect(() => {
+    const next = search.trim();
+    if (next === keyword) return;
+    const timer = setTimeout(() => {
+      setKeyword(next);
+      setPage(1); // từ khóa mới → kết quả mới, đứng ở trang 3 là thấy bảng rỗng
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, keyword]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -241,11 +294,13 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
       originalAccessDisabled: u.access_disabled,
       username: u.username,
       password: "",
-      name: u.name ?? "",
-      xa: u.xa ?? "",
+      // Tài khoản cấp tỉnh có thể còn sót `xa` từ dữ liệu cũ. Ô đó bị ẩn theo vai trò, nên
+      // mang giá trị vào form là lưu ngầm một thứ cán bộ không nhìn thấy.
+      xa: ROLE_LOCATION[u.role].xa === "hidden" ? "" : u.xa ?? "",
       tinh: u.tinh ?? "",
       role: u.role,
       accessDisabled: u.access_disabled,
+      name: u.name ?? "",
     });
   }
 
@@ -288,7 +343,9 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           name: form.name.trim(),
           xa: form.xa.trim(),
           tinh: form.tinh.trim(),
-          role: form.role,
+          // Vai trò của CHÍNH MÌNH không gửi lên: BE chặn tự đổi vai trò, gửi nguyên giá trị
+          // cũ thì không sao, nhưng không gửi mới là đúng ý định của form đang khóa ô đó.
+          role: form.id === user.id ? undefined : form.role,
           access_disabled: form.accessDisabled,
           password: form.password || undefined,
         });
@@ -302,17 +359,59 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     }
   }
 
-  async function handleDelete(u: ManagedUser) {
+  function askDelete(u: ManagedUser) {
     if (u.id === user.id) return;
-    if (!window.confirm(`Xóa tài khoản "${u.username}"? Thao tác không thể hoàn tác.`)) return;
     setError("");
+    setDeleteTyped("");
+    setConfirmDelete(u);
+  }
+
+  async function doDelete() {
+    const target = confirmDelete;
+    if (!target) return;
+    setError("");
+    setBusyRow(target.id);
     try {
-      await deleteUser(u.id);
+      await deleteUser(target.id);
+      setConfirmDelete(null);
       // Xóa item cuối của trang (không phải trang 1) → lùi 1 trang cho khỏi trống; còn lại reload.
       if (items.length === 1 && page > 1) setPage((p) => p - 1);
       else await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Xóa thất bại");
+      setConfirmDelete(null);
+    } finally {
+      setBusyRow("");
+    }
+  }
+
+  /** Khóa nhanh từ hộp thoại xóa — lối thoát được khuyến nghị thay cho xóa hẳn. */
+  async function lockInstead() {
+    const target = confirmDelete;
+    if (!target) return;
+    setError("");
+    setBusyRow(target.id);
+    try {
+      await updateUser(target.id, { access_disabled: true });
+      setConfirmDelete(null);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Tạm khóa thất bại");
+    } finally {
+      setBusyRow("");
+    }
+  }
+
+  async function handleRestore(u: ManagedUser) {
+    setError("");
+    setBusyRow(u.id);
+    try {
+      await restoreUser(u.id);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Khôi phục thất bại");
+    } finally {
+      setBusyRow("");
     }
   }
 
@@ -324,22 +423,36 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
       isOfficialRole(form.originalRole) !== isOfficialRole(form.role),
   );
   const selectedProvince = form ? findProvince(provinces, form.tinh) : undefined;
+  const rule = ROLE_LOCATION[form?.role ?? "user"];
+  const showWard = rule.xa !== "hidden";
+  // Giá trị đã nhập phải khớp danh mục hiện hành (tài khoản cũ lưu tên ngắn thì form đã tự
+  // chuẩn hóa ở effect bên trên).
   const locationValid = Boolean(
     form &&
       ((!form.tinh.trim() && !form.xa.trim()) ||
         (selectedProvince && (!form.xa.trim() || Boolean(findWard(wards, form.xa))))),
   );
+  // Ràng buộc theo vai trò CHỈ áp khi TẠO MỚI. Tài khoản cũ đang thiếu địa bàn thì vẫn phải
+  // sửa được tên hiển thị hay mật khẩu — chặn ở đây là biến một thao tác vặt thành việc dọn
+  // dữ liệu bắt buộc.
+  const roleLocationOk =
+    !form ||
+    !isCreate ||
+    ((rule.tinh !== "required" || Boolean(form.tinh.trim())) &&
+      (rule.xa !== "required" || Boolean(form.xa.trim())));
   const canSubmit =
     form &&
     locationValid &&
+    roleLocationOk &&
     (isCreate
       ? form.username.trim().length >= 3 && form.password.length >= 8
       : form.password === "" || form.password.length >= 8);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  function changeRoleFilter(nextRole: RoleFilter) {
-    setRoleFilter(nextRole);
+  /** Mọi bộ lọc đều phải đưa về trang 1 — đứng ở trang 3 rồi lọc lại là thấy bảng rỗng. */
+  function changeFilter(apply: () => void) {
+    apply();
     setPage(1);
   }
 
@@ -350,14 +463,51 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
       <div className="stats-head">
         <div>
           <h1 className="page-title">Quản lý tài khoản</h1>
-          <p className="muted page-sub">Mỗi tài khoản gắn với một xã/phường</p>
+          <p className="muted page-sub">
+            Vai trò quyết định địa bàn cần nhập — tài khoản cấp tỉnh không gắn xã/phường
+          </p>
         </div>
         <div className="accounts-head-actions">
+          <label className="accounts-role-filter accounts-search">
+            <span>Tìm tài khoản</span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Tên đăng nhập hoặc tên hiển thị…"
+            />
+          </label>
           <label className="accounts-role-filter">
-            <span>Lọc theo vai trò</span>
+            <span>Tỉnh / Thành</span>
+            <select
+              value={tinhFilter}
+              onChange={(event) => changeFilter(() => setTinhFilter(event.target.value))}
+              disabled={loading || provincesLoading || Boolean(provincesError)}
+            >
+              <option value="">Tất cả tỉnh/thành</option>
+              {provinces.map((province) => (
+                <option value={province.text} key={province.slug}>{province.text}</option>
+              ))}
+            </select>
+          </label>
+          <label className="accounts-role-filter">
+            <span>Trạng thái</span>
+            <select
+              value={statusFilter}
+              onChange={(event) =>
+                changeFilter(() => setStatusFilter(event.target.value as UserStatusFilter))
+              }
+              disabled={loading}
+            >
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <option value={option.key} key={option.key}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="accounts-role-filter">
+            <span>Vai trò</span>
             <select
               value={roleFilter}
-              onChange={(event) => changeRoleFilter(event.target.value as RoleFilter)}
+              onChange={(event) => changeFilter(() => setRoleFilter(event.target.value as RoleFilter))}
               disabled={loading}
             >
               {ROLE_FILTER_OPTIONS.map((option) => (
@@ -398,9 +548,9 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
             {!loading && items.length === 0 && (
               <tr>
                 <td colSpan={8} className="center muted">
-                  {roleFilter === "all"
+                  {roleFilter === "all" && statusFilter === "all" && !tinhFilter && !keyword
                     ? "Chưa có tài khoản nào"
-                    : "Không có tài khoản thuộc vai trò đã chọn"}
+                    : "Không có tài khoản khớp bộ lọc đang chọn"}
                 </td>
               </tr>
             )}
@@ -420,8 +570,12 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                     </span>
                   </td>
                   <td className="center">
-                    <span className={`badge ${u.access_disabled ? "warn" : "ok"}`}>
-                      {u.access_disabled ? "Tạm khóa" : "Hoạt động"}
+                    <span
+                      className={`badge ${
+                        u.deleted_at ? "role-user" : u.access_disabled ? "warn" : "ok"
+                      }`}
+                    >
+                      {u.deleted_at ? "Đã xóa" : u.access_disabled ? "Tạm khóa" : "Hoạt động"}
                     </span>
                   </td>
                   <td className="muted">
@@ -429,17 +583,30 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   </td>
                   <td className="center">
                     <div className="row-actions">
-                      <button className="ghost sm" onClick={() => openEdit(u)}>
-                        Sửa
-                      </button>
-                      <button
-                        className="ghost sm danger"
-                        disabled={u.id === user.id}
-                        title={u.id === user.id ? "Không thể tự xóa" : "Xóa tài khoản"}
-                        onClick={() => handleDelete(u)}
-                      >
-                        Xóa
-                      </button>
+                      {u.deleted_at ? (
+                        // Tài khoản đã xóa mềm: không sửa được (BE cũng chặn), chỉ khôi phục.
+                        <button
+                          className="ghost sm"
+                          disabled={busyRow === u.id}
+                          onClick={() => handleRestore(u)}
+                        >
+                          {busyRow === u.id ? "Đang khôi phục…" : "Khôi phục"}
+                        </button>
+                      ) : (
+                        <>
+                          <button className="ghost sm" onClick={() => openEdit(u)}>
+                            Sửa
+                          </button>
+                          <button
+                            className="ghost sm danger"
+                            disabled={u.id === user.id}
+                            title={u.id === user.id ? "Không thể tự xóa" : "Xóa tài khoản"}
+                            onClick={() => askDelete(u)}
+                          >
+                            Xóa
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -465,6 +632,67 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           </button>
         </div>
       </div>
+
+      {confirmDelete && (
+        <div className="modal-backdrop" onClick={() => !busyRow && setConfirmDelete(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Xóa tài khoản {confirmDelete.username}</h2>
+
+            <p className="muted">
+              Tài khoản sẽ ngừng đăng nhập được và <b>biến khỏi bảng theo đơn vị</b> của trang
+              Thống kê, kèm toàn bộ hồ sơ đã làm. Dữ liệu vẫn được giữ lại trong hệ thống nên
+              khôi phục được — xem ở bộ lọc trạng thái <b>Đã xóa</b>.
+            </p>
+
+            <div className="role-impact-note" role="note">
+              <strong>Chỉ tạm dừng dùng tài khoản?</strong>
+              <span>
+                Chọn <b>Tạm khóa</b>: tài khoản không đăng nhập được nữa nhưng đơn vị vẫn nằm
+                trong báo cáo và số hồ sơ vẫn được tính.
+              </span>
+            </div>
+
+            <label>
+              Gõ <b>{confirmDelete.username}</b> để xác nhận
+              <input
+                value={deleteTyped}
+                autoFocus
+                autoComplete="off"
+                onChange={(e) => setDeleteTyped(e.target.value)}
+                placeholder={confirmDelete.username}
+              />
+            </label>
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setConfirmDelete(null)}
+                disabled={Boolean(busyRow)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="ghost"
+                onClick={lockInstead}
+                disabled={Boolean(busyRow) || confirmDelete.access_disabled}
+                title={confirmDelete.access_disabled ? "Tài khoản đã bị tạm khóa" : ""}
+              >
+                Tạm khóa thay vì xóa
+              </button>
+              <button
+                type="button"
+                className="btn-primary danger"
+                onClick={doDelete}
+                disabled={Boolean(busyRow) || deleteTyped.trim() !== confirmDelete.username}
+              >
+                {busyRow ? "Đang xử lý…" : "Xóa tài khoản"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {form && (
         <div className="modal-backdrop" onClick={() => !saving && setForm(null)}>
@@ -502,9 +730,39 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               />
             </label>
 
+            {/* VAI TRÒ đứng TRƯỚC địa bàn: nó quyết định có phải nhập xã/phường hay không.
+                Để sau thì cán bộ điền xong địa bàn mới biết ô vừa điền bị ẩn đi. */}
+            <label>
+              Vai trò
+              <select
+                value={form.role}
+                disabled={form.id === user.id}
+                onChange={(e) => {
+                  const nextRole = e.target.value as Role;
+                  setLocationError("");
+                  // Vai trò cấp tỉnh không có xã — xóa luôn giá trị cũ, không giữ lại một
+                  // giá trị đã bị ẩn khỏi màn hình rồi âm thầm lưu xuống DB.
+                  const clearWard = ROLE_LOCATION[nextRole].xa === "hidden";
+                  setForm({ ...form, role: nextRole, xa: clearWard ? "" : form.xa });
+                }}
+              >
+                <option value="user">Người dùng</option>
+                <option value="commune">Hành chính công xã</option>
+                <option value="province">Hành chính công tỉnh</option>
+                <option value="province_admin">Tỉnh (xem báo cáo thống kê)</option>
+                <option value="admin">Quản trị</option>
+              </select>
+            </label>
+            <p className="form-hint">{ROLE_HINT[form.role]}</p>
+            {form.id === user.id && (
+              <p className="form-hint">
+                Không thể tự đổi vai trò của chính mình — hãy nhờ một quản trị viên khác.
+              </p>
+            )}
+
             <div className="form-row">
               <Combobox
-                label="Tỉnh / Thành"
+                label={rule.tinh === "required" ? "Tỉnh / Thành *" : "Tỉnh / Thành"}
                 value={selectedProvince?.text ?? form.tinh}
                 options={provinces.map((province) => ({
                   value: province.text,
@@ -518,19 +776,24 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   setForm({ ...form, tinh: value, xa: "" });
                 }}
               />
-              <Combobox
-                label="Xã / Phường"
-                value={findWard(wards, form.xa) ?? form.xa}
-                options={wards.map((ward) => ({ value: ward, label: ward }))}
-                allLabel="Chưa chọn"
-                placeholder="Tìm xã/phường…"
-                disabled={!selectedProvince || wardsLoading}
-                onChange={(value) => {
-                  setLocationError("");
-                  setForm({ ...form, xa: value });
-                }}
-              />
+              {showWard && (
+                <Combobox
+                  label={rule.xa === "required" ? "Xã / Phường *" : "Xã / Phường"}
+                  value={findWard(wards, form.xa) ?? form.xa}
+                  options={wards.map((ward) => ({ value: ward, label: ward }))}
+                  allLabel="Chưa chọn"
+                  placeholder="Tìm xã/phường…"
+                  disabled={!selectedProvince || wardsLoading}
+                  onChange={(value) => {
+                    setLocationError("");
+                    setForm({ ...form, xa: value });
+                  }}
+                />
+              )}
             </div>
+            {!showWard && (
+              <p className="form-hint">Vai trò cấp tỉnh không gắn với xã/phường.</p>
+            )}
 
             {(provincesLoading || wardsLoading) && (
               <div className="location-status">
@@ -553,6 +816,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               )}
             {!provincesError &&
               !locationError &&
+              showWard &&
               selectedProvince &&
               form.xa &&
               !wardsLoading &&
@@ -561,20 +825,6 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   Xã/phường cũ không thuộc tỉnh đã chọn. Vui lòng chọn lại.
                 </div>
               )}
-
-            <label>
-              Vai trò
-              <select
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-              >
-                <option value="user">Người dùng</option>
-                <option value="commune">Hành chính công xã</option>
-                <option value="province">Hành chính công tỉnh</option>
-                <option value="province_admin">Tỉnh (xem báo cáo thống kê)</option>
-                <option value="admin">Quản trị</option>
-              </select>
-            </label>
 
             {!isCreate && (
               <label>
@@ -598,6 +848,13 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                     ? "Toàn bộ lịch sử của tài khoản sẽ được tính vào Hồ sơ thực tế."
                     : "Toàn bộ lịch sử của tài khoản sẽ không còn được tính vào Hồ sơ thực tế; dữ liệu vẫn còn trong Tất cả hồ sơ."}
                 </span>
+              </div>
+            )}
+
+            {!roleLocationOk && (
+              <div className="error">
+                Vai trò &ldquo;{ROLE_META[form.role].label}&rdquo; cần
+                {rule.xa === "required" ? " tỉnh/thành và xã/phường." : " tỉnh/thành."}
               </div>
             )}
 

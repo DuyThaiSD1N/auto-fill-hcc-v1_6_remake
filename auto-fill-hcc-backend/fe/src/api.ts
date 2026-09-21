@@ -7,12 +7,12 @@ import type {
   DownloadResult,
   ReportExportBody,
   ReportOptionsResp,
-  Role,
   StatsResp,
   StatsSource,
   TraceDetail,
   TraceListResp,
   UserCreateBody,
+  UserListFilters,
   UserListResp,
   UserUpdateBody,
 } from "./types";
@@ -184,10 +184,23 @@ export function getReportOptions(signal?: AbortSignal): Promise<ReportOptionsRes
 }
 
 // --- Quản lý tài khoản (admin) ---
-export function listUsers(page = 1, pageSize = 20, role?: Role): Promise<UserListResp> {
+export function listUsers(
+  page = 1,
+  pageSize = 20,
+  filters: UserListFilters = {},
+): Promise<UserListResp> {
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
-  if (role) params.set("role", role);
+  if (filters.role) params.set("role", filters.role);
+  if (filters.q?.trim()) params.set("q", filters.q.trim());
+  if (filters.tinh) params.set("tinh", filters.tinh);
+  // "all" là mặc định của BE — không gửi để URL gọn và cache dễ đoán hơn.
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
   return request<UserListResp>(`/api/v1/users?${params.toString()}`);
+}
+
+/** Bỏ dấu xóa mềm. Không có đường này thì xóa mềm chỉ là giấu đi, không cứu được gì. */
+export function restoreUser(id: string): Promise<ManagedUser> {
+  return request<ManagedUser>(`/api/v1/users/${id}/restore`, { method: "POST" });
 }
 
 export function createUser(body: UserCreateBody): Promise<ManagedUser> {

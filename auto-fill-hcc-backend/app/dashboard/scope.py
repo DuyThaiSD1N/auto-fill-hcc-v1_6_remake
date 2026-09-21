@@ -10,7 +10,12 @@ province_name đã chuẩn hóa + fold dấu để chịu "Thành phố Đà N�
 """
 from app.db.mongo import get_db
 from app.reports.integration import fold, province_name
-from app.users.roles import OFFICIAL_ACCOUNT_ROLES, PROVINCE_ADMIN_ROLE, normalized_role
+from app.users.roles import (
+    NOT_DELETED,
+    OFFICIAL_ACCOUNT_ROLES,
+    PROVINCE_ADMIN_ROLE,
+    normalized_role,
+)
 
 _UNIT_PROJECTION = {"name": 1, "username": 1, "xa": 1, "tinh": 1, "role": 1, "access_disabled": 1}
 
@@ -22,6 +27,7 @@ def _unit_of(user: dict) -> dict:
         "xa": (user.get("xa") or "").strip() or None,
         "tinh": (user.get("tinh") or "").strip() or None,
         "role": normalized_role(user.get("role")),
+        "accessDisabled": user.get("access_disabled") is True,
     }
 
 
@@ -32,12 +38,14 @@ async def _units_matching(province: str | None) -> list[dict]:
     """
     target = fold(province_name(province)) if province else None
     rows = await get_db().users.find(
-        {"role": {"$in": list(OFFICIAL_ACCOUNT_ROLES)}}, _UNIT_PROJECTION
+        {**NOT_DELETED, "role": {"$in": list(OFFICIAL_ACCOUNT_ROLES)}}, _UNIT_PROJECTION
     ).to_list(5000)
     units: list[dict] = []
     for row in rows:
-        if row.get("access_disabled"):
-            continue
+        # Tài khoản TẠM KHÓA vẫn là một đơn vị: công việc đã làm xong tháng trước không có lý
+        # do biến mất khỏi báo cáo chỉ vì hôm nay khóa tài khoản để bảo trì. Bảng hiện nhãn
+        # "Tạm khóa" và vẫn cộng vào tổng — ẩn đi thì tổng của tỉnh không khớp tổng các dòng.
+        # (Khóa vẫn chặn ĐĂNG NHẬP như cũ, ở ensure_account_available.)
         if target is not None and fold(province_name(row.get("tinh"))) != target:
             continue
         units.append(_unit_of(row))
