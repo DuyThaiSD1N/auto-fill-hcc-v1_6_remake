@@ -4470,6 +4470,10 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-lao-cai" ||
       cfg.key === "chuyen-muc-dich-su-dung-dat-lao-cai" ||
+      // [Lào Cai] 1.115679 (bản nộp ở Phường/Xã): hồ sơ hay nộp thay theo Giấy uỷ quyền, và khối
+      // người nộp có 6 ô (*) phải điền theo giấy tờ của CHÍNH người đăng nhập → thiếu mốc tài khoản
+      // là BE bỏ trống cả khối.
+      cfg.key === "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175" ||
       // [Lào Cai] 1.115694: bắt buộc có mốc tài khoản, nếu không BE sẽ bỏ trống khối người nộp.
       cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua" ||
       // [Lào Cai] 1.115677: Mẫu 39 hay do vợ/chồng ký nộp thay → phải có mốc tài khoản mới biết ai đi nộp.
@@ -5095,7 +5099,9 @@ async function initLocationManager() {
   for (const prov of store.getProvinces()) {
     const option = document.createElement('option');
     option.value = prov.slug;
-    option.textContent = prov.text;
+    // Nhãn đọc cho cán bộ (BE trả "label", vd "Thành phố Bắc Ninh"); tên khớp option trên cổng
+    // DVC vẫn là prov.text và chỉ lấy theo slug ở handler 'change' bên dưới.
+    option.textContent = prov.label || prov.text;
     provinceSelect.appendChild(option);
   }
   await applyStoredLocation();
@@ -5104,7 +5110,11 @@ async function initLocationManager() {
   provinceSelect.addEventListener('change', (e) => {
     const slug = e.target.value;
     currentLocation.provinceSlug = slug;
-    currentLocation.province = slug ? (e.target.options[e.target.selectedIndex]?.textContent || '') : '';
+    // Tên tỉnh lưu lại phải là tên trong danh mục (khớp option trên cổng DVC), KHÔNG phải nhãn
+    // đang hiển thị — nhãn có thể khác ("Thành phố Bắc Ninh") thì cổng không tìm ra option.
+    currentLocation.province = slug
+      ? (locationStore()?.getProvinces?.().find((p) => p.slug === slug)?.text || '')
+      : '';
     currentLocation.ward = '';
     currentLocation.source = "manual";   // đã tự chọn -> đừng để mặc định tài khoản ghi đè nữa
     loadWards(slug, '');
@@ -5240,21 +5250,28 @@ function selectSoFor(link) {
   return provinces.includes(agencyLocationFor(link).provinceSlug);
 }
 
+/** Tên tỉnh để IN RA cho cán bộ đọc; chỗ điền hộ trên cổng vẫn dùng area.province. */
+function provinceLabel(provinceText) {
+  return locationStore()?.labelFor?.(provinceText) || provinceText;
+}
+
 /** Phần địa bàn trợ lý sẽ chọn hộ, để in ra status/toast cho khớp số ô thật trên cổng. */
 function agencyAreaLabel(link) {
   const area = agencyLocationFor(link);
+  const prov = provinceLabel(area.province);
   // Tick Sở thì cổng KHÔNG dùng tới ô Phường/Xã — in tên xã ra là báo sai việc trợ lý sắp làm.
-  if (selectSoFor(link)) return `Sở của ${area.province}`;
-  if (agencyProvinceOnly(link)) return area.province;
-  return `${area.ward}, ${area.province}`;
+  if (selectSoFor(link)) return `Sở của ${prov}`;
+  if (agencyProvinceOnly(link)) return prov;
+  return `${area.ward}, ${prov}`;
 }
 
 function showLocationSummary() {
+  const prov = provinceLabel(currentLocation.province);
   if (locationIsComplete()) {
-    locationStatus.textContent = `✓ ${currentLocation.ward}, ${currentLocation.province}`;
+    locationStatus.textContent = `✓ ${currentLocation.ward}, ${prov}`;
     locationStatus.className = 'status ok';
   } else if (currentLocation.provinceSlug) {
-    locationStatus.textContent = `✓ ${currentLocation.province} (có thể chọn thêm Phường/Xã)`;
+    locationStatus.textContent = `✓ ${prov} (có thể chọn thêm Phường/Xã)`;
     locationStatus.className = 'status ok';
   } else {
     locationStatus.textContent = '';

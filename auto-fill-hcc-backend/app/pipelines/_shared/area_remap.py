@@ -564,6 +564,90 @@ def is_current_area(tinh: str, xa: str) -> bool:
     return (_fold_province(_CURRENT_PROVINCES[province_key]), _fold_accent(xa)) in _CURRENT_PAIRS
 
 
+# ---------------------------------------------------------------------------
+# Do GAN DUNG ten xa khi OCR doc lech dau (OPT-IN -- khong nhanh nao o tren tu goi).
+# ---------------------------------------------------------------------------
+
+# Ten fold ngan hon nguong nay thi mot ky tu lech da la mot phan qua lon cua ten -> de dung
+# nham sang xa khac ("Thang" vs "Thanh", "Tan An" vs "Tan Am"). Chi do ten du dai.
+_NEAR_MATCH_MIN_LEN = 6
+
+
+def _off_by_one(a: str, b: str) -> bool:
+    """Hai chuoi lech DUNG MOT ky tu (thay/them/bot). Bang nhau -> False."""
+    if a == b:
+        return False
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la == lb:
+        return sum(1 for x, y in zip(a, b) if x != y) == 1
+    if la > lb:
+        a, b, la = b, a, lb
+    i = 0
+    while i < la and a[i] == b[i]:
+        i += 1
+    return a[i:] == b[i + 1:]
+
+
+@lru_cache(maxsize=128)
+def _ward_candidates(tinh: str) -> tuple[tuple[str, str], ...]:
+    """Moi ten xa ma tinh nay biet -> (ten da fold, ten xa MOI tra ve).
+
+    Gop ca ba nguon da co: ten xa CU cua tinh cu (_REMAP), ten xa CU tra theo tinh MOI
+    (_REMAP_BY_NEW_PROVINCE) va ten xa HIEN HANH cua tinh (_CURRENT_WARD). Entry da bi danh
+    dau ambiguous o cac bang do thi khong nhan vao day -- chung von khong du can cu.
+    """
+    tinh_folded = _fold(tinh)
+    prov_folded = _fold_province(tinh)
+    out: dict[str, set[str]] = {}
+
+    def offer(name_folded: str, xa_moi: str) -> None:
+        if name_folded and xa_moi:
+            out.setdefault(name_folded, set()).add(xa_moi)
+
+    for (prov, xa_cu), mapping in _REMAP.items():
+        if prov == tinh_folded:
+            offer(xa_cu, mapping["xa"])
+    for (prov, xa_cu_acc), xa_moi in _REMAP_BY_NEW_PROVINCE.items():
+        if prov == prov_folded and (prov, xa_cu_acc) not in _REMAP_BY_NEW_PROVINCE_AMBIGUOUS:
+            offer(_fold(xa_cu_acc), xa_moi)
+    for (prov, ward_acc), ward in _CURRENT_WARD.items():
+        if prov == tinh_folded and (prov, ward_acc) not in _CURRENT_WARD_AMBIGUOUS:
+            offer(_fold(ward_acc), ward)
+
+    # Mot ten fold ma ra NHIEU xa moi khac nhau thi chinh no da mo ho -> bo khoi kho ung vien.
+    return tuple((name, next(iter(targets))) for name, targets in out.items() if len(targets) == 1)
+
+
+def near_match_ward(tinh: str, xa: str) -> str:
+    """Ten xa/phuong HIEN HANH khi ten doc duoc chi lech DUNG MOT ky tu so voi ten that.
+
+    Sinh ra de go dung mot loai loi: OCR doc sai MOT dau tren giay viet tay. Vi du that --
+    to khai ghi "UBND xa Dong Lo, huyen Hiep Hoa, tinh Bac Giang" nhung OCR ra "xa Dong le":
+    moi bang tra deu truot (khong bang nao chua "dong le" vi do khong phai ten hanh chinh),
+    o Xa/Phuong tren cong bo trong.
+
+    KHONG phai fallback chung -- ba lop chan giu no o dung pham vi mot loi go dau:
+      1. Chi do trong PHAM VI MOT TINH da biet;
+      2. Chi nhan lech DUNG MOT ky tu, va chi voi ten du dai (_NEAR_MATCH_MIN_LEN);
+      3. Chi tra ve khi TAT CA ung vien cung chi ve MOT xa moi. Ten nao co tu hai ung vien
+         khac dich tro len thi bo tay -- de trong con hon dien nham mot xa khac.
+
+    Ket qua la mot PHONG DOAN co can cu, khong phai du lieu doc duoc: nguoi goi phai danh dau
+    field do la default de extension to vang cho can bo soat lai.
+    """
+    if not tinh or not xa:
+        return ""
+    xa_folded = _fold(xa)
+    if len(xa_folded) < _NEAR_MATCH_MIN_LEN:
+        return ""
+    targets = {
+        xa_moi for name, xa_moi in _ward_candidates(tinh) if _off_by_one(xa_folded, name)
+    }
+    return targets.pop() if len(targets) == 1 else ""
+
+
 def province_for_ward(xa: str) -> Optional[tuple[str, str]]:
     """Tinh DUY NHAT dang co phuong/xa ten nay -> (ten tinh, ten xa day du).
 
@@ -1044,3 +1128,4 @@ def reload() -> None:
     _build_new_province_index()
     # Clear cache khi reload data
     _remap_area_cached.cache_clear()
+    _ward_candidates.cache_clear()
