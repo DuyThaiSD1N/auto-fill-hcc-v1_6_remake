@@ -110,6 +110,63 @@ def test_khuyet_tat_rejects_requester_details_when_ocr_identity_mismatches_ui():
     assert "data[gender]" not in values
 
 
+def test_khuyet_tat_unticks_owner_checkbox_when_llm_omits_owner_group():
+    """Mẫu số 01 có mục II: chủ hồ sơ suy từ người đại diện, phải bỏ tích ô chủ hồ sơ."""
+    values = _mapped_values([
+        {"name": "Nkt_HoTen", "value": "HOÀNG THỊ LÀNH"},
+        {"name": "Nkt_SoDinhDanh", "value": "010183007970"},
+        {"name": "Ndd_HoTen", "value": "HOÀNG THỊ QUỲNH"},
+        {"name": "Ndd_SoDinhDanh", "value": "010190008941"},
+        {"name": "Ndd_SoDienThoai", "value": "0388.082.382"},
+        {"name": "Ndd_NoiCuTru", "value": {
+            "tinh": "Lào Cai", "xa": "phường Cam Đường", "diaChi": "Tổ 29",
+        }},
+    ], {
+        "formContext": {
+            "applicantFullname": "NGUYỄN DUY THÁI",
+            "applicantIdentityNumber": "001204018566",
+        }
+    })
+
+    assert values["data[isOwnerDossierCheck]"] is False
+    assert values["data[ownerFullname]"] == "HOÀNG THỊ QUỲNH"
+    assert values["data[ownerIdentityNumber]"] == "010190008941"
+    assert values["data[ownerPhoneNumber]"] == "0388082382"
+    assert values["data[ownerProvince]"] == "Lào Cai"
+    assert values["data[ownerDistrict]"] == "Phường Cam Đường"
+    assert values["data[ownerAddress]"] == "Tổ 29"
+    # Người khuyết tật ở mục I không bị chủ hồ sơ (người đại diện) ghi đè.
+    assert values["data[NktHoTen]"] == "HOÀNG THỊ LÀNH"
+    assert values["data[NktSoDinhdanh]"] == "010183007970"
+
+
+def test_khuyet_tat_owner_falls_back_to_disabled_person_without_representative():
+    values = _mapped_values([
+        {"name": "Nkt_HoTen", "value": "NGƯỜI KHUYẾT TẬT"},
+        {"name": "Nkt_SoDinhDanh", "value": "012345678901"},
+        {"name": "Nkt_NgaySinh", "value": "02/02/1990"},
+        {"name": "Nkt_GioiTinh", "value": "Nữ"},
+    ])
+
+    assert values["data[isOwnerDossierCheck]"] is False
+    assert values["data[ownerFullname]"] == "NGƯỜI KHUYẾT TẬT"
+    assert values["data[ownerIdentityNumber]"] == "012345678901"
+    assert values["data[ownerBirthday]"] == "02/02/1990"
+    assert values["data[ownerGender]"] == "Nữ"
+
+
+def test_khuyet_tat_owner_group_still_wins_over_fallback():
+    values = _mapped_values([
+        {"name": "ChuHoSo_HoTen", "value": "NGƯỜI ĐỨNG ĐƠN"},
+        {"name": "ChuHoSo_SoDinhDanh", "value": "099999999999"},
+        {"name": "Ndd_HoTen", "value": "NGƯỜI ĐẠI DIỆN"},
+        {"name": "Ndd_SoDinhDanh", "value": "012345678901"},
+    ])
+
+    assert values["data[ownerFullname]"] == "NGƯỜI ĐỨNG ĐƠN"
+    assert values["data[ownerIdentityNumber]"] == "099999999999"
+
+
 def test_khuyet_tat_representative_owner_is_not_copied_to_disabled_person():
     values = _mapped_values([
         {"name": "ChuHoSo_HoTen", "value": "NGƯỜI ĐẠI DIỆN"},

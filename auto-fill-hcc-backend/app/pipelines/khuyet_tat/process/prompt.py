@@ -16,6 +16,7 @@ Có thể kèm hồ sơ bệnh án, trích lục khai sinh hoặc giấy tờ y 
 5. Hồ sơ bệnh án/trích lục khai sinh chỉ dùng để bổ sung thông tin người khuyết tật còn thiếu hoặc đối chiếu ngày sinh/số định danh; không được thay thế các ô đánh dấu trong đơn đề nghị nếu đơn đã rõ.
 6. NguoiNop_* chỉ được trích từ block matched_requester_ocr do Python cung cấp. formContext UI chỉ là mỏ neo xác định đúng người; mọi ngày sinh, giới tính, ngày cấp, nơi cấp, địa chỉ và thông tin khác vẫn phải có trong OCR đúng người.
 7. Không mặc định CCCD duy nhất là của chủ hồ sơ. Chỉ ghép CCCD vào ChuHoSo_* khi họ tên hoặc số định danh khớp đúng người đứng đơn đã xác định trong Mẫu số 01.
+8. ChuHoSo_HoTen là BẮT BUỘC khi đơn đọc được người đứng đơn. Không được bỏ trống nhóm ChuHoSo_* chỉ vì thông tin đã trả ở Ndd_* hoặc Nkt_*: thiếu nhóm này thì cổng giữ nguyên tích "Người nộp hồ sơ là chủ hồ sơ" và khối chủ hồ sơ bị khoá theo tài khoản đăng nhập.
 </critical_rules>
 
 <source_priority>

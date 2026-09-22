@@ -145,6 +145,49 @@ def _compact_code(value) -> str:
     return folded
 
 
+def _owner_profile(values: dict) -> dict:
+    """Hồ sơ CHỦ HỒ SƠ = người đứng đơn trong Mẫu số 01.
+
+    LLM nhiều lần chỉ trả ``Ndd_*``/``Nkt_*`` mà bỏ trống nhóm ``ChuHoSo_*`` vì thấy
+    thông tin đã có ở mục II/mục I. Trước đây mapper coi như không có chủ hồ sơ nên
+    KHÔNG phát ``data[isOwnerDossierCheck]``, cổng giữ nguyên tích "Người nộp hồ sơ
+    là chủ hồ sơ" và khối chủ hồ sơ bị khoá theo tài khoản đang đăng nhập. Suy ngược
+    từ mục II (người đại diện hợp pháp đứng đơn), hết mới tới mục I (người khuyết tật
+    tự đề nghị), để luôn biết chủ hồ sơ là ai mà quyết định bỏ tích.
+    """
+    profile = {
+        "name": values.get("ChuHoSo_HoTen"),
+        "identity": _identity(values.get("ChuHoSo_SoDinhDanh")),
+        "birthday": values.get("ChuHoSo_NgaySinh"),
+        "gender": values.get("ChuHoSo_GioiTinh"),
+        "identityDate": values.get("ChuHoSo_NgayCap"),
+        "issuer": values.get("ChuHoSo_NoiCap"),
+        "area": _area(values.get("ChuHoSo_NoiCuTru")),
+        "phone": values.get("ChuHoSo_DienThoai"),
+        "nation": values.get("ChuHoSo_QuocTich"),
+    }
+    if profile["name"] or profile["identity"]:
+        return profile
+
+    ndd_identity = _identity(values.get("Ndd_SoDinhDanh"))
+    if values.get("Ndd_HoTen") or ndd_identity:
+        profile["name"] = values.get("Ndd_HoTen")
+        profile["identity"] = ndd_identity
+        profile["area"] = profile["area"] or _area(values.get("Ndd_NoiCuTru"))
+        profile["phone"] = profile["phone"] or values.get("Ndd_SoDienThoai")
+        return profile
+
+    nkt_identity = _identity(values.get("Nkt_SoDinhDanh"))
+    if values.get("Nkt_HoTen") or nkt_identity:
+        profile["name"] = values.get("Nkt_HoTen")
+        profile["identity"] = nkt_identity
+        profile["birthday"] = profile["birthday"] or values.get("Nkt_NgaySinh")
+        profile["gender"] = profile["gender"] or values.get("Nkt_GioiTinh")
+        profile["area"] = profile["area"] or _area(values.get("Nkt_ThuongTru"))
+
+    return profile
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     values = _by_name(fields)
     out: list[dict] = []
@@ -184,10 +227,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         else None
     )
 
-    owner_name = values.get("ChuHoSo_HoTen")
-    owner_identity = _identity(values.get("ChuHoSo_SoDinhDanh"))
-    owner_area = _area(values.get("ChuHoSo_NoiCuTru"))
-    owner_issuer = values.get("ChuHoSo_NoiCap")
+    owner = _owner_profile(values)
+    owner_name = owner["name"]
+    owner_identity = owner["identity"]
+    owner_area = owner["area"]
+    owner_issuer = owner["issuer"]
     owner_present = bool(owner_name or owner_identity)
     owner_matches_applicant = owner_present and _same_person(
         applicant_name,
@@ -220,17 +264,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Luôn phát Chủ hồ sơ tường minh, kể cả tự nộp. Một số Form.io không copy
         # ngày sinh/ngày cấp sau khi tick nên không được phụ thuộc vào mirror của cổng.
         add("data[ownerFullname]", owner_name)
-        add("data[ownerBirthday]", values.get("ChuHoSo_NgaySinh"))
-        add("data[ownerGender]", values.get("ChuHoSo_GioiTinh"))
+        add("data[ownerBirthday]", owner["birthday"])
+        add("data[ownerGender]", owner["gender"])
         add("data[ownerIdentityNumber]", owner_identity)
-        add("data[ownerIdentityDate]", values.get("ChuHoSo_NgayCap"))
+        add("data[ownerIdentityDate]", owner["identityDate"])
         add("data[ownerIdIssuePlace]", owner_issuer)
         if owner_area:
             add("data[ownerProvince]", owner_area.get("tinh"))
             add("data[ownerDistrict]", owner_area.get("xa"))
             add("data[ownerAddress]", owner_area.get("diaChi"))
-        add("data[ownerPhoneNumber]", _phone(values.get("ChuHoSo_DienThoai")))
-        add("data[ownerNation]", values.get("ChuHoSo_QuocTich") or "Việt Nam")
+        add("data[ownerPhoneNumber]", _phone(owner["phone"]))
+        add("data[ownerNation]", owner["nation"] or "Việt Nam")
 
     phone = _phone(values.get("Ndd_SoDienThoai"))
 
@@ -253,7 +297,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add(
         "data[NktNgaySinh]",
         values.get("Nkt_NgaySinh")
-        or (values.get("ChuHoSo_NgaySinh") if owner_is_nkt else None),
+        or (owner["birthday"] if owner_is_nkt else None),
     )
     add(
         "data[NktSoDinhdanh]",
@@ -262,7 +306,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add(
         "data[NktGioiTinh]",
         values.get("Nkt_GioiTinh")
-        or (values.get("ChuHoSo_GioiTinh") if owner_is_nkt else None),
+        or (owner["gender"] if owner_is_nkt else None),
     )
 
     nkt_tt = _area(values.get("Nkt_ThuongTru"))
