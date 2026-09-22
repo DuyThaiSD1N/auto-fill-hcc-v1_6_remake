@@ -128,6 +128,8 @@ from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
 from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
+from app.pipelines.cho_thue_dat_thue_rung.attach import plan as cho_thue_dat_thue_rung_attach
+from app.pipelines.cho_thue_dat_thue_rung.process import run as cho_thue_dat_thue_rung_process
 from app.pipelines.dk_giay_cn_thua_dat_dien_tich_tang_them.process import (
     run as dk_giay_cn_thua_dat_dien_tich_tang_them_process,
 )
@@ -2329,6 +2331,72 @@ PROCEDURES: list[dict] = [
             "⚠ ĐIỀN FORM: nút/checkbox 'Người nộp là chủ hồ sơ' của cổng chỉ sao chép sang khối chủ hồ sơ "
             "tới Nơi cấp/Ngày cấp căn cước, KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ. Hệ thống vì vậy luôn "
             "điền đầy đủ cả khối chủ hồ sơ kể cả khi người nộp trùng chủ hồ sơ."
+        ),
+    },
+    {
+        "key": "cho-thue-dat-thue-rung",
+        # Mã 1.115678 — BẢN PHÂN CẤP của thủ tục giao/thuê đất Lào Cai, áp dụng cho các trường hợp tại
+        # Điều 3 Quyết định 40/2026/QĐ-UBND ngày 31/5/2026. Cùng cổng, cùng eForm iGate legacy
+        # (CongDan_*/ChuHoSo_*) với 1.115650 nên dùng lại fill-legacy.js + engine đính kèm fixed-slot;
+        # khác nhau ở DANH MỤC ĐÍNH KÈM (thứ tự dòng, xem attach/planner.py) và ở nguồn giấy tờ
+        # (hồ sơ trúng đấu giá, không phải dự án đầu tư).
+        #
+        # ⚠ VA CHẠM NHẬN DIỆN VỚI 1.115650: tiêu đề thủ tục này CHỨA TRỌN tiêu đề của 1.115650, chỉ
+        # thêm phần "(đối với các trường hợp quy định tại Điều 3 Quyết định số 40/2026/QĐ-UBND…)".
+        # Trang này vì vậy khớp CẢ HAI entry. Nhánh textPriority của popup.js chọn entry có TỔNG ĐỘ
+        # DÀI CỤM LỚN NHẤT, nên phải khai LẠI cụm dùng chung rồi CỘNG THÊM cụm riêng — có vậy tổng
+        # điểm mới vượt 1.115650 trên trang này, trong khi trang của 1.115650 không chứa cụm riêng
+        # nên vẫn về đúng thủ tục cũ. Có test chặn cả hai chiều.
+        #
+        # Cụm riêng cố ý DỪNG Ở "Điều 3 Quyết định số 40/2026", KHÔNG kéo tới "/QĐ-UBND": cổng có chỗ
+        # in "QĐ- UBND" (thừa một dấu cách sau gạch nối) mà hàm chuẩn hoá chỉ gộp khoảng trắng chứ
+        # không xoá được — khai thêm phần đó là tự làm hỏng nhận diện.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá",
+                "Điều 3 Quyết định số 40/2026",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu "
+            "giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất và "
+            "trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có "
+            "sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng (Điều 3 Quyết định số "
+            "40/2026/QĐ-UBND ngày 31/5/2026 của UBND tỉnh Lào Cai)"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục này phần lớn dùng cho hồ sơ GIAO ĐẤT SAU KHI TRÚNG ĐẤU GIÁ. Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị giao đất (Mẫu số 01 kèm Quyết định 47/2026/QĐ-UBND) — dùng để điền thân đơn.\n"
+            "2. Quyết định công nhận kết quả trúng đấu giá + danh sách người trúng đấu giá kèm theo.\n"
+            "3. Biên bản đấu giá + danh sách người tham gia đấu giá và giá trả.\n"
+            "4. Chứng từ tài chính: giấy nộp tiền vào NSNN (tiền sử dụng đất, lệ phí trước bạ, tiền đặt "
+            "trước), thông báo nộp tiền sử dụng đất, thông báo/tờ khai lệ phí trước bạ.\n"
+            "5. Hợp đồng ủy quyền có công chứng (nếu nộp thay) và CCCD của người trúng đấu giá.\n"
+            "6. Trường hợp dự án/giao rừng: văn bản chấp thuận chủ trương đầu tư, phương án sử dụng đất, "
+            "giấy phép khai thác khoáng sản, hồ sơ giao rừng/thuê rừng, giấy tờ miễn giảm tiền sử dụng đất.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "⚠ ĐÍNH KÈM: danh mục của cổng KHÔNG có dòng riêng cho giấy tờ trúng đấu giá, nộp tiền và "
+            "thông báo thuế → hệ thống gộp tất cả vào dòng 1 \"Đơn theo Mẫu số 01\" (dòng này nhận nhiều "
+            "tệp). Cổng giới hạn 6 MB mỗi dòng: bộ hồ sơ trúng đấu giá thường vượt, cần nén PDF hoặc "
+            "tách nhiều tệp — hệ thống sẽ báo trước khi vượt.\n"
+            "⚠ Cổng có thể TICK SẴN dòng \"Giấy tờ chứng minh thuộc đối tượng miễn, giảm tiền sử dụng "
+            "đất\". Hồ sơ không thuộc diện miễn giảm (thông báo thuế ghi \"Số tiền giảm: 0 đồng\") thì "
+            "cán bộ BỎ TICK dòng đó.\n"
+            "⚠ ĐIỀN FORM: hai ô \"Họ và tên\" và \"Số Căn cước\" của khối người nộp là ô readonly do "
+            "cổng đổ từ tài khoản đang đăng nhập — hệ thống CỐ Ý KHÔNG điền hai ô này, vì ghi vào đó là "
+            "script của cổng xoá trắng \"Di động\" và \"Số Căn cước\". Hồ sơ nộp thay theo ủy quyền thì "
+            "tài khoản đăng nhập phải chính là người được ủy quyền; hệ thống sẽ cảnh báo nếu tài khoản "
+            "đang đăng nhập không khớp người được ủy quyền trong hồ sơ. Checkbox \"Người nộp là chủ hồ "
+            "sơ\" chỉ sao chép Nơi "
+            "cấp/Ngày cấp căn cước, KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ — hệ thống vì vậy luôn điền "
+            "đầy đủ cả khối chủ hồ sơ, cán bộ không cần tick."
         ),
     },
     {
@@ -5232,6 +5300,7 @@ _PIPELINE = {
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_process,
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_process,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
+    "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_process,
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_process,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_process,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_process,
@@ -5395,6 +5464,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_attach,
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_attach,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
+    "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_attach,
     "dang-ky-bien-phap-bao-dam-quang-ninh": dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "dang-ky-dat-dai-lan-dau-bac-ninh": dang_ky_dat_dai_lan_dau_bac_ninh_attach,

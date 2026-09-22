@@ -4535,6 +4535,10 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||
       // [Lào Cai] 1.115650: chủ hồ sơ thường là DOANH NGHIỆP, hồ sơ đầy người có số định danh (người
       cfg.key === "giao-thue-dat-lao-cai" ||
+      // [Lào Cai] 1.115678: hồ sơ giao đất sau trúng đấu giá rất hay nộp thay theo Hợp đồng ủy quyền
+      // → mốc tài khoản là thứ DUY NHẤT phân biệt "người trúng đấu giá tự nộp" với "người được ủy
+      // quyền nộp thay"; thiếu nó BE phải đoán mode từ giấy tờ.
+      cfg.key === "cho-thue-dat-thue-rung" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
