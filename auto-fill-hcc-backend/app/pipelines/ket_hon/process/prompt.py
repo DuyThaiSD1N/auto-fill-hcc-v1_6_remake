@@ -96,8 +96,16 @@ NGUỒN DỮ LIỆU:
 - BẢN ÁN/QUYẾT ĐỊNH LY HÔN — MỖI BÊN MỘT VĂN BẢN RIÊNG, GÁN THEO ĐƯƠNG SỰ:
   Hồ sơ kết hôn RẤT HAY có NHIỀU quyết định ly hôn khác nhau (bên nam ly hôn với người khác, bên nữ ly hôn
   với người khác), thường nằm liền nhau trong CÙNG một file PDF. BẮT BUỘC duyệt TỪNG văn bản độc lập:
+  B0. VĂN BẢN NÀO ĐƯỢC TÍNH LÀ "văn bản ly hôn" — KHÔNG CHỈ loại có chữ "ly hôn" trên tiêu đề. Tính ĐỦ CẢ:
+      "Quyết định công nhận thuận tình ly hôn", "Bản án ly hôn", "Bản án/Quyết định KHÔNG CÔNG NHẬN QUAN HỆ
+      VỢ CHỒNG" (hai người chung sống nhưng chưa đăng ký kết hôn, toà tuyên chấm dứt), "Bản án/Quyết định
+      HỦY VIỆC KẾT HÔN TRÁI PHÁP LUẬT". Tiêu đề kiểu V/v "Không công nhận quan hệ vợ chồng, tranh chấp về
+      nuôi con chung" VẪN LÀ văn bản ly hôn của các đương sự trong đó — KHÔNG được bỏ qua chỉ vì thiếu chữ
+      "ly hôn". Số của loại này thường ghi "Bản án số: 06/2020/HNGĐ - ST" → trả "06/2020/HNGĐ-ST" (bỏ khoảng
+      trắng quanh dấu gạch, giữ nguyên phần còn lại).
   B1. Với MỖI văn bản ly hôn, đọc riêng danh sách đương sự (nguyên đơn/bị đơn, "công nhận thuận tình ly hôn
-      giữa ... và ...") và cơ quan ban hành của CHÍNH văn bản đó.
+      giữa ... và ...", "không công nhận quan hệ vợ chồng giữa ... và ...") và cơ quan ban hành của CHÍNH
+      văn bản đó.
   B2. So khớp CHẶT họ tên đương sự với CccdNam_HoTen / CccdNu_HoTen (chỉ chuẩn hóa hoa-thường, dấu tiếng Việt,
       khoảng trắng) hoặc số CCCD ghi trên văn bản. Không fuzzy, không sửa tên để tạo khớp.
   B3. Chỉ gán số/ngày/cơ quan cho người có tên TRONG CHÍNH văn bản đó.
@@ -106,6 +114,15 @@ NGUỒN DỮ LIỆU:
   CHỈ khi CẢ HAI họ tên nam và nữ cùng là đương sự TRONG CÙNG MỘT văn bản thì hai bên mới dùng chung
   số/ngày/cơ quan giống hệt nhau. Người nào không có văn bản nào ghi tên → BỎ TRỐNG cả 4 field ly hôn của
   người đó, kể cả khi người kia có.
+  RÀNG BUỘC VỚI TÌNH TRẠNG HÔN NHÂN: văn bản nào là căn cứ để kết luận một bên có mã 3 thì CHÍNH văn bản đó
+  phải được trả vào *_BanAnLyHon_So/_Ngay/_CoQuan/_DuongSu của bên đó. Trả CccdNam_TinhTrangHonNhan=3 (hoặc
+  CccdNu_...=3) mà lại lấy số/ngày/cơ quan của văn bản thuộc bên kia là SAI NGHIÊM TRỌNG — nghĩa là văn bản
+  của bên này đã bị bỏ sót, phải quay lại B0/B1 quét lại toàn bộ tài liệu cho đúng bên đó.
+  TỰ KIỂM TRA TRƯỚC KHI TRẢ KẾT QUẢ: với mỗi bên có *_BanAnLyHon_So, họ tên của CHÍNH bên đó (CccdNam_HoTen /
+  CccdNu_HoTen) BẮT BUỘC phải nằm trong *_BanAnLyHon_DuongSu của bên đó. Không nằm trong → văn bản đang gán
+  là của người khác: quét lại hồ sơ tìm văn bản có tên người này (kể cả các loại ở B0); vẫn không có thì
+  BỎ TRỐNG cả 4 field ly hôn của bên đó, TUYỆT ĐỐI không giữ văn bản của bên kia.
+  Hai bên KHÔNG được có *_BanAnLyHon_So giống hệt nhau trừ khi cả hai tên đều nằm trong cùng một DuongSu.
   + CccdNam_BanAnLyHon_So / CccdNu_BanAnLyHon_So: số bản án/quyết định (vd "336/2023/QĐST-HNGD"), lấy nguyên
     văn dòng "Số:" trên ĐÚNG văn bản đã khớp tên người đó.
   + CccdNam_BanAnLyHon_Ngay / CccdNu_BanAnLyHon_Ngay: ngày ban hành, dd/mm/yyyy (dòng "..., ngày ... tháng ...
@@ -127,6 +144,15 @@ NGUỒN DỮ LIỆU:
     - "Số: 52/2023/QĐST-HNGĐ", Toà án nhân dân thành phố Sơn La, ngày 17/02/2023, ly hôn giữa chị Lường Thị Ly
       và anh Mè Minh Tuấn → CHỈ gán cho BÊN NAM Mè Minh Tuấn.
     SAI NGHIÊM TRỌNG nếu điền 52/2023 (hoặc 70/2018) cho cả hai bên.
+  VÍ DỤ hai văn bản KHÁC LOẠI (lỗi thật đã gặp — bên nam bị bỏ sót vì tiêu đề không có chữ "ly hôn"):
+    - "Bản án số: 06/2020/HNGĐ - ST" ngày 7/9/2020, Tòa án nhân dân thị xã Sa Pa - tỉnh Lào Cai,
+      V/v "Không công nhận quan hệ vợ chồng, tranh chấp về nuôi con chung", nguyên đơn chị Châu Thị Si,
+      bị đơn anh Giàng A Chư → ĐÂY LÀ văn bản ly hôn của BÊN NAM Giàng A Chư:
+      CccdNam_BanAnLyHon_So="06/2020/HNGĐ-ST", _Ngay="07/09/2020",
+      _CoQuan="Tòa án nhân dân thị xã Sa Pa, tỉnh Lào Cai", _DuongSu="Châu Thị Si; Giàng A Chư".
+    - "Số: 06/2025/QĐST-HNGD" ngày 01/8/2025, Tòa án nhân dân khu vực 4 - Sơn La, công nhận thuận tình
+      ly hôn giữa bà Lý Thị Pa La và ông Hàng A Minh → CHỈ gán cho BÊN NỮ Lý Thị Pa La.
+    SAI NGHIÊM TRỌNG nếu điền 06/2025 cho cả hai bên và bỏ mất bản án 06/2020 của bên nam.
   Không suy diễn hay bịa khi văn bản không ghi rõ; thiếu phần nào thì bỏ field đó, không đoán.
 - LOẠI ĐĂNG KÝ: nếu TỜ KHAI có mục "Loại đăng ký" được tích/ghi rõ thì trả ToKhai_LoaiDangKy
   đúng nhãn được chọn (vd "Đăng ký lần đầu", "Đăng ký lại"). Tờ khai không có mục này hoặc không

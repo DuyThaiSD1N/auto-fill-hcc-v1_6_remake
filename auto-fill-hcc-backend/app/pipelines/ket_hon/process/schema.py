@@ -27,7 +27,11 @@ FIELDS: list[dict] = [
     {"name": "CccdNam_BanAnLyHon_So",
      "desc": "Số bản án/quyết định ly hôn của BÊN NAM. CHỈ lấy khi văn bản ly hôn thật xác định đúng "
              "người này là đương sự, cùng điều kiện đối chiếu tên/CCCD như CccdNam_TinhTrangHonNhan mã 3. "
-             "Không khớp đúng người hoặc không có văn bản thì bỏ field."},
+             "Tính cả bản án/quyết định KHÔNG CÔNG NHẬN QUAN HỆ VỢ CHỒNG và HỦY VIỆC KẾT HÔN TRÁI PHÁP "
+             "LUẬT — tiêu đề không có chữ \"ly hôn\" vẫn là văn bản ly hôn của đương sự trong đó. Số "
+             "dạng \"Bản án số: 06/2020/HNGĐ - ST\" trả thành \"06/2020/HNGĐ-ST\". "
+             "Không khớp đúng người hoặc không có văn bản thì bỏ field; TUYỆT ĐỐI không mượn văn bản "
+             "của bên kia."},
     {"name": "CccdNam_BanAnLyHon_Ngay",
      "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn của BÊN NAM, dd/mm/yyyy. Cùng điều kiện đối "
              "chiếu như CccdNam_BanAnLyHon_So."},
@@ -62,7 +66,11 @@ FIELDS: list[dict] = [
     {"name": "CccdNu_BanAnLyHon_So",
      "desc": "Số bản án/quyết định ly hôn của BÊN NỮ. CHỈ lấy khi văn bản ly hôn thật xác định đúng "
              "người này là đương sự, cùng điều kiện đối chiếu tên/CCCD như CccdNu_TinhTrangHonNhan mã 3. "
-             "Không khớp đúng người hoặc không có văn bản thì bỏ field."},
+             "Tính cả bản án/quyết định KHÔNG CÔNG NHẬN QUAN HỆ VỢ CHỒNG và HỦY VIỆC KẾT HÔN TRÁI PHÁP "
+             "LUẬT — tiêu đề không có chữ \"ly hôn\" vẫn là văn bản ly hôn của đương sự trong đó. Số "
+             "dạng \"Bản án số: 06/2020/HNGĐ - ST\" trả thành \"06/2020/HNGĐ-ST\". "
+             "Không khớp đúng người hoặc không có văn bản thì bỏ field; TUYỆT ĐỐI không mượn văn bản "
+             "của bên kia."},
     {"name": "CccdNu_BanAnLyHon_Ngay",
      "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn của BÊN NỮ, dd/mm/yyyy. Cùng điều kiện đối "
              "chiếu như CccdNu_BanAnLyHon_So."},
