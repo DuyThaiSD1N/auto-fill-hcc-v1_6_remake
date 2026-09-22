@@ -38,7 +38,9 @@ function callSites(fn) {
 const GUARDED = [
   {
     reader: "portalUploadErrorNodes",
-    consumers: ["snapshotPortalUploadErrors", "newPortalUploadError"],
+    consumers: ["snapshotPortalUploadErrors", "newPortalUploadError", "newPortalUploadFailure",
+      // Không đọc làm bằng chứng — chỉ ĐÓNG toast upload-thất-bại để tệp kế không bị đọc nhầm.
+      "dismissUploadFailureToasts"],
     why: "toast lỗi của cổng sống rất lâu — đọc trần là câu báo lỗi của tệp này thành lời than của tệp trước",
   },
   {

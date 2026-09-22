@@ -433,6 +433,24 @@
     return { error: `Đã click nhưng React Select chưa nhận "${wanted}"` };
   }
 
+  // Đọc giá trị ĐANG CÓ của các ô chủ hồ sơ để backend hậu kiểm trước khi chuyển bước.
+  // Ô không tìm thấy thì VẮNG khỏi kết quả (không trả chuỗi rỗng): backend phân biệt "trang
+  // để trống" với "bộ dò không thấy ô" — thấy không chắc thì thà cho qua để chính cổng chặn,
+  // còn hơn chặn oan công dân.
+  function readOwnerFields(fields) {
+    const values = {};
+    for (const field of fields || []) {
+      const { control, scope } = fieldControl(field);
+      if (!control) continue;
+      const raw = field.comp === "owner-combobox"
+        ? comboDisplayedValue(scope)
+        : control.value;
+      const key = field.key || field.name || field.label || "";
+      if (key) values[key] = usableOwnerValue(raw) ? ownerScalarValue(raw) : "";
+    }
+    return values;
+  }
+
   async function fillOwnerFields(fields) {
     if (typeof H.injectAutofillStyles === "function") H.injectAutofillStyles();
     if (typeof H.clearAutofillMarks === "function") H.clearAutofillMarks();
@@ -735,6 +753,14 @@
     const ownerContext = extractOwnerContext();
     if (!ownerContext) return; // frame không có khối định danh → để frame đúng trả lời
     sendResponse({ ok: true, ownerContext });
+  });
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "readOwnerFields") return;
+    const values = readOwnerFields(Array.isArray(msg.fields) ? msg.fields : []);
+    // Frame không có ô nào thì im để frame đúng trả lời (content script chạy ở mọi frame).
+    if (!Object.keys(values).length) return;
+    sendResponse({ ok: true, values });
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

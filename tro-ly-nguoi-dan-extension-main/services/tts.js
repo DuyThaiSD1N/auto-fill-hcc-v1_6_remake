@@ -1,7 +1,7 @@
 // TTS cho extension — plan_tuyenquang/13. Port từ chatbot-hcc-base-ts/voice-mode-hcc/src/lib/tts.ts.
 // Đọc 1 câu qua WebSocket /ws/tts (backend tự chọn giọng: vi → phuongnhi-north).
 // Khác bản gốc: WS host lấy từ baseUrl (window.HCC_BASE_URL), KHÔNG dùng window.location.host
-// (panel chạy trong iframe trang DVC). Expose window.__hccTTS = { speak, stop, setMuted }.
+// (panel chạy trong iframe trang DVC). Expose window.__hccTTS = { speak, stop, setMuted, setVoice }.
 (() => {
   "use strict";
 
@@ -85,12 +85,25 @@
   const _idPrefix = Math.random().toString(36).slice(2, 8); // nhiều tab không giẫm id nhau
   const _pending = {}; // id → onDone (vòng rảnh tay: đọc xong → mở mic)
 
+  // Giọng máy quầy đã chọn, theo từng ngôn ngữ: { vi: "...", hmong: "..." }. Rỗng = để BE
+  // dùng mặc định. Giữ ở đây thay vì truyền qua từng lời gọi speak() — các chỗ gọi rải rác
+  // trong sidebar, thêm tham số là dễ sót một chỗ rồi đọc lẫn giọng.
+  let _voiceByLang = {};
+
+  function setVoice(map) {
+    _voiceByLang = map && typeof map === "object" ? map : {};
+  }
+
   function ttsWsUrl(lang) {
     const base = window.HCC_BASE_URL || "https://demo-trolyao-hcc.vnekyc.vn";
     const u = new URL(base);
     u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
     u.pathname = "/ws/tts";
-    u.search = `?lang=${lang || "vi"}`;
+    const params = new URLSearchParams({ lang: lang || "vi" });
+    // BE lọc qua allowlist (voice/catalog.py) nên id sai/cũ chỉ rơi về mặc định, không vỡ tiếng.
+    const voice = _voiceByLang[lang || "vi"];
+    if (voice) params.set("voice", voice);
+    u.search = `?${params.toString()}`;
     return u.toString();
   }
 
@@ -152,5 +165,5 @@
     try { cb(); } catch (_) { /* nuốt lỗi callback */ }
   });
 
-  window.__hccTTS = { speak, stop, setMuted };
+  window.__hccTTS = { speak, stop, setMuted, setVoice };
 })();

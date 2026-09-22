@@ -27,7 +27,7 @@
             <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
                  extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
                  Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
-            <span class="release-meta" id="release-meta" data-ngay="14/09/2026"></span>
+            <span class="release-meta" id="release-meta" data-ngay="19/09/2026"></span>
             <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
             <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
@@ -163,6 +163,18 @@
         </div>
       </div>
       <p class="settings-note">Áp dụng từ lượt đính kèm tiếp theo.</p>
+
+      <!-- GIỌNG ĐỌC: danh mục do BE cấp (/api/v1/voice/config → voices), nên thêm/bớt giọng
+           KHÔNG phải phát hành lại extension. Cả thẻ TỰ ẨN khi ngôn ngữ chỉ có một giọng —
+           bày một ô chọn duy nhất bấm vào không đổi gì là làm cán bộ tưởng hỏng. -->
+      <div class="settings-card settings-card-col" id="voice-card" hidden>
+        <div class="settings-copy">
+          <label id="voice-label">Giọng đọc</label>
+          <p id="voice-description">Chọn giọng Trợ lý dùng để đọc. Áp dụng từ câu đọc tiếp theo.</p>
+        </div>
+        <div class="settings-seg" id="voice-group" role="radiogroup"
+             aria-labelledby="voice-label" aria-describedby="voice-description"></div>
+      </div>
       <p class="settings-saved" id="settings-saved" role="status" aria-live="polite"></p>
     </section>
 

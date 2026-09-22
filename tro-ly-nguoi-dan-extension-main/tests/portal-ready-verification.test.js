@@ -6,9 +6,19 @@ const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
 const sidebar = fs.readFileSync(path.join(root, "sidebar.js"), "utf8");
 
-test("nút phao yêu cầu kiểm tra trang thay vì xác nhận đã vào hồ sơ", () => {
-  assert.match(sidebar, /label: "Kiểm tra lại trang hiện tại", send: "__event:sso_success"/);
+test("nút phao 'Kiểm tra lại trang hiện tại' đã bỏ khỏi UI", () => {
+  // Yêu cầu 22/09/2026. Lọc ở FE chứ KHÔNG gỡ chip ở backend: backend còn phục vụ bản
+  // extension cũ trên chợ vốn dựa vào nút này để công dân tự yêu cầu đọc lại trang.
+  assert.doesNotMatch(sidebar, /renderChips\(\[\{ label: "Kiểm tra lại trang hiện tại"/);
+  assert.match(sidebar, /chips\.filter\(\(c\) => c\.send !== "__event:sso_success"\)/);
+  // Không được thay bằng lời xác nhận suông "đã vào trang" — phải đọc DOM thật.
   assert.doesNotMatch(sidebar, /label: "Tôi đã vào trang làm hồ sơ"/);
+});
+
+test("hết ~60s chưa nhận ra trang thì tự đọc lại DOM, không đứng im", () => {
+  const block = sidebar.match(/watcherTicks >= 17 && !fallbackChipShown\) \{([\s\S]*?)\} else if/);
+  assert.ok(block, "thiếu nhánh phao sau ~60 giây");
+  assert.match(block[1], /void verifyPortalState\(\)/);
 });
 
 test("action xác minh đọc lại DOM rồi gửi page_status có cờ manualCheck", () => {

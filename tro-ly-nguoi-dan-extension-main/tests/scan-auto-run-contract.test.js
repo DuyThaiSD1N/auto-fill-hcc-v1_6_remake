@@ -56,10 +56,13 @@ test("thẻ hướng dẫn (ảnh + lời) hiện Ở TRÊN khi chọn Scan; ả
 
 test("mỗi tệp về: thông báo TEXT trên danh sách + VOICE; nút Đã đưa đủ ở dưới cùng", () => {
   assert.match(sidebar, /function renderScanFeedback\(\)/);
-  assert.match(sidebar, /Em đã nhận \*\*\$\{n\} tệp\*\* giấy tờ từ máy quét/);   // text tổng số tệp
+  // Chữ giờ do BE cấp (/voice/config → scanFeedback) để có bản Mông; bản dưới đây chỉ là
+  // dự phòng khi gặp server cũ, nên số tệp là {count} chứ không còn nội suy ${n}.
+  assert.match(sidebar, /Em đã nhận \*\*\{count\} tệp\*\* giấy tờ từ máy quét/);  // text tổng số tệp
   assert.match(sidebar, /đặt tiếp tờ nữa/);                                       // còn thì đặt tiếp
   assert.match(sidebar, /Đã đưa đủ giấy tờ/);                                     // đủ thì bấm
-  assert.match(sidebar, /window\.__hccTTS\?\.speak\?\.\(tts, "vi"\)/);            // đọc voice
+  // Vẫn đọc thành tiếng, nhưng giọng đi theo ngôn ngữ CỦA CHỮ (xem scan-feedback-hmong).
+  assert.match(sidebar, /window\.__hccTTS\?\.speak\?\.\(tts, hmPack \? "hmong" : "vi"\)/);
   // Chèn NGAY TRÊN danh sách giấy tờ (doc-progress-card) → danh sách + nút ở dưới cùng.
   assert.match(sidebar, /getElementById\("doc-progress-card"\)[\s\S]{0,120}insertBefore\(el, anchor\)/);
   assert.match(sidebar, /renderScanFeedback\(\); \/\/ text/);
@@ -87,7 +90,8 @@ test("mỗi tệp máy quét về → toast; ảnh hướng dẫn bấm phóng t
   assert.match(sidebar, /function showToast\(/);
   assert.match(sidebar, /showToast\(`🖨️ Đã nhận: \$\{scanBaseName\(rel\)\}`\)/);
   assert.match(sidebar, /function openImageZoom\(/);
-  assert.match(sidebar, /openImageZoom\(img, SCAN_GUIDE_ALT\)/);
+  // alt giờ lấy từ BE (bản Mông khi bật tiếng Mông) nên là biến `alt`, không còn hằng.
+  assert.match(sidebar, /openImageZoom\(img, alt\)/);
   assert.match(css, /\.tlnd-toast\b/);
   assert.match(css, /\.img-zoom-scrim\b/);
 });

@@ -116,6 +116,39 @@ function plain(value) {
     [{ fileIndex: 0, documentName: "Căn cước", componentIndex: 2, target: "existing" }]
   );
   assert.match(identityOnly.error, /STT1/);
+  // Sự cố Nghĩa Hưng 21/09/2026: BE bản cũ vẫn gửi tệp KHÔNG có bundleId (giấy tùy thân không
+  // khớp người ký nào). Bỏ RIÊNG tệp đó rồi đính tiếp, thay vì hủy cả lượt làm mất sạch tệp lành.
+  const lac = await context.buildSignatureSplitBundles(
+    [file("van-ban-1.pdf"), file("van-ban-2.pdf"), file("cccd-ban.pdf"), file("cccd-nguoi-la.pdf")],
+    [
+      { fileIndex: 0, documentName: "Trích lục", componentIndex: 1, target: "existing",
+        bundleId: "signature-1", bundleRole: "signature_document" },
+      { fileIndex: 1, documentName: "Bảo lãnh", componentIndex: 1, target: "existing",
+        bundleId: "signature-2", bundleRole: "signature_document" },
+      { fileIndex: 2, documentName: "Căn cước Ban", componentIndex: 2, target: "existing",
+        bundleId: "signature-2", bundleRole: "identity", identityScope: "matched" },
+      { fileIndex: 3, documentName: "Giấy tờ tùy thân 2", componentIndex: null, target: "new",
+        bundleRole: "identity" },
+    ]
+  );
+  assert.equal(lac.error, undefined, "một tệp lạc không được làm hỏng cả lượt");
+  assert.deepEqual(
+    plain(lac.bundles.map((bundle) => bundle.files.map((item) => item.name))),
+    [["van-ban-1.pdf"], ["van-ban-2.pdf", "cccd-ban.pdf"]]
+  );
+  assert.deepEqual(lac.skippedNames, ["cccd-nguoi-la.pdf"], "phải nêu tên tệp bị bỏ");
+
+  // Bỏ hết tệp lạc mà không còn văn bản STT1 nào thì vẫn phải dừng — không có gì để đính.
+  const chiToanTepLac = await context.buildSignatureSplitBundles(
+    [file("cccd-a.pdf"), file("cccd-b.pdf")],
+    [
+      { fileIndex: 0, documentName: "CCCD A", componentIndex: 2, bundleRole: "identity" },
+      { fileIndex: 1, documentName: "CCCD B", componentIndex: 2, bundleId: "signature-1",
+        bundleRole: "identity" },
+    ]
+  );
+  assert.match(chiToanTepLac.error, /chứng thực chữ ký|STT1/i);
+
   console.log("TLND signature split bundles passed");
 })().catch((error) => {
   console.error(error);

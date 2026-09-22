@@ -18,19 +18,19 @@ test("verify đính bền với cổng ĐƠ: poll thật + check lần cuối + 
   // Hạn chờ: 12s → 25s (nới cho cổng đơ) → 8s. Rút mạnh được vì bỏ cuộc sớm giờ RẺ: hoãn lại
   // rồi lượt sau quay lại, mà lượt sau dedup sẽ nhận ra tệp đã lên trang nên không đính trùng.
   // Chờ 25s thì mỗi tệp hỏng bắt tất cả tệp còn lại xếp hàng.
-  assert.match(attach, /waitForPersistedAttachment\(row, planItem = \{\}, previousName = "", timeout = 8000\)/);
-  // Vòng chờ bằng chứng dương phải SẠCH tín hiệu toàn trang: toast không được cắt nó.
+  assert.match(attach, /waitForPersistedAttachment\(row, planItem = \{\}, previousName = "", timeout = 8000,\n\s*uploadFailed = null\)/);
+  // Vòng chờ bằng chứng dương không dùng bộ lọc toast "lỗi" chung (chỉ uploadFailed hẹp được cắt).
   assert.ok(!/PortalUploadError/.test(
     attach.slice(attach.indexOf("async function waitForPersistedAttachment")).split("\n}")[0]));
   // Tệp CUỐI/DUY NHẤT hỏng: round-robin không có tệp khác chen → backoff TĂNG DẦN trước khi thử lại.
-  assert.match(attach, /const backoffMs = \(round - 1\) \* 3000 \+ \(queue\.length <= 1 \? 2500 : 0\)/);
+  assert.match(attach, /const backoffMs = Math\.max\(0, minGapMs - \(Date\.now\(\) - lastFailAt\)\)/);
   assert.match(attach, /const MAX_ROUNDS = 3/);
 });
 
 test("chỉ tô xanh khi TÊN FILE hiện thật trên dòng", () => {
   // Modal đóng chỉ chứng minh cú click đã chạy; cổng vẫn có thể trả 500 sau đó.
   assert.match(attach, /async function waitForPersistedAttachment[\s\S]{0,600}?rowAttachedFileName\(liveRow\)/);
-  assert.match(attach, /const persisted = await waitForPersistedAttachment\(row, planItem, existingName\)/);
+  assert.match(attach, /const persisted = await waitForPersistedAttachment\(row, planItem, existingName, 8000, uploadFailed\)/);
   assert.match(attach, /if \(!persisted\)[\s\S]{0,320}?markAttachmentResult\(liveRow \|\| dialog, false\)/);
   assert.match(attach, /code: "wallet-file-not-persisted"/);
   // Không còn đường tô xanh vô điều kiện sau khi modal đóng.

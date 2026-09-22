@@ -44,10 +44,7 @@ assert.equal(
   true,
   "Object chỉ có tên vợ/chồng vẫn phải được nhận diện là vùng tình trạng hôn nhân động",
 );
-// fillDivorceDecisionAreaByKnownNames trả {any, used, numberHandled, dateHandled, agencyHandled}
-// — `any` mới là cờ "đã điền được gì chưa"; các khóa còn lại để tầng nhãn/vị trí biết ô nào
-// đã xong mà không điền đè.
-assert.equal(sandbox.fillStructuredValue(container, value).any, true);
+assert.equal(sandbox.fillStructuredValue(container, value), true);
 assert.equal(spouseInput.value, "VŨ HỮU NINH");
 assert.equal(spouseInput.options.typing, true);
 assert.equal(spouseInput.options.commit, true);

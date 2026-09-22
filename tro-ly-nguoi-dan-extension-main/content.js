@@ -1125,6 +1125,23 @@
   // Bộ luật nhận diện do BE gửi xuống (registry.PORTAL_SUBMIT) → thêm cổng khỏi phát hành lại.
   let submitRules = null;
   let lastSubmitClickAt = 0;
+  // Tự nạp luật từ storage thay vì chỉ chờ sidebar gửi: sidebar chỉ gửi luật tới ĐÚNG tab của
+  // nó, còn chứng thực tách hồ sơ mở thêm tab mới — tab đó không có luật nên cú bấm "Nộp" ở
+  // đó không bao giờ được nhận ra, mất hẳn hồ sơ tách. Sidebar đã lưu sẵn luật ở key này.
+  const SUBMIT_RULES_KEY = "tlnd_submit_rules";
+  try {
+    chrome.storage.local.get([SUBMIT_RULES_KEY], (res) => {
+      void chrome.runtime.lastError;
+      const rules = res?.[SUBMIT_RULES_KEY];
+      if (!submitRules && rules && typeof rules === "object") submitRules = rules;
+    });
+    // Luật về sau content script đã chạy (hồ sơ đầu tiên) → nghe thay đổi để khỏi lỡ.
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local" || !changes[SUBMIT_RULES_KEY]) return;
+      const rules = changes[SUBMIT_RULES_KEY].newValue;
+      submitRules = rules && typeof rules === "object" ? rules : null;
+    });
+  } catch (_) { /* context mất sau khi reload extension — chờ setSubmitRules như cũ */ }
   // input[type=submit]: cổng HkdOnline (ASP.NET) dùng input chứ không phải button/a.
   const SUBMIT_CLICKABLE = 'button, a, input[type="submit"], input[type="button"]';
 
@@ -1161,6 +1178,25 @@
       try { if (el.matches(rule.buttonSelector)) return { ref }; } catch (_) {}
     }
     return null;
+  }
+
+  // LƯỚI ĐỠ cho cú bấm: dò chữ trên MÀN KẾT QUẢ theo `successText` của luật cổng (BE khai).
+  // Dành cho cổng mà màn kết quả không có câu "nộp/gửi hồ sơ thành công" — liên thông khai
+  // sinh chỉ hiện "Vui lòng ghi nhớ… Số hồ sơ… Ngày hẹn trả dự kiến". Vẫn khóa theo urlPattern
+  // như cú bấm: cụm chữ có khớp mà sai trang thì tuyệt đối không tính.
+  // `body` đã bỏ dấu + gộp khoảng trắng (foldTxt ở page_status) nên so thẳng với cụm của BE.
+  function matchSuccessText(body) {
+    const rule = submitRules?.[location.hostname];
+    const groups = rule?.successText;
+    if (!Array.isArray(groups) || !groups.length || !body) return false;
+    if (rule.urlPattern) {
+      let ok = false;
+      try { ok = new RegExp(rule.urlPattern).test(location.pathname + location.hash); }
+      catch (_) { return false; }
+      if (!ok) return false;
+    }
+    return groups.some((group) => Array.isArray(group) && group.length
+      && group.every((phrase) => typeof phrase === "string" && phrase && body.includes(phrase)));
   }
 
   // Capture-phase: cổng có thể stopPropagation ở handler riêng của nút.
@@ -1445,9 +1481,14 @@
       // Các cổng bộ ngành nền iGate (Angular Material, route padsvc/apply-online + wizard
       // 4 bước giống nhau): NN&MT + GD&ĐT + Xây dựng. Trang "chọn nơi và loại" (nếu cổng có)
       // nhận theo form#ngSelectAgencyForm1 (id hardcode trong template Angular, ổn định).
-      const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn"]
-        .includes(location.hostname);
-      const maeAgencyBlock = maeHost && !!document.querySelector("form#ngSelectAgencyForm1");
+      // Cổng bộ nền iGate: hộp thoại chọn cơ quan form#ngSelectAgencyForm(1) + wizard
+      // mat-stepper. Bộ Nội vụ dùng CÙNG component (UBND tỉnh → Sở/Ban ngành → Sở Nội vụ).
+      const maeHost = ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn",
+        "dichvucongbnv.moha.gov.vn"].includes(location.hostname);
+      // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
+      // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
+      const maeAgencyBlock = maeHost && !!document.querySelector(
+        "form#ngSelectAgencyForm1, form#ngSelectAgencyForm");
       // Trang thủ tục đang hiện khối "Chọn cơ quan thực hiện" (khớp text fold dấu,
       // không dựa id/class dễ đổi). Trên host MAE tắt hẳn: engine chọn cơ quan React
       // không chạy được ở đó, tín hiệu riêng là maeAgencyBlock.
@@ -1559,7 +1600,10 @@
         businessProcedureHint,
         // Chỉ tin đúng câu xác nhận nộp/gửi hồ sơ của cổng. Không ghép hai cụm chung
         // "thành công" + "mã hồ sơ" vì chúng có thể cùng xuất hiện ở màn tra cứu khác.
-        submitted: body.includes("nop ho so thanh cong") || body.includes("gui ho so thanh cong"),
+        // Cổng nào màn kết quả nói khác (liên thông khai sinh) thì BE khai câu riêng trong
+        // successText — khóa cả URL, xem matchSuccessText.
+        submitted: body.includes("nop ho so thanh cong") || body.includes("gui ho so thanh cong")
+          || matchSuccessText(body),
       });
       return;
     }

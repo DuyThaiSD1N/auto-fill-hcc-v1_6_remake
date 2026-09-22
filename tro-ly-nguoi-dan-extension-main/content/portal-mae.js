@@ -46,7 +46,11 @@
     }
   }
 
-  const maeForm = () => document.querySelector("form#ngSelectAgencyForm1");
+  // Hai biến thể cùng template Angular: trang "chọn nơi và loại" của MAE/GD&ĐT dùng id
+  // ngSelectAgencyForm1 (đủ Tỉnh + radio Sở + Sở + Trường hợp), còn cổng Bộ Xây dựng mở HỘP
+  // THOẠI id ngSelectAgencyForm chỉ có Đơn vị thực hiện + Trường hợp giải quyết.
+  const maeForm = () =>
+    document.querySelector("form#ngSelectAgencyForm1, form#ngSelectAgencyForm");
   const matSelect = (control) => document.querySelector(`mat-select[formcontrolname="${control}"]`);
   const matSelectValue = (sel) => fold(sel?.querySelector?.(".mat-select-value-text")?.textContent || "");
 
@@ -130,13 +134,39 @@
     const primary = Array.from(document.querySelectorAll("div.button-row button.btn-primary"))
       .find((b) => isVisible(b));
     if (primary) return primary;
-    return Array.from(document.querySelectorAll("button"))
-      .find((b) => isVisible(b) && fold(b.textContent).includes("dong y va tiep tuc")) || null;
+    // Hộp thoại Bộ Xây dựng: nút class "applyBtn", nhãn chỉ "Đồng ý" (không có "và tiếp tục").
+    const apply = Array.from(document.querySelectorAll("button.applyBtn")).find(isVisible);
+    if (apply) return apply;
+    const byText = (want) => Array.from(document.querySelectorAll("button"))
+      .find((b) => isVisible(b) && fold(b.textContent).includes(want));
+    return byText("dong y va tiep tuc") || byText("dong y") || null;
   }
 
   async function fillMaeAgency({ province, agency, variant, variantMatch, variantAvoid }) {
     const form = await waitFor(maeForm, 6000);
     if (!form) return { error: "Không thấy form chọn cơ quan trên trang." };
+
+    // Rẽ nhánh theo ID FORM chứ không dò DOM: hộp thoại Bộ Xây dựng (ngSelectAgencyForm) chỉ có
+    // Đơn vị thực hiện + Trường hợp giải quyết. Dò "có ô Tỉnh không" sẽ rủi ro vì Angular render
+    // chậm — trang MAE thật mà ô chưa kịp hiện thì bị bỏ qua im lặng, hỏng đường đang chạy tốt.
+    if (form.id === "ngSelectAgencyForm") {
+      // Đơn vị thực hiện đã được chọn từ bước "Chọn cơ quan thực hiện" trên DVCQG → giữ nguyên,
+      // chỉ đụng vào khi backend gửi tên cơ quan cụ thể.
+      if (fold(agency)) {
+        const unitSel = await waitFor(() => matSelect("agency"), 5000);
+        if (unitSel && !matSelectValue(unitSel).includes(fold(agency))) {
+          const res = await pickMatOption(unitSel, (text) => text.includes(fold(agency)), agency);
+          if (res.error) return { error: `Đơn vị thực hiện: ${res.error}` };
+        }
+      }
+      const processRes = await pickProcedureProcess(
+        fold(variantMatch), fold(variantAvoid), variant || "trường hợp giải quyết");
+      if (processRes.error) return processRes;
+      const agreeBtn = await waitFor(findAgreeButton, 4000);
+      if (!agreeBtn) return { error: 'Không thấy nút "Đồng ý".' };
+      clickLikeUser(agreeBtn);
+      return { ok: true, dialog: true, process: processRes.picked || (processRes.kept ? "ok" : "skipped") };
+    }
 
     // 1) Tỉnh/Thành phố — option dạng "Thành phố Đà Nẵng"/"Tỉnh Quảng Trị"; khớp 2 chiều
     //    để "Tỉnh Quảng Trị" ăn cả option chỉ ghi "Quảng Trị".

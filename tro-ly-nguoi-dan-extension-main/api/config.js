@@ -1,22 +1,14 @@
-// ⚠ ĐANG TRỎ LOCALHOST ĐỂ TEST — docker app cổng 12005. Trả về production trước khi phát hành:
-//   TLND_DEFAULT_BASE_URL  = "https://trolyhoso-hcc.tiengnoi.vn"
-//   TLND_FALLBACK_BASE_URL = "https://trolyhoso-hcc.vnekyc.vn"
-const TLND_DEFAULT_BASE_URL = "http://localhost:12005";  // Backend CHÍNH (LOCAL)
+const TLND_DEFAULT_BASE_URL = "https://trolyhoso-hcc.tiengnoi.vn";  // Backend CHÍNH
 
 const TLND_BASE_URL_KEY = "tlnd_base_url";
-// Base URL đã lưu trong storage của bản đang cài sẽ ĐÈ giá trị ở trên. Khi đổi sang localhost để
-// test, hai domain production phải nằm trong danh sách này, nếu không extension vẫn gọi server thật
-// và tưởng là code mới không chạy.
 const TLND_LEGACY_BASE_URLS = new Set([
   "https://trolynguoidan-admin.vnekyc.vn",
-  "https://trolyhoso-hcc.tiengnoi.vn",
-  "https://trolyhoso-hcc.vnekyc.vn",
 ]);
 
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản, nếu không
 // khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
-const TLND_FALLBACK_BASE_URL = "";   // chạy local: TRỐNG = tắt failover
+const TLND_FALLBACK_BASE_URL = "https://trolyhoso-hcc.vnekyc.vn";
 const TLND_API_TIMEOUT_MS = 100000;        // đủ dài cho chat/OCR+LLM; chỉ cắt server TREO thật rồi mới failover
 const TLND_FAILOVER_COOLDOWN_MS = 30000;   // chính vừa lỗi thì ưu tiên phụ trong khoảng này rồi thử lại chính
 

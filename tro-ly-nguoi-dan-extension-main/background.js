@@ -528,6 +528,56 @@ async function completeSplitQueueUnlocked(state) {
   return { done: true, summary: splitQueueSummary(state) };
 }
 
+// ── Tab tách → tab gốc (để đếm được cú bấm "Nộp" ở tab tách) ──
+// Chứng thực tách mỗi tài liệu thành một hồ sơ riêng trên một tab MỚI. Mốc nộp của handfree đi
+// qua sidebar của tab gốc (sidebar mới có token + phiên trò chuyện), mà sidebar chỉ nhận cú bấm
+// từ đúng tab của nó → cú bấm ở tab tách bị bỏ, 4 hồ sơ chỉ đếm được 1. Nhớ tab tách thuộc tab
+// gốc nào để background chuyển tiếp về đúng sidebar đó.
+// Key RIÊNG, không nằm trong state hàng đợi: hàng đợi xoá khi đính kèm xong, còn công dân bấm
+// "Nộp" SAU đó — gắn vào hàng đợi là mất dấu đúng lúc cần.
+const SPLIT_TAB_ORIGIN_KEY = "tlnd_split_tab_origin";
+
+async function getSplitTabOrigins() {
+  try {
+    const res = await chrome.storage.local.get([SPLIT_TAB_ORIGIN_KEY]);
+    return res?.[SPLIT_TAB_ORIGIN_KEY] || {};
+  } catch (_) { return {}; }
+}
+
+async function rememberSplitTabOrigin(splitTabId, originTabId) {
+  if (!splitTabId || !originTabId || splitTabId === originTabId) return;
+  const map = await getSplitTabOrigins();
+  map[splitTabId] = originTabId;
+  try { await chrome.storage.local.set({ [SPLIT_TAB_ORIGIN_KEY]: map }); } catch (_) { /* bỏ qua */ }
+}
+
+async function forgetSplitTabOrigin(tabId) {
+  const map = await getSplitTabOrigins();
+  if (!(tabId in map)) return;
+  delete map[tabId];
+  try { await chrome.storage.local.set({ [SPLIT_TAB_ORIGIN_KEY]: map }); } catch (_) { /* bỏ qua */ }
+}
+
+// Cú bấm "Nộp" ở tab tách → chuyển tiếp về sidebar tab gốc. CHỈ chuyển tiếp tab TÁCH (có trong
+// bản đồ): cú bấm ở chính tab gốc thì sidebar đã tự nhận trực tiếp — chuyển tiếp nữa là đếm đôi.
+// Cùng đường đó cho câu báo "dịch vụ công đang lỗi, em đính lại": tab tách không có sidebar để đọc.
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.__tlnd !== "submitClicked" && msg?.__tlnd !== "attachRetrying") return;
+  const tabId = sender?.tab?.id;
+  if (!tabId) return;
+  void (async () => {
+    const originTabId = (await getSplitTabOrigins())[tabId];
+    if (!originTabId) return;
+    try {
+      await chrome.runtime.sendMessage(msg.__tlnd === "attachRetrying"
+        ? { __tlnd: "attachRetryingRelay", originTabId }
+        : { __tlnd: "submitClickedRelay", originTabId, host: msg.host || "", ref: msg.ref || "" });
+    } catch (_) { /* sidebar tab gốc đã đóng → không còn phiên để chấm mốc */ }
+  })();
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => { void forgetSplitTabOrigin(tabId); });
+
 async function openNextSplitQueueItemUnlocked() {
   let state = await getSplitAttachQueue();
   if (!state) return { done: true };
@@ -556,6 +606,7 @@ async function openNextSplitQueueItemUnlocked() {
         ts: Date.now(),
       };
       if (!await setPendingMap(pending)) throw new Error("Không lưu được bundle cho tab mới.");
+      await rememberSplitTabOrigin(tab.id, state.originTabId);
       state.activeTabId = tab.id;
       state.activeItem = { ordinal: item.ordinal || null };
       state.updatedAt = Date.now();
@@ -689,6 +740,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             remaining: items.filter(Boolean),
             activeTabId: waitForTabId,
             activeItem: waitForTabId ? { ordinal: 1 } : null,
+            // Tab có sidebar đã bắt đầu lượt tách — đích chuyển tiếp mốc "Nộp" của các tab tách.
+            originTabId: Number(msg.originTabId) || waitForTabId || null,
             results: initialResults,
             startedAt: Date.now(),
             updatedAt: Date.now(),

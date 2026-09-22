@@ -39,6 +39,38 @@ async function fillFormAngular(fields) {
       continue;
     }
 
+    // sdt-nguoiyeucau: SĐT đọc trên giấy là số của NGƯỜI KÝ TỜ KHAI. Ô "Số điện thoại" lại nằm
+    // trong khối Thông tin người yêu cầu (cổng đổ theo tài khoản đăng nhập) → chỉ điền khi hai
+    // người là MỘT; khác người thì bỏ qua, không điền số của người khác.
+    // Value là OBJECT {sdt, ten} — thiếu nhánh này thì nó rơi xuống fillNgText ở dưới và ghi
+    // thẳng "[object Object]" vào ô số điện thoại.
+    if (f.comp === "sdt-nguoiyeucau") {
+      try {
+        const info = f.value || {};
+        const req = readRequesterIdentity();
+        const tenForm = norm(req.ten);
+        const tenGiay = norm(info.ten);
+        if (!tenForm || !tenGiay || tenForm !== tenGiay) {
+          console.log(`[AutoFill-NG] NycSdt: bỏ qua — người yêu cầu trên form "${req.ten}" ≠ tờ khai "${info.ten || ""}"`);
+        } else {
+          const el = findFormControl(fieldCandidates({ name: f.name }));
+          if (!el) {
+            result.notFound.push(f.name);
+            console.warn("[AutoFill-NG] NycSdt: không tìm thấy ô số điện thoại");
+          } else if (fillNgText(el, info.sdt)) {
+            result.filled++;
+          } else {
+            result.notFound.push(f.name);
+            markUnfilled(el);
+          }
+        }
+      } catch (e) {
+        result.errors.push(f.name);
+        console.warn("[AutoFill-NG] Lỗi điền NycSdt:", e);
+      }
+      continue;
+    }
+
     // raw: input trần (vd Số lượng bản sao) — không có type đặc thù, tìm theo formcontrolname
     // hoặc fallback theo placeholder; set value + dispatch input.
     if (f.comp === "raw") {

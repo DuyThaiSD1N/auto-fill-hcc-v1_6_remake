@@ -407,8 +407,9 @@ async function ensureWalletDocumentName(dialog, documentName) {
   return true;
 }
 
-async function waitForUploadCompletion(dialog, previousText) {
+async function waitForUploadCompletion(dialog, previousText, uploadFailed = null) {
   await waitFor(() => {
+    if (uploadFailed?.()) return true;
     const doneButton = findWalletUploadDoneButton(dialog);
     if (!doneButton) return true;
     if (!document.documentElement.contains(dialog)) return true;
@@ -417,8 +418,9 @@ async function waitForUploadCompletion(dialog, previousText) {
   }, 6000, 150);
 }
 
-async function waitForWalletDialogClosed(dialog) {
+async function waitForWalletDialogClosed(dialog, uploadFailed = null) {
   await waitFor(() =>
+    !!uploadFailed?.() ||
     !document.documentElement.contains(dialog) ||
     dialog.getAttribute("data-state") === "closed" ||
     !isVisible(dialog),
@@ -654,6 +656,59 @@ function newPortalUploadError(before = []) {
   return "";
 }
 
+// NGOẠI LỆ HẸP cho nguyên tắc "toast không phán quyết": chỉ câu lỗi TẢI TỆP của chính cổng
+// ("Upload thất bại (File Service): Upload failed: 500…") mới được cắt vòng chờ. Không có nó, mỗi
+// tệp hỏng phải chờ hết ~20s × 3 lượt ≈ 1 phút+ trong khi cổng đã báo hỏng ngay giây đầu.
+// Ba lần khai hỏng oan trước đây đều do bắt chữ "lỗi" CHUNG CHUNG / gỡ toast; ở đây:
+//   - chỉ khớp cụm upload-thất-bại, không khớp "lỗi" trơn → không bắt "Lời nhắn…", "1.500.000 đồng";
+//   - chỉ toast MỚI theo nội dung so với mốc trước tệp này → toast tệp trước còn treo thì KHÔNG cắt
+//     (chờ hết giờ như cũ — chậm chứ không oan);
+//   - không bao giờ gỡ/bấm toast.
+// Cắt sớm chỉ là HOÃN tệp sang lượt sau, không phải kết luận cuối: lượt sau bỏ qua dòng đã có tệp
+// và bước soi lại bảng cuối cùng vẫn vớt tệp cổng ghi nhận trễ, nên không mất/không đính trùng.
+function newPortalUploadFailure(before = []) {
+  const seen = new Set(before);
+  for (const hit of portalUploadErrorNodes()) {
+    if (seen.has(foldChoiceText(hit.text))) continue;
+    if (UPLOAD_FAILURE_RE.test(hit.text)) return hit.text;
+  }
+  return "";
+}
+// Hai câu cổng thật: "Upload thất bại (File Service): Upload failed: 500…" và
+// "Tải lên tài liệu thất bại, vui lòng thử lại".
+const UPLOAD_FAILURE_RE = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại/i;
+
+/** Đóng toast "Upload thất bại…" (nút X) TRƯỚC khi sang tệp kế.
+ *
+ *  Toast này của cổng treo rất lâu; còn trên màn thì tệp kế tiếp — dù chưa đính — bị đọc nhầm là
+ *  hỏng, và một tệp hỏng thật với CÙNG câu than lại không được nhận là lỗi mới. Chỉ đóng đúng toast
+ *  upload-thất-bại, không đụng thông báo khác của cổng. Không có nút X → để nguyên; mốc so theo
+ *  nội dung (snapshot trước mỗi tệp) vẫn chặn đọc nhầm. */
+async function dismissUploadFailureToasts() {
+  const hits = portalUploadErrorNodes().filter((hit) => UPLOAD_FAILURE_RE.test(hit.text));
+  let clicked = 0;
+  for (const { node } of hits) {
+    // Nút X có thể nằm ở khung toast bao ngoài vùng chữ → leo lên tối đa 4 cấp tìm nút đóng.
+    let box = node;
+    let closeBtn = null;
+    for (let depth = 0; box && depth < 5 && !closeBtn; depth++, box = box.parentElement) {
+      closeBtn = Array.from(box.querySelectorAll("button, [role='button'], [aria-label]")).find((b) => {
+        if (!isVisible(b)) return false;
+        const label = foldChoiceText(`${b.getAttribute("aria-label") || ""} ${b.getAttribute("title") || ""}`);
+        const text = nodeText(b).trim();
+        return label.includes("close") || label.includes("dong") || text === "×" || text === "x"
+          || text === "✕" || b.hasAttribute("toast-close") || b.hasAttribute("data-close-button")
+          || !!b.querySelector("svg.lucide-x");
+      }) || null;
+    }
+    if (closeBtn) { clickLikeUser(closeBtn); clicked++; }
+  }
+  if (clicked) {
+    await waitFor(() => !portalUploadErrorNodes().some((hit) => UPLOAD_FAILURE_RE.test(hit.text)), 1500, 100);
+  }
+  return clicked;
+}
+
 // Modal đóng CHỈ chứng minh cú click đã chạy. Cổng moj có thể đóng modal trong khi File Service
 // trả 500 → dòng vẫn trống mà ta đã tô xanh và báo ok (đã gặp thật: 4 tệp chỉ vào được 2-3).
 // Hậu điều kiện DUY NHẤT đáng tin: TÊN FILE xuất hiện thật trên dòng, và khác tên cũ.
@@ -662,7 +717,8 @@ function newPortalUploadError(before = []) {
 // Ngoài ra cổng moj hay ĐƠ (block main thread) rất lâu sau "Thêm vào ví & Chọn": phải nới thời gian
 // (freeze có thể >12s) VÀ CHECK LẦN CUỐI sau khi hết đơ (Date.now vượt hạn ngay trong lúc đơ; thoát
 // mà không check là bỏ sót đúng lúc dòng vừa gắn xong → báo "chưa ghi nhận" oan).
-async function waitForPersistedAttachment(row, planItem = {}, previousName = "", timeout = 8000) {
+async function waitForPersistedAttachment(row, planItem = {}, previousName = "", timeout = 8000,
+  uploadFailed = null) {
   const start = Date.now();
   const probe = async () => {
     const liveRow = await resolveLiveAttachmentRow(row, planItem);
@@ -674,6 +730,7 @@ async function waitForPersistedAttachment(row, planItem = {}, previousName = "",
   while (Date.now() - start < timeout) {
     const hit = await probe();
     if (hit) return hit;
+    if (uploadFailed?.()) break; // vẫn probe lần cuối bên dưới: tên đã lên thì vẫn là thành công
     await sleep(300);
   }
   return await probe(); // lần cuối: dòng có thể vừa cập nhật ngay khi cổng hết đơ
@@ -967,7 +1024,8 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   };
 
   const file = dataUrlToFile(payloadFile, intendedDocumentName);
-  // Mốc toast chỉ để SOẠN CÂU BÁO LỖI cho đúng tệp này — KHÔNG dùng để phán quyết thành/bại.
+  // Mốc toast để SOẠN CÂU BÁO LỖI cho đúng tệp này. Toast KHÔNG kết luận thành công; riêng câu
+  // "upload thất bại" MỚI được hoãn tệp sớm (newPortalUploadFailure).
   const errorsBefore = snapshotPortalUploadErrors();
   if (!setFilesOnInput(uploadInput, [file], { allowMultiple: false })) {
     markAttachmentResult(dialog, false);
@@ -976,22 +1034,28 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
 
   // Cổng 502 ở bước tải tệp → dừng NGAY, trả câu cổng báo. Chờ hết hạn ở đây chỉ làm các tệp
   // còn lại phải xếp hàng; việc thử lại đã có vòng round-robin lo.
+  // Cổng hiện đúng câu "upload thất bại" → hoãn tệp NGAY (xem newPortalUploadFailure).
+  const uploadFailed = () => newPortalUploadFailure(errorsBefore);
   await waitFor(
-    () => dialog.querySelector('input[name="documentName"]') || findWalletUploadDoneButton(dialog),
+    () => uploadFailed() || dialog.querySelector('input[name="documentName"]') || findWalletUploadDoneButton(dialog),
     4000,
     100,
   );
-  const nameOk = await ensureWalletDocumentName(dialog, intendedDocumentName);
-  if (!nameOk) {
-    markAttachmentResult(dialog, false);
-    return { error: `Không tìm thấy ô Tên tài liệu cho file ${file.name}.`, fileNames: [file.name] };
+  let doneButton = null;
+  if (!uploadFailed()) {
+    const nameOk = await ensureWalletDocumentName(dialog, intendedDocumentName);
+    if (!nameOk) {
+      markAttachmentResult(dialog, false);
+      return { error: `Không tìm thấy ô Tên tài liệu cho file ${file.name}.`, fileNames: [file.name] };
+    }
+    doneButton = await waitFor(() => {
+      if (uploadFailed()) return "upload-failed";
+      const button = findWalletUploadDoneButton(dialog);
+      if (button && !button.disabled) return button;
+      return null;
+    }, 6000, 100);
+    if (doneButton === "upload-failed") doneButton = null;
   }
-
-  const doneButton = await waitFor(() => {
-    const button = findWalletUploadDoneButton(dialog);
-    if (button && !button.disabled) return button;
-    return null;
-  }, 6000, 100);
   if (!doneButton) {
     markAttachmentResult(dialog, false);
     const portalError = newPortalUploadError(errorsBefore);
@@ -1005,12 +1069,12 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
 
   const previousText = foldedNodeText(doneButton);
   doneButton.click();
-  await waitForUploadCompletion(dialog, previousText);
-  await waitForWalletDialogClosed(dialog);
+  await waitForUploadCompletion(dialog, previousText, uploadFailed);
+  await waitForWalletDialogClosed(dialog, uploadFailed);
   if (document.documentElement.contains(dialog) && isVisible(dialog)) {
     await closeDocumentWalletDialogs();
   }
-  const persisted = await waitForPersistedAttachment(row, planItem, existingName);
+  const persisted = await waitForPersistedAttachment(row, planItem, existingName, 8000, uploadFailed);
   if (!persisted) {
     const liveRow = (await resolveLiveAttachmentRow(row, planItem)) || row;
     markAttachmentResult(liveRow || dialog, false);
@@ -1838,16 +1902,30 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     const MAX_ROUNDS = 3;
     const lastErrorByIndex = new Map();
     let queue = plannedAttachments.map((item, index) => ({ item: item || {}, index }));
+    // Báo sidebar MỘT lần mỗi lượt khi cổng làm hỏng một tệp và tệp đó còn lượt thử lại: trong lúc
+    // chờ cổng hồi, công dân không thấy gì chuyển động và tưởng máy treo. Báo ngay lúc hoãn (không
+    // đợi hết lượt) để câu đọc chạy song song với các tệp còn lại.
+    let retryAnnounced = false;
+    const announceRetry = (round) => {
+      if (retryAnnounced || round >= MAX_ROUNDS) return;
+      retryAnnounced = true;
+      try {
+        chrome.runtime.sendMessage({ __tlnd: "attachRetrying" }, () => void chrome.runtime.lastError);
+      } catch (_) { /* extension vừa reload → bỏ câu báo, không ảnh hưởng đính kèm */ }
+    };
 
+    let lastFailAt = 0; // mốc hỏng gần nhất — đo khoảng nghỉ cổng đã có trước lượt thử lại
     for (let round = 1; round <= MAX_ROUNDS && queue.length; round++) {
       const deferred = [];
       if (round > 1) {
         console.warn(`[AutoFill-AttachPlan] lượt ${round}: thử lại ${queue.length} tệp bị hoãn`);
         await closeDocumentWalletDialogs();
-        // BACKOFF TĂNG DẦN: cổng 500/đơ cần thời gian hồi (thử lại ngay cũng 500). Tệp CUỐI/DUY NHẤT
-        // chờ lâu hơn vì round-robin không có tệp khác chen vào tạo khoảng nghỉ. Lượt càng sau chờ càng lâu.
-        const backoffMs = (round - 1) * 3000 + (queue.length <= 1 ? 2500 : 0);
-        await sleep(backoffMs);
+        // Cổng 500/đơ cần thời gian hồi (thử lại ngay cũng 500) — nhưng thời gian đính các tệp SAU tệp
+        // lỗi đã là khoảng nghỉ rồi. Chỉ chờ PHẦN CÒN THIẾU tính từ lần hỏng GẦN NHẤT: tệp 3/5 hỏng thì
+        // lúc xong tệp 5 cổng đã nghỉ đủ → thử lại ngay; tệp CUỐI hỏng thì mới phải chờ đủ khoảng này.
+        const minGapMs = round === 2 ? 500 : 1000;
+        const backoffMs = Math.max(0, minGapMs - (Date.now() - lastFailAt));
+        if (backoffMs) await sleep(backoffMs);
       }
       for (const { item, index: i } of queue) {
         const payloadFile = payloadForPlanItem(payloadFiles, item, i);
@@ -1885,6 +1963,9 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
           const result = await attachOneFileToOtherListFile(payloadFile, item);
           if (result?.error) {
             lastErrorByIndex.set(i, result.error);
+            await dismissUploadFailureToasts(); // toast treo → tệp kế bị đọc nhầm là hỏng
+            announceRetry(round);
+            lastFailAt = Date.now();
             deferred.push({ item, index: i });
             continue;
           }
@@ -1898,11 +1979,13 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
           row = await rowForPlanItem(item);
         } catch (e) {
           lastErrorByIndex.set(i, e?.message || String(e));
+          lastFailAt = Date.now();
           deferred.push({ item, index: i });
           continue;
         }
         if (!row) {
           lastErrorByIndex.set(i, `Không tìm thấy dòng hồ sơ "${item.componentName || ""}".`);
+          lastFailAt = Date.now();
           deferred.push({ item, index: i });
           continue;
         }
@@ -1919,6 +2002,9 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
           });
           terminalCode = result.code || terminalCode;
           lastErrorByIndex.set(i, result.error);
+          await dismissUploadFailureToasts(); // toast treo → tệp kế bị đọc nhầm là hỏng
+          announceRetry(round);
+          lastFailAt = Date.now();
           deferred.push({ item, index: i });
           continue;
         }

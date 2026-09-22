@@ -20,9 +20,13 @@ test("manifest khai đủ cổng moet: host_permissions + content script match",
 });
 
 test("content.js nhận moet + moc là host iGate (wizard 4 bước dùng chung với MAE)", () => {
-  assert.match(content,
-    /\["dichvucongnnmt\.mae\.gov\.vn", "dvc\.moet\.gov\.vn", "dvc\.moc\.gov\.vn"\]/,
-    "moet/moc phải nằm trong danh sách host iGate để phát wizardStep/attachmentTarget");
+  // Kiểm THÀNH VIÊN, không khoá nguyên văn: danh sách còn thêm cổng bộ khác (vd Bộ Nội vụ).
+  const list = content.match(/const maeHost = \[([\s\S]*?)\]\.includes\(location\.hostname\)/);
+  assert.ok(list, "không tìm thấy danh sách maeHost");
+  for (const host of ["dichvucongnnmt.mae.gov.vn", "dvc.moet.gov.vn", "dvc.moc.gov.vn"]) {
+    assert.ok(list[1].includes(`"${host}"`),
+      `${host} phải nằm trong danh sách host iGate để phát wizardStep/attachmentTarget`);
+  }
 });
 
 test("manifest khai đủ cổng moc (Bộ Xây dựng — NOXH)", () => {

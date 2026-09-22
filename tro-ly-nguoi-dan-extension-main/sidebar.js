@@ -71,6 +71,10 @@
     // Hiểu card "rating" (đánh giá trải nghiệm trước đăng xuất). BE chỉ chèn bước đánh giá khi
     // client khai cờ này; extension cũ không khai → BE ra thẳng 2 nút đăng xuất như trước.
     supportsRating: true,
+    // Hiểu nút chuyển bước / gửi hồ sơ do BE điều phối (guided_click_next, guided_submit) và
+    // biết đọc giá trị ô chủ hồ sơ trước khi chuyển bước. BE chỉ bật luồng dẫn từng bước cho
+    // client khai cờ này; bản trên chợ không khai → giữ nguyên câu "công dân tự bấm nút trang".
+    supportsGuidedSteps: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -303,12 +307,37 @@
   // Content script bắn cú bấm về ĐÂY. Dùng chrome.runtime (không phải postMessage): trang web
   // không gửi được runtime message vào extension nên số liệu không bị trang giả mạo.
   chrome.runtime.onMessage.addListener((msg, sender) => {
-    if (msg?.__tlnd !== "submitClicked") return;
-    if (String(sender?.tab?.id || "") !== String(TAB_ID)) return; // tab khác → kệ
+    let fromThisDossier = false;
+    if (msg?.__tlnd === "submitClicked") {
+      // Cú bấm ngay trên tab của sidebar này.
+      fromThisDossier = String(sender?.tab?.id || "") === String(TAB_ID);
+    } else if (msg?.__tlnd === "submitClickedRelay") {
+      // Cú bấm ở tab TÁCH (chứng thực nhiều hồ sơ) — background chuyển tiếp về đây vì tab tách
+      // không có sidebar mang phiên trò chuyện. Mỗi lần là MỘT hồ sơ riêng trên cổng; BE ghi
+      // thành sự kiện nộp riêng nên đếm đủ số hồ sơ thay vì chỉ tab đầu.
+      fromThisDossier = String(msg.originTabId || "") === String(TAB_ID);
+    }
+    if (!fromThisDossier) return;                                 // tab khác → kệ
     if (!api.conversationId) return;                              // chưa có hồ sơ nào để chấm
     void ask(`__event:submit_clicked:${JSON.stringify({
       host: String(msg.host || ""), ref: String(msg.ref || ""),
     })}`, "system");
+  });
+
+  // Cổng trả lỗi khi đính kèm, engine đang hoãn tệp để thử lại → nói cho công dân biết đang chờ gì,
+  // không thì họ tưởng máy treo. Câu cục bộ (không qua BE) vì phải báo NGAY giữa lượt đính kèm.
+  // Chặn lặp 30s: chứng thực tách N tab mỗi tab tự báo một lần, không được đọc N lần liền.
+  const ATTACH_RETRY_TEXT = "Dạ dịch vụ công đang lỗi, công dân chờ chút em đính kèm lại ạ.";
+  let attachRetrySaidAt = 0;
+  chrome.runtime.onMessage.addListener((msg, sender) => {
+    let mine = false;
+    if (msg?.__tlnd === "attachRetrying") mine = String(sender?.tab?.id || "") === String(TAB_ID);
+    else if (msg?.__tlnd === "attachRetryingRelay") mine = String(msg.originTabId || "") === String(TAB_ID);
+    if (!mine || Date.now() - attachRetrySaidAt < 30000) return;
+    attachRetrySaidAt = Date.now();
+    addBotMd(`⚠️ ${ATTACH_RETRY_TEXT}`);
+    setStatus("📎 Dịch vụ công đang lỗi — đang đính kèm lại…");
+    if (voiceCfg.tts && !ttsMuted) window.__hccTTS?.speak?.(ATTACH_RETRY_TEXT, "vi", () => {});
   });
 
   function sendToBackground(payload) {
@@ -620,13 +649,18 @@
     // noTts: render lại reply CŨ khi khôi phục phiên — không đọc lại câu đã đọc rồi.
     if (opts?.noTts) { /* bỏ đọc */ }
     else if (!duplicateLogoutChoice && d.tts_text && voiceCfg.tts) {
-      // fill_report đến ngay sau action điền form. Đây là phần tiếp nối của fields_ready nên
-      // phải xếp hàng để đọc HẾT câu "Xong rồi ạ..." trước; các chuyển trạng thái khác vẫn
-      // cắt câu cũ để bot không đọc hướng dẫn đã hết hiệu lực.
-      const queueAfterFillReady = prevState === "filling" && d.state === "reviewing"
-        && replyTtsInFlight > 0;
-      if (!queueAfterFillReady) stopReplyTts();
-      else console.debug("[TLND] xếp TTS rà soát sau câu báo đọc xong giấy tờ");
+      // Mặc định chuyển bước là CẮT câu cũ, để bot không đọc hướng dẫn đã hết hiệu lực.
+      // Hai trường hợp xếp hàng thay vì cắt:
+      //   1. fill_report đến ngay sau action điền form — nó là phần tiếp nối của fields_ready,
+      //      cắt là mất vế "Xong rồi ạ...".
+      //   2. Quầy mà BE bật finishSentenceBeforeNext (Lai Châu): công dân nghe qua lời dịch
+      //      tiếng Mông, mất nửa câu là mất hẳn ý.
+      // Ngắt lời bằng micro (barge-in) thì VẪN cắt ở cả hai — người nói được ưu tiên.
+      const queueThisReply = replyTtsInFlight > 0
+        && ((prevState === "filling" && d.state === "reviewing")
+          || voiceCfg?.finishSentenceBeforeNext === true);
+      if (!queueThisReply) stopReplyTts();
+      else console.debug("[TLND] xếp TTS sau câu đang đọc, không cắt ngang");
       replyTtsInFlight += 1;
       // Rảnh tay: đọc xong tự mở mic nghe lượt kế (docs/03a §5). onDone KHÔNG bắn khi bị ngắt lời.
       window.__hccTTS?.speak?.(d.tts_text, d.tts_lang || "vi", () => {
@@ -651,7 +685,17 @@
     // Ẩn nút hoàn thành thủ công còn sót trong last_reply của phiên cũ. Luồng mới chỉ
     // kết thúc khi watcher đọc được xác nhận nộp thành công từ chính cổng dịch vụ công.
     chips = chips.filter((c) => c.send !== "__action:finish_procedure");
+    // Nút "Kiểm tra lại trang hiện tại" đã bỏ khỏi UI (yêu cầu 22/09/2026). Lọc ở FE chứ
+    // không gỡ ở backend: backend còn phải phục vụ bản extension cũ trên chợ đang dùng nút
+    // này. Cơ chế verify_portal_state vẫn sống, chỉ không còn nút cho công dân bấm.
+    chips = chips.filter((c) => c.send !== "__event:sso_success");
     if (!chips.length) return;
+    // Chỉ được có MỘT nút chuyển bước sống trên màn hình. Nút cũ có thể còn sót do khôi phục
+    // phiên dựng lại last_reply, hoặc do hai tab cùng phiên cùng báo trạng thái trang — bấm
+    // nhầm nút của bước trước là đẩy cổng đi sai bước.
+    if (chips.some((c) => c.cta)) {
+      document.querySelectorAll(".chip.cta").forEach((el) => el.remove());
+    }
     const wrap = document.createElement("div");
     const isLogoutChoice = chips.some((c) => [
       "__action:logout_citizen", "__action:continue_dossiers",
@@ -660,7 +704,9 @@
     chips.forEach((c) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "chip" + (c.solid ? " solid" : "");
+      // cta: nút chuyển bước/gửi hồ sơ — to tràn ngang, nổi bật vì đây là việc DUY NHẤT
+      // công dân cần làm ở bước đó.
+      b.className = "chip" + (c.solid ? " solid" : "") + (c.cta ? " cta" : "");
       b.dataset.send = c.send || "";
       b.dataset.renderState = lastState || "";
       b.textContent = c.label;
@@ -680,6 +726,14 @@
         }
       }
       b.addEventListener("click", () => {
+        // "Chọn thêm tệp từ máy": mở hộp chọn tệp NGAY trong cú bấm (Chrome chỉ cho mở hộp chọn tệp
+        // khi còn trong thao tác người dùng — đợi BE trả lời rồi mới mở là hay bị chặn). Không qua BE:
+        // lệnh pick_files của BE bỏ qua hộp chọn khi đã nối máy quét, nên trước đây bấm nút này
+        // không có tác dụng gì. Nút dùng lại được nhiều lần → không khoá nhóm chip.
+        if (c.send === "__action:pick_files_again" && uploadSid && $fileInput) {
+          $fileInput.click();
+          return;
+        }
         // 1 nhóm chip chỉ bấm 1 lần — disable cả nhóm rồi gửi.
         wrap.querySelectorAll("button").forEach((x) => (x.disabled = true));
         // Nút chốt giấy tờ được chuyển sang holder riêng dưới checklist; vẫn khoá cả
@@ -702,6 +756,21 @@
         }
         if (c.send === "__action:docs_done" || c.send === "__event:docs_complete") {
           void submitDocsComplete(c.send, "chip", c.label);
+          return;
+        }
+        // Nút chuyển bước: đọc giá trị các ô bắt buộc NGAY trên trang rồi mới gửi, để backend
+        // chặn trước và gọi đúng tên ô còn thiếu thay vì để cổng nháy toast rồi thôi.
+        if (c.send === "__action:guided_next") {
+          void (async () => {
+            const payload = { phase: c.phase || "" };
+            if (c.collect === "ownerFields") {
+              const res = await sendToContent({
+                action: "readOwnerFields", fields: c.fields || [],
+              });
+              payload.ownerFields = res?.values || {};
+            }
+            await ask(`__action:guided_next:${JSON.stringify(payload)}`, "chip", c.label);
+          })();
           return;
         }
         ask(c.send, "chip", c.label);
@@ -872,6 +941,45 @@
     await sendPageStatus({ ...(ctx?.ok ? ctx : { ok: true }), manualCheck: true });
   }
 
+  // ── Luồng dẫn từng bước: bấm hộ nút của cổng ──
+  // Hai hàm này CHẠY NGOÀI lượt ask() (runActions gọi qua setTimeout 0). Gọi ask() từ trong
+  // runActions là tự khoá: cờ busy của lượt ngoài chưa tắt nên lượt mới chỉ xếp hàng chờ.
+  async function runGuidedNext(phase, expect) {
+    setStatus("Đang chuyển bước trên trang…");
+    // Bấm và dò song song: engine content còn rình toast vài giây, chờ nó xong mới dò thì
+    // trường hợp THÀNH CÔNG (đa số) cũng phải chờ đủ chừng ấy.
+    const press = sendToContent({ action: "guidedClickNext" });
+    // Bấm xong chưa chắc đã qua bước (cổng có thể chặn im lặng) → đối chiếu số bước thật
+    // trên thanh bước, dùng chính bộ đọc mà watcher trang đang dùng.
+    let wizardStep = 0;
+    let moved = !expect;
+    for (let i = 0; i < 12 && !moved; i++) {
+      await new Promise((r) => setTimeout(r, 300));
+      const ctx = await sendToContent({ action: "getPageContext" });
+      wizardStep = Number(ctx?.wizardStep) || 0;
+      if (wizardStep === expect) moved = true;
+    }
+    const res = moved ? null : await press; // chỉ cần lời cổng báo khi KHÔNG qua được bước
+    setStatus("");
+    await ask(`__action:guided_step_report:${JSON.stringify({
+      phase, ok: moved, message: res?.message || "", wizardStep,
+    })}`, "system");
+    // Sang bước chủ hồ sơ → thành phần hồ sơ: đẩy trạng thái trang lên NGAY để bot hỏi cách
+    // gửi giấy tờ liền, thay vì chờ tới nhịp watcher kế tiếp (3,5 giây).
+    if (moved && phase === "owner") await verifyPortalState();
+  }
+
+  async function runGuidedSubmit() {
+    setStatus("Đang gửi hồ sơ…");
+    const res = await sendToContent({ action: "guidedSubmit" });
+    setStatus("");
+    // Nộp được hay không do chính cổng trả lời (màn xác nhận / event submitted). Ở đây chỉ
+    // báo cú bấm có ăn không: không bấm được, hoặc cổng nháy toast báo thiếu.
+    await ask(`__action:guided_submit_report:${JSON.stringify({
+      ok: !!res?.clicked && !res?.message, message: res?.message || "",
+    })}`, "system");
+  }
+
   let lastPageSig = "";
   const WATCH_STATES = [
     "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
@@ -926,10 +1034,10 @@
           watcherPageStatusInFlight = false;
         }
       } else if (lastState === "guide_login" && watcherTicks >= 17 && !fallbackChipShown) {
-        // ~60s chưa tự nhận ra → cho công dân yêu cầu kiểm tra DOM lại, không coi đây
-        // là lời xác nhận đã đăng nhập hay đã vào hồ sơ.
+        // ~60s chưa tự nhận ra → tự đọc lại DOM một lần thay vì hiện nút cho công dân bấm
+        // (nút "Kiểm tra lại trang hiện tại" đã bỏ khỏi UI, yêu cầu 22/09/2026).
         fallbackChipShown = true;
-        renderChips([{ label: "Kiểm tra lại trang hiện tại", send: "__event:sso_success", solid: true }]);
+        void verifyPortalState();
       } else if (lastState === "done" && ctx.submitted && !submittedReported) {
         // Chốt TRƯỚC khi gọi BE: trang thành công giữ nguyên text rất lâu; nếu để reply
         // state=done khởi động watcher lại thì cùng hồ sơ sẽ sinh nhiều card hoàn tất.
@@ -1483,7 +1591,7 @@
 
   const DOC_OPTIONS = {
     qr: { icon: "📱", title: "Chụp bằng điện thoại (quét QR)", desc: "Quét mã QR, chụp hoặc chọn ảnh giấy tờ ngay trên điện thoại — nhanh nhất." },
-    scan: { icon: "📷", title: "Scan tại quầy", desc: "Đặt giấy tờ bản cứng lên máy quét tại quầy." },
+    scan: { icon: "🖨️", title: "Scan tại quầy", desc: "Đặt giấy tờ bản cứng lên máy quét tại quầy." },
     profile: { icon: "📁", title: "Lấy dữ liệu đã lưu", desc: "Đã từng làm và lưu hồ sơ → không cần cung cấp lại." },
   };
   function renderDocOptions(card) {
@@ -2677,24 +2785,45 @@
 
   // Thẻ hướng dẫn đặt giấy lên máy quét (ảnh + lời) — dựng MỘT lần khi máy quét sẵn sàng, đúng
   // như mockup panelScan. Ảnh là asset của chính extension (assets/scan-guide.jpg).
-  const SCAN_GUIDE_ALT = "Hướng dẫn scan: đặt giấy úp mặt cần scan xuống rồi ấn nút Scan";
+  // Dự phòng khi gặp server cũ chưa cấp scanGuide — CHỈ tiếng Việt, cùng lý do với
+  // SCAN_FEEDBACK_FALLBACK: bản Mông chỉ có một nguồn là script_mong.py.
+  const SCAN_GUIDE_FALLBACK = {
+    heading: "🖨️ Đặt giấy tờ lên máy quét ở quầy",
+    body: "Công dân đặt giấy lên máy scan **theo hướng dẫn trong hình** rồi ấn nút **Scan** ạ.",
+    alt: "Hướng dẫn scan: đặt giấy úp mặt cần scan xuống rồi ấn nút Scan",
+    zoom: "🔍 Bấm để xem hình to",
+    note: "Chỉ đặt **từng tờ một** — máy tự kéo giấy vào. Xong hết thì bấm **\"Đã đưa đủ\"** giúp em.",
+  };
+
+  // Escape TRƯỚC rồi mới đổi **…** thành <b> — chữ do BE cấp không chèn được thẻ vào panel.
+  function inlineBold(s) {
+    return window.escapeHtml(String(s || "")).replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+  }
+
   function renderScanGuideCard() {
     if (scanGuideShown) return;
     scanGuideShown = true;
+    const pack = voiceCfg?.scanGuide || {};
+    const viG = pack.vi || SCAN_GUIDE_FALLBACK;
+    // Chỉ chú thích Mông khi ĐANG bật tiếng Mông VÀ BE có gửi bản đó xuống.
+    const hmG = (voiceLang === "hmong" && _hmongAllowed()) ? pack.hmong : null;
+    // Chú thích Mông đi NGAY DƯỚI dòng Việt tương ứng — thẻ này là các dòng rời, không
+    // gộp được thành một khối cuối như câu chat.
+    const hm = (key) => (hmG?.[key] ? `<div class="scan-guide-hm">${inlineBold(hmG[key])}</div>` : "");
     const el = document.createElement("div");
     el.className = "scan-guide";
     const img = chrome.runtime.getURL("assets/scan-guide.jpg");
+    // alt của ảnh dùng bản Mông khi có: trình đọc màn hình đang ở tiếng Mông.
+    const alt = window.escapeHtml(hmG?.alt || viG.alt || "");
     el.innerHTML = `
-      <div class="scan-guide-h">🖨️ Đặt giấy tờ lên máy quét ở quầy</div>
-      <div class="scan-guide-p">Công dân đặt giấy lên máy scan <b>theo hướng dẫn trong hình</b> rồi
-        ấn nút <b>Scan</b> ạ.</div>
-      <div class="scan-guide-pic" data-zoom="1" title="Bấm để xem hình to">
-        <img class="scan-guide-img" src="${img}" alt="${SCAN_GUIDE_ALT}">
-        <span class="scan-guide-zoom">🔍 Bấm để xem hình to</span>
+      <div class="scan-guide-h">${inlineBold(viG.heading)}</div>${hm("heading")}
+      <div class="scan-guide-p">${inlineBold(viG.body)}</div>${hm("body")}
+      <div class="scan-guide-pic" data-zoom="1" title="${window.escapeHtml(viG.zoom || "")}">
+        <img class="scan-guide-img" src="${img}" alt="${alt}">
+        <span class="scan-guide-zoom">${inlineBold(hmG?.zoom || viG.zoom)}</span>
       </div>
-      <div class="scan-guide-note">Chỉ đặt <b>từng tờ một</b> — máy tự kéo giấy vào. Xong hết thì bấm
-        <b>"Đã đưa đủ"</b> giúp em.</div>`;
-    el.querySelector("[data-zoom]")?.addEventListener("click", () => openImageZoom(img, SCAN_GUIDE_ALT));
+      <div class="scan-guide-note">${inlineBold(viG.note)}</div>${hm("note")}`;
+    el.querySelector("[data-zoom]")?.addEventListener("click", () => openImageZoom(img, alt));
     addNode(el);
   }
 
@@ -2717,11 +2846,29 @@
 
   // Thông báo mỗi lần máy quét trả tệp: TEXT (chèn NGAY TRÊN danh sách giấy tờ, luôn thấy gần
   // nút "Đã đưa đủ") + VOICE (đọc hướng dẫn). Một node duy nhất, cập nhật tại chỗ theo tổng số tệp.
+  // BE chưa cấp scanFeedback (server cũ) thì vẫn phải có chữ. Bản dự phòng CHỈ tiếng Việt:
+  // không nhúng bản Mông ở đây để lời thoại Mông chỉ có một nguồn duy nhất (script_mong.py).
+  const SCAN_FEEDBACK_FALLBACK = {
+    md: "🖨️ Em đã nhận **{count} tệp** giấy tờ từ máy quét.\n\n"
+      + "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
+      + "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ.",
+    tts: "Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan,"
+      + " em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ.",
+    ttsMore: "Em đã nhận thêm một tệp, tổng cộng {count} tệp. Còn nữa thì công dân đặt tiếp"
+      + " vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ.",
+  };
+
   function renderScanFeedback() {
     const n = scanReceivedCount;
-    const md = `🖨️ Em đã nhận **${n} tệp** giấy tờ từ máy quét.\n\n`
-      + "- Còn giấy tờ cần scan thì công dân **đặt tiếp tờ nữa** vào máy — em tự nhận ạ.\n"
-      + "- Đã đủ rồi thì bấm **\"Đã đưa đủ giấy tờ\"** ở dưới để em bắt đầu xử lý ạ.";
+    const pack = voiceCfg?.scanFeedback || {};
+    const viPack = pack.vi || SCAN_FEEDBACK_FALLBACK;
+    // Chỉ dùng bản Mông khi ĐANG bật tiếng Mông VÀ BE thực sự gửi bản đó xuống. Thiếu bản
+    // dịch thì nói tiếng Việt bằng giọng Việt — KHÔNG đọc chữ Việt bằng giọng Mông.
+    const hmPack = (voiceLang === "hmong" && _hmongAllowed()) ? pack.hmong : null;
+    const fill = (s) => String(s || "").replace(/\{count\}/g, String(n));
+    let md = fill(viPack.md);
+    // Khối Mông in nghiêng ở CUỐI, đúng bố cục câu chat do BE dựng.
+    if (hmPack?.md) md += `\n\n*${fill(hmPack.md)}*`;
     let el = document.getElementById("scan-feedback-card");
     if (!el) {
       el = document.createElement("div");
@@ -2734,10 +2881,12 @@
     el.innerHTML = window.renderMarkdown ? window.renderMarkdown(md) : md;
     $messages.scrollTop = $messages.scrollHeight;
     // Đọc thành tiếng (rảnh tay). Tệp đầu đọc đủ hướng dẫn; các tệp sau đọc gọn để đỡ rườm.
-    const tts = n <= 1
-      ? "Em đã nhận được một tệp giấy tờ. Nếu còn giấy tờ, công dân đặt tiếp vào máy scan, em sẽ tự nhận. Xong hết thì bấm nút Đã đưa đủ giấy tờ ạ."
-      : `Em đã nhận thêm một tệp, tổng cộng ${n} tệp. Còn nữa thì công dân đặt tiếp vào máy scan, đủ rồi bấm nút Đã đưa đủ giấy tờ để em thực hiện xử lý ạ.`;
-    if (voiceCfg?.tts && !ttsMuted) { try { stopReplyTts(); } catch (_) { /* ignore */ } window.__hccTTS?.speak?.(tts, "vi"); }
+    const spoken = hmPack || viPack;
+    const tts = fill(n <= 1 ? spoken.tts : (spoken.ttsMore || spoken.tts));
+    if (voiceCfg?.tts && !ttsMuted && tts) {
+      try { stopReplyTts(); } catch (_) { /* ignore */ }
+      window.__hccTTS?.speak?.(tts, hmPack ? "hmong" : "vi");
+    }
   }
 
   // Lightbox phóng to ảnh — click nền hoặc Esc để đóng.
@@ -3495,18 +3644,23 @@
     const hasBundleContract = entries.some((entry) =>
       entry.planItem?.bundleId || entry.planItem?.bundleRole || entry.planItem?.identityScope);
     if (hasBundleContract) {
-      const invalid = entries.find((entry) =>
-        !entry.planItem?.bundleId ||
-        !["signature_document", "identity"].includes(entry.planItem?.bundleRole));
-      if (invalid) {
-        return {
-          error: `Kế hoạch nhiều hồ sơ thiếu quan hệ bundle cho ${invalid.file?.name || "một tệp"}.`,
-        };
+      // Tệp không có quan hệ hồ sơ (vd giấy tùy thân không khớp người ký nào) thì BỎ RIÊNG tệp đó
+      // rồi đính tiếp phần còn lại. Trước đây hủy cả lượt: hỏng 1 tệp là mất cả 4, mà kế hoạch được
+      // phát lại y nguyên nên bấm "Đính kèm lại" hỏng mãi (sự cố Nghĩa Hưng 21/09/2026).
+      const usable = entries.filter((entry) => entry.planItem?.bundleId
+        && ["signature_document", "identity"].includes(entry.planItem?.bundleRole));
+      const skippedNames = entries.filter((entry) => !usable.includes(entry))
+        .map((entry) => entry.file?.name || entry.planItem?.fileName || "một tệp");
+      if (!usable.some((entry) => entry.planItem.bundleRole === "signature_document")) {
+        return { error: "Kế hoạch nhiều hồ sơ không có giấy tờ, văn bản cần chứng thực chữ ký." };
+      }
+      if (skippedNames.length) {
+        console.warn("[TLND-Split] bỏ tệp không có quan hệ hồ sơ:", skippedNames);
       }
 
       const bundleOrder = [];
       const grouped = new Map();
-      for (const entry of entries) {
+      for (const entry of usable) {
         const bundleId = String(entry.planItem.bundleId);
         if (!grouped.has(bundleId)) grouped.set(bundleId, []);
         grouped.get(bundleId).push(entry);
@@ -3545,7 +3699,7 @@
         }));
         bundles.push({ files: bundleFiles, attachments: bundleAttachments });
       }
-      return { bundles };
+      return { bundles, skippedNames };
     }
 
     if (identityEntries.length > 1) {
@@ -3691,6 +3845,12 @@
       ? await buildSignatureSplitBundles(files, attachments)
       : { bundles: buildCopyCertificationSplitBundles(files, attachments, a.stt1VirtualCopy) };
     if (built.error) return { report: { attached: 0, errors: [built.error], mode: "split" } };
+    // Nói rõ tệp bị bỏ ngay tại chỗ: BE chỉ biết những tệp CHÍNH NÓ loại, còn tệp rơi ở đây là
+    // phần BE bản cũ vẫn gửi sang. Không đọc thành tiếng — không phải việc công dân phải xử lý.
+    if (built.skippedNames?.length) {
+      addBotMd(`⚠️ Em bỏ qua ${built.skippedNames.length} tệp chưa xếp được vào hồ sơ nào: `
+        + built.skippedNames.join(", ") + ". Các hồ sơ còn lại em đính bình thường ạ.");
+    }
     const bundles = built.bundles || [];
     if (!bundles.length) return { report: { attached: 0, errors: ["Không có tài liệu để tách hồ sơ."], mode: "split" } };
 
@@ -3770,6 +3930,8 @@
       queueId,
       total: bundles.length,
       waitForTabId,
+      // Tab của sidebar này — background chuyển tiếp mốc "Nộp" của các tab tách về đây.
+      originTabId: Number(TAB_ID) || null,
       initialResults,
       itemsStorageKey: SPLIT_STAGE_KEY,
     });
@@ -3956,6 +4118,15 @@
             errors: [viAttachError(e)],
           })}`, "system");
         }
+      } else if (a.type === "guided_click_next") {
+        // Hoãn khỏi lượt hiện tại: runActions chạy BÊN TRONG ask() lúc cờ busy còn bật, nên
+        // ask() lồng bên trong chỉ nằm lại pendingQueue và chờ ask() ngoài xong — mà ask()
+        // ngoài lại đang chờ chính runActions → khoá cứng, bot im luôn sau khi bấm nút.
+        const phase = a.phase || "";
+        const expect = Number(a.expectStep) || 0;
+        setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
+      } else if (a.type === "guided_submit") {
+        setTimeout(() => { void runGuidedSubmit(); }, 0);
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
         pipeDone();
         setStatus("Đang điền thông tin chủ hồ sơ…");
@@ -4367,6 +4538,12 @@
   let voiceCfgLoaded = false; // chưa fetch xong /voice/config thì KHÔNG được reset switch
   let hmongRestoredConv = ""; // đã tự khôi phục cho conversation nào (chống gửi lặp)
   const LANG_KEY = "tlnd_lang";
+  // Giọng đọc máy quầy đã chọn, THEO TỪNG NGÔN NGỮ: { vi: "...", hmong: "..." }. Lưu theo máy
+  // (không theo phiên) giống tlnd_lang — phiên mới/reload vẫn giữ đúng giọng cán bộ quen nghe.
+  const VOICE_KEY = "tlnd_voice";
+  let voiceChoice = {};
+  const $voiceCard = document.getElementById("voice-card");
+  const $voiceGroup = document.getElementById("voice-group");
   const $langBar = document.getElementById("lang-bar");
   const $langSwitch = document.getElementById("lang-switch");
   const $langState = document.getElementById("lang-state");
@@ -4389,6 +4566,52 @@
     return (voiceCfg.langs || []).includes("hmong") && tinh.includes("lai chau");
   }
 
+  // ── Giọng đọc ──
+  // Danh mục do BE cấp (/voice/config → voices) nên thêm giọng KHÔNG phải phát hành lại
+  // extension. Ẩn cả thẻ khi ngôn ngữ chỉ có MỘT giọng: bày một ô chọn duy nhất bấm vào
+  // không đổi gì là làm cán bộ tưởng hỏng.
+  function renderVoiceSettings() {
+    if (!$voiceCard || !$voiceGroup) return;
+    const list = (voiceCfg?.voices || {})[voiceLang] || [];
+    $voiceCard.hidden = list.length < 2;
+    if ($voiceCard.hidden) { $voiceGroup.replaceChildren(); return; }
+    const current = voiceChoice[voiceLang] || (voiceCfg?.defaultVoice || {})[voiceLang] || "";
+    $voiceGroup.replaceChildren(...list.map((v) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "radio");
+      btn.setAttribute("aria-checked", String(v.id === current));
+      // aria-checked chỉ trình đọc màn hình nghe được. Ô đang chọn phải TÔ bằng .on như mọi
+      // .settings-seg khác, nếu không cán bộ nhìn hai ô giống hệt nhau, bấm rồi cũng không
+      // biết đã đổi chưa.
+      btn.classList.toggle("on", v.id === current);
+      btn.textContent = `${v.gender === "nam" ? "👨" : "👩"} ${v.label}`;
+      btn.addEventListener("click", () => saveVoice(v.id));
+      return btn;
+    }));
+  }
+
+  function saveVoice(id) {
+    voiceChoice = { ...voiceChoice, [voiceLang]: id };
+    renderVoiceSettings();
+    window.__hccTTS?.setVoice?.(voiceChoice);
+    chrome.storage?.local.set({ [VOICE_KEY]: voiceChoice }, () => {
+      if (chrome.runtime.lastError) {
+        if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+        return;
+      }
+      announceAttachmentSettingsSaved();
+    });
+  }
+
+  chrome.storage?.local.get([VOICE_KEY], (res) => {
+    if (chrome.runtime.lastError) return;
+    const saved = res?.[VOICE_KEY];
+    if (saved && typeof saved === "object") voiceChoice = saved;
+    window.__hccTTS?.setVoice?.(voiceChoice);
+    renderVoiceSettings();
+  });
+
   function updateLangBar() {
     if (!$langBar) return;
     const allowed = _hmongAllowed();
@@ -4399,6 +4622,8 @@
     // Chỉ reset khi ĐÃ có config thật (đổi acc / server tắt hmong). renderAccount chạy
     // TRƯỚC khi fetch /voice/config xong — lúc đó langs còn rỗng, reset ở đây là tắt oan.
     if (voiceCfgLoaded && !allowed && voiceLang === "hmong") syncLangUI("vi");
+    // Mỗi ngôn ngữ một danh mục giọng riêng → đổi ngôn ngữ phải vẽ lại ô chọn.
+    renderVoiceSettings();
   }
 
   $langSwitch?.addEventListener("click", () => {
@@ -4617,6 +4842,7 @@
       if ($micBtn) $micBtn.hidden = !asrOn;
       if ($hfBtn) $hfBtn.hidden = !asrOn;
       updateLangBar(); // config về xong mới biết server có tiếng Mông không
+      renderVoiceSettings(); // danh mục giọng cũng nằm trong config này
       window.__hccTTS?.setMuted?.(ttsMuted);
     })().finally(() => { voiceCfgLoading = null; });
     return voiceCfgLoading;
