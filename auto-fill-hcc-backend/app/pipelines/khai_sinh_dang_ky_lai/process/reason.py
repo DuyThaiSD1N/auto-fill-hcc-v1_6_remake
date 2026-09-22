@@ -13,6 +13,11 @@ from app.pipelines._shared.compact_agent.issuer import (
     ISSUER_CUC,
     normalize_issuer,
 )
+from app.pipelines._shared.area_remap import (
+    canonical_province,
+    is_current_area,
+    remap_area,
+)
 from app.pipelines._shared.formatting import normalize_date
 from app.services.llm import client
 
@@ -778,6 +783,7 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
         f"Giới tính: {gender or 'Không xác định'}\n"
         f"Dân tộc: {ethnicity or 'Không xác định'}\n"
         f"Quốc tịch: {nationality or 'Không xác định'}\n"
+        f"{_RESIDENCE_LABEL}: {residence or 'Không xác định'}\n"
         f"Trạng thái: {status}\n"
         f"Nguồn: {source}\n"
         f"Căn cứ phân vai: {_DECLARATION_ROLE_BASIS}"
@@ -1486,6 +1492,130 @@ def _declaration_role_rebuild(context: str, tag: str) -> dict:
     return values
 
 
+# Nhãn "Nơi cư trú" trong khối vai: dòng đọc TẤT ĐỊNH từ tờ khai, không qua LLM. Có nhãn này
+# nghĩa là tờ khai CÓ ghi nơi cư trú của vai đó và bước trích xuất phải dùng đúng nó.
+_RESIDENCE_LABEL = "Nơi cư trú"
+
+# Tờ khai ghi cha/mẹ đã mất bằng chính ô nơi cư trú — để nguyên cho nhánh xử lý "đã chết".
+_DEAD_RESIDENCE_MARKERS = ("da chet", "da mat", "tu tran")
+
+# Nhãn cấp huyện đứng ngay trước tỉnh. Biểu mẫu chỉ có 2 cấp (xã – tỉnh) nên cụm này phải bỏ.
+_DISTRICT_LABEL_RE = re.compile(
+    r"^(huyện|huyen|quận|quan|thị xã|thi xa|tp\.?|thành phố|thanh pho)\b",
+    re.IGNORECASE,
+)
+
+
+def _area_or_none(tinh: str, xa: str, dia_chi: str, huyen: str = "") -> dict | None:
+    """Ghép object địa chỉ rồi CHỈ trả về khi xã/phường thật sự chọn được trên cổng."""
+    if not tinh or not xa:
+        return None
+    # Tờ khai viết "tỉnh Lâm Đồng"/"TP Hà Nội"; danh mục nhận cả nhãn đầy đủ lẫn tên trần, nhưng
+    # các field khác của thủ tục này đều đang là tên trần nên dẫn về một kiểu cho khỏi lệch.
+    tinh = canonical_province(tinh) or tinh
+    area = remap_area(
+        {"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": dia_chi},
+        huyen_hint=huyen,
+    )
+    if not isinstance(area, dict):
+        return None
+    if not str(area.get("xa") or "").strip():
+        return None
+    return area if is_current_area(str(area.get("tinh") or ""), str(area.get("xa") or "")) else None
+
+
+def _residence_from_declaration_line(line: str) -> dict | None:
+    """Dòng "Nơi cư trú" trên tờ khai -> object {quocGia, tinh, xa, diaChi}.
+
+    Tách bằng cách ĐẾM TỪ CUỐI như quy tắc địa chỉ chung: phần cuối là tỉnh, phần sát trước
+    tỉnh là xã (tờ khai hiện hành chỉ còn 2 cấp), mọi phần phía trước là chi tiết. Tờ khai cũ
+    còn ghi cấp huyện xen giữa thì bỏ cụm đó — nhận ra bằng nhãn "huyện/quận/TP", hoặc bằng
+    chính kết quả tra danh mục khi nhãn bị lược.
+
+    Trả None khi không chắc (thiếu vế, ô ghi "Đã chết", hoặc tách ra một xã KHÔNG có trong danh
+    mục hiện hành). Không chắc thì giữ nguyên kết quả bước trích xuất còn hơn điền một ô chết.
+    """
+    text = " ".join(str(line or "").split())
+    folded = _fold(text)
+    if not text or "khong xac dinh" in folded:
+        return None
+    if any(marker in folded for marker in _DEAD_RESIDENCE_MARKERS):
+        return None
+
+    parts = [part.strip(" .;") for part in re.split(r"[,\n]", text)]
+    parts = [part for part in parts if part]
+    if len(parts) < 2:
+        return None
+
+    tinh, rest = parts[-1], parts[:-1]
+    # Nhãn cấp huyện ghi rõ -> bỏ thẳng, không cần đoán.
+    if len(rest) >= 2 and _DISTRICT_LABEL_RE.match(rest[-1]):
+        return _area_or_none(tinh, rest[-2], ", ".join(rest[:-2]), huyen=rest[-1])
+    # Không có nhãn: thử hiểu phần sát tỉnh là XÃ trước (tờ khai 2 cấp, dạng phổ biến nhất),
+    # trượt danh mục thì mới hiểu nó là huyện bị lược nhãn (tờ khai cũ 3 cấp).
+    return (
+        _area_or_none(tinh, rest[-1], ", ".join(rest[:-1]))
+        or (
+            _area_or_none(tinh, rest[-2], ", ".join(rest[:-2]), huyen=rest[-1])
+            if len(rest) >= 2
+            else None
+        )
+    )
+
+
+def _declaration_residence_overrides(context: str, tag: str) -> dict:
+    """Nơi cư trú của vai này đã chốt từ tờ khai -> giá trị bắt buộc của bước trích xuất."""
+    section = _section(context, tag)
+    if not section or _is_unknown(section):
+        return {}
+    if _DECLARATION_ROLE_BASIS not in _labeled_value(section, "Căn cứ phân vai"):
+        return {}
+    area = _residence_from_declaration_line(_labeled_value(section, _RESIDENCE_LABEL))
+    return {_ROLE_PREFIX[tag] + "ResidenceDomestic": area} if area else {}
+
+
+def _apply_declaration_residence_overrides(
+    fields: list[dict],
+    context: str,
+    invalid_prefixes: set[str],
+) -> list[dict]:
+    """Đặt lại Nơi cư trú cha/mẹ theo TỜ KHAI, kể cả khi agent đã lấy theo CCCD.
+
+    Mục 1 của <uu_tien_nguon> nói rõ tờ khai là nguồn số 1 cho nơi cư trú, nhưng CCCD cũng IN
+    nơi thường trú nên agent rất hay lấy nhầm theo thẻ — và lấy nhầm KHÔNG ĐỀU giữa hai vai
+    (req_e783af63a58e: cha đúng theo tờ khai, mẹ lại theo CCCD). Dặn bằng chữ không đủ, nên
+    chốt lại bằng Python ở đây.
+
+    Chỉ ghi đè khi CẢ HAI điều kiện đúng: khối vai dựng tất định từ tờ khai, và dòng nơi cư trú
+    tách ra được một xã/phường CÓ trong danh mục hiện hành. Thiếu một trong hai thì giữ nguyên
+    kết quả của bước trích xuất.
+    """
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    overrides: dict[str, dict] = {}
+    for tag in ("cha", "me"):
+        if _ROLE_PREFIX[tag] in invalid_prefixes:
+            continue
+        overrides.update(_declaration_residence_overrides(context, tag))
+    if not overrides:
+        return fields
+
+    result, seen = [], set()
+    for field in fields:
+        name = str(field.get("name") or "")
+        if name in overrides:
+            field = {**field, "value": overrides[name]}
+            seen.add(name)
+        result.append(field)
+    for name, value in overrides.items():
+        if name in seen:
+            continue
+        comp = COMPACT_COMP_BY_NAME.get(name)
+        if comp:
+            result.append({"name": name, "comp": comp, "value": value})
+    return result
+
+
 def _apply_identity_card_overrides(
     fields: list[dict],
     context: str,
@@ -1834,6 +1964,14 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     if context:
         result = _apply_identity_card_overrides(
             result, context, invalid_prefixes - empty_prefixes, empty_prefixes
+        )
+
+    # ===== BƯỚC 6: NƠI CƯ TRÚ CHA/MẸ LẤY THEO TỜ KHAI =====
+    # Chạy sau BƯỚC 5 vì hai bước không giẫm ô nhau: bước trên chốt ba ô giấy tờ tùy thân theo
+    # CCCD, bước này chốt ô nơi cư trú theo tờ khai — đúng thứ tự nguồn đã quy định.
+    if context:
+        result = _apply_declaration_residence_overrides(
+            result, context, invalid_prefixes - empty_prefixes
         )
 
     return result

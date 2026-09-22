@@ -537,6 +537,9 @@ PROCEDURES: list[dict] = [
         # Đối chiếu với dòng "Loại hình doanh nghiệp" in trên hồ sơ (và nhãn radio bước 2 của wizard).
         # Thêm loại hình khác (TNHH một/hai thành viên, DNTN, hợp danh) = thêm entry tương tự.
         "enterpriseEntityLabel": "Công ty cổ phần",
+        # Mã loại hình = value radio $CtlEntType của cổng. Extension so khớp theo MÃ này trước, nhãn
+        # chỉ là lưới đỡ: cổng in nhãn mỗi chỗ một kiểu nên so nguyên văn là trượt.
+        "enterpriseEntityValue": "SC",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -569,15 +572,15 @@ PROCEDURES: list[dict] = [
         # Vì vậy phần điều hướng của extension (content/procedures/enterprise-registration.js) KHÔNG
         # phải sửa gì — nó đọc loại hình từ chính entry này qua cờ "lên đạn" của panel.
         "detect": {"urlIncludes": ["dangkyquamang.dkkd.gov.vn"], "headingDisabled": True},
-        # KHÔNG tự nhận diện thủ tục này: panel phải để cán bộ tự chọn.
+        # TỪNG tắt tự nhận diện (detectDisabled) vì cổng postback ở MỌI bước, cờ giữ lựa chọn tay của
+        # panel (manualProcedureOverride) reset sau mỗi lần tải trang, nên nhận diện chạy lại liên tục
+        # và có quyền đổi thủ tục ngay giữa lúc đang điền dở — mà rule chung ở "detect" lại chỉ có
+        # domain, trùng hệt entry công ty cổ phần nên luôn trả về CTCP (entry đứng trước).
         #
-        # Cổng này tải lại trang ở MỌI bước (postback), mà cờ giữ lựa chọn tay của panel
-        # (manualProcedureOverride) lại reset sau mỗi lần tải trang — nên nhận diện tự động
-        # chạy lại liên tục và có quyền đổi thủ tục ngay giữa lúc đang điền dở. Với loại hình
-        # này thì rủi ro đó không đáng đánh đổi: cứ để cán bộ chọn một lần rồi giữ nguyên.
-        # Vẫn giữ "detect" ở trên để biết thủ tục này thuộc cổng nào; cờ dưới mới là thứ
-        # extension đọc để loại nó khỏi vòng nhận diện.
-        "detectDisabled": True,
+        # Nay extension chốt loại hình bằng dòng "Loại hình doanh nghiệp" của CHÍNH hồ sơ đang mở và
+        # KHÔNG còn đoán theo domain trên cổng này (popup.js — nhánh dangkyquamang): chưa đọc được
+        # loại hình thì giữ nguyên thủ tục đang chọn, không nhận bừa. Nhận diện tự động vì thế an
+        # toàn và được bật lại, hồ sơ TNHH hai thành viên không còn bị kéo sang CTCP giữa chừng.
         "label": "Đăng ký thành lập công ty trách nhiệm hữu hạn hai thành viên trở lên",
         "mode": "agent",
         "enterprisePortal": True,

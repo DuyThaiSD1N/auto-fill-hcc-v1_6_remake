@@ -122,17 +122,53 @@
   H.detectEnterpriseEntityLabel = () => {
     if (location.hostname !== "dangkyquamang.dkkd.gov.vn") return "";
     if (detectStage() !== "dossier") return "";
+    return entityLabelFromCells() || entityLabelFromLines();
+  };
+
+  /**
+   * Đọc THẲNG từ ô bảng: khối "Thông tin về hồ sơ" render bằng <table>, nhãn và giá trị nằm ở hai ô
+   * cạnh nhau. Chắc hơn innerText vì không phụ thuộc cách trình duyệt nối ô thành dòng (chỗ có dấu
+   * ":", chỗ chỉ có TAB, chỗ lại xuống dòng).
+   */
+  function entityLabelFromCells() {
+    const cells = Array.from(document.querySelectorAll("td, th, dt"));
+    for (const cell of cells) {
+      if (!fold(cell.textContent || "").startsWith(ENTITY_LABEL_MARKER)) continue;
+      // Nhãn và giá trị CHUNG một ô ("Loại hình doanh nghiệp: Công ty cổ phần").
+      const inline = valueAfterMarker(cell.textContent || "");
+      if (inline) return inline;
+      // Nhãn đứng riêng một ô → giá trị ở ô kế bên (bỏ qua ô rỗng dùng để căn lề).
+      let sibling = cell.nextElementSibling;
+      while (sibling && !String(sibling.textContent || "").trim()) sibling = sibling.nextElementSibling;
+      const value = String(sibling?.textContent || "").replace(/\s+/g, " ").trim();
+      if (value) return value;
+    }
+    return "";
+  }
+
+  /** Dự phòng khi khối thông tin không render bằng bảng: cắt theo dòng của innerText. */
+  function entityLabelFromLines() {
     const lines = String(document.body?.innerText || "").split(/\r?\n/);
     for (let i = 0; i < lines.length; i += 1) {
       if (!fold(lines[i]).startsWith(ENTITY_LABEL_MARKER)) continue;
       // Bảng render "nhãn<TAB>giá trị" trên một dòng; vài bản tách nhãn và giá trị thành hai dòng.
-      const inline = lines[i].split(":").slice(1).join(":").replace(/\s+/g, " ").trim();
+      const inline = valueAfterMarker(lines[i]);
       if (inline) return inline;
       const next = lines.slice(i + 1).find((line) => line.trim());
       return next ? next.replace(/\s+/g, " ").trim() : "";
     }
     return "";
-  };
+  }
+
+  /**
+   * Phần GIÁ TRỊ của chuỗi "nhãn <ngăn cách> giá trị". Ngăn cách là ":" HOẶC TAB — bản cũ chỉ cắt
+   * theo ":" nên với bảng hai cột (innerText nối hai ô bằng TAB) nó trả rỗng rồi vớ luôn dòng kế
+   * tiếp, tức là nhãn của trường khác. Không có ngăn cách = chuỗi chỉ chứa nhãn → trả "".
+   */
+  function valueAfterMarker(raw) {
+    const match = String(raw || "").match(/^[^:\t]*[:\t]([\s\S]*)$/);
+    return match ? match[1].replace(/\s+/g, " ").trim() : "";
+  }
 
   if (window.top !== window) return;   // wizard nằm ở top frame; hint ở trên thì frame nào cũng trả được
 

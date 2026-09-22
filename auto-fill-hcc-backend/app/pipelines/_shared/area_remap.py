@@ -109,6 +109,21 @@ def _fold_nospace(text: str) -> str:
     return _fold(text).replace(" ", "")
 
 
+def _is_glued_ward_name(text: str) -> bool:
+    """Ten xa co phai MOT tu viet dinh lien khong (sau khi cat nhan loai don vi).
+
+    Phai cat "Xa/Phuong/Thi tran" TRUOC khi dem khoang trang. Dem tren chuoi tho thi
+    "Phường Langbiang" (dinh lien that, chi co khoang trang cua nhan) bi cham la ten da co
+    khoang trang dung -> truot ca hai bang tra nospace, tra ve nguyen "Phường Langbiang" --
+    mot ten KHONG co trong danh muc, dropdown Phuong/Xa tren cong bo trong.
+
+    Ten da co khoang trang THAT ("Phường Xuân Hương") van tra False nhu cu, nen khong bi
+    dong nham qua "core" cua mot phuong khac.
+    """
+    core = _UNIT_PREFIX_RE.sub("", str(text or "")).strip()
+    return bool(core) and " " not in core
+
+
 def _fold_accent(text: str) -> str:
     """Nhu _fold() nhung GIU dau thanh -- chi bo qua VI TRI dat dau.
 
@@ -130,6 +145,26 @@ def _fold_accent(text: str) -> str:
         base = base.replace("đ", "d")
         out.append(base + "".join(marks))
     return " ".join(out)
+
+
+# Dau gach ngan cach ten xa voi hau to cap huyen/thanh pho ("Tân Hà - Lâm Hà"). Gom ca gach
+# ngang dai ma trinh soan thao hay tu doi.
+_DASH_RE = re.compile(r"\s*[-–—]+\s*")
+
+
+def _fold_accent_dashless(text: str) -> str:
+    """_fold_accent() roi coi dau gach nhu mot khoang trang.
+
+    Danh muc viet hau to cap huyen/thanh pho theo HAI kieu: co gach ("Phường Cam Ly - Đà Lạt")
+    va lien khong gach ("Xã Tân Hà Lâm Hà"). To khai in ra thi luon dung dau gach cho ca hai,
+    nen chi nhin cach viet la khong the biet ben nao dung -- bo gach o CA HAI ben roi so thi
+    het van de. Toan quoc chi 7/3321 ten xa co dau gach va bo gach xong khong ten nao trung
+    ten nao, nen buoc nay khong the dong nham hai xa vao lam mot.
+    """
+    # Phai bo gach TRUOC khi fold: _fold_accent() gom dau thanh ve cuoi TUNG TU, nen cat mot tu
+    # da fold ("ha-lam" + hai dau) thanh hai se dinh ca hai dau vao tu sau. "Tân Hà-Lâm Hà" viet
+    # sat khong khoang trang la cach viet rat pho bien tren to khai.
+    return _fold_accent(_DASH_RE.sub(" ", str(text or "")))
 
 
 _DISTRICT_PREFIX_RE = re.compile(
@@ -311,6 +346,12 @@ _CURRENT_WARD: dict[tuple[str, str], str] = {}
 # Ten fold bi TRUNG trong cung mot tinh -> khong du can cu de chon, bo qua thay vi doan bua.
 _CURRENT_WARD_AMBIGUOUS: set[tuple[str, str]] = set()
 
+# Nhu _CURRENT_WARD nhung khoa da BO DAU GACH o ca hai ben -- go cach viet hau to cap huyen/
+# thanh pho khong khop nhau giua to khai va danh muc (vd to khai "Tân Hà - Lâm Hà", danh muc
+# "Xã Tân Hà Lâm Hà"). Tra SAU _CURRENT_WARD nen ten khop san khong di qua day.
+_CURRENT_WARD_DASHLESS: dict[tuple[str, str], str] = {}
+_CURRENT_WARD_DASHLESS_AMBIGUOUS: set[tuple[str, str]] = set()
+
 
 def _build_current_ward_index() -> None:
     try:
@@ -347,6 +388,13 @@ def _build_current_ward_index() -> None:
                         _CURRENT_WARD[key] = ward_full_name
                     elif existing != ward_full_name:
                         _CURRENT_WARD_AMBIGUOUS.add(key)
+                dashless_key = (tinh_key, _fold_accent_dashless(ward_full_name))
+                if dashless_key[1]:
+                    existing = _CURRENT_WARD_DASHLESS.get(dashless_key)
+                    if existing is None:
+                        _CURRENT_WARD_DASHLESS[dashless_key] = ward_full_name
+                    elif existing != ward_full_name:
+                        _CURRENT_WARD_DASHLESS_AMBIGUOUS.add(dashless_key)
 
 
 _build_current_ward_index()  # chay 1 lan luc import
@@ -543,7 +591,25 @@ def canonical_ward(tinh: object, xa: object) -> Optional[str]:
     key = (_fold(province), _fold_accent(ward))
     if key in _CURRENT_WARD_AMBIGUOUS:
         return None
-    return _CURRENT_WARD.get(key)
+    return _CURRENT_WARD.get(key) or current_ward_dashless(province, ward)
+
+
+def current_ward_dashless(tinh: object, xa: object) -> Optional[str]:
+    """Ten phuong/xa DAY DU khi to khai va danh muc viet hau to cap huyen khac nhau o dau gach.
+
+    "Tân Hà - Lâm Hà" tren to khai va "Xã Tân Hà Lâm Hà" trong danh muc la MOT xa, nhung moi
+    bang tra deu so chuoi nen cap nay truot sach -> o Phuong/Xa bi cham la ten chet va bo trong
+    (req_9a2497c5d578). Bo dau gach o ca hai ben roi so la khop.
+
+    Tra None khi khong chac: tinh khong nhan ra, hoac bo gach xong ten ung voi nhieu xa.
+    """
+    ward = str(xa or "").strip()
+    if not ward or not str(tinh or "").strip():
+        return None
+    key = (_fold(tinh), _fold_accent_dashless(ward))
+    if not key[1] or key in _CURRENT_WARD_DASHLESS_AMBIGUOUS:
+        return None
+    return _CURRENT_WARD_DASHLESS.get(key)
 
 
 def is_current_area(tinh: str, xa: str) -> bool:
@@ -792,23 +858,34 @@ def _remap_area_cached(
     # Buoc 2: lookup bang sap nhap (tinh, xa)
     key = (tinh_folded, _fold(xa_expanded))
     mapping = _REMAP.get(key)
-    if not mapping and xa_expanded and " " not in xa_expanded.strip():
+    if not mapping and xa_expanded and _is_glued_ward_name(xa_expanded):
         # Ten xa THUC SU viet dinh lien khong dau cach (vd "langbiang" thay vi "Lang Biang") ->
-        # khop bat chap khoang trang. CHI ap dung khi khong co khoang trang, tranh dong nham ten
-        # da co khoang trang dung nhung khac cach viet (vd hau to "- <thanh pho>") vao mot xa khac.
+        # khop bat chap khoang trang. CHI ap dung khi phan ten (sau khi cat nhan "Xa/Phuong/Thi
+        # tran") dinh lien, tranh dong nham ten da co khoang trang dung nhung khac cach viet (vd
+        # hau to "- <thanh pho>") vao mot xa khac.
         mapping = _REMAP_NOSPACE.get((tinh_folded, _fold_nospace(xa_expanded)))
     if mapping:
         return (mapping["tinh"], mapping["xa"], dia_chi)
 
     # Buoc 2b: ten xa co the DA LA ten hien hanh (khong doi qua sap nhap, khong nam trong
     # bang remap) nhung OCR/LLM tra dinh lien khong dau cach (vd "langbiang") -> tra ve dung
-    # ten co khoang trang chuan tu danh muc hien hanh. CHI kich hoat khi xa_expanded THUC SU
-    # la MOT TU dinh lien (khong co khoang trang) -- ten da co khoang trang dung (vd "Phường
-    # Xuân Hương", thieu hau to "- Đà Lạt") KHONG duoc dong qua "core" cua phuong khac.
-    if xa_expanded and " " not in xa_expanded.strip():
+    # ten co khoang trang chuan tu danh muc hien hanh. CHI kich hoat khi PHAN TEN (da cat nhan
+    # "Xa/Phuong/Thi tran") THUC SU la MOT TU dinh lien -- nho cat nhan truoc ma "Phường
+    # Langbiang" cung vao duoc nhanh nay, con ten da co khoang trang dung (vd "Phường Xuân
+    # Hương", thieu hau to "- Đà Lạt") KHONG duoc dong qua "core" cua phuong khac.
+    if xa_expanded and _is_glued_ward_name(xa_expanded):
         current_ward = _CURRENT_WARD_NOSPACE.get((tinh_folded, _fold_nospace(xa_expanded)))
         if current_ward:
             return (tinh, current_ward, dia_chi)
+
+    # Buoc 2b3: to khai va danh muc viet hau to cap huyen/thanh pho khac nhau o CHO DAU GACH --
+    # to khai "Tân Hà - Lâm Hà", danh muc "Xã Tân Hà Lâm Hà" (va nguoc lai: "Cam Ly Đà Lạt" vs
+    # "Phường Cam Ly - Đà Lạt"). Danh muc dung ca hai kieu nen nhin cach viet khong doan duoc ben
+    # nao dung; bo gach o ca hai ben roi so. Ten khop san da ra o cac buoc tren, nen buoc nay chi
+    # don nhung cap truoc day truot sach va bi cham la ten chet (-> o Phuong/Xa bo trong).
+    current_ward_dash = current_ward_dashless(tinh, xa_expanded)
+    if current_ward_dash:
+        return (tinh, current_ward_dash, dia_chi)
 
     # Buoc 2b2: giay to mang TINH MOI nhung dong dia chi con ten XA CU. Rat pho bien voi giay to
     # cap/in lai sau sap nhap 2025 (vd CCCD ghi "Thon 5 Nghia Trung / Nghia Hung, Ninh Binh": tinh
@@ -1115,6 +1192,8 @@ def reload() -> None:
     _CURRENT_WARD_NOSPACE.clear()
     _CURRENT_WARD.clear()
     _CURRENT_WARD_AMBIGUOUS.clear()
+    _CURRENT_WARD_DASHLESS.clear()
+    _CURRENT_WARD_DASHLESS_AMBIGUOUS.clear()
     _build_current_ward_index()
     _PROVINCE_BY_WARD.clear()
     _WARD_NAME_AMBIGUOUS.clear()

@@ -1173,6 +1173,37 @@ function detectUrlScopeOk(detect, url) {
   return scope.some((u) => u && url.includes(String(u).toLowerCase()));
 }
 
+// Mã loại hình doanh nghiệp của cổng ĐKKD qua mạng (trùng value radio $CtlEntType: SC = công ty
+// cổ phần, LLC1/LLC2 = TNHH một/hai thành viên trở lên, PRI = doanh nghiệp tư nhân, PARTNER = hợp
+// danh). Cổng in nhãn loại hình MỖI CHỖ MỘT KIỂU — khối "Thông tin về hồ sơ" có bản ghi "Công ty
+// TNHH hai thành viên trở lên", nhãn radio của wizard ghi đủ "Công ty trách nhiệm hữu hạn hai thành
+// viên trở lên", có bản dùng số "2 thành viên" — nên so NGUYÊN VĂN với registry là trượt. Rút cả hai
+// vế về mã rồi mới so.
+//
+// Không suy ra được mã thì trả "" và để bên gọi bỏ qua: thà không nhận diện còn hơn nhận nhầm loại
+// hình (chọn sai là hồ sơ thật phải bỏ đi làm lại).
+function enterpriseEntityCode(label) {
+  const text = normDetect(label);
+  if (!text) return "";
+  if (text.includes("hop danh")) return "PARTNER";
+  if (text.includes("tu nhan")) return "PRI";
+  if (text.includes("trach nhiem huu han") || /\btnhh\b/.test(text)) {
+    // "một thành viên" / "1 thành viên" / "MTV" vs "hai thành viên" / "2 thành viên".
+    if (/\bmtv\b/.test(text) || /\b(mot|1) thanh vien\b/.test(text)) return "LLC1";
+    if (/\b(hai|2) thanh vien\b/.test(text)) return "LLC2";
+    return "";   // TNHH nhưng không rõ một hay hai thành viên → không đoán
+  }
+  if (text.includes("co phan")) return "SC";
+  return "";
+}
+
+// Mã loại hình của một thủ tục trong registry: ưu tiên `enterpriseEntityValue` (value radio, backend
+// khai tay) rồi mới suy từ nhãn.
+function enterpriseEntityCodeOf(procedure) {
+  return String(procedure?.enterpriseEntityValue || "").trim().toUpperCase()
+    || enterpriseEntityCode(procedure?.enterpriseEntityLabel || "");
+}
+
 // Khớp tín hiệu trang (URL + heading) với rule `detect` của thủ tục từ backend.
 function detectProcedureKeyFromSignals(signals) {
   if (!signals) return "";
@@ -1190,16 +1221,24 @@ function detectProcedureKeyFromSignals(signals) {
   // Cổng ĐKKD qua mạng dùng CHUNG Registration.aspx/DW_DOCUMENTEdit.aspx cho MỌI loại hình doanh
   // nghiệp: URL, heading và body ("ĐĂNG KÝ DOANH NGHIỆP", "Thành lập mới...") không phân biệt được
   // CTCP với TNHH/DNTN, và các nhánh đoán theo text bên dưới từng trả nhầm thành thủ tục HỘ kinh doanh.
-  if (String(signals.enterpriseProcedureHint || "")) {
+  //
+  // Gate theo DOMAIN chứ không chỉ theo `enterpriseProcedureHint`: hint do content script của cổng
+  // sinh ra, lượt postback nào nó chưa gắn kịp là hint rỗng và cả khối này bị bỏ qua → rơi xuống rule
+  // urlIncludes, nơi CTCP và TNHH hai thành viên khai TRÙNG domain nên luôn trả về entry đứng trước
+  // (CTCP). Đó chính là lỗi "đang điền hồ sơ TNHH tự nhảy sang công ty cổ phần". Trong phạm vi cổng
+  // này, loại hình CHỈ được chốt bằng dòng "Loại hình doanh nghiệp" của chính hồ sơ.
+  if (url.includes("dangkyquamang.dkkd.gov.vn") || String(signals.enterpriseProcedureHint || "")) {
     const entityLabel = normDetect(signals.enterpriseEntityLabel || "");
     if (entityLabel) {
       // Hồ sơ đã tạo: cổng in rõ "Loại hình doanh nghiệp" → chốt đúng thủ tục theo loại hình đó.
-      // Loại hình chưa có thủ tục tương ứng (vd TNHH) thì để TRỐNG, không nhận bừa sang CTCP.
+      // Loại hình chưa có thủ tục tương ứng (vd TNHH một thành viên) thì để TRỐNG, không nhận bừa.
       // Nhánh này dò THẲNG trong PROCEDURES (không qua `detectables`) nên phải tự loại thủ tục
       // bật detectDisabled — nếu không, loại hình khớp là nó vẫn tự chọn bất chấp cờ.
+      const wantedCode = enterpriseEntityCode(entityLabel);
       const matched = PROCEDURES.find((item) => item.enterpriseEntityLabel
         && !item.detectDisabled
-        && normDetect(item.enterpriseEntityLabel) === entityLabel);
+        && (normDetect(item.enterpriseEntityLabel) === entityLabel
+          || (!!wantedCode && enterpriseEntityCodeOf(item) === wantedCode)));
       if (matched) return matched.key;
       // Không nhận diện được (loại hình chưa có thủ tục, hoặc thủ tục đó chỉ cho chọn tay):
       // GIỮ lựa chọn doanh nghiệp đang có thay vì trả rỗng. Cổng postback ở mọi bước nên trả rỗng
@@ -1207,9 +1246,12 @@ function detectProcedureKeyFromSignals(signals) {
       if (isEnterprisePortalProcedure(selected)) return selected.key;
       return "";
     }
-    // Chưa chốt loại hình (wizard, trang chủ cổng, màn đăng nhập): giữ thủ tục doanh nghiệp đang
-    // chọn nếu có; không thì rơi xuống rule urlIncludes để nhận theo domain — đúng như cổng HKD.
+    // Chưa chốt loại hình (wizard chọn loại đăng ký/loại hình, trang chủ cổng, màn đăng nhập):
+    // GIỮ thủ tục doanh nghiệp đang chọn; chưa chọn gì thì để TRỐNG cho cán bộ tự chọn.
+    // KHÔNG rơi xuống rule urlIncludes như trước: domain này có nhiều loại hình cùng khai, đoán theo
+    // domain là cầm chắc 50% sai và còn ghi đè lựa chọn tay sau mỗi lần postback.
     if (isEnterprisePortalProcedure(selected)) return selected.key;
+    return "";
   }
 
   if (url.includes("hokinhdoanh.dkkd.gov.vn")) {

@@ -77,6 +77,14 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    NGÀY SINH và GIỚI TÍNH cũng là thông tin IN trên thẻ: chính người đó (con, cha, mẹ) có CCCD/CMND
    trong hồ sơ thì lấy NGÀY SINH + GIỚI TÍNH theo CCCD, kể cả khi tờ khai ghi khác (chữ viết tay hay bị
    OCR đọc sai). Tờ khai/giấy khác chỉ bù khi thẻ không có hoặc không đọc được.
+   ⚠ DANH SÁCH NÀY ĐÓNG — ĐÚNG NĂM ô lấy theo CCCD: số định danh, ngày cấp, nơi cấp, ngày sinh,
+   giới tính. Mọi ô KHÁC vẫn theo mục 1 (TỜ KHAI TRƯỚC). ❌ CẤM suy rộng "thông tin in trên thẻ" sang
+   các ô khác — NƠI CƯ TRÚ, QUÊ QUÁN, NƠI SINH in trên CCCD KHÔNG được đè lên tờ khai. Tờ khai có
+   dòng "Nơi cư trú" của cha/mẹ thì Father_/Mother_ResidenceDomestic lấy ĐÚNG dòng đó, kể cả khi CCCD
+   của chính người đó ghi địa chỉ khác (thẻ cũ, chưa đổi sau khi chuyển hộ khẩu hoặc sau sáp nhập).
+   VD: tờ khai ghi "Nơi cư trú: (2) Tân Hà - Lâm Hà, tỉnh Lâm Đồng" còn CCCD mẹ ghi "Thôn Đức Long,
+   Hoài Đức, Lâm Hà, Lâm Đồng" → Mother_ResidenceDomestic = {"quocGia":"Việt Nam","tinh":"Lâm Đồng",
+   "xa":"Tân Hà - Lâm Hà","diaChi":""} theo TỜ KHAI. SAI nếu ra xa="Thôn Đức Long" hay xa="Hoài Đức".
 7. HỒ SƠ KHÔNG CÓ TỜ KHAI thì mới dùng khối <phan_vai_khi_khong_co_to_khai> bên dưới.
 </uu_tien_nguon>
 
