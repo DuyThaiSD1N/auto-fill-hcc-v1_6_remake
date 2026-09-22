@@ -23,8 +23,9 @@ def _fold(text: str) -> str:
     t = unicodedata.normalize("NFD", str(text or ""))
     t = "".join(ch for ch in t if unicodedata.category(ch) != "Mn")
     t = t.replace("\u0110", "D").replace("\u0111", "d")
-    # Bo cac ky tu dac biet thuong gap trong OCR viet tat dan toc
-    t = re.sub(r"['.`''\-()[\]]", "", t)
+    # Bo cac ky tu dac biet thuong gap trong OCR viet tat dan toc.
+    # Ke ca dau nhay CONG (U+2018/U+2019/U+02BC): OCR tra "K’Ho" chu khong phai "K'Ho".
+    t = re.sub(r"['.`‘’ʼ´\-()[\]]", "", t)
     return re.sub(r"\s+", " ", t).strip().lower()
 
 

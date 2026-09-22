@@ -540,6 +540,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
+        if name == "DanTocC1":
+            # MỌI nhánh (bản thân / ủy quyền / fallback tờ khai) phải đi qua bảng chuẩn hóa. Gửi
+            # nguyên văn "K'Ho" thì dropdown của cổng không có option nào trùng, extension quay
+            # sang khớp lỏng và bốc nhầm option ngắn ("Họ") vì dấu nháy là ranh giới từ.
+            value = normalize_ethnic(value) or value
         field = {"name": name, "comp": comp, "value": value}
         if default:
             field["default"] = True  # extension tô VIỀN VÀNG (giá trị mặc định, không từ giấy tờ)
@@ -834,7 +839,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add_with_declaration_fallback(
                 "GioiTinhC1", card.get("GioiTinh") or values.get("PoA_SubjectGender"), "ToKhai_GioiTinh")
             add_with_declaration_fallback(
-                "DanTocC1", normalize_ethnic(_tk("ToKhai_DanToc") or values.get("PoA_SubjectDanToc")), "ToKhai_DanToc")
+                "DanTocC1", _tk("ToKhai_DanToc") or values.get("PoA_SubjectDanToc"), "ToKhai_DanToc")
             add("QuocTichC1", "Việt Nam")
             subject_id = card.get("SoDinhDanh") or values.get("PoA_SubjectIdNumber")
             subject_issuer = card.get("NoiCap") or poa_issuer

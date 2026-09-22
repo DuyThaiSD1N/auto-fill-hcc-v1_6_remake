@@ -239,6 +239,9 @@ Ví dụ: TỜ KHAI ghi:
 - RIÊNG Cccd_DanToc (dân tộc) — thẻ CCCD/Căn cước mẫu mới thường KHÔNG in dân tộc. THỨ TỰ ƯU TIÊN NGUỒN:
   (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Dân tộc: ..." (ở khối người được cấp) → ToKhai_DanToc;
   (2) thẻ CCCD/CMND nếu có in → Cccd_DanToc. BẮT BUỘC điền ToKhai_DanToc nếu tờ khai ghi, VÀ điền Cccd_DanToc nếu CCCD ghi — ĐỪNG bỏ trống chỉ vì thẻ CCCD không in.
+  + CHÉP NGUYÊN VĂN chữ trên giấy, GIỮ CẢ DẤU NHÁY và chữ đứng trước nó — "K'Ho" phải trả "K'Ho",
+    KHÔNG được cắt còn "Ho"/"Họ"; tương tự "H'Mông", "M'Nông", "Cil", "Chil", "Xrê". Python tự
+    chuẩn hóa về option của dropdown, nên đừng tự đoán hay tự đổi sang tên dân tộc khác.
 - Cccd_NgayCap (ngày cấp CCCD) — BẮT BUỘC trả nếu BẤT KỲ giấy nào có. Khi có NGÀY Ở NHIỀU CHỖ (mặt sau CCCD và tờ khai), TRẢ CẢ HAI NGUỒN:
   + Cccd_NgayCap: MẶT SAU CCCD — ngày ở dòng "Ngày, tháng, năm / Date, month, year" (dd/mm/yyyy). Ngày này
     CÓ THỂ DÍNH LIỀN nhãn do OCR gộp, vd "...Date, month, year01/05/2021" → Cccd_NgayCap = "01/05/2021".
