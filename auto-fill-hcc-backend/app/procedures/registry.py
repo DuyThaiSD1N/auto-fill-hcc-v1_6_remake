@@ -130,6 +130,18 @@ from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
 from app.pipelines.cho_thue_dat_thue_rung.attach import plan as cho_thue_dat_thue_rung_attach
 from app.pipelines.cho_thue_dat_thue_rung.process import run as cho_thue_dat_thue_rung_process
+from app.pipelines.tang_cho_qsdd_nha_nuoc_chua_cap_gcn.attach import (
+    plan as tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
+)
+from app.pipelines.tang_cho_qsdd_nha_nuoc_chua_cap_gcn.process import (
+    run as tang_cho_qsdd_nha_nuoc_chua_cap_gcn_process,
+)
+from app.pipelines.dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi.attach import (
+    plan as dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_attach,
+)
+from app.pipelines.dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi.process import (
+    run as dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_process,
+)
 from app.pipelines.dk_giay_cn_thua_dat_dien_tich_tang_them.process import (
     run as dk_giay_cn_thua_dat_dien_tich_tang_them_process,
 )
@@ -2400,6 +2412,64 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "tang-cho-qsdd-nha-nuoc-chua-cap-gcn",
+        # Mã 1.115690 — "hiến đất làm đường": hộ gia đình tặng cho Nhà nước/cộng đồng dân cư một phần
+        # thửa đất để mở rộng đường giao thông, trường hợp thửa đất CHƯA được cấp Giấy chứng nhận.
+        # Cùng cổng, cùng eForm iGate legacy (CongDan_*/ChuHoSo_*) với 1.115650/1.115678/1.115693 nên
+        # dùng lại fill-legacy.js. Khác hẳn ở BƯỚC ĐÍNH KÈM: thủ tục này KHÔNG có bảng "Thành phần hồ
+        # sơ" (cổng in "Hồ sơ không yêu cầu giấy tờ kèm theo") → mọi tệp xuống danh sách "Giấy tờ
+        # khác", engine `target=new` chứ không phải `fixed-slot`.
+        #
+        # ⚠ NHẬN DIỆN: cụm riêng là "thửa đất chưa được cấp Giấy chứng nhận". Cổng còn có thủ tục song
+        # sinh cho trường hợp thửa đất ĐÃ được cấp Giấy chứng nhận; hai vế loại trừ nhau nên chữ "chưa"
+        # là chỗ phân biệt duy nhất — KHÔNG được rút gọn cụm này. textPriority để entry có tổng độ dài
+        # cụm lớn nhất thắng khi tiêu đề lồng nhau.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "tặng cho quyền sử dụng đất cho Nhà nước hoặc cộng đồng dân cư hoặc mở rộng đường "
+                "giao thông",
+                "thửa đất chưa được cấp Giấy chứng nhận",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Tặng cho quyền sử dụng đất cho Nhà nước hoặc cộng đồng dân cư hoặc mở rộng "
+            "đường giao thông đối với trường hợp thửa đất chưa được cấp Giấy chứng nhận"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Hồ sơ HIẾN ĐẤT LÀM ĐƯỜNG. Giấy tờ cần tải lên (bộ mẫu gồm đúng 3 tệp):\n"
+            "1. Văn bản tặng cho quyền sử dụng đất để mở rộng đường giao thông công cộng (đơn hiến "
+            "đất) — nguồn chính của tên, CCCD, địa chỉ và số điện thoại chủ hồ sơ.\n"
+            "2. Giấy ủy quyền có công chứng — nguồn nhân thân của NGƯỜI ĐI NỘP (người được ủy quyền).\n"
+            "3. Giấy chứng nhận quyền sử dụng đất của thửa đất gốc, chụp ĐỦ cả trang chỉnh lý và trang "
+            "biến động (số CCCD mới và địa chỉ mới nằm ở đó).\n"
+            "Có thể bổ sung CCCD, sơ đồ/trích đo thửa đất, văn bản của UBND nếu hồ sơ có.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "⚠ ĐÍNH KÈM: thủ tục này KHÔNG có bảng \"Thành phần hồ sơ\" (cổng ghi \"Hồ sơ không yêu "
+            "cầu giấy tờ kèm theo\") → hệ thống đính TẤT CẢ tệp vào mục \"Giấy tờ khác\", mỗi tệp một "
+            "dòng kèm tên mô tả (\"Văn bản tặng cho quyền sử dụng đất\", \"Giấy ủy quyền\", \"Giấy "
+            "chứng nhận quyền sử dụng đất\"). Không tách tệp sang chỗ khác, không bỏ sót tệp nào. Cổng "
+            "giới hạn 6 MB mỗi tệp.\n"
+            "⚠ Ô \"Về việc (*)\" đã được cổng điền sẵn đúng tên thủ tục — GIỮ NGUYÊN, hệ thống cố ý "
+            "không ghi đè.\n"
+            "⚠ ĐIỀN FORM: hai ô \"Họ và tên\" và \"Số Căn cước\" của khối người nộp là ô readonly do "
+            "cổng đổ từ tài khoản đang đăng nhập — hệ thống CỐ Ý KHÔNG điền hai ô này, vì ghi vào đó "
+            "là script của cổng xoá trắng \"Di động\" và \"Số Căn cước\". Hồ sơ nộp thay theo ủy quyền "
+            "thì tài khoản đăng nhập phải chính là người được ủy quyền; hệ thống sẽ cảnh báo nếu không "
+            "khớp. Checkbox \"Người nộp là chủ hồ sơ\" chỉ sao chép Nơi cấp/Ngày cấp căn cước, KHÔNG "
+            "sao chép Tỉnh/Phường-Xã/Địa chỉ — hệ thống vì vậy luôn điền đầy đủ cả khối chủ hồ sơ, cán "
+            "bộ không cần tick.\n"
+            "⚠ Giấy tờ của thủ tục này thường chỉ ghi NĂM SINH và không ghi dân tộc/giới tính — hệ "
+            "thống để trống các ô đó thay vì bịa; giới tính chỉ suy từ số CCCD 12 số."
+        ),
+    },
+    {
         "key": "dang-ky-bien-phap-bao-dam-quang-ninh",
         # URL /nop-ho-so/141946 (thủ tục XÓA là /141949) — id đổi theo cấu hình cổng → khóa domain +
         # tiêu đề. ⚠ Cụm "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất" là CHUỖI CON của tiêu đề
@@ -3583,6 +3653,82 @@ PROCEDURES: list[dict] = [
             "bộ đề nghị tách tệp nếu nơi tiếp nhận yêu cầu. Dòng 'Mảnh trích đo' thường không có trong "
             "hồ sơ dân nộp; trợ lý nhắc chứ không tự tích.\n"
             "Ô 'Về việc' (*) ở bước Thành phần hồ sơ do cổng điền sẵn tên thủ tục — trợ lý KHÔNG ghi đè."
+        ),
+    },
+    {
+        "key": "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi",
+        # Cổng dichvucong.laocai.gov.vn (iGate VNPT legacy, HTML/jQuery thuần) — bước 2 dùng CÙNG bộ ô
+        # CongDan_*/ChuHoSo_* với 1.115667/1.115668/1.115678/1.115694 (engine dom-*), mapping theo
+        # "Mapping_1.115693_Cap_GCN_dien_tich_tang_them_Nguyen_Duy_Tam.xlsx" (2 bản DOM cá nhân+tổ chức).
+        #
+        # ⚠ BƯỚC ĐÍNH KÈM KHÁC HẲN 1.115694: KHÔNG có bảng dòng cố định. Khối "Biểu mẫu giấy tờ" ghi
+        # "(Hồ sơ không yêu cầu giấy tờ kèm theo)" nên mọi tài liệu phải tự thêm dòng trong mục "Giấy
+        # tờ khác" (attach/planner.py phát target="new" cho tất cả). Đừng chép planner của 1.115694.
+        #
+        # ⚑ VA CHẠM NHẬN DIỆN VỚI 1.115694: hai tiêu đề GIỐNG NHAU tới hết cụm "…thửa đất gốc đã có
+        # Giấy chứng nhận,", chỉ khác vế cuối. Vế cuối của hai thủ tục LOẠI TRỪ NHAU nên chỉ cần khai
+        # cụm riêng là đủ, không cần textPriority:
+        #   • 1.115693 (entry này): "phần diện tích đất tăng thêm chưa được cấp giấy chứng nhận"
+        #   • 1.115694: "…do nhận chuyển quyền sử dụng một phần thửa đất đã được cấp giấy chứng nhận"
+        # Cụm dùng chung vẫn khai để loại trang của các thủ tục đất đai khác cùng cổng. Có test chặn
+        # cả hai chiều.
+        #
+        # Cụm chung khai bản "so với giấy chứng nhận đã cấp" (không hoa) vì hàm chuẩn hoá của popup.js
+        # đã hạ chữ thường; tiêu đề trên cổng viết hoa "Giấy chứng nhận" ở chỗ này còn 1.115694 thì
+        # không — không được dựa vào chữ hoa để phân biệt.
+        #
+        # urlScope khóa host Lào Cai: cụm "diện tích tăng thêm do thay đổi ranh giới" cũng có ở bản
+        # Lâm Đồng (1.116356, form Form.io hoàn toàn khác).
+        # Key trùng mục ke_khai_links (1.115693).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "diện tích tăng thêm do thay đổi ranh giới so với giấy chứng nhận đã cấp",
+                "phần diện tích đất tăng thêm chưa được cấp giấy chứng nhận",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi "
+            "ranh giới so với giấy chứng nhận đã cấp đối với trường hợp thửa đất gốc đã có Giấy chứng "
+            "nhận, phần diện tích đất tăng thêm chưa được cấp Giấy chứng nhận"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục dùng cho phần diện tích tăng thêm CHƯA ĐƯỢC CẤP giấy cho ai — chứng minh bằng biên "
+            "bản xác nhận ranh giới với các hộ giáp ranh, KHÔNG phải bằng hợp đồng mua bán (mua lại một "
+            "phần thửa của người khác là thủ tục 1.115694).\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp cho thửa đất GỐC.\n"
+            "3. Phiếu đo đạc chỉnh lý thửa đất và Bản mô tả ranh giới, mốc giới thửa đất (nên quét chung "
+            "một tệp — trên cổng hai giấy này đi chung một dòng).\n"
+            "4. Biên bản làm việc xác nhận ranh giới, mốc giới và hiện trạng sử dụng đất (giấy tờ chứng "
+            "minh phần diện tích tăng thêm).\n"
+            "5. Giấy ủy quyền/văn bản về việc đại diện nếu nộp thay; Giấy cam kết xác nhận chữ ký (nếu "
+            "có) chỉ là giấy bổ trợ, KHÔNG thay được giấy ủy quyền.\n"
+            "6. Tờ khai lệ phí trước bạ, tờ khai tiền sử dụng đất, tờ khai thuế SDĐ phi nông nghiệp; "
+            "CCCD của chủ hồ sơ và người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "⚠ ĐÍNH KÈM: bước Thành phần hồ sơ của thủ tục này KHÔNG có dòng giấy tờ dựng sẵn ('Hồ sơ "
+            "không yêu cầu giấy tờ kèm theo') — TẤT CẢ tài liệu đi vào mục 'Giấy tờ khác'. Trợ lý tự bấm "
+            "'+' thêm dòng, gõ tên giấy tờ rồi đính tệp; cột 'Loại' giữ nguyên 'Mới'. MỖI TỆP một dòng, "
+            "ô 'Giấy tờ khác - Chọn tệp tin' đứng riêng ở cuối trang để TRỐNG.\n"
+            "⚠ Cổng giới hạn 6 MB mỗi tệp. Bản scan đất đai thường vượt — tách hồ sơ thành nhiều tệp "
+            "theo nhóm giấy tờ và giảm ảnh quét về 300 dpi; hệ thống báo trước tệp nào vượt.\n"
+            "⚠ ĐIỀN FORM: chủ hồ sơ = người sử dụng đất đứng tên mục 1.1 của Đơn; những người ĐỒNG SỬ "
+            "DỤNG liệt kê tiếp ở mục 1.4/1.7/1.10 KHÔNG có ô trên bước 2. Nơi thường trú của chủ hồ sơ "
+            "thường ở TỈNH KHÁC với nơi có thửa đất — trợ lý cảnh báo nếu hai địa chỉ trùng nhau.\n"
+            "⚠ Hai ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là ô readonly do cổng đổ từ tài "
+            "khoản đang đăng nhập — hệ thống CỐ Ý KHÔNG điền, vì ghi vào đó là script của cổng xoá trắng "
+            "'Di động' và 'Số Căn cước'. Nộp thay theo ủy quyền thì phải đăng nhập bằng tài khoản của "
+            "chính người được ủy quyền; hệ thống cảnh báo nếu không khớp. Checkbox 'Người nộp là chủ hồ "
+            "sơ' chỉ sao chép Nơi cấp/Ngày cấp căn cước, KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ — hệ "
+            "thống vì vậy luôn điền đầy đủ cả khối chủ hồ sơ, cán bộ không cần tick.\n"
+            "Ô 'Về việc' (*) và 'Ghi chú' ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè."
         ),
     },
     {
@@ -5301,6 +5447,7 @@ _PIPELINE = {
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_process,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_process,
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_process,
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_process,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_process,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_process,
@@ -5356,6 +5503,8 @@ _PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175": chuyen_md_sd_dat_phuong_xa_lao_cai_process,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_process,
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi":
+        dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_process,
     "ho-tro-mai-tang": ho_tro_mai_tang_process,
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_process,
@@ -5427,6 +5576,8 @@ _ATTACH_PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175": chuyen_md_sd_dat_phuong_xa_lao_cai_attach,
     "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua":
         dk_giay_cn_thua_dat_dien_tich_tang_them_attach,
+    "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi":
+        dang_ky_cap_gcn_dien_tich_tang_them_thay_doi_ranh_gioi_attach,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep": xac_nhan_tiep_tuc_dat_nong_nghiep_attach,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_attach,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_attach,
@@ -5465,6 +5616,7 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_attach,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_attach,
+    "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
     "dang-ky-bien-phap-bao-dam-quang-ninh": dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "dang-ky-dat-dai-lan-dau-bac-ninh": dang_ky_dat_dai_lan_dau_bac_ninh_attach,

@@ -4528,6 +4528,10 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175" ||
       // [Lào Cai] 1.115694: bắt buộc có mốc tài khoản, nếu không BE sẽ bỏ trống khối người nộp.
       cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua" ||
+      // [Lào Cai] 1.115693: chủ hộ hay thường trú ở tỉnh khác nơi có thửa đất nên gần như luôn ủy
+      // quyền cho người tại địa phương đi nộp → mốc tài khoản là thứ DUY NHẤT tách được người nộp
+      // khỏi chủ hồ sơ; thiếu nó BE phải đoán mode từ giấy tờ.
+      cfg.key === "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi" ||
       // [Lào Cai] 1.115677: Mẫu 39 hay do vợ/chồng ký nộp thay → phải có mốc tài khoản mới biết ai đi nộp.
       cfg.key === "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep" ||
       // [Lào Cai] 1.115671: người nộp thường là NGƯỜI ĐẠI DIỆN ký thay tổ chức → phải có mốc tài
@@ -4539,6 +4543,10 @@ ocrBtn.addEventListener("click", async () => {
       // → mốc tài khoản là thứ DUY NHẤT phân biệt "người trúng đấu giá tự nộp" với "người được ủy
       // quyền nộp thay"; thiếu nó BE phải đoán mode từ giấy tờ.
       cfg.key === "cho-thue-dat-thue-rung" ||
+      // [Lào Cai] 1.115690 (hiến đất làm đường): bộ hồ sơ mẫu luôn có Giấy ủy quyền, người đi nộp là
+      // người được ủy quyền chứ không phải người tặng cho → mốc tài khoản là thứ DUY NHẤT chốt được
+      // mode; thiếu nó BE phải đoán từ giấy tờ và cảnh báo.
+      cfg.key === "tang-cho-qsdd-nha-nuoc-chua-cap-gcn" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
