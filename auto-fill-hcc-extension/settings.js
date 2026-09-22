@@ -53,3 +53,60 @@ bindToggle(submitterOwnerModeSetting, SUBMITTER_OWNER_MODE_KEY);
 bindToggle(estateSplitAttachmentsSetting, ESTATE_SPLIT_ATTACH_KEY);
 
 void restoreSettings();
+
+// ── Hỏi đánh giá sau khi gửi hồ sơ — cài đặt THEO TÀI KHOẢN ────────────────────────────────
+// Máy quầy có nhiều cán bộ dùng chung nên không thể lưu một cờ chung: lưu bảng
+// {tên đăng nhập: bật/tắt}. Tài khoản chưa có trong bảng = BẬT (mọi máy đang chạy không đổi).
+// Trang này mở ở TAB RIÊNG, không giữ token nên không tự hỏi được /auth/me — popup ghi sẵn tên
+// đăng nhập ra CURRENT_USERNAME_KEY. Chưa có tên thì KHÓA công tắc: lưu lúc đó là lưu nhầm cho
+// tài khoản khác đang có trong bảng.
+const RATING_ENABLED_BY_USER_KEY = "autofill_rating_enabled_by_user";
+const CURRENT_USERNAME_KEY = "autofill_current_username";
+
+const ratingCardSetting = document.getElementById("ratingCardSetting");
+const ratingAccountName = document.getElementById("ratingAccountName");
+const ratingSaveStatus = document.getElementById("ratingSaveStatus");
+let ratingUsername = "";
+let ratingStatusTimer = null;
+
+function showRatingStatus(message, error = false) {
+  ratingSaveStatus.textContent = message;
+  ratingSaveStatus.className = error ? "save-status error" : "save-status";
+  if (ratingStatusTimer) clearTimeout(ratingStatusTimer);
+  ratingStatusTimer = setTimeout(() => { ratingSaveStatus.textContent = ""; }, 2200);
+}
+
+async function restoreRatingSetting() {
+  try {
+    const store = await chrome.storage.local.get([RATING_ENABLED_BY_USER_KEY, CURRENT_USERNAME_KEY]);
+    ratingUsername = String(store?.[CURRENT_USERNAME_KEY] || "").trim();
+    const map = store?.[RATING_ENABLED_BY_USER_KEY];
+    ratingCardSetting.checked = !(ratingUsername && map && typeof map === "object"
+      && map[ratingUsername] === false);
+  } catch (_) {
+    ratingUsername = "";
+    ratingCardSetting.checked = true;
+  }
+  ratingCardSetting.disabled = !ratingUsername;
+  ratingAccountName.textContent = ratingUsername || "chưa đăng nhập";
+  if (!ratingUsername) {
+    ratingSaveStatus.textContent = "Đăng nhập trên trợ lý rồi mở lại trang này để đổi cài đặt.";
+    ratingSaveStatus.className = "save-status";
+  }
+}
+
+ratingCardSetting.addEventListener("change", async () => {
+  if (!ratingUsername) return;
+  try {
+    const store = await chrome.storage.local.get([RATING_ENABLED_BY_USER_KEY]);
+    const map = { ...(store?.[RATING_ENABLED_BY_USER_KEY] || {}) };
+    map[ratingUsername] = ratingCardSetting.checked === true;
+    await chrome.storage.local.set({ [RATING_ENABLED_BY_USER_KEY]: map });
+    showRatingStatus("Đã lưu cài đặt.");
+  } catch (_) {
+    showRatingStatus("Không lưu được cài đặt. Vui lòng thử lại.", true);
+    await restoreRatingSetting();
+  }
+});
+
+void restoreRatingSetting();

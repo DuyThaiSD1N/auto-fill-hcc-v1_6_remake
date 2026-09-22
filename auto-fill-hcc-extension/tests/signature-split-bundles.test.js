@@ -123,6 +123,38 @@ function plain(value) {
   );
   assert.match(identityOnly.error, /STT1/);
 
+  // Sự cố Nghĩa Hưng 21/09/2026 (gặp ở bản Handfree, cùng máy đính kèm): kế hoạch có tệp KHÔNG
+  // mang bundleId → trước đây hủy cả lượt, mất luôn các tệp lành, mà thử lại thì hỏng y hệt.
+  const lac = await context.buildSignatureSplitBundles(
+    [file("van-ban-1.pdf"), file("van-ban-2.pdf"), file("cccd-ban.pdf"), file("cccd-nguoi-la.pdf")],
+    [
+      { fileIndex: 0, documentName: "Trích lục", componentIndex: 1, target: "existing",
+        bundleId: "signature-1", bundleRole: "signature_document" },
+      { fileIndex: 1, documentName: "Bảo lãnh", componentIndex: 1, target: "existing",
+        bundleId: "signature-2", bundleRole: "signature_document" },
+      { fileIndex: 2, documentName: "Căn cước Ban", componentIndex: 2, target: "existing",
+        bundleId: "signature-2", bundleRole: "identity", identityScope: "matched" },
+      { fileIndex: 3, documentName: "Giấy tờ tùy thân 2", componentIndex: null, target: "new",
+        bundleRole: "identity" },
+    ]
+  );
+  assert.equal(lac.error, undefined, "một tệp lạc không được làm hỏng cả lượt");
+  assert.deepEqual(
+    plain(lac.bundles.map((bundle) => bundle.files.map((item) => item.name))),
+    [["van-ban-1.pdf"], ["van-ban-2.pdf", "cccd-ban.pdf"]]
+  );
+  assert.deepEqual(lac.skippedNames, ["cccd-nguoi-la.pdf"], "phải nêu tên tệp bị bỏ");
+
+  const chiToanTepLac = await context.buildSignatureSplitBundles(
+    [file("cccd-a.pdf"), file("cccd-b.pdf")],
+    [
+      { fileIndex: 0, documentName: "CCCD A", componentIndex: 2, bundleRole: "identity" },
+      { fileIndex: 1, documentName: "CCCD B", componentIndex: 2, bundleId: "signature-1",
+        bundleRole: "identity" },
+    ]
+  );
+  assert.match(chiToanTepLac.error, /chứng thực chữ ký|STT1/i);
+
   console.log("signature split bundles: shared, matched and safe legacy fallback passed");
 })().catch((error) => {
   console.error(error);

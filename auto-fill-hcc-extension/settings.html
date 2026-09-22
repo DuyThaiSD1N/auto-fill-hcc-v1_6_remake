@@ -70,6 +70,32 @@
 
       <p id="saveStatus" class="save-status" role="status" aria-live="polite"></p>
     </section>
+
+    <!-- Lưu THEO TÀI KHOẢN đang đăng nhập trên máy này (một máy quầy nhiều cán bộ dùng chung). -->
+    <section class="settings-card" aria-labelledby="ratingSettingsTitle">
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="ratingSettingsTitle">Đánh giá trải nghiệm</h2>
+          <p>Áp dụng cho tài khoản <strong id="ratingAccountName">đang đăng nhập</strong> trên máy này.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="ratingCardSetting">
+        <span class="setting-copy">
+          <strong>Hỏi đánh giá sau khi gửi hồ sơ</strong>
+          <span>
+            BẬT (mặc định): gửi hồ sơ xong, trợ lý hiện phiếu đánh giá trải nghiệm. TẮT: không hiện phiếu nữa.
+            Việc ghi nhận hồ sơ đã nộp vẫn giữ nguyên, báo cáo không bị thiếu.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="ratingCardSetting" type="checkbox" checked>
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="ratingSaveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
   </main>
 
   <script src="settings.js"></script>

@@ -86,8 +86,9 @@ const reviewCardEl = document.getElementById("reviewCard");
 const supportCodeBtn = document.getElementById("supportCode");
 const supportCodeValueEl = document.getElementById("supportCodeValue");
 const uploadLabel = document.querySelector('label[for="fileInput"]');
-
+ 
 // Danh sách thủ tục lấy từ BE: [{ key, label, roles:[{value,label}], useDangKyBy }]
+
 // Các thủ tục Bắc Ninh có khối "Thông tin trong trường hợp được ủy quyền". Mỗi thủ tục chọn một
 // loại đối tượng và một chủ thể nguồn khác nhau; dùng map để thủ tục mới không phải rải if/else.
 const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
@@ -3718,18 +3719,23 @@ async function buildSignatureSplitBundles(payloadFiles, attachments) {
   const hasBundleContract = entries.some((entry) =>
     entry.planItem?.bundleId || entry.planItem?.bundleRole || entry.planItem?.identityScope);
   if (hasBundleContract) {
-    const invalid = entries.find((entry) =>
-      !entry.planItem?.bundleId ||
-      !["signature_document", "identity"].includes(entry.planItem?.bundleRole));
-    if (invalid) {
-      return {
-        error: `Kế hoạch nhiều hồ sơ thiếu quan hệ bundle cho ${invalid.file?.name || "một tệp"}.`,
-      };
+    // Tệp không có quan hệ hồ sơ (vd giấy tùy thân không khớp người ký nào) thì BỎ RIÊNG tệp đó rồi
+    // đính tiếp phần còn lại. Trước đây hủy cả lượt: hỏng 1 tệp là mất sạch, mà kế hoạch được phát
+    // lại y nguyên nên thử lại hỏng mãi (sự cố Nghĩa Hưng 21/09/2026, bản Handfree cùng bệnh).
+    const usable = entries.filter((entry) => entry.planItem?.bundleId
+      && ["signature_document", "identity"].includes(entry.planItem?.bundleRole));
+    const skippedNames = entries.filter((entry) => !usable.includes(entry))
+      .map((entry) => entry.file?.name || entry.planItem?.fileName || "một tệp");
+    if (!usable.some((entry) => entry.planItem.bundleRole === "signature_document")) {
+      return { error: "Kế hoạch nhiều hồ sơ không có giấy tờ, văn bản cần chứng thực chữ ký." };
+    }
+    if (skippedNames.length) {
+      console.warn("[AutoFill-Split] bỏ tệp không có quan hệ hồ sơ:", skippedNames);
     }
 
     const bundleOrder = [];
     const grouped = new Map();
-    for (const entry of entries) {
+    for (const entry of usable) {
       const bundleId = String(entry.planItem.bundleId);
       if (!grouped.has(bundleId)) grouped.set(bundleId, []);
       grouped.get(bundleId).push(entry);
@@ -3768,7 +3774,7 @@ async function buildSignatureSplitBundles(payloadFiles, attachments) {
       }));
       bundles.push({ files, planItems });
     }
-    return { bundles };
+    return { bundles, skippedNames };
   }
 
   // Contract cũ chỉ an toàn khi có tối đa một identity dùng chung. Nhiều identity nhưng không có
@@ -3854,6 +3860,10 @@ async function attachSplitAcrossTabs(payloadFiles, attachments, procedure, planR
     ? await buildSignatureSplitBundles(payloadFiles, attachments)
     : { bundles: buildDefaultSplitBundles(payloadFiles, attachments, planRes?.stt1VirtualCopy) };
   if (built.error) return built;
+  if (built.skippedNames?.length) {
+    showPageToast(`Bỏ qua ${built.skippedNames.length} tệp chưa xếp được vào hồ sơ nào: `
+      + built.skippedNames.join(", "), "warn");
+  }
   const bundles = built.bundles || [];
   if (!bundles.length) return { error: "Không có tài liệu để tách hồ sơ." };
   const firstBundle = bundles[0];
@@ -4481,6 +4491,8 @@ ocrBtn.addEventListener("click", async () => {
       // [Lào Cai] 1.115671: người nộp thường là NGƯỜI ĐẠI DIỆN ký thay tổ chức → phải có mốc tài
       // khoản mới tách được nhân thân người nộp khỏi nhân thân chủ hồ sơ là tổ chức.
       cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||
+      // [Lào Cai] 1.115650: chủ hồ sơ thường là DOANH NGHIỆP, hồ sơ đầy người có số định danh (người
+      cfg.key === "giao-thue-dat-lao-cai" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {

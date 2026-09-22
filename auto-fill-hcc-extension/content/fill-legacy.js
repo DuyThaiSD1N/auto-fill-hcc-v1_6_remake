@@ -834,10 +834,6 @@ function foldLegacyChoice(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s*[-–—‐‑]+\s*/g, " ")
-    // Dấu nháy trong tên dân tộc ("K'Ho", "H'Mông", "M'Nông") phải DÍNH LIỀN, không được thành
-    // khoảng trắng/ranh giới từ: "k'ho" tách ra thì option "Họ" lọt vào khớp lỏng và được chọn
-    // thay cho "Cơ Ho" (gặp thật ở thủ tục xác nhận tình trạng hôn nhân).
-    .replace(/['’‘`´ʼ]/g, "")
     // Nhãn option của cổng có chỗ viết "…" (một ký tự), chỗ viết "..." (ba dấu chấm), lại hay
     // kèm khoảng trắng lạ — vd option tình trạng hôn nhân "Từ ngày… tháng… năm… đến ngày…".
     // Không gộp thì chuỗi ta gửi lên không khớp option nào, dropdown bị bỏ trống.
