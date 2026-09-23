@@ -33,6 +33,8 @@ function removeResultName(list, name) {
 
 const LEGACY_REPAIRABLE_COMPS = new Set([
   "raw",
+  // Địa chỉ Tỉnh/Phường: eForm có thể dựng lại khối và xóa sau khi đã điền.
+  "x-select-area",
   "x-input",
   "x-input-number",
   "x-date",
@@ -122,6 +124,49 @@ function findLegacyRadioTarget(container, value) {
   }) || null;
 }
 
+// Ô bọc riêng của MỘT option. Có mẫu dựng option bằng <p class="p_checkbox_custom radio-custom">
+// chứa input ẩn + text nhãn, KHÔNG có <label for>, nên phải lần ngược lên phần tử cha gần nhất
+// mà chỉ chứa đúng checkbox này.
+function legacyRadioOptionWrap(container, box) {
+  let wrap = null;
+  let node = box?.parentElement || null;
+  // Leo tới ông cha XA NHẤT vẫn chỉ chứa đúng checkbox này: nhãn có thể nằm ở cấp trên input.
+  while (node && node !== container) {
+    if (node.querySelectorAll('input[type="checkbox"]').length !== 1) break;
+    wrap = node;
+    node = node.parentElement;
+  }
+  return wrap;
+}
+
+function legacyRadioOptionLabel(container, box) {
+  const label = container.querySelector(`label[for="${CSS.escape(box.id)}"]`);
+  if (label) return label.textContent;
+  return legacyRadioOptionWrap(container, box)?.textContent || "";
+}
+
+// Trạng thái THẬT của một x-select-area sau khi điền. eForm hộ tịch có lúc dựng lại cả khối một nhịp
+// SAU khi dropdown đi trước đổi giá trị: Tỉnh/Phường vừa điền bị xóa trắng. Phải đọc lại được để pass
+// sửa lỗi điền bù. Chỉ xét hai dạng đã biết cấu trúc: chuỗi ghi tay và địa chỉ {tinh, xa, diaChi};
+// dạng khác (bản án ly hôn, khoảng thời gian...) coi như đã đạt để không điền lại lung tung.
+function legacySelectAreaState(container, usedName, field) {
+  if (isPlainSelectAreaValue(field.value)) {
+    const input = selectAreaPlainTextInput(container, usedName);
+    return {
+      supported: true,
+      filled: !!input && legacyScalarMatches(input.value, field.value),
+      container,
+      target: input?.parentElement || container,
+    };
+  }
+  const data = normalizeAreaValue(field.value);
+  if (!data || typeof data !== "object" || hasDivorceDecisionAreaValue(data) || (!data.tinh && !data.xa)) {
+    return { supported: false, filled: true };
+  }
+  const filled = legacyAreaRolesFilled(container, data) && legacyAreaDetailFilled(container, data);
+  return { supported: true, filled, container, target: container };
+}
+
 function legacyFieldState(field) {
   if (!field || !LEGACY_REPAIRABLE_COMPS.has(field.comp)) return { supported: false, filled: true };
   const names = fieldCandidates(field);
@@ -157,6 +202,9 @@ function legacyFieldState(field) {
         legacyScalarMatches(year?.value, full[3])
       : !!yearOnly && legacyScalarMatches(year?.value, raw);
     return { supported: true, filled, container, target: (day || month || year)?.parentElement || container };
+  }
+  if (field.comp === "x-select-area") {
+    return legacySelectAreaState(container, found.usedName, field);
   }
   if (field.comp === "x-radio") {
     const target = findLegacyRadioTarget(container, field.value);
@@ -335,6 +383,7 @@ function guessOtherTextOfSelect(field) {
 async function fillForm(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
+  legacyFillRun++;   // mở lại hạn mức hai lượt điền cho mỗi khối địa chỉ
   const result = { filled: 0, notFound: [], errors: [] };
   const filledNames = new Set();
 
@@ -667,7 +716,7 @@ function foldLegacyChoice(value) {
     .toLowerCase();
 }
 
-async function pickInWidget(root, value) {
+async function pickInWidget(root, value, { markMissing = true } = {}) {
   const header = root.querySelector(".input-field-select");
   if (!header) return false;
   header.click();
@@ -708,7 +757,9 @@ async function pickInWidget(root, value) {
     console.warn(`[AutoFill] pickInWidget: không khớp "${value}". Option hiện có:`,
       getOpts().map((o) => o.textContent.trim()).filter(Boolean).slice(0, 20));
     header.click();
-    markUnfilled(root.querySelector(".input-field-select") || root);
+    // markMissing=false: khối địa chỉ ở lượt điền đầu còn một lượt nữa sau khi tick lại ô phạm vi,
+    // tô đỏ ngay bây giờ chỉ làm ô nháy đỏ rồi xanh — để lượt cuối quyết định màu.
+    if (markMissing) markUnfilled(root.querySelector(".input-field-select") || root);
     return false;
   }
   target.click();
@@ -1139,21 +1190,156 @@ async function fillSelectArea(container, f) {
   if (hasDivorceDecisionAreaValue(data)) {
     return fillDivorceDecisionArea(container, data);
   }
+  // Không có Tỉnh/Xã để đối chiếu thì không kết luận được khối đúng hay sai → điền một lượt như cũ.
+  if (!data.tinh && !data.xa) return fillAreaWidgets(container, data);
+
+  const state = legacyAreaFillState(container);
+  // ĐÃ ĐIỀN ĐƯỢC: giữ nguyên khối xanh — không tick lại ô phạm vi, không chọn lại dropdown.
+  if (state.fills && legacyAreaRolesFilled(container, data) && legacyAreaDetailFilled(container, data)) {
+    return true;
+  }
+  // Hết hai lượt mà vẫn trượt → dừng, nhường cho pass đánh dấu cuối cùng tô đỏ.
+  if (state.fills >= LEGACY_AREA_MAX_FILLS) return false;
+
+  // LƯỢT 1 — chưa phân biệt được "cổng dựng hỏng khối" với "khối render chậm" nên KHÔNG tô đỏ:
+  // còn nguyên một lượt điền nữa sau khi tick lại ô phạm vi, tô đỏ bây giờ chỉ làm khối nháy đỏ.
+  state.fills++;
+  const any = await fillAreaWidgets(container, data, { markMissing: false });
+  if (legacyAreaRolesFilled(container, data)) return any;
+  if (!(await resetLegacyAreaScope(container))) {
+    // Không tìm được ô "Trong nước/Khác" để tick lại thì điền lần 2 cũng ra kết quả cũ → tô đỏ luôn.
+    state.fills = LEGACY_AREA_MAX_FILLS;
+    markMissingAreaRoles(container, data);
+    return any;
+  }
+  // Tick lại có thể làm cổng dựng phần tử MỚI → lấy lại khối theo name trước khi điền lần 2.
+  let fresh = container;
+  if (!container.isConnected) {
+    fresh = findNamedElement("x-select-area", fieldCandidates(f)).el || container;
+  }
+  // LƯỢT 2 là lượt cuối → tô bình thường: vào được thì xanh, vẫn trượt thì đỏ.
+  state.fills = LEGACY_AREA_MAX_FILLS;
+  legacyAreaFillState(fresh).fills = LEGACY_AREA_MAX_FILLS;
+  const retried = await fillAreaWidgets(fresh, data);
+  return any || retried;
+}
+
+function legacyAreaWidgetsByRole(container) {
+  const byRole = {};
+  for (const widget of container.querySelectorAll('[id^="custom-select-"]')) {
+    const role = areaRoleOf(widget);
+    if (role && !byRole[role]) byRole[role] = widget;
+  }
+  return byRole;
+}
+
+// Tỉnh/Xã đã chọn đúng chưa — dùng để biết có phải dựng lại khối địa chỉ rồi điền lần 2 không.
+function legacyAreaRolesFilled(container, data) {
+  const byRole = legacyAreaWidgetsByRole(container);
+  const picked = (role) => byRole[role]?.querySelector(".input-field-select")?.textContent || "";
+  if (data.tinh && !(byRole.tinh && legacyChoiceMatches(picked("tinh"), data.tinh))) return false;
+  if (data.xa && !(byRole.xa && legacyChoiceMatches(picked("xa"), data.xa))) return false;
+  return true;
+}
+
+// Ô "Địa chỉ" (số nhà/đường) trong khối đã đúng giá trị cần điền chưa.
+function legacyAreaDetailFilled(container, data) {
+  if (!data.diaChi) return true;
+  return legacyScalarMatches(container.querySelector("input.input-field")?.value, data.diaChi);
+}
+
+// Lượt 1 điền với markMissing=false; khi không còn lượt 2 thì phải tự tô đỏ ô Tỉnh/Xã còn trượt.
+function markMissingAreaRoles(container, data) {
+  const byRole = legacyAreaWidgetsByRole(container);
+  for (const role of ["tinh", "xa"]) {
+    const w = byRole[role];
+    if (!w || !data[role]) continue;
+    const header = w.querySelector(".input-field-select");
+    if (!legacyChoiceMatches(header?.textContent, data[role])) markUnfilled(header || w);
+  }
+}
+
+// Ô tích phạm vi địa chỉ ("Trong nước" / "Nước ngoài" / "Khác") chi phối khối x-select-area đứng
+// ngay dưới. Tìm NGƯỢC LÊN tối đa 5 cấp, bỏ qua ô tích nằm trong chính khối địa chỉ.
+function legacyAreaScopeGroup(container) {
+  let node = container.parentElement;
+  for (let level = 0; node && level < 5; level++, node = node.parentElement) {
+    for (const group of node.querySelectorAll("x-radio")) {
+      if (group.contains(container) || container.contains(group)) continue;
+      const boxes = Array.from(group.querySelectorAll('input[type="checkbox"]'));
+      if (boxes.length < 2) continue;
+      const labelOf = (box) => foldLegacyChoice(legacyRadioOptionLabel(group, box));
+      if (!boxes.some((box) => labelOf(box).includes("trong nuoc"))) continue;
+      const current = boxes.find((box) => box.checked);
+      if (!current) continue;
+      const others = boxes.filter((box) => box !== current);
+      // Ưu tiên nhảy sang "Khác"/"Nước ngoài" — hai option này chắc chắn làm cổng dựng lại khối.
+      const other = others.find((box) => /khac|nuoc ngoai/.test(labelOf(box))) || others[0];
+      if (other) return { group, current, other };
+    }
+  }
+  return null;
+}
+
+async function clickLegacyRadioOption(group, box) {
+  box.click();
+  const wrap = legacyRadioOptionWrap(group, box);
+  if (!box.checked && wrap && wrap !== box) wrap.click();
+  // Fallback cho bản web-component chặn click tổng hợp (giống fillRadio).
+  if (!box.checked) {
+    box.checked = true;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
+
+// Cổng dichvucong thỉnh thoảng dựng HỎNG khối địa chỉ: dropdown Tỉnh/Xã không có option hoặc chọn
+// không ăn, nên pass sửa lỗi điền lại bao nhiêu lần cũng trượt. Tick sang option KHÁC của ô "Trong
+// nước/Nước ngoài" rồi tick lại option cũ → cổng dựng lại khối từ đầu, lúc đó điền mới ăn.
+async function resetLegacyAreaScope(container) {
+  const scope = legacyAreaScopeGroup(container);
+  if (!scope) return false;
+  console.warn("[AutoFill] Khối địa chỉ lỗi — tick lại ô phạm vi rồi điền lần 2.");
+  await clickLegacyRadioOption(scope.group, scope.other);
+  await sleep(400);
+  await clickLegacyRadioOption(scope.group, scope.current);
+  await sleep(600);
+  return true;
+}
+
+// Mỗi khối địa chỉ chỉ được điền TỐI ĐA hai lượt trong một lần fill: lượt đầu, rồi nếu Tỉnh/Xã
+// chưa vào thì tick lại ô phạm vi ("Khác" → "Trong nước") cho cổng dựng lại khối và điền lượt hai.
+// Hết hai lượt là CHỐT: các pass sửa lỗi phía sau không chọn lại dropdown nữa. Chọn đi chọn lại
+// không chữa được khối cổng dựng hỏng, mà mỗi lượt lại làm mất ô "Địa chỉ" và tốn vài giây.
+const LEGACY_AREA_MAX_FILLS = 2;
+let legacyFillRun = 0;
+const legacyAreaFills = new WeakMap();
+
+function legacyAreaFillState(container) {
+  const state = legacyAreaFills.get(container);
+  if (state && state.run === legacyFillRun) return state;
+  const fresh = { run: legacyFillRun, fills: 0 };
+  legacyAreaFills.set(container, fresh);
+  return fresh;
+}
+
+async function fillAreaWidgets(container, data, { markMissing = true } = {}) {
   // Area thường được hiện ra sau khi tick radio "Trong nước" ngay trước đó →
   // sub-widget có thể chưa kịp render. Chờ tối đa 1.5s.
   await waitFor(() => container.querySelector('[id^="custom-select-"]'), 1500);
-  const widgets = Array.from(container.querySelectorAll('[id^="custom-select-"]'));
-  const byRole = {};
-  for (const w of widgets) {
-    const r = areaRoleOf(w);
-    if (r && !byRole[r]) byRole[r] = w;
-  }
+  const byRole = legacyAreaWidgetsByRole(container);
   let any = false;
   for (const role of ["quocGia", "tinh", "xa"]) {
     const w = byRole[role];
     const val = data[role];
     if (!w || !val) continue;
-    const ok = await pickInWidget(w, val);
+    // Ô đã đúng sẵn → giữ nguyên viền xanh: chọn lại chỉ làm cổng load lại tầng dưới và xóa mất
+    // xã/phường vừa chọn ở lượt trước.
+    if (legacyChoiceMatches(w.querySelector(".input-field-select")?.textContent, val)) {
+      markFilled(w.querySelector(".input-field-select") || w);
+      any = true;
+      continue;
+    }
+    const ok = await pickInWidget(w, val, { markMissing });
     if (ok) { any = true; await sleep(700); } // chờ tầng dưới load qua AJAX
   }
   if (data.diaChi) {

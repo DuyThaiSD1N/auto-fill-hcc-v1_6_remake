@@ -1,4 +1,4 @@
-const TLND_DEFAULT_BASE_URL = "https://trolyhoso-hcc.tiengnoi.vn";  // Backend CHÍNH
+const TLND_DEFAULT_BASE_URL = "http://localhost:12005";  // Backend CHÍNH (LOCAL test — production: https://trolyhoso-hcc.tiengnoi.vn)
 
 const TLND_BASE_URL_KEY = "tlnd_base_url";
 const TLND_LEGACY_BASE_URLS = new Set([
@@ -8,7 +8,7 @@ const TLND_LEGACY_BASE_URLS = new Set([
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản, nếu không
 // khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
-const TLND_FALLBACK_BASE_URL = "https://trolyhoso-hcc.vnekyc.vn";
+const TLND_FALLBACK_BASE_URL = "";  // LOCAL test: tắt failover (production: https://trolyhoso-hcc.vnekyc.vn)
 const TLND_API_TIMEOUT_MS = 100000;        // đủ dài cho chat/OCR+LLM; chỉ cắt server TREO thật rồi mới failover
 const TLND_FAILOVER_COOLDOWN_MS = 30000;   // chính vừa lỗi thì ưu tiên phụ trong khoảng này rồi thử lại chính
 
