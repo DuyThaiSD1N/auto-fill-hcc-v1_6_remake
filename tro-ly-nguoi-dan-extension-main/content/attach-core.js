@@ -12,12 +12,65 @@ const {
   setNativeValue, dispatchInputEvent, dispatchKeyboardEvent, detectFormKind, foldChoiceText,
 } = H;
 
-function hasAttachmentTarget() {
-  return !!(
-    document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]') || // cổng Bắc Ninh
-    findCopyCertificationAttachmentRow() ||
-    findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"])
+// Trang "Thông tin chủ hồ sơ" nhánh ỦY QUYỀN có MỘT bảng đính kèm riêng cho văn bản ủy quyền
+// ("Tên hồ sơ | Đính kèm | Hành động", đúng một dòng, nút cũng ghi "Chọn tệp đính kèm").
+// Nó KHÔNG phải bảng thành phần hồ sơ: nhận nhầm là bot bỏ qua cả bước chủ hồ sơ và có thể
+// đính giấy tờ cần chứng thực vào đúng ô giấy ủy quyền.
+const AUTHORIZATION_ROW_MARKERS = ["tai lieu uy quyen", "van ban uy quyen", "giay uy quyen"];
+
+function isAuthorizationAttachmentRow(row) {
+  if (!row) return false;
+  if (AUTHORIZATION_ROW_MARKERS.some((marker) => foldedNodeText(row).includes(marker))) return true;
+  const table = row.closest?.("table");
+  if (!table) return false;
+  // Bảng ủy quyền dùng "Tên hồ sơ"/"Hành động"; bảng thành phần hồ sơ dùng "Tên thành phần
+  // hồ sơ"/"Thao Tác". Chỉ loại khi chắc chắn KHÔNG phải bảng thành phần hồ sơ.
+  const head = foldedNodeText(table.querySelector("thead") || table);
+  return head.includes("ten ho so") && head.includes("hanh dong")
+    && !head.includes("thanh phan ho so");
+}
+
+function findAuthorizationAttachmentRow() {
+  return Array.from(document.querySelectorAll("tr")).find(
+    (row) => isAuthorizationAttachmentRow(row) && hasAttachmentChooseControl(row),
+  ) || null;
+}
+
+// Giấy ủy quyền đính vào ô RIÊNG ở bước chủ hồ sơ, không đi qua kế hoạch đính kèm của bước
+// Thành phần hồ sơ (dòng này đã bị loại khỏi danh sách thành phần có chủ ý). Dùng lại đúng
+// engine ví tài liệu của cổng nên không phát sinh đường đính kèm thứ hai.
+async function attachAuthorizationFile(payloadFile) {
+  const row = findAuthorizationAttachmentRow();
+  if (!row) return { error: "Không thấy dòng đính kèm giấy ủy quyền trên trang." };
+  // Dòng này chỉ chứa MỘT tệp. Đã có tệp thì coi như xong, không đính đè: cổng đổi tên tệp khi
+  // lưu (bỏ dấu) nên so tên để quyết định đính lại là dễ đính thành hai bản.
+  const existing = rowAttachedFileName(row);
+  if (existing) return { ok: true, attached: 1, fileNames: [existing], skipped: true };
+  // KHÔNG truyền componentName: nếu dòng bị dựng lại, bộ dò theo tên sẽ tìm trong danh sách
+  // thành phần hồ sơ — nơi dòng này cố tình không có mặt.
+  return await attachOneFileViaDocumentWallet(row, payloadFile, {
+    documentName: attachmentDocumentName(payloadFile),
+  });
+}
+
+function hasAuthorizationAttachmentBlock() {
+  // Mốc CHẮC NHẤT là nhãn khối: nhánh ủy quyền đổi "Thông tin chủ hồ sơ" thành "Thông tin
+  // người nộp hồ sơ" và mọc thêm khối "Thông tin ủy quyền cá nhân". Bảng đính kèm giấy ủy
+  // quyền chỉ là dấu hiệu phụ — nó có thể đổi markup, nhãn khối thì không.
+  const headingFound = Array.from(document.querySelectorAll("h1,h2,h3")).some(
+    (el) => foldedNodeText(el).includes("thong tin uy quyen"),
   );
+  if (headingFound) return true;
+  return Array.from(document.querySelectorAll("tr")).some(
+    (row) => isAuthorizationAttachmentRow(row) && hasAttachmentChooseControl(row),
+  );
+}
+
+function hasAttachmentTarget() {
+  if (document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]')) return true; // Bắc Ninh
+  if (findCopyCertificationAttachmentRow()) return true;
+  const button = findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"]);
+  return !!button && !isAuthorizationAttachmentRow(button.closest?.("tr"));
 }
 
 const COPY_CERT_ATTACHMENT_SNIPPETS = [
@@ -183,7 +236,8 @@ function findCopyCertificationAttachmentRow() {
   if (matched) return matched;
 
   const button = findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"]);
-  return button?.closest?.("tr") || null;
+  const row = button?.closest?.("tr") || null;
+  return isAuthorizationAttachmentRow(row) ? null : row;
 }
 
 function isAddAttachmentRow(row) {
@@ -216,6 +270,7 @@ function hasAttachmentChooseControl(row) {
 function findAttachmentCandidateRows() {
   return Array.from(document.querySelectorAll("tr")).filter((row) => {
     if (isAddAttachmentRow(row)) return false;
+    if (isAuthorizationAttachmentRow(row)) return false; // dòng giấy ủy quyền ở bước chủ hồ sơ
     return hasAttachmentChooseControl(row);
   });
 }
@@ -503,8 +558,7 @@ function isCopyCertificationDefaultComponentName(value) {
 
 function rowAttachedFileName(row) {
   if (!row) return "";
-  const cells = Array.from(row?.cells || []);
-  const attachCell = cells[2] || row;
+  const attachCell = attachmentFileCell(row);
   if (!attachCell) return "";
   const clone = attachCell.cloneNode(true);
   clone.querySelectorAll("button, svg, input, textarea, select").forEach((node) => node.remove());
@@ -574,8 +628,13 @@ function findEmptyAttachmentRowByComponent(componentName) {
   ) || null;
 }
 
+// Bảng thành phần hồ sơ có 5 cột (STT | Tên thành phần | Đính kèm tệp tin | Loại chứng thực |
+// Thao Tác) nên ô tệp là cột 3. Bảng giấy ủy quyền ở bước chủ hồ sơ chỉ có 3 cột (Tên hồ sơ |
+// Đính kèm | Hành động) → ô tệp là cột 2; đọc cứng cột 3 là trúng cột Hành động, sau khi bỏ
+// nút view/delete thì còn rỗng, nên đính xong vẫn báo "cổng chưa ghi nhận".
 function attachmentFileCell(row) {
   const cells = Array.from(row?.cells || []);
+  if (isAuthorizationAttachmentRow(row)) return cells[1] || row || null;
   return cells[2] || row || null;
 }
 
@@ -2099,6 +2158,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     sendResponse({ ok: true, url: location.href, attachmentContext: collectAttachmentContext() });
     return;
   }
+  if (msg?.action === "attachAuthorizationFile") {
+    // Chỉ frame có ĐÚNG bảng giấy ủy quyền trả lời; frame khác im (all_frames).
+    if (!findAuthorizationAttachmentRow()) return;
+    if (!msg.file) { sendResponse({ error: "Không có tệp giấy ủy quyền." }); return; }
+    attachAuthorizationFile(msg.file)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ error: `Lỗi đính giấy ủy quyền: ${e?.message || e}` }));
+    return true; // async
+  }
   if (msg?.action === "attachFilesByPlan") {
     if (!hasAttachmentTarget()) return;
     const files = Array.isArray(msg.files) ? msg.files : [];
@@ -2121,6 +2189,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 Object.assign(H, {
   attachFilesByPlan, collectAttachmentContext, hasAttachmentTarget,
+  hasAuthorizationAttachmentBlock,
   dataUrlToFile, setFilesOnInput, payloadForPlanItem, collectProcedureSignals,
 });
 

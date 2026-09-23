@@ -85,6 +85,10 @@ button { font-family: inherit; }
   font-size: 10.5px; opacity: .92;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Khung "hồ sơ phụ" (companion.html) ở tab hồ sơ tách. Dòng phụ ở đây không phải khẩu hiệu mà
+   là TÊN HỒ SƠ của tab — thứ duy nhất phân biệt tab này với mấy tab hồ sơ còn lại, nên phải đọc
+   được ở tầm mắt người lớn tuổi chứ không nằm ở cỡ chữ 10.5px như dòng phụ thường. */
+.bot-h .s.ho-so-phu { font-size: 12px; font-weight: 700; opacity: 1; }
 .bot-h .sp { display: flex; gap: 4px; flex-shrink: 0; }
 .bot-h .ib {
   width: 28px; height: 28px; border-radius: 8px;
@@ -442,11 +446,46 @@ body.settings-mode .bot-f { display: none; }
   white-space: normal; line-height: 1.3;
 }
 .docs-done-actions { margin-top: 1px; }
-.docs-done-actions .chip { width: 100%; }
+.docs-done-actions .chip {
+  width: 100%;
+  box-shadow: 0 7px 18px rgba(18, 160, 106, .22);
+}
 
-/* Nút chuyển bước / gửi hồ sơ (guidedSteps). Ở mấy bước này công dân chỉ có MỘT việc phải
-   làm, nên nút chiếm trọn chiều ngang và nhịp nhẹ để mắt bắt được ngay giữa khung chat. */
+/* ── Nhịp "nẩy" của nút việc-chính ──
+   Dùng chung cho mọi nút đang là việc DUY NHẤT công dân phải làm: bắt đầu thủ tục, chốt giấy
+   tờ, chuyển bước, gửi hồ sơ. Khung chat trôi liên tục và người lớn tuổi quét mắt qua chữ,
+   nút đứng yên rất dễ bị bỏ qua — nẩy hai nhịp rồi lặng kèm vòng sáng lan ra thì mắt bắt được
+   mà không thành đèn nháy. Vòng sáng đi bằng box-shadow chứ không bằng phần tử phụ: chip là
+   button trần, không có lớp bọc để đặt vòng ra ngoài. */
+@keyframes tlnd-nay-nut {
+  0%, 100% { transform: translateY(0) scale(1); }
+  28% { transform: translateY(-5px) scale(1.03); }
+  50% { transform: translateY(0) scale(.99); }
+  70% { transform: translateY(-2px) scale(1.012); }
+}
+@keyframes tlnd-nay-vien-cam {
+  0% { box-shadow: 0 6px 16px rgba(217, 84, 47, .32), 0 0 0 0 rgba(240, 138, 75, .5); }
+  75%, 100% { box-shadow: 0 6px 16px rgba(217, 84, 47, .32), 0 0 0 13px rgba(240, 138, 75, 0); }
+}
+@keyframes tlnd-nay-vien-xanh {
+  0% { box-shadow: 0 7px 18px rgba(18, 160, 106, .22), 0 0 0 0 rgba(18, 160, 106, .42); }
+  75%, 100% { box-shadow: 0 7px 18px rgba(18, 160, 106, .22), 0 0 0 13px rgba(18, 160, 106, 0); }
+}
+/* Vệt sáng quét ngang, chỉ dành cho nút cam chuyển bước — đây là nút mạnh nhất trong khung.
+   Chạy bằng transform (không phải `left`) để khỏi tính lại bố cục mỗi khung hình: sidebar còn
+   đang cuộn chat, vẽ lại liên tục là giật. */
+@keyframes tlnd-nay-loe {
+  0%, 55% { transform: translateX(0) skewX(-18deg); }
+  100% { transform: translateX(500%) skewX(-18deg); }
+}
+
+.start-btn,
+.docs-done-actions .chip {
+  animation: tlnd-nay-nut 1.7s ease-in-out infinite, tlnd-nay-vien-xanh 1.7s ease-out infinite;
+}
+/* Nút chuyển bước / gửi hồ sơ (guidedSteps). */
 .chip.cta {
+  position: relative; overflow: hidden;
   width: 100%;
   justify-content: center;
   padding: 13px 14px;
@@ -455,13 +494,15 @@ body.settings-mode .bot-f { display: none; }
   background: linear-gradient(135deg, #f08a4b, #d9542f);
   border-color: transparent; color: #fff;
   box-shadow: 0 6px 16px rgba(217, 84, 47, .32);
-  animation: ctaPulse 1.8s ease-in-out infinite;
+  animation: tlnd-nay-nut 1.7s ease-in-out infinite, tlnd-nay-vien-cam 1.7s ease-out infinite;
+}
+.chip.cta::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 38%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .5), transparent);
+  transform: skewX(-18deg); pointer-events: none;
+  animation: tlnd-nay-loe 2.6s ease-in-out infinite;
 }
 .chip.cta:hover { background: linear-gradient(135deg, #ef7f3b, #cc4a27); }
-@keyframes ctaPulse {
-  0%, 100% { transform: translateY(0); box-shadow: 0 6px 16px rgba(217, 84, 47, .32); }
-  45% { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(217, 84, 47, .42); }
-}
 /* Đã bấm: chuyển hẳn sang trạng thái "xong" (xanh, đứng yên) thay vì mờ đi như chip thường —
    công dân nhìn là biết lệnh đã nhận, không bấm lại. */
 .chip.cta:disabled,
@@ -470,6 +511,13 @@ body.settings-mode .bot-f { display: none; }
   background: var(--teal-soft); color: var(--teal-d);
   border-color: #bce3d3; box-shadow: none;
 }
+.chip.cta:disabled::before { display: none; }
+
+/* Đang khoá (chờ tệp đầu tiên) hoặc đang bị bấm thì phải đứng yên: nẩy lúc đó là mời bấm một
+   nút không bấm được, hoặc nuốt mất phản hồi lún xuống của cú bấm. Đặt CUỐI khối vì các luật
+   trên cùng độ ưu tiên — viết trước là bị chính nút cam ghi đè. */
+.chip:disabled, .chip.cta:disabled, .start-btn:disabled { animation: none; }
+.chip:active, .chip.cta:active, .start-btn:active { animation: none; }
 
 /* ── Thẻ dịch vụ ── */
 .svc2 {
@@ -1046,7 +1094,8 @@ body.settings-mode .bot-f { display: none; }
 @keyframes tp { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .wave i, .typing i, .pipe-spin, .svc-sheet, .chip.cta { animation: none; }
+  .wave i, .typing i, .pipe-spin, .svc-sheet,
+  .chip.cta, .chip.cta::before, .start-btn, .docs-done-actions .chip { animation: none; }
   .svc2, .svc2 .arr, .chip, .step-meter > i, .file-list-row,
   .tl, .allbar, .srow, .svc-sheet-close, .svc-voice,
   .rating-opt, .rating-chip, .rating-mic, .rating-submit, .tlnd-toast { transition: none; }
@@ -1291,6 +1340,8 @@ body.settings-mode .bot-f { display: none; }
   max-height: 228px; /* ~6 dòng × 38px */
   overflow-y: auto;
 }
+/* Không đủ chỗ phía dưới (ô cuối card sát đáy khung chat) → mở NGƯỢC LÊN. */
+.ssel-list.up { top: auto; bottom: calc(100% + 4px); }
 .ssel-item { padding: 9px 12px; font-size: 13px; cursor: pointer; }
 .ssel-item:hover { background: var(--teal-soft); }
 .ssel-item.on { background: var(--teal-soft); font-weight: 700; color: var(--teal-d); }
@@ -1315,19 +1366,6 @@ body.settings-mode .bot-f { display: none; }
 .scan-recent-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; }
 .scan-recent-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .scan-recent-row button { padding: 2px 10px; font-size: 13px; background: var(--teal-d); }
-
-/* Lời mời dùng lại giấy tờ của hồ sơ trước — tông xanh: GỢI Ý tiện lợi, không phải cảnh báo. */
-.prev-session-offer {
-  display: flex; align-items: center; gap: 8px;
-  padding: 7px 10px 7px 14px; font-size: 12px;
-  color: #23486e; background: #eef4fd; border-top: 1px solid #bcd4ef;
-}
-.prev-session-offer[hidden] { display: none; }
-.prev-offer-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prev-offer-use {
-  flex: 0 0 auto; border: 0; border-radius: 7px; cursor: pointer;
-  padding: 5px 11px; font-size: 12px; font-weight: 700; color: #fff; background: var(--blue);
-}
 
 /* Lớp phủ kéo-thả tệp (sidebar.js — khối "Kéo-thả tệp"). Không chặn click khi ẩn. */
 .drop-overlay {

@@ -23,7 +23,10 @@
   // id của cổng (ổn định hơn class Tailwind đổi theo build). Bước Thành phần hồ sơ KHÔNG có
   // data-e2e nên phải khai riêng id; data-e2e="btn-next" dùng chung cho cả nút "Bước tiếp
   // theo" (bước 1) lẫn "Gửi hồ sơ" (bước 4) → luôn kiểm chữ trên nút để không bấm nhầm nộp.
+  // Nhánh ủy quyền của bước chủ hồ sơ MẤT data-e2e="btn-next" và đổi id — khai tường minh
+  // chứ không trông vào nhánh dự phòng button[type=submit].
   const NEXT_SELECTORS = ['button[id^="kt_buoc-tiep-theo"]', "#nop-thu-tuc-b-3",
+                          "#nop-thu-tuc-b-3-uy-quyen",
                           'button[data-e2e="btn-next"]', 'button[type="submit"]'];
   const NEXT_TEXTS = ["buoc tiep theo"];
   const SUBMIT_SELECTORS = ["#kt_gui-ho-so", 'button[data-e2e="btn-next"]',

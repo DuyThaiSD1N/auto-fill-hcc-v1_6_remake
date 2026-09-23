@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trợ lý nhân dân — hồ sơ phụ</title>
+  <!-- Dùng CHUNG sidebar.css: hồ sơ phụ phải nhìn y như khung chính, công dân không được
+       cảm thấy vừa rơi sang một công cụ khác. -->
+  <link rel="stylesheet" href="sidebar.css" />
+</head>
+<body>
+  <div class="tlnd-app">
+    <header class="bot-h">
+      <div class="bot-h-top">
+        <div class="ava" id="bot-avatar"></div>
+        <div class="ht">
+          <div class="title-line">
+            <div class="t">Trợ lý nhân dân</div>
+          </div>
+          <!-- Thay dòng "Hỗ trợ thủ tục hành chính công" bằng tên hồ sơ của tab này: đây là
+               thứ duy nhất phân biệt tab này với các tab hồ sơ khác. companion.js điền. -->
+          <div class="s ho-so-phu" id="ho-so-nhan">Hồ sơ phụ</div>
+        </div>
+        <div class="sp">
+          <button id="min-btn" class="ib" type="button" title="Thu gọn">–</button>
+          <button id="close-btn" class="ib" type="button" title="Thu về biểu tượng">✕</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="bot-b" id="messages"></main>
+  </div>
+
+  <script src="services/render.js"></script>
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="api/credentials.js"></script>
+  <script src="api/client.js"></script>
+  <script src="companion.js"></script>
+</body>
+</html>

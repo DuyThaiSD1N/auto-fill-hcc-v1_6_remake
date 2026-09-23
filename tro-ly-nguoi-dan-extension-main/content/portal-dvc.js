@@ -446,9 +446,52 @@
         ? comboDisplayedValue(scope)
         : control.value;
       const key = field.key || field.name || field.label || "";
-      if (key) values[key] = usableOwnerValue(raw) ? ownerScalarValue(raw) : "";
+      if (!key) continue;
+      values[key] = {
+        value: usableOwnerValue(raw) ? ownerScalarValue(raw) : "",
+        // Bắt buộc hay không phải đọc từ CHÍNH trang, không khai cứng ở backend: cùng một ô
+        // "Địa chỉ chi tiết" có dấu * ở nhánh tự làm nhưng KHÔNG có ở nhánh ủy quyền.
+        required: fieldMarkedRequired(field),
+      };
     }
     return values;
+  }
+
+  // Trạng thái các ô BẮT BUỘC của trang chủ hồ sơ, đọc THUẦN từ DOM (không cần contract của
+  // backend, nên dùng được ngay ở nhịp page_status đầu tiên). Backend lấy đây để quyết định
+  // có phải xin giấy tờ ngay tại bước này không: còn ô trống thì quét giấy để tự điền, đủ
+  // hết rồi thì khỏi bắt công dân quét lại. Nhánh ủy quyền có thêm 4 ô luôn trống nên tự
+  // rơi vào vế "còn thiếu" mà không cần luật riêng.
+  function ownerFormRequiredState() {
+    const labels = Array.from(document.querySelectorAll("label"))
+      .filter((element) => isVisible(element) && /\*/.test(element.textContent || ""));
+    let required = 0;
+    let missing = 0;
+    for (const label of labels) {
+      let filled = null;
+      let scope = label.parentElement;
+      for (let i = 0; i < 6 && scope && filled === null; i++, scope = scope.parentElement) {
+        // react-select chỉ dựng singleValue khi ĐÃ chọn; input của nó luôn rỗng nên phải
+        // xét trước, nếu không ô "Nơi cấp" đã chọn vẫn bị tính là thiếu.
+        const combo = scope.querySelector('[class*="singleValue"]');
+        if (combo) { filled = !!nodeText(combo); break; }
+        const control = Array.from(scope.querySelectorAll("input:not([type=hidden]),textarea"))
+          .find(isVisible);
+        if (control) filled = usableOwnerValue(control.value);
+      }
+      if (filled === null) continue; // không dò ra ô thì không kết luận
+      required += 1;
+      if (!filled) missing += 1;
+    }
+    return { required, missing };
+  }
+
+  // Cổng bọc dấu sao trong <span class="text-red-500"> *</span> ngay trong <label>.
+  function fieldMarkedRequired(field) {
+    const section = ownerFieldSection(field);
+    const label = section ? ownerFieldLabel(field, section) : null;
+    if (!label) return false;
+    return /\*/.test(String(label.textContent || ""));
   }
 
   async function fillOwnerFields(fields) {
@@ -528,7 +571,7 @@
     return result;
   }
 
-  Object.assign(H, { extractOwnerContext, fillOwnerFields });
+  Object.assign(H, { extractOwnerContext, fillOwnerFields, ownerFormRequiredState });
 
   // Khối "Chọn cơ quan thực hiện" — tìm theo heading fold text (id/class React đổi theo build).
   function agencyBlock() {

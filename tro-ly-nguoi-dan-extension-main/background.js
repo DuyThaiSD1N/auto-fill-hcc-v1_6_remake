@@ -558,6 +558,63 @@ async function forgetSplitTabOrigin(tabId) {
   try { await chrome.storage.local.set({ [SPLIT_TAB_ORIGIN_KEY]: map }); } catch (_) { /* bỏ qua */ }
 }
 
+// ── Thẻ "hồ sơ phụ" của tab tách (CHỈ để hiển thị) ──
+// Tab tách sinh bằng tabs.create nên không có dấu phiên (tlnd_journey) → content.js không dựng
+// khung, công dân bấm bong bóng thì ra màn bắt đầu y như chưa làm gì. Ghi vài thông tin nhẹ để
+// tab đó dựng được khung "hồ sơ phụ" CHỈ ĐỌC (nó không cầm phiên, không gửi gì lên BE).
+// Key RIÊNG, KHÔNG nhét vào SPLIT_TAB_ORIGIN_KEY: bản đồ kia là đường đếm mốc "Nộp hồ sơ" vừa vá
+// sau sự cố đếm thiếu hồ sơ tách — đổi hình dạng giá trị của nó là đụng đúng chỗ đó.
+const SPLIT_TAB_INFO_KEY = "tlnd_split_tab_info";
+// Tab đóng lúc service worker đang ngủ thì không ai dọn được mục của nó. Mốc thời gian để tab
+// mang lại đúng số tab cũ (Chrome dùng lại id) không dựng nhầm thẻ của hồ sơ hôm trước.
+const SPLIT_TAB_INFO_TTL_MS = 12 * 60 * 60 * 1000;
+
+async function getSplitTabInfos() {
+  try {
+    const res = await chrome.storage.local.get([SPLIT_TAB_INFO_KEY]);
+    return res?.[SPLIT_TAB_INFO_KEY] || {};
+  } catch (_) { return {}; }
+}
+
+// Nhãn ngắn để công dân nhận ra tab này là hồ sơ của giấy tờ nào. detectedType là loại giấy đã
+// chuẩn hoá ("Căn cước công dân"), dễ đọc hơn documentName — thứ có thể là cả câu mô tả.
+function splitDocLabel(item) {
+  const first = (Array.isArray(item?.attachments) ? item.attachments : [])[0] || {};
+  const raw = String(first.detectedType || first.documentName || first.fileName
+    || item?.files?.[0]?.name || "").trim();
+  return raw.length > 40 ? `${raw.slice(0, 39)}…` : raw;
+}
+
+async function rememberSplitTabInfo(splitTabId, info) {
+  if (!splitTabId) return;
+  const map = await getSplitTabInfos();
+  map[splitTabId] = { ...info, ts: Date.now() };
+  try { await chrome.storage.local.set({ [SPLIT_TAB_INFO_KEY]: map }); } catch (_) { /* bỏ qua */ }
+}
+
+async function forgetSplitTabInfo(tabId) {
+  const map = await getSplitTabInfos();
+  if (!(tabId in map)) return;
+  delete map[tabId];
+  try { await chrome.storage.local.set({ [SPLIT_TAB_INFO_KEY]: map }); } catch (_) { /* bỏ qua */ }
+}
+
+// Khung hồ sơ phụ xin quay về tab gốc. Đi qua background vì content script không có chrome.tabs.
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg?.action !== "focusDossierTab") return;
+  (async () => {
+    try {
+      const tabId = Number(msg.tabId);
+      if (!Number.isInteger(tabId) || tabId <= 0) throw new Error("Thiếu tab để quay về.");
+      const tab = await chrome.tabs.get(tabId);
+      await chrome.tabs.update(tabId, { active: true });
+      if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true });
+      sendResponse({ ok: true });
+    } catch (e) { sendResponse({ error: e?.message || String(e) }); }
+  })();
+  return true;
+});
+
 // Cú bấm "Nộp" ở tab tách → chuyển tiếp về sidebar tab gốc. CHỈ chuyển tiếp tab TÁCH (có trong
 // bản đồ): cú bấm ở chính tab gốc thì sidebar đã tự nhận trực tiếp — chuyển tiếp nữa là đếm đôi.
 // Cùng đường đó cho câu báo "dịch vụ công đang lỗi, em đính lại": tab tách không có sidebar để đọc.
@@ -576,7 +633,10 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   })();
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => { void forgetSplitTabOrigin(tabId); });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  void forgetSplitTabOrigin(tabId);
+  void forgetSplitTabInfo(tabId);
+});
 
 async function openNextSplitQueueItemUnlocked() {
   let state = await getSplitAttachQueue();
@@ -607,6 +667,12 @@ async function openNextSplitQueueItemUnlocked() {
       };
       if (!await setPendingMap(pending)) throw new Error("Không lưu được bundle cho tab mới.");
       await rememberSplitTabOrigin(tab.id, state.originTabId);
+      await rememberSplitTabInfo(tab.id, {
+        ordinal: Number(item.ordinal) || null,
+        total: Number(state.total) || null,
+        label: splitDocLabel(item),
+        originTabId: Number(state.originTabId) || null,
+      });
       state.activeTabId = tab.id;
       state.activeItem = { ordinal: item.ordinal || null };
       state.updatedAt = Date.now();

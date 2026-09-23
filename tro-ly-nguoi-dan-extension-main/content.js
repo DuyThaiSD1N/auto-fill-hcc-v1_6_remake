@@ -44,6 +44,12 @@
   // script, nên tự dò ở đây luôn ra "không hỗ trợ". Mặc định "push" để mọi đường
   // hỏng (SW đang ngủ, message rớt) đều rơi về chế độ chạy được ở mọi trình duyệt.
   let _cheDoKhung = "push";
+  // Tab này là một HỒ SƠ TÁCH (chứng thực nhiều tài liệu = nhiều hồ sơ = nhiều tab) hay không.
+  // Có thẻ → khung dựng ở chế độ "hồ sơ phụ" (companion.html) thay vì khung hội thoại đầy đủ:
+  // một phiên chỉ được MỘT khung lái, hai khung cùng phiên là đếm nộp hai lần và báo trạng thái
+  // trang của sai hồ sơ về backend. Xem SPLIT_TAB_INFO_KEY trong background.js.
+  const SPLIT_TAB_INFO_KEY = "tlnd_split_tab_info";
+  let _theHoSoPhu = null;
   // Khung bên của TAB NÀY có đang mở không. Nguồn thật là port sidebar giữ với background (xem
   // khungBenMoTheoTab); ở đây chỉ là bản sao để quyết định hiện/ẩn nút tròn.
   let _khungBenMo = false;
@@ -59,6 +65,38 @@
     });
   }
   const laKhungBen = () => _cheDoKhung === "sidepanel";
+
+  function layTabId() {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ action: "getTabId" }, (res) => {
+          resolve(chrome.runtime.lastError ? null : (res?.tabId ?? null));
+        });
+      } catch (_) { resolve(null); }
+    });
+  }
+
+  function docTheHoSoPhu() {
+    return new Promise((resolve) => {
+      try {
+        // Đọc bản đồ TRƯỚC khi hỏi số tab: hỏi số tab phải đánh thức service worker, mà gần như
+        // mọi trang đều không dính tới hồ sơ tách. Bản đồ rỗng → về ngay, luồng thường không
+        // phải chờ thêm một vòng message chỉ để biết mình không phải tab tách.
+        chrome.storage.local.get([SPLIT_TAB_INFO_KEY], (st) => {
+          const map = chrome.runtime.lastError ? null : st?.[SPLIT_TAB_INFO_KEY];
+          if (!map || !Object.keys(map).length) return resolve(null);
+          void (async () => {
+            const tabId = await layTabId();
+            const the = tabId == null ? null : map[tabId];
+            // Thẻ quá cũ là rác của lượt trước mà Chrome dùng lại số tab — bỏ, đừng dựng nhầm
+            // khung hồ sơ phụ cho một tab công dân tự mở.
+            if (!the || Date.now() - (the.ts || 0) > 12 * 60 * 60 * 1000) return resolve(null);
+            resolve({ ...the, tabId });
+          })();
+        });
+      } catch (_) { resolve(null); }
+    });
+  }
 
   // Hoạt động thật trên trang cổng cũng giữ phiên sống. Nếu chỉ nghe event trong iframe sidebar,
   // người dân đang rà/điền form trên trang sẽ bị timeout oan sau 20 phút.
@@ -157,6 +195,9 @@
     // Trang chủ DVC là điểm bắt đầu một lượt công dân mới. Báo cho iframe xóa conversation
     // cũ thay vì khôi phục journey còn sót từ trang thủ tục vừa quay về.
     if (IS_DVC_HOME) sidebarQuery.set("fresh", "dvc-home");
+    // Tab hồ sơ tách nạp trang hồ sơ phụ: nó chỉ ĐỌC lại hội thoại của hồ sơ chính, không cầm
+    // phiên nên không thể gửi nhầm gì lên backend.
+    const trangKhung = _theHoSoPhu ? "companion.html" : "sidebar.html";
     shadow.innerHTML = `
       <style>
         :host {
@@ -171,7 +212,7 @@
         iframe { width:100%; height:100%; border:0; display:block; background:#fff; }
       </style>
       <iframe id="${IFRAME_ID}" allow="camera; microphone"
-        src="${chrome.runtime.getURL(`sidebar.html?${sidebarQuery.toString()}`)}"></iframe>`;
+        src="${chrome.runtime.getURL(`${trangKhung}?${sidebarQuery.toString()}`)}"></iframe>`;
 
     (document.body || document.documentElement).appendChild(host);
 
@@ -929,6 +970,18 @@
       }
       return;
     }
+    // Tab hồ sơ tách: dựng khung "hồ sơ phụ" ngay, trước mọi nhánh khác. Tab này do máy mở nên
+    // không có dấu phiên — để nó rơi xuống showInitial() là chỉ còn bong bóng, bấm vào ra màn
+    // bắt đầu như chưa làm gì (đúng cảnh công dân đang gặp).
+    _theHoSoPhu = await docTheHoSoPhu();
+    if (_theHoSoPhu) {
+      // Bấm "Nộp hồ sơ" làm cổng nạp lại trang. Công dân đã thu gọn khung thì đừng bật lại —
+      // họ thu gọn chính vì đang muốn nhìn trang.
+      let daThuGon = false;
+      try { daThuGon = sessionStorage.getItem(SS_OPEN_KEY) === "0"; } catch (_) {}
+      if (daThuGon) showLauncher(); else ensurePanelOpen();
+      return;
+    }
     if (IS_BUSINESS_HOST) {
       const mirrored = readBusinessProgressMirror();
       // Mirror chỉ để dựng thẻ ngay, tránh khe trống lúc chờ chrome.storage. RUN_KEY mới là
@@ -1551,6 +1604,11 @@
       const ownerContext = (wizardStep === 1 && window.__TLND__ &&
         typeof window.__TLND__.extractOwnerContext === "function")
         ? window.__TLND__.extractOwnerContext() : null;
+      // Đếm ô bắt buộc còn trống ở bước chủ hồ sơ — backend dùng để quyết định có xin giấy
+      // tờ ngay tại bước này không (đủ hết thì khỏi bắt công dân quét lại).
+      const ownerForm = (wizardStep === 1 && window.__TLND__ &&
+        typeof window.__TLND__.ownerFormRequiredState === "function")
+        ? window.__TLND__.ownerFormRequiredState() : null;
       const businessHost = String(location.hostname || "").toLowerCase() === "hokinhdoanh.dkkd.gov.vn";
       // Stage GỘP (thành lập mới + thay đổi): search-business/select-change chỉ luồng thay
       // đổi mới nhận ra — BE cần chúng để dừng nhận giấy tờ đúng màn tra cứu hộ KD.
@@ -1590,9 +1648,17 @@
         // Thông tin định danh của đúng người đang đứng tên chủ hồ sơ. Backend dùng làm
         // context nghiệp vụ; extension không tự quyết người hay nguồn dữ liệu.
         ownerContext,
+        ownerForm,
         // Attach-only (chứng thực bản sao) không có form bước 2: nhận diện trực tiếp bảng
         // Thành phần hồ sơ để BE chuyển sang nhận tệp, kể cả khi stepper render chưa ổn định.
         attachmentTarget,
+        // Bước Thông tin chủ hồ sơ nhánh ỦY QUYỀN có bảng đính kèm riêng cho văn bản ủy
+        // quyền. Cờ này để backend biết trang đang ở nhánh ủy quyền (cần quét giấy tờ ngay
+        // vì 4 ô ủy quyền luôn trống), và để KHÔNG nhầm bảng đó là thành phần hồ sơ.
+        authorizationBlock: !!(
+          window.__TLND__ && typeof window.__TLND__.hasAuthorizationAttachmentBlock === "function"
+          && window.__TLND__.hasAuthorizationAttachmentBlock()
+        ),
         // HkdOnline reload toàn trang qua từng bước; backend chỉ cần stage đã xác thực từ
         // control/metadata cổng để quyết định bootstrap hay bắt đầu nhận giấy tờ.
         businessHost,

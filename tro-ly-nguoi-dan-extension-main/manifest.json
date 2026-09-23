@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.4.2",
+  "version": "1.5",
   "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -11,8 +11,6 @@
   },
   "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData", "alarms", "idle", "sidePanel", "scripting"],
   "host_permissions": [
-    "http://localhost:12005/*",
-    "ws://localhost:12005/*",
     "https://*.gov.vn/*",
     "https://trolyhoso-hcc.tiengnoi.vn/*",
     "wss://trolyhoso-hcc.tiengnoi.vn/*",
@@ -98,6 +96,7 @@
     {
       "resources": [
         "sidebar.html", "sidebar.css", "sidebar.js", "preview.html", "preview.js",
+        "companion.html", "companion.js",
         "services/*", "api/*", "lib/*", "vendor/*", "assets/*",
         "permission.html", "permission.js"
       ],

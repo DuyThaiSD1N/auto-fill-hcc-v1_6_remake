@@ -32,3 +32,14 @@ test("watcher theo dõi đổi bước khi đang chọn hoặc tải giấy tờ
   assert.match(sidebar, /a\.type === "update_docs_done_chip"/);
   assert.match(sidebar, /updateDocsDoneChipLabel\(a\.label,\s*a\.labelHmong\)/);
 });
+
+test("đổi bước mà hỏi lại thì lời hỏi cũ bị gỡ khỏi khung chat", () => {
+  // Gỡ phải chạy TRƯỚC khi dựng lời hỏi mới, nếu không xoá luôn cái vừa dựng —
+  // vì vậy đọc action ngay trong renderReply chứ không đợi runActions.
+  assert.match(sidebar, /a\.type === "drop_stale_ask" && a\.tag === "doc_method"/);
+  assert.match(sidebar, /function dropStaleDocMethodAsk\(\)/);
+  assert.match(sidebar, /querySelectorAll\('\[data-ask="doc-method"\]'\)/);
+  // Cả bong bóng mở đầu lẫn thẻ QR/Scan đều phải mang mốc, gỡ nửa vời là còn lại rác.
+  assert.match(sidebar, /\$botBubble\.dataset\.ask = "doc-method"/);
+  assert.match(sidebar, /el\.dataset\.ask = "doc-method"/);
+});

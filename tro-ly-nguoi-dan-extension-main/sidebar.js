@@ -75,6 +75,13 @@
     // biết đọc giá trị ô chủ hồ sơ trước khi chuyển bước. BE chỉ bật luồng dẫn từng bước cho
     // client khai cờ này; bản trên chợ không khai → giữ nguyên câu "công dân tự bấm nút trang".
     supportsGuidedSteps: true,
+    // Biết quét giấy tờ NGAY ở bước chủ hồ sơ để tự điền (và phân biệt được bảng đính kèm
+    // văn bản ủy quyền với bảng thành phần hồ sơ). BE chỉ bật luồng quét sớm cho client khai
+    // cờ này; bản trên chợ không khai → giữ nguyên thứ tự bước cũ.
+    supportsOwnerScan: true,
+    // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
+    // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
+    supportsProcedureFirst: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -641,7 +648,16 @@
       "__action:logout_citizen", "__action:continue_dossiers",
     ].includes(chip.send));
     const duplicateLogoutChoice = hasLogoutChoice && !!document.querySelector(".chips.logout-choice");
-    if (d.display_md && !duplicateLogoutChoice) addBotMd(d.display_md);
+    // Đọc action NGAY ở đây (không chờ runActions chạy sau renderReply) — gỡ sau khi đã dựng
+    // lời hỏi mới thì xoá luôn cả cái vừa dựng. Cùng chỗ với collapse_after_tts bên dưới.
+    if ((d.actions || []).some((a) => a.type === "drop_stale_ask" && a.tag === "doc_method")) {
+      dropStaleDocMethodAsk();
+    }
+    const $botBubble = (d.display_md && !duplicateLogoutChoice) ? addBotMd(d.display_md) : null;
+    // Bong bóng mở đầu lời hỏi cách cung cấp giấy tờ đi liền với thẻ QR/Scan → gỡ thì gỡ cả cặp.
+    if ($botBubble && (d.cards || []).some((c) => c.kind === "doc_options")) {
+      $botBubble.dataset.ask = "doc-method";
+    }
     // ĐỌC XONG câu này thì THU GỌN panel (kịch bản đăng nhập trên trang SSO → lộ mã QR để quét).
     // Chỉ áp cho reply LIVE (không phải khôi phục phiên noTts, kẻo mở lại tay bị auto-thu-gọn).
     const collapseAfter = !opts?.noTts && (d.actions || []).some((a) => a.type === "collapse_after_tts");
@@ -781,6 +797,14 @@
     placeDocsDoneAfterProgress();
   }
 
+  // Trang nhảy sang bước khác trong lúc trợ lý còn chờ giấy tờ → BE hỏi lại với checklist của
+  // bước mới. Lời hỏi cũ phải BIẾN MẤT chứ không chỉ nằm lại phía trên: checklist của nó sai
+  // bước (còn ô căn cước chủ hồ sơ) và hai thẻ QR/Scan giống hệt nhau đều bấm được.
+  // BE xoá bong bóng đó khỏi lịch sử ở cùng lượt, nên khôi phục phiên cũng không thấy lại.
+  function dropStaleDocMethodAsk() {
+    document.querySelectorAll('[data-ask="doc-method"]').forEach((el) => el.remove());
+  }
+
   function hideStaleDeclarationActions() {
     document.querySelectorAll([
       '.chip[data-send="__action:refill"]',
@@ -904,6 +928,11 @@
       principal: c.principal || null,
       // Định danh ở chính khối "Thông tin chủ hồ sơ" — backend dùng để chọn đúng người.
       ownerContext: c.ownerContext || null,
+      // Số ô bắt buộc / số ô còn trống ở bước chủ hồ sơ — backend quyết định có xin giấy tờ
+      // ngay tại bước này không. Nhánh ủy quyền luôn còn trống 4 ô nên tự rơi vào vế "cần quét".
+      ownerForm: c.ownerForm || null,
+      // Bảng đính kèm văn bản ủy quyền NGAY ở bước chủ hồ sơ — không phải thành phần hồ sơ.
+      authorizationBlock: !!c.authorizationBlock,
       // Chỉ có khi công dân chủ động bấm kiểm tra lại. Backend dùng cờ này để trả lời
       // rõ đang còn ở đăng nhập hay chưa tới hồ sơ, thay vì im lặng như watcher nền.
       manualCheck: !!c.manualCheck,
@@ -967,6 +996,29 @@
     // Sang bước chủ hồ sơ → thành phần hồ sơ: đẩy trạng thái trang lên NGAY để bot hỏi cách
     // gửi giấy tờ liền, thay vì chờ tới nhịp watcher kế tiếp (3,5 giây).
     if (moved && phase === "owner") await verifyPortalState();
+  }
+
+  // Giấy ủy quyền đính vào ô RIÊNG ở bước chủ hồ sơ, ngay sau khi điền xong hai khối.
+  // Chạy ngoài lượt ask() như hai hàm dưới — xem chú thích ở trên.
+  async function runAttachAuthorizationDoc(a) {
+    setStatus("📎 Đang đính kèm giấy ủy quyền…");
+    let res = null;
+    let error = "";
+    try {
+      const raw = await fetchSessionFilesAsPayload(a.session_id || uploadSid);
+      const file = (raw || []).find((f) => f.name === String(a.fileName || ""));
+      // Không lấy đại tệp khác khi không khớp tên: đính nhầm giấy vào ô ủy quyền còn tệ hơn
+      // để trống, vì cán bộ nhìn thấy ô đã có tệp thì không kiểm lại nữa.
+      if (!file) error = "không thấy tệp giấy ủy quyền trong phiên";
+      else res = await sendToContent({ action: "attachAuthorizationFile", file });
+    } catch (e) {
+      error = String(e?.message || e);
+    }
+    setStatus("");
+    await ask(`__action:authorization_attach_report:${JSON.stringify({
+      ok: !!res?.ok,
+      error: error || res?.error || (res ? "" : "trang chưa có dòng giấy ủy quyền"),
+    })}`, "system");
   }
 
   async function runGuidedSubmit() {
@@ -1485,8 +1537,15 @@
       input.blur();
       onPick(o);
     }
-    input.addEventListener("focus", () => { input.select(); render(""); list.hidden = false; });
-    input.addEventListener("input", () => { render(input.value); list.hidden = false; });
+    // Ô cuối card (Đối tượng thực hiện) nằm sát đáy khung chat → danh sách mở xuống bị cắt
+    // mất, công dân không thấy lựa chọn nào. Đo chỗ trống thật rồi mới quyết mở lên hay xuống.
+    function placeList() {
+      const room = window.innerHeight - input.getBoundingClientRect().bottom;
+      list.classList.toggle("up", room < 240);
+    }
+    const open = () => { list.hidden = false; placeList(); };
+    input.addEventListener("focus", () => { input.select(); render(""); open(); });
+    input.addEventListener("input", () => { render(input.value); open(); });
     // Blur không chọn gì → trả lại giá trị đang chọn (chữ đang gõ chỉ là bộ lọc).
     input.addEventListener("blur", () => { list.hidden = true; input.value = value; });
     input.addEventListener("keydown", (e) => {
@@ -1608,6 +1667,7 @@
         addUserText("Đổi sang chụp điện thoại (QR)");
         ask(`__action:doc_method:${JSON.stringify({ value: "qr" })}`, "chip", "Chụp bằng điện thoại (quét QR)");
       });
+      el.dataset.ask = "doc-method";
       addNode(el);
       renderScanGuideCard();
       ask(`__action:doc_method:${JSON.stringify({ value: "scan" })}`, "chip", "Scan tại quầy");
@@ -1621,6 +1681,8 @@
       const hmLine = hmTitle ? `<div class="ot-hm">${window.escapeHtml(hmTitle)}</div>` : "";
       const el = document.createElement("div");
       el.className = "opt";
+      // Mốc để gỡ khi trang sang bước khác mà trợ lý hỏi lại (xem dropStaleDocMethodAsk).
+      el.dataset.ask = "doc-method";
       el.innerHTML = `<div class="oi">${meta.icon}</div><div>
         <div class="ot">${window.escapeHtml(meta.title)}</div>${hmLine}
         <div class="od">${window.escapeHtml(meta.desc)}</div></div>`;
@@ -1844,7 +1906,6 @@
   let scanRecentPending = [];          // [{ rel, name, mtimeMs }] chờ cán bộ chọn tay
   const scanDangDoiTen = new Set();    // rel cũ/mới của lần đổi tên do CHÍNH mình — bỏ qua cặp event
   const $scanRecent = document.getElementById("scan-recent-list");
-  const $hoSoTruoc = document.getElementById("prev-session-offer");
 
   async function napSoSachScan(sid) {
     if (!scanDongBo || !sid) return;
@@ -2029,99 +2090,16 @@
     void luuSoSachScan();
   }
 
-  // ── "Hồ sơ trước": dùng lại giấy tờ bằng một chạm ──
-  // Cùng bài toán với autofill (mục 4.11): watermark chặn đúng việc kéo giấy người trước sang hồ sơ
-  // người sau, nhưng chặn luôn ca hợp lệ "cùng công dân làm thủ tục thứ hai".
-  // KHÁC autofill: chỉ cất THAM CHIẾU (sid + fid), không chép nội dung giấy tờ vào extension. BE giữ
-  // phiên 24 giờ (upload_session_ttl_hours) — dùng lại thì tải từ phiên cũ sang phiên mới.
-  const KHOA_HO_SO_TRUOC = `tlnd_ho_so_truoc_${TAB_ID || "khong-tab"}`;
-  const HO_SO_TRUOC_TTL_MS = 30 * 60 * 1000;
-
-  function catHoSoTruoc() {
-    // Chụp ĐỒNG BỘ trước mọi await: bên gọi dọn danh sách tệp ngay sau lệnh này.
-    const sid = uploadSid;
-    const tep = (uploadSessionFiles || []).filter((f) => f?.fid).map((f) => ({ fid: f.fid, name: tenHienThi(f) }));
-    if (!sid || !tep.length) return;
-    void (async () => {
-      let ten = null;
-      try { ten = (await readPageContext())?.principal?.name || null; } catch (_) { /* còn số tệp + giờ */ }
-      try { await chrome.storage.local.set({ [KHOA_HO_SO_TRUOC]: { sid, tep, luc: Date.now(), ten } }); }
-      catch (_) { /* ignore */ }
-    })();
-  }
-  async function docHoSoTruoc() {
+  // Tính năng "dùng lại hồ sơ trước" ĐÃ GỠ (chốt nghiệp vụ 23/09/2026). Nó cất tham chiếu giấy tờ
+  // của công dân vừa xong (tlnd_ho_so_truoc_<tab>) để mời dùng lại. Gỡ code thôi thì các khoá đó
+  // nằm lại trên máy quầy mãi, vì TTL 30 phút chỉ chạy khi còn code đọc nó — dọn một lần lúc dựng.
+  void (async () => {
     try {
-      const res = await chrome.storage.local.get(KHOA_HO_SO_TRUOC);
-      const snap = res?.[KHOA_HO_SO_TRUOC];
-      if (!snap?.sid || !Array.isArray(snap.tep) || !snap.tep.length) return null;
-      if (Date.now() - Number(snap.luc || 0) > HO_SO_TRUOC_TTL_MS) { void boHoSoTruoc(); return null; }
-      return snap;
-    } catch (_) { return null; }
-  }
-  async function boHoSoTruoc() {
-    try { await chrome.storage.local.remove(KHOA_HO_SO_TRUOC); } catch (_) { /* ignore */ }
-  }
-  async function hienLoiMoiHoSoTruoc(soTepGoi) {
-    if (!$hoSoTruoc) return;
-    const sid = uploadSid;
-    if (!sid || uploadSessionProgress?.complete) { $hoSoTruoc.hidden = true; return; }
-    const soTep = Number.isFinite(soTepGoi) ? soTepGoi
-      : ((uploadSessionFiles || []).length || Number(uploadSessionProgress?.files_count) || 0);
-    // Lời mời CHỈ có nghĩa khi phiên mới còn trống. Đã có tệp = đang làm hồ sơ cụ thể rồi → dọn luôn
-    // ngăn lưu, không để tham chiếu giấy của công dân trước nằm lại.
-    if (soTep > 0) {
-      if (!$hoSoTruoc.hidden) { $hoSoTruoc.hidden = true; void boHoSoTruoc(); }
-      return;
-    }
-    const snap = await docHoSoTruoc();
-    if (!snap || snap.sid === sid || sid !== uploadSid) { $hoSoTruoc.hidden = true; return; }
-    const gio = new Date(snap.luc).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    const nhan = document.createElement("span");
-    nhan.className = "prev-offer-label";
-    nhan.textContent = `📎 Hồ sơ trước — ${snap.ten ? `${snap.ten} · ` : ""}${snap.tep.length} giấy tờ · ${gio}`;
-    const nut = document.createElement("button");
-    nut.type = "button";
-    nut.className = "prev-offer-use";
-    nut.textContent = "Dùng lại";
-    nut.title = "Tải lại toàn bộ giấy tờ của hồ sơ trước vào phiên này (khi CÙNG công dân làm thủ tục tiếp theo)";
-    nut.addEventListener("click", () => void dungLaiHoSoTruoc());
-    // CỐ Ý không có nút "×": bấm nhầm là mất hẳn lời mời, mà nó vốn tự ẩn khi phiên có tệp.
-    $hoSoTruoc.replaceChildren(nhan, nut);
-    $hoSoTruoc.hidden = false;
-  }
-  async function dungLaiHoSoTruoc() {
-    markActivity();
-    const sid = uploadSid;
-    const snap = await docHoSoTruoc();
-    if (!snap || !sid) { void hienLoiMoiHoSoTruoc(); return; }
-    if ($hoSoTruoc) $hoSoTruoc.hidden = true;
-    await boHoSoTruoc(); // dùng rồi thì thôi, không mời lại
-    setStatus(`⏳ Đang lấy lại ${snap.tep.length} giấy tờ của hồ sơ trước…`);
-    const tepMoi = [];
-    let hong = 0;
-    for (const t of snap.tep) {
-      try {
-        const res = await uploadSessionFetch(
-          `${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(snap.sid)}/files/${encodeURIComponent(t.fid)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        tepMoi.push(new File([blob], t.name || "giay-to", { type: blob.type || "application/octet-stream" }));
-      } catch (e) {
-        hong += 1;
-        console.warn("[TLND] Không lấy lại được tệp của hồ sơ trước", t.fid, e?.message || e);
-      }
-    }
-    if (sid !== uploadSid) return;
-    if (!tepMoi.length) {
-      setStatus("⚠️ Không lấy lại được giấy tờ của hồ sơ trước — phiên cũ có thể đã hết hạn.", true);
-      return;
-    }
-    setStatus("");
-    const data = await uploadFilesToSession(tepMoi, { source: "reuse" });
-    if (data) {
-      showToast(`📎 Đã dùng lại ${tepMoi.length} giấy tờ của hồ sơ trước${hong ? ` (${hong} tệp không lấy được)` : ""}.`, { ms: 4000 });
-    }
-  }
+      const all = await chrome.storage.local.get(null);
+      const keys = Object.keys(all || {}).filter((k) => k.startsWith("tlnd_ho_so_truoc_"));
+      if (keys.length) await chrome.storage.local.remove(keys);
+    } catch (_) { /* không chặn khởi động */ }
+  })();
 
   // ── Sửa tên tệp ngay trong danh sách ──
   // Tệp từ máy quét: đổi luôn tên trên đĩa qua agent (caps "rename") — giống autofill mục 4.13.
@@ -2538,7 +2516,6 @@
     hienDanhSachGanDay();
     scanLoDaThuSid = "";
     scanDoiSoatSid = "";
-    if ($hoSoTruoc) $hoSoTruoc.hidden = true;
   }
 
   function setUploadSession(sid) {
@@ -2550,7 +2527,6 @@
     void napSoSachScan(sid).then(async () => {
       await doiSoatTepQuet();
       await thuGomLoQuet();
-      void hienLoiMoiHoSoTruoc();
     });
     // Khi sidebar được dựng lại giữa phiên, WS không phát lại tiến trình cũ. Đọc snapshot
     // ngay để checklist và nút xem file vẫn khôi phục đủ, không chờ công dân tải thêm tệp.
@@ -3092,7 +3068,6 @@
   }
 
   function renderDocProgress(p, { preserveScroll = false } = {}) {
-    queueMicrotask(() => void hienLoiMoiHoSoTruoc(Number(p?.files_count)));
     const preservedScrollTop = preserveScroll ? $messages.scrollTop : null;
     uploadSessionProgress = p || uploadSessionProgress;
     // Nhận được tệp ĐẦU TIÊN (kể cả tệp chưa nhận ra loại / slot tuỳ chọn) → mở khoá nút
@@ -4127,6 +4102,8 @@
         setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(); }, 0);
+      } else if (a.type === "attach_authorization_doc") {
+        setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
         pipeDone();
         setStatus("Đang điền thông tin chủ hồ sơ…");
@@ -4400,9 +4377,6 @@
       // HkdOnline là WebForms full-postback và có state machine sống qua reload. Dọn nó
       // trước khi xóa conversation để phiên cũ không tự điền tiếp sau "Trò chuyện mới".
       await sendToContent({ action: "clearBusinessRegistrationState" });
-      // Kết thúc CÓ CHỦ ĐÍCH một hồ sơ (bấm Trò chuyện mới / nộp xong) → cất tham chiếu giấy tờ để cùng
-      // công dân làm thủ tục tiếp dùng lại. Hết giờ vì bỏ đi (idle) thì không mời.
-      if (reason === "manual" || reason === "completed") catHoSoTruoc();
       resetUploadFileListState();
       // Công dân MỚI: nâng mốc watermark (chặn kéo lại giấy người trước) + ngắt máy quét để
       // chặng sau nối lại sạch.

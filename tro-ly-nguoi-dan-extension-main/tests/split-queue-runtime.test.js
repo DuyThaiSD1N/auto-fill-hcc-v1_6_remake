@@ -98,7 +98,9 @@ function bundle(ordinal) {
     ordinal,
     url: `https://example.test/dossier-${ordinal}`,
     files: [{ name: `file-${ordinal}.pdf`, dataUrl: "data:application/pdf;base64,AA==" }],
-    attachments: [{ fileIndex: 0, componentIndex: 1 }],
+    // Hồ sơ 3 có loại giấy đã nhận ra; hồ sơ 2 không → nhãn thẻ hồ sơ phụ phải rơi về tên tệp.
+    attachments: [{ fileIndex: 0, componentIndex: 1,
+      ...(ordinal === 3 ? { detectedType: "Sổ hộ khẩu" } : {}) }],
     procedure: "chung-thuc-ban-sao",
   };
 }
@@ -109,6 +111,7 @@ function bundle(ordinal) {
     action: "startSplitAttachQueue",
     queueId: "queue-1",
     total: 3,
+    originTabId: 7,
     initialResults: [{ ok: true, ordinal: 1 }],
     itemsStorageKey: "tro_ly_split_attach_queue_stage",
   });
@@ -120,8 +123,20 @@ function bundle(ordinal) {
     "pending và queue phải được lưu trước khi điều hướng");
   assert.equal(storage.tro_ly_split_attach_queue.activeTabId, createdTabs[0].id);
 
+  // Thẻ hồ sơ phụ: tab tách không có dấu phiên nên đây là thứ DUY NHẤT để nó dựng được khung.
+  const the2 = storage.tlnd_split_tab_info?.[createdTabs[0].id];
+  assert.ok(the2, "tab tách phải có thẻ hồ sơ phụ");
+  assert.equal(the2.ordinal, 2);
+  assert.equal(the2.total, 3);
+  assert.equal(the2.originTabId, 7);
+  assert.equal(the2.label, "file-2.pdf", "không nhận ra loại giấy thì lấy tên tệp");
+  // Bản đồ đếm mốc "Nộp" phải giữ NGUYÊN hình dạng số trần — thẻ hiển thị đi key riêng.
+  assert.equal(storage.tlnd_split_tab_origin?.[createdTabs[0].id], 7);
+
   await dispatch({ action: "clearPendingAttach" }, createdTabs[0].id);
   assert.equal(createdTabs.length, 2, "xong tab trước mới mở tab sau");
+  assert.equal(storage.tlnd_split_tab_info?.[createdTabs[1].id]?.label, "Sổ hộ khẩu",
+    "nhận ra loại giấy thì nhãn đọc theo loại, không phải tên tệp");
   await dispatch({ action: "failPendingAttach", code: "test", error: "lỗi thử" }, createdTabs[1].id);
 
   const status = await dispatch({ action: "getSplitAttachQueueStatus", queueId: "queue-1" });

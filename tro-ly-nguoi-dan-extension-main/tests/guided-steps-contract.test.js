@@ -103,3 +103,28 @@ test("nút CTA nổi bật và khi đã bấm thì thành trạng thái xong, kh
   // Người dùng tắt hiệu ứng thì không được nhấp nháy.
   assert.match(css, /prefers-reduced-motion[\s\S]*\.chip\.cta/);
 });
+
+test("mọi nút việc-chính dùng CHUNG một nhịp nẩy", () => {
+  // Ba nút này không bao giờ hiện cùng lúc nhưng đều là "việc duy nhất phải làm" ở bước của
+  // mình — nhịp lệch nhau thì công dân thấy như ba loại nút khác nhau.
+  for (const sel of [/\.chip\.cta \{[^}]*tlnd-nay-nut/, /\.start-btn,\s*\n\.docs-done-actions \.chip \{[^}]*tlnd-nay-nut/]) {
+    assert.match(css, sel);
+  }
+});
+
+test("nút đang khoá hoặc đang bấm thì đứng yên", () => {
+  // Nẩy lúc nút khoá = mời bấm thứ không bấm được (nút chốt giấy tờ khoá tới khi có tệp đầu).
+  const tat = css.match(/\.chip:disabled, \.chip\.cta:disabled, \.start-btn:disabled \{ animation: none; \}/);
+  assert.ok(tat, "thiếu luật tắt nhịp khi nút bị khoá");
+  assert.match(css, /\.chip:active, \.chip\.cta:active, \.start-btn:active \{ animation: none; \}/);
+  // Phải nằm SAU .chip.cta: cùng độ ưu tiên, viết trước là bị nút cam ghi đè, nút khoá vẫn nẩy.
+  assert.ok(css.indexOf(tat[0]) > css.indexOf(".chip.cta {"), "luật tắt nhịp phải đặt sau .chip.cta");
+});
+
+test("giảm chuyển động tắt được cả ba nút, kể cả vệt sáng", () => {
+  const block = css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/);
+  assert.ok(block, "thiếu khối prefers-reduced-motion");
+  for (const sel of [".chip.cta::before", ".start-btn", ".docs-done-actions .chip"]) {
+    assert.ok(block[1].includes(sel), `giảm chuyển động chưa tắt ${sel}`);
+  }
+});
