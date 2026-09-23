@@ -364,6 +364,11 @@ input, select, textarea { font-family: inherit; }
    margin-top của .secondary-btn. Tạo khoảng cách dưới để ba hành động không dính nhau. */
 #proxyFillBtn:not([hidden]) { margin-bottom: 6px; }
 
+/* "Chọn cơ quan thực hiện" (bước 01) nằm ngay trên "Quét và nhập dữ liệu" — mà nút chính không
+   có margin-top nên hai nút dính sát nhau, dễ bấm nhầm. Tách rộng hơn 6px của hai nút cùng
+   nhóm: đây là hai việc KHÁC bước, không phải hai lựa chọn song song. */
+#agencyFillBtn:not([hidden]) { margin-bottom: 5px; }
+
 /* Trigger thu gọn: 1 dòng, dạng link — mặc định giấy tờ KHÔNG hiện, bấm mới mở. */
 .hint-toggle {
   display: flex;

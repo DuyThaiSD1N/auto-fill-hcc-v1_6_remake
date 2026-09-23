@@ -2223,7 +2223,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
             "textPriority": True,
         },
-        "label": "[Tỉnh Lào Cai] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "label": "(Lào Cai - Cấp phường/xã) Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -2261,7 +2261,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": (
-            "[Tỉnh Lào Cai] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử "
+            "(Lào Cai - Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử "
             "dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, "
             "cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài"
         ),
@@ -2397,7 +2397,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": (
-            "[Tỉnh Lào Cai] Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu "
+            "(Lào Cai - Cấp phường/xã) Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu "
             "giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất và "
             "trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có "
             "sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng (Điều 3 Quyết định số "
@@ -2459,7 +2459,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": (
-            "[Tỉnh Lào Cai] Tặng cho quyền sử dụng đất cho Nhà nước hoặc cộng đồng dân cư hoặc mở rộng "
+            "(Lào Cai - Cấp phường/xã) Tặng cho quyền sử dụng đất cho Nhà nước hoặc cộng đồng dân cư hoặc mở rộng "
             "đường giao thông đối với trường hợp thửa đất chưa được cấp Giấy chứng nhận"
         ),
         "mode": "agent",
@@ -2521,7 +2521,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": (
-            "[Tỉnh Lào Cai] Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn "
+            "(Lào Cai - Cấp phường/xã) Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn "
             "bằng quyền sử dụng đất để thực hiện dự án đầu tư theo quy định tại điểm a, b khoản 1 "
             "Điều 127 Luật Đất đai"
         ),
@@ -3153,8 +3153,8 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": (
-            "[Tỉnh Lào Cai(cấp xã)] Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục "
-            "đích sử dụng đất (1.115680)"
+            "(Lào Cai - Cấp phường/xã) Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục "
+            "đích sử dụng đất"
         ),
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -3484,7 +3484,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": (
-            "[Lào Cai] Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của pháp luật đất đai do "
+            "(Lào Cai - Cấp phường/xã) Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của pháp luật đất đai do "
             "người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau "
             "khi thu hồi"
         ),
@@ -3539,7 +3539,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": (
-            "[Lào Cai] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+            "(Lào Cai - Cấp phường/xã) Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
             "quyền sở hữu tài sản gắn liền với đất lần đầu đối với tổ chức đang sử dụng đất"
         ),
         "mode": "agent",
@@ -3707,9 +3707,9 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": (
-            "[Lào Cai] Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi "
+            "(Lào Cai - Cấp phường/xã) Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi "
             "hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư đối với trường hợp "
-            "quy định tại Khoản 1 Điều 175 Luật Đất đai năm 2024 (1.115679 - cho Phường/Xã)"
+            "quy định tại Khoản 1 Điều 175 Luật Đất đai năm 2024"
         ),
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -3778,7 +3778,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": (
-            "[Lào Cai] Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng "
+            "(Lào Cai - Cấp phường/xã) Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng "
             "nhận trước ngày 01 tháng 7 năm 2004"
         ),
         "mode": "agent",
@@ -3843,7 +3843,7 @@ PROCEDURES: list[dict] = [
             "textIncludes": ["sử dụng đất kết hợp đa mục đích"],
             "headingDisabled": True,
         },
-        "label": "[Lào Cai] Sử dụng đất kết hợp đa mục đích (cấp xã)",
+        "label": "(Lào Cai - Cấp phường/xã) Sử dụng đất kết hợp đa mục đích",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -3975,7 +3975,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": (
-            "[Lào Cai] Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi "
+            "(Lào Cai - Cấp phường/xã) Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi "
             "ranh giới so với giấy chứng nhận đã cấp đối với trường hợp thửa đất gốc đã có Giấy chứng "
             "nhận, phần diện tích đất tăng thêm chưa được cấp Giấy chứng nhận"
         ),

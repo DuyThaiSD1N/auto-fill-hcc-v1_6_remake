@@ -750,4 +750,35 @@ function fillNgRadio(el, value) {
   H.fillFormAngular = fillFormAngular;
   H.phanTichNgayGio = phanTichNgayGio; // test dùng (tests/test-ngay-gio-lien-thong.js)
   H.resolveAltNameGroups = resolveAltNameGroups; // dùng chung: legacy engine (content.js) cũng gọi
+
+  // ── Điền hộ khối "Chọn cơ quan thực hiện" (bước 01 liên thông khai sinh) ────────────────
+  // Popup gửi plan lấy từ registry (procedures[].agencyFillPlan) đã thay {province}/{ward}.
+  // Dùng ĐÚNG engine fillFormAngular như mọi ô khác — không có logic điền riêng ở đây.
+  //
+  // Guard IsNuocNgoai là bắt buộc: bước kê khai (bước 02) cũng là Angular và cũng có ô select,
+  // bấm nhầm nút ở đó mà không chặn là điền bậy vào biểu mẫu. Không thấy ô này thì im lặng
+  // trả lời "sai trang" chứ không đụng gì.
+  //
+  // KHÔNG tự bấm "Chuyển bước tiếp theo": cán bộ phải rà lại cơ quan trước khi sang bước sau.
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (!msg || msg.action !== "fillAgencyByPlan") return;
+    if (!document.querySelector('[formcontrolname="IsNuocNgoai"]')) {
+      sendResponse({ ok: false, error: "Trang hiện tại không phải bước Chọn cơ quan thực hiện." });
+      return;
+    }
+    (async () => {
+      try {
+        const r = await fillFormAngular(msg.fields || []);
+        sendResponse({
+          ok: (r.filled || 0) > 0,
+          filled: r.filled || 0,
+          notFound: r.notFound || [],
+          errors: r.errors || [],
+        });
+      } catch (e) {
+        sendResponse({ ok: false, error: String((e && e.message) || e) });
+      }
+    })();
+    return true; // giữ kênh cho sendResponse bất đồng bộ
+  });
 })();

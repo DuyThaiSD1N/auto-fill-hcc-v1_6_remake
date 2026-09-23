@@ -72,6 +72,7 @@ reportBtn?.addEventListener("click", async (e) => {
     reportBtn.removeAttribute("aria-busy");
   }
 });
+const agencyFillBtn = document.getElementById("agencyFillBtn");
 const proxyFillBtn = document.getElementById("proxyFillBtn");
 const ocrBtn = document.getElementById("ocrBtn");
 const attachStepBtn = document.getElementById("attachStepBtn");
@@ -116,6 +117,12 @@ const currentBacNinhAuthorizedPersonConfig = () =>
   BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;
 const isBacNinhAuthorizedPersonProcedure = () =>
   !!currentBacNinhAuthorizedPersonConfig();
+// Thủ tục có kế hoạch điền hộ khối "Chọn cơ quan thực hiện" (registry.agencyFillPlan). Gắn theo
+// SỰ CÓ MẶT của kế hoạch, không theo key: thêm cổng khác chỉ cần sửa BE, khỏi phát hành lại.
+const currentAgencyFillPlan = () => {
+  const plan = currentConfig()?.agencyFillPlan;
+  return Array.isArray(plan) && plan.length ? plan : null;
+};
 const isBacNinhThreeStepProcedure = (config = currentConfig()) =>
   BAC_NINH_THREE_STEP_PROCEDURES.has(config?.key);
 
@@ -516,6 +523,10 @@ function showMain(user) {
   mainScreen.hidden = false;
   if (reportBtn) reportBtn.hidden = false;
   userLabel.textContent = user?.name || user?.username || "";
+  // settings.html mở ở TAB RIÊNG, không có token nên không tự hỏi được /auth/me. Ghi tên đăng
+  // nhập ra storage để trang đó biết đang chỉnh cài đặt CHO AI (cài đặt lưu theo tài khoản).
+  // Thiếu dòng này thì trang Cài đặt báo "chưa đăng nhập" và KHOÁ công tắc đánh giá.
+  void rememberCurrentUsername(user?.username || "");
   // /auth/me về sau khi khối địa chỉ đã dựng -> áp lại để lấy tỉnh/xã gắn trong tài khoản.
   void applyStoredLocation();
 }
@@ -2163,6 +2174,11 @@ function refreshAttachStepUI() {
     proxyFillBtn.hidden = !isBacNinhAuthorizedPersonProcedure();
     proxyFillBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
   }
+  if (agencyFillBtn) {
+    // KHÔNG phụ thuộc số tệp: bước 01 diễn ra TRƯỚC khi chọn giấy tờ.
+    agencyFillBtn.hidden = !currentAgencyFillPlan();
+    agencyFillBtn.disabled = !!window.__AUTOFILL_HCC_POPUP_BUSY__;
+  }
   if (!attachStepBtn) return;
   const cfg = currentConfig();
   // Không bắt buộc process bước 2 trước: chỉ cần thủ tục có bước đính kèm + đã chọn file.
@@ -2224,6 +2240,12 @@ function applyFormUI() {
     proxyFillBtn.hidden = !isBacNinhAuthorizedPersonProcedure();
     proxyFillBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
   }
+  // Nút "Chọn cơ quan thực hiện" hiện cho thủ tục có agencyFillPlan (liên thông khai sinh).
+  // KHÔNG khoá theo số tệp: bước 01 diễn ra trước khi cán bộ chọn giấy tờ.
+  if (agencyFillBtn) {
+    agencyFillBtn.hidden = !currentAgencyFillPlan();
+    agencyFillBtn.disabled = !!window.__AUTOFILL_HCC_POPUP_BUSY__;
+  }
   // Ô tick "tách hồ sơ" hiện cho MỌI thủ tục split-eligible, gồm cả case local (chứng thực chữ ký
   // người dịch CTV): tick = đa tab (mỗi file 1 hồ sơ), bỏ tick = 1 tab (gộp vào 1 hồ sơ) — giống
   // chứng thực bản sao/chữ ký.
@@ -2248,6 +2270,54 @@ function applyFormUI() {
   }
   renderFiles();
   refreshAttachStepUI();
+}
+
+// Nút "Chọn cơ quan thực hiện" (bước 01 liên thông khai sinh). Không đọc giấy tờ, không gọi BE:
+// kế hoạch đã nằm sẵn trong registry, chỉ thay {province}/{ward} bằng địa bàn đang chọn rồi nhờ
+// content điền. Cố ý KHÔNG tự bấm "Chuyển bước tiếp theo" — cán bộ rà lại cơ quan rồi tự bấm.
+function resolveAgencyPlan(plan) {
+  const subs = { "{province}": currentLocation.province || "", "{ward}": currentLocation.ward || "" };
+  const sub = (v) => {
+    if (typeof v === "string") return Object.prototype.hasOwnProperty.call(subs, v) ? subs[v] : v;
+    if (v && typeof v === "object") {
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sub(x)]));
+    }
+    return v;
+  };
+  return plan.map((step) => Object.fromEntries(Object.entries(step).map(([k, v]) => [k, sub(v)])));
+}
+
+if (agencyFillBtn) {
+  agencyFillBtn.addEventListener("click", async () => {
+    if (window.__AUTOFILL_HCC_POPUP_BUSY__) return;
+    const plan = currentAgencyFillPlan();
+    if (!plan) return;
+    // Thiếu địa bàn thì chặn NGAY: gửi đi là ô Tỉnh/Xã bị bỏ trống giữa chừng, cán bộ phải dọn
+    // lại chữ lọc còn sót trong ô.
+    if (!locationIsComplete()) {
+      setStatus("Chọn Tỉnh/Thành và Phường/Xã ở mục Địa bàn trước đã.", "err");
+      return;
+    }
+    window.__AUTOFILL_HCC_POPUP_BUSY__ = true;
+    agencyFillBtn.disabled = true;
+    try {
+      setStatus("Đang chọn cơ quan thực hiện...", "info");
+      const res = await sendToContent({ action: "fillAgencyByPlan", fields: resolveAgencyPlan(plan) });
+      if (res?.error) throw new Error(res.error);
+      if (!res?.ok) throw new Error("Trang chưa sẵn sàng — mở đúng bước Chọn cơ quan thực hiện rồi thử lại.");
+      const sot = (res.notFound || []).length;
+      setStatus(
+        `Đã chọn cơ quan (${res.filled} mục)${sot ? ` — còn ${sot} mục cần chọn tay` : ""}. `
+        + "Cán bộ rà lại rồi bấm Chuyển bước tiếp theo.",
+        sot ? "info" : "ok",
+      );
+    } catch (e) {
+      setStatus(e.message || "Không chọn được cơ quan thực hiện.", "err");
+    } finally {
+      window.__AUTOFILL_HCC_POPUP_BUSY__ = false;
+      agencyFillBtn.disabled = false;
+    }
+  });
 }
 
 // Nút "Điền thông tin người ủy quyền" (Bắc Ninh): đọc file bằng purpose=authorized_person rồi
@@ -2335,6 +2405,33 @@ async function restoreSplitMode() {
   if (splitModeToggle) splitModeToggle.checked = attachSplitMode;
 }
 
+// Cài đặt "hỏi đánh giá sau khi gửi hồ sơ" — lưu THEO TÀI KHOẢN vì một máy quầy nhiều cán bộ dùng
+// chung: bảng {tên đăng nhập: bật/tắt}. Tài khoản chưa có trong bảng = BẬT (giữ nguyên hành vi cũ).
+// Hai khoá này PHẢI trùng chữ với settings.js — hai file đọc/ghi chéo nhau qua storage.
+const RATING_ENABLED_BY_USER_KEY = "autofill_rating_enabled_by_user";
+const CURRENT_USERNAME_KEY = "autofill_current_username";
+let ratingEnabled = true;
+
+async function rememberCurrentUsername(username) {
+  try { await chrome.storage.local.set({ [CURRENT_USERNAME_KEY]: String(username || "") }); }
+  catch (_) { /* không chặn đăng nhập */ }
+  await restoreRatingEnabled();
+}
+
+async function restoreRatingEnabled() {
+  try {
+    const store = await chrome.storage.local.get([RATING_ENABLED_BY_USER_KEY, CURRENT_USERNAME_KEY]);
+    ratingEnabled = ratingEnabledFor(store?.[RATING_ENABLED_BY_USER_KEY], store?.[CURRENT_USERNAME_KEY]);
+  } catch (_) { ratingEnabled = true; }
+}
+
+/** Chỉ tắt khi tài khoản này được ghi rõ là false — thiếu bảng/thiếu tên = bật. */
+function ratingEnabledFor(map, username) {
+  const name = String(username || "").trim();
+  if (!name || !map || typeof map !== "object") return true;
+  return map[name] !== false;
+}
+
 // Đọc cài đặt "tách giấy tờ trong file" từ storage (do settings.html ghi). Không có ô tick ở popup.
 async function restoreSplitDocumentsSetting() {
   try {
@@ -2343,6 +2440,7 @@ async function restoreSplitDocumentsSetting() {
     submitterOwnerMode = result[SUBMITTER_OWNER_MODE_KEY] === true;
     estateSplitAttachments = result[ESTATE_SPLIT_ATTACH_KEY] === true;
   } catch (_) { attachSplitDocuments = false; submitterOwnerMode = false; estateSplitAttachments = false; }
+  await restoreRatingEnabled();
 }
 // settings.html bật/tắt → đồng bộ ngay vào popup đang mở (không cần mở lại popup).
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -2350,6 +2448,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes[SPLIT_DOCUMENTS_SETTING_KEY]) attachSplitDocuments = changes[SPLIT_DOCUMENTS_SETTING_KEY].newValue === true;
   if (changes[SUBMITTER_OWNER_MODE_KEY]) submitterOwnerMode = changes[SUBMITTER_OWNER_MODE_KEY].newValue === true;
   if (changes[ESTATE_SPLIT_ATTACH_KEY]) estateSplitAttachments = changes[ESTATE_SPLIT_ATTACH_KEY].newValue === true;
+  // Tắt ở tab Cài đặt phải ăn ngay vào bảng đang mở, không bắt đóng/mở lại trợ lý.
+  if (changes[RATING_ENABLED_BY_USER_KEY] || changes[CURRENT_USERNAME_KEY]) void restoreRatingEnabled();
 });
 
 fileInput.addEventListener("change", () => {
@@ -4232,6 +4332,10 @@ function renderRatingView() {
 
 /** Mở màn đánh giá cho một hồ sơ, nếu hồ sơ đó chưa từng được hỏi. */
 function openRating(dossierId) {
+  // Cán bộ tắt "Hỏi đánh giá" trong Cài đặt → không hiện phiếu. Chặn ở ĐÂY vì cả hai đường vào
+  // (bấm nộp xong, và dựng lại bảng sau postback) đều đi qua hàm này. Mốc nộp hồ sơ do service
+  // worker gửi riêng (/dossiers/submit-click) nên báo cáo số hồ sơ KHÔNG bị ảnh hưởng.
+  if (!ratingEnabled) return;
   if (!dossierId || !RATING_CARD || ratingState) return;
   ratingState = { dossierId, level: 0, reasons: new Set(), note: "" };
   showView("rating");
@@ -4252,6 +4356,14 @@ async function resumePendingRating() {
     if (done.includes(dossierId)) return;
     // Cờ quá cũ (cán bộ đóng trình duyệt rồi mở lại hôm sau) thì bỏ — hỏi lúc đó là vô nghĩa.
     if (pending.at && Date.now() - Number(pending.at) > 30 * 60 * 1000) {
+      await markRatingDone(dossierId);
+      return;
+    }
+    // Đọc cài đặt NGAY TẠI ĐÂY: popup vừa dựng thì ratingEnabled còn là giá trị mặc định (true)
+    // cho tới khi storage trả về — chạy sớm là phiếu bật lên đúng một lần dù đã tắt.
+    await restoreRatingEnabled();
+    if (!ratingEnabled) {
+      // Đánh dấu đã xử lý: bật lại cài đặt sau này không được đội lên phiếu của hồ sơ cũ.
       await markRatingDone(dossierId);
       return;
     }

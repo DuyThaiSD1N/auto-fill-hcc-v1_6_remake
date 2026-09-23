@@ -1811,7 +1811,12 @@
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const norm = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+  // normalize("NFC") là BẮT BUỘC, không phải cho đẹp: nhãn option của cổng liên thông khai sinh
+  // lưu ở dạng tổ hợp khác NFC ("Không có yếu tố nước ngoài"), nên so === với chuỗi NFC của
+  // backend là TRƯỢT dù hai chuỗi hiện ra y hệt nhau trên màn hình — không cách nào nhìn ra.
+  // Bản handfree đã chuẩn hoá từ trước (content/fill-core.js); bản này thì chưa, nên cùng một
+  // kế hoạch điền mà chạy được ở handfree lại hỏng ở đây.
+  const norm = (s) => (s || "").normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
 
   // Fill-tất-cả-8-trang: mỗi lần trang load lại (sau Lưu/điều hướng), nếu đang có phiên thì chạy bước kế.
   if (IS_TOP_FRAME && !window.__AUTOFILL_HCC_FILLALL_RESUMED__) {

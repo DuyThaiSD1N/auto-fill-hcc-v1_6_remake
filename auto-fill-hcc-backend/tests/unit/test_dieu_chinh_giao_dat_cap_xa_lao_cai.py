@@ -41,7 +41,7 @@ def test_registry_khoa_bang_ma_va_thang_rule_theo_ten():
     assert detect["urlScope"] == ["dichvucong.laocai.gov.vn"]
     assert "1.115680" in detect["textIncludes"]
     assert detect["textPriority"] is True
-    assert entry["label"].startswith("[Tỉnh Lào Cai(cấp xã)]")
+    assert entry["label"].startswith("(Lào Cai - Cấp phường/xã)")
     assert entry["hasAttachmentStep"] is True
 
     so = _entry(_SO_KEY)

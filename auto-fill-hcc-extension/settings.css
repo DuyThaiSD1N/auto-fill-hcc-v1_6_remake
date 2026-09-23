@@ -135,6 +135,10 @@ h1 {
 .switch input:checked + .switch-track { background: #1565c0; }
 .switch input:checked + .switch-track::after { transform: translateX(20px); }
 .switch input:focus-visible + .switch-track { outline: 3px solid rgba(21, 101, 192, 0.24); }
+/* Công tắc bị KHOÁ phải nhìn ra là bị khoá. Thiếu rule này, công tắc khoá ở trạng thái bật trông
+   y hệt công tắc đang bật bình thường — cán bộ bấm không ăn, tưởng trợ lý bị đơ. */
+.switch input:disabled + .switch-track { opacity: 0.45; cursor: not-allowed; }
+.setting-row:has(input:disabled) { cursor: not-allowed; }
 
 .save-status {
   min-height: 18px;
