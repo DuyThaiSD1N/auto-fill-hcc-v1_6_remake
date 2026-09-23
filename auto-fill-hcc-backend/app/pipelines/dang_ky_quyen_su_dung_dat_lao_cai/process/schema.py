@@ -32,6 +32,17 @@ FIELDS: list[dict] = [
             "diện, bên ủy quyền, bên được ủy quyền), mỗi người một object: " + _PERSON_DESC
         ),
     },
+    {
+        "name": "NguoiDuocUyQuyen",
+        "desc": (
+            "CHỈ điền khi hồ sơ có văn bản riêng tiêu đề 'GIẤY ỦY QUYỀN'/'HỢP ĐỒNG ỦY QUYỀN'/'VĂN BẢN VỀ VIỆC "
+            "ĐẠI DIỆN' có dòng 'ủy quyền cho' kèm số định danh của bên B. Chép người đứng NGAY SAU 'ủy quyền "
+            "cho' vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" ('Nam'/'Nữ'), \"danToc\", "
+            "\"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), \"noiCapCccd\", \"dienThoai\", \"thuongTru\": "
+            + _AREA_DESC + "}. Không có văn bản ủy quyền thì BỎ TRỐNG — người đại diện theo pháp luật ghi trên "
+            "GCN đăng ký doanh nghiệp KHÔNG phải người được ủy quyền."
+        ),
+    },
     # ---- Chủ hồ sơ = người đứng tên Đơn đăng ký biến động (bên NHẬN quyền sử dụng đất). ----
     {"name": "ChuHoSo_LoaiDoiTuong",
      "desc": "Chủ hồ sơ (người đứng tên Đơn mục 1.a, bên nhận chuyển quyền) là 'Cá nhân' hay 'Tổ chức'."},
@@ -81,8 +92,12 @@ for _name in ("ChuHoSo_DiaChiHopDong", "ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiDkdn"
 
 # Ô UI thật ở bước 2 (name = <tiền tố><key>, Nth.FormBuilder). <select> native → dom-select, còn lại → dom-input.
 UI_COMP_BY_NAME = {
-    # Phần II — người nộp. Họ tên/Số căn cước/địa chỉ do tài khoản định danh điền sẵn → KHÔNG phát lại (sửa
-    # "Họ và tên" là cổng xoá trắng Di động + CCCD). Nhân thân còn lại chỉ lấy từ giấy tờ CỦA CHÍNH người nộp.
+    # Phần II — người nộp. Chế độ THEO TÀI KHOẢN (mặc định) KHÔNG phát lại Họ tên/Số căn cước/địa chỉ/Di động:
+    # cổng đã điền sẵn đúng người từ tài khoản định danh, mà sửa "Họ và tên" là cổng xoá trắng Di động + CCCD.
+    # Chế độ THEO TỜ KHAI phát cả khối vì người nộp là người KHÁC — nửa khối của tài khoản nửa của người trong
+    # hồ sơ là sai người khi cổng xác thực với CSDLQG dân cư.
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",      # người nộp đại diện tổ chức chủ hồ sơ
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",
@@ -90,6 +105,10 @@ UI_COMP_BY_NAME = {
     "CongDan_danTocCongDan": "dom-select",       # JS cổng không tự đổ dân tộc
     "CongDan_ngayCapCmnd": "dom-input",
     "CongDan_noiCapCmnd": "dom-input",
+    "CongDan_diDong": "dom-input",
+    "CongDan_maTinhThanh": "dom-select",
+    "CongDan_maPhuongXa": "dom-select",          # nạp AJAX sau khi chọn tỉnh
+    "CongDan_diaChi": "dom-input",
     # Phần III — chủ hồ sơ. Đối tượng là DRIVER: đổi CN/DN mới hiện nhóm ô tương ứng → phát TRƯỚC.
     "ChuHoSo_maDoiTuongNopHS": "dom-select",     # "" / CN / DN / CQ / TC
     "ChuHoSo_tenChuHoSo": "dom-input",           # (*) khi CN

@@ -84,6 +84,39 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
                                   "xin trợ cấp hưu trí cho người già", "điều chỉnh trợ cấp hưu trí",
                                   "thôi hưởng trợ cấp hưu trí", "chế độ hưu trí xã hội",
                                   "trợ cấp cho người cao tuổi không có lương hưu"],
+    # Nhãn dùng chung cụm "trợ cấp hưu trí xã hội" với thủ tục hưu trí → hint chỉ nhận cụm có
+    # "mai táng"/"chôn cất", không bao giờ để lọt cụm trợ cấp trơn.
+    "ho-tro-mai-tang-huu-tri-xa-hoi": ["hỗ trợ mai táng cho người hưởng trợ cấp hưu trí",
+                                       "mai táng cho người hưởng hưu trí xã hội",
+                                       "chi phí mai táng người cao tuổi hưởng trợ cấp hưu trí"],
+    # Người có công (Bộ Nội vụ) chuyển chỗ ở → chuyển hồ sơ hưởng ưu đãi theo. KHÔNG nhận "chuyển hộ
+    # khẩu"/"đổi nơi thường trú" trơn: đó là thủ tục cư trú của công an, không phải thủ tục này.
+    "di-chuyen-ho-so-nguoi-huong-tro-cap": ["di chuyển hồ sơ người có công",
+                                            "chuyển hồ sơ hưởng trợ cấp ưu đãi",
+                                            "chuyển hồ sơ liệt sĩ về nơi ở mới",
+                                            "người có công chuyển nơi thường trú",
+                                            "di chuyển hồ sơ trợ cấp ưu đãi"],
+    # Giấy XÁC NHẬN khuyết tật — KHÁC "trợ cấp cho người khuyết tật" (tiền hàng tháng) ở trên:
+    # cái này là đi giám định để được công nhận mức độ khuyết tật.
+    "xac-dinh-muc-do-khuyet-tat": ["xác định mức độ khuyết tật", "xác định lại mức độ khuyết tật",
+                                   "cấp giấy xác nhận khuyết tật", "làm giấy khuyết tật",
+                                   "giám định mức độ khuyết tật", "xin giấy chứng nhận khuyết tật"],
+    # Hai thủ tục mai táng chỉ khác NHÓM ĐỐI TƯỢNG → cụm "mai táng" trơn KHÔNG thuộc bên nào; để
+    # LLM đọc cả câu rồi quyết, hoặc hỏi lại. Nhét vào một bên là bên kia không bao giờ được chọn.
+    "ho-tro-mai-tang": ["hỗ trợ mai táng cho đối tượng bảo trợ xã hội",
+                        "mai táng cho người hưởng trợ cấp bảo trợ xã hội",
+                        "chi phí mai táng người khuyết tật",
+                        "mai táng cho trẻ mồ côi đang hưởng trợ cấp"],
+    # CÙNG cổng Bộ Y tế và tên gần trùng với hưu trí xã hội ở trên: chỉ nhận những cụm gắn với
+    # ĐỐI TƯỢNG bảo trợ xã hội (khuyết tật, mồ côi, đơn thân, HIV) hoặc khoản chăm sóc/nuôi dưỡng.
+    # Cụm "trợ cấp xã hội" trơn để LLM quyết theo cả câu, không nhét vào đây kẻo nuốt của hưu trí.
+    "tro-cap-xa-hoi-hang-thang": ["trợ cấp xã hội hàng tháng", "trợ cấp bảo trợ xã hội",
+                                  "hỗ trợ kinh phí chăm sóc nuôi dưỡng",
+                                  "trợ cấp cho người khuyết tật", "trợ cấp cho trẻ mồ côi",
+                                  "trợ cấp mẹ đơn thân nuôi con nhỏ",
+                                  "trợ cấp cho người nhiễm HIV",
+                                  "điều chỉnh trợ cấp xã hội hàng tháng",
+                                  "thôi hưởng trợ cấp xã hội hàng tháng"],
     "cap-ban-sao-van-bang-so-goc": ["bản sao văn bằng", "bản sao chứng chỉ", "bản sao bằng tốt nghiệp",
                                     "mất bằng tốt nghiệp", "xin lại bằng cấp ba", "trích lục văn bằng"],
     "cho-thue-thue-mua-nha-o-xa-hoi": ["thuê nhà ở xã hội", "thuê mua nhà ở xã hội",
@@ -325,6 +358,19 @@ Người dân đang ở bước "{state}". Đọc câu của họ và trả DUY 
   (kèm thường trú + BHYT cho trẻ dưới 6 tuổi) vs ĐĂNG KÝ LẠI khai sinh vs cấp bản sao/trích lục
   khai sinh vs CẢI CHÍNH/thay đổi/bổ sung hộ tịch (sửa thông tin đã đăng ký). Câu chung chung
   "đăng ký khai sinh" không nêu liên thông/hộ khẩu/bảo hiểm → chọn bản đơn lẻ...
+  BỐN thủ tục của cổng Bộ Y tế RẤT DỄ LẪN: "trợ cấp HƯU TRÍ xã hội" là chế độ cho NGƯỜI CAO TUỔI
+  không có lương hưu, người hưởng CÒN SỐNG; "trợ cấp XÃ HỘI HÀNG THÁNG, hỗ trợ kinh phí chăm sóc,
+  nuôi dưỡng" là chế độ bảo trợ xã hội cho người khuyết tật, trẻ mồ côi, người đơn thân nuôi con
+  nhỏ, người nhiễm HIV và người nhận chăm sóc, nuôi dưỡng; và HAI thủ tục MAI TÁNG cho người
+  ĐÃ MẤT (thân nhân xin tiền mai táng): một dành cho người đang hưởng TRỢ CẤP HƯU TRÍ XÃ HỘI, một
+  dành cho ĐỐI TƯỢNG BẢO TRỢ XÃ HỘI (khuyết tật, mồ côi, đơn thân, HIV…). Có mai táng/chôn cất/
+  giấy chứng tử/người đã mất thì chắc chắn thuộc hai thủ tục mai táng, nhưng phải xem người mất
+  thuộc nhóm nào mới chọn được; câu không nêu nhóm → kind="unknown" để bot hỏi lại. Tương tự, câu
+  chỉ nói "trợ cấp xã hội" mà KHÔNG nêu tuổi già/lương hưu, KHÔNG nêu nhóm bảo trợ, KHÔNG nhắc
+  người mất → kind="unknown", đừng đoán. Cũng của cổng này, "XÁC ĐỊNH, XÁC ĐỊNH LẠI MỨC ĐỘ KHUYẾT
+  TẬT và cấp Giấy xác nhận khuyết tật" là đi GIÁM ĐỊNH để được công nhận khuyết tật (xin giấy),
+  KHÁC "trợ cấp cho người khuyết tật" là xin TIỀN hằng tháng — cứ nói giấy xác nhận/giám định/xác
+  định mức độ thì chọn thủ tục khuyết tật này.
   Người dân hay nói "CÔNG CHỨNG" thay cho "chứng thực": "công chứng <tên giấy tờ>" (căn cước,
   sổ đỏ, bằng cấp...) = chứng thực BẢN SAO; "công chứng chữ ký/điểm chỉ" = chứng thực CHỮ KÝ;
   "công chứng/chứng thực HỢP ĐỒNG, GIAO DỊCH" (mua bán, tặng cho, thế chấp nhà/đất/xe) =

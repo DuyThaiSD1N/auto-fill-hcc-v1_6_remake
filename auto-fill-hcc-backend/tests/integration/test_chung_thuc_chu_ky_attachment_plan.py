@@ -671,3 +671,46 @@ def test_split_mode_rejects_hallucinated_relationship_keys():
     identity = next(item for item in attachments if item["bundleRole"] == "identity")
     assert identity["bundleId"] == "signature-1"
     assert errors == []
+
+
+def test_split_mode_bo_giay_tuy_than_khong_khop_ai_thay_vi_de_dong_moi():
+    """Sự cố Nghĩa Hưng 21/09/2026: 2 văn bản + 1 căn cước LẠC (không khớp người ký nào).
+
+    Dòng "Thêm thành phần" sinh ra cho tệp lạc là vô dụng ở chế độ tách (mỗi tab chỉ có STT1/STT2),
+    mà extension thấy tệp KHÔNG có bundleId thì bỏ NGUYÊN lượt đính kèm → mất cả 3 tệp lành.
+    """
+    files = [
+        _file("van-ban-1.pdf"), _file("van-ban-2.pdf"),
+        _file("cccd-nguoi-ky-2.pdf"), _file("cccd-nguoi-la.pdf"),
+    ]
+    segments = [
+        _signature_segment(0, "PHẠM ĐỨC HIỆP", "036043000537"),
+        _signature_segment(1, "NGUYỄN XUÂN BAN", "036057012421"),
+        _identity_segment(2, [("NGUYỄN XUÂN BAN", "036057012421", "CCCD")]),
+        _identity_segment(3, [("TRẦN VĂN HẠNH", "036065008181", "CCCD")]),
+    ]
+    pages = {
+        0: {1: "TRÍCH LỤC KHAI TỬ Người ký PHẠM ĐỨC HIỆP 036043000537"},
+        1: {1: "GIẤY CAM KẾT BẢO LÃNH NHÂN SỰ NGUYỄN XUÂN BAN 036057012421"},
+        2: {1: "CĂN CƯỚC CÔNG DÂN NGUYỄN XUÂN BAN 036057012421"},
+        3: {1: "CĂN CƯỚC CÔNG DÂN TRẦN VĂN HẠNH 036065008181"},
+    }
+    errors: list[str] = []
+
+    attachments, classified = build_segment_plan_items(
+        files, segments, _meta(len(files)), pages, {}, split_mode=True, errors=errors,
+    )
+
+    # Tệp lạc KHÔNG nằm trong kế hoạch, và không tệp nào thiếu bundleId.
+    assert 3 not in [item["fileIndex"] for item in attachments]
+    assert all(item.get("bundleId") for item in attachments)
+    assert [(item["fileIndex"], item["bundleId"], item["bundleRole"]) for item in attachments] == [
+        (0, "signature-1", "signature_document"),
+        (1, "signature-2", "signature_document"),
+        (2, "signature-2", "identity"),
+    ]
+    # Lý do phải nêu TÊN TỆP để câu báo cho cán bộ dùng được luôn.
+    assert errors == ["Giấy tờ tùy thân cccd-nguoi-la.pdf không khớp người ký của văn bản nào."]
+    # Vẫn ghi vào classified để trang quản trị thấy tệp đã đọc ra gì và vì sao bị bỏ.
+    skipped = [row for row in classified if row["target"] == "skipped"]
+    assert [(row["fileIndex"], row["bundleId"]) for row in skipped] == [(3, None)]

@@ -258,3 +258,46 @@ def test_bvhttdl_luoi_class_khong_dinh_nut_dong():
     close_tag = '<button type="button" class="btn btn-light btn-sm style_btn_close">'
     assert _matches(_VH_HOST, "/nop-ho-so", label="Đã đổi nhãn", tag=submit_tag)
     assert not _matches(_VH_HOST, "/nop-ho-so", label="Đóng", tag=close_tag)
+
+
+# ── successText: lưới đỡ dò chữ màn kết quả ─────────────────────────────────────────────
+# Extension so thẳng cụm với innerText đã bỏ dấu + gộp khoảng trắng. Một cụm còn dấu, còn
+# chữ hoa hay thừa khoảng trắng là KHÔNG BAO GIỜ khớp — hỏng âm thầm, không ai phát hiện.
+
+def _fold_like_extension(text: str) -> str:
+    import unicodedata
+    text = text.replace("Đ", "D").replace("đ", "d")
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    return " ".join(text.split()).lower()
+
+
+def test_success_text_dung_dinh_dang_extension_doc_duoc():
+    for host, rule in PORTAL_SUBMIT.items():
+        groups = rule.get("successText")
+        if groups is None:
+            continue
+        assert isinstance(groups, list) and groups, host
+        for group in groups:
+            assert isinstance(group, list) and group, f"{host}: nhóm rỗng khớp mọi trang"
+            for phrase in group:
+                assert phrase == _fold_like_extension(phrase), f"{host}: '{phrase}' chưa fold"
+
+
+def test_success_text_luon_di_kem_urlPattern():
+    """Chữ màn kết quả có thể lặp lại ở màn tra cứu; thiếu khóa URL là đếm nhầm."""
+    for host, rule in PORTAL_SUBMIT.items():
+        if rule.get("successText"):
+            assert rule.get("urlPattern"), f"{host}: successText mà không khóa URL"
+
+
+def test_lien_thong_nhan_duoc_man_ket_qua_that():
+    """Chữ màn kết quả thật (Phường Vũ Ninh, 21/09 — cổng đã cấp số G22.99.08-260921-896048)."""
+    rule = PORTAL_SUBMIT["lienthong.dichvucong.gov.vn"]
+    page = _fold_like_extension(
+        "Vui lòng ghi nhớ các thông tin bên dưới để theo dõi tình hình xử lý hoặc cập nhập "
+        "thông tin hồ sơ của bạn. Số hồ sơ: G22.99.08-260921-896048 "
+        "Ngày hẹn trả dự kiến: 25/09/2026. Không bao gồm thời gian xin xác nhận trên VneID."
+    )
+    assert any(all(p in page for p in group) for group in rule["successText"])
+    assert re.match(rule["urlPattern"], "/#/ke-khai/2.000987")

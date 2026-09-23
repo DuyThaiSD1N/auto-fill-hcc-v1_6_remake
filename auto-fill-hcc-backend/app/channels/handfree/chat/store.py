@@ -97,3 +97,21 @@ def push_history(conv: dict, role: str, text: str, source: str = "") -> None:
     # Giữ history gọn (phiên dài chủ yếu là sự kiện) — 200 lượt là quá đủ để khôi phục UI.
     if len(conv["history"]) > 200:
         conv["history"] = conv["history"][-200:]
+
+
+def drop_last_bot_history(conv: dict, state: str) -> bool:
+    """Xoá câu bot GẦN NHẤT nếu nó được nói ở `state` đó. Trả True khi có xoá.
+
+    Dùng khi một lời hỏi hết hiệu lực vì trang đã sang bước khác: để lại thì khôi phục phiên
+    dựng lại đúng câu đã sai bước. Chỉ soi ĐÚNG bản ghi bot cuối — câu bot cũ hơn vẫn là thứ
+    công dân đã thấy và trả lời, xoá theo là viết lại lịch sử.
+    """
+    history = conv.get("history") or []
+    for index in range(len(history) - 1, -1, -1):
+        if history[index].get("role") != "bot":
+            continue
+        if history[index].get("state") == state:
+            history.pop(index)
+            return True
+        return False
+    return False

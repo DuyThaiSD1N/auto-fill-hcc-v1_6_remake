@@ -11,6 +11,8 @@ Cổng `dichvucong.laocai.gov.vn` (eForm iGate, Nth.FormBuilder). Trang `nhap-th
 trang có `input[name="HoSoOnline_giayToKhac[]"]` nên FE tự chạy `attachOneFileToOtherListFile`
 (content.js) — engine này **điền cả TÊN tài liệu** vào ô rồi mới đính tệp, đúng yêu cầu nghiệp vụ là
 phải ghi rõ danh mục văn bản bổ sung. Nếu chỉ đẩy vào slot 3–5 thì tệp lên nhưng ô tên để trống.
+Tên đó do LLM đọc nội dung đặt (xem prompt), BE chỉ chuẩn hoá + khử trùng — tên tệp không dùng được
+vì hệ thống upload đã bỏ dấu và chèn số.
 
 Phân loại THUẦN LLM (không lưới keyword). Không bỏ sót tệp nào.
 """
@@ -21,7 +23,6 @@ import time
 from typing import Any
 
 from app.config import settings
-from app.pipelines._shared import normalize_document_name
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -29,6 +30,9 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _LOAI_BAN = "Bản chính"
+
+# Cổng ghi ngay trên bảng: "Dung lượng tối đa là 6 Mb". Gán tệp quá cỡ thì cổng nuốt im lặng.
+_MAX_FILE_BYTES = 6 * 1024 * 1024
 
 # docType → (slotIndex, text NGUYÊN VĂN của dòng trên cổng, tên hiển thị).
 _ROUTES: dict[str, dict[str, Any]] = {
@@ -79,15 +83,55 @@ def _normalize_doc_type(value: Any) -> str:
     return "other"
 
 
-def _other_component_name(file_name: str) -> str:
-    """Tên dòng 'Giấy tờ khác' mới — engine otherListFile điền chuỗi này vào ô tên tài liệu."""
-    stem = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", str(file_name or "")).strip()
-    stem = re.sub(r"[_]+", " ", stem)
-    stem = re.sub(r"\s+", " ", stem).strip()
-    return normalize_document_name(stem, "Tài liệu khác kèm theo") if stem else "Tài liệu khác kèm theo"
+_FALLBACK_DOCUMENT_NAME = "Tài liệu khác"
+_MAX_DOCUMENT_NAME = 60
 
 
-async def _classify_one(document: dict[str, Any]) -> tuple[int, str]:
+def _clean_document_name(raw: str) -> str:
+    """Chuẩn hoá tên gõ vào ô "Tên giấy tờ".
+
+    KHÔNG dùng `normalize_document_name` của _shared: hàm đó nhận TÊN TỆP nên chạy `Path(raw).stem`,
+    cắt mất phần trước dấu "/" — "QĐ 894/QĐ-UBND phê duyệt…" thành "QĐ-UBND phê duyệt…", tức mất đúng
+    số hiệu văn bản là thứ phân biệt các quyết định với nhau. Ở đây chỉ đổi "/" thành "-" (giữ số
+    hiệu, tránh ký tự cổng có thể từ chối) và bỏ ký tự lạ.
+    """
+    import unicodedata
+
+    text = unicodedata.normalize("NFC", str(raw or "")).replace("/", "-")
+    chars = [ch if (ch.isalnum() or ch in " _-,.()") else " " for ch in text]
+    text = re.sub(r"\s+", " ", "".join(chars)).strip(" -,.")
+    return text[:_MAX_DOCUMENT_NAME].strip(" -,.")
+
+
+def _unique_document_name(base: str, used: set[str]) -> str:
+    """Hai dòng "Giấy tờ khác" trùng tên là cán bộ không phân biệt được văn bản nào."""
+    value = _clean_document_name(base) or _FALLBACK_DOCUMENT_NAME
+    key = _fold(value)
+    if key and key not in used:
+        used.add(key)
+        return value
+    stem = value[:52].strip() or _FALLBACK_DOCUMENT_NAME
+    suffix = 2
+    while True:
+        candidate = f"{stem} {suffix}"[:_MAX_DOCUMENT_NAME].strip()
+        if _fold(candidate) not in used:
+            used.add(_fold(candidate))
+            return candidate
+        suffix += 1
+
+
+def _file_bytes(file: dict) -> int | None:
+    """Kích thước thật, suy từ độ dài base64 của dataUrl (FileItem không mang size)."""
+    data_url = file.get("dataUrl")
+    if not isinstance(data_url, str) or "," not in data_url:
+        return None
+    payload = data_url.split(",", 1)[1]
+    if not payload:
+        return None
+    return len(payload) * 3 // 4 - payload[-2:].count("=")
+
+
+async def _classify_one(document: dict[str, Any]) -> tuple[int, str, str]:
     index = int(document.get("index"))
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -95,49 +139,59 @@ async def _classify_one(document: dict[str, Any]) -> tuple[int, str]:
             [{"index": index, "text": str(document.get("text") or "")[:12000]}]
         )},
     ]
-    raw = await client.chat(messages, max_tokens=120, enable_thinking=settings.agent_reasoning)
+    # max_tokens cao hơn bản cũ vì nay LLM còn phải trả documentName.
+    raw = await client.chat(messages, max_tokens=220, enable_thinking=settings.agent_reasoning)
     parsed = client.extract_json_block(raw)
     first = next(iter(parsed.get("documents", []) or []), {})
-    return index, _normalize_doc_type(first.get("docType") or first.get("type"))
+    doc_type = _normalize_doc_type(first.get("docType") or first.get("type"))
+    return index, doc_type, str(first.get("documentName") or "").strip()
 
 
 async def _classify_with_llm(
     documents: list[dict[str, Any]],
     errors: list[str] | None = None,
-) -> dict[int, str]:
+) -> dict[int, tuple[str, str]]:
     if not documents:
         return {}
     outcomes = await asyncio.gather(*(_classify_one(d) for d in documents), return_exceptions=True)
-    result: dict[int, str] = {}
+    result: dict[int, tuple[str, str]] = {}
     for document, outcome in zip(documents, outcomes, strict=True):
         if isinstance(outcome, BaseException):
             if errors is not None:
                 errors.append(f"attachment_agent file {document.get('index')}: {outcome}")
             continue
-        index, doc_type = outcome
-        result[index] = doc_type
+        index, doc_type, document_name = outcome
+        result[index] = (doc_type, document_name)
     return result
 
 
 def build_plan_items(
     files: list[dict],
-    llm_types: dict[int, str] | None = None,
+    llm_types: dict[int, tuple[str, str] | str] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
     unknown: list[str] = []
+    qua_nang: list[str] = []
+    used_names: set[str] = set()
     by_row: dict[str, list[str]] = {}
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
-        llm_type = llm_types.get(index, "")
+        raw = llm_types.get(index)
+        llm_type, llm_name = raw if isinstance(raw, tuple) else (raw or "", "")
         doc_type = llm_type if llm_type in _ALLOWED else "other"
         source = "llm" if llm_type else "default"
 
+        size = _file_bytes(file)
+        if size and size > _MAX_FILE_BYTES:
+            qua_nang.append(f"{file_name} ({round(size / 1024 / 1024, 1)} MB)")
+
         if doc_type == "other":
-            component_name = _other_component_name(file_name)
+            # Tên lấy từ LLM đọc nội dung, KHÔNG lấy tên tệp (mất dấu, dính số của hệ thống upload).
+            component_name = _unique_document_name(llm_name, used_names)
             item = {
                 "fileIndex": index,
                 "fileName": file_name,
@@ -148,8 +202,11 @@ def build_plan_items(
                 "target": "new",
                 "needsAddComponent": True,
                 "detectedType": doc_type,
+                # Cổng iGate VNPT: bấm option "Chọn tệp tin" mở hộp thoại file của hệ điều hành
+                # (chặn UI) → FE chỉ gán thẳng, hụt thì bỏ qua tệp đó.
+                "noChooserClick": True,
             }
-            unknown.append(file_name)
+            unknown.append(f"{file_name} → \"{component_name}\"")
         else:
             route = _ROUTES[doc_type]
             item = {
@@ -171,6 +228,7 @@ def build_plan_items(
         classified.append({
             "fileName": file_name,
             "docType": doc_type,
+            "documentName": item["documentName"],
             "source": source,
             "target": item["target"],
             "slotIndex": item.get("slotIndex"),
@@ -178,8 +236,13 @@ def build_plan_items(
 
     if unknown:
         warnings.append(
-            "Chưa nhận ra loại giấy tờ, đã thêm dòng \"Giấy tờ khác\" đặt tên theo tệp để không bỏ sót — "
-            f"cán bộ kiểm tra lại: {', '.join(unknown)}."
+            "Chưa nhận ra loại giấy tờ, đã thêm dòng \"Giấy tờ khác\" kèm tên tài liệu để không bỏ "
+            f"sót — cán bộ kiểm tra lại: {', '.join(unknown)}."
+        )
+    if qua_nang:
+        warnings.append(
+            "Tệp vượt giới hạn 6 MB của cổng nên có thể bị nuốt im lặng, hãy nén hoặc giảm DPI rồi "
+            f"tải lại: {', '.join(qua_nang)}."
         )
     # Một dòng nhận NHIỀU tệp là hợp lệ, nhưng cán bộ phải ghi rõ danh mục văn bản vào ô "Ghi chú" —
     # nêu sẵn để khỏi phải tự dò.

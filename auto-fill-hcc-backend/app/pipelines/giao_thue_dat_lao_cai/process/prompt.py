@@ -45,4 +45,18 @@ EXTRA_RULES = """
 13. Người ký đơn thay mặt công ty (giám đốc) KHÔNG đương nhiên là người được ủy quyền nộp hồ sơ; chỉ
     coi là NGƯỜI NỘP khác chủ hồ sơ khi có văn bản ủy quyền riêng.
 </traps>
+
+<ung_vien_nguoi_nop_rules>
+16. ⚑ KHÔNG tự quyết AI LÀ NGƯỜI ĐI NỘP. Trang nộp hồ sơ đã có sẵn họ tên + số căn cước của tài khoản
+    đăng nhập; downstream mới là chỗ chọn người. Việc của bạn là LIỆT KÊ ĐỦ ứng viên:
+    - DanhSachCccd: mỗi ảnh/bản sao CCCD/CMND thật trong hồ sơ một object.
+    - NguoiTrongGiayTo: MỌI cá nhân có kèm số định danh ở bất kỳ giấy tờ nào (người đại diện theo pháp
+      luật trên Giấy chứng nhận đăng ký doanh nghiệp, thành viên góp vốn, người ký đơn, người sử dụng
+      đất). Thiếu một người là downstream không điền được khối người nộp cho người đó.
+    - NguoiDuocUyQuyen: CHỈ khi có văn bản ủy quyền riêng.
+17. NguoiNop_* vẫn giữ nghĩa "người ký/đứng ra nộp theo giấy tờ" (người ký đơn, người đại diện theo
+    pháp luật khi chủ hồ sơ là tổ chức). Không suy từ việc ai xuất hiện nhiều lần nhất.
+18. Người đại diện theo pháp luật ghi trên Giấy chứng nhận đăng ký doanh nghiệp KHÔNG mặc nhiên là
+    người đi nộp — vẫn liệt kê vào NguoiTrongGiayTo để downstream đối chiếu.
+</ung_vien_nguoi_nop_rules>
 """.strip()

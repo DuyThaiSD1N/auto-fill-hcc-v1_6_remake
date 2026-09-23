@@ -46,10 +46,21 @@ async def _load_owner_user(conv: dict | None, sess: dict | None) -> dict | None:
 logger = logging.getLogger(__name__)
 
 
+def _execution_subject_for_owner(conv: dict) -> str:
+    """Nhánh đang chạy ở bước chủ hồ sơ. TRANG là sự thật, không phải lựa chọn của cán bộ.
+
+    Trang mọc khối "Thông tin ủy quyền cá nhân" nghĩa là cổng đang ở nhánh ủy quyền; cán bộ
+    quên chọn "Đối tượng thực hiện" trong sidebar thì bốn ô đó sẽ không bao giờ được điền.
+    """
+    if conv.get("authorization_page"):
+        return "authorized_person"
+    return str(conv.get("execution_subject") or "self")
+
+
 def _owner_pipeline_options(conv: dict, owner_context: dict) -> dict:
     """Only the authorized branch may carry authorization context into OCR/LLM."""
     options = {"ownerContext": owner_context}
-    if str(conv.get("execution_subject") or "self") == "authorized_person":
+    if _execution_subject_for_owner(conv) == "authorized_person":
         options["executionSubject"] = "authorized_person"
     return options
 
@@ -181,6 +192,7 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str) 
         conv["extracted"] = process_result.get("extracted", {})
         conv["attach_plan"] = attach_result.get("attachments", [])
         conv["attach_errors"] = attach_result.get("errors", [])
+        conv["attach_fail_streak"] = 0  # kế hoạch MỚI → cho watcher tự đính lại từ đầu
         conv["pipeline_status"] = "business_ready"
         conv["pipeline_error"] = ""
         conv["trace_request_id"] = await tracing.record_process(
@@ -227,7 +239,7 @@ async def run_owner_info(conv_id: str, sid: str, procedure_key: str) -> None:
         if not (owner_context.get("fullName") or owner_context.get("identityNumber")):
             raise RuntimeError("Chưa đọc được họ tên hoặc số định danh của chủ hồ sơ trên trang.")
 
-        execution_subject = str(conv.get("execution_subject") or "self")
+        execution_subject = _execution_subject_for_owner(conv)
         # Nhánh bản thân tuyệt đối không truyền context ủy quyền vào pipeline/prompt.
         pipeline_options = _owner_pipeline_options(conv, owner_context)
         result = await pipeline({"": files}, pipeline_options)
@@ -282,6 +294,32 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             raise RuntimeError("Phiên không còn file nào.")
 
         attach_options = dict(options or {})
+        from app.channels.handfree.chat import guided_steps as guided
+
+        proc_cfg = get_procedure(procedure_key) or {}
+        auth_key = guided.authorization_doc_key(proc_cfg)
+        # Gác bằng CHÍNH checklist của phiên, không chỉ bằng khai báo của thủ tục: phiên của
+        # bản extension cũ chỉ có một ô nên không bao giờ có ô giấy ủy quyền, và mọi tệp đều
+        # đã có loại — nhưng dựa vào dây chuyền đó là dựa vào thứ ở xa, dễ đứt khi sửa chỗ khác.
+        session_keys = {str(d.get("key") or "") for d in sess.get("required_docs") or []}
+        if auth_key and auth_key in session_keys:
+            # KHÔNG được đính vào thành phần hồ sơ:
+            #  - giấy ủy quyền: nó có ô riêng ở bước chủ hồ sơ, không phải giấy đem chứng thực;
+            #  - tệp chưa nhận ra loại: với thủ tục này bộ phân loại có sẵn ô "giấy tờ khác" nên
+            #    để trống loại nghĩa là nó ĐÃ TỪ CHỐI (giấy ủy quyền không đúng người) — đính
+            #    vào là đem giấy của cặp người khác đi chứng thực.
+            attach_options["excludeFileNames"] = [
+                str(f.get("name") or "") for f in sess.get("files", [])
+                if f.get("doc_key") == auth_key or not f.get("doc_key")
+            ]
+        if attach_options.get("excludeIdentityDocuments"):
+            # Đã phân loại lúc upload thì biết ĐÍCH DANH tệp nào là căn cước của chủ hồ sơ —
+            # chính xác hơn để planner tự đoán lại theo loại giấy tờ nó nhận ra.
+            owner_keys = guided.owner_doc_keys(proc_cfg)
+            attach_options["identityFileNames"] = [
+                str(f.get("name") or "") for f in sess.get("files", [])
+                if f.get("doc_key") in owner_keys
+            ]
         result = await attach_fn(files, attach_options, session=None)
 
         conv = await conv_store.get(conv_id)
@@ -294,6 +332,7 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         conv["attach_plan"] = result.get("attachments", [])
         conv["attach_plan_stt1_virtual"] = result.get("stt1VirtualCopy")
         conv["attach_errors"] = result.get("errors", [])
+        conv["attach_fail_streak"] = 0  # kế hoạch MỚI → cho watcher tự đính lại từ đầu
         conv["attach_action_in_progress"] = False
         conv["attach_action_dispatch_id"] = ""
         conv["attach_action_lease_until"] = None

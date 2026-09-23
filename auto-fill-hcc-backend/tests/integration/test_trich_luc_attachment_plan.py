@@ -44,33 +44,37 @@ async def test_trich_luc_dispatcher_defaults_to_preserve_and_only_true_splits(mo
     assert [call[0] for call in calls] == ["preserve", "preserve", "split"]
 
 
-async def test_trich_luc_preserve_keeps_mixed_file_and_uses_bundle_name(monkeypatch):
+_MIXED_TEXT = (
+    "───── Trang 1/4 ─────\nTỜ KHAI YÊU CẦU CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH\n"
+    "───── Trang 2/4 ─────\nCHÚ THÍCH\nGhi số căn cước công dân nếu có\n"
+    "───── Trang 3/4 ─────\nCĂN CƯỚC CÔNG DÂN\nCitizen Identity Card\n"
+    "───── Trang 4/4 ─────\nGIẤY KHAI SINH"
+)
+
+
+async def _plan_mixed(monkeypatch, llm_reply):
     async def fake_ocr_per_file(files):
-        return [{
-            "name": "mixed.pdf",
-            "text": (
-                "───── Trang 1/4 ─────\nTỜ KHAI YÊU CẦU CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH\n"
-                "───── Trang 2/4 ─────\nCHÚ THÍCH\nGhi số căn cước công dân nếu có\n"
-                "───── Trang 3/4 ─────\nCĂN CƯỚC CÔNG DÂN\nCitizen Identity Card\n"
-                "───── Trang 4/4 ─────\nGIẤY KHAI SINH"
-            ),
-        }]
+        return [{"name": "mixed.pdf", "text": _MIXED_TEXT}]
 
     async def fake_chat(messages, max_tokens, enable_thinking):
-        # Tái hiện LLM chỉ nhìn trang đầu; planner vẫn phải nhận ra đây là nguyên bộ hồ sơ.
-        return json.dumps({
-            "documents": [{
-                "fileIndex": 0, "type": "paper_declaration", "documentName": "Tờ khai bản giấy",
-            }]
-        })
+        if isinstance(llm_reply, Exception):
+            raise llm_reply
+        return json.dumps(llm_reply)
 
     monkeypatch.setattr(preserve_planner.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(preserve_planner.client, "chat", fake_chat)
-
     result = await preserve_planner.plan_trich_luc_attachments_without_split(
         [_file("mixed.pdf")], {}, _session(),
     )
     AttachmentPlanResp.model_validate(result)
+    return result
+
+
+async def test_trich_luc_preserve_keeps_mixed_file_and_uses_bundle_name(monkeypatch):
+    """LLM (đọc hết các trang) nhận ra bộ hồ sơ → giữ nguyên file, tên bộ hồ sơ."""
+    result = await _plan_mixed(monkeypatch, {"documents": [{
+        "fileIndex": 0, "type": "other", "documentName": "Hồ sơ trích lục hộ tịch",
+    }]})
 
     assert result["extracted"]["attachmentMode"] == "preserve_files"
     assert len(result["attachments"]) == 1
@@ -78,6 +82,26 @@ async def test_trich_luc_preserve_keeps_mixed_file_and_uses_bundle_name(monkeypa
     assert result["attachments"][0]["target"] == "new"
     assert "sourceSegments" not in result["attachments"][0]
     assert result["extracted"]["classified"][0]["type"] == "other"
+    assert result["extracted"]["classified"][0]["source"] == "llm"
+
+
+async def test_trich_luc_preserve_rule_never_overrides_llm(monkeypatch):
+    """Rule quét đầu trang KHÔNG được đè lên kết quả LLM — LLM trả tờ khai thì là tờ khai."""
+    result = await _plan_mixed(monkeypatch, {"documents": [{
+        "fileIndex": 0, "type": "paper_declaration", "documentName": "Tờ khai bản giấy",
+    }]})
+
+    assert result["attachments"][0]["documentName"] == "Tờ khai bản giấy"
+    assert result["extracted"]["classified"][0]["type"] == "paper_declaration"
+
+
+async def test_trich_luc_preserve_rule_only_backs_up_when_llm_fails(monkeypatch):
+    """LLM lỗi → rule đỡ: quét đầu trang vẫn nhận ra bộ hồ sơ để giữ đủ file."""
+    result = await _plan_mixed(monkeypatch, RuntimeError("provider down"))
+
+    assert len(result["attachments"]) == 1
+    assert result["attachments"][0]["documentName"] == "Hồ sơ trích lục hộ tịch"
+    assert result["extracted"]["classified"][0]["source"] == "rule"
 
 
 async def test_trich_luc_preserve_single_cccd_uses_subject_name(monkeypatch):
@@ -413,8 +437,9 @@ def test_trich_luc_attachment_prompt_uses_ocr_text_only():
     assert "fileName" not in prompt
 
     assert "Hồ sơ trích lục hộ tịch" in preserve_prompt.SYSTEM_PROMPT
-    assert "GIỐNG HỆT tập fileIndex đầu vào" in preserve_prompt.SYSTEM_PROMPT
-    assert "không mượn loại, tên hoặc chủ thể" in preserve_prompt.SYSTEM_PROMPT
+    # Mỗi lượt gọi đúng MỘT file (planner gọi riêng từng file) — không còn luật giữ tập fileIndex.
+    assert "Mỗi yêu cầu chỉ chứa ĐÚNG MỘT file" in preserve_prompt.SYSTEM_PROMPT
+    assert "đọc HẾT các trang" in preserve_prompt.SYSTEM_PROMPT
     assert "danh sách giấy tờ được kể" in preserve_prompt.SYSTEM_PROMPT
     assert 'Riêng cụm\n   "Đặc điểm nhận dạng" không đủ' in preserve_prompt.SYSTEM_PROMPT
     assert "Tài liệu trích lục hộ tịch" == preserve_planner._OTHER_LABEL

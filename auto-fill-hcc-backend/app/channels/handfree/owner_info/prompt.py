@@ -51,6 +51,10 @@ Chủ hồ sơ ở trên là người ĐƯỢC ỦY QUYỀN đang đi nộp hồ
   ủy quyền trên chính văn bản, không lấy đại từ CCCD khác.
 - Authorization_GrantorFullName, Authorization_GrantorDateOfBirth và
   Authorization_GrantorIdentityNumber chỉ thuộc người ủy quyền.
+- Văn bản ủy quyền LUÔN ghi ngày sinh của CẢ HAI bên, nhưng chỉ có MỘT trường ngày sinh để trả.
+  Authorization_GrantorDateOfBirth lấy ngày sinh trong khối BÊN ỦY QUYỀN (bên A, thường là mục
+  I); ngày sinh của bên được ủy quyền (bên B) không có chỗ trả, bỏ qua nó. Đọc được ngày sinh
+  của bên A thì PHẢI trả — có hai ngày sinh trong tài liệu KHÔNG phải là lý do để bỏ trống.
 - Chỉ được dùng giấy tờ định danh khác để bổ sung người ủy quyền khi đã nối chắc chắn bằng họ tên
   hoặc số giấy tờ ghi trên văn bản ủy quyền.
 - Authorization_Relationship chỉ trả khi tài liệu ghi rõ quan hệ với người được ủy quyền;

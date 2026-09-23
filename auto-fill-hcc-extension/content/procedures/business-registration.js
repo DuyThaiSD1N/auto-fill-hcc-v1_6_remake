@@ -2503,7 +2503,19 @@
 
     // 3. Lưu.
     const saveBtn = findBusinessSaveButton();
-    if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);
+    if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
+    // Nút Lưu chỉ bật khi cổng thấy form "dirty" qua sự kiện input/change THẬT. Trang địa chỉ gần
+    // như KHÔNG BAO GIỜ bật được cờ đó ở lượt chạy sau cascade: ô "Số nhà" cố ý set value không kèm
+    // sự kiện (tránh postback thừa — xem fillAreaStreetNumber), còn các select địa danh sau postback
+    // đã đúng đích nên chooseAreaLevel không chạm vào nữa; các ô không postback (điện thoại/email)
+    // thì chỉ điền ở lượt ĐẦU (filledStep) nên lượt resume cũng không sinh sự kiện nào.
+    // ⇒ disabled ở đây KHÔNG có nghĩa "không có gì để lưu". Bỏ qua Lưu chính là lỗi "hồ sơ thay đổi
+    // hộ kinh doanh không đổi được địa chỉ trụ sở": địa chỉ mới nằm đúng trên DOM rồi bị postback
+    // của trang kế xoá đi, im lặng, không báo gì. Cùng cách chữa đã dùng ở trang thuế và nhánh chung.
+    if (saveBtn.disabled) {
+      if (!fields.length) return void advanceFillAll(st); // thật sự không có gì để lưu
+      try { saveBtn.removeAttribute("disabled"); } catch (e) { /* ignore */ }
+    }
     st.phase = "saving";
     await setFillAllState(st);
     const reloaded = await clickSaveDetectReload(saveBtn);
@@ -3279,6 +3291,8 @@
   // Trang thuế: export để test được nhịp Lưu → đảo radio → Lưu mà không cần cả state machine.
   H.fillAddressCascade = fillAddressCascade;   // test cascade Tinh/Phuong-Xa
   H.handleTaxPage = handleTaxPage;
+  // Trang địa chỉ: export để test được nhịp "cổng để nút Lưu disabled nhưng vẫn phải lưu".
+  H.handleAddressCascadePage = handleAddressCascadePage;
   H.taxWantsSameAsHeadOffice = taxWantsSameAsHeadOffice;
   H.TAX_PAGE_KEY = "thong-tin-ve-thue";
   H.getFillAllState = getFillAllState;

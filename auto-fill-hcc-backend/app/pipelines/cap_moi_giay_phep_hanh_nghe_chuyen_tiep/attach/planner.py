@@ -12,11 +12,18 @@ Bảng thành phần hồ sơ có nhiều dòng (mục a–h); ta gán vào các
 FE khớp dòng bằng TÊN giấy tờ (componentName, substring fold), tick checkbox + chọn loaiBan + set file.
 Ta upload bản SCAN → loaiBan = "Scan tệp tin".
 
-Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword chỉ DỰ PHÒNG. ⚠ Giấy KSK / Giấy xác
-nhận thực hành đều GHI "Căn cước công dân số ..." → phải nhận theo loại đặc trưng TRƯỚC cccd. CCCD (thẻ
-thật) KHÔNG có dòng riêng trên bảng → bỏ qua.
+Phân loại THUẦN LLM — mọi dấu hiệu (kể cả dấu hiệu nhận ảnh chân dung) nằm trong prompt, KHÔNG có rule
+keyword/ngưỡng chữ trong code: OCR của cùng một tệp ra khác nhau giữa các lần chạy (watermark app scan,
+mốc trang, chữ vụn), rule cứng khớp được lần này thì trượt lần sau. Mỗi tệp một lượt gọi riêng để kết
+quả của tệp này không phụ thuộc thứ tự hay số lượng tệp khác, và không phải tin chỉ số LLM trả về.
+
+⚑ KHÔNG BỎ SÓT TỆP: tệp LLM không xếp được (other) hoặc lượt gọi lỗi → đính vào dòng Đơn (tờ khai),
+giữ nguyên tên tệp gốc để cán bộ nhận ra. attp-row gộp nhiều tệp vào cùng một dòng theo componentName.
+CCCD (thẻ thật) KHÔNG có dòng riêng trên bảng → bỏ qua như trước.
 """
 
+import asyncio
+import re
 import time
 from typing import Any
 
@@ -78,149 +85,84 @@ _SKIP_DOCS = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
 
-def _is_identity_text(text: str) -> bool:
-    h = _fold(text)
-    return any(m in h for m in ("can cuoc cong dan", "chung minh nhan dan", "the can cuoc", "ho chieu", "passport"))
+def _canon(value: Any) -> str:
+    return re.sub(r"[\s_\-]+", "_", _fold(str(value or ""))).strip("_")
 
 
-_IMAGE_TOKENS = {"left", "right", "image", "images", "anh", "photo", "picture", "portrait"}
+def _normalize_doc_type(value: Any) -> str:
+    """Khớp ĐÚNG nhãn trong allowed_types. Nhãn lạ → other.
+
+    Không khớp chuỗi con: bản cũ dò `"anh" in text` nên nhãn "thuc_hanh" (chứa "anh") bị đổi thành
+    anh_chan_dung — giấy xác nhận thực hành bị lái sang dòng ảnh.
+    """
+    canon = _canon(value)
+    return next((doc_type for doc_type in _ALLOWED_DOC_TYPES if _canon(doc_type) == canon), _OTHER)
 
 
-def _is_image_only(text: str) -> bool:
-    """True khi OCR RỖNG hoặc CHỈ có nhãn ảnh (vd 'Left image Right image') — dùng để nhận ảnh chân dung
-    VÀ để BÁC BỎ khi LLM lỡ gán anh_chan_dung cho tài liệu có nội dung văn bản thật."""
-    h = _fold(text)
-    if not h:
-        return True
-    tokens = set(h.split())
-    return bool(tokens) and tokens <= _IMAGE_TOKENS
-
-
-def _rule_doc_type(text: str) -> str:
-    """Route TẤT ĐỊNH theo OCR (dự phòng cho LLM).
-
-    ⚠ BẪY QUAN TRỌNG — ĐƠN Mẫu 08 LIỆT KÊ danh mục hồ sơ '(1) văn bằng ... (2) giấy khám sức khỏe ...
-    (3) sơ yếu lý lịch ... (4) giấy xác nhận hoàn thành quá trình thực hành ... (5) ảnh 4x6' → text của
-    ĐƠN CHỨA từ khóa của MỌI loại khác. Vì vậy PHẢI nhận ĐƠN TRƯỚC (dấu hiệu RIÊNG 'NGƯỜI LÀM ĐƠN' — chỉ
-    Đơn có), rồi mới tới các loại khác. Ngoài ra KSK / Xác nhận thực hành đều ghi 'Căn cước công dân số
-    ...' → cccd phải chạy CUỐI CÙNG (không bắt nhầm)."""
-    h = _fold(text)
-    if not h:
-        return ""
-    # Ảnh chân dung: OCR chỉ ra nhãn ảnh (vd "Left image Right image"), không có nội dung văn bản.
-    if _is_image_only(text):
-        return _ANH
-    # (1) ĐƠN đề nghị (mục a) — NHẬN TRƯỚC vì Đơn liệt kê mọi giấy tờ khác. Dấu hiệu RIÊNG: "NGƯỜI LÀM ĐƠN"
-    # ở cuối / tiêu đề "ĐƠN ĐỀ NGHỊ ... cấp giấy phép hành nghề". Các giấy khác KHÔNG có "người làm đơn".
-    if "nguoi lam don" in h \
-            or ("don de nghi" in h and "cap giay phep hanh nghe" in h and "chuc danh de nghi cap" in h):
-        return _DON
-    # (2) Sơ yếu lý lịch tự thuật (mục e).
-    if "so yeu ly lich" in h or "hoan canh gia dinh" in h or "qua trinh cong tac" in h \
-            or "nguyen quan" in h:
-        return _SYLL
-    # (3) Giấy xác nhận HOÀN THÀNH QUÁ TRÌNH THỰC HÀNH (mục g, Mẫu 07). Nhiều dấu hiệu: tiêu đề, số hiệu
-    # GXNTH/GXTTH, "theo Mẫu 07", hoặc "thời gian thực hành" + (người hướng dẫn / cơ sở thực hành).
-    if "hoan thanh qua trinh thuc hanh" in h or ("xac nhan" in h and "qua trinh thuc hanh" in h) \
-            or "gxnth" in h or "gxtth" in h or "mau so 07" in h or "mau 07" in h \
-            or ("thoi gian thuc hanh" in h and ("nguoi huong dan" in h or "co so thuc hanh" in h or "benh vien" in h)):
-        return _THUCHANH
-    # (4) Giấy khám sức khỏe (mục d).
-    if "giay kham suc khoe" in h or "kham suc khoe" in h or "phan loai suc khoe" in h \
-            or "phan loai the luc" in h:
-        return _SUCKHOE
-    # (5) Văn bằng chuyên môn (mục b — bằng tốt nghiệp/cử nhân).
-    if "bang tot nghiep" in h or "bang cu nhan" in h or "the degree of bachelor" in h \
-            or "so vao so goc cap van bang" in h or ("hieu truong" in h and ("cu nhan" in h or "van bang" in h)):
-        return _VANBANG
-    # (6) CCCD/CMND (SAU CÙNG — chỉ khi là thẻ CCCD thật, sau khi đã loại KSK/thực hành/... có nhắc CCCD).
-    if _is_identity_text(h):
-        return _CCCD
-    return ""
-
-
-def _normalize_doc_type(value: str) -> str:
-    text = _fold(value or "")
-    if not text or text == "other":
-        return _OTHER
-    if "anh" in text or "chan dung" in text or "photo" in text or "image" in text:
-        return _ANH
-    if "thuc hanh" in text or "mau 07" in text or "07" in text:
-        return _THUCHANH
-    if "suc khoe" in text or "kham" in text:
-        return _SUCKHOE
-    if "so yeu" in text or "syll" in text or "ly lich" in text or "09" in text:
-        return _SYLL
-    if "van bang" in text or "bang cap" in text or "cu nhan" in text or "tot nghiep" in text:
-        return _VANBANG
-    if "don" in text or "de nghi" in text or "08" in text:
-        return _DON
-    if "cccd" in text or "can cuoc" in text or "cmnd" in text or "ho chieu" in text:
-        return _CCCD
-    return value if value in _ALLOWED_DOC_TYPES else _OTHER
-
-
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
-    if not documents:
-        return {}
+async def _classify_one(index: int, file_name: str, text: str) -> tuple[int, str]:
     messages = [
         {"role": "system", "content": prompt.SYSTEM_PROMPT},
-        {"role": "user", "content": prompt.build_user_prompt(documents)},
+        {"role": "user", "content": prompt.build_user_prompt(file_name, text)},
     ]
-    raw = await client.chat(messages, max_tokens=500, enable_thinking=settings.agent_reasoning)
+    raw = await client.chat(messages, max_tokens=120, enable_thinking=settings.agent_reasoning)
     parsed = client.extract_json_block(raw)
-    out: dict[int, str] = {}
-    for item in parsed.get("documents", []) or []:
-        try:
-            idx = int(item.get("index"))
-        except Exception:  # noqa: BLE001
+    first = next(iter(parsed.get("documents", []) or []), None) or parsed
+    return index, _normalize_doc_type(first.get("docType") or first.get("type"))
+
+
+async def _classify_with_llm(
+    documents: list[dict[str, Any]],
+    errors: list[str] | None = None,
+) -> dict[int, str]:
+    """Một lượt gọi cho MỖI tệp — lỗi của tệp này không kéo theo tệp khác."""
+    if not documents:
+        return {}
+    outcomes = await asyncio.gather(
+        *(_classify_one(d["index"], d["name"], d["text"]) for d in documents),
+        return_exceptions=True,
+    )
+    result: dict[int, str] = {}
+    for document, outcome in zip(documents, outcomes, strict=True):
+        if isinstance(outcome, BaseException):
+            if errors is not None:
+                errors.append(f"attachment_agent file {document['name']}: {outcome}")
             continue
-        out[idx] = _normalize_doc_type(str(item.get("docType") or item.get("type") or ""))
-    return out
+        index, doc_type = outcome
+        result[index] = doc_type
+    return result
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str) -> dict:
+def _build_row_item(file: dict, file_index: int, doc_type: str, *, detected_type: str | None = None) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        "documentName": row["documentName"],
+        # Tệp dồn vào dòng Đơn giữ TÊN GỐC: engine attp-row đặt tên tệp theo documentName, đặt tên
+        # "Đơn đề nghị…" cho một tệp lạ là cán bộ không phân biệt được hai tệp cùng dòng.
+        "documentName": file_name if detected_type == _OTHER else row["documentName"],
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
         "needsAddComponent": False,
-        "detectedType": doc_type,
+        "detectedType": detected_type or doc_type,
     }
 
 
 def build_plan_items(
     files: list[dict],
-    ocr_results: list[dict],
     llm_types: dict[int, str] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
-    by_name = {item.get("name"): item for item in ocr_results}
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    fallback: list[str] = []
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
-        text = str(by_name.get(file_name, {}).get("text") or "")
-        llm_type = llm_types.get(idx, "")
-        rule_type = _rule_doc_type(text)
-        # CHỐT CHẶN: anh_chan_dung là loại "KHÔNG có text". Nếu LLM lỡ gán anh cho tài liệu CÓ nội dung
-        # văn bản (vd nhầm Giấy xác nhận thực hành → ảnh) → BÁC BỎ, để rule route đúng theo nội dung.
-        if llm_type == _ANH and not _is_image_only(text):
-            llm_type = ""
-        # LLM-primary: ưu tiên phán đoán LLM; rule keyword chỉ dự phòng khi LLM trả other/không hợp lệ.
-        if llm_type in _ROWS or llm_type in _SKIP_DOCS:
-            doc_type, source = llm_type, "llm"
-        elif rule_type:
-            doc_type, source = rule_type, "rule"
-        else:
-            doc_type, source = _OTHER, "unknown"
+        doc_type = llm_types.get(idx, _OTHER)
+        source = "llm" if idx in llm_types else "fallback"
 
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type))
@@ -230,9 +172,17 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
             continue
 
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source})
+        # Không xếp được loại → dồn vào dòng Đơn chứ KHÔNG bỏ: bảng không có dòng "giấy tờ khác", mà
+        # bỏ tệp là hồ sơ thiếu giấy người dân đã đưa.
+        items.append(_build_row_item(file, idx, _DON, detected_type=_OTHER))
+        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "fallbackRow": _DON})
+        fallback.append(file_name)
 
+    if fallback:
+        warnings.append(
+            "Chưa nhận ra loại giấy tờ, đã đính kèm chung vào dòng Đơn (mục a) để không bỏ sót — cán bộ "
+            f"kiểm tra lại: {', '.join(fallback)}."
+        )
     return items, warnings, classified
 
 
@@ -253,23 +203,25 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"OCR {item.get('name')}: {item['error']}")
 
     ocr_by_name = {item.get("name"): item for item in ocr_results}
-    # LLM-primary: gửi MỌI file có OCR text cho LLM phân loại.
-    llm_docs: list[dict[str, Any]] = []
-    for idx, file in enumerate(raw_files):
-        text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        if text.strip():
-            llm_docs.append({"index": idx, "text": text})
+    # Gửi MỌI tệp cho LLM, kể cả tệp OCR RỖNG: ảnh chân dung thường không có chữ nào, bỏ qua tệp rỗng
+    # là để tệp ảnh không bao giờ được xếp loại.
+    llm_docs = [
+        {"index": idx, "name": str(file.get("name") or ""),
+         "text": str(ocr_by_name.get(file.get("name"), {}).get("text") or "")}
+        for idx, file in enumerate(raw_files)
+        if file.get("type") in _OCR_TYPES
+    ]
 
     t1 = time.monotonic()
     llm_types: dict[int, str] = {}
     if llm_docs:
         try:
-            llm_types = await _classify_with_llm(llm_docs)
+            llm_types = await _classify_with_llm(llm_docs, errors)
         except Exception as exc:  # noqa: BLE001
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types)
+    attachments, warnings, classified = build_plan_items(raw_files, llm_types)
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
 
@@ -278,7 +230,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         "extracted": {
             "documents": [f["name"] for f in raw_files],
             "ocrDocuments": [r.get("name") for r in ocr_results if r.get("text")],
-            "llmDocuments": [raw_files[doc["index"]]["name"] for doc in llm_docs],
+            "llmDocuments": [doc["name"] for doc in llm_docs],
             "classified": classified,
             "skippedOcr": skipped_ocr,
             "rows": [{"docType": k, **v} for k, v in _ROWS.items()],

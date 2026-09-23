@@ -80,15 +80,36 @@ def test_quyet_dinh_bi_dieu_chinh_khac_van_ban_thay_doi_can_cu():
 def test_giay_to_la_di_duong_giay_to_khac_co_ten_tai_lieu():
     """Phải là target 'new' để engine otherListFile ĐIỀN TÊN tài liệu, không phải fixed-slot."""
     items, warnings, _ = planner.build_plan_items(
-        _files(["GCN_dang_ky_doanh_nghiep.pdf"]), {0: "other"}
+        _files(["25528_GCN_dang_ky_doanh_nghiep_1787304693.pdf"]),
+        {0: ("other", "GCN đăng ký doanh nghiệp Công ty CP Đầu tư XYZ")},
     )
 
     item = items[0]
     assert item["target"] == "new"
     assert item["needsAddComponent"] is True
+    assert item["noChooserClick"] is True
     assert "slotIndex" not in item
-    assert item["componentName"] == "GCN dang ky doanh nghiep"
+    # Tên do LLM đọc nội dung đặt — tên tệp đã bị hệ thống upload bỏ dấu và chèn số.
+    assert item["componentName"] == "GCN đăng ký doanh nghiệp Công ty CP Đầu tư XYZ"
+    assert item["documentName"] == item["componentName"]
     assert any("không bỏ sót" in w for w in warnings)
+
+
+def test_ten_tai_lieu_giu_so_hieu_van_ban_va_khong_trung_nhau():
+    """Số hiệu là thứ DUY NHẤT phân biệt các quyết định — không được để rơi mất dấu '/'."""
+    items, _, _ = planner.build_plan_items(
+        _files(["a.pdf", "b.pdf", "c.pdf"]),
+        {
+            0: ("other", "QĐ 894/QĐ-UBND phê duyệt điều chỉnh quy hoạch"),
+            1: ("other", "Giấy ủy quyền nộp hồ sơ"),
+            2: ("other", "Giấy ủy quyền nộp hồ sơ"),
+        },
+    )
+    names = [i["componentName"] for i in items]
+
+    assert names[0] == "QĐ 894-QĐ-UBND phê duyệt điều chỉnh quy hoạch"
+    assert names[1] == "Giấy ủy quyền nộp hồ sơ"
+    assert names[2] == "Giấy ủy quyền nộp hồ sơ 2"
 
 
 def test_khong_bo_sot_file_khi_llm_chet():
@@ -96,8 +117,21 @@ def test_khong_bo_sot_file_khi_llm_chet():
 
     assert [i["fileIndex"] for i in items] == [0, 1]
     assert all(i["target"] == "new" for i in items)
+    # Không có tên từ LLM thì vẫn phải có chuỗi để gõ vào ô, và hai dòng không được trùng tên.
+    assert [i["componentName"] for i in items] == ["Tài liệu khác", "Tài liệu khác 2"]
     assert warnings
     assert all(c["source"] == "default" for c in classified)
+
+
+def test_canh_bao_tep_vuot_6mb():
+    """Cổng ghi "Dung lượng tối đa là 6 Mb" và nuốt im lặng tệp quá cỡ."""
+    import base64
+
+    big = "data:application/pdf;base64," + base64.b64encode(b"x" * (7 * 1024 * 1024)).decode()
+    files = [{"name": "ban_do.pdf", "type": "application/pdf", "dataUrl": big}]
+    _, warnings, _ = planner.build_plan_items(files, {0: ("quyet_dinh_bi_dieu_chinh", "")})
+
+    assert any("6 MB" in w and "ban_do.pdf" in w for w in warnings)
 
 
 def test_o_ve_viec_va_ghi_chu_co_that_tren_trang():

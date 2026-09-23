@@ -474,9 +474,9 @@ def _build_split_bundle_plan_items(
             if len(signer_values) == 1 and "" not in signer_values:
                 assigned_by_bundle[signer_matches[0]].append((unit, "shared"))
             else:
-                indexes = ", ".join(str(record["fileIndex"]) for record in unit)
+                names = ", ".join(record["fileName"] for record in unit)
                 errors.append(
-                    f"Giấy tờ tùy thân fileIndex={indexes} khớp nhiều người ký khác nhau; không tự ghép."
+                    f"Giấy tờ tùy thân {names} khớp nhiều người ký khác nhau; không tự ghép."
                 )
                 unmatched_units.append(unit)
             continue
@@ -494,9 +494,9 @@ def _build_split_bundle_plan_items(
             # provider thiếu metadata nhưng classifier vẫn xác định đúng đây là giấy tùy thân.
             assigned_by_bundle[0].append((unit, "matched"))
         else:
-            indexes = ", ".join(str(record["fileIndex"]) for record in unit)
+            names = ", ".join(record["fileName"] for record in unit)
             errors.append(
-                f"Không xác định được văn bản tương ứng cho giấy tờ tùy thân fileIndex={indexes}."
+                f"Giấy tờ tùy thân {names} không khớp người ký của văn bản nào."
             )
             unmatched_units.append(unit)
 
@@ -557,8 +557,27 @@ def _build_split_bundle_plan_items(
         assigned = assigned_by_bundle[bundle_index]
         if assigned:
             attachments.append(_emit_identity(assigned, bundle_index))
+    # Giấy tùy thân không xếp được vào hồ sơ nào: KHÔNG đẻ dòng "Thêm thành phần" như chế độ gộp.
+    # Mỗi tab ở chế độ tách chỉ có đúng hai dòng cố định (STT1 văn bản, STT2 giấy tùy thân) nên dòng
+    # thêm không bao giờ dùng được; giữ nó lại thì extension thấy một tệp KHÔNG có bundleId và bỏ
+    # nguyên lượt đính kèm — hỏng một tệp thành mất cả hồ sơ (sự cố Nghĩa Hưng 21/09/2026).
+    # Vẫn ghi vào `classified` để trang quản trị thấy tệp đã đọc được gì và vì sao bị bỏ.
     for unit in unmatched_units:
-        attachments.append(_emit_identity([(unit, "matched")], None))
+        for record in sorted(unit, key=lambda item: item["order"]):
+            classified.append({
+                "fileIndex": record["fileIndex"],
+                "fileName": record["fileName"],
+                "pageFrom": record["segment"]["pageFrom"],
+                "pageTo": record["segment"]["pageTo"],
+                "detectedType": record["detectedType"],
+                "documentName": record["documentName"],
+                "logicalGroup": None,
+                "target": "skipped",
+                "componentIndex": None,
+                "bundleId": None,
+                "bundleRole": "identity",
+                "identityScope": None,
+            })
 
     return attachments, sorted(classified, key=lambda item: (item["fileIndex"], item["pageFrom"]))
 

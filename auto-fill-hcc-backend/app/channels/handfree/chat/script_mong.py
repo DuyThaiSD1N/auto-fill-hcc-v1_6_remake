@@ -68,6 +68,7 @@ LOCATION_CARD_HMONG = {
 # Test đối chiếu source flow.py đảm bảo không bỏ sót nhãn nào.
 CHIP_HMONG = {
     "Đúng rồi": "Yog lawm",
+    "Đồng ý": "Pom zoo",
     "Chọn thủ tục khác": "Xaiv lwm yam",
     "🆕 Làm thủ tục khác": "Ua lwm yam",
     "Có, hãy đăng xuất": "Yog, tawm mus",
@@ -89,6 +90,12 @@ CHIP_HMONG = {
     "🔁 Điền lại thông tin": "Sau dua cov ntaub ntawv",
     "🔁 Đính kèm lại": "Muab tso dua",
     "🗂️ Điều chỉnh giấy tờ": "Kho cov ntaub ntawv",
+    # Nút chuyển bước / gửi hồ sơ của luồng dẫn từng bước (guidedSteps).
+    "Xong, sang bước đính kèm →": "Tiav lawm, mus muab tso",
+    "✅ Có, chứng thực luôn": "Yog, ua pov thawj",
+    "❌ Không chứng thực thẻ này": "Tsis ua pov thawj daim no",
+    "Xong, sang bước nhận kết quả →": "Tiav lawm, mus txais",
+    "📨 Gửi hồ sơ": "Xa ntaub ntawv",
     "🗑️ Xóa dữ liệu": "Rho tawm",
     # Nhãn động (không nằm trong literal "label": ... của flow):
     "Kiểm tra lại trang hiện tại": "Xyuas dua nplooj no",
@@ -191,6 +198,8 @@ STEP_LABELS_HMONG = {
 # (dùng chung mọi thủ tục; thuật ngữ hành chính giữ tiếng Việt như mockup "theej Hộ tịch").
 DOC_SLOT_HMONG = {
     "cccd": "Daim npav CCCD",
+    "cccd_chu_ho_so": "Daim CCCD tus tswv ntaub ntawv",
+    "giay_uy_quyen": "Daim ntawv tso cai (ủy quyền)",
     "cccd_nam": "CCCD tus txiv (bên nam)",
     "cccd_nu": "CCCD tus poj niam (bên nữ)",
     "cccd_cha": "CCCD leej txiv",
@@ -227,6 +236,29 @@ GREET_RETURNING = {
 CONFIRM_PROCEDURE = {
     "md": "Pej xeem xav ua {procedure} ntawm {ward}, {province}, puas yog?",
     "tts": "Pej xeem xav ua {procedure} ntawm {ward} {province}, puas yog?",
+}
+
+GREET_PROCEDURE_FIRST = {
+    "md": (
+        "Nyob zoo pej xeem! Kuv yog Tus pab pej xeem, pab ua cov ntaub ntawv hauv nom tswv. "
+        "Pej xeem xaiv cov ntaub ntawv xav ua hauv qab no — nias rau daim ntawv los yog "
+        "ntaus/hais lub npe."
+    ),
+    "tts": (
+        "Nyob zoo pej xeem, kuv yog tus pab pej xeem. "
+        "Pej xeem xaiv cov ntaub ntawv xav ua, nias rau daim ntawv los yog hais lub npe."
+    ),
+}
+
+CONFIRM_PROCEDURE_WITH_LOCATION = {
+    "md": (
+        "Pej xeem xav ua {procedure}. Pej xeem xyuas qhov chaw ua ntaub ntawv hauv qab no; "
+        "yog yuav hloov ces nias rau txhua qhov, yog lawm ces nias Đúng rồi."
+    ),
+    "tts": (
+        "Pej xeem xav ua {procedure}. Pej xeem xyuas qhov chaw ua ntaub ntawv hauv qab no, "
+        "yog yuav hloov ces nias rau txhua qhov, yog lawm ces nias Đúng rồi."
+    ),
 }
 
 PROCEDURE_NOT_RECOGNIZED = {
@@ -354,6 +386,23 @@ ASK_DOC_METHOD = {
 
 INTRO_FORM_REACHED = {"md": "Txog nplooj sau ntawv lawm.", "tts": "Txog nplooj sau ntawv lawm."}
 INTRO_OWNER_REACHED = {"md": "Txog kauj ruam tus tswv ntaub ntawv lawm.", "tts": "Txog kauj ruam tus tswv ntaub ntawv lawm."}
+INTRO_AUTHORIZATION_SCAN_REACHED = {
+    "md": (
+        "Txog kauj ruam Thông tin người nộp hồ sơ thiab ủy quyền lawm. Vim Đối tượng thực hiện "
+        "yog Người khác ủy quyền, kuv yuav sau ob pawg: Thông tin người nộp hồ sơ thiab "
+        "Thông tin ủy quyền cá nhân."
+    ),
+    "tts": (
+        "Txog kauj ruam Thông tin người nộp hồ sơ thiab ủy quyền lawm. Vim Đối tượng thực hiện "
+        "yog Người khác ủy quyền, kuv yuav sau ob pawg: Thông tin người nộp hồ sơ thiab "
+        "Thông tin ủy quyền cá nhân."
+    ),
+}
+
+INTRO_OWNER_SCAN_REACHED = {
+    "md": "Txog kauj ruam tus tswv ntaub ntawv lawm. Kuv yuav sau tus tswv ntaub ntawv ua ntej.",
+    "tts": "Txog kauj ruam tus tswv ntaub ntawv lawm. Kuv yuav sau tus tswv ntaub ntawv ua ntej.",
+}
 INTRO_ATTACH_REACHED = {"md": "Txog kauj ruam Thành phần hồ sơ lawm.", "tts": "Txog kauj ruam muab ntaub ntawv tso lawm."}
 
 OWNER_INFO_GUIDE = {
@@ -628,6 +677,14 @@ ATTACH_NONE = {
     "tts": "Kuv muab tsis tau. Pej xeem xyuas nplooj ces nias muab tso dua.",
 }
 
+# CHƯA CÓ BẢN DỊCH RIÊNG cho vế "bấm lại cũng vô ích, hãy sửa giấy tờ" — chỉ CẮT LẠI đúng vế đã
+# được dịch ở ATTACH_NONE, không tự đặt câu Mông mới. Khối tiếng Việt phía trên vẫn nói đủ, và thà
+# nói ít hơn là nói thứ công dân nghe không ra. Có bản dịch thật thì thay nguyên khối này.
+ATTACH_NONE_REPEAT = {
+    "md": "Kuv muab tsis tau ib daim twg.",
+    "tts": "Kuv muab tsis tau.",
+}
+
 SAME_PAGE_TWO_STEP_SUMMARY = {
     "md": ("\n\n📋 **Nhập đơn đăng ký** — sau tau {filled} lub thawv ✓ · "
            "**Tải thành phần hồ sơ** — muab tau {attached} daim ✓"),
@@ -704,6 +761,19 @@ SCAN_PICK_ATTACH = {
         "Xaiv ntau daim ib zaug los tau; tag nrho suav ua ntaub ntawv theej, tsis faib."
     ),
     "tts": "Pej xeem xaiv ib daim los ntau daim hauv computer.",
+}
+
+SCAN_PICK_OWNER = {
+    "md": (
+        "Pej xeem muab ib daim ib zaug tso rau lub tshuab scan ces nias lub pob Scan — muaj "
+        "daim Căn cước công dân tus tswv ntaub ntawv thiab cov ntaub ntawv yuav theej. Kuv "
+        "txais thiab faib raws hom pab pej xeem."
+    ),
+    "tts": (
+        "Pej xeem muab ib daim ib zaug tso rau lub tshuab scan ces nias lub pob Scan, muaj daim "
+        "Căn cước công dân tus tswv ntaub ntawv thiab cov ntaub ntawv yuav theej. Kuv txais "
+        "thiab faib raws hom pab pej xeem."
+    ),
 }
 
 DONE_SUBMITTED = {
@@ -849,6 +919,16 @@ GUIDE_AGENCY_SELECT_PROVINCE = {
             "kom xa tau ntaub ntawv."),
 }
 
+# CHƯA CÓ BẢN DỊCH RIÊNG: bỏ đúng vế "kuv xaiv qhov {variant_label}" khỏi bản dịch đã có của
+# MAE_AGENCY_AUTOFILL_GUIDE (hộp thoại này không có trường hợp giải quyết), không tự đặt câu Mông
+# mới. Có bản dịch thật thì thay nguyên khối.
+AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE = {
+    "md": ("Kuv xaiv xeev {province} thiab {agency}, ces nias "
+           "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+    "tts": ("Kuv xaiv xeev {province} thiab {agency}, ces nias "
+            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+}
+
 MAE_AGENCY_AUTOFILL_GUIDE = {
     "md": ("Kuv xaiv xeev {province} thiab {agency}, kuv xaiv qhov {variant_label} ces nias "
            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
@@ -894,4 +974,174 @@ REFILL_WRONG_PAGE = {
            "ces nias Điền lại thông tin."),
     "tts": ("Nplooj ntawv tsis yog nplooj Kê khai thông tin. Pej xeem rov mus rau nplooj Kê khai "
             "ces nias Điền lại thông tin."),
+}
+
+# ── Dẫn từng bước wizard (guidedSteps) ────────────────────────────────────────────────────
+# NỢ DỊCH: các câu dưới ghép lại từ vế đã dịch sẵn của OWNER_INFO_ATTACH_GUIDE / ATTACH_DONE /
+# OWNER_FIELDS_EMPTY, KHÔNG tự đặt từ mới. Riêng GUIDED_RESULT_STEP chỉ giữ được ý chính
+# ("chọn một cách nhận kết quả trên trang rồi bấm nút") — ba lựa chọn và các ô của dịch vụ bưu
+# chính chưa có bản Mông, cần người dịch bổ sung. Nhãn bước giữ nguyên tiếng Việt như các câu
+# Mông khác, để công dân dò khớp đúng chữ trên màn hình cổng.
+
+GUIDED_OWNER_STEP = {
+    "md": (
+        "Pej xeem sau los yog kho tus tswv ntaub ntawv (xov tooj, email, chaw nyob). "
+        "Sau tiav ces nias lub pob hauv qab no, kuv pab hloov mus rau Thành phần hồ sơ."
+    ),
+    "tts": (
+        "Pej xeem sau los yog kho tus tswv ntaub ntawv. Sau tiav ces nias lub pob hauv qab no, "
+        "kuv pab hloov mus rau Thành phần hồ sơ."
+    ),
+}
+
+GUIDED_OWNER_MISSING = {
+    "md": (
+        "Nplooj ntawv tseem tshuav qhov khoob. Pej xeem sau qhov tseem khoob ces nias dua "
+        "lub pob hauv qab no."
+    ),
+    "tts": (
+        "Nplooj ntawv tseem tshuav qhov khoob. Pej xeem sau qhov tseem khoob ces nias dua "
+        "lub pob hauv qab no."
+    ),
+}
+
+GUIDED_ATTACH_DONE = {
+    "md": (
+        "Kuv muab {attached} daim tso tiav lawm. Pej xeem xyuas zaum kawg ces nias lub pob "
+        "hauv qab no, kuv pab hloov mus rau Thông tin nhận kết quả."
+    ),
+    "tts": (
+        "Kuv muab tso tiav lawm. Pej xeem xyuas zaum kawg ces nias lub pob hauv qab no, "
+        "kuv pab hloov mus rau Thông tin nhận kết quả."
+    ),
+}
+
+GUIDED_ATTACH_SPLIT_DONE = {
+    "md": (
+        "Kuv muab tiav {succeeded}/{total} phau, ib daim ib phau. Nias lub pob hauv qab no kuv "
+        "pab hloov phau hauv lub tab no mus rau Thông tin nhận kết quả. Cov phau tshuav, pej "
+        "xeem qhib ib lub tab zuj zus ces nias Nộp hồ sơ."
+    ),
+    "tts": (
+        "Kuv muab tiav lawm, ib daim ib phau. Nias lub pob hauv qab no kuv pab hloov phau hauv "
+        "lub tab no mus rau Thông tin nhận kết quả. Cov phau tshuav, pej xeem qhib ib lub tab "
+        "zuj zus ces nias Nộp hồ sơ."
+    ),
+}
+
+GUIDED_STEP_BLOCKED = {
+    "md": (
+        "Nplooj ntawv tsis txais, kuv hloov tsis tau kauj ruam. Pej xeem xyuas nplooj ntawv "
+        "ces nias dua lub pob hauv qab no."
+    ),
+    "tts": (
+        "Nplooj ntawv tsis txais, kuv hloov tsis tau kauj ruam. Pej xeem xyuas nplooj ntawv "
+        "ces nias dua lub pob hauv qab no."
+    ),
+}
+
+GUIDED_STEP_STUCK = {
+    "md": (
+        "Kuv nias lub pob hauv nplooj ntawv lawm tab sis nplooj ntawv tsis hloov. Pej xeem "
+        "xyuas nplooj ntawv, kho tiav ces nias dua lub pob hauv qab no."
+    ),
+    "tts": (
+        "Kuv nias lub pob hauv nplooj ntawv lawm tab sis nplooj ntawv tsis hloov. Pej xeem "
+        "xyuas nplooj ntawv, kho tiav ces nias dua lub pob hauv qab no."
+    ),
+}
+
+GUIDED_RESULT_STEP = {
+    "md": (
+        "Txog kauj ruam Thông tin nhận kết quả lawm. Pej xeem xaiv ib txoj kev txais ntaub "
+        "ntawv nyob hauv nplooj ntawv. Xaiv tiav ces nias lub pob hauv qab no los yog nias "
+        "Gửi hồ sơ nyob hauv nplooj ntawv."
+    ),
+    "tts": (
+        "Txog kauj ruam Thông tin nhận kết quả lawm. Pej xeem xaiv ib txoj kev txais ntaub "
+        "ntawv nyob hauv nplooj ntawv. Xaiv tiav ces nias lub pob hauv qab no los yog nias "
+        "Gửi hồ sơ nyob hauv nplooj ntawv."
+    ),
+}
+
+GUIDED_SUBMIT_SENT = {
+    "md": "Kuv nias Gửi hồ sơ pab pej xeem lawm. Pej xeem tos nplooj ntawv teb ib pliag.",
+    "tts": "Kuv nias Gửi hồ sơ pab pej xeem lawm. Pej xeem tos nplooj ntawv teb ib pliag.",
+}
+
+GUIDED_OWNER_READY = {
+    "md": (
+        "Kuv xyuas tus tswv ntaub ntawv hauv nplooj ntawv txaus lawm. Pej xeem nyeem dua ib "
+        "zaug, ces nias lub pob hauv qab no, kuv pab hloov mus rau Thành phần hồ sơ."
+    ),
+    "tts": (
+        "Kuv xyuas tus tswv ntaub ntawv hauv nplooj ntawv txaus lawm. Pej xeem nyeem dua ib "
+        "zaug, ces nias lub pob hauv qab no, kuv pab hloov mus rau Thành phần hồ sơ."
+    ),
+}
+
+GUIDED_CERTIFY_ASK = {
+    "md": (
+        "Hauv cov ntaub ntawv pej xeem tab tom muab muaj daim Căn cước công dân. Pej xeem puas "
+        "xav ua ntawv pov thawj daim no thiab?"
+    ),
+    "tts": (
+        "Hauv cov ntaub ntawv pej xeem tab tom muab muaj daim Căn cước công dân. Pej xeem puas "
+        "xav ua ntawv pov thawj daim no thiab?"
+    ),
+}
+
+GUIDED_CERTIFY_YES = {
+    "md": "Kuv yuav ua ntawv pov thawj daim Căn cước công dân thiab.",
+    "tts": "Kuv yuav ua ntawv pov thawj daim Căn cước công dân thiab.",
+}
+
+GUIDED_CERTIFY_NO = {
+    "md": (
+        "Kuv siv daim Căn cước công dân los sau ntaub ntawv xwb, tsis muab tso rau hauv phau "
+        "ntawv pov thawj."
+    ),
+    "tts": (
+        "Kuv siv daim Căn cước công dân los sau ntaub ntawv xwb, tsis muab tso rau hauv phau "
+        "ntawv pov thawj."
+    ),
+}
+
+GUIDED_DOCS_STEP_SWITCHED = {
+    "md": (
+        "Txog kauj ruam Thành phần hồ sơ lawm. Txij no kuv tsuas txais cov ntaub ntawv yuav "
+        "theej xwb. Pej xeem muab cov seem ces nias lub pob hauv qab no."
+    ),
+    "tts": (
+        "Txog kauj ruam Thành phần hồ sơ lawm. Txij no kuv tsuas txais cov ntaub ntawv yuav "
+        "theej xwb. Pej xeem muab cov seem ces nias lub pob hauv qab no."
+    ),
+}
+
+GUIDED_IDENTITY_MOVED_NOTE = {
+    "md": (
+        " Daim Căn cước công dân pej xeem muab, kuv tso rau hauv cov ntaub ntawv yuav theej. "
+        "Yog tsis xav theej daim ntawd, pej xeem nias rho tawm."
+    ),
+    "tts": (
+        " Daim Căn cước công dân pej xeem muab, kuv tso rau hauv cov ntaub ntawv yuav theej. "
+        "Yog tsis xav theej daim ntawd, pej xeem nias rho tawm."
+    ),
+}
+
+
+GUIDED_AUTHORIZATION_ATTACHED = {
+    "md": "Kuv muab daim ntawv tso cai (ủy quyền) tso rau hauv phau ntaub ntawv lawm.",
+    "tts": "Kuv muab daim ntawv tso cai tso rau hauv phau ntaub ntawv lawm.",
+}
+
+GUIDED_AUTHORIZATION_ATTACH_FAILED = {
+    "md": (
+        "Kuv muab tsis tau daim ntawv tso cai (ủy quyền). Pej xeem nias Chọn tệp đính kèm "
+        "ntawm kab giấy ủy quyền hauv nplooj ntawv."
+    ),
+    "tts": (
+        "Kuv muab tsis tau daim ntawv tso cai. Pej xeem nias Chọn tệp đính kèm ntawm kab "
+        "giấy ủy quyền hauv nplooj ntawv."
+    ),
 }

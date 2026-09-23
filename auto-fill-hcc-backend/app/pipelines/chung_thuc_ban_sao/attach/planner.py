@@ -735,6 +735,40 @@ def build_segment_plan_items(
     return attachments, sorted(classified, key=lambda item: (item["fileIndex"], item["pageFrom"]))
 
 
+def _drop_identity_documents(attachments: list[dict],
+                             identity_file_names: list[str] | None = None,
+                             drop_identity_types: bool = False) -> list[dict]:
+    """Công dân trả lời KHÔNG chứng thực thẻ căn cước: thẻ đó chỉ dùng để điền form.
+
+    `identity_file_names` là các tệp ĐÃ được phân loại vào ô "căn cước của chủ hồ sơ" lúc
+    upload — khớp đích danh thì chính xác hơn để đây tự đoán lại theo loại giấy tờ. Không có
+    danh sách (phiên cũ, một ô duy nhất nên không hề phân loại) mới rơi về suy theo loại.
+    Lưu ý khác biệt: căn cước của NGƯỜI KHÁC vẫn là giấy cần chứng thực, và nó không nằm
+    trong danh sách này.
+
+    Phải xếp lại vai của các mục còn lại. Mục ĐẦU TIÊN luôn ứng với dòng có sẵn (STT1) của
+    cổng, các mục sau mới là thành phần thêm mới; bỏ mục đầu mà không xếp lại là để trống
+    đúng dòng bắt buộc và biến mọi thứ thành "new".
+    """
+    drop = set(identity_file_names or ())
+    kept = [
+        item for item in attachments
+        if str(item.get("fileName") or "") not in drop
+        and not (drop_identity_types and item.get("detectedType") in _IDENTITY_DOCUMENT_TYPES)
+    ]
+    if len(kept) == len(attachments):
+        return attachments
+    for index, item in enumerate(kept):
+        first = index == 0
+        item["componentName"] = (
+            DEFAULT_COPY_CERTIFICATION_COMPONENT if first else item["documentName"]
+        )
+        item["target"] = "existing" if first else "new"
+        item["componentIndex"] = 1 if first else None
+        item["needsAddComponent"] = not first
+    return kept
+
+
 async def plan(
     files: list[FileItem],
     options: dict | None = None,
@@ -826,6 +860,22 @@ async def plan(
         page_text_by_file,
         full_text_by_file,
     )
+    # Tệp KHÔNG được đính (giấy ủy quyền có ô riêng ở bước trước; tệp bộ phân loại đã từ chối)
+    # và tệp căn cước khi công dân chọn không chứng thực — cùng một việc: bỏ khỏi kế hoạch rồi
+    # xếp lại vai, vì mục đầu tiên luôn ứng với dòng STT1 có sẵn của cổng.
+    drop_names = [str(name) for name in options.get("excludeFileNames") or []]
+    if options.get("excludeIdentityDocuments") is True:
+        drop_names += [str(name) for name in options.get("identityFileNames") or []]
+    if drop_names or options.get("excludeIdentityDocuments") is True:
+        attachments = _drop_identity_documents(
+            attachments, drop_names,
+            drop_identity_types=options.get("excludeIdentityDocuments") is True
+            and not options.get("identityFileNames"),
+        )
+        kept_names = {str(item.get("fileName") or "") for item in attachments}
+        for row in classified:
+            if str(row.get("fileName") or "") not in kept_names:
+                row["target"] = "skipped"  # giữ trong trace để soi được, nhưng không đính
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
     indexed_ocr_results = []
     for file_index, file in enumerate(raw_files):

@@ -53,15 +53,7 @@ def new_session(
 
     # Gắn tên tiếng Mông theo SLOT KEY cho checklist (VÔ ĐIỀU KIỆN — sidebar tự quyết hiển thị
     # theo chế độ đang bật, nên toggle tiếng Mông giữa chừng phiên vẫn có sẵn dữ liệu).
-    from app.channels.handfree.chat.script_mong import DOC_SLOT_HMONG
-
-    docs = []
-    for d in required_docs or []:
-        item = dict(d)
-        name_hmong = DOC_SLOT_HMONG.get(str(d.get("key") or ""))
-        if name_hmong:
-            item["nameHmong"] = name_hmong
-        docs.append(item)
+    docs = decorate_docs(required_docs)
     return {
         # 64-bit thay cho mã 24-bit cũ: vẫn đủ ngắn để hiện trên UI nhưng tránh va chạm
         # phiên khi hệ thống có nhiều lượt upload. Quyền truy cập vẫn do capability/JWT quyết.
@@ -181,6 +173,70 @@ async def set_complete(sid: str, value: bool) -> dict | None:
     return await get_db().upload_sessions.find_one_and_update(
         {"_id": sid},
         {"$set": {"complete": value, "updated_at": _now()}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+def decorate_docs(required_docs: list[dict] | None) -> list[dict]:
+    """Gắn tên tiếng Mông theo SLOT KEY (xem chú thích ở new_session)."""
+    from app.channels.handfree.chat.script_mong import DOC_SLOT_HMONG
+
+    docs = []
+    for d in required_docs or []:
+        item = dict(d)
+        name_hmong = DOC_SLOT_HMONG.get(str(d.get("key") or ""))
+        if name_hmong:
+            item["nameHmong"] = name_hmong
+        docs.append(item)
+    return docs
+
+
+async def set_required_docs(sid: str, required_docs: list[dict]) -> dict | None:
+    """Đổi checklist của phiên ĐANG DÙNG LẠI khi hội thoại sang bước khác.
+
+    Phiên giấy tờ đi xuyên nhiều bước, còn danh sách ô thì phụ thuộc bước: ô "Căn cước công dân
+    của chủ hồ sơ" chỉ có nghĩa ở bước Thông tin chủ hồ sơ. Qua bước Thành phần hồ sơ mà vẫn
+    hiện ô đó là bảo công dân đưa lại thứ họ đã đưa rồi.
+
+    Chỉ $set đúng `required_docs` — KHÔNG đụng mảng `files`, nên tệp đã phân loại vào ô bị rút
+    vẫn nằm nguyên trong phiên (planner vẫn thấy), chỉ không còn hiện trên checklist.
+    """
+    if not sid:
+        return None
+    return await get_db().upload_sessions.find_one_and_update(
+        {"_id": sid},
+        {"$set": {"required_docs": decorate_docs(required_docs), "updated_at": _now()}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def move_files_between_slots(sid: str, from_key: str, to_key: str) -> dict | None:
+    """Chuyển mọi tệp đang nằm ở ô `from_key` sang ô `to_key` của CÙNG phiên.
+
+    Dùng khi bản chất giấy tờ đổi theo lựa chọn của công dân (căn cước quét để điền form,
+    công dân chọn chứng thực luôn → nó thành giấy đem đi chứng thực). Không đụng tệp ở ô khác.
+    """
+    if not sid or not from_key or not to_key or from_key == to_key:
+        return None
+    return await get_db().upload_sessions.find_one_and_update(
+        {"_id": sid},
+        {"$set": {"files.$[slot].doc_key": to_key, "updated_at": _now()}},
+        array_filters=[{"slot.doc_key": from_key}],
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def set_owner_hint(sid: str, owner_hint: dict) -> dict | None:
+    """Họ tên + số định danh của chủ hồ sơ đọc từ cổng, lưu lên PHIÊN.
+
+    Endpoint nhận tệp chỉ có phiên, không có hội thoại — muốn khâu phân loại biết "căn cước
+    của ĐÚNG người này" thì mốc phải nằm ở đây.
+    """
+    if not sid:
+        return None
+    return await get_db().upload_sessions.find_one_and_update(
+        {"_id": sid},
+        {"$set": {"owner_hint": owner_hint, "updated_at": _now()}},
         return_document=ReturnDocument.AFTER,
     )
 

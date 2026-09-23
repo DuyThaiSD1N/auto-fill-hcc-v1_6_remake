@@ -155,7 +155,8 @@ def route_to_slot(info: dict, required_docs: list[dict], files: list[dict],
 
 async def classify_files(payload_files: list[dict], required_docs: list[dict],
                          existing_files: list[dict], hint_doc_key: str | None,
-                         procedure_key: str = "") -> list[dict]:
+                         procedure_key: str = "",
+                         context: dict | None = None) -> list[dict]:
     """OCR + phân loại 1 lô ảnh. Map kết quả theo THỨ TỰ MẢNG (không tin index nào khác).
 
     → [{doc_key, side, note, ocr_ok}] cùng độ dài payload_files.
@@ -182,7 +183,8 @@ async def classify_files(payload_files: list[dict], required_docs: list[dict],
             return route_to_slot(classify_text(text), required_docs, acc, hint_doc_key)
 
         return await llm_classifier.classify_files(
-            payload_files, required_docs, existing_files, registered.spec, fallback
+            payload_files, required_docs, existing_files, registered.spec, fallback,
+            context,
         )
 
     # Phân loại realtime vẫn dùng provider duy nhất Tiếng Nói, với giới hạn token ngắn.

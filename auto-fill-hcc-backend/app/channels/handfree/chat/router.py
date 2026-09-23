@@ -140,6 +140,17 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Bản extension mới hiểu card "rating" (đánh giá trước đăng xuất). Client cũ không khai
         # → BE giữ nguyên luồng cũ (hiện thẳng 2 nút đăng xuất/nộp thêm), không vỡ.
         "supportsRating": raw.get("supportsRating") is True,
+        # Bản extension mới hiểu nút chuyển bước/gửi hồ sơ do BE điều phối (guided_steps).
+        # Extension cũ không khai → BE giữ nguyên câu thoại và luồng "công dân tự bấm nút
+        # của trang" như cũ.
+        "supportsGuidedSteps": raw.get("supportsGuidedSteps") is True,
+        # Biết quét giấy tờ ngay ở bước chủ hồ sơ và phân biệt bảng đính kèm văn bản ủy quyền
+        # với bảng thành phần hồ sơ. Extension cũ không khai → BE giữ nguyên thứ tự bước cũ
+        # (xin giấy tờ ở bước Thành phần hồ sơ).
+        "supportsOwnerScan": raw.get("supportsOwnerScan") is True,
+        # Màn chào thứ tự mới: chọn thủ tục trước, card chọn nơi xuống lượt xác nhận.
+        # Extension cũ không khai → giữ nguyên màn chào cũ (nơi ở trên, thủ tục ở dưới).
+        "supportsProcedureFirst": raw.get("supportsProcedureFirst") is True,
     }
 
 

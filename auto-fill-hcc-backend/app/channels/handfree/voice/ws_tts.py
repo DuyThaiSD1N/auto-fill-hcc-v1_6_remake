@@ -33,7 +33,8 @@ def _config_frame(lang: str = "vi", voice: str = "") -> str:
             "stability": 0.5,
             "similarity_boost": 0.7,
         },
-        "generator_config": {"chunk_length_schedule": [20]},
+        # Biên mỗi khúc = một nhịp nghỉ khi đọc. Xem settings.tts_chunk_lengths.
+        "generator_config": {"chunk_length_schedule": settings.tts_chunk_lengths},
         "xi_api_key": settings.tts_api_key,
     })
 

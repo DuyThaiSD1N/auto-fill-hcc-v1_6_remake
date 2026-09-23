@@ -69,8 +69,20 @@ van_ban_chu_truong_dau_tu khi tài liệu CHÍNH NÓ là quyết định/văn b�
 quan ban hành, điều khoản).
 </traps>
 
+<document_name_rules>
+- documentName: TÊN TIẾNG VIỆT NGẮN GỌN THEO NỘI DUNG tài liệu, tối đa khoảng 60 ký tự — đây là chuỗi
+  sẽ được gõ vào ô "Tên giấy tờ" của dòng "Giấy tờ khác" trên cổng, nên phải đọc là biết giấy gì:
+  "QĐ 1678/QĐ-UBND điều chỉnh chủ trương đầu tư lần 2",
+  "GCN đăng ký doanh nghiệp Công ty TNHH Đầu tư năng lượng 159",
+  "Đơn đề nghị cho thuê đất Công ty TNHH Đầu tư năng lượng 159".
+- TUYỆT ĐỐI KHÔNG chép tên tệp (kiểu "25528_QD_1678_dieu_chinh_...") — tên tệp mất dấu và dính số rác
+  của hệ thống.
+- Nhiều tài liệu CÙNG LOẠI phải có tên KHÁC NHAU (thêm số hiệu/ngày/lần điều chỉnh để phân biệt).
+- OCR quá thiếu để biết là giấy gì thì để documentName TRỐNG, đừng bịa.
+</document_name_rules>
+
 <output_contract>
-{"documents":[{"index":0,"docType":"don_mau_01"}]}
+{"documents":[{"index":0,"docType":"don_mau_01","documentName":"Đơn đề nghị cho thuê đất Công ty ABC"}]}
 </output_contract>
 """.strip()
 

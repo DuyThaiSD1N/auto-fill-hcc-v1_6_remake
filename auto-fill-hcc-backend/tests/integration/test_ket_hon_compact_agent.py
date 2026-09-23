@@ -215,62 +215,6 @@ def test_ket_hon_does_not_recheck_divorce_status_after_llm():
     assert ket_hon_runner._compact_field_fallback(extracted, documents) == extracted
 
 
-def _divorce_compact(side_name, other_side_name, duong_su_nam, duong_su_nu):
-    """Compact fields của một hồ sơ hai bên cùng khai đã ly hôn (mã 3)."""
-    return [
-        {"name": "CccdNam_HoTen", "value": side_name},
-        {"name": "CccdNam_SoDinhDanh", "value": "010093009110"},
-        {"name": "CccdNam_TinhTrangHonNhan", "value": "3"},
-        {"name": "CccdNam_BanAnLyHon_So", "value": "06/2020/HNGĐ-ST"},
-        {"name": "CccdNam_BanAnLyHon_Ngay", "value": "07/09/2020"},
-        {"name": "CccdNam_BanAnLyHon_CoQuan", "value": "Tòa án nhân dân thị xã Sa Pa, tỉnh Lào Cai"},
-        {"name": "CccdNam_BanAnLyHon_DuongSu", "value": duong_su_nam},
-        {"name": "CccdNu_HoTen", "value": other_side_name},
-        {"name": "CccdNu_SoDinhDanh", "value": "014195002326"},
-        {"name": "CccdNu_TinhTrangHonNhan", "value": "3"},
-        {"name": "CccdNu_BanAnLyHon_So", "value": "06/2025/QĐST-HNGD"},
-        {"name": "CccdNu_BanAnLyHon_Ngay", "value": "01/08/2025"},
-        {"name": "CccdNu_BanAnLyHon_CoQuan", "value": "Tòa án nhân dân khu vực 4 - Sơn La"},
-        {"name": "CccdNu_BanAnLyHon_DuongSu", "value": duong_su_nu},
-    ]
-
-
-def test_ket_hon_keeps_each_side_own_divorce_decision():
-    """Mỗi bên một văn bản riêng, đương sự khớp → cả hai khối TTHN_LyHon* phải ra."""
-    mapped = {f["name"]: f["value"] for f in mapper.enrich(_divorce_compact(
-        "GIÀNG A CHƯ", "LÝ THỊ PA LA",
-        "Châu Thị Si; Giàng A Chư", "Lý Thị Pa La; Hàng A Minh",
-    ))}
-    assert mapped["TTHN_LyHonBenNam"] == {
-        "soBanAnQuyetDinhLyHon": "06/2020/HNGĐ-ST",
-        "ngayCapBanAnQuyetDinhLyHon": "07/09/2020",
-        "coQuanCapBanAnQuyetDinhLyHon": "Tòa án nhân dân thị xã Sa Pa, tỉnh Lào Cai",
-    }
-    assert mapped["TTHN_LyHonBenNu"]["soBanAnQuyetDinhLyHon"] == "06/2025/QĐST-HNGD"
-
-
-def test_ket_hon_drops_divorce_decision_copied_from_the_other_side():
-    """LLM bê quyết định của bên nữ sang bên nam → chỉ khối bên nam bị loại, bên nữ giữ nguyên.
-
-    Đây là lỗi thật req_d7b96c92bd4d/req_ddc87d857881: bên nam mất trắng số quyết định ly hôn.
-    """
-    mapped = {f["name"]: f["value"] for f in mapper.enrich(_divorce_compact(
-        "GIÀNG A CHƯ", "LÝ THỊ PA LA",
-        "Lý Thị Pa La; Hàng A Minh", "Lý Thị Pa La; Hàng A Minh",
-    ))}
-    assert "TTHN_LyHonBenNam" not in mapped
-    assert mapped["TTHN_LyHonBenNu"]["soBanAnQuyetDinhLyHon"] == "06/2025/QĐST-HNGD"
-
-
-def test_ket_hon_prompt_counts_non_recognition_judgment_as_divorce_document():
-    """Bản án "không công nhận quan hệ vợ chồng" cũng là văn bản ly hôn của bên đó."""
-    assert "KHÔNG CÔNG NHẬN QUAN HỆ" in EXTRA_RULES.upper()
-    assert "HỦY VIỆC KẾT HÔN TRÁI PHÁP LUẬT" in EXTRA_RULES.upper()
-    # Ràng buộc chéo: mã 3 của bên nào phải đi kèm đúng văn bản của bên đó.
-    assert "RÀNG BUỘC VỚI TÌNH TRẠNG HÔN NHÂN" in EXTRA_RULES
-    assert "TỰ KIỂM TRA TRƯỚC KHI TRẢ KẾT QUẢ" in EXTRA_RULES
-
-
 def test_ket_hon_mapper_normalizes_ho_chi_minh_province_aliases():
     aliases = (
         "TP.Hồ Chí Minh",

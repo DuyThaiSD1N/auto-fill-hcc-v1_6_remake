@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from app.channels.handfree.chat import consent as consent_log
+from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
@@ -280,10 +281,14 @@ def _attachment_plan_line(item: dict) -> str:
     return f"- **{source}** → {target}"
 
 
-def _doc_list(proc: dict) -> tuple[str, str]:
+def _doc_list(proc: dict, docs: list[dict] | None = None) -> tuple[str, str]:
     """Danh sách giấy tờ → (markdown, câu tts). ƯU TIÊN requiredDocs (cấu trúc, khớp checklist
-    phiên QR, gồm cả slot tuỳ chọn); fallback uploadHint text cũ."""
-    docs = proc.get("requiredDocs")
+    phiên QR, gồm cả slot tuỳ chọn); fallback uploadHint text cũ.
+
+    `docs` cho phép truyền checklist THEO BƯỚC — lời bot phải đọc đúng danh sách mà phiên
+    giấy tờ đang dùng, không thì công dân nghe một đằng nhìn checklist một nẻo.
+    """
+    docs = docs if docs is not None else proc.get("requiredDocs")
     if docs:
         show_repeatable_hint = not proc.get("hideRepeatableHint", False)
         lines, tts_req, tts_opt = [], [], []
@@ -297,10 +302,17 @@ def _doc_list(proc: dict) -> tuple[str, str]:
                 extra = " — không giới hạn số lượng" if announce_repeatable else (
                     " — chụp cả 2 mặt" if d.get("sides") == 2 else ""
                 )
-                lines.append(f"- **{name}**{extra}")
-                tts_req.append(name + (" không giới hạn số lượng" if announce_repeatable else (
+                # Nói rõ từng loại dùng làm gì CHỈ khi checklist có từ hai loại trở lên (bước
+                # chủ hồ sơ: căn cước để điền form, còn lại để đính kèm) — không thì công dân
+                # tưởng phải chứng thực cả căn cước. Còn một loại duy nhất thì không có gì để
+                # phân biệt, mà câu "để đính kèm ở bước sau" đọc lúc đang Ở bước đó là sai.
+                purpose = str(d.get("purpose") or "").strip() if len(docs) > 1 else ""
+                lines.append(f"- **{name}**{extra}" + (f" — *{purpose}*" if purpose else ""))
+                # Bản đọc cần chữ "và": trên màn hình có dấu "—" tách hai ý, đọc lên mà dính
+                # liền thành "…bản sao không giới hạn…" thì nghe như một cụm danh từ.
+                tts_req.append(name + (" và không giới hạn số lượng" if announce_repeatable else (
                     " chụp cả hai mặt" if d.get("sides") == 2 else ""
-                )))
+                )) + (f", {purpose}" if purpose else ""))
         tts = "; ".join(tts_req)
         if tts_opt:
             tts += ". Nếu có, công dân bổ sung thêm: " + "; ".join(tts_opt)
@@ -411,6 +423,10 @@ def _docs_done_label_for_conv(conv: dict) -> str:
     adjustment_target = _documents_adjustment_target(conv)
     if adjustment_target:
         return _DOCUMENT_ADJUSTMENT_LABELS[adjustment_target]
+    # Nhánh ủy quyền: xong lượt này trợ lý điền HAI khối rồi đính luôn giấy ủy quyền, nên
+    # nhãn "điền chủ hồ sơ đi" vừa sai vai vừa thiếu việc.
+    if conv.get("authorization_page") and str(conv.get("docs_target") or "") == "owner":
+        return "✅ Đã đưa đủ giấy tờ, điền thông tin và đính kèm đi"
     return _docs_done_label(str(conv.get("docs_target") or ""))
 
 
@@ -457,6 +473,10 @@ def _attachment_options(conv: dict, extra: dict | None = None) -> dict:
             and capabilities.get("supportsSourceSegments") is True
             and isinstance(split_documents, bool)):
         options["splitDocuments"] = split_documents
+    # Thẻ căn cước được quét để ĐIỀN FORM; công dân trả lời không chứng thực thì đừng đính nó
+    # vào hồ sơ. Chỉ đặt khi đã hỏi và nhận câu trả lời "không" — phiên cũ không có khóa này.
+    if conv.get("certify_identity") is False:
+        options["excludeIdentityDocuments"] = True
     return options
 
 
@@ -467,6 +487,38 @@ def _preset_attach_mode(conv: dict) -> str:
     đang chạy (queue split đa-tab phải ổn định), thủ tục sau tự nhận giá trị mới."""
     mode = (conv.get("attachment_preferences") or {}).get("attachMode")
     return mode if mode in ("merge", "split") else ""
+
+
+def _attach_mode_chips() -> list:
+    return [
+        {"label": "📎 Đính kèm trong 1 hồ sơ",
+         "send": '__action:attach_mode:{"value":"merge"}', "solid": True},
+        {"label": "🗂️ Đính kèm nhiều hồ sơ",
+         "send": '__action:attach_mode:{"value":"split"}'},
+    ]
+
+
+def _attach_mode_gate(conv: dict, proc: dict, files_count: int = 0):
+    """Chốt gộp/tách TRƯỚC khi chạy planner → (câu hỏi | None, vừa áp cài đặt sẵn?).
+
+    Phải đi qua đây ở MỌI đường tới bước đính kèm. Luồng quét sớm nhận giấy tờ ngay ở bước chủ
+    hồ sơ rồi sang thẳng đính kèm, nếu không gọi thì hai thủ tục chứng thực mất hẳn lựa chọn
+    "mỗi tài liệu một hồ sơ riêng" và âm thầm gộp tất cả vào một hồ sơ.
+    """
+    if (proc.get("mode") != "attach"
+            or conv.get("procedure_key") not in _ATTACH_MODE_PROCEDURES
+            or conv.get("attach_mode")):
+        return None, False
+    preset = _preset_attach_mode(conv)
+    if preset:
+        conv["attach_mode"] = preset
+        # Tách nhiều hồ sơ là hành vi lớn (mở nhiều tab) — báo 1 câu cho công dân biết.
+        return None, preset == "split"
+    conv["state"] = "choosing_attach_mode"
+    conv["pipeline_status"] = "waiting_attach_mode"
+    r = Reply(*_fmt(vi.ATTACH_MODE_ASK, files_count=files_count))
+    r.chips = _attach_mode_chips()
+    return r, False
 
 
 def _wait_for_attachment_context(conv: dict) -> bool:
@@ -703,6 +755,9 @@ async def _handle_turn_inner(
     # Chủ thể dữ liệu VNeID (CCCD/tên content đọc từ cổng) đến theo page_status BẤT KỂ state →
     # lưu ngay để consent ghi biên bản (ưu tiên định danh VNeID, không có mới rơi về mã phiên).
     docs_target_changed = False
+    # Bước đang nhận giấy tờ TRƯỚC khi trang báo đổi bước — cần để biết công dân vừa rời khỏi
+    # bước chủ hồ sơ, chứ không phải vừa mở thẳng vào bước đính kèm.
+    docs_target_before = str(conv.get("docs_target") or "")
     if client_page_context:
         # Mọi câu gõ/bấm mang snapshot trang hiện tại. Cập nhật trước khi xử lý request_attach
         # để không trả lời theo docs_target cũ khi công dân vừa chuyển từ Kê khai sang Đính kèm.
@@ -717,6 +772,11 @@ async def _handle_turn_inner(
         principal = intent.payload.get("principal") or {}
         if principal:
             conv["portal_principal"] = principal
+        # Nhánh ủy quyền do CHÍNH TRANG quyết (trang mọc khối "Thông tin ủy quyền cá nhân"),
+        # không tin lựa chọn "Đối tượng thực hiện" của cán bộ: chọn thiếu là bốn ô ủy quyền
+        # không bao giờ được điền dù trang đang hiện rành rành.
+        if intent.payload.get("authorizationBlock"):
+            conv["authorization_page"] = True
         if intent.payload.get("ownerContext"):
             conv["owner_context"] = dict(intent.payload["ownerContext"])
         elif (
@@ -756,6 +816,11 @@ async def _handle_turn_inner(
         # Trong lúc nhận giấy tờ, SPA có thể đổi bước mà không reload. Chỉ cập nhật nhãn nút,
         # không chạy pipeline và không sinh thêm bubble; lúc chốt FE vẫn gửi context mới nhất.
         if docs_target_changed and state in ("ask_doc_method", "qr_waiting", "collecting_docs"):
+            switched = await _guided_docs_target_switch(
+                conv, current_proc, docs_target_before,
+            )
+            if switched is not None:
+                return switched
             r = Reply()
             r.actions = [_update_docs_done_action(
                 conv.get("docs_target") or "",
@@ -767,10 +832,27 @@ async def _handle_turn_inner(
     business_page_status = (
         state == "filling" and _is_business_flow(current_proc)
     )
+    guided_on = guided.enabled(conv, current_proc)
+    # Luồng dẫn từng bước cần nghe page_status CẢ Ở state "done": đính kèm xong là state đã về
+    # done, nhưng công dân còn hai bước nữa trên cổng (nhận kết quả → gửi hồ sơ). Không mở thì
+    # công dân tự bấm sang bước 4 sẽ không được hướng dẫn gì.
+    guided_page_status = guided_on and state == "done"
     if intent.kind == "event" and intent.value == "page_status" and state not in (
         "guide_login", "owner_waiting_next", "attaching"
-    ) and not business_page_status:
+    ) and not business_page_status and not guided_page_status:
         return Reply()
+    if guided_on:
+        # Đổi bước mà KHÔNG bấm nút của trợ lý (công dân tự bấm nút cuối trang cổng) vẫn phải
+        # được hướng dẫn tiếp. Watcher trang gửi page_status khi chữ ký trang đổi.
+        if (
+            intent.kind == "event" and intent.value == "page_status"
+            and guided.is_result_step(current_proc, intent.payload)
+            and conv.get("attach_done") and _say_once(conv, "guided_result")
+        ):
+            return _guided_result_step_reply(conv, current_proc)
+        guided_reply = await _handle_guided_action(conv, current_proc, intent)
+        if guided_reply is not None:
+            return guided_reply
     if intent.kind == "action" and intent.value == "set_lang":
         return _apply_lang(conv, intent.payload)
     if intent.kind == "action" and intent.value == "set_location":
@@ -990,15 +1072,23 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
     conv["procedure_key"] = key
     conv["state"] = "confirm_procedure"
     loc = conv.get("location") or {}
-    md, tts = _fmt(
-        vi.CONFIRM_PROCEDURE,
-        procedure=proc.get("shortLabel") or proc["label"],
-        ward=loc.get("ward") or "(chưa chọn xã)",
-        province=loc.get("province") or "(chưa chọn tỉnh)",
-    )
-    r = Reply(md, tts)
+    label = proc.get("shortLabel") or proc["label"]
+    if _procedure_first(conv):
+        # Card chọn nơi xuống ĐÂY: công dân đã biết đang làm thủ tục gì rồi mới soát nơi, và
+        # sửa được ngay tại chỗ trước khi bấm Đúng rồi.
+        r = Reply(*_fmt(vi.CONFIRM_PROCEDURE_WITH_LOCATION, procedure=label))
+        r.cards = [_location_card(conv)]
+    else:
+        r = Reply(*_fmt(
+            vi.CONFIRM_PROCEDURE,
+            procedure=label,
+            ward=loc.get("ward") or "(chưa chọn xã)",
+            province=loc.get("province") or "(chưa chọn tỉnh)",
+        ))
     r.chips = [
-        {"label": "Đúng rồi", "send": "__action:goto_login", "solid": True},
+        # Đây là nút chốt của cả màn chọn thủ tục + nơi làm → to, tràn ngang như các nút
+        # chuyển bước khác, đừng để lẫn với chip phụ bên cạnh.
+        {"label": "Đồng ý", "send": "__action:goto_login", "solid": True, "cta": True},
         {"label": "Chọn thủ tục khác", "send": "__action:new_procedure"},
     ]
     return r
@@ -1027,8 +1117,22 @@ def _answer_question(conv: dict, question: str, mentioned_key: str | None = None
     return r
 
 
+def _procedure_first(conv: dict) -> bool:
+    """Chọn THỦ TỤC trước, chọn nơi sau (ngay trong lượt xác nhận).
+
+    Nơi làm thủ tục gần như luôn đúng sẵn theo tài khoản quầy, nên bắt soát nó TRƯỚC khi biết
+    làm thủ tục gì là bắt công dân đọc một thứ chưa liên quan. Extension cũ không khai cờ →
+    giữ nguyên màn chào cũ (nơi ở trên, thủ tục ở dưới).
+    """
+    return (conv.get("client_capabilities") or {}).get("supportsProcedureFirst") is True
+
+
 def _handle_greet(conv: dict, intent: Intent) -> Reply:
     # Lượt đầu / không hiểu ở màn chào → chào + card chọn nơi + chọn thủ tục.
+    if _procedure_first(conv):
+        r = Reply(*_fmt(vi.GREET_PROCEDURE_FIRST))
+        r.cards = [_service_list_card(conv)]
+        return r
     r = Reply(*_fmt(vi.GREET))
     r.cards = [_location_card(conv), _service_list_card(conv)]
     return r
@@ -1202,7 +1306,10 @@ def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
     province = loc.get("province") or ""
     agency = str(proc.get("agencyDeptLabel") or "")
     variant_label = variant.get("label") or ""
-    if agency:
+    if agency and not _variant_options(proc):
+        # Hộp thoại chỉ có Tỉnh + Sở, không có trường hợp giải quyết (Bộ Nội vụ).
+        r = Reply(*_fmt(vi.AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE, province=province, agency=agency))
+    elif agency:
         r = Reply(*_fmt(vi.MAE_AGENCY_AUTOFILL_GUIDE, province=province, agency=agency,
                         variant_label=variant_label))
     else:
@@ -1348,11 +1455,23 @@ def _to_ask_doc_method(conv: dict, intro: tuple[str, str] | None = None) -> Repl
         return _to_consent(conv)
     conv["state"] = "ask_doc_method"
     conv["awaiting_events"] = []
-    md_list, tts_list = _doc_list(proc)
+    # Chỉ truyền danh sách theo bước khi thủ tục THỰC SỰ có; None để `_doc_list` giữ nguyên
+    # đường fallback uploadHint của nó (thủ tục không khai requiredDocs vẫn đọc như cũ).
+    md_list, tts_list = _doc_list(
+        proc, guided.docs_for_target(conv, proc, str(conv.get("docs_target") or "")),
+    )
     if intro is None:
         pmd, ptts = _login_ok_prefix(conv)
-        reached = (vi.INTRO_OWNER_REACHED if conv.get("owner_phase")
-                   else (vi.INTRO_ATTACH_REACHED if proc.get("mode") == "attach" else vi.INTRO_FORM_REACHED))
+        if conv.get("owner_phase") and guided.owner_scan_enabled(conv, proc):
+            # Nói rõ VIỆC SẮP LÀM: công dân đang ở trang có form, đưa giấy tờ ra mà không
+            # biết để làm gì thì tưởng đã sang bước đính kèm.
+            reached = (vi.INTRO_AUTHORIZATION_SCAN_REACHED if conv.get("authorization_page")
+                       else vi.INTRO_OWNER_SCAN_REACHED)
+        elif conv.get("owner_phase"):
+            reached = vi.INTRO_OWNER_REACHED
+        else:
+            reached = (vi.INTRO_ATTACH_REACHED if proc.get("mode") == "attach"
+                       else vi.INTRO_FORM_REACHED)
         intro = (pmd + reached["md"], ptts + reached["tts"])
     md, tts = _fmt(vi.ASK_DOC_METHOD,
                    intro_md=intro[0], intro_tts=intro[1],
@@ -1570,9 +1689,31 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         if (proc.get("ownerInfo") or {}).get("enabled"):
             conv["owner_phase"] = True
             return _to_ask_doc_method(conv)
+        if guided.owner_scan_enabled(conv, proc):
+            # Quét sớm: chỉ xin giấy tờ ở bước này khi trang CÒN ô bắt buộc trống (nhánh ủy
+            # quyền luôn còn 4 ô). Điền đủ sẵn rồi thì đừng bắt công dân quét lại — đưa thẳng
+            # nút chuyển bước, giấy tờ nhận ở bước Thành phần hồ sơ như cũ.
+            if guided.needs_scan_at_owner_step(ctx):
+                if _say_once(conv, "owner_scan"):
+                    _login_ok_prefix(conv)
+                    conv["owner_phase"] = True
+                    conv["owner_scan_pending"] = True
+                    return _to_ask_doc_method(conv)
+                return Reply()
+            conv["owner_phase"] = False
+            if _say_once(conv, "owner_info"):
+                _login_ok_prefix(conv)
+                r = Reply(*_fmt(vi.GUIDED_OWNER_READY, **guided.step_labels(proc)))
+                r.chips = [guided.owner_cta_chip(proc)]
+                return r
+            return Reply()
         # Các thủ tục chưa bật capability vẫn giữ hướng dẫn thủ công cũ.
         if _say_once(conv, "owner_info"):
             _login_ok_prefix(conv)  # chỉ đánh dấu đã qua đăng nhập, không sinh chữ
+            if guided.enabled(conv, proc):
+                r = Reply(*_fmt(vi.GUIDED_OWNER_STEP, **guided.step_labels(proc)))
+                r.chips = [guided.owner_cta_chip(proc)]
+                return r
             template = vi.OWNER_INFO_ATTACH_GUIDE if proc.get("mode") == "attach" else vi.OWNER_INFO_GUIDE
             return Reply(*_fmt(template))
         return Reply()
@@ -1657,11 +1798,31 @@ def _picked_doc_method(intent: Intent) -> str:
     return ""
 
 
+def _scan_pick_template(conv: dict, proc: dict) -> dict:
+    """Câu hướng dẫn scan tại quầy, theo đúng checklist của BƯỚC hiện tại."""
+    if proc.get("mode") != "attach":
+        return vi.SCAN_PICK
+    # Chỉ đổi câu khi checklist ĐANG có ô của bước chủ hồ sơ. KHÔNG được suy theo "nhiều hơn
+    # một ô": chứng thực chữ ký và chứng thực giao dịch tài sản cũng là attach-only mà vốn
+    # nhiều ô, đổi câu cho chúng là nói về căn cước chủ hồ sơ ở thủ tục không hề có thứ đó.
+    owner_keys = guided.owner_doc_keys(proc)
+    if owner_keys and any(
+        str(doc.get("key") or "") in owner_keys
+        for doc in upload_service.docs_for_conversation(conv)
+    ):
+        return vi.SCAN_PICK_OWNER
+    return vi.SCAN_PICK_ATTACH
+
+
 async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> Reply | None:
     """Chọn/ĐỔI cách gửi giấy tờ. reuse_session=True (đang ở qr_waiting/collecting_docs) → GIỮ
     nguyên phiên upload hiện có (QR & scan cùng đẩy vào /upload/{sid} nên đổi qua lại KHÔNG mất
     file đã tải); =False (từ ask_doc_method) → tạo phiên mới. method lạ (profile ẩn) → None."""
     keep = reuse_session and conv.get("upload_session_id")
+    if keep:
+        # Phiên đi xuyên nhiều bước nhưng checklist thì theo bước: rút ô chỉ có nghĩa ở bước
+        # trước trước khi hiện lại cho công dân.
+        await upload_service.sync_for_conversation(conv)
     if method == "qr":
         conv["doc_method"] = "qr"
         conv["state"] = "qr_waiting"
@@ -1678,7 +1839,7 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
         if not keep:
             await upload_service.create_for_conversation(conv)
         proc = get_procedure(conv.get("procedure_key") or "") or {}
-        template = vi.SCAN_PICK_ATTACH if proc.get("mode") == "attach" else vi.SCAN_PICK
+        template = _scan_pick_template(conv, proc)
         # Scan tại quầy: cả đợt tệp đi trong 1 request và đã phân loại xong khi request trả
         # về → FE tự chốt (docs_done) ngay sau đợt chọn, không bắt bấm "Đã đưa đủ".
         # CHỈ bật (kèm câu "em tự xử lý luôn") khi client khai supportsScanAutoRun — extension
@@ -1845,30 +2006,14 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
     # (attachment_preferences.attachMode) thì áp luôn, KHÔNG hỏi giữa luồng; extension cũ
     # không gửi preference → vẫn hỏi + chip như trước để bản trên chợ không đổi hành vi.
     preset_split_note = False
-    if (target == "attachment" and attach_only
-            and conv.get("procedure_key") in _ATTACH_MODE_PROCEDURES
-            and not conv.get("attach_mode")):
-        preset = _preset_attach_mode(conv)
-        if preset:
-            conv["attach_mode"] = preset
-            # Tách nhiều hồ sơ là hành vi lớn (mở nhiều tab) — báo 1 câu cho công dân biết.
-            preset_split_note = preset == "split"
-        else:
-            conv["state"] = "choosing_attach_mode"
-            conv["pipeline_status"] = "waiting_attach_mode"
-            r = Reply(*_fmt(vi.ATTACH_MODE_ASK, files_count=files_count))
-            r.chips = [
-                {"label": "📎 Đính kèm trong 1 hồ sơ",
-                 "send": '__action:attach_mode:{"value":"merge"}', "solid": True},
-                {"label": "🗂️ Đính kèm nhiều hồ sơ",
-                 "send": '__action:attach_mode:{"value":"split"}'},
-            ]
-            return r
+    if target == "attachment":
+        mode_question, preset_split_note = _attach_mode_gate(conv, proc, files_count)
+        if mode_question is not None:
+            return mode_question
 
     if target == "owner":
         conv["auto_attach_after_fill"] = False
-        owner_enabled = bool((proc.get("ownerInfo") or {}).get("enabled"))
-        if not owner_enabled:
+        if not _owner_info_enabled(conv, proc):
             conv["pipeline_status"] = "waiting_page_target"
             r = Reply(*_fmt(vi.DOCS_TARGET_UNKNOWN))
             r.chips = [_docs_done_chip(conv)]
@@ -1948,12 +2093,7 @@ async def _handle_choosing_attach_mode(conv: dict, intent: Intent) -> Reply:
         )))
 
     r = Reply(*_fmt(vi.ATTACH_MODE_ASK, files_count=0))
-    r.chips = [
-        {"label": "📎 Đính kèm trong 1 hồ sơ",
-         "send": '__action:attach_mode:{"value":"merge"}', "solid": True},
-        {"label": "🗂️ Đính kèm nhiều hồ sơ",
-         "send": '__action:attach_mode:{"value":"split"}'},
-    ]
+    r.chips = _attach_mode_chips()
     return r
 
 
@@ -2000,6 +2140,7 @@ async def _start_documents_adjustment(conv: dict, target: str) -> Reply:
     conv["attachment_plan_started"] = False
     conv["attach_plan"] = []
     conv["attach_errors"] = []
+    conv["attach_fail_streak"] = 0
     conv["attach_trace_request_id"] = None
     conv["attach_done"] = False
     conv["pipeline_status"] = ""
@@ -2007,6 +2148,10 @@ async def _start_documents_adjustment(conv: dict, target: str) -> Reply:
     conv["awaiting_events"] = []
     conv["supplementing_documents"] = True
     conv["supplement_reuse_session"] = bool(session)
+    if session:
+        # Đã qua bước chủ hồ sơ rồi mới mở lại chỗ tải giấy: checklist phải chỉ còn giấy tờ
+        # của bước hiện tại, không hiện lại ô căn cước công dân đã dùng để điền form.
+        await upload_service.sync_for_conversation(conv, session)
     if target == "declaration":
         # Kết quả cũ chỉ dùng để hiển thị form hiện tại. Lượt chốt sau phải tạo trace mới
         # và nhận fields mới từ OCR/LLM, không được phát lại cache cũ.
@@ -2109,7 +2254,7 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
         return r
     if conv.get("doc_method") == "scan":
         proc = get_procedure(conv.get("procedure_key") or "") or {}
-        template = vi.SCAN_PICK_ATTACH if proc.get("mode") == "attach" else vi.SCAN_PICK
+        template = _scan_pick_template(conv, proc)
         r = Reply(*_fmt(template))
         r.chips = [
             {"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again"},
@@ -2152,6 +2297,212 @@ def _join_owner_labels(labels: list[str]) -> str:
     if len(labels) == 1:
         return labels[0]
     return ", ".join(labels[:-1]) + " và " + labels[-1]
+
+
+def _owner_info_enabled(conv: dict, proc: dict) -> bool:
+    """Điền chủ hồ sơ tự động: bật thật trong registry, HOẶC bật qua luồng quét sớm.
+
+    Tách hai đường vì `ownerInfo.enabled` áp cho mọi client: bật nó cho thủ tục attach-only
+    sẽ khiến extension cũ nhận giấy tờ ở bước 1 rồi kẹt (không có bước kê khai để đi tiếp).
+    """
+    if (proc.get("ownerInfo") or {}).get("enabled"):
+        return True
+    return guided.owner_scan_enabled(conv, proc)
+
+
+def _guided_blocked_reply(conv: dict, proc: dict, payload: dict, phase: str) -> Reply:
+    """Cổng không cho qua bước: đọc lại NGUYÊN VĂN lời cổng báo rồi mời bấm lại.
+
+    Toast của cổng nằm ở góc màn hình và tự tắt sau vài giây — công dân thường không kịp đọc,
+    nên không nói lại thì họ chỉ thấy "bấm mà không có gì xảy ra".
+    """
+    message = str(payload.get("message") or "").strip()
+    if message:
+        r = Reply(*_fmt(vi.GUIDED_STEP_BLOCKED, portal_message=message))
+    else:
+        r = Reply(*_fmt(vi.GUIDED_STEP_STUCK))
+    chip = guided.cta_chip_for(proc, phase)
+    if chip:
+        r.chips = [chip]
+    return r
+
+
+def _guided_result_step_reply(conv: dict, proc: dict) -> Reply:
+    """Hướng dẫn chọn phương thức nhận kết quả. Bot KHÔNG tự chọn hộ: chọn sai là hồ sơ trả về
+    sai đường, và đây là ý muốn riêng của từng công dân."""
+    r = Reply(*_fmt(vi.GUIDED_RESULT_STEP, **guided.step_labels(proc)))
+    r.chips = [guided.submit_cta_chip()]
+    return r
+
+
+async def _handle_guided_action(conv: dict, proc: dict, intent: Intent) -> Reply | None:
+    """Các lượt của luồng dẫn từng bước. Trả None để lượt đi tiếp vào state machine cũ."""
+    if intent.kind != "action":
+        return None
+
+    if intent.value == "guided_next":
+        phase = str(intent.payload.get("phase") or "")
+        if phase == guided.OWNER:
+            missing = guided.missing_owner_labels(proc, intent.payload.get("ownerFields"))
+            if missing:
+                text = _join_owner_labels(missing)
+                r = Reply(*_fmt(vi.GUIDED_OWNER_MISSING, missing_note=text, missing_tts=text))
+                r.chips = [guided.owner_cta_chip(proc)]
+                return r
+        r = Reply()
+        r.actions = [guided.click_next_action(proc, phase)]
+        return r
+
+    if intent.value == "guided_step_report":
+        phase = str(intent.payload.get("phase") or "")
+        if not intent.payload.get("ok"):
+            return _guided_blocked_reply(conv, proc, intent.payload, phase)
+        if phase == guided.ATTACHMENT and _say_once(conv, "guided_result"):
+            return _guided_result_step_reply(conv, proc)
+        # Sang bước chủ hồ sơ → thành phần hồ sơ: watcher trang phát page_status ngay sau đó,
+        # nhánh guide_login cũ tự nhận bước đính kèm và nói tiếp. Im ở đây để không hai bubble.
+        return Reply()
+
+    if intent.value == "authorization_attach_report":
+        if intent.payload.get("ok"):
+            return Reply(*_fmt(vi.GUIDED_AUTHORIZATION_ATTACHED))
+        return Reply(*_fmt(
+            vi.GUIDED_AUTHORIZATION_ATTACH_FAILED,
+            error=str(intent.payload.get("error") or "không rõ"),
+        ))
+
+    if intent.value == "certify_identity":
+        certify = str(intent.payload.get("value") or "").lower() != "no"
+        conv["certify_identity"] = certify
+        if certify:
+            # Chứng thực luôn thì thẻ căn cước KHÔNG còn là giấy "chỉ để điền form" nữa —
+            # chuyển sang ô giấy cần chứng thực, nếu không nó nằm lại ô sắp bị rút khỏi
+            # checklist và công dân không còn thấy để xem hay xoá.
+            sid = str(conv.get("upload_session_id") or "")
+            for source, target in guided.certified_slot_moves(proc):
+                await up_store.move_files_between_slots(sid, source, target)
+        r = Reply(*_fmt(vi.GUIDED_CERTIFY_YES if certify else vi.GUIDED_CERTIFY_NO))
+        r.chips = [guided.owner_cta_chip(proc)]
+        return r
+
+    if intent.value == "guided_submit":
+        r = Reply(*_fmt(vi.GUIDED_SUBMIT_SENT, **guided.step_labels(proc)))
+        r.actions = [guided.submit_action(proc)]
+        return r
+
+    if intent.value == "guided_submit_report":
+        if intent.payload.get("ok"):
+            # Nộp được rồi thì cú bấm nút đã đi vào đường đếm hồ sơ cũ (submit_clicked →
+            # submitted). Nói thêm ở đây là chèn bubble vào giữa card đánh giá.
+            return Reply()
+        return _guided_blocked_reply(conv, proc, intent.payload, guided.RESULT)
+
+    return None
+
+
+def _reask_doc_method_after_step_switch(conv: dict) -> Reply:
+    """Hỏi lại cách cung cấp giấy tờ ở bước MỚI, đồng thời xoá hẳn lời hỏi của bước trước.
+
+    Lời hỏi cũ mang checklist của bước chủ hồ sơ (còn ô căn cước) nên đứng ở bước Thành phần
+    hồ sơ là sai bước, mà hai thẻ QR/Scan giống hệt nhau thì thẻ cũ vẫn bấm được. Xoá ở CẢ hai
+    nơi: lịch sử (khôi phục phiên) và màn hình đang mở (action cho FE).
+    """
+    dropped = conv_store.drop_last_bot_history(conv, "ask_doc_method")
+    reply = _to_ask_doc_method(conv)
+    if dropped:
+        reply.actions = [*reply.actions, {"type": "drop_stale_ask", "tag": "doc_method"}]
+    return reply
+
+
+async def _guided_docs_target_switch(
+    conv: dict, proc: dict, target_before: str = "",
+) -> Reply | None:
+    """Trang nhảy sang Thành phần hồ sơ TRONG LÚC trợ lý còn đang chờ giấy tờ của bước chủ hồ sơ.
+
+    Xảy ra khi công dân tự điền form rồi tự bấm Bước tiếp theo. Checklist của bước chủ hồ sơ
+    hết nghĩa ở đây: ô "căn cước của chủ hồ sơ" phải rút, còn tệp đã nằm trong ô đó phải
+    chuyển sang ô giấy cần chứng thực — trợ lý KHÔNG chạy pipeline chủ hồ sơ nên không có bằng
+    chứng nào nói thẻ đó đưa ra để làm gì; giấu tệp đi mà vẫn đính là công dân mất đường bỏ ra.
+
+    Trả None để lượt đi tiếp theo đường cũ (chỉ đổi nhãn nút chốt).
+    """
+    if not guided.owner_scan_enabled(conv, proc) or conv.get("docs_target") != "attachment":
+        return None
+    if target_before != "owner":
+        return None  # mở thẳng vào bước đính kèm thì không có gì để chuyển
+    sid = str(conv.get("upload_session_id") or "")
+    sess = await up_store.get(sid) if sid else None
+    if not sess:
+        # Chưa tạo phiên: công dân chưa kịp chọn cách gửi giấy đã tự điền rồi bấm sang bước
+        # sau. Vẫn phải hỏi lại — lần này checklist chỉ còn giấy cần chứng thực.
+        conv["owner_phase"] = False
+        return _reask_doc_method_after_step_switch(conv)
+    owner_keys = guided.owner_doc_keys(proc)
+    if not any(str(d.get("key") or "") in owner_keys for d in sess.get("required_docs") or []):
+        return None  # phiên đã mang checklist của bước này rồi
+
+    moved = 0
+    for source, target in guided.certified_slot_moves(proc):
+        count = sum(1 for f in sess.get("files", []) if f.get("doc_key") == source)
+        if count:
+            await up_store.move_files_between_slots(sid, source, target)
+            moved += count
+    await upload_service.sync_for_conversation(conv, sess)
+    conv["owner_phase"] = False
+
+    if not (sess.get("files") or []):
+        # Chưa đưa tệp nào → hỏi lại cách cung cấp, lần này checklist chỉ còn giấy cần chứng thực.
+        return _reask_doc_method_after_step_switch(conv)
+    # Đã có tệp thì KHÔNG hỏi lại cách cung cấp — hỏi lại là bắt làm lại việc vừa làm.
+    r = Reply(*_fmt(vi.GUIDED_DOCS_STEP_SWITCHED,
+                    note=vi.GUIDED_IDENTITY_MOVED_NOTE if moved else None))
+    r.chips = [_docs_done_chip(conv)]
+    r.actions = [_update_docs_done_action(
+        conv.get("docs_target") or "",
+        adjustment_target=_documents_adjustment_target(conv),
+    )]
+    return r
+
+
+async def _authorization_attach_action(conv: dict, proc: dict) -> dict | None:
+    """Đính giấy ủy quyền vào ô riêng của bước chủ hồ sơ, ngay sau khi điền xong.
+
+    Giấy này KHÔNG đi cùng đường với giấy đem chứng thực: nó có ô riêng ngay tại bước này.
+    Chỉ phát khi bộ phân loại đã xếp được đúng tệp vào ô giấy ủy quyền — tức đã xác minh bên
+    được ủy quyền đúng là người đang nộp; không có tệp nào đạt thì im, đừng đính bừa.
+    """
+    if not (conv.get("authorization_page") and guided.owner_scan_enabled(conv, proc)):
+        return None
+    key = guided.authorization_doc_key(proc)
+    if not key or not _say_once(conv, "uy_quyen_attached"):
+        return None
+    sid = str(conv.get("upload_session_id") or "")
+    sess = await up_store.get(sid) if sid else None
+    if not sess:
+        return None
+    name = next(
+        (str(f.get("name") or "") for f in sess.get("files", []) if f.get("doc_key") == key),
+        "",
+    )
+    if not name:
+        return None
+    return {"type": "attach_authorization_doc", "session_id": sid, "fileName": name}
+
+
+def _owner_step_follow_up(conv: dict, proc: dict) -> tuple[dict | None, list]:
+    """Sau khi xong việc ở bước chủ hồ sơ: (câu phụ, chip) để nối vào chính lượt đó.
+
+    Câu phụ phải đi qua `note=` của `_fmt`, không được nối tay vào display_md — xem chú thích
+    ở `_fmt` (chế độ Mông sẽ bắt giọng Mông đọc chữ Việt).
+    """
+    if not guided.owner_scan_enabled(conv, proc):
+        return None, []
+    # Chỉ hỏi khi pipeline THẬT SỰ đọc được giấy tờ tùy thân của chủ hồ sơ; không có bằng
+    # chứng đã quét căn cước thì hỏi là hỏi vu vơ.
+    if (conv.get("owner_fields") and conv.get("certify_identity") is None
+            and _say_once(conv, "certify_identity_ask")):
+        return vi.GUIDED_CERTIFY_ASK, guided.certify_identity_chips()
+    return None, [guided.owner_cta_chip(proc)]
 
 
 def _owner_report_names(conv: dict, rep: dict) -> tuple[list[str], list[str]]:
@@ -2228,12 +2579,20 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
             f" Còn thiếu {missing_text}, công dân vui lòng tự điền giúp em."
             if missing else ""
         )
-        return Reply(*_fmt(
+        proc_owner = get_procedure(conv.get("procedure_key") or "") or {}
+        note, chips = _owner_step_follow_up(conv, proc_owner)
+        r = Reply(*_fmt(
             vi.OWNER_FILL_DONE,
+            note=note,
             completed=_join_owner_labels(completed),
             missing_note=missing_note,
             missing_tts=missing_tts,
         ))
+        r.chips = chips
+        attach_action = await _authorization_attach_action(conv, proc_owner)
+        if attach_action:
+            r.actions = [attach_action]
+        return r
     return Reply(*_fmt(vi.OWNER_PROCESSING))
 
 
@@ -2243,6 +2602,29 @@ async def _handle_owner_waiting_next(conv: dict, intent: Intent) -> Reply:
         conv["owner_info_done"] = False
         return _owner_fields_reply(conv)
     proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if (
+        intent.kind == "event"
+        and intent.value == "page_status"
+        and proc.get("mode") == "attach"
+        and guided.owner_scan_enabled(conv, proc)
+        and _attachment_page_reached(conv, proc, intent.payload)
+    ):
+        # Thủ tục attach-only KHÔNG có bước Kê khai để chờ: từ Thông tin chủ hồ sơ là sang
+        # thẳng Thành phần hồ sơ. Giấy tờ đã nhận ở bước trước nằm CÙNG upload session nên
+        # đính kèm dùng lại đúng phiên đó, không bắt công dân quét lần hai.
+        # Vẫn phải qua cổng gộp/tách: giấy tờ nhận ở bước TRƯỚC nên nhánh trong _docs_complete
+        # (chỉ chạy khi target="attachment") không đi qua, và hai thủ tục chứng thực sẽ âm thầm
+        # mất lựa chọn "mỗi tài liệu một hồ sơ riêng". Máy quầy đã đặt sẵn trong Cài đặt thì áp
+        # luôn, không hỏi. Bỏ qua cờ báo-trước "sẽ tách": câu ATTACH_PLAN_READY_SPLIT ở bước
+        # kế hoạch đã nói rõ, thêm ở đây là hai lần cùng một ý.
+        progress = await upload_service.progress_of(conv.get("upload_session_id") or "") or {}
+        mode_question, _ = _attach_mode_gate(conv, proc, int(progress.get("files_count") or 0))
+        if mode_question is not None:
+            return mode_question
+        conv["owner_phase"] = False
+        conv["docs_target"] = "attachment"
+        conv["state"] = "attaching"
+        return await _handle_attaching(conv, Intent("action", "request_attach", {}))
     if (
         intent.kind == "event"
         and intent.value == "page_status"
@@ -2600,7 +2982,14 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         else:
             dossier_count = len(plan)
             template = vi.ATTACH_PLAN_READY
-        r = Reply(*_fmt(template, count=dossier_count, plan_list=plan_list))
+        # Planner ghi lý do bỏ tệp vào attach_errors; nói TRƯỚC khi đính để cán bộ không phải
+        # đoán vì sao thiếu tệp (trước đây lý do này không bao giờ ra tới màn hình).
+        skipped_note = "; ".join(str(e) for e in (conv.get("attach_errors") or []) if e)[:300]
+        r = Reply(*_fmt(
+            template, count=dossier_count, plan_list=plan_list,
+            skipped_note=skipped_note,
+            note=vi.ATTACH_PLAN_SKIPPED_NOTE if skipped_note else None,
+        ))
         # Hợp đồng cũ: FE engine attach nhận {attachments, files} — file lấy theo URL phiên,
         # procedure để engine chuẩn hoá plan theo thủ tục (normalizeAttachmentPlan).
         r.actions = [_attach_plan_action(conv, plan)]
@@ -2627,6 +3016,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             and plan
             and not conv.get("attach_done")
             and not conv.get("attach_action_in_progress")
+            # Hỏng liên tiếp cùng một kế hoạch → chỉ chạy lại khi cán bộ tự bấm.
+            and int(conv.get("attach_fail_streak") or 0) < 2
         ):
             r = Reply(*_fmt(vi.ATTACH_PAGE_REACHED))
             r.actions = [_attach_plan_action(conv, plan)]
@@ -2665,10 +3056,18 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         if attached == 0 and not (skipped > 0 and not errors):
             # Không gắn được tệp nào (thường do trang chưa ở bước Thành phần hồ sơ) →
             # KHÔNG chốt xong, giữ bước attaching để thử lại được.
+            # Lần hỏng thứ 2 trở đi: kế hoạch được phát lại Y NGUYÊN nên bấm lại chắc chắn hỏng
+            # tiếp. Đổi sang đường thoát thật (sửa giấy tờ → lập kế hoạch mới) và khoá luôn nhánh
+            # tự phát lệnh của watcher trang, nếu không cặp "thử → lỗi" tự sinh mãi.
+            conv["attach_fail_streak"] = int(conv.get("attach_fail_streak") or 0) + 1
             note = f": *{errors[0]}*" if errors else ""
-            r = Reply(*_fmt(vi.ATTACH_NONE, error_note=note))
-            r.chips = [{"label": "🔁 Đính kèm lại", "send": "__event:attach_ready", "solid": True}]
+            repeated = conv["attach_fail_streak"] >= 2
+            r = Reply(*_fmt(vi.ATTACH_NONE_REPEAT if repeated else vi.ATTACH_NONE, error_note=note))
+            r.chips = [{"label": "🔁 Đính kèm lại", "send": "__event:attach_ready", "solid": not repeated}]
+            if repeated:
+                r.chips.insert(0, {**_supplement_documents_chip(), "solid": True})
             return r
+        conv["attach_fail_streak"] = 0
         conv["attach_done"] = True
         conv["state"] = "done"
         _clear_documents_adjustment(conv)
@@ -2704,7 +3103,27 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
                             note=recap, **recap_kw))
         else:
             r = Reply(*_fmt(vi.ATTACH_DONE, attached=attached, note=recap, **recap_kw))
+        # Luồng dẫn từng bước: thay lời "tự bấm Nộp hồ sơ" bằng nút chuyển sang bước nhận kết
+        # quả. Chế độ tách hồ sơ VẪN có nút, chỉ khác câu chữ: nút bấm qua sendToContent gắn
+        # chặt tab của sidebar nên nó luôn chuyển đúng hồ sơ ở tab gốc; các tab tách không có
+        # khung lái nên công dân tự bấm trên trang, và câu thoại phải nói rõ điều đó.
+        guided_step = guided.enabled(conv, proc_done)
+        if guided_step and not errors and not (attached == 0 and skipped > 0):
+            guided_kw = {"attached": attached, **guided.step_labels(proc_done)}
+            if recap:
+                guided_kw["filled"] = filled_count
+            if conv.get("attach_mode") == "split":
+                r = Reply(*_fmt(vi.GUIDED_ATTACH_SPLIT_DONE, succeeded=succeeded, total=total,
+                                note=recap, **guided_kw))
+            else:
+                r = Reply(*_fmt(vi.GUIDED_ATTACH_DONE, note=recap, **guided_kw))
+        # Gắn chip SAU khi đã chốt xong Reply: dựng Reply mới ở trên là thay cả danh sách chip,
+        # gắn trước thì nút "Điều chỉnh giấy tờ" bị nuốt mất.
+        # Thứ tự: sửa giấy tờ trước, nút chuyển bước xuống cuối — nó tràn ngang và nổi bật nên
+        # đứng cuối mới không át nút còn lại.
         r.chips = [_supplement_documents_chip()]
+        if guided_step:
+            r.chips.append(guided.attach_cta_chip())
         # Không bắt công dân bấm thêm nút hoàn thành. state=done bật watcher; khi cổng báo
         # nộp thành công, event submitted sẽ hiển thị lời chốt rồi tự về màn bắt đầu.
         return r

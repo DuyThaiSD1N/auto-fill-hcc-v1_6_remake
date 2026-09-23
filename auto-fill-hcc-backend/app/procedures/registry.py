@@ -3,6 +3,7 @@
 `pipeline` map key → module pipeline xử lý.
 """
 # Pipeline đính kèm theo thủ tục (package-by-feature, app/pipelines/<thủ tục>/attach).
+from app.procedures import agency_plans
 from app.pipelines.cap_ban_sao_so_goc.attach import plan as cap_ban_sao_so_goc_attach
 from app.pipelines.an_toan_thuc_pham.attach import plan as an_toan_thuc_pham_attach
 from app.pipelines.an_toan_thuc_pham.process import run as an_toan_thuc_pham_process
@@ -124,6 +125,8 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai.attach import pla
 from app.pipelines.dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai.process import run as dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_process
 from app.pipelines.dinh_chinh_gcn_da_cap_lao_cai.attach import plan as dinh_chinh_gcn_da_cap_lao_cai_attach
 from app.pipelines.dinh_chinh_gcn_da_cap_lao_cai.process import run as dinh_chinh_gcn_da_cap_lao_cai_process
+from app.pipelines.dieu_chinh_giao_dat_cap_xa_lao_cai.attach import plan as dieu_chinh_giao_dat_cap_xa_lao_cai_attach
+from app.pipelines.dieu_chinh_giao_dat_cap_xa_lao_cai.process import run as dieu_chinh_giao_dat_cap_xa_lao_cai_process
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_giao_dat_lao_cai_attach
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
 from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
@@ -820,6 +823,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Bước 01 "Chọn cơ quan thực hiện": popup hiện nút điền hộ khi thủ tục có khoá này.
+        # Dùng CHUNG với Handfree (app/procedures/agency_plans.py) để hai kênh không lệch nhau.
+        "agencyFillPlan": agency_plans.LIEN_THONG_KHAI_SINH,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. CCCD của cha (cả 2 mặt) + CCCD của mẹ (cả 2 mặt).\n"
@@ -3123,6 +3129,54 @@ PROCEDURES: list[dict] = [
             "⚠ Nút 'Người nộp là chủ hồ sơ' của cổng KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ, nên hệ thống "
             "luôn điền đầy đủ khối chủ hồ sơ. Địa chỉ ghi theo đơn vị hành chính CŨ (trước sáp nhập) sẽ "
             "được chuẩn hoá; xã/phường cũ không còn thì hệ thống báo để cán bộ chọn tay."
+        ),
+    },
+    {
+        "key": "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai",
+        # Bản nộp ở UBND CẤP XÃ (maCoQuan=UBND_PLC_LCI) của cùng nghiệp vụ với 1.115652 (bản ở Sở).
+        # Tên thủ tục CHỈ khác ở đuôi "(cấp xã)" nên cụm tên của 1.115652 là CHUỖI CON của trang này →
+        # phải khoá bằng MÃ. Cổng in mã trong banner "thủ tục đã chọn" ở mọi bước ("Một phần 1.115680 -
+        # Điều chỉnh quyết định giao đất… (cấp xã).") và banner là chữ hiển thị nên nằm trong bodyText;
+        # URL chỉ có ?sid=<phiên> nên không dùng urlIncludes được.
+        # Cả hai entry đều textPriority → FE chọn entry có TỔNG ĐỘ DÀI CỤM LỚN NHẤT: entry này gồm mã +
+        # cụm tên ĐẦY ĐỦ kèm "(cấp xã)" nên luôn thắng ở trang 1.115680, còn trang 1.115652 không chứa
+        # "1.115680" nên không bị cướp.
+        # Bước 2 giống hệt 1.115652; khác ở CÁCH ĐÍNH KÈM và ô "Về việc" (xem pipeline).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "1.115680",
+                "điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục đích sử dụng đất "
+                "(cấp xã)",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai(cấp xã)] Điều chỉnh quyết định giao đất, cho thuê đất, cho phép chuyển mục "
+            "đích sử dụng đất (1.115680)"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục này nộp tại UBND CẤP XÃ (mã 1.115680). Bản cùng nghiệp vụ nộp ở Sở là mã 1.115652 "
+            "— chọn nhầm là sai cơ quan tiếp nhận.\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị điều chỉnh (Mẫu số 04 kèm QĐ 47/2026/QĐ-UBND) → dòng 1 'Đơn theo Mẫu số 04'.\n"
+            "2. Quyết định giao đất/cho thuê đất/cho phép chuyển mục đích ĐANG ĐỀ NGHỊ ĐIỀU CHỈNH.\n"
+            "3. Văn bản làm THAY ĐỔI CĂN CỨ: thông báo kết quả kiểm tra/đo đạc, quyết định phê duyệt "
+            "hoặc điều chỉnh quy hoạch, quyết định chấp thuận (điều chỉnh) chủ trương đầu tư.\n"
+            "4. Giấy tờ khác (ĐKKD, ủy quyền…) sẽ được thêm thành dòng 'Giấy tờ khác' kèm tên tài liệu.\n"
+            "⚠ CÁCH ĐÍNH của cơ quan tiếp nhận cấp xã: hai dòng thành phần số 2 và số 3 ĐỂ TRỐNG; quyết "
+            "định đi vào dòng 'Giấy tờ khác' tên 'bản chính quyết định', văn bản làm thay đổi căn cứ vào "
+            "dòng 'bản chính văn bản thay đổi căn cứ' — mỗi tệp một dòng. Đây là điểm khác bản ở Sở.\n"
+            "⚠ Ô 'Về việc' (*) giữ NGUYÊN chuỗi cổng điền sẵn theo tên thủ tục — cơ quan không yêu cầu "
+            "sửa (khác 1.115652).\n"
+            "⚠ Mỗi tệp tối đa 6 MB.\n"
+            "⚠ Nút 'Người nộp là chủ hồ sơ' của cổng KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ, nên hệ thống "
+            "luôn điền đầy đủ khối chủ hồ sơ."
         ),
     },
     {
@@ -5727,6 +5781,7 @@ _PIPELINE = {
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_cong_trinh_process,
     "dieu-chinh-dat-dai": dieu_chinh_dat_dai_process,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_process,
+    "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai": dieu_chinh_giao_dat_cap_xa_lao_cai_process,
     "dang-ky-dat-dai-lan-dau": dang_ky_dat_dai_process,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai": cap_gcn_nhan_chuyen_nhuong_process,
@@ -5847,6 +5902,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
+    "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai": dieu_chinh_giao_dat_cap_xa_lao_cai_attach,
     "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai": dang_ky_gcn_chuyen_quyen_lao_cai_attach,
     "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai": dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach,
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_attach,

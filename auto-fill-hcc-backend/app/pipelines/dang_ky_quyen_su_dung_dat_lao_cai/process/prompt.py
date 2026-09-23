@@ -30,4 +30,10 @@ CCCD:
   NoiCap="Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ Căn cước mẫu mới ghi "BỘ CÔNG AN" thì
   NoiCap="Bộ Công an".
 
+NGƯỜI ĐI NỘP:
+- NguoiTrongGiayTo và NguoiDuocUyQuyen chỉ là DANH SÁCH ỨNG VIÊN. TUYỆT ĐỐI không tự kết luận ai là người đi
+  nộp — Python chọn bằng thông tin tài khoản đang đăng nhập trên cổng.
+- NguoiDuocUyQuyen chỉ điền khi có VĂN BẢN ỦY QUYỀN riêng; người đại diện theo pháp luật ghi trên GCN đăng ký
+  doanh nghiệp KHÔNG phải người được ủy quyền.
+
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""

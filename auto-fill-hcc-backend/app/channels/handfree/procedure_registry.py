@@ -6,6 +6,7 @@ sở hữu bản sao pipeline nghiệp vụ.
 """
 from app.channels.handfree.owner_info import run as tu_phap_owner_info
 from app.channels.handfree.flow_profiles import resolve_flow_profile
+from app.procedures import agency_plans
 from app.procedures import portal_submit as core_portal_submit
 from app.procedures import registry as core_registry
 
@@ -58,18 +59,7 @@ PROCEDURES: list[dict] = [
         # logic fill mới). {province}/{ward} được flow thay bằng nơi ở của phiên trước khi gửi.
         # Chỉ điền khối khai sinh + 2 select "trường hợp" + giữ tick "Cùng địa bàn" (khối thường
         # trú tự mirror + khoá theo khối khai sinh). Ô "Cơ quan thực hiện" readonly tự suy — bỏ.
-        "agencyFillPlan": [
-            {"name": "IsNuocNgoai", "comp": "select", "value": "Không có yếu tố nước ngoài"},
-            {"name": "CqdkksDiaChi", "comp": "diachi",
-             "value": {"tinh": "{province}", "xa": "{ward}"}},
-            {"name": "DkksTruongHop", "comp": "select", "value": "Đã xác định được cả cha lẫn mẹ"},
-            {"name": "CqdkttIsDkks", "comp": "checkbox", "value": True},
-            {"name": "DkttTruongHop", "comp": "select",
-             "value": "Con về với cha, mẹ; cha, mẹ là chủ sở hữu chỗ ở hợp pháp"},
-            # Mặc định tích "Cấp thẻ căn cước" cho trẻ — tick xong cổng TỰ điền khối con
-            # (cơ quan cấp mặc định Xã/Phường, địa chỉ + tên cơ quan tự suy) nên chỉ cần tick.
-            {"name": "IsCapTheCanCuoc", "comp": "checkbox", "value": True},
-        ],
+        "agencyFillPlan": agency_plans.LIEN_THONG_KHAI_SINH,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Căn cước công dân cha.\n"
@@ -592,11 +582,40 @@ PROCEDURES: list[dict] = [
         # không hiển thị card xin consent và không tạo consent_logs.
         "requiresConsent": False,
         "ownerInfo": {"enabled": False},
+        # Thủ tục ĐẦU TIÊN chạy luồng dẫn từng bước (nút chuyển bước + nút gửi hồ sơ ngay trong
+        # sidebar). Chỉ client khai supportsGuidedSteps mới nhận; bản trên chợ giữ luồng cũ.
+        "guidedSteps": {
+            "enabled": True,
+            "ownerScan": True,
+            # Ô CHỈ có ở bước Thông tin chủ hồ sơ: căn cước dùng để ĐIỀN FORM, không phải giấy
+            # đem đi chứng thực. Sang bước Thành phần hồ sơ ô này bị rút (sync_for_conversation).
+            "ownerStepDocs": [
+                {"key": "cccd_chu_ho_so", "name": "Căn cước công dân của chủ hồ sơ",
+                 "icon": "🪪", "sides": 1,
+                 "purpose": "để em điền thông tin chủ hồ sơ",
+                 # Công dân chọn chứng thực luôn thẻ này → nó thành giấy đem đi chứng thực,
+                 # phải chuyển sang ô dưới đây để còn hiện trên checklist ở bước sau.
+                 "certifiedInto": "khac"},
+            ],
+            # Nhánh ỦY QUYỀN: trang đổi nhãn khối thành "Thông tin người nộp hồ sơ" và mọc
+            # thêm khối "Thông tin ủy quyền cá nhân" (4 ô, đều bắt buộc, LUÔN trống khi mở
+            # trang). Cùng bộ khóa với trên để mọi luật sau đó không phải phân nhánh; chỉ
+            # đổi TÊN HIỂN THỊ cho đúng vai, và thêm ô giấy ủy quyền.
+            "authorizationStepDocs": [
+                {"key": "cccd_chu_ho_so", "name": "Căn cước công dân của người nộp hồ sơ",
+                 "icon": "🪪", "sides": 1,
+                 "purpose": "để em điền thông tin người nộp hồ sơ",
+                 "certifiedInto": "khac"},
+                {"key": "giay_uy_quyen", "name": "Giấy ủy quyền", "icon": "📝", "sides": 1,
+                 "purpose": "để em điền thông tin ủy quyền và đính kèm vào hồ sơ luôn"},
+            ],
+        },
         # Một loại duy nhất, nhận lặp không giới hạn. sides=1 chỉ là số tệp tối thiểu;
         # repeatable giữ phiên mở để người dân tiếp tục thêm tệp rồi chủ động bấm Đã đủ.
         "requiredDocs": [
             {"key": "khac", "name": "Giấy tờ cần chứng thực bản sao", "icon": "📄",
-             "sides": 1, "repeatable": True},
+             "sides": 1, "repeatable": True,
+             "purpose": "để đính kèm vào Thành phần hồ sơ ở bước sau"},
         ],
         "mode": "attach",
         "roles": [],
@@ -921,7 +940,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
-        "shortLabel": "Trợ cấp hưu trí xã hội",
+        "shortLabel": "Trợ cấp hưu trí xã hội — thực hiện, điều chỉnh, thôi hưởng",
         "subtitle": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
         "icon": "👴",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d80-74d8-8515-90f6f61822f0",
@@ -953,6 +972,294 @@ PROCEDURES: list[dict] = [
             "Hệ thống lấy chủ hồ sơ từ mục thông tin người đề nghị hưởng trợ cấp hưu trí xã hội.\n"
             "Bước Thành phần hồ sơ: cổng chỉ còn ĐÚNG MỘT dòng nên mọi tệp đều được đính vào "
             "dòng đó; tệp không phải Văn bản đề nghị vẫn đính được nhưng có cảnh báo để cán bộ soát."
+        ),
+    },
+    {
+        "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
+        # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn (iGate + Form.io). Chọn cơ quan HAI BƯỚC:
+        #  A. Hộp thoại DVCQG: chọn Tỉnh → bật "Sở" (KHÔNG chọn tên sở) → Đồng ý → mục "Nộp trực
+        #     tuyến" đầu tiên = đúng luồng agencySoFirst sẵn có (ward bỏ trống: agencyProvinceOnly).
+        #  B. Sang cổng bộ, hộp thoại form#ngSelectAgencyForm1 (CÙNG component trang chọn cơ quan
+        #     của MAE): UBND Tỉnh → radio "Sở/Ban ngành" → Sở Nội vụ → "Đồng ý và tiếp tục" =
+        #     nhánh maePortal. KHÔNG có ô "Trường hợp giải quyết" nên không khai variants — bot
+        #     không hỏi gì, điền luôn.
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.010827",
+                "019d2bfb-03d1-7738-83c0-e5b7b37f5bb0",
+            ],
+            # Trang kê khai (padsvc/apply-online/<id>) KHÔNG còn mã thủ tục trên URL → phải có cụm
+            # tên để nhận ra khi công dân mở thẳng trang đó.
+            "textIncludes": ["di chuyển hồ sơ khi người hưởng trợ cấp ưu đãi"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Di chuyển hồ sơ khi người hưởng trợ cấp ưu đãi thay đổi nơi thường trú",
+        "shortLabel": "Di chuyển hồ sơ khi người hưởng trợ cấp ưu đãi thay đổi nơi thường trú",
+        "subtitle": "Chuyển hồ sơ người có công sang nơi thường trú mới",
+        "icon": "🎖️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-03d1-7738-83c0-e5b7b37f5bb0",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "maePortal": True,
+        "agencyDeptLabel": "Sở Nội vụ",
+        # Wizard cổng Bộ Nội vụ: 1 Thông tin hồ sơ → 2 Thành phần hồ sơ → 3 Thông tin bổ sung →
+        # 4 Nộp hồ sơ (cùng cách đánh số với các cổng bộ khác).
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bước đính kèm là HAI Ô CỐ ĐỊNH (planner core trả fixed-slot): ô 1 Đơn Mẫu 27, ô 2 căn cước
+        # hoặc xác nhận cư trú CT07 → không bật hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị di chuyển hồ sơ (Mẫu số 27, Nghị định 131/2021/NĐ-CP)"
+             " — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người hưởng trợ cấp ưu đãi", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "cu_tru", "name": "Giấy xác nhận thông tin về cư trú (Mẫu CT07) tại nơi thường "
+             "trú mới", "icon": "🏠", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: bản khai thân nhân, giấy khai sinh, giấy "
+             "chứng nhận gia đình liệt sĩ, Bằng Tổ quốc ghi công", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị di chuyển hồ sơ theo Mẫu số 27 (Phụ lục I Nghị định 131/2021/NĐ-CP), "
+            "đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người hưởng trợ cấp ưu đãi (người làm đơn).\n"
+            "3. Giấy xác nhận thông tin về cư trú (Mẫu CT07) tại nơi thường trú mới.\n"
+            "4. Nếu có: bản khai thân nhân, giấy khai sinh, giấy chứng nhận gia đình liệt sĩ, Bằng "
+            "Tổ quốc ghi công, phiếu báo di chuyển hồ sơ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là người hưởng trợ cấp (người làm đơn); ai đi nộp thay thì hệ thống tự nhận ra.\n"
+            "Bước Thành phần hồ sơ: Đơn Mẫu 27 vào ô 1; căn cước hoặc xác nhận cư trú vào ô 2."
+        ),
+    },
+    {
+        "key": "xac-dinh-muc-do-khuyet-tat",
+        # Cổng Bộ Y tế, cùng cách chọn cơ quan + wizard với ba thủ tục trợ cấp/mai táng ở trên.
+        # KHÁC HẲN ở bước đính kèm: KHÔNG phải một dòng gộp, mà là các Ô UPLOAD CỐ ĐỊNH — planner
+        # core (pipelines/khuyet_tat) trả target="fixed-slot" cho từng ô. Vì vậy TUYỆT ĐỐI không
+        # đặt hideRepeatableHint: dồn hết tệp vào một ô là sai ô ngay.
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.001699",
+                "019d2bfe-b7cd-76e9-b909-bcf437629cb8",
+            ],
+            # Không trùng chữ với nhóm trợ cấp/mai táng nên một cụm là đủ tách.
+            "textIncludes": ["mức độ khuyết tật"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Xác định, xác định lại mức độ khuyết tật và cấp Giấy xác nhận khuyết tật",
+        "shortLabel": "Xác định mức độ khuyết tật và cấp Giấy xác nhận khuyết tật",
+        "subtitle": "Xác định hoặc xác định lại mức độ khuyết tật, cấp Giấy xác nhận khuyết tật",
+        "icon": "♿",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7cd-76e9-b909-bcf437629cb8",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Tên các mục dưới đây bám đúng ba ô upload của cổng (SLOTS trong pipelines/khuyet_tat) để
+        # công dân mang giấy theo đúng ô, không phải gom một đống.
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị xác định, xác định lại mức độ khuyết tật "
+             "(Mẫu số 01) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_to_khuyet_tat", "name": "Bản sao giấy tờ liên quan đến khuyết tật: "
+             "bệnh án, giấy khám, giấy ra viện, giấy tờ điều trị hoặc phẫu thuật", "icon": "🏥",
+             "sides": 1, "repeatable": True},
+            {"key": "ket_luan_y_khoa", "name": "Bản sao kết luận của Hội đồng Giám định y khoa "
+             "hoặc kết luận của cơ sở y tế (nếu có)", "icon": "🩺",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người khuyết tật hoặc người đại diện "
+             "đứng đơn", "icon": "🪪", "sides": 1, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị xác định, xác định lại mức độ khuyết tật (Mẫu số 01), đã ký — nguồn "
+            "chính để điền form.\n"
+            "2. Căn cước công dân của người khuyết tật hoặc người đại diện đứng đơn.\n"
+            "3. Bản sao giấy tờ liên quan đến khuyết tật: bệnh án, giấy khám, giấy ra viện, giấy "
+            "tờ điều trị hoặc phẫu thuật.\n"
+            "4. Nếu có: bản sao kết luận của Hội đồng Giám định y khoa hoặc của cơ sở y tế.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: trang có các Ô UPLOAD RIÊNG cho từng loại giấy tờ, mỗi giấy "
+            "được đính vào đúng ô của nó."
+        ),
+    },
+    {
+        "key": "ho-tro-mai-tang",
+        # CÙNG cổng Bộ Y tế, cùng khung với "ho-tro-mai-tang-huu-tri-xa-hoi"; khác NHÓM ĐỐI TƯỢNG
+        # (bảo trợ xã hội thay vì người hưởng trợ cấp hưu trí xã hội). Bảng thành phần hồ sơ cũng
+        # chỉ một dòng Tờ khai → hideRepeatableHint.
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.001731",
+                "019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+            ],
+            # "mai táng" trơn trùng với thủ tục mai táng cho người hưởng trợ cấp hưu trí → phải kèm
+            # vế nhóm đối tượng.
+            "textIncludes": ["mai táng cho đối tượng bảo trợ xã hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
+        "shortLabel": "Hỗ trợ chi phí mai táng — đối tượng bảo trợ xã hội",
+        "subtitle": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội đã mất",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7dd-7239-b166-b6cd79d326b8",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng "
+             "(Mẫu số 02, Nghị định 176/2025/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_tu", "name": "Giấy chứng tử hoặc trích lục khai tử của người đã mất",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đơn đề nghị", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02 ban hành kèm theo Nghị định số "
+            "176/2025/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Giấy chứng tử hoặc trích lục khai tử của đối tượng bảo trợ xã hội đã mất.\n"
+            "3. Căn cước công dân của người đứng đơn đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: cổng chỉ có ĐÚNG MỘT dòng nên mọi tệp đều được đính vào dòng "
+            "đó; tệp không phải Tờ khai vẫn đính được nhưng có cảnh báo để cán bộ soát."
+        ),
+    },
+    {
+        "key": "ho-tro-mai-tang-huu-tri-xa-hoi",
+        # CÙNG cổng Bộ Y tế, CÙNG cách chọn cơ quan và wizard với "dieu-chinh-huu-tri-xa-hoi".
+        # Bảng thành phần hồ sơ CHỈ CÓ MỘT DÒNG (Tờ khai Mẫu số 02, NĐ 176/2025) → hideRepeatableHint
+        # như hưu trí: planner dồn mọi tệp vào dòng đó.
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.014028",
+                "019d2bff-3508-7268-b54b-6ce79a8cbf0e",
+            ],
+            # Ba thủ tục cùng cổng dùng chung chữ với nhau: "trợ cấp hưu trí xã hội" (với thủ tục
+            # hưu trí) và "mai táng" (với thủ tục mai táng cho đối tượng BẢO TRỢ xã hội). Phải lấy
+            # cụm ghép cả hai vế mới tách được khỏi cả hai.
+            "textIncludes": ["mai táng đối với đối tượng hưởng trợ cấp hưu trí"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội",
+        "shortLabel": "Hỗ trợ chi phí mai táng — người hưởng trợ cấp hưu trí xã hội",
+        "subtitle": "Hỗ trợ chi phí mai táng cho người đang hưởng trợ cấp hưu trí xã hội đã mất",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3508-7268-b54b-6ce79a8cbf0e",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng "
+             "(Mẫu số 02, Nghị định 176/2025/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_tu", "name": "Giấy chứng tử hoặc trích lục khai tử của người đã mất",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đơn đề nghị", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02 ban hành kèm theo Nghị định số "
+            "176/2025/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Giấy chứng tử hoặc trích lục khai tử của người hưởng trợ cấp đã mất.\n"
+            "3. Căn cước công dân của người đứng đơn đề nghị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: cổng chỉ có ĐÚNG MỘT dòng nên mọi tệp đều được đính vào dòng "
+            "đó; tệp không phải Tờ khai vẫn đính được nhưng có cảnh báo để cán bộ soát."
+        ),
+    },
+    {
+        "key": "tro-cap-xa-hoi-hang-thang",
+        # CÙNG cổng Bộ Y tế và CÙNG cách chọn cơ quan với "dieu-chinh-huu-tri-xa-hoi" (DVCQG chọn
+        # đủ Tỉnh + Xã rồi vào thẳng trang kê khai, không toggle "Sở", không trang chọn nơi+loại).
+        # KHÁC ở bước đính kèm: bảng thành phần hồ sơ là BẢNG NHIỀU DÒNG TÍCH CHỌN (engine attp-row
+        # của core) chứ không phải một dòng duy nhất → KHÔNG đặt hideRepeatableHint, và checklist
+        # phải liệt kê đúng các dòng để công dân mang đủ giấy.
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.001776",
+                "019d2bfe-b7e6-740b-9573-24f800e8664d",
+            ],
+            # Hai thủ tục trợ cấp của cùng cổng có tên rất giống nhau; cụm "chăm sóc, nuôi dưỡng"
+            # là phần CHỈ thủ tục này có, dùng nó để không nhận nhầm sang hưu trí xã hội.
+            "textIncludes": ["chăm sóc, nuôi dưỡng hàng tháng"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thực hiện, điều chỉnh, thôi hưởng trợ cấp xã hội hàng tháng, hỗ trợ kinh phí "
+            "chăm sóc, nuôi dưỡng hàng tháng"
+        ),
+        "shortLabel": "Trợ cấp xã hội hàng tháng cho đối tượng bảo trợ xã hội",
+        "subtitle": "Trợ cấp xã hội hàng tháng, hỗ trợ kinh phí chăm sóc, nuôi dưỡng",
+        "icon": "🤝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7e6-740b-9573-24f800e8664d",
+        "needsAgencySelect": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị trợ giúp xã hội (Mẫu 1a/1b/1c/1d/1đ) "
+             "hoặc Tờ khai nhận chăm sóc, nuôi dưỡng (Mẫu 2a/2b/03) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của đối tượng hưởng trợ cấp "
+             "(trẻ em chưa có căn cước thì mang Giấy khai sinh)", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khuyet_tat", "name": "Giấy xác nhận khuyết tật hoặc Biên bản giám định "
+             "y khoa (nếu đối tượng là người khuyết tật)", "icon": "♿",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: xác nhận cư trú, xác nhận nhiễm HIV, "
+             "xác nhận đang mang thai, căn cước của người khai thay", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị trợ giúp xã hội (Mẫu 1a/1b/1c/1d/1đ) HOẶC Tờ khai nhận chăm sóc, "
+            "nuôi dưỡng (Mẫu 2a/2b/03), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của đối tượng hưởng trợ cấp; đối tượng là trẻ em thì Giấy khai "
+            "sinh thay cho căn cước.\n"
+            "3. Nếu có: Giấy xác nhận khuyết tật hoặc Biên bản giám định y khoa, Giấy xác nhận "
+            "thông tin về cư trú, giấy tờ xác nhận nhiễm HIV hoặc đang mang thai, và căn cước "
+            "của người nộp thay.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Chủ hồ sơ là ĐỐI TƯỢNG hưởng trợ cấp, không phải người đi nộp thay.\n"
+            "Bước Thành phần hồ sơ: bảng có nhiều dòng, mỗi giấy tờ được tích vào đúng dòng của nó."
         ),
     },
     {

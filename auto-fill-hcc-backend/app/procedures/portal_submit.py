@@ -32,6 +32,12 @@ Cách khớp ở content script: URL đúng VÀ (id trùng HOẶC nhãn trùng).
 # trong hash, bỏ hash là không phân biệt được trang nào.
 #
 # Khớp = URL đúng VÀ (buttonSelector khớp HOẶC id trùng HOẶC nhãn trùng).
+#
+# `successText` (tùy chọn) — LƯỚI ĐỠ khi cú bấm rớt: dò chữ trên MÀN KẾT QUẢ sau khi nộp.
+# Danh sách các NHÓM cụm đã bỏ dấu; trang khớp khi chứa ĐỦ mọi cụm của ÍT NHẤT một nhóm, và
+# vẫn phải qua urlPattern. Chỉ khai cho cổng mà màn kết quả không có câu "nộp/gửi hồ sơ thành
+# công" (extension đã dò sẵn câu đó cho mọi cổng). Mỗi cụm phải là câu RIÊNG của màn kết quả —
+# "thành công" hay "mã hồ sơ" trơn thì màn tra cứu cũng có.
 _FORMIO = {
     # Nền tảng Form.io/Angular dùng chung ở 10 cổng (xem danh sách cuối file): nút cuối KHÔNG có
     # id, và NHÃN đổi theo từng cổng/thủ tục — đã gặp đủ ba biến thể "Nộp hồ sơ", "Tiếp tục",
@@ -87,6 +93,18 @@ PORTAL_SUBMIT: dict[str, dict] = {
     "lienthong.dichvucong.gov.vn": {
         "urlPattern": r"^/#/ke-khai/([\d.]+)$",
         "buttonText": ["hoan thanh"],
+        # Màn kết quả KHÔNG có chữ "thành công" nên câu dò chung của extension trượt hẳn —
+        # cú bấm mà rớt là mất dấu hồ sơ. Màn này giữ nguyên URL /#/ke-khai/<mã> và chỉ hiện:
+        #   "Vui lòng ghi nhớ các thông tin bên dưới để theo dõi tình hình xử lý…
+        #    Số hồ sơ: G22.99.08-… · Ngày hẹn trả dự kiến: dd/mm/yyyy"
+        # Đã soát cả 10 snapshot bước 1→5: không bước nào chứa cụm nào trong ba cụm này.
+        # Bắt buộc ĐỦ cả ba. "Ngày hẹn trả dự kiến" là mỏ neo chặt nhất: chỉ hồ sơ ĐÃ tiếp nhận
+        # mới có ngày hẹn trả — lưu nháp nếu có hiện "ghi nhớ… số hồ sơ" cũng không có dòng này.
+        "successText": [[
+            "vui long ghi nho cac thong tin ben duoi",
+            "so ho so",
+            "ngay hen tra du kien",
+        ]],
     },
     # Bắc Ninh (Liferay portlet). Cả 4 tab nằm sẵn trong DOM, chỉ ẩn/hiện — nhưng ta bắt CLICK
     # nên tab ẩn không bấm được, không cần gác thêm bước.

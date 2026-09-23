@@ -9,9 +9,59 @@ mapper sẽ không phát (chống bịa ô không tồn tại).
 
 ⚑ Hồ sơ thủ tục này thường là TỔ CHỨC/DOANH NGHIỆP xin thuê đất làm dự án → form có sẵn ô tên tổ chức
 và mã số thuế cho cả hai khối.
+
+⚑ `CongDan_tenCongDan` / `CongDan_soCmnd` là readonly, cổng tự đổ tên + số căn cước của TÀI KHOẢN
+ĐANG ĐĂNG NHẬP — và đó cũng là MỐC để biết ai đang đi nộp (extension đọc, gửi lên trong
+`options.formContext`). Hai ô này VẪN ĐƯỢC PHÁT để cả khối là MỘT người: bỏ trống chúng thì khối thành
+nửa của tài khoản (tên, căn cước) nửa của người trong hồ sơ (ngày sinh, địa chỉ, di động).
+⚠ `setNativeValue` ghi được cả ô readonly, nhưng khi bấm "Đồng ý và tiếp tục" cổng gửi chính hai ô đó
+KÈM NGÀY SINH sang CSDL quốc gia dân cư để xác thực: lệch tài khoản là CHẶN NỘP ("Thông tin người nộp
+hồ sơ không đúng với tài khoản đăng nhập!"). Vì vậy chế độ theo tài khoản ghi lại ĐÚNG giá trị mốc,
+còn chế độ theo tờ khai thì cảnh báo khi lệch (xem mapper).
 """
 
+_AREA_DESC = (
+    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "số nhà/đường/tổ/thôn."
+)
+
 FIELDS: list[dict] = [
+    # --- ỨNG VIÊN NGƯỜI NỘP: LLM chỉ LIỆT KÊ người xuất hiện trong hồ sơ, KHÔNG quyết ai đi nộp.
+    # Mapper mới là chỗ chọn người theo mốc tài khoản (xem mapper.enrich).
+    {
+        "name": "NguoiDuocUyQuyen",
+        "desc": (
+            "CHỈ điền khi hồ sơ có văn bản riêng tiêu đề 'GIẤY ỦY QUYỀN'/'HỢP ĐỒNG ỦY QUYỀN'/'VĂN BẢN "
+            "VỀ VIỆC ĐẠI DIỆN' có dòng 'ủy quyền cho' kèm số định danh của bên B. Chép người đứng NGAY "
+            "SAU 'ủy quyền cho' vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" "
+            "('Nam'/'Nữ'), \"danToc\", \"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), "
+            "\"noiCapCccd\", \"dienThoai\", \"email\", \"thuongTru\": " + _AREA_DESC + "}. "
+            "Không có văn bản ủy quyền thì BỎ TRỐNG — người đại diện theo pháp luật ghi trên Giấy chứng "
+            "nhận đăng ký doanh nghiệp KHÔNG phải người được ủy quyền."
+        ),
+    },
+    {
+        "name": "DanhSachCccd",
+        "desc": (
+            "Một object cho MỖI ảnh/bản sao CCCD/CMND/thẻ Căn cước THẬT có trong hồ sơ (không lấy người "
+            "chỉ được NHẮC TỚI trong đơn hay quyết định): [{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,"
+            "NgayCap,NoiCap,NoiCuTru}]. NgaySinh/NgayCap dd/mm/yyyy. NoiCuTru = nơi thường trú in trên "
+            "thẻ, " + _AREA_DESC
+        ),
+    },
+    {
+        "name": "NguoiTrongGiayTo",
+        "desc": (
+            "MỌI cá nhân được ghi KÈM SỐ ĐỊNH DANH/CCCD/CMND trong bất kỳ giấy tờ nào của hồ sơ (người "
+            "đại diện theo pháp luật trên Giấy chứng nhận đăng ký doanh nghiệp, thành viên góp vốn, "
+            "người ký đơn, người được ủy quyền, người sử dụng đất), mỗi người một object: "
+            "[{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,NgayCap,NoiCap,DienThoai,Email,NoiCuTru}]. "
+            "NgaySinh/NgayCap dd/mm/yyyy (giấy chỉ ghi năm thì trả đúng năm). GioiTinh suy từ xưng hô "
+            "gắn TRỰC TIẾP với chính người đó (Ông→Nam, Bà→Nữ) hoặc chữ số thứ 4 của CCCD 12 số. "
+            "NoiCuTru " + _AREA_DESC + " Người nào thiếu mục nào thì bỏ mục đó, KHÔNG bịa."
+        ),
+    },
+
     # --- CHỦ HỒ SƠ (người/tổ chức sử dụng đất, đứng tên đơn) ---
     {
         "name": "ChuHoSo_HoTen",
@@ -95,14 +145,14 @@ for name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru", "ThuaDat_DiaChi"):
 # Nơi cấp/Ngày cấp căn cước, KHÔNG copy địa chỉ — mapper phát thẳng đủ cả khối chủ hồ sơ thay vì
 # trông vào nó (xem mapper.enrich).
 UI_COMP_BY_NAME = {
-    # Khối NGƯỜI NỘP
+    # Khối NGƯỜI NỘP. Hai ô đầu readonly (cổng đổ từ tài khoản) nhưng vẫn phát để cả khối là một người.
     "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",
     "CongDan_gioiTinhCongDan": "dom-select",
     "CongDan_danTocCongDan": "dom-select",
-    "CongDan_soCmnd": "dom-input",
     "CongDan_ngayCapCmnd": "dom-input",
     "CongDan_noiCapCmnd": "dom-input",
     "CongDan_maTinhThanh": "dom-select",   # Tỉnh/Thành phố (cascade 2 cấp, không có huyện).

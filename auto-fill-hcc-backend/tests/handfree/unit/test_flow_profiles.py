@@ -167,6 +167,64 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "maePortal" not in byt_pension
     assert byt_pension["wizard"]["declarationStep"] == 1
     assert byt_pension["wizard"]["attachmentStep"] == 2
+    # Trợ cấp xã hội hàng tháng: cùng cổng Bộ Y tế, cùng cách chọn cơ quan với hưu trí, nhưng bảng
+    # thành phần hồ sơ là bảng NHIỀU DÒNG tích chọn → không được dồn hết tệp vào một dòng.
+    byt_allowance = procedures.pop("tro-cap-xa-hoi-hang-thang")
+    assert byt_allowance.get("flowProfile") is None
+    assert byt_allowance["needsAgencySelect"] is True
+    assert "agencyProvinceOnly" not in byt_allowance
+    assert "agencySoFirst" not in byt_allowance
+    assert "maePortal" not in byt_allowance
+    assert byt_allowance["wizard"] == byt_pension["wizard"]
+    assert byt_allowance["hasAttachmentStep"] is True
+    assert "hideRepeatableHint" not in byt_allowance
+    assert byt_allowance["detect"]["urlScope"] == ["dichvucongbyt.moh.gov.vn"]
+    # Tên hai thủ tục gần trùng: dấu hiệu nhận trang phải là cụm CHỈ thủ tục này có.
+    assert byt_allowance["detect"]["textIncludes"] == ["chăm sóc, nuôi dưỡng hàng tháng"]
+    # Hỗ trợ mai táng: cùng khung hưu trí, bảng CHỈ MỘT DÒNG nên vẫn dồn tệp (hideRepeatableHint).
+    byt_funeral = procedures.pop("ho-tro-mai-tang-huu-tri-xa-hoi")
+    assert byt_funeral.get("flowProfile") is None
+    assert byt_funeral["needsAgencySelect"] is True
+    assert byt_funeral["wizard"] == byt_pension["wizard"]
+    assert byt_funeral["hideRepeatableHint"] is True
+    # Mai táng cho đối tượng BẢO TRỢ xã hội: cùng khung, chỉ khác nhóm đối tượng.
+    byt_funeral_social = procedures.pop("ho-tro-mai-tang")
+    assert byt_funeral_social.get("flowProfile") is None
+    assert byt_funeral_social["needsAgencySelect"] is True
+    assert byt_funeral_social["wizard"] == byt_pension["wizard"]
+    assert byt_funeral_social["hideRepeatableHint"] is True
+    # Ba nhãn dùng chung chữ với nhau ("trợ cấp hưu trí xã hội" / "mai táng") → dấu hiệu nhận trang
+    # phải ghép đủ cả hai vế, nếu không hai thủ tục mai táng nhận nhầm sang nhau.
+    assert byt_funeral["detect"]["textIncludes"] == ["mai táng đối với đối tượng hưởng trợ cấp hưu trí"]
+    assert byt_funeral_social["detect"]["textIncludes"] == ["mai táng cho đối tượng bảo trợ xã hội"]
+    for marker in (byt_funeral, byt_funeral_social):
+        other = byt_funeral_social if marker is byt_funeral else byt_funeral
+        phrase = marker["detect"]["textIncludes"][0].lower()
+        assert phrase in marker["label"].lower()
+        assert phrase not in other["label"].lower(), "dấu hiệu nhận trang trùng sang thủ tục kia"
+    assert "mai táng" not in byt_pension["label"]
+    # Tên hiển thị trên danh sách phải nói RÕ nhóm đối tượng, không rút gọn thành "Hỗ trợ mai táng".
+    for entry in (byt_funeral, byt_funeral_social, byt_allowance, byt_pension):
+        assert len(entry["shortLabel"]) >= 30, entry["shortLabel"]
+    assert byt_funeral["shortLabel"] != byt_funeral_social["shortLabel"]
+    # Xác định mức độ khuyết tật: CÙNG cổng nhưng bước đính kèm là các Ô CỐ ĐỊNH (fixed-slot của
+    # pipelines/khuyet_tat) → dồn hết tệp vào một ô là sai ô, nên KHÔNG được bật hideRepeatableHint.
+    byt_disability = procedures.pop("xac-dinh-muc-do-khuyet-tat")
+    assert byt_disability.get("flowProfile") is None
+    assert byt_disability["needsAgencySelect"] is True
+    assert byt_disability["wizard"] == byt_pension["wizard"]
+    assert "hideRepeatableHint" not in byt_disability
+    assert byt_disability["detect"]["urlIncludes"][0] == "maThuTuc=1.001699"
+    assert len(byt_disability["shortLabel"]) >= 30
+    # Bộ Nội vụ: chọn cơ quan HAI BƯỚC — DVCQG bật "Sở" (agencySoFirst) rồi hộp thoại cổng bộ
+    # (maePortal) chọn Sở Nội vụ; hộp thoại không có trường hợp giải quyết nên KHÔNG có variants.
+    moha_move = procedures.pop("di-chuyen-ho-so-nguoi-huong-tro-cap")
+    assert moha_move.get("flowProfile") is None
+    assert moha_move["needsAgencySelect"] is True
+    assert moha_move["agencyProvinceOnly"] is True and moha_move["agencySoFirst"] is True
+    assert moha_move["maePortal"] is True and moha_move["agencyDeptLabel"] == "Sở Nội vụ"
+    assert "variants" not in moha_move
+    assert "hideRepeatableHint" not in moha_move
     # HkdOnline nhánh THAY ĐỔI: cùng cổng với thành lập mới nhưng workflow "change"
     # (wizard 4 bước + pageOrder động), không dùng profile tư pháp.
     business_change = procedures.pop("dang-ky-thay-doi-noi-dung-ho-kinh-doanh")
@@ -217,8 +275,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # So với mốc 21 ban đầu: +1 "khai-sinh-dang-ky-thuong" (khai sinh đơn lẻ),
     # +1 "chung-thuc-giao-dich-tai-san", +1 "chung-thuc-chu-ky-nguoi-dich-ctv" (attach-only)
     # +1 "dieu-chinh-huu-tri-xa-hoi" (Bộ Y tế), +1 "cham-dut-hoat-dong-ho-kinh-doanh"
-    # và +1 "cap-giay-phep-xay-dung-moi-nha-o-rieng-le" (Bộ Xây dựng).
-    assert len(procedures) == 27
+    # +1 "cap-giay-phep-xay-dung-moi-nha-o-rieng-le" (Bộ Xây dựng)
+    # +4 cổng Bộ Y tế dùng lại core sẵn có: "tro-cap-xa-hoi-hang-thang",
+    # "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang", "xac-dinh-muc-do-khuyet-tat";
+    # +1 cổng Bộ Nội vụ "di-chuyen-ho-so-nguoi-huong-tro-cap".
+    assert len(procedures) == 32
 
     for procedure in procedures:
         key = procedure["key"]

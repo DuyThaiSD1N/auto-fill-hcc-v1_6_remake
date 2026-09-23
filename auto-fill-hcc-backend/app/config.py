@@ -136,6 +136,17 @@ class Settings(BaseSettings):
     tts_voice_vi_male: str = ""                 # nam, tiếng Việt — CHƯA có id; trống = không hiện
     tts_resample_rate: int = 16000
     tts_tempo: float = 0.95
+    # Số KÝ TỰ máy đọc gom lại trước khi sinh audio, cho từng khúc (giá trị cuối lặp lại cho
+    # các khúc sau). Mỗi khúc là một lần tổng hợp riêng nên biên khúc nghe thành một nhịp nghỉ,
+    # và biên rơi vào đâu là theo phép ĐẾM KÝ TỰ, không theo cụm từ.
+    # Trước đây chốt cứng "20": cứ 20 ký tự một nhịp nghỉ — quầy Kiến Hưng nghe "Giấy tờ cần
+    # chứng thực bản / (nghỉ) / sao không giới hạn số lượng".
+    # Chọn 250: đo 133 câu trong script_vi thấy trung vị 109 ký tự, p90 175 → 98% câu gọn trong
+    # MỘT khúc, tức không còn nhịp nghỉ nào giữa câu.
+    # Khúc đầu to KHÔNG làm chậm vì chờ gom chữ: services/tts.js gửi cả câu trong một frame rồi
+    # đóng lượt, chữ có đủ ngay. Cái phải đánh đổi là máy tổng hợp trọn câu trước khi phát tiếng
+    # đầu — thấy chậm mở miệng thì hạ khúc đầu bằng env, đổi lại sẽ có nhịp nghỉ giữa câu.
+    tts_chunk_length_schedule: str = "250,290"
     asr_grpc_uri_hmong: str = ""
     tts_ws_url_hmong: str = ""
     tts_voice_hmong: str = "vuado"              # Anh Dơ (giọng nữ tiếng Mông là "xi" — Cô Xi)
@@ -144,6 +155,17 @@ class Settings(BaseSettings):
     allowed_extension_ids: str = ""
     # Origin của FE trace (web). Mặc định cho dev Vite. Phân tách bằng dấu phẩy.
     frontend_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def tts_chunk_lengths(self) -> list[int]:
+        """Lịch gom ký tự gửi máy đọc. Giá trị rác/rỗng → rơi về mặc định an toàn, không để
+        cấu hình sai làm lượt đọc câm."""
+        values = []
+        for part in str(self.tts_chunk_length_schedule or "").split(","):
+            part = part.strip()
+            if part.isdigit() and int(part) > 0:
+                values.append(int(part))
+        return values or [250, 290]
 
     @property
     def allowed_origins(self) -> list[str]:

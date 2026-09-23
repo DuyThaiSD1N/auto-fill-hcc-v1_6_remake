@@ -88,7 +88,12 @@ def test_moi_template_duoc_fmt_dung_deu_co_twin_mong():
 # Placeholder có nội dung là chữ tiếng Việt lấy từ registry / từ cổng. Nhét vào bản Mông là
 # giọng Mông đọc nguyên một danh sách tiếng Việt — đúng cái lỗi file này sinh ra để chặn.
 _VIET_PLACEHOLDERS = {"documents_md", "documents_tts", "options_md", "options_tts", "error",
-                      "procedures", "missing_note", "doc_list_tts", "intro_md", "intro_tts"}
+                      "procedures", "missing_note", "doc_list_tts", "intro_md", "intro_tts",
+                      # guidedSteps: nhãn bước + nguyên văn lời cổng báo đều là chữ Việt lấy
+                      # từ registry/DOM. Bản Mông nhắc tên bước thì viết thẳng tiếng Việt
+                      # trong câu (như các câu Mông khác), không nhúng qua placeholder.
+                      "missing_tts", "attachment_step", "result_step", "submit_label",
+                      "portal_message"}
 
 
 def test_ban_mong_khong_nhung_placeholder_chua_chu_viet():

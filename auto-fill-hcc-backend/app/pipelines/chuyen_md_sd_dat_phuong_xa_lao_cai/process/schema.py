@@ -57,6 +57,17 @@ FIELDS: list[dict] = [
               "HAI người, mỗi người đủ HoTen/NgaySinh/SoDinhDanh/NgayCap/NoiCap."
         ),
     },
+    {
+        "name": "NguoiDuocUyQuyen",
+        "desc": (
+            "CHỈ điền khi hồ sơ có văn bản riêng tiêu đề 'GIẤY UỶ QUYỀN'/'HỢP ĐỒNG UỶ QUYỀN'/'VĂN BẢN VỀ "
+            "VIỆC ĐẠI DIỆN'. Chép BÊN ĐƯỢC UỶ QUYỀN (bên B — người đứng sau 'uỷ quyền cho', người đi nộp "
+            "thay) vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy, chỉ có năm thì trả đúng năm), "
+            "\"gioiTinh\" ('Nam'/'Nữ'), \"danToc\", \"soDinhDanh\" (liền chữ số), \"ngayCapCccd\" "
+            "(dd/mm/yyyy), \"noiCapCccd\", \"dienThoai\", \"email\", \"thuongTru\": " + _AREA_DESC + "}. "
+            "KHÔNG lấy bên UỶ QUYỀN (bên A — chủ hồ sơ). Không có văn bản uỷ quyền thì BỎ TRỐNG."
+        ),
+    },
     # ---- Chủ hồ sơ = NGƯỜI SỬ DỤNG ĐẤT đứng tên mục 1 của Đơn (Mẫu số 02/03/17). ----
     {"name": "ChuHoSo_LoaiDoiTuong",
      "desc": "Chủ hồ sơ (người sử dụng đất đứng tên mục 1 của Đơn) thuộc loại nào, trả ĐÚNG một trong bốn "
@@ -128,8 +139,11 @@ for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiUyQuyen", "ChuHoSo_DiaChiGcn",
 
 # Ô UI thật ở bước 2 (name = <tiền tố><key>, Nth.FormBuilder). <select> native → dom-select, còn lại → dom-input.
 UI_COMP_BY_NAME = {
-    # Phần I — người nộp (tài khoản đang đăng nhập). "Họ và tên" + "Số Căn cước" readonly, cổng tự đổ từ tài
-    # khoản định danh → KHÔNG phát lại.
+    # Phần I — người nộp. "Họ và tên" + "Số Căn cước" readonly, cổng tự đổ từ tài khoản định danh nên chế độ
+    # THEO TÀI KHOẢN (mặc định) KHÔNG phát lại. Chế độ THEO TỜ KHAI thì PHẢI phát: người nộp lúc đó là người
+    # khác với tài khoản, để nguyên hai ô đó là khối thành nửa của tài khoản nửa của người trong hồ sơ.
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",      # người nộp đại diện tổ chức chủ hồ sơ
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",

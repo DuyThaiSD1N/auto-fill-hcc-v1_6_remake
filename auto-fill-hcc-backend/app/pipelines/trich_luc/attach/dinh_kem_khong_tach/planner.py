@@ -2,8 +2,17 @@
 
 Nhánh này không sinh ``sourceSegments``. Hai file rời là hai mặt giấy tờ tùy thân
 cùng người vẫn được gộp bằng ``sourceFileIndexes`` theo số định danh/MRZ.
+
+⚑ LLM QUYẾT TRƯỚC, RULE CHỈ ĐỠ KHI LLM KHÔNG TRẢ KẾT QUẢ cho file đó. Không rule keyword nào được
+đè lên kết quả LLM: chữ trong giấy tờ hộ tịch tham chiếu chéo nhau rất nhiều (trích lục cải chính
+ghi "…Giấy khai sinh số…", Giấy khai sinh có trang ghi chú nhắc trích lục cải chính), rule dò chữ
+đè lên LLM là đổi đúng thành sai.
+
+⚑ Mỗi file một lượt gọi LLM: gọi chung cả hồ sơ thì các file giống nhau kéo nhau sai cùng chiều
+(hai trích lục cải chính/bổ sung cùng bị gọi là giấy kết hôn), và phải tin fileIndex LLM trả về.
 """
 
+import asyncio
 import re
 import time
 from typing import Any
@@ -13,6 +22,7 @@ from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.identity_merge import merge_identity_attachments
+from app.pipelines.trich_luc.attach.civil_status_names import civil_status_name, is_civil_status
 from app.process.schemas import FileItem
 from app.services import ocr
 from app.services.llm import client
@@ -79,13 +89,6 @@ def _has_identity_evidence(text: str) -> bool:
     if _CCCD_RE.search(str(text or "")):
         signal_count += 1
     return signal_count >= 2
-
-
-def _coerce_int(value: Any) -> int | None:
-    try:
-        return int(value)
-    except (TypeError, ValueError):
-        return None
 
 
 def _canonical_type(value: Any) -> str:
@@ -190,20 +193,6 @@ def _label_for_type(doc_type: str) -> str:
     }.get(doc_type, _OTHER_LABEL)
 
 
-def _fallback_document_name(text: str) -> str:
-    folded = _fold(text)
-    for marker, label in (
-        ("giay khai sinh", _BIRTH_LABEL), ("trich luc khai sinh", _BIRTH_LABEL),
-        ("giay chung nhan ket hon", _MARRIAGE_LABEL), ("trich luc ket hon", _MARRIAGE_LABEL),
-        ("trich luc khai tu", _DEATH_LABEL), ("van ban uy quyen", _AUTHORIZATION_LABEL),
-        ("giay uy quyen", _AUTHORIZATION_LABEL),
-        ("giay xac nhan thong tin ve cu tru", _RESIDENCE_LABEL),
-    ):
-        if marker in folded:
-            return label
-    return _OTHER_LABEL
-
-
 def _unique_document_name(base: str, used: set[str], fallback: str) -> str:
     normalized = normalize_document_name(base, fallback)
     key = _fold(normalized)
@@ -221,34 +210,43 @@ def _unique_document_name(base: str, used: set[str], fallback: str) -> str:
         suffix += 1
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> list[dict]:
-    if not documents:
-        return []
+async def _classify_one(document: dict[str, Any]) -> dict | None:
     raw = await client.chat(
         [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_user_prompt(documents)},
+            {"role": "user", "content": build_user_prompt([document])},
         ],
-        max_tokens=max(900, min(2800, len(documents) * 180)),
+        max_tokens=300,
         enable_thinking=settings.agent_reasoning,
     )
     parsed = client.extract_json_block(raw)
-    return parsed.get("documents", []) if isinstance(parsed, dict) else []
+    items = parsed.get("documents", []) if isinstance(parsed, dict) else []
+    # Chỉ gửi đúng một file nên lấy phần tử đầu, KHÔNG tra theo fileIndex LLM tự ghi.
+    first = next((item for item in items if isinstance(item, dict)), None)
+    if first is None:
+        return None
+    return {
+        "type": _canonical_type(first.get("type")),
+        "documentName": str(first.get("documentName") or first.get("title") or "").strip(),
+        "subjectName": _clean_subject_name(first.get("subjectName")),
+    }
 
 
-def _validated_classifications(raw_items: list[dict], file_count: int) -> dict[int, dict]:
+async def _classify_with_llm(
+    documents: list[dict[str, Any]], errors: list[str] | None = None,
+) -> dict[int, dict]:
+    """Một lượt gọi cho MỖI file; file lỗi thì vắng khỏi kết quả để rule đỡ riêng file đó."""
+    if not documents:
+        return {}
+    outcomes = await asyncio.gather(*(_classify_one(d) for d in documents), return_exceptions=True)
     result: dict[int, dict] = {}
-    for raw in raw_items:
-        if not isinstance(raw, dict):
+    for document, outcome in zip(documents, outcomes, strict=True):
+        if isinstance(outcome, BaseException):
+            if errors is not None:
+                errors.append(f"attachment_agent fileIndex={document['fileIndex']}: {outcome}")
             continue
-        file_index = _coerce_int(raw.get("fileIndex", raw.get("index")))
-        if file_index is None or not 0 <= file_index < file_count or file_index in result:
-            continue
-        result[file_index] = {
-            "type": _canonical_type(raw.get("type")),
-            "documentName": str(raw.get("documentName") or raw.get("title") or "").strip(),
-            "subjectName": _clean_subject_name(raw.get("subjectName")),
-        }
+        if outcome is not None:
+            result[document["fileIndex"]] = outcome
     return result
 
 
@@ -284,14 +282,13 @@ async def plan_trich_luc_attachments_without_split(
         for file_index in range(len(raw_files))
     ]
     started = time.monotonic()
-    raw_classifications: list[dict] = []
+    classified_by_index: dict[int, dict] = {}
     if documents:
         try:
-            raw_classifications = await _classify_with_llm(documents)
+            classified_by_index = await _classify_with_llm(documents, errors)
         except Exception as exc:  # noqa: BLE001 - fallback vẫn phải giữ đủ file
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
-    classified_by_index = _validated_classifications(raw_classifications, len(raw_files))
 
     attachments: list[dict] = []
     classified: list[dict] = []
@@ -303,8 +300,17 @@ async def plan_trich_luc_attachments_without_split(
     for file_index, file in enumerate(raw_files):
         text = documents[file_index]["ocrText"]
         llm_item = classified_by_index.get(file_index) or {}
-        doc_type = llm_item.get("type") if file_index in classified_by_index else _rule_doc_type(text)
-        mixed_bundle = _is_mixed_bundle(text, llm_item.get("documentName") or "")
+        if file_index in classified_by_index:
+            # LLM đã trả lời → tin LLM. Chỉ coi là bộ hồ sơ khi CHÍNH LLM đặt tên bộ hồ sơ; quét đầu
+            # trang bằng chữ KHÔNG được đè lên kết quả LLM.
+            source = "llm"
+            doc_type = llm_item.get("type") or "other"
+            mixed_bundle = _fold(llm_item.get("documentName")) == _fold(_BUNDLE_LABEL)
+        else:
+            # LLM không trả kết quả cho file này (lỗi gọi, JSON hỏng) → rule đỡ để vẫn giữ đủ file.
+            source = "rule"
+            doc_type = _rule_doc_type(text)
+            mixed_bundle = _is_mixed_bundle(text)
         if mixed_bundle:
             doc_type = "other"
 
@@ -318,14 +324,17 @@ async def plan_trich_luc_attachments_without_split(
             identity_subject_by_index[file_index] = llm_item.get("subjectName") or ""
         elif mixed_bundle:
             document_name = _unique_document_name(_BUNDLE_LABEL, used_names, _BUNDLE_LABEL)
-        elif doc_type in {
-            "civil_status_birth", "civil_status_marriage", "civil_status_death",
-            "authorization", "residence_proof", "paper_declaration",
-        }:
+        elif is_civil_status(doc_type):
+            label = civil_status_name(doc_type, llm_item.get("documentName") or "")
+            document_name = _unique_document_name(label, used_names, label)
+        elif doc_type in {"authorization", "residence_proof", "paper_declaration"}:
             label = _label_for_type(doc_type)
             document_name = _unique_document_name(label, used_names, label)
         else:
-            proposed = llm_item.get("documentName") or _fallback_document_name(text)
+            # Giấy tờ đơn lẻ "lạ" (trích lục cải chính, bổ sung…) giữ ĐÚNG tiêu đề LLM đọc được. Không
+            # có tiêu đề thì dùng tên chung — KHÔNG đoán tên bằng chữ trong giấy: trích lục cải chính
+            # luôn có câu "…Giấy khai sinh số…" nên đoán theo chữ là gọi nó thành Giấy khai sinh.
+            proposed = llm_item.get("documentName") or _OTHER_LABEL
             document_name = _unique_document_name(proposed, used_names, _OTHER_LABEL)
 
         target, component_index, component_name, needs_add = _route_for_type(
@@ -344,6 +353,9 @@ async def plan_trich_luc_attachments_without_split(
         classified.append({
             "fileIndex": file_index, "fileName": file.get("name"), "type": doc_type,
             "documentName": document_name, "target": target, "componentIndex": component_index,
+            # Ghi nguồn quyết định vào trace: không có trường này thì phải suy ngược mới biết loại sai
+            # là do LLM hay do rule.
+            "source": source, "llmTitle": llm_item.get("documentName") or "",
         })
 
     ocr_text_by_index = {item["fileIndex"]: item["ocrText"] for item in documents}

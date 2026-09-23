@@ -23,12 +23,6 @@ _RE_TONE_O = re.compile("(" + "|".join(_TONE_O) + r")(?!\w)")
 _RE_TONE_U = re.compile("(?<![qQ])(" + "|".join(_TONE_U) + r")(?!\w)")
 _WARD_TYPE = re.compile(r"^(Phường|Xã|Đặc khu)\s+", re.IGNORECASE)
 
-# Tên HIỂN THỊ khác tên trong danh mục. CHỈ đổi nhãn đọc cho cán bộ ("label"); "text" vẫn là tên
-# đúng như option trên cổng DVC nên mọi chỗ khớp/điền hộ (chọn cơ quan thực hiện, lưu tài khoản,
-# ô Tỉnh/Thành trong tờ khai) không bị lệch. Cổng vẫn đang liệt kê "Tỉnh Bắc Ninh" — đổi thẳng
-# "text" là trợ lý không tìm ra option nào để chọn nữa.
-_DISPLAY_LABEL = {"Tỉnh Bắc Ninh": "Thành phố Bắc Ninh"}
-
 
 def _modern_tone(value: str) -> str:
     value = _RE_TONE_O.sub(lambda match: _TONE_O[match.group(1)], value)
@@ -50,12 +44,7 @@ def _load() -> tuple[list[dict], dict[str, dict]]:
     for item in raw["provinces"]:
         slug = item["code_name"].replace("_", "")
         text = _modern_tone(item["full_name"])
-        province = {
-            "text": text,
-            "slug": slug,
-            "name": _modern_tone(item["name"]),
-            "label": _DISPLAY_LABEL.get(text, text),
-        }
+        province = {"text": text, "slug": slug, "name": _modern_tone(item["name"])}
         communes = [_modern_tone(ward["full_name"]) for ward in item["wards"]]
         provinces.append(province)
         wards_by_slug[slug] = {"slug": slug, "province": text, "communes": communes}

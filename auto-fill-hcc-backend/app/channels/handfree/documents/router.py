@@ -203,6 +203,9 @@ async def upload_files(
             sess["files"],
             hint_doc_key=doc_key or None,
             procedure_key=sess.get("procedure_key") or "",
+            # Mốc chủ hồ sơ đọc từ cổng (họ tên + số định danh). Endpoint này không thấy hội
+            # thoại nên mốc được gắn sẵn lên phiên lúc tạo/đồng bộ.
+            context={"owner": sess.get("owner_hint") or {}},
         )
         accepted, metas = [], []
         for payload, staged_item, res in zip(payloads, staged, results):

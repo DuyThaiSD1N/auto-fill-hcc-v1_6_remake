@@ -48,6 +48,40 @@ TU_PHAP_FLOW: dict = {
         "attachmentStep": 3,
         "resultStep": 4,
     },
+    # Dẫn từng bước wizard bằng nút trong sidebar thay vì để công dân tự dò nút của cổng.
+    # Tắt mặc định: chỉ thủ tục đã chạy thử trên cổng thật mới bật ("enabled": True), vì câu
+    # thoại và nút bấm phải khớp đúng nhãn của từng trang.
+    "guidedSteps": {
+        "enabled": False,
+        # Quét giấy tờ NGAY ở bước Thông tin chủ hồ sơ để tự điền, thay vì đợi tới bước
+        # Thành phần hồ sơ. Một lần quét dùng cho cả điền form lẫn đính kèm.
+        # Cố ý KHÔNG bật bằng `ownerInfo.enabled` của registry: cờ đó ảnh hưởng cả extension
+        # cũ trên chợ (bản cũ sẽ nhận giấy tờ ở bước 1 rồi kẹt vì thủ tục attach-only không
+        # có bước kê khai). Cờ này chỉ có tác dụng khi client khai supportsOwnerScan.
+        "ownerScan": False,
+        # Ô bắt buộc ở bước Thông tin chủ hồ sơ — khai theo KHÓA của ownerInfo.fields để
+        # nhãn báo thiếu ("ngày cấp", "nơi cấp"…) luôn lấy từ một chỗ duy nhất. Danh sách này
+        # độc lập với ownerInfo.enabled: thủ tục attach-only không tự điền chủ hồ sơ nhưng
+        # cổng vẫn bắt buộc đúng các ô đó.
+        "ownerRequiredFields": [
+            "Owner_IssueDate",
+            "Owner_IssuePlace",
+            "Owner_PhoneNumber",
+            "Owner_DetailedAddress",
+        ],
+        # Chỉ hiện ở nhánh ủy quyền; trang tự làm không có ô nào khớp nên tự bỏ qua.
+        "authorizationRequiredFields": [
+            "Authorization_GrantorFullName",
+            "Authorization_GrantorDateOfBirth",
+            "Authorization_Relationship",
+            "Authorization_GrantorIdentityNumber",
+        ],
+        # Nhãn ĐÚNG CHỮ trên cổng — câu thoại và nút đọc lại nguyên văn để công dân đối chiếu
+        # được với màn hình. Nút nộp cuối cổng tư pháp ghi "Gửi hồ sơ", không phải "Nộp hồ sơ".
+        "attachmentStepLabel": "Thành phần hồ sơ",
+        "resultStepLabel": "Thông tin nhận kết quả",
+        "submitLabel": "Gửi hồ sơ",
+    },
     "ownerInfo": {
         "enabled": True,
         "fields": {

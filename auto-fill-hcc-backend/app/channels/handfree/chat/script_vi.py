@@ -20,6 +20,32 @@ GREET = {
     ),
 }
 
+# Thứ tự MỚI: chọn thủ tục trước, chọn nơi sau. Màn chào không còn card chọn nơi nên câu chào
+# cũng không được bảo công dân "kiểm tra nơi làm thủ tục bên dưới".
+GREET_PROCEDURE_FIRST = {
+    "md": (
+        "**Xin chào công dân!** Em là **Trợ lý nhân dân**, hỗ trợ làm thủ tục hành chính công ạ.\n\n"
+        "Công dân **chọn thủ tục** cần làm bên dưới — bấm vào thẻ hoặc gõ/nói tên thủ tục đều được ạ."
+    ),
+    "tts": (
+        "Xin chào công dân em là Trợ lý nhân dân. "
+        "Công dân chọn thủ tục cần làm, bấm vào thẻ hoặc nói tên thủ tục đều được ạ."
+    ),
+}
+
+# Nơi làm thủ tục giờ hiện NGAY TRONG lượt xác nhận → mời công dân soát nó trước khi đồng ý.
+CONFIRM_PROCEDURE_WITH_LOCATION = {
+    "md": (
+        "Dạ, công dân muốn làm **{procedure}** ạ.\n\n"
+        "Công dân kiểm tra **nơi làm thủ tục** bên dưới, cần sửa thì bấm vào từng mục; "
+        "đúng rồi thì bấm **Đúng rồi** để em mở trang thủ tục ạ."
+    ),
+    "tts": (
+        "Dạ công dân muốn làm thủ tục {procedure} ạ. Công dân kiểm tra nơi làm thủ tục bên dưới, "
+        "cần sửa thì bấm vào từng mục, đúng rồi thì bấm đúng rồi để em mở trang thủ tục ạ."
+    ),
+}
+
 GREET_RETURNING = {
     "md": "Công dân đang làm dở thủ tục **{procedure}** (đến bước: {step_label}). Công dân muốn **tiếp tục** hay **làm thủ tục khác** ạ?",
     "tts": "Công dân đang làm dở thủ tục {procedure}. Công dân muốn tiếp tục hay làm thủ tục khác ạ?",
@@ -134,6 +160,19 @@ MAE_AGENCY_AUTOFILL_GUIDE = {
     "tts": (
         "Em đã chọn tỉnh {province} và {agency}, mình tự chọn cho em trường hợp "
         "{variant_label} rồi ấn đồng ý và tiếp tục để vào trang kê khai nhé ạ."
+    ),
+}
+
+# Hộp thoại chọn cơ quan của cổng bộ KHÔNG có ô "Trường hợp giải quyết" (vd Bộ Nội vụ: UBND tỉnh →
+# Sở/Ban ngành → Sở Nội vụ). Câu của MAE nhắc tên trường hợp nên dùng lại sẽ ra câu cụt.
+AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE = {
+    "md": (
+        "Dạ ở phần **Cơ quan thực hiện**, em chọn **UBND {province}** và **{agency}**, giờ em "
+        "bấm **Đồng ý và tiếp tục** để qua trang **Thông tin hồ sơ** nhé ạ."
+    ),
+    "tts": (
+        "Dạ ở phần cơ quan thực hiện, em chọn ủy ban nhân dân {province} và {agency}, giờ em "
+        "bấm đồng ý và tiếp tục để qua trang thông tin hồ sơ nhé ạ."
     ),
 }
 
@@ -324,6 +363,27 @@ INTRO_OWNER_REACHED = {
     "md": "Đã vào bước Thông tin chủ hồ sơ ✓",
     "tts": "Mình đã vào bước thông tin chủ hồ sơ rồi ạ.",
 }
+# Quét sớm: công dân đang đứng ở trang có FORM, đưa giấy tờ ra mà không biết để làm gì thì
+# tưởng đã sang bước đính kèm. Nói thẳng việc sắp làm.
+INTRO_OWNER_SCAN_REACHED = {
+    "md": "Đã vào bước Thông tin chủ hồ sơ ✓ Em sẽ **điền thông tin chủ hồ sơ** trước cho công dân ạ.",
+    "tts": "Mình đã vào bước thông tin chủ hồ sơ rồi ạ. Em sẽ điền thông tin chủ hồ sơ trước cho công dân.",
+}
+# Nhánh ỦY QUYỀN: trang đổi nhãn khối thành "Thông tin người nộp hồ sơ" và mọc thêm khối
+# "Thông tin ủy quyền cá nhân" → nói thẳng là sẽ điền HAI khối, và vì sao.
+INTRO_AUTHORIZATION_SCAN_REACHED = {
+    "md": (
+        "Đã vào bước **Thông tin người nộp hồ sơ và ủy quyền** ✓ Vì **Đối tượng thực hiện** là "
+        "**Người khác ủy quyền**, em sẽ điền **hai khối**: **Thông tin người nộp hồ sơ** và "
+        "**Thông tin ủy quyền cá nhân** ạ."
+    ),
+    "tts": (
+        "Đã vào bước thông tin người nộp hồ sơ và ủy quyền. Vì đối tượng thực hiện là người "
+        "khác ủy quyền, em sẽ điền hai khối: thông tin người nộp hồ sơ và thông tin ủy quyền "
+        "cá nhân ạ."
+    ),
+}
+
 INTRO_ATTACH_REACHED = {
     "md": "Đã vào bước Thành phần hồ sơ ✓",
     "tts": "Mình đã vào bước thành phần hồ sơ rồi ạ.",
@@ -1020,6 +1080,27 @@ ATTACH_NONE = {
     ),
 }
 
+# Kế hoạch có tệp KHÔNG xếp được vào hồ sơ nào (vd giấy tùy thân không khớp người ký của văn bản
+# nào). Nói NGAY ở bước báo kế hoạch để cán bộ biết trước tệp nào sẽ không được đính.
+ATTACH_PLAN_SKIPPED_NOTE = {
+    "md": "\n\n⚠️ {skipped_note}",
+    "tts": " Có giấy tờ em chưa xếp được vào hồ sơ nào nên em sẽ bỏ qua ạ.",
+}
+
+# Thử lại mà vẫn 0 tệp: KHÔNG mời bấm lại nữa (kế hoạch cũ được phát lại y nguyên nên kết quả y
+# nguyên). Chỉ đường thoát thật: sửa giấy tờ rồi lập kế hoạch mới.
+ATTACH_NONE_REPEAT = {
+    "md": (
+        "⚠️ Em vẫn chưa gắn được tệp nào vào hồ sơ{error_note}.\n\n"
+        "Bấm lại cũng ra kết quả cũ vì em dùng lại đúng kế hoạch đó ạ. Công dân bấm "
+        "**🗂️ Điều chỉnh giấy tờ** để bỏ hoặc chụp lại giấy tờ chưa đúng, em lập kế hoạch mới ngay."
+    ),
+    "tts": (
+        "Em vẫn chưa gắn được tệp nào vào hồ sơ ạ. Bấm lại cũng ra kết quả cũ, công dân bấm "
+        "điều chỉnh giấy tờ để bỏ hoặc chụp lại giấy tờ chưa đúng, em lập kế hoạch mới ngay ạ."
+    ),
+}
+
 ATTACH_DONE = {
     "md": (
         "✅ Em đã đính xong **{attached} tệp** vào thành phần hồ sơ.\n\n"
@@ -1144,6 +1225,22 @@ SCAN_PICK_ATTACH = {
     "tts": (
         "Dạ công dân đặt giấy tờ lên máy quét rồi bấm nút Scan. Em tự nhận tất cả là "
         "giấy tờ cần chứng thực bản sao ạ."
+    ),
+}
+
+# Bước chủ hồ sơ nhận HAI loại giấy dùng vào hai việc khác nhau → ở đây trợ lý CÓ phân loại,
+# không được đọc câu "tất cả nhận thẳng là giấy tờ cần chứng thực" của bước đính kèm.
+SCAN_PICK_OWNER = {
+    "md": (
+        "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
+        "Công dân **đặt lần lượt từng giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan** — cả "
+        "**căn cước công dân của chủ hồ sơ** lẫn **giấy tờ cần chứng thực**. Scan tới đâu em "
+        "**tự nhận và tự xếp đúng loại** tới đó, công dân không phải chọn tệp ạ."
+    ),
+    "tts": (
+        "Dạ công dân đặt lần lượt từng giấy tờ lên máy quét rồi bấm nút Scan, cả căn cước công "
+        "dân của chủ hồ sơ lẫn giấy tờ cần chứng thực. Scan tới đâu em tự nhận và tự xếp đúng "
+        "loại tới đó ạ."
     ),
 }
 
@@ -1322,6 +1419,210 @@ STILL_READING_DOCUMENTS = {
     "md": "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ…",
     "tts": "Dạ em vẫn đang đọc giấy tờ, sắp xong rồi ạ.",
 }
+
+# ── Dẫn từng bước wizard (guidedSteps) ────────────────────────────────────────────────────
+# Công dân lớn tuổi không tìm ra nút "Bước tiếp theo" nằm cuối trang cổng → trợ lý đặt NÚT
+# CHUYỂN BƯỚC ngay trong khung chat và tự bấm hộ. Nhãn bước ({attachment_step},
+# {result_step}, {submit_label}) lấy từ registry để đọc ĐÚNG CHỮ đang hiện trên cổng.
+
+GUIDED_OWNER_STEP = {
+    "md": (
+        "Công dân điền hoặc chỉnh sửa **Thông tin chủ hồ sơ**: ngày cấp và nơi cấp căn cước "
+        "công dân, số điện thoại, địa chỉ chi tiết.\n\n"
+        "Xong rồi công dân bấm nút bên dưới, em chuyển sang bước **{attachment_step}** giúp ạ."
+    ),
+    "tts": (
+        "Công dân điền hoặc chỉnh sửa thông tin chủ hồ sơ, gồm ngày cấp và nơi cấp căn cước "
+        "công dân, số điện thoại, địa chỉ chi tiết. Xong rồi công dân bấm nút bên dưới, "
+        "em chuyển bước giúp ạ."
+    ),
+}
+
+# Chặn TRƯỚC khi bấm nút của cổng: cổng chỉ tô đỏ ô thiếu ở cuối trang, công dân không thấy.
+GUIDED_OWNER_MISSING = {
+    "md": (
+        "Dạ trang còn thiếu **{missing_note}** ạ. Công dân điền nốt rồi bấm lại nút bên dưới "
+        "giúp em nhé."
+    ),
+    "tts": (
+        "Dạ trang còn thiếu {missing_tts} ạ. Công dân điền nốt rồi bấm lại nút bên dưới giúp em nhé."
+    ),
+}
+
+GUIDED_ATTACH_DONE = {
+    "md": (
+        "✅ Em đã đính xong **{attached} tệp** vào thành phần hồ sơ.\n\n"
+        "Công dân rà soát lại các mục đã đính kèm trên trang; xong rồi bấm nút bên dưới để em "
+        "chuyển sang bước **{result_step}** ạ."
+    ),
+    "tts": (
+        "Em đã đính xong các tệp vào thành phần hồ sơ rồi ạ. Công dân rà soát lại các mục đã "
+        "đính kèm trên trang, xong rồi bấm nút bên dưới để em chuyển sang bước thông tin nhận "
+        "kết quả ạ."
+    ),
+}
+
+# Cổng chặn bằng toast/thông báo đỏ (vd "Vui lòng đính kèm đủ Hồ sơ bắt buộc"). Toast tự tắt
+# sau vài giây và nằm ở góc màn hình — đọc lại nguyên văn cho công dân biết vì sao chưa qua bước.
+GUIDED_STEP_BLOCKED = {
+    "md": (
+        "⚠️ Trang chưa cho chuyển bước, trang báo: *{portal_message}*\n\n"
+        "Công dân xử lý giúp em rồi bấm lại nút bên dưới ạ."
+    ),
+    "tts": (
+        "Trang chưa cho chuyển bước ạ. Trang báo: {portal_message}. "
+        "Công dân xử lý giúp em rồi bấm lại nút bên dưới ạ."
+    ),
+}
+
+# Dùng chung cho cả nút chuyển bước lẫn nút gửi hồ sơ → không nêu tên nút cụ thể.
+GUIDED_STEP_STUCK = {
+    "md": (
+        "⚠️ Em đã bấm nút trên trang nhưng trang chưa chuyển ạ. Công dân xem trên trang còn "
+        "ô nào báo đỏ không, xử lý xong thì bấm lại nút bên dưới giúp em."
+    ),
+    "tts": (
+        "Em đã bấm nút trên trang nhưng trang chưa chuyển ạ. Công dân xem trên trang còn ô nào "
+        "báo đỏ không, xử lý xong thì bấm lại nút bên dưới giúp em."
+    ),
+}
+
+# Bước cuối: trợ lý KHÔNG tự chọn hộ (phương thức nhận kết quả là ý muốn của công dân, chọn
+# sai là phải làm lại hồ sơ) — chỉ nói kỹ từng lựa chọn và các ô đi kèm.
+GUIDED_RESULT_STEP = {
+    "md": (
+        "Đã vào bước **{result_step}** ✓ Công dân chọn **một** cách nhận kết quả trên trang ạ:\n\n"
+        "1. **Nhận kết quả bản giấy có đóng dấu** — gạt nút bật lên, rồi chọn thêm **nơi nhận "
+        "kết quả trực tiếp** để đến lấy.\n"
+        "2. **Nhận kết quả trực tuyến** — nhận bản điện tử ngay trên hệ thống, không phải đến quầy.\n"
+        "3. **Dịch vụ bưu chính công ích** — bưu điện mang kết quả đến tận địa chỉ; chọn cách này "
+        "thì điền thêm **đơn vị bưu chính**, **họ và tên**, **số điện thoại người nhận**, "
+        "**tỉnh/thành phố**, **phường/xã** và **số nhà, tên đường**.\n\n"
+        "Chọn xong, công dân bấm nút bên dưới hoặc bấm **{submit_label}** trên trang, cách nào "
+        "cũng được ạ."
+    ),
+    "tts": (
+        "Đã vào bước thông tin nhận kết quả. Công dân chọn một cách nhận kết quả trên trang ạ. "
+        "Cách một, nhận bản giấy có đóng dấu, chọn xong phải chọn thêm nơi đến lấy kết quả. "
+        "Cách hai, nhận kết quả trực tuyến, nhận bản điện tử ngay trên hệ thống. "
+        "Cách ba, dịch vụ bưu chính công ích, bưu điện mang đến tận địa chỉ, chọn cách này thì "
+        "điền thêm đơn vị bưu chính, họ và tên, số điện thoại người nhận, tỉnh thành phố, "
+        "phường xã và số nhà tên đường. "
+        "Chọn xong, công dân bấm nút bên dưới hoặc bấm nút gửi hồ sơ trên trang đều được ạ."
+    ),
+}
+
+GUIDED_SUBMIT_SENT = {
+    "md": "Em đã bấm **{submit_label}** giúp công dân, công dân chờ trang xác nhận chút ạ…",
+    "tts": "Em đã bấm gửi hồ sơ giúp công dân, công dân chờ trang xác nhận chút ạ.",
+}
+
+# Trang đã điền đủ mọi ô bắt buộc → không bắt công dân quét giấy tờ ở bước này nữa, giấy tờ
+# để sang bước Thành phần hồ sơ nhận một thể.
+GUIDED_OWNER_READY = {
+    "md": (
+        "Đã vào bước **Thông tin chủ hồ sơ** ✓\n\n"
+        "Em xem thông tin trên trang đã đủ rồi ạ. Công dân đọc lại một lượt cho "
+        "chắc, xong bấm nút bên dưới để em chuyển sang bước **{attachment_step}** nhé."
+    ),
+    "tts": (
+        "Đã vào bước thông tin chủ hồ sơ. Em xem thông tin trên trang đã đủ rồi ạ. "
+        "Công dân đọc lại một lượt cho chắc, xong bấm nút bên dưới để em chuyển bước nhé."
+    ),
+}
+
+# Hỏi RIÊNG thẻ căn cước: nó được quét để lấy ngày cấp/nơi cấp điền form, nhưng chưa chắc
+# công dân muốn chứng thực chính thẻ đó. Các giấy còn lại mặc định là giấy đem đi chứng thực.
+GUIDED_CERTIFY_ASK = {
+    "md": (
+        "Trong giấy tờ công dân vừa đưa có **thẻ Căn cước công dân**. Công dân có **chứng thực "
+        "bản sao** thẻ này luôn không ạ?"
+    ),
+    "tts": (
+        "Trong giấy tờ công dân vừa đưa có thẻ căn cước công dân. Công dân có chứng thực bản sao "
+        "thẻ này luôn không ạ?"
+    ),
+}
+
+# Công dân tự điền xong rồi tự bấm sang bước Thành phần hồ sơ trong lúc trợ lý còn đang chờ
+# giấy tờ. Checklist của bước chủ hồ sơ hết nghĩa ở đây → phải nói đã sang bước nào.
+GUIDED_DOCS_STEP_SWITCHED = {
+    "md": (
+        "Đã vào bước **Thành phần hồ sơ** ✓ Từ đây em chỉ nhận **giấy tờ cần chứng thực** thôi ạ.\n\n"
+        "Công dân đưa nốt giấy tờ còn lại rồi bấm nút bên dưới để em đính kèm nhé."
+    ),
+    "tts": (
+        "Đã vào bước thành phần hồ sơ. Từ đây em chỉ nhận giấy tờ cần chứng thực thôi ạ. "
+        "Công dân đưa nốt giấy tờ còn lại rồi bấm nút bên dưới để em đính kèm nhé."
+    ),
+}
+
+# Thẻ căn cước đã quét ở bước trước: trợ lý KHÔNG chạy pipeline chủ hồ sơ (công dân tự điền)
+# nên không có bằng chứng nào nói thẻ đó đưa ra để làm gì. Không đoán — chuyển sang giấy cần
+# chứng thực cho công dân NHÌN THẤY và tự quyết; giấu tệp đi mà vẫn đính là tệ nhất.
+GUIDED_IDENTITY_MOVED_NOTE = {
+    "md": (
+        "\n\nThẻ **Căn cước công dân** công dân đã đưa, em xếp vào **giấy tờ cần chứng thực**. "
+        "Nếu thẻ đó không cần chứng thực, công dân bấm vào mục giấy tờ để xoá giúp em ạ."
+    ),
+    "tts": (
+        " Thẻ căn cước công dân công dân đã đưa, em xếp vào giấy tờ cần chứng thực. "
+        "Nếu thẻ đó không cần chứng thực, công dân xoá giúp em ạ."
+    ),
+}
+
+GUIDED_AUTHORIZATION_ATTACHED = {
+    "md": "📎 Em đã đính kèm **giấy ủy quyền** vào hồ sơ ạ.",
+    "tts": "Em đã đính kèm giấy ủy quyền vào hồ sơ ạ.",
+}
+
+GUIDED_AUTHORIZATION_ATTACH_FAILED = {
+    "md": (
+        "⚠️ Em chưa đính kèm được **giấy ủy quyền** ({error}).\n\n"
+        "Công dân bấm **Chọn tệp đính kèm** ở dòng giấy ủy quyền trên trang giúp em ạ."
+    ),
+    "tts": (
+        "Em chưa đính kèm được giấy ủy quyền ạ. Công dân bấm chọn tệp đính kèm ở dòng giấy "
+        "ủy quyền trên trang giúp em nhé."
+    ),
+}
+
+GUIDED_CERTIFY_YES = {
+    "md": "Dạ, em sẽ chứng thực bản sao cả **thẻ Căn cước công dân** cho công dân ạ.",
+    "tts": "Dạ, em sẽ chứng thực bản sao cả thẻ căn cước công dân cho công dân ạ.",
+}
+
+GUIDED_CERTIFY_NO = {
+    "md": (
+        "Dạ, em chỉ dùng thẻ **Căn cước công dân** để điền thông tin thôi, **không** đính vào "
+        "hồ sơ chứng thực ạ."
+    ),
+    "tts": (
+        "Dạ, em chỉ dùng thẻ căn cước công dân để điền thông tin thôi, không đính vào hồ sơ "
+        "chứng thực ạ."
+    ),
+}
+
+# Nhãn nút trong khung chat: ngắn, đọc là hiểu bấm xong đi đâu.
+GUIDED_CERTIFY_YES_CTA = "✅ Có, chứng thực luôn"
+GUIDED_CERTIFY_NO_CTA = "❌ Không chứng thực thẻ này"
+GUIDED_OWNER_CTA = "Xong, sang bước đính kèm →"
+GUIDED_ATTACH_SPLIT_DONE = {
+    "md": (
+        "✅ Em đã đính xong **{succeeded}/{total} hồ sơ**, mỗi tài liệu nằm trong một hồ sơ riêng.\n\n"
+        "Bấm nút bên dưới để em chuyển **hồ sơ ở tab này** sang bước **{result_step}**. "
+        "Các hồ sơ còn lại công dân mở từng tab rồi bấm **Nộp hồ sơ / Gửi hồ sơ** ngay trên "
+        "trang giúp em ạ."
+    ),
+    "tts": (
+        "Em đã đính xong {succeeded} trên {total} hồ sơ, mỗi tài liệu trong một hồ sơ riêng. "
+        "Công dân bấm nút bên dưới để em chuyển hồ sơ ở tab này sang bước thông tin nhận kết "
+        "quả; các hồ sơ còn lại công dân mở từng tab rồi bấm nộp hồ sơ giúp em nhé."
+    ),
+}
+
+GUIDED_ATTACH_CTA = "Xong, sang bước nhận kết quả →"
+GUIDED_SUBMIT_CTA = "📨 Gửi hồ sơ"
 
 # Nhãn bước hiển thị trên thanh tiến trình (progress.label) — khớp docs/03a §3.
 STEP_LABELS = {

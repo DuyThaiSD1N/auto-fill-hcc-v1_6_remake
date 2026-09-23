@@ -5,15 +5,19 @@ Trang `nhap-thong-tin-ho-so` có **14 `input[type=file]`** theo thứ tự DOM, 
 tin", `chooseBootstrapFileOptionForInput` mở dropdown). `slotIndex` = thứ tự DOM (0-based):
 
   0–9  : 10 dòng thành phần hồ sơ sẵn (`GiayToCuaHoSoOnline_<id>_fileGiayTo`)
-  10–12: 3 dòng "giấy tờ khác" (`HoSoOnline_giayToKhac_file_1..3`)
+  10–12: 3 dòng "giấy tờ khác" (`HoSoOnline_giayToKhac_file_1..3`) — MỖI DÒNG CÓ Ô "TÊN GIẤY TỜ"
   13   : ô `HoSoOnline_fileGiayToKhac`
 
 ⚑ slotKey của package CỐ Ý không nằm trong `FIXED_SLOT_KEYWORDS` (content.js) để FE bỏ bước khớp
 keyword và dùng thẳng `slotIndex` — cần thiết vì 3 dòng "Phương án sử dụng đất" (slot 3/4/5) mở đầu
 gần như y hệt nhau, keyword không thể phân biệt.
 
-Phân loại THUẦN LLM (không lưới keyword). Tài liệu chưa rõ loại → dòng "giấy tờ khác", tuyệt đối không
-bỏ sót tệp nào.
+⚑ Tài liệu chưa rõ loại đi `target="new"` (KHÔNG phải fixed-slot): chỉ engine `attachOneFileToOtherListFile`
+của FE mới THÊM DÒNG, GÕ TÊN GIẤY TỜ rồi mới gán tệp; đi fixed-slot thì tệp lên nhưng ô tên để trống.
+Tên do LLM đọc nội dung đặt (xem prompt), BE chỉ chuẩn hoá + khử trùng — tên tệp không dùng được vì
+hệ thống upload đã bỏ dấu và chèn số.
+
+Phân loại THUẦN LLM (không lưới keyword). Tuyệt đối không bỏ sót tệp nào.
 """
 
 import asyncio
@@ -22,7 +26,6 @@ import time
 from typing import Any
 
 from app.config import settings
-from app.pipelines._shared import normalize_document_name
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -30,9 +33,8 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
-# Ô "giấy tờ khác" đầu tiên; 3 ô liền nhau (10, 11, 12) rồi tới ô tổng hợp (13).
-_OTHER_SLOT_INDEX = 10
-_OTHER_SLOT_COUNT = 4
+# Cổng ghi ngay trên bảng: "Dung lượng tối đa là 6 Mb". Gán tệp quá cỡ thì cổng nuốt im lặng.
+_MAX_FILE_BYTES = 6 * 1024 * 1024
 
 # docType → (slotIndex, text NGUYÊN VĂN của dòng trên cổng, tên hiển thị).
 _ROUTES: dict[str, dict[str, Any]] = {
@@ -114,100 +116,167 @@ def _normalize_doc_type(value: Any) -> str:
     return "other"
 
 
-def _other_display(file_name: str) -> str:
-    """Tài liệu chưa rõ loại giữ TÊN THẬT theo tệp để cán bộ biết là giấy gì."""
-    stem = re.sub(r"\.[A-Za-z0-9]{1,5}$", "", str(file_name or "")).strip()
-    stem = re.sub(r"[_]+", " ", stem)
-    stem = re.sub(r"\s+", " ", stem).strip()
-    return normalize_document_name(stem, "Tài liệu khác") if stem else "Tài liệu khác"
+_FALLBACK_DOCUMENT_NAME = "Tài liệu khác"
+_MAX_DOCUMENT_NAME = 60
 
 
-async def _classify_one(document: dict[str, Any]) -> tuple[int, str]:
+def _clean_document_name(raw: str) -> str:
+    """Chuẩn hoá tên gõ vào ô "Tên giấy tờ".
+
+    KHÔNG dùng `normalize_document_name` của _shared: hàm đó nhận TÊN TỆP nên chạy `Path(raw).stem`,
+    cắt mất phần trước dấu "/" — "QĐ 1678/QĐ-UBND điều chỉnh…" thành "QĐ-UBND điều chỉnh…", tức mất
+    đúng số hiệu văn bản là thứ phân biệt các quyết định với nhau. Ở đây chỉ đổi "/" thành "-" (giữ
+    số hiệu, tránh ký tự cổng có thể từ chối) và bỏ ký tự lạ.
+    """
+    import unicodedata
+
+    text = unicodedata.normalize("NFC", str(raw or "")).replace("/", "-")
+    chars = [ch if (ch.isalnum() or ch in " _-,.()") else " " for ch in text]
+    text = re.sub(r"\s+", " ", "".join(chars)).strip(" -,.")
+    return text[:_MAX_DOCUMENT_NAME].strip(" -,.")
+
+
+def _unique_document_name(base: str, used: set[str]) -> str:
+    """Tên gõ vào ô "Tên giấy tờ" của dòng Giấy tờ khác — hai dòng trùng tên là cán bộ không phân biệt được."""
+    value = _clean_document_name(base) or _FALLBACK_DOCUMENT_NAME
+    key = _fold(value)
+    if key and key not in used:
+        used.add(key)
+        return value
+    stem = value[:52].strip() or _FALLBACK_DOCUMENT_NAME
+    suffix = 2
+    while True:
+        candidate = f"{stem} {suffix}"[:_MAX_DOCUMENT_NAME].strip()
+        if _fold(candidate) not in used:
+            used.add(_fold(candidate))
+            return candidate
+        suffix += 1
+
+
+def _file_bytes(file: dict) -> int | None:
+    """Kích thước thật, suy từ độ dài base64 của dataUrl (FileItem không mang size)."""
+    data_url = file.get("dataUrl")
+    if not isinstance(data_url, str) or "," not in data_url:
+        return None
+    payload = data_url.split(",", 1)[1]
+    if not payload:
+        return None
+    return len(payload) * 3 // 4 - payload[-2:].count("=")
+
+
+async def _classify_one(document: dict[str, Any]) -> tuple[int, str, str]:
     index = int(document.get("index"))
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": build_user_prompt([{"index": index, "text": str(document.get("text") or "")[:12000]}])},
     ]
-    raw = await client.chat(messages, max_tokens=120, enable_thinking=settings.agent_reasoning)
+    # max_tokens cao hơn bản cũ vì nay LLM còn phải trả documentName.
+    raw = await client.chat(messages, max_tokens=220, enable_thinking=settings.agent_reasoning)
     parsed = client.extract_json_block(raw)
     first = next(iter(parsed.get("documents", []) or []), {})
-    return index, _normalize_doc_type(first.get("docType") or first.get("type"))
+    doc_type = _normalize_doc_type(first.get("docType") or first.get("type"))
+    return index, doc_type, str(first.get("documentName") or "").strip()
 
 
 async def _classify_with_llm(
     documents: list[dict[str, Any]],
     errors: list[str] | None = None,
-) -> dict[int, str]:
+) -> dict[int, tuple[str, str]]:
     if not documents:
         return {}
     # Một call cho mỗi file: PDF dài hoặc lỗi provider chỉ làm file đó rơi về other.
     outcomes = await asyncio.gather(*(_classify_one(d) for d in documents), return_exceptions=True)
-    result: dict[int, str] = {}
+    result: dict[int, tuple[str, str]] = {}
     for document, outcome in zip(documents, outcomes, strict=True):
         if isinstance(outcome, BaseException):
             if errors is not None:
                 errors.append(f"attachment_agent file {document.get('index')}: {outcome}")
             continue
-        index, doc_type = outcome
-        result[index] = doc_type
+        index, doc_type, document_name = outcome
+        result[index] = (doc_type, document_name)
     return result
 
 
 def build_plan_items(
     files: list[dict],
-    llm_types: dict[int, str] | None = None,
+    llm_types: dict[int, tuple[str, str] | str] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
     unknown: list[str] = []
-    other_used = 0
+    qua_nang: list[str] = []
+    used_names: set[str] = set()
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
-        llm_type = llm_types.get(index, "")
+        raw = llm_types.get(index)
+        llm_type, llm_name = raw if isinstance(raw, tuple) else (raw or "", "")
         doc_type = llm_type if llm_type in _ALLOWED else "other"
         source = "llm" if llm_type else "default"
 
-        if doc_type == "other":
-            # Trải đều qua các ô "giấy tờ khác"; hết ô thì dồn vào ô cuối (input multiple).
-            slot_index = _OTHER_SLOT_INDEX + min(other_used, _OTHER_SLOT_COUNT - 1)
-            other_used += 1
-            slot_key = f"laocai_giay_to_khac_{slot_index}"
-            slot_name = "Giấy tờ khác"
-            document_name = _other_display(file_name)
-            unknown.append(file_name)
-        else:
-            route = _ROUTES[doc_type]
-            slot_index = route["slotIndex"]
-            slot_key = f"laocai_gtd_{doc_type}"
-            slot_name = route["slotName"]
-            document_name = route["display"]
+        size = _file_bytes(file)
+        if size and size > _MAX_FILE_BYTES:
+            qua_nang.append(f"{file_name} ({round(size / 1024 / 1024, 1)} MB)")
 
+        if doc_type == "other":
+            # Dòng "Giấy tờ khác" phải có TÊN GIẤY TỜ. Chỉ engine otherListFile của FE mới gõ được tên
+            # đó (nó thêm dòng, điền ô tên rồi mới gán tệp) — đi fixed-slot thì tệp lên nhưng ô tên
+            # TRỐNG. Tên lấy từ LLM đọc nội dung, KHÔNG lấy tên tệp (mất dấu, dính số của hệ thống).
+            document_name = _unique_document_name(llm_name, used_names)
+            attachments.append({
+                "fileIndex": index,
+                "fileName": file_name,
+                "documentName": document_name,
+                "componentName": document_name,
+                "target": "new",
+                "needsAddComponent": True,
+                "detectedType": doc_type,
+                # Cổng iGate VNPT: bấm option "Chọn tệp tin" mở hộp thoại file của hệ điều hành
+                # (chặn UI) → FE chỉ gán thẳng, hụt thì bỏ qua tệp đó.
+                "noChooserClick": True,
+            })
+            unknown.append(f"{file_name} → \"{document_name}\"")
+            classified.append({
+                "fileName": file_name,
+                "docType": doc_type,
+                "documentName": document_name,
+                "source": source,
+                "slotIndex": None,
+            })
+            continue
+
+        route = _ROUTES[doc_type]
         attachments.append({
             "fileIndex": index,
             "fileName": file_name,
-            "documentName": document_name,
-            "componentName": slot_name,
+            "documentName": route["display"],
+            "componentName": route["slotName"],
             "target": "fixed-slot",
             "needsAddComponent": False,
-            "slotKey": slot_key,
-            "slotIndex": slot_index,
-            "slotName": slot_name,
+            "slotKey": f"laocai_gtd_{doc_type}",
+            "slotIndex": route["slotIndex"],
+            "slotName": route["slotName"],
             "detectedType": doc_type,
         })
         classified.append({
             "fileName": file_name,
             "docType": doc_type,
+            "documentName": route["display"],
             "source": source,
-            "slotIndex": slot_index,
+            "slotIndex": route["slotIndex"],
         })
 
     if unknown:
         warnings.append(
-            "Chưa nhận ra loại giấy tờ, đã tạm đính vào dòng \"Giấy tờ khác\" để không bỏ sót — "
-            f"cán bộ kiểm tra lại: {', '.join(unknown)}."
+            "Chưa nhận ra loại giấy tờ, đã thêm dòng \"Giấy tờ khác\" kèm tên tài liệu để không bỏ "
+            f"sót — cán bộ kiểm tra lại: {', '.join(unknown)}."
+        )
+    if qua_nang:
+        warnings.append(
+            "Tệp vượt giới hạn 6 MB của cổng nên có thể bị nuốt im lặng, hãy nén hoặc giảm DPI rồi "
+            f"tải lại: {', '.join(qua_nang)}."
         )
     return attachments, warnings, classified
 

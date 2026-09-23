@@ -27,7 +27,9 @@ về đúng type của từng tài liệu logic. Một file PDF có thể chứa
 8. Nếu trang có nội dung nhưng OCR_TEXT quá thiếu thông tin để nhận biết loại giấy tờ, trả type là other.
    Trang thực sự trắng xử lý theo rule blank_page bên dưới.
 9. Giấy khai sinh, giấy chứng nhận kết hôn, trích lục kết hôn, trích lục khai tử là giấy tờ hộ tịch chính
-   và phải được phân loại vào nhóm civil_status_* tương ứng để thêm thành phần hồ sơ mới.
+   và phải được phân loại vào nhóm civil_status_* tương ứng để thêm thành phần hồ sơ mới. Giấy tờ KHÔNG
+   khớp rõ loại nào (trích lục cải chính / bổ sung / thay đổi hộ tịch…) thì dùng other và documentName
+   là ĐÚNG TIÊU ĐỀ in trên giấy — tuyệt đối không ép vào loại gần giống.
 10. CCCD/CMND/Hộ chiếu/Giấy chứng nhận căn cước phải phân loại là identity để đính vào thành phần hồ sơ STT 3.
 11. Văn bản ủy quyền phải phân loại là authorization để đính vào thành phần hồ sơ STT 2.
 12. Giấy tờ chứng minh cư trú phải phân loại là residence_proof để đính vào thành phần hồ sơ STT 4.
@@ -52,12 +54,9 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
 </allowed_types>
 
 <type_definitions>
-- civil_status_birth: Giấy khai sinh, bản sao Giấy khai sinh, trích lục khai sinh,
-  hoặc trích lục ghi vào Sổ hộ tịch việc khai sinh.
-- civil_status_marriage: Giấy chứng nhận kết hôn, trích lục kết hôn,
-  hoặc trích lục ghi chú kết hôn.
-- civil_status_death: Trích lục khai tử, bản sao trích lục khai tử,
-  hoặc giấy tờ hộ tịch ghi nhận việc khai tử.
+- civil_status_birth: CHỈ Giấy khai sinh (bản chính/bản sao) hoặc Trích lục khai sinh.
+- civil_status_marriage: CHỈ Giấy chứng nhận kết hôn, Trích lục kết hôn hoặc Trích lục ghi chú kết hôn.
+- civil_status_death: CHỈ Giấy chứng tử hoặc Trích lục khai tử (bản sao).
 - identity: CCCD, CMND, Hộ chiếu, Thẻ căn cước, Căn cước điện tử,
   Giấy chứng nhận căn cước hoặc giấy tờ tùy thân có ảnh và thông tin cá nhân.
   Mặt sau thẻ chỉ là identity khi có MRZ 'IDVNM...', hoặc có ít nhất hai tín hiệu độc lập trong các
@@ -67,14 +66,32 @@ Mỗi tài liệu phải trả type thuộc đúng một trong các enum sau:
 - residence_proof: giấy tờ chứng minh thông tin cư trú/nơi cư trú/chỗ ở.
 - paper_declaration: tờ khai/yêu cầu cấp bản sao giấy khai sinh, bản sao trích lục hộ tịch bản giấy.
 - blank_page: trang trắng không có nội dung giấy tờ; backend sẽ bỏ khỏi kế hoạch đính kèm.
-- other: tài liệu khác không thuộc các nhóm trên.
+- other: tài liệu khác không thuộc các nhóm trên, vd:
+    · Giấy tờ hộ tịch khác: Trích lục cải chính hộ tịch, Giấy chứng sinh, Giấy xác nhận tình trạng
+      hôn nhân, Quyết định công nhận việc nuôi con nuôi, Giấy chứng nhận nuôi con nuôi
+    · Giấy tờ cư trú/gia đình: Sổ hộ khẩu, Sổ tạm trú
+    · Bằng cấp, học tập: Bằng tốt nghiệp, Chứng chỉ, Học bạ, Giấy chứng nhận tốt nghiệp tạm thời
+    · Văn bản khác: Quyết định, Giấy xác nhận, Công văn, Bản án/Quyết định của Tòa án
 </type_definitions>
+
+<traps>
+⚑ BẪY 1 — TRÍCH LỤC CẢI CHÍNH / BỔ SUNG / THAY ĐỔI HỘ TỊCH ghi "Trong Sổ đăng ký khai sinh và Giấy
+khai sinh số …" — đó là THAM CHIẾU tới sổ gốc, KHÔNG biến tài liệu thành civil_status_birth. Loại của
+tài liệu là việc ghi trong TIÊU ĐỀ ("CẢI CHÍNH", "BỔ SUNG"…) → other + đúng tiêu đề đó.
+⚑ BẪY 2 — Phần "Xác nhận" của trích lục ghi "Thẻ căn cước công dân số …" — KHÔNG biến tài liệu thành identity.
+⚑ BẪY 3 — Trích lục cải chính KHÔNG phải trích lục kết hôn dù cả hai cùng mở đầu bằng "TRÍCH LỤC".
+Không khớp rõ loại nào thì trả other + tiêu đề thật, KHÔNG chọn loại "gần giống nhất".
+</traps>
 
 <title_rules>
 - title là tên tài liệu tiếng Việt ngắn để hiển thị.
-- Với civil_status_birth, title nên là "Giấy khai sinh".
-- Với civil_status_marriage, title nên là "Giấy đăng ký kết hôn".
-- Với civil_status_death, title nên là "Trích lục khai tử".
+- Giấy bản chính và trích lục là hai giấy KHÁC NHAU — title/documentName chọn theo TIÊU ĐỀ in trên giấy:
+    · civil_status_birth    → "Giấy khai sinh" | "Trích lục khai sinh"
+    · civil_status_marriage → "Giấy đăng ký kết hôn" (giấy chứng nhận kết hôn) | "Trích lục kết hôn" |
+      "Trích lục ghi chú kết hôn"
+    · civil_status_death    → "Giấy chứng tử" | "Trích lục khai tử"
+- Với other là giấy tờ đơn lẻ: title/documentName là ĐÚNG TIÊU ĐỀ in trên giấy, ghép các dòng tiêu đề bị
+  ngắt ("TRÍCH LỤC" + "CẢI CHÍNH HỘ TỊCH" → "Trích lục cải chính hộ tịch"), không kèm số/ngày/tên người.
 - Với identity, title/documentName là "CCCD HỌ TÊN" nếu đọc chắc họ tên trên đúng thẻ;
   nếu không đọc chắc tên thì dùng "Căn cước công dân".
 - Với authorization, title nên là "Văn bản ủy quyền".

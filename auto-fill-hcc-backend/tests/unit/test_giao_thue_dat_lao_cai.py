@@ -46,7 +46,10 @@ def test_co_trong_registry_va_khoa_dung_cong_lao_cai():
 def test_nguoi_nop_la_chu_ho_so_van_phat_du_dia_chi_chu_ho_so():
     """Nút 'Người nộp là chủ hồ sơ' của cổng chỉ copy tới nơi cấp/ngày cấp căn cước, KHÔNG copy địa chỉ."""
     fields, warnings = mapper.enrich(
-        _CHU_HO_SO_TO_CHUC + [{"name": "NguoiNop_HoTen", "value": "NGUYỄN VĂN A"}]
+        _CHU_HO_SO_TO_CHUC + [{"name": "NguoiNop_HoTen", "value": "NGUYỄN VĂN A"}],
+        # Khối chủ hồ sơ không phụ thuộc người đi nộp, nhưng vẫn truyền mốc tài khoản để không lẫn với
+        # cảnh báo "chưa xác định được người đang đi nộp" (xem test_giao_thue_dat_lao_cai_nguoi_nop).
+        {"formContext": {"applicantFullname": "NGUYỄN VĂN A", "applicantIdentityNumber": "012345678901"}},
     )
     by_name = _names(fields)
 
@@ -116,8 +119,9 @@ def test_ui_comp_chi_khai_o_co_that_tren_snapshot():
 
 def test_slot_index_dung_thu_tu_dom_cua_14_o_upload():
     assert [r["slotIndex"] for r in planner._ROUTES.values()] == list(range(10))
-    assert planner._OTHER_SLOT_INDEX == 10
-    assert planner._OTHER_SLOT_INDEX + planner._OTHER_SLOT_COUNT == 14
+    # 3 ô "giấy tờ khác" (10-12) + ô tổng hợp (13) KHÔNG đi bằng slotIndex nữa: chúng cần engine
+    # otherListFile của FE để gõ tên tài liệu, nên planner không giữ hằng số slot cho chúng.
+    assert not hasattr(planner, "_OTHER_SLOT_INDEX")
 
 
 def test_slot_name_khop_text_that_cua_dong():
@@ -158,22 +162,26 @@ def test_mot_bo_ho_so_that_vao_dung_dong():
         },
     )
 
-    by_file = {i["fileName"]: i["slotIndex"] for i in items}
-    assert by_file["don.pdf"] == 0
+    by_file = {i["fileName"]: i for i in items}
+    assert by_file["don.pdf"]["slotIndex"] == 0
     # Quyết định gốc + 2 bản điều chỉnh CÙNG một dòng (ô upload multiple).
-    assert by_file["qd_goc.pdf"] == by_file["qd_dc_1.pdf"] == by_file["qd_dc_2.pdf"] == 1
-    assert by_file["dkkd.pdf"] == 10
-    assert all(i["target"] == "fixed-slot" for i in items)
+    assert (by_file["qd_goc.pdf"]["slotIndex"] == by_file["qd_dc_1.pdf"]["slotIndex"]
+            == by_file["qd_dc_2.pdf"]["slotIndex"] == 1)
+    # ĐKKD không có dòng riêng → dòng "Giấy tờ khác" (target new để FE gõ được tên tài liệu).
+    assert by_file["dkkd.pdf"]["target"] == "new"
+    assert "slotIndex" not in by_file["dkkd.pdf"]
     assert any("không bỏ sót" in w for w in warnings)
 
 
-def test_nhieu_tai_lieu_la_trai_deu_qua_cac_o_giay_to_khac():
-    items, _, _ = planner.build_plan_items(_files([f"la{i}.pdf" for i in range(6)]), {})
+def test_nhieu_tai_lieu_la_deu_thanh_dong_giay_to_khac_rieng():
+    """FE tự bấm nút '+' thêm dòng nên không giới hạn 3 ô như bảng in sẵn."""
+    items, _, _ = planner.build_plan_items(
+        _files([f"la{i}.pdf" for i in range(6)]),
+        {i: ("other", f"Văn bản số {i}") for i in range(6)},
+    )
 
-    # 4 ô "giấy tờ khác" (10..13), file thứ 5 trở đi dồn vào ô cuối.
-    assert [i["slotIndex"] for i in items] == [10, 11, 12, 13, 13, 13]
-    # Giữ TÊN THẬT theo tệp để cán bộ biết là giấy gì.
-    assert items[0]["documentName"].startswith("la0")
+    assert all(i["target"] == "new" and i["needsAddComponent"] for i in items)
+    assert len({i["documentName"] for i in items}) == 6
 
 
 def test_khong_bo_sot_file_nao_khi_llm_chet():
@@ -262,3 +270,77 @@ def test_moi_entry_lao_cai_deu_khoa_dung_host():
         entry = next(p for p in public_list() if p["key"] == key)
         assert entry["detect"]["urlScope"] == ["dichvucong.laocai.gov.vn"], key
         assert entry["label"].startswith("[Tỉnh Lào Cai]"), key
+
+
+def test_giay_to_khac_phai_di_target_new_de_fe_dien_ten():
+    """Chỉ engine otherListFile mới THÊM DÒNG + GÕ TÊN; fixed-slot thì tệp lên mà ô tên để trống."""
+    items, _, _ = planner.build_plan_items(
+        _files(["scan.pdf"]), {0: ("other", "QĐ 1678/QĐ-UBND điều chỉnh chủ trương đầu tư lần 2")}
+    )
+
+    item = items[0]
+    assert item["target"] == "new"
+    assert item["needsAddComponent"] is True
+    assert "slotIndex" not in item
+    # Cổng iGate VNPT: bấm option "Chọn tệp tin" mở hộp thoại của hệ điều hành → cấm FE bấm.
+    assert item["noChooserClick"] is True
+
+
+def test_ten_tai_lieu_lay_tu_llm_va_giu_so_hieu_van_ban():
+    """normalize_document_name của _shared cắt mất phần trước '/' — số hiệu là thứ phân biệt các QĐ."""
+    items, _, _ = planner.build_plan_items(
+        _files(["25528_QD_1678_dieu_chinh_chu_truong_dau_tu_lan_2_1787304693.pdf"]),
+        {0: ("other", "QĐ 1678/QĐ-UBND điều chỉnh chủ trương đầu tư lần 2")},
+    )
+    name = items[0]["documentName"]
+
+    assert "1678" in name
+    assert name == items[0]["componentName"]  # FE gõ componentName vào ô tên
+    # Không được lấy tên tệp (mất dấu + dính số của hệ thống upload).
+    assert "1787304693" not in name
+    assert "dieu_chinh" not in name
+
+
+def test_hai_tai_lieu_trung_ten_thi_tach_ra():
+    items, _, _ = planner.build_plan_items(
+        _files(["a.pdf", "b.pdf"]),
+        {0: ("other", "Quyết định chấp thuận điều chỉnh chủ trương đầu tư"),
+         1: ("other", "Quyết định chấp thuận điều chỉnh chủ trương đầu tư")},
+    )
+
+    assert items[0]["documentName"] != items[1]["documentName"]
+    assert items[1]["documentName"].endswith(" 2")
+
+
+def test_llm_khong_dat_duoc_ten_thi_dung_ten_mac_dinh():
+    items, _, _ = planner.build_plan_items(_files(["a.pdf"]), {0: ("other", "")})
+    assert items[0]["documentName"] == "Tài liệu khác"
+
+
+def test_tai_lieu_nhan_ra_loai_van_di_fixed_slot():
+    items, _, _ = planner.build_plan_items(
+        _files(["don.pdf"]), {0: ("don_mau_01", "Đơn đề nghị cho thuê đất")}
+    )
+
+    assert items[0]["target"] == "fixed-slot"
+    assert items[0]["slotIndex"] == 0
+    # Dòng có sẵn không có ô tên → giữ tên hiển thị cố định của dòng.
+    assert items[0]["documentName"] == "Đơn đề nghị giao đất, cho thuê đất (Mẫu số 01)"
+
+
+def test_canh_bao_tep_vuot_6mb():
+    import base64
+
+    big = "data:application/pdf;base64," + base64.b64encode(b"x" * (7 * 1024 * 1024)).decode()
+    _, warnings, _ = planner.build_plan_items(
+        [{"name": "scan.pdf", "type": "application/pdf", "dataUrl": big}], {0: ("other", "Bản vẽ")}
+    )
+
+    assert any("6 MB" in w and "scan.pdf" in w for w in warnings)
+
+
+def test_prompt_cam_chep_ten_tep():
+    from app.pipelines.giao_thue_dat_lao_cai.attach.prompt import SYSTEM_PROMPT
+
+    assert "documentName" in SYSTEM_PROMPT
+    assert "TUYỆT ĐỐI KHÔNG chép tên tệp" in SYSTEM_PROMPT

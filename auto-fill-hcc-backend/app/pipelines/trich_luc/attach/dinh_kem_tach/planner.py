@@ -12,6 +12,7 @@ from app.pipelines._shared import fold as _fold
 from app.pipelines._shared import normalize_document_name
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.identity_merge import merge_identity_records
+from app.pipelines.trich_luc.attach.civil_status_names import civil_status_name, is_civil_status
 from app.process.schemas import FileItem
 from app.services import ocr
 from app.services.llm import client
@@ -24,9 +25,6 @@ _ALLOWED_LLM_TYPES = {
     "authorization", "residence_proof", "paper_declaration", "blank_page", "other",
 }
 
-_BIRTH_LABEL = "Giấy khai sinh"
-_MARRIAGE_LABEL = "Giấy đăng ký kết hôn"
-_DEATH_LABEL = "Trích lục khai tử"
 _IDENTITY_LABEL = "Căn cước công dân"
 _AUTHORIZATION_LABEL = "Văn bản ủy quyền"
 _RESIDENCE_LABEL = "Giấy tờ chứng minh cư trú"
@@ -64,14 +62,10 @@ def _canonical_type(value: str) -> str:
 
 def _label_for_type(doc_type: str, title: str = "") -> str:
     title = str(title or "").strip()
-    # Ba giấy tờ hộ tịch dùng nhãn chuẩn của eForm; title OCR như "Giấy chứng nhận kết hôn"
-    # không được làm tên component lệch khỏi contract cũ.
-    if doc_type == "civil_status_birth":
-        return _BIRTH_LABEL
-    if doc_type == "civil_status_marriage":
-        return _MARRIAGE_LABEL
-    if doc_type == "civil_status_death":
-        return _DEATH_LABEL
+    # Giấy hộ tịch: tên theo TIÊU ĐỀ trong danh sách được phép của loại (Giấy khai sinh ≠ Trích lục
+    # khai sinh). "Giấy chứng nhận kết hôn" vẫn về nhãn cũ "Giấy đăng ký kết hôn" của eForm.
+    if is_civil_status(doc_type):
+        return civil_status_name(doc_type, title)
     labels = {
         "identity": _IDENTITY_LABEL,
         "authorization": _AUTHORIZATION_LABEL,
@@ -418,6 +412,11 @@ async def plan_trich_luc_attachments(
         if doc_type == "other":
             fallback = _OTHER_LABEL
             base_name = segment.get("documentName") or file.get("name") or ""
+        elif is_civil_status(doc_type):
+            # Giấy hộ tịch luôn đi qua danh sách tên được phép — documentName tự do của LLM ("Giấy chứng
+            # nhận kết hôn", "Giấy khai sinh bản sao") không được làm lệch nhãn eForm.
+            fallback = _label_for_type(doc_type)
+            base_name = civil_status_name(doc_type, segment.get("documentName"), segment.get("title"))
         else:
             fallback = _label_for_type(doc_type)
             base_name = segment.get("documentName") or _label_for_type(doc_type, segment.get("title", ""))

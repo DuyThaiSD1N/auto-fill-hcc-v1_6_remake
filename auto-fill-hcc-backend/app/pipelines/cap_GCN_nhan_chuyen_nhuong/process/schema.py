@@ -23,6 +23,28 @@ FIELDS: list[dict] = [
             + _AREA_DESC
         ),
     },
+    {
+        "name": "NguoiDuocUyQuyen",
+        "desc": (
+            "CHỈ điền khi hồ sơ có văn bản riêng tiêu đề 'GIẤY ỦY QUYỀN'/'HỢP ĐỒNG ỦY QUYỀN'/'VĂN BẢN "
+            "VỀ VIỆC ĐẠI DIỆN' có dòng 'ủy quyền cho' kèm số định danh của bên B. Chép người đứng NGAY "
+            "SAU 'ủy quyền cho' vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" "
+            "('Nam'/'Nữ'), \"danToc\", \"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), \"noiCapCccd\", "
+            "\"dienThoai\", \"thuongTru\": " + _AREA_DESC + "}. Không có văn bản ủy quyền thì BỎ TRỐNG "
+            "— người đại diện theo pháp luật của chủ đầu tư KHÔNG phải người được ủy quyền."
+        ),
+    },
+    {
+        "name": "NguoiTrongGiayTo",
+        "desc": (
+            "MỌI cá nhân được ghi KÈM SỐ ĐỊNH DANH/CCCD/CMND trong bất kỳ giấy tờ nào của hồ sơ (người "
+            "ký đơn, bên nhận chuyển nhượng và vợ/chồng cùng đứng tên, người được ủy quyền), mỗi người "
+            "một object: [{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,NgayCap,NoiCap,DienThoai,NoiCuTru}]. "
+            "NgaySinh/NgayCap dd/mm/yyyy (giấy chỉ ghi năm thì trả đúng năm). NoiCuTru " + _AREA_DESC
+            + " Người nào thiếu mục nào thì bỏ mục đó, KHÔNG bịa. Đây chỉ là DANH SÁCH ỨNG VIÊN — không "
+            "tự quyết ai là người đi nộp."
+        ),
+    },
     # ---- Chủ hồ sơ = BÊN NHẬN chuyển nhượng (bên B), người đứng tên Đơn đăng ký biến động. ----
     {"name": "ChuHoSo_LoaiDoiTuong",
      "desc": "Bên nhận chuyển nhượng là 'Cá nhân' hay 'Tổ chức'. Chỉ trả 'Tổ chức' khi bên NHẬN là công ty/"
@@ -74,14 +96,21 @@ for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiHopDong"):
 # Ô UI thật ở bước 2 (name = <tiền tố><key> do Nth.FormBuilder dựng từ XML). <select> native → dom-select,
 # còn lại (kể cả ô ngày bootstrap-datetimepicker DD/MM/YYYY) → dom-input.
 UI_COMP_BY_NAME = {
-    # Phần I — người nộp. Họ tên/Số căn cước/địa chỉ đã được cổng điền từ tài khoản định danh; mapper cố ý
-    # KHÔNG phát lại (sửa "Họ và tên" là cổng xoá trắng Di động + CCCD). Các ô dưới chỉ lấy từ CCCD của
-    # CHÍNH người nộp (khớp số/họ tên tài khoản). Di động/Fax không có nguồn: SĐT trên Đơn là của chủ hồ sơ.
+    # Phần I — người nộp. Ở chế độ THEO TÀI KHOẢN (mặc định) mapper KHÔNG phát lại Họ tên/Số căn cước/
+    # địa chỉ/Di động: cổng đã điền sẵn đúng người từ tài khoản định danh, mà sửa "Họ và tên" thì cổng
+    # xoá trắng Di động + CCCD. Chế độ THEO TỜ KHAI phát cả khối vì người nộp là người KHÁC — để nửa
+    # khối của tài khoản nửa của người trong hồ sơ là sai người khi cổng xác thực với CSDLQG dân cư.
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",
     "CongDan_gioiTinhCongDan": "dom-select",     # mặc định cổng "0" = Nữ → phải sửa theo thẻ
     "CongDan_danTocCongDan": "dom-select",
     "CongDan_ngayCapCmnd": "dom-input",
     "CongDan_noiCapCmnd": "dom-input",
+    "CongDan_diDong": "dom-input",
+    "CongDan_maTinhThanh": "dom-select",
+    "CongDan_maPhuongXa": "dom-select",          # nạp AJAX sau khi chọn tỉnh
+    "CongDan_diaChi": "dom-input",
     # Phần II — chủ hồ sơ. Đối tượng là DRIVER: đổi nhánh CN/DN mới hiện nhóm ô tương ứng → phát TRƯỚC.
     "ChuHoSo_maDoiTuongNopHS": "dom-select",     # "" / CN / DN / CQ / TC
     "ChuHoSo_tenChuHoSo": "dom-input",           # (*) khi CN

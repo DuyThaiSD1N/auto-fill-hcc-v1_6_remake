@@ -52,4 +52,10 @@ CCCD:
   mỗi người kèm NoiCuTru của CHÍNH người đó, vì khối "người nộp" trên cổng lấy địa chỉ của NGƯỜI ĐI NỘP chứ
   không phải của chủ hồ sơ.
 
+NGƯỜI ĐI NỘP:
+- NguoiTrongGiayTo và NguoiDuocUyQuyen chỉ là DANH SÁCH ỨNG VIÊN. TUYỆT ĐỐI không tự kết luận ai là người đi
+  nộp — Python chọn bằng thông tin tài khoản đang đăng nhập trên cổng.
+- NguoiDuocUyQuyen là BÊN B (người đứng sau "uỷ quyền cho", người đi nộp thay), KHÔNG phải bên A. Bên A là
+  chủ hồ sơ, đã nằm ở các field ChuHoSo_*.
+
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""

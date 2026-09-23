@@ -22,6 +22,8 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
     )
     # options mang formContext (VNeID người đăng nhập) — mapper cần nó để nhận ra CCCD của NGƯỜI NỘP
-    # giữa nhiều thẻ trong hồ sơ.
-    res["fields"] = mapper.enrich(res["fields"], options)
+    # giữa nhiều thẻ trong hồ sơ — và submitterMode để biết lấy người nộp theo tài khoản hay theo tờ khai.
+    res["fields"], warnings = mapper.enrich(res["fields"], options)
+    if warnings:
+        res.setdefault("errors", []).extend(warnings)
     return res

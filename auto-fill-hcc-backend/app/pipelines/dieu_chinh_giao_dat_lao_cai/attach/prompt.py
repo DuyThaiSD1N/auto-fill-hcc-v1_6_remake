@@ -65,8 +65,20 @@ các quyết định điều chỉnh đều trích "Quyết định số … ng�
 `quyet_dinh_bi_dieu_chinh` khi tài liệu CHÍNH NÓ là quyết định giao/cho thuê đất.
 </traps>
 
+<document_name_rules>
+- documentName: TÊN TIẾNG VIỆT NGẮN GỌN THEO NỘI DUNG tài liệu, tối đa khoảng 60 ký tự — đây là chuỗi
+  sẽ được gõ vào ô "Tên giấy tờ" của dòng "Giấy tờ khác" trên cổng, nên phải đọc là biết giấy gì:
+  "GCN đăng ký doanh nghiệp Công ty CP Đầu tư XYZ",
+  "Giấy ủy quyền nộp hồ sơ ngày 12/3/2026",
+  "QĐ 894/QĐ-UBND phê duyệt điều chỉnh quy hoạch chi tiết".
+- TUYỆT ĐỐI KHÔNG chép tên tệp (kiểu "20260414101741011776136690_1788423073") — tên tệp mất dấu và
+  dính số rác của hệ thống upload.
+- Nhiều tài liệu CÙNG LOẠI phải có tên KHÁC NHAU (thêm số hiệu/ngày/lần điều chỉnh để phân biệt).
+- OCR quá thiếu để biết là giấy gì thì để documentName TRỐNG, đừng bịa.
+</document_name_rules>
+
 <output_contract>
-{"documents":[{"index":0,"docType":"don_mau_04"}]}
+{"documents":[{"index":0,"docType":"other","documentName":"GCN đăng ký doanh nghiệp Công ty CP ABC"}]}
 </output_contract>
 """.strip()
 

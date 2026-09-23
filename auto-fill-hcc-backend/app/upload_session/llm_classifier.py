@@ -22,19 +22,25 @@ class ClassificationSpec:
     system_prompt: str
     allowed_keys: frozenset[str]
     build_user_prompt: Callable[[str, str], str]
+    # Thủ tục cần biết NGỮ CẢNH PHIÊN mới phân loại đúng (vd "căn cước của ĐÚNG chủ hồ sơ
+    # này" chứ không phải căn cước bất kỳ) thì khai thêm hàm này. Để trống = giữ nguyên
+    # hợp đồng cũ, các spec đang chạy không phải sửa gì.
+    build_user_prompt_with_context: Callable[[str, str, dict], str] | None = None
 
 
-async def _classify_one(file: dict, ocr_result: dict,
-                        spec: ClassificationSpec) -> str | None:
+async def _classify_one(file: dict, ocr_result: dict, spec: ClassificationSpec,
+                        context: dict | None = None) -> str | None:
     """Gọi LLM cho đúng một tệp; lỗi tệp này không làm hỏng tệp khác."""
+    name = file.get("name") or "file"
+    text = ocr_result.get("text") or ""
+    user_content = (
+        spec.build_user_prompt_with_context(name, text, dict(context or {}))
+        if spec.build_user_prompt_with_context
+        else spec.build_user_prompt(name, text)
+    )
     messages = [
         {"role": "system", "content": spec.system_prompt},
-        {
-            "role": "user",
-            "content": spec.build_user_prompt(
-                file.get("name") or "file", ocr_result.get("text") or ""
-            ),
-        },
+        {"role": "user", "content": user_content},
     ]
     try:
         raw = await client.chat(messages, max_tokens=100, enable_thinking=False)
@@ -52,6 +58,7 @@ async def classify_files(
     existing_files: list[dict],
     spec: ClassificationSpec,
     fallback: Callable[[str, list[dict]], tuple[str | None, str | None, str]],
+    context: dict | None = None,
 ) -> list[dict]:
     """OCR batch dùng chung, LLM từng tệp, giữ nguyên shape kết quả upload-session."""
     try:
@@ -74,7 +81,7 @@ async def classify_files(
     ]
     # Chạy song song nhưng mỗi coroutine dựng messages/prompt riêng cho đúng một tệp.
     predicted = await asyncio.gather(*(
-        _classify_one(file, result, spec)
+        _classify_one(file, result, spec, context)
         for file, result in zip(payload_files, normalized_ocr)
     ))
 

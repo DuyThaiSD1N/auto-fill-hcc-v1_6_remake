@@ -37,7 +37,8 @@ AUTHORIZATION_FIELDS: list[dict] = [
         "Họ tên người ủy quyền/bên ủy quyền trên văn bản ủy quyền."
     )},
     {"name": "Authorization_GrantorDateOfBirth", "desc": (
-        "Ngày sinh người ủy quyền, dd/mm/yyyy; chỉ trả khi tài liệu ghi rõ."
+        "Ngày sinh của BÊN ỦY QUYỀN (bên A) ghi trên văn bản ủy quyền, dd/mm/yyyy. "
+        "Văn bản có ngày sinh của cả hai bên; KHÔNG lấy ngày sinh của bên được ủy quyền."
     )},
     {"name": "Authorization_Relationship", "desc": (
         "Quan hệ của người ủy quyền với người được ủy quyền; chỉ trả khi tài liệu ghi rõ, không suy đoán."

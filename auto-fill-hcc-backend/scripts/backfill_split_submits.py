@@ -32,13 +32,18 @@ An toàn:
     thật chen vào giữa cũng không cộng dồn sai.
   - Chạy lại nhiều lần an toàn: hồ sơ đã đủ thì tự bỏ qua.
 
+MẶC ĐỊNH CHỈ CHỨNG THỰC BẢN SAO. Hai thủ tục kia phải gọi đích danh (--thu-tuc chu-ky / ctv /
+tat-ca). Trước đây mặc định là cả 3: chạy thử có cờ mà lúc --apply quên cờ là ghi lan sang chữ
+ký/CTV — mà quy tắc đếm chữ ký (trừ giấy tờ tùy thân) lệch với bản sao, sai là số liệu sai thật.
+
 Chạy trên server (thư mục backend):
-  python -m scripts.backfill_split_submits                       # chạy thử, in bảng
-  python -m scripts.backfill_split_submits --apply               # ghi thật
+  python -m scripts.backfill_split_submits                       # chạy thử bản sao, in bảng
+  python -m scripts.backfill_split_submits --apply               # ghi thật (bản sao)
   python -m scripts.backfill_split_submits --ho-so <id>          # chỉ 1 hồ sơ
   python -m scripts.backfill_split_submits --thu-tuc chu-ky      # chỉ chứng thực chữ ký
+  python -m scripts.backfill_split_submits --thu-tuc tat-ca      # cả 3 thủ tục
   python -m scripts.backfill_split_submits --tu 2026-09-01 --den 2026-09-18
-  python -m scripts.backfill_split_submits --revert --apply      # gỡ toàn bộ sự kiện đã tái tạo
+  python -m scripts.backfill_split_submits --revert --apply      # gỡ sự kiện tái tạo (theo --thu-tuc)
 """
 import argparse
 import os
@@ -209,9 +214,10 @@ def apply_backfill(db, rows: list[dict]) -> int:
     return done
 
 
-def revert_backfill(db, *, dossier_id=None, write=False) -> int:
-    """Gỡ mọi sự kiện tái tạo và trừ lại submit_count tương ứng."""
-    query: dict = {"submit_events.reconstructed": True}
+def revert_backfill(db, *, dossier_id=None, write=False, procedures=PROCEDURES) -> int:
+    """Gỡ sự kiện tái tạo và trừ lại submit_count tương ứng — CHỈ trong các thủ tục được chọn,
+    để gỡ đợt bản sao không kéo theo đợt chữ ký đã chạy riêng trước đó."""
+    query: dict = {"submit_events.reconstructed": True, "procedure": {"$in": list(procedures)}}
     if dossier_id:
         query["_id"] = dossier_id
     n = 0
@@ -250,8 +256,8 @@ def main() -> None:
     ap.add_argument("--ho-so", dest="dossier_id", help="chỉ xử lý 1 hồ sơ")
     ap.add_argument("--tu", help="lọc hồ sơ BẮT ĐẦU từ ngày (YYYY-MM-DD, giờ VN)")
     ap.add_argument("--den", help="lọc hồ sơ BẮT ĐẦU đến hết ngày (YYYY-MM-DD, giờ VN)")
-    ap.add_argument("--thu-tuc", choices=["ban-sao", "chu-ky", "ctv"],
-                    help="chỉ xử lý 1 loại chứng thực (mặc định: cả 3)")
+    ap.add_argument("--thu-tuc", choices=["ban-sao", "chu-ky", "ctv", "tat-ca"], default="ban-sao",
+                    help="loại chứng thực cần xử lý (mặc định: CHỈ bản sao)")
     ap.add_argument("--gom-mo-ho", action="store_true",
                     help="sửa cả hồ sơ mơ hồ (nhiều lượt đa tab số tệp khác nhau) theo lượt MỚI NHẤT")
     args = ap.parse_args()
@@ -259,10 +265,15 @@ def main() -> None:
     client = MongoClient(settings.mongo_dsn)
     db = client[settings.mongo_db]
     mode = "GHI THẬT" if args.apply else "CHẠY THỬ (không ghi)"
+    procedures = PROCEDURES if args.thu_tuc == "tat-ca" else (
+        {"ban-sao": "chung-thuc-ban-sao", "chu-ky": "chung-thuc-chu-ky",
+         "ctv": "chung-thuc-chu-ky-nguoi-dich-ctv"}[args.thu_tuc],
+    )
+    print(f"Thủ tục: {', '.join(SHORT[p] for p in procedures)}")
 
     if args.revert:
         print(f"== GỠ sự kiện tái tạo — {mode} ==")
-        n = revert_backfill(db, dossier_id=args.dossier_id, write=args.apply)
+        n = revert_backfill(db, dossier_id=args.dossier_id, write=args.apply, procedures=procedures)
         print(f"\n{'Đã gỡ' if args.apply else 'Sẽ gỡ'} ở {n} hồ sơ.")
         return
 
@@ -270,11 +281,7 @@ def main() -> None:
         db, dossier_id=args.dossier_id,
         date_from=_parse_day(args.tu), date_to=_parse_day(args.den, end=True),
         take_ambiguous=args.gom_mo_ho,
-        procedures=(
-            ({"ban-sao": "chung-thuc-ban-sao", "chu-ky": "chung-thuc-chu-ky",
-              "ctv": "chung-thuc-chu-ky-nguoi-dich-ctv"}[args.thu_tuc],)
-            if args.thu_tuc else PROCEDURES
-        ),
+        procedures=procedures,
     )
     print(f"== Tái tạo lần nộp chứng thực đa tab — {mode} ==")
     _print_rows("CẦN BỔ SUNG", todo)
