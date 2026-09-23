@@ -130,6 +130,12 @@ from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
 from app.pipelines.cho_thue_dat_thue_rung.attach import plan as cho_thue_dat_thue_rung_attach
 from app.pipelines.cho_thue_dat_thue_rung.process import run as cho_thue_dat_thue_rung_process
+from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhung_sqdd_du_an.attach import (
+    plan as to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_attach,
+)
+from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhung_sqdd_du_an.process import (
+    run as to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_process,
+)
 from app.pipelines.tang_cho_qsdd_nha_nuoc_chua_cap_gcn.attach import (
     plan as tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
 )
@@ -2467,6 +2473,86 @@ PROCEDURES: list[dict] = [
             "bộ không cần tick.\n"
             "⚠ Giấy tờ của thủ tục này thường chỉ ghi NĂM SINH và không ghi dân tộc/giới tính — hệ "
             "thống để trống các ô đó thay vì bịa; giới tính chỉ suy từ số CCCD 12 số."
+        ),
+    },
+    {
+        "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an",
+        # Mã 1.115681 — thủ tục của DOANH NGHIỆP: tổ chức kinh tế đã được chấp thuận chủ trương đầu
+        # tư nay xin nhận chuyển nhượng/thuê/nhận góp vốn quyền sử dụng đất của các hộ dân để gom đủ
+        # mặt bằng dự án. Cùng cổng, cùng eForm iGate legacy (CongDan_*/ChuHoSo_*) với
+        # 1.115650/1.115678/1.115690/1.115693 nên dùng lại fill-legacy.js.
+        #
+        # Khác các thủ tục anh em ở ba chỗ: (a) CHỦ HỒ SƠ LÀ PHÁP NHÂN → "Đối tượng nộp hồ sơ" = DN,
+        # cổng ẩn hết 7 ô nhân thân cá nhân của khối chủ hồ sơ; (b) ô "Tên cơ quan/tổ chức" của khối
+        # NGƯỜI NỘP là ĐƠN VỊ ĐƯỢC ỦY QUYỀN — một pháp nhân KHÁC chủ hồ sơ; (c) bước đính kèm không
+        # có bảng "Thành phần hồ sơ nộp" nên mọi tệp xuống "Giấy tờ khác" (target=new), hai dòng đầu
+        # giữ nguyên văn tên thành phần theo ảnh hướng dẫn.
+        #
+        # ⚠ NHẬN DIỆN: tiêu đề rất dài và có nhiều thủ tục đất đai cùng cổng chứa các cụm con
+        # ("nhận chuyển nhượng", "thực hiện dự án đầu tư"). Cụm RIÊNG chỉ thủ tục này có là căn cứ
+        # pháp lý "điểm a, b khoản 1 Điều 127 Luật Đất đai" — KHÔNG được rút gọn cụm đó.
+        # textPriority để entry có tổng độ dài cụm lớn nhất thắng khi tiêu đề lồng nhau.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn bằng "
+                "quyền sử dụng đất để thực hiện dự án đầu tư",
+                "điểm a, b khoản 1 Điều 127 Luật Đất đai",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn "
+            "bằng quyền sử dụng đất để thực hiện dự án đầu tư theo quy định tại điểm a, b khoản 1 "
+            "Điều 127 Luật Đất đai"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Hồ sơ CỦA TỔ CHỨC KINH TẾ (doanh nghiệp) gom mặt bằng thực hiện dự án đầu tư. Giấy tờ "
+            "cần tải lên (bộ mẫu gồm 7 tệp):\n"
+            "1. Văn bản đề nghị của tổ chức (đơn theo mẫu, có số hiệu dạng 06/CV-MP) — nguồn chính "
+            "của tên tổ chức, mã số doanh nghiệp, địa chỉ trụ sở MỚI và toàn bộ phần kê khai đất.\n"
+            "2. Trích lục/sơ đồ vị trí khu đất đề xuất thực hiện dự án, kèm Giấy chứng nhận quyền sử "
+            "dụng đất của các hộ dân có đất chuyển nhượng.\n"
+            "3. Quyết định chấp thuận chủ trương đầu tư đồng thời chấp thuận nhà đầu tư.\n"
+            "4. Giấy chứng nhận đăng ký doanh nghiệp — BẢN MỚI NHẤT (chú ý dòng \"đăng ký thay đổi "
+            "lần thứ …\"), là nguồn chuẩn của tên công ty, mã số doanh nghiệp, điện thoại và nhân "
+            "thân người đại diện theo pháp luật.\n"
+            "5. Giấy ủy quyền — nguồn nhân thân của NGƯỜI ĐI NỘP và của ĐƠN VỊ ĐƯỢC ỦY QUYỀN.\n"
+            "6. Quyết định thu hồi/cho thuê đất của đợt trước, kèm sơ họa mặt bằng và mảnh đo đạc "
+            "chỉnh lý (nếu dự án đã được giao một phần đất).\n"
+            "7. Sơ họa tổng mặt bằng xây dựng dự án.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "⚠ ĐÍNH KÈM: màn hình này KHÔNG có bảng \"Thành phần hồ sơ nộp\" (cổng ghi \"Hồ sơ "
+            "không yêu cầu giấy tờ kèm theo\") → hệ thống đính TẤT CẢ tệp vào mục \"Giấy tờ khác\", "
+            "mỗi tệp một dòng kèm tên mô tả. Hai dòng đầu giữ NGUYÊN VĂN tên thành phần theo ảnh "
+            "hướng dẫn (\"Trích lục vị trí khu đất…\" và \"Văn bản đề nghị chấp thuận cho tổ chức "
+            "kinh tế nhận chuyển nhượng…\"), các tệp còn lại là đính kèm chung. Không tách tệp sang "
+            "chỗ khác, không bỏ sót tệp nào. Cổng giới hạn 6 MB mỗi tệp — tệp quyết định cho thuê đất "
+            "thường sát trần, cần nén nếu cổng báo quá dung lượng.\n"
+            "⚠ Ô \"Về việc (*)\" đã được cổng điền sẵn đúng tên thủ tục — GIỮ NGUYÊN, hệ thống cố ý "
+            "không ghi đè.\n"
+            "⚠ ĐIỀN FORM — CHỦ HỒ SƠ LÀ TỔ CHỨC: \"Đối tượng nộp hồ sơ\" được đặt là Doanh nghiệp/"
+            "Tổ chức nên cổng ẩn hết các ô nhân thân cá nhân của khối chủ hồ sơ; hệ thống điền tên "
+            "công ty, mã số thuế và địa chỉ trụ sở. Nhân thân người đại diện theo pháp luật chỉ được "
+            "lưu để đối chiếu, bước này không có ô.\n"
+            "⚠ ĐIỀN FORM — Ô \"Tên cơ quan/tổ chức\" CỦA KHỐI NGƯỜI NỘP là ĐƠN VỊ ĐI NỘP THAY (bên "
+            "được ủy quyền), KHÔNG phải tổ chức chủ hồ sơ. Hai ô \"Họ và tên\" và \"Số Căn cước\" "
+            "của khối người nộp là ô readonly do cổng đổ từ tài khoản đang đăng nhập — hệ thống CỐ Ý "
+            "KHÔNG điền hai ô này, vì ghi vào đó là script của cổng xoá trắng \"Di động\" và \"Số "
+            "Căn cước\". Tài khoản đăng nhập phải chính là người được ủy quyền (hoặc người đại diện "
+            "theo pháp luật nếu tự nộp); hệ thống sẽ cảnh báo và để trống cả khối nếu không khớp. "
+            "Checkbox \"Người nộp là chủ hồ sơ\" TUYỆT ĐỐI không tick với hồ sơ nộp theo ủy quyền.\n"
+            "⚠ ĐỊA GIỚI HÀNH CHÍNH: Giấy chứng nhận đăng ký doanh nghiệp và các quyết định còn in "
+            "địa giới TRƯỚC 01/7/2025 (\"Xã Âu Lâu, Thành phố Yên Bái, Tỉnh Yên Bái\") trong khi Đơn "
+            "đề nghị đã in địa giới mới — hệ thống tự quy đổi sang danh mục hiện hành của cổng, cán "
+            "bộ vẫn nên đối chiếu Phường/Xã sau khi điền.\n"
+            "⚠ Các hộ gia đình đứng tên trên Giấy chứng nhận quyền sử dụng đất là BÊN CHUYỂN NHƯỢNG — "
+            "hệ thống chỉ lưu để đối chiếu, không đưa vào chủ hồ sơ hay người nộp."
         ),
     },
     {
@@ -5448,6 +5534,7 @@ _PIPELINE = {
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_process,
     "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_process,
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an": to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_process,
     "dang-ky-dat-dai-lan-dau-lam-dong": dang_ky_dat_dai_lan_dau_lam_dong_process,
     "chuyen-muc-dich-su-dung-dat-lam-dong": chuyen_muc_dich_su_dung_dat_lam_dong_process,
     "dang-ky-dien-tich-tang-them-lam-dong": dang_ky_dien_tich_tang_them_lam_dong_process,
@@ -5617,6 +5704,7 @@ _ATTACH_PIPELINE = {
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_attach,
     "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an": to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_attach,
     "dang-ky-bien-phap-bao-dam-quang-ninh": dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "xoa-dang-ky-bien-phap-bao-dam-quang-ninh": xoa_dang_ky_bien_phap_bao_dam_quang_ninh_attach,
     "dang-ky-dat-dai-lan-dau-bac-ninh": dang_ky_dat_dai_lan_dau_bac_ninh_attach,

@@ -4547,6 +4547,10 @@ ocrBtn.addEventListener("click", async () => {
       // người được ủy quyền chứ không phải người tặng cho → mốc tài khoản là thứ DUY NHẤT chốt được
       // mode; thiếu nó BE phải đoán từ giấy tờ và cảnh báo.
       cfg.key === "tang-cho-qsdd-nha-nuoc-chua-cap-gcn" ||
+      // [Lào Cai] 1.115681: hồ sơ của TỔ CHỨC KINH TẾ, gần như luôn ủy quyền cho một pháp nhân
+      // khác đi nộp → mốc tài khoản vừa chốt mode, vừa quyết định ô "Tên cơ quan/tổ chức" của
+      // khối người nộp mang tên đơn vị được ủy quyền hay tên chủ hồ sơ; thiếu nó BE bỏ trống cả khối.
+      cfg.key === "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
