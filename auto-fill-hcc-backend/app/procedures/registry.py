@@ -136,6 +136,18 @@ from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhung_sqdd_du_an.attach import (
 from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhung_sqdd_du_an.process import (
     run as to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_process,
 )
+from app.pipelines.xac_dinh_lai_dien_tich_dat_o.attach import (
+    plan as xac_dinh_lai_dien_tich_dat_o_attach,
+)
+from app.pipelines.xac_dinh_lai_dien_tich_dat_o.process import (
+    run as xac_dinh_lai_dien_tich_dat_o_process,
+)
+from app.pipelines.su_dung_dat_ket_hop_da_muc_dich_cap_xa.attach import (
+    plan as su_dung_dat_ket_hop_da_muc_dich_cap_xa_attach,
+)
+from app.pipelines.su_dung_dat_ket_hop_da_muc_dich_cap_xa.process import (
+    run as su_dung_dat_ket_hop_da_muc_dich_cap_xa_process,
+)
 from app.pipelines.tang_cho_qsdd_nha_nuoc_chua_cap_gcn.attach import (
     plan as tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
 )
@@ -3686,6 +3698,140 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004",
+        # Mã 1.115685 — cổng dichvucong.laocai.gov.vn (iGate VNPT legacy, HTML/jQuery thuần). Bước 2
+        # dùng CÙNG bộ ô CongDan_*/ChuHoSo_* với 1.115650/1.115678/1.115693/1.115694 (engine dom-*),
+        # mapping theo "mapping_xac_dinh_lai_dien_tich_dat_o_1.115685.xlsx" (2 bản DOM cá nhân+tổ chức).
+        #
+        # Bước "Thành phần hồ sơ" là bảng PHẲNG 3 DÒNG (attach/planner.py), khớp ô theo slotIndex +
+        # tích checkbox từng dòng; giấy tờ không có dòng riêng xuống "Giấy tờ khác". Dòng Đơn nhận
+        # NHIỀU TỆP (hồ sơ mẫu có cả bản ký số lẫn bản chưa ký) — engine gom theo slotKey.
+        #
+        # ⚑ VA CHẠM NHẬN DIỆN VỚI BẢN QUẢNG NGÃI: `xac-dinh-lai-dien-tich-dat-o-quang-ngai` mang TÊN
+        # THỦ TỤC TRÙNG KHÍT (cùng là 1.012817 gốc, mỗi tỉnh một bản triển khai). Entry đó khai
+        # textPriority + urlScope dichvucong.quangngai.gov.vn; entry này khóa host Lào Cai. urlScope
+        # là thứ DUY NHẤT tách được hai bên — KHÔNG được bỏ, và KHÔNG khai textPriority ở đây để
+        # nhánh ưu tiên của popup.js vẫn thuộc về bản Quảng Ngãi như trước. Có test chặn cả hai chiều.
+        #
+        # Cụm text khai bản thường (không hoa) vì hàm chuẩn hoá của popup.js đã hạ chữ thường.
+        # Key trùng mục ke_khai_links (1.115685).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp giấy chứng nhận "
+                "trước ngày 01 tháng 7 năm 2004",
+            ],
+            "headingDisabled": True,
+        },
+        "label": (
+            "[Lào Cai] Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng "
+            "nhận trước ngày 01 tháng 7 năm 2004"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục dùng khi Giấy chứng nhận cấp TRƯỚC 01/7/2004 ghi gộp đất ở với đất vườn/ao trong "
+            "cùng một thửa, nay đề nghị xác định lại phần nào là đất ở. TỔNG diện tích thửa KHÔNG "
+            "đổi — không phải đo đạc lại thửa (1.115693) cũng không phải mua thêm đất (1.115694).\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất → dòng 1. Cổng treo mẫu tải "
+            "về là Mẫu số 24 (QĐ 47/2026/QĐ-UBND); hồ sơ dùng Mẫu số 18 cũ vẫn đọc được nhưng trợ lý "
+            "sẽ cảnh báo để cán bộ đề nghị lập lại đơn theo mẫu cổng đang treo.\n"
+            "2. Giấy chứng nhận đã cấp, scan cả bìa lẫn các trang 'Những thay đổi sau khi cấp Giấy "
+            "chứng nhận' → dòng 2. Nếu giấy của người dân đã có trong kho dữ liệu thì có thể dùng nút "
+            "'Lấy giấy tờ từ KDL' thay cho việc scan.\n"
+            "3. Văn bản về việc đại diện theo pháp luật dân sự → dòng 3, CHỈ khi nộp thay.\n"
+            "4. CCCD của người sử dụng đất (và của người nộp nếu nộp thay); nếu có: bản án/quyết định "
+            "của Toà án, giấy xác nhận cư trú, tờ khai lệ phí trước bạ → xuống 'Giấy tờ khác'.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "⚠ Bản scan của thủ tục này hay có TRANG TRẮNG ở đầu tệp và hay có hai bản đơn gần trùng "
+            "nhau (một bản đã ký số, một bản chưa) — trợ lý đọc hết các trang và gắn CẢ HAI bản vào "
+            "cùng dòng Đơn, ô 'Số bản' vẫn để 1; cán bộ bỏ bớt bản trùng nếu nơi tiếp nhận yêu cầu.\n"
+            "⚠ Cổng giới hạn 6 MB mỗi tệp. Bản scan Giấy chứng nhận cũ quét màu rất hay vượt — giảm "
+            "về 300 dpi hoặc tách tệp; hệ thống báo trước tệp nào vượt.\n"
+            "⚠ ĐIỀN FORM: chủ hồ sơ = người đứng tên mục 1.a) của Đơn, KHÔNG phải tên in trên trang "
+            "chứng nhận gốc của Giấy chứng nhận (giấy cấp trước 2004 đã qua nhiều lần sang tên). Giấy "
+            "chứng nhận cũ ghi số CMND 9 số khác số CCCD 12 số hiện tại và ghi địa chỉ theo đơn vị "
+            "hành chính CŨ — lấy theo CCCD/Đơn, phần trên giấy chỉ để đối chiếu.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản "
+            "định danh — phải đăng nhập đúng tài khoản của NGƯỜI ĐI NỘP. Trợ lý chỉ điền nhân thân "
+            "người nộp khi hồ sơ có giấy tờ của CHÍNH người đó; thiếu thì để trống và cảnh báo để cán "
+            "bộ nhập tay, KHÔNG lấy của chủ hồ sơ.\n"
+            "Ô 'Về việc' (*) ở bước Thành phần hồ sơ do cổng điền sẵn — trợ lý KHÔNG ghi đè. Ô 'Ghi "
+            "chú' để trống; nếu Đơn kê giấy tờ ở mục 3.(2)/3.(3) mà chưa có tệp thì cán bộ ghi rõ vào "
+            "đó trước khi nộp."
+        ),
+    },
+    {
+        "key": "su-dung-dat-ket-hop-da-muc-dich-cap-xa",
+        # Mã 1.115682 — cổng dichvucong.laocai.gov.vn (iGate VNPT legacy, HTML/jQuery thuần: mapping
+        # đếm được formcontrolname = 0, formio-component = 0). Bước 2 dùng CÙNG bộ ô CongDan_*/
+        # ChuHoSo_* với 1.115650/1.115678/1.115681/1.115685/1.115693/1.115694 (engine dom-*), mapping
+        # theo "Mapping_1.115682_Su-dung-dat-ket-hop-da-muc-dich_Buoc2-Buoc3.xlsx".
+        #
+        # ⚑ BƯỚC ĐÍNH KÈM KHÔNG CÓ BẢNG "THÀNH PHẦN HỒ SƠ": khối "Biểu mẫu giấy tờ" chỉ in "(Hồ sơ
+        # không yêu cầu giấy tờ kèm theo)", toàn bộ giấy tờ đính ở danh sách "Giấy tờ khác". Vì vậy
+        # attach/planner.py KHÔNG phát fixed-slot/slotIndex/tickRow nào — khác hẳn 1.115685 và
+        # 1.115693 ở cùng cổng. Đừng "đồng bộ" hai planner đó với nhau.
+        #
+        # Cơ sở pháp lý: Điều 218 Luật Đất đai 2024 + Điều 99 Nghị định 102/2024/NĐ-CP; đơn theo Mẫu
+        # số 13. KHÔNG phải chuyển mục đích sử dụng đất — mục đích chính của thửa giữ nguyên, nên
+        # không đụng tới chuyen-md-sd-dat-phuong-xa-lao-cai / chuyen-doi-md-sd-dat-lao-cai.
+        #
+        # Cụm text khai bản thường (không hoa) vì hàm chuẩn hoá của popup.js đã hạ chữ thường.
+        # urlScope khóa host Lào Cai để cụm "sử dụng đất kết hợp đa mục đích" không quét sang cổng
+        # tỉnh khác nếu sau này thêm bản địa phương thứ hai của cùng thủ tục.
+        # Key trùng mục ke_khai_links (1.115682).
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": ["sử dụng đất kết hợp đa mục đích"],
+            "headingDisabled": True,
+        },
+        "label": "[Lào Cai] Sử dụng đất kết hợp đa mục đích (cấp xã)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Thủ tục dùng khi người sử dụng đất muốn dùng KẾT HỢP một phần thửa vào mục đích khác "
+            "(thương mại, dịch vụ, du lịch…) trong khi mục đích chính trên Giấy chứng nhận GIỮ "
+            "NGUYÊN — theo Điều 218 Luật Đất đai 2024 và Điều 99 Nghị định 102/2024/NĐ-CP. Không "
+            "phải chuyển mục đích sử dụng đất, không phải tách thửa, không phải cấp đổi Giấy chứng "
+            "nhận.\n"
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị sử dụng đất kết hợp đa mục đích theo Mẫu số 13 (đơn ngắn, có 'Kính "
+            "gửi UBND phường/xã', mục 5.2 ghi diện tích kết hợp).\n"
+            "2. Phương án sử dụng đất kết hợp — tập thuyết minh dài, gộp chung cả bản đồ, mặt bằng, "
+            "mặt đứng, bản vẽ kết cấu thành MỘT tệp.\n"
+            "3. Giấy chứng nhận đã cấp (scan cả trang 1 và trang sơ đồ thửa đất/toạ độ góc ranh).\n"
+            "4. Bản sao Căn cước công dân của chủ hộ — mục 6 của Đơn Mẫu 13 có kê, rất hay bị quên.\n"
+            "Nếu nộp thay theo ủy quyền thì tải thêm Giấy ủy quyền và CCCD của người đi nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "⚠ MÀN HÌNH ĐÍNH KÈM KHÔNG CÓ BẢNG THÀNH PHẦN HỒ SƠ — cổng ghi '(Hồ sơ không yêu cầu "
+            "giấy tờ kèm theo)'. Trợ lý tạo mỗi giấy tờ một dòng ở danh sách 'Giấy tờ khác' và gõ "
+            "sẵn tên; cán bộ soát lại tên từng dòng trước khi bấm 'Đồng ý và tiếp tục'.\n"
+            "⚠ Cổng giới hạn 6 MB mỗi tệp. Tệp Phương án kèm bản đồ/bản vẽ rất hay vượt — giảm ảnh "
+            "quét về 300 dpi hoặc tách thuyết minh và bản vẽ thành hai tệp; hệ thống báo trước tệp "
+            "nào vượt.\n"
+            "⚠ ĐIỀN FORM — BA TỈNH TRÊN CÙNG MỘT HỒ SƠ: tỉnh có THỬA ĐẤT (trên Giấy chứng nhận) "
+            "khác tỉnh NƠI THƯỜNG TRÚ của chủ hồ sơ (mục 2 của Đơn) và khác tỉnh của người đi nộp. "
+            "Giấy chứng nhận KHÔNG ghi nơi thường trú, chỉ ghi địa chỉ thửa đất — lệch tỉnh ở thủ "
+            "tục này là bình thường, không phải lỗi.\n"
+            "⚠ Đơn và Phương án hay LỆCH NHAU về diện tích sử dụng kết hợp. Trợ lý đọc cả hai con "
+            "số, lấy mục 5.2 của Đơn làm chuẩn và cảnh báo để cán bộ yêu cầu người dân chỉnh lại "
+            "cho thống nhất — KHÔNG tự sửa số. Trợ lý cũng nhắc khi diện tích kết hợp vượt 50% "
+            "tổng diện tích thửa.\n"
+            "⚠ Ô 'Họ và tên' và 'Số Căn cước' của khối người nộp là readonly, cổng điền từ tài khoản "
+            "định danh. Ca thường gặp là cán bộ một cửa nộp thay: khi hồ sơ không có giấy tờ của "
+            "chính người đang đăng nhập, trợ lý CỐ Ý để trống cả khối 'Thông tin người nộp' và cảnh "
+            "báo — cán bộ tự nhập nhân thân của mình, KHÔNG lấy của chủ hồ sơ.\n"
+            "Ô 'Về việc' (*) do cổng điền sẵn — trợ lý KHÔNG ghi đè. Ô 'Ghi chú' để trống; nếu giấy "
+            "tờ Đơn kê ở mục 6 mà chưa nộp được thì cán bộ ghi rõ vào đó trước khi nộp."
+        ),
+    },
+    {
         "key": "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua",
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — bước 2 dùng CÙNG bộ ô
         # CongDan_*/ChuHoSo_* với 1.115667/1.115668 (engine dom-*), mapping theo
@@ -5546,6 +5692,8 @@ _PIPELINE = {
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_process,
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_process,
+    "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_process,
+    "su-dung-dat-ket-hop-da-muc-dich-cap-xa": su_dung_dat_ket_hop_da_muc_dich_cap_xa_process,
     "dinh-chinh-sai-sot-quang-ngai": dinh_chinh_sai_sot_quang_ngai_process,
     "dinh-chinh-gcn-da-cap-ninh-binh": dinh_chinh_gcn_da_cap_ninh_binh_process,
     "dinh-chinh-da-cap-ninh-binh": dinh_chinh_da_cap_ninh_binh_process,
@@ -5680,6 +5828,8 @@ _ATTACH_PIPELINE = {
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_attach,
     "dang-ky-dat-dai-lan-dau-quang-ngai": dang_ky_dat_dai_lan_dau_quang_ngai_attach,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_attach,
+    "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_attach,
+    "su-dung-dat-ket-hop-da-muc-dich-cap-xa": su_dung_dat_ket_hop_da_muc_dich_cap_xa_attach,
     "dinh-chinh-sai-sot-quang-ngai": dinh_chinh_sai_sot_quang_ngai_attach,
     "dinh-chinh-gcn-da-cap-ninh-binh": dinh_chinh_gcn_da_cap_ninh_binh_attach,
     "dinh-chinh-da-cap-ninh-binh": dinh_chinh_da_cap_ninh_binh_attach,

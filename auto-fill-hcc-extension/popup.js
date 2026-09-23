@@ -711,6 +711,18 @@ function isHaiChauDaNangUser(user) {
   return isDaNangBusinessUser(user) && normalizeProcedureSearch(user?.xa).includes("hai chau");
 }
 
+// ===== Nghiệp vụ riêng phường Đắk Bla — tỉnh Lâm Đồng (chỉ áp cho tài khoản của địa bàn này) =====
+// Ô "Lý do giải thể" (trang Chấm dứt hoạt động) LUÔN là câu cố định, bất kể Thông báo chấm dứt
+// trong hồ sơ ghi lý do gì — kể cả khi backend không đọc được lý do nào.
+const DAK_BLA_DISSOLUTION_REASON = "Hộ kinh doanh không hiệu quả";
+
+/** Tài khoản phường Đắk Bla — tỉnh Lâm Đồng (/auth/me trả `xa` + `tinh`). */
+function isDakBlaLamDongUser(user) {
+  // Phải khớp CẢ phường lẫn tỉnh: chỉ địa bàn này mới ghi đè lý do giải thể.
+  return normalizeProcedureSearch(user?.tinh).includes("lam dong")
+    && normalizeProcedureSearch(user?.xa).includes("dak bla");
+}
+
 function buildBusinessDefaults(user) {
   const defaults = {};
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
@@ -722,6 +734,7 @@ function buildBusinessDefaults(user) {
     defaults.dissolutionReason = HAI_CHAU_DISSOLUTION_REASON;
     defaults.postalServiceAddress = HAI_CHAU_POSTAL_ADDRESS;
   }
+  if (isDakBlaLamDongUser(user)) defaults.dissolutionReason = DAK_BLA_DISSOLUTION_REASON;
   return Object.keys(defaults).length ? defaults : null;
 }
 
@@ -4551,6 +4564,13 @@ ocrBtn.addEventListener("click", async () => {
       // khác đi nộp → mốc tài khoản vừa chốt mode, vừa quyết định ô "Tên cơ quan/tổ chức" của
       // khối người nộp mang tên đơn vị được ủy quyền hay tên chủ hồ sơ; thiếu nó BE bỏ trống cả khối.
       cfg.key === "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an" ||
+      // [Lào Cai] 1.115685: hồ sơ thường là người dân TỰ NỘP, nhưng khối "Thông tin người nộp" chỉ
+      // được điền khi đối chiếu khớp với tài khoản đang đăng nhập → thiếu mốc là BE bỏ trống cả khối.
+      cfg.key === "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004" ||
+      // [Lào Cai] 1.115682: ca thường gặp là CÁN BỘ MỘT CỬA nộp thay người dân (chủ hồ sơ thường
+      // trú tỉnh khác nơi có thửa đất) → mốc tài khoản là thứ DUY NHẤT tách được người nộp khỏi chủ
+      // hồ sơ; thiếu nó BE cố ý bỏ trống cả khối "Thông tin người nộp" thay vì điền nhầm nhân thân.
+      cfg.key === "su-dung-dat-ket-hop-da-muc-dich-cap-xa" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
