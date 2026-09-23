@@ -481,6 +481,75 @@ def _card_issue_place(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# MẶT SAU CCCD/CĂN CƯỚC GHÉP VỚI NGƯỜI BẰNG MRZ, KHÔNG BẰNG THỨ TỰ TRANG
+#
+# Mặt sau thẻ không in họ tên nên không biết là của ai — trừ dải MRZ in ở CUỐI mặt sau, dòng 1
+# mang đủ 12 số định danh. Người dân hay scan dồn mọi mặt trước lên một trang, mọi mặt sau xuống
+# trang kế (req_e30f70b0d62b: trang 2 ba mặt trước con/mẹ/cha, trang 3 ba mặt sau), nên ghép theo
+# vị trí trang là ghép sai người: agent đã tráo ngày cấp/nơi cấp của con và mẹ. Ngày cấp, nơi
+# cấp in NGAY TRÊN dải MRZ của chính tấm thẻ đó.
+# ---------------------------------------------------------------------------
+
+# Dòng 1 MRZ: "IDVNM" + 9 ký tự số thẻ + 1 check digit + 12 số định danh + "<<". OCR hay đọc số 0
+# thành chữ O ("IDVNMO62009749902706...") nên nhận cả chữ rồi mới chuẩn hoá.
+_MRZ_ID_LINE_RE = re.compile(r"IDVNM[0-9A-Z]{10}([0-9OQDIl]{12})<", flags=re.IGNORECASE)
+_MRZ_DIGIT_FIXES = str.maketrans({"O": "0", "o": "0", "Q": "0", "D": "0", "I": "1", "l": "1"})
+_ISSUE_PLACE_MARKERS = (
+    ("bo cong an", ISSUER_BO_CONG_AN),
+    ("cuc canh sat", ISSUER_CUC),
+    ("quan ly hanh chinh ve trat tu", ISSUER_CUC),
+)
+
+
+def _last_issue_date(text: str) -> str:
+    """Ngày cấp GẦN dải MRZ nhất — đoạn phía trên có thể còn đuôi của thẻ trước."""
+    found = [
+        (match.start(), match.group(1))
+        for pattern in _ISSUE_DATE_PATTERNS
+        for match in re.finditer(pattern, text, flags=re.IGNORECASE)
+    ]
+    return normalize_date(max(found)[1]) if found else ""
+
+
+def _last_issue_place(text: str) -> str:
+    folded = _fold(text)
+    found = [
+        (folded.rfind(marker), issuer)
+        for marker, issuer in _ISSUE_PLACE_MARKERS
+        if marker in folded
+    ]
+    return max(found)[1] if found else ""
+
+
+def _mrz_card_backs(documents: list[dict]) -> dict[str, dict]:
+    """Số định danh → ngày cấp/nơi cấp đọc từ mặt sau thẻ có dải MRZ mang đúng số đó.
+
+    Đoạn mặt sau của một thẻ = từ sau dải MRZ trước đó (hoặc đầu trang) tới dòng 1 MRZ của nó.
+    Cùng một số mà hai mặt sau ghi khác nhau thì không chốt được — bỏ số đó.
+    """
+    backs: dict[str, dict] = {}
+    conflicted: set[str] = set()
+    for document in documents:
+        for page in _PAGE_BREAK_RE.split(str(document.get("text") or "")):
+            start = 0
+            for match in _MRZ_ID_LINE_RE.finditer(page):
+                segment, start = page[start:match.start()], match.end()
+                identity = match.group(1).translate(_MRZ_DIGIT_FIXES)
+                if not identity.isdigit():
+                    continue
+                card = {
+                    "issue_date": _last_issue_date(segment),
+                    "issue_place": _last_issue_place(segment),
+                }
+                if not any(card.values()):
+                    continue
+                if identity in backs and backs[identity] != card:
+                    conflicted.add(identity)
+                backs[identity] = card
+    return {identity: card for identity, card in backs.items() if identity not in conflicted}
+
+
+# ---------------------------------------------------------------------------
 # TÁCH TRANG TRƯỚC KHI ĐỌC NHÂN THÂN GIẤY TỜ
 #
 # Người dân hay scan CẢ TẬP hồ sơ thành MỘT file: tờ khai, bản cam đoan, CCCD con, CCCD mẹ,
@@ -1407,6 +1476,12 @@ def _apply_identity_card_facts(
     ]
     if not people:
         return sections
+    # Mặt sau gộp vào mặt trước theo thứ tự trang có thể là mặt sau của người khác; MRZ thì không.
+    backs = _mrz_card_backs(documents)
+    for person in people:
+        back = backs.get(person.get("id") or "")
+        if person.get("is_identity") and back:
+            person.update({key: value for key, value in back.items() if value})
 
     result = dict(sections)
     for tag in ("cha", "me"):
@@ -1650,6 +1725,68 @@ def _apply_identity_card_overrides(
     return result
 
 
+_MRZ_BACKS_TAG = "mat_sau_the_theo_mrz"
+_MRZ_BACK_LINE_RE = re.compile(r"^(\d{12}) \| Ngày cấp: ([^|]*) \| Nơi cấp: (.*)$", flags=re.MULTILINE)
+_MRZ_OVERRIDE_PREFIXES = ("Subject_", "Mother_", "Father_", "Requester_")
+
+
+def _render_mrz_backs(documents: list[dict]) -> str:
+    lines = [
+        f"{identity} | Ngày cấp: {card['issue_date']} | Nơi cấp: {card['issue_place']}"
+        for identity, card in _mrz_card_backs(documents).items()
+    ]
+    if not lines:
+        return ""
+    return (
+        f"<{_MRZ_BACKS_TAG}>\n"
+        "Ngày cấp/Nơi cấp đọc từ mặt sau thẻ, ghép với người bằng số định danh trong dải MRZ. "
+        "Người có *_IdNumber trùng số nào thì *_IdIssueDate/*_IdIssuePlace BẮT BUỘC lấy đúng dòng "
+        "đó, KHÔNG ghép mặt sau theo thứ tự trang.\n"
+        + "\n".join(lines)
+        + f"\n</{_MRZ_BACKS_TAG}>\n"
+    )
+
+
+def _apply_mrz_issue_overrides(fields: list[dict], context: str) -> list[dict]:
+    """Ngày cấp/nơi cấp của MỌI vai theo mặt sau thẻ mang đúng số định danh của vai đó."""
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    backs = {
+        identity: (date.strip(), place.strip())
+        for identity, date, place in _MRZ_BACK_LINE_RE.findall(_section(context, _MRZ_BACKS_TAG))
+    }
+    if not backs:
+        return fields
+    ids = {
+        prefix: _digits(field.get("value"))
+        for field in fields
+        for prefix in _MRZ_OVERRIDE_PREFIXES
+        if field.get("name") == f"{prefix}IdNumber"
+    }
+    overrides: dict[str, str] = {}
+    for prefix, identity in ids.items():
+        date, place = backs.get(identity, ("", ""))
+        if date:
+            overrides[f"{prefix}IdIssueDate"] = date
+        if place:
+            overrides[f"{prefix}IdIssuePlace"] = place
+    if not overrides:
+        return fields
+
+    result, seen = [], set()
+    for field in fields:
+        name = str(field.get("name") or "")
+        if name in overrides:
+            field = {**field, "value": overrides[name]}
+            seen.add(name)
+        result.append(field)
+    for name, value in overrides.items():
+        comp = COMPACT_COMP_BY_NAME.get(name)
+        if name not in seen and comp:
+            result.append({"name": name, "comp": comp, "value": value})
+    return result
+
+
 def _render_context(raw: str, options: dict | None, documents: list[dict]) -> str:
     """Kiểm tra tất định kết quả LLM rồi ghim vào prompt trích xuất."""
     sections = {tag: _section(raw, tag) for tag in _FAMILY_TAGS}
@@ -1739,6 +1876,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         f"Nguồn: {declaration_source}\n"
         "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
         "</to_khai_dang_ky_lai>\n"
+        f"{_render_mrz_backs(documents)}"
         "Khối <cha>/<me> có dòng \"Nguồn giấy tờ tùy thân\" nghĩa là Số CCCD/CMND, Ngày cấp, "
         "Nơi cấp trong khối đó đã đọc thẳng từ chính tấm CCCD/CMND của người đó: BẮT BUỘC trả "
         "y nguyên vào *_IdNumber, *_IdIssueDate, *_IdIssuePlace, không lấy theo tờ khai.\n"
@@ -1973,6 +2111,12 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
         result = _apply_declaration_residence_overrides(
             result, context, invalid_prefixes - empty_prefixes
         )
+
+    # ===== BƯỚC 7: NGÀY CẤP/NƠI CẤP THEO MRZ MẶT SAU THẺ =====
+    # Chạy sau BƯỚC 5: mặt sau ghép bằng số định danh in trong MRZ chắc hơn mọi cách ghép theo
+    # vị trí trang, và là căn cứ duy nhất cho CON (BƯỚC 5 chỉ chốt cha/mẹ).
+    if context:
+        result = _apply_mrz_issue_overrides(result, context)
 
     return result
 

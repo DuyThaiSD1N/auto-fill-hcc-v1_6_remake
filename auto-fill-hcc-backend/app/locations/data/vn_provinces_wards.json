@@ -8437,11 +8437,11 @@
           "code": "07840",
           "name": "Hiệp Hoà",
           "name_en": "Hiep Hoa",
-          "full_name": "Xã Hiệp Hoà",
-          "full_name_en": "Hiep Hoa Commune",
+          "full_name": "Phường Hiệp Hoà",
+          "full_name_en": "Hiep Hoa Ward",
           "code_name": "hiep_hoa",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "07864",
