@@ -349,6 +349,8 @@ from app.pipelines.chap_thuan_dau_noi_tam.attach import plan as chap_thuan_dau_n
 from app.pipelines.chap_thuan_dau_noi_tam.process import run as chap_thuan_dau_noi_tam_process
 from app.pipelines.cong_bo_du_dk_tiem_chung.attach import plan as cong_bo_du_dk_tiem_chung_attach
 from app.pipelines.cong_bo_du_dk_tiem_chung.process import run as cong_bo_du_dk_tiem_chung_process
+from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.attach import plan as cap_bo_sung_xe_tap_lai_attach
+from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.process import run as cap_bo_sung_xe_tap_lai_process
 
 PROCEDURES: list[dict] = [
     {
@@ -5696,6 +5698,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai",
+        # TTHC 1.001751 — cổng DVC Bộ Xây dựng dvc.moc.gov.vn (Form.io, engine fillFormStandard dom-* + attach
+        # attp-row; CÙNG cổng #63 liên vận / cây xanh). Chủ thể đề nghị = cơ sở đào tạo lái xe; người nộp là
+        # cá nhân đăng nhập. DATAGRID xe data[tbantest][i][...] (key lệch nghĩa nhãn cột — xem schema). URL
+        # SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "textIncludes": [
+                "cấp bổ sung xe tập lái, cấp lại giấy phép xe tập lái",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp bổ sung xe tập lái, cấp lại Giấy phép xe tập lái",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Danh sách xe đề nghị cấp giấy phép xe tập lái của cơ sở đào tạo (theo mẫu NĐ 94/2026) — đã ký, "
+            "đóng dấu. Nguồn chính: cơ quan chủ quản, cơ sở đào tạo, bảng xe, nơi ký, người ký.\n"
+            "2. Giấy tờ xe tập lái (có thể gộp 1 file): Chứng nhận đăng ký xe ô tô, Chứng nhận kiểm định an toàn "
+            "kỹ thuật và bảo vệ môi trường, Hợp đồng thuê xe (xe không thuộc sở hữu cơ sở đào tạo).\n"
+            "3. Nếu muốn điền Phần người nộp: CCCD của người nộp (không đính kèm). Không có thì giữ thông tin "
+            "tài khoản VNeID.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension điền Thông tin người nộp (nếu có CCCD), cơ quan chủ quản / cơ sở đào tạo, bảng danh sách "
+            "xe (biển số, xe hợp đồng/xe của cơ sở, nhãn hiệu, loại xe, số động cơ, số khung, ngày cấp/hết hạn "
+            "kiểm định), nơi ký và thủ trưởng ký.\n"
+            "Bước đính kèm: Danh sách đề nghị → dòng 1; giấy đăng ký xe + kiểm định + hợp đồng thuê xe → dòng 2 "
+            "(đều '1 Bản chính')."
+        ),
+    },
+    {
         "key": "cap-giay-phep-lien-van-viet-lao",
         # Cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io apply-online) — CÙNG nền tảng/engine fill standard
         # dom-* với cung_cap_thong_tin_quy_hoach. URL chỉ ObjectId (không có MaTTHC) → detect theo id
@@ -5923,6 +5959,7 @@ _PIPELINE = {
     "cap-ban-sao-van-bang-so-goc": cap_ban_sao_van_bang_process,
     "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_process,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
+    "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_process,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -6091,6 +6128,7 @@ _ATTACH_PIPELINE = {
     "cap-ban-sao-van-bang-so-goc": cap_ban_sao_van_bang_attach,
     "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_attach,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
+    "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_attach,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
