@@ -998,6 +998,8 @@
       "label": "Gia hạn Chứng chỉ hành nghề thú y",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-a5c7-766f-af92-cdc33555359c",
       "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {

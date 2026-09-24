@@ -107,7 +107,11 @@ def _parse_area_text(value: Any) -> dict | None:
         out["diaChi"] = ", ".join(parts[:-2]).strip()
     elif len(parts) == 2:
         out["tinh"] = parts[-1]
-        out["diaChi"] = parts[0]
+        # "Phường X - Tỉnh Y": đơn chỉ ghi tới phường/xã → phần đầu là XÃ, không phải địa chỉ chi tiết.
+        if re.match(r"^(xã|phường|thị\s*trấn)\s+", parts[0], re.IGNORECASE):
+            out["xa"] = parts[0]
+        else:
+            out["diaChi"] = parts[0]
     else:
         out["diaChi"] = parts[0]
     return out if any(out.values()) else None

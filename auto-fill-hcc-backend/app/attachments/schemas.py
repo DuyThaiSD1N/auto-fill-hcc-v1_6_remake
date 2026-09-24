@@ -77,6 +77,12 @@ class AttachmentPlanItem(BaseModel):
     loaiBan: str | None = None
     # Số bản khai trong modal "Thêm giấy tờ" trước khi dòng upload được tạo.
     quantity: int | None = Field(default=None, ge=1)
+    # Dùng cho target "add-document-dialog": modal "Thêm giấy tờ" không tạo được dòng (cổng không có
+    # loại giấy tờ này trong danh mục…) thì FE ĐÍNH CHUNG tệp vào dòng attp-row có tên này thay vì bỏ.
+    fallbackComponentName: str | None = None
+    # Dùng cho engine attp-row: các dòng cổng TICK SẴN nhưng hồ sơ không có giấy tờ (vd "Giấy phép lao
+    # động … đối với người nước ngoài") → FE BỎ TICK nếu dòng chưa có tệp và không nằm trong kế hoạch.
+    untickRows: list[str] | None = None
 
 
 class AttachmentPlanResp(BaseModel):

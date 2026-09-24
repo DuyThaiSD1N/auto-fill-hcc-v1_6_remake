@@ -95,6 +95,9 @@ THỨ TỰ PHÂN VAI — TỜ KHAI TRƯỚC, GIẤY TỜ KHÁC CHỈ LÀ NGUỒN
    - người nữ lớn hơn con ít nhất khoảng 15 tuổi là mẹ.
    Chỉ áp dụng khi mỗi vai có đúng một ứng viên và con trùng họ với ít nhất một người thuộc thế hệ trước;
    mơ hồ thì ghi "Không xác định".
+   Người trẻ nhất KHÔNG trùng họ với người nam nào lớn hơn thì chưa chắc là con (thường là người đi nộp
+   hộ): khi đó con là người CÒN SỐNG có thẻ, trùng họ với đúng một người nam lớn hơn ≥15 tuổi (kể cả
+   người trong giấy khai tử) — người nam đó là cha.
 4. CCCD/CMND chỉ cho biết thông tin của chính người trên thẻ. Tên file và thứ tự tải lên chỉ là tín hiệu
    phụ, không đủ để tự gán vai.
 4b. Hồ sơ KHÔNG có tờ khai, chỉ có ĐÚNG MỘT thẻ căn cước/CMND và không tài liệu nào chỉ đích danh
@@ -108,7 +111,8 @@ THỨ TỰ PHÂN VAI — TỜ KHAI TRƯỚC, GIẤY TỜ KHÁC CHỈ LÀ NGUỒN
    - KHÔNG có tờ khai: không giấy tờ nào nói ai là người yêu cầu → ghi "Không xác định" cho cả khối
      <nguoi_yeu_cau>; KHÔNG dựng nhân thân người yêu cầu từ CCCD của con/cha/mẹ trong hồ sơ.
    Người yêu cầu có thể đồng thời là con, cha hoặc mẹ.
-6. Vợ/chồng, người ký, chủ hộ, người nhận công văn không tự động là cha/mẹ/con.
+6. Vợ/chồng, người ký, chủ hộ, người nhận công văn không tự động là cha/mẹ/con. Bên ĐƯỢC ỦY QUYỀN
+   trên giấy ủy quyền là người đi nộp hộ, không tự động là cha/mẹ/con.
 7. Một người không được đồng thời là con và cha/mẹ. Không ghép tên, số định danh, ngày sinh hoặc nguồn
    của hai người khác nhau.
 8. "Số/ngày đăng ký trước đây" chỉ hợp lệ khi thuộc GIẤY KHAI SINH, TRÍCH LỤC KHAI SINH hoặc
@@ -363,6 +367,49 @@ def _year_of(value) -> int | None:
     return int(years[-1]) if years else None
 
 
+# Số CCCD 12 chữ số: chữ số thứ 4 mã hoá giới tính + thế kỷ sinh, hai chữ số kế tiếp là năm sinh.
+_ID_CENTURY_BY_CODE = {"0": 1900, "1": 1900, "2": 2000, "3": 2000, "4": 2100, "5": 2100, "8": 1800, "9": 1800}
+
+
+def _id_birth_year(id_number, gender=None) -> int | None:
+    """Năm sinh mã hoá trong số CCCD; None nếu không đọc được hoặc giới tính mã hoá lệch thẻ.
+
+    Giới tính in trên thẻ lệch với mã trong số thì chính con số đang bị OCR đọc sai → không tin.
+    """
+    digits = _digits(id_number)
+    if len(digits) != 12 or digits[3] not in _ID_CENTURY_BY_CODE:
+        return None
+    folded_gender = _fold(gender)
+    id_is_female = int(digits[3]) % 2 == 1
+    if folded_gender in {"nam", "male"} and id_is_female:
+        return None
+    if folded_gender in {"nu", "female"} and not id_is_female:
+        return None
+    return _ID_CENTURY_BY_CODE[digits[3]] + int(digits[4:6])
+
+
+def reconcile_birth_with_id(birth, id_number, gender=None):
+    """Sửa NĂM sinh OCR đọc lệch theo năm mã hoá trong số CCCD, giữ nguyên ngày/tháng.
+
+    req_f0fa659d2248: mặt trước thẻ của bà DƯƠNG THỊ VẬY bị OCR đọc "01/01/1994", trong khi số
+    027139005852 (và MRZ "390101") nói sinh 1939. Năm sai làm bà thành người trẻ nhất hồ sơ → bị
+    phân nhầm làm CON thay vì MẸ, cả khối cha/mẹ sụp theo.
+    """
+    year = _id_birth_year(id_number, gender)
+    text = str(birth or "").strip()
+    if not year:
+        return birth
+    if not text:
+        return str(year)
+    years = list(re.finditer(r"(?<!\d)(?:18|19|20|21)\d{2}(?!\d)", text))
+    if not years:
+        return birth
+    last = years[-1]
+    if int(last.group(0)) == year:
+        return birth
+    return text[:last.start()] + str(year) + text[last.end():]
+
+
 def _role_is_subject(values: dict, prefix: str) -> bool:
     """Vai cha/mẹ vừa trích ra có ĐÚNG LÀ chính người con hay không.
 
@@ -449,6 +496,8 @@ def _first_match(text: str, patterns: tuple[str, ...]) -> str:
 # in ở mặt sau thẻ, nên phải loại hai nhãn đó ra trước khi bắt ngày.
 _ISSUE_DATE_PATTERNS = (
     r"Ng[aà]y\s*c[aấ]p(?:\s*/\s*Date\s+of\s+issue)?\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})",
+    # Thẻ căn cước mẫu 2024: "Ngày, tháng, năm cấp / Date of issue:" rồi xuống dòng mới tới ngày.
+    r"Ng[aà]y,?\s*th[aá]ng,?\s*n[aă]m\s*c[aấ]p(?:\s*/\s*Date\s+of\s+issue)?\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})",
     r"Date\s+of\s+issue\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})",
     r"Ng[aà]y,?\s*th[aá]ng,?\s*n[aă]m(?!\s*(?:sinh|h[eế]t\s+h[aạ]n))"
     r"(?:\s*/\s*Date,?\s*month,?\s*year)?\s*:?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4})",
@@ -568,7 +617,7 @@ _PAGE_BREAK_RE = re.compile(
 # này là phần nối tiếp (mặt sau CCCD, trang trắng) nên phải gộp vào giấy tờ ngay trước nó —
 # nếu không, ngày cấp in ở mặt sau bị tách rời khỏi họ tên in ở mặt trước.
 _UNIT_NAME_LINE_RE = re.compile(
-    r"^\s*H[oọ][,.]?\s*(?:v[aà]\s+)?(?:ch[uữ]\s*[dđ][eệ]m[,.]?\s*)?t[eê]n",
+    r"^\s*H[oọ][,.]?\s*(?:v[aà]\s+)?(?:ch[uữ]\s*[dđ][eệ]m[,.]?\s*(?:v[aà]\s+)?)?t[eê]n",
     flags=re.IGNORECASE | re.MULTILINE,
 )
 
@@ -618,14 +667,16 @@ def _person_from_document(document: dict) -> dict | None:
     # Với sổ/trích lục khai tử, chỉ đọc phần người được khai tử; không lấy người
     # đi khai tử, người ký hay cán bộ xuất hiện phía sau.
     block = text[death_match.end():] if death_match else text
+    # Thẻ căn cước mẫu 2024 ghi nhãn song ngữ "Họ, chữ đệm và tên khai sinh / Full name:" và in giá
+    # trị ở DÒNG DƯỚI; không nhận dạng này thì cả tấm thẻ bị bỏ qua khi phân vai (req_f0fa659d2248).
     name = _first_match(block, (
         r"^\s*Họ\s+và\s+tên(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
-        r"^\s*Họ,\s*chữ\s*đệm(?:,\s*|\s+và\s+)tên\s*:\s*([^\n\r]+)",
+        r"^\s*Họ,\s*chữ\s*đệm(?:,\s*|\s+và\s+)tên(?:\s+khai\s+sinh)?(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
         r"^\s*Họ,\s*chữ\s*đệm,\s*tên\s*:\s*([^\n\r]+)",
     ))
     birth = _first_match(block, (
         r"^\s*Ngày\s+sinh(?:\s*/\s*Date\s+of\s+birth)?\s*:\s*([^\n\r]+)",
-        r"^\s*Ngày,\s*tháng,\s*năm\s+sinh\s*:\s*([^\n\r]+)",
+        r"^\s*Ngày,\s*tháng,\s*năm\s+sinh(?:\s*/\s*Date\s+of\s+birth)?\s*:\s*([^\n\r]+)",
     ))
     gender = _first_match(block, (
         r"Giới\s*tính(?:\s*/\s*Sex)?\s*:\s*(Nam|Nữ|Male|Female)",
@@ -642,6 +693,8 @@ def _person_from_document(document: dict) -> dict | None:
     ))
     if not name or not birth or not gender:
         return None
+    if is_identity:
+        birth = reconcile_birth_with_id(birth, id_number, gender)
 
     status = "đã chết" if is_death else "không xác định"
     section = (
@@ -726,6 +779,149 @@ def _cut_at(value, stops: tuple[str, ...]) -> str:
         if match:
             text = text[:match.start()]
     return text.strip(" .,;:-")
+
+
+# ---------------------------------------------------------------------------
+# GIẤY ỦY QUYỀN — NGƯỜI ĐƯỢC ỦY QUYỀN LÀ NGƯỜI YÊU CẦU
+#
+# Hồ sơ có giấy ủy quyền nghĩa là người đi nộp là BÊN ĐƯỢC ỦY QUYỀN, nên khối "Thông tin người yêu
+# cầu" phải mang nhân thân người đó (ô quan hệ tích "Khác"), không phải người được đăng ký lại.
+# Python đọc thẳng mục "Bên được ủy quyền" từ OCR để không phụ thuộc agent trích xuất.
+# ---------------------------------------------------------------------------
+
+_AUTHORIZED_TAG = "nguoi_duoc_uy_quyen"
+_AUTHORIZED_BASIS = 'Mục "Bên được ủy quyền" trên giấy ủy quyền, Python đọc trực tiếp OCR.'
+
+# Dòng MỞ mục người được ủy quyền. Neo đầu dòng để không bắt nhầm câu cam kết "... giữa bên ủy
+# quyền và bên được ủy quyền" hay dòng chữ ký "BÊN ỦY QUYỀN   BÊN ĐƯỢC ỦY QUYỀN".
+_AUTHORIZED_HEADER_RE = re.compile(
+    r"^(?:[ivx]+\s*[.)/]\s*|\d+\s*[.)/]\s*|[a-d]\s*[.)]\s*|[-+*•]\s*)?(?:ben\s+b\s*[(:-]?\s*)?"
+    r"(?:ben|nguoi)\s+(?:duoc|nhan)\s+uy\s+quyen\b\s*(?:\(\s*ben\s+b\s*\))?\)?\s*:?\s*(.*)$"
+)
+# Dòng mở mục khác → hết mục người được ủy quyền.
+_AUTHORIZED_BLOCK_END_RE = re.compile(
+    r"^(?:[ivx]+\s*[.)/]|\d+\s*[.)/])\s|"
+    r"^(?:ben\s+uy\s+quyen|nguoi\s+uy\s+quyen|noi\s+dung|pham\s+vi|thoi\s+han|cam\s+ket)\b|"
+    r"^[─━\-]{3,}\s*trang\b"
+)
+_AUTHORIZED_NAME_LABEL_RE = re.compile(
+    r"^[-+*•]?\s*(?:ong\s*/\s*ba|ong\s*\(\s*ba\s*\)|ong|ba|anh|chi|"
+    r"ho\s*,?\s*(?:va\s+)?(?:chu\s*dem\s*,?\s*(?:va\s+)?)?ten|ten)\s*:"
+)
+_AUTHORIZED_RESIDENCE_LABEL_RE = re.compile(
+    r"^[-+*•]?\s*(?:noi\s*(?:dang\s*ky\s*)?(?:thuong\s*tru|cu\s*tru|o(?:\s*hien\s*nay)?)|dia\s*chi|"
+    r"(?:ho\s*khau\s*)?thuong\s*tru|hktt|cho\s*o(?:\s*hien\s*nay)?)\b[^:]*:"
+)
+_AUTHORIZED_NAME_STOPS = (
+    r"\bsinh\s+n[aă]m\b", r"\bn[aă]m\s+sinh\b", r"\bng[aà]y\s+sinh\b", r"\bsinh\s+ng[aà]y\b",
+    r"\bs[oố]\s+(?:CCCD|CMND|c[aă]n\s+c[uư][oớ]c|đ[iị]nh\s+danh)", r"\bCCCD\b", r"\bCMND\b",
+    r"\bgi[oớ]i\s+t[ií]nh\b", r"[,;(]",
+)
+_HONORIFIC_RE = re.compile(r"^(?:ông\s*/\s*bà|ông|bà|anh|chị)\s*[:.]?\s+", re.IGNORECASE)
+_AUTHORIZED_ID_RE = re.compile(
+    r"(?:cccd|cmnd|can\s*cuoc(?:\s*cong\s*dan)?|dinh\s*danh(?:\s*ca\s*nhan)?|chung\s*minh\s*nhan\s*dan)"
+    r"[^\d\n]{0,25}?(\d[\d .]{7,18}\d)"
+)
+_AUTHORIZED_BIRTH_RE = re.compile(
+    r"(?:sinh\s*nam|nam\s*sinh|ngay\s*sinh|sinh\s*ngay)[^\d\n]{0,6}(\d{1,2}[/.-]\d{1,2}[/.-]\d{4}|\d{4})"
+)
+_AUTHORIZED_ISSUE_DATE_RE = re.compile(
+    r"(?:ngay\s*cap|cap\s*ngay)[^\d\n]{0,6}(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})"
+)
+
+
+def _authorized_block_lines(text: str) -> list[str]:
+    """Các dòng thuộc mục "Bên được ủy quyền" đầu tiên có dữ liệu; rỗng nếu không có giấy ủy quyền."""
+    lines = str(text or "").splitlines()
+    for index, line in enumerate(lines):
+        header = _AUTHORIZED_HEADER_RE.match(_fold(line))
+        if not header:
+            continue
+        block: list[str] = []
+        # Giá trị có thể viết liền trên dòng mở mục: "Bên được ủy quyền: Ông Nguyễn Văn A, sinh năm ..."
+        inline = line[line.find(":") + 1:].strip() if ":" in line else ""
+        if inline:
+            block.append(inline)
+        for follow in lines[index + 1:index + 12]:
+            folded = _fold(follow)
+            if _AUTHORIZED_BLOCK_END_RE.match(folded):
+                break
+            if follow.strip():
+                block.append(follow.strip())
+        if block:
+            return block
+    return []
+
+
+def _authorized_person_from_lines(block: list[str]) -> dict:
+    name = residence = issue_place = ""
+    for index, line in enumerate(block):
+        folded = _fold(line)
+        value = line[line.find(":") + 1:].strip() if ":" in line else ""
+        if not name and (_AUTHORIZED_NAME_LABEL_RE.match(folded) or (index == 0 and not value)):
+            candidate = value or line
+            name = _HONORIFIC_RE.sub("", _cut_at(_HONORIFIC_RE.sub("", candidate), _AUTHORIZED_NAME_STOPS))
+        elif not residence and _AUTHORIZED_RESIDENCE_LABEL_RE.match(folded):
+            residence = value
+        elif not issue_place and re.match(r"^[-+*•]?\s*noi\s*cap\b", folded):
+            issue_place = value
+    joined = _fold("\n".join(block))
+    id_match = _AUTHORIZED_ID_RE.search(joined)
+    birth_match = _AUTHORIZED_BIRTH_RE.search(joined)
+    issue_match = _AUTHORIZED_ISSUE_DATE_RE.search(joined)
+    # Họ tên phải có ít nhất hai tiếng chữ cái — dòng trống "Ông/bà: ......" không phải họ tên.
+    if len(re.findall(r"[^\W\d_]{1,}", name)) < 2:
+        name = ""
+    return {
+        "name": re.sub(r"\s+", " ", name).strip(" .,;:-"),
+        "id": _digits(id_match.group(1)) if id_match else "",
+        "birth": birth_match.group(1) if birth_match else "",
+        "issue_date": issue_match.group(1) if issue_match else "",
+        "issue_place": _cut_at(issue_place, (r"[,;]",)),
+        "residence": residence,
+    }
+
+
+def _authorized_person(documents: list[dict]) -> dict | None:
+    """Người được ủy quyền ghi trên giấy ủy quyền trong hồ sơ; None nếu không có."""
+    for document in documents:
+        text = str(document.get("text") or "")
+        if "uy quyen" not in _fold(text):
+            continue
+        person = _authorized_person_from_lines(_authorized_block_lines(text))
+        if person["name"] or person["id"]:
+            return {**person, "source": document.get("name") or "(không tên)"}
+    return None
+
+
+def _render_authorized(documents: list[dict]) -> str:
+    person = _authorized_person(documents)
+    if not person:
+        return ""
+    lines = [
+        f"Họ tên: {person['name'] or 'Không xác định'}",
+        f"Năm sinh: {person['birth'] or 'Không xác định'}",
+        f"Số CCCD/CMND: {person['id'] or 'Không xác định'}",
+        f"Ngày cấp: {person['issue_date'] or 'Không xác định'}",
+        f"Nơi cấp: {person['issue_place'] or 'Không xác định'}",
+        f"Nơi cư trú: {person['residence'] or 'Không xác định'}",
+        f"Nguồn: {person['source']}",
+        f"Căn cứ: {_AUTHORIZED_BASIS}",
+    ]
+    return (
+        f"<{_AUTHORIZED_TAG}>\n"
+        + "\n".join(lines)
+        + f"\n</{_AUTHORIZED_TAG}>\n"
+        "Hồ sơ có GIẤY ỦY QUYỀN: người đi nộp là người trong khối <nguoi_duoc_uy_quyen>. BẮT BUỘC trả "
+        "Authorized_* theo đúng người đó (ngày cấp/nơi cấp/nơi cư trú bù từ CCCD của chính người đó nếu "
+        "có trong hồ sơ). Người được ủy quyền KHÔNG phải con/cha/mẹ trừ khi trùng cả họ tên lẫn số định "
+        "danh với vai đó.\n"
+    )
+
+
+def authorized_residence_area(line) -> dict | None:
+    """Dòng nơi cư trú trên giấy ủy quyền -> object địa bàn; giấy ủy quyền hay ngăn bằng gạch ngang."""
+    return _residence_from_declaration_line(re.sub(r"\s+[-–]\s+", ", ", str(line or "")))
 
 
 def _declaration_documents(documents: list[dict]) -> list[dict]:
@@ -1112,6 +1308,99 @@ def _repair_single_identity_as_subject(
         return sections
     basis = "Hồ sơ chỉ có một thẻ căn cước/CMND và không có vai nào khác được xác định."
     return {**sections, "con": _as_family_section(cards[0]["section"], basis)}
+
+
+def _fill_missing_roles_by_generation(
+    raw: str,
+    sections: dict[str, str],
+    documents: list[dict],
+) -> dict[str, str]:
+    """Hồ sơ không tờ khai, agent đã chốt một phần vai → bù vai còn trống theo quy tắc thế hệ.
+
+    req_f0fa659d2248: agent (và bước ghép dòng họ) chốt con NGUYỄN ĐĂNG THÚC + cha NGUYỄN ĐĂNG KY
+    nhưng bỏ trống mẹ, dù hồ sơ có đúng ba người và thẻ nữ DƯƠNG THỊ VẬY (1939) chỉ có thể là mẹ.
+    Chỉ nhận khi mọi vai ĐÃ CÓ người khớp đúng người quy tắc thế hệ chọn — không bao giờ đổi vai.
+    """
+    if _declaration_source_names(documents):
+        return sections
+    if all(not _is_unknown(sections.get(tag) or "") for tag in _FAMILY_TAGS):
+        return sections
+    generated = _repair_family_by_generation(raw, sections, documents)
+    if generated is sections:
+        return sections
+    result = dict(sections)
+    for tag in _FAMILY_TAGS:
+        current = sections.get(tag) or ""
+        if _is_unknown(current):
+            result[tag] = generated[tag]
+        elif not _names_align(_role_name(current), _role_name(generated[tag])):
+            return sections
+    return result
+
+
+def _surname(name) -> str:
+    return _fold(name).split(" ", 1)[0]
+
+
+def _lineage_suspect(sections: dict[str, str]) -> bool:
+    """Kết quả phân vai đáng ngờ về dòng họ: không có cha/mẹ nào, hoặc cha khác họ con."""
+    father = sections.get("cha") or ""
+    if _is_unknown(father):
+        return _is_unknown(sections.get("me") or "")
+    child_name = _role_name(sections.get("con") or "")
+    return bool(child_name) and _surname(child_name) != _surname(_role_name(father))
+
+
+def _repair_family_by_lineage(
+    sections: dict[str, str],
+    documents: list[dict],
+) -> dict[str, str]:
+    """Hồ sơ không có tờ khai/giấy khai sinh, agent không ghép được cha/mẹ nào → ghép theo DÒNG HỌ.
+
+    Quy tắc "người trẻ nhất là con" gãy khi hồ sơ kèm thẻ của người nộp hộ khác họ. req_f0fa659d2248:
+    thẻ NGUYỄN ĐĂNG THÚC (1965), thẻ DƯƠNG THỊ VẬY (1994), trích lục khai tử NGUYỄN ĐĂNG KY (1933).
+    Agent chọn người trẻ nhất (Vậy) làm con, không ai cùng họ để làm cha → xoá cả khối cha, biểu mẫu
+    gần như trắng. Con theo họ cha, nên cặp duy nhất "người còn sống có thẻ + người nam cùng họ lớn
+    hơn ≥15 tuổi" mới là con/cha thật (Thúc ← Ky); người lẻ còn lại chỉ là người đi nộp hộ.
+
+    Chỉ chốt khi có ĐÚNG MỘT cặp như vậy — nhiều cặp (ông/cha/cháu cùng họ) là mơ hồ, giữ nguyên.
+    Mẹ không xét: mẹ giữ họ riêng nên dòng họ không nói được gì về mẹ.
+    """
+    if _declaration_source_names(documents) or _valid_birth_source_names(documents):
+        return sections
+    people: dict[str, dict] = {}
+    for document in _identity_units(documents):
+        person = _person_from_document(document)
+        if not person or not person.get("year"):
+            continue
+        key = _fold(person["name"])
+        # Cùng một người vừa có thẻ vừa xuất hiện ở giấy khác: giữ bản đọc từ thẻ.
+        if key not in people or (person.get("is_identity") and not people[key].get("is_identity")):
+            people[key] = person
+
+    pairs = [
+        (child, father)
+        for child in people.values()
+        if child.get("is_identity")
+        for father in people.values()
+        if father is not child
+        and father["gender"] in {"nam", "male"}
+        and child["year"] - father["year"] >= 15
+        and _surname(child["name"]) == _surname(father["name"])
+    ]
+    if len(pairs) != 1:
+        return sections
+    child, father = pairs[0]
+    basis = "Không có tờ khai; cặp duy nhất cùng họ, cha là nam hơn con ít nhất 15 tuổi."
+    repaired = {
+        **sections,
+        "con": _as_family_section(child["section"], basis),
+        "cha": _as_family_section(father["section"], basis),
+    }
+    # Đổi sang người con khác thì người mẹ agent ghép cho người con cũ không còn căn cứ.
+    if not _names_align(_role_name(sections.get("con") or ""), child["name"]):
+        repaired["me"] = _unknown_role_section("Người con được chốt lại theo dòng họ; không có căn cứ về mẹ.")
+    return repaired
 
 
 def _valid_birth_source_names(documents: list[dict]) -> list[str]:
@@ -1727,7 +2016,7 @@ def _apply_identity_card_overrides(
 
 _MRZ_BACKS_TAG = "mat_sau_the_theo_mrz"
 _MRZ_BACK_LINE_RE = re.compile(r"^(\d{12}) \| Ngày cấp: ([^|]*) \| Nơi cấp: (.*)$", flags=re.MULTILINE)
-_MRZ_OVERRIDE_PREFIXES = ("Subject_", "Mother_", "Father_", "Requester_")
+_MRZ_OVERRIDE_PREFIXES = ("Subject_", "Mother_", "Father_", "Requester_", "Authorized_")
 
 
 def _render_mrz_backs(documents: list[dict]) -> str:
@@ -1798,6 +2087,13 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
     if not any(not _is_unknown(s) for s in sections.values()):
         sections = _repair_family_by_generation(raw, sections, documents)
+
+    # Agent không ghép được cha/mẹ nào, hoặc ghép một người cha KHÁC HỌ con → thử ghép theo dòng họ.
+    if _lineage_suspect(sections):
+        sections = _repair_family_by_lineage(sections, documents)
+
+    # Còn vai trống → bù theo quy tắc thế hệ, chỉ khi kết quả không ngược với vai đã chốt.
+    sections = _fill_missing_roles_by_generation(raw, sections, documents)
 
     # Vẫn chưa có người được đăng ký lại mà hồ sơ chỉ có đúng một thẻ → thẻ đó chính là người đó.
     if _is_unknown(sections.get("con") or ""):
@@ -1877,6 +2173,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
         "</to_khai_dang_ky_lai>\n"
         f"{_render_mrz_backs(documents)}"
+        f"{_render_authorized(documents)}"
         "Khối <cha>/<me> có dòng \"Nguồn giấy tờ tùy thân\" nghĩa là Số CCCD/CMND, Ngày cấp, "
         "Nơi cấp trong khối đó đã đọc thẳng từ chính tấm CCCD/CMND của người đó: BẮT BUỘC trả "
         "y nguyên vào *_IdNumber, *_IdIssueDate, *_IdIssuePlace, không lấy theo tờ khai.\n"
@@ -1939,6 +2236,34 @@ def _identity_matches(fields_by_name: dict, context: str, tag: str) -> bool:
     return False
 
 
+# Ô ngày sinh của từng vai + giới tính mặc định của vai (cha nam, mẹ nữ) khi agent không trả *_Gender.
+_BIRTH_FIELDS_BY_PREFIX = {
+    "Subject_": (("Subject_BirthDate", "Subject_BirthDateFromId"), None),
+    "Mother_": (("Mother_BirthDateOrYear",), "Nữ"),
+    "Father_": (("Father_BirthDateOrYear",), "Nam"),
+}
+
+
+def _reconcile_birth_fields(fields: list[dict]) -> list[dict]:
+    """Ngày sinh agent chép từ mặt trước thẻ phải khớp năm mã hoá trong số CCCD của chính vai đó."""
+    values = {field.get("name"): field.get("value") for field in fields if field.get("name")}
+    fixes: dict[str, object] = {}
+    for prefix, (names, default_gender) in _BIRTH_FIELDS_BY_PREFIX.items():
+        id_number = values.get(prefix + "IdNumber")
+        gender = values.get(prefix + "Gender") or default_gender
+        for name in names:
+            if name in values:
+                fixed = reconcile_birth_with_id(values[name], id_number, gender)
+                if fixed != values[name]:
+                    fixes[name] = fixed
+    if not fixes:
+        return fields
+    return [
+        {**field, "value": fixes[field["name"]]} if field.get("name") in fixes else field
+        for field in fields
+    ]
+
+
 def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     """Không cho field của một người chảy sang vai khác sau bước trích xuất.
     
@@ -1948,6 +2273,7 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     3. Loại bỏ trùng lặp với Subject
     4. Xóa địa chỉ "Đã chết" không hợp lệ từ LLM
     """
+    fields = _reconcile_birth_fields(fields)
     values = {
         field.get("name"): field.get("value")
         for field in fields
@@ -2043,6 +2369,11 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     has_birth_source = bool(context) and _fold(
         _labeled_value(_section(context, "dang_ky_khai_sinh_truoc_day"), "Có tài liệu khai sinh hợp lệ")
     ) == "co"
+    # Không có tờ khai thì Requester_* là do agent tự bịa (hay gặp: "Khác") — lọt xuống mapper là nó
+    # coi như có tờ khai rồi ghi đè nơi cư trú người yêu cầu cổng đã điền sẵn từ VNeID thành rỗng.
+    no_declaration = bool(context) and _fold(
+        _labeled_value(_section(context, "to_khai_dang_ky_lai"), "Có tờ khai đăng ký lại khai sinh")
+    ) == "khong"
 
     # ===== BƯỚC 4: LỌC FIELDS =====
     result: list[dict] = []
@@ -2071,6 +2402,8 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
             if not ctx_value or "khong xac dinh" in ctx_value or ctx_value == "khong co":
                 continue
         if context and name.startswith("PreviousRegistration_") and not has_birth_source:
+            continue
+        if no_declaration and name.startswith("Requester_"):
             continue
         result.append(field)
 

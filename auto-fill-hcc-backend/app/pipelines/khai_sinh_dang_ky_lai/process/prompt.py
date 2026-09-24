@@ -42,6 +42,11 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    Cổng đã tự điền khối người yêu cầu từ tài khoản VNeID đang đăng nhập; Python chỉ tick "Khác" để tách
    khối đó ra, KHÔNG ghi đè, rồi đổ toàn bộ dữ liệu quét được vào các khối con/cha/mẹ.
    TUYỆT ĐỐI KHÔNG bịa Requester_* từ CCCD của con/cha/mẹ hay từ tên trên giấy khai sinh cũ.
+2b. CÓ GIẤY ỦY QUYỀN (tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN"/"HỢP ĐỒNG ỦY QUYỀN", hoặc có khối
+   <nguoi_duoc_uy_quyen>): người đi nộp là BÊN ĐƯỢC ỦY QUYỀN. Trả Authorized_FullName/IdNumber/
+   IdIssueDate/IdIssuePlace/ResidenceDomestic theo mục "Bên được ủy quyền" (thiếu thì bù từ CCCD của
+   CHÍNH người đó nếu có trong hồ sơ) + Authorized_SourceDocumentTitle = tiêu đề nguyên văn giấy đó.
+   KHÔNG lấy bên ủy quyền. Áp dụng kể cả khi hồ sơ không có tờ khai — Requester_* vẫn theo mục 1/2.
 3. Vì vậy CCCD/CMND của CHÍNH người được đăng ký lại khai sinh phải được trích đủ vào Subject_IdNumber,
    Subject_IdIssueDate, Subject_IdIssuePlace, Subject_BirthDateFromId, Subject_ResidenceDomestic (ngoài
    họ tên/ngày sinh/giới tính). Subject_BirthDateFromId là ngày sinh IN TRÊN THẺ, đọc thẳng từ thẻ và

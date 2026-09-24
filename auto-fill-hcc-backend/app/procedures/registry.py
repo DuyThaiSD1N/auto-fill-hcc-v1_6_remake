@@ -307,6 +307,8 @@ from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import plan as cap_gp
 from app.pipelines.cap_giay_phep_khai_thac_thuy_san.process import run as cap_gp_khai_thac_ts_process
 from app.pipelines.cap_lai_CCHN_thu_y.attach import plan as cap_lai_cchn_thu_y_attach
 from app.pipelines.cap_lai_CCHN_thu_y.process import run as cap_lai_cchn_thu_y_process
+from app.pipelines.gia_han_chung_chi_hanh_nghe_thu_y.attach import plan as gia_han_cchn_thu_y_attach
+from app.pipelines.gia_han_chung_chi_hanh_nghe_thu_y.process import run as gia_han_cchn_thu_y_process
 from app.pipelines.cap_gcn_dang_ky_tau_ca.attach import plan as cap_gcn_dang_ky_tau_ca_attach
 from app.pipelines.cap_gcn_dang_ky_tau_ca.process import run as cap_gcn_dang_ky_tau_ca_process
 from app.pipelines.dang_ky_bien_phap_bao_dam_qsdd.attach import plan as dk_bien_phap_bao_dam_attach
@@ -4885,6 +4887,44 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "gia-han-chung-chi-hanh-nghe-thu-y",
+        # Mã TTHC 2.001064 — nộp tại SỞ Nông nghiệp và Môi trường (ke_khai_links đặt selectSo). Cùng họ
+        # form với cấp lại (#cap-lai-chung-chi-hanh-nghe-thu-y): Form.io dom-* + attach attp-row, tờ đơn
+        # là Mẫu 02.HNTY (không có ô lý do). Bảng thành phần 3 dòng + nút "Thêm giấy tờ" cho văn bằng.
+        # CHỈ MỘT cụm: popup đòi trang chứa ĐỦ mọi cụm textIncludes. "gia hạn CẤP chứng chỉ…" chỉ có ở
+        # tiêu đề tờ đơn (bước kê khai) → khai thêm là bước "Thành phần hồ sơ" không nhận ra thủ tục và
+        # popup báo "chưa có bước đính kèm tự động". Tiêu đề "Gia hạn Chứng chỉ…" có ở MỌI bước.
+        "detect": {
+            "textIncludes": [
+                "gia hạn chứng chỉ hành nghề thú y",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Gia hạn Chứng chỉ hành nghề thú y",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của NGƯỜI ĐỨNG ĐƠN — người được gia hạn chứng chỉ):\n"
+            "1. Đơn đăng ký gia hạn Chứng chỉ hành nghề thú y (Mẫu 02.HNTY) — đã ký.\n"
+            "2. Giấy khám sức khỏe (bản chính) — bắt buộc đính kèm; còn dùng để lấy số CCCD, ngày cấp, "
+            "nơi cấp, giới tính khi hồ sơ không có thẻ CCCD.\n"
+            "3. Văn bằng / chứng chỉ chuyên môn (bằng tốt nghiệp, bản sao chứng thực).\n"
+            "4. Chứng chỉ hành nghề thú y ĐÃ CẤP — để lấy Số đăng ký và ngày hết hiệu lực; thiếu bản này "
+            "thì hai ô đó phải nhập tay.\n"
+            "5. Thẻ Căn cước (nếu có) của người đứng đơn; nếu người KHÁC nộp thay: tải kèm CCCD người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension bỏ tích 'Người nộp hồ sơ là chủ hồ sơ', điền chủ hồ sơ + tờ đơn theo người đứng "
+            "đơn (không bấm 'Sao chép thông tin người nộp') và tự tích phạm vi hành nghề theo đơn.\n"
+            "Bước đính kèm: Giấy khám sức khỏe → dòng 'Giấy chứng nhận sức khỏe' (1 Bản chính); Đơn → "
+            "dòng 'Đơn đăng ký gia hạn theo Mẫu số 02.HNTY' (1 Bản chính); văn bằng → '+ Thêm giấy tờ' "
+            "(1 Bản sao), không thêm được dòng thì đính chung vào dòng Đơn. Dòng 'Giấy phép lao động' "
+            "(chỉ cho người nước ngoài) được bỏ tick. CCCD chỉ dùng ở bước thông tin."
+        ),
+    },
+    {
         "key": "cap-gcn-dang-ky-tau-ca",
         # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
         # + attach attp-row (16 dòng thành phần hồ sơ). Field-key nhân thân data[...] TRÙNG KHÍT #66/#92.
@@ -5820,6 +5860,7 @@ _PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_process,
+    "gia-han-chung-chi-hanh-nghe-thu-y": gia_han_cchn_thu_y_process,
     "cong-bo-co-so-du-dieu-kien-tiem-chung": cong_bo_du_dk_tiem_chung_process,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_process,
     "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_process,
@@ -5986,6 +6027,7 @@ _ATTACH_PIPELINE = {
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_attach,
+    "gia-han-chung-chi-hanh-nghe-thu-y": gia_han_cchn_thu_y_attach,
     "cong-bo-co-so-du-dieu-kien-tiem-chung": cong_bo_du_dk_tiem_chung_attach,
     "cap-gcn-dang-ky-tau-ca": cap_gcn_dang_ky_tau_ca_attach,
     "dang-ky-bien-phap-bao-dam-qsdd": dk_bien_phap_bao_dam_attach,

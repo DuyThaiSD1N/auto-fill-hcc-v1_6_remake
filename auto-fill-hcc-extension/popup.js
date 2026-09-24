@@ -3723,7 +3723,11 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   if (planRes.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   // Đính chưa đủ (attachedCount < số nhóm) hoặc có tệp bị loại → cảnh báo (warn) thay vì báo thành công
   // trọn vẹn. warn cũng giữ lại danh sách giấy tờ (clearFilesAfterAttach) để cán bộ còn tệp mà xử lý.
-  const warn = attachedCount < sendFiles.length || droppedNames.length > 0;
+  // notes[] = engine phải đi đường dự phòng (vd không thêm được dòng qua "Thêm giấy tờ" nên đính chung
+  // vào dòng khác) — tệp đã lên nhưng cán bộ còn việc phải làm tay.
+  const attachNotes = (attachRes?.notes || []).filter(Boolean);
+  if (attachNotes.length) msg += `\n⚠ ${attachNotes.join("\n⚠ ")}`;
+  const warn = attachedCount < sendFiles.length || droppedNames.length > 0 || attachNotes.length > 0;
   // errors[] của ENGINE đính kèm nói rõ dòng nào trượt ("Không khớp thành phần …", "Chỉ lên được 0/1
   // tệp …"). Trước đây bị nuốt hoàn toàn nên cán bộ thấy "đã đính kèm" mà hồ sơ vẫn thiếu.
   const attachErrors = (attachRes?.errors || []).filter(Boolean);
@@ -4632,6 +4636,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
       cfg.key === "cap-giay-phep-khai-thac-thuy-san" ||
       cfg.key === "cap-lai-chung-chi-hanh-nghe-thu-y" ||
+      cfg.key === "gia-han-chung-chi-hanh-nghe-thu-y" ||
       cfg.key === "cong-bo-co-so-du-dieu-kien-tiem-chung" ||
       cfg.key === "dang-ky-bien-phap-bao-dam-qsdd" ||
       cfg.key === "xoa-dang-ky-tau-ca" ||

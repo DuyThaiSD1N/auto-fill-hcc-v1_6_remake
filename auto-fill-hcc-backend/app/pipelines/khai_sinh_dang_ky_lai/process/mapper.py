@@ -6,7 +6,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import is_current_area, near_match_ward, remap_area
 from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
-from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
 from app.pipelines.khai_sinh_dang_ky_lai.process import reason as _reason_mod
 
@@ -186,9 +186,16 @@ def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
 
-def _id_doc_type(number) -> str:
-    """CMND cu ~9 so -> 'Chung minh nhan dan'; CCCD/Can cuoc 12 so -> 'Can cuoc cong dan'."""
-    return "Chứng minh nhân dân" if len(_digits(number)) == 9 else "Căn cước công dân"
+def _id_doc_type(number, issuer: str = "") -> str:
+    """CMND 9 số -> "Chứng minh nhân dân"; số 12 chữ số thì NƠI CẤP quyết định loại thẻ.
+
+    Cùng là 12 chữ số nhưng thẻ Căn cước mới (Bộ Công an, từ 01/7/2024) và CCCD gắn chip cũ
+    (Cục Cảnh sát QLHC về TTXH) là hai option khác nhau trên cổng. Gán cứng "Căn cước công dân"
+    thì thẻ Căn cước mới bị chọn nhầm option CCCD.
+    """
+    if len(_digits(number)) == 9:
+        return "Chứng minh nhân dân"
+    return id_doc_type("Căn cước", issuer)
 
 
 def _copy_value(value) -> str:
@@ -232,9 +239,9 @@ def _issuer_or_default(values: dict, prefix: str) -> str:
 # Ô tích "(5) Quan hệ với người được khai sinh" của biểu mẫu legacy.
 _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Mother"}
 
-# Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ tờ khai, hoặc
-# đối chiếu được người đăng nhập chính là người được đăng ký lại khai sinh.
-_REQUESTER_OVERWRITE_SOURCES = frozenset({"to_khai", "cccd_con"})
+# Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ giấy ủy quyền, từ
+# tờ khai, hoặc đối chiếu được người đăng nhập chính là người được đăng ký lại khai sinh.
+_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "to_khai", "cccd_con"})
 
 # Mục I được cổng điền sẵn từ tài khoản VNeID đang đăng nhập. Khi tờ khai chốt người yêu cầu là
 # NGƯỜI KHÁC (người nộp hộ đăng nhập bằng tài khoản của chính họ), mọi ô ta không đọc được vẫn
@@ -442,10 +449,101 @@ def _person_from_role(values: dict, prefix: str, context: str) -> dict:
     }
 
 
+def _authorized_context(context: str) -> dict:
+    """Khối <nguoi_duoc_uy_quyen> reason.py đọc tất định từ mục "Bên được ủy quyền"."""
+    section = _reason_mod._section(context, _reason_mod._AUTHORIZED_TAG) if context else ""
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    return {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": _digits(read("Số CCCD/CMND")),
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": read("Nơi cấp"),
+        "noi_cu_tru": read("Nơi cư trú"),
+    }
+
+
+def _authorized_requester(values: dict, context: str) -> dict | None:
+    """Hồ sơ có GIẤY ỦY QUYỀN → người yêu cầu là BÊN ĐƯỢC ỦY QUYỀN, thắng cả tờ khai lẫn CCCD con.
+
+    Người đi nộp hồ sơ theo ủy quyền chính là bên được ủy quyền, nên mục I phải mang nhân thân người
+    đó. Họ tên/số định danh lấy theo khối Python đọc thẳng từ giấy (agent hay nhầm sang BÊN ủy quyền);
+    field Authorized_* của agent chỉ được bù khi chỉ về CÙNG người đó.
+    """
+    parsed = _authorized_context(context)
+    agent = {
+        "ho_ten": values.get("Authorized_FullName"),
+        "so_dinh_danh": values.get("Authorized_IdNumber"),
+    }
+    has_agent = bool(agent["ho_ten"] or agent["so_dinh_danh"])
+    if parsed["ho_ten"] or parsed["so_dinh_danh"]:
+        agent_ids = (_digits(agent["so_dinh_danh"]), parsed["so_dinh_danh"])
+        use_agent = has_agent and (
+            (all(agent_ids) and agent_ids[0] == agent_ids[1])
+            or _reason_mod._names_align(parsed["ho_ten"], agent["ho_ten"])
+        )
+    elif has_agent and "uy quyen" in _fold(values.get("Authorized_SourceDocumentTitle")):
+        use_agent = True
+    else:
+        return None
+
+    residence = values.get("Authorized_ResidenceDomestic") if use_agent else None
+    ngay_cap = (use_agent and values.get("Authorized_IdIssueDate")) or parsed["ngay_cap"]
+    person = {
+        "ho_ten": parsed["ho_ten"] or (agent["ho_ten"] if use_agent else ""),
+        "so_dinh_danh": next(
+            (
+                value
+                for value in (parsed["so_dinh_danh"], agent["so_dinh_danh"] if use_agent else "")
+                if _is_valid_id_number(value)
+            ),
+            None,
+        ),
+        "ngay_cap": ngay_cap,
+        "noi_cap": normalize_issuer((use_agent and values.get("Authorized_IdIssuePlace")) or parsed["noi_cap"]),
+        "noi_cu_tru": (
+            _normalize_domestic_area(residence)
+            if isinstance(residence, dict)
+            else _reason_mod.authorized_residence_area(parsed["noi_cu_tru"])
+        ),
+    }
+
+    # Người được ủy quyền trùng đúng một vai trong hồ sơ (vd con đã thành niên ủy quyền cho cha) thì
+    # tick theo vai đó và bù giấy tờ tùy thân từ CCCD của chính vai đó; không trùng ai → "Khác".
+    relation = "Khac"
+    for prefix, tick in (("Subject", "BanThan"), ("Father", "ChaDe"), ("Mother", "MeDe")):
+        if _same_person(
+            person["ho_ten"], person["so_dinh_danh"],
+            values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        ):
+            relation = tick
+            base = _person_from_role(values, prefix, context)
+            person = {key: person.get(key) or base.get(key) for key in person}
+            break
+
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "quan_he": relation,
+        "quan_he_default": False,
+        # Giấy ủy quyền thường chỉ ghi số thẻ, không ghi nơi cấp → loại thẻ (CCCD cũ hay Căn cước
+        # mới) chỉ là đoán; đánh dấu để extension tô vàng cho cán bộ soát.
+        "loai_giay_to_default": not person["noi_cap"],
+        "source": "uy_quyen",
+    }
+
+
 def _resolve_requester(values: dict, context: str, options: dict | None = None) -> dict:
     """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
 
-    HAI NHÁNH TÁCH BẠCH — quyết định bằng việc hồ sơ CÓ hay KHÔNG có tờ khai/đơn:
+    0. CÓ GIẤY ỦY QUYỀN: người đi nộp là BÊN ĐƯỢC ỦY QUYỀN → ưu tiên tuyệt đối, xem
+       _authorized_requester.
+
+    Còn lại HAI NHÁNH TÁCH BẠCH — quyết định bằng việc hồ sơ CÓ hay KHÔNG có tờ khai/đơn:
 
     A. CÓ TỜ KHAI: tờ khai là nguồn duy nhất của cả ô tích lẫn nhân thân người yêu cầu. Ghi đè
        thẳng lên dữ liệu cổng điền sẵn từ tài khoản VNeID đang đăng nhập (người nộp hộ thường
@@ -464,6 +562,10 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
          - KHÔNG trùng → người thứ ba đi nộp hộ, không suy được quan hệ: tick "Khác" và KHÔNG ghi
            đè khối này, để cổng giữ nguyên dữ liệu VNeID; dữ liệu quét được đổ vào con/cha/mẹ.
     """
+    authorized = _authorized_requester(values, context)
+    if authorized:
+        return authorized
+
     # Agent chỉ được trả Requester_* khi đọc từ tờ khai, nên bản thân việc có Requester_* đã là bằng
     # chứng; _has_declaration còn bắt được ca tờ khai chỉ tích ô quan hệ mà bỏ trống họ tên.
     has_requester_facts = any(
@@ -657,7 +759,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("SoDinhDanhC", req_id)
             add("SoGiayToDinhDanhC", req_id)
             if req_id:
-                add("LoaiGiayToDinhDanhC", _id_doc_type(req_id))
+                add(
+                    "LoaiGiayToDinhDanhC",
+                    _id_doc_type(req_id, requester.get("noi_cap")),
+                    default=bool(requester.get("loai_giay_to_default")),
+                )
             add("NgayCapDDC", requester.get("ngay_cap"))
             add("NoiCapDDC", requester.get("noi_cap"))
 
@@ -716,7 +822,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if mother_id:
             add("SoDinhDanhMe", mother_id, me_default)
             add("SoGiayToDinhDanhMe", mother_id, me_default)
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id), me_default)
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id, _issuer_or_default(values, "Mother")), me_default)
         else:
             # Không có số CCCD mẹ -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
             clear("SoDinhDanhMe")
@@ -743,7 +849,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if father_id:
             add("SoDinhDanhCha", father_id, cha_default)
             add("SoGiayToDinhDanhCha", father_id, cha_default)
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id), cha_default)
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id, _issuer_or_default(values, "Father")), cha_default)
         else:
             # Không có số CCCD cha -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
             clear("SoDinhDanhCha")

@@ -4136,6 +4136,23 @@
     }
   }
 
+  // Ngược với tickAttpRowCheckbox: dòng cổng tick SẴN nhưng hồ sơ không có giấy tờ đó (BE gửi
+  // untickRows, vd "Giấy phép lao động … đối với người nước ngoài") → bỏ tick. KHÔNG đụng dòng đã có tệp.
+  async function untickAttpRowCheckbox(row) {
+    const cell = row.cells?.[1] || row.cells?.[0] || row;
+    const cb = cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
+    if (!cb || !cb.checked || attpRowAttachedFingerprints(row).length) return false;
+    const clickable = cb.closest("mat-checkbox") || cb.closest("label") || cb;
+    clickable.click();
+    await sleep(200);
+    if (cb.checked) {
+      cb.checked = false;
+      cb.dispatchEvent(new Event("input", { bubbles: true }));
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    return true;
+  }
+
   async function setAttpRowLoaiBan(row, loaiBan) {
     const want = foldChoiceText(loaiBan || "");   // "ban chinh" | "ban sao"
     if (!want) return;
@@ -4154,10 +4171,32 @@
     return foldChoiceText(value || "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/[^a-z0-9]/g, "");
   }
 
+  // Ô upload của dòng. Cổng MAE (gia hạn CCHN thú y…) có HAI khối uploadBtn: "Scan tệp tin" đứng TRƯỚC,
+  // "Chọn tệp tin" (button.btn_upload + input multiple) đứng SAU — querySelector trần trúng input của Scan
+  // nên tệp không lên. Lấy input mà khối bọc gần nhất CHỈ có nút "Chọn tệp tin".
+  function attpRowUploadInput(row) {
+    const inputs = Array.from(row?.querySelectorAll?.('input[type="file"]') || []);
+    if (inputs.length <= 1) return inputs[0] || null;
+    const isChooser = (el) => {
+      const text = foldChoiceText(nodeText(el));
+      return !text.includes("scan") && (text.includes("chon tep") || el.classList?.contains("btn_upload"));
+    };
+    for (const input of inputs) {
+      for (let node = input.parentElement; node && node !== row; node = node.parentElement) {
+        const buttons = Array.from(node.querySelectorAll("button, a"));
+        if (!buttons.length) continue;
+        if (buttons.every(isChooser)) return input;
+        break;
+      }
+    }
+    // Không nhận ra nút: "Chọn tệp tin" luôn đứng sau "Scan tệp tin".
+    return inputs[inputs.length - 1];
+  }
+
   // Đọc fingerprint các file ĐÃ đính trong ô đính kèm của dòng. Ô đính kèm là ô chứa input[type=file]
   // (ở cổng Đà Nẵng/Bộ Xây dựng là CỘT CUỐI, KHÁC cells[2] = cột "Loại bản") → không dùng rowAttachedFileName.
   function attpRowAttachedFingerprints(row) {
-    const input = row?.querySelector?.('input[type="file"]');
+    const input = attpRowUploadInput(row);
     const cell = (input && input.closest('td, th, mat-cell, [role="cell"], [role="gridcell"]')) || row;
     if (!cell) return [];
     const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
@@ -4195,6 +4234,13 @@
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(item);
     }
+    // Dòng cổng tick sẵn mà hồ sơ không có (untickRows) → bỏ tick, trừ dòng chính kế hoạch sắp đính tệp.
+    const untickNames = [...new Set(attachments.flatMap((item) => item.untickRows || []))];
+    for (const name of untickNames) {
+      const row = findAttachmentRowByComponent(name);
+      const planned = attachments.some((item) => componentTextMatches(row, item.componentName || ""));
+      if (row && !planned) await untickAttpRowCheckbox(row);
+    }
     for (const items of groups.values()) {
       const first = items[0];
       const row = await waitFor(
@@ -4215,8 +4261,8 @@
       if (!pending.length) { markAttachmentResult(row, true); continue; }
       await tickAttpRowCheckbox(row);
       await setAttpRowLoaiBan(row, first.loaiBan);
-      // Ô upload ở CUỐI dòng (không phải cells[2]) → tìm trong cả dòng.
-      const input = row.querySelector('input[type="file"]');
+      // Ô upload ở CUỐI dòng (không phải cells[2]) → tìm trong cả dòng, đúng ô của nút "Chọn tệp tin".
+      const input = attpRowUploadInput(row);
       if (!input) { errors.push(`Dòng "${first.documentName}" không có ô upload.`); continue; }
       const files = [];
       const names = [];
@@ -4358,6 +4404,42 @@
           };
         }
         const ensureResult = await H.ensureMaeAddDocumentRows(addDocumentItems);
+        // Modal không tạo được dòng nhưng BE chỉ sẵn dòng dự phòng (fallbackComponentName) → ĐÍNH CHUNG
+        // vào dòng đó thay vì bỏ tệp, rồi nhắc cán bộ ghi chú hồ sơ.
+        if (ensureResult?.error && addDocumentItems.every((item) => item.fallbackComponentName)) {
+          const fallbackItems = addDocumentItems.map((item) => ({
+            ...item,
+            target: "attp-row",
+            needsAddComponent: false,
+            componentName: item.fallbackComponentName,
+            loaiBan: "", // giữ loại bản của dòng dự phòng, không đổi sang loại của giấy tờ gốc
+          }));
+          const fallbackResult = await attachFilesByAttpRow(payloadFiles, fallbackItems);
+          attachedNames.push(...(fallbackResult.fileNames || []));
+          skippedNames.push(...(fallbackResult.skippedNames || []));
+          const rowNames = [...new Set(addDocumentItems.map((item) => item.componentName))].join("; ");
+          const fallbackNames = [...new Set(addDocumentItems.map((item) => item.fallbackComponentName))].join("; ");
+          const note = `Không thêm được dòng "${rowNames}" qua nút Thêm giấy tờ (${ensureResult.error}) — `
+            + `đã đính kèm chung vào dòng "${fallbackNames}". Vui lòng ghi rõ ở phần Ghi chú hồ sơ.`;
+          if (fallbackResult.error) {
+            return {
+              error: `${note} ${fallbackResult.error}`,
+              attached: attachedNames.length,
+              skipped: skippedNames.length,
+              fileNames: attachedNames,
+              skippedNames,
+            };
+          }
+          return {
+            ok: true,
+            method: "attp-row+add-document-dialog-fallback",
+            attached: attachedNames.length,
+            skipped: skippedNames.length,
+            fileNames: attachedNames,
+            skippedNames,
+            notes: [note],
+          };
+        }
         if (ensureResult?.error) {
           return {
             error: ensureResult.error,

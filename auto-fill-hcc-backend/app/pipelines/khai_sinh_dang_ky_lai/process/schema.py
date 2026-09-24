@@ -28,6 +28,20 @@ FIELDS: list[dict] = [
      "desc": "Chữ NGUYÊN VĂN ghi ở dòng quan hệ trên tờ khai khi không quy được về 4 giá trị chuẩn "
              "(vd 'Con', 'Anh', 'Em', 'Chị', 'Cháu nội'...). Dùng kèm Requester_RelationToSubject=\"Khác\"."},
 
+    # Người được ủy quyền — CHỈ khi hồ sơ có GIẤY ỦY QUYỀN / văn bản ủy quyền. Người đi nộp là bên
+    # được ủy quyền nên mapper ƯU TIÊN người này cho khối "Thông tin người yêu cầu" (tick "Khác").
+    {"name": "Authorized_SourceDocumentTitle",
+     "desc": 'Tiêu đề NGUYÊN VĂN của giấy ủy quyền đã dùng để điền Authorized_* (vd "GIẤY ỦY QUYỀN"). '
+             "Không có giấy ủy quyền thì bỏ toàn bộ Authorized_*."},
+    {"name": "Authorized_FullName",
+     "desc": 'Họ tên BÊN ĐƯỢC ỦY QUYỀN trên giấy ủy quyền (mục "Bên được ủy quyền"/"Người được ủy quyền"). '
+             "KHÔNG lấy bên ủy quyền, KHÔNG lấy tên ở chữ ký nếu mục đó đã ghi họ tên."},
+    {"name": "Authorized_IdNumber", "desc": "Số CCCD/CMND/định danh của bên được ủy quyền ghi trên giấy ủy quyền (hoặc CCCD của chính người đó)."},
+    {"name": "Authorized_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân của bên được ủy quyền, dd/mm/yyyy — chỉ trả khi giấy ủy quyền hoặc CCCD của chính người đó ghi rõ."},
+    {"name": "Authorized_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân của bên được ủy quyền — chỉ trả khi giấy ủy quyền hoặc CCCD của chính người đó ghi rõ."},
+    {"name": "Authorized_ResidenceDomestic",
+     "desc": "Nơi thường trú/cư trú của bên được ủy quyền ghi trên giấy ủy quyền, object {quocGia,tinh,xa,diaChi}."},
+
     # Người được đăng ký lại khai sinh.
     {"name": "Subject_FullName", "desc": "Họ tên đầy đủ của người được đăng ký lại khai sinh."},
     {"name": "Subject_BirthDate",
@@ -166,6 +180,7 @@ ALIASES: dict[str, list[str]] = {}
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
     "Requester_IdIssueDate",
+    "Authorized_IdIssueDate",
     "Subject_BirthDate",
     "Subject_BirthDateFromId",
     "Subject_IdIssueDate",
@@ -176,6 +191,7 @@ for _name in (
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (
     "Requester_ResidenceDomestic",
+    "Authorized_ResidenceDomestic",
     "Subject_BirthPlaceDomestic",
     "Subject_ResidenceDomestic",
     "Subject_HometownDomestic",
