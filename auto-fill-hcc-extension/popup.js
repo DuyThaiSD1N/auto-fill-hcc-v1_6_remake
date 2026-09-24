@@ -734,8 +734,19 @@ function isDakBlaLamDongUser(user) {
     && normalizeProcedureSearch(user?.xa).includes("dak bla");
 }
 
+// ===== Nghiệp vụ riêng phường Yên Bái — tỉnh Lào Cai (chỉ áp cho tài khoản của địa bàn này) =====
+// Trang Ngành nghề kinh doanh: KHÔNG ghi gì vào ô mô tả (ô trắng dưới tên ngành) của từng dòng ngành —
+// chỉ giữ tên ngành chính thức cổng tự hiện theo mã VSIC. Địa bàn khác vẫn điền ô mô tả như cũ.
+/** Tài khoản phường Yên Bái — tỉnh Lào Cai (/auth/me trả `xa` + `tinh`). */
+function isYenBaiLaoCaiUser(user) {
+  // Phải khớp CẢ phường lẫn tỉnh: không dính địa danh "Yên Bái" (tỉnh cũ) ở nơi khác.
+  return normalizeProcedureSearch(user?.tinh).includes("lao cai")
+    && normalizeProcedureSearch(user?.xa).includes("yen bai");
+}
+
 function buildBusinessDefaults(user) {
   const defaults = {};
+  if (isYenBaiLaoCaiUser(user)) defaults.skipBusinessLineDescription = true;
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
   // Đà Nẵng: vai trò người nộp LUÔN là "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh",
   // kể cả khi nhân thân tài khoản khác chủ hộ (nghiệp vụ địa phương yêu cầu). Chỉ áp cho tài khoản

@@ -26,6 +26,9 @@ _ALLOWED_DOC_TYPES = {"identity", "marriage_certificate", "marriage_declaration"
 # documentName = tên tài liệu đặt trong ví/khi tải lên — ngắn gọn.
 _ROW_2_COMPONENT = "Bản sao Giấy chứng nhận kết hôn"
 _ROW_2_DOCUMENT_NAME = "Bản sao Giấy chứng nhận kết hôn"
+# Dòng STT2 ghi rõ: không có bản sao GCN kết hôn thì nộp bản sao hồ sơ, giấy tờ cá nhân có thông tin
+# liên quan đến nội dung đăng ký kết hôn → giấy tờ thay thế cũng vào dòng này, không thêm dòng mới.
+_ROW_2_SUBSTITUTE_NAME = "Giấy tờ liên quan đến nội dung đăng ký kết hôn"
 
 _SIDE_MAP = {"nam": "male", "nu": "female", "ca_hai": "both", "both": "both", "male": "male", "female": "female"}
 _FACE_MAP = {"truoc": "front", "sau": "back", "ca_hai": "", "both": "", "front": "front", "back": "back"}
@@ -304,21 +307,29 @@ async def plan_ket_hon_lai_attachments(
     elif len(id_indexes) == 1 and sides[id_indexes[0]] == "unknown":
         sides[id_indexes[0]] = "both"
 
+    # Dòng STT2 chỉ nhận 1 file: ưu tiên GCN kết hôn cũ; không có thì giấy tờ cá nhân liên quan
+    # (other), rồi mới tới bản cam đoan — thường là bộ gộp "cam đoan + giấy khai sinh" nộp thay GCN.
+    row_2_idx = next((i for i in range(len(raw_files)) if is_cert[i]), None)
+    for substitute_type in ("other", "commitment"):
+        if row_2_idx is None:
+            row_2_idx = next(
+                (i for i, t in enumerate(doc_types) if t == substitute_type and not is_cert[i]),
+                None,
+            )
+
     attachments: list[dict] = []
     used_labels: set[str] = set()
-    cert_used = False
     for idx, file in enumerate(raw_files):
-        if is_cert[idx] and not cert_used:
-            cert_used = True
+        if idx == row_2_idx:
             attachments.append({
                 "fileIndex": idx,
                 "fileName": str(file.get("name") or f"file-{idx + 1}"),
-                "documentName": _ROW_2_DOCUMENT_NAME,
+                "documentName": _ROW_2_DOCUMENT_NAME if is_cert[idx] else _ROW_2_SUBSTITUTE_NAME,
                 "componentName": _ROW_2_COMPONENT,
                 "target": "existing",
                 "componentIndex": 2,
                 "needsAddComponent": False,
-                "detectedType": "marriage_certificate",
+                "detectedType": "marriage_certificate" if is_cert[idx] else doc_types[idx],
             })
             continue
         if doc_types[idx] == "identity" and not is_cert[idx]:

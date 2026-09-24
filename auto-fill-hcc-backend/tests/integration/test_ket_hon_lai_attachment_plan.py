@@ -81,3 +81,54 @@ async def test_ket_hon_lai_keeps_two_identity_subjects_separate(monkeypatch):
     assert len(result["attachments"]) == 2
     assert result["attachments"][0]["sourceFileIndexes"] == [0, 1]
     assert result["attachments"][1]["sourceFileIndexes"] == [2, 3]
+
+
+async def test_ket_hon_lai_commitment_bundle_without_certificate_goes_to_row_2(monkeypatch):
+    # Không còn GCN kết hôn: nộp bộ gộp "bản cam đoan + giấy khai sinh" → vào dòng STT2, không thêm dòng.
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "bo-giay-to.pdf",
+            "text": "BẢN CAM ĐOAN Tôi chỉ còn lưu giữ giấy khai sinh ... GIẤY KHAI SINH (BẢN SAO) Họ và tên: NGUYỄN VĂN A",
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": 0, "type": "commitment"}]})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon_lai.client, "chat", fake_chat)
+
+    res = await ket_hon_lai.plan_ket_hon_lai_attachments([_file("bo-giay-to.pdf")], {}, _session())
+
+    [item] = res["attachments"]
+    assert item["target"] == "existing"
+    assert item["componentIndex"] == 2
+    assert item["needsAddComponent"] is False
+    assert item["componentName"] == "Bản sao Giấy chứng nhận kết hôn"
+    assert item["documentName"] == "Giấy tờ liên quan đến nội dung đăng ký kết hôn"
+
+
+async def test_ket_hon_lai_row_2_prefers_certificate_then_personal_document(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "cam-doan.pdf", "text": "BẢN CAM ĐOAN"},
+            {"name": "khai-sinh.pdf", "text": "GIẤY KHAI SINH (BẢN SAO)"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 0, "type": "commitment"},
+            {"index": 1, "type": "other", "documentName": "Giấy khai sinh"},
+        ]})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon_lai.client, "chat", fake_chat)
+
+    res = await ket_hon_lai.plan_ket_hon_lai_attachments(
+        [_file("cam-doan.pdf"), _file("khai-sinh.pdf")], {}, _session(),
+    )
+
+    by_file = {item["fileName"]: item for item in res["attachments"]}
+    assert by_file["khai-sinh.pdf"]["target"] == "existing"
+    assert by_file["khai-sinh.pdf"]["componentIndex"] == 2
+    assert by_file["cam-doan.pdf"]["target"] == "new"
+    assert by_file["cam-doan.pdf"]["componentName"] == "Bản cam đoan"
