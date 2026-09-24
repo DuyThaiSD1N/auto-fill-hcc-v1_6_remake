@@ -1779,6 +1779,51 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4b1d-dcd3-70c4-8e82-0d6b9eecdb0f",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "thong-bao-sua-doi-bo-sung-chuong-trinh-khuyen-mai",
+      "code": "2.001474",
+      "label": "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-428e-76a8-a8e8-65eee3365b73",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "thong-bao-san-pham-quang-cao-bang-quang-cao-bang-ron",
+      "code": "1.004650",
+      "label": "Thủ tục tiếp nhận hồ sơ thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-d4c8-725d-8498-130caf913cf2",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-the-huong-dan-vien-du-lich-noi-dia",
+      "code": "1.004623",
+      "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch nội địa",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7fa4-c5c7-744b-afcf-3c51350aa612",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai",
+      "code": "2.002288",
+      "label": "Cấp, cấp lại Phù hiệu cho xe ô tô, xe bốn bánh có gắn động cơ kinh doanh vận tải",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-a055-702e-b40b-ed5848ebb0d9",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai",
+      "code": "1.001751",
+      "label": "Cấp bổ sung xe tập lái, cấp lại Giấy phép xe tập lái",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-1332-703e-951b-def74019fb46",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }
