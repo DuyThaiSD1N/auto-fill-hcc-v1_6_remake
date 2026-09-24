@@ -197,16 +197,114 @@ def _after_attach(caps=NEW_CLIENT):
     return _conv(caps, state="done", attach_done=True)
 
 
-async def test_qua_buoc_nhan_ket_qua_thi_huong_dan_ba_phuong_thuc():
-    conv = _after_attach()
-    r = await flow.handle_turn(conv, Intent("action", "guided_step_report", {
+RESULT_CLIENT = {**NEW_CLIENT, "supportsResultMethod": True}
+
+
+async def _to_result_step(conv):
+    return await flow.handle_turn(conv, Intent("action", "guided_step_report", {
         "phase": "attachment", "ok": True, "wizardStep": 4,
     }))
+
+
+async def test_client_khong_co_engine_van_nhan_huong_dan_ba_phuong_thuc():
+    """Bản khai guided steps nhưng CHƯA có engine gạt công tắc: chọn hộ thì công dân ngồi chờ
+    một cú bấm không bao giờ xảy ra → giữ nguyên câu hướng dẫn tự bấm."""
+    r = await _to_result_step(_after_attach(NEW_CLIENT))
     for phrase in ("bản giấy có đóng dấu", "trực tuyến", "bưu chính"):
         assert phrase in r.display_md
     assert "đơn vị bưu chính" in r.display_md, "chọn bưu chính là phải điền thêm cả khối địa chỉ"
     assert r.chips[0]["send"] == "__action:guided_submit"
-    assert not r.actions, "bot KHÔNG tự chọn phương thức nhận kết quả hộ công dân"
+    assert not r.actions and not r.cards
+
+
+async def test_tu_chon_san_ban_giay_va_gat_cong_tac_tren_trang():
+    conv = _after_attach(RESULT_CLIENT)
+    r = await _to_result_step(conv)
+    assert "Em đang chọn **Nhận kết quả bản giấy có đóng dấu**" in r.display_md
+    # Câu chốt đi kèm MỌI lượt chọn, và nút Gửi hồ sơ phải in đậm cho nổi.
+    assert "bấm **Gửi hồ sơ** để em nộp hồ sơ" in r.display_md
+    card = r.cards[0]
+    assert card["kind"] == "result_methods" and card["selected"] == "paper"
+    assert [o["key"] for o in card["options"]] == ["paper", "online", "postal"]
+    action = r.actions[0]
+    assert action["type"] == "select_result_method" and action["method"] == "paper"
+    # Cổng dùng switch chứ không phải radio → FE phải biết cả ba nhãn để tắt cái đang bật.
+    assert len(action["allLabels"]) == 3
+    assert action["label"] == "Nhận kết quả bản giấy có đóng dấu", "phải đúng chữ trên cổng"
+    assert conv["result_method"] == "paper"
+    assert r.chips[0]["send"] == "__action:guided_submit"
+
+
+async def test_doi_sang_cach_khac_thi_gat_lai_cong_tac_do():
+    conv = _after_attach(RESULT_CLIENT)
+    await _to_result_step(conv)
+    r = await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "postal"}))
+    assert conv["result_method"] == "postal"
+    assert r.cards[0]["selected"] == "postal"
+    assert r.actions[0]["method"] == "postal"
+
+
+async def test_ban_giay_va_truc_tuyen_khong_doi_dien_them_gi():
+    """Kiểm trên cổng thật: chỉ bưu chính mới mở khối thông tin người nhận."""
+    for cach in ("paper", "online"):
+        conv = _after_attach(RESULT_CLIENT)
+        await _to_result_step(conv)
+        r = await flow.handle_turn(conv, Intent("action", "result_method_report", {
+            "method": cach, "ok": True, "missing": [],
+        }))
+        assert "điền" not in r.display_md.replace("điền hộ", ""), f"{cach} không phải điền gì thêm"
+        assert "bấm **Gửi hồ sơ** để em nộp hồ sơ" in r.display_md
+
+
+async def test_chi_buu_chinh_moi_dan_cong_dan_tu_dien():
+    conv = _after_attach(RESULT_CLIENT)
+    await _to_result_step(conv)
+    await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "postal"}))
+    r = await flow.handle_turn(conv, Intent("action", "result_method_report", {
+        "method": "postal", "ok": True, "missing": [],
+    }))
+    assert "công dân điền trực tiếp trên trang" in r.display_md
+    assert not r.actions, "trợ lý KHÔNG điền hộ địa chỉ/người nhận"
+    assert "bấm **Gửi hồ sơ** để em nộp hồ sơ" in r.display_md
+
+
+async def test_chi_buu_chinh_moi_duoc_soi_o_trong():
+    """FE chỉ quét ô bắt buộc cho cách đòi thêm thông tin — quét cả trang cho cách không đòi
+    gì là mời gọi báo nhầm ô của khối khác."""
+    conv = _after_attach(RESULT_CLIENT)
+    r = await _to_result_step(conv)
+    assert r.actions[0]["needsInput"] is False, "bản giấy không đòi gì thêm"
+    r = await flow.handle_turn(conv, Intent("action", "pick_result_method", {"method": "postal"}))
+    assert r.actions[0]["needsInput"] is True
+
+
+async def test_o_bat_buoc_con_trong_thi_doc_ten_o_cho_cong_dan():
+    """Ô phụ do chính cổng dựng ra sau khi bật công tắc — FE đọc dấu * rồi trả tên ô về."""
+    conv = _after_attach(RESULT_CLIENT)
+    await _to_result_step(conv)
+    r = await flow.handle_turn(conv, Intent("action", "result_method_report", {
+        "method": "paper", "ok": True, "missing": ["Nơi nhận kết quả trực tiếp"],
+    }))
+    assert "Nơi nhận kết quả trực tiếp" in r.display_md
+    assert r.chips[0]["send"] == "__action:guided_submit"
+
+
+async def test_gat_khong_duoc_thi_noi_thang_de_cong_dan_tu_gat():
+    conv = _after_attach(RESULT_CLIENT)
+    await _to_result_step(conv)
+    r = await flow.handle_turn(conv, Intent("action", "result_method_report", {
+        "method": "paper", "ok": False, "error": "Không thấy công tắc trên trang.",
+    }))
+    assert "chưa gạt được" in r.display_md
+    assert r.chips[0]["send"] == "__action:guided_submit"
+
+
+async def test_cach_nhan_ket_qua_co_ban_mong():
+    from app.channels.handfree.chat import script_mong as mong
+
+    for ten in ("GUIDED_RESULT_PICK", "GUIDED_RESULT_PICKED", "GUIDED_RESULT_NEEDS_INPUT",
+                "GUIDED_RESULT_MISSING", "GUIDED_RESULT_FAILED"):
+        assert getattr(mong, ten).get("md"), f"thiếu bản Mông cho {ten}"
 
 
 async def test_cong_dan_tu_bam_sang_buoc_4_cung_duoc_huong_dan():

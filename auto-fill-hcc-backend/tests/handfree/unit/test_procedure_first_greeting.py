@@ -42,6 +42,32 @@ def test_man_chao_cu_giu_nguyen_thu_tu_noi_truoc():
     assert r.display_md == vi.GREET["md"], "bản trên chợ phải nhận đúng nguyên văn câu cũ"
 
 
+def test_cau_xac_nhan_hoi_thang_ca_noi_lam_lan_doi_tuong():
+    """Người lớn tuổi đọc một câu hỏi có/không nhanh hơn là tự đối chiếu ba dòng trong card,
+    nên câu phải nêu đủ thủ tục + nơi làm + đối tượng rồi mới mời bấm."""
+    r = flow._to_confirm_procedure(_conv(NEW_CLIENT), "chung-thuc-ban-sao")
+    assert "Phường Hải Châu, Thành phố Đà Nẵng" in r.display_md
+    assert "cho bản thân" in r.display_md
+    assert "đúng không ạ?" in r.display_md
+    # Nhãn nút trong câu phải khớp nút thật; nút đã đổi "Đúng rồi" → "Đồng ý" từ trước.
+    assert "Đúng rồi" not in r.display_md
+    assert r.display_md.count("**Đồng ý**") == 2, "đúng thì bấm, sai thì chọn lại rồi cũng bấm"
+
+
+def test_doi_tuong_khac_thi_cau_doi_theo():
+    conv = _conv(NEW_CLIENT)
+    conv["execution_subject"] = "authorized_person"
+    r = flow._to_confirm_procedure(conv, "chung-thuc-ban-sao")
+    assert "do người khác ủy quyền" in r.display_md
+
+
+def test_chua_chon_noi_van_hoi_duoc_khong_vo_cau():
+    conv = _conv(NEW_CLIENT)
+    conv["location"] = {}
+    r = flow._to_confirm_procedure(conv, "chung-thuc-ban-sao")
+    assert "(chưa chọn xã)" in r.display_md and "(chưa chọn tỉnh)" in r.display_md
+
+
 def test_chon_thu_tuc_xong_moi_hien_noi_de_chinh():
     conv = _conv(NEW_CLIENT)
     r = flow._to_confirm_procedure(conv, "chung-thuc-ban-sao")

@@ -39,6 +39,8 @@ _PAGE_HEADER_RE = re.compile(
     r"[\t \u2500-\u257f-]*$"
 )
 _CCCD_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
+# Nhãn LLM tách tài liệu gắn cho trang trắng (prompt.py, quy tắc 14).
+_BLANK_PAGE_KEY = "trang trang"
 _FACE_FRONT_MARKERS = (
     "can cuoc cong dan", "citizen identity", "identity card", "ho va ten", "full name",
     "ngay sinh", "date of birth", "gia tri den", "date of expiry",
@@ -514,6 +516,34 @@ def _logical_group_key(record: dict) -> str:
     return ""
 
 
+def _is_blank_segment(segment: dict) -> bool:
+    return _fold(segment.get("detectedType") or "") == _BLANK_PAGE_KEY
+
+
+def _drop_blank_segments(
+    segments: list[dict], raw_files: list[dict], file_meta: dict[int, dict]
+) -> tuple[list[dict], list[dict]]:
+    """Bỏ khoảng trang trắng khỏi kế hoạch tách; trả (giữ lại, đã bỏ).
+
+    File mà mọi trang đều bị gắn trang trắng vẫn đính NGUYÊN file: OCR rỗng cũng có thể là ảnh chụp
+    không có chữ, bỏ cả file thì giấy tờ cán bộ tải lên biến mất khỏi hồ sơ.
+    """
+    kept: list[dict] = []
+    dropped: list[dict] = []
+    for file_index, file in enumerate(raw_files):
+        items = [segment for segment in segments if segment["fileIndex"] == file_index]
+        content = [segment for segment in items if not _is_blank_segment(segment)]
+        if items and not content:
+            page_count = int(file_meta[file_index]["pageCount"] or 1)
+            kept.append(_fallback_segment(
+                file_index, 1, page_count, str(file.get("name") or f"file-{file_index + 1}")
+            ))
+            continue
+        kept.extend(content)
+        dropped.extend(segment for segment in items if _is_blank_segment(segment))
+    return kept, dropped
+
+
 def _select_primary_index(detected_by_index: dict[int, str], count: int) -> int:
     if count <= 1:
         return 0
@@ -843,7 +873,10 @@ async def plan(
     llm_ms = int((time.monotonic() - t1) * 1000)
 
     segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
-    if not split_documents:
+    blank_segments: list[dict] = []
+    if split_documents:
+        segments, blank_segments = _drop_blank_segments(segments, raw_files, file_meta)
+    else:
         segments = _preserve_source_file_segments(
             segments,
             raw_files,
@@ -860,6 +893,20 @@ async def plan(
         page_text_by_file,
         full_text_by_file,
     )
+    classified = sorted(classified + [
+        {
+            "fileIndex": segment["fileIndex"],
+            "fileName": str(raw_files[segment["fileIndex"]].get("name") or ""),
+            "pageFrom": segment["pageFrom"],
+            "pageTo": segment["pageTo"],
+            "detectedType": segment.get("detectedType") or "",
+            "documentName": segment.get("documentName") or "",
+            "logicalGroup": None,
+            "target": "skipped",
+            "componentIndex": None,
+        }
+        for segment in blank_segments
+    ], key=lambda item: (item["fileIndex"], item["pageFrom"]))
     # Tệp KHÔNG được đính (giấy ủy quyền có ô riêng ở bước trước; tệp bộ phân loại đã từ chối)
     # và tệp căn cước khi công dân chọn không chứng thực — cùng một việc: bỏ khỏi kế hoạch rồi
     # xếp lại vai, vì mục đầu tiên luôn ứng với dòng STT1 có sẵn của cổng.

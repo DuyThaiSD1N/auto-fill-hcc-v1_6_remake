@@ -1202,16 +1202,6 @@
       "autoConfirm": true
     },
     {
-      "key": "xoa-dang-ky-bien-phap-bao-dam-lao-cai",
-      "code": "1.011443",
-      "label": "(Lào Cai - Cấp Sở) Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e53-77ba-aa3f-086a9b9717ba",
-      "needsAgencySelect": true,
-      "provinceOnlyAgency": true,
-      "selectSo": true,
-      "autoConfirm": true
-    },
-    {
       "key": "yeu-cau-tro-giup-phap-ly",
       "code": "2.000829",
       "label": "Thủ tục yêu cầu trợ giúp pháp lý",

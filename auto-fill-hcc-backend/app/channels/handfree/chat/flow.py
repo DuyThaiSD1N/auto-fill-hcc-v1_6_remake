@@ -1076,7 +1076,16 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
     if _procedure_first(conv):
         # Card chọn nơi xuống ĐÂY: công dân đã biết đang làm thủ tục gì rồi mới soát nơi, và
         # sửa được ngay tại chỗ trước khi bấm Đúng rồi.
-        r = Reply(*_fmt(vi.CONFIRM_PROCEDURE_WITH_LOCATION, procedure=label))
+        subject = _execution_subject_selection(conv, proc) or {}
+        r = Reply(*_fmt(
+            vi.CONFIRM_PROCEDURE_WITH_LOCATION,
+            procedure=label,
+            ward=loc.get("ward") or "(chưa chọn xã)",
+            province=loc.get("province") or "(chưa chọn tỉnh)",
+            # Dạng ngắn để ghép vào câu; thủ tục không bật chọn đối tượng thì nói "cho bản
+            # thân" — đó cũng là mặc định của cổng.
+            subject=subject.get("shortLabel") or subject.get("label") or "cho bản thân",
+        ))
         r.cards = [_location_card(conv)]
     else:
         r = Reply(*_fmt(
@@ -1302,6 +1311,20 @@ def _variant_lists(proc: dict) -> tuple[str, str]:
     return "\n".join(md_lines), "; ".join(tts_parts)
 
 
+def _mae_ward_level(proc: dict) -> bool:
+    """Hộp thoại cổng bộ chọn cơ quan ở CẤP XÃ (radio "Phường/Xã") thay vì Sở/Ban ngành."""
+    return str(proc.get("maeAgencyLevel") or "") == "ward"
+
+
+def _supports_mae_ward_agency(conv: dict) -> bool:
+    return (conv.get("client_capabilities") or {}).get("supportsMaeWardAgency") is True
+
+
+def _supports_agency_card(conv: dict) -> bool:
+    """Biết bấm "Nộp trực tuyến" ở ĐÚNG thẻ theo chữ (agencyCardIncludes) thay vì thẻ đầu."""
+    return (conv.get("client_capabilities") or {}).get("supportsAgencyCard") is True
+
+
 def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
     """Lệnh FE chọn Trường hợp giải quyết (kèm Tỉnh/Sở nếu cổng có) rồi bấm Đồng ý.
 
@@ -1313,6 +1336,24 @@ def _variant_fill_agency_reply(conv: dict, proc: dict, loc: dict) -> Reply:
     province = loc.get("province") or ""
     agency = str(proc.get("agencyDeptLabel") or "")
     variant_label = variant.get("label") or ""
+    if _mae_ward_level(proc):
+        # Cấp xã: không có tên Sở để đọc, và engine cũ trên chợ chỉ biết gạt radio "Sở/Ban
+        # ngành" → client chưa khai cờ thì dặn chọn tay thay vì bắn lệnh nó hiểu sai cấp.
+        ward = loc.get("ward") or ""
+        if not _supports_mae_ward_agency(conv):
+            return Reply(*_fmt(vi.MAE_AGENCY_WARD_FAILED,
+                               error="bản trợ lý này chưa tự chọn được cấp xã",
+                               province=province, ward=ward))
+        r = Reply(*_fmt(vi.AGENCY_WARD_DIALOG_AUTOFILL_GUIDE, province=province, ward=ward))
+        r.actions = [{"type": "fill_mae_agency",
+                      "province": province,
+                      "ward": ward,
+                      "agencyLevel": "ward",
+                      "agency": "",
+                      "variant": "",
+                      "variantMatch": "",
+                      "variantAvoid": ""}]
+        return r
     if agency and not _variant_options(proc):
         # Hộp thoại chỉ có Tỉnh + Sở, không có trường hợp giải quyết (Bộ Nội vụ).
         r = Reply(*_fmt(vi.AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE, province=province, agency=agency))
@@ -1606,6 +1647,16 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
                   "province": _agency_province(proc, loc), "ward": ward}
         if proc.get("agencySoFirst"):
             action["soMode"] = True
+        card = str(proc.get("agencyCardIncludes") or "")
+        if card:
+            # Trang kết quả ra nhiều thẻ, thẻ đầu là cấp Sở. Engine cũ trên chợ chỉ biết bấm thẻ
+            # đầu → KHÔNG bắn lệnh cho nó (nộp nhầm cơ quan mà không ai hay), dặn chọn tay.
+            if not _supports_agency_card(conv):
+                if _say_once(conv, "agency_card_manual"):
+                    return Reply(*_fmt(vi.AGENCY_CARD_MANUAL_GUIDE, ward=ward,
+                                       province=action["province"], card=card))
+                return Reply()
+            action["cardIncludes"] = card
         r.actions = [action]
         return r
     if proc.get("maePortal") and ctx.get("maeAgencyBlock"):
@@ -1765,10 +1816,23 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "event" and intent.value == "agency_failed":
         return Reply(*_fmt(vi.AGENCY_SELECT_FAILED, error=intent.payload.get("value") or "không rõ",
                            ward=_agency_ward_display(proc, loc), province=loc.get("province") or ""))
+    if intent.kind == "event" and intent.value == "agency_card_missing":
+        # Tỉnh/xã + Đồng ý đã xong, chỉ không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
+        # KHÔNG lùi về thẻ đầu (thẻ đầu là cấp Sở) — dặn công dân bấm đúng thẻ.
+        return Reply(*_fmt(vi.AGENCY_CARD_MISSING,
+                           card=str(proc.get("agencyCardIncludes") or "cơ quan đúng")))
     if intent.kind == "event" and intent.value == "mae_agency_failed":
         # Trang MAE không tự điền được → dặn chọn tay đầy đủ (tỉnh, sở, trường hợp) rồi chờ
         # page_status của trang kê khai; chip phao cho công dân yêu cầu kiểm tra lại.
         variant = _variant_option(proc, conv.get("procedure_variant") or _variant_default_key(proc))
+        if _mae_ward_level(proc):
+            r = Reply(*_fmt(vi.MAE_AGENCY_WARD_FAILED,
+                            error=intent.payload.get("value") or "không rõ",
+                            province=loc.get("province") or "",
+                            ward=loc.get("ward") or ""))
+            r.chips = [{"label": "Kiểm tra lại trang hiện tại", "send": "__event:sso_success",
+                        "solid": True}]
+            return r
         r = Reply(*_fmt(vi.MAE_AGENCY_FAILED,
                         error=intent.payload.get("value") or "không rõ",
                         province=loc.get("province") or "",
@@ -2335,9 +2399,72 @@ def _guided_blocked_reply(conv: dict, proc: dict, payload: dict, phase: str) -> 
 
 
 def _guided_result_step_reply(conv: dict, proc: dict) -> Reply:
-    """Hướng dẫn chọn phương thức nhận kết quả. Bot KHÔNG tự chọn hộ: chọn sai là hồ sơ trả về
-    sai đường, và đây là ý muốn riêng của từng công dân."""
-    r = Reply(*_fmt(vi.GUIDED_RESULT_STEP, **guided.step_labels(proc)))
+    """Bước Thông tin nhận kết quả.
+
+    Trợ lý gạt sẵn công tắc "bản giấy" rồi mời đổi, thay vì đọc ba cách bắt công dân tự dò công
+    tắc cuối trang. Vẫn không quyết thay công dân: đây là ĐỀ XUẤT đổi được trong một chạm, và
+    với hai cách còn lại trợ lý CHỈ gạt công tắc — địa chỉ, người nhận thì công dân tự điền,
+    điền hộ mà sai là kết quả đi lạc chỗ.
+
+    Client chưa có engine gạt công tắc → giữ nguyên câu hướng dẫn cũ (ba cách, tự bấm).
+    """
+    if not guided.result_methods_enabled(conv, proc):
+        r = Reply(*_fmt(vi.GUIDED_RESULT_STEP, **guided.step_labels(proc)))
+        r.chips = [guided.submit_cta_chip()]
+        return r
+    default = guided.default_result_method(proc) or {}
+    key = str(default.get("key") or "")
+    conv["result_method"] = key
+    r = Reply(*_fmt(vi.GUIDED_RESULT_PICK, note=vi.GUIDED_RESULT_SUBMIT_HINT,
+                    label=str(default.get("label") or ""), **guided.step_labels(proc)))
+    r.cards = [guided.result_methods_card(proc, key)]
+    action = guided.select_result_method_action(proc, key)
+    r.actions = [action] if action else []
+    r.chips = [guided.submit_cta_chip()]
+    return r
+
+
+def _pick_result_method_reply(conv: dict, proc: dict, intent: Intent) -> Reply:
+    """Công dân bấm sang cách khác → gạt đúng công tắc đó, giữ thẻ đang chọn cho khớp trang."""
+    key = str(intent.payload.get("method") or "")
+    method = guided.result_method(proc, key)
+    if not method:
+        return Reply()
+    conv["result_method"] = key
+    r = Reply()
+    r.cards = [guided.result_methods_card(proc, key)]
+    action = guided.select_result_method_action(proc, key)
+    r.actions = [action] if action else []
+    r.chips = [guided.submit_cta_chip()]
+    return r
+
+
+def _result_method_report_reply(conv: dict, proc: dict, intent: Intent) -> Reply:
+    """FE báo kết quả gạt công tắc. Không gạt được thì nói thẳng để công dân tự gạt — im lặng
+    là họ ngồi chờ một cú bấm không bao giờ xảy ra."""
+    key = str(intent.payload.get("method") or conv.get("result_method") or "")
+    method = guided.result_method(proc, key) or {}
+    label = str(method.get("label") or "")
+    labels = guided.step_labels(proc)
+    hint = vi.GUIDED_RESULT_SUBMIT_HINT
+    if not intent.payload.get("ok"):
+        # Câu này đã tự chỉ sang nút Gửi hồ sơ, không nối thêm câu chốt nữa cho khỏi lặp.
+        r = Reply(*_fmt(vi.GUIDED_RESULT_FAILED, label=label, **labels))
+    else:
+        # Ô bắt buộc còn trống do FE đọc THẲNG trên trang (dấu * của chính cổng), không khai
+        # cứng ở đây: cổng còn đổi, và chỉ cách đòi thêm thông tin mới được FE soi.
+        missing = [str(x).strip() for x in (intent.payload.get("missing") or []) if str(x).strip()]
+        if missing:
+            text = _join_owner_labels(missing)
+            r = Reply(*_fmt(vi.GUIDED_RESULT_MISSING, note=hint, label=label,
+                            missing_note=text, missing_tts=text, **labels))
+        elif method.get("needsInput"):
+            r = Reply(*_fmt(vi.GUIDED_RESULT_NEEDS_INPUT, note=hint, label=label, **labels))
+        else:
+            r = Reply(*_fmt(vi.GUIDED_RESULT_PICKED, note=hint, label=label, **labels))
+    # Gắn lại thẻ ở lượt CÓ CHỮ này: lượt bấm chọn là Reply rỗng nên router không lưu nó vào
+    # last_reply — dựng lại sidebar sau điều hướng mà chỉ có lượt rỗng thì mất đường đổi cách.
+    r.cards = [guided.result_methods_card(proc, key)]
     r.chips = [guided.submit_cta_chip()]
     return r
 
@@ -2369,6 +2496,12 @@ async def _handle_guided_action(conv: dict, proc: dict, intent: Intent) -> Reply
         # Sang bước chủ hồ sơ → thành phần hồ sơ: watcher trang phát page_status ngay sau đó,
         # nhánh guide_login cũ tự nhận bước đính kèm và nói tiếp. Im ở đây để không hai bubble.
         return Reply()
+
+    if intent.value == "pick_result_method":
+        return _pick_result_method_reply(conv, proc, intent)
+
+    if intent.value == "result_method_report":
+        return _result_method_report_reply(conv, proc, intent)
 
     if intent.value == "authorization_attach_report":
         if intent.payload.get("ok"):

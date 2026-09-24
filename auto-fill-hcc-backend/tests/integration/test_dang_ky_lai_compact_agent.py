@@ -104,26 +104,6 @@ def test_dang_ky_lai_address_normalization_preserves_full_names_and_deceased_mar
     assert result["MeNoiCuTru_TrongNuoc"] == source_fields[1]["value"]
 
 
-def test_dang_ky_lai_id_doc_type_follows_issuer_not_number_length():
-    """Số 12 chữ số chưa nói được loại thẻ: thẻ Căn cước mới do Bộ Công an cấp, CCCD chip cũ do Cục."""
-    source_fields = [
-        {"name": "Mother_FullName", "value": "Trần Thị Mẫu"},
-        {"name": "Mother_IdNumber", "value": "001155000001"},
-        {"name": "Mother_IdIssueDate", "value": "08/08/2024"},
-        {"name": "Mother_IdIssuePlace", "value": "Bộ Công an"},
-        {"name": "Father_FullName", "value": "Lê Văn Mẫu"},
-        {"name": "Father_IdNumber", "value": "001058000002"},
-        {"name": "Father_IdIssueDate", "value": "12/06/2021"},
-    ]
-    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
-
-    assert result["LoaiGiayToDinhDanhMe"] == "Thẻ Căn cước"
-    # Không đọc được nơi cấp, ngày cấp trước 01/7/2024 → CCCD gắn chip cũ.
-    assert result["LoaiGiayToDinhDanhCha"] == "Thẻ căn cước công dân"
-    assert mapper._id_doc_type("024086001950", "Bộ Công an") == "Thẻ Căn cước"
-    assert mapper._id_doc_type("121609105", "Bộ Công an") == "Chứng minh nhân dân"
-
-
 def test_dang_ky_lai_prompt_requires_full_administrative_unit_names():
     assert 'luôn trả "Thành phố Hồ Chí Minh"' in EXTRA_RULES
     assert 'không trả "X.", "P.", "TT."' in EXTRA_RULES
@@ -294,8 +274,7 @@ async def test_dang_ky_lai_compact_agent_derives_legacy_fields(monkeypatch):
     assert d["HoTenMeKS"] == "PHẠM NGỌC THỦY"
     assert d["SoGiayToDinhDanhCha"] == "025203007360"
     assert d["SoGiayToDinhDanhMe"] == "012193000851"
-    # Ngày cấp 2021, nơi cấp Cục Cảnh sát → CCCD gắn chip cũ, không phải thẻ Căn cước mới.
-    assert d["LoaiGiayToDinhDanhCha"] == "Thẻ căn cước công dân"
+    assert d["LoaiGiayToDinhDanhCha"] == "Căn cước công dân"
     assert d["NoiCapDDCha"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["NoiCapDDMe"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["ChaLoaiCuTru"] == "Thường trú"

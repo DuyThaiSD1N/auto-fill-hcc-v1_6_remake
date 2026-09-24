@@ -335,290 +335,99 @@ async def test_process_runner_sanitizes_before_mapper(monkeypatch):
     assert result["fields"] == seen["fields"]
 
 
-# req_f0fa659d2248: không tờ khai. Thẻ căn cước MẪU MỚI của người được đăng ký lại (Thúc), thẻ của mẹ
-# (Vậy) bị OCR đọc năm sinh 1994 trong khi số CCCD 027 1 39 ... nói 1939, và trích lục khai tử của cha.
-_NEW_CARD_THUC = """CĂN CƯỚC
+# req_e30f70b0d62b: trang 2 dồn ba MẶT TRƯỚC (con, mẹ, cha), trang 3 dồn ba MẶT SAU. Mặt sau không
+# in họ tên — chỉ dải MRZ mới cho biết đó là thẻ của ai.
+_STACKED_CARDS_OCR = """
+───── Trang 1/2 ─────
+CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+Số / No.: 027192010120
+Họ và tên / Full name:
+NGUYỄN THỊ TRANG
+Ngày sinh / Date of birth: 14/07/1992
+Giới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam
+Có giá trị đến: 14/07/2032
+
+CĂN CƯỚC
 IDENTITY CARD
 Số định danh cá nhân / Personal identification number:
-027065010250
+027165009519
 Họ, chữ đệm và tên khai sinh / Full name:
-NGUYỄN ĐĂNG THÚC
-Ngày, tháng, năm sinh / Date of birth:
-20/10/1965
-Giới tính / Sex:
-Nam
-Quốc tịch / Nationality:
-Việt Nam
-Nơi đăng ký khai sinh / Place of birth:
-Hà Mãn, Thuận Thành, Bắc Ninh
-Ngày, tháng, năm cấp / Date of issue:
-10/02/2025
-BỘ CÔNG AN/MINISTRY OF PUBLIC SECURITY"""
+NGUYỄN THỊ AN
+Ngày, tháng, năm sinh / Date of birth: 05/06/1965
+Giới tính / Sex: Nữ
 
-_CARD_VAY = """CĂN CƯỚC CÔNG DÂN
-Số / No.: 027139005852
-Họ và tên / Full name: DƯƠNG THỊ VẬY
-Ngày sinh / Date of birth: 01/01/1994
-Giới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam"""
-
-_DEATH_KY = """TRÍCH LỤC KHAI TỬ
-Họ, chữ đệm, tên: NGUYỄN ĐĂNG KY
-Ngày, tháng, năm sinh: 1933
-Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam
-Họ, chữ đệm, tên người đi khai tử: Nguyễn Văn Kiến"""
-
-_RAW_VAY_AS_CHILD = """<con>
-Họ tên: DƯƠNG THỊ VẬY
-Số CCCD/CMND: 027139005852
-Ngày sinh: 01/01/1994
-Giới tính: Nữ
-</con>
-<me>
-Họ tên: Không xác định
-</me>
-"""
-_RAW_UNKNOWN_FATHER = """<cha>
-Họ tên: Không xác định
-</cha>"""
-
-
-def _lineage_documents():
-    return [
-        {"name": "PDF_023.pdf", "text": _NEW_CARD_THUC},
-        {"name": "PDF_024.pdf", "text": _CARD_VAY},
-        {"name": "PDF_025.pdf", "text": _DEATH_KY},
-    ]
-
-
-def _assert_thuc_ky_vay(context):
-    assert reason._role_name(reason._section(context, "con")) == "NGUYỄN ĐĂNG THÚC"
-    cha = reason._section(context, "cha")
-    assert reason._role_name(cha) == "NGUYỄN ĐĂNG KY"
-    assert "đã chết" in cha
-    me = reason._section(context, "me")
-    assert reason._role_name(me) == "DƯƠNG THỊ VẬY"
-    assert "01/01/1939" in me
-
-
-def test_person_parser_reads_new_identity_card_layout():
-    person = reason._person_from_document({"name": "PDF_023.pdf", "text": _NEW_CARD_THUC})
-
-    assert person["name"] == "NGUYỄN ĐĂNG THÚC"
-    assert person["year"] == 1965
-    assert person["id"] == "027065010250"
-    assert person["issue_date"] == "10/02/2025"
-    assert person["is_identity"] is True
-
-
-def test_birth_year_follows_identity_number_when_ocr_misreads_card():
-    person = reason._person_from_document({"name": "PDF_024.pdf", "text": _CARD_VAY})
-
-    assert person["year"] == 1939
-    assert reason.reconcile_birth_with_id("01/01/1994", "027139005852", "Nữ") == "01/01/1939"
-    # Giới tính mã hoá trong số lệch giới tính in trên thẻ → chính con số bị đọc sai, không tin.
-    assert reason.reconcile_birth_with_id("01/01/1994", "027139005852", "Nam") == "01/01/1994"
-    # CMND 9 số không mã hoá năm sinh.
-    assert reason.reconcile_birth_with_id("1994", "125452298", "Nữ") == "1994"
-
-
-def test_no_declaration_youngest_by_ocr_is_actually_mother():
-    raw = _RAW_VAY_AS_CHILD + _RAW_UNKNOWN_FATHER
-
-    _assert_thuc_ky_vay(reason._render_context(raw, {}, _lineage_documents()))
-
-
-def test_no_declaration_replaces_father_with_different_surname_by_lineage():
-    raw = _RAW_VAY_AS_CHILD + """<cha>
-Họ tên: NGUYỄN ĐĂNG THÚC
-Số CCCD/CMND: 027065010250
-Ngày sinh: 20/10/1965
-Giới tính: Nam
-</cha>"""
-
-    _assert_thuc_ky_vay(reason._render_context(raw, {}, _lineage_documents()))
-
-
-def test_no_declaration_fills_missing_mother_by_generation():
-    raw = """<con>
-Họ tên: NGUYỄN ĐĂNG THÚC
-Số CCCD/CMND: 027065010250
-Ngày sinh: 20/10/1965
-Giới tính: Nam
-</con>
-<me>
-Họ tên: Không xác định
-</me>
-<cha>
-Họ tên: NGUYỄN ĐĂNG KY
-Ngày sinh: 1933
-Giới tính: Nam
-Trạng thái: đã chết
-</cha>"""
-
-    _assert_thuc_ky_vay(reason._render_context(raw, {}, _lineage_documents()))
-
-
-def test_lineage_repair_skips_when_several_same_surname_pairs():
-    grandson = """CHỨNG MINH NHÂN DÂN
-Số / No.: 125452298
-Họ và tên / Full name: NGUYỄN ĐĂNG AN
-Ngày sinh / Date of birth: 02/02/1990
-Giới tính / Sex: Nam"""
-    documents = _lineage_documents() + [{"name": "cmnd-an.pdf", "text": grandson}]
-    sections = {"con": "", "cha": "", "me": ""}
-
-    assert reason._repair_family_by_lineage(sections, documents) == sections
-
-
-def test_sanitizer_drops_requester_fields_and_fixes_mother_birth_year():
-    raw = _RAW_VAY_AS_CHILD + _RAW_UNKNOWN_FATHER
-    context = reason._render_context(raw, {}, _lineage_documents())
-    fields = [
-        {"name": "Subject_FullName", "comp": "x-input", "value": "NGUYỄN ĐĂNG THÚC"},
-        {"name": "Subject_IdNumber", "comp": "x-input", "value": "027065010250"},
-        {"name": "Mother_FullName", "comp": "x-input", "value": "DƯƠNG THỊ VẬY"},
-        {"name": "Mother_IdNumber", "comp": "x-input", "value": "027139005852"},
-        {"name": "Mother_BirthDateOrYear", "comp": "x-input", "value": "01/01/1994"},
-        {"name": "Requester_RelationToSubject", "comp": "x-input", "value": "Khác"},
-    ]
-
-    values = {f["name"]: f["value"] for f in reason.sanitize_extracted_fields(fields, context)}
-
-    assert values["Subject_FullName"] == "NGUYỄN ĐĂNG THÚC"
-    assert values["Mother_FullName"] == "DƯƠNG THỊ VẬY"
-    assert values["Mother_BirthDateOrYear"] == "01/01/1939"
-    assert "Requester_RelationToSubject" not in values
-
-
-# ---------------------------------------------------------------------------
-# Giấy ủy quyền: người yêu cầu là BÊN ĐƯỢC ỦY QUYỀN (dữ liệu bịa).
-# ---------------------------------------------------------------------------
-
-_AUTHORIZATION_LETTER = """───── Trang 1/2 ─────
 CĂN CƯỚC CÔNG DÂN
-Số / No.: 001190000111
-Họ và tên / Full name: TRẦN THỊ MẪU
-Ngày sinh / Date of birth: 02/03/1990
-Giới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam
+Citizen Identity Card
+Số / No.: 027062009749
+Họ và tên / Full name:
+NGUYỄN VĂN DẦN
+Ngày sinh / Date of birth: 01/01/1962
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam
+
 ───── Trang 2/2 ─────
-GIẤY ỦY QUYỀN
-I. BÊN ỦY QUYỀN:
-Ông/bà: Trần Thị Mẫu Sinh năm: 1990
-Số CCCD: 001190000111
-Nơi thường trú: Thôn Một - Tiên Du - Bắc Ninh
-II. BÊN ĐƯỢC ỦY QUYỀN:
-Ông/bà: Lê Văn Thử Sinh năm: 1985
-Số CCCD: 001085000222
-Nơi thường trú: Thôn Hai - Phương Liễu - TP Bắc Ninh
-III. NỘI DUNG ỦY QUYỀN:
-Nộp hồ sơ Đăng ký khai sinh lại
-- Mọi tranh chấp phát sinh giữa bên ủy quyền và bên được ủy quyền sẽ do hai bên tự giải quyết.
-BÊN UỶ QUYỀN BÊN ĐƯỢC ỦY QUYỀN
-Trần Thị Mẫu Lê Văn Thử
-"""
+Đặc điểm nhận dạng / Personal identification:
+Ngày, tháng, năm / Date, month, year: 09/05/2021
+CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI
+IDVNM1920101202027192010120<<5
+9207145F3207143VNM<<<<<<<<<<<<<<4
+NGUYEN<<THI<TRANG<<<<<<<<<<<<<<<
+Nơi cư trú / Place of residence Khu Sơn Trung
+Ngày, tháng, năm cấp / Date of issue:
+06/06/2025
+Ngày, tháng, năm hết hạn / Date of expiry:
+Không thời hạn
+BỘ CÔNG AN/MINISTRY OF PUBLIC SECURITY
+IDVNM1650095196027165009519<<9
+6506054F9912315VNM<<<<<<<<<<<<<<2
+NGUYEN<<THI<AN<<<<<<<<<<<<<<<<
+Đặc điểm nhận dạng / Personal identification:
+Ngày, tháng, năm / Date, month, year: 09/05/2021
+CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI
+IDVNMO620097499027062009749<<2
+6201016M9912315VNM<<<<<<<<<<<<<<2
+NGUYEN<<VAN<DAN<<<<<<<<<<<<<<<<
+""".strip()
 
 
-def _authorization_context(text=_AUTHORIZATION_LETTER) -> str:
-    block = reason._render_authorized([{"name": "ho_so.pdf", "text": text}])
-    return f"<phan_vai_da_xac_dinh>\n{block}</phan_vai_da_xac_dinh>"
+def test_card_backs_pair_by_mrz_not_page_order():
+    backs = reason._mrz_card_backs([{"name": "ho-so.pdf", "text": _STACKED_CARDS_OCR}])
+
+    cuc = "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert backs == {
+        "027192010120": {"issue_date": "09/05/2021", "issue_place": cuc},
+        "027165009519": {"issue_date": "06/06/2025", "issue_place": "Bộ Công an"},
+        "027062009749": {"issue_date": "09/05/2021", "issue_place": cuc},
+    }
 
 
-def _authorization_ui(fields, context, applicant=("TRẦN THỊ MẪU", "001190000111")):
-    from app.pipelines.khai_sinh_dang_ky_lai.process import mapper
-
-    out = mapper.enrich(fields, {
-        "_reasoning_context": context,
-        "formContext": {"applicantFullname": applicant[0], "applicantIdentityNumber": applicant[1]},
-    })
-    return {field["name"]: field for field in out}
-
-
-def test_authorization_letter_reads_authorized_party_not_authorizer():
-    section = reason._section(_authorization_context(), "nguoi_duoc_uy_quyen")
-
-    assert reason._labeled_value(section, "Họ tên") == "Lê Văn Thử"
-    assert reason._labeled_value(section, "Số CCCD/CMND") == "001085000222"
-    assert reason._labeled_value(section, "Năm sinh") == "1985"
-    assert reason._labeled_value(section, "Nơi cư trú") == "Thôn Hai - Phương Liễu - TP Bắc Ninh"
-
-
-def test_authorization_letter_inline_header_format():
-    text = (
-        "GIẤY ỦY QUYỀN\n"
-        "Bên ủy quyền: Bà Trần Thị Mẫu, sinh năm 1990\n"
-        "Bên được ủy quyền: Ông Lê Văn Thử, sinh năm 1985, CCCD số 001085000222 cấp ngày 05/06/2022\n"
-        "Nội dung ủy quyền: nộp hồ sơ\n"
+def test_sanitizer_fixes_issue_date_swapped_between_child_and_mother():
+    raw = _raw_roles(
+        requester="NGUYỄN THỊ TRANG",
+        requester_id="027192010120",
+        child="NGUYỄN THỊ TRANG",
+        child_id="027192010120",
+        mother="NGUYỄN THỊ AN",
+        mother_id="027165009519",
+        father="NGUYỄN VĂN DẦN",
     )
-    section = reason._section(_authorization_context(text), "nguoi_duoc_uy_quyen")
-
-    assert reason._labeled_value(section, "Họ tên") == "Lê Văn Thử"
-    assert reason._labeled_value(section, "Số CCCD/CMND") == "001085000222"
-    assert reason._labeled_value(section, "Ngày cấp") == "05/06/2022"
-
-
-def test_no_authorization_letter_renders_nothing():
-    text = "CĂN CƯỚC CÔNG DÂN\nHọ và tên / Full name: TRẦN THỊ MẪU\n"
-    assert reason._render_authorized([{"name": "cccd.jpg", "text": text}]) == ""
-
-
-def test_authorized_party_becomes_requester_without_declaration():
+    context = reason._render_context(raw, {}, [{"name": "ho-so.pdf", "text": _STACKED_CARDS_OCR}])
+    # Đúng output agent của req_e30f70b0d62b: ngày cấp/nơi cấp con và mẹ bị tráo.
     fields = [
-        {"name": "Subject_FullName", "value": "TRẦN THỊ MẪU"},
-        {"name": "Subject_IdNumber", "value": "001190000111"},
+        {"name": "Subject_FullName", "value": "NGUYỄN THỊ TRANG"},
+        {"name": "Subject_IdNumber", "value": "027192010120"},
+        {"name": "Subject_IdIssueDate", "value": "06/06/2025"},
+        {"name": "Subject_IdIssuePlace", "value": "Bộ Công an"},
+        {"name": "Mother_FullName", "value": "NGUYỄN THỊ AN"},
+        {"name": "Mother_Gender", "value": "Nữ"},
+        {"name": "Mother_IdNumber", "value": "027165009519"},
+        {"name": "Mother_IdIssueDate", "value": "09/05/2021"},
+        {"name": "Mother_IdIssuePlace", "value": "Cục Cảnh sát quản lý hành chính về trật tự xã hội"},
     ]
-    ui = _authorization_ui(fields, _authorization_context())
 
-    assert ui["QuanHe"]["value"] == "Khac"
-    assert not ui["QuanHe"].get("default")
-    assert ui["HoVaTenC"]["value"] == "LÊ VĂN THỬ"
-    assert ui["SoDinhDanhC"]["value"] == "001085000222"
-    assert ui["LoaiGiayToDinhDanhC"]["default"] is True
-    # Nhân thân tài khoản đăng nhập (người khác) không được sót lại ở mục I.
-    assert ui["NgayCapDDC"].get("clear") is True
-    assert ui["nycNoiCuTru_TrongNuoc"]["value"]["tinh"] == "Bắc Ninh"
-    assert ui["nycNoiCuTru_TrongNuoc"]["value"]["diaChi"] == "Thôn Hai"
+    values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
 
-
-def test_authorized_party_wins_over_declaration_requester():
-    fields = [
-        {"name": "Requester_SourceDocumentTitle", "value": "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH"},
-        {"name": "Requester_FullName", "value": "TRẦN THỊ MẪU"},
-        {"name": "Requester_RelationToSubject", "value": "Bản thân"},
-        {"name": "Subject_FullName", "value": "TRẦN THỊ MẪU"},
-    ]
-    ui = _authorization_ui(fields, _authorization_context())
-
-    assert ui["QuanHe"]["value"] == "Khac"
-    assert ui["HoVaTenC"]["value"] == "LÊ VĂN THỬ"
-
-
-def test_agent_authorized_fields_for_authorizer_are_ignored():
-    fields = [
-        {"name": "Subject_FullName", "value": "TRẦN THỊ MẪU"},
-        {"name": "Authorized_SourceDocumentTitle", "value": "GIẤY ỦY QUYỀN"},
-        {"name": "Authorized_FullName", "value": "TRẦN THỊ MẪU"},
-        {"name": "Authorized_IdNumber", "value": "001190000111"},
-        {"name": "Authorized_IdIssueDate", "value": "01/01/2021"},
-    ]
-    ui = _authorization_ui(fields, _authorization_context())
-
-    assert ui["HoVaTenC"]["value"] == "LÊ VĂN THỬ"
-    assert ui["SoDinhDanhC"]["value"] == "001085000222"
-    assert ui["NgayCapDDC"].get("clear") is True
-
-
-def test_agent_authorized_fields_used_when_python_found_no_block():
-    fields = [
-        {"name": "Subject_FullName", "value": "TRẦN THỊ MẪU"},
-        {"name": "Authorized_SourceDocumentTitle", "value": "GIẤY ỦY QUYỀN"},
-        {"name": "Authorized_FullName", "value": "Lê Văn Thử"},
-        {"name": "Authorized_IdNumber", "value": "001085000222"},
-        {"name": "Authorized_IdIssueDate", "value": "05/06/2022"},
-    ]
-    ui = _authorization_ui(fields, "")
-
-    assert ui["QuanHe"]["value"] == "Khac"
-    assert ui["HoVaTenC"]["value"] == "LÊ VĂN THỬ"
-    assert ui["NgayCapDDC"]["value"] == "05/06/2022"
-    assert ui["NoiCapDDC"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert not ui["LoaiGiayToDinhDanhC"].get("default")
+    assert values["Subject_IdIssueDate"] == "09/05/2021"
+    assert values["Subject_IdIssuePlace"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert values["Mother_IdIssueDate"] == "06/06/2025"
+    assert values["Mother_IdIssuePlace"] == "Bộ Công an"

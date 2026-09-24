@@ -30,8 +30,20 @@ Một file có thể chứa nhiều giấy tờ; một giấy tờ cũng có th�
    nếu đó chỉ là các phần sẽ được gộp. Ví dụ: "CCCD Nguyễn Văn A", "Học bạ THPT Nguyễn Văn A".
 9. Không trả chung chung "Tài liệu chứng thực" nếu đọc được tiêu đề, loại giấy tờ hoặc chủ thể.
 10. Chỉ dùng chữ, số, khoảng trắng, gạch dưới, gạch ngang trong documentName; tối đa khoảng 45 ký tự.
-11. OCR rỗng hoặc không đủ nhận biết thì để detectedType, documentName, subjectName, identityNumber,
-    logicalKey rỗng. Trả duy nhất một JSON object, không markdown, không giải thích.
+11. Trang CÓ CHỮ nhưng không đủ nhận biết (vd chỉ một dòng tên đơn vị) thì để detectedType, documentName,
+    subjectName, identityNumber, logicalKey rỗng — KHÔNG gọi là trang trắng.
+12. Bìa, mặt sau, trang lót của giấy tờ nhiều mặt (văn bằng, chứng chỉ, giấy phép, sổ) thường CHỈ lặp lại
+    quốc hiệu và tên giấy tờ (vd trang chỉ có "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM" + "BẰNG CỬ NHÂN").
+    Trang đó thuộc giấy tờ CÙNG TÊN liền kề (thường là trang ngay trước), nằm chung pageFrom-pageTo với
+    giấy tờ đó; không tách thành tài liệu riêng.
+13. Cùng một giấy tờ bị chụp/quét LẶP LẠI thành một bản đầy đủ khác (ở chỗ khác trong file hoặc ở file
+    khác; trùng tiêu đề, chủ thể, số hiệu) là MỘT BẢN KHÁC cần chứng thực riêng → logicalKey PHẢI khác
+    bản trước (thêm hậu tố "-ban-2", "-ban-3"…), documentName giữ nguyên. Chỉ dùng chung logicalKey cho
+    các PHẦN KHÁC NHAU của cùng một bản: mặt trước/mặt sau, trang 1/trang 2, học bạ chia nhiều file.
+14. Trang thực sự trắng: OCR rỗng, hoặc chỉ có nền/viền/nhiễu quét/số trang → detectedType "Trang trắng",
+    documentName "Trang trắng", đứng thành khoảng trang riêng; backend bỏ trang này khỏi đính kèm. Không
+    gọi là trang trắng chỉ vì OCR khó đọc.
+15. Trả duy nhất một JSON object, không markdown, không giải thích.
 </critical_rules>
 
 <output_contract>

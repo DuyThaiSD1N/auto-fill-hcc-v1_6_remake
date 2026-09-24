@@ -23,7 +23,6 @@ from app.pipelines._shared.compact_agent.issuer import (
     default_issuer,
     normalize_issuer,
 )
-from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_ban_sao_van_bang_so_goc.process.schema import UI_COMP_BY_NAME
 
@@ -163,43 +162,6 @@ def _area(value: Any) -> dict:
     return value if isinstance(value, dict) else {}
 
 
-def _huyen_from_ocr(xa: Any, ocr_text: str) -> str | None:
-    """Tìm cấp huyện cũ đứng NGAY SAU tên xã trong OCR ("Tuy Lộc, Thành phố Yên Bái, Yên Bái") — dự phòng khi
-    LLM bỏ khoá "huyen". Chỉ nhận khi sau đoạn huyện còn ít nhất 1 đoạn (tỉnh), tránh lấy nhầm tên tỉnh."""
-    target = _fold(_strip_admin_prefix(xa))
-    if not target or not ocr_text:
-        return None
-    segments = [s.strip() for s in re.split(r"[,\n]", ocr_text)]
-    for i, seg in enumerate(segments[:-2]):
-        if _fold(_strip_admin_prefix(seg)) == target and segments[i + 1]:
-            return segments[i + 1]
-    return None
-
-
-def _remap(area: dict, ocr_text: str = "") -> dict:
-    """Địa chỉ CCCD/phiếu hay là địa danh CŨ (trước sáp nhập) → quy về tỉnh/xã hiện hành cho khớp option
-    cổng. Khoá "huyen" (cấp huyện cũ) là gợi ý để chọn đúng xã mới khi tên xã trùng ở nhiều huyện."""
-    if not area:
-        return {}
-    base = {
-        "quocGia": area.get("quocGia") or "Việt Nam",
-        # remap_area không nhận tên tỉnh CŨ có tiền tố ("Tỉnh Yên Bái") → bỏ tiền tố; _province_label thêm lại.
-        "tinh": _strip_admin_prefix(area.get("tinh") or area.get("tinhThanh") or ""),
-        "xa": area.get("xa") or area.get("phuong") or "",
-        "diaChi": area.get("diaChi") or area.get("chiTiet") or "",
-    }
-    hint = _text(area.get("huyen") or area.get("quanHuyen")) or None
-    out = remap_area(dict(base), huyen_hint=hint) or base
-    if base["xa"] and not out.get("xa") and not hint:
-        # Tên xã trùng ở nhiều huyện → remap bỏ trống xã khi thiếu gợi ý huyện. Thử lấy huyện từ OCR.
-        ocr_hint = _huyen_from_ocr(base["xa"], ocr_text)
-        if ocr_hint:
-            retry = remap_area(dict(base), huyen_hint=ocr_hint) or {}
-            if retry.get("xa"):
-                out = retry
-    return out
-
-
 def _ten_van_bang(loai: Any) -> str | None:
     """Tên văn bằng cho ô 'Đã được cấp' khi Phiếu không ghi rõ — suy từ loại tốt nghiệp."""
     lf = _fold(loai)
@@ -305,17 +267,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     chu_ngaycap = _date(values.get("VanBang_NgayCap")) or (chu["ngaycap"] if chu_cccd_valid else None)
     chu_phone = _phone(values.get("VanBang_DienThoai")) or (chu["phone"] if chu_cccd_valid else None)
     chu_quoctich = (_text(chu["quoctich"]) if chu_cccd_valid else None) or "Việt Nam"
-    # ĐỊA CHỈ chủ: ưu tiên CCCD chủ (địa chỉ HIỆN TẠI). Phiếu BM04 hay ghi địa chỉ LÚC DỰ THI (cũ) →
-    # VanBang_ThuongTru chỉ là dự phòng, và bỏ hẳn nếu nó chính là địa chỉ dự thi. Sau đó remap địa danh cũ.
-    vb_tt = _area(values.get("VanBang_ThuongTru"))
-
-    def _addr_key(v: Any) -> str:
-        return re.sub(r"[^a-z0-9]+", "", _fold(_text(v)))
-
-    du_thi = _addr_key(values.get("VanBang_DiaChiDuThi"))
-    if vb_tt and du_thi and _addr_key(vb_tt) == du_thi:
-        vb_tt = {}
-    chu_tt = _remap((_area(chu["tt"]) if chu_cccd_valid else {}) or vb_tt, ocr_text)
+    chu_tt = _area(values.get("VanBang_ThuongTru")) or (_area(chu["tt"]) if chu_cccd_valid else {})
     chu_tinh = _province_label(chu_tt.get("tinh") or chu_tt.get("tinhThanh"))
     chu_xa = _text(chu_tt.get("xa") or chu_tt.get("phuong"))
     chu_diachi = _text(chu_tt.get("diaChi") or chu_tt.get("chiTiet"))
@@ -337,7 +289,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
 
     # ===== Phần I: NGƯỜI NỘP (tự nộp → lấy chính CCCD chủ; nộp thay → CCCD người nộp) =====
     p1 = chu if self_submit else nop
-    p1_tt = _remap(_area(p1.get("tt")), ocr_text)
+    p1_tt = _area(p1.get("tt"))
     add("data[chonDoiTuong]", "Cá nhân")
     if self_submit:
         add("data[isOwnerDossier]", True)  # tick → form copy Phần I sang chủ hồ sơ (Phần II-VI).

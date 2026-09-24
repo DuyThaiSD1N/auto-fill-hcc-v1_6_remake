@@ -151,6 +151,17 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Màn chào thứ tự mới: chọn thủ tục trước, card chọn nơi xuống lượt xác nhận.
         # Extension cũ không khai → giữ nguyên màn chào cũ (nơi ở trên, thủ tục ở dưới).
         "supportsProcedureFirst": raw.get("supportsProcedureFirst") is True,
+        # Có engine gạt công tắc "cách nhận kết quả" trên cổng. Cờ RIÊNG chứ không dựa
+        # supportsGuidedSteps: bản khai guided steps mà chưa có engine sẽ nhận action lạ rồi
+        # im lặng, công dân ngồi chờ một cú bấm không bao giờ xảy ra.
+        "supportsResultMethod": raw.get("supportsResultMethod") is True,
+        # Biết chọn cơ quan CẤP XÃ trong hộp thoại cổng bộ (radio "Phường/Xã"). Extension cũ chỉ
+        # biết gạt radio "Sở/Ban ngành" → không khai cờ thì BE dặn công dân chọn tay, chứ không
+        # bắn lệnh để nó gạt nhầm sang cấp Sở.
+        "supportsMaeWardAgency": raw.get("supportsMaeWardAgency") is True,
+        # Biết bấm "Nộp trực tuyến" ở ĐÚNG thẻ theo chữ (agencyCardIncludes) trên trang kết quả
+        # DVCQG. Extension cũ luôn bấm thẻ đầu (cấp Sở) → không khai cờ thì BE dặn chọn tay.
+        "supportsAgencyCard": raw.get("supportsAgencyCard") is True,
     }
 
 

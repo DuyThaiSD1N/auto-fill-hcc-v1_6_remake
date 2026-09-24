@@ -131,8 +131,6 @@ from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
 from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
-from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_lao_cai.attach import plan as xoa_dk_bpbd_lao_cai_attach
-from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_lao_cai.process import run as xoa_dk_bpbd_lao_cai_process
 from app.pipelines.cho_thue_dat_thue_rung.attach import plan as cho_thue_dat_thue_rung_attach
 from app.pipelines.cho_thue_dat_thue_rung.process import run as cho_thue_dat_thue_rung_process
 from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhung_sqdd_du_an.attach import (
@@ -367,11 +365,16 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         # Hai thủ tục chứng thực này đi thẳng vào luồng đính kèm, không mở màn xin consent.
         "skipConsent": True,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (FE gửi options.splitDocuments): BẬT → mỗi giấy tờ
+        # trong file gộp thành một tài liệu riêng, bỏ trang trắng; TẮT/bản cũ → giữ nguyên từng file.
+        # Độc lập với ô "tách hồ sơ" (splitMode, đa tab): bật cả hai thì mỗi tài liệu là một hồ sơ.
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Bản chính giấy tờ, văn bản làm cơ sở để chứng thực bản sao.\n"
             "2. Bản sao cần chứng thực.\n"
-            "Hệ thống sẽ nhận diện, tách/gộp các phần cùng giấy tờ và đính đúng hồ sơ."
+            "Mặc định mỗi file đính thành một tài liệu. Bật \"Có tách hồ sơ khi đính kèm\" trong Cài "
+            "đặt để tách file gộp nhiều giấy tờ thành từng tài liệu riêng."
         ),
     },
     {
@@ -2371,39 +2374,6 @@ PROCEDURES: list[dict] = [
             "⚠ ĐIỀN FORM: nút/checkbox 'Người nộp là chủ hồ sơ' của cổng chỉ sao chép sang khối chủ hồ sơ "
             "tới Nơi cấp/Ngày cấp căn cước, KHÔNG sao chép Tỉnh/Phường-Xã/Địa chỉ. Hệ thống vì vậy luôn "
             "điền đầy đủ cả khối chủ hồ sơ kể cả khi người nộp trùng chủ hồ sơ."
-        ),
-    },
-    {
-        "key": "xoa-dang-ky-bien-phap-bao-dam-lao-cai",
-        # 1.011443.000.00.00.H38 (Văn phòng đăng ký đất đai tỉnh Lào Cai). Cùng eForm iGate legacy
-        # (CongDan_*/ChuHoSo_*) với 1.115650 nên dùng lại fill-legacy.js + engine đính kèm fixed-slot.
-        # Mã QG 1.011443 dùng chung với Bắc Ninh/Đà Nẵng/Quảng Ninh → khóa host laocai + tên thủ tục.
-        "detect": {
-            "urlScope": ["dichvucong.laocai.gov.vn"],
-            "textIncludes": [
-                "Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
-            ],
-            "headingDisabled": True,
-            "textPriority": True,
-        },
-        "label": (
-            "[Tỉnh Lào Cai - Cấp Sở] Xóa đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn "
-            "liền với đất"
-        ),
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm (Mẫu số 03a) đã ký — trang 2 có chữ ký, con "
-            "dấu BÊN NHẬN BẢO ĐẢM (ngân hàng/quỹ tín dụng). Dùng để điền thông tin người yêu cầu.\n"
-            "2. Giấy chứng nhận quyền sử dụng đất (scan ĐỦ các trang, kể cả trang IV 'Những thay đổi').\n"
-            "3. Căn cước công dân của người yêu cầu; văn bản ủy quyền nếu có người nộp thay.\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
-            "⚠ Không có văn bản đồng ý xóa thế chấp riêng thì tệp Phiếu 03a (đã có chữ ký, con dấu bên "
-            "nhận bảo đảm) được đính chung vào dòng 'Văn bản đồng ý xóa thế chấp'. Dòng GCN được ghi 'Số "
-            "bản' theo số trang Giấy chứng nhận. CCCD và giấy tờ ngoài danh mục vào 'Giấy tờ khác'."
         ),
     },
     {
@@ -5807,7 +5777,6 @@ _PIPELINE = {
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_process,
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_process,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
-    "xoa-dang-ky-bien-phap-bao-dam-lao-cai": xoa_dk_bpbd_lao_cai_process,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_process,
     "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_process,
     "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an": to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_process,
@@ -5985,7 +5954,6 @@ _ATTACH_PIPELINE = {
     "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai": dang_ky_dat_dai_lan_dau_ho_gia_dinh_lao_cai_attach,
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_attach,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
-    "xoa-dang-ky-bien-phap-bao-dam-lao-cai": xoa_dk_bpbd_lao_cai_attach,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_attach,
     "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
     "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an": to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_attach,

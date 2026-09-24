@@ -252,12 +252,12 @@ GREET_PROCEDURE_FIRST = {
 
 CONFIRM_PROCEDURE_WITH_LOCATION = {
     "md": (
-        "Pej xeem xav ua {procedure}. Pej xeem xyuas qhov chaw ua ntaub ntawv hauv qab no; "
-        "yog yuav hloov ces nias rau txhua qhov, yog lawm ces nias Đúng rồi."
+        "Pej xeem ua {procedure} ntawm {ward}, {province} — puas yog? Yog lawm ces nias "
+        "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
     ),
     "tts": (
-        "Pej xeem xav ua {procedure}. Pej xeem xyuas qhov chaw ua ntaub ntawv hauv qab no, "
-        "yog yuav hloov ces nias rau txhua qhov, yog lawm ces nias Đúng rồi."
+        "Pej xeem ua {procedure} ntawm {ward}, {province} — puas yog? Yog lawm ces nias "
+        "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
     ),
 }
 
@@ -366,6 +366,18 @@ WAIT_ATTACH_PORTAL_REMIND = {
 AGENCY_SELECT_FAILED = {
     "md": "Kuv xaiv tsis tau qhov chaw. Pej xeem xaiv {ward}, {province} kiag ces nias Đồng ý.",
     "tts": "Kuv xaiv tsis tau. Pej xeem xaiv kiag ces nias pom zoo.",
+}
+
+# Nợ dịch: câu Việt còn nói "đúng thẻ có dòng {card}, thẻ đầu là của Sở" — chưa có bản dịch câu
+# đó; tên thẻ là chữ Việt nên không được nhúng placeholder vào đây. Tạm ghép từ câu có sẵn.
+AGENCY_CARD_MANUAL_GUIDE = {
+    "md": "Pej xeem xaiv {ward}, {province} kiag ces nias Đồng ý, ces nias Nộp trực tuyến.",
+    "tts": "Pej xeem xaiv kiag ces nias pom zoo, ces nias Nộp trực tuyến.",
+}
+
+AGENCY_CARD_MISSING = {
+    "md": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
+    "tts": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
 }
 
 GUIDE_LOGIN_NO_URL = {
@@ -929,6 +941,13 @@ AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE = {
             "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
 }
 
+AGENCY_WARD_DIALOG_AUTOFILL_GUIDE = {
+    "md": ("Kuv xaiv {province} thiab {ward}, ces nias "
+           "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+    "tts": ("Kuv xaiv {province} thiab {ward}, ces nias "
+            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+}
+
 MAE_AGENCY_AUTOFILL_GUIDE = {
     "md": ("Kuv xaiv xeev {province} thiab {agency}, kuv xaiv qhov {variant_label} ces nias "
            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
@@ -941,6 +960,13 @@ MAE_AGENCY_FAILED = {
            "xaiv {agency}, ces qhov {variant_label}, ces nias Đồng ý và tiếp tục."),
     "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv xeev {province}, xaiv {agency}, xaiv qhov "
             "{variant_label}, ces nias Đồng ý và tiếp tục."),
+}
+
+MAE_AGENCY_WARD_FAILED = {
+    "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv: {province}, ces Phường/Xã "
+           "xaiv {ward}, ces nias Đồng ý và tiếp tục."),
+    "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv {province}, xaiv {ward}, ces nias "
+            "Đồng ý và tiếp tục."),
 }
 
 PROCEDURE_PROVINCE_LOCKED = {
@@ -1013,6 +1039,66 @@ GUIDED_ATTACH_DONE = {
     "tts": (
         "Kuv muab tso tiav lawm. Pej xeem xyuas zaum kawg ces nias lub pob hauv qab no, "
         "kuv pab hloov mus rau Thông tin nhận kết quả."
+    ),
+}
+
+# Tên cách nhận kết quả là chữ Việt in trên cổng. Theo lối của GUIDED_OWNER_MISSING: bản Mông
+# nói chung chung, KHÔNG nhúng chữ Việt qua placeholder (test khoá {label}/{missing_*}).
+GUIDED_RESULT_PICK = {
+    "md": (
+        "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li "
+        "cas ne? Kuv xaiv txoj kev ib, txais daim ntawv muaj hom thawj. Xav hloov txoj twg ces "
+        "nias txoj ntawd."
+    ),
+    "tts": (
+        "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li "
+        "cas ne? Kuv xaiv txoj kev ib, txais daim ntawv muaj hom thawj. Xav hloov txoj twg ces "
+        "nias txoj ntawd."
+    ),
+}
+
+GUIDED_RESULT_SUBMIT_HINT = {
+    "md": "\n\nPej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ kuv xa ntaub ntawv.",
+    "tts": " Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ kuv xa ntaub ntawv.",
+}
+
+GUIDED_RESULT_PICKED = {
+    "md": "Kuv twb xaiv txoj kev txais txiaj ntsig rau saum nplooj ntawv lawm.",
+    "tts": "Kuv twb xaiv txoj kev txais txiaj ntsig rau saum nplooj ntawv lawm.",
+}
+
+GUIDED_RESULT_NEEDS_INPUT = {
+    "md": (
+        "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv. Txoj kev no tseem xav tau cov "
+        "ntaub ntawv tus neeg txais — pej xeem sau ncaj qha rau saum nplooj ntawv, kuv tsis "
+        "sau chaw nyob los sis npe tus neeg txais hloov pej xeem."
+    ),
+    "tts": (
+        "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv. Txoj kev no tseem xav tau cov "
+        "ntaub ntawv tus neeg txais, pej xeem sau ncaj qha rau saum nplooj ntawv, kuv tsis sau "
+        "chaw nyob los sis npe tus neeg txais hloov pej xeem."
+    ),
+}
+
+GUIDED_RESULT_MISSING = {
+    "md": (
+        "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv. Nplooj ntawv tseem tshuav qhov "
+        "khoob — pej xeem sau ntxiv rau saum nplooj ntawv."
+    ),
+    "tts": (
+        "Kuv twb xaiv txoj kev ntawd rau saum nplooj ntawv. Nplooj ntawv tseem tshuav qhov "
+        "khoob, pej xeem sau ntxiv rau saum nplooj ntawv."
+    ),
+}
+
+GUIDED_RESULT_FAILED = {
+    "md": (
+        "Kuv tsis tau hloov tau lub pob txoj kev txais txiaj ntsig. Pej xeem hloov pab kuv "
+        "ntawm nplooj ntawv ces nias Gửi hồ sơ."
+    ),
+    "tts": (
+        "Kuv tsis tau hloov tau lub pob txoj kev txais txiaj ntsig. Pej xeem hloov pab kuv "
+        "ntawm nplooj ntawv ces nias Gửi hồ sơ."
     ),
 }
 

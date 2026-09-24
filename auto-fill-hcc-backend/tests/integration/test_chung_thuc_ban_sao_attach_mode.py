@@ -9,7 +9,8 @@ def test_registry_exposes_chung_thuc_ban_sao_attach_mode():
     assert proc["roles"] == []
     assert proc["skipConsent"] is True
     assert get_pipeline("chung-thuc-ban-sao") is None
-    assert "tách/gộp các phần cùng giấy tờ" in proc["uploadHint"]
+    assert "Có tách hồ sơ khi đính kèm" in proc["uploadHint"]
+    assert proc["supportsSplitDocuments"] is True
 
 
 def test_registry_skips_consent_for_chung_thuc_chu_ky():

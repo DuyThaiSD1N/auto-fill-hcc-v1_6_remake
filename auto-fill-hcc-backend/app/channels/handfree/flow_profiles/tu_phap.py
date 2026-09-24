@@ -16,16 +16,19 @@ TU_PHAP_FLOW: dict = {
             {
                 "key": "self",
                 "label": "Làm thủ tục cho bản thân",
+                "shortLabel": "cho bản thân",
                 "portalValue": "null",
             },
             {
                 "key": "authorized_person",
                 "label": "Người khác ủy quyền",
+                "shortLabel": "do người khác ủy quyền",
                 "portalValue": "canhan",
             },
             {
                 "key": "enterprise_authorized",
                 "label": "Doanh nghiệp ủy quyền",
+                "shortLabel": "do doanh nghiệp ủy quyền",
                 # Chưa có data-value ổn định từ DOM thật; để rỗng buộc extension
                 # khớp chính xác theo nhãn đang hiển thị, tránh đoán nhầm option.
                 "portalValue": "",
@@ -33,11 +36,13 @@ TU_PHAP_FLOW: dict = {
             {
                 "key": "other_person",
                 "label": "Làm thủ tục cho người khác",
+                "shortLabel": "cho người khác",
                 "portalValue": "",
             },
             {
                 "key": "organization_representative",
                 "label": "Đại diện cơ quan, tổ chức",
+                "shortLabel": "với tư cách đại diện cơ quan, tổ chức",
                 "portalValue": "",
             },
         ],

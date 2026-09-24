@@ -609,6 +609,21 @@ PROCEDURES: list[dict] = [
                 {"key": "giay_uy_quyen", "name": "Giấy ủy quyền", "icon": "📝", "sides": 1,
                  "purpose": "để em điền thông tin ủy quyền và đính kèm vào hồ sơ luôn"},
             ],
+            # Bước Thông tin nhận kết quả: cổng để CẢ BA công tắc tắt, không có mặc định nào.
+            # `label` phải đúng NGUYÊN VĂN chữ trên cổng — FE khớp công tắc theo nhãn đã fold
+            # dấu, KHÔNG theo id (id Radix kiểu ":r91:-form-item" sinh lại mỗi lần render).
+            # `needsInput`: CHỈ bưu chính mới đòi thêm thông tin người nhận (kiểm trên cổng
+            # thật 24/09/2026 — bản giấy và trực tuyến gạt xong là xong). Trợ lý chỉ tick,
+            # không bao giờ điền hộ địa chỉ/người nhận.
+            "resultMethods": [
+                {"key": "paper", "label": "Nhận kết quả bản giấy có đóng dấu", "icon": "📄",
+                 "desc": "Nhận bản giấy có đóng dấu của cơ quan.", "default": True},
+                {"key": "online", "label": "Nhận kết quả trực tuyến", "icon": "🌐",
+                 "desc": "Nhận bản điện tử ngay trên hệ thống."},
+                {"key": "postal", "label": "Dịch vụ bưu chính công ích", "icon": "📮",
+                 "desc": "Nhân viên bưu điện sẽ đến địa chỉ trả kết quả để trả hồ sơ.",
+                 "needsInput": True},
+            ],
         },
         # Một loại duy nhất, nhận lặp không giới hạn. sides=1 chỉ là số tệp tối thiểu;
         # repeatable giữ phiên mở để người dân tiếp tục thêm tệp rồi chủ động bấm Đã đủ.
@@ -975,6 +990,76 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
+        # Cổng Bộ Y tế, CÙNG khung với "dieu-chinh-huu-tri-xa-hoi" ngay trên: DVCQG chọn ĐỦ Tỉnh +
+        # Xã rồi vào THẲNG trang kê khai (không có hộp thoại chọn cơ quan trong cổng), wizard iGate
+        # 1 Thông tin hồ sơ → 2 Thành phần hồ sơ → 3 Hình thức nhận kết quả → 4 Nộp hồ sơ.
+        # KHÁC hưu trí ở trang kết quả DVCQG: thủ tục do CẢ Sở Y tế lẫn UBND xã tiếp nhận nên ra
+        # NHIỀU thẻ, thẻ đầu là cấp Sở — bấm "thẻ đầu" như mọi thủ tục khác là nộp nhầm cơ quan.
+        # agencyCardIncludes chốt đúng thẻ UBND (cùng chuỗi Auto Fill đang dùng, ke_khai_links
+        # submitCardIncludes).
+        "detect": {
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            # KHÔNG khai id apply-online/<id>: snapshot là của một tài khoản cụ thể, id đó đổi
+            # theo đơn vị tiếp nhận.
+            "urlIncludes": [
+                "maThuTuc=1.013855",
+                "019d2bff-2d33-76fe-bd90-4f37b18e4401",
+            ],
+            "textIncludes": ["cơ sở đủ điều kiện an toàn thực phẩm", "phạm vi quản lý của bộ y tế"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh "
+            "dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế"
+        ),
+        "shortLabel": "Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm (dịch vụ ăn uống)",
+        "subtitle": "Cho quán ăn, nhà hàng, bếp ăn, cơ sở sản xuất thực phẩm thuộc Bộ Y tế",
+        "icon": "🍲",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d33-76fe-bd90-4f37b18e4401",
+        "needsAgencySelect": True,
+        "agencyCardIncludes": "Cơ quan thực hiện: UBND",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bảng thành phần hồ sơ chỉ có MỘT dòng "A. Thành phần hồ sơ: a)…e)" gom cả năm loại giấy →
+        # planner core dồn mọi tệp vào dòng đó (fixed-slot attp_dossier, upload lặp). Các ô dưới đây
+        # chỉ để công dân biết cần mang gì, không phải đích đến riêng.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị cấp Giấy chứng nhận (Mẫu số 1 Phụ lục I, Nghị định "
+             "155/2018/NĐ-CP)", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "dkkd", "name": "Bản sao Giấy chứng nhận đăng ký kinh doanh hoặc đăng ký doanh "
+             "nghiệp (có ngành nghề phù hợp)", "icon": "🏪", "sides": 1, "repeatable": True},
+            {"key": "thuyet_minh", "name": "Bản thuyết minh cơ sở vật chất, trang thiết bị, dụng cụ "
+             "bảo đảm vệ sinh an toàn thực phẩm", "icon": "📝", "sides": 1, "repeatable": True},
+            {"key": "suc_khoe", "name": "Giấy xác nhận đủ sức khỏe của chủ cơ sở và người trực tiếp "
+             "sản xuất, kinh doanh", "icon": "🩺", "sides": 1, "repeatable": True},
+            {"key": "tap_huan", "name": "Danh sách người đã được tập huấn kiến thức an toàn thực phẩm "
+             "(có xác nhận của chủ cơ sở)", "icon": "📋", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của chủ cơ sở", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị cấp Giấy chứng nhận (Mẫu số 1 Phụ lục I, Nghị định 155/2018/NĐ-CP) — "
+            "nguồn chính để điền form.\n"
+            "2. Căn cước công dân của chủ cơ sở.\n"
+            "3. Bản sao Giấy chứng nhận đăng ký kinh doanh / đăng ký doanh nghiệp.\n"
+            "4. Bản thuyết minh cơ sở vật chất, trang thiết bị; giấy xác nhận đủ sức khỏe; danh "
+            "sách người đã tập huấn kiến thức an toàn thực phẩm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: cổng chỉ có MỘT dòng 'A. Thành phần hồ sơ' gom mọi loại giấy "
+            "nên mọi tệp đều được đính vào dòng đó."
+        ),
+    },
+    {
         "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn (iGate + Form.io). Chọn cơ quan HAI BƯỚC:
         #  A. Hộp thoại DVCQG: chọn Tỉnh → bật "Sở" (KHÔNG chọn tên sở) → Đồng ý → mục "Nộp trực
@@ -1037,6 +1122,148 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Chủ hồ sơ là người hưởng trợ cấp (người làm đơn); ai đi nộp thay thì hệ thống tự nhận ra.\n"
             "Bước Thành phần hồ sơ: Đơn Mẫu 27 vào ô 1; căn cước hoặc xác nhận cư trú vào ô 2."
+        ),
+    },
+    {
+        "key": "tro-cap-tho-cung-liet-si",
+        # Cổng Bộ Nội vụ, CÙNG cách chọn cơ quan CẤP XÃ với "uu-dai-ncc-tu-tran" ngay dưới:
+        # DVCQG chọn đủ Tỉnh + Phường/Xã, rồi hộp thoại form#ngSelectAgencyForm1 gạt radio
+        # "Phường/Xã" + chọn xã + "Đồng ý và tiếp tục". Không có ô "Trường hợp giải quyết".
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            # Chưa có snapshot trang kê khai nên chưa biết id SPA (apply-online/<id>,
+            # process=<id>). Trên cổng bộ, hai trang đó KHÔNG còn mã thủ tục trên URL →
+            # nhận ra bằng cụm tên; tên thủ tục này không đụng thủ tục nào khác.
+            "urlIncludes": [
+                "MaTTHC=1.010803",
+                "019d2bfa-fc0c-7046-b5dc-04303a18608d",
+            ],
+            "textIncludes": ["giải quyết chế độ trợ cấp thờ cúng liệt sĩ"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Giải quyết chế độ trợ cấp thờ cúng liệt sĩ",
+        "shortLabel": "Giải quyết chế độ trợ cấp thờ cúng liệt sĩ",
+        "subtitle": "Trợ cấp cho người được giao thờ cúng liệt sĩ",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc0c-7046-b5dc-04303a18608d",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có BA ô cố định (planner core trả fixed-slot 0/1/2) theo đúng
+        # thứ tự dưới đây, phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "van_ban_uy_quyen", "name": "Văn bản ủy quyền thờ cúng liệt sĩ (khi các thân "
+             "nhân ủy quyền cho một người đứng thờ cúng)", "icon": "✍️", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "don_de_nghi", "name": "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt "
+             "sĩ (Mẫu số 18, Nghị định 131/2021/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "bang_tqgc", "name": "Bản sao chứng thực từ Bằng \"Tổ quốc ghi công\"",
+             "icon": "🎖️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị thờ cúng", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "trich_luc_khai_tu", "name": "Trích lục khai tử của thân nhân liệt sĩ (khi "
+             "người thờ cúng trước đó đã mất)", "icon": "🕯️", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18, Phụ lục I "
+            "Nghị định 131/2021/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Bản sao chứng thực từ Bằng \"Tổ quốc ghi công\" — lấy thông tin liệt sĩ (số bằng, "
+            "số quyết định, quê quán).\n"
+            "3. Căn cước công dân của người đề nghị — bổ sung số định danh, ngày/nơi cấp, nơi cư trú.\n"
+            "4. Nếu có: văn bản ủy quyền thờ cúng, trích lục khai tử của thân nhân liệt sĩ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người đề nghị (còn sống, là chủ hồ sơ) và liệt sĩ là HAI người khác nhau — "
+            "không lấy thông tin trên Bằng Tổ quốc ghi công điền cho người đề nghị.\n"
+            "Bước Thành phần hồ sơ: văn bản ủy quyền vào ô 1, Đơn Mẫu 18 vào ô 2, Bằng Tổ quốc "
+            "ghi công vào ô 3; căn cước và trích lục khai tử xếp vào mục 'Thêm giấy tờ'."
+        ),
+    },
+    {
+        "key": "uu-dai-ncc-tu-tran",
+        # CÙNG cổng Bộ Nội vụ và cùng wizard với "di-chuyen-ho-so-nguoi-huong-tro-cap", KHÁC HẲN
+        # ở bước chọn cơ quan vì thủ tục này giải quyết ở CẤP XÃ ("Quy trình liên thông Xã - Sở
+        # Nội vụ"), không phải ở Sở:
+        #  A. Hộp thoại DVCQG: chọn ĐỦ Tỉnh + Phường/Xã của tài khoản rồi "Nộp trực tuyến" →
+        #     chỉ needsAgencySelect, KHÔNG agencyProvinceOnly (ward rỗng = bỏ qua ô xã), KHÔNG
+        #     agencySoFirst (gạt toggle "Sở" là chọn nhầm cấp).
+        #  B. Sang cổng bộ, hộp thoại form#ngSelectAgencyForm1 (cùng component với MAE): Tỉnh →
+        #     radio "Phường/Xã" (cổng đã tích SẴN) → xã → "Đồng ý và tiếp tục". Nhánh maePortal
+        #     nhưng ở cấp xã → maeAgencyLevel "ward"; không có ô "Trường hợp giải quyết".
+        "detect": {
+            # Hai host: trang chi tiết thủ tục trên DVCQG (uuid) và cổng bộ (mã TTHC + id SPA).
+            # Thiếu dichvucong.gov.vn thì uuid nằm trong urlIncludes cũng không bao giờ khớp.
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "MaTTHC=1.010824",
+                "019d2bfa-fc36-7611-9219-adb6dee5774f",
+                "apply-online/69607677911c3f32013c0efc",
+                "process=697032389ebae42b4c3841e6",
+            ],
+            # Trang kê khai/đính kèm không còn mã thủ tục trên URL. Hai cụm đi cùng nhau (AND):
+            # "ưu đãi từ trần" một mình cũng đủ hiếm, nhưng cụm đầu chặn nhầm với thủ tục di
+            # chuyển hồ sơ cùng cổng (trang đó cũng có chữ "trợ cấp ưu đãi").
+            "textIncludes": ["hưởng trợ cấp khi người có công", "ưu đãi từ trần"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hưởng trợ cấp khi người có công đang hưởng trợ cấp ưu đãi từ trần",
+        "shortLabel": "Hưởng trợ cấp khi người có công đang hưởng trợ cấp ưu đãi từ trần",
+        "subtitle": "Giải quyết chế độ cho thân nhân khi người có công từ trần",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc36-7611-9219-adb6dee5774f",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có ô CỐ ĐỊNH cho Bản khai Mẫu 12 (planner core trả fixed-slot
+        # slotIndex 0), phần còn lại đi "Thêm giấy tờ" → KHÔNG hideRepeatableHint.
+        "requiredDocs": [
+            {"key": "ban_khai", "name": "Bản khai giải quyết chế độ ưu đãi khi người có công từ "
+             "trần (Mẫu số 12, Nghị định 131/2021/NĐ-CP) — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "trich_luc_khai_tu", "name": "Trích lục khai tử hoặc giấy báo tử của người có "
+             "công đã từ trần", "icon": "🕯️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người khai (người nhận trợ cấp)",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "giay_khai_sinh", "name": "Giấy khai sinh của con chưa đủ 18 tuổi (nếu thân "
+             "nhân hưởng trợ cấp là con)", "icon": "👶", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "bien_ban_hop", "name": "Biên bản họp gia đình cử người nhận trợ cấp",
+             "icon": "📝", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác: danh sách đề nghị trợ cấp, quyết "
+             "định trợ cấp cũ của người từ trần", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản khai giải quyết chế độ ưu đãi khi người có công từ trần (Mẫu số 12, Phụ lục I "
+            "Nghị định 131/2021/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Trích lục khai tử hoặc giấy báo tử của người có công đã từ trần.\n"
+            "3. Căn cước công dân của người khai (người đứng tên nhận trợ cấp).\n"
+            "4. Nếu có: giấy khai sinh (thân nhân là con chưa đủ 18 tuổi), biên bản họp gia đình, "
+            "danh sách đề nghị trợ cấp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người khai (còn sống, là chủ hồ sơ) và người có công đã từ trần là HAI người "
+            "khác nhau — không ghép thông tin của hai người vào nhau.\n"
+            "Bước Thành phần hồ sơ: Bản khai Mẫu 12 vào ô 1; trích lục khai tử, căn cước và các "
+            "giấy còn lại xếp vào mục 'Thêm giấy tờ'."
         ),
     },
     {

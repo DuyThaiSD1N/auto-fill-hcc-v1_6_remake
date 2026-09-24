@@ -34,15 +34,17 @@ GREET_PROCEDURE_FIRST = {
 }
 
 # Nơi làm thủ tục giờ hiện NGAY TRONG lượt xác nhận → mời công dân soát nó trước khi đồng ý.
+# Hỏi thẳng cả ba thứ trong MỘT câu (thủ tục + nơi làm + đối tượng) thay vì bảo "kiểm tra bên
+# dưới": người lớn tuổi đọc câu hỏi có/không nhanh hơn là tự đối chiếu ba dòng trong card.
 CONFIRM_PROCEDURE_WITH_LOCATION = {
     "md": (
-        "Dạ, công dân muốn làm **{procedure}** ạ.\n\n"
-        "Công dân kiểm tra **nơi làm thủ tục** bên dưới, cần sửa thì bấm vào từng mục; "
-        "đúng rồi thì bấm **Đúng rồi** để em mở trang thủ tục ạ."
+        "Dạ, công dân làm **{procedure}** ở **{ward}, {province}**, **{subject}** — đúng không ạ?\n\n"
+        "Nếu đúng thì công dân bấm **Đồng ý**; chưa đúng thì chọn lại ở bên dưới rồi bấm "
+        "**Đồng ý** nhé."
     ),
     "tts": (
-        "Dạ công dân muốn làm thủ tục {procedure} ạ. Công dân kiểm tra nơi làm thủ tục bên dưới, "
-        "cần sửa thì bấm vào từng mục, đúng rồi thì bấm đúng rồi để em mở trang thủ tục ạ."
+        "Dạ, công dân làm thủ tục {procedure} ở {ward}, {province}, {subject} — đúng không ạ? "
+        "Nếu đúng thì công dân bấm đồng ý; chưa đúng thì chọn lại ở bên dưới rồi bấm đồng ý nhé."
     ),
 }
 
@@ -176,6 +178,19 @@ AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE = {
     ),
 }
 
+# Cùng hộp thoại đó nhưng thủ tục giải quyết ở CẤP XÃ (Bộ Nội vụ, người có công từ trần): chọn
+# Tỉnh + Phường/Xã chứ không phải Sở, nên câu trên dùng lại sẽ đọc sai cấp cơ quan.
+AGENCY_WARD_DIALOG_AUTOFILL_GUIDE = {
+    "md": (
+        "Dạ ở phần **Cơ quan thực hiện**, em chọn **{province}** và **{ward}**, giờ em bấm "
+        "**Đồng ý và tiếp tục** để qua trang **Thông tin hồ sơ** nhé ạ."
+    ),
+    "tts": (
+        "Dạ ở phần cơ quan thực hiện, em chọn {province} và {ward}, giờ em bấm đồng ý và tiếp "
+        "tục để qua trang thông tin hồ sơ nhé ạ."
+    ),
+}
+
 MAE_AGENCY_FAILED = {
     "md": (
         "⚠️ Em chưa chọn tự động được trên trang: *{error}*\n\n"
@@ -185,6 +200,18 @@ MAE_AGENCY_FAILED = {
     "tts": (
         "Em chưa chọn tự động được ạ. Công dân chọn tay giúp em tỉnh {province}, mục sở ban "
         "ngành chọn {agency}, trường hợp {variant_label}, rồi bấm đồng ý và tiếp tục ạ."
+    ),
+}
+
+MAE_AGENCY_WARD_FAILED = {
+    "md": (
+        "⚠️ Em chưa chọn tự động được trên trang: *{error}*\n\n"
+        "Công dân chọn tay giúp em: **{province}** → **Phường/Xã** → **{ward}** rồi bấm "
+        "**Đồng ý và tiếp tục** ạ."
+    ),
+    "tts": (
+        "Em chưa chọn tự động được ạ. Công dân chọn tay giúp em {province}, mục phường xã chọn "
+        "{ward}, rồi bấm đồng ý và tiếp tục ạ."
     ),
 }
 
@@ -335,6 +362,34 @@ AGENCY_SELECT_FAILED = {
         "Công dân chọn tay giúp em: **{ward}, {province}** rồi bấm **Đồng ý** ạ."
     ),
     "tts": "Em chưa chọn tự động được công dân chọn tay giúp em rồi bấm đồng ý ạ.",
+}
+
+# Thủ tục mà trang kết quả DVCQG ra NHIỀU thẻ (Sở lẫn UBND xã cùng tiếp nhận) và thẻ đầu KHÔNG
+# phải thẻ đúng. Bản trợ lý chưa biết chọn thẻ theo chữ → dặn công dân làm tay cả bước, không để
+# nó bấm thẻ đầu.
+AGENCY_CARD_MANUAL_GUIDE = {
+    "md": (
+        "Dạ, ở bước **Chọn cơ quan thực hiện**, công dân chọn **{ward}, {province}**, bấm "
+        "**Đồng ý**, rồi bấm **Nộp trực tuyến** ở đúng thẻ có dòng **{card}** giúp em ạ — "
+        "thủ tục này có nhiều thẻ, thẻ đầu tiên là của Sở nên không phải thẻ đó ạ."
+    ),
+    "tts": (
+        "Dạ, công dân chọn {ward}, {province}, bấm đồng ý, rồi bấm nộp trực tuyến ở đúng thẻ có "
+        "dòng {card} giúp em ạ. Thẻ đầu tiên là của Sở nên không phải thẻ đó ạ."
+    ),
+}
+
+# Đã chọn xong tỉnh/xã + Đồng ý nhưng không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
+AGENCY_CARD_MISSING = {
+    "md": (
+        "⚠️ Em chưa thấy thẻ có dòng **{card}** để bấm **Nộp trực tuyến** ạ.\n\n"
+        "Công dân tìm giúp em thẻ có dòng đó trong danh sách rồi bấm **Nộp trực tuyến** — "
+        "đừng bấm thẻ đầu tiên vì đó là thẻ của Sở ạ."
+    ),
+    "tts": (
+        "Em chưa thấy thẻ có dòng {card} ạ. Công dân tìm giúp em thẻ đó rồi bấm nộp trực tuyến, "
+        "đừng bấm thẻ đầu tiên vì đó là thẻ của Sở ạ."
+    ),
 }
 
 GUIDE_LOGIN_NO_URL = {
@@ -1607,6 +1662,68 @@ GUIDED_CERTIFY_NO = {
 GUIDED_CERTIFY_YES_CTA = "✅ Có, chứng thực luôn"
 GUIDED_CERTIFY_NO_CTA = "❌ Không chứng thực thẻ này"
 GUIDED_OWNER_CTA = "Xong, sang bước đính kèm →"
+# Trợ lý gạt sẵn công tắc "bản giấy" — cách đại đa số công dân ra quầy đang chọn. Vẫn nói rõ
+# đây là ĐỀ XUẤT và đổi được trong một chạm.
+GUIDED_RESULT_PICK = {
+    "md": (
+        "Đã vào bước **{result_step}** ✓\n\n"
+        "Công dân muốn nhận kết quả bằng cách nào ạ? Em đang chọn **{label}** — công dân bấm "
+        "chọn cách khác nếu muốn đổi nhé."
+    ),
+    "tts": (
+        "Đã vào bước thông tin nhận kết quả. Công dân muốn nhận kết quả bằng cách nào ạ? "
+        "Em đang chọn {label}. Công dân bấm chọn cách khác nếu muốn đổi nhé."
+    ),
+}
+
+# Câu chốt đi kèm MỌI lượt chọn cách nhận kết quả — dùng qua note= của _fmt để bản Mông cũng
+# nối đúng khối của nó, không lẫn Việt vào lời đọc Mông.
+GUIDED_RESULT_SUBMIT_HINT = {
+    "md": "\n\nCông dân kiểm tra thông tin, nếu đã ổn thì bấm **{submit_label}** để em nộp hồ sơ ạ.",
+    "tts": " Công dân kiểm tra thông tin, nếu đã ổn thì bấm {submit_label} để em nộp hồ sơ ạ.",
+}
+
+GUIDED_RESULT_PICKED = {
+    "md": "✅ Em đã chọn **{label}** trên trang.",
+    "tts": "Em đã chọn {label} trên trang.",
+}
+
+# CHỈ dịch vụ bưu chính mới đòi thêm thông tin. Địa chỉ/người nhận là dữ liệu riêng của công
+# dân, điền hộ mà sai là kết quả đi lạc chỗ.
+GUIDED_RESULT_NEEDS_INPUT = {
+    "md": (
+        "✅ Em đã chọn **{label}** trên trang.\n\n"
+        "Cách này cần thêm thông tin người nhận — công dân điền trực tiếp trên trang giúp em "
+        "nhé, em không điền hộ địa chỉ hay tên người nhận đâu ạ."
+    ),
+    "tts": (
+        "Em đã chọn {label} trên trang. Cách này cần thêm thông tin người nhận, công dân điền "
+        "trực tiếp trên trang giúp em nhé, em không điền hộ địa chỉ hay tên người nhận đâu ạ."
+    ),
+}
+
+GUIDED_RESULT_MISSING = {
+    "md": (
+        "✅ Em đã chọn **{label}** trên trang.\n\n"
+        "Trang còn thiếu **{missing_note}** — công dân điền nốt giúp em ạ."
+    ),
+    "tts": (
+        "Em đã chọn {label} trên trang. Trang còn thiếu {missing_tts}. Công dân điền nốt "
+        "giúp em ạ."
+    ),
+}
+
+GUIDED_RESULT_FAILED = {
+    "md": (
+        "⚠️ Em chưa gạt được công tắc **{label}** trên trang. Công dân gạt giúp em ngay trên "
+        "trang rồi bấm **{submit_label}** ạ."
+    ),
+    "tts": (
+        "Em chưa gạt được công tắc {label} trên trang. Công dân gạt giúp em ngay trên trang "
+        "rồi bấm {submit_label} ạ."
+    ),
+}
+
 GUIDED_ATTACH_SPLIT_DONE = {
     "md": (
         "✅ Em đã đính xong **{succeeded}/{total} hồ sơ**, mỗi tài liệu nằm trong một hồ sơ riêng.\n\n"

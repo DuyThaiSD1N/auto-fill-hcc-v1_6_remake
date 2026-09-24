@@ -2,8 +2,12 @@
 trợ cấp xã hội hàng tháng, hỗ trợ kinh phí chăm sóc, nuôi dưỡng hàng tháng".
 
 HAI vai (có thể NỘP THAY):
-  Phần 1 (data[fullname...])   — NGƯỜI NỘP = người khai thay trên tờ khai. Không có block người khai thay
-                                 → dùng đối tượng; không sử dụng tài khoản/formContext do FE truyền.
+  Phần 1 (data[fullname...])   — NGƯỜI NỘP, 2 chế độ:
+      · THEO TÀI KHOẢN (mặc định khi FE gửi họ tên/CCCD tài khoản trong formContext): chọn người khai
+        thay hoặc đối tượng khớp tài khoản (CCCD, hoặc họ tên bỏ dấu); họ tên + CCCD LUÔN lấy của tài
+        khoản vì cổng đã điền sẵn theo định danh điện tử, OCR/chữ viết tay hay lệch dấu.
+      · THEO TỜ KHAI (submitterMode="owner_as_submitter", hoặc FE không gửi mốc — extension đời cũ):
+        người khai thay trên tờ khai; không có block người khai thay → dùng đối tượng.
   Phần 2 (data[owner*])        — CHỦ HỒ SƠ = ĐỐI TƯỢNG hưởng trợ cấp. LUÔN bỏ tích isOwnerDossierCheck +
                                  điền tường minh (không dựa vào auto-copy của cổng).
 Mỗi data[key] xuất hiện 1× trong DOM → KHÔNG dùng occurrence.
@@ -187,9 +191,42 @@ def _issuer(value: Any) -> str | None:
     return normalize_issuer(text) if text else None
 
 
+def _account_anchor(options: dict | None) -> dict | None:
+    """Mốc tài khoản cho chế độ THEO TÀI KHOẢN; None → chạy chế độ tờ khai.
+
+    FE đời cũ không gửi formContext, hoặc trang chưa có ô người nộp điền sẵn → mốc rỗng; khi đó giữ
+    nguyên hành vi tờ khai thay vì bỏ trống Phần I.
+    """
+    options = options or {}
+    if str(options.get("submitterMode") or "") == "owner_as_submitter":
+        return None
+    context = options.get("formContext") or {}
+    name = _text(context.get("applicantFullname"))
+    identity = _identity(context.get("applicantIdentityNumber"))
+    if not name and not identity:
+        return None
+    return {"name": name, "identity": identity}
+
+
+def _matches_account(person: dict, anchor: dict) -> bool:
+    if anchor["identity"] and person.get("identity") == anchor["identity"]:
+        return True
+    return bool(anchor["name"] and person.get("name") and _fold(person["name"]) == _fold(anchor["name"]))
+
+
+def _account_submitter(candidates: list[dict], anchor: dict) -> dict | None:
+    # Khớp CCCD trước: hai người trong hồ sơ trùng họ tên bỏ dấu thì CCCD mới tách được.
+    for person in candidates:
+        if anchor["identity"] and person.get("identity") == anchor["identity"]:
+            return person
+    for person in candidates:
+        if _matches_account(person, anchor):
+            return person
+    return None
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    # Giữ tham số để tương thích caller/test cũ, nhưng thủ tục này cố ý không dùng nhân thân từ FE.
-    _ = options
+    anchor = _account_anchor(options)
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
@@ -225,34 +262,55 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not name:
         warnings.append("Thiếu họ tên đối tượng hưởng trợ cấp từ CCCD/Tờ khai/Giấy khai sinh.")
 
-    # --- NGƯỜI NỘP (Phần I) = người tại block "Thông tin người khai thay" trên tờ khai. ---
-    nop_ext_name = _text(values.get("NguoiNop_HoTen"))
-    nop_ext_id = _validated_submitter_identity(values.get("NguoiNop_SoDinhDanh"))
-    has_declarant = bool(nop_ext_name or nop_ext_id)
+    # --- NGƯỜI NỘP (Phần I): ứng viên là người khai thay trên tờ khai và chính đối tượng. ---
+    declarant = {
+        "name": _text(values.get("NguoiNop_HoTen")),
+        "identity": _validated_submitter_identity(values.get("NguoiNop_SoDinhDanh")),
+        "birthday": _date(values.get("NguoiNop_NgaySinh")),
+        "gender": _text(values.get("NguoiNop_GioiTinh")),
+        "id_date": _date(values.get("NguoiNop_NgayCap")),
+        "issuer": _issuer(values.get("NguoiNop_NoiCap")),
+        "residence": _area(values.get("NguoiNop_ThuongTru")),
+        "phone": _phone(values.get("NguoiNop_DienThoai")),
+        "email": _text(values.get("NguoiNop_Email")),
+    }
+    subject = {
+        "name": name,
+        "identity": identity,
+        "birthday": birthday,
+        "gender": gender,
+        "id_date": id_date,
+        "issuer": issuer,
+        "residence": residence,
+        "phone": phone,
+        "email": _text(values.get("DoiTuong_Email")),
+    }
+    has_declarant = bool(declarant["name"] or declarant["identity"])
 
-    if has_declarant:
-        # Có người khai thay: chỉ điền dữ liệu đọc được của đúng người này; thiếu thì để trống.
-        nop_name = nop_ext_name
-        nop_identity = nop_ext_id
-        nop_birthday = _date(values.get("NguoiNop_NgaySinh"))
-        nop_gender = _text(values.get("NguoiNop_GioiTinh"))
-        nop_id_date = _date(values.get("NguoiNop_NgayCap"))
-        nop_issuer = _issuer(values.get("NguoiNop_NoiCap"))
-        nop_residence = _area(values.get("NguoiNop_ThuongTru"))
-        nop_phone = _phone(values.get("NguoiNop_DienThoai"))
-        nop_email = _text(values.get("NguoiNop_Email"))
+    if anchor:
+        candidates = [declarant, subject] if has_declarant else [subject]
+        matched = _account_submitter(candidates, anchor)
+        if matched is None:
+            # Người đăng nhập không có trong hồ sơ: chỉ họ tên + CCCD tài khoản là chắc chắn của họ;
+            # nhân thân khác không có nguồn → để trống, không mượn của người khai thay/đối tượng.
+            submitter = {"name": anchor["name"], "identity": anchor["identity"]}
+            warnings.append(
+                "Không tìm thấy người nộp khớp tài khoản "
+                f"({anchor['identity'] or anchor['name']}) trong tờ khai/giấy tờ; "
+                "chỉ điền họ tên và số định danh của tài khoản."
+            )
+        else:
+            submitter = {
+                **matched,
+                "name": anchor["name"] or matched.get("name"),
+                "identity": anchor["identity"] or matched.get("identity"),
+            }
     else:
+        # Có người khai thay: chỉ điền dữ liệu đọc được của đúng người này; thiếu thì để trống.
         # Không có block người khai thay → đối tượng tự khai, Phần I dùng cùng nhân thân đối tượng.
-        nop_name = name
-        nop_identity = identity
-        nop_birthday = birthday
-        nop_gender = gender
-        nop_id_date = id_date
-        nop_issuer = issuer
-        nop_residence = residence
-        nop_phone = phone
-        nop_email = _text(values.get("DoiTuong_Email"))
+        submitter = declarant if has_declarant else subject
 
+    nop_residence = submitter.get("residence")
     _complete_missing_provinces(residence, nop_residence)
 
     # Remap phường/xã theo bảng sáp nhập (_shared/data/remap_*.json); phải chạy SAU
@@ -261,15 +319,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     nop_residence = remap_area(nop_residence)
 
     add("data[chonDoiTuong]", "Cá nhân")
-    add("data[fullname]", nop_name)
-    add("data[birthday]", nop_birthday)
-    add("data[gender]", nop_gender)
-    add("data[identityNumber]", nop_identity)
-    add("data[identityDate]", nop_id_date)
-    add("data[idIssuePlace]", nop_issuer)
+    add("data[fullname]", submitter.get("name"))
+    add("data[birthday]", submitter.get("birthday"))
+    add("data[gender]", submitter.get("gender"))
+    add("data[identityNumber]", submitter.get("identity"))
+    add("data[identityDate]", submitter.get("id_date"))
+    add("data[idIssuePlace]", submitter.get("issuer"))
     add_area("data[province]", "data[district]", "data[address]", nop_residence)  # Thường trú người nộp.
-    add("data[phoneNumber]", nop_phone)
-    add("data[email]", nop_email)
+    add("data[phoneNumber]", submitter.get("phone"))
+    add("data[email]", submitter.get("email"))
 
     # --- Mở khoá Phần II: BỎ TÍCH "Người nộp là chủ hồ sơ" ---
     add("data[isOwnerDossierCheck]", False)

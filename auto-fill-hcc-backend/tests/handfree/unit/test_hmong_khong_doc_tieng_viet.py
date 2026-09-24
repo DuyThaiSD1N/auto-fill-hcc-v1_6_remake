@@ -93,6 +93,11 @@ _VIET_PLACEHOLDERS = {"documents_md", "documents_tts", "options_md", "options_tt
                       # từ registry/DOM. Bản Mông nhắc tên bước thì viết thẳng tiếng Việt
                       # trong câu (như các câu Mông khác), không nhúng qua placeholder.
                       "missing_tts", "attachment_step", "result_step", "submit_label",
+                      # Tên cách nhận kết quả lấy NGUYÊN VĂN chữ trên cổng (registry
+                      # guidedSteps.resultMethods) — cùng loại với nhãn bước ở trên.
+                      "label",
+                      # Chữ trên thẻ kết quả DVCQG ("Cơ quan thực hiện: UBND") — registry.
+                      "card",
                       "portal_message"}
 
 

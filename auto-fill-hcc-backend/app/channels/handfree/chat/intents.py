@@ -96,6 +96,27 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
                                             "chuyển hồ sơ liệt sĩ về nơi ở mới",
                                             "người có công chuyển nơi thường trú",
                                             "di chuyển hồ sơ trợ cấp ưu đãi"],
+    # CÙNG cụm "trợ cấp ưu đãi" với thủ tục di chuyển hồ sơ ngay trên, chỉ khác ở chỗ NGƯỜI CÓ
+    # CÔNG ĐÃ MẤT và thân nhân đứng ra hưởng chế độ → hint chỉ nhận cụm có người có công qua
+    # đời; cụm "trợ cấp ưu đãi" trơn không thuộc bên nào.
+    # Giấy chứng nhận ATTP cho quán ăn / cơ sở sản xuất thực phẩm (Bộ Y tế). Người dân thường gọi
+    # theo việc mở quán chứ không theo tên giấy.
+    "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": [
+        "giấy chứng nhận an toàn thực phẩm", "giấy chứng nhận vệ sinh an toàn thực phẩm",
+        "xin giấy an toàn thực phẩm cho quán ăn", "mở nhà hàng cần giấy an toàn thực phẩm",
+        "giấy phép vệ sinh thực phẩm cho bếp ăn", "cơ sở đủ điều kiện an toàn thực phẩm",
+    ],
+    # Người được giao THỜ CÚNG liệt sĩ (liệt sĩ không còn thân nhân hưởng trợ cấp hằng tháng).
+    # Cụm "thờ cúng" là dấu hiệu riêng, không đụng thủ tục nào khác trong danh mục.
+    "tro-cap-tho-cung-liet-si": ["trợ cấp thờ cúng liệt sĩ", "chế độ thờ cúng liệt sĩ",
+                                 "tôi đang thờ cúng liệt sĩ muốn hưởng trợ cấp",
+                                 "xin tiền thờ cúng liệt sĩ hằng năm",
+                                 "người thờ cúng liệt sĩ"],
+    "uu-dai-ncc-tu-tran": ["người có công từ trần", "người có công mất hưởng trợ cấp",
+                           "chế độ khi người có công qua đời",
+                           "trợ cấp tuất cho thân nhân người có công",
+                           "trợ cấp mai táng người có công đang hưởng trợ cấp ưu đãi",
+                           "bố tôi là thương binh vừa mất muốn làm chế độ"],
     # Giấy XÁC NHẬN khuyết tật — KHÁC "trợ cấp cho người khuyết tật" (tiền hàng tháng) ở trên:
     # cái này là đi giám định để được công nhận mức độ khuyết tật.
     "xac-dinh-muc-do-khuyet-tat": ["xác định mức độ khuyết tật", "xác định lại mức độ khuyết tật",

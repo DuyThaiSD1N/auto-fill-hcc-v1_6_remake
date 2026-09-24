@@ -34,26 +34,31 @@ def test_tu_phap_profile_materializes_owner_wizard_without_mutating_raw_entry():
             {
                 "key": "self",
                 "label": "Làm thủ tục cho bản thân",
+                    "shortLabel": "cho bản thân",
                 "portalValue": "null",
             },
             {
                 "key": "authorized_person",
                 "label": "Người khác ủy quyền",
+                    "shortLabel": "do người khác ủy quyền",
                 "portalValue": "canhan",
             },
             {
                 "key": "enterprise_authorized",
                 "label": "Doanh nghiệp ủy quyền",
+                    "shortLabel": "do doanh nghiệp ủy quyền",
                 "portalValue": "",
             },
             {
                 "key": "other_person",
                 "label": "Làm thủ tục cho người khác",
+                    "shortLabel": "cho người khác",
                 "portalValue": "",
             },
             {
                 "key": "organization_representative",
                 "label": "Đại diện cơ quan, tổ chức",
+                    "shortLabel": "với tư cách đại diện cơ quan, tổ chức",
                 "portalValue": "",
             },
         ],
@@ -167,6 +172,14 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "maePortal" not in byt_pension
     assert byt_pension["wizard"]["declarationStep"] == 1
     assert byt_pension["wizard"]["attachmentStep"] == 2
+    # ATTP Bộ Y tế: cùng khung với hưu trí, chỉ khác phải bấm ĐÚNG thẻ UBND ở trang kết quả DVCQG
+    # (chi tiết ở test_agency_card_dvcqg.py).
+    byt_food_safety = procedures.pop("cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham")
+    assert byt_food_safety.get("flowProfile") is None
+    assert byt_food_safety["wizard"] == byt_pension["wizard"]
+    assert byt_food_safety["agencyCardIncludes"] == "Cơ quan thực hiện: UBND"
+    assert byt_food_safety["hideRepeatableHint"] is True
+    assert len(byt_food_safety["shortLabel"]) >= 30
     # Trợ cấp xã hội hàng tháng: cùng cổng Bộ Y tế, cùng cách chọn cơ quan với hưu trí, nhưng bảng
     # thành phần hồ sơ là bảng NHIỀU DÒNG tích chọn → không được dồn hết tệp vào một dòng.
     byt_allowance = procedures.pop("tro-cap-xa-hoi-hang-thang")
@@ -225,6 +238,20 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert moha_move["maePortal"] is True and moha_move["agencyDeptLabel"] == "Sở Nội vụ"
     assert "variants" not in moha_move
     assert "hideRepeatableHint" not in moha_move
+    # CÙNG cổng Bộ Nội vụ nhưng giải quyết ở CẤP XÃ: DVCQG chọn đủ Tỉnh + Xã (không
+    # agencyProvinceOnly/agencySoFirst), hộp thoại cổng bộ gạt radio "Phường/Xã".
+    # Chi tiết hành vi cấp xã nằm ở test_mae_agency_cap_xa.py; ở đây chỉ chốt hình dạng entry.
+    for moha_ward_key in ("uu-dai-ncc-tu-tran", "tro-cap-tho-cung-liet-si"):
+        moha_ward = procedures.pop(moha_ward_key)
+        assert moha_ward.get("flowProfile") is None
+        assert moha_ward["needsAgencySelect"] is True
+        assert "agencyProvinceOnly" not in moha_ward and "agencySoFirst" not in moha_ward
+        assert moha_ward["maePortal"] is True and moha_ward["maeAgencyLevel"] == "ward"
+        assert "agencyDeptLabel" not in moha_ward, "cấp xã thì không có tên Sở để đọc"
+        assert moha_ward["wizard"] == moha_move["wizard"]
+        assert "variants" not in moha_ward
+        assert "hideRepeatableHint" not in moha_ward
+        assert len(moha_ward["shortLabel"]) >= 30
     # HkdOnline nhánh THAY ĐỔI: cùng cổng với thành lập mới nhưng workflow "change"
     # (wizard 4 bước + pageOrder động), không dùng profile tư pháp.
     business_change = procedures.pop("dang-ky-thay-doi-noi-dung-ho-kinh-doanh")
@@ -278,8 +305,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 "cap-giay-phep-xay-dung-moi-nha-o-rieng-le" (Bộ Xây dựng)
     # +4 cổng Bộ Y tế dùng lại core sẵn có: "tro-cap-xa-hoi-hang-thang",
     # "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang", "xac-dinh-muc-do-khuyet-tat";
-    # +1 cổng Bộ Nội vụ "di-chuyen-ho-so-nguoi-huong-tro-cap".
-    assert len(procedures) == 32
+    # +3 cổng Bộ Nội vụ: "di-chuyen-ho-so-nguoi-huong-tro-cap" (cấp Sở),
+    # "uu-dai-ncc-tu-tran" + "tro-cap-tho-cung-liet-si" (cấp xã);
+    # +1 cổng Bộ Y tế "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" (ATTP).
+    assert len(procedures) == 35
 
     for procedure in procedures:
         key = procedure["key"]

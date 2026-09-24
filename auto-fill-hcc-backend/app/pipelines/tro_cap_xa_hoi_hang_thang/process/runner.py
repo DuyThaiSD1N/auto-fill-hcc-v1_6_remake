@@ -13,8 +13,8 @@ from app.pipelines.tro_cap_xa_hoi_hang_thang.process.schema import (
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
-    # Giữ chữ ký pipeline chung nhưng không truyền formContext/options của FE xuống compact runner.
-    _ = options
+    # LLM chỉ trích người khai thay + đối tượng từ giấy tờ; mốc tài khoản (formContext) chỉ dùng ở mapper
+    # để chọn người nộp, không đưa vào prompt.
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -23,9 +23,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
     )
-    # Thủ tục này xác định người nộp từ block "Thông tin người khai thay" trên tờ khai; không dùng
-    # nhân thân tài khoản/formContext do FE gửi kèm request chung.
-    mapped_fields, warnings = mapper.enrich(res["fields"])
+    mapped_fields, warnings = mapper.enrich(res["fields"], options)
     res["fields"] = mapped_fields
     if warnings:
         res.setdefault("errors", []).extend(warnings)

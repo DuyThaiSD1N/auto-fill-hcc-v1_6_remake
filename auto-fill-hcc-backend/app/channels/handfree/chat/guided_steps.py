@@ -238,6 +238,71 @@ def submit_action(proc: dict | None) -> dict:
     return {"type": "guided_submit", "label": step_labels(proc)["submit_label"]}
 
 
+def result_methods_enabled(conv: dict, proc: dict | None) -> bool:
+    """Trợ lý gạt hộ công tắc nhận kết quả. Cờ RIÊNG, không dùng chung supportsGuidedSteps:
+    bản extension khai guided steps nhưng chưa có engine gạt công tắc sẽ nhận action lạ rồi
+    im lặng, công dân ngồi chờ một cú bấm không bao giờ xảy ra."""
+    if not config(proc).get("resultMethods"):
+        return False
+    return (conv.get("client_capabilities") or {}).get("supportsResultMethod") is True
+
+
+def result_methods(proc: dict | None) -> list[dict]:
+    return list(config(proc).get("resultMethods") or [])
+
+
+def default_result_method(proc: dict | None) -> dict | None:
+    """Cách trợ lý đề xuất sẵn. Khai bằng cờ `default` chứ không lấy phần tử đầu: thứ tự trong
+    registry bám thứ tự công tắc TRÊN CỔNG, đổi thứ tự đó không được kéo theo đổi đề xuất."""
+    methods = result_methods(proc)
+    for method in methods:
+        if method.get("default"):
+            return method
+    return methods[0] if methods else None
+
+
+def result_method(proc: dict | None, key: str) -> dict | None:
+    for method in result_methods(proc):
+        if str(method.get("key") or "") == str(key or ""):
+            return method
+    return None
+
+
+def result_methods_card(proc: dict | None, selected: str) -> dict:
+    """Card 3 lựa chọn, dùng lại khuôn doc_options của FE (icon + tiêu đề + mô tả + dấu chọn)."""
+    return {
+        "kind": "result_methods",
+        "selected": str(selected or ""),
+        "options": [
+            {
+                "key": str(method.get("key") or ""),
+                "label": str(method.get("label") or ""),
+                "icon": str(method.get("icon") or ""),
+                "desc": str(method.get("desc") or ""),
+                "send": f"__action:pick_result_method:{{\"method\":\"{method.get('key')}\"}}",
+            }
+            for method in result_methods(proc)
+        ],
+    }
+
+
+def select_result_method_action(proc: dict | None, key: str) -> dict | None:
+    """Lệnh gạt công tắc. Gửi kèm nhãn của CẢ BA để FE tắt được cái đang bật — cổng dùng
+    switch chứ không phải radio, bật cái mới không tự tắt cái cũ."""
+    method = result_method(proc, key)
+    if not method:
+        return None
+    return {
+        "type": "select_result_method",
+        "method": str(method.get("key") or ""),
+        "label": str(method.get("label") or ""),
+        "allLabels": [str(m.get("label") or "") for m in result_methods(proc)],
+        # Chỉ cách nào đòi thêm thông tin mới cần FE soi ô trống. Quét cả trang cho cách không
+        # đòi gì là mời gọi báo nhầm ô bắt buộc của khối khác trên cùng trang.
+        "needsInput": bool(method.get("needsInput")),
+    }
+
+
 def is_result_step(proc: dict | None, page_context: dict | None) -> bool:
     step = (page_context or {}).get("wizardStep")
     return isinstance(step, int) and step == _wizard(proc, "resultStep", 4)

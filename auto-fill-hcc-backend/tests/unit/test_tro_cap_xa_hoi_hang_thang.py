@@ -32,7 +32,22 @@ def _subject_fields():
     }
 
 
-def test_mapper_uses_declarant_and_ignores_frontend_applicant_context():
+_ACCOUNT = {"applicantFullname": "Vũ Đình Thiết", "applicantIdentityNumber": "040203015844"}
+_DECLARATION_MODE = {"submitterMode": "owner_as_submitter", "formContext": _ACCOUNT}
+
+
+def _declarant_fields():
+    return {
+        **_subject_fields(),
+        "NguoiNop_HoTen": "TRẦN VĂN TÚ",
+        "NguoiNop_SoDinhDanh": "051070028267",
+        "NguoiNop_NgayCap": "15/11/2024",
+        "NguoiNop_NoiCap": "Bộ Công an",
+        "NguoiNop_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "phường Đoàn Kết", "diaChi": "Tổ 2"},
+    }
+
+
+def test_mapper_declaration_mode_uses_declarant_and_ignores_account():
     fields = {
         **_subject_fields(),
         "NguoiNop_HoTen": "NGUYỄN THÚY VÂN",
@@ -46,27 +61,101 @@ def test_mapper_uses_declarant_and_ignores_frontend_applicant_context():
         },
     }
 
-    result, warnings = _mapped(fields, {
-        "formContext": {
-            "applicantFullname": "Vũ Đình Thiết",
-            "applicantIdentityNumber": "040203015844",
-        }
-    })
+    result, warnings = _mapped(fields, _DECLARATION_MODE)
 
     assert not warnings
     assert result["data[fullname]"] == "NGUYỄN THÚY VÂN"
     assert "data[identityNumber]" not in result
     assert result["data[province]"] == "Tỉnh Lai Châu"
-    assert result["data[district]"] == "phường Đoàn Kết"
+    assert result["data[district]"] == "Phường Đoàn Kết"
     assert result["data[address]"] == "Tổ 5"
     assert result["data[ownerFullname]"] == "TRẦN VĂN HÙNG"
     assert result["data[ownerIdentityNumber]"] == "038081022531"
 
 
-def test_mapper_uses_subject_for_part_one_when_no_declarant_block():
-    result, warnings = _mapped(_subject_fields(), {
-        "formContext": {"applicantFullname": "Vũ Đình Thiết"}
+def test_mapper_without_account_anchor_keeps_declaration_behaviour():
+    # Extension đời cũ không gửi formContext, hoặc gửi mốc rỗng → giữ nguyên hành vi theo tờ khai.
+    for options in (None, {}, {"formContext": {"applicantFullname": " ", "applicantIdentityNumber": ""}}):
+        result, warnings = _mapped(_declarant_fields(), options)
+        assert not warnings
+        assert result["data[fullname]"] == "TRẦN VĂN TÚ"
+        assert result["data[identityNumber]"] == "051070028267"
+
+
+def test_account_mode_matches_declarant_and_takes_name_and_identity_from_account():
+    result, warnings = _mapped(_declarant_fields(), {
+        "formContext": {"applicantFullname": "Trần Văn Tứ", "applicantIdentityNumber": "051070028267"}
     })
+
+    assert not warnings
+    assert result["data[fullname]"] == "Trần Văn Tứ"
+    assert result["data[identityNumber]"] == "051070028267"
+    assert result["data[identityDate]"] == "15/11/2024"
+    assert result["data[address]"] == "Tổ 2"
+    assert result["data[ownerFullname]"] == "TRẦN VĂN HÙNG"
+
+
+def test_account_mode_matches_by_name_without_diacritics_alone():
+    fields = {**_declarant_fields()}
+    fields.pop("NguoiNop_SoDinhDanh")
+
+    result, warnings = _mapped(fields, {
+        "formContext": {"applicantFullname": "Trần Văn Tứ", "applicantIdentityNumber": "051070028267"}
+    })
+
+    assert not warnings
+    assert result["data[fullname]"] == "Trần Văn Tứ"
+    assert result["data[identityNumber]"] == "051070028267"
+    assert result["data[identityDate]"] == "15/11/2024"
+
+
+def test_account_mode_matches_by_identity_alone():
+    result, warnings = _mapped(_declarant_fields(), {
+        "formContext": {"applicantFullname": "Trần Tứ", "applicantIdentityNumber": "051070028267"}
+    })
+
+    assert not warnings
+    assert result["data[fullname]"] == "Trần Tứ"
+    assert result["data[identityDate]"] == "15/11/2024"
+
+
+def test_account_mode_subject_submits_for_themself():
+    result, warnings = _mapped(_declarant_fields(), {
+        "formContext": {"applicantFullname": "Trần Văn Hùng", "applicantIdentityNumber": "038081022531"}
+    })
+
+    assert not warnings
+    assert result["data[fullname]"] == "Trần Văn Hùng"
+    assert result["data[identityNumber]"] == "038081022531"
+    assert result["data[birthday]"] == "04/05/1981"
+    assert result["data[address]"] == "Tổ 5"
+    assert result["data[ownerFullname]"] == "TRẦN VĂN HÙNG"
+
+
+def test_account_mode_identity_match_beats_name_match():
+    fields = {**_declarant_fields(), "NguoiNop_HoTen": "TRẦN VĂN HÙNG"}
+
+    result, _ = _mapped(fields, {
+        "formContext": {"applicantFullname": "Trần Văn Hùng", "applicantIdentityNumber": "038081022531"}
+    })
+
+    assert result["data[birthday]"] == "04/05/1981"
+    assert "data[identityDate]" in result and result["data[identityDate]"] == "27/02/2022"
+
+
+def test_account_mode_unmatched_fills_only_account_name_and_identity():
+    result, warnings = _mapped(_declarant_fields(), {"formContext": _ACCOUNT})
+
+    assert result["data[fullname]"] == "Vũ Đình Thiết"
+    assert result["data[identityNumber]"] == "040203015844"
+    for leaked in ("data[birthday]", "data[identityDate]", "data[idIssuePlace]", "data[address]"):
+        assert leaked not in result
+    assert result["data[ownerFullname]"] == "TRẦN VĂN HÙNG"
+    assert warnings and "040203015844" in warnings[0]
+
+
+def test_mapper_uses_subject_for_part_one_when_no_declarant_block():
+    result, warnings = _mapped(_subject_fields(), _DECLARATION_MODE)
 
     assert not warnings
     assert result["data[fullname]"] == "TRẦN VĂN HÙNG"
