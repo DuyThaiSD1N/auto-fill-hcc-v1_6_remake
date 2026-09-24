@@ -17,6 +17,7 @@ from app.services import ocr
 from app.services.llm import client
 
 from app.pipelines.xac_nhan_tthn.attach.dinh_kem_tach.prompt import SYSTEM_PROMPT, build_user_prompt
+from app.pipelines.xac_nhan_tthn.attach.nghia_hung import OMITTED_DECLARATION_NOTE, omits_paper_declaration
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _ALLOWED_LLM_TYPES = {
@@ -370,7 +371,7 @@ def _build_item(file: dict, segment: dict, doc_type: str, document_name: str) ->
 async def plan_xac_nhan_tthn_attachments(
     files: list[FileItem], options: dict | None = None, session: dict | None = None,
 ) -> dict:
-    _ = options or {}
+    omit_declaration = omits_paper_declaration(options)
     errors: list[str] = []
     raw_files = [{"name": file.name, "type": file.type, "dataUrl": file.dataUrl} for file in files]
     ocr_pairs = [(index, file) for index, file in enumerate(raw_files) if file.get("type") in _OCR_TYPES]
@@ -434,6 +435,24 @@ async def plan_xac_nhan_tthn_attachments(
                 "pageTo": segment["pageTo"],
                 "type": doc_type,
                 "documentName": _BLANK_PAGE_LABEL,
+                "target": "ignored",
+                "componentIndex": None,
+            })
+            continue
+        if omit_declaration and doc_type == "paper_declaration":
+            # Xã Nghĩa Hưng: đoạn Tờ khai (giấy hay scan) không đính, các đoạn khác giữ nguyên.
+            pages = (
+                str(segment["pageFrom"]) if segment["pageFrom"] == segment["pageTo"]
+                else f"{segment['pageFrom']}-{segment['pageTo']}"
+            )
+            errors.append(f"{OMITTED_DECLARATION_NOTE}: trang {pages} của {file.get('name') or 'file'}")
+            classified.append({
+                "fileIndex": file_index,
+                "fileName": file.get("name"),
+                "pageFrom": segment["pageFrom"],
+                "pageTo": segment["pageTo"],
+                "type": doc_type,
+                "documentName": _PAPER_DECLARATION_LABEL,
                 "target": "ignored",
                 "componentIndex": None,
             })

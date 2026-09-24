@@ -43,27 +43,53 @@ def _load() -> list[dict]:
 KE_KHAI_LINKS: list[dict] = _load()
 
 
-def with_ke_khai_detect_urls(procedures: list[dict]) -> list[dict]:
-    """Bổ sung URL trang chi tiết DVCQG vào cấu hình detect trả cho extension.
+def _code_detect_parts(code: str) -> list[str]:
+    """Mảnh URL nhận diện theo mã TTHC quốc gia ở bước chọn của cổng bộ/ngành.
 
-    URL kê khai đã có một nguồn chuẩn ở ``ke_khai_links.json``. Ghép lúc trả API giúp
-    popup nhận diện được thủ tục ngay tại trang ``/thu-tuc-hanh-chinh/<uuid>`` mà
-    không phải chép lại UUID vào từng entry của registry.
+    Bấm "Nộp trực tuyến" trên DVCQG, cổng bộ mở trang chọn quy trình dạng
+    ``dvc.moc.gov.vn/vi/nps/apply?MaTTHC=1.013229&MaDVC=1.013229.01&...``. Trang này chưa có
+    apply-online/process id nên chỉ mã trên URL là định danh được thủ tục. Mã luôn đủ 6 chữ số
+    sau dấu chấm nên ``matthc=<mã>`` không dính mã dài hơn; ``MaDVC`` là mã TTHC + đuôi ``.xx``
+    nên chốt thêm dấu chấm. Popup so khớp trên URL đã lower-case.
     """
-    url_by_key = {
-        str(item.get("key") or ""): str(item.get("url") or "").strip()
-        for item in KE_KHAI_LINKS
-        if item.get("key") and item.get("url")
-    }
+    return [f"matthc={code}", f"madvc={code}."]
+
+
+def with_ke_khai_detect_urls(procedures: list[dict]) -> list[dict]:
+    """Bổ sung URL trang chi tiết DVCQG và mã TTHC vào cấu hình detect trả cho extension.
+
+    URL kê khai và mã TTHC đã có một nguồn chuẩn ở ``ke_khai_links.json``. Ghép lúc trả API giúp
+    popup nhận diện được thủ tục ngay tại trang ``/thu-tuc-hanh-chinh/<uuid>`` và tại trang chọn
+    quy trình mang ``MaTTHC=`` của cổng bộ, mà không phải chép lại vào từng entry của registry.
+    Entry có ``urlScope`` vẫn bị giới hạn host như cũ, nên các thủ tục tỉnh dùng chung một mã
+    không nhận nhầm sang nhau.
+    """
+    parts_by_key: dict[str, list[str]] = {}
+    for item in KE_KHAI_LINKS:
+        key = str(item.get("key") or "")
+        if not key:
+            continue
+        parts: list[str] = []
+        url = str(item.get("url") or "").strip()
+        if url:
+            parts.append(url)
+        code = str(item.get("code") or "").strip()
+        if code:
+            parts.extend(_code_detect_parts(code))
+        if parts:
+            parts_by_key[key] = parts
     result: list[dict] = []
     for procedure in procedures:
         public_procedure = dict(procedure)
-        entry_url = url_by_key.get(str(procedure.get("key") or ""))
-        if entry_url:
+        parts = parts_by_key.get(str(procedure.get("key") or ""))
+        if parts:
             detect = dict(procedure.get("detect") or {})
             url_includes = list(detect.get("urlIncludes") or [])
-            if entry_url not in url_includes:
-                url_includes.append(entry_url)
+            lowered = {str(u).lower() for u in url_includes}
+            for part in parts:
+                if part.lower() not in lowered:
+                    url_includes.append(part)
+                    lowered.add(part.lower())
             detect["urlIncludes"] = url_includes
             public_procedure["detect"] = detect
         result.append(public_procedure)

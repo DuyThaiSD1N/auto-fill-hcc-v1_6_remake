@@ -20,6 +20,7 @@ from app.channels.handfree.procedure_registry import (
     get_procedure,
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
+from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
 from app.upload_session.ws import broadcast
@@ -320,6 +321,9 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
                 str(f.get("name") or "") for f in sess.get("files", [])
                 if f.get("doc_key") in owner_keys
             ]
+        # Tài khoản chủ phiên quyết các cấu hình theo xã (STT1 ảo Hải Châu, bỏ Tờ khai Nghĩa Hưng).
+        owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
+        attach_options = with_account_attach_options(attach_options, owner_user, procedure_key)
         result = await attach_fn(files, attach_options, session=None)
 
         conv = await conv_store.get(conv_id)
@@ -327,7 +331,6 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             return
         # STT1 nhận 1 file ẢO. HTTP router auto-fill gọi sẵn; handfree đi qua chat pipeline nên
         # phải gọi Ở ĐÂY. Account/thủ tục khác → no-op (directive None), plan giữ nguyên.
-        owner_user = await _load_owner_user(conv, sess)
         result = apply_stt1_virtual_copy(result, owner_user, procedure_key)
         conv["attach_plan"] = result.get("attachments", [])
         conv["attach_plan_stt1_virtual"] = result.get("stt1VirtualCopy")

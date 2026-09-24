@@ -855,6 +855,81 @@ def _rescue_subject_card(values: dict) -> dict:
     return moved
 
 
+def _drop_duplicated_requester_card(values: dict, options: dict | None) -> dict:
+    """Agent chép CÙNG MỘT thẻ vào cả Nyc_* lẫn ChuThe_* → chỉ giữ ở vai người yêu cầu khi thẻ đó
+    đúng là của người đang đăng nhập; còn lại bỏ Nyc_* để thẻ chỉ điền mục II.
+
+    Lỗi thật (req_55aa47ae0dba): tài khoản đăng nhập là người khác, hồ sơ chỉ có CCCD của người được
+    đăng ký, agent trả thẻ đó ở cả hai nhóm. Không có giấy hộ tịch để đối chiếu nên _requester_trusted
+    tin Nyc_* → thẻ GHI ĐÈ lên người yêu cầu cổng đã điền sẵn. Agent lúc trả một nhóm, lúc trả cả hai,
+    nên kết quả chập chờn giữa các lần chạy.
+
+    Cùng thẻ = trùng số (kể cả OCR rơi chữ số), hoặc trùng họ tên khi một bên không đọc được số.
+    Thẻ khớp người đăng nhập (tự xin cho mình) thì giữ nguyên cả hai nhóm như cũ.
+    """
+    if not (_has_requester_card(values) and _has_subject_card(values)):
+        return values
+    req_id, subj_id = _digits(values.get("Nyc_SoDinhDanh")), _digits(values.get("ChuThe_SoDinhDanh"))
+    req_name, subj_name = _fold(values.get("Nyc_HoTen")), _fold(values.get("ChuThe_HoTen"))
+    same_by_id = id_match(req_id, subj_id)
+    same_card = same_by_id is True or (
+        same_by_id is None and bool(req_name and subj_name and req_name == subj_name)
+    )
+    if not same_card or _card_matches_login(values, options):
+        return values
+    return {key: value for key, value in values.items() if not key.startswith("Nyc_")}
+
+
+def _rescue_single_card_not_login(values: dict, options: dict | None) -> dict:
+    """Hồ sơ chỉ có MỘT thẻ, agent xếp vào Nyc_* nhưng thẻ LỆCH người đang đăng nhập → thẻ của người
+    được đăng ký, chuyển sang ChuThe_* để điền mục "Thông tin về giấy tờ hộ tịch đã đăng ký".
+
+    Ca điển hình: người dân đăng nhập VNeID rồi chỉ upload CCCD của người cần cấp bản sao (con, bố/mẹ
+    già...). Mục I cổng đã tự điền đúng người đăng nhập; tin Nyc_* thì thẻ đó GHI ĐÈ lên người yêu cầu,
+    còn mục II bỏ trống.
+
+    Không đổi vai khi:
+      - tờ khai đã ghi người yêu cầu (TkNyc_*) → _rescue_subject_card lo;
+      - không có mỏ neo đăng nhập hoặc không so được cặp số/tên nào với nó;
+      - giấy hộ tịch nêu rõ chủ thể mà thẻ lệch hẳn chủ thể đó → thẻ đúng là người yêu cầu nộp hộ
+        (vd trích lục khai tử + CCCD người thân), giữ nguyên như _rescue_requester_card.
+    """
+    if _has_subject_card(values) or not _has_requester_card(values):
+        return values
+    if any(str(key).startswith("TkNyc_") and values.get(key) not in (None, "", {}, []) for key in values):
+        return values
+
+    ctx = (options or {}).get("formContext") or {}
+    login_id = _digits(ctx.get("applicantIdentityNumber"))
+    login_name = _fold(ctx.get("applicantFullname"))
+    card_id = _digits(values.get("Nyc_SoDinhDanh"))
+    card_name = _fold(values.get("Nyc_HoTen"))
+    if not ((login_id and card_id) or (login_name and card_name)):
+        return values
+    if id_match(login_id, card_id) is True or (login_name and card_name and login_name == card_name):
+        return values
+
+    subject_ids = {value for value in (
+        _digits(values.get("HoTich_SoDinhDanh")),
+        _digits(values.get("HoTich_SoGiayToTuyThan")),
+    ) if value}
+    subject_name = _fold(values.get("HoTich_HoTenNguoiDuocDangKy"))
+    card_is_subject = (
+        (card_id and any(id_match(card_id, subject_id) is True for subject_id in subject_ids))
+        or bool(subject_name and card_name and subject_name == card_name)
+    )
+    subject_comparable = bool((subject_ids and card_id) or (subject_name and card_name))
+    if subject_comparable and not card_is_subject:
+        return values
+
+    moved = {key: value for key, value in values.items() if not key.startswith("Nyc_")}
+    for suffix in _CARD_FIELD_SUFFIXES:
+        value = values.get(f"Nyc_{suffix}")
+        if value not in (None, "", {}, []):
+            moved[f"ChuThe_{suffix}"] = value
+    return moved
+
+
 # Nhân thân của người được đăng ký, đổ từ THẺ/khối người yêu cầu khi đổi vai vợ ↔ chồng.
 _SUBJECT_FROM_REQUESTER = {
     "HoTich_HoTenNguoiDuocDangKy": "Nyc_HoTen",
@@ -1009,12 +1084,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
     facts = _drop_document_numbers_from_id_fields(_by_name(fields))
     values = _prefer_requester_as_marriage_subject(
-        _rescue_subject_card(
-            _rescue_requester_card(
-                # Bỏ CMND cũ TRƯỚC hai bước cứu vai: hai bước đó đọc "có thẻ chủ thể hay không",
-                # mà thẻ thừa của chính người yêu cầu lại đang chiếm đúng ô đó.
-                _prefer_cccd_between_cards(_apply_declaration_precedence(facts))
-            )
+        _rescue_single_card_not_login(
+            _rescue_subject_card(
+                _rescue_requester_card(
+                    # Bỏ CMND cũ và thẻ chép lặp TRƯỚC các bước cứu vai: các bước đó đọc "có thẻ chủ
+                    # thể hay không", mà thẻ thừa lại đang chiếm đúng ô đó.
+                    _drop_duplicated_requester_card(
+                        _prefer_cccd_between_cards(_apply_declaration_precedence(facts)),
+                        options,
+                    )
+                )
+            ),
+            options,
         ),
         options,
     )

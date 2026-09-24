@@ -24,6 +24,11 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   Luật này KHÔNG áp dụng cho cặp CCCD + CMND cùng một người ở gạch đầu dòng trên.
 - Chỉ có 1 CCCD và thẻ đó khớp CONTEXT người yêu cầu → chỉ trả Nyc_*; Python sẽ dùng cùng người đó
   cho cả người yêu cầu và người được đăng ký, KHÔNG trả lặp sang ChuThe_*.
+- Chỉ có 1 CCCD, có CONTEXT nhưng thẻ KHÔNG khớp CONTEXT, và hồ sơ không có tờ khai ghi người yêu
+  cầu → đó là thẻ của NGƯỜI ĐƯỢC ĐĂNG KÝ → trả vào ChuThe_*, KHÔNG trả Nyc_* (người yêu cầu đã là
+  người đăng nhập, cổng tự điền). MỘT thẻ chỉ được trả vào MỘT nhóm: TUYỆT ĐỐI không chép cùng thẻ
+  sang cả Nyc_* lẫn ChuThe_*. Ngoại lệ duy nhất là luật ƯU TIÊN CAO bên dưới (giấy hộ tịch nêu
+  chủ thể KHÁC thẻ).
 - Ghép mặt trước và mặt sau cùng thẻ bằng số CCCD/MRZ và họ tên; không phụ thuộc tên file hoặc thứ tự upload.
 - Không có CONTEXT: thẻ khớp HoTich_* là ChuThe_*; thẻ khác chủ thể mới có thể là Nyc_*.
   Chỉ có 1 CCCD và KHÔNG có mỏ neo nào (không tờ khai, không giấy hộ tịch nêu tên/số chủ thể)
