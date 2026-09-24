@@ -26,6 +26,10 @@ class FieldOut(BaseModel):
     value: Any  # str | dict (x-select-area)
     default: bool = False  # True = giá trị BE điền mặc định (extension tô viền vàng), không từ giấy tờ
     occurrence: int | None = None  # Dùng khi Form.io tái sử dụng cùng name cho nhiều cụm field.
+    # Tên thay thế khi form phiên bản khác đổi name của cùng một ô; extension thử lần lượt
+    # name chính rồi tới alias (content.js fieldCandidates). Thiếu khai báo này thì response_model
+    # cắt mất alias mapper đã gắn và ô chỉ dò được đúng một tên.
+    aliases: list[str] | None = None
 
 
 class ProcessResp(BaseModel):

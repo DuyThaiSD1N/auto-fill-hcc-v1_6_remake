@@ -123,13 +123,127 @@ def test_matching_cccd_residence_used_without_correction_declaration():
     }
 
 
-def test_requester_id_card_number_filled_from_form_context():
+# ==================================================================================
+# MỤC I — thứ tự ưu tiên: TỜ KHAI > CCCD người yêu cầu > VNeID (để im)
+# ==================================================================================
+
+_REQUESTER_CARD = {
+    "HoTen": "TRẦN VĂN CHA",
+    "SoDinhDanh": "068180001234",
+    "NgaySinh": "01/02/1980",
+    "NgayCap": "10/10/2021",
+    "NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    "NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Xuân Trường", "diaChi": "Tổ 3"},
+}
+_SUBJECT_CARD = {
+    "HoTen": "TRẦN THỊ CON",
+    "SoDinhDanh": "068212009999",
+    "NgaySinh": "05/05/2012",
+    "NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Xuân Trường", "diaChi": "Tổ 3"},
+}
+_VNEID = {"formContext": {
+    "applicantFullname": "TRẦN VĂN CHA",
+    "applicantIdentityNumber": "068180001234",
+}}
+
+
+def test_requester_declaration_wins_over_cccd():
+    """Tờ khai là nguồn số 1: có CCCD của chính người đó cũng KHÔNG được ghi đè."""
+    out = _by_name(mapper.enrich(
+        _fields({
+            "NguoiYeuCau_HoTen": "TRẦN VĂN CHA",
+            "NguoiYeuCau_SoDinhDanh": "111222333",
+            "NguoiYeuCau_LoaiGiayTo": "Chứng minh nhân dân",
+            "NguoiYeuCau_NgayCap": "01/01/2015",
+            "NguoiYeuCau_NoiCap": "Công an tỉnh Lâm Đồng",
+            "NguoiYeuCau_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Lâm Đồng",
+                                     "xa": "Xuân Trường", "diaChi": "Tổ 1"},
+            "DanhSachCccd": [_REQUESTER_CARD, _SUBJECT_CARD],
+        }),
+        options=_VNEID,
+    ))
+    assert out["HoVaTenC"]["value"] == "TRẦN VĂN CHA"
+    assert out["SoDinhDanhC"]["value"] == "111222333"
+    assert out["SoGiayToTuyThanC"]["value"] == "111222333"
+    assert out["LoaiGiayToDinhDanhC"]["value"] == "Chứng minh nhân dân"
+    assert out["NgayCapDDC"]["value"] == "01/01/2015"
+    assert out["NoiCapDDC"]["value"] == "Công an tỉnh Lâm Đồng"
+    assert out["nycNoiCuTru_TrongNuoc"]["value"]["diaChi"] == "Tổ 1"
+    # Lấy từ giấy tờ → KHÔNG viền vàng, extension ghi đè dữ liệu VNeID cổng điền sẵn.
+    for name in ("HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "nycNoiCuTru_TrongNuoc"):
+        assert "default" not in out[name]
+
+
+def test_requester_cccd_fills_only_cells_missing_on_declaration():
+    """Tờ khai thiếu ô nào thì CCCD của chính người yêu cầu bù ĐÚNG ô đó."""
+    out = _by_name(mapper.enrich(
+        _fields({
+            "NguoiYeuCau_HoTen": "TRẦN VĂN CHA",
+            "NguoiYeuCau_SoDinhDanh": "068180001234",
+            "DanhSachCccd": [_REQUESTER_CARD, _SUBJECT_CARD],
+        }),
+        options=_VNEID,
+    ))
+    assert out["NgayCapDDC"]["value"] == "10/10/2021"
+    assert out["NoiCapDDC"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert out["nycNoiCuTru_TrongNuoc"]["value"]["diaChi"] == "Tổ 3"
+    assert out["LoaiGiayToDinhDanhC"]["value"] == "Thẻ căn cước công dân"
+
+
+def test_requester_cccd_used_when_no_declaration():
+    out = _by_name(mapper.enrich(
+        _fields({"DanhSachCccd": [_REQUESTER_CARD, _SUBJECT_CARD]}),
+        options=_VNEID,
+    ))
+    assert out["HoVaTenC"]["value"] == "TRẦN VĂN CHA"
+    assert out["SoDinhDanhC"]["value"] == "068180001234"
+    assert out["NgayCapDDC"]["value"] == "10/10/2021"
+
+
+def test_requester_declaration_anchors_card_when_portal_account_is_proxy():
+    """Cán bộ nộp thay đăng nhập VNeID: mỏ neo phải là TỜ KHAI, không phải tài khoản cổng."""
+    out = _by_name(mapper.enrich(
+        _fields({
+            "NguoiYeuCau_HoTen": "TRẦN VĂN CHA",
+            "DanhSachCccd": [_REQUESTER_CARD, _SUBJECT_CARD],
+        }),
+        options={"formContext": {"applicantFullname": "CÁN BỘ NỘP THAY",
+                                 "applicantIdentityNumber": "011111111111"}},
+    ))
+    assert out["SoDinhDanhC"]["value"] == "068180001234"
+    assert out["NgayCapDDC"]["value"] == "10/10/2021"
+
+
+def test_requester_left_untouched_when_only_vneid_available():
+    """Không tờ khai, không CCCD người yêu cầu → ĐỂ IM ô cổng đã điền theo VNeID."""
     out = _by_name(mapper.enrich(
         _fields({"LoaiSuKien": "birth", "ChuThe_HoTen": "Bé A"}),
-        options={"formContext": {"applicantIdentityNumber": "040203015844"}},
+        options={"formContext": {"applicantFullname": "TRẦN VĂN CHA",
+                                 "applicantIdentityNumber": "040203015844"}},
     ))
-    assert out["SoGiayToTuyThanC"]["value"] == "040203015844"
-    assert "default" not in out["SoGiayToTuyThanC"]
+    for name in ("HoVaTenC", "SoDinhDanhC", "SoGiayToTuyThanC",
+                 "LoaiGiayToDinhDanhC", "NgayCapDDC", "NoiCapDDC"):
+        assert name not in out
+
+
+def test_subject_cccd_not_mistaken_for_requester_card():
+    """Thẻ duy nhất trong hồ sơ lệch mỏ neo → là thẻ chủ thể, không được đổ vào mục I."""
+    out = _by_name(mapper.enrich(
+        _fields({"DanhSachCccd": [_SUBJECT_CARD], "ChuThe_HoTen": "TRẦN THỊ CON"}),
+        options=_VNEID,
+    ))
+    assert "HoVaTenC" not in out
+    assert "SoDinhDanhC" not in out
+
+
+def test_requester_fields_carry_form_name_aliases():
+    """Mục I gửi kèm alias để khớp cả eForm đặt tên theo kiểu khai tử / trích lục."""
+    out = _by_name(mapper.enrich(
+        _fields({"NguoiYeuCau_HoTen": "TRẦN VĂN CHA", "NguoiYeuCau_SoDinhDanh": "068180001234"}),
+    ))
+    assert out["HoVaTenC"]["aliases"] == ["NYC_HoVaTen"]
+    assert "SoGiayToDinhDanhC" in out["SoGiayToTuyThanC"]["aliases"]
+    assert "LoaiGiayToTuyThanC" in out["LoaiGiayToDinhDanhC"]["aliases"]
 
 
 def test_quyen_so_not_computed_from_registration_number():
