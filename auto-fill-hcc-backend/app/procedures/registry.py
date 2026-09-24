@@ -351,6 +351,8 @@ from app.pipelines.cong_bo_du_dk_tiem_chung.attach import plan as cong_bo_du_dk_
 from app.pipelines.cong_bo_du_dk_tiem_chung.process import run as cong_bo_du_dk_tiem_chung_process
 from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.attach import plan as cap_bo_sung_xe_tap_lai_attach
 from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.process import run as cap_bo_sung_xe_tap_lai_process
+from app.pipelines.cap_lai_phu_hieu_xe_oto.attach import plan as cap_lai_phu_hieu_xe_oto_attach
+from app.pipelines.cap_lai_phu_hieu_xe_oto.process import run as cap_lai_phu_hieu_xe_oto_process
 
 PROCEDURES: list[dict] = [
     {
@@ -5732,6 +5734,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai",
+        # TTHC 2.002288 — cổng DVC Bộ Xây dựng dvc.moc.gov.vn (Form.io, engine fillFormStandard dom-* + attach
+        # attp-row; CÙNG cổng xe tập lái / liên vận). Chủ thể đề nghị = đơn vị kinh doanh vận tải; người nộp là
+        # cá nhân đăng nhập. Xe nhập qua panel "Thêm phương tiện" (comp dom-click mở panel, một xe mỗi lần).
+        # URL SPA ObjectId → detect theo cụm tên.
+        "detect": {
+            "textIncludes": [
+                "cấp, cấp lại phù hiệu cho xe ô tô, xe bốn bánh có gắn động cơ kinh doanh vận tải",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp, cấp lại Phù hiệu cho xe ô tô, xe bốn bánh có gắn động cơ kinh doanh vận tải",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Giấy đề nghị cấp (cấp lại) phù hiệu của đơn vị kinh doanh vận tải — đã ký, đóng dấu. Nguồn chính: "
+            "số văn bản, kính gửi, tên/địa chỉ/điện thoại đơn vị, số lượng nộp lại, bảng xe, loại phù hiệu.\n"
+            "2. Chứng nhận đăng ký xe ô tô, kèm hợp đồng dịch vụ giữa xã viên và HTX / hợp đồng thuê xe nếu xe không "
+            "đứng tên đơn vị (có thể gộp 1 file).\n"
+            "3. Nếu có: Giấy phép kinh doanh vận tải, GCN đăng ký doanh nghiệp/HTX (để điền số GPKDVT, mã số "
+            "doanh nghiệp); CCCD của người nộp (không đính kèm).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension điền thông tin doanh nghiệp, giấy đề nghị, đơn vị kinh doanh vận tải, số lượng phù hiệu, "
+            "rồi bấm 'Thêm phương tiện' và điền thông tin xe đầu tiên (biển số, số khung, số máy, loại xe, nhãn "
+            "hiệu, người sở hữu/hợp đồng). Người dùng tự chọn Màu phù hiệu, soát rồi bấm 'Thêm'.\n"
+            "Bước đính kèm: Chứng nhận đăng ký xe + hợp đồng → dòng 1 ('1 Bản sao'); Giấy đề nghị → dòng 2 "
+            "('1 Bản chính')."
+        ),
+    },
+    {
         "key": "cap-giay-phep-lien-van-viet-lao",
         # Cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io apply-online) — CÙNG nền tảng/engine fill standard
         # dom-* với cung_cap_thong_tin_quy_hoach. URL chỉ ObjectId (không có MaTTHC) → detect theo id
@@ -5960,6 +5996,7 @@ _PIPELINE = {
     "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_process,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_process,
+    "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_process,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -6129,6 +6166,7 @@ _ATTACH_PIPELINE = {
     "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_attach,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_attach,
+    "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_attach,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,

@@ -5489,7 +5489,8 @@
     if (!el) return "";
     const span = el.querySelector?.("span");
     const text = span ? span.textContent : el.textContent;
-    return String(text || "").replace(/Remove item:.*/i, "").trim();
+    // Mục của select nhiều có nút xoá "Remove item" (không kèm ":") nằm trong textContent.
+    return String(text || "").replace(/Remove item.*/i, "").trim();
   }
 
   function foldChoiceText(value) {
@@ -5599,7 +5600,8 @@
     // change_owner_type_idfld: ô "Lý do thay đổi thông tin chủ hộ kinh doanh" (HkdOnline) là select con
     //   cascade theo "Loại đăng ký thay đổi" (CHANGE_OWNER_TYPE_TITLE_IDFld) — danh sách lý do nạp lại
     //   SAU khi đổi Loại, không nhận area-select thì thử 1 lần rồi bỏ, hụt mất "Khác" dù giá trị đúng.
-    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld/.test(String(name || "").toLowerCase());
+    // diachihoatdong][tinhthanh|xaphuong: Tỉnh/Phường-xã của đơn vị KDVT (Bộ XD, cấp phù hiệu).
+    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)/.test(String(name || "").toLowerCase());
   }
 
   function isAreaSelectField(f) {
@@ -5773,6 +5775,45 @@
     return choiceDisplayText(choices?.querySelector?.(".choices__list--single .choices__item"));
   }
 
+  // Mục ĐANG CHỌN của Choices: select đơn (.choices__list--single) HOẶC select nhiều (.choices__list--multiple,
+  // vd "Loại hình kinh doanh vận tải" cổng Bộ XD cấp phù hiệu). Bỏ placeholder.
+  function choicesSelectedItems(choices) {
+    return Array.from(choices?.querySelectorAll?.(
+      ".choices__list--single .choices__item, .choices__list--multiple .choices__item",
+    ) || []).filter((item) => !isPlaceholderText(choiceDisplayText(item)));
+  }
+
+  function isStandardMultiSelect(select) {
+    if (!select) return false;
+    if (select.multiple) return true;
+    const group = standardMarkTarget(select);
+    const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+    return choices?.getAttribute?.("data-type") === "select-multiple";
+  }
+
+  // Select NHIỀU: form có thể chọn SẴN mục mặc định sai (vd "…bằng xe buýt") → bấm nút xoá (×) của các mục
+  // không nằm trong giá trị cần, rồi chọn lần lượt từng giá trị. Nhiều giá trị ngăn bằng "|".
+  async function fillStandardMultiSelect(select, value) {
+    const group = standardMarkTarget(select);
+    const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+    const wants = String(value ?? "").split("|").map((s) => s.trim()).filter(Boolean);
+    if (!choices || !wants.length) return false;
+    for (const item of choicesSelectedItems(choices)) {
+      if (wants.some((w) => choiceMatches(item, w))) continue;
+      const btn = item.querySelector(".choices__button, [data-button]");
+      if (!btn) continue;
+      ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) => dispatchChoiceMouse(btn, type));
+      await sleep(200);
+    }
+    let ok = true;
+    for (const want of wants) {
+      if (!await pickChoicesItem(select, want, 0)) ok = false;
+      await sleep(150);
+    }
+    if (ok) markFilled(group);
+    return ok;
+  }
+
   function currentStandardSelectMatches(select, value) {
     if (!select) return false;
     const group = standardMarkTarget(select);
@@ -5801,6 +5842,37 @@
       if (text && !text.includes("[") && !text.includes("$")) return text;
     }
     return "";
+  }
+
+  // Component Form.io ĐÚNG của select. getComponent(leaf) trả component ĐẦU TIÊN trùng key lá, nên hai ô cùng
+  // key lá ở hai khối (vd "Tại" data[TinhThanh] và Tỉnh đơn vị KDVT data[T_DonViKinhDoanh][DiaChiHoatDong]
+  // [TinhThanh], cổng Bộ XD cấp phù hiệu) bị ghi NHẦM sang ô kia mà vẫn báo thành công. Key lồng → tìm theo
+  // đường dẫn đầy đủ; không chắc đúng ô thì trả null để đi đường chọn trên giao diện Choices.
+  function formioComponentForSelect(holder, select, names = []) {
+    const key = formioKeyFromSelect(select, names);
+    if (!key || typeof holder?.formio?.getComponent !== "function") return { key, comp: null, nested: false };
+    const fullName = [select?.name, ...(Array.isArray(names) ? names : [])]
+      .find((n) => /^data\[/.test(String(n || ""))) || "";
+    const segments = [...String(fullName).matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]);
+    const nested = segments.length > 1 && segments[segments.length - 1] === key;
+    const get = (path) => { try { return holder.formio.getComponent(path); } catch { return null; } };
+    if (!nested) return { key, comp: get(key), nested };
+
+    const path = segments.join(".");
+    const isThis = (c) => !!c && c.component?.key === key &&
+      (!c.path || String(c.path).replace(/\[(\d+)\]/g, ".$1") === path);
+    let comp = get(path);
+    if (!isThis(comp)) comp = get(key);
+    if (!isThis(comp) && typeof holder.formio.everyComponent === "function") {
+      comp = null;
+      try {
+        holder.formio.everyComponent((c) => {
+          if (c?.path && isThis(c)) { comp = c; return false; }
+          return undefined;
+        });
+      } catch { /* ignore */ }
+    }
+    return { key, comp: isThis(comp) ? comp : null, nested };
   }
 
   function formioOptionText(option) {
@@ -5897,10 +5969,9 @@
 
   async function fillFormioSelectComponent(select, value, names = [], deadline = 0) {
     if (!select) return false;
-    const key = formioKeyFromSelect(select, names);
-    if (!key) return false;
+    if (!formioKeyFromSelect(select, names)) return false;
     const holder = formioFindHolderNear(select);
-    const comp = holder?.formio?.getComponent?.(key);
+    const { key, comp, nested } = formioComponentForSelect(holder, select, names);
     if (!holder || !comp) return false;
 
     const raw = String(value ?? "").trim();
@@ -5931,14 +6002,15 @@
     }
     if (!finalValue) return false;
 
-    holder.submission.data[key] = finalValue;
+    // Key lồng: data[key] ở gốc submission là ô KHÁC (hoặc rác) → chỉ ghi qua component.
+    if (!nested) holder.submission.data[key] = finalValue;
     try { comp.setValue(finalValue, { modified: true }); } catch (e) { console.warn("[AutoFill-STD] Form.io setValue lỗi:", key, e); }
     try { comp.updateValue(finalValue, { modified: true }); } catch (e) { console.warn("[AutoFill-STD] Form.io updateValue lỗi:", key, e); }
     try { comp.triggerChange?.({ modified: true }); } catch { /* ignore */ }
     try { comp.redraw?.(); } catch (e) { console.warn("[AutoFill-STD] Form.io redraw lỗi:", key, e); }
 
     const ok = await waitForStandardSelect(() => currentStandardSelectMatches(select, raw) ||
-      choiceMatches({ textContent: formioOptionText(comp.dataValue || holder.submission.data[key]), getAttribute: () => "" }, raw),
+      choiceMatches({ textContent: formioOptionText(comp.dataValue || (!nested && holder.submission.data[key])), getAttribute: () => "" }, raw),
       800,
       80,
       deadline
@@ -6111,6 +6183,55 @@
     }
     return done > 0;
   }
+  // comp "dom-click": NÚT Form.io mở panel nhập liệu (vd "Thêm phương tiện" của cổng Bộ Xây dựng, thủ tục cấp
+  // phù hiệu) — phải bấm TRƯỚC các ô trong panel (BE phát field này ngay trước các ô đó). f.buttonKey = key
+  // component (wrapper .formio-component-<key>); f.waitName = một ô trong panel: đã hiện thì KHÔNG bấm lại (điền
+  // lần 2 không đóng/mở panel), bấm xong chờ ô đó render rồi mới điền tiếp.
+  // Nút này là CÔNG TẮC (bấm lần nữa là đóng panel) → mỗi lượt chỉ MỘT cú click, và chỉ bấm lại khi panel
+  // vẫn chưa mở sau khi chờ đủ. Nút trong khối Thẩm định render trễ → chờ nút xuất hiện + hết disabled.
+  async function clickStandardButton(f, candidates, root = document) {
+    // Panel coi là ĐÃ MỞ khi ô chờ hiện, HOẶC bất kỳ ô nào cùng khối cha của nó (data[A][B][x] → data[A][B])
+    // hiện ra — phòng tên ô chờ lệch so với form thật mà bấm lần 2 lại đóng mất panel.
+    const panelPrefix = String(f.waitName || "").replace(/\[[^\]]*\]$/, "");
+    const panelReady = () => {
+      if (!f.waitName) return null;
+      const el = root.querySelector(`[name="${CSS.escape(f.waitName)}"]`);
+      if (el && standardControlVisible(el)) return el;
+      if (!panelPrefix.includes("[")) return null;
+      return Array.from(root.querySelectorAll(`[name^="${CSS.escape(panelPrefix)}["]`))
+        .find(standardControlVisible) || null;
+    };
+    const findButton = () => {
+      const btn = candidates.map((n) => root.querySelector(`button[name="${CSS.escape(n)}"]`)).find(Boolean) ||
+        (f.buttonKey ? root.querySelector(`.formio-component-${CSS.escape(f.buttonKey)} button`) : null);
+      return btn && !btn.disabled ? btn : null;
+    };
+    if (panelReady()) return true;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const btn = findButton() || await waitFor(findButton, 2000, 100);
+      if (!btn) {
+        console.warn(`[AutoFill-STD] Không thấy nút ${f.name} (lần ${attempt}).`);
+        return false;
+      }
+      try { btn.scrollIntoView({ block: "center" }); } catch (_) { /* ignore */ }
+      await sleep(150);
+      // Chuỗi sự kiện chuột như thao tác tay; click() cuối là cú click DUY NHẤT (không bắn thêm "click").
+      ["pointerover", "mouseover", "pointerdown", "mousedown", "pointerup", "mouseup"].forEach((type) => {
+        try { btn.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window })); } catch (_) { /* ignore */ }
+      });
+      btn.click();
+      if (!f.waitName) { await sleep(400); return true; }
+      if (await waitFor(panelReady, 3000, 100)) {
+        // Choices/flatpickr trong panel dựng sau input một nhịp.
+        await sleep(300);
+        console.log(`[AutoFill-STD] Đã bấm ${f.name} — panel mở (lần ${attempt}).`);
+        return true;
+      }
+      console.warn(`[AutoFill-STD] Bấm ${f.name} lần ${attempt} nhưng panel chưa mở${attempt < 2 ? " → bấm lại" : ""}.`);
+    }
+    return false;
+  }
+
   function shouldPreferFormioSelectComponent(select, names = []) {
     if (!select) return false;
     const group = standardMarkTarget(select);
@@ -6146,9 +6267,8 @@
   function standardSelectOptionState(select, value, names = []) {
     if (!select) return { settled: false, hasValue: false };
     const texts = [];
-    const key = formioKeyFromSelect(select, names);
-    const holder = key ? formioFindHolderNear(select) : null;
-    const comp = holder?.formio?.getComponent?.(key);
+    const holder = formioKeyFromSelect(select, names) ? formioFindHolderNear(select) : null;
+    const { comp } = formioComponentForSelect(holder, select, names);
     if (Array.isArray(comp?.selectOptions)) comp.selectOptions.forEach((o) => texts.push(formioOptionText(o)));
     if (Array.isArray(comp?.items)) comp.items.forEach((o) => texts.push(formioOptionText(o)));
 
@@ -6184,8 +6304,7 @@
     }
     if (standardSelectBudgetLeft(deadline) <= 0) return false;
     const raw = String(value ?? "");
-    const current = choices.querySelector(".choices__list--single .choices__item");
-    if (current && !isPlaceholderText(choiceDisplayText(current)) && choiceMatches(current, value)) {
+    if (choicesSelectedItems(choices).some((item) => choiceMatches(item, value))) {
       markFilled(group);
       return true;
     }
@@ -6215,11 +6334,8 @@
 
     if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "nearest" });
     const search = choices.querySelector(".choices__input--cloned");
-    const isSelected = () => {
-      const label = currentChoicesValue(choices);
-      return !!label && !isPlaceholderText(label) &&
-        choiceMatches({ textContent: label, getAttribute: () => "" }, value);
-    };
+    const isSelected = () => choicesSelectedItems(choices).some((item) =>
+      choiceMatches({ textContent: choiceDisplayText(item), getAttribute: () => "" }, value));
 
     // Cách 1 — click tổng hợp đúng option khi dropdown đang mở (ổn với select nhỏ như Giới tính,
     // không dùng Enter để tránh Enter đóng dropdown làm hụt lượt chọn).
@@ -7048,6 +7164,8 @@
         let ok = false;
         if (f.comp === "dom-vehicle-add") {
           ok = await fillVehicleAddRows(f, candidates);
+        } else if (f.comp === "dom-click") {
+          ok = await clickStandardButton(f, candidates, root);
         } else if (f.comp === "dom-checkbox") {
           const el = findStandardCheckbox(candidates, f.optionValue, f.optionLabel, root);
           ok = await fillStandardCheckbox(el, f.value);
@@ -7062,7 +7180,9 @@
             ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
           } else {
             const el = findStandardSelect(candidates, occurrence, root);
-            ok = await fillStandardSelectAny(el, f.value, candidates, occurrence, 0, root);
+            ok = isStandardMultiSelect(el)
+              ? await fillStandardMultiSelect(el, f.value)
+              : await fillStandardSelectAny(el, f.value, candidates, occurrence, 0, root);
           }
         } else if (f.comp === "dom-date" || f.comp === "dom-datetime") {
           const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);

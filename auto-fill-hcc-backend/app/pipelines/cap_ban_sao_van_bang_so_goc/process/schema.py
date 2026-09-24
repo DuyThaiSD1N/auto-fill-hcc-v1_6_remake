@@ -7,15 +7,15 @@ BA NHÓM NHÂN THÂN — TÁCH RIÊNG (có thể là 2 người khác nhau: ch�
   CCCD). VanBang_HoTen là NEO xác định ai là chủ hồ sơ.
 - ChuHoSo_* : CCCD của CHỦ VĂN BẰNG — tức CCCD có họ tên TRÙNG với văn bằng (số định danh, ngày cấp, nơi
   cấp, thường trú). Kèm ChuHoSo_HoTen (tên IN trên CCCD đó) để mapper kiểm tra khớp.
-- NguoiNop_* : CCCD của NGƯỜI NỘP THAY — CCCD có họ tên KHÁC văn bằng (hoặc tài khoản đăng nhập). Điền Phần I.
+- NguoiNop_* : CCCD của NGƯỜI NỘP THAY — CCCD có họ tên KHÁC văn bằng. KHÔNG điền Phần I, chỉ để mapper
+  loại CCCD này khỏi chủ hồ sơ.
 
 Mapper định tuyến TẤT ĐỊNH theo khớp tên (không tin LLM phân nhóm): CCCD nào khớp VanBang_HoTen → chủ hồ
 sơ; CCCD còn lại → người nộp.
 
 Cấu trúc form:
-- Phần I   Người nộp (data[fullname]/[identityNumber]/[gender]/[birthday]/[identityDate]/[idIssuePlace]/
-  [province]/[district]/[address]/[phoneNumber]/[email]) — từ NguoiNop_* (CCCD người nộp) hoặc tài khoản.
-  Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) checkbox — KHÔNG tick.
+- Phần I   Người nộp — chỉ điền khi số CCCD tài khoản TRÙNG số CCCD chủ hồ sơ (trừ họ tên); nút
+  data[isOwnerDossier] KHÔNG đụng tới.
 - Phần II  data[ChuHS] = loại chủ hồ sơ.
 - Phần III-V data[owner...] : chủ văn bằng (cá nhân owner*; tổ chức/DN ownerOrganizationFullname/ownerTaxCode).
 - Panel "Phieu" (data[Kinhgui]/[ToiTen]/[Sodinhdanh]/[Duoccap]/[do]/[Sohieu]/[requestQty]/[sogoc]/
@@ -122,7 +122,9 @@ FIELDS += [
     {"name": "Phieu_TenVanBang", "desc": "Nội dung dòng 'Đã được cấp (tên văn bằng, chứng chỉ)' trên Phiếu "
         "BM04 (vd 'BẰNG THPT', 'Bằng tốt nghiệp THPT'). Chép nguyên văn."},
     {"name": "Phieu_CoQuanCapVanBang", "desc": "Cơ quan ở dòng 'Do … cấp' trên Phiếu BM04 (nơi ĐÃ cấp văn "
-        "bằng, vd 'Sở Giáo dục và Đào tạo Đà Nẵng'). Chép nguyên văn."},
+        "bằng, vd 'Sở Giáo dục và Đào tạo Đà Nẵng'). Chép nguyên văn. Phiếu không có dòng này → lấy cơ quan "
+        "cấp in trên VĂN BẰNG (dòng ký 'GIÁM ĐỐC SỞ GIÁO DỤC VÀ ĐÀO TẠO …' → 'Sở Giáo dục và Đào tạo …'); "
+        "không có văn bằng → bỏ (mapper tự suy)."},
     {"name": "Phieu_SoHieu", "desc": "Nội dung 'Số hiệu/hoặc số vào sổ gốc' trên Phiếu BM04/văn bằng. "
         "Không ghi → bỏ."},
     {"name": "Phieu_SoLuongBanSao", "desc": "Số lượng bản sao xin cấp — Phiếu BM04 'Đề nghị cấp … bản sao'. "
@@ -159,7 +161,7 @@ COMPACT_COMP_BY_NAME["Phieu_NgayLap"] = "x-date"
 UI_COMP_BY_NAME = {
     # ----- Phần I: NGƯỜI NỘP HỒ SƠ -----
     "data[chonDoiTuong]": "dom-select",
-    "data[isOwnerDossier]": "dom-checkbox",  # "Người nộp là chủ hồ sơ" — chỉ tick khi TỰ NỘP.
+    "data[isOwnerDossier]": "dom-checkbox",  # "Người nộp là chủ hồ sơ" — KHÔNG đụng tới.
     "data[fullname]": "dom-input",
     "data[identityNumber]": "dom-input",
     "data[gender]": "dom-select",

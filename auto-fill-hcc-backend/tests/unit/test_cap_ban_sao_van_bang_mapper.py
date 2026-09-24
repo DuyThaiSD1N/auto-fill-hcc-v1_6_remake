@@ -80,6 +80,23 @@ def test_derive_when_phieu_lines_missing():
     assert "0778501192" in got["data[lienhe]"]                  # suy SĐT + địa chỉ
 
 
+def test_co_quan_cap_falls_back_to_so_giao_duc():
+    """Đơn tự viết không có dòng 'Do … cấp' → cơ quan cấp = Sở GD&ĐT (Kính gửi / tỉnh của trường)."""
+    v = dict(_VALUES)
+    v.pop("Phieu_CoQuanCapVanBang")
+    got, _ = _map(v)
+    assert got["data[do]"] == "SỞ GIÁO DỤC VÀ ĐÀO TẠO ĐÀ NẴNG"
+
+    v.pop("Phieu_KinhGui")
+    v["VanBang_TruongDiaChi"] = {"tinh": "Tỉnh Quảng Trị", "xa": "Phường A"}
+    got, _ = _map(v)
+    assert got["data[do]"] == "Sở Giáo dục và Đào tạo Quảng Trị"
+
+    v.pop("VanBang_TruongDiaChi")
+    got, _ = _map(v)
+    assert got["data[do]"] == "Sở Giáo dục và Đào tạo"
+
+
 def test_owner_block_still_maps():
     """Panel Phần III-V (owner) KHÔNG đổi — vẫn ra data[owner*]."""
     got, _ = _map(_VALUES)
@@ -150,10 +167,42 @@ def test_remap_takes_district_hint_from_ocr_when_llm_drops_it():
     assert _owner_area(got) == ("Tỉnh Lào Cai", "Phường Nam Cường", "Thôn A")
 
 
-def test_submitter_address_is_remapped():
-    """Phần I (người nộp thay) cũng remap địa danh cũ."""
+_PHAN_I_KEYS = [
+    "data[chonDoiTuong]", "data[isOwnerDossier]", "data[fullname]", "data[identityNumber]", "data[gender]",
+    "data[birthday]", "data[identityDate]", "data[idIssuePlace]", "data[province]", "data[district]",
+    "data[address]", "data[phoneNumber]", "data[email]",
+]
+
+
+def test_submitter_section_empty_when_cccd_differs():
+    """Phần I (THÔNG TIN NGƯỜI NỘP HỒ SƠ) bỏ trống khi số CCCD tài khoản khác/thiếu — kể cả trùng tên."""
     v = dict(_DIA_CHI_VALUES, NguoiNop_HoTen="LÊ THỊ HOA", NguoiNop_SoDinhDanh="001190000002",
              NguoiNop_ThuongTru=_OLD_EXAM_AREA)
+    for values, ctx in (
+        (v, {}),
+        (v, {"applicantIdentityNumber": "001190000002"}),               # CCCD người nộp thay
+        (_VALUES, {"applicantFullname": "NGUYỄN ANH QUÂN"}),           # trùng tên nhưng không có số
+        (_VALUES, {"applicantIdentityNumber": "001190000009"}),        # số khác chủ
+    ):
+        got, _ = _map(values, ctx)
+        for key in _PHAN_I_KEYS:
+            assert key not in got, f"không được điền Phần I: {key}"
     got, _ = _map(v)
-    assert got["data[province]"] == "Thành phố Đà Nẵng"
-    assert got["data[district]"] == "Phường An Hải"
+    assert got["data[ownerFullname]"]  # chủ hồ sơ vẫn điền bình thường
+
+
+def test_submitter_section_filled_without_name_when_cccd_matches_owner():
+    """Số CCCD tài khoản TRÙNG số CCCD chủ hồ sơ → điền Phần I từ nhân thân chủ, KHÔNG điền họ tên."""
+    got, _ = _map(_VALUES, {"applicantFullname": "NGUYỄN ANH QUÂN", "applicantIdentityNumber": "048202003364"})
+    assert "data[fullname]" not in got
+    assert "data[isOwnerDossier]" not in got
+    assert "data[chonDoiTuong]" not in got
+    assert got["data[identityNumber]"] == "048202003364"
+    assert got["data[gender]"] == "Nam"
+    assert got["data[birthday]"] == "18/08/2002"
+    assert got["data[identityDate]"] == "19/12/2022"
+    assert got["data[idIssuePlace]"] == got["data[ownerIdentityAgency22]"]
+    assert got["data[province]"] == got["data[ownerProvince]"]
+    assert got["data[district]"] == got["data[ownerDistrict]"]
+    assert got["data[address]"] == got["data[ownerAddress]"]
+    assert got["data[phoneNumber]"] == "0778501192"

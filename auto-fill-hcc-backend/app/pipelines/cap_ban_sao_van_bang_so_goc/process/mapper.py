@@ -1,14 +1,15 @@
 """Map compact source facts → Form.io data[...] fields cho "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc".
 
 ĐỊNH TUYẾN TẤT ĐỊNH theo NEO = tên chủ văn bằng (VanBang_HoTen). Có thể có 2 người: chủ văn bằng vs người
-nộp thay (mỗi người 1 CCCD). CCCD khớp tên văn bằng → CHỦ HỒ SƠ; CCCD khác tên → NGƯỜI NỘP (Phần I). Nếu
-LLM gán nhầm, mapper HOÁN ĐỔI theo khớp tên (không tin LLM phân nhóm).
+nộp thay (mỗi người 1 CCCD). CCCD khớp tên văn bằng → CHỦ HỒ SƠ; CCCD khác tên → NGƯỜI NỘP (chỉ để loại
+khỏi chủ hồ sơ). Nếu LLM gán nhầm, mapper HOÁN ĐỔI theo khớp tên (không tin LLM phân nhóm).
 
-- Phần I  Người nộp (flat): từ NguoiNop_* (CCCD người nộp) hoặc tài khoản (formContext).
+- Phần I  Người nộp: chỉ điền khi số CCCD tài khoản đăng nhập TRÙNG số CCCD chủ hồ sơ — điền nhân thân chủ
+  trừ họ tên (tài khoản tự đổ). Không trùng → bỏ trống.
 - Phần II data[ChuHS]: loại chủ hồ sơ.
 - Phần III-V data[owner...]: chủ văn bằng (nhân thân từ VĂN BẰNG, CCCD số/ngày cấp/nơi cấp/thường trú khớp tên).
 - Phần VIII: nội dung kê khai của CHỦ VĂN BẰNG theo Phiếu BM04.
-Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) KHÔNG tick.
+Nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) KHÔNG đụng tới.
 """
 
 from __future__ import annotations
@@ -214,6 +215,17 @@ def _ten_van_bang(loai: Any) -> str | None:
     return _text(loai)
 
 
+def _co_quan_cap(values: dict) -> str | None:
+    """Ô 'Do … cấp' khi Phiếu không có dòng này (đơn tự viết) — văn bằng THPT do Sở GD&ĐT cấp, cũng là nơi
+    giữ sổ gốc = cơ quan ở dòng 'Kính gửi'. Kính gửi không phải Sở GD → 'Sở Giáo dục và Đào tạo <tỉnh trường>'."""
+    kinh_gui = _text(values.get("Phieu_KinhGui"))
+    if kinh_gui and "giao duc" in _fold(kinh_gui):
+        return kinh_gui
+    truong_dc = values.get("VanBang_TruongDiaChi")
+    tinh = _strip_admin_prefix(truong_dc.get("tinh") or "") if isinstance(truong_dc, dict) else ""
+    return f"Sở Giáo dục và Đào tạo {tinh}".strip()
+
+
 def _thong_tin_khac(values: dict) -> str | None:
     """Dòng 'Thông tin khác' = tên trường + năm tốt nghiệp (khi Phiếu không có sẵn cụm này)."""
     truong = _text(values.get("VanBang_Truong"))
@@ -326,32 +338,22 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     if not (chu_name or org_name):
         warnings.append("Thiếu tên chủ văn bằng (chủ hồ sơ).")
 
-    # ===== TỰ NỘP? Chủ hồ sơ TRÙNG người nộp (khớp tài khoản formContext) và KHÔNG có người nộp thay riêng
-    # → tick "Người nộp là chủ hồ sơ", điền Phần I bằng chính CCCD chủ (form tự copy Phần I → chủ hồ sơ). =====
+    # ===== Phần I: NGƯỜI NỘP — chỉ điền khi SỐ CCCD tài khoản đăng nhập (formContext) TRÙNG số CCCD chủ hồ
+    # sơ (người nộp chính là chủ). Điền các thông tin còn lại từ nhân thân chủ, KHÔNG điền họ tên (tài khoản
+    # tự đổ). Khác số / thiếu số → bỏ trống cả Phần I. CCCD người nộp thay (NguoiNop_*) chỉ dùng định tuyến. =====
     ctx = (options or {}).get("formContext") or {}
-    ctx_name = _text(ctx.get("applicantFullname") or ctx.get("fullname"))
     ctx_id = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
-    chu_has_ident = bool(chu_id or chu_name)
-    chu_matches_ctx = bool((chu_id and ctx_id and chu_id == ctx_id) or _same_name(chu_name, ctx_name))
-    self_submit = (not distinct_nop) and (ctx_id or ctx_name) and (chu_matches_ctx or not chu_has_ident)
-
-    # ===== Phần I: NGƯỜI NỘP (tự nộp → lấy chính CCCD chủ; nộp thay → CCCD người nộp) =====
-    p1 = chu if self_submit else nop
-    p1_tt = _remap(_area(p1.get("tt")), ocr_text)
-    add("data[chonDoiTuong]", "Cá nhân")
-    if self_submit:
-        add("data[isOwnerDossier]", True)  # tick → form copy Phần I sang chủ hồ sơ (Phần II-VI).
-    add("data[fullname]", _text(p1.get("name")) or (chu_name if self_submit else ctx_name))
-    add("data[identityNumber]", p1.get("id") or ctx_id)
-    add("data[birthday]", p1.get("dob"))
-    add("data[gender]", p1.get("gender"))
-    add("data[identityDate]", p1.get("ngaycap"))
-    add("data[idIssuePlace]", _issue_place(p1.get("noicap"), chu_loai_gt if self_submit else "", p1.get("ngaycap")))
-    add("data[province]", _province_label(p1_tt.get("tinh") or p1_tt.get("tinhThanh")))
-    add("data[district]", _text(p1_tt.get("xa") or p1_tt.get("phuong")))
-    add("data[address]", _text(p1_tt.get("diaChi") or p1_tt.get("chiTiet")))
-    add("data[phoneNumber]", p1.get("phone"))
-    add("data[email]", p1.get("email"))
+    if not is_org and chu_id and ctx_id and chu_id == ctx_id:
+        add("data[identityNumber]", chu_id)
+        add("data[gender]", chu_gender)
+        add("data[birthday]", chu_dob)
+        add("data[identityDate]", chu_ngaycap)
+        add("data[idIssuePlace]", chu_noicap)
+        add("data[province]", chu_tinh)
+        add("data[district]", chu_xa)
+        add("data[address]", chu_diachi)
+        add("data[phoneNumber]", chu_phone)
+        add("data[email]", chu["email"] if chu_cccd_valid else None)
 
     # ===== Phần II: loại chủ hồ sơ =====
     add("data[ChuHS]", "Doanh nghiệp" if is_dn else ("Tổ chức" if is_org else "Cá nhân"))
@@ -383,7 +385,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     add("data[sinhNam]", chu_dob)                          # ô hidden "Sinh ngày" = ngày sinh chủ
     add("data[Sodinhdanh]", chu_id)
     add("data[Duoccap]", _text(values.get("Phieu_TenVanBang")) or _ten_van_bang(values.get("VanBang_LoaiTotNghiep")))
-    add("data[do]", _text(values.get("Phieu_CoQuanCapVanBang")))
+    add("data[do]", _text(values.get("Phieu_CoQuanCapVanBang")) or _co_quan_cap(values))
     add("data[Sohieu]", _text(values.get("Phieu_SoHieu")))
     add("data[requestQty]", _identity(values.get("Phieu_SoLuongBanSao")) or "1")
     check("data[sogoc]", True)                             # thủ tục = cấp BẢN SAO TỪ SỔ GỐC
