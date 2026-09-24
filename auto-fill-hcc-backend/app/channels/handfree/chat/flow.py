@@ -17,7 +17,7 @@ from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat.intents import Intent, fold
-from app.locations.catalog import PROVINCES, province_by_slug
+from app.locations.catalog import PROVINCES, portal_agency_ward, province_by_slug
 from app.channels.handfree.notify import service as notify_service
 from app.channels.handfree.flow_profiles import FLOW_PROFILES
 from app.channels.handfree.procedure_registry import (
@@ -1158,6 +1158,13 @@ def _agency_ward_display(proc: dict, loc: dict) -> str:
     return loc.get("ward") or ""
 
 
+def _portal_ward(loc: dict) -> str:
+    """Tên xã để CHỌN trên khối cơ quan của cổng: cổng chưa cập nhật một số xã (vd còn "Xã Hiệp
+    Hòa" trong khi danh mục đã là Phường) nên lấy theo bảng ngoại lệ của catalog. Câu đọc cho
+    công dân vẫn dùng loc["ward"] như cũ."""
+    return portal_agency_ward(loc.get("province_slug") or loc.get("province"), loc.get("ward"))
+
+
 def _agency_province(proc: dict, loc: dict) -> str:
     """Tỉnh để chọn ở khối "Chọn cơ quan thực hiện". Thủ tục của RIÊNG một tỉnh (vd Bắc Ninh
     1.011441) khai agencyProvince cố định — không lấy tỉnh tài khoản, công dân tỉnh khác vẫn
@@ -1523,7 +1530,7 @@ def _resolve_agency_plan(plan: list | None, loc: dict) -> list:
     (comp diachi = {tinh, xa}). Trả list rỗng nếu không có plan → flow rẽ về dặn chọn tay."""
     if not plan:
         return []
-    subs = {"{province}": loc.get("province") or "", "{ward}": loc.get("ward") or ""}
+    subs = {"{province}": loc.get("province") or "", "{ward}": _portal_ward(loc)}
 
     def sub(v):
         if isinstance(v, str):
@@ -1594,7 +1601,7 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # cụ thể) rồi Đồng ý; "Nộp trực tuyến" ở kết quả ĐẦU TIÊN của danh sách sau đó mới
         # là Sở chuyên ngành của thủ tục.
         r = Reply()
-        ward = "" if proc.get("agencyProvinceOnly") else (loc.get("ward") or "")
+        ward = "" if proc.get("agencyProvinceOnly") else _portal_ward(loc)
         action = {"type": "select_agency",
                   "province": _agency_province(proc, loc), "ward": ward}
         if proc.get("agencySoFirst"):

@@ -670,7 +670,31 @@ def _area(value):
         swapped = remap_area({**out, "xa": dia_chi, "diaChi": out["xa"]})
         if isinstance(swapped, dict) and swapped.get("xa"):
             return swapped
-    return remapped
+    return _keep_merged_ward_in_detail(remapped, value.get("xa") or value.get("xã") or out["xa"])
+
+
+def _keep_merged_ward_in_detail(area, old_ward):
+    """Xã cũ đã sáp nhập sang đơn vị MỚI khác tên → giữ tên xã cũ ở cuối địa chỉ chi tiết.
+
+    Vd CCCD in "Xóm 3, Thôn Đông / Nghi Hoa, Nghi Lộc, Nghệ An": xã Nghi Hoa đã sáp nhập thành
+    "Phường Cửa Lò" nên tên cũ biến mất khỏi hồ sơ. Cán bộ cần địa chỉ chi tiết
+    "Xóm 3, Thôn Đông, Nghi Hoa" để lần ra đúng địa bàn cũ. Chỉ đổi tiền tố/cách viết
+    (vd "Vĩnh Lộc" → "Xã Vĩnh Lộc") thì không phải sáp nhập, giữ nguyên.
+    """
+    if not isinstance(area, dict):
+        return area
+    old = str(old_ward or "").strip()
+    new = str(area.get("xa") or "").strip()
+    old_name = _strip_admin_prefix(old)
+    if not old_name or not new or _fold(old_name) in _fold(new):
+        return area
+    if old_name.isdigit():
+        # "Phường 1" trần thành "1" vô nghĩa ở ô chi tiết → giữ đủ tiền tố.
+        old_name = old if not old.isdigit() else f"Phường {old}"
+    dia_chi = str(area.get("diaChi") or "").strip()
+    if _fold(old_name) in _fold(dia_chi):
+        return area
+    return {**area, "diaChi": f"{dia_chi}, {old_name}" if dia_chi else old_name}
 
 
 def _chu_the_matches_hotich(values: dict) -> bool:

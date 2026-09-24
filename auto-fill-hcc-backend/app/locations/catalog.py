@@ -53,6 +53,47 @@ def _load() -> tuple[list[dict], dict[str, dict]]:
 
 PROVINCES, WARDS_BY_SLUG = _load()
 
+# Tên Phường/Xã mà khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia (dichvucong.gov.vn) đang
+# liệt kê, khi cổng CHƯA cập nhật theo danh mục hiện hành. Hai extension gõ đúng chuỗi này vào ô
+# tìm kiếm của cổng, lệch tiền tố Xã/Phường là không ra option nào và ô xã bị bỏ trống.
+# CHỈ dùng cho bước chọn cơ quan: WARDS_BY_SLUG giữ tên hiện hành vì biểu mẫu kê khai
+# (area_remap) và tài khoản (canonical_location) vẫn cần "Phường ...". Cổng cập nhật rồi thì xóa dòng.
+_PORTAL_AGENCY_WARDS: dict[str, dict[str, str]] = {
+    "bacninh": {"Phường Hiệp Hòa": "Xã Hiệp Hòa"},
+}
+
+
+def portal_agency_ward(province: str | None, ward: str | None) -> str:
+    """Tên xã để chọn ở khối "Chọn cơ quan thực hiện" của cổng; không có ngoại lệ thì giữ nguyên.
+
+    `province` nhận slug ("bacninh"), tên đầy đủ hoặc tên trần như các chỗ khác trong module.
+    """
+    ward_text = (ward or "").strip()
+    if not ward_text:
+        return ward_text
+    province_text = (province or "").strip()
+    found = province_by_slug(province_text) or _find_province(province_text)
+    if not found:
+        return ward_text
+    aliases = _PORTAL_AGENCY_WARDS.get(found["slug"], {})
+    ward_folded = _fold(ward_text)
+    return next(
+        (portal for current, portal in aliases.items() if _fold(current) == ward_folded),
+        ward_text,
+    )
+
+
+def portal_agency_wards_by_slug() -> dict[str, dict]:
+    """WARDS_BY_SLUG với tên xã theo khối chọn cơ quan của cổng — cho danh mục trả extension."""
+    result: dict[str, dict] = {}
+    for slug, data in WARDS_BY_SLUG.items():
+        aliases = _PORTAL_AGENCY_WARDS.get(slug)
+        if not aliases:
+            result[slug] = data
+            continue
+        result[slug] = {**data, "communes": [aliases.get(ward, ward) for ward in data["communes"]]}
+    return result
+
 
 def province_by_slug(slug: str) -> dict | None:
     return next((province for province in PROVINCES if province["slug"] == slug), None)
