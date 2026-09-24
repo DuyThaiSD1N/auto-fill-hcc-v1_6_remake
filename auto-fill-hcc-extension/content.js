@@ -3756,6 +3756,30 @@
     }
   }
 
+  // Ghi ô "Số bản" của dòng thành phần (cổng iGate VNPT, vd Lào Cai 1.011443: dòng GCN phải ghi số trang).
+  // Ưu tiên ô có name mang "soBan"/"soLuong"; không có thì lấy ô text DUY NHẤT trong dòng đang chứa một số
+  // nguyên (giá trị mặc định "1"). Nhiều ứng viên thì không đoán, để cán bộ tự sửa.
+  function setFixedSlotRowCopies(row, count) {
+    const value = String(parseInt(count, 10) || "");
+    if (!row || !value) return false;
+    const inputs = Array.from(row.querySelectorAll("input")).filter((el) => {
+      const type = String(el.type || "text").toLowerCase();
+      return (type === "text" || type === "number") && !el.readOnly && !el.disabled;
+    });
+    const byName = inputs.filter((el) => /so_?ban|so_?luong/i.test(`${el.name || ""} ${el.id || ""}`));
+    const numeric = inputs.filter((el) => /^\d{1,3}$/.test(String(el.value || "").trim()));
+    const target = byName.length === 1 ? byName[0] : numeric.length === 1 ? numeric[0] : null;
+    if (!target) {
+      console.warn("[AutoFill-FixedSlot] không xác định được ô Số bản", {
+        byName: byName.length,
+        numeric: numeric.length,
+      });
+      return false;
+    }
+    setNativeValue(target, value, { typing: true, commit: true });
+    return true;
+  }
+
   // Dự phòng: khoanh nhánh trên CHÍNH danh sách dòng thành phần mà findAttachmentRows() nhận ra (cùng nguồn với
   // attachmentContext gửi BE), khớp tên dòng theo từ khóa rồi lấy input file bất kỳ trong dòng.
   function findSectionAttachmentRow(item) {
@@ -4009,6 +4033,7 @@
         // ở cổng Lai Châu click option đó MỞ HỘP THOẠI FILE GỐC của OS (thừa, chặn UI). Chỉ khi gán hụt
         // (cổng chỉ nhận file sau khi mở dropdown, vd mai táng) mới click rồi thử lại.
         // assumeConsumed: form mai táng reset input.files sau khi đọc → lấy kết quả gán trước dispatch.
+        const slotRow = input.closest("tr");
         let ok = setFilesOnInput(input, files, { assumeConsumed: true });
         if (!ok && !item.sectionHeader && !item.noChooserClick) {
           await chooseBootstrapFileOptionForInput(input);
@@ -4017,6 +4042,7 @@
         await sleep(600);
         const markTarget = input.closest("tr") || input.closest("td") || input.parentElement || input;
         markAttachmentResult(markTarget, ok);
+        if (ok && item.soBan) setFixedSlotRowCopies(slotRow, item.soBan);
         if (ok) attachedNames.push(...fileNames);
         else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
         continue;

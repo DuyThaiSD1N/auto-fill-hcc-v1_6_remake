@@ -162,8 +162,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     warnings: list[str] = []
     seen: set[str] = set()
 
+    # Ô Phần I cổng đã đổ sẵn từ tài khoản VNeID (bị khoá, nền xám) → KHÔNG điền đè. Phần I luôn là
+    # tài khoản đăng nhập nên giá trị cổng là chuẩn, giá trị OCR (vd "HÀNG" thay "HẰNG") chỉ làm sai.
+    ctx = (options or {}).get("formContext") or {}
+    portal_prefilled = {
+        key
+        for key, ctx_key in (
+            ("data[fullname]", "applicantFullname"),
+            ("data[identityNumber]", "applicantIdentityNumber"),
+        )
+        if _text(ctx.get(ctx_key))
+    }
+
     def add(name: str, value) -> None:
-        if name in seen or value in (None, "", {}, []):
+        if name in seen or name in portal_prefilled or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
@@ -194,7 +206,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # --- Quyết định TỰ NỘP / NỘP THAY: formContext (tên+CCCD tài khoản) SO với người hành nghề. Ưu tiên
     # so theo SỐ ĐỊNH DANH; không có thì so theo TÊN đã fold. ---
-    ctx = (options or {}).get("formContext") or {}
     ctx_name = _text(ctx.get("applicantFullname") or ctx.get("ownerFullname") or ctx.get("fullname"))
     ctx_identity = _identity(
         ctx.get("applicantIdentityNumber") or ctx.get("ownerIdentityNumber") or ctx.get("identityNumber")

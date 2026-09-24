@@ -24,6 +24,13 @@ Cấu trúc form:
   [KhoaThi]/[SoGiayTo]/[select]… đã BỎ). Xem field-key thật bằng probe DOM panel formio-component-Phieu.
 """
 
+# Địa chỉ trên CCCD/phiếu thường là địa danh CŨ 3 cấp (trước sáp nhập) → giữ cấp huyện ở khoá "huyen" để
+# mapper remap đúng xã mới (vd "Tuy Lộc, TP Yên Bái" → Phường Nam Cường, Lào Cai).
+_AREA_DESC = ("object {quocGia,tinh,huyen,xa,diaChi}. tinh=tỉnh/thành phố; huyen=quận/huyện/thị xã/thành phố "
+              "thuộc tỉnh NẾU giấy ghi (địa danh cũ — BẮT BUỘC giữ, mapper cần để quy đổi sang xã mới); "
+              "xa=phường/xã/thị trấn; diaChi=số nhà/đường/thôn/tổ. Chép đúng địa danh trên giấy, KHÔNG tự đổi "
+              "sang tên sau sáp nhập.")
+
 # --- Nhân thân + học vấn CHỦ VĂN BẰNG (nguồn: VĂN BẰNG / Phiếu BM04) ---
 _VANBANG_FIELDS = [
     ("HoTen", "Họ và tên CHỦ VĂN BẰNG — người được cấp bản sao. LẤY TỪ VĂN BẰNG (bằng tốt nghiệp mục 'Họ "
@@ -52,9 +59,14 @@ _VANBANG_FIELDS = [
         "văn bằng. Chỉ chữ số. ĐÂY là số của chủ (KHÔNG phải của người nộp thay)."),
     ("NgayCap", "Ngày cấp giấy tờ của chủ văn bằng, dd/mm/yyyy — Phiếu BM04 'Ngày và nơi cấp'."),
     ("DienThoai", "Số điện thoại chủ văn bằng — Phiếu BM04 'Điện thoại'. Chỉ chữ số."),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ chủ văn bằng, object {quocGia,tinh,xa,diaChi} — Phiếu BM04 'Địa chỉ "
-        "thường trú' (của người trên văn bằng). tinh='Tỉnh/Thành phố …'; xa=phường/xã; diaChi=số nhà/đường. "
-        "⚠ KHÔNG lấy địa chỉ trên CCCD của người nộp thay."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ HIỆN NAY của chủ văn bằng, " + _AREA_DESC + " Phiếu BM04 'Địa chỉ thường "
+        "trú'/'Nơi ở hiện nay'. ⚠ KHÔNG lấy địa chỉ LÚC DỰ THI ('Hộ khẩu thường trú khi dự thi', 'Địa chỉ "
+        "dự thi', 'Nơi đăng ký dự thi'…) → cái đó vào VanBang_DiaChiDuThi. KHÔNG lấy nơi sinh, địa chỉ "
+        "trường/hội đồng thi, địa chỉ trên CCCD của người nộp thay. Phiếu không có dòng thường trú hiện nay "
+        "→ BỎ field này."),
+    ("DiaChiDuThi", "Địa chỉ/hộ khẩu của chủ văn bằng LÚC DỰ THI — CHỈ dòng có chữ 'dự thi' ('Hộ khẩu "
+        "thường trú khi dự thi', 'Địa chỉ dự thi', 'Nơi đăng ký dự thi'…) trên Phiếu BM04/văn bằng. Chép "
+        "nguyên văn. KHÔNG lấy 'Nơi sinh'. CHỈ để đối chiếu, KHÔNG phải địa chỉ hiện tại."),
 ]
 
 FIELDS: list[dict] = [{"name": f"VanBang_{n}", "desc": d} for n, d in _VANBANG_FIELDS]
@@ -82,9 +94,9 @@ FIELDS += [
         '"Bộ Công an".'},
     {"name": "ChuHoSo_QuocTich", "desc": 'Quốc tịch chủ văn bằng (CCCD "Quốc tịch"). Mặc định "Việt Nam".'},
     {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại chủ văn bằng — Phiếu BM04 'Điện thoại'. Chỉ chữ số."},
-    {"name": "ChuHoSo_ThuongTru", "desc": "NƠI THƯỜNG TRÚ chủ văn bằng, object {quocGia,tinh,xa,diaChi}. "
-        "CCCD (khớp tên văn bằng) 'Nơi thường trú' / Phiếu BM04 'Địa chỉ thường trú'. tinh='Tỉnh/Thành phố "
-        "…'; xa=phường/xã; diaChi=số nhà/đường."},
+    {"name": "ChuHoSo_ThuongTru", "desc": "NƠI THƯỜNG TRÚ chủ văn bằng IN TRÊN CCCD (khớp tên văn bằng) "
+        "'Nơi thường trú', " + _AREA_DESC + " CHỈ lấy từ CCCD — KHÔNG lấy từ Phiếu BM04 (phiếu hay ghi địa chỉ "
+        "lúc dự thi)."},
 ]
 
 # --- CCCD của NGƯỜI NỘP THAY (CCCD KHÁC tên văn bằng) ---
@@ -96,7 +108,7 @@ _NOP_FIELDS = [
     ("GioiTinh", 'Giới tính NGƯỜI NỘP: "Nam"/"Nữ" — CCCD người nộp.'),
     ("NgayCap", "Ngày cấp CCCD NGƯỜI NỘP, dd/mm/yyyy."),
     ("NoiCap", 'Nơi cấp CCCD NGƯỜI NỘP (chuẩn hóa như ChuHoSo_NoiCap).'),
-    ("ThuongTru", "NƠI THƯỜNG TRÚ NGƯỜI NỘP, object {quocGia,tinh,xa,diaChi}."),
+    ("ThuongTru", "NƠI THƯỜNG TRÚ NGƯỜI NỘP (CCCD người nộp), " + _AREA_DESC),
     ("DienThoai", "Số điện thoại NGƯỜI NỘP nếu có. Chỉ chữ số."),
     ("Email", "Email NGƯỜI NỘP nếu có; thường không có → bỏ."),
 ]

@@ -4673,6 +4673,9 @@ ocrBtn.addEventListener("click", async () => {
       // → mốc tài khoản là thứ DUY NHẤT phân biệt "người trúng đấu giá tự nộp" với "người được ủy
       // quyền nộp thay"; thiếu nó BE phải đoán mode từ giấy tờ.
       cfg.key === "cho-thue-dat-thue-rung" ||
+      // [Lào Cai] 1.011443.H38 (xóa đăng ký biện pháp bảo đảm): khối người nộp chỉ được điền theo giấy tờ
+      // của CHÍNH người đăng nhập (cổng xác thực với CSDLQG) → thiếu mốc là BE bỏ trống cả khối.
+      cfg.key === "xoa-dang-ky-bien-phap-bao-dam-lao-cai" ||
       // [Lào Cai] 1.115690 (hiến đất làm đường): bộ hồ sơ mẫu luôn có Giấy ủy quyền, người đi nộp là
       // người được ủy quyền chứ không phải người tặng cho → mốc tài khoản là thứ DUY NHẤT chốt được
       // mode; thiếu nó BE phải đoán từ giấy tờ và cảnh báo.

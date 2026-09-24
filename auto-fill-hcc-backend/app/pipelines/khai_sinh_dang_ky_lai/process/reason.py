@@ -388,6 +388,14 @@ def _id_birth_year(id_number, gender=None) -> int | None:
     return _ID_CENTURY_BY_CODE[digits[3]] + int(digits[4:6])
 
 
+def _id_gender(id_number) -> str:
+    """Giới tính mã hoá trong số CCCD 12 chữ số (chữ số thứ 4 chẵn = Nam, lẻ = Nữ)."""
+    digits = _digits(id_number)
+    if len(digits) != 12 or digits[3] not in _ID_CENTURY_BY_CODE:
+        return ""
+    return "Nữ" if int(digits[3]) % 2 else "Nam"
+
+
 def reconcile_birth_with_id(birth, id_number, gender=None):
     """Sửa NĂM sinh OCR đọc lệch theo năm mã hoá trong số CCCD, giữ nguyên ngày/tháng.
 
@@ -660,9 +668,13 @@ def _person_from_document(document: dict) -> dict | None:
         death_match
         or "trich luc khai tu" in folded
         or "giay bao tu" in folded
+        or "giay chung tu" in folded
     )
     if not is_identity and not is_death:
         return None
+    # Trích lục khai tử hay ghi "Giấy tờ tùy thân: Căn cước công dân số ..." của người đã mất. Đó
+    # vẫn là giấy khai tử, không phải tấm thẻ: tính là thẻ thì người đã mất thành ứng viên CON.
+    is_identity = is_identity and not is_death
 
     # Với sổ/trích lục khai tử, chỉ đọc phần người được khai tử; không lấy người
     # đi khai tử, người ký hay cán bộ xuất hiện phía sau.
@@ -670,6 +682,8 @@ def _person_from_document(document: dict) -> dict | None:
     # Thẻ căn cước mẫu 2024 ghi nhãn song ngữ "Họ, chữ đệm và tên khai sinh / Full name:" và in giá
     # trị ở DÒNG DƯỚI; không nhận dạng này thì cả tấm thẻ bị bỏ qua khi phân vai (req_f0fa659d2248).
     name = _first_match(block, (
+        # Giấy chứng tử mẫu cũ: "Họ và tên người chết:".
+        r"^\s*Họ\s+(?:và\s+)?tên\s+người\s+chết\s*:\s*([^\n\r]+)",
         r"^\s*Họ\s+và\s+tên(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
         r"^\s*Họ,\s*chữ\s*đệm(?:,\s*|\s+và\s+)tên(?:\s+khai\s+sinh)?(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
         r"^\s*Họ,\s*chữ\s*đệm,\s*tên\s*:\s*([^\n\r]+)",
@@ -691,10 +705,14 @@ def _person_from_document(document: dict) -> dict | None:
     nationality = _first_match(block, (
         r"Quốc\s*tịch(?:\s*/\s*Nationality)?\s*:?\s*([^\n\r]+)",
     ))
-    if not name or not birth or not gender:
-        return None
+    # Số CCCD 12 chữ số mã hoá sẵn giới tính + năm sinh. OCR rụng dòng "Giới tính"/"Ngày sinh" ở
+    # một tấm thì vẫn đọc được từ số, không thì cả người biến khỏi bước phân vai theo thế hệ.
+    if is_identity and not gender:
+        gender = _id_gender(id_number)
     if is_identity:
         birth = reconcile_birth_with_id(birth, id_number, gender)
+    if not name or not birth or not gender:
+        return None
 
     status = "đã chết" if is_death else "không xác định"
     section = (
@@ -1212,6 +1230,126 @@ def _requester_section(person: dict, sections: dict[str, str]) -> str:
     return f"{body}\nVai trò đồng thời: {label}"
 
 
+_MALE_VALUES = {"nam", "male"}
+_FEMALE_VALUES = {"nu", "female"}
+# Khoảng cách tuổi TỐI ĐA khi Python tự chốt vai đè lên agent: xa hơn thì nhiều khả năng đó là
+# ông/bà nộp kèm thẻ, không phải cha/mẹ.
+_MAX_MOTHER_GAP = 50
+_MAX_FATHER_GAP = 70
+_GENERATION_BASIS = (
+    "Đúng ba người, người trẻ nhất là con; hai người lớn hơn thuộc hai giới và cách ít nhất 15 năm."
+)
+
+
+def _is_dead(person: dict) -> bool:
+    return "da chet" in _fold(_labeled_value(person.get("section") or "", "Trạng thái"))
+
+
+def _same_document_person(a: dict, b: dict) -> bool:
+    """Hai giấy tờ nói về cùng MỘT người.
+
+    Cùng loại số (12 hoặc 9 chữ số) thì số quyết định. Thiếu số hoặc một bên CMND cũ, một bên
+    CCCD mới thì phải khớp CẢ họ tên lẫn năm sinh — cha và con trùng tên là chuyện thường.
+    """
+    id_a, id_b = a.get("id") or "", b.get("id") or ""
+    if id_a and id_b and len(id_a) == len(id_b):
+        return id_a == id_b
+    return bool(a.get("year")) and a.get("year") == b.get("year") and _names_align(
+        a.get("name"), b.get("name")
+    )
+
+
+def _people_from_documents(documents: list[dict]) -> list[dict]:
+    """Mỗi NGƯỜI trong hồ sơ đúng một lần, đọc thẳng từ CCCD/CMND và giấy khai tử.
+
+    Cha/mẹ đã mất hay nộp CẢ thẻ cũ lẫn trích lục khai tử: gộp làm một người, giữ bản đọc từ thẻ
+    nhưng mang trạng thái "đã chết" để người đó không bao giờ bị chọn làm con.
+    """
+    people: list[dict] = []
+    for document in _identity_units(documents):
+        person = _person_from_document(document)
+        if not person or not person.get("year"):
+            continue
+        index = next(
+            (i for i, known in enumerate(people) if _same_document_person(known, person)),
+            None,
+        )
+        if index is None:
+            people.append(person)
+            continue
+        known = people[index]
+        keep = person if person.get("is_identity") and not known.get("is_identity") else known
+        if (_is_dead(known) or _is_dead(person)) and not _is_dead(keep):
+            keep = {**keep, "section": _set_role_label(keep["section"], "Trạng thái", "đã chết")}
+        people[index] = keep
+    return people
+
+
+def _family_from_documents(documents: list[dict], strict: bool = False) -> dict[str, dict] | None:
+    """Ba người đọc thẳng từ giấy tờ in sẵn → con/cha/mẹ theo thế hệ, hoặc None nếu mơ hồ.
+
+    Luật chung: đúng ba người; người trẻ nhất CÒN SỐNG là con; hai người lớn hơn con ≥15 tuổi,
+    một nam một nữ; con trùng họ với ít nhất một người thế hệ trước.
+
+    strict=True (dùng để ĐÈ kết quả agent) thêm: con phải trùng họ CHA, và khoảng cách tuổi
+    không quá xa (mẹ ≤ 50, cha ≤ 70 tuổi so với con) — ngoài ngưỡng đó để agent tự xử.
+    """
+    people = _people_from_documents(documents)
+    if len(people) != 3:
+        return None
+    ordered = sorted(people, key=lambda item: item["year"])
+    child, older = ordered[-1], ordered[:-1]
+    if _is_dead(child) or child["year"] == older[-1]["year"]:
+        return None
+    if child["year"] - max(item["year"] for item in older) < 15:
+        return None
+    men = [item for item in older if item["gender"] in _MALE_VALUES]
+    women = [item for item in older if item["gender"] in _FEMALE_VALUES]
+    if len(men) != 1 or len(women) != 1:
+        return None
+    father, mother = men[0], women[0]
+    child_surname = _surname(child["name"])
+    if not child_surname:
+        return None
+    if strict:
+        if child_surname != _surname(father["name"]):
+            return None
+        if child["year"] - mother["year"] > _MAX_MOTHER_GAP:
+            return None
+        if child["year"] - father["year"] > _MAX_FATHER_GAP:
+            return None
+    elif child_surname not in {_surname(father["name"]), _surname(mother["name"])}:
+        return None
+    return {"con": child, "cha": father, "me": mother}
+
+
+def _override_family_by_generation(
+    sections: dict[str, str],
+    documents: list[dict],
+) -> dict[str, str]:
+    """Hồ sơ KHÔNG có nhãn quan hệ nào (không tờ khai, không giấy khai sinh cũ) → thế hệ thắng agent.
+
+    Ca 3 CCCD hoặc 2 CCCD + 1 trích lục khai tử: vai chỉ suy được từ năm sinh + giới tính IN SẴN
+    trên giấy tờ, Python đọc tất định được. Agent lại hay tráo (xếp người đã mất vào <con>, xếp con
+    vào <me> vì cùng giới...), rồi bước kiểm tra xoá sạch các vai sai và biểu mẫu ra trắng. Nên khi
+    luật thế hệ chốt được DUY NHẤT một gia đình hợp lý thì dùng luôn gia đình đó; agent chỉ còn
+    được bù nhãn trống cho ĐÚNG người mà Python đã chốt.
+    """
+    if _declaration_source_names(documents) or _valid_birth_source_names(documents):
+        return sections
+    family = _family_from_documents(documents, strict=True)
+    if not family:
+        return sections
+    result = dict(sections)
+    for tag, person in family.items():
+        merged = _as_family_section(person["section"], _GENERATION_BASIS)
+        existing = sections.get(tag) or ""
+        if not _is_unknown(existing) and _same_role_person(existing, person):
+            merged = _merge_role_section(merged, existing)
+        result[tag] = merged
+    return result
+
+
 def _repair_family_by_generation(
     raw: str,
     sections: dict[str, str],
@@ -1224,39 +1362,39 @@ def _repair_family_by_generation(
     """
     # Ưu tiên nhân thân được Python đọc trực tiếp từ từng tài liệu. Nhờ vậy raw
     # reason dài/bị cụt vẫn không làm mất người trẻ nhất hoặc nhầm giấy khai tử.
-    document_candidates = [
-        person
-        for document in _identity_units(documents)
-        if (person := _person_from_document(document))
-    ]
-    candidates = {
-        _fold(person["name"]): person
-        for person in document_candidates
-        if person.get("year")
-    }
+    family = _family_from_documents(documents)
+    if family:
+        return {
+            tag: _as_family_section(person["section"], _GENERATION_BASIS)
+            for tag, person in family.items()
+        }
 
-    if len(candidates) != 3:
-        candidates = {}
-        for tag in ("nguoi_yeu_cau", *_FAMILY_TAGS):
-            section = _section(raw, tag)
-            name = _role_name(section)
-            year = _role_year(section)
-            gender = _fold(_labeled_value(section, "Giới tính"))
-            if not name or not year or gender not in {"nam", "nu", "male", "female"}:
-                continue
-            key = _fold(name)
-            current = candidates.get(key)
-            score = sum(bool(_labeled_value(section, label)) for label in (
-                "Số CCCD/CMND", "Ngày sinh", "Giới tính", "Trạng thái", "Nguồn",
-            ))
-            if not current or score > current["score"]:
-                candidates[key] = {
-                    "section": section,
-                    "name": name,
-                    "year": year,
-                    "gender": gender,
-                    "score": score,
-                }
+    # Giấy tờ in sẵn đã cho đúng ba người mà luật thế hệ vẫn không chốt được → mơ hồ thật, giữ
+    # nguyên. Chỉ khi OCR giấy tờ không đọc đủ người mới dựa vào nhân thân agent tự ghi ra.
+    if len(_people_from_documents(documents)) == 3:
+        return sections
+
+    candidates: dict[str, dict] = {}
+    for tag in ("nguoi_yeu_cau", *_FAMILY_TAGS):
+        section = _section(raw, tag)
+        name = _role_name(section)
+        year = _role_year(section)
+        gender = _fold(_labeled_value(section, "Giới tính"))
+        if not name or not year or gender not in _MALE_VALUES | _FEMALE_VALUES:
+            continue
+        key = _fold(name)
+        current = candidates.get(key)
+        score = sum(bool(_labeled_value(section, label)) for label in (
+            "Số CCCD/CMND", "Ngày sinh", "Giới tính", "Trạng thái", "Nguồn",
+        ))
+        if not current or score > current["score"]:
+            candidates[key] = {
+                "section": section,
+                "name": name,
+                "year": year,
+                "gender": gender,
+                "score": score,
+            }
 
     if len(candidates) != 3:
         return sections
@@ -1264,23 +1402,24 @@ def _repair_family_by_generation(
     ordered = sorted(candidates.values(), key=lambda item: item["year"])
     youngest = ordered[-1]
     older = ordered[:-1]
+    if _is_dead(youngest):
+        return sections
     if youngest["year"] - max(item["year"] for item in older) < 15:
         return sections
-    child_surname = _fold(youngest["name"]).split(" ", 1)[0]
-    older_surnames = {_fold(item["name"]).split(" ", 1)[0] for item in older}
+    child_surname = _surname(youngest["name"])
+    older_surnames = {_surname(item["name"]) for item in older}
     if not child_surname or child_surname not in older_surnames:
         return sections
 
-    men = [item for item in older if item["gender"] in {"nam", "male"}]
-    women = [item for item in older if item["gender"] in {"nu", "female"}]
+    men = [item for item in older if item["gender"] in _MALE_VALUES]
+    women = [item for item in older if item["gender"] in _FEMALE_VALUES]
     if len(men) != 1 or len(women) != 1:
         return sections
 
-    basis = "Đúng ba người, người trẻ nhất là con; hai người lớn hơn thuộc hai giới và cách ít nhất 15 năm."
     return {
-        "con": _as_family_section(youngest["section"], basis),
-        "cha": _as_family_section(men[0]["section"], basis),
-        "me": _as_family_section(women[0]["section"], basis),
+        "con": _as_family_section(youngest["section"], _GENERATION_BASIS),
+        "cha": _as_family_section(men[0]["section"], _GENERATION_BASIS),
+        "me": _as_family_section(women[0]["section"], _GENERATION_BASIS),
     }
 
 
@@ -2083,6 +2222,10 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     # TỜ KHAI TRƯỚC, CCCD SAU: nhãn quan hệ in sẵn trên tờ khai là căn cứ mạnh nhất và Python
     # đọc được tất định, nên chốt vai từ đó trước mọi suy luận dựa trên thẻ căn cước bên dưới.
     sections = _repair_family_from_declaration(sections, documents)
+
+    # Không tờ khai, không giấy khai sinh cũ (ca 3 CCCD / 2 CCCD + 1 khai tử): năm sinh + giới tính
+    # in sẵn trên giấy tờ chốt được đúng một gia đình thì Python thắng agent.
+    sections = _override_family_by_generation(sections, documents)
 
     # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
     if not any(not _is_unknown(s) for s in sections.values()):
