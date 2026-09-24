@@ -285,6 +285,11 @@ def _fold_option(text: str) -> str:
     return re.sub(r"\s+", " ", t.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
+# Nhóm địa phương mà hồ sơ ghi riêng, không có option trong dropdown: luôn chọn "Khác" + ghi
+# nguyên văn, KHÔNG quy về dân tộc chuẩn (vd "Cao Lan" giữ "Cao Lan", không đổi thành "Sán Chay").
+OTHER_ETHNICITY_NAMES = frozenset({"cil", "cill", "cao lan"})
+
+
 def ethnicity_for_form(value: str | None) -> tuple[str, str]:
     """(giá trị dropdown, chữ ghi vào ô "Khác").
 
@@ -295,6 +300,8 @@ def ethnicity_for_form(value: str | None) -> tuple[str, str]:
     raw = str(value or "").strip()
     if not raw:
         return "", ""
+    if _fold(raw) in OTHER_ETHNICITY_NAMES:
+        return "Khác", raw
     normalized = normalize_ethnic(raw)
     if _fold_option(normalized) in FORM_ETHNICITIES:
         return normalized, ""

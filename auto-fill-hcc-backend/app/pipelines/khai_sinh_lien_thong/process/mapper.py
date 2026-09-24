@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.ethnic_normalize import normalize_ethnic
+from app.pipelines._shared.ethnic_normalize import OTHER_ETHNICITY_NAMES, normalize_ethnic
 from app.pipelines._shared.hospital_lookup import lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
 
@@ -31,11 +31,11 @@ def _upper_name(value) -> str:
 
 
 def _ethnicity_for_form(value) -> tuple[str, str]:
-    """Cil/Cill không có option riêng: chọn Khác và giữ nguyên cách ghi vào ô nhập tay."""
+    """Cil/Cill/Cao Lan không có option riêng: chọn Khác và giữ nguyên cách ghi vào ô nhập tay."""
     raw = str(value or "").strip()
     if not raw:
         return "", ""
-    if _fold(raw) in {"cil", "cill"}:
+    if _fold(raw) in OTHER_ETHNICITY_NAMES:
         return "Khác", raw
     return normalize_ethnic(raw), ""
 
