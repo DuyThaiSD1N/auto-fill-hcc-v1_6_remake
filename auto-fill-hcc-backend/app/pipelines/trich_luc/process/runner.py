@@ -243,9 +243,110 @@ def _apply_power_of_attorney(raw_fields, documents: list[dict]):
     return values
 
 
+_CARD_NUMBER_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
+_CARD_DATE_RE = re.compile(r"(?<!\d)(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?!\d)")
+_CARD_SEX_RE = re.compile(r"\bsex\b\s*:?\s*(nam|nu)\b")
+_CARD_PROVINCE_RE = re.compile(r"^(tinh|thanh pho|tp\.?)\s")
+
+
+def _label_value(lines: list[str], index: int) -> str:
+    """Giá trị của nhãn: phần sau dấu hai chấm cùng dòng, trống thì dòng kế tiếp."""
+    tail = lines[index].split(":", 1)[1].strip() if ":" in lines[index] else ""
+    if tail:
+        return tail
+    return next((line.strip() for line in lines[index + 1:index + 3] if line.strip()), "")
+
+
+def _card_area(lines: list[str], start: int) -> dict | None:
+    """Nơi thường trú in trên thẻ; chỉ nhận khi có nhãn xã/phường và cụm cuối là tỉnh/thành phố."""
+    for index in range(start, min(start + 20, len(lines))):
+        folded = _fold(lines[index])
+        if not (folded.startswith("noi thuong tru") or "place of residence" in folded):
+            continue
+        parts = [lines[index].split(":", 1)[1] if ":" in lines[index] else ""]
+        for line in lines[index + 1:index + 4]:
+            if not line.strip() or ":" in line:
+                break
+            parts.append(line)
+        chunks = [chunk.strip(" .;") for chunk in ",".join(parts).split(",") if chunk.strip(" .;")]
+        if not chunks or not _CARD_PROVINCE_RE.match(_fold(chunks[-1])):
+            return None
+        return _party_area(", ".join(chunks))
+    return None
+
+
+def _identity_cards(documents: list[dict]) -> dict[str, dict]:
+    """Thẻ căn cước/CCCD đọc thẳng từ OCR (kể cả màn hình "Căn cước điện tử" của VNeID), theo số.
+
+    Neo vào nhãn song ngữ "Full name" chỉ có trên thẻ — giấy hộ tịch in thuần tiếng Việt nên không
+    bắt nhầm người ghi trên trích lục. Số định danh nằm ngay trên dòng họ tên.
+    """
+    cards: dict[str, dict] = {}
+    for document in documents:
+        lines = str(document.get("text") or "").splitlines()
+        for index, line in enumerate(lines):
+            if "full name" not in _fold(line):
+                continue
+            name = _label_value(lines, index)
+            above = [re.sub(r"(?<=\d)[ .](?=\d)", "", text) for text in lines[max(index - 4, 0):index]]
+            numbers = [match for text in above for match in _CARD_NUMBER_RE.findall(text)]
+            if not name or not numbers:
+                continue
+            card = {"HoTen": name, "SoDinhDanh": numbers[-1]}
+            for text in lines[index + 1:index + 6]:
+                folded = _fold(text)
+                date = _CARD_DATE_RE.search(text)
+                if "date of birth" in folded and date:
+                    card["NgaySinh"] = f"{int(date.group(1)):02d}/{int(date.group(2)):02d}/{date.group(3)}"
+                sex = _CARD_SEX_RE.search(folded)
+                if sex:
+                    card["GioiTinh"] = "Nam" if sex.group(1) == "nam" else "Nữ"
+            area = _card_area(lines, index + 1)
+            if area:
+                card["NoiCuTru"] = area
+            cards.setdefault(card["SoDinhDanh"], card)
+    return cards
+
+
+def _rescue_death_requester_card(raw_fields, documents: list[dict]):
+    """TRÍCH LỤC KHAI TỬ: agent bỏ sót thẻ căn cước của người yêu cầu → đọc thẳng thẻ từ OCR vào Nyc_*.
+
+    Người được đăng ký đã mất nên mọi thẻ trong hồ sơ là của người thân đi xin bản sao. Agent chập
+    chờn: có lần không trả thẻ nào (thẻ là trang "Căn cước điện tử" gộp chung PDF với trích lục) →
+    mục I giữ người đăng nhập, ô quan hệ tick "Bản thân" và người đã mất bị hiểu là tự đi xin.
+
+    Chỉ chạy khi: sự kiện là khai tử, agent không trả thẻ nào (Nyc_*/ChuThe_*), và OCR có ĐÚNG MỘT
+    thẻ khác người đã mất.
+    """
+    if not isinstance(raw_fields, (dict, list)):
+        return raw_fields
+    values = dict(raw_fields) if isinstance(raw_fields, dict) else {
+        field.get("name"): field.get("value") for field in raw_fields if isinstance(field, dict)
+    }
+    event = values.get("ToKhai_LoaiSuKien") or values.get("HoTich_LoaiSuKien")
+    if str(event or "").strip().lower() != "death":
+        return raw_fields
+    if any(
+        str(key).startswith(("Nyc_", "ChuThe_")) and value not in (None, "", {}, [])
+        for key, value in values.items()
+    ):
+        return raw_fields
+
+    deceased = {
+        _fold(values.get(name)) for name in ("HoTich_HoTenNguoiDuocDangKy", "ToKhai_HoTenNguoiDuocCap")
+    } - {""}
+    cards = [card for card in _identity_cards(documents).values() if _fold(card["HoTen"]) not in deceased]
+    if len(cards) != 1:
+        return raw_fields
+    for suffix, value in cards[0].items():
+        values[f"Nyc_{suffix}"] = value
+    return values
+
+
 def _compact_field_fallback(raw_fields, documents: list[dict]):
     raw_fields = _drop_certification_registration(raw_fields, documents)
     raw_fields = _apply_power_of_attorney(raw_fields, documents)
+    raw_fields = _rescue_death_requester_card(raw_fields, documents)
     return _drop_unbacked_cards(raw_fields, documents)
 
 

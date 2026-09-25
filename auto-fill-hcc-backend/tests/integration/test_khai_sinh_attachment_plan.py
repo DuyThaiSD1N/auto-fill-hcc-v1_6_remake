@@ -243,3 +243,70 @@ def test_khai_sinh_procedure_has_attachment_step():
     proc = get_procedure("khai-sinh-dang-ky-thuong")
 
     assert proc["hasAttachmentStep"] is True
+
+
+_DECLARATION_OCR = (
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nTỜ KHAI ĐĂNG KÝ KHAI SINH\n"
+    "Tôi cam đoan nội dung đề nghị đăng ký khai sinh trên đây là đúng sự thật"
+)
+
+
+def _declaration_ocr_and_chat(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "to-khai.pdf", "text": _DECLARATION_OCR},
+            {"name": "chung-sinh.pdf", "text": "GIẤY CHỨNG SINH"},
+            {"name": "cccd-me.pdf", "text": "CĂN CƯỚC CÔNG DÂN"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 0, "docType": "birth_proof"},
+            {"index": 1, "docType": "birth_proof"},
+            {"index": 2, "docType": "other"},
+        ]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    return [_file("to-khai.pdf"), _file("chung-sinh.pdf"), _file("cccd-me.pdf")]
+
+
+async def test_khai_sinh_attach_omits_declaration_for_nghia_lo(monkeypatch):
+    """Cờ Nghĩa Lộ: tờ khai khai sinh không được đính, chứng sinh + CCCD vẫn vào STT1."""
+    files = _declaration_ocr_and_chat(monkeypatch)
+    options = khai_sinh.with_nghia_lo_attach_options(
+        {}, {"tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Nghĩa Lộ"}, "khai-sinh-dang-ky"
+    )
+    res = await khai_sinh.plan_khai_sinh_attachments(files, options, _session())
+
+    assert [it["fileName"] for it in res["attachments"]] == ["chung-sinh.pdf", "cccd-me.pdf"]
+    assert res["extracted"]["birthProof"] == "chung-sinh.pdf"
+    assert res["extracted"]["omittedDeclarations"] == ["to-khai.pdf"]
+    assert res["extracted"]["skipped"] == []
+    assert any("to-khai.pdf" in e and "Nghĩa Lộ" in e for e in res["errors"])
+
+
+async def test_khai_sinh_attach_keeps_declaration_for_other_accounts(monkeypatch):
+    """Tài khoản khác: tờ khai vẫn đính như trước (không cờ)."""
+    files = _declaration_ocr_and_chat(monkeypatch)
+    options = khai_sinh.with_nghia_lo_attach_options(
+        {"omitBirthDeclaration": True}, {"tinh": "Tỉnh Lào Cai", "xa": "Phường Nghĩa Lộ"},
+        "khai-sinh-dang-ky",
+    )
+    assert "omitBirthDeclaration" not in options  # client không tự bật được
+    res = await khai_sinh.plan_khai_sinh_attachments(files, options, _session())
+
+    assert sorted(it["fileName"] for it in res["attachments"]) == [
+        "cccd-me.pdf", "chung-sinh.pdf", "to-khai.pdf",
+    ]
+    assert res["extracted"]["omittedDeclarations"] == []
+
+
+def test_nghia_lo_option_only_for_quang_ngai_ward_and_lien_thong():
+    ok = {"tinh": "Quảng Ngãi", "xa": "Phường Nghĩa Lộ"}
+    assert khai_sinh.with_nghia_lo_attach_options({}, ok, "khai-sinh-dang-ky") == {
+        "omitBirthDeclaration": True
+    }
+    assert khai_sinh.with_nghia_lo_attach_options({}, ok, "khai-sinh-dang-ky-thuong") == {}
+    assert not khai_sinh.is_quang_ngai_nghia_lo({"tinh": "Tỉnh Quảng Ngãi", "xa": "Xã Nghĩa Lộc"})
+    assert not khai_sinh.is_quang_ngai_nghia_lo(None)

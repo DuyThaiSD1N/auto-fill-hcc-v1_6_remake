@@ -180,3 +180,80 @@ def test_two_cccd_match_requester_and_fill_remaining_card_as_subject():
     assert out["NDK_NgayCap"]["value"] == "13/04/2021"
     assert out["NDK_NoiCap"]["value"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert out["NDK_NoiCuTru_TrongNuoc"]["value"]["diaChi"] == "Khu Phương Lai"
+
+
+_DEATH_EXTRACT_WITH_EID = """Phần ghi về người chết:
+Họ và tên: TRẦN VĂN BÌNH Giới tính: Nam.
+Ngày, tháng, năm, sinh: 01/02/1950
+Phần ghi về người đi đăng ký khai tử:
+Họ và tên: TRẦN VĂN AN
+Quan hệ với người đã chết: Là con trai
+← Căn cước điện tử
+CĂN CƯỚC ĐIỆN TỬ
+Số định danh cá nhân / Personal identification number:
+001190000001
+Họ, chữ đệm và tên / Full name:
+LÊ THỊ HOA
+Ngày, tháng, năm sinh / Date of birth: 5/3/1990 Giới tính / Sex: Nữ
+Quốc tịch / Nationality: Việt Nam
+Nơi thường trú:
+Thôn Đông, Xóm 1,
+Phường Hòa Bình, Tỉnh Bắc Ninh
+Nơi tạm trú:
+"""
+
+_DEATH_LLM_WITHOUT_CARD = {
+    "HoTich_LoaiSuKien": "death",
+    "HoTich_TenGiayTo": "Trích lục khai tử",
+    "HoTich_HoTenNguoiDuocDangKy": "TRẦN VĂN BÌNH",
+    "HoTich_So": "12",
+    "CopyRequest_QuanHe": "Bản thân",
+}
+_OTHER_LOGIN = {"formContext": {"applicantFullname": "Phạm Văn Cường",
+                                "applicantIdentityNumber": "001200000009"}}
+
+
+def test_death_extract_never_ticks_self_relation():
+    """Người được đăng ký đã mất → agent trả "Bản thân" cũng không được tick "Bản thân"."""
+    out = _by_name(mapper.enrich(_fields(_DEATH_LLM_WITHOUT_CARD), options=_OTHER_LOGIN))
+    assert out["NYC_QuanHe"]["value"] == "Khác"
+    assert out["NDK_HoVaTen"]["value"] == "TRẦN VĂN BÌNH"
+
+
+def test_death_extract_reads_missed_eid_card_as_requester():
+    """Agent bỏ sót trang "Căn cước điện tử" gộp chung PDF → runner đọc thẻ đó vào người yêu cầu."""
+    from app.pipelines.trich_luc.process import runner
+
+    raw = runner._compact_field_fallback(
+        dict(_DEATH_LLM_WITHOUT_CARD), [{"name": "a.pdf", "text": _DEATH_EXTRACT_WITH_EID}])
+    assert raw["Nyc_HoTen"] == "LÊ THỊ HOA"
+    assert raw["Nyc_SoDinhDanh"] == "001190000001"
+    assert raw["Nyc_NgaySinh"] == "05/03/1990"
+    assert raw["Nyc_GioiTinh"] == "Nữ"
+    assert raw["Nyc_NoiCuTru"]["xa"] == "Phường Hòa Bình"
+    assert raw["Nyc_NoiCuTru"]["diaChi"] == "Thôn Đông, Xóm 1"
+
+    out = _by_name(mapper.enrich(
+        [{"name": k, "value": v} for k, v in raw.items()], options=_OTHER_LOGIN))
+    assert out["NYC_QuanHe"]["value"] == "Khác"
+    assert out["HoVaTenC"]["value"] == "LÊ THỊ HOA"
+    assert out["SoDinhDanhC"]["value"] == "001190000001"
+    assert out["NDK_HoVaTen"]["value"] == "TRẦN VĂN BÌNH"
+
+
+def test_death_extract_keeps_card_the_agent_already_returned():
+    """Agent đã trả thẻ thì runner không đụng tới."""
+    from app.pipelines.trich_luc.process import runner
+
+    llm = dict(_DEATH_LLM_WITHOUT_CARD, Nyc_HoTen="LÊ THỊ HOA", Nyc_SoDinhDanh="001190000001")
+    raw = runner._compact_field_fallback(dict(llm), [{"name": "a.pdf", "text": _DEATH_EXTRACT_WITH_EID}])
+    assert "Nyc_NgaySinh" not in raw
+
+
+def test_birth_extract_does_not_read_card_from_ocr():
+    """Ngoài khai tử, thẻ có thể là của người được đăng ký → không tự gán vào người yêu cầu."""
+    from app.pipelines.trich_luc.process import runner
+
+    llm = dict(_DEATH_LLM_WITHOUT_CARD, HoTich_LoaiSuKien="birth", HoTich_TenGiayTo="Giấy khai sinh")
+    raw = runner._compact_field_fallback(dict(llm), [{"name": "a.pdf", "text": _DEATH_EXTRACT_WITH_EID}])
+    assert "Nyc_HoTen" not in raw

@@ -41,6 +41,8 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   tồn tại dưới dạng dòng chữ IN TRÊN trích lục ("Giấy tờ tùy thân: Giấy CMND số ..."), và nó thuộc về
   HoTich_SoGiayToTuyThan/HoTich_NgayCapGiayToTuyThan/HoTich_NoiCapGiayToTuyThan — TUYỆT ĐỐI không
   chuyển sang ChuThe_*.
+  Trang "CĂN CƯỚC ĐIỆN TỬ" (màn hình VNeID có "Số định danh cá nhân", "Họ, chữ đệm và tên / Full name")
+  CŨNG LÀ thẻ căn cước, kể cả khi nằm CHUNG MỘT FILE PDF với trích lục → BẮT BUỘC trả vào Nyc_*.
 - Có hơn 2 CCCD mà không đủ mỏ neo phân vai → chỉ trả người chắc chắn; không đoán theo tuổi hoặc tên file.
 </multi_cccd_rules>
 
@@ -270,6 +272,7 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
   "Con đẻ", "Vợ", "Chồng", "Ông", "Bà"). Không có dòng này thì bỏ qua, KHÔNG suy diễn từ việc người
   yêu cầu có trùng người được cấp bản sao hay không — Python tự đối chiếu số định danh/họ tên giữa
   mục I và mục II để tick "Bản thân"/"Khác" khi field này trống.
+  TRÍCH LỤC KHAI TỬ: người được đăng ký đã chết, TUYỆT ĐỐI không trả CopyRequest_QuanHe = "Bản thân".
 - HoTich_NguoiThan: BẮT BUỘC trả khi CHÍNH giấy hộ tịch có dòng ghi tên người thân của người được
   đăng ký (giấy khai sinh ghi cha/mẹ; giấy chứng nhận kết hôn ghi vợ/chồng; trích lục khai tử ghi
   người thân nếu có). Mỗi dòng là một object {quanHe, hoTen, soGiayTo}: quanHe lấy ĐÚNG vai ở nhãn
