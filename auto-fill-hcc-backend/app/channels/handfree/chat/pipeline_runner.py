@@ -20,6 +20,7 @@ from app.channels.handfree.procedure_registry import (
     get_procedure,
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
+from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
@@ -108,6 +109,9 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options["formContext"] = dict(conv["form_context"])
         if proc.get("review"):
             options["_review"] = True
+        options = with_account_process_options(
+            options, await _load_owner_user(conv, sess), procedure_key
+        )
 
         t_pipe = time.monotonic()
         result = await pipeline(files_by_role, options)

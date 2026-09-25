@@ -47,6 +47,28 @@ def _fold(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+# Cấu hình theo tài khoản: tỉnh Lâm Đồng KHÔNG điền cụm "Loại đăng ký / cơ quan, số, quyển số,
+# ngày đăng ký khai sinh trước đây / Loại khai sinh" ở mục II — cán bộ tự nhập. Mapper không biết
+# tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options
+# để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho tỉnh khác.
+PROCEDURE_KEY = "khai-sinh-dang-ky-lai"
+OMIT_PREVIOUS_REGISTRATION_OPTION = "omitPreviousRegistration"
+
+
+def is_lam_dong_account(user: dict | None) -> bool:
+    """True khi tài khoản thuộc tỉnh Lâm Đồng ("Tỉnh Lâm Đồng" hay "Lâm Đồng" đều khớp)."""
+    return "lam dong" in _fold((user or {}).get("tinh") or "")
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ bỏ cụm đăng ký trước đây do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(OMIT_PREVIOUS_REGISTRATION_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_lam_dong_account(user):
+        result[OMIT_PREVIOUS_REGISTRATION_OPTION] = True
+    return result
+
+
 def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
@@ -738,8 +760,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append({"name": name, "comp": comp, "value": "", "clear": True})
         seen.add(name)
 
-    for default in _STRUCTURAL_DEFAULTS:
-        add(default["name"], default["value"])
+    omit_previous_registration = (options or {}).get(OMIT_PREVIOUS_REGISTRATION_OPTION) is True
+    if not omit_previous_registration:
+        for default in _STRUCTURAL_DEFAULTS:
+            add(default["name"], default["value"])
 
     # I. Nguoi yeu cau.
     # Buoc 1 BAT BUOC: chot o tich "(5) Quan he voi nguoi duoc khai sinh" TRUOC khi dien nhan than —
@@ -863,14 +887,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default)
 
     # Thong tin dang ky truoc day.
-    agency_province, agency_commune, agency_guessed = _previous_registration_agency(values)
-    add("coQuanDKTruocDay_filter", agency_province)
-    # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh. Tên suy ra từ phép dò gần đúng
-    # là phỏng đoán, không phải chữ đọc được -> đánh dấu default để extension tô vàng.
-    add("coQuanDKTruocDay", agency_commune, agency_guessed)
-    add("soDKTruocDay", _previous_registration_number(values))
-    add("quyenSoDKTruocDay", values.get("PreviousRegistration_BookNumber"))
-    add("ngayDKTruocDay", values.get("PreviousRegistration_Date"))
+    if not omit_previous_registration:
+        agency_province, agency_commune, agency_guessed = _previous_registration_agency(values)
+        add("coQuanDKTruocDay_filter", agency_province)
+        # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh. Tên suy ra từ phép dò gần đúng
+        # là phỏng đoán, không phải chữ đọc được -> đánh dấu default để extension tô vàng.
+        add("coQuanDKTruocDay", agency_commune, agency_guessed)
+        add("soDKTruocDay", _previous_registration_number(values))
+        add("quyenSoDKTruocDay", values.get("PreviousRegistration_BookNumber"))
+        add("ngayDKTruocDay", values.get("PreviousRegistration_Date"))
 
     # Chi dien yeu cau ban sao khi to khai co khai bao that.
     if _is_birth_reregistration_declaration(values.get("CopyRequest_SourceDocumentTitle")):

@@ -1090,7 +1090,7 @@
     {
       "key": "ho-tro-chi-phi-khuyen-khich-hoa-tang",
       "code": "1.012749",
-      "label": "Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
+      "label": "Quảng Ngãi - Hỗ trợ chi phí khuyến khích sử dụng hình thức hỏa táng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019da601-350c-755b-9393-18754910591d",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -1534,7 +1534,7 @@
     {
       "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-lam-dong",
       "code": "1.012818",
-      "label": "[Lâm Đồng] Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định",
+      "label": "[Lâm Đồng] Thu hồi Giấy chứng nhận đã cấp lần đầu không đúng quy định của pháp luật đất đai do người sử dụng đất, chủ sở hữu tài sản gắn liền với đất phát hiện và cấp lại Giấy chứng nhận sau khi thu hồi",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76e6-7468-b6f2-417e588578f5",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -1550,7 +1550,7 @@
     {
       "key": "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
       "code": "1.013949",
-      "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+      "label": "Quảng Ngãi - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -1558,7 +1558,7 @@
     {
       "key": "cap-giay-chung-nhan-lan-dau",
       "code": "1.013978",
-      "label": "Cấp giấy chứng nhận lần đầu",
+      "label": "Quảng Ngãi - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -1566,7 +1566,7 @@
     {
       "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
       "code": "1.012817",
-      "label": "Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
+      "label": "Quảng Ngãi - Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76ef-752f-a5e5-ff4ce5737bb1",
       "needsAgencySelect": true,
       "autoConfirm": true

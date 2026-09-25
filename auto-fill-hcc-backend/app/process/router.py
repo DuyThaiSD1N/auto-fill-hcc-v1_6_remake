@@ -9,6 +9,7 @@ from app.core.deps import require_auth
 from app.core.errors import AppError
 from app.dossiers import repo as dossiers_repo
 from app.dossiers.options import dossier_id_from_options
+from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
@@ -36,6 +37,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         proc=proc,
         pipeline=pipeline,
         include_review=True,
+    )
+    # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây) do server đặt từ `user`.
+    prepared.pipeline_options = with_account_process_options(
+        prepared.pipeline_options, user, body.procedure
     )
     total_bytes = prepared.total_bytes
     ocr_provider = prepared.ocr_provider
