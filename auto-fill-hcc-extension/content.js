@@ -5767,12 +5767,34 @@
       if (!await sleepForStandardSelect(8, deadline)) break;
     }
     search.dispatchEvent(new Event("change", { bubbles: true }));
-    await waitForStandardSelect(() => {
+    const typedApplied = await waitForStandardSelect(() => {
       const after = choicesListSignature(choices);
       return after !== before || choicesHasNoChoices(choices) ? true : null;
     }, 450, 50, deadline);
+    // Chữ đã nằm trong ô mà danh sách vẫn đứng yên (cổng Bộ XD cấp phù hiệu: "Tại", "Kính gửi", "Loại hình
+    // doanh nghiệp") → gõ thêm MỘT dấu cách vào ĐẦU ô, đúng thao tác tay cán bộ dùng để ô chịu lọc.
+    if (!typedApplied) await nudgeChoicesSearchLeadingSpace(search, text, choices, before, deadline);
     if (select) searchedStandardSelects.add(select);
     return true;
+  }
+
+  async function nudgeChoicesSearchLeadingSpace(search, text, choices, before, deadline = 0) {
+    if (!search || search.disabled || standardSelectBudgetLeft(deadline) <= 0) return false;
+    if (typeof search.focus === "function") search.focus();
+    try { search.setSelectionRange?.(0, 0); } catch { /* ignore */ }
+    dispatchKeyboardEvent(search, "keydown", " ");
+    dispatchKeyboardEvent(search, "keypress", " ");
+    dispatchInputEvent(search, "beforeinput", { data: " ", inputType: "insertText" });
+    setInputValueDirect(search, " " + String(text ?? "").replace(/^\s+/, ""));
+    try { search.setSelectionRange?.(1, 1); } catch { /* ignore */ }
+    dispatchInputEvent(search, "input", { data: " ", inputType: "insertText" });
+    dispatchKeyboardEvent(search, "keyup", " ");
+    search.dispatchEvent(new Event("change", { bubbles: true }));
+    // Nguồn tìm từ xa trả chậm hơn search client-side → chờ lâu hơn hai bước trên.
+    return !!await waitForStandardSelect(() => {
+      const after = choicesListSignature(choices);
+      return after !== before || choicesHasNoChoices(choices) ? true : null;
+    }, 1500, 80, deadline);
   }
 
   async function openChoicesDropdown(choices, raw, deadline = 0, select = null) {
@@ -6319,6 +6341,62 @@
     return { settled: !loading && (staticSource || plainNativeSource || searchedEmpty), hasValue };
   }
 
+  // BE gắn f.searchOnce cho ô Choices tìm TỪ XA mà mở/gõ lại nhiều lần là HỎNG (cổng Bộ XD cấp phù hiệu: Màu
+  // sơn, Loại phương tiện… — mỗi lượt mở lại không chọn gì là ô render sang mã id '63d…'). Chỉ MỘT lượt đúng
+  // thao tác tay: mở ô → gõ chữ → thêm MỘT dấu cách vào đầu → chờ kết quả → bấm chọn. Không thấy option thì
+  // đóng dropdown để trống cho cán bộ; KHÔNG thử từ khác, KHÔNG ghi thẳng Form.io.
+  async function fillChoicesSearchOnce(select, value) {
+    const group = standardMarkTarget(select);
+    const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
+    const raw = String(value ?? "").trim();
+    if (!choices || !raw || choices.classList.contains("is-disabled")) return false;
+    const isSelected = () => choicesSelectedItems(choices).some((item) =>
+      choiceMatches({ textContent: choiceDisplayText(item), getAttribute: () => "" }, raw));
+    if (isSelected()) {
+      markFilled(group);
+      return true;
+    }
+
+    const opener = choices.querySelector(".choices__inner, [role='combobox']") || choices;
+    if (!choicesDropdownOpen(choices)) {
+      if (typeof opener.focus === "function") opener.focus();
+      ["pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) => dispatchChoiceMouse(opener, type));
+      await waitFor(() => choicesDropdownOpen(choices), 800, 40);
+    }
+    const search = await waitFor(() => {
+      const input = choices.querySelector(".choices__input--cloned");
+      return input && !input.disabled ? input : null;
+    }, 800, 40);
+    if (!search) return false;
+
+    if (typeof search.focus === "function") search.focus();
+    dispatchInputEvent(search, "beforeinput", { data: raw, inputType: "insertText" });
+    setInputValueDirect(search, raw);
+    dispatchInputEvent(search, "input", { data: raw, inputType: "insertText" });
+    await sleep(80);
+    await nudgeChoicesSearchLeadingSpace(search, raw, choices, choicesListSignature(choices));
+
+    const target = await waitFor(() => bestChoiceOption(choicesVisibleOptions(choices), raw), 3000, 100);
+    if (!target) {
+      dispatchKeyboardEvent(search, "keydown", "Escape");
+      console.warn(`[AutoFill-STD] ${select.name}: không thấy option "${raw}" sau một lượt tìm → để trống.`);
+      return false;
+    }
+    if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "nearest" });
+    const clickTarget = target.querySelector("span") || target;
+    ["mouseover", "mousemove", "pointerdown", "mousedown", "pointerup", "mouseup", "click"].forEach((type) =>
+      dispatchChoiceMouse(clickTarget, type));
+    let selected = await waitFor(isSelected, 500, 60);
+    if (!selected) {
+      // Cùng MỘT option đang được highlight — Enter chỉ xác nhận lựa chọn, không mở/tìm lại.
+      dispatchKeyboardEvent(search, "keydown", "Enter");
+      dispatchKeyboardEvent(search, "keyup", "Enter");
+      selected = await waitFor(isSelected, 500, 60);
+    }
+    if (selected) markFilled(group);
+    return !!selected;
+  }
+
   async function pickChoicesItem(select, value, deadline = 0) {
     const group = standardMarkTarget(select);
     const choices = group?.classList?.contains("choices") ? group : group?.querySelector?.(".choices");
@@ -6348,6 +6426,22 @@
         return bestChoiceOption(options, value);
       }, isLast ? targetTimeout : 450, 100, deadline);
       if (target) break;
+    }
+    if (!target && standardSelectBudgetLeft(deadline) > 0) {
+      // Ô tìm từ xa (cổng Bộ XD cấp phù hiệu: Màu sơn, Loại phương tiện, Kính gửi…): chữ đã vào ô mà danh sách
+      // chỉ hiện "Không tìm thấy" — bước viết chữ coi thế là đã lọc nên không tự gõ dấu cách. Gõ lại chữ đầy
+      // đủ rồi CHỦ ĐỘNG thêm một dấu cách vào đầu như thao tác tay, chờ kết quả tìm từ xa lâu hơn.
+      await openChoicesDropdown(choices, raw, deadline, select);
+      const search = choices.querySelector(".choices__input--cloned");
+      if (search && !search.disabled) {
+        await nudgeChoicesSearchLeadingSpace(search, raw, choices, choicesListSignature(choices), deadline);
+        target = await waitForStandardSelect(
+          () => bestChoiceOption(choicesVisibleOptions(choices), value),
+          2000,
+          100,
+          deadline
+        );
+      }
     }
     if (!target) {
       // Chưa thấy option khớp (có thể cascade con chưa nạp xong) → thử lại ở lượt retry/stabilize sau.
@@ -7201,6 +7295,10 @@
           if (isAreaSelectField(f)) {
             const deadline = standardFieldDeadline(areaDeadlines, f);
             ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
+          } else if (f.searchOnce) {
+            const el = findStandardSelect(candidates, occurrence, root)
+              || await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100);
+            ok = !!el && await fillChoicesSearchOnce(el, f.value);
           } else {
             const el = findStandardSelect(candidates, occurrence, root);
             ok = isStandardMultiSelect(el)

@@ -4550,6 +4550,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "xac-nhan-ho-so-so-nha-da-nang" ||
       cfg.key === "cap-phep-long-duong-via-he" ||
       cfg.key === "cap-giay-phep-chat-ha-cay-xanh" ||
+      // [Bộ Xây dựng] 2.002288 cấp phù hiệu: người nộp thường là xã viên (Bên B hợp đồng) và hồ sơ hay
+      // không kèm CCCD → họ tên tài khoản là mốc duy nhất để lấy đúng SĐT Bên B thay cho SĐT đơn vị.
+      cfg.key === "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai" ||
       cfg.key === "cap-ban-sao-van-bang-so-goc" ||
       cfg.key === "chap-thuan-dau-noi-tam" ||
       // [Lào Cai] 1.115667: tài khoản prefill CongDan_tenCongDan/CongDan_soCmnd → mốc chọn CCCD người nộp.

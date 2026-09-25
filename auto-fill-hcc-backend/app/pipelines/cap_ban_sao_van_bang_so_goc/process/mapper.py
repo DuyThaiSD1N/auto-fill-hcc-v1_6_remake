@@ -105,6 +105,16 @@ def _phone(value: Any) -> str | None:
     return None
 
 
+def _phone_read(value: Any) -> tuple[str | None, bool]:
+    """(số điện thoại, đủ chữ số?). Phiếu bị che/mờ ('Điện thoại liên hệ: …7788') → vẫn trả phần chữ số đọc
+    được để ô không bỏ trắng; complete=False để mapper cảnh báo nhập nốt."""
+    full = _phone(value)
+    if full:
+        return full, True
+    digits = re.sub(r"\D+", "", _text(value) or "")
+    return (digits, False) if len(digits) >= 3 else (None, False)
+
+
 def _date(value: Any) -> str | None:
     text = _text(value)
     if not text:
@@ -241,6 +251,28 @@ def _lien_he(phone: Any, tt: Any) -> str | None:
     return ", ".join(parts) or None
 
 
+_UY = r"(?:ỦY|UỶ|UY)\s*QUYỀN"
+_UY_QUYEN = re.compile(rf"(?:GIẤY|HỢP\s+ĐỒNG|VĂN\s+BẢN)\s+{_UY}|BÊN\s+ĐƯỢC\s+{_UY}", re.IGNORECASE)
+
+
+def _has_authorization(ocr_text: str) -> bool:
+    return bool(_UY_QUYEN.search(unicodedata.normalize("NFC", ocr_text or "")))
+
+
+def _date_in_ocr(value: str | None, ocr_text: str) -> str | None:
+    """Giấy ủy quyền hay bị che năm ('Ngày tháng năm sinh: 01-01', 'cấp ngày 10/09') và LLM tự BỊA năm cho đủ
+    dd/mm/yyyy. Chỉ giữ ngày có ĐỦ ngày-tháng-năm trong OCR (d/m/yyyy, d-m-yyyy, 'ngày d tháng m năm yyyy')."""
+    if not value or not ocr_text:
+        return value
+    m = re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", value)
+    if not m:
+        return None
+    d, mo, y = (int(g) for g in m.groups())
+    pattern = (rf"(?<!\d)0?{d}\s*[/.\-]\s*0?{mo}\s*[/.\-]\s*{y}(?!\d)"
+               rf"|ngày\s+0?{d}\s+tháng\s+0?{mo}\s+năm\s+{y}(?!\d)")
+    return value if re.search(pattern, ocr_text, flags=re.IGNORECASE) else None
+
+
 def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     out: list[dict] = []
@@ -315,7 +347,12 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     # Số/ngày cấp/địa chỉ/điện thoại chủ: ưu tiên BM04 (VanBang_*), rồi tới CCCD chủ (nếu hợp lệ).
     chu_id = _identity(values.get("VanBang_SoGiayTo")) or (chu["id"] if chu_cccd_valid else None)
     chu_ngaycap = _date(values.get("VanBang_NgayCap")) or (chu["ngaycap"] if chu_cccd_valid else None)
-    chu_phone = _phone(values.get("VanBang_DienThoai")) or (chu["phone"] if chu_cccd_valid else None)
+    chu_phone, chu_phone_ok = _phone_read(values.get("VanBang_DienThoai"))
+    if not chu_phone and chu_cccd_valid and chu["phone"]:
+        chu_phone, chu_phone_ok = chu["phone"], True
+    if chu_phone and not chu_phone_ok:
+        warnings.append(f"Số điện thoại chủ văn bằng trên phiếu bị che/mờ, mới đọc được '{chu_phone}' — vui lòng "
+                        "nhập nốt các chữ số còn thiếu.")
     chu_quoctich = (_text(chu["quoctich"]) if chu_cccd_valid else None) or "Việt Nam"
     # ĐỊA CHỈ chủ: ưu tiên CCCD chủ (địa chỉ HIỆN TẠI). Phiếu BM04 hay ghi địa chỉ LÚC DỰ THI (cũ) →
     # VanBang_ThuongTru chỉ là dự phòng, và bỏ hẳn nếu nó chính là địa chỉ dự thi. Sau đó remap địa danh cũ.
@@ -343,7 +380,34 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     # tự đổ). Khác số / thiếu số → bỏ trống cả Phần I. CCCD người nộp thay (NguoiNop_*) chỉ dùng định tuyến. =====
     ctx = (options or {}).get("formContext") or {}
     ctx_id = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
-    if not is_org and chu_id and ctx_id and chu_id == ctx_id:
+    # CÓ GIẤY ỦY QUYỀN → người nộp là BÊN ĐƯỢC ỦY QUYỀN: GHI ĐÈ cả Phần I (khối tài khoản VNeID tự đổ, thường
+    # là của cán bộ) bằng nhân thân người đó, kể cả họ tên.
+    proxy = nop if (_has_authorization(ocr_text) and nop["name"]
+                    and not (anchor and _same_name(nop["name"], anchor))) else None
+    if proxy:
+        add("data[fullname]", proxy["name"].upper())
+        add("data[identityNumber]", proxy["id"])
+        if not proxy["id"] or len(proxy["id"]) not in (9, 12):
+            warnings.append(f"Số CCCD người được ủy quyền ({proxy['name']}) bị che/thiếu" + (
+                f", mới đọc được '{proxy['id']}'" if proxy["id"] else "") + " — vui lòng nhập đủ.")
+        add("data[gender]", proxy["gender"])
+        p_dob = _date_in_ocr(proxy["dob"], ocr_text)
+        p_ngaycap = _date_in_ocr(proxy["ngaycap"], ocr_text)
+        add("data[birthday]", p_dob)
+        add("data[identityDate]", p_ngaycap)
+        missing = [lbl for lbl, v in (("ngày sinh", p_dob), ("ngày cấp CCCD", p_ngaycap)) if not v]
+        if missing:
+            warnings.append(f"Giấy ủy quyền không ghi đủ {', '.join(missing)} của người được ủy quyền — vui lòng "
+                            "nhập tay (các ô này đang là của tài khoản đăng nhập).")
+        p_loai = _id_doc_type_by_len(proxy["id"]) or "Căn cước công dân"
+        add("data[idIssuePlace]", _issue_place(proxy["noicap"], p_loai, p_ngaycap))
+        p_tt = _remap(_area(proxy["tt"]) or {}, ocr_text)
+        add("data[province]", _province_label(p_tt.get("tinh") or p_tt.get("tinhThanh")))
+        add("data[district]", _text(p_tt.get("xa") or p_tt.get("phuong")))
+        add("data[address]", _text(p_tt.get("diaChi") or p_tt.get("chiTiet")))
+        add("data[phoneNumber]", proxy["phone"])
+        add("data[email]", proxy["email"])
+    elif not is_org and chu_id and ctx_id and chu_id == ctx_id:
         add("data[identityNumber]", chu_id)
         add("data[gender]", chu_gender)
         add("data[birthday]", chu_dob)

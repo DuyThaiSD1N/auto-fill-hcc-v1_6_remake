@@ -40,6 +40,16 @@ _CHO_THUE = {
 _DICH_VU_TAI = "Xe ô tô tải kinh doanh vận tải hàng hóa thông thường và xe taxi tải"
 _KD_HANG_HOA = "Kinh doanh vận tải hàng hóa bằng xe ô tô"
 
+# Select Choices tìm TỪ XA: gõ chữ xong phải thêm một dấu cách mới ra kết quả, và mỗi lần FE mở/gõ lại mà không
+# chọn là ô render hỏng sang mã id. Cờ searchOnce → FE (fillChoicesSearchOnce) chỉ chạy MỘT lượt gõ + dấu cách.
+_SEARCH_ONCE = {
+    "data[TinhThanh]",
+    "data[T_CoQuan]",
+    f"{_DV}[LoaiHinhDoanhNghiep]",
+    f"{_PT}[MauSon]",
+    f"{_PT}[PhanLoaiXeCoGioi]",
+}
+
 # Danh mục "Nước sản xuất" của cổng dùng tên TIẾNG ANH. "Viet" khớp cả "Vietnam" lẫn "Viet Nam".
 _NUOC_SX = {
     "viet nam": "Viet",
@@ -270,6 +280,69 @@ def _year(value: Any) -> str | None:
     return years[-1] if years else None
 
 
+_DATE_YEAR = re.compile(
+    r"\b\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*(?:19|20)\d{2}\b|tháng\s+\d{1,2}\s+năm\s+(?:19|20)\d{2}", re.IGNORECASE)
+
+
+def _year_in_ocr(year: str | None, ocr_text: str, *, allow_dates: bool) -> str | None:
+    """LLM hay BỊA năm khi giấy tờ bị che ('Năm sản xuất: 20.'). Năm phải có NGUYÊN VĂN trong OCR mới giữ.
+    Năm sản xuất không bao giờ nằm trong một ngày tháng → bỏ các ngày trước khi dò, để năm lập văn bản/năm ký
+    hợp đồng không 'xác nhận' hộ năm bịa. Niên hạn thì có thể lấy từ 'Giá trị đến ngày …' → giữ ngày."""
+    if not year or not ocr_text:
+        return year
+    haystack = ocr_text if allow_dates else _DATE_YEAR.sub(" ", ocr_text)
+    return year if re.search(rf"(?<!\d){year}(?!\d)", haystack) else None
+
+
+def _same_person(a: Any, b: Any) -> bool:
+    strip = lambda v: re.sub(r"^(ong|ba|anh|chi)\s+", "", _fold(v))  # noqa: E731
+    return bool(_fold(a)) and strip(a) == strip(b)
+
+
+_BEN_B_HEAD = re.compile(r"B[ÊE]N\s+B\s*(?:\([^)]*\))?\s*:\s*(?:ÔNG|BÀ|Ông|Bà)?\s*([^\n:]+?)\s*(?:\n|\s[-–]\s)")
+_PHONE_LABEL = re.compile(r"điện\s*thoại\s*:\s*([\d.\s]{4,}\d)", re.IGNORECASE)
+
+
+_ITEM_END = r"(?=\s[-–]\s|\n|$)"
+
+
+def _ben_b_from_ocr(ocr_text: str) -> dict:
+    """Nhân thân BÊN B hợp đồng đọc thẳng từ OCR — LLM hay BỎ SÓT các khoá HopDong_BenB_* dù OCR có đủ. Chỉ
+    dò trong khối Bên B (trước 'ĐIỀU'/'Bên A' kế tiếp) để không vớ SĐT/địa chỉ của Bên A."""
+    m = _BEN_B_HEAD.search(ocr_text or "")
+    if not m:
+        return {}
+    block = re.split(r"ĐIỀU\s+\d|B[ÊE]N\s+A\b", ocr_text[m.end():m.end() + 600])[0]
+
+    def grab(pattern: str) -> str | None:
+        hit = re.search(pattern, block, flags=re.IGNORECASE)
+        return _text(hit.group(1)) if hit else None
+
+    phone = _PHONE_LABEL.search(block)
+    return {
+        "name": _text(m.group(1)),
+        "phone": phone.group(1).strip() if phone else None,
+        "address": grab(r"địa\s*chỉ\s*:\s*(.+?)" + _ITEM_END),
+        "cccd": grab(r"(?:cccd|cmnd|căn\s*cước)[^:\n]{0,20}:\s*([\d\s.]+)"),
+        "ngayCap": grab(r"cấp\s*ngày\s*([\d/.\-]+)"),
+        "noiCap": grab(r"cấp\s*ngày[^\n]*?\btại\s+(.+?)(?=\.\s|\s[-–]\s|\n|$)"),
+    }
+
+
+def _split_address(text: str | None) -> dict | None:
+    """'TDP X, Phường Y, Tỉnh Z.' → {tinh, xa, diaChi} — cùng dạng object LLM trả cho ô địa chỉ."""
+    parts = [p.strip(" .") for p in str(text or "").split(",") if p.strip(" .")]
+    if not parts:
+        return None
+    out = {"quocGia": "Việt Nam", "tinh": "", "xa": "", "diaChi": ""}
+    if parts and re.match(r"(tỉnh|thành\s*phố|tp\.?)\s", parts[-1], flags=re.IGNORECASE):
+        out["tinh"] = parts.pop()
+    if parts and re.match(r"(phường|xã|thị\s*trấn|đặc\s*khu)\s", parts[-1], flags=re.IGNORECASE):
+        out["xa"] = parts.pop()
+    out["diaChi"] = ", ".join(parts)
+    return out
+
+
 def _plate(value: Any) -> str | None:
     """Biển số theo định dạng giấy tờ ('37C-123.45'); bỏ ký hiệu nhỏ in cạnh như '(V)'/'(T)'."""
     text = _text(value)
@@ -452,7 +525,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        item = {"name": name, "comp": comp, "value": value}
+        if name in _SEARCH_ONCE:
+            item["searchOnce"] = True
+        out.append(item)
         seen.add(name)
 
     cars = _vehicles(values.get("PhuongTien"))
@@ -467,10 +543,35 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         warnings.append(f"Số điện thoại đơn vị KDVT trên giấy tờ bị che/mờ, mới đọc được '{dv_phone}' — vui lòng "
                         "nhập nốt các chữ số còn thiếu.")
 
-    # ===== Phần I: NGƯỜI NỘP (chỉ khi có CCCD) =====
+    # ===== Phần I: NGƯỜI NỘP — ĐƯỢC GHI ĐÈ khối VNeID tự đổ (tài khoản thường là của cán bộ) =====
+    # Nguồn: thẻ CCCD trong hồ sơ → không có thì BÊN B hợp đồng (xã viên/bên cho thuê — chủ xe đi làm phù
+    # hiệu). Không có cả hai thì để nguyên khối tài khoản.
     nop_name = _text(values.get("NguoiNop_HoTen"))
     nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
-    if nop_name or nop_id:
+    ocr_b = _ben_b_from_ocr(ocr_text)
+    ben_b_name = _text(values.get("HopDong_BenB_HoTen")) or ocr_b.get("name")
+    ben_b_phone = values.get("HopDong_BenB_DienThoai") or ocr_b.get("phone")
+    ben_b_is_submitter = not (nop_name or nop_id) and bool(ben_b_name)
+    if ben_b_is_submitter:
+        add("data[fullname]", ben_b_name.upper())
+        b_id = _identity(values.get("HopDong_BenB_SoCCCD") or ocr_b.get("cccd"))
+        add("data[identityNumber]", b_id)
+        if not b_id or len(b_id) != 12:
+            warnings.append(f"Số CCCD của {ben_b_name} trên hợp đồng bị che/thiếu" + (f", mới đọc được '{b_id}'"
+                            if b_id else "") + " — vui lòng nhập đủ 12 số.")
+        # Ngày cấp trên hợp đồng hay bị che ('17/') → chỉ nhận ngày ĐỦ dd/mm/yyyy.
+        b_date = _date(values.get("HopDong_BenB_NgayCapCCCD") or ocr_b.get("ngayCap"))
+        add("data[identityDate]", b_date if b_date and re.fullmatch(r"\d{2}/\d{2}/\d{4}", b_date) else None)
+        add("data[identityAgency]", _issuer(values.get("HopDong_BenB_NoiCapCCCD") or ocr_b.get("noiCap")))
+        add("data[nation]", "Việt Nam")
+        b_area = _area(values.get("HopDong_BenB_DiaChi")) or _split_address(ocr_b.get("address"))
+        if b_area:
+            add("data[province]", _province_label(b_area.get("tinh")))
+            add("data[district]", _text(b_area.get("xa")))
+            add("data[address]", _text(b_area.get("diaChi")))
+        warnings.append(f"Người nộp lấy theo Bên B hợp đồng ({ben_b_name}) — hợp đồng không ghi ngày sinh, giới "
+                        "tính: kiểm tra lại hai ô này (đang là của tài khoản đăng nhập).")
+    elif nop_name or nop_id:
         add("data[fullname]", nop_name)
         add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
         add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
@@ -484,7 +585,18 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
             add("data[district]", _text(nop_area.get("xa")))
             add("data[address]", _text(nop_area.get("diaChi")))
     add("data[email]", _email(values.get("NguoiNop_Email")))
-    add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")) or dv_phone)
+    # SĐT người nộp: số ghi cho chính người đó → Bên B hợp đồng khi Bên B CHÍNH LÀ người nộp (lấy theo Bên B,
+    # hoặc trùng họ tên CCCD/tài khoản) → cuối cùng mới tới số đơn vị KDVT. Số của người nộp dù bị che vẫn đúng
+    # người hơn số đơn vị (cảnh báo nhập nốt).
+    ctx = (options or {}).get("formContext") or {}
+    submitter = nop_name or _text(ctx.get("applicantFullname"))
+    nop_phone, nop_phone_ok = _phone_read(values.get("NguoiNop_DienThoai"))
+    if not nop_phone and (ben_b_is_submitter or _same_person(ben_b_name, submitter)):
+        nop_phone, nop_phone_ok = _phone_read(ben_b_phone)
+    if nop_phone and not nop_phone_ok:
+        warnings.append(f"Số điện thoại người nộp trên giấy tờ bị che/mờ, mới đọc được '{nop_phone}' — vui lòng "
+                        "nhập nốt các chữ số còn thiếu.")
+    add("data[phoneNumber]", nop_phone or dv_phone)
 
     # Ghi chú (data[tenHoSo]): tên hồ sơ gợi ý, vd "Cấp lại phù hiệu xe tải 37C-123.45".
     cap_lai = "cap_lai" in _fold(values.get("DeNghi_LoaiDeNghi")).replace(" ", "_") or "cap lai" in _fold(
@@ -607,7 +719,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         warnings.append(f"Xe {label}: số khung '{so_khung}' ngắn hơn 17 ký tự — đối chiếu Chứng nhận đăng ký xe.")
     if not so_khung or not so_may:
         warnings.append(f"Xe {label}: thiếu số khung hoặc số máy — vui lòng nhập tay.")
-    add(f"{_PT}[NienHan]", _year(_item_text(car, "nienHan")))
+    nien_han = _year_in_ocr(_year(_item_text(car, "nienHan")), ocr_text, allow_dates=True)
+    add(f"{_PT}[NienHan]", nien_han)
+    if not nien_han:
+        warnings.append(f"Xe {label}: không đọc được đủ niên hạn sử dụng trên giấy tờ — vui lòng nhập tay.")
 
     so_cho = _digits(_item_text(car, "soCho"))
     add(f"{_PT}[PhanLoaiXeCoGioi]", _loai_phuong_tien(loai_xe, loai_phu_hieu, so_cho))
@@ -619,7 +734,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     else:
         add(f"{_PT}[SoChoNgoi]", so_cho or _digits(_item_text(car, "trongTai")))
     add(f"{_PT}[MauSon]", _item_text(car, "mauSon"))
-    add(f"{_PT}[NamSanXuat]", _year(_item_text(car, "namSanXuat")))
+    nam_sx = _year_in_ocr(_year(_item_text(car, "namSanXuat")), ocr_text, allow_dates=False)
+    add(f"{_PT}[NamSanXuat]", nam_sx)
+    if not nam_sx:
+        warnings.append(f"Xe {label}: không đọc được đủ năm sản xuất trên giấy tờ — vui lòng nhập tay.")
     add(f"{_PT}[NhanHieu]", _item_text(car, "nhanHieu"))
     add(f"{_PT}[TinhTrangPhuongTien]", "Đang hoạt động")
     warnings.append("Chọn 'Màu phù hiệu' theo loại phù hiệu, kiểm tra thông tin xe rồi bấm 'Thêm' để đưa xe vào "

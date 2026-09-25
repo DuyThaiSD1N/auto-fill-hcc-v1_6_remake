@@ -25,7 +25,9 @@ _NOP_FIELDS = [
     ("QuocTich", 'Quốc tịch NGƯỜI NỘP (CCCD). Mặc định "Việt Nam".'),
     ("ThuongTru", "NƠI THƯỜNG TRÚ/cư trú NGƯỜI NỘP trên CCCD, object {quocGia,tinh,xa,diaChi}. tinh='Tỉnh/"
         "Thành phố …', xa='Phường/Xã …', diaChi=số nhà/đường/thôn/tổ (KHÔNG kèm phường/xã/tỉnh)."),
-    ("DienThoai", "Số điện thoại DI ĐỘNG của NGƯỜI NỘP nếu giấy tờ ghi rõ là của người đó. Chỉ chữ số."),
+    ("DienThoai", "Số điện thoại DI ĐỘNG của NGƯỜI NỘP nếu giấy tờ ghi rõ là của người đó (vd Bên B của hợp "
+        "đồng CÙNG họ tên người trên CCCD → số 'Điện thoại' của Bên B). KHÔNG lấy số của đơn vị KDVT/Bên A. "
+        "Chép nguyên phần đọc được, bị che thì KHÔNG đoán thêm chữ số."),
     ("Email", "Email cá nhân NGƯỜI NỘP nếu có; thường không có → bỏ."),
 ]
 
@@ -56,6 +58,18 @@ FIELDS += [
     {"name": "DonVi_Fax", "desc": "Số fax của đơn vị nếu có."},
     {"name": "DonVi_NguoiDaiDien", "desc": "Họ tên NGƯỜI ĐẠI DIỆN đơn vị KDVT — tên dưới chữ ký 'Đại diện đơn vị "
         "kinh doanh vận tải' của Giấy đề nghị, hoặc 'Bên A - Đại diện: Ông/Bà …' của HĐ. Không kèm 'Ông/Bà'."},
+    {"name": "HopDong_BenB_HoTen", "desc": "Họ tên BÊN B của hợp đồng dịch vụ xã viên/HĐ thuê xe/HĐ hợp tác — "
+        "bên KHÔNG phải đơn vị KDVT (xã viên, bên cho thuê). Không kèm 'Ông/Bà'. Không có hợp đồng → bỏ."},
+    {"name": "HopDong_BenB_DienThoai", "desc": "Số điện thoại của BÊN B trong hợp đồng (dòng 'Số điện thoại' "
+        "dưới Bên B). Chép nguyên phần đọc được, bị che thì KHÔNG đoán thêm chữ số."},
+    {"name": "HopDong_BenB_DiaChi", "desc": "Địa chỉ của BÊN B trong hợp đồng, object {quocGia,tinh,xa,diaChi}. "
+        "tinh='Tỉnh/Thành phố …', xa='Phường/Xã …', diaChi=số nhà/thôn/tổ dân phố (KHÔNG kèm phường/xã/tỉnh)."},
+    {"name": "HopDong_BenB_SoCCCD", "desc": "Số CCCD/CMND của BÊN B ghi trong hợp đồng. Chỉ chữ số, bị che thì "
+        "giữ phần đọc được, KHÔNG đoán thêm."},
+    {"name": "HopDong_BenB_NgayCapCCCD", "desc": "Ngày cấp CCCD của BÊN B ghi trong hợp đồng, dd/mm/yyyy. Bị "
+        "che/thiếu → bỏ."},
+    {"name": "HopDong_BenB_NoiCapCCCD", "desc": "Nơi cấp CCCD của BÊN B ghi trong hợp đồng ('Cục Cảnh sát QLHC "
+        "về TTXH' → 'Cục Cảnh sát quản lý hành chính về trật tự xã hội')."},
     {"name": "GCNDK_SoGiay", "desc": "Số Giấy chứng nhận đăng ký doanh nghiệp/HTX/hộ kinh doanh — CHỈ khi có "
         "GCN đăng ký trong hồ sơ. Không có → bỏ."},
     {"name": "GCNDK_CoQuanCap", "desc": "Cơ quan cấp GCN đăng ký doanh nghiệp/HTX (vd 'Phòng Đăng ký kinh "
@@ -102,10 +116,12 @@ FIELDS += [
         "\"mauSon\" (Màu sơn (Color)), "
         "\"trongTai\" (Trọng tải (Gross weight) / 'Sức chứa' / 'Tải trọng' tính bằng kg, vd '6.750 KG'), "
         "\"soCho\" (Số chỗ ngồi (Seats) — chỉ số), "
-        "\"namSanXuat\" (năm sản xuất, 4 chữ số), "
+        "\"namSanXuat\" (năm sản xuất, 4 chữ số — CHỈ khi đọc được ĐỦ 4 chữ số trên giấy tờ; bị che/cắt như "
+        "'20.', '20__' → BỎ khoá, KHÔNG đoán), "
         "\"nuocSanXuat\" (nước sản xuất, tiếng Việt, vd 'Việt Nam', 'Hàn Quốc'), "
         "\"nienHan\" (năm hết niên hạn sử dụng: HĐ 'Niên hạn sử dụng' hoặc Chứng nhận đăng ký 'Giá trị đến "
-        "ngày (date of expiry)' — chỉ lấy NĂM 4 chữ số), "
+        "ngày (date of expiry)' — chỉ lấy NĂM 4 chữ số đọc được nguyên văn; bị che/cắt → BỎ khoá, KHÔNG tự "
+        "tính từ năm sản xuất), "
         "\"chuXe\" (Tên chủ xe (Owner's full name) trên Chứng nhận đăng ký), "
         "\"ngayDangKy\" (ngày cấp Chứng nhận đăng ký — dòng '<Địa danh>, ngày … tháng … năm …' cạnh chữ ký "
         "Trưởng phòng, dd/mm/yyyy), "
@@ -130,6 +146,7 @@ for _n in ("NguoiNop_NgaySinh", "NguoiNop_NgayCap", "GCNDK_NgayCap", "GPKD_NgayC
     COMPACT_COMP_BY_NAME[_n] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiNop_ThuongTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["DonVi_DiaChi"] = "x-select-area"
+COMPACT_COMP_BY_NAME["HopDong_BenB_DiaChi"] = "x-select-area"
 COMPACT_COMP_BY_NAME["PhuongTien"] = "x-array"
 
 # ---- UI Form.io fields (data[...]) — comp dom-*. Field-key lấy từ HTML thật (file mapping).

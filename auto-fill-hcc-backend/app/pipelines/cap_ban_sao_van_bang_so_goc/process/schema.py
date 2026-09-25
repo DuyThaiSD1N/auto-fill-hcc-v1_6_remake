@@ -102,7 +102,9 @@ FIELDS += [
 # --- CCCD của NGƯỜI NỘP THAY (CCCD KHÁC tên văn bằng) ---
 _NOP_FIELDS = [
     ("HoTen", "Họ tên NGƯỜI NỘP HỒ SƠ — chỉ điền khi có CCCD tải lên mang tên KHÁC với văn bằng (người "
-        "nộp thay). IN HOA."),
+        "nộp thay) HOẶC có GIẤY ỦY QUYỀN (lấy mục 'BÊN ĐƯỢC ỦY QUYỀN'; tên bị che ở mục đó thì lấy tên ký dưới "
+        "'BÊN ĐƯỢC ỦY QUYỀN'). IN HOA. Các khoá NguoiNop_* còn lại lấy cùng nguồn; ngày bị che năm ('01-01', "
+        "'cấp ngày 10/09') → BỎ, KHÔNG tự thêm năm."),
     ("SoDinhDanh", "Số CCCD NGƯỜI NỘP (CCCD khác tên văn bằng). Chỉ chữ số."),
     ("NgaySinh", "Ngày sinh NGƯỜI NỘP, dd/mm/yyyy — CCCD người nộp."),
     ("GioiTinh", 'Giới tính NGƯỜI NỘP: "Nam"/"Nữ" — CCCD người nộp.'),

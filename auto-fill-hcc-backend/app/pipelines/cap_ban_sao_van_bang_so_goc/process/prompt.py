@@ -12,6 +12,8 @@ có thêm CCCD của NGƯỜI NỘP THAY (người khác đi nộp hộ) hoặc 
      ChuHoSo_SoGiayTo/NgayCap/NoiCap/ThuongTru từ CCCD đó.
 2) NGƯỜI NỘP THAY = người đi nộp hộ (KHÁC chủ văn bằng). Nếu có CCCD mang tên KHÁC VanBang_HoTen thì đó
    là CCCD người nộp → điền NguoiNop_* (HoTen/SoDinhDanh/NgaySinh/GioiTinh/NgayCap/NoiCap/ThuongTru).
+   Có GIẤY ỦY QUYỀN → người nộp là mục 'BÊN ĐƯỢC ỦY QUYỀN': điền NguoiNop_* từ mục đó (kể cả khi không có
+   CCCD của người này). 'BÊN ỦY QUYỀN' là chủ văn bằng. Ngày bị che/thiếu năm → BỎ khoá, KHÔNG tự thêm năm.
 
 QUY TẮC KHỚP (BẮT BUỘC): với MỖI thẻ CCCD, đọc 'Họ và tên' trên thẻ rồi so với VanBang_HoTen:
 - TRÙNG tên → thông tin CCCD đó thuộc CHỦ VĂN BẰNG (ChuHoSo_*).

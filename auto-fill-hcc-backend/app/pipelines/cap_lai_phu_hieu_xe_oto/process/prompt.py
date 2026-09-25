@@ -16,6 +16,8 @@ Chứng nhận đăng ký xe và hợp đồng thường GỘP chung một file 
 BA vai — TÁCH RIÊNG, KHÔNG TRỘN:
 - NGƯỜI NỘP (NguoiNop_*) CHỈ lấy từ THẺ CCCD/CMND. KHÔNG lấy người ký Giấy đề nghị, đại diện Bên A/Bên B
   trong hợp đồng hay chủ xe. Không có thẻ CCCD → bỏ trống toàn bộ NguoiNop_*.
+- BÊN B hợp đồng (HopDong_BenB_*): trả ĐỦ họ tên, địa chỉ, số điện thoại, số CCCD, ngày cấp, nơi cấp ghi
+  dưới "BÊN B" — hệ thống dùng làm người nộp khi hồ sơ không có thẻ CCCD.
 - ĐƠN VỊ KDVT (DonVi_*, GCNDK_*, GPKD_*) = đơn vị đứng tên Giấy đề nghị / Bên A của hợp đồng.
 - CHỦ XE (PhuongTien[].chuXe) = 'Tên chủ xe' trên Chứng nhận đăng ký xe — có thể là cá nhân xã viên/bên cho
   thuê, KHÁC đơn vị KDVT. Địa chỉ/CCCD của chủ xe KHÔNG đưa vào DonVi_* hay NguoiNop_*.
@@ -25,6 +27,10 @@ nghị/hợp đồng hay ghi RÚT GỌN hoặc bị che (biển số, số máy,
 khác. Một ký tự bị che/mờ ở mọi nguồn → giữ phần đọc được, KHÔNG tự đoán thêm ký tự.
 Nước sản xuất, năm sản xuất, loại phù hiệu, cấp hạn phù hiệu: lấy từ bảng xe của Giấy đề nghị (Chứng nhận
 đăng ký không in).
+⚠ NĂM SẢN XUẤT / NIÊN HẠN SỬ DỤNG: chỉ chép khi thấy ĐỦ 4 chữ số trên giấy tờ. Bị che/cắt ('20.', '20__',
+'20:') ở mọi nguồn → BỎ khoá. TUYỆT ĐỐI không suy từ năm đăng ký, số khung, năm sản xuất + 25 hay ước lượng.
+⚠ SỐ ĐIỆN THOẠI người nộp ≠ số của đơn vị KDVT (Bên A). Người trên CCCD trùng họ tên Bên B của hợp đồng → dùng
+số điện thoại của Bên B.
 
 ⚠ Giấy đề nghị có thể kèm khung thông tin GIÁM SÁT HÀNH TRÌNH (Đơn vị lắp đặt, Đơn vị truyền dẫn dữ liệu, Trang
 web, Tài khoản, Mật khẩu) — BỎ QUA toàn bộ, KHÔNG lấy 'Tài khoản' làm email đơn vị, KHÔNG chép mật khẩu.
