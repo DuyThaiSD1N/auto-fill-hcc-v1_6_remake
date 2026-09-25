@@ -574,7 +574,7 @@
       "autoConfirm": true
     },
     {
-      "key": "cap-gcn-dang-ky-tau-ca-tau-phuc-vu-nuoi-trong-thuy-san",
+      "key": "cap-gcn-dang-ky-tau-ca",
       "code": "1.003650",
       "label": "Cấp giấy chứng nhận đăng ký tàu cá, tàu phục vụ nuôi trồng thủy sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-2864-76fe-9234-7c54e1661f21",
@@ -1020,14 +1020,6 @@
       "needsAgencySelect": true,
       "provinceOnlyAgency": true,
       "selectSo": true,
-      "autoConfirm": true
-    },
-    {
-      "key": "cap-chung-chi-hanh-nghe-thu-y",
-      "code": "1.004756",
-      "label": "Cấp Chứng chỉ hành nghề thú y",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-3ffa-7038-9c34-a5938ca7ea82",
-      "needsAgencySelect": true,
       "autoConfirm": true
     },
     {

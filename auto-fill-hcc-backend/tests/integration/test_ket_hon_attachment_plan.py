@@ -6,6 +6,7 @@ import fitz
 from app.pipelines.ket_hon.attach import planner as ket_hon_dispatcher
 from app.pipelines.ket_hon.attach.dinh_kem_khong_tach import planner as ket_hon_preserve
 from app.pipelines.ket_hon.attach.dinh_kem_tach import planner as ket_hon
+from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
 
 
@@ -554,3 +555,107 @@ TỜ KHAI ĐĂNG KÝ KẾT HÔN
     ]
     blank = next(item for item in result["extracted"]["classified"] if item["type"] == "blank_page")
     assert blank["target"] == "ignored"
+
+
+_NGHIA_HUNG_USER = {"tinh": "Tỉnh Ninh Bình", "xa": "Xã Nghĩa Hưng"}
+
+
+def test_ket_hon_nghia_hung_flag_is_set_by_account_only():
+    options = with_account_attach_options({}, _NGHIA_HUNG_USER, "ket-hon")
+    assert options["omitPaperDeclaration"] is True
+    # Client không tự bật được cho xã khác; thủ tục kết hôn khác chưa áp dụng.
+    other_ward = {"tinh": "Tỉnh Ninh Bình", "xa": "Xã Nghĩa Hưng Đông"}
+    assert "omitPaperDeclaration" not in with_account_attach_options(
+        {"omitPaperDeclaration": True}, other_ward, "ket-hon",
+    )
+    assert "omitPaperDeclaration" not in with_account_attach_options(
+        {}, _NGHIA_HUNG_USER, "ket-hon-nuoc-ngoai",
+    )
+
+
+async def test_ket_hon_preserve_nghia_hung_drops_declaration_and_trims_bundle(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "to-khai.pdf", "text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nBên nữ Bên nam"},
+            {
+                "name": "ho-so.pdf",
+                "text": """
+───── Trang 1/3 ─────
+TỜ KHAI ĐĂNG KÝ KẾT HÔN
+Kính gửi: UBND xã
+───── Trang 2/3 ─────
+Chúng tôi cam đoan những lời khai trên đây là đúng sự thật
+Làm tại xã, ngày 01 tháng 01 năm 2026
+Bên nữ Bên nam
+───── Trang 3/3 ─────
+GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN
+""",
+            },
+            {"name": "cccd.jpg", "text": "CĂN CƯỚC CÔNG DÂN\nSố 001234567890\nHọ và tên NGUYỄN VĂN A"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"fileIndex": 0, "type": "marriage_declaration", "documentName": "Tờ khai đăng ký kết hôn"},
+            {"fileIndex": 1, "type": "other", "documentName": "Hồ sơ đăng ký kết hôn"},
+            {"fileIndex": 2, "type": "identity", "subjectName": "NGUYỄN VĂN A"},
+        ]})
+
+    monkeypatch.setattr(ket_hon_preserve.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon_preserve.client, "chat", fake_chat)
+    files = [_file("to-khai.pdf"), _pdf_file("ho-so.pdf", 3), _file("cccd.jpg", "image/jpeg")]
+
+    result = await ket_hon_dispatcher.plan(
+        files, with_account_attach_options(_attachment_context(), _NGHIA_HUNG_USER, "ket-hon"), {},
+    )
+
+    by_file = {item["fileIndex"]: item for item in result["attachments"]}
+    assert set(by_file) == {1, 2}
+    assert by_file[1]["documentName"] == "Giấy tờ đăng ký kết hôn"
+    assert by_file[1]["sourceSegments"] == [{"fileIndex": 1, "pageIndexes": [2]}]
+    assert by_file[2]["target"] == "existing"
+    ignored = [item for item in result["extracted"]["classified"] if item["target"] == "ignored"]
+    assert [item["fileIndex"] for item in ignored] == [0]
+    assert any("bỏ trang 1, 2 của ho-so.pdf" in error for error in result["errors"])
+
+    # Tài khoản khác: giữ nguyên hành vi cũ, Tờ khai vẫn đính.
+    result = await ket_hon_dispatcher.plan(files, _attachment_context(), {})
+    assert [item["fileIndex"] for item in result["attachments"]] == [0, 1, 2]
+    assert all("sourceSegments" not in item for item in result["attachments"])
+
+
+async def test_ket_hon_split_nghia_hung_drops_only_declaration_segment(monkeypatch):
+    async def fake_ocr_per_file(files):
+        return [{
+            "name": "mixed.pdf",
+            "text": """
+───── Trang 1/3 ─────
+CĂN CƯỚC CÔNG DÂN Số 001234567890
+───── Trang 2/3 ─────
+TỜ KHAI ĐĂNG KÝ KẾT HÔN
+───── Trang 3/3 ─────
+BẢN CAM ĐOAN
+""",
+        }]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity", "subjectName": "NGUYỄN VĂN A"},
+            {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "marriage_declaration"},
+            {"fileIndex": 0, "pageFrom": 3, "pageTo": 3, "type": "commitment"},
+        ]})
+
+    monkeypatch.setattr(ket_hon.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(ket_hon.client, "chat", fake_chat)
+    options = with_account_attach_options(
+        {**_attachment_context(), "splitDocuments": True}, _NGHIA_HUNG_USER, "ket-hon",
+    )
+
+    result = await ket_hon_dispatcher.plan([_pdf_file("mixed.pdf", 3)], options, {})
+
+    assert [item["documentName"] for item in result["attachments"]] == [
+        "CCCD NGUYỄN VĂN A",
+        "Bản cam đoan",
+    ]
+    ignored = [item for item in result["extracted"]["classified"] if item["target"] == "ignored"]
+    assert [(item["pageFrom"], item["type"]) for item in ignored] == [(2, "marriage_declaration")]
