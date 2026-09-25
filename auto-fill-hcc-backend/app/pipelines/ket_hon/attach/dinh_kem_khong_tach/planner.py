@@ -1,7 +1,8 @@
 """Phân loại theo nguyên file cho thủ tục đăng ký kết hôn.
 
 Nhánh này cố ý không sinh ``sourceSegments``: một PDF hỗn hợp vẫn là một tài liệu đính kèm.
-Ngoại lệ duy nhất là các file rời chứa hai mặt CCCD cùng người được gộp bằng ``sourceFileIndexes``.
+Ngoại lệ: các file rời chứa hai mặt CCCD cùng người được gộp bằng ``sourceFileIndexes``; riêng
+xã Nghĩa Hưng (bỏ Tờ khai) thì file gộp được cắt trang Tờ khai bằng ``sourceSegments``.
 """
 
 import re
@@ -14,6 +15,7 @@ from app.pipelines._shared import normalize_document_name
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.identity_merge import merge_identity_attachments
 from app.pipelines.ket_hon.attach.dinh_kem_khong_tach.prompt import SYSTEM_PROMPT, build_user_prompt
+from app.pipelines.xac_nhan_tthn.attach.nghia_hung import OMITTED_DECLARATION_NOTE, omits_paper_declaration
 from app.process.schemas import FileItem
 from app.services import ocr
 from app.services.llm import client
@@ -33,6 +35,37 @@ _ID_SLOT_COMPONENT = (
     "Hộ chiếu/Chứng minh nhân dân/Thẻ căn cước công dân/Thẻ căn cước/Căn cước điện tử"
 )
 _IDENTITY_NUMBER_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
+
+# Chỉ dùng khi xã bỏ Tờ khai (Nghĩa Hưng): cắt trang Tờ khai khỏi file gộp theo header Trang n/m.
+_NUMBERED_PAGE_HEADER_RE = re.compile(
+    r"(?im)^[\t ─-╿-]*(?:trang|page)\s+(\d+)\s*/\s*(\d+)"
+    r"[\t ─-╿-]*$"
+)
+_DECLARATION_MARKER = "to khai dang ky ket hon"
+# Trang ký tên/mặt sau của Tờ khai: lời cam đoan, chữ ký hai bên nhưng không có tiêu đề riêng.
+_DECLARATION_TAIL_MARKERS = ("chung toi cam doan", "lam tai", "ben nam", "ben nu")
+_NEAR_EMPTY_PAGE_CHARS = 30
+_RELATED_DOCUMENT_MARKERS = (
+    "can cuoc cong dan",
+    "citizen identity",
+    "identity card",
+    "idvnm",
+    "chung minh nhan dan",
+    "ho chieu",
+    "passport",
+    "ban cam doan",
+    "giay cam doan",
+    "giay xac nhan tinh trang hon nhan",
+    "ket qua kiem tra thong tin cong dan",
+    "quyet dinh ly hon",
+    "ban an ly hon",
+    "trich luc khai tu",
+    "giay bao tu",
+    "trich luc ghi chu ly hon",
+    "van ban uy quyen",
+    "giay uy quyen",
+)
+_RELATED_BUNDLE_LABEL = "Giấy tờ đăng ký kết hôn"
 
 
 def _coerce_int(value: Any) -> int | None:
@@ -90,6 +123,59 @@ def _fallback_document_name(text: str) -> str:
         if marker in folded:
             return title
     return ""
+
+
+def _starts_line(text: str, markers: tuple[str, ...]) -> bool:
+    return any(
+        _fold(line).startswith(markers)
+        for line in str(text or "").splitlines()
+        if str(line).strip()
+    )
+
+
+def _is_declaration_page(page_text: str, previous_is_declaration: bool) -> bool:
+    """Trang thuộc Tờ khai: có tiêu đề Tờ khai, hoặc là trang nối tiếp ngay sau Tờ khai."""
+    head = page_text[:600]
+    folded_head = _fold(head)
+    has_related_title = _starts_line(head, _RELATED_DOCUMENT_MARKERS)
+    if _starts_line(head, (_DECLARATION_MARKER,)):
+        return True
+    # Tiêu đề bị OCR dính dòng; bản cam đoan nhắc tới Tờ khai thì có tiêu đề riêng nên loại.
+    if _DECLARATION_MARKER in folded_head and not has_related_title:
+        return True
+    if not previous_is_declaration:
+        return False
+    # Chú thích, mặt sau gần trắng và trang ký tên không có tài liệu độc lập vẫn thuộc Tờ khai.
+    if folded_head.startswith("chu thich") or len(page_text.strip()) < _NEAR_EMPTY_PAGE_CHARS:
+        return True
+    if has_related_title or _rule_doc_type(page_text) != "other":
+        return False
+    return any(marker in folded_head for marker in _DECLARATION_TAIL_MARKERS)
+
+
+def _declaration_page_split(text: str) -> tuple[list[int], list[int]] | None:
+    """Chia trang (0-based) thành (trang Tờ khai, trang giữ lại); None khi OCR mất header Trang n/m."""
+    value = str(text or "")
+    matches = list(_NUMBERED_PAGE_HEADER_RE.finditer(value))
+    if not matches:
+        return None
+    pages: dict[int, str] = {}
+    total = 0
+    for position, match in enumerate(matches):
+        end = matches[position + 1].start() if position + 1 < len(matches) else len(value)
+        number = int(match.group(1))
+        total = max(total, number, int(match.group(2)))
+        pages[number] = value[match.end():end].strip()
+    declaration_pages: list[int] = []
+    kept_pages: list[int] = []
+    previous_is_declaration = False
+    for number in range(1, total + 1):
+        page = pages.get(number)
+        # Trang OCR bị mất không biết nội dung: giữ lại để không làm rơi giấy tờ thật.
+        is_declaration = page is not None and _is_declaration_page(page, previous_is_declaration)
+        (declaration_pages if is_declaration else kept_pages).append(number - 1)
+        previous_is_declaration = is_declaration
+    return declaration_pages, kept_pages
 
 
 def _clean_subject_name(value: Any) -> str:
@@ -197,6 +283,7 @@ def _validated_classifications(raw_items: list[dict], file_count: int) -> dict[i
 async def plan_ket_hon_attachments_without_split(
     files: list[FileItem], options: dict | None = None, session: dict | None = None,
 ) -> dict:
+    omit_declaration = omits_paper_declaration(options)
     errors: list[str] = []
     raw_files = [{"name": file.name, "type": file.type, "dataUrl": file.dataUrl} for file in files]
     ocr_pairs = [(index, file) for index, file in enumerate(raw_files) if file.get("type") in _OCR_TYPES]
@@ -233,6 +320,7 @@ async def plan_ket_hon_attachments_without_split(
     used_names: set[str] = set()
     identity_position = 0
     slot = _identity_slot(options)
+    trimmed_indexes: set[int] = set()
 
     for file_index, file in enumerate(raw_files):
         ocr_text = documents[file_index]["ocrText"]
@@ -241,7 +329,42 @@ async def plan_ket_hon_attachments_without_split(
         if file_index not in classified_by_index:
             doc_type = _rule_doc_type(ocr_text)
 
-        if doc_type == "identity":
+        # Xã Nghĩa Hưng: Tờ khai (giấy hay scan) không đính. File chỉ là Tờ khai thì bỏ hẳn; file
+        # gộp thì cắt bỏ trang Tờ khai, các trang giấy tờ khác vẫn đính.
+        kept_pages: list[int] | None = None
+        if omit_declaration:
+            file_name = str(file.get("name") or f"file-{file_index + 1}")
+            declaration_pages, other_pages = _declaration_page_split(ocr_text) or ([], [])
+            if declaration_pages and other_pages:
+                kept_pages = other_pages
+                doc_type = "other"
+                trimmed_indexes.add(file_index)
+                removed = ", ".join(str(index + 1) for index in declaration_pages)
+                errors.append(f"{OMITTED_DECLARATION_NOTE}: bỏ trang {removed} của {file_name}")
+            elif doc_type == "marriage_declaration" or declaration_pages:
+                errors.append(f"{OMITTED_DECLARATION_NOTE}: {file_name}")
+                classified.append({
+                    "fileIndex": file_index,
+                    "fileName": file.get("name"),
+                    "type": "marriage_declaration",
+                    "documentName": _DECLARATION_LABEL,
+                    "target": "ignored",
+                    "componentIndex": None,
+                })
+                continue
+            elif _starts_line(ocr_text, (_DECLARATION_MARKER,)):
+                errors.append(
+                    f"{file_name} gộp Tờ khai với giấy tờ khác nhưng không xác định được trang; "
+                    "đã đính cả file"
+                )
+
+        if kept_pages is not None:
+            # Đã cắt Tờ khai: phần còn lại là giấy tờ đi kèm, không gọi là "Hồ sơ"/"Tờ khai" nữa.
+            only_commitment_left = _fold(llm_item.get("documentName") or "") == "to khai va ban cam doan"
+            proposed = _COMMITMENT_LABEL if only_commitment_left else _RELATED_BUNDLE_LABEL
+            document_name = _unique_document_name(proposed, used_names, _RELATED_BUNDLE_LABEL)
+            target, component_index, component_name, needs_add = "new", None, document_name, True
+        elif doc_type == "identity":
             document_name = _unique_document_name(
                 _identity_document_name(ocr_text, llm_item.get("subjectName") or ""),
                 used_names,
@@ -265,7 +388,7 @@ async def plan_ket_hon_attachments_without_split(
             document_name = _unique_document_name(proposed, used_names, _OTHER_LABEL)
             target, component_index, component_name, needs_add = "new", None, document_name, True
 
-        attachments.append({
+        attachment = {
             "fileIndex": file_index,
             "fileName": str(file.get("name") or f"file-{file_index + 1}"),
             "documentName": document_name,
@@ -274,7 +397,10 @@ async def plan_ket_hon_attachments_without_split(
             "componentIndex": component_index,
             "needsAddComponent": needs_add,
             "detectedType": document_name,
-        })
+        }
+        if kept_pages is not None:
+            attachment["sourceSegments"] = [{"fileIndex": file_index, "pageIndexes": kept_pages}]
+        attachments.append(attachment)
         classified.append({
             "fileIndex": file_index,
             "fileName": file.get("name"),
@@ -285,7 +411,11 @@ async def plan_ket_hon_attachments_without_split(
         })
 
     ocr_text_by_index = {item["fileIndex"]: item["ocrText"] for item in documents}
-    attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
+    # File đã cắt trang Tờ khai phải đứng riêng: gộp CCCD theo OCR sẽ đè mất sourceSegments.
+    merge_text_by_index = {
+        index: "" if index in trimmed_indexes else text for index, text in ocr_text_by_index.items()
+    }
+    attachments = merge_identity_attachments(attachments, merge_text_by_index, identity_indexes)
     # Tên được đánh lại SAU KHI gộp: lấy tên đọc được ở bất kỳ mặt nào của cùng người. Component
     # có sẵn vẫn giữ nguyên tên DOM; chỉ documentName/component mới dùng "CCCD HỌ TÊN".
     used_identity_names: set[str] = set()

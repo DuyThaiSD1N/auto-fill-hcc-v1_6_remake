@@ -477,6 +477,23 @@ def _same_person_by_id(values: dict, options: dict | None) -> bool | None:
 
 
 def _resolve_quanhe(values: dict, options: dict | None) -> tuple[str, bool]:
+    """Chốt ô tích "(5) Quan hệ", riêng TRÍCH LỤC KHAI TỬ không bao giờ là "Bản thân".
+
+    Người được đăng ký đã mất nên không thể tự đi xin bản sao. Hồ sơ chỉ có trích lục khai tử + CCCD
+    người thân mà agent vẫn trả CopyRequest_QuanHe="Bản thân" (không có tờ khai nào ghi thế), mapper
+    tin theo → cổng tick "Bản thân" rồi gộp khối người yêu cầu vào người đã mất.
+    """
+    if _event_type(values) != "death":
+        return _resolve_quanhe_by_identity(values, options)
+    if _quanhe_option(values.get("CopyRequest_QuanHe")) == "Bản thân":
+        values = {key: value for key, value in values.items() if key != "CopyRequest_QuanHe"}
+    quanhe, guessed = _resolve_quanhe_by_identity(values, options)
+    if quanhe == "Bản thân":
+        return "Khác", True
+    return quanhe, guessed
+
+
+def _resolve_quanhe_by_identity(values: dict, options: dict | None) -> tuple[str, bool]:
     """Chốt ô tích "(5) Quan hệ với người được cấp bản sao". Trả (nhãn option, là suy đoán).
 
     Thứ tự nguồn:

@@ -14,6 +14,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_gcn_dang_ky_tau_ca.process.schema import UI_COMP_BY_NAME
@@ -99,17 +100,27 @@ def _parse_area_text(value: Any) -> dict | None:
 
 
 def _area(value: Any) -> dict | None:
+    """Parse rồi REMAP địa danh cũ → mới sau sáp nhập: Hợp đồng/Tờ khai/GCN đăng ký tàu cũ hay còn ghi
+    xã/quận cũ, hoặc ghi xã thiếu tiền tố ("Sơn Trà") → dropdown Phường/Xã của cổng không khớp option."""
     if isinstance(value, str):
-        return _parse_area_text(value)
-    if not isinstance(value, dict):
+        out = _parse_area_text(value)
+    elif isinstance(value, dict):
+        out = {
+            "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
+            "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
+            "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
+            "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
+        }
+        # Gợi ý cấp huyện cũ để remap gỡ xã trùng tên ở nhiều huyện; remap_area tự bỏ khóa này khỏi kết quả.
+        huyen = value.get("huyen") or value.get("quanHuyen")
+        if huyen:
+            out["huyen"] = huyen
+    else:
         return None
-    out = {
-        "quocGia": value.get("quocGia") or value.get("quoc_gia") or "Việt Nam",
-        "tinh": value.get("tinh") or value.get("tỉnh") or value.get("tinhThanh") or "",
-        "xa": value.get("xa") or value.get("xã") or value.get("phuong") or value.get("phường") or "",
-        "diaChi": value.get("diaChi") or value.get("dia_chi") or value.get("diachi") or value.get("chiTiet") or "",
-    }
-    return out if any(out.values()) else None
+    if not out or not any(out.values()):
+        return None
+    out = remap_area(out, allow_diachi_fallback=True)
+    return out if out and any(out.values()) else None
 
 
 def _identity(value: Any) -> str | None:

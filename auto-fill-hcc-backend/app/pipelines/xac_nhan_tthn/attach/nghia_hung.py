@@ -1,8 +1,8 @@
 """Cấu hình theo tài khoản: xã Nghĩa Hưng (Ninh Bình) KHÔNG đính kèm Tờ khai.
 
-Cán bộ xã Nghĩa Hưng không đính Tờ khai cấp Giấy xác nhận tình trạng hôn nhân (bản giấy hay bản
-scan đều vậy) vào thành phần hồ sơ; các giấy tờ khác (CCCD, quyết định ly hôn, giấy chứng nhận kết
-hôn, ủy quyền…) vẫn đính như thường.
+Cán bộ xã Nghĩa Hưng không đính Tờ khai (bản giấy hay bản scan đều vậy) vào thành phần hồ sơ của
+hai thủ tục: cấp Giấy xác nhận tình trạng hôn nhân và đăng ký kết hôn. Các giấy tờ khác (CCCD,
+quyết định ly hôn, giấy xác nhận tình trạng hôn nhân, bản cam đoan, ủy quyền…) vẫn đính như thường.
 
 Planner không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 ``with_account_attach_options`` để server tự đặt cờ ``omitPaperDeclaration``. Cờ luôn bị ghi đè
@@ -11,7 +11,7 @@ hành vi giữ y hệt.
 """
 from app.pipelines._shared import fold
 
-PROCEDURE_KEY = "xac-nhan-tinh-trang-hon-nhan"
+PROCEDURE_KEYS = frozenset({"xac-nhan-tinh-trang-hon-nhan", "ket-hon"})
 OMIT_PAPER_DECLARATION_OPTION = "omitPaperDeclaration"
 OMITTED_DECLARATION_NOTE = "Không đính kèm Tờ khai theo cấu hình xã Nghĩa Hưng"
 
@@ -39,7 +39,7 @@ def with_account_attach_options(options: dict | None, user: dict | None, procedu
     """Trả bản sao options với cờ bỏ Tờ khai do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(OMIT_PAPER_DECLARATION_OPTION, None)
-    if procedure == PROCEDURE_KEY and is_ninh_binh_nghia_hung(user):
+    if procedure in PROCEDURE_KEYS and is_ninh_binh_nghia_hung(user):
         result[OMIT_PAPER_DECLARATION_OPTION] = True
     return result
 
