@@ -1876,13 +1876,22 @@ def _scan_pick_template(conv: dict, proc: dict) -> dict:
     # Chỉ đổi câu khi checklist ĐANG có ô của bước chủ hồ sơ. KHÔNG được suy theo "nhiều hơn
     # một ô": chứng thực chữ ký và chứng thực giao dịch tài sản cũng là attach-only mà vốn
     # nhiều ô, đổi câu cho chúng là nói về căn cước chủ hồ sơ ở thủ tục không hề có thứ đó.
+    docs = upload_service.docs_for_conversation(conv)
     owner_keys = guided.owner_doc_keys(proc)
-    if owner_keys and any(
-        str(doc.get("key") or "") in owner_keys
-        for doc in upload_service.docs_for_conversation(conv)
-    ):
+    if owner_keys and any(str(doc.get("key") or "") in owner_keys for doc in docs):
         return vi.SCAN_PICK_OWNER
-    return vi.SCAN_PICK_ATTACH
+    # "Tất cả nhận thẳng là <ô>, không phân loại" CHỈ đúng khi checklist có đúng MỘT ô — khi đó
+    # upload_session.classify bỏ qua phân loại thật. Checklist nhiều ô (chữ ký, giao dịch tài
+    # sản, phân chia di sản) có phân loại → câu chung, không nói "không phân loại".
+    if len(docs) == 1:
+        return vi.SCAN_PICK_ATTACH
+    return vi.SCAN_PICK
+
+
+def _scan_pick_doc_name(conv: dict) -> str:
+    """Tên ô duy nhất cho câu SCAN_PICK_ATTACH (template khác bỏ qua tham số này)."""
+    docs = upload_service.docs_for_conversation(conv)
+    return str(docs[0].get("name") or "giấy tờ") if len(docs) == 1 else ""
 
 
 async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> Reply | None:
@@ -1917,7 +1926,8 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
         # cũ trên chợ không khai → giữ luồng bấm tay, không hứa điều nó không làm.
         # RIÊNG lượt Điều chỉnh giấy tờ giữ chốt tay (có thể chỉ xóa tệp rồi bấm hoàn tất).
         auto_run = _supports_scan_auto_run(conv) and not bool(conv.get("supplementing_documents"))
-        r = Reply(*_fmt(template, note=vi.SCAN_AUTO_RUN_NOTE if auto_run else None))
+        r = Reply(*_fmt(template, note=vi.SCAN_AUTO_RUN_NOTE if auto_run else None,
+                        doc_name=_scan_pick_doc_name(conv)))
         r.actions = [{
             "type": "pick_files",
             "session_id": conv["upload_session_id"],
@@ -2326,7 +2336,7 @@ async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
     if conv.get("doc_method") == "scan":
         proc = get_procedure(conv.get("procedure_key") or "") or {}
         template = _scan_pick_template(conv, proc)
-        r = Reply(*_fmt(template))
+        r = Reply(*_fmt(template, doc_name=_scan_pick_doc_name(conv)))
         r.chips = [
             {"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again"},
             _switch_to_qr_chip(),

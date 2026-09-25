@@ -1,10 +1,12 @@
 """API quản lý tài khoản — toàn bộ gác require_admin."""
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import Response
 
 from app.core.deps import require_admin
-from app.users import service
+from app.core.errors import AppError
+from app.users import import_excel, service
 from app.users.schemas import Role, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
@@ -34,6 +36,29 @@ async def list_users(
 @router.post("")
 async def create_user(body: UserCreate, _admin: dict = Depends(require_admin)):
     return await service.create_user(body)
+
+
+@router.get("/import/template")
+async def import_template(_admin: dict = Depends(require_admin)):
+    return Response(
+        content=import_excel.template_bytes(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="mau-tao-tai-khoan.xlsx"'},
+    )
+
+
+@router.post("/import")
+async def import_users(
+    file: UploadFile = File(...),
+    apply: bool = Query(False),
+    _admin: dict = Depends(require_admin),
+):
+    """apply=false: chỉ kiểm, trả bảng xem trước. apply=true: kiểm lại rồi tạo."""
+    # Đọc thừa 1 byte để biết file có vượt giới hạn không mà không phải nạp cả file lớn.
+    content = await file.read(import_excel.MAX_BYTES + 1)
+    if len(content) > import_excel.MAX_BYTES:
+        raise AppError("IMPORT_FILE_TOO_LARGE", "File quá 2MB.", 413)
+    return await import_excel.run(content, apply=apply)
 
 
 @router.patch("/{user_id}")

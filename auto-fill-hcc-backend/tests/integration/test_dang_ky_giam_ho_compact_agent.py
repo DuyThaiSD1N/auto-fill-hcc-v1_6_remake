@@ -99,7 +99,7 @@ async def test_dang_ky_giam_ho_derives_iframe_fields(monkeypatch):
 
     assert d["HoVaTenC"] == "NGUYỄN THỊ PHƯƠNG THẢO"
     assert d["SoDinhDanhC"] == "011192002254"
-    assert d["LoaiGiayToDinhDanhC"] == "Căn cước công dân"
+    assert d["LoaiGiayToDinhDanhC"] == "Thẻ căn cước công dân"
     assert d["NgayCapDDC"] == "25/04/2021"
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["TT_SoNhaToDanPhoC"] == "Tổ 1"
@@ -112,7 +112,7 @@ async def test_dang_ky_giam_ho_derives_iframe_fields(monkeypatch):
     assert d["dantocA"] == "Kinh"
     assert d["quoctichA"] == "Việt Nam"
     assert d["sodinhdanhA"] == "011170001926"
-    assert d["loaigiaytoA"] == "Căn cước công dân"
+    assert d["loaigiaytoA"] == "Thẻ căn cước công dân"
     assert d["sodinhdanhA1"] == "011170001926"
     assert d["ngaycapA"] == "10/05/2021"
     assert d["noicapA"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
@@ -328,9 +328,9 @@ Lý do đăng ký giám hộ: Bố mẹ đi làm ăn xa, không có khả năng 
     res = await agent.run({"doc": [_file("tờ khai đăng ký giám hộ.pdf"), _file("giấy khai sinh.pdf")]}, {})
     d = {f["name"]: f["value"] for f in res["fields"]}
 
-    assert d["loaigiaytoA"] == "Căn cước công dân"
+    assert d["loaigiaytoA"] == "Thẻ căn cước công dân"
     assert d["sodinhdanhB"] == "012320003527"
-    assert d["loaigiaytoB"] == "Căn cước công dân"
+    assert d["loaigiaytoB"] == "Thẻ Căn cước"
     assert d["sodinhdanhB1"] == "012320003527"
     assert d["ngaycapB"] == "16/08/2024"
     assert d["noicapB"] == "Bộ Công an"

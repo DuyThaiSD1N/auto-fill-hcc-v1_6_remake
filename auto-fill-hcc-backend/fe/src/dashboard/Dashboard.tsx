@@ -531,7 +531,7 @@ export default function Dashboard({ user, onLogout }: Props) {
                 {canViewUnits &&
                   scope?.units.map((u) => (
                     <option key={u.unitId} value={u.unitId}>
-                      {u.xa || u.name}
+                      {u.name || u.xa}
                     </option>
                   ))}
               </select>
@@ -599,7 +599,7 @@ export default function Dashboard({ user, onLogout }: Props) {
   function renderTQ() {
     const total = kpis?.dossiers ?? 0;
     const top = kpis?.topProcedure;
-    const selectedName = summary?.selected?.xa || summary?.selected?.name;
+    const selectedName = summary?.selected?.name || summary?.selected?.xa;
     const kpiSpecs: KpiSpec[] = [
       {
         icon: "doc",
@@ -820,7 +820,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         bg: "var(--grn-bg)",
         label: "Đơn vị dẫn đầu",
         value: best ? fmt(best.dossiers) : "—",
-        foot: best ? <b>{best.xa || best.name}</b> : <>Chưa có dữ liệu</>,
+        foot: best ? <b>{best.name || best.xa}</b> : <>Chưa có dữ liệu</>,
       },
       {
         icon: "doc",
@@ -867,7 +867,7 @@ export default function Dashboard({ user, onLogout }: Props) {
                       <span className="no">{i + 1}</span>
                       <span className="tx">
                         <span className="t1">
-                          {u.xa || u.name}
+                          {u.name || u.xa}
                           {isMe && <em> · đơn vị của bạn</em>}
                         </span>
                         <span className="t2">{unitLevel(u.xa).label} · {fmt(u.procedureTypes)} loại thủ tục</span>
@@ -914,7 +914,7 @@ export default function Dashboard({ user, onLogout }: Props) {
 
   function dvTable() {
     const meId = scope?.self.unitId;
-    let rows = units.map((u) => ({ ...u, name: u.xa || u.name || "" }));
+    let rows = units.map((u) => ({ ...u, name: u.name || u.xa || "" }));
     const all = rows.length;
     const q = qUnit.trim().toLowerCase();
     if (q) rows = rows.filter((r) => (r.name || "").toLowerCase().includes(q));
@@ -1071,7 +1071,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         <Card
           title="Danh mục thủ tục phát sinh hồ sơ"
           sub={`${all} thủ tục · tổng ${fmt(total)} hồ sơ · ${
-            summary?.selected ? summary.selected.xa || summary.selected.name : canViewUnits ? `toàn tỉnh (${scope?.unitCount ?? 0} đơn vị)` : acctName
+            summary?.selected ? summary.selected.name || summary.selected.xa : canViewUnits ? `toàn tỉnh (${scope?.unitCount ?? 0} đơn vị)` : acctName
           }`}
           right={
             <input
@@ -1290,7 +1290,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         : PRESETS.find((p) => p.key === preset)?.label ?? "—";
     const donViXuat = canViewUnits
       ? selUnit
-        ? selUnit.xa || selUnit.name || "1 đơn vị"
+        ? selUnit.name || selUnit.xa || "1 đơn vị"
         : `Tất cả ${scope?.unitCount ?? 0} đơn vị`
       : acctName;
     const phamVi = canViewUnits ? `Toàn tỉnh ${provinceName} — ${scope?.unitCount ?? 0} đơn vị` : acctName;

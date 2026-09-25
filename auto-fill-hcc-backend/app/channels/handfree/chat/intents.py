@@ -73,6 +73,19 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
                                      "công chứng hợp đồng mua bán", "công chứng hợp đồng tặng cho",
                                      "công chứng hợp đồng thế chấp", "chứng thực hợp đồng mua bán nhà đất",
                                      "chứng thực giao dịch mua bán xe / nhà / đất"],
+    # SỬA / BỔ SUNG / HỦY một hợp đồng, giao dịch ĐÃ chứng thực trước đó — KHÁC giao dịch tài sản
+    # (chứng thực một hợp đồng MỚI). Cụm "chứng thực hợp đồng" trơn không thuộc thủ tục này.
+    "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": [
+        "chứng thực sửa đổi hợp đồng", "chứng thực hủy bỏ hợp đồng", "hủy hợp đồng đã chứng thực",
+        "bổ sung phụ lục hợp đồng đã chứng thực", "sửa đổi, bổ sung, hủy bỏ giao dịch",
+        "chứng thực việc hủy giao dịch mua bán",
+    ],
+    # Chia DI SẢN THỪA KẾ của người đã mất — KHÁC giao dịch tài sản ngay trên (mua bán, tặng cho,
+    # thế chấp giữa người còn sống). Cụm "hợp đồng"/"nhà đất" trơn không thuộc thủ tục này.
+    "chung-thuc-phan-chia-di-san": ["chứng thực văn bản phân chia di sản",
+                                    "chứng thực thỏa thuận phân chia di sản", "chia di sản thừa kế",
+                                    "chia thừa kế nhà đất", "làm giấy chia thừa kế",
+                                    "phân chia tài sản thừa kế của bố mẹ đã mất"],
     "cap-giay-phep-khai-thac-thuy-san": ["giấy phép khai thác thủy sản", "giấy phép đánh bắt cá",
                                          "cấp lại giấy phép khai thác", "giấy phép tàu cá",
                                          "giấy phép đánh bắt hải sản"],

@@ -1,6 +1,9 @@
 """Chứng thực bản sao — hai chế độ đính kèm: gộp (giữ nguyên file) và tách tài liệu (splitDocuments)."""
 
-from app.pipelines.chung_thuc_ban_sao.attach import planner, prompt
+import re
+
+from app.pipelines.chung_thuc_ban_sao.attach import planner, preserve_prompt, prompt
+from app.pipelines.chung_thuc_ban_sao.attach.planner import _clean_document_name, _unique_document_name
 from app.process.schemas import FileItem
 from app.procedures.registry import PROCEDURES
 
@@ -142,3 +145,111 @@ def test_prompt_tach_co_quy_tac_bia_ban_quet_lap_va_trang_trang():
     assert '"-ban-2"' in text
     assert '"Trang trắng"' in text
     assert "Không\n    gọi là trang trắng chỉ vì OCR khó đọc" in text
+
+
+# ── Đặt tên: tên hiện thành TÊN THÀNH PHẦN + TÊN FILE trên cổng, ô chỉ nhận 50 ký tự ──
+
+
+def test_ten_co_dau_gach_cheo_khong_mat_phan_dau():
+    # "/" trong mốc "Quý I/2026" từng làm Path.stem cắt còn "2026 …" — mất hẳn loại giấy.
+    name = _unique_document_name("Bản tự ĐG XL Quý I/2026 Thảo", set(), "x")
+    assert name == "Bản tự ĐG XL Quý I-2026 Thảo"
+    assert _clean_document_name("QĐ 398/QĐ-BVĐKT giao nhiệm vụ") == "QĐ 398-QĐ-BVĐKT giao nhiệm vụ"
+
+
+def test_ten_qua_dai_giu_loai_giay_va_moc_khi_cat():
+    name = _unique_document_name("Phiếu theo dõi đánh giá viên chức Quý I/2026 Nguyễn Thị Thu Thảo", set(), "x")
+    assert len(name) <= 50
+    assert name.startswith("Phiếu theo dõi đánh giá viên chức Quý I-2026")
+
+
+def test_ca_hai_prompt_co_quy_tac_dat_ten_ngan_du_nghia():
+    for text in (prompt.SYSTEM_PROMPT, preserve_prompt.SYSTEM_PROMPT):
+        assert "<document_name_rules>" in text
+        assert "TỐI ĐA 40 ký tự" in text
+        assert "TUYỆT ĐỐI không bỏ loại giấy hoặc mốc phân biệt" in text
+
+
+def test_vi_du_dat_ten_trong_prompt_dung_luat_cua_chinh_no():
+    examples = re.findall(r'→ "([^"]+)"', prompt.DOCUMENT_NAME_RULES)
+    assert len(examples) >= 5
+    for example in examples:
+        assert len(example) <= 40, example
+        assert "/" not in example, example
+        assert not re.search(r"\s\d+$", example), f"không được kết thúc bằng số đứng riêng: {example}"
+        assert _clean_document_name(example) == example, example
+
+
+def test_giay_to_don_le_ten_41_den_50_ky_tu_khong_bi_thay_bang_ho_so_chung_thuc():
+    """Trace req_07ac12a8f7f9: phụ lục văn bằng 2 trang ra "Hồ sơ chứng thực" vì tên LLM vượt 40 ký tự."""
+    name = "Phụ lục văn bằng cử nhân Nguyễn Minh Hiếu"  # 41 ký tự
+    preserved = planner._preserve_source_file_segments(
+        [{"fileIndex": 0, "pageFrom": 1, "pageTo": 2, "detectedType": "Phụ lục văn bằng",
+          "documentName": name, "logicalKey": "phu-luc-van-bang"}],
+        [{"name": "phu luc hieu.pdf"}], {0: {"pageCount": 2}},
+        is_identity_segment=lambda _s: False, long_name_fallback="Hồ sơ chứng thực",
+    )
+    assert preserved[0]["documentName"] == name
+    assert len(_unique_document_name(preserved[0]["documentName"], set(), "x")) <= 50
+
+
+def test_file_hon_hop_ten_dai_van_ve_ten_nhom():
+    preserved = planner._preserve_source_file_segments(
+        [{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "detectedType": "Căn cước công dân", "logicalKey": "cccd-a"},
+         {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "detectedType": "Giấy khai sinh",
+          "documentName": "Giấy khai sinh và căn cước công dân của Nguyễn Văn A", "logicalKey": "ks-a"}],
+        [{"name": "gop.pdf"}], {0: {"pageCount": 2}},
+        is_identity_segment=lambda s: s.get("detectedType") == "Căn cước công dân",
+        long_name_fallback="Hồ sơ chứng thực",
+    )
+    assert preserved[0]["documentName"] == "Hồ sơ chứng thực"
+
+
+def _patch_files(monkeypatch, ocr_rows: list[dict], segments: list[dict]):
+    async def fake_ocr(_files):
+        return ocr_rows
+
+    async def fake_llm(_documents):
+        return segments
+
+    monkeypatch.setattr(planner.ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner, "_classify_documents_with_llm", fake_llm)
+    monkeypatch.setattr(planner, "_classify_source_files_with_llm", fake_llm)
+    monkeypatch.setattr(planner, "_pdf_page_count", lambda _file: 1)
+
+
+def _named(*names: str) -> list[FileItem]:
+    return [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AA==", role="doc")
+            for n in names]
+
+
+async def test_tep_scan_trang_bi_bo_qua_ca_hai_che_do_va_bao_can_bo(monkeypatch):
+    """Trace req_9fa8b22768d5: scan_0001.pdf OCR chỉ ra "2" → trước đây vẫn đính thành "scan_0001 pdf trang 1"."""
+    _patch_files(
+        monkeypatch,
+        [{"name": "ks.pdf", "text": "GIẤY KHAI SINH Họ và tên Nguyễn Văn A"}, {"name": "scan_0001.pdf", "text": "2"}],
+        [{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "detectedType": "Giấy khai sinh",
+          "documentName": "Giấy khai sinh Nguyễn Văn A"}],
+    )
+    for options in ({"splitDocuments": True}, {}):
+        result = await planner.plan(_named("ks.pdf", "scan_0001.pdf"), options=options)
+        assert [i["fileName"] for i in result["attachments"]] == ["ks.pdf"], options
+        assert any("scan_0001.pdf" in e and "tệp trắng" in e for e in result["errors"])
+        skipped = [c for c in result["extracted"]["classified"] if c["fileName"] == "scan_0001.pdf"]
+        assert skipped and all(c["target"] == "skipped" for c in skipped)
+
+
+async def test_ocr_loi_khong_bi_coi_la_tep_trang(monkeypatch):
+    _patch_files(
+        monkeypatch,
+        [{"name": "ks.pdf", "text": "GIẤY KHAI SINH"}, {"name": "anh.pdf", "text": "", "error": "timeout"}],
+        [{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "detectedType": "Giấy khai sinh", "documentName": "Giấy khai sinh"}],
+    )
+    result = await planner.plan(_named("ks.pdf", "anh.pdf"), options={"splitDocuments": True})
+    assert sorted(i["fileName"] for i in result["attachments"]) == ["anh.pdf", "ks.pdf"]
+
+
+async def test_moi_tep_deu_trang_thi_van_giu_de_ke_hoach_khong_rong(monkeypatch):
+    _patch_files(monkeypatch, [{"name": "a.pdf", "text": "2"}], [])
+    result = await planner.plan(_named("a.pdf"), options={"splitDocuments": True})
+    assert len(result["attachments"]) == 1

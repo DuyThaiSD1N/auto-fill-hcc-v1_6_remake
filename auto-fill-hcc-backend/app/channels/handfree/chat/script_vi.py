@@ -1270,16 +1270,18 @@ SCAN_PICK = {
     ),
 }
 
+# Checklist CHỈ MỘT ô (chứng thực bản sao, chữ ký người dịch): tên ô lấy từ chính checklist,
+# không ghi cứng — thủ tục khác đọc "giấy tờ cần chứng thực bản sao" là nói sai thủ tục.
 SCAN_PICK_ATTACH = {
     "md": (
         "Dạ công dân chọn **🖨️ Scan tại quầy** ✓\n\n"
         "Công dân **đặt giấy tờ lên máy quét** ở quầy rồi **ấn nút Scan**. Scan tới đâu em "
-        "**tự nhận** tới đó — tất cả nhận thẳng là **Giấy tờ cần chứng thực bản sao**, "
+        "**tự nhận** tới đó — tất cả nhận thẳng là **{doc_name}**, "
         "không phân loại ở bước này ạ."
     ),
     "tts": (
         "Dạ công dân đặt giấy tờ lên máy quét rồi bấm nút Scan. Em tự nhận tất cả là "
-        "giấy tờ cần chứng thực bản sao ạ."
+        "{doc_name} ạ."
     ),
 }
 

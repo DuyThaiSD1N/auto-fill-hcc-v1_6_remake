@@ -12,6 +12,7 @@ import {
 import type { ManagedUser, Role, User, UserStatusFilter } from "../types";
 import { fmtDateTime } from "../format";
 import Combobox from "../components/Combobox";
+import ImportAccountsModal from "../components/ImportAccountsModal";
 import TopBar, { type View } from "../components/TopBar";
 
 interface Props {
@@ -142,6 +143,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<FormState | null>(null);
+  const [importing, setImporting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -515,6 +517,9 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               ))}
             </select>
           </label>
+          <button className="ghost" onClick={() => setImporting(true)}>
+            Nhập từ Excel
+          </button>
           <button className="btn-primary" onClick={openCreate}>
             + Thêm tài khoản
           </button>
@@ -870,6 +875,10 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
             </div>
           </form>
         </div>
+      )}
+
+      {importing && (
+        <ImportAccountsModal onClose={() => setImporting(false)} onImported={() => void load()} />
       )}
     </div>
   );

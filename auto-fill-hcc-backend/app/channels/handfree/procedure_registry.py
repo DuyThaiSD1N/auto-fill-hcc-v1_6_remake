@@ -686,6 +686,103 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chung-thuc-phan-chia-di-san",
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với chứng thực chữ ký / giao dịch tài
+        # sản ngay trên: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG
+        # guidedSteps (luồng cũ).
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-9daf-70da-8f48-223498332346",
+                "maThuTuc=2.001406",
+            ],
+        },
+        "label": "Chứng thực văn bản phân chia di sản mà di sản là động sản, quyền sử dụng đất, nhà ở",
+        "shortLabel": "Chứng thực văn bản phân chia di sản",
+        "subtitle": "Chứng thực văn bản thỏa thuận chia di sản thừa kế: động sản, đất đai, nhà ở",
+        "icon": "📜",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-9daf-70da-8f48-223498332346",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) giấy chứng nhận sở hữu/sử dụng, (2) dự thảo văn bản phân chia
+        # di sản. Planner core mặc định GỘP: dự thảo → dòng 2, MỌI giấy khác gộp một PDF → dòng 1.
+        # KHÔNG bật supportsSplitDocuments: giữ đúng mặc định gộp như bản đang chạy.
+        # Ba ô bám đúng hai dòng của cổng + một ô gom phần còn lại; bộ phân loại lúc tải lên
+        # (pipelines/chung_thuc_phan_chia_di_san/handfree) xếp tệp vào đúng ô, planner vẫn tự
+        # phân loại lại theo nội dung lúc đính.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "so_huu", "name": "Giấy chứng nhận quyền sở hữu/sử dụng tài sản là di sản "
+             "(sổ đỏ, đăng ký xe…)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "du_thao", "name": "Dự thảo văn bản thỏa thuận phân chia di sản", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận quyền sở hữu/quyền sử dụng hoặc giấy tờ thay thế của tài sản là di sản.\n"
+            "2. Dự thảo văn bản thỏa thuận phân chia di sản thừa kế.\n"
+            "3. Nếu có: giấy chứng tử/trích lục khai tử, phiếu đo đạc/chỉnh lý thửa đất, CCCD người "
+            "được hưởng di sản, giấy ủy quyền đi nộp hồ sơ.\n"
+            "Bước Thành phần hồ sơ: dự thảo vào dòng 2; mọi giấy tờ còn lại gộp chung một tệp PDF "
+            "vào dòng 1."
+        ),
+    },
+    {
+        "key": "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
+        # Cổng React mới (Bộ Tư pháp), cùng khung attach-only với phân chia di sản / giao dịch tài
+        # sản: đi thẳng Thành phần hồ sơ, không consent, không bước chủ hồ sơ, KHÔNG guidedSteps
+        # (luồng cũ), không hỏi gộp/tách nhiều hồ sơ.
+        "detect": {
+            "urlIncludes": [
+                "019d2bfd-8e59-72ab-ae1a-a2985865d253",
+                "maThuTuc=2.000913",
+            ],
+        },
+        "label": "Chứng thực việc sửa đổi, bổ sung, hủy bỏ giao dịch",
+        "shortLabel": "Chứng thực sửa đổi, bổ sung, hủy bỏ giao dịch",
+        "subtitle": "Sửa đổi, bổ sung hoặc hủy bỏ hợp đồng, giao dịch đã được chứng thực",
+        "icon": "📝",
+        "flowProfile": "tu-phap",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e59-72ab-ae1a-a2985865d253",
+        # Attach-only tại quầy: đi thẳng Thành phần hồ sơ → nhận tệp, KHÔNG card consent/consent_logs.
+        "requiresConsent": False,
+        "ownerInfo": {"enabled": False},
+        # Cổng có 2 dòng cố định: (1) dự thảo sửa đổi/bổ sung/hủy bỏ + giấy tờ tài sản liên quan
+        # (planner gộp một PDF), (2) giao dịch/hợp đồng cũ đã chứng thực. CCCD/ủy quyền/giấy khác
+        # thêm thành phần mới. Bộ phân loại lúc tải lên (pipelines/chung_thuc_sua_doi_giao_dich/
+        # handfree) xếp tệp vào đúng ô; planner vẫn tự phân loại lại theo nội dung lúc đính.
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "du_thao", "name": "Dự thảo văn bản sửa đổi, bổ sung, hủy bỏ giao dịch",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giao_dich_cu", "name": "Giao dịch/hợp đồng cũ đã được chứng thực",
+             "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "so_huu", "name": "Giấy chứng nhận quyền sở hữu/sử dụng tài sản (nếu giao dịch "
+             "liên quan tài sản)", "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (nếu có)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Dự thảo văn bản sửa đổi, bổ sung, hủy bỏ giao dịch.\n"
+            "2. Giao dịch/hợp đồng cũ đã được chứng thực.\n"
+            "3. Nếu giao dịch liên quan tài sản phải đăng ký: giấy chứng nhận quyền sở hữu/sử dụng "
+            "hoặc giấy tờ thay thế.\n"
+            "4. Nếu có: căn cước của các bên, văn bản ủy quyền hoặc giấy tờ khác.\n"
+            "Bước Thành phần hồ sơ: dự thảo và giấy tờ tài sản gộp một PDF vào dòng 1; giao dịch cũ "
+            "đã chứng thực vào dòng 2; giấy tờ còn lại thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
         "key": "chung-thuc-chu-ky-nguoi-dich-ctv",
         "detect": {
             "urlIncludes": [

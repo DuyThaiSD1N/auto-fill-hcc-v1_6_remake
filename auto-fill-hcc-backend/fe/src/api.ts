@@ -223,6 +223,44 @@ export function deleteUser(id: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(`/api/v1/users/${id}`, { method: "DELETE" });
 }
 
+// --- Nhập tài khoản hàng loạt từ Excel ---
+export type ImportRowStatus =
+  | "create" | "created" | "exists" | "exists_deleted" | "duplicate_in_file" | "error";
+
+/** Một dòng kết quả. BE KHÔNG trả mật khẩu. */
+export interface ImportRow {
+  row: number;
+  name: string;
+  username: string;
+  tinh: string;
+  xa: string;
+  role: "" | "commune" | "province";
+  status: ImportRowStatus;
+  message: string;
+}
+
+export interface ImportResult {
+  applied: boolean;
+  summary: Partial<Record<ImportRowStatus, number>>;
+  rows: ImportRow[];
+}
+
+/** apply=false: chỉ kiểm, không ghi. apply=true: BE kiểm lại từ đầu rồi mới tạo — gửi lại
+ *  đúng file, không giữ gì ở BE giữa hai bước. */
+export function importUsers(file: File, apply: boolean): Promise<ImportResult> {
+  const body = new FormData();
+  body.append("file", file);
+  // KHÔNG tự đặt Content-Type: trình duyệt phải tự thêm boundary của multipart.
+  return request<ImportResult>(`/api/v1/users/import?apply=${apply ? "true" : "false"}`, {
+    method: "POST",
+    body,
+  });
+}
+
+export function downloadImportTemplate(): Promise<DownloadResult> {
+  return requestDownload(`/api/v1/users/import/template`);
+}
+
 // --- Danh mục tỉnh/xã ---
 export interface Province {
   text: string;

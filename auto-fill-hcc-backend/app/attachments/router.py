@@ -16,7 +16,6 @@ from app.dossiers import repo as dossiers_repo
 from app.dossiers.options import dossier_id_from_options
 from app.process import requests_repo
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
-from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
 from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
 from app.procedures.registry import get_attach_pipeline, get_procedure
 from app.services import ocr
@@ -149,10 +148,8 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
     if total_bytes > max_total:
         raise AppError("PAYLOAD_TOO_LARGE", f"Tổng payload vượt quá {settings.max_total_payload_mb}MB", 413)
 
-    # Cấu hình theo tài khoản (xã Nghĩa Hưng bỏ Tờ khai TTHN, phường Nghĩa Lộ bỏ Tờ khai khai sinh)
-    # do server đặt từ `user`, không nhận từ client.
+    # Cấu hình theo tài khoản (xã Nghĩa Hưng bỏ Tờ khai TTHN) do server đặt từ `user`, không nhận từ client.
     options = with_account_attach_options(body.options, user, body.procedure)
-    options = with_nghia_lo_attach_options(options, user, body.procedure)
 
     session = None
     session_id = str(options.get("sessionId") or options.get("requestId") or "").strip()

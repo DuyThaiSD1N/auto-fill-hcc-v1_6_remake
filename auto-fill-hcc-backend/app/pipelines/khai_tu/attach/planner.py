@@ -24,8 +24,10 @@ _ALLOWED_DOC_TYPES = {
     "death_event_proof",
     "authorization",
     "death_place_proof",
+    "unreadable_page",
     "other",
 }
+_UNREADABLE = "unreadable_page"
 
 _IDENTITY_LABEL = "Căn cước công dân"
 _IDENTITY_MIXED_LABEL = "Giấy tờ tùy thân"
@@ -110,6 +112,8 @@ def _canonical_type(item: dict) -> str:
         "death_place": "death_place_proof",
         "body_found_place_proof": "death_place_proof",
         "giay_uy_quyen": "authorization",
+        "blank_page": "unreadable_page",
+        "blank": "unreadable_page",
     }
     raw = aliases.get(raw, raw)
     return raw if raw in _ALLOWED_DOC_TYPES else "other"
@@ -350,6 +354,62 @@ def _validated_segments(
     return sorted(valid, key=lambda item: (item["fileIndex"], item["pageFrom"]))
 
 
+def _merge_unreadable_segments(segments: list[dict]) -> list[dict]:
+    """Trang trắng/OCR nhiễu thuộc tệp scan của tài liệu bên cạnh: gộp vào tài liệu LIỀN TRƯỚC cùng tệp
+    (đứng đầu tệp thì gộp vào tài liệu liền sau). Tách riêng thì nó thành một thành phần hồ sơ mang tên LLM
+    bịa ra từ chữ nhiễu. Tệp chỉ có trang như vậy vẫn giữ một đoạn "other" để không mất tệp."""
+    ordered = sorted(segments, key=lambda item: (item["fileIndex"], item["pageFrom"]))
+    kept: list[dict] = []
+    pending: list[dict] = []
+    for segment in ordered:
+        if segment["type"] == _UNREADABLE:
+            previous = kept[-1] if kept else None
+            if previous and previous["fileIndex"] == segment["fileIndex"] and previous["pageTo"] + 1 == segment["pageFrom"]:
+                previous["pageTo"] = segment["pageTo"]
+            else:
+                pending.append(segment)
+            continue
+        leading = [p for p in pending if p["fileIndex"] == segment["fileIndex"]]
+        if leading and leading[-1]["pageTo"] + 1 == segment["pageFrom"]:
+            segment = {**segment, "pageFrom": leading[0]["pageFrom"]}
+            pending = [p for p in pending if p["fileIndex"] != segment["fileIndex"]]
+        kept.append(dict(segment))
+    for segment in pending:
+        kept.append({**segment, "type": "other", "title": "", "documentName": ""})
+    return sorted(kept, key=lambda item: (item["fileIndex"], item["pageFrom"]))
+
+
+def _existing_row_names(options: dict | None) -> list[str]:
+    components = (((options or {}).get("attachmentContext") or {}).get("components") or [])
+    names = [str(c.get("componentName") or "") for c in components if isinstance(c, dict)]
+    names += [name for _, name in _FALLBACK_SLOTS.values()]
+    return [_fold(name) for name in names if _fold(name)]
+
+
+def _clashes(name: str, others: list[str]) -> bool:
+    key = _fold(name)
+    return any(key == other or key in other or other in key for other in others)
+
+
+def _avoid_existing_row_names(attachments: list[dict], options: dict | None) -> None:
+    """Tên thành phần THÊM MỚI không được trùng/chứa/nằm trong tên dòng có sẵn: extension khớp dòng theo
+    chuỗi con đã bỏ dấu, tên "Giấy báo tử" sẽ khớp nhầm dòng "Giấy báo tử hoặc giấy tờ thay…"."""
+    existing = _existing_row_names(options)
+    for item in attachments:
+        if item.get("target") != "new":
+            continue
+        name = str(item.get("componentName") or "")
+        if not _clashes(name, existing):
+            continue
+        candidate = f"{name} bổ sung"
+        suffix = 2
+        while _clashes(candidate, existing):
+            candidate = f"{name} bổ sung {suffix}"
+            suffix += 1
+        item["componentName"] = candidate
+        item["documentName"] = candidate
+
+
 def _segment_text(segment: dict, page_text_by_file: dict[int, dict[int, str]], full_text_by_file: dict[int, str]) -> str:
     file_index = segment["fileIndex"]
     pages = page_text_by_file.get(file_index) or {}
@@ -405,8 +465,19 @@ def _source_segment(segment: dict, page_count: int) -> dict | None:
     }
 
 
-def _build_item(file: dict, segment: dict, doc_type: str, document_name: str, options: dict | None) -> dict:
+def _build_item(
+    file: dict, segment: dict, doc_type: str, document_name: str, options: dict | None,
+    used_slots: set[int] | None = None,
+) -> dict:
     slot = _slot_for_type(options, doc_type)
+    # Mỗi dòng có sẵn chỉ nhận MỘT tài liệu. Tài liệu cùng loại thứ hai trở đi mà vẫn trỏ dòng đó thì cổng
+    # thấy dòng đã có tệp và tự thêm thành phần MANG NGUYÊN TÊN DÒNG → hai dòng trùng tên. Cho nó đi
+    # "Thêm thành phần" với tên thật của chính tài liệu.
+    if slot and used_slots is not None:
+        if slot[0] in used_slots:
+            slot = None
+        else:
+            used_slots.add(slot[0])
     target = "existing" if slot else "new"
     item = {
         "fileIndex": segment["fileIndex"],
@@ -529,9 +600,10 @@ async def plan_khai_tu_attachments(
         except Exception as exc:  # noqa: BLE001 - fallback giữ đủ file và không gán bừa vai CCCD
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
-    segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
+    segments = _merge_unreadable_segments(_validated_segments(raw_segments, raw_files, file_meta, errors))
 
     attachments: list[dict] = []
+    used_slots: set[int] = set()
     classified: list[dict] = []
     identity_records: list[dict] = []
     identity_insert_at: int | None = None
@@ -566,7 +638,7 @@ async def plan_khai_tu_attachments(
             )
             document_name = _unique_document_name(base_name, used_names, _label_for_type(doc_type))
 
-        item = _build_item(file, segment, doc_type, document_name, options)
+        item = _build_item(file, segment, doc_type, document_name, options, used_slots)
         if doc_type == "identity":
             if identity_insert_at is None:
                 identity_insert_at = len(attachments)
@@ -594,6 +666,7 @@ async def plan_khai_tu_attachments(
         )
         insert_at = identity_insert_at or 0
         attachments[insert_at:insert_at] = grouped_identities
+    _avoid_existing_row_names(attachments, options)
 
     indexed_ocr_results = []
     for file_index, file in enumerate(raw_files):

@@ -9,11 +9,6 @@ OCR + phân loại để tìm ĐÚNG từng file trong số file người dùng 
 vị trí (slotIndex 0 = chứng sinh, slotIndex 1 = tờ khai cư trú). Các giấy tờ "other" (CCCD cha/mẹ,
 giấy kết hôn…) KHÔNG bị bỏ qua và KHÔNG gộp thành 1 PDF: mỗi tệp là một item repeatUpload cùng
 trỏ ô STT1 để FE đính NHIỀU TỆP RỜI vào cùng hàng giấy chứng sinh (trang cho phép nhiều tệp/hàng).
-
-Cấu hình theo tài khoản: phường Nghĩa Lộ (Quảng Ngãi) KHÔNG đính Tờ khai đăng ký khai sinh; các
-giấy tờ khác vẫn đính như thường. Planner không biết tài khoản nên router (Auto Fill) và
-pipeline_runner (Handfree) gọi ``with_nghia_lo_attach_options`` để server tự đặt cờ
-``omitBirthDeclaration``. Tài khoản khác: không có cờ, hành vi giữ y hệt.
 """
 import re
 import time
@@ -36,47 +31,6 @@ def _fold(value: str) -> str:
     text = unicodedata.normalize("NFD", value or "")
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
-
-
-PROCEDURE_KEY = "khai-sinh-dang-ky"
-OMIT_BIRTH_DECLARATION_OPTION = "omitBirthDeclaration"
-OMITTED_DECLARATION_NOTE = "Không đính kèm Tờ khai đăng ký khai sinh theo cấu hình phường Nghĩa Lộ"
-
-_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
-
-
-def is_quang_ngai_nghia_lo(user: dict | None) -> bool:
-    """True khi tài khoản thuộc phường Nghĩa Lộ, tỉnh Quảng Ngãi.
-
-    Lào Cai cũng có Phường Nghĩa Lộ nên bắt buộc khớp tỉnh; xã khớp ĐÚNG tên sau khi bỏ tiền tố.
-    """
-    if not user:
-        return False
-    tinh = _fold(user.get("tinh") or "")
-    xa = _fold(user.get("xa") or "")
-    for prefix in _WARD_PREFIXES:
-        if xa.startswith(prefix):
-            xa = xa[len(prefix):].strip()
-            break
-    return "quang ngai" in tinh and xa == "nghia lo"
-
-
-def with_nghia_lo_attach_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ bỏ Tờ khai khai sinh do server quyết theo tài khoản."""
-    result = dict(options or {})
-    result.pop(OMIT_BIRTH_DECLARATION_OPTION, None)
-    if procedure == PROCEDURE_KEY and is_quang_ngai_nghia_lo(user):
-        result[OMIT_BIRTH_DECLARATION_OPTION] = True
-    return result
-
-
-def _is_birth_declaration_text(text: str) -> bool:
-    """Tờ khai đăng ký khai sinh (bản giấy) — nhận theo tiêu đề mẫu.
-
-    Phải xét TRƯỚC ``_is_birth_proof_text``: tờ khai có câu "Tôi cam đoan ... khai sinh" nên rule
-    chứng sinh (cam đoan + sinh) sẽ nhận nhầm nó là giấy cam đoan về việc sinh.
-    """
-    return bool(re.search(r"to khai dang k[yi] khai sinh", _fold(text)))
 
 
 def _is_birth_proof_text(text: str) -> bool:
@@ -129,7 +83,6 @@ def _is_explicit_other_text(text: str) -> bool:
 _DOC_BIRTH = "birth_proof"
 _DOC_RESIDENCE = "residence_form"
 _DOC_OTHER = "other"
-_DOC_DECLARATION = "birth_declaration"  # chỉ gán khi có cờ omitBirthDeclaration
 
 
 async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
@@ -172,7 +125,7 @@ async def plan_khai_sinh_attachments(
     options: dict | None = None,
     session: dict | None = None,
 ) -> dict:
-    omit_declaration = (options or {}).get(OMIT_BIRTH_DECLARATION_OPTION) is True
+    _ = options or {}
     errors: list[str] = []
     raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
@@ -213,10 +166,7 @@ async def plan_khai_sinh_attachments(
 
         # LLM vẫn chạy trước, nhưng nhãn trái hẳn loại giấy tờ rõ ràng phải bị chặn.
         # Đây là validation an toàn, không phải phân loại trước LLM.
-        if omit_declaration and _is_birth_declaration_text(text):
-            final_types[idx] = _DOC_DECLARATION
-            classification_sources[idx] = "rule_omit_declaration"
-        elif _is_birth_proof_text(text):
+        if _is_birth_proof_text(text):
             final_types[idx] = _DOC_BIRTH
             classification_sources[idx] = "rule_fallback" if llm_type != _DOC_BIRTH else "llm"
         elif _is_residence_form_text(text):
@@ -244,9 +194,6 @@ async def plan_khai_sinh_attachments(
 
     attachments: list[dict] = []
     other_indices: list[int] = []
-    declaration_indices = [i for i in range(len(raw_files)) if final_types[i] == _DOC_DECLARATION]
-    for idx in declaration_indices:
-        errors.append(f"{OMITTED_DECLARATION_NOTE}: {raw_files[idx]['name']}")
 
     # STT1 nhận giấy chứng sinh + mọi giấy tờ khác (CCCD cha/mẹ, giấy kết hôn… = "other").
     # Trang liên thông CHO ĐÍNH NHIỀU FILE vào 1 hàng: input #fileDinhKem KHÔNG có `multiple`
@@ -255,8 +202,7 @@ async def plan_khai_sinh_attachments(
     # mở menu "Chọn tệp tin" nhiều lần, thêm từng tệp RỜI vào cùng hàng chứng sinh.
     if birth_index is not None:
         other_indices = [
-            i for i in range(len(raw_files))
-            if i not in (birth_index, residence_index) and i not in declaration_indices
+            i for i in range(len(raw_files)) if i not in (birth_index, residence_index)
         ]
         for idx in (birth_index, *other_indices):  # chứng sinh trước, rồi các giấy tờ khác
             f = raw_files[idx]
@@ -306,7 +252,6 @@ async def plan_khai_sinh_attachments(
     # "other" nay đã gộp vào STT1 → matched. Chỉ còn skip khi KHÔNG có chứng sinh (không có ô để gộp).
     matched = {i for i in (birth_index, residence_index) if i is not None}
     matched.update(other_indices)
-    matched.update(declaration_indices)  # đã có ghi chú riêng, không báo "bỏ qua"
     skipped_names = [rf["name"] for i, rf in enumerate(raw_files) if i not in matched]
     if skipped_names:
         errors.append(
@@ -331,7 +276,6 @@ async def plan_khai_sinh_attachments(
             "birthProof": raw_files[birth_index]["name"] if birth_index is not None else None,
             "residenceForm": raw_files[residence_index]["name"] if residence_index is not None else None,
             "skipped": skipped_names,
-            "omittedDeclarations": [raw_files[i]["name"] for i in declaration_indices],
             "sessionId": (session or {}).get("request_id"),
         },
         "stats": {

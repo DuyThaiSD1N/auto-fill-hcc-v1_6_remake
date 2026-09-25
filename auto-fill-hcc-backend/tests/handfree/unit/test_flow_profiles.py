@@ -283,7 +283,8 @@ def test_registered_procedures_use_their_declared_flow_family():
 
     attach_only = {
         "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san",
-        "chung-thuc-chu-ky-nguoi-dich-ctv",
+        "chung-thuc-chu-ky-nguoi-dich-ctv", "chung-thuc-phan-chia-di-san",
+        "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
     }
     for key, procedure in procedures.items():
         owner_enabled = procedure["ownerInfo"]["enabled"]
@@ -307,8 +308,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # "ho-tro-mai-tang-huu-tri-xa-hoi", "ho-tro-mai-tang", "xac-dinh-muc-do-khuyet-tat";
     # +3 cổng Bộ Nội vụ: "di-chuyen-ho-so-nguoi-huong-tro-cap" (cấp Sở),
     # "uu-dai-ncc-tu-tran" + "tro-cap-tho-cung-liet-si" (cấp xã);
-    # +1 cổng Bộ Y tế "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" (ATTP).
-    assert len(procedures) == 35
+    # +1 cổng Bộ Y tế "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" (ATTP);
+    # +2 attach-only tư pháp "chung-thuc-phan-chia-di-san", "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich".
+    assert len(procedures) == 37
 
     for procedure in procedures:
         key = procedure["key"]

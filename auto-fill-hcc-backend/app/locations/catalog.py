@@ -111,6 +111,36 @@ def _find_province(value: str) -> dict | None:
     )
 
 
+def ward_name_matches(tinh: str | None, ward_name: str | None) -> tuple[str | None, list[str]]:
+    """Tra xã theo TÊN trong đúng tỉnh → (tên tỉnh chuẩn, các xã khớp với tên đầy đủ).
+
+    File nhập tài khoản hàng loạt chỉ ghi tên trần ("Bồng Lai"); tài khoản phải lưu tên đầy đủ
+    của danh mục ("Phường Bồng Lai"). Ghi sẵn tên đầy đủ thì khớp chính xác trước. Trả NHIỀU kết
+    quả khi một tỉnh có hai đơn vị trùng tên trần (Phường X / Xã X): người gọi phải báo, KHÔNG được
+    tự chọn một bên. Tỉnh không có trong danh mục → (None, []).
+    """
+    province = _find_province((tinh or "").strip())
+    if not province:
+        return None, []
+    raw = " ".join((ward_name or "").split())
+    if not raw:
+        return province["text"], []
+    communes = WARDS_BY_SLUG[province["slug"]]["communes"]
+    bare = lambda ward: _WARD_TYPE.sub("", ward)  # noqa: E731
+
+    # So CÓ DẤU trước: bỏ dấu thì "Văn Lang"/"Văn Lăng" (hai xã khác nhau cùng tỉnh) thành một,
+    # file ghi đúng dấu vẫn bị báo trùng oan. Chuẩn vị trí dấu (Hoà→Hòa) như danh mục đã làm.
+    # Chỉ khi có dấu không ra gì mới lùi về so bỏ dấu (file gõ thiếu dấu).
+    toned = lambda value: _modern_tone(unicodedata.normalize("NFC", value)).casefold()  # noqa: E731
+    for key in (toned, _fold):
+        wanted = key(raw)
+        for candidate in (lambda ward: ward, bare):
+            found = [ward for ward in communes if key(candidate(ward)) == wanted]
+            if found:
+                return province["text"], found
+    return province["text"], []
+
+
 def province_name_variants(value: str) -> list[str]:
     """Mọi cách ghi tên một tỉnh đang có thể nằm trong DB, để lọc bằng $in thay vì $regex.
 

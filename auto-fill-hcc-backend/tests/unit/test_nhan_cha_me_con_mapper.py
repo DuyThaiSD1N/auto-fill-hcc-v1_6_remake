@@ -68,7 +68,7 @@ def test_nhan_cha_me_con_maps_father_recognizes_child():
 
     assert d["HoVaTenC"] == "ĐÈO NGỌC HIẾU"
     assert d["SoDinhDanhC"] == "012098005476"
-    assert d["LoaiGiayToDinhDanhC"] == "Căn cước công dân"
+    assert d["LoaiGiayToDinhDanhC"] == "Thẻ căn cước công dân"
     assert d["SoGiayToDinhDanhC"] == "012098005476"
     assert d["NgayCapDDC"] == "27/06/2021"
     assert d["NoiCapDDC"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
@@ -83,7 +83,7 @@ def test_nhan_cha_me_con_maps_father_recognizes_child():
     assert d["ngaysinhA"] == "18/01/1998"
     assert d["gioitinhA"] == "Nam"
     assert d["sodinhdanhA"] == "012098005476"
-    assert d["loaigiaytoA"] == "Căn cước công dân"
+    assert d["loaigiaytoA"] == "Thẻ căn cước công dân"
     assert d["sogiaytodinhdanhA"] == "012098005476"
     assert d["NoiCapA"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert d["noicutruA"] == "Trong nước"

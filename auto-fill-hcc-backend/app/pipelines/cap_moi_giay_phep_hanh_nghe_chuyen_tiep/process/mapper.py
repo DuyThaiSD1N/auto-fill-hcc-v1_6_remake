@@ -11,7 +11,7 @@ hành nghề:
       Phần 1 (data[fullname...]) = người hành nghề. GIỮ tích data[isOwnerDossierCheck] mặc định (KHÔNG
       emit) → cổng TỰ nhân bản Phần 1 sang Phần 2. KHÔNG điền owner_*.
   - NỘP THAY (người nộp ≠ người hành nghề):
-      Phần 1 = NGƯỜI NỘP (tên+CCCD tài khoản + NguoiNop_* nếu hồ sơ có CCCD người nộp; thiếu để trống).
+      Phần 1 = NGƯỜI NỘP: cổng đã đổ sẵn từ VNeID → KHÔNG điền gì vào Phần 1.
       BỎ TÍCH data[isOwnerDossierCheck]=False để mở Phần 2 → điền owner_* = người hành nghề (tường minh).
 
 Mỗi data[key] xuất hiện 1× trong DOM → KHÔNG dùng occurrence.
@@ -237,29 +237,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[email]", email)
         return out, warnings
 
-    # === NỘP THAY: Phần I = NGƯỜI NỘP (chỉ điền cái CÓ; thiếu để trống — KHÔNG lấy nhân thân người hành
-    # nghề đổ vào đây). BỎ TÍCH để mở Phần II → điền owner_* = người hành nghề. ===
-    sub_full = nop_ext_name or ctx_name
-    sub_identity = nop_ext_id or ctx_identity
-    sub_birthday = _date(values.get("NguoiNop_NgaySinh"))
-    sub_gender = _text(values.get("NguoiNop_GioiTinh"))
-    sub_id_date = _date(values.get("NguoiNop_NgayCap"))
-    sub_issuer = _issuer(values.get("NguoiNop_NoiCap"))
-    sub_residence = _area(values.get("NguoiNop_ThuongTru"))
-    sub_phone = _phone(values.get("NguoiNop_DienThoai"))
-    sub_email = _text(values.get("NguoiNop_Email"))
-
-    add("data[fullname]", sub_full)
-    add("data[birthday]", sub_birthday)
-    add("data[gender]", sub_gender)
-    add("data[identityNumber]", sub_identity)
-    add("data[identityDate]", sub_id_date)
-    add("data[idIssuePlace]", sub_issuer)
-    add_area("data[province]", "data[district]", "data[address]", sub_residence)
-    add("data[phoneNumber]", sub_phone)
-    add("data[email]", sub_email)
-
-    # Mở khoá Phần II.
+    # === NỘP THAY: Phần I (người nộp) cổng đã đổ sẵn từ tài khoản VNeID → KHÔNG điền. BỎ TÍCH để mở
+    # Phần II → điền owner_* = người hành nghề. ===
     add("data[isOwnerDossierCheck]", False)
 
     # Phần II = NGƯỜI HÀNH NGHỀ (chủ hồ sơ).

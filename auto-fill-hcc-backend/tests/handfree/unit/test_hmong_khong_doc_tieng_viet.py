@@ -96,6 +96,8 @@ _VIET_PLACEHOLDERS = {"documents_md", "documents_tts", "options_md", "options_tt
                       # Tên cách nhận kết quả lấy NGUYÊN VĂN chữ trên cổng (registry
                       # guidedSteps.resultMethods) — cùng loại với nhãn bước ở trên.
                       "label",
+                      # Tên ô checklist (registry requiredDocs[].name) trong câu hướng dẫn scan.
+                      "doc_name",
                       # Chữ trên thẻ kết quả DVCQG ("Cơ quan thực hiện: UBND") — registry.
                       "card",
                       "portal_message"}

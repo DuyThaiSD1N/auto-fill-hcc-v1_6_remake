@@ -1814,6 +1814,76 @@ tbody tr:last-child td {
   margin-top: 6px;
 }
 
+/* ── Nhập tài khoản từ Excel ── bảng xem trước cần rộng hơn form một tài khoản. */
+.modal-card.import-card {
+  max-width: 880px;
+}
+.import-pick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.import-pick input[type="file"] {
+  flex: 1 1 260px;
+  margin-top: 0;
+}
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* Ô đếm theo trạng thái — bấm để lọc bảng. */
+.import-count {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.import-count b {
+  margin-left: 4px;
+}
+.import-count.ok b {
+  color: var(--ok-fg);
+}
+.import-count.warn b {
+  color: var(--warn-fg);
+}
+.import-count.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+.import-count:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.import-table {
+  max-height: 46vh;
+  overflow: auto;
+}
+.import-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.import-table td {
+  vertical-align: top;
+  font-size: 13px;
+}
+.import-reason {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.badge.neutral {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
 @media (max-width: 680px) {
   .app {
     padding-inline: 12px;

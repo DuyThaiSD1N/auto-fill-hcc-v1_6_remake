@@ -28,7 +28,10 @@ Một PDF có thể chứa nhiều giấy tờ khác loại.
    death_event_proof, không phải other. Không đặt tên tài liệu là "Danh sách mộ".
 10. Nếu một trang bắt đầu bằng tiêu đề chính rõ ràng và khác tài liệu đứng trước thì phải tách thành
    tài liệu logic riêng, kể cả khi nó nhắc lại thông tin cá nhân hoặc sự kiện chết.
-11. OCR rỗng hoặc không đủ nhận biết thì dùng other và để documentName rỗng.
+11. Trang KHÔNG ĐỌC ĐƯỢC dùng unreadable_page: OCR rỗng, trang trắng/mặt sau, hoặc chữ nhiễu không thuộc
+    hồ sơ này — không nhắc người chết, người yêu cầu hay sự kiện chết; địa danh, đơn vị, số điện thoại lạc
+    lõng; câu lặp vô nghĩa. Backend gộp trang đó vào tài liệu liền trước, KHÔNG tạo thành phần riêng.
+    Trang có tiêu đề giấy tờ rõ ràng VÀ nội dung liên quan hồ sơ thì KHÔNG phải unreadable_page.
 12. Trả đúng một JSON object, không giải thích, không markdown.
 </critical_rules>
 
@@ -39,6 +42,7 @@ Một PDF có thể chứa nhiều giấy tờ khác loại.
 - death_event_proof
 - authorization
 - death_place_proof
+- unreadable_page
 - other
 </allowed_types>
 
@@ -53,6 +57,7 @@ Một PDF có thể chứa nhiều giấy tờ khác loại.
 - authorization: Văn bản ủy quyền hoặc Giấy ủy quyền thực hiện đăng ký khai tử.
 - death_place_proof: giấy tờ chứng minh nơi chết hoặc nơi phát hiện thi thể khi không xác định được nơi
   cư trú cuối cùng của người chết.
+- unreadable_page: trang trắng hoặc OCR nhiễu không đọc được (xem critical_rules 11).
 - other: mọi tài liệu còn lại; phải giữ riêng từng tài liệu logic và đặt tên theo nội dung.
 </type_definitions>
 

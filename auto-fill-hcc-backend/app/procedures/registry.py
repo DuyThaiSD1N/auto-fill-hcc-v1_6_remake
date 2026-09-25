@@ -13,6 +13,8 @@ from app.pipelines.cap_lai_an_toan_thuc_pham.process import run as cap_lai_an_to
 from app.pipelines.cap_lai_an_toan_thuc_pham.attach import plan as cap_lai_an_toan_thuc_pham_attach
 from app.pipelines.cap_gcn_attp_cong_thuong.process import run as cap_gcn_attp_ct_process
 from app.pipelines.cap_gcn_attp_cong_thuong.attach import plan as cap_gcn_attp_ct_attach
+from app.pipelines.thong_bao_sua_doi_ctkm.process import run as thong_bao_sua_doi_ctkm_process
+from app.pipelines.thong_bao_sua_doi_ctkm.attach import plan as thong_bao_sua_doi_ctkm_attach
 from app.pipelines.cap_giay_phep_xay_dung.attach import plan as cap_giay_phep_xay_dung_attach
 from app.pipelines.cap_giay_phep_xay_dung.process import run as cap_giay_phep_xay_dung_process
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.attach import plan as dieu_chinh_gpxd_attach
@@ -86,6 +88,8 @@ from app.pipelines.cap_gcn_diem_tro_choi_dien_tu.process import run as cap_gcn_d
 from app.pipelines.cap_gcn_diem_tro_choi_dien_tu.attach import plan as cap_gcn_diem_tro_choi_dien_tu_attach
 from app.pipelines.cap_giay_phep_xuat_ban_tai_lieu_khong_kinh_doanh.process import run as cap_giay_phep_xuat_ban_process
 from app.pipelines.cap_giay_phep_xuat_ban_tai_lieu_khong_kinh_doanh.attach import plan as cap_giay_phep_xuat_ban_attach
+from app.pipelines.thong_bao_san_pham_quang_cao_bang_ron.process import run as thong_bao_spqc_bang_ron_process
+from app.pipelines.thong_bao_san_pham_quang_cao_bang_ron.attach import plan as thong_bao_spqc_bang_ron_attach
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_bac_ninh.process import run as giao_thue_chuyen_muc_dich_dat_bac_ninh_process
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_bac_ninh.attach import plan as giao_thue_chuyen_muc_dich_dat_bac_ninh_attach
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_ninh_binh.process import run as giao_thue_chuyen_muc_dich_dat_ninh_binh_process
@@ -1404,6 +1408,31 @@ PROCEDURES: list[dict] = [
             "(người đại diện pháp luật), extension điền cả 3 phần.\n"
             "Phần 'Thông tin chung' (cơ quan/lĩnh vực/thủ tục) hệ thống tự điền; ô 'Dịch vụ công' bạn tự "
             "chọn mức độ. Đính kèm bản scan (Đơn 51a, CCCD chứng thực, GCN hộ KD chứng thực) làm thủ công."
+        ),
+    },
+    {
+        "key": "thong-bao-san-pham-quang-cao-bang-ron",
+        # Cổng Bộ VHTTDL (liz, engine content/fill-liz.js), form + bảng thành phần hồ sơ CHUNG trang
+        # /nop-ho-so như thủ tục GPXB bên dưới. Không điền khối người nộp (cổng đổ từ tài khoản định danh);
+        # khối "Thông tin người ủy quyền" = doanh nghiệp, phải tích ô cùng tên thì cổng mới ghi nhận.
+        "detect": {"urlScope": ["dichvucong.bvhttdl.gov.vn"], "urlIncludes": ["matthc=1.004650"]},
+        "label": "Thủ tục tiếp nhận hồ sơ thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn",
+        "mode": "agent",
+        # Bảng style_table 7 dòng, input file trong <app-upload-flie-multi> → engine fixed-slot theo
+        # slotIndex 0..6; một ô nhận được nhiều tệp.
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn (Mẫu số 01).\n"
+            "2. Giấy chứng nhận đăng ký doanh nghiệp (điền khối 'Thông tin người ủy quyền').\n"
+            "3. Ma-két, bản phối cảnh, giấy tờ hợp chuẩn/hợp quy; nếu có: thông báo khuyến mại, văn bản "
+            "quyền sử dụng địa điểm, giấy phép xây dựng.\n"
+            "Khối người nộp giữ nguyên thông tin tài khoản. Hệ thống tự tích 'Thông tin người ủy quyền'.\n"
+            "Bước đính kèm: mỗi giấy vào đúng dòng; GCN đăng ký doanh nghiệp và thông báo khuyến mại đính "
+            "chung dòng (1) với giấy tờ hợp quy.\n"
+            "⚠ Chưa tích ô cam kết thì nút 'Lưu và nộp hồ sơ' bị khoá — cán bộ tự tích sau khi rà soát."
         ),
     },
     {
@@ -4290,6 +4319,33 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+        # Cổng DVC Bộ Công Thương (Form.io + bảng đính kèm attp-row, CÙNG engine 2 thủ tục ATTP ở trên),
+        # dùng chung cho Sở Công Thương mọi tỉnh nên nhãn không gắn tỉnh. Mã 2.001474 hiện ở dòng
+        # "Quy trình: 2.001474 - …" cả bước kê khai lẫn bước đính kèm. Tờ khai Mẫu 06 dùng lại 5 field-key
+        # của khối tài khoản → mapper gắn occurrence 0/1.
+        "detect": {
+            "urlScope": ["dichvucong-tthc.moit.gov.vn"],
+            "textIncludes": ["2.001474", "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại (Mẫu 06, bản đã ký số).\n"
+            "2. Nếu muốn điền khối thông tin tài khoản: CCCD của chính người đang đăng nhập nộp hồ sơ.\n"
+            "Form điền: chủ hồ sơ (thương nhân) + tờ khai Mẫu 06 (số/ngày thông báo, kính gửi, thông tin "
+            "doanh nghiệp, thông báo khuyến mại gốc, tên chương trình, thời gian áp dụng, lý do, cam kết).\n"
+            "Bước đính kèm: mọi tệp đính vào dòng \"Thông báo sửa đổi, bổ sung nội dung chương trình khuyến "
+            "mại\", giữ nguyên tên tệp."
+        ),
+    },
+    {
         "key": "ho-tro-mai-tang",
         "detect": {
             "urlIncludes": ["maThuTuc=1.001731"],
@@ -5940,6 +5996,7 @@ _PIPELINE = {
     "cung-cap-thong-tin-quy-hoach": cung_cap_thong_tin_quy_hoach_process,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": cap_gcn_diem_tro_choi_dien_tu_process,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": cap_giay_phep_xuat_ban_process,
+    "thong-bao-san-pham-quang-cao-bang-ron": thong_bao_spqc_bang_ron_process,
     "giao-thue-chuyen-muc-dich-dat-bac-ninh": giao_thue_chuyen_muc_dich_dat_bac_ninh_process,
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_process,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_process,
@@ -5974,6 +6031,7 @@ _PIPELINE = {
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": cap_lai_an_toan_thuc_pham_process,
     "cap-gcn-attp-cong-thuong": cap_gcn_attp_ct_process,
+    "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": thong_bao_sua_doi_ctkm_process,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_process,
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_process,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_nha_o_process,
@@ -6081,6 +6139,7 @@ _ATTACH_PIPELINE = {
     "cung-cap-thong-tin-quy-hoach": cung_cap_thong_tin_quy_hoach_attach,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": cap_gcn_diem_tro_choi_dien_tu_attach,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": cap_giay_phep_xuat_ban_attach,
+    "thong-bao-san-pham-quang-cao-bang-ron": thong_bao_spqc_bang_ron_attach,
     "giao-thue-chuyen-muc-dich-dat-bac-ninh": giao_thue_chuyen_muc_dich_dat_bac_ninh_attach,
     "giao-thue-chuyen-muc-dich-dat-ninh-binh": giao_thue_chuyen_muc_dich_dat_ninh_binh_attach,
     "giao-thue-chuyen-muc-dich-dat-quang-ngai": giao_thue_chuyen_muc_dich_dat_quang_ngai_attach,
@@ -6223,6 +6282,7 @@ _ATTACH_PIPELINE = {
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": cap_lai_an_toan_thuc_pham_attach,
     "cap-gcn-attp-cong-thuong": cap_gcn_attp_ct_attach,
+    "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": thong_bao_sua_doi_ctkm_attach,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_attach,
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_attach,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_attach,

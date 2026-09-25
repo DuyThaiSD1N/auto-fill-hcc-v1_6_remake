@@ -6,6 +6,8 @@ nguồn. Planner vẫn kiểm tra fileIndex và ép khoảng trang phủ toàn b
 import json
 from typing import Any
 
+from app.pipelines.chung_thuc_ban_sao.attach.prompt import DOCUMENT_NAME_RULES
+
 
 SYSTEM_PROMPT = """
 <persona>
@@ -30,18 +32,20 @@ Mỗi file có thể chứa một hoặc nhiều giấy tờ, nhưng tuyệt đ�
    - ví dụ: giấy chứng sinh + tờ khai khai sinh → "Hồ sơ đăng ký khai sinh"; đơn đăng ký biến động
      đất đai + giấy chứng nhận → "Hồ sơ biến động đất đai".
 6. Nếu các giấy tờ trong file không có một nghiệp vụ chung rõ ràng, dùng "Hồ sơ chứng thực".
-7. Với giấy tờ cá nhân đơn lẻ, documentName có thể gồm loại giấy tờ và họ tên đúng chủ thể.
-   Không lấy tên cán bộ ký hoặc người liên quan làm chủ thể.
+7. File chỉ có MỘT giấy tờ: đặt documentName theo document_name_rules. Không lấy tên cán bộ ký
+   hoặc người liên quan làm chủ thể.
 8. Chỉ điền subjectName khi toàn bộ file có một chủ thể chung rõ ràng. Chỉ điền identityNumber khi
    toàn bộ file là giấy tờ tùy thân của đúng một người; file hỗn hợp thì để trống hai trường này.
 9. logicalKey chỉ dùng cho file chứa một giấy tờ logic. File hỗn hợp phải để logicalKey rỗng.
-10. documentName chỉ gồm chữ, số, khoảng trắng, gạch dưới, gạch ngang; ưu tiên 20-35 ký tự và
-    tuyệt đối không quá 40 ký tự.
+10. documentName chỉ gồm chữ, số, khoảng trắng, gạch dưới, gạch ngang; tối đa 40 ký tự (quá dài thì
+    rút gọn theo document_name_rules, không để hệ thống cắt cụt).
 11. Không trả tên chung chung "Tài liệu chứng thực" khi OCR nhận biết được nội dung.
 12. OCR rỗng hoặc không đủ nhận biết thì để detectedType, documentName, subjectName,
     identityNumber, logicalKey rỗng.
 13. Trả duy nhất một JSON object, không markdown, không giải thích.
 </critical_rules>
+
+""" + DOCUMENT_NAME_RULES + """
 
 <output_contract>
 {"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":3,"detectedType":"Hồ sơ tổng hợp","documentName":"Hồ sơ đăng ký khai sinh","subjectName":"","identityNumber":"","logicalKey":""}]}

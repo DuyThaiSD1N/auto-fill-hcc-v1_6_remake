@@ -359,15 +359,38 @@ def test_client_cu_giu_nguyen_cau_scan_cu():
 
 
 def test_thu_tuc_attach_only_nhieu_o_khac_khong_bi_doi_cau_scan():
-    """Chứng thực chữ ký và chứng thực giao dịch tài sản cũng là attach-only mà vốn NHIỀU ô.
+    """Chứng thực chữ ký / giao dịch tài sản / phân chia di sản cũng là attach-only mà vốn NHIỀU ô.
     Suy câu scan theo "nhiều hơn một ô" là nói về căn cước chủ hồ sơ ở thủ tục không có thứ đó.
+    Và KHÔNG được đọc câu "nhận thẳng là Giấy tờ cần chứng thực bản sao, không phân loại": nhiều
+    ô thì có phân loại, và đó cũng không phải thủ tục bản sao.
     """
-    for key in ("chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san"):
+    for key in ("chung-thuc-chu-ky", "chung-thuc-giao-dich-tai-san", "chung-thuc-phan-chia-di-san"):
         proc_obj = flow.get_procedure(key)
         assert len(proc_obj["requiredDocs"]) > 1, f"{key} phải nhiều ô thì test này mới có nghĩa"
         for caps in (SCAN_CLIENT, OLD_CLIENT):
             conv = _conv(caps, procedure_key=key, docs_target="owner")
-            assert flow._scan_pick_template(conv, proc_obj) is flow.vi.SCAN_PICK_ATTACH, key
+            template = flow._scan_pick_template(conv, proc_obj)
+            assert template is flow.vi.SCAN_PICK, key
+            md, _ = flow._fmt(template, doc_name=flow._scan_pick_doc_name(conv))
+            assert "bản sao" not in md and "không phân loại" not in md, key
+
+
+def test_thu_tuc_mot_o_doc_dung_ten_o_cua_chinh_no():
+    """Câu "nhận thẳng, không phân loại" đúng với checklist một ô — nhưng phải nêu tên ô của
+    CHÍNH thủ tục, không ghi cứng "chứng thực bản sao"."""
+    expect = {
+        "chung-thuc-ban-sao": "Giấy tờ cần chứng thực bản sao",
+        "chung-thuc-chu-ky-nguoi-dich-ctv": "Bản dịch và giấy tờ, văn bản cần dịch",
+    }
+    for key, name in expect.items():
+        proc_obj = flow.get_procedure(key)
+        conv = _conv(OLD_CLIENT, procedure_key=key, docs_target="attachment")
+        template = flow._scan_pick_template(conv, proc_obj)
+        assert template is flow.vi.SCAN_PICK_ATTACH, key
+        md, _ = flow._fmt(template, doc_name=flow._scan_pick_doc_name(conv))
+        assert f"**{name}**" in md, key
+    ctv_md, _ = flow._fmt(flow.vi.SCAN_PICK_ATTACH, doc_name="Bản dịch và giấy tờ, văn bản cần dịch")
+    assert "bản sao" not in ctv_md
 
 
 def test_thu_tuc_khong_khai_requiredDocs_van_doc_theo_uploadHint():

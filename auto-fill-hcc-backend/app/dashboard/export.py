@@ -58,7 +58,7 @@ def _scope_label(scope: dict) -> str:
         province = scope.get("province") or ""
         return f"Toàn tỉnh {province}".strip()
     self_unit = scope.get("self") or {}
-    return self_unit.get("xa") or self_unit.get("name") or "Đơn vị của bạn"
+    return self_unit.get("name") or self_unit.get("xa") or "Đơn vị của bạn"
 
 
 def _write_header(ws, row: int, headers: list[tuple[str, str, int]]) -> None:
@@ -187,7 +187,7 @@ def _sheet_units(wb: Workbook, data: dict) -> None:
         dossiers = int(u.get("dossiers") or 0)
         total += dossiers
         _body_cell(ws, r, 1, idx, "c")
-        _body_cell(ws, r, 2, u.get("xa") or u.get("name") or "—", "l")
+        _body_cell(ws, r, 2, u.get("name") or u.get("xa") or "—", "l")
         _body_cell(ws, r, 3, _cap(u.get("xa")), "c")
         _body_cell(ws, r, 4, dossiers, "r", num=True, bold=True)
         _body_cell(ws, r, 5, int(u.get("procedureTypes") or 0), "r", num=True)
@@ -326,7 +326,7 @@ def export_filename(data: dict) -> str:
     scope = data.get("scope") or {}
     selected = data.get("selected") or {}
     if selected:
-        who = selected.get("xa") or selected.get("name") or "don-vi"
+        who = selected.get("name") or selected.get("xa") or "don-vi"
     else:
         who = _scope_label(scope)
     period = _period_label(data.get("range") or {})

@@ -7,6 +7,7 @@ import base64
 import logging
 import re
 import time
+import unicodedata
 from collections.abc import Callable
 from typing import Any
 
@@ -174,18 +175,36 @@ def canonical_document_type(value: str) -> str:
         return "Sổ hộ khẩu"
     if "trich luc" in text:
         return "Trích lục hộ tịch"
-    return normalize_document_name(value, _GENERIC_DOCUMENT_TYPE)
+    return _clean_document_name(value, _GENERIC_DOCUMENT_TYPE)[:50].strip()
 
 
 def _coerce_llm_document_info(value: Any) -> dict[str, str]:
     if isinstance(value, dict):
         detected = canonical_document_type(str(value.get("detectedType") or value.get("type") or ""))
         raw_name = str(value.get("documentName") or value.get("name") or value.get("title") or "")
-        document_name = normalize_document_name(raw_name, detected) if raw_name else ""
+        document_name = _clean_document_name(raw_name, detected)[:50].strip() if raw_name else ""
         return {"detectedType": detected, "documentName": document_name}
 
     detected = canonical_document_type(str(value or ""))
     return {"detectedType": detected, "documentName": ""}
+
+
+def _clean_document_name(raw: str, fallback: str = "") -> str:
+    """Làm sạch tên tài liệu do LLM đặt theo bộ ký tự ô "Tên tài liệu" của cổng.
+
+    Không dùng `_shared.normalize_document_name`: hàm đó nhận TÊN FILE nên chạy `Path(raw).stem`, cắt
+    bỏ mọi thứ trước dấu "/" — "Phiếu theo dõi ĐG Quý I/2026 Thảo" thành "2026 Thảo", mất hẳn loại
+    giấy. "/" đổi thành "-" để giữ mốc "Quý I-2026".
+    """
+    source = unicodedata.normalize("NFC", str(raw or "").replace("/", "-")).strip()
+    chars = [
+        ch if (ch.isalnum() or ch in {" ", "_", "-"}) else " "
+        for ch in source
+        if unicodedata.category(ch) != "Mn"
+    ]
+    text = re.sub(r"\s+", " ", "".join(chars))
+    text = re.sub(r"-{2,}", "-", text).strip(" -_")
+    return text or fallback
 
 
 def _unique_document_name(base: str, used: set[str], fallback: str) -> str:
@@ -195,7 +214,7 @@ def _unique_document_name(base: str, used: set[str], fallback: str) -> str:
         # ký tự cuối là một từ dở dang hay một từ hoàn chỉnh.
         head = source[:48].rstrip()
         source = head.rsplit(" ", 1)[0].strip() or head
-    raw = normalize_document_name(source, fallback)
+    raw = _clean_document_name(source, fallback)[:50].strip()
     normalized = raw
     if len(raw) >= 50:
         # normalize_document_name giới hạn cứng 50 ký tự. Cắt lại ở ranh giới từ để tên trên
@@ -392,6 +411,7 @@ def _preserve_source_file_segments(
     *,
     is_identity_segment: Callable[[dict], bool],
     long_name_fallback: str,
+    skip_file_indexes: set[int] | frozenset[int] = frozenset(),
 ) -> list[dict]:
     """Co kết quả phân đoạn về đúng một đoạn đầy đủ cho mỗi file nguồn.
 
@@ -407,6 +427,8 @@ def _preserve_source_file_segments(
 
     preserved: list[dict] = []
     for file_index, file in enumerate(raw_files):
+        if file_index in skip_file_indexes:
+            continue
         page_count = int(file_meta[file_index]["pageCount"] or 1)
         items = sorted(by_file[file_index], key=lambda item: (item["pageFrom"], item["pageTo"]))
         if not items:
@@ -431,11 +453,18 @@ def _preserve_source_file_segments(
         document_name = str(primary.get("documentName") or "").strip()
         if is_mixed:
             document_name = long_name_fallback
-        document_name = normalize_document_name(
-            document_name or str(file.get("name") or f"file-{file_index + 1}"),
-            canonical_document_type(detected),
+        document_name = (
+            _clean_document_name(document_name, canonical_document_type(detected))
+            if document_name
+            # Chỉ TÊN FILE mới cần bỏ đuôi ".pdf" bằng helper chung.
+            else normalize_document_name(
+                str(file.get("name") or f"file-{file_index + 1}"), canonical_document_type(detected)
+            )
         )
-        if len(document_name) > 40:
+        # Tên dài chỉ bị thay bằng tên nhóm khi file THẬT SỰ gộp nhiều giấy tờ (tên dài lúc đó là liệt kê
+        # "A và B"). Giấy tờ đơn lẻ tên 41–50 ký tự ("Phụ lục văn bằng cử nhân Nguyễn Minh Hiếu") vẫn hợp lệ
+        # với cổng — thay bằng "Hồ sơ chứng thực" là mất nghĩa; _unique_document_name cắt ở ranh giới từ.
+        if len(document_name) > 40 and (is_mixed or _fold(detected).startswith("ho so")):
             document_name = long_name_fallback
 
         preserved.append({
@@ -520,13 +549,18 @@ def _is_blank_segment(segment: dict) -> bool:
     return _fold(segment.get("detectedType") or "") == _BLANK_PAGE_KEY
 
 
+def _has_letters(text: str) -> bool:
+    """OCR có đọc ra CHỮ CÁI nào không (bỏ dòng "Trang n/m"): tệp chỉ có số trang/ký hiệu là trang trắng."""
+    return any(ch.isalpha() for ch in _PAGE_HEADER_RE.sub(" ", str(text or "")))
+
+
 def _drop_blank_segments(
     segments: list[dict], raw_files: list[dict], file_meta: dict[int, dict]
 ) -> tuple[list[dict], list[dict]]:
     """Bỏ khoảng trang trắng khỏi kế hoạch tách; trả (giữ lại, đã bỏ).
 
-    File mà mọi trang đều bị gắn trang trắng vẫn đính NGUYÊN file: OCR rỗng cũng có thể là ảnh chụp
-    không có chữ, bỏ cả file thì giấy tờ cán bộ tải lên biến mất khỏi hồ sơ.
+    File mà LLM gắn trang trắng cho MỌI trang nhưng OCR vẫn có chữ thì đính NGUYÊN file — LLM có thể xem
+    nhầm ảnh/giấy mờ là trang trắng. Tệp OCR không ra chữ nào đã bị bỏ trước đó (`_has_letters`).
     """
     kept: list[dict] = []
     dropped: list[dict] = []
@@ -873,9 +907,26 @@ async def plan(
     llm_ms = int((time.monotonic() - t1) * 1000)
 
     segments = _validated_segments(raw_segments, raw_files, file_meta, errors)
-    blank_segments: list[dict] = []
+    # Tệp scan trắng: OCR CHẠY ĐƯỢC mà không ra chữ cái nào (chỉ số trang/ký hiệu) → không đính, báo cán bộ.
+    # OCR lỗi hoặc tệp không OCR được (docx…) KHÔNG tính là trắng. Mọi tệp đều trắng thì vẫn giữ, để kế hoạch
+    # không rỗng.
+    blank_files = {
+        index for index, result in ocr_by_index.items()
+        if not result.get("error") and not _has_letters(result.get("text"))
+    }
+    if len(blank_files) == len(raw_files):
+        blank_files = set()
+    if blank_files:
+        errors.append(
+            "Đã bỏ qua tệp trắng (không đọc được chữ nào): "
+            + ", ".join(str(raw_files[i].get("name") or "") for i in sorted(blank_files))
+            + " — nếu đó là ảnh cần chứng thực, cán bộ đính tay."
+        )
+    blank_segments: list[dict] = [segment for segment in segments if segment["fileIndex"] in blank_files]
+    segments = [segment for segment in segments if segment["fileIndex"] not in blank_files]
     if split_documents:
-        segments, blank_segments = _drop_blank_segments(segments, raw_files, file_meta)
+        segments, dropped = _drop_blank_segments(segments, raw_files, file_meta)
+        blank_segments += dropped
     else:
         segments = _preserve_source_file_segments(
             segments,
@@ -885,6 +936,7 @@ async def plan(
                 segment.get("detectedType") or segment.get("documentName") or ""
             ) in _IDENTITY_DOCUMENT_TYPES,
             long_name_fallback="Hồ sơ chứng thực",
+            skip_file_indexes=blank_files,
         )
     attachments, classified = build_segment_plan_items(
         raw_files,
