@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.19.8",
+  "version": "1.19.9",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -13,7 +13,6 @@
     "idle"
   ],
   "host_permissions": [
-    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],

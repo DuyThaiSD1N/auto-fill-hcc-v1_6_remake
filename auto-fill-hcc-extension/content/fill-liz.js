@@ -44,7 +44,8 @@
     return map;
   }
 
-  function findFieldExact(index, sec, lab) {
+  function findField(index, section, label) {
+    const sec = fold(section), lab = fold(label);
     // (1) khớp đúng (section, label).
     let mf = index.get(sec + "||" + lab);
     if (mf) return mf;
@@ -53,33 +54,13 @@
       const [s, l] = key.split("||");
       if (l === lab && (s.includes(sec) || sec.includes(s))) return el;
     }
-    // (3) chỉ khớp label (khi form không dựng section như mẫu) — chỉ nhận nếu DUY NHẤT.
+    // (3) chỉ khớp label — CHỈ khi BE không yêu cầu section. Có section mà không thấy ô đúng khối thì BỎ:
+    // nhãn "Nơi cấp/Địa chỉ chi tiết" lặp giữa các khối, khối đích chưa render thì ô DUY NHẤT còn lại là
+    // của khối khác (vd người nộp) → ghi đè nhầm người.
+    if (sec) return null;
     const byLabel = [];
     for (const [key, el] of index) if (key.endsWith("||" + lab)) byLabel.push(el);
     return byLabel.length === 1 ? byLabel[0] : null;
-  }
-
-  // BE có thể gửi kèm `aliases` (cách viết nhãn khác) khi chưa đối chiếu được DOM gốc. Thử khớp đúng
-  // với nhãn chính rồi từng alias; hụt hết mới khớp theo TIỀN TỐ trong cùng section (nhãn dài có hậu tố
-  // chú thích, vd "Trình độ ngoại ngữ (đối với…)") — chỉ nhận khi duy nhất để không điền nhầm ô.
-  function findField(index, section, label, aliases) {
-    const sec = fold(section);
-    const labels = [label, ...(Array.isArray(aliases) ? aliases : [])].map(fold).filter(Boolean);
-    for (const lab of labels) {
-      const mf = findFieldExact(index, sec, lab);
-      if (mf) return mf;
-    }
-    if (!aliases || !aliases.length) return null;
-    for (const lab of labels) {
-      if (lab.length < 6) continue;
-      const hits = [];
-      for (const [key, el] of index) {
-        const [s, l] = key.split("||");
-        if ((s.includes(sec) || sec.includes(s)) && (l.startsWith(lab) || (lab.startsWith(l) && l.length >= 6))) hits.push(el);
-      }
-      if (hits.length === 1) return hits[0];
-    }
-    return null;
   }
 
   function inputOf(matField) {
@@ -111,9 +92,8 @@
     return !!t && (t === want || t.includes(want) || want.includes(t));
   }
 
-  // mat-select overlay: mở → (gõ lọc nếu có ô search) → chọn option khớp. `hint` (tuỳ chọn, vd tên tỉnh)
-  // dùng để chọn đúng dòng khi nhiều option cùng chứa giá trị (tên xã trùng ở nhiều tỉnh).
-  async function fillLizSelect(matField, value, hint) {
+  // mat-select overlay: mở → (gõ lọc nếu có ô search) → chọn option khớp.
+  async function fillLizSelect(matField, value) {
     const ms = matField.querySelector("mat-select");
     if (!ms) return fillLizText(matField, value); // fallback
     const want = fold(value);
@@ -127,22 +107,44 @@
     trigger.click();
     await waitFor(() => matOptions().length > 0, 2500);
 
-    // Ô lọc trong panel (mat-select có filter) → gõ để nạp option đúng.
+    // Giá trị gộp "Xã …, Tỉnh …" (ô Địa chỉ hành chính): tách phần xã/tỉnh để lọc và để khớp chặt cả hai.
+    const parts = String(value).split(",").map((p) => p.trim()).filter(Boolean);
+    const bare = (p) => fold(p).replace(/^(xa|phuong|thi tran|dac khu|tinh|thanh pho|tp\.?)\s+/, "").trim();
+    const wardBare = parts.length > 1 ? bare(parts[0]) : "";
+    const provinceBare = parts.length > 1 ? bare(parts[parts.length - 1]) : "";
+    const matchesArea = (text) => {
+      const t = fold(text);
+      return !!wardBare && t.includes(wardBare) && t.includes(provinceBare);
+    };
+    const pick = () => {
+      const opts = matOptions().filter((o) => !o.querySelector("input"));
+      return opts.find((o) => fold(o.textContent) === want) ||
+        (wardBare ? opts.find((o) => matchesArea(o.textContent)) : null) ||
+        opts.find((o) => optMatch(o.textContent, want)) || null;
+    };
+
+    // Ô lọc trong panel (ngx-mat-select-search). Danh sách chỉ nạp SẴN một phần (vd toàn Hà Nội) — option
+    // tỉnh khác chỉ hiện khi gõ lọc, và bộ lọc tìm theo TÊN XÃ: gõ nguyên "Xã A, Tỉnh B" thì không ra gì.
+    // Gõ tên xã trần trước; không ra thì thử nguyên chuỗi.
     const search = document.querySelector(
-      ".cdk-overlay-pane input[type=text], .mat-select-search-inner input, .mat-select-panel input[type=text]"
+      ".cdk-overlay-pane .mat-select-search-inner input[type=text], .cdk-overlay-pane input[type=text], " +
+      ".mat-select-search-inner input, .mat-select-panel input[type=text]"
     );
-    if (search) {
-      search.focus();
-      setNativeValue(search, String(value));
-      search.dispatchEvent(new Event("input", { bubbles: true }));
-      await waitFor(() => matOptions().some((o) => optMatch(o.textContent, want)), 2500);
+    if (search && !pick()) {
+      const terms = [...new Set([wardBare ? parts[0].replace(/^(xã|phường|thị trấn|đặc khu)\s+/i, "") : "", String(value)])]
+        .filter(Boolean);
+      for (const term of terms) {
+        search.focus();
+        setNativeValue(search, term);
+        search.dispatchEvent(new Event("input", { bubbles: true }));
+        search.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: term.slice(-1) }));
+        await waitFor(() => !!pick(), 4000);
+        if (pick()) break;
+      }
     }
 
     const opts = matOptions();
-    const wantHint = hint ? fold(hint) : "";
-    const target = opts.find((o) => fold(o.textContent) === want) ||
-      (wantHint && opts.find((o) => optMatch(o.textContent, want) && fold(o.textContent).includes(wantHint))) ||
-      opts.find((o) => optMatch(o.textContent, want));
+    const target = pick();
     if (!target) {
       console.warn(`[AutoFill-LIZ] mat-select không khớp "${value}". Option:`,
         opts.map((o) => o.textContent.trim()).filter(Boolean).slice(0, 25));
@@ -156,14 +158,55 @@
     return "ok";
   }
 
+  // Ô tích (liz-checkbox), khớp theo nhãn. Chỉ bấm khi trạng thái hiện tại KHÁC giá trị cần — chạy lại
+  // lượt điền không được bỏ tích. Không bao giờ khớp mờ sang ô khác: nhãn phải bằng hoặc chứa trọn nhãn cần.
+  function findLizCheckbox(label) {
+    const want = fold(label);
+    if (!want) return null;
+    const boxes = Array.from(document.querySelectorAll("liz-checkbox")).filter(isVisible);
+    return boxes.find((b) => fold(b.textContent) === want) ||
+      boxes.find((b) => fold(b.textContent).includes(want)) || null;
+  }
+
+  async function fillLizCheckbox(label, value) {
+    const box = findLizCheckbox(label);
+    const input = box && box.querySelector("input[type=checkbox]");
+    if (!input) return "notfound";
+    if (input.disabled) return "disabled";
+    const want = value === true || ["true", "1", "co", "yes"].includes(fold(value));
+    // Khối phụ thuộc (vd "Thông tin người ủy quyền") render SAU khi tích, có thể chậm hơn vài trăm ms —
+    // dựng chỉ mục sớm thì các ô của khối chưa có. Đếm ô hiển thị TRƯỚC khi bấm, chờ số đó đổi (tối đa 3s).
+    const visibleFields = () => Array.from(document.querySelectorAll("mat-form-field")).filter(isVisible).length;
+    if (input.checked !== want) {
+      const before = visibleFields();
+      input.click();
+      await waitFor(() => input.checked === want, 1500);
+      if (input.checked === want) await waitFor(() => visibleFields() !== before, 3000);
+    }
+    if (input.checked !== want) return "notmatch";
+    markFilled(box.querySelector("mat-checkbox") || box);
+    await sleep(200);
+    return "ok";
+  }
+
   async function fillFormLiz(fields) {
     injectAutofillStyles();
     clearAutofillMarks();
     const result = { filled: 0, notFound: [], errors: [], skipped: [] };
-    const index = buildIndex();
+    let index = buildIndex();
 
     for (const f of fields) {
-      const mf = findField(index, f.section || "", f.name, f.aliases);
+      if (f.comp === "liz-checkbox") {
+        const r = await fillLizCheckbox(f.name, f.value);
+        if (r === "ok") { result.filled++; index = buildIndex(); }
+        else if (r === "disabled") result.skipped.push(f.name);
+        else {
+          result.notFound.push(f.name);
+          console.warn(`[AutoFill-LIZ] Không tích được ô "${f.name}" (${r})`);
+        }
+        continue;
+      }
+      const mf = findField(index, f.section || "", f.name);
       if (!mf) {
         result.notFound.push(f.name);
         console.warn(`[AutoFill-LIZ] Không thấy ô (section="${f.section}", label="${f.name}")`);
@@ -171,7 +214,7 @@
       }
       try {
         let r;
-        if (f.comp === "liz-select") r = await fillLizSelect(mf, f.value, f.hint);
+        if (f.comp === "liz-select") r = await fillLizSelect(mf, f.value);
         else r = fillLizText(mf, f.value); // liz-input, liz-date
         if (r === "ok") result.filled++;
         else if (r === "disabled") result.skipped.push(f.name); // cổng tự điền, bỏ qua (không tính lỗi)

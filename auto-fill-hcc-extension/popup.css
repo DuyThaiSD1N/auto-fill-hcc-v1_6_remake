@@ -530,41 +530,6 @@ input, select, textarea { font-family: inherit; }
 /* Nhãn 🖨️ cho file tự về từ máy quét trong danh sách file */
 .file-list .from-scan { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }
 
-/* Danh sách fallback khi không tự tin gom được batch quét gần nhất (xem
-   attemptBatchImport/renderScanRecentList trong popup.js) — cán bộ tự chọn
-   thay vì để hệ thống đoán liều. */
-.scan-recent-list {
-  border: 1px solid #f0c36d;
-  background: #fff8e6;
-  border-radius: 4px;
-  padding: 6px 8px;
-  margin: 8px 0;
-  font-size: 12px;
-}
-.scan-recent-hint { color: #8a5a00; margin-bottom: 4px; }
-.scan-recent-add-all {
-  width: auto;
-  font-size: 11.5px;
-  padding: 3px 8px;
-  margin-bottom: 4px;
-  background: #8a5a00;
-}
-.scan-recent-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 3px 0;
-}
-.scan-recent-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.scan-recent-row button {
-  width: auto;
-  flex: 0 0 auto;
-  padding: 1px 8px;
-  font-size: 13px;
-  background: #0d7d52;
-}
-
 /* Mask phủ TOÀN BỘ nội dung popup (kể cả ngoài #fileList — nhãn, nút, khối
    khác trong "Giấy tờ") lúc đang kéo file qua — vẫn CHỈ nằm trong document
    của popup.html (extension), không đụng gì tới trang gốc. Ẩn mặc định,
