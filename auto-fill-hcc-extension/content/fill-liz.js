@@ -44,8 +44,7 @@
     return map;
   }
 
-  function findField(index, section, label) {
-    const sec = fold(section), lab = fold(label);
+  function findFieldExact(index, sec, lab) {
     // (1) khớp đúng (section, label).
     let mf = index.get(sec + "||" + lab);
     if (mf) return mf;
@@ -58,6 +57,29 @@
     const byLabel = [];
     for (const [key, el] of index) if (key.endsWith("||" + lab)) byLabel.push(el);
     return byLabel.length === 1 ? byLabel[0] : null;
+  }
+
+  // BE có thể gửi kèm `aliases` (cách viết nhãn khác) khi chưa đối chiếu được DOM gốc. Thử khớp đúng
+  // với nhãn chính rồi từng alias; hụt hết mới khớp theo TIỀN TỐ trong cùng section (nhãn dài có hậu tố
+  // chú thích, vd "Trình độ ngoại ngữ (đối với…)") — chỉ nhận khi duy nhất để không điền nhầm ô.
+  function findField(index, section, label, aliases) {
+    const sec = fold(section);
+    const labels = [label, ...(Array.isArray(aliases) ? aliases : [])].map(fold).filter(Boolean);
+    for (const lab of labels) {
+      const mf = findFieldExact(index, sec, lab);
+      if (mf) return mf;
+    }
+    if (!aliases || !aliases.length) return null;
+    for (const lab of labels) {
+      if (lab.length < 6) continue;
+      const hits = [];
+      for (const [key, el] of index) {
+        const [s, l] = key.split("||");
+        if ((s.includes(sec) || sec.includes(s)) && (l.startsWith(lab) || (lab.startsWith(l) && l.length >= 6))) hits.push(el);
+      }
+      if (hits.length === 1) return hits[0];
+    }
+    return null;
   }
 
   function inputOf(matField) {
@@ -89,8 +111,9 @@
     return !!t && (t === want || t.includes(want) || want.includes(t));
   }
 
-  // mat-select overlay: mở → (gõ lọc nếu có ô search) → chọn option khớp.
-  async function fillLizSelect(matField, value) {
+  // mat-select overlay: mở → (gõ lọc nếu có ô search) → chọn option khớp. `hint` (tuỳ chọn, vd tên tỉnh)
+  // dùng để chọn đúng dòng khi nhiều option cùng chứa giá trị (tên xã trùng ở nhiều tỉnh).
+  async function fillLizSelect(matField, value, hint) {
     const ms = matField.querySelector("mat-select");
     if (!ms) return fillLizText(matField, value); // fallback
     const want = fold(value);
@@ -116,7 +139,10 @@
     }
 
     const opts = matOptions();
-    const target = opts.find((o) => fold(o.textContent) === want) || opts.find((o) => optMatch(o.textContent, want));
+    const wantHint = hint ? fold(hint) : "";
+    const target = opts.find((o) => fold(o.textContent) === want) ||
+      (wantHint && opts.find((o) => optMatch(o.textContent, want) && fold(o.textContent).includes(wantHint))) ||
+      opts.find((o) => optMatch(o.textContent, want));
     if (!target) {
       console.warn(`[AutoFill-LIZ] mat-select không khớp "${value}". Option:`,
         opts.map((o) => o.textContent.trim()).filter(Boolean).slice(0, 25));
@@ -137,7 +163,7 @@
     const index = buildIndex();
 
     for (const f of fields) {
-      const mf = findField(index, f.section || "", f.name);
+      const mf = findField(index, f.section || "", f.name, f.aliases);
       if (!mf) {
         result.notFound.push(f.name);
         console.warn(`[AutoFill-LIZ] Không thấy ô (section="${f.section}", label="${f.name}")`);
@@ -145,7 +171,7 @@
       }
       try {
         let r;
-        if (f.comp === "liz-select") r = await fillLizSelect(mf, f.value);
+        if (f.comp === "liz-select") r = await fillLizSelect(mf, f.value, f.hint);
         else r = fillLizText(mf, f.value); // liz-input, liz-date
         if (r === "ok") result.filled++;
         else if (r === "disabled") result.skipped.push(f.name); // cổng tự điền, bỏ qua (không tính lỗi)
