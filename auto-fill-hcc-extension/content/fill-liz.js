@@ -12,6 +12,8 @@
 
   // norm() chỉ lowercase, KHÔNG bỏ dấu → fold bỏ dấu để khớp nhãn tiếng Việt ổn định.
   const fold = (s) => norm(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").trim();
+  // Nhãn cổng hay kèm dấu chấm/hai chấm/dấu * bắt buộc ở cuối ("…tại điểm.") → bỏ để khớp đúng nhãn BE.
+  const foldLabel = (s) => fold(s).replace(/[\s.:*]+$/, "");
 
   // Text nhãn section của 1 mat-form-field: leo lên .group gần nhất → lấy .group-header.
   function sectionOf(matField) {
@@ -28,9 +30,16 @@
     return hdr ? fold(hdr.textContent) : "";
   }
 
+  // Ô khai báo bằng `placeholder` (không có <mat-label>) — vd "Tên điểm du lịch…", "Trình độ ngoại ngữ…"
+  // của thẻ HDV — chỉ có label nổi .mat-form-field-label / data-placeholder trên input → đọc lần lượt.
   function labelOf(matField) {
-    const lbl = matField.querySelector("mat-label");
-    return lbl ? fold(lbl.textContent) : "";
+    const lbl = matField.querySelector("mat-label, .mat-form-field-label, .mdc-floating-label, label");
+    const text = lbl && lbl.textContent.trim();
+    if (text) return foldLabel(text);
+    const inp = matField.querySelector("input, textarea");
+    const ph = inp && (inp.getAttribute("data-placeholder") || inp.getAttribute("placeholder") ||
+      inp.getAttribute("aria-label"));
+    return ph ? foldLabel(ph) : "";
   }
 
   // Lập chỉ mục mọi mat-form-field theo (section, label) → phần tử. Nhãn lặp giữa section nên key gộp cả 2.
@@ -45,7 +54,7 @@
   }
 
   function findField(index, section, label) {
-    const sec = fold(section), lab = fold(label);
+    const sec = fold(section), lab = foldLabel(label);
     // (1) khớp đúng (section, label).
     let mf = index.get(sec + "||" + lab);
     if (mf) return mf;
