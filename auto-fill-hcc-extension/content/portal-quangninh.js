@@ -543,10 +543,18 @@
     }
   }
 
+  // Thủ tục có trang nộp CÙNG DẠNG URL (/nop-ho-so?...MaTTHC=) nhưng không đi qua bảng danh sách/modal
+  // của cổng tỉnh, nên không cần cờ "Đi đến thủ tục" — nhắc thiếu cờ chỉ gây hiểu nhầm.
+  //   1.004623: cấp thẻ hướng dẫn viên du lịch nội địa (cổng Bộ VHTTDL).
+  const NO_FLOW_MA_TTHC = new Set(["1.004623"]);
+
   /** Đúng trang nộp hồ sơ của một mã TTHC — chỗ cán bộ TRÔNG ĐỢI trợ lý làm việc. */
   function onDossierPage() {
     try {
       const url = new URL(location.href);
+      // Tên tham số mã TTHC tuỳ cổng viết hoa/thường (MaTTHC, matthc…) → dò không phân biệt hoa thường.
+      const ma = [...url.searchParams].find(([k]) => k.toLowerCase() === "matthc")?.[1] || "";
+      if (NO_FLOW_MA_TTHC.has(ma.trim())) return false;
       return url.pathname.startsWith("/nop-ho-so") && !!url.searchParams.get("MaTTHC");
     } catch (_) { return false; }
   }

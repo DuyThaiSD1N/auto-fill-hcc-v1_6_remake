@@ -565,38 +565,6 @@ input, select, textarea { font-family: inherit; }
   background: #0d7d52;
 }
 
-/* Lời đề nghị dùng lại giấy tờ của hồ sơ trước (xem renderPrevSessionOffer trong popup.js).
-   Tông xanh dương nhạt — là GỢI Ý tiện lợi, không phải cảnh báo; khác hẳn tông hổ phách của
-   .scan-recent-list (chỗ đó là "hệ thống không chắc, cán bộ phải tự quyết"). */
-.prev-session-offer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #bcd4ef;
-  background: #f2f7fd;
-  border-radius: 4px;
-  padding: 5px 6px 5px 8px;
-  margin: 8px 0;
-  font-size: 11.5px;
-}
-.prev-session-offer[hidden] { display: none; }
-.prev-session-offer .prev-offer-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: #23486e;
-}
-.prev-session-offer .prev-offer-use {
-  flex: 0 0 auto;
-  width: auto;
-  padding: 3px 9px;
-  font-size: 11.5px;
-  font-weight: 600;
-  background: #1565c0;
-}
-
 /* Mask phủ TOÀN BỘ nội dung popup (kể cả ngoài #fileList — nhãn, nút, khối
    khác trong "Giấy tờ") lúc đang kéo file qua — vẫn CHỈ nằm trong document
    của popup.html (extension), không đụng gì tới trang gốc. Ẩn mặc định,

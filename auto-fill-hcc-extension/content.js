@@ -47,7 +47,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "19/9";
+  const APP_RELEASE_DATE = "25/9";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -2863,7 +2863,7 @@
   // vớt tệp cổng ghi nhận trễ → không mất, không đính trùng.
   // Hai câu cổng thật: "Upload thất bại (File Service): Upload failed: 500…" và
   // "Tải lên tài liệu thất bại, vui lòng thử lại".
-  const UPLOAD_FAILURE_RE = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại/i;
+  const UPLOAD_FAILURE_RE = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại|không tải được (?:file|tệp)/i;
 
   function uploadFailureToastNodes() {
     return Array.from(document.querySelectorAll(
@@ -4117,10 +4117,15 @@
 
   // Chế độ TÁCH HỒ SƠ (split): ép mọi file về STT1 (dòng "Bản chính giấy tờ…"), KHÔNG thêm dòng.
   // Mỗi hồ sơ chỉ 1 file → file khác thuộc hồ sơ/tab khác (popup + background điều phối).
-  function forceRow1PlanItem(item) {
-    // Chứng thực chữ ký: giấy tùy thân (CCCD/Hộ chiếu...) PHẢI vào STT2, TUYỆT ĐỐI không ép về STT1.
+  function forceRow1PlanItem(item, procedure = "") {
+    // CHỈ chứng thực chữ ký có cấu trúc STT1=tài liệu, STT2=giấy tùy thân: giấy tùy thân PHẢI vào STT2.
+    // Chứng thực bản sao tách mỗi tài liệu thành một hồ sơ riêng nên cả CCCD cũng vào STT1 của tab đó.
     // Case bản dịch đặt forceFirstRow vì tên file có thể chứa chữ "CCCD" nhưng vẫn là tài liệu hàng 1.
-    if (!item?.forceFirstRow && isIdentityAttachmentItem(item)) {
+    if (
+      procedure === "chung-thuc-chu-ky" &&
+      !item?.forceFirstRow &&
+      isIdentityAttachmentItem(item)
+    ) {
       const row2 = findAttachmentRows()[1] || null;
       const name2 = row2 ? attachmentComponentName(row2) : "";
       return {
@@ -4538,7 +4543,7 @@
       // Hải Châu (Đà Nẵng): bundle split có file ẢO (virtualCopy) → GIỮ nguyên kế hoạch BE (giấy tờ thật
       // target=new, file ảo target=STT1), KHÔNG ép mọi file về STT1. Split thường vẫn ép hết về STT1.
       const plannedAttachments = (splitMode && !normalItems.some((it) => it && it.virtualCopy))
-        ? normalItems.map(forceRow1PlanItem)   // split thường: mọi file ép về STT1
+        ? normalItems.map((item) => forceRow1PlanItem(item, procedure))   // split thường: ép về STT1
         : normalizeAttachmentPlan(normalItems, procedure);
 
       // ROUND-ROBIN: hỏng thì HOÃN lại rồi đi tiếp, hết lượt mới quay lại thử phần hoãn.
@@ -5132,6 +5137,22 @@
     return el ? String(el.getAttribute(attrName) || "").trim() : "";
   }
 
+  // [Bộ VHTTDL — liz] Họ tên + số định danh của khối "Thông tin người nộp hồ sơ" là input disabled KHÔNG
+  // có name/formcontrolname (cổng đổ từ tài khoản định danh) → đọc theo (.group-header, <mat-label>).
+  function readLizAccountValue(labelPrefixes) {
+    if (!document.querySelector("liz-input, liz-form-component")) return "";
+    const wanted = labelPrefixes.map(foldChoiceText);
+    for (const mf of document.querySelectorAll("mat-form-field")) {
+      const header = mf.closest(".group")?.querySelector(".group-header");
+      if (!foldChoiceText(nodeText(header)).includes("nguoi nop")) continue;
+      const label = foldChoiceText(nodeText(mf.querySelector("mat-label")));
+      if (!wanted.some((w) => label.startsWith(w))) continue;
+      const value = String(mf.querySelector("input")?.value || "").trim();
+      if (value && !isPlaceholderText(value)) return value;
+    }
+    return "";
+  }
+
   // [Bắc Ninh] Trang tài khoản VNeID (/vneidsso): đọc ô prefill theo NAME suffix trong portlet
   // `_taikhoan_sso_vneid_` (bỏ hidden). Mốc để BE chọn ĐÚNG người trong giấy tờ upload.
   function readBacNinhAccountValue(key) {
@@ -5156,13 +5177,15 @@
         readInputLikeValue(["HoVaTenC", "NYC_HoVaTen"]) ||
         // Cổng iGate VNPT (Nth.FormBuilder, vd Lào Cai): khối người nộp prefill từ tài khoản định danh.
         readInputLikeValue("CongDan_tenCongDan") ||
-        readBacNinhAccountValue("hoTen"),
+        readBacNinhAccountValue("hoTen") ||
+        readLizAccountValue(["ten nguoi"]),
       applicantIdentityNumber:
         readInputLikeValue("data[identityNumber]") ||
         readNgReflectValue("ng-reflect-identity-number") ||
         readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]) ||
         readInputLikeValue("CongDan_soCmnd") ||
-        readBacNinhAccountValue("soDinhDanh"),
+        readBacNinhAccountValue("soDinhDanh") ||
+        readLizAccountValue(["cmnd", "so dinh danh"]),
       ownerFullname: readInputLikeValue("data[ownerFullname]"),
       ownerIdentityNumber: readInputLikeValue("data[ownerIdentityNumber]"),
       ownerDossierChecked: !!checkbox?.checked,

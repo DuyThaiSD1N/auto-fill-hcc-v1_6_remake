@@ -550,9 +550,6 @@ async function bootstrap() {
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
-    // Dựng lại lời đề nghị "dùng lại hồ sơ trước" — cổng dịch vụ công redirect/postback liên tục,
-    // panel bị dựng lại thường xuyên, phải hiện lại được sau mỗi lần đó chứ không mất theo RAM.
-    await renderPrevSessionOffer();
     // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
     await resumeEnterpriseFillIfPending();
     // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
@@ -601,9 +598,6 @@ loginBtn.addEventListener("click", async () => {
     await autoDetectProcedure();
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
-    // Dựng lại lời đề nghị "dùng lại hồ sơ trước" — cổng dịch vụ công redirect/postback liên tục,
-    // panel bị dựng lại thường xuyên, phải hiện lại được sau mỗi lần đó chứ không mất theo RAM.
-    await renderPrevSessionOffer();
     // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
     await resumeEnterpriseFillIfPending();
     // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
@@ -641,7 +635,6 @@ logoutBtn.addEventListener("click", async () => {
   await AuthStore.clearTokens();
   currentUser = null;
   await clearSession();
-  await clearPrevSession(); // rời phiên làm việc → không để giấy tờ công dân nằm lại trên máy
   files.length = 0;
   lastProcessSession = null;
   renderFiles();
@@ -654,9 +647,6 @@ logoutBtn.addEventListener("click", async () => {
 // Tạo phiên mới: xoá file + kết quả + sessionId của TAB hiện tại (giữ đăng nhập, giữ thủ tục đã chọn).
 if (newSessionBtn) {
   newSessionBtn.addEventListener("click", async () => {
-    // Cất giấy tờ hồ sơ vừa xong sang ngăn "hồ sơ trước" TRƯỚC khi xoá bất cứ thứ gì — đây là
-    // nguồn duy nhất để mời dùng lại khi cùng công dân làm thủ tục tiếp theo.
-    archiveCurrentSessionAsPrev();
     await clearSession();
     files.length = 0;
     lastProcessSession = null;
@@ -676,7 +666,6 @@ if (newSessionBtn) {
     renderFiles();
     applyFormUI();
     refreshAttachStepUI();
-    void renderPrevSessionOffer(); // mời dùng lại giấy tờ vừa cất, nếu vẫn là cùng công dân
     // Nhận diện lại theo TRANG HIỆN TẠI (giống lúc mới mở): trang form → tự chọn+khóa; không → để trống.
     await autoDetectProcedure();
     setStatus("Đã tạo phiên mới — sẵn sàng cho hồ sơ tiếp theo.", "ok");
@@ -970,9 +959,6 @@ function shouldPreserveProcedureWorkOnAutoDetect(previousKey, nextKey, source, f
 }
 
 function resetProcedureWorkState() {
-  // Cất giấy tờ của hồ sơ đang đóng vào ngăn "hồ sơ trước" TRƯỚC khi xoá files[] — để còn mời
-  // dùng lại được nếu vẫn là cùng công dân (xem archiveCurrentSessionAsPrev).
-  archiveCurrentSessionAsPrev();
   // Vô hiệu mọi saveSession cũ đang đọc file lớn; bản lưu đó không được ghi file thủ tục trước trở lại.
   sessionWriteRevision++;
   files.length = 0;
@@ -1632,14 +1618,6 @@ const files = []; // { file, role, dataUrl?, restored? }
 // Session lưu THEO TAB (autofill_session_<tabId>) → mỗi tab 1 phiên; tab mới không bị
 // kéo thủ tục/file của tab cũ sang. Bản popup đứng riêng (không nhúng) dùng key "popup".
 const SESSION_KEY = "autofill_session_" + (EMBEDDED_TAB_ID ?? "popup");
-// Ngăn "hồ sơ trước": snapshot của phiên vừa đóng, GIỮ LẠI (không xoá) để cán bộ dùng lại được
-// bằng 1 chạm khi CÙNG một công dân làm thủ tục thứ hai (vd khai sinh liên thông + cấp bản sao).
-// PHẢI nằm trong chrome.storage.local chứ không phải biến trong RAM: cổng dịch vụ công
-// postback/redirect liên tục, panel bị dựng lại thường xuyên — giữ trong RAM là mất ngay lời đề
-// nghị, cán bộ lại phải thêm tay từng file. Mỗi lần tạo phiên mới thì GHI ĐÈ ngăn này, nên tối đa
-// luôn chỉ 2 bản/tab (hiện tại + trước đó), không phình theo số lượt tiếp dân.
-const PREV_SESSION_KEY = "autofill_prev_session_" + (EMBEDDED_TAB_ID ?? "popup");
-const PREV_SESSION_TTL_MS = 30 * 60 * 1000; // quá 30 phút thì không còn là "hồ sơ vừa xong" nữa
 const UNKNOWN_WORK_PROCEDURE_KEY = "__legacy_unknown__";
 let sessionWriteRevision = 0;
 let sessionWriteQueue = Promise.resolve();
@@ -1649,8 +1627,7 @@ function enqueueSessionWrite(operation) {
   return sessionWriteQueue;
 }
 
-// Hai hàm ánh xạ item files[] ↔ snapshot lưu trữ. Dùng CHUNG cho cả saveSession/restoreSession
-// lẫn ngăn "hồ sơ trước" (archiveCurrentSessionAsPrev/reusePrevSession) — bộ field
+// Hai hàm ánh xạ item files[] ↔ snapshot lưu trữ, dùng cho saveSession/restoreSession — bộ field
 // fromScan/rel/hash/canhBaoScan từng bị sót một lần khi chép tay, không chép lần hai.
 function fileItemToSnapshot(it) {
   return {
@@ -1750,114 +1727,18 @@ async function restoreSession() {
   applyFormUI();
 }
 
-// ===== Ngăn "hồ sơ trước" — dùng lại giấy tờ bằng 1 chạm =====
-// Bài toán: watermark (xem attemptBatchImport) chặn được việc pin nhầm giấy tờ của công dân
-// TRƯỚC vào hồ sơ công dân MỚI — nhưng lại chặn luôn ca hợp lệ "cùng một công dân làm thủ tục
-// thứ hai" (khai sinh liên thông + cấp bản sao), khiến cán bộ phải thêm tay từng file.
-//
-// Không giải bằng cách thêm nút "giữ lại giấy tờ": nút bắt cán bộ quyết định TRƯỚC khi bấm, mà
-// bấm nhầm thì hỏng im lặng (đúng nhược điểm của mọi phương án 2-nút). Thay vào đó: sau khi tạo
-// phiên mới, hiện MỘT lời đề nghị kèm TÊN công dân của hồ sơ trước — quyết định trở thành phép
-// so bằng mắt "người ngồi trước mặt có phải người này không", và mặc định luôn an toàn
-// (không bấm = không có giấy tờ người khác lọt vào).
-function archiveCurrentSessionAsPrev() {
-  // Dựng snapshot ĐỒNG BỘ từ files[] ngay tại đây, KHÔNG đọc lại SESSION_KEY từ storage: bên gọi
-  // xoá files[]/ghi đè session ngay sau lệnh này, đọc storage (bất đồng bộ) dễ vớ phải bản đã bị
-  // dọn rỗng. File chưa kịp có dataUrl thì bỏ qua — khôi phục ra file rỗng còn tệ hơn là thiếu.
-  const snapFiles = files.filter((it) => it.dataUrl).map(fileItemToSnapshot);
-  if (!snapFiles.length) return; // không có giấy tờ nào thì không có gì để mời dùng lại
-  const p = currentConsentContext?.principal; // {cccd, name} đọc từ VNeID trên trang, có thì mới có nhãn tên
-  const snap = {
-    files: snapFiles,
-    procedureKey: selectedProcedureKey,
-    workProcedureKey,
-    archivedAt: Date.now(),
-    principalName: p?.name || null,
-    principalCccd: p?.cccd || null,
-  };
+// Tính năng "dùng lại hồ sơ trước" ĐÃ GỠ (chốt nghiệp vụ 23/09/2026). Nó chép NGUYÊN ẢNH giấy tờ
+// công dân vào chrome.storage.local (autofill_prev_session_<tab>) để mời dùng lại. Gỡ code thôi
+// thì dữ liệu đó nằm lại trên máy quầy mãi, vì TTL 30 phút chỉ chạy khi còn code đọc nó. Dọn một
+// lần mỗi lần popup dựng — rẻ, và máy nào cập nhật lúc nào cũng được dọn.
+async function purgeLegacyPrevSessions() {
   try {
-    void chrome.storage.local.set({ [PREV_SESSION_KEY]: snap });
-  } catch (e) {
-    console.warn("[Popup] Không lưu được hồ sơ trước để dùng lại:", e);
-  }
+    const all = await chrome.storage.local.get(null);
+    const keys = Object.keys(all || {}).filter((k) => k.startsWith("autofill_prev_session_"));
+    if (keys.length) await chrome.storage.local.remove(keys);
+  } catch (_) { /* không chặn khởi động */ }
 }
-
-async function clearPrevSession() {
-  try {
-    await chrome.storage.local.remove(PREV_SESSION_KEY);
-  } catch (e) { /* ignore */ }
-}
-
-async function readPrevSession() {
-  let snap = null;
-  try {
-    const res = await chrome.storage.local.get(PREV_SESSION_KEY);
-    snap = res?.[PREV_SESSION_KEY];
-  } catch (e) { /* ignore */ }
-  if (!snap || !Array.isArray(snap.files) || !snap.files.length) return null;
-  if (Date.now() - Number(snap.archivedAt || 0) > PREV_SESSION_TTL_MS) {
-    void clearPrevSession(); // quá hạn - dọn luôn, không giữ giấy tờ công dân trên máy lâu hơn cần thiết
-    return null;
-  }
-  return snap;
-}
-
-const prevSessionOfferEl = document.getElementById("prevSessionOffer");
-
-async function renderPrevSessionOffer() {
-  if (!prevSessionOfferEl) return;
-  // Lời đề nghị CHỈ có nghĩa khi hồ sơ đang trống: đã có giấy tờ nào đó (quét ra, thêm tay, hay
-  // vừa bấm dùng lại) nghĩa là cán bộ đang làm hồ sơ cụ thể rồi — dọn luôn cả ngăn lưu để giấy tờ
-  // của công dân trước không nằm lại trên máy.
-  if (files.length) {
-    if (!prevSessionOfferEl.hidden) {
-      prevSessionOfferEl.hidden = true;
-      void clearPrevSession();
-    }
-    return;
-  }
-  const snap = await readPrevSession();
-  if (!snap) {
-    prevSessionOfferEl.hidden = true;
-    return;
-  }
-  const gio = new Date(snap.archivedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-  // Nhãn nhận diện: có tên VNeID thì hiện tên (cán bộ nhìn là biết ngay có đúng người đang ngồi
-  // trước mặt không); không có thì còn số file + giờ, vẫn đủ để phân biệt lượt.
-  const moTa = (snap.principalName ? `${snap.principalName} · ` : "")
-    + `${snap.files.length} giấy tờ · ${gio}`;
-
-  prevSessionOfferEl.textContent = "";
-  const label = document.createElement("span");
-  label.className = "prev-offer-label";
-  label.textContent = `📎 Hồ sơ trước — ${moTa}`;
-  label.title = snap.principalCccd ? "CCCD: " + snap.principalCccd : "";
-  const dungLaiBtn = document.createElement("button");
-  dungLaiBtn.type = "button";
-  dungLaiBtn.className = "prev-offer-use";
-  dungLaiBtn.textContent = "Dùng lại";
-  dungLaiBtn.title = "Đưa lại toàn bộ giấy tờ của hồ sơ trước vào danh sách (dùng khi CÙNG công dân làm thủ tục tiếp theo)";
-  dungLaiBtn.addEventListener("click", () => void reusePrevSession());
-  // CỐ Ý KHÔNG có nút "×" bỏ qua: nó xoá vĩnh viễn ngăn "hồ sơ trước", bấm nhầm
-  // là mất hẳn giấy tờ không lấy lại được — trong khi lời đề nghị vốn đã tự ẩn
-  // và tự dọn ngay khi có file mới vào danh sách. Một nút chỉ có mặt hại.
-  prevSessionOfferEl.append(label, dungLaiBtn);
-  prevSessionOfferEl.hidden = false;
-}
-
-async function reusePrevSession() {
-  const snap = await readPrevSession();
-  if (!snap) { void renderPrevSessionOffer(); return; }
-  await clearPrevSession(); // dùng rồi thì thôi, không mời lại lần nữa
-  for (const f of snap.files) {
-    if (f?.dataUrl) files.push(fileItemFromSnapshot(f));
-  }
-  renderFiles();
-  refreshAttachStepUI();
-  saveSession();
-  void renderPrevSessionOffer();
-  setStatus(`Đã dùng lại ${snap.files.length} giấy tờ của hồ sơ trước.`, "ok");
-}
+void purgeLegacyPrevSessions();
 
 function restoreBusinessFillSupportCode() {
   // Chỉ khôi phục trên thủ tục HKD; cùng tab có thể được điều hướng sang một thủ tục/cổng khác.
@@ -2083,9 +1964,6 @@ function renderFiles() {
   const roles = effectiveRoles();
   const agent = isAgentMode();
   const attach = isAttachMode();
-  // Danh sách vừa đổi → xét lại lời đề nghị "dùng lại hồ sơ trước" (có file thì tự ẩn + dọn ngăn).
-  // Rẻ: nhánh có-file thoát ngay, chỉ khi danh sách trống mới đọc storage.
-  void renderPrevSessionOffer();
   fileList.innerHTML = "";
   files.forEach((item, i) => {
     const li = document.createElement("li");
@@ -3549,6 +3427,17 @@ async function runBusinessAttach(cfg, options) {
   };
 }
 
+// File GỐC mà một mục kế hoạch lấy trang từ đó: sourceSegments (tách theo trang, có thể ghép trang
+// nhiều file) > sourceFileIndexes (gộp nguyên file) > fileIndex.
+function planItemSourceIndexes(item) {
+  const segmentIndexes = Array.isArray(item?.sourceSegments)
+    ? item.sourceSegments.map((segment) => Number(segment?.fileIndex)).filter(Number.isInteger)
+    : [];
+  if (segmentIndexes.length) return [...new Set(segmentIndexes)];
+  if (Array.isArray(item?.sourceFileIndexes) && item.sourceFileIndexes.length) return item.sourceFileIndexes;
+  return [item?.fileIndex];
+}
+
 async function runAttachmentPlanForCurrentFiles(options = {}) {
   const cfg = currentConfig();
   // Gắn ở ĐÂY (không ở từng call site) để mọi nhánh đính kèm — kể cả client-local split và
@@ -3676,21 +3565,28 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   const attachedCount = Number.isInteger(attachRes?.attached) ? attachRes.attached : sendFiles.length;
   const skippedCount = Number.isInteger(attachRes?.skipped) ? attachRes.skipped : 0;
 
-  // Người dùng tải `payloadFiles.length` file GỐC; BE có thể GỘP nhiều file thành 1 nhóm (1 PDF) →
-  // còn `sendFiles.length` nhóm. Phải báo rõ số file gốc + gộp thành nhóm nào, tránh hiểu nhầm
-  // "4/4" là đã mất 3 file. Nếu không gộp (số nhóm = số file) thì giữ câu cũ cho gọn.
+  // Người dùng tải `payloadFiles.length` file GỐC; BE có thể GỘP nhiều file thành 1 nhóm (1 PDF) hoặc
+  // TÁCH một file thành nhiều tài liệu theo trang (sourceSegments) → còn `sendFiles.length` nhóm. Phải
+  // báo rõ số file gốc + gộp/tách thành nhóm nào, tránh hiểu nhầm "4/4" là đã mất 3 file. Không gộp
+  // không tách thì giữ câu cũ cho gọn.
   const uploadedCount = payloadFiles.length;
-  const isMerged = uploadedCount > sendFiles.length;
-  let msg = isMerged
-    ? `Đã tải lên ${uploadedCount} file, gộp thành ${sendFiles.length} nhóm hồ sơ; đã đính kèm ${attachedCount}/${sendFiles.length} nhóm.`
+  const hasRecomposedDocuments = (rawAttachments || []).some((item) =>
+    (Array.isArray(item?.sourceSegments) && item.sourceSegments.length > 0) ||
+    (Array.isArray(item?.sourceFileIndexes) && item.sourceFileIndexes.length > 1)
+  );
+  const transformLabel = uploadedCount > sendFiles.length
+    ? "gộp thành"
+    : uploadedCount < sendFiles.length
+      ? "tách thành"
+      : "xử lý thành";
+  let msg = hasRecomposedDocuments
+    ? `Đã tải lên ${uploadedCount} file, ${transformLabel} ${sendFiles.length} nhóm hồ sơ; đã đính kèm ${attachedCount}/${sendFiles.length} nhóm.`
     : `Đã đính kèm ${attachedCount}/${sendFiles.length} file vào hồ sơ.`;
-  if (isMerged) {
-    // Liệt kê từng nhóm gồm những file gốc nào (theo sourceFileIndexes của kế hoạch TRƯỚC khi gộp).
+  if (hasRecomposedDocuments) {
+    // Liệt kê từng nhóm gồm những file gốc nào theo contract TRƯỚC khi FE tách/gộp PDF.
     const groupLines = (rawAttachments || [])
       .map((a) => {
-        const src = Array.isArray(a.sourceFileIndexes) && a.sourceFileIndexes.length
-          ? a.sourceFileIndexes
-          : [a.fileIndex];
+        const src = planItemSourceIndexes(a);
         const srcNames = src.map((i) => payloadFiles[i]?.name).filter(Boolean).join(" + ");
         return srcNames ? `• ${a.documentName || "Hồ sơ"} ← ${srcNames}` : "";
       })
@@ -3711,10 +3607,7 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   const droppedNames = (() => {
     const used = new Set();
     for (const item of rawAttachments) {
-      const src = Array.isArray(item?.sourceFileIndexes) && item.sourceFileIndexes.length
-        ? item.sourceFileIndexes
-        : [item?.fileIndex];
-      for (const i of src) if (Number.isInteger(i)) used.add(i);
+      for (const i of planItemSourceIndexes(item)) if (Number.isInteger(i)) used.add(i);
     }
     const classified = planRes.extracted?.classified;
     // Pipeline không khai classified → không phân biệt được "bỏ có chủ đích" với "bị loại" → im lặng
@@ -3756,16 +3649,11 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
 // Đính kèm XONG TRỌN VẸN → dọn danh sách giấy tờ. Giấy tờ đã nộp lên cổng rồi thì để lại trong
 // khung "Giấy tờ" chỉ tổ rối, và nguy hiểm hơn là dễ nộp trùng sang thủ tục/hồ sơ kế tiếp.
 //
-// Cất sang ngăn "hồ sơ trước" TRƯỚC khi dọn (không thì dọn xong là mất hẳn): cùng công dân làm
-// thủ tục thứ hai thì lời đề nghị "Dùng lại" hiện ra ngay — vì dọn xong files[] rỗng, đúng điều
-// kiện renderPrevSessionOffer() cần. Xem mục 4.11 trong docs/tich-hop-scan-bridge.md.
-//
 // KHÔNG dọn khi warn/inProgress: còn nhóm chưa đính được hoặc luồng nhiều bước đang chạy dở —
 // dọn đi là mất dấu việc còn dang dở, cán bộ không biết còn thiếu gì.
 async function clearFilesAfterAttach(res) {
   if (!res || res.error || res.warn || res.inProgress) return;
   if (!files.length) return;
-  archiveCurrentSessionAsPrev();
   files.length = 0;
   renderFiles();
   refreshAttachStepUI();
@@ -4635,6 +4523,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "xet-tuyen-vien-chuc" ||
       cfg.key === "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" ||
       cfg.key === "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham" ||
+      // [Bộ Công Thương] 2.001474: khối "Thông tin tài khoản" chỉ được điền từ CCCD khớp tài khoản đăng
+      // nhập — thiếu mốc là BE để trống khối đó.
+      cfg.key === "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai" ||
       cfg.key === "dinh-chinh-sai-sot-lam-dong" ||
       cfg.key === "giai-quyet-che-do-khang-chien" ||
       cfg.key === "di-chuyen-ho-so-nguoi-huong-tro-cap" ||
@@ -4679,6 +4570,7 @@ ocrBtn.addEventListener("click", async () => {
       // khoản mới tách được nhân thân người nộp khỏi nhân thân chủ hồ sơ là tổ chức.
       cfg.key === "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an" ||
       // [Lào Cai] 1.115650: chủ hồ sơ thường là DOANH NGHIỆP, hồ sơ đầy người có số định danh (người
+      // đại diện, thành viên góp vốn) → thiếu mốc tài khoản thì không biết ai đang đi nộp.
       cfg.key === "giao-thue-dat-lao-cai" ||
       // [Lào Cai] 1.115678: hồ sơ giao đất sau trúng đấu giá rất hay nộp thay theo Hợp đồng ủy quyền
       // → mốc tài khoản là thứ DUY NHẤT phân biệt "người trúng đấu giá tự nộp" với "người được ủy
@@ -4702,6 +4594,14 @@ ocrBtn.addEventListener("click", async () => {
       // trú tỉnh khác nơi có thửa đất) → mốc tài khoản là thứ DUY NHẤT tách được người nộp khỏi chủ
       // hồ sơ; thiếu nó BE cố ý bỏ trống cả khối "Thông tin người nộp" thay vì điền nhầm nhân thân.
       cfg.key === "su-dung-dat-ket-hop-da-muc-dich-cap-xa" ||
+      // [Bộ VHTTDL] 1.004623 (thẻ HDV nội địa): mốc tài khoản chốt người đề nghị vào khối "Thông tin
+      // người nộp hồ sơ" (tự nộp) hay "Thông tin ủy quyền" (cán bộ nộp thay); thiếu mốc BE coi là tự nộp.
+      cfg.key === "cap-the-huong-dan-vien-du-lich-noi-dia" ||
+      // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
+      // mốc tài khoản mới biết ai trong số đó đang đi nộp.
+      cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||
+      // [Lào Cai] 1.115680 (bản cấp xã của 1.115652): cùng contract hai chế độ người nộp.
+      cfg.key === "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {

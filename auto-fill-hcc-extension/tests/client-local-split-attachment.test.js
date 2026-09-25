@@ -88,7 +88,7 @@ assert.equal(bundles[1].planItems[0].forceFirstRow, true);
 assert.equal(bundles[1].planItems[0].componentIndex, 1);
 assert.match(
   content,
-  /if \(!item\?\.forceFirstRow && isIdentityAttachmentItem\(item\)\)/,
+  /!item\?\.forceFirstRow &&\s*isIdentityAttachmentItem\(item\)/,
   "Content phải ưu tiên forceFirstRow trước heuristic CCCD"
 );
 

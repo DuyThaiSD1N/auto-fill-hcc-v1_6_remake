@@ -15,6 +15,8 @@ test("chỉ khớp đúng câu tải-tệp-thất-bại của cổng", () => {
   const re = eval(src[1]); // eslint-disable-line no-eval
   assert.ok(re.test("Upload thất bại (File Service): Upload failed: 500 Internal Server Error"));
   assert.ok(re.test("Tải lên tài liệu thất bại, vui lòng thử lại"));
+  assert.ok(re.test("Thông báo Không tải được file hoặc lưu thất bại."));
+  assert.ok(!re.test("Lưu thất bại"));
   assert.ok(!re.test("Lời nhắn: vui lòng kiểm tra lại"));
   assert.ok(!re.test("Lệ phí 1.500.000 đồng"));
   assert.ok(!re.test("Có lỗi xảy ra"));

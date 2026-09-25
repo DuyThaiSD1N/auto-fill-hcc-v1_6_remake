@@ -3,6 +3,19 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.19.8",
+    date: "25/9/2026",
+    items: [
+      "Chứng thực bản sao: bật \"Có tách hồ sơ khi đính kèm\" trong Cài đặt để tách file gộp nhiều giấy tờ thành từng tài liệu; khi tách hồ sơ, căn cước được đính đúng dòng đầu của hồ sơ riêng.",
+      "Đính kèm: nhận thêm thông báo \"Không tải được file hoặc lưu thất bại\" để đính tiếp tệp khác rồi tự đính lại; một tệp lỗi không còn làm hỏng cả lượt đính chứng thực chữ ký.",
+      "Liên thông khai sinh: trợ lý điền hộ bước \"Chọn cơ quan thực hiện\".",
+      "Thêm thủ tục: Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại (Bộ Công Thương), Gia hạn chứng chỉ hành nghề thú y và các thủ tục đất đai tỉnh Lào Cai.",
+      "Đăng ký doanh nghiệp: tự nhận đúng loại hình công ty (TNHH, cổ phần…) để chọn thủ tục.",
+      "Điền được tên dân tộc có dấu nháy (vd dân tộc Cơ Ho).",
+      "Không còn lưu giấy tờ của hồ sơ trước trên máy; dữ liệu cũ tự được dọn khi cập nhật.",
+    ],
+  },
+  {
     version: "1.19",
     date: "19/9/2026",
     items: [

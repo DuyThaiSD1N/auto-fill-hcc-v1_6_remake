@@ -353,6 +353,8 @@ from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.attach im
 from app.pipelines.cap_bo_sung_xe_tap_lai_cap_lai_giay_phep_xe_tap_lai.process import run as cap_bo_sung_xe_tap_lai_process
 from app.pipelines.cap_lai_phu_hieu_xe_oto.attach import plan as cap_lai_phu_hieu_xe_oto_attach
 from app.pipelines.cap_lai_phu_hieu_xe_oto.process import run as cap_lai_phu_hieu_xe_oto_process
+from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.attach import plan as cap_the_hdv_noi_dia_attach
+from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.process import run as cap_the_hdv_noi_dia_process
 
 PROCEDURES: list[dict] = [
     {
@@ -1430,6 +1432,46 @@ PROCEDURES: list[dict] = [
             "mục được đưa vào dòng (4) kèm cảnh báo để cán bộ đối chiếu.\n"
             "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', "
             "chưa tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
+        ),
+    },
+    {
+        "key": "cap-the-huong-dan-vien-du-lich-noi-dia",
+        # Cùng cổng Bộ VHTTDL với hai thủ tục ở trên (Angular Material `liz-*`, engine content/fill-liz.js
+        # khớp theo (.group-header, <mat-label>)); hồ sơ nộp về Sở VHTTDL tỉnh (mã quy trình QT-121).
+        # Form VÀ bảng thành phần hồ sơ nằm CHUNG một trang. matthc=1.004623 cũng được ghép tự động từ
+        # ke_khai_links.json; cụm tên là lưới đỡ khi URL trang nộp không mang mã. Cụm này không trùng
+        # "cấp ĐỔI/cấp LẠI thẻ hướng dẫn viên" (chữ "đổi"/"lại" chen giữa "cấp" và "thẻ").
+        "detect": {
+            "urlIncludes": ["matthc=1.004623"],
+            "textIncludes": ["cấp thẻ hướng dẫn viên du lịch nội địa"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục cấp thẻ hướng dẫn viên du lịch nội địa",
+        "mode": "agent",
+        # Bảng 3 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..2
+        # (thứ tự DOM: ảnh chân dung, Đơn Mẫu 04, văn bằng + chứng chỉ).
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm:\n"
+            "1. Đơn đề nghị cấp thẻ hướng dẫn viên du lịch nội địa (Mẫu số 04, Thông tư 04/2024/TT-BVHTTDL) "
+            "— nguồn chính để điền.\n"
+            "2. Bản sao chứng thực bằng tốt nghiệp trung cấp trở lên.\n"
+            "3. Bản sao chứng thực chứng chỉ nghiệp vụ hướng dẫn du lịch nội địa (bắt buộc khi văn bằng "
+            "KHÔNG thuộc chuyên ngành hướng dẫn du lịch).\n"
+            "4. Ảnh chân dung màu 3cm x 4cm (jpg/png, hoặc PDF một trang chỉ có ảnh).\n"
+            "5. Nếu có: CCCD của người đề nghị — để bổ sung ngày sinh, ngày cấp, địa chỉ khi đơn bị che/"
+            "để trống.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Người đề nghị tự đăng nhập nộp: điền khối 'Thông tin người nộp hồ sơ' (họ tên, số định danh "
+            "cổng tự điền) + khối thông tin đề nghị cấp thẻ (giới tính, trình độ, email). Cán bộ nộp thay: "
+            "thông tin người đề nghị được điền vào khối 'Thông tin ủy quyền' — cán bộ tự tích ô 'Thông tin "
+            "ủy quyền' và nhập SĐT/email/địa chỉ của mình.\n"
+            "Đính kèm: ảnh → dòng (3) ảnh chân dung; Đơn Mẫu 04 → dòng (1); văn bằng + chứng chỉ → CHUNG "
+            "dòng (2) (Bản sao). Trang không có dòng 'Giấy tờ khác': tệp lạ vào dòng Đơn kèm cảnh báo.\n"
+            "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', chưa "
+            "tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
         ),
     },
     {
@@ -5997,6 +6039,7 @@ _PIPELINE = {
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_process,
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_process,
+    "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_process,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -6167,6 +6210,7 @@ _ATTACH_PIPELINE = {
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_attach,
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_attach,
+    "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_attach,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
