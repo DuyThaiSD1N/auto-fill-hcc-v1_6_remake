@@ -160,7 +160,7 @@ def test_trich_luc_death_extract_maps_deceased_identity_issue_details():
     assert result["NDK_SoGiayToTuyThan"] == "052038000054"
     assert result["NDK_NgayCap"] == "27/03/2021"
     assert result["NDK_NoiCap"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ căn cước công dân"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Căn cước công dân"
 
 
 def test_trich_luc_birth_declaration_maps_subject_identity_document():
@@ -177,7 +177,7 @@ def test_trich_luc_birth_declaration_maps_subject_identity_document():
     result = {field["name"]: field["value"] for field in mapper.enrich(source_fields)}
 
     assert result["NDK_SoDinhDanh"] == "037218005053"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Căn cước công dân"
     assert result["NDK_SoGiayToTuyThan"] == "037218005053"
     assert result["NDK_NgayCap"] == "20/06/2025"
     assert result["NDK_NoiCap"] == "Bộ Công an"
@@ -214,7 +214,7 @@ def test_trich_luc_self_request_keeps_identity_from_both_declaration_blocks():
     assert result["NgayCapDDC"] == "26/06/2026"
     assert result["NoiCapDDC"] == "Bộ Công an"
     assert result["NDK_SoDinhDanh"] == "068308008269"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Căn cước công dân"
     assert result["NDK_SoGiayToTuyThan"] == "068308008269"
     assert result["NDK_NgayCap"] == "26/06/2026"
     assert result["NDK_NoiCap"] == "Bộ Công an"
@@ -264,7 +264,7 @@ def test_trich_luc_subject_card_identity_has_priority_over_declaration_identity(
     assert result["NDK_SoGiayToTuyThan"] == "012345678906"
     assert result["NDK_NgayCap"] == "12/08/2025"
     assert result["NDK_NoiCap"] == "Bộ Công an"
-    assert result["NDK_LoaiGiayToTuyThan"] == "Thẻ Căn cước"
+    assert result["NDK_LoaiGiayToTuyThan"] == "Căn cước công dân"
 
 
 def test_trich_luc_normalizes_ho_chi_minh_province_aliases():

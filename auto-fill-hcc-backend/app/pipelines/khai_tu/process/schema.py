@@ -27,8 +27,8 @@ FIELDS: list[dict] = [
 
     {"name": "NguoiYeuCau_LoaiGiayTo",
      "desc": "Loại giấy tờ tùy thân người yêu cầu ĐÚNG NHƯ TỜ KHAI gọi tên tại nhãn 'Giấy tờ tùy thân', "
-             "ví dụ tờ khai ghi 'CCCD số ...' thì trả 'Thẻ căn cước công dân', ghi 'CMND số ...' thì trả "
-             "'Chứng minh nhân dân', ghi 'Căn cước số ...' thì trả 'Thẻ Căn cước', ghi hộ chiếu thì trả "
+             "ví dụ tờ khai ghi 'CCCD số ...' thì trả 'Căn cước công dân', ghi 'CMND số ...' thì trả "
+             "'Chứng minh nhân dân', ghi 'Căn cước số ...' cũng trả 'Căn cước công dân', ghi hộ chiếu thì trả "
              "'Hộ chiếu'. Tờ khai không gọi tên loại giấy tờ thì bỏ field, không suy từ độ dài số."},
 
     {"name": "NguoiYeuCau_NgayCap",

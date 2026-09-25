@@ -2072,7 +2072,9 @@ function refreshAttachStepUI() {
   const cfg = currentConfig();
   // Không bắt buộc process bước 2 trước: chỉ cần thủ tục có bước đính kèm + đã chọn file.
   // ĐKKD đã gộp đính kèm vào nút "Quét nhập thông tin và đính kèm" → ẩn nút đính kèm riêng.
-  attachStepBtn.hidden = !cfg.hasAttachmentStep || isAttachMode() || !!currentBusinessPages().length;
+  // Thủ tục fillWithAttach cũng vậy: nút quét điền xong tự đính kèm (xem attachAfterFill).
+  attachStepBtn.hidden = !cfg.hasAttachmentStep || isAttachMode() || !!currentBusinessPages().length ||
+    !!cfg.fillWithAttach;
   attachStepBtn.disabled = !cfg.hasAttachmentStep || !files.length || window.__AUTOFILL_HCC_POPUP_BUSY__;
 }
 
@@ -4594,8 +4596,8 @@ ocrBtn.addEventListener("click", async () => {
       // trú tỉnh khác nơi có thửa đất) → mốc tài khoản là thứ DUY NHẤT tách được người nộp khỏi chủ
       // hồ sơ; thiếu nó BE cố ý bỏ trống cả khối "Thông tin người nộp" thay vì điền nhầm nhân thân.
       cfg.key === "su-dung-dat-ket-hop-da-muc-dich-cap-xa" ||
-      // [Bộ VHTTDL] 1.004623 (thẻ HDV nội địa): mốc tài khoản chốt người đề nghị vào khối "Thông tin
-      // người nộp hồ sơ" (tự nộp) hay "Thông tin ủy quyền" (cán bộ nộp thay); thiếu mốc BE coi là tự nộp.
+      // [Bộ VHTTDL] 1.004623 (thẻ HDV nội địa): khối "Thông tin người nộp hồ sơ" chỉ được điền khi CCCD
+      // tài khoản TRÙNG CCCD trên đơn; thiếu mốc là BE bỏ trống khối đó, chỉ điền phần cấp thẻ.
       cfg.key === "cap-the-huong-dan-vien-du-lich-noi-dia" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
@@ -4640,11 +4642,13 @@ ocrBtn.addEventListener("click", async () => {
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;
     showSupportCode(res.requestId || res.sessionId);
 
-    await dispatchFill(res.fields || [], res.errors || [], page);
+    const fillOutcome = await dispatchFill(res.fields || [], res.errors || [], page);
 
     // Rà soát bbox: thủ tục bật review → nạp sources + đẩy xuống content + hiện card "Xem trên ảnh".
     try { await maybeShowReview(res.requestId || res.sessionId, res.reviewToken); }
     catch (err) { console.warn("[AutoFill] review:", err); }
+
+    if (cfg.fillWithAttach) await attachAfterFill(fillOutcome, res.sessionId);
   } catch (e) {
     if (e.unauthorized) {
       await AuthStore.clearTokens();
@@ -4899,6 +4903,23 @@ function buildFillDetails(fillRes, processErrors, totalFields) {
   return details;
 }
 
+// Thủ tục fillWithAttach (form + bảng thành phần hồ sơ CHUNG một trang): điền xong tự đính kèm luôn cùng
+// bộ file, giống nút gộp của đăng ký kinh doanh. Mã hỗ trợ giữ mã của lượt điền (/process).
+async function attachAfterFill(fillOutcome, sessionId) {
+  // Bước điền hỏng (sai trang, không đọc được giấy tờ) → dừng, giữ thông báo lỗi của bước điền.
+  if (!fillOutcome?.ok) return;
+  setStatus("Đã điền xong. Đang phân loại & đính kèm giấy tờ...", "info");
+  const res = await runAttachmentPlanForCurrentFiles(sessionId ? { sessionId } : {});
+  const details = [...(fillOutcome.details || []), ...(res?.details || [])];
+  if (res?.error) {
+    setStatus(`${fillOutcome.message} Chưa đính kèm được: ${res.error}`, "warn", details);
+    return;
+  }
+  const type = fillOutcome.partial || res.warn ? "warn" : (res.inProgress ? "info" : "ok");
+  setStatus(`${fillOutcome.message} ${res.message || ""}`.trim(), type, details);
+  await clearFilesAfterAttach(res);
+}
+
 async function dispatchFill(allFields, errors, page = null) {
   // errors[] từ BE có thể chứa chi tiết OCR/LLM kỹ thuật → chỉ log, KHÔNG hiện thô lên UI.
   if (errors && errors.length) console.warn("[AutoFill] Cảnh báo trích xuất:", errors);
@@ -4977,7 +4998,7 @@ async function dispatchFill(allFields, errors, page = null) {
       hasWarnings ? "warn" : "success"
     );
     if (panelMinimized) await sendToContent({ action: "markPanelFillComplete" });
-    return { ok: true, filled, partial: hasWarnings, details };
+    return { ok: true, filled, partial: hasWarnings, details, message };
   } catch (error) {
     console.warn("[AutoFill] Điền form lỗi:", error);
     if (panelMinimized) {

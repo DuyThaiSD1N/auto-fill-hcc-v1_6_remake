@@ -3,10 +3,11 @@
 Mỗi field emit {name=<mat-label>, comp, value, section=<cụm group-header>, aliases=[nhãn thay thế]};
 nhãn LẶP giữa các section (Ngày sinh/Ngày cấp/Nơi cấp/Email/Địa chỉ…) nên `section` là bắt buộc.
 
-Người đề nghị cấp thẻ đi vào MỘT trong hai khối, chốt bằng tài khoản đang đăng nhập (formContext):
-  - khớp (tự nộp)          → Phần II "Thông tin người nộp hồ sơ" — tên + số định danh cổng tự điền;
-  - không khớp (nộp thay)  → Phần III "Thông tin ủy quyền"; Phần II để cán bộ tự khai của mình.
-Không có formContext (extension cũ) thì coi là tự nộp — ca phổ biến của thủ tục cấp thẻ cá nhân.
+Phần II "Thông tin người nộp hồ sơ" là của TÀI KHOẢN đang đăng nhập (tên + số định danh cổng tự điền).
+Chỉ đổ nhân thân người đề nghị vào đó khi số CCCD tài khoản (formContext) TRÙNG ĐỦ số CCCD trên đơn.
+Không trùng / không đọc đủ số / không có formContext → bỏ hẳn Phần II, chỉ điền phần "Cấp thẻ…" bên
+dưới. Không điền khối "Thông tin ủy quyền": khối này ẩn tới khi tick ô, engine không thấy ô sẽ rơi về
+khớp theo nhãn duy nhất và đổ nhầm ngày sinh/SĐT/địa chỉ của đơn vào Phần II của tài khoản.
 """
 
 from __future__ import annotations
@@ -23,16 +24,17 @@ from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.process.schema import 
     COMP_BY_UI,
     S_NOP,
     S_THE,
-    S_UQ,
 )
 
-_LABEL_TEN_UQ = "Tên người / Tên đơn vị ủy quyền"
-_LABEL_CMND_UQ = "CMND/Hộ chiếu/MST Doanh nghiệp"
 _LABEL_NGOAI_NGU = "Trình độ ngoại ngữ (đối với người đề nghị cấp thẻ HDV du lịch quốc tế)"
 _LABEL_DIEM_DU_LICH = "Tên điểm du lịch đối với trường hợp cấp thẻ hướng dẫn viên du lịch tại điểm"
 
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
-_TITLE_PREFIX = re.compile(r"^(ông|bà|anh|chị)\s*/?\s*(bà|ông)?\s*[:.]?\s+", re.IGNORECASE)
+# LLM hay chép cả câu đề nghị "…cấp thẻ hướng dẫn viên du lịch tại điểm <tên điểm> cho tôi".
+_DIEM_PREFIX = re.compile(
+    r"^.*?(?:hướng dẫn viên du lịch\s+)?tại điểm\s*[:\-]?\s*", re.IGNORECASE,
+)
+_DIEM_SUFFIX = re.compile(r"\s*cho tôi\s*[./]*$", re.IGNORECASE)
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -52,22 +54,16 @@ def _fold(value: Any) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
-def _name_key(value: Any) -> str:
-    text = _TITLE_PREFIX.sub("", _text(value) or "")
-    return " ".join(re.sub(r"[^a-z ]+", " ", _fold(text)).split())
-
-
-def _name_relation(a: Any, b: Any) -> str:
-    """'same' | 'prefix' (một bên là phần đầu của bên kia — tên bị che) | 'different' | 'unknown'."""
-    key_a, key_b = _name_key(a), _name_key(b)
-    if not key_a or not key_b:
-        return "unknown"
-    if key_a == key_b:
-        return "same"
-    short, long_ = sorted((key_a, key_b), key=len)
-    if len(short.split()) >= 2 and (long_ + " ").startswith(short + " "):
-        return "prefix"
-    return "different"
+def _ten_diem(value: Any) -> str | None:
+    """Tên điểm du lịch — bỏ phần câu đề nghị bị chép kèm; dòng 'Hướng dẫn ghi' in sẵn không phải giá trị."""
+    text = _text(value)
+    if not text:
+        return None
+    text = _DIEM_SUFFIX.sub("", _DIEM_PREFIX.sub("", text)).strip(" .:;,-")
+    folded = _fold(text)
+    if not text or folded.startswith("ten diem du lich") or "doi voi truong hop" in folded:
+        return None
+    return text
 
 
 def _digits(value: Any) -> str:
@@ -196,32 +192,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     tinh = _province_label(area.get("tinh")) if area else None
     dia_chi_chi_tiet = _text(area.get("diaChi")) if area else None
 
-    # ---- Chốt khối theo tài khoản đăng nhập ----
+    # ---- Phần II chỉ điền khi CCCD tài khoản đăng nhập TRÙNG CCCD trên đơn ----
     ctx = (options or {}).get("formContext") or {}
     ctx_name = _text(ctx.get("applicantFullname") or ctx.get("fullname"))
-    ctx_identity = _digits(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
-    nop_thay = False
-    if ctx_identity and identity and len(ctx_identity) in (9, 12):
-        nop_thay = ctx_identity != identity
-    elif ctx_name and ho_ten:
-        relation = _name_relation(ctx_name, ho_ten)
-        # Số định danh trên đơn bị che một phần vẫn đối chiếu được phần đầu với tài khoản.
-        id_conflict = bool(raw_identity and ctx_identity and not ctx_identity.startswith(raw_identity))
-        nop_thay = relation == "different" or id_conflict
+    ctx_identity = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
+    tu_nop = bool(ctx_identity and identity and ctx_identity == identity)
 
-    section = S_UQ if nop_thay else S_NOP
-    if nop_thay:
-        put(S_UQ, _LABEL_TEN_UQ, ho_ten)
-        put(S_UQ, _LABEL_CMND_UQ, identity)
-    put(section, "Ngày sinh", ngay_sinh)
-    put(section, "Ngày cấp", ngay_cap)
-    put(section, "Nơi cấp", noi_cap)
-    put(section, "Số điện thoại", phone)
-    put(section, "Email", email)
-    # Ô hành chính là MỘT mat-select gộp Tỉnh–Xã; gửi tên xã, kèm tỉnh làm gợi ý để engine chọn đúng
-    # dòng khi tên xã trùng ở nhiều tỉnh.
-    put(section, "Địa chỉ hành chính", xa or tinh, hint=tinh if xa else None)
-    put(section, "Địa chỉ chi tiết", dia_chi_chi_tiet)
+    if tu_nop:
+        put(S_NOP, "Ngày sinh", ngay_sinh)
+        put(S_NOP, "Ngày cấp", ngay_cap)
+        put(S_NOP, "Nơi cấp", noi_cap)
+        put(S_NOP, "Số điện thoại", phone)
+        put(S_NOP, "Email", email)
+        # Ô hành chính là MỘT mat-select gộp Tỉnh–Xã; gửi tên xã, kèm tỉnh làm gợi ý để engine chọn đúng
+        # dòng khi tên xã trùng ở nhiều tỉnh.
+        put(S_NOP, "Địa chỉ hành chính", xa or tinh, hint=tinh if xa else None)
+        put(S_NOP, "Địa chỉ chi tiết", dia_chi_chi_tiet)
 
     # ---- Phần IV: nội dung Đơn Mẫu 04 ----
     trinh_do = _text(values.get("NguoiDeNghi_TrinhDoChuyenMon")) or _text(values.get("VanBang_TrinhDo"))
@@ -229,15 +215,23 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     put(S_THE, "Trình độ chuyên môn nghiệp vụ", trinh_do)
     put(S_THE, _LABEL_NGOAI_NGU, _text(values.get("NguoiDeNghi_TrinhDoNgoaiNgu")))
     put(S_THE, "Email", email)
-    put(S_THE, _LABEL_DIEM_DU_LICH, _text(values.get("NguoiDeNghi_TenDiemDuLich")))
+    put(S_THE, _LABEL_DIEM_DU_LICH, _ten_diem(values.get("NguoiDeNghi_TenDiemDuLich")))
 
     # ---- Cảnh báo ----
-    if nop_thay:
+    if not tu_nop:
+        if not ctx_identity:
+            ly_do = "chưa đọc được số CCCD của tài khoản đang đăng nhập"
+        elif not identity:
+            ly_do = "chưa đọc được đủ số CCCD trên Đơn Mẫu 04"
+        else:
+            ly_do = (
+                f"số CCCD tài khoản đang đăng nhập ({ctx_name or ctx_identity}) KHÁC số CCCD của người "
+                f"đề nghị cấp thẻ ({ho_ten or 'theo Đơn Mẫu 04'})"
+            )
         warnings.append(
-            f"Tài khoản đang đăng nhập ({ctx_name or ctx_identity}) KHÔNG phải người đề nghị cấp thẻ "
-            f"({ho_ten or 'theo Đơn Mẫu 04'}) — thông tin người đề nghị đã được điền vào khối \"Thông "
-            "tin ủy quyền\". Cán bộ tích ô \"Thông tin ủy quyền\" và tự nhập Số điện thoại, E-mail, Địa "
-            "chỉ của chính mình ở khối \"Thông tin người nộp hồ sơ\"."
+            f"Không điền khối \"Thông tin người nộp hồ sơ\" vì {ly_do} — khối này giữ thông tin tài khoản, "
+            "cán bộ tự kiểm tra Ngày sinh, Số điện thoại, Email, Địa chỉ. Chỉ điền phần \"Cấp thẻ hướng "
+            "dẫn viên du lịch\" theo đơn."
         )
     else:
         thieu = [

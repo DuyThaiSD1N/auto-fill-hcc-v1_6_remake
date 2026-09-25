@@ -1451,6 +1451,10 @@ PROCEDURES: list[dict] = [
         # Bảng 3 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..2
         # (thứ tự DOM: ảnh chân dung, Đơn Mẫu 04, văn bằng + chứng chỉ).
         "hasAttachmentStep": True,
+        # Form và bảng đính kèm CHUNG một trang → gộp như đăng ký kinh doanh: nút quét điền xong tự đính
+        # kèm luôn cùng bộ file, extension ẩn nút "Đính kèm giấy tờ" riêng.
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -1464,10 +1468,10 @@ PROCEDURES: list[dict] = [
             "5. Nếu có: CCCD của người đề nghị — để bổ sung ngày sinh, ngày cấp, địa chỉ khi đơn bị che/"
             "để trống.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Người đề nghị tự đăng nhập nộp: điền khối 'Thông tin người nộp hồ sơ' (họ tên, số định danh "
-            "cổng tự điền) + khối thông tin đề nghị cấp thẻ (giới tính, trình độ, email). Cán bộ nộp thay: "
-            "thông tin người đề nghị được điền vào khối 'Thông tin ủy quyền' — cán bộ tự tích ô 'Thông tin "
-            "ủy quyền' và nhập SĐT/email/địa chỉ của mình.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi số CCCD của tài khoản đăng nhập TRÙNG số "
+            "CCCD trên đơn; không trùng thì chỉ điền khối thông tin đề nghị cấp thẻ (giới tính, trình độ, "
+            "email, tên điểm du lịch).\n"
+            "Một lần bấm 'Quét, nhập dữ liệu và đính kèm' sẽ điền form rồi tự đính kèm giấy tờ.\n"
             "Đính kèm: ảnh → dòng (3) ảnh chân dung; Đơn Mẫu 04 → dòng (1); văn bằng + chứng chỉ → CHUNG "
             "dòng (2) (Bản sao). Trang không có dòng 'Giấy tờ khác': tệp lạ vào dòng Đơn kèm cảnh báo.\n"
             "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', chưa "

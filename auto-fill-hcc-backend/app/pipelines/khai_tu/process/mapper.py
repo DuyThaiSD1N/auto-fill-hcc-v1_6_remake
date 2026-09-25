@@ -122,13 +122,13 @@ def _doc_type(so_dinh_danh, issuer: str = "") -> str:
     """Suy loại giấy tờ từ độ dài số định danh và nơi cấp.
 
     - 9 chữ số → CMND (Chứng minh nhân dân)
-    - 12 chữ số → CCCD/Căn cước (dùng id_doc_type phân biệt Bộ Công an vs Cục Cảnh sát)
+    - 12 chữ số → Căn cước công dân (cổng gộp thẻ Căn cước mới và CCCD cũ)
     - Khác → mặc định Căn cước công dân
     """
     digits = _digits(so_dinh_danh)
     if len(digits) == 9:
         return "Chứng minh nhân dân"
-    return id_doc_type("Thẻ căn cước công dân", issuer)
+    return id_doc_type("Căn cước công dân", issuer)
 
 
 def _identity_number_for_form(value, document_type: str = "") -> str:
@@ -328,7 +328,7 @@ def enrich(
     else:
         add("SoDinhDanhC", "000000000000", default=True)
         add("SoGiayToDinhDanhC", "000000000000", default=True)
-        add("LoaiGiayToDinhDanhC", "Thẻ căn cước công dân", default=True)
+        add("LoaiGiayToDinhDanhC", "Căn cước công dân", default=True)
 
     # Nơi cư trú người yêu cầu.
     if requester_residence:

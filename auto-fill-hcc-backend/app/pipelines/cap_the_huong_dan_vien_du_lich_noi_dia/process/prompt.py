@@ -20,6 +20,8 @@ EXTRA_RULES = """
    mất năm thì bỏ field, KHÔNG ghép năm tốt nghiệp hay năm cấp vào.
 7. Các dòng 'Hướng dẫn ghi: (1) Quốc tế, nội địa hoặc tại điểm. (2) Tên điểm du lịch…' in sẵn cuối đơn
    là chú thích mẫu, KHÔNG phải giá trị. Dòng chấm để trống thì bỏ field.
+   Tên điểm du lịch thật nằm trong câu đề nghị '…cấp thẻ hướng dẫn viên du lịch tại điểm <TÊN ĐIỂM>
+   cho tôi' → NguoiDeNghi_TenDiemDuLich = <TÊN ĐIỂM>; câu ghi 'nội địa'/'quốc tế' thì bỏ field.
 8. Giới tính: ô '□' rỗng là KHÔNG chọn. Chỉ trả khi thấy rõ ô nào được đánh dấu hoặc CCCD ghi rõ.
 </masked_and_missing_rules>
 

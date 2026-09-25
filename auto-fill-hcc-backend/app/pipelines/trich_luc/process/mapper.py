@@ -249,7 +249,7 @@ def _id_doc_type_with_number(number: str, hint, issuer: str = "") -> str:
     """Loại giấy tờ tùy thân kết hợp độ dài số với hint/issuer.
 
     Số 9 chữ số là CMND (cũ), bất kể hint nói gì — CCCD/Căn cước luôn có 12 chữ số.
-    Số 12 chữ số → nhường cho id_doc_type() phán theo nơi cấp.
+    Số 12 chữ số → nhường cho id_doc_type() (thẻ Căn cước lẫn CCCD đều ra "Căn cước công dân").
     """
     d = _digits(number)
     if len(d) == 9:
@@ -1506,7 +1506,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 # SỐ CHỮ SỐ là bằng chứng mạnh hơn cả chữ OCR đọc được: căn cước/CCCD LUÔN 12 chữ số,
                 # nên số 9 chữ số chỉ có thể là CMND cũ. Giấy hộ tịch cũ (trích lục khai tử của người
                 # sinh trước 1960...) hay ghi CMND 9 số, mà OCR thì hay rơi mất chữ "CMND" — thiếu
-                # luật này thì id_hint rơi về mặc định "Căn cước" rồi chọn nhầm option "Thẻ Căn cước"
+                # luật này thì id_hint rơi về mặc định "Căn cước" rồi chọn nhầm option "Căn cước công dân"
                 # cho một số 9 chữ số, sai hiển nhiên mà nhìn vẫn hợp lệ.
                 id_hint = (ct_loai if card_wins_id_block else None) or ht_loai or ct_loai
                 ndk_so_giay_to = ((ct_so if card_wins_id_block else None)

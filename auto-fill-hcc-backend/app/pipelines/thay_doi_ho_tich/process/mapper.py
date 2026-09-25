@@ -3,7 +3,7 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines.thay_doi_ho_tich.process.schema import UI_ALIASES, UI_COMP_BY_NAME
@@ -743,12 +743,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("SoGiayToTuyThanC", requester_id_doc)
 
     # (3) Loại giấy tờ tùy thân - từ tờ khai hoặc suy từ độ dài số
-    requester_id_type = values.get("NguoiYeuCau_LoaiGiayTo")
+    # LLM có thể trả "Thẻ Căn cước"/"CCCD" → quy về option "Căn cước công dân" của cổng.
+    requester_id_type = id_doc_type(values.get("NguoiYeuCau_LoaiGiayTo"))
     if not requester_id_type and requester_id:
         # Suy từ độ dài: 12 số = CCCD, 9 số = CMND
         id_len = len(requester_id.replace(" ", ""))
         if id_len == 12:
-            requester_id_type = "Thẻ căn cước công dân"
+            requester_id_type = "Căn cước công dân"
         elif id_len == 9:
             requester_id_type = "Chứng minh nhân dân"
     if requester_id_type:

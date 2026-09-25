@@ -227,7 +227,7 @@ def _eform_area(area: dict | None) -> dict | None:
 
 
 def _id_doc_type(number: Any, issuer: str) -> str | None:
-    """9 số → CMND; 12 số → CCCD cũ / Căn cước mới theo nơi cấp."""
+    """9 số → CMND; 12 số → "Căn cước công dân" (cổng gộp CCCD cũ và Căn cước mới)."""
     digits = _digits(number)
     if not digits:
         return None

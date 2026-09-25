@@ -187,11 +187,10 @@ def _by_name(fields: list[dict]) -> dict:
 
 
 def _id_doc_type(number, issuer: str = "") -> str:
-    """CMND 9 số -> "Chứng minh nhân dân"; số 12 chữ số thì NƠI CẤP quyết định loại thẻ.
+    """CMND 9 số -> "Chứng minh nhân dân"; số 12 chữ số -> "Căn cước công dân".
 
-    Cùng là 12 chữ số nhưng thẻ Căn cước mới (Bộ Công an, từ 01/7/2024) và CCCD gắn chip cũ
-    (Cục Cảnh sát QLHC về TTXH) là hai option khác nhau trên cổng. Gán cứng "Căn cước công dân"
-    thì thẻ Căn cước mới bị chọn nhầm option CCCD.
+    Cổng hộ tịch đã gộp thẻ Căn cước mới (Bộ Công an) và CCCD gắn chip cũ (Cục Cảnh sát QLHC về
+    TTXH) về một option "Căn cước công dân".
     """
     if len(_digits(number)) == 9:
         return "Chứng minh nhân dân"

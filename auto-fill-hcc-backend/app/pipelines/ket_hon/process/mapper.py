@@ -275,7 +275,7 @@ def enrich(fields: list[dict]) -> list[dict]:
             raw_id_type = values.get(f"{src}_LoaiGiayTo")
             id_type = normalize_id_type(raw_id_type) or "Hộ chiếu (CMND nước ngoài)"
         else:
-            id_type = id_doc_type("Thẻ căn cước công dân", issuer)
+            id_type = id_doc_type("Căn cước công dân", issuer)
         add(f"LoaiGiayToDinhDanh_{dst}", id_type)
 
         add(f"NgaySinh{dst}", ngay_sinh, default=ngay_sinh_default)

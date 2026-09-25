@@ -55,7 +55,7 @@ def _copy_value(value) -> str:
 
 
 def _id_doc_type(number) -> str:
-    return "Chứng minh nhân dân" if len(_digits(number)) == 9 else "Thẻ căn cước công dân"
+    return "Chứng minh nhân dân" if len(_digits(number)) == 9 else "Căn cước công dân"
 
 
 def _issue_place(issue_place, issue_date) -> str:

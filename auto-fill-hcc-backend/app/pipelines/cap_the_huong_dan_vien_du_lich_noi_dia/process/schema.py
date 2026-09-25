@@ -5,9 +5,9 @@ Cổng Bộ VHTTDL `dichvucong.bvhttdl.gov.vn` (nộp về Sở VHTTDL tỉnh) �
 NẰM CHUNG trang. LLM chỉ trả FACT nguồn; `mapper.enrich` suy tất định ra ô UI theo
 (section = `.group-header`, name = `<mat-label>`) cho engine `fill-liz.js`.
 
-Hồ sơ chỉ có MỘT người: người đề nghị cấp thẻ (Đơn Mẫu 04). Người đó rơi vào khối nào tuỳ ai đăng nhập:
-  - tự nộp  → Phần II "Thông tin người nộp hồ sơ" (tên + số định danh cổng tự điền, khoá);
-  - nộp thay → Phần III "Thông tin ủy quyền", Phần II là của người đang đăng nhập.
+Hồ sơ chỉ có MỘT người: người đề nghị cấp thẻ (Đơn Mẫu 04). Phần II "Thông tin người nộp hồ sơ" là của
+tài khoản đăng nhập — chỉ điền khi số CCCD tài khoản TRÙNG số CCCD trên đơn (xem mapper); khối "Thông
+tin ủy quyền" không điền.
 Phần IV là nội dung Đơn Mẫu 04 (giới tính, trình độ, ngoại ngữ, email, tên điểm du lịch).
 
 ⚑ NHÃN CHƯA ĐỐI CHIẾU ĐƯỢC VỚI DOM GỐC: bản DOM dùng để lập mapping đã bị Google Dịch (vd "Thành phần
@@ -59,8 +59,10 @@ FIELDS: list[dict] = [
     },
     {
         "name": "NguoiDeNghi_TenDiemDuLich",
-        "desc": "Tên điểm du lịch (chỉ khi đề nghị thẻ hướng dẫn viên TẠI ĐIỂM). Phần 'Hướng dẫn ghi' in "
-                "sẵn cuối đơn KHÔNG phải giá trị — đơn không ghi tên điểm cụ thể thì bỏ field.",
+        "desc": "Tên điểm du lịch (chỉ khi đề nghị thẻ hướng dẫn viên TẠI ĐIỂM). Nằm trong câu đề nghị "
+                "'…kính đề nghị Sở … cấp thẻ hướng dẫn viên du lịch tại điểm <TÊN ĐIỂM> cho tôi' — chỉ chép "
+                "phần <TÊN ĐIỂM> (vd 'Khu du lịch Hồ Xanh'), bỏ 'tại điểm' và 'cho tôi'. Phần 'Hướng dẫn "
+                "ghi' in sẵn cuối đơn KHÔNG phải giá trị — đơn không ghi tên điểm cụ thể thì bỏ field.",
     },
     {
         "name": "Don_LoaiThe",
@@ -98,30 +100,20 @@ COMPACT_COMP_BY_NAME["NguoiDeNghi_DiaChi"] = "x-select-area"
 # ---- UI fields cho engine fill-liz.js — khớp (section, mat-label) ----
 # Section là CỤM NGẮN: engine chấp nhận header chứa cụm này (hoặc ngược lại).
 S_NOP = "Thông tin người nộp hồ sơ"
-S_UQ = "ủy quyền"
 S_THE = "thẻ hướng dẫn"
 
 # comp: liz-input (text/textarea) | liz-date (datepicker dd/mm/yyyy) | liz-select (mat-select overlay).
 # Cố ý BỎ các ô cổng render `disabled` ở Phần II (Tên người nộp, CMND/Hộ chiếu/MST) — cổng tự điền từ
 # tài khoản định danh, engine bơm vào cũng bị chặn. Phần I (cơ quan, lĩnh vực, thủ tục, dịch vụ công)
 # cổng chọn sẵn; Phần V lệ phí cổng tự tính — không khai.
-_PERSON_BLOCK: list[tuple[str, str, tuple[str, ...]]] = [
-    ("Ngày sinh", "liz-date", ()),
-    ("Ngày cấp", "liz-date", ()),
-    ("Nơi cấp", "liz-input", ()),
-    ("Số điện thoại", "liz-input", ("Điện thoại",)),
-    ("Email", "liz-input", ("E-mail",)),
-    ("Địa chỉ hành chính", "liz-select", ()),
-    ("Địa chỉ chi tiết", "liz-input", ("Địa chỉ",)),
-]
-
 UI_FIELDS: list[tuple[str, str, str, tuple[str, ...]]] = [
-    *[(S_NOP, label, comp, aliases) for label, comp, aliases in _PERSON_BLOCK],
-
-    (S_UQ, "Tên người / Tên đơn vị ủy quyền", "liz-input",
-     ("Tên người / Đơn vị ủy quyền", "Tên người ủy quyền / Tên đơn vị ủy quyền", "Tên người")),
-    (S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp", "liz-input", ("CMND/Hộ chiếu", "CMND")),
-    *[(S_UQ, label, comp, aliases) for label, comp, aliases in _PERSON_BLOCK],
+    (S_NOP, "Ngày sinh", "liz-date", ()),
+    (S_NOP, "Ngày cấp", "liz-date", ()),
+    (S_NOP, "Nơi cấp", "liz-input", ()),
+    (S_NOP, "Số điện thoại", "liz-input", ("Điện thoại",)),
+    (S_NOP, "Email", "liz-input", ("E-mail",)),
+    (S_NOP, "Địa chỉ hành chính", "liz-select", ()),
+    (S_NOP, "Địa chỉ chi tiết", "liz-input", ("Địa chỉ",)),
 
     (S_THE, "Giới tính", "liz-select", ()),
     (S_THE, "Trình độ chuyên môn nghiệp vụ", "liz-input",

@@ -1,6 +1,7 @@
 """[Bộ VHTTDL] Thủ tục cấp thẻ hướng dẫn viên du lịch nội địa (1.004623).
 
-Khoá: người đề nghị vào đúng khối (tự nộp → Phần II, nộp thay → Phần III) theo tài khoản đăng nhập;
+Khoá: Phần II chỉ điền khi CCCD tài khoản đăng nhập trùng CCCD trên đơn, không trùng thì chỉ điền phần
+"Cấp thẻ" (không đụng khối ủy quyền);
 số liệu bị che trên bản scan không được điền nửa vời; bảng đính kèm 3 dòng theo thứ tự DOM, văn bằng +
 chứng chỉ chung một dòng, ảnh chân dung (không có chữ) nhận tất định.
 """
@@ -12,7 +13,6 @@ from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.process import mapper
 from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.process.schema import (
     S_NOP,
     S_THE,
-    S_UQ,
     UI_FIELDS,
 )
 from app.procedures.ke_khai_links import KE_KHAI_LINKS
@@ -59,7 +59,7 @@ def test_khong_khai_o_bi_cong_khoa_o_khoi_nguoi_nop():
     assert not any(label.startswith(("Tên người", "CMND")) for label in khai_nop)
 
 
-def test_tu_nop_dien_khoi_nguoi_nop_va_khong_dung_khoi_uy_quyen():
+def test_cccd_trung_tai_khoan_moi_dien_khoi_nguoi_nop():
     fields, warnings = mapper.enrich(_DON, {"formContext": {
         "applicantFullname": "Trần Thị Lan", "applicantIdentityNumber": "001303012345",
     }})
@@ -72,7 +72,7 @@ def test_tu_nop_dien_khoi_nguoi_nop_va_khong_dung_khoi_uy_quyen():
     assert ui[(S_NOP, "Email")] == "tranthilan@example.com"
     assert ui[(S_NOP, "Địa chỉ chi tiết")] == "Thôn 3"
     assert "Bố Trạch" in ui[(S_NOP, "Địa chỉ hành chính")]
-    assert not any(section == S_UQ for section, _ in ui)
+    assert {section for section, _ in ui} == {S_NOP, S_THE}
     assert ui[(S_THE, "Giới tính")] == "Nữ"
     assert ui[(S_THE, "Trình độ chuyên môn nghiệp vụ")] == "Đại học"
     assert ui[(S_THE, "Email")] == "tranthilan@example.com"
@@ -80,7 +80,7 @@ def test_tu_nop_dien_khoi_nguoi_nop_va_khong_dung_khoi_uy_quyen():
 
 
 def test_select_dia_chi_kem_goi_y_tinh_va_aliases_nhan():
-    fields, _ = mapper.enrich(_DON)
+    fields, _ = mapper.enrich(_DON, {"formContext": {"applicantIdentityNumber": "001303012345"}})
     by_label = {(f["section"], f["name"]): f for f in fields}
     select = by_label[(S_NOP, "Địa chỉ hành chính")]
     assert select["comp"] == "liz-select"
@@ -88,21 +88,38 @@ def test_select_dia_chi_kem_goi_y_tinh_va_aliases_nhan():
     assert "Địa chỉ" in by_label[(S_NOP, "Địa chỉ chi tiết")]["aliases"]
 
 
-def test_nop_thay_dua_nguoi_de_nghi_sang_khoi_uy_quyen():
+def test_cccd_khac_tai_khoan_chi_dien_phan_cap_the():
+    """Tài khoản khác người đề nghị: không đổ nhân thân đơn vào Phần II, cũng không vào khối ủy quyền
+    (khối ẩn → engine rơi về khớp nhãn duy nhất và đổ nhầm vào Phần II)."""
     fields, warnings = mapper.enrich(_DON, {"formContext": {
         "applicantFullname": "NGUYỄN VĂN BÌNH", "applicantIdentityNumber": "038090001111",
     }})
     ui = _ui(fields)
 
-    assert ui[(S_UQ, "Tên người / Tên đơn vị ủy quyền")] == "TRẦN THỊ LAN"
-    assert ui[(S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp")] == "001303012345"
-    assert ui[(S_UQ, "Ngày sinh")] == "05/03/2003"
-    assert not any(section == S_NOP for section, _ in ui)
-    assert any("Thông tin ủy quyền" in w for w in warnings)
+    assert {section for section, _ in ui} == {S_THE}
+    assert ui[(S_THE, "Giới tính")] == "Nữ"
+    assert ui[(S_THE, "Email")] == "tranthilan@example.com"
+    assert any("KHÁC số CCCD" in w and "Thông tin người nộp hồ sơ" in w for w in warnings)
 
 
-def test_ten_va_so_bi_che_van_coi_la_tu_nop_nhung_khong_dien_so_cut():
-    """Bản scan che phần tên + đuôi số: đầu khớp tài khoản thì vẫn là tự nộp; số cụt không được điền."""
+def test_khong_co_form_context_thi_khong_dien_khoi_nguoi_nop():
+    fields, warnings = mapper.enrich(_DON)
+    assert {section for section, _ in _ui(fields)} == {S_THE}
+    assert any("tài khoản đang đăng nhập" in w for w in warnings)
+
+
+def test_ten_diem_du_lich_lay_tu_cau_de_nghi():
+    for raw in ("Khu du lịch Hồ Xanh", "tại điểm Khu du lịch Hồ Xanh cho tôi",
+                "cấp thẻ hướng dẫn viên du lịch tại điểm Khu du lịch Hồ Xanh cho tôi."):
+        fields, _ = mapper.enrich([{"name": "NguoiDeNghi_TenDiemDuLich", "value": raw}])
+        assert _ui(fields)[(S_THE, mapper._LABEL_DIEM_DU_LICH)] == "Khu du lịch Hồ Xanh"
+    hint = "Tên điểm du lịch đối với trường hợp cấp thẻ hướng dẫn viên du lịch tại điểm."
+    fields, _ = mapper.enrich([{"name": "NguoiDeNghi_TenDiemDuLich", "value": hint}])
+    assert (S_THE, mapper._LABEL_DIEM_DU_LICH) not in _ui(fields)
+
+
+def test_so_bi_che_khong_dien_khoi_nguoi_nop_va_khong_dien_so_cut():
+    """Bản scan che đuôi số định danh: không đối chiếu được đủ CCCD thì không điền Phần II."""
     masked = [
         {"name": "NguoiDeNghi_HoTen", "value": "TRẦN THỊ"},
         {"name": "NguoiDeNghi_SoDinhDanh", "value": "0013"},
@@ -114,11 +131,9 @@ def test_ten_va_so_bi_che_van_coi_la_tu_nop_nhung_khong_dien_so_cut():
     }})
     ui = _ui(fields)
 
-    assert not any(section == S_UQ for section, _ in ui)
-    assert (S_NOP, "Số điện thoại") not in ui
-    assert (S_NOP, "Email") not in ui
+    assert not any(section == S_NOP for section, _ in ui)
     assert any("0013" in w for w in warnings)
-    assert any("Số điện thoại" in w and "E-mail" in w for w in warnings)
+    assert any("chưa đọc được đủ số CCCD" in w for w in warnings)
 
 
 def test_gioi_tinh_suy_tu_cccd_khi_don_khong_danh_dau():
@@ -127,7 +142,11 @@ def test_gioi_tinh_suy_tu_cccd_khi_don_khong_danh_dau():
 
 
 def test_khong_bia_ngay_khi_thieu_nam():
-    fields, _ = mapper.enrich([{"name": "NguoiDeNghi_NgaySinh", "value": "16/11"}])
+    fields, _ = mapper.enrich(
+        [{"name": "NguoiDeNghi_NgaySinh", "value": "16/11"},
+         {"name": "NguoiDeNghi_SoDinhDanh", "value": "001303012345"}],
+        {"formContext": {"applicantIdentityNumber": "001303012345"}},
+    )
     assert (S_NOP, "Ngày sinh") not in _ui(fields)
 
 
