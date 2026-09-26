@@ -94,6 +94,13 @@ def test_khoi_thong_bao_va_so_luong_noi_thanh_mot_dong():
     assert ui[(S_TB, "Số lượng")] == "Băng rôn dọc: 30 tấm; Băng rôn ngang: 10 tấm"
 
 
+def test_noi_dung_chi_lay_dong_muc_2_bo_dia_diem_kinh_doanh_ben_duoi():
+    values = {**_facts(), "ThongBao_NoiDung": "Khuyến mại mẫu, điện máy mẫu\nĐỊA ĐIỂM KD – CÔNG TY MẪU B\n"
+                                              "1 Đường Mẫu, Phường Mẫu, Tỉnh Mẫu"}
+    ui = _ui(_run(values)[0])
+    assert ui[(S_TB, "Nội dung trên bảng quảng cáo, băng-rôn")] == "Khuyến mại mẫu, điện máy mẫu"
+
+
 def test_so_bi_che_va_ngay_trong_khong_dien_ma_canh_bao():
     values = {**_facts(), "DoanhNghiep_MaSo": "310", "DoanhNghiep_DienThoai": "09",
               "ThongBao_TuNgay": "  /  /2026", "ThongBao_DenNgay": ""}

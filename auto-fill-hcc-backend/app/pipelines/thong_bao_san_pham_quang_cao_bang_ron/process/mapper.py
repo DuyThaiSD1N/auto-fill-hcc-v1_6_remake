@@ -41,6 +41,17 @@ def _one_line(value: Any) -> str | None:
     return text or None
 
 
+def _first_line(value: Any) -> str | None:
+    """Nội dung băng-rôn = câu trên dòng mục 2; các dòng dưới là tên/địa chỉ địa điểm kinh doanh → bỏ."""
+    if value in (None, "", {}, []) or isinstance(value, dict):
+        return None
+    for line in str(value).splitlines():
+        line = " ".join(line.split()).strip(" ;,")
+        if line:
+            return line
+    return None
+
+
 def _fold(value: Any) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
@@ -169,7 +180,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # ---- Khối THÔNG BÁO SẢN PHẨM QUẢNG CÁO (nội dung tờ khai Mẫu 01) ----
     put(S_TB, "Số GPKD", code)
     put(S_TB, "Nơi cấp GPKD", issuer)
-    put(S_TB, "Nội dung trên bảng quảng cáo, băng-rôn", _one_line(values.get("ThongBao_NoiDung")))
+    put(S_TB, "Nội dung trên bảng quảng cáo, băng-rôn", _first_line(values.get("ThongBao_NoiDung")))
     put(S_TB, "Địa điểm thực hiện", _one_line(values.get("ThongBao_DiaDiem")))
     tu_ngay = _date(values.get("ThongBao_TuNgay"))
     den_ngay = _date(values.get("ThongBao_DenNgay"))
