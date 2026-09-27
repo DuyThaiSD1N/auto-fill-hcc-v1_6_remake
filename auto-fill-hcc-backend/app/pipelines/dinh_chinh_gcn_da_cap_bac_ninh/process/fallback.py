@@ -10,6 +10,17 @@ import re
 _KINHGUI_RE = re.compile(r"Kính\s*g[ửu]i\s*:?\s*(.+)", re.IGNORECASE)
 _DIACHI_RE = re.compile(r"(?:c\)|-)\s*Địa\s*ch[ỉi][^:\n]*:\s*(.+)", re.IGNORECASE)
 _NOIDUNG_RE = re.compile(r"(?:2|II)\.\s*N[ộo]i\s*dung\s*bi[ếe]n\s*đ[ộo]ng[^:\n]*:\s*(.+)", re.IGNORECASE)
+# Mục "Thông tin khác" trang 2 của Mẫu 18: OCR hay làm lệch/mất nhãn "(1)(2)(3)" ("(2) : Tình trạng…",
+# dòng ranh giới không còn "(3)") nên LLM bỏ sót — bắt theo CỤM NHÃN, không theo số thứ tự.
+_THONG_TIN_KHAC_RES = {
+    "Don_ThanhVienHo": re.compile(r"Th[àa]nh\s*vi[êe]n\s*h[ộo]\s*gia\s*đ[ìi]nh[^:\n]*:\s*(.+)", re.IGNORECASE),
+    "Don_TranhChap": re.compile(
+        r"T[ìi]nh\s*tr[ạa]ng\s*tranh\s*ch[ấa]p\s*đ[ấa]t\s*đai[^:\n]*:\s*(.+)", re.IGNORECASE
+    ),
+    "Don_RanhGioi": re.compile(r"S[ựu]\s*thay\s*đ[ổo]i\s*ranh\s*gi[ớo]i[^:\n]*:\s*(.+)", re.IGNORECASE),
+}
+# Chấm giữ chỗ của mẫu in ("...." / "…") — dòng chỉ có chấm là dòng TRỐNG.
+_PLACEHOLDER_DOTS_RE = re.compile(r"(?:\.\s*){2,}|…+")
 
 
 def _as_dict(raw_fields):
@@ -70,5 +81,14 @@ def apply_ocr_fallback(raw_fields, documents: list[dict]) -> dict:
             nd = _clean_line(nd)
             if nd:
                 fields["Don_NoiDungBienDong"] = nd
+
+    for name, pattern in _THONG_TIN_KHAC_RES.items():
+        if str(fields.get(name) or "").strip():
+            continue
+        m = pattern.search(text)
+        if m:
+            value = _clean_line(_PLACEHOLDER_DOTS_RE.sub(" ", m.group(1)))
+            if value:
+                fields[name] = value
 
     return fields

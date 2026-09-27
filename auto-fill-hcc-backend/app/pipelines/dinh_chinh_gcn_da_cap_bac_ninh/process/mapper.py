@@ -20,7 +20,9 @@ def _by_name(fields: list[dict]) -> dict:
 def _text(value) -> str | None:
     if value in (None, "", {}, []):
         return None
-    return " ".join(str(value).split()).strip(" ,;") or None
+    # Bỏ chấm giữ chỗ của mẫu in: "CCCD...." → "CCCD"; ô chỉ có "...." → trống.
+    text = _PLACEHOLDER_DOTS_RE.sub(" ", str(value))
+    return " ".join(text.split()).strip(" ,;") or None
 
 
 def _digits(value) -> str | None:
