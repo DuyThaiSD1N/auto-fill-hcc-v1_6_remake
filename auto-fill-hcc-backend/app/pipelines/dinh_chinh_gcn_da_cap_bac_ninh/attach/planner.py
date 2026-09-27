@@ -7,7 +7,7 @@ gán file vào ô Bản chính.
 
 Gom file theo CHÚ GIẢI hồ sơ mẫu:
 - Đơn Mẫu 18 + CCCD người yêu cầu → nhóm "Đơn đăng ký biến động đất đai... Mẫu số 18".
-- Bản gốc GCN → nhóm "Bản gốc Giấy chứng nhận đã cấp".
+- Bản gốc GCN → nhóm "Giấy chứng nhận đã cấp" (mã TP-H05.000040).
 - Giấy tờ chứng minh sai sót → nhóm "Giấy tờ chứng minh sai sót".
 - Văn bản ủy quyền → nhóm "Văn bản về việc ủy quyền".
 
@@ -33,7 +33,10 @@ _CONFIDENT_LLM_TYPES = {"identity", "application", "land_certificate", "authoriz
 
 # Nhãn nhận dạng NHÓM thành phần hồ sơ (FE khớp theo substring đã fold dấu).
 _COMP_APPLICATION = "Đơn đăng ký biến động đất đai"
-_COMP_LAND_CERT = "Bản gốc Giấy chứng nhận đã cấp"
+# Cổng đổi tên nhóm thành "Giấy chứng nhận đã cấp, trừ trường hợp…" (bỏ chữ "Bản gốc") → khớp theo MÃ
+# thành phần như cap_doi_gcn_bac_ninh. Không dùng "Giấy chứng nhận đã cấp" trần: nhóm "Giấy tờ chứng
+# minh sai sót" cũng chứa cụm đó ở cuối câu.
+_COMP_LAND_CERT = "TP-H05.000040"
 _COMP_ERROR_PROOF = "Giấy tờ chứng minh sai sót"
 _COMP_AUTHORIZATION = "Văn bản về việc ủy quyền"
 

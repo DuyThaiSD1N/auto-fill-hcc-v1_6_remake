@@ -1,4 +1,4 @@
-"""Pipeline "[Tỉnh Bắc Ninh] Đính chính giấy chứng nhận đã cấp" (maThuTuc 1.012790).
+"""Pipeline "[Tỉnh Bắc Ninh] Đính chính giấy chứng nhận đã cấp" (maThuTuc 1.115476, trước là 1.012790).
 
 Cùng nền tảng Liferay + select2 như các thủ tục đất đai Bắc Ninh khác (khớp ô theo NHÃN title,
 comp bn-*, engine content/fill-bacninh.js). Cấu trúc = ĐƠN BLOCK Mẫu 18 (Kính gửi/a)Tên/b)Giấy tờ/

@@ -1,4 +1,4 @@
-"""OCR fallback cho cấp đổi GCN Bắc Ninh (Đơn Mẫu 18).
+"""OCR fallback cho đính chính GCN đã cấp Bắc Ninh (Đơn Mẫu 18).
 
 Quy tắc địa chỉ CHUNG của compact agent ép field địa chỉ về object {quocGia,tinh,diaChi} và BỎ
 phường/xã. Nhưng đơn Bắc Ninh có dòng "c) Địa chỉ" đầy đủ 1 dòng → trích NGUYÊN VĂN từ OCR để đảm
@@ -8,8 +8,8 @@ bảo Don_DiaChi luôn có phường/xã, không phụ thuộc LLM. Vá cả Kí
 import re
 
 _KINHGUI_RE = re.compile(r"Kính\s*g[ửu]i\s*:?\s*(.+)", re.IGNORECASE)
-_DIACHI_RE = re.compile(r"c\)\s*Địa\s*ch[ỉi][^:\n]*:\s*(.+)", re.IGNORECASE)
-_NOIDUNG_RE = re.compile(r"2\.\s*N[ộo]i\s*dung\s*bi[ếe]n\s*đ[ộo]ng[^:\n]*:\s*(.+)", re.IGNORECASE)
+_DIACHI_RE = re.compile(r"(?:c\)|-)\s*Địa\s*ch[ỉi][^:\n]*:\s*(.+)", re.IGNORECASE)
+_NOIDUNG_RE = re.compile(r"(?:2|II)\.\s*N[ộo]i\s*dung\s*bi[ếe]n\s*đ[ộo]ng[^:\n]*:\s*(.+)", re.IGNORECASE)
 
 
 def _as_dict(raw_fields):

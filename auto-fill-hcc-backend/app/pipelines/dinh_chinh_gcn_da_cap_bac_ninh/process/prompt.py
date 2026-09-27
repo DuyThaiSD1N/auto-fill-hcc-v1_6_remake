@@ -21,8 +21,10 @@ NGUỒN DỮ LIỆU:
   tục này thường là đính chính thông tin trên GCN (vd "Đính chính diện tích/số thửa/họ tên..."). Nếu
   mục này trống thì BỎ field.
 - Don_DienThoai lấy từ Đơn (mục d) nếu có; chỉ chữ số.
-- Don_GiayTo2/Don_GiayTo3: lấy từ mục 3 Đơn "(2) ..." và "(3) ...". Bỏ nếu trống. KHÔNG lấy dòng
-  "(1) Giấy chứng nhận đã cấp" (dòng in sẵn của mẫu).
+- Don_GiayTo2/Don_GiayTo3: lấy từ mục giấy tờ liên quan của Đơn "(2) ..." và "(3) ...". Bỏ nếu trống.
+  KHÔNG lấy dòng "(1) Giấy chứng nhận đã cấp" (dòng in sẵn của mẫu).
+- Don_MaSoThue/Don_Email/Don_MienGiam/Don_ThanhVienHo/Don_TranhChap/Don_RanhGioi: CHỈ chép khi Đơn
+  GHI RÕ nội dung ở đúng dòng đó. Dòng trống hoặc chỉ có dấu chấm "...." → BỎ field, không suy luận.
 
 KHÔNG trả field UI dạng "a) Tên", "b) Giấy tờ...", "nhanTaiNha...", element_...; chỉ trả field nguồn
 trong schema. Không bịa thông tin còn thiếu; ô/tài liệu không có thì bỏ field.
