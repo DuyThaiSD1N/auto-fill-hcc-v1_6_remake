@@ -587,6 +587,22 @@
     return null;
   }
 
+  // Khối "Chọn cơ quan thực hiện" của cổng CHƯA cập nhật tên một số xã sau sáp nhập: còn liệt kê
+  // "Xã Hiệp Hòa" trong khi danh mục hiện hành (tài khoản, mọi ô kê khai) là "Phường Hiệp Hòa".
+  // Gõ tên hiện hành vào ô xã là không ra option nào. CHỈ đổi tên lúc CHỌN cơ quan — dữ liệu điền
+  // form vẫn là "Phường Hiệp Hòa". Cùng bảng _PORTAL_AGENCY_WARDS của backend
+  // (app/locations/catalog.py); BE mới đã đổi sẵn, bảng này đỡ khi BE đang trỏ tới chưa cập nhật.
+  // Cổng cập nhật rồi thì xóa dòng.
+  const PORTAL_AGENCY_WARDS = {
+    "bac ninh": { "phuong hiep hoa": "Xã Hiệp Hòa" },
+  };
+
+  function portalAgencyWard(province, ward) {
+    const provinceCore = fold(province).replace(/^(tinh|thanh pho)\s+/, "");
+    const aliases = PORTAL_AGENCY_WARDS[provinceCore];
+    return (aliases && aliases[fold(ward)]) || ward;
+  }
+
   function comboValue(btn) {
     const span = btn.querySelector("span");
     return span ? span.textContent.trim() : "";
@@ -799,7 +815,8 @@
     } else {
       // XÃ: danh sách nạp async → chờ dài hơn. ward RỖNG thì pickCombo tự bỏ qua
       // (thủ tục bộ ngành chỉ cần tỉnh).
-      const wardRes = await pickCombo(combos[1], ward, { force: true, timeout: 8000 });
+      const wardRes = await pickCombo(combos[1], portalAgencyWard(province, ward),
+        { force: true, timeout: 8000 });
       if (!wardRes.ok) return { error: `Xã: ${wardRes.error}` };
     }
 
