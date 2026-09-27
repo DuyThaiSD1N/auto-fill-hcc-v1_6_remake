@@ -17,11 +17,26 @@ const {
 // Nó KHÔNG phải bảng thành phần hồ sơ: nhận nhầm là bot bỏ qua cả bước chủ hồ sơ và có thể
 // đính giấy tờ cần chứng thực vào đúng ô giấy ủy quyền.
 const AUTHORIZATION_ROW_MARKERS = ["tai lieu uy quyen", "van ban uy quyen", "giay uy quyen"];
+// Tiêu đề bảng THÀNH PHẦN HỒ SƠ ("Tên giấy tờ" — iGate Bộ Nội vụ; "Tên thành phần hồ sơ" — tư
+// pháp). Trong bảng này, dòng tên "Văn bản ủy quyền" là một THÀNH PHẦN THẬT phải đính (vd thờ cúng
+// liệt sĩ, dòng 1) chứ không phải bảng ủy quyền của bước chủ hồ sơ — marker chữ ở trên không được
+// áp vào đây.
+const COMPONENT_TABLE_HEADER_MARKERS = ["ten giay to", "ten thanh phan ho so"];
+
+// Chỉ đọc hàng TIÊU ĐỀ (thead, hoặc các ô th khi cổng không dựng thead), không đọc cả bảng: tên
+// dòng thường chứa đúng những chữ đó ("thành phần hồ sơ"…) và làm lệch phân loại.
+function attachmentTableHeaderText(table) {
+  const thead = table?.querySelector?.("thead");
+  if (thead) return foldedNodeText(thead);
+  return Array.from(table?.querySelectorAll?.("th") || []).map(foldedNodeText).join(" ");
+}
 
 function isAuthorizationAttachmentRow(row) {
   if (!row) return false;
-  if (AUTHORIZATION_ROW_MARKERS.some((marker) => foldedNodeText(row).includes(marker))) return true;
   const table = row.closest?.("table");
+  const header = table ? attachmentTableHeaderText(table) : "";
+  if (COMPONENT_TABLE_HEADER_MARKERS.some((marker) => header.includes(marker))) return false;
+  if (AUTHORIZATION_ROW_MARKERS.some((marker) => foldedNodeText(row).includes(marker))) return true;
   if (!table) return false;
   // Bảng ủy quyền dùng "Tên hồ sơ"/"Hành động"; bảng thành phần hồ sơ dùng "Tên thành phần
   // hồ sơ"/"Thao Tác". Chỉ loại khi chắc chắn KHÔNG phải bảng thành phần hồ sơ.
@@ -69,8 +84,16 @@ function hasAuthorizationAttachmentBlock() {
 function hasAttachmentTarget() {
   if (document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]')) return true; // Bắc Ninh
   if (findCopyCertificationAttachmentRow()) return true;
-  const button = findButtonByText(document, ["Chọn tệp đính kèm", "Chọn tệp"]);
-  return !!button && !isAuthorizationAttachmentRow(button.closest?.("tr"));
+  // Xét MỌI nút chọn tệp, không chỉ nút đầu: nút đầu rơi vào dòng bị loại (bảng ủy quyền) không
+  // có nghĩa trang không còn dòng đính kèm hợp lệ nào. Trả false ở đây là listener im lặng và
+  // sidebar nhận "0 tệp" không lý do.
+  const wants = ["Chọn tệp đính kèm", "Chọn tệp"].map((label) => foldChoiceText(label));
+  return Array.from(document.querySelectorAll("button")).some((button) => {
+    if (!isVisible(button)) return false;
+    const text = foldedNodeText(button);
+    if (!wants.some((want) => text === want || text.includes(want))) return false;
+    return !isAuthorizationAttachmentRow(button.closest?.("tr"));
+  });
 }
 
 const COPY_CERT_ATTACHMENT_SNIPPETS = [
@@ -735,7 +758,7 @@ function newPortalUploadFailure(before = []) {
 }
 // Hai câu cổng thật: "Upload thất bại (File Service): Upload failed: 500…" và
 // "Tải lên tài liệu thất bại, vui lòng thử lại".
-const UPLOAD_FAILURE_RE = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại/i;
+const UPLOAD_FAILURE_RE = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại|không tải được (?:file|tệp)/i;
 
 /** Đóng toast "Upload thất bại…" (nút X) TRƯỚC khi sang tệp kế.
  *

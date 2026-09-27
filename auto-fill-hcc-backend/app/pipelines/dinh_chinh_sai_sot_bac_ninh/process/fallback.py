@@ -9,10 +9,10 @@ import re
 
 # "Kính gửi: <cơ quan>" — lấy tới hết dòng, bỏ chú thích "(1)" cuối.
 _KINHGUI_RE = re.compile(r"Kính\s*g[ửu]i\s*:?\s*(.+)", re.IGNORECASE)
-# "c) Địa chỉ(2): <địa chỉ>" — lấy tới hết dòng.
-_DIACHI_RE = re.compile(r"c\)\s*Địa\s*ch[ỉi][^:\n]*:\s*(.+)", re.IGNORECASE)
-# "2. Nội dung biến động(3): <nội dung>"
-_NOIDUNG_RE = re.compile(r"2\.\s*N[ộo]i\s*dung\s*bi[ếe]n\s*đ[ộo]ng[^:\n]*:\s*(.+)", re.IGNORECASE)
+# "c) Địa chỉ(2): <địa chỉ>" (mẫu mới: "- Địa chỉ: <địa chỉ>") — lấy tới hết dòng.
+_DIACHI_RE = re.compile(r"(?:c\)|-)\s*Địa\s*ch[ỉi][^:\n]*:\s*(.+)", re.IGNORECASE)
+# "2. Nội dung biến động(3): <nội dung>" (mẫu mới: "II. Nội dung biến động (3): …")
+_NOIDUNG_RE = re.compile(r"(?:2|II)\.\s*N[ộo]i\s*dung\s*bi[ếe]n\s*đ[ộo]ng[^:\n]*:\s*(.+)", re.IGNORECASE)
 
 
 def _as_dict(raw_fields):

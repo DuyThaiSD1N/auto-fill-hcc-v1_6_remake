@@ -59,7 +59,10 @@ test("portal-mae dùng selector ổn định (formcontrolname), không dựa id 
     assert.ok(portalMae.includes(marker), `portal-mae thiếu marker: ${marker}`);
   }
   assert.ok(!/#mat-select-\d|#mat-radio-\d/.test(portalMae), "cấm selector id mat-* động");
-  assert.ok(portalMae.includes('r.value === "1"'), "radio Sở/Ban ngành khớp theo input value=1");
+  // Radio khớp theo input value chứ không phải nhãn/id: "1" = Sở/Ban ngành, "0" = Phường/Xã
+  // (thủ tục giải quyết ở cấp xã). Xem tests/mae-agency-ward.test.js.
+  assert.ok(portalMae.includes("r.value === wantValue"), "radio khớp theo input value");
+  assert.ok(portalMae.includes('clickLevelRadio("1")'), "nhánh Sở/Ban ngành giữ value=1");
 });
 
 test("attach-core có engine attp-row: khớp dòng theo componentName, chống trùng, set file cuối dòng", () => {

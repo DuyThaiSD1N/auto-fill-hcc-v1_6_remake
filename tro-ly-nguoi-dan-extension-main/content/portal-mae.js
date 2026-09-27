@@ -5,7 +5,8 @@
 //
 // DOM (id mat-select-N/mat-radio-N đổi theo thứ tự render — KHÔNG dùng; formcontrolname ổn định):
 //   - mat-select[formcontrolname="agency1"]            → Tỉnh/Thành phố
-//   - mat-radio-group[formcontrolname="selectedLevel"] → radio (input value="1" = Sở/Ban ngành)
+//   - mat-radio-group[formcontrolname="selectedLevel"] → radio (value "1" = Sở/Ban ngành,
+//     value "0" = Phường/Xã — thủ tục giải quyết ở cấp xã đi nhánh này, BE gửi agencyLevel)
 //   - mat-select[formcontrolname="agency"]             → Sở/Ban ngành hoặc Phường/Xã
 //   - mat-select[formcontrolname="procedureProcess"]   → Trường hợp giải quyết (ẨN nếu chỉ 1
 //     trường hợp; cổng TỰ chọn option ĐẦU nếu >1 → muốn "cấp lại" phải chủ động mở chọn)
@@ -93,13 +94,17 @@
     return { ok: true, picked: opt.textContent.trim() };
   }
 
-  async function clickSoBanNganhRadio() {
+  // Cùng một radio-group: value "1" = Sở/Ban ngành, value "0" = Phường/Xã (cổng tích sẵn "0").
+  // Thủ tục giải quyết ở cấp xã (Bộ Nội vụ — người có công từ trần) cần nhánh "0".
+  async function clickLevelRadio(wantValue) {
     const group = await waitFor(
       () => document.querySelector('mat-radio-group[formcontrolname="selectedLevel"]'), 5000);
     if (!group) return { error: 'Không thấy radio "Sở/Ban ngành - Phường/Xã".' };
     const input = Array.from(group.querySelectorAll('input[type="radio"]'))
-      .find((r) => r.value === "1");
-    if (!input) return { error: 'Không thấy nút radio "Sở/Ban ngành".' };
+      .find((r) => r.value === wantValue);
+    if (!input) {
+      return { error: `Không thấy nút radio ${wantValue === "0" ? '"Phường/Xã"' : '"Sở/Ban ngành"'}.` };
+    }
     const button = input.closest("mat-radio-button");
     if (input.checked || button?.classList?.contains("mat-radio-checked")) return { ok: true };
     clickLikeUser(button?.querySelector("label") || button || input);
@@ -142,7 +147,7 @@
     return byText("dong y va tiep tuc") || byText("dong y") || null;
   }
 
-  async function fillMaeAgency({ province, agency, variant, variantMatch, variantAvoid }) {
+  async function fillMaeAgency({ province, agency, ward, agencyLevel, variant, variantMatch, variantAvoid }) {
     const form = await waitFor(maeForm, 6000);
     if (!form) return { error: "Không thấy form chọn cơ quan trên trang." };
 
@@ -183,8 +188,35 @@
       await sleep(600); // chờ danh sách cơ quan nạp lại theo tỉnh
     }
 
+    // 2a) Cấp XÃ: radio "Phường/Xã" + chọn đúng xã rồi Đồng ý. Hộp thoại này không có ô
+    //     "Trường hợp giải quyết" nên dừng ở đây, không chạy tiếp nhánh Sở bên dưới.
+    if (agencyLevel === "ward") {
+      const levelRes = await clickLevelRadio("0");
+      if (levelRes.error) return levelRes;
+      const wardSel = await waitFor(() => matSelect("agency"), 5000);
+      if (!wardSel) return { error: "Không thấy ô chọn Phường/Xã." };
+      const wantWard = fold(ward);
+      if (!wantWard) return { error: "Tài khoản chưa gắn phường/xã nên em chưa biết chọn ô nào." };
+      if (!matSelectValue(wardSel).includes(wantWard)) {
+        // Option ghi đủ "Phường Nghĩa Lộ"/"Xã An Thạnh"; tên từ tài khoản có thể thiếu tiền tố
+        // → khớp hai chiều như ô Tỉnh.
+        const res = await pickMatOption(
+          wardSel,
+          (text) => text === wantWard || text.includes(wantWard)
+            || (text.length >= 4 && wantWard.includes(text)),
+          ward,
+          { timeout: 9000 },
+        );
+        if (res.error) return { error: `Phường/Xã: ${res.error}` };
+      }
+      const agreeWard = await waitFor(findAgreeButton, 4000);
+      if (!agreeWard) return { error: 'Không thấy nút "Đồng ý và tiếp tục".' };
+      clickLikeUser(agreeWard);
+      return { ok: true, level: "ward", ward };
+    }
+
     // 2) Radio "Sở/Ban ngành" (value="1").
-    const radioRes = await clickSoBanNganhRadio();
+    const radioRes = await clickLevelRadio("1");
     if (radioRes.error) return radioRes;
 
     // 3) Sở Nông nghiệp và Môi trường — tên có hậu tố tỉnh ("… Đà Nẵng") → khớp substring.
@@ -222,6 +254,8 @@
     fillMaeAgency({
       province: msg.province || "",
       agency: msg.agency || "",
+      ward: msg.ward || "",
+      agencyLevel: msg.agencyLevel || "",
       variant: msg.variant || "",
       variantMatch: msg.variantMatch || "",
       variantAvoid: msg.variantAvoid || "",

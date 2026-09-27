@@ -82,6 +82,15 @@
     // Màn chào thứ tự mới: chọn thủ tục trước, chọn nơi làm thủ tục ở lượt xác nhận.
     // BE chỉ đổi thứ tự cho client khai cờ này; bản trên chợ giữ nguyên màn chào cũ.
     supportsProcedureFirst: true,
+    // Có engine gạt công tắc "cách nhận kết quả" (portal-dvc.js::selectResultMethod). BE chỉ
+    // chọn sẵn hộ khi thấy cờ này; thiếu cờ → giữ câu hướng dẫn ba cách để công dân tự gạt.
+    supportsResultMethod: true,
+    // Hộp thoại cổng bộ chọn cơ quan ở CẤP XÃ (radio "Phường/Xã"). Thiếu cờ → BE dặn công dân
+    // chọn tay thay vì bắn lệnh cho engine cũ gạt nhầm sang "Sở/Ban ngành".
+    supportsMaeWardAgency: true,
+    // Bấm "Nộp trực tuyến" ở đúng thẻ theo chữ BE gửi (portal-dvc.js::clickNopTrucTuyenByCard).
+    // Thiếu cờ → BE dặn công dân chọn tay thay vì để engine cũ bấm thẻ đầu (cấp Sở).
+    supportsAgencyCard: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -1032,6 +1041,24 @@
     })}`, "system");
   }
 
+  // Gạt công tắc "cách nhận kết quả" trên trang rồi báo BE. Ô phụ mọc ra sau khi bật (địa chỉ,
+  // người nhận…) thì engine đọc dấu * của chính cổng và trả về đây — trợ lý chỉ NÓI ra, không
+  // bao giờ điền hộ.
+  async function runSelectResultMethod(a) {
+    setStatus("Đang chọn cách nhận kết quả…");
+    const res = await sendToContent({
+      action: "selectResultMethod", label: a.label || "", allLabels: a.allLabels || [],
+      needsInput: !!a.needsInput,
+    });
+    setStatus("");
+    await ask(`__action:result_method_report:${JSON.stringify({
+      method: a.method || "",
+      ok: !!res?.ok,
+      missing: Array.isArray(res?.missing) ? res.missing : [],
+      error: res?.error || "",
+    })}`, "system");
+  }
+
   let lastPageSig = "";
   const WATCH_STATES = [
     "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
@@ -1105,6 +1132,7 @@
     if (card.kind === "service_list") return renderServiceList(card);
     if (card.kind === "location_picker") return renderLocationPicker(card);
     if (card.kind === "doc_options") return renderDocOptions(card);
+    if (card.kind === "result_methods") return renderResultMethods(card);
     // Contract cũ từng xin SĐT sau khi nộp hồ sơ. Đã ngừng hoàn toàn; bỏ qua cả card
     // còn sót trong last_reply của phiên được tạo trước khi extension cập nhật.
     if (card.kind === "phone_form") return;
@@ -1697,6 +1725,30 @@
     });
   }
 
+  // ── Card "cách nhận kết quả" (bước 4) ──
+  // Trợ lý đã gạt sẵn một công tắc trên trang; thẻ ở đây chỉ phản chiếu lựa chọn đó và cho đổi.
+  // Mỗi lượt BE trả lại card với `selected` mới → gỡ card cũ, không để hai bộ thẻ chồng nhau
+  // rồi công dân bấm nhầm cái đã cũ.
+  function renderResultMethods(card) {
+    document.querySelectorAll(".result-methods").forEach((el) => el.remove());
+    const wrap = document.createElement("div");
+    wrap.className = "result-methods";
+    (card.options || []).forEach((opt) => {
+      const el = document.createElement("div");
+      el.className = "opt" + (opt.key === card.selected ? " picked" : "");
+      el.innerHTML = `<div class="oi">${window.escapeHtml(opt.icon || "")}</div><div>
+        <div class="ot">${window.escapeHtml(opt.label || "")}</div>
+        <div class="od">${window.escapeHtml(opt.desc || "")}</div></div>`;
+      el.addEventListener("click", () => {
+        if (opt.key === card.selected) return; // đang chọn rồi, bấm lại không gạt lại cho rối
+        addUserText(opt.label || "");
+        ask(String(opt.send || ""), "chip", opt.label || "");
+      });
+      wrap.appendChild(el);
+    });
+    addNode(wrap);
+  }
+
   // ── Card tiến trình xử lý giấy tờ (thường 30–90s) ──
   // Chặng chủ hồ sơ vẫn diễn giải 4 bước; chặng điền tờ khai chỉ hiện một dòng gọn.
   const PIPE_STAGES = [
@@ -1901,11 +1953,8 @@
   let scanDaGo = new Map();            // hash -> { rel, luc }: nội dung đã bị GỠ TAY
   let scanAgentHelpers = null;         // { listFiles, fetchBlob, renameFile, caps } từ onConnected
   let scanAgentCaps = [];
-  let scanLoDaThuSid = "";             // mỗi phiên chỉ gom lô một lần
   let scanDoiSoatSid = "";             // mỗi phiên chỉ đối soát một lần
-  let scanRecentPending = [];          // [{ rel, name, mtimeMs }] chờ cán bộ chọn tay
   const scanDangDoiTen = new Set();    // rel cũ/mới của lần đổi tên do CHÍNH mình — bỏ qua cặp event
-  const $scanRecent = document.getElementById("scan-recent-list");
 
   async function napSoSachScan(sid) {
     if (!scanDongBo || !sid) return;
@@ -1968,95 +2017,10 @@
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
   }
 
-  function formatRelativeTime(ms) {
-    const phut = Math.max(0, Math.round((Date.now() - ms) / 60000));
-    if (phut < 1) return "vừa xong";
-    if (phut < 60) return `${phut} phút trước`;
-    return `${Math.round(phut / 60)} giờ trước`;
-  }
-
-  // ── Tệp quét gần đây: cán bộ chọn tay ──
-  // Hiện khi KHÔNG tự tin gom lô (không rõ ranh giới giữa hai công dân) hoặc lô đã quá cũ — hệ thống
-  // không đoán liều, cán bộ nhìn tên + giờ rồi quyết.
-  function hienDanhSachGanDay() {
-    if (!$scanRecent) return;
-    $scanRecent.replaceChildren();
-    if (!scanRecentPending.length || !uploadSid) { $scanRecent.hidden = true; return; }
-    const dau = document.createElement("div");
-    dau.className = "scan-recent-head";
-    const goiY = document.createElement("span");
-    goiY.className = "scan-recent-hint";
-    goiY.textContent = "🖨️ Máy quét có tệp gần đây, chưa chắc của công dân này — chọn đúng tệp cần tải lên:";
-    const tatCa = document.createElement("button");
-    tatCa.type = "button";
-    tatCa.className = "scan-recent-add-all";
-    tatCa.textContent = "+ Thêm tất cả";
-    tatCa.addEventListener("click", () => void themTuDanhSachGanDay([...scanRecentPending]));
-    dau.append(goiY, tatCa);
-    $scanRecent.appendChild(dau);
-    for (const f of scanRecentPending) {
-      const row = document.createElement("div");
-      row.className = "scan-recent-row";
-      const nhan = document.createElement("span");
-      nhan.textContent = `${f.name} — ${formatRelativeTime(f.mtimeMs)}`;
-      nhan.title = f.rel;
-      const them = document.createElement("button");
-      them.type = "button";
-      them.textContent = "+";
-      them.title = "Tải tệp này lên hồ sơ";
-      them.setAttribute("aria-label", `Tải lên ${f.name}`);
-      them.addEventListener("click", () => void themTuDanhSachGanDay([f]));
-      row.append(nhan, them);
-      $scanRecent.appendChild(row);
-    }
-    $scanRecent.hidden = false;
-  }
-
-  async function themTuDanhSachGanDay(ds) {
-    markActivity();
-    for (const f of ds) {
-      scanRecentPending = scanRecentPending.filter((x) => x.rel !== f.rel);
-      hienDanhSachGanDay();
-      if (!scanAgentHelpers) break;
-      // tuDong=false: quyết định của cán bộ — không bị watermark / trần tuổi / "đã gỡ tay" chặn.
-      await onScanFile({ rel: f.rel, mtimeMs: f.mtimeMs }, () => scanAgentHelpers.fetchBlob(f.rel), { tuDong: false });
-    }
-  }
-
-  // Gom LÔ tệp quét đã có sẵn trong thư mục lúc vừa nối máy quét / vừa vào bước tải giấy tờ (cán bộ
-  // quét trước rồi mới mở Trợ lý). Quyết định ở lib/scanLo.js (chép từ autofill).
-  async function thuGomLoQuet() {
-    const sid = uploadSid;
-    if (!sid || !scanAgentHelpers || !window.TLNDScanLo || scanLoDaThuSid === sid) return;
-    if (uploadSessionProgress?.complete) return;
-    scanLoDaThuSid = sid; // chốt TRƯỚC await: onConnected và setUploadSession gọi gần như cùng lúc
-    let trenDia;
-    try {
-      trenDia = await scanAgentHelpers.listFiles();
-    } catch (e) {
-      console.warn("[TLND] Không đọc được /v1/files để gom lô quét:", e?.message || e);
-      scanLoDaThuSid = ""; // lỗi tạm thời — lần sau thử lại
-      return;
-    }
-    if (sid !== uploadSid) return;
-    const daCo = new Set((scanDongBo?.danhSach() || []).map((x) => x.rel));
-    const kq = window.TLNDScanLo.quyetDinh({ trenDia, daCo, watermarkMs: scanWatermarkMs });
-    // Nhật ký quyết định: "vì sao tệp này bị/không bị tự tải" trả lời được bằng một dòng console.
-    console.info("[TLND] Gom lô quét:", {
-      ...kq.nhatKy,
-      watermark: scanWatermarkMs ? new Date(scanWatermarkMs).toLocaleString() : "chưa có",
-      quyet_dinh: kq.lyDo || kq.hanhDong,
-    });
-    if (kq.hanhDong === "tu-them") {
-      for (const f of kq.tuThem) {
-        if (sid !== uploadSid) return;
-        await onScanFile({ rel: f.rel, mtimeMs: f.mtimeMs }, () => scanAgentHelpers.fetchBlob(f.rel));
-      }
-    } else if (kq.hanhDong === "chon-tay") {
-      scanRecentPending = kq.chonTay;
-      hienDanhSachGanDay();
-    }
-  }
+  // Tính năng "gom lô tệp quét có sẵn trong thư mục" ĐÃ GỠ (chốt nghiệp vụ 23/09/2026).
+  // Nó đọc /v1/files rồi ĐOÁN tệp nào thuộc công dân đang ngồi đây theo khoảng cách thời gian;
+  // đoán không chắc thì hiện danh sách cho cán bộ chọn tay. Nay chỉ nhận tệp máy quét bắn ra
+  // trong lúc phiên đang mở (event file.added) — quét ra tệp nào nhận tệp đó, không đoán.
 
   // Đối soát MỘT LẦN mỗi phiên: tệp đã tải lên (sổ rel→fid) với trạng thái THẬT trên đĩa — bắt đúng ca
   // "bị xoá/ghi đè trong lúc Trợ lý đóng", thứ SSE sống không thấy được.
@@ -2512,22 +2476,16 @@
     previewDuLieu.clear();
     dongPreviewTuSidebar(); // không để giấy của công dân trước treo trên màn hình
     tenSuaTheoFid = new Map();
-    scanRecentPending = [];
-    hienDanhSachGanDay();
-    scanLoDaThuSid = "";
     scanDoiSoatSid = "";
   }
 
   function setUploadSession(sid) {
     if (uploadSid !== sid) resetUploadFileListState();
     uploadSid = sid;
-    // Sổ rel→fid + tên đã sửa của phiên này sống qua lần dựng lại iframe. Nạp xong MỚI đối soát và
-    // gom lô, để lô không tải lại những tệp đã có.
+    // Sổ rel→fid + tên đã sửa của phiên này sống qua lần dựng lại iframe. Nạp xong MỚI đối soát,
+    // để lượt đối soát nhìn đúng những tệp đã có.
     void napTenSua(sid);
-    void napSoSachScan(sid).then(async () => {
-      await doiSoatTepQuet();
-      await thuGomLoQuet();
-    });
+    void napSoSachScan(sid).then(() => doiSoatTepQuet());
     // Khi sidebar được dựng lại giữa phiên, WS không phát lại tiến trình cũ. Đọc snapshot
     // ngay để checklist và nút xem file vẫn khôi phục đủ, không chờ công dân tải thêm tệp.
     return loadUploadSessionFiles().catch((error) => {
@@ -2891,20 +2849,15 @@
   const scanFileMtimeMs = (evt) => Number(evt?.mtimeMs) || Date.parse(evt?.at || "") || 0;
   const scanBaseName = (rel) => String(rel || "").split(/[\\/]/).pop() || "tep-quet";
 
-  // MỘT chỗ duy nhất cho mọi đường đưa tệp quét lên phiên: event file.added, lô gom lúc nối máy quét,
-  // đối soát, và cán bộ bấm "+" ở danh sách gần đây (tuDong=false). Chốt chặn đặt ở đây để đường
-  // thêm về sau không quên — cùng lý do với importOneScanFile bên autofill. Trả true khi phiên thật
-  // sự có thêm/đổi tệp.
-  async function onScanFile(evt, fetchBlob, { tuDong = true } = {}) {
+  // MỘT chỗ duy nhất cho hai đường đưa tệp quét lên phiên: event file.added và lượt đối soát.
+  // Chốt chặn đặt ở đây để đường thêm về sau không quên — cùng lý do với importOneScanFile bên
+  // autofill. Trả true khi phiên thật sự có thêm/đổi tệp.
+  async function onScanFile(evt, fetchBlob) {
     const rel = evt?.rel;
     if (!rel || !uploadSid || scanUploadingRel.has(rel) || scanDangDoiTen.has(rel)) return false;
     const mtime = scanFileMtimeMs(evt);
-    // Watermark: bỏ tệp cũ hơn mốc (giấy của công dân TRƯỚC). Cán bộ tự chọn tay thì không chặn.
-    if (tuDong && scanWatermarkMs && mtime && mtime <= scanWatermarkMs) return false;
-    // Trần tuổi — CHỈ khi có mtimeMs (lô gom từ /v1/files). Event SSE không mang mtimeMs: chính sự
-    // kiện là bằng chứng "vừa xuất hiện", siết theo mtime sẽ chặn nhầm tệp cũ vừa được chép vào.
-    const tuoiToiDa = window.TLNDScanLo?.BATCH_AUTO_MAX_AGE_MS || 30 * 60 * 1000;
-    if (tuDong && Number(evt.mtimeMs) && Date.now() - Number(evt.mtimeMs) > tuoiToiDa) return false;
+    // Watermark: bỏ tệp cũ hơn mốc (giấy của công dân TRƯỚC).
+    if (scanWatermarkMs && mtime && mtime <= scanWatermarkMs) return false;
     scanUploadingRel.add(rel);
     const sid = uploadSid;
     const ve = scanDongBo?.batDauTai(rel); // chốt TRƯỚC await đầu tiên — xem scanDongBo.taiXong
@@ -2913,14 +2866,10 @@
       const blob = await fetchBlob();
       if (!blob || !blob.size) return false;               // bỏ tệp 0 byte (máy đang ghi dở)
       const hash = await sha256Hex(blob);
-      if (tuDong) {
-        // Nội dung này đã bị GỠ TAY → không tự đưa lại (gỡ là một quyết định, không phải thao tác tạm).
-        if (scanDaGo.has(hash)) {
-          console.info("[TLND] scan: bỏ qua tệp đã bị gỡ tay", rel);
-          return false;
-        }
-      } else if (scanDaGo.delete(hash)) {
-        luuDaGoScan(); // chủ động thêm lại → bỏ dấu, lần sau tự tải bình thường
+      // Nội dung này đã bị GỠ TAY → không đưa lại (gỡ là một quyết định, không phải thao tác tạm).
+      if (scanDaGo.has(hash)) {
+        console.info("[TLND] scan: bỏ qua tệp đã bị gỡ tay", rel);
+        return false;
       }
       // Cùng rel, cùng nội dung đã nằm trên phiên (agent bắn lại added khi mtime đổi mà nội dung y
       // nguyên, hoặc đối soát) → không tải lại.
@@ -2941,10 +2890,6 @@
         void luuSoSachScan();
       }
       if (!data || biGoNgay) return false;
-      if (scanRecentPending.some((f) => f.rel === rel)) {
-        scanRecentPending = scanRecentPending.filter((f) => f.rel !== rel);
-        hienDanhSachGanDay();
-      }
       if (laCapNhat) {
         showToast(`🖨️ Đã cập nhật bản mới: ${scanBaseName(rel)}`);
       } else {
@@ -2965,10 +2910,6 @@
     if (!rel) return;
     // Cặp event do CHÍNH mình đổi tên — tệp vẫn là tệp đó, sổ đã dời sang rel mới (ketThucSuaTen).
     if (scanDangDoiTen.has(rel)) return;
-    if (scanRecentPending.some((f) => f.rel === rel)) {
-      scanRecentPending = scanRecentPending.filter((f) => f.rel !== rel);
-      hienDanhSachGanDay();
-    }
     if (!uploadSid || uploadSessionProgress?.complete) return;
     // Gỡ ĐÚNG tệp mình đã tải lên cho rel này. Không đoán theo tên như bản cũ: tệp trùng tên có thể là
     // giấy công dân tự tải từ điện thoại. rel không do mình tải lên → daXoa trả null → không gỡ.
@@ -3003,10 +2944,7 @@
         const doiCaps = caps.join() !== scanAgentCaps.join();
         scanAgentCaps = caps;
         if (doiCaps && activeFileGroup) renderUploadFileList();
-        void (async () => {
-          await doiSoatTepQuet();
-          await thuGomLoQuet();
-        })();
+        void doiSoatTepQuet();
       },
     });
   }
@@ -3018,7 +2956,6 @@
     scanUploadingRel.clear();
     scanAgentHelpers = null;
     scanAgentCaps = [];
-    scanLoDaThuSid = "";
     scanDoiSoatSid = "";
     scanGuideShown = false;
     scanReceivedCount = 0;
@@ -3031,8 +2968,6 @@
     scanNewestMs = 0;
     scanUploadingRel.clear();
     scanDongBo?.datLai();
-    scanRecentPending = [];
-    hienDanhSachGanDay();
     // Lưu mốc: iframe dựng lại sau điều hướng mà mất mốc là quay lại đúng lỗi "kéo giấy người trước".
     try { void chrome.storage.local.set({ [KHOA_WATERMARK_SCAN]: scanWatermarkMs }); } catch (_) { /* ignore */ }
   }
@@ -4005,7 +3940,12 @@
         // Lượt bổ sung gửi lại toàn bộ danh sách còn lại. attach-core tự bỏ qua những
         // file đã có trên cổng; báo số skip để backend không hiểu nhầm "0 file mới" là lỗi.
         skipped: Number(res?.skipped) || 0,
-        errors: res?.error ? [res.error] : (res?.errors || []),
+        // res null = KHÔNG frame nào trả lời (listener tự im khi không thấy bảng thành phần hồ sơ,
+        // hoặc trang vừa tải lại). Phải nói ra, nếu không backend chỉ thấy "0 tệp, 0 lỗi" và câu
+        // báo cho công dân không có lý do nào để lần theo.
+        errors: !res
+          ? ["Trang không nhận lệnh đính kèm — chưa thấy bảng Thành phần hồ sơ hoặc trang vừa tải lại"]
+          : res.error ? [res.error] : (res.errors || []),
       };
       await heartbeatPromise;
       ask(`__action:attach_report:${JSON.stringify({
@@ -4102,6 +4042,8 @@
         setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(); }, 0);
+      } else if (a.type === "select_result_method") {
+        setTimeout(() => { void runSelectResultMethod(a); }, 0);
       } else if (a.type === "attach_authorization_doc") {
         setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
@@ -4153,9 +4095,14 @@
           ward: a.ward,
           // Cổng bộ ngành (GD&ĐT...): chuyển toggle "Sở" (không chọn sở cụ thể) rồi Đồng ý.
           soMode: a.soMode === true,
+          // Trang kết quả nhiều thẻ mà thẻ đầu là cấp Sở: bấm "Nộp trực tuyến" ở thẻ có chữ này.
+          cardIncludes: a.cardIncludes || "",
         });
         setStatus("");
         if (res?.ok) ask("__event:agency_selected", "system");
+        // Tỉnh/xã đã chọn xong, chỉ thiếu thẻ đúng → câu riêng (bấm đúng thẻ), không phải
+        // "chọn tay tỉnh/xã" như lỗi chọn cơ quan thường.
+        else if (res?.code === "card_not_found") ask(`__event:agency_card_missing:${res.error || ""}`, "system");
         else ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
       } else if (a.type === "fill_agency_plan" && Array.isArray(a.plan)) {
         // Liên thông khai sinh: engine content/fill-angular.js điền hộ khối chọn cơ quan
@@ -4258,6 +4205,10 @@
           action: "fillMaeAgency",
           province: a.province || "",
           agency: a.agency || "",
+          // agencyLevel "ward": hộp thoại chọn Tỉnh + Phường/Xã (thủ tục giải quyết ở cấp xã)
+          // thay vì radio "Sở/Ban ngành".
+          ward: a.ward || "",
+          agencyLevel: a.agencyLevel || "",
           variant: a.variant || "",
           variantMatch: a.variantMatch || "",
           variantAvoid: a.variantAvoid || "",

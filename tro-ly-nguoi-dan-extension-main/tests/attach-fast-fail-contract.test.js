@@ -47,11 +47,12 @@ const failFn = attach.slice(attach.indexOf("function newPortalUploadFailure"));
 const failFnBody = failFn.slice(0, failFn.indexOf("\n}"));
 assert.match(failFnBody, /if \(seen\.has\(foldChoiceText\(hit\.text\)\)\) continue;/);
 assert.match(failFnBody, /UPLOAD_FAILURE_RE\.test\(hit\.text\)/);
-assert.match(attach, /const UPLOAD_FAILURE_RE = \/upload thất bại\|upload failed\|tải lên thất bại\|tải lên tài liệu thất bại\|tải tệp thất bại\/i;/);
+assert.match(attach, /const UPLOAD_FAILURE_RE = \/upload thất bại\|upload failed\|tải lên thất bại\|tải lên tài liệu thất bại\|tải tệp thất bại\|không tải được \(\?:file\|tệp\)\/i;/);
 // Khớp đúng hai câu toast thật của cổng.
-const failRe = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại/i;
+const failRe = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại|không tải được (?:file|tệp)/i;
 assert.ok(failRe.test("Upload thất bại (File Service): Upload failed: 500 Internal Server Error"));
 assert.ok(failRe.test("Tải lên tài liệu thất bại, vui lòng thử lại"));
+assert.ok(failRe.test("Thông báo Không tải được file hoặc lưu thất bại."));
 assert.ok(!failRe.test("Lời nhắn: vui lòng kiểm tra lại"));
 assert.ok(!/lỗi/.test(failFnBody.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n")),
   "không được hoãn sớm theo chữ 'lỗi' chung chung");

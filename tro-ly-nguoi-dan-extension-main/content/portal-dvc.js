@@ -731,7 +731,55 @@
     return true;
   }
 
-  async function selectAgency({ province, ward, soMode = false }) {
+  // ── Chọn ĐÚNG thẻ kết quả theo chữ (agencyCardIncludes) ──
+  // Có thủ tục do CẢ Sở lẫn UBND xã tiếp nhận: trang kết quả ra nhiều thẻ, thẻ đầu là cấp Sở.
+  // Cách dò thẻ lấy từ Auto Fill (content/agency-select.js::submitCard), nơi đã chạy thật.
+  const nopTrucTuyenButtons = (scope) =>
+    Array.from((scope || document).querySelectorAll("button, a"))
+      .filter((b) => isVisible(b) && fold(b.textContent).includes("nop truc tuyen"));
+
+  // Thẻ bao quanh một nút: ancestor LỚN NHẤT vẫn chỉ chứa đúng nút đó. Leo thêm một bậc là ôm
+  // luôn nút của thẻ bên cạnh → đọc nhầm cơ quan của thẻ khác.
+  function resultCard(button) {
+    let node = button?.parentElement || null;
+    let card = null;
+    for (let depth = 0; node && depth < 8; depth += 1) {
+      if (nopTrucTuyenButtons(node).length !== 1) break;
+      card = node;
+      node = node.parentElement;
+    }
+    return card;
+  }
+
+  async function clickNopTrucTuyenByCard(cardIncludes) {
+    const want = fold(cardIncludes);
+    const first = await waitFor(() => nopTrucTuyenButtons()[0] || null, 7000);
+    if (!first) return { error: 'Không thấy nút "Nộp trực tuyến" nào sau khi bấm Đồng ý.' };
+    // Danh sách kết quả React vẽ DẦN → đợi số thẻ đứng yên rồi mới chốt; chọn sớm là chọn trên
+    // danh sách chưa đủ.
+    let count = nopTrucTuyenButtons().length;
+    for (let round = 0; round < 5; round += 1) {
+      await sleep(400);
+      const now = nopTrucTuyenButtons().length;
+      if (now === count) break;
+      count = now;
+    }
+    const all = nopTrucTuyenButtons();
+    const btn = all.find((b) => fold(resultCard(b)?.textContent).includes(want));
+    // KHÔNG lùi về thẻ đầu khi không khớp: thẻ đầu chính là thẻ sai (cấp Sở), bấm nó là nộp
+    // nhầm cơ quan mà không ai hay. Dừng lại để công dân bấm đúng thẻ.
+    if (!btn) {
+      return {
+        error: `Không thấy thẻ có dòng "${cardIncludes}" trong ${all.length} thẻ kết quả.`,
+        code: "card_not_found",
+      };
+    }
+    try { btn.scrollIntoView({ block: "center" }); } catch (_) {}
+    clickLikeUser(btn);
+    return { ok: true, cards: all.length };
+  }
+
+  async function selectAgency({ province, ward, soMode = false, cardIncludes = "" }) {
     const block = await waitFor(agencyBlock, 6000);
     if (!block) return { error: 'Không thấy khối "Chọn cơ quan thực hiện" trên trang.' };
 
@@ -772,6 +820,12 @@
     // Trình tự trên cổng: "Nộp hồ sơ"/"Đồng ý" trong khối → danh sách cơ quan
     // hiện ra kèm nút "Nộp trực tuyến" RIÊNG → phải bấm nốt. Chỉ bỏ qua khi nút vừa bấm
     // đã chính là "Nộp trực tuyến".
+    if (cardIncludes && !fold(submitLabel).includes("nop truc tuyen")) {
+      const picked = await clickNopTrucTuyenByCard(cardIncludes);
+      if (picked.error) return picked;
+      return { ok: true, province: comboValue(combos[0]), ward: comboValue(combos[1]),
+               submit: submitLabel, nop_truc_tuyen: true, cards: picked.cards };
+    }
     const submitted = fold(submitLabel).includes("nop truc tuyen") ? true : await clickNopTrucTuyen();
     return { ok: true, province: comboValue(combos[0]), ward: comboValue(combos[1]),
              submit: submitLabel, nop_truc_tuyen: submitted };
@@ -785,6 +839,7 @@
       province: msg.province || "",
       ward: msg.ward || "",
       soMode: msg.soMode === true,
+      cardIncludes: msg.cardIncludes || "",
     })
       .then(sendResponse)
       .catch((e) => sendResponse({ error: String(e?.message || e) }));
@@ -796,6 +851,93 @@
     const ownerContext = extractOwnerContext();
     if (!ownerContext) return; // frame không có khối định danh → để frame đúng trả lời
     sendResponse({ ok: true, ownerContext });
+  });
+
+  // ── Bước Thông tin nhận kết quả: gạt công tắc "cách nhận kết quả" ──
+  // Cổng dựng ba công tắc Radix (role="switch", data-state="checked|unchecked"), CẢ BA tắt khi
+  // vào bước. Khớp theo NHÃN đã fold dấu chứ không theo id: id kiểu ":r91:-form-item" do React
+  // sinh lại mỗi lần render. Là switch chứ không phải radio → bật cái mới KHÔNG tự tắt cái cũ,
+  // phải tự tắt.
+  // HÀNG của một công tắc = tổ tiên gần nhất còn chứa ĐÚNG MỘT công tắc. Leo theo số cấp cố
+  // định là sai: ba hàng nằm chung một div bọc, leo tới đó thì text chứa cả ba nhãn nên công
+  // tắc ĐẦU TIÊN khớp với mọi nhãn — gạt xong lại bị chính vòng "tắt cái khác" tắt đi.
+  function resultSwitchRow(sw) {
+    let row = sw;
+    let scope = sw.parentElement;
+    for (let i = 0; i < 5 && scope; i++) {
+      if (scope.querySelectorAll('button[role="switch"]').length > 1) break;
+      row = scope;
+      scope = scope.parentElement;
+    }
+    return row;
+  }
+
+  function resultSwitchByLabel(label) {
+    const wanted = fold(label);
+    if (!wanted) return null;
+    for (const sw of document.querySelectorAll('button[role="switch"]')) {
+      if (!isVisible(sw)) continue;
+      if (fold(resultSwitchRow(sw).textContent).includes(wanted)) return sw;
+    }
+    return null;
+  }
+
+  const resultSwitchOn = (sw) => sw?.getAttribute("data-state") === "checked"
+    || sw?.getAttribute("aria-checked") === "true";
+
+  async function setResultSwitch(sw, on) {
+    if (!sw || resultSwitchOn(sw) === on) return true;
+    try { sw.scrollIntoView({ block: "center" }); } catch (_) { /* ignore */ }
+    clickLikeUser(sw);
+    return !!await waitFor(() => resultSwitchOn(sw) === on, 2500);
+  }
+
+  // Ô bắt buộc còn trống trong khối vừa hiện ra sau khi bật công tắc. Đọc dấu * của CHÍNH cổng,
+  // không khai cứng danh sách: mỗi cách nhận kết quả mở một bộ ô khác nhau và cổng còn đổi.
+  function missingResultFields() {
+    const missing = [];
+    for (const label of document.querySelectorAll("label")) {
+      if (!isVisible(label) || !/\*/.test(String(label.textContent || ""))) continue;
+      const ten = String(label.textContent || "").replace(/\*/g, "").replace(/\s+/g, " ").trim();
+      if (!ten) continue;
+      const box = label.closest("div");
+      const control = box?.querySelector("input, textarea, button[role='combobox'], [aria-haspopup='listbox']");
+      if (!control) continue;
+      const daCo = control.tagName === "INPUT" || control.tagName === "TEXTAREA"
+        ? String(control.value || "").trim()
+        // Combobox chưa chọn hiển thị chữ mờ "Chọn…"/"Nhập hoặc chọn" — coi như trống.
+        : String(control.textContent || "").trim().replace(/^(chọn|nhập).*/i, "");
+      if (!daCo && !missing.includes(ten)) missing.push(ten);
+    }
+    return missing.slice(0, 5);
+  }
+
+  async function selectResultMethod({ label, allLabels, needsInput }) {
+    const target = resultSwitchByLabel(label);
+    if (!target) return { ok: false, error: "Không thấy công tắc trên trang." };
+    if (!await setResultSwitch(target, true)) {
+      return { ok: false, error: "Gạt công tắc mà trang không đổi trạng thái." };
+    }
+    for (const khac of (allLabels || [])) {
+      if (fold(khac) === fold(label)) continue;
+      const sw = resultSwitchByLabel(khac);
+      if (sw && resultSwitchOn(sw)) await setResultSwitch(sw, false);
+    }
+    // Chỉ soi ô trống cho cách thật sự đòi thêm thông tin (bưu chính). Quét cả trang cho cách
+    // không đòi gì là mời gọi báo nhầm ô bắt buộc của khối khác trên cùng trang.
+    if (!needsInput) return { ok: true, missing: [] };
+    await sleep(600); // React dựng khối ô phụ của cách vừa chọn
+    return { ok: true, missing: missingResultFields() };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "selectResultMethod") return;
+    // Frame không có công tắc nào thì IM để frame đúng trả lời (content script chạy mọi frame).
+    if (!resultSwitchByLabel(msg.label)) return;
+    selectResultMethod(msg)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true; // async
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

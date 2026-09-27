@@ -4,9 +4,10 @@
 """
 
 CATALOG: list[tuple[str, str | None, str]] = [
-    ("van_ban_kien_nghi", "KQ004767",
+    # Cổng đổi mã thành phần KQ004767/KQ004768 → TP-H05.000177.S/TP-H05.000174.S (crawl 27/09/2026).
+    ("van_ban_kien_nghi", "TP-H05.000177",
      "Văn bản kiến nghị việc cấp Giấy chứng nhận không đúng quy định (thường là Biên bản họp gia đình)"),
-    ("gcn", "KQ004768", "Giấy chứng nhận QSDĐ đã cấp (sổ đỏ/hồng) — bản gốc đang xin thu hồi"),
+    ("gcn", "TP-H05.000174", "Giấy chứng nhận QSDĐ đã cấp (sổ đỏ/hồng) — bản gốc đang xin thu hồi"),
     ("cccd", None, "Căn cước công dân/CMND/thẻ căn cước/hộ chiếu"),
     ("khac", None, "Giấy tờ khác hoặc không xác định được loại"),
 ]
