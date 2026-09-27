@@ -1042,8 +1042,8 @@ PROCEDURES: list[dict] = [
             "3. Nếu có: tờ khai bản giấy, văn bản ủy quyền, giấy tờ chứng minh sự kiện chết hoặc nơi chết.\n"
             "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR, tách tài liệu trong PDF "
             "và gộp tất cả giấy tờ tùy thân thành một nhóm.\n"
-            "Bước 3: hệ thống đưa giấy tờ vào đúng thành phần hồ sơ có sẵn; giấy tờ tùy thân và tờ khai "
-            "bản giấy được thêm thành phần mới."
+            "Bước 3: hệ thống đưa giấy tờ vào đúng thành phần hồ sơ có sẵn; tờ khai bản giấy vào ô STT 2 "
+            "(nếu hồ sơ không có giấy báo tử); giấy tờ tùy thân được thêm thành phần mới."
         ),
     },
     {
@@ -3112,15 +3112,16 @@ PROCEDURES: list[dict] = [
             "4. CCCD/giấy tờ tùy thân của chủ đất; nếu có: văn bản của cơ quan thẩm quyền về tách/hợp "
             "thửa, giấy ủy quyền, giấy phép hoạt động đo đạc và bản đồ của đơn vị lập bản vẽ.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Điền đơn (chỉ nhánh TÁCH THỬA): khớp ô theo NHÃN (Kính gửi, a) Tên, b) Giấy tờ nhân thân, thửa "
-            "đất số/tờ bản đồ/diện tích/loại đất/địa chỉ thửa/số vào sổ GCN/ngày cấp, diện tích thửa mới, lý "
-            "do, giấy tờ kèm, đề nghị cấp GCN) + khối người nhận kết quả (họ tên, CCCD, SĐT, địa chỉ).\n"
+            "Điền đơn (chỉ nhánh TÁCH THỬA): khớp ô theo class eform-element (Kính gửi, 1.1 Tên, 1.2 Giấy tờ "
+            "nhân thân, 1.3 Địa chỉ, 1.4 Điện thoại, 2.1 thửa đất số/tờ bản đồ/diện tích/loại đất/địa chỉ "
+            "thửa/số vào sổ GCN/ngày cấp, diện tích thửa mới, lý do, giấy tờ kèm, đề nghị cấp GCN) + khối "
+            "người nhận kết quả (họ tên, CCCD, SĐT, địa chỉ).\n"
             "Đính kèm (khớp theo MÃ THÀNH PHẦN in trong dòng tiêu đề trên cổng): Đơn Mẫu 22→TP-H05.000032, "
             "Bản vẽ Mẫu 22a→TP-H05.000033, GCN đã cấp→TP-H05.000040, Văn bản cơ quan có thẩm quyền→"
             "TP-H05.000047; CCCD, giấy ủy quyền, giấy phép đo đạc và giấy tờ chưa rõ loại→ô 'File đính kèm "
             "khác' (không bỏ sót tệp nào).\n"
-            "Để user tự làm: Tỉnh/Xã (địa chỉ thường trú) là select cascade; nhánh HỢP THỬA (nếu có); cơ quan "
-            "tiếp nhận và tỉnh/phường người nhận."
+            "Để user tự làm: số thửa sau tách ('thành … thửa') và loại đất từng thửa mới; nhánh HỢP THỬA (nếu "
+            "có); cơ quan tiếp nhận và tỉnh/phường người nhận."
         ),
     },
     {

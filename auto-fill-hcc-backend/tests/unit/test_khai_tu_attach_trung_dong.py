@@ -18,9 +18,8 @@ _NOTICE_ROW = "- Giấy báo tử hoặc giấy tờ thay Giấy báo tử do c�
 
 def _context() -> dict:
     return {"attachmentContext": {"components": [
-        {"index": 1, "componentName": "Mẫu hộ tịch điện tử", "hasFile": True},
-        {"index": 3, "componentName": _NOTICE_ROW, "hasFile": False},
-        {"index": 4, "componentName": _EVENT_ROW, "hasFile": False},
+        {"index": 1, "componentName": _NOTICE_ROW, "hasFile": False},
+        {"index": 2, "componentName": _EVENT_ROW, "hasFile": False},
     ]}}
 
 
@@ -67,7 +66,8 @@ async def test_hai_chung_cu_cung_loai_khong_don_vao_cung_dong_va_trang_nhieu_gop
     items = result["attachments"]
 
     existing = [i for i in items if i["target"] == "existing"]
-    assert [i["componentIndex"] for i in existing] == [4], "dòng có sẵn chỉ nhận MỘT tài liệu"
+    # Tờ khai vào dòng Giấy báo tử (đang trống); dòng sự kiện chết chỉ nhận MỘT tài liệu.
+    assert [i["componentIndex"] for i in existing] == [1, 2], "dòng có sẵn chỉ nhận MỘT tài liệu"
     cam_doan = next(i for i in items if i["documentName"] == "Bản cam đoan")
     assert cam_doan["target"] == "new" and cam_doan["componentName"] == "Bản cam đoan"
     # Trang 4 nhiễu đi cùng Bản cam đoan, không thành thành phần riêng.
@@ -90,7 +90,7 @@ async def test_ten_thanh_phan_moi_khong_trung_hay_nam_trong_ten_dong_co_san(monk
     result = await khai_tu.plan_khai_tu_attachments([_pdf("a.pdf", 1), _pdf("b.pdf", 1)], _context(), {})
     items = result["attachments"]
 
-    assert items[0]["target"] == "existing" and items[0]["componentIndex"] == 3
+    assert items[0]["target"] == "existing" and items[0]["componentIndex"] == 1
     added = items[1]
     assert added["target"] == "new"
     row = khai_tu._fold(_NOTICE_ROW)

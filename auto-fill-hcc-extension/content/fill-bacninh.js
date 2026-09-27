@@ -64,18 +64,28 @@
   // Khớp ô eForm theo CLASS NGỮ NGHĨA ỔN ĐỊNH `eform-element-<Key>` (vd KinhGui, 211ThuaDatSo,
   // CoQuanCapNYC). Bền hơn khớp NHÃN vì nhiều ô trùng title ("Cơ quan cấp"/"cấp ngày"/"Số"). Dùng
   // attribute selector [class~="..."] để né vấn đề escape với key bắt đầu bằng số (211…, 11…).
+  // Dạng "Neo>Key": lấy ô Key ĐẦU TIÊN đứng SAU ô Neo trong DOM — cho class trùng nhiều chỗ (vd LoaiDat
+  // của thửa gốc/thửa mới/hợp thửa) mà vẫn neo theo class ổn định, không đếm thứ tự.
   function findElementByClass(name) {
-    const key = String(name || "").trim();
+    const raw = String(name || "").trim();
+    if (!raw) return null;
+    const sep = raw.indexOf(">");
+    const anchorKey = sep > 0 ? raw.slice(0, sep).trim() : "";
+    const key = sep > 0 ? raw.slice(sep + 1).trim() : raw;
     if (!key) return null;
-    let el = null;
+    const anchor = anchorKey ? findElementByClass(anchorKey) : null;
+    if (anchorKey && !anchor) return null;
+    let nodes;
     try {
-      el = document.querySelector(
+      nodes = document.querySelectorAll(
         `input[class~="eform-element-${key}"], textarea[class~="eform-element-${key}"]`,
       );
-    } catch { el = null; }
-    if (el && /^(input|textarea)$/i.test(el.tagName)) {
+    } catch { return null; }
+    for (const el of nodes) {
       const type = (el.getAttribute("type") || "text").toLowerCase();
-      if (!["file", "checkbox", "radio", "hidden"].includes(type)) return el;
+      if (["file", "checkbox", "radio", "hidden"].includes(type)) continue;
+      if (anchor && !(anchor.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING)) continue;
+      return el;
     }
     return null;
   }
@@ -118,6 +128,11 @@
     return chosen ? chosen.el : null;
   }
 
+  // Lõi tên đơn vị hành chính (bỏ tiền tố cấp): select Tỉnh người nhận KQ ghi "Thành phố Bắc Ninh"
+  // trong khi địa chỉ OCR ghi "tỉnh Bắc Ninh"; select Xã có nơi ghi "P. Kinh Bắc" thay "Phường Kinh Bắc".
+  const ADMIN_PREFIX_RE = /^(tinh|thanh pho|tp\.?|thi tran|tt\.|phuong|p\.|xa|x\.|dac khu)\s+/;
+  const adminCore = (s) => fold(s).replace(ADMIN_PREFIX_RE, "").trim();
+
   // ---- select2 (chỉ dùng nếu BE phát field bn-select; hiện đơn đính chính không cần) ----
   // Set option theo TEXT (fold) trên <select> gốc rồi báo select2/jQuery cập nhật + nạp cascade.
   function fillSelect2ByText(selectEl, value) {
@@ -132,6 +147,12 @@
         picked = opt;
         if (t === want) break;
       }
+    }
+    if (!picked) {
+      // Không khớp chuỗi → so LÕI tên, chỉ nhận khi đúng MỘT option (tránh chọn nhầm Phường/Xã trùng lõi).
+      const core = adminCore(value);
+      const hits = core ? [...selectEl.options].filter((o) => adminCore(o.textContent) === core) : [];
+      if (hits.length === 1) picked = hits[0];
     }
     if (!picked) return false;
     selectEl.value = picked.value;

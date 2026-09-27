@@ -40,23 +40,25 @@ _DEATH_PLACE_PROOF_LABEL = "Giấy tờ chứng minh nơi chết hoặc nơi ph�
 _OTHER_LABEL = "Tài liệu khai tử"
 
 # Fallback cho extension cũ chưa gửi attachmentContext. Luồng mới lấy index và tên thật từ DOM.
+# Index đếm theo extension: chỉ các dòng có nút "Chọn tệp", nên dòng eform (STT 1 trên cổng) không được
+# đếm → Giấy báo tử (STT 2 trên cổng) là index 1.
 _FALLBACK_SLOTS = {
     "death_notice": (
-        2,
+        1,
         "- Giấy báo tử hoặc giấy tờ thay Giấy báo tử do cơ quan có thẩm quyền cấp.",
     ),
     "death_event_proof": (
-        3,
+        2,
         "- Giấy tờ, tài liệu, chứng cứ do cơ quan, tổ chức có thẩm quyền cấp hoặc xác nhận hợp lệ "
         "chứng minh sự kiện chết đối với trường hợp đăng ký khai tử cho người chết đã lâu",
     ),
     "authorization": (
-        4,
+        3,
         "- Văn bản ủy quyền (được chứng thực) theo quy định của pháp luật trong trường hợp ủy quyền "
         "thực hiện việc đăng ký khai tử.",
     ),
     "death_place_proof": (
-        5,
+        4,
         "- Trường hợp không xác định được nơi cư trú cuối cùng của người chết thì xuất trình giấy tờ "
         "chứng minh nơi người đó chết hoặc nơi phát hiện thi thể của người chết.",
     ),
@@ -604,6 +606,7 @@ async def plan_khai_tu_attachments(
 
     attachments: list[dict] = []
     used_slots: set[int] = set()
+    declarations: list[tuple[dict, dict]] = []
     classified: list[dict] = []
     identity_records: list[dict] = []
     identity_insert_at: int | None = None
@@ -658,6 +661,20 @@ async def plan_khai_tu_attachments(
             "target": target,
             "componentIndex": component_index,
         })
+        if doc_type == "paper_declaration":
+            declarations.append((item, classified[-1]))
+
+    # Tờ khai bản giấy vào dòng Giấy báo tử (STT 2 trên cổng). Giấy báo tử thật được ưu tiên dòng đó:
+    # chỉ khi không có Giấy báo tử nào chiếm thì tờ khai đầu tiên mới vào, còn lại vẫn thêm thành phần mới.
+    death_notice_slot = _slot_for_type(options, "death_notice")
+    if declarations and death_notice_slot and death_notice_slot[0] not in used_slots:
+        used_slots.add(death_notice_slot[0])
+        item, classified_item = declarations[0]
+        item.update({
+            "target": "existing", "componentIndex": death_notice_slot[0],
+            "componentName": death_notice_slot[1], "needsAddComponent": False,
+        })
+        classified_item.update({"target": "existing", "componentIndex": death_notice_slot[0]})
 
     if identity_records:
         grouped_identities = merge_identity_records(

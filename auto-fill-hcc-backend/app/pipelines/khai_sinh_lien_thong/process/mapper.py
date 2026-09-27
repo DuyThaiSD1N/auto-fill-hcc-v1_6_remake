@@ -64,6 +64,40 @@ def _norm_birth_place(area):
     return out
 
 
+def _province_key(value) -> str:
+    """Tên tỉnh đã fold, bỏ tiền tố loại đơn vị ("tỉnh"/"thành phố"/"tp")."""
+    return re.sub(r"^(tinh|thanh pho|tp\.?)\s+", "", _fold(value)).strip()
+
+
+def _fix_tk_birth_province(tk, gcs):
+    """Tờ khai ghi tỉnh nơi sinh mâu thuẫn với chính TÊN cơ sở y tế → lấy tỉnh của cơ sở.
+
+    Dòng "Nơi sinh" trên tờ khai viết tay hay bị OCR đọc nhầm tên địa danh cuối dòng (vd
+    "..., P. X, <thành phố của tỉnh A>" ra một thành phố của tỉnh B), trong khi tên bệnh viện
+    tuyến tỉnh ngay đầu dòng vẫn ghi rõ tỉnh A. Chỉ sửa khi tên tỉnh của cơ sở (theo giấy chứng
+    sinh hoặc bảng bệnh viện) CÓ trong diaChi và tỉnh tờ khai thì KHÔNG; xã + chi tiết giữ nguyên.
+    """
+    if not isinstance(tk, dict):
+        return tk
+    tk_tinh = tk.get("tinh") or tk.get("tỉnh")
+    dia = str(tk.get("diaChi") or tk.get("dia_chi") or tk.get("diachi") or "")
+    tk_key = _province_key(tk_tinh)
+    folded_dia = _fold(dia)
+    if not (tk_key and folded_dia) or tk_key in folded_dia:
+        return tk
+    candidates = []
+    if isinstance(gcs, dict):
+        candidates.append(gcs.get("tinh") or gcs.get("tỉnh"))
+    hospital = lookup_hospital(dia)
+    if hospital:
+        candidates.append(hospital["tinh"])
+    for tinh in candidates:
+        key = _province_key(tinh)
+        if key and key != tk_key and key in folded_dia:
+            return {**tk, "tinh": tinh}
+    return tk
+
+
 def _is_birth_cert_serial(value) -> bool:
     """Số giấy chứng sinh (vd "01327.GCS.12096.25") — KHÔNG phải số giấy CN kết hôn."""
     text = str(value or "").upper()
@@ -230,7 +264,7 @@ def enrich(fields: list[dict]) -> list[dict]:
     # (ngoài khối). Trước đây tính bên trong `if has_child:` nên hồ sơ KHÔNG có giấy chứng sinh
     # lẫn tờ khai — has_child = False — chạy tới phần quê quán là nổ UnboundLocalError
     # "cannot access local variable 'is_lam_dong'", công dân chỉ thấy "Xử lý giấy tờ chưa xong".
-    ns_raw = values.get("Tk_NoiSinh") or values.get("Gcs_NoiSinh")
+    ns_raw = _fix_tk_birth_province(values.get("Tk_NoiSinh"), values.get("Gcs_NoiSinh")) or values.get("Gcs_NoiSinh")
     ns_area = _area(_norm_birth_place(ns_raw)) if ns_raw else None
     birth_province = _fold(ns_area.get("tinh") or "") if ns_area else ""
     is_lam_dong = "lam dong" in birth_province

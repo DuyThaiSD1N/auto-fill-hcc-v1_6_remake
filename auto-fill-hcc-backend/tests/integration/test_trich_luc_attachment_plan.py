@@ -79,10 +79,45 @@ async def test_trich_luc_preserve_keeps_mixed_file_and_uses_bundle_name(monkeypa
     assert result["extracted"]["attachmentMode"] == "preserve_files"
     assert len(result["attachments"]) == 1
     assert result["attachments"][0]["documentName"] == "Hồ sơ trích lục hộ tịch"
-    assert result["attachments"][0]["target"] == "new"
+    # LLM không liệt kê containsTypes → dựa tiêu đề đầu trang: có trang CCCD nên vào ô CCCD.
+    assert result["attachments"][0]["target"] == "existing"
+    assert result["attachments"][0]["componentIndex"] == 3
     assert "sourceSegments" not in result["attachments"][0]
     assert result["extracted"]["classified"][0]["type"] == "other"
     assert result["extracted"]["classified"][0]["source"] == "llm"
+
+
+async def test_trich_luc_preserve_bundle_yields_row_to_single_document(monkeypatch):
+    """File hỗn hợp vào ô của giấy tờ chính, nhưng file CCCD riêng được ưu tiên ô CCCD."""
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "mixed.pdf", "text": _MIXED_TEXT},
+            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nCitizen Identity Card"},
+        ]
+
+    replies = iter([
+        {"documents": [{
+            "fileIndex": 0, "type": "other", "documentName": "Hồ sơ trích lục hộ tịch",
+            "containsTypes": ["paper_declaration", "identity", "authorization"],
+        }]},
+        {"documents": [{"fileIndex": 1, "type": "identity", "documentName": "Căn cước công dân"}]},
+    ])
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps(next(replies))
+
+    monkeypatch.setattr(preserve_planner.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(preserve_planner.client, "chat", fake_chat)
+    result = await preserve_planner.plan_trich_luc_attachments_without_split(
+        [_file("mixed.pdf"), _file("cccd.pdf")], {}, _session(),
+    )
+
+    by_file = {item["fileIndex"]: item for item in result["attachments"]}
+    assert by_file[1]["componentIndex"] == 3
+    # Ô CCCD đã có file riêng → file hỗn hợp xuống ô kế tiếp mà nó có: ủy quyền.
+    assert by_file[0]["target"] == "existing"
+    assert by_file[0]["componentIndex"] == 2
+    assert by_file[0]["documentName"] == "Hồ sơ trích lục hộ tịch"
 
 
 async def test_trich_luc_preserve_rule_never_overrides_llm(monkeypatch):

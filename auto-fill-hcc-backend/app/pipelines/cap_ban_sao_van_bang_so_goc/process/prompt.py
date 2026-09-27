@@ -34,6 +34,9 @@ bằng. Phiếu BM04/văn bằng thường ghi địa chỉ LÚC DỰ THI ('Hộ
 thi', 'Nơi đăng ký dự thi') — đó là địa chỉ CŨ → chỉ ghi vào VanBang_DiaChiDuThi, TUYỆT ĐỐI KHÔNG đưa vào
 VanBang_ThuongTru/ChuHoSo_ThuongTru. VanBang_ThuongTru chỉ nhận dòng địa chỉ thường trú/nơi ở HIỆN NAY.
 'Nơi sinh' KHÔNG phải địa chỉ dự thi cũng không phải thường trú.
+Có GIẤY ỦY QUYỀN: 'Hộ khẩu thường trú'/'Nơi thường trú' ở mục 'BÊN ỦY QUYỀN' là thường trú HIỆN NAY của chủ
+văn bằng → VanBang_ThuongTru (object, tách tinh/xa/diaChi). KHÔNG đưa vào VanBang_DiaChiDuThi — field đó
+CHỈ nhận dòng có chữ 'dự thi'.
 
 ⚠ RIÊNG thủ tục này, field địa chỉ (…_ThuongTru) trả THÊM khoá "huyen" = quận/huyện/thị xã/thành phố thuộc
 tỉnh nếu giấy ghi (vd CCCD 'Thôn A, Tuy Lộc, Thành phố Yên Bái, Yên Bái' → tinh='Yên Bái', huyen='Thành

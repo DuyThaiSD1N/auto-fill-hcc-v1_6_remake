@@ -86,3 +86,40 @@ def test_owner_block_still_maps():
     assert got["data[ownerFullname]"] == "NGUYỄN ANH QUÂN"
     assert got["data[ownerIdentityNumber]"] == "048202003364"
     assert got["data[ChuHS]"] == "Cá nhân"
+
+
+_OCR_UY_QUYEN = """ĐƠN XIN CẤP LẠI BẢN SAO BẰNG TỐT NGHIỆP
+Tôi tên là: TRẦN VĂN AN
+GIẤY ỦY QUYỀN
+I. BÊN ỦY QUYỀN:
+Họ, chữ đệm, tên: TRẦN VĂN AN
+Hộ khẩu thường trú: Thôn Đông Hà - Xã Hòa Bình - Quảng Trị
+CCCD/CMND số: 012345 ; cấp ngày 01/... tại: Bộ Công an
+II. BÊN ĐƯỢC ỦY QUYỀN:
+Họ, chữ đệm, tên: TRẦN VĂN BÌNH
+Hộ khẩu thường trú: Tổ 5 - Phường Khác - Hà Tĩnh
+BÊN ỦY QUYỀN
+(Ký, họ tên)
+"""
+
+
+def test_owner_address_from_authorization_when_llm_puts_it_in_du_thi():
+    """Đơn tự viết không có dòng địa chỉ; thường trú chủ chỉ có ở mục 'BÊN ỦY QUYỀN' và LLM gán nhầm vào
+    VanBang_DiaChiDuThi → mapper vẫn phải điền tỉnh/xã/địa chỉ chủ hồ sơ từ OCR."""
+    values = {
+        "VanBang_HoTen": "TRẦN VĂN AN",
+        "VanBang_DiaChiDuThi": "Thôn Đông Hà - Xã Hòa Bình - Quảng Trị",
+        "NguoiNop_HoTen": "TRẦN VĂN BÌNH",
+    }
+    fields = [{"name": k, "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": {}}, ocr_text=_OCR_UY_QUYEN)
+    got = {f["name"]: f["value"] for f in out}
+    assert got["data[ownerProvince]"] == "Tỉnh Quảng Trị"
+    assert got["data[ownerDistrict]"] == "Xã Hòa Bình"
+    assert got["data[ownerAddress]"] == "Thôn Đông Hà"
+
+
+def test_split_address_with_district():
+    assert mapper._split_address("Số 3, Phường Tân Mai, Quận Hoàng Mai, Hà Nội") == {
+        "quocGia": "Việt Nam", "tinh": "Hà Nội", "huyen": "Quận Hoàng Mai", "xa": "Phường Tân Mai",
+        "diaChi": "Số 3"}

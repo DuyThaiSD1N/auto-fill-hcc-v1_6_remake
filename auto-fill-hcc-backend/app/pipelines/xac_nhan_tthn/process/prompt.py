@@ -235,6 +235,11 @@ Ví dụ: TỜ KHAI ghi:
   + BẮT BUỘC trả TẤT CẢ các field ToKhai_* khi TỜ KHAI có ghi thông tin tương ứng, NGAY CẢ KHI CCCD cũng có thông tin đó.
   + TUYỆT ĐỐI KHÔNG tự chọn một nguồn rồi bỏ nguồn còn lại; cả ToKhai_* VÀ Cccd_* đều phải được trả khi cả hai nguồn đều có.
 - Cccd_NoiCuTru = "Nơi thường trú/Nơi cư trú" trên CCCD/CMND, chỉ lấy từ thẻ CCCD/CMND.
+  + Mặt sau thẻ CĂN CƯỚC mới: OCR hay MẤT nhãn "Nơi cư trú / Place of residence", địa chỉ đứng trơ
+    trọi ở đầu trang ngay TRƯỚC dòng "Nơi đăng ký khai sinh / Place of birth" → đó chính là
+    Cccd_NoiCuTru (vd "Phường A - B, Tỉnh C" → tinh="C", xa="A - B").
+  + TUYỆT ĐỐI KHÔNG lấy "Nơi thường trú/tạm trú cuối cùng" hay "Nơi chết" trên GIẤY CHỨNG TỬ/trích
+    lục khai tử làm Cccd_NoiCuTru — đó là địa chỉ của vợ/chồng đã mất. Thẻ không có địa chỉ thì bỏ trống.
 - Nếu có nhiều ảnh CCCD thì gộp mặt trước + mặt sau của cùng một người.
 - RIÊNG Cccd_DanToc (dân tộc) — thẻ CCCD/Căn cước mẫu mới thường KHÔNG in dân tộc. THỨ TỰ ƯU TIÊN NGUỒN:
   (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Dân tộc: ..." (ở khối người được cấp) → ToKhai_DanToc;

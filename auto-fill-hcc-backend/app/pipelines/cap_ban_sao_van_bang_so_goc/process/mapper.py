@@ -259,6 +259,49 @@ def _has_authorization(ocr_text: str) -> bool:
     return bool(_UY_QUYEN.search(unicodedata.normalize("NFC", ocr_text or "")))
 
 
+# Mục "BÊN ỦY QUYỀN" (người ủy quyền = chủ văn bằng) kéo tới "BÊN ĐƯỢC ỦY QUYỀN". Lấy lần xuất hiện ĐẦU —
+# chữ "BÊN ỦY QUYỀN" ở khối chữ ký cuối giấy không có dòng thường trú nên không ảnh hưởng.
+_BEN_UY_QUYEN = re.compile(rf"(?<!ĐƯỢC\s)BÊN\s+{_UY}(.*?)(?=BÊN\s+ĐƯỢC\s+{_UY}|$)", re.IGNORECASE | re.DOTALL)
+_THUONG_TRU_LINE = re.compile(r"(?:hộ\s+khẩu\s+thường\s+trú|nơi\s+thường\s+trú|địa\s+chỉ\s+thường\s+trú|"
+                              r"nơi\s+cư\s+trú|nơi\s+ở\s+hiện\s+nay)\s*:\s*([^\n]+)", re.IGNORECASE)
+_TEN_LINE = re.compile(r"(?:họ,?\s*chữ\s+đệm,?\s*tên|họ\s+và\s+tên|họ\s+tên)\s*:\s*([^\n;]+)", re.IGNORECASE)
+_XA_PREFIX = re.compile(r"^(xã|phường|thị\s+trấn)\b", re.IGNORECASE)
+_HUYEN_PREFIX = re.compile(r"^(huyện|quận|thị\s+xã|thành\s+phố|tp\.?)\b", re.IGNORECASE)
+
+
+def _split_address(text: str) -> dict:
+    """"Thôn A - Xã B - Tỉnh C" / "Thôn A, Xã B, Huyện D, Tỉnh C" → {tinh, huyen, xa, diaChi}. Cụm CUỐI là
+    tỉnh; xã = cụm có tiền tố xã/phường/thị trấn, không có thì là cụm ngay trước tỉnh (hoặc trước huyện)."""
+    parts = [p.strip(" .;") for p in re.split(r",|\s[-–]\s", text) if p.strip(" .;")]
+    if len(parts) < 2:
+        return {}
+    tinh, rest = parts[-1], parts[:-1]
+    huyen = ""
+    if len(rest) >= 2 and _HUYEN_PREFIX.match(rest[-1]) and not _XA_PREFIX.match(rest[-1]):
+        huyen, rest = rest[-1], rest[:-1]
+    xa_idx = next((i for i, p in enumerate(rest) if _XA_PREFIX.match(p)), None)
+    if xa_idx is None and len(rest) >= 2:
+        xa_idx = len(rest) - 1
+    xa = rest[xa_idx] if xa_idx is not None else ""
+    dia_chi = ", ".join(rest[:xa_idx] if xa_idx is not None else rest)
+    return {"quocGia": "Việt Nam", "tinh": tinh, "huyen": huyen, "xa": xa, "diaChi": dia_chi}
+
+
+def _owner_addr_from_authorization(ocr_text: str, anchor: str | None) -> dict:
+    """Thường trú chủ văn bằng từ mục 'BÊN ỦY QUYỀN' của giấy ủy quyền. Đơn tự viết không có dòng địa chỉ →
+    đây là nguồn địa chỉ DUY NHẤT của chủ, nhưng LLM hay nhét nó vào VanBang_DiaChiDuThi. Tên ở mục đó
+    (nếu đọc được) phải khớp tên văn bằng."""
+    m = _BEN_UY_QUYEN.search(unicodedata.normalize("NFC", ocr_text or ""))
+    if not m:
+        return {}
+    section = m.group(1)
+    ten = _TEN_LINE.search(section)
+    if anchor and ten and _text(ten.group(1)) and not _same_name(ten.group(1), anchor):
+        return {}
+    line = _THUONG_TRU_LINE.search(section)
+    return _split_address(_text(line.group(1)) or "") if line else {}
+
+
 def _date_in_ocr(value: str | None, ocr_text: str) -> str | None:
     """Giấy ủy quyền hay bị che năm ('Ngày tháng năm sinh: 01-01', 'cấp ngày 10/09') và LLM tự BỊA năm cho đủ
     dd/mm/yyyy. Chỉ giữ ngày có ĐỦ ngày-tháng-năm trong OCR (d/m/yyyy, d-m-yyyy, 'ngày d tháng m năm yyyy')."""
@@ -364,7 +407,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     du_thi = _addr_key(values.get("VanBang_DiaChiDuThi"))
     if vb_tt and du_thi and _addr_key(vb_tt) == du_thi:
         vb_tt = {}
-    chu_tt = _remap((_area(chu["tt"]) if chu_cccd_valid else {}) or vb_tt, ocr_text)
+    # Không CCCD/phiếu nào có thường trú chủ → dò mục 'BÊN ỦY QUYỀN' trong giấy ủy quyền (không qua bộ lọc
+    # địa chỉ dự thi: LLM hay gán nhầm chính dòng này vào VanBang_DiaChiDuThi).
+    chu_tt = _remap((_area(chu["tt"]) if chu_cccd_valid else {}) or vb_tt
+                    or _owner_addr_from_authorization(ocr_text, anchor), ocr_text)
     chu_tinh = _province_label(chu_tt.get("tinh") or chu_tt.get("tinhThanh"))
     chu_xa = _text(chu_tt.get("xa") or chu_tt.get("phuong"))
     chu_diachi = _text(chu_tt.get("diaChi") or chu_tt.get("chiTiet"))

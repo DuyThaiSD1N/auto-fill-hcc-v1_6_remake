@@ -50,6 +50,11 @@ _ROW_BY_TYPE = {
     "identity": (3, "Hộ chiếu/Chứng minh nhân dân/Thẻ căn cước công dân/Thẻ căn cước/Căn cước điện tử"),
     "residence_proof": (4, "Giấy tờ có giá trị chứng minh thông tin về cư trú"),
 }
+# File hỗn hợp vào ô của giấy tờ chính theo thứ tự này; không có loại nào khớp thì thêm thành phần mới.
+_BUNDLE_ROW_PRIORITY = ("identity", "residence_proof", "authorization")
+_TYPE_BY_PAGE_KIND = {
+    "identity": "identity", "residence": "residence_proof", "authorization": "authorization",
+}
 
 _CCCD_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
 _PAGE_HEADER_RE = re.compile(
@@ -141,6 +146,10 @@ def _is_mixed_bundle(text: str, proposed_name: str = "") -> bool:
     """Nhìn đầu từng trang để không nhầm nội dung/chú thích của một giấy tờ là tài liệu khác."""
     if _fold(proposed_name) == _fold(_BUNDLE_LABEL):
         return True
+    return len(_page_kinds(text)) >= 2
+
+
+def _page_kinds(text: str) -> set[str]:
     kinds: set[str] = set()
     for page in _page_starts(text):
         if not page or page.startswith("chu thich"):
@@ -155,7 +164,7 @@ def _is_mixed_bundle(text: str, proposed_name: str = "") -> bool:
             if any(marker in page for marker in markers):
                 kinds.add(kind)
                 break
-    return len(kinds) >= 2
+    return kinds
 
 
 def _clean_subject_name(value: Any) -> str:
@@ -225,10 +234,14 @@ async def _classify_one(document: dict[str, Any]) -> dict | None:
     first = next((item for item in items if isinstance(item, dict)), None)
     if first is None:
         return None
+    raw_contains = first.get("containsTypes")
     return {
         "type": _canonical_type(first.get("type")),
         "documentName": str(first.get("documentName") or first.get("title") or "").strip(),
         "subjectName": _clean_subject_name(first.get("subjectName")),
+        "containsTypes": [
+            _canonical_type(value) for value in raw_contains
+        ] if isinstance(raw_contains, list) else [],
     }
 
 
@@ -296,6 +309,7 @@ async def plan_trich_luc_attachments_without_split(
     identity_subject_by_index: dict[int, str] = {}
     used_names: set[str] = set()
     used_slots: set[int] = set()
+    bundle_types_by_file: dict[int, list[str]] = {}
 
     for file_index, file in enumerate(raw_files):
         text = documents[file_index]["ocrText"]
@@ -324,6 +338,10 @@ async def plan_trich_luc_attachments_without_split(
             identity_subject_by_index[file_index] = llm_item.get("subjectName") or ""
         elif mixed_bundle:
             document_name = _unique_document_name(_BUNDLE_LABEL, used_names, _BUNDLE_LABEL)
+            # LLM liệt kê tài liệu con; thiếu thì mới dựa vào tiêu đề đầu trang để chọn ô.
+            bundle_types_by_file[file_index] = llm_item.get("containsTypes") or [
+                _TYPE_BY_PAGE_KIND[kind] for kind in _page_kinds(text) if kind in _TYPE_BY_PAGE_KIND
+            ]
         elif is_civil_status(doc_type):
             label = civil_status_name(doc_type, llm_item.get("documentName") or "")
             document_name = _unique_document_name(label, used_names, label)
@@ -357,6 +375,25 @@ async def plan_trich_luc_attachments_without_split(
             # là do LLM hay do rule.
             "source": source, "llmTitle": llm_item.get("documentName") or "",
         })
+
+    # File hỗn hợp chọn ô sau cùng để giấy tờ đơn loại được ưu tiên ô của chính nó.
+    for file_index, contained in bundle_types_by_file.items():
+        doc_type = next(
+            (
+                doc_type for doc_type in _BUNDLE_ROW_PRIORITY
+                if doc_type in contained and _ROW_BY_TYPE[doc_type][0] not in used_slots
+            ),
+            None,
+        )
+        if doc_type is None:
+            continue
+        component_index, component_name = _ROW_BY_TYPE[doc_type]
+        used_slots.add(component_index)
+        attachments[file_index].update({
+            "target": "existing", "componentIndex": component_index,
+            "componentName": component_name, "needsAddComponent": False,
+        })
+        classified[file_index].update({"target": "existing", "componentIndex": component_index})
 
     ocr_text_by_index = {item["fileIndex"]: item["ocrText"] for item in documents}
     attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)

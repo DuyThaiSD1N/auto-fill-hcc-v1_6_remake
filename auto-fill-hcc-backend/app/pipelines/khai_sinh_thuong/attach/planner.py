@@ -2,7 +2,7 @@
 
 KHÁC liên thông khai sinh (cổng React, menu-slot). Ở đây dùng cơ chế:
   - Ô CÓ SẴN (target "existing", khớp theo text dòng): chứng sinh→STT2, bỏ rơi→STT3,
-    mang thai hộ→STT4, ủy quyền→STT5.
+    mang thai hộ→STT4, ủy quyền→STT5. Tờ khai giấy→STT2 khi không có giấy chứng sinh chiếm ô.
   - CCCD & giấy tờ khác → THÊM thành phần mới (target "new"), tên thành phần = "loại + tên người",
     tên file ngắn gọn (cccd_<tên>). KHÔNG bỏ qua file nào.
 """
@@ -25,6 +25,7 @@ _ALLOWED_TYPES = {
     "surrogacy_doc",
     "authorization",
     "identity",
+    "paper_declaration",
     "commitment",
     "other",
 }
@@ -41,7 +42,11 @@ _EXISTING_ROUTE = {
     "abandoned_record": (3, _ROW_3),
     "surrogacy_doc": (4, _ROW_4),
     "authorization": (5, _ROW_5),
+    "paper_declaration": (2, _ROW_2),
 }
+
+# Hai loại cùng tranh ô STT2: giấy chứng sinh luôn được ưu tiên, tờ khai chỉ lấp ô khi ô còn trống.
+_SLOT_PRIORITY = {"paper_declaration": 1}
 
 # Nhãn hiển thị (documentName = tên tài liệu khi upload) cho từng loại.
 _DOC_LABEL = {
@@ -50,6 +55,7 @@ _DOC_LABEL = {
     "surrogacy_doc": "Văn bản xác nhận mang thai hộ",
     "authorization": "Văn bản ủy quyền",
     "identity": "Căn cước công dân",
+    "paper_declaration": "Tờ khai đăng ký khai sinh",
     "commitment": "Bản cam đoan",
     "other": "Tài liệu khai sinh",
 }
@@ -69,6 +75,12 @@ def _fold(value: str) -> str:
 def _is_cccd_text(text: str) -> bool:
     folded = _fold(text)
     return any(m in folded for m in _CCCD_MARKERS)
+
+
+def _is_declaration_text(text: str) -> bool:
+    """Tờ khai giấy: tiêu đề nằm ở đầu trang. Chỉ xét phần đầu để bản cam đoan nhắc tới tờ khai
+    trong thân bài không bị nhận nhầm."""
+    return "to khai dang ky khai sinh" in _fold(text)[:400]
 
 
 def _is_birth_proof_text(text: str) -> bool:
@@ -194,27 +206,45 @@ async def plan_khai_sinh_thuong_attachments(
             errors.append(f"attachment_agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
+    doc_types: dict[int, str] = {}
+    for idx, file in enumerate(raw_files):
+        doc_type = (llm_types.get(idx) or {}).get("type") or "other"
+        text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+
+        # Tờ khai giấy có câu "Tôi cam đoan…" và số CCCD nên LLM hay gán commitment/identity;
+        # tiêu đề tờ khai ở đầu trang là căn cứ quyết định.
+        if doc_type in {"commitment", "identity", "other"} and _is_declaration_text(text):
+            doc_type = "paper_declaration"
+        # Fallback rule khi LLM lỡ để "other": CCCD → identity; chứng sinh/người làm chứng → birth_proof.
+        elif doc_type == "other":
+            if _is_cccd_text(text):
+                doc_type = "identity"
+            elif _is_birth_proof_text(text):
+                doc_type = "birth_proof"
+        doc_types[idx] = doc_type
+
+    # Mỗi ô có sẵn nhận một file; loại ưu tiên cao hơn (giấy chứng sinh) giành ô trước tờ khai.
+    existing_slot_owner: dict[int, int] = {}
+    for idx in sorted(doc_types, key=lambda i: (_SLOT_PRIORITY.get(doc_types[i], 0), i)):
+        route = _EXISTING_ROUTE.get(doc_types[idx])
+        if route and route[0] not in existing_slot_owner:
+            existing_slot_owner[route[0]] = idx
+    existing_by_file = {idx: slot for slot, idx in existing_slot_owner.items()}
+
     used_labels: set[str] = set()
-    used_existing: set[int] = set()
     attachments: list[dict] = []
     classified: list[dict] = []
     identity_indexes: set[int] = set()
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "other", "title": ""}
-        doc_type = detected["type"]
+        doc_type = doc_types[idx]
         text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
+        # Luật đã đổi loại thì tiêu đề LLM (vd "Bản cam đoan") không còn đúng → bỏ.
+        if detected.get("type") != doc_type:
+            detected = {"type": doc_type, "title": ""}
 
-        # Fallback rule khi LLM lỡ để "other": CCCD → identity; chứng sinh/người làm chứng → birth_proof.
-        if doc_type == "other":
-            if _is_cccd_text(text):
-                doc_type = "identity"
-            elif _is_birth_proof_text(text):
-                doc_type = "birth_proof"
-
-        route = _EXISTING_ROUTE.get(doc_type)
-        if route and route[0] not in used_existing:
-            comp_index, existing_component = route
-            used_existing.add(comp_index)
+        if idx in existing_by_file:
+            comp_index, existing_component = _EXISTING_ROUTE[doc_type]
             document_name = _DOC_LABEL.get(doc_type, "Tài liệu")
             item = {
                 "fileIndex": idx,

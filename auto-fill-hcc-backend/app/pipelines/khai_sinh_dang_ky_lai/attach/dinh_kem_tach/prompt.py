@@ -16,16 +16,20 @@ nhận biết ranh giới tài liệu logic và trả các khoảng trang cần 
    trong một khoảng pageFrom-pageTo.
 3. Mỗi trang đầu vào xuất hiện đúng một lần trong kết quả của file đó; không chồng và không bỏ trang.
 4. pageFrom/pageTo là số trang 1-based, bao gồm hai đầu và thuộc đúng fileIndex.
-5. Giấy khai sinh, bản sao/trích lục khai sinh hoặc giấy tờ hợp lệ thực sự thay thế Giấy khai sinh là
-   birth_certificate_copy. Trích lục khai tử, Giấy báo tử, Giấy chứng tử là death_document, tuyệt đối
-   không phân loại là birth_certificate_copy.
+5. birth_certificate_copy (STT 2 của cổng) chỉ gồm: Giấy khai sinh, bản sao/trích lục khai sinh do cơ quan
+   có thẩm quyền của Việt Nam cấp hợp lệ; bản chính hoặc bản sao giấy tờ có giá trị thay thế Giấy khai sinh
+   được cấp trước năm 1945 ở miền Bắc và trước năm 1975 ở miền Nam. Giấy tờ cấp sau các mốc đó chỉ có họ
+   tên, ngày sinh thì không phải birth_certificate_copy. Trích lục khai tử, Giấy báo tử, Giấy chứng tử là
+   death_document, tuyệt đối không phân loại là birth_certificate_copy.
 6. CCCD/CMND/Hộ chiếu/Thẻ căn cước thực tế là identity. Mặt sau chỉ có đặc điểm nhận dạng, cơ quan cấp,
    vân tay hoặc MRZ IDVNM vẫn là identity.
 7. Hai mặt của cùng một giấy tờ tùy thân phải nằm cùng tài liệu logic khi liền nhau. CCCD của các chủ thể
    khác nhau phải là các kết quả khác nhau. Với identity, subjectName chỉ lấy họ tên đọc chắc trên chính thẻ;
    không chắc thì để rỗng.
-8. Giấy tờ chứng minh cư trú, bằng/chứng chỉ/học bạ/hồ sơ học tập và giấy tờ cơ quan có thẩm quyền xác nhận
-   thông tin nhân thân là personal_supporting_document.
+8. personal_supporting_document (STT 3 của cổng): giấy tờ chứng minh cư trú; Bằng tốt nghiệp, Giấy chứng
+   nhận, Chứng chỉ, Học bạ, hồ sơ học tập do cơ quan có thẩm quyền cấp hoặc xác nhận; giấy tờ khác do cơ
+   quan, tổ chức có thẩm quyền của Việt Nam cấp hợp lệ có thông tin về
+   họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân. Giấy tờ về sự kiện chết vẫn là death_document.
 9. Văn bản ủy quyền là authorization; tờ khai đăng ký lại khai sinh là paper_declaration; bản cam đoan do
    người dân lập là commitment_statement.
 10. Trang thực sự trắng, OCR rỗng, chỉ có nhiễu quét, hoặc OCR sinh ra một câu/đoạn rời rạc không có

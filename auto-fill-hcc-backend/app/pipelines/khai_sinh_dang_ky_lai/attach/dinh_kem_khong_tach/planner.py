@@ -44,16 +44,20 @@ _MIXED_FILE_LABELS = {
     _fold(_PERSONAL_SUPPORTING_LABEL),
 }
 
+# Tên đầy đủ theo cổng (crawl 26/09/2026): STT 2 chỉ nhận giấy tờ thay thế GKS cấp trước 1945 (miền
+# Bắc)/1975 (miền Nam); STT 3 mở rộng thêm giấy tờ khác có họ tên, ngày sinh của cá nhân.
 _ROW_2_COMPONENT = (
     "+ Bản sao Giấy khai sinh do cơ quan có thẩm quyền của Việt Nam cấp hợp lệ "
     "(bản sao được chứng thực từ bản chính, bản sao được cấp từ Sổ đăng ký khai sinh); "
-    "bản chính hoặc bản sao giấy tờ có giá trị thay thế Giấy khai sinh"
+    "bản chính hoặc bản sao giấy tờ có giá trị thay thế Giấy khai sinh được cấp trước năm 1945 "
+    "ở miền Bắc và trước năm 1975 ở miền Nam."
 )
 _ROW_3_COMPONENT = (
     "+ Trường hợp người yêu cầu không có giấy tờ nêu trên thì phải nộp bản sao giấy tờ "
     "do cơ quan, tổ chức có thẩm quyền của Việt Nam cấp hợp lệ như: Giấy chứng minh nhân dân, "
     "Thẻ căn cước công dân hoặc Hộ chiếu; giấy tờ chứng minh về nơi cư trú; Bằng tốt nghiệp, "
-    "Giấy chứng nhận, Chứng chỉ, Học bạ, hồ sơ học tập"
+    "Giấy chứng nhận, Chứng chỉ, Học bạ, hồ sơ học tập do cơ quan có thẩm quyền cấp hoặc xác nhận; "
+    "giấy tờ khác có thông tin về họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân."
 )
 _ROW_5_COMPONENT = (
     "- Văn bản ủy quyền theo quy định của pháp luật trong trường hợp ủy quyền thực hiện "
@@ -330,6 +334,9 @@ def _aggregate_document_name(
     return document_name
 
 
+_ROW_COMPONENTS = {2: _ROW_2_COMPONENT, 3: _ROW_3_COMPONENT, 5: _ROW_5_COMPONENT}
+
+
 def _route_for_types(types: list[str]) -> tuple[str, int | None, str]:
     categories: set[int | str] = set()
     if "birth_certificate_copy" in types:
@@ -347,6 +354,11 @@ def _route_for_types(types: list[str]) -> tuple[str, int | None, str]:
     if categories == {5}:
         return "existing", 5, _ROW_5_COMPONENT
     return "new", None, ""
+
+
+def _mixed_row_candidates(types: list[str]) -> list[int]:
+    """File gộp nhiều loại giấy tờ luôn vào STT 3: dòng có nội dung tổng quát nhất của cổng."""
+    return [3] if len(set(types)) > 1 else []
 
 
 def _group_same_cccd_faces(records: list[dict]) -> list[list[dict]]:
@@ -494,6 +506,17 @@ async def plan_dang_ky_lai_khai_sinh_attachments(
         if slot == 3:
             candidates.sort(key=lambda info: (not info["isCccd"], info["order"]))
         winners[slot] = candidates[0]["order"]
+    # File hỗn hợp chỉ vào STT 3 khi không file đơn loại nào đã chiếm ô đó.
+    for info in group_infos:
+        if info["target"] != "new":
+            continue
+        slot = next(
+            (slot for slot in _mixed_row_candidates(info["types"]) if slot not in winners), None,
+        )
+        if slot is None:
+            continue
+        winners[slot] = info["order"]
+        info.update({"target": "existing", "componentIndex": slot, "componentName": _ROW_COMPONENTS[slot]})
 
     used_names: set[str] = set()
     attachments: list[dict] = []

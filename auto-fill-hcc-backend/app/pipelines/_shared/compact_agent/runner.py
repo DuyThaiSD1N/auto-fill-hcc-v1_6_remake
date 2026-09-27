@@ -162,6 +162,7 @@ async def run(
     compact_field_fallback=None,
     options: dict | None = None,
     context_builder=None,
+    document_filter=None,
     max_tokens: int = _COMPACT_AGENT_MAX_TOKENS,
 ) -> dict:
     errors: list[str] = []
@@ -223,23 +224,32 @@ async def run(
     _provs = {r.get("provider") for r in ocr_results if r.get("provider")}
     effective_provider = "both" if len(_provs) > 1 else (next(iter(_provs)) if _provs else None)
 
+    # Pipeline có thể gạn tài liệu lạc thủ tục TRƯỚC khi gửi LLM (trace vẫn giữ đủ OCR). Lọc lỗi
+    # hoặc lọc ra rỗng -> gửi đủ như cũ.
+    llm_documents = documents
+    if document_filter and documents:
+        try:
+            llm_documents = document_filter(documents) or documents
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"filter: {e}")
+
     # Tầng suy luận (PA1): chốt vai trò từng người TRƯỚC khi trích, nối vào prompt trích xuất.
     # Lỗi/không suy được -> context rỗng, bước trích chạy như cũ.
     reasoning_context = ""
-    if context_builder and documents:
+    if context_builder and llm_documents:
         try:
-            reasoning_context = await context_builder(documents, options or {}) or ""
+            reasoning_context = await context_builder(llm_documents, options or {}) or ""
         except Exception as e:  # noqa: BLE001
             errors.append(f"reason: {e}")
 
     result_fields: list[dict] = []
     llm_output: dict | None = None  # JSON thô LLM parse được (lưu trace).
     t1 = time.monotonic()
-    if documents:
+    if llm_documents:
         messages = [
             {"role": "system",
              "content": compact_prompt.build_system_prompt(fields, extra_rules + reasoning_context)},
-            {"role": "user", "content": compact_prompt.build_user_content(documents)},
+            {"role": "user", "content": compact_prompt.build_user_content(llm_documents)},
         ]
         try:
             raw = await client.chat(
@@ -251,7 +261,7 @@ async def run(
             llm_output = parsed
             raw_fields = parsed.get("fields")
             if compact_field_fallback:
-                raw_fields = compact_field_fallback(raw_fields, documents)
+                raw_fields = compact_field_fallback(raw_fields, llm_documents)
             result_fields = validate(raw_fields, allowed, comp_by_name, aliases)
         except Exception as e:  # noqa: BLE001
             errors.append(f"agent: {e}")

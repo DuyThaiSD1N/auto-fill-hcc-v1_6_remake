@@ -60,13 +60,13 @@ _VANBANG_FIELDS = [
     ("NgayCap", "Ngày cấp giấy tờ của chủ văn bằng, dd/mm/yyyy — Phiếu BM04 'Ngày và nơi cấp'."),
     ("DienThoai", "Số điện thoại chủ văn bằng — Phiếu BM04 'Điện thoại'. Chỉ chữ số."),
     ("ThuongTru", "NƠI THƯỜNG TRÚ HIỆN NAY của chủ văn bằng, " + _AREA_DESC + " Phiếu BM04 'Địa chỉ thường "
-        "trú'/'Nơi ở hiện nay'. ⚠ KHÔNG lấy địa chỉ LÚC DỰ THI ('Hộ khẩu thường trú khi dự thi', 'Địa chỉ "
+        "trú'/'Nơi ở hiện nay', hoặc GIẤY ỦY QUYỀN mục 'BÊN ỦY QUYỀN' dòng 'Hộ khẩu thường trú'. ⚠ KHÔNG lấy địa chỉ LÚC DỰ THI ('Hộ khẩu thường trú khi dự thi', 'Địa chỉ "
         "dự thi', 'Nơi đăng ký dự thi'…) → cái đó vào VanBang_DiaChiDuThi. KHÔNG lấy nơi sinh, địa chỉ "
         "trường/hội đồng thi, địa chỉ trên CCCD của người nộp thay. Phiếu không có dòng thường trú hiện nay "
         "→ BỎ field này."),
     ("DiaChiDuThi", "Địa chỉ/hộ khẩu của chủ văn bằng LÚC DỰ THI — CHỈ dòng có chữ 'dự thi' ('Hộ khẩu "
         "thường trú khi dự thi', 'Địa chỉ dự thi', 'Nơi đăng ký dự thi'…) trên Phiếu BM04/văn bằng. Chép "
-        "nguyên văn. KHÔNG lấy 'Nơi sinh'. CHỈ để đối chiếu, KHÔNG phải địa chỉ hiện tại."),
+        "nguyên văn. KHÔNG lấy 'Nơi sinh', KHÔNG lấy địa chỉ trong giấy ủy quyền. CHỈ để đối chiếu, KHÔNG phải địa chỉ hiện tại."),
 ]
 
 FIELDS: list[dict] = [{"name": f"VanBang_{n}", "desc": d} for n, d in _VANBANG_FIELDS]

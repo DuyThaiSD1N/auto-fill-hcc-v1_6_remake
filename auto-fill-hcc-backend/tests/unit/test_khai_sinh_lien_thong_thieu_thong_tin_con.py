@@ -56,3 +56,28 @@ def test_sinh_o_lam_dong_van_lay_que_quan_me():
     })
     qq = _fields(result).get("QqDiaChi") or {}
     assert "Lâm Đồng" in str(qq), "sinh ở Lâm Đồng thì quê quán con theo MẸ"
+
+
+def test_noi_sinh_to_khai_sai_tinh_lay_tinh_cua_benh_vien():
+    # OCR tờ khai đọc nhầm địa danh cuối dòng "Nơi sinh" thành tỉnh khác, trong khi tên bệnh viện
+    # tuyến tỉnh ngay đầu dòng (và giấy chứng sinh) ghi rõ tỉnh thật → lấy tỉnh của bệnh viện.
+    result = _run({
+        "Gcs_NgaySinhCon": "01/02/2026",
+        "Gcs_NoiSinh": {"tinh": "Lai Châu", "diaChi": "Bệnh viện Đa khoa tỉnh Lai Châu"},
+        "Tk_NoiSinh": {"tinh": "Điện Biên", "xa": "Tân Phong",
+                       "diaChi": "Bệnh viện Đa khoa tỉnh Lai Châu, số 1 đường Bất Kỳ"},
+    })
+    ns = _fields(result)["NsDiaChi"]
+    assert ns["tinh"] == "Lai Châu"
+    assert "Tân Phong" in ns["xa"]
+    assert "số 1 đường Bất Kỳ" in ns["diaChi"]
+
+
+def test_noi_sinh_to_khai_khac_tinh_nhung_khong_mau_thuan_ten_co_so_thi_giu():
+    # Tờ khai ghi nơi sinh ở tỉnh khác, tên cơ sở không nhắc tỉnh của giấy chứng sinh → giữ tờ khai.
+    result = _run({
+        "Gcs_NgaySinhCon": "01/02/2026",
+        "Gcs_NoiSinh": {"tinh": "Lai Châu", "diaChi": "Bệnh viện Đa khoa tỉnh Lai Châu"},
+        "Tk_NoiSinh": {"tinh": "Điện Biên", "xa": "Mường Thanh", "diaChi": "Trạm y tế phường"},
+    })
+    assert _fields(result)["NsDiaChi"]["tinh"] == "Điện Biên"
