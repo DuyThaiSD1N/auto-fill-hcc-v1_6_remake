@@ -32,23 +32,24 @@ def _attachment_context() -> dict:
     return {
         "attachmentContext": {
             "components": [
+                {"index": 1, "componentName": "Mẫu hộ tịch điện tử", "hasFile": True},
                 {
-                    "index": 1,
+                    "index": 3,
                     "componentName": "Giấy báo tử hoặc giấy tờ thay Giấy báo tử do cơ quan có thẩm quyền cấp",
                     "hasFile": False,
                 },
                 {
-                    "index": 2,
+                    "index": 5,
                     "componentName": "Giấy tờ chứng minh sự kiện chết đối với người chết đã lâu",
                     "hasFile": False,
                 },
                 {
-                    "index": 3,
+                    "index": 7,
                     "componentName": "Văn bản ủy quyền thực hiện việc đăng ký khai tử",
                     "hasFile": False,
                 },
                 {
-                    "index": 4,
+                    "index": 9,
                     "componentName": "Giấy tờ chứng minh nơi người đó chết hoặc nơi phát hiện thi thể",
                     "hasFile": False,
                 },
@@ -159,7 +160,7 @@ async def test_khai_tu_routes_all_existing_rows_from_live_attachment_context(mon
         {},
     )
 
-    assert [item["componentIndex"] for item in result["attachments"]] == [1, 2, 3, 4]
+    assert [item["componentIndex"] for item in result["attachments"]] == [3, 5, 7, 9]
     assert [item["componentName"] for item in result["attachments"]] == [
         "Giấy báo tử hoặc giấy tờ thay Giấy báo tử do cơ quan có thẩm quyền cấp",
         "Giấy tờ chứng minh sự kiện chết đối với người chết đã lâu",
@@ -202,7 +203,7 @@ async def test_khai_tu_routes_tombstone_to_death_event_row_even_when_llm_calls_i
         "documentName": "Ảnh bia mộ",
         "componentName": "Giấy tờ chứng minh sự kiện chết đối với người chết đã lâu",
         "target": "existing",
-        "componentIndex": 2,
+        "componentIndex": 5,
         "needsAddComponent": False,
         "detectedType": "Ảnh bia mộ",
     }]
@@ -258,58 +259,6 @@ VĂN BẢN ỦY QUYỀN
     ]
 
 
-async def test_khai_tu_routes_paper_declaration_to_death_notice_row_when_it_is_free(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN Số 040203015844"},
-            {"name": "tk.pdf", "text": "TỜ KHAI ĐĂNG KÝ KHAI TỬ"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "identity"},
-            {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "paper_declaration"},
-        ]})
-
-    monkeypatch.setattr(khai_tu.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(khai_tu.client, "chat", fake_chat)
-
-    result = await khai_tu.plan_khai_tu_attachments(
-        [_file("cccd.pdf"), _file("tk.pdf")], _attachment_context(), {},
-    )
-
-    declaration = result["attachments"][1]
-    assert declaration["documentName"] == "Tờ khai đăng ký khai tử bản giấy"
-    assert declaration["target"] == "existing"
-    assert declaration["componentIndex"] == 1
-    assert declaration["componentName"] == (
-        "Giấy báo tử hoặc giấy tờ thay Giấy báo tử do cơ quan có thẩm quyền cấp"
-    )
-    assert declaration["needsAddComponent"] is False
-    assert result["attachments"][0]["target"] == "new"
-
-
-async def test_khai_tu_fallback_slots_count_rows_like_extension_without_eform_row(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "tk.pdf", "text": "TỜ KHAI ĐĂNG KÝ KHAI TỬ"},
-            {"name": "uq.pdf", "text": "VĂN BẢN ỦY QUYỀN"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "paper_declaration"},
-            {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "authorization"},
-        ]})
-
-    monkeypatch.setattr(khai_tu.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(khai_tu.client, "chat", fake_chat)
-
-    result = await khai_tu.plan_khai_tu_attachments([_file("tk.pdf"), _file("uq.pdf")], {}, {})
-
-    assert [item["componentIndex"] for item in result["attachments"]] == [1, 3]
-
-
 async def test_khai_tu_llm_failure_uses_safe_rules_without_role_matching(monkeypatch):
     async def fake_ocr_per_file(files):
         return [
@@ -336,7 +285,7 @@ async def test_khai_tu_llm_failure_uses_safe_rules_without_role_matching(monkeyp
         "Tài liệu khai tử",
     ]
     assert result["attachments"][0]["target"] == "new"
-    assert result["attachments"][1]["componentIndex"] == 3
+    assert result["attachments"][1]["componentIndex"] == 7
     assert result["attachments"][2]["target"] == "new"
     assert any("attachment_agent" in error for error in result["errors"])
     assert not any("không khớp" in error for error in result["errors"])

@@ -1,7 +1,7 @@
 """Map compact facts → UI field cho e-form Bắc Ninh (tách thửa đất).
 
-Thân đơn khớp theo CLASS eform-element-<Key> (2.1/2.2 trùng key → FE lấy DOM đầu = tách); người
-nhận kết quả khớp theo NAME cố định.
+Thân đơn khớp theo NHÃN (Phần II/III trùng title → FE lấy DOM đầu = tách); người nhận kết quả
+khớp theo NAME cố định.
 """
 
 from app.pipelines.tach_hop_thua_dat_bac_ninh.process import schema as S
@@ -70,14 +70,16 @@ def enrich(fields: list[dict]) -> list[dict]:
     phone = v.get("Nguoi_DienThoai")  # thường không có
     tinh, xa, chi_tiet = _split_address(dia_chi)
 
-    # Phần 1 — người sử dụng đất. "1.3. Địa chỉ" là MỘT ô text → điền nguyên dòng.
+    # Phần I — người sử dụng đất. Địa chỉ TÁCH: Tỉnh/Xã → select (bn-select, FE điền cascade);
+    # ô "Địa chỉ chi tiết" chỉ nhận tổ dân phố/xóm/số nhà (bỏ nếu không có).
     add(S.L_KINHGUI, v.get("Don_KinhGui"))
     add(S.L_TEN, ho_ten)
     add(S.L_GIAYTO, so_dd)
-    add(S.L_DIACHI, dia_chi)
-    add(S.L_DIENTHOAI, phone)
+    add(S.S_TINH_DON, tinh)
+    add(S.S_XA_DON, xa)
+    add(S.L_DIACHI_CT, chi_tiet)
 
-    # Phần 2.1 — thửa đất gốc + thửa mới.
+    # Phần II — thửa đất gốc + thửa mới.
     add(S.L_THUA_SO, v.get("Thua_So"))
     add(S.L_TOBANDO, v.get("Thua_ToBanDo"))
     add(S.L_DIENTICH, v.get("Thua_DienTich"))
@@ -85,14 +87,10 @@ def enrich(fields: list[dict]) -> list[dict]:
     add(S.L_DIACHITHUA, _flatten(v.get("Thua_DiaChi")))
     add(S.L_SOVAOSO, v.get("Gcn_SoVaoSo"))
     add(S.L_NGAYCAP, v.get("Gcn_NgayCap"))
-    add(S.L_THANH, v.get("ThuaMoi_SoThua"))
     add(S.L_THUAMOI1, v.get("ThuaMoi_DienTich1"))
-    add(S.L_THUAMOI1_LOAIDAT, v.get("ThuaMoi_LoaiDat1"))
     add(S.L_THUAMOI2, v.get("ThuaMoi_DienTich2"))
-    add(S.L_THUAMOI2_LOAIDAT, v.get("ThuaMoi_LoaiDat2"))
-    add(S.L_THUAMOI_KHAC, v.get("ThuaMoi_Khac"))
 
-    # Phần 3–5 — lý do/giấy tờ kèm/đề nghị cấp GCN.
+    # Phần IV — lý do/giấy tờ kèm/đề nghị cấp GCN.
     add(S.L_LYDO, v.get("Don_LyDo"))
     add(S.L_GIAYTOKEM, v.get("Don_GiayToKem"))
     add(S.L_DENGHIGCN, v.get("Don_DeNghiCapGCN"))

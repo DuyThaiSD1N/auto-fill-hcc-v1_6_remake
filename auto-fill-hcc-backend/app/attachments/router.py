@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
@@ -14,6 +15,8 @@ from app.core.deps import require_auth
 from app.core.errors import AppError
 from app.dossiers import repo as dossiers_repo
 from app.dossiers.options import dossier_id_from_options
+from app.monitor import persist as monitor_persist
+from app.monitor import recorder as mon
 from app.process import requests_repo
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
@@ -64,13 +67,16 @@ async def _save_attach_trace(
     """
     created_at = datetime.now(timezone.utc)
     files_meta: list[dict] = []
+    rec = mon.current()
     try:
         # Lưu file + bản ghi process_requests để trace detail xem được nội dung file (qua /traces/{id}/files).
-        files_meta = save_request_files(request_id, created_at, body.files)
-        await requests_repo.create_request(
-            request_id=request_id, created_at=created_at, user_id=user["id"],
-            procedure=body.procedure, options=options, files_meta=files_meta,
-        )
+        with mon.span("persist.files", files=len(body.files)):
+            files_meta = save_request_files(request_id, created_at, body.files)
+        with mon.span("persist.db"):
+            await requests_repo.create_request(
+                request_id=request_id, created_at=created_at, user_id=user["id"],
+                procedure=body.procedure, options=options, files_meta=files_meta,
+            )
     except Exception as e:  # noqa: BLE001
         logger.warning("Lưu file/bản ghi request đính kèm thất bại (%s): %s", request_id, e)
 
@@ -97,38 +103,105 @@ async def _save_attach_trace(
             {"name": f.name, "role": f.role, "sha256": None, "uses": 1}
             for f in body.files
         ]
-    await traces_repo.create_trace(
-        request_id=request_id, user_id=user["id"],
-        username=user.get("username"), name=user.get("name"),
-        applicant_name=applicant_name, attachments=attachments,
-        split=split_value, stats_version=2, dossier_ids=dossier_ids,
-        kind="attach",  # bước đính kèm — phân biệt với autofill trên màn trace
-        stats=result.get("stats"), total_bytes=total_bytes,
-        procedure=body.procedure, procedure_label=proc.get("label"),
-        ocr_provider=ocr.resolved_label(),
-        ocr_text=result.get("ocr_text", ""),
-        # Lưu kế hoạch đính kèm để xem chi tiết (file → tài liệu → ô/component đích).
-        llm_output={"attachments": plan, "extracted": result.get("extracted")},
-        fields_count=len(plan), status="done",
-        created_at=created_at,
-        dossier_id=dossier_id_from_options(options),
-    )
-    # Mốc BẮT ĐẦU hồ sơ Auto Fill = lượt process/đính kèm ĐẦU TIÊN. Đường này là DUY NHẤT với
-    # thủ tục attach-only (chứng thực bản sao/chữ ký) — nhóm nhiều lượt nhất mà không hề gọi
-    # /process, nên thiếu chỗ này là mất hẳn nhóm đó khỏi thống kê.
-    dossier_id = dossier_id_from_options(options)
-    if dossier_id:
-        await dossiers_repo.upsert_started(
-            dossier_id=dossier_id, user_id=str(user.get("id") or ""),
+    with mon.span("persist.db"):
+        await traces_repo.create_trace(
+            request_id=request_id, user_id=user["id"],
             username=user.get("username"), name=user.get("name"),
+            applicant_name=applicant_name, attachments=attachments,
+            split=split_value, stats_version=2, dossier_ids=dossier_ids,
+            kind="attach",  # bước đính kèm — phân biệt với autofill trên màn trace
+            stats=result.get("stats"), total_bytes=total_bytes,
             procedure=body.procedure, procedure_label=proc.get("label"),
-            province=user.get("tinh"), ward=user.get("xa"),
-            started_at=created_at, experience="autofill", applicant_name=applicant_name,
+            ocr_provider=ocr.resolved_label(),
+            ocr_text=result.get("ocr_text", "") or monitor_persist.recorded_ocr_text(rec),
+            # Lưu kế hoạch đính kèm để xem chi tiết (file → tài liệu → ô/component đích).
+            llm_output={"attachments": plan, "extracted": result.get("extracted")},
+            fields_count=len(plan), status="done",
+            created_at=created_at,
+            dossier_id=dossier_id_from_options(options),
+            timing=monitor_persist.timing(rec),
+            outcome=rec.outcome if rec is not None else None,
+            errors=result.get("errors") or None,
         )
+        # Mốc BẮT ĐẦU hồ sơ Auto Fill = lượt process/đính kèm ĐẦU TIÊN. Đường này là DUY NHẤT với
+        # thủ tục attach-only (chứng thực bản sao/chữ ký) — nhóm nhiều lượt nhất mà không hề gọi
+        # /process, nên thiếu chỗ này là mất hẳn nhóm đó khỏi thống kê.
+        dossier_id = dossier_id_from_options(options)
+        if dossier_id:
+            await dossiers_repo.upsert_started(
+                dossier_id=dossier_id, user_id=str(user.get("id") or ""),
+                username=user.get("username"), name=user.get("name"),
+                procedure=body.procedure, procedure_label=proc.get("label"),
+                province=user.get("tinh"), ward=user.get("xa"),
+                started_at=created_at, experience="autofill", applicant_name=applicant_name,
+            )
+
 
 
 @router.post("/plan", response_model=AttachmentPlanResp)
 async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require_auth)):
+    handler_start = time.perf_counter()
+    rec = mon.start(
+        "attach", "autofill", procedure=body.procedure, user_id=user.get("id"),
+        username=user.get("username"), name=user.get("name"), files=len(body.files),
+        dossier_id=dossier_id_from_options(body.options),
+    )
+    # Nhận + parse body + xác thực (chạy trước handler) — v2 bọc v1 thì v2 đã tự ghi phần này.
+    if rec is not None and not any(sp.name == "pre.request" for sp in rec.spans):
+        rec.add_span("pre.request", rec.origin, handler_start)
+    async with mon.span("pre.prepare"):
+        proc, options, session, total_bytes = await _prepare_attach(body, user)
+
+    # Thủ tục đã migrate sang app/pipelines/<thủ tục>/attach → dispatch qua registry.
+    attach_fn = get_attach_pipeline(body.procedure)
+    if attach_fn:
+        # Mã hỗ trợ: sinh 1 request_id cho lượt đính kèm, trả về FE để cán bộ copy khi báo lỗi.
+        request_id = traces_repo.new_request_id()
+        if rec is not None:
+            rec.meta["request_id"] = request_id
+            rec.count("bytes", total_bytes)
+        try:
+            # Bọc cả planner: OCR/LLM bên trong tự tách thành bước riêng; phần còn lại của span này
+            # là luật hậu xử lý của planner (gộp CCCD, tách trang, bỏ trang trắng, gán ô…).
+            async with mon.span("post.plan", procedure=body.procedure):
+                result = await attach_fn(body.files, options, session=session)
+        except Exception as e:
+            # Không ghi traces (giữ cách đếm cũ) — chỉ trace_steps outcome=error; ném lại y như cũ.
+            if rec is not None:
+                rec.set_outcome("error")
+                rec.meta["steps_only"] = True  # lượt hỏng không ghi traces
+                rec.error(f"{getattr(e, 'code', type(e).__name__)}: {e}")
+                rec.mark_wait_end()
+                monitor_persist.schedule(rec, request_id)
+            raise
+        # Hotfix theo tài khoản (Chứng thực bản sao, Đà Nẵng/Hải Châu): chèn directive file ảo STT1.
+        # Gate ở đây vì router mới có `user` (tinh/xa); no-op với mọi thủ tục/tài khoản khác.
+        with mon.span("post.stt1"):
+            result = apply_stt1_virtual_copy(result, user, body.procedure)
+        result["requestId"] = request_id
+        if rec is not None:
+            for err in result.get("errors") or []:
+                rec.error(err)
+            if result.get("errors"):
+                rec.set_outcome("partial")
+            # T4 = kế hoạch sau luật của planner; T5 = đúng JSON trả FE (response_model lược
+            # key nội bộ) — dựng lúc ghi nền để không tốn CPU trên đường chính.
+            rec.output("plan", result.get("attachments"))
+            rec.output("extracted", result.get("extracted"))
+            rec.output("response", lambda r=result: AttachmentPlanResp.model_validate(r).model_dump(mode="json"))
+        # Mỗi lượt đính kèm là một hành động riêng trên hồ sơ. Lưu trace kind="attach"
+        # cho cả attach-only và thủ tục có hasAttachmentStep để màn trace đối chiếu được.
+        await _save_attach_trace(body, proc, options, result, user, total_bytes, request_id)
+        if rec is not None:
+            rec.mark_wait_end()
+            monitor_persist.schedule(rec, request_id)
+        return result
+
+    raise AppError("UNSUPPORTED_ATTACHMENT_PROCEDURE", f"Chưa hỗ trợ plan đính kèm cho {body.procedure}", 400)
+
+
+async def _prepare_attach(body: AttachmentPlanReq, user: dict):
+    """Kiểm tra đầu vào + option theo tài khoản + tra session; trả (proc, options, session, bytes)."""
     proc = get_procedure(body.procedure)
     if not proc or (proc.get("mode") != "attach" and not proc.get("hasAttachmentStep")):
         raise AppError("UNKNOWN_ATTACHMENT_PROCEDURE", f"Thủ tục đính kèm không hợp lệ: {body.procedure}", 400)
@@ -163,22 +236,7 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
         if session.get("procedure") != body.procedure:
             raise AppError("SESSION_PROCEDURE_MISMATCH", "Session không thuộc thủ tục đang chọn", 400)
 
-    # Thủ tục đã migrate sang app/pipelines/<thủ tục>/attach → dispatch qua registry.
-    attach_fn = get_attach_pipeline(body.procedure)
-    if attach_fn:
-        result = await attach_fn(body.files, options, session=session)
-        # Hotfix theo tài khoản (Chứng thực bản sao, Đà Nẵng/Hải Châu): chèn directive file ảo STT1.
-        # Gate ở đây vì router mới có `user` (tinh/xa); no-op với mọi thủ tục/tài khoản khác.
-        result = apply_stt1_virtual_copy(result, user, body.procedure)
-        # Mã hỗ trợ: sinh 1 request_id cho lượt đính kèm, trả về FE để cán bộ copy khi báo lỗi.
-        request_id = traces_repo.new_request_id()
-        result["requestId"] = request_id
-        # Mỗi lượt đính kèm là một hành động riêng trên hồ sơ. Lưu trace kind="attach"
-        # cho cả attach-only và thủ tục có hasAttachmentStep để màn trace đối chiếu được.
-        await _save_attach_trace(body, proc, options, result, user, total_bytes, request_id)
-        return result
-
-    raise AppError("UNSUPPORTED_ATTACHMENT_PROCEDURE", f"Chưa hỗ trợ plan đính kèm cho {body.procedure}", 400)
+    return proc, options, session, total_bytes
 
 
 @router.post("/client-trace", response_model=ClientAttachmentTraceResp)
@@ -192,6 +250,15 @@ async def create_client_attachment_trace(
     này. Guard đó giữ luồng metadata-only cô lập, tránh một thủ tục OCR vô tình bỏ qua
     pipeline phân loại tài liệu ở backend.
     """
+    handler_start = time.perf_counter()
+    # Không OCR/LLM (extension tự đính) → timeline chỉ có nhận request + ghi DB; cờ client_attach
+    # để dashboard tách khỏi lượt đính kèm có xử lý ở backend.
+    rec = mon.start("attach", "autofill", procedure=body.procedure, user_id=user.get("id"),
+                    username=user.get("username"), name=user.get("name"), files=len(body.files),
+                    dossier_id=dossier_id_from_options(body.options or {}))
+    if rec is not None:
+        rec.add_span("pre.request", rec.origin, handler_start)
+        rec.flag("client_attach")
     proc = get_procedure(body.procedure)
     client_case = proc.get("clientAttachmentCase") if proc else None
     if not proc or not isinstance(client_case, dict):
@@ -260,6 +327,26 @@ async def create_client_attachment_trace(
         files_meta=files_meta,
     )
     applicant_name = resolve_applicant_name(options, {"attachments": plan})
+    if rec is not None:
+        rec.meta["request_id"] = request_id
+        rec.output("plan", plan)
+    with mon.span("persist.db"):
+        await _save_client_attach_trace(
+            request_id=request_id, created_at=created_at, user=user, proc=proc, body=body,
+            options=options, plan=plan, attachments=attachments, split=split,
+            dossier_ids=dossier_ids, client_case=client_case, applicant_name=applicant_name,
+            rec=rec,
+        )
+    if rec is not None:
+        rec.output("response", {"requestId": request_id})
+        rec.mark_wait_end()
+        monitor_persist.schedule(rec, request_id)
+    return {"requestId": request_id}
+
+
+async def _save_client_attach_trace(*, request_id, created_at, user, proc, body, options, plan,
+                                    attachments, split, dossier_ids, client_case,
+                                    applicant_name, rec) -> None:
     await traces_repo.create_trace(
         request_id=request_id,
         user_id=user["id"],
@@ -288,6 +375,8 @@ async def create_client_attachment_trace(
         status="done",
         created_at=created_at,
         dossier_id=dossier_id_from_options(options),
+        timing=monitor_persist.timing(rec),
+        outcome=rec.outcome if rec is not None else None,
     )
     # Đính kèm phía client (không qua planner) vẫn là một lượt làm việc trên hồ sơ đó →
     # cũng phải chấm mốc, nếu không hồ sơ tách-tab sẽ không có started_at.
@@ -300,4 +389,3 @@ async def create_client_attachment_trace(
             province=user.get("tinh"), ward=user.get("xa"),
             started_at=created_at, experience="autofill", applicant_name=applicant_name,
         )
-    return {"requestId": request_id}

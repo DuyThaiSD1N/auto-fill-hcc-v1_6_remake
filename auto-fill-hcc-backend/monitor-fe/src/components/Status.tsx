@@ -5,27 +5,22 @@ export function Spinner({ label = "Đang tải" }: { label?: string }) {
 }
 
 export function PageLoading({ label }: { label: string }) {
-  return (
-    <main id="main-content" className="page-loading">
-      <span className="page-loading__document"><Icon name="document" size={28} /></span>
-      <span className="page-loading__bar"><span /></span>
-      <p>{label}</p>
-    </main>
-  );
+  return <div className="page-loading"><Spinner label={label} /></div>;
 }
 
 export function ErrorNotice({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div className="notice notice--error" role="alert">
+      <Icon name="alert" />
       <div>
         <strong>Không tải được dữ liệu</strong>
-        <p>{message}</p>
+        <span>{message}</span>
       </div>
-      {onRetry ? (
-        <button className="button button--secondary" type="button" onClick={onRetry}>
-          <Icon name="refresh" /> Thử lại
-        </button>
-      ) : null}
+      {onRetry ? <button className="btn btn--sm" type="button" onClick={onRetry}><Icon name="refresh" size={14} /> Thử lại</button> : null}
     </div>
   );
+}
+
+export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+  return <div className="state"><strong>{title}</strong>{hint ? <span>{hint}</span> : null}</div>;
 }

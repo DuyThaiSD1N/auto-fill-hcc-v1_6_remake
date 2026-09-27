@@ -36,9 +36,6 @@ hoặc theo giấy tờ nằm bên trong file.
 10. Với identity, subjectName là họ tên trên giấy tờ khi toàn file chỉ thuộc một người. Nếu có
    nhiều người hoặc không chắc chắn thì để rỗng. Type khác luôn để subjectName rỗng.
 11. Trả đúng một JSON object, không giải thích, không markdown.
-12. Khi documentName là "Hồ sơ trích lục hộ tịch", trả thêm containsTypes là danh sách type (theo
-   allowed_types, trừ other) của từng tài liệu độc lập thực sự có trong file. Tài liệu chỉ được nhắc
-   trong Tờ khai không tính. Kết quả khác không cần containsTypes.
 </critical_rules>
 
 <allowed_types>
@@ -99,8 +96,6 @@ trích lục cải chính KHÔNG phải trích lục kết hôn, dù cả hai c�
 
 <output_contract>
 {"documents":[{"fileIndex":0,"type":"identity","documentName":"Căn cước công dân","subjectName":"HỌ TÊN"}]}
-File hỗn hợp:
-{"documents":[{"fileIndex":0,"type":"other","documentName":"Hồ sơ trích lục hộ tịch","subjectName":"","containsTypes":["paper_declaration","identity","civil_status_birth"]}]}
 </output_contract>
 """.strip()
 

@@ -18,6 +18,8 @@ from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.db.indexes import ensure_indexes
 from app.db.mongo import close, connect
 from app.locations.router import router as locations_router
+from app.monitor.recorder import set_origin as set_monitor_origin
+from app.monitor.router import router as monitor_router
 from app.procedures.router import router as procedures_router
 from app.process.router import router as process_router
 from app.review.router import router as review_router
@@ -74,6 +76,7 @@ async def timing_middleware(request: Request, call_next):
     - X-Process-Time << TTFB → phần còn lại ở proxy/mạng/nhận body, không phải xử lý.
     """
     t0 = time.perf_counter()
+    set_monitor_origin(t0)
     response = await call_next(request)
     dt_ms = int((time.perf_counter() - t0) * 1000)
     response.headers["X-Process-Time"] = str(dt_ms)
@@ -92,6 +95,7 @@ app.include_router(procedures_router)
 app.include_router(process_router)
 app.include_router(review_router)
 app.include_router(attachments_router)
+app.include_router(monitor_router)  # web Monitor (super_admin)
 app.include_router(dossiers_router)  # mốc bấm nộp của Auto Fill (Handfree đi qua chat)
 app.include_router(traces_router)
 app.include_router(dashboard_router)  # bảng thống kê phường (require_ward, khóa theo user_id)

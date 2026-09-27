@@ -123,7 +123,11 @@ async def test_record_attach_va_set_report(captured):
     assert captured["finishes"][0][1]["stats"] == stats
 
     await tracing.set_report(rid, "attach", {"attached": 1, "errors": []})
-    assert captured["reports"][0] == (rid, "attach", {"attached": 1, "errors": []})
+    req_id, kind, report = captured["reports"][0]
+    assert (req_id, kind) == (rid, "attach")
+    # Nội dung extension gửi giữ nguyên; BE chỉ thêm mốc nhận báo cáo cho web Monitor.
+    assert {k: v for k, v in report.items() if k != "received_at"} == {"attached": 1, "errors": []}
+    assert report["received_at"] is not None
     # request_id rỗng (trace ghi fail trước đó) → im lặng, không nổ.
     await tracing.set_report(None, "attach", {})
     assert len(captured["reports"]) == 1

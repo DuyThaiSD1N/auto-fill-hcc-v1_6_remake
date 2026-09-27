@@ -404,6 +404,46 @@ async def list_for_dashboard(
     return {"items": items, "total": total}
 
 
+async def search_dossiers(
+    *,
+    q: str | None = None,
+    user_id: str | None = None,
+    procedure: str | None = None,
+    experience: str | None = None,
+    submitted: bool | None = None,
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> dict:
+    """Danh sách hồ sơ cho web Monitor: như ``list_dossiers`` + tìm chứa chuỗi ``q`` trên mã hồ sơ,
+    tên người làm thủ tục, tên đơn vị, tên thủ tục (không phân biệt hoa thường)."""
+    import re
+
+    query = _build_query(
+        user_id=user_id, procedure=procedure, experience=experience,
+        submitted=submitted, date_from=date_from, date_to=date_to,
+    )
+    text = (q or "").strip()
+    if text:
+        pattern = {"$regex": re.escape(text), "$options": "i"}
+        match_text = {"$or": [
+            {field: pattern}
+            for field in ("_id", "applicant_name", "name", "username", "procedure_label", "procedure")
+        ]}
+        query = {"$and": [query, match_text]} if query else match_text
+    db = get_db()
+    total = await db.dossiers.count_documents(query)
+    cursor = (
+        db.dossiers.find(query, {"submit_events": 0})
+        .sort("started_at", -1)
+        .skip(max(skip, 0))
+        .limit(max(min(limit, 100), 1))
+    )
+    docs = await cursor.to_list(length=limit)
+    return {"items": [_serialize(d) for d in docs], "total": total}
+
+
 async def get_dossier(dossier_id: str) -> dict | None:
     doc = await get_db().dossiers.find_one({"_id": dossier_id})
     return _serialize(doc) if doc else None

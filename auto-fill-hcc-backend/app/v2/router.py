@@ -1,5 +1,6 @@
 import base64
 import json
+import time
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
@@ -8,6 +9,7 @@ from app.attachments.router import plan_attachments as plan_attachments_v1
 from app.attachments.schemas import AttachmentPlanReq, AttachmentPlanResp
 from app.core.deps import require_auth
 from app.core.errors import AppError
+from app.monitor import recorder as mon
 from app.process.router import process as process_v1
 from app.process.schemas import FileItem, ProcessReq, ProcessResp
 
@@ -80,12 +82,18 @@ async def process_v2(
     user: dict = Depends(require_auth),
 ):
     """Một endpoint multipart cho cả điền form và lập kế hoạch đính kèm."""
+    handler_start = time.perf_counter()
     action = (action or "").strip().lower()
     if action not in {"fill", "attach"}:
         raise AppError("BAD_ACTION", "action chỉ nhận giá trị fill hoặc attach", 400)
 
+    # v1 bên dưới dùng lại recorder này (cùng kind) → timeline có cả phần nhận multipart.
+    rec = mon.start("autofill" if action == "fill" else "attach", "autofill", api="v2")
+    if rec is not None:
+        rec.add_span("pre.request", rec.origin, handler_start)
     parsed_options = _parse_json_object(options, error="BAD_OPTIONS", label="options")
-    file_items = await _to_file_items(files or [], fileMetadata)
+    with mon.span("pre.receive", files=len(files or [])):
+        file_items = await _to_file_items(files or [], fileMetadata)
 
     if action == "fill":
         result = await process_v1(
@@ -93,7 +101,11 @@ async def process_v2(
             background,
             user,
         )
-        payload = ProcessResp.model_validate(result).model_dump(mode="json")
+        with mon.span("post.response"):
+            payload = ProcessResp.model_validate(result).model_dump(mode="json")
+        if rec is not None:
+            rec.output("response", payload)
+            rec.mark_wait_end()
         return {"action": action, **payload}
 
     result = await plan_attachments_v1(
@@ -102,5 +114,9 @@ async def process_v2(
     )
     # Gọi handler trực tiếp sẽ bỏ qua response_model của route v1. Validate lại để v2
     # không vô tình lộ ocr_text/llm_output nội bộ và giữ đúng shape attachment hiện hành.
-    payload = AttachmentPlanResp.model_validate(result).model_dump(mode="json")
+    with mon.span("post.response"):
+        payload = AttachmentPlanResp.model_validate(result).model_dump(mode="json")
+    if rec is not None:
+        rec.output("response", payload)
+        rec.mark_wait_end()
     return {"action": action, **payload}

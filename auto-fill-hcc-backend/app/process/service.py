@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable
 
 from app.config import settings
 from app.core.errors import AppError
+from app.monitor import recorder as mon
 from app.pipelines._shared.formatting import normalize_ui_dates
 from app.process.schemas import ProcessReq
 from app.services import ocr
@@ -115,9 +116,16 @@ def prepare_process(
 
 
 async def execute_process(prepared: PreparedProcess) -> dict:
-    result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
+    async with mon.span("pipeline", procedure=prepared.procedure):
+        result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
+        rec = mon.current()
+        if rec is not None:
+            # Hậu xử lý riêng của package + mapper nằm trong 148 runner → đo bằng khoảng trống từ
+            # lúc runner chung xong tới lúc pipeline trả (con của span pipeline), không sửa từng package.
+            rec.close_gap("agent_end", "post.mapper")
     # Chốt chặn CHUNG cho mọi thủ tục: mỗi pipeline tự chuẩn hóa ngày một kiểu (nhiều pipeline
     # không chuẩn hóa gì cả), nên siết một lần ở đây thay vì vá rải rác 90 mapper.
     if isinstance(result, dict):
-        normalize_ui_dates(result.get("fields"))
+        with mon.span("post.dates"):
+            normalize_ui_dates(result.get("fields"))
     return result

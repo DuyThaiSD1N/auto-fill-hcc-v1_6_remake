@@ -319,66 +319,7 @@ async def test_ket_hon_preserve_uses_common_name_for_mixed_marriage_dossier(monk
     item = result["attachments"][0]
     assert item["documentName"] == "Hồ sơ đăng ký kết hôn"
     assert item["componentName"] == "Hồ sơ đăng ký kết hôn"
-    # Không có CCCD trong file → không ô có sẵn nào khớp, vẫn thêm thành phần mới.
     assert item["target"] == "new"
-
-
-async def test_ket_hon_preserve_mixed_dossier_with_identity_uses_identity_row(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "ho-so.pdf", "text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nCĂN CƯỚC CÔNG DÂN"},
-            {"name": "ho-so-2.pdf", "text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nCĂN CƯỚC CÔNG DÂN"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {
-                "fileIndex": index, "type": "other", "documentName": "Hồ sơ đăng ký kết hôn",
-                "subjectName": "", "containsTypes": ["marriage_declaration", "identity"],
-            }
-            for index in range(2)
-        ]})
-
-    monkeypatch.setattr(ket_hon_preserve.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(ket_hon_preserve.client, "chat", fake_chat)
-
-    result = await ket_hon_dispatcher.plan(
-        [_file("ho-so.pdf"), _file("ho-so-2.pdf")], _attachment_context(), {},
-    )
-
-    first, second = result["attachments"]
-    assert (first["target"], first["componentIndex"], first["needsAddComponent"]) == ("existing", 2, False)
-    assert first["documentName"] == "Hồ sơ đăng ký kết hôn"
-    # Ô CCCD chỉ nhận một file: file hỗn hợp thứ hai thêm thành phần mới.
-    assert second["target"] == "new"
-
-
-async def test_ket_hon_preserve_single_identity_file_wins_identity_row_over_bundle(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "ho-so.pdf", "text": "TỜ KHAI ĐĂNG KÝ KẾT HÔN\nCĂN CƯỚC CÔNG DÂN"},
-            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nCitizen Identity Card"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {
-                "fileIndex": 0, "type": "other", "documentName": "Hồ sơ đăng ký kết hôn",
-                "subjectName": "", "containsTypes": ["marriage_declaration", "identity"],
-            },
-            {"fileIndex": 1, "type": "identity", "documentName": "Căn cước công dân", "subjectName": ""},
-        ]})
-
-    monkeypatch.setattr(ket_hon_preserve.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(ket_hon_preserve.client, "chat", fake_chat)
-
-    result = await ket_hon_dispatcher.plan(
-        [_file("ho-so.pdf"), _file("cccd.pdf")], _attachment_context(), {},
-    )
-
-    by_file = {item["fileIndex"]: item for item in result["attachments"]}
-    assert (by_file[1]["target"], by_file[1]["componentIndex"]) == ("existing", 2)
-    assert by_file[0]["target"] == "new"
 
 
 async def test_ket_hon_defaults_to_preserve_and_only_true_enables_split(monkeypatch):

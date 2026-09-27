@@ -274,55 +274,14 @@ async def test_default_mode_preserves_mixed_file_as_one_bundle(monkeypatch):
     monkeypatch.setattr(preserve_planner.ocr, "ocr_per_file", fake_ocr_per_file)
     monkeypatch.setattr(preserve_planner.client, "chat", fake_chat)
 
-    evidence_name = (
-        "- Giấy tờ liên quan đến việc thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc;"
-    )
-    authorization_name = "- Văn bản ủy quyền (được chứng thực) theo quy định của pháp luật."
-    # Tên dòng cổng thật: khối mobile ẩn "Tên Hồ Sơ:" bị ghép lặp vào sau tên.
-    portal_context = {"attachmentContext": {"components": [
-        {"index": 1, "componentName": f"{evidence_name}Tên Hồ Sơ: {evidence_name}", "hasFile": True},
-        {"index": 2, "componentName": f"{authorization_name}Tên Hồ Sơ: {authorization_name}", "hasFile": True},
-    ]}}
-
-    result = await planner.plan_thay_doi_ho_tich_attachments(
-        [_pdf_file("mixed.pdf", 3)], portal_context, {},
-    )
+    result = await planner.plan_thay_doi_ho_tich_attachments([_pdf_file("mixed.pdf", 3)], {}, {})
 
     assert result["extracted"]["attachmentMode"] == "preserve_files"
     assert len(result["attachments"]) == 1
     assert result["attachments"][0]["documentName"] == "Hồ sơ cải chính hộ tịch"
-    assert result["attachments"][0]["target"] == "existing"
-    assert result["attachments"][0]["componentIndex"] == 1
-    assert result["attachments"][0]["needsAddComponent"] is False
-    assert result["attachments"][0]["componentName"].startswith("Giấy tờ liên quan")
+    assert result["attachments"][0]["target"] == "new"
     assert "sourceSegments" not in result["attachments"][0]
     assert "sourceFileIndexes" not in result["attachments"][0]
-
-
-async def test_default_mode_single_evidence_wins_related_row_over_bundle(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "mixed.pdf", "text": "GIẤY KHAI SINH\nCĂN CƯỚC CÔNG DÂN"},
-            {"name": "birth.pdf", "text": "GIẤY KHAI SINH"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {"fileIndex": 0, "type": "other", "documentName": "Hồ sơ cải chính hộ tịch"},
-            {"fileIndex": 1, "type": "supporting_evidence", "documentName": "Giấy khai sinh"},
-        ]})
-
-    monkeypatch.setattr(preserve_planner.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(preserve_planner.client, "chat", fake_chat)
-
-    result = await planner.plan_thay_doi_ho_tich_attachments(
-        [_file("mixed.pdf"), _file("birth.pdf")], _context(), {},
-    )
-
-    by_file = {item["fileIndex"]: item for item in result["attachments"]}
-    assert (by_file[1]["target"], by_file[1]["componentIndex"]) == ("existing", 4)
-    assert by_file[0]["target"] == "new"
-    assert by_file[0]["documentName"] == "Hồ sơ cải chính hộ tịch"
 
 
 async def test_preserve_mode_routes_single_evidence_and_authorization(monkeypatch):

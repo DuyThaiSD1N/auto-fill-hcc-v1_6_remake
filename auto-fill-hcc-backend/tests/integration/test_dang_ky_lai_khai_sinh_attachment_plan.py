@@ -462,69 +462,11 @@ PHẦN GHI CHÚ NHỮNG THÔNG TIN THAY ĐỔI SAU NÀY
     )
     assert len(result["attachments"]) == 1
     item = result["attachments"][0]
-    # File gộp luôn vào STT 3 (dòng tổng quát), kể cả khi có bản sao GKS; không thêm thành phần.
-    assert item["target"] == "existing"
-    assert item["componentIndex"] == 3
-    assert item["needsAddComponent"] is False
+    assert item["target"] == "new"
     assert item["documentName"] == "Giấy tờ đăng ký lại khai sinh"
     assert "sourceSegments" not in item
     assert "sourceFileIndexes" not in item
     assert [(item["pageFrom"], item["pageTo"]) for item in result["extracted"]["classified"]] == [(1, 3)]
-
-
-async def test_dang_ky_lai_khai_sinh_mixed_pdfs_share_general_row_three(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "gop-1.pdf", "text": "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\nGIẤY KHAI SINH"},
-            {"name": "gks.pdf", "text": "GIẤY KHAI SINH (BẢN SAO)"},
-            {"name": "gop-2.pdf", "text": "VĂN BẢN ỦY QUYỀN\nCĂN CƯỚC CÔNG DÂN"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {"fileIndex": 0, "types": ["paper_declaration", "birth_certificate_copy"], "documentName": ""},
-            {"fileIndex": 1, "types": ["birth_certificate_copy"], "documentName": "Bản sao Giấy khai sinh"},
-            {"fileIndex": 2, "types": ["authorization", "identity"], "documentName": ""},
-        ]})
-
-    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
-
-    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
-        [_file("gop-1.pdf"), _file("gks.pdf"), _file("gop-2.pdf")], {}, _session()
-    )
-
-    by_file = {item["fileIndex"]: item for item in result["attachments"]}
-    # File GKS riêng giữ STT 2; file gộp đầu tiên vào STT 3 dù không có CCCD/giấy tờ thay thế.
-    assert (by_file[1]["target"], by_file[1]["componentIndex"]) == ("existing", 2)
-    assert (by_file[0]["target"], by_file[0]["componentIndex"]) == ("existing", 3)
-    # STT 3 chỉ nhận một file: file gộp thứ hai không nhảy sang ô ủy quyền mà thêm thành phần mới.
-    assert by_file[2]["target"] == "new"
-
-
-async def test_dang_ky_lai_khai_sinh_single_cccd_keeps_row_three_over_mixed_pdf(monkeypatch):
-    async def fake_ocr_per_file(files):
-        return [
-            {"name": "gop.pdf", "text": "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\nGIẤY KHAI SINH"},
-            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN Citizen Identity Card"},
-        ]
-
-    async def fake_chat(messages, max_tokens, enable_thinking):
-        return json.dumps({"documents": [
-            {"fileIndex": 0, "types": ["paper_declaration", "birth_certificate_copy"], "documentName": ""},
-            {"fileIndex": 1, "types": ["identity"], "documentName": "Căn cước công dân"},
-        ]})
-
-    monkeypatch.setattr(dang_ky_lai_khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
-    monkeypatch.setattr(dang_ky_lai_khai_sinh.client, "chat", fake_chat)
-
-    result = await dang_ky_lai_khai_sinh.plan_dang_ky_lai_khai_sinh_attachments(
-        [_file("gop.pdf"), _file("cccd.pdf")], {}, _session()
-    )
-
-    by_file = {item["fileIndex"]: item for item in result["attachments"]}
-    assert (by_file[1]["target"], by_file[1]["componentIndex"]) == ("existing", 3)
-    assert by_file[0]["target"] == "new"
 
 
 async def test_dang_ky_lai_khai_sinh_mixed_dossier_rejects_child_document_name(monkeypatch):
@@ -561,11 +503,9 @@ TRÍCH LỤC KHAI TỬ
 
     item = result["attachments"][0]
     assert item["documentName"] == "Hồ sơ đăng ký lại khai sinh"
-    # Không có bản sao GKS; có CCCD nên vào ô STT 3 giấy tờ thay thế.
-    assert item["componentName"] == dang_ky_lai_khai_sinh._ROW_3_COMPONENT
-    assert item["target"] == "existing"
-    assert item["componentIndex"] == 3
-    assert item["needsAddComponent"] is False
+    assert item["componentName"] == "Hồ sơ đăng ký lại khai sinh"
+    assert item["target"] == "new"
+    assert item["needsAddComponent"] is True
     assert result["extracted"]["classified"][0]["documentName"] == "Hồ sơ đăng ký lại khai sinh"
 
 
@@ -1147,18 +1087,3 @@ def test_dang_ky_lai_khai_sinh_split_prompt_has_page_and_cccd_safety_rules():
     assert "không phải là tiêu đề" in SPLIT_SYSTEM_PROMPT
     assert "Tiêu đề thực tế > cấu trúc đặc trưng" in SPLIT_SYSTEM_PROMPT
     assert "\n" in split_planner._truncate_text("BẢN CAM ĐOAN\nTrích lục khai tử của cha")
-
-
-def test_dang_ky_lai_khai_sinh_rows_two_three_match_current_portal():
-    """Tên STT 2/3 phải là tên đầy đủ đang hiển thị trên cổng (crawl 26/09/2026) ở cả hai nhánh."""
-    for module in (dang_ky_lai_khai_sinh, split_planner):
-        assert module._ROW_2_COMPONENT.endswith(
-            "giấy tờ có giá trị thay thế Giấy khai sinh được cấp trước năm 1945 "
-            "ở miền Bắc và trước năm 1975 ở miền Nam."
-        )
-        assert module._ROW_3_COMPONENT.endswith(
-            "giấy tờ khác có thông tin về họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân."
-        )
-    for system_prompt in (SYSTEM_PROMPT, SPLIT_SYSTEM_PROMPT):
-        assert "trước năm 1945 ở miền Bắc" in system_prompt
-        assert "họ, chữ đệm, tên, ngày, tháng, năm sinh của cá nhân" in system_prompt

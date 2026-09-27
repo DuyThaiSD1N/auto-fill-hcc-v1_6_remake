@@ -6,6 +6,7 @@ provider/fallback khác. Tiếng Nói tự tách trang PDF, xoay ảnh và OCR n
 import re
 
 from app.config import settings
+from app.monitor import recorder as mon
 from app.services import ocr_tiengnoi
 
 _PAGE_SEPARATOR_RE = re.compile(
@@ -94,30 +95,58 @@ async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dic
     text cắt ở trần phân loại (thấp hơn) không đủ dày cho trích xuất nên cache nó là bẫy — lượt
     sau vẫn phải OCR lại mà lại tưởng là đã có. ``classify`` chỉ còn tác dụng khi cache tắt.
     """
+    async with mon.span("ocr.call", files=len(files or []), classify=classify):
+        return await _ocr_per_file(files, classify=classify)
+
+
+async def _ocr_per_file(files: list[dict], *, classify: bool) -> list[dict]:
     from app.services import ocr_cache
 
+    rec = mon.current()
     if not settings.ocr_cache_enabled or not files:
-        return await _run_uncached(files, classify=classify)
+        async with mon.span("ocr.remote", files=len(files or [])) as remote:
+            results = await _run_uncached(files, classify=classify)
+        if rec is not None and files:
+            _record_files(rec, files, results, [None] * len(files),
+                          [("off", None)] * len(files), remote)
+        return results
 
     need_tokens = settings.ocr_tiengnoi_fill_max_tokens
-    keys = [_cache_key(item) for item in files]
-    cached = await ocr_cache.get_many([key for key in keys if key])
-    cached = {
-        key: value
-        for key, value in cached.items()
-        if value.get("provider") == "tiengnoi"
-        and _has_meaningful_ocr_text(value.get("text"))
+    # Băm = giải mã base64 + sha256 từng file (CPU) → nhóm tiền xử lý, không tính vào OCR.
+    with mon.span("pre.hash", files=len(files)):
+        keys = [_cache_key(item) for item in files]
+    async with mon.span("ocr.cache", files=len(files)) as cache_span:
+        raw_cached = await ocr_cache.get_many([key for key in keys if key])
+    cached: dict = {}
+    states: list[tuple[str, str | None]] = []
+    for key in keys:
+        value = raw_cached.get(key) if key else None
+        if not key:
+            states.append(("miss", "no_key"))
+        elif value is None:
+            states.append(("miss", "not_found"))
+        elif value.get("provider") != "tiengnoi":
+            states.append(("miss", "provider"))
+        elif not _has_meaningful_ocr_text(value.get("text")):
+            states.append(("miss", "empty"))
         # Bản ghi cũ chưa có max_tokens đều do luồng fill ghi (chỉ upload-session dùng trần
         # phân loại, mà đường đó trước đây không ghi cache được) → coi như đã đủ dày.
-        and (value.get("max_tokens") or need_tokens) >= need_tokens
-    }
+        elif (value.get("max_tokens") or need_tokens) < need_tokens:
+            states.append(("miss", "thin"))
+        else:
+            cached[key] = value
+            states.append(("hit", None))
+    hits = sum(1 for state, _ in states if state == "hit")
+    cache_span.attrs["hit"] = hits
+    cache_span.attrs["miss"] = len(states) - hits
 
     miss_files = [item for item, key in zip(files, keys) if not key or key not in cached]
-    fresh = (
-        await _run_uncached(miss_files, classify=False)
-        if miss_files
-        else []
-    )
+    remote = None
+    if miss_files:
+        async with mon.span("ocr.remote", files=len(miss_files), max_tokens=need_tokens) as remote:
+            fresh = await _run_uncached(miss_files, classify=False)
+    else:
+        fresh = []
 
     results: list[dict] = []
     fresh_iter = iter(fresh)
@@ -139,7 +168,49 @@ async def ocr_per_file(files: list[dict], *, classify: bool = False) -> list[dic
             to_cache.append((key, result["text"], "tiengnoi", need_tokens))
 
     ocr_cache.put_many_bg(to_cache)
+    if rec is not None:
+        _record_files(rec, files, results, keys, states, remote)
     return results
+
+
+def _record_files(rec, files: list[dict], results: list[dict], keys: list,
+                  states: list[tuple[str, str | None]], remote) -> None:
+    """Ghi meta + THAM CHIẾU text OCR từng file vào recorder (không copy, không I/O)."""
+    split = None
+    if remote is not None and getattr(remote, "id", None) is not None:
+        split = next((s for s in reversed(rec.spans)
+                      if s.name == "ocr.split" and s.parent == remote.id), None)
+    pages_of_miss = list((split.attrs.get("pages") if split else None) or [])
+    miss_idx = 0
+    hits = 0
+    for idx, (item, result, key, (state, reason)) in enumerate(zip(files, results, keys, states)):
+        text = (result or {}).get("text") or ""
+        pages = None
+        if state != "hit":
+            pages = pages_of_miss[miss_idx] if miss_idx < len(pages_of_miss) else None
+            miss_idx += 1
+        else:
+            hits += 1
+        data_url = (item or {}).get("dataUrl") or ""
+        rec.ocr_files.append({
+            "idx": idx,
+            "name": (item or {}).get("name"),
+            "type": (item or {}).get("type"),
+            "sha256": key.split(":", 1)[-1] if key else None,
+            "bytes": (len(data_url) * 3 // 4) if data_url else None,
+            "cache": state,
+            "reason": reason,
+            "pages": pages,
+            "chars": len(text),
+            "provider": (result or {}).get("provider"),
+            "error": (result or {}).get("error"),
+            "text": text,
+        })
+    rec.count("ocr_files", len(files))
+    rec.count("ocr_hit", hits)
+    rec.count("ocr_miss", len(files) - hits)
+    if any((r or {}).get("error") for r in results):
+        rec.flag("ocr_error")
 
 
 async def ocr_tokens_per_file(files: list[dict]) -> list[dict]:

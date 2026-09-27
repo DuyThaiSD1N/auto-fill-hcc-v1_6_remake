@@ -16,6 +16,7 @@ Mọi hàm đều best-effort: lỗi ghi vết không được chặn luồng đ
 import logging
 from datetime import datetime, timezone
 
+from app.monitor import persist as monitor_persist
 from app.process import requests_repo
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -76,6 +77,7 @@ async def record_process(
     files: list[dict],
     result: dict,
     pipe_ms: int,
+    rec=None,
 ) -> str | None:
     """Trace kind=autofill sau khi pipeline trích field xong. Trả request_id để flow
     cập nhật kết quả điền THẬT (fill_report) vào đúng trace."""
@@ -109,6 +111,9 @@ async def record_process(
             fields_count=len(result.get("fields", [])), status="done",
             stats=stats, created_at=created_at, experience="handfree",
             dossier_id=conv.get("_id"),  # 1 conversation = 1 hồ sơ (khóa chung 2 kênh)
+            timing=monitor_persist.timing(rec),
+            outcome=rec.outcome if rec is not None else None,
+            errors=result.get("errors") or None,
         )
         return request_id
     except Exception as e:  # noqa: BLE001 — ghi vết là phụ, không chặn luồng điền
@@ -117,7 +122,7 @@ async def record_process(
 
 
 async def record_attach(conv: dict, procedure_key: str, proc: dict, files: list[dict],
-                        result: dict, split: bool | None = None) -> str | None:
+                        result: dict, split: bool | None = None, rec=None) -> str | None:
     """Trace kind=attach sau khi lập xong kế hoạch đính kèm (mỗi file → ô/component đích)."""
     try:
         request_id = traces_repo.new_request_id()
@@ -142,12 +147,15 @@ async def record_attach(conv: dict, procedure_key: str, proc: dict, files: list[
             # Pipeline đính kèm có thể ép provider riêng hoặc fallback theo từng file;
             # dùng engine thực tế pipeline báo về thay vì cấu hình OCR chung của sidebar.
             ocr_provider=result.get("ocr_provider") or _ocr_label(),
-            ocr_text=result.get("ocr_text", ""),
+            ocr_text=result.get("ocr_text", "") or monitor_persist.recorded_ocr_text(rec),
             llm_output={"classification": result.get("llm_output"),
                         "attachments": plan, "extracted": result.get("extracted")},
             fields_count=len(plan), status="done", stats=stats, split=split,
             created_at=created_at, experience="handfree",
             dossier_id=conv.get("_id"),  # 1 conversation = 1 hồ sơ (khóa chung 2 kênh)
+            timing=monitor_persist.timing(rec),
+            outcome=rec.outcome if rec is not None else None,
+            errors=result.get("errors") or None,
         )
         return request_id
     except Exception as e:  # noqa: BLE001
@@ -155,23 +163,29 @@ async def record_attach(conv: dict, procedure_key: str, proc: dict, files: list[
         return None
 
 
-async def record_error(conv: dict, procedure_key: str, kind: str, error: str) -> None:
+async def record_error(conv: dict, procedure_key: str, kind: str, error: str,
+                       rec=None) -> str | None:
     """Lượt hỏng cũng lên bảng (status=error) — dashboard thấy được tỉ lệ lỗi thật."""
     try:
         error_code = str(error)[:200]
         proc_label = (conv.get("procedure_key") or procedure_key)
         uid, uname = _identity(conv)
+        request_id = traces_repo.new_request_id()
         await traces_repo.create_trace(
-            request_id=traces_repo.new_request_id(), user_id=uid, username=uname,
+            request_id=request_id, user_id=uid, username=uname,
             name=_account_name(conv), kind=kind,
             procedure=procedure_key, procedure_label=proc_label,
             ocr_provider=_ocr_label(), ocr_text="", llm_output=None,
             fields_count=0, status="error", error_code=error_code,
             created_at=datetime.now(timezone.utc), experience="handfree",
             dossier_id=conv.get("_id"),  # 1 conversation = 1 hồ sơ (khóa chung 2 kênh)
+            timing=monitor_persist.timing(rec),
+            outcome="error" if rec is not None else None,
         )
+        return request_id
     except Exception as e:  # noqa: BLE001
         logger.warning("[tracing] ghi trace lỗi-của-lỗi (%s): %s", conv.get("_id"), e)
+        return None
 
 
 async def set_report(request_id: str | None, kind: str, report: dict) -> None:
@@ -181,6 +195,9 @@ async def set_report(request_id: str | None, kind: str, report: dict) -> None:
     if not request_id:
         return
     try:
+        # Mốc BE nhận báo cáo (extension không gửi giờ) → Monitor tính được khoảng từ lúc gửi
+        # kết quả (fields_ready/attach_ready) tới lúc điền/đính xong trên cổng.
+        report = {**report, "received_at": datetime.now(timezone.utc)}
         await traces_repo.set_report(request_id, kind, report)
     except Exception as e:  # noqa: BLE001
         logger.warning("[tracing] set_report lỗi (%s): %s", request_id, e)

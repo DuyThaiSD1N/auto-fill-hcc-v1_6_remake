@@ -15,7 +15,16 @@ export type IconName =
   | "refresh"
   | "search"
   | "shield"
-  | "user";
+  | "user"
+  | "gauge"
+  | "list"
+  | "folder"
+  | "sun"
+  | "moon"
+  | "menu"
+  | "x"
+  | "alert"
+  | "clock";
 
 interface Props extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -52,6 +61,15 @@ export default function Icon({ name, size = 18, ...props }: Props) {
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
     shield: <><path d="M20 13c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V5l8-3 8 3Z" /><path d="m9 12 2 2 4-4" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4 22a8 8 0 0 1 16 0" /></>,
+    gauge: <><path d="M4 18a8 8 0 1 1 16 0" /><path d="m12 14 4-5" /><path d="M3 18h18" /></>,
+    list: <><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>,
+    folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />,
+    sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></>,
+    moon: <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />,
+    menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+    x: <path d="M6 6l12 12M18 6 6 18" />,
+    alert: <><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   };
 
   return <svg {...common} {...props}>{paths[name]}</svg>;

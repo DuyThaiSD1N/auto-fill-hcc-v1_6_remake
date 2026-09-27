@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -57,6 +58,15 @@ class Settings(BaseSettings):
     # cả lô, ghi bulk chạy nền. Best-effort — lỗi cache KHÔNG được làm hỏng OCR.
     ocr_cache_enabled: bool = True
     ocr_cache_ttl_hours: int = 12  # TTL tự dọn; hết hạn thì lần sau OCR lại rồi cache lại
+
+    # Ghi thời gian + output từng công đoạn cho web Monitor (app/monitor). "off" = kill-switch tắt
+    # hẳn bộ ghi; "summary" = chỉ thời gian (không lưu text OCR/LLM); "full" = đủ.
+    trace_detail: Literal["off", "summary", "full"] = "full"
+    trace_output_max_chars: int = 20000      # trần mỗi output (text LLM thô, JSON parse…)
+    trace_ocr_text_max_chars: int = 200000   # trần text OCR một file trong ocr_texts
+    trace_doc_max_bytes: int = 512 * 1024    # trần một document trace_steps
+    trace_persist_concurrency: int = 4       # số lượt ghi nền chạy đồng thời
+    trace_persist_max_pending: int = 200     # vượt → bỏ phần chi tiết, không xếp hàng chờ
 
     # LLM (primary — vLLM/Qwen, OpenAI-compatible)
     llm_base_url: str = "https://spark-abf9.tail0f2e98.ts.net:8443"

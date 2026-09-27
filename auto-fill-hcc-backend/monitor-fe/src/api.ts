@@ -1,8 +1,14 @@
 import type {
+  Dossier,
+  DossierDetail,
+  Facets,
+  LatencyResponse,
   LoginResponse,
   MonitorUser,
-  TraceDetail,
-  TraceListResponse,
+  Page,
+  RunDetail,
+  RunRow,
+  TraceDoc,
 } from "./types";
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
@@ -106,9 +112,9 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
     }
     expireSession();
   }
-  if (response.status === 403) {
-    // Monitor chỉ gọi API dành cho super admin/trace reader. 403 nghĩa là quyền của phiên
-    // đã thay đổi; kết thúc phiên thay vì để người dùng mắc kẹt ở màn hình trắng.
+  if (response.status === 403 && path.startsWith("/auth/")) {
+    // Chỉ 403 ở kiểm tra phiên mới là mất quyền; 403 của API dữ liệu hiện thành lỗi trên màn
+    // (vd một endpoint chặn riêng) thay vì đá người dùng ra đăng nhập.
     expireSession();
   }
   if (!response.ok) throw await parseError(response);
@@ -146,18 +152,54 @@ export async function validateMonitorSession(): Promise<MonitorUser | null> {
   }
 }
 
-export function listTraces(requestId: string, page = 1): Promise<TraceListResponse> {
-  const params = new URLSearchParams({
-    requestId,
-    source: "all",
-    page: String(page),
-    pageSize: "20",
-  });
-  return request<TraceListResponse>(`/api/v1/traces?${params.toString()}`);
+export function getTrace(id: string): Promise<TraceDoc> {
+  return request<TraceDoc>(`/api/v1/traces/${encodeURIComponent(id)}`);
 }
 
-export function getTrace(id: string): Promise<TraceDetail> {
-  return request<TraceDetail>(`/api/v1/traces/${encodeURIComponent(id)}`);
+export function getFacets(): Promise<Facets> {
+  return request<Facets>("/api/v1/monitor/facets");
+}
+
+export function listRuns(query: string): Promise<Page<RunRow>> {
+  return request<Page<RunRow>>(`/api/v1/monitor/runs${query}`);
+}
+
+export function getRun(requestId: string, kind?: string | null): Promise<RunDetail> {
+  const q = kind ? `?kind=${encodeURIComponent(kind)}` : "";
+  return request<RunDetail>(`/api/v1/monitor/runs/${encodeURIComponent(requestId)}${q}`);
+}
+
+export function getOcrText(sha: string): Promise<{ id: string; text: string; chars?: number; truncated?: boolean }> {
+  return request(`/api/v1/monitor/ocr/${encodeURIComponent(sha)}`);
+}
+
+export function listDossiers(query: string): Promise<Page<Dossier>> {
+  return request<Page<Dossier>>(`/api/v1/monitor/dossiers${query}`);
+}
+
+export function getDossier(id: string): Promise<DossierDetail> {
+  return request<DossierDetail>(`/api/v1/monitor/dossiers/${encodeURIComponent(id)}`);
+}
+
+export function getLatency(query: string): Promise<LatencyResponse> {
+  return request<LatencyResponse>(`/api/v1/monitor/stats/latency${query}`);
+}
+
+/** Tải mọi tệp của một trace thành 1 file ZIP (BE nén sẵn). */
+export async function downloadTraceZip(traceId: string): Promise<{ blob: Blob; filename: string }> {
+  const path = `/api/v1/traces/${encodeURIComponent(traceId)}/download`;
+  async function go(retry: boolean): Promise<Response> {
+    const headers = new Headers();
+    if (monitorSession.access) headers.set("Authorization", `Bearer ${monitorSession.access}`);
+    const response = await fetch(`${BASE}${path}`, { headers });
+    if (response.status === 401 && retry && (await refreshTokens())) return go(false);
+    if (response.status === 401) expireSession();
+    if (!response.ok) throw await parseError(response);
+    return response;
+  }
+  const response = await go(true);
+  const match = /filename="?([^";]+)"?/i.exec(response.headers.get("Content-Disposition") || "");
+  return { blob: await response.blob(), filename: match?.[1] || `${traceId}.zip` };
 }
 
 export async function fetchTraceFile(traceId: string, index: number): Promise<Blob> {
@@ -168,7 +210,7 @@ export async function fetchTraceFile(traceId: string, index: number): Promise<Bl
     if (monitorSession.access) headers.set("Authorization", `Bearer ${monitorSession.access}`);
     const response = await fetch(`${BASE}${path}`, { headers });
     if (response.status === 401 && retry && (await refreshTokens())) return fetchBlob(false);
-    if (response.status === 401 || response.status === 403) expireSession();
+    if (response.status === 401) expireSession();
     if (!response.ok) throw await parseError(response);
     return response.blob();
   }

@@ -154,6 +154,11 @@ async def create_trace(
     # ⚠ ĐỪNG NHẦM với `dossier_ids` (số nhiều) ngay dưới: đó là id TỔNG HỢP của lượt tách
     # hồ sơ, phục vụ cách đếm cũ — hai thứ hoàn toàn khác nhau.
     dossier_id: str | None = None,
+    # Web Monitor (app/monitor): tóm tắt thời gian từng nhóm/bước + kết quả lượt. None = không ghi
+    # (giữ nguyên document của các nơi gọi chưa đo).
+    timing: dict | None = None,
+    outcome: str | None = None,
+    errors: list[str] | None = None,
 ) -> str | None:
     doc = {
         "request_id": request_id,
@@ -188,6 +193,12 @@ async def create_trace(
         "experience": experience,
         "created_at": created_at or datetime.now(timezone.utc),
     }
+    if timing is not None:
+        doc["timing"] = timing
+    if outcome is not None:
+        doc["outcome"] = outcome
+    if errors:
+        doc["errors"] = [str(e)[:500] for e in errors[:20]]
     try:
         res = await get_db().traces.insert_one(doc)
         return str(res.inserted_id)
@@ -291,6 +302,20 @@ async def get_trace(trace_id: str) -> dict | None:
         return None
     db = get_db()
     doc = await db.traces.find_one({"_id": oid})
+    if doc:
+        await _apply_current_account_names(db, [doc])
+    return _serialize(doc) if doc else None
+
+
+async def get_trace_by_request(request_id: str, kind: str | None = None) -> dict | None:
+    """Trace theo mã hỗ trợ (+ bước) — web Monitor mở lượt bằng request_id, không cần ObjectId."""
+    if not request_id:
+        return None
+    query: dict = {"request_id": request_id}
+    if kind:
+        query["kind"] = kind
+    db = get_db()
+    doc = await db.traces.find_one(query, sort=[("created_at", -1)])
     if doc:
         await _apply_current_account_names(db, [doc])
     return _serialize(doc) if doc else None

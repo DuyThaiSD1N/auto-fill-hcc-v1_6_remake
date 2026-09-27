@@ -1,4 +1,4 @@
-from pymongo.errors import OperationFailure
+from pymongo.errors import CollectionInvalid, OperationFailure
 
 from app.config import settings
 from app.db.mongo import get_db
@@ -60,6 +60,22 @@ async def _migrate_legacy_upload_ttl(db) -> None:
         pass
 
 
+async def _ensure_compressed_collection(db, name: str) -> None:
+    """Tạo collection nén zstd nếu chưa có; đã có / Mongo không cho → giữ nguyên, không lỗi.
+
+    Nén chỉ đặt được lúc TẠO collection, nên phải tạo tường minh trước khi create_index
+    (create_index trên collection chưa có sẽ tự tạo với nén mặc định snappy).
+    """
+    try:
+        if name in await db.list_collection_names(filter={"name": name}):
+            return
+        await db.create_collection(
+            name, storageEngine={"wiredTiger": {"configString": "block_compressor=zstd"}}
+        )
+    except (CollectionInvalid, OperationFailure):
+        pass
+
+
 async def ensure_indexes() -> None:
     db = get_db()
     await db.users.create_index("username", unique=True)
@@ -101,6 +117,17 @@ async def ensure_indexes() -> None:
     # Khóa hồ sơ dùng chung 2 kênh (= dossiers._id) — tra mọi lượt điền/đính kèm của 1 hồ sơ.
     await db.traces.create_index("dossier_id")
     await db.traces.create_index("attachments.sha256")
+    # Chi tiết công đoạn cho web Monitor (app/monitor): _id = "<request_id>:<kind>", text OCR
+    # theo sha256 file. Nặng nên nén zstd; CHƯA đặt TTL — bật sau bằng _ensure_ttl theo created_at.
+    await _ensure_compressed_collection(db, "trace_steps")
+    await _ensure_compressed_collection(db, "ocr_texts")
+    await db.trace_steps.create_index("request_id")
+    await db.trace_steps.create_index([("created_at", -1)])
+    # Lượt lỗi chỉ nằm ở trace_steps (không ghi vào traces để khỏi lệch cách đếm hồ sơ cũ).
+    await db.trace_steps.create_index([("outcome", 1), ("created_at", -1)])
+    await db.trace_steps.create_index([("steps_only", 1), ("created_at", -1)])
+    await db.trace_steps.create_index("meta.dossier_id")
+    await db.ocr_texts.create_index([("created_at", -1)])
     # Cache OCR (_id = hash nội dung, tra bằng index primary). TTL tự dọn text OCR cũ.
     await db.ocr_cache.create_index(
         "created_at", expireAfterSeconds=settings.ocr_cache_ttl_hours * 3600

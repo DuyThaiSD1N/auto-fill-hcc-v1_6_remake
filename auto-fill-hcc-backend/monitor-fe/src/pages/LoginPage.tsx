@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { loginMonitor } from "../api";
-import type { MonitorUser } from "../types";
-import Brand from "../components/Brand";
 import Icon from "../components/Icon";
 import { Spinner } from "../components/Status";
+import type { MonitorUser } from "../types";
 
 export default function LoginPage({ onSuccess }: { onSuccess: (user: MonitorUser) => void }) {
   const [username, setUsername] = useState("");
@@ -20,101 +19,47 @@ export default function LoginPage({ onSuccess }: { onSuccess: (user: MonitorUser
     try {
       onSuccess(await loginMonitor(username.trim(), password));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không đăng nhập được. Vui lòng thử lại.");
+      setError(reason instanceof Error ? reason.message : "Không đăng nhập được. Thử lại.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main id="main-content" className="login-page">
-      <section className="login-context" aria-label="Giới thiệu Monitor">
-        <div className="login-context__grid" />
-        <div className="login-context__content">
-          <Brand />
-          <div className="login-context__copy">
-            <span className="eyebrow eyebrow--light">Không gian kiểm tra độc lập</span>
-            <h1>Đọc lại từng dấu vết của một hồ sơ.</h1>
-            <p>
-              Đối chiếu giấy tờ đầu vào, nội dung OCR, kết quả LLM và báo cáo thực thi trong
-              cùng một màn hình.
-            </p>
-          </div>
-          <div className="access-rule">
-            <Icon name="shield" size={20} />
-            <span>
-              <strong>Vùng dữ liệu hạn chế</strong>
-              Chỉ tài khoản giám sát được ủy quyền mới có thể truy cập.
-            </span>
-          </div>
+    <main id="main-content" className="login">
+      <form className="login-card" onSubmit={submit}>
+        <div className="brand">
+          <span className="brand__mark" aria-hidden="true"><span /><span /><span /><span /></span>
+          <span className="brand__words"><strong>Monitor</strong><span>Trợ lý nhân dân</span></span>
         </div>
-        <div className="scan-index" aria-hidden="true">
-          <span>INPUT</span><span>OCR</span><span>LLM</span><span>REPORT</span>
-        </div>
-      </section>
+        <span className="ribbon" aria-hidden="true">
+          <span className="ribbon__seg st-pre" style={{ width: "8%" }} />
+          <span className="ribbon__seg st-ocr" style={{ width: "34%" }} />
+          <span className="ribbon__seg st-llm" style={{ width: "46%" }} />
+          <span className="ribbon__seg st-post" style={{ width: "12%" }} />
+        </span>
 
-      <section className="login-form-panel">
-        <form className="login-card" onSubmit={submit}>
-          <header>
-            <span className="eyebrow">Xác thực Monitor</span>
-            <h2>Đăng nhập</h2>
-            <p>Dùng tài khoản super admin dành riêng cho hệ thống giám sát.</p>
-          </header>
-
-          <label className="field">
-            <span>Tên đăng nhập</span>
-            <span className="field__control">
-              <Icon name="user" />
-              <input
-                autoComplete="username"
-                autoFocus
-                disabled={loading}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="Nhập tên đăng nhập"
-                value={username}
-              />
-            </span>
-          </label>
-
-          <label className="field">
-            <span>Mật khẩu</span>
-            <span className="field__control">
-              <Icon name="shield" />
-              <input
-                autoComplete="current-password"
-                disabled={loading}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Nhập mật khẩu"
-                type={showPassword ? "text" : "password"}
-                value={password}
-              />
-              <button
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                className="field__reveal"
-                onClick={() => setShowPassword((current) => !current)}
-                tabIndex={0}
-                type="button"
-              >
-                <Icon name={showPassword ? "eye-off" : "eye"} />
-              </button>
-            </span>
-          </label>
-
-          {error ? <div className="form-error" role="alert">{error}</div> : null}
-
-          <button
-            className="button button--primary button--large"
-            disabled={loading || !username.trim() || !password}
-            type="submit"
-          >
-            {loading ? <Spinner label="Đang xác thực" /> : <><Icon name="shield" /> Vào Monitor</>}
-          </button>
-
-          <p className="login-card__footnote">
-            Phiên đăng nhập được tách hoàn toàn khỏi web quản lý hồ sơ hiện tại.
-          </p>
-        </form>
-      </section>
+        <label className="field">
+          <span>Tên đăng nhập</span>
+          <input className="input" autoComplete="username" autoFocus disabled={loading}
+                 value={username} onChange={(e) => setUsername(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Mật khẩu</span>
+          <span className="field__pw">
+            <input className="input" autoComplete="current-password" disabled={loading}
+                   type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button className="btn btn--icon btn--ghost" type="button" onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>
+              <Icon name={showPassword ? "eye-off" : "eye"} size={16} />
+            </button>
+          </span>
+        </label>
+        {error ? <div className="form-error" role="alert">{error}</div> : null}
+        <button className="btn btn--primary" style={{ height: 38 }} type="submit" disabled={loading || !username.trim() || !password}>
+          {loading ? <Spinner label="Đang đăng nhập" /> : "Đăng nhập"}
+        </button>
+      </form>
     </main>
   );
 }

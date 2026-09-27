@@ -3,9 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="description" content="Monitor đối chiếu quá trình xử lý hồ sơ của Trợ lý hồ sơ." />
-    <title>Trợ lý hồ sơ — Monitor</title>
+    <meta name="theme-color" content="#F3F5F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0D1216" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Monitor thời gian và output từng công đoạn của Trợ lý nhân dân." />
+    <title>Monitor — Trợ lý nhân dân</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <script>
+      // Đặt theme trước khi React vẽ để không nháy sáng/tối.
+      try {
+        var t = localStorage.getItem("hcc_monitor_theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <a class="skip-link" href="#main-content">Chuyển đến nội dung chính</a>

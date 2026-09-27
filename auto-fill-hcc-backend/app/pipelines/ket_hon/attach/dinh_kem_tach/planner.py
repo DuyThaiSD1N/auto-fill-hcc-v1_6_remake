@@ -11,7 +11,6 @@ from app.pipelines._shared import normalize_document_name
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.identity_merge import merge_identity_records
 from app.pipelines.ket_hon.attach.dinh_kem_tach.prompt import SYSTEM_PROMPT, build_user_prompt
-from app.pipelines.xac_nhan_tthn.attach.nghia_hung import OMITTED_DECLARATION_NOTE, omits_paper_declaration
 from app.process.schemas import FileItem
 from app.services import ocr
 from app.services.llm import client
@@ -409,7 +408,6 @@ def _build_item(file: dict, segment: dict, document_name: str) -> dict:
 async def plan_ket_hon_attachments(
     files: list[FileItem], options: dict | None = None, session: dict | None = None,
 ) -> dict:
-    omit_declaration = omits_paper_declaration(options)
     errors: list[str] = []
     raw_files = [{"name": file.name, "type": file.type, "dataUrl": file.dataUrl} for file in files]
     ocr_pairs = [(index, file) for index, file in enumerate(raw_files) if file.get("type") in _OCR_TYPES]
@@ -481,24 +479,6 @@ async def plan_ket_hon_attachments(
                 "pageTo": segment["pageTo"],
                 "type": doc_type,
                 "documentName": "Trang trắng",
-                "target": "ignored",
-                "componentIndex": None,
-            })
-            continue
-        if omit_declaration and doc_type == "marriage_declaration":
-            # Xã Nghĩa Hưng: đoạn Tờ khai (giấy hay scan) không đính, các đoạn khác giữ nguyên.
-            pages = (
-                str(segment["pageFrom"]) if segment["pageFrom"] == segment["pageTo"]
-                else f"{segment['pageFrom']}-{segment['pageTo']}"
-            )
-            errors.append(f"{OMITTED_DECLARATION_NOTE}: trang {pages} của {file.get('name') or 'file'}")
-            classified.append({
-                "fileIndex": file_index,
-                "fileName": file.get("name"),
-                "pageFrom": segment["pageFrom"],
-                "pageTo": segment["pageTo"],
-                "type": doc_type,
-                "documentName": _DECLARATION_LABEL,
                 "target": "ignored",
                 "componentIndex": None,
             })

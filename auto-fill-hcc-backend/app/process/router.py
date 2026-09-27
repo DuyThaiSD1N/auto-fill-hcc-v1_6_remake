@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends
@@ -9,6 +10,8 @@ from app.core.deps import require_auth
 from app.core.errors import AppError
 from app.dossiers import repo as dossiers_repo
 from app.dossiers.options import dossier_id_from_options
+from app.monitor import persist as monitor_persist
+from app.monitor import recorder as mon
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
@@ -27,32 +30,51 @@ router = APIRouter(prefix="/api/v1", tags=["process"])
 @router.post("/process", response_model=ProcessResp)
 async def process(body: ProcessReq, background: BackgroundTasks,
                   user: dict = Depends(require_auth)):
+    handler_start = time.perf_counter()
     request_id = traces_repo.new_request_id()
     created_at = datetime.now(timezone.utc)
+    rec = mon.start(
+        "autofill", "autofill", request_id=request_id, procedure=body.procedure,
+        user_id=user.get("id"), username=user.get("username"), name=user.get("name"),
+        files=len(body.files), dossier_id=dossier_id_from_options(body.options),
+    )
+    # Nhận + parse body + xác thực (chạy trước handler) — v2 bọc v1 thì v2 đã tự ghi phần này.
+    if rec is not None and not any(sp.name == "pre.request" for sp in rec.spans):
+        rec.add_span("pre.request", rec.origin, handler_start)
 
     proc = get_procedure(body.procedure)
     pipeline = get_pipeline(body.procedure)
-    prepared = prepare_process(
-        body,
-        proc=proc,
-        pipeline=pipeline,
-        include_review=True,
-    )
-    # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây) do server đặt từ `user`.
-    prepared.pipeline_options = with_account_process_options(
-        prepared.pipeline_options, user, body.procedure
-    )
+    with mon.span("pre.prepare"):
+        prepared = prepare_process(
+            body,
+            proc=proc,
+            pipeline=pipeline,
+            include_review=True,
+        )
+        # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây) do server đặt từ `user`.
+        prepared.pipeline_options = with_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
     total_bytes = prepared.total_bytes
     ocr_provider = prepared.ocr_provider
+    if rec is not None:
+        rec.count("bytes", total_bytes)
 
     try:
         result = await execute_process(prepared)
     except AppError:
         raise
     except Exception as e:  # noqa: BLE001
+        if rec is not None:
+            rec.set_outcome("error")
+            rec.meta["steps_only"] = True  # lượt hỏng không ghi traces
+            rec.error(f"PIPELINE_ERROR: {type(e).__name__}: {e}")
+            rec.mark_wait_end()
+            # Không đi qua BackgroundTasks: handler ném lỗi thì FastAPI không chạy background.
+            monitor_persist.schedule(rec, request_id)
         # Lỗi pipeline: ghi audit/bản ghi lỗi ở NỀN (không chặn việc trả lỗi cho FE).
         background.add_task(_persist_error, request_id, created_at, user, body,
-                            total_bytes, "PIPELINE_ERROR")
+                            total_bytes, "PIPELINE_ERROR", rec)
         raise AppError("PIPELINE_ERROR", f"Lỗi xử lý: {e}", 500)
 
     # Pop dữ liệu rà soát khỏi result để không lọt ra FE (lưu ở nền bên dưới).
@@ -62,9 +84,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     # TẤT CẢ việc lưu vết (disk + 4 lượt Mongo) đẩy sang NỀN: fields đã sẵn sàng ngay đây,
     # người dùng KHÔNG cần chờ audit/trace/finish ghi xong. Cắt phần "im lặng" sau OCR+LLM.
     background.add_task(_persist_success, request_id, created_at, user, body, proc,
-                        total_bytes, ocr_provider, result, review_data)
+                        total_bytes, ocr_provider, result, review_data, rec)
 
-    return {
+    response = {
         "sessionId": request_id,
         "requestId": request_id,
         "reviewToken": review_token,
@@ -75,6 +97,14 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         "pages": result.get("pages"),
         "businessFlow": result.get("businessFlow"),
     }
+    if rec is not None:
+        for err in result.get("errors") or []:
+            rec.error(err)
+        if result.get("errors"):
+            rec.set_outcome("partial")
+        rec.output("response", response)
+        rec.mark_wait_end()
+    return response
 
 
 async def _touch_dossier(dossier_id, user, procedure, proc, created_at, applicant_name=None) -> None:
@@ -91,11 +121,21 @@ async def _touch_dossier(dossier_id, user, procedure, proc, created_at, applican
 
 
 async def _persist_success(request_id, created_at, user, body, proc, total_bytes,
-                           ocr_provider, result, review_data) -> None:
+                           ocr_provider, result, review_data, rec=None) -> None:
     """Lưu vết 1 request thành công — chạy NỀN sau khi đã trả response.
 
     Toàn bộ best-effort: lỗi lưu KHÔNG ảnh hưởng kết quả người dùng đã nhận.
     """
+    mon.bind(rec)
+    try:
+        await _persist_success_steps(request_id, created_at, user, body, proc, total_bytes,
+                                     ocr_provider, result, review_data, rec)
+    finally:
+        monitor_persist.schedule(rec, request_id)
+
+
+async def _persist_success_steps(request_id, created_at, user, body, proc, total_bytes,
+                                 ocr_provider, result, review_data, rec) -> None:
     dossier_id = dossier_id_from_options(body.options)
     # 1) Dữ liệu rà soát bbox (nếu có) → LƯU ĐẦU TIÊN: FE gọi /review ngay sau khi điền xong form,
     #    ưu tiên ghi trước để card "Xem trên ảnh" kịp có dữ liệu (né đua với FE).
@@ -111,57 +151,68 @@ async def _persist_success(request_id, created_at, user, body, proc, total_bytes
     doc_id: str | None = None
     files_meta: list[dict] = []
     try:
-        files_meta = await asyncio.to_thread(save_request_files, request_id, created_at, body.files)
-        doc_id = await requests_repo.create_request(
-            request_id=request_id, created_at=created_at, user_id=user["id"],
-            procedure=body.procedure, options=body.options or {}, files_meta=files_meta,
-        )
+        with mon.span("persist.files", files=len(body.files)):
+            files_meta = await asyncio.to_thread(save_request_files, request_id, created_at, body.files)
+        with mon.span("persist.db"):
+            doc_id = await requests_repo.create_request(
+                request_id=request_id, created_at=created_at, user_id=user["id"],
+                procedure=body.procedure, options=body.options or {}, files_meta=files_meta,
+            )
     except Exception as e:  # noqa: BLE001
         logger.warning("Nền: lưu file/bản ghi request thất bại (%s): %s", request_id, e)
 
     # 3) Audit + finish + trace theo dõi.
-    try:
-        await audit.log_request(
-            user_id=user["id"], request_id=request_id, procedure=body.procedure,
-            files_count=len(body.files), total_bytes=total_bytes, status=200,
-            stats=result.get("stats"),
-        )
-        await requests_repo.finish_request(
-            doc_id, status="done", stats=result.get("stats"),
-            fields_count=len(result.get("fields", [])),
-            fields=result.get("fields", []),
-            extracted=result.get("extracted", {}),
-        )
-        attachments = build_process_trace_attachments(files_meta)
-        if not attachments:
-            attachments = [{"name": f.name, "role": f.role, "sha256": None, "uses": 1}
-                           for f in body.files]
-        applicant_name = resolve_applicant_name(body.options or {}, result)
-        kf_total, kf_filled = count_key_fields(body.procedure, result.get("fields", []))
-        await traces_repo.create_trace(
-            request_id=request_id, user_id=user["id"],
-            username=user.get("username"), name=user.get("name"),
-            applicant_name=applicant_name, attachments=attachments,
-            stats_version=2, dossier_ids=[request_id],
-            kind="autofill", key_fields_total=kf_total, key_fields_filled=kf_filled,
-            stats=result.get("stats"), total_bytes=total_bytes,
-            procedure=body.procedure, procedure_label=proc.get("label"),
-            # Ưu tiên provider hiệu lực per-file từ pipeline ("both" nếu hỗn hợp); fallback theo option.
-            ocr_provider=result.get("ocr_provider") or ocr_provider,
-            ocr_text=result.get("ocr_text", ""), llm_output=result.get("llm_output"),
-            fields_count=len(result.get("fields", [])), status="done",
-            created_at=created_at,
-            dossier_id=dossier_id,
-        )
-        # Mốc BẮT ĐẦU hồ sơ của Auto Fill = lượt process/đính kèm ĐẦU TIÊN (upsert_started chỉ
-        # ghi started_at lần đầu). Extension bản cũ không gửi dossierId → bỏ qua, không vỡ.
-        await _touch_dossier(dossier_id, user, body.procedure, proc, created_at, applicant_name)
-    except Exception as e:  # noqa: BLE001
-        logger.warning("Nền: ghi audit/trace thất bại (%s): %s", request_id, e)
+    with mon.span("persist.db"):
+        try:
+            await audit.log_request(
+                user_id=user["id"], request_id=request_id, procedure=body.procedure,
+                files_count=len(body.files), total_bytes=total_bytes, status=200,
+                stats=result.get("stats"),
+            )
+            await requests_repo.finish_request(
+                doc_id, status="done", stats=result.get("stats"),
+                fields_count=len(result.get("fields", [])),
+                fields=result.get("fields", []),
+                extracted=result.get("extracted", {}),
+            )
+            attachments = build_process_trace_attachments(files_meta)
+            if not attachments:
+                attachments = [{"name": f.name, "role": f.role, "sha256": None, "uses": 1}
+                               for f in body.files]
+            applicant_name = resolve_applicant_name(body.options or {}, result)
+            kf_total, kf_filled = count_key_fields(body.procedure, result.get("fields", []))
+            await traces_repo.create_trace(
+                request_id=request_id, user_id=user["id"],
+                username=user.get("username"), name=user.get("name"),
+                applicant_name=applicant_name, attachments=attachments,
+                stats_version=2, dossier_ids=[request_id],
+                kind="autofill", key_fields_total=kf_total, key_fields_filled=kf_filled,
+                stats=result.get("stats"), total_bytes=total_bytes,
+                procedure=body.procedure, procedure_label=proc.get("label"),
+                # Ưu tiên provider hiệu lực per-file từ pipeline ("both" nếu hỗn hợp); fallback theo option.
+                ocr_provider=result.get("ocr_provider") or ocr_provider,
+                ocr_text=result.get("ocr_text", ""), llm_output=result.get("llm_output"),
+                fields_count=len(result.get("fields", [])), status="done",
+                created_at=created_at,
+                dossier_id=dossier_id,
+                timing=monitor_persist.timing(rec),
+                outcome=rec.outcome if rec is not None else None,
+                errors=result.get("errors") or None,
+            )
+            # Mốc BẮT ĐẦU hồ sơ của Auto Fill = lượt process/đính kèm ĐẦU TIÊN (upsert_started chỉ
+            # ghi started_at lần đầu). Extension bản cũ không gửi dossierId → bỏ qua, không vỡ.
+            await _touch_dossier(dossier_id, user, body.procedure, proc, created_at, applicant_name)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Nền: ghi audit/trace thất bại (%s): %s", request_id, e)
 
 
-async def _persist_error(request_id, created_at, user, body, total_bytes, error_code) -> None:
-    """Lưu vết 1 request lỗi pipeline — chạy NỀN. Best-effort."""
+async def _persist_error(request_id, created_at, user, body, total_bytes, error_code,
+                         rec=None) -> None:
+    """Lưu vết 1 request lỗi pipeline — chạy NỀN. Best-effort.
+
+    Lượt lỗi KHÔNG ghi vào ``traces`` (cách đếm hồ sơ cũ dựa trên traces) — chi tiết lỗi cho
+    web Monitor nằm ở ``trace_steps`` với ``outcome="error"`` (đặt lịch ngay trong handler).
+    """
     try:
         files_meta = await asyncio.to_thread(save_request_files, request_id, created_at, body.files)
         doc_id = await requests_repo.create_request(

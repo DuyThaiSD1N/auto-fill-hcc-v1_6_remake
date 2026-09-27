@@ -7,6 +7,7 @@ theo checklist thủ tục chỉ chạy trong router Handfree này.
 import base64
 import io
 import socket
+import time
 
 import qrcode
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
@@ -16,6 +17,9 @@ from starlette.concurrency import run_in_threadpool
 from app.config import settings
 from app.core.deps import require_auth
 from app.core.errors import AppError
+from app.monitor import persist as monitor_persist
+from app.monitor import recorder as mon
+from app.traces import repo as traces_repo
 from app.channels.handfree.chat.access import get_owned_conversation
 from app.channels.handfree.procedure_registry import get_procedure
 from app.upload_session import audit, classify, store
@@ -145,6 +149,35 @@ async def upload_files(
     doc_key: str = Form(default=""),
     sess: dict = Depends(require_upload_session_access),
 ):
+    # Trace PHÂN LOẠI (web Monitor): OCR thật của handfree nằm ở đây — bước điền sau đó chỉ trúng
+    # cache. Chỉ ghi trace_steps (kind=classify), không ghi traces để không lẫn cách đếm hồ sơ.
+    handler_start = time.perf_counter()
+    rec = mon.start("classify", "handfree", fresh=True, upload_session_id=sid, steps_only=True,
+                    conversation_id=sess.get("conversation_id"),
+                    dossier_id=sess.get("conversation_id"),
+                    procedure=sess.get("procedure_key"), user_id=sess.get("owner_user_id"),
+                    files=len(files), hint_doc_key=doc_key or None)
+    request_id = traces_repo.new_request_id() if rec is not None else None
+    if rec is not None:
+        rec.meta["request_id"] = request_id
+        rec.add_span("pre.request", rec.origin, handler_start)
+    try:
+        response = await _upload_files(sid, files, doc_key, sess)
+    except Exception as exc:
+        if rec is not None:
+            rec.set_outcome("error")
+            rec.error(f"{type(exc).__name__}: {getattr(exc, 'detail', exc)}")
+            rec.mark_wait_end()
+            monitor_persist.schedule(rec, request_id)
+        raise
+    if rec is not None:
+        rec.output("response", response)
+        rec.mark_wait_end()
+        monitor_persist.schedule(rec, request_id)
+    return response
+
+
+async def _upload_files(sid: str, files: list[UploadFile], doc_key: str, sess: dict) -> dict:
     ensure_upload_session_experience(sess, "handfree")
     if sess.get("complete"):
         raise HTTPException(status_code=409, detail="Phiên đã hoàn tất.")
@@ -158,55 +191,60 @@ async def upload_files(
     committed_file_ids: list[str] = []
     metadata_persisted = False
     try:
-        for uf in files:
-            filename = uf.filename or "anh.jpg"
-            staged_path = store.new_staged_file_path(sid)
-            remaining_total = max_total_bytes - existing_bytes - incoming_bytes
-            if remaining_total < 0:
-                raise HTTPException(
-                    status_code=413,
-                    detail=(f"Tổng dung lượng giấy tờ trong phiên vượt "
-                            f"{settings.max_total_payload_mb}MB."),
-                )
-            try:
-                size = await run_in_threadpool(
-                    copy_upload_to_staging,
-                    uf.file,
-                    staged_path,
-                    max_bytes,
-                    remaining_total,
-                )
-            except FileLimitExceeded as exc:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"Tệp {filename} vượt {settings.max_file_size_mb}MB.",
-                ) from exc
-            except SessionLimitExceeded as exc:
-                raise HTTPException(
-                    status_code=413,
-                    detail=(f"Tổng dung lượng giấy tờ trong phiên vượt "
-                            f"{settings.max_total_payload_mb}MB."),
-                ) from exc
-            incoming_bytes += size
-            item = {"path": staged_path, "size": size}
-            staged.append(item)
-            payloads.append({
-                "name": filename,
-                "type": uf.content_type or "image/jpeg",
-                # Chỉ là đường dẫn nội bộ do server tạo, không nhận từ request của người dùng.
-                "path": str(staged_path),
-            })
+        with mon.span("pre.receive", files=len(files)):
+            for uf in files:
+                filename = uf.filename or "anh.jpg"
+                staged_path = store.new_staged_file_path(sid)
+                remaining_total = max_total_bytes - existing_bytes - incoming_bytes
+                if remaining_total < 0:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(f"Tổng dung lượng giấy tờ trong phiên vượt "
+                                f"{settings.max_total_payload_mb}MB."),
+                    )
+                try:
+                    size = await run_in_threadpool(
+                        copy_upload_to_staging,
+                        uf.file,
+                        staged_path,
+                        max_bytes,
+                        remaining_total,
+                    )
+                except FileLimitExceeded as exc:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Tệp {filename} vượt {settings.max_file_size_mb}MB.",
+                    ) from exc
+                except SessionLimitExceeded as exc:
+                    raise HTTPException(
+                        status_code=413,
+                        detail=(f"Tổng dung lượng giấy tờ trong phiên vượt "
+                                f"{settings.max_total_payload_mb}MB."),
+                    ) from exc
+                incoming_bytes += size
+                item = {"path": staged_path, "size": size}
+                staged.append(item)
+                payloads.append({
+                    "name": filename,
+                    "type": uf.content_type or "image/jpeg",
+                    # Chỉ là đường dẫn nội bộ do server tạo, không nhận từ request của người dùng.
+                    "path": str(staged_path),
+                })
 
-        results = await classify.classify_files(
-            payloads,
-            sess["required_docs"],
-            sess["files"],
-            hint_doc_key=doc_key or None,
-            procedure_key=sess.get("procedure_key") or "",
-            # Mốc chủ hồ sơ đọc từ cổng (họ tên + số định danh). Endpoint này không thấy hội
-            # thoại nên mốc được gắn sẵn lên phiên lúc tạo/đồng bộ.
-            context={"owner": sess.get("owner_hint") or {}},
-        )
+        # Bọc cả bước phân loại: OCR + LLM từng file tự tách thành bước riêng; phần còn lại là
+        # luật gán giấy vào ô (theo LLM hay theo từ khoá dự phòng).
+        async with mon.span("post.route", files=len(payloads)):
+            results = await classify.classify_files(
+                payloads,
+                sess["required_docs"],
+                sess["files"],
+                hint_doc_key=doc_key or None,
+                procedure_key=sess.get("procedure_key") or "",
+                # Mốc chủ hồ sơ đọc từ cổng (họ tên + số định danh). Endpoint này không thấy hội
+                # thoại nên mốc được gắn sẵn lên phiên lúc tạo/đồng bộ.
+                context={"owner": sess.get("owner_hint") or {}},
+            )
+        mon.output("classified", results)
         accepted, metas = [], []
         for payload, staged_item, res in zip(payloads, staged, results):
             fid = store.new_file_id(payload["name"])
@@ -223,7 +261,8 @@ async def upload_files(
 
         # Quota được kiểm tra LẠI ngay trong thao tác $push nguyên tử. Hai request đồng thời có
         # thể cùng vượt qua kiểm tra snapshot, nhưng chỉ request còn nằm trong 100MB được ghi.
-        updated = await store.append_files_with_limit(sid, metas, max_total_bytes)
+        with mon.span("persist.db"):
+            updated = await store.append_files_with_limit(sid, metas, max_total_bytes)
         if not updated:
             current = await store.get(sid)
             if current and current.get("complete"):

@@ -17,6 +17,7 @@ from typing import BinaryIO
 import httpx
 
 from app.config import settings
+from app.monitor import recorder as mon
 
 logger = logging.getLogger(__name__)
 
@@ -122,11 +123,13 @@ async def _post(
         if idx > 0:
             _rewind(decoded)
         try:
-            data = await _post_once(
-                decoded, max_tokens, include_tokens=include_tokens,
-                base_url=base_url, api_key=api_key,
-            )
+            async with mon.span("ocr.server", target=tag, attempt=idx + 1):
+                data = await _post_once(
+                    decoded, max_tokens, include_tokens=include_tokens,
+                    base_url=base_url, api_key=api_key,
+                )
             if tag != "primary":
+                mon.flag("ocr_fallback")
                 logger.warning("OCR %s [%s] OK sau khi server chính lỗi", tag, base_url)
             return data
         except Exception as e:  # noqa: BLE001
@@ -174,19 +177,27 @@ async def _ocr_per_file(
     if not files:
         return out
     with ExitStack() as stack:
-        decoded = [_open_input(f, stack) for f in files]
+        with mon.span("pre.decode", files=len(files)) as dec:
+            decoded = [_open_input(f, stack) for f in files]
+            dec.attrs["bytes"] = sum(len(d) for _n, d, _m in decoded if isinstance(d, (bytes, bytearray)))
         data = await _post(decoded, max_tokens, include_tokens=include_tokens)
-    results = data.get("results") or []
-    for i, o in enumerate(out):
-        if i < len(results):
-            res = results[i] or {}
-            o["text"] = res.get("text") or ""
-            if include_tokens:
-                o["tokens"] = _tokens(res)
-            if res.get("ok") is False and res.get("error"):
-                o["error"] = str(res.get("error"))
-        else:
-            o["error"] = "thiếu kết quả từ OCR tiengnoi"
+    with mon.span("ocr.split", files=len(files)) as split:
+        results = data.get("results") or []
+        pages: list[int | None] = []
+        for i, o in enumerate(out):
+            if i < len(results):
+                res = results[i] or {}
+                o["text"] = res.get("text") or ""
+                if include_tokens:
+                    o["tokens"] = _tokens(res)
+                if res.get("ok") is False and res.get("error"):
+                    o["error"] = str(res.get("error"))
+                page_list = res.get("pages")
+                pages.append(len(page_list) if isinstance(page_list, list) else res.get("page_count"))
+            else:
+                o["error"] = "thiếu kết quả từ OCR tiengnoi"
+                pages.append(None)
+        split.attrs["pages"] = pages
     return out
 
 
