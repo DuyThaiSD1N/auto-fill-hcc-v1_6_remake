@@ -186,10 +186,14 @@ def _validated_classifications(raw_items: list[dict], file_count: int) -> dict[i
         file_index = _coerce_int(raw.get("fileIndex", raw.get("index")))
         if file_index is None or not 0 <= file_index < file_count or file_index in result:
             continue
+        raw_contains = raw.get("containsTypes")
         result[file_index] = {
             "type": _canonical_type(raw.get("type")),
             "documentName": str(raw.get("documentName") or raw.get("title") or "").strip(),
             "subjectName": _clean_subject_name(raw.get("subjectName")),
+            "containsTypes": [
+                _canonical_type(value) for value in raw_contains
+            ] if isinstance(raw_contains, list) else [],
         }
     return result
 
@@ -233,6 +237,7 @@ async def plan_ket_hon_attachments_without_split(
     used_names: set[str] = set()
     identity_position = 0
     slot = _identity_slot(options)
+    identity_bundles: list[tuple[dict, dict]] = []
 
     for file_index, file in enumerate(raw_files):
         ocr_text = documents[file_index]["ocrText"]
@@ -265,7 +270,7 @@ async def plan_ket_hon_attachments_without_split(
             document_name = _unique_document_name(proposed, used_names, _OTHER_LABEL)
             target, component_index, component_name, needs_add = "new", None, document_name, True
 
-        attachments.append({
+        attachment = {
             "fileIndex": file_index,
             "fileName": str(file.get("name") or f"file-{file_index + 1}"),
             "documentName": document_name,
@@ -274,7 +279,8 @@ async def plan_ket_hon_attachments_without_split(
             "componentIndex": component_index,
             "needsAddComponent": needs_add,
             "detectedType": document_name,
-        })
+        }
+        attachments.append(attachment)
         classified.append({
             "fileIndex": file_index,
             "fileName": file.get("name"),
@@ -283,6 +289,17 @@ async def plan_ket_hon_attachments_without_split(
             "target": target,
             "componentIndex": component_index,
         })
+        if doc_type == "other" and "identity" in llm_item.get("containsTypes", []):
+            identity_bundles.append((attachment, classified[-1]))
+
+    # File hỗn hợp có giấy tờ tùy thân chỉ vào ô CCCD khi không có file CCCD riêng nào chiếm ô.
+    if identity_position == 0 and identity_bundles:
+        attachment, classified_item = identity_bundles[0]
+        attachment.update({
+            "target": "existing", "componentIndex": slot[0],
+            "componentName": slot[1], "needsAddComponent": False,
+        })
+        classified_item.update({"target": "existing", "componentIndex": slot[0]})
 
     ocr_text_by_index = {item["fileIndex"]: item["ocrText"] for item in documents}
     attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)

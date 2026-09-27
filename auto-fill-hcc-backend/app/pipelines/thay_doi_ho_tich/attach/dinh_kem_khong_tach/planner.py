@@ -31,6 +31,7 @@ _DECLARATION_LABEL = "Tờ khai cải chính hộ tịch bản giấy"
 _EVIDENCE_LABEL = "Giấy tờ làm căn cứ cải chính hộ tịch"
 _AUTHORIZATION_LABEL = "Văn bản ủy quyền"
 _OTHER_LABEL = "Tài liệu đính kèm"
+_BUNDLE_LABEL = "Hồ sơ cải chính hộ tịch"
 
 _FALLBACK_SLOTS = {
     "supporting_evidence": (
@@ -231,6 +232,7 @@ async def plan_thay_doi_ho_tich_attachments_without_split(
     identity_indexes: set[int] = set()
     used_names: set[str] = set()
     claimed_component_indexes: set[int] = set()
+    bundle_file_indexes: list[int] = []
 
     for file_index, file in enumerate(raw_files):
         llm_item = classified_by_index.get(file_index) or {}
@@ -262,6 +264,12 @@ async def plan_thay_doi_ho_tich_attachments_without_split(
             else:
                 target, component_index = "new", None
                 component_name, needs_add = document_name, True
+        elif _fold(llm_item.get("documentName")) == _fold(_BUNDLE_LABEL):
+            # File gộp nhiều nhóm giấy tờ vào ô "Giấy tờ liên quan…" của cổng. Chọn ô sau vòng lặp để
+            # giấy tờ căn cứ đứng riêng được ưu tiên; ô đã có file khác thì mới thêm thành phần mới.
+            document_name = _unique_document_name(_BUNDLE_LABEL, used_names, _BUNDLE_LABEL)
+            bundle_file_indexes.append(file_index)
+            target, component_index, component_name, needs_add = "new", None, document_name, True
         else:
             proposed = llm_item.get("documentName")
             document_name = _unique_document_name(proposed, used_names, _OTHER_LABEL)
@@ -287,6 +295,16 @@ async def plan_thay_doi_ho_tich_attachments_without_split(
             "target": target,
             "componentIndex": component_index,
         })
+
+    for file_index in bundle_file_indexes:
+        slot = _slot(options, "supporting_evidence", claimed_component_indexes)
+        if not slot:
+            break
+        attachments[file_index].update({
+            "target": "existing", "componentIndex": slot[0],
+            "componentName": slot[1], "needsAddComponent": False,
+        })
+        classified[file_index].update({"target": "existing", "componentIndex": slot[0]})
 
     ocr_text_by_index = {item["fileIndex"]: item["ocrText"] for item in documents}
     attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)

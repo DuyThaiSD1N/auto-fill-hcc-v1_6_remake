@@ -30,6 +30,9 @@ Mỗi file đầu vào phải được giữ nguyên, không chia theo trang hay
     Nếu một file nguyên bản chứa CCCD của nhiều người hoặc không đọc chắc chắn được tên thì để rỗng.
     Các loại không phải identity luôn để subjectName rỗng.
 11. Trả đúng một JSON object, không giải thích, không markdown.
+12. Với file hỗn hợp (type other chứa nhiều tài liệu), trả thêm containsTypes là danh sách type (theo
+    allowed_types, trừ other) của từng tài liệu độc lập thực sự có trong file. Giấy tờ chỉ được nhắc
+    trong Tờ khai/Bản cam đoan không tính. Kết quả khác không cần containsTypes.
 </critical_rules>
 
 <file_index_binding_rules>
@@ -81,6 +84,8 @@ Mỗi file đầu vào phải được giữ nguyên, không chia theo trang hay
 
 <output_contract>
 {"documents":[{"fileIndex":0,"type":"identity","documentName":"Căn cước công dân","subjectName":"HỌ TÊN"}]}
+File hỗn hợp:
+{"documents":[{"fileIndex":0,"type":"other","documentName":"Hồ sơ đăng ký kết hôn","subjectName":"","containsTypes":["marriage_declaration","identity"]}]}
 </output_contract>
 """.strip()
 

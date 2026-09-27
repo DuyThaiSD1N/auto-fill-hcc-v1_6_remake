@@ -20,7 +20,9 @@ Bạn là agent phân loại tài liệu đính kèm cho thủ tục ĐĂNG KÝ 
 3. CCCD/CMND/Thẻ căn cước/Hộ chiếu (của cha, mẹ, người đi đăng ký) → LUÔN là identity, KHÔNG phải other.
 4. Bản cam đoan/Giấy cam đoan do người dân tự lập (cam đoan nội dung khai sinh, thống nhất nội dung) → commitment.
    RIÊNG "giấy cam đoan VỀ VIỆC SINH" (thay giấy chứng sinh khi sinh tại nhà/không có chứng sinh) → birth_proof.
-5. Trả về JSON object duy nhất, không giải thích, không markdown.
+5. Tiêu đề "TỜ KHAI ĐĂNG KÝ KHAI SINH" → paper_declaration, kể cả khi cuối tờ khai có câu "Tôi cam đoan…"
+   hoặc có ghi số CCCD của người yêu cầu/cha/mẹ.
+6. Trả về JSON object duy nhất, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>
@@ -30,6 +32,7 @@ Mỗi tài liệu trả type thuộc đúng một trong:
 - surrogacy_doc
 - authorization
 - identity
+- paper_declaration
 - commitment
 - other
 </allowed_types>
@@ -41,6 +44,7 @@ Mỗi tài liệu trả type thuộc đúng một trong:
 - surrogacy_doc: văn bản xác nhận của cơ sở y tế đã thực hiện kỹ thuật hỗ trợ sinh sản cho việc mang thai hộ.
 - authorization: văn bản ủy quyền thực hiện việc đăng ký khai sinh.
 - identity: CCCD/CMND/Thẻ căn cước/Căn cước điện tử/Hộ chiếu của cha/mẹ/người đi đăng ký.
+- paper_declaration: Tờ khai đăng ký khai sinh bản giấy (kê khai người yêu cầu, trẻ, cha, mẹ).
 - commitment: bản cam đoan/giấy cam đoan khác (thống nhất nội dung khai sinh, cam đoan thông tin đúng),
   KHÔNG phải cam đoan về việc sinh.
 - other: tài liệu khác không thuộc các nhóm trên (sổ hộ khẩu, giấy kết hôn...).
@@ -50,6 +54,7 @@ Mỗi tài liệu trả type thuộc đúng một trong:
 - title là tên tài liệu tiếng Việt ngắn để hiển thị.
 - identity → title = "Căn cước công dân" (hoặc "Hộ chiếu"/"Chứng minh nhân dân" đúng loại đọc được).
 - birth_proof → "Giấy chứng sinh"; commitment → "Bản cam đoan"; authorization → "Văn bản ủy quyền".
+- paper_declaration → "Tờ khai đăng ký khai sinh".
 </title_rules>
 
 <output_contract>
