@@ -1,13 +1,16 @@
 """Runner for compact agent output: OCR files -> compact fields -> validated UI fields."""
 
 import base64
+import hashlib
 import io
+import json
 import mimetypes
 import time
 import zipfile
 import xml.etree.ElementTree as ET
 
 from app.config import settings
+from app.monitor import recorder as mon
 from app.pipelines._shared.compact_agent import prompt as compact_prompt
 from app.pipelines._shared.documents import join_ocr_documents
 from app.pipelines._shared.formatting import normalize_date
@@ -74,9 +77,28 @@ def _docx_walk(container) -> list[str]:
 
 
 def _extract_docx_text(file: dict) -> dict:
+    # Dùng chung cho bước điền và 8 planner đính kèm: text DOCX không đi qua dịch vụ OCR nên
+    # ghi vào Monitor ngay tại đây để bước nào cũng có "OCR text" của file DOCX.
+    with mon.span("pre.docx", name=file.get("name")):
+        item = _extract_docx_text_impl(file)
+    rec = mon.current()
+    if rec is not None:
+        text = item.get("text") or ""
+        rec.ocr_files.append({
+            "idx": len(rec.ocr_files), "name": item.get("name"), "type": item.get("type"),
+            "sha256": item.pop("_sha256", None), "cache": "docx", "reason": None, "pages": None,
+            "chars": len(text), "provider": "docx", "error": item.get("error"), "text": text,
+        })
+    item.pop("_sha256", None)
+    return item
+
+
+def _extract_docx_text_impl(file: dict) -> dict:
     item = {"name": file.get("name"), "type": file.get("type"), "text": "", "provider": "docx"}
     try:
         raw = _decode_data_url(file.get("dataUrl") or "")
+        if mon.current() is not None:
+            item["_sha256"] = hashlib.sha256(raw).hexdigest()
         lines: list[str] = []
         with zipfile.ZipFile(io.BytesIO(raw)) as zf:
             names = ["word/document.xml"]
@@ -119,8 +141,12 @@ def _extract_docx_images(file: dict) -> list[dict]:
 
 
 def validate(raw_fields, allowed: set[str], comp_by_name: dict[str, str],
-             aliases: dict[str, list[str]] | None = None) -> list[dict]:
-    """Accept compact {name: value}; keep array format compatibility during rollout."""
+             aliases: dict[str, list[str]] | None = None,
+             dropped: list[dict] | None = None) -> list[dict]:
+    """Accept compact {name: value}; keep array format compatibility during rollout.
+
+    ``dropped`` (tuỳ chọn) nhận các field LLM trả nhưng bị loại, kèm lý do — cho web Monitor.
+    """
     aliases = aliases or {}
     out: list[dict] = []
     seen: set[str] = set()
@@ -137,8 +163,13 @@ def validate(raw_fields, allowed: set[str], comp_by_name: dict[str, str],
 
     for name, value in items:
         if name not in allowed or name in seen:
+            if dropped is not None:
+                dropped.append({"name": name, "value": value,
+                                "reason": "duplicate" if name in seen else "not_allowed"})
             continue
         if value in (None, "", {}, []):
+            if dropped is not None:
+                dropped.append({"name": name, "value": value, "reason": "empty"})
             continue
         comp = comp_by_name[name]
         if comp in _DATE_COMPS and isinstance(value, str):
@@ -162,7 +193,6 @@ async def run(
     compact_field_fallback=None,
     options: dict | None = None,
     context_builder=None,
-    document_filter=None,
     max_tokens: int = _COMPACT_AGENT_MAX_TOKENS,
 ) -> dict:
     errors: list[str] = []
@@ -175,8 +205,10 @@ async def run(
     regular_ocr_files = [f for f in files if not _is_docx(f)]
     docx_results_by_name = {r.get("name"): r for r in (_extract_docx_text(f) for f in docx_files)}
     docx_image_files: list[dict] = []
-    for f in docx_files:
-        docx_image_files.extend(_extract_docx_images(f))
+    if docx_files:
+        with mon.span("pre.docx_images", files=len(docx_files)):
+            for f in docx_files:
+                docx_image_files.extend(_extract_docx_images(f))
     ocr_files = regular_ocr_files + docx_image_files
     ocr_results_raw = await ocr.ocr_per_file(ocr_files) if ocr_files else []
     regular_results = ocr_results_raw[:len(regular_ocr_files)]
@@ -224,32 +256,26 @@ async def run(
     _provs = {r.get("provider") for r in ocr_results if r.get("provider")}
     effective_provider = "both" if len(_provs) > 1 else (next(iter(_provs)) if _provs else None)
 
-    # Pipeline có thể gạn tài liệu lạc thủ tục TRƯỚC khi gửi LLM (trace vẫn giữ đủ OCR). Lọc lỗi
-    # hoặc lọc ra rỗng -> gửi đủ như cũ.
-    llm_documents = documents
-    if document_filter and documents:
-        try:
-            llm_documents = document_filter(documents) or documents
-        except Exception as e:  # noqa: BLE001
-            errors.append(f"filter: {e}")
-
     # Tầng suy luận (PA1): chốt vai trò từng người TRƯỚC khi trích, nối vào prompt trích xuất.
     # Lỗi/không suy được -> context rỗng, bước trích chạy như cũ.
     reasoning_context = ""
-    if context_builder and llm_documents:
+    if context_builder and documents:
         try:
-            reasoning_context = await context_builder(llm_documents, options or {}) or ""
+            # Phần tất định tính vào hậu xử lý; LLM gọi bên trong (3 thủ tục) tự tách thành llm.reason.
+            async with mon.span("post.reason"):
+                reasoning_context = await context_builder(documents, options or {}) or ""
         except Exception as e:  # noqa: BLE001
             errors.append(f"reason: {e}")
+        mon.output("reasoning_context", reasoning_context)
 
     result_fields: list[dict] = []
     llm_output: dict | None = None  # JSON thô LLM parse được (lưu trace).
     t1 = time.monotonic()
-    if llm_documents:
+    if documents:
         messages = [
             {"role": "system",
              "content": compact_prompt.build_system_prompt(fields, extra_rules + reasoning_context)},
-            {"role": "user", "content": compact_prompt.build_user_content(llm_documents)},
+            {"role": "user", "content": compact_prompt.build_user_content(documents)},
         ]
         try:
             raw = await client.chat(
@@ -261,11 +287,23 @@ async def run(
             llm_output = parsed
             raw_fields = parsed.get("fields")
             if compact_field_fallback:
-                raw_fields = compact_field_fallback(raw_fields, llm_documents)
-            result_fields = validate(raw_fields, allowed, comp_by_name, aliases)
+                with mon.span("post.fallback"):
+                    raw_fields = compact_field_fallback(raw_fields, documents)
+            dropped: list[dict] | None = [] if mon.current() is not None else None
+            with mon.span("post.validate") as vspan:
+                result_fields = validate(raw_fields, allowed, comp_by_name, aliases, dropped=dropped)
+            if dropped is not None:
+                vspan.attrs["kept"] = len(result_fields)
+                vspan.attrs["dropped"] = len(dropped)
+                mon.output("validate_dropped", dropped)
+                # Chụp chuỗi JSON (bất biến): mapper phía sau có thể sửa chính các dict này.
+                mon.output("fields_after_validate",
+                           json.dumps(result_fields, ensure_ascii=False, default=str))
         except Exception as e:  # noqa: BLE001
             errors.append(f"agent: {e}")
     llm_ms = int((time.monotonic() - t1) * 1000)
+    # Mốc runner chung xong → phần còn lại tới khi pipeline package trả = hậu xử lý/mapper.
+    mon.mark("agent_end")
 
     return {
         "fields": result_fields,
