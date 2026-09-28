@@ -4280,6 +4280,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "xoa-dang-ky-tau-ca" ||
       cfg.key === "xoa-dang-ky-phuong-tien-thuy" ||
       cfg.key === "dang-ky-bien-dong-dat-dai-da-nang" ||
+      // [Đà Nẵng] 1.013995: họ tên + CCCD người nộp khoá theo tài khoản, chủ hồ sơ hay là tổ chức → mốc tài
+      // khoản chọn đúng thẻ CCCD để điền giới tính/ngày cấp/nơi cấp; thiếu mốc là BE để trống các ô đó.
+      cfg.key === "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn" ||
       cfg.key === "cap-gcn-so-nha-da-nang" ||
       cfg.key === "xac-nhan-ho-so-so-nha-da-nang" ||
       cfg.key === "cap-phep-long-duong-via-he" ||
