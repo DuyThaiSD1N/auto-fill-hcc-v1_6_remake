@@ -215,6 +215,28 @@ def _compose_label(side: str, face: str, used: set[str]) -> str:
     return _dedup_label(f"{base}{suffix}", used)
 
 
+def _rename_merged_identity(attachments: list[dict], sides: list[str]) -> list[dict]:
+    """Item CCCD đã gộp mặt trước + mặt sau thành 1 PDF → bỏ hậu tố mặt khỏi tên.
+
+    merge_identity_attachments giữ nguyên tên của item mặt trước, nên tài liệu chứa CẢ hai mặt lại
+    mang tên "CCCD bên nam - mặt trước". Đặt lại theo bên (nam/nữ) như ca một file có đủ hai mặt.
+    """
+    merged = [a for a in attachments if len(a.get("sourceFileIndexes") or []) > 1]
+    if not merged:
+        return attachments
+    merged_ids = {id(a) for a in merged}
+    used = {_fold(str(a.get("documentName") or "")) for a in attachments if id(a) not in merged_ids}
+    renamed: dict[int, dict] = {}
+    for item in merged:
+        side = sides[item["fileIndex"]] if item["fileIndex"] < len(sides) else ""
+        label = _compose_label(side or "unknown", "", used)
+        update = {"documentName": label, "detectedType": label}
+        if item.get("target") != "existing":
+            update["componentName"] = label
+        renamed[id(item)] = {**item, **update}
+    return [renamed.get(id(a), a) for a in attachments]
+
+
 def _build_item(file: dict, idx: int, label: str, detected_type: str) -> dict:
     return {
         "fileIndex": idx,
@@ -351,6 +373,7 @@ async def plan_ket_hon_lai_attachments(
         },
         id_indexes,
     )
+    attachments = _rename_merged_identity(attachments, sides)
 
     return {
         "attachments": attachments,
