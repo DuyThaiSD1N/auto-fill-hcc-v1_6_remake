@@ -137,11 +137,13 @@ def _area(value: Any) -> dict | None:
 
 
 def _identity(value: Any) -> str | None:
+    """Số CCCD (12) / CMND (9) / MST (10, có mã chi nhánh thì 13). Độ dài khác → không phải số định danh
+    (vd 'Số (Number)' của Giấy chứng nhận đăng ký xe bị LLM đọc nhầm) → bỏ."""
     text = _text(value)
     if not text:
         return None
     digits = re.sub(r"\D+", "", text)
-    return digits or None
+    return digits if len(digits) in (9, 10, 12, 13) else None
 
 
 def _bienso(value: Any) -> str | None:
@@ -284,32 +286,47 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
-    def add_area(province_name, district_name, address_name, area) -> None:
-        if not area:
+    def put(name: str, value) -> None:
+        """Ô Phần I: cổng đổ sẵn thông tin chủ tài khoản VNeID (thường là cán bộ, không phải người nộp) →
+        giấy tờ không có dữ liệu thì yêu cầu extension XÓA TRẮNG ô đó thay vì để nguyên giá trị tài khoản.
+        FE chỉ xoá được ô input/date; ô select giữ nguyên."""
+        if value not in (None, "", {}, []):
+            add(name, value)
             return
-        add(province_name, _province_label(area.get("tinh")))
-        add(district_name, _text(area.get("xa")))
-        add(address_name, _text(area.get("diaChi")))
+        comp = UI_COMP_BY_NAME.get(name)
+        if name in seen or comp not in ("dom-input", "dom-date"):
+            return
+        out.append({"name": name, "comp": comp, "value": "", "clear": True})
+        seen.add(name)
 
     # --- Phần I: người nộp ---
     name = _text(values.get("NguoiNop_HoTen"))
-    identity = _identity(values.get("NguoiNop_SoDinhDanh"))
-    residence = _area(values.get("NguoiNop_ThuongTru"))
+    raw_identity = _text(values.get("NguoiNop_SoDinhDanh"))
+    identity = _identity(raw_identity)
+    residence = _area(values.get("NguoiNop_ThuongTru")) or {}
 
     if not name:
         warnings.append("Thiếu họ tên người nộp từ CCCD/Giấy đề nghị.")
+    if raw_identity and not identity:
+        warnings.append(f"Số định danh người nộp đọc được '{raw_identity}' không phải số CCCD/CMND/MST hợp lệ "
+                        "— đã để trống, vui lòng nhập tay.")
+    elif not identity:
+        warnings.append("Hồ sơ không có CCCD người nộp — đã để trống số CCCD, ngày sinh, ngày cấp; vui lòng "
+                        "nhập tay.")
 
     add("data[chonDoiTuong]", "Cá nhân")
-    add("data[fullname]", name)
-    add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
+    put("data[fullname]", name)
+    put("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
     add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
-    add("data[identityNumber]", identity)
-    add("data[identityDate]", _date(values.get("NguoiNop_NgayCapCccd")))
+    put("data[identityNumber]", identity)
+    put("data[identityDate]", _date(values.get("NguoiNop_NgayCapCccd")))
     add("data[identityAgency]", _issuer(values.get("NguoiNop_NoiCapCccd")))
     add("data[nation]", _text(values.get("NguoiNop_QuocTich")) or ("Việt Nam" if name else None))
-    add_area("data[province]", "data[district]", "data[address]", residence)
-    add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
-    add("data[email]", _text(values.get("NguoiNop_Email")))
+    add("data[province]", _province_label(residence.get("tinh")))
+    add("data[district]", _text(residence.get("xa")))
+    put("data[address]", _text(residence.get("diaChi")))
+    put("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
+    put("data[email]", _text(values.get("NguoiNop_Email")))
 
     # --- Phần II: thông tin đề nghị (key LỒNG) ---
     add(f"{_PANEL}[dichVu]", _dichvu_value(values.get("DeNghi_DichVu")))

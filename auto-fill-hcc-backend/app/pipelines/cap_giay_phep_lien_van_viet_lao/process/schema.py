@@ -12,10 +12,13 @@ FIELDS: list[dict] = [
     # === NGƯỜI NỘP = người/đơn vị đứng đơn xin cấp phép (Phần I). Nguồn: CCCD + Giấy đề nghị. ===
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI NỘP/đứng đơn. Lấy từ CCCD (Họ và tên) hoặc Giấy đề "
         "nghị mục 1 'Tên tổ chức/cá nhân' và dòng ký '(Ký, ghi rõ họ và tên)'. Ghi IN HOA như giấy tờ."},
-    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp, dd/mm/yyyy — từ CCCD."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp, dd/mm/yyyy — CHỈ từ thẻ CCCD/CMND của người nộp. "
+        "Hồ sơ không có thẻ CCCD → BỎ (không đoán, không lấy từ giấy tờ khác)."},
     {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính người nộp: "Nam" hoặc "Nữ" (từ CCCD).'},
-    {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND (cá nhân) hoặc MST (tổ chức) của người nộp; đọc CCCD "
-        "(mặt trước/MRZ) hoặc Giấy đề nghị. Chỉ chữ số."},
+    {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD (12 chữ số)/CMND (9 chữ số) của người nộp, hoặc MST (tổ "
+        "chức); đọc thẻ CCCD (mặt trước/MRZ) hoặc Giấy đề nghị nếu đơn ghi rõ 'Số CCCD/CMND'. Chỉ chữ số. "
+        "⚠ KHÔNG lấy 'Số (Number)' của Giấy chứng nhận đăng ký xe ô tô, số khung/số máy/biển số — đó không "
+        "phải số định danh. Không có thẻ CCCD và đơn không ghi → BỎ."},
     {"name": "NguoiNop_NgayCapCccd", "desc": "Ngày cấp CCCD/CMND (mặt sau), dd/mm/yyyy. Chỉ có nếu upload CCCD."},
     {"name": "NguoiNop_NoiCapCccd",
      "desc": 'Nơi cấp CCCD/CMND. "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → "Cục Cảnh '

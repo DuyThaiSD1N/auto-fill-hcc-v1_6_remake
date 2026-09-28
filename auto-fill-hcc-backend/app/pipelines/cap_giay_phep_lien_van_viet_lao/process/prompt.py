@@ -7,7 +7,10 @@ Lào, Quyết định cử đi công tác, Hợp đồng thuê phương tiện.
 
 CHỈ MỘT NGƯỜI đứng đơn (cá nhân) — không tách nhiều người. Trích nhân thân NGƯỜI NỘP từ CCCD + Giấy đề
 nghị:
-- Họ tên/ngày sinh/giới tính/số định danh/ngày-nơi cấp: ưu tiên CCCD.
+- Họ tên/ngày sinh/giới tính/số định danh/ngày-nơi cấp: ưu tiên CCCD. Ngày sinh/giới tính/ngày-nơi cấp
+  CHỈ lấy từ thẻ CCCD; hồ sơ không có thẻ CCCD thì BỎ các field này (hệ thống tự xoá trắng ô trên cổng).
+- ⚠ Giấy chứng nhận đăng ký xe ô tô KHÔNG phải giấy tờ nhân thân: 'Số (Number)' in dưới tiêu đề là số
+  giấy đăng ký xe, KHÔNG phải số CCCD → không đưa vào NguoiNop_SoDinhDanh.
 - NguoiNop_ThuongTru: ưu tiên địa chỉ trong Giấy đề nghị mục 2 (địa danh MỚI sau sáp nhập); tách object
   {tinh,xa,diaChi}; diaChi CHỈ chi tiết (số nhà/đường/tổ/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
 - NguoiNop_DienThoai: lấy ở Giấy đề nghị mục 3 (CCCD không có).
