@@ -11,7 +11,7 @@ import re
 import unicodedata
 from typing import Any
 
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import canonical_province, remap_area
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.thong_bao_sua_doi_ctkm.process.schema import UI_COMP_BY_NAME
 
@@ -114,10 +114,17 @@ def _area_label(value: Any) -> str | None:
     return text or None
 
 
+def _province(value: Any) -> str | None:
+    """Tên trần theo danh mục ("TP. HCM" → "Hồ Chí Minh"); không nhận ra thì bóc tiền tố như cũ."""
+    text = _text(value)
+    return (canonical_province(text) or _area_label(text)) if text else None
+
+
 def _submission_province(kinh_gui: Any) -> str | None:
     """Tỉnh nộp đơn chỉ khi "Kính gửi" nêu ĐÚNG MỘT tỉnh/thành ("Sở Công Thương tỉnh X").
 
-    Thông báo gửi đồng loạt ("… các Tỉnh/Thành phố trên toàn quốc") không cho biết nơi nộp → để trống.
+    Thông báo gửi đồng loạt ("… các Tỉnh/Thành phố trên toàn quốc") không cho biết nơi nộp → None, để
+    mapper lùi về địa danh ở dòng ngày lập.
     """
     text = _text(kinh_gui)
     if not text:
@@ -126,7 +133,13 @@ def _submission_province(kinh_gui: Any) -> str | None:
     if "cac tinh" in folded or "toan quoc" in folded or folded.count("tinh ") + folded.count("thanh pho ") != 1:
         return None
     match = re.search(r"(?:tỉnh|thành phố|tp\.?)\s+(.+)$", text, flags=re.IGNORECASE)
-    return _area_label(match.group(0)) if match else None
+    return _province(match.group(0)) if match else None
+
+
+def _identity(value: Any) -> str | None:
+    """Số CCCD 12 số / CMND 9 số; đọc thiếu số thì coi như không có."""
+    digits = _digits(value)
+    return digits if len(digits) in (9, 12) else None
 
 
 def _account_anchor(options: dict | None) -> tuple[str, str]:
@@ -215,16 +228,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # === Khối CHỦ HỒ SƠ = thương nhân; bỏ tích để mở khối, điền tường minh ===
     add("data[isOwnerDossier]", False)
     add("data[ownerFullname]", trader)
+    # Cổng điền sẵn CCCD chủ hồ sơ = CCCD tài khoản đăng nhập. Hồ sơ có CCCD thì ghi đè; không có thì
+    # ghi RỖNG để xóa, tránh nộp kèm CCCD người đăng nhập dưới tên doanh nghiệp.
+    out.append({
+        "name": "data[ownerIdentityNumber]",
+        "comp": UI_COMP_BY_NAME["data[ownerIdentityNumber]"],
+        "value": _identity(values.get("NguoiNop_SoDinhDanh")) or "",
+    })
     add("data[ownertaxCode]", tax)
     add("data[ownerPhoneNumber]", phone)
     add("data[ownerAddress]", _full_address(raw_area, head_office))
 
     # === Tờ khai Mẫu 06: đầu đơn ===
     add("data[registerNumber]", _text(values.get("ThongBao_So")))
-    province_of_submission = _submission_province(values.get("ThongBao_KinhGui"))
+    # Kính gửi nêu đúng một tỉnh > địa danh dòng ngày lập ("TP. HCM, ngày …") > tỉnh trụ sở chính.
+    province_of_submission = (
+        _submission_province(values.get("ThongBao_KinhGui"))
+        or _province(values.get("ThongBao_DiaDanh"))
+        or _province((head_office or {}).get("tinh"))
+    )
     add("data[tinhThanhPhoNopDon]", province_of_submission)
     if not province_of_submission:
-        warnings.append("Kính gửi không nêu đúng một tỉnh — vui lòng chọn tay 'Tỉnh / Thành Phố nộp đơn'.")
+        warnings.append("Không xác định được tỉnh nộp đơn — vui lòng chọn tay 'Tỉnh / Thành Phố nộp đơn'.")
     add("data[ngayNopDon]", _date(values.get("ThongBao_NgayLap")))
     add("data[kinhGui]", _text(values.get("ThongBao_KinhGui")))
 

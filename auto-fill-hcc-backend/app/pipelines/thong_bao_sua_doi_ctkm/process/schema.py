@@ -41,6 +41,8 @@ FIELDS: list[dict] = [
         "nguyên văn phần sau 'Số:'."},
     {"name": "ThongBao_NgayLap", "desc": f"Ngày ở dòng '<địa danh>, ngày … tháng … năm …' đầu {_TB}, "
         "dd/mm/yyyy."},
+    {"name": "ThongBao_DiaDanh", "desc": f"Địa danh ở đầu CÙNG dòng '<địa danh>, ngày … tháng … năm …' của {_TB}, "
+        "chép nguyên văn phần trước dấu phẩy (vd 'TP. HCM', 'Hà Nội'), KHÔNG kèm chữ 'ngày'."},
     {"name": "ThongBao_KinhGui", "desc": f"Nơi nhận ở dòng 'Kính gửi:' của {_TB}, chép nguyên văn, bỏ chữ "
         "'Kính gửi:'."},
 
@@ -86,6 +88,7 @@ UI_COMP_BY_NAME = {
     # --- Khối CHỦ HỒ SƠ = thương nhân ---
     "data[isOwnerDossier]": "dom-checkbox",
     "data[ownerFullname]": "dom-input",
+    "data[ownerIdentityNumber]": "dom-input",
     "data[ownertaxCode]": "dom-input",
     "data[ownerPhoneNumber]": "dom-input",
     "data[ownerAddress]": "dom-input",

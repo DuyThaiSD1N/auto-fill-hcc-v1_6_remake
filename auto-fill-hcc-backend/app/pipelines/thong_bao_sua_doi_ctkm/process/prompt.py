@@ -20,7 +20,7 @@ EXTRA_RULES = """<critical_rules>
 <hai_van_ban>
 Văn bản NÀY sửa đổi một Thông báo thực hiện khuyến mại GỐC:
 - ThongBao_So / ThongBao_NgayLap = số và ngày của chính Thông báo sửa đổi (góc trái "Số: …" và dòng
-  "<địa danh>, ngày … tháng … năm …").
+  "<địa danh>, ngày … tháng … năm …"). ThongBao_DiaDanh = phần <địa danh> trước dấu phẩy của dòng đó.
 - ThongBaoGoc_So / ThongBaoGoc_Ngay = số và ngày trong câu "Căn cứ Thông báo thực hiện khuyến mại số …
   ngày …". KHÔNG đổi chéo hai cặp này.
 </hai_van_ban>

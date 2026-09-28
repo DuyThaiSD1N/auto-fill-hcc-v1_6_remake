@@ -30,6 +30,9 @@ FIELDS: list[dict] = [
         "(KHÔNG kèm xã/tỉnh). KHÔNG lấy địa chỉ thường trú của người chịu trách nhiệm."},
 
     # ---- Nội dung tờ khai Mẫu 01 ----
+    {"name": "ThongBao_SoGPKD", "desc": f"Số ở dòng 'Giấy chứng nhận đăng ký kinh doanh số: …' mục 1 trên {_TB}. "
+        "Chép đúng chữ số in trên dòng đó kể cả khi ngắn/bị che (vd '0109'); trả field này ĐỘC LẬP với "
+        "DoanhNghiep_MaSo, kể cả khi GCN để trống mã số."},
     {"name": "ThongBao_NoiDung", "desc": f"Mục '2. Nội dung trên bảng quảng cáo, băng rôn' trên {_TB}, CHỈ chép "
         "câu nội dung ngay sau dấu ':' của dòng mục 2. KHÔNG lấy các dòng tên/địa chỉ địa điểm kinh doanh "
         "ghi kèm ngay dưới."},

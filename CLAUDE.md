@@ -9,18 +9,43 @@ Monorepo 3 phần:
 ## BẮT BUỘC: sửa xong code backend là deploy Docker ngay
 
 Mỗi khi sửa bất kỳ file nào trong `auto-fill-hcc-backend/` (trừ file test và tài liệu), sau khi
-sửa xong phải tự chạy tuần tự, không cần hỏi lại:
+sửa xong phải tự chạy tuần tự, không cần hỏi lại. Khi người dùng nói "chạy code mới lên docker"
+cũng làm đúng quy trình này (máy là Windows, lệnh dưới đây chạy được trong PowerShell):
 
-```bash
+```powershell
 cd auto-fill-hcc-backend
-python -m pytest tests/unit tests/integration -q          # 1. test trước
-docker compose -f compose.prod.yml up -d --build app batch-worker   # 2. build + restart
-docker compose -f compose.prod.yml ps                     # 3. kiểm tra container đã Up
-curl -s http://localhost:12005/healthz                     # 4. kiểm tra backend sống
+
+# 1. Test riêng pipeline vừa sửa — bắt buộc pass hết
+python -m pytest tests/unit/test_<ten_pipeline>.py -q -p no:cacheprovider
+
+# 2. Test toàn bộ để so với baseline
+python -m pytest tests/unit tests/integration -q --continue-on-collection-errors -p no:cacheprovider
+
+# 3. Build + restart (chọn service theo bảng bên dưới)
+docker compose -f compose.prod.yml up -d --build app batch-worker
+
+# 4. Kiểm tra container đã Up
+docker compose -f compose.prod.yml ps
+
+# 5. Kiểm tra backend sống — phải trả về {"ok":true}
+curl.exe -s http://localhost:12005/healthz
 ```
 
-Chỉ báo "xong" khi container đã `Up` và `/healthz` trả về OK. Nếu build hoặc healthz lỗi thì sửa
-tiếp, không được bỏ qua bước này.
+Ghi chú từng bước:
+
+- Bước 1: nếu test của pipeline vừa sửa đỏ thì sửa tiếp, KHÔNG build Docker.
+- Bước 2: bắt buộc có `--continue-on-collection-errors`. Ở máy local, 3 file
+  `tests/unit/test_monitor_attach_flow.py`, `test_monitor_process_flow.py`,
+  `test_trace_document_content_access.py` lỗi collect do protobuf local cũ (thiếu
+  `runtime_version`). Thiếu cờ này thì pytest dừng ngay, không chạy test nào. Đây là lỗi môi
+  trường, không phải lỗi code, và không ảnh hưởng image Docker.
+- Bước 2: so số fail với baseline ở mục "Test". Số fail tăng, hoặc có test fail thuộc pipeline vừa
+  sửa, thì phải xem lại trước khi build.
+- Bước 5: trong PowerShell phải gõ `curl.exe`. `curl` trơn là alias của `Invoke-WebRequest`.
+
+Chỉ báo "xong" khi container đã `Up` và `/healthz` trả về `{"ok":true}`. Nếu build hoặc healthz
+lỗi thì sửa tiếp, không được bỏ qua bước này. Khi báo cáo cho người dùng, ghi rõ: kết quả test của
+pipeline vừa sửa, số pass/fail toàn bộ so với baseline, trạng thái container, kết quả healthz.
 
 Chọn service để build theo chỗ đã sửa:
 
@@ -63,6 +88,11 @@ Script build image, `docker save` rồi `scp` sang đích. Sau đó phải vào 
 Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree` lỗi collect sẵn, bỏ qua.
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
+
+Baseline ngày 2026-09-28 (máy local, có `--continue-on-collection-errors`):
+`93 failed, 1790 passed, 23 skipped, 3 errors`. Các test đỏ nằm ở khai tử, trích lục, xác nhận TTHN,
+thay đổi hộ tịch, khuyết tật, xét tuyển viên chức, mai táng. Nếu sửa xong mà số test đỏ giảm hẳn
+hoặc tăng lên, cập nhật lại dòng này.
 
 ## Lưu ý
 Không bao giờ được phép tự ý dùng git để merge code hay đẩy lên github

@@ -10,6 +10,13 @@ EXTRA_RULES = """<critical_rules>
    chép đúng phần đọc được; trống thì bỏ field.
 </critical_rules>
 
+<to_khai>
+Tờ khai chính là văn bản có tiêu đề "THÔNG BÁO SẢN PHẨM QUẢNG CÁO TRÊN BẢNG QUẢNG CÁO, BĂNG RÔN" (có
+"Kính gửi: Sở Văn hóa…", các mục đánh số 1–7), dù KHÔNG in chữ "Mẫu số 01" và dù tên file là gì. Hồ sơ có
+văn bản này thì BẮT BUỘC trả đủ ThongBao_NoiDung (mục 2), ThongBao_DiaDiem (mục 3), ThongBao_SoLuong
+(mục 5), ThongBao_PhuongAnThaoDo (mục 6) — đừng dừng sau khi trả xong DoanhNghiep_*.
+</to_khai>
+
 <vai_tro>
 - DoanhNghiep_* = doanh nghiệp đứng tên thông báo quảng cáo. Ưu tiên Giấy chứng nhận đăng ký doanh
   nghiệp; thiếu mới lấy mục 1 của tờ khai.
@@ -25,4 +32,5 @@ khuyến mại và ngày ghi trên ma-két là thời gian KHÁC, không dùng.
 </thoi_gian>
 
 <reminder>Chỉ trả JSON field nguồn hợp lệ. Doanh nghiệp ≠ người chịu trách nhiệm; không bù chữ số bị che;
-thời gian thực hiện chỉ lấy ở mục 4 tờ khai.</reminder>"""
+thời gian thực hiện chỉ lấy ở mục 4 tờ khai. Có tờ khai thì PHẢI trả ThongBao_SoGPKD, ThongBao_NoiDung,
+ThongBao_DiaDiem, ThongBao_SoLuong, ThongBao_PhuongAnThaoDo.</reminder>"""

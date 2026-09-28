@@ -1888,6 +1888,53 @@ def _parent_birth_from_documents(section: str, documents, child_year: int) -> st
     return found.pop() if len(found) == 1 else ""
 
 
+def _child_birth_from_card(section: str, documents, parent_years=()) -> str:
+    """Ngày sinh in trên CHÍNH tấm CCCD/CMND của người trong khối <con>.
+
+    Dòng ngày sinh người được đăng ký lại trên tờ khai là chữ VIẾT TAY: OCR đọc "1991" thành
+    "1941" là con trở nên già hơn cả cha lẫn mẹ, rồi luật thế hệ xoá trắng CẢ HAI vai dù tờ khai
+    ghi rõ họ tên, CCCD từng người. Số viết tay trên tờ khai cũng có thể hỏng nên không tự suy
+    năm từ con số đó — phải có tấm thẻ in sẵn.
+
+    Khối <con> có số định danh thì thẻ mang đúng số đó thắng. Khối dựng từ tờ khai thường KHÔNG
+    có số (tờ khai không in dòng CCCD cho người được đăng ký lại; năm lệch thì bước dựng vai cũng
+    không bù số từ thẻ) → đành khớp theo họ tên. Cha và con trùng tên là chuyện thường, nên khớp
+    theo tên chỉ được dùng để CỨU ca năm tờ khai làm hỏng phép so thế hệ với cha/mẹ đã ghi, và
+    năm trên thẻ phải hợp thế hệ với tất cả cha/mẹ đó.
+    """
+    child_id = _role_id(section)
+    child_name = _role_name(section)
+    if not child_id and not child_name:
+        return ""
+    found = set()
+    for document in _identity_units(documents):
+        person = _person_from_document(document)
+        # Thẻ thật phải đọc được số định danh: trang tờ khai nhắc chữ "căn cước" cũng bị nhận là
+        # giấy tờ tùy thân, mang theo đúng dòng ngày sinh viết tay ta đang muốn thay.
+        if not person or not person.get("is_identity") or not person.get("id"):
+            continue
+        if child_id:
+            if person.get("id") != child_id:
+                continue
+        elif not _names_align(child_name, person.get("name")):
+            continue
+        birth = _labeled_value(person.get("section") or "", "Ngày sinh")
+        if person.get("year") and birth:
+            found.add(birth)
+    if len(found) != 1:
+        return ""
+    birth = found.pop()
+    if child_id:
+        return birth
+    declared_year, card_year = _role_year(section), _year_of(birth)
+    years = [year for year in parent_years if year]
+    if not years or not declared_year or not card_year:
+        return ""
+    breaks_generation = any(declared_year - year < 15 for year in years)
+    fits_generation = all(card_year - year >= 15 for year in years)
+    return birth if breaks_generation and fits_generation else ""
+
+
 def _validate_family_sections(sections: dict[str, str], documents=()) -> dict[str, str]:
     """Loại kết luận tự mâu thuẫn trước khi ghim vào prompt trích xuất."""
     result = dict(sections)
@@ -1911,6 +1958,15 @@ def _validate_family_sections(sections: dict[str, str], documents=()) -> dict[st
     # THƯỜNG (tờ khai viết tay còn hay rụng một tiếng: "Vũ Huy Hoàn" → "Vũ Huy Hoà"), nên chỉ
     # riêng tên trùng thì CHƯA đủ: số định danh hoặc năm sinh khác nhau là bằng chứng chắc chắn
     # đây là hai người, không được xoá vai cha/mẹ.
+    # Năm sinh của con quyết định cả phép so thế hệ bên dưới → thẻ in sẵn của chính người con
+    # thắng dòng viết tay trên tờ khai.
+    card_birth = _child_birth_from_card(
+        result.get("con", ""),
+        documents,
+        [_role_year(result.get(tag, "")) for tag in ("cha", "me")],
+    )
+    if card_birth and _year_of(card_birth) != _role_year(result.get("con", "")):
+        result["con"] = _set_role_label(result["con"], "Ngày sinh", card_birth)
     child_id = _role_id(result.get("con", ""))
     child_name = _fold(_role_name(result.get("con", "")))
     child_year = _role_year(result.get("con", ""))

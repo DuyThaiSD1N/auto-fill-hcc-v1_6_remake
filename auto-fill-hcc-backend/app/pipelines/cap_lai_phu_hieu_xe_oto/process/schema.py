@@ -8,8 +8,8 @@ ra tất định các ô data[...].
 - Phần IV   Đơn vị KDVT          : data[T_DonViKinhDoanh][...] — Giấy đề nghị / HĐ dịch vụ / GCN ĐK / GPKDVT.
 - Phần V    Thẩm định            : data[ThamDinh][SoLuongNopLai/DeNghiDuocCap].
 - Phần VI-VII Phương tiện        : bấm "Thêm phương tiện" (comp dom-click) rồi điền panel
-                                   data[ThamDinh][ThemPhuongTienRaw][...] cho xe ĐẦU TIÊN. Nút "Thêm" lưu xe
-                                   vào danh sách để người dùng tự bấm sau khi soát.
+                                   data[ThamDinh][ThemPhuongTienRaw][...] cho xe ĐẦU TIÊN, cuối cùng bấm nút
+                                   "Thêm" (dom-click [add]) để đưa xe vào danh sách phương tiện.
 """
 
 # --- Người nộp hồ sơ (Phần I) — CHỈ từ thẻ CCCD ---
@@ -238,4 +238,6 @@ UI_COMP_BY_NAME = {
     f"{_PT}[HopDongThueMuon][LoaiHinhChoThue]": "dom-select",
     f"{_PT}[HopDongThueMuon][ThoiGianBatDauThue]": "dom-date",
     f"{_PT}[HopDongThueMuon][ThoiGianHetHanThue]": "dom-date",
+    # Nút "Thêm" cuối panel: đưa xe vừa điền vào danh sách phương tiện — FE bấm SAU tất cả ô _PT.
+    f"{_PT}[add]": "dom-click",
 }

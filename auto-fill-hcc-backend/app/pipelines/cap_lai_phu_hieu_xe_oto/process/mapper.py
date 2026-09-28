@@ -6,8 +6,8 @@ gắn động cơ kinh doanh vận tải" (TTHC 2.002288).
 - Phần II  Doanh nghiệp của người nộp + Phần IV Đơn vị KDVT: cùng một đơn vị (Giấy đề nghị → HĐ → GCN/GPKDVT).
 - Phần III Giấy đề nghị: số văn bản, tại (tỉnh), ngày, kính gửi, dịch vụ (suy từ loại phù hiệu).
 - Phần V   Thẩm định: số lượng nộp lại (ô chỉ nhận số: "Không" → 0), đề nghị được cấp.
-- Phần VI-VII Phương tiện: phát nút dom-click "Thêm phương tiện" rồi các ô panel của xe ĐẦU TIÊN (panel chỉ
-           nhập một xe mỗi lần). Chủ xe khác đơn vị KDVT → radio "Xe thuê/xe hợp tác kinh doanh/xe của thành
+- Phần VI-VII Phương tiện: phát nút dom-click "Thêm phương tiện", các ô panel của xe ĐẦU TIÊN (panel chỉ
+           nhập một xe mỗi lần), cuối cùng nút dom-click "Thêm" đưa xe vào danh sách. Chủ xe khác đơn vị KDVT → radio "Xe thuê/xe hợp tác kinh doanh/xe của thành
            viên HTX" + khối hợp đồng; trùng → radio "Xe thuộc sở hữu của ĐVKDVT" + khối đăng ký xe.
 """
 
@@ -531,6 +531,13 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         out.append(item)
         seen.add(name)
 
+    def clear(name: str) -> None:
+        """Yêu cầu extension XÓA giá trị tài khoản đăng nhập đổ sẵn ở ô mà giấy tờ không có dữ liệu."""
+        if name in seen or name not in UI_COMP_BY_NAME:
+            return
+        out.append({"name": name, "comp": UI_COMP_BY_NAME[name], "value": "", "clear": True})
+        seen.add(name)
+
     cars = _vehicles(values.get("PhuongTien"))
     car = cars[0] if cars else {}
     loai_phu_hieu = _fold(_item_text(car, "loaiPhuHieu"))
@@ -554,6 +561,8 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     ben_b_is_submitter = not (nop_name or nop_id) and bool(ben_b_name)
     if ben_b_is_submitter:
         add("data[fullname]", ben_b_name.upper())
+        # Hợp đồng không ghi ngày sinh → xoá ngày sinh của tài khoản đăng nhập, không để lệch người nộp.
+        clear("data[birthday]")
         b_id = _identity(values.get("HopDong_BenB_SoCCCD") or ocr_b.get("cccd"))
         add("data[identityNumber]", b_id)
         if not b_id or len(b_id) != 12:
@@ -570,10 +579,11 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
             add("data[district]", _text(b_area.get("xa")))
             add("data[address]", _text(b_area.get("diaChi")))
         warnings.append(f"Người nộp lấy theo Bên B hợp đồng ({ben_b_name}) — hợp đồng không ghi ngày sinh, giới "
-                        "tính: kiểm tra lại hai ô này (đang là của tài khoản đăng nhập).")
+                        "tính: đã để trống ngày sinh, kiểm tra lại giới tính (đang là của tài khoản đăng nhập).")
     elif nop_name or nop_id:
         add("data[fullname]", nop_name)
         add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
+        clear("data[birthday]")
         add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
         add("data[identityNumber]", nop_id)
         add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
@@ -684,6 +694,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         warnings.append(f"Hồ sơ có {len(cars)} xe — chỉ điền sẵn xe đầu tiên; các xe còn lại ({others}) bấm "
                         "'Thêm phương tiện' nhập tiếp.")
 
+    # Chạy điền lại trên trang ĐÃ thêm xe → biển số có sẵn trong bảng danh sách: FE bỏ cả hai nút + các ô panel,
+    # không thêm xe trùng.
+    listed = {"skipIfListed": plate} if plate else {}
+
     # Nút "Thêm phương tiện": FE bấm rồi chờ ô Biển đăng ký của panel hiện ra (waitName) mới điền tiếp.
     out.append({
         "name": "data[ThamDinh][themPhuongTien]",
@@ -691,6 +705,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         "value": True,
         "buttonKey": "themPhuongTien",
         "waitName": f"{_PT}[BienDangKy]",
+        **listed,
     })
 
     # Chủ xe khác đơn vị KDVT (xe của xã viên / xe thuê) → nhánh VII-B; trùng → VII-A.
@@ -740,8 +755,8 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         warnings.append(f"Xe {label}: không đọc được đủ năm sản xuất trên giấy tờ — vui lòng nhập tay.")
     add(f"{_PT}[NhanHieu]", _item_text(car, "nhanHieu"))
     add(f"{_PT}[TinhTrangPhuongTien]", "Đang hoạt động")
-    warnings.append("Chọn 'Màu phù hiệu' theo loại phù hiệu, kiểm tra thông tin xe rồi bấm 'Thêm' để đưa xe vào "
-                    "danh sách phương tiện.")
+    warnings.append(f"Xe {label} đã được bấm 'Thêm' vào danh sách phương tiện — kiểm tra lại thông tin xe và chọn "
+                    "'Màu phù hiệu' theo loại phù hiệu (nếu cổng yêu cầu).")
 
     if kind or owned is False:
         add(f"{_PT}[ChuPhuongTienThue.HoVaTen]", chu_xe)
@@ -754,5 +769,9 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     elif owned:
         add(f"{_PT}[ChuPhuongTien.HoVaTen]", don_vi)
         add(f"{_PT}[GiayDangKyPhuongTien.NgayCap]", _date(_item_text(car, "ngayDangKy")))
+
+    # Nút "Thêm" cuối panel: đưa xe vừa điền vào danh sách. Phát SAU CÙNG (sau mọi ô panel); không waitName →
+    # FE bấm đúng một lần.
+    out.append({"name": f"{_PT}[add]", "comp": "dom-click", "value": True, **listed})
 
     return out, warnings

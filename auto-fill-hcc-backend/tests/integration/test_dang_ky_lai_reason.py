@@ -467,3 +467,90 @@ def test_other_declaration_requester_skips_reregistration_declaration():
     )
 
     assert reason._other_declaration_requester([{"name": "to-khai.pdf", "text": text}]) is None
+
+
+def _declared_section(name, birth, gender, identity="Không xác định"):
+    return (
+        f"Họ tên: {name}\n"
+        f"Số CCCD/CMND: {identity}\n"
+        f"Ngày sinh: {birth}\n"
+        f"Giới tính: {gender}\n"
+        "Trạng thái: còn sống\n"
+        "Nguồn: to-khai.pdf\n"
+        "Căn cứ phân vai: Nhãn quan hệ in sẵn trên tờ khai đăng ký lại khai sinh."
+    )
+
+
+_CHILD_CARD_OCR = (
+    "CĂN CƯỚC CÔNG DÂN\n"
+    "Citizen Identity Card\n"
+    "Số / No.: 037090000222\n"
+    "Họ và tên / Full name: TRẦN VĂN MẪU\n"
+    "Ngày sinh / Date of birth: 12/03/1990\n"
+    "Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam\n"
+)
+
+
+def _family_with_misread_child_year():
+    return {
+        "con": _declared_section("Trần Văn Mẫu", "12-03-1940", "Nam", "037090000222"),
+        "cha": _declared_section("Trần Văn Thử", "20-07-1962", "Nam"),
+        "me": _declared_section("Lê Thị Mẫu", "05-01-1965", "Nữ"),
+    }
+
+
+def test_child_card_year_beats_misread_declaration_year_and_keeps_parents():
+    # OCR đọc năm sinh viết tay của con "1990" thành "1940" → con già hơn cả cha mẹ. Tấm CCCD in sẵn
+    # của chính người con phải thắng, không được xoá trắng khối cha/mẹ tờ khai đã ghi rõ.
+    result = reason._validate_family_sections(
+        _family_with_misread_child_year(),
+        [{"name": "cccd-con.pdf", "text": _CHILD_CARD_OCR}],
+    )
+
+    assert reason._labeled_value(result["con"], "Ngày sinh") == "12/03/1990"
+    assert reason._role_name(result["cha"]) == "Trần Văn Thử"
+    assert reason._role_name(result["me"]) == "Lê Thị Mẫu"
+
+
+def test_misread_child_year_without_matching_card_still_drops_parents():
+    # Không có thẻ nào mang số của khối <con> → không có căn cứ in sẵn, giữ luật thế hệ như cũ.
+    other_card = _CHILD_CARD_OCR.replace("037090000222", "037090000333")
+    result = reason._validate_family_sections(
+        _family_with_misread_child_year(),
+        [{"name": "cccd-khac.pdf", "text": other_card}],
+    )
+
+    assert reason._labeled_value(result["con"], "Ngày sinh") == "12-03-1940"
+    assert reason._is_unknown(result["cha"])
+    assert reason._is_unknown(result["me"])
+
+
+def test_child_without_id_uses_card_matched_by_name_to_keep_parents():
+    # Khối <con> dựng từ tờ khai không có số CCCD → khớp thẻ theo họ tên để cứu năm sinh đọc lệch.
+    sections = _family_with_misread_child_year()
+    sections["con"] = _declared_section("Trần Văn Mẫu", "12-03-1940", "Nam")
+    result = reason._validate_family_sections(
+        sections,
+        [{"name": "cccd-con.pdf", "text": _CHILD_CARD_OCR}],
+    )
+
+    assert reason._labeled_value(result["con"], "Ngày sinh") == "12/03/1990"
+    assert reason._role_name(result["cha"]) == "Trần Văn Thử"
+    assert reason._role_name(result["me"]) == "Lê Thị Mẫu"
+
+
+def test_child_without_id_ignores_same_name_father_card():
+    # Con trùng tên cha, hồ sơ chỉ có thẻ của cha → năm trên thẻ không hợp thế hệ, không được mượn.
+    sections = _family_with_misread_child_year()
+    sections["con"] = _declared_section("Trần Văn Thử", "12-03-1940", "Nam")
+    father_card = (
+        _CHILD_CARD_OCR.replace("037090000222", "037062000451")
+        .replace("TRẦN VĂN MẪU", "TRẦN VĂN THỬ")
+        .replace("12/03/1990", "20/07/1962")
+    )
+    result = reason._validate_family_sections(
+        sections,
+        [{"name": "cccd-cha.pdf", "text": father_card}],
+    )
+
+    assert reason._labeled_value(result["con"], "Ngày sinh") == "12-03-1940"

@@ -120,6 +120,12 @@ def _enterprise_code(value: Any) -> str | None:
     return f"{match.group(1)}-{match.group(2)}" if match.group(2) else match.group(1)
 
 
+def _partial_code(value: Any) -> str | None:
+    """Mã bị che/thiếu số: giữ nguyên phần chữ số đọc được (vd "0109") để cán bộ bổ sung tiếp."""
+    text = re.sub(r"[^\d-]+", "", str(value or "")).strip("-")
+    return text if re.search(r"\d", text) else None
+
+
 def _date(value: Any) -> str | None:
     """Chỉ nhận ngày ĐỦ ngày/tháng/năm — tờ khai để trống "…/…/2026" thì bỏ, không ghép 01/01."""
     text = normalize_date(str(value)) if value else ""
@@ -144,7 +150,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             warnings.append(f"{label} đọc được \"{_text(raw)}\" nhưng không đủ chữ số — vui lòng nhập tay.")
 
     name = _text(values.get("DoanhNghiep_Ten"))
-    code = _enterprise_code(values.get("DoanhNghiep_MaSo"))
+    # Mã đủ số: ưu tiên GCN, rồi dòng "Giấy chứng nhận ĐKKD số" trên tờ khai.
+    code = _enterprise_code(values.get("DoanhNghiep_MaSo")) or _enterprise_code(values.get("ThongBao_SoGPKD"))
     issuer = _text(values.get("DoanhNghiep_NoiCap"))
     phone = _phone(values.get("DoanhNghiep_DienThoai"))
     head_office = _area(values.get("DoanhNghiep_TruSo"))
@@ -178,7 +185,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         )
 
     # ---- Khối THÔNG BÁO SẢN PHẨM QUẢNG CÁO (nội dung tờ khai Mẫu 01) ----
-    put(S_TB, "Số GPKD", code)
+    # Số GPKD vẫn điền phần đọc được dù thiếu số (khối ủy quyền ở trên thì chỉ nhận mã đủ 10 số).
+    gpkd = (code or _partial_code(values.get("DoanhNghiep_MaSo"))
+            or _partial_code(values.get("ThongBao_SoGPKD")))
+    put(S_TB, "Số GPKD", gpkd)
+    if gpkd and not code:
+        warnings.append(f"Số GPKD chỉ đọc được \"{gpkd}\" (chưa đủ chữ số) — đã điền phần đọc được, vui lòng "
+                        "kiểm tra và bổ sung.")
     put(S_TB, "Nơi cấp GPKD", issuer)
     put(S_TB, "Nội dung trên bảng quảng cáo, băng-rôn", _first_line(values.get("ThongBao_NoiDung")))
     put(S_TB, "Địa điểm thực hiện", _one_line(values.get("ThongBao_DiaDiem")))
