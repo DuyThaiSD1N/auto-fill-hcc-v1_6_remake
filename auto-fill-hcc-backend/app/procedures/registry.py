@@ -333,6 +333,8 @@ from app.pipelines.dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn.attach import pl
 from app.pipelines.dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn.process import run as dk_tai_san_gan_lien_dat_process
 from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.attach import plan as dk_bien_dong_chia_tach_to_chuc_dn_attach
 from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.process import run as dk_bien_dong_chia_tach_to_chuc_dn_process
+from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach import plan as chia_tach_sap_nhap_hop_nhat_hoi_attach
+from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.process import run as chia_tach_sap_nhap_hop_nhat_hoi_process
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.attach import plan as chuyen_muc_dich_dat_dn_attach
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.process import run as chuyen_muc_dich_dat_dn_process
 from app.pipelines.cap_gcn_so_nha_da_nang.attach import plan as cap_gcn_so_nha_dn_attach
@@ -5714,6 +5716,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh",
+        # Mã TTHC 1.012945. Cổng DVCQG — Form.io, engine fillFormStandard dom-* + attach attp-row 7 dòng. Eform
+        # chung: "Chọn mẫu đơn" (data[ChonTruongHop]) mở MỘT trong 4 fieldset chia / tách / sáp nhập / hợp nhất,
+        # mỗi fieldset một bộ field-key; mẫu tách TRÙNG field-key Phần I → mapper gắn scope fieldset2. Họ tên +
+        # CCCD + ngày sinh người nộp khoá theo tài khoản → mốc formContext. Không urlScope (cổng quốc gia).
+        "detect": {
+            "textIncludes": ["chia, tách; sáp nhập; hợp nhất hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thủ tục chia, tách; sáp nhập; hợp nhất hội (cấp tỉnh)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị chia, tách, sáp nhập, hợp nhất hội (Mẫu số 10) đã ký — Kính gửi, tên các hội.\n"
+            "2. Đề án — lý do, tên gọi, địa chỉ trụ sở, nhân sự Ban chấp hành / Ban kiểm tra.\n"
+            "3. Nghị quyết + Biên bản họp của Ban chấp hành; Danh sách Ban chấp hành, Ban kiểm tra hội mới.\n"
+            "4. Dự thảo Điều lệ; văn bản xác nhận nơi dự kiến đặt trụ sở (nếu có).\n"
+            "5. Phiếu lý lịch tư pháp số 1 + Sơ yếu lý lịch (Mẫu số 17) của người dự kiến làm chủ tịch — điền "
+            "thông tin chủ hồ sơ.\n"
+            "6. CCCD của người nộp (tài khoản đăng nhập) — để điền giới tính, ngày cấp, nơi cấp, địa chỉ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form điền: chủ hồ sơ = chủ tịch dự kiến; bảng 'Hồ sơ kèm theo' liệt kê từng giấy tờ; 'Chọn mẫu "
+            "đơn' theo trường hợp (hồ sơ ghi gộp 'sáp nhập, hợp nhất' → mẫu hợp nhất) rồi điền tên các hội, "
+            "Nghị định, lý do, người liên hệ, địa chỉ trụ sở, TM. Ban chấp hành.\n"
+            "Bước đính kèm (mỗi dòng 1 file gộp, đều Bản chính): VB xác nhận trụ sở→dòng 1 (thiếu thì tạm "
+            "đính trang Đề án về trụ sở); Đơn→dòng 2; Đề án→dòng 3; Nghị quyết + Biên bản họp→dòng 4; Danh "
+            "sách BCH (+ trang Đề án có Ban kiểm tra)→dòng 5; Sơ yếu lý lịch + Phiếu LLTP→dòng 6; Điều lệ→"
+            "dòng 7."
+        ),
+    },
+    {
         "key": "cap-phep-long-duong-via-he",
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#76/#78). EFORM RIÊNG nhiều phần: Phần I người nộp (cá nhân đại diện) + Phần I-b
@@ -6229,6 +6266,7 @@ _PIPELINE = {
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
+    "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_process,
     "cap-phep-long-duong-via-he": cap_phep_via_he_process,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_process,
@@ -6404,6 +6442,7 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
+    "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_attach,
     "cap-phep-long-duong-via-he": cap_phep_via_he_attach,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_attach,
