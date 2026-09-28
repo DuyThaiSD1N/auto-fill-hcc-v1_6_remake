@@ -192,6 +192,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(field)
         seen.add(seen_key)
 
+    def put(name: str, value) -> None:
+        """Ô nhân thân CHỦ HỒ SƠ: cổng đổ sẵn thông tin chủ tài khoản (thường là cán bộ nộp thay) → giấy tờ
+        không có dữ liệu (hay gặp: ngày sinh, vì Đơn Mẫu 04/05.KT không có mục này) thì yêu cầu extension
+        XÓA TRẮNG ô đó thay vì để lại giá trị của người khác. FE chỉ xoá được ô input/date."""
+        if value not in (None, "", {}, []):
+            add(name, value)
+            return
+        comp = UI_COMP_BY_NAME.get(name)
+        if (name, None) in seen or comp not in ("dom-input", "dom-date"):
+            return
+        out.append({"name": name, "comp": comp, "value": "", "clear": True})
+        seen.add((name, None))
+
     def add_area(province_name, district_name, address_name, area) -> None:
         if not area:
             return
@@ -235,7 +248,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not is_nop_thay:
         # === TỰ NỘP: Phần I = chủ tàu; TICK isOwnerDossierCheck (mặc định CHƯA tick) → Phần II tự đổ. ===
         add("data[fullname]", name)
-        add("data[birthday]", birthday)
+        # Ngày sinh tài khoản chỉ giữ khi CHẮC là chủ tàu (trùng số định danh); không chắc thì xoá trắng.
+        if birthday or not (identity and ctx_identity == identity):
+            put("data[birthday]", birthday)
+            if not birthday:
+                warnings.append("Hồ sơ không có CCCD chủ tàu nên không có ngày sinh — đã để trống ô 'Ngày sinh', "
+                                "vui lòng nhập tay.")
         add("data[gender]", gender)
         add("data[identityNumber]", identity)
         add("data[identityDate]", id_date)
@@ -257,16 +275,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[email]", _text(values.get("NguoiNop_Email")))
         add("data[isOwnerDossierCheck]", False)
 
-        add("data[ownerFullname]", name)
-        add("data[ownerBirthday]", birthday)
+        # Phần II cổng đổ sẵn theo TÀI KHOẢN (người nộp thay) → ô nào giấy tờ chủ tàu không có thì xoá trắng.
+        put("data[ownerFullname]", name)
+        put("data[ownerBirthday]", birthday)
         add("data[ownerGender]", gender)
-        add("data[ownerIdentityNumber]", identity)
-        add("data[ownerIdentityDate]", id_date)
-        add("data[ownerIdIssuePlace]", issuer)
-        add_area("data[ownerProvince]", "data[ownerDistrict]", "data[ownerAddress]", residence)
-        add("data[ownerPhoneNumber]", phone)
-        add("data[ownerEmail]", email)
+        put("data[ownerIdentityNumber]", identity)
+        put("data[ownerIdentityDate]", id_date)
+        put("data[ownerIdIssuePlace]", issuer)
+        add("data[ownerProvince]", _province_label(residence.get("tinh")) if residence else None)
+        add("data[ownerDistrict]", _commune_label(residence.get("xa")) if residence else None)
+        put("data[ownerAddress]", _text(residence.get("diaChi")) if residence else None)
+        put("data[ownerPhoneNumber]", phone)
+        put("data[ownerEmail]", email)
         add("data[ownerNation]", "Việt Nam" if name or identity else None)
+        if not birthday:
+            warnings.append("Hồ sơ không có CCCD chủ tàu nên không có ngày sinh — đã để trống ô 'Ngày sinh' của "
+                            "chủ hồ sơ, vui lòng nhập tay.")
 
     # --- Phần III: NỘI DUNG ĐƠN ĐỀ NGHỊ (chủ thể LUÔN là chủ tàu). Key trùng Phần I → occurrence=1.
     # chonDoiTuong occ=1 ("Cá nhân") set TRƯỚC để ô "Họ tên chủ tàu" (formio-hidden theo điều kiện) hiện ra,
