@@ -1816,6 +1816,137 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san",
+      "code": "1.012787",
+      "label": "Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng trong dự án bất động sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2b45f564b292",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xoa-dang-ky-phuong-tien",
+      "code": "2.001659",
+      "label": "Xóa đăng ký phương tiện",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-a039-75a8-85e4-a19d8132bb5d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-giay-phep-hanh-nghe-cap-truoc-2024",
+      "code": "1.012290",
+      "label": "Cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024 đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1dcc-7496-8805-1623df922b71",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-giay-phep-hoat-dong-kham-benh-chua-benh",
+      "code": "1.012280",
+      "label": "Điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1d9a-76c9-8537-4e29900dec8a",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "gia-han-luu-hanh-phuong-tien-lao-tai-viet-nam",
+      "code": "1.002063",
+      "label": "Gia hạn thời gian lưu hành tại Việt Nam cho phương tiện của Lào",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-134f-7491-9d27-d7049d4567a6",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-thay-doi-bien-phap-bao-dam-qsdd",
+      "code": "1.011442",
+      "label": "Đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-7e5b-760d-9c8b-955bb35491f2",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh",
+      "code": "1.012278",
+      "label": "Cấp mới giấy phép hoạt động khám bệnh, chữa bệnh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1dae-71ac-95d8-374403c4ee5e",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep",
+      "code": "1.012292",
+      "label": "Điều chỉnh giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-1db3-774c-81c5-200c7dcc25a1",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly",
+      "code": "1.012756",
+      "label": "Đăng ký đất đai lần đầu đối với trường hợp được Nhà nước giao đất để quản lý",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6ef6-721c-8d2f-7fca1fdbfa3c",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
+      "code": "1.012906",
+      "label": "Cấp mới chứng chỉ hành nghề môi giới bất động sản",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88c8-7158-8063-6f38da02b999",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh",
+      "code": "1.012942",
+      "label": "Thủ tục báo cáo tổ chức đại hội thành lập, đại hội nhiệm kỳ, đại hội bất thường của hội (cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-137c-7669-b668-60277b1a9cb7",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh",
+      "code": "1.012945",
+      "label": "Thủ tục chia, tách; sáp nhập; hợp nhất hội (cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-138e-725c-a0d7-46a5f07bc45b",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua",
+      "code": "1.013977",
+      "label": "Đăng ký biến động thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do chia, tách, hợp nhất, sáp nhập tổ chức hoặc chuyển đổi mô hình tổ chức, chuyển đổi loại hình doanh nghiệp theo quy định của pháp luật về doanh nghiệp; điều chỉnh quy hoạch xây dựng chi tiết; cấp Giấy chứng nhận cho từng thửa đất theo quy hoạch xây dựng chi tiết cho chủ đầu tư dự án có nhu cầu",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8671-748e-8363-fcba5996a7f6",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn",
+      "code": "1.013995",
+      "label": "Đăng ký tài sản gắn liền với thửa đất đã được cấp Giấy chứng nhận hoặc đăng ký thay đổi về tài sản gắn liền với đất so với nội dung đã đăng ký, gia hạn thời hạn sở hữu nhà ở của tổ chức nước ngoài, cá nhân nước ngoài theo quy định của pháp luật về nhà ở nội dung đã đăng ký",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-868b-77ba-8cfe-b3af7e63b81a",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+      "code": "1.014104",
+      "label": "Cấp lại, điều chỉnh Giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở Y tế (Cơ sở bán buôn thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, quầy thuốc, tủ thuốc trạm y tế xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ truyền)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-3cdc-755a-a2a6-714d0c0b1361",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }
