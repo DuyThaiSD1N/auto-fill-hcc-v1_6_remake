@@ -331,6 +331,8 @@ from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.attach import plan as dk_bi
 from app.pipelines.dang_ky_bien_dong_dat_dai_da_nang.process import run as dk_bien_dong_dat_dai_dn_process
 from app.pipelines.dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn.attach import plan as dk_tai_san_gan_lien_dat_attach
 from app.pipelines.dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn.process import run as dk_tai_san_gan_lien_dat_process
+from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.attach import plan as dk_bien_dong_chia_tach_to_chuc_dn_attach
+from app.pipelines.dang_ky_bien_dong_chia_tach_hop_nhat_sap_nhap_to_chuc_cap_gcn_tung_thua.process import run as dk_bien_dong_chia_tach_to_chuc_dn_process
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.attach import plan as chuyen_muc_dich_dat_dn_attach
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.process import run as chuyen_muc_dich_dat_dn_process
 from app.pipelines.cap_gcn_so_nha_da_nang.attach import plan as cap_gcn_so_nha_dn_attach
@@ -5670,6 +5672,48 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua",
+        # Mã TTHC 1.013977. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
+        # dom-* (CÙNG field-key panel "Thông tin chung" với 1.013995) + attach attp-row 9 dòng: PDF gộp nhiều chục
+        # trang được tách theo trang rồi GOM mỗi dòng thành MỘT file (giấy tờ chính trước, đính kèm chung sau).
+        # Họ tên + CCCD + ngày sinh người nộp khoá theo tài khoản → mốc formContext. urlScope khoá host: cùng
+        # cụm tên với bản Lào Cai (1.115670).
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": [
+                "chia, tách, hợp nhất, sáp nhập tổ chức hoặc chuyển đổi mô hình tổ chức",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Đà Nẵng] Đăng ký biến động thay đổi quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất do chia, "
+            "tách, hợp nhất, sáp nhập tổ chức hoặc chuyển đổi mô hình tổ chức, chuyển đổi loại hình doanh nghiệp; "
+            "điều chỉnh quy hoạch xây dựng chi tiết; cấp Giấy chứng nhận cho từng thửa đất theo quy hoạch xây dựng "
+            "chi tiết cho chủ đầu tư dự án có nhu cầu"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký — tên MỚI của tổ chức, "
+            "mã số doanh nghiệp, địa chỉ trụ sở, điện thoại, nội dung biến động.\n"
+            "2. Giấy chứng nhận đã cấp (đủ trang, kể cả trang bổ sung).\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp bản mới nhất (+ bảng tình hình thay đổi ĐKDN nếu có); quyết "
+            "định / biên bản họp HĐTV về việc chia, tách, sáp nhập, chuyển đổi, đổi tên.\n"
+            "4. Nếu nộp thay: giấy ủy quyền (+ công văn chấp thuận của ngân hàng nhận thế chấp nếu có).\n"
+            "5. CCCD của người nộp (tài khoản đăng nhập) — để điền giới tính, ngày cấp, nơi cấp; không có thì lấy "
+            "ngày cấp/nơi cấp theo giấy ủy quyền khi bên được ủy quyền là người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước đính kèm (mỗi dòng 1 file gộp): Đơn + tờ khai LPTB/SDĐPNN→dòng 1 (Bản chính); GCN + giấy phép "
+            "xây dựng→dòng 2; giấy ủy quyền + công văn ngân hàng→dòng 3; QĐ quy hoạch chi tiết→dòng 4; mảnh "
+            "trích đo→dòng 5; bản vẽ tách/hợp thửa→dòng 6; GCN ĐKDN + bảng thay đổi→dòng 7; QĐ/biên bản HĐTV→"
+            "dòng 8; QĐ điều chỉnh quy hoạch + chứng từ nghĩa vụ tài chính→dòng 9."
+        ),
+    },
+    {
         "key": "cap-phep-long-duong-via-he",
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#76/#78). EFORM RIÊNG nhiều phần: Phần I người nộp (cá nhân đại diện) + Phần I-b
@@ -6184,6 +6228,7 @@ _PIPELINE = {
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_process,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
+    "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_process,
     "cap-phep-long-duong-via-he": cap_phep_via_he_process,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_process,
@@ -6358,6 +6403,7 @@ _ATTACH_PIPELINE = {
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_attach,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
+    "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_attach,
     "cap-phep-long-duong-via-he": cap_phep_via_he_attach,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_attach,
