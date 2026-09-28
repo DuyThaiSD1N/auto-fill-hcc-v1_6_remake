@@ -337,6 +337,8 @@ from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach import plan a
 from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.process import run as chia_tach_sap_nhap_hop_nhat_hoi_process
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.attach import plan as bao_cao_to_chuc_dai_hoi_attach
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.process import run as bao_cao_to_chuc_dai_hoi_process
+from app.pipelines.cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san.attach import plan as cap_moi_cchn_moi_gioi_bds_attach
+from app.pipelines.cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san.process import run as cap_moi_cchn_moi_gioi_bds_process
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.attach import plan as chuyen_muc_dich_dat_dn_attach
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.process import run as chuyen_muc_dich_dat_dn_process
 from app.pipelines.cap_gcn_so_nha_da_nang.attach import plan as cap_gcn_so_nha_dn_attach
@@ -5791,6 +5793,36 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
+        # Mã TTHC 1.012906 (Sở Xây dựng). Form.io, engine fillFormStandard dom-* + attach attp-row 6 dòng (tách
+        # theo trang: Đơn trang 1 + CCCD trang 2 của cùng một PDF về 2 dòng). Phần I người nộp khoá họ tên/ngày
+        # sinh/CCCD theo tài khoản → mốc formContext; Đơn đăng ký dự thi (panel brokerExamRegistrationForm) dùng
+        # lại key data[birthday] → scope. Không urlScope: link kê khai đi từ cổng DVCQG.
+        "detect": {
+            "textIncludes": ["Cấp mới chứng chỉ hành nghề môi giới bất động sản"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp mới chứng chỉ hành nghề môi giới bất động sản",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đăng ký dự thi sát hạch có dán ảnh 4x6 (Phụ lục XXI NĐ 96/2024/NĐ-CP) — điền Đơn.\n"
+            "2. CCCD / thẻ căn cước 2 mặt của người đề nghị (bản sao chứng thực).\n"
+            "3. Bằng tốt nghiệp THPT trở lên; Giấy chứng nhận hoàn thành khóa đào tạo, bồi dưỡng kiến thức hành "
+            "nghề môi giới BĐS (bản sao chứng thực).\n"
+            "4. Ảnh 4x6; chứng chỉ do nước ngoài cấp + bản dịch (nếu có).\n"
+            "5. Nộp thay: CCCD của người nộp (tài khoản đăng nhập); tổ chức nộp: Giấy chứng nhận đăng ký doanh "
+            "nghiệp / giấy giới thiệu.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước đính kèm: bằng tốt nghiệp→dòng 1; CCCD→dòng 2; Đơn→dòng 3; chứng chỉ nước ngoài→dòng 4 (không "
+            "có thì bỏ tick); GCN khóa học→dòng 5; ảnh 4x6→dòng 6 (không có ảnh rời thì đính chung trang Đơn)."
+        ),
+    },
+    {
         "key": "cap-phep-long-duong-via-he",
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#76/#78). EFORM RIÊNG nhiều phần: Phần I người nộp (cá nhân đại diện) + Phần I-b
@@ -6308,6 +6340,7 @@ _PIPELINE = {
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": bao_cao_to_chuc_dai_hoi_process,
+    "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": cap_moi_cchn_moi_gioi_bds_process,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_process,
     "cap-phep-long-duong-via-he": cap_phep_via_he_process,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_process,
@@ -6485,6 +6518,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": bao_cao_to_chuc_dai_hoi_attach,
+    "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": cap_moi_cchn_moi_gioi_bds_attach,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_attach,
     "cap-phep-long-duong-via-he": cap_phep_via_he_attach,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_attach,
