@@ -4285,6 +4285,12 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn" ||
       // [Đà Nẵng] 1.013977: như trên; mốc tài khoản còn dùng để đối chiếu bên được ủy quyền trên giấy UQ.
       cfg.key === "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua" ||
+      // [Đà Nẵng] 1.012756: chủ hồ sơ là tổ chức → mốc tài khoản đối chiếu người đại diện theo pháp luật (GCN
+      // ĐKDN) / bên được ủy quyền để lấy giới tính, ngày cấp, nơi cấp; thiếu mốc là BE để trống các ô đó.
+      cfg.key === "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly" ||
+      // [Sở Xây dựng] 1.012906: Phần I khoá họ tên/ngày sinh/CCCD theo tài khoản → mốc tài khoản quyết định tự nộp
+      // hay nộp thay; thiếu mốc là BE để trống giới tính, ngày cấp, nơi cấp, địa chỉ người nộp.
+      cfg.key === "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san" ||
       cfg.key === "cap-gcn-so-nha-da-nang" ||
       cfg.key === "xac-nhan-ho-so-so-nha-da-nang" ||
       cfg.key === "cap-phep-long-duong-via-he" ||

@@ -339,6 +339,8 @@ from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.attach import plan as ba
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.process import run as bao_cao_to_chuc_dai_hoi_process
 from app.pipelines.cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san.attach import plan as cap_moi_cchn_moi_gioi_bds_attach
 from app.pipelines.cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san.process import run as cap_moi_cchn_moi_gioi_bds_process
+from app.pipelines.dang_ky_dat_dai_lan_dau_nha_nuoc_giao_quan_ly.attach import plan as dk_dat_dai_lan_dau_nn_giao_quan_ly_attach
+from app.pipelines.dang_ky_dat_dai_lan_dau_nha_nuoc_giao_quan_ly.process import run as dk_dat_dai_lan_dau_nn_giao_quan_ly_process
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.attach import plan as chuyen_muc_dich_dat_dn_attach
 from app.pipelines.chuyen_muc_dich_su_dung_dat_da_nang.process import run as chuyen_muc_dich_dat_dn_process
 from app.pipelines.cap_gcn_so_nha_da_nang.attach import plan as cap_gcn_so_nha_dn_attach
@@ -5823,6 +5825,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly",
+        # Mã TTHC 1.012756 (Văn phòng Đăng ký đất đai). Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io,
+        # engine fillFormStandard dom-* (CÙNG field-key panel "Thông tin chung" với 1.013977) + attach attp-row 2
+        # dòng: PDF gộp vài chục trang được tách theo trang, MỖI GIẤY TỜ MỘT FILE (D1-xx / D2-xx), các file cùng
+        # dòng đặt chung vào ô "Chọn tệp tin" (multiple). Họ tên + CCCD + ngày sinh người nộp khoá theo tài khoản
+        # → mốc formContext đối chiếu người đại diện theo pháp luật / bên được ủy quyền. urlScope khoá host: mã
+        # 1.012756 là mã quốc gia, form tỉnh khác không cùng field-key.
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": ["được Nhà nước giao đất để quản lý"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Đà Nẵng] Đăng ký đất đai lần đầu đối với trường hợp được Nhà nước giao đất để quản lý",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) đã ký, đóng dấu — tên tổ chức, mã số "
+            "doanh nghiệp, địa chỉ trụ sở, điện thoại, ô đề nghị được đánh dấu.\n"
+            "2. Báo cáo kết quả rà soát hiện trạng sử dụng đất (Mẫu số 15đ) + trích lục bản đồ / mảnh trích đo "
+            "thửa đất.\n"
+            "3. Các giấy tờ kê ở mục 5 của Đơn: quyết định giao đất / cho thuê đất / chủ trương đầu tư, hợp đồng "
+            "thuê đất + phụ lục, biên bản giao đất, GCN đăng ký doanh nghiệp, phiếu đo đạc chỉnh lý, giấy tờ thuế, "
+            "tờ khai lệ phí trước bạ.\n"
+            "4. CCCD của người nộp (tài khoản đăng nhập) nếu có; nộp thay thì kèm giấy ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước đính kèm (mỗi giấy tờ một file, đánh số D1-xx / D2-xx theo thứ tự): Đơn + các giấy tờ kèm theo "
+            "mục 5→dòng 1; Báo cáo rà soát + trích lục bản đồ→dòng 2; cả hai 'Bản chính'. Trang trắng bị bỏ."
+        ),
+    },
+    {
         "key": "cap-phep-long-duong-via-he",
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#76/#78). EFORM RIÊNG nhiều phần: Phần I người nộp (cá nhân đại diện) + Phần I-b
@@ -6341,6 +6377,7 @@ _PIPELINE = {
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": bao_cao_to_chuc_dai_hoi_process,
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": cap_moi_cchn_moi_gioi_bds_process,
+    "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly": dk_dat_dai_lan_dau_nn_giao_quan_ly_process,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_process,
     "cap-phep-long-duong-via-he": cap_phep_via_he_process,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_process,
@@ -6519,6 +6556,7 @@ _ATTACH_PIPELINE = {
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": bao_cao_to_chuc_dai_hoi_attach,
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": cap_moi_cchn_moi_gioi_bds_attach,
+    "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly": dk_dat_dai_lan_dau_nn_giao_quan_ly_attach,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_attach,
     "cap-phep-long-duong-via-he": cap_phep_via_he_attach,
     "cho-thue-thue-mua-nha-o-xa-hoi": cho_thue_noxh_attach,
