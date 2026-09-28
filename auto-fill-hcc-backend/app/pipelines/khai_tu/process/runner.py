@@ -11,6 +11,7 @@ from app.pipelines.khai_tu.process.schema import (
     ALLOWED,
     COMPACT_COMP_BY_NAME,
     FIELDS,
+    UI_COMP_BY_NAME,
 )
 
 _LEGACY_DECEASED_FIELD_NAMES = {
@@ -133,6 +134,46 @@ def _filter_gbt_metadata(canonical: dict, documents: list[dict]) -> dict:
     return canonical
 
 
+# Trích lục khai tử thay cho giấy báo tử: mục (14) chọn "Giấy tờ thay thế" và lấy SỐ ĐĂNG KÝ khai
+# tử ở dòng "Số: 69 ngày 27/9/2026" ngay dưới "Đã được đăng ký khai tử tại: ...". Số hiệu trích lục
+# (vd "208/TLKT-BS" ở đầu trang) không phải số này.
+_DEATH_EXTRACT_SUBSTITUTE = "Giấy tờ thay thế"
+_DEATH_EXTRACT_TITLE_RE = re.compile(r"trich\s+luc\s+khai\s+tu")
+_DEATH_EXTRACT_REGISTERED_RE = re.compile(r"da\s+duoc\s+dang\s+ky\s+khai\s+tu\s+tai")
+_DEATH_EXTRACT_NUMBER_RE = re.compile(r"(?<!quyen )(?<![a-z])so\s*:\s*([0-9][0-9a-z/.\-]*)")
+
+
+def _death_extract_number(ocr_text: str) -> str:
+    """Số đăng ký khai tử trên TRÍCH LỤC KHAI TỬ; rỗng nếu hồ sơ không có trích lục đọc được số."""
+    for page in _source_pages(ocr_text):
+        if not _DEATH_EXTRACT_TITLE_RE.search(page):
+            continue
+        registered = _DEATH_EXTRACT_REGISTERED_RE.search(page)
+        if not registered:
+            continue
+        found = _DEATH_EXTRACT_NUMBER_RE.search(page[registered.end():registered.end() + 300])
+        if found:
+            return found.group(1).rstrip(".-/")
+    return ""
+
+
+def _fill_death_extract_substitute(ui_fields: list[dict], ocr_text: str) -> list[dict]:
+    """Hồ sơ không có giấy báo tử nhưng có trích lục khai tử → mục (14) ghi trích lục là giấy tờ thay thế.
+
+    Có số/cơ quan/ngày giấy báo tử thật thì giữ nguyên, trích lục không chen vào.
+    """
+    if any(str(field.get("name") or "").startswith("gbt") for field in ui_fields):
+        return ui_fields
+    number = _death_extract_number(ocr_text)
+    if not number:
+        return ui_fields
+    return [
+        *ui_fields,
+        {"name": "gbtLoai", "comp": UI_COMP_BY_NAME["gbtLoai"], "value": _DEATH_EXTRACT_SUBSTITUTE},
+        {"name": "gbtSo", "comp": UI_COMP_BY_NAME["gbtSo"], "value": number},
+    ]
+
+
 def _canonicalize_deceased_fields(raw_fields, documents):
     """Chuyển output compact cũ trước validation; tên mới luôn được ưu tiên.
 
@@ -229,6 +270,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options,
         reasoning_context=res.get("reasoning_context") or "",
     )
+    res["fields"] = _fill_death_extract_substitute(res["fields"], res.get("ocr_text") or "")
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
     if (options or {}).get("_review"):

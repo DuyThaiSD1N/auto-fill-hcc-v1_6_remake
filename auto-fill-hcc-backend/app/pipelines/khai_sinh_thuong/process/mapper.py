@@ -94,6 +94,10 @@ _STRUCTURAL_DEFAULTS = [
     {"name": "LoaiDangKy", "comp": "x-radio", "value": "1"},
     {"name": "nksLoaiKhaiSinh", "comp": "x-select-default", "value": "Đã xác định được cả cha lẫn mẹ"},
 ]
+# Hai lựa chọn còn lại của nksLoaiKhaiSinh; giá trị vẫn nằm ở vị trí mặc định trong `out` vì ô
+# này phải chọn trước để cổng hiện/ẩn đúng mục cha, mẹ.
+_BIRTH_TYPE_NO_FATHER = "Chưa xác định được cha"
+_BIRTH_TYPE_NO_MOTHER = "Chưa xác định được mẹ"
 
 _TAIL_DEFAULTS = [
     {"name": "QuanHe", "comp": "x-radio", "value": "ChaDe"},
@@ -615,6 +619,21 @@ def enrich(fields: list[dict]) -> list[dict]:
         # Mẹ: lấy từ Gcs_ hoặc TkKs_ nếu có tên mẹ
         if not has_mother_tk and (values.get("Gcs_HoTenCon") or values.get("TkKs_HoTenMe")):
             pass  # mẹ không có thông tin → để trống
+
+    # Loại khai sinh theo cha/mẹ đã xác định. Chỉ dựa vào tên/số định danh: field lẻ như
+    # CccdNam_NoiDangKyKhaiSinh (đọc nhầm từ mặt sau CCCD mẹ) không đủ để coi là có cha.
+    # Thiếu cả hai thì nhiều khả năng là OCR hỏng → giữ mặc định thay vì đoán.
+    has_father = has_father_cccd or has_father_tk
+    has_mother = has_mother_cccd or has_mother_tk
+    birth_type = None
+    if has_mother and not has_father:
+        birth_type = _BIRTH_TYPE_NO_FATHER
+    elif has_father and not has_mother:
+        birth_type = _BIRTH_TYPE_NO_MOTHER
+    if birth_type:
+        for field in out:
+            if field["name"] == "nksLoaiKhaiSinh":
+                field["value"] = birth_type
 
     # nu_is_subject → CccdNam_/CccdNu_ không phải cha/mẹ thật, chỉ còn tờ khai làm nguồn.
     father_residence, father_deceased = _parent_residence(

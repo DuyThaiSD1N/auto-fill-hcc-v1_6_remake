@@ -494,3 +494,53 @@ async def test_dang_ky_lai_compact_agent_maps_self_requester_from_paper_declarat
     assert "SoDinhDanhMe" not in d
     assert "soDKTruocDay" not in d
     assert not res["errors"]
+
+
+def test_dang_ky_lai_fills_requester_from_other_declaration_with_khac_tick():
+    # Hồ sơ nộp nhầm tờ khai cấp bản sao trích lục: mục I vẫn điền theo dòng người yêu cầu,
+    # ô quan hệ tích "Khác" (default) vì dòng quan hệ của biểu mẫu khác không tin được.
+    context = (
+        "<to_khai_dang_ky_lai>\nCó tờ khai đăng ký lại khai sinh: Không\n</to_khai_dang_ky_lai>\n"
+        f"<{reason.OTHER_DECLARATION_TAG}>\n"
+        "Họ tên: TRẦN VĂN MẪU\n"
+        "Số CCCD/CMND: 037090000111\n"
+        "Ngày cấp: 30/05/2024\n"
+        "Nơi cấp: Cục Cảnh sát\n"
+        "Nơi cư trú: Không xác định\n"
+        "Nguồn: to-khai-trich-luc.pdf\n"
+        f"</{reason.OTHER_DECLARATION_TAG}>\n"
+    )
+    source_fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN MẪU"},
+        {"name": "Subject_IdNumber", "value": "037090000111"},
+        {"name": "Subject_IdIssueDate", "value": "30/03/2024"},
+        {"name": "Subject_Ethnicity", "value": "Kinh"},
+    ]
+    options = {
+        "_reasoning_context": context,
+        "formContext": {"applicantFullname": "LÊ THỊ CỔNG", "applicantIdentityNumber": "001190000222"},
+    }
+
+    result = {field["name"]: field for field in mapper.enrich(source_fields, options)}
+
+    assert result["QuanHe"]["value"] == "Khac"
+    assert result["QuanHe"]["default"] is True
+    assert result["HoVaTenC"]["value"] == "TRẦN VĂN MẪU"
+    assert result["SoDinhDanhC"]["value"] == "037090000111"
+    # Trùng thẻ của người được đăng ký lại → ngày cấp theo thẻ, không theo tờ khai viết tay.
+    assert result["NgayCapDDC"]["value"] == "30/03/2024"
+    assert result["DanTocC"]["value"] == "Kinh"
+
+
+def test_dang_ky_lai_without_any_declaration_keeps_portal_requester():
+    context = "<to_khai_dang_ky_lai>\nCó tờ khai đăng ký lại khai sinh: Không\n</to_khai_dang_ky_lai>\n"
+    source_fields = [{"name": "Subject_FullName", "value": "TRẦN VĂN MẪU"}]
+    options = {
+        "_reasoning_context": context,
+        "formContext": {"applicantFullname": "LÊ THỊ CỔNG", "applicantIdentityNumber": "001190000222"},
+    }
+
+    result = {field["name"]: field for field in mapper.enrich(source_fields, options)}
+
+    assert result["QuanHe"]["value"] == "Khac"
+    assert "HoVaTenC" not in result

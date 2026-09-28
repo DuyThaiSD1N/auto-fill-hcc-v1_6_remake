@@ -431,3 +431,39 @@ def test_sanitizer_fixes_issue_date_swapped_between_child_and_mother():
     assert values["Subject_IdIssuePlace"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert values["Mother_IdIssueDate"] == "06/06/2025"
     assert values["Mother_IdIssuePlace"] == "Bộ Công an"
+
+
+_COPY_EXTRACT_DECLARATION = """TỜ KHAI
+CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH
+Kính gửi: (1) Ủy ban nhân dân phường Mẫu Sơn.
+Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN MẪU
+Nơi cư trú: (2) Tổ 3 Khu Thử - Phường Mẫu Sơn
+tỉnh Ninh Bình
+Giấy tờ tùy thân: (3) CCCD: 037090000111 Cấp ngày: 30/5/2024
+nơi cấp: Cục Cảnh sát
+Quan hệ với người được cấp bản sao Trích lục hộ tịch: Bản chính
+Đề nghị cơ quan cấp bản sao trích lục(4) Giấy khai Sinh
+Họ, chữ đệm, tên: TRẦN VĂN MẪU
+"""
+
+
+def test_other_declaration_requester_reads_copy_extract_form():
+    person = reason._other_declaration_requester([
+        {"name": "to-khai-trich-luc.pdf", "text": _COPY_EXTRACT_DECLARATION},
+    ])
+
+    assert person["name"] == "TRẦN VĂN MẪU"
+    assert person["id"] == "037090000111"
+    assert person["issue_date"] == "30/05/2024"
+    assert person["residence"] == "Tổ 3 Khu Thử - Phường Mẫu Sơn, tỉnh Ninh Bình"
+    assert person["source"] == "to-khai-trich-luc.pdf"
+
+
+def test_other_declaration_requester_skips_reregistration_declaration():
+    text = (
+        "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
+        "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN MẪU\n"
+        "Giấy tờ tùy thân: CCCD 037090000111\n"
+    )
+
+    assert reason._other_declaration_requester([{"name": "to-khai.pdf", "text": text}]) is None

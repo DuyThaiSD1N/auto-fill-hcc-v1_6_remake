@@ -953,6 +953,122 @@ def authorized_residence_area(line) -> dict | None:
     return _residence_from_declaration_line(re.sub(r"\s+[-–]\s+", ", ", str(line or "")))
 
 
+# ---------------------------------------------------------------------------
+# TỜ KHAI HỘ TỊCH CỦA THỦ TỤC KHÁC — CHỈ LẤY NHÂN THÂN NGƯỜI YÊU CẦU
+#
+# Người dân hay nộp nhầm tờ khai của thủ tục khác (vd "Tờ khai cấp bản sao trích lục hộ tịch")
+# thay cho tờ khai đăng ký lại khai sinh. Tờ đó không chốt được vai con/cha/mẹ, nhưng dòng
+# "Họ, chữ đệm, tên người yêu cầu" vẫn là lời khai về người đang đi nộp hồ sơ. Dòng quan hệ của
+# biểu mẫu khác hỏi chuyện khác (quan hệ với người được cấp bản sao...) và OCR đọc ra những chữ như
+# "Bản chính" → KHÔNG tin; mapper luôn tích "Khác" cho cán bộ soát.
+# ---------------------------------------------------------------------------
+
+OTHER_DECLARATION_TAG = "nguoi_yeu_cau_to_khai_khac"
+_OTHER_DECLARATION_BASIS = (
+    'Dòng "người yêu cầu" trên tờ khai của thủ tục khác, Python đọc trực tiếp OCR; '
+    "không dùng dòng quan hệ."
+)
+_OTHER_REQUESTER_RE = re.compile(_DECLARATION_ANCHORS[0][1], flags=re.IGNORECASE)
+# Khối người yêu cầu dừng ở dòng họ tên kế tiếp (người được cấp bản sao...) hoặc câu đề nghị.
+_OTHER_REQUESTER_END_RE = re.compile(
+    rf"^\s*(?:{_NAME_LABEL}\b|[DĐ][eề]\s+ngh[iị]|T[oô]i\s+cam\s+[dđ]oan|K[ií]nh\s+g[uử]i)",
+    flags=re.IGNORECASE,
+)
+_OTHER_LINE_LABEL_RE = re.compile(r"^[^:]{2,40}:")
+
+
+def _other_declaration_lines(text: str) -> list[str]:
+    lines = str(text or "").splitlines()
+    for index, line in enumerate(lines):
+        if _OTHER_REQUESTER_RE.match(line):
+            end = next(
+                (
+                    stop
+                    for stop in range(index + 1, len(lines))
+                    if _OTHER_REQUESTER_END_RE.match(lines[stop])
+                ),
+                len(lines),
+            )
+            return lines[index:end]
+    return []
+
+
+def _other_declaration_residence(block: list[str]) -> str:
+    """Dòng "Nơi cư trú", nối cả dòng tràn (vd tên tỉnh rơi xuống dòng dưới, không có nhãn)."""
+    for index, line in enumerate(block):
+        found = re.search(r"N[oơ]i\s+c[uư]\s+tr[uú]\s*:?\s*(.*)$", line, flags=re.IGNORECASE)
+        if not found:
+            continue
+        parts = [_strip_marker(found.group(1))]
+        for extra in block[index + 1:]:
+            if _OTHER_LINE_LABEL_RE.match(extra.strip()):
+                break
+            parts.append(extra.strip())
+        return ", ".join(part.strip(" ,.;") for part in parts if part.strip(" ,.;"))
+    return ""
+
+
+def _other_declaration_requester(documents: list[dict]) -> dict | None:
+    """Người yêu cầu ghi trên tờ khai KHÔNG phải tờ khai đăng ký lại khai sinh; None nếu không có."""
+    reregistration = {id(document) for document in _declaration_documents(documents)}
+    for document in documents:
+        text = str(document.get("text") or "")
+        if id(document) in reregistration or "to khai" not in _fold(text):
+            continue
+        block = _other_declaration_lines(text)
+        if not block:
+            continue
+        head = _OTHER_REQUESTER_RE.match(block[0]).group(1)
+        name = split_name_note(
+            _strip_marker(_cut_at(head, (r"Ng[aà]y[,\s]", r"N[aă]m\s+sinh", r"Sinh\s+ng[aà]y")))
+        )[0]
+        body = "\n".join(block)
+        identity = _digits(_first_match(body, (
+            r"S[oố]\s+[dđ][iị]nh\s+danh[^:\n]*:?\s*([0-9][0-9 ]{8,})",
+            r"(?:CCCD|CMND|C[aă]n\s+c[uư][oớ]c|Ch[uứ]ng\s+minh)[^0-9\n]{0,40}?([0-9][0-9 ]{8,})",
+        )))
+        issue_date = normalize_date(_first_match(body, (
+            r"(?:C[aấ]p\s+ng[aà]y|Ng[aà]y\s+c[aấ]p)\s*:?\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})",
+        )).replace(".", "/"))
+        issue_place = _cut_at(
+            _first_match(body, (r"N[oơ]i\s+c[aấ]p\s*:?\s*([^\n\r]+)",)),
+            (r"Quan\s*h[eệ]", r"C[aấ]p\s+ng[aà]y"),
+        )
+        if len(_fold(name).split()) < 2 and len(identity) not in {9, 12}:
+            continue
+        return {
+            "name": name if len(_fold(name).split()) >= 2 else "",
+            "id": identity if len(identity) in {9, 12} else "",
+            "issue_date": issue_date,
+            "issue_place": normalize_issuer(issue_place) if issue_place else "",
+            "residence": _other_declaration_residence(block),
+            "source": document.get("name") or "(không tên)",
+        }
+    return None
+
+
+def _render_other_declaration(documents: list[dict]) -> str:
+    person = _other_declaration_requester(documents)
+    if not person:
+        return ""
+    lines = [
+        f"Họ tên: {person['name'] or 'Không xác định'}",
+        f"Số CCCD/CMND: {person['id'] or 'Không xác định'}",
+        f"Ngày cấp: {person['issue_date'] or 'Không xác định'}",
+        f"Nơi cấp: {person['issue_place'] or 'Không xác định'}",
+        f"Nơi cư trú: {person['residence'] or 'Không xác định'}",
+        f"Nguồn: {person['source']}",
+        f"Căn cứ: {_OTHER_DECLARATION_BASIS}",
+    ]
+    return (
+        f"<{OTHER_DECLARATION_TAG}>\n"
+        + "\n".join(lines)
+        + f"\n</{OTHER_DECLARATION_TAG}>\n"
+        "Khối <nguoi_yeu_cau_to_khai_khac> do Python tự điền vào mục người yêu cầu; KHÔNG dùng nó để "
+        "trả Requester_* hay đổi vai con/cha/mẹ.\n"
+    )
+
+
 def _declaration_documents(documents: list[dict]) -> list[dict]:
     return [
         document
@@ -2328,6 +2444,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "</to_khai_dang_ky_lai>\n"
         f"{_render_mrz_backs(documents)}"
         f"{_render_authorized(documents)}"
+        f"{'' if declaration_sources else _render_other_declaration(documents)}"
         "Khối <cha>/<me> có dòng \"Nguồn giấy tờ tùy thân\" nghĩa là Số CCCD/CMND, Ngày cấp, "
         "Nơi cấp trong khối đó đã đọc thẳng từ chính tấm CCCD/CMND của người đó: BẮT BUỘC trả "
         "y nguyên vào *_IdNumber, *_IdIssueDate, *_IdIssuePlace, không lấy theo tờ khai.\n"

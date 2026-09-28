@@ -262,7 +262,7 @@ _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Moth
 
 # Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ giấy ủy quyền, từ
 # tờ khai, hoặc đối chiếu được người đăng nhập chính là người được đăng ký lại khai sinh.
-_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "to_khai", "cccd_con"})
+_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "to_khai", "cccd_con", "to_khai_khac"})
 
 # Mục I được cổng điền sẵn từ tài khoản VNeID đang đăng nhập. Khi tờ khai chốt người yêu cầu là
 # NGƯỜI KHÁC (người nộp hộ đăng nhập bằng tài khoản của chính họ), mọi ô ta không đọc được vẫn
@@ -558,6 +558,58 @@ def _authorized_requester(values: dict, context: str) -> dict | None:
     }
 
 
+def _other_declaration_requester(values: dict, context: str) -> dict | None:
+    """Hồ sơ nộp NHẦM tờ khai của thủ tục khác (vd cấp bản sao trích lục) → vẫn điền mục I theo
+    dòng người yêu cầu trên tờ đó, nhưng ô quan hệ LUÔN tích "Khác".
+
+    Dòng quan hệ của biểu mẫu khác hỏi chuyện khác và hay bị OCR đọc thành chữ vô nghĩa ("Bản
+    chính"), nên không suy vai từ đó; đánh dấu default để extension tô vàng cho cán bộ tự tích lại.
+    Người yêu cầu trùng số định danh với một vai trong hồ sơ thì giấy tờ tùy thân lấy theo CCCD
+    của chính vai đó — thẻ in sẵn sạch hơn chữ viết tay (ngày cấp hay bị đọc lệch tháng).
+    """
+    section = _reason_mod._section(context, _reason_mod.OTHER_DECLARATION_TAG) if context else ""
+    if not section:
+        return None
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    identity = _digits(read("Số CCCD/CMND"))
+    person = {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": identity if _is_valid_id_number(identity) else None,
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": normalize_issuer(read("Nơi cấp")),
+        "noi_cu_tru": _reason_mod.authorized_residence_area(read("Nơi cư trú")),
+    }
+    if not person["ho_ten"] and not person["so_dinh_danh"]:
+        return None
+
+    ethnicity = ""
+    for prefix in ("Subject", "Father", "Mother"):
+        if _same_person(
+            person["ho_ten"], person["so_dinh_danh"],
+            values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        ):
+            base = _person_from_role(values, prefix, context)
+            for key in _ID_DOC_KEYS:
+                person[key] = base.get(key) or person[key]
+            person["noi_cu_tru"] = person["noi_cu_tru"] or base.get("noi_cu_tru")
+            ethnicity = values.get(f"{prefix}_Ethnicity") or ""
+            break
+
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "dan_toc": ethnicity,
+        "quan_he": "Khac",
+        "quan_he_default": True,
+        "source": "to_khai_khac",
+    }
+
+
 def _resolve_requester(values: dict, context: str, options: dict | None = None) -> dict:
     """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
 
@@ -660,6 +712,10 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         person = _person_from_role(values, "Subject", context)
         if person.get("ho_ten") or person.get("so_dinh_danh"):
             return {**person, "quan_he": "BanThan", "quan_he_default": False, "source": "cccd_con"}
+
+    other = _other_declaration_requester(values, context)
+    if other:
+        return other
 
     return {"quan_he": "Khac", "quan_he_default": True, "source": "khong_to_khai"}
 
@@ -808,7 +864,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
         # Dan toc nguoi yeu cau doc theo dung vai da tick. "Khac" la nguoi thu ba (anh/chi/em/uy quyen)
-        # nen khong co nguon dan toc trong ho so -> de trong cho cong giu du lieu VNeID.
+        # nen khong co nguon dan toc trong ho so -> de trong cho cong giu du lieu VNeID. Rieng nguoi
+        # yeu cau doc tu to khai thu tuc khac ma trung the cua mot vai thi da co san dan toc vai do.
+        if requester.get("dan_toc"):
+            add("DanTocC", normalize_ethnic(requester.get("dan_toc")))
         for _name in _ETHNICITY_BY_TICK.get(quan_he, ()):
             if values.get(_name):
                 add("DanTocC", normalize_ethnic(values.get(_name)))

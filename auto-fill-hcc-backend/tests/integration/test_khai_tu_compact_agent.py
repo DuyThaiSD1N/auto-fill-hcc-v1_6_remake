@@ -11,6 +11,7 @@ from app.pipelines.khai_tu.process.prompt import EXTRA_RULES
 from app.pipelines.khai_tu.process import reason
 from app.pipelines.khai_tu.process.runner import (
     _canonicalize_deceased_fields,
+    _fill_death_extract_substitute,
     _requester_hint,
 )
 from app.pipelines.khai_tu.process.schema import FIELDS
@@ -770,6 +771,41 @@ def test_khai_tu_only_keeps_metadata_supported_by_actual_death_notice():
 
     assert _canonicalize_deceased_fields(correct, documents) == correct
     assert _canonicalize_deceased_fields(wrong_extract, documents) == {}
+
+
+_TRICH_LUC_KHAI_TU = (
+    "===== trich-luc.pdf =====\n"
+    "UBND XÃ AN PHÚ\n"
+    "Số: 208/TLKT-BS\n"
+    "TRÍCH LỤC KHAI TỬ\n"
+    "Họ, chữ đệm, tên: NGUYỄN VĂN MẪU\n"
+    "Đã được đăng ký khai tử tại: UBND xã An Phú, huyện Bình Hòa, tỉnh Minh Sơn\n"
+    "Quyển số: 01\n"
+    "Số: 69 ngày 27/9/2026\n"
+    "Thực hiện trích lục từ: Sổ đăng ký khai tử\n"
+)
+
+
+def test_khai_tu_death_extract_fills_substitute_death_notice():
+    fields = _fill_death_extract_substitute(
+        [{"name": "HoTen", "comp": "x-input", "value": "NGUYỄN VĂN MẪU"}],
+        _TRICH_LUC_KHAI_TU,
+    )
+    values = {field["name"]: field["value"] for field in fields}
+
+    assert values["gbtLoai"] == "Giấy tờ thay thế"
+    assert values["gbtSo"] == "69"
+    assert "gbtNgay" not in values and "gbtCoQuanCap" not in values
+
+
+def test_khai_tu_death_extract_does_not_override_real_death_notice():
+    fields = [
+        {"name": "gbtLoai", "comp": "x-select-default", "value": "Giấy báo tử"},
+        {"name": "gbtSo", "comp": "x-input", "value": "41002"},
+    ]
+
+    assert _fill_death_extract_substitute(fields, _TRICH_LUC_KHAI_TU) == fields
+    assert _fill_death_extract_substitute([], "TỜ KHAI ĐĂNG KÝ KHAI TỬ\nSố: 12") == []
 
 
 def test_khai_tu_schema_uses_new_deceased_prefix_and_keeps_death_notice_names():
