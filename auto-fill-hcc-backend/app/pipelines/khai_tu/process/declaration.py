@@ -154,9 +154,11 @@ def _document_type(value: str) -> str:
         return "Chứng minh nhân dân"
     if "ho chieu" in folded or "passport" in folded:
         return "Hộ chiếu"
-    # Cổng gộp thẻ Căn cước mới và CCCD cũ về một option "Căn cước công dân".
-    if "cccd" in folded or "can cuoc" in folded or "cc" == folded.strip():
+    # Cổng tách hai option: CCCD gắn chip cũ và thẻ Căn cước mới (từ 01/7/2024).
+    if "cccd" in folded or "can cuoc cong dan" in folded:
         return "Căn cước công dân"
+    if "can cuoc" in folded or "cc" == folded.strip():
+        return "Thẻ căn cước"
     return ""
 
 

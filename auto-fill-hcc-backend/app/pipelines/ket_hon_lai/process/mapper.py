@@ -3,7 +3,7 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines.ket_hon_lai.process.schema import UI_COMP_BY_NAME
@@ -98,7 +98,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
         add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
         add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
-        add(f"LoaiGiayToDinhDanh_{dst}", "Căn cước công dân")
+        add(f"LoaiGiayToDinhDanh_{dst}", id_doc_type("Căn cước công dân", issuer))
         add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
         add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
         add(f"NoiCapDD_{dst}", issuer)

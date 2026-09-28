@@ -6,7 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
-from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines.khai_sinh_thuong.process import mapper as birth_mapper
 from app.pipelines.nhan_cha_me_con.process import mapper as recognition_mapper
 
@@ -80,7 +80,7 @@ def map_birth(fields: list[dict]) -> list[dict]:
     _replace(output, "SoDinhDanhC", "x-input", requester_id)
     _replace(output, "SoGiayToDinhDanhC", "x-input", requester_id)
     if requester_id:
-        _replace(output, "LoaiGiayToDinhDanhC", "x-select", "Căn cước công dân")
+        _replace(output, "LoaiGiayToDinhDanhC", "x-select", id_doc_type("Căn cước công dân", requester_issuer or ""))
     _replace(output, "NgayCapDDC", "x-date", requester_issue_date)
     _replace(output, "NoiCapDDC", "x-input", requester_issuer)
     if values.get("Requester_ResidenceDomestic"):

@@ -50,7 +50,7 @@ def test_map_full_case():
     assert out["HoTenBenNu"]["value"] == "MÁ THỊ SỐ"
     assert out["SoDinhDanh_BenNu"]["value"] == "012189003303"
     assert out["SoGiayToDinhDanh_BenNu"]["value"] == "012189003303"
-    assert out["LoaiGiayToDinhDanh_BenNu"]["value"] == "Căn cước công dân"
+    assert out["LoaiGiayToDinhDanh_BenNu"]["value"] == "Thẻ căn cước"  # Bộ Công an cấp = thẻ Căn cước mới
     assert out["NgaySinhBenNu"]["value"] == "01/01/1989"
     assert out["NgayCapDD_BenNu"]["value"] == "16/03/2026"
     assert out["NoiCapDD_BenNu"]["value"] == "Bộ Công an"        # bỏ đuôi tiếng Anh

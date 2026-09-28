@@ -16,7 +16,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
-from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
 from app.pipelines.khai_sinh_co_ho_so.process import reason as _reason_mod
 
@@ -208,9 +208,12 @@ def _ethnicity(value) -> str:
     return normalize_ethnic(value)
 
 
-def _id_doc_type(number) -> str:
-    """CMND cu ~9 so -> 'Chung minh nhan dan'; CCCD/Can cuoc 12 so -> 'Can cuoc cong dan'."""
-    return "Chứng minh nhân dân" if len(_digits(number)) == 9 else "Căn cước công dân"
+def _id_doc_type(number, issuer: str = "") -> str:
+    """CMND cu ~9 so -> 'Chung minh nhan dan'; 12 so -> noi cap quyet dinh
+    (Bo Cong an -> 'The can cuoc', Cuc Canh sat -> 'Can cuoc cong dan')."""
+    if len(_digits(number)) == 9:
+        return "Chứng minh nhân dân"
+    return id_doc_type("Căn cước công dân", issuer)
 
 
 def _copy_value(value) -> str:
@@ -541,7 +544,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("SoDinhDanhC", req_id)
             add("SoGiayToDinhDanhC", req_id)
             if req_id:
-                add("LoaiGiayToDinhDanhC", _id_doc_type(req_id))
+                add("LoaiGiayToDinhDanhC", _id_doc_type(req_id, requester.get("noi_cap")))
             add("NgayCapDDC", requester.get("ngay_cap"))
             add("NoiCapDDC", requester.get("noi_cap"))
 
@@ -587,7 +590,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("SoDinhDanhMe", values.get("Mother_IdNumber"))
         add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"))
         if values.get("Mother_IdNumber"):
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber")))
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber"), _issuer_or_default(values, "Mother")))
         add("NgayCapDDMe", values.get("Mother_IdIssueDate"))
         add("NoiCapDDMe", _issuer_or_default(values, "Mother"))
         add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"))
@@ -602,7 +605,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("SoDinhDanhCha", values.get("Father_IdNumber"))
         add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"))
         if values.get("Father_IdNumber"):
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber")))
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber"), _issuer_or_default(values, "Father")))
         add("NgayCapDDCha", values.get("Father_IdIssueDate"))
         add("NoiCapDDCha", _issuer_or_default(values, "Father"))
         add("NamSinhChaKS", values.get("Father_BirthDateOrYear"))

@@ -69,7 +69,7 @@ _DOC_LABEL = {
     "personal_document": "Giấy tờ cá nhân",
     "civil_servant_doc": "Văn bản xác nhận của cơ quan",
     "authorization": "Văn bản ủy quyền",
-    "paper_declaration": "Tờ khai đăng ký khai sinh (bản giấy)",
+    "paper_declaration": "Tờ khai đăng ký",
     "other": "Tài liệu khai sinh",
 }
 
@@ -282,7 +282,11 @@ async def plan_khai_sinh_co_ho_so_attachments(
         else:
             # paper_declaration / other: không thuộc ô nào có sẵn. KHÔNG đính vào STT 1 (mẫu điện tử
             # do hệ thống tự sinh) — thêm thành phần mới để không bỏ rơi file người dân đã tải lên.
-            label = detected.get("title") or _DOC_LABEL.get(doc_type, "Tài liệu khai sinh")
+            # Tờ khai giấy luôn mang tên cố định, không lấy title LLM đặt.
+            if doc_type == "paper_declaration":
+                label = _DOC_LABEL["paper_declaration"]
+            else:
+                label = detected.get("title") or _DOC_LABEL.get(doc_type, "Tài liệu khai sinh")
             component_name = _unique_label(label, used_labels)
             item = {
                 "fileIndex": idx,
@@ -295,7 +299,9 @@ async def plan_khai_sinh_co_ho_so_attachments(
                 "detectedType": component_name,
             }
 
-        if _is_cccd_text(text):
+        # Chỉ giấy tờ cá nhân mới được ghép 2 mặt. Tờ khai/bản cam đoan cũng in "Số định danh cá nhân"
+        # trùng số CCCD → nếu đưa vào đây sẽ bị ghép nhầm thành "mặt sau" CCCD và rơi vào STT 3.
+        if doc_type == "personal_document" and _is_cccd_text(text):
             identity_indexes.add(idx)
 
         attachments.append(item)

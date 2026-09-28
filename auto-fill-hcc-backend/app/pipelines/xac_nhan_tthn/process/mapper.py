@@ -130,8 +130,9 @@ def _normalize_commune_label(value) -> str:
 def _id_doc_type_for(number, issuer) -> str:
     """Loại giấy tờ tùy thân theo SỐ: 9 chữ số là CMND cũ, CCCD/Căn cước luôn 12 chữ số.
 
-    Số 12 chữ số (hoặc chưa rõ) → "Căn cước công dân": cổng gộp thẻ Căn cước mới và CCCD cũ về một
-    option. Nhãn "Chứng minh nhân dân" giống option của eForm hộ tịch đang dùng ở trích lục.
+    Số 12 chữ số (hoặc chưa rõ) mới phân loại tiếp theo nơi cấp (Bộ Công an → "Thẻ căn cước",
+    Cục Cảnh sát → "Căn cước công dân"). Nhãn "Chứng minh nhân dân" giống option của eForm hộ tịch
+    đang dùng ở trích lục.
     """
     if len(_digits(number)) == 9:
         return "Chứng minh nhân dân"

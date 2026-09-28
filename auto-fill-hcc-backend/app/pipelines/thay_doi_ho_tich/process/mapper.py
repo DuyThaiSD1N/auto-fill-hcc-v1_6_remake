@@ -742,19 +742,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         )
         add("SoGiayToTuyThanC", requester_id_doc)
 
-    # (3) Loại giấy tờ tùy thân - từ tờ khai hoặc suy từ độ dài số
-    # LLM có thể trả "Thẻ Căn cước"/"CCCD" → quy về option "Căn cước công dân" của cổng.
-    requester_id_type = id_doc_type(values.get("NguoiYeuCau_LoaiGiayTo"))
-    if not requester_id_type and requester_id:
-        # Suy từ độ dài: 12 số = CCCD, 9 số = CMND
-        id_len = len(requester_id.replace(" ", ""))
-        if id_len == 12:
-            requester_id_type = "Căn cước công dân"
-        elif id_len == 9:
-            requester_id_type = "Chứng minh nhân dân"
-    if requester_id_type:
-        add("LoaiGiayToTuyThanC", requester_id_type)
-
     # (3) Ngày cấp + Cơ quan cấp giấy tờ tùy thân của người yêu cầu. Tờ khai đã đọc tất định ở
     # declaration.py, nhưng mapper không phát ra ô UI nào nên hai ô này luôn trống trên form.
     # Ưu tiên tờ khai → thẻ CCCD khớp người yêu cầu → Cccd_* → thẻ của người có nội dung thay đổi
@@ -798,6 +785,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         card_date, card_issuer = _card_issue(card)
         requester_issue_date = requester_issue_date or card_date
         requester_issuer = requester_issuer or normalize_issuer(card_issuer)
+
+    # (3) Loại giấy tờ tùy thân - từ tờ khai hoặc suy từ độ dài số. Nhóm căn cước do NƠI CẤP quyết
+    # định (Bộ Công an → "Thẻ căn cước", Cục Cảnh sát → "Căn cước công dân"): người dân quen ghi
+    # "CCCD" cả cho thẻ Căn cước mới. Đặt sau khi chốt nơi cấp nhưng vẫn trước mọi add() ngày/nơi cấp.
+    type_issuer = requester_issuer or (default_issuer(requester_issue_date) if requester_issue_date else "")
+    declared_type = values.get("NguoiYeuCau_LoaiGiayTo")
+    requester_id_type = id_doc_type(declared_type, type_issuer) if declared_type else ""
+    if not requester_id_type and requester_id:
+        # Suy từ độ dài: 12 số = CCCD/Căn cước (theo nơi cấp), 9 số = CMND
+        id_len = len(requester_id.replace(" ", ""))
+        if id_len == 12:
+            requester_id_type = id_doc_type("Căn cước công dân", type_issuer)
+        elif id_len == 9:
+            requester_id_type = "Chứng minh nhân dân"
+    if requester_id_type:
+        add("LoaiGiayToTuyThanC", requester_id_type)
 
     if requester_issue_date:
         add("NgayCapDDC", requester_issue_date)
@@ -914,10 +917,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # NHƯNG người lớn có CCCD (ngày/nơi cấp) → vẫn điền, kể cả khi sự kiện hộ tịch gốc là khai sinh.
         has_id_card = bool(ngay_cap or noi_cap or g("SoGiayTo"))
         if ntd_so_dinh_danh and (event != "birth" or has_id_card):
-            add("ntdLoaiGiayToTuyThan", "Căn cước công dân")
+            ntd_issuer = noi_cap or default_issuer(ngay_cap)
+            add("ntdLoaiGiayToTuyThan", id_doc_type("Căn cước công dân", ntd_issuer))
             add("ntdSoGiayToTuyThan", g("SoGiayTo") or ntd_so_dinh_danh)
             add("ntdNgayCapGiayToTuyThan", ngay_cap)
-            add("ntdNoiCapGiayToTuyThan", noi_cap or default_issuer(ngay_cap))
+            add("ntdNoiCapGiayToTuyThan", ntd_issuer)
         residence = _area(g("NoiCuTru"))
         if residence:
             add("ntdLoaiCuTru", "Thường trú")

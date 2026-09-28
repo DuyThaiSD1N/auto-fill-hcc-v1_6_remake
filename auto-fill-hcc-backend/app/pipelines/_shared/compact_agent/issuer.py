@@ -11,9 +11,10 @@ import unicodedata
 ISSUER_BO_CONG_AN = "Bộ Công an"
 ISSUER_CUC = "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
 
-# Loại giấy tờ tùy thân KHỚP option dropdown eForm hộ tịch (Sở Tư pháp). Cổng đã gộp thẻ Căn cước
-# mới (Bộ Công an) và CCCD gắn chip cũ (Cục Cảnh sát QLHC) về MỘT option "Căn cước công dân".
-DOC_CAN_CUOC_CONG_DAN = "Căn cước công dân"
+# Loại giấy tờ tùy thân KHỚP option dropdown eForm hộ tịch (Sở Tư pháp). Cổng có HAI option riêng:
+# thẻ Căn cước mới (Bộ Công an, từ 01/7/2024) và CCCD gắn chip cũ (Cục Cảnh sát QLHC về TTXH).
+DOC_THE_CAN_CUOC = "Thẻ căn cước"
+DOC_CCCD = "Căn cước công dân"
 
 
 def _fold(value) -> str:
@@ -65,9 +66,9 @@ def default_issuer(ngay_cap) -> str:
 
 
 def id_doc_type(loai_hint, issuer: str = "") -> str:
-    """Loại giấy tờ tùy thân KHỚP option dropdown eForm hộ tịch.
+    """Loại giấy tờ tùy thân KHỚP option dropdown eForm hộ tịch, phân biệt theo NƠI CẤP:
+    Bộ Công an → "Thẻ căn cước" (thẻ mới); Cục Cảnh sát → "Căn cước công dân" (CCCD cũ).
 
-    Thẻ Căn cước mới lẫn CCCD cũ đều ra "Căn cước công dân" (cổng chỉ còn một option cho cả hai).
     CMND/Hộ chiếu/Thẻ thường trú/Giấy chứng nhận căn cước ưu tiên theo loai_hint (bất kể issuer).
     """
     norm = _fold(loai_hint)
@@ -79,8 +80,15 @@ def id_doc_type(loai_hint, issuer: str = "") -> str:
         return "Thẻ thường trú"
     if "giay chung nhan can cuoc" in norm:
         return "Giấy chứng nhận căn cước"
-    # Nhóm căn cước/CCCD: loại ghi rõ, hoặc nơi cấp là cơ quan cấp thẻ căn cước.
+    # Nhóm căn cước/CCCD: NƠI CẤP quyết định.
     iss = normalize_issuer(issuer) if issuer else ""
-    if iss in (ISSUER_BO_CONG_AN, ISSUER_CUC) or "can cuoc" in norm or "cccd" in norm:
-        return DOC_CAN_CUOC_CONG_DAN
+    if iss == ISSUER_BO_CONG_AN:
+        return DOC_THE_CAN_CUOC
+    if iss == ISSUER_CUC:
+        return DOC_CCCD
+    # Không suy được nơi cấp → dựa vào chữ trong loại ("công dân"/"CCCD" = CCCD cũ, "căn cước"/"CC" = thẻ mới).
+    if "cong dan" in norm or "cccd" in norm:
+        return DOC_CCCD
+    if "can cuoc" in norm or norm == "cc":
+        return DOC_THE_CAN_CUOC
     return str(loai_hint or "").strip()

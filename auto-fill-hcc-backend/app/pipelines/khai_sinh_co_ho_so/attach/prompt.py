@@ -56,7 +56,7 @@ Mỗi tài liệu trả type thuộc đúng một trong:
 - CCCD → "Căn cước công dân" (hoặc "Thẻ căn cước"/"Chứng minh nhân dân"/"Hộ chiếu" đúng loại đọc được);
   thẻ BHYT → "Thẻ bảo hiểm y tế"; giấy chứng nhận kết hôn → "Giấy chứng nhận kết hôn";
   trích lục khai tử → "Trích lục khai tử"; commitment → "Bản cam đoan";
-  authorization → "Văn bản ủy quyền"; paper_declaration → "Tờ khai đăng ký khai sinh".
+  authorization → "Văn bản ủy quyền"; paper_declaration → "Tờ khai đăng ký".
 </title_rules>
 
 <output_contract>

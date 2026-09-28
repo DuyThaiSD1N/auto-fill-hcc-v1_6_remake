@@ -3,7 +3,7 @@
 import re
 
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as LEGACY_COMP_BY_NAME
-from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.hospital_lookup import lookup_hospital
@@ -685,7 +685,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("SoDinhDanhC", requester.get("so_dinh_danh"))
         add("SoGiayToDinhDanhC", requester.get("so_dinh_danh"))
         if requester.get("so_dinh_danh"):
-            add("LoaiGiayToDinhDanhC", "Căn cước công dân")
+            add("LoaiGiayToDinhDanhC", id_doc_type("Căn cước công dân", requester.get("noi_cap") or ""))
         add("NgayCapDDC", requester.get("ngay_cap"))
         add("NoiCapDDC", requester.get("noi_cap"))
         if not requester.get("deceased"):
@@ -726,7 +726,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("NamSinhMeKS", values.get("CccdNu_NgaySinh"))
         add("SoDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
         add("SoGiayToDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
-        add("LoaiGiayToDinhDanhMe", "Căn cước công dân")
+        add("LoaiGiayToDinhDanhMe", id_doc_type("Căn cước công dân", mother_issuer))
         add("NgayCapDDMe", values.get("CccdNu_NgayCap"))
         add("NoiCapDDMe", mother_issuer)
         add("DanTocMeKS", values.get("TkKs_DanTocMe") or values.get("CccdNu_DanToc"))
@@ -753,7 +753,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         add("NamSinhChaKS", values.get("CccdNam_NgaySinh"))
         add("SoDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
         add("SoGiayToDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
-        add("LoaiGiayToDinhDanhCha", "Căn cước công dân")
+        add("LoaiGiayToDinhDanhCha", id_doc_type("Căn cước công dân", father_issuer))
         add("NgayCapDDCha", values.get("CccdNam_NgayCap"))
         add("NoiCapDDCha", father_issuer)
         add("DanTocChaKS", values.get("TkKs_DanTocCha") or values.get("CccdNam_DanToc"))

@@ -122,7 +122,7 @@ def _doc_type(so_dinh_danh, issuer: str = "") -> str:
     """Suy loại giấy tờ từ độ dài số định danh và nơi cấp.
 
     - 9 chữ số → CMND (Chứng minh nhân dân)
-    - 12 chữ số → Căn cước công dân (cổng gộp thẻ Căn cước mới và CCCD cũ)
+    - 12 chữ số → id_doc_type phân biệt theo nơi cấp (Bộ Công an → Thẻ căn cước, Cục Cảnh sát → CCCD)
     - Khác → mặc định Căn cước công dân
     """
     digits = _digits(so_dinh_danh)

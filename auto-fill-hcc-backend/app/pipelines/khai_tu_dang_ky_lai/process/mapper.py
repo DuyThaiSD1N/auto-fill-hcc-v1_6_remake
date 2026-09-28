@@ -3,7 +3,7 @@
 import re
 
 from app.pipelines._shared.formatting import normalize_date, parse_death_time, upper_person_name
-from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines.khai_tu_dang_ky_lai.process.schema import UI_COMP_BY_NAME
 
@@ -54,8 +54,11 @@ def _copy_value(value) -> str:
     return str(value or "").strip()
 
 
-def _id_doc_type(number) -> str:
-    return "Chứng minh nhân dân" if len(_digits(number)) == 9 else "Căn cước công dân"
+def _id_doc_type(number, issuer: str = "") -> str:
+    # 12 số: nơi cấp phân biệt "Thẻ căn cước" (Bộ Công an) với "Căn cước công dân" (Cục Cảnh sát).
+    if len(_digits(number)) == 9:
+        return "Chứng minh nhân dân"
+    return id_doc_type("Căn cước công dân", issuer)
 
 
 def _issue_place(issue_place, issue_date) -> str:
@@ -95,7 +98,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("SoDinhDanhC", requester_id)
     add("SoGiayToDinhDanhC", requester_id)
     if requester_id:
-        add("LoaiGiayToDinhDanhC", _id_doc_type(requester_id))
+        add("LoaiGiayToDinhDanhC", _id_doc_type(
+            requester_id,
+            _issue_place(values.get("Requester_IdIssuePlace"), values.get("Requester_IdIssueDate")),
+        ))
     add("NgayCapDDC", normalize_date(values.get("Requester_IdIssueDate")))
     add("NoiCapDDC", _issue_place(values.get("Requester_IdIssuePlace"), values.get("Requester_IdIssueDate")))
     add("nycLoaiCuTru", "Thường trú")
@@ -122,7 +128,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("SoDinhDanh", deceased_id)
     add("SoGiayToDinhDanh", deceased_id)
     if deceased_id:
-        add("LoaiGiayToDinhDanh", _id_doc_type(deceased_id))
+        add("LoaiGiayToDinhDanh", _id_doc_type(
+            deceased_id,
+            _issue_place(values.get("Deceased_IdIssuePlace"), values.get("Deceased_IdIssueDate")),
+        ))
     add("NgayCapDD", normalize_date(values.get("Deceased_IdIssueDate")))
     add("NoiCapDD", _issue_place(values.get("Deceased_IdIssuePlace"), values.get("Deceased_IdIssueDate")))
     add("nktLoaiCuTru", "Thường trú")
