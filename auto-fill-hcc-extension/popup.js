@@ -4254,6 +4254,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
+      // [Bộ Y tế] 1.014104: Họ tên + CCCD người nộp bị khoá theo tài khoản, hay nộp thay → mốc tài khoản
+      // quyết định Phần I lấy nhân thân chủ cơ sở hay CCCD người nộp; thiếu mốc là BE không đụng Phần I.
+      cfg.key === "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te" ||
       cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
       // Cấp GCN đăng ký tàu cá: Phần I prefill từ tài khoản (số định danh bị khóa) → thiếu mốc là BE
       // luôn coi là tự nộp, ghi đè họ tên chủ tàu lên Phần I và tích "Người nộp là chủ hồ sơ".

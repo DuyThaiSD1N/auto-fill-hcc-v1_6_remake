@@ -307,6 +307,12 @@ from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.attach import plan as
 from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.process import run as cap_moi_gphn_chuyen_tiep_process
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.attach import plan as cap_cchn_duoc_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.process import run as cap_cchn_duoc_process
+from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach import (
+    plan as cap_lai_dieu_chinh_gcn_dkkd_duoc_attach,
+)
+from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.process import (
+    run as cap_lai_dieu_chinh_gcn_dkkd_duoc_process,
+)
 from app.pipelines.cap_van_ban_chap_thuan_tau_ca.attach import plan as cap_vb_chap_thuan_tau_ca_attach
 from app.pipelines.cap_van_ban_chap_thuan_tau_ca.process import run as cap_vb_chap_thuan_tau_ca_process
 from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import plan as cap_gp_khai_thac_ts_attach
@@ -4885,6 +4891,43 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        # Mã TTHC 1.014104, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Cổng Bộ Y tế — Form.io, engine
+        # fillFormStandard dom-* + attach attp-row tách PDF gộp theo trang (field-key trùng #101). URL SPA
+        # là ObjectId → detect theo cụm tên; URL DVCQG + MaTTHC do with_ke_khai_detect_urls ghép thêm.
+        "detect": {
+            "textIncludes": [
+                "cấp lại, điều chỉnh giấy chứng nhận đủ điều kiện kinh doanh dược",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại, điều chỉnh Giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở "
+                 "Y tế (Cơ sở bán buôn thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, "
+                 "quầy thuốc, tủ thuốc trạm y tế xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ "
+                 "truyền)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị điều chỉnh GCN đủ điều kiện kinh doanh dược (Mẫu số 12) HOẶC Đơn đề nghị cấp lại "
+            "(Mẫu số 11) — đã ký.\n"
+            "2. Giấy chứng nhận đăng ký hộ kinh doanh / doanh nghiệp (bản mới nhất, chứng minh tên/địa chỉ "
+            "đã thay đổi) và GCN đạt GPP nếu có.\n"
+            "3. CCCD của chủ cơ sở (để điền ngày cấp, nơi cấp); nếu người KHÁC nộp thay: tải kèm CCCD của "
+            "người nộp.\n"
+            "4. Tùy trường hợp: GCN đủ ĐKKD dược bị ghi sai (cấp lại), Chứng chỉ hành nghề dược (thay đổi "
+            "người phụ trách chuyên môn), Tài liệu thuyết minh bảo đảm an ninh (Mẫu 11 PL II).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Extension bỏ tích 'Người nộp hồ sơ là chủ hồ sơ' và điền Thông tin chủ hồ sơ theo chủ cơ sở; ô "
+            "Ghi chú = nội dung xin điều chỉnh. Họ tên + CCCD người nộp giữ theo tài khoản.\n"
+            "Bước đính kèm: PDF gộp được tách theo trang và tick vào đúng dòng (Đơn Mẫu 12 → dòng 3, GCN đăng "
+            "ký hộ kinh doanh + GPP → dòng 5...), loại '1 Bản chính' (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
+    {
         "key": "cap-van-ban-chap-thuan-tau-ca",
         # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
         # + attach attp-row (field-key nhân thân data[...] TRÙNG KHÍT #92/#101). Có thêm nội dung tờ khai
@@ -6079,6 +6122,7 @@ _PIPELINE = {
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_process,
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_process,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_process,
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_process,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_process,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_process,
@@ -6251,6 +6295,7 @@ _ATTACH_PIPELINE = {
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_attach,
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_attach,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_attach,
+    "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_attach,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
     "cap-giay-phep-khai-thac-thuy-san": cap_gp_khai_thac_ts_attach,
     "cap-lai-chung-chi-hanh-nghe-thu-y": cap_lai_cchn_thu_y_attach,
