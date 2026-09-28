@@ -12,14 +12,13 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.deps import require_auth
+from app.core.deps import require_super_admin
 from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.dossiers import repo as dossiers_repo
 from app.monitor import queries
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
-from app.users.roles import SUPER_ADMIN_ROLE
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/monitor", tags=["monitor"])
@@ -27,13 +26,6 @@ router = APIRouter(prefix="/api/v1/monitor", tags=["monitor"])
 Source = Literal["all", "autofill", "handfree"]
 Kind = Literal["all", "autofill", "attach", "classify", "owner_info"]
 Outcome = Literal["all", "ok", "partial", "error", "issues"]
-
-
-async def require_super_admin(user: dict = Depends(require_auth)) -> dict:
-    """Monitor chứa OCR/output LLM/ảnh giấy tờ của mọi đơn vị → chỉ role nội bộ super_admin."""
-    if (user.get("role") or "user") != SUPER_ADMIN_ROLE:
-        raise AppError("FORBIDDEN", "Chỉ tài khoản Monitor được xem dữ liệu này", 403)
-    return user
 
 
 def _iso(value: Any) -> Any:

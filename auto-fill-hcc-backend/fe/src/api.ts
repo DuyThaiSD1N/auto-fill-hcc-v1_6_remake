@@ -1,9 +1,11 @@
 import type {
+  AccountExportOptions,
   DossierDetail,
   DossierListResp,
   Facets,
   LoginResp,
   ManagedUser,
+  PasswordRevealResp,
   DownloadResult,
   ReportExportBody,
   ReportOptionsResp,
@@ -223,6 +225,64 @@ export function deleteUser(id: string): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>(`/api/v1/users/${id}`, { method: "DELETE" });
 }
 
+// --- Mật khẩu tài khoản ---
+/** POST để mật khẩu không nằm trong URL / bộ đệm. */
+export function revealPassword(id: string): Promise<PasswordRevealResp> {
+  return request<PasswordRevealResp>(`/api/v1/users/${id}/password/reveal`, { method: "POST" });
+}
+
+export function setUserPassword(id: string, password: string): Promise<ManagedUser> {
+  return request<ManagedUser>(`/api/v1/users/${id}/password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+}
+
+export type PasswordImportStatus =
+  | "store" | "stored" | "already" | "mismatch" | "not_found" | "duplicate_in_file" | "error";
+
+/** BE không trả mật khẩu. */
+export interface PasswordImportRow {
+  row: number;
+  username: string;
+  status: PasswordImportStatus;
+  message: string;
+}
+
+export interface PasswordImportResult {
+  applied: boolean;
+  summary: Partial<Record<PasswordImportStatus, number>>;
+  rows: PasswordImportRow[];
+}
+
+export function importPasswords(file: File, apply: boolean): Promise<PasswordImportResult> {
+  const body = new FormData();
+  body.append("file", file);
+  return request<PasswordImportResult>(
+    `/api/v1/users/password-import?apply=${apply ? "true" : "false"}`,
+    { method: "POST", body },
+  );
+}
+
+export function downloadPasswordTemplate(): Promise<DownloadResult> {
+  return requestDownload(`/api/v1/users/password-import/template`);
+}
+
+// --- Xuất danh sách tài khoản HCC ---
+export function getAccountExportOptions(signal?: AbortSignal): Promise<AccountExportOptions> {
+  return request<AccountExportOptions>(`/api/v1/users/export/options`, { signal });
+}
+
+/** province rỗng = tất cả tỉnh. */
+export function exportAccounts(province: string): Promise<DownloadResult> {
+  return requestDownload(`/api/v1/users/export`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ province: province || null }),
+  });
+}
+
 // --- Nhập tài khoản hàng loạt từ Excel ---
 export type ImportRowStatus =
   | "create" | "created" | "exists" | "exists_deleted" | "duplicate_in_file" | "error";
@@ -314,19 +374,6 @@ async function requestDownload(
   }
   filename ||= disposition.match(/filename="?([^";]+)"?/i)?.[1];
   return { blob: await res.blob(), filename };
-}
-
-async function requestBlob(path: string): Promise<Blob> {
-  return (await requestDownload(path)).blob;
-}
-
-export function fetchTraceFile(traceId: string, index: number): Promise<Blob> {
-  return requestBlob(`/api/v1/traces/${traceId}/files/${index}`);
-}
-
-// Tải TẤT CẢ tài liệu của trace dưới dạng 1 file ZIP (BE gom, FE tải blob kèm Authorization).
-export function fetchTraceArchive(traceId: string): Promise<Blob> {
-  return requestBlob(`/api/v1/traces/${traceId}/download`);
 }
 
 export function exportReportExcel(

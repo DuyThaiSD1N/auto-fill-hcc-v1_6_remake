@@ -47,7 +47,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "25/9";
+  const APP_RELEASE_DATE = "28/9";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -2548,15 +2548,80 @@
     return match ? match[1] : "";
   }
 
-  function safeAttachmentFileName(payload, documentName) {
+  // Cài đặt THEO TÀI KHOẢN "đổi tên tệp theo loại giấy tờ khi đính kèm": popup/trang Cài đặt chép từ BE
+  // vào storage (khoá phải trùng chữ với api/account-settings.js). Thiếu bản sao = BẬT, đúng hành vi cũ.
+  const ACCOUNT_SETTINGS_KEY = "autofill_account_settings";
+  let renameAttachmentFiles = true;
+  function applyAccountSettings(value) {
+    renameAttachmentFiles = !(value && typeof value === "object" && value.renameAttachmentFiles === false);
+  }
+  const accountSettingsReady = new Promise((resolve) => {
+    try {
+      chrome.storage.local.get([ACCOUNT_SETTINGS_KEY], (res) => {
+        if (!chrome.runtime.lastError) applyAccountSettings(res?.[ACCOUNT_SETTINGS_KEY]);
+        resolve();
+      });
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes[ACCOUNT_SETTINGS_KEY]) {
+          applyAccountSettings(changes[ACCOUNT_SETTINGS_KEY].newValue);
+        }
+      });
+    } catch (_) { resolve(); }
+  });
+
+  // Tắt đổi tên: nhiều tệp gốc trùng tên (ảnh điện thoại cùng tên "image.jpg") mà tải lên y nguyên thì
+  // bước "đã có trong hồ sơ" coi tệp sau là tệp trước → bỏ sót. Tên thuộc về tệp ĐẦU TIÊN giữ nó
+  // (nhận theo nội dung), tệp khác cùng tên được thêm số " 2", " 3"… — cùng một tệp luôn ra cùng tên
+  // nên đính lại/hậu kiểm vẫn khớp.
+  const originalUploadNameOwners = new Map();
+  function payloadContentKey(payload) {
+    const dataUrl = String(payload?.dataUrl || "");
+    const mid = Math.floor(dataUrl.length / 2);
+    return `${dataUrl.length}:${dataUrl.slice(mid, mid + 64)}:${dataUrl.slice(-64)}`;
+  }
+  function uniqueOriginalFileName(payload, ext) {
+    const base = attachmentDocumentName(payload);
+    const owner = payloadContentKey(payload);
+    for (let n = 1; ; n++) {
+      const suffix = n === 1 ? "" : ` ${n}`;
+      const name = base.slice(0, 50 - suffix.length).trim() + suffix;
+      const key = foldChoiceText(name);
+      const current = originalUploadNameOwners.get(key);
+      if (!current || current === owner) {
+        originalUploadNameOwners.set(key, owner);
+        return name + ext;
+      }
+    }
+  }
+
+  // forceRename: tệp ẢO (virtualCopy, cùng byte với tệp thật) phải giữ tên riêng dù tắt đổi tên.
+  function safeAttachmentFileName(payload, documentName, { forceRename = false } = {}) {
     const ext = fileExtension(payload?.name);
+    if (!renameAttachmentFiles && !forceRename) return uniqueOriginalFileName(payload, ext);
     let base = String(documentName || "").trim() || attachmentDocumentName(payload);
     // documentName có thể ĐÃ kèm đuôi (vd "…đất.pdf") → bỏ đuôi trùng để KHÔNG thành "…đất.pdf.pdf".
     if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length);
     return base + ext;
   }
 
-  function dataUrlToFile(payload, documentName = "") {
+  // Nhiều tệp cùng lên MỘT ô (fixed-slot, HkdOnline) mà cùng loại giấy thì cùng tên → đánh số " 2", " 3"…
+  // để cổng và cán bộ phân biệt được. Tắt đổi tên thì uniqueOriginalFileName đã tự tách tên theo nội dung.
+  function dataUrlFilesForBatch(entries) {
+    const seen = new Map();
+    return entries.map(({ payload, documentName }) => {
+      let name = String(documentName || "").trim();
+      if (renameAttachmentFiles && name) {
+        name = name.replace(/\.[a-z0-9]{2,5}$/i, "");
+        const key = foldChoiceText(name);
+        const count = (seen.get(key) || 0) + 1;
+        seen.set(key, count);
+        if (count > 1) name = `${name} ${count}`;
+      }
+      return dataUrlToFile(payload, name);
+    });
+  }
+
+  function dataUrlToFile(payload, documentName = "", nameOptions = {}) {
     const dataUrl = String(payload?.dataUrl || "");
     const comma = dataUrl.indexOf(",");
     if (comma < 0) throw new Error(`File ${payload?.name || ""} không có dataUrl hợp lệ.`);
@@ -2566,14 +2631,17 @@
     const binary = atob(b64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return new File([bytes], safeAttachmentFileName(payload, documentName), {
+    return new File([bytes], safeAttachmentFileName(payload, documentName, nameOptions), {
       type: mime,
       lastModified: Date.now(),
     });
   }
 
+  // normalize NFC: tên tệp tạo trên macOS ở dạng NFD (chữ + dấu tách rời) → dấu bị coi là ký tự lạ,
+  // thành "uy quye n thie t". Dựng sẵn dấu trước khi lọc ký tự.
   function attachmentDocumentName(file) {
     const raw = String(file?.name || "tai-lieu")
+      .normalize("NFC")
       .replace(/\.[^.]+$/, "")
       .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")
       .replace(/\s+/g, " ")
@@ -2587,6 +2655,7 @@
   // ký tự lạ khác. KHÔNG fold dấu, KHÔNG đổi dấu cách thành "_".
   function walletSafeDocumentName(name) {
     const s = String(name || "")
+      .normalize("NFC")                         // tên NFD (macOS) → dấu không bị lọc mất, xem attachmentDocumentName
       .replace(/\.[^.\s]+$/, "")               // bỏ đuôi file (.pdf, .jpg…)
       .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")   // giữ chữ (mọi ngôn ngữ), số, _, -, dấu cách; bỏ dấu chấm & ký tự khác
       .replace(/\s+/g, " ")
@@ -2952,13 +3021,16 @@
 
   function attachmentPlanLabels(planItem = {}, payloadFile = {}) {
     const componentName = String(planItem.componentName || "").trim();
+    // Tắt đổi tên: tên gốc thô có thể trùng tệp KHÁC (hai ảnh "image.jpg") → chỉ nhận đúng tên sẽ tải lên.
+    const ownNames = renameAttachmentFiles || planItem.virtualCopy === true
+      ? [attachmentDocumentName(payloadFile), payloadFile.name]
+      : [safeAttachmentFileName(payloadFile, planItem.documentName)];
     return uniqueElements([
       isCopyCertificationDefaultComponentName(componentName) ? "" : componentName,
       planItem.detectedType,
       planItem.documentName,
       componentNameForAppendedFile(planItem, payloadFile),
-      attachmentDocumentName(payloadFile),
-      payloadFile.name,
+      ...ownNames,
     ].filter(Boolean)).map(attachmentTextKey).filter(Boolean);
   }
 
@@ -3385,7 +3457,7 @@
       };
     }
 
-    const file = dataUrlToFile(payloadFile, intendedDocumentName);
+    const file = dataUrlToFile(payloadFile, intendedDocumentName, { forceRename: planItem.virtualCopy === true });
     // Mốc toast "…thất bại" chụp NGAY TRƯỚC khi đưa tệp vào: chỉ toast MỚI sau mốc mới là của tệp này.
     const failuresBefore = snapshotUploadFailures();
     const uploadFailed = () => newPortalUploadFailure(failuresBefore);
@@ -3407,7 +3479,10 @@
 
     await waitFor(() => uploadFailed() || dialog.querySelector('input[name="documentName"]') || findWalletUploadDoneButton(dialog), 4000, 100);
     if (uploadFailed()) return uploadRejected(uploadFailed());
-    const nameOk = await ensureWalletDocumentName(dialog, intendedDocumentName);
+    // Cổng hiển thị "Tên tài liệu" (không phải tên tệp) trên dòng thành phần → tắt đổi tên thì ô này cũng
+    // mang tên tệp vừa tải lên; tệp ảo vẫn giữ tên loại giấy như tên tệp của nó.
+    const walletDocumentName = renameAttachmentFiles || planItem.virtualCopy === true ? intendedDocumentName : file.name;
+    const nameOk = await ensureWalletDocumentName(dialog, walletDocumentName);
     if (!nameOk) {
       markAttachmentResult(dialog, false);
       return { error: `Không tìm thấy ô Tên tài liệu cho file ${file.name}.`, fileNames: [file.name] };
@@ -4006,10 +4081,9 @@
 
     for (const { item, indices } of bySlot.values()) {
       const slotLabel = item.slotName || item.componentName || "";
-      const files = indices
-        .map((i) => payloadForPlanItem(payloadFiles, attachments[i], i))
-        .filter(Boolean)
-        .map((payload) => dataUrlToFile(payload));
+      const files = dataUrlFilesForBatch(indices
+        .map((i) => ({ payload: payloadForPlanItem(payloadFiles, attachments[i], i), documentName: attachments[i].documentName }))
+        .filter((entry) => entry.payload));
       if (!files.length) {
         fail(item, `Không tìm thấy file cho ô "${slotLabel}".`);
         continue;
@@ -4244,13 +4318,17 @@
   }
 
   // Dòng ĐÃ có file trùng tài liệu này chưa? So 24 ký tự đầu (chịu được tên bị cắt "..." khi hiển thị).
-  function attpRowHasDoc(row, item) {
-    const want = attpDocFingerprint(item.documentName || item.fileName || "");
-    if (want.length < 6) return false;
-    const probe = want.slice(0, 24);
-    return attpRowAttachedFingerprints(row).some(
-      (fp) => fp.startsWith(probe) || probe.startsWith(fp.slice(0, 24))
-    );
+  // Tắt đổi tên: tệp lên cổng mang tên gốc → so thêm đúng tên sẽ tải lên (payload), không chỉ documentName.
+  function attpRowHasDoc(row, item, payload = null) {
+    const names = [item.documentName || item.fileName || ""];
+    if (!renameAttachmentFiles && payload) names.push(safeAttachmentFileName(payload, item.documentName));
+    const attached = attpRowAttachedFingerprints(row);
+    return names.some((name) => {
+      const want = attpDocFingerprint(name);
+      if (want.length < 6) return false;
+      const probe = want.slice(0, 24);
+      return attached.some((fp) => fp.startsWith(probe) || probe.startsWith(fp.slice(0, 24)));
+    });
   }
 
   async function attachFilesByAttpRow(payloadFiles, attachments) {
@@ -4283,7 +4361,7 @@
       row.scrollIntoView?.({ block: "center" });
       // CHỐNG TRÙNG: dòng đã có file trùng tài liệu này (vd bấm "Đính kèm" 2 lần) → bỏ qua, không đính lại.
       const pending = items.filter((item) => {
-        if (attpRowHasDoc(row, item)) {
+        if (attpRowHasDoc(row, item, payloadForPlanItem(payloadFiles, item))) {
           skippedNames.push(item.documentName || item.fileName || "");
           return false;
         }
@@ -4323,6 +4401,7 @@
   }
 
   async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
+    await accountSettingsReady; // cờ đổi tên tệp phải có trước khi dựng File đầu tiên
     // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
     if (detectFormKind() === "bacninh" && typeof H.attachBacNinhByPlan === "function") {
       return H.attachBacNinhByPlan(payloadFiles, attachments, opts);
@@ -6341,6 +6420,62 @@
     return { settled: !loading && (staticSource || plainNativeSource || searchedEmpty), hasValue };
   }
 
+  // Ô select Form.io: nhờ content/formio-select-main.js (MAIN world) gọi chính API component — nguồn từ xa thì
+  // tải theo từ khoá và chờ API trả thật; danh sách nạp sẵn (custom/values/json) thì chọn thẳng, không gõ tìm
+  // (gõ tìm trên nguồn custom làm cổng chạy lại JS nạp danh sách → trống/hiện mã id). Isolated world không thấy
+  // instance Form.io nên đường gõ DOM chỉ đoán thời gian chờ và hay trượt/chọn nhầm.
+  // handled=false (không phải Form.io từ xa, cầu nối chưa nạp, không tải được) → bên gọi đi đường DOM cũ.
+  // handled=true, ok=false → đã tải danh sách mà không có option khớp: để trống, KHÔNG thử đường DOM khớp lỏng.
+  const FORMIO_SELECT_REQUEST_EVENT = "__HCC_FORMIO_SELECT_REQUEST__";
+  const FORMIO_SELECT_RESULT_EVENT = "__HCC_FORMIO_SELECT_RESULT__";
+  const FORMIO_SELECT_READY_ATTR = "data-hcc-formio-select-ready";
+  const FORMIO_SELECT_TARGET_ATTR = "data-hcc-formio-select-target";
+
+  async function fillFormioRemoteSelectViaMain(select, value) {
+    if (!select?.closest?.(".formio-component") || !String(value ?? "").trim()) return { handled: false };
+    if (document.documentElement?.getAttribute(FORMIO_SELECT_READY_ATTR) !== "1") {
+      console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io (MAIN world) chưa nạp → đường DOM.`);
+      return { handled: false, reason: "bridge-not-ready" };
+    }
+    const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const startedAt = Date.now();
+    select.setAttribute(FORMIO_SELECT_TARGET_ATTR, requestId);
+    try {
+      const result = await new Promise((resolve) => {
+        let timer = null;
+        const onResult = (event) => {
+          let data;
+          try { data = JSON.parse(String(event.detail || "{}")); } catch { return; }
+          if (data.requestId !== requestId) return;
+          clearTimeout(timer);
+          document.removeEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
+          resolve(data);
+        };
+        // Lớn hơn TOTAL_BUDGET_MS bên MAIN (20s) để không bỏ cuộc trong lúc MAIN vẫn đang setValue.
+        timer = setTimeout(() => {
+          document.removeEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
+          resolve({ handled: false, reason: "timeout" });
+        }, 23000);
+        document.addEventListener(FORMIO_SELECT_RESULT_EVENT, onResult);
+        document.dispatchEvent(new CustomEvent(FORMIO_SELECT_REQUEST_EVENT, {
+          detail: JSON.stringify({ requestId, value: String(value) }),
+        }));
+      });
+      const ms = Date.now() - startedAt;
+      if (!result.handled) {
+        console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io bỏ qua (${result.reason || "?"}, ${ms}ms) → đường DOM.`, result);
+      } else if (result.ok) {
+        markFilled(standardMarkTarget(select));
+        console.info(`[AutoFill-STD] ${select.name}: cầu nối Form.io chọn "${result.label || value}" (${ms}ms).`);
+      } else {
+        console.warn(`[AutoFill-STD] ${select.name}: không có option khớp "${value}" (${result.reason || "?"}, ${result.options ?? "?"} option, ${ms}ms) → để trống.`);
+      }
+      return result;
+    } finally {
+      select.removeAttribute(FORMIO_SELECT_TARGET_ATTR);
+    }
+  }
+
   // BE gắn f.searchOnce cho ô Choices tìm TỪ XA mà mở/gõ lại nhiều lần là HỎNG (cổng Bộ XD cấp phù hiệu: Màu
   // sơn, Loại phương tiện… — mỗi lượt mở lại không chọn gì là ô render sang mã id '63d…'). Chỉ MỘT lượt đúng
   // thao tác tay: mở ô → gõ chữ → thêm MỘT dấu cách vào đầu → chờ kết quả → bấm chọn. Không thấy option thì
@@ -7292,7 +7427,17 @@
           const el = findStandardRadio(candidates, root) || await waitFor(() => findStandardRadio(candidates, root), 1500, 80);
           ok = await fillStandardRadio(el, f.value);
         } else if (f.comp === "dom-select") {
-          if (isAreaSelectField(f)) {
+          // Ô Tỉnh/Xã giữ luồng cascade + ngân sách riêng. Select nhiều cũng hỏi cầu nối (danh sách nạp sẵn);
+          // cầu nối bỏ qua thì về fillStandardMultiSelect như cũ.
+          let viaMain = null;
+          if (!isAreaSelectField(f)) {
+            const el = findStandardSelect(candidates, occurrence, root)
+              || (f.searchOnce ? await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100) : null);
+            if (el) viaMain = await fillFormioRemoteSelectViaMain(el, f.value);
+          }
+          if (viaMain?.handled) {
+            ok = !!viaMain.ok;
+          } else if (isAreaSelectField(f)) {
             const deadline = standardFieldDeadline(areaDeadlines, f);
             ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
           } else if (f.searchOnce) {
@@ -7624,7 +7769,7 @@
     FIELD_NAME_ALIASES, LEGACY_MIRROR_FIELDS,
     fillFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
     isOwnerDossierCheckboxField, standardCheckboxWantsTrue, orderStandardFields,
-    readAcctContact, dataUrlToFile, setFilesOnInput, payloadForPlanItem,
+    readAcctContact, dataUrlToFile, dataUrlFilesForBatch, setFilesOnInput, payloadForPlanItem,
   });
 
 })(); // end guard chống nạp trùng

@@ -1,4 +1,5 @@
 """Nghiệp vụ quản lý tài khoản xã/phường (chỉ admin)."""
+import asyncio
 import re
 from datetime import datetime, timezone
 
@@ -8,9 +9,9 @@ from pymongo.errors import DuplicateKeyError
 
 from app.auth.access_control import MAINTENANCE_MESSAGE
 from app.core.errors import AppError
-from app.core.security import hash_password
 from app.db.mongo import get_db
 from app.locations.catalog import canonical_location, province_name_variants
+from app.users import password_vault
 from app.users.schemas import Role, UserCreate, UserUpdate
 from app.users.roles import NOT_DELETED, SUPER_ADMIN_ROLE
 
@@ -45,6 +46,8 @@ def _public(user: dict) -> dict:
         # Có giá trị = đã xóa mềm. FE dựa vào đây để đổi hàng sang trạng thái "Đã xóa" kèm
         # nút Khôi phục thay cho Sửa/Xóa.
         "deleted_at": _iso(user.get("deleted_at")),
+        # Chỉ báo CÓ/KHÔNG có bản mã hoá; bản thân `password_enc` không bao giờ rời BE qua đây.
+        "password_stored": bool(user.get("password_enc")),
     }
 
 
@@ -155,9 +158,10 @@ async def list_users(
 async def create_user(body: UserCreate) -> dict:
     now = _now()
     tinh, xa = canonical_location(body.tinh, body.xa)
+    password_set, _ = password_vault.password_fields(body.password)
     doc = {
         "username": body.username,
-        "password_hash": hash_password(body.password),
+        **password_set,
         "name": body.name,
         "xa": xa,
         "tinh": tinh,
@@ -230,7 +234,9 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
         else:
             unset_fields = {"access_disabled_reason": "", "access_disabled_at": ""}
     if body.password:
-        updates["password_hash"] = hash_password(body.password)
+        password_set, password_unset = password_vault.password_fields(body.password)
+        updates.update(password_set)
+        unset_fields = {**unset_fields, **password_unset}
 
     update_doc: dict = {"$set": updates}
     if unset_fields:
@@ -298,3 +304,46 @@ async def restore_user(user_id: str) -> dict:
     if not result:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản đã xóa", 404)
     return _public(result)
+
+
+async def _manageable_user(db, oid: ObjectId) -> dict:
+    current = await db.users.find_one({"_id": oid, **NOT_DELETED})
+    if not current:
+        raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    if current.get("role") == SUPER_ADMIN_ROLE:
+        raise AppError(
+            "PROTECTED_ACCOUNT",
+            "Tài khoản Monitor được bảo vệ và không thể thao tác tại trang quản lý này.",
+            403,
+        )
+    return current
+
+
+async def set_password(user_id: str, password: str) -> dict:
+    """Admin đặt mật khẩu mới (không cần mật khẩu cũ). Ghi cả bcrypt lẫn bản mã hoá."""
+    db = get_db()
+    oid = _oid(user_id)
+    await _manageable_user(db, oid)
+    password_set, password_unset = await asyncio.to_thread(password_vault.password_fields, password)
+    update_doc: dict = {"$set": {**password_set, "updated_at": _now()}}
+    if password_unset:
+        update_doc["$unset"] = password_unset
+    result = await db.users.find_one_and_update(
+        {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}, **NOT_DELETED},
+        update_doc,
+        return_document=True,
+    )
+    if not result:
+        raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    return _public(result)
+
+
+async def reveal_password(user_id: str) -> tuple[dict, dict]:
+    """(kết quả trả FE, tài khoản) — tài khoản chỉ để router ghi nhật ký."""
+    current = await _manageable_user(get_db(), _oid(user_id))
+    password = password_vault.decrypt(current.get("password_enc"))
+    return {
+        "stored": password is not None,
+        "password": password,
+        "vaultEnabled": password_vault.enabled(),
+    }, current

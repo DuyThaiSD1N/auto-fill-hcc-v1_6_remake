@@ -20,6 +20,7 @@ from app.core.errors import AppError
 from app.core.security import hash_password
 from app.db.mongo import get_db
 from app.locations.catalog import ward_name_matches
+from app.users import password_vault
 from app.users.schemas import UserCreate
 from app.users.service import _now
 
@@ -241,10 +242,12 @@ async def _create_rows(rows: list[dict], passwords: dict[int, str]) -> None:
     users = get_db().users
     for row, password_hash in zip(rows, hashes):
         now = _now()
+        enc_set, _ = password_vault.enc_fields(passwords[row["row"]])
         try:
             await users.insert_one({
                 "username": row["username"],
                 "password_hash": password_hash,
+                **enc_set,
                 "name": row["name"] or None,
                 "xa": row["xa"] or None,
                 "tinh": row["tinh"],

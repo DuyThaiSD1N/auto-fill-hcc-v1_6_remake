@@ -12,7 +12,10 @@ import {
 import type { ManagedUser, Role, User, UserStatusFilter } from "../types";
 import { fmtDateTime } from "../format";
 import Combobox from "../components/Combobox";
+import ChangePasswordModal from "../components/ChangePasswordModal";
 import ImportAccountsModal from "../components/ImportAccountsModal";
+import { StoredPassword } from "../components/PasswordFields";
+import PasswordImportModal from "../components/PasswordImportModal";
 import TopBar, { type View } from "../components/TopBar";
 
 interface Props {
@@ -144,6 +147,10 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   const [error, setError] = useState("");
   const [form, setForm] = useState<FormState | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importingPasswords, setImportingPasswords] = useState(false);
+  const [passwordTarget, setPasswordTarget] = useState<ManagedUser | null>(null);
+  // Tăng sau mỗi lần đổi mật khẩu để ô "Mật khẩu hiện tại" dựng lại, không giữ bản đã hiện trước đó.
+  const [passwordVersion, setPasswordVersion] = useState(0);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [provinces, setProvinces] = useState<Province[]>([]);
@@ -349,7 +356,6 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           // cũ thì không sao, nhưng không gửi mới là đúng ý định của form đang khóa ô đó.
           role: form.id === user.id ? undefined : form.role,
           access_disabled: form.accessDisabled,
-          password: form.password || undefined,
         });
       }
       setForm(null);
@@ -435,7 +441,7 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
         (selectedProvince && (!form.xa.trim() || Boolean(findWard(wards, form.xa))))),
   );
   // Ràng buộc theo vai trò CHỈ áp khi TẠO MỚI. Tài khoản cũ đang thiếu địa bàn thì vẫn phải
-  // sửa được tên hiển thị hay mật khẩu — chặn ở đây là biến một thao tác vặt thành việc dọn
+  // sửa được tên hiển thị — chặn ở đây là biến một thao tác vặt thành việc dọn
   // dữ liệu bắt buộc.
   const roleLocationOk =
     !form ||
@@ -446,9 +452,8 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     form &&
     locationValid &&
     roleLocationOk &&
-    (isCreate
-      ? form.username.trim().length >= 3 && form.password.length >= 8
-      : form.password === "" || form.password.length >= 8);
+    (!isCreate || (form.username.trim().length >= 3 && form.password.length >= 8));
+  const editingUser = form && form.id !== null ? items.find((u) => u.id === form.id) : undefined;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -519,6 +524,12 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
           </label>
           <button className="ghost" onClick={() => setImporting(true)}>
             Nhập từ Excel
+          </button>
+          <button className="ghost" onClick={() => setImportingPasswords(true)}>
+            Nạp mật khẩu
+          </button>
+          <button className="ghost" onClick={() => onNavigate("account-export")}>
+            Xuất tài khoản
           </button>
           <button className="btn-primary" onClick={openCreate}>
             + Thêm tài khoản
@@ -601,6 +612,9 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                         <>
                           <button className="ghost sm" onClick={() => openEdit(u)}>
                             Sửa
+                          </button>
+                          <button className="ghost sm" onClick={() => setPasswordTarget(u)}>
+                            Đổi mật khẩu
                           </button>
                           <button
                             className="ghost sm danger"
@@ -715,16 +729,26 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               />
             </label>
 
-            <label>
-              Mật khẩu {isCreate ? "" : "(để trống nếu không đổi)"}
-              <input
-                type="password"
-                value={form.password}
-                autoComplete="new-password"
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder={isCreate ? "≥ 8 ký tự" : "••••••••"}
-              />
-            </label>
+            {isCreate ? (
+              <label>
+                Mật khẩu
+                <input
+                  type="password"
+                  value={form.password}
+                  autoComplete="new-password"
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="≥ 8 ký tự"
+                />
+              </label>
+            ) : (
+              editingUser && (
+                <StoredPassword
+                  key={`${editingUser.id}:${passwordVersion}`}
+                  account={editingUser}
+                  onChangePassword={() => setPasswordTarget(editingUser)}
+                />
+              )
+            )}
 
             <label>
               Tên hiển thị
@@ -879,6 +903,26 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
 
       {importing && (
         <ImportAccountsModal onClose={() => setImporting(false)} onImported={() => void load()} />
+      )}
+
+      {importingPasswords && (
+        <PasswordImportModal
+          onClose={() => setImportingPasswords(false)}
+          onImported={() => void load()}
+        />
+      )}
+
+      {/* Mở được từ modal Sửa: nằm SAU trong DOM nên phủ lên trên, đóng không mất form đang sửa. */}
+      {passwordTarget && (
+        <ChangePasswordModal
+          key={passwordTarget.id}
+          account={passwordTarget}
+          onClose={() => setPasswordTarget(null)}
+          onChanged={() => {
+            setPasswordVersion((v) => v + 1);
+            void load();
+          }}
+        />
       )}
     </div>
   );

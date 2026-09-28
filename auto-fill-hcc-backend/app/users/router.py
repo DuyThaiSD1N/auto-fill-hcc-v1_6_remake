@@ -2,14 +2,19 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 from app.core.deps import require_admin
 from app.core.errors import AppError
-from app.users import import_excel, service
-from app.users.schemas import Role, UserCreate, UserUpdate
+from app.reports.router import _content_disposition
+from app.users import access_log, export_excel, import_excel, password_import, service
+from app.users.schemas import AccountExportRequest, PasswordSet, Role, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
+
+_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+# Phản hồi chứa mật khẩu: không cho trình duyệt/proxy lưu đệm.
+_NO_STORE = {"Cache-Control": "no-store"}
 
 
 @router.get("")
@@ -59,6 +64,69 @@ async def import_users(
     if len(content) > import_excel.MAX_BYTES:
         raise AppError("IMPORT_FILE_TOO_LARGE", "File quá 2MB.", 413)
     return await import_excel.run(content, apply=apply)
+
+
+@router.get("/password-import/template")
+async def password_import_template(_admin: dict = Depends(require_admin)):
+    return Response(
+        content=password_import.template_bytes(),
+        media_type=_XLSX,
+        headers={"Content-Disposition": 'attachment; filename="mau-nap-mat-khau.xlsx"'},
+    )
+
+
+@router.post("/password-import")
+async def import_passwords(
+    file: UploadFile = File(...),
+    apply: bool = Query(False),
+    admin: dict = Depends(require_admin),
+):
+    """apply=false: chỉ so với mật khẩu đang dùng. apply=true: so lại rồi lưu dòng khớp."""
+    content = await file.read(import_excel.MAX_BYTES + 1)
+    if len(content) > import_excel.MAX_BYTES:
+        raise AppError("IMPORT_FILE_TOO_LARGE", "File quá 2MB.", 413)
+    result = await password_import.run(content, apply=apply)
+    if apply:
+        await access_log.record(
+            "import_passwords", admin, stored=result["summary"].get("stored", 0),
+        )
+    return result
+
+
+@router.get("/export/options")
+async def export_options(_admin: dict = Depends(require_admin)):
+    return await export_excel.options()
+
+
+@router.post("/export")
+async def export_accounts(body: AccountExportRequest, admin: dict = Depends(require_admin)):
+    data, filename, count, province = await export_excel.export(body.province)
+    await access_log.record("export_accounts", admin, province=province, count=count)
+    return Response(
+        content=data,
+        media_type=_XLSX,
+        headers={"Content-Disposition": _content_disposition(filename), **_NO_STORE},
+    )
+
+
+@router.post("/{user_id}/password")
+async def set_password(user_id: str, body: PasswordSet, admin: dict = Depends(require_admin)):
+    result = await service.set_password(user_id, body.password)
+    await access_log.record(
+        "set_password", admin, target_id=result["id"], target_username=result["username"],
+    )
+    return result
+
+
+@router.post("/{user_id}/password/reveal")
+async def reveal_password(user_id: str, admin: dict = Depends(require_admin)):
+    """POST (không phải GET) để mật khẩu không nằm trong URL/log truy cập hay bộ đệm."""
+    result, target = await service.reveal_password(user_id)
+    await access_log.record(
+        "reveal_password", admin, target_id=str(target["_id"]),
+        target_username=target.get("username"), stored=result["stored"],
+    )
+    return JSONResponse(result, headers=_NO_STORE)
 
 
 @router.patch("/{user_id}")

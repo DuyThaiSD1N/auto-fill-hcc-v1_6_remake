@@ -71,6 +71,33 @@
       <p id="saveStatus" class="save-status" role="status" aria-live="polite"></p>
     </section>
 
+    <!-- Lưu THEO TÀI KHOẢN trên máy chủ (đi theo cán bộ sang máy khác) — cần đăng nhập trên trợ lý. -->
+    <section class="settings-card" aria-labelledby="fileNameSettingsTitle">
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="fileNameSettingsTitle">Tên tệp đính kèm</h2>
+          <p>Áp dụng cho tài khoản <strong id="renameAccountName">đang đăng nhập</strong>, lưu trên máy chủ.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="renameAttachmentFilesSetting">
+        <span class="setting-copy">
+          <strong>Đổi tên tệp theo loại giấy tờ khi đính kèm</strong>
+          <span>
+            BẬT (mặc định): tệp tải lên cổng (và ô "Tên tài liệu" của ví tài liệu) đặt theo loại giấy tờ. TẮT: giữ
+            tên tệp gốc, chỉ bỏ ký tự cổng không nhận. Tệp được gộp/tách vẫn theo loại giấy tờ; tên thành phần hồ
+            sơ không đổi.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="renameAttachmentFilesSetting" type="checkbox" checked disabled>
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="renameSaveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
+
     <!-- Lưu THEO TÀI KHOẢN đang đăng nhập trên máy này (một máy quầy nhiều cán bộ dùng chung). -->
     <section class="settings-card" aria-labelledby="ratingSettingsTitle">
       <div class="settings-card-heading">
@@ -98,6 +125,10 @@
     </section>
   </main>
 
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="api/client.js"></script>
+  <script src="api/account-settings.js"></script>
   <script src="settings.js"></script>
 </body>
 

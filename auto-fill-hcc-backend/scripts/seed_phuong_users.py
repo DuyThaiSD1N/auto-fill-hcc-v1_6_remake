@@ -8,7 +8,7 @@ Cần .env trỏ đúng Mongo.
 import asyncio
 from datetime import datetime, timezone
 
-from app.core.security import hash_password
+from app.users.password_vault import password_fields
 from app.db.mongo import connect, get_db
 
 # (username, password, name, xa, tinh, role)
@@ -26,11 +26,13 @@ DANH_SACH = [
 
 async def seed_one(db, username: str, password: str, name: str, xa: str, tinh: str, role: str) -> None:
     now = datetime.now(timezone.utc)
+    password_set, password_unset = password_fields(password)
     res = await db.users.update_one(
         {"username": username.lower()},
         {
+            **({"$unset": password_unset} if password_unset else {}),
             "$set": {
-                "password_hash": hash_password(password),
+                **password_set,
                 "name": name,
                 "xa": xa,
                 "tinh": tinh,

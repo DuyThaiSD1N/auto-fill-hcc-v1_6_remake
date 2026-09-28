@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     # Capability riêng cho URL QR; để trống chỉ dùng JWT refresh secret làm fallback
     # tương thích deployment cũ. Production nên cấu hình secret riêng.
     upload_capability_secret: str = ""
+    # Khoá Fernet cho bản mã hoá HAI CHIỀU của mật khẩu tài khoản (để admin xem/xuất lại).
+    # Đăng nhập vẫn chỉ so bcrypt. Để trống = không lưu bản mã hoá. Mất khoá = không đọc lại
+    # được mật khẩu đã lưu, nhưng đăng nhập không ảnh hưởng.
+    password_vault_key: str = ""
 
     # Storage — nơi lưu file/ảnh của mỗi request.
     storage_dir: str = "data/uploads"

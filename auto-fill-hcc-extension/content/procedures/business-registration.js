@@ -3141,9 +3141,15 @@
     if (!input || !btn) return; // trang chưa sẵn
     st.uploadTries = (st.uploadTries || 0) + 1;
     if (st.uploadTries > 3) return void failAttachAll("Tải file lên thất bại (thử lại quá số lần).");
+    // Tên tệp theo cài đặt tài khoản (đổi tên theo loại giấy / giữ tên gốc). Ghi lại tên đã tải lên để
+    // pha classify còn khớp theo tên khi số dòng lệch số tệp.
+    const files = H.dataUrlFilesForBatch((st.files || []).map((f, i) => ({
+      payload: f,
+      documentName: st.plan?.[i]?.documentName || "",
+    })));
+    (st.plan || []).forEach((p, i) => { if (files[i]) p.uploadName = files[i].name; });
     st.uploaded = true; // sau postback "Tải lên" → dòng file hiện ra → pha classify
     await setAttachAllState(st);
-    const files = (st.files || []).map((f) => H.dataUrlToFile(f, ""));
     H.setFilesOnInput(input, files, { allowMultiple: true, assumeConsumed: true });
     await sleep(500);
     const reloaded = await clickSaveDetectReload(btn); // "Tải lên" → postback
@@ -3153,9 +3159,10 @@
 
   function categoryForFileName(st, folded) {
     if (!folded) return null;
-    const p = (st.plan || []).find((x) => foldName(x.fileName) === folded);
+    const names = (x) => [x.fileName, x.uploadName].filter(Boolean).map(foldName);
+    const p = (st.plan || []).find((x) => names(x).includes(folded));
     if (p) return p.category;
-    const p2 = (st.plan || []).find((x) => folded.includes(foldName(x.fileName)) || foldName(x.fileName).includes(folded));
+    const p2 = (st.plan || []).find((x) => names(x).some((n) => folded.includes(n) || n.includes(folded)));
     return p2 ? p2.category : null;
   }
 

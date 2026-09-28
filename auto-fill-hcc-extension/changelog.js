@@ -3,6 +3,19 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.20",
+    date: "28/9/2026",
+    items: [
+      "Cấp phù hiệu xe (Bộ Xây dựng): điền đủ các ô chọn (Kính gửi, Dịch vụ, Loại phương tiện, Màu sơn, Nước sản xuất…) nhanh hơn, không còn trống, chọn nhầm hay hiện mã số.",
+      "Cài đặt: thêm tuỳ chọn \"Đổi tên tệp theo loại giấy tờ khi đính kèm\" — tắt để giữ tên tệp gốc.",
+      "Đính kèm xong vẫn giữ danh sách giấy tờ để rà soát hoặc đính lại.",
+      "Máy quét: chỉ nhận giấy tờ quét trong lúc đang làm hồ sơ, không tự lấy tệp quét cũ trên máy.",
+      "Bộ VHTTDL (thẻ hướng dẫn viên…): điền đúng ô của từng khối, không ghi nhầm sang người nộp; chọn được Phường/Xã, Tỉnh.",
+      "Bắc Ninh: chọn đúng Tỉnh, Phường/Xã khi cổng ghi tên khác giấy tờ; điền đúng loại đất từng thửa.",
+      "Đăng ký tàu cá: không còn ghi đè tên chủ tàu lên phần người nộp.",
+    ],
+  },
+  {
     version: "1.19.8",
     date: "25/9/2026",
     items: [

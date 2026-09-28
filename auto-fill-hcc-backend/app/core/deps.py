@@ -52,6 +52,17 @@ async def require_trace_reader(user: dict = Depends(require_auth)) -> dict:
     return user
 
 
+async def require_super_admin(user: dict = Depends(require_auth)) -> dict:
+    """Dữ liệu giấy tờ (tệp gốc, text OCR, output LLM) và web Monitor → chỉ role nội bộ super_admin."""
+    if (user.get("role") or "user") != SUPER_ADMIN_ROLE:
+        raise AppError("FORBIDDEN", "Chỉ tài khoản Monitor được xem dữ liệu này", 403)
+    return user
+
+
+def is_super_admin(user: dict | None) -> bool:
+    return bool(user) and (user.get("role") or "user") == SUPER_ADMIN_ROLE
+
+
 async def require_ward(user: dict = Depends(require_auth)) -> dict:
     """Cổng cho BẢNG THỐNG KÊ PHƯỜNG (self-service của tài khoản phường).
 

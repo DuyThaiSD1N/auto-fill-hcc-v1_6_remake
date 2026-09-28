@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import type { User } from "../types";
 import Logo from "./Logo";
 
-export type View = "traces" | "dossiers" | "stats" | "reports" | "accounts";
+export type View = "traces" | "dossiers" | "stats" | "reports" | "accounts" | "account-export";
+
+// Trang con không có mục riêng trên sidebar: sáng mục cha để người dùng biết mình đang ở đâu.
+const PARENT_VIEW: Partial<Record<View, View>> = { "account-export": "accounts" };
 
 interface Props {
   user: User;
@@ -58,7 +61,8 @@ export default function TopBar({ user, view, onNavigate, onLogout }: Props) {
     () => window.localStorage.getItem("hcc_admin_sidebar_collapsed") === "1",
   );
   const isAdmin = user.role === "admin";
-  const current = NAV_ITEMS.find((item) => item.key === view) ?? NAV_ITEMS[0];
+  const navView = PARENT_VIEW[view] ?? view;
+  const current = NAV_ITEMS.find((item) => item.key === navView) ?? NAV_ITEMS[0];
   const initials = (user.name || user.username)
     .split(/\s+/)
     .filter(Boolean)
@@ -139,8 +143,8 @@ export default function TopBar({ user, view, onNavigate, onLogout }: Props) {
             <button
               type="button"
               key={item.key}
-              className={`sidebar-nav-item ${view === item.key ? "active" : ""}`}
-              aria-current={view === item.key ? "page" : undefined}
+              className={`sidebar-nav-item ${navView === item.key ? "active" : ""}`}
+              aria-current={navView === item.key ? "page" : undefined}
               title={sidebarCollapsed ? item.label : undefined}
               onClick={() => navigate(item.key)}
             >
@@ -177,8 +181,8 @@ export default function TopBar({ user, view, onNavigate, onLogout }: Props) {
           <Icon name="menu" />
         </button>
         <div className="topbar-context">
-          <span>Hệ thống quản trị</span>
-          <strong>{current.label}</strong>
+          <span>{navView !== view ? `Hệ thống quản trị · ${current.label}` : "Hệ thống quản trị"}</span>
+          <strong>{view === "account-export" ? "Xuất danh sách tài khoản" : current.label}</strong>
         </div>
       </header>
       <span id="main-content" className="main-anchor" tabIndex={-1} />

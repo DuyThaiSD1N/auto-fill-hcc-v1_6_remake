@@ -110,3 +110,64 @@ ratingCardSetting.addEventListener("change", async () => {
 });
 
 void restoreRatingSetting();
+
+// ── Đổi tên tệp khi đính kèm — cài đặt THEO TÀI KHOẢN lưu ở BE ──────────────────────────────
+// Trang này không có /auth/me nhưng đọc được token trong storage (AuthStore) nên gọi thẳng BE.
+// Công tắc KHOÁ cho tới khi đọc được giá trị từ BE: lưu khi chưa biết giá trị thật là ghi đè mù.
+const renameAttachmentFilesSetting = document.getElementById("renameAttachmentFilesSetting");
+const renameAccountName = document.getElementById("renameAccountName");
+const renameSaveStatus = document.getElementById("renameSaveStatus");
+let renameStatusTimer = null;
+
+function showRenameStatus(message, error = false, sticky = false) {
+  renameSaveStatus.textContent = message;
+  renameSaveStatus.className = error ? "save-status error" : "save-status";
+  if (renameStatusTimer) clearTimeout(renameStatusTimer);
+  if (!sticky) renameStatusTimer = setTimeout(() => { renameSaveStatus.textContent = ""; }, 2200);
+}
+
+function renameErrorMessage(error) {
+  return error?.unauthorized
+    ? "Phiên đăng nhập đã hết hạn. Đăng nhập lại trên trợ lý rồi mở lại trang này."
+    : "Không kết nối được máy chủ để đọc/lưu cài đặt. Vui lòng thử lại sau.";
+}
+
+async function restoreRenameSetting() {
+  renameAttachmentFilesSetting.disabled = true;
+  try {
+    const store = await chrome.storage.local.get([CURRENT_USERNAME_KEY]);
+    const name = String(store?.[CURRENT_USERNAME_KEY] || "").trim();
+    if (name) renameAccountName.textContent = name;
+  } catch (_) { /* chỉ để hiển thị */ }
+  let tokens = null;
+  try { tokens = await AuthStore.getTokens(); } catch (_) { tokens = null; }
+  if (!tokens?.accessToken) {
+    renameAccountName.textContent = "chưa đăng nhập";
+    showRenameStatus("Đăng nhập trên trợ lý rồi mở lại trang này để đổi cài đặt.", false, true);
+    return;
+  }
+  try {
+    const settings = await AccountSettings.refresh();
+    renameAttachmentFilesSetting.checked = settings.renameAttachmentFiles !== false;
+    renameAttachmentFilesSetting.disabled = false;
+  } catch (error) {
+    showRenameStatus(renameErrorMessage(error), true, true);
+  }
+}
+
+renameAttachmentFilesSetting.addEventListener("change", async () => {
+  const wanted = renameAttachmentFilesSetting.checked === true;
+  renameAttachmentFilesSetting.disabled = true;
+  try {
+    const settings = await AccountSettings.save({ renameAttachmentFiles: wanted });
+    renameAttachmentFilesSetting.checked = settings.renameAttachmentFiles !== false;
+    showRenameStatus("Đã lưu cài đặt.");
+  } catch (error) {
+    renameAttachmentFilesSetting.checked = !wanted;
+    showRenameStatus(renameErrorMessage(error), true, true);
+  } finally {
+    renameAttachmentFilesSetting.disabled = false;
+  }
+});
+
+void restoreRenameSetting();

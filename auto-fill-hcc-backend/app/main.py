@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from app.account_settings.router import router as account_settings_router
 from app.attachments.router import router as attachments_router
 from app.dossiers.router import router as dossiers_router
 from app.auth.router import router as auth_router
@@ -90,6 +91,7 @@ app.add_exception_handler(AppError, app_error_handler)
 app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(auth_router)
+app.include_router(account_settings_router)  # cài đặt theo tài khoản cho cả hai extension
 app.include_router(batch_router)
 app.include_router(procedures_router)
 app.include_router(process_router)

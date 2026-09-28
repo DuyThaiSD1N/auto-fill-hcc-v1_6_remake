@@ -5,6 +5,7 @@ import Dossiers from "./pages/Dossiers";
 import Stats from "./pages/Stats";
 import Accounts from "./pages/Accounts";
 import Reports from "./pages/Reports";
+import AccountExport from "./pages/AccountExport";
 import TraceDetailPage from "./components/TraceDetailPage";
 import type { View } from "./components/TopBar";
 import { AUTH_EXPIRED_EVENT, tokens } from "./api";
@@ -59,11 +60,13 @@ export default function App() {
   }
 
   // Chỉ admin mới vào được trang quản lý tài khoản; user thường bị đẩy về Nhật ký.
-  const adminOnlyView = view === "accounts" || view === "reports" || view === "dossiers";
+  const adminOnlyView =
+    view === "accounts" || view === "account-export" || view === "reports" || view === "dossiers";
   const effectiveView: View = adminOnlyView && user.role !== "admin" ? "traces" : view;
   const shared = { user, onLogout: handleLogout, view: effectiveView, onNavigate: navigate };
 
   if (effectiveView === "accounts") return <Accounts {...shared} />;
+  if (effectiveView === "account-export") return <AccountExport {...shared} />;
   if (effectiveView === "reports") return <Reports {...shared} />;
   if (effectiveView === "stats") return <Stats {...shared} />;
   if (effectiveView === "dossiers") return <Dossiers {...shared} />;

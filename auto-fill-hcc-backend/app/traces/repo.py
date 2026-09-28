@@ -1082,6 +1082,15 @@ async def daily_counts_by_user_ids(
     return [{"date": row["_id"], "count": int(row["count"])} for row in rows if row.get("_id")]
 
 
+# Nội dung giấy tờ trong trace: text OCR, JSON LLM đọc được, kết quả điền thật trên form (giá trị
+# từng ô). Web quản lý chỉ xem thông tin lượt + thời gian; nội dung này chỉ web Monitor (super_admin).
+DOCUMENT_CONTENT_FIELDS = ("ocr_text", "llm_output", "report")
+
+
+def without_document_content(doc: dict) -> dict:
+    return {k: v for k, v in doc.items() if k not in DOCUMENT_CONTENT_FIELDS}
+
+
 def _serialize(doc: dict) -> dict:
     doc = dict(doc)
     doc["id"] = str(doc.pop("_id"))

@@ -23,6 +23,8 @@ export interface ManagedUser {
   last_login_at?: string | null;
   /** Có giá trị = đã xóa mềm (document vẫn còn trong Mongo, khôi phục được). */
   deleted_at?: string | null;
+  /** Có bản mã hoá hai chiều → xem/xuất được mật khẩu. false = chỉ còn bcrypt một chiều. */
+  password_stored?: boolean;
 }
 
 /** Trạng thái lọc ở trang Quản lý tài khoản. "deleted" là cửa duy nhất thấy tài khoản đã xóa. */
@@ -49,6 +51,25 @@ export interface UserCreateBody {
   xa?: string | null;
   tinh?: string | null;
   role: Role;
+}
+
+export interface PasswordRevealResp {
+  stored: boolean;
+  password: string | null;
+  vaultEnabled: boolean;
+}
+
+export interface AccountExportProvince {
+  value: string;
+  label: string;
+  communeCount: number;
+  provinceCount: number;
+  missingPasswordCount: number;
+}
+
+export interface AccountExportOptions {
+  provinces: AccountExportProvince[];
+  vaultEnabled: boolean;
 }
 
 export interface UserUpdateBody {
@@ -104,11 +125,22 @@ export interface TraceStats {
   total_latency_ms?: number | null;
 }
 
+// Tóm tắt thời gian từng công đoạn (app/monitor/recorder.py::summary) — chỉ trace ghi sau khi bật bộ ghi.
+export interface TraceTiming {
+  wait?: number;
+  g?: { pre?: number; ocr?: number; llm?: number; post?: number };
+  other?: number;
+  persist_wait?: number;
+  s?: Record<string, number>;
+  n?: Record<string, number>;
+}
+
+// BE không trả text OCR / output LLM / kết quả điền cho trang quản lý (chỉ web Monitor).
 export interface TraceDetail extends TraceListItem {
-  ocr_text: string;
-  llm_output: unknown;
   stats?: TraceStats | null;    // thời gian OCR/LLM/tổng (ms) — trace cũ không có
   total_bytes?: number | null;  // dung lượng hồ sơ (payload)
+  timing?: TraceTiming | null;
+  outcome?: "ok" | "partial" | "error" | null;
 }
 
 export interface TraceListResp {

@@ -243,7 +243,8 @@ async function sendToContent(payload) {
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
         world: "MAIN",
-        files: ["content/attach-mae-main.js"],
+        // formio-select-main.js: cầu nối select Form.io nguồn từ xa — thiếu thì ô đó lùi về đường gõ DOM.
+        files: ["content/attach-mae-main.js", "content/formio-select-main.js"],
       });
       await chrome.scripting.executeScript({
         target: isAttachmentAction ? { tabId } : { tabId, allFrames: true },
@@ -468,6 +469,7 @@ function showLogin() {
   // để lần đăng nhập sau seed lại TỪ TÀI KHOẢN. Khôi phục phiên còn hạn đi thẳng showMain() nên KHÔNG
   // reset ở lần mở lại bình thường (lựa chọn tay vẫn giữ khi chưa đăng xuất).
   void forgetStoredLocation();
+  void AccountSettings.forget().catch(() => {});
   loginScreen.hidden = false;
   mainScreen.hidden = true;
   // Footer nằm NGOÀI mainScreen nên luôn hiển thị → phải tự ẩn nút báo cáo khi chưa đăng nhập.
@@ -527,6 +529,9 @@ function showMain(user) {
   // nhập ra storage để trang đó biết đang chỉnh cài đặt CHO AI (cài đặt lưu theo tài khoản).
   // Thiếu dòng này thì trang Cài đặt báo "chưa đăng nhập" và KHOÁ công tắc đánh giá.
   void rememberCurrentUsername(user?.username || "");
+  // Cài đặt theo tài khoản (đổi tên tệp khi đính kèm…) → bản sao cho content script. BE lỗi thì giữ
+  // bản sao đang có; chưa có bản sao thì content dùng mặc định.
+  void AccountSettings.refresh().catch((e) => console.warn("[Popup] Không tải được cài đặt tài khoản:", e));
   // /auth/me về sau khi khối địa chỉ đã dựng -> áp lại để lấy tỉnh/xã gắn trong tài khoản.
   void applyStoredLocation();
 }
@@ -544,7 +549,6 @@ async function bootstrap() {
     await restoreSplitMode();
     await restoreSplitDocumentsSetting();
     await restoreSession();
-    await restoreScanWatermark(); // mốc "giấy tờ này của công dân trước" phải sống qua redirect
     await restoreScanDaGo();      // file cán bộ đã gỡ tay cũng phải sống qua redirect
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
@@ -592,7 +596,6 @@ loginBtn.addEventListener("click", async () => {
     await restoreSplitMode();
     await restoreSplitDocumentsSetting();
     await restoreSession();
-    await restoreScanWatermark(); // mốc "giấy tờ này của công dân trước" phải sống qua redirect
     await restoreScanDaGo();      // file cán bộ đã gỡ tay cũng phải sống qua redirect
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
@@ -650,7 +653,6 @@ if (newSessionBtn) {
     await clearSession();
     files.length = 0;
     lastProcessSession = null;
-    resetScanBatchImportState(); // cong dan tiep theo, cung popup dang mo -> phai thu gom batch lai tu dau
     // Đưa TẤT CẢ về mặc định: bỏ chọn thủ tục + mở khóa, xoá ô tìm, xoá card rà soát.
     selectedProcedureKey = "";
     selectedBusinessPageKey = "";
@@ -971,7 +973,6 @@ function resetProcedureWorkState() {
   closePhoneUpload();
   currentConsentContext = null;
   pendingConsentTrigger = null;
-  resetScanBatchImportState(); // phien lam viec moi -> phai thu gom batch lai tu dau (xem gan ensureScanAgentConnected)
   void sendToContent({ action: "clearPanelAutoRestore" });
   showView("main");
   setStatus("", "");
@@ -1016,9 +1017,6 @@ async function selectProcedure(key, { source = "manual", confirmedNavigation = f
   // Có thủ tục đang làm việc (tự nhận diện hay chọn tay đều tính) → dò máy quét, không đợi
   // cán bộ bấm gì. Hàm tự bỏ qua nếu đã kết nối từ lần chọn trước.
   ensureScanAgentConnected();
-  // Agent có thể đã kết nối sẵn từ trước (vd đổi thủ tục, hoặc "Phiên mới" trong cùng popup) →
-  // thử gom batch quét gần nhất ngay, không đợi onConnected (chỉ bắn 1 lần lúc SSE mở).
-  void attemptBatchImport();
   // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
   if (selectionChanged || workOwnerChanged) await saveSession();
   return true;
@@ -2352,8 +2350,8 @@ fileInput.addEventListener("change", () => {
 });
 
 // Kéo-thả file từ NGOÀI vào TOÀN BỘ nội dung popup — lối vào thủ công SONG
-// SONG với nút "+ Thêm file" ở trên. ĐỘC LẬP với cơ chế tự pin file máy quét
-// (attemptBatchImport phía dưới) — không liên quan, không phụ thuộc nhau.
+// SONG với nút "+ Thêm file" ở trên. ĐỘC LẬP với luồng nhận file máy quét
+// (handleScanAgentFile phía dưới) — không liên quan, không phụ thuộc nhau.
 //
 // Nghe trên document CỦA CHÍNH popup.html (dù chạy độc lập hay nhúng trong
 // iframe panel nổi) — vẫn là "ở extension", KHÔNG đụng gì tới trang gốc. Xem
@@ -2646,7 +2644,6 @@ if (phoneUploadBtn) phoneUploadBtn.addEventListener("click", openPhoneUpload);
 // Máy không cài scan-bridge (đa số) thì dò mãi không thấy, không hiện gì, không ảnh
 // hưởng luồng cũ.
 const scanAgentStatusEl = document.getElementById("scanAgentStatus");
-const scanRecentListEl = document.getElementById("scanRecentList");
 let scanAgentConn = null; // giữ ĐÚNG MỘT kết nối suốt phiên popup, không dò lại mỗi lần detect
 
 function setScanAgentStatus(state) {
@@ -2663,30 +2660,15 @@ function setScanAgentStatus(state) {
   scanAgentStatusEl.hidden = !text;
 }
 
-// Tải + hash + thêm/cập nhật MỘT file quét vào files[] — dùng chung cho cả
-// đường sống (SSE, handleScanAgentFile) lẫn đường batch-import (xem
-// attemptBatchImport/addScanRecentItems bên dưới). KHÔNG tự renderFiles/
+// Tải + hash + thêm/cập nhật MỘT file quét vào files[] — đường DUY NHẤT đưa file
+// máy quét vào hồ sơ là sự kiện sống (SSE, handleScanAgentFile): chỉ nhận file
+// quét ra TRONG LÚC phiên đang mở, không gom file có sẵn trên đĩa. KHÔNG tự renderFiles/
 // saveSession ở đây: bên gọi tự quyết định gọi 1 lần sau khi xử lý xong cả
 // loạt, tránh vẽ lại/ghi session nhiều lần khi thêm nhiều file liên tiếp.
 // Trả true nếu files[] thực sự đổi (thêm mới hoặc cập nhật nội dung khác).
-// tuDong=true: lượt thêm do MÁY quyết định (gom batch, hoặc event file.added của
-// agent). Chỉ những lượt đó mới bị bộ nhớ "đã gỡ thủ công" chặn — cán bộ tự bấm
+// tuDong=true: lượt thêm do MÁY quyết định (event file.added của agent). Chỉ những lượt đó mới bị bộ nhớ "đã gỡ thủ công" chặn — cán bộ tự bấm
 // thêm lại thì phải được, và lúc đó dấu cũ bị gỡ luôn (họ đã đổi ý).
 async function importOneScanFile(evt, fetchBlob, { tuDong = false } = {}) {
-  // CHỐT CHẶN TUỔI — đặt ở đây vì đây là chỗ DUY NHẤT cả ba đường thêm file
-  // quét đều đi qua (gom batch, event file.added, và cán bộ bấm thêm tay).
-  // Trước đây phép kiểm nằm ở nơi gọi: `attemptBatchImport` có, đường SSE thì
-  // không — hôm nay chưa gây hại vì SSE lấy *thời điểm sự kiện* làm bằng chứng
-  // "vừa xuất hiện" (nên không gửi mtimeMs, và phép kiểm dưới đây tự bỏ qua),
-  // nhưng người viết đường thứ tư sẽ không có gì nhắc họ.
-  //
-  // Kiểm TRƯỚC khi tải: file cũ thì không việc gì phải kéo cả 6MB về rồi mới bỏ.
-  const mtimeMs = Number(evt.mtimeMs) || 0;
-  if (tuDong && mtimeMs && Date.now() - mtimeMs > BATCH_AUTO_MAX_AGE_MS) {
-    console.info("[Popup] Không tự pin %s: file quét lúc %s, quá %d phút.",
-      evt.rel, new Date(mtimeMs).toLocaleString(), Math.round(BATCH_AUTO_MAX_AGE_MS / 60000));
-    return false;
-  }
   // Chốt mốc thứ tự TRƯỚC await đầu tiên: nếu trong lúc đang tải mà có event xoá đúng rel này
   // (rất hay xảy ra khi đổi tên hàng loạt, và file 3MB tải mất cả giây) thì bỏ luôn kết quả —
   // không được push một file vừa bị xoá khỏi đĩa trở vào danh sách chờ gửi lên server.
@@ -2705,12 +2687,6 @@ async function importOneScanFile(evt, fetchBlob, { tuDong = false } = {}) {
   }
   const name = String(evt.rel || "scan").split("/").pop();
   const type = blob.type || "application/pdf";
-  // Ghi nhận mốc thời gian quét mới nhất mà PHIÊN NÀY đã nhận — dùng làm watermark cho phiên sau
-  // (xem resetScanBatchImportState/attemptBatchImport). Batch-import có sẵn `mtimeMs`; đường SSE
-  // sống chỉ có `at` (thời điểm agent phát event, xem watcher.go type Event).
-  const ts = Number(evt.mtimeMs) || Date.parse(evt.at || "") || 0;
-  if (ts > scanNewestMs) scanNewestMs = ts;
-
   const cu = files.find((it) => it.fromScan && it.rel === evt.rel);
   if (cu) {
     if (cu.hash === hash) return false; // dung noi dung, khong co gi de cap nhat
@@ -2837,117 +2813,20 @@ async function reconcileScanAgentFiles({ listFiles, fetchBlob }) {
   }
 }
 
-// ===== Gom batch quét ra TRƯỚC lúc popup mở ("quét trước, mở extension
-// sau" — luồng thực tế ở hành chính công, khác giả định ban đầu là mở popup
-// rồi mới quét) =====
-// Thiết kế đầy đủ: docs/superpowers/specs/2026-09-09-tu-dong-pin-file-quet-design.md
-// (repo scan-bridge). Không dùng một ngưỡng thời gian cố định để tách "loạt
-// quét công dân này" khỏi "loạt quét công dân khác" — ~70 máy, mỗi cán bộ
-// thao tác một kiểu, không đoán được độ trễ mở popup sau khi quét xong. Thay
-// vào đó so khoảng cách TƯƠNG ĐỐI giữa các lần quét: quét cách đợt trước rõ
-// ràng → tự tin, tự pin thẳng; quét dồn dập đều đặn không có ranh giới rõ
-// (vd quét dồn nhiều công dân liên tiếp, ca hiếm) → KHÔNG đoán liều, chỉ hiện
-// danh sách để cán bộ tự chọn (mục "Kéo-thả" trong spec là tính năng RIÊNG,
-// không liên quan cơ chế này).
-const BATCH_SINGLE_FLOOR_MS = 5 * 60 * 1000; // file dung 1 minh: can cach file ke >= 5 phut moi tu tin
-const BATCH_GAP_RATIO = 4; // ranh gioi phai >= 4 lan khoang cach noi bo lon nhat da thay
-const BATCH_GAP_FLOOR_MS = 20 * 1000; // duoi 20s khong tinh la ranh gioi, chi la nhieu quet lien tuc
-const BATCH_MAX_FILES = 30; // qua so nay ma chua thay ranh gioi -> khong doan, coi la khong tu tin
-const BATCH_MAX_SPAN_MS = 30 * 60 * 1000; // qua 30 phut ma chua thay ranh gioi -> khong tu tin
-const RECENT_LIST_WINDOW_MS = 2 * 60 * 60 * 1000; // cua so hien danh sach fallback: 2 gio gan nhat
-// Trần tuổi cho lượt TỰ pin. Watermark chỉ chặn được "cũ hơn phiên trước" — lần
-// đầu dùng trên một máy/tab nó bằng 0 nên KHÔNG chặn gì cả, mà thuật toán gom
-// batch thì chỉ nhìn khoảng cách TƯƠNG ĐỐI: một thư mục có file cũ ba ngày vẫn
-// cho ra "ranh giới rõ ràng" → tự tin → pin nguyên giấy tờ ba ngày trước vào hồ
-// sơ đang làm. Đã gặp thật (thư mục Downloads, file 2026-09-08 lẫn 2026-07-30).
-//
-// Chặt hơn cửa sổ danh sách chọn tay (2 giờ) là CỐ Ý: tự động thì không có ai
-// kiểm, còn danh sách thì cán bộ nhìn rồi mới bấm.
-const BATCH_AUTO_MAX_AGE_MS = 30 * 60 * 1000;
-const RECENT_LIST_MAX = 30; // toi da so dong hien trong danh sach fallback
-
-// Đi ngược từ file mới nhất, mở rộng "batch" từng file, so khoảng cách tới
-// file kế với các khoảng cách nội bộ đã thấy trong batch. Trả
-// {confident, batch}: confident=true thì batch là danh sách nên tự pin;
-// confident=false thì không có ranh giới rõ ràng, batch luôn rỗng.
-function phanTichBatchGanNhat(chuaXuLy) {
-  if (!chuaXuLy.length) return { confident: true, batch: [] }; // khong co gi moi - xong viec
-  const list = [...chuaXuLy].sort((a, b) => b.mtimeMs - a.mtimeMs);
-  const batch = [list[0]];
-  let maxGapNoiBo = 0;
-  for (let i = 1; i < list.length; i++) {
-    const gap = list[i - 1].mtimeMs - list[i].mtimeMs;
-    const nguong = batch.length === 1
-      ? BATCH_SINGLE_FLOOR_MS
-      : Math.max(BATCH_GAP_FLOOR_MS, BATCH_GAP_RATIO * maxGapNoiBo);
-    if (gap >= nguong) break; // tim thay ranh gioi ro rang -> dung mo rong, tu tin voi batch hien tai
-    batch.push(list[i]);
-    maxGapNoiBo = Math.max(maxGapNoiBo, gap);
-    if (batch.length >= BATCH_MAX_FILES ||
-      (list[0].mtimeMs - list[i].mtimeMs) >= BATCH_MAX_SPAN_MS) {
-      return { confident: false, batch: [] }; // qua dai ma chua thay ranh gioi -> khong doan
-    }
-  }
-  return { confident: true, batch };
-}
-
-function formatRelativeTime(mtimeMs) {
-  const diffMin = Math.max(0, Math.round((Date.now() - mtimeMs) / 60000));
-  if (diffMin < 1) return "vừa xong";
-  if (diffMin < 60) return `${diffMin} phút trước`;
-  return `${Math.round(diffMin / 60)} giờ trước`;
-}
-
 let scanAgentHelpers = null; // cache {listFiles, fetchBlob, renameFile} tu lan onConnected gan nhat
 let scanAgentCaps = []; // kha nang agent tu khai qua /v1/ping (agent ban cu -> rong -> an chuc nang)
-let batchImportAttempted = false; // rieng theo PHIEN LAM VIEC (reset cung "files.length = 0"),
-// KHAC voi scanAgentReconciled o tren (rieng theo POPUP)
-let scanRecentPending = []; // danh sach cho fallback khi KHONG tu tin: [{rel, name, mtimeMs}]
 
 // Mốc thứ tự sự kiện xoá, dùng để chặn đua với lượt tải đang dở (xem
 // handleScanAgentFileRemoved/importOneScanFile). Chỉ tăng, không bao giờ reset trong phiên.
 let scanEventSeq = 0;
 const scanRemovedAt = new Map(); // rel -> seq cua lan xoa gan nhat
 
-// ===== Watermark: chặn tự pin giấy tờ của CÔNG DÂN TRƯỚC vào hồ sơ mới =====
-// Bug thật: bấm "Tạo phiên mới" xong, files[] rỗng nên không còn gì để loại trừ, mà loạt file mới
-// nhất trên đĩa VẪN LÀ của công dân vừa xong (người mới chưa quét gì) → thuật toán gom batch thấy
-// ranh giới rõ ràng → tự tin → pin nguyên hồ sơ người trước sang người mới. Sai người, im lặng,
-// nhìn không ra (tên file toàn dạng 2026xxxx.pdf).
-//
-// Cách chặn: nhớ mốc thời gian quét mới nhất mà phiên trước đã dùng; phiên sau chỉ xét file MỚI
-// HƠN mốc đó. Ưu điểm so với bắt cán bộ nhớ thứ tự thao tác: cả hai thứ tự đều đúng — quét người
-// mới TRƯỚC rồi mới bấm tạo phiên (file mới hơn mốc → vẫn gom đúng), hay bấm tạo phiên trước rồi
-// mới quét (SSE sống tự đưa vào) đều ra kết quả đúng, không phải nhớ gì.
-const SCAN_WATERMARK_KEY = "autofill_scan_watermark_" + (EMBEDDED_TAB_ID ?? "popup");
-let scanWatermarkMs = 0; // file co mtime <= moc nay da thuoc mot phien TRUOC
-let scanNewestMs = 0;    // mtime moi nhat ma PHIEN NAY da nhan tu may quet
-
-// Reset lại ở đúng 2 chỗ đang reset "files.length = 0" (resetProcedureWorkState
-// + nút "Phiên mới") — công dân tiếp theo, kể cả trong cùng một popup đang mở,
-// phải được thử gom batch lại từ đầu.
-function resetScanBatchImportState() {
-  // Đẩy watermark lên tới file quét mới nhất mà phiên vừa đóng đã nhận: từ giờ những file cũ hơn
-  // hoặc bằng mốc này là giấy tờ của CÔNG DÂN TRƯỚC, không được tự pin vào hồ sơ mới nữa.
-  // Giữ trong biến (không đọc lại storage lúc cần) vì attemptBatchImport chạy ngay sau đây vài
-  // mili giây — đợi storage ghi xong mới đọc là vớ phải mốc cũ.
-  if (scanNewestMs > scanWatermarkMs) scanWatermarkMs = scanNewestMs;
-  scanNewestMs = 0;
-  try {
-    void chrome.storage.local.set({ [SCAN_WATERMARK_KEY]: scanWatermarkMs });
-  } catch (e) { /* ignore - mat watermark chi lam mat loc, khong lam hong gi */ }
-  batchImportAttempted = false;
-  scanRecentPending = [];
-  renderScanRecentList();
-}
-
 // ===== Nhớ file cán bộ đã GỠ THỦ CÔNG: không bao giờ tự pin lại =====
 //
 // Gỡ một dòng khỏi danh sách đính kèm là một QUYẾT ĐỊNH, không phải thao tác
-// tạm. Trước đây nút × chỉ `files.splice()`: panel dựng lại sau redirect là
-// attemptBatchImport chạy lại, thấy file đó "chưa có trong files[]" nên gom vào
-// lần nữa — cán bộ gỡ xong quay lại thấy nó nằm đó, và nếu không để ý thì file
-// vừa loại vẫn đi lên server.
+// tạm: agent bắn lại `file.added` khi file bị quét đè CÙNG nội dung, không có bộ
+// nhớ này thì file cán bộ vừa loại tự quay lại danh sách — và nếu không để ý
+// thì vẫn đi lên server.
 //
 // Nhớ theo HASH NỘI DUNG chứ không theo `rel`: quét đè lên đúng tên file cũ ra
 // nội dung KHÁC thì đó là giấy tờ khác, phải được đưa vào bình thường — đúng
@@ -2986,150 +2865,6 @@ function ghiNhanDaGo(item) {
   if (!item?.fromScan || !item.hash) return;
   scanDaGo.set(item.hash, { rel: item.rel || null, luc: Date.now() });
   luuScanDaGo();
-}
-
-// Đọc lại watermark lúc mở popup: panel bị dựng lại liên tục sau redirect/postback, mất mốc là
-// quay lại đúng bug "bấm tạo phiên mới xong tự pin giấy tờ của công dân trước".
-async function restoreScanWatermark() {
-  try {
-    const res = await chrome.storage.local.get(SCAN_WATERMARK_KEY);
-    const ms = Number(res?.[SCAN_WATERMARK_KEY] || 0);
-    if (Number.isFinite(ms) && ms > scanWatermarkMs) scanWatermarkMs = ms;
-  } catch (e) { /* ignore */ }
-}
-
-function renderScanRecentList() {
-  if (!scanRecentListEl) return;
-  scanRecentListEl.textContent = "";
-  if (!scanRecentPending.length) {
-    scanRecentListEl.hidden = true;
-    return;
-  }
-  scanRecentListEl.hidden = false;
-  const hint = document.createElement("div");
-  hint.className = "scan-recent-hint";
-  hint.textContent = "Máy quét có nhiều file gần đây, chưa chắc cùng một người — chọn đúng file cần đính kèm:";
-  scanRecentListEl.appendChild(hint);
-  const addAllBtn = document.createElement("button");
-  addAllBtn.type = "button";
-  addAllBtn.className = "scan-recent-add-all";
-  addAllBtn.textContent = "+ Thêm tất cả";
-  addAllBtn.addEventListener("click", () => void addScanRecentItems([...scanRecentPending]));
-  scanRecentListEl.appendChild(addAllBtn);
-  for (const item of scanRecentPending) {
-    const row = document.createElement("div");
-    row.className = "scan-recent-row";
-    const label = document.createElement("span");
-    label.textContent = `${item.name} — ${formatRelativeTime(item.mtimeMs)}`;
-    const addBtn = document.createElement("button");
-    addBtn.type = "button";
-    addBtn.textContent = "+";
-    addBtn.title = "Thêm file này vào danh sách đính kèm";
-    addBtn.addEventListener("click", () => void addScanRecentItems([item]));
-    row.append(label, addBtn);
-    scanRecentListEl.appendChild(row);
-  }
-}
-
-async function addScanRecentItems(items) {
-  if (!scanAgentHelpers) return;
-  let any = false;
-  for (const item of items) {
-    try {
-      const changed = await importOneScanFile({ rel: item.rel, mtimeMs: item.mtimeMs }, () => scanAgentHelpers.fetchBlob(item.rel));
-      if (changed) any = true;
-    } catch (e) {
-      console.warn("[Popup] Không thêm được file từ danh sách gần đây:", item.rel, e);
-    }
-    scanRecentPending = scanRecentPending.filter((it) => it.rel !== item.rel);
-  }
-  renderScanRecentList();
-  if (any) {
-    renderFiles();
-    refreshAttachStepUI();
-    saveSession();
-  }
-}
-
-// Thử gom + tự pin batch quét gần nhất — gọi 1 lần/phiên làm việc, từ 2 điểm:
-// selectProcedure() (agent có thể đã kết nối từ trước) và onConnected của
-// ScanAgent.connect() (agent kết nối muộn hơn, sau lúc khoá thủ tục). Guard
-// "batchImportAttempted" PHẢI được set TRƯỚC await đầu tiên để 2 điểm gọi
-// gần như đồng thời không chạy đúp (JS đơn luồng).
-async function attemptBatchImport() {
-  if (batchImportAttempted) return;
-  if (!scanAgentHelpers) return; // agent chua ket noi kip - onConnected se tu goi lai
-  batchImportAttempted = true;
-
-  let current;
-  try {
-    current = await scanAgentHelpers.listFiles();
-  } catch (e) {
-    console.warn("[Popup] Không đọc được /v1/files để gom batch gần nhất:", e);
-    batchImportAttempted = false; // loi tam thoi - lan sau thu lai, khong coi la xong
-    return;
-  }
-  const daCo = new Set(files.filter((it) => it.fromScan && it.rel).map((it) => it.rel));
-  const tren0Dia = (current.files || [])
-    .filter((f) => f?.rel)
-    .map((f) => ({ rel: f.rel, name: f.name || String(f.rel).split("/").pop(), mtimeMs: new Date(f.mtime).getTime() }))
-    .filter((f) => Number.isFinite(f.mtimeMs));
-  const chuaCo = tren0Dia.filter((f) => !daCo.has(f.rel));
-  // Watermark: bỏ mọi file cũ hơn/bằng mốc phiên trước đã dùng — đây là chốt chặn "pin nhầm
-  // giấy tờ công dân trước sang hồ sơ mới". File bị ghi đè (cùng rel, nội dung mới) có mtime
-  // mới hơn mốc nên vẫn lọt qua, đúng với logic checksum đang có.
-  const chuaXuLy = chuaCo.filter((f) => f.mtimeMs > scanWatermarkMs);
-
-  // Nhật ký quyết định. Có nó thì câu "vì sao file này bị/không bị tự pin" trả
-  // lời được bằng một dòng console, thay vì phải dựng lại cả môi trường để đoán
-  // — đúng thứ đã ngốn cả buổi ngày 2026-09-11.
-  console.info("[Popup] Gom batch quét:", {
-    tren_dia: tren0Dia.length,
-    da_co_trong_danh_sach: tren0Dia.length - chuaCo.length,
-    bi_watermark_chan: chuaCo.length - chuaXuLy.length,
-    con_ung_vien: chuaXuLy.length,
-    watermark: scanWatermarkMs ? new Date(scanWatermarkMs).toLocaleString() : "chưa có",
-  });
-  if (!chuaXuLy.length) return;
-
-  const { confident, batch } = phanTichBatchGanNhat(chuaXuLy);
-  if (confident && !batch.length) return;
-  // Lô "tự tin" nhưng đã quá cũ thì KHÔNG tự pin — rơi xuống danh sách chọn tay
-  // để cán bộ nhìn rồi quyết. Xét file MỚI NHẤT của lô: lô đã liền mạch về thời
-  // gian (BATCH_MAX_SPAN_MS), nên file mới nhất cũ thì cả lô đều cũ.
-  const loQuaCu = batch.length > 0 && Date.now() - batch[0].mtimeMs > BATCH_AUTO_MAX_AGE_MS;
-  console.info("[Popup] Quyết định:", !confident
-    ? "không tự tin về ranh giới lô → để cán bộ chọn tay"
-    : loQuaCu
-      ? `lô mới nhất quét lúc ${new Date(batch[0].mtimeMs).toLocaleString()} — quá ${Math.round(BATCH_AUTO_MAX_AGE_MS / 60000)} phút → KHÔNG tự pin`
-      : `tự pin ${batch.length} file`);
-  if (confident && !loQuaCu) {
-    let any = false;
-    for (const item of batch) {
-      try {
-        const changed = await importOneScanFile(
-          { rel: item.rel, mtimeMs: item.mtimeMs },
-          () => scanAgentHelpers.fetchBlob(item.rel),
-          { tuDong: true },
-        );
-        if (changed) any = true;
-      } catch (e) {
-        console.warn("[Popup] Không tự thêm được file từ batch gần nhất:", item.rel, e);
-      }
-    }
-    if (any) {
-      renderFiles();
-      refreshAttachStepUI();
-      saveSession();
-    }
-  } else {
-    const now = Date.now();
-    scanRecentPending = chuaXuLy
-      .filter((f) => now - f.mtimeMs <= RECENT_LIST_WINDOW_MS)
-      .sort((a, b) => b.mtimeMs - a.mtimeMs)
-      .slice(0, RECENT_LIST_MAX);
-    renderScanRecentList();
-  }
 }
 
 // ---- Tự nạp lại khi agent đã đặt bản extension mới lên đĩa ----------------
@@ -3302,10 +3037,7 @@ function ensureScanAgentConnected() {
       const doiCaps = capsMoi.join() !== scanAgentCaps.join();
       scanAgentCaps = capsMoi;
       if (doiCaps) renderFiles(); // vua biet agent ho tro gi -> ve lai de hien/an nut sua ten
-      void (async () => {
-        await reconcileScanAgentFiles(helpers);
-        await attemptBatchImport();
-      })();
+      void reconcileScanAgentFiles(helpers);
     },
   });
 }
@@ -3628,7 +3360,7 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   // errors[] từ BE có thể chứa chi tiết kỹ thuật → đưa xuống "Xem chi tiết", KHÔNG nối thô vào câu chính.
   if (planRes.errors?.length) console.warn("[AutoFill-Attach] Cảnh báo xử lý:", planRes.errors);
   // Đính chưa đủ (attachedCount < số nhóm) hoặc có tệp bị loại → cảnh báo (warn) thay vì báo thành công
-  // trọn vẹn. warn cũng giữ lại danh sách giấy tờ (clearFilesAfterAttach) để cán bộ còn tệp mà xử lý.
+  // trọn vẹn.
   // notes[] = engine phải đi đường dự phòng (vd không thêm được dòng qua "Thêm giấy tờ" nên đính chung
   // vào dòng khác) — tệp đã lên nhưng cán bộ còn việc phải làm tay.
   const attachNotes = (attachRes?.notes || []).filter(Boolean);
@@ -3646,20 +3378,6 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     : "Đã đính kèm xong hồ sơ.";
   await showPageToast(toastMessage, warn ? "warn" : "success");
   return { ok: true, message: msg, warn, requestId: planRes.requestId, details: planRes.errors || [] };
-}
-
-// Đính kèm XONG TRỌN VẸN → dọn danh sách giấy tờ. Giấy tờ đã nộp lên cổng rồi thì để lại trong
-// khung "Giấy tờ" chỉ tổ rối, và nguy hiểm hơn là dễ nộp trùng sang thủ tục/hồ sơ kế tiếp.
-//
-// KHÔNG dọn khi warn/inProgress: còn nhóm chưa đính được hoặc luồng nhiều bước đang chạy dở —
-// dọn đi là mất dấu việc còn dang dở, cán bộ không biết còn thiếu gì.
-async function clearFilesAfterAttach(res) {
-  if (!res || res.error || res.warn || res.inProgress) return;
-  if (!files.length) return;
-  files.length = 0;
-  renderFiles();
-  refreshAttachStepUI();
-  await saveSession();
 }
 
 // Lấy plan item của BE cho file thứ `origIndex`, rồi đổi sang vị trí của file trong bundle gửi cho tab.
@@ -4504,7 +4222,6 @@ ocrBtn.addEventListener("click", async () => {
       showSupportCode(attachRes?.requestId);
       if (attachRes?.error) setStatus(attachRes.error, "err");
       else setStatus(attachRes.message, attachRes.warn ? "warn" : (attachRes.inProgress ? "info" : "ok"), attachRes.details);
-      await clearFilesAfterAttach(attachRes);
       return;
     }
 
@@ -4538,6 +4255,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
       cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
+      // Cấp GCN đăng ký tàu cá: Phần I prefill từ tài khoản (số định danh bị khóa) → thiếu mốc là BE
+      // luôn coi là tự nộp, ghi đè họ tên chủ tàu lên Phần I và tích "Người nộp là chủ hồ sơ".
+      cfg.key === "cap-gcn-dang-ky-tau-ca" ||
       cfg.key === "cap-giay-phep-khai-thac-thuy-san" ||
       cfg.key === "cap-lai-chung-chi-hanh-nghe-thu-y" ||
       cfg.key === "gia-han-chung-chi-hanh-nghe-thu-y" ||
@@ -4853,7 +4573,6 @@ if (attachStepBtn) {
         setStatus(res.error, "err");
       } else {
         setStatus(res.message, res.warn ? "warn" : "ok", res.details);
-        await clearFilesAfterAttach(res);
       }
     } catch (e) {
       if (e.unauthorized) {
@@ -4920,7 +4639,6 @@ async function attachAfterFill(fillOutcome, sessionId) {
   }
   const type = fillOutcome.partial || res.warn ? "warn" : (res.inProgress ? "info" : "ok");
   setStatus(`${fillOutcome.message} ${res.message || ""}`.trim(), type, details);
-  await clearFilesAfterAttach(res);
 }
 
 async function dispatchFill(allFields, errors, page = null) {

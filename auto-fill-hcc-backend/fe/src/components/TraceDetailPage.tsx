@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { getTrace } from "../api";
 import type { TraceDetail, User } from "../types";
-import { fmtBytes, fmtDateTime, fmtMs } from "../format";
 import { goToList } from "../nav";
 import TopBar, { type View } from "./TopBar";
-import TraceFiles from "./TraceFiles";
+import TraceInfo from "./TraceInfo";
 
 interface Props {
   id: string;
@@ -13,8 +12,8 @@ interface Props {
   onNavigate: (v: View) => void;
 }
 
-// Trang chi tiết trace ĐẦY ĐỦ (URL riêng #/trace/<id>) — mở từ nút "Xem chi tiết" trên drawer.
-// Bố cục 2 cột: trái xem file, phải OCR text + LLM JSON; phía trên là thẻ meta gồm thời gian xử lý.
+// Trang chi tiết trace (URL riêng #/trace/<id>) — mở từ nút "Xem chi tiết" trên drawer. Cùng thông tin với
+// drawer, bố cục rộng hơn. Không có nội dung giấy tờ (xem TraceInfo).
 export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Props) {
   const [trace, setTrace] = useState<TraceDetail | null>(null);
   const [error, setError] = useState("");
@@ -30,9 +29,6 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
       alive = false;
     };
   }, [id]);
-
-  const llmText =
-    trace && trace.llm_output != null ? JSON.stringify(trace.llm_output, null, 2) : "(không có)";
 
   return (
     <div className="app">
@@ -69,86 +65,8 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
           </div>
 
           <section className="panel detail-section">
-            <dl className="meta meta-3">
-              <div>
-                <dt>Phường</dt>
-                <dd>{trace.name || (trace.experience === "handfree" ? "—" : trace.username) || "—"}</dd>
-              </div>
-              <div>
-                <dt>Tài khoản</dt>
-                <dd>{trace.username || "—"}</dd>
-              </div>
-              <div>
-                <dt>Thời gian</dt>
-                <dd>{fmtDateTime(trace.created_at)}</dd>
-              </div>
-              <div>
-                <dt>Loại</dt>
-                <dd>{trace.experience === "handfree" ? "Handfree" : "No handfree"}</dd>
-              </div>
-              <div>
-                <dt>Thao tác</dt>
-                <dd>{trace.kind === "attach" ? "Đính kèm" : "Auto-fill"}</dd>
-              </div>
-              <div>
-                <dt>Số trường điền</dt>
-                <dd>{trace.fields_count}</dd>
-              </div>
-              {trace.kind !== "attach" && (
-                <div>
-                  <dt>Trường then chốt (bóc tách được)</dt>
-                  <dd>{`${trace.key_fields_filled ?? 0}/${trace.key_fields_total ?? 0}`}</dd>
-                </div>
-              )}
-              {trace.stats && (
-                <>
-                  <div>
-                    <dt>Thời gian OCR</dt>
-                    <dd>{fmtMs(trace.stats.ocr_latency_ms)}</dd>
-                  </div>
-                  <div>
-                    <dt>Thời gian LLM</dt>
-                    <dd>{fmtMs(trace.stats.llm_latency_ms)}</dd>
-                  </div>
-                  <div>
-                    <dt>Tổng xử lý (server)</dt>
-                    <dd>{fmtMs(trace.stats.total_latency_ms)}</dd>
-                  </div>
-                </>
-              )}
-              {trace.total_bytes != null && (
-                <div>
-                  <dt>Dung lượng hồ sơ</dt>
-                  <dd>{fmtBytes(trace.total_bytes)}</dd>
-                </div>
-              )}
-              <div>
-                <dt>Mã request</dt>
-                <dd className="mono">{trace.request_id}</dd>
-              </div>
-            </dl>
+            <TraceInfo trace={trace} wide />
           </section>
-
-          <div className="detail-cols">
-            <section className="panel detail-section">
-              <TraceFiles
-                traceId={trace.id}
-                attachments={trace.attachments ?? []}
-                archiveName={`${trace.procedure}_${trace.request_id}`}
-              />
-            </section>
-
-            <div className="detail-col-right">
-              <section className="panel detail-section">
-                <h3>Text OCR (gộp các file, ngăn bằng ---)</h3>
-                <pre className="block ocr">{trace.ocr_text || "(không có)"}</pre>
-              </section>
-              <section className="panel detail-section">
-                <h3>Output LLM parse được</h3>
-                <pre className="block json">{llmText}</pre>
-              </section>
-            </div>
-          </div>
         </>
       )}
     </div>

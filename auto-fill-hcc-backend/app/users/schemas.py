@@ -62,3 +62,20 @@ class UserUpdate(BaseModel):
         if len(v) < 8:
             raise ValueError("Mật khẩu phải >= 8 ký tự")
         return v
+
+
+class PasswordSet(BaseModel):
+    """Admin đặt mật khẩu mới cho một tài khoản. Ô "xác nhận" chỉ kiểm ở FE."""
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def _password_ok(cls, v: str) -> str:
+        if len(v or "") < 8:
+            raise ValueError("Mật khẩu phải >= 8 ký tự")
+        return v
+
+
+class AccountExportRequest(BaseModel):
+    """None/rỗng = tất cả tỉnh."""
+    province: str | None = None

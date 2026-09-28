@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.19.9",
+  "version": "1.20",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -13,7 +13,6 @@
     "idle"
   ],
   "host_permissions": [
-    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
@@ -108,6 +107,39 @@
       "world": "MAIN",
       "js": [
         "content/fill-lamdong-main.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*.gov.vn/*",
+        "https://dichvucongnganhtuphap.moj.gov.vn/*",
+        "https://tokhaidientu.moj.gov.vn/*",
+        "https://dichvucongbyt.moh.gov.vn/*",
+        "https://hokinhdoanh.dkkd.gov.vn/*",
+        "https://dangkyquamang.dkkd.gov.vn/*",
+        "https://lienthong.dichvucong.gov.vn/*",
+        "https://dichvucong.gov.vn/*",
+        "https://*.laichau.gov.vn/*",
+        "https://dichvucongbnv.moha.gov.vn/*",
+        "https://motcua.moha.gov.vn/*",
+        "https://dichvucong-tthc.moit.gov.vn/*",
+        "https://dvc.moc.gov.vn/*",
+        "https://dichvucong.bacninh.gov.vn/*",
+        "https://dichvucong.quangngai.gov.vn/*",
+        "https://dichvucong.khanhhoa.gov.vn/*",
+        "https://dichvucong.lamdong.gov.vn/*",
+        "https://dichvucong.bvhttdl.gov.vn/*",
+        "https://dichvucongnnmt.mae.gov.vn/*",
+        "https://dichvucong.danang.gov.vn/*",
+        "https://dvc.moet.gov.vn/*",
+        "https://dichvucong.quangninh.gov.vn/*",
+        "https://dichvucong.ninhbinh.gov.vn/*"
+      ],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": [
+        "content/formio-select-main.js"
       ],
       "run_at": "document_start"
     }

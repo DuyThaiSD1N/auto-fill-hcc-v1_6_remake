@@ -451,33 +451,6 @@ tbody tr:last-child td {
   margin: 0;
   font-weight: 500;
 }
-.block {
-  background: #0f1722;
-  color: #d7e2ee;
-  padding: 14px;
-  border-radius: 8px;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-size: 12.5px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 360px;
-  overflow: auto;
-}
-.block.json {
-  color: #b8e6c4;
-}
-.files {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.files li {
-  font-size: 13px;
-}
 .linklike {
   background: none;
   border: none;
@@ -493,34 +466,6 @@ tbody tr:last-child td {
 .linklike.active {
   font-weight: 600;
 }
-.file-preview {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.file-preview-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  font-size: 12.5px;
-}
-.file-preview img {
-  display: block;
-  max-width: 100%;
-  margin: 0 auto;
-}
-.file-preview iframe {
-  display: block;
-  width: 100%;
-  height: 70vh;
-  border: none;
-}
-
 /* ---------- Trace detail: nút trên drawer + trang chi tiết đầy đủ ---------- */
 .drawer-head-actions {
   display: flex;
@@ -575,36 +520,109 @@ tbody tr:last-child td {
 .meta.meta-3 {
   grid-template-columns: repeat(3, 1fr);
 }
-.detail-cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-.detail-col-right {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 @media (max-width: 860px) {
-  .detail-cols {
-    grid-template-columns: 1fr;
-  }
   .meta.meta-3 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* Header khối "File đính kèm": tiêu đề + nút Tải tất cả cùng hàng. */
-.files-head {
+/* Thời gian từng công đoạn (trace mới) + danh sách tên tệp — trang quản lý không có nội dung giấy tờ. */
+.trace-timing,
+.trace-files-names {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.trace-timing h3,
+.trace-files-names h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.trace-timing__head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
 }
-.files-head h3 {
+.trace-timing__wait {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stage-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--track);
+}
+.stage-bar > span {
+  min-width: 2px;
+}
+.stage-bar__other {
+  background: repeating-linear-gradient(45deg, #c3cccd 0 3px, #e6ebeb 3px 6px);
+}
+.stage-legend {
+  list-style: none;
+  margin: 8px 0 12px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 12.5px;
+}
+.stage-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+.stage-legend b {
+  font-variant-numeric: tabular-nums;
+}
+.trace-timing__meta {
+  margin-bottom: 12px;
+}
+.trace-steps {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.trace-steps th,
+.trace-steps td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.trace-steps th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.trace-steps .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.trace-steps code {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 6px;
+}
+.trace-files-names ul {
   margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 /* ---------- Tabs (nav) ---------- */
@@ -2600,3 +2618,123 @@ a:focus-visible,
   padding: 2px 9px; font-size: 12px; color: var(--text);
 }
 .rating-note-text { font-style: italic; color: var(--muted); font-size: 13px; }
+
+/* ---------- Mật khẩu tài khoản & xuất danh sách ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.password-input {
+  position: relative;
+  display: flex;
+}
+.password-input input {
+  flex: 1;
+  min-width: 0;
+  padding-right: 44px;
+}
+.password-eye {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  transform: translateY(-50%);
+}
+.password-eye:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.password-eye:focus-visible,
+.inline-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.modal-card .field-error {
+  margin-top: 0;
+  padding: 6px 9px;
+  font-size: 12.5px;
+}
+.stored-password {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.stored-password-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.stored-password-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stored-password-row input {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.stored-password .form-hint {
+  margin: 0;
+}
+.inline-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-size: inherit;
+  font-weight: 600;
+}
+.inline-link:hover {
+  text-decoration: underline;
+}
+.export-province-list {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.export-province-list .table-wrap {
+  max-height: 520px;
+  overflow: auto;
+}
+.export-province-list tbody tr {
+  cursor: pointer;
+}
+.export-province-list tbody tr:hover {
+  background: #f5f8fc;
+}
+.export-province-list tbody tr.selected {
+  background: var(--ok-bg);
+}
+.export-all-row td {
+  font-weight: 600;
+}
+.export-radio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.export-radio input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}

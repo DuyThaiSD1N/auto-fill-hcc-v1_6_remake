@@ -1,7 +1,8 @@
-"""API trace: danh sách + chi tiết các lần gọi /process (tài khoản, thủ tục, OCR text, JSON LLM).
+"""API trace: danh sách + chi tiết các lần gọi /process (tài khoản, thủ tục, thời gian xử lý).
 
-Toàn bộ gác require_trace_reader: chỉ admin của TRANG QUẢN LÝ cũ và super_admin của Monitor
-được đọc. Tài khoản phường đăng nhập qua extension không thể gọi thẳng API lấy PII toàn hệ thống.
+Gác require_trace_reader: chỉ admin của TRANG QUẢN LÝ và super_admin của Monitor được đọc. Nội dung
+giấy tờ (text OCR, JSON LLM, kết quả điền, tệp gốc) CHỈ trả cho super_admin (web Monitor); admin
+trang quản lý chỉ thấy thông tin lượt. Tài khoản phường không gọi được các API này.
 """
 import asyncio
 import io
@@ -14,7 +15,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse, Response
 
 from app.config import settings
-from app.core.deps import require_trace_reader
+from app.core.deps import is_super_admin, require_super_admin, require_trace_reader
 from app.core.errors import AppError
 from app.process import requests_repo
 from app.stats import cutover
@@ -42,7 +43,7 @@ _parse_stats_range = parse_stats_range
 
 @router.get("")
 async def list_traces(
-    _: dict = Depends(require_trace_reader),
+    user: dict = Depends(require_trace_reader),
     userId: str | None = Query(None),
     procedure: str | None = Query(None),
     dateFrom: str | None = Query(None),
@@ -62,6 +63,8 @@ async def list_traces(
         skip=(page - 1) * pageSize,
         limit=pageSize,
     )
+    if not is_super_admin(user):
+        res = {**res, "items": [repo.without_document_content(t) for t in res["items"]]}
     return {**res, "page": page, "pageSize": pageSize}
 
 
@@ -94,15 +97,15 @@ async def stats(
 
 
 @router.get("/{trace_id}")
-async def get_trace(trace_id: str, _: dict = Depends(require_trace_reader)):
+async def get_trace(trace_id: str, user: dict = Depends(require_trace_reader)):
     doc = await repo.get_trace(trace_id)
     if not doc:
         raise AppError("TRACE_NOT_FOUND", "Không tìm thấy trace", 404)
-    return doc
+    return doc if is_super_admin(user) else repo.without_document_content(doc)
 
 
 @router.get("/{trace_id}/files/{index}")
-async def get_trace_file(trace_id: str, index: int, _: dict = Depends(require_trace_reader)):
+async def get_trace_file(trace_id: str, index: int, _: dict = Depends(require_super_admin)):
     """Serve nội dung 1 file đã đính kèm để xem trong drawer trace.
 
     File lưu trên disk lúc /process; metadata (path, type) ở process_requests.files,
@@ -136,7 +139,7 @@ async def get_trace_file(trace_id: str, index: int, _: dict = Depends(require_tr
 
 
 @router.get("/{trace_id}/download")
-async def download_all_files(trace_id: str, _: dict = Depends(require_trace_reader)):
+async def download_all_files(trace_id: str, _: dict = Depends(require_super_admin)):
     """Gom TẤT CẢ tài liệu của trace thành 1 file ZIP để tải một lần.
 
     Cùng nguồn file với /files/{index} (process_requests.files). Nén ở thread riêng để không

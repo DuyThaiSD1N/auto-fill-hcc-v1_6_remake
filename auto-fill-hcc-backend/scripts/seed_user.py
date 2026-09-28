@@ -10,7 +10,7 @@ import argparse
 import asyncio
 from datetime import datetime, timezone
 
-from app.core.security import hash_password
+from app.users.password_vault import password_fields
 from app.db.mongo import connect, get_db
 
 
@@ -26,8 +26,9 @@ async def seed(
     db = get_db()
     await db.users.create_index("username", unique=True)
     now = datetime.now(timezone.utc)
+    password_set, password_unset = password_fields(password)
     set_fields = {
-        "password_hash": hash_password(password),
+        **password_set,
         "name": name,
         "role": role,
         "updated_at": now,
@@ -42,6 +43,7 @@ async def seed(
         {
             "$set": set_fields,
             "$setOnInsert": {"username": username.lower(), "created_at": now},
+            **({"$unset": password_unset} if password_unset else {}),
         },
         upsert=True,
     )
