@@ -305,6 +305,8 @@ from app.pipelines.xoa_dang_ky_tau_ca.attach import plan as xoa_dang_ky_tau_ca_a
 from app.pipelines.xoa_dang_ky_tau_ca.process import run as xoa_dang_ky_tau_ca_process
 from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.attach import plan as cap_moi_gphn_chuyen_tiep_attach
 from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.process import run as cap_moi_gphn_chuyen_tiep_process
+from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.attach import plan as dieu_chinh_gphn_chuyen_tiep_attach
+from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.process import run as dieu_chinh_gphn_chuyen_tiep_process
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.attach import plan as cap_cchn_duoc_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.process import run as cap_cchn_duoc_process
 from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach import (
@@ -4863,6 +4865,43 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep",
+        # Mã TTHC 1.012292, nộp tại Sở Y tế. Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — CÙNG form với
+        # cap-moi-giay-phep-hanh-nghe-chuyen-tiep (+ ô data[ghiChu]); bảng đính kèm 10 dòng, nhiều dòng trùng
+        # tên. URL SPA là ObjectId không có MaTTHC → detect theo cụm tên đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "điều chỉnh giấy phép hành nghề trong giai đoạn chuyển tiếp",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Điều chỉnh giấy phép hành nghề trong giai đoạn chuyển tiếp đối với hồ sơ nộp từ ngày 01 "
+                 "tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực hành nghề đối với các chức "
+                 "danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng lâm sàng, cấp cứu viên "
+                 "ngoại viện, tâm lý lâm sàng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (đều là của NGƯỜI HÀNH NGHỀ đề nghị điều chỉnh):\n"
+            "1. Đơn đề nghị (Mẫu 08 PL I NĐ 96/2023) — đã ký; ghi rõ trường hợp và phạm vi hành nghề đề nghị.\n"
+            "2. Bản sao chứng chỉ hành nghề / giấy phép hành nghề đã cấp.\n"
+            "3. Bản sao văn bằng đào tạo (bằng chuyên khoa, bằng tốt nghiệp…) và chứng chỉ đào tạo liên quan "
+            "đến phạm vi đề nghị bổ sung.\n"
+            "4. Nếu có: Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 PL I); thẻ CCCD của người hành "
+            "nghề; CCCD của người nộp thay.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Nếu TỰ NỘP: extension điền Phần 1 và tích 'Người nộp hồ sơ là chủ hồ sơ'. Nếu NỘP THAY: bỏ tích "
+            "ô đó rồi điền Phần 2 (người hành nghề). Ô Ghi chú lấy trường hợp + phạm vi hành nghề trên Đơn.\n"
+            "Bước đính kèm: Đơn vào 2 dòng Đơn Mẫu 08 (bản chính); CCHN/GPHN vào 3 dòng 'giấy phép hành nghề "
+            "đã cấp'; chứng chỉ đào tạo + văn bằng vào dòng 'một trong các giấy tờ sau'; văn bằng thêm vào "
+            "dòng 'văn bằng đào tạo' (đều chọn Bản sao)."
+        ),
+    },
+    {
         "key": "cap-chung-chi-hanh-nghe-duoc",
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
         # attp-row (field-key data[...] TRÙNG KHÍT #92/#62). 1 người=người đề nghị (tự nộp / nộp thay như
@@ -6353,6 +6392,7 @@ _PIPELINE = {
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_process,
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_process,
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_process,
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": dieu_chinh_gphn_chuyen_tiep_process,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_process,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_process,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
@@ -6532,6 +6572,7 @@ _ATTACH_PIPELINE = {
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_attach,
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_attach,
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_attach,
+    "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": dieu_chinh_gphn_chuyen_tiep_attach,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_attach,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_attach,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,

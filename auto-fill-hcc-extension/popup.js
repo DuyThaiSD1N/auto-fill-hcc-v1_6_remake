@@ -4264,6 +4264,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "xac-dinh-muc-do-khuyet-tat" ||
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
+      cfg.key === "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
       // [Bộ Y tế] 1.014104: Họ tên + CCCD người nộp bị khoá theo tài khoản, hay nộp thay → mốc tài khoản
       // quyết định Phần I lấy nhân thân chủ cơ sở hay CCCD người nộp; thiếu mốc là BE không đụng Phần I.
