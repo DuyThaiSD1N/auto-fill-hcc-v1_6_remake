@@ -300,6 +300,11 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
       "autofill_panel_open_" + tabId,
       "autofill_session_" + tabId,
     ]);
+    void mutateSubmitStore(SUBMIT_MARKS_KEY, (cur) => {
+      const all = cur && typeof cur === "object" ? { ...cur } : {};
+      delete all[tabId];
+      return all;
+    });
     await withSplitQueueLock(async () => {
       const map = await getPendingMap();
       if (map[tabId]) { delete map[tabId]; await setPendingMap(map); }
@@ -337,32 +342,175 @@ async function markRatingPending(dossierId, tabId) {
   return true;
 }
 
-async function reportDossierSubmitClick(tabId, host, ref) {
-  if (!tabId) return;
-  const sessionKey = "autofill_session_" + tabId;
-  const store = await chrome.storage.local.get([sessionKey, SUBMIT_WATCH_KEY, "auth_tokens"]);
-  const session = store?.[sessionKey];
-  const dossierId = String(session?.dossierId || "").trim();
-  // Chưa có khóa = extension chưa điền/đính kèm gì cho hồ sơ này → không có gì để chấm.
-  // Cố ý: báo cáo chỉ tính hồ sơ trợ lý có tham gia.
-  if (!dossierId) return;
-  const base = String(store?.[SUBMIT_WATCH_KEY]?.base || "").replace(/\/+$/, "");
-  const accessToken = store?.auth_tokens?.accessToken;
-  if (!base || !accessToken) return;
+// ── Gửi mốc nộp lên BE: hàng đợi bền + làm mới token ──
+// Trước đây gửi một phát bằng access token đang nằm trong storage: token sống 1 giờ và chỉ
+// popup biết làm mới, nên token hết hạn đúng lúc bấm nộp là BE trả 401 — mà fetch không ném
+// lỗi với 401 nên extension vẫn tưởng đã ghi. Đo trên prod: ~1,6% hồ sơ đã hỏi đánh giá (tức
+// chắc chắn đã bấm nộp) mà sổ hồ sơ vẫn "chưa nộp". Giờ mỗi mốc vào hàng đợi trong storage,
+// gửi đến khi BE nhận (res.ok) mới xoá; lần gửi lại mang giờ bấm thật + mã cú bấm để BE không
+// ghi trùng (dossiers/repo.add_submit_event).
+const SUBMIT_OUTBOX_KEY = "autofill_submit_outbox";
+// Mốc nộp theo TAB (không để trong autofill_session_<tab>: popup ghi đè nguyên phiên bằng
+// snapshot của nó, mọi khoá lạ trong đó sẽ mất).
+const SUBMIT_MARKS_KEY = "autofill_submit_marks";
+const SUBMIT_OUTBOX_ALARM = "autofill-submit-outbox";
+const SUBMIT_OUTBOX_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
+const SUBMIT_OUTBOX_MAX = 100;
+const SUBMIT_FETCH_TIMEOUT_MS = 20000;
+const SUBMIT_RETRY_STATUS = new Set([401, 408, 429]);
+const SUBMIT_INFRA_STATUS = new Set([502, 503, 504]);
+
+function newSubmitClickId() {
+  try { return crypto.randomUUID(); } catch (_) { }
+  return "c-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+let submitStoreChain = Promise.resolve();
+// Mọi đọc-sửa-ghi hàng đợi/mốc đi qua một chuỗi: enqueue lúc đang flush không được mất mục.
+function mutateSubmitStore(key, fn) {
+  const run = async () => {
+    const cur = (await chrome.storage.local.get([key]))?.[key];
+    const next = fn(cur);
+    await chrome.storage.local.set({ [key]: next });
+    return next;
+  };
+  submitStoreChain = submitStoreChain.then(run, run);
+  return submitStoreChain;
+}
+
+async function fetchWithTimeout(url, init) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), SUBMIT_FETCH_TIMEOUT_MS);
+  try { return await fetch(url, { ...init, signal: ctrl.signal }); }
+  finally { clearTimeout(timer); }
+}
+
+// BE XOAY VÒNG refresh token (token cũ bị thu hồi ngay). Popup có thể làm mới cùng lúc với ta:
+// bên thua nhận 401 dù cặp token mới đã có trong storage → đọc lại trước khi coi là hỏng.
+// Không bao giờ xoá token ở đây: đá cán bộ ra màn đăng nhập là việc của popup.
+async function refreshSubmitTokens(base, used) {
   try {
-    await fetch(base + "/api/v1/dossiers/submit-click", {
+    const res = await fetchWithTimeout(base + "/auth/refresh", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
-      body: JSON.stringify({ dossierId, portalHost: host || "", portalDossierRef: ref || "" }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: used.refreshToken }),
     });
-  } catch (e) {
-    console.warn("[BG] Không báo được mốc nộp hồ sơ:", e?.message || e);
-    return; // giữ khóa để lần bấm sau còn cơ hội ghi
+    if (res.ok) {
+      const nt = await res.json();
+      if (nt?.accessToken && nt?.refreshToken) {
+        const saved = { accessToken: nt.accessToken, refreshToken: nt.refreshToken, savedAt: Date.now() };
+        // Cán bộ vừa đăng xuất / đăng nhập tài khoản khác trong lúc ta làm mới → không được
+        // hồi sinh phiên cũ vào storage; cặp mới chỉ dùng cho request này.
+        const cur = (await chrome.storage.local.get(["auth_tokens"]))?.auth_tokens;
+        if (cur?.refreshToken === used.refreshToken) await chrome.storage.local.set({ auth_tokens: saved });
+        return saved;
+      }
+    }
+  } catch (_) { /* mạng — thử lại sau */ }
+  await new Promise((r) => setTimeout(r, 1500));
+  const cur = (await chrome.storage.local.get(["auth_tokens"]))?.auth_tokens;
+  return cur?.accessToken && cur.accessToken !== used.accessToken ? cur : null;
+}
+
+/** Gửi MỘT mốc. "ok" = BE đã nhận · "drop" = BE từ chối hẳn (gửi lại cũng vậy) · "retry". */
+async function sendSubmitReport(item) {
+  const store = await chrome.storage.local.get([SUBMIT_WATCH_KEY, "auth_tokens"]);
+  const conf = store?.[SUBMIT_WATCH_KEY] || {};
+  // Base popup đang dùng lúc nạp thủ tục trước, rồi tới các base còn lại (chính/phụ) khi lỗi hạ tầng.
+  const bases = [...new Set([conf.base, ...(Array.isArray(conf.bases) ? conf.bases : [])]
+    .map((b) => String(b || "").trim().replace(/\/+$/, "")).filter(Boolean))];
+  let tokens = store?.auth_tokens;
+  if (!bases.length || !tokens?.accessToken) return "retry"; // chưa đăng nhập — chờ popup
+  const body = JSON.stringify({
+    dossierId: item.dossierId, portalHost: item.host || "", portalDossierRef: item.ref || "",
+    clickId: item.clickId, clickedAt: item.clickedAt, source: item.source || "click",
+  });
+  const post = (base) => fetchWithTimeout(base + "/api/v1/dossiers/submit-click", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + tokens.accessToken },
+    body,
+  });
+  for (const base of bases) {
+    let res;
+    try { res = await post(base); } catch (_) { continue; }
+    if (SUBMIT_INFRA_STATUS.has(res.status)) continue;
+    if (res.status === 401 && tokens.refreshToken) {
+      const nt = await refreshSubmitTokens(base, tokens);
+      if (!nt) return "retry";
+      tokens = nt;
+      try { res = await post(base); } catch (_) { continue; }
+    }
+    if (res.ok) return "ok";
+    if (SUBMIT_RETRY_STATUS.has(res.status) || res.status >= 500) return "retry";
+    return "drop";
   }
+  return "retry";
+}
+
+let submitFlushing = null;
+function flushSubmitOutbox() {
+  if (submitFlushing) return submitFlushing;
+  submitFlushing = (async () => {
+    let queue = (await chrome.storage.local.get([SUBMIT_OUTBOX_KEY]))?.[SUBMIT_OUTBOX_KEY];
+    queue = Array.isArray(queue) ? queue : [];
+    const fresh = queue.filter((it) => it?.clickId && Date.now() - Number(it.clickedAt || 0) < SUBMIT_OUTBOX_MAX_AGE_MS);
+    if (fresh.length !== queue.length) {
+      const keep = new Set(fresh.map((it) => it.clickId));
+      await mutateSubmitStore(SUBMIT_OUTBOX_KEY, (cur) => (Array.isArray(cur) ? cur : []).filter((it) => keep.has(it?.clickId)));
+    }
+    // Đúng thứ tự: mốc dò chữ luôn xếp SAU cú bấm của cùng lần nộp — gửi chệch thứ tự thì BE
+    // không lọc được mốc dò chữ trùng. Mục đầu chưa gửi được thì dừng cả hàng.
+    for (const item of fresh) {
+      const r = await sendSubmitReport(item);
+      if (r === "retry") {
+        try { chrome.alarms.create(SUBMIT_OUTBOX_ALARM, { delayInMinutes: 1 }); } catch (_) {}
+        return;
+      }
+      if (r === "drop") console.warn("[BG] BE từ chối mốc nộp hồ sơ, bỏ khỏi hàng đợi:", item.dossierId);
+      await mutateSubmitStore(SUBMIT_OUTBOX_KEY, (cur) => (Array.isArray(cur) ? cur : []).filter((it) => it?.clickId !== item.clickId));
+    }
+  })().catch((e) => console.warn("[BG] Không gửi được hàng đợi mốc nộp:", e?.message || e))
+    .finally(() => { submitFlushing = null; });
+  return submitFlushing;
+}
+
+async function enqueueSubmitReport(item) {
+  await mutateSubmitStore(SUBMIT_OUTBOX_KEY, (cur) => {
+    const list = (Array.isArray(cur) ? cur : []).filter((it) => it?.clickId !== item.clickId);
+    list.push(item);
+    return list.slice(-SUBMIT_OUTBOX_MAX);
+  });
+  void flushSubmitOutbox();
+}
+
+// Hàng đợi còn mốc thì mọi dịp sống dậy đều thử gửi: hẹn giờ, trình duyệt mở lại, và lúc popup
+// vừa đăng nhập/làm mới token (401 vì refresh token hỏng chỉ gỡ được khi cán bộ đăng nhập lại).
+chrome.alarms.onAlarm.addListener((a) => { if (a?.name === SUBMIT_OUTBOX_ALARM) void flushSubmitOutbox(); });
+chrome.runtime.onStartup.addListener(() => { void flushSubmitOutbox(); });
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && changes.auth_tokens?.newValue?.accessToken) void flushSubmitOutbox();
+});
+
+async function readSubmitSession(tabId) {
+  const sessionKey = "autofill_session_" + tabId;
+  const store = await chrome.storage.local.get([sessionKey, SUBMIT_MARKS_KEY]);
+  const session = store?.[sessionKey];
+  const marks = store?.[SUBMIT_MARKS_KEY]?.[tabId] || {};
+  return { sessionKey, session, marks, dossierId: String(session?.dossierId || "").trim() };
+}
+
+async function markTabSubmitted(tabId, sessionKey, session, patch) {
+  await mutateSubmitStore(SUBMIT_MARKS_KEY, (cur) => {
+    const all = cur && typeof cur === "object" ? cur : {};
+    return { ...all, [tabId]: { ...(all[tabId] || {}), ...patch } };
+  });
   // GIỮ khóa, chỉ đánh dấu đã nộp: chứng thực tách nhiều tab còn bấm nộp tiếp trên chính khóa
   // này và mỗi lần là một sự kiện. Khóa mới sinh ở LƯỢT process/đính kèm kế tiếp (popup.js
   // ensureDossierId), tức khi cán bộ bắt đầu hồ sơ khác.
   await chrome.storage.local.set({ [sessionKey]: { ...session, dossierSubmitted: true } });
+}
+
+async function afterDossierSubmitted(tabId, dossierId) {
   // Bấm nộp = coi như đã nộp. Không chờ cổng báo "thành công": câu chữ đó khác nhau theo cổng
   // và chỉ thu thập được bằng cách nộp hồ sơ thật, nên chờ nó là không bao giờ hỏi được ở
   // phần lớn cổng. Đổi lại: có thể hỏi cả khi cổng báo thiếu giấy tờ — chấp nhận.
@@ -370,6 +518,46 @@ async function reportDossierSubmitClick(tabId, host, ref) {
   try {
     await chrome.runtime.sendMessage({ action: "dossierSubmitted", tabId, dossierId });
   } catch (_) { /* panel chưa dựng lại sau điều hướng → cờ ở storage lo tiếp */ }
+}
+
+async function reportDossierSubmitClick(tabId, host, ref, clickId, clickedAt) {
+  if (!tabId) return;
+  const { sessionKey, session, dossierId } = await readSubmitSession(tabId);
+  // Chưa có khóa = extension chưa điền/đính kèm gì cho hồ sơ này → không có gì để chấm.
+  // Cố ý: báo cáo chỉ tính hồ sơ trợ lý có tham gia.
+  if (!dossierId) return;
+  const at = Number(clickedAt) || Date.now();
+  await markTabSubmitted(tabId, sessionKey, session, { clickDossierId: dossierId });
+  await enqueueSubmitReport({
+    dossierId, host: host || "", ref: ref || "", source: "click",
+    clickId: String(clickId || "") || newSubmitClickId(), clickedAt: at,
+  });
+  await afterDossierSubmitted(tabId, dossierId);
+}
+
+// Lớp 2: màn kết quả hiện chữ "nộp hồ sơ thành công" (hoặc successText riêng của cổng) mà cú
+// bấm không bắt được — nút nằm trong khung lạ, nộp bằng phím Enter, cổng đổi nút.
+async function reportDossierSubmitSeen(tabId, host, ref, seenAt) {
+  if (!tabId) return;
+  const { sessionKey, session, marks, dossierId } = await readSubmitSession(tabId);
+  if (!dossierId) return;
+  const at = Number(seenAt) || Date.now();
+  // Chữ đã nằm sẵn trên trang TỪ TRƯỚC khi bắt đầu hồ sơ này (cán bộ làm hồ sơ mới ngay trên
+  // màn kết quả của hồ sơ cũ) → là của hồ sơ cũ.
+  const createdAt = Number(session?.dossierCreatedAt || 0);
+  if (createdAt && at < createdAt) return;
+  // Lọc THEO TAB + HỒ SƠ, không theo thời gian: tab này đã có cú bấm (hoặc đã ghi chữ) cho hồ
+  // sơ này thì chữ "thành công" là của chính lần đó. Không dùng cửa sổ thời gian vì hàng đợi tách
+  // tự chuyển sang tab kế — tab cũ bị ẩn, chữ của nó chỉ được dò khi cán bộ quay lại, có khi rất lâu.
+  // Không lọc theo cả hồ sơ vì các tab tách dùng CHUNG khóa: tab 2 rớt cú bấm mà bị cú bấm tab 1
+  // che thì đếm thiếu một hồ sơ (BE cũng không lọc lại — text_dedupe_window=False).
+  if (marks.clickDossierId === dossierId || marks.textDossierId === dossierId) return;
+  await markTabSubmitted(tabId, sessionKey, session, { textDossierId: dossierId });
+  await enqueueSubmitReport({
+    dossierId, host: host || "", ref: ref || "", source: "text",
+    clickId: newSubmitClickId(), clickedAt: at,
+  });
+  await afterDossierSubmitted(tabId, dossierId);
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -386,7 +574,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg?.action === "dossierSubmitClicked") {
-    void reportDossierSubmitClick(sender?.tab?.id, msg.host, msg.ref);
+    void reportDossierSubmitClick(sender?.tab?.id, msg.host, msg.ref, msg.clickId, msg.clickedAt);
+    sendResponse?.({ ok: true });
+    return true;
+  }
+  if (msg?.action === "dossierSubmitSeen") {
+    void reportDossierSubmitSeen(sender?.tab?.id, msg.host, msg.ref, msg.seenAt);
     sendResponse?.({ ok: true });
     return true;
   }

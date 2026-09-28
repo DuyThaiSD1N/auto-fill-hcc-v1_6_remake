@@ -145,6 +145,18 @@ async function apiCall(path, opts = {}) {
       await AuthStore.saveTokens(nt);
       res = await backendFetch(path, withAuth(nt.accessToken));
     } else {
+      // BE xoay vòng refresh token (token cũ bị thu hồi ngay). Background gửi lại mốc nộp hồ sơ
+      // cũng làm mới token — nó thắng thì refresh của ta bị từ chối dù cặp mới đã (sắp) nằm
+      // trong storage. Đọc lại trước khi đá cán bộ ra màn đăng nhập.
+      for (const waitMs of [0, 1500]) {
+        if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+        const cur = await AuthStore.getTokens();
+        if (cur?.accessToken && cur.refreshToken !== tokens.refreshToken) {
+          const retried = await backendFetch(path, withAuth(cur.accessToken));
+          if (retried.status !== 401) return retried;
+          break;
+        }
+      }
       await AuthStore.clearTokens();
       const err = new Error("UNAUTHORIZED");
       err.unauthorized = true;

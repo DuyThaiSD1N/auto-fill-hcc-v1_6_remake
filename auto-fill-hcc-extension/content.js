@@ -1726,13 +1726,56 @@
       if (!hit) return;
       if (Date.now() - lastSubmitClickAt < 3000) return; // bấm dồn / double-click
       lastSubmitClickAt = Date.now();
+      // Mã + giờ bấm sinh NGAY tại cú bấm: background có thể phải gửi lại muộn (token hết hạn,
+      // mất mạng) — BE cần giờ thật và cần nhận ra lần gửi lại là cùng một cú bấm.
+      let clickId = "";
+      try { clickId = crypto.randomUUID(); } catch (_) { clickId = "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
       try {
         chrome.runtime.sendMessage(
-          { action: "dossierSubmitClicked", host: location.hostname, ref },
+          { action: "dossierSubmitClicked", host: location.hostname, ref, clickId, clickedAt: lastSubmitClickAt },
           () => void chrome.runtime.lastError,
         );
       } catch (_) {}
     }, true); // capture: cổng có handler riêng có thể stopPropagation
+
+    // Lớp 2 — chữ trên MÀN KẾT QUẢ, cho lúc cú bấm không bắt được (nút trong khung lạ, nộp bằng
+    // phím Enter, cổng đổi nút). Chỉ tin câu xác nhận nộp/gửi hồ sơ của cổng, KHÔNG ghép
+    // "thành công" + "mã hồ sơ" (màn tra cứu cũng có). Cổng mà màn kết quả nói khác (liên thông)
+    // thì BE khai successText riêng — khóa cả urlPattern. Cùng bộ câu với handfree (page_status).
+    // Background quyết định có ghi hay không (đã có mốc bấm thì chữ này là của chính lần đó).
+    const SUCCESS_PHRASES = ["nop ho so thanh cong", "gui ho so thanh cong"];
+    const matchUrl = (rule) => {
+      if (!rule.urlPattern) return { ok: true, ref: "" };
+      try {
+        const m = new RegExp(rule.urlPattern).exec(location.pathname + location.hash);
+        return m ? { ok: true, ref: m[1] || "" } : { ok: false, ref: "" };
+      } catch (_) { return { ok: false, ref: "" }; }
+    };
+    const pageShowsSubmitSuccess = (rule, body) => {
+      if (SUCCESS_PHRASES.some((p) => body.includes(p))) return true;
+      const groups = rule.successText;
+      if (!Array.isArray(groups) || !groups.length || !matchUrl(rule).ok) return false;
+      return groups.some((g) => Array.isArray(g) && g.length
+        && g.every((p) => typeof p === "string" && p && body.includes(p)));
+    };
+    // Mốc chữ thành công XUẤT HIỆN trên document này (0 = đang không hiện). Báo một lần cho mỗi
+    // lần hiện; chữ biến mất rồi hiện lại (SPA sang hồ sơ khác rồi nộp tiếp) là lần mới.
+    let submitSuccessShownAt = 0;
+    setInterval(() => {
+      const rule = submitRules?.[location.hostname];
+      // Tab ẩn: chữ vẫn nằm đó, quay lại là bắt — khỏi đọc innerText của cả chục tab nền.
+      if (!rule || !document.body || document.hidden) return;
+      const shown = pageShowsSubmitSuccess(rule, foldSubmitLabel(document.body.innerText || ""));
+      if (!shown) { submitSuccessShownAt = 0; return; }
+      if (submitSuccessShownAt) return;
+      submitSuccessShownAt = Date.now();
+      try {
+        chrome.runtime.sendMessage(
+          { action: "dossierSubmitSeen", host: location.hostname, ref: matchUrl(rule).ref, seenAt: submitSuccessShownAt },
+          () => void chrome.runtime.lastError,
+        );
+      } catch (_) {}
+    }, 3000);
   }
 
   // Sau khi chuyển trang (WebForms reload → DOM bị xoá), tự bật lại panel nổi nếu trước đó đang mở.
@@ -5587,25 +5630,6 @@
     return true;
   }
 
-  // Field có cờ clear (BE không có dữ liệu cho ô mà cổng đã đổ sẵn từ tài khoản, vd Ngày sinh người nộp) →
-  // XÓA giá trị. Ô flatpickr: xoá ô gốc trước rồi mới blur ô hiển thị — lúc blur flatpickr/Form.io đọc lại ô
-  // gốc, thấy rỗng thì setDate("") (xoá hẳn), nếu còn ngày cũ thì nó tự ghi lại.
-  function clearStandardDate(el) {
-    if (!el) return false;
-    const group = standardMarkTarget(el);
-    const visible = group?.querySelector?.('input:not([type="hidden"])');
-    setNativeValue(el, "", { typing: false, commit: false });
-    if (visible && visible !== el) setNativeValue(visible, "", { typing: true, commit: true });
-    else el.dispatchEvent(new Event("blur", { bubbles: true }));
-    return !String(el.value || "").trim();
-  }
-
-  function clearStandardInput(el) {
-    if (!el) return false;
-    setNativeValue(el, "", { typing: true, commit: true });
-    return !String(el.value || "").trim();
-  }
-
   function choiceDisplayText(el) {
     if (!el) return "";
     const span = el.querySelector?.("span");
@@ -6332,21 +6356,6 @@
   // lần 2 không đóng/mở panel), bấm xong chờ ô đó render rồi mới điền tiếp.
   // Nút này là CÔNG TẮC (bấm lần nữa là đóng panel) → mỗi lượt chỉ MỘT cú click, và chỉ bấm lại khi panel
   // vẫn chưa mở sau khi chờ đủ. Nút trong khối Thẩm định render trễ → chờ nút xuất hiện + hết disabled.
-  // Không có waitName (vd nút "Thêm" đưa xe trong panel vào danh sách, BE phát SAU các ô panel) → bấm một lần.
-  // f.skipIfListed = chữ định danh bản ghi (vd biển số xe): đã có trong một ô bảng trên trang (bản ghi đã thêm
-  // ở lượt điền trước) → vòng điền bỏ nút + các ô cùng panel, không thêm trùng (xem fillFormStandard).
-  function standardListHasText(text) {
-    const want = norm(text);
-    if (!want) return false;
-    return Array.from(document.querySelectorAll("table td")).some((td) => norm(td.textContent) === want);
-  }
-
-  // Khối cha của panel mà nút dom-click phục vụ: theo ô chờ (nút mở panel) hoặc theo chính tên nút (nút "Thêm"
-  // nằm trong panel).
-  function standardClickPanelPrefix(f) {
-    return String(f.waitName || f.name || "").replace(/\[[^\]]*\]$/, "");
-  }
-
   async function clickStandardButton(f, candidates, root = document) {
     // Panel coi là ĐÃ MỞ khi ô chờ hiện, HOẶC bất kỳ ô nào cùng khối cha của nó (data[A][B][x] → data[A][B])
     // hiện ra — phòng tên ô chờ lệch so với form thật mà bấm lần 2 lại đóng mất panel.
@@ -6969,6 +6978,17 @@
     return target.checked;
   }
 
+  // Field `clear`: BE xoá giá trị cổng đổ sẵn (vd nhân thân tài khoản khi người nộp theo tờ khai là người
+  // khác). Ô vừa bị xoá là ô TRỐNG nên không được mang viền xanh "đã điền"; `markEmpty` → tô đỏ để cán bộ
+  // biết phải nhập tay.
+  function markStandardCleared(f, candidates, occurrence, root) {
+    const el = findStandardInputForField(f, candidates, occurrence, root) || findStandardSelect(candidates, occurrence, root);
+    const target = standardMarkTarget(el);
+    if (!target?.classList) return;
+    target.classList.remove("autofill-filled");
+    if (f.markEmpty) target.classList.add("autofill-not-filled");
+  }
+
   function isStandardEmptyControl(control) {
     if (!control || control.disabled) return false;
     if (String(control.name || "").includes("BUSINESS_ACT_TEXTFld")) {
@@ -7403,22 +7423,8 @@
     const failedFieldKeys = new Set();
     const scopeLog = [];
     const orderedFields = orderStandardFields(fields);
-    // Panel có bản ghi đã nằm trong danh sách (xem standardListHasText) → bỏ nút mở/thêm và các ô của panel.
-    const listedPanels = new Set(fields
-      .filter((f) => f.comp === "dom-click" && f.skipIfListed && standardListHasText(f.skipIfListed))
-      .map(standardClickPanelPrefix)
-      .filter((prefix) => prefix.includes("[")));
-    if (listedPanels.size) {
-      console.log(`[AutoFill-STD] Bản ghi đã có trong danh sách → không thêm lại: ${Array.from(listedPanels).join(", ")}`);
-    }
-    const inListedPanel = (f) => (f.comp === "dom-click" && listedPanels.has(standardClickPanelPrefix(f))) ||
-      Array.from(listedPanels).some((prefix) => String(f.name || "").startsWith(`${prefix}[`));
 
     for (const f of orderedFields) {
-      if (inListedPanel(f)) {
-        result.filled++;
-        continue;
-      }
       // Ô khai scope mà trang không có khối đó → bỏ qua, không tính notFound (xem standardScopeRoot).
       //
       // ⚠ Khối khai trong scope render TRỄ: Form.io dựng panel tờ đơn SAU khi khối Angular ở đầu trang
@@ -7508,18 +7514,18 @@
           }
           // dom-datetime: ô lưu ISO có giờ (vd tuNgay/denNgay) → fallback set ISO 00:00:00; dom-date: ô
           // dd/MM/yyyy (vd birthday) → fallback gõ dd/mm/yyyy. Chọn trên lịch đúng cho cả hai.
-          ok = f.clear ? clearStandardDate(el) : fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
+          ok = fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
         } else if (f.comp === "dom-input" || f.comp === "raw") {
           const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);
           const postbackAddressInput = isPostbackAddressField(f);
-          if (f.clear) ok = clearStandardInput(el);
-          else ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
+          ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
         } else {
           const input = findStandardInputForField(f, candidates, occurrence, root);
           if (input) ok = fillStandardInput(input, f.value);
           else ok = await fillStandardSelectAny(findStandardSelect(candidates, occurrence, root), f.value, candidates, occurrence, 0, root);
         }
 
+        if (ok && f.clear) markStandardCleared(f, candidates, occurrence, root);
         if (ok) result.filled++;
         else {
           failedFieldKeys.add(standardFieldIdentity(f));
@@ -7687,14 +7693,8 @@
   // điền lại các ô text/date đang trống; lặp vài lần phòng postback muộn xoá tiếp.
   async function reapplyEmptyStandardTextFields(fields) {
     const SIMPLE = new Set(["dom-input", "dom-date", "dom-datetime", "raw"]);
-    // Nút dom-click KHÔNG có waitName (vd "Thêm" của panel phương tiện) đã chốt panel vào danh sách → form xoá
-    // trắng các ô panel; điền lại là đổ nhân bản xe vừa thêm vào panel. Bỏ các ô cùng khối cha với nút đó.
-    const committed = fields
-      .filter((f) => f.comp === "dom-click" && !f.waitName)
-      .map(standardClickPanelPrefix)
-      .filter((prefix) => prefix.includes("["));
-    const targets = fields.filter((f) => SIMPLE.has(f.comp) && !f.clear && !isAreaSelectField(f) &&
-      !committed.some((prefix) => String(f.name || "").startsWith(`${prefix}[`)));
+    // Field `clear` CỐ Ý để trống — điền lại chuỗi rỗng chỉ làm markFilled tô xanh đè lên màu đỏ.
+    const targets = fields.filter((f) => SIMPLE.has(f.comp) && !isAreaSelectField(f) && !f.clear);
     if (!targets.length) return;
 
     for (const delay of [250, 600, 1000]) {

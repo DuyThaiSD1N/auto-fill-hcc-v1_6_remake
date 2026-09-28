@@ -28,6 +28,8 @@ const chrome = {
         for (const key of Array.isArray(keys) ? keys : [keys]) delete storage[key];
       },
     },
+    // Hàng đợi mốc nộp nghe token mới để gửi lại (background.js).
+    onChanged: { addListener() {} },
   },
   tabs: {
     onRemoved: { addListener() {} },

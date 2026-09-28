@@ -61,7 +61,7 @@ test("content.js chỉ tính cú bấm trên ĐÚNG trang nộp hồ sơ", () =>
   assert.match(content, /chrome\.storage\.local\.get\(\[SUBMIT_WATCH_KEY\]/);
   // Popup nạp /procedures SAU khi content script chạy → phải nghe thay đổi, không thì lỡ hồ sơ đầu.
   assert.match(content, /chrome\.storage\.onChanged\.addListener[\s\S]{0,220}?SUBMIT_WATCH_KEY/);
-  assert.match(popup, /res\.portalSubmit[\s\S]{0,400}?\[SUBMIT_WATCH_KEY\]: \{ rules: res\.portalSubmit, base \}/);
+  assert.match(popup, /res\.portalSubmit[\s\S]{0,500}?\[SUBMIT_WATCH_KEY\]: \{\s*rules: res\.portalSubmit, base,/);
 });
 
 test("bắt click ở content script chứ không ở popup", () => {
@@ -75,7 +75,7 @@ test("background chỉ báo hồ sơ mà extension CÓ tham gia", () => {
   // Không có dossierId = chưa từng điền/đính kèm → không chấm. Báo cáo chỉ tính hồ sơ trợ lý làm.
   assert.match(background, /if \(!dossierId\) return;/);
   assert.match(background, /\/api\/v1\/dossiers\/submit-click/);
-  assert.match(background, /Authorization: "Bearer " \+ accessToken/);
-  // Gọi BE lỗi → GIỮ khóa để lần bấm sau còn ghi được.
-  assert.match(background, /console\.warn\("\[BG\] Không báo được mốc nộp hồ sơ[\s\S]{0,120}?return;/);
+  assert.match(background, /Authorization: "Bearer " \+ tokens\.accessToken/);
+  // Gọi BE lỗi → mốc nằm lại hàng đợi trong storage, không mất (tests/submit-outbox.test.js).
+  assert.match(background, /const SUBMIT_OUTBOX_KEY = "autofill_submit_outbox"/);
 });

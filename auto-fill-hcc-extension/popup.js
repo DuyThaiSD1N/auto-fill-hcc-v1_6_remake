@@ -137,6 +137,9 @@ let dossierId = "";
 // Hồ sơ này đã có ít nhất một lần bấm "Gửi hồ sơ". Không xoá khóa ngay lúc đó (chứng thực tách
 // nhiều tab còn nộp tiếp trên cùng khóa) — chỉ đánh dấu để LƯỢT process/đính kèm SAU xoay khóa.
 let dossierSubmitted = false;
+// Lúc sinh khóa hồ sơ — background bỏ chữ "nộp thành công" đã nằm sẵn trên trang từ TRƯỚC mốc
+// này (làm hồ sơ mới ngay trên màn kết quả của hồ sơ cũ).
+let dossierCreatedAt = 0;
 let selectedProcedureKey = "";
 // Thủ tục sở hữu file/kết quả của phiên đang làm. Khác selectedProcedureKey ở màn chọn chung
 // HKD: lúc đó selection tạm rỗng nhưng vẫn phải nhớ file cũ thuộc thủ tục nào để không mang sang hồ sơ khác.
@@ -927,6 +930,7 @@ function ensureDossierId() {
   if (!dossierId || dossierSubmitted) {
     dossierId = newDossierId();
     dossierSubmitted = false;
+    dossierCreatedAt = Date.now();
     void saveSession(); // phải nằm trong storage trước khi trang reload, nếu không 1 hồ sơ đếm thành 2
   }
   return dossierId;
@@ -1536,7 +1540,12 @@ async function loadProcedures() {
       const base = (typeof activeBackendBase === "function") ? activeBackendBase() : BACKEND_URL;
       try {
         await chrome.storage.local.set({
-          [SUBMIT_WATCH_KEY]: { rules: res.portalSubmit, base },
+          // bases: background gửi lại mốc nộp qua base còn sống khi base trên lỗi hạ tầng.
+          [SUBMIT_WATCH_KEY]: {
+            rules: res.portalSubmit, base,
+            bases: [BACKEND_URL, typeof BACKEND_URL_FALLBACK === "string" ? BACKEND_URL_FALLBACK : ""]
+              .filter(Boolean),
+          },
         });
       } catch (_) { /* không chặn luồng nạp thủ tục */ }
     }
@@ -1663,6 +1672,7 @@ async function saveSession() {
       businessFillSupportCode,
       dossierId,
       dossierSubmitted,
+      dossierCreatedAt,
       files: files.map(fileItemToSnapshot),
     };
     await enqueueSessionWrite(async () => {
@@ -1706,6 +1716,7 @@ async function restoreSession() {
   // Khóa hồ sơ phải sống qua reload, nếu không một hồ sơ sẽ bị đếm thành nhiều.
   dossierId = String(saved.dossierId || "").trim();
   dossierSubmitted = !!saved.dossierSubmitted;
+  dossierCreatedAt = Number(saved.dossierCreatedAt) || 0;
   const savedFiles = Array.isArray(saved.files) ? saved.files : [];
   workProcedureKey = String(saved.workProcedureKey || saved.procedureKey || "").trim();
   // Session từ bản extension cũ có thể đã giữ file sau khi selection bị đưa về rỗng ở màn HKD.
@@ -4254,9 +4265,6 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
-      // [Bộ Y tế] 1.014104: Họ tên + CCCD người nộp bị khoá theo tài khoản, hay nộp thay → mốc tài khoản
-      // quyết định Phần I lấy nhân thân chủ cơ sở hay CCCD người nộp; thiếu mốc là BE không đụng Phần I.
-      cfg.key === "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te" ||
       cfg.key === "cap-van-ban-chap-thuan-tau-ca" ||
       // Cấp GCN đăng ký tàu cá: Phần I prefill từ tài khoản (số định danh bị khóa) → thiếu mốc là BE
       // luôn coi là tự nộp, ghi đè họ tên chủ tàu lên Phần I và tích "Người nộp là chủ hồ sơ".
@@ -4330,6 +4338,18 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||
       // [Lào Cai] 1.115680 (bản cấp xã của 1.115652): cùng contract hai chế độ người nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai" ||
+      // [Lào Cai] 1.115687 (thu hồi GCN cấp sai): mapper chỉ điền nhân thân khối người nộp khi khớp mốc
+      // tài khoản; thiếu mốc là cả khối "Thông tin người nộp" luôn trống.
+      cfg.key === "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai" ||
+      // [Lào Cai] 1.115688 (đăng ký đất đai lần đầu cho tổ chức): cùng contract mốc tài khoản với 1.115687.
+      cfg.key === "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc" ||
+      // [Lào Cai] 1.115666 / 1.115670 / 1.115686 / 1.115689: cổng xác thực Họ tên/Số Căn cước/Ngày sinh
+      // khối người nộp với CSDLQG dân cư → chế độ theo tài khoản cần mốc để chỉ lấy nhân thân của chính
+      // người đang đăng nhập.
+      cfg.key === "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai" ||
+      cfg.key === "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai" ||
+      cfg.key === "dinh-chinh-gcn-da-cap-lao-cai" ||
+      cfg.key === "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
