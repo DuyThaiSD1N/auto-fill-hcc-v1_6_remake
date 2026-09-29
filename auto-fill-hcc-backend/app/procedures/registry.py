@@ -397,6 +397,8 @@ from app.pipelines.cap_the_huong_dan_vien_du_lich_tai_diem_da_nang.attach import
 from app.pipelines.cap_the_huong_dan_vien_du_lich_tai_diem_da_nang.process import run as cap_the_hdv_tai_diem_dn_process
 from app.pipelines.cap_doi_the_huong_dan_vien_du_lich_da_nang.attach import plan as cap_doi_the_hdv_dn_attach
 from app.pipelines.cap_doi_the_huong_dan_vien_du_lich_da_nang.process import run as cap_doi_the_hdv_dn_process
+from app.pipelines.cap_lai_the_huong_dan_vien_du_lich_da_nang.attach import plan as cap_lai_the_hdv_dn_attach
+from app.pipelines.cap_lai_the_huong_dan_vien_du_lich_da_nang.process import run as cap_lai_the_hdv_dn_process
 
 PROCEDURES: list[dict] = [
     {
@@ -1624,6 +1626,49 @@ PROCEDURES: list[dict] = [
             "Đính kèm: GCN cập nhật kiến thức → dòng (1); thẻ HDV → dòng (2); Đơn → dòng (3); ảnh → dòng (4).\n"
             "⚠ Nộp nhầm bộ CẤP MỚI (Đơn Mẫu 04 + chứng chỉ nghiệp vụ + văn bằng): hệ thống vẫn đính kèm "
             "tạm (đơn → dòng 3, chứng chỉ/văn bằng → dòng 1) và cảnh báo sai mẫu / thiếu thẻ HDV.\n"
+            "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', chưa "
+            "tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
+        ),
+    },
+    {
+        "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
+        # Cùng cổng Bộ VHTTDL và CÙNG giao diện với cấp đổi / thẻ nội địa / tại điểm ở trên (liz-*, engine
+        # content/fill-liz.js), nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-122). matthc=1.004614 được ghép
+        # tự động từ ke_khai_links.json (key trùng). Cụm tên lấy từ ô Thủ tục ("QT-122 - Thủ tục cấp lại thẻ
+        # hướng dẫn viên du lịch"): chữ "lại" chen giữa "cấp" và "thẻ" nên không trùng cụm của thẻ nội địa,
+        # tại điểm hay cấp đổi; nhãn "Lý do đề nghị cấp đổi/cấp lại thẻ" không có chữ "thủ tục" đứng trước.
+        "detect": {
+            "textIncludes": ["thủ tục cấp lại thẻ hướng dẫn viên du lịch"],
+            "headingDisabled": True,
+        },
+        "label": "[Đà Nẵng] Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
+        "mode": "agent",
+        # Bảng 3 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..2
+        # (thứ tự DOM: bản sao giấy tờ liên quan nội dung thay đổi, Đơn Mẫu 05, ảnh chân dung).
+        "hasAttachmentStep": True,
+        # Form và bảng đính kèm CHUNG một trang → nút quét điền xong tự đính kèm luôn cùng bộ file.
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm:\n"
+            "1. Đơn đề nghị cấp lại thẻ hướng dẫn viên du lịch (Mẫu số 05, Phụ lục II Thông tư "
+            "04/2024/TT-BVHTTDL) — nguồn chính để điền: số thẻ, nơi cấp, ngày cấp, loại thẻ đã được cấp, lý do.\n"
+            "2. 01 ảnh chân dung màu 3cm x 4cm (jpg/png, hoặc PDF một trang chỉ có ảnh) — ảnh in trên "
+            "chứng chỉ/thẻ không thay được.\n"
+            "3. Nếu cấp lại để thay đổi thông tin trên thẻ: bản sao có chứng thực giấy tờ liên quan đến nội dung "
+            "thay đổi.\n"
+            "4. Nếu có: CCCD, chứng chỉ nghiệp vụ hướng dẫn du lịch, văn bằng, thẻ HDV cũ — để đối chiếu nhân thân.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR, PDF gộp nhiều giấy tờ "
+            "được tách theo trang.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi số CCCD của tài khoản đăng nhập TRÙNG số "
+            "CCCD của người đề nghị; không trùng thì chỉ điền khối thông tin cấp lại thẻ (giới tính, email, "
+            "loại thẻ, số thẻ, ngày cấp, nơi cấp, lý do).\n"
+            "Đính kèm: Đơn → dòng 2; ảnh → dòng 3; giấy tờ thay đổi, chứng chỉ, văn bằng, thẻ cũ, giấy tờ khác → "
+            "CHUNG dòng 1 (hệ thống đưa sẵn nội dung cần ghi vào ô 'Mô tả'). CCCD không có dòng, không đính.\n"
+            "⚠ Nộp nhầm bộ CẤP MỚI (Đơn Mẫu 04 + chứng chỉ nghiệp vụ + văn bằng): hệ thống vẫn đính kèm "
+            "tạm (đơn → dòng 2, chứng chỉ/văn bằng → dòng 1) và cảnh báo sai mẫu, thiếu số thẻ/loại thẻ.\n"
             "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', chưa "
             "tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
         ),
@@ -6779,6 +6824,7 @@ _PIPELINE = {
     "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_process,
     "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": cap_the_hdv_tai_diem_dn_process,
     "cap-doi-the-huong-dan-vien-du-lich-da-nang": cap_doi_the_hdv_dn_process,
+    "cap-lai-the-huong-dan-vien-du-lich-da-nang": cap_lai_the_hdv_dn_process,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -6968,6 +7014,7 @@ _ATTACH_PIPELINE = {
     "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_attach,
     "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": cap_the_hdv_tai_diem_dn_attach,
     "cap-doi-the-huong-dan-vien-du-lich-da-nang": cap_doi_the_hdv_dn_attach,
+    "cap-lai-the-huong-dan-vien-du-lich-da-nang": cap_lai_the_hdv_dn_attach,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,

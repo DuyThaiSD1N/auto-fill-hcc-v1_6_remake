@@ -548,7 +548,8 @@
   //   1.004623: cấp thẻ hướng dẫn viên du lịch nội địa (cổng Bộ VHTTDL).
   //   1.001440: cấp thẻ hướng dẫn viên du lịch tại điểm (cổng Bộ VHTTDL, Sở VHTTDL Đà Nẵng).
   //   1.001432: cấp đổi thẻ hướng dẫn viên du lịch quốc tế, nội địa (cổng Bộ VHTTDL, Sở VHTTDL Đà Nẵng).
-  const NO_FLOW_MA_TTHC = new Set(["1.004623", "1.001440", "1.001432"]);
+  //   1.004614: cấp lại thẻ hướng dẫn viên du lịch (cổng Bộ VHTTDL, Sở VHTTDL Đà Nẵng).
+  const NO_FLOW_MA_TTHC = new Set(["1.004623", "1.001440", "1.001432", "1.004614"]);
 
   /** Đúng trang nộp hồ sơ của một mã TTHC — chỗ cán bộ TRÔNG ĐỢI trợ lý làm việc. */
   function onDossierPage() {
