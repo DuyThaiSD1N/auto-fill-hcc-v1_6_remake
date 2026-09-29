@@ -4266,6 +4266,11 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh" ||
+      // Cấp lại GPHN (cấp trước 01/01/2024): chế độ theo tài khoản so tài khoản với người hành nghề để
+      // quyết tự nộp / nộp thay — thiếu mốc là BE luôn coi tự nộp.
+      cfg.key === "cap-lai-giay-phep-hanh-nghe-truoc-2024" ||
+      // Điều chỉnh GPHĐ KCB: chủ hồ sơ là cơ sở, tài khoản so với người ký Đơn để quyết tự nộp / nộp thay.
+      cfg.key === "dieu-chinh-giay-phep-hoat-dong-kcb" ||
       cfg.key === "cap-chung-chi-hanh-nghe-duoc" ||
       // [Bộ Y tế] 1.014104: Họ tên + CCCD người nộp bị khoá theo tài khoản, hay nộp thay → mốc tài khoản
       // quyết định Phần I lấy nhân thân chủ cơ sở hay CCCD người nộp; thiếu mốc là BE không đụng Phần I.
@@ -4290,9 +4295,6 @@ ocrBtn.addEventListener("click", async () => {
       // [Đà Nẵng] 1.012756: chủ hồ sơ là tổ chức → mốc tài khoản đối chiếu người đại diện theo pháp luật (GCN
       // ĐKDN) / bên được ủy quyền để lấy giới tính, ngày cấp, nơi cấp; thiếu mốc là BE để trống các ô đó.
       cfg.key === "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly" ||
-      // [Đà Nẵng] 1.011442 đăng ký thay đổi BPBĐ: như 1.012756 — chủ hồ sơ hay là tổ chức, người nộp là người
-      // đại diện theo pháp luật hoặc người được ủy quyền; thiếu mốc là BE để trống giới tính, ngày cấp, nơi cấp.
-      cfg.key === "dang-ky-thay-doi-bien-phap-bao-dam-qsdd" ||
       // [Sở Xây dựng] 1.012906: Phần I khoá họ tên/ngày sinh/CCCD theo tài khoản → mốc tài khoản quyết định tự nộp
       // hay nộp thay; thiếu mốc là BE để trống giới tính, ngày cấp, nơi cấp, địa chỉ người nộp.
       cfg.key === "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san" ||
@@ -4369,6 +4371,11 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai" ||
       cfg.key === "dinh-chinh-gcn-da-cap-lao-cai" ||
       cfg.key === "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai" ||
+      // [Lào Cai] 1.011441 / 1.011442 (đăng ký / đăng ký thay đổi biện pháp bảo đảm): người đi nộp hay là
+      // cán bộ ngân hàng/quỹ tín dụng theo Giấy giới thiệu, khác người yêu cầu đăng ký → chế độ theo tài
+      // khoản cần mốc để chỉ lấy nhân thân của chính người đăng nhập.
+      cfg.key === "dang-ky-bien-phap-bao-dam-lao-cai" ||
+      cfg.key === "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
