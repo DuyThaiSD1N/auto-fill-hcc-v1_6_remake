@@ -4295,6 +4295,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Đà Nẵng] 1.012756: chủ hồ sơ là tổ chức → mốc tài khoản đối chiếu người đại diện theo pháp luật (GCN
       // ĐKDN) / bên được ủy quyền để lấy giới tính, ngày cấp, nơi cấp; thiếu mốc là BE để trống các ô đó.
       cfg.key === "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly" ||
+      // [Đà Nẵng] 1.011442 đăng ký thay đổi BPBĐ: như 1.012756 — chủ hồ sơ hay là tổ chức, người nộp là người
+      // đại diện theo pháp luật hoặc người được ủy quyền; thiếu mốc là BE để trống giới tính, ngày cấp, nơi cấp.
+      cfg.key === "dang-ky-thay-doi-bien-phap-bao-dam-qsdd" ||
       // [Sở Xây dựng] 1.012906: Phần I khoá họ tên/ngày sinh/CCCD theo tài khoản → mốc tài khoản quyết định tự nộp
       // hay nộp thay; thiếu mốc là BE để trống giới tính, ngày cấp, nơi cấp, địa chỉ người nộp.
       cfg.key === "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san" ||
