@@ -4359,6 +4359,8 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-the-huong-dan-vien-du-lich-noi-dia" ||
       // [Đà Nẵng · Bộ VHTTDL] 1.001440 (thẻ HDV tại điểm): cùng cổng, cùng contract với 1.004623.
       cfg.key === "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang" ||
+      // [Đà Nẵng · Bộ VHTTDL] 1.001432 (cấp đổi thẻ HDV quốc tế/nội địa): cùng cổng, cùng contract.
+      cfg.key === "cap-doi-the-huong-dan-vien-du-lich-da-nang" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||
