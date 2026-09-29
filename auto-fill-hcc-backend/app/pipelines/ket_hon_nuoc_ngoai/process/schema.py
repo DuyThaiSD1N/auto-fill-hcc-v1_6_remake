@@ -66,6 +66,15 @@ FIELDS: list[dict] = [
              "CccdNu_BanAnLyHon_So."},
 ]
 
+# Nhân thân hai bên CHÉP NGUYÊN VĂN từ TỜ KHAI — tách nguồn để Python đối chiếu với giấy tờ tùy thân:
+# trùng số → theo giấy tờ; bên người Việt lệch cả tên lẫn số → giấy tờ của người khác, theo tờ khai.
+for _side, _label in (("Nam", "bên nam"), ("Nu", "bên nữ")):
+    FIELDS += [
+        {"name": f"ToKhai{_side}_HoTen", "desc": f"Họ tên {_label} CHÉP NGUYÊN VĂN từ tờ khai đăng ký kết hôn; không lấy từ giấy tờ tùy thân."},
+        {"name": f"ToKhai{_side}_SoGiayTo", "desc": f"Số giấy tờ tùy thân {_label} CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ giấy tờ tùy thân."},
+        {"name": f"ToKhai{_side}_NgaySinh", "desc": f"Ngày sinh {_label} trên tờ khai, dd/mm/yyyy; không lấy từ giấy tờ tùy thân."},
+    ]
+
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 

@@ -33,6 +33,53 @@ def _normalize_dan_toc(value):
     return _DAN_TOC_CANON.get(key, raw)
 
 
+def _digits(value) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _ids_close(a: str, b: str) -> bool:
+    """Hai số định danh khớp, hoặc chỉ lệch mức OCR (một chữ số / rơi 1–2 chữ số)."""
+    if a == b:
+        return True
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    if not 0 < len(long) - len(short) <= 2:
+        return False
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: nhân thân CCCD lệch CẢ họ tên lẫn số định danh so với tờ khai → giấy tờ của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    card_digits, declared_digits = _digits(card_id), _digits(declared_id)
+    return not (card_digits and declared_digits and _ids_close(card_digits, declared_digits))
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -89,18 +136,39 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
-    def add_person(src: str, dst: str) -> None:
-        if not (values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen")):
+    def add_person(src: str, dst: str, declaration: str) -> None:
+        if not (
+            values.get(f"{src}_SoDinhDanh") or values.get(f"{src}_HoTen")
+            or values.get(f"{declaration}_SoDinhDanh") or values.get(f"{declaration}_HoTen")
+        ):
             return
-        issuer = normalize_issuer(values.get(f"{src}_NoiCap")) or default_issuer(values.get(f"{src}_NgayCap"))
+        # TH1 — nhân thân trích được (CCCD) lệch CẢ tên lẫn số so với khối vợ/chồng trên tờ khai: đó là
+        # giấy tờ của NGƯỜI KHÁC. Họ tên/số/ngày sinh điền theo tờ khai (viền vàng), bỏ ngày/nơi cấp của
+        # thẻ đó. TH2 (trùng số) và ca còn lại: thẻ (bản IN) trước, tờ khai chỉ bù ô thẻ thiếu.
+        card_is_other = _card_is_other_person(
+            values.get(f"{src}_HoTen"), values.get(f"{src}_SoDinhDanh"),
+            values.get(f"{declaration}_HoTen"), values.get(f"{declaration}_SoDinhDanh"))
+
+        def identity(name: str) -> tuple:
+            declared = values.get(f"{declaration}_{name}")
+            if card_is_other:
+                return declared, bool(declared)
+            return values.get(f"{src}_{name}") or declared, False
+
+        ho_ten, ho_ten_default = identity("HoTen")
+        so_dinh_danh, so_default = identity("SoDinhDanh")
+        ngay_sinh, ngay_sinh_default = identity("NgaySinh")
+        ngay_cap = None if card_is_other else values.get(f"{src}_NgayCap")
+        noi_cap = None if card_is_other else values.get(f"{src}_NoiCap")
+        issuer = normalize_issuer(noi_cap) or default_issuer(ngay_cap)
         area = _area(values.get(f"{src}_NoiCuTru_TrongNuoc"))
 
-        add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
-        add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
-        add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
+        add(f"HoTen{dst}", upper_person_name(ho_ten), ho_ten_default)
+        add(f"SoDinhDanh_{dst}", so_dinh_danh, so_default)
+        add(f"SoGiayToDinhDanh_{dst}", so_dinh_danh, so_default)
         add(f"LoaiGiayToDinhDanh_{dst}", id_doc_type("Căn cước công dân", issuer))
-        add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
-        add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
+        add(f"NgaySinh{dst}", ngay_sinh, ngay_sinh_default)
+        add(f"NgayCapDD_{dst}", ngay_cap)
         add(f"NoiCapDD_{dst}", issuer)
         add(f"DanToc{dst}", _normalize_dan_toc(values.get(f"{src}_DanToc")))
         add(f"QuocTich{dst}", values.get(f"{src}_QuocTich") or "Việt Nam")
@@ -112,8 +180,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add(f"SoLanKetHon_{dst}", "1", default=True)
         add(f"LoaiTinhTrangHonNhan_{dst}", _TINH_TRANG_HON_NHAN_DEFAULT, default=True)
 
-    add_person("CccdNu", "BenNu")
-    add_person("CccdNam", "BenNam")
+    add_person("CccdNu", "BenNu", "ToKhaiNu")
+    add_person("CccdNam", "BenNam", "ToKhaiNam")
 
     # Hồ sơ gốc (lần đăng ký kết hôn trước đây).
     add("loaiDangKy", _LOAI_DANG_KY_LAI, default=True)

@@ -1,6 +1,7 @@
 """Map compact re-registration death facts to legacy x-* UI fields."""
 
 import re
+import unicodedata
 
 from app.pipelines._shared.formatting import normalize_date, parse_death_time, upper_person_name
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type
@@ -10,6 +11,72 @@ from app.pipelines.khai_tu_dang_ky_lai.process.schema import UI_COMP_BY_NAME
 
 def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
+
+
+def _fold(value) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _ids_close(a: str, b: str) -> bool:
+    """Hai số định danh khớp, hoặc chỉ lệch mức OCR (một chữ số / rơi 1–2 chữ số)."""
+    if a == b:
+        return True
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    if not 0 < len(long) - len(short) <= 2:
+        return False
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: nhân thân trích được lệch CẢ họ tên lẫn số định danh so với tờ khai → của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    card_digits, declared_digits = _digits(card_id), _digits(declared_id)
+    return not (card_digits and declared_digits and _ids_close(card_digits, declared_digits))
+
+
+def _declaration_wins_on_mismatch(values: dict, prefix: str, declared_prefix: str) -> bool:
+    """TH1 cho một vai: thay họ tên/số/ngày sinh bằng tờ khai, bỏ ngày cấp/nơi cấp của thẻ lạ."""
+    if not _card_is_other_person(
+        values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        values.get(f"{declared_prefix}_HoTen"), values.get(f"{declared_prefix}_SoDinhDanh"),
+    ):
+        return False
+    values[f"{prefix}_FullName"] = values.get(f"{declared_prefix}_HoTen")
+    values[f"{prefix}_IdNumber"] = values.get(f"{declared_prefix}_SoDinhDanh")
+    for suffix in ("IdIssueDate", "IdIssuePlace"):
+        values.pop(f"{prefix}_{suffix}", None)
+    if prefix == "Deceased":
+        values["Deceased_BirthDate"] = values.get("ToKhai_NguoiChet_NgaySinh")
+        values.pop("Deceased_Gender", None)
+    return True
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -89,14 +156,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
         seen.add(name)
 
+    # TH1 — nhân thân lệch cả tên lẫn số so với tờ khai: thẻ của người khác → theo tờ khai, viền vàng.
+    requester_other = _declaration_wins_on_mismatch(values, "Requester", "ToKhai_NguoiYeuCau")
+    deceased_other = _declaration_wins_on_mismatch(values, "Deceased", "ToKhai_NguoiChet")
+
     # Structural default: only option rendered in this eForm is "Đăng ký lại".
     add("loaiDangKy", "2")
 
     # I. Người yêu cầu.
     requester_id = values.get("Requester_IdNumber")
-    add("HoVaTenC", upper_person_name(values.get("Requester_FullName")))
-    add("SoDinhDanhC", requester_id)
-    add("SoGiayToDinhDanhC", requester_id)
+    add("HoVaTenC", upper_person_name(values.get("Requester_FullName")), requester_other)
+    add("SoDinhDanhC", requester_id, requester_other)
+    add("SoGiayToDinhDanhC", requester_id, requester_other)
     if requester_id:
         add("LoaiGiayToDinhDanhC", _id_doc_type(
             requester_id,
@@ -120,13 +191,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     # III. Người được đăng ký lại khai tử.
     deceased_id = values.get("Deceased_IdNumber")
-    add("HoTen", upper_person_name(values.get("Deceased_FullName")))
-    add("NgaySinh", _date_or_year(values.get("Deceased_BirthDate")))
+    add("HoTen", upper_person_name(values.get("Deceased_FullName")), deceased_other)
+    add("NgaySinh", _date_or_year(values.get("Deceased_BirthDate")), deceased_other)
     add("GioiTinh", values.get("Deceased_Gender"))
     add("nktDanToc", values.get("Deceased_Ethnicity"))
     add("nktQuocTich", values.get("Deceased_Nationality") or "Việt Nam")
-    add("SoDinhDanh", deceased_id)
-    add("SoGiayToDinhDanh", deceased_id)
+    add("SoDinhDanh", deceased_id, deceased_other)
+    add("SoGiayToDinhDanh", deceased_id, deceased_other)
     if deceased_id:
         add("LoaiGiayToDinhDanh", _id_doc_type(
             deceased_id,

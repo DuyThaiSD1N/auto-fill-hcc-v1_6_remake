@@ -433,46 +433,208 @@ def test_sanitizer_fixes_issue_date_swapped_between_child_and_mother():
     assert values["Mother_IdIssuePlace"] == "Bộ Công an"
 
 
-def test_relation_read_as_father_flips_to_self_when_requester_is_subject():
-    # Dòng quan hệ viết tay "bản thân" bị OCR đọc thành "bố/thuỷ"; cha trên tờ khai là người khác.
-    declaration = (
-        "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
-        "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\n"
-        "Giấy tờ tùy thân: CCCD số 068090001111\n"
-        "Quan hệ với người được khai sinh: bố/thuỷ\n"
-        "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:\n"
-        "Họ, chữ đệm, tên: TRẦN VĂN BÌNH\n"
-        "Ngày, tháng, năm sinh: 10/05/1990\n"
-        "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam\n"
-        "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA\n"
-        "Năm sinh: 1965 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
-        "Họ, chữ đệm, tên người cha: TRẦN VĂN AN\n"
-        "Năm sinh: 1962 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
-        "Tôi cam đoan những nội dung khai trên đây là đúng sự thật"
+# Tờ khai ghi cha/mẹ một đằng, hai tấm CCCD nộp kèm lại là của hai người khác hẳn (lệch cả tên lẫn số).
+_MISMATCHED_PARENT_CARDS_DOCS = [
+    {
+        "name": "to-khai.pdf",
+        "text": (
+            "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
+            "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\n"
+            "Quan hệ với người được khai sinh: Bản thân\n"
+            "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:\n"
+            "Họ, chữ đệm, tên: TRẦN VĂN BÌNH\n"
+            "Ngày, tháng, năm sinh: 10/05/1990\n"
+            "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA\n"
+            "Năm sinh: 1965 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Giấy tờ tùy thân: CCCD số 068165002222\n"
+            "Họ, chữ đệm, tên người cha: TRẦN VĂN AN\n"
+            "Năm sinh: 1962 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Giấy tờ tùy thân: CCCD số 068062003333\n"
+            "Tôi cam đoan những nội dung khai trên đây là đúng sự thật"
+        ),
+    },
+    {
+        "name": "cccd-1.pdf",
+        "text": (
+            "CĂN CƯỚC CÔNG DÂN\nSố / No.: 068062009999\nHọ và tên / Full name: PHẠM VĂN KHÁNH\n"
+            "Ngày sinh / Date of birth: 01/01/1962\nGiới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam"
+        ),
+    },
+    {
+        "name": "cccd-2.pdf",
+        "text": (
+            "CĂN CƯỚC CÔNG DÂN\nSố / No.: 068165008888\nHọ và tên / Full name: ĐỖ THỊ MAI\n"
+            "Ngày sinh / Date of birth: 02/02/1965\nGiới tính / Sex: Nữ Quốc tịch / Nationality: Việt Nam"
+        ),
+    },
+]
+
+
+def _mismatched_parent_cards_context() -> str:
+    raw = _raw_roles(
+        requester="TRẦN VĂN BÌNH",
+        requester_id="068090001111",
+        child="TRẦN VĂN BÌNH",
+        child_id="068090001111",
+        mother="ĐỖ THỊ MAI",
+        mother_id="068165008888",
+        father="PHẠM VĂN KHÁNH",
     )
-    raw = "<quan_he_nguoi_yeu_cau>\nKết luận: cha\nCăn cứ: Tờ khai ghi bố.\n</quan_he_nguoi_yeu_cau>"
+    return reason._render_context(raw, {}, _MISMATCHED_PARENT_CARDS_DOCS)
+
+
+def test_parents_take_cards_by_generation_when_declaration_mismatches_all_cards():
+    context = _mismatched_parent_cards_context()
+    # Tờ khai lệch cả tên lẫn số với mọi CCCD, nhưng thẻ nam 1962 / nữ 1965 hợp tuổi với con 1990
+    # → chốt thẻ theo thế hệ: nhân thân theo thẻ, tô vàng.
+    assert reason._labeled_value(reason._section(context, "cha"), reason._GENERATION_CARD_LABEL)
+    assert reason._labeled_value(reason._section(context, "me"), reason._GENERATION_CARD_LABEL)
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Father_FullName", "value": "PHẠM VĂN KHÁNH"},
+        {"name": "Father_IdNumber", "value": "068062009999"},
+        {"name": "Mother_FullName", "value": "ĐỖ THỊ MAI"},
+        {"name": "Mother_IdNumber", "value": "068165008888"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+    values = {field["name"]: field["value"] for field in result}
+    defaults = {field["name"] for field in result if field.get("default")}
+
+    assert values["Father_FullName"] == "PHẠM VĂN KHÁNH"
+    assert values["Father_IdNumber"] == "068062009999"
+    assert values["Mother_FullName"] == "ĐỖ THỊ MAI"
+    assert values["Mother_IdNumber"] == "068165008888"
+    assert {"Father_FullName", "Father_IdNumber", "Mother_FullName", "Mother_IdNumber"} <= defaults
+
+
+def test_generation_card_overrides_declared_identity_extracted_by_agent():
+    context = _mismatched_parent_cards_context()
+    # Agent trích tên theo tờ khai → nhân thân vẫn đặt lại theo thẻ đã chốt theo thế hệ.
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
+        {"name": "Father_IdNumber", "value": "068062003333"},
+        {"name": "Mother_FullName", "value": "LÊ THỊ HOA"},
+    ]
+
+    values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
+
+    assert values["Father_FullName"] == "PHẠM VĂN KHÁNH"
+    assert values["Father_IdNumber"] == "068062009999"
+    assert values["Mother_FullName"] == "ĐỖ THỊ MAI"
+    assert values["Mother_IdNumber"] == "068165008888"
+
+
+def _cards_out_of_generation_context() -> str:
+    # Thẻ lạ lệch cả tên lẫn số VÀ không hợp tuổi với con (sinh sau con) → không chốt được, theo tờ khai.
+    docs = [
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
+        {"name": "cccd-1.pdf", "text": _card("068095009999", "PHẠM VĂN KHÁNH", "01/01/1995", "Nam")},
+        {"name": "cccd-2.pdf", "text": _card("068196008888", "ĐỖ THỊ MAI", "02/02/1996", "Nữ")},
+    ]
+    return reason._render_context(_raw_roles(child="TRẦN VĂN BÌNH", child_id="068090001111"), {}, docs)
+
+
+def test_parents_fall_back_to_declaration_when_cards_do_not_fit_generation():
+    context = _cards_out_of_generation_context()
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Father_FullName", "value": "PHẠM VĂN KHÁNH"},
+        {"name": "Father_IdNumber", "value": "068062009999"},
+        {"name": "Mother_FullName", "value": "ĐỖ THỊ MAI"},
+        {"name": "Mother_IdNumber", "value": "068165008888"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+    values = {field["name"]: field["value"] for field in result}
+    defaults = {field["name"] for field in result if field.get("default")}
+
+    assert values["Father_FullName"] == "TRẦN VĂN AN"
+    assert values["Father_IdNumber"] == "068062003333"
+    assert values["Mother_FullName"] == "LÊ THỊ HOA"
+    assert values["Mother_IdNumber"] == "068165002222"
+    assert {"Father_FullName", "Father_IdNumber", "Mother_FullName", "Mother_IdNumber"} <= defaults
+
+
+def test_parent_id_from_foreign_card_falls_back_to_declaration():
+    context = _cards_out_of_generation_context()
+    # Tên theo tờ khai nhưng số + ngày cấp chép từ thẻ của người khác (mã năm sinh 1995 ≠ cha 1962);
+    # mẹ bị bỏ trống số.
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
+        {"name": "Father_IdNumber", "value": "068095009999"},
+        {"name": "Father_IdIssueDate", "value": "01/01/2021"},
+        {"name": "Mother_FullName", "value": "LÊ THỊ HOA"},
+    ]
+
+    result = reason.sanitize_extracted_fields(fields, context)
+    values = {field["name"]: field["value"] for field in result}
+
+    assert values["Father_IdNumber"] == "068062003333"
+    assert "Father_IdIssueDate" not in values
+    assert values["Mother_FullName"] == "LÊ THỊ HOA"
+    assert values["Mother_IdNumber"] == "068165002222"
+
+
+def test_parent_card_matching_name_is_not_flagged_as_foreign():
+    # Thẻ của cha đúng tên tờ khai (số lệch do OCR tờ khai) → vẫn là thẻ của cha, không fallback.
+    docs = [
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
+        {
+            "name": "cccd-1.pdf",
+            "text": _MISMATCHED_PARENT_CARDS_DOCS[1]["text"].replace("PHẠM VĂN KHÁNH", "TRẦN VĂN AN"),
+        },
+        _MISMATCHED_PARENT_CARDS_DOCS[2],
+    ]
+    context = reason._render_context(_raw_roles(child="TRẦN VĂN BÌNH", child_id="068090001111"), {}, docs)
+
+    assert not reason._labeled_value(reason._section(context, "cha"), reason._NO_CARD_MATCH_LABEL)
+    assert not reason._labeled_value(reason._section(context, "cha"), reason._GENERATION_CARD_LABEL)
+    # Thẻ nữ còn thừa hợp tuổi → mẹ chốt theo thế hệ thay cho TH1.
+    assert reason._labeled_value(reason._section(context, "me"), reason._GENERATION_CARD_LABEL)
+
+
+def test_child_takes_card_by_generation_when_declaration_name_and_id_are_garbled():
+    docs = [
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
+        {"name": "cccd-con.pdf", "text": _card("068090007777", "TRẦN VĂN BẢO", "10/05/1990", "Nam")},
+        {"name": "cccd-cha.pdf", "text": _card("068062003333", "TRẦN VĂN AN", "01/01/1962", "Nam")},
+        {"name": "cccd-me.pdf", "text": _card("068165002222", "LÊ THỊ HOA", "02/02/1965", "Nữ")},
+    ]
+    context = reason._render_context("", {}, docs)
+
+    assert reason._labeled_value(reason._section(context, "con"), reason._GENERATION_CARD_LABEL)
+    result = reason.sanitize_extracted_fields(
+        [
+            {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+            {"name": "Subject_BirthPlaceDomestic", "value": {"tinh": "Tỉnh Nam Định"}},
+            {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
+            {"name": "Mother_FullName", "value": "LÊ THỊ HOA"},
+        ],
+        context,
+    )
+    values = {field["name"]: field["value"] for field in result}
+    defaults = {field["name"] for field in result if field.get("default")}
+
+    assert values["Subject_FullName"] == "TRẦN VĂN BẢO"
+    assert values["Subject_IdNumber"] == "068090007777"
+    assert values["Subject_BirthPlaceDomestic"] == {"tinh": "Tỉnh Nam Định"}
+    assert "Subject_FullName" in defaults
+
+
+def test_relation_read_as_father_flips_to_self_when_requester_is_subject():
+    declaration = _MISMATCHED_PARENT_CARDS_DOCS[0]["text"].replace(
+        "Quan hệ với người được khai sinh: Bản thân", "Quan hệ với người được khai sinh: bố/thuỷ"
+    )
+    raw = (
+        "<quan_he_nguoi_yeu_cau>\nKết luận: cha\nCăn cứ: Tờ khai ghi bố.\n</quan_he_nguoi_yeu_cau>"
+    )
     context = reason._render_context(raw, {}, [{"name": "to-khai.pdf", "text": declaration}])
 
     assert reason._labeled_value(reason._section(context, "quan_he_nguoi_yeu_cau"), "Kết luận") == "bản thân"
-
-
-_DECLARATION_WINS_TEXT = (
-    "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
-    "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\n"
-    "Giấy tờ tùy thân: CCCD số 06809000111\n"
-    "Quan hệ với người được khai sinh: Bản thân\n"
-    "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:\n"
-    "Họ, chữ đệm, tên: TRẦN VĂN BÌNH\n"
-    "Ngày, tháng, năm sinh: 10-05-1990\n"
-    "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam\n"
-    "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA\n"
-    "Năm sinh: 1965 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
-    "Giấy tờ tùy thân: CCCD số 068165002222\n"
-    "Họ, chữ đệm, tên người cha: TRẦN VĂN AN\n"
-    "Năm sinh: 1962 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
-    "Giấy tờ tùy thân: CCCD số 068062003333, Cục CSQLHC về TTXH cấp ngày 11-08-2021\n"
-    "Tôi cam đoan những nội dung khai trên đây là đúng sự thật"
-)
 
 
 def _card(identity: str, name: str, birth: str, sex: str) -> str:
@@ -482,45 +644,11 @@ def _card(identity: str, name: str, birth: str, sex: str) -> str:
     )
 
 
-def test_declaration_wins_over_every_card_value():
-    docs = [
-        {"name": "to-khai.pdf", "text": _DECLARATION_WINS_TEXT},
-        # Cùng người nhưng thẻ ghi khác tờ khai: con lệch tên + ngày sinh, cha lệch số + năm sinh.
-        {"name": "cccd-con.pdf", "text": _card("068090001122", "TRẦN VĂN BINH", "11/05/1990", "Nam")},
-        {"name": "cccd-cha.pdf", "text": _card("068063003344", "TRẦN VĂN AN", "01/01/1963", "Nam")},
-    ]
-    context = reason._render_context("", {}, docs)
-    # Agent trích toàn bộ theo CCCD.
-    fields = [
-        {"name": "Requester_RelationToSubject", "value": "Bản thân"},
-        {"name": "Requester_FullName", "value": "TRẦN VĂN BINH"},
-        {"name": "Requester_IdNumber", "value": "068090001122"},
-        {"name": "Subject_FullName", "value": "TRẦN VĂN BINH"},
-        {"name": "Subject_BirthDate", "value": "11/05/1990"},
-        {"name": "Subject_BirthDateFromId", "value": "11/05/1990"},
-        {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
-        {"name": "Father_Gender", "value": "Nam"},
-        {"name": "Father_IdNumber", "value": "068063003344"},
-        {"name": "Father_IdIssueDate", "value": "10/08/2021"},
-        {"name": "Father_BirthDateOrYear", "value": "01/01/1963"},
-    ]
-
-    values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
-
-    assert values["Requester_FullName"] == "TRẦN VĂN BÌNH"
-    assert values["Requester_IdNumber"] == "06809000111"  # sai độ dài vẫn theo tờ khai
-    assert values["Subject_FullName"] == "TRẦN VĂN BÌNH"
-    assert values["Subject_BirthDate"] == "10/05/1990"
-    assert "Subject_BirthDateFromId" not in values
-    assert values["Father_IdNumber"] == "068062003333"
-    assert values["Father_IdIssueDate"] == "11/08/2021"
-    assert values["Father_BirthDateOrYear"] == "1962"
-    assert values["Mother_IdNumber"] == "068165002222"
-
 
 def test_declaration_year_only_keeps_card_full_date_of_same_year():
+    # TH2: thẻ trùng số tờ khai; tờ khai chỉ ghi năm sinh → giữ ngày sinh đầy đủ của thẻ cùng năm.
     docs = [
-        {"name": "to-khai.pdf", "text": _DECLARATION_WINS_TEXT},
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
         {"name": "cccd-me.pdf", "text": _card("068165002222", "LÊ THỊ HOA", "02/02/1965", "Nữ")},
     ]
     context = reason._render_context("", {}, docs)
@@ -534,7 +662,6 @@ def test_declaration_year_only_keeps_card_full_date_of_same_year():
     values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
 
     assert values["Mother_BirthDateOrYear"] == "02/02/1965"
-
 
 # Thẻ căn cước mẫu 2024: ngày sinh in ở DÒNG DƯỚI dòng nhãn "Date of birth:  Giới tính / Sex:".
 _NEW_CARD_MOTHER = (
@@ -583,3 +710,188 @@ def test_generation_rule_runs_despite_birth_certificate_of_subjects_child():
 
     assert reason._role_name(reason._section(context, "me")) == "PHẠM THỊ LAN"
     assert reason._role_name(reason._section(context, "cha")) == "LÊ VĂN HẢI"
+
+
+def test_same_id_card_wins_name_birth_gender_over_declaration():
+    # TH2: CCCD cha mang ĐÚNG số tờ khai ghi nhưng tên viết tay trên tờ khai bị OCR đọc lệch hẳn.
+    docs = [
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
+        {
+            "name": "cccd-cha.pdf",
+            "text": _card("068062003333", "PHẠM VĂN KHÁNH", "01/01/1962", "Nam")
+            + "\nNgày, tháng, năm / Date, month, year: 10/08/2021\n"
+            "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI",
+        },
+    ]
+    context = reason._render_context(_raw_roles(child="TRẦN VĂN BÌNH", child_id="068090001111"), {}, docs)
+    # Agent trích tên/năm sinh cha theo tờ khai.
+    fields = [
+        {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
+        {"name": "Father_IdNumber", "value": "068062003333"},
+        {"name": "Father_BirthDateOrYear", "value": "1962"},
+    ]
+
+    values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
+
+    assert values["Father_FullName"] == "PHẠM VĂN KHÁNH"
+    assert values["Father_BirthDateOrYear"] == "01/01/1962"
+    assert values["Father_Gender"] == "Nam"
+    assert values["Father_IdNumber"] == "068062003333"
+    assert values["Father_IdIssueDate"] == "10/08/2021"
+
+
+def test_card_matching_name_with_garbled_declared_id_wins_identity():
+    # Tờ khai viết tay: tên mất dấu, số CCCD rụng chữ số (không hợp lệ) → thẻ khớp tên vẫn là của mẹ,
+    # họ tên/ngày sinh theo thẻ in.
+    declaration = _MISMATCHED_PARENT_CARDS_DOCS[0]["text"].replace(
+        "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA", "Họ, chữ đệm, tên người mẹ: LE THI HOA"
+    ).replace("CCCD số 068165002222", "CCCD số 0681650022")
+    docs = [
+        {"name": "to-khai.pdf", "text": declaration},
+        {"name": "cccd-me.pdf", "text": _card("068165002222", "LÊ THỊ HOA", "02/02/1965", "Nữ")},
+    ]
+    context = reason._render_context("", {}, docs)
+
+    assert reason._labeled_value(reason._section(context, "me"), reason._OWN_CARD_LABEL)
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields(
+            [
+                {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+                {"name": "Mother_FullName", "value": "LE THI HOA"},
+                {"name": "Mother_IdNumber", "value": "068165002222"},
+                {"name": "Mother_BirthDateOrYear", "value": "1965"},
+            ],
+            context,
+        )
+    }
+
+    assert values["Mother_FullName"] == "LÊ THỊ HOA"
+    assert values["Mother_BirthDateOrYear"] == "02/02/1965"
+    assert values["Mother_IdNumber"] == "068165002222"
+
+
+
+# ---- Tờ khai lấp chỗ trống (replay hồ sơ thật: agent bỏ sót vai / người yêu cầu) ----
+_DECLARATION_WITH_REQUESTER_ID = _MISMATCHED_PARENT_CARDS_DOCS[0]["text"].replace(
+    "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\n",
+    "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\nGiấy tờ tùy thân: CCCD số 068090001111 cấp ngày 10-08-2021\n",
+)
+
+
+def test_declaration_fills_role_agent_dropped_when_no_card():
+    # Không có thẻ nào, agent bỏ sót cả khối mẹ → mẹ vẫn điền theo tờ khai.
+    context = reason._render_context("", {}, [{"name": "to-khai.pdf", "text": _DECLARATION_WITH_REQUESTER_ID}])
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields(
+            [
+                {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+                {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
+            ],
+            context,
+        )
+    }
+
+    assert values["Mother_FullName"] == "LÊ THỊ HOA"
+    assert values["Mother_BirthDateOrYear"] == "1965"
+    assert values["Mother_IdNumber"] == "068165002222"
+    assert values["Mother_Ethnicity"] == "Kinh"
+
+
+def test_declaration_fills_requester_id_and_issue_date_agent_dropped():
+    context = reason._render_context("", {}, [{"name": "to-khai.pdf", "text": _DECLARATION_WITH_REQUESTER_ID}])
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields([{"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"}], context)
+    }
+
+    assert values["Requester_IdNumber"] == "068090001111"
+    assert values["Requester_IdIssueDate"] == "10/08/2021"
+
+
+def test_declaration_fill_never_overwrites_card_identity():
+    docs = [
+        {"name": "to-khai.pdf", "text": _DECLARATION_WITH_REQUESTER_ID.replace("LÊ THỊ HOA", "LE THI HOA")},
+        {"name": "cccd-me.pdf", "text": _card("068165002222", "LÊ THỊ HOA", "02/02/1965", "Nữ")},
+    ]
+    context = reason._render_context("", {}, docs)
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields(
+            [{"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"}, {"name": "Mother_FullName", "value": "LE THI HOA"}],
+            context,
+        )
+    }
+
+    assert values["Mother_FullName"] == "LÊ THỊ HOA"
+    assert values["Mother_BirthDateOrYear"] == "02/02/1965"
+
+
+def test_subject_id_of_other_family_member_is_dropped_not_used_to_rewrite_birth():
+    # Agent gán số CCCD của MẸ (mã năm sinh 1965, nữ) cho con sinh 1990 → bỏ số, giữ ngày sinh con.
+    context = reason._render_context("", {}, [{"name": "to-khai.pdf", "text": _DECLARATION_WITH_REQUESTER_ID}])
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields(
+            [
+                {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+                {"name": "Subject_Gender", "value": "Nam"},
+                {"name": "Subject_BirthDate", "value": "10/05/1990"},
+                {"name": "Subject_IdNumber", "value": "068165002222"},
+            ],
+            context,
+        )
+    }
+
+    assert values["Subject_BirthDate"] == "10/05/1990"
+    assert values.get("Subject_IdNumber") != "068165002222"
+
+
+def test_card_number_with_dropped_digit_does_not_replace_valid_declared_number():
+    # OCR đọc rụng một chữ số NGAY TRÊN THẺ (11 số) → giữ số 12 chữ số tờ khai ghi.
+    docs = [
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
+        {"name": "cccd-me.pdf", "text": _card("06816500222", "LÊ THỊ HOA", "02/02/1965", "Nữ")},
+    ]
+    context = reason._render_context("", {}, docs)
+    values = {
+        field["name"]: field["value"]
+        for field in reason.sanitize_extracted_fields(
+            [
+                {"name": "Subject_FullName", "value": "TRẦN VĂN BÌNH"},
+                {"name": "Mother_FullName", "value": "LÊ THỊ HOA"},
+                {"name": "Mother_IdNumber", "value": "06816500222"},
+            ],
+            context,
+        )
+    }
+
+    assert values["Mother_IdNumber"] == "068165002222"
+
+
+
+def test_generation_does_not_take_card_whose_year_contradicts_declaration():
+    # Tờ khai: con sinh 1990, không CCCD. Thẻ nữ sinh 2010 (con/cháu của người được đăng ký nộp
+    # kèm) — năm sinh lệch hẳn tờ khai → không phải người được đăng ký lại, giữ tờ khai.
+    docs = [
+        _MISMATCHED_PARENT_CARDS_DOCS[0],
+        {"name": "cccd-chau.pdf", "text": _card("068310005555", "TRẦN THỊ NGỌC", "05/02/2010", "Nữ")},
+    ]
+    context = reason._render_context("", {}, docs)
+
+    assert not reason._labeled_value(reason._section(context, "con"), reason._GENERATION_CARD_LABEL)
+    assert reason._role_name(reason._section(context, "con")) == "TRẦN VĂN BÌNH"
+
+
+def test_old_card_birth_and_gender_on_one_line_reads_clean_date():
+    person = reason._person_from_document({
+        "name": "cmnd.pdf",
+        "text": (
+            "CĂN CƯỚC CÔNG DÂN\nSố / No.: 068155001234\nHọ và tên / Full name: LÊ THỊ HOA\n"
+            "Ngày sinh / Date of birth: 28/05/1955 Giới tính / Sex: Nữ\nQuốc tịch / Nationality: Việt Nam"
+        ),
+    })
+
+    assert reason._labeled_value(person["section"], "Ngày sinh") == "28/05/1955"

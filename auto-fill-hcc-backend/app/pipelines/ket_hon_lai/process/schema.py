@@ -35,6 +35,21 @@ FIELDS: list[dict] = [
              "trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN; tờ khai không ghi/không đọc được mới lấy nơi thường trú trên CCCD/CMND "
              "của chính người đó, cuối cùng mới đến giấy CN kết hôn cũ. Không trộn hai nguồn."},
 
+    # Nhân thân ghi trên TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN — tách nguồn để mapper đối chiếu với CCCD:
+    # CCCD trùng số tờ khai → theo thẻ; CCCD lệch cả tên lẫn số → thẻ của người khác, theo tờ khai.
+    {"name": "ToKhaiNam_HoTen",
+     "desc": "Họ tên ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
+    {"name": "ToKhaiNam_SoDinhDanh",
+     "desc": "Số định danh/CCCD ghi ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. CHỈ lấy từ tờ khai."},
+    {"name": "ToKhaiNam_NgaySinh",
+     "desc": "Ngày sinh ở khối CHỒNG/bên nam của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ tờ khai."},
+    {"name": "ToKhaiNu_HoTen",
+     "desc": "Họ tên ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN. CHỈ lấy từ tờ khai, không lấy CCCD."},
+    {"name": "ToKhaiNu_SoDinhDanh",
+     "desc": "Số định danh/CCCD ghi ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, chép nguyên văn. CHỈ lấy từ tờ khai."},
+    {"name": "ToKhaiNu_NgaySinh",
+     "desc": "Ngày sinh ở khối VỢ/bên nữ của TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN, dd/mm/yyyy. CHỈ lấy từ tờ khai."},
+
     # Lần đăng ký kết hôn TRƯỚC ĐÂY. Chỉ đọc từ tờ khai đăng ký lại hoặc giấy CN kết hôn cũ.
     {"name": "KetHonCu_So",
      "desc": "Số Giấy chứng nhận kết hôn/Số đăng ký kết hôn trước đây. Chỉ lấy khi GIẤY CHỨNG NHẬN KẾT HÔN cũ "
@@ -60,7 +75,8 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("CccdNam_NgaySinh", "CccdNam_NgayCap", "CccdNu_NgaySinh", "CccdNu_NgayCap", "KetHonCu_NgayDangKy"):
+for _name in ("CccdNam_NgaySinh", "CccdNam_NgayCap", "CccdNu_NgaySinh", "CccdNu_NgayCap", "KetHonCu_NgayDangKy",
+              "ToKhaiNam_NgaySinh", "ToKhaiNu_NgaySinh"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in ("CccdNam_NoiCuTru_TrongNuoc", "CccdNu_NoiCuTru_TrongNuoc"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"

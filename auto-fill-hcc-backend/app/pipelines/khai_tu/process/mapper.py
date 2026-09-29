@@ -48,6 +48,35 @@ def _same_id(card_number, declared_number) -> bool:
     return all(digit in remaining for digit in short)
 
 
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: thẻ lệch CẢ họ tên lẫn số định danh so với tờ khai → thẻ của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    return not (_digits(card_id) and _digits(declared_id) and _same_id(card_id, declared_id))
+
+
 def _requester_card_match(
     values: dict, options: dict | None, reasoning_context: str = ""
 ) -> tuple[bool, bool]:
@@ -349,6 +378,14 @@ def enrich(
         has_cccd
         and not requester_trusted
     )
+    # TH1 — thẻ không phải của người yêu cầu mà cũng lệch CẢ tên lẫn số so với mục người mất trên tờ
+    # khai: đó là thẻ của người thứ ba. Không dùng thẻ cho người mất; điền theo tờ khai, viền vàng.
+    deceased_card_other = cccd_is_deceased and _card_is_other_person(
+        values.get("Cccd_HoTen"), values.get("Cccd_SoDinhDanh"),
+        values.get("NguoiMat_HoTen"), values.get("NguoiMat_SoDinhDanh"),
+    )
+    if deceased_card_other:
+        cccd_is_deceased = False
 
     def deceased(person_key: str, cccd_key: str | None = None):
         val = values.get(person_key)
@@ -378,14 +415,20 @@ def enrich(
                 if deceased_id_matched
                 else deceased("NguoiMat_HoTen", "Cccd_HoTen")
             ),
+            default=deceased_card_other,
         )
-        add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("NguoiMat_NgaySinh", "Cccd_NgaySinh")))
+        # TH2 — thẻ trùng số tờ khai: ngày sinh, giới tính cũng theo thẻ (bản IN); tờ khai chỉ bù.
+        if deceased_id_matched:
+            add("NgaySinh", _ngay_sinh_nguoi_mat(deceased_card_first("Cccd_NgaySinh", "NguoiMat_NgaySinh")))
+            add("GioiTinh", deceased_card_first("Cccd_GioiTinh", "NguoiMat_GioiTinh"))
+        add("NgaySinh", _ngay_sinh_nguoi_mat(deceased("NguoiMat_NgaySinh", "Cccd_NgaySinh")),
+            default=deceased_card_other)
         add("GioiTinh", deceased("NguoiMat_GioiTinh", "Cccd_GioiTinh"))
         add("nktDanToc", deceased("NguoiMat_DanToc", "Cccd_DanToc"))
         add("nktQuocTich", deceased("NguoiMat_QuocTich", "Cccd_QuocTich") or "Việt Nam")
         so_dinh_danh = deceased_card_first("Cccd_SoDinhDanh", "NguoiMat_SoDinhDanh")
-        add("SoDinhDanh", so_dinh_danh)
-        add("SoGiayToDinhDanh", so_dinh_danh)
+        add("SoDinhDanh", so_dinh_danh, default=deceased_card_other)
+        add("SoGiayToDinhDanh", so_dinh_danh, default=deceased_card_other)
         if so_dinh_danh:
             _issuer_mat = deceased_card_first("Cccd_NoiCap", "NguoiMat_NoiCapGiayTo") or default_issuer(deceased_card_first("Cccd_NgayCap", "NguoiMat_NgayCapGiayTo"))
             add("LoaiGiayToDinhDanh", _doc_type(so_dinh_danh, _issuer_mat))

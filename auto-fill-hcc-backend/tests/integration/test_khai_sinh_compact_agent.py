@@ -468,3 +468,194 @@ async def test_khai_sinh_compact_agent_rejects_direct_ui_keys(monkeypatch):
 def test_registry_uses_compact_birth_pipelines():
     assert get_pipeline("khai-sinh-dang-ky") is agent.run
     assert get_pipeline("khai-sinh-dang-ky-lai") is dang_ky_lai_process.run
+
+
+# ---------------------------------------------------------------------------
+# Khai sinh cho người đã có hồ sơ: đối chiếu CCCD với tờ khai của chính thủ tục.
+# TH1: CCCD lệch cả tên lẫn số → thẻ người khác, điền theo tờ khai (tô vàng).
+# TH2: CCCD trùng số tờ khai → họ tên/số/ngày sinh/giới tính theo thẻ.
+# ---------------------------------------------------------------------------
+
+from app.pipelines.khai_sinh_co_ho_so.process import mapper as co_ho_so_mapper
+from app.pipelines.khai_sinh_co_ho_so.process import reason as co_ho_so_reason
+
+_CO_HO_SO_TO_KHAI = {
+    "name": "to_khai.pdf",
+    "text": (
+        "TỜ KHAI ĐĂNG KÝ KHAI SINH\n"
+        "Họ, chữ đệm, tên người yêu cầu: Trần Văn Bình\n"
+        "Họ, chữ đệm, tên: Trần Thị Mai\n"
+        "Ngày, tháng, năm sinh: 01/02/2000\n"
+        "Giới tính: Nữ Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+        "Số định danh cá nhân: 001300000333\n"
+        "Họ, chữ đệm, tên người mẹ: Lê Thị Hạnh\n"
+        "Năm sinh: 1975 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+        "Căn cước công dân số: 001175000111\n"
+        "Họ, chữ đệm, tên người cha: Trần Văn Bình\n"
+        "Năm sinh: 1970 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+        "Căn cước công dân số: 001070000222\n"
+        "Tôi cam đoan những nội dung khai trên đây là đúng sự thật\n"
+    ),
+}
+
+
+def _co_ho_so_card(name, id_number, birth, gender):
+    return {
+        "name": f"cccd_{id_number}.jpg",
+        "text": (
+            "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nCĂN CƯỚC CÔNG DÂN\n"
+            f"Số / No.: {id_number}\n"
+            f"Họ và tên / Full name: {name}\n"
+            f"Ngày sinh / Date of birth: {birth}\n"
+            f"Giới tính / Sex: {gender} Quốc tịch / Nationality: Việt Nam\n"
+        ),
+    }
+
+
+def _co_ho_so_fields(documents, extracted: dict) -> tuple[str, dict, list[dict]]:
+    context = co_ho_so_reason._render_context("", {}, documents)
+    fields = co_ho_so_reason.sanitize_extracted_fields(_fields(extracted), context)
+    ui = co_ho_so_mapper.enrich(fields, {"_reasoning_context": context})
+    return context, {f["name"]: f["value"] for f in fields}, ui
+
+
+# Thẻ lạ lệch cả tên lẫn số và KHÔNG hợp tuổi làm cha (sinh sau con) → không chốt được theo thế hệ.
+_CO_HO_SO_OUT_OF_GENERATION = ("PHẠM VĂN KHOA", "001095999888", "05/05/1995", "Nam")
+
+
+def test_co_ho_so_card_of_other_person_falls_back_to_declaration():
+    other = _co_ho_so_card(*_CO_HO_SO_OUT_OF_GENERATION)
+    context, values, ui = _co_ho_so_fields([_CO_HO_SO_TO_KHAI, other], {
+        "Subject_FullName": "Trần Thị Mai",
+        "Father_FullName": "PHẠM VĂN KHOA",
+        "Father_IdNumber": "001095999888",
+        "Father_BirthDateOrYear": "05/05/1995",
+        "Father_Gender": "Nam",
+        "Father_IdIssueDate": "01/01/2021",
+    })
+
+    assert co_ho_so_reason._NO_CARD_MATCH_LABEL in co_ho_so_reason._section(context, "cha")
+    assert values["Father_FullName"] == "Trần Văn Bình"
+    assert values["Father_IdNumber"] == "001070000222"
+    assert values["Father_BirthDateOrYear"] == "1970"
+    assert "Father_IdIssueDate" not in values
+    by_name = {f["name"]: f for f in ui}
+    assert by_name["HoTenChaKS"]["value"] == "TRẦN VĂN BÌNH"
+    assert by_name["HoTenChaKS"].get("default") is True
+    assert by_name["SoDinhDanhCha"]["value"] == "001070000222"
+    assert by_name["SoDinhDanhCha"].get("default") is True
+
+
+def test_co_ho_so_declared_role_keeps_but_drops_other_card_issue_date():
+    other = _co_ho_so_card(*_CO_HO_SO_OUT_OF_GENERATION)
+    _context, values, _ui = _co_ho_so_fields([_CO_HO_SO_TO_KHAI, other], {
+        "Father_FullName": "Trần Văn Bình",
+        "Father_BirthDateOrYear": "1970",
+        "Father_IdIssueDate": "01/01/2021",
+        "Father_IdIssuePlace": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    })
+
+    assert values["Father_FullName"] == "Trần Văn Bình"
+    assert values["Father_IdNumber"] == "001070000222"
+    assert "Father_IdIssueDate" not in values
+    assert "Father_IdIssuePlace" not in values
+
+
+def test_co_ho_so_same_id_card_wins_identity_over_declaration():
+    mother = _co_ho_so_card("LÊ THỊ HOA", "001175000111", "10/10/1975", "Nữ")
+    context, values, ui = _co_ho_so_fields([_CO_HO_SO_TO_KHAI, mother], {
+        "Mother_FullName": "Lê Thị Hạnh",
+        "Mother_IdNumber": "001175000111",
+        "Mother_BirthDateOrYear": "1975",
+        "Mother_Ethnicity": "Kinh",
+    })
+
+    assert co_ho_so_reason._SAME_ID_LABEL in co_ho_so_reason._section(context, "me")
+    assert values["Mother_FullName"] == "LÊ THỊ HOA"
+    assert values["Mother_BirthDateOrYear"] == "10/10/1975"
+    assert values["Mother_Gender"] == "Nữ"
+    assert values["Mother_Ethnicity"] == "Kinh"
+    by_name = {f["name"]: f for f in ui}
+    assert by_name["HoTenMeKS"]["value"] == "LÊ THỊ HOA"
+    assert not by_name["HoTenMeKS"].get("default")
+
+
+def test_co_ho_so_declaration_is_not_read_as_identity_card():
+    context = co_ho_so_reason._render_context("", {}, [_CO_HO_SO_TO_KHAI])
+    for tag in ("cha", "me"):
+        section = co_ho_so_reason._section(context, tag)
+        assert co_ho_so_reason._NO_CARD_MATCH_LABEL not in section
+        assert co_ho_so_reason._SAME_ID_LABEL not in section
+
+
+def test_co_ho_so_parent_takes_card_by_generation_when_declaration_mismatches():
+    father = _co_ho_so_card("PHẠM VĂN KHOA", "001080999888", "05/05/1980", "Nam")
+    context, values, ui = _co_ho_so_fields([_CO_HO_SO_TO_KHAI, father], {
+        "Subject_FullName": "Trần Thị Mai",
+        "Father_FullName": "Trần Văn Bình",
+        "Father_IdNumber": "001070000222",
+        "Father_BirthDateOrYear": "1970",
+        "Father_Ethnicity": "Kinh",
+    })
+
+    assert co_ho_so_reason._GENERATION_CARD_LABEL in co_ho_so_reason._section(context, "cha")
+    assert values["Father_FullName"] == "PHẠM VĂN KHOA"
+    assert values["Father_IdNumber"] == "001080999888"
+    assert values["Father_BirthDateOrYear"] == "05/05/1980"
+    assert values["Father_Ethnicity"] == "Kinh"
+    by_name = {f["name"]: f for f in ui}
+    assert by_name["HoTenChaKS"]["value"] == "PHẠM VĂN KHOA"
+    assert by_name["HoTenChaKS"].get("default") is True
+
+
+def test_co_ho_so_child_takes_card_by_generation_when_declaration_mismatches():
+    child = _co_ho_so_card("TRẦN THỊ MƠ", "001300000999", "01/02/2000", "Nữ")
+    father = _co_ho_so_card("TRẦN VĂN BÌNH", "001070000222", "01/01/1970", "Nam")
+    context, values, ui = _co_ho_so_fields([_CO_HO_SO_TO_KHAI, child, father], {
+        "Subject_FullName": "Trần Thị Mai",
+        "Subject_BirthPlaceDomestic": {"tinh": "Thành phố Hà Nội"},
+        "Father_FullName": "Trần Văn Bình",
+    })
+
+    assert co_ho_so_reason._GENERATION_CARD_LABEL in co_ho_so_reason._section(context, "con")
+    assert values["Subject_FullName"] == "TRẦN THỊ MƠ"
+    assert values["Subject_IdNumber"] == "001300000999"
+    assert values["Subject_BirthPlaceDomestic"] == {"tinh": "Thành phố Hà Nội"}
+    by_name = {f["name"]: f for f in ui}
+    assert by_name["HoTenKS"].get("default") is True
+
+
+def test_co_ho_so_card_matching_name_with_garbled_declared_id_wins_identity():
+    declaration = {
+        **_CO_HO_SO_TO_KHAI,
+        "text": _CO_HO_SO_TO_KHAI["text"].replace("Lê Thị Hạnh", "Le Thi Hanh").replace("001175000111", "0011750001"),
+    }
+    mother = _co_ho_so_card("LÊ THỊ HẠNH", "001175000111", "10/10/1975", "Nữ")
+    context, values, _ui = _co_ho_so_fields([declaration, mother], {
+        "Mother_FullName": "Le Thi Hanh",
+        "Mother_IdNumber": "001175000111",
+        "Mother_BirthDateOrYear": "1975",
+        "Mother_Ethnicity": "Kinh",
+    })
+
+    assert co_ho_so_reason._OWN_CARD_LABEL in co_ho_so_reason._section(context, "me")
+    assert values["Mother_FullName"] == "LÊ THỊ HẠNH"
+    assert values["Mother_BirthDateOrYear"] == "10/10/1975"
+    assert values["Mother_Ethnicity"] == "Kinh"
+
+
+
+def test_co_ho_so_unparsed_card_with_matching_id_code_keeps_issue_date():
+    # Có thẻ (của người khác) nên mẹ bị gắn TH1, nhưng số agent trích mang mã năm sinh 1975 + nữ khớp
+    # đúng mẹ → là thẻ thật của mẹ mà Python không đọc ra mẫu → giữ ngày cấp/nơi cấp.
+    other = _co_ho_so_card(*_CO_HO_SO_OUT_OF_GENERATION)
+    declaration = {**_CO_HO_SO_TO_KHAI, "text": _CO_HO_SO_TO_KHAI["text"].replace("Năm sinh: 1975", "Năm sinh: 1975\nGiới tính: Nữ")}
+    _context, values, _ui = _co_ho_so_fields([declaration, other], {
+        "Mother_FullName": "Lê Thị Hạnh",
+        "Mother_IdNumber": "001175000555",
+        "Mother_IdIssueDate": "09/05/2021",
+        "Mother_IdIssuePlace": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    })
+
+    assert values["Mother_IdNumber"] == "001175000555"
+    assert values["Mother_IdIssueDate"] == "09/05/2021"

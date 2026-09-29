@@ -127,6 +127,37 @@ def _declaration_contradicts_card(card_id, declared_id) -> bool:
     return not all(ch in it for ch in short)
 
 
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: thẻ lệch CẢ họ tên lẫn số định danh so với cột tờ khai → thẻ của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    card_digits, declared_digits = _digits(card_id), _digits(declared_id)
+    # Số khớp, hoặc chỉ lệch mức OCR (một chữ số / rơi 1–2 chữ số) → vẫn là cùng một người.
+    return not (card_digits and declared_digits and not _declaration_contradicts_card(card_digits, declared_digits))
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -227,16 +258,23 @@ def enrich(fields: list[dict]) -> list[dict]:
         )
         if not has_person:
             return
-        # Nhân thân: THẺ CĂN CƯỚC (bản IN) trước — họ tên, số, ngày sinh, ngày cấp, nơi cấp; tờ khai
-        # chỉ bù ô thẻ thiếu. Số tờ khai trái hẳn số thẻ → vẫn bù nhưng viền vàng để soát.
+        # TH1 — thẻ lệch CẢ tên lẫn số so với cột tờ khai: đó là thẻ của NGƯỜI KHÁC (nộp nhầm/ghép
+        # nhầm cột). Bỏ hẳn nhân thân, ngày/nơi cấp, nơi cư trú của thẻ; điền theo tờ khai, viền vàng.
+        card_is_other = _card_is_other_person(
+            values.get(f"{src}_HoTen"), values.get(f"{src}_SoDinhDanh"),
+            values.get(f"{declaration}_HoTen"), values.get(f"{declaration}_SoDinhDanh"))
+        # TH2 và ca còn lại — THẺ CĂN CƯỚC (bản IN) trước: họ tên, số, ngày sinh, ngày cấp, nơi cấp;
+        # tờ khai chỉ bù ô thẻ thiếu. Số tờ khai trái hẳn số thẻ → vẫn bù nhưng viền vàng để soát.
         unsure = _declaration_contradicts_card(
             values.get(f"{src}_SoDinhDanh"), values.get(f"{declaration}_SoDinhDanh"))
 
         def identity(name: str) -> tuple:
+            declared = values.get(f"{declaration}_{name}")
+            if card_is_other:
+                return declared, bool(declared)
             card_value = values.get(f"{src}_{name}")
             if card_value:
                 return card_value, False
-            declared = values.get(f"{declaration}_{name}")
             return declared, bool(declared) and unsure
 
         ho_ten, ho_ten_default = identity("HoTen")
@@ -257,7 +295,7 @@ def enrich(fields: list[dict]) -> list[dict]:
         nationality = normalize_nationality(raw_quoc_tich)
         # Ưu tiên nơi cư trú từ TỜ KHAI (chính xác hơn), fallback CCCD.
         to_khai_area_raw = values.get(declaration_area_name)
-        cccd_area_raw = values.get(f"{src}_NoiCuTru_TrongNuoc")
+        cccd_area_raw = None if card_is_other else values.get(f"{src}_NoiCuTru_TrongNuoc")
         area_raw = to_khai_area_raw if isinstance(to_khai_area_raw, dict) and (
             to_khai_area_raw.get("tinh") or to_khai_area_raw.get("xa") or to_khai_area_raw.get("diaChi")
         ) else cccd_area_raw
@@ -286,8 +324,10 @@ def enrich(fields: list[dict]) -> list[dict]:
         # Dân tộc: CCCD chip không in dân tộc nên nguồn thật gần như luôn là cột tờ khai. Tên có trong
         # dropdown thì chọn thẳng (biến thể như "K'Ho" → "Cơ Ho"); tên ngoài danh sách (vd "Cill") thì
         # chọn "Khác" và ghi nguyên văn vào ô bên cạnh — ô đó chỉ render sau khi chọn nên phát ngay sau.
+        # Dân tộc không nằm trong nhóm ô theo thẻ: tờ khai trước, thẻ (đúng người) chỉ bù.
         dan_toc, dan_toc_khac = ethnicity_for_form(
-            values.get(f"{src}_DanToc") or values.get(f"{declaration}_DanToc"))
+            values.get(f"{declaration}_DanToc")
+            or (None if card_is_other else values.get(f"{src}_DanToc")))
         add(f"DanToc{dst}", _normalize_dan_toc(dan_toc))
         add(f"DanTocKhac{dst}", dan_toc_khac, otherOf=f"DanToc{dst}")
         add(f"QuocTich{dst}", nationality)

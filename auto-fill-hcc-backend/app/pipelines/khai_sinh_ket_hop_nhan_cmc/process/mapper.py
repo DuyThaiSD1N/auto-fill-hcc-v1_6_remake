@@ -70,6 +70,13 @@ def map_birth(fields: list[dict]) -> list[dict]:
         {"name": "CccdNu_DanToc", "value": values.get("Mother_Ethnicity")},
         {"name": "CccdNu_QuocTich", "value": values.get("Mother_Nationality")},
         {"name": "CccdNu_NoiCuTru_TrongNuoc", "value": values.get("Mother_ResidenceDomestic")},
+        # Tờ khai của chính thủ tục — mapper khai sinh tự đối chiếu với CCCD (TH1/TH2).
+        {"name": "TkKs_HoTenCha", "value": values.get("ToKhai_Father_FullName")},
+        {"name": "TkKs_SoDinhDanhCha", "value": values.get("ToKhai_Father_IdNumber")},
+        {"name": "TkKs_NamSinhCha", "value": values.get("ToKhai_Father_BirthDate")},
+        {"name": "TkKs_HoTenMe", "value": values.get("ToKhai_Mother_FullName")},
+        {"name": "TkKs_SoDinhDanhMe", "value": values.get("ToKhai_Mother_IdNumber")},
+        {"name": "TkKs_NamSinhMe", "value": values.get("ToKhai_Mother_BirthDate")},
     ]
     output = birth_mapper.enrich(compact)
 
@@ -105,8 +112,31 @@ def map_birth(fields: list[dict]) -> list[dict]:
     return output
 
 
+# Ô nhân thân người cha (bên A) trên eForm nhận cha, mẹ, con — tô vàng khi điền theo tờ khai (TH1).
+_RECOGNITION_PARENT_IDENTITY = ("HotenA", "ngaysinhA", "sodinhdanhA", "sogiaytodinhdanhA")
+
+
+def _father_card_is_other(values: dict) -> bool:
+    """TH1: nhân thân cha trích được lệch CẢ tên lẫn số so với tờ khai → của người khác."""
+    return birth_mapper._card_is_other_person(
+        values.get("Father_FullName"), values.get("Father_IdNumber"),
+        values.get("ToKhai_Father_FullName"), values.get("ToKhai_Father_IdNumber"),
+    )
+
+
 def map_recognition(fields: list[dict], options: dict | None = None) -> list[dict]:
     values = _values(fields)
+    father_other = _father_card_is_other(values)
+    # Lệch tờ khai nhưng thẻ hợp tuổi làm cha → giữ theo thẻ (tờ khai OCR hỏng), chỉ tô vàng.
+    father_by_generation = father_other and birth_mapper._card_fits_generation(
+        values.get("Father_BirthDate"), values.get("Child_BirthDate"), "Cha"
+    )
+    if father_other and not father_by_generation:
+        values["Father_FullName"] = values.get("ToKhai_Father_FullName")
+        values["Father_IdNumber"] = values.get("ToKhai_Father_IdNumber")
+        values["Father_BirthDate"] = values.get("ToKhai_Father_BirthDate")
+        for key in ("Father_IdIssueDate", "Father_IdIssuePlace"):
+            values.pop(key, None)
     compact = [
         {"name": "Requester_FullName", "value": values.get("Requester_FullName")},
         {"name": "Requester_BirthDate", "value": values.get("Requester_BirthDate")},
@@ -142,7 +172,12 @@ def map_recognition(fields: list[dict], options: dict | None = None) -> list[dic
         {"name": "Relationship_Claim", "value": values.get("Recognition_RelationshipClaim")},
         {"name": "CopyRequest_WantsCopy", "value": values.get("Recognition_CopyRequest")},
     ]
-    return recognition_mapper.enrich(compact, options)
+    output = recognition_mapper.enrich(compact, options)
+    if father_other:
+        for item in output:
+            if item.get("name") in _RECOGNITION_PARENT_IDENTITY:
+                item["default"] = True
+    return output
 
 
 def enrich(fields: list[dict], variant: str, options: dict | None = None) -> list[dict]:

@@ -189,6 +189,113 @@ def _same_identity(name_a: Any, id_a: Any, name_b: Any, id_b: Any) -> bool:
     return bool(folded_a) and folded_a == folded_b
 
 
+def _digits(value) -> str:
+    return re.sub(r"\D", "", str(value or ""))
+
+
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _ids_close(a: str, b: str) -> bool:
+    """Hai số giấy tờ khớp, hoặc chỉ lệch mức OCR (một chữ số / rơi 1–2 chữ số)."""
+    if a == b:
+        return True
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    if not 0 < len(long) - len(short) <= 2:
+        return False
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: giấy tờ tùy thân lệch CẢ họ tên lẫn số so với tờ khai → của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    card_digits, declared_digits = _digits(card_id), _digits(declared_id)
+    return not (card_digits and declared_digits and _ids_close(card_digits, declared_digits))
+
+
+def _birth_year(value: Any) -> int | None:
+    match = re.search(r"(\d{4})\s*$", str(value or "").strip())
+    return int(match.group(1)) if match else None
+
+
+# Khoảng cách tuổi cha/mẹ – con hợp lý; xa hơn thì nhiều khả năng là ông/bà nộp kèm thẻ.
+_PARENT_MAX_GAP = {"nam": 70, "nu": 50}
+
+
+def _generation_fits(parent_birth: Any, child_birth: Any, parent_gender: Any) -> bool:
+    parent_year, child_year = _birth_year(parent_birth), _birth_year(child_birth)
+    if not parent_year or not child_year:
+        return False
+    return 15 <= child_year - parent_year <= _PARENT_MAX_GAP.get(_fold(parent_gender), 70)
+
+
+def _reconcile_with_declaration(values: dict) -> set[str]:
+    """Đối chiếu CCCD của cha/mẹ và con với tờ khai của chính thủ tục (TH1/TH2).
+
+    Chỉ xét vai có SỐ giấy tờ (có thẻ). Thẻ lệch CẢ tên lẫn số so với tờ khai:
+      - hợp tuổi (cha/mẹ hơn con 15–70 năm với cha, 15–50 năm với mẹ) → vẫn là thẻ của vai đó,
+        tờ khai OCR hỏng: giữ theo thẻ;
+      - không hợp tuổi → thẻ của người khác: họ tên/số/ngày sinh theo tờ khai, bỏ ngày cấp/nơi cấp.
+    Trả tập vai ("Parent"/"Child") cần tô vàng.
+    """
+    flagged: set[str] = set()
+    for role, other in (("Parent", "Child"), ("Child", "Parent")):
+        if not _digits(values.get(f"{role}_IdNumber")):
+            continue
+        if not _card_is_other_person(
+            values.get(f"{role}_FullName"), values.get(f"{role}_IdNumber"),
+            values.get(f"ToKhai_{role}_FullName"), values.get(f"ToKhai_{role}_IdNumber"),
+        ):
+            continue
+        flagged.add(role)
+        other_birth = values.get(f"{other}_BirthDate") or values.get(f"ToKhai_{other}_BirthDate")
+        if role == "Parent":
+            fits = _generation_fits(values.get("Parent_BirthDate"), other_birth, values.get("Parent_Gender"))
+        else:
+            fits = _generation_fits(other_birth, values.get("Child_BirthDate"), values.get("Parent_Gender"))
+        if fits:
+            continue
+        for suffix in ("FullName", "IdNumber", "BirthDate"):
+            declared = values.get(f"ToKhai_{role}_{suffix}")
+            if declared:
+                values[f"{role}_{suffix}"] = declared
+            else:
+                values.pop(f"{role}_{suffix}", None)
+        for suffix in ("IdIssueDate", "IdIssuePlace"):
+            values.pop(f"{role}_{suffix}", None)
+    return flagged
+
+
+# Ô nhân thân tô vàng khi CCCD lệch tờ khai (TH1): A = cha/mẹ, B = con.
+_FLAGGED_UI_FIELDS = {
+    "Parent": ("HotenA", "ngaysinhA", "sodinhdanhA", "sogiaytodinhdanhA"),
+    "Child": ("hotenB", "ngaysinhB", "sodinhdanhB", "sogiaytodinhdanhB"),
+}
+
+
 def _birth_document_from_info(value: Any) -> dict:
     text = _clean(value)
     if not text:
@@ -267,13 +374,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 if requester_value not in (None, "", {}, []):
                     values[f"Child_{suffix}"] = requester_value
 
+    # TH1/TH2: CCCD cha/mẹ, con đối chiếu với tờ khai của chính thủ tục.
+    flagged = _reconcile_with_declaration(values)
+    flagged_ui = {name for role in flagged for name in _FLAGGED_UI_FIELDS[role]}
+
     def add(name: str, value: Any) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        field = {"name": name, "comp": comp, "value": value}
+        if name in flagged_ui:
+            field["default"] = True
+        out.append(field)
         seen.add(name)
 
     def add_domestic_area(prefix: str, area_value: Any) -> None:

@@ -88,4 +88,6 @@ field đó.
 KHÔNG trả field UI/default (HoTenBenNam, LoaiGiayToDinhDanh_*, LoaiCuTru_*, NoiCuTru_* radio,
 QuocTichBenNam/BenNu dạng UI, tình trạng hôn nhân, loại đăng ký...). Chỉ trả các trường Cccd*_ ở trên.
 Mỗi nhóm CccdNam_*/CccdNu_* lấy trọn từ đúng giấy tờ của người đó, không trộn giữa hai người.
+Có tờ khai đăng ký kết hôn thì BẮT BUỘC trả thêm ToKhaiNam_*/ToKhaiNu_* CHÉP NGUYÊN VĂN từ tờ khai, KỂ CẢ
+khi giấy tờ tùy thân ghi khác; KHÔNG chép từ giấy tờ tùy thân sang. Python tự đối chiếu.
 """

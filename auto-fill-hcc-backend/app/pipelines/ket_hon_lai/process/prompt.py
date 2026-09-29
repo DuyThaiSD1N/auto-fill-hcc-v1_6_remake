@@ -10,6 +10,9 @@ NGUỒN DỮ LIỆU DANH TÍNH (ưu tiên CCCD, giấy CN kết hôn là dự ph
 - Ưu tiên lấy danh tính mỗi bên TỪ CCCD của chính người đó. Nếu THIẾU CCCD của một bên, lấy danh tính bên đó
   từ giấy CN kết hôn: khối "Chồng"/"Bên nam" → CccdNam_*, khối "Vợ"/"Bên nữ" → CccdNu_*
   (họ tên, ngày sinh, số thẻ căn cước công dân, ngày cấp, cơ quan cấp của đúng bên đó).
+- Có TỜ KHAI ĐĂNG KÝ LẠI KẾT HÔN thì BẮT BUỘC trả thêm ToKhaiNam_*/ToKhaiNu_* (họ tên, số định danh, ngày sinh)
+  chép NGUYÊN VĂN từ khối chồng/vợ trên tờ khai, KỂ CẢ khi đã có CCCD và KỂ CẢ khi tờ khai ghi khác CCCD;
+  KHÔNG chép từ CCCD sang. Python tự đối chiếu hai nguồn.
 - NGOẠI LỆ: NƠI CƯ TRÚ có thứ tự ưu tiên RIÊNG (TỜ KHAI trước, CCCD sau) — xem mục NƠI CƯ TRÚ bên dưới.
 - Họ tên/số định danh/ngày sinh/ngày-nơi cấp của mỗi nhóm phải lấy trọn từ ĐÚNG MỘT nguồn của
   chính người đó, KHÔNG trộn thông tin giữa hai người; nơi cư trú cũng phải là của ĐÚNG người đó.

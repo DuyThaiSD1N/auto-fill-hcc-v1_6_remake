@@ -284,3 +284,62 @@ def test_prompt_uses_source_priority_and_general_address_rules():
     assert "Child_NameOnBirthCertificate" in EXTRA_RULES
     assert "không dùng một danh sách tên mẫu cố định" in EXTRA_RULES
     assert "giấy chứng tử" in EXTRA_RULES.lower()
+
+
+def _ket_hop_fields(values: dict) -> list[dict]:
+    return [{"name": name, "comp": "x-input", "value": value} for name, value in values.items()]
+
+
+_KET_HOP_OTHER_CARD = {
+    "Child_FullName": "Trần Minh An",
+    "Child_BirthDate": "01/03/2026",
+    "Father_FullName": "PHẠM VĂN KHOA",
+    "Father_IdNumber": "001050999888",
+    # Hơn con 76 tuổi → không hợp làm cha, thẻ của người khác.
+    "Father_BirthDate": "05/05/1950",
+    "Father_IdIssueDate": "01/01/2021",
+    "ToKhai_Father_FullName": "Trần Văn Bình",
+    "ToKhai_Father_IdNumber": "001090000222",
+    "ToKhai_Father_BirthDate": "02/02/1990",
+    "Recognition_ConfirmationType": "Cha nhận con",
+}
+
+
+def test_birth_variant_card_of_other_person_falls_back_to_declaration():
+    fields = {f["name"]: f for f in mapper.enrich(_ket_hop_fields(_KET_HOP_OTHER_CARD), mapper.BIRTH_VARIANT)}
+
+    assert fields["HoTenChaKS"]["value"] == "TRẦN VĂN BÌNH"
+    assert fields["HoTenChaKS"].get("default") is True
+    assert fields["SoDinhDanhCha"]["value"] == "001090000222"
+    assert "NgayCapDDCha" not in fields
+
+
+def test_recognition_variant_card_of_other_person_falls_back_to_declaration():
+    fields = {f["name"]: f for f in mapper.enrich(_ket_hop_fields(_KET_HOP_OTHER_CARD), mapper.RECOGNITION_VARIANT)}
+
+    assert fields["HotenA"]["value"] == "TRẦN VĂN BÌNH"
+    assert fields["HotenA"].get("default") is True
+    assert fields["sodinhdanhA"]["value"] == "001090000222"
+
+
+def test_birth_variant_same_id_card_wins_name():
+    values = {
+        **_KET_HOP_OTHER_CARD,
+        "Father_FullName": "TRẦN VĂN BÌNH",
+        "Father_IdNumber": "001090000222",
+        "ToKhai_Father_FullName": "Trần Văn Bính Hoàng",
+    }
+    fields = {f["name"]: f for f in mapper.enrich(_ket_hop_fields(values), mapper.BIRTH_VARIANT)}
+
+    assert fields["HoTenChaKS"]["value"] == "TRẦN VĂN BÌNH"
+    assert not fields["HoTenChaKS"].get("default")
+    assert fields["NgayCapDDCha"]["value"] == "01/01/2021"
+
+
+def test_recognition_variant_mismatched_card_fitting_generation_stays_on_card():
+    values = {**_KET_HOP_OTHER_CARD, "Father_IdNumber": "001080999888", "Father_BirthDate": "05/05/1980"}
+    fields = {f["name"]: f for f in mapper.enrich(_ket_hop_fields(values), mapper.RECOGNITION_VARIANT)}
+
+    assert fields["HotenA"]["value"] == "PHẠM VĂN KHOA"
+    assert fields["HotenA"].get("default") is True
+    assert fields["sodinhdanhA"]["value"] == "001080999888"

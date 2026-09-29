@@ -518,23 +518,3 @@ def test_dang_ky_lai_father_sharing_child_name_keeps_father_tick():
     result = {field["name"]: field["value"] for field in mapper.enrich(_self_requester_misread_as_father("Trần Văn Bình"))}
 
     assert result["QuanHe"] == "ChaDe"
-
-
-def test_dang_ky_lai_self_requester_keeps_declaration_id_over_card():
-    # Tờ khai thắng: số viết tay trên tờ khai (kể cả sai độ dài) được giữ, không đổi sang số thẻ con.
-    fields = [
-        {"name": "Requester_SourceDocumentTitle", "comp": "x-input", "value": "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH"},
-        {"name": "Requester_RelationToSubject", "comp": "x-input", "value": "Bản thân"},
-        {"name": "Requester_FullName", "comp": "x-input", "value": "Trần Văn Bình"},
-        {"name": "Requester_IdNumber", "comp": "x-input", "value": "06809000111"},
-        {"name": "Subject_FullName", "comp": "x-input", "value": "Trần Văn Bình"},
-        {"name": "Subject_IdNumber", "comp": "x-input", "value": "068090001122"},
-        {"name": "Subject_IdIssueDate", "comp": "x-input", "value": "10/08/2021"},
-    ]
-
-    result = {field["name"]: field["value"] for field in mapper.enrich(fields)}
-
-    assert result["QuanHe"] == "BanThan"
-    assert result["SoDinhDanhC"] == "06809000111"
-    # Ngày cấp của thẻ mang số KHÁC không được bù sang; ô bị xoá trắng cho cán bộ gõ.
-    assert result["NgayCapDDC"] == ""

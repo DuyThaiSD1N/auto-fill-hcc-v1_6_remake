@@ -672,24 +672,32 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             relation = "BanThan"
         role = _ROLE_BY_RELATION_TICK.get(relation)
         base = _person_from_role(values, role, context) if role else {}
-        # TỜ KHAI THẮNG: mọi ô tờ khai ghi (kể cả số định danh viết tay sai độ dài) lấy theo tờ
-        # khai; giấy tờ của chính vai đã tick chỉ bù ô tờ khai bỏ trống.
+        # Người yêu cầu CHÍNH LÀ người được đăng ký lại ("Bản thân") → hồ sơ có CCCD của đúng người
+        # đó, và giấy tờ tùy thân đọc từ THẺ luôn sạch hơn dòng viết tay trên tờ khai: số định danh
+        # trên tờ khai hay bị OCR rụng chữ số (vd "0240806368" thay cho "024068006368"), điền vào
+        # mục I là sai người ngay từ ô đầu tiên.
+        # NƠI CƯ TRÚ và HỌ TÊN vẫn ưu tiên tờ khai: tờ khai viết hôm nay, còn thẻ có thể cấp từ
+        # nhiều năm trước và địa giới hành chính đã đổi.
+        card_first = _requester_is_subject(values, relation, context)
         # `base` chỉ là NGƯỜI YÊU CẦU khi ô tích đáng tin: vai cha/mẹ thì chính ô tích khẳng định
         # điều đó, riêng "Bản thân" phải qua thêm phép so tên (ô tích rất hay bị tick nhầm).
-        trust_base = bool(role) and (
-            relation != "BanThan" or _requester_is_subject(values, relation, context)
-        )
+        trust_base = bool(role) and (relation != "BanThan" or card_first)
         sources = {
-            key: (declared.get(key), base.get(key)) if trust_base else (declared.get(key),)
+            key: (base.get(key), declared.get(key))
+            if card_first and key in _ID_DOC_KEYS
+            else (declared.get(key), base.get(key)) if trust_base
+            else (declared.get(key),)
             for key in declared
         }
         person = {key: next((v for v in order if v), None) for key, order in sources.items()}
-        # Số tờ khai KHÁC số thẻ thì ngày cấp/nơi cấp bù từ thẻ là của một tấm thẻ khác → bỏ.
-        if declared.get("so_dinh_danh") and _digits(declared["so_dinh_danh"]) != _digits(
-            base.get("so_dinh_danh")
-        ):
-            for key in ("ngay_cap", "noi_cap"):
-                person[key] = declared.get(key) or None
+        # Chốt chặn cuối, KHÔNG phụ thuộc agent: agent được phép bỏ Subject_IdNumber khi nó thấy
+        # hồ sơ không có thẻ, lúc đó phép đảo ưu tiên bên trên không có gì để lấy và số hỏng của
+        # tờ khai lại lọt xuống. Quét lại đúng những nguồn được phép, lấy số ĐÚNG ĐỘ DÀI; không
+        # nguồn nào đạt thì để TRỐNG hẳn cho người dùng gõ, hơn là điền con số sai trông như thật.
+        if not _is_valid_id_number(person.get("so_dinh_danh")):
+            person["so_dinh_danh"] = next(
+                (v for v in sources["so_dinh_danh"] if _is_valid_id_number(v)), None
+            )
         # Hai dòng tờ khai cùng chỉ một người thì phải mang CÙNG một họ tên đã được phân xử.
         self_name = _self_full_name(context) if relation == "BanThan" else ""
         if self_name:
@@ -878,9 +886,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Người yêu cầu tự đi làm cho chính mình: mục I và mục II là MỘT người nên phải cùng một
         # họ tên đã được reason.py phân xử, không để mỗi mục mang một dòng OCR khác nhau.
         self_name = _self_full_name(context) if quan_he == "BanThan" else ""
-        add("HoTenKS", upper_person_name(self_name or values.get("Subject_FullName")))
-        add("NgaySinhChon", _subject_birth_date(values))
-        add("GioiTinhKS", values.get("Subject_Gender"))
+        # Con chốt CCCD theo thế hệ (tờ khai lệch mọi CCCD) → tô vàng nhân thân cho cán bộ soát.
+        ks_default = "Subject_FullName" in default_names
+        add("HoTenKS", upper_person_name(self_name or values.get("Subject_FullName")), ks_default)
+        add("NgaySinhChon", _subject_birth_date(values), ks_default)
+        add("GioiTinhKS", values.get("Subject_Gender"), ks_default)
         add("DanTocKS", normalize_ethnic(values.get("Subject_Ethnicity")))
         add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
         if values.get("Subject_BirthPlaceDomestic"):
@@ -901,9 +911,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Ghi đè số định danh mẹ (nếu không có thì clear để xóa dữ liệu cũ)
         mother_id = values.get("Mother_IdNumber")
         if mother_id:
-            add("SoDinhDanhMe", mother_id, me_default)
-            add("SoGiayToDinhDanhMe", mother_id, me_default)
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id, _issuer_or_default(values, "Mother")), me_default)
+            # Số bù riêng từ tờ khai (hồ sơ không có CCCD của người này) cũng tô vàng.
+            id_default = me_default or "Mother_IdNumber" in default_names
+            add("SoDinhDanhMe", mother_id, id_default)
+            add("SoGiayToDinhDanhMe", mother_id, id_default)
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id, _issuer_or_default(values, "Mother")), id_default)
         else:
             # Không có số CCCD mẹ -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
             clear("SoDinhDanhMe")
@@ -928,9 +940,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Ghi đè số định danh cha (nếu không có thì clear để xóa dữ liệu cũ)
         father_id = values.get("Father_IdNumber")
         if father_id:
-            add("SoDinhDanhCha", father_id, cha_default)
-            add("SoGiayToDinhDanhCha", father_id, cha_default)
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id, _issuer_or_default(values, "Father")), cha_default)
+            # Số bù riêng từ tờ khai (hồ sơ không có CCCD của người này) cũng tô vàng.
+            id_default = cha_default or "Father_IdNumber" in default_names
+            add("SoDinhDanhCha", father_id, id_default)
+            add("SoGiayToDinhDanhCha", father_id, id_default)
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id, _issuer_or_default(values, "Father")), id_default)
         else:
             # Không có số CCCD cha -> clear các ô liên quan để xóa dữ liệu cổng điền sẵn
             clear("SoDinhDanhCha")

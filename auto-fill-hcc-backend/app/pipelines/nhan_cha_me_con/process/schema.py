@@ -43,6 +43,16 @@ FIELDS: list[dict] = [
     {"name": "Child_BirthDocumentIssuePlace", "desc": "Cơ quan cấp/nơi đăng ký giấy khai sinh/giấy chứng sinh."},
     {"name": "Child_BirthDocumentInfo", "desc": "Thông tin giấy khai sinh/giấy chứng sinh nếu đọc được, gồm số, nơi cấp, ngày cấp."},
 
+    # Nhân thân cha/mẹ và con CHÉP NGUYÊN VĂN từ TỜ KHAI — tách nguồn để Python đối chiếu với CCCD:
+    # CCCD trùng số tờ khai → theo thẻ; CCCD lệch cả tên lẫn số → hợp tuổi thì vẫn theo thẻ (tờ khai
+    # OCR hỏng), không hợp tuổi thì là thẻ người khác và điền theo tờ khai.
+    {"name": "ToKhai_Parent_FullName", "desc": "Họ tên cha/mẹ CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Parent_IdNumber", "desc": "Số giấy tờ tùy thân cha/mẹ CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Parent_BirthDate", "desc": "Ngày sinh cha/mẹ trên tờ khai, dd/mm/yyyy (chỉ năm thì yyyy); không lấy từ CCCD."},
+    {"name": "ToKhai_Child_FullName", "desc": "Họ tên người con CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Child_IdNumber", "desc": "Số giấy tờ tùy thân người con CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Child_BirthDate", "desc": "Ngày sinh người con trên tờ khai, dd/mm/yyyy; không lấy từ CCCD."},
+
     # IV. Nội dung đăng ký.
     {"name": "Registration_Agency", "desc": "Cơ quan kính gửi/cơ quan đăng ký nếu tờ khai ghi rõ."},
     {"name": "Registration_Type", "desc": 'Loại đăng ký: "Đăng ký mới" hoặc "Ghi vào sổ việc nhận cha, mẹ, con đã được đăng ký tại cơ quan có thẩm quyền của nước ngoài".'},

@@ -18,6 +18,9 @@ giấy khai sinh/giấy chứng sinh của con; kết quả xét nghiệm ADN ho
    Xã Tam Hợp nếu không xuất hiện trong OCR giấy tờ.
 4. Nếu người yêu cầu cũng chính là cha/mẹ trong hồ sơ, vẫn trả cả Requester_* và Parent_*.
 5. Không dựa vào tên file để chia vai trò. Dựa vào nhãn trong tờ khai và đối chiếu tên/số định danh.
+6. Có tờ khai thì BẮT BUỘC trả thêm ToKhai_Parent_* và ToKhai_Child_* CHÉP NGUYÊN VĂN từ tờ khai (theo
+   đúng nhãn "Là Cha/Mẹ/Con của"), KỂ CẢ khi CCCD ghi khác; KHÔNG chép từ CCCD sang. Python tự đối chiếu
+   với CCCD.
 </critical_rules>
 
 <source_priority_rules>

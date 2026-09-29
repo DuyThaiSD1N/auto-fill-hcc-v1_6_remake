@@ -710,6 +710,8 @@ def _person_from_document(document: dict) -> dict | None:
         birth = _first_match(block, (
             r"Date\s+of\s+birth\s*:[^\n\r]*[\r\n]+\s*(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{4})",
         )) or birth
+    # Thẻ mẫu cũ in ngày sinh và giới tính trên CÙNG một dòng ("28/05/1955 Giới tính / Sex: Nữ").
+    birth = _cut_at(birth, (r"Gi[oớ]i\s*t[ií]nh", r"\bSex\b"))
     gender = _first_match(block, (
         r"Giới\s*tính(?:\s*/\s*Sex)?\s*:\s*(Nam|Nữ|Male|Female)",
     ))
@@ -2077,6 +2079,20 @@ _ID_CARD_LABELS = (
     ("Nơi cấp", "issue_place", "IdIssuePlace"),
 )
 
+# Hồ sơ CÓ CCCD/CMND nhưng không tấm nào mang họ tên cha/mẹ mà tờ khai ghi (nộp nhầm thẻ, hoặc
+# thẻ lệch cả tên lẫn số so với tờ khai). Số định danh/ngày cấp/nơi cấp trích từ những thẻ đó là
+# của NGƯỜI KHÁC, nên vai này điền theo tờ khai (tô vàng cho cán bộ soát) thay vì bỏ trống.
+_NO_CARD_MATCH_LABEL = "Đối chiếu CCCD"
+_NO_CARD_MATCH_VALUE = "Không có CCCD/CMND nào trong hồ sơ mang họ tên này, giấy tờ tùy thân lấy theo tờ khai."
+
+
+def _declared_id_without_card(context: str, tag: str) -> str:
+    """Số định danh tờ khai ghi cho vai này, khi hồ sơ không có CCCD/CMND nào mang họ tên người đó."""
+    section = _section(context, tag)
+    if not section or _is_unknown(section) or not _labeled_value(section, _NO_CARD_MATCH_LABEL):
+        return ""
+    return _role_id(section)
+
 
 def _card_belongs_to_role(section: str, card: dict) -> bool:
     """Tấm thẻ này có đúng là của người mà khối vai đang nói tới hay không.
@@ -2090,29 +2106,24 @@ def _card_belongs_to_role(section: str, card: dict) -> bool:
 
 
 def _stamp_identity_card(section: str, card: dict) -> str:
-    """Bù ba ô giấy tờ tùy thân của khối vai từ tấm thẻ — TỜ KHAI THẮNG, thẻ chỉ bù ô trống.
-
-    Tờ khai ghi số định danh KHÁC số trên thẻ thì ngày cấp/nơi cấp in trên thẻ là của một tấm
-    thẻ khác với tấm tờ khai khai báo → không bù gì, cũng không gắn nguồn thẻ cho khối này.
-    """
-    declared_id = _digits(_labeled_value(section, "Số CCCD/CMND"))
-    if declared_id and declared_id != _digits(card.get("id")):
-        return section
+    """Ghi đè ba ô giấy tờ tùy thân của khối vai bằng giá trị đọc thẳng từ tấm thẻ."""
     values = {
         label: str(card.get(key) or "").strip()
         for label, key, _ in _ID_CARD_LABELS
     }
+    # OCR đọc rụng chữ số ngay trên thẻ ("02415000852") thì số đó không dùng được; giữ số tờ khai.
+    if len(_digits(values["Số CCCD/CMND"])) not in {9, 12}:
+        values["Số CCCD/CMND"] = ""
     if not any(values.values()):
         return section
 
     lines, seen = [], set()
     for line in section.splitlines():
-        label, separator, current = line.partition(":")
+        label, separator, _ = line.partition(":")
         label = label.strip()
         if separator and label in values:
             seen.add(label)
-            current = current.strip()
-            if values[label] and (not current or "khong xac dinh" in _fold(current)):
+            if values[label]:
                 line = f"{label}: {values[label]}"
         lines.append(line)
     lines.extend(
@@ -2122,6 +2133,148 @@ def _stamp_identity_card(section: str, card: dict) -> str:
     )
     lines.append(f"{_ID_CARD_SOURCE_LABEL}: {card.get('source') or '(không tên)'}")
     return "\n".join(lines)
+
+
+# TH2: thẻ trùng số định danh tờ khai ghi → các nhãn nhân thân IN trên thẻ thắng tờ khai viết tay.
+_SAME_ID_LABEL = "Đối chiếu CCCD trùng số"
+_SAME_ID_VALUE = "Thẻ mang đúng số định danh tờ khai ghi; họ tên, ngày sinh, giới tính lấy theo thẻ."
+_SAME_ID_CARD_LABELS = (("Họ tên", "FullName"), ("Ngày sinh", "BirthDateOrYear"), ("Giới tính", "Gender"))
+
+
+# Thẻ đã chốt là của CHÍNH người tờ khai ghi nhờ họ tên (lệch do OCR chữ viết tay) dù số tờ khai lệch
+# hoặc hỏng: nhân thân IN trên thẻ chắc hơn bản viết tay, nên cũng lấy theo thẻ như TH2.
+_OWN_CARD_LABEL = "Đối chiếu CCCD cùng người"
+_OWN_CARD_VALUE = "Thẻ khớp họ tên người tờ khai ghi; họ tên, ngày sinh, giới tính lấy theo thẻ."
+
+
+def _stamp_own_card(section: str, card: dict) -> str:
+    """Khối vai + thẻ khớp họ tên: nhân thân theo thẻ, ô trống khác thẻ bù (giống TH2)."""
+    stamped = _stamp_same_id_card(section, card)
+    return stamped.replace(f"{_SAME_ID_LABEL}: {_SAME_ID_VALUE}", f"{_OWN_CARD_LABEL}: {_OWN_CARD_VALUE}")
+
+
+def _stamp_same_id_card(section: str, card: dict) -> str:
+    """Khối vai + tấm thẻ trùng số: họ tên/ngày sinh/giới tính theo thẻ, ô trống khác thẻ bù."""
+    card_section = card.get("section") or ""
+    for label, _suffix in _SAME_ID_CARD_LABELS:
+        value = _labeled_value(card_section, label)
+        if value and "khong xac dinh" not in _fold(value):
+            section = _set_role_label(section, label, value)
+    section = _stamp_identity_card(_merge_role_section(section, card_section), card)
+    return f"{section}\n{_SAME_ID_LABEL}: {_SAME_ID_VALUE}"
+
+
+# TH1 mở rộng: vai trên tờ khai lệch cả tên lẫn số với MỌI CCCD (thường do OCR tờ khai viết tay hỏng).
+# CCCD chưa thuộc vai nào mà hợp DUY NHẤT với vai đó theo giới tính + ngày sinh → thẻ của vai đó:
+# nhân thân theo thẻ, tờ khai chỉ bù ô thẻ không có, tô vàng cho cán bộ soát.
+_GENERATION_CARD_LABEL = "Đối chiếu CCCD theo thế hệ"
+_GENERATION_CARD_VALUE = (
+    "Tờ khai lệch cả tên lẫn số với mọi CCCD; thẻ chốt theo ngày sinh + giới tính, nhân thân theo thẻ, "
+    "tờ khai chỉ bù ô thẻ không có."
+)
+_GENERATION_STAMP_LABELS = ("Họ tên", "Ngày sinh", "Giới tính", "Dân tộc", "Quốc tịch")
+_ROLE_GENDERS = {"cha": _MALE_VALUES, "me": _FEMALE_VALUES}
+_ROLE_MAX_GAP = {"cha": _MAX_FATHER_GAP, "me": _MAX_MOTHER_GAP}
+
+
+def _stamp_generation_card(section: str, card: dict) -> str:
+    """Khối vai tờ khai + tấm thẻ chốt theo thế hệ: nhân thân theo thẻ, nhãn thẻ không có giữ tờ khai."""
+    card_section = card.get("section") or ""
+    for label in _GENERATION_STAMP_LABELS:
+        value = _labeled_value(card_section, label)
+        if value and "khong xac dinh" not in _fold(value):
+            section = _set_role_label(section, label, value)
+    section = _stamp_identity_card(_merge_role_section(section, card_section), card)
+    lines = [line for line in section.splitlines() if not line.startswith(f"{_NO_CARD_MATCH_LABEL}:")]
+    return "\n".join(lines) + f"\n{_GENERATION_CARD_LABEL}: {_GENERATION_CARD_VALUE}"
+
+
+def _card_matches_section(card: dict, section: str) -> bool:
+    if not section or _is_unknown(section):
+        return False
+    declared_id = _role_id(section)
+    return bool(declared_id and card.get("id") == declared_id) or _names_align(
+        _role_name(section), card.get("name")
+    )
+
+
+def _years_compatible(declared_year, card_year) -> bool:
+    """Năm sinh tờ khai ghi cho vai và năm trên thẻ có thể là CÙNG một người không.
+
+    Lệch ≤2 năm, hoặc chỉ khác đúng MỘT chữ số (OCR chữ viết tay đọc "1965" thành "1985") thì vẫn có
+    thể cùng người; lệch hẳn (tờ khai 1957, thẻ 1972) là hai người — vd thẻ của con/cháu người được
+    đăng ký nộp kèm. Tờ khai không ghi năm thì không có gì để cãi.
+    """
+    if not declared_year or not card_year:
+        return True
+    if abs(declared_year - card_year) <= 2:
+        return True
+    a, b = str(declared_year), str(card_year)
+    return len(a) == len(b) and sum(x != y for x, y in zip(a, b)) == 1
+
+
+def _assign_cards_by_generation(sections: dict[str, str], cards: list[dict]) -> dict[str, str]:
+    """Vai tờ khai không khớp CCCD nào → lấy CCCD còn thừa hợp giới tính + ngày sinh (duy nhất).
+
+    Con: người trẻ nhất trong số thẻ còn thừa, cách mọi người còn lại ≥15 năm, cùng họ cha hoặc mẹ.
+    Cha/mẹ: đúng giới, lớn hơn con 15–70 năm (cha) / 15–50 năm (mẹ). Không chốt được → giữ tờ khai.
+    """
+    open_tags = [
+        tag for tag in _FAMILY_TAGS
+        if _from_declaration_label(sections.get(tag) or "")
+        and not any(_card_matches_section(card, sections.get(tag) or "") for card in cards)
+    ]
+    if not open_tags:
+        return sections
+    free = [
+        card for card in cards
+        if card.get("year") and not any(_card_matches_section(card, sections.get(tag) or "") for tag in _FAMILY_TAGS)
+    ]
+    if not free:
+        return sections
+
+    assigned: dict[str, dict] = {}
+    if "con" in open_tags:
+        youngest = max(free, key=lambda card: card["year"])
+        # Năm sinh cha/mẹ tờ khai ghi vẫn dùng để so thế hệ kể cả khi vai đó chưa khớp thẻ nào.
+        others = [card["year"] for card in free if card is not youngest] + [
+            year for tag in ("cha", "me")
+            if (year := _role_year(sections.get(tag) or ""))
+        ]
+        if (
+            others
+            and all(youngest["year"] - year >= 15 for year in others)
+            and _years_compatible(_role_year(sections.get("con") or ""), youngest["year"])
+        ):
+            assigned["con"] = youngest
+    child_year = assigned["con"]["year"] if "con" in assigned else _role_year(sections.get("con") or "")
+    if child_year:
+        for tag in ("cha", "me"):
+            if tag not in open_tags:
+                continue
+            fits = [
+                card for card in free
+                if all(card is not other for other in assigned.values())
+                and card.get("gender") in _ROLE_GENDERS[tag]
+                and 15 <= child_year - card["year"] <= _ROLE_MAX_GAP[tag]
+                and _years_compatible(_role_year(sections.get(tag) or ""), card["year"])
+            ]
+            if len(fits) == 1:
+                assigned[tag] = fits[0]
+    # Con chốt theo thế hệ phải cùng họ cha hoặc mẹ — không thì người "trẻ nhất" có thể chỉ là mẹ
+    # kém cha nhiều tuổi; khi đó bỏ cả lượt chốt vì cha/mẹ đã tính tuổi theo người đó.
+    if "con" in assigned:
+        parent_names = [
+            assigned[tag]["name"] if tag in assigned else _role_name(sections.get(tag) or "")
+            for tag in ("cha", "me")
+        ]
+        if _surname(assigned["con"]["name"]) not in {_surname(name) for name in parent_names if name}:
+            return sections
+
+    result = dict(sections)
+    for tag, card in assigned.items():
+        result[tag] = _stamp_generation_card(result[tag], card)
+    return result
 
 
 def _apply_identity_card_facts(
@@ -2152,11 +2305,27 @@ def _apply_identity_card_facts(
         if person.get("is_identity") and back:
             person.update({key: value for key, value in back.items() if value})
 
+    cards = [person for person in people if person.get("is_identity") and person.get("id")]
     result = dict(sections)
     for tag in ("cha", "me"):
         section = result.get(tag) or ""
         if not section or _is_unknown(section):
             continue
+        # TH2 — thẻ mang ĐÚNG số định danh tờ khai ghi cho vai này: chắc chắn là thẻ của người đó,
+        # kể cả khi tên viết tay trên tờ khai bị OCR đọc lệch hẳn. Họ tên, ngày sinh, giới tính và ba
+        # ô giấy tờ tùy thân lấy theo thẻ (bản IN); các nhãn còn lại giữ tờ khai, thẻ chỉ bù ô trống.
+        declared_id = _role_id(section)
+        same_id = [card for card in cards if declared_id and card.get("id") == declared_id]
+        if len(same_id) == 1:
+            section = _stamp_same_id_card(section, same_id[0])
+            result[tag] = section
+        # TH1 — không thẻ nào mang tên hoặc số của người tờ khai ghi. Chỉ so HỌ TÊN (bỏ qua năm
+        # sinh): thẻ đúng tên mà lệch năm vẫn có thể là thẻ thật bị OCR đọc lệch năm.
+        if cards and not same_id and _from_declaration_label(section) and not any(
+            _names_align(_role_name(section), card.get("name")) for card in cards
+        ):
+            section = f"{section}\n{_NO_CARD_MATCH_LABEL}: {_NO_CARD_MATCH_VALUE}"
+            result[tag] = section
         matched = [person for person in people if _card_belongs_to_role(section, person)]
         if not matched:
             continue
@@ -2166,11 +2335,17 @@ def _apply_identity_card_facts(
         if len(matched) == 1:
             section = _merge_role_section(section, matched[0]["section"])
         # Ba ô giấy tờ tùy thân chỉ CCCD/CMND mới cấp được; trích lục khai tử không chen vào.
-        cards = [person for person in matched if person.get("is_identity")]
-        if len(cards) == 1:
-            section = _stamp_identity_card(_merge_role_section(section, cards[0]["section"]), cards[0])
+        own_cards = [person for person in matched if person.get("is_identity")]
+        if len(own_cards) == 1:
+            if _labeled_value(section, _SAME_ID_LABEL):
+                section = _stamp_identity_card(
+                    _merge_role_section(section, own_cards[0]["section"]), own_cards[0]
+                )
+            else:
+                # Khớp tên nhưng số tờ khai lệch/hỏng: vẫn là thẻ của người đó → nhân thân theo thẻ.
+                section = _stamp_own_card(section, own_cards[0])
         result[tag] = section
-    return result
+    return _assign_cards_by_generation(result, cards)
 
 
 # Nhân thân cha/mẹ mà khối phân vai đã chốt sẵn. Dùng để dựng lại vai khi agent trích xuất bỏ
@@ -2197,8 +2372,13 @@ def _identity_card_overrides(context: str, tag: str, rebuild: bool = False) -> d
         return {}
     prefix = _ROLE_PREFIX[tag]
     labels = [(label, suffix) for label, _key, suffix in _ID_CARD_LABELS]
-    if rebuild:
+    if rebuild or _labeled_value(section, _GENERATION_CARD_LABEL):
+        # Vai chốt CCCD theo thế hệ: nhân thân trong khối đã là thẻ trước, tờ khai bù.
         labels += list(_ROLE_CONTEXT_FIELDS)
+    elif _labeled_value(section, _SAME_ID_LABEL) or _labeled_value(section, _OWN_CARD_LABEL):
+        # TH2 (hoặc thẻ khớp tên cùng người): họ tên/ngày sinh/giới tính đã chốt theo thẻ → bước trích
+        # không được đổi.
+        labels += list(_SAME_ID_CARD_LABELS)
     overrides = {}
     for label, suffix in labels:
         value = _labeled_value(section, label)
@@ -2230,6 +2410,10 @@ def _declaration_role_rebuild(context: str, tag: str) -> dict:
         value = _labeled_value(section, label)
         if value and "khong xac dinh" not in _fold(value):
             values[prefix + suffix] = value
+    # Không CCCD nào trong hồ sơ là của người này → số định danh chỉ còn nguồn tờ khai.
+    declared_id = _declared_id_without_card(context, tag)
+    if declared_id:
+        values[prefix + "IdNumber"] = declared_id
     # Thiếu họ tên thì khối dựng lại chỉ là mảnh vụn (quốc tịch/dân tộc trơ trọi) — thà bỏ trống.
     if not values.get(prefix + "FullName"):
         return {}
@@ -2336,9 +2520,16 @@ def _apply_declaration_residence_overrides(
     """
     from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
 
+    extracted = {str(field.get("name") or "") for field in fields if field.get("value")}
     overrides: dict[str, dict] = {}
     for tag in ("cha", "me"):
-        if _ROLE_PREFIX[tag] in invalid_prefixes:
+        prefix = _ROLE_PREFIX[tag]
+        if prefix in invalid_prefixes:
+            continue
+        # Vai chốt CCCD theo thế hệ: nơi cư trú theo thẻ trước, tờ khai chỉ bù khi agent bỏ trống.
+        if _labeled_value(_section(context, tag), _GENERATION_CARD_LABEL) and (
+            prefix + "ResidenceDomestic" in extracted
+        ):
             continue
         overrides.update(_declaration_residence_overrides(context, tag))
     if not overrides:
@@ -2391,6 +2582,61 @@ def _apply_identity_card_overrides(
         comp = COMPACT_COMP_BY_NAME.get(name)
         if comp:
             result.append({"name": name, "comp": comp, "value": value})
+    return result
+
+
+_SUBJECT_GENERATION_FIELDS = (
+    ("Họ tên", "FullName"),
+    ("Ngày sinh", "BirthDate"),
+    ("Giới tính", "Gender"),
+    ("Dân tộc", "Ethnicity"),
+    ("Quốc tịch", "Nationality"),
+    ("Số CCCD/CMND", "IdNumber"),
+    ("Ngày cấp", "IdIssueDate"),
+    ("Nơi cấp", "IdIssuePlace"),
+)
+
+
+def _apply_generation_card_overrides(fields: list[dict], context: str) -> list[dict]:
+    """Vai chốt CCCD theo thế hệ: con lấy nhân thân theo khối (cha/mẹ đã chốt ở BƯỚC 5), tô vàng cả ba.
+
+    Hồ sơ có hai nguồn cãi nhau cho cùng một vai (tờ khai và thẻ) nên cán bộ phải soát lại.
+    """
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    overrides: dict[str, str] = {}
+    marked: set[str] = set()
+    for tag in _FAMILY_TAGS:
+        section = _section(context, tag)
+        if not _labeled_value(section, _GENERATION_CARD_LABEL):
+            continue
+        prefix = _ROLE_PREFIX[tag]
+        if tag == "con":
+            for label, suffix in _SUBJECT_GENERATION_FIELDS:
+                value = _labeled_value(section, label)
+                if value and "khong xac dinh" not in _fold(value):
+                    overrides[prefix + suffix] = value
+        marked |= {prefix + "FullName", prefix + "IdNumber"}
+    if not marked:
+        return fields
+
+    result, seen = [], set()
+    for field in fields:
+        name = str(field.get("name") or "")
+        if name in overrides:
+            field = {**field, "value": overrides[name]}
+            seen.add(name)
+        if name in marked:
+            field = {**field, "default": True}
+        result.append(field)
+    for name, value in overrides.items():
+        comp = COMPACT_COMP_BY_NAME.get(name)
+        if name in seen or not comp:
+            continue
+        field = {"name": name, "comp": comp, "value": value}
+        if name in marked:
+            field["default"] = True
+        result.append(field)
     return result
 
 
@@ -2519,8 +2765,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     # Người yêu cầu và người được đăng ký lại là MỘT người thì chỉ được có MỘT họ tên; tờ khai
     # viết tay hay để OCR đọc lệch một trong hai dòng nên chốt lại bằng số tài liệu ghi đúng tên.
     self_name = (
-        # Có tờ khai thì tờ khai thắng: không lấy tên in trên thẻ, chỉ phân xử giữa hai dòng tờ khai.
-        (_self_card_name(requester, sections.get("con") or "", documents) if not declaration_sources else "")
+        _self_card_name(requester, sections.get("con") or "", documents)
         or _self_name_consensus(_role_name(requester), _role_name(sections.get("con") or ""), documents)
         if relation_value == "bản thân"
         else ""
@@ -2558,15 +2803,24 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         "Căn cứ: Kết quả kiểm tra trực tiếp loại tài liệu OCR bằng Python.\n"
         "</to_khai_dang_ky_lai>\n"
         f"{_render_mrz_backs(documents)}"
+        f"{_render_declared_roles(documents)}"
         f"{_render_authorized(documents)}"
         f"{'' if declaration_sources else _render_other_declaration(documents)}"
-        f"{_render_declared_roles(documents)}"
-        "Hồ sơ CÓ tờ khai đăng ký lại khai sinh thì TỜ KHAI THẮNG: mọi họ tên, ngày sinh, số định "
-        "danh, ngày cấp, dân tộc, quốc tịch, nơi cư trú mà tờ khai ghi đều lấy theo tờ khai kể cả khi "
-        "CCCD ghi khác; CCCD chỉ dùng để bù ô tờ khai bỏ trống của CHÍNH người đó.\n"
         "Khối <cha>/<me> có dòng \"Nguồn giấy tờ tùy thân\" nghĩa là Số CCCD/CMND, Ngày cấp, "
-        "Nơi cấp trong khối đó đã chốt (tờ khai trước, thẻ của chính người đó bù ô trống): BẮT BUỘC "
-        "trả y nguyên vào *_IdNumber, *_IdIssueDate, *_IdIssuePlace.\n"
+        "Nơi cấp trong khối đó đã đọc thẳng từ chính tấm CCCD/CMND của người đó: BẮT BUỘC trả "
+        "y nguyên vào *_IdNumber, *_IdIssueDate, *_IdIssuePlace, không lấy theo tờ khai.\n"
+        f"Khối <cha>/<me> có dòng \"{_NO_CARD_MATCH_LABEL}\" nghĩa là KHÔNG tấm CCCD/CMND nào trong hồ sơ "
+        "là của người đó: trích TOÀN BỘ Father_*/Mother_* theo tờ khai (họ tên, số định danh, năm sinh...), "
+        "TUYỆT ĐỐI không lấy số, ngày cấp, nơi cấp, ngày sinh từ CCCD của người khác.\n"
+        f"Khối <con>/<cha>/<me> có dòng \"{_GENERATION_CARD_LABEL}\" nghĩa là tờ khai lệch với mọi CCCD và "
+        "tấm thẻ trong khối đã được chốt theo ngày sinh + giới tính: nhân thân, số định danh, ngày cấp, nơi cấp, "
+        "nơi cư trú lấy theo THẺ đó; chỉ ô thẻ không có mới lấy theo tờ khai.\n"
+        f"Khối <cha>/<me> có dòng \"{_OWN_CARD_LABEL}\" nghĩa là CCCD khớp họ tên người tờ khai ghi (số tờ khai "
+        "lệch do viết tay/OCR): họ tên, ngày sinh, giới tính, số định danh, ngày cấp, nơi cấp lấy theo THẺ; "
+        "dân tộc, quốc tịch, nơi cư trú vẫn lấy theo tờ khai.\n"
+        f"Khối <cha>/<me> có dòng \"{_SAME_ID_LABEL}\" nghĩa là CCCD mang ĐÚNG số tờ khai ghi: họ tên, "
+        "ngày sinh, giới tính, số định danh, ngày cấp, nơi cấp của Father_*/Mother_* BẮT BUỘC lấy y nguyên "
+        "theo khối đó (theo thẻ); dân tộc, quốc tịch, nơi cư trú vẫn lấy theo tờ khai.\n"
         "Subject_* chỉ thuộc <con>; Mother_* chỉ thuộc <me>; Father_* chỉ thuộc <cha>. "
         "Nếu một khối ghi Không xác định thì bỏ toàn bộ field của vai đó. "
         "PreviousRegistration_* chỉ được trả khi khối đăng ký khai sinh trước đây ghi Có. "
@@ -2654,6 +2908,160 @@ def _reconcile_birth_fields(fields: list[dict]) -> list[dict]:
     ]
 
 
+_FOREIGN_ID_SUFFIXES = ("IdNumber", "IdIssueDate", "IdIssuePlace", "BirthDateFromId")
+
+
+def _id_fits_role(id_number, section: str) -> bool:
+    """Số CCCD mang mã năm sinh + giới tính khớp chính vai → là thẻ của người đó.
+
+    Python chỉ đọc được thẻ theo vài mẫu quen thuộc; thẻ in lệch mẫu thì không đọc ra, vai bị coi là
+    "không có thẻ nào" (TH1) trong khi agent vẫn đọc đúng thẻ. Mã trong số là bằng chứng độc lập.
+    """
+    own_year = _role_year(section)
+    id_year = _id_birth_year(id_number, _labeled_value(section, "Giới tính"))
+    return bool(own_year and id_year and abs(own_year - id_year) <= 1)
+
+
+def _drop_foreign_ids(fields: list[dict], context: str) -> list[dict]:
+    """Số định danh agent gán cho một vai mà năm mã hoá trong số lệch năm sinh của vai đó >2 năm và
+    TRÙNG năm sinh của người khác trong gia đình → số của người khác (vd số CCCD của mẹ gán cho con).
+
+    Bỏ số đó thay vì để bước sửa năm sinh theo số định danh đổi ngày sinh của vai thành năm sinh
+    của người kia. Không trùng ai thì giữ — có thể chính năm sinh tờ khai bị OCR đọc lệch.
+    """
+    if not context:
+        return fields
+    values = {field.get("name"): field.get("value") for field in fields if field.get("name")}
+    years = {tag: _role_year(_section(context, tag)) for tag in _FAMILY_TAGS}
+    drop: set[str] = set()
+    flag: set[str] = set()
+    for tag in _FAMILY_TAGS:
+        prefix = _ROLE_PREFIX[tag]
+        id_number = _digits(values.get(prefix + "IdNumber"))
+        # Số sai độ dài (OCR rụng/nhân đôi chữ số): khối vai có số hợp lệ (thẻ/tờ khai) thì bỏ để bước
+        # sau điền số đó; không có số nào thay được thì vẫn điền số OCR đọc ra nhưng tô vàng để sửa.
+        if id_number and len(id_number) not in {9, 12}:
+            if _role_id(_section(context, tag)):
+                drop.add(prefix + "IdNumber")
+            else:
+                flag.add(prefix + "IdNumber")
+            continue
+        own_year = years[tag]
+        # Không ràng giới tính: số mang giới tính khác vai càng chứng tỏ là số của người khác.
+        id_year = _id_birth_year(id_number)
+        if not own_year or not id_year or abs(own_year - id_year) <= 2:
+            continue
+        if any(other != tag and year == id_year for other, year in years.items()):
+            drop |= {prefix + suffix for suffix in _FOREIGN_ID_SUFFIXES}
+    if not drop and not flag:
+        return fields
+    return [
+        {**field, "default": True} if field.get("name") in flag else field
+        for field in fields
+        if field.get("name") not in drop
+    ]
+
+
+# Nhân thân đọc NGUYÊN VĂN từ tờ khai (chưa qua bước bù/sửa nào từ CCCD) — nền để lấp ô trống.
+_DECLARED_ROLES_TAG = "to_khai_goc"
+_DECLARED_ROLE_PREFIX = {"nguoi_yeu_cau": "Requester_", **_ROLE_PREFIX}
+_DECLARED_FAMILY_LABELS = (
+    ("Họ tên", "FullName"),
+    ("Giới tính", "Gender"),
+    ("Dân tộc", "Ethnicity"),
+    ("Quốc tịch", "Nationality"),
+    ("Số CCCD/CMND", "IdNumber"),
+)
+_DECLARED_REQUESTER_LABELS = (("Họ tên", "FullName"), ("Số CCCD/CMND", "IdNumber"))
+_DECLARED_BIRTH_SUFFIX = {"con": "BirthDate", "me": "BirthDateOrYear", "cha": "BirthDateOrYear"}
+
+
+def _render_declared_roles(documents: list[dict]) -> str:
+    roles = _declaration_roles(documents)
+    blocks = [
+        f"<{_DECLARED_ROLES_TAG}_{tag}>\n{roles[tag]['section']}\n</{_DECLARED_ROLES_TAG}_{tag}>\n"
+        for tag in _DECLARED_ROLE_PREFIX
+        if tag in roles
+    ]
+    if not blocks:
+        return ""
+    return (
+        f"<{_DECLARED_ROLES_TAG}>\n"
+        "Nhân thân đọc NGUYÊN VĂN từ tờ khai, chỉ dùng để lấp ô còn trống.\n"
+        + "".join(blocks)
+        + f"</{_DECLARED_ROLES_TAG}>\n"
+    )
+
+
+def _declared_value(section: str, label: str) -> str:
+    value = _labeled_value(section, label)
+    return "" if not value or "khong xac dinh" in _fold(value) else value
+
+
+def _apply_declaration_fill(fields: list[dict], context: str) -> list[dict]:
+    """Ô nào còn TRỐNG mà tờ khai có ghi thì điền theo tờ khai.
+
+    Không bao giờ đè giá trị đã có: nhân thân đã chốt theo thẻ (TH2, cùng người, chốt theo thế hệ)
+    giữ nguyên, tờ khai chỉ bù. Dùng cho vai agent bỏ sót (cha/mẹ đã mất không có thẻ, người yêu
+    cầu), vai bị loại ở bước lọc, và ô dân tộc/quốc tịch/nơi cư trú agent bỏ trống.
+    Vai mà khối phân vai đã xoá vì dữ liệu phi lý (trùng con, sai giới, sai thế hệ) thì bỏ qua.
+    """
+    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+    if not _section(context, _DECLARED_ROLES_TAG):
+        return fields
+    present = {
+        str(field.get("name") or "")
+        for field in fields
+        if field.get("value") not in (None, "", {}, [])
+    }
+    additions: dict = {}
+    for tag, prefix in _DECLARED_ROLE_PREFIX.items():
+        declared = _section(context, f"{_DECLARED_ROLES_TAG}_{tag}")
+        if not declared:
+            continue
+        if tag in _FAMILY_TAGS and _is_unknown(_section(context, tag)):
+            continue
+        labels = _DECLARED_FAMILY_LABELS if tag in _FAMILY_TAGS else _DECLARED_REQUESTER_LABELS
+        for label, suffix in labels:
+            value = _declared_value(declared, label)
+            if label == "Họ tên":
+                value = split_name_note(value)[0]
+            if label == "Số CCCD/CMND":
+                value = _digits(value) if len(_digits(value)) in {9, 12} else ""
+            if value and prefix + suffix not in present:
+                additions[prefix + suffix] = value
+        # Ngày cấp tờ khai ghi đi kèm số tờ khai ghi — ô số đang mang số KHÁC thì bỏ qua. Tờ khai
+        # không đọc được số (OCR rụng) thì ngày cấp vẫn là của giấy tờ người đó, vẫn lấp.
+        issue_date = _declared_date(_declared_value(declared, "Ngày cấp"))
+        current_id = _digits(additions.get(prefix + "IdNumber") or next(
+            (field.get("value") for field in fields if field.get("name") == prefix + "IdNumber"), ""
+        ))
+        declared_id = _digits(_declared_value(declared, "Số CCCD/CMND"))
+        if (
+            issue_date
+            and prefix + "IdIssueDate" not in present
+            and (not declared_id or not current_id or current_id == declared_id)
+        ):
+            additions[prefix + "IdIssueDate"] = issue_date
+        birth_suffix = _DECLARED_BIRTH_SUFFIX.get(tag)
+        birth = _declared_date(_declared_value(declared, "Ngày sinh")) if birth_suffix else ""
+        if birth and prefix + birth_suffix not in present:
+            additions[prefix + birth_suffix] = birth
+        residence = _declared_value(declared, _RESIDENCE_LABEL)
+        area = _residence_from_declaration_line(residence) if residence else None
+        if area and prefix + "ResidenceDomestic" not in present:
+            additions[prefix + "ResidenceDomestic"] = area
+    if not additions:
+        return fields
+    result = [field for field in fields if str(field.get("name") or "") not in additions]
+    for name, value in additions.items():
+        comp = COMPACT_COMP_BY_NAME.get(name)
+        if comp:
+            result.append({"name": name, "comp": comp, "value": value})
+    return result
+
+
 def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     """Không cho field của một người chảy sang vai khác sau bước trích xuất.
     
@@ -2663,7 +3071,7 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     3. Loại bỏ trùng lặp với Subject
     4. Xóa địa chỉ "Đã chết" không hợp lệ từ LLM
     """
-    fields = _reconcile_birth_fields(fields)
+    fields = _reconcile_birth_fields(_drop_foreign_ids(fields, context))
     values = {
         field.get("name"): field.get("value")
         for field in fields
@@ -2752,10 +3160,26 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     mismatched_prefixes: set[str] = set()
     if context:
         for tag in _FAMILY_TAGS:
+            # Vai chốt CCCD theo thế hệ: nhân thân bị đặt lại theo khối ở BƯỚC 5/5B, không loại cả vai
+            # chỉ vì agent trích theo tên tờ khai — mất theo nơi sinh, quê quán, nơi cư trú của vai.
+            if _labeled_value(_section(context, tag), _GENERATION_CARD_LABEL):
+                continue
             if not _identity_matches(values, context, tag):
                 mismatched_prefixes.add(_ROLE_PREFIX[tag])
                 invalid_prefixes.add(_ROLE_PREFIX[tag])
-    
+                continue
+            # Tên khớp tờ khai nhưng số lại khác số tờ khai, trong khi hồ sơ không có CCCD nào mang
+            # tên người này → số đó chép từ thẻ của NGƯỜI KHÁC, kéo theo ngày cấp/nơi cấp/ngày sinh
+            # của người đó. Loại cả vai để BƯỚC 4B dựng lại trọn vẹn theo tờ khai.
+            declared_id = _declared_id_without_card(context, tag)
+            actual_id = _digits(values.get(_ID_FIELD[tag]))
+            if (
+                declared_id and actual_id and actual_id != declared_id
+                and not _id_fits_role(actual_id, _section(context, tag))
+            ):
+                mismatched_prefixes.add(_ROLE_PREFIX[tag])
+                invalid_prefixes.add(_ROLE_PREFIX[tag])
+
     has_birth_source = bool(context) and _fold(
         _labeled_value(_section(context, "dang_ky_khai_sinh_truoc_day"), "Có tài liệu khai sinh hợp lệ")
     ) == "co"
@@ -2801,13 +3225,17 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     # Chỉ vai mà tờ khai đã chốt tất định mới được dựng lại, và chỉ khi lý do loại duy nhất là
     # lệch tên. Đánh dấu default để extension tô vàng: hồ sơ đang có hai tên cho cùng một vai,
     # cán bộ phải soát lại chứ không nhận nguyên.
+    # Hồ sơ có CCCD nhưng không thẻ nào mang tên người tờ khai ghi thì agent hay bỏ trống cả vai
+    # (hai nguồn cãi nhau) — vai trống đó cũng dựng lại theo tờ khai, không để mất khối cha/mẹ.
     rebuilt_prefixes: set[str] = set()
     if context:
         from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
 
         for tag in ("cha", "me"):
             prefix = _ROLE_PREFIX[tag]
-            if prefix not in mismatched_prefixes or prefix in broken_prefixes:
+            mismatched = prefix in mismatched_prefixes and prefix not in broken_prefixes
+            empty_without_card = prefix in empty_prefixes and bool(_declared_id_without_card(context, tag))
+            if not (mismatched or empty_without_card):
                 continue
             rebuilt = _declaration_role_rebuild(context, tag)
             if not rebuilt:
@@ -2820,12 +3248,35 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     invalid_prefixes -= rebuilt_prefixes
     empty_prefixes |= rebuilt_prefixes
 
+    # Vai giữ nguyên kết quả trích xuất nhưng agent bỏ trống số định danh: không CCCD nào trong hồ
+    # sơ là của người này nên số tờ khai là nguồn duy nhất — điền vào và tô vàng cho cán bộ soát.
+    if context:
+        from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
+
+        for tag in ("cha", "me"):
+            prefix, id_field = _ROLE_PREFIX[tag], _ID_FIELD[tag]
+            if prefix in invalid_prefixes or prefix in rebuilt_prefixes:
+                continue
+            declared_id = _declared_id_without_card(context, tag)
+            if declared_id and not any(
+                field.get("name") == id_field and _digits(field.get("value")) for field in result
+            ):
+                result = [field for field in result if field.get("name") != id_field]
+                result.append({
+                    "name": id_field, "comp": COMPACT_COMP_BY_NAME[id_field],
+                    "value": declared_id, "default": True,
+                })
+
     # ===== BƯỚC 5: GIẤY TỜ TÙY THÂN CHA/MẸ LẤY THEO CCCD =====
     # Chạy CUỐI CÙNG để giá trị đọc thẳng từ tấm thẻ không bị bước lọc nào phía trên ghi đè.
     if context:
         result = _apply_identity_card_overrides(
             result, context, invalid_prefixes - empty_prefixes, empty_prefixes
         )
+
+    # ===== BƯỚC 5B: VAI CHỐT CCCD THEO THẾ HỆ → NHÂN THÂN CON THEO THẺ, TÔ VÀNG =====
+    if context:
+        result = _apply_generation_card_overrides(result, context)
 
     # ===== BƯỚC 6: NƠI CƯ TRÚ CHA/MẸ LẤY THEO TỜ KHAI =====
     # Chạy sau BƯỚC 5 vì hai bước không giẫm ô nhau: bước trên chốt ba ô giấy tờ tùy thân theo
@@ -2841,130 +3292,12 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     if context:
         result = _apply_mrz_issue_overrides(result, context)
 
-    # ===== BƯỚC 8: TỜ KHAI THẮNG =====
-    # Chạy SAU CÙNG: mọi bước phía trên (agent trích theo CCCD, ghép thẻ, sửa năm sinh theo số
-    # định danh...) có thể đã đưa giá trị của thẻ vào; ô nào tờ khai có ghi thì trả về tờ khai.
+    # ===== BƯỚC 8: TỜ KHAI LẤP CHỖ TRỐNG =====
+    # Chạy SAU CÙNG: ô nào mọi bước trên để trống mà tờ khai có ghi thì điền theo tờ khai — tránh
+    # "có mà không điền". Không đè giá trị đã chốt theo thẻ.
     if context:
-        result = _apply_declaration_wins(result, context)
+        result = _apply_declaration_fill(result, context)
 
-    return result
-
-
-# Nhân thân đọc thẳng từ tờ khai — chưa qua bất kỳ bước bù/sửa nào từ CCCD. Khác khối
-# <phan_vai_da_xac_dinh> (đã được thẻ bù và sửa năm sinh để phân vai), khối này là nguyên văn
-# tờ khai để bước cuối trả mọi ô về đúng giá trị tờ khai ghi.
-_DECLARED_ROLES_TAG = "to_khai_goc"
-_DECLARED_ROLE_PREFIX = {"nguoi_yeu_cau": "Requester_", **_ROLE_PREFIX}
-_DECLARED_LABELS = (
-    ("Họ tên", "FullName"),
-    ("Giới tính", "Gender"),
-    ("Dân tộc", "Ethnicity"),
-    ("Quốc tịch", "Nationality"),
-)
-_DECLARED_BIRTH_SUFFIX = {"con": "BirthDate", "me": "BirthDateOrYear", "cha": "BirthDateOrYear"}
-
-
-def _render_declared_roles(documents: list[dict]) -> str:
-    roles = _declaration_roles(documents)
-    blocks = [
-        f"<{_DECLARED_ROLES_TAG}_{tag}>\n{roles[tag]['section']}\n</{_DECLARED_ROLES_TAG}_{tag}>\n"
-        for tag in _DECLARED_ROLE_PREFIX
-        if tag in roles
-    ]
-    if not blocks:
-        return ""
-    return (
-        f"<{_DECLARED_ROLES_TAG}>\n"
-        "Nhân thân đọc NGUYÊN VĂN từ tờ khai. Giá trị nào tờ khai ghi thì trả đúng giá trị đó.\n"
-        + "".join(blocks)
-        + f"</{_DECLARED_ROLES_TAG}>\n"
-    )
-
-
-def _declared_value(section: str, label: str) -> str:
-    value = _labeled_value(section, label)
-    return "" if not value or "khong xac dinh" in _fold(value) else value
-
-
-def _declared_overrides(context: str, tag: str, current: dict) -> tuple[dict, bool]:
-    """Ô → giá trị tờ khai của một vai; kèm cờ "số định danh tờ khai khác số đang có".
-
-    Vai gia đình chỉ ghim khi khối phân vai vẫn giữ vai đó (vai bị xoá vì dữ liệu phi lý — trùng
-    con, sai giới, sai thế hệ — thì để trống như cũ).
-    """
-    declared = _section(context, f"{_DECLARED_ROLES_TAG}_{tag}")
-    if not declared:
-        return {}, False
-    if tag in _FAMILY_TAGS and _is_unknown(_section(context, tag)):
-        return {}, False
-    prefix = _DECLARED_ROLE_PREFIX[tag]
-    overrides: dict = {}
-    labels = _DECLARED_LABELS if tag in _FAMILY_TAGS else _DECLARED_LABELS[:1]
-    for label, suffix in labels:
-        value = _declared_value(declared, label)
-        if label == "Họ tên":
-            value = split_name_note(value)[0]
-        if value:
-            overrides[prefix + suffix] = value
-
-    birth_suffix = _DECLARED_BIRTH_SUFFIX.get(tag)
-    birth = _declared_date(_declared_value(declared, "Ngày sinh")) if birth_suffix else ""
-    if birth:
-        existing = current.get(prefix + birth_suffix)
-        # Tờ khai chỉ ghi năm mà ô đang có ngày đầy đủ CÙNG năm đó thì không mâu thuẫn — giữ ngày.
-        if "/" in birth or _year_of(existing) != int(birth):
-            overrides[prefix + birth_suffix] = birth
-
-    identity = _digits(_declared_value(declared, "Số CCCD/CMND"))
-    changed_id = bool(identity) and identity != _digits(current.get(prefix + "IdNumber"))
-    if identity:
-        overrides[prefix + "IdNumber"] = identity
-    issue_date = _declared_date(_declared_value(declared, "Ngày cấp"))
-    if issue_date:
-        overrides[prefix + "IdIssueDate"] = issue_date
-
-    residence = _declared_value(declared, _RESIDENCE_LABEL)
-    area = _residence_from_declaration_line(residence) if residence else None
-    if area:
-        overrides[prefix + "ResidenceDomestic"] = area
-    return overrides, changed_id
-
-
-def _apply_declaration_wins(fields: list[dict], context: str) -> list[dict]:
-    """Ô nào tờ khai có ghi thì lấy theo tờ khai, bất kể CCCD ghi gì; CCCD chỉ còn bù ô trống."""
-    from app.pipelines.khai_sinh_dang_ky_lai.process.schema import COMPACT_COMP_BY_NAME
-
-    if not _section(context, _DECLARED_ROLES_TAG):
-        return fields
-    current = {field.get("name"): field.get("value") for field in fields if field.get("name")}
-    overrides: dict = {}
-    drop: set[str] = set()
-    for tag, prefix in _DECLARED_ROLE_PREFIX.items():
-        values, changed_id = _declared_overrides(context, tag, current)
-        overrides.update(values)
-        if changed_id:
-            # Ngày cấp/nơi cấp đang có là của tấm thẻ mang số KHÁC số tờ khai → bỏ, trừ ngày tờ
-            # khai tự ghi (đã nằm trong overrides).
-            drop |= {prefix + "IdIssueDate", prefix + "IdIssuePlace"} - set(values)
-        if tag == "con" and "Subject_BirthDate" in values:
-            # Mục II ưu tiên ngày sinh đọc từ thẻ; tờ khai đã ghi ngày sinh thì bỏ ngày theo thẻ.
-            drop.add("Subject_BirthDateFromId")
-    if not overrides and not drop:
-        return fields
-
-    result, seen = [], set()
-    for field in fields:
-        name = str(field.get("name") or "")
-        if name in drop:
-            continue
-        if name in overrides:
-            field = {**field, "value": overrides[name]}
-            seen.add(name)
-        result.append(field)
-    for name, value in overrides.items():
-        comp = COMPACT_COMP_BY_NAME.get(name)
-        if name not in seen and comp:
-            result.append({"name": name, "comp": comp, "value": value})
     return result
 
 

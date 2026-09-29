@@ -51,6 +51,106 @@ def _same_person(name_a, id_a, name_b, id_b) -> bool:
     return bool(folded_a and folded_b and folded_a == folded_b)
 
 
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold_name(a).split(), _fold_name(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _ids_close(a: str, b: str) -> bool:
+    """Hai số định danh khớp, hoặc chỉ lệch mức OCR (một chữ số / rơi 1–2 chữ số)."""
+    if a == b:
+        return True
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    if not 0 < len(long) - len(short) <= 2:
+        return False
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: CCCD lệch CẢ họ tên lẫn số định danh so với tờ khai → thẻ của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    card_digits, declared_digits = _digits(card_id), _digits(declared_id)
+    return not (card_digits and declared_digits and _ids_close(card_digits, declared_digits))
+
+
+# CCCD cha/mẹ ↔ mục cha/mẹ trên tờ khai.
+_PARENT_CARDS = (("Cha", "CccdNam_"), ("Me", "CccdNu_"))
+# Khoảng cách tuổi cha/mẹ – con hợp lý; xa hơn thì nhiều khả năng là ông/bà nộp kèm thẻ.
+_PARENT_GAP = {"Cha": (15, 70), "Me": (15, 50)}
+_PARENT_TICK = {"Cha": "ChaDe", "Me": "MeDe"}
+
+
+def _card_fits_generation(card_birth, child_birth, role: str) -> bool:
+    """Thẻ (giới tính đã theo ô Nam/Nữ) hợp tuổi làm cha/mẹ của người được khai sinh."""
+    card_year, child_year = _birth_year(card_birth), _birth_year(child_birth)
+    if not card_year or not child_year:
+        return False
+    low, high = _PARENT_GAP[role]
+    return low <= child_year - card_year <= high
+
+
+def _drop_other_parent_cards(values: dict, nu_is_subject: bool) -> tuple[set[str], set[str]]:
+    """TH1: CCCD cha/mẹ lệch cả tên lẫn số so với tờ khai.
+
+    Thẻ hợp tuổi làm cha/mẹ (giới tính theo ô Nam/Nữ, ngày sinh cách con 15–70 năm với cha, 15–50
+    năm với mẹ) → vẫn là thẻ của vai đó, tờ khai OCR hỏng: nhân thân theo thẻ, tờ khai bù ô trống.
+    Không hợp tuổi, hoặc là thẻ của người yêu cầu thứ ba → bỏ thẻ, vai đó điền theo tờ khai.
+
+    Trả (vai đã bỏ thẻ, vai chốt thẻ theo thế hệ) để tô vàng. CCCD Nữ đang được dùng làm người
+    được khai sinh (nu_is_subject) hoặc thẻ trùng tên người được khai sinh thì không phải thẻ
+    cha/mẹ, bỏ qua.
+    """
+    subject_names = (values.get("CccdChuThe_HoTen"), values.get("Gcs_HoTenCon"), values.get("TkKs_HoTenCon"))
+    child_birth = (
+        values.get("Gcs_NgaySinhCon") or values.get("TkKs_NgaySinhCon") or values.get("CccdChuThe_NgaySinh")
+    )
+    dropped: set[str] = set()
+    by_generation: set[str] = set()
+    for role, card in _PARENT_CARDS:
+        if role == "Me" and nu_is_subject:
+            continue
+        card_name = values.get(f"{card}HoTen")
+        if any(_names_align(card_name, name) for name in subject_names if name):
+            continue
+        if not _card_is_other_person(
+            card_name, values.get(f"{card}SoDinhDanh"),
+            values.get(f"TkKs_HoTen{role}"), values.get(f"TkKs_SoDinhDanh{role}"),
+        ):
+            continue
+        # Thẻ của người yêu cầu mà tờ khai không ghi người đó là cha/mẹ → người thứ ba, không chốt vai.
+        third_person = _names_align(card_name, values.get("TkKs_NycHoTen")) and (
+            _canonical_relation(values.get("TkKs_NycQuanHe")) != _PARENT_TICK[role]
+        )
+        if not third_person and _card_fits_generation(values.get(f"{card}NgaySinh"), child_birth, role):
+            by_generation.add(role)
+            continue
+        for key in [key for key in values if key.startswith(card)]:
+            values.pop(key)
+        dropped.add(role)
+    return dropped, by_generation
+
+
 # Giá trị ô tích (5) "Quan hệ với người được khai sinh": BanThan/ChaDe/MeDe/Khac.
 _RELATION_TICKS = {"banthan": "BanThan", "chade": "ChaDe", "mede": "MeDe", "khac": "Khac"}
 
@@ -559,13 +659,16 @@ def enrich(fields: list[dict]) -> list[dict]:
     out: list[dict] = []
     seen: set[str] = set()
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, default: bool = False) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = _COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        field = {"name": name, "comp": comp, "value": value}
+        if default:
+            field["default"] = True
+        out.append(field)
         seen.add(name)
 
     for default in _STRUCTURAL_DEFAULTS:
@@ -573,6 +676,10 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     # ── Phát hiện LLM nhầm CccdNu_ là mẹ nhưng thực ra là người được đăng ký ──
     nu_is_subject = _cccd_nu_is_subject(values)
+
+    # ── TH1: CCCD cha/mẹ lệch cả tên lẫn số so với tờ khai → thẻ người khác, vai đó theo tờ khai ──
+    # Thẻ lệch mà hợp tuổi + giới tính → chốt theo thế hệ: nhân thân theo thẻ, tô vàng.
+    other_cards, generation_cards = _drop_other_parent_cards(values, nu_is_subject)
 
     # ── Xác định thông tin người được đăng ký ──────────────────────────────
     subject = _resolve_subject(values, nu_is_subject=nu_is_subject)
@@ -740,55 +847,71 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     # ── Mẹ ────────────────────────────────────────────────────────────────
     if has_mother_cccd:
-        # Ưu tiên tên từ tờ khai (TkKs_HoTenMe) nếu có, fallback CCCD
-        add("HoTenMeKS", upper_person_name(values.get("TkKs_HoTenMe") or values.get("CccdNu_HoTen")))
-        add("NamSinhMeKS", values.get("CccdNu_NgaySinh"))
-        add("SoDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
-        add("SoGiayToDinhDanhMe", values.get("CccdNu_SoDinhDanh"))
+        # Thẻ còn lại sau bước TH1 là thẻ của chính mẹ (trùng số, khớp tên, hoặc chốt theo tuổi):
+        # họ tên IN trên thẻ chắc hơn bản viết tay trên tờ khai; tờ khai chỉ bù khi thẻ thiếu.
+        mother_generation = "Me" in generation_cards
+        mother_name = values.get("CccdNu_HoTen") or values.get("TkKs_HoTenMe")
+        add("HoTenMeKS", upper_person_name(mother_name), mother_generation)
+        add("NamSinhMeKS", values.get("CccdNu_NgaySinh"), mother_generation)
+        add("SoDinhDanhMe", values.get("CccdNu_SoDinhDanh"), mother_generation)
+        add("SoGiayToDinhDanhMe", values.get("CccdNu_SoDinhDanh"), mother_generation)
         add("LoaiGiayToDinhDanhMe", id_doc_type("Căn cước công dân", mother_issuer))
         add("NgayCapDDMe", values.get("CccdNu_NgayCap"))
         add("NoiCapDDMe", mother_issuer)
-        add("DanTocMeKS", values.get("TkKs_DanTocMe") or values.get("CccdNu_DanToc"))
+        add("DanTocMeKS", (
+            values.get("CccdNu_DanToc") or values.get("TkKs_DanTocMe")
+            if mother_generation
+            else values.get("TkKs_DanTocMe") or values.get("CccdNu_DanToc")
+        ))
         add("QuocTichMeKS", values.get("CccdNu_QuocTich") or "Việt Nam")
         _add_residence(add, "Me", mother_residence, mother_deceased)
     elif has_mother_tk:
-        # Mẹ chỉ có tên + năm sinh từ tờ khai (đã mất hoặc không có CCCD)
-        add("HoTenMeKS", upper_person_name(values.get("TkKs_HoTenMe")))
-        add("NamSinhMeKS", values.get("TkKs_NamSinhMe"))
+        # Mẹ chỉ có tên + năm sinh từ tờ khai (đã mất, không có CCCD, hoặc CCCD là của người khác)
+        mother_other = "Me" in other_cards
+        add("HoTenMeKS", upper_person_name(values.get("TkKs_HoTenMe")), mother_other)
+        add("NamSinhMeKS", values.get("TkKs_NamSinhMe"), mother_other)
         add("DanTocMeKS", values.get("TkKs_DanTocMe"))
         add("QuocTichMeKS", "Việt Nam")
         # Thêm số CCCD từ tờ khai nếu có
         tk_me_sdd = values.get("TkKs_SoDinhDanhMe")
         if tk_me_sdd:
-            add("SoDinhDanhMe", tk_me_sdd)
-            add("SoGiayToDinhDanhMe", tk_me_sdd)
+            add("SoDinhDanhMe", tk_me_sdd, mother_other)
+            add("SoGiayToDinhDanhMe", tk_me_sdd, mother_other)
             add("LoaiGiayToDinhDanhMe", "Căn cước công dân")
         _add_residence(add, "Me", mother_residence, mother_deceased)
 
     # ── Cha ───────────────────────────────────────────────────────────────
     if has_father_cccd:
-        # Ưu tiên tên từ tờ khai (TkKs_HoTenCha) nếu có, fallback CCCD
-        add("HoTenChaKS", upper_person_name(values.get("TkKs_HoTenCha") or values.get("CccdNam_HoTen")))
-        add("NamSinhChaKS", values.get("CccdNam_NgaySinh"))
-        add("SoDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
-        add("SoGiayToDinhDanhCha", values.get("CccdNam_SoDinhDanh"))
+        # Thẻ còn lại sau bước TH1 là thẻ của chính cha (trùng số, khớp tên, hoặc chốt theo tuổi):
+        # họ tên IN trên thẻ chắc hơn bản viết tay trên tờ khai; tờ khai chỉ bù khi thẻ thiếu.
+        father_generation = "Cha" in generation_cards
+        father_name = values.get("CccdNam_HoTen") or values.get("TkKs_HoTenCha")
+        add("HoTenChaKS", upper_person_name(father_name), father_generation)
+        add("NamSinhChaKS", values.get("CccdNam_NgaySinh"), father_generation)
+        add("SoDinhDanhCha", values.get("CccdNam_SoDinhDanh"), father_generation)
+        add("SoGiayToDinhDanhCha", values.get("CccdNam_SoDinhDanh"), father_generation)
         add("LoaiGiayToDinhDanhCha", id_doc_type("Căn cước công dân", father_issuer))
         add("NgayCapDDCha", values.get("CccdNam_NgayCap"))
         add("NoiCapDDCha", father_issuer)
-        add("DanTocChaKS", values.get("TkKs_DanTocCha") or values.get("CccdNam_DanToc"))
+        add("DanTocChaKS", (
+            values.get("CccdNam_DanToc") or values.get("TkKs_DanTocCha")
+            if father_generation
+            else values.get("TkKs_DanTocCha") or values.get("CccdNam_DanToc")
+        ))
         add("QuocTichChaKS", values.get("CccdNam_QuocTich") or "Việt Nam")
         _add_residence(add, "Cha", father_residence, father_deceased)
     elif has_father_tk:
-        # Cha chỉ có tên + năm sinh từ tờ khai (đã mất hoặc không có CCCD)
-        add("HoTenChaKS", upper_person_name(values.get("TkKs_HoTenCha")))
-        add("NamSinhChaKS", values.get("TkKs_NamSinhCha"))
+        # Cha chỉ có tên + năm sinh từ tờ khai (đã mất, không có CCCD, hoặc CCCD là của người khác)
+        father_other = "Cha" in other_cards
+        add("HoTenChaKS", upper_person_name(values.get("TkKs_HoTenCha")), father_other)
+        add("NamSinhChaKS", values.get("TkKs_NamSinhCha"), father_other)
         add("DanTocChaKS", values.get("TkKs_DanTocCha"))
         add("QuocTichChaKS", "Việt Nam")
         # Thêm số CCCD từ tờ khai nếu có
         tk_cha_sdd = values.get("TkKs_SoDinhDanhCha")
         if tk_cha_sdd:
-            add("SoDinhDanhCha", tk_cha_sdd)
-            add("SoGiayToDinhDanhCha", tk_cha_sdd)
+            add("SoDinhDanhCha", tk_cha_sdd, father_other)
+            add("SoGiayToDinhDanhCha", tk_cha_sdd, father_other)
             add("LoaiGiayToDinhDanhCha", "Căn cước công dân")
         _add_residence(add, "Cha", father_residence, father_deceased)
 

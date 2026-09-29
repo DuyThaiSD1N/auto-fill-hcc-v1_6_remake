@@ -19,6 +19,9 @@ thể hiện việc đăng ký khai tử trước đây.
    ghi rõ số/quyển/ngày/cơ quan đăng ký cũ.
 5. Với nơi cư trú của người yêu cầu và người chết, ưu tiên địa chỉ ghi trên tờ khai. CCCD chỉ dùng
    để bổ sung khi tờ khai không ghi nơi cư trú tương ứng.
+6. Có tờ khai thì BẮT BUỘC trả thêm ToKhai_NguoiYeuCau_* và ToKhai_NguoiChet_* CHÉP NGUYÊN VĂN từ tờ khai,
+   KỂ CẢ khi CCCD ghi khác; KHÔNG chép từ CCCD sang. Python tự đối chiếu: CCCD trùng số tờ khai thì theo thẻ,
+   CCCD lệch cả tên lẫn số thì là thẻ của người khác và điền theo tờ khai.
 </critical_rules>
 
 <role_split_rules>

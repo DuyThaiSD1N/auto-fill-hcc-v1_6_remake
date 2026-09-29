@@ -508,6 +508,9 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields while preserving the extension response shape."""
     values = _by_name(fields)
+    # Vai cha/mẹ reason.py dựng lại theo tờ khai vì CCCD là của người khác được đánh dấu default —
+    # cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
+    default_names = {f.get("name") for f in fields if f.get("default")}
     context: str = (options or {}).get("_reasoning_context") or ""
     out: list[dict] = []
     seen: set[str] = set()
@@ -569,10 +572,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # II. Nguoi duoc dang ky khai sinh.
     has_subject = any(name.startswith("Subject_") for name in values)
     if has_subject:
-        add("HoTenKS", upper_person_name(values.get("Subject_FullName")))
-        add("NgaySinhChon", values.get("Subject_BirthDate"))
+        # Con chốt CCCD theo thế hệ (tờ khai lệch mọi CCCD) → tô vàng nhân thân cho cán bộ soát.
+        ks_default = "Subject_FullName" in default_names
+        add("HoTenKS", upper_person_name(values.get("Subject_FullName")), ks_default)
+        add("NgaySinhChon", values.get("Subject_BirthDate"), ks_default)
         add("NgaySinhChonBangChu", values.get("Subject_BirthDateInWords"))
-        add("GioiTinhKS", values.get("Subject_Gender"))
+        add("GioiTinhKS", values.get("Subject_Gender"), ks_default)
         add("DanTocKS", _ethnicity(values.get("Subject_Ethnicity")))
         add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
         if values.get("Subject_BirthPlaceDomestic"):
@@ -586,31 +591,35 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # CCCD của một bên thì bên kia phải để TRỐNG, không điền quốc tịch/loại cư trú mặc định.
     has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
     if has_mother:
-        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")))
-        add("SoDinhDanhMe", values.get("Mother_IdNumber"))
-        add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"))
+        me_default = "Mother_FullName" in default_names
+        me_id_default = me_default or "Mother_IdNumber" in default_names
+        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
+        add("SoDinhDanhMe", values.get("Mother_IdNumber"), me_id_default)
+        add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"), me_id_default)
         if values.get("Mother_IdNumber"):
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber"), _issuer_or_default(values, "Mother")))
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber"), _issuer_or_default(values, "Mother")), me_id_default)
         add("NgayCapDDMe", values.get("Mother_IdIssueDate"))
-        add("NoiCapDDMe", _issuer_or_default(values, "Mother"))
-        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"))
-        add("DanTocMeKS", _ethnicity(values.get("Mother_Ethnicity")))
-        add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam")
+        add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_id_default)
+        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default)
+        add("DanTocMeKS", _ethnicity(values.get("Mother_Ethnicity")), me_default)
+        add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
         _add_residence(add, "Me", _resolve_residence(values, "Mother", context))
 
     # IV. Cha. Cùng nguyên tắc với khối mẹ: không có nhân thân thì bỏ trống cả khối.
     has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
     if has_father:
-        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")))
-        add("SoDinhDanhCha", values.get("Father_IdNumber"))
-        add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"))
+        cha_default = "Father_FullName" in default_names
+        cha_id_default = cha_default or "Father_IdNumber" in default_names
+        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
+        add("SoDinhDanhCha", values.get("Father_IdNumber"), cha_id_default)
+        add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"), cha_id_default)
         if values.get("Father_IdNumber"):
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber"), _issuer_or_default(values, "Father")))
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber"), _issuer_or_default(values, "Father")), cha_id_default)
         add("NgayCapDDCha", values.get("Father_IdIssueDate"))
-        add("NoiCapDDCha", _issuer_or_default(values, "Father"))
-        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"))
-        add("DanTocChaKS", _ethnicity(values.get("Father_Ethnicity")))
-        add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam")
+        add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_id_default)
+        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default)
+        add("DanTocChaKS", _ethnicity(values.get("Father_Ethnicity")), cha_default)
+        add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context))
 
     # Chi dien yeu cau ban sao khi to khai co khai bao that.

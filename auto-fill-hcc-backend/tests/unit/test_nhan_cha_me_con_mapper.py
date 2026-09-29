@@ -147,3 +147,51 @@ def test_nhan_cha_me_con_prompt_locks_confirmation_options():
     assert "Con nhận cha" in system_prompt
     assert "Con nhận mẹ" in system_prompt
     assert "Không lấy các giá trị có sẵn trong HTML tĩnh" in system_prompt
+
+
+# CCCD cha lệch cả tên lẫn số so với tờ khai (TH1): hợp tuổi thì vẫn theo thẻ, không hợp thì theo tờ khai.
+def _recognition_fields(parent_birth: str) -> list[dict]:
+    return [
+        _field("Requester_RelationshipToRecognized", "Cha"),
+        _field("Parent_FullName", "PHẠM VĂN KHOA"),
+        _field("Parent_IdNumber", "001080999888"),
+        _field("Parent_BirthDate", parent_birth),
+        _field("Parent_Gender", "Nam"),
+        _field("Parent_IdIssueDate", "01/01/2021"),
+        _field("ToKhai_Parent_FullName", "Trần Văn Bình"),
+        _field("ToKhai_Parent_IdNumber", "001090000222"),
+        _field("ToKhai_Parent_BirthDate", "02/02/1990"),
+        _field("Child_FullName", "Trần Minh An"),
+        _field("Child_BirthDate", "01/03/2020"),
+    ]
+
+
+def test_nhan_cha_me_con_parent_card_fitting_generation_stays_on_card():
+    mapped = {f["name"]: f for f in mapper.enrich(_recognition_fields("05/05/1980"))}
+
+    assert mapped["HotenA"]["value"] == "PHẠM VĂN KHOA"
+    assert mapped["HotenA"].get("default") is True
+    assert mapped["sodinhdanhA"]["value"] == "001080999888"
+    assert mapped["ngaycapA"]["value"] == "01/01/2021"
+
+
+def test_nhan_cha_me_con_parent_card_of_other_person_falls_back_to_declaration():
+    # Hơn con 75 tuổi → không hợp làm cha, thẻ của người khác.
+    mapped = {f["name"]: f for f in mapper.enrich(_recognition_fields("05/05/1945"))}
+
+    assert mapped["HotenA"]["value"] == "TRẦN VĂN BÌNH"
+    assert mapped["HotenA"].get("default") is True
+    assert mapped["sodinhdanhA"]["value"] == "001090000222"
+    assert mapped["ngaysinhA"]["value"] == "02/02/1990"
+    assert "ngaycapA" not in mapped
+
+
+def test_nhan_cha_me_con_same_id_card_is_not_flagged():
+    fields = _recognition_fields("05/05/1980")
+    fields = [f for f in fields if f["name"] != "ToKhai_Parent_IdNumber"] + [
+        _field("ToKhai_Parent_IdNumber", "001080999888"),
+    ]
+    mapped = {f["name"]: f for f in mapper.enrich(fields)}
+
+    assert mapped["HotenA"]["value"] == "PHẠM VĂN KHOA"
+    assert not mapped["HotenA"].get("default")

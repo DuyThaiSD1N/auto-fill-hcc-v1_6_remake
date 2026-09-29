@@ -28,6 +28,14 @@ FIELDS: list[dict] = [
     {"name": "Deceased_DeathPlaceDomestic", "desc": "Nơi chết, object {quocGia,tinh,xa,diaChi}; xa bắt buộc nếu giấy có."},
     {"name": "Deceased_DeathCause", "desc": "Nguyên nhân chết."},
 
+    # Nhân thân CHÉP NGUYÊN VĂN từ TỜ KHAI — tách nguồn để Python đối chiếu với CCCD: CCCD trùng số tờ
+    # khai → theo thẻ; CCCD lệch cả tên lẫn số → thẻ của người khác, theo tờ khai.
+    {"name": "ToKhai_NguoiYeuCau_HoTen", "desc": "Họ tên người yêu cầu CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_NguoiYeuCau_SoDinhDanh", "desc": "Số giấy tờ tùy thân người yêu cầu CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_NguoiChet_HoTen", "desc": "Họ tên người đã chết CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_NguoiChet_SoDinhDanh", "desc": "Số giấy tờ tùy thân người đã chết CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_NguoiChet_NgaySinh", "desc": "Ngày sinh người đã chết CHÉP từ tờ khai, dd/mm/yyyy (chỉ năm thì yyyy); không lấy từ CCCD."},
+
     # Giấy báo tử/giấy tờ thay thế.
     {"name": "DeathNotice_Type", "desc": "Loại giấy tờ báo tử/giấy tờ thay thế nếu giấy ghi rõ."},
     {"name": "DeathNotice_Number", "desc": "Số giấy báo tử/giấy tờ thay thế; chỉ trả nếu có giá trị thật."},

@@ -339,6 +339,8 @@ _CARD_ID_LABEL = r"^\s*so(?:\s*dinh\s*danh\s*ca\s*nhan)?\s*/\s*(?:no\b|personal\
 _CARD_NAME_LABEL = r"^\s*ho\s*,?\s*(?:va|chu\s*dem\s*va)\s*ten(?:\s*khai\s*sinh)?\s*/\s*full\s*name"
 _CARD_ISSUE_LABEL = r"^\s*ngay\s*,?\s*thang\s*,?\s*nam(?:\s*cap)?\s*/\s*(?:date\s*,?\s*month\s*,?\s*year|date\s*of\s*issue)"
 # Dòng MRZ mặt sau: IDVNM + 9 số seri + 1 số kiểm tra + 12 số định danh.
+_CARD_BIRTH_LABEL = r"^\s*ngay\s*,?\s*(?:thang\s*,?\s*nam\s*)?sinh\s*/\s*date\s*of\s*birth"
+_CARD_GENDER_RE = re.compile(r"gioi\s*tinh\s*/\s*sex\s*:?\s*(nam|nu)\b")
 _CARD_MRZ_RE = re.compile(r"IDVNM\d{9}[\dA-Z<](\d{12})")
 _CARD_LABEL_TAIL = r"^[\s:/.]*"
 
@@ -374,6 +376,8 @@ def identity_cards(ocr_text: str) -> dict[str, dict]:
     cards: dict[str, dict] = {}
     lines = str(ocr_text or "").splitlines()
     front_id = ""
+    # Thẻ đang đọc dở mặt trước: ngày sinh/giới tính in SAU họ tên nên phải nhớ thẻ đến dòng đó.
+    detail_id = ""
     back_date = ""
     back_text: list[str] = []
     for index, line in enumerate(lines):
@@ -381,6 +385,7 @@ def identity_cards(ocr_text: str) -> dict[str, dict]:
         if re.search(_CARD_ID_LABEL, folded):
             digits = re.sub(r"\D", "", _card_value(lines, index, _CARD_ID_LABEL))
             front_id = digits if len(digits) == 12 else ""
+            detail_id = ""
             if front_id:
                 cards.setdefault(front_id, {"SoDinhDanh": front_id})
             continue
@@ -388,9 +393,28 @@ def identity_cards(ocr_text: str) -> dict[str, dict]:
             name = re.sub(r"\s+", " ", _card_value(lines, index, _CARD_NAME_LABEL)).strip(" .:")
             if name and not re.search(r"\d", name):
                 cards[front_id].setdefault("HoTen", name)
-            front_id = ""
+            detail_id, front_id = front_id, ""
             continue
+        if detail_id and re.search(_CARD_BIRTH_LABEL, folded):
+            # Thẻ căn cước mẫu 2024 in "Date of birth:  Giới tính / Sex:" rồi ngày + giới tính ở DÒNG DƯỚI.
+            following = lines[index + 1] if index + 1 < len(lines) else ""
+            birth = _birth_date(_card_value(lines, index, _CARD_BIRTH_LABEL))
+            if "/" not in birth:
+                birth = _birth_date(following)
+            if "/" in birth:
+                cards[detail_id].setdefault("NgaySinh", birth)
+            gender = _CARD_GENDER_RE.search(folded)
+            if not gender and re.search(r"gioi\s*tinh", folded):
+                gender = re.search(r"\d{4}\s+(nam|nu)\b", _fold(following))
+            if gender:
+                cards[detail_id].setdefault("GioiTinh", "Nữ" if gender.group(1) == "nu" else "Nam")
+            continue
+        if detail_id and "GioiTinh" not in cards[detail_id]:
+            gender = _CARD_GENDER_RE.search(folded)
+            if gender:
+                cards[detail_id]["GioiTinh"] = "Nữ" if gender.group(1) == "nu" else "Nam"
         if re.search(_CARD_ISSUE_LABEL, folded):
+            detail_id = ""
             back_date = _issue_date(_card_value(lines, index, _CARD_ISSUE_LABEL))
             back_text = []
             continue
@@ -420,6 +444,8 @@ _CARD_ROLE_FIELDS = {
     "deceased": ("NguoiMat_SoDinhDanh", {
         "HoTen": "NguoiMat_HoTen",
         "SoDinhDanh": "NguoiMat_SoDinhDanh",
+        "NgaySinh": "NguoiMat_NgaySinh",
+        "GioiTinh": "NguoiMat_GioiTinh",
         "NgayCap": "NguoiMat_NgayCapGiayTo",
         "NoiCap": "NguoiMat_NoiCapGiayTo",
     }),
@@ -427,6 +453,8 @@ _CARD_ROLE_FIELDS = {
 _REQUESTER_CARD_GROUP = {
     "HoTen": "Cccd_HoTen",
     "SoDinhDanh": "Cccd_SoDinhDanh",
+    "NgaySinh": "Cccd_NgaySinh",
+    "GioiTinh": "Cccd_GioiTinh",
     "NgayCap": "Cccd_NgayCap",
     "NoiCap": "Cccd_NoiCap",
 }

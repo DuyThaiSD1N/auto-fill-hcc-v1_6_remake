@@ -25,6 +25,9 @@ hai eForm liên tiếp nhưng lần trích xuất này chỉ trả các SOURCE F
 3. Không lấy tên người ký/cán bộ y tế/người đã chết làm thành viên hồ sơ.
 4. Mọi số CCCD/định danh là chuỗi và phải giữ số 0 ở đầu.
 5. Không trả field UI như HoTenKS, HoTenChaKS, HotenA, hotenB, loaiXacNhan.
+6. Có tờ khai thì BẮT BUỘC trả thêm ToKhai_Father_* và ToKhai_Mother_* CHÉP NGUYÊN VĂN từ tờ khai, KỂ CẢ
+   khi CCCD ghi khác; KHÔNG chép từ CCCD sang. Python tự đối chiếu: CCCD trùng số tờ khai thì theo thẻ,
+   CCCD lệch cả tên lẫn số thì là thẻ của người khác và điền theo tờ khai.
 </identity_and_role_rules>
 
 <child_name_resolution>

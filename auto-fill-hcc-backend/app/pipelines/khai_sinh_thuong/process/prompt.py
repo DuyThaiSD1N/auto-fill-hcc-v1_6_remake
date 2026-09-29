@@ -96,8 +96,11 @@ CccdNu_*  — CCCD giới tính Nữ KHÔNG phải chủ thể → MẸ.
 TkKs_* — Lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH bản giấy khi thiếu giấy chứng sinh hoặc thiếu CCCD cha/mẹ.
   TkKs_HoTenCon/NgaySinhCon/GioiTinhCon/DanTocCon/NoiSinh/QueQuan: thông tin người được đăng ký trên tờ khai
     (CHỈ dùng khi không có Gcs_* và không có CccdChuThe_*).
-  TkKs_HoTenCha, TkKs_NamSinhCha, TkKs_DanTocCha: cha theo tờ khai khi không có CCCD cha.
-  TkKs_HoTenMe, TkKs_NamSinhMe, TkKs_DanTocMe: mẹ theo tờ khai khi không có CCCD mẹ.
+  TkKs_HoTenCha, TkKs_NamSinhCha, TkKs_DanTocCha, TkKs_SoDinhDanhCha: cha theo tờ khai.
+  TkKs_HoTenMe, TkKs_NamSinhMe, TkKs_DanTocMe, TkKs_SoDinhDanhMe: mẹ theo tờ khai.
+    Tờ khai có mục cha/mẹ thì LUÔN trả các field này CHÉP NGUYÊN VĂN từ tờ khai, KỂ CẢ khi hồ sơ có
+    CCCD của người đó và KỂ CẢ khi CCCD ghi khác — KHÔNG chép từ CCCD sang. Python tự đối chiếu:
+    CCCD trùng số tờ khai thì theo thẻ; CCCD lệch cả tên lẫn số thì là thẻ người khác, theo tờ khai.
   TkKs_NoiCuTruCha / TkKs_NoiCuTruMe: tờ khai có dòng "Nơi cư trú" RIÊNG trong TỪNG mục
     (mục người yêu cầu, mục người được khai sinh, mục cha, mục mẹ). Lấy đúng dòng nằm trong
     mục CHA cho TkKs_NoiCuTruCha và đúng dòng nằm trong mục MẸ cho TkKs_NoiCuTruMe — TUYỆT ĐỐI

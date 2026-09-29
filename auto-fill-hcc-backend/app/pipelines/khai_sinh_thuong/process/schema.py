@@ -91,7 +91,7 @@ FIELDS: list[dict] = [
     {"name": "TkKs_DanTocCon", "desc": "Dân tộc người được đăng ký trên tờ khai."},
     {"name": "TkKs_NoiSinh", "desc": "Nơi sinh trên tờ khai, object {quocGia,tinh,xa,diaChi}."},
     {"name": "TkKs_QueQuan", "desc": "Quê quán người được đăng ký trên tờ khai, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "TkKs_HoTenCha", "desc": "Họ tên cha trên tờ khai (khi không có CCCD cha)."},
+    {"name": "TkKs_HoTenCha", "desc": "Họ tên cha CHÉP NGUYÊN VĂN từ mục cha trên tờ khai; tờ khai có ghi thì LUÔN trả, kể cả khi hồ sơ có CCCD cha. Không lấy từ CCCD."},
     {"name": "TkKs_NamSinhCha", "desc": "Năm sinh cha trên tờ khai, yyyy."},
     {"name": "TkKs_DanTocCha", "desc": "Dân tộc cha trên tờ khai."},
     {"name": "TkKs_SoDinhDanhCha", "desc": "Số CCCD/định danh cha từ dòng 'Giấy tờ tùy thân' trong mục cha trên tờ khai."},
@@ -103,7 +103,7 @@ FIELDS: list[dict] = [
             "thì trả nguyên cụm chữ đó vào diaChi và bỏ trống tinh/xa."
         ),
     },
-    {"name": "TkKs_HoTenMe", "desc": "Họ tên mẹ trên tờ khai (khi không có CCCD mẹ)."},
+    {"name": "TkKs_HoTenMe", "desc": "Họ tên mẹ CHÉP NGUYÊN VĂN từ mục mẹ trên tờ khai; tờ khai có ghi thì LUÔN trả, kể cả khi hồ sơ có CCCD mẹ. Không lấy từ CCCD."},
     {"name": "TkKs_NamSinhMe", "desc": "Năm sinh mẹ trên tờ khai, yyyy."},
     {"name": "TkKs_DanTocMe", "desc": "Dân tộc mẹ trên tờ khai."},
     {"name": "TkKs_SoDinhDanhMe", "desc": "Số CCCD/định danh mẹ từ dòng 'Giấy tờ tùy thân' trong mục mẹ trên tờ khai."},

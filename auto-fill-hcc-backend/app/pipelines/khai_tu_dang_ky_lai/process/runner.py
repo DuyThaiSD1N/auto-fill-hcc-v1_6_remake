@@ -79,12 +79,22 @@ def _cccd_front_facts(text: str, id_number: str) -> dict:
             facts["name"] = value
 
     dob = re.search(r"(?:Ngày sinh|Ngày, tháng, năm sinh)\s*/\s*Date of birth\s*:?\s*([0-9]{1,2}/[0-9]{1,2}/[0-9]{4})", body, re.IGNORECASE)
+    # Thẻ căn cước mẫu 2024: "Date of birth:  Giới tính / Sex:" rồi ngày sinh + giới tính ở DÒNG DƯỚI.
+    next_line = re.search(
+        r"Date of birth\s*:?[^\n]*\n\s*([0-9]{1,2}/[0-9]{1,2}/[0-9]{4})(?:\s+(Nam|Nữ))?",
+        body,
+        re.IGNORECASE,
+    )
     if dob:
         facts["birthDate"] = dob.group(1)
+    elif next_line:
+        facts["birthDate"] = next_line.group(1)
 
     gender = re.search(r"Giới tính\s*/\s*Sex\s*:?\s*(Nam|Nữ)", body, re.IGNORECASE)
     if gender:
         facts["gender"] = gender.group(1).capitalize()
+    elif next_line and next_line.group(2):
+        facts["gender"] = next_line.group(2).capitalize()
 
     nationality = re.search(r"Quốc tịch\s*/\s*Nationality\s*:?\s*([^\n]+)", body, re.IGNORECASE)
     if nationality:
@@ -139,17 +149,24 @@ def _compact_field_fallback(raw_fields, documents: list[dict]):
     if not fields or not text:
         return raw_fields
 
+    # TH2 — số định danh (agent trích, hoặc số CHÉP từ tờ khai) khớp số in trên một tấm thẻ trong hồ sơ
+    # → cùng một người: họ tên, ngày sinh, giới tính, số, ngày cấp, nơi cấp theo THẺ.
     role_map = {
-        "Requester": fields.get("Requester_IdNumber"),
-        "Deceased": fields.get("Deceased_IdNumber"),
+        "Requester": (fields.get("Requester_IdNumber"), fields.get("ToKhai_NguoiYeuCau_SoDinhDanh")),
+        "Deceased": (fields.get("Deceased_IdNumber"), fields.get("ToKhai_NguoiChet_SoDinhDanh")),
     }
-    for prefix, id_number in role_map.items():
-        if not id_number:
-            continue
-        facts = {}
-        facts.update(_cccd_front_facts(text, id_number))
-        facts.update(_cccd_issue_facts(text, id_number))
-        _apply_identity_facts(fields, prefix, facts)
+    for prefix, candidates in role_map.items():
+        for id_number in candidates:
+            if not _digits(id_number):
+                continue
+            facts = {}
+            facts.update(_cccd_front_facts(text, id_number))
+            facts.update(_cccd_issue_facts(text, id_number))
+            if not facts:
+                continue
+            fields[f"{prefix}_IdNumber"] = _digits(id_number)
+            _apply_identity_facts(fields, prefix, facts)
+            break
     return fields
 
 

@@ -31,6 +31,15 @@ FIELDS: list[dict] = [
     {"name": "Mother_IdIssuePlace", "desc": "Nơi cấp giấy tờ người mẹ nếu có."},
     {"name": "Mother_ResidenceDomestic", "desc": "Nơi cư trú người mẹ, object {quocGia,tinh,xa,diaChi}."},
 
+    # Nhân thân cha/mẹ CHÉP NGUYÊN VĂN từ TỜ KHAI — tách nguồn để Python đối chiếu với CCCD: CCCD trùng
+    # số tờ khai → theo thẻ; CCCD lệch cả tên lẫn số → thẻ của người khác, theo tờ khai.
+    {"name": "ToKhai_Father_FullName", "desc": "Họ tên người cha CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Father_IdNumber", "desc": "Số giấy tờ tùy thân người cha CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Father_BirthDate", "desc": "Ngày sinh người cha trên tờ khai, dd/mm/yyyy (chỉ năm thì yyyy); không lấy từ CCCD."},
+    {"name": "ToKhai_Mother_FullName", "desc": "Họ tên người mẹ CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Mother_IdNumber", "desc": "Số giấy tờ tùy thân người mẹ CHÉP NGUYÊN VĂN từ tờ khai; không lấy từ CCCD."},
+    {"name": "ToKhai_Mother_BirthDate", "desc": "Ngày sinh người mẹ trên tờ khai, dd/mm/yyyy (chỉ năm thì yyyy); không lấy từ CCCD."},
+
     {"name": "Child_FullName", "desc": "Tên dự kiến đăng ký cho trẻ theo các tờ khai."},
     {"name": "Child_NameOnBirthCertificate", "desc": "Tên trẻ ghi riêng trên giấy chứng sinh, kể cả khi khác tờ khai."},
     {"name": "Child_BirthDate", "desc": "Ngày sinh trẻ, dd/mm/yyyy."},

@@ -837,3 +837,43 @@ def test_khai_tu_sanitize_bo_qua_so_cccd_nhac_trong_ly_do_loai():
     assert reason._rejected_identity_numbers(context) == {"068063001858"}
     kept = {field["name"] for field in reason.sanitize_identity_fields(fields, context)}
     assert kept == {field["name"] for field in fields}
+
+
+def _khai_tu_fields(card_name, card_id):
+    # Tờ khai: người yêu cầu Lê Văn Bình, người mất Trần Văn An; một thẻ CCCD không phải người yêu cầu.
+    return [
+        {"name": "NguoiYeuCau_HoTen", "value": "Lê Văn Bình"},
+        {"name": "NguoiYeuCau_SoDinhDanh", "value": "068090001111"},
+        {"name": "NguoiMat_HoTen", "value": "Trần Văn An"},
+        {"name": "NguoiMat_SoDinhDanh", "value": "068062003333"},
+        {"name": "NguoiMat_NgaySinh", "value": "1962"},
+        {"name": "Cccd_HoTen", "value": card_name},
+        {"name": "Cccd_SoDinhDanh", "value": card_id},
+        {"name": "Cccd_NgaySinh", "value": "01/01/1963"},
+        {"name": "Cccd_GioiTinh", "value": "Nam"},
+        {"name": "Cccd_NgayCap", "value": "10/08/2021"},
+    ]
+
+
+def test_khai_tu_card_of_third_person_falls_back_to_declaration():
+    from app.pipelines.khai_tu.process import mapper as khai_tu_mapper
+
+    # TH1: thẻ lệch cả tên lẫn số so với người mất trên tờ khai → theo tờ khai, viền vàng.
+    d = {f["name"]: f for f in khai_tu_mapper.enrich(_khai_tu_fields("PHẠM VĂN KHÁNH", "068063009999"))}
+
+    assert d["HoTen"]["value"] == "TRẦN VĂN AN"
+    assert d["HoTen"].get("default") is True
+    assert d["SoDinhDanh"]["value"] == "068062003333"
+    assert "NgayCapDD" not in d
+
+
+def test_khai_tu_same_id_card_wins_deceased_identity():
+    from app.pipelines.khai_tu.process import mapper as khai_tu_mapper
+
+    # TH2: thẻ trùng số người mất trên tờ khai → họ tên, ngày sinh, ngày cấp theo thẻ.
+    d = {f["name"]: f["value"] for f in khai_tu_mapper.enrich(_khai_tu_fields("PHẠM VĂN KHÁNH", "068062003333"))}
+
+    assert d["HoTen"] == "PHẠM VĂN KHÁNH"
+    assert d["NgaySinh"] == "01/01/1963"
+    assert d["GioiTinh"] == "Nam"
+    assert d["NgayCapDD"] == "10/08/2021"

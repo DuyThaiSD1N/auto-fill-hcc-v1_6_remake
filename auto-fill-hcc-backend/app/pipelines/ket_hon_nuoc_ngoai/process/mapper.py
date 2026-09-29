@@ -97,18 +97,68 @@ def _area(value):
     return out
 
 
+def _digits(value) -> str:
+    return re.sub(r"\D", "", str(value or ""))
+
+
+def _names_align(a, b) -> bool:
+    """Cùng một tên, cho phép lệch MỘT ký tự ở MỘT tiếng (mức sai của OCR chữ viết tay)."""
+    words_a, words_b = _fold(a).split(), _fold(b).split()
+    if not words_a or not words_b:
+        return False
+    if words_a == words_b:
+        return True
+    if len(words_a) != len(words_b) or len(words_a) < 2:
+        return False
+    diff = [(x, y) for x, y in zip(words_a, words_b) if x != y]
+    if len(diff) != 1:
+        return False
+    x, y = diff[0]
+    if len(x) == len(y):
+        return sum(p != q for p, q in zip(x, y)) == 1
+    short, long = sorted((x, y), key=len)
+    return len(long) - len(short) == 1 and any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def _ids_close(a: str, b: str) -> bool:
+    """Hai số giấy tờ khớp, hoặc chỉ lệch mức OCR (một chữ số / rơi 1–2 chữ số)."""
+    if a == b:
+        return True
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    if not 0 < len(long) - len(short) <= 2:
+        return False
+    it = iter(long)
+    return all(ch in it for ch in short)
+
+
+def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> bool:
+    """TH1: giấy tờ tùy thân lệch CẢ họ tên lẫn số so với tờ khai → của người khác.
+
+    Trùng số (TH2) hoặc chỉ lệch một trong hai (thường do OCR chữ viết tay) thì vẫn là cùng người.
+    """
+    if not declared_name or not card_name or _names_align(card_name, declared_name):
+        return False
+    card_digits, declared_digits = _digits(card_id), _digits(declared_id)
+    return not (card_digits and declared_digits and _ids_close(card_digits, declared_digits))
+
+
 def enrich(fields: list[dict]) -> list[dict]:
     values = _by_name(fields)
     out: list[dict] = []
     seen: set[str] = set()
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, default: bool = False) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        field = {"name": name, "comp": comp, "value": value}
+        if default:
+            field["default"] = True
+        out.append(field)
         seen.add(name)
 
     def add_person(src: str, dst: str) -> None:
@@ -131,10 +181,27 @@ def enrich(fields: list[dict]) -> list[dict]:
         if vn_issuer:
             foreign = False
 
-        add(f"HoTen{dst}", upper_person_name(values.get(f"{src}_HoTen")))
-        add(f"SoDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
-        add(f"SoGiayToDinhDanh_{dst}", values.get(f"{src}_SoDinhDanh"))
-        add(f"NgaySinh{dst}", values.get(f"{src}_NgaySinh"))
+        # TH1 — CHỈ bên người Việt: giấy tờ lệch CẢ tên lẫn số so với tờ khai → của người khác, nhân
+        # thân theo tờ khai, bỏ ngày cấp/nơi cấp, tô vàng. Bên nước ngoài không xét: tờ khai ghi tên
+        # phiên âm tiếng Việt nên tên LUÔN lệch hộ chiếu, chỉ còn số — OCR hỏng số là thành nhầm người.
+        side = "Nam" if src == "CccdNam" else "Nu"
+        card_other = not foreign and _card_is_other_person(
+            values.get(f"{src}_HoTen"), values.get(f"{src}_SoDinhDanh"),
+            values.get(f"ToKhai{side}_HoTen"), values.get(f"ToKhai{side}_SoGiayTo"),
+        )
+        ho_ten, so_giay_to, ngay_sinh = (
+            (values.get(f"ToKhai{side}_HoTen"), values.get(f"ToKhai{side}_SoGiayTo"), values.get(f"ToKhai{side}_NgaySinh"))
+            if card_other
+            else (values.get(f"{src}_HoTen"), values.get(f"{src}_SoDinhDanh"), values.get(f"{src}_NgaySinh"))
+        )
+        if card_other:
+            issuer_raw = None
+            values.pop(f"{src}_NgayCap", None)
+
+        add(f"HoTen{dst}", upper_person_name(ho_ten), card_other)
+        add(f"SoDinhDanh_{dst}", so_giay_to, card_other)
+        add(f"SoGiayToDinhDanh_{dst}", so_giay_to, card_other)
+        add(f"NgaySinh{dst}", ngay_sinh, card_other)
         add(f"NgayCapDD_{dst}", values.get(f"{src}_NgayCap"))
         # Dropdown dân tộc chỉ có 54 DÂN TỘC VIỆT NAM, nên dân tộc của người mang quốc tịch nước
         # ngoài không bao giờ có option khớp. Khớp gần đúng còn tệ hơn bỏ trống: "Hán" bị cổng gom
@@ -172,7 +239,8 @@ def enrich(fields: list[dict]) -> list[dict]:
         else:
             issuer = normalize_issuer(issuer_raw) or default_issuer(values.get(f"{src}_NgayCap"))
             add(f"LoaiGiayToDinhDanh_{dst}", id_doc_type("Căn cước", issuer))
-            add(f"NoiCapDD_{dst}", issuer)
+            # TH1: không có ngày cấp/nơi cấp của đúng người → không đoán cơ quan cấp.
+            add(f"NoiCapDD_{dst}", None if card_other else issuer)
             add(f"QuocTich{dst}", quoc_tich or "Việt Nam")  # giấy tờ VN → Việt Nam
             add(f"LoaiCuTru_{dst}", "Thường trú")
             if area:
