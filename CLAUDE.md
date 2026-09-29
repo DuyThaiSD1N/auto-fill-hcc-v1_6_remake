@@ -89,8 +89,9 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
-Baseline ngày 2026-09-28 (máy local, có `--continue-on-collection-errors`):
-`93 failed, 1790 passed, 23 skipped, 3 errors`. Các test đỏ nằm ở khai tử, trích lục, xác nhận TTHN,
+Baseline ngày 2026-09-29 (máy local, có `--continue-on-collection-errors`):
+`96 failed, 2063 passed, 23 skipped, 4 errors` (lỗi collect thứ 4 là
+`tests/unit/test_submit_click_khong_dem_doi.py`). Các test đỏ nằm ở khai tử, trích lục, xác nhận TTHN,
 thay đổi hộ tịch, khuyết tật, xét tuyển viên chức, mai táng. Nếu sửa xong mà số test đỏ giảm hẳn
 hoặc tăng lên, cập nhật lại dòng này.
 

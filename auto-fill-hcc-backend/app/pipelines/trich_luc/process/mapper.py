@@ -1336,13 +1336,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
             # Thẻ căn cước của chính người được đăng ký khớp SỐ với tờ khai/giấy hộ tịch → ngày sinh,
             # giới tính, ngày/nơi cấp lấy bản IN trên thẻ (cùng quy tắc với họ tên, số định danh).
-            card_same_as_record = id_match(
-                _ct("ChuThe_SoDinhDanh"),
-                values.get("HoTich_SoDinhDanh") or values.get("HoTich_SoGiayToTuyThan"),
-            ) is True
+            record_id = values.get("HoTich_SoDinhDanh") or values.get("HoTich_SoGiayToTuyThan")
+            card_same_as_record = id_match(_ct("ChuThe_SoDinhDanh"), record_id) is True
+            # Người yêu cầu TỰ XIN BẢN SAO CỦA MÌNH: thẻ căn cước nằm ở Nyc_* chứ không ở ChuThe_*.
+            # Số trên thẻ khớp số của người được đăng ký thì đó cũng là thẻ của chủ thể → ngày sinh,
+            # giới tính lấy bản IN trên thẻ, không lấy chữ viết tay trên tờ khai (OCR hay đọc lệch số).
+            requester_card_same_as_record = (
+                not card_same_as_record
+                and id_match(values.get("Nyc_SoDinhDanh"), record_id) is True
+            )
 
             def _ct_same(name):
-                return _ct(name) if card_same_as_record else None
+                if card_same_as_record:
+                    return _ct(name)
+                if requester_card_same_as_record:
+                    return values.get(name.replace("ChuThe_", "Nyc_", 1))
+                return None
 
             # Tên người được đăng ký: THẺ CĂN CƯỚC của chính họ thắng tờ khai/giấy hộ tịch khi số
             # định danh hai bên khớp nhau — cùng người thì bản IN đáng tin hơn bản viết tay, và đó
