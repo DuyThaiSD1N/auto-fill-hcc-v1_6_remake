@@ -369,6 +369,8 @@ from app.pipelines.cap_doi_gcn_da_nang.attach import plan as cap_doi_gcn_dn_atta
 from app.pipelines.cap_doi_gcn_da_nang.process import run as cap_doi_gcn_dn_process
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_da_nang.attach import plan as xoa_bpbd_dn_attach
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_da_nang.process import run as xoa_bpbd_dn_process
+from app.pipelines.dang_ky_thay_doi_bien_phap_bao_dam_qsdd.attach import plan as dktd_bpbd_dn_attach
+from app.pipelines.dang_ky_thay_doi_bien_phap_bao_dam_qsdd.process import run as dktd_bpbd_dn_process
 from app.pipelines.xac_nhan_ho_so_so_nha_da_nang.attach import plan as xn_ho_so_so_nha_dn_attach
 from app.pipelines.xac_nhan_ho_so_so_nha_da_nang.process import run as xn_ho_so_so_nha_dn_process
 from app.pipelines.cap_phep_long_duong_via_he.attach import plan as cap_phep_via_he_attach
@@ -5747,6 +5749,48 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-thay-doi-bien-phap-bao-dam-qsdd",
+        # 1.011442 — Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn (Form.io, CÙNG panel "Thông tin chung" với
+        # xóa-đăng-ký-BPBĐ Đà Nẵng / 1.012756) + attach attp-row 12 dòng. Key trùng ke_khai_links.json. Mã QG dùng
+        # chung với Lào Cai (dang-ky-thay-doi-bien-phap-bao-dam-lao-cai) → khóa host danang. Cụm tên có "thay
+        # đổi" nên KHÔNG trùng trang #68 (đăng ký lần đầu) hay trang Xóa đăng ký.
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": [
+                "Đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Đà Nẵng] Đăng ký thay đổi biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Phiếu yêu cầu đăng ký thay đổi (Mẫu số 02a) đã ký — BẮT BUỘC; lấy người yêu cầu (chủ hồ sơ) "
+            "và nội dung thay đổi.\n"
+            "2. Giấy chứng nhận QSDĐ (bản gốc) của TỪNG tài sản bảo đảm — mỗi GCN một file, scan đủ trang kể "
+            "cả trang bổ sung.\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp của tổ chức yêu cầu (tên, mã số, trụ sở, người đại diện "
+            "theo pháp luật).\n"
+            "4. Văn bản ủy quyền / giấy giới thiệu khi người nộp không phải người đại diện theo pháp luật.\n"
+            "5. Nếu có: văn bản sửa đổi, bổ sung hợp đồng bảo đảm; văn bản chuyển giao quyền đòi nợ; văn bản "
+            "khác chứng minh căn cứ thay đổi; Danh mục Mẫu số 01đ; CCCD người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "Form điền: chủ hồ sơ (tổ chức → tên tổ chức + mã định danh; ô Họ tên chủ hồ sơ ghi người đại diện "
+            "theo pháp luật), địa chỉ trụ sở, SĐT, email, giới tính/ngày cấp/nơi cấp người nộp (theo người khớp "
+            "tài khoản). 'Nội dung yêu cầu giải quyết' ghép thửa đất + số phát hành GCN + nội dung thay đổi.\n"
+            "Đính kèm: Phiếu 02a→dòng 1 (Bản chính); mọi GCN→đính chung dòng 5 'Giấy chứng nhận (bản gốc)'; GCN "
+            "ĐKDN + văn bản ủy quyền→đính chung dòng (i) 'thông qua người đại diện'; văn bản sửa đổi/chuyển "
+            "giao/căn cứ khác/Danh mục 01đ→đúng dòng. Dòng 'điểm b khoản 1 Điều 18' và các dòng (iv), (v) chỉ "
+            "đính tay khi thuộc trường hợp."
+        ),
+    },
+    {
         "key": "cap-gcn-so-nha-da-nang",
         # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard dom-* + attach
         # attp-row (CÙNG cổng #68/#75, field-key data[...] y hệt). HAI vai 1 panel: Chủ hồ sơ (chủ sở hữu
@@ -6627,6 +6671,7 @@ _PIPELINE = {
     "dang-ky-dat-dai-lan-dau-da-nang": dk_dat_dai_lan_dau_dn_process,
     "cap-doi-gcn-da-nang": cap_doi_gcn_dn_process,
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_process,
+    "dang-ky-thay-doi-bien-phap-bao-dam-qsdd": dktd_bpbd_dn_process,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
@@ -6813,6 +6858,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-dat-dai-lan-dau-da-nang": dk_dat_dai_lan_dau_dn_attach,
     "cap-doi-gcn-da-nang": cap_doi_gcn_dn_attach,
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_attach,
+    "dang-ky-thay-doi-bien-phap-bao-dam-qsdd": dktd_bpbd_dn_attach,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
