@@ -72,33 +72,6 @@
     return byLabel.length === 1 ? byLabel[0] : null;
   }
 
-  const isDateField = (mf) => !!(mf.closest("liz-datepicker, liz-date") || mf.querySelector(
-    "mat-datepicker-toggle, .mat-datepicker-toggle, input[matdatepicker], .mat-datepicker-input"
-  ));
-
-  // Dự phòng khi nhãn cổng in khác mọi nhãn BE biết (vd "Ngày cấp"/"Nơi cấp" của thẻ HDV cũ): BE gửi
-  // `after` = nhãn ô MỐC đứng ngay trước → lấy ô ĐẦU TIÊN cùng loại (ngày / chữ) trong tối đa 3 ô sau mốc,
-  // cùng section. Bỏ qua mat-select; hết section thì dừng — không bao giờ trượt sang khối khác.
-  function findFieldAfter(index, f) {
-    let anchor = null;
-    for (const label of [].concat(f.after)) {
-      anchor = findField(index, f.section || "", label);
-      if (anchor) break;
-    }
-    if (!anchor) return null;
-    const sec = sectionOf(anchor);
-    const all = Array.from(document.querySelectorAll("mat-form-field")).filter(isVisible);
-    const start = all.indexOf(anchor);
-    const wantDate = f.comp === "liz-date";
-    for (let i = start + 1; start >= 0 && i < all.length && i <= start + 3; i++) {
-      const mf = all[i];
-      if (sectionOf(mf) !== sec) break;
-      if (mf.querySelector("mat-select") || isDateField(mf) !== wantDate) continue;
-      return mf;
-    }
-    return null;
-  }
-
   function inputOf(matField) {
     // Có form dùng <textarea> cho ô nội dung dài (tóm tắt tài liệu, ghi chú) — cùng cách gõ như input.
     return matField.querySelector(
@@ -196,22 +169,7 @@
 
   // Ô tích (liz-checkbox), khớp theo nhãn. Chỉ bấm khi trạng thái hiện tại KHÁC giá trị cần — chạy lại
   // lượt điền không được bỏ tích. Không bao giờ khớp mờ sang ô khác: nhãn phải bằng hoặc chứa trọn nhãn cần.
-  // Nhóm nhiều ô trong một liz-checkbox (vd "Đã được cấp thẻ … loại: Nội địa / Quốc tế / Tại điểm"): BE gửi
-  // kèm `option` = nhãn ô cần tích → trả về đúng <mat-checkbox> đó trong nhóm có nhãn `labels`. Không thấy
-  // nhóm theo nhãn thì chỉ nhận ô có nhãn BẰNG ĐÚNG option, không khớp chứa nhau sang ô khác.
-  function findLizOption(labels, option) {
-    const want = fold(option);
-    if (!want) return null;
-    const boxes = Array.from(document.querySelectorAll("liz-checkbox")).filter(isVisible);
-    const wants = labels.map(fold).filter(Boolean);
-    const group = boxes.find((b) => wants.some((w) => fold(b.textContent).includes(w)));
-    const opts = Array.from((group || document).querySelectorAll("liz-checkbox mat-checkbox")).filter(isVisible);
-    return opts.find((o) => fold(o.textContent) === want) ||
-      (group ? opts.find((o) => fold(o.textContent).startsWith(want)) : null) || null;
-  }
-
-  function findLizCheckbox(label, option, aliases) {
-    if (option) return findLizOption([label, ...(aliases || [])], option);
+  function findLizCheckbox(label) {
     const want = fold(label);
     if (!want) return null;
     const boxes = Array.from(document.querySelectorAll("liz-checkbox")).filter(isVisible);
@@ -219,8 +177,8 @@
       boxes.find((b) => fold(b.textContent).includes(want)) || null;
   }
 
-  async function fillLizCheckbox(label, value, option, aliases) {
-    const box = findLizCheckbox(label, option, aliases);
+  async function fillLizCheckbox(label, value) {
+    const box = findLizCheckbox(label);
     const input = box && box.querySelector("input[type=checkbox]");
     if (!input) return "notfound";
     if (input.disabled) return "disabled";
@@ -248,22 +206,16 @@
 
     for (const f of fields) {
       if (f.comp === "liz-checkbox") {
-        const r = await fillLizCheckbox(f.name, f.value, f.option, f.aliases);
+        const r = await fillLizCheckbox(f.name, f.value);
         if (r === "ok") { result.filled++; index = buildIndex(); }
         else if (r === "disabled") result.skipped.push(f.name);
         else {
           result.notFound.push(f.name);
-          console.warn(`[AutoFill-LIZ] Không tích được ô "${f.name}"${f.option ? ` / "${f.option}"` : ""} (${r})`);
+          console.warn(`[AutoFill-LIZ] Không tích được ô "${f.name}" (${r})`);
         }
         continue;
       }
-      // Nhãn chính trước, rồi từng alias — vẫn trong đúng section (nhãn cổng in khác bản mapping 1–2 chữ).
-      let mf = null;
-      for (const label of [f.name, ...(Array.isArray(f.aliases) ? f.aliases : [])]) {
-        mf = findField(index, f.section || "", label);
-        if (mf) break;
-      }
-      if (!mf && f.after) mf = findFieldAfter(index, f);
+      const mf = findField(index, f.section || "", f.name);
       if (!mf) {
         result.notFound.push(f.name);
         console.warn(`[AutoFill-LIZ] Không thấy ô (section="${f.section}", label="${f.name}")`);

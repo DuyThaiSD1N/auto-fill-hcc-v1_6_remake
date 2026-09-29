@@ -7015,6 +7015,22 @@
   // Field `clear`: BE xoá giá trị cổng đổ sẵn (vd nhân thân tài khoản khi người nộp theo tờ khai là người
   // khác). Ô vừa bị xoá là ô TRỐNG nên không được mang viền xanh "đã điền"; `markEmpty` → tô đỏ để cán bộ
   // biết phải nhập tay.
+  // Field `enableInput`: ô cổng khoá (disabled) theo tài khoản VNeID nhưng người nộp theo tờ khai là người
+  // khác → bỏ disabled ở MỌI input của component (ô ngày Form.io = input ẩn flatpickr + ô hiển thị) rồi
+  // mới ghi, để cán bộ còn sửa được khi OCR sai.
+  function enableStandardFieldInputs(f, candidates, occurrence, root) {
+    const el = findStandardInputForField(f, candidates, occurrence, root) || findStandardSelect(candidates, occurrence, root);
+    const group = el?.closest?.(".formio-component") || standardMarkTarget(el);
+    const inputs = group?.querySelectorAll ? Array.from(group.querySelectorAll("input, select, textarea")) : [];
+    if (el && !inputs.includes(el)) inputs.push(el);
+    for (const node of inputs) {
+      if (!node.disabled && !node.hasAttribute("disabled")) continue;
+      node.disabled = false;
+      node.removeAttribute("disabled");
+      node.setAttribute("data-autofill-enabled-disabled", "true");
+    }
+  }
+
   function markStandardCleared(f, candidates, occurrence, root) {
     const el = findStandardInputForField(f, candidates, occurrence, root) || findStandardSelect(candidates, occurrence, root);
     const target = standardMarkTarget(el);
@@ -7165,7 +7181,9 @@
       if (maxIndex <= 0) continue;
       // Chờ datagrid render (panel có thể mở chậm) trước khi bấm "Thêm dòng".
       await waitFor(() => standardDatagridRows(grid).length > 0 || standardDatagridAddButton(grid), 2000, 100);
-      for (let guard = 0; guard < 12 && standardDatagridRows(grid).length <= maxIndex; guard++) {
+      // Số lần bấm theo đúng số dòng cần (vd >5 nguyện vọng thi tuyển), +2 dự phòng lần bấm hụt; tối thiểu 12.
+      const maxClicks = Math.max(12, maxIndex + 2);
+      for (let guard = 0; guard < maxClicks && standardDatagridRows(grid).length <= maxIndex; guard++) {
         const before = standardDatagridRows(grid).length;
         const button = standardDatagridAddButton(grid);
         if (!button || button.disabled) break;
@@ -7502,6 +7520,7 @@
       if (!root) continue;
       const candidates = fieldCandidates(f);
       const occurrence = standardOccurrence(f.occurrence);
+      if (f.enableInput) enableStandardFieldInputs(f, candidates, occurrence, root);
       // comp "dom-expect": ô extension CHỊU TRÁCH NHIỆM điền nhưng BE không có dữ liệu → KHÔNG điền, chỉ
       // TÔ ĐỎ nếu ô đang trống (để user biết cần điền tay), kể cả khi form không đánh dấu ô đó bắt buộc.
       // Không tính vào filled/notFound.

@@ -21,3 +21,10 @@ test("vòng điền lại ô text trống bỏ qua field clear (không tô xanh 
   const body = src.slice(src.indexOf("async function reapplyEmptyStandardTextFields"), src.indexOf("async function reapplyOwnerDossierCopy"));
   assert.match(body, /!f\.clear\)/);
 });
+
+test("field enableInput: bỏ disabled của component trước khi ghi (ô khoá VNeID, chế độ tờ khai)", () => {
+  assert.match(src, /if \(f\.enableInput\) enableStandardFieldInputs\(f, candidates, occurrence, root\);/);
+  const body = src.slice(src.indexOf("function enableStandardFieldInputs"), src.indexOf("function markStandardCleared"));
+  assert.match(body, /closest\?\.\("\.formio-component"\)/);
+  assert.match(body, /node\.removeAttribute\("disabled"\)/);
+});

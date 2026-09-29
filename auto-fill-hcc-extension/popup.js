@@ -4357,12 +4357,6 @@ ocrBtn.addEventListener("click", async () => {
       // [Bộ VHTTDL] 1.004623 (thẻ HDV nội địa): khối "Thông tin người nộp hồ sơ" chỉ được điền khi CCCD
       // tài khoản TRÙNG CCCD trên đơn; thiếu mốc là BE bỏ trống khối đó, chỉ điền phần cấp thẻ.
       cfg.key === "cap-the-huong-dan-vien-du-lich-noi-dia" ||
-      // [Đà Nẵng · Bộ VHTTDL] 1.001440 (thẻ HDV tại điểm): cùng cổng, cùng contract với 1.004623.
-      cfg.key === "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang" ||
-      // [Đà Nẵng · Bộ VHTTDL] 1.001432 (cấp đổi thẻ HDV quốc tế/nội địa): cùng cổng, cùng contract.
-      cfg.key === "cap-doi-the-huong-dan-vien-du-lich-da-nang" ||
-      // [Đà Nẵng · Bộ VHTTDL] 1.004614 (cấp lại thẻ HDV): cùng cổng, cùng contract.
-      cfg.key === "cap-lai-the-huong-dan-vien-du-lich-da-nang" ||
       // [Lào Cai] 1.115652: cùng cổng, cùng bẫy — hồ sơ tổ chức nhiều người có số định danh, phải có
       // mốc tài khoản mới biết ai trong số đó đang đi nộp.
       cfg.key === "dieu-chinh-quyet-dinh-giao-dat-lao-cai" ||
@@ -4385,6 +4379,10 @@ ocrBtn.addEventListener("click", async () => {
       // khoản cần mốc để chỉ lấy nhân thân của chính người đăng nhập.
       cfg.key === "dang-ky-bien-phap-bao-dam-lao-cai" ||
       cfg.key === "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai" ||
+      // [Bộ Nội vụ] Thi tuyển công chức: Phần I (họ tên, ngày sinh, CCCD) cổng khoá theo VNeID → chế độ
+      // theo tài khoản cần mốc để biết tài khoản có phải người dự tuyển không (tự nộp → tích ô "Người
+      // nộp là chủ hồ sơ"); thiếu mốc là BE để trống Phần I.
+      cfg.key === "thi-tuyen-cong-chuc" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
