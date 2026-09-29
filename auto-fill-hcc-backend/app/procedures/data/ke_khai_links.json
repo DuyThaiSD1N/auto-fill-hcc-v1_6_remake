@@ -1947,6 +1947,33 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
+      "code": "1.004614",
+      "label": "Đà Nẵng - Thủ tục cấp lại thẻ hướng dẫn viên du lịch",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d7fa0-f695-75df-8834-aa4c22e41529",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-doi-the-huong-dan-vien-du-lich-da-nang",
+      "code": "1.001432",
+      "label": "Đà Nẵng - Thủ tục cấp đổi thẻ hướng dẫn viên du lịch quốc tế, thẻ hướng dẫn viên du lịch nội địa",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d90c7-0901-71cb-ab99-2f6e20b9ce08",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang",
+      "code": "1.001440",
+      "label": "Đà Nẵng - Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b526-75c8-a04d-beec224973cf",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
     }
   ]
 }

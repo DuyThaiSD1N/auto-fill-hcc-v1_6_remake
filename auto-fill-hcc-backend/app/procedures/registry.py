@@ -393,6 +393,8 @@ from app.pipelines.cap_lai_phu_hieu_xe_oto.attach import plan as cap_lai_phu_hie
 from app.pipelines.cap_lai_phu_hieu_xe_oto.process import run as cap_lai_phu_hieu_xe_oto_process
 from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.attach import plan as cap_the_hdv_noi_dia_attach
 from app.pipelines.cap_the_huong_dan_vien_du_lich_noi_dia.process import run as cap_the_hdv_noi_dia_process
+from app.pipelines.cap_the_huong_dan_vien_du_lich_tai_diem_da_nang.attach import plan as cap_the_hdv_tai_diem_dn_attach
+from app.pipelines.cap_the_huong_dan_vien_du_lich_tai_diem_da_nang.process import run as cap_the_hdv_tai_diem_dn_process
 
 PROCEDURES: list[dict] = [
     {
@@ -1539,6 +1541,46 @@ PROCEDURES: list[dict] = [
             "Một lần bấm 'Quét, nhập dữ liệu và đính kèm' sẽ điền form rồi tự đính kèm giấy tờ.\n"
             "Đính kèm: ảnh → dòng (3) ảnh chân dung; Đơn Mẫu 04 → dòng (1); văn bằng + chứng chỉ → CHUNG "
             "dòng (2) (Bản sao). Trang không có dòng 'Giấy tờ khác': tệp lạ vào dòng Đơn kèm cảnh báo.\n"
+            "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', chưa "
+            "tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
+        ),
+    },
+    {
+        "key": "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang",
+        # Cùng cổng Bộ VHTTDL và CÙNG giao diện với thẻ HDV nội địa ở trên (liz-*, engine content/fill-liz.js),
+        # nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-115). matthc=1.001440 được ghép tự động từ
+        # ke_khai_links.json (key trùng). Cụm tên có chữ "Thủ tục" đứng trước: trang thẻ NỘI ĐỊA cũng in
+        # nhãn "…trường hợp cấp thẻ hướng dẫn viên du lịch tại điểm" (ô Tên điểm du lịch) nhưng không có
+        # "thủ tục cấp thẻ … tại điểm", nên không nhận nhầm sang nhau.
+        "detect": {
+            "textIncludes": ["thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm"],
+            "headingDisabled": True,
+        },
+        "label": "[Đà Nẵng] Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
+        "mode": "agent",
+        # Bảng 2 dòng, mỗi dòng một <app-upload-flie-multi> → engine fixed-slot theo slotIndex 0..1
+        # (thứ tự DOM: Đơn Mẫu 06, ảnh chân dung). Chứng chỉ/văn bằng/giấy tờ khác đính CHUNG dòng Đơn.
+        "hasAttachmentStep": True,
+        # Form và bảng đính kèm CHUNG một trang → nút quét điền xong tự đính kèm luôn cùng bộ file.
+        "fillWithAttach": True,
+        "fillButtonLabel": "Quét, nhập dữ liệu và đính kèm",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền và đính kèm:\n"
+            "1. Đơn đề nghị cấp thẻ hướng dẫn viên du lịch tại điểm (Mẫu số 06) — nguồn chính để điền; đơn "
+            "phải ghi TÊN ĐIỂM DU LỊCH sẽ hướng dẫn.\n"
+            "2. 02 ảnh chân dung màu 3cm x 4cm (jpg/png, hoặc PDF một trang chỉ có ảnh) — ảnh in trên chứng chỉ "
+            "không thay được.\n"
+            "3. Nếu có: CCCD, chứng chỉ/giấy chứng nhận nghiệp vụ hướng dẫn du lịch, văn bằng — để đối chiếu "
+            "nhân thân và trình độ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Khối 'Thông tin người nộp hồ sơ' chỉ được điền khi số CCCD của tài khoản đăng nhập TRÙNG số "
+            "CCCD của người đề nghị; không trùng thì chỉ điền khối đề nghị cấp thẻ (giới tính, trình độ, "
+            "email, tên điểm du lịch).\n"
+            "Đính kèm: Đơn → dòng (1); ảnh → dòng (2). Trang không có dòng cho chứng chỉ/văn bằng/giấy tờ "
+            "khác: các tệp này vào CHUNG dòng (1), hệ thống đưa sẵn nội dung cần ghi vào ô 'Mô tả' của dòng (1).\n"
+            "⚠ Đơn/chứng chỉ ghi thẻ NỘI ĐỊA hoặc QUỐC TẾ là lệch thủ tục — hệ thống cảnh báo để chọn lại.\n"
             "⚠ Sau khi điền xong phải tự tích ô cam kết 'Tôi cam kết trách nhiệm trước pháp luật…', chưa "
             "tích thì nút 'Lưu và nộp hồ sơ' bị khoá."
         ),
@@ -6692,6 +6734,7 @@ _PIPELINE = {
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_process,
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_process,
     "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_process,
+    "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": cap_the_hdv_tai_diem_dn_process,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_process,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_process,
     "dang-ky-kinh-doanh": dang_ky_kinh_doanh_process,
@@ -6879,6 +6922,7 @@ _ATTACH_PIPELINE = {
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_attach,
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_attach,
     "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_attach,
+    "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang": cap_the_hdv_tai_diem_dn_attach,
     "cap-gcnkncm-cccm": cap_gcnkncm_cccm_attach,
     "xoa-dang-ky-tau-ca": xoa_dang_ky_tau_ca_attach,
     "dang-ky-lap-dat-su-dung-nuoc-sach": cap_nuoc_sach_attach,
