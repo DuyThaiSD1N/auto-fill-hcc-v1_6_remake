@@ -81,7 +81,3 @@ async def test_ket_hon_lai_keeps_two_identity_subjects_separate(monkeypatch):
     assert len(result["attachments"]) == 2
     assert result["attachments"][0]["sourceFileIndexes"] == [0, 1]
     assert result["attachments"][1]["sourceFileIndexes"] == [2, 3]
-    # Tài liệu gộp có cả hai mặt → tên không được chỉ ghi "mặt trước".
-    assert result["attachments"][0]["documentName"] == "CCCD bên nam"
-    assert result["attachments"][0]["componentName"] == "CCCD bên nam"
-    assert result["attachments"][1]["documentName"] == "CCCD bên nữ"

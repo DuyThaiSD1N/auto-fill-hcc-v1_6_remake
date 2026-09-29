@@ -1,3 +1,5 @@
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Tách tuyệt đối hai vai:
@@ -59,4 +61,4 @@ EXTRA_RULES = """
 18. Người đại diện theo pháp luật ghi trên Giấy chứng nhận đăng ký doanh nghiệp KHÔNG mặc nhiên là
     người đi nộp — vẫn liệt kê vào NguoiTrongGiayTo để downstream đối chiếu.
 </ung_vien_nguoi_nop_rules>
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

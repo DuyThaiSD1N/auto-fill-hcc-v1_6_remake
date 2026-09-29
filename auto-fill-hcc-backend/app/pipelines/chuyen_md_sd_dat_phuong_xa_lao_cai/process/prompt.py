@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115679 (Lào Cai — nộp tại phường/xã)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ của thủ tục này là CHUYỂN MỤC ĐÍCH sử dụng đất (hoặc chuyển hình thức / gia hạn /
 điều chỉnh thời hạn sử dụng đất của dự án đầu tư), nộp tại UBND phường/xã. Hồ sơ phổ biến nhất là hộ gia
 đình - cá nhân xin chuyển đất trồng cây lâu năm sang đất ở.
@@ -58,4 +60,4 @@ NGƯỜI ĐI NỘP:
 - NguoiDuocUyQuyen là BÊN B (người đứng sau "uỷ quyền cho", người đi nộp thay), KHÔNG phải bên A. Bên A là
   chủ hồ sơ, đã nằm ở các field ChuHoSo_*.
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

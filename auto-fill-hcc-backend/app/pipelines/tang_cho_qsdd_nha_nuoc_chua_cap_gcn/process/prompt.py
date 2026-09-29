@@ -1,5 +1,7 @@
 """Luật trích xuất riêng cho thủ tục [Lào Cai] tặng cho quyền sử dụng đất mở rộng đường (1.115690)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Bộ giấy tờ của thủ tục này có BA NGUỒN và BỐN VAI — tách tuyệt đối, đây là chỗ sai nhiều nhất:
@@ -70,4 +72,4 @@ EXTRA_RULES = """
 21. Chủ hồ sơ tự đi nộp là chuyện BÌNH THƯỜNG. Chỉ coi người nộp khác chủ hồ sơ khi thật sự có giấy
     uỷ quyền — không suy ra uỷ quyền chỉ vì thấy tên người khác ở đâu đó trong hồ sơ.
 </traps>
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

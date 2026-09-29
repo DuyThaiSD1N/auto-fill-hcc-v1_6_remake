@@ -8,6 +8,17 @@ bộ tự quyết, tránh cổng tự xoá dữ liệu đã điền khi trạng 
 
 ⚑ Trang "Thành phần hồ sơ" có thêm 2 textarea: `HoSoOnline_veViec` (BẮT BUỘC — trích yếu hồ sơ, cổng tự
 điền sẵn TÊN THỦ TỤC nên phải ghi đè bằng trích yếu thật của Đơn) và `HoSoOnline_ghiChu`.
+
+⚑ HAI CHẾ ĐỘ KHỐI NGƯỜI NỘP (cổng đối chiếu Họ tên + Số Căn cước + Ngày sinh với CSDL quốc gia dân cư và
+tài khoản đăng nhập → cả khối phải là MỘT người):
+  · THEO TÀI KHOẢN (mặc định; thiếu `options.formContext` — bản extension cũ, hoặc popup không đọc được
+    trang — coi là chưa có mốc): chọn ứng viên khớp mốc (số định danh trước, thiếu số mới theo
+    họ tên), bù nhân thân chỉ từ bản ghi của chính người đó; KHÔNG ghi hai ô readonly Họ tên/Số Căn cước
+    (cổng đã đổ đúng tài khoản). Không có mốc / không tìm thấy → bỏ trống cả khối + cảnh báo.
+  · THEO TỜ KHAI (`submitterMode="owner_as_submitter"`): bên được ủy quyền → người ký đơn (NguoiNop_*)
+    → chủ hồ sơ cá nhân; ghi hai ô readonly theo người đó (đi trước), XOÁ ô nhân thân tài khoản mà hồ sơ
+    không có (`_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop`); lệch tài khoản thì cảnh báo cổng sẽ chặn
+    nộp.
 """
 
 import re
@@ -16,6 +27,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
+from app.pipelines._shared.lao_cai_nguoi_nop import chot_khoi_nguoi_nop
 from app.pipelines.dang_ky_bien_dong_chia_tach_to_chuc_lao_cai.process.schema import (
     UI_ALIASES,
     UI_CHU_HO_SO_CA_NHAN,
@@ -146,6 +158,261 @@ def _trich_yeu(values: dict) -> str | None:
     return ", ".join(parts)
 
 
+# ----- Người nộp: ứng viên + chọn người (chế độ TÀI KHOẢN / TỜ KHAI) -----
+# Mọi ứng viên quy về cùng một bộ khoá để so khớp và bù nhân thân.
+_PERSON_KEYS = ("HoTen", "SoDinhDanh", "NgaySinh", "GioiTinh", "DanToc", "NgayCap", "NoiCap",
+                "NoiCuTru", "DienThoai", "Email", "Fax")
+_DATE_KEYS = ("NgaySinh", "NgayCap")
+
+
+def _empty(value) -> bool:
+    return value in (None, "", {}, [])
+
+
+def _get(person: dict | None, key: str):
+    value = (person or {}).get(key)
+    return None if _empty(value) else value
+
+
+def _text(value) -> str | None:
+    """Ứng viên là dữ liệu tự do của LLM — năm sinh có thể về dạng số nguyên."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        value = str(int(value))
+    return _plain(value)
+
+
+def _is_candidate(person: dict | None) -> bool:
+    return bool(person) and bool(_get(person, "HoTen") or _get(person, "SoDinhDanh"))
+
+
+def _people(values: dict, name: str) -> list[dict]:
+    items = values.get(name)
+    if not isinstance(items, list):
+        return []
+    return [p for p in items if isinstance(p, dict) and _is_candidate(p)]
+
+
+def _pick(source: dict, *keys):
+    for key in keys:
+        if not _empty(source.get(key)):
+            return source[key]
+    return None
+
+
+def _proxy_person(values: dict) -> dict | None:
+    """Bên được ủy quyền — object khoá camelCase theo desc của schema."""
+    proxy = values.get("NguoiDuocUyQuyen")
+    if isinstance(proxy, list) and len(proxy) == 1:
+        proxy = proxy[0]
+    if not isinstance(proxy, dict):
+        return None
+    person = {
+        "HoTen": _pick(proxy, "hoTen", "HoTen"),
+        "SoDinhDanh": _pick(proxy, "soDinhDanh", "SoDinhDanh"),
+        "NgaySinh": _pick(proxy, "ngaySinh", "NgaySinh"),
+        "GioiTinh": _pick(proxy, "gioiTinh", "GioiTinh"),
+        "DanToc": _pick(proxy, "danToc", "DanToc"),
+        "NgayCap": _pick(proxy, "ngayCapCccd", "NgayCap"),
+        "NoiCap": _pick(proxy, "noiCapCccd", "NoiCap"),
+        "DienThoai": _pick(proxy, "dienThoai", "DienThoai"),
+        "Email": _pick(proxy, "email", "Email"),
+        "NoiCuTru": _pick(proxy, "thuongTru", "NoiCuTru"),
+    }
+    return person if _is_candidate(person) else None
+
+
+def _flat_person(values: dict, prefix: str) -> dict | None:
+    """Khối phẳng NguoiNop_*/ChuHoSo_* dạng ứng viên."""
+    person = {key: values.get(f"{prefix}_{key}") for key in _PERSON_KEYS}
+    return person if _is_candidate(person) else None
+
+
+def _year(value) -> str | None:
+    match = re.search(r"(\d{4})$", _text(value) or "")
+    return match.group(1) if match else None
+
+
+def _dob_conflict(left: dict, right: dict) -> bool:
+    """Cùng họ tên mà ngày sinh mâu thuẫn là hai người khác nhau (cha/con trùng tên)."""
+    a, b = _text(_get(left, "NgaySinh")), _text(_get(right, "NgaySinh"))
+    if not a or not b:
+        return False
+    full_a, full_b = _date(a), _date(b)
+    if full_a and full_b:
+        return full_a != full_b
+    return _year(a) != _year(b)
+
+
+def _same_person(base: dict, person: dict, base_id: str | None) -> bool:
+    """Khớp SỐ ĐỊNH DANH khi cả hai phía có số; chỉ khi một phía thiếu số mới khớp HỌ TÊN bỏ dấu."""
+    person_id = _digits(_get(person, "SoDinhDanh"))
+    if base_id and person_id:
+        return base_id == person_id
+    base_name = _fold(_get(base, "HoTen"))
+    return bool(base_name) and base_name == _fold(_get(person, "HoTen")) and not _dob_conflict(base, person)
+
+
+def _merge_person(
+    base: dict | None, groups: list[list[dict]], known_id: str | None = None
+) -> dict | None:
+    """Bù mục còn thiếu của `base` CHỈ từ bản ghi của CHÍNH người đó.
+
+    Khối phẳng/giấy ủy quyền hay thiếu dân tộc, nơi cấp, địa chỉ — những thứ nằm ở ảnh CCCD. Không gộp
+    theo "cùng nguồn" vì khối phẳng có thể đã bị LLM ghép chéo hai người. `known_id` là số định danh đã
+    biết chắc của người này (mốc tài khoản) khi giấy tờ của họ không ghi số — chặn gộp nhầm người trùng
+    tên nhưng khác số.
+    """
+    if not base:
+        return None
+    merged = dict(base)
+    for group in groups:
+        for person in group:
+            if person is base:
+                continue
+            # Tính lại mỗi vòng: vừa bù được số định danh thì các lượt sau phải khớp theo số.
+            base_id = _digits(_get(merged, "SoDinhDanh")) or known_id
+            if not _same_person(merged, person, base_id):
+                continue
+            for key in _PERSON_KEYS:
+                value = _get(person, key)
+                if value is None:
+                    continue
+                current = _get(merged, key)
+                # Ngày chỉ có năm coi như thiếu: bản ghi khác của cùng người có ngày đủ thì lấy ngày đủ.
+                if current is None or (key in _DATE_KEYS and not _date(_text(current))
+                                       and _date(_text(value))):
+                    merged[key] = value
+    return merged
+
+
+def _find_by_anchor(groups: list[list[dict]], anchor_id: str | None, anchor_name: str) -> dict | None:
+    """Ứng viên khớp mốc tài khoản — theo SỐ ĐỊNH DANH trước, thiếu số mới theo HỌ TÊN (duy nhất 1 người)."""
+    if anchor_id:
+        for group in groups:
+            for person in group:
+                if _digits(_get(person, "SoDinhDanh")) == anchor_id:
+                    return person
+    if not anchor_name:
+        return None
+    hits = [
+        person for group in groups for person in group
+        # Mốc có số mà giấy tờ cũng có số (khác số) → người khác, không xét theo tên.
+        if not (anchor_id and _digits(_get(person, "SoDinhDanh")))
+        and _fold(_get(person, "HoTen")) == anchor_name
+    ]
+    if not hits:
+        return None
+    # Nhiều bản ghi cùng tên chỉ chấp nhận khi chắc là MỘT người (số định danh, ngày sinh không mâu thuẫn).
+    first = hits[0]
+    ids = {_digits(_get(p, "SoDinhDanh")) for p in hits} - {None}
+    if len(ids) > 1 or any(_dob_conflict(first, other) for other in hits[1:]):
+        return None
+    return first
+
+
+def _nguoi_nop_hai_che_do(
+    values: dict, options: dict, is_org: bool, theo_to_khai: bool, add
+) -> tuple[dict | None, list[str]]:
+    """Khối người nộp cho extension có gửi mốc tài khoản (hoặc bật chế độ tờ khai).
+
+    Trả (địa chỉ của người nộp đã chọn, cảnh báo). Cổng gửi Họ tên + Số Căn cước + Ngày sinh của khối
+    này sang CSDL quốc gia dân cư và đối chiếu tài khoản đăng nhập → cả khối là của MỘT người.
+    """
+    warnings: list[str] = []
+    ctx = options.get("formContext")
+    ctx = ctx if isinstance(ctx, dict) else {}
+    anchor_id_raw = _text(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
+    anchor_id = _digits(anchor_id_raw)
+    anchor_name_raw = _plain(ctx.get("applicantFullname"))
+    anchor_name = _fold(anchor_name_raw)
+    has_anchor = bool(anchor_id or anchor_name)
+
+    proxy = _proxy_person(values)
+    flat_nop = _flat_person(values, "NguoiNop")
+    owner = None if is_org else _flat_person(values, "ChuHoSo")
+    # Thứ tự ưu tiên nguồn: CCCD rời (đủ nhất) → người ghi kèm số trong giấy tờ → giấy ủy quyền →
+    # khối phẳng người nộp → chủ hồ sơ cá nhân.
+    groups = [
+        _people(values, "DanhSachCccd"),
+        _people(values, "NguoiTrongGiayTo"),
+        [proxy] if proxy else [],
+        [flat_nop] if flat_nop else [],
+        [owner] if owner else [],
+    ]
+
+    if theo_to_khai:
+        # Bên được ủy quyền đi nộp thay; không có thì người ký đơn (khối phẳng), cuối cùng là chủ hồ sơ
+        # cá nhân — tổ chức không tự đi nộp.
+        base = proxy or flat_nop or owner
+        person = _merge_person(base, groups)
+        if not person:
+            warnings.append(
+                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có văn bản ủy quyền và cũng không "
+                "đọc được người đứng tên đơn, nên trợ lý để trống khối \"Thông tin người nộp hồ sơ\" — cán "
+                "bộ nhập tay."
+            )
+            return None, warnings
+        ten = _plain(_get(person, "HoTen"))
+        so_cmnd = _digits(_get(person, "SoDinhDanh"))
+        if has_anchor:
+            if anchor_id and so_cmnd:
+                lech = anchor_id != so_cmnd
+            else:
+                lech = bool(anchor_name and ten) and anchor_name != _fold(ten)
+            if lech:
+                warnings.append(
+                    "Khối \"Thông tin người nộp hồ sơ\" đang điền theo TỜ KHAI ("
+                    + (ten or "người trong hồ sơ")
+                    + ") nhưng tài khoản đang đăng nhập là "
+                    + (anchor_name_raw or anchor_id_raw or "người khác")
+                    + ". Cổng xác thực Họ tên/Số Căn cước/Ngày sinh với CSDL quốc gia dân cư và tài khoản "
+                    "đăng nhập trước khi cho nộp — lệch là bị chặn. Đăng nhập đúng tài khoản người đi nộp, "
+                    "hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+                )
+    else:
+        if not has_anchor:
+            warnings.append(
+                "Không xác định được NGƯỜI ĐANG ĐI NỘP: cổng chưa đổ sẵn Họ tên/Số Căn cước từ tài khoản "
+                "định danh (hoặc trang chưa đăng nhập). Trợ lý bỏ trống nhân thân khối \"Thông tin người "
+                "nộp hồ sơ\" để khỏi điền nhầm người — đăng nhập đúng tài khoản người đi nộp rồi quét lại."
+                " Vừa cập nhật/tải lại extension thì F5 trang cổng rồi quét lại; người nộp theo tờ khai thì "
+                "bật cài đặt \"Người nộp = chủ hồ sơ\"."
+            )
+            return None, warnings
+        found = _find_by_anchor(groups, anchor_id, anchor_name)
+        if not found:
+            warnings.append(
+                "Hồ sơ không có giấy tờ nào ghi nhân thân của CHÍNH người đang đăng nhập"
+                + (f" ({anchor_name_raw})" if anchor_name_raw else "")
+                + " nên trợ lý để trống khối \"Thông tin người nộp hồ sơ\" — cán bộ nhập tay, KHÔNG lấy "
+                "thông tin của người khác trong hồ sơ vì cổng xác thực với CSDL quốc gia dân cư trước khi "
+                "cho nộp."
+            )
+            return None, warnings
+        person = _merge_person(found, groups, known_id=anchor_id)
+
+    # Theo tài khoản: hai ô readonly Họ tên/Số Căn cước cổng đã đổ đúng → không ghi. Theo tờ khai: đi
+    # TRƯỚC để phần nhân thân bên dưới thuộc về đúng người ở hai ô đầu.
+    if theo_to_khai:
+        add("CongDan_tenCongDan", ten)
+        add("CongDan_soCmnd", so_cmnd)
+    doc_id = _digits(_get(person, "SoDinhDanh"))
+    ngay_cap = _date(_text(_get(person, "NgayCap")))
+    # Nơi cấp mặc định CHỈ khi giấy tờ của chính người đó có số định danh — không thì là bịa.
+    noi_cap = normalize_issuer(_plain(_get(person, "NoiCap")))
+    if not noi_cap and doc_id:
+        noi_cap = default_issuer(ngay_cap)
+    add("CongDan_ngaySinhCongDan", _date(_text(_get(person, "NgaySinh"))))
+    add("CongDan_gioiTinhCongDan", _plain(_get(person, "GioiTinh")))
+    add("CongDan_danTocCongDan", _plain(_get(person, "DanToc")))
+    add("CongDan_ngayCapCmnd", ngay_cap)
+    add("CongDan_noiCapCmnd", noi_cap)
+    add("CongDan_diDong", _phone(_text(_get(person, "DienThoai"))))
+    add("CongDan_email", _plain(_get(person, "Email")))
+    add("CongDan_fax", _text(_get(person, "Fax")))
+    return _area(_get(person, "NoiCuTru")), warnings
+
+
 def _is_org(values: dict) -> bool:
     flag = values.get("ChuHoSo_LaToChuc")
     if isinstance(flag, bool):
@@ -156,7 +423,9 @@ def _is_org(values: dict) -> bool:
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    del options
+    options = options if isinstance(options, dict) else {}
+    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    theo_to_khai = str(options.get("submitterMode") or "") == "owner_as_submitter"
     values = _by_name(fields)
     out: list[dict] = []
     seen: set[str] = set()
@@ -184,28 +453,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     ma_so_thue = _tax_code(values.get("ChuHoSo_MaSoThue"))
 
     # --- Khối NGƯỜI NỘP ---
-    nop_identity = _digits(values.get("NguoiNop_SoDinhDanh"))
-    nop_ngay_cap = _date(values.get("NguoiNop_NgayCap"))
-    # Nơi cấp mặc định CHỈ khi hồ sơ thật sự có giấy tờ định danh của người đó — không thì là bịa.
-    nop_noi_cap = normalize_issuer(_plain(values.get("NguoiNop_NoiCap")))
-    if not nop_noi_cap and nop_identity:
-        nop_noi_cap = default_issuer(nop_ngay_cap)
-    add("CongDan_tenCongDan", _plain(values.get("NguoiNop_HoTen")))
-    add("CongDan_ngaySinhCongDan", _date(values.get("NguoiNop_NgaySinh")))
-    add("CongDan_gioiTinhCongDan", _plain(values.get("NguoiNop_GioiTinh")))
-    add("CongDan_danTocCongDan", _plain(values.get("NguoiNop_DanToc")))
-    add("CongDan_soCmnd", nop_identity)
-    add("CongDan_ngayCapCmnd", nop_ngay_cap)
-    add("CongDan_noiCapCmnd", nop_noi_cap)
-    add("CongDan_diDong", _phone(values.get("NguoiNop_DienThoai")))
-    add("CongDan_email", _plain(values.get("NguoiNop_Email")))
-    add("CongDan_fax", _plain(values.get("NguoiNop_Fax")))
+    nop_area, nop_warnings = _nguoi_nop_hai_che_do(values, options, is_org, theo_to_khai, add)
+    warnings.extend(nop_warnings)
     if is_org:
-        # Người nộp đại diện cho tổ chức → ô tên cơ quan/MST của khối người nộp cũng là của tổ chức đó.
+        # Ô tên cơ quan/MST của khối người nộp là dữ liệu của TỔ CHỨC chủ hồ sơ → phát được cả khi
+        # chưa xác định được ai đi nộp.
         add("CongDan_tenCoQuanToChuc", ten_to_chuc)
         add("CongDan_maSoThueNguoiNop", ma_so_thue)
-
-    nop_area = _area(values.get("NguoiNop_NoiCuTru")) or _area(values.get("ChuHoSo_NoiCuTru"))
     if nop_area:
         add("CongDan_maTinhThanh", _province_label(nop_area.get("tinh")))
         add("CongDan_maPhuongXa", _plain(nop_area.get("xa")))
@@ -238,7 +492,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             )
 
     # 3 ô địa chỉ này là thứ checkbox của cổng KHÔNG copy → luôn phát từ dữ liệu trích được.
-    chs_area = _area(values.get("ChuHoSo_NoiCuTru")) or nop_area
+    # Nguồn giữ như luồng cũ (khối phẳng) — không phụ thuộc người nộp vừa chọn theo mốc.
+    chs_area = _area(values.get("ChuHoSo_NoiCuTru")) or _area(values.get("NguoiNop_NoiCuTru"))
     if chs_area:
         add("ChuHoSo_maTinhThanhCHS", _province_label(chs_area.get("tinh")))
         add("ChuHoSo_maPhuongXaCHS", _plain(chs_area.get("xa")))
@@ -261,4 +516,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # --- Bước "Thành phần hồ sơ" ---
     add("HoSoOnline_veViec", _trich_yeu(values))
 
+    out = chot_khoi_nguoi_nop(
+        out, theo_to_khai=theo_to_khai, comp_by_name=UI_COMP_BY_NAME, warnings=warnings
+    )
     return out, warnings

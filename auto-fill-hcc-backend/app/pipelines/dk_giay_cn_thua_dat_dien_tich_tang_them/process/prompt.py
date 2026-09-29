@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115694 (Lào Cai) — thửa đất có diện tích tăng thêm."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Thủ tục: Đăng ký, cấp Giấy chứng nhận đối với thửa đất có DIỆN TÍCH TĂNG THÊM do thay
 đổi ranh giới so với Giấy chứng nhận đã cấp — trường hợp thửa đất GỐC đã có Giấy chứng nhận và phần
 diện tích tăng thêm do NHẬN CHUYỂN QUYỀN sử dụng MỘT PHẦN thửa đất đã được cấp Giấy chứng nhận (cổng
@@ -87,4 +89,4 @@ GIẤY CHỨNG NHẬN ĐÃ CẤP (Gcn_* CHỈ lấy từ chính Giấy chứng n
 - Gcn_DonViCap là cơ quan KÝ CẤP GCN; "TM. ỦY BAN NHÂN DÂN ..." → "UBND ...".
 
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo, ChuHoSo_maTinhThanhCHS...). Không đọc được chắc chắn
-thì bỏ field, tuyệt đối không bịa."""
+thì bỏ field, tuyệt đối không bịa.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

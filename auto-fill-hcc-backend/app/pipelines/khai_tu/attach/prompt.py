@@ -30,7 +30,8 @@ Một PDF có thể chứa nhiều giấy tờ khác loại.
    tài liệu logic riêng, kể cả khi nó nhắc lại thông tin cá nhân hoặc sự kiện chết.
 11. Trang KHÔNG ĐỌC ĐƯỢC dùng unreadable_page: OCR rỗng, trang trắng/mặt sau, hoặc chữ nhiễu không thuộc
     hồ sơ này — không nhắc người chết, người yêu cầu hay sự kiện chết; địa danh, đơn vị, số điện thoại lạc
-    lõng; câu lặp vô nghĩa. Backend gộp trang đó vào tài liệu liền trước, KHÔNG tạo thành phần riêng.
+    lõng; câu lặp vô nghĩa; trang chỉ có MỘT dòng tên cơ quan (OCR đọc nhầm con dấu hằn qua mặt sau,
+    vd "SỞ ... TỈNH ..."). Backend gộp trang đó vào tài liệu liền trước, KHÔNG tạo thành phần riêng.
     Trang có tiêu đề giấy tờ rõ ràng VÀ nội dung liên quan hồ sơ thì KHÔNG phải unreadable_page.
 12. Trả đúng một JSON object, không giải thích, không markdown.
 </critical_rules>

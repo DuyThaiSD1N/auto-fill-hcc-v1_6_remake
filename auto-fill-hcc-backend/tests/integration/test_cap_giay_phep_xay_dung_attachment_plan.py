@@ -112,7 +112,7 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
     assert res["extracted"]["congTrinhNhanh"] == "nha_o_rieng_le"
 
     app_items = by_slot["gpxd_nrl_don"]
-    assert [item["fileIndex"] for item in app_items] == [1, 0, 2]
+    assert [item["fileIndex"] for item in app_items] == [1, 0]
     assert {item["componentIndex"] for item in app_items} == {12}
     assert {item["slotIndex"] for item in app_items} == {11}
     assert "Đơn đề nghị cấp giấy phép xây dựng" in app_items[0]["componentName"]
@@ -124,7 +124,9 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
     assert "giấy tờ hợp pháp về đất đai" in land_items[0]["componentName"].lower()
 
     design_items = by_slot["gpxd_nrl_banve"]
-    assert [item["fileIndex"] for item in design_items] == [4, 3, 5, 6]
+    # Bản cam kết (file 2) vào dòng 16 cùng bản vẽ: dòng 16 của cổng ghi "…; bản cam kết bảo đảm an toàn
+    # đối với công trình liền kề".
+    assert [item["fileIndex"] for item in design_items] == [4, 3, 2, 5, 6]
     assert {item["componentIndex"] for item in design_items} == {16}
     assert {item["slotIndex"] for item in design_items} == {15}
     assert "Bộ bản vẽ thiết kế xây dựng kèm theo" in design_items[0]["componentName"]
@@ -141,6 +143,7 @@ async def test_cap_giay_phep_xay_dung_routes_sample_house_documents_to_fixed_slo
     assert by_name["Bản cam ket xây nhà 2026.pdf"]["docType"] == "safety_commitment"
     assert by_name["Sổ đỏ 1.jpg"]["componentIndex"] == 13
     assert by_name["Bản vẽ xin cấp phép xây dựng.pdf"]["componentIndex"] == 16
+    assert by_name["Bản cam ket xây nhà 2026.pdf"]["componentIndex"] == 16
 
 
 async def test_cap_giay_phep_xay_dung_khong_doan_theo_ten_file_khi_ocr_rong(monkeypatch):
@@ -312,3 +315,19 @@ def test_prompt_chot_thu_tu_uu_tien_khi_tep_quet_gop():
     assert "TUYỆT ĐỐI KHÔNG trả hai type cho một tệp" in SYSTEM_PROMPT
     # Bảng cũ NĐ 175 dùng số dòng 1/11/27 — prompt không được nhắc lại số dòng đã chết.
     assert "Dòng 11" not in SYSTEM_PROMPT and "Dòng 27" not in SYSTEM_PROMPT
+
+
+def test_ban_cam_ket_nha_o_rieng_le_vao_dong_16_ton_giao_giu_dong_don():
+    """Nhà ở riêng lẻ: bản cam kết an toàn công trình liền kề thuộc dòng 16 (dòng bản vẽ ghi rõ "bản cam
+    kết"). Khối tín ngưỡng không có dòng nào nhắc cam kết → giữ dòng Đơn (6)."""
+    files = [{"name": "cam-ket.pdf", "type": "application/pdf"}]
+    llm = {0: {"type": "safety_commitment", "title": "Bản cam kết"}}
+
+    items, _, _ = planner.build_plan_items(files, None, llm, "nha_o_rieng_le")
+    assert [(item["componentIndex"], item["slotIndex"]) for item in items] == [(16, 15)]
+
+    items, _, _ = planner.build_plan_items(files, None, llm, "khong_ro")
+    assert [item["componentIndex"] for item in items] == [16], "khối lạ về mặc định nhà ở riêng lẻ"
+
+    items, _, _ = planner.build_plan_items(files, None, llm, "tin_nguong_ton_giao")
+    assert [item["componentIndex"] for item in items] == [6]

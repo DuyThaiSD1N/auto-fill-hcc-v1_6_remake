@@ -1,5 +1,7 @@
 """Luật trích xuất riêng cho [Lào Cai] tổ chức kinh tế nhận chuyển nhượng QSDĐ dự án (1.115681)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Bộ giấy tờ của thủ tục này có TỚI BẢY NGUỒN. Nhận ra đúng từng nguồn trước khi lấy bất kỳ giá trị
@@ -94,4 +96,4 @@ EXTRA_RULES = """
 23. ⚠ TÊN DỰ ÁN VÀ TÊN CƠ QUAN BAN HÀNH GIỮ NGUYÊN VĂN kể cả khi còn mang địa danh trước sáp nhập
     ("… tại tỉnh Yên Bái", "UBND tỉnh Yên Bái"). Chỉ ĐỊA CHỈ mới được chuẩn hóa, TÊN RIÊNG thì không.
 </traps>
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

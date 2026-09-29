@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115668 (Lào Cai)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ đăng ký biến động (chuyển nhượng, thừa kế, tặng cho, góp vốn, chuyển đổi, cho thuê lại, mua tài
 sản đấu giá…) thường gồm: Đơn đăng ký biến động đất đai (Mẫu số 24); Giấy chứng nhận quyền sử dụng đất đã cấp;
 Hợp đồng/văn bản chuyển quyền đã công chứng; Giấy ủy quyền; GCN đăng ký doanh nghiệp; hóa đơn, tờ khai thuế;
@@ -36,4 +38,4 @@ NGƯỜI ĐI NỘP:
 - NguoiDuocUyQuyen chỉ điền khi có VĂN BẢN ỦY QUYỀN riêng; người đại diện theo pháp luật ghi trên GCN đăng ký
   doanh nghiệp KHÔNG phải người được ủy quyền.
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

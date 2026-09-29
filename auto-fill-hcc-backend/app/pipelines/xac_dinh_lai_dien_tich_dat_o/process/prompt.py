@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115685 (Lào Cai) — xác định lại diện tích đất ở."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <bo_ho_so_thu_tuc_nay>
 Thủ tục: Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận TRƯỚC ngày
@@ -112,4 +114,4 @@ các trang, đừng kết luận "tệp rỗng" vì trang đầu trắng.
 
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo, ChuHoSo_maTinhThanhCHS…). Không đọc được chắc chắn
 thì bỏ field, tuyệt đối không bịa.
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

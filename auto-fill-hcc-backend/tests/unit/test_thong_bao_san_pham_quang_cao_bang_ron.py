@@ -99,43 +99,10 @@ def test_so_bi_che_va_ngay_trong_khong_dien_ma_canh_bao():
               "ThongBao_TuNgay": "  /  /2026", "ThongBao_DenNgay": ""}
     fields, warnings = _run(values)
     ui = _ui(fields)
-    assert (S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp") not in ui
+    assert (S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp") not in ui and (S_TB, "Số GPKD") not in ui
     assert (S_UQ, "Số điện thoại") not in ui and (S_TB, "Từ ngày thực hiện") not in ui
     assert any("Mã số doanh nghiệp" in w for w in warnings)
     assert any("thời gian thực hiện" in w for w in warnings)
-
-
-def test_so_gpkd_thieu_so_van_dien_phan_doc_duoc():
-    """Tờ khai chỉ ghi được vài chữ số đầu (bị che) → vẫn điền phần đó vào Số GPKD và cảnh báo bổ sung."""
-    values = {**_facts(), "DoanhNghiep_MaSo": "0109"}
-    fields, warnings = _run(values)
-    ui = _ui(fields)
-    assert ui[(S_TB, "Số GPKD")] == "0109"
-    assert any("Số GPKD" in w and "0109" in w for w in warnings)
-
-
-def test_gcn_trong_ma_so_thi_lay_so_gpkd_tren_to_khai():
-    """GCN để trống mã số → LLM trả DoanhNghiep_MaSo rỗng; lấy số GPKD ghi trên tờ khai."""
-    values = {**_facts(), "DoanhNghiep_MaSo": "", "ThongBao_SoGPKD": "0109"}
-    fields, warnings = _run(values)
-    assert _ui(fields)[(S_TB, "Số GPKD")] == "0109"
-    assert any("Số GPKD" in w and "0109" in w for w in warnings)
-
-
-def test_so_gpkd_du_so_tren_to_khai_dung_cho_ca_khoi_uy_quyen():
-    values = {**_facts(), "DoanhNghiep_MaSo": "", "ThongBao_SoGPKD": "0109000002"}
-    fields, warnings = _run(values)
-    ui = _ui(fields)
-    assert ui[(S_TB, "Số GPKD")] == "0109000002"
-    assert ui[(S_UQ, "CMND/Hộ chiếu/MST Doanh nghiệp")] == "0109000002"
-    assert not any("Số GPKD" in w for w in warnings)
-
-
-def test_khong_doc_duoc_chu_so_nao_thi_bo_trong_so_gpkd():
-    values = {**_facts(), "DoanhNghiep_MaSo": "..."}
-    fields, warnings = _run(values)
-    assert (S_TB, "Số GPKD") not in _ui(fields)
-    assert not any("Số GPKD" in w for w in warnings)
 
 
 def test_khong_co_ten_doanh_nghiep_thi_khong_tich_o_uy_quyen():
@@ -147,7 +114,7 @@ def test_khong_co_ten_doanh_nghiep_thi_khong_tich_o_uy_quyen():
 
 
 def test_thieu_o_bat_buoc_cua_khoi_uy_quyen_thi_khong_tich():
-    """MST và điện thoại bị che còn vài chữ số → tích vào là cổng khoá nút nộp."""
+    """Trace req_04699ba09c29: MST "310" và điện thoại "09" bị che → tích vào là cổng khoá nút nộp."""
     values = {**_facts(), "DoanhNghiep_MaSo": "310", "DoanhNghiep_DienThoai": "09"}
     fields, warnings = _run(values)
     assert not any(f["comp"] == "liz-checkbox" for f in fields)

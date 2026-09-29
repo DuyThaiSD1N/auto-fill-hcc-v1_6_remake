@@ -146,6 +146,14 @@ _TYPES_BY_GROUP = {
 }
 
 
+# Nhóm riêng theo khối: bản cam kết bảo đảm an toàn công trình liền kề nằm trong dòng BẢN VẼ của khối
+# nhà ở riêng lẻ (STT 16 "…; bản cam kết bảo đảm an toàn đối với công trình liền kề"). Khối tín ngưỡng,
+# tôn giáo không có dòng nào nhắc bản cam kết → giữ ở nhóm Đơn.
+_GROUP_OVERRIDE_BY_NHANH: dict[str, dict[str, str]] = {
+    _NHANH_NHA_O_RIENG_LE: {_DOC_SAFETY_COMMITMENT: _GROUP_BANVE},
+}
+
+
 def slots_for(nhanh: str) -> dict[str, dict[str, Any]]:
     return _SLOTS_BY_NHANH.get(nhanh or "", _SLOTS_BY_NHANH[_DEFAULT_NHANH])
 
@@ -287,7 +295,11 @@ def _ordered_entries(entries: list[dict]) -> list[dict]:
     return sorted(entries, key=lambda item: (_GROUP_PRIORITY.get(item["docType"], 99), item["idx"]))
 
 
-def _group_for_type(doc_type: str) -> str:
+def _group_for_type(doc_type: str, nhanh: str = _DEFAULT_NHANH) -> str:
+    block = nhanh if nhanh in _SLOTS_BY_NHANH else _DEFAULT_NHANH
+    override = _GROUP_OVERRIDE_BY_NHANH.get(block, {}).get(doc_type)
+    if override:
+        return override
     for group, types in _TYPES_BY_GROUP.items():
         if doc_type in types:
             return group
@@ -342,7 +354,7 @@ def build_plan_items(
     routed = {group: [] for group in _TYPES_BY_GROUP}
     skipped_entries: list[dict] = []
     for entry in resolved:
-        group = _group_for_type(entry["docType"])
+        group = _group_for_type(entry["docType"], nhanh)
         (routed[group] if group else skipped_entries).append(entry)
 
     attachments: list[dict] = []

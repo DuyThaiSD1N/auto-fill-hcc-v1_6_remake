@@ -20,7 +20,9 @@ Chọn nguồn theo sheet "Ma trận đa nguồn" của "Mapping_CMDSDD_1.115679
   · `submitterMode="owner_as_submitter"` — THEO TỜ KHAI: bỏ mốc, lấy BÊN ĐƯỢC UỶ QUYỀN, không có văn bản
     uỷ quyền thì lấy chủ hồ sơ (chủ hồ sơ là TỔ CHỨC thì chỉ nhận bên được uỷ quyền — tổ chức không tự đi
     nộp). Chế độ này PHẢI ghi đè cả "Họ và tên" + "Số Căn cước" vì người nộp khác người cổng đổ sẵn; để
-    nguyên là khối thành nửa của tài khoản nửa của người trong hồ sơ. Lệch tài khoản thì cảnh báo.
+    nguyên là khối thành nửa của tài khoản nửa của người trong hồ sơ. Họ tên + căn cước ghi TRƯỚC các
+    ô khác; ô nhân thân cổng đổ từ tài khoản mà hồ sơ không có thì phát lệnh XOÁ
+    (`_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop`). Lệch tài khoản thì cảnh báo.
 
 ⚠ Ô "Giới tính" của cổng không có option trống nên luôn hiển thị "Nữ": hồ sơ nam giới mà thiếu giới tính là
 nộp sai mà form vẫn trông như đã chọn → cố gắng suy từ xưng hô Ông/Bà khi không có ảnh thẻ.
@@ -32,6 +34,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.lao_cai_nguoi_nop import chot_khoi_nguoi_nop
 from app.pipelines.chuyen_md_sd_dat_phuong_xa_lao_cai.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 _FULL_DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
@@ -465,4 +468,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             _phone(values.get("Don_DienThoai")) or _phone(values.get("PhieuChuyen_DienThoai")))
         add("ChuHoSo_emailChuHoSo", _email(values.get("Don_Email")))
 
+    out = chot_khoi_nguoi_nop(
+        out, theo_to_khai=theo_to_khai, comp_by_name=UI_COMP_BY_NAME, warnings=warnings
+    )
     return out, warnings

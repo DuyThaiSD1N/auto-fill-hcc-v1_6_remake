@@ -6,9 +6,9 @@ Cổng dichvucong.laocai.gov.vn (iGate VNPT / Nth.FormBuilder, form jQuery — f
 thuộc tính `name`. Mapping theo "Mapping_XN_thoi_han_SDD_nong_nghiep_LaoCai.xlsx" (34 ô bước 2, bóc
 tách từ cả hai biến thể DOM Cá nhân/Tổ chức).
 
-⚠ HAI Ô KHÔNG BAO GIỜ PHÁT: `CongDan_tenCongDan` và `CongDan_soCmnd` là readonly, cổng tự điền từ tài
-khoản định danh đã đăng nhập; script của cổng còn XOÁ TRẮNG "Di động" + "Số Căn cước" khi họ tên bị
-sửa khác tài khoản. Vì vậy chúng không có trong UI_COMP_BY_NAME (xem mapper).
+⚠ `CongDan_tenCongDan` và `CongDan_soCmnd` là readonly, cổng tự điền từ tài khoản định danh đã đăng
+nhập; script của cổng XOÁ TRẮNG "Di động" + "Số Căn cước" khi họ tên bị sửa. Chế độ tài khoản không
+phát hai ô này; chế độ tờ khai ghi chúng TRƯỚC các ô khác (`_shared/lao_cai_nguoi_nop`, xem mapper).
 
 ⚠ Bước 3 "Thành phần hồ sơ" CHỈ có ảnh chụp màn hình, chưa có DOM; khối "Biểu mẫu giấy tờ" (e-form kê
 khai mục 3.1–3.8 của Đơn 39) đang thu gọn/chưa render (sheet "Cảnh báo trường ẩn"). Vì vậy các dữ kiện
@@ -128,8 +128,9 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ChuHoSo_DiaChiDon",
-        "desc": "Địa chỉ ghi ở mục 2 'Địa chỉ liên hệ' của Đơn Mẫu số 39, " + _AREA_DESC + " ĐÂY LÀ NƠI "
-                "CƯ TRÚ — TUYỆT ĐỐI không lấy mục '3.7. Địa điểm thửa đất/khu đất' (đó là vị trí đất).",
+        "desc": "Địa chỉ ghi ở mục 2 'Địa chỉ liên hệ' của Đơn Mẫu số 39 — field DUY NHẤT nhận địa chỉ này, "
+                + _AREA_DESC + " ĐÂY LÀ NƠI CƯ TRÚ — TUYỆT ĐỐI không lấy mục '3.7. Địa điểm thửa đất/khu "
+                "đất' (đó là vị trí đất).",
     },
     {
         "name": "ChuHoSo_DiaChiToChuc",
@@ -212,19 +213,22 @@ FIELDS: list[dict] = [
     },
 ]
 
-ALLOWED = {field["name"] for field in FIELDS}
+# Qwen hay xếp địa chỉ mục 2 của Đơn vào nhóm Don_* và tự đặt tên (Don_DiaChi, Don_DiaChiDon) dù prompt
+# ghi rõ ChuHoSo_DiaChiDon — bước lọc bỏ tên lạ là mất luôn địa chỉ. Nhận các tên đó ở bước lọc (KHÔNG đưa
+# vào FIELDS nên không lộ ra prompt); mapper quy về ChuHoSo_DiaChiDon, tên chuẩn thắng.
+TEN_LECH_DIA_CHI_DON = ("Don_DiaChi", "Don_DiaChiDon")
+
+ALLOWED = {field["name"] for field in FIELDS} | set(TEN_LECH_DIA_CHI_DON)
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in ("ChuHoSo_NgayCap", "Gcn_NgayCap", "Don_NgayLap"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiToChuc", "ThuaDat_DiaChi"):
+for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiToChuc", "ThuaDat_DiaChi", *TEN_LECH_DIA_CHI_DON):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 # ---- Ô UI THẬT ở bước 2 (thuộc tính `name`, Nth.FormBuilder). <select> native → dom-select, còn lại
 # (kể cả datetime-picker) → dom-input. Danh sách bám đúng 34 dòng của file mapping; các ô CỐ Ý không khai:
-#   CongDan_tenCongDan / CongDan_soCmnd : readonly, cổng điền từ tài khoản định danh — sửa họ tên là
-#                                         cổng xoá trắng Di động + Số Căn cước.
 #   CongDan_maDMDiaChi                  : input ẩn (display:none), label rỗng, chưa xác định được nhãn.
 #   chkbox_nguoinoplachuhs              : checkbox "Người nộp là chủ hồ sơ" — mapper luôn phát ĐỦ khối
 #                                         chủ hồ sơ nên không cần bấm; tự bấm còn rủi ro cổng xoá dữ liệu.
@@ -233,6 +237,9 @@ for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiToChuc", "ThuaDat_DiaChi"):
 UI_COMP_BY_NAME = {
     # Phần I — Thông tin người nộp (CHÍNH NGƯỜI ĐI NỘP: người sử dụng đất tự nộp, vợ/chồng cùng sử dụng
     # đất nộp thay, hoặc người được ủy quyền).
+    # Họ tên/Số Căn cước readonly, cổng đổ từ tài khoản — chỉ phát ở chế độ tờ khai (xem mapper).
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",

@@ -23,10 +23,13 @@ function fold(value: string): string {
 
 export default function AccountMultiSelect({
   accounts,
+  counts,
   selectedIds,
   onChange,
 }: {
   accounts: ReportAccount[];
+  /** Số hồ sơ theo id tài khoản trong khoảng ngày đang chọn — có thì hiện cạnh từng dòng. */
+  counts?: Map<string, number>;
   selectedIds: string[];
   onChange: (ids: string[]) => void;
 }) {
@@ -94,7 +97,7 @@ export default function AccountMultiSelect({
       </div>
 
       <div className="account-picker-summary" aria-live="polite">
-        Đã chọn <strong>{selected.size.toLocaleString("vi-VN")}</strong> / {accounts.length.toLocaleString("vi-VN")} tài khoản
+        Đã chọn <strong>{accounts.filter((account) => selected.has(account.id)).length.toLocaleString("vi-VN")}</strong> / {accounts.length.toLocaleString("vi-VN")} tài khoản
       </div>
 
       <div className="account-picker-list" role="group" aria-label="Danh sách tài khoản có thể xuất báo cáo">
@@ -112,6 +115,7 @@ export default function AccountMultiSelect({
               </span>
               <span className="account-check-meta">
                 {account.username} · {account.xa || "Chưa xác định xã"} · {account.tinh || "Chưa xác định tỉnh"}
+                {counts && ` · ${(counts.get(account.id) ?? 0).toLocaleString("vi-VN")} hồ sơ`}
               </span>
             </span>
           </label>

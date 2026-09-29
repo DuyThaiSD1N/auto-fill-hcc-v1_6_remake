@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115682 (Lào Cai) — sử dụng đất kết hợp đa mục đích (cấp xã)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <bo_ho_so_thu_tuc_nay>
 Thủ tục: Sử dụng đất kết hợp đa mục đích (cấp xã) — cổng DVC tỉnh Lào Cai, theo Điều 218 Luật Đất đai
@@ -118,4 +120,4 @@ bản đồ, mặt bằng, mặt đứng, chi tiết móng. Đọc hết các tr
 
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo, ChuHoSo_maTinhThanhCHS…). Không đọc được chắc chắn
 thì bỏ field, tuyệt đối không bịa.
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

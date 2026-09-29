@@ -12,12 +12,12 @@ và mã số thuế cho cả hai khối.
 
 ⚑ `CongDan_tenCongDan` / `CongDan_soCmnd` là readonly, cổng tự đổ tên + số căn cước của TÀI KHOẢN
 ĐANG ĐĂNG NHẬP — và đó cũng là MỐC để biết ai đang đi nộp (extension đọc, gửi lên trong
-`options.formContext`). Hai ô này VẪN ĐƯỢC PHÁT để cả khối là MỘT người: bỏ trống chúng thì khối thành
-nửa của tài khoản (tên, căn cước) nửa của người trong hồ sơ (ngày sinh, địa chỉ, di động).
+`options.formContext`). Chế độ theo tài khoản KHÔNG ghi hai ô này (cổng đã đổ đúng); chế độ theo tờ
+khai ghi họ tên + căn cước của người trong hồ sơ TRƯỚC các ô khác rồi xoá nhân thân tài khoản mà hồ sơ
+không có (`_shared/lao_cai_nguoi_nop`).
 ⚠ `setNativeValue` ghi được cả ô readonly, nhưng khi bấm "Đồng ý và tiếp tục" cổng gửi chính hai ô đó
 KÈM NGÀY SINH sang CSDL quốc gia dân cư để xác thực: lệch tài khoản là CHẶN NỘP ("Thông tin người nộp
-hồ sơ không đúng với tài khoản đăng nhập!"). Vì vậy chế độ theo tài khoản ghi lại ĐÚNG giá trị mốc,
-còn chế độ theo tờ khai thì cảnh báo khi lệch (xem mapper).
+hồ sơ không đúng với tài khoản đăng nhập!") → chế độ theo tờ khai cảnh báo khi lệch (xem mapper).
 """
 
 _AREA_DESC = (

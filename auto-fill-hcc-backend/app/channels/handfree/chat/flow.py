@@ -114,6 +114,10 @@ class Reply:
     # Giọng đọc cho tts_text: "vi" | "hmong". handle_turn tự gắn "hmong" khi lượt này
     # có đoạn TTS tiếng Mông (conv lang=hmong + có bản dịch) — FE truyền thẳng cho /ws/tts.
     tts_lang: str = "vi"
+    # Cập nhật TẠI CHỖ bong bóng bot gần nhất thay vì thêm bong bóng mới (FE sửa chữ trong bong
+    # bóng đang có, router thay câu bot cuối trong history). Chỉ đặt khi client khai
+    # supportsReplaceLast — client cũ không biết cờ này sẽ vẽ thêm như trước.
+    replace_last: bool = False
 
 
 # ── Helpers dựng card/chip ──
@@ -601,6 +605,26 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
     stt1_virtual = conv.get("attach_plan_stt1_virtual")
     if stt1_virtual:
         action["stt1VirtualCopy"] = stt1_virtual
+    # Tách nhiều hồ sơ: các tab tách chạy khung hồ sơ phụ CHỈ ĐỌC — không nói chuyện với BE nên
+    # không bao giờ nhận lệnh select_result_method của hồ sơ chính. Gửi sẵn lệnh gạt mặc định
+    # theo đây để khung phụ tự gạt trên chính trang của nó khi tới bước nhận kết quả.
+    if action["mode"] == "split" and guided.result_methods_enabled(conv, proc):
+        default = guided.default_result_method(proc) or {}
+        result_action = guided.select_result_method_action(proc, str(default.get("key") or ""))
+        if result_action:
+            # Kèm cả danh sách để khung phụ vẽ card 3 lựa chọn như hồ sơ chính — công dân ở tab
+            # tách cũng đổi được cách nhận mà khung phụ không phải hỏi BE.
+            result_action["options"] = [
+                {
+                    "key": str(method.get("key") or ""),
+                    "label": str(method.get("label") or ""),
+                    "icon": str(method.get("icon") or ""),
+                    "desc": str(method.get("desc") or ""),
+                    "needsInput": bool(method.get("needsInput")),
+                }
+                for method in guided.result_methods(proc)
+            ]
+            action["resultMethod"] = result_action
     dispatch_id = _begin_attach_action(conv)
     if dispatch_id:
         action["dispatch_id"] = dispatch_id
@@ -1017,7 +1041,7 @@ def _apply_location(conv: dict, payload: dict) -> Reply:
         return Reply()
     # Đang xác nhận thủ tục: nơi làm đổi → hỏi lại câu xác nhận với nơi MỚI.
     if state == "confirm_procedure" and conv.get("procedure_key"):
-        return _to_confirm_procedure(conv, conv["procedure_key"])
+        return _confirm_procedure_refresh(conv)
     return Reply(*_fmt(vi.CHANGED_LOCATION, ward=loc["ward"] or "(chưa chọn xã)", province=loc["province"]))
 
 
@@ -1032,7 +1056,30 @@ def _apply_execution_subject(conv: dict, payload: dict) -> Reply:
     if requested not in valid_keys:
         return Reply()
     conv["execution_subject"] = requested
+    # Câu xác nhận có ghi đối tượng ("…cho bản thân — đúng không ạ?") → đổi đối tượng thì sửa
+    # câu đó tại chỗ. Client cũ không sửa tại chỗ được: giữ im lặng như trước, kẻo mỗi lần đổi
+    # lại đẻ thêm một bong bóng.
+    if (conv.get("state") == "confirm_procedure" and conv.get("procedure_key")
+            and _supports_replace_last(conv)):
+        return _confirm_procedure_refresh(conv)
     return Reply()
+
+
+def _supports_replace_last(conv: dict) -> bool:
+    return (conv.get("client_capabilities") or {}).get("supportsReplaceLast") is True
+
+
+def _confirm_procedure_refresh(conv: dict) -> Reply:
+    """Công dân vừa chỉnh nơi làm/đối tượng ngay trên card xác nhận → câu hỏi theo lựa chọn MỚI.
+
+    Client mới: sửa TẠI CHỖ bong bóng đang có, không đọc lại (công dân vừa tự bấm, đọc lại mỗi
+    lần chọn dropdown là ồn). Client cũ: vẽ thêm câu xác nhận như trước.
+    """
+    r = _to_confirm_procedure(conv, conv["procedure_key"])
+    if _supports_replace_last(conv):
+        r.replace_last = True
+        r.tts_text = ""
+    return r
 
 
 def _to_confirm_procedure(conv: dict, key: str) -> Reply:
@@ -1238,6 +1285,24 @@ def _start_guide_login(conv: dict) -> Reply:
     return r
 
 
+def submit_click_is_after_text(conv: dict, clicked_at_ms: object) -> bool:
+    """Cú bấm (giờ bấm thật, epoch ms) xảy ra SAU mốc dò chữ "nộp thành công" đang ghi?
+
+    Màn kết quả chỉ hiện SAU cú bấm của chính lần nộp đó, nên cú bấm cùng lần luôn sớm hơn mốc
+    dò chữ. Không có giờ bấm (extension cũ) → coi là cùng lần như trước.
+    """
+    text_at = conv.get("submit_clicked_at")
+    if clicked_at_ms is None or not isinstance(text_at, datetime):
+        return False
+    try:
+        clicked = datetime.fromtimestamp(float(clicked_at_ms) / 1000, tz=timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return False
+    if text_at.tzinfo is None:
+        text_at = text_at.replace(tzinfo=timezone.utc)
+    return clicked > text_at
+
+
 def _record_submit_click(conv: dict, payload: dict) -> Reply:
     """Công dân vừa bấm "Gửi hồ sơ" trên cổng — CHỈ chấm mốc, không đụng hội thoại.
 
@@ -1255,13 +1320,20 @@ def _record_submit_click(conv: dict, payload: dict) -> Reply:
     # cú bấm đến sau là bấm trên trang thành công, KHÔNG phải lần nộp thứ hai. Đẩy mốc mới ở
     # đây là router thấy mốc lạ và ghi thêm một sự kiện nữa → một lần nộp đếm thành hai.
     # Chỉ nâng nhãn nguồn, giữ nguyên mốc đã ghi.
-    if conv.get("submit_clicked_at") and conv.get("submit_clicked_source") == "text":
+    #
+    # Extension mới gửi kèm giờ bấm thật: cú bấm SAU mốc dò chữ là lần nộp khác (chứng thực tách —
+    # tab gốc được ghi bằng dò chữ, rồi tab tách bấm nộp hồ sơ của nó) → phải ghi sự kiện mới.
+    if conv.get("submit_clicked_at") and conv.get("submit_clicked_source") == "text" \
+            and not submit_click_is_after_text(conv, payload.get("clicked_at")):
         conv["submit_clicked_source"] = "click"
     else:
         conv["submit_clicked_at"] = datetime.now(timezone.utc)
         conv["submit_clicked_source"] = "click"
         conv["submit_portal_host"] = str(payload.get("host") or "")[:200]
         conv["submit_dossier_ref"] = str(payload.get("ref") or "")[:100]
+        # Background extension báo CÙNG cú bấm này qua đường riêng; hai đường mang chung mã
+        # để sổ hồ sơ chỉ ghi một sự kiện. Extension cũ không gửi → rỗng, ghi như cũ.
+        conv["submit_click_id"] = str(payload.get("click_id") or "")[:64]
     # Bấm nộp = coi như đã nộp → hỏi đánh giá NGAY, giống hệt Auto Fill. Không chờ cổng báo
     # "nộp hồ sơ thành công": câu chữ đó khác nhau theo cổng và chỉ thu thập được bằng cách nộp
     # hồ sơ thật, nên chờ nó là phần lớn cổng không bao giờ hỏi được.
@@ -3389,6 +3461,7 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         if not conv.get("submit_clicked_at"):
             conv["submit_clicked_at"] = datetime.now(timezone.utc)
             conv["submit_clicked_source"] = "text"
+            conv["submit_click_id"] = ""
         # Công dân ĐÃ đánh giá xong và ta đã hiện 2 nút đăng xuất từ trước (lúc đó submitted chưa
         # fire nên chưa kèm đồng hồ) → giờ cổng xác nhận: CHỈ khởi động đồng hồ tự đăng xuất, KHÔNG
         # đẻ khối nút thứ hai (nút đã có sẵn trên màn).

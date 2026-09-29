@@ -137,6 +137,10 @@ from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_lao_cai.attach import plan as xoa_dk_bpbd_lao_cai_attach
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_lao_cai.process import run as xoa_dk_bpbd_lao_cai_process
+from app.pipelines.dang_ky_bien_phap_bao_dam_lao_cai.attach import plan as dk_bpbd_lao_cai_attach
+from app.pipelines.dang_ky_bien_phap_bao_dam_lao_cai.process import run as dk_bpbd_lao_cai_process
+from app.pipelines.dang_ky_thay_doi_bien_phap_bao_dam_lao_cai.attach import plan as dktd_bpbd_lao_cai_attach
+from app.pipelines.dang_ky_thay_doi_bien_phap_bao_dam_lao_cai.process import run as dktd_bpbd_lao_cai_process
 from app.pipelines.cho_thue_dat_thue_rung.attach import plan as cho_thue_dat_thue_rung_attach
 from app.pipelines.cho_thue_dat_thue_rung.process import run as cho_thue_dat_thue_rung_process
 from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhung_sqdd_du_an.attach import (
@@ -219,6 +223,8 @@ from app.pipelines.cap_hoc_tap_bac_ninh.attach import plan as cap_hoc_tap_bac_ni
 from app.pipelines.cap_hoc_tap_bac_ninh.process import run as cap_hoc_tap_bac_ninh_process
 from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.process import run as dinh_chinh_gcn_dn_process
 from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.attach import plan as dinh_chinh_gcn_dn_attach
+from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.process import run as nhan_chuyen_nhuong_du_an_dn_process
+from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.attach import plan as nhan_chuyen_nhuong_du_an_dn_attach
 from app.pipelines.tach_hop_thua_dat_bac_ninh.process import run as tach_hop_thua_dat_bac_ninh_process
 from app.pipelines.tach_hop_thua_dat_bac_ninh.attach import plan as tach_hop_thua_dat_bac_ninh_attach
 from app.pipelines.doi_ten_nuoc_sach.attach import plan as doi_ten_nuoc_sach_attach
@@ -309,6 +315,10 @@ from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.attach import plan
 from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.process import run as dieu_chinh_gphn_chuyen_tiep_process
 from app.pipelines.cap_moi_giay_phep_hoat_dong_kham_benh_chua_benh.attach import plan as cap_moi_gphd_kbcb_attach
 from app.pipelines.cap_moi_giay_phep_hoat_dong_kham_benh_chua_benh.process import run as cap_moi_gphd_kbcb_process
+from app.pipelines.cap_lai_giay_phep_hanh_nghe_truoc_2024.attach import plan as cap_lai_gphn_truoc_2024_attach
+from app.pipelines.cap_lai_giay_phep_hanh_nghe_truoc_2024.process import run as cap_lai_gphn_truoc_2024_process
+from app.pipelines.dieu_chinh_giay_phep_hoat_dong_kcb.attach import plan as dieu_chinh_gphd_kcb_attach
+from app.pipelines.dieu_chinh_giay_phep_hoat_dong_kcb.process import run as dieu_chinh_gphd_kcb_process
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.attach import plan as cap_cchn_duoc_attach
 from app.pipelines.cap_chung_chi_hanh_nghe_duoc.process import run as cap_cchn_duoc_process
 from app.pipelines.cap_lai_dieu_chinh_gcn_du_dieu_kien_kinh_doanh_duoc_so_y_te.attach import (
@@ -2512,6 +2522,73 @@ PROCEDURES: list[dict] = [
             "⚠ Không có văn bản đồng ý xóa thế chấp riêng thì tệp Phiếu 03a (đã có chữ ký, con dấu bên "
             "nhận bảo đảm) được đính chung vào dòng 'Văn bản đồng ý xóa thế chấp'. Dòng GCN được ghi 'Số "
             "bản' theo số trang Giấy chứng nhận. CCCD và giấy tờ ngoài danh mục vào 'Giấy tờ khác'."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-phap-bao-dam-lao-cai",
+        # 1.011441.000.00.00.H38 (Văn phòng đăng ký đất đai tỉnh Lào Cai), cùng eForm iGate với thủ tục xóa
+        # đăng ký 1.011443. Mã QG dùng chung với Bắc Ninh/Đà Nẵng/Quảng Ninh → khóa host laocai. Tên thủ tục
+        # là chuỗi con của tiêu đề "Xóa đăng ký biện pháp bảo đảm bằng…" nên phải khóa thêm bằng MÃ.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "1.011441",
+                "Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai - Cấp Sở] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu yêu cầu đăng ký biện pháp bảo đảm (Mẫu số 01a) đã ký — dùng để điền thông tin người "
+            "yêu cầu đăng ký (chủ hồ sơ).\n"
+            "2. Hợp đồng thế chấp có công chứng/chứng thực (kèm lời chứng, biên bản định giá nếu có).\n"
+            "3. Giấy chứng nhận quyền sử dụng đất (BẮT BUỘC, scan đủ các trang).\n"
+            "4. Giấy giới thiệu hoặc văn bản ủy quyền của người đi nộp (khi cán bộ ngân hàng/quỹ tín dụng "
+            "nộp thay).\n"
+            "5. CCCD, giấy chứng nhận đăng ký doanh nghiệp, giấy tờ khác (nếu có).\n"
+            "⚠ Mọi Giấy chứng nhận vào dòng bắt buộc thứ 2; dòng GCN thứ 4 chỉ dùng khi hồ sơ có Giấy chứng "
+            "nhận thứ hai. Tệp gộp nhiều giấy tờ được ghi rõ ở ô 'Ghi chú'; ô 'Về việc' giữ nguyên chữ cổng."
+        ),
+    },
+    {
+        "key": "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai",
+        # 1.011442.000.00.00.H38 (Văn phòng đăng ký đất đai tỉnh Lào Cai), cùng eForm iGate với 1.011441/
+        # 1.011443. Mã QG dùng chung nhiều tỉnh → khóa host laocai + mã + cụm tên.
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": [
+                "1.011442",
+                "thay đổi nội dung biện pháp bảo đảm",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai - Cấp Sở] Đăng ký thay đổi nội dung biện pháp bảo đảm bằng quyền sử dụng đất, tài "
+            "sản gắn liền với đất đã đăng ký"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Phiếu yêu cầu đăng ký thay đổi (Mẫu số 02a) đã ký — đính vào dòng 'Đơn yêu cầu đăng ký thế "
+            "chấp' (bắt buộc) theo hướng dẫn của cổng.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất (đủ các trang, kể cả trang bổ sung).\n"
+            "3. Hợp đồng thế chấp / hợp đồng sửa đổi, bổ sung (nếu có).\n"
+            "4. Giấy giới thiệu hoặc văn bản ủy quyền của người đi nộp (nếu có).\n"
+            "5. Văn bản chứng minh việc thay đổi (đổi tên ngân hàng, chuyển giao quyền đòi nợ…), CCCD người "
+            "nộp (nếu có) — vào 'Giấy tờ khác' kèm tên tài liệu.\n"
+            "⚠ Ô 'Về việc' giữ nguyên chữ cổng; tệp gộp nhiều giấy tờ được ghi rõ ở ô 'Ghi chú'."
         ),
     },
     {
@@ -4916,6 +4993,22 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": "Cấp mới giấy phép hoạt động khám bệnh, chữa bệnh",
+        "key": "cap-lai-giay-phep-hanh-nghe-truoc-2024",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, field-key TRÙNG KHÍT cap-moi-giay-phep-hanh-nghe-
+        # chuyen-tiep; attach BẢNG attp-row ~34 dòng trùng tên (xem planner). Trang không in mã TTHC, URL SPA
+        # là ObjectId → detect theo cụm tên đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024 "
+                 "đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực "
+                 "hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng "
+                 "lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -4939,6 +5032,48 @@ PROCEDURES: list[dict] = [
             "dòng 4 (người phụ trách bộ phận chuyên môn — cơ sở có người phụ trách riêng thì cán bộ thay tệp); "
             "bản kê khai + giấy tờ chứng minh → dòng 5; danh sách hành nghề → dòng 6; danh mục kỹ thuật → dòng "
             "8. Dòng 7, 9, 10, 11 (bệnh viện / nhân đạo) chỉ đính khi hồ sơ có giấy tờ tương ứng."
+            "Giấy tờ cần tải lên để tự động điền (đều là của NGƯỜI HÀNH NGHỀ đề nghị cấp lại):\n"
+            "1. Đơn đề nghị theo Mẫu 08 Phụ lục I NĐ 96/2023 — đã ký.\n"
+            "2. Chứng chỉ / giấy phép hành nghề đã được cấp.\n"
+            "3. 02 ảnh chân dung 4x6 nền trắng.\n"
+            "4. Thẻ Căn cước công dân của người hành nghề; nếu người KHÁC nộp thay: tải kèm CCCD của người nộp.\n"
+            "5. Giấy tờ khác nếu có (giấy khám sức khỏe, tài liệu chứng minh thông tin thay đổi…).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Người nộp: nếu tài khoản đăng nhập là người hành nghề (hoặc bật cài đặt 'Người nộp = chủ hồ sơ') "
+            "thì extension điền Phần 1 và giữ tích 'Người nộp là chủ hồ sơ'; nếu người KHÁC nộp thay thì bỏ "
+            "tích, điền Phần 2 (người hành nghề) riêng.\n"
+            "Bước đính kèm: mỗi giấy tờ được tick vào đúng dòng thành phần hồ sơ (Đơn Mẫu 08 / Giấy phép đã "
+            "cấp / Ảnh chân dung / …); CCCD và giấy tờ chưa nhận ra được đính chung dòng Đơn."
+        ),
+    },
+    {
+        "key": "dieu-chinh-giay-phep-hoat-dong-kcb",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io field-key như các thủ tục BYT; chủ hồ sơ là CƠ SỞ
+        # (tổ chức) → mapper chọn data[chonDoiTuong] loại tổ chức trước để ô tên tổ chức hiện ra. Attach
+        # attp-row 5 dòng (2 dòng Đơn trùng tên). Trang không in mã TTHC, URL SPA là ObjectId → detect theo tên.
+        "detect": {
+            "textIncludes": ["điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Điều chỉnh giấy phép hoạt động khám bệnh, chữa bệnh",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của CƠ SỞ khám bệnh, chữa bệnh đề nghị điều chỉnh):\n"
+            "1. Đơn đề nghị cấp điều chỉnh giấy phép hoạt động (Mẫu 02 Phụ lục II NĐ 96/2023) — đã ký, đóng dấu.\n"
+            "2. Giấy phép hoạt động khám bệnh, chữa bệnh đã được cấp (và quyết định của Sở Y tế kèm theo nếu có).\n"
+            "3. Quyết định tổ chức lại / đổi tên của UBND hoặc giấy tờ chứng minh việc thay đổi.\n"
+            "4. Bản kê khai cơ sở vật chất, thiết bị, nhân sự (khi thay đổi quy mô, phạm vi, danh mục kỹ thuật).\n"
+            "5. CCCD của người ký Đơn (để điền ngày sinh, số CCCD người đại diện); nếu người KHÁC nộp thay: "
+            "tải kèm CCCD của người nộp.\n"
+            "Người nộp: nếu tài khoản đăng nhập là người ký Đơn (hoặc bật cài đặt 'Người nộp = chủ hồ sơ') thì "
+            "extension điền Phần 1 theo cơ sở và giữ tích 'Người nộp là chủ hồ sơ'; nếu người KHÁC nộp thay thì "
+            "bỏ tích, điền Phần 2 (cơ sở + người đại diện) riêng.\n"
+            "Bước đính kèm: Đơn vào dòng Đơn Mẫu 02; giấy phép + quyết định của Sở Y tế vào dòng 'Bản gốc giấy "
+            "phép hoạt động'; quyết định tổ chức lại, CCCD và giấy tờ khác vào dòng 'điểm b khoản 3 Điều 54'."
         ),
     },
     {
@@ -5718,6 +5853,42 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang",
+        # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, field-key TRÙNG KHÍT dang-ky-bien-dong-dat-
+        # dai-da-nang (panel "Thông tin chung"). Attach attp-row 11 dòng (dòng trùng + 1 dòng không tên →
+        # componentIndex), hồ sơ thường 1 PDF gộp → tách theo trang. urlScope khoá host: CÙNG tên thủ tục với
+        # bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai).
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": [
+                "cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng "
+                "trong dự án bất động sản",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Đà Nẵng] Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với "
+                 "đất cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng "
+                 "trong dự án bất động sản",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể là MỘT file scan gộp cả bộ hồ sơ — hệ thống tự tách theo trang):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký.\n"
+            "2. Hợp đồng chuyển nhượng với chủ đầu tư dự án + biên bản bàn giao nhà, đất.\n"
+            "3. Giấy chứng nhận đã cấp cho chủ đầu tư dự án; văn bản đủ điều kiện chuyển nhượng (Sở Xây dựng).\n"
+            "4. Chứng từ nghĩa vụ tài chính / tờ khai lệ phí trước bạ, thuế sử dụng đất phi nông nghiệp (nếu có).\n"
+            "5. CCCD người nhận chuyển nhượng; nếu nộp thay: văn bản ủy quyền + CCCD người được ủy quyền.\n"
+            "Form điền: Chủ hồ sơ = bên NHẬN chuyển nhượng (người mua) + Người nộp. Tự nộp → tích 'Chủ hồ sơ "
+            "cũng là người nộp'; ủy quyền → bỏ tích và điền cả hai. Ô 'Nội dung yêu cầu giải quyết' chép mục 2 "
+            "'Nội dung biến động' của Đơn Mẫu 18.\n"
+            "Bước đính kèm: mỗi giấy vào đúng dòng (Đơn Mẫu 18 / Hợp đồng / Biên bản bàn giao / GCN chủ đầu tư "
+            "/ Văn bản đủ điều kiện / Chứng từ tài chính); CCCD, ủy quyền và giấy khác vào dòng Đơn."
+        ),
+    },
+    {
         "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn",
         # Mã TTHC 1.013995. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
         # dom-* (CÙNG field-key panel "Thông tin chung" với #75) + attach attp-row 8 dòng, tách PDF gộp theo
@@ -6346,6 +6517,8 @@ _PIPELINE = {
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_process,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_process,
     "xoa-dang-ky-bien-phap-bao-dam-lao-cai": xoa_dk_bpbd_lao_cai_process,
+    "dang-ky-bien-phap-bao-dam-lao-cai": dk_bpbd_lao_cai_process,
+    "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai": dktd_bpbd_lao_cai_process,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_process,
     "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_process,
     "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an": to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_process,
@@ -6434,6 +6607,8 @@ _PIPELINE = {
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_process,
     "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": dieu_chinh_gphn_chuyen_tiep_process,
     "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": cap_moi_gphd_kbcb_process,
+    "cap-lai-giay-phep-hanh-nghe-truoc-2024": cap_lai_gphn_truoc_2024_process,
+    "dieu-chinh-giay-phep-hoat-dong-kcb": dieu_chinh_gphd_kcb_process,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_process,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_process,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_process,
@@ -6453,6 +6628,7 @@ _PIPELINE = {
     "cap-doi-gcn-da-nang": cap_doi_gcn_dn_process,
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_process,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
+    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
@@ -6539,6 +6715,8 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-gcn-da-cap-lao-cai": dinh_chinh_gcn_da_cap_lao_cai_attach,
     "giao-thue-dat-lao-cai": giao_thue_dat_lao_cai_attach,
     "xoa-dang-ky-bien-phap-bao-dam-lao-cai": xoa_dk_bpbd_lao_cai_attach,
+    "dang-ky-bien-phap-bao-dam-lao-cai": dk_bpbd_lao_cai_attach,
+    "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai": dktd_bpbd_lao_cai_attach,
     "cho-thue-dat-thue-rung": cho_thue_dat_thue_rung_attach,
     "tang-cho-qsdd-nha-nuoc-chua-cap-gcn": tang_cho_qsdd_nha_nuoc_chua_cap_gcn_attach,
     "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an": to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_attach,
@@ -6615,6 +6793,8 @@ _ATTACH_PIPELINE = {
     "cap-moi-giay-phep-hanh-nghe-chuyen-tiep": cap_moi_gphn_chuyen_tiep_attach,
     "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep": dieu_chinh_gphn_chuyen_tiep_attach,
     "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh": cap_moi_gphd_kbcb_attach,
+    "cap-lai-giay-phep-hanh-nghe-truoc-2024": cap_lai_gphn_truoc_2024_attach,
+    "dieu-chinh-giay-phep-hoat-dong-kcb": dieu_chinh_gphd_kcb_attach,
     "cap-chung-chi-hanh-nghe-duoc": cap_cchn_duoc_attach,
     "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te": cap_lai_dieu_chinh_gcn_dkkd_duoc_attach,
     "cap-van-ban-chap-thuan-tau-ca": cap_vb_chap_thuan_tau_ca_attach,
@@ -6634,6 +6814,7 @@ _ATTACH_PIPELINE = {
     "cap-doi-gcn-da-nang": cap_doi_gcn_dn_attach,
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_attach,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
+    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,

@@ -381,6 +381,39 @@ def _merge_unreadable_segments(segments: list[dict]) -> list[dict]:
     return sorted(kept, key=lambda item: (item["fileIndex"], item["pageFrom"]))
 
 
+_SPARSE_PAGE_MAX_CHARS = 60
+
+
+def _is_sparse_text(text: str) -> bool:
+    """Mặt sau trắng/chỉ có dấu đỏ hằn qua: OCR hay trả MỘT dòng tên cơ quan đọc bừa từ con dấu
+    ("SỞ GIÁO DỤC VÀ ĐÀO TẠO TỈNH ..."). Giấy tờ thật dù một trang cũng dài hơn nhiều."""
+    return len(re.sub(r"[^a-z0-9]+", "", _fold(text))) < _SPARSE_PAGE_MAX_CHARS
+
+
+def _demote_sparse_other_segments(
+    segments: list[dict], page_text_by_file: dict[int, dict[int, str]],
+) -> list[dict]:
+    """LLM vẫn hay xếp trang nhiễu vào "other" và lấy dòng nhiễu làm tên → thành phần hồ sơ mới mang
+    tên cơ quan lạ. Chỉ hạ về unreadable_page khi cùng tệp còn tài liệu khác để gộp vào."""
+    per_file: dict[int, int] = {}
+    for segment in segments:
+        per_file[segment["fileIndex"]] = per_file.get(segment["fileIndex"], 0) + 1
+    out: list[dict] = []
+    for segment in segments:
+        pages = page_text_by_file.get(segment["fileIndex"]) or {}
+        text = "\n".join(pages.get(page, "") for page in range(segment["pageFrom"], segment["pageTo"] + 1))
+        if (
+            segment["type"] == "other"
+            and per_file[segment["fileIndex"]] > 1
+            and _is_sparse_text(text)
+            and not _is_tombstone_evidence(text)
+            and _rule_doc_type(text) == "other"
+        ):
+            segment = {**segment, "type": _UNREADABLE}
+        out.append(segment)
+    return out
+
+
 def _existing_row_names(options: dict | None) -> list[str]:
     components = (((options or {}).get("attachmentContext") or {}).get("components") or [])
     names = [str(c.get("componentName") or "") for c in components if isinstance(c, dict)]
@@ -602,7 +635,9 @@ async def plan_khai_tu_attachments(
         except Exception as exc:  # noqa: BLE001 - fallback giữ đủ file và không gán bừa vai CCCD
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
-    segments = _merge_unreadable_segments(_validated_segments(raw_segments, raw_files, file_meta, errors))
+    segments = _merge_unreadable_segments(_demote_sparse_other_segments(
+        _validated_segments(raw_segments, raw_files, file_meta, errors), page_text_by_file,
+    ))
 
     attachments: list[dict] = []
     used_slots: set[int] = set()

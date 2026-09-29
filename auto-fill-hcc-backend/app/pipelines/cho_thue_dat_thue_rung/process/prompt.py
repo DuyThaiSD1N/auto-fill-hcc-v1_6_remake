@@ -1,3 +1,5 @@
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Tách tuyệt đối hai vai — đây là chỗ sai nhiều nhất của thủ tục này:
@@ -64,4 +66,4 @@ EXTRA_RULES = """
     thật sự có hợp đồng ủy quyền hoặc giấy ủy quyền riêng — không suy ra ủy quyền chỉ vì thấy tên
     người khác ở đâu đó trong hồ sơ (người nộp tiền thay, người tham gia đấu giá không trúng…).
 </traps>
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

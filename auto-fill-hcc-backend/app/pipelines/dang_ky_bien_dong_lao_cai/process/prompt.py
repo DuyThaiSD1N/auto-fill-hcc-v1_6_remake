@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115671 (Lào Cai)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ đăng ký biến động của thủ tục này rơi vào MỘT trong năm trường hợp: (1) thay đổi quyền sử
 dụng đất theo thỏa thuận của các thành viên hộ gia đình hoặc của vợ và chồng; (2) quyền sử dụng đất xây dựng công
 trình trên mặt đất phục vụ vận hành công trình ngầm; (3) bán tài sản, ĐIỀU CHUYỂN, chuyển nhượng quyền sử dụng đất
@@ -50,4 +52,4 @@ CCCD:
   NoiCap="Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ Căn cước mẫu mới ghi "BỘ CÔNG AN" thì
   NoiCap="Bộ Công an".
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

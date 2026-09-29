@@ -1,3 +1,5 @@
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Hồ sơ này có BA thực thể, tách tuyệt đối:
@@ -51,4 +53,15 @@ EXTRA_RULES = """
     lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho vào diaChi.
 15. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.
 </missing_and_normalization_rules>
-""".strip()
+
+<ung_vien_nguoi_nop_rules>
+16. NguoiDuocUyQuyen, DanhSachCccd, NguoiTrongGiayTo chỉ LIỆT KÊ những người có trong hồ sơ — KHÔNG
+    quyết ai đi nộp. Ghi đủ mọi người thoả mô tả, kể cả người trùng chủ hồ sơ hoặc trùng NguoiNop_*.
+17. Mọi thuộc tính (số định danh, ngày sinh, ngày cấp, nơi cấp, địa chỉ) phải đi theo ĐÚNG người mang
+    họ tên đó. Khi người ký Đơn Mẫu 24 khác người đại diện theo pháp luật ghi trên Giấy chứng nhận
+    đăng ký doanh nghiệp/quyết định, hoặc khác bên được ủy quyền, thì KHÔNG lấy nhân thân của người
+    kia gán cho người ký, và ngược lại.
+18. Giấy tờ chỉ ghi NĂM sinh: trong danh sách ứng viên trả đúng năm đó; ở khối phẳng
+    ChuHoSo_*/NguoiNop_* thì BỎ FIELD ngày sinh.
+</ung_vien_nguoi_nop_rules>
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

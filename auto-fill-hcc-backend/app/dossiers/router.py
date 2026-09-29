@@ -28,6 +28,12 @@ class SubmitClickReq(BaseModel):
     # Mã trên URL cổng. Với cổng tư pháp đây là mã THỦ TỤC chứ không phải mã hồ sơ (đã kiểm:
     # hai hồ sơ khai tử khác nhau cùng ra /nop-ho-so/144862) → chỉ lưu đối chiếu, KHÔNG làm khóa.
     portalDossierRef: str = Field(default="", max_length=100)
+    # Bản extension có hàng đợi gửi lại: mã cú bấm để lần gửi lại không thành sự kiện thứ hai,
+    # giờ bấm thật (epoch ms) vì lần gửi lại có thể muộn hàng giờ. Bản cũ không gửi → như cũ.
+    clickId: str = Field(default="", max_length=64)
+    clickedAt: int | None = None
+    # "text" = suy từ chữ "nộp thành công" trên màn kết quả (lưới đỡ khi cú bấm rớt).
+    source: Literal["", "click", "text"] = ""
 
 
 class RatingReq(BaseModel):
@@ -74,10 +80,15 @@ async def submit_click(body: SubmitClickReq, user: dict = Depends(require_auth))
     """
     await dossiers_repo.add_submit_event(
         dossier_id=body.dossierId,
-        clicked_at=datetime.now(timezone.utc),
+        clicked_at=(dossiers_repo.client_clicked_at(body.clickedAt)
+                    if body.clickedAt is not None else datetime.now(timezone.utc)),
         portal_host=body.portalHost or None,
         portal_dossier_ref=body.portalDossierRef or None,
         owner_user_id=str(user.get("id") or ""),
+        click_id=body.clickId or None,
+        source=body.source or None,
+        # Extension lọc mốc dò chữ theo từng tab (background.js reportDossierSubmitSeen).
+        text_dedupe_window=False,
     )
     return {"ok": True}
 

@@ -245,8 +245,19 @@ export default function Stats({ user, onLogout, view, onNavigate }: Props) {
     analysisTabRefs.current[nextIndex]?.focus();
   }
 
-  const procs = data?.procedures ?? [];
-  const wards = data?.wards ?? [];
+  // BE vẫn trả thủ tục/đơn vị có lượt xử lý nhưng 0 hồ sơ nộp (app/stats/cutover.py::_rebuild);
+  // màn này chỉ liệt kê số hồ sơ nên ẩn dòng 0 — hiện "0 hồ sơ" dễ bị hiểu là số liệu sai.
+  const procs = useMemo(
+    () => (data?.procedures ?? []).filter((p) => p.count > 0),
+    [data],
+  );
+  const wards = useMemo(
+    () =>
+      (data?.wards ?? [])
+        .filter((w) => w.total > 0)
+        .map((w) => ({ ...w, procedures: w.procedures.filter((p) => p.count > 0) })),
+    [data],
+  );
   // Mốc 14/9/2026 đổi cách đếm hồ sơ. CHỈ nói khi khoảng vắt qua mốc — lúc đó con số là hai
   // cách đếm cộng lại nên trông như tụt. Kỳ nằm trọn một bên thì số nhất quán, khỏi chú thích.
   const counting = data?.counting;

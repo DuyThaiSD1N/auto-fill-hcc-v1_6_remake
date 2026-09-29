@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { exportReportExcel, getReportOptions } from "../api";
+import { exportReportExcel, getReportOptions, getStats } from "../api";
 import AccountMultiSelect from "../components/AccountMultiSelect";
 import Combobox from "../components/Combobox";
 import TopBar, { type View } from "../components/TopBar";
@@ -114,6 +114,12 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [optionsError, setOptionsError] = useState("");
   const [exportMode, setExportMode] = useState<"local" | "combined" | null>(null);
+  // Số hồ sơ của từng tài khoản trong khoảng ngày (cùng cách đếm với file báo cáo) để báo cáo
+  // chi tiết chỉ tạo sheet cho tài khoản có số liệu — một tỉnh ~115 tài khoản, phần lớn 0 hồ sơ.
+  const [onlyWithData, setOnlyWithData] = useState(true);
+  const [countsByUser, setCountsByUser] = useState<Map<string, number> | null>(null);
+  const [countsLoading, setCountsLoading] = useState(false);
+  const [countsError, setCountsError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const exportControllerRef = useRef<AbortController | null>(null);
@@ -133,6 +139,29 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    setCountsByUser(null);
+    setCountsError("");
+    if (!dateFrom || !dateTo || dateFrom > dateTo) {
+      setCountsLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setCountsLoading(true);
+    getStats("all", "all", dateFrom, dateTo, controller.signal)
+      .then((result) => {
+        setCountsByUser(new Map(result.wards.map((ward) => [ward.userId, ward.total])));
+      })
+      .catch((reason) => {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setCountsError(reason instanceof Error ? reason.message : "Không đếm được hồ sơ.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCountsLoading(false);
+      });
+    return () => controller.abort();
+  }, [dateFrom, dateTo]);
 
   useEffect(() => () => {
     const controller = exportControllerRef.current;
@@ -162,11 +191,22 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     .filter((account): account is ReportAccount => Boolean(account));
   const selectedOfficialAccounts = selectedAccounts.filter(isOfficialAccount);
   const selectedOfficialIds = selectedOfficialAccounts.map((account) => account.id);
-  const provinceAccounts = officialOnly ? officialProvinceAccounts : allProvinceAccounts;
+  const dataFilterOn = onlyWithData && countsByUser !== null;
+  const hasData = (account: ReportAccount) => (countsByUser?.get(account.id) ?? 0) > 0;
+  const provinceScopeAccounts = officialOnly ? officialProvinceAccounts : allProvinceAccounts;
+  const provinceAccounts = dataFilterOn ? provinceScopeAccounts.filter(hasData) : provinceScopeAccounts;
+  const pickerAccounts = dataFilterOn ? options.accounts.filter(hasData) : options.accounts;
+  const officialPickerAccounts = dataFilterOn ? officialAccounts.filter(hasData) : officialAccounts;
   const effectiveMode: ReportSelectionMode = layout === "daily_summary" ? "accounts" : mode;
   const exportAccounts = layout === "daily_summary"
-    ? selectedOfficialAccounts
-    : mode === "province" ? provinceAccounts : selectedAccounts;
+    ? dataFilterOn ? selectedOfficialAccounts.filter(hasData) : selectedOfficialAccounts
+    : mode === "province"
+      ? provinceAccounts
+      : dataFilterOn ? selectedAccounts.filter(hasData) : selectedAccounts;
+  // Lọc theo số liệu chỉ làm được ở FE: gửi BE danh sách tài khoản cụ thể thay vì "cả tỉnh".
+  const sendMode: ReportSelectionMode =
+    effectiveMode === "province" && dataFilterOn ? "accounts" : effectiveMode;
+  const waitingCounts = onlyWithData && countsLoading;
   const dateInvalid = !dateFrom || !dateTo || dateFrom > dateTo;
   const selectionInvalid = exportAccounts.length === 0;
   const officialProvinceEmpty = layout === "procedure_detail" && mode === "province"
@@ -181,6 +221,7 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     && !selectionInvalid
     && !tooManyAccounts
     && (layout !== "daily_summary" || options.handfreeEnabled)
+    && !waitingCounts
     && exportMode === null;
 
   const provinceOptions = options.provinces.map((item) => ({
@@ -200,6 +241,8 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
     if (selectionInvalid) {
       if (officialProvinceEmpty) {
         setError("Tỉnh/thành đã chọn chưa có tài khoản HCC xã hoặc HCC tỉnh.");
+      } else if (dataFilterOn) {
+        setError("Không có tài khoản nào có hồ sơ trong khoảng ngày đã chọn.");
       } else {
         setError(effectiveMode === "province" ? "Vui lòng chọn một tỉnh có tài khoản." : "Vui lòng chọn ít nhất một tài khoản HCC.");
       }
@@ -218,12 +261,10 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
       const result = await exportReportExcel({
         dateFrom,
         dateTo,
-        selectionMode: effectiveMode,
-        province: effectiveMode === "province" ? province : undefined,
-        officialOnly: layout === "daily_summary" || (mode === "province" ? officialOnly : undefined),
-        accountIds: effectiveMode === "accounts"
-          ? layout === "daily_summary" ? selectedOfficialIds : selectedIds
-          : undefined,
+        selectionMode: sendMode,
+        province: sendMode === "province" ? province : undefined,
+        officialOnly: layout === "daily_summary" || (sendMode === "province" ? officialOnly : undefined),
+        accountIds: sendMode === "accounts" ? exportAccounts.map((account) => account.id) : undefined,
         includeHandfree,
         reportLayout: layout,
       }, controller.signal);
@@ -236,7 +277,9 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
         dateTo,
         includeHandfree,
       );
-      const filename = result.filename?.includes(
+      // Gửi dạng danh sách tài khoản thay cho "cả tỉnh" thì tên file BE ghi "N tài khoản" — giữ
+      // tên theo tỉnh mà cán bộ đã chọn.
+      const filename = sendMode === effectiveMode && result.filename?.includes(
         layout === "daily_summary" ? "Tổng hợp hồ sơ" : "Báo cáo hồ sơ",
       )
         ? result.filename
@@ -356,6 +399,27 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
             </div>
           )}
 
+          <label className="official-account-toggle report-data-toggle">
+            <input
+              type="checkbox"
+              checked={onlyWithData}
+              disabled={Boolean(countsError)}
+              onChange={(event) => setOnlyWithData(event.target.checked)}
+            />
+            <span>
+              <strong>Chỉ xuất tài khoản có hồ sơ trong khoảng ngày</strong>
+              <small aria-live="polite">
+                {countsLoading
+                  ? "Đang đếm hồ sơ theo khoảng ngày…"
+                  : countsError
+                    ? `Không đếm được hồ sơ (${countsError}) — đang liệt kê mọi tài khoản.`
+                    : countsByUser
+                      ? `Tài khoản 0 hồ sơ (Auto Fill + Handfree) ${layout === "daily_summary" ? "không đưa vào bảng tổng hợp" : "không tạo sheet"}. ${[...countsByUser.values()].filter((n) => n > 0).length.toLocaleString("vi-VN")} tài khoản có hồ sơ trong khoảng này.`
+                      : "Chọn khoảng ngày hợp lệ để đếm hồ sơ."}
+              </small>
+            </span>
+          </label>
+
           {loadingOptions && <div className="report-loading" aria-live="polite">Đang tải danh sách tài khoản…</div>}
           {optionsError && <div className="error" role="alert">{optionsError}</div>}
 
@@ -389,12 +453,22 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
                       <strong>Chưa có tài khoản hành chính công</strong>
                       <span>Tỉnh này chưa có tài khoản mang role HCC xã hoặc HCC tỉnh.</span>
                     </div>
+                  ) : dataFilterOn && provinceAccounts.length === 0 ? (
+                    <div className="province-account-empty" role="status">
+                      <strong>Không có tài khoản nào có hồ sơ</strong>
+                      <span>
+                        {provinceScopeAccounts.length.toLocaleString("vi-VN")} tài khoản của tỉnh này đều 0 hồ sơ
+                        trong khoảng ngày đã chọn.
+                      </span>
+                    </div>
                   ) : (
                     <>
                       <strong>
-                        {officialOnly
-                          ? `${provinceAccounts.length.toLocaleString("vi-VN")}/${allProvinceAccounts.length.toLocaleString("vi-VN")} tài khoản HCC sẽ được xuất`
-                          : `${provinceAccounts.length.toLocaleString("vi-VN")} tài khoản sẽ được xuất`}
+                        {dataFilterOn
+                          ? `${provinceAccounts.length.toLocaleString("vi-VN")}/${provinceScopeAccounts.length.toLocaleString("vi-VN")} tài khoản ${officialOnly ? "HCC " : ""}có hồ sơ sẽ được xuất`
+                          : officialOnly
+                            ? `${provinceAccounts.length.toLocaleString("vi-VN")}/${allProvinceAccounts.length.toLocaleString("vi-VN")} tài khoản HCC sẽ được xuất`
+                            : `${provinceAccounts.length.toLocaleString("vi-VN")} tài khoản sẽ được xuất`}
                       </strong>
                       <ul>
                         {provinceAccounts.slice(0, 8).map((account) => (
@@ -402,6 +476,11 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
                             <span>{account.name || account.xa || account.username}</span>
                             <span className="province-account-identity">
                               <span className="muted">{account.username}</span>
+                              {countsByUser && (
+                                <span className="muted">
+                                  {(countsByUser.get(account.id) ?? 0).toLocaleString("vi-VN")} hồ sơ
+                                </span>
+                              )}
                               {officialOnly && (
                                 <span className={`badge compact role-${account.role}`}>
                                   {officialRoleLabel(account)}
@@ -423,7 +502,8 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
 
           {!loadingOptions && !optionsError && layout === "daily_summary" && (
             <AccountMultiSelect
-              accounts={officialAccounts}
+              accounts={officialPickerAccounts}
+              counts={countsByUser ?? undefined}
               selectedIds={selectedOfficialIds}
               onChange={setSelectedIds}
             />
@@ -431,7 +511,8 @@ export default function Reports({ user, onLogout, view, onNavigate }: Props) {
 
           {!loadingOptions && !optionsError && layout === "procedure_detail" && mode === "accounts" && (
             <AccountMultiSelect
-              accounts={options.accounts}
+              accounts={pickerAccounts}
+              counts={countsByUser ?? undefined}
               selectedIds={selectedIds}
               onChange={setSelectedIds}
             />

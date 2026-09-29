@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115688 (Lào Cai)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ của thủ tục này là ĐĂNG KÝ ĐẤT ĐAI, TÀI SẢN GẮN LIỀN VỚI ĐẤT và đề nghị CẤP GIẤY
 CHỨNG NHẬN LẦN ĐẦU. Thửa đất CHƯA có Giấy chứng nhận — trong hồ sơ không có sổ đỏ để đối chiếu.
 
@@ -47,4 +49,4 @@ CCCD:
   quyền, người đại diện ký thay tổ chức — mỗi người kèm NoiCuTru của chính người đó, vì khối "người nộp"
   trên cổng lấy địa chỉ của NGƯỜI ĐI NỘP chứ không phải của chủ hồ sơ.
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

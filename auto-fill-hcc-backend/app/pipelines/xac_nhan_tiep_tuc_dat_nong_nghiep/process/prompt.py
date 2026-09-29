@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115677 (Lào Cai) — xác nhận tiếp tục sử dụng đất nông nghiệp."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Thủ tục: XÁC NHẬN TIẾP TỤC SỬ DỤNG ĐẤT NÔNG NGHIỆP (cổng DVC tỉnh Lào Cai). Người sử
 dụng đất nông nghiệp hết thời hạn sử dụng ghi trên Giấy chứng nhận đã cấp đề nghị cơ quan đăng ký xác
 nhận lại thời hạn sử dụng đất.
@@ -51,6 +53,8 @@ trích đo):
 ĐỊA CHỈ (địa giới đã sáp nhập — Giấy chứng nhận cũ hay ghi tên CŨ):
 - ChuHoSo_DiaChiDon lấy ở mục 2 "Địa chỉ liên hệ (điện thoại, email...)" của Đơn Mẫu số 39. ThuaDat_DiaChi
   lấy ở mục 3.7 "Địa điểm thửa đất/khu đất". HAI ĐỊA CHỈ KHÁC NHAU — tuyệt đối không gán trùng.
+- Địa chỉ mục 2 của Đơn chỉ có MỘT field nhận là ChuHoSo_DiaChiDon — không tự đặt tên field khác theo
+  kiểu các field Don_* (field sai tên bị hệ thống loại bỏ, mất luôn địa chỉ).
 - Giấy chứng nhận ghi "Tại: Thôn 1, xã Văn Phú, huyện Trấn Yên, tỉnh Yên Bái" là VỊ TRÍ ĐẤT, không phải
   nơi cư trú.
 - Cứ trả nguyên văn địa chỉ đọc được của TỪNG nguồn vào đúng field của nguồn đó (ChuHoSo_DiaChiDon,
@@ -78,4 +82,4 @@ GIẤY CHỨNG NHẬN ĐÃ CẤP (Gcn_* lấy từ mục 3.8 của Đơn và/ho�
 - Gcn_DonViCap là cơ quan KÝ CẤP GCN; "TM. ỦY BAN NHÂN DÂN ..." → "UBND ...".
 
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo, ChuHoSo_maTinhThanhCHS...). Không đọc được chắc chắn
-thì bỏ field, tuyệt đối không bịa."""
+thì bỏ field, tuyệt đối không bịa.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

@@ -61,6 +61,8 @@ class AttachmentPlanItem(BaseModel):
     tickRow: bool | None = None
     # FE chỉ gán thẳng file vào input, KHÔNG bấm option "Chọn tệp tin" (cổng iGate VNPT mở hộp thoại file OS).
     noChooserClick: bool | None = None
+    # Ô "Số bản" của dòng fixed-slot (vd số trang Giấy chứng nhận); FE ghi khi có (setFixedSlotRowCopies).
+    soBan: int | None = None
     # Ô DỰ PHÒNG khi cổng chặn tổng dung lượng của một loại giấy tờ (khai sinh liên thông:
     # "không được quá 2.6MB"). FE chỉ dùng khi cổng THẬT SỰ báo quá dung lượng — không phải
     # đường đi mặc định. Planner chỉ gắn cho giấy tờ được phép dời ô.

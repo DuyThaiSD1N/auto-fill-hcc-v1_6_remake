@@ -28,8 +28,11 @@ Nhân, thửa 428 tờ bản đồ 264, TDP Cầu Mây 1, phường Sa Pa, tỉn
    prefill tài khoản vào hai ô readonly `CongDan_tenCongDan` / `CongDan_soCmnd`; extension đọc rồi
    gửi lên trong `options.formContext`.
 
-3. KHÔNG PHÁT `CongDan_tenCongDan` / `CongDan_soCmnd`. Hai ô readonly đó mà bị ghi thì script cổng
-   XOÁ TRẮNG "Di động" + "Số Căn cước" — điền vào chính là làm hỏng ô bắt buộc vừa điền xong.
+3. Hai ô readonly `CongDan_tenCongDan` / `CongDan_soCmnd`: ghi họ tên vào là script cổng XOÁ TRẮNG
+   "Di động" + "Số Căn cước". Chế độ theo tài khoản KHÔNG ghi (cổng đã đổ đúng tài khoản). Chế độ theo
+   tờ khai GHI theo người đã chọn, đứng TRƯỚC mọi ô `CongDan_*` khác, và XOÁ các ô nhân thân tài khoản
+   mà hồ sơ không có (`_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop`) — ghi trước nên cổng xoá không
+   làm mất ô vừa điền.
 
 4. LỌC Ô THEO ĐỐI TƯỢNG. Khối chủ hồ sơ có 2 nhóm ô loại trừ nhau (`ORG_ONLY_FIELDS` /
    `INDIVIDUAL_ONLY_FIELDS`): chọn "Cá nhân" thì nhóm tổ chức bị display:none và ngược lại.
@@ -44,6 +47,15 @@ Nhân, thửa 428 tờ bản đồ 264, TDP Cầu Mây 1, phường Sa Pa, tỉn
    Thuyết minh mục IV.2 ghi 267,8 m² (bảng cơ cấu ngay dưới của chính Thuyết minh lại ghi 258,5 m²).
    Mapper KHÔNG tự chọn hộ và KHÔNG sửa số — chỉ nói ra để cán bộ soát, vì đây là dữ liệu quyết định
    nghĩa vụ tài chính. Cùng chỗ đó kiểm luôn trần 50% của Điều 99 Nghị định 102/2024/NĐ-CP.
+
+7. CHẾ ĐỘ "THEO TỜ KHAI" (`options.submitterMode="owner_as_submitter"`, cài đặt "Người nộp = chủ hồ
+   sơ" của extension): bỏ mốc tài khoản, người nộp lấy theo hồ sơ — khối `NguoiNop_*` (bên được ủy
+   quyền, hoặc bản chép chủ hồ sơ khi tự nộp), trống hẳn thì chủ hồ sơ CÁ NHÂN. Nhân thân chỉ bù từ
+   khối facts của CHÍNH người đó (`_merge_person`). Trùng/khác chủ hồ sơ (bổ khuyết chéo, ô tên tổ
+   chức) cũng chốt theo tờ khai. Hai ô readonly ghi theo người đó (điểm 3) → người theo tờ khai lệch
+   tài khoản thì cảnh báo, vì cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp.
+   ⚠ Ca cán bộ một cửa nộp thay mà hồ sơ không có văn bản ủy quyền: tờ khai ra chủ hồ sơ, lệch tài
+   khoản cán bộ → luôn có cảnh báo; đó là lý do chế độ tài khoản vẫn là mặc định.
 """
 
 import re
@@ -52,6 +64,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
+from app.pipelines._shared.lao_cai_nguoi_nop import chot_khoi_nguoi_nop
 from app.pipelines.su_dung_dat_ket_hop_da_muc_dich_cap_xa.process.schema import (
     INDIVIDUAL_ONLY_FIELDS,
     ORG_ONLY_FIELDS,
@@ -310,6 +323,92 @@ def _nop_area(values: dict, nop_source: str | None, cho_phep_bo_khuyet: bool) ->
     return nop_area or (chs_area if cho_phep_bo_khuyet else None)
 
 
+_KHOA_NHAN_THAN = (
+    "HoTen", "SoDinhDanh", "NgaySinh", "GioiTinh", "DanToc", "NgayCap", "NoiCap", "NoiCuTru",
+    "DienThoai", "Email", "Fax",
+)
+
+
+def _khoi_nhan_than(values: dict, tien_to: str) -> dict | None:
+    """Khối phẳng `<tien_to>_*` dưới dạng MỘT người — chỉ dùng cho chế độ THEO TỜ KHAI.
+
+    Ngày chỉ có năm bị bỏ ngay ở đây: để nguyên "1985" thì vừa chặn ngày đủ của khối kia bù vào,
+    vừa bị coi là mâu thuẫn ngày sinh khi phải so hai khối theo họ tên.
+    """
+    block = {key: values.get(f"{tien_to}_{key}") for key in _KHOA_NHAN_THAN}
+    block["NgaySinh"] = _date(block["NgaySinh"])
+    block["NgayCap"] = _date(block["NgayCap"])
+    return block if (_plain(block["HoTen"]) or _digits(block["SoDinhDanh"])) else None
+
+
+def _same_person_by_name(left: dict, right: dict) -> bool:
+    """Hai bản ghi cùng họ tên nhưng KHÁC ngày sinh là hai người (cha/con trùng tên) — không gộp."""
+    left_dob = _date(left.get("NgaySinh"))
+    right_dob = _date(right.get("NgaySinh"))
+    return not (left_dob and right_dob and left_dob != right_dob)
+
+
+def _merge_person(base: dict | None, *others: dict | None) -> dict | None:
+    """Bù mục còn thiếu của `base` bằng khối facts khác CỦA CHÍNH người đó.
+
+    Chỉ gộp khi chắc chắn cùng người: khớp SỐ ĐỊNH DANH, hoặc (khi một trong hai phía không đọc được
+    số) khớp HỌ TÊN bỏ dấu mà ngày sinh không mâu thuẫn. Hai số định danh khác nhau là hai người —
+    không bao giờ lấy nhân thân chéo.
+    """
+    if not base:
+        return None
+    merged = dict(base)
+    base_id = _digits(merged.get("SoDinhDanh"))
+    base_name = _fold(_plain(merged.get("HoTen")) or "")
+    for person in others:
+        if not person:
+            continue
+        person_id = _digits(person.get("SoDinhDanh"))
+        person_name = _fold(_plain(person.get("HoTen")) or "")
+        same = (
+            (base_id and person_id and base_id == person_id)
+            or (not (base_id and person_id) and base_name and base_name == person_name
+                and _same_person_by_name(merged, person))
+        )
+        if not same:
+            continue
+        for key, value in person.items():
+            if merged.get(key) in (None, "", {}, []) and value not in (None, "", {}, []):
+                merged[key] = value
+    return merged
+
+
+def _canh_bao_theo_to_khai(nguoi_nop: dict | None, options: dict | None) -> list[str]:
+    """Cảnh báo riêng của chế độ THEO TỜ KHAI — không có cảnh báo "thiếu mốc tài khoản" ở đây."""
+    if not nguoi_nop:
+        return [
+            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng tờ khai không xác định được người nộp (không "
+            "có bên được ủy quyền, chủ hồ sơ không phải cá nhân hoặc không đọc được họ tên/số căn cước) "
+            "nên trợ lý để trống nhân thân khối \"Thông tin người nộp\" — cán bộ nhập tay."
+        ]
+    ctx_id, ctx_name = _account_anchor(options)
+    if not (ctx_id or ctx_name):
+        return []
+    lech = _match(
+        ctx_id,
+        ctx_name,
+        _digits(nguoi_nop.get("SoDinhDanh")),
+        _fold(_plain(nguoi_nop.get("HoTen")) or ""),
+    ) is False
+    if not lech:
+        return []
+    ctx = (options or {}).get("formContext") or {}
+    return [
+        "Khối \"Thông tin người nộp\" đang điền theo TỜ KHAI ("
+        + (_plain(nguoi_nop.get("HoTen")) or "người trong hồ sơ")
+        + ") nhưng tài khoản đang đăng nhập là "
+        + (_plain(ctx.get("applicantFullname")) or "người khác")
+        + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh của khối người nộp với tài khoản trước khi "
+        "cho nộp — lệch là bị chặn. "
+        "Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+    ]
+
+
 def _canh_bao_dinh_danh(so: str | None, vai: str) -> str | None:
     """Số định danh sai độ dài → phát nhưng phải nói ra."""
     if not so or len(so) in _DO_DAI_DINH_DANH_HOP_LE:
@@ -330,12 +429,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     is_org = _is_org(values)
     ctx_id, ctx_name = _account_anchor(options)
-    same_person = _same_person(values, ctx_id, ctx_name)
+    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    if theo_to_khai:
+        # Trùng/khác chủ hồ sơ chốt theo HAI KHỐI FACTS (không truyền mốc) — người nộp lúc này là
+        # người trong tờ khai chứ không phải tài khoản đang đăng nhập.
+        same_person = _same_person(values, None, "")
+    else:
+        same_person = _same_person(values, ctx_id, ctx_name)
     # Hai khối facts CHẮC CHẮN là hai người khác nhau → cấm mọi việc chép nhân thân chéo.
     khac_nguoi = _nop_block_is_other_person(values)
-    # Khối nào là nhân thân của chính tài khoản đang đăng nhập. None = chưa xác minh được ⇒ KHÔNG
-    # phát bất kỳ ô nào của khối "Thông tin người nộp" (xem `_khoi_cua_nguoi_dang_nhap`).
-    nop_source = _khoi_cua_nguoi_dang_nhap(values, ctx_id, ctx_name)
+    if theo_to_khai:
+        # Khối người nộp phát riêng theo `nguoi_nop` bên dưới, không qua `pick`.
+        nop_source = None
+        # Khối NguoiNop_* là bên được ủy quyền (có văn bản ủy quyền) hoặc bản chép chủ hồ sơ (tự
+        # nộp); trống hẳn thì người nộp là chủ hồ sơ — chỉ khi chủ hồ sơ là CÁ NHÂN.
+        khoi_nop = _khoi_nhan_than(values, "NguoiNop")
+        khoi_chs = _khoi_nhan_than(values, "ChuHoSo")
+        nguoi_nop = _merge_person(khoi_nop or (None if is_org else khoi_chs), khoi_nop, khoi_chs)
+    else:
+        # Khối nào là nhân thân của chính tài khoản đang đăng nhập. None = chưa xác minh được ⇒ KHÔNG
+        # phát bất kỳ ô nào của khối "Thông tin người nộp" (xem `_khoi_cua_nguoi_dang_nhap`).
+        nop_source = _khoi_cua_nguoi_dang_nhap(values, ctx_id, ctx_name)
 
     def add(name: str, value) -> None:
         if name in seen or value in (None, "", {}, []):
@@ -389,34 +504,70 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     nop_fax, chs_fax = pick("NguoiNop_Fax", "ChuHoSo_Fax")
 
     # --- Khối NGƯỜI NỘP ---
-    nop_identity = _digits(nop_so_raw)
-    nop_ngay_cap = _date(nop_ngay_cap_raw)
-    # Nơi cấp mặc định CHỈ khi hồ sơ thật sự có giấy tờ định danh của người đó — không thì là bịa.
-    nop_noi_cap = normalize_issuer(_plain(nop_noi_cap_raw))
-    if not nop_noi_cap and nop_identity:
-        nop_noi_cap = default_issuer(nop_ngay_cap)
-    # ⚠ KHÔNG phát CongDan_tenCongDan / CongDan_soCmnd: hai ô readonly, ghi vào là cổng xoá trắng
-    # "Di động" + "Số Căn cước" (xem docstring, điểm 3). `nop_ten`/`nop_identity` chỉ dùng để suy ra
-    # nơi cấp mặc định và để cảnh báo.
-    add("CongDan_ngaySinhCongDan", _date(nop_ngay_sinh))
-    add("CongDan_gioiTinhCongDan", _plain(nop_gioi_tinh))
-    add("CongDan_danTocCongDan", _plain(nop_dan_toc))
-    add("CongDan_ngayCapCmnd", nop_ngay_cap)
-    add("CongDan_noiCapCmnd", nop_noi_cap)
-    add("CongDan_diDong", _phone(nop_dien_thoai))
-    add("CongDan_email", _plain(nop_email))
-    add("CongDan_fax", _plain(nop_fax))
-    if is_org and nop_source == "chs":
-        # Chỉ khi chính người của tổ chức đi nộp thì khối người nộp mới mang tên/MST tổ chức đó.
-        # Nộp thay theo ủy quyền thì người được ủy quyền là CÁ NHÂN — điền tên tổ chức vào đây là sai.
-        add("CongDan_tenCoQuanToChuc", ten_to_chuc)
-        add("CongDan_maSoThueNguoiNop", ma_so_thue)
+    if theo_to_khai:
+        nop_identity = _digits((nguoi_nop or {}).get("SoDinhDanh"))
+        nop_area = _area((nguoi_nop or {}).get("NoiCuTru"))
+        if nguoi_nop:
+            nop_ngay_cap = _date(nguoi_nop.get("NgayCap"))
+            nop_noi_cap = normalize_issuer(_plain(nguoi_nop.get("NoiCap")))
+            if not nop_noi_cap and nop_identity:
+                nop_noi_cap = default_issuer(nop_ngay_cap)
+            # Hai ô readonly ghi theo người trong tờ khai (xem docstring, điểm 3); lệch tài khoản thì
+            # cảnh báo (`_canh_bao_theo_to_khai`).
+            add("CongDan_tenCongDan", _plain(nguoi_nop.get("HoTen")))
+            add("CongDan_soCmnd", nop_identity)
+            add("CongDan_ngaySinhCongDan", _date(nguoi_nop.get("NgaySinh")))
+            add("CongDan_gioiTinhCongDan", _plain(nguoi_nop.get("GioiTinh")))
+            add("CongDan_danTocCongDan", _plain(nguoi_nop.get("DanToc")))
+            add("CongDan_ngayCapCmnd", nop_ngay_cap)
+            add("CongDan_noiCapCmnd", nop_noi_cap)
+            add("CongDan_diDong", _phone(nguoi_nop.get("DienThoai")))
+            add("CongDan_email", _plain(nguoi_nop.get("Email")))
+            add("CongDan_fax", _plain(nguoi_nop.get("Fax")))
+            la_chu_ho_so = _match(
+                nop_identity,
+                _fold(_plain(nguoi_nop.get("HoTen")) or ""),
+                _digits(values.get("ChuHoSo_SoDinhDanh")),
+                _fold(_plain(values.get("ChuHoSo_HoTen")) or ""),
+            ) is True
+            if is_org and la_chu_ho_so:
+                # Cùng lý do với nhánh tài khoản: chỉ người của chính tổ chức đi nộp mới mang tên/MST
+                # tổ chức; bên được ủy quyền là CÁ NHÂN.
+                add("CongDan_tenCoQuanToChuc", ten_to_chuc)
+                add("CongDan_maSoThueNguoiNop", ma_so_thue)
+            if nop_area:
+                add("CongDan_maTinhThanh", _province_label(nop_area.get("tinh")))
+                add("CongDan_maPhuongXa", _plain(nop_area.get("xa")))
+                add("CongDan_diaChi", _plain(nop_area.get("diaChi")))
+    else:
+        nop_identity = _digits(nop_so_raw)
+        nop_ngay_cap = _date(nop_ngay_cap_raw)
+        # Nơi cấp mặc định CHỈ khi hồ sơ thật sự có giấy tờ định danh của người đó — không thì là bịa.
+        nop_noi_cap = normalize_issuer(_plain(nop_noi_cap_raw))
+        if not nop_noi_cap and nop_identity:
+            nop_noi_cap = default_issuer(nop_ngay_cap)
+        # ⚠ KHÔNG phát CongDan_tenCongDan / CongDan_soCmnd: hai ô readonly, ghi vào là cổng xoá trắng
+        # "Di động" + "Số Căn cước" (xem docstring, điểm 3). `nop_ten`/`nop_identity` chỉ dùng để suy ra
+        # nơi cấp mặc định và để cảnh báo.
+        add("CongDan_ngaySinhCongDan", _date(nop_ngay_sinh))
+        add("CongDan_gioiTinhCongDan", _plain(nop_gioi_tinh))
+        add("CongDan_danTocCongDan", _plain(nop_dan_toc))
+        add("CongDan_ngayCapCmnd", nop_ngay_cap)
+        add("CongDan_noiCapCmnd", nop_noi_cap)
+        add("CongDan_diDong", _phone(nop_dien_thoai))
+        add("CongDan_email", _plain(nop_email))
+        add("CongDan_fax", _plain(nop_fax))
+        if is_org and nop_source == "chs":
+            # Chỉ khi chính người của tổ chức đi nộp thì khối người nộp mới mang tên/MST tổ chức đó.
+            # Nộp thay theo ủy quyền thì người được ủy quyền là CÁ NHÂN — điền tên tổ chức vào đây là sai.
+            add("CongDan_tenCoQuanToChuc", ten_to_chuc)
+            add("CongDan_maSoThueNguoiNop", ma_so_thue)
 
-    nop_area = _nop_area(values, nop_source, same_person and not khac_nguoi)
-    if nop_area:
-        add("CongDan_maTinhThanh", _province_label(nop_area.get("tinh")))
-        add("CongDan_maPhuongXa", _plain(nop_area.get("xa")))
-        add("CongDan_diaChi", _plain(nop_area.get("diaChi")))
+        nop_area = _nop_area(values, nop_source, same_person and not khac_nguoi)
+        if nop_area:
+            add("CongDan_maTinhThanh", _province_label(nop_area.get("tinh")))
+            add("CongDan_maPhuongXa", _plain(nop_area.get("xa")))
+            add("CongDan_diaChi", _plain(nop_area.get("diaChi")))
 
     # --- Khối CHỦ HỒ SƠ: phát ĐỦ, KHÔNG dựa vào checkbox "Người nộp là chủ hồ sơ" ---
     add("ChuHoSo_maDoiTuongNopHS", _DOI_TUONG_TO_CHUC if is_org else _DOI_TUONG_CA_NHAN)
@@ -463,7 +614,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     warnings.extend(_canh_bao_dien_tich_ket_hop(values))
     warnings.extend(_canh_bao_mau_don(values))
     warnings.extend(_canh_bao_nham_dia_chi_thua_dat(values, chs_area))
-    warnings.extend(_mode_warnings(values, same_person, nop_area, nop_source, ctx_id, ctx_name))
+    if theo_to_khai:
+        warnings.extend(_canh_bao_theo_to_khai(nguoi_nop, options))
+    else:
+        warnings.extend(_mode_warnings(values, same_person, nop_area, nop_source, ctx_id, ctx_name))
+    out = chot_khoi_nguoi_nop(
+        out,
+        theo_to_khai=theo_to_khai,
+        comp_by_name=UI_COMP_BY_NAME,
+        warnings=warnings,
+        bo_qua=INDIVIDUAL_ONLY_FIELDS if is_org else ORG_ONLY_FIELDS,
+    )
     return out, warnings
 
 

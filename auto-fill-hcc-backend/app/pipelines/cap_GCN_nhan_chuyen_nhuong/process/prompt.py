@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115667 (Lào Cai)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ cấp Giấy chứng nhận cho NGƯỜI NHẬN chuyển nhượng trong dự án bất động sản thường gồm:
 Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 24); Hợp đồng chuyển nhượng đã công chứng;
 Giấy chứng nhận quyền sử dụng đất của CHỦ ĐẦU TƯ; Biên bản kiểm tra hiện trạng/bàn giao; Biên bản nghiệm thu;
@@ -39,4 +41,4 @@ NGƯỜI ĐI NỘP:
 - NguoiDuocUyQuyen chỉ điền khi có VĂN BẢN ỦY QUYỀN riêng; người đại diện theo pháp luật của chủ đầu tư
   (bên chuyển nhượng) KHÔNG phải người được ủy quyền.
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

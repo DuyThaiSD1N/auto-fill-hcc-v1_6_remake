@@ -162,6 +162,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết bấm "Nộp trực tuyến" ở ĐÚNG thẻ theo chữ (agencyCardIncludes) trên trang kết quả
         # DVCQG. Extension cũ luôn bấm thẻ đầu (cấp Sở) → không khai cờ thì BE dặn chọn tay.
         "supportsAgencyCard": raw.get("supportsAgencyCard") is True,
+        # Biết sửa TẠI CHỖ bong bóng bot gần nhất (Reply.replace_last) — vd chỉnh nơi làm trên
+        # card xác nhận thủ tục. Client cũ không khai → BE vẽ thêm bong bóng như trước.
+        "supportsReplaceLast": raw.get("supportsReplaceLast") is True,
     }
 
 
@@ -199,6 +202,7 @@ def _serialize(conv: dict, reply: flow.Reply) -> dict:
         "procedure_key": conv.get("procedure_key"),
         "location": conv.get("location", {}),
         "execution_subject": conv.get("execution_subject", "self"),
+        "replace_last": bool(reply.replace_last),
     }
 
 
@@ -278,10 +282,13 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
     # History chỉ lưu thứ NGƯỜI thấy: nhãn chip nếu có; lệnh máy trần (__action/__event)
     # không có nhãn thì KHÔNG lưu (khôi phục phiên không được lộ lệnh máy).
     display = (req.display_message or "").strip()
+    user_pushed = False
     if message and not message.startswith("__"):
         store.push_history(conv, "user", message, req.source)
+        user_pushed = True
     elif message and display:
         store.push_history(conv, "user", display, req.source)
+        user_pushed = True
 
     # Lượt đầu (message rỗng, phiên mới) → màn chào; còn lại đi qua intent → flow.
     if not message and not conv["history"]:
@@ -306,6 +313,13 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
     payload = _serialize(conv, reply)
     # Reply RỖNG (bot im lặng chờ trang) → không lưu history, không đè last_reply —
     # khôi phục phiên phải render lại được câu có nội dung gần nhất.
+    if reply.replace_last:
+        # Sửa tại chỗ: history phải khớp màn hình — bỏ dòng thao tác vừa rồi của người dùng (chỉ
+        # là chỉnh dropdown) và THAY câu bot cuối cùng trạng thái, không thêm câu mới. Không thì
+        # khôi phục phiên dựng lại đủ các câu hỏi cũ mà công dân chưa từng thấy nằm chồng lên nhau.
+        if user_pushed and conv["history"] and conv["history"][-1].get("role") == "user":
+            conv["history"].pop()
+        store.drop_last_bot_history(conv, conv.get("state", ""))
     if reply.display_md or reply.cards or reply.chips:
         store.push_history(conv, "bot", reply.display_md, "bot")
         conv["last_reply"] = {
@@ -329,7 +343,7 @@ def core_procedure_label(procedure_key: str) -> str | None:
     return (get_core_procedure(procedure_key or "") or {}).get("label")
 
 
-async def _sync_dossier(conv: dict) -> None:
+async def _sync_dossier(conv: dict, *, persist: bool = True) -> None:
     """Đổ mốc vòng đời hồ sơ sang collection `dossiers` (không TTL).
 
     `conversations` tự xoá sau 24h nên mọi mốc thời gian phải được sao ra ngoài ngay trong
@@ -382,12 +396,66 @@ async def _sync_dossier(conv: dict) -> None:
             clicked_at=clicked_at,
             portal_host=conv.get("submit_portal_host"),
             portal_dossier_ref=conv.get("submit_dossier_ref"),
+            click_id=conv.get("submit_click_id") or None,
+            source=conv.get("submit_clicked_source") or None,
         )
         # Chống ghi lặp CHO CÙNG MỘT cú bấm: watcher/reload có thể phát lại. Mỗi cú bấm MỚI
         # có mốc thời gian mới nên vẫn vào nhật ký thành một sự kiện riêng — số hồ sơ đếm
         # theo số sự kiện, không được nuốt.
         conv["submit_clicked_synced_at"] = clicked_at
-        await store.save(conv)
+        if persist:
+            await store.save(conv)
+
+
+class SubmitClickBody(BaseModel):
+    click_id: str = Field(min_length=1, max_length=64)
+    clicked_at: int | None = None  # epoch ms — lần gửi lại có thể muộn so với cú bấm
+    host: str = Field(default="", max_length=200)
+    ref: str = Field(default="", max_length=100)
+
+
+# Chỉ các khoá mốc nộp — endpoint dưới đây ghi bằng $set từng khoá, không replace cả document.
+_SUBMIT_FIELDS = (
+    "submit_clicked_at", "submit_clicked_source", "submit_portal_host", "submit_dossier_ref",
+    "submit_click_id", "submit_clicked_synced_at", "dossier_has_activity",
+)
+
+
+@router.post("/conversations/{conv_id}/submit-click")
+async def record_submit_click(conv_id: str, body: SubmitClickBody, user: dict = Depends(require_auth)):
+    """Cú bấm "Gửi hồ sơ" do BACKGROUND extension báo — không đi qua sidebar.
+
+    Sidebar là iframe nằm trong trang cổng: cổng chuyển trang ngay khi bấm nộp thì iframe
+    chết trước khi kịp gửi `__event:submit_clicked`, mốc nộp mất lặng lẽ. Background không
+    chết theo trang. Sidebar còn sống vẫn gửi event của nó (để hiện phiếu đánh giá) — cùng
+    `click_id` nên sổ hồ sơ chỉ ghi một lần.
+
+    Không dựng lượt hội thoại, không đụng history/state/capabilities: lượt chat đang chạy dở
+    `replace_one` cả document lúc kết thúc, ghi đè nguyên conversation ở đây là đè mất lượt đó
+    (và ngược lại) → chỉ `$set` đúng các khoá mốc nộp.
+    """
+    from app.db.mongo import get_db
+
+    conv = await access.get_owned_conversation(conv_id, user)
+    if (conv.get("submit_clicked_source") == "text" and conv.get("submit_clicked_at")
+            and not conv.get("submit_click_id")
+            and not flow.submit_click_is_after_text(conv, body.clicked_at)):
+        # Mốc dò chữ đã ghi CHÍNH lần nộp này (xem flow._record_submit_click) — chỉ nâng nhãn.
+        # Bấm SAU mốc đó là lần nộp khác (tab tách) → đi tiếp, ghi sự kiện mới.
+        await get_db().conversations.update_one(
+            {"_id": conv_id}, {"$set": {"submit_clicked_source": "click", "submit_click_id": body.click_id}})
+        return {"ok": True}
+    conv.update({
+        "submit_clicked_at": dossiers_repo.client_clicked_at(body.clicked_at),
+        "submit_clicked_source": "click",
+        "submit_portal_host": body.host,
+        "submit_dossier_ref": body.ref,
+        "submit_click_id": body.click_id,
+    })
+    await _sync_dossier(conv, persist=False)
+    await get_db().conversations.update_one(
+        {"_id": conv_id}, {"$set": {k: conv[k] for k in _SUBMIT_FIELDS if k in conv}})
+    return {"ok": True}
 
 
 @router.delete("/conversations/{conv_id}")

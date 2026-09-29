@@ -1,21 +1,34 @@
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Tách tuyệt đối hai vai:
    - CHỦ HỒ SƠ là người/TỔ CHỨC được giao đất, thuê đất, đứng tên Đơn đề nghị điều chỉnh (Mẫu số 04).
-     Hồ sơ doanh nghiệp: ChuHoSo_TenToChuc là TÊN CÔNG TY, còn ChuHoSo_HoTen là NGƯỜI ĐẠI DIỆN THEO
-     PHÁP LUẬT (người ký đơn, đóng dấu pháp nhân).
-   - NGƯỜI NỘP là BÊN ĐƯỢC ỦY QUYỀN nếu hồ sơ có văn bản ủy quyền; không có ủy quyền thì NguoiNop_*
-     bằng đúng thông tin của người đứng tên chủ hồ sơ.
+     Hồ sơ doanh nghiệp: ChuHoSo_TenToChuc là TÊN CÔNG TY, còn ChuHoSo_HoTen là NGƯỜI KÝ ĐƠN thay mặt
+     tổ chức ở mục "Người làm đơn" — kể cả người ký thay ("KT. GIÁM ĐỐC", "PHÓ GIÁM ĐỐC", "TL.", "TUQ.").
+   - Người ký Đơn và NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT ghi trong quyết định chấp thuận (điều chỉnh) chủ trương
+     đầu tư hoặc giấy chứng nhận đăng ký doanh nghiệp là HAI NGƯỜI KHÁC NHAU, trừ khi trùng họ tên. Người
+     đại diện ghi trong các văn bản đó chỉ được liệt kê ở NguoiTrongGiayTo, KHÔNG đưa vào ChuHoSo_* hay
+     NguoiNop_*.
+   - NGƯỜI NỘP là BÊN ĐƯỢC ỦY QUYỀN nếu hồ sơ có văn bản ủy quyền; không có ủy quyền thì NguoiNop_HoTen
+     là người ký Đơn (trùng ChuHoSo_HoTen).
    - Không lấy người ký quyết định của cơ quan nhà nước (Chủ tịch/Phó Chủ tịch UBND) làm chủ hồ sơ hay
      người nộp — họ là bên BAN HÀNH quyết định, không phải người làm hồ sơ.
-2. Mọi thuộc tính (số giấy tờ, ngày cấp, nơi cấp, ngày sinh, địa chỉ, điện thoại) phải đi theo ĐÚNG
-   người. Có CCCD riêng của đúng người thì ưu tiên CCCD cho thông tin định danh.
+2. Nhân thân (số giấy tờ, ngày cấp, nơi cấp, ngày sinh, giới tính, dân tộc, địa chỉ cá nhân, điện
+   thoại) của ChuHoSo_* / NguoiNop_* CHỈ lấy ở chỗ ghi NGAY CẠNH họ tên của CHÍNH người ở ChuHoSo_HoTen /
+   NguoiNop_HoTen (cùng câu, cùng đoạn giới thiệu người đó) hoặc trên CCCD của người đó. Hồ sơ không
+   ghi mục nào của người ký Đơn thì BỎ field đó — tuyệt đối không lấy nhân thân của người đại diện theo
+   pháp luật hay người khác ghi trong quyết định, dù cùng công ty.
 </source_and_role_rules>
 
 <to_chuc_rules>
 3. Nhận diện hồ sơ TỔ CHỨC: đơn ghi tên công ty, có mã số doanh nghiệp/mã số thuế, kèm Giấy chứng nhận
    đăng ký doanh nghiệp, dấu tròn pháp nhân. Khi đó ChuHoSo_LaToChuc = true,
    ChuHoSo_TenToChuc = tên công ty NGUYÊN VĂN, ChuHoSo_MaSoThue = mã số doanh nghiệp.
+   Tên công ty và mã số: ưu tiên CHỮ IN trong thân quyết định, giấy chứng nhận đăng ký doanh nghiệp hoặc
+   thân Đơn. Chữ trong DẤU MỘC (con dấu tròn, thường cạnh chữ ký, có dạng "M.S.D.N: …") OCR hay đọc sai
+   ký tự → chỉ dùng khi không nguồn chữ in nào ghi. Tên/mã ở dấu mộc chỉ lệch chữ in vài ký tự là cùng
+   một công ty bị OCR đọc sai → lấy theo CHỮ IN.
 4. Hồ sơ tổ chức: ChuHoSo_NoiCuTru là ĐỊA CHỈ TRỤ SỞ CHÍNH của công ty, KHÔNG phải nơi thường trú của
    người đại diện, và KHÔNG phải địa điểm khu đất.
 5. Hồ sơ cá nhân thì BỎ HẲN ChuHoSo_TenToChuc và ChuHoSo_MaSoThue, không suy diễn.
@@ -51,4 +64,4 @@ EXTRA_RULES = """
     <tỉnh>": lấy cụm CUỐI làm tinh, cụm ngay TRƯỚC làm xa, phần còn lại cho vào diaChi.
 13. Giấy tờ không ghi thì BỎ FIELD. Không suy diễn, không lấy giá trị của giấy tờ khác thay thế.
 </missing_and_normalization_rules>
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

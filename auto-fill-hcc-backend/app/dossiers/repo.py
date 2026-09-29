@@ -17,7 +17,7 @@ xem thống kê là mất sạch — đó chính là lý do tách ra đây.
 `duration` cố ý KHÔNG lưu: tính lúc query từ started_at/submit_clicked_at để không bao giờ
 lệch với hai mốc gốc.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.db.mongo import get_db
 
@@ -78,6 +78,26 @@ async def upsert_started(
 # đủ để mảng không phình vô hạn nếu ai đó bấm loạn.
 _MAX_SUBMIT_EVENTS = 50
 
+# Mốc dò chữ "nộp thành công" nói về CHÍNH lần bấm vừa rồi: màn kết quả hiện ngay sau cú bấm.
+# Hồ sơ đã có mốc nộp trong khoảng này thì mốc dò chữ là trùng, không phải lần nộp thứ hai.
+_TEXT_DEDUPE_WINDOW = timedelta(minutes=30)
+# Extension gửi lại mốc nộp khi lần trước rớt (token hết hạn, mất mạng) kèm giờ bấm THẬT. Giờ
+# client ngoài khoảng này là đồng hồ máy sai — dùng giờ server còn hơn ghi mốc vô nghĩa.
+_CLIENT_TIME_PAST = timedelta(days=7)
+_CLIENT_TIME_FUTURE = timedelta(minutes=5)
+
+
+def client_clicked_at(epoch_ms: object) -> datetime:
+    """Giờ bấm nộp do extension gửi (epoch ms) → datetime UTC; thiếu/lệch thì lấy giờ server."""
+    now = _now()
+    try:
+        at = datetime.fromtimestamp(float(epoch_ms) / 1000, tz=timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return now
+    if at < now - _CLIENT_TIME_PAST or at > now + _CLIENT_TIME_FUTURE:
+        return now
+    return min(at, now)
+
 
 async def add_submit_event(
     *,
@@ -86,6 +106,9 @@ async def add_submit_event(
     portal_host: str | None = None,
     portal_dossier_ref: str | None = None,
     owner_user_id: str | None = None,
+    click_id: str | None = None,
+    source: str | None = None,
+    text_dedupe_window: bool = True,
 ) -> None:
     """Ghi MỘT lần bấm "Gửi hồ sơ" vào nhật ký của hồ sơ.
 
@@ -95,10 +118,22 @@ async def add_submit_event(
 
     `submit_clicked_at`/`submit_count` là bản rút gọn của mảng, giữ riêng để lọc theo khoảng
     ngày và sắp xếp bằng index — bới trong mảng thì không dùng được index.
+
+    `click_id`: mã MỘT cú bấm do extension sinh. Cùng cú bấm có thể tới bằng hai đường
+    (background + sidebar Handfree) hoặc được gửi lại sau khi tưởng rớt — lọc ngay trong
+    điều kiện update để hai request đồng thời cũng không lọt thành hai sự kiện.
+    `source="text"`: mốc suy từ chữ "nộp thành công" trên màn kết quả, bỏ nếu vừa có mốc.
+    `text_dedupe_window=False`: bên gọi đã tự lọc THEO TAB. Chứng thực tách nhiều tab dùng chung
+    một khóa hồ sơ — lọc theo cả hồ sơ thì chữ "thành công" của tab 2 (cú bấm tab 2 rớt) bị mốc
+    bấm của tab 1 che mất, đếm thiếu một hồ sơ.
     """
     if not dossier_id:
         return
     event: dict = {"at": clicked_at}
+    if click_id:
+        event["id"] = click_id
+    if source:
+        event["source"] = source
     if portal_host:
         event["host"] = portal_host
     if portal_dossier_ref:
@@ -114,6 +149,13 @@ async def add_submit_event(
     query: dict = {"_id": dossier_id}
     if owner_user_id:
         query["user_id"] = owner_user_id
+    if click_id:
+        query["submit_events.id"] = {"$ne": click_id}
+    if source == "text" and text_dedupe_window:
+        query["$or"] = [
+            {"submit_clicked_at": None},
+            {"submit_clicked_at": {"$lt": clicked_at - _TEXT_DEDUPE_WINDOW}},
+        ]
     try:
         await get_db().dossiers.update_one(query, {
             "$set": update,

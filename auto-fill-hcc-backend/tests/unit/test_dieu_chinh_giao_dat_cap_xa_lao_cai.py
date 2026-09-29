@@ -175,7 +175,8 @@ def test_hai_che_do_nguoi_nop_van_chay():
 
     values = _values(mapper.enrich(facts, {"formContext": anchor})[0])
     assert values["CongDan_ngaySinhCongDan"] == "05/05/1960"
-    assert values["CongDan_tenCongDan"] == "TRẦN NHƯ DƯ"
+    # Chế độ tài khoản không ghi hai ô readonly cổng đã đổ đúng tài khoản.
+    assert "CongDan_tenCongDan" not in values
 
     values = _values(mapper.enrich(facts, {"submitterMode": "owner_as_submitter"})[0])
     assert values["CongDan_tenCongDan"] == "TRẦN NHƯ DƯ"

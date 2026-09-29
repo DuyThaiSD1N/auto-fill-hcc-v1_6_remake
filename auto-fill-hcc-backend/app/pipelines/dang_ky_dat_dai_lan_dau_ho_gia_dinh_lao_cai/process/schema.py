@@ -10,9 +10,55 @@ với các thủ tục Lào Cai khác nên engine `fill-legacy.js` của extensi
 
 Trang nhập liệu chỉ có 2 khối nhân thân; các field thửa đất KHÔNG có ô riêng trên form mà dùng để
 dựng ô "Ghi chú" ở bước thành phần hồ sơ.
+
+⚑ Cổng xác thực Họ tên + Số Căn cước + Ngày sinh của khối NGƯỜI NỘP với CSDL quốc gia dân cư và với
+tài khoản đăng nhập trước khi cho nộp → cả khối phải là MỘT người. LLM chỉ LIỆT KÊ ứng viên
+(DanhSachCccd, NguoiTrongGiayTo, NguoiDuocUyQuyen); mapper chọn người theo mốc tài khoản
+(`options.formContext`) hoặc theo tờ khai (`options.submitterMode`).
 """
 
+_AREA_DESC = (
+    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "số nhà/đường/tổ/thôn."
+)
+
 FIELDS: list[dict] = [
+    # --- ỨNG VIÊN NGƯỜI NỘP: LLM chỉ LIỆT KÊ người xuất hiện trong hồ sơ, KHÔNG quyết ai đi nộp. ---
+    {
+        "name": "NguoiDuocUyQuyen",
+        "desc": (
+            "CHỈ điền khi hồ sơ có văn bản riêng tiêu đề 'GIẤY ỦY QUYỀN'/'HỢP ĐỒNG ỦY QUYỀN'/'VĂN BẢN "
+            "VỀ VIỆC ĐẠI DIỆN' trong đó người sử dụng đất ủy quyền cho người khác, kèm số định danh "
+            "của bên được ủy quyền. Chép người đứng NGAY SAU 'ủy quyền cho'/'bên được ủy quyền' vào "
+            "object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" ('Nam'/'Nữ'), \"danToc\", "
+            "\"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), \"noiCapCccd\", \"dienThoai\", \"email\", "
+            "\"thuongTru\": " + _AREA_DESC + "}. Không có văn bản ủy quyền thì BỎ TRỐNG — vợ/chồng "
+            "cùng đứng tên ở mục 1 Đơn Mẫu 21 hay thành viên hộ gia đình KHÔNG phải người được ủy quyền."
+        ),
+    },
+    {
+        "name": "DanhSachCccd",
+        "desc": (
+            "Một object cho MỖI ảnh/bản sao CCCD/CMND/thẻ Căn cước THẬT có trong hồ sơ (không lấy người "
+            "chỉ được NHẮC TỚI trong đơn hay giấy tờ khác): [{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,"
+            "NgayCap,NoiCap,NoiCuTru}]. NgaySinh/NgayCap dd/mm/yyyy. NoiCuTru = nơi thường trú in trên "
+            "thẻ, " + _AREA_DESC
+        ),
+    },
+    {
+        "name": "NguoiTrongGiayTo",
+        "desc": (
+            "MỌI cá nhân được ghi KÈM SỐ ĐỊNH DANH/CCCD/CMND trong bất kỳ giấy tờ nào của hồ sơ (người "
+            "sử dụng đất và vợ/chồng ở mục 1 Đơn Mẫu 21, người ký đơn, bên ủy quyền và bên được ủy "
+            "quyền, các bên trong giấy tờ chuyển quyền/cho tặng đất), mỗi người một object: "
+            "[{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,NgayCap,NoiCap,DienThoai,Email,NoiCuTru}]. "
+            "NgaySinh/NgayCap dd/mm/yyyy (giấy chỉ ghi năm sinh thì trả đúng năm). GioiTinh suy từ xưng "
+            "hô gắn TRỰC TIẾP với chính người đó (Ông→Nam, Bà→Nữ) hoặc chữ số thứ 4 của CCCD 12 số. "
+            "NoiCuTru " + _AREA_DESC + " Mỗi mục phải lấy từ phần giấy tờ ghi về CHÍNH người đó; người "
+            "nào thiếu mục nào thì bỏ mục đó, KHÔNG bịa, không mượn của người khác."
+        ),
+    },
+
     # --- CHỦ HỒ SƠ = NGƯỜI SỬ DỤNG ĐẤT đứng tên Đơn Mẫu 21 ---
     {
         "name": "ChuHoSo_HoTen",

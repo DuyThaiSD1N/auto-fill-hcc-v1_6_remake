@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { buildQuery, navigate, useLocation } from "../router";
 import { isoDay } from "../format";
 import { useFacets } from "../hooks";
+import ComboSelect from "./ComboSelect";
 import Icon from "./Icon";
 
 /** Bộ lọc nằm trên URL: đọc từ query, ghi bằng replaceState (Back vẫn về trang trước đó). */
@@ -81,32 +82,22 @@ export function DateRange({ range, from, to, onChange }: {
 
 export function UnitSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { facets } = useFacets();
-  return (
-    <label className="filter">
-      <span>Đơn vị</span>
-      <select className="select" value={value} onChange={(e) => onChange(e.target.value)} style={{ maxWidth: 220 }}>
-        <option value="">Tất cả đơn vị</option>
-        {(facets?.users ?? []).map((u) => (
-          <option key={u.userId} value={u.userId}>{u.name || u.username || u.userId}</option>
-        ))}
-      </select>
-    </label>
-  );
+  const options = useMemo(() => (facets?.users ?? []).map((u) => ({
+    value: u.userId,
+    label: u.name || u.username || u.userId,
+    hint: u.name && u.username ? u.username : undefined,
+  })), [facets]);
+  return <ComboSelect label="Đơn vị" value={value} options={options} allLabel="Tất cả đơn vị" onChange={onChange} width={220} />;
 }
 
 export function ProcedureSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { facets } = useFacets();
-  return (
-    <label className="filter">
-      <span>Thủ tục</span>
-      <select className="select" value={value} onChange={(e) => onChange(e.target.value)} style={{ maxWidth: 260 }}>
-        <option value="">Tất cả thủ tục</option>
-        {(facets?.procedures ?? []).map((p) => (
-          <option key={p.key} value={p.key}>{p.label || p.key}</option>
-        ))}
-      </select>
-    </label>
-  );
+  const options = useMemo(() => (facets?.procedures ?? []).map((p) => ({
+    value: p.key,
+    label: p.label || p.key,
+    hint: p.label ? p.key : undefined,
+  })), [facets]);
+  return <ComboSelect label="Thủ tục" value={value} options={options} allLabel="Tất cả thủ tục" onChange={onChange} width={260} />;
 }
 
 /** Ô tìm: gõ xong 350 ms mới lọc (không gọi API mỗi phím). */

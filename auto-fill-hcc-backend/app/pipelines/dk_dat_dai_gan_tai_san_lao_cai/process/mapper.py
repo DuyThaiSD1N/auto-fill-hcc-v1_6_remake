@@ -3,7 +3,7 @@
 Chọn nguồn theo "Mapping_1.115688_DangKyDatDai_LanDau_LaoCai.xlsx" (cột "Dữ liệu được lấy từ", thứ tự ưu
 tiên ghi ở phần CHÚ THÍCH: CCCD/giấy tờ pháp nhân → Đơn đăng ký Mẫu 15 → giấy tờ kèm theo (Mẫu 15a/15b, Báo
 cáo 15d, Giấy ủy quyền, Đơn đề nghị xác nhận) → từ điển nhãn):
-  Người nộp : Họ tên + Số Căn cước readonly, cổng đổ từ tài khoản định danh → KHÔNG phát.
+  Người nộp : Họ tên + Số Căn cước readonly, cổng đổ từ tài khoản định danh → chế độ tài khoản KHÔNG phát.
               Ngày sinh/giới tính/dân tộc/ngày cấp/nơi cấp/ĐỊA CHỈ → giấy tờ CỦA CHÍNH người đang đăng nhập:
               CCCD đã upload (khớp số định danh, không có số thì khớp họ tên tài khoản) rồi đến các người
               được ghi kèm CCCD trong Đơn/Mẫu 15a/Giấy ủy quyền. Hồ sơ nộp thay thì đó là bên nhận ủy quyền.
@@ -14,6 +14,15 @@ cáo 15d, Giấy ủy quyền, Đơn đề nghị xác nhận) → từ điển 
               Cá nhân → CCCD rồi Đơn/Mẫu 15a; tổ chức → tên theo giấy tờ pháp nhân + MST.
               Địa chỉ → Đơn Mẫu 15 → Giấy ủy quyền (bên ủy quyền) → Mẫu 15a/Đơn đề nghị xác nhận → CCCD.
               Di động/Email → Đơn Mẫu 15.
+
+⚑ CHẾ ĐỘ "THEO TỜ KHAI" (`options.submitterMode="owner_as_submitter"`, cài đặt "Người nộp = chủ hồ sơ" của
+extension): bỏ mốc tài khoản, người nộp = chủ hồ sơ CÁ NHÂN, nhân thân bù từ CCCD/giấy tờ của CHÍNH người đó
+(`_merge_person`). Schema không tách vai BÊN NHẬN ỦY QUYỀN (NguoiTrongGiayTo chỉ liệt kê mọi người có số định
+danh) và không có trường người ký đơn thay tổ chức → hồ sơ có Giấy ủy quyền hoặc chủ hồ sơ là tổ chức thì để
+trống nhân thân khối người nộp + cảnh báo, không đoán giữa các ứng viên. Hai ô readonly Họ tên/Số Căn cước ghi
+theo người đó, đứng TRƯỚC các ô khác của khối (sửa họ tên làm script cổng xoá Di động/Số Căn cước), ô nhân thân
+tài khoản mà hồ sơ không có thì XOÁ (`_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop`); lệch tài khoản thì cảnh
+báo. Cảnh báo chỉ có ở `enrich_with_warnings`; `enrich` giữ hợp đồng cũ (chỉ trả danh sách field) cho runner.
 """
 
 import re
@@ -22,6 +31,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.lao_cai_nguoi_nop import chot_khoi_nguoi_nop
 from app.pipelines.dk_dat_dai_gan_tai_san_lao_cai.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 _FULL_DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
@@ -189,11 +199,100 @@ def _find_person(people: list[dict], id_number, name) -> dict | None:
     return _match_by_id(people, id_number) if _digits(id_number) else _match_by_name(people, name)
 
 
+def _get(person: dict | None, *keys):
+    for key in keys:
+        value = (person or {}).get(key)
+        if value not in (None, "", {}, []):
+            return value
+    return None
+
+
+def _owner_person(values: dict, owner_card: dict | None, owner_named: dict | None) -> dict | None:
+    """Chủ hồ sơ CÁ NHÂN dạng một người — chỉ dùng cho chế độ THEO TỜ KHAI khi người nộp là chủ hồ sơ.
+
+    Ngày sinh/ngày cấp/nơi cấp theo đúng thứ tự nguồn của khối chủ hồ sơ (thẻ → Đơn → người trong giấy tờ):
+    cổng đối chiếu Ngày sinh của khối người nộp với CSDL dân cư, hai khối phải ra cùng một con số. Di động/
+    Email trên Đơn là của người sử dụng đất nên thuộc về đúng người này.
+    """
+    residence = next(
+        (a for a in (values.get("ChuHoSo_DiaChiDon"), values.get("ChuHoSo_DiaChiDanhSach")) if _area(a)),
+        None,
+    )
+    block = {
+        "HoTen": values.get("ChuHoSo_HoTen"),
+        "SoDinhDanh": values.get("ChuHoSo_SoDinhDanh"),
+        "NgaySinh": (
+            _full_date((owner_card or {}).get("NgaySinh"))
+            or _full_date(values.get("ChuHoSo_NgaySinh"))
+            or _full_date((owner_named or {}).get("NgaySinh"))
+        ),
+        "GioiTinh": _gender(owner_card) or _gender(owner_named, values.get("ChuHoSo_XungHo")),
+        "DanToc": (owner_card or {}).get("DanToc"),
+        "NgayCap": (
+            _full_date((owner_card or {}).get("NgayCap"))
+            or _full_date(values.get("ChuHoSo_NgayCap"))
+            or _full_date((owner_named or {}).get("NgayCap"))
+        ),
+        "NoiCap": (
+            _issuer((owner_card or {}).get("NoiCap"))
+            or _issuer(values.get("ChuHoSo_NoiCap"))
+            or _issuer((owner_named or {}).get("NoiCap"))
+        ),
+        "DienThoai": values.get("Don_DienThoai"),
+        "Email": values.get("Don_Email"),
+        "NoiCuTru": residence,
+    }
+    return block if (_plain(block["HoTen"]) or _digits(block["SoDinhDanh"])) else None
+
+
+def _same_person_by_name(left: dict, right: dict) -> bool:
+    """Hai bản ghi cùng họ tên nhưng KHÁC ngày sinh là hai người (cha/con trùng tên) — không gộp."""
+    left_dob = _full_date(_get(left, "NgaySinh"))
+    right_dob = _full_date(_get(right, "NgaySinh"))
+    return not (left_dob and right_dob and left_dob != right_dob)
+
+
+def _merge_person(base: dict | None, *groups: list[dict]) -> dict | None:
+    """Bù các mục còn thiếu của `base` bằng giấy tờ khác CỦA CHÍNH người đó.
+
+    Chỉ gộp khi chắc chắn cùng người: khớp SỐ ĐỊNH DANH, hoặc (khi một trong hai phía không đọc được số) khớp
+    HỌ TÊN bỏ dấu mà ngày sinh không mâu thuẫn. Hai số định danh khác nhau là hai người — không lấy chéo.
+    """
+    if not base:
+        return None
+    merged = dict(base)
+    base_id = _digits(_get(merged, "SoDinhDanh"))
+    base_name = _fold(_get(merged, "HoTen"))
+    for group in groups:
+        for person in group:
+            person_id = _digits(_get(person, "SoDinhDanh"))
+            person_name = _fold(_get(person, "HoTen"))
+            same = (
+                (base_id and person_id and base_id == person_id)
+                or (not (base_id and person_id) and base_name and base_name == person_name
+                    and _same_person_by_name(merged, person))
+            )
+            if not same:
+                continue
+            for field, value in person.items():
+                if merged.get(field) in (None, "", {}, []) and value not in (None, "", {}, []):
+                    merged[field] = value
+    return merged
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
+    """Hợp đồng cũ của runner: chỉ trả danh sách field. Cảnh báo lấy qua `enrich_with_warnings`."""
+    return enrich_with_warnings(fields, options)[0]
+
+
+def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     ctx = (options or {}).get("formContext") or {}
+    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     out: list[dict] = []
     seen: set[str] = set()
+    warnings: list[str] = []
 
     def add(name: str, value) -> None:
         if name in seen or value in (None, "", {}, []):
@@ -232,35 +331,93 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # Người nộp đứng ra cho tổ chức chủ hồ sơ (mapping sheet "1. Tổ chức", dòng 3–4 của khối người nộp).
         add("CongDan_tenCoQuanToChuc", org_name)
         add("CongDan_maSoThueNguoiNop", org_tax)
-    if applicant_card:
-        add("CongDan_ngaySinhCongDan", _full_date(applicant_card.get("NgaySinh")))
-        add("CongDan_gioiTinhCongDan", _gender(applicant_card))
-        add("CongDan_danTocCongDan", _plain(applicant_card.get("DanToc")))
-    # Hồ sơ thật rất hay thiếu ảnh CCCD; Đơn Mẫu 15/Mẫu 15a/Giấy ủy quyền vẫn ghi đủ số + ngày cấp + nơi cấp.
-    add("CongDan_ngaySinhCongDan", _full_date((applicant_named or {}).get("NgaySinh")))
-    add("CongDan_gioiTinhCongDan", _gender(applicant_named))
-    add("CongDan_ngayCapCmnd",
-        _full_date((applicant_card or {}).get("NgayCap")) or _full_date((applicant_named or {}).get("NgayCap")))
-    add("CongDan_noiCapCmnd",
-        _issuer((applicant_card or {}).get("NoiCap")) or _issuer((applicant_named or {}).get("NoiCap")))
-    # Ô "Số nhà/Đường/Tổ/Thôn" và "Di động" của khối người nộp là BẮT BUỘC (*) mà cổng để TRỐNG. Tỉnh/Xã cổng
-    # có đổ sẵn theo tài khoản, nhưng vẫn phát lại theo giấy tờ của CHÍNH người đăng nhập để bộ ba địa chỉ là
-    # một địa chỉ nhất quán — chắp nửa tài khoản nửa giấy tờ là ra địa chỉ không có thật.
-    applicant_area = (
-        _area((applicant_card or {}).get("NoiCuTru"))
-        or _area((applicant_named or {}).get("NoiCuTru"))
-    )
-    if applicant_area:
-        # Tỉnh TRƯỚC xã: danh sách Phường/Xã chỉ nạp bằng AJAX sau khi chọn tỉnh.
-        add("CongDan_maTinhThanh", province_label(applicant_area.get("tinh")))
-        add("CongDan_maPhuongXa", _plain(applicant_area.get("xa")))
-        add("CongDan_diaChi", _plain(applicant_area.get("diaChi")))
-    # Di động/Email trên Đơn là của NGƯỜI SỬ DỤNG ĐẤT → chỉ dùng lại cho khối người nộp khi người đăng nhập
-    # chính là chủ hồ sơ. Nộp thay mà chép số của chủ hồ sơ sang là cổng gửi thông báo về sai người.
-    self_submit = bool(person_id and applicant_id and _digits(person_id) == _digits(applicant_id))
-    if self_submit:
-        add("CongDan_diDong", _phone(values.get("Don_DienThoai")))
-        add("CongDan_email", _email(values.get("Don_Email")))
+    if theo_to_khai:
+        # Giấy ủy quyền có mặt (có địa chỉ bên ủy quyền) nghĩa là người nộp KHÔNG phải chủ hồ sơ, mà schema
+        # không chỉ ra ai trong NguoiTrongGiayTo là bên nhận ủy quyền → để trống, không đoán. Tổ chức không
+        # tự đi nộp, và schema không có trường người ký đơn thay tổ chức → cũng để trống.
+        co_uy_quyen = bool(values.get("ChuHoSo_DiaChiUyQuyen"))
+        base = None if (is_org or co_uy_quyen) else _owner_person(values, owner_card, owner_named)
+        nguoi_nop = _merge_person(base, cards, named)
+        if nguoi_nop:
+            ten_nop = upper_person_name(_plain(_get(nguoi_nop, "HoTen")))
+            if ten_nop:
+                # Chỉ ghi Số Căn cước khi đã có họ tên: đổi riêng số mà giữ họ tên tài khoản là khối người nộp
+                # thành nửa người này nửa người kia.
+                add("CongDan_tenCongDan", ten_nop)
+                add("CongDan_soCmnd", _id_number(_get(nguoi_nop, "SoDinhDanh")))
+            add("CongDan_ngaySinhCongDan", _full_date(_get(nguoi_nop, "NgaySinh")))
+            add("CongDan_gioiTinhCongDan", _gender(nguoi_nop))
+            add("CongDan_danTocCongDan", _plain(_get(nguoi_nop, "DanToc")))
+            add("CongDan_ngayCapCmnd", _full_date(_get(nguoi_nop, "NgayCap")))
+            add("CongDan_noiCapCmnd", _issuer(_get(nguoi_nop, "NoiCap")))
+            nop_area = _area(_get(nguoi_nop, "NoiCuTru"))
+            if nop_area:
+                # Tỉnh TRƯỚC xã: danh sách Phường/Xã chỉ nạp bằng AJAX sau khi chọn tỉnh.
+                add("CongDan_maTinhThanh", province_label(nop_area.get("tinh")))
+                add("CongDan_maPhuongXa", _plain(nop_area.get("xa")))
+                add("CongDan_diaChi", _plain(nop_area.get("diaChi")))
+            add("CongDan_diDong", _phone(_get(nguoi_nop, "DienThoai")))
+            add("CongDan_email", _email(_get(nguoi_nop, "Email")))
+            if applicant_id or applicant_name:
+                nop_id = _digits(_get(nguoi_nop, "SoDinhDanh"))
+                nop_name = _fold(_get(nguoi_nop, "HoTen"))
+                lech = (
+                    (_digits(applicant_id) and nop_id and _digits(applicant_id) != nop_id)
+                    or (not (_digits(applicant_id) and nop_id)
+                        and _fold(applicant_name) and nop_name and _fold(applicant_name) != nop_name)
+                )
+                if lech:
+                    warnings.append(
+                        "Khối \"Thông tin người nộp hồ sơ\" đang điền theo TỜ KHAI ("
+                        + (_plain(_get(nguoi_nop, "HoTen")) or "chủ hồ sơ")
+                        + ") nhưng tài khoản đang đăng nhập là "
+                        + (_plain(applicant_name) or "người khác")
+                        + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp "
+                        "— lệch là bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt "
+                        "\"Người nộp = chủ hồ sơ\"."
+                    )
+        else:
+            if co_uy_quyen:
+                ly_do = ("hồ sơ có Giấy ủy quyền nhưng tờ khai không tách riêng BÊN NHẬN ỦY QUYỀN nên không "
+                         "xác định được ai đi nộp")
+            elif is_org:
+                ly_do = "chủ hồ sơ là TỔ CHỨC và tờ khai không ghi riêng người đi nộp thay tổ chức"
+            else:
+                ly_do = "không đọc được họ tên/số căn cước của chủ hồ sơ"
+            warnings.append(
+                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng " + ly_do + ", nên trợ lý để trống nhân thân "
+                "khối \"Thông tin người nộp hồ sơ\" — cán bộ nhập tay, KHÔNG lấy thông tin của người khác."
+            )
+    else:
+        if applicant_card:
+            add("CongDan_ngaySinhCongDan", _full_date(applicant_card.get("NgaySinh")))
+            add("CongDan_gioiTinhCongDan", _gender(applicant_card))
+            add("CongDan_danTocCongDan", _plain(applicant_card.get("DanToc")))
+        # Hồ sơ thật rất hay thiếu ảnh CCCD; Đơn Mẫu 15/Mẫu 15a/Giấy ủy quyền vẫn ghi đủ số + ngày cấp + nơi cấp.
+        add("CongDan_ngaySinhCongDan", _full_date((applicant_named or {}).get("NgaySinh")))
+        add("CongDan_gioiTinhCongDan", _gender(applicant_named))
+        add("CongDan_ngayCapCmnd",
+            _full_date((applicant_card or {}).get("NgayCap")) or _full_date((applicant_named or {}).get("NgayCap")))
+        add("CongDan_noiCapCmnd",
+            _issuer((applicant_card or {}).get("NoiCap")) or _issuer((applicant_named or {}).get("NoiCap")))
+        # Ô "Số nhà/Đường/Tổ/Thôn" và "Di động" của khối người nộp là BẮT BUỘC (*) mà cổng để TRỐNG. Tỉnh/Xã cổng
+        # có đổ sẵn theo tài khoản, nhưng vẫn phát lại theo giấy tờ của CHÍNH người đăng nhập để bộ ba địa chỉ là
+        # một địa chỉ nhất quán — chắp nửa tài khoản nửa giấy tờ là ra địa chỉ không có thật.
+        applicant_area = (
+            _area((applicant_card or {}).get("NoiCuTru"))
+            or _area((applicant_named or {}).get("NoiCuTru"))
+        )
+        if applicant_area:
+            # Tỉnh TRƯỚC xã: danh sách Phường/Xã chỉ nạp bằng AJAX sau khi chọn tỉnh.
+            add("CongDan_maTinhThanh", province_label(applicant_area.get("tinh")))
+            add("CongDan_maPhuongXa", _plain(applicant_area.get("xa")))
+            add("CongDan_diaChi", _plain(applicant_area.get("diaChi")))
+        # Di động/Email trên Đơn là của NGƯỜI SỬ DỤNG ĐẤT → chỉ dùng lại cho khối người nộp khi người đăng nhập
+        # chính là chủ hồ sơ. Nộp thay mà chép số của chủ hồ sơ sang là cổng gửi thông báo về sai người.
+        self_submit = bool(person_id and applicant_id and _digits(person_id) == _digits(applicant_id))
+        if self_submit:
+            add("CongDan_diDong", _phone(values.get("Don_DienThoai")))
+            add("CongDan_email", _email(values.get("Don_Email")))
 
     # ----- Phần II: chủ hồ sơ. -----
     if is_org:
@@ -305,4 +462,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("ChuHoSo_diDongLienLacCHS", _phone(values.get("Don_DienThoai")))
         add("ChuHoSo_emailChuHoSo", _email(values.get("Don_Email")))
 
-    return out
+    out = chot_khoi_nguoi_nop(
+        out, theo_to_khai=theo_to_khai, comp_by_name=UI_COMP_BY_NAME, warnings=warnings
+    )
+    return out, warnings

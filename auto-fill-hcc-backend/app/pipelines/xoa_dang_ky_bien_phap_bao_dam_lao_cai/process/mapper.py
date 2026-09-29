@@ -2,7 +2,10 @@
 
 Bước 2 của thủ tục này dùng ĐÚNG bộ ô với 1.115650 (`giao_thue_dat_lao_cai`), nên toàn bộ phần chọn
 người nộp (mốc tài khoản / chế độ "Người nộp = chủ hồ sơ"), luật chỉ phát ngày đủ ngày-tháng-năm và
-luật luôn phát đủ khối địa chỉ chủ hồ sơ đi qua `giao_thue_dat_lao_cai.process.mapper.enrich`.
+luật luôn phát đủ khối địa chỉ chủ hồ sơ đi qua `giao_thue_dat_lao_cai.process.mapper.enrich` — kể cả
+bước chốt khối người nộp `_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop` (tài khoản: không ghi hai ô
+readonly; tờ khai: họ tên + căn cước đứng đầu, xoá nhân thân tài khoản mà hồ sơ không có). Bộ lọc ô ẩn
+bên dưới chỉ đụng ô `ChuHoSo_*`, không lọc ô `CongDan_*` nào, nên không gọi lại helper ở đây.
 
 Phần riêng của thủ tục này, rút từ hai bản DOM trong `mapping_xoa_dang_ky_BPBD_QSDD_H38.xlsx`:
 

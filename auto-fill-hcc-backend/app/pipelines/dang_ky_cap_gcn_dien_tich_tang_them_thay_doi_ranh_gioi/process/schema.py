@@ -224,15 +224,15 @@ for name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru", "ThuaDat_DiaChi"):
 #    "không xác định được nhãn từ HTML tĩnh – không suy đoán".
 #  • `code-dkdn` — ô tra cứu doanh nghiệp, div#form-search-dn display:none ở CẢ hai bản DOM.
 #  • `local_file`, `local_file_xuly`, `AN_FORM_CHS`, `tokenCsrf` — hidden do hệ thống tự sinh.
-#  • ⚠ `CongDan_tenCongDan` và `CongDan_soCmnd` — HAI Ô KHÔNG BAO GIỜ ĐƯỢC PHÁT. Chúng readonly, cổng
-#    tự đổ từ tài khoản định danh đang đăng nhập; script của cổng còn XOÁ TRẮNG "Di động" + "Số Căn
-#    cước" ngay khi họ tên bị sửa khác tài khoản — tức là điền vào đây làm HỎNG chính ô bắt buộc
-#    "Di động" vừa điền xong. Hành vi này đã xác minh trên cùng họ biểu mẫu Lào Cai
-#    (1.115667/1.115668/1.115677/1.115678/1.115694).
-#    Bù lại, đúng hai ô đó là MỐC DUY NHẤT để biết AI đang đi nộp: extension đọc chúng rồi gửi lên
-#    trong `options.formContext` (xem mapper).
+#
+# ⚠ `CongDan_tenCongDan` và `CongDan_soCmnd` readonly, cổng tự đổ từ tài khoản định danh đang đăng nhập;
+# script của cổng XOÁ TRẮNG "Di động" + "Số Căn cước" khi họ tên bị sửa. Chế độ tài khoản không phát
+# hai ô này (chúng là MỐC để biết ai đang đi nộp, extension gửi lên trong `options.formContext`); chế độ
+# tờ khai ghi chúng TRƯỚC các ô khác (`_shared/lao_cai_nguoi_nop`, xem mapper).
 UI_COMP_BY_NAME = {
     # Khối NGƯỜI NỘP
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",

@@ -2738,3 +2738,6 @@ a:focus-visible,
   height: 16px;
   accent-color: var(--primary);
 }
+.report-data-toggle {
+  margin-bottom: 14px;
+}

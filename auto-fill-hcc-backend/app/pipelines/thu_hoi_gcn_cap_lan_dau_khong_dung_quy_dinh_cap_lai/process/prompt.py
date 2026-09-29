@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115687 (Lào Cai)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ của thủ tục này là ĐỀ NGHỊ THU HỒI/HỦY một Giấy chứng nhận quyền sử dụng đất đã cấp LẦN
 ĐẦU không đúng quy định, do CHÍNH người sử dụng đất phát hiện, và cấp lại Giấy chứng nhận sau khi thu hồi.
 
@@ -43,4 +45,4 @@ CCCD:
   Giấy chứng nhận — mỗi người kèm NoiCuTru của chính người đó, vì khối "người nộp" trên cổng lấy địa chỉ của
   NGƯỜI ĐI NỘP chứ không phải của chủ hồ sơ.
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

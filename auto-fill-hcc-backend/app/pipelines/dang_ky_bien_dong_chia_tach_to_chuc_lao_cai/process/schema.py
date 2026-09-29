@@ -12,9 +12,58 @@ KHÔNG có phần thân đơn (thửa đất, nội dung biến động) → cá
 ⚑ Chủ hồ sơ của thủ tục này gần như luôn là TỔ CHỨC (doanh nghiệp sau chuyển đổi, đơn vị sự nghiệp sau
 sáp nhập). Khi chọn đối tượng "Tổ chức", cổng ẨN 7 ô cá nhân của khối chủ hồ sơ (họ tên, ngày sinh,
 giới tính, dân tộc, số/nơi cấp/ngày cấp căn cước) — mapper không phát các ô đó để khỏi điền vào ô ẩn.
+
+⚑ Cổng xác thực Họ tên + Số Căn cước + Ngày sinh của khối NGƯỜI NỘP với CSDL quốc gia dân cư và với
+tài khoản đăng nhập trước khi cho nộp → cả khối phải là MỘT người. LLM chỉ LIỆT KÊ ứng viên
+(DanhSachCccd, NguoiTrongGiayTo, NguoiDuocUyQuyen); mapper chọn người theo mốc tài khoản
+(`options.formContext`) hoặc theo tờ khai (`options.submitterMode`).
 """
 
+_AREA_DESC = (
+    "object {quocGia,tinh,xa,diaChi}; địa chỉ hiện hành chỉ còn 2 cấp (xã/phường → tỉnh), diaChi giữ "
+    "số nhà/đường/tổ/thôn."
+)
+
 FIELDS: list[dict] = [
+    # --- ỨNG VIÊN NGƯỜI NỘP: LLM chỉ LIỆT KÊ người xuất hiện trong hồ sơ, KHÔNG quyết ai đi nộp. ---
+    {
+        "name": "NguoiDuocUyQuyen",
+        "desc": (
+            "CHỈ điền khi hồ sơ có văn bản riêng tiêu đề 'GIẤY ỦY QUYỀN'/'HỢP ĐỒNG ỦY QUYỀN'/'VĂN BẢN "
+            "VỀ VIỆC ĐẠI DIỆN' trong đó tổ chức (hoặc người đứng đầu tổ chức) ủy quyền cho một cá nhân "
+            "đi làm thủ tục, kèm số định danh của bên được ủy quyền. Chép người đứng NGAY SAU 'ủy quyền "
+            "cho'/'bên được ủy quyền' vào object: {\"hoTen\", \"ngaySinh\" (dd/mm/yyyy), \"gioiTinh\" "
+            "('Nam'/'Nữ'), \"danToc\", \"soDinhDanh\", \"ngayCapCccd\" (dd/mm/yyyy), \"noiCapCccd\", "
+            "\"dienThoai\", \"email\", \"thuongTru\": " + _AREA_DESC + "}. Không có văn bản ủy quyền thì "
+            "BỎ TRỐNG — người đại diện theo pháp luật trên Giấy chứng nhận đăng ký doanh nghiệp, giám "
+            "đốc/thủ trưởng được nêu trong quyết định thành lập, người ký Đơn Mẫu 24 KHÔNG phải người "
+            "được ủy quyền."
+        ),
+    },
+    {
+        "name": "DanhSachCccd",
+        "desc": (
+            "Một object cho MỖI ảnh/bản sao CCCD/CMND/thẻ Căn cước THẬT có trong hồ sơ (không lấy người "
+            "chỉ được NHẮC TỚI trong đơn hay quyết định): [{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,"
+            "NgayCap,NoiCap,NoiCuTru}]. NgaySinh/NgayCap dd/mm/yyyy. NoiCuTru = nơi thường trú in trên "
+            "thẻ, " + _AREA_DESC
+        ),
+    },
+    {
+        "name": "NguoiTrongGiayTo",
+        "desc": (
+            "MỌI cá nhân được ghi KÈM SỐ ĐỊNH DANH/CCCD/CMND trong bất kỳ giấy tờ nào của hồ sơ (người "
+            "ký Đơn Mẫu 24, người đại diện theo pháp luật trên Giấy chứng nhận đăng ký doanh nghiệp, bên "
+            "ủy quyền và bên được ủy quyền), mỗi người một object: "
+            "[{HoTen,SoDinhDanh,NgaySinh,GioiTinh,DanToc,NgayCap,NoiCap,DienThoai,Email,NoiCuTru}]. "
+            "NgaySinh/NgayCap dd/mm/yyyy (giấy chỉ ghi năm sinh thì trả đúng năm). GioiTinh suy từ xưng "
+            "hô gắn TRỰC TIẾP với chính người đó (Ông→Nam, Bà→Nữ) hoặc chữ số thứ 4 của CCCD 12 số. "
+            "NoiCuTru " + _AREA_DESC + " Không liệt kê người chỉ có tên mà không kèm số định danh (người "
+            "ký ban hành quyết định, cán bộ xác nhận). Mỗi mục phải lấy từ phần giấy tờ ghi về CHÍNH "
+            "người đó; người nào thiếu mục nào thì bỏ mục đó, KHÔNG bịa, không mượn của người khác."
+        ),
+    },
+
     # --- CHỦ HỒ SƠ = người sử dụng đất khai ở Đơn Mẫu 24 (tổ chức SAU khi chia/tách/sáp nhập) ---
     {
         "name": "ChuHoSo_HoTen",

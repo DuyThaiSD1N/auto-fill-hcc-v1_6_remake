@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115651 (Lào Cai)."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """Hồ sơ chuyển mục đích / chuyển hình thức / gia hạn / điều chỉnh thời hạn sử dụng đất thường gồm: Đơn (Mẫu số 02,
 03, 17 hoặc 18); Giấy chứng nhận quyền sử dụng đất; Quyết định giao đất/cho thuê đất/cho phép chuyển mục đích; mảnh
 đo đạc chỉnh lý bản đồ địa chính; văn bản về thời hạn dự án đầu tư; GCN đăng ký doanh nghiệp; giấy ủy quyền; CCCD.
@@ -27,4 +29,4 @@ CCCD:
   vào NguoiTrongGiayTo. Thẻ có "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" thì NoiCap="Cục Cảnh sát
   quản lý hành chính về trật tự xã hội"; thẻ Căn cước mẫu mới ghi "BỘ CÔNG AN" thì NoiCap="Bộ Công an".
 
-KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field."""
+KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo...). Không đọc được chắc chắn thì bỏ field.""" + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

@@ -1,8 +1,8 @@
 """[Lào Cai] 1.115650 — hai chế độ xác định NGƯỜI NỘP.
 
 Cổng đổ sẵn Họ tên + Số Căn cước của tài khoản vào hai ô readonly rồi gửi chính chúng (kèm ngày sinh)
-sang CSDL quốc gia dân cư để xác thực trước khi cho nộp. Vì vậy: không bao giờ ghi đè hai ô đó, và
-nhân thân khối người nộp phải là của CHÍNH người đang đăng nhập.
+sang CSDL quốc gia dân cư để xác thực trước khi cho nộp. Vì vậy: chế độ theo tài khoản không ghi hai
+ô đó, và nhân thân khối người nộp phải là của CHÍNH người đang đăng nhập.
 """
 
 from pathlib import Path
@@ -43,11 +43,11 @@ def test_ho_ten_va_can_cuoc_luon_di_cung_nguoi_voi_phan_nhan_than():
     assert "CongDan_tenCongDan" in UI_COMP_BY_NAME
     assert "CongDan_soCmnd" in UI_COMP_BY_NAME
 
-    # Chế độ TÀI KHOẢN: ghi lại ĐÚNG chuỗi mốc, không lấy biến thể trong giấy tờ.
+    # Chế độ TÀI KHOẢN: hai ô readonly cổng đã đổ đúng tài khoản → không ghi, chỉ bù nhân thân.
     fields, _ = mapper.enrich(_FACTS, {"formContext": _ANCHOR})
     values = _values(fields)
-    assert values["CongDan_tenCongDan"] == "ĐỖ XUÂN THÀNH"
-    assert values["CongDan_soCmnd"] == "035066009759"
+    assert "CongDan_tenCongDan" not in values
+    assert "CongDan_soCmnd" not in values
     assert values["CongDan_ngaySinhCongDan"] == "06/12/1966"
 
     # Chế độ TỜ KHAI: ghi theo người trong hồ sơ.
@@ -163,3 +163,62 @@ def test_popup_gui_form_context_cho_thu_tuc_nay():
         return
     block = popup.read_text(encoding="utf-8").split("collectFormContext", 1)[0]
     assert 'cfg.key === "giao-thue-dat-lao-cai"' in block
+
+
+# Người nộp theo tờ khai chỉ có họ tên + số định danh + năm sinh; hồ sơ còn một người KHÁC có nhân thân
+# đầy đủ. Tên/số đều giả.
+_FACTS_THIEU = [
+    {"name": "ChuHoSo_HoTen", "value": "Phạm Thị Giả"},
+    {"name": "ChuHoSo_NoiCuTru", "value": {"tinh": "Lào Cai", "xa": "Cam Đường", "diaChi": "Tổ 1"}},
+    {"name": "NguoiNop_HoTen", "value": "Phạm Thị Giả"},
+    {"name": "NguoiNop_SoDinhDanh", "value": "001170000011"},
+    {"name": "NguoiNop_NgaySinh", "value": "1970"},
+    {"name": "NguoiTrongGiayTo", "value": [
+        {"HoTen": "Lê Văn Khác", "SoDinhDanh": "001080000099", "NgaySinh": "01/02/1980",
+         "GioiTinh": "Nam", "NgayCap": "03/04/2021", "NoiCap": "Bộ Công an", "DienThoai": "0900000099",
+         "NoiCuTru": {"tinh": "Lào Cai", "xa": "Xuân Tăng", "diaChi": "Số 99"}},
+    ]},
+]
+_TK_KHAC = {"applicantFullname": "NGUYỄN TÀI KHOẢN", "applicantIdentityNumber": "001199000001"}
+
+
+def test_to_khai_ho_ten_can_cuoc_dung_dau_va_xoa_nhan_than_tai_khoan_ho_so_khong_co():
+    fields, _ = mapper.enrich(
+        _FACTS_THIEU, {"submitterMode": "owner_as_submitter", "formContext": _TK_KHAC}
+    )
+    values = _values(fields)
+    names = [f["name"] for f in fields if f["name"].startswith("CongDan_")]
+
+    assert names[:2] == ["CongDan_tenCongDan", "CongDan_soCmnd"]
+    assert values["CongDan_tenCongDan"] == "Phạm Thị Giả"
+    assert values["CongDan_soCmnd"] == "001170000011"
+    cleared = {f["name"] for f in fields if f.get("clear")}
+    # Chỉ có năm sinh → xoá ô ngày sinh tài khoản thay vì để sót.
+    for name in ("CongDan_ngaySinhCongDan", "CongDan_ngayCapCmnd", "CongDan_diDong",
+                 "CongDan_danTocCongDan", "CongDan_email", "CongDan_fax"):
+        assert name in cleared, name
+        assert values[name] == "", name
+    # Không mượn nhân thân của người khác trong hồ sơ.
+    for foreign in ("001080000099", "01/02/1980", "03/04/2021", "0900000099", "Số 99"):
+        assert foreign not in values.values(), foreign
+
+
+def test_to_khai_nguoi_nop_khong_co_so_dinh_danh_thi_xoa_o_can_cuoc_ngay_sau_ho_ten():
+    facts = [f for f in _FACTS_THIEU if f["name"] != "NguoiNop_SoDinhDanh"]
+    fields, _ = mapper.enrich(facts, {"submitterMode": "owner_as_submitter"})
+    congdan = [f for f in fields if f["name"].startswith("CongDan_")]
+
+    assert congdan[0]["name"] == "CongDan_tenCongDan"
+    assert congdan[1] == {"name": "CongDan_soCmnd", "comp": UI_COMP_BY_NAME["CongDan_soCmnd"],
+                          "value": "", "clear": True, "markEmpty": True}
+
+
+def test_tai_khoan_khong_ghi_hai_o_readonly_va_khong_xoa_o_nao():
+    fields, _ = mapper.enrich(_FACTS_THIEU, {"formContext": {
+        "applicantFullname": "LÊ VĂN KHÁC", "applicantIdentityNumber": "001080000099",
+    }})
+    values = _values(fields)
+
+    assert not {"CongDan_tenCongDan", "CongDan_soCmnd"} & set(values)
+    assert not any(f.get("clear") for f in fields)
+    assert values["CongDan_ngaySinhCongDan"] == "01/02/1980"

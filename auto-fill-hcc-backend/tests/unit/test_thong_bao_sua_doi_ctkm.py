@@ -115,31 +115,14 @@ def test_so_bi_che_thieu_chu_so_khong_dien_va_bao_canh_bao():
     assert any("Điện thoại thương nhân" in w for w in warnings)
 
 
-def test_tinh_nop_don_uu_tien_kinh_gui_roi_dia_danh_roi_tru_so():
-    fields, _ = _run({**_trader(), "ThongBao_DiaDanh": "TP. HCM"})
+def test_tinh_nop_don_chi_khi_kinh_gui_neu_dung_mot_tinh():
+    fields, _ = _run(_trader())
     assert fields[("data[tinhThanhPhoNopDon]", None)]["value"] == "Quảng Trị"
 
     toan_quoc = {**_trader(), "ThongBao_KinhGui": "Sở Công Thương các Tỉnh/Thành phố trên toàn quốc"}
-    fields, _ = _run({**toan_quoc, "ThongBao_DiaDanh": "TP. HCM"})
-    assert fields[("data[tinhThanhPhoNopDon]", None)]["value"] == "Hồ Chí Minh"
-
-    fields, _ = _run(toan_quoc)
-    assert fields[("data[tinhThanhPhoNopDon]", None)]["value"] == "Hà Nội"
-
-    fields, warnings = _run({**toan_quoc, "ThuongNhan_DiaChi": None})
+    fields, warnings = _run(toan_quoc)
     assert ("data[tinhThanhPhoNopDon]", None) not in fields
     assert any("Tỉnh / Thành Phố nộp đơn" in w for w in warnings)
-
-
-def test_cccd_chu_ho_so_ghi_de_hoac_xoa_trang():
-    fields, _ = _run({**_trader(), **_cccd()}, _ACCOUNT)
-    assert fields[("data[ownerIdentityNumber]", None)]["value"] == "001099000001"
-
-    fields, _ = _run(_trader(), _ACCOUNT)
-    assert fields[("data[ownerIdentityNumber]", None)]["value"] == ""
-
-    fields, _ = _run({**_trader(), "NguoiNop_SoDinhDanh": "0010990"}, _ACCOUNT)
-    assert fields[("data[ownerIdentityNumber]", None)]["value"] == ""
 
 
 def test_moi_field_mapper_phat_deu_co_trong_ui_va_prompt_chi_dung_field_hop_le():

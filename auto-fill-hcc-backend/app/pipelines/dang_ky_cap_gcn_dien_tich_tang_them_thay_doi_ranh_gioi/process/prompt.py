@@ -1,5 +1,7 @@
 """Luật prompt riêng cho thủ tục 1.115693 (Lào Cai) — diện tích tăng thêm do thay đổi ranh giới."""
 
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <bo_ho_so_thu_tuc_nay>
 Thủ tục: Đăng ký, cấp Giấy chứng nhận đối với thửa đất có DIỆN TÍCH TĂNG THÊM do thay đổi ranh giới so
@@ -116,4 +118,4 @@ thông tin đó, đừng dừng ở trang đầu.
 
 KHÔNG trả field UI (CongDan_*, ChuHoSo_tenChuHoSo, ChuHoSo_maTinhThanhCHS…). Không đọc được chắc chắn
 thì bỏ field, tuyệt đối không bịa.
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

@@ -98,9 +98,12 @@ for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiUyQuyen"):
 
 # Ô UI thật ở bước 2 (name = <tiền tố><key>, Nth.FormBuilder). <select> native → dom-select, còn lại → dom-input.
 UI_COMP_BY_NAME = {
-    # Phần I — người nộp (tài khoản đang đăng nhập). Họ tên + Số Căn cước readonly, cổng tự đổ từ tài khoản
-    # định danh → KHÔNG phát lại (sửa "Họ và tên" là cổng xoá trắng Di động + Số CCCD khi bấm Tiếp tục).
+    # Phần I — người nộp. Họ tên + Số Căn cước readonly, cổng tự đổ từ tài khoản định danh: chế độ tài khoản
+    # KHÔNG phát lại; chế độ tờ khai ghi theo người trong hồ sơ, đứng TRƯỚC các ô khác (sửa "Họ và tên" là
+    # cổng xoá trắng Di động + Số CCCD).
     # Di động/Email/Fax mapping ghi "Tự nhập" → không có nguồn trong hồ sơ, để cán bộ gõ.
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",      # người nộp đại diện tổ chức chủ hồ sơ
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",

@@ -12,11 +12,11 @@ bộ tự quyết, tránh cổng tự xoá dữ liệu đã điền khi trạng 
     có mốc, hoặc hồ sơ không có giấy tờ của người đó → BỎ TRỐNG cả khối + cảnh báo.
   · `submitterMode="owner_as_submitter"` — THEO TỜ KHAI: bỏ mốc, lấy bên được ủy quyền → người ký đơn
     → chủ hồ sơ.
-Hai ô `CongDan_tenCongDan` / `CongDan_soCmnd` readonly (cổng đổ từ tài khoản) nhưng VẪN ĐƯỢC PHÁT để
-cả khối là MỘT người — bỏ trống chúng thì khối thành nửa của tài khoản nửa của người trong hồ sơ. Chế
-độ theo tài khoản ghi lại đúng chuỗi mốc; chế độ theo tờ khai ghi theo người trong hồ sơ và CẢNH BÁO
-khi lệch tài khoản, vì cổng gửi chính hai ô đó (kèm ngày sinh) sang CSDL quốc gia dân cư để xác thực
-trước khi cho nộp — lệch là chặn nộp ("Thông tin người nộp hồ sơ không đúng với tài khoản đăng nhập!").
+Hai ô `CongDan_tenCongDan` / `CongDan_soCmnd` readonly (cổng đổ từ tài khoản): chế độ theo tài khoản
+KHÔNG ghi; chế độ theo tờ khai ghi theo người trong hồ sơ, XOÁ các ô nhân thân tài khoản mà hồ sơ không
+có (`_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop`) và CẢNH BÁO khi lệch tài khoản, vì cổng gửi chính
+hai ô đó (kèm ngày sinh) sang CSDL quốc gia dân cư để xác thực trước khi cho nộp — lệch là chặn nộp
+("Thông tin người nộp hồ sơ không đúng với tài khoản đăng nhập!").
 
 ⚑ Trang "Thành phần hồ sơ" có thêm 2 textarea: `HoSoOnline_veViec` (BẮT BUỘC — trích yếu hồ sơ, cổng tự
 điền sẵn TÊN THỦ TỤC nên phải ghi đè bằng trích yếu thật của Đơn) và `HoSoOnline_ghiChu`.
@@ -28,6 +28,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
+from app.pipelines._shared.lao_cai_nguoi_nop import chot_khoi_nguoi_nop
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 _DOI_TUONG_TO_CHUC = "Tổ chức"
@@ -312,14 +313,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     nop_area = _area(_get(nguoi_nop, "NoiCuTru")) if nguoi_nop else None
     if nguoi_nop:
         nop_identity = _digits(_get(nguoi_nop, "SoDinhDanh"))
-        # Chế độ theo tài khoản ghi lại ĐÚNG chuỗi mốc (không lấy biến thể viết hoa/CMND 9 số trong
-        # giấy tờ) để không phá lệnh xác thực CSDLQG.
+        # Chế độ theo tài khoản giữ nguyên hai ô readonly cổng đã đổ đúng tài khoản (chot_khoi_nguoi_nop);
+        # theo tờ khai thì ghi theo người trong hồ sơ.
         if theo_to_khai:
             add("CongDan_tenCongDan", _plain(_get(nguoi_nop, "HoTen")))
             add("CongDan_soCmnd", nop_identity)
-        else:
-            add("CongDan_tenCongDan", _plain(ctx.get("applicantFullname") or ctx.get("fullname")))
-            add("CongDan_soCmnd", anchor_id)
         nop_ngay_cap = _date(_get(nguoi_nop, "NgayCap"))
         # Nơi cấp mặc định CHỈ khi hồ sơ thật sự có giấy tờ định danh của người đó — không thì là bịa.
         nop_noi_cap = normalize_issuer(_plain(_get(nguoi_nop, "NoiCap")))
@@ -407,4 +405,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # --- Bước "Thành phần hồ sơ" ---
     add("HoSoOnline_veViec", _trich_yeu(values))
 
+    out = chot_khoi_nguoi_nop(
+        out, theo_to_khai=theo_to_khai, comp_by_name=UI_COMP_BY_NAME, warnings=warnings
+    )
     return out, warnings

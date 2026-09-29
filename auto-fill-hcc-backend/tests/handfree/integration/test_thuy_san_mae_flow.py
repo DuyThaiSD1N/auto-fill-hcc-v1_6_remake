@@ -129,7 +129,7 @@ def test_attach_plan_mang_attach_step_theo_thu_tuc():
     assert flow._attach_plan_action(conv_tp, [])["attach_step"] == 3
 
 
-def test_planner_bo_qua_giay_phep_cu_khong_canh_bao():
+def test_planner_giay_phep_cu_va_cccd_di_kem_dong_don_khong_canh_bao():
     from app.pipelines.cap_giay_phep_khai_thac_thuy_san.attach import planner
 
     files = [{"name": "don.jpg"}, {"name": "gp-cu.jpg"}, {"name": "cccd.jpg"}]
@@ -140,10 +140,11 @@ def test_planner_bo_qua_giay_phep_cu_khong_canh_bao():
     ]
     items, warnings, classified = planner.build_plan_items(files, ocr, {})
     assert not warnings, warnings
-    assert len(items) == 1 and items[0]["detectedType"] == "don_cap_lai"
-    assert items[0]["target"] == "attp-row"
-    skipped = {c["fileName"] for c in classified if c.get("skipped")}
-    assert skipped == {"gp-cu.jpg", "cccd.jpg"}
+    # Bảng chỉ có dòng Đơn → giấy phép cũ + CCCD đính cùng dòng Đơn cấp lại, không bỏ tệp nào.
+    assert [i["detectedType"] for i in items] == ["don_cap_lai", "giay_phep_cu", "cccd"]
+    assert all(i["target"] == "attp-row" and "Mẫu số 05" in i["componentName"] for i in items)
+    routed = {c["fileName"] for c in classified if c.get("routedTo") == "don_cap_lai"}
+    assert routed == {"gp-cu.jpg", "cccd.jpg"}
 
 
 def test_upload_classifier_da_dang_ky():

@@ -10,9 +10,9 @@ engine dom-* của extension khớp ô theo thuộc tính `name`. Mapping theo
 "Mapping_DVC_LaoCai_Buoc2_TranThiMinhHue.xlsx" (34 ô bước 2, đã đối chiếu cả hai biến thể DOM cá
 nhân/tổ chức).
 
-⚠ HAI Ô KHÔNG BAO GIỜ PHÁT: `CongDan_tenCongDan` và `CongDan_soCmnd` là readonly, cổng tự điền từ tài
-khoản định danh đã đăng nhập; script của cổng còn XOÁ TRẮNG "Di động" + "Số Căn cước" khi họ tên bị
-sửa khác tài khoản. Vì vậy chúng không có trong UI_COMP_BY_NAME (xem mapper).
+⚠ `CongDan_tenCongDan` và `CongDan_soCmnd` là readonly, cổng tự điền từ tài khoản định danh đã đăng
+nhập; script của cổng XOÁ TRẮNG "Di động" + "Số Căn cước" khi họ tên bị sửa. Chế độ tài khoản không
+phát hai ô này; chế độ tờ khai ghi chúng TRƯỚC các ô khác (`_shared/lao_cai_nguoi_nop`, xem mapper).
 
 ⚠ Bước 3 "Thành phần hồ sơ" / eForm kê khai CHƯA có DOM (sheet "Cảnh báo trường ẩn" của file mapping
 ghi rõ wizard chưa mở tới bước này), nên thủ tục khai `hasAttachmentStep: False` và các dữ kiện nghiệp
@@ -195,14 +195,15 @@ for _name in ("ChuHoSo_DiaChiDon", "ChuHoSo_DiaChiHopDong", "ChuHoSo_DiaChiDkdn"
 
 # ---- Ô UI THẬT ở bước 2 (thuộc tính `name`, Nth.FormBuilder). <select> native → dom-select, còn lại
 # (kể cả datetime-picker) → dom-input. Danh sách bám đúng 34 dòng của file mapping; các ô CỐ Ý không khai:
-#   CongDan_tenCongDan / CongDan_soCmnd : readonly, cổng điền từ tài khoản định danh — sửa họ tên là
-#                                         cổng xoá trắng Di động + Số Căn cước.
 #   CongDan_maDMDiaChi                  : input ẩn (display:none), chưa xác định được nhãn.
 #   chkbox_nguoinoplachuhs              : checkbox "Người nộp là chủ hồ sơ" — mapper luôn phát ĐỦ khối
 #                                         chủ hồ sơ nên không cần bấm; tự bấm còn rủi ro cổng xoá dữ liệu.
 #   code-dkdn                           : ô tra cứu doanh nghiệp, không phải dữ liệu hồ sơ.
 UI_COMP_BY_NAME = {
     # Phần I — Thông tin người nộp (CHÍNH NGƯỜI ĐI NỘP: chủ hồ sơ tự nộp, hoặc người được ủy quyền).
+    # Họ tên/Số Căn cước readonly, cổng đổ từ tài khoản — chỉ phát ở chế độ tờ khai (xem mapper).
+    "CongDan_tenCongDan": "dom-input",
+    "CongDan_soCmnd": "dom-input",
     "CongDan_tenCoQuanToChuc": "dom-input",
     "CongDan_maSoThueNguoiNop": "dom-input",
     "CongDan_ngaySinhCongDan": "dom-input",

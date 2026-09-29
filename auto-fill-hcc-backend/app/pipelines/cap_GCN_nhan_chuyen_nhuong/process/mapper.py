@@ -15,7 +15,8 @@ Chọn nguồn theo cột "Nguồn ưu tiên" (sheet 2 file mapping):
     Ở chế độ này người nộp là NGƯỜI KHÁC với tài khoản nên PHẢI ghi đè cả Họ tên, Số căn cước, địa chỉ
     và Di động — để nguyên phần cổng đổ sẵn thì khối thành nửa của tài khoản nửa của người trong hồ sơ.
     Cổng gửi chính Họ tên/Số căn cước/Ngày sinh sang CSDL quốc gia dân cư để xác thực trước khi cho
-    nộp, nên lệch tài khoản là bị chặn — mapper cảnh báo thay vì im lặng.
+    nộp, nên lệch tài khoản là bị chặn — mapper cảnh báo thay vì im lặng. Ô nhân thân cổng đổ từ tài
+    khoản mà hồ sơ không có thì phát lệnh XOÁ (`_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop`).
 """
 
 import re
@@ -24,6 +25,7 @@ import unicodedata
 from app.pipelines._shared.area_remap import province_label, remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.lao_cai_nguoi_nop import chot_khoi_nguoi_nop
 from app.pipelines.cap_GCN_nhan_chuyen_nhuong.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
 _FULL_DATE_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
@@ -367,4 +369,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("ChuHoSo_diDongLienLacCHS", _phone(values.get("Don_DienThoai")))
         add("ChuHoSo_emailChuHoSo", _email(values.get("Don_Email")))
 
+    out = chot_khoi_nguoi_nop(
+        out, theo_to_khai=theo_to_khai, comp_by_name=UI_COMP_BY_NAME, warnings=warnings
+    )
     return out, warnings

@@ -14,9 +14,10 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và trả đúng type hồ s�
 1. Chỉ dựa vào OCR_TEXT. Không dùng tên file, thứ tự file, hoặc giả định bên ngoài để phân loại.
 2. Mỗi tài liệu trả đúng một type trong allowed_types.
 3. Downstream gom kết quả về 3 NHÓM và bơm từng file vào hàng upload có sẵn (không thêm thành phần mới):
-   - Nhóm ĐƠN: Đơn đề nghị cấp giấy phép xây dựng, CCCD/giấy tờ định danh của chủ hộ/người nộp, bản cam kết an toàn xây dựng/liền kề.
+   - Nhóm ĐƠN: Đơn đề nghị cấp giấy phép xây dựng, CCCD/giấy tờ định danh của chủ hộ/người nộp.
    - Nhóm ĐẤT ĐAI: giấy tờ hợp pháp về đất đai, sổ đỏ, giấy chứng nhận quyền sử dụng đất.
    - Nhóm THIẾT KẾ: bản vẽ xin cấp phép, bản kê khai kinh nghiệm thiết kế, chứng chỉ năng lực tổ chức thiết kế, chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế.
+   - Bản cam kết an toàn xây dựng/liền kề là type RIÊNG (safety_commitment); downstream tự xếp nó vào dòng đúng theo loại công trình.
 4. Nếu một file là "Đơn đề nghị cấp giấy phép xây dựng" và có phần "Gửi kèm theo đơn này..." thì vẫn chọn building_permit_application, không chọn land_legal_document hay design_document.
 5. Nếu một file là bản vẽ/hồ sơ thiết kế và có tên/mã số doanh nghiệp thiết kế trong khung tên bản vẽ thì chọn construction_design_drawings, không chọn construction_capacity_certificate.
 6. Trả JSON object duy nhất, không markdown, không giải thích.

@@ -1,3 +1,5 @@
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <ho_so_rules>
 Hồ sơ gồm: Phiếu yêu cầu xóa đăng ký biện pháp bảo đảm bằng QSDĐ, TSGLVĐ (Mẫu số 03a — trang 2 có khối
@@ -55,4 +57,4 @@ sổ hồng — bản scan thường là 2 trang mở đôi), có thể có CCCD
 
 Ví dụ output ĐÚNG (dữ liệu minh họa):
 {"fields":{"ChuHoSo_HoTen":"TRẦN THỊ MẪU","ChuHoSo_LaToChuc":false,"ChuHoSo_GioiTinh":"Nữ","ChuHoSo_SoDinhDanh":"010180001234","ChuHoSo_NgayCap":"10/05/2022","ChuHoSo_NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","ChuHoSo_NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","diaChi":"Tổ dân phố số 2"},"ChuHoSo_DienThoai":"0912000111","Don_TuCachNguoiYeuCau":"Bên bảo đảm","Don_KinhGui":"Chi nhánh Văn phòng đăng ký đất đai khu vực Minh Họa","Gcn_SoPhatHanh":"AB 123456","Gcn_SoVaoSo":"CH00001","BenNhanBaoDam_Ten":"Ngân hàng TMCP Minh Họa","NguoiTrongGiayTo":[{"HoTen":"TRẦN THỊ MẪU","SoDinhDanh":"010180001234","GioiTinh":"Nữ","NgaySinh":"1980","NgayCap":"10/05/2022","NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","DienThoai":"0912000111","NoiCuTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Lào Cai","xa":"Phường Minh Họa","diaChi":"Tổ dân phố số 2"}}]}}
-""".strip()
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

@@ -1,3 +1,5 @@
+from app.pipelines._shared.lao_cai_nguoi_nop import QUY_TAC_NHAN_THAN_DUNG_NGUOI
+
 EXTRA_RULES = """
 <source_and_role_rules>
 1. Hồ sơ này có BA vai, tách tuyệt đối:
@@ -46,4 +48,14 @@ EXTRA_RULES = """
 13. Giấy chứng nhận đã cấp mang tên BÊN CHUYỂN QUYỀN — đó là bản chất của thủ tục này, KHÔNG phải lỗi.
     Đừng vì thế mà đổi ChuHoSo_HoTen thành tên trên Giấy chứng nhận.
 </traps>
-""".strip()
+
+<ung_vien_nguoi_nop_rules>
+14. NguoiDuocUyQuyen, DanhSachCccd, NguoiTrongGiayTo chỉ LIỆT KÊ người có trong hồ sơ; KHÔNG tự quyết
+    ai là người đi nộp — hệ thống chọn theo tài khoản đăng nhập cổng.
+15. Mọi thuộc tính (số định danh, ngày sinh, ngày cấp, nơi cấp, địa chỉ) phải đi theo ĐÚNG người mang
+    họ tên đó, lấy ở chỗ ghi cạnh chính người đó. Người ký đơn khác người đại diện/được ủy quyền ghi
+    trong giấy tờ khác thì KHÔNG lấy nhân thân của người kia điền cho người ký đơn (và ngược lại).
+16. Giấy tờ chỉ ghi NĂM sinh/năm cấp: trong ba danh sách ứng viên trả đúng năm đó; ở khối phẳng
+    ChuHoSo_*/NguoiNop_* thì BỎ field ngày.
+</ung_vien_nguoi_nop_rules>
+""".strip() + "\n\n" + QUY_TAC_NHAN_THAN_DUNG_NGUOI

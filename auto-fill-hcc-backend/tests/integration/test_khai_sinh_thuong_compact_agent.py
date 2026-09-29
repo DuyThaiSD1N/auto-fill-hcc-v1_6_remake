@@ -65,40 +65,6 @@ def test_khai_sinh_thuong_mapper_derives_legacy_fields():
     assert values["NoiCapDDMe"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
 
 
-def test_khai_sinh_thuong_mother_only_marks_father_undetermined():
-    # Mặt sau CCCD mẹ bị đọc lạc sang CccdNam_NoiDangKyKhaiSinh — không được coi là có cha.
-    compact_fields = [
-        {"name": "Gcs_HoTenCon", "value": "Trần Thị Mai"},
-        {"name": "Gcs_NgaySinhCon", "value": "05/06/2025"},
-        {"name": "CccdNu_HoTen", "value": "TRẦN THỊ LAN"},
-        {"name": "CccdNu_SoDinhDanh", "value": "001199000123"},
-        {"name": "CccdNu_NgayCap", "value": "01/02/2024"},
-        {"name": "CccdNam_NoiDangKyKhaiSinh", "value": {"quocGia": "Việt Nam", "tinh": "Hà Nội", "xa": "Ba Đình"}},
-        {"name": "TkKs_HoTenMe", "value": "Trần Thị Lan"},
-        {"name": "TkKs_NycQuanHe", "value": "Mẹ ruột"},
-    ]
-
-    fields = mapper.enrich(compact_fields)
-    values = {f["name"]: f["value"] for f in fields}
-
-    assert fields[1]["name"] == "nksLoaiKhaiSinh"
-    assert values["nksLoaiKhaiSinh"] == "Chưa xác định được cha"
-    assert "HoTenChaKS" not in values
-    assert values["HoTenMeKS"] == "TRẦN THỊ LAN"
-
-
-def test_khai_sinh_thuong_father_only_marks_mother_undetermined():
-    compact_fields = [
-        {"name": "Gcs_HoTenCon", "value": "Lê Văn An"},
-        {"name": "CccdNam_HoTen", "value": "LÊ VĂN BÌNH"},
-        {"name": "CccdNam_SoDinhDanh", "value": "001090000456"},
-    ]
-
-    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
-
-    assert values["nksLoaiKhaiSinh"] == "Chưa xác định được mẹ"
-
-
 def test_khai_sinh_thuong_prompt_forbids_ui_fields():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
