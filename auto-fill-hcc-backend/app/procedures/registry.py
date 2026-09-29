@@ -4975,11 +4975,12 @@ PROCEDURES: list[dict] = [
             "4. Nếu có: Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 PL I); thẻ CCCD của người hành "
             "nghề; CCCD của người nộp thay.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Nếu TỰ NỘP: extension điền Phần 1 và tích 'Người nộp hồ sơ là chủ hồ sơ'. Nếu NỘP THAY: bỏ tích "
-            "ô đó rồi điền Phần 2 (người hành nghề). Ô Ghi chú lấy trường hợp + phạm vi hành nghề trên Đơn.\n"
-            "Bước đính kèm: Đơn vào 2 dòng Đơn Mẫu 08 (bản chính); CCHN/GPHN vào 3 dòng 'giấy phép hành nghề "
-            "đã cấp'; chứng chỉ đào tạo + văn bằng vào dòng 'một trong các giấy tờ sau'; văn bằng thêm vào "
-            "dòng 'văn bằng đào tạo' (đều chọn Bản sao)."
+            "Nếu TỰ NỘP: extension điền Phần 1 và tích 'Người nộp hồ sơ là chủ hồ sơ'. Nếu NỘP THAY: tải kèm "
+            "CCCD (2 mặt) của người nộp để điền nốt Phần 1, bỏ tích ô đó rồi điền Phần 2 (người hành nghề). "
+            "Ô Ghi chú lấy trường hợp + phạm vi hành nghề trên Đơn.\n"
+            "Bước đính kèm: mỗi tệp vào đúng một dòng — Đơn vào dòng Đơn Mẫu 08 đầu tiên (bản chính); CCHN/GPHN "
+            "vào dòng 'b) giấy phép hành nghề đã cấp'; chứng chỉ đào tạo vào dòng 'một trong các giấy tờ sau'; "
+            "văn bằng vào dòng 'c) văn bằng đào tạo' (đều chọn Bản sao)."
         ),
     },
     {

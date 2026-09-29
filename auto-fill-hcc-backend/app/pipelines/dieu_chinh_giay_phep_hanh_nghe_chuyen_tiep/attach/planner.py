@@ -2,21 +2,23 @@
 tiếp..." (cổng Bộ Y tế — Angular mat-table, engine FE `attp-row`).
 
 Bảng có 10 dòng, cổng gộp cấu hình nhiều trường hợp nên TÊN DÒNG TRÙNG NHAU:
-  1  "Đơn theo Mẫu 08 Phụ lục I …;"                    ← Đơn đề nghị (bản chính, cố định)
-  2  "a) Đơn theo Mẫu 08 Phụ lục I …."                  ← Đơn đề nghị (cùng tệp dòng 1)
+  1  "Đơn theo Mẫu 08 Phụ lục I …;"                    ← Đơn đề nghị (bản chính) + tệp không nhận ra
+  2  "a) Đơn theo Mẫu 08 Phụ lục I …."                  ← (trùng dòng 1, để trống)
   3  "b) Bản sao hợp lệ giấy phép hành nghề đã cấp …"    ← CCHN/GPHN đã cấp (bản sao)
-  4  ") Bản sao hợp lệ của một trong các giấy tờ sau …"  ← Chứng chỉ đào tạo + Văn bằng đào tạo (bản sao)
+  4  ") Bản sao hợp lệ của một trong các giấy tờ sau …"  ← Chứng chỉ đào tạo (bản sao)
   5  "Bản chính hoặc bản sao hợp lệ giấy xác nhận … Mẫu 07 …"   ← Giấy xác nhận thực hành
-  6  "Bản sao hợp lệ giấy phép hành nghề đã cấp (không áp dụng …" ← CCHN/GPHN (cùng tệp dòng 3)
-  7  "d) Bản chính hoặc bản sao hợp lệ giấy xác nhận … Mẫu 07 …" ← Giấy xác nhận thực hành (cùng tệp dòng 5)
-  8  "Bản sao hợp lệ giấy phép hành nghề đã cấp …" (chỉ Bản sao) ← CCHN/GPHN (cùng tệp dòng 3)
+  6  "Bản sao hợp lệ giấy phép hành nghề đã cấp (không áp dụng …" ← (trùng dòng 3, để trống)
+  7  "d) Bản chính hoặc bản sao hợp lệ giấy xác nhận … Mẫu 07 …" ← (trùng dòng 5, để trống)
+  8  "Bản sao hợp lệ giấy phép hành nghề đã cấp …" (chỉ Bản sao) ← (trùng dòng 3, để trống)
   9  "c) Bản sao hợp lệ giấy chứng nhận người có bài thuốc gia truyền …" ← GCN gia truyền
-  10 "c) Bản sao hợp lệ văn bằng đào tạo …"             ← Văn bằng đào tạo (cùng tệp dòng 4)
-Theo ảnh ánh xạ: một giấy tờ đính vào MỌI dòng trùng nội dung với nó.
+  10 "c) Bản sao hợp lệ văn bằng đào tạo …"             ← Văn bằng đào tạo (bản sao)
+MỖI TỆP ĐÍNH ĐÚNG MỘT DÒNG: nộp 5 tệp thì cổng nhận 5 tệp. Trước đây một giấy tờ đính vào mọi dòng trùng
+nội dung → 5 tệp thành 9 (Đơn ×2, CCHN ×3, văn bằng ×2), cán bộ phải xoá bớt.
 
 Engine attp-row GOM item theo componentName rồi tìm dòng bằng (componentName, componentIndex). Dòng 3/6/8
 trùng chữ → mỗi dòng một componentName KHÁC NHAU (đoạn con vẫn khớp đúng dòng đó) + componentIndex; nếu
 cổng đổi thứ tự dòng, engine rơi về dòng đầu tiên khớp tên và bỏ qua tệp đã có ở dòng đó (không đính trùng).
+Dòng trùng vẫn giữ trong _ROWS (docTypes rỗng) để trace thấy đủ bảng.
 
 Phân loại THUẦN LLM, mỗi tệp một lượt gọi (xem prompt). ⚑ KHÔNG BỎ SÓT TỆP: tệp không xếp được (other)
 hoặc lượt gọi lỗi → đính vào dòng 1 (Đơn), giữ tên tệp gốc. CCCD không có dòng riêng → bỏ qua.
@@ -58,24 +60,24 @@ _DOC_NAMES = {
 }
 
 # Theo THỨ TỰ dòng trên cổng. componentName = đoạn con của tên dòng, KHÁC NHAU giữa mọi dòng (engine gom
-# theo nó); docTypes theo thứ tự tệp trong dòng (dòng 4: chứng chỉ trước, văn bằng sau — như danh mục Đơn).
+# theo nó). Mỗi docType nằm ở ĐÚNG MỘT dòng → mỗi tệp chỉ đính một lần; dòng trùng tên để docTypes rỗng.
 _ROWS: list[dict[str, Any]] = [
     {"componentIndex": 1, "componentName": "Đơn theo Mẫu 08 Phụ lục I",
      "loaiBan": _BAN_CHINH, "docTypes": [_DON, _OTHER]},
     {"componentIndex": 2, "componentName": "a) Đơn theo Mẫu 08 Phụ lục I",
-     "loaiBan": _BAN_CHINH, "docTypes": [_DON]},
+     "loaiBan": _BAN_CHINH, "docTypes": []},
     {"componentIndex": 3, "componentName": "b) Bản sao hợp lệ giấy phép hành nghề đã cấp",
      "loaiBan": _BAN_SAO, "docTypes": [_GPHN]},
     {"componentIndex": 4, "componentName": "Bản sao hợp lệ của một trong các giấy tờ sau",
-     "loaiBan": _BAN_SAO, "docTypes": [_CHUNGCHI, _VANBANG]},
+     "loaiBan": _BAN_SAO, "docTypes": [_CHUNGCHI]},
     {"componentIndex": 5, "componentName": "Bản chính hoặc bản sao hợp lệ giấy xác nhận hoàn thành quá trình thực hành",
      "loaiBan": _BAN_CHINH, "docTypes": [_THUCHANH]},
     {"componentIndex": 6, "componentName": "Bản sao hợp lệ giấy phép hành nghề đã cấp (không áp dụng",
-     "loaiBan": _BAN_SAO, "docTypes": [_GPHN]},
+     "loaiBan": _BAN_SAO, "docTypes": []},
     {"componentIndex": 7, "componentName": "d) Bản chính hoặc bản sao hợp lệ giấy xác nhận hoàn thành",
-     "loaiBan": _BAN_CHINH, "docTypes": [_THUCHANH]},
+     "loaiBan": _BAN_CHINH, "docTypes": []},
     {"componentIndex": 8, "componentName": "Bản sao hợp lệ giấy phép hành nghề đã cấp",
-     "loaiBan": _BAN_SAO, "docTypes": [_GPHN]},
+     "loaiBan": _BAN_SAO, "docTypes": []},
     {"componentIndex": 9, "componentName": "Bản sao hợp lệ giấy chứng nhận người có bài thuốc gia truyền",
      "loaiBan": _BAN_SAO, "docTypes": [_GIATRUYEN]},
     {"componentIndex": 10, "componentName": "c) Bản sao hợp lệ văn bằng đào tạo",

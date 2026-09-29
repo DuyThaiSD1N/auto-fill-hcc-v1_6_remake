@@ -52,6 +52,9 @@ cáo, băng-rôn" (Bộ VHTTDL). Đọc OCR_TEXT của MỘT tệp và xếp và
   cửa hàng, số điện thoại, tên đường/công trình xung quanh, chữ băng-rôn lặp lại rời rạc, KHÔNG có bố cục
   quảng cáo đầy đủ → phoi_canh. Ma-két là THIẾT KẾ mẫu băng-rôn: nội dung quảng cáo trọn vẹn (thương hiệu,
   chương trình, mức giảm giá, thời gian, kích thước) → maket.
+- Ảnh phối cảnh chụp cả dãy phố nên OCR hay ra lời giới thiệu cửa hàng lân cận ("Đặc điểm nổi bật",
+  "Thời gian mở cửa", "Số điện thoại"), tên xã/phường/quận, và hàng dài dòng rác lặp gần giống nhau
+  (mã lô, ký hiệu). Có vài câu kiểu khẩu hiệu cũng KHÔNG đủ để là maket → phoi_canh.
 </traps>
 
 <output_contract>
@@ -59,6 +62,39 @@ cáo, băng-rôn" (Bộ VHTTDL). Đọc OCR_TEXT của MỘT tệp và xếp và
 Ghi reason TRƯỚC rồi mới chọn docType.
 </output_contract>
 """.strip()
+
+
+# Lượt 2 — chỉ chạy khi ≥2 tệp cùng bị xếp maket mà không tệp nào là phoi_canh: hồ sơ thật nộp một ma-két
+# + một bản phối cảnh, nên một trong số đó gần như chắc là ảnh phối cảnh bị đọc nhầm. So các tệp VỚI NHAU
+# dễ hơn phân loại từng tệp một mình.
+PICK_PHOI_CANH_PROMPT = """
+<persona>
+Hồ sơ thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn có các tệp dưới đây đều bị xếp là ma-két.
+Hồ sơ cần một ma-két và một BẢN PHỐI CẢNH vị trí đặt. Chọn ĐÚNG MỘT tệp giống bản phối cảnh nhất.
+</persona>
+
+<signals>
+- Bản phối cảnh: ẢNH CHỤP vị trí treo thực tế (có thể ghép băng-rôn vào ảnh). OCR lẫn chữ biển hiệu các
+  cửa hàng xung quanh, số điện thoại, tên đường/xã/phường, lời giới thiệu cửa hàng, dòng rác lặp lại,
+  chữ quảng cáo rời rạc không thành bố cục.
+- Ma-két: THIẾT KẾ mẫu băng-rôn — nội dung quảng cáo trọn vẹn, mạch lạc (thương hiệu, chương trình,
+  mức giảm giá, thời gian áp dụng, kích thước), có thể lặp lại cho nhiều mẫu.
+</signals>
+
+<output_contract>
+{"reason":"<một câu: vì sao tệp đó là ảnh phối cảnh>","index":<index của tệp được chọn>}
+Chỉ trả JSON object duy nhất, không markdown. Ghi reason TRƯỚC rồi mới chọn index.
+</output_contract>
+""".strip()
+
+
+def build_pick_prompt(documents: list[dict[str, Any]]) -> str:
+    payload = [{"index": d.get("index"), "ocrText": d.get("text", "")} for d in documents]
+    return (
+        "OCR_TEXT CÁC TỆP ĐANG BỊ XẾP LÀ MA-KÉT:\n"
+        f"{json.dumps(payload, ensure_ascii=False)}\n\n"
+        "Chọn một index là bản phối cảnh."
+    )
 
 
 def build_user_prompt(documents: list[dict[str, Any]]) -> str:

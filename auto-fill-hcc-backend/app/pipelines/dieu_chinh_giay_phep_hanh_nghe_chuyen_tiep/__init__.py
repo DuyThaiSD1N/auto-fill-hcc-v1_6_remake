@@ -17,7 +17,9 @@ Cấu trúc form (mỗi data[key] xuất hiện 1 lần → KHÔNG occurrence):
   Phần 2 Chủ hồ sơ   → data[owner*] + data[ownerNation]="Việt Nam" + data[ghiChu].
                        · TỰ NỘP: TÍCH data[isOwnerDossierCheck] (cổng này để TRỐNG mặc định) → cổng nhân
                          bản Phần 1 → Phần 2; KHÔNG điền owner_*.
-                       · NỘP THAY: BỎ TÍCH rồi điền owner_* tường minh.
-  Phần 3 Thành phần hồ sơ → bảng attp-row 10 dòng, nhiều dòng TRÙNG tên (xem attach/planner.py).
+                       · NỘP THAY: điền nốt Phần 1 từ CCCD người nộp (cổng chỉ đổ sẵn họ tên +
+                         số định danh), BỎ TÍCH rồi điền owner_* tường minh.
+  Phần 3 Thành phần hồ sơ → bảng attp-row 10 dòng, nhiều dòng TRÙNG tên; mỗi tệp đính vào ĐÚNG MỘT dòng
+                       (xem attach/planner.py).
   Phần 4 receivingKind / lệ phí / captcha → cổng tự lo, KHÔNG điền.
 """

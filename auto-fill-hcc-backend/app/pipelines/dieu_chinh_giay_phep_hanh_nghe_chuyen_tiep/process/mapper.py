@@ -5,8 +5,8 @@ Quyết định TỰ NỘP / NỘP THAY bằng formContext (tên + CCCD tài kho
 hành nghề:
   - TỰ NỘP: Phần 1 = người hành nghề (trừ ô cổng khoá sẵn). TÍCH data[isOwnerDossierCheck]=True — cổng
     này để ô TRỐNG mặc định; engine tick SAU CÙNG nên cổng nhân bản Phần 1 đã điền sang Phần 2.
-  - NỘP THAY: Phần 1 cổng đã đổ sẵn từ VNeID → KHÔNG điền. data[isOwnerDossierCheck]=False rồi điền
-    owner_* = người hành nghề.
+  - NỘP THAY: cổng chỉ đổ sẵn họ tên + số định danh vào Phần 1 → điền phần còn lại từ NguoiNop_* (CCCD
+    người nộp). data[isOwnerDossierCheck]=False rồi điền owner_* = người hành nghề.
 data[ghiChu] (cả hai trường hợp) = trường hợp đề nghị + phạm vi hành nghề trên Đơn Mẫu 08.
 
 Mỗi data[key] xuất hiện 1× trong DOM → KHÔNG dùng occurrence.
@@ -252,6 +252,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[email]", email)
         add("data[isOwnerDossierCheck]", True)
     else:
+        # Cổng chỉ đổ sẵn họ tên + số định danh tài khoản (bị khoá, add() bỏ qua) — ngày sinh, giới tính,
+        # ngày/nơi cấp, địa chỉ của NGƯỜI NỘP vẫn trống → điền từ CCCD người nộp nếu hồ sơ có.
+        add("data[fullname]", _text(values.get("NguoiNop_HoTen")))
+        add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
+        add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
+        add("data[identityNumber]", _identity(values.get("NguoiNop_SoDinhDanh")))
+        add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
+        add("data[idIssuePlace]", _issuer(values.get("NguoiNop_NoiCap")))
+        add_area("data[province]", "data[district]", "data[address]", _area(values.get("NguoiNop_ThuongTru")))
+        add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
+        add("data[email]", _email(values.get("NguoiNop_Email")))
+
         add("data[isOwnerDossierCheck]", False)
         add("data[ownerFullname]", name)
         add("data[ownerBirthday]", birthday)

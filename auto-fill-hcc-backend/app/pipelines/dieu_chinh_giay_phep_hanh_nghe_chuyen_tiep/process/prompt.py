@@ -10,8 +10,9 @@ THỂ có CCCD của người nộp thay.
 
 HAI vai — tách RIÊNG, KHÔNG lẫn:
 - NGƯỜI HÀNH NGHỀ (NguoiHanhNghe_*) = CHỦ HỒ SƠ = người đứng tên Đơn Mẫu 08 ("Họ và tên", "NGƯỜI LÀM ĐƠN").
-- NGƯỜI NỘP (NguoiNop_*) = tài khoản đứng nộp. ĐA SỐ tự nộp → BỎ TRỐNG NguoiNop_*. Chỉ khi hồ sơ có CCCD
-  RIÊNG của một người KHÁC người hành nghề mới trích NguoiNop_* từ CCCD đó (xem <nguoi_nop_context>).
+- NGƯỜI NỘP (NguoiNop_*) = tài khoản đứng nộp. ĐA SỐ tự nộp → BỎ TRỐNG NguoiNop_*. Khi hồ sơ có CCCD
+  RIÊNG của một người KHÁC người hành nghề thì PHẢI trích đủ NguoiNop_* từ CCCD đó (cả mặt sau: ngày cấp,
+  nơi cấp) — Phần I trên cổng điền từ các field này (xem <nguoi_nop_context>).
 
 THỨ TỰ NGUỒN cho NguoiHanhNghe_*: (1) CCCD → (2) Đơn Mẫu 08 → các giấy còn lại chỉ để đối chiếu.
 ⚠ CHỨNG CHỈ HÀNH NGHỀ / GPHN cũ (cấp từ nhiều năm trước) in số CMND 9 chữ số, "Cấp ngày", "Nơi cấp: Công an

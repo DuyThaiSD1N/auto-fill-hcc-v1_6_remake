@@ -16,7 +16,9 @@ Giấy chứng nhận đăng ký doanh nghiệp và thông báo khuyến mại c
 nghiệp/chương trình → dòng (1), đính CHUNG với giấy tờ hợp quy (engine gom nhiều tệp vào một ô). Tệp
 không nhận ra loại → dòng (7) kèm cảnh báo — trang không có ô "Giấy tờ khác", không tệp nào bị bỏ.
 
-Phân loại THUẦN LLM từng tệp; định tuyến loại → dòng là tất định.
+Phân loại THUẦN LLM từng tệp; định tuyến loại → dòng là tất định. Riêng ảnh phối cảnh hay bị đọc nhầm thành
+ma-két (OCR ảnh chụp dãy phố ra chữ biển hiệu rời rạc): ≥2 tệp maket mà không có phoi_canh thì một tệp phải là
+phối cảnh → hỏi LLM lượt 2 chọn tệp nào, chuyển tệp đó sang dòng (5).
 """
 
 import asyncio
@@ -29,7 +31,7 @@ from app.config import settings
 from app.process.schemas import FileItem
 from app.services.llm import client
 
-from .prompt import SYSTEM_PROMPT, build_user_prompt
+from .prompt import PICK_PHOI_CANH_PROMPT, SYSTEM_PROMPT, build_pick_prompt, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
@@ -127,6 +129,34 @@ async def _classify_with_llm(documents: list[dict[str, Any]], errors: list[str])
     return result
 
 
+def _maket_thieu_phoi_canh(llm_types: dict[int, str]) -> list[int]:
+    """Các tệp maket khi hồ sơ có ≥2 ma-két mà thiếu phối cảnh — một trong số đó phải là phối cảnh."""
+    maket = sorted(i for i, t in llm_types.items() if t == "maket")
+    if len(maket) < 2 or "phoi_canh" in llm_types.values():
+        return []
+    return maket
+
+
+async def _chon_phoi_canh(documents: list[dict[str, Any]], errors: list[str]) -> int:
+    """LLM chọn trong các tệp maket tệp giống ảnh phối cảnh nhất. Lỗi/trả index lạ → tệp đầu tiên."""
+    candidates = [int(d["index"]) for d in documents]
+    try:
+        messages = [
+            {"role": "system", "content": PICK_PHOI_CANH_PROMPT},
+            {"role": "user", "content": build_pick_prompt(
+                [{"index": d["index"], "text": str(d.get("text") or "")[:6000]} for d in documents]
+            )},
+        ]
+        raw = await client.chat(messages, max_tokens=220, enable_thinking=settings.agent_reasoning)
+        chosen = int(client.extract_json_block(raw).get("index"))
+        if chosen in candidates:
+            return chosen
+        errors.append(f"attachment_agent chọn phối cảnh: index {chosen} không thuộc {candidates}")
+    except Exception as exc:  # noqa: BLE001 — lượt phụ, lỗi thì rơi về tệp đầu, không làm hỏng cả lượt đính
+        errors.append(f"attachment_agent chọn phối cảnh: {exc}")
+    return candidates[0]
+
+
 def build_plan_items(files: list[dict], llm_types: dict[int, str] | None = None) -> tuple[list[dict], list[str], list[dict]]:
     llm_types = llm_types or {}
     attachments: list[dict] = []
@@ -193,9 +223,19 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_documents = [{"index": i, "text": t} for i, t in text_by_index.items() if t.strip()]
     started = time.monotonic()
     llm_types = await _classify_with_llm(llm_documents, errors) if llm_documents else {}
+    warnings: list[str] = []
+    maket = _maket_thieu_phoi_canh(llm_types)
+    if maket:
+        chosen = await _chon_phoi_canh([{"index": i, "text": text_by_index.get(i, "")} for i in maket], errors)
+        llm_types[chosen] = "phoi_canh"
+        warnings.append(
+            f"Có {len(maket)} tệp đọc ra là ma-két nhưng không có bản phối cảnh — đã đưa "
+            f"\"{raw_files[chosen]['name']}\" vào dòng \"Bản phối cảnh vị trí đặt bảng quảng cáo\", cán bộ đối chiếu lại."
+        )
     llm_ms = int((time.monotonic() - started) * 1000)
 
-    attachments, warnings, classified = build_plan_items(raw_files, llm_types)
+    attachments, plan_warnings, classified = build_plan_items(raw_files, llm_types)
+    warnings.extend(plan_warnings)
     errors.extend(warnings)
     return {
         "attachments": attachments,

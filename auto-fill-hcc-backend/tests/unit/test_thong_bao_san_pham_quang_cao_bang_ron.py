@@ -196,3 +196,63 @@ def test_cac_tep_cung_dong_chung_slot_key_de_engine_gom_mot_o():
     items, _, _ = planner.build_plan_items([{"name": f"{i}.pdf"} for i in range(3)], types)
     assert {i["slotKey"] for i in items} == {"spqc_row_0"}
     assert all(i["sectionHeader"] == "Thành phần hồ sơ" and i["slotKeywords"] == ["hop chuan"] for i in items)
+
+
+def test_hai_ma_ket_khong_co_phoi_canh_thi_chi_mot_tep_can_chon():
+    assert planner._maket_thieu_phoi_canh({0: "maket", 1: "gcn_dang_ky_doanh_nghiep", 2: "maket"}) == [0, 2]
+    assert planner._maket_thieu_phoi_canh({0: "maket", 1: "phoi_canh", 2: "maket"}) == []
+    assert planner._maket_thieu_phoi_canh({0: "maket", 1: "other"}) == []
+
+
+def _chay_plan(monkeypatch, texts, loai, tra_loi_chon):
+    import asyncio
+    import json
+
+    from app.process.schemas import FileItem
+    from app.services import ocr
+
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": texts[f["name"]]} for f in files]
+
+    names = list(texts)
+    calls = []
+
+    async def fake_chat(messages, **_):
+        calls.append(messages[0]["content"])
+        if messages[0]["content"] == planner.PICK_PHOI_CANH_PROMPT:
+            if isinstance(tra_loi_chon, Exception):
+                raise tra_loi_chon
+            return json.dumps(tra_loi_chon)
+        index = json.loads(messages[1]["content"].split("\n", 1)[1].split("\n\n", 1)[0])[0]["index"]
+        return json.dumps({"documents": [{"index": index, "docType": loai[names[index]]}]})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [FileItem(name=n, role="attach", type="application/pdf", dataUrl="data:application/pdf;base64,") for n in names]
+    return asyncio.run(planner.plan(files)), calls
+
+
+def test_phoi_canh_bi_doc_thanh_ma_ket_thi_llm_chon_mot_tep_dua_sang_dong_5(monkeypatch):
+    texts = {"a.pdf": "Siêu thị Mẫu giảm giá 50% từ 01/07 đến 10/07", "b.pdf": "0900000000 Xã Mẫu Lô 1A Lô 1B",
+             "c.pdf": "GIẤY CHỨNG NHẬN ĐĂNG KÝ DOANH NGHIỆP"}
+    loai = {"a.pdf": "maket", "b.pdf": "maket", "c.pdf": "gcn_dang_ky_doanh_nghiep"}
+    result, calls = _chay_plan(monkeypatch, texts, loai, {"reason": "ảnh dãy phố", "index": 1})
+    assert [a["slotIndex"] for a in result["attachments"]] == [2, 4, 0]
+    assert calls.count(planner.PICK_PHOI_CANH_PROMPT) == 1
+    assert any("b.pdf" in e and "Bản phối cảnh" in e for e in result["errors"])
+
+
+def test_llm_chon_phoi_canh_loi_thi_van_dua_tep_dau_sang_dong_5(monkeypatch):
+    texts = {"a.pdf": "Siêu thị Mẫu", "b.pdf": "Cửa hàng Mẫu"}
+    loai = {"a.pdf": "maket", "b.pdf": "maket"}
+    for tra_loi in (RuntimeError("llm chết"), {"index": 7}):
+        result, _ = _chay_plan(monkeypatch, texts, loai, tra_loi)
+        assert [a["slotIndex"] for a in result["attachments"]] == [4, 2]
+
+
+def test_da_co_phoi_canh_thi_khong_hoi_llm_luot_2(monkeypatch):
+    texts = {"a.pdf": "m1", "b.pdf": "m2", "c.pdf": "pc"}
+    loai = {"a.pdf": "maket", "b.pdf": "maket", "c.pdf": "phoi_canh"}
+    result, calls = _chay_plan(monkeypatch, texts, loai, {"index": 0})
+    assert [a["slotIndex"] for a in result["attachments"]] == [2, 2, 4]
+    assert planner.PICK_PHOI_CANH_PROMPT not in calls

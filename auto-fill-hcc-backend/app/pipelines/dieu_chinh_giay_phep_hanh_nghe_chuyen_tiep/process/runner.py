@@ -42,6 +42,35 @@ def _matches_anchor(text: str, name: str, identity: str) -> bool:
     return name_matches if name else identity_matches
 
 
+def _is_id_card(text: str) -> bool:
+    norm = _norm_text(text)
+    return ("can cuoc" in norm or "citizen identity" in norm) and "don de nghi" not in norm
+
+
+def _named_on_don(documents: list[dict], name: str, identity: str) -> bool:
+    """Đơn Mẫu 08 có ghi tên/số định danh của tài khoản không (tự nộp có kèm CCCD của chính mình)."""
+    for document in documents:
+        text = str(document.get("text") or "")
+        if "don de nghi" not in _norm_text(text):
+            continue
+        if (name and name in _norm_text(text)) or _identity_occurs(identity, text):
+            return True
+    return False
+
+
+def _id_card_back(documents: list[dict], front_index: int, identity: str) -> tuple[int, str] | None:
+    """Mặt sau CCCD (ngày cấp, nơi cấp) không in tên; nhận ra nhờ dòng MRZ chứa số định danh."""
+    if not identity:
+        return None
+    for index, document in enumerate(documents, start=1):
+        text = str(document.get("text") or "")
+        if index == front_index or "IDVNM" not in text.upper():
+            continue
+        if identity in re.sub(r"\D+", "", text):
+            return index, text[:2000]
+    return None
+
+
 async def _submitter_context(documents: list[dict], options: dict) -> str:
     """Neo NGƯỜI NỘP (tên+CCCD cổng tự đổ từ tài khoản vào Phần I) để LLM tách khỏi NGƯỜI HÀNH NGHỀ.
 
@@ -72,6 +101,30 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
             break
 
     anchor = f'tên "{raw_name}"' + (f', số định danh "{identity}"' if identity else "")
+    if matched and _is_id_card(matched[1]) and not _named_on_don(documents, name, identity):
+        # Tài khoản khớp đúng một thẻ CCCD mà Đơn Mẫu 08 đứng tên người KHÁC → chắc chắn nộp thay. Nói
+        # thẳng, không để LLM tự suy: có điều kiện thì nó hay bỏ trống NguoiNop_* và Phần I trống theo.
+        idx, scope = matched
+        back = _id_card_back(documents, idx, identity)
+        back_block = (
+            f"<tai_lieu_nguoi_nop tai_lieu=\"{back[0]}\" mat=\"sau\">\n{back[1]}\n</tai_lieu_nguoi_nop>\n"
+            if back else ""
+        )
+        return (
+            "\n\n<nguoi_nop_context result=\"nop_thay\">\n"
+            f"NGƯỜI NỘP HỒ SƠ (tài khoản đăng nhập) là: {anchor}. Tài liệu #{idx} là thẻ CCCD của người nộp; Đơn "
+            "Mẫu 08 đứng tên người KHÁC → hồ sơ NỘP THAY.\n"
+            f"- BẮT BUỘC trích NguoiNop_HoTen, NguoiNop_NgaySinh, NguoiNop_GioiTinh, NguoiNop_SoDinhDanh, "
+            f"NguoiNop_ThuongTru TỪ CCCD #{idx}"
+            + (f"; NguoiNop_NgayCap (dòng \"Ngày, tháng, năm\") và NguoiNop_NoiCap (chức danh người ký) TỪ MẶT "
+               f"SAU #{back[0]}" if back else "")
+            + ".\n"
+            f"- NguoiHanhNghe_* lấy từ Đơn Mẫu 08 / giấy tờ của người hành nghề, TUYỆT ĐỐI KHÔNG lấy từ CCCD "
+            f"#{idx}.\n"
+            f"<tai_lieu_nguoi_nop tai_lieu=\"{idx}\">\n{scope}\n</tai_lieu_nguoi_nop>\n"
+            f"{back_block}"
+            "</nguoi_nop_context>"
+        )
     if matched:
         idx, scope = matched
         return (
