@@ -431,3 +431,155 @@ def test_sanitizer_fixes_issue_date_swapped_between_child_and_mother():
     assert values["Subject_IdIssuePlace"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert values["Mother_IdIssueDate"] == "06/06/2025"
     assert values["Mother_IdIssuePlace"] == "Bộ Công an"
+
+
+def test_relation_read_as_father_flips_to_self_when_requester_is_subject():
+    # Dòng quan hệ viết tay "bản thân" bị OCR đọc thành "bố/thuỷ"; cha trên tờ khai là người khác.
+    declaration = (
+        "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
+        "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\n"
+        "Giấy tờ tùy thân: CCCD số 068090001111\n"
+        "Quan hệ với người được khai sinh: bố/thuỷ\n"
+        "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:\n"
+        "Họ, chữ đệm, tên: TRẦN VĂN BÌNH\n"
+        "Ngày, tháng, năm sinh: 10/05/1990\n"
+        "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+        "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA\n"
+        "Năm sinh: 1965 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+        "Họ, chữ đệm, tên người cha: TRẦN VĂN AN\n"
+        "Năm sinh: 1962 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+        "Tôi cam đoan những nội dung khai trên đây là đúng sự thật"
+    )
+    raw = "<quan_he_nguoi_yeu_cau>\nKết luận: cha\nCăn cứ: Tờ khai ghi bố.\n</quan_he_nguoi_yeu_cau>"
+    context = reason._render_context(raw, {}, [{"name": "to-khai.pdf", "text": declaration}])
+
+    assert reason._labeled_value(reason._section(context, "quan_he_nguoi_yeu_cau"), "Kết luận") == "bản thân"
+
+
+_DECLARATION_WINS_TEXT = (
+    "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH\n"
+    "Họ, chữ đệm, tên người yêu cầu: TRẦN VĂN BÌNH\n"
+    "Giấy tờ tùy thân: CCCD số 06809000111\n"
+    "Quan hệ với người được khai sinh: Bản thân\n"
+    "Đề nghị cơ quan đăng ký lại khai sinh cho người có tên dưới đây:\n"
+    "Họ, chữ đệm, tên: TRẦN VĂN BÌNH\n"
+    "Ngày, tháng, năm sinh: 10-05-1990\n"
+    "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+    "Họ, chữ đệm, tên người mẹ: LÊ THỊ HOA\n"
+    "Năm sinh: 1965 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+    "Giấy tờ tùy thân: CCCD số 068165002222\n"
+    "Họ, chữ đệm, tên người cha: TRẦN VĂN AN\n"
+    "Năm sinh: 1962 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+    "Giấy tờ tùy thân: CCCD số 068062003333, Cục CSQLHC về TTXH cấp ngày 11-08-2021\n"
+    "Tôi cam đoan những nội dung khai trên đây là đúng sự thật"
+)
+
+
+def _card(identity: str, name: str, birth: str, sex: str) -> str:
+    return (
+        f"CĂN CƯỚC CÔNG DÂN\nSố / No.: {identity}\nHọ và tên / Full name: {name}\n"
+        f"Ngày sinh / Date of birth: {birth}\nGiới tính / Sex: {sex} Quốc tịch / Nationality: Việt Nam"
+    )
+
+
+def test_declaration_wins_over_every_card_value():
+    docs = [
+        {"name": "to-khai.pdf", "text": _DECLARATION_WINS_TEXT},
+        # Cùng người nhưng thẻ ghi khác tờ khai: con lệch tên + ngày sinh, cha lệch số + năm sinh.
+        {"name": "cccd-con.pdf", "text": _card("068090001122", "TRẦN VĂN BINH", "11/05/1990", "Nam")},
+        {"name": "cccd-cha.pdf", "text": _card("068063003344", "TRẦN VĂN AN", "01/01/1963", "Nam")},
+    ]
+    context = reason._render_context("", {}, docs)
+    # Agent trích toàn bộ theo CCCD.
+    fields = [
+        {"name": "Requester_RelationToSubject", "value": "Bản thân"},
+        {"name": "Requester_FullName", "value": "TRẦN VĂN BINH"},
+        {"name": "Requester_IdNumber", "value": "068090001122"},
+        {"name": "Subject_FullName", "value": "TRẦN VĂN BINH"},
+        {"name": "Subject_BirthDate", "value": "11/05/1990"},
+        {"name": "Subject_BirthDateFromId", "value": "11/05/1990"},
+        {"name": "Father_FullName", "value": "TRẦN VĂN AN"},
+        {"name": "Father_Gender", "value": "Nam"},
+        {"name": "Father_IdNumber", "value": "068063003344"},
+        {"name": "Father_IdIssueDate", "value": "10/08/2021"},
+        {"name": "Father_BirthDateOrYear", "value": "01/01/1963"},
+    ]
+
+    values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
+
+    assert values["Requester_FullName"] == "TRẦN VĂN BÌNH"
+    assert values["Requester_IdNumber"] == "06809000111"  # sai độ dài vẫn theo tờ khai
+    assert values["Subject_FullName"] == "TRẦN VĂN BÌNH"
+    assert values["Subject_BirthDate"] == "10/05/1990"
+    assert "Subject_BirthDateFromId" not in values
+    assert values["Father_IdNumber"] == "068062003333"
+    assert values["Father_IdIssueDate"] == "11/08/2021"
+    assert values["Father_BirthDateOrYear"] == "1962"
+    assert values["Mother_IdNumber"] == "068165002222"
+
+
+def test_declaration_year_only_keeps_card_full_date_of_same_year():
+    docs = [
+        {"name": "to-khai.pdf", "text": _DECLARATION_WINS_TEXT},
+        {"name": "cccd-me.pdf", "text": _card("068165002222", "LÊ THỊ HOA", "02/02/1965", "Nữ")},
+    ]
+    context = reason._render_context("", {}, docs)
+    fields = [
+        {"name": "Mother_FullName", "value": "LÊ THỊ HOA"},
+        {"name": "Mother_Gender", "value": "Nữ"},
+        {"name": "Mother_IdNumber", "value": "068165002222"},
+        {"name": "Mother_BirthDateOrYear", "value": "02/02/1965"},
+    ]
+
+    values = {field["name"]: field["value"] for field in reason.sanitize_extracted_fields(fields, context)}
+
+    assert values["Mother_BirthDateOrYear"] == "02/02/1965"
+
+
+# Thẻ căn cước mẫu 2024: ngày sinh in ở DÒNG DƯỚI dòng nhãn "Date of birth:  Giới tính / Sex:".
+_NEW_CARD_MOTHER = (
+    "CĂN CƯỚC\nIDENTITY CARD\n"
+    "Số định danh cá nhân / Personal identification number:\n048130001234\n"
+    "Họ, chữ đệm và tên khai sinh / Full name:\nPHẠM THỊ LAN\n"
+    "Ngày, tháng, năm sinh / Date of birth:  Giới tính / Sex:\n03/03/1930 Nữ\n"
+    "Quốc tịch / Nationality:\nViệt Nam"
+)
+
+
+def test_new_card_reads_birth_date_on_line_below_label():
+    person = reason._person_from_document({"name": "can-cuoc.pdf", "text": _NEW_CARD_MOTHER})
+
+    assert person["name"] == "PHẠM THỊ LAN"
+    assert person["year"] == 1930
+
+
+def test_generation_rule_runs_despite_birth_certificate_of_subjects_child():
+    docs = [
+        {"name": "cccd-con.pdf", "text": _card("048162005678", "LÊ THỊ THU", "12/12/1962", "Nữ")},
+        {"name": "can-cuoc-me.pdf", "text": _NEW_CARD_MOTHER},
+        {
+            "name": "khai-tu-cha.pdf",
+            "text": (
+                "TRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: LÊ VĂN HẢI\nNgày, tháng, năm sinh: 04/04/1929\n"
+                "Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam"
+            ),
+        },
+        # Giấy khai sinh của CON bà Thu (bà Thu đứng tên MẸ) — không được chặn luật thế hệ.
+        {
+            "name": "khai-sinh-con.pdf",
+            "text": "BẢN SAO GIẤY KHAI SINH Số: 55\nKhai về Cha, Mẹ CHA MẸ\nHọ, tên Đỗ Văn Nam Lê thị Thu",
+        },
+    ]
+    # Agent lấy chồng bà Thu (ghi trên giấy khai sinh của con) làm "cha", bỏ trống mẹ.
+    raw = (
+        "<con>\nHọ tên: LÊ THỊ THU\nSố CCCD/CMND: 048162005678\nNgày sinh: 12/12/1962\nGiới tính: Nữ\n"
+        "Nguồn: cccd-con.pdf\nCăn cứ phân vai: CCCD\n</con>\n"
+        "<cha>\nHọ tên: ĐỖ VĂN NAM\nSố CCCD/CMND: Không xác định\nNgày sinh: Không xác định\n"
+        "Giới tính: Nam\nNguồn: khai-sinh-con.pdf\nCăn cứ phân vai: Giấy khai sinh.\n</cha>\n"
+        "<me>\nHọ tên: Không xác định\n</me>"
+    )
+
+    context = reason._render_context(raw, {}, docs)
+
+    assert reason._role_name(reason._section(context, "me")) == "PHẠM THỊ LAN"
+    assert reason._role_name(reason._section(context, "cha")) == "LÊ VĂN HẢI"

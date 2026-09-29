@@ -150,3 +150,29 @@ async def test_attachment_plan_uses_exact_five_portal_categories(monkeypatch):
         "DISSOLUTION_FAMILY_MINUTES",
         "OTHERS",
     ]
+
+
+async def test_attachment_plan_splits_phone_photos_with_same_name(monkeypatch):
+    texts = [
+        "THÔNG BÁO Về việc người nộp thuế chấm dứt hiệu lực mã số thuế",
+        "GIẤY CHỨNG NHẬN ĐĂNG KÝ HỘ KINH DOANH Mã số hộ kinh doanh",
+        "Mẫu số 4 THÔNG BÁO Về việc chấm dứt hoạt động hộ kinh doanh",
+    ]
+
+    async def fake_ocr_per_file(files):
+        return [{"name": item["name"], "text": text} for item, text in zip(files, texts)]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": []})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [FileItem(
+        name="image.jpg", type="image/jpeg", dataUrl="data:image/jpeg;base64,AAA", role="doc",
+    ) for _ in texts]
+    result = await planner.plan(files)
+    assert [item["category"] for item in result["attachments"]] == [
+        "TAX_TERMINATION_NOTICE",
+        "BUSINESS_REG_CERT_ORIGINAL",
+        "DISSOLUTION_NOTICE",
+    ]

@@ -494,3 +494,47 @@ async def test_dang_ky_lai_compact_agent_maps_self_requester_from_paper_declarat
     assert "SoDinhDanhMe" not in d
     assert "soDKTruocDay" not in d
     assert not res["errors"]
+
+
+def _self_requester_misread_as_father(father_name: str) -> list[dict]:
+    # Dòng quan hệ viết tay "bản thân" bị OCR đọc ra chữ nhiễu dính "bố" → agent trả "Cha".
+    return [
+        {"name": "Requester_SourceDocumentTitle", "comp": "x-input", "value": "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH"},
+        {"name": "Requester_RelationToSubject", "comp": "x-input", "value": "Cha"},
+        {"name": "Requester_FullName", "comp": "x-input", "value": "Trần Văn Bình"},
+        {"name": "Subject_FullName", "comp": "x-input", "value": "Trần Văn Bình"},
+        {"name": "Father_FullName", "comp": "x-input", "value": father_name},
+    ]
+
+
+def test_dang_ky_lai_same_name_as_subject_ticks_self_not_father():
+    result = {field["name"]: field["value"] for field in mapper.enrich(_self_requester_misread_as_father("Trần Văn An"))}
+
+    assert result["QuanHe"] == "BanThan"
+
+
+def test_dang_ky_lai_father_sharing_child_name_keeps_father_tick():
+    # Cha đặt tên con trùng tên mình: tên người yêu cầu khớp cả con lẫn cha → giữ nguyên "Cha".
+    result = {field["name"]: field["value"] for field in mapper.enrich(_self_requester_misread_as_father("Trần Văn Bình"))}
+
+    assert result["QuanHe"] == "ChaDe"
+
+
+def test_dang_ky_lai_self_requester_keeps_declaration_id_over_card():
+    # Tờ khai thắng: số viết tay trên tờ khai (kể cả sai độ dài) được giữ, không đổi sang số thẻ con.
+    fields = [
+        {"name": "Requester_SourceDocumentTitle", "comp": "x-input", "value": "TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH"},
+        {"name": "Requester_RelationToSubject", "comp": "x-input", "value": "Bản thân"},
+        {"name": "Requester_FullName", "comp": "x-input", "value": "Trần Văn Bình"},
+        {"name": "Requester_IdNumber", "comp": "x-input", "value": "06809000111"},
+        {"name": "Subject_FullName", "comp": "x-input", "value": "Trần Văn Bình"},
+        {"name": "Subject_IdNumber", "comp": "x-input", "value": "068090001122"},
+        {"name": "Subject_IdIssueDate", "comp": "x-input", "value": "10/08/2021"},
+    ]
+
+    result = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+
+    assert result["QuanHe"] == "BanThan"
+    assert result["SoDinhDanhC"] == "06809000111"
+    # Ngày cấp của thẻ mang số KHÁC không được bù sang; ô bị xoá trắng cho cán bộ gõ.
+    assert result["NgayCapDDC"] == ""

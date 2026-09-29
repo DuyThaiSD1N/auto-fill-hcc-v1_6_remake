@@ -663,34 +663,33 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             or _relation_by_identity(values)
             or _relation_from_context(context)
         )
+        # Agent trích xuất cũng đọc lại dòng quan hệ viết tay và hay tích Cha/Mẹ theo chữ OCR nhiễu,
+        # đè lên kết luận đã phân xử ở reason.py → đối chiếu tên lần nữa ngay tại đây.
+        parent = {"ChaDe": "Father_FullName", "MeDe": "Mother_FullName"}.get(relation)
+        if parent and _reason_mod.names_say_self_not_parent(
+            values.get("Requester_FullName"), values.get("Subject_FullName"), values.get(parent)
+        ):
+            relation = "BanThan"
         role = _ROLE_BY_RELATION_TICK.get(relation)
         base = _person_from_role(values, role, context) if role else {}
-        # Người yêu cầu CHÍNH LÀ người được đăng ký lại ("Bản thân") → hồ sơ có CCCD của đúng người
-        # đó, và giấy tờ tùy thân đọc từ THẺ luôn sạch hơn dòng viết tay trên tờ khai: số định danh
-        # trên tờ khai hay bị OCR rụng chữ số (vd "0240806368" thay cho "024068006368"), điền vào
-        # mục I là sai người ngay từ ô đầu tiên.
-        # NƠI CƯ TRÚ và HỌ TÊN vẫn ưu tiên tờ khai: tờ khai viết hôm nay, còn thẻ có thể cấp từ
-        # nhiều năm trước và địa giới hành chính đã đổi.
-        card_first = _requester_is_subject(values, relation, context)
+        # TỜ KHAI THẮNG: mọi ô tờ khai ghi (kể cả số định danh viết tay sai độ dài) lấy theo tờ
+        # khai; giấy tờ của chính vai đã tick chỉ bù ô tờ khai bỏ trống.
         # `base` chỉ là NGƯỜI YÊU CẦU khi ô tích đáng tin: vai cha/mẹ thì chính ô tích khẳng định
         # điều đó, riêng "Bản thân" phải qua thêm phép so tên (ô tích rất hay bị tick nhầm).
-        trust_base = bool(role) and (relation != "BanThan" or card_first)
+        trust_base = bool(role) and (
+            relation != "BanThan" or _requester_is_subject(values, relation, context)
+        )
         sources = {
-            key: (base.get(key), declared.get(key))
-            if card_first and key in _ID_DOC_KEYS
-            else (declared.get(key), base.get(key)) if trust_base
-            else (declared.get(key),)
+            key: (declared.get(key), base.get(key)) if trust_base else (declared.get(key),)
             for key in declared
         }
         person = {key: next((v for v in order if v), None) for key, order in sources.items()}
-        # Chốt chặn cuối, KHÔNG phụ thuộc agent: agent được phép bỏ Subject_IdNumber khi nó thấy
-        # hồ sơ không có thẻ, lúc đó phép đảo ưu tiên bên trên không có gì để lấy và số hỏng của
-        # tờ khai lại lọt xuống. Quét lại đúng những nguồn được phép, lấy số ĐÚNG ĐỘ DÀI; không
-        # nguồn nào đạt thì để TRỐNG hẳn cho người dùng gõ, hơn là điền con số sai trông như thật.
-        if not _is_valid_id_number(person.get("so_dinh_danh")):
-            person["so_dinh_danh"] = next(
-                (v for v in sources["so_dinh_danh"] if _is_valid_id_number(v)), None
-            )
+        # Số tờ khai KHÁC số thẻ thì ngày cấp/nơi cấp bù từ thẻ là của một tấm thẻ khác → bỏ.
+        if declared.get("so_dinh_danh") and _digits(declared["so_dinh_danh"]) != _digits(
+            base.get("so_dinh_danh")
+        ):
+            for key in ("ngay_cap", "noi_cap"):
+                person[key] = declared.get(key) or None
         # Hai dòng tờ khai cùng chỉ một người thì phải mang CÙNG một họ tên đã được phân xử.
         self_name = _self_full_name(context) if relation == "BanThan" else ""
         if self_name:

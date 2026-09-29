@@ -87,22 +87,24 @@ def _unique_name(value: str, used: set[str], fallback: str) -> str:
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     _ = options or {}
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
-    ocr_files = [item for item in raw_files if item.get("type") in _OCR_TYPES]
+    ocr_indexes = [index for index, item in enumerate(raw_files) if item.get("type") in _OCR_TYPES]
     errors: list[str] = []
 
     from app.services import ocr
 
     started = time.monotonic()
-    ocr_results = await ocr.ocr_per_file(ocr_files) if ocr_files else []
+    ocr_results = await ocr.ocr_per_file([raw_files[index] for index in ocr_indexes]) if ocr_indexes else []
     ocr_ms = int((time.monotonic() - started) * 1000)
     for result in ocr_results:
         if result.get("error"):
             errors.append(f"OCR {result.get('name')}: {result['error']}")
-    ocr_by_name = {result.get("name"): result for result in ocr_results}
-    docs = [{
-        "index": index,
-        "text": _truncate(str(ocr_by_name.get(item.get("name"), {}).get("text") or "")),
-    } for index, item in enumerate(raw_files)]
+    # Ghép theo vị trí, không theo tên: ảnh chụp từ điện thoại hay cùng tên "image.jpg", ghép
+    # theo tên làm mọi file nhận chung OCR của file cuối và bị dồn vào một loại đính kèm.
+    ocr_text = {
+        index: str((result or {}).get("text") or "")
+        for index, result in zip(ocr_indexes, ocr_results)
+    }
+    docs = [{"index": index, "text": _truncate(ocr_text.get(index, ""))} for index in range(len(raw_files))]
 
     llm_started = time.monotonic()
     classified: dict[int, dict[str, str]] = {}
@@ -117,7 +119,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     summary = []
     used_names: set[str] = set()
     for index, item in enumerate(raw_files):
-        text = str(ocr_by_name.get(item.get("name"), {}).get("text") or "")
+        text = ocr_text.get(index, "")
         llm = classified.get(index) or {}
         doc_type = _detect_type(text) or str(llm.get("type") or "other")
         if doc_type not in _TYPE_CONFIG:
