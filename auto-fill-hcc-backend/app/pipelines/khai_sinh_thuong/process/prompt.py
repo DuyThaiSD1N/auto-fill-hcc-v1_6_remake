@@ -96,6 +96,10 @@ CccdNu_*  — CCCD giới tính Nữ KHÔNG phải chủ thể → MẸ.
 TkKs_* — Lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH bản giấy khi thiếu giấy chứng sinh hoặc thiếu CCCD cha/mẹ.
   TkKs_HoTenCon/NgaySinhCon/GioiTinhCon/DanTocCon/NoiSinh/QueQuan: thông tin người được đăng ký trên tờ khai
     (CHỈ dùng khi không có Gcs_* và không có CccdChuThe_*).
+  Không có giấy chứng sinh nhưng có TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (mẫu CT01, vd "đăng ký
+    thường trú lần đầu cho con mới sinh") mà người ở mục 1 KHÔNG phải cha/mẹ → mục 1 "Họ, chữ đệm
+    và tên khai sinh", mục 2 "Ngày, tháng, năm sinh", mục 3 "Giới tính" chính là thông tin CON →
+    TkKs_HoTenCon, TkKs_NgaySinhCon, TkKs_GioiTinhCon. Chủ hộ (mục 7-9) KHÔNG phải cha/mẹ/con.
   TkKs_HoTenCha, TkKs_NamSinhCha, TkKs_DanTocCha, TkKs_SoDinhDanhCha: cha theo tờ khai.
   TkKs_HoTenMe, TkKs_NamSinhMe, TkKs_DanTocMe, TkKs_SoDinhDanhMe: mẹ theo tờ khai.
     Tờ khai có mục cha/mẹ thì LUÔN trả các field này CHÉP NGUYÊN VĂN từ tờ khai, KỂ CẢ khi hồ sơ có

@@ -153,11 +153,76 @@ def _reassign_issue_by_mrz(fields: dict, groups: list[tuple[str, str, str]], tex
     return fields
 
 
+# Hồ sơ khai sinh cho trẻ mới sinh hay kèm TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ (mẫu CT01, đăng ký
+# thường trú cho con) thay cho giấy chứng sinh. Mục 1-3 của tờ khai đó chính là họ tên, ngày sinh,
+# giới tính của con; LLM hay bỏ qua vì tờ khai không mang tên "khai sinh" → đọc thẳng từ OCR.
+_CT01_TITLE = "to khai thay doi thong tin cu tru"
+_CT01_ITEMS = (
+    ("TkKs_HoTenCon", re.compile(r"^1\s*[.)]\s*ho,?\s*chu dem va ten")),
+    ("TkKs_NgaySinhCon", re.compile(r"^2\s*[.)]\s*ngay,?\s*thang,?\s*nam sinh")),
+    ("TkKs_GioiTinhCon", re.compile(r"^3\s*[.)]\s*gioi tinh")),
+)
+_CT01_END_RE = re.compile(r"^(?:[4-9]|1[0-9])\s*[.)]\s")
+_CHILD_KEYS = ("Gcs_HoTenCon", "Gcs_NgaySinhCon", "TkKs_HoTenCon", "TkKs_NgaySinhCon",
+               "CccdChuThe_HoTen", "CccdChuThe_NgaySinh")
+
+
+def _ct01_child(text: str) -> dict:
+    """{TkKs_HoTenCon, TkKs_NgaySinhCon, TkKs_GioiTinhCon} từ mục 1-3 của tờ khai CT01 đầu tiên."""
+    out: dict = {}
+    in_form = False
+    for line in str(text or "").splitlines():
+        folded = _fold(line)
+        if not in_form:
+            in_form = _CT01_TITLE in folded
+            continue
+        if _CT01_END_RE.match(folded):
+            break
+        for key, rx in _CT01_ITEMS:
+            if key in out or not rx.match(folded) or ":" not in line:
+                continue
+            value = line.split(":", 1)[1].strip()
+            if key == "TkKs_NgaySinhCon":
+                m = re.search(_DATE, value)
+                value = _norm_date(*m.groups()) if m else ""
+            elif key == "TkKs_GioiTinhCon":
+                g = _fold(value)
+                value = "Nữ" if g.startswith("nu") else "Nam" if g.startswith("nam") else ""
+            if value:
+                out[key] = value
+    return out
+
+
+def _fill_child_from_ct01(fields: dict, text: str) -> dict:
+    """Bổ sung thông tin con từ tờ khai CT01 khi hồ sơ không có nguồn con nào khác.
+
+    Chỉ nhận khi người trên tờ khai KHÔNG phải cha/mẹ (khác tên hai thẻ) và sinh sau cha/mẹ
+    ít nhất 12 năm — tờ khai CT01 cũng có thể là của chính cha hoặc mẹ đổi nơi cư trú.
+    """
+    if any(fields.get(k) for k in _CHILD_KEYS):
+        return fields
+    child = _ct01_child(text)
+    if not child.get("TkKs_HoTenCon"):
+        return fields
+    name = _fold(child["TkKs_HoTenCon"])
+    if name in {_fold(fields.get("CccdNam_HoTen")), _fold(fields.get("CccdNu_HoTen"))}:
+        return fields
+    birth = _norm_value_date(child.get("TkKs_NgaySinhCon"))
+    child_year = int(birth[-4:]) if birth else None
+    for key in ("CccdNam_NgaySinh", "CccdNu_NgaySinh"):
+        parent = _norm_value_date(fields.get(key))
+        if parent and (not child_year or child_year - int(parent[-4:]) < 12):
+            return fields
+    fields.update(child)
+    return fields
+
+
 def _fix_issue_by_mrz(raw_fields, documents: list[dict]):
     if not isinstance(raw_fields, dict):
         return raw_fields
     text = "\n\n".join(str(d.get("text") or "") for d in documents or [])
-    return _reassign_issue_by_mrz(dict(raw_fields), _ID_ISSUE_GROUPS, text)
+    fields = _reassign_issue_by_mrz(dict(raw_fields), _ID_ISSUE_GROUPS, text)
+    return _fill_child_from_ct01(fields, text)
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:

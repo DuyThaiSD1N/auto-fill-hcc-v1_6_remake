@@ -165,3 +165,50 @@ def test_khai_sinh_thuong_mismatched_card_fitting_generation_is_father():
     assert ui["NamSinhChaKS"]["value"] == "05/05/1980"
     assert ui["NgayCapDDCha"]["value"] == "01/01/2021"
     assert ui["DanTocChaKS"]["value"] == "Kinh"
+
+
+_CT01_OCR = """CĂN CƯỚC CÔNG DÂN
+Họ và tên / Full name:
+LÊ VĂN TÂM
+───── Trang 2/2 ─────
+TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ
+Kính gửi(1): Công an phường Đông Hải
+1. Họ, chữ đệm và tên khai sinh: LÊ MINH KHANG
+2. Ngày, tháng, năm sinh: 05 / 07 / 2026
+3. Giới tính: Nam
+4. Số định danh cá nhân:
+7. Họ, chữ đệm và tên chủ hộ(2): LÊ VĂN SƠN
+8. Mối quan hệ với chủ hộ: cháu nội
+10. Nội dung đề nghị(3): Đăng ký thường trú lần đầu cho con mới sinh
+"""
+
+
+def test_khai_sinh_thuong_child_from_residence_form_ct01():
+    from app.pipelines.khai_sinh_thuong.process import runner
+
+    raw = {
+        "CccdNam_HoTen": "LÊ VĂN TÂM", "CccdNam_SoDinhDanh": "038095001234",
+        "CccdNam_NgaySinh": "01/02/1995",
+        "CccdNu_HoTen": "PHẠM THỊ LAN", "CccdNu_SoDinhDanh": "038197005678",
+        "CccdNu_NgaySinh": "03/04/1997",
+    }
+    fixed = runner._fix_issue_by_mrz(raw, [{"text": _CT01_OCR}])
+
+    assert fixed["TkKs_HoTenCon"] == "LÊ MINH KHANG"
+    assert fixed["TkKs_NgaySinhCon"] == "05/07/2026"
+    assert fixed["TkKs_GioiTinhCon"] == "Nam"
+    ui = _thuong_ui(fixed)
+    assert ui["HoTenKS"]["value"] == "LÊ MINH KHANG"
+    assert ui["GioiTinhKS"]["value"] == "Nam"
+
+
+def test_khai_sinh_thuong_ct01_of_parent_is_not_child():
+    from app.pipelines.khai_sinh_thuong.process import runner
+
+    raw = {"CccdNam_HoTen": "LÊ MINH KHANG", "CccdNam_NgaySinh": "01/02/1995"}
+    fixed = runner._fix_issue_by_mrz(raw, [{"text": _CT01_OCR}])
+    assert "TkKs_HoTenCon" not in fixed
+
+    raw = {"Gcs_HoTenCon": "Lê Minh Khôi", "CccdNam_HoTen": "LÊ VĂN TÂM"}
+    fixed = runner._fix_issue_by_mrz(raw, [{"text": _CT01_OCR}])
+    assert "TkKs_HoTenCon" not in fixed

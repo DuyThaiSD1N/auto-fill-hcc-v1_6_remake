@@ -95,6 +95,53 @@ def test_xac_nhan_tthn_poa_without_declared_requester_fills_submitter_by_default
     assert values["SoDinhDanhC1"] == "001160000222"
 
 
+def _poa_card_with(**overrides):
+    fields = [dict(f) for f in _POA_ONLY_FIELDS]
+    for f in fields:
+        if f["name"] in overrides:
+            f["value"] = overrides[f["name"]]
+    mapped = mapper.enrich(fields)
+    return {field["name"]: field["value"] for field in mapped}
+
+
+def test_xac_nhan_tthn_poa_card_same_name_accepted_when_poa_id_differs():
+    """Giấy ủy quyền ghi sai nhiều chữ số CCCD nhưng thẻ trùng họ tên → vẫn lấy thẻ (bản IN)."""
+    values = _poa_card_with(PoA_SubjectIdNumber="001185000292", PoA_SubjectName="Lê Thị Hoa")
+
+    assert values["GioiTinhC1"] == "Nữ"
+    assert values["SoDinhDanhC1"] == "001160000222"
+
+
+def test_xac_nhan_tthn_poa_card_same_name_other_birth_date_rejected():
+    values = _poa_card_with(PoA_SubjectIdNumber="001185000292",
+                            PoA_SubjectCccdNgaySinh="03/03/1985")
+
+    assert not values.get("GioiTinhC1")
+    assert values["SoDinhDanhC1"] == "001185000292"
+
+
+def test_xac_nhan_tthn_poa_card_other_name_and_id_rejected():
+    values = _poa_card_with(PoA_SubjectIdNumber="001185000292",
+                            PoA_SubjectCccdHoTen="PHẠM THỊ LAN")
+
+    assert not values.get("GioiTinhC1")
+    assert values["SoDinhDanhC1"] == "001185000292"
+
+
+def test_xac_nhan_tthn_poa_subject_card_in_cccd_slot_accepted_by_name():
+    """Thẻ người ủy quyền bị agent đặt vào Cccd_*, số lệch giấy ủy quyền nhưng trùng tên."""
+    values = {
+        "PoA_SubjectName": "Lê Thị Hoa", "PoA_SubjectDoB": "02/02/1960",
+        "PoA_SubjectIdNumber": "001185000292",
+        "Cccd_HoTen": "LÊ THỊ HOA", "Cccd_SoDinhDanh": "001160000222",
+        "Cccd_NgaySinh": "02/02/1960", "Cccd_GioiTinh": "Nữ",
+    }
+    card = mapper._poa_subject_card(values)
+
+    assert card["SoDinhDanh"] == "001160000222"
+    assert card["GioiTinh"] == "Nữ"
+
+
 def test_xac_nhan_tthn_poa_without_declared_requester_fills_grantor_as_self_for_hiep_hoa():
     """Tài khoản Hiệp Hòa: mục I và mục II đều là người ủy quyền, "Bản thân"."""
     user = {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}

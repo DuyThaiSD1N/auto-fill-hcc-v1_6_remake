@@ -316,20 +316,31 @@ def _is_foreign_area(area) -> bool:
 def _poa_subject_card(values: dict) -> dict:
     """Thẻ căn cước CỦA NGƯỜI ỦY QUYỀN (người cần giấy), gom từ PoA_SubjectCccd* hoặc Cccd_*.
 
-    Chỉ nhận thẻ khi số trên thẻ khớp số trên giấy ủy quyền (trùng hẳn, hoặc OCR rơi/đọc nhầm một
-    chữ số), hoặc giấy ủy quyền không ghi số. Số khác hẳn = thẻ của người khác → bỏ, không ghép
-    nhân thân hai người.
+    Nhận thẻ khi số trên thẻ khớp số trên giấy ủy quyền (trùng hẳn, hoặc OCR rơi/đọc nhầm một
+    chữ số), hoặc giấy ủy quyền không ghi số, hoặc họ tên trên thẻ trùng họ tên người ủy quyền —
+    giấy ủy quyền hay ghi/OCR sai vài chữ số CCCD trong khi thẻ là bản IN. Số khác hẳn và tên
+    cũng khác (hoặc cùng tên nhưng ngày sinh khác) = thẻ của người khác → bỏ, không ghép nhân thân
+    hai người.
     """
     poa_id = values.get("PoA_SubjectIdNumber")
 
-    def belongs(card_id) -> bool:
+    def same_name(card_name, card_dob) -> bool:
+        if _name_match(card_name, values.get("PoA_SubjectName")) is not True:
+            return False
+        card_date, poa_date = _date_key(card_dob), _date_key(values.get("PoA_SubjectDoB"))
+        return not (card_date and poa_date and card_date != poa_date)
+
+    def belongs(card_id, card_name, card_dob) -> bool:
         if not _digits(card_id):
             return False
         if not _digits(poa_id):
             return True
-        return _id_match(card_id, poa_id) is True or _is_one_digit_misread(card_id, poa_id)
+        return (_id_match(card_id, poa_id) is True or _is_one_digit_misread(card_id, poa_id)
+                or same_name(card_name, card_dob))
 
-    if values.get("PoA_SubjectCccdSoDinhDanh") and belongs(values.get("PoA_SubjectCccdSoDinhDanh")):
+    if values.get("PoA_SubjectCccdSoDinhDanh") and belongs(
+            values.get("PoA_SubjectCccdSoDinhDanh"),
+            values.get("PoA_SubjectCccdHoTen"), values.get("PoA_SubjectCccdNgaySinh")):
         return {
             "HoTen": values.get("PoA_SubjectCccdHoTen"),
             "SoDinhDanh": values.get("PoA_SubjectCccdSoDinhDanh"),
@@ -342,8 +353,11 @@ def _poa_subject_card(values: dict) -> dict:
             "NoiCuTru": _area(values.get("PoA_SubjectCccdNoiCuTru")),
         }
     # Agent đôi khi đặt thẻ người ủy quyền vào Cccd_* (vd hồ sơ chỉ kèm đúng một thẻ): số trùng hẳn
-    # số trên giấy ủy quyền mới nhận — thẻ người đi nộp cũng nằm ở Cccd_*.
-    if _digits(poa_id) and _id_match(values.get("Cccd_SoDinhDanh"), poa_id) is True:
+    # số trên giấy ủy quyền (hoặc họ tên trùng người ủy quyền) mới nhận — thẻ người đi nộp cũng nằm
+    # ở Cccd_*.
+    if _digits(values.get("Cccd_SoDinhDanh")) and (
+            (_digits(poa_id) and _id_match(values.get("Cccd_SoDinhDanh"), poa_id) is True)
+            or same_name(values.get("Cccd_HoTen"), values.get("Cccd_NgaySinh"))):
         return {
             "HoTen": values.get("Cccd_HoTen"),
             "SoDinhDanh": values.get("Cccd_SoDinhDanh"),
