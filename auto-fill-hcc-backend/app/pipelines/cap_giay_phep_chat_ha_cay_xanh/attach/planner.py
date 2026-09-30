@@ -4,8 +4,8 @@ Angular Reactive Form, engine FE `attp-row`).
 Bảng thành phần hồ sơ 2 dòng: (1) Đơn đề nghị (Mẫu 01) — loaiBan "Bản chính"; (2) Ảnh chụp hiện trạng cây
 xanh — loaiBan "Scan tệp tin". FE khớp dòng bằng componentName (substring fold).
 
-Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword + heuristic ảnh chỉ DỰ PHÒNG. CCCD/
-GCN QSDĐ không có dòng riêng → bỏ qua/other.
+Phân loại **LLM-primary**: LLM đọc OCR quyết định loại; rule keyword + heuristic ảnh chỉ DỰ PHÒNG. CCCD và
+GCN QSDĐ không có dòng riêng → đính CHUNG dòng "Đơn đề nghị".
 """
 
 import time
@@ -23,6 +23,7 @@ _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _DON = "don_de_nghi"
 _ANH = "anh_hien_trang"
 _CCCD = "cccd"
+_GCN = "gcn_qsdd"
 _OTHER = "other"
 
 _ROWS: dict[str, dict[str, str]] = {
@@ -42,6 +43,12 @@ _ROWS: dict[str, dict[str, str]] = {
         "loaiBan": "Bản chính",
         "documentName": "Căn cước công dân (kèm Đơn đề nghị)",
     },
+    # GCN QSDĐ (tài liệu liên quan nơi có cây) cũng không có dòng riêng → đính CHUNG dòng "Đơn đề nghị".
+    _GCN: {
+        "componentName": "Đơn đề nghị cấp giấy phép chặt hạ, dịch chuyển cây xanh",
+        "loaiBan": "Bản chính",
+        "documentName": "Giấy chứng nhận quyền sử dụng đất (kèm Đơn đề nghị)",
+    },
 }
 _SKIP_DOCS: set[str] = set()
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
@@ -52,10 +59,22 @@ def _is_identity_text(text: str) -> bool:
     return any(m in h for m in ("can cuoc cong dan", "chung minh nhan dan", "the can cuoc", "ho chieu", "passport"))
 
 
+# Dấu hiệu văn bản hành chính (quốc hiệu, tiêu ngữ, tiêu đề giấy tờ). Ảnh chụp cây ngoài phố hay dính chữ
+# biển hiệu/bảng quảng cáo → OCR ra vài chữ rời rạc, không có dấu hiệu nào trong số này.
+_ADMIN_MARKERS = (
+    "cong hoa xa hoi", "doc lap", "tu do", "hanh phuc", "kinh gui", "don de nghi", "giay chung nhan",
+    "can cuoc", "chung minh", "uy ban", "quyet dinh", "so do",
+)
+
+
 def _is_photo_like(text: str) -> bool:
-    """File ẢNH hiện trạng: OCR rỗng/chỉ nhãn ảnh/rác. Đếm chữ cái < 20 → coi là ảnh."""
-    letters = sum(1 for c in _fold(text) if c.isalpha())
-    return letters < 20
+    """File ẢNH hiện trạng: OCR rỗng/chỉ nhãn ảnh/rác (chữ cái < 20), HOẶC ít chữ (< 200 chữ cái) và không có
+    dấu hiệu văn bản hành chính nào (ảnh dính chữ biển hiệu)."""
+    h = _fold(text)
+    letters = sum(1 for c in h if c.isalpha())
+    if letters < 20:
+        return True
+    return letters < 200 and not any(m in h for m in _ADMIN_MARKERS)
 
 
 def _rule_doc_type(text: str) -> str:
@@ -64,6 +83,9 @@ def _rule_doc_type(text: str) -> str:
         return ""
     if "don de nghi" in h and ("chat ha" in h or "dich chuyen" in h) and "cay xanh" in h:
         return _DON
+    # GCN QSDĐ ghi số CCCD của chủ đất → nhận GCN TRƯỚC identity.
+    if "giay chung nhan" in h and "quyen su dung dat" in h:
+        return _GCN
     if _is_identity_text(h):
         return _CCCD
     return ""
@@ -75,6 +97,8 @@ def _normalize_doc_type(value: str) -> str:
         return _OTHER
     if text in _ALLOWED_DOC_TYPES:
         return text
+    if "gcn" in text or "giay chung nhan" in text or "quyen su dung dat" in text or "qsdd" in text:
+        return _GCN
     if "anh" in text or "hien trang" in text or "hinh anh" in text:
         return _ANH
     if "don" in text or "de nghi" in text or "01" in text:
