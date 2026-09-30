@@ -1,6 +1,6 @@
 """Kiểm thử tầng phân vai raw-text của đăng ký lại khai sinh."""
 
-from app.pipelines.khai_sinh_dang_ky_lai.process import reason
+from app.pipelines.khai_sinh_dang_ky_lai.process import mapper, reason
 from app.pipelines.khai_sinh_dang_ky_lai.process import runner as process_runner
 
 
@@ -895,3 +895,105 @@ def test_old_card_birth_and_gender_on_one_line_reads_clean_date():
     })
 
     assert reason._labeled_value(person["section"], "Ngày sinh") == "28/05/1955"
+
+
+# Hồ sơ 4 CCCD không tờ khai: cán bộ đăng nhập cổng scan kèm thẻ của chính mình + con + mẹ + cha.
+_OFFICER_FRONT = (
+    "CĂN CƯỚC CÔNG DÂN\nSố / No: 001201012345\nHọ và tên / Full name:\nTRẦN MINH KHOA\n"
+    "Ngày sinh / Date of birth: 02/03/2001\nGiới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam\n"
+    "Nơi thường trú / Place of residence: Thôn Đông\nSong Liễu, Thuận Thành, Bắc Ninh\n"
+    "Có giá trị đến: 02/03/2026"
+)
+_OFFICER_BACK = (
+    "Ngày, tháng, năm / Date, month, year: 10/04/2021\n"
+    "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI\n"
+    "IDVNM2010123452001201012345<<9"
+)
+_FOUR_CARD_DOCS = [
+    {"name": "cccd-can-bo.jpg", "text": _OFFICER_FRONT},
+    {"name": "cccd-can-bo-sau.jpg", "text": _OFFICER_BACK},
+    {"name": "cccd-con.jpg", "text": _card("027078001111", "LÊ VĂN HÙNG", "05/06/1978", "Nam")},
+    {"name": "cccd-me.jpg", "text": _card("027150002222", "PHẠM THỊ MAI", "07/08/1950", "Nữ")},
+    {"name": "cccd-cha.jpg", "text": _card("027048003333", "LÊ VĂN SƠN", "09/10/1948", "Nam")},
+]
+# Agent chọn người trẻ nhất (cán bộ) làm con — đúng lỗi của hồ sơ thật.
+_FOUR_CARD_RAW = (
+    "<con>\nHọ tên: TRẦN MINH KHOA\nSố CCCD/CMND: 001201012345\nNgày sinh: 02/03/2001\nGiới tính: Nam\n"
+    "Nguồn: cccd-can-bo.jpg\nCăn cứ phân vai: Người trẻ nhất.\n</con>\n"
+    "<me>\nHọ tên: PHẠM THỊ MAI\nSố CCCD/CMND: 027150002222\nNgày sinh: 07/08/1950\nGiới tính: Nữ\n"
+    "Nguồn: cccd-me.jpg\nCăn cứ phân vai: Thế hệ.\n</me>\n"
+    "<cha>\nHọ tên: LÊ VĂN SƠN\nSố CCCD/CMND: 027048003333\nNgày sinh: 09/10/1948\nGiới tính: Nam\n"
+    "Nguồn: cccd-cha.jpg\nCăn cứ phân vai: Thế hệ.\n</cha>"
+)
+_OFFICER_LOGIN = {"formContext": {"applicantFullname": "TRẦN MINH KHOA", "applicantIdentityNumber": "001201012345"}}
+
+
+def test_officer_card_of_logged_in_account_is_excluded_from_family_roles():
+    context = reason._render_context(_FOUR_CARD_RAW, _OFFICER_LOGIN, _FOUR_CARD_DOCS)
+
+    assert reason._role_name(reason._section(context, "con")) == "LÊ VĂN HÙNG"
+    assert reason._role_name(reason._section(context, "me")) == "PHẠM THỊ MAI"
+    assert reason._role_name(reason._section(context, "cha")) == "LÊ VĂN SƠN"
+    requester = reason._section(context, "nguoi_yeu_cau")
+    assert reason._labeled_value(requester, "Căn cứ phân vai") == reason.APPLICANT_CARD_BASIS
+    assert reason._labeled_value(requester, "Số CCCD/CMND") == "001201012345"
+    assert reason._labeled_value(requester, "Ngày cấp") == "10/04/2021"
+    assert reason._labeled_value(reason._section(context, "quan_he_nguoi_yeu_cau"), "Kết luận") == "khác"
+
+
+def test_officer_card_matched_by_name_when_portal_sends_no_id():
+    options = {"formContext": {"applicantFullname": "Trần Minh Khoa"}}
+    context = reason._render_context(_FOUR_CARD_RAW, options, _FOUR_CARD_DOCS)
+
+    assert reason._role_name(reason._section(context, "me")) == "PHẠM THỊ MAI"
+    assert reason._labeled_value(reason._section(context, "nguoi_yeu_cau"), "Họ tên") == "TRẦN MINH KHOA"
+
+
+def test_lineage_repair_keeps_mother_card_without_portal_anchor():
+    # Không có mỏ neo cổng: ghép con/cha theo dòng họ vẫn phải ghép lại mẹ, không bỏ trống.
+    context = reason._render_context(_FOUR_CARD_RAW, {}, _FOUR_CARD_DOCS)
+
+    assert reason._role_name(reason._section(context, "con")) == "LÊ VĂN HÙNG"
+    assert reason._role_name(reason._section(context, "me")) == "PHẠM THỊ MAI"
+    assert reason._labeled_value(reason._section(context, "nguoi_yeu_cau"), "Căn cứ phân vai") != (
+        reason.APPLICANT_CARD_BASIS
+    )
+
+
+def test_logged_in_subject_card_is_not_treated_as_officer():
+    # Người đăng nhập chính là con (3 thẻ con/mẹ/cha) → vẫn "bản thân", không dựng khối cán bộ.
+    docs = _FOUR_CARD_DOCS[2:]
+    options = {"formContext": {"applicantFullname": "LÊ VĂN HÙNG", "applicantIdentityNumber": "027078001111"}}
+    context = reason._render_context("", options, docs)
+
+    assert reason._role_name(reason._section(context, "con")) == "LÊ VĂN HÙNG"
+    assert reason._labeled_value(reason._section(context, "quan_he_nguoi_yeu_cau"), "Kết luận") == "bản thân"
+    assert reason._labeled_value(reason._section(context, "nguoi_yeu_cau"), "Căn cứ phân vai") != (
+        reason.APPLICANT_CARD_BASIS
+    )
+
+
+def test_mapper_fills_requester_from_officer_card_and_mother_from_her_card():
+    context = reason._render_context(_FOUR_CARD_RAW, _OFFICER_LOGIN, _FOUR_CARD_DOCS)
+    fields = [
+        {"name": "Subject_FullName", "value": "LÊ VĂN HÙNG"},
+        {"name": "Subject_IdNumber", "value": "027078001111"},
+        {"name": "Mother_FullName", "value": "PHẠM THỊ MAI"},
+        {"name": "Mother_Gender", "value": "Nữ"},
+        {"name": "Mother_IdNumber", "value": "027150002222"},
+        {"name": "Father_FullName", "value": "LÊ VĂN SƠN"},
+        {"name": "Father_Gender", "value": "Nam"},
+        {"name": "Father_IdNumber", "value": "027048003333"},
+    ]
+    fields = reason.sanitize_extracted_fields(fields, context)
+
+    out = {f["name"]: f for f in mapper.enrich(fields, {**_OFFICER_LOGIN, "_reasoning_context": context})}
+
+    assert out["QuanHe"]["value"] == "Khac" and not out["QuanHe"].get("default")
+    assert out["HoVaTenC"]["value"] == "TRẦN MINH KHOA"
+    assert out["SoDinhDanhC"]["value"] == "001201012345"
+    assert out["NgayCapDDC"]["value"] == "10/04/2021"
+    assert out["nycNoiCuTru_TrongNuoc"]["value"]["tinh"] == "Bắc Ninh"
+    assert out["HoTenMeKS"]["value"] == "PHẠM THỊ MAI"
+    assert out["SoDinhDanhMe"]["value"] == "027150002222"
+    assert not any(f.get("clear") for f in out.values() if f["name"].endswith("C"))

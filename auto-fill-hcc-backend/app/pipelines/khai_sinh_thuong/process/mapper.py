@@ -473,10 +473,11 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
         }
     # Ưu tiên 3: Giấy chứng sinh
     if values.get("Gcs_HoTenCon") or values.get("Gcs_NgaySinhCon"):
-        # Quê quán con = quê quán cha
-        # Ưu tiên: QueQuan (CCCD cũ) > NoiDangKyKhaiSinh (căn cước mới) > NoiCuTru (fallback)
+        # Quê quán con: tờ khai tự ghi thì theo tờ khai; không ghi thì = quê quán cha
+        # Ưu tiên: tờ khai > QueQuan (CCCD cũ) > NoiDangKyKhaiSinh (căn cước mới) > NoiCuTru (fallback)
         que_quan_raw = (
-            _area(values.get("CccdNam_QueQuan"))
+            _area(values.get("TkKs_QueQuan"))
+            or _area(values.get("CccdNam_QueQuan"))
             or _area(values.get("CccdNam_NoiDangKyKhaiSinh"))  
             or _area(values.get("CccdNam_NoiCuTru_TrongNuoc"))
         )
@@ -521,13 +522,14 @@ def _resolve_subject(values: dict, nu_is_subject: bool = False) -> dict:
 def _parent_residence(values: dict, cccd_key: str, tk_key: str, allow_cccd: bool) -> tuple:
     """Nơi cư trú cha/mẹ, trả (area, deceased).
 
-    Nguồn theo thứ tự: CCCD (bản in, OCR chắc hơn) → dòng "Nơi cư trú" ở mục cha/mẹ trên
-    tờ khai. Tờ khai lấp chỗ trống cho cha/mẹ không nộp CCCD — trước đây nhóm này không có
-    địa chỉ nào nên hai ô trên form bị bỏ trắng.
+    Nguồn theo thứ tự: dòng "Nơi cư trú" ở mục cha/mẹ trên TỜ KHAI → CCCD. Tờ khai là nơi cư trú
+    HIỆN TẠI do chính người dân khai cho lần đăng ký này; địa chỉ in trên thẻ có thể đã cũ (chuyển
+    nơi ở sau khi làm thẻ, đơn vị hành chính trước sáp nhập) — lấy thẻ trước thì cha khai "Nhất
+    Hòa" trên tờ khai vẫn ra xã in trên thẻ. CCCD chỉ lấp chỗ trống khi tờ khai không ghi.
 
     Marker "Đã chết"/"Đã mất" là hạng bét: chỉ dùng khi KHÔNG nguồn nào có địa chỉ thật.
     """
-    keys = ([cccd_key] if allow_cccd else []) + [tk_key]
+    keys = [tk_key] + ([cccd_key] if allow_cccd else [])
     found = []
     for key in keys:
         raw = values.get(key)

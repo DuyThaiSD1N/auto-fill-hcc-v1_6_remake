@@ -1410,16 +1410,20 @@ def _same_document_person(a: dict, b: dict) -> bool:
     )
 
 
-def _people_from_documents(documents: list[dict]) -> list[dict]:
+def _people_from_documents(documents: list[dict], exclude: dict | None = None) -> list[dict]:
     """Mỗi NGƯỜI trong hồ sơ đúng một lần, đọc thẳng từ CCCD/CMND và giấy khai tử.
 
     Cha/mẹ đã mất hay nộp CẢ thẻ cũ lẫn trích lục khai tử: gộp làm một người, giữ bản đọc từ thẻ
     nhưng mang trạng thái "đã chết" để người đó không bao giờ bị chọn làm con.
+
+    exclude: bỏ hẳn một người khỏi danh sách (thẻ của chính người đăng nhập cổng nộp kèm hồ sơ).
     """
     people: list[dict] = []
     for document in _identity_units(documents):
         person = _person_from_document(document)
         if not person or not person.get("year"):
+            continue
+        if exclude and _same_document_person(exclude, person):
             continue
         index = next(
             (i for i, known in enumerate(people) if _same_document_person(known, person)),
@@ -1436,7 +1440,11 @@ def _people_from_documents(documents: list[dict]) -> list[dict]:
     return people
 
 
-def _family_from_documents(documents: list[dict], strict: bool = False) -> dict[str, dict] | None:
+def _family_from_documents(
+    documents: list[dict],
+    strict: bool = False,
+    exclude: dict | None = None,
+) -> dict[str, dict] | None:
     """Ba người đọc thẳng từ giấy tờ in sẵn → con/cha/mẹ theo thế hệ, hoặc None nếu mơ hồ.
 
     Luật chung: đúng ba người; người trẻ nhất CÒN SỐNG là con; hai người lớn hơn con ≥15 tuổi,
@@ -1445,7 +1453,7 @@ def _family_from_documents(documents: list[dict], strict: bool = False) -> dict[
     strict=True (dùng để ĐÈ kết quả agent) thêm: con phải trùng họ CHA, và khoảng cách tuổi
     không quá xa (mẹ ≤ 50, cha ≤ 70 tuổi so với con) — ngoài ngưỡng đó để agent tự xử.
     """
-    people = _people_from_documents(documents)
+    people = _people_from_documents(documents, exclude)
     if len(people) != 3:
         return None
     ordered = sorted(people, key=lambda item: item["year"])
@@ -1477,6 +1485,7 @@ def _family_from_documents(documents: list[dict], strict: bool = False) -> dict[
 def _override_family_by_generation(
     sections: dict[str, str],
     documents: list[dict],
+    applicant_card: dict | None = None,
 ) -> dict[str, str]:
     """Hồ sơ KHÔNG có tờ khai đăng ký lại → thế hệ thắng agent.
 
@@ -1489,10 +1498,16 @@ def _override_family_by_generation(
     Giấy khai sinh cũ KHÔNG chặn bước này: hồ sơ hay scan cả tập thành một file, và giấy khai sinh
     trong đó nhiều khi là của CON người được đăng ký lại (req_06248b349f90: agent lấy chồng của
     người đó làm "cha"), hoặc chỉ là câu "bản chính giấy khai sinh bị mất" trong bản cam đoan.
+
+    Hồ sơ kèm thẻ của CHÍNH người đăng nhập cổng (cán bộ/người nộp hộ, applicant_card) thì có bốn
+    người và luật ba người không chạy — bỏ thẻ đó ra rồi thử lại. Chỉ bỏ khi cả bộ không chốt được,
+    để ca người đăng nhập chính là con/cha/mẹ vẫn đi đường cũ.
     """
     if _declaration_source_names(documents):
         return sections
-    family = _family_from_documents(documents, strict=True)
+    family = _family_from_documents(documents, strict=True) or (
+        applicant_card and _family_from_documents(documents, strict=True, exclude=applicant_card)
+    )
     if not family:
         return sections
     result = dict(sections)
@@ -1645,9 +1660,42 @@ def _lineage_suspect(sections: dict[str, str]) -> bool:
     return bool(child_name) and _surname(child_name) != _surname(_role_name(father))
 
 
+def _lineage_pairs(people: list[dict]) -> list[tuple[dict, dict]]:
+    """Mọi cặp (con còn thẻ, cha) cùng họ, cha là nam lớn hơn con ≥15 tuổi."""
+    return [
+        (child, father)
+        for child in people
+        if child.get("is_identity")
+        for father in people
+        if father is not child
+        and father["gender"] in _MALE_VALUES
+        and child["year"] - father["year"] >= 15
+        and _surname(child["name"]) == _surname(father["name"])
+    ]
+
+
+def _lineage_mother(people: list[dict], child: dict, father: dict) -> dict | None:
+    """Người mẹ đi kèm cặp con/cha vừa chốt: ĐÚNG MỘT người nữ hơn con 15–50 tuổi.
+
+    Mẹ giữ họ riêng nên không ghép được theo dòng họ; nhưng khi cặp con/cha đã chắc thì thẻ nữ
+    duy nhất thuộc thế hệ trước con chính là mẹ. Trước đây bước này bỏ trống mẹ nên CCCD mẹ nộp
+    đủ trong hồ sơ vẫn không được điền.
+    """
+    women = [
+        person
+        for person in people
+        if person is not child
+        and person is not father
+        and person["gender"] in _FEMALE_VALUES
+        and 15 <= child["year"] - person["year"] <= _MAX_MOTHER_GAP
+    ]
+    return women[0] if len(women) == 1 else None
+
+
 def _repair_family_by_lineage(
     sections: dict[str, str],
     documents: list[dict],
+    applicant_card: dict | None = None,
 ) -> dict[str, str]:
     """Hồ sơ không có tờ khai/giấy khai sinh, agent không ghép được cha/mẹ nào → ghép theo DÒNG HỌ.
 
@@ -1657,8 +1705,9 @@ def _repair_family_by_lineage(
     gần như trắng. Con theo họ cha, nên cặp duy nhất "người còn sống có thẻ + người nam cùng họ lớn
     hơn ≥15 tuổi" mới là con/cha thật (Thúc ← Ky); người lẻ còn lại chỉ là người đi nộp hộ.
 
-    Chỉ chốt khi có ĐÚNG MỘT cặp như vậy — nhiều cặp (ông/cha/cháu cùng họ) là mơ hồ, giữ nguyên.
-    Mẹ không xét: mẹ giữ họ riêng nên dòng họ không nói được gì về mẹ.
+    Chỉ chốt khi có ĐÚNG MỘT cặp như vậy — nhiều cặp (ông/cha/cháu cùng họ) là mơ hồ, giữ nguyên;
+    riêng khi mơ hồ mà hồ sơ có thẻ của người đăng nhập cổng (applicant_card) thì bỏ thẻ đó ra thử lại.
+    Mẹ giữ họ riêng nên không ghép theo dòng họ, mà theo thế hệ của người con vừa chốt.
     """
     if _declaration_source_names(documents) or _valid_birth_source_names(documents):
         return sections
@@ -1672,16 +1721,11 @@ def _repair_family_by_lineage(
         if key not in people or (person.get("is_identity") and not people[key].get("is_identity")):
             people[key] = person
 
-    pairs = [
-        (child, father)
-        for child in people.values()
-        if child.get("is_identity")
-        for father in people.values()
-        if father is not child
-        and father["gender"] in {"nam", "male"}
-        and child["year"] - father["year"] >= 15
-        and _surname(child["name"]) == _surname(father["name"])
-    ]
+    candidates = list(people.values())
+    pairs = _lineage_pairs(candidates)
+    if len(pairs) != 1 and applicant_card:
+        candidates = [person for person in candidates if not _same_document_person(applicant_card, person)]
+        pairs = _lineage_pairs(candidates)
     if len(pairs) != 1:
         return sections
     child, father = pairs[0]
@@ -1691,9 +1735,18 @@ def _repair_family_by_lineage(
         "con": _as_family_section(child["section"], basis),
         "cha": _as_family_section(father["section"], basis),
     }
-    # Đổi sang người con khác thì người mẹ agent ghép cho người con cũ không còn căn cứ.
+    # Đổi sang người con khác thì người mẹ agent ghép cho người con cũ không còn căn cứ → ghép lại
+    # theo thế hệ của người con mới; không có đúng một ứng viên thì mới để trống.
     if not _names_align(_role_name(sections.get("con") or ""), child["name"]):
-        repaired["me"] = _unknown_role_section("Người con được chốt lại theo dòng họ; không có căn cứ về mẹ.")
+        mother = _lineage_mother(candidates, child, father)
+        repaired["me"] = (
+            _as_family_section(
+                mother["section"],
+                "Không có tờ khai; người nữ duy nhất hơn người con đã chốt theo dòng họ 15–50 tuổi.",
+            )
+            if mother
+            else _unknown_role_section("Người con được chốt lại theo dòng họ; không có căn cứ về mẹ.")
+        )
     return repaired
 
 
@@ -1912,6 +1965,90 @@ def _validated_requester(section: str, options: dict | None, has_declaration: bo
         "Căn cứ phân vai: Kết quả agent không khớp mỏ neo người yêu cầu trên cổng.\n"
         "Vai trò đồng thời: không xác định"
     )
+
+
+# ---------------------------------------------------------------------------
+# THẺ CỦA CHÍNH NGƯỜI ĐĂNG NHẬP CỔNG NỘP KÈM HỒ SƠ
+#
+# Mục "Thông tin người yêu cầu" trên cổng LUÔN là tài khoản VNeID đang đăng nhập. Cán bộ một cửa
+# (hoặc người nộp hộ) hay scan kèm CCCD của chính mình vào hồ sơ: bốn thẻ cán bộ/con/mẹ/cha. Tấm
+# thẻ mang đúng số định danh của tài khoản đăng nhập (cổng truyền qua formContext) chắc chắn là
+# thẻ người yêu cầu → điền mục I theo thẻ đó, và KHÔNG cho thẻ đó tham gia phân vai con/cha/mẹ.
+# ---------------------------------------------------------------------------
+
+APPLICANT_CARD_BASIS = "Thẻ căn cước trùng tài khoản VNeID đang đăng nhập cổng (người nộp hồ sơ)."
+_CARD_RESIDENCE_RE = re.compile(
+    r"N[oơ]i\s+(?:th[uư][oờ]ng\s+tr[uú]|c[uư]\s+tr[uú])\s*(?:/\s*Place\s+of\s+residence)?\s*:\s*"
+    r"([^\n\r]*)(?:\r?\n([^\n\r:]*)(?=\r?\n|$))?",
+    flags=re.IGNORECASE,
+)
+
+
+def _card_residence(text: str) -> str:
+    """Dòng "Nơi thường trú/Nơi cư trú" in trên thẻ, ghép cả dòng bị xuống giữa chừng.
+
+    Thẻ in phần chi tiết (thôn/tổ dân phố) trên dòng nhãn, còn "xã, huyện, tỉnh" ở dòng dưới →
+    ghép bằng dấu phẩy để bước tách địa chỉ đếm từ cuối được đúng.
+    """
+    match = _CARD_RESIDENCE_RE.search(str(text or ""))
+    if not match:
+        return ""
+    parts = [part.strip(" ,") for part in match.groups() if part and part.strip(" ,")]
+    return ", ".join(parts)
+
+
+def _applicant_card(documents: list[dict], options: dict | None) -> dict | None:
+    """Tấm CCCD/căn cước trong hồ sơ là của CHÍNH tài khoản đang đăng nhập cổng, hoặc None.
+
+    Có số định danh thì chỉ so số (hai người trùng tên là chuyện thường); cổng không truyền số mới
+    so họ tên. Chỉ nhận khi hồ sơ có từ HAI người trở lên và đúng MỘT thẻ khớp — hồ sơ một thẻ là
+    ca chính chủ tự đi làm, đã có đường xử lý riêng.
+    """
+    name, identity = _requester_context(options)
+    if not name and not identity:
+        return None
+    matches: dict[str, dict] = {}
+    for unit in _identity_units(documents):
+        person = _person_from_document(unit)
+        if not person or not person.get("is_identity"):
+            continue
+        if identity and person.get("id"):
+            same = identity == person["id"]
+        else:
+            same = bool(name) and _fold(name) == _fold(person["name"])
+        if same:
+            matches.setdefault(person.get("id") or _fold(person["name"]), {
+                **person, "residence": _card_residence(unit.get("text")),
+            })
+    if len(matches) != 1 or len(_people_from_documents(documents)) < 2:
+        return None
+    card = next(iter(matches.values()))
+    back = _mrz_card_backs(documents).get(card.get("id") or "") or {}
+    return {
+        **card,
+        "issue_date": back.get("issue_date") or card.get("issue_date") or "",
+        "issue_place": back.get("issue_place") or card.get("issue_place") or "",
+    }
+
+
+def _applicant_card_section(card: dict) -> str:
+    """Khối <nguoi_yeu_cau> dựng tất định từ thẻ của người đăng nhập cổng."""
+    section = card["section"]
+    for label, value in (
+        ("Nguồn", card.get("source")),
+        ("Căn cứ phân vai", APPLICANT_CARD_BASIS),
+        ("Ngày cấp", card.get("issue_date")),
+        ("Nơi cấp", card.get("issue_place")),
+        ("Nơi cư trú", card.get("residence")),
+        ("Vai trò đồng thời", "không xác định"),
+    ):
+        if not value:
+            continue
+        if _labeled_value(section, label):
+            section = _set_role_label(section, label, value)
+        else:
+            section += f"\n{label}: {value}"
+    return section
 
 
 def _parent_birth_from_documents(section: str, documents, child_year: int) -> str:
@@ -2710,9 +2847,13 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
     # đọc được tất định, nên chốt vai từ đó trước mọi suy luận dựa trên thẻ căn cước bên dưới.
     sections = _repair_family_from_declaration(sections, documents)
 
+    # Không tờ khai mà hồ sơ kèm CCCD của chính người đăng nhập cổng (cán bộ/người nộp hộ): thẻ đó
+    # là của người yêu cầu, được bỏ ra khi phân vai con/cha/mẹ nếu cả bộ không chốt được.
+    applicant_card = None if _declaration_source_names(documents) else _applicant_card(documents, options)
+
     # Không tờ khai, không giấy khai sinh cũ (ca 3 CCCD / 2 CCCD + 1 khai tử): năm sinh + giới tính
     # in sẵn trên giấy tờ chốt được đúng một gia đình thì Python thắng agent.
-    sections = _override_family_by_generation(sections, documents)
+    sections = _override_family_by_generation(sections, documents, applicant_card)
 
     # Nếu LLM trả không ra ai → thử suy từ thế hệ (3 người, nam/nữ, cách 15 năm).
     if not any(not _is_unknown(s) for s in sections.values()):
@@ -2720,7 +2861,7 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
 
     # Agent không ghép được cha/mẹ nào, hoặc ghép một người cha KHÁC HỌ con → thử ghép theo dòng họ.
     if _lineage_suspect(sections):
-        sections = _repair_family_by_lineage(sections, documents)
+        sections = _repair_family_by_lineage(sections, documents, applicant_card)
 
     # Còn vai trống → bù theo quy tắc thế hệ, chỉ khi kết quả không ngược với vai đã chốt.
     sections = _fill_missing_roles_by_generation(raw, sections, documents)
@@ -2752,6 +2893,13 @@ def _render_context(raw: str, options: dict | None, documents: list[dict]) -> st
         if declared_requester:
             requester_raw = _requester_section(declared_requester, sections)
     requester = _validated_requester(requester_raw, options, bool(declaration_sources))
+    # Thẻ của người đăng nhập không thuộc vai nào trong gia đình → đó là người yêu cầu, dựng mục I
+    # tất định từ chính tấm thẻ. Người đăng nhập là con/cha/mẹ thì giữ đường xử lý cũ (bản thân...).
+    if applicant_card and not any(
+        _anchor_is_role((applicant_card["name"], applicant_card.get("id") or ""), sections.get(tag) or "")
+        for tag in _FAMILY_TAGS
+    ):
+        requester = _applicant_card_section(applicant_card)
 
     # Đăng ký khai sinh trước đây: Python tự kiểm tra loại tài liệu (không tin LLM).
     valid_sources = _valid_birth_source_names(documents)

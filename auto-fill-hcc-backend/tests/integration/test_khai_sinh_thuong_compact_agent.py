@@ -212,3 +212,25 @@ def test_khai_sinh_thuong_ct01_of_parent_is_not_child():
     raw = {"Gcs_HoTenCon": "Lê Minh Khôi", "CccdNam_HoTen": "LÊ VĂN TÂM"}
     fixed = runner._fix_issue_by_mrz(raw, [{"text": _CT01_OCR}])
     assert "TkKs_HoTenCon" not in fixed
+
+
+def test_khai_sinh_thuong_parent_residence_prefers_declaration_over_card():
+    # Thẻ in địa chỉ cũ; tờ khai ghi nơi cư trú + quê quán hiện tại → form theo tờ khai.
+    compact_fields = [
+        {"name": "Gcs_HoTenCon", "value": "Lê Minh An"},
+        {"name": "Gcs_NgaySinhCon", "value": "01/02/2026"},
+        {"name": "CccdNam_HoTen", "value": "LÊ VĂN BÌNH"},
+        {"name": "CccdNam_SoDinhDanh", "value": "001099000001"},
+        {"name": "CccdNam_QueQuan", "value": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Tam Hợp", "diaChi": ""}},
+        {"name": "CccdNam_NoiCuTru_TrongNuoc", "value": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Tam Hợp", "diaChi": "Xóm Cũ"}},
+        {"name": "TkKs_HoTenCha", "value": "Lê Văn Bình"},
+        {"name": "TkKs_SoDinhDanhCha", "value": "001099000001"},
+        {"name": "TkKs_NoiCuTruCha", "value": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Quỳnh Lưu", "diaChi": "Xóm Mới"}},
+        {"name": "TkKs_QueQuan", "value": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Quỳnh Lưu", "diaChi": ""}},
+    ]
+
+    values = {f["name"]: f["value"] for f in mapper.enrich(compact_fields)}
+
+    assert "Quỳnh Lưu" in values["ChaNoiCuTru_TrongNuoc"]["xa"]
+    assert values["ChaNoiCuTru_TrongNuoc"]["diaChi"] == "Xóm Mới"
+    assert "Quỳnh Lưu" in values["nksQueQuan_TrongNuoc"]["xa"]

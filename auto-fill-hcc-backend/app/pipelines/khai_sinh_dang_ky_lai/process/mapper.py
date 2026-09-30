@@ -262,7 +262,7 @@ _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Moth
 
 # Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ giấy ủy quyền, từ
 # tờ khai, hoặc đối chiếu được người đăng nhập chính là người được đăng ký lại khai sinh.
-_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "to_khai", "cccd_con", "to_khai_khac"})
+_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "to_khai", "cccd_con", "to_khai_khac", "the_nguoi_dang_nhap"})
 
 # Mục I được cổng điền sẵn từ tài khoản VNeID đang đăng nhập. Khi tờ khai chốt người yêu cầu là
 # NGƯỜI KHÁC (người nộp hộ đăng nhập bằng tài khoản của chính họ), mọi ô ta không đọc được vẫn
@@ -610,6 +610,42 @@ def _other_declaration_requester(values: dict, context: str) -> dict | None:
     }
 
 
+def _applicant_card_requester(context: str) -> dict | None:
+    """Hồ sơ không tờ khai kèm CCCD của CHÍNH người đăng nhập cổng (cán bộ/người nộp hộ).
+
+    reason.py đã đối chiếu số định danh của tài khoản VNeID với từng thẻ và dựng khối
+    <nguoi_yeu_cau> từ đúng tấm thẻ đó (chỉ khi người đó không phải con/cha/mẹ). Mục I trên cổng
+    luôn là người đăng nhập nên điền theo thẻ; người này ngoài gia đình nên tích "Khác".
+    """
+    section = _reason_mod._section(context, "nguoi_yeu_cau") if context else ""
+    if _reason_mod._labeled_value(section, "Căn cứ phân vai") != _reason_mod.APPLICANT_CARD_BASIS:
+        return None
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    identity = _digits(read("Số CCCD/CMND"))
+    person = {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": identity if _is_valid_id_number(identity) else None,
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": normalize_issuer(read("Nơi cấp")),
+        "noi_cu_tru": _reason_mod.authorized_residence_area(read("Nơi cư trú")),
+    }
+    if not person["ho_ten"] and not person["so_dinh_danh"]:
+        return None
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "dan_toc": read("Dân tộc"),
+        "quan_he": "Khac",
+        "quan_he_default": False,
+        "source": "the_nguoi_dang_nhap",
+    }
+
+
 def _resolve_requester(values: dict, context: str, options: dict | None = None) -> dict:
     """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
 
@@ -719,6 +755,11 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         person = _person_from_role(values, "Subject", context)
         if person.get("ho_ten") or person.get("so_dinh_danh"):
             return {**person, "quan_he": "BanThan", "quan_he_default": False, "source": "cccd_con"}
+
+    # Hồ sơ kèm CCCD của chính người đăng nhập (cán bộ) → mục I theo thẻ đó.
+    card = _applicant_card_requester(context)
+    if card:
+        return card
 
     other = _other_declaration_requester(values, context)
     if other:
