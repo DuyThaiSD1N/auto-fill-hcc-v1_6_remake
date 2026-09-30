@@ -23,6 +23,9 @@ from app.channels.handfree.procedure_registry import (
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
+from app.pipelines.xac_nhan_tthn.process.mapper import (
+    with_account_process_options as with_tthn_account_process_options,
+)
 from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
 from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
@@ -148,9 +151,9 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
                 options["formContext"] = dict(conv["form_context"])
             if proc.get("review"):
                 options["_review"] = True
-            options = with_account_process_options(
-                options, await _load_owner_user(conv, sess), procedure_key
-            )
+            owner_user = await _load_owner_user(conv, sess)
+            options = with_account_process_options(options, owner_user, procedure_key)
+            options = with_tthn_account_process_options(options, owner_user, procedure_key)
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):

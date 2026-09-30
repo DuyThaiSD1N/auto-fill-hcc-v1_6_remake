@@ -13,6 +13,45 @@ from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 
 _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
 
+# Cấu hình theo tài khoản: phường Hiệp Hòa (Bắc Ninh) coi NGƯỜI ỦY QUYỀN là người yêu cầu (mục I,
+# quan hệ "Bản thân") khi tờ khai không ghi riêng người yêu cầu; nơi khác mục I vẫn là người được
+# ủy quyền đi nộp. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree)
+# gọi with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client
+# không tự bật được cho xã khác.
+PROCEDURE_KEY = "xac-nhan-tinh-trang-hon-nhan"
+GRANTOR_AS_REQUESTER_OPTION = "grantorAsRequester"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def is_bac_ninh_hiep_hoa(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Hiệp Hòa, Bắc Ninh ("Tỉnh"/"Thành phố Bắc Ninh" đều khớp).
+
+    Xã khớp ĐÚNG tên sau khi bỏ tiền tố (catalog cũ còn ghi "Xã Hiệp Hòa") để không dính nơi khác
+    có tên chứa "Hiệp Hòa".
+    """
+    if not user:
+        return False
+    tinh = _fold(user.get("tinh") or "")
+    xa = _fold(user.get("xa") or "")
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "bac ninh" in tinh and xa == "hiep hoa"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ người ủy quyền = người yêu cầu do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(GRANTOR_AS_REQUESTER_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_bac_ninh_hiep_hoa(user):
+        result[GRANTOR_AS_REQUESTER_OPTION] = True
+    return result
+
+
+def grantor_as_requester(options: dict | None) -> bool:
+    return (options or {}).get(GRANTOR_AS_REQUESTER_OPTION) is True
+
 # Nhãn nguyên văn 6 option "Tình trạng hôn nhân" của cổng, khoá theo MÃ option. Cùng bảng với
 # app/pipelines/ket_hon/process/mapper.py (_TINH_TRANG_HON_NHAN) — kể cả khoảng trắng lạ trước
 # dấu "…" thứ tư của option 5, đã đối chiếu với DOM thật; sửa cho "gọn" là không khớp option nữa.
@@ -536,8 +575,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     B. ỦY QUYỀN (có PoA_SubjectName từ giấy ủy quyền):
        - Người ủy quyền (Section I giấy ủy quyền) = người CẦN giấy → Mục II form.
-       - Mục I: tờ khai ghi người yêu cầu thì theo tờ khai; không ghi thì Mục I CŨNG là người ủy
-         quyền, quan hệ = "1" (Bản thân). Người được ủy quyền chỉ đi nộp, không lên form.
+       - Mục I: tờ khai ghi người yêu cầu thì theo tờ khai; không ghi thì Mục I = người được ủy
+         quyền (người ĐI NỘP = CCCD upload), quan hệ = "2" (Khác: Người được ủy quyền).
+         Riêng tài khoản phường Hiệp Hòa (cờ grantorAsRequester): Mục I CŨNG là người ủy quyền,
+         quan hệ = "1" (Bản thân).
 
     C. THÂN NHÂN NỘP HỘ, KHÔNG giấy ủy quyền (tờ khai ghi RIÊNG khối "người yêu cầu" ở đầu tờ khai
        khác người ở Section II — vd con đứng khai hộ cha mẹ):
@@ -697,11 +738,24 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("NoiCapDDC", req_noi_cap)
                 add("nycLoaiCuTru", "Thường trú")
                 residence_req = _area(values.get("ToKhaiYeuCau_NoiCuTru"))
+            elif not grantor_as_requester(options):
+                # To khai khong ghi nguoi yeu cau -> nguoi di nop dung ten minh, giu hanh vi cu.
+                add("quanhevoinguoiduocxacminh", "2")
+                add_relation_other(values.get("ToKhaiYeuCau_QuanHe"), _RELATION_OTHER_POA)
+                add("HoVaTenC", upper_person_name(values.get("Cccd_HoTen")))
+                add("NgaySinhC", values.get("Cccd_NgaySinh"))
+                add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
+                add("LoaiGiayToDinhDanhC", _id_doc_type_for(values.get("Cccd_SoDinhDanh"), issuer))
+                add("SoGiayToTuyThanC", values.get("Cccd_SoDinhDanh"))
+                add("NgayCapDDC", values.get("Cccd_NgayCap"))
+                add("NoiCapDDC", issuer)
+                add("nycLoaiCuTru", "Thường trú")
+                residence_req = _area(values.get("Cccd_NoiCuTru"))
             else:
-                # Tờ khai không ghi người yêu cầu (hồ sơ chỉ có giấy ủy quyền + thẻ): người yêu cầu
-                # vẫn là NGƯỜI ỦY QUYỀN, người được ủy quyền chỉ đi nộp thay. Mục I điền cùng người,
-                # cùng nguồn với mục II bên dưới, quan hệ "Bản thân". Bản cũ lấy thẻ người đi nộp
-                # làm mục I và tick "Khác: Người được ủy quyền".
+                # Chỉ tài khoản phường Hiệp Hòa (Bắc Ninh): tờ khai không ghi người yêu cầu (hồ sơ
+                # chỉ có giấy ủy quyền + thẻ) thì người yêu cầu vẫn là NGƯỜI ỦY QUYỀN, người được
+                # ủy quyền chỉ đi nộp thay. Mục I điền cùng người, cùng nguồn với mục II bên dưới,
+                # quan hệ "Bản thân".
                 add("quanhevoinguoiduocxacminh", "1")
                 card = _poa_subject_card(values)
                 tk_is_subject = _tk_is_poa_subject(values)

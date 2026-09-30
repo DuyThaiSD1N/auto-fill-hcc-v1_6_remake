@@ -13,6 +13,9 @@ from app.dossiers.options import dossier_id_from_options
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
+from app.pipelines.xac_nhan_tthn.process.mapper import (
+    with_account_process_options as with_tthn_account_process_options,
+)
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
@@ -51,8 +54,12 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             pipeline=pipeline,
             include_review=True,
         )
-        # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây) do server đặt từ `user`.
+        # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây, Hiệp Hòa lấy người ủy quyền
+        # làm người yêu cầu TTHN) do server đặt từ `user`.
         prepared.pipeline_options = with_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_tthn_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes
