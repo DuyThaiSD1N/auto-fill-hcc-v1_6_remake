@@ -44,6 +44,7 @@ from app.pipelines.chung_thuc_chu_ky_nguoi_dich_ctv.attach import (
     plan as chung_thuc_chu_ky_nguoi_dich_ctv_attach,
 )
 from app.pipelines.chung_thuc_di_chuc.attach import plan as chung_thuc_di_chuc_attach
+from app.pipelines.bau_to_truong_to_hoa_giai.attach import plan as bau_to_truong_to_hoa_giai_attach
 from app.pipelines.chung_thuc_giao_dich_tai_san.attach import plan as chung_thuc_giao_dich_tai_san_attach
 from app.pipelines.chung_thuc_phan_chia_di_san.attach import plan as chung_thuc_phan_chia_di_san_attach
 from app.pipelines.chung_thuc_sua_doi_giao_dich.attach import plan as chung_thuc_sua_doi_giao_dich_attach
@@ -582,6 +583,29 @@ PROCEDURES: list[dict] = [
             "Bước 3: nếu có CCCD/giấy tờ tùy thân riêng, BE yêu cầu FE gộp chúng vào PDF dự thảo di chúc "
             "để upload dòng STT 1; giấy tờ tài sản đính vào dòng STT 2. Nếu không có dự thảo di chúc, "
             "CCCD/giấy tờ tùy thân mới thêm thành phần hồ sơ."
+        ),
+    },
+    {
+        "key": "bau-to-truong-to-hoa-giai",
+        # Mã TTHC 2.000950 — cổng hiển thị tên "Thủ tục công nhận tổ trưởng tổ hòa giải (cấp xã)".
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.000950"],
+            "textIncludes": ["công nhận tổ trưởng tổ hòa giải"],
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục bầu tổ trưởng tổ hòa giải (cấp xã)",
+        # Chỉ đính kèm: BE OCR phân loại rồi xếp file vào 2 ô có sẵn (không có bước Kê khai).
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Biên bản kết quả biểu quyết bầu tổ trưởng tổ hòa giải (Mẫu 04), kèm biên bản bầu "
+            "hòa giải viên (Mẫu 01) nếu có.\n"
+            "2. Giấy đề nghị công nhận tổ trưởng tổ hòa giải (Mẫu 07), kèm danh sách đề nghị công nhận "
+            "hòa giải viên (Mẫu 06) và tổng hợp danh sách hòa giải viên (Mẫu 10) nếu có.\n"
+            "Bước 3: biên bản đính dòng STT 1, văn bản đề nghị đính dòng STT 2; nhiều file cùng dòng "
+            "được gộp thành một PDF. Không cần thêm thành phần hồ sơ."
         ),
     },
     {
@@ -6929,6 +6953,7 @@ _ATTACH_PIPELINE = {
     # trước khi gọi backend); đăng ký ở đây để kênh Handfree có kế hoạch đính kèm.
     "chung-thuc-chu-ky-nguoi-dich-ctv": chung_thuc_chu_ky_nguoi_dich_ctv_attach,
     "chung-thuc-di-chuc": chung_thuc_di_chuc_attach,
+    "bau-to-truong-to-hoa-giai": bau_to_truong_to_hoa_giai_attach,
     "chung-thuc-giao-dich-tai-san": chung_thuc_giao_dich_tai_san_attach,
     "chung-thuc-phan-chia-di-san": chung_thuc_phan_chia_di_san_attach,
     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich": chung_thuc_sua_doi_giao_dich_attach,
