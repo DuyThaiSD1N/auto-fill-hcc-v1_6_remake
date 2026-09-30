@@ -901,8 +901,10 @@
       "label": "Quảng Ninh - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với toàn bộ diện tích đất đang sử dụng quy định tại khoản 2 Điều 24 Nghị định số 101/2024/NĐ-CP (trường hợp diện tích tăng thêm chưa cấp Giấy chứng nhận)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f685c-cd7f-7499-b2be-38cd916bcc7e",
       "needsAgencySelect": true,
+      "agencyWard": "Đặc khu Cô Tô",
       "provincePortalFlow": {
         "host": "dichvucong.quangninh.gov.vn",
+        "rowIncludes": "Miền núi, hải đảo",
         "rowIndex": 2
       },
       "autoConfirm": true

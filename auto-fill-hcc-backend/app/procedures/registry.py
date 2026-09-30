@@ -121,6 +121,9 @@ from app.pipelines.cap_doi_gcn_do_do_dac_khong_nvtc_quang_ninh_mien_nui_hai_dao.
 from app.pipelines.tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao.attach import plan as tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach
+from app.pipelines.dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_mien_nui_hai_dao.attach import (
+    plan as dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
+)
 from app.pipelines.dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as dang_ky_bien_phap_bao_dam_quang_ninh_attach
 from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.attach import plan as dang_ky_gcn_chuyen_quyen_lao_cai_attach
 from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.process import run as dang_ky_gcn_chuyen_quyen_lao_cai_process
@@ -2406,6 +2409,45 @@ PROCEDURES: list[dict] = [
             "2. Giấy tờ chứng minh việc đổi tên/thay đổi thông tin của người sử dụng đất, chủ sở hữu tài sản.\n"
             "3. Văn bản của cơ quan có thẩm quyền cho phép hoặc công nhận việc đổi tên (nếu có).\n"
             "4. Bản gốc Giấy chứng nhận đã cấp; mảnh trích đo bản đồ địa chính; văn bản đại diện (nếu có)."
+        ),
+    },
+    {
+        "key": "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh",
+        # 1.115841 — key TRÙNG ke_khai_links nên chọn ở panel là vào đúng pipeline. URL /nop-ho-so/<id>
+        # đổi theo cấu hình cổng → khóa domain + cụm "khoản 2 điều 24" (chỉ thủ tục này có) + "Miền núi,
+        # hải đảo" (bảng cổng tỉnh có thêm dòng đồng bằng cùng tên, ke_khai_links chọn dòng miền núi).
+        "detect": {
+            "urlScope": ["dichvucong.quangninh.gov.vn"],
+            "textIncludes": [
+                "toàn bộ diện tích đất đang sử dụng quy định tại khoản 2 điều 24",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Quảng Ninh] [Đặc thù] Thủ tục đăng ký, cấp giấy chứng nhận quyền sử dụng đất, quyền sở "
+            "hữu tài sản gắn liền với đất đối với toàn bộ diện tích đất đang sử dụng quy định tại khoản 2 "
+            "Điều 24 Nghị định số 101/2024/NĐ-CP - Miền núi, hải đảo"
+        ),
+        # Trang chỉ có bước thành phần hồ sơ; engine wallet-modal (React/Radix), không chạy process.
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) → dòng 1.\n"
+            "2. Giấy chứng nhận đã cấp (bìa + trang chứng nhận, sơ đồ đất) → dòng 2.\n"
+            "3. Phiếu đo đạc chỉnh lý thửa đất, phiếu xác nhận kết quả đo đạc hiện trạng, bản mô tả ranh "
+            "giới mốc giới → dòng 3 'Giấy tờ chứng minh phần diện tích tăng thêm'.\n"
+            "4. Nếu có: tờ khai lệ phí trước bạ (01/LPTB), thuế SDĐ phi nông nghiệp (04/TK-SDDPNN), thuế "
+            "TNCN (03/BĐS-TNCN) → dòng 4/5/6; không có thì để trống.\n"
+            "Hệ thống phân loại theo NỘI DUNG, không theo tên file (file tên 'đơn cấp đổi' mà là Mẫu 18 vẫn "
+            "vào dòng 1). Mỗi file đính NGUYÊN vào một dòng, không tách trang: file phiếu đo đạc gộp kèm bản "
+            "photo GCN, đơn đăng ký cũ, công văn xác nhận nhà ở vẫn vào dòng 3 — hệ thống liệt kê các giấy "
+            "tờ nằm chung và đề xuất nội dung ô 'Ghi chú (Trích yếu nội dung hồ sơ)' để cán bộ dán vào.\n"
+            "Văn bản ủy quyền, giấy tờ tài sản đứng riêng và giấy tờ ngoài danh mục được thêm thành phần "
+            "hồ sơ mới."
         ),
     },
     {
@@ -6910,6 +6952,7 @@ _ATTACH_PIPELINE = {
     "tach-hop-thua-dat-quang-ninh-mien-nui-hai-dao": tach_hop_thua_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
+    "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
     "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai": dieu_chinh_giao_dat_cap_xa_lao_cai_attach,
     "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai": dang_ky_gcn_chuyen_quyen_lao_cai_attach,

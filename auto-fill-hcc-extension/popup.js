@@ -5149,11 +5149,16 @@ function procedureProvinceFor(link) {
  * Địa bàn trợ lý sẽ chọn cho thủ tục này. Thủ tục riêng của một tỉnh (vd Quảng Ninh) LUÔN chọn
  * đúng tỉnh đó dù địa chỉ đang lưu là tỉnh khác — chọn tỉnh khác thì cổng không ra thẻ/biểu mẫu
  * của tỉnh. Xã chỉ giữ khi địa chỉ đang lưu thuộc chính tỉnh đó.
+ *
+ * Thủ tục khai `agencyWard` (vd "Đặc khu Cô Tô") luôn chọn đúng xã đó, bỏ qua xã đang lưu.
  */
 function agencyLocationFor(link) {
   const forced = procedureProvinceFor(link);
-  if (!forced || forced.slug === currentLocation.provinceSlug) return currentLocation;
-  return { province: forced.text, provinceSlug: forced.slug, ward: "" };
+  const area = (!forced || forced.slug === currentLocation.provinceSlug)
+    ? currentLocation
+    : { province: forced.text, provinceSlug: forced.slug, ward: "" };
+  const fixedWard = String(link?.agencyWard || "").trim();
+  return fixedWard ? { ...area, ward: fixedWard } : area;
 }
 
 /** Đủ địa chỉ để "lên đạn" cho MỘT thủ tục cụ thể.

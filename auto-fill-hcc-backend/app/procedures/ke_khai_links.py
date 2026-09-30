@@ -15,6 +15,10 @@ từ /locations/catalog = `code_name` bỏ dấu gạch dưới) — cùng một
 cấp xã, bật tràn cả nước là hồ sơ đi lạc cơ quan tiếp nhận. Extension chốt cờ theo tỉnh đang chọn
 ở popup.js:selectSoFor.
 
+`agencyWard`: Phường/Xã CỐ ĐỊNH phải chọn ở khối "Chọn cơ quan thực hiện", thay cho xã đang lưu
+ở popup (vd "Đặc khu Cô Tô" cho các thủ tục Quảng Ninh chỉ nộp qua đặc khu). Chỉ dùng cùng thủ tục
+đặc thù của một tỉnh (nhãn "Tỉnh - …"), vì tỉnh được ép theo tiền tố nhãn ở popup.js:agencyLocationFor.
+
 `submitCardIncludes`: trang kết quả của Cổng QG ra NHIỀU thẻ cùng tên thủ tục, khác nhau ở "Cơ quan
 thực hiện" / "Đối tượng". Mặc định trợ lý lấy thẻ ĐẦU; khai chuỗi này thì nó tìm đúng thẻ chứa chuỗi
 đó (vd "Cơ quan thực hiện: Văn phòng Đăng ký đất đai") rồi mới bấm "Nộp trực tuyến" — bấm nhầm thẻ là
