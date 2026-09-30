@@ -28,3 +28,25 @@ test("field enableInput: bỏ disabled của component trước khi ghi (ô kho�
   assert.match(body, /closest\?\.\("\.formio-component"\)/);
   assert.match(body, /node\.removeAttribute\("disabled"\)/);
 });
+
+test("Bắc Ninh: ô chữ ghi Thành phố Bắc Ninh, ô chọn giữ Tỉnh Bắc Ninh để khớp option cổng", () => {
+  const start = src.indexOf("  const TEXT_FIELD_COMP");
+  const body = src.slice(start, src.indexOf("  function handleAutofillMessage"));
+  const doiTen = new Function(`${body}; return tenTinhBacNinhTrongOChu;`)();
+  const [diaChi, tinhChon, congAn, diaChiCu, chuThuong, tinhKhac] = doiTen([
+    { comp: "dom-input", value: "Số 12, Phường Kinh Bắc, Tỉnh Bắc Ninh" },
+    { comp: "dom-select", value: "Tỉnh Bắc Ninh" },
+    { comp: "bn-input", value: "Công an tỉnh Bắc Ninh" },
+    { comp: "x-input", value: "Phường Vũ Ninh, Thành phố Bắc Ninh, Tỉnh Bắc Ninh" },
+    { comp: "bn-textarea", value: "thôn Đông, xã Tiên Du, tỉnh Bắc Ninh." },
+    { comp: "liz-input", value: "Phường Hà Đông, Thành phố Hà Nội" },
+  ]);
+  assert.strictEqual(diaChi.value, "Số 12, Phường Kinh Bắc, Thành phố Bắc Ninh");
+  assert.strictEqual(tinhChon.value, "Tỉnh Bắc Ninh");
+  assert.strictEqual(congAn.value, "Công an tỉnh Bắc Ninh");
+  assert.strictEqual(diaChiCu.value, "Phường Vũ Ninh, Thành phố Bắc Ninh, Tỉnh Bắc Ninh");
+  assert.strictEqual(chuThuong.value, "thôn Đông, xã Tiên Du, thành phố Bắc Ninh.");
+  assert.strictEqual(tinhKhac.value, "Phường Hà Đông, Thành phố Hà Nội");
+  // Cả hai lối điền (tờ khai + người được ủy quyền Bắc Ninh) đều đi qua bước đổi tên.
+  assert.strictEqual((src.match(/tenTinhBacNinhTrongOChu\(Array\.isArray\(msg\.fields\)/g) || []).length, 2);
+});

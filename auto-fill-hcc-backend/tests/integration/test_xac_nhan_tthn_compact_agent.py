@@ -65,6 +65,35 @@ def test_xac_nhan_tthn_maps_declared_married_and_self_relation():
     assert values["TinhTrangHonNhanC1"] == "Hiện tại đang có vợ/chồng"
 
 
+def test_xac_nhan_tthn_poa_without_declared_requester_fills_grantor_as_self():
+    """Giấy ủy quyền + thẻ, không có tờ khai: mục I và mục II đều là người ủy quyền, "Bản thân"."""
+    area = {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Hiệp Hòa", "diaChi": "Thôn Mẫu"}
+    mapped = mapper.enrich([
+        {"name": "Cccd_HoTen", "comp": "x-input", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Cccd_SoDinhDanh", "comp": "x-input", "value": "001090000111"},
+        {"name": "Cccd_NgaySinh", "comp": "x-date", "value": "01/01/1990"},
+        {"name": "PoA_SubjectName", "comp": "x-input", "value": "LÊ THỊ HOA"},
+        {"name": "PoA_SubjectDoB", "comp": "x-date", "value": "02/02/1960"},
+        {"name": "PoA_SubjectIdNumber", "comp": "x-input", "value": "001160000222"},
+        {"name": "PoA_SubjectIdDate", "comp": "x-date", "value": "10/10/2021"},
+        {"name": "PoA_SubjectAddress", "comp": "x-select-area", "value": area},
+        {"name": "PoA_SubjectCccdHoTen", "comp": "x-input", "value": "LÊ THỊ HOA"},
+        {"name": "PoA_SubjectCccdSoDinhDanh", "comp": "x-input", "value": "001160000222"},
+        {"name": "PoA_SubjectCccdNgaySinh", "comp": "x-date", "value": "02/02/1960"},
+        {"name": "PoA_SubjectCccdGioiTinh", "comp": "x-input", "value": "Nữ"},
+    ])
+    values = {field["name"]: field["value"] for field in mapped}
+
+    assert values["quanhevoinguoiduocxacminh"] == "1"
+    assert "quanhekhac" not in values
+    assert values["HoVaTenC"] == values["HoVaTenC1"] == "LÊ THỊ HOA"
+    assert values["SoDinhDanhC"] == values["SoDinhDanhC1"] == "001160000222"
+    assert values["NgaySinhC"] == values["NgaySinhC1"] == "02/02/1960"
+    assert values["NgayCapDDC"] == values["NgayCapDDC1"] == "10/10/2021"
+    assert values["NoiCapDDC"] == values["NoiCapDDC1"]
+    assert values["nycNoiCuTru_TrongNuoc"] == values["nxnNoiCuTru_TrongNuoc"]
+
+
 def test_xac_nhan_tthn_prompt_allows_declared_married_and_self_relation():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 

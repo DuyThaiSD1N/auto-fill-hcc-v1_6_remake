@@ -18,6 +18,8 @@ def test_catalog_has_complete_post_merger_data():
 def test_bac_ninh_contains_song_lieu():
     province = province_by_slug("bacninh")
     assert province and province["text"] == "Tỉnh Bắc Ninh"
+    # Nhãn hiển thị đổi riêng, "text" phải giữ nguyên để còn khớp option trên cổng DVC.
+    assert province["label"] == "Thành phố Bắc Ninh"
     assert len(WARDS_BY_SLUG["bacninh"]["communes"]) == 99
     assert "Phường Song Liễu" in WARDS_BY_SLUG["bacninh"]["communes"]
 
@@ -45,6 +47,6 @@ def test_empty_location_keeps_existing_nullable_contract():
 async def test_location_endpoints_return_expected_contract():
     provinces = await list_provinces()
     wards = await get_wards("bacninh")
-    assert provinces["provinces"][0].keys() == {"text", "slug", "name"}
+    assert provinces["provinces"][0].keys() == {"text", "slug", "name", "label"}
     assert wards["province"] == "Tỉnh Bắc Ninh"
     assert "Phường Song Liễu" in wards["communes"]

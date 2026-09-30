@@ -318,6 +318,31 @@ def _poa_subject_card(values: dict) -> dict:
     return {"NoiCuTru": _area(values.get("PoA_SubjectCccdNoiCuTru"))}
 
 
+def _tk_is_poa_subject(values: dict) -> bool:
+    """Khối ToKhai_* (mục II tờ khai) có phải chính NGƯỜI ỦY QUYỀN trên giấy ủy quyền không.
+
+    Tờ khai viết tay: OCR hay đọc nhầm MỘT chữ số CCCD ("…3446" → "…3466") và cả tên
+    ("Phạm Minh Kha" → "Phạm Nhung Khae"). Lệch đúng một chữ số chỉ được coi là cùng người
+    khi có thêm bằng chứng độc lập: cùng năm sinh hoặc cùng họ.
+    """
+    poa_subject_name = values.get("PoA_SubjectName")
+    tk_id = _digits(values.get("ToKhai_SoDinhDanh"))
+    poa_id = _digits(values.get("PoA_SubjectIdNumber"))
+    tk_year = _birth_year(values.get("ToKhai_NgaySinh"))
+    poa_year = _birth_year(values.get("PoA_SubjectDoB"))
+    tk_misread_poa_id = _is_one_digit_misread(tk_id, poa_id) and bool(
+        (tk_year and poa_year and tk_year == poa_year)
+        or (_family_name(values.get("ToKhai_HoTen"))
+            and _family_name(values.get("ToKhai_HoTen")) == _family_name(poa_subject_name))
+    )
+    return bool(
+        (_fold(values.get("ToKhai_HoTen"))
+         and _fold(values.get("ToKhai_HoTen")) == _fold(poa_subject_name))
+        or (tk_id and poa_id and tk_id == poa_id)
+        or tk_misread_poa_id
+    )
+
+
 def _add_residence(add, prefix: str, area, default: bool = False) -> None:
     """Phat muc "Noi cu tru" cho mot nguoi (prefix = nyc / nxn).
 
@@ -511,8 +536,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
     B. ỦY QUYỀN (có PoA_SubjectName từ giấy ủy quyền):
        - Người ủy quyền (Section I giấy ủy quyền) = người CẦN giấy → Mục II form.
-       - Người được ủy quyền (Section II giấy ủy quyền) = người ĐI NỘP = CCCD upload → Mục I form.
-       - Quan hệ = "2" (Khác).
+       - Mục I: tờ khai ghi người yêu cầu thì theo tờ khai; không ghi thì Mục I CŨNG là người ủy
+         quyền, quan hệ = "1" (Bản thân). Người được ủy quyền chỉ đi nộp, không lên form.
 
     C. THÂN NHÂN NỘP HỘ, KHÔNG giấy ủy quyền (tờ khai ghi RIÊNG khối "người yêu cầu" ở đầu tờ khai
        khác người ở Section II — vd con đứng khai hộ cha mẹ):
@@ -673,18 +698,35 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                 add("nycLoaiCuTru", "Thường trú")
                 residence_req = _area(values.get("ToKhaiYeuCau_NoiCuTru"))
             else:
-                # To khai khong ghi nguoi yeu cau -> nguoi di nop dung ten minh, giu hanh vi cu.
-                add("quanhevoinguoiduocxacminh", "2")
-                add_relation_other(values.get("ToKhaiYeuCau_QuanHe"), _RELATION_OTHER_POA)
-                add("HoVaTenC", upper_person_name(values.get("Cccd_HoTen")))
-                add("NgaySinhC", values.get("Cccd_NgaySinh"))
-                add("SoDinhDanhC", values.get("Cccd_SoDinhDanh"))
-                add("LoaiGiayToDinhDanhC", _id_doc_type_for(values.get("Cccd_SoDinhDanh"), issuer))
-                add("SoGiayToTuyThanC", values.get("Cccd_SoDinhDanh"))
-                add("NgayCapDDC", values.get("Cccd_NgayCap"))
-                add("NoiCapDDC", issuer)
+                # Tờ khai không ghi người yêu cầu (hồ sơ chỉ có giấy ủy quyền + thẻ): người yêu cầu
+                # vẫn là NGƯỜI ỦY QUYỀN, người được ủy quyền chỉ đi nộp thay. Mục I điền cùng người,
+                # cùng nguồn với mục II bên dưới, quan hệ "Bản thân". Bản cũ lấy thẻ người đi nộp
+                # làm mục I và tick "Khác: Người được ủy quyền".
+                add("quanhevoinguoiduocxacminh", "1")
+                card = _poa_subject_card(values)
+                tk_is_subject = _tk_is_poa_subject(values)
+                req_id = card.get("SoDinhDanh") or values.get("PoA_SubjectIdNumber")
+                req_noi_cap = (card.get("NoiCap") or values.get("PoA_SubjectIssuer")
+                               or default_issuer(values.get("PoA_SubjectIdDate")))
+                add("HoVaTenC", upper_person_name(
+                    card.get("HoTen")
+                    or _card_name_when_same_person(
+                        values, values.get("PoA_SubjectIdNumber"), poa_subject_name)
+                    or poa_subject_name))
+                add("NgaySinhC", card.get("NgaySinh")
+                    or (values.get("ToKhai_NgaySinh") if tk_is_subject else None)
+                    or values.get("PoA_SubjectDoB"))
+                add("SoDinhDanhC", req_id)
+                if req_id:
+                    add("LoaiGiayToDinhDanhC", _id_doc_type_for(req_id, req_noi_cap))
+                add("SoGiayToTuyThanC", req_id)
+                add("NgayCapDDC", card.get("NgayCap") or values.get("PoA_SubjectIdDate"))
+                add("NoiCapDDC", req_noi_cap)
                 add("nycLoaiCuTru", "Thường trú")
-                residence_req = _area(values.get("Cccd_NoiCuTru"))
+                residence_req = prefer_printed_street(
+                    _area(values.get("ToKhai_NoiCuTru")) or _area(values.get("PoA_SubjectAddress")),
+                    card.get("NoiCuTru"),
+                )
             _add_residence(add, "nyc", residence_req)
         else:
             # KHÔNG ỦY QUYỀN: Mục I ưu tiên khối "người yêu cầu" ghi RIÊNG ở đầu tờ khai
@@ -786,25 +828,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             # KHONG muon khoi GIAY TO cua to khai: ho so ra nuoc ngoai co to khai ghi HO CHIEU
             # (so + ngay cap) trong khi giay uy quyen ghi so CCCD -> ghep ngay cap ho chieu vao
             # so the can cuoc la sai giay to ma nhin van hop le.
-            _tk_id = _digits(values.get("ToKhai_SoDinhDanh"))
-            _poa_id = _digits(values.get("PoA_SubjectIdNumber"))
-            # Tờ khai viết tay: OCR hay đọc nhầm MỘT chữ số CCCD ("…3446" → "…3466") và cả tên
-            # ("Phạm Minh Kha" → "Phạm Nhung Khae"). Lệch đúng một chữ số chỉ được coi là cùng người
-            # khi có thêm bằng chứng độc lập: cùng năm sinh hoặc cùng họ.
-            _tk_year = _birth_year(values.get("ToKhai_NgaySinh"))
-            _poa_year = _birth_year(values.get("PoA_SubjectDoB"))
-            tk_misread_poa_id = _is_one_digit_misread(_tk_id, _poa_id) and bool(
-                (_tk_year and _poa_year and _tk_year == _poa_year)
-                or (_family_name(values.get("ToKhai_HoTen"))
-                    and _family_name(values.get("ToKhai_HoTen")) == _family_name(poa_subject_name))
-            )
-            tk_is_poa_subject = bool(
-                (_fold(values.get("ToKhai_HoTen"))
-                 and _fold(values.get("ToKhai_HoTen")) == _fold(poa_subject_name))
-                or (_tk_id and _poa_id and _tk_id == _poa_id)
-                or tk_misread_poa_id
-            )
-
+            tk_is_poa_subject = _tk_is_poa_subject(values)
             card = _poa_subject_card(values)
 
             def _tk(name):
