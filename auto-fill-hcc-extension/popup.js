@@ -4256,6 +4256,9 @@ ocrBtn.addEventListener("click", async () => {
       // [Bộ Công Thương] 2.001474: khối "Thông tin tài khoản" chỉ được điền từ CCCD khớp tài khoản đăng
       // nhập — thiếu mốc là BE để trống khối đó.
       cfg.key === "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai" ||
+      // [Bộ Công Thương] 2.000004: như trên — khối tài khoản chỉ lấy từ giấy tờ khớp họ tên + số định danh
+      // của tài khoản đăng nhập (CCCD, người liên hệ / chủ hộ trên Đơn); thiếu mốc là BE để trống khối đó.
+      cfg.key === "dang-ky-khuyen-mai-may-rui-mot-tinh" ||
       cfg.key === "dinh-chinh-sai-sot-lam-dong" ||
       cfg.key === "giai-quyet-che-do-khang-chien" ||
       cfg.key === "di-chuyen-ho-so-nguoi-huong-tro-cap" ||
@@ -4385,6 +4388,12 @@ ocrBtn.addEventListener("click", async () => {
       // khoản cần mốc để chỉ lấy nhân thân của chính người đăng nhập.
       cfg.key === "dang-ky-bien-phap-bao-dam-lao-cai" ||
       cfg.key === "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai" ||
+      // [Lào Cai] 1.009759 / 1.009646 / 1.009645 (chủ trương đầu tư): cổng xác thực khối người nộp với CSDLQG
+      // dân cư, hồ sơ ghi nhân thân người đại diện theo pháp luật của nhà đầu tư → chế độ theo tài khoản cần
+      // mốc để chỉ lấy nhân thân của chính người đăng nhập.
+      cfg.key === "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai" ||
+      cfg.key === "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai" ||
+      cfg.key === "chap-thuan-chu-truong-dau-tu-ubnd-tinh-lao-cai" ||
       // [Bộ Nội vụ] Thi tuyển công chức: Phần I (họ tên, ngày sinh, CCCD) cổng khoá theo VNeID → chế độ
       // theo tài khoản cần mốc để biết tài khoản có phải người dự tuyển không (tự nộp → tích ô "Người
       // nộp là chủ hồ sơ"); thiếu mốc là BE để trống Phần I.

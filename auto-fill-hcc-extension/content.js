@@ -1314,25 +1314,6 @@
     document.addEventListener("mouseup", () => { dragging = false; });
   }
 
-  // [Bắc Ninh] Cổng DVC vẫn liệt kê option "Tỉnh Bắc Ninh" nên ô CHỌN tỉnh (select/combobox) và
-  // chọn cơ quan thực hiện giữ nguyên tên đó; riêng ô NHẬP CHỮ trong tờ khai (địa chỉ...) ghi
-  // "Thành phố Bắc Ninh". Chỉ đổi khi tên tỉnh đứng ở vị trí cấp tỉnh của địa chỉ (đầu chuỗi hoặc
-  // sau dấu phẩy) → tên riêng như "Công an tỉnh Bắc Ninh" không bị đụng. Địa chỉ cũ đã có "Thành phố
-  // Bắc Ninh" (thành phố thuộc tỉnh trước sáp nhập) thì để nguyên, tránh ra "..., Thành phố Bắc
-  // Ninh, Thành phố Bắc Ninh".
-  const TEXT_FIELD_COMP = /-(input|textarea)$/;
-  const TINH_BAC_NINH_TRONG_DIA_CHI = /(^|[,;]\s*)([Tt])ỉnh(\s+)Bắc(\s+)Ninh(?![\p{L}\p{N}])/gu;
-  function tenTinhBacNinhTrongOChu(fields) {
-    return fields.map((f) => {
-      if (typeof f?.value !== "string" || !TEXT_FIELD_COMP.test(String(f.comp || ""))) return f;
-      const value = f.value.normalize("NFC");
-      if (/thành phố\s+bắc ninh|tp\.?\s*bắc ninh/iu.test(value)) return f;
-      const next = value.replace(TINH_BAC_NINH_TRONG_DIA_CHI, (m, lead, t, s1, s2) =>
-        `${lead}${t === "T" ? "Thành phố" : "thành phố"}${s1}Bắc${s2}Ninh`);
-      return next === value ? f : { ...f, value: next };
-    });
-  }
-
   function handleAutofillMessage(msg, sender, sendResponse) {
     // manifest inject content script vào all_frames. Các action state machine HkdOnline chỉ được
     // frame chính trả lời; nếu iframe con phản hồi `unknown` trước, popup sẽ dừng dù trang gốc đúng.
@@ -1615,7 +1596,7 @@
       return true;
     }
     if (msg.action === "fillBacNinhAuthorizedPerson") {
-      const fields = tenTinhBacNinhTrongOChu(Array.isArray(msg.fields) ? msg.fields : []);
+      const fields = Array.isArray(msg.fields) ? msg.fields : [];
       if (typeof H.isBacNinhForm === "function" && !H.isBacNinhForm()) return;
       if (!fields.length || typeof H.fillAuthorizedPersonBacNinh !== "function") {
         sendResponse({ error: "Không có dữ liệu người được ủy quyền hoặc engine Bắc Ninh chưa sẵn sàng." });
@@ -1631,7 +1612,7 @@
     // hoặc form HTML thường (input/select[name]) của các thủ tục đất đai.
     const formKind = detectFormKind();
     if (!formKind) return; // frame không chứa form thật
-    let fields = tenTinhBacNinhTrongOChu(Array.isArray(msg.fields) ? msg.fields : []);
+    let fields = Array.isArray(msg.fields) ? msg.fields : [];
     // Lượt điền MỘT trang HKD cũng phải áp default theo địa bàn (vd "Lý do giải thể" / "Địa chỉ nhận
     // kết quả" của tài khoản Hải Châu), giống hệt lượt tự chạy cả luồng.
     if (msg.businessPage && typeof H.applyBusinessLocalDefaults === "function") {
