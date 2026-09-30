@@ -15,11 +15,41 @@ const path = require("node:path");
 function napEngine() {
   const src = fs.readFileSync(path.join(__dirname, "..", "content", "fill-angular.js"), "utf8");
   const window = { __HCC__: {} };
-  new Function("window", "document", src)(window, { querySelectorAll: () => [] });
+  // chrome giả: cuối file có listener fillAgencyByPlan, chỉ cần addListener không nổ.
+  const chrome = { runtime: { onMessage: { addListener: () => {} } } };
+  new Function("window", "document", "chrome", src)(window, { querySelectorAll: () => [] }, chrome);
   return window.__HCC__;
 }
 
-const { phanTichNgayGio } = napEngine();
+const { phanTichNgayGio, chonXaLechTienTo } = napEngine();
+
+// Ô Phường/Xã của khối địa chỉ: cổng liên thông còn liệt kê tên cũ "Xã …" cho đơn vị đã lên phường.
+test("cổng chỉ có 'Xã Hiệp Hòa' → chọn được khi backend gửi 'Phường Hiệp Hòa'", () => {
+  const opts = ["Xã Hiệp Hòa Đông", "Xã Hiệp Hòa", "Phường Bắc Giang"];
+  assert.strictEqual(chonXaLechTienTo(opts, "Phường Hiệp Hòa"), 1);
+});
+
+test("cổng ghi dấu kiểu cũ 'Hoà' vẫn khớp tên kiểu mới 'Hòa', cả khi lệch tiền tố", () => {
+  assert.strictEqual(chonXaLechTienTo(["Phường Bắc Giang", "Phường Hiệp Hoà"], "Phường Hiệp Hòa"), 1);
+  assert.strictEqual(chonXaLechTienTo(["Xã Hiệp Hoà"], "Phường Hiệp Hòa"), 0);
+  assert.strictEqual(chonXaLechTienTo(["Xã Thuỵ Anh"], "Xã Thụy Anh"), 0);
+});
+
+test("không đổi dấu giữa âm tiết: 'Hoàng', 'Quỳnh' giữ nguyên, không khớp nhầm", () => {
+  assert.strictEqual(chonXaLechTienTo(["Xã Hoàng Vân"], "Xã Hoàng Vân"), 0);
+  assert.strictEqual(chonXaLechTienTo(["Phường Quỳnh Lưu"], "Xã Quỳnh Lưu"), 0);
+  assert.strictEqual(chonXaLechTienTo(["Xã Hòa An"], "Xã Hoàn An"), -1);
+});
+
+test("tỉnh có cả 'Phường X' lẫn 'Xã X' thì không đoán", () => {
+  assert.strictEqual(chonXaLechTienTo(["Phường An Bình", "Xã An Bình"], "Thị trấn An Bình"), -1);
+});
+
+test("tên trần phải trùng nguyên văn, không nhận option chỉ chứa tên", () => {
+  assert.strictEqual(chonXaLechTienTo(["Xã Hiệp Hòa Đông", "Xã Tân Hiệp Hòa"], "Phường Hiệp Hòa"), -1);
+  assert.strictEqual(chonXaLechTienTo([], "Phường Hiệp Hòa"), -1);
+  assert.strictEqual(chonXaLechTienTo(["Xã Hiệp Hòa"], ""), -1);
+});
 
 test("đủ ngày giờ phút → chọn định dạng có giờ:phút, tách sẵn giờ và phút", () => {
   assert.deepStrictEqual(phanTichNgayGio("01/08/2026 18:15"), {
