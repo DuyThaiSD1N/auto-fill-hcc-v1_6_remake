@@ -17,8 +17,9 @@ nghiệp/chương trình → dòng (1), đính CHUNG với giấy tờ hợp quy
 không nhận ra loại → dòng (7) kèm cảnh báo — trang không có ô "Giấy tờ khác", không tệp nào bị bỏ.
 
 Phân loại THUẦN LLM từng tệp; định tuyến loại → dòng là tất định. Riêng ảnh phối cảnh hay bị đọc nhầm thành
-ma-két (OCR ảnh chụp dãy phố ra chữ biển hiệu rời rạc): ≥2 tệp maket mà không có phoi_canh thì một tệp phải là
-phối cảnh → hỏi LLM lượt 2 chọn tệp nào, chuyển tệp đó sang dòng (5).
+ma-két hoặc không rõ loại (OCR ảnh chụp dãy phố ra chữ biển hiệu rời rạc): chưa có phoi_canh mà có ≥2 tệp maket,
+hoặc có maket + tệp other, thì một tệp trong số đó gần như chắc là phối cảnh → hỏi LLM lượt 2 chọn tệp nào, chuyển
+tệp đó sang dòng (5).
 """
 
 import asyncio
@@ -129,16 +130,24 @@ async def _classify_with_llm(documents: list[dict[str, Any]], errors: list[str])
     return result
 
 
-def _maket_thieu_phoi_canh(llm_types: dict[int, str]) -> list[int]:
-    """Các tệp maket khi hồ sơ có ≥2 ma-két mà thiếu phối cảnh — một trong số đó phải là phối cảnh."""
-    maket = sorted(i for i, t in llm_types.items() if t == "maket")
-    if len(maket) < 2 or "phoi_canh" in llm_types.values():
+def _ung_vien_phoi_canh(llm_types: dict[int, str], file_count: int) -> list[int]:
+    """Tệp maket + tệp other khi hồ sơ thiếu phối cảnh mà có ≥2 ma-két hoặc có ma-két kèm tệp chưa rõ loại.
+
+    Ảnh phối cảnh không chỉ bị đọc thành ma-két: OCR ảnh chụp ít chữ, LLM hay trả other → rơi xuống dòng (7). Hồ
+    sơ có ma-két thì gần như chắc có phối cảnh, nên tệp other cũng là ứng viên. Tệp không OCR ra chữ / LLM lỗi
+    (không có trong llm_types) tính là other.
+    """
+    if "phoi_canh" in llm_types.values():
         return []
-    return maket
+    maket = [i for i, t in llm_types.items() if t == "maket"]
+    other = [i for i in range(file_count) if llm_types.get(i, _T_OTHER) == _T_OTHER]
+    if len(maket) >= 2 or (maket and other):
+        return sorted(maket + other)
+    return []
 
 
-async def _chon_phoi_canh(documents: list[dict[str, Any]], errors: list[str]) -> int:
-    """LLM chọn trong các tệp maket tệp giống ảnh phối cảnh nhất. Lỗi/trả index lạ → tệp đầu tiên."""
+async def _chon_phoi_canh(documents: list[dict[str, Any]], fallback: int, errors: list[str]) -> int:
+    """LLM chọn trong các ứng viên tệp giống ảnh phối cảnh nhất. Lỗi/trả index lạ → `fallback`."""
     candidates = [int(d["index"]) for d in documents]
     try:
         messages = [
@@ -154,7 +163,7 @@ async def _chon_phoi_canh(documents: list[dict[str, Any]], errors: list[str]) ->
         errors.append(f"attachment_agent chọn phối cảnh: index {chosen} không thuộc {candidates}")
     except Exception as exc:  # noqa: BLE001 — lượt phụ, lỗi thì rơi về tệp đầu, không làm hỏng cả lượt đính
         errors.append(f"attachment_agent chọn phối cảnh: {exc}")
-    return candidates[0]
+    return fallback
 
 
 def build_plan_items(files: list[dict], llm_types: dict[int, str] | None = None) -> tuple[list[dict], list[str], list[dict]]:
@@ -224,12 +233,16 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     started = time.monotonic()
     llm_types = await _classify_with_llm(llm_documents, errors) if llm_documents else {}
     warnings: list[str] = []
-    maket = _maket_thieu_phoi_canh(llm_types)
-    if maket:
-        chosen = await _chon_phoi_canh([{"index": i, "text": text_by_index.get(i, "")} for i in maket], errors)
+    ung_vien = _ung_vien_phoi_canh(llm_types, len(raw_files))
+    if ung_vien:
+        # LLM lỗi: lấy tệp other đầu tiên (vốn đã rơi dòng 7, chuyển không mất gì); không có thì ma-két đầu.
+        fallback = next((i for i in ung_vien if llm_types.get(i) != "maket"), ung_vien[0])
+        chosen = await _chon_phoi_canh(
+            [{"index": i, "text": text_by_index.get(i, "")} for i in ung_vien], fallback, errors,
+        )
         llm_types[chosen] = "phoi_canh"
         warnings.append(
-            f"Có {len(maket)} tệp đọc ra là ma-két nhưng không có bản phối cảnh — đã đưa "
+            f"Hồ sơ chưa có bản phối cảnh (chọn trong {len(ung_vien)} tệp đọc ra là ma-két/chưa rõ loại) — đã đưa "
             f"\"{raw_files[chosen]['name']}\" vào dòng \"Bản phối cảnh vị trí đặt bảng quảng cáo\", cán bộ đối chiếu lại."
         )
     llm_ms = int((time.monotonic() - started) * 1000)

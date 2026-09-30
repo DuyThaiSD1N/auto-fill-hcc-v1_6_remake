@@ -198,10 +198,15 @@ def test_cac_tep_cung_dong_chung_slot_key_de_engine_gom_mot_o():
     assert all(i["sectionHeader"] == "Thành phần hồ sơ" and i["slotKeywords"] == ["hop chuan"] for i in items)
 
 
-def test_hai_ma_ket_khong_co_phoi_canh_thi_chi_mot_tep_can_chon():
-    assert planner._maket_thieu_phoi_canh({0: "maket", 1: "gcn_dang_ky_doanh_nghiep", 2: "maket"}) == [0, 2]
-    assert planner._maket_thieu_phoi_canh({0: "maket", 1: "phoi_canh", 2: "maket"}) == []
-    assert planner._maket_thieu_phoi_canh({0: "maket", 1: "other"}) == []
+def test_thieu_phoi_canh_thi_ung_vien_la_cac_tep_maket_va_other():
+    assert planner._ung_vien_phoi_canh({0: "maket", 1: "gcn_dang_ky_doanh_nghiep", 2: "maket"}, 3) == [0, 2]
+    assert planner._ung_vien_phoi_canh({0: "maket", 1: "phoi_canh", 2: "maket"}, 3) == []
+    # Ảnh phối cảnh ít chữ bị trả other (hoặc OCR rỗng, không có trong llm_types) → vẫn là ứng viên.
+    assert planner._ung_vien_phoi_canh({0: "other", 1: "maket"}, 2) == [0, 1]
+    assert planner._ung_vien_phoi_canh({1: "maket"}, 2) == [0, 1]
+    # Không có ma-két nào thì không đoán phối cảnh từ tệp other.
+    assert planner._ung_vien_phoi_canh({0: "other", 1: "gcn_dang_ky_doanh_nghiep"}, 2) == []
+    assert planner._ung_vien_phoi_canh({0: "maket", 1: "gcn_dang_ky_doanh_nghiep"}, 2) == []
 
 
 def _chay_plan(monkeypatch, texts, loai, tra_loi_chon):
@@ -256,3 +261,19 @@ def test_da_co_phoi_canh_thi_khong_hoi_llm_luot_2(monkeypatch):
     result, calls = _chay_plan(monkeypatch, texts, loai, {"index": 0})
     assert [a["slotIndex"] for a in result["attachments"]] == [2, 2, 4]
     assert planner.PICK_PHOI_CANH_PROMPT not in calls
+
+
+def test_phoi_canh_bi_doc_thanh_other_thi_khong_roi_xuong_dong_7(monkeypatch):
+    texts = {"pc.pdf": "Cửa hàng Mẫu 0900000000", "d.pdf": "GIẤY CHỨNG NHẬN ĐĂNG KÝ DOANH NGHIỆP",
+             "mk.pdf": "Siêu thị Mẫu giảm giá 50% từ 01/07 đến 10/07"}
+    loai = {"pc.pdf": "other", "d.pdf": "gcn_dang_ky_doanh_nghiep", "mk.pdf": "maket"}
+    result, calls = _chay_plan(monkeypatch, texts, loai, {"reason": "ảnh dãy phố", "index": 0})
+    assert [a["slotIndex"] for a in result["attachments"]] == [4, 0, 2]
+    assert calls.count(planner.PICK_PHOI_CANH_PROMPT) == 1
+
+
+def test_llm_luot_2_loi_thi_uu_tien_chuyen_tep_other_giu_nguyen_ma_ket(monkeypatch):
+    texts = {"mk.pdf": "Siêu thị Mẫu", "pc.pdf": "Cửa hàng Mẫu"}
+    loai = {"mk.pdf": "maket", "pc.pdf": "other"}
+    result, _ = _chay_plan(monkeypatch, texts, loai, RuntimeError("llm chết"))
+    assert [a["slotIndex"] for a in result["attachments"]] == [2, 4]

@@ -55,6 +55,8 @@ cáo, băng-rôn" (Bộ VHTTDL). Đọc OCR_TEXT của MỘT tệp và xếp và
 - Ảnh phối cảnh chụp cả dãy phố nên OCR hay ra lời giới thiệu cửa hàng lân cận ("Đặc điểm nổi bật",
   "Thời gian mở cửa", "Số điện thoại"), tên xã/phường/quận, và hàng dài dòng rác lặp gần giống nhau
   (mã lô, ký hiệu). Có vài câu kiểu khẩu hiệu cũng KHÔNG đủ để là maket → phoi_canh.
+- OCR rất ít chữ, chỉ vài mảnh rời (biển hiệu, số nhà, tên đường, chữ băng-rôn) và không phải văn bản hành chính
+  → gần như chắc là ảnh chụp vị trí → phoi_canh, đừng vội trả other.
 </traps>
 
 <output_contract>
@@ -64,12 +66,13 @@ Ghi reason TRƯỚC rồi mới chọn docType.
 """.strip()
 
 
-# Lượt 2 — chỉ chạy khi ≥2 tệp cùng bị xếp maket mà không tệp nào là phoi_canh: hồ sơ thật nộp một ma-két
-# + một bản phối cảnh, nên một trong số đó gần như chắc là ảnh phối cảnh bị đọc nhầm. So các tệp VỚI NHAU
-# dễ hơn phân loại từng tệp một mình.
+# Lượt 2 — chỉ chạy khi không tệp nào là phoi_canh mà có ≥2 tệp maket, hoặc maket + tệp other: hồ sơ thật nộp
+# một ma-két + một bản phối cảnh, nên một trong số đó gần như chắc là ảnh phối cảnh bị đọc nhầm. So các tệp VỚI
+# NHAU dễ hơn phân loại từng tệp một mình.
 PICK_PHOI_CANH_PROMPT = """
 <persona>
-Hồ sơ thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn có các tệp dưới đây đều bị xếp là ma-két.
+Hồ sơ thông báo sản phẩm quảng cáo trên bảng quảng cáo, băng-rôn có các tệp dưới đây bị xếp là ma-két hoặc chưa
+nhận ra loại.
 Hồ sơ cần một ma-két và một BẢN PHỐI CẢNH vị trí đặt. Chọn ĐÚNG MỘT tệp giống bản phối cảnh nhất.
 </persona>
 
@@ -91,7 +94,7 @@ Chỉ trả JSON object duy nhất, không markdown. Ghi reason TRƯỚC rồi m
 def build_pick_prompt(documents: list[dict[str, Any]]) -> str:
     payload = [{"index": d.get("index"), "ocrText": d.get("text", "")} for d in documents]
     return (
-        "OCR_TEXT CÁC TỆP ĐANG BỊ XẾP LÀ MA-KÉT:\n"
+        "OCR_TEXT CÁC TỆP ĐANG BỊ XẾP LÀ MA-KÉT HOẶC CHƯA RÕ LOẠI:\n"
         f"{json.dumps(payload, ensure_ascii=False)}\n\n"
         "Chọn một index là bản phối cảnh."
     )

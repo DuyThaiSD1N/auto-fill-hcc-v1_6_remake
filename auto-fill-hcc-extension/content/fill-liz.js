@@ -106,6 +106,19 @@
     );
   }
 
+  // Ô chỉ nhận số (vd "Số lượng" của thông báo quảng cáo băng-rôn) mà BE gửi cả câu "Kích thước: 0.8m x 3m;
+  // Số lượng: 105" → trình duyệt bỏ chuỗi, ô trống. Rút số: ưu tiên số sau "số lượng"; không có thì cộng các
+  // số đi kèm đơn vị đếm ("30 tấm; 10 tấm" → 40); còn lại chỉ nhận khi chuỗi có ĐÚNG một số nguyên.
+  function numberFromText(value) {
+    const text = fold(value);
+    const labeled = text.match(/so luong\s*[:\-]?\s*(\d[\d.]*)/);
+    if (labeled) return labeled[1].replace(/\./g, "");
+    const counted = [...text.matchAll(/(\d[\d.]*)\s*(tam|cai|chiec|bang|bo|to)\b/g)];
+    if (counted.length) return String(counted.reduce((sum, m) => sum + Number(m[1].replace(/\./g, "")), 0));
+    const all = text.match(/\d+/g) || [];
+    return all.length === 1 ? all[0] : "";
+  }
+
   // Ô text / ngày: gõ trực tiếp (ngày dạng dd/mm/yyyy). Bỏ qua ô disabled (cổng tự điền từ tài khoản).
   function fillLizText(matField, value) {
     const inp = inputOf(matField);
@@ -113,6 +126,12 @@
     if (inp.disabled || inp.readOnly) return "disabled";
     inp.focus();
     setNativeValue(inp, String(value));
+    if (String(value).trim() && !String(inp.value || "").trim()) {
+      const num = numberFromText(value);
+      console.warn(`[AutoFill-LIZ] Ô từ chối "${value}" (type=${inp.type}) → thử số "${num}"`);
+      if (!num) return "notmatch";
+      setNativeValue(inp, num);
+    }
     inp.dispatchEvent(new Event("input", { bubbles: true }));
     inp.dispatchEvent(new Event("blur", { bubbles: true }));
     markFilled(matField);
