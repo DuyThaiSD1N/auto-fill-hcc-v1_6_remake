@@ -6,13 +6,10 @@ ENGINE TÁCH/GỘP (như dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_c
 file (`sourceSegments`). Hồ sơ hay là MỘT PDF gộp Tờ khai + Giấy chứng nhận.
 
 Bảng thành phần hồ sơ CHỈ CÓ MỘT dòng (theo ảnh ánh xạ của thủ tục):
-  1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu ... (Mẫu số 02)  ← to_khai (Bản chính)
-Giấy chứng nhận QSDĐ/QSH nhà ở là giấy tờ chứng minh chỗ ở hợp pháp nhưng KHÔNG có dòng → bấm "+ Thêm giấy tờ"
-(`add-document-dialog`) tạo dòng "Giấy chứng nhận quyền sử dụng đất" (Bản sao). Trong file GCN, trang BÌA + "VI-
-Những thay đổi sau khi cấp" đứng TRƯỚC trang I-V (đúng thứ tự ánh xạ). Hợp đồng thuê/mượn/ở nhờ và văn bản ủy quyền
-cũng đi qua "Thêm giấy tờ". Modal không tạo được dòng thì FE ĐÍNH CHUNG vào dòng Tờ khai (`fallbackComponentName`).
-CCCD không thuộc thành phần hồ sơ (thông tin nhân thân đã kê khai ở bước 1) → bỏ qua. Trang không rõ loại → đính
-chung dòng Tờ khai, kèm cảnh báo.
+  1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu ... (Mẫu số 02)
+TOÀN BỘ file đính chung vào dòng 1 (mục I), KHÔNG tạo dòng mới qua "+ Thêm giấy tờ". Thứ tự trong file gộp: Tờ
+khai → Giấy chứng nhận (trang BÌA + "VI- Những thay đổi sau khi cấp" đứng TRƯỚC trang I-V) → giấy tờ chỗ ở khác →
+văn bản ủy quyền → CCCD → trang không rõ loại (kèm cảnh báo).
 """
 
 import re
@@ -56,26 +53,8 @@ _TO_KHAI_ROW = {
     "documentName": "Tờ khai xác nhận tình trạng chỗ ở hợp pháp",
     "loaiBan": "Bản chính",
 }
-# Dòng tạo qua modal "Thêm giấy tờ": componentName gõ vào ô autocomplete "Giấy tờ" của modal.
-_ADDED_ROWS: dict[str, dict[str, str]] = {
-    _GCN: {
-        "componentName": "Giấy chứng nhận quyền sử dụng đất",
-        "documentName": "Giấy chứng nhận quyền sử dụng đất",
-        "loaiBan": "Bản sao",
-    },
-    _GIAY_TO_CHO_O: {
-        "componentName": "Giấy tờ, tài liệu chứng minh chỗ ở hợp pháp",
-        "documentName": "Giấy tờ chứng minh chỗ ở hợp pháp",
-        "loaiBan": "Bản sao",
-    },
-    _AUTHORIZATION: {
-        "componentName": "Văn bản ủy quyền",
-        "documentName": "Văn bản ủy quyền",
-        "loaiBan": "Bản chính",
-    },
-}
-# Thứ tự dòng thêm (theo ánh xạ: GCN là dòng 2).
-_ADDED_ORDER = [_GCN, _GIAY_TO_CHO_O, _AUTHORIZATION]
+# Thứ tự các loại giấy tờ khi gộp vào dòng Tờ khai.
+_ORDER = [_TO_KHAI, _GCN, _GIAY_TO_CHO_O, _AUTHORIZATION, _CCCD, _OTHER]
 
 
 def _normalize_type(value: Any) -> str:
@@ -207,42 +186,27 @@ def build_plan_items(
     classified: list[dict] = []
     warnings: list[str] = []
     unknown_pages: list[str] = []
-    to_khai_parts: list[tuple[dict, str]] = []
-    added_parts: dict[str, list[dict]] = {}
+    parts: list[tuple[dict, str]] = []
 
     for segment, doc_type in typed:
         file = raw_files[segment["fileIndex"]]
-        base = {"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
-                "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type}
-        if doc_type == _CCCD:
-            classified.append({**base, "target": "skip"})
-            continue
-        if doc_type in _ADDED_ROWS:
-            if doc_type == _GCN:
-                segment = _gcn_segment_with_cover_first(segment, pages_by_file)
-            added_parts.setdefault(doc_type, []).append(segment)
-            classified.append({**base, "target": "add-document-dialog"})
-            continue
+        if doc_type == _GCN:
+            segment = _gcn_segment_with_cover_first(segment, pages_by_file)
         if doc_type == _OTHER:
             unknown_pages.append(f"{file.get('name')} trang {segment['pageFrom']}-{segment['pageTo']}")
-        to_khai_parts.append((segment, doc_type))
-        classified.append({**base, "componentIndex": _TO_KHAI_ROW["componentIndex"]})
-
-    def _file_name(segment: dict) -> str:
-        file = raw_files[segment["fileIndex"]]
-        return str(file.get("name") or f"file-{segment['fileIndex'] + 1}")
-
-    def _segments(parts: list[dict]) -> list[dict]:
-        return [_source_segment(s, file_meta[s["fileIndex"]]["pageCount"]) for s in parts]
+        parts.append((segment, doc_type))
+        classified.append({"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
+                           "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type,
+                           "componentIndex": _TO_KHAI_ROW["componentIndex"]})
 
     attachments: list[dict] = []
-    if to_khai_parts:
-        # Tờ khai trước, trang không rõ loại theo sau.
-        parts = sorted(to_khai_parts, key=lambda p: (p[1] != _TO_KHAI, p[0]["fileIndex"], p[0]["pageFrom"]))
+    if parts:
+        parts.sort(key=lambda p: (_ORDER.index(p[1]), p[0]["fileIndex"], p[0]["pageFrom"]))
         first = parts[0][0]
+        file = raw_files[first["fileIndex"]]
         attachments.append({
             "fileIndex": first["fileIndex"],
-            "fileName": _file_name(first),
+            "fileName": str(file.get("name") or f"file-{first['fileIndex'] + 1}"),
             "documentName": _TO_KHAI_ROW["documentName"],
             "componentName": _TO_KHAI_ROW["componentName"],
             "componentIndex": _TO_KHAI_ROW["componentIndex"],
@@ -251,27 +215,9 @@ def build_plan_items(
             "needsAddComponent": False,
             "detectedType": parts[0][1],
             "includedTypes": [doc_type for _, doc_type in parts],
-            "sourceSegments": _segments([segment for segment, _ in parts]),
-        })
-
-    for doc_type in _ADDED_ORDER:
-        parts = sorted(added_parts.get(doc_type) or [], key=lambda s: (s["fileIndex"], s["pageFrom"]))
-        if not parts:
-            continue
-        row = _ADDED_ROWS[doc_type]
-        attachments.append({
-            "fileIndex": parts[0]["fileIndex"],
-            "fileName": _file_name(parts[0]),
-            "documentName": row["documentName"],
-            "componentName": row["componentName"],
-            "loaiBan": row["loaiBan"],
-            "quantity": 1,
-            "target": "add-document-dialog",
-            "needsAddComponent": True,
-            "detectedType": doc_type,
-            # Modal không tạo được dòng → đính chung vào dòng Tờ khai (phương án dự phòng của ánh xạ).
-            "fallbackComponentName": _TO_KHAI_ROW["componentName"],
-            "sourceSegments": _segments(parts),
+            "sourceSegments": [
+                _source_segment(s, file_meta[s["fileIndex"]]["pageCount"]) for s, _ in parts
+            ],
         })
 
     # --- Cảnh báo ---
@@ -280,7 +226,7 @@ def build_plan_items(
         warnings.append("Chưa có Tờ khai xác nhận tình trạng chỗ ở hợp pháp (Mẫu số 02) — cần bổ sung.")
     if _GCN not in found and _GIAY_TO_CHO_O not in found:
         warnings.append(
-            "Chưa thấy Giấy chứng nhận hoặc giấy tờ chứng minh chỗ ở hợp pháp — cần nộp kèm qua nút Thêm giấy tờ."
+            "Chưa thấy Giấy chứng nhận hoặc giấy tờ chứng minh chỗ ở hợp pháp — cần bổ sung."
         )
     if unknown_pages:
         warnings.append(

@@ -5,22 +5,24 @@ Bảng 11 dòng (theo ảnh ánh xạ):
   1  "Đơn theo Mẫu 02 Phụ lục II …"                             ← Đơn đề nghị (Bản chính)
   2  "Bản sao hợp lệ quyết định thành lập … giấy chứng nhận đăng ký doanh nghiệp …" ← GCN ĐKHKD/ĐKDN (Bản sao)
   3  "… Mẫu 11 … của người chịu trách nhiệm chuyên môn kỹ thuật …" ← CCHN/GPHN + GXN quá trình hành nghề
-  4  "… Mẫu 11 … của người phụ trách bộ phận chuyên môn …"       ← cùng tệp dòng 3 (đính kèm lại)
+  4  "… Mẫu 11 … của người phụ trách bộ phận chuyên môn …"       ← KHÔNG đính (CCHN/GXN đã ở dòng 3)
   5  "Bản kê khai cơ sở vật chất … Mẫu 08 … và các giấy tờ chứng minh …" ← Bản kê khai + văn bằng, chứng
      chỉ đào tạo/CME, quyết định, danh hiệu, hợp đồng… (Bản chính)
   6  "Danh sách … Mẫu 01 …"                                      ← DS đăng ký hành nghề (radio Bản chính)
   7  "Văn bản … bệnh viện … Mẫu 03 …"                            ← chỉ bệnh viện
-  8  "Danh mục chuyên môn kỹ thuật …"                            ← DM kỹ thuật (radio Bản chính)
+  8  "Danh mục chuyên môn kỹ thuật …"                            ← DM kỹ thuật ĐỨNG RIÊNG (radio Bản chính);
+     DM nằm chung tệp với bản kê khai thì đã đính ở dòng 5, không nhân bản
   9  "Trường hợp đề nghị cấp lần đầu … nhân đạo …"               ← tài liệu nguồn tài chính nhân đạo
-  10 "Đơn theo Mẫu 02 Phụ lục II …" (TRÙNG tên dòng 1, nằm trong nhóm nhân đạo) ← Đơn, CHỈ khi hồ sơ có
-     tài liệu nhân đạo
-  11 "Tài liệu chứng minh nguồn tài chính … nhân đạo"            ← tài liệu nguồn tài chính nhân đạo
+  10 "Đơn theo Mẫu 02 Phụ lục II …" (TRÙNG tên dòng 1, nằm trong nhóm nhân đạo) ← KHÔNG đính (Đơn đã ở dòng 1)
+  11 "Tài liệu chứng minh nguồn tài chính … nhân đạo"            ← KHÔNG đính (tài liệu nhân đạo đã ở dòng 9)
 
 Engine attp-row GOM item theo componentName rồi tìm dòng bằng (componentName, componentIndex). Dòng 1/10
 trùng chữ → mỗi dòng một componentName KHÁC NHAU (đều là đoạn con của tên dòng) + componentIndex.
 
 Phân loại THUẦN LLM, mỗi tệp một lượt gọi (xem prompt). Một tệp scan GỘP nhiều giấy (vd bản kê khai +
-danh mục kỹ thuật + giấy chứng nhận CME) được gắn nhiều loại → đính vào mọi dòng tương ứng, mỗi dòng 1 lần.
+danh mục kỹ thuật + giấy chứng nhận CME) được gắn nhiều loại.
+⚑ MỖI TỆP ĐÚNG MỘT DÒNG: tệp đính vào dòng ĐẦU TIÊN (theo thứ tự bảng) nhận một trong các loại của nó; các dòng
+sau KHÔNG nhân bản lại tệp đó (cổng coi là đính kèm trùng lặp).
 ⚑ KHÔNG BỎ SÓT TỆP: tệp không xếp được (other) hoặc lượt gọi lỗi → đính vào dòng 5 (giấy tờ chứng minh),
 giữ tên tệp gốc. CCCD không có dòng riêng → bỏ qua.
 """
@@ -73,7 +75,7 @@ _DOC_NAMES = {
 }
 
 # Theo THỨ TỰ dòng trên cổng. componentName = đoạn con của tên dòng, KHÁC NHAU giữa mọi dòng (engine gom
-# theo nó); docTypes theo thứ tự tệp trong dòng. requiresAny: dòng chỉ nhận tệp khi hồ sơ có loại đó.
+# theo nó); docTypes theo thứ tự tệp trong dòng. docTypes rỗng = dòng để trống (giấy đã đính ở dòng khác).
 _ROWS: list[dict[str, Any]] = [
     {"componentIndex": 1, "componentName": "Đơn theo Mẫu 02 Phụ lục II ban hành kèm theo Nghị định",
      "loaiBan": _BAN_CHINH, "docTypes": [_DON]},
@@ -82,7 +84,7 @@ _ROWS: list[dict[str, Any]] = [
     {"componentIndex": 3, "componentName": "của người chịu trách nhiệm chuyên môn kỹ thuật của cơ sở",
      "loaiBan": _BAN_SAO, "docTypes": [_GPHN, _XNHN]},
     {"componentIndex": 4, "componentName": "của người phụ trách bộ phận chuyên môn của cơ sở",
-     "loaiBan": _BAN_SAO, "docTypes": [_GPHN, _XNHN]},
+     "loaiBan": _BAN_SAO, "docTypes": []},
     {"componentIndex": 5, "componentName": "Bản kê khai cơ sở vật chất, danh mục thiết bị y tế",
      "loaiBan": _BAN_CHINH, "docTypes": [_KEKHAI, _VANBANG, _CHUNGCHI, _CHUNGMINH, _OTHER]},
     {"componentIndex": 6, "componentName": "Danh sách ghi rõ họ tên, số giấy phép hành nghề của từng người",
@@ -94,9 +96,9 @@ _ROWS: list[dict[str, Any]] = [
     {"componentIndex": 9, "componentName": "Trường hợp đề nghị cấp lần đầu giấy phép hoạt động",
      "loaiBan": _BAN_CHINH, "docTypes": [_NHANDAO]},
     {"componentIndex": 10, "componentName": "Đơn theo Mẫu 02 Phụ lục II",
-     "loaiBan": _BAN_CHINH, "docTypes": [_DON], "requiresAny": [_NHANDAO]},
+     "loaiBan": _BAN_CHINH, "docTypes": []},
     {"componentIndex": 11, "componentName": "Tài liệu chứng minh nguồn tài chính cho hoạt động",
-     "loaiBan": _BAN_CHINH, "docTypes": [_NHANDAO]},
+     "loaiBan": _BAN_CHINH, "docTypes": []},
 ]
 _SKIP_DOCS = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_DOC_NAMES) | _SKIP_DOCS | {_OTHER}
@@ -161,6 +163,11 @@ async def _classify_with_llm(
     return result
 
 
+def _target_row(doc_types: list[str]) -> int | None:
+    """Dòng ĐẦU TIÊN (theo thứ tự bảng) nhận một trong các loại của tệp."""
+    return next((r["componentIndex"] for r in _ROWS if set(doc_types) & set(r["docTypes"])), None)
+
+
 def _document_name(file_name: str, doc_type: str, same_type_count: int) -> str:
     # Tệp lạ giữ TÊN GỐC để cán bộ nhận ra; nhiều tệp cùng loại (vd 2 chứng chỉ đào tạo) thêm tên gốc để
     # hai tệp trong cùng dòng không mang cùng một tên.
@@ -195,20 +202,20 @@ def build_plan_items(
         else:
             for doc_type in doc_types:
                 by_type.setdefault(doc_type, []).append(idx)
-            entry["rows"] = [r["componentIndex"] for r in _ROWS if set(doc_types) & set(r["docTypes"])]
+            target_row = _target_row(doc_types)
+            entry["rows"] = [target_row] if target_row is not None else []
         if doc_types == [_OTHER]:
             entry["fallbackRow"] = _CHUNGMINH
         classified.append(entry)
 
     items: list[dict] = []
+    placed: set[int] = set()
     for row in _ROWS:
-        if row.get("requiresAny") and not any(by_type.get(t) for t in row["requiresAny"]):
-            continue
-        placed: set[int] = set()
         for doc_type in row["docTypes"]:
             indices = by_type.get(doc_type, [])
             for idx in indices:
-                # Tệp gộp nhiều loại cùng rơi vào một dòng (vd văn bằng + chứng chỉ ở dòng 5) → đính 1 lần.
+                # Mỗi tệp đúng MỘT dòng: tệp gộp nhiều loại (vd bản kê khai + danh mục kỹ thuật) đã đính ở dòng
+                # trước thì không nhân bản sang dòng sau.
                 if idx in placed:
                     continue
                 placed.add(idx)

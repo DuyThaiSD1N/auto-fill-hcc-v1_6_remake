@@ -675,7 +675,9 @@ def _area(value):
     }
     if not out["tinh"] and not out["xa"] and not out["diaChi"]:
         return None
-    remapped = remap_area(dict(out))
+    # Cấp huyện chỉ là gợi ý cho remap (phường trùng tên ở hai huyện cũ), remap_area tự bỏ khóa này.
+    huyen = str(value.get("huyen") or value.get("quanHuyen") or "").strip()
+    remapped = remap_area({**out, "huyen": huyen} if huyen else dict(out))
     # CCCD in địa chỉ không nhãn "Phúc Thắng / Danh Thắng, Hiệp Hòa, Bắc Giang" hay bị agent đảo thôn
     # với xã. Xã trả về không khớp danh mục mà phần chi tiết là một TÊN trần (không số, không phẩy)
     # khớp được xã → đảo lại. Không khớp thì giữ nguyên kết quả cũ.

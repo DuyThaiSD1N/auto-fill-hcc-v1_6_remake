@@ -114,9 +114,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     loai_cu = _loai_the(values.get("TheCu_Loai"))
     so_the, so_bi_loai = _so_the(values.get("TheCu_SoThe"))
     ly_do = _text(values.get("Don_LyDo"))
+    loai_de_nghi = _loai_de_nghi(values.get("Don_LoaiDeNghi"))
+    loai_moi = _loai_the(values.get("Don_LoaiTheDeNghi")) if loai_de_nghi == "cấp mới" else None
+    # Không có loại thẻ cũ mà hồ sơ là đơn cấp mới → tích tạm theo loại thẻ ĐỀ NGHỊ (kèm cảnh báo bên dưới)
+    # để cán bộ khỏi bỏ trống mục bắt buộc; cán bộ đổi ô nếu loại thẻ đã cấp khác.
+    loai_tich = loai_cu or loai_moi
     # Tích loại thẻ TRƯỚC các ô chữ: engine dựng lại chỉ mục sau khi tích, ô phụ thuộc (nếu có) mới hiện.
-    if loai_cu:
-        put(S_THE, LABEL_LOAI_THE, True, option=LOAI_THE_OPTIONS[loai_cu])
+    if loai_tich:
+        put(S_THE, LABEL_LOAI_THE, True, option=LOAI_THE_OPTIONS[loai_tich])
     put(S_THE, "Giới tính", _gender(values.get("NguoiDeNghi_GioiTinh"), identity))
     put(S_THE, "Email", email)
     put(S_THE, "Số thẻ", so_the)
@@ -158,8 +163,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             "bộ đối chiếu CCCD/VNeID của người đề nghị."
         )
 
-    loai_de_nghi = _loai_de_nghi(values.get("Don_LoaiDeNghi"))
-    loai_moi = _loai_the(values.get("Don_LoaiTheDeNghi")) if loai_de_nghi == "cấp mới" else None
     if loai_de_nghi == "cấp mới":
         warnings.append(
             "LỆCH THỦ TỤC: Đơn trong hồ sơ là đơn CẤP MỚI thẻ hướng dẫn viên du lịch"
@@ -184,15 +187,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             "Chưa có SỐ THẺ hướng dẫn viên du lịch đã được cấp — Đơn Mẫu 05 không ghi số thẻ và hồ sơ không có "
             "ảnh thẻ cũ; cán bộ bổ sung (tra cứu trên hệ thống quản lý hướng dẫn viên) trước khi nộp."
         )
-    if not loai_cu:
-        goi_y = (
-            f" Đơn cấp mới đề nghị loại {loai_moi.upper()} — đó là loại thẻ ĐỀ NGHỊ, chỉ tích khi xác nhận "
-            "được đúng là loại thẻ đã được cấp."
-            if loai_moi else ""
+    if not loai_cu and loai_moi:
+        warnings.append(
+            f"Chưa xác định được LOẠI THẺ đã được cấp từ Đơn Mẫu 05 hoặc thẻ cũ — đã tích TẠM ô "
+            f"{LOAI_THE_OPTIONS[loai_moi].upper()} theo loại thẻ đề nghị trên đơn cấp mới. Cán bộ đối chiếu thẻ "
+            "đã được cấp và đổi ô ở mục 'Đã được cấp thẻ hướng dẫn viên du lịch loại' nếu khác."
         )
+    elif not loai_cu:
         warnings.append(
             "Chưa xác định được LOẠI THẺ đã được cấp (Nội địa / Quốc tế / Tại điểm) từ Đơn Mẫu 05 hoặc thẻ cũ — "
-            "cán bộ tự tích ô tương ứng ở mục 'Đã được cấp thẻ hướng dẫn viên du lịch loại'." + goi_y
+            "cán bộ tự tích ô tương ứng ở mục 'Đã được cấp thẻ hướng dẫn viên du lịch loại'."
         )
     if not ly_do and loai_de_nghi != "cấp mới":
         warnings.append(

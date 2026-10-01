@@ -139,7 +139,7 @@ def test_moi_o_emit_deu_khai_trong_schema():
 
 
 def test_ho_so_cap_moi_nop_nham_khong_bia_the_cu():
-    """Như bản mapping: Đơn Mẫu 04 nội địa + chứng chỉ → không tích loại thẻ, không bịa số thẻ, cảnh báo."""
+    """Đơn Mẫu 04 nội địa + chứng chỉ → tích tạm loại thẻ đề nghị, không bịa số thẻ, cảnh báo."""
     fields, warnings = mapper.enrich(
         _facts(
             Don_LoaiDeNghi="cấp mới", Don_LoaiTheDeNghi="nội địa", TheCu_SoThe="CMS./HDDLNĐ-0123",
@@ -150,10 +150,11 @@ def test_ho_so_cap_moi_nop_nham_khong_bia_the_cu():
     ui = _ui(fields)
 
     assert (S_THE, "Số thẻ") not in ui
-    assert not any(f["comp"] == "liz-checkbox" for f in fields)
+    boxes = [f for f in fields if f["comp"] == "liz-checkbox"]
+    assert len(boxes) == 1 and boxes[0]["name"] == LABEL_LOAI_THE and boxes[0]["option"] == "Nội địa"
     assert any("LỆCH THỦ TỤC" in w and "NỘI ĐỊA" in w and "CẤP LẠI" in w for w in warnings)
     assert any("trông như số hiệu chứng chỉ" in w for w in warnings)
-    assert any("LOẠI THẺ" in w and "đề nghị loại NỘI ĐỊA" in w for w in warnings)
+    assert any("LOẠI THẺ" in w and "tích TẠM ô NỘI ĐỊA" in w for w in warnings)
     assert not any("chưa ghi LÝ DO" in w for w in warnings), "đơn cấp mới không có mục lý do"
 
 

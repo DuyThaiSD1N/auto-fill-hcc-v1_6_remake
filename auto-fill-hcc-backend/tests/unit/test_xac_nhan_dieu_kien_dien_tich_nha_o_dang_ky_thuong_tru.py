@@ -149,9 +149,9 @@ def _seg(file_index: int, page_from: int, page_to: int, doc_type: str) -> dict:
     return {"fileIndex": file_index, "pageFrom": page_from, "pageTo": page_to, "type": doc_type, "documentName": ""}
 
 
-def test_merged_pdf_splits_to_khai_row_and_gcn_added_row_cover_first():
-    """PDF gộp 3 trang: trang 1 Tờ khai -> dòng 1; trang 2 (I-V) + trang 3 (bìa + VI) -> dòng GCN thêm qua modal,
-    trang bìa đứng trước."""
+def test_merged_pdf_all_pages_go_to_to_khai_row_gcn_cover_first():
+    """PDF gộp 3 trang: trang 1 Tờ khai + trang 2 (I-V) + trang 3 (bìa + VI) -> chung dòng 1 (mục I), không tạo
+    dòng qua modal; trong GCN trang bìa đứng trước."""
     raw_files = [{"name": "ho-so.pdf", "type": "application/pdf"}]
     file_meta = {0: {"pageCount": 3, "pageBoundariesAvailable": True}}
     pages_by_file = {0: {
@@ -164,43 +164,37 @@ def test_merged_pdf_splits_to_khai_row_and_gcn_added_row_cover_first():
     attachments, classified, warnings = planner.build_plan_items(raw_files, segments, file_meta, pages_by_file)
 
     assert warnings == []
-    assert len(attachments) == 2
-    to_khai, gcn = attachments
-    assert to_khai["target"] == "attp-row"
-    assert to_khai["componentName"] == _TO_KHAI_NAME
-    assert to_khai["componentIndex"] == 0
-    assert to_khai["loaiBan"] == "Bản chính"
-    assert to_khai["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [0]}]
-
-    assert gcn["target"] == "add-document-dialog"
-    assert gcn["needsAddComponent"] is True
-    assert gcn["componentName"] == "Giấy chứng nhận quyền sử dụng đất"
-    assert gcn["loaiBan"] == "Bản sao"
-    assert gcn["fallbackComponentName"] == _TO_KHAI_NAME
-    assert gcn["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [2, 1]}]
-    assert [item.get("target", "attp-row") for item in classified] == ["attp-row", "add-document-dialog"]
-    # Hợp đồng API giữ đủ các field FE cần.
-    for item in attachments:
-        AttachmentPlanItem(**item)
+    assert len(attachments) == 1
+    item = attachments[0]
+    assert item["target"] == "attp-row"
+    assert item["needsAddComponent"] is False
+    assert item["componentName"] == _TO_KHAI_NAME
+    assert item["componentIndex"] == 0
+    assert item["loaiBan"] == "Bản chính"
+    assert item["sourceSegments"] == [{"fileIndex": 0, "pageIndexes": [0]}, {"fileIndex": 0, "pageIndexes": [2, 1]}]
+    assert all(c["componentIndex"] == 0 for c in classified)
+    AttachmentPlanItem(**item)
 
 
-def test_cccd_skipped_and_unknown_pages_go_to_to_khai_row_with_warning():
-    raw_files = [{"name": "to-khai.pdf", "type": "application/pdf"}, {"name": "cccd.jpg", "type": "image/jpeg"},
-                 {"name": "la.pdf", "type": "application/pdf"}]
-    file_meta = {0: {"pageCount": 1, "pageBoundariesAvailable": True},
-                 1: {"pageCount": 1, "pageBoundariesAvailable": True},
-                 2: {"pageCount": 1, "pageBoundariesAvailable": True}}
-    pages_by_file = {0: {1: "TỜ KHAI"}, 1: {1: "CĂN CƯỚC CÔNG DÂN"}, 2: {1: "trang trắng"}}
-    segments = [_seg(0, 1, 1, "to_khai"), _seg(1, 1, 1, "cccd"), _seg(2, 1, 1, "other")]
+def test_every_file_including_cccd_and_unknown_goes_to_to_khai_row():
+    raw_files = [{"name": "cccd.jpg", "type": "image/jpeg"}, {"name": "la.pdf", "type": "application/pdf"},
+                 {"name": "uy-quyen.pdf", "type": "application/pdf"}, {"name": "to-khai.pdf", "type": "application/pdf"}]
+    file_meta = {i: {"pageCount": 1, "pageBoundariesAvailable": True} for i in range(4)}
+    pages_by_file = {0: {1: "CĂN CƯỚC CÔNG DÂN"}, 1: {1: "trang trắng"}, 2: {1: "GIẤY ỦY QUYỀN"}, 3: {1: "TỜ KHAI"}}
+    segments = [_seg(0, 1, 1, "cccd"), _seg(1, 1, 1, "other"), _seg(2, 1, 1, "authorization"),
+                _seg(3, 1, 1, "to_khai")]
 
     attachments, classified, warnings = planner.build_plan_items(raw_files, segments, file_meta, pages_by_file)
 
     assert len(attachments) == 1
+    assert attachments[0]["fileIndex"] == 3
     assert attachments[0]["sourceSegments"] == [
-        {"fileIndex": 0, "pageIndexes": None},
+        {"fileIndex": 3, "pageIndexes": None},
         {"fileIndex": 2, "pageIndexes": None},
+        {"fileIndex": 0, "pageIndexes": None},
+        {"fileIndex": 1, "pageIndexes": None},
     ]
-    assert classified[1]["target"] == "skip"
+    assert all(c.get("target") != "skip" for c in classified)
     assert any("Giấy chứng nhận" in warning for warning in warnings)
     assert any("la.pdf" in warning for warning in warnings)
 

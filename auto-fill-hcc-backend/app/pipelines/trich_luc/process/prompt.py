@@ -84,6 +84,10 @@ Thủ tục: Cấp bản sao Giấy khai sinh, bản sao Trích lục hộ tịc
     dưới là HAI cấp khác nhau, KHÔNG được bỏ cụm nào: MỌI cụm đứng trước xã đều vào diaChi, giữ nguyên
     thứ tự. Vd "Xóm 3, Thôn Đông\\nNghi Hoa, Nghi Lộc, Nghệ An" → diaChi="Xóm 3, Thôn Đông",
     xa="Nghi Hoa", tinh="Nghệ An" (bỏ huyện Nghi Lộc); SAI nếu diaChi chỉ còn "Xóm 3".
+  + Cấp huyện bỏ khỏi xa/diaChi nhưng VẪN trả riêng ở khóa "huyen" (đúng chữ in trên giấy) để quy đổi
+    địa giới: nhiều tỉnh có phường trùng tên ở hai huyện cũ (vd "Phường 1" của TP Đông Hà và của TX
+    Quảng Trị). Vd "Khu Phố 7\\nPhường 1, Thành phố Đông Hà, Quảng Trị" → diaChi="Khu Phố 7",
+    xa="1", huyen="Thành phố Đông Hà", tinh="Quảng Trị". Giấy không có cấp huyện thì bỏ khóa này.
 - Tách NGUỒN, không gộp trực tiếp:
   + TỜ KHAI CẤP BẢN SAO chỉ sinh ToKhai_*. Mục (4) sinh ToKhai_LoaiSuKien/ToKhai_TenGiayTo;
     block sau "cho người có tên dưới đây" sinh ToKhai_HoTenNguoiDuocCap và các ToKhai_* cá nhân;
