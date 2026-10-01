@@ -1970,6 +1970,14 @@
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru",
+      "code": "1.013314",
+      "label": "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng ký thường trú mới",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

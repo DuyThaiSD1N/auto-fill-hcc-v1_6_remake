@@ -405,6 +405,8 @@ from app.pipelines.cap_lai_the_huong_dan_vien_du_lich_da_nang.attach import plan
 from app.pipelines.cap_lai_the_huong_dan_vien_du_lich_da_nang.process import run as cap_lai_the_hdv_dn_process
 from app.pipelines.dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan.attach import plan as dk_lai_phuong_tien_chuyen_quyen_attach
 from app.pipelines.dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan.process import run as dk_lai_phuong_tien_chuyen_quyen_process
+from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.attach import plan as xn_dien_tich_nha_o_thuong_tru_attach
+from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process import run as xn_dien_tich_nha_o_thuong_tru_process
 
 PROCEDURES: list[dict] = [
     {
@@ -6770,6 +6772,39 @@ PROCEDURES: list[dict] = [
             "đăng ký cũ→dòng 3 (Bản sao); Đơn 07 + Đơn xóa 10→dòng 4 (CCCD chỉ dùng ở bước thông tin)."
         ),
     },
+    {
+        "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru",
+        # Mã TTHC 1.013314 (UBND cấp xã). Đi từ link kê khai DVCQG, chọn tỉnh + phường/xã như bình thường rồi sang
+        # cổng tỉnh iGate: Form.io 23 ô cùng họ template đăng ký đất đai lần đầu Quảng Ngãi, engine dom-* + attach
+        # attp-row 1 dòng (Tờ khai Mẫu 02) + modal "Thêm giấy tờ" cho Giấy chứng nhận. Không urlScope: mã ghép từ
+        # ke_khai_links, tên thủ tục đủ đặc trưng.
+        "detect": {
+            "textIncludes": ["Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; "
+            "nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không "
+            "được đăng ký thường trú mới"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu để đăng ký thường trú, "
+            "đăng ký tạm trú (Mẫu số 02) đã ký — dùng để điền thông tin người đề nghị và địa chỉ chỗ ở.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất/quyền sở hữu nhà ở của chỗ ở (đủ bìa và các trang).\n"
+            "3. Nếu có: hợp đồng thuê, mượn, ở nhờ; văn bản ủy quyền khi nộp thay.\n"
+            "4. CCCD của người đề nghị (nếu có) — chỉ dùng để điền ngày cấp/nơi cấp, không đính kèm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước đính kèm: Tờ khai → dòng 1 (Bản chính); Giấy chứng nhận → thêm dòng 2 qua nút 'Thêm giấy tờ' "
+            "(Bản sao, trang bìa + trang những thay đổi đứng trước). Cổng không thêm được dòng thì đính chung "
+            "vào dòng Tờ khai — ghi chú hồ sơ."
+        ),
+    },
 ]
 
 
@@ -6943,6 +6978,7 @@ _PIPELINE = {
     "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_process,
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_process,
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_process,
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7140,6 +7176,7 @@ _ATTACH_PIPELINE = {
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_attach,
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_attach,
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_attach,
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}
