@@ -1,0 +1,1628 @@
+[
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Hữu",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đại Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Đông",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đại Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phước Khánh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đại Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Đại Phước",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đại Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hiệp Phước (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nhơn Trạch"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Tân (Nhơn Trạch)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nhơn Trạch"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Thạnh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nhơn Trạch"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Hội",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nhơn Trạch"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phước Thiền",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nhơn Trạch"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phước An (Nhơn Trạch)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Vĩnh Thanh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Thọ",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Hiệp (Long Thành)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Thái"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phước Bình",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Thái"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phước Thái",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Thái"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bàu Cạn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Phước",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Thành (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Thành"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Lộc An (Long Thành)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Thành"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bình Sơn (Long Thành)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Thành"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Thành"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Đức",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bình An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tam An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "An Phước",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Đồi 61",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Viễn"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "An Viễn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Viễn"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bình Minh (Trảng Bom)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Minh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bắc Sơn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Minh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Trảng Bom (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trảng Bom"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Quảng Tiến",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trảng Bom"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Sông Trầu",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trảng Bom"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Giang Điền",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trảng Bom"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thanh Bình (Trảng Bom)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bàu Hàm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Cây Gáo",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bàu Hàm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Sông Thao",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bàu Hàm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bàu Hàm",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bàu Hàm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Đông Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hưng Thịnh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tây Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hưng Thịnh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Trung Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hưng Thịnh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hưng Thịnh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hưng Thịnh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Dầu Giây (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Dầu Giây"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hưng Lộc",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Dầu Giây"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bàu Hàm 2",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Dầu Giây"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Lộ 25",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Dầu Giây"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Quang Trung",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Gia Kiệm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Gia Tân 3",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Gia Kiệm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Gia Kiệm",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Gia Kiệm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Gia Tân 1",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thống Nhất"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Gia Tân 2",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thống Nhất"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Cường",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thống Nhất"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Túc",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thống Nhất"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Sông Nhạn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Quế"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Quế",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Quế"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Cẩm Đường",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Đường"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thừa Đức",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Đường"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Đường",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Đường"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Giao (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Cẩm Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Nhân Nghĩa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Cẩm Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Mỹ",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Cẩm Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bảo Bình",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Cẩm Mỹ"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Lâm San",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Sông Ray"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Sông Ray",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Sông Ray"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Tây",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Đông"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Đông",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Đông"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Tâm (phần)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Đông"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Bảo",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Định"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bảo Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Định"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Định",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Định"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Lang Minh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Phú",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Gia Ray (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Thọ",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Trường",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Suối Cát",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Hiệp",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Hưng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Tâm (phần còn lại)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Suối Cao",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Thành"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Thành",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Thành"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Suối Nho",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Bắc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Bắc",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Bắc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Túc Trưng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "La Ngà"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "La Ngà",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "La Ngà"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Định Quán (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Định Quán"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Ngọc",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Định Quán"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Gia Canh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Định Quán"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Ngọc Định",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Định Quán"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Tân",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Vinh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Vinh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Vinh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Điền",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Lợi",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Thịnh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tà Lài"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Lập",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tà Lài"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tà Lài",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tà Lài"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nam Cát Tiên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Nam Cát Tiên",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nam Cát Tiên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Phú (thị trấn, Tân Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Lộc",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Trà Cổ",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Thanh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Xuân",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Phú"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thanh Sơn (Tân Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Sơn (Tân Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Bình",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Lâm",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Lâm"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Vĩnh An (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trị An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Mã Đà",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trị An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Trị An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trị An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Vĩnh Tân",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân An"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân An"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Thắng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nha Bích"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Lập",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nha Bích"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Nha Bích",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nha Bích"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước An (Hớn Quản)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Quan"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Lợi (Hớn Quản)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Quan"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Quang Minh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Quan"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Quan",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Quan"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Hưng (Hớn Quản)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "An Khương",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thanh An",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Khai (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Khai"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Hiệp (Hớn Quản)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Khai"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đồng Nơ",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Khai"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "An Phú",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Minh Đức"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Tâm",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Minh Đức"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Đức",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Minh Đức"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Thịnh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Thành"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Thành",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Thành"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Ninh (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Ninh"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Thái",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Ninh"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Thuận",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Ninh"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Khánh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Điền",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Hưng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Thiện",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Tấn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Tấn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Tấn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Thạnh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Thạnh"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Phú",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Quang"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Hiệp",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Quang"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc Quang",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Lộc Quang"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Thành (Bù Đốp)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Tiến"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Tiến (Bù Đốp)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Tiến"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Lộc An (Lộc Ninh)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Tiến"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thanh Bình (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thiện Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thanh Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thiện Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thiện Hưng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thiện Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước Thiện",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hưng Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Hưng Phước",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hưng Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Văn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đức Hạnh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Nghĩa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Nghĩa"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước Minh",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đa Kia"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bình Thắng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đa Kia"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đa Kia",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đa Kia"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Hưng (Phú Riềng)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Tân"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Bình",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Tân"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bình Tân",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Tân"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Tân (Phú Riềng)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Hà"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Hà",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Hà"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bù Nho",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Riềng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Riềng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Riềng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước Tân",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Trung"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Trung",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Trung"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thuận Phú",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thuận Lợi"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thuận Lợi",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thuận Lợi"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đồng Tiến",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Tâm"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Phước",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Tâm"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đồng Tâm",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Tâm"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Hưng (Đồng Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Lợi"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Lợi (Đồng Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Lợi"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Hòa",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Lợi"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Phú (thị trấn, Đồng Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Phú"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Tiến (Đồng Phú)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Phú"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Lập",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Phú"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đăng Hà",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Sơn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thống Nhất",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Sơn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước Sơn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Sơn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đức Liễu",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nghĩa Trung"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Nghĩa Bình",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nghĩa Trung"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Nghĩa Trung",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Nghĩa Trung"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đức Phong (thị trấn)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bù Đăng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đoàn Kết",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bù Đăng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Hưng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bù Đăng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Sơn (Bù Đăng)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thọ Sơn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đồng Nai",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thọ Sơn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thọ Sơn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thọ Sơn"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đường 10",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đak Nhau"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đak Nhau",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đak Nhau"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bình Minh (Bù Đăng)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bom Bo"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bom Bo",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bom Bo"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Hạnh (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Biên Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hóa An (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Biên Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bửu Hòa (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Biên Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Vạn (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Biên Hòa"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bửu Long (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trấn Biên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Quang Vinh (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trấn Biên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Trung Dũng (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trấn Biên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thống Nhất (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trấn Biên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hiệp Hòa (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trấn Biên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "An Bình (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trấn Biên"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Hiệp (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tam Hiệp"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Mai (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tam Hiệp"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bình Đa (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tam Hiệp"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tam Hiệp (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tam Hiệp"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hố Nai (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Bình"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Biên (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Bình"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Bình (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Bình"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Trảng Dài (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trảng Dài"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thiện Tân",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Trảng Dài"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Hòa (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hố Nai"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hố Nai 3",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hố Nai"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Bình Tân (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "An Hòa (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Long Hưng (Biên Hòa)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Hưng"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Suối Tre (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Thiện",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bình Lộc",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Lộc"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bảo Vinh (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bảo Vinh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bảo Quang",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bảo Vinh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bàu Sen (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lập"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Lập (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Xuân Lập"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân An (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Bình (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Hòa (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Bình (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bàu Trâm",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Long Khánh"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Xuân Tân (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hàng Gòn"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Hàng Gòn",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Hàng Gòn"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Phong (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Triều"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tân Bình",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Triều"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Bình Lợi",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Triều"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thạnh Phú",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tân Triều"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Long (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Minh Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Hưng (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Minh Hưng"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Hưng Long (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Chơn Thành"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thành Tâm (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Chơn Thành"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Minh Thành (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Chơn Thành"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "An Lộc (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Hưng Chiến (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Đức (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thanh Bình (Hớn Quản)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phú Thịnh (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Lộc"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thanh Phú",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Lộc"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thanh Lương",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "An Lộc"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Phước (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Bình"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước Bình (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Bình"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bình Sơn (Phú Riềng)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Bình"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Giang",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Bình"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Long Thủy (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Thác Mơ (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Sơn Giang (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Phước Tín",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Long"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tiến Thành (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Xoài"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Thành (Đồng Xoài)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đồng Xoài"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Phú (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Đồng (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Thiện (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Bình (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tân Xuân (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Phước"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Tiến Hưng",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bình Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phước Tân (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phước Tân"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Tam Phước (phường)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Tam Phước"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Thanh Sơn (Định Quán)",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Thanh Sơn"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Đak Lua",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đak Lua"
+    },
+    {
+        "tinh_cu": "Đồng Nai",
+        "xa_cu": "Phú Lý",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Phú Lý"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Bù Gia Mập",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Bù Gia Mập"
+    },
+    {
+        "tinh_cu": "Bình Phước",
+        "xa_cu": "Đăk Ơ",
+        "tinh_moi": "Đồng Nai",
+        "xa_moi": "Đăk Ơ"
+    }
+]

@@ -403,6 +403,8 @@ from app.pipelines.cap_doi_the_huong_dan_vien_du_lich_da_nang.attach import plan
 from app.pipelines.cap_doi_the_huong_dan_vien_du_lich_da_nang.process import run as cap_doi_the_hdv_dn_process
 from app.pipelines.cap_lai_the_huong_dan_vien_du_lich_da_nang.attach import plan as cap_lai_the_hdv_dn_attach
 from app.pipelines.cap_lai_the_huong_dan_vien_du_lich_da_nang.process import run as cap_lai_the_hdv_dn_process
+from app.pipelines.dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan.attach import plan as dk_lai_phuong_tien_chuyen_quyen_attach
+from app.pipelines.dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan.process import run as dk_lai_phuong_tien_chuyen_quyen_process
 
 PROCEDURES: list[dict] = [
     {
@@ -6728,6 +6730,38 @@ PROCEDURES: list[dict] = [
             "dòng Tờ khai."
         ),
     },
+    {
+        "key": "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+        # Mã TTHC 1.004002 (Sở Xây dựng, dvc.moc.gov.vn). Form.io, engine fillFormStandard dom-* + attach attp-row 4
+        # dòng: PDF gộp cả bộ được tách theo trang, dòng 3 gộp Hợp đồng → Hóa đơn → GCN đăng ký cũ, dòng 4 gộp Đơn 07
+        # → Đơn xóa 10. Phần I = người đại diện của CHỦ MỚI (không khoá theo tài khoản, chỉ ngày sinh đổ sẵn). Không
+        # urlScope: link kê khai đi từ cổng DVCQG (mã ghép từ ke_khai_links).
+        "detect": {
+            "textIncludes": ["chuyển quyền sở hữu phương tiện nhưng không thay đổi cơ quan đăng ký"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký lại phương tiện trong trường hợp chuyển quyền sở hữu phương tiện nhưng không thay đổi cơ quan "
+            "đăng ký phương tiện"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị đăng ký lại phương tiện thủy nội địa (Mẫu số 07) của chủ phương tiện MỚI — đã ký, đóng dấu.\n"
+            "2. Hợp đồng mua bán phương tiện (bản sao chứng thực, kèm lời chứng công chứng viên) hoặc quyết định điều "
+            "chuyển / giấy tờ cho, tặng, thừa kế.\n"
+            "3. Giấy chứng nhận đăng ký phương tiện cũ; hóa đơn GTGT; Đơn đề nghị xóa đăng ký (Mẫu số 10) của bên bán.\n"
+            "4. Giấy nộp tiền / biên lai lệ phí trước bạ; Giấy chứng nhận an toàn kỹ thuật và bảo vệ môi trường.\n"
+            "5. CCCD của người đại diện (người nộp) nếu có — để điền ngày sinh, ngày cấp, địa chỉ người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước đính kèm: biên lai lệ phí trước bạ→dòng 1; GCN an toàn kỹ thuật→dòng 2; Hợp đồng + Hóa đơn + GCN "
+            "đăng ký cũ→dòng 3 (Bản sao); Đơn 07 + Đơn xóa 10→dòng 4 (CCCD chỉ dùng ở bước thông tin)."
+        ),
+    },
 ]
 
 
@@ -6900,6 +6934,7 @@ _PIPELINE = {
     "cham-dut-hoat-dong-ho-kinh-doanh": cham_dut_hoat_dong_ho_kinh_doanh_process,
     "tam-ngung-kinh-doanh": tam_ngung_kinh_doanh_process,
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_process,
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7096,6 +7131,7 @@ _ATTACH_PIPELINE = {
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_attach,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_attach,
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_attach,
+    "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

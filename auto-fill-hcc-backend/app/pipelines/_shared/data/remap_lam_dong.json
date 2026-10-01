@@ -1606,6 +1606,7 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 1",
+        "huyen_cu": "Đà Lạt",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường Xuân Hương - Đà Lạt",
         "ghi_chu": "Phường 1 (TP Đà Lạt cũ) — khác Phường 1 (TP Bảo Lộc cũ)"
@@ -1613,6 +1614,7 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 2",
+        "huyen_cu": "Đà Lạt",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường Xuân Hương - Đà Lạt",
         "ghi_chu": "Phường 2 (TP Đà Lạt cũ) — khác Phường 2 (TP Bảo Lộc cũ)"
@@ -1727,6 +1729,7 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 1",
+        "huyen_cu": "Bảo Lộc",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường 1 Bảo Lộc",
         "ghi_chu": "Phường 1 (TP Bảo Lộc cũ) — khác Phường 1 (TP Đà Lạt cũ)"
@@ -1747,6 +1750,7 @@
     {
         "tinh_cu": "Lâm Đồng",
         "xa_cu": "Phường 2",
+        "huyen_cu": "Bảo Lộc",
         "tinh_moi": "Lâm Đồng",
         "xa_moi": "Phường 2 Bảo Lộc",
         "ghi_chu": "Phường 2 (TP Bảo Lộc cũ) — khác Phường 2 (TP Đà Lạt cũ)"

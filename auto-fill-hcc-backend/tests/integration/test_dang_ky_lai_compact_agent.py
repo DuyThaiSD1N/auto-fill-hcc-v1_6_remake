@@ -518,3 +518,28 @@ def test_dang_ky_lai_father_sharing_child_name_keeps_father_tick():
     result = {field["name"]: field["value"] for field in mapper.enrich(_self_requester_misread_as_father("Trần Văn Bình"))}
 
     assert result["QuanHe"] == "ChaDe"
+
+
+def _previous_agency(commune, district=None):
+    fields = [
+        {"name": "PreviousRegistration_AgencyProvince", "comp": "x-input", "value": "Lâm Đồng"},
+        {"name": "PreviousRegistration_AgencyCommune", "comp": "x-input", "value": commune},
+    ]
+    if district:
+        fields.append({"name": "PreviousRegistration_AgencyDistrict", "comp": "x-input", "value": district})
+    result = {field["name"]: field["value"] for field in mapper.enrich(fields)}
+    return result["coQuanDKTruocDay_filter"], result["coQuanDKTruocDay"]
+
+
+def test_dang_ky_lai_numbered_ward_uses_old_city_to_pick_merged_ward():
+    # "Phường 1" có ở cả TP Đà Lạt cũ lẫn TP Bảo Lộc cũ → cấp huyện cũ quyết định phường mới.
+    assert "PreviousRegistration_AgencyDistrict" in {field["name"] for field in FIELDS}
+    assert _previous_agency("Phường 1", "Thành phố Đà Lạt") == ("Lâm Đồng", "Phường Xuân Hương - Đà Lạt")
+    assert _previous_agency("Phường 2", "Bảo Lộc") == ("Lâm Đồng", "Phường 2 Bảo Lộc")
+
+
+def test_dang_ky_lai_numbered_ward_with_city_suffix_in_commune():
+    assert _previous_agency("Phường 1, thành phố Đà Lạt") == ("Lâm Đồng", "Phường Xuân Hương - Đà Lạt")
+    assert _previous_agency("Phường 1 - Đà Lạt") == ("Lâm Đồng", "Phường Xuân Hương - Đà Lạt")
+    # Tên hiện hành có sẵn gạch thì giữ nguyên, không bị tách.
+    assert _previous_agency("Phường Cam Ly - Đà Lạt") == ("Lâm Đồng", "Phường Cam Ly - Đà Lạt")

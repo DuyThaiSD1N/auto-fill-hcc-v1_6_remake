@@ -1275,6 +1275,7 @@
       "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp tỉnh)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-138a-761e-a8e5-014dbed4f2be",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1973,6 +1974,15 @@
       "code": "1.001440",
       "label": "Đà Nẵng - Thủ tục cấp thẻ hướng dẫn viên du lịch tại điểm",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-b526-75c8-a04d-beec224973cf",
+      "needsAgencySelect": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
+      "code": "1.004002",
+      "label": "Đăng ký lại phương tiện trong trường hợp chuyển quyền sở hữu phương tiện nhưng không thay đổi cơ quan đăng ký phương tiện",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-3a7b-7789-9f25-1ec7a3f64d81",
       "needsAgencySelect": true,
       "selectSo": true,
       "autoConfirm": true

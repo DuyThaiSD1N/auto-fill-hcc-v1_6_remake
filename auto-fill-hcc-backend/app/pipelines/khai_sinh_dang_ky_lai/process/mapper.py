@@ -792,6 +792,22 @@ def _previous_registration_number(values: dict) -> str:
 
 
 _AGENCY_PREFIX_RE = re.compile(r"^\s*(?:ủy\s+ban\s+nhân\s+dân|uỷ\s+ban\s+nhân\s+dân|ubnd)\s*[.:,-]?\s*", re.IGNORECASE)
+# Đuôi cấp huyện cũ viết liền sau tên xã: "Phường 1, thành phố Đà Lạt", "Phường 1 - Đà Lạt".
+_AGENCY_DISTRICT_SUFFIX_RE = re.compile(
+    r"^(?P<xa>.+?)\s*(?:,|\s-\s|\s–\s)\s*"
+    r"(?:(?:thành\s+phố|tp\.?|thị\s+xã|tx\.?|huyện|quận)\s+)?(?P<huyen>[^,]+?)\s*(?:,.*)?$",
+    re.IGNORECASE,
+)
+
+
+def _agency_area(province: str, commune: str, district: str) -> tuple[str, str]:
+    area = _normalize_domestic_area({
+        "quocGia": "Việt Nam",
+        "tinh": province,
+        "xa": commune,
+        "huyen": district,
+    }) or {}
+    return str(area.get("tinh") or province).strip(), str(area.get("xa") or "").strip()
 
 
 def _previous_registration_agency(values: dict) -> tuple[str, str, bool]:
@@ -805,22 +821,32 @@ def _previous_registration_agency(values: dict) -> tuple[str, str, bool]:
     ("Bắc Ninh"). Trả tỉnh cũ thì ô tỉnh không khớp option nào, ô Xã/Phường nạp theo tỉnh cũng
     trống theo — cả khối cơ quan đăng ký trước đây bỏ trắng dù hồ sơ ghi đủ.
 
+    CẤP HUYỆN cũ là gợi ý bắt buộc với phường đánh số: "Phường 1" của Lâm Đồng có ở cả TP Đà Lạt cũ
+    (→ Phường Xuân Hương - Đà Lạt) lẫn TP Bảo Lộc cũ, chỉ (tỉnh, xã) thì remap không dám chọn và
+    ô chọn nhận "Phường 1" — tên không còn trên cổng. Lấy huyện từ field riêng, hoặc từ đuôi
+    ", thành phố Đà Lạt" / " - Đà Lạt" agent để dính trong tên xã.
+
     Trả kèm cờ cho biết tên xã là PHỎNG ĐOÁN từ phép dò gần đúng chứ không phải chữ đọc được.
     """
     province = str(values.get("PreviousRegistration_AgencyProvince") or "").strip()
     commune = str(values.get("PreviousRegistration_AgencyCommune") or "").strip()
     commune = _AGENCY_PREFIX_RE.sub("", commune).strip()
+    district = _AGENCY_PREFIX_RE.sub("", str(values.get("PreviousRegistration_AgencyDistrict") or "")).strip()
     if not province and not commune:
         return "", "", False
-    area = _normalize_domestic_area({
-        "quocGia": "Việt Nam",
-        "tinh": province,
-        "xa": commune,
-    }) or {}
-    out_province = str(area.get("tinh") or province).strip()
-    out_commune = str(area.get("xa") or "").strip()
+    out_province, out_commune = _agency_area(province, commune, district)
     if out_commune and is_current_area(out_province, out_commune):
         return out_province, out_commune, False
+
+    # Tên xã nguyên chuỗi không khớp → thử tách đuôi cấp huyện. Phải thử SAU nguyên chuỗi vì danh
+    # mục hiện hành cũng có tên mang gạch ("Phường Cam Ly - Đà Lạt").
+    split = _AGENCY_DISTRICT_SUFFIX_RE.match(commune)
+    if split:
+        split_province, split_commune = _agency_area(
+            province, split.group("xa").strip(), district or split.group("huyen").strip()
+        )
+        if split_commune and is_current_area(split_province, split_commune):
+            return split_province, split_commune, False
 
     # Đến đây là ô Xã/Phường KHÔNG chọn được trên cổng: hoặc bảng remap không có tên này, hoặc
     # cả tỉnh đã tổ chức lại nên remap_area() chủ động bỏ trống. Thử gỡ đúng một lỗi đọc dấu
