@@ -5194,22 +5194,6 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": "Cấp mới giấy phép hoạt động khám bệnh, chữa bệnh",
-        "key": "cap-lai-giay-phep-hanh-nghe-truoc-2024",
-        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, field-key TRÙNG KHÍT cap-moi-giay-phep-hanh-nghe-
-        # chuyen-tiep; attach BẢNG attp-row ~34 dòng trùng tên (xem planner). Trang không in mã TTHC, URL SPA
-        # là ObjectId → detect theo cụm tên đặc trưng.
-        "detect": {
-            "textIncludes": [
-                "cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024",
-                "kiểm tra đánh giá năng lực hành nghề",
-            ],
-            "headingDisabled": True,
-            "textPriority": True,
-        },
-        "label": "Cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024 "
-                 "đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực "
-                 "hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng "
-                 "lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
@@ -5233,6 +5217,30 @@ PROCEDURES: list[dict] = [
             "dòng 4 (người phụ trách bộ phận chuyên môn — cơ sở có người phụ trách riêng thì cán bộ thay tệp); "
             "bản kê khai + giấy tờ chứng minh → dòng 5; danh sách hành nghề → dòng 6; danh mục kỹ thuật → dòng "
             "8. Dòng 7, 9, 10, 11 (bệnh viện / nhân đạo) chỉ đính khi hồ sơ có giấy tờ tương ứng."
+        ),
+    },
+    {
+        "key": "cap-lai-giay-phep-hanh-nghe-truoc-2024",
+        # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, field-key TRÙNG KHÍT cap-moi-giay-phep-hanh-nghe-
+        # chuyen-tiep; attach BẢNG attp-row ~34 dòng trùng tên (xem planner). Trang không in mã TTHC, URL SPA
+        # là ObjectId → detect theo cụm tên đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024",
+                "kiểm tra đánh giá năng lực hành nghề",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp lại giấy phép hành nghề đối với trường hợp được cấp trước ngày 01 tháng 01 năm 2024 "
+                 "đối với hồ sơ nộp từ ngày 01 tháng 01 năm 2024 đến thời điểm kiểm tra đánh giá năng lực "
+                 "hành nghề đối với các chức danh bác sỹ, y sỹ, điều dưỡng, hộ sinh, kỹ thuật y, dinh dưỡng "
+                 "lâm sàng, cấp cứu viên ngoại viện, tâm lý lâm sàng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
             "Giấy tờ cần tải lên để tự động điền (đều là của NGƯỜI HÀNH NGHỀ đề nghị cấp lại):\n"
             "1. Đơn đề nghị theo Mẫu 08 Phụ lục I NĐ 96/2023 — đã ký.\n"
             "2. Chứng chỉ / giấy phép hành nghề đã được cấp.\n"

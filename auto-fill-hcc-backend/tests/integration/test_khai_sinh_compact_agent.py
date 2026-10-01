@@ -659,3 +659,49 @@ def test_co_ho_so_unparsed_card_with_matching_id_code_keeps_issue_date():
 
     assert values["Mother_IdNumber"] == "001175000555"
     assert values["Mother_IdIssueDate"] == "09/05/2021"
+
+
+def test_co_ho_so_merged_scan_death_cert_before_declaration_is_not_subject():
+    # File scan gộp: trích lục khai tử của mẹ (nhãn trần "Họ, chữ đệm, tên:") đứng TRƯỚC tờ khai.
+    # Trước đây nhãn đó bị nhận thành <con> → mẹ "trùng con", cha "lệch thế hệ" → mất cả cha lẫn mẹ.
+    merged = {
+        "name": "can_cu.pdf",
+        "text": (
+            "───── Trang 1/2 ─────\n"
+            "TRÍCH LỤC KHAI TỬ\n"
+            "Họ, chữ đệm, tên: LÊ THỊ HẠNH\n"
+            "Ngày, tháng, năm sinh: 01/01/1950\n"
+            "Giới tính: Nữ Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Giấy tờ tùy thân: Thẻ căn cước công dân số 001150000111\n"
+            "───── Trang 2/2 ─────\n"
+            "TỜ KHAI ĐĂNG KÝ KHAI SINH\n"
+            "Họ, chữ đệm, tên người yêu cầu: TRẦN THỊ MAI\n"
+            "Quan hệ với người được khai sinh: Bản thân\n"
+            "Đề nghị cơ quan đăng ký khai sinh cho người dưới đây:\n"
+            "Họ, chữ đệm, tên: TRẦN THỊ MAI\n"
+            "Ngày, tháng, năm sinh: 10/10/1975\n"
+            "Giới tính: Nữ Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Họ, chữ đệm, tên người mẹ: LÊ THỊ HẠNH\n"
+            "Năm sinh: 01/01/1950 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Nơi cư trú: (2) Đã chết\n"
+            "Họ, chữ đệm, tên người cha: TRẦN VĂN BÌNH\n"
+            "Năm sinh: 01/01/1945 Dân tộc: Kinh Quốc tịch: Việt Nam\n"
+            "Tôi cam đoan nội dung đề nghị đăng ký khai sinh trên đây là đúng sự thật\n"
+        ),
+    }
+    context, values, ui = _co_ho_so_fields([merged], {
+        "Subject_FullName": "TRẦN THỊ MAI",
+        "Subject_BirthDate": "10/10/1975",
+        "Mother_FullName": "LÊ THỊ HẠNH",
+        "Mother_BirthDateOrYear": "01/01/1950",
+        "Father_FullName": "TRẦN VĂN BÌNH",
+        "Father_BirthDateOrYear": "01/01/1945",
+        "Father_Gender": "Nam",
+    })
+
+    assert co_ho_so_reason._role_name(co_ho_so_reason._section(context, "con")) == "TRẦN THỊ MAI"
+    assert values["Mother_FullName"] == "LÊ THỊ HẠNH"
+    assert values["Father_FullName"] == "TRẦN VĂN BÌNH"
+    by_name = {f["name"]: f for f in ui}
+    assert by_name["HoTenMeKS"]["value"] == "LÊ THỊ HẠNH"
+    assert by_name["HoTenChaKS"]["value"] == "TRẦN VĂN BÌNH"

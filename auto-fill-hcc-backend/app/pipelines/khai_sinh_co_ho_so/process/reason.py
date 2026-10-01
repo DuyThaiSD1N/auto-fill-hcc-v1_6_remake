@@ -444,17 +444,24 @@ def _declaration_documents(documents: list[dict]) -> list[dict]:
 def _declaration_blocks(text) -> dict[str, str]:
     """Cắt tờ khai thành từng khối theo nhãn quan hệ in sẵn trên biểu mẫu."""
     lines = str(text or "").splitlines()
+    # File scan gộp (CCCD + trích lục khai tử + cam đoan + tờ khai) có nhãn trần "Họ, chữ đệm, tên:"
+    # của trích lục khai tử đứng TRƯỚC tờ khai → bị nhận thành <con>. Chỉ đọc từ tiêu đề tờ khai trở đi.
+    title_index = next(
+        (index for index, line in enumerate(lines) if "to khai dang ky khai sinh" in _fold(line)),
+        0,
+    )
+    lines = lines[title_index:]
     anchors: list[tuple[int, str, str]] = []
     stop_index = len(lines)
     # "Đề nghị ... đăng ký khai sinh cho người có tên dưới đây" mở đầu khối người được đăng ký
-    # lại. Nhãn trần "Họ, chữ đệm, tên:" đứng TRƯỚC dòng này vẫn thuộc người yêu cầu (OCR hay rụng
-    # mất chữ "người yêu cầu"), nên không được nhận nhầm thành <con>.
+    # khai sinh. Nhãn trần "Họ, chữ đệm, tên:" đứng TRƯỚC dòng này vẫn thuộc người yêu cầu (OCR hay
+    # rụng mất chữ "người yêu cầu"), nên không được nhận nhầm thành <con>.
     subject_start = next(
         (
             index
             for index, line in enumerate(lines)
             if re.search(
-                r"[dđ][aă]ng\s+k[yý]\s+l[aạ]i\s+khai\s+sinh\s+cho\s+ng[uư][oờ]i",
+                r"[dđ][aă]ng\s+k[yý]\s+(?:l[aạ]i\s+)?khai\s+sinh\s+cho\s+ng[uư][oờ]i",
                 line,
                 flags=re.IGNORECASE,
             )

@@ -543,3 +543,45 @@ def test_dang_ky_lai_numbered_ward_with_city_suffix_in_commune():
     assert _previous_agency("Phường 1 - Đà Lạt") == ("Lâm Đồng", "Phường Xuân Hương - Đà Lạt")
     # Tên hiện hành có sẵn gạch thì giữ nguyên, không bị tách.
     assert _previous_agency("Phường Cam Ly - Đà Lạt") == ("Lâm Đồng", "Phường Cam Ly - Đà Lạt")
+
+
+def _authorized_with_residence(xa, dia_chi="Do Nha"):
+    return [
+        {"name": "Subject_FullName", "comp": "x-input", "value": "TRẦN VĂN BÌNH"},
+        {"name": "Subject_ResidenceDomestic", "comp": "x-select-area", "value": {
+            "quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Hiệp Hòa", "diaChi": "Thôn Do Nha"}},
+        {"name": "Authorized_FullName", "comp": "x-input", "value": "Lê Văn Cường"},
+        {"name": "Authorized_IdNumber", "comp": "x-input", "value": "001095001234"},
+        {"name": "Authorized_SourceDocumentTitle", "comp": "x-input", "value": "GIẤY ỦY QUYỀN"},
+        {"name": "Authorized_ResidenceDomestic", "comp": "x-select-area", "value": {
+            "quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": xa, "diaChi": dia_chi}},
+    ]
+
+
+def _requester_area(fields):
+    field = next(f for f in mapper.enrich(fields) if f["name"] == "nycNoiCuTru_TrongNuoc")
+    return field["value"], field.get("default")
+
+
+def test_dang_ky_lai_authorized_misread_commune_borrows_same_hamlet_role():
+    # OCR đọc nhầm tên phường viết tay trên giấy ủy quyền → mượn phường của vai cùng thôn, tô vàng.
+    area, default = _requester_area(_authorized_with_residence("Lươn"))
+
+    assert area["xa"] == "Phường Hiệp Hòa"
+    assert area["diaChi"] == "Do Nha"
+    assert default is True
+
+
+def test_dang_ky_lai_authorized_misread_commune_other_hamlet_left_blank():
+    area, default = _requester_area(_authorized_with_residence("Lươn", "Thôn Đông Sơn"))
+
+    assert area["xa"] == ""
+    assert area["tinh"] == "Bắc Ninh"
+    assert default is True
+
+
+def test_dang_ky_lai_authorized_valid_commune_kept():
+    area, default = _requester_area(_authorized_with_residence("Hiệp Hòa", "Thôn Đông Sơn"))
+
+    assert area["xa"] == "Phường Hiệp Hòa"
+    assert not default

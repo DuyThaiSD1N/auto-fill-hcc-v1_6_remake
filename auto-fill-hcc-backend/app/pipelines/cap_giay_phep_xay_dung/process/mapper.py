@@ -19,6 +19,38 @@ _EXPECT_PERSON_FIELDS = (
 )
 
 
+# Cấu hình theo tài khoản: phường Đăk Cấm (Quảng Ngãi) LUÔN chọn "Cá nhân" ở ô "Tổ chức/cá nhân lập
+# thiết kế", kể cả khi giấy tờ có công ty thiết kế; nơi khác giữ nguyên logic suy theo giấy tờ. Mapper
+# không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự
+# bật được cho xã khác.
+PROCEDURE_KEY = "cap-giay-phep-xay-dung-moi-nha-o-rieng-le"
+FORCE_INDIVIDUAL_DESIGNER_OPTION = "forceIndividualDesigner"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def is_quang_ngai_dak_cam(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Đăk Cấm, Quảng Ngãi ("Đăk"/"Đắk", có/không tiền tố đều khớp)."""
+    if not user:
+        return False
+    tinh = _fold(user.get("tinh") or "")
+    xa = _fold(user.get("xa") or "")
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "quang ngai" in tinh and xa == "dak cam"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ luôn chọn cá nhân lập thiết kế do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(FORCE_INDIVIDUAL_DESIGNER_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_quang_ngai_dak_cam(user):
+        result[FORCE_INDIVIDUAL_DESIGNER_OPTION] = True
+    return result
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -613,7 +645,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     design_kind = _fold(values.get("LapThietKe_Loai"))
     has_design_org = bool(values.get("ThietKe_ToChuc_Ten") or values.get("ThietKe_ToChuc_MaSo")) or "to chuc" in design_kind
-    if has_design_org:
+    if (options or {}).get(FORCE_INDIVIDUAL_DESIGNER_OPTION) is True:
+        # Đăk Cấm: luôn "Cá nhân". Không có cá nhân thiết kế riêng thì lấy chủ nhiệm thiết kế — người
+        # đứng tên bản vẽ của công ty thiết kế.
+        add("data[toChucCaNhanLapThietKe]", "caNhan")
+        designer_name = _text(values.get("ThietKe_CaNhan_HoTen"))
+        designer_certificate = _text(values.get("ThietKe_CaNhan_ChungChi"))
+        if not designer_name and not designer_certificate:
+            designer_name = _text(values.get("ThietKe_ChuNhiem_HoTen"))
+            designer_certificate = _chung_chi_cua_chu_nhiem(designer_name, _design_leads(values)) or _text(
+                values.get("ThietKe_ChuNhiem_ChungChi")
+            )
+        add("data[tenCaNhanLapThietKe]", designer_name)
+        add("data[maSoChungChiCaNhanLapThietKe]", designer_certificate)
+    elif has_design_org:
         add("data[toChucCaNhanLapThietKe]", "toChuc")
         add("data[tenDoanhNghiepLapThietKe]", _text(values.get("ThietKe_ToChuc_Ten")))
         # Chỉ điền nếu là MSDN hợp lệ (10 số / 10-3); mã năng lực "LAD…" → bỏ, ô bắt buộc sẽ tô đỏ.
