@@ -73,26 +73,10 @@
       "autoConfirm": true
     },
     {
-      "key": "khai-sinh-nuoc-ngoai",
-      "code": "2.000528",
-      "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8662-763f-927f-dc039ede198c",
-      "needsAgencySelect": true,
-      "autoConfirm": true
-    },
-    {
       "key": "khai-sinh-da-co-ho-so",
       "code": "1.004772",
       "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6711-733d-b674-fc3d805e70c8",
-      "needsAgencySelect": true,
-      "autoConfirm": true
-    },
-    {
-      "key": "khai-sinh-nuoc-ngoai-da-co-ho-so",
-      "code": "1.000893",
-      "label": "Thủ tục đăng ký khai sinh có yếu tố nước ngoài cho người đã có hồ sơ, giấy tờ cá nhân",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3faf-768a-9224-a27e812b1907",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
