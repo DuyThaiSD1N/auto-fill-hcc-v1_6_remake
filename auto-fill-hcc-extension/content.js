@@ -6452,6 +6452,59 @@
     return false;
   }
 
+  // comp "dom-editgrid": bảng Form.io EDITGRID (vd "Danh sách máy chính" của tờ khai đăng ký tàu cá). Khác
+  // datagrid: mỗi dòng phải bấm "Thêm" → điền ô data[GRID][i][field] trong dòng đang mở → bấm "Lưu" mới vào
+  // danh sách. f.value = mảng object {field: giá trị}. Bảng đã có đủ số dòng (điền lần 2) → không thêm trùng.
+  async function fillStandardEditGrid(f, root = document) {
+    const key = String(f.gridKey || String(f.name || "").replace(/^data\[|\]$/g, "")).trim();
+    const rows = (Array.isArray(f.value) ? f.value : []).filter((r) => r && typeof r === "object");
+    if (!key || !rows.length) return false;
+    const ref = (suffix) => `[ref="${CSS.escape(`editgrid-${key}-${suffix}`)}"]`;
+    const wrap = () => root.querySelector(`.formio-component-${CSS.escape(key)}`);
+    const rowCount = () => wrap()?.querySelectorAll(`li${ref("row")}`).length || 0;
+    const openSave = () => wrap()?.querySelector(`button${ref("saveRow")}`) || null;
+    const press = (btn) => {
+      try { btn.scrollIntoView({ block: "center" }); } catch (_) { /* ignore */ }
+      ["pointerdown", "mousedown", "pointerup", "mouseup"].forEach((type) => {
+        try { btn.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window })); } catch (_) { /* ignore */ }
+      });
+      btn.click();
+    };
+    if (!(wrap() || await waitFor(wrap, 2000, 100))) return false;
+    if (!openSave() && rowCount() >= rows.length) return true;
+    let ok = true;
+    for (let i = openSave() ? rowCount() - 1 : rowCount(); i < rows.length; i++) {
+      if (!openSave()) {
+        const add = wrap()?.querySelector(`button${ref("addRow")}`);
+        if (!add || add.disabled) { ok = false; break; }
+        press(add);
+      }
+      const prefix = `data[${key}][${i}][`;
+      const firstInput = () => Array.from(wrap()?.querySelectorAll(`[name^="${CSS.escape(prefix)}"]`) || [])
+        .find(standardControlVisible) || null;
+      if (!await waitFor(firstInput, 3000, 100)) { ok = false; break; }
+      await sleep(200);
+      for (const [field, value] of Object.entries(rows[i])) {
+        if (value === null || value === undefined || value === "") continue;
+        const el = wrap()?.querySelector(`input[name="${CSS.escape(prefix + field + "]")}"], textarea[name="${CSS.escape(prefix + field + "]")}"]`);
+        if (el && !el.disabled) fillStandardInput(el, String(value));
+        else console.warn(`[AutoFill-STD] Editgrid ${key}: không thấy ô ${field} dòng ${i}.`);
+        await sleep(60);
+      }
+      const save = openSave();
+      if (!save) { ok = false; break; }
+      await sleep(150);
+      press(save);
+      if (!await waitFor(() => !openSave(), 2500, 100)) {
+        console.warn(`[AutoFill-STD] Editgrid ${key}: dòng ${i} chưa lưu được (còn ô bắt buộc trống?).`);
+        ok = false;
+        break;
+      }
+      await sleep(200);
+    }
+    return ok;
+  }
+
   function shouldPreferFormioSelectComponent(select, names = []) {
     if (!select) return false;
     const group = standardMarkTarget(select);
@@ -7558,6 +7611,8 @@
           ok = await fillVehicleAddRows(f, candidates);
         } else if (f.comp === "dom-click") {
           ok = await clickStandardButton(f, candidates, root);
+        } else if (f.comp === "dom-editgrid") {
+          ok = await fillStandardEditGrid(f, root);
         } else if (f.comp === "dom-checkbox") {
           const el = findStandardCheckbox(candidates, f.optionValue, f.optionLabel, root);
           ok = await fillStandardCheckbox(el, f.value);

@@ -1,9 +1,12 @@
 """Map compact source facts → Form.io data[...] fields cho thủ tục "Cấp giấy chứng nhận đăng ký tàu cá,
 tàu phục vụ nuôi trồng thủy sản".
 
-Đơn giản hơn #66 (không occurrence, không sub-form tàu, không Phần III):
 - Nhân thân 2 vai (như #66): tự nộp → TICH data[isOwnerDossierCheck]=True (cổng tự đổ Phần I → Phần II,
   KHÔNG điền owner_*); nộp thay → bỏ tích + điền owner_* = chủ tàu. Quyết định bằng formContext.
+- Phần III — TỜ KHAI ĐĂNG KÝ TÀU CÁ (sub-form cổng thêm 09/2026): người đứng khai LUÔN là chủ tàu. Các key
+  trùng Phần I (data[fullname/address/identityNumber/phoneNumber]) điền occurrence=1, Phần I occurrence=0 —
+  thiếu occurrence thì data[identityNumber] Phần I (bị khóa theo VNeID) bị bỏ qua và ô tờ khai bị ghi nhầm.
+  Bảng máy chính / chủ sở hữu là EDITGRID (comp dom-editgrid, value = danh sách dòng).
 - Nhánh CHỦ TÀU = TỔ CHỨC (chưa test): data[chonDoiTuong]="Tổ chức/Doanh nghiệp" + data[organization]/
   data[taxCode] (Phần I) + data[ownerOrganizationFullname]/data[ownerTaxCode] (Phần II).
 """
@@ -20,6 +23,8 @@ from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_gcn_dang_ky_tau_ca.process.schema import UI_COMP_BY_NAME
 
 _CHON_CA_NHAN = "Cá nhân"
+# Key có ở CẢ Phần I (occurrence 0) lẫn tờ khai Phần III (occurrence 1).
+_SHARED_KEYS = {"data[fullname]", "data[address]", "data[identityNumber]", "data[phoneNumber]"}
 _CHON_TO_CHUC = "Tổ chức/Doanh nghiệp"  # đúng option HTML thật.
 
 
@@ -158,20 +163,111 @@ def _issuer(value: Any) -> str | None:
     return normalize_issuer(text) if text else None
 
 
+def _full_address(area: dict | None) -> str | None:
+    """Ô "Thường trú tại" của tờ khai là 1 ô chữ: ghép 'chi tiết, xã, tỉnh'."""
+    if not area:
+        return None
+    parts = [_text(area.get("diaChi")), _commune_label(area.get("xa")), _province_label(area.get("tinh"))]
+    return ", ".join(p for p in parts if p) or None
+
+
+def _number(value: Any, *, integer: bool = False) -> str | None:
+    """Ô number Form.io chỉ nhận số với dấu chấm thập phân: '12,90' → '12.9', '04' → '4'."""
+    text = _text(value)
+    if not text:
+        return None
+    m = re.search(r"\d+(?:[.,]\d+)?", text)
+    if not m:
+        return None
+    raw = m.group(0).replace(",", ".")
+    try:
+        num = float(raw)
+    except ValueError:
+        return None
+    if integer:
+        return str(int(num))
+    return str(int(num)) if num.is_integer() else f"{num:g}"
+
+
+def _year(value: Any) -> str | None:
+    m = re.search(r"\b(1[89]\d\d|20\d\d)\b", _text(value) or "")
+    return m.group(1) if m else None
+
+
+_EMPTY_WORDS = {"khong", "khong co", "k", "0", "-", "..."}
+
+
+def _optional_text(value: Any) -> str | None:
+    text = _text(value)
+    if not text or _fold(text).strip(" .") in _EMPTY_WORDS or not re.search(r"\w", text):
+        return None
+    return text
+
+
+def _may_chinh_rows(value: Any) -> list[dict]:
+    rows: list[dict] = []
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, dict):
+            continue
+        ky_hieu = _text(item.get("kyHieu") or item.get("kyHieuMay"))
+        so_may_text = _text(item.get("soMay"))
+        cong_suat = _number(item.get("congSuatKW") or item.get("congSuat"))
+        vong_quay = _number(item.get("vongQuayRPM") or item.get("vongQuay"))
+        ghi_chu = _text(item.get("ghiChu"))
+        if not any((ky_hieu, so_may_text, cong_suat, vong_quay)):
+            continue
+        # "Số máy" trên cổng là ô NUMBER; số máy có chữ (vd '4DR5-123') không gõ được → đưa sang ghi chú.
+        so_may = so_may_text if so_may_text and re.fullmatch(r"\d+", so_may_text) else None
+        if so_may_text and not so_may:
+            ghi_chu = "; ".join(p for p in (f"Số máy: {so_may_text}", ghi_chu) if p)
+        row = {
+            "thuTu": str(len(rows) + 1),
+            "kyHieuMay": ky_hieu,
+            "soMay": so_may,
+            "congSuatDinhMucKW": cong_suat,
+            "vongQuayDinhMucRPM": vong_quay,
+            "ghiChu": ghi_chu,
+        }
+        rows.append({k: v for k, v in row.items() if v})
+    return rows
+
+
+def _chu_so_huu_rows(value: Any) -> list[dict]:
+    rows: list[dict] = []
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, dict):
+            continue
+        ho_ten = _text(item.get("hoTen"))
+        if not ho_ten:  # cổng bắt buộc họ tên → dòng thiếu tên không lưu được
+            continue
+        row = {
+            "thuTu": str(len(rows) + 1),
+            "hoTenChuSoHuu": ho_ten,
+            "diaChiChuSoHuu": _text(item.get("diaChi")),
+            "soGiayToChuSoHuu": _identity(item.get("soGiayTo")),
+        }
+        rows.append({k: v for k, v in row.items() if v})
+    return rows
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
-    seen: set[str] = set()
+    seen: set[tuple[str, int | None]] = set()
 
-    def add(name: str, value) -> None:
-        if name in seen or value in (None, "", {}, []):
+    def add(name: str, value, *, occurrence=None) -> None:
+        seen_key = (name, occurrence)
+        if seen_key in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
-        seen.add(name)
+        field = {"name": name, "comp": comp, "value": value}
+        if name in _SHARED_KEYS:
+            field["occurrence"] = 0 if occurrence is None else occurrence
+        out.append(field)
+        seen.add(seen_key)
 
     def add_area(province_name, district_name, address_name, area) -> None:
         if not area:
@@ -233,47 +329,75 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[ownerNation]", nation)
         if not org_name:
             warnings.append("Chủ tàu là Tổ chức nhưng thiếu tên tổ chức (ChuTau_TenToChuc).")
-        return out, warnings
-
-    # === NHÁNH CÁ NHÂN ===
-    add("data[chonDoiTuong]", _CHON_CA_NHAN)
-
-    if not is_nop_thay:
-        # --- TỰ NỘP: Phần I = chủ tàu. TICH "Người nộp là chủ hồ sơ" (mặc định CHƯA tick) → cổng tự đổ
-        # Phần I → Phần II. KHÔNG điền owner_* (tránh đè dữ liệu cổng vừa đồng bộ). ---
-        add("data[fullname]", name)
-        add("data[birthday]", birthday)
-        add("data[gender]", gender)
-        add("data[identityNumber]", identity)
-        add("data[identityDate]", id_date)
-        add("data[idIssuePlace]", issuer)
-        add_area("data[province]", "data[district]", "data[address]", residence)
-        add("data[phoneNumber]", phone)
-        add("data[email]", email)
-        add("data[isOwnerDossierCheck]", True)
     else:
-        # --- NỘP THAY: Phần I = NGƯỜI NỘP; BỎ TÍCH; Phần II owner_* = chủ tàu. ---
-        add("data[fullname]", nop_ext_name or ctx_name)
-        add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
-        add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
-        add("data[identityNumber]", nop_ext_id or ctx_identity)
-        add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
-        add("data[idIssuePlace]", _issuer(values.get("NguoiNop_NoiCap")))
-        add_area("data[province]", "data[district]", "data[address]", _area(values.get("NguoiNop_ThuongTru")))
-        add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
-        add("data[email]", _text(values.get("NguoiNop_Email")))
+        # === NHÁNH CÁ NHÂN ===
+        add("data[chonDoiTuong]", _CHON_CA_NHAN)
 
-        add("data[isOwnerDossierCheck]", False)
+        if not is_nop_thay:
+            # --- TỰ NỘP: Phần I = chủ tàu. TICH "Người nộp là chủ hồ sơ" (mặc định CHƯA tick) → cổng tự đổ
+            # Phần I → Phần II. KHÔNG điền owner_* (tránh đè dữ liệu cổng vừa đồng bộ). ---
+            add("data[fullname]", name)
+            add("data[birthday]", birthday)
+            add("data[gender]", gender)
+            add("data[identityNumber]", identity)
+            add("data[identityDate]", id_date)
+            add("data[idIssuePlace]", issuer)
+            add_area("data[province]", "data[district]", "data[address]", residence)
+            add("data[phoneNumber]", phone)
+            add("data[email]", email)
+            add("data[isOwnerDossierCheck]", True)
+        else:
+            # --- NỘP THAY: Phần I = NGƯỜI NỘP; BỎ TÍCH; Phần II owner_* = chủ tàu. ---
+            add("data[fullname]", nop_ext_name or ctx_name)
+            add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
+            add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))
+            add("data[identityNumber]", nop_ext_id or ctx_identity)
+            add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
+            add("data[idIssuePlace]", _issuer(values.get("NguoiNop_NoiCap")))
+            add_area("data[province]", "data[district]", "data[address]", _area(values.get("NguoiNop_ThuongTru")))
+            add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")))
+            add("data[email]", _text(values.get("NguoiNop_Email")))
 
-        add("data[ownerFullname]", name)
-        add("data[ownerBirthday]", birthday)
-        add("data[ownerGender]", gender)
-        add("data[ownerIdentityNumber]", identity)
-        add("data[ownerIdentityDate]", id_date)
-        add("data[ownerIdIssuePlace]", issuer)
-        add_area("data[ownerProvince]", "data[ownerDistrict]", "data[ownerAddress]", residence)
-        add("data[ownerPhoneNumber]", phone)
-        add("data[ownerEmail]", email)
-        add("data[ownerNation]", nation)
+            add("data[isOwnerDossierCheck]", False)
+
+            add("data[ownerFullname]", name)
+            add("data[ownerBirthday]", birthday)
+            add("data[ownerGender]", gender)
+            add("data[ownerIdentityNumber]", identity)
+            add("data[ownerIdentityDate]", id_date)
+            add("data[ownerIdIssuePlace]", issuer)
+            add_area("data[ownerProvince]", "data[ownerDistrict]", "data[ownerAddress]", residence)
+            add("data[ownerPhoneNumber]", phone)
+            add("data[ownerEmail]", email)
+            add("data[ownerNation]", nation)
+
+
+    # === PHẦN III — TỜ KHAI ĐĂNG KÝ TÀU CÁ: người đứng khai LUÔN là chủ tàu (kể cả nộp thay). ===
+    declarant = name or org_name
+    add("data[diaDanh]", _text(values.get("ToKhai_DiaDanh")))
+    add("data[ngayBC]", _date(values.get("ToKhai_NgayKhai")))
+    add("data[kinhGui]", _text(values.get("ToKhai_KinhGui")))
+    add("data[fullname]", declarant, occurrence=1)
+    add("data[address]", _full_address(residence), occurrence=1)
+    add("data[identityNumber]", identity, occurrence=1)
+    add("data[phoneNumber]", phone, occurrence=1)
+    add("data[tenTau]", _optional_text(values.get("Tau_Ten")))
+    add("data[congDungNghe]", _text(values.get("Tau_CongDung")))
+    add("data[namDong]", _year(values.get("Tau_NamDong")))
+    add("data[noiDong]", _optional_text(values.get("Tau_NoiDong")))
+    add("data[cangDangKy]", _text(values.get("Tau_CangDangKy")))
+    for ui_name, src in (
+        ("data[Lmax]", "Tau_Lmax"), ("data[Bmax]", "Tau_Bmax"), ("data[Dmax]", "Tau_D"),
+        ("data[Ltk]", "Tau_Ltk"), ("data[Btk]", "Tau_Btk"), ("data[d]", "Tau_d"),
+        ("data[tongDungTich]", "Tau_TongDungTich"), ("data[trongTai]", "Tau_TrongTai"),
+    ):
+        add(ui_name, _number(values.get(src)))
+    add("data[soThuyenVien]", _number(values.get("Tau_SoThuyenVien"), integer=True))
+    add("data[vatLieuVo]", _text(values.get("Tau_VatLieuVo")))
+    add("data[ngheKiem]", _optional_text(values.get("Tau_NgheKiem")))
+    add("data[vungHoatDong]", _text(values.get("Tau_VungHoatDong")))
+    add("data[mayChinh]", _may_chinh_rows(values.get("Tau_MayChinh")))
+    add("data[chuSoHuu]", _chu_so_huu_rows(values.get("Tau_ChuSoHuu")))
+    add("data[chuDN]", declarant)
 
     return out, warnings

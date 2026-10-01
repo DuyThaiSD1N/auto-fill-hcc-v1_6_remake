@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from difflib import SequenceMatcher
 from typing import Any
 
 from app.pipelines._shared.compact_agent.issuer import (
@@ -24,7 +25,7 @@ from app.pipelines._shared.compact_agent.issuer import (
     default_issuer,
     normalize_issuer,
 )
-from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.area_remap import canonical_ward, is_current_area, near_match_ward, remap_area
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cap_ban_sao_van_bang_so_goc.process.schema import UI_COMP_BY_NAME
 
@@ -211,6 +212,36 @@ def _remap(area: dict, ocr_text: str = "") -> dict:
     return out
 
 
+_XA_IN_TEXT = re.compile(r"\b(?:xã|phường|thị\s+trấn)\s+((?:[^\W\d_]+[ \t]*){1,4})", re.IGNORECASE)
+
+
+def _current_ward(tinh: str | None, xa: str | None, ocr_text: str = "") -> tuple[str | None, bool]:
+    """(tên phường/xã chọn được trên cổng, có phải PHỎNG ĐOÁN không). Xã không có trong danh mục hiện
+    hành (vd viết tay 'Trung Thuần' OCR ra 'Trung Thiên') → option không khớp, ô Phường/Xã đỏ và cổng
+    xoá luôn ô Tỉnh. Gỡ theo thứ tự: lệch đúng 1 ký tự (near_match_ward) → tên xã CÙNG TỈNH được nhắc
+    nguyên văn ở chỗ khác trong hồ sơ (dòng chứng thực/địa điểm lập giấy) và gần giống tên đọc được.
+    Không gỡ được → bỏ trống (giữ ô Tỉnh), không giao tên chết cho extension."""
+    tinh_bare = _strip_admin_prefix(tinh or "")
+    if not xa or not tinh_bare or is_current_area(tinh_bare, xa):
+        return xa, False
+    guess = near_match_ward(tinh_bare, _strip_admin_prefix(xa))
+    if guess:
+        return guess, True
+    target = _fold(_strip_admin_prefix(xa))
+    found: set[str] = set()
+    for m in _XA_IN_TEXT.finditer(unicodedata.normalize("NFC", ocr_text or "")):
+        words = m.group(1).split()
+        for n in range(len(words), 0, -1):
+            ward = canonical_ward(tinh_bare, " ".join(words[:n]))
+            if ward:
+                found.add(ward)
+                break
+    close = {w for w in found if SequenceMatcher(None, target, _fold(_strip_admin_prefix(w))).ratio() >= 0.75}
+    if len(close) == 1:
+        return close.pop(), True
+    return None, False
+
+
 def _ten_van_bang(loai: Any) -> str | None:
     """Tên văn bằng cho ô 'Đã được cấp' khi Phiếu không ghi rõ — suy từ loại tốt nghiệp."""
     lf = _fold(loai)
@@ -322,13 +353,24 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     warnings: list[str] = []
     seen: set[str] = set()
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, default: bool = False) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        field = {"name": name, "comp": comp, "value": value}
+        if default:  # giá trị PHỎNG ĐOÁN → extension tô vàng cho cán bộ soát.
+            field["default"] = True
+        out.append(field)
+        seen.add(name)
+
+    def clear(name: str) -> None:
+        """Xoá ô cổng tự đổ sẵn từ tài khoản VNeID (không thuộc người nộp thật)."""
+        comp = UI_COMP_BY_NAME.get(name)
+        if name in seen or not comp:
+            return
+        out.append({"name": name, "comp": comp, "value": "", "clear": True})
         seen.add(name)
 
     def check(name: str, on: bool) -> None:
@@ -412,7 +454,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     chu_tt = _remap((_area(chu["tt"]) if chu_cccd_valid else {}) or vb_tt
                     or _owner_addr_from_authorization(ocr_text, anchor), ocr_text)
     chu_tinh = _province_label(chu_tt.get("tinh") or chu_tt.get("tinhThanh"))
-    chu_xa = _text(chu_tt.get("xa") or chu_tt.get("phuong"))
+    chu_xa, chu_xa_guess = _current_ward(chu_tinh, _text(chu_tt.get("xa") or chu_tt.get("phuong")), ocr_text)
     chu_diachi = _text(chu_tt.get("diaChi") or chu_tt.get("chiTiet"))
     # Loại giấy tờ theo ĐỘ DÀI số định danh (12→CCCD, 9→CMND), KHÔNG tin nhãn form; nơi cấp suy theo đó.
     chu_loai_gt = _id_doc_type_by_len(chu_id) or _text(values.get("VanBang_LoaiGiayTo")) or ""
@@ -439,19 +481,27 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         add("data[gender]", proxy["gender"])
         p_dob = _date_in_ocr(proxy["dob"], ocr_text)
         p_ngaycap = _date_in_ocr(proxy["ngaycap"], ocr_text)
-        add("data[birthday]", p_dob)
-        add("data[identityDate]", p_ngaycap)
+        # Ngày sinh/ngày cấp không đủ trên giấy → XOÁ giá trị VNeID tự đổ (của chủ tài khoản), không để sót.
+        for ui_name, v in (("data[birthday]", p_dob), ("data[identityDate]", p_ngaycap)):
+            if v:
+                add(ui_name, v)
+            else:
+                clear(ui_name)
         missing = [lbl for lbl, v in (("ngày sinh", p_dob), ("ngày cấp CCCD", p_ngaycap)) if not v]
         if missing:
-            warnings.append(f"Giấy ủy quyền không ghi đủ {', '.join(missing)} của người được ủy quyền — vui lòng "
-                            "nhập tay (các ô này đang là của tài khoản đăng nhập).")
+            warnings.append(f"Giấy ủy quyền không ghi đủ {', '.join(missing)} của người được ủy quyền — đã xoá "
+                            "giá trị của tài khoản đăng nhập, vui lòng nhập tay.")
         p_loai = _id_doc_type_by_len(proxy["id"]) or "Căn cước công dân"
         add("data[idIssuePlace]", _issue_place(proxy["noicap"], p_loai, p_ngaycap))
-        p_tt = _remap(_area(proxy["tt"]) or {}, ocr_text)
-        add("data[province]", _province_label(p_tt.get("tinh") or p_tt.get("tinhThanh")))
-        add("data[district]", _text(p_tt.get("xa") or p_tt.get("phuong")))
+        # Thường trú người được ủy quyền; giấy không ghi thì theo thường trú chủ hồ sơ trong hồ sơ.
+        p_tt = _remap(_area(proxy["tt"]) or {}, ocr_text) or chu_tt
+        p_tinh = _province_label(p_tt.get("tinh") or p_tt.get("tinhThanh"))
+        p_xa, p_xa_guess = _current_ward(p_tinh, _text(p_tt.get("xa") or p_tt.get("phuong")), ocr_text)
+        add("data[province]", p_tinh)
+        add("data[district]", p_xa, default=p_xa_guess)
         add("data[address]", _text(p_tt.get("diaChi") or p_tt.get("chiTiet")))
-        add("data[phoneNumber]", proxy["phone"])
+        # Giấy ủy quyền hiếm khi ghi SĐT bên được ủy quyền → dùng SĐT liên hệ của hồ sơ (đơn/phiếu).
+        add("data[phoneNumber]", proxy["phone"] or chu_phone, default=not proxy["phone"])
         add("data[email]", proxy["email"])
     elif not is_org and chu_id and ctx_id and chu_id == ctx_id:
         add("data[identityNumber]", chu_id)
@@ -460,7 +510,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         add("data[identityDate]", chu_ngaycap)
         add("data[idIssuePlace]", chu_noicap)
         add("data[province]", chu_tinh)
-        add("data[district]", chu_xa)
+        add("data[district]", chu_xa, default=chu_xa_guess)
         add("data[address]", chu_diachi)
         add("data[phoneNumber]", chu_phone)
         add("data[email]", chu["email"] if chu_cccd_valid else None)
@@ -485,7 +535,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     add("data[ownerNation]", chu_quoctich)
     add("data[ownerPhoneNumber]", chu_phone)
     add("data[ownerProvince]", chu_tinh)
-    add("data[ownerDistrict]", chu_xa)
+    add("data[ownerDistrict]", chu_xa, default=chu_xa_guess)
     add("data[ownerAddress]", chu_diachi)
 
     # ===== Panel "Phieu" (Phiếu đề nghị BM04) — chép gần nguyên văn phiếu =====

@@ -4,11 +4,11 @@ Môi trường dichvucongnnmt.mae.gov.vn (Form.io).
 CÙNG nền tảng Form.io + engine (fillFormStandard dom-* + attach attp-row) và field-key nhân thân
 data[...] TRÙNG KHÍT #66 (cap_van_ban_chap_thuan_tau_ca) / #92 / #101.
 
-KHÁC #66 (đơn giản hơn):
-- Form Bước 1 CHỈ thu NHÂN THÂN 2 vai: Phần I (người nộp) / Phần II (chủ tàu = chủ hồ sơ).
-- KHÔNG có occurrence (key Phần I ≠ Phần II), KHÔNG có sub-form tờ khai, KHÔNG có ô thông số tàu nào.
-  Toàn bộ dữ liệu TÀU (số đăng ký, kích thước, máy chính, nghề, vùng, năm/nơi đóng…) chỉ nằm trong
-  file ĐÍNH KÈM ở Bước 2 (xác nhận trong bảng "Ma trận đa nguồn" của mapping) — không nhập lại trên form.
+Form Bước 1:
+- Phần I (người nộp) / Phần II (chủ tàu = chủ hồ sơ) — nhân thân 2 vai.
+- Phần III — sub-form "1.003650_M2a.H38" (TỜ KHAI ĐĂNG KÝ TÀU CÁ), cổng thêm vào 09/2026: kính gửi, người
+  đứng khai (= chủ tàu), thông số tàu, EDITGRID máy chính + chủ sở hữu, đại diện chủ tàu. Key
+  data[fullname/address/identityNumber/phoneNumber] TRÙNG Phần I → Phần I occurrence=0, tờ khai occurrence=1.
 - Có 3 ĐỐI TƯỢNG (data[chonDoiTuong]): "Cá nhân" / "Tổ chức/Doanh nghiệp" / "Cơ quan nhà nước" — toggle
   ẩn/hiện data[organization]+data[taxCode] (Phần I) và data[ownerOrganizationFullname]+data[ownerTaxCode]
   (Phần II). Bản này TEST đầy đủ nhánh CÁ NHÂN; nhánh Tổ chức/Cơ quan implement theo mapping nhưng CHƯA

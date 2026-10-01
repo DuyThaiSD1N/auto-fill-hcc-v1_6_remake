@@ -6,9 +6,12 @@ gồm: CCCD của chủ tàu, Tờ khai đăng ký Mẫu số 02a.ĐKT, và (tù
 nhận đăng ký tàu cá cũ, Giấy chứng nhận xóa đăng ký, Thông báo thuế trước bạ; có thể có CCCD của người
 nộp thay.
 
-⚠ FORM CHỈ THU NHÂN THÂN. Toàn bộ THÔNG SỐ TÀU (tên tàu, số đăng ký, kích thước, máy chính, nghề, vùng
-hoạt động, năm/nơi đóng, tổng dung tích…) KHÔNG có ô nhập trên form — chỉ nằm trong file đính kèm. TUYỆT
-ĐỐI KHÔNG cố trích các thông số tàu này (không có field cho chúng).
+TỜ KHAI ĐĂNG KÝ TÀU CÁ (ToKhai_* / Tau_*): form có Phần III chép lại Tờ khai 02a.ĐKT. Trích từ CHÍNH Tờ
+khai 02a.ĐKT; ô nào Tờ khai để trống thì bổ sung từ Giấy chứng nhận an toàn kỹ thuật / Biên bản kiểm tra
+kỹ thuật / Giấy chứng nhận đăng ký tàu cá cũ / Hợp đồng mua bán (cùng một con tàu). Phân biệt D (chiều cao
+mạn, đi với Lmax/Bmax) với d (chiều chìm, đi với Ltk/Btk). Số đo trả con số, dấu chấm thập phân. Tên tàu
+Tờ khai để trống → bỏ Tau_Ten (KHÔNG lấy số đăng ký thay). Tau_MayChinh: mỗi máy chính 1 phần tử.
+Tau_ChuSoHuu CHỈ khi tàu nhiều chủ.
 
 HAI vai — tách RIÊNG:
 - CHỦ TÀU (NguoiDeNghi_*) = CHỦ HỒ SƠ = người đứng tên đăng ký tàu. Đây là người CHÍNH. Trích toàn bộ
