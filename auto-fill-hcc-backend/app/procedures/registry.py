@@ -6331,9 +6331,9 @@ PROCEDURES: list[dict] = [
         "key": "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly",
         # Mã TTHC 1.012756 (Văn phòng Đăng ký đất đai). Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io,
         # engine fillFormStandard dom-* (CÙNG field-key panel "Thông tin chung" với 1.013977) + attach attp-row 2
-        # dòng: PDF gộp vài chục trang được tách theo trang, MỖI GIẤY TỜ MỘT FILE (D1-xx / D2-xx), các file cùng
-        # dòng đặt chung vào ô "Chọn tệp tin" (multiple). Họ tên + CCCD + ngày sinh người nộp khoá theo tài khoản
-        # → mốc formContext đối chiếu người đại diện theo pháp luật / bên được ủy quyền. urlScope khoá host: mã
+        # dòng: KHÔNG tách file — PDF gộp đính nguyên vào dòng 1 (Đơn). Họ tên + CCCD + ngày sinh người nộp khoá
+        # theo tài khoản; chủ hồ sơ tổ chức → ô Họ tên chủ hồ sơ, giới tính, ngày cấp, nơi cấp theo người đại diện
+        # theo pháp luật trên GCN đăng ký doanh nghiệp. urlScope khoá host: mã
         # 1.012756 là mã quốc gia, form tỉnh khác không cùng field-key.
         "detect": {
             "urlScope": ["dichvucong.danang.gov.vn"],
@@ -6357,8 +6357,8 @@ PROCEDURES: list[dict] = [
             "tờ khai lệ phí trước bạ.\n"
             "4. CCCD của người nộp (tài khoản đăng nhập) nếu có; nộp thay thì kèm giấy ủy quyền.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Bước đính kèm (mỗi giấy tờ một file, đánh số D1-xx / D2-xx theo thứ tự): Đơn + các giấy tờ kèm theo "
-            "mục 5→dòng 1; Báo cáo rà soát + trích lục bản đồ→dòng 2; cả hai 'Bản chính'. Trang trắng bị bỏ."
+            "Bước đính kèm: KHÔNG tách file — toàn bộ file tải lên đính nguyên vào dòng 1 (Đơn đăng ký đất đai), "
+            "'Bản chính'."
         ),
     },
     {
