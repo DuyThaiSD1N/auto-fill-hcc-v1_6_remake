@@ -20,9 +20,12 @@ FIELDS: list[dict] = [
      "desc": "Địa chỉ nơi cư trú người đề nghị (mục c) Địa chỉ của tờ khai) — CHUỖI MỘT DÒNG, giữ đủ "
              "tổ/thôn + phường/xã + tỉnh. KHÔNG trả object."},
     {"name": "Don_DienThoai", "desc": "Điện thoại liên hệ trên tờ khai (chỉ chữ số/định dạng như đơn)."},
+    {"name": "Don_Email", "desc": 'Hộp thư điện tử trên tờ khai (mục 1.d). Bỏ nếu trống.'},
     {"name": "Don_NoiKhai", "desc": 'Địa danh nơi khai ở cuối đơn (vd "Song Liễu"). Bỏ nếu không có.'},
 
     # Thửa đất (mục 2 tờ khai).
+    {"name": "Dat_ThuaSo", "desc": 'Số thửa đất (mục 2 "a) Thửa đất số"), chỉ phần số, vd "68".'},
+    {"name": "Dat_ToBanDo", "desc": 'Số tờ bản đồ (mục "2.2. Tờ bản đồ số"), chỉ phần số, vd "3".'},
     {"name": "Dat_DiaChi",
      "desc": "Địa chỉ thửa đất (mục b) Địa chỉ (5)) — CHUỖI MỘT DÒNG, giữ đủ phường/xã, tỉnh. KHÔNG object."},
     {"name": "Dat_DienTich", "desc": 'Diện tích thửa đất (mục c), vd "152,0 m²".'},
@@ -35,6 +38,19 @@ FIELDS: list[dict] = [
      "desc": "Nguồn gốc sử dụng đất (mục e, chú thích (9)) — lấy TOÀN BỘ nội dung NGUYÊN VĂN từ sau "
              '"(9):" cho đến trước mục "g)", GỒM MỌI CÂU/ĐOẠN (nguồn gốc, phiếu thu, đồng chủ sử dụng, '
              "quá trình sử dụng, xây nhà...). KHÔNG rút gọn, KHÔNG cắt bớt."},
+
+    # Nhà ở, công trình xây dựng (mục 3 tờ khai) — chỉ có khi người dân kê khai tài sản.
+    {"name": "Nha_Loai", "desc": "a) Loại nhà ở, công trình xây dựng (11)."},
+    {"name": "Nha_DienTichXayDung", "desc": 'b) Diện tích xây dựng (12), giữ đơn vị như đơn (vd "80,5 m²").'},
+    {"name": "Nha_DienTichSan", "desc": "c) Diện tích sàn xây dựng/diện tích sử dụng (13), giữ đơn vị."},
+    {"name": "Nha_SoHuuChung", "desc": "d) Sở hữu chung (14), giữ đơn vị."},
+    {"name": "Nha_SoHuuRieng", "desc": "Sở hữu riêng (14), giữ đơn vị."},
+    {"name": "Nha_SoTang", "desc": 'đ) Tổng số tầng, chỉ phần số (vd "3").'},
+    {"name": "Nha_SoTangNoi", "desc": "Số tầng nổi, chỉ phần số."},
+    {"name": "Nha_SoTangHam", "desc": "Số tầng hầm, chỉ phần số."},
+    {"name": "Nha_NguonGoc", "desc": "e) Nguồn gốc nhà ở, công trình (15) (vd \"Tự xây dựng\")."},
+    {"name": "Nha_NamHoanThanh", "desc": "g) Năm hoàn thành xây dựng (16)."},
+    {"name": "Nha_ThoiHanSoHuu", "desc": "h) Thời hạn sở hữu đến (17)."},
 
     # Mục "5. Những giấy tờ nộp kèm theo" — danh sách giấy tờ đính kèm công dân tự liệt kê.
     {"name": "Don_KemTheo1", "desc": 'Giấy tờ nộp kèm số (1) ở mục 5 (vd "Mẫu số 15a. danh sách...").'},
@@ -62,11 +78,27 @@ L_MUCDICH = "d) Sử dụng vào mục đích"
 L_TUTHOIDIEM = "từ thời điểm"
 L_THOIHAN = "d) Thời hạn đề nghị được sử dụng đất"
 L_NGUONGOC = "e) Nguồn gốc sử dụng đất"
-# Ô (1)(2)(3) thực chất là mục "5. Những giấy tờ nộp kèm theo" (KHÔNG phải chú thích như xlsx ghi).
+# Ô (1)(2) thực chất là mục "5. Những giấy tờ nộp kèm theo" (KHÔNG phải chú thích như xlsx ghi).
+# Form 1.115443 chỉ còn 2 ô (bỏ "(3)") → mapper gộp giấy tờ (3) vào ô (2).
 L_KT1 = "(1)"
 L_KT2 = "(2)"
-L_KT3 = "(3)"
 L_NOIKHAI = "Nơi khai hồ sơ"
+
+# Ô mới của form 1.115443 — khớp theo CLASS eform-element-<Key> (nhãn "tờ bản đồ số" trùng ở mục g).
+C_EMAIL = "HopThuDienTuNeuCo"
+C_THUA_SO = "AThuaDatSo"
+C_TO_BAN_DO = "22ToBanDoSo"
+C_NHA_LOAI = "ALoaiNhaOCongTrinhXayDung11"
+C_NHA_DT_XD = "BDienTichXayDung12"
+C_NHA_DT_SAN = "CDienTichSanXayDungdienTichSuDung13"
+C_NHA_SH_CHUNG = "DSoHuuChung14"
+C_NHA_SH_RIENG = "SoHuuRieng14"
+C_NHA_SO_TANG = "DSoTang"
+C_NHA_TANG_NOI = "TangTrongDoSoTangNoi"
+C_NHA_TANG_HAM = "TangSoTangHam"
+C_NHA_NGUON_GOC = "ENguonGoc15"
+C_NHA_NAM_HT = "GNamHoanThanhXayDung16"
+C_NHA_THOI_HAN = "HThoiHanSoHuuDen17"
 
 # ---- UI: người nhận kết quả (Phần IV) — khớp theo NAME ----
 N_HOTEN = "nhanTaiNhahoTen"
@@ -82,7 +114,12 @@ UI_COMP_BY_NAME = {
     L_DIENTHOAI: "bn-input", L_DAT_DIACHI: "bn-input", L_DAT_DIENTICH: "bn-input",
     L_SD_CHUNG: "bn-input", L_SD_RIENG: "bn-input", L_MUCDICH: "bn-input", L_TUTHOIDIEM: "bn-input",
     L_THOIHAN: "bn-input", L_NGUONGOC: "bn-input", L_KT1: "bn-input", L_KT2: "bn-input",
-    L_KT3: "bn-input", L_NOIKHAI: "bn-input",
+    L_NOIKHAI: "bn-input",
+    C_EMAIL: "bn-input", C_THUA_SO: "bn-input", C_TO_BAN_DO: "bn-input",
+    C_NHA_LOAI: "bn-input", C_NHA_DT_XD: "bn-input", C_NHA_DT_SAN: "bn-input",
+    C_NHA_SH_CHUNG: "bn-input", C_NHA_SH_RIENG: "bn-input", C_NHA_SO_TANG: "bn-input",
+    C_NHA_TANG_NOI: "bn-input", C_NHA_TANG_HAM: "bn-input", C_NHA_NGUON_GOC: "bn-input",
+    C_NHA_NAM_HT: "bn-input", C_NHA_THOI_HAN: "bn-input",
     N_HOTEN: "bn-input", N_CCCD: "bn-input", N_SDT: "bn-input", N_DIACHI: "bn-input",
     L_DENGHI: "bn-radio",
 }

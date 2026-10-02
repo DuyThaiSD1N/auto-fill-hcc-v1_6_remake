@@ -11,6 +11,14 @@ NGUỒN & CÁCH LẤY:
 - Các field thửa đất (Dat_*) lấy NGUYÊN VĂN từ mục 2 của tờ khai (địa chỉ, diện tích, sử dụng
   chung/riêng, mục đích, từ thời điểm, thời hạn, nguồn gốc). Mục trống thì bỏ field.
 - Dat_DienTich giữ nguyên cách ghi (vd "152,0 m²"). Dat_MucDich vd "Đất ở". Dat_ThoiHan vd "Lâu dài".
+- Dat_ThuaSo / Dat_ToBanDo lấy ở dòng "a) Thửa đất số: ...; 2.2. Tờ bản đồ số: ..." của ĐƠN, chỉ
+  phần số (vd "68", "3"). Đơn để trống thì lấy ở Phiếu xác nhận kết quả đo đạc/trích đo/trích lục
+  của cùng thửa đất. Dat_DienTich cũng vậy: đơn để trống thì lấy diện tích trên phiếu đo đạc.
+- Ô CHỈ CÓ dấu chấm/dấu "…" hoặc chỉ còn đơn vị in sẵn (".... m²", "… tầng") là ô TRỐNG → bỏ field,
+  KHÔNG trả "m²", "…", "....".
+- Nha_* (mục 3 Nhà ở, công trình xây dựng) CHỈ trả khi người dân thật sự kê khai; mục 3 để trống thì
+  bỏ hết Nha_*.
+- Don_Email: hộp thư điện tử ở mục 1.d; trống thì bỏ.
 
 - QUAN TRỌNG — NGOẠI LỆ quy tắc địa chỉ chung (quy tắc 5): Don_DiaChi và Dat_DiaChi PHẢI là CHUỖI
   (string) MỘT DÒNG, chép nguyên văn, GIỮ ĐỦ tổ dân phố/thôn + phường/xã + tỉnh. KHÔNG trả object,
@@ -29,5 +37,5 @@ schema. Không bịa; tài liệu/mục không có thì bỏ field.
 
 Ví dụ output ĐÚNG:
 ```json
-{"fields":{"Cccd_HoTen":"VŨ THỊ THẢO","Cccd_SoDinhDanh":"033180009318","Cccd_NgayCap":"15/09/2021","Cccd_NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","Don_KinhGui":"UBND phường Song Liễu, tỉnh Bắc Ninh","Don_DiaChi":"Tổ dân phố Đồng Ngư, phường Song Liễu, tỉnh Bắc Ninh","Don_DienThoai":"0395.792.788","Dat_DiaChi":"Tổ dân phố Đồng Ngư, phường Song Liễu, tỉnh Bắc Ninh","Dat_DienTich":"152,0 m²","Dat_MucDich":"Đất ở","Dat_TuThoiDiem":"27/03/2008","Dat_ThoiHan":"Lâu dài","Dat_NguonGoc":"Giao đất ở"}}
+{"fields":{"Cccd_HoTen":"NGUYỄN VĂN AN","Cccd_SoDinhDanh":"001090012345","Cccd_NgayCap":"10/01/2022","Cccd_NoiCap":"Cục Cảnh sát quản lý hành chính về trật tự xã hội","Don_KinhGui":"UBND phường Hòa Bình, tỉnh Bắc Ninh","Don_DiaChi":"Tổ dân phố Số 1, phường Hòa Bình, tỉnh Bắc Ninh","Don_DienThoai":"0900.000.111","Dat_ThuaSo":"125","Dat_ToBanDo":"7","Dat_DiaChi":"Tổ dân phố Số 1, phường Hòa Bình, tỉnh Bắc Ninh","Dat_DienTich":"150,0 m²","Dat_MucDich":"Đất ở","Dat_TuThoiDiem":"01/01/2005","Dat_ThoiHan":"Lâu dài","Dat_NguonGoc":"Giao đất ở"}}
 ```"""

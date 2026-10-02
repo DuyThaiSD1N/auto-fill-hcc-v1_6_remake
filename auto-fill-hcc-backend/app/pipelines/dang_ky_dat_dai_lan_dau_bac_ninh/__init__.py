@@ -2,6 +2,6 @@
 
 Cùng nền tảng Liferay + select2 như các thủ tục Bắc Ninh khác → dùng chung engine
 `content/fill-bacninh.js`. Ô thân đơn là `element_<id>` khớp theo NHÃN; khối người nhận là
-field tên cố định `nhanTaiNha*` khớp theo NAME; ô "Đề nghị (a/b/c)" là radio khớp theo nhãn.
-maThuTucHanhChinh=1.013978.
+field tên cố định `nhanTaiNha*` khớp theo NAME; ô "Đề nghị (a/b/c)" là checkbox khớp theo nhãn.
+maThuTucHanhChinh=1.115443 (trước đây 1.013978); đính kèm khớp theo mã thành phần TP-H05.xxxxxx.
 """

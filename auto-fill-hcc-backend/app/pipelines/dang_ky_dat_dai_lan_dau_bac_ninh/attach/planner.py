@@ -1,6 +1,6 @@
 """Đính kèm cho "[Bắc Ninh] Đăng ký đất đai, cấp GCN lần đầu".
 
-LLM phân loại là chính → NHÃN RÚT GỌN (catalog.py) → componentName chi tiết (mã KQ) hoặc ô bổ sung.
+LLM phân loại là chính → NHÃN RÚT GỌN (catalog.py) → componentName (mã TP-H05...) hoặc ô bổ sung.
 Rule từ khóa/tên file chỉ là fallback khi OCR rỗng hoặc LLM không chắc.
 """
 import re
@@ -37,20 +37,28 @@ def _label_by_keywords(ocr_text: str) -> str | None:
     h = _fold(ocr_text or "")
     if not h.strip():
         return None
-    if "mau so 15a" in h or "mau 15a" in h or ("danh sach" in h and "chung quyen su dung dat" in h):
+    # Tiêu đề đơn xét TRƯỚC: thân Mẫu 15 có câu hướng dẫn "kê khai ... theo Mẫu số 15a".
+    if "don dang ky dat dai" in h:
+        return "don_mau_15"
+    if "mau so 15a" in h or "mau 15a" in h or ("danh sach" in h and (
+            "chung quyen su dung dat" in h or "su dung chung thua dat" in h)):
         return "danh_sach_15a"
+    # Tờ khai thuế/tiền SDĐ/lệ phí trước bạ có mục "ủy quyền khai thay" → xét TRƯỚC ủy quyền.
+    if any(k in h for k in ("to khai thue", "to khai tien su dung dat", "to khai le phi truoc ba",
+                            "phieu thu", "bien lai", "nghia vu tai chinh")):
+        return "chung_tu_tai_chinh"
     if "uy quyen" in h or "dai dien theo" in h:
         return "uy_quyen"
     if "ket hon" in h:
         return "gcn_ket_hon"
-    if "phieu thu" in h or "nghia vu tai chinh" in h:
-        return "chung_tu_tai_chinh"
     if "thua ke" in h:
         return "thua_ke"
-    if "trich do" in h:
+    if "trich do" in h or "trich luc ban do" in h or "ket qua do dac" in h or "moc gioi thua dat" in h:
         return "trich_do_dia_chinh"
     if "xu phat" in h:
         return "xu_phat"
+    if "mau so 18" in h or "don dang ky bien dong" in h:
+        return "don_mau_18"
     if "don dang ky dat dai" in h or "mau so 15" in h:
         return "don_mau_15"
     if _looks_like_identity(h):
@@ -68,8 +76,10 @@ def _label_by_filename(name: str) -> str | None:
         return "uy_quyen"
     if "ket hon" in h or "dkkh" in h:
         return "gcn_ket_hon"
-    if "phieu thu" in h:
+    if "phieu thu" in h or "thue" in h:
         return "chung_tu_tai_chinh"
+    if "do dac" in h or "trich do" in h:
+        return "trich_do_dia_chinh"
     if "can cuoc" in h or "cccd" in h or "cmnd" in h or "cmt" in h:
         return "cccd"
     if "mau 15" in h or "mau so 15" in h or "don dk" in h or "don dang ky" in h:

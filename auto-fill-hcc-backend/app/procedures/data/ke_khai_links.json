@@ -404,6 +404,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-dat-dai-lan-dau-dien-tich-tang-them",
+      "code": "1.115443",
+      "label": "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với cá nhân, cộng đồng dân cư, hộ gia đình, người gốc Việt Nam định cư ở nước ngoài; Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm so với Giấy chứng nhận đã cấp mà phần diện tích tăng thêm chưa được cấp Giấy chứng nhận",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f0347-7cb9-732a-bce1-a787258e29e1",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "xet-tuyen-cong-chuc",
       "code": "1.014113",
       "label": "Thủ tục xét tuyển Công chức",

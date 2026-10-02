@@ -3171,11 +3171,14 @@ PROCEDURES: list[dict] = [
             "3. Nếu có: Giấy chứng nhận kết hôn (đồng sử dụng), Mẫu 15a (danh sách đồng sử dụng), "
             "phiếu thu/chứng từ tài chính, giấy tờ nguồn gốc đất, hợp đồng ủy quyền.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Điền đơn: khớp ô theo NHÃN (Họ tên, Địa chỉ, thửa đất, diện tích, mục đích, thời hạn, nguồn "
-            "gốc...) + người nhận kết quả; ô 'Đề nghị' tự tick a) đăng ký + b) cấp Giấy chứng nhận.\n"
-            "Đính kèm: Đơn Mẫu 15→KQ005747, Mẫu 15a→KQ006106, phiếu thu→KQ006110, ủy quyền→KQ005910, "
-            "giấy tờ nguồn gốc→KQ006114; CCCD/kết hôn→ô đính kèm bổ sung. Cơ quan tiếp nhận, tỉnh/phường "
-            "người nhận và khối ủy quyền là select/khối riêng theo địa bàn — chọn/khai tay."
+            "Điền đơn: khớp ô theo NHÃN (Họ tên, Địa chỉ, thửa đất số, tờ bản đồ, diện tích, mục đích, "
+            "thời hạn, nguồn gốc, nhà ở...) + người nhận kết quả; ô 'Đề nghị' tự tick a) đăng ký + b) cấp "
+            "Giấy chứng nhận.\n"
+            "Đính kèm theo mã thành phần: Đơn Mẫu 15→TP-H05.000018, Mẫu 15a→TP-H05.000159.S, tờ khai "
+            "thuế/phiếu thu→TP-H05.000149.S, ủy quyền→TP-H05.000046, đo đạc/trích đo→TP-H05.000167.S, "
+            "giấy tờ nguồn gốc→TP-H05.000168.S, GCN đã cấp→TP-H05.000151.S; CCCD/kết hôn→ô đính kèm bổ "
+            "sung. Cơ quan tiếp nhận, tỉnh/phường người nhận và khối ủy quyền là select/khối riêng theo "
+            "địa bàn — chọn/khai tay."
         ),
     },
     {

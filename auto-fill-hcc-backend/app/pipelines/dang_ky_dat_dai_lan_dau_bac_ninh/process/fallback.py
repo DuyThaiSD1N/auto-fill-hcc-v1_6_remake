@@ -2,6 +2,12 @@
 
 import re
 
+from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process.mapper import _PAGE_MARK_RE
+from app.pipelines.dang_ky_dat_dai_lan_dau_bac_ninh.process.mapper import _clean as _clean_value
+
+# Neo "a)" / "2.2." để chỉ bắt dòng của ĐƠN, không bắt "Thửa đất số" của phiếu đo đạc/tờ khai thuế.
+_THUA_SO_RE = re.compile(r"a\)\s*Th[ửừ]a\s*đ[ấa]t\s*s[ốo]\s*:?\s*([^;\n]+)", re.IGNORECASE)
+_TO_BAN_DO_RE = re.compile(r"2\.2\.?\s*T[ờo]\s*b[ảa]n\s*đ[ồo]\s*s[ốo]\s*:?\s*([^;\n]+)", re.IGNORECASE)
 _DON_DIACHI_RE = re.compile(r"c\)\s*Địa\s*ch[ỉi]\s*\(?4?\)?\s*:?\s*(.+)", re.IGNORECASE)
 _DAT_DIACHI_RE = re.compile(r"b\)\s*Địa\s*ch[ỉi]\s*\(?5?\)?\s*:?\s*(.+)", re.IGNORECASE)
 _KINHGUI_RE = re.compile(r"Kính\s*g[ửu]i\s*:?\s*(.+)", re.IGNORECASE)
@@ -43,7 +49,15 @@ def _has_ward(v) -> bool:
 
 def apply_ocr_fallback(raw_fields, documents: list[dict]) -> dict:
     fields = _as_dict(raw_fields)
-    text = "\n".join(d.get("text") or "" for d in documents)
+    # Bỏ vạch ngắt trang trước khi bắt khối: mục e) Nguồn gốc hay vắt sang trang 2.
+    text = _PAGE_MARK_RE.sub(" ", "\n".join(d.get("text") or "" for d in documents))
+
+    for key, rx in (("Dat_ThuaSo", _THUA_SO_RE), ("Dat_ToBanDo", _TO_BAN_DO_RE)):
+        if not _clean_value(fields.get(key)):
+            m = rx.search(text)
+            v = _clean_value(m.group(1)) if m else None
+            if v:
+                fields[key] = v
 
     if not _has_ward(fields.get("Don_DiaChi")):
         m = _DON_DIACHI_RE.search(text)
@@ -70,20 +84,21 @@ def apply_ocr_fallback(raw_fields, documents: list[dict]) -> dict:
     # Nguồn gốc: LLM hay CẮT NGẮN ô văn bản dài → ưu tiên bản OCR đầy đủ nếu dài hơn.
     m = _NGUONGOC_RE.search(text)
     if m:
-        full = " ".join(m.group(1).split()).strip(" .;,-")
-        cur = str(fields.get("Dat_NguonGoc") or "")
+        full = _clean_value(m.group(1)) or ""
+        cur = str(_clean_value(fields.get("Dat_NguonGoc")) or "")
         if full and len(full) > len(cur):
             fields["Dat_NguonGoc"] = full
 
     # Mục 5 "Những giấy tờ nộp kèm theo": vá (1)(2)(3) nếu thiếu (là DANH SÁCH giấy tờ đính kèm).
-    if not all(str(fields.get(f"Don_KemTheo{i}") or "").strip() for i in (1, 2, 3)):
+    # Dòng để trống của mẫu ("(1) …") không phải giá trị → _clean_value trả None, bỏ qua.
+    if not all(_clean_value(fields.get(f"Don_KemTheo{i}")) for i in (1, 2, 3)):
         mb = _KEMTHEO_BLOCK_RE.search(text)
         if mb:
             for num, val in _KEMTHEO_ITEM_RE.findall(mb.group(1)):
                 if num in ("1", "2", "3"):
                     key = f"Don_KemTheo{num}"
-                    if not str(fields.get(key) or "").strip():
-                        v = " ".join(val.split()).strip(" .;,-")
+                    if not _clean_value(fields.get(key)):
+                        v = _clean_value(val)
                         if v:
                             fields[key] = v
     return fields

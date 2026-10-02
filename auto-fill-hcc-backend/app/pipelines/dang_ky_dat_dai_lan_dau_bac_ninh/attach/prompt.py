@@ -18,12 +18,18 @@ cấp Giấy chứng nhận lần đầu" trên cổng dịch vụ công tỉnh 
 <critical_rules>
 1. Chỉ phân loại theo OCR_TEXT (nội dung). KHÔNG dùng tên file, thứ tự file.
 2. Trả về ĐÚNG một nhãn rút gọn trong danh mục cho mỗi tài liệu (trường "label").
-3. "Đơn đăng ký đất đai... Mẫu số 15" → "don_mau_15". "Danh sách/văn bản xác định thành viên chung
-   quyền sử dụng đất (Mẫu 15a)" → "danh_sach_15a" (KHÔNG nhầm với "don_mau_15").
+3. "Đơn đăng ký đất đai... Mẫu số 15" → "don_mau_15". "Danh sách những người sử dụng chung thửa
+   đất... (Kèm theo Mẫu số 15)" / Mẫu 15a → "danh_sach_15a" (KHÔNG nhầm với "don_mau_15" dù có chữ
+   "Mẫu số 15").
 4. Giấy chứng nhận/đăng ký KẾT HÔN → "gcn_ket_hon". Căn cước công dân → "cccd".
-5. Hợp đồng/văn bản ủy quyền, đại diện → "uy_quyen". Phiếu thu tiền/nghĩa vụ tài chính → "chung_tu_tai_chinh".
-6. Không nhận biết được thì "khac".
-7. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
+5. Giấy/hợp đồng ủy quyền mà tiêu đề là "GIẤY ỦY QUYỀN"/"HỢP ĐỒNG ỦY QUYỀN" → "uy_quyen".
+6. Tờ khai thuế sử dụng đất phi nông nghiệp, tờ khai tiền sử dụng đất, tờ khai lệ phí trước bạ, phiếu
+   thu, biên lai → "chung_tu_tai_chinh" (kể cả khi tờ khai có mục "cá nhân được ủy quyền khai thay" —
+   đó KHÔNG phải giấy ủy quyền).
+7. Phiếu xác nhận kết quả đo đạc hiện trạng thửa đất, bản mô tả ranh giới mốc giới, trích lục/trích
+   đo bản đồ địa chính → "trich_do_dia_chinh".
+8. Không nhận biết được thì "khac".
+9. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 
 <document_name_rules>
