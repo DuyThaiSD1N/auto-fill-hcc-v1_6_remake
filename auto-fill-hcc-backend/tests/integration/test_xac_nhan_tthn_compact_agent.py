@@ -6,7 +6,7 @@ import httpx
 import respx
 
 from app.config import settings
-from app.pipelines._shared.compact_agent import prompt as compact_prompt
+from app.pipelines.xac_nhan_tthn.process import base_prompt as compact_prompt
 from app.pipelines.xac_nhan_tthn import process as agent
 from app.pipelines.xac_nhan_tthn.process import mapper
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
@@ -43,8 +43,8 @@ def test_xac_nhan_tthn_prompt_requires_purpose_from_current_declaration():
 def test_xac_nhan_tthn_maps_declared_married_and_self_relation():
     mapped = mapper.enrich(
         [
-            {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN THỊ A"},
-            {"name": "Cccd_SoDinhDanh", "comp": "x-input", "value": "0123456789"},
+            {"name": "NguoiDuocCap_HoTen", "comp": "x-input", "value": "NGUYỄN THỊ A"},
+            {"name": "NguoiDuocCap_SoDinhDanh", "comp": "x-input", "value": "0123456789"},
             {"name": "ToKhai_LaBanThan", "comp": "x-input", "value": True},
             {
                 "name": "TinhTrangHonNhanC1",
@@ -63,117 +63,6 @@ def test_xac_nhan_tthn_maps_declared_married_and_self_relation():
 
     assert values["quanhevoinguoiduocxacminh"] == "1"
     assert values["TinhTrangHonNhanC1"] == "Hiện tại đang có vợ/chồng"
-
-
-_POA_ONLY_AREA = {"quocGia": "Việt Nam", "tinh": "Bắc Ninh", "xa": "Hiệp Hòa", "diaChi": "Thôn Mẫu"}
-_POA_ONLY_FIELDS = [
-    {"name": "Cccd_HoTen", "comp": "x-input", "value": "TRẦN VĂN BÌNH"},
-    {"name": "Cccd_SoDinhDanh", "comp": "x-input", "value": "001090000111"},
-    {"name": "Cccd_NgaySinh", "comp": "x-date", "value": "01/01/1990"},
-    {"name": "PoA_SubjectName", "comp": "x-input", "value": "LÊ THỊ HOA"},
-    {"name": "PoA_SubjectDoB", "comp": "x-date", "value": "02/02/1960"},
-    {"name": "PoA_SubjectIdNumber", "comp": "x-input", "value": "001160000222"},
-    {"name": "PoA_SubjectIdDate", "comp": "x-date", "value": "10/10/2021"},
-    {"name": "PoA_SubjectAddress", "comp": "x-select-area", "value": _POA_ONLY_AREA},
-    {"name": "PoA_SubjectCccdHoTen", "comp": "x-input", "value": "LÊ THỊ HOA"},
-    {"name": "PoA_SubjectCccdSoDinhDanh", "comp": "x-input", "value": "001160000222"},
-    {"name": "PoA_SubjectCccdNgaySinh", "comp": "x-date", "value": "02/02/1960"},
-    {"name": "PoA_SubjectCccdGioiTinh", "comp": "x-input", "value": "Nữ"},
-]
-
-
-def test_xac_nhan_tthn_poa_without_declared_requester_fills_submitter_by_default():
-    """Mặc định (không phải Hiệp Hòa): mục I là người được ủy quyền đi nộp, "Khác"."""
-    mapped = mapper.enrich([dict(f) for f in _POA_ONLY_FIELDS])
-    values = {field["name"]: field["value"] for field in mapped}
-
-    assert values["quanhevoinguoiduocxacminh"] == "2"
-    assert values["quanhekhac"] == "Người được ủy quyền"
-    assert values["HoVaTenC"] == "TRẦN VĂN BÌNH"
-    assert values["SoDinhDanhC"] == "001090000111"
-    assert values["HoVaTenC1"] == "LÊ THỊ HOA"
-    assert values["SoDinhDanhC1"] == "001160000222"
-
-
-def _poa_card_with(**overrides):
-    fields = [dict(f) for f in _POA_ONLY_FIELDS]
-    for f in fields:
-        if f["name"] in overrides:
-            f["value"] = overrides[f["name"]]
-    mapped = mapper.enrich(fields)
-    return {field["name"]: field["value"] for field in mapped}
-
-
-def test_xac_nhan_tthn_poa_card_same_name_accepted_when_poa_id_differs():
-    """Giấy ủy quyền ghi sai nhiều chữ số CCCD nhưng thẻ trùng họ tên → vẫn lấy thẻ (bản IN)."""
-    values = _poa_card_with(PoA_SubjectIdNumber="001185000292", PoA_SubjectName="Lê Thị Hoa")
-
-    assert values["GioiTinhC1"] == "Nữ"
-    assert values["SoDinhDanhC1"] == "001160000222"
-
-
-def test_xac_nhan_tthn_poa_card_same_name_other_birth_date_rejected():
-    values = _poa_card_with(PoA_SubjectIdNumber="001185000292",
-                            PoA_SubjectCccdNgaySinh="03/03/1985")
-
-    assert not values.get("GioiTinhC1")
-    assert values["SoDinhDanhC1"] == "001185000292"
-
-
-def test_xac_nhan_tthn_poa_card_other_name_and_id_rejected():
-    values = _poa_card_with(PoA_SubjectIdNumber="001185000292",
-                            PoA_SubjectCccdHoTen="PHẠM THỊ LAN")
-
-    assert not values.get("GioiTinhC1")
-    assert values["SoDinhDanhC1"] == "001185000292"
-
-
-def test_xac_nhan_tthn_poa_subject_card_in_cccd_slot_accepted_by_name():
-    """Thẻ người ủy quyền bị agent đặt vào Cccd_*, số lệch giấy ủy quyền nhưng trùng tên."""
-    values = {
-        "PoA_SubjectName": "Lê Thị Hoa", "PoA_SubjectDoB": "02/02/1960",
-        "PoA_SubjectIdNumber": "001185000292",
-        "Cccd_HoTen": "LÊ THỊ HOA", "Cccd_SoDinhDanh": "001160000222",
-        "Cccd_NgaySinh": "02/02/1960", "Cccd_GioiTinh": "Nữ",
-    }
-    card = mapper._poa_subject_card(values)
-
-    assert card["SoDinhDanh"] == "001160000222"
-    assert card["GioiTinh"] == "Nữ"
-
-
-def test_xac_nhan_tthn_poa_without_declared_requester_fills_grantor_as_self_for_hiep_hoa():
-    """Tài khoản Hiệp Hòa: mục I và mục II đều là người ủy quyền, "Bản thân"."""
-    user = {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}
-    options = mapper.with_account_process_options({}, user, mapper.PROCEDURE_KEY)
-    mapped = mapper.enrich([dict(f) for f in _POA_ONLY_FIELDS], options)
-    values = {field["name"]: field["value"] for field in mapped}
-
-    assert values["quanhevoinguoiduocxacminh"] == "1"
-    assert "quanhekhac" not in values
-    assert values["HoVaTenC"] == values["HoVaTenC1"] == "LÊ THỊ HOA"
-    assert values["SoDinhDanhC"] == values["SoDinhDanhC1"] == "001160000222"
-    assert values["NgaySinhC"] == values["NgaySinhC1"] == "02/02/1960"
-    assert values["NgayCapDDC"] == values["NgayCapDDC1"] == "10/10/2021"
-    assert values["NoiCapDDC"] == values["NoiCapDDC1"]
-    assert values["nycNoiCuTru_TrongNuoc"] == values["nxnNoiCuTru_TrongNuoc"]
-
-
-def test_xac_nhan_tthn_grantor_as_requester_option_only_for_hiep_hoa_account():
-    key = mapper.PROCEDURE_KEY
-    flag = mapper.GRANTOR_AS_REQUESTER_OPTION
-    hiep_hoa = {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}
-
-    assert mapper.with_account_process_options({}, hiep_hoa, key)[flag] is True
-    assert mapper.with_account_process_options(
-        {}, {"tinh": "Thành phố Bắc Ninh", "xa": "Xã Hiệp Hòa"}, key)[flag] is True
-    # Tài khoản khác / thủ tục khác: không có cờ, kể cả khi client tự gửi lên.
-    assert flag not in mapper.with_account_process_options(
-        {flag: True}, {"tinh": "Tỉnh Ninh Bình", "xa": "Xã Nghĩa Hưng"}, key)
-    assert flag not in mapper.with_account_process_options(
-        {flag: True}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Kinh Bắc"}, key)
-    assert flag not in mapper.with_account_process_options({flag: True}, hiep_hoa, "ket-hon")
-    assert flag not in mapper.with_account_process_options({flag: True}, None, key)
 
 
 def test_xac_nhan_tthn_prompt_allows_declared_married_and_self_relation():
@@ -243,9 +132,9 @@ def test_xac_nhan_tthn_prompt_does_not_mix_spouse_identity_with_marriage_certifi
 def test_xac_nhan_tthn_expands_commune_abbreviations():
     def mapped_area(xa):
         mapped = mapper.enrich([
-            {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
+            {"name": "NguoiDuocCap_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
             {
-                "name": "Cccd_NoiCuTru",
+                "name": "NguoiDuocCap_NoiCuTru",
                 "comp": "x-select-area",
                 "value": {
                     "quocGia": "Việt Nam",
@@ -264,9 +153,9 @@ def test_xac_nhan_tthn_expands_commune_abbreviations():
 
 def test_xac_nhan_tthn_prefers_declaration_residence_over_identity_card():
     mapped = mapper.enrich([
-        {"name": "Cccd_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
+        {"name": "NguoiDuocCap_HoTen", "comp": "x-input", "value": "NGUYỄN VĂN A"},
         {
-            "name": "Cccd_NoiCuTru",
+            "name": "NguoiDuocCap_NoiCuTru",
             "comp": "x-select-area",
             "value": {
                 "quocGia": "Việt Nam",
@@ -314,14 +203,14 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
     )
     out = {
         "fields": {
-            "Cccd_HoTen": "VŨ ĐÌNH THIẾT",
-            "Cccd_SoDinhDanh": "040203015844",
-            "Cccd_NgaySinh": "26/4/2003",
-            "Cccd_GioiTinh": "Nam",
-            "Cccd_DanToc": "Kinh",
-            "Cccd_NgayCap": "2/7/2021",
-            "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "Cccd_NoiCuTru": {
+            "NguoiDuocCap_HoTen": "VŨ ĐÌNH THIẾT",
+            "NguoiDuocCap_SoDinhDanh": "040203015844",
+            "NguoiDuocCap_NgaySinh": "26/4/2003",
+            "NguoiDuocCap_GioiTinh": "Nam",
+            "NguoiDuocCap_DanToc": "Kinh",
+            "NguoiDuocCap_NgayCap": "2/7/2021",
+            "NguoiDuocCap_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiDuocCap_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Nghệ An",
                 "diaChi": "Xóm Long Thành",
@@ -385,12 +274,12 @@ async def test_xac_nhan_tthn_compact_agent_maps_divorce_decision(monkeypatch):
     )
     out = {
         "fields": {
-            "Cccd_HoTen": "PHẠM MINH TUÂN",
-            "Cccd_SoDinhDanh": "012071000001",
-            "Cccd_NgaySinh": "01/01/1971",
-            "Cccd_GioiTinh": "Nam",
-            "Cccd_NgayCap": "02/02/2021",
-            "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiDuocCap_HoTen": "PHẠM MINH TUÂN",
+            "NguoiDuocCap_SoDinhDanh": "012071000001",
+            "NguoiDuocCap_NgaySinh": "01/01/1971",
+            "NguoiDuocCap_GioiTinh": "Nam",
+            "NguoiDuocCap_NgayCap": "02/02/2021",
+            "NguoiDuocCap_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
             "DivorceDecision_Number": "16/2012/QĐST-HNGĐ",
             "DivorceDecision_Date": "03/05/2012",
             "DivorceDecision_Agency": "Tòa án nhân dân thị xã Lai Châu, tỉnh Lai Châu",
@@ -426,7 +315,7 @@ async def test_xac_nhan_tthn_compact_agent_defaults_issuer(monkeypatch):
     respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
         return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 20})
     )
-    out = {"fields": {"Cccd_HoTen": "NGUYỄN VĂN A", "Cccd_SoDinhDanh": "012345678901"}}
+    out = {"fields": {"NguoiDuocCap_HoTen": "NGUYỄN VĂN A", "NguoiDuocCap_SoDinhDanh": "012345678901"}}
     respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(
             200,

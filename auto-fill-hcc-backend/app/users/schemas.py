@@ -5,7 +5,8 @@ from pydantic import BaseModel, field_validator
 # "commune"/"province" (Hành chính công xã/tỉnh): hành xử như "user" (không vào panel, chỉ dùng
 # extension), chỉ khác nhãn phân loại. Mọi cổng quyền check == "admin" nên coi là non-admin.
 # "province_admin": tài khoản Tỉnh CHỈ để xem bảng thống kê (đa đơn vị cùng tỉnh), không xử lý hồ sơ.
-Role = Literal["admin", "user", "commune", "province", "province_admin"]
+# "tdp" (Tổ dân phố): con của một HCC xã (`parent_id`), tỉnh/xã lấy theo xã cha.
+Role = Literal["admin", "user", "commune", "province", "province_admin", "tdp"]
 
 
 class UserManaged(BaseModel):
@@ -28,6 +29,8 @@ class UserCreate(BaseModel):
     xa: str | None = None
     tinh: str | None = None
     role: Role = "user"
+    # Chỉ dùng khi role = "tdp": id tài khoản HCC xã cha. Role khác thì bỏ qua.
+    parent_id: str | None = None
 
     @field_validator("username")
     @classmethod
@@ -53,6 +56,8 @@ class UserUpdate(BaseModel):
     role: Role | None = None
     access_disabled: bool | None = None
     password: str | None = None
+    # Đổi xã cha của tổ dân phố (hoặc chọn cha khi đổi sang role "tdp").
+    parent_id: str | None = None
 
     @field_validator("password")
     @classmethod

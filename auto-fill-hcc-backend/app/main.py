@@ -1,6 +1,7 @@
+import asyncio
 import logging
 import time
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -28,6 +29,7 @@ from app.reports.router import router as reports_router
 from app.dashboard.router import router as dashboard_router
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
+from app.upload_session.ws import relay_events_forever
 from app.upload_session.ws import router as upload_ws_router
 from app.users.router import router as users_router
 from app.v2.router import router as v2_router
@@ -37,7 +39,11 @@ from app.v2.router import router as v2_router
 async def lifespan(_: FastAPI):
     connect()
     await ensure_indexes()
+    ws_relay = asyncio.create_task(relay_events_forever())
     yield
+    ws_relay.cancel()
+    with suppress(asyncio.CancelledError):
+        await ws_relay
     close()
 
 
@@ -113,6 +119,7 @@ app.include_router(v2_router)
 # Handfree là một channel bổ sung trên cùng core procedure/process/attach. Feature flag chỉ
 # đóng/mở entrypoint hội thoại và mobile riêng; toàn bộ API Auto Fill phía trên không đổi.
 if settings.handfree_enabled:
+    from app.channels.handfree.authorization_letter.router import router as handfree_authorization_letter_router
     from app.channels.handfree.chat.router import router as handfree_chat_router
     from app.channels.handfree.documents.router import (
         mobile_router as handfree_mobile_router,
@@ -123,6 +130,7 @@ if settings.handfree_enabled:
     from app.channels.handfree.voice.ws_tts import router as handfree_tts_router
 
     app.include_router(handfree_chat_router)
+    app.include_router(handfree_authorization_letter_router)  # giấy ủy quyền soạn tại quầy (tab riêng)
     app.include_router(handfree_document_router)
     app.include_router(handfree_mobile_router)
     app.include_router(handfree_voice_router)

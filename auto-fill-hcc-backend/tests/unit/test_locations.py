@@ -17,16 +17,14 @@ def test_catalog_has_complete_post_merger_data():
 
 def test_bac_ninh_contains_song_lieu():
     province = province_by_slug("bacninh")
-    assert province and province["text"] == "Tỉnh Bắc Ninh"
-    # Nhãn hiển thị đổi riêng, "text" phải giữ nguyên để còn khớp option trên cổng DVC.
-    assert province["label"] == "Thành phố Bắc Ninh"
+    assert province and province["text"] == "Thành phố Bắc Ninh"
     assert len(WARDS_BY_SLUG["bacninh"]["communes"]) == 99
     assert "Phường Song Liễu" in WARDS_BY_SLUG["bacninh"]["communes"]
 
 
 def test_canonical_location_accepts_legacy_short_names():
     assert canonical_location("Bắc Ninh", "Song Liễu") == (
-        "Tỉnh Bắc Ninh",
+        "Thành phố Bắc Ninh",
         "Phường Song Liễu",
     )
 
@@ -48,5 +46,19 @@ async def test_location_endpoints_return_expected_contract():
     provinces = await list_provinces()
     wards = await get_wards("bacninh")
     assert provinces["provinces"][0].keys() == {"text", "slug", "name", "label"}
-    assert wards["province"] == "Tỉnh Bắc Ninh"
+    assert wards["province"] == "Thành phố Bắc Ninh"
     assert "Phường Song Liễu" in wards["communes"]
+
+
+def test_ten_cu_tinh_bac_ninh_van_nhan_dien_sau_khi_len_thanh_pho():
+    # Tài khoản/hồ sơ lưu trước khi đổi vẫn ghi "Tỉnh Bắc Ninh": phải ra đúng tỉnh, không bị
+    # coi là ngoài danh mục, và lọc theo tỉnh phải phủ cả tên cũ.
+    from app.locations.catalog import province_name_variants
+    from app.pipelines._shared.area_remap import province_label
+
+    assert canonical_location("Tỉnh Bắc Ninh", "Phường Song Liễu") == (
+        "Thành phố Bắc Ninh", "Phường Song Liễu",
+    )
+    assert "Tỉnh Bắc Ninh" in province_name_variants("Thành phố Bắc Ninh")
+    assert province_label("Tỉnh Bắc Ninh") == "Thành phố Bắc Ninh"
+    assert province_label("Lạng Sơn") == "Tỉnh Lạng Sơn"

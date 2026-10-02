@@ -31,6 +31,7 @@ from app.dossiers import repo as dossiers_repo
 from app.reports.integration import unit_key
 from app.stats import cutover
 from app.traces.date_range import parse_stats_range
+from app.users import tdp_rollup
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 logger = logging.getLogger(__name__)
@@ -212,9 +213,11 @@ async def logs(
     date_from, date_to = _range(dateFrom, dateTo)
     ids, _selected = _resolve_user_ids(resolved, unit)
     unit_by_id = {u["unitId"]: u for u in resolved["units"]}
+    # Hồ sơ của tổ dân phố thuộc xã cha: số liệu phía trên đã cộng dồn nên nhật ký cũng phải có.
+    rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), ids)
 
     result = await dossiers_repo.list_for_dashboard(
-        user_ids=ids, date_from=date_from, date_to=date_to,
+        user_ids=rollup.expand(ids), date_from=date_from, date_to=date_to,
         skip=(page - 1) * pageSize, limit=pageSize,
         experience=None if source == "all" else source,
         # "Đã hoàn thành" = đã bấm nộp — đúng tập mà thống kê đếm từ 15/9/2026.
@@ -222,13 +225,14 @@ async def logs(
     )
     items = []
     for row in result["items"]:
-        unit_meta = unit_by_id.get(row["userId"]) or {}
+        unit_id = rollup.unit(row["userId"])
+        unit_meta = unit_by_id.get(unit_id) or {}
         items.append({
             "dossierId": row["dossierId"],
             "receivedAt": row["startedAt"],
             "submittedAt": row["submittedAt"],
             "submitCount": row["submitCount"],
-            "unitId": row["userId"],
+            "unitId": unit_id,
             "unitName": unit_meta.get("xa") or unit_meta.get("name") or "—",
             "procedure": row["procedure"],
             "procedureLabel": row["procedureLabel"] or row["procedure"],
@@ -267,9 +271,10 @@ async def export(
     ids = [selected["unitId"]] if selected else [u["unitId"] for u in units]
     date_from, date_to = _range(dateFrom, dateTo)
     unit_by_id = {u["unitId"]: u for u in units}
+    rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), ids)
     # Cùng nguồn với /logs — file xuất ra phải khớp đúng thứ cán bộ đang nhìn trên màn hình.
     log_res = await dossiers_repo.list_for_dashboard(
-        user_ids=ids,
+        user_ids=rollup.expand(ids),
         date_from=date_from,
         date_to=date_to,
         skip=0,
@@ -281,8 +286,8 @@ async def export(
             "dossierId": row["dossierId"],
             "receivedAt": row["startedAt"],
             "submittedAt": row["submittedAt"],
-            "unitName": (unit_by_id.get(row["userId"]) or {}).get("xa")
-            or (unit_by_id.get(row["userId"]) or {}).get("name")
+            "unitName": (unit_by_id.get(rollup.unit(row["userId"])) or {}).get("xa")
+            or (unit_by_id.get(rollup.unit(row["userId"])) or {}).get("name")
             or "—",
             "procedureLabel": row["procedureLabel"] or row["procedure"],
             "rating": row["rating"],

@@ -257,7 +257,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     issuer = _issuer(values.get("DoiTuong_NoiCap"))
     residence = _area(values.get("DoiTuong_ThuongTru"))
     phone = _phone(values.get("DoiTuong_DienThoai"))
-    ghichu = _text(values.get("DoiTuong_GhiChu"))
 
     if not name:
         warnings.append("Thiếu họ tên đối tượng hưởng trợ cấp từ CCCD/Tờ khai/Giấy khai sinh.")
@@ -328,6 +327,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add_area("data[province]", "data[district]", "data[address]", nop_residence)  # Thường trú người nộp.
     add("data[phoneNumber]", submitter.get("phone"))
     add("data[email]", submitter.get("email"))
+    if "data[email]" not in seen:
+        # Cổng nhớ email của lượt nộp trước (cán bộ gõ) và tự điền lại → hồ sơ không có email của người
+        # nộp thì phải XOÁ ô, để sót là thông báo xử lý gửi nhầm người. `clear`: extension không tô xanh.
+        out.append({"name": "data[email]", "comp": UI_COMP_BY_NAME["data[email]"], "value": "", "clear": True})
+        seen.add("data[email]")
 
     # --- Mở khoá Phần II: BỎ TÍCH "Người nộp là chủ hồ sơ" ---
     add("data[isOwnerDossierCheck]", False)
@@ -343,6 +347,5 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[ownerPhoneNumber]", phone)
     add("data[ownerEmail]", _text(values.get("DoiTuong_Email")))
     add("data[ownerNation]", "Việt Nam" if name or identity else None)
-    add("data[ghiChu]", ghichu)
 
     return out, warnings

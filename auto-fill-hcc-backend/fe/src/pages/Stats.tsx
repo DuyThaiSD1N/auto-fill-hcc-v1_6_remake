@@ -46,6 +46,7 @@ const ROLE_META: Record<Role, { label: string; cls: string }> = {
   commune: { label: "HCC xã", cls: "role-commune" },
   province: { label: "HCC tỉnh", cls: "role-province" },
   province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
+  tdp: { label: "Tổ dân phố", cls: "role-tdp" },
 };
 const ACCOUNT_ROLE_OPTIONS: Record<StatsScope, { key: AccountRoleFilter; label: string }[]> = {
   official: [

@@ -44,7 +44,7 @@ EXTRA_RULES = """<critical_rules>
 
 <output_examples>
 Đúng:
-{"fields":{"ToKhai_HoTen":"Nguyễn Văn P","ToKhai_QuanHeVoiLietSi":"Cháu ruột","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Bắc Ninh","xa":"Phường Song Liễu","diaChi":""},"LietSi_HoTen":"Nguyễn Văn M","ToKhai_NguoiCungDi":[{"hoTen":"Nguyễn Văn B","ngaySinh":"03/02/1967","soGiayTo":"027067010265","ngayCap":"09/05/2021","moiQuanHe":"Em trai liệt sĩ"}]}}
+{"fields":{"ToKhai_HoTen":"Nguyễn Văn P","ToKhai_QuanHeVoiLietSi":"Cháu ruột","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Thành phố Bắc Ninh","xa":"Phường Song Liễu","diaChi":""},"LietSi_HoTen":"Nguyễn Văn M","ToKhai_NguoiCungDi":[{"hoTen":"Nguyễn Văn B","ngaySinh":"03/02/1967","soGiayTo":"027067010265","ngayCap":"09/05/2021","moiQuanHe":"Em trai liệt sĩ"}]}}
 
 Sai:
 {"fields":{"data[fullname1]":"Nguyễn Văn M","qheLSi":"Cháu ruột"}}

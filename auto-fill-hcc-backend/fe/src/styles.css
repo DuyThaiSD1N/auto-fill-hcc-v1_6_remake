@@ -2741,3 +2741,12 @@ a:focus-visible,
 .report-data-toggle {
   margin-bottom: 14px;
 }
+.badge.role-tdp {
+  background: #e6f0fb;
+  color: #1f5f99;
+}
+.account-parent {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}

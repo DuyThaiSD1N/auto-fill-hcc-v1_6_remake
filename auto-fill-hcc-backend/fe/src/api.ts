@@ -5,6 +5,7 @@ import type {
   Facets,
   LoginResp,
   ManagedUser,
+  ParentAccount,
   PasswordRevealResp,
   DownloadResult,
   ReportExportBody,
@@ -219,6 +220,11 @@ export function updateUser(id: string, body: UserUpdateBody): Promise<ManagedUse
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+/** HCC xã chọn được làm cha của tổ dân phố. */
+export function getParentAccounts(signal?: AbortSignal): Promise<{ items: ParentAccount[] }> {
+  return request<{ items: ParentAccount[] }>(`/api/v1/users/parents`, { signal });
 }
 
 export function deleteUser(id: string): Promise<{ ok: boolean }> {

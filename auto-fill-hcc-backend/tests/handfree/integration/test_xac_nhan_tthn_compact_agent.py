@@ -6,7 +6,7 @@ import httpx
 import respx
 
 from app.config import settings
-from app.pipelines._shared.compact_agent import prompt as compact_prompt
+from app.pipelines.xac_nhan_tthn.process import base_prompt as compact_prompt
 from app.channels.handfree.owner_info import run as owner_info_run
 from app.pipelines.xac_nhan_tthn import process as agent
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
@@ -30,14 +30,14 @@ async def test_xac_nhan_tthn_compact_agent_derives_self_ui_fields(monkeypatch):
     )
     out = {
         "fields": {
-            "Cccd_HoTen": "VŨ ĐÌNH THIẾT",
-            "Cccd_SoDinhDanh": "040203015844",
-            "Cccd_NgaySinh": "26/4/2003",
-            "Cccd_GioiTinh": "Nam",
-            "Cccd_DanToc": "Kinh",
-            "Cccd_NgayCap": "2/7/2021",
-            "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
-            "Cccd_NoiCuTru": {
+            "NguoiDuocCap_HoTen": "VŨ ĐÌNH THIẾT",
+            "NguoiDuocCap_SoDinhDanh": "040203015844",
+            "NguoiDuocCap_NgaySinh": "26/4/2003",
+            "NguoiDuocCap_GioiTinh": "Nam",
+            "NguoiDuocCap_DanToc": "Kinh",
+            "NguoiDuocCap_NgayCap": "2/7/2021",
+            "NguoiDuocCap_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiDuocCap_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Nghệ An",
                 "diaChi": "Xóm Long Thành",
@@ -101,12 +101,12 @@ async def test_xac_nhan_tthn_compact_agent_maps_divorce_decision(monkeypatch):
     )
     out = {
         "fields": {
-            "Cccd_HoTen": "PHẠM MINH TUÂN",
-            "Cccd_SoDinhDanh": "012071000001",
-            "Cccd_NgaySinh": "01/01/1971",
-            "Cccd_GioiTinh": "Nam",
-            "Cccd_NgayCap": "02/02/2021",
-            "Cccd_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "NguoiDuocCap_HoTen": "PHẠM MINH TUÂN",
+            "NguoiDuocCap_SoDinhDanh": "012071000001",
+            "NguoiDuocCap_NgaySinh": "01/01/1971",
+            "NguoiDuocCap_GioiTinh": "Nam",
+            "NguoiDuocCap_NgayCap": "02/02/2021",
+            "NguoiDuocCap_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
             "DivorceDecision_Number": "16/2012/QĐST-HNGĐ",
             "DivorceDecision_Date": "03/05/2012",
             "DivorceDecision_Agency": "Tòa án nhân dân thị xã Lai Châu, tỉnh Lai Châu",
@@ -142,7 +142,7 @@ async def test_xac_nhan_tthn_compact_agent_defaults_issuer(monkeypatch):
     respx.post(settings.ocr_tiengnoi_base_url.rstrip("/") + "/v1/ocr").mock(
         return_value=httpx.Response(200, json={"results": [{"text": "..."}] * 10})
     )
-    out = {"fields": {"Cccd_HoTen": "NGUYỄN VĂN A", "Cccd_SoDinhDanh": "012345678901"}}
+    out = {"fields": {"NguoiDuocCap_HoTen": "NGUYỄN VĂN A", "NguoiDuocCap_SoDinhDanh": "012345678901"}}
     respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(
             200,
@@ -166,10 +166,10 @@ def test_xac_nhan_tthn_compact_prompt_rejects_ui_fields():
     # Wording lõi mới 2026-08 (đồng bộ auto-fill): phân vai BẢN THÂN/ỦY QUYỀN thay câu
     # "mặc định là bản thân"; TinhTrangHonNhanC1 được trả khi tờ khai ghi rõ trạng thái chuẩn.
     assert "A. BẢN THÂN: người yêu cầu chính là người cần giấy XNTTHN" in system_prompt
-    assert "Cccd_* CHỈ lấy từ CCCD/CMND upload" in system_prompt
+    assert "NguoiDuocCap_* = thông tin IN trên giấy tờ của NGƯỜI ĐƯỢC CẤP" in system_prompt
     assert "Không trả field UI/default" in system_prompt
     assert "quanhevoinguoiduocxacminh" in system_prompt
-    assert "DivorceDecision_* lấy từ OCR" in system_prompt
+    assert "DivorceDecision_* lấy từ tài liệu quyết định/bản án ly hôn thật" in system_prompt
     assert "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ" in system_prompt  # nguồn giấy XNTTHN cũ
     assert "RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ" in system_prompt
     assert "Không suy luận tình trạng hôn nhân từ CCCD" in system_prompt

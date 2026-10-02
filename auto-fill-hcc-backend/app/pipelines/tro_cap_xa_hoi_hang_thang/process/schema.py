@@ -10,7 +10,7 @@ HAI vai (có thể NỘP THAY — như sua_doi / di_chuyen):
 Cấu trúc form (field-key CHUẨN từ HTML thật; mỗi key XUẤT HIỆN 1 LẦN → KHÔNG occurrence):
   Phần 1 Người nộp  → data[fullname/birthday/gender/identityNumber/identityDate/idIssuePlace/province/
                       district/address/phoneNumber/email] + chonDoiTuong="Cá nhân".
-  Phần 2 Chủ hồ sơ  → data[owner*] + data[ghiChu]. BỎ TÍCH data[isOwnerDossierCheck] để mở + điền.
+  Phần 2 Chủ hồ sơ  → data[owner*] (ô Ghi chú để trống). BỎ TÍCH data[isOwnerDossierCheck] để mở + điền.
 """
 
 FIELDS: list[dict] = [
@@ -35,9 +35,6 @@ FIELDS: list[dict] = [
              "(tên MỚI nếu biết), diaChi=số nhà/đường/tổ dân phố/thôn (KHÔNG kèm xã/huyện/tỉnh)."},
     {"name": "DoiTuong_DienThoai", "desc": "Số điện thoại đối tượng nếu Tờ khai có. Chỉ chữ số; không lấy SĐT bàn."},
     {"name": "DoiTuong_Email", "desc": "Email đối tượng nếu giấy tờ có (thường không có → bỏ)."},
-    {"name": "DoiTuong_GhiChu", "desc": "Ghi chú về đối tượng — dạng tật + MỨC ĐỘ khuyết tật (vd 'Khuyết tật "
-        "vận động, mức độ Nặng') lấy ở Giấy xác nhận khuyết tật / Biên bản giám định y khoa / Tờ khai; hoặc "
-        "diện đối tượng bảo trợ (trẻ mồ côi, hộ nghèo...). Chép ngắn gọn nếu có, không thì bỏ."},
 
     # === NGƯỜI NỘP (Phần I) = NGƯỜI KHAI THAY trên tờ khai. CCCD riêng chỉ bổ sung khi đúng người. ===
     {"name": "NguoiNop_HoTen",
@@ -106,5 +103,4 @@ UI_COMP_BY_NAME = {
     "data[ownerPhoneNumber]": "dom-input",
     "data[ownerEmail]": "dom-input",
     "data[ownerNation]": "dom-select",
-    "data[ghiChu]": "dom-input",
 }

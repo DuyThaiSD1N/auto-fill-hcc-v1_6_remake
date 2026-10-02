@@ -359,7 +359,7 @@ async def test_export_service_builds_daily_summary_without_using_detail_stats(mo
         return {
             "source": "handfree",
             "units": [{
-                "unitKey": "tinh bac ninh::phuong bac giang",
+                "unitKey": "thanh pho bac ninh::phuong bac giang",
                 "dailyCounts": [{"date": "2026-08-18", "count": 7}],
             }],
         }

@@ -17,12 +17,17 @@ tính trên cả khoảng ra 1, tính trên từng nửa ra 2.
 
 `requests` (số LƯỢT xử lý) và thống kê tài liệu dùng lại vẫn lấy từ trace trên TOÀN khoảng,
 không đụng tới: đó là chỉ số khác, không phải số hồ sơ.
+
+Tổ dân phố (role "tdp") cộng dồn vào HCC xã cha ở ĐÂY — mọi nơi đếm theo đơn vị đều đi qua các
+hàm dưới (xem app/users/tdp_rollup.py). Chưa có tổ dân phố nào thì kết quả y như trước.
 """
 from datetime import datetime, timedelta, timezone
 
 from app.dossiers import stats as dossiers_stats
 from app.traces import repo as traces_repo
 from app.traces.date_range import VIETNAM_TZ
+from app.users import tdp_rollup
+from app.users.tdp_rollup import TdpRollup
 
 # 00:00 ngày 15/9/2026 giờ Việt Nam. Đổi mốc thì đổi ĐÚNG một dòng này.
 SUBMITTED_COUNT_FROM = datetime(2026, 9, 15, tzinfo=VIETNAM_TZ).astimezone(timezone.utc)
@@ -194,9 +199,11 @@ async def dossier_stats(
 
     Khoảng nằm trọn trước mốc → trả thẳng kết quả cách cũ, không thêm một truy vấn nào.
     """
-    base = await traces_repo.stats_by_user_ids(
-        user_ids=user_ids, date_from=date_from, date_to=date_to, experience=experience,
-    )
+    rollup = TdpRollup(await tdp_rollup.load_tdp_parents(), user_ids)
+    ids = rollup.expand(user_ids)
+    base = rollup.stats(await traces_repo.stats_by_user_ids(
+        user_ids=ids, date_from=date_from, date_to=date_to, experience=experience,
+    ))
     if date_to <= SUBMITTED_COUNT_FROM:
         return base
 
@@ -204,20 +211,20 @@ async def dossier_stats(
     if date_from < SUBMITTED_COUNT_FROM:
         # Phải chạy LẠI trên đúng nửa trước mốc: số hồ sơ của `base` tính trên cả khoảng nên
         # đã gộp lẫn các lượt sau mốc vào.
-        old = await traces_repo.stats_by_user_ids(
-            user_ids=user_ids,
+        old = rollup.stats(await traces_repo.stats_by_user_ids(
+            user_ids=ids,
             date_from=date_from,
             date_to=SUBMITTED_COUNT_FROM,
             experience=experience,
-        )
+        ))
         buckets = _counts_by_bucket(old)
 
-    _add_new_counts(buckets, await dossiers_stats.submitted_counts(
-        user_ids=user_ids,
+    _add_new_counts(buckets, rollup.rows(await dossiers_stats.submitted_counts(
+        user_ids=ids,
         date_from=max(date_from, SUBMITTED_COUNT_FROM),
         date_to=date_to,
         experience=experience,
-    ))
+    )))
     return _rebuild(base, buckets)
 
 
@@ -233,29 +240,36 @@ async def admin_stats(
     Khác `dossier_stats`: phạm vi ở đây là VAI TRÒ tài khoản ("all" / "official") chứ không
     phải một tập đơn vị, và hai đầu khoảng có thể bỏ trống (xem tất cả).
     """
-    base = await traces_repo.stats(
-        date_from=date_from, date_to=date_to, scope=scope, experience=experience,
-    )
+    # scope "all" → None = không giới hạn tài khoản. Chỉ "official" mới cần liệt kê id, và lấy
+    # đúng bộ lọc vai trò mà cách cũ đang dùng để hai bên mốc cùng một phạm vi. Tổ dân phố
+    # không phải đơn vị nhưng hồ sơ của nó thuộc xã cha → mở rộng tập đếm rồi dồn về cha.
     start = date_from or _EPOCH
     end = date_to or (datetime.now(timezone.utc) + timedelta(days=1))
+    links = await tdp_rollup.load_tdp_parents()
+    # Chỉ tra tập tài khoản khi thật sự cần (có tổ dân phố, hoặc khoảng có phần sau mốc): khoảng
+    # nằm trọn trước mốc mà chưa có tổ dân phố thì y như cách cũ, không thêm truy vấn nào.
+    needs_ids = scope != "all" and (bool(links) or end > SUBMITTED_COUNT_FROM)
+    scope_ids = await traces_repo.stats_scope_user_ids(scope) if needs_ids else None
+    rollup = TdpRollup(links, scope_ids)
+    base = rollup.stats(await traces_repo.stats(
+        date_from=date_from, date_to=date_to, scope=scope, experience=experience,
+    ))
     if end <= SUBMITTED_COUNT_FROM:
         return base
 
     buckets: dict[tuple[str, str], dict] = {}
     if start < SUBMITTED_COUNT_FROM:
-        old = await traces_repo.stats(
+        old = rollup.stats(await traces_repo.stats(
             date_from=date_from, date_to=SUBMITTED_COUNT_FROM, scope=scope, experience=experience,
-        )
+        ))
         buckets = _counts_by_bucket(old)
 
-    _add_new_counts(buckets, await dossiers_stats.submitted_counts(
-        # scope "all" → None = không giới hạn tài khoản. Chỉ "official" mới cần liệt kê id,
-        # và lấy đúng bộ lọc vai trò mà cách cũ đang dùng để hai bên mốc cùng một phạm vi.
-        user_ids=None if scope == "all" else await traces_repo.stats_scope_user_ids(scope),
+    _add_new_counts(buckets, rollup.rows(await dossiers_stats.submitted_counts(
+        user_ids=rollup.expand(scope_ids),
         date_from=max(start, SUBMITTED_COUNT_FROM),
         date_to=end,
         experience=experience,
-    ))
+    )))
     return _rebuild(base, buckets)
 
 
@@ -272,9 +286,11 @@ async def daily_dossier_counts(
     đầu từ đó) nhưng vẫn cộng theo khóa để an toàn nếu sau này mốc rơi vào giữa ngày.
     """
     counts: dict[tuple[str, str], int] = {}
+    rollup = TdpRollup(await tdp_rollup.load_tdp_parents(), user_ids)
+    ids = rollup.expand(user_ids) or []
 
     def absorb(rows: list[dict]) -> None:
-        for row in rows:
+        for row in rollup.rows(rows):
             day = str(row.get("date") or "")
             if not day:
                 continue
@@ -283,14 +299,14 @@ async def daily_dossier_counts(
 
     if date_from < SUBMITTED_COUNT_FROM:
         absorb(await traces_repo.daily_dossier_counts_by_user_ids(
-            user_ids=user_ids,
+            user_ids=ids,
             date_from=date_from,
             date_to=min(date_to, SUBMITTED_COUNT_FROM),
             experience=experience,
         ))
     if date_to > SUBMITTED_COUNT_FROM:
         absorb(await dossiers_stats.submitted_daily_counts(
-            user_ids=user_ids,
+            user_ids=ids,
             date_from=max(date_from, SUBMITTED_COUNT_FROM),
             date_to=date_to,
             experience=experience,

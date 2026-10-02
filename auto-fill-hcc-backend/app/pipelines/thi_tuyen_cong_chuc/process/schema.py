@@ -62,15 +62,27 @@ FIELDS: list[dict] = [
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD/CMND, dd/mm/yyyy."},
     {"name": "Person1_NoiCap", "desc": "Nơi cấp CCCD/CMND."},
     {"name": "Person1_NoiCuTru", "desc": "Nơi thường trú/cư trú trên CCCD, object {quocGia,tinh,xa,diaChi}."},
+
+    # NGƯỜI NỘP KHÁC người dự tuyển — chỉ trích từ OCR mà runner đánh dấu khớp tài khoản đăng nhập.
+    {"name": "NguoiNop_HoTen", "desc": "CHỈ khi requester_context có matched_requester_ocr và người khớp KHÁC người dự tuyển trên Phiếu: họ tên người đó. Còn lại bỏ trống."},
+    {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND của đúng người ở NguoiNop_HoTen, chỉ chữ số."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh đầy đủ của đúng người ở NguoiNop_HoTen, dd/mm/yyyy; chỉ có năm thì bỏ."},
+    {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính của đúng người ở NguoiNop_HoTen: "Nam" hoặc "Nữ".'},
+    {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD/CMND của đúng người ở NguoiNop_HoTen, dd/mm/yyyy."},
+    {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD/CMND của đúng người ở NguoiNop_HoTen."},
+    {"name": "NguoiNop_NoiCuTru", "desc": "Nơi thường trú của đúng người ở NguoiNop_HoTen, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của đúng người ở NguoiNop_HoTen, chỉ chữ số."},
+    {"name": "NguoiNop_Email", "desc": "Email của đúng người ở NguoiNop_HoTen nếu giấy tờ ghi."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Phieu_NgaySinh", "Phieu_NgayCap", "Person1_NgaySinh", "Person1_NgayCap"):
+for _name in ("Phieu_NgaySinh", "Phieu_NgayCap", "Person1_NgaySinh", "Person1_NgayCap", "NguoiNop_NgaySinh",
+              "NguoiNop_NgayCap"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("Phieu_QueQuan", "Phieu_NoiThuongTru", "Phieu_NoiOHienTai", "Person1_NoiCuTru"):
+for _name in ("Phieu_QueQuan", "Phieu_NoiThuongTru", "Phieu_NoiOHienTai", "Person1_NoiCuTru", "NguoiNop_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 for _name in ("Phieu_VanBangChungChi", "Phieu_QuaTrinhCongTac", "Phieu_ThuTuUuTien"):
     COMPACT_COMP_BY_NAME[_name] = "x-array"

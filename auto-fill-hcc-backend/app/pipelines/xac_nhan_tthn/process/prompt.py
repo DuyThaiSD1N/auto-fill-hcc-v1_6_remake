@@ -1,33 +1,10 @@
-"""Procedure-specific compact prompt rules for "Xác nhận tình trạng hôn nhân"."""
+"""Luật trích xuất theo TỪNG LOẠI GIẤY của thủ tục "Xác nhận tình trạng hôn nhân".
 
-EXTRA_RULES = """<procedure>
-Thủ tục có BA TRƯỜNG HỢP:
+Khung chung (vai trò, nhận diện giấy, vai người, định dạng, output) nằm ở ``base_prompt``.
+"""
 
-A. BẢN THÂN: người yêu cầu chính là người cần giấy XNTTHN. Chỉ có CCCD của một người.
-   → Chỉ trả Cccd_* (+ giấy tờ hôn nhân nếu có). KHÔNG trả PoA_*.
-
-B. ỦY QUYỀN: có GIẤY ỦY QUYỀN kèm theo. Người được ủy quyền (đi nộp hộ) có CCCD riêng.
-   → Trả Cccd_* từ CCCD của người ĐI NỘP (người được ủy quyền - Section II giấy ủy quyền).
-   → Trả PoA_* từ GIẤY ỦY QUYỀN của người ỦY QUYỀN (người CẦN giấy - Section I giấy ủy quyền).
-
-C. THÂN NHÂN KHAI HỘ, KHÔNG có giấy ủy quyền riêng: tờ khai có khối "Họ, chữ đệm, tên người yêu
-   cầu" ở ĐẦU tờ khai GHI TÊN KHÁC với người ở phần "Đề nghị cấp Giấy xác nhận... cho người có tên
-   dưới đây" (Section II), thường kèm dòng "Quan hệ với người được cấp Giấy xác nhận...: là con
-   đẻ/cháu/..." — KHÔNG có tài liệu riêng tiêu đề "GIẤY ỦY QUYỀN".
-   → Trả ToKhaiYeuCau_* từ khối "người yêu cầu" đầu tờ khai (xem <nguoi_yeu_cau_extraction>).
-   → Trả ToKhai_* từ Section II như bình thường (người được cấp).
-   → KHÔNG trả PoA_* (không có giấy ủy quyền thật).
-
-Đầu vào thường có CCCD/CMND; có thể có thêm GIẤY KHAI SINH/TRÍCH LỤC KHAI SINH của chính người
-xin giấy, giấy ủy quyền, quyết định/bản án ly hôn, giấy chứng tử/trích lục khai tử/giấy báo tử của
-vợ/chồng đã chết, HOẶC GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ (đã cấp trước đây).
-
-CCCD + GIẤY KHAI SINH của CÙNG MỘT NGƯỜI là trường hợp A (BẢN THÂN), KHÔNG phải C: giấy khai sinh
-có tên cha/mẹ nhưng cha/mẹ KHÔNG đứng ra yêu cầu gì cả. Xem <giay_khai_sinh>.
-</procedure>
-
-<nguoi_yeu_cau_extraction>
-Tờ khai LUÔN có khối "người yêu cầu" RIÊNG ở ĐẦU tờ khai (trước phần "Đề nghị cấp..."), gồm:
+EXTRA_RULES = """<to_khai>
+KHỐI NGƯỜI YÊU CẦU — Tờ khai LUÔN có khối "người yêu cầu" RIÊNG ở ĐẦU tờ khai (trước phần "Đề nghị cấp..."), gồm:
   "Họ, chữ đệm, tên người yêu cầu: <tên>"
   "Ngày, tháng, năm sinh: <ngày sinh>"
   "Nơi cư trú: <địa chỉ>"
@@ -41,29 +18,16 @@ cấp ở Section II hay không (Python mapper tự so sánh, KHÔNG phải LLM)
 - ToKhaiYeuCau_SoDinhDanh (từ "Giấy tờ tùy thân" NGAY SAU tên người yêu cầu, KHÔNG lấy nhầm số ở Section II)
 - ToKhaiYeuCau_NgayCapGiayTo (từ "cấp ngày..." của giấy tờ người yêu cầu, dd/mm/yyyy)
 - ToKhaiYeuCau_NoiCapGiayTo (từ "nơi cấp ..." của giấy tờ người yêu cầu)
-- ToKhaiYeuCau_NoiCuTru (từ "Nơi cư trú:" NGAY DƯỚI tên người yêu cầu, object {quocGia,tinh,xa,diaChi};
-  áp quy tắc <noi_cu_tru>)
+- ToKhaiYeuCau_NoiCuTru (từ "Nơi cư trú:" NGAY DƯỚI tên người yêu cầu, object {quocGia,tinh,xa,diaChi})
 - ToKhaiYeuCau_QuanHe (từ dòng "Quan hệ với người được cấp Giấy xác nhận tình trạng hôn nhân:" —
   BẮT BUỘC trả NGUYÊN VĂN khi tờ khai có dòng này, dù ghi "Bản thân"/"Tự khai" hay bất kỳ quan hệ
   nào khác như "là con đẻ", "là bố đẻ". Python mapper sẽ tự quy đổi sang mã quan hệ trên cổng.)
-
-TUYỆT ĐỐI KHÔNG gộp thông tin của khối "người yêu cầu" (đầu tờ khai) vào ToKhai_* (khối "người được
-cấp", Section II) hay ngược lại — hai khối này LUÔN tách riêng dù trùng người.
-
 ToKhaiYeuCau_* CHỈ được lấy từ TỜ KHAI (đơn do người dân viết). TUYỆT ĐỐI KHÔNG lấy từ GIẤY XÁC NHẬN
-TÌNH TRẠNG HÔN NHÂN ĐÃ CẤP — đó là KẾT QUẢ do UBND ký, không phải tờ khai. Giấy đã cấp mở đầu bằng:
-  "Xét đề nghị của ông/bà: <TÊN>, là công chức tư pháp hộ tịch
-   về việc cấp Giấy xác nhận tình trạng hôn nhân cho ông/bà <NGƯỜI ĐƯỢC CẤP>"
-<TÊN> ở dòng đó là CÁN BỘ TƯ PHÁP HỘ TỊCH của UBND đề nghị cấp giấy — KHÔNG PHẢI người yêu cầu và
-KHÔNG PHẢI người được cấp. Bỏ qua hoàn toàn: không trả ToKhaiYeuCau_*, không trả ToKhai_* từ tên đó.
-Người của giấy đã cấp là người ghi sau "cho ông/bà ..." và ở khối "XÁC NHẬN: Họ, chữ đệm, tên: ...".
-Tương tự, bỏ qua mọi tên đứng cạnh chức danh (công chức, cán bộ, chuyên viên, Chủ tịch, KT. CHỦ TỊCH,
-PHÓ CHỦ TỊCH, "NGƯỜI KÝ ...") — đó là người ký giấy, không phải đương sự.
-</nguoi_yeu_cau_extraction>
+TÌNH TRẠNG HÔN NHÂN ĐÃ CẤP (xem <nguoi_trong_ho_so>).
 
-<critical_tokhai_extraction>
-QUAN TRỌNG: Khi có TỜ KHAI cấp giấy XNTTHN, BẮT BUỘC trả TẤT CẢ các field ToKhai_* tương ứng với thông tin
-trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (Section II - người được cấp):
+KHỐI NGƯỜI ĐƯỢC CẤP — QUAN TRỌNG: Khi có TỜ KHAI cấp giấy XNTTHN, BẮT BUỘC trả TẤT CẢ các field ToKhai_* tương ứng
+với thông tin trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (Section II -
+người được cấp):
 - ToKhai_HoTen (từ "Họ, chữ đệm, tên:")
 - ToKhai_NgaySinh (từ "Ngày, tháng, năm sinh:", dd/mm/yyyy)
 - ToKhai_GioiTinh (từ "Giới tính:", "Nam" hoặc "Nữ")
@@ -73,108 +37,28 @@ trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho
 - ToKhai_NgayCapGiayTo (từ "Cấp ngày...", dd/mm/yyyy)
 - ToKhai_NoiCapGiayTo (từ "tại ..." sau "Cấp ngày")
 - ToKhai_NoiCuTru (từ "Nơi cư trú:", object {quocGia,tinh,xa,diaChi})
+TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ
+NguoiDuocCap_*) đều phải được trả khi đều có thông tin. Python mapper sẽ quyết định ưu tiên nguồn nào, KHÔNG phải LLM.
 
-TUYỆT ĐỐI KHÔNG bỏ qua các field ToKhai_* chỉ vì CCCD cũng có thông tin tương tự. CẢ HAI NGUỒN (ToKhai_* VÀ Cccd_*)
-đều phải được trả khi đều có thông tin. Python mapper sẽ quyết định ưu tiên nguồn nào, KHÔNG phải LLM.
-</critical_tokhai_extraction>
+TUYỆT ĐỐI KHÔNG gộp thông tin của khối "người yêu cầu" (đầu tờ khai) vào ToKhai_* (khối "người được
+cấp", Section II) hay ngược lại — hai khối này LUÔN tách riêng dù trùng người.
 
-<giay_khai_sinh>
-NHẬN DẠNG: tài liệu tiêu đề "GIẤY KHAI SINH", "TRÍCH LỤC KHAI SINH" (hoặc bản sao trích lục), có
-khối "Người được khai sinh", "Người cha", "Người mẹ".
+NƠI CƯ TRÚ TRÊN TỜ KHAI:
+- TUYỆT ĐỐI KHÔNG lấy địa chỉ trong đoạn "Tình trạng hôn nhân" làm ToKhai_NoiCuTru; đó là địa chỉ
+  của vợ/chồng hoặc địa chỉ cũ được nhắc lại.
+- Trước khi xuất JSON: nếu TỜ KHAI có dòng "Nơi cư trú" thì output phải có ToKhai_NoiCuTru và Python
+  sẽ dùng địa chỉ này trước NguoiDuocCap_NoiCuTru.
+</to_khai>
 
-Hồ sơ XNTTHN kèm giấy khai sinh là để CHỨNG MINH NHÂN THÂN của chính người xin giấy (nhất là dân
-tộc và ngày sinh, vì thẻ căn cước mẫu mới không in dân tộc). Trên giấy này KHÔNG có ai là "người
-yêu cầu cấp Giấy XNTTHN" cả.
-
-TRẢ:
-- Gks_HoTen, Gks_NgaySinh, Gks_GioiTinh, Gks_DanToc, Gks_QuocTich = của NGƯỜI ĐƯỢC KHAI SINH.
-- Gks_ChaHoTen, Gks_MeHoTen = tên cha, tên mẹ ghi trên giấy (BẮT BUỘC trả khi giấy có ghi).
-
-TUYỆT ĐỐI KHÔNG:
-- KHÔNG đẩy tên CHA, MẸ, NGƯỜI ĐI KHAI SINH hay CÁN BỘ KÝ trên giấy khai sinh vào ToKhaiYeuCau_*
-  (khối "người yêu cầu") hay ToKhai_* (khối "người được cấp"). Giấy khai sinh KHÔNG phải tờ khai.
-- KHÔNG lấy số định danh của cha/mẹ in trên trích lục mẫu mới làm ToKhaiYeuCau_SoDinhDanh hay
-  ToKhai_SoDinhDanh — đó là số của người khác, ghép vào mục I/II là hỏng cả hồ sơ.
-- ToKhaiYeuCau_* CHỈ được trả khi có TỜ KHAI thật (đơn do người dân viết, có dòng "Họ, chữ đệm, tên
-  người yêu cầu"). Chỉ có CCCD + giấy khai sinh thì KHÔNG trả ToKhaiYeuCau_* nào.
-</giay_khai_sinh>
-
-<giay_uy_quyen>
-NHẬN DẠNG GIẤY ỦY QUYỀN: tài liệu có tiêu đề "GIẤY ỦY QUYỀN" hoặc "GIẤY UỶ QUYỀN", có phần
-"I. Người ủy quyền" (hoặc "Bên ủy quyền") và "II. Người được ủy quyền" (hoặc "Bên nhận ủy quyền"),
-kết thúc bằng "Nội dung ủy quyền" hoặc "Phạm vi ủy quyền".
-
-TRÍCH XUẤT KHI CÓ GIẤY ỦY QUYỀN:
-
-Section I — NGƯỜI ỦY QUYỀN (người CẦN giấy XNTTHN) → các field PoA_Subject*:
-- PoA_SubjectName  = họ tên người ủy quyền ở phần "I. Người ủy quyền / Họ và tên: ..."
-- PoA_SubjectDoB   = ngày sinh người ủy quyền ("sinh ngày ..."), dd/mm/yyyy
-- PoA_SubjectIdNumber = số CCCD/CMND/Hộ chiếu của người ủy quyền ("CMND/CCCD/số hộ chiếu: ...")
-- PoA_SubjectIdDate   = ngày cấp giấy tờ của người ủy quyền ("cấp ngày ..."), dd/mm/yyyy
-- PoA_SubjectIssuer   = nơi cấp giấy tờ của người ủy quyền ("do ... cấp")
-  + Nếu OCR thấy "Cục Cảnh sát QLHC" / "quản lý hành chính về trật tự" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-  + Nếu thấy "Bộ Công an" → "Bộ Công an"
-- PoA_SubjectAddress  = nơi cư trú người ủy quyền ("Nơi cư trú / Địa chỉ: ..."), object {tinh, xa, diaChi}
-  (áp quy tắc <noi_cu_tru> để tách tinh/xa/diaChi)
-- PoA_SubjectDanToc = dân tộc người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh")
-
-THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (nếu hồ sơ kèm; số thẻ trùng hoặc gần trùng PoA_SubjectIdNumber,
-họ tên trùng người ủy quyền) → các field PoA_SubjectCccd*, đọc từ BẢN IN trên thẻ:
-- PoA_SubjectCccdHoTen, PoA_SubjectCccdSoDinhDanh, PoA_SubjectCccdNgaySinh, PoA_SubjectCccdGioiTinh
-- PoA_SubjectCccdNgayCap, PoA_SubjectCccdNoiCap (mặt sau)
-- PoA_SubjectCccdNoiCuTru = "Nơi thường trú" in trên thẻ, object {quocGia, tinh, xa, diaChi}
-Hồ sơ có HAI thẻ (người ủy quyền + người đi nộp) thì thẻ người đi nộp vào Cccd_*, thẻ người ủy
-quyền vào PoA_SubjectCccd* — KHÔNG bỏ sót thẻ thứ hai, KHÔNG trộn hai thẻ.
-
-Section II — NGƯỜI ĐƯỢC ỦY QUYỀN (người ĐI NỘP hộ) → CCCD của người này thường được upload kèm.
-Thông tin từ CCCD upload → điền vào Cccd_* như bình thường.
-KHÔNG trích thông tin người được ủy quyền từ giấy ủy quyền vào Cccd_* (dùng CCCD upload).
-
-LƯU Ý QUAN TRỌNG:
-- Nếu giấy ủy quyền chỉ ghi tên KHÔNG kèm CCCD/ngày sinh người ủy quyền → vẫn trả PoA_SubjectName,
-  bỏ qua các field còn lại nếu không có.
-- Khi có cả CCCD và giấy ủy quyền: CCCD upload thường là của người ĐƯỢC ủy quyền (đi nộp hộ).
-  Đối chiếu tên CCCD với Section II giấy ủy quyền để xác nhận.
-- TUYỆT ĐỐI KHÔNG nhầm người ủy quyền (Section I) với người được ủy quyền (Section II).
-</giay_uy_quyen>
-
-<giay_xntthn_cu>
-Nếu có GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ (tiêu đề "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN"), giấy này
-NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích → được phép dùng làm NGUỒN:
-- Nếu dòng tình trạng hôn nhân ghi "... chồng/vợ đã chết (theo Giấy chứng tử/Trích lục khai tử số <N> do <CQ>
-  cấp ngày <D>)" → DeathCert_Number=<N> (GIỮ NGUYÊN như ghi trên giấy, KỂ CẢ hậu tố "/TLKT-BS"),
-  DeathCert_Date=<D> (dd/mm/yyyy), DeathCert_Agency=<CQ> (bỏ chữ "cấp").
-- Nếu ghi "... đã ly hôn (Bản án/Quyết định ly hôn số <N> ngày <D> của <CQ>)"
-  → DivorceDecision_Number/Date/Agency tương ứng.
-- Purpose: lấy NGUYÊN VĂN từ "Giấy này được sử dụng để: <mục đích>", GIỮ TRỌN câu tới hết dòng.
-  Mệnh đề "không có giá trị sử dụng để đăng ký kết hôn" là MỘT PHẦN của mục đích, phải giữ — dù nó
-  nằm trong ngoặc hay nối bằng dấu phẩy. Chỉ bỏ đúng cái nhãn phía trước.
-  vd "Giao dịch nhà, đất, không có giá trị sử dụng để đăng ký kết hôn"
-   -> Purpose = "Giao dịch nhà, đất, không có giá trị sử dụng để đăng ký kết hôn"  (ĐÚNG)
-   -> Purpose = "Giao dịch nhà, đất"                                               (SAI, cắt cụt)
-</giay_xntthn_cu>
-
-<purpose_extraction>
-- BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng Giấy xác nhận tình trạng hôn nhân: ...".
-- Lấy toàn bộ nội dung sau nhãn trên, nối các dòng liên tiếp; dừng trước "Tôi cam đoan", "Làm tại" hoặc
-  "Người yêu cầu". Bỏ "(5)" và nhãn, không bỏ field chỉ vì OCR sai nhẹ trong nội dung.
-- TUYỆT ĐỐI KHÔNG cắt ngắn mục đích. Giữ cả những mệnh đề đứng sau dấu phẩy như "không có giá trị
-  đăng ký kết hôn" / "không có giá trị sử dụng để đăng ký kết hôn" — đây là nội dung người dân phải
-  ghi vào ô "Nhập mục đích(*)" của cổng, thiếu là hồ sơ sai.
-  vd "Bổ sung giấy tờ mua bán đất, không có giá trị đăng ký kết hôn"
-   -> giữ NGUYÊN cả cụm, KHÔNG rút thành "Bổ sung giấy tờ mua bán đất".
-- Thứ tự nguồn: TỜ KHAI hiện tại → "Giấy này được sử dụng để: ..." trên giấy XNTTHN cũ.
-</purpose_extraction>
-
-<to_khai_status_relation>
+<tinh_trang_hon_nhan>
 - Từ dòng "Tình trạng hôn nhân" trên TỜ KHAI:
   + Nếu ghi "đã đăng ký kết hôn nhưng chồng đã chết" hoặc "đã đăng ký kết hôn nhưng vợ đã chết"
     hoặc "vợ/chồng đã chết" VÀ CÓ dòng "Theo giấy chứng tử số ... do ... cấp ngày ..." → BẮT BUỘC
-    trích xuất DeathCert_Number, DeathCert_Date, DeathCert_Agency từ dòng đó (xem chi tiết ở
-    <death_cert_from_tokhai>). TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 trong trường hợp này
+    trích xuất DeathCert_Number, DeathCert_Date, DeathCert_Agency từ dòng đó (xem GIẤY CHỨNG TỬ GHI
+    TRÊN TỜ KHAI bên dưới). TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 trong trường hợp này
     (Python mapper sẽ tự điền trạng thái GÓA từ DeathCert_*).
   + Nếu ghi "đã ly hôn" hoặc "đã đăng ký kết hôn nhưng đã ly hôn" VÀ CÓ dòng "Theo bản án/quyết định
-    ly hôn số ... do/của ... cấp/ngày ..." → trích xuất DivorceDecision_* (tương tự death cert).
+    ly hôn số ... do/của ... cấp/ngày ..." → trích xuất DivorceDecision_* (tương tự giấy chứng tử).
     KHÔNG trả TinhTrangHonNhanC1.
   + Nếu nội dung bắt đầu bằng "Chưa kết hôn" hoặc CHỈ ghi "hiện tại chưa đăng ký kết hôn với ai"
     (KHÔNG có thông tin về chồng/vợ đã chết hay ly hôn) → TinhTrangHonNhanC1 = "Hiện tại chưa đăng ký kết hôn với ai".
@@ -185,27 +69,29 @@ NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích �
   TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng" (KÈM theo DivorceDecision_*/DeathCert_* và
   Marriage_*). Ly hôn/góa lúc này chỉ là quá khứ; hai trạng thái "…đã ly hôn/vợ chồng đã chết;
   hiện tại chưa đăng ký kết hôn với ai" là SAI SỰ THẬT với người đã cưới lại.
+- RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ một trong hai trạng thái chuẩn:
+  "Hiện tại chưa đăng ký kết hôn với ai" hoặc "Hiện tại đang có vợ/chồng".
+  Trạng thái GÓA/ĐÃ LY HÔN do Python chọn từ DeathCert_*/DivorceDecision_* và ưu tiên hơn tờ khai —
+  NHƯNG CHỈ khi người đó HIỆN TẠI CHƯA kết hôn lại. Tờ khai ghi "hiện tại đã kết hôn với ..." thì
+  vẫn PHẢI trả TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
+- Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
 - Trả ToKhai_LaBanThan=true CHỈ khi dòng quan hệ ghi "Tự khai"/"Bản thân" VÀ họ tên người yêu cầu
   trùng họ tên người được cấp.
-</to_khai_status_relation>
 
-<death_cert_from_tokhai>
-Khi TỜ KHAI có dòng "Tình trạng hôn nhân" ghi rõ "chồng/vợ đã chết" VÀ có dòng tiếp theo dạng
-"Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>" hoặc "Theo trích lục khai tử số <N> do <CQ> cấp ngày <D>":
-
+GIẤY CHỨNG TỬ GHI TRÊN TỜ KHAI — Khi TỜ KHAI có dòng "Tình trạng hôn nhân" ghi rõ "chồng/vợ đã chết" VÀ có dòng
+tiếp theo dạng "Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>" hoặc "Theo trích lục khai tử số <N> do <CQ> cấp
+ngày <D>":
 - DeathCert_Number = <N> (GIỮ NGUYÊN như tờ khai ghi, kể cả hậu tố: "12", "212/2022", "167/TLKT-BS")
 - DeathCert_Date = <D> (dd/mm/yyyy hoặc dd-mm-yyyy, chuẩn hóa thành dd/mm/yyyy)
 - DeathCert_Agency = <CQ> (cơ quan cấp, ví dụ "UBND phường 1 TP Dalat tỉnh Lâm Đồng").
   Chuẩn hóa: "UBND" → "Ủy ban nhân dân", giữ nguyên địa danh phía sau.
-
-LƯU Ý: 
+LƯU Ý:
 - BẮT BUỘC trả CẢ BA field DeathCert_* khi tờ khai có đủ thông tin số, cơ quan, ngày.
 - TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 khi đã trích được DeathCert_* từ tờ khai, vì Python mapper
   sẽ tự động điền trạng thái "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại
   chưa đăng ký kết hôn với ai" dựa trên sự hiện diện của DeathCert_*.
 - Dòng "Hiện tại chưa đăng ký kết hôn với ai" trong tờ khai CHỈ LÀ phần bổ sung, KHÔNG được dùng để
   đè lên trạng thái GÓA khi đã có thông tin chồng/vợ đã chết.
-
 Ví dụ: TỜ KHAI ghi:
   "Tình trạng hôn nhân: (4) đã đăng ký kết hôn nhưng chồng đã chết
    Theo giấy chứng tử số 12 do UBND phường 1 TP Dalat tỉnh Lâm Đồng cấp ngày 28-2-2005
@@ -215,56 +101,124 @@ Ví dụ: TỜ KHAI ghi:
   - DeathCert_Date = "28/02/2005"
   - DeathCert_Agency = "Ủy ban nhân dân phường 1 TP Đà Lạt tỉnh Lâm Đồng"
   - KHÔNG trả TinhTrangHonNhanC1 (để Python mapper xử lý).
-</death_cert_from_tokhai>
 
-<source_rules>
-- Cccd_* CHỈ lấy từ CCCD/CMND upload (thẻ vật lý được chụp/scan kèm hồ sơ):
-  + Trường hợp BẢN THÂN: CCCD upload là của chính người cần giấy XNTTHN.
-  + Trường hợp ỦY QUYỀN: CCCD upload là của người ĐƯỢC ủy quyền (đi nộp hộ) — thông tin
-    người cần giấy (người ủy quyền) lấy từ GIẤY ỦY QUYỀN → điền vào PoA_Subject*.
-- ToKhai_* lấy từ TỜ KHAI cấp giấy XNTTHN, TUYỆT ĐỐI PHẢI TÁCH NGUỒN VỚI Cccd_*:
-  + ToKhai_HoTen = dòng "Họ, chữ đệm, tên:" trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (Section II - người được cấp).
-  + ToKhai_NgaySinh = dòng "Ngày, tháng, năm sinh:" trong phần người được cấp, dd/mm/yyyy.
-  + ToKhai_GioiTinh = dòng "Giới tính:" trong phần người được cấp ("Nam" hoặc "Nữ").
-  + ToKhai_DanToc = dòng "Dân tộc:" trong phần người được cấp.
-  + ToKhai_QuocTich = dòng "Quốc tịch:" trong phần người được cấp.
-  + ToKhai_SoDinhDanh = dòng "Giấy tờ tùy thân: ... số" trong phần người được cấp.
-  + ToKhai_NgayCapGiayTo = dòng "Cấp ngày..." trong phần người được cấp, dd/mm/yyyy.
-  + ToKhai_NoiCapGiayTo = dòng "tại ..." sau "Cấp ngày" trong phần người được cấp.
-  + ToKhai_NoiCuTru = dòng "Nơi cư trú:" trong phần người được cấp, object {quocGia,tinh,xa,diaChi}.
-  + BẮT BUỘC trả TẤT CẢ các field ToKhai_* khi TỜ KHAI có ghi thông tin tương ứng, NGAY CẢ KHI CCCD cũng có thông tin đó.
-  + TUYỆT ĐỐI KHÔNG tự chọn một nguồn rồi bỏ nguồn còn lại; cả ToKhai_* VÀ Cccd_* đều phải được trả khi cả hai nguồn đều có.
-- Cccd_NoiCuTru = "Nơi thường trú/Nơi cư trú" trên CCCD/CMND, chỉ lấy từ thẻ CCCD/CMND.
+KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
+- Dòng "Tình trạng hôn nhân" của tờ khai có thể xin xác nhận CHƯA ĐĂNG KÝ KẾT HÔN TRONG MỘT KHOẢNG
+  THỜI GIAN ĐÃ QUA, kể cả khi HIỆN TẠI người đó đã có vợ/chồng. Các dạng thường gặp:
+  + "Từ ngày 01 tháng 01 năm 2025 đến ngày 13 tháng 12 năm 2025. Tôi chưa đăng ký kết hôn với ai.
+     Hiện tại đã kết hôn với vợ tên là: ..."
+  + "Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với ..."
+  + "Từ 27-4-2016 tới 14-9-2016 chưa đăng ký kết hôn với ai."
+- Period_TuNgay = ngày sau chữ "Từ ngày"/"Từ"; Period_DenNgay = ngày sau chữ "đến ngày"/"đến"/"tới".
+  Cả hai dd/mm/yyyy, ghép đủ ngày + tháng + năm dù tờ khai viết tách chữ ("ngày 1 tháng 1 năm 2025"
+  -> "01/01/2025") hay viết gọn bằng dấu gạch chéo/gạch ngang ("27/4/2016" -> "27/04/2016").
+  CHỮ "ngày" CÓ THỂ VẮNG ở một hoặc cả hai đầu mốc — chỉ cần có cặp "Từ ... đến/tới ..." kèm ý
+  "chưa đăng ký kết hôn với ai" là PHẢI trả cả hai field.
+- BẮT BUỘC trả Period_TuNgay/Period_DenNgay NGAY CẢ KHI cùng dòng đó còn khai ly hôn hoặc vợ/chồng
+  đã chết. Đây là ca phổ biến nhất: "Đã kết hôn, ly hôn theo bản án số 12/2016 ngày 27/4/2016 do
+  Tòa án ... Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với
+  <tên vợ/chồng>" → trả ĐỦ CẢ BA nhóm: DivorceDecision_*, Period_TuNgay/Period_DenNgay VÀ
+  Marriage_* (+ TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng").
+- MỐC BẮT ĐẦU THƯỜNG TRÙNG NGÀY BẢN ÁN LY HÔN (người ta xin xác nhận từ lúc ly hôn tới lúc cưới
+  lại). TUYỆT ĐỐI KHÔNG vì thấy ngày đó đã dùng cho DivorceDecision_Date mà bỏ Period_TuNgay —
+  MỘT NGÀY ĐƯỢC PHÉP xuất hiện ở CẢ HAI field. Bỏ Period_* là mất đúng cái khoảng thời gian người
+  dân cần xác nhận và cổng sẽ chọn nhầm option "đã ly hôn; hiện tại chưa đăng ký kết hôn với ai".
+- HAI ngày này KHÔNG phải ngày đăng ký kết hôn: Marriage_Date vẫn lấy riêng từ giấy chứng nhận kết hôn
+  / cụm "Ngày ... tháng ... năm ..." đứng sau số và nơi đăng ký kết hôn. Mốc kết thúc CÓ THỂ trùng
+  ngày đăng ký kết hôn hiện tại — vẫn trả cả hai field, không gộp.
+- Không thấy cụm "Từ ngày ... đến ngày ..." thì bỏ trống CẢ HAI, không suy từ ngày khác.
+- Period_* CHỈ lấy từ TỜ KHAI cấp Giấy XNTTHN. Hồ sơ KHÔNG có tờ khai → KHÔNG trả Period_* (giấy XNTTHN cũ,
+  trích lục khai tử, bản án, giấy kết hôn không phải nguồn của Period).
+- Ngày vợ/chồng chết ("chồng đã chết ngày ..."), ngày ly hôn, ngày cấp trích lục/bản án, ngày đăng ký kết hôn
+  KHÔNG phải Period — chỉ ngày đứng ngay sau đúng cụm "Từ (ngày)" ... "đến/tới (ngày)" của khoảng thời gian
+  xin xác nhận chưa đăng ký kết hôn.
+- Có "Từ ngày ..." mà không có "đến/tới ..." thì Period_DenNgay để TRỐNG, không tự đặt ngày kết thúc.
+</tinh_trang_hon_nhan>
+
+<muc_dich>
+- BẮT BUỘC trả Purpose khi TỜ KHAI có dòng "Mục đích sử dụng Giấy xác nhận tình trạng hôn nhân: ...".
+- Lấy toàn bộ nội dung sau nhãn trên, nối các dòng liên tiếp; dừng trước "Tôi cam đoan", "Làm tại" hoặc
+  "Người yêu cầu". Bỏ "(5)" và nhãn, không bỏ field chỉ vì OCR sai nhẹ trong nội dung.
+- TUYỆT ĐỐI KHÔNG cắt ngắn mục đích. Giữ cả những mệnh đề đứng sau dấu phẩy như "không có giá trị
+  đăng ký kết hôn" / "không có giá trị sử dụng để đăng ký kết hôn" — đây là nội dung người dân phải
+  ghi vào ô "Nhập mục đích(*)" của cổng, thiếu là hồ sơ sai.
+  vd "Bổ sung giấy tờ mua bán đất, không có giá trị đăng ký kết hôn"
+   -> giữ NGUYÊN cả cụm, KHÔNG rút thành "Bổ sung giấy tờ mua bán đất".
+- Thứ tự nguồn: TỜ KHAI hiện tại → "Giấy này được sử dụng để: ..." trên giấy XNTTHN cũ (xem <giay_xntthn_cu>).
+</muc_dich>
+
+<the_va_giay_in>
+- NguoiDuocCap_* = thông tin IN trên giấy tờ của NGƯỜI ĐƯỢC CẤP. KHÔNG lấy từ tờ khai. Chọn nguồn theo TỪNG
+  field, không theo cả nhóm: thẻ CCCD/CMND upload trước; field nào thẻ KHÔNG in (thường là dân tộc) hoặc hồ
+  sơ không có thẻ thì lấy từ giấy in khác đứng tên họ — khối "XÁC NHẬN" của giấy XNTTHN cũ, xác nhận thông
+  tin cư trú. Riêng dân tộc có field riêng, xem mục dân tộc bên dưới.
+- NguoiYeuCau_* = thông tin IN trên thẻ của người ĐI NỘP khi người đó KHÁC người được cấp (người được
+  ủy quyền, người thân khai hộ). Chỉ có một người thì để trống.
+  + Trường hợp ỦY QUYỀN: thẻ upload thường là của người ĐƯỢC ủy quyền (đi nộp hộ) → NguoiYeuCau_*;
+    thông tin người cần giấy (người ủy quyền) lấy từ GIẤY ỦY QUYỀN → PoA_Subject*.
+- NguoiDuocCap_NoiCuTru / NguoiYeuCau_NoiCuTru = "Nơi thường trú/Nơi cư trú" in trên thẻ của đúng người đó.
   + Mặt sau thẻ CĂN CƯỚC mới: OCR hay MẤT nhãn "Nơi cư trú / Place of residence", địa chỉ đứng trơ
     trọi ở đầu trang ngay TRƯỚC dòng "Nơi đăng ký khai sinh / Place of birth" → đó chính là
-    Cccd_NoiCuTru (vd "Phường A - B, Tỉnh C" → tinh="C", xa="A - B").
+    nơi cư trú của chủ thẻ (vd "Phường A - B, Tỉnh C" → tinh="C", xa="A - B").
   + TUYỆT ĐỐI KHÔNG lấy "Nơi thường trú/tạm trú cuối cùng" hay "Nơi chết" trên GIẤY CHỨNG TỬ/trích
-    lục khai tử làm Cccd_NoiCuTru — đó là địa chỉ của vợ/chồng đã mất. Thẻ không có địa chỉ thì bỏ trống.
-- Nếu có nhiều ảnh CCCD thì gộp mặt trước + mặt sau của cùng một người.
-- RIÊNG Cccd_DanToc (dân tộc) — thẻ CCCD/Căn cước mẫu mới thường KHÔNG in dân tộc. THỨ TỰ ƯU TIÊN NGUỒN:
+    lục khai tử làm NguoiDuocCap_NoiCuTru — đó là địa chỉ của vợ/chồng đã mất. Thẻ không có địa chỉ thì bỏ trống.
+- RIÊNG dân tộc — thẻ CCCD/Căn cước mẫu mới thường KHÔNG in dân tộc. Trả ĐỦ các nguồn có ghi, mỗi nguồn
+  một field riêng:
   (1) TỜ KHAI cấp Giấy XNTTHN — dòng "Dân tộc: ..." (ở khối người được cấp) → ToKhai_DanToc;
-  (2) thẻ CCCD/CMND nếu có in → Cccd_DanToc. BẮT BUỘC điền ToKhai_DanToc nếu tờ khai ghi, VÀ điền Cccd_DanToc nếu CCCD ghi — ĐỪNG bỏ trống chỉ vì thẻ CCCD không in.
-  + CHÉP NGUYÊN VĂN chữ trên giấy, GIỮ CẢ DẤU NHÁY và chữ đứng trước nó — "K'Ho" phải trả "K'Ho",
-    KHÔNG được cắt còn "Ho"/"Họ"; tương tự "H'Mông", "M'Nông", "Cil", "Chil", "Xrê". Python tự
-    chuẩn hóa về option của dropdown, nên đừng tự đoán hay tự đổi sang tên dân tộc khác.
-- Cccd_NgayCap (ngày cấp CCCD) — BẮT BUỘC trả nếu BẤT KỲ giấy nào có. Khi có NGÀY Ở NHIỀU CHỖ (mặt sau CCCD và tờ khai), TRẢ CẢ HAI NGUỒN:
-  + Cccd_NgayCap: MẶT SAU CCCD — ngày ở dòng "Ngày, tháng, năm / Date, month, year" (dd/mm/yyyy). Ngày này
-    CÓ THỂ DÍNH LIỀN nhãn do OCR gộp, vd "...Date, month, year01/05/2021" → Cccd_NgayCap = "01/05/2021".
-  + ToKhai_NgayCapGiayTo: Nếu TỜ KHAI có dòng "Giấy tờ tùy thân: CCCD số ... cấp ngày <D>" thì BẮT BUỘC trả ToKhai_NgayCapGiayTo = <D> (dd/mm/yyyy).
-  + Cccd_NoiCap nằm gần dòng ngày cấp trên MẶT SAU CCCD; nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH
-  VỀ TRẬT TỰ XÃ HỘI" thì trả Cccd_NoiCap = "Cục Cảnh sát quản lý hành chính về trật tự xã hội". Nếu là thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", thường cấp từ 01/7/2024) ghi "BỘ CÔNG AN"/"MINISTRY OF PUBLIC SECURITY" thì trả Cccd_NoiCap = "Bộ Công an"; KHÔNG mặc định "Cục Cảnh sát..." cho thẻ này.
+  (2) THẺ CCCD/CMND của người được cấp nếu có in (CMND cũ có in) → NguoiDuocCap_DanToc;
+  (3) giấy tờ KHÁC ghi dân tộc của CHÍNH người được cấp: khối "XÁC NHẬN" của giấy XNTTHN cũ, xác nhận thông
+      tin cư trú, giấy chứng nhận kết hôn (đúng cột của người được cấp, xem <giay_ket_hon>), giấy khai sinh
+      của chính họ → GiayToKhac_DanToc. BẮT BUỘC trả KỂ CẢ khi hồ sơ có thẻ hoặc tờ khai.
+  KHÔNG lấy dân tộc của người đã mất, của con, cha mẹ hay của người vợ/chồng.
+- Ngày cấp CCCD — BẮT BUỘC trả nếu BẤT KỲ giấy nào có. Khi có NGÀY Ở NHIỀU CHỖ (mặt sau CCCD và tờ khai), TRẢ CẢ HAI NGUỒN:
+  + NguoiDuocCap_NgayCap / NguoiYeuCau_NgayCap: MẶT SAU thẻ của đúng người — ngày ở dòng "Ngày, tháng, năm / Date,
+    month, year" (dd/mm/yyyy). Ngày này CÓ THỂ DÍNH LIỀN nhãn do OCR gộp, vd "...Date, month, year01/05/2021" → "01/05/2021".
+  + ToKhai_NgayCapGiayTo: Nếu TỜ KHAI có dòng "Giấy tờ tùy thân: CCCD số ... cấp ngày <D>" thì BẮT BUỘC trả
+    ToKhai_NgayCapGiayTo = <D> (dd/mm/yyyy).
+  + Nơi cấp (NguoiDuocCap_NoiCap / NguoiYeuCau_NoiCap) nằm gần dòng ngày cấp trên MẶT SAU thẻ; chuẩn hóa theo
+    <dinh_dang>.
   + ToKhai_NoiCapGiayTo: Nếu TỜ KHAI có dòng "tại ..." sau "Cấp ngày" thì BẮT BUỘC trả ToKhai_NoiCapGiayTo.
-- DivorceDecision_* lấy từ OCR của tài liệu là quyết định/bản án ly hôn thật, HOẶC từ dòng tình trạng
-  hôn nhân trên giấy XNTTHN cũ (nhắc lại "Bản án/Quyết định ly hôn số ..."). Không dùng tên file để kết luận.
-- Một tài liệu ly hôn thật thường có các dấu hiệu: "TÒA ÁN NHÂN DÂN" hoặc "TAND",
-  tiêu đề "QUYẾT ĐỊNH"/"BẢN ÁN", và nội dung như "công nhận thuận tình ly hôn",
-  "ly hôn", "về quan hệ hôn nhân".
-- DeathCert_* lấy từ OCR tài liệu khai tử thật của VỢ/CHỒNG (giấy chứng tử, trích lục khai tử, giấy
-  báo tử), HOẶC từ dòng tình trạng hôn nhân trên giấy XNTTHN cũ (nhắc lại "Giấy chứng tử số ..."). KHÔNG
-  lấy từ CCCD người yêu cầu; thông tin người chết là VỢ/CHỒNG, không phải người yêu cầu — không điền Cccd_*.
-</source_rules>
+</the_va_giay_in>
 
-<death_cert_extraction>
+<giay_uy_quyen>
+TRÍCH XUẤT KHI CÓ GIẤY ỦY QUYỀN:
+
+Section I — NGƯỜI ỦY QUYỀN (người CẦN giấy XNTTHN) → các field PoA_Subject*:
+- PoA_SubjectName  = họ tên người ủy quyền ở phần "I. Người ủy quyền / Họ và tên: ..."
+- PoA_SubjectDoB   = ngày sinh người ủy quyền ("sinh ngày ..."), dd/mm/yyyy
+- PoA_SubjectIdNumber = số CCCD/CMND/Hộ chiếu của người ủy quyền ("CMND/CCCD/số hộ chiếu: ...")
+- PoA_SubjectIdDate   = ngày cấp giấy tờ của người ủy quyền ("cấp ngày ..."), dd/mm/yyyy
+- PoA_SubjectIssuer   = nơi cấp giấy tờ của người ủy quyền ("do ... cấp"), chuẩn hóa theo <dinh_dang>
+  + Nếu OCR thấy "Cục Cảnh sát QLHC" / "quản lý hành chính về trật tự" → "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+  + Nếu thấy "Bộ Công an" → "Bộ Công an"
+- PoA_SubjectAddress  = nơi cư trú người ủy quyền ("Nơi cư trú / Địa chỉ: ..."), object {tinh, xa, diaChi}
+  (áp quy tắc địa chỉ ở <dinh_dang> để tách tinh/xa/diaChi)
+- PoA_SubjectDanToc = dân tộc người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh")
+
+THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (nếu hồ sơ kèm; số thẻ trùng hoặc gần trùng PoA_SubjectIdNumber,
+họ tên trùng người ủy quyền) → các field NguoiDuocCap_*, đọc từ BẢN IN trên thẻ (họ tên, số, ngày
+sinh, giới tính, ngày cấp, nơi cấp, "Nơi thường trú" object {quocGia, tinh, xa, diaChi}).
+
+Section II — NGƯỜI ĐƯỢC ỦY QUYỀN (người ĐI NỘP hộ) → thẻ của người này thường được upload kèm
+→ các field NguoiYeuCau_*, đọc từ BẢN IN trên thẻ. KHÔNG trích người được ủy quyền từ chữ trên
+giấy ủy quyền vào NguoiYeuCau_* (chỉ dùng thẻ upload).
+Hồ sơ có HAI thẻ thì thẻ người đi nộp vào NguoiYeuCau_*, thẻ người ủy quyền vào NguoiDuocCap_* —
+KHÔNG bỏ sót thẻ thứ hai, KHÔNG trộn hai thẻ.
+
+LƯU Ý QUAN TRỌNG:
+- Nếu giấy ủy quyền chỉ ghi tên KHÔNG kèm CCCD/ngày sinh người ủy quyền → vẫn trả PoA_SubjectName,
+  bỏ qua các field còn lại nếu không có.
+- Khi có cả CCCD và giấy ủy quyền: CCCD upload thường là của người ĐƯỢC ủy quyền (đi nộp hộ).
+  Đối chiếu tên CCCD với Section II giấy ủy quyền để xác nhận.
+- TUYỆT ĐỐI KHÔNG nhầm người ủy quyền (Section I) với người được ủy quyền (Section II).
+</giay_uy_quyen>
+
+<giay_khai_tu>
+- DeathCert_* lấy từ OCR tài liệu khai tử thật của VỢ/CHỒNG (giấy chứng tử, trích lục khai tử, giấy
+  báo tử), HOẶC từ dòng tình trạng hôn nhân trên tờ khai / giấy XNTTHN cũ (nhắc lại "Giấy chứng tử số ...").
+  KHÔNG lấy từ CCCD người yêu cầu; thông tin người chết là VỢ/CHỒNG, không phải người yêu cầu — không điền
+  NguoiDuocCap_*.
+
 Cổng hỏi "Số / Ngày cấp / Cơ quan cấp Giấy chứng tử/Trích lục khai tử/Bản án" = thông tin của CHÍNH TỜ
 GIẤY ĐANG NỘP, KHÔNG phải số/ngày của lần đăng ký khai tử gốc trong sổ.
 
@@ -296,9 +250,11 @@ Ví dụ: TRÍCH LỤC KHAI TỬ (BẢN SAO) của UBND xã Nghĩa Thương:
   - DeathCert_Date   = "07/11/2024"           (ĐÚNG — ngày cấp giấy đang nộp)
   - DeathCert_Agency = "Ủy ban nhân dân xã Nghĩa Thương"
   KHÔNG trả DeathCert_Number = "116" / DeathCert_Date = "11/12/2009" (SAI — đó là đăng ký gốc trong sổ).
-</death_cert_extraction>
+</giay_khai_tu>
 
-<divorce_decision_extraction>
+<ban_an_ly_hon>
+- DivorceDecision_* lấy từ tài liệu quyết định/bản án ly hôn thật (dấu hiệu ở <giay_to>), HOẶC từ dòng tình trạng
+  hôn nhân trên tờ khai / giấy XNTTHN cũ (nhắc lại "Bản án/Quyết định ly hôn số ..."). Không dùng tên file để kết luận.
 - DivorceDecision_Number: lấy số ở nhãn "Số:" NGAY ĐẦU văn bản (phần tiêu đề, ngay dưới tên Tòa án).
   TUYỆT ĐỐI KHÔNG lấy số ở các cụm DẪN CHIẾU trong phần nội dung như "Tại quyết định dân sự số ...",
   "tại bản án số ...", "theo quyết định số ..." — đó là số văn bản GỐC được trích lục/dẫn chiếu,
@@ -310,11 +266,20 @@ Ví dụ: TRÍCH LỤC KHAI TỬ (BẢN SAO) của UBND xã Nghĩa Thương:
 - DivorceDecision_Agency: lấy cơ quan ban hành/cấp quyết định từ đầu văn bản hoặc phần ký.
   Chuẩn hóa "TAND" thành "Tòa án nhân dân". Ví dụ "TAND THỊ XÃ LAI CHÂU / TỈNH LAI CHÂU"
   -> "Tòa án nhân dân thị xã Lai Châu, tỉnh Lai Châu".
-- Chỉ trả DivorceDecision_* khi tài liệu có đủ dấu hiệu quyết định/bản án ly hôn.
-  Nếu chỉ có CCCD hoặc giấy tờ không chứng minh ly hôn thì bỏ qua toàn bộ DivorceDecision_*.
-</divorce_decision_extraction>
+- Chỉ trả DivorceDecision_* khi có bản án/quyết định ly hôn thật HOẶC tờ khai / giấy XNTTHN cũ ghi đã ly hôn
+  theo bản án/quyết định số .... Nếu chỉ có CCCD hoặc giấy tờ không nhắc tới ly hôn thì bỏ qua toàn bộ DivorceDecision_*.
+- BẢN ÁN/QUYẾT ĐỊNH LY HÔN GHI TRÊN TỜ KHAI — hồ sơ KHÔNG có văn bản bản án/quyết định mà dòng tình trạng hôn nhân
+  của tờ khai (hoặc giấy XNTTHN cũ) ghi đã ly hôn theo bản án/quyết định số <N> của/do <CQ> ... ngày <D>:
+  + BẮT BUỘC trả ĐỦ CẢ BA field khi dòng đó có: DivorceDecision_Number = <N> (GIỮ NGUYÊN số và ký hiệu như
+    "105/2018/QĐST-HNGĐ"), DivorceDecision_Agency = <CQ> (chuẩn hóa "TAND" → "Tòa án nhân dân"),
+    DivorceDecision_Date = <D>.
+  + <D> là ngày GẮN VỚI việc ly hôn trên chính dòng đó, có thể đứng SAU số ("số ... ngày <D>") hoặc đứng TRƯỚC
+    ("đến ngày <D> thì ly hôn theo quyết định số ..."). KHÔNG lấy ngày đăng ký kết hôn ("ngày ... đã đăng ký kết
+    hôn với ...") hay ngày làm tờ khai.
+  + Có văn bản bản án/quyết định thật thì lấy theo văn bản đó (các gạch đầu dòng trên), không lấy từ tờ khai.
+</ban_an_ly_hon>
 
-<marriage_extraction>
+<giay_ket_hon>
 - Nguồn ưu tiên Marriage_*: (1) GIẤY CHỨNG NHẬN/ĐĂNG KÝ KẾT HÔN thật; (2) đoạn "Tình trạng hôn nhân"
   trên TỜ KHAI khi ghi rõ người yêu cầu hiện tại đang có vợ/chồng.
 - Marriage_SpouseName = họ tên người vợ/chồng HIỆN TẠI. Trên tờ khai lấy sau cụm "đang có chồng là"/
@@ -323,6 +288,11 @@ Ví dụ: TRÍCH LỤC KHAI TỬ (BẢN SAO) của UBND xã Nghĩa Thương:
   BẮT BUỘC trả khi tờ khai có một trong các cụm này, KỂ CẢ khi phía trước còn khai ly hôn/góa.
   Chỉ lấy HỌ TÊN; ngày sinh, số CCCD, ngày cấp CCCD của vợ/chồng đi kèm thì BỎ, không nhét vào
   Marriage_Number/Marriage_Date.
+- Giấy chứng nhận kết hôn in HAI CỘT: cột trái là VỢ ("Họ, chữ đệm, tên vợ"), cột phải là CHỒNG ("Họ, chữ
+  đệm, tên chồng"). OCR thường gộp hai cột thành một dòng, vd "Dân tộc: <vợ> Dân tộc: <chồng>" — giá trị
+  ĐẦU là của VỢ, giá trị SAU là của CHỒNG. Xác định người được cấp là vợ hay chồng (so họ tên với thẻ / tờ
+  khai / người còn lại là Marriage_SpouseName) rồi lấy dân tộc ở cột của người đó → GiayToKhac_DanToc,
+  KỂ CẢ khi hồ sơ có thẻ. KHÔNG lấy dân tộc ở cột của người vợ/chồng kia.
 - Marriage_Number/Date/Agency chỉ trả khi giấy kết hôn hoặc tờ khai ghi rõ SỐ, NGÀY đăng ký/cấp và CƠ QUAN
   đăng ký/cấp giấy kết hôn tương ứng; thiếu field nào thì bỏ field đó.
 - Không lấy số CCCD/CMND, ngày sinh, ngày cấp CCCD hoặc cơ quan cấp CCCD của vợ/chồng làm thông tin
@@ -331,65 +301,23 @@ Ví dụ: TRÍCH LỤC KHAI TỬ (BẢN SAO) của UBND xã Nghĩa Thương:
   NGOẠI LỆ: cuộc hôn nhân MỚI đăng ký SAU ngày ly hôn/ngày chết (tờ khai ghi "hiện tại đã kết hôn
   với ..." hoặc có giấy kết hôn mới) thì VẪN trả Marriage_* — đó là hôn nhân hiện tại, không phải
   cuộc hôn nhân đã chấm dứt.
-</marriage_extraction>
+</giay_ket_hon>
 
-<khoang_thoi_gian_chua_ket_hon>
-- Dòng "Tình trạng hôn nhân" của tờ khai có thể xin xác nhận CHƯA ĐĂNG KÝ KẾT HÔN TRONG MỘT KHOẢNG
-  THỜI GIAN ĐÃ QUA, kể cả khi HIỆN TẠI người đó đã có vợ/chồng. Các dạng thường gặp:
-  + "Từ ngày 01 tháng 01 năm 2025 đến ngày 13 tháng 12 năm 2025. Tôi chưa đăng ký kết hôn với ai.
-     Hiện tại đã kết hôn với vợ tên là: ..."
-  + "Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với ..."
-  + "Từ 27-4-2016 tới 14-9-2016 chưa đăng ký kết hôn với ai."
-- Period_TuNgay = ngày sau chữ "Từ ngày"/"Từ"; Period_DenNgay = ngày sau chữ "đến ngày"/"đến"/"tới".
-  Cả hai dd/mm/yyyy, ghép đủ ngày + tháng + năm dù tờ khai viết tách chữ ("ngày 1 tháng 1 năm 2025"
-  -> "01/01/2025") hay viết gọn bằng dấu gạch chéo/gạch ngang ("27/4/2016" -> "27/04/2016").
-  CHỮ "ngày" CÓ THỂ VẮNG ở một hoặc cả hai đầu mốc — chỉ cần có cặp "Từ ... đến/tới ..." kèm ý
-  "chưa đăng ký kết hôn với ai" là PHẢI trả cả hai field.
-- BẮT BUỘC trả Period_TuNgay/Period_DenNgay NGAY CẢ KHI cùng dòng đó còn khai ly hôn hoặc vợ/chồng
-  đã chết. Đây là ca phổ biến nhất: "Đã kết hôn, ly hôn theo bản án số 12/2016 ngày 27/4/2016 do
-  Tòa án ... Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với
-  <tên vợ/chồng>" → trả ĐỦ CẢ BA nhóm: DivorceDecision_*, Period_TuNgay/Period_DenNgay VÀ
-  Marriage_* (+ TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng").
-- MỐC BẮT ĐẦU THƯỜNG TRÙNG NGÀY BẢN ÁN LY HÔN (người ta xin xác nhận từ lúc ly hôn tới lúc cưới
-  lại). TUYỆT ĐỐI KHÔNG vì thấy ngày đó đã dùng cho DivorceDecision_Date mà bỏ Period_TuNgay —
-  MỘT NGÀY ĐƯỢC PHÉP xuất hiện ở CẢ HAI field. Bỏ Period_* là mất đúng cái khoảng thời gian người
-  dân cần xác nhận và cổng sẽ chọn nhầm option "đã ly hôn; hiện tại chưa đăng ký kết hôn với ai".
-- HAI ngày này KHÔNG phải ngày đăng ký kết hôn: Marriage_Date vẫn lấy riêng từ giấy chứng nhận kết hôn
-  / cụm "Ngày ... tháng ... năm ..." đứng sau số và nơi đăng ký kết hôn. Mốc kết thúc CÓ THỂ trùng
-  ngày đăng ký kết hôn hiện tại — vẫn trả cả hai field, không gộp.
-- Không thấy cụm "Từ ngày ... đến ngày ..." thì bỏ trống CẢ HAI, không suy từ ngày khác.
-</khoang_thoi_gian_chua_ket_hon>
-
-<noi_cu_tru>
-- TUYỆT ĐỐI KHÔNG lấy địa chỉ trong đoạn "Tình trạng hôn nhân" làm ToKhai_NoiCuTru; đó là địa chỉ
-  của vợ/chồng hoặc địa chỉ cũ được nhắc lại.
-- Mỗi địa chỉ trả object {quocGia, tinh, xa, diaChi}. Địa chỉ hành chính hiện hành CHỈ 2 cấp:
-  XÃ/PHƯỜNG/THỊ TRẤN rồi đến TỈNH/THÀNH PHỐ (KHÔNG còn cấp huyện/quận).
-- xa = tên xã/phường/thị trấn. tinh = tỉnh/thành phố.
-- diaChi = phần CHI TIẾT đứng TRƯỚC xã/phường: tổ, tổ dân phố, bản, thôn, xóm, khu, số nhà, đường.
-  TÊN xã/phường/thị trấn, huyện/quận, tỉnh KHÔNG được đưa vào diaChi.
-  Nếu không có phần chi tiết đứng trước xã/phường thì diaChi để TRỐNG.
-- ĐẾM TỪ CUỐI khi địa chỉ liệt kê không nhãn (dạng cũ 3 cấp "[chi tiết], xã, HUYỆN, tỉnh"): cuối = tỉnh;
-  phần NGAY TRƯỚC tỉnh nếu là CẤP HUYỆN (huyện/quận/thị xã/thành phố thuộc tỉnh) thì BỎ HẲN; phần trước đó
-  = xã. Tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản"/"Nậm"/"Mường"/"Pa" — KHÔNG coi là chi tiết chỉ vì
-  bắt đầu bằng "Bản", VỊ TRÍ (áp chót, trước cấp huyện/tỉnh) mới quyết định là xã. BẮT BUỘC điền xa.
-</noi_cu_tru>
-
-<address_verification>
-Trước khi xuất JSON: nếu TỜ KHAI có dòng "Nơi cư trú" thì output phải có ToKhai_NoiCuTru và Python
-sẽ dùng địa chỉ này trước Cccd_NoiCuTru.
-</address_verification>
-
-<forbidden_ui_fields>
-- Không trả field UI/default như HoVaTenC, HoVaTenC1, SoDinhDanhC, SoDinhDanhC1,
-  LoaiGiayToDinhDanhC, LoaiGiayToDinhDanhC1, quanhevoinguoiduocxacminh, quanhekhac, mucdich, nhapmucdichkhac,
-  loại cư trú, radio trong/ngoài nước. (Purpose vẫn TRẢ — Python sẽ điền vào ô Nhập mục đích.)
-- RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ một trong hai trạng thái chuẩn:
-  "Hiện tại chưa đăng ký kết hôn với ai" hoặc "Hiện tại đang có vợ/chồng".
-  Trạng thái GÓA/ĐÃ LY HÔN do Python chọn từ DeathCert_*/DivorceDecision_* và ưu tiên hơn tờ khai —
-  NHƯNG CHỈ khi người đó HIỆN TẠI CHƯA kết hôn lại. Tờ khai ghi "hiện tại đã kết hôn với ..." thì
-  vẫn PHẢI trả TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng" (xem <to_khai_status_relation>).
-- Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
-- Nếu thiếu quốc tịch thì bỏ qua Cccd_QuocTich; Python sẽ mặc định Việt Nam.
-</forbidden_ui_fields>"""
-
+<giay_xntthn_cu>
+Nếu có GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ (tiêu đề "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN"), giấy này
+NHẮC LẠI tình trạng hôn nhân + giấy tờ liên quan + mục đích → được phép dùng làm NGUỒN:
+- Nếu dòng tình trạng hôn nhân ghi "... chồng/vợ đã chết (theo Giấy chứng tử/Trích lục khai tử số <N> do <CQ>
+  cấp ngày <D>)" → DeathCert_Number=<N> (GIỮ NGUYÊN như ghi trên giấy, KỂ CẢ hậu tố "/TLKT-BS"),
+  DeathCert_Date=<D> (dd/mm/yyyy), DeathCert_Agency=<CQ> (bỏ chữ "cấp").
+- Nếu ghi "... đã ly hôn (Bản án/Quyết định ly hôn số <N> ngày <D> của <CQ>)"
+  → DivorceDecision_Number/Date/Agency tương ứng.
+- Purpose: lấy NGUYÊN VĂN từ "Giấy này được sử dụng để: <mục đích>", GIỮ TRỌN câu tới hết dòng.
+  Mệnh đề "không có giá trị sử dụng để đăng ký kết hôn" là MỘT PHẦN của mục đích, phải giữ — dù nó
+  nằm trong ngoặc hay nối bằng dấu phẩy. Chỉ bỏ đúng cái nhãn phía trước.
+  vd "Giao dịch nhà, đất, không có giá trị sử dụng để đăng ký kết hôn"
+   -> Purpose = "Giao dịch nhà, đất, không có giá trị sử dụng để đăng ký kết hôn"  (ĐÚNG)
+   -> Purpose = "Giao dịch nhà, đất"                                               (SAI, cắt cụt)
+- Nhân thân người được cấp in ở khối "XÁC NHẬN" (họ tên, ngày sinh, giới tính, số giấy tờ...) →
+  NguoiDuocCap_*. Dòng "Dân tộc: ..." ở khối này → BẮT BUỘC trả GiayToKhac_DanToc, KỂ CẢ khi hồ sơ có thẻ
+  CCCD (thẻ mẫu mới không in dân tộc nên đây thường là nguồn dân tộc duy nhất).
+</giay_xntthn_cu>"""

@@ -283,7 +283,7 @@ def template_bytes() -> bytes:
     guide = workbook.create_sheet("Hướng dẫn")
     for line in (
         "Chỉ điền ở sheet 'Tài khoản'. Mỗi dòng một tài khoản.",
-        "Tên tỉnh: tên trần hoặc đầy đủ (Bắc Ninh / Tỉnh Bắc Ninh).",
+        "Tên tỉnh: tên trần hoặc đầy đủ (Lạng Sơn / Tỉnh Lạng Sơn).",
         "Tên xã/phường: CHỈ tên, không cần tiền tố Xã/Phường (vd Bồng Lai). Ghi đúng dấu.",
         "Tài khoản Hành chính công tỉnh: để trống Tên xã/phường.",
         "Tên đăng nhập: từ 3 ký tự, không phân biệt hoa thường. Đã có thì bỏ qua, không ghi đè.",

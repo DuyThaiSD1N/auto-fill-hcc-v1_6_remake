@@ -42,7 +42,8 @@ async def test_khai_sinh_attach_picks_birth_proof_into_single_slot(monkeypatch):
     assert all(it["target"] == "fixed-slot" and it["slotIndex"] == 0 for it in items)
     assert all(it["repeatUpload"] is True for it in items)
     assert all("sourceFileIndexes" not in it for it in items)
-    assert all(it["documentName"] == "Giấy chứng sinh" for it in items)
+    # Thủ tục này giữ nguyên tên file gốc; nhãn loại giấy chỉ nằm ở slotName/componentName.
+    assert [it["documentName"] for it in items] == ["chung-sinh", "cccd-bo", "cccd-me"]
     # Chứng sinh trước, rồi các "other" (CCCD cha/mẹ) theo thứ tự file.
     assert [it["fileIndex"] for it in items] == [1, 0, 2]
     assert [it["fileName"] for it in items] == ["chung-sinh.pdf", "cccd-bo.pdf", "cccd-me.pdf"]
@@ -81,10 +82,10 @@ async def test_khai_sinh_attach_two_slots_with_residence_form(monkeypatch):
     stt2 = [it for it in items if it["slotIndex"] == 1]
     assert [it["fileIndex"] for it in stt1] == [0, 2]   # chứng sinh trước, rồi CCCD bố
     assert all(it["repeatUpload"] is True and "sourceFileIndexes" not in it for it in stt1)
-    assert all(it["documentName"] == "Giấy chứng sinh" for it in stt1)
+    assert [it["documentName"] for it in stt1] == ["chung-sinh", "cccd-bo"]
     assert len(stt2) == 1
     assert stt2[0]["fileName"] == "cu-tru.pdf"
-    assert stt2[0]["documentName"] == "Tờ khai thay đổi thông tin cư trú"
+    assert stt2[0]["documentName"] == "cu-tru"
     assert "repeatUpload" not in stt2[0]   # STT2 chỉ 1 tệp, không cần lặp menu
     assert all(it["target"] == "fixed-slot" for it in items)
     assert res["extracted"]["birthProof"] == "chung-sinh.pdf"
@@ -113,7 +114,7 @@ async def test_khai_sinh_attach_residence_form_rule_fallback(monkeypatch):
 
     assert by_slot[0]["fileName"] == "f1.pdf"
     assert by_slot[1]["fileName"] == "f2.pdf"
-    assert by_slot[1]["documentName"] == "Tờ khai thay đổi thông tin cư trú"
+    assert by_slot[1]["documentName"] == "f2"
 
 
 async def test_khai_sinh_attach_rule_fallback_when_llm_fails(monkeypatch):
@@ -237,6 +238,34 @@ async def test_khai_sinh_llm_result_uses_explicit_index_not_output_order(monkeyp
     assert classified[3] == "birth_proof"
     assert classified[5] == "residence_form"
     assert classified[0] == "other"
+
+
+async def test_khai_sinh_attach_keeps_original_names_and_numbers_duplicates(monkeypatch):
+    """Nhiều tệp cùng ô STT1 phải khác tên (cổng chặn trùng tên); tên gốc trùng thì tệp sau thêm số."""
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "image.pdf", "text": "GIẤY CHỨNG SINH"},
+            {"name": "image.pdf", "text": "CĂN CƯỚC CÔNG DÂN"},
+            {"name": "đk kết hôn.pdf", "text": "GIẤY CHỨNG NHẬN KẾT HÔN"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 0, "docType": "birth_proof"},
+            {"index": 1, "docType": "other"},
+            {"index": 2, "docType": "other"},
+        ]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+
+    res = await khai_sinh.plan_khai_sinh_attachments(
+        [_file("image.pdf"), _file("image.pdf"), _file("đk kết hôn.pdf")], {}, _session()
+    )
+    items = res["attachments"]
+
+    assert [it["documentName"] for it in items] == ["image", "image 2", "đk kết hôn"]
+    assert all(it["slotName"] == "Giấy chứng sinh" for it in items)
 
 
 def test_khai_sinh_procedure_has_attachment_step():

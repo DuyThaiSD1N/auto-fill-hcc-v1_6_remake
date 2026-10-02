@@ -80,8 +80,8 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
 
 <address_rules>
 - Địa chỉ trong nước trả object {quocGia,tinh,xa,diaChi}. Tách cấp huyện ra khỏi diaChi.
-- Với "TDP Ngọc Tỉnh - Phường Song Liễu - Tỉnh Bắc Ninh":
-  tinh="Tỉnh Bắc Ninh", xa="Phường Song Liễu", diaChi="TDP Ngọc Tỉnh".
+- Với "TDP Ngọc Tỉnh - Phường Song Liễu - Thành phố Bắc Ninh":
+  tinh="Thành phố Bắc Ninh", xa="Phường Song Liễu", diaChi="TDP Ngọc Tỉnh".
 - QUAN TRỌNG — HAI ĐỊA CHỈ KHÁC NHAU, KHÔNG được gán trùng:
     · Applicant_NoiCuTru = địa chỉ NGƯỜI NỘP/ĐẠI DIỆN. Có Giấy ủy quyền thì ƯU TIÊN TUYỆT ĐỐI "Nơi cư
       trú"/"Nơi thường trú" của BÊN ĐƯỢC ỦY QUYỀN trong giấy đó, dù Đơn có ghi địa chỉ liên hệ khác.

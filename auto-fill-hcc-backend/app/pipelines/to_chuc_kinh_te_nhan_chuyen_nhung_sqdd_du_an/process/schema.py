@@ -164,7 +164,7 @@ FIELDS: list[dict] = [
         "desc": "Nơi thường trú CỦA CÁ NHÂN người đại diện theo pháp luật, " + _AREA_DESC + " ⚠ "
                 "KHÔNG phải trụ sở tổ chức. ⚠ Hồ sơ mẫu có MÂU THUẪN THẬT giữa hai giấy: Giấy chứng "
                 "nhận ĐKDN ghi 'Tổ 9, Phường Ngô Quyền, Thành phố Bắc Giang, Tỉnh Bắc Giang' còn Đơn "
-                "đề nghị ghi 'Số nhà 08 đường Đào Sư Tích, Phường Bắc Giang, Tỉnh Bắc Ninh' — trả "
+                "đề nghị ghi 'Số nhà 08 đường Đào Sư Tích, Phường Bắc Giang, Thành phố Bắc Ninh' — trả "
                 "theo Giấy chứng nhận ĐKDN (giấy tờ pháp lý gốc) và để cán bộ đối chiếu.",
     },
 

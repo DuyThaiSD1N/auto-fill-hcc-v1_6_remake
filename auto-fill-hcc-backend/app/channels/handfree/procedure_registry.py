@@ -926,7 +926,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-ban-sao-van-bang-so-goc",
-        "provinceOnly": ["danang"],  # đặc thù Đà Nẵng: chỉ account tỉnh này thấy + gọi được
+        "provinceOnly": ["danang", "bacninh"],  # chỉ account Đà Nẵng, Bắc Ninh thấy + gọi được
         # Cổng Bộ GD&ĐT dvc.moet.gov.vn — CÙNG nền iGate với cổng NN&MT (wizard 4 bước:
         # 1 Thông tin hồ sơ = kê khai Form.io, 2 Thành phần hồ sơ = attp-row) nhưng KHÔNG có
         # trang "chọn nơi và loại": Nộp trực tuyến trên DVCQG → thẳng trang kê khai.
@@ -940,8 +940,8 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
-        "shortLabel": "Bản sao văn bằng, chứng chỉ",
-        "subtitle": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc (Sở Giáo dục và Đào tạo)",
+        "shortLabel": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc",
+        "subtitle": "Sở Giáo dục và Đào tạo",
         "icon": "🎓",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-df63-75bf-8bff-4c9d1f98674c",
         "needsAgencySelect": True,

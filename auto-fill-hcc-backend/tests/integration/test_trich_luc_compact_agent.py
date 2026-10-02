@@ -220,58 +220,6 @@ def test_trich_luc_self_request_keeps_identity_from_both_declaration_blocks():
     assert result["NDK_NoiCap"] == "Bộ Công an"
 
 
-def test_trich_luc_self_request_takes_subject_birth_date_from_matching_requester_card():
-    """Tự xin cho mình: CCCD ở Nyc_* khớp số tờ khai → ngày sinh mục II lấy bản in trên thẻ."""
-    source_fields = [
-        {"name": "ToKhai_LoaiSuKien", "value": "birth"},
-        {"name": "ToKhai_TenGiayTo", "value": "Giấy khai sinh"},
-        {"name": "ToKhai_HoTenNguoiDuocCap", "value": "Nguyễn Văn An"},
-        {"name": "ToKhai_SoDinhDanh", "value": "001090000111"},
-        {"name": "ToKhai_NgaySinh", "value": "01/02/1990"},
-        {"name": "ToKhai_GioiTinh", "value": "Nữ"},
-        {"name": "Nyc_HoTen", "value": "NGUYỄN VĂN AN"},
-        {"name": "Nyc_SoDinhDanh", "value": "001090000111"},
-        {"name": "Nyc_NgaySinh", "value": "11/02/1990"},
-        {"name": "Nyc_GioiTinh", "value": "Nam"},
-    ]
-    options = {
-        "formContext": {
-            "applicantFullname": "Nguyễn Văn An",
-            "applicantIdentityNumber": "001090000111",
-        }
-    }
-
-    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields, options)}
-
-    assert result["NYC_QuanHe"] == "Bản thân"
-    assert result["NDK_NgaySinh"] == "11/02/1990"
-    assert result["NDK_GioiTinh"] == "Nam"
-
-
-def test_trich_luc_requester_card_of_other_person_does_not_override_subject_birth_date():
-    """Thẻ người yêu cầu LỆCH số chủ thể (nộp hộ) → ngày sinh mục II giữ theo tờ khai."""
-    source_fields = [
-        {"name": "ToKhai_LoaiSuKien", "value": "birth"},
-        {"name": "ToKhai_TenGiayTo", "value": "Giấy khai sinh"},
-        {"name": "ToKhai_HoTenNguoiDuocCap", "value": "Nguyễn Văn An"},
-        {"name": "ToKhai_SoDinhDanh", "value": "001090000111"},
-        {"name": "ToKhai_NgaySinh", "value": "01/02/1990"},
-        {"name": "Nyc_HoTen", "value": "TRẦN THỊ BÌNH"},
-        {"name": "Nyc_SoDinhDanh", "value": "001190000222"},
-        {"name": "Nyc_NgaySinh", "value": "05/06/1965"},
-    ]
-    options = {
-        "formContext": {
-            "applicantFullname": "Trần Thị Bình",
-            "applicantIdentityNumber": "001190000222",
-        }
-    }
-
-    result = {field["name"]: field["value"] for field in mapper.enrich(source_fields, options)}
-
-    assert result["NDK_NgaySinh"] == "01/02/1990"
-
-
 def test_trich_luc_birth_certificate_with_only_personal_id_does_not_invent_id_document():
     source_fields = [
         {"name": "HoTich_LoaiSuKien", "value": "birth"},

@@ -23,10 +23,10 @@ _RE_TONE_O = re.compile("(" + "|".join(_TONE_O) + r")(?!\w)")
 _RE_TONE_U = re.compile("(?<![qQ])(" + "|".join(_TONE_U) + r")(?!\w)")
 _WARD_TYPE = re.compile(r"^(Phường|Xã|Đặc khu)\s+", re.IGNORECASE)
 
-# Tên HIỂN THỊ khác tên trong danh mục. Chỉ đổi nhãn đọc cho cán bộ ("label"); "text" vẫn là tên
-# đúng như option trên cổng DVC nên mọi chỗ khớp/điền hộ (chọn cơ quan thực hiện, lưu tài khoản)
-# không bị lệch. Đổi thẳng "text" là trợ lý không tìm ra option "Tỉnh Bắc Ninh" trên cổng nữa.
-_DISPLAY_LABEL = {"Tỉnh Bắc Ninh": "Thành phố Bắc Ninh"}
+# Tên HIỂN THỊ khác tên trong danh mục ("label" cho extension in ra màn hình; "text" là tên khớp
+# option cổng / lưu tài khoản). Hiện trống: Bắc Ninh đã đổi thẳng trong danh mục thành "Thành phố
+# Bắc Ninh"; riêng khối chọn cơ quan của cổng DVC quốc gia còn tên cũ → _PORTAL_AGENCY_PROVINCES.
+_DISPLAY_LABEL: dict[str, str] = {}
 
 
 def _modern_tone(value: str) -> str:
@@ -63,6 +63,30 @@ def _load() -> tuple[list[dict], dict[str, dict]]:
 
 PROVINCES, WARDS_BY_SLUG = _load()
 
+
+def _load_codes() -> tuple[dict[str, str], dict[str, str]]:
+    raw = json.loads(_DATA_FILE.read_text(encoding="utf-8"))
+    provinces = {item["code"]: _modern_tone(item["full_name"]) for item in raw["provinces"]}
+    wards = {ward["code"]: _modern_tone(ward["full_name"])
+             for item in raw["provinces"] for ward in item["wards"]}
+    return provinces, wards
+
+
+_PROVINCE_BY_CODE, _WARD_BY_CODE = _load_codes()
+
+
+def names_by_code(province_code, ward_code) -> tuple[str, str]:
+    """Mã tỉnh/xã theo danh mục hành chính (vd "40", "17059") → tên đầy đủ; mã lạ → chuỗi rỗng.
+
+    Dữ liệu VNeID trên cổng eForm Bộ Tư pháp lưu địa chỉ bằng mã, số 0 đầu có thể bị cắt.
+    """
+    province = str(province_code or "").strip()
+    ward = str(ward_code or "").strip()
+    return (
+        _PROVINCE_BY_CODE.get(province.zfill(2), "") if province.isdigit() else "",
+        _WARD_BY_CODE.get(ward.zfill(5), "") if ward.isdigit() else "",
+    )
+
 # Tên Phường/Xã mà khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia (dichvucong.gov.vn) đang
 # liệt kê, khi cổng CHƯA cập nhật theo danh mục hiện hành. Hai extension gõ đúng chuỗi này vào ô
 # tìm kiếm của cổng, lệch tiền tố Xã/Phường là không ra option nào và ô xã bị bỏ trống.
@@ -71,6 +95,29 @@ PROVINCES, WARDS_BY_SLUG = _load()
 _PORTAL_AGENCY_WARDS: dict[str, dict[str, str]] = {
     "bacninh": {"Phường Hiệp Hòa": "Xã Hiệp Hòa"},
 }
+
+
+# Tên TỈNH ở khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia khi cổng CHƯA cập nhật việc tỉnh
+# lên thành phố trực thuộc TW. Extension Handfree gõ nguyên chuỗi vào ô tìm của cổng: gõ
+# "Thành phố Bắc Ninh" thì cổng (còn ghi "Tỉnh Bắc Ninh") lọc ra rỗng. CHỈ dùng cho bước chọn cơ
+# quan — danh mục, tài khoản và biểu mẫu kê khai vẫn dùng tên hiện hành. Cổng cập nhật rồi thì xóa dòng.
+_PORTAL_AGENCY_PROVINCES: dict[str, str] = {
+    "bacninh": "Tỉnh Bắc Ninh",
+}
+
+
+def portal_agency_province(province: str | None) -> str:
+    """Tên tỉnh để chọn ở khối "Chọn cơ quan thực hiện" của cổng; không có ngoại lệ thì giữ nguyên.
+
+    Nhận slug, tên đầy đủ (mới hoặc cũ) hoặc tên trần như các chỗ khác trong module.
+    """
+    province_text = (province or "").strip()
+    if not province_text:
+        return province_text
+    found = province_by_slug(province_text) or _find_province(province_text)
+    if not found:
+        return province_text
+    return _PORTAL_AGENCY_PROVINCES.get(found["slug"], province_text)
 
 
 def portal_agency_ward(province: str | None, ward: str | None) -> str:
@@ -109,16 +156,32 @@ def province_by_slug(slug: str) -> dict | None:
     return next((province for province in PROVINCES if province["slug"] == slug), None)
 
 
-def _find_province(value: str) -> dict | None:
+_PROVINCE_TYPE = re.compile(r"^(tinh|thanh pho|tp\.?)\s+")
+
+
+def find_province(value: str) -> dict | None:
+    """Tỉnh trong danh mục theo tên đầy đủ, tên trần, hoặc tên đầy đủ với LOẠI ĐƠN VỊ CŨ.
+
+    Tỉnh lên thành phố trực thuộc trung ương (Huế, Bắc Ninh…) thì DB, trace và hồ sơ cũ vẫn ghi
+    "Tỉnh X": so tên trần sau khi bỏ tiền tố loại để giá trị cũ vẫn ra đúng tỉnh, không bị coi là
+    ngoài danh mục (sửa tài khoản báo lỗi, báo cáo tách một tỉnh thành hai dòng).
+    """
     folded = _fold(value)
+    if not folded:
+        return None
+    bare = _PROVINCE_TYPE.sub("", folded)
     return next(
         (
             province
             for province in PROVINCES
             if folded in {_fold(province["text"]), _fold(province["name"])}
+            or bare == _fold(province["name"])
         ),
         None,
     )
+
+
+_find_province = find_province
 
 
 def ward_name_matches(tinh: str | None, ward_name: str | None) -> tuple[str | None, list[str]]:
@@ -166,7 +229,9 @@ def province_name_variants(value: str) -> list[str]:
     province = _find_province(text)
     if not province:
         return [text]
-    return sorted({text, province["text"], province["name"]})
+    name = province["name"]
+    # Kèm cả hai loại đơn vị: tài khoản lưu trước khi tỉnh lên thành phố vẫn ghi "Tỉnh X".
+    return sorted({text, province["text"], name, f"Tỉnh {name}", f"Thành phố {name}"})
 
 
 def canonical_location(

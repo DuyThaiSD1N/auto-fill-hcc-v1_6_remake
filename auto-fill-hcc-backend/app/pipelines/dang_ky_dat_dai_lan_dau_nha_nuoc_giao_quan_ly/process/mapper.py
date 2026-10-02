@@ -3,20 +3,17 @@ giao đất để quản lý" (1.012756, cổng Đà Nẵng).
 
 Theo mapping của thủ tục:
 - data[fullname] / data[birthday] / data[identityNumber]: cổng đổ sẵn từ tài khoản → KHÔNG phát.
-- CHỦ HỒ SƠ = tổ chức đứng tên Đơn Mẫu 15 (tên theo GCN đăng ký doanh nghiệp) → data[organization] +
-  data[taxCode] (mã số doanh nghiệp), data[chonDoiTuong] = loại chủ hồ sơ. data[ownerFullname] là ô của NGƯỜI:
-  tổ chức → NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT trên GCN đăng ký doanh nghiệp (tài liệu BA; không đọc được người đại
-  diện thì ghi tên tổ chức). Cá nhân → họ tên.
-- data[isOwnerDossier]: tích khi người ở data[ownerFullname] khớp tài khoản; khác người → bỏ tích.
-- data[gender] / data[identityDate] / data[identityAgency]: (1) thẻ CCCD khớp tài khoản → (2) người đại diện theo
-  pháp luật khớp tài khoản → (3) bên được ủy quyền khớp tài khoản → (4) chủ hồ sơ tổ chức mà tài khoản không khớp
-  ai: theo NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT trên GCN đăng ký doanh nghiệp (tài liệu BA). Khớp tài khoản mà thiếu giới
-  tính thì suy từ số định danh 12 số của tài khoản.
+- CHỦ HỒ SƠ = tổ chức đứng tên Đơn Mẫu 15 (tên theo GCN đăng ký doanh nghiệp) → data[ownerFullname] +
+  data[organization] + data[taxCode] (mã số doanh nghiệp), data[chonDoiTuong] = loại chủ hồ sơ.
+- data[isOwnerDossier]: tích khi chủ hồ sơ CÁ NHÂN trùng tài khoản; tổ chức hoặc người khác → bỏ tích.
+- data[gender] / data[identityDate] / data[identityAgency] theo NGƯỜI NỘP THỰC TẾ (khớp tài khoản):
+  (1) thẻ CCCD khớp tài khoản → (2) người đại diện theo pháp luật trên GCN đăng ký doanh nghiệp khớp tài khoản →
+  (3) bên được ủy quyền trên giấy UQ khớp tài khoản. Thiếu giới tính thì suy từ số định danh 12 số của tài khoản.
 - data[phoneNumber]: người nộp là bên được ủy quyền → SĐT trên giấy UQ; không thì SĐT Đơn Mẫu 15 / tờ khai.
 - Địa chỉ: trụ sở ở Đà Nẵng → Tỉnh/TP + Phường/Xã + địa chỉ chi tiết theo trụ sở (đơn vị MỚI); trụ sở ngoài Đà
   Nẵng (cổng không chọn được tỉnh khác) → cả ba ô lấy theo ĐỊA CHỈ THỬA ĐẤT; không có thì ghi đủ địa chỉ trụ sở
   vào data[address].
-- data[noidungyeucaugiaiquyet]: câu khung của cổng "ÔNG/BÀ: … (người ở data[ownerFullname]) ĐỀ NGHỊ GIẢI QUYẾT …" + các đề nghị
+- data[noidungyeucaugiaiquyet]: câu khung của cổng "ÔNG/BÀ: … (chủ hồ sơ) ĐỀ NGHỊ GIẢI QUYẾT …" + các đề nghị
   được đánh dấu ở Đơn mục 4 (vd "Đề nghị cấp Giấy chứng nhận").
 """
 
@@ -115,11 +112,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     owner_phone = _phone(values.get("ChuHoSo_DienThoai"))
     de_nghi = _de_nghi(values.get("Don_DeNghi"))
 
-    dd_name = _text(values.get("DaiDien_HoTen")) if owner_is_tc else None
-    dd_id = _identity(values.get("DaiDien_SoDinhDanh")) if owner_is_tc else None
-    # Ô "Họ và tên chủ hồ sơ" là ô của NGƯỜI: tổ chức → người đại diện theo pháp luật (tài liệu BA).
-    owner_display = (dd_name or owner_name) if owner_is_tc else owner_name
-
     # --- Mốc tài khoản đăng nhập (extension gửi formContext) ---
     ctx = (options or {}).get("formContext") or {}
     ctx_name = _text(ctx.get("applicantFullname") or ctx.get("fullname"))
@@ -132,15 +124,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # NGƯỜI NỘP: thẻ CCCD khớp tài khoản.
     nop_ok = matches_account(_text(values.get("NguoiNop_HoTen")), _identity(values.get("NguoiNop_SoDinhDanh")))
     # NGƯỜI ĐẠI DIỆN THEO PHÁP LUẬT khớp tài khoản → người nộp chính là người đại diện.
-    dd_ok = owner_is_tc and matches_account(dd_name, dd_id)
+    dd_name = _text(values.get("DaiDien_HoTen"))
+    dd_ok = owner_is_tc and matches_account(dd_name, _identity(values.get("DaiDien_SoDinhDanh")))
     # BÊN ĐƯỢC ỦY QUYỀN khớp tài khoản → người nộp chính là người được ủy quyền.
     uq_name = _text(values.get("UyQuyen_HoTen"))
     uq_ok = matches_account(uq_name, _identity(values.get("UyQuyen_SoDinhDanh")))
 
-    # Người ở ô ownerFullname (tổ chức: người đại diện; cá nhân: chủ hồ sơ) cũng là người nộp?
+    # Chủ hồ sơ CÁ NHÂN trùng tài khoản → tự nộp.
     self_submit: bool | None = None
     if owner_is_tc:
-        self_submit = dd_ok
+        self_submit = False
     elif owner_name and has_ctx:
         if ctx_identity and owner_id and len(owner_id) >= 9:
             self_submit = owner_id == ctx_identity
@@ -152,7 +145,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[chonDoiTuong]", "Tổ chức" if owner_is_tc else "Cá nhân")
     if self_submit is not None:
         add("data[isOwnerDossier]", self_submit)
-    add("data[ownerFullname]", owner_display)
+    add("data[ownerFullname]", owner_name)
     if owner_is_tc:
         add("data[organization]", owner_name)
         add("data[taxCode]", owner_id)
@@ -174,12 +167,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         guessed = _gender_from_identity(ctx_identity)
         add("data[gender]", guessed)
         gender_guessed = bool(guessed)
-    # Tài khoản không khớp ai trong hồ sơ → theo người đại diện trên GCN đăng ký doanh nghiệp (tài liệu BA).
-    dd_fallback = owner_is_tc and bool(dd_name) and not (nop_ok or dd_ok or uq_ok)
-    if dd_fallback:
-        add("data[gender]", _gender_from_title(values.get("DaiDien_GioiTinh")))
-        add("data[identityDate]", _date(values.get("DaiDien_NgayCap")))
-        add("data[identityAgency]", _issuer(values.get("DaiDien_NoiCap")))
 
     # --- Liên hệ: SĐT người được ủy quyền khi họ là người nộp, không thì SĐT Đơn Mẫu 15 / tờ khai ---
     uq_phone = _phone(values.get("UyQuyen_DienThoai")) if uq_ok and not dd_ok else None
@@ -206,8 +193,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     elif owner_outside_dn:
         add("data[address]", _full_address(owner_area))
 
-    if owner_display:
-        request = f"ÔNG/BÀ: {owner_display} (chủ hồ sơ) ĐỀ NGHỊ GIẢI QUYẾT {_PROC_TITLE}."
+    if owner_name:
+        request = f"ÔNG/BÀ: {owner_name} (chủ hồ sơ) ĐỀ NGHỊ GIẢI QUYẾT {_PROC_TITLE}."
         if de_nghi:
             request += f" {de_nghi}."
         add("data[noidungyeucaugiaiquyet]", request)
@@ -219,9 +206,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if owner_is_tc and not owner_id:
         warnings.append("Chưa có mã số doanh nghiệp của chủ hồ sơ (GCN đăng ký doanh nghiệp / Đơn mục 1b) — vui "
                         "lòng nhập tay ô Mã định danh tổ chức, doanh nghiệp.")
-    if owner_is_tc and not dd_name:
-        warnings.append("Không đọc được người đại diện theo pháp luật trên GCN đăng ký doanh nghiệp — ô Họ và tên "
-                        "chủ hồ sơ đang ghi tên tổ chức, chưa điền giới tính, ngày cấp, nơi cấp; kiểm tra lại.")
     if "data[phoneNumber]" not in seen:
         warnings.append("Không tìm thấy số điện thoại (Đơn Mẫu 15 / tờ khai / giấy ủy quyền) — bắt buộc, vui lòng "
                         "nhập tay.")
@@ -237,12 +221,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if owner_name and not de_nghi:
         warnings.append("Không đọc được ô đề nghị được đánh dấu ở Đơn mục 4 — Nội dung yêu cầu chỉ có câu khung, "
                         "kiểm tra lại.")
-    # dd_fallback: đã điền theo người đại diện theo pháp luật → không báo thiếu; cảnh báo nộp thay ở dưới.
-    if not has_ctx and not dd_fallback:
+    if not has_ctx:
         warnings.append(
             "Không đọc được tài khoản đang đăng nhập trên form — chưa điền giới tính, ngày cấp, nơi cấp của người nộp."
         )
-    elif has_ctx and not (nop_ok or dd_ok or uq_ok or dd_fallback):
+    elif not (nop_ok or dd_ok or uq_ok):
         warnings.append(
             "Tài khoản người nộp không khớp CCCD, người đại diện theo pháp luật hay bên được ủy quyền trong hồ sơ — "
             "vui lòng tự nhập giới tính, ngày cấp, nơi cấp."
@@ -254,8 +237,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         warnings.append(
             f"Người nộp (tài khoản) không phải người đại diện theo pháp luật của tổ chức{who} — nếu nộp thay cần "
             "giấy ủy quyền (đính chung dòng 1)."
-            + (" Giới tính, ngày cấp, nơi cấp đang điền theo người đại diện trên GCN đăng ký doanh nghiệp."
-               if dd_fallback else "")
         )
     elif uq_name and has_ctx and not uq_ok and not dd_ok:
         warnings.append(

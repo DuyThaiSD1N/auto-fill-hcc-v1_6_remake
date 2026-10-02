@@ -102,7 +102,7 @@ async def test_xa_ten_tran_luu_ten_day_du_tu_danh_muc(users):
     users()
     content = _xlsx([[1, "A", "Bắc Ninh", "Bồng Lai", "tkthu01", "matkhau-gia-01", XA]])
     row = (await import_excel.run(content, apply=False))["rows"][0]
-    assert (row["tinh"], row["xa"]) == ("Tỉnh Bắc Ninh", "Phường Bồng Lai")
+    assert (row["tinh"], row["xa"]) == ("Thành phố Bắc Ninh", "Phường Bồng Lai")
 
 
 async def test_xa_so_co_dau_truoc_khong_bao_trung_oan(users):
@@ -206,7 +206,7 @@ async def test_tao_that_ghi_dung_truong_va_khong_tra_mat_khau(users):
     result = await import_excel.run(content, apply=True)
     doc = store.inserted[0]
     assert {k: doc[k] for k in ("username", "name", "tinh", "xa", "role", "access_disabled")} == {
-        "username": "tkthu01", "name": "UBND A", "tinh": "Tỉnh Bắc Ninh",
+        "username": "tkthu01", "name": "UBND A", "tinh": "Thành phố Bắc Ninh",
         "xa": "Phường Bồng Lai", "role": "commune", "access_disabled": False,
     }
     assert "password" not in doc

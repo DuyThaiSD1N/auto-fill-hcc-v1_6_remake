@@ -12,6 +12,8 @@ pymupdf==1.27.2.3
 Pillow==11.0.0
 pytesseract==0.3.13
 openpyxl==3.1.5
+# Giấy ủy quyền (Handfree): xuất .docx chuẩn để cán bộ mở bằng Word sửa tiếp.
+python-docx==1.1.2
 qrcode[pil]>=7.4
 # Voice Handfree: WS /ws/asr bridge gRPC và /ws/tts relay upstream.
 # Hai mức tối thiểu khớp chính xác code protobuf đã generate trong app/channels/handfree/voice.

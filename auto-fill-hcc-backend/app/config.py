@@ -73,7 +73,10 @@ class Settings(BaseSettings):
     llm_model: str = "Qwen/Qwen3.6-35B-A3B"
     llm_timeout_ms: int = 60000
     llm_temperature: float = 0.1
-    llm_max_tokens: int = 1500
+    llm_max_tokens: int = 1800
+    # Máy riêng cho OCR Qwen (app/services/ocr_qwen.py) để không tranh lượt với LLM trích xuất; trống → dùng LLM_*.
+    ocr_qwen_base_url: str = ""
+    ocr_qwen_model: str = ""
 
     # LLM DỰ PHÒNG cấp 1 — mirror vLLM cùng contract (OpenAI-compatible), thử TRƯỚC khi rơi
     fallback_llm_base_url: str = ""

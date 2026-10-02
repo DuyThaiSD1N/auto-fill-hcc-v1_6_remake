@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createUser,
   deleteUser,
+  getParentAccounts,
   getProvinces,
   getWards,
   listUsers,
@@ -9,7 +10,7 @@ import {
   updateUser,
   type Province,
 } from "../api";
-import type { ManagedUser, Role, User, UserStatusFilter } from "../types";
+import type { ManagedUser, ParentAccount, Role, User, UserStatusFilter } from "../types";
 import { fmtDateTime } from "../format";
 import Combobox from "../components/Combobox";
 import ChangePasswordModal from "../components/ChangePasswordModal";
@@ -36,6 +37,8 @@ interface FormState {
   tinh: string;
   role: Role;
   accessDisabled: boolean;
+  /** Tổ dân phố: id HCC xã cha. */
+  parentId: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -49,6 +52,7 @@ const EMPTY_FORM: FormState = {
   tinh: "",
   role: "user",
   accessDisabled: false,
+  parentId: "",
 };
 
 // Nhãn hiển thị + class badge theo role. commune = "Hành chính công xã" (như user, chỉ khác nhãn).
@@ -58,17 +62,21 @@ const ROLE_META: Record<Role, { label: string; cls: string }> = {
   commune: { label: "Hành chính công xã", cls: "role-commune" },
   province: { label: "Hành chính công tỉnh", cls: "role-province" },
   province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
+  tdp: { label: "Tổ dân phố", cls: "role-tdp" },
 };
 
 // Vai trò quyết định địa bàn cần nhập. Tài khoản cấp tỉnh KHÔNG có xã/phường — ép nhập là
 // sinh ra một "xã" không có thật trong báo cáo hành chính; để trống mà vẫn hiện ô thì cán bộ
 // tưởng mình quên điền. Nên ẩn hẳn.
-const ROLE_LOCATION: Record<Role, { tinh: "required" | "optional"; xa: "required" | "optional" | "hidden" }> = {
+// "inherited": không nhập — địa bàn chép theo tài khoản cha (tổ dân phố lấy theo HCC xã).
+type LocationRule = "required" | "optional" | "hidden" | "inherited";
+const ROLE_LOCATION: Record<Role, { tinh: Exclude<LocationRule, "hidden">; xa: LocationRule }> = {
   admin: { tinh: "optional", xa: "optional" },
   user: { tinh: "optional", xa: "optional" },
   commune: { tinh: "required", xa: "required" },
   province: { tinh: "required", xa: "hidden" },
   province_admin: { tinh: "required", xa: "hidden" },
+  tdp: { tinh: "inherited", xa: "inherited" },
 };
 
 // Hai vai trò "tỉnh" nghe gần giống nhau nhưng hậu quả ngược nhau — một cái là ĐƠN VỊ được
@@ -80,10 +88,14 @@ const ROLE_HINT: Record<Role, string> = {
   province: "Là một ĐƠN VỊ cấp tỉnh. Hồ sơ của tài khoản này được tính vào số liệu đơn vị.",
   province_admin:
     "Chỉ XEM báo cáo của mọi xã/phường trong tỉnh. Không xử lý hồ sơ, không tính vào số liệu đơn vị.",
+  tdp:
+    "Thuộc một HCC xã/phường, dùng extension như cán bộ xã. Địa bàn lấy theo xã cha; hồ sơ được CỘNG vào số liệu của xã cha, không thành đơn vị riêng.",
 };
 
 const PAGE_SIZE = 20;
-const isOfficialRole = (role: Role | null): boolean => role === "commune" || role === "province";
+// Tổ dân phố không phải đơn vị nhưng hồ sơ của nó được cộng vào xã cha → cũng vào "Hồ sơ thực tế".
+const isOfficialRole = (role: Role | null): boolean =>
+  role === "commune" || role === "province" || role === "tdp";
 type RoleFilter = "all" | Role;
 const ROLE_FILTER_OPTIONS: { key: RoleFilter; label: string }[] = [
   { key: "all", label: "Tất cả vai trò" },
@@ -92,6 +104,7 @@ const ROLE_FILTER_OPTIONS: { key: RoleFilter; label: string }[] = [
   { key: "commune", label: "Hành chính công xã" },
   { key: "province", label: "Hành chính công tỉnh" },
   { key: "province_admin", label: "Tỉnh (báo cáo)" },
+  { key: "tdp", label: "Tổ dân phố" },
 ];
 
 const STATUS_FILTER_OPTIONS: { key: UserStatusFilter; label: string }[] = [
@@ -113,11 +126,20 @@ const foldLocation = (value: string): string =>
 const withoutWardType = (value: string): string =>
   value.replace(/^(Phường|Xã|Đặc khu)\s+/i, "").trim();
 
+// Tài khoản lưu trước khi tỉnh lên thành phố trực thuộc TW vẫn ghi "Tỉnh X" → so thêm tên trần
+// (bỏ loại đơn vị), cùng quy tắc với backend app/locations/catalog.py::find_province.
+const withoutProvinceType = (value: string): string =>
+  value.replace(/^(tinh|thanh pho|tp\.?)\s+/, "");
+
 function findProvince(provinces: Province[], value: string): Province | undefined {
   const folded = foldLocation(value);
+  if (!folded) return undefined;
+  const bare = withoutProvinceType(folded);
   return provinces.find(
     (province) =>
-      foldLocation(province.text) === folded || foldLocation(province.name) === folded,
+      foldLocation(province.text) === folded ||
+      foldLocation(province.name) === folded ||
+      foldLocation(province.name) === bare,
   );
 }
 
@@ -159,6 +181,8 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   const [wardsLoading, setWardsLoading] = useState(false);
   const [provincesError, setProvincesError] = useState("");
   const [locationError, setLocationError] = useState("");
+  const [parents, setParents] = useState<ParentAccount[] | null>(null);
+  const [parentsError, setParentsError] = useState("");
   const wardsCache = useRef(new Map<string, string[]>());
   const wardsRequestId = useRef(0);
 
@@ -225,6 +249,21 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
       controller.abort();
     };
   }, []);
+
+  // Danh sách HCC xã chỉ cần khi form đang là tổ dân phố; tải một lần rồi giữ trong trang.
+  const needParents = form?.role === "tdp";
+  useEffect(() => {
+    if (!needParents || parents !== null) return;
+    const controller = new AbortController();
+    setParentsError("");
+    getParentAccounts(controller.signal)
+      .then((result) => setParents(result.items))
+      .catch((reason) => {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        setParentsError(reason instanceof Error ? reason.message : "Không tải được danh sách HCC xã");
+      });
+    return () => controller.abort();
+  }, [needParents, parents]);
 
   useEffect(() => {
     const requestId = ++wardsRequestId.current;
@@ -304,12 +343,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
       username: u.username,
       password: "",
       // Tài khoản cấp tỉnh có thể còn sót `xa` từ dữ liệu cũ. Ô đó bị ẩn theo vai trò, nên
-      // mang giá trị vào form là lưu ngầm một thứ cán bộ không nhìn thấy.
-      xa: ROLE_LOCATION[u.role].xa === "hidden" ? "" : u.xa ?? "",
-      tinh: u.tinh ?? "",
+      // mang giá trị vào form là lưu ngầm một thứ cán bộ không nhìn thấy. Tổ dân phố không nhập
+      // địa bàn (lấy theo xã cha) nên để trống luôn.
+      xa: ["hidden", "inherited"].includes(ROLE_LOCATION[u.role].xa) ? "" : u.xa ?? "",
+      tinh: ROLE_LOCATION[u.role].tinh === "inherited" ? "" : u.tinh ?? "",
       role: u.role,
       accessDisabled: u.access_disabled,
       name: u.name ?? "",
+      parentId: u.parent_id ?? "",
     });
   }
 
@@ -338,20 +379,25 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
     ) return;
     setSaving(true);
     try {
+      const isTdpForm = form.role === "tdp";
+      // Tổ dân phố: không gửi tỉnh/xã (BE chép theo xã cha), chỉ gửi xã cha.
+      const location = isTdpForm
+        ? { parent_id: form.parentId }
+        : { xa: form.xa.trim(), tinh: form.tinh.trim() };
       if (form.id === null) {
         await createUser({
           username: form.username.trim(),
           password: form.password,
           name: form.name.trim() || null,
-          xa: form.xa.trim() || null,
-          tinh: form.tinh.trim() || null,
+          ...(isTdpForm
+            ? location
+            : { xa: form.xa.trim() || null, tinh: form.tinh.trim() || null }),
           role: form.role,
         });
       } else {
         await updateUser(form.id, {
           name: form.name.trim(),
-          xa: form.xa.trim(),
-          tinh: form.tinh.trim(),
+          ...location,
           // Vai trò của CHÍNH MÌNH không gửi lên: BE chặn tự đổi vai trò, gửi nguyên giá trị
           // cũ thì không sao, nhưng không gửi mới là đúng ý định của form đang khóa ô đó.
           role: form.id === user.id ? undefined : form.role,
@@ -432,22 +478,28 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
   );
   const selectedProvince = form ? findProvince(provinces, form.tinh) : undefined;
   const rule = ROLE_LOCATION[form?.role ?? "user"];
-  const showWard = rule.xa !== "hidden";
+  const isTdp = form?.role === "tdp";
+  const showWard = rule.xa !== "hidden" && rule.xa !== "inherited";
+  const selectedParent = isTdp && form ? parents?.find((p) => p.id === form.parentId) : undefined;
   // Giá trị đã nhập phải khớp danh mục hiện hành (tài khoản cũ lưu tên ngắn thì form đã tự
   // chuẩn hóa ở effect bên trên).
   const locationValid = Boolean(
     form &&
-      ((!form.tinh.trim() && !form.xa.trim()) ||
+      (isTdp ||
+        (!form.tinh.trim() && !form.xa.trim()) ||
         (selectedProvince && (!form.xa.trim() || Boolean(findWard(wards, form.xa))))),
   );
   // Ràng buộc theo vai trò CHỈ áp khi TẠO MỚI. Tài khoản cũ đang thiếu địa bàn thì vẫn phải
   // sửa được tên hiển thị — chặn ở đây là biến một thao tác vặt thành việc dọn
   // dữ liệu bắt buộc.
+  // Riêng tổ dân phố: luôn bắt chọn xã cha, cả khi sửa (không có cha thì không có địa bàn).
   const roleLocationOk =
     !form ||
-    !isCreate ||
-    ((rule.tinh !== "required" || Boolean(form.tinh.trim())) &&
-      (rule.xa !== "required" || Boolean(form.xa.trim())));
+    (isTdp
+      ? Boolean(form.parentId)
+      : !isCreate ||
+        ((rule.tinh !== "required" || Boolean(form.tinh.trim())) &&
+          (rule.xa !== "required" || Boolean(form.xa.trim()))));
   const canSubmit =
     form &&
     locationValid &&
@@ -577,7 +629,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                     {u.username}
                     {u.id === user.id && <span className="tag-self">bạn</span>}
                   </td>
-                  <td>{u.name || <span className="muted">—</span>}</td>
+                  <td>
+                    {u.name || <span className="muted">—</span>}
+                    {u.role === "tdp" && (
+                      <div className="account-parent">
+                        thuộc {u.parent ? u.parent.name || u.parent.username : "HCC xã đã xóa"}
+                      </div>
+                    )}
+                  </td>
                   <td>{u.xa || <span className="muted">—</span>}</td>
                   <td>{u.tinh || <span className="muted">—</span>}</td>
                   <td className="center">
@@ -771,13 +830,21 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   setLocationError("");
                   // Vai trò cấp tỉnh không có xã — xóa luôn giá trị cũ, không giữ lại một
                   // giá trị đã bị ẩn khỏi màn hình rồi âm thầm lưu xuống DB.
-                  const clearWard = ROLE_LOCATION[nextRole].xa === "hidden";
-                  setForm({ ...form, role: nextRole, xa: clearWard ? "" : form.xa });
+                  const nextRule = ROLE_LOCATION[nextRole];
+                  const clearWard = nextRule.xa === "hidden" || nextRule.xa === "inherited";
+                  setForm({
+                    ...form,
+                    role: nextRole,
+                    xa: clearWard ? "" : form.xa,
+                    tinh: nextRule.tinh === "inherited" ? "" : form.tinh,
+                    parentId: nextRole === "tdp" ? form.parentId : "",
+                  });
                 }}
               >
                 <option value="user">Người dùng</option>
                 <option value="commune">Hành chính công xã</option>
                 <option value="province">Hành chính công tỉnh</option>
+                <option value="tdp">Tổ dân phố (thuộc HCC xã)</option>
                 <option value="province_admin">Tỉnh (xem báo cáo thống kê)</option>
                 <option value="admin">Quản trị</option>
               </select>
@@ -789,6 +856,36 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
               </p>
             )}
 
+            {isTdp && (
+              <>
+                <Combobox
+                  label="Thuộc HCC xã / phường *"
+                  value={form.parentId}
+                  options={(parents ?? []).map((parent) => ({
+                    value: parent.id,
+                    label: [parent.name || parent.username, parent.xa, parent.tinh]
+                      .filter(Boolean)
+                      .join(" · "),
+                  }))}
+                  allLabel="Chưa chọn"
+                  placeholder="Tìm HCC xã/phường…"
+                  disabled={parents === null || Boolean(parentsError)}
+                  onChange={(value) => setForm({ ...form, parentId: value })}
+                />
+                {parents === null && !parentsError && (
+                  <div className="location-status">Đang tải danh sách HCC xã/phường…</div>
+                )}
+                {parentsError && <div className="error">{parentsError}</div>}
+                <p className="form-hint">
+                  {selectedParent
+                    ? `Địa bàn: ${[selectedParent.xa, selectedParent.tinh].filter(Boolean).join(", ") || "chưa gán"} — theo HCC xã đã chọn.`
+                    : "Địa bàn của tổ dân phố lấy theo HCC xã/phường mà nó trực thuộc."}
+                </p>
+              </>
+            )}
+
+            {!isTdp && (
+            <>
             <div className="form-row">
               <Combobox
                 label={rule.tinh === "required" ? "Tỉnh / Thành *" : "Tỉnh / Thành"}
@@ -854,6 +951,8 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   Xã/phường cũ không thuộc tỉnh đã chọn. Vui lòng chọn lại.
                 </div>
               )}
+            </>
+            )}
 
             {!isCreate && (
               <label>
@@ -882,8 +981,14 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
 
             {!roleLocationOk && (
               <div className="error">
-                Vai trò &ldquo;{ROLE_META[form.role].label}&rdquo; cần
-                {rule.xa === "required" ? " tỉnh/thành và xã/phường." : " tỉnh/thành."}
+                {isTdp ? (
+                  "Tổ dân phố cần chọn HCC xã/phường mà nó trực thuộc."
+                ) : (
+                  <>
+                    Vai trò &ldquo;{ROLE_META[form.role].label}&rdquo; cần
+                    {rule.xa === "required" ? " tỉnh/thành và xã/phường." : " tỉnh/thành."}
+                  </>
+                )}
               </div>
             )}
 

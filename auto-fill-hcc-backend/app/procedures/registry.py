@@ -15,6 +15,8 @@ from app.pipelines.cap_gcn_attp_cong_thuong.process import run as cap_gcn_attp_c
 from app.pipelines.cap_gcn_attp_cong_thuong.attach import plan as cap_gcn_attp_ct_attach
 from app.pipelines.thong_bao_sua_doi_ctkm.process import run as thong_bao_sua_doi_ctkm_process
 from app.pipelines.thong_bao_sua_doi_ctkm.attach import plan as thong_bao_sua_doi_ctkm_attach
+from app.pipelines.dang_ky_khuyen_mai_may_rui.process import run as dang_ky_khuyen_mai_may_rui_process
+from app.pipelines.dang_ky_khuyen_mai_may_rui.attach import plan as dang_ky_khuyen_mai_may_rui_attach
 from app.pipelines.cap_giay_phep_xay_dung.attach import plan as cap_giay_phep_xay_dung_attach
 from app.pipelines.cap_giay_phep_xay_dung.process import run as cap_giay_phep_xay_dung_process
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.attach import plan as dieu_chinh_gpxd_attach
@@ -137,6 +139,12 @@ from app.pipelines.dieu_chinh_giao_dat_cap_xa_lao_cai.attach import plan as dieu
 from app.pipelines.dieu_chinh_giao_dat_cap_xa_lao_cai.process import run as dieu_chinh_giao_dat_cap_xa_lao_cai_process
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.attach import plan as dieu_chinh_giao_dat_lao_cai_attach
 from app.pipelines.dieu_chinh_giao_dat_lao_cai.process import run as dieu_chinh_giao_dat_lao_cai_process
+from app.pipelines.chu_truong_dau_tu_lao_cai.attach import (
+    plan_chap_thuan_ubnd as ctdt_lao_cai_chap_thuan_ubnd_attach,
+    plan_dieu_chinh_bql as ctdt_lao_cai_dieu_chinh_bql_attach,
+    plan_dieu_chinh_ubnd as ctdt_lao_cai_dieu_chinh_ubnd_attach,
+)
+from app.pipelines.chu_truong_dau_tu_lao_cai.process import run as ctdt_lao_cai_process
 from app.pipelines.giao_thue_dat_lao_cai.attach import plan as giao_thue_dat_lao_cai_attach
 from app.pipelines.giao_thue_dat_lao_cai.process import run as giao_thue_dat_lao_cai_process
 from app.pipelines.xoa_dang_ky_bien_phap_bao_dam_lao_cai.attach import plan as xoa_dk_bpbd_lao_cai_attach
@@ -309,6 +317,8 @@ from app.pipelines.tro_cap_xa_hoi_hang_thang.attach import plan as tro_cap_xa_ho
 from app.pipelines.tro_cap_xa_hoi_hang_thang.process import run as tro_cap_xa_hoi_hang_thang_process
 from app.pipelines.cap_giay_phep_lien_van_viet_lao.attach import plan as cap_giay_phep_lien_van_viet_lao_attach
 from app.pipelines.cap_giay_phep_lien_van_viet_lao.process import run as cap_giay_phep_lien_van_viet_lao_process
+from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.attach import plan as gia_han_luu_hanh_pt_lao_attach
+from app.pipelines.gia_han_luu_hanh_phuong_tien_lao.process import run as gia_han_luu_hanh_pt_lao_process
 from app.pipelines.cap_gcnkncm_cccm.attach import plan as cap_gcnkncm_cccm_attach
 from app.pipelines.cap_gcnkncm_cccm.process import run as cap_gcnkncm_cccm_process
 from app.pipelines.xoa_dang_ky_tau_ca.attach import plan as xoa_dang_ky_tau_ca_attach
@@ -2794,6 +2804,106 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai",
+        # Cổng dichvucong.laocai.gov.vn (eForm iGate) — trang điền chỉ có khối CongDan_*/ChuHoSo_* như các thủ tục
+        # Lào Cai khác; 3 thủ tục chủ trương đầu tư dùng chung process `chu_truong_dau_tu_lao_cai`. Tiêu đề
+        # trang "1.009759.H38 - Chấp thuận điều chỉnh chủ trương đầu tư thuộc thẩm quyền của Ban quản lý …".
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": ["1.009759", "Chấp thuận điều chỉnh chủ trương đầu tư thuộc thẩm quyền của Ban quản lý"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Chấp thuận điều chỉnh chủ trương đầu tư thuộc thẩm quyền của Ban quản lý khu "
+            "công nghiệp, khu chế xuất, khu công nghệ cao, khu kinh tế"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (toàn bộ hồ sơ dự án):\n"
+            "1. Văn bản đề nghị điều chỉnh dự án đầu tư (có mục Nhà đầu tư + người đại diện theo pháp luật).\n"
+            "2. Báo cáo tình hình thực hiện dự án, quyết định/biên bản họp của nhà đầu tư, thuyết minh điều chỉnh.\n"
+            "3. Giấy chứng nhận đầu tư / quyết định chấp thuận chủ trương đầu tư đã cấp, Giấy chứng nhận đăng ký "
+            "doanh nghiệp, báo cáo tài chính 02 năm, giấy tờ đất và giấy tờ khác của dự án.\n"
+            "Không cần chọn trước vai trò giấy tờ.\n"
+            "Form điền: khối chủ hồ sơ = NHÀ ĐẦU TƯ (doanh nghiệp: tên, mã số thuế, trụ sở, điện thoại); khối "
+            "người nộp = người đang đăng nhập (lấy nhân thân từ Văn bản đề nghị nếu là người đại diện theo pháp "
+            "luật, hoặc CCCD / giấy ủy quyền của chính người đó).\n"
+            "Bước đính kèm: theo hướng dẫn của Ban quản lý, hồ sơ đính chung vào dòng \"Văn bản đề nghị điều "
+            "chỉnh dự án đầu tư\" (cổng nhận tối đa 5 tệp/dòng — Văn bản đề nghị luôn ở dòng này, tệp thứ 6 trở "
+            "đi vào \"Giấy tờ khác\" kèm tên tài liệu). Tệp trên 6 MB cần nén trước khi tải."
+        ),
+    },
+    {
+        "key": "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai",
+        # Cùng trang điền + process với 1.009759. Tên thủ tục TRÊN CỔNG khác tên trong danh mục: "1.009646.H38 -
+        # Thủ tục điều chỉnh dự án đầu tư thuộc thẩm quyền chấp thuận chủ trương đầu tư của UBND cấp tỉnh".
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": ["1.009646", "điều chỉnh dự án đầu tư thuộc thẩm quyền chấp thuận chủ trương đầu tư"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Điều chỉnh dự án đầu tư thuộc thẩm quyền chấp thuận chủ trương đầu tư của Chủ "
+            "tịch UBND cấp tỉnh"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (toàn bộ hồ sơ dự án):\n"
+            "1. Văn bản đề nghị điều chỉnh dự án đầu tư (có mục Nhà đầu tư + người đại diện theo pháp luật).\n"
+            "2. Báo cáo đề xuất / giải trình điều chỉnh, quyết định của nhà đầu tư, báo cáo tình hình thực hiện.\n"
+            "3. Quyết định chấp thuận chủ trương đầu tư đã cấp, Giấy chứng nhận đăng ký doanh nghiệp và giấy tờ "
+            "khác của dự án.\n"
+            "Không cần chọn trước vai trò giấy tờ.\n"
+            "Form điền: khối chủ hồ sơ = NHÀ ĐẦU TƯ (doanh nghiệp: tên, mã số thuế, trụ sở, điện thoại); khối "
+            "người nộp = người đang đăng nhập (lấy nhân thân từ Văn bản đề nghị nếu là người đại diện theo pháp "
+            "luật, hoặc CCCD / giấy ủy quyền của chính người đó).\n"
+            "Bước đính kèm: theo hướng dẫn của Ban quản lý, hồ sơ đính chung vào dòng \"c1) Đối với trường "
+            "hợp a1\" (tối đa 5 tệp/dòng — Văn bản đề nghị luôn ở dòng này, tệp thứ 6 trở đi vào \"Giấy tờ "
+            "khác\" kèm tên tài liệu); các dòng trường hợp khác để trống. Tệp trên 6 MB cần nén trước."
+        ),
+    },
+    {
+        "key": "chap-thuan-chu-truong-dau-tu-ubnd-tinh-lao-cai",
+        # Cùng process với 1.009759. Trang nộp GỘP điền + đính kèm (nhapThongTinHoSo1bBKN), khối chủ hồ sơ đứng
+        # trước khối người nộp, không có nút "Người nộp là chủ hồ sơ" và không có "Giấy tờ khác".
+        "detect": {
+            "urlScope": ["dichvucong.laocai.gov.vn"],
+            "textIncludes": ["1.009645", "Thủ tục chấp thuận chủ trương đầu tư thuộc thẩm quyền của UBND cấp tỉnh"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Lào Cai] Chấp thuận chủ trương đầu tư thuộc thẩm quyền của Chủ tịch UBND cấp tỉnh"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (toàn bộ hồ sơ dự án):\n"
+            "1. Văn bản đề nghị thực hiện dự án đầu tư (có mục Nhà đầu tư + người đại diện theo pháp luật).\n"
+            "2. Đề xuất dự án đầu tư, phương án tài chính, bản vẽ, tọa độ ranh giới.\n"
+            "3. Giấy chứng nhận đăng ký doanh nghiệp, báo cáo tài chính 02 năm, cam kết tín dụng và tài liệu "
+            "khác.\n"
+            "Không cần chọn trước vai trò giấy tờ.\n"
+            "Form điền: khối chủ hồ sơ = NHÀ ĐẦU TƯ (doanh nghiệp: tên, mã số thuế, trụ sở, điện thoại); khối "
+            "người nộp = người đang đăng nhập (lấy nhân thân từ Văn bản đề nghị nếu là người đại diện theo pháp "
+            "luật, hoặc CCCD / giấy ủy quyền của chính người đó).\n"
+            "Bước đính kèm: theo hướng dẫn của Ban quản lý, hồ sơ đính chung vào dòng \"Hồ sơ đề nghị chấp "
+            "thuận chủ trương đầu tư…\" (tối đa 5 tệp/dòng — Văn bản đề nghị luôn ở dòng này; trang không có "
+            "\"Giấy tờ khác\" nên phần còn lại vào dòng \"Đối với trường hợp 1\", rồi dòng 3, dòng 4). Tệp "
+            "trên 6 MB cần nén trước khi tải."
+        ),
+    },
+    {
         "key": "cho-thue-dat-thue-rung",
         # Mã 1.115678 — BẢN PHÂN CẤP của thủ tục giao/thuê đất Lào Cai, áp dụng cho các trường hợp tại
         # Điều 3 Quyết định 40/2026/QĐ-UBND ngày 31/5/2026. Cùng cổng, cùng eForm iGate legacy
@@ -4652,6 +4762,40 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-khuyen-mai-may-rui-mot-tinh",
+        # Cùng cổng DVC Bộ Công Thương + cùng engine với 2.001474 ở trên (2 form Form.io, bảng đính kèm
+        # attp-row), dùng chung cho Sở Công Thương mọi tỉnh nên nhãn không gắn tỉnh. Mã 2.000004 hiện ở dòng
+        # "Quy trình: 2.000004 - …". Tờ khai Mẫu 02 ĐP dùng lại 7 field-key của khối tài khoản → occurrence 0/1.
+        "detect": {
+            "urlScope": ["dichvucong-tthc.moit.gov.vn"],
+            "textIncludes": [
+                "2.000004",
+                "Đăng ký hoạt động khuyến mại đối với chương trình khuyến mại mang tính may rủi",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký hoạt động khuyến mại đối với chương trình khuyến mại mang tính may rủi thực hiện trên địa "
+            "bàn 01 tỉnh, thành phố trực thuộc Trung ương"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Đăng ký thực hiện khuyến mại (Mẫu số 02 ĐP, đã ký, đóng dấu).\n"
+            "2. Thể lệ chương trình khuyến mại (Mẫu số 03 ĐP).\n"
+            "3. Mẫu bằng chứng xác định trúng thưởng (mẫu phiếu bốc thăm / thẻ cào).\n"
+            "4. Nếu có: giấy tờ về chất lượng hàng hóa dùng để khuyến mại (giấy chứng nhận chất lượng, CO/CQ…).\n"
+            "5. Nếu muốn điền khối thông tin tài khoản: CCCD của chính người đang đăng nhập nộp hồ sơ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "Bước đính kèm: Đăng ký / Thể lệ / Mẫu bằng chứng vào 3 dòng tương ứng; giấy tờ chất lượng hàng "
+            "hóa và giấy tờ khác đính chung dòng Đăng ký. Giữ nguyên tên tệp."
+        ),
+    },
+    {
         "key": "ho-tro-mai-tang",
         "detect": {
             "urlIncludes": ["maThuTuc=1.001731"],
@@ -6331,9 +6475,9 @@ PROCEDURES: list[dict] = [
         "key": "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly",
         # Mã TTHC 1.012756 (Văn phòng Đăng ký đất đai). Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io,
         # engine fillFormStandard dom-* (CÙNG field-key panel "Thông tin chung" với 1.013977) + attach attp-row 2
-        # dòng: KHÔNG tách file — PDF gộp đính nguyên vào dòng 1 (Đơn). Họ tên + CCCD + ngày sinh người nộp khoá
-        # theo tài khoản; chủ hồ sơ tổ chức → ô Họ tên chủ hồ sơ, giới tính, ngày cấp, nơi cấp theo người đại diện
-        # theo pháp luật trên GCN đăng ký doanh nghiệp. urlScope khoá host: mã
+        # dòng: PDF gộp vài chục trang được tách theo trang, MỖI GIẤY TỜ MỘT FILE (D1-xx / D2-xx), các file cùng
+        # dòng đặt chung vào ô "Chọn tệp tin" (multiple). Họ tên + CCCD + ngày sinh người nộp khoá theo tài khoản
+        # → mốc formContext đối chiếu người đại diện theo pháp luật / bên được ủy quyền. urlScope khoá host: mã
         # 1.012756 là mã quốc gia, form tỉnh khác không cùng field-key.
         "detect": {
             "urlScope": ["dichvucong.danang.gov.vn"],
@@ -6357,8 +6501,8 @@ PROCEDURES: list[dict] = [
             "tờ khai lệ phí trước bạ.\n"
             "4. CCCD của người nộp (tài khoản đăng nhập) nếu có; nộp thay thì kèm giấy ủy quyền.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
-            "Bước đính kèm: KHÔNG tách file — toàn bộ file tải lên đính nguyên vào dòng 1 (Đơn đăng ký đất đai), "
-            "'Bản chính'."
+            "Bước đính kèm (mỗi giấy tờ một file, đánh số D1-xx / D2-xx theo thứ tự): Đơn + các giấy tờ kèm theo "
+            "mục 5→dòng 1; Báo cáo rà soát + trích lục bản đồ→dòng 2; cả hai 'Bản chính'. Trang trắng bị bỏ."
         ),
     },
     {
@@ -6682,6 +6826,33 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "gia-han-luu-hanh-phuong-tien-lao",
+        # Mã TTHC 1.002063 (chỉ nằm trong option data[dichVu]). Cổng Bộ Xây dựng dvc.moc.gov.vn — Form.io key
+        # PHẲNG (khác liên vận Việt–Lào key lồng), engine fill standard dom-* + attach attp-row 2 dòng.
+        # URL chỉ ObjectId → detect theo tên thủ tục.
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn"],
+            "textIncludes": ["Gia hạn thời gian lưu hành tại Việt Nam cho phương tiện của Lào"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Gia hạn thời gian lưu hành tại Việt Nam cho phương tiện của Lào",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (một file có thể gộp nhiều giấy — hệ thống tự tách theo trang):\n"
+            "1. Giấy đề nghị gia hạn thời gian lưu hành của phương tiện tại Việt Nam (Mẫu số 07) đã ký.\n"
+            "2. Giấy phép liên vận Việt Nam – Lào (bìa, trang thông tin xe, các trang Record có dấu nhập cảnh).\n"
+            "3. Giấy tờ chứng minh lý do gia hạn (vd báo giá sửa chữa xe) nếu có.\n"
+            "4. CCCD của người xin gia hạn (để điền ngày sinh, số CCCD, ngày cấp).\n"
+            "Form điền: Chọn đối tượng = Cá nhân (người xin gia hạn); khối đề nghị: Kính gửi, lý do, thời gian "
+            "nhập cảnh, số ngày gia hạn, từ/đến ngày, biển số xe, Tại, người ký. Ô Ghi chú để trống.\n"
+            "Bước đính kèm: Giấy đề nghị → dòng 1; Giấy phép liên vận → dòng 2; giấy tờ khác đính chung dòng 1."
+        ),
+    },
+    {
         "key": "cap-gcnkncm-cccm",
         # Cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io apply-online) — CÙNG engine fill standard dom-* +
         # đính kèm attp-row với lien_van/chat_ha_cay_xanh. URL chỉ ObjectId → DETECT THEO TÊN (text) để
@@ -6882,12 +7053,16 @@ _PIPELINE = {
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": cap_lai_an_toan_thuc_pham_process,
     "cap-gcn-attp-cong-thuong": cap_gcn_attp_ct_process,
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": thong_bao_sua_doi_ctkm_process,
+    "dang-ky-khuyen-mai-may-rui-mot-tinh": dang_ky_khuyen_mai_may_rui_process,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_process,
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_process,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_nha_o_process,
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_cong_trinh_process,
     "dieu-chinh-dat-dai": dieu_chinh_dat_dai_process,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_process,
+    "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai": ctdt_lao_cai_process,
+    "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai": ctdt_lao_cai_process,
+    "chap-thuan-chu-truong-dau-tu-ubnd-tinh-lao-cai": ctdt_lao_cai_process,
     "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai": dieu_chinh_giao_dat_cap_xa_lao_cai_process,
     "dang-ky-dat-dai-lan-dau": dang_ky_dat_dai_process,
     "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": dang_ky_dat_dai_tai_san_process,
@@ -6962,6 +7137,7 @@ _PIPELINE = {
     "cap-ban-sao-van-bang-so-goc": cap_ban_sao_van_bang_process,
     "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_process,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_process,
+    "gia-han-luu-hanh-phuong-tien-lao": gia_han_luu_hanh_pt_lao_process,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_process,
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_process,
     "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_process,
@@ -7033,6 +7209,9 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
+    "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai": ctdt_lao_cai_dieu_chinh_bql_attach,
+    "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai": ctdt_lao_cai_dieu_chinh_ubnd_attach,
+    "chap-thuan-chu-truong-dau-tu-ubnd-tinh-lao-cai": ctdt_lao_cai_chap_thuan_ubnd_attach,
     "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai": dieu_chinh_giao_dat_cap_xa_lao_cai_attach,
     "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai": dang_ky_gcn_chuyen_quyen_lao_cai_attach,
     "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai": dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach,
@@ -7156,6 +7335,7 @@ _ATTACH_PIPELINE = {
     "cap-ban-sao-van-bang-so-goc": cap_ban_sao_van_bang_attach,
     "chap-thuan-dau-noi-tam": chap_thuan_dau_noi_tam_attach,
     "cap-giay-phep-lien-van-viet-lao": cap_giay_phep_lien_van_viet_lao_attach,
+    "gia-han-luu-hanh-phuong-tien-lao": gia_han_luu_hanh_pt_lao_attach,
     "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai": cap_bo_sung_xe_tap_lai_attach,
     "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai": cap_lai_phu_hieu_xe_oto_attach,
     "cap-the-huong-dan-vien-du-lich-noi-dia": cap_the_hdv_noi_dia_attach,
@@ -7171,6 +7351,7 @@ _ATTACH_PIPELINE = {
     "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham": cap_lai_an_toan_thuc_pham_attach,
     "cap-gcn-attp-cong-thuong": cap_gcn_attp_ct_attach,
     "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai": thong_bao_sua_doi_ctkm_attach,
+    "dang-ky-khuyen-mai-may-rui-mot-tinh": dang_ky_khuyen_mai_may_rui_attach,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_attach,
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_attach,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_attach,

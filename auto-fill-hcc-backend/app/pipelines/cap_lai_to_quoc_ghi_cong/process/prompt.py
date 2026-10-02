@@ -52,7 +52,7 @@ EXTRA_RULES = """<critical_rules>
 
 <output_examples>
 Đúng:
-{"fields":{"ToKhai_HoTen":"Trần Văn A","ToKhai_MoiQuanHeVoiLietSi":"em ruột","ToKhai_DeNghiCap":"Cấp lại","ToKhai_LyDoCap":"rách nát","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Tỉnh Bắc Ninh","xa":"Phường Song Liễu","diaChi":"TDP Đoàn Hạ"},"LietSi_HoTen":"Trần Văn B","LietSi_NgaySinh":"không nhớ","ToKhai_ThanNhan":[{"hoTen":"Trần Văn C","ngaySinh":"không nhớ","moiQuanHe":"Bố đẻ"}]}}
+{"fields":{"ToKhai_HoTen":"Trần Văn A","ToKhai_MoiQuanHeVoiLietSi":"em ruột","ToKhai_DeNghiCap":"Cấp lại","ToKhai_LyDoCap":"rách nát","ToKhai_NoiThuongTru":{"quocGia":"Việt Nam","tinh":"Thành phố Bắc Ninh","xa":"Phường Song Liễu","diaChi":"TDP Đoàn Hạ"},"LietSi_HoTen":"Trần Văn B","LietSi_NgaySinh":"không nhớ","ToKhai_ThanNhan":[{"hoTen":"Trần Văn C","ngaySinh":"không nhớ","moiQuanHe":"Bố đẻ"}]}}
 
 Sai:
 {"fields":{"data[fullname]":"Trần Văn A","denghiCap":"Cấp lại"}}

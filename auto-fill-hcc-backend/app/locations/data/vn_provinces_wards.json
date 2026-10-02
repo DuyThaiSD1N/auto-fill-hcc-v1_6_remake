@@ -7876,11 +7876,11 @@
       "code": "24",
       "name": "Bắc Ninh",
       "name_en": "Bac Ninh",
-      "full_name": "Tỉnh Bắc Ninh",
-      "full_name_en": "Bac Ninh Province",
+      "full_name": "Thành phố Bắc Ninh",
+      "full_name_en": "Bac Ninh City",
       "code_name": "bac_ninh",
-      "type": "Tỉnh",
-      "type_en": "Province",
+      "type": "Thành phố",
+      "type_en": "City",
       "wards_count": 99,
       "wards": [
         {

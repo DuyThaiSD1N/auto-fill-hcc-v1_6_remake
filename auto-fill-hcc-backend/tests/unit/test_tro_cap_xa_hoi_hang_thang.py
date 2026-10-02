@@ -286,3 +286,22 @@ async def test_attach_plan_never_empty_even_if_all_files_skip(monkeypatch):
     assert len(result["attachments"]) == 1, "plan không được rỗng dù file bị xếp skip"
     assert result["attachments"][0]["componentName"] == "Mẫu số 1a, 1b, 1c, 1d"
     assert result["attachments"][0]["target"] == "attp-row"
+
+
+def test_khong_co_email_thi_xoa_o_email_cong_nho_tu_luot_truoc():
+    for options in (None, {"formContext": _ACCOUNT}, _DECLARATION_MODE):
+        result, _ = mapper.enrich(
+            [{"name": name, "value": value} for name, value in _subject_fields().items()], options
+        )
+        email = next(f for f in result if f["name"] == "data[email]")
+        assert email["value"] == "" and email["clear"] is True
+
+
+def test_co_email_nguoi_nop_thi_dien_email_do():
+    ui, _ = _mapped({**_subject_fields(), "DoiTuong_Email": "gia@example.com"})
+    assert ui["data[email]"] == "gia@example.com"
+
+
+def test_o_ghi_chu_chu_ho_so_de_trong():
+    ui, _ = _mapped({**_subject_fields(), "DoiTuong_GhiChu": "Khuyết tật vận động, mức độ Nặng"})
+    assert "data[ghiChu]" not in ui

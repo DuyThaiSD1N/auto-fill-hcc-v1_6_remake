@@ -249,3 +249,51 @@ async def test_handfree_sidebar_bao_tab_tach_sau_moc_do_chu_van_dem(db):
     chat_router.flow._record_submit_click(conv, {"click_id": "tab2", "clicked_at": _unix_ms(datetime.now(timezone.utc))})
     await chat_router._sync_dossier(conv, persist=False)
     assert len(_events(db, "conv-1")) == 2
+
+
+
+# ── Chỉ tính nộp khi hồ sơ đã có lượt ĐIỀN hoặc ĐÍNH KÈM ──
+
+def _conv_rong(db):
+    """Phiên Handfree đã chọn thủ tục nhưng trợ lý chưa điền/đính gì (cán bộ làm bằng Auto Fill)."""
+    return _conv(db, attach_trace_request_id=None)
+
+
+def test_handfree_background_bam_nop_khi_chua_dien_dinh_khong_tao_ho_so(db):
+    _conv_rong(db)
+    client = _app(handfree_router)
+    res = client.post("/api/v1/assistant/conversations/conv-1/submit-click", json={"click_id": "c-1"})
+    assert res.status_code == 200
+    assert db.dossiers._c.find_one({"_id": "conv-1"}) is None, "không được đẻ hồ sơ 'đã nộp' rỗng"
+    conv = db.conversations._c.find_one({"_id": "conv-1"})
+    assert conv.get("submit_clicked_at") is None and not conv.get("dossier_has_activity")
+
+
+async def test_handfree_bam_truoc_khi_dien_dinh_khong_ghi_bu_ve_sau(db):
+    """Cú bấm lúc chưa có việc thật bị bỏ; có lượt đính kèm sau đó cũng không được ghi bù mốc cũ.
+    Lần nộp thật sau đó là một cú bấm mới → một sự kiện."""
+    conv = _conv_rong(db)
+    chat_router.flow._record_submit_click(conv, {"click_id": "som"})
+    await chat_router._sync_dossier(conv, persist=False)
+    conv["attach_trace_request_id"] = "req-1"   # trợ lý đính kèm
+    await chat_router._sync_dossier(conv, persist=False)
+    assert _events(db, "conv-1") == []
+    chat_router.flow._record_submit_click(conv, {"click_id": "that"})
+    await chat_router._sync_dossier(conv, persist=False)
+    assert [e["id"] for e in _events(db, "conv-1")] == ["that"]
+
+
+def test_handfree_khong_hoi_danh_gia_khi_chua_dien_dinh():
+    conv = {"client_capabilities": {"supportsRating": True}}
+    r = chat_router.flow._record_submit_click(conv, {"click_id": "c-1"})
+    assert not r.cards and not conv.get("awaiting_rating"), "không có dòng hồ sơ để lưu phiếu"
+    conv["attach_trace_request_id"] = "req-1"
+    r = chat_router.flow._record_submit_click(conv, {"click_id": "c-2"})
+    assert r.cards and r.cards[0]["kind"] == "rating"
+
+
+async def test_handfree_man_ket_thuc_khong_hoi_danh_gia_khi_chua_dien_dinh(monkeypatch):
+    conv = {"state": "done", "client_capabilities": {"supportsRating": True}}
+    r = await chat_router.flow._handle_done(conv, chat_router.intents.Intent("event", "submitted", {}))
+    assert not any(c.get("kind") == "rating" for c in (r.cards or []))
+    assert not conv.get("awaiting_rating")

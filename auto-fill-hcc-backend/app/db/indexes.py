@@ -76,8 +76,27 @@ async def _ensure_compressed_collection(db, name: str) -> None:
         pass
 
 
+async def _ensure_capped_collection(db, name: str, size_bytes: int) -> None:
+    """Tạo capped collection; đã có mà không capped (lỡ insert trước) thì chuyển sang capped.
+
+    Nhiều worker cùng khởi động sẽ đua tạo → lỗi "đã tồn tại" bỏ qua.
+    """
+    try:
+        if name not in await db.list_collection_names(filter={"name": name}):
+            await db.create_collection(name, capped=True, size=size_bytes)
+            return
+        if not (await db[name].options()).get("capped"):
+            await db.command("convertToCapped", name, size=size_bytes)
+    except (CollectionInvalid, OperationFailure):
+        pass
+
+
 async def ensure_indexes() -> None:
     db = get_db()
+    # Kênh sự kiện WS giữa các worker uvicorn (app/upload_session/ws.py).
+    from app.upload_session.ws import EVENTS_CAPPED_BYTES, EVENTS_COLLECTION
+
+    await _ensure_capped_collection(db, EVENTS_COLLECTION, EVENTS_CAPPED_BYTES)
     await db.users.create_index("username", unique=True)
     await db.refresh_tokens.create_index("token_hash")
     await db.refresh_tokens.create_index("user_id")

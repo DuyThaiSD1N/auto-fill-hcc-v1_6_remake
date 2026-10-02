@@ -13,7 +13,13 @@ from app.db.mongo import get_db
 from app.locations.catalog import canonical_location, province_name_variants
 from app.users import password_vault
 from app.users.schemas import Role, UserCreate, UserUpdate
-from app.users.roles import NOT_DELETED, SUPER_ADMIN_ROLE
+from app.users.roles import (
+    NOT_DELETED,
+    SUPER_ADMIN_ROLE,
+    TDP_PARENT_ROLE,
+    TDP_ROLE,
+    normalized_role,
+)
 
 
 def _now() -> datetime:
@@ -32,7 +38,20 @@ def _iso(value) -> str | None:
     return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).isoformat()
 
 
-def _public(user: dict) -> dict:
+def _parent_public(parent: dict | None) -> dict | None:
+    if not parent:
+        return None
+    return {
+        "id": str(parent["_id"]),
+        "username": parent.get("username"),
+        "name": parent.get("name"),
+        "xa": parent.get("xa"),
+        "tinh": parent.get("tinh"),
+    }
+
+
+def _public(user: dict, parent: dict | None = None) -> dict:
+    is_tdp = normalized_role(user.get("role")) == TDP_ROLE
     return {
         "id": str(user["_id"]),
         "username": user["username"],
@@ -48,7 +67,71 @@ def _public(user: dict) -> dict:
         "deleted_at": _iso(user.get("deleted_at")),
         # Chỉ báo CÓ/KHÔNG có bản mã hoá; bản thân `password_enc` không bao giờ rời BE qua đây.
         "password_stored": bool(user.get("password_enc")),
+        # Tổ dân phố: HCC xã cha (địa bàn đã chép theo cha). Role khác luôn None.
+        "parent_id": user.get("parent_id") if is_tdp else None,
+        "parent": _parent_public(parent) if is_tdp else None,
     }
+
+
+async def _parents_by_id(db, users: list[dict]) -> dict[str, dict]:
+    """Một truy vấn cho mọi xã cha của các tổ dân phố trong danh sách (không lọc xóa mềm: cha
+    đã xóa vẫn phải hiện đúng tên)."""
+    oids = []
+    for user in users:
+        if normalized_role(user.get("role")) != TDP_ROLE or not user.get("parent_id"):
+            continue
+        try:
+            oids.append(ObjectId(user["parent_id"]))
+        except (InvalidId, TypeError):
+            continue
+    if not oids:
+        return {}
+    cursor = db.users.find(
+        {"_id": {"$in": oids}}, {"username": 1, "name": 1, "xa": 1, "tinh": 1},
+    )
+    return {str(doc["_id"]): doc async for doc in cursor}
+
+
+async def _public_with_parent(db, user: dict) -> dict:
+    parents = await _parents_by_id(db, [user])
+    return _public(user, parents.get(str(user.get("parent_id") or "")))
+
+
+async def _tdp_parent(db, parent_id: str | None, *, self_id: ObjectId | None = None) -> dict:
+    """Xã cha hợp lệ của tổ dân phố: tồn tại, chưa xóa, đúng role HCC xã."""
+    if not parent_id:
+        raise AppError(
+            "TDP_PARENT_REQUIRED", "Tổ dân phố phải chọn HCC xã/phường mà nó trực thuộc.", 400,
+        )
+    try:
+        parent_oid = ObjectId(parent_id)
+    except (InvalidId, TypeError):
+        parent_oid = None
+    parent = (
+        await db.users.find_one({"_id": parent_oid, **NOT_DELETED})
+        if parent_oid is not None and parent_oid != self_id
+        else None
+    )
+    if not parent or normalized_role(parent.get("role")) != TDP_PARENT_ROLE:
+        raise AppError(
+            "TDP_PARENT_INVALID",
+            "HCC xã/phường cha không tồn tại, đã bị xóa hoặc không phải tài khoản Hành chính công xã.",
+            400,
+        )
+    return parent
+
+
+async def _ensure_no_active_children(db, oid: ObjectId, action: str) -> None:
+    count = await db.users.count_documents(
+        {"parent_id": str(oid), "role": TDP_ROLE, **NOT_DELETED},
+    )
+    if count:
+        raise AppError(
+            "HAS_CHILD_ACCOUNTS",
+            f"Tài khoản đang có {count} tổ dân phố trực thuộc. Hãy chuyển các tổ dân phố sang "
+            f"HCC xã khác hoặc xóa chúng trước khi {action}.",
+            409,
+        )
 
 
 def _oid(user_id: str) -> ObjectId:
@@ -151,13 +234,30 @@ async def list_users(
     cursor = (
         db.users.find(query).sort("username", 1).skip(max(skip, 0)).limit(max(min(limit, 100), 1))
     )
-    items = [_public(u) async for u in cursor]
+    docs = [u async for u in cursor]
+    parents = await _parents_by_id(db, docs)
+    items = [_public(u, parents.get(str(u.get("parent_id") or ""))) for u in docs]
     return {"items": items, "total": total}
+
+
+async def list_parent_accounts() -> list[dict]:
+    """HCC xã chưa xóa — lựa chọn "Thuộc HCC xã" khi tạo/sửa tổ dân phố."""
+    cursor = get_db().users.find(
+        {**NOT_DELETED, "role": TDP_PARENT_ROLE},
+        {"username": 1, "name": 1, "xa": 1, "tinh": 1},
+    ).sort([("tinh", 1), ("xa", 1), ("username", 1)])
+    return [_parent_public(doc) async for doc in cursor]
 
 
 async def create_user(body: UserCreate) -> dict:
     now = _now()
-    tinh, xa = canonical_location(body.tinh, body.xa)
+    parent = None
+    if body.role == TDP_ROLE:
+        # Địa bàn của tổ dân phố là địa bàn xã cha — không nhận tỉnh/xã từ form.
+        parent = await _tdp_parent(get_db(), body.parent_id)
+        tinh, xa = parent.get("tinh"), parent.get("xa")
+    else:
+        tinh, xa = canonical_location(body.tinh, body.xa)
     password_set, _ = password_vault.password_fields(body.password)
     doc = {
         "username": body.username,
@@ -170,12 +270,14 @@ async def create_user(body: UserCreate) -> dict:
         "created_at": now,
         "updated_at": now,
     }
+    if parent is not None:
+        doc["parent_id"] = str(parent["_id"])
     try:
         res = await get_db().users.insert_one(doc)
     except DuplicateKeyError:
         raise AppError("USERNAME_EXISTS", "Tên đăng nhập đã tồn tại", 409)
     doc["_id"] = res.inserted_id
-    return _public(doc)
+    return _public(doc, parent)
 
 
 async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> dict:
@@ -199,8 +301,19 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
     unset_fields: dict = {}
     if body.name is not None:
         updates["name"] = body.name
+    current_role = normalized_role(current.get("role"))
+    new_role = body.role if body.role is not None else current_role
+    if current_role == TDP_PARENT_ROLE and new_role != TDP_PARENT_ROLE:
+        await _ensure_no_active_children(db, oid, "đổi vai trò")
     location_fields = body.model_fields_set & {"tinh", "xa"}
-    if location_fields:
+    if new_role == TDP_ROLE:
+        # Tổ dân phố không tự có địa bàn: luôn chép lại từ xã cha (kể cả khi chỉ đổi tên), để
+        # địa bàn đã lệch vì dữ liệu cũ cũng tự về đúng.
+        parent = await _tdp_parent(db, body.parent_id or current.get("parent_id"), self_id=oid)
+        updates["parent_id"] = str(parent["_id"])
+        updates["tinh"] = parent.get("tinh")
+        updates["xa"] = parent.get("xa")
+    elif location_fields:
         # PATCH có thể chỉ gửi một nửa cặp tỉnh-xã. Ghép với dữ liệu đang lưu rồi mới
         # kiểm tra để không cho một xã cũ bị giữ lại dưới tỉnh mới.
         tinh_input = body.tinh if "tinh" in location_fields else current.get("tinh")
@@ -208,6 +321,8 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
         tinh, xa = canonical_location(tinh_input, xa_input)
         updates["tinh"] = tinh
         updates["xa"] = xa
+    if current_role == TDP_ROLE and new_role != TDP_ROLE:
+        unset_fields["parent_id"] = ""
     if body.role is not None and body.role != (current.get("role") or "user"):
         # require_admin đọc lại user từ DB mỗi request, nên tự hạ quyền là mất trang quản trị
         # NGAY, không đợi token hết hạn. Đứng cạnh CANNOT_DISABLE_SELF bên dưới vì cùng một
@@ -248,6 +363,15 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
     )
     if not result:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản", 404)
+    if new_role == TDP_PARENT_ROLE and (
+        result.get("tinh") != current.get("tinh") or result.get("xa") != current.get("xa")
+    ):
+        # Địa bàn tổ dân phố là bản chép của xã cha — cha đổi thì con đổi theo, kể cả con đã
+        # xóa mềm (khôi phục ra vẫn đúng địa bàn).
+        await db.users.update_many(
+            {"parent_id": str(oid), "role": TDP_ROLE},
+            {"$set": {"tinh": result.get("tinh"), "xa": result.get("xa"), "updated_at": now}},
+        )
     if body.access_disabled is True:
         # Access token đang sống bị chặn bởi require_auth; thu hồi refresh token để
         # phiên cũ không thể tự gia hạn trong lúc bảo trì.
@@ -255,7 +379,7 @@ async def update_user(user_id: str, body: UserUpdate, current_user_id: str) -> d
             {"user_id": str(oid), "revoked_at": None},
             {"$set": {"revoked_at": now}},
         )
-    return _public(result)
+    return await _public_with_parent(db, result)
 
 
 async def delete_user(user_id: str, current_user_id: str) -> None:
@@ -274,6 +398,8 @@ async def delete_user(user_id: str, current_user_id: str) -> None:
         )
     if current.get("deleted_at") is not None:
         return  # đã xóa rồi, coi như thành công (bấm hai lần không báo lỗi)
+    if normalized_role(current.get("role")) == TDP_PARENT_ROLE:
+        await _ensure_no_active_children(db, oid, "xóa")
     if current.get("role") == "admin" and current.get("access_disabled") is not True:
         await _ensure_not_last_admin(db, oid)
 
@@ -296,6 +422,10 @@ async def restore_user(user_id: str) -> dict:
     """Bỏ dấu xóa mềm. Không có đường này thì xóa mềm chỉ là giấu đi, không cứu được gì."""
     db = get_db()
     oid = _oid(user_id)
+    current = await db.users.find_one({"_id": oid})
+    if current and normalized_role(current.get("role")) == TDP_ROLE:
+        # Không khôi phục tổ dân phố "mồ côi": xã cha phải còn dùng được.
+        await _tdp_parent(db, current.get("parent_id"), self_id=oid)
     result = await db.users.find_one_and_update(
         {"_id": oid, "role": {"$ne": SUPER_ADMIN_ROLE}, "deleted_at": {"$ne": None}},
         {"$set": {"updated_at": _now()}, "$unset": {"deleted_at": "", "deleted_by": ""}},
@@ -303,7 +433,7 @@ async def restore_user(user_id: str) -> dict:
     )
     if not result:
         raise AppError("USER_NOT_FOUND", "Không tìm thấy tài khoản đã xóa", 404)
-    return _public(result)
+    return await _public_with_parent(db, result)
 
 
 async def _manageable_user(db, oid: ObjectId) -> dict:

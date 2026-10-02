@@ -37,7 +37,5 @@ NGUỒN DỮ LIỆU (DoiTuong_*):
 - Nơi cấp: CCCD gắn chip không in nhãn "Nơi cấp" riêng → lấy ở Tờ khai. Chuẩn hóa tên cơ quan.
 - DoiTuong_ThuongTru (nơi thường trú/hộ khẩu): tách object {tinh,xa,diaChi}; ưu tiên Tờ khai (địa giới
   MỚI sau sáp nhập); diaChi CHỈ chi tiết (số nhà/đường/tổ dân phố/thôn), KHÔNG kèm phường/xã/huyện/tỉnh.
-- DoiTuong_GhiChu: dạng tật + MỨC ĐỘ khuyết tật (vd "Khuyết tật vận động, mức độ Nặng") lấy ở Giấy xác
-  nhận khuyết tật / Biên bản giám định / Tờ khai; hoặc diện đối tượng bảo trợ. Không có thì bỏ.
 
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa thông tin còn thiếu; giấy tờ không có thì bỏ field."""

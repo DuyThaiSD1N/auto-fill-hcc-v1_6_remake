@@ -39,7 +39,7 @@ FIELDS: list[dict] = [
         "ghi trên tờ khai Mẫu 02 (vd 'Công nhân, người lao động đang làm việc tại doanh nghiệp...'). Chép "
         "NGUYÊN VĂN nhóm đã ghi trong đơn."},
     {"name": "TinhDuAn", "desc": "Tên tỉnh/thành phố nơi có dự án nhà ở xã hội — mục 9 ('...tại tỉnh/Thành "
-        "phố ...'). Thường là 'Tỉnh Bắc Ninh'."},
+        "phố ...'). Thường là 'Thành phố Bắc Ninh'."},
 
     {"name": "Don_NoiKhai", "desc": "Địa danh nơi khai đơn (dòng ký cuối Mẫu 02) — thường 'Bắc Ninh'. Nếu "
         "không rõ, bỏ (cổng để sẵn 'Bắc Ninh')."},

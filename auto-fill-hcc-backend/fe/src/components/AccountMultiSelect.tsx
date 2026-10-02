@@ -9,6 +9,7 @@ const ROLE_LABEL: Record<Role, string> = {
   commune: "HCC xã",
   province: "HCC tỉnh",
   province_admin: "Tỉnh (báo cáo)",
+  tdp: "Tổ dân phố",
 };
 
 function fold(value: string): string {

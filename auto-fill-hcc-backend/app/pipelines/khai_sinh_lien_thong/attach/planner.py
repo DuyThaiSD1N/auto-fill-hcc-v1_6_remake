@@ -125,6 +125,29 @@ def _is_explicit_other_text(text: str) -> bool:
     return bool(is_identity_card or is_identity_paper or is_marriage_certificate)
 
 
+def _original_document_names(raw_files: list[dict]) -> dict[int, str]:
+    """documentName = TÊN FILE GỐC cho mọi tệp, không đặt theo loại giấy.
+
+    Extension (bật đổi tên) đặt tên tệp tải lên theo documentName; nhiều tệp cùng ô STT1 mà cùng
+    nhãn "Giấy chứng sinh" thì cổng liên thông chặn trùng TÊN trong dsFile → chỉ giữ tệp đầu.
+    Hai file gốc trùng tên cũng bị chặn như vậy nên tệp sau mới thêm số " 2", " 3".
+    Bỏ đuôi ".pdf"/".jpg": extension tự gắn lại đuôi của tệp gốc khi tải lên.
+    """
+    used: set[str] = set()
+    names: dict[int, str] = {}
+    for idx, f in enumerate(raw_files):
+        original = str(f.get("name") or "").strip()
+        dot = original.rfind(".")
+        stem = (original[:dot] if dot > 0 else original).strip() or f"file-{idx + 1}"
+        name, n = stem, 2
+        while _fold(name) in used:
+            name = f"{stem} {n}"
+            n += 1
+        used.add(_fold(name))
+        names[idx] = name
+    return names
+
+
 # Loại tài liệu LLM gán cho mỗi file ở bước đính kèm khai sinh.
 _DOC_BIRTH = "birth_proof"
 _DOC_RESIDENCE = "residence_form"
@@ -244,6 +267,7 @@ async def plan_khai_sinh_attachments(
 
     attachments: list[dict] = []
     other_indices: list[int] = []
+    document_names = _original_document_names(raw_files)
     declaration_indices = [i for i in range(len(raw_files)) if final_types[i] == _DOC_DECLARATION]
     for idx in declaration_indices:
         errors.append(f"{OMITTED_DECLARATION_NOTE}: {raw_files[idx]['name']}")
@@ -263,7 +287,7 @@ async def plan_khai_sinh_attachments(
             item = {
                 "fileIndex": idx,
                 "fileName": f["name"],
-                "documentName": _BIRTH_PROOF_LABEL,
+                "documentName": document_names[idx],
                 "componentName": _BIRTH_PROOF_LABEL,
                 "target": "fixed-slot",
                 "slotIndex": 0,            # STT1: giấy chứng sinh (nhận nhiều tệp rời)
@@ -293,7 +317,7 @@ async def plan_khai_sinh_attachments(
         attachments.append({
             "fileIndex": residence_index,
             "fileName": f["name"],
-            "documentName": _RESIDENCE_FORM_LABEL,
+            "documentName": document_names[residence_index],
             "componentName": _RESIDENCE_FORM_LABEL,
             "target": "fixed-slot",
             "slotIndex": 1,            # STT2: tờ khai thay đổi thông tin cư trú (tùy trường hợp)

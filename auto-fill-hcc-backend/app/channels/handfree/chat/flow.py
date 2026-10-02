@@ -17,7 +17,12 @@ from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat.intents import Intent, fold
-from app.locations.catalog import PROVINCES, portal_agency_ward, province_by_slug
+from app.locations.catalog import (
+    PROVINCES,
+    portal_agency_province,
+    portal_agency_ward,
+    province_by_slug,
+)
 from app.channels.handfree.notify import service as notify_service
 from app.channels.handfree.flow_profiles import FLOW_PROFILES
 from app.channels.handfree.procedure_registry import (
@@ -28,6 +33,7 @@ from app.channels.handfree.profiles import service as profile_service
 from app.channels.handfree.documents import service as upload_service
 from app.dossiers import rating_card
 from app.dossiers import repo as dossiers_repo
+from app.channels.handfree.authorization_letter.card import AUTHORIZATION_LETTER_TOOL, COUNTER_TOOLS_SECTION
 from app.upload_session import store as up_store
 
 
@@ -153,7 +159,13 @@ def _service_list_card(conv: dict | None = None) -> dict:
             if title_hmong:
                 item["titleHmong"] = title_hmong
         items.append(item)
-    return {"kind": "service_list", "items": items}
+    card = {"kind": "service_list", "items": items}
+    # Giấy tờ soạn tại quầy (không phải thủ tục DVC): chỉ extension biết mở tab công cụ mới thấy;
+    # bản cũ trên chợ không khai cờ → card y như cũ. Chế độ tiếng Mông ẩn (công cụ chỉ có tiếng Việt).
+    caps = (conv or {}).get("client_capabilities") or {}
+    if caps.get("supportsAuthorizationLetter") is True and not hmong:
+        card["counterTools"] = {**COUNTER_TOOLS_SECTION, "items": [dict(AUTHORIZATION_LETTER_TOOL)]}
+    return card
 
 
 def _execution_subject_config(proc: dict | None = None) -> dict:
@@ -1285,6 +1297,18 @@ def _start_guide_login(conv: dict) -> Reply:
     return r
 
 
+def dossier_has_real_work(conv: dict) -> bool:
+    """Hồ sơ đã có lượt ĐIỀN hoặc ĐÍNH KÈM do trợ lý chạy — tiêu chí để một cú bấm nộp được tính.
+
+    Bấm nộp một mình KHÔNG đủ: cán bộ mở sidebar Handfree, chọn thủ tục rồi làm bằng Auto Fill thì
+    content script Handfree vẫn bắt được cú bấm → một hồ sơ "đã nộp" không có việc gì của trợ lý,
+    và cùng lần nộp đó bị đếm ở cả hai kênh. `dossier_has_activity` dính lại sau lượt đầu vì bước
+    "bổ sung giấy tờ" reset trace_request_id về None.
+    """
+    return bool(conv.get("dossier_has_activity") or conv.get("trace_request_id")
+                or conv.get("attach_trace_request_id") or conv.get("attach_done"))
+
+
 def submit_click_is_after_text(conv: dict, clicked_at_ms: object) -> bool:
     """Cú bấm (giờ bấm thật, epoch ms) xảy ra SAU mốc dò chữ "nộp thành công" đang ghi?
 
@@ -1340,7 +1364,10 @@ def _record_submit_click(conv: dict, payload: dict) -> Reply:
     #
     # CHỈ dựng card, KHÔNG kèm await_logout_choice: đồng hồ tự đăng xuất 2 phút phải đợi cổng
     # xác nhận thật, nếu không cổng báo thiếu giấy tờ là công dân bị đăng xuất giữa lúc sửa.
-    if _supports_rating(conv) and not conv.get("rating") and not conv.get("awaiting_rating"):
+    # Chưa điền/đính gì thì cú bấm không được tính (router._sync_dossier) và không có dòng hồ sơ
+    # để lưu phiếu → không hỏi đánh giá.
+    if (_supports_rating(conv) and dossier_has_real_work(conv)
+            and not conv.get("rating") and not conv.get("awaiting_rating")):
         conv["awaiting_rating"] = True
         r = Reply("", "")
         r.cards = [_rating_card()]
@@ -1715,8 +1742,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # là Sở chuyên ngành của thủ tục.
         r = Reply()
         ward = "" if proc.get("agencyProvinceOnly") else _portal_ward(loc)
+        # Tên tỉnh theo khối chọn cơ quan của cổng (có thể còn tên cũ, vd "Tỉnh Bắc Ninh").
         action = {"type": "select_agency",
-                  "province": _agency_province(proc, loc), "ward": ward}
+                  "province": portal_agency_province(_agency_province(proc, loc)), "ward": ward}
         if proc.get("agencySoFirst"):
             action["soMode"] = True
         card = str(proc.get("agencyCardIncludes") or "")
@@ -3471,8 +3499,9 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
             return r
         conv["submitted_logout_decision"] = "pending"
         # Bản extension mới (supportsRating): chèn bước ĐÁNH GIÁ trải nghiệm TRƯỚC 2 nút đăng
-        # xuất. Bản cũ không khai cờ → ra thẳng 2 nút như trước (không vỡ).
-        if _supports_rating(conv) and not conv.get("rating"):
+        # xuất. Bản cũ không khai cờ → ra thẳng 2 nút như trước (không vỡ). Hồ sơ chưa điền/đính
+        # gì thì không có dòng hồ sơ để lưu phiếu → bỏ bước đánh giá.
+        if _supports_rating(conv) and not conv.get("rating") and dossier_has_real_work(conv):
             if conv.get("awaiting_rating"):
                 # Card đã dựng từ lúc BẤM nút và công dân còn đang đánh giá dở. Dựng thêm card
                 # thứ hai là hai khối chồng nhau; chỉ khởi động đồng hồ tự đăng xuất (giờ mới

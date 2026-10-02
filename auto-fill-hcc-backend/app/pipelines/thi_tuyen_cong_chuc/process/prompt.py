@@ -13,8 +13,9 @@ EXTRA_RULES = """<critical_rules>
    "PHIẾU ĐĂNG KÝ THI TUYỂN CÔNG CHỨC", "Mẫu số 01", "Mẫu số 02",
    "Nghị định số 170/2025/NĐ-CP", "thi tuyển công chức", hoặc nội dung
    "vị trí việc làm dự tuyển", "cơ quan, tổ chức, đơn vị dự tuyển".
-2. Nếu có CCCD/CMND/hộ chiếu riêng, chỉ trích vào Person1_* để bổ sung ngày cấp/nơi cấp/nơi cư trú;
-   không thay thế Phieu_* nếu phiếu đã có thông tin ứng viên.
+2. CCCD/CMND/hộ chiếu riêng của NGƯỜI DỰ TUYỂN (cùng số/họ tên với Phiếu) trích vào Person1_* để bổ sung
+   ngày cấp/nơi cấp/nơi cư trú; không thay thế Phieu_* nếu phiếu đã có thông tin ứng viên. Giấy tờ của người
+   KHÁC người dự tuyển nằm trong matched_requester_ocr thì trích vào NguoiNop_* (xem nguoi_nop_rules).
 3. Tên file chỉ là tín hiệu phụ; OCR là nguồn chính.
 </document_classification>
 
@@ -56,10 +57,17 @@ EXTRA_RULES = """<critical_rules>
 </priority_and_confirmation>
 
 <cccd_extraction>
-1. Nếu OCR có CCCD/CMND độc lập, trả Person1_* theo đúng người trên giấy tờ.
+1. Person1_* chỉ dành cho CCCD/CMND của người dự tuyển; trả theo đúng người trên giấy tờ.
 2. Person1_NgayCap không được lấy ngày sinh/ngày hết hạn. Nếu thấy "Công an tỉnh ..." thì giữ đúng.
 3. Person1_NoiCuTru là object {quocGia,tinh,xa,diaChi}.
 </cccd_extraction>
+
+<nguoi_nop_rules>
+1. NguoiNop_* CHỈ trích khi requester_context có matched_requester_ocr VÀ người khớp tài khoản KHÁC người
+   dự tuyển trên Phiếu; lấy nhân thân ở đúng đoạn OCR đó. requester_context là "owner_match",
+   "missing_ui_anchor" hoặc "no_document_match" thì KHÔNG trả NguoiNop_*.
+2. Không chép nhân thân người dự tuyển sang NguoiNop_* và ngược lại.
+</nguoi_nop_rules>
 
 <output_examples>
 Đúng:

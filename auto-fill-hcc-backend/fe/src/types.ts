@@ -1,6 +1,16 @@
 // "commune"/"province" (Hành chính công xã/tỉnh): như "user" — không vào panel, chỉ khác nhãn.
 // "province_admin": tài khoản Tỉnh CHỈ để xem bảng thống kê đa đơn vị (khác "province" của HCC).
-export type Role = "admin" | "user" | "commune" | "province" | "province_admin";
+// "tdp" (Tổ dân phố): con của một HCC xã (`parent_id`), tỉnh/xã lấy theo xã cha.
+export type Role = "admin" | "user" | "commune" | "province" | "province_admin" | "tdp";
+
+/** HCC xã làm cha của tổ dân phố (rút gọn). */
+export interface ParentAccount {
+  id: string;
+  username: string;
+  name?: string | null;
+  xa?: string | null;
+  tinh?: string | null;
+}
 
 export interface User {
   id: string;
@@ -25,6 +35,9 @@ export interface ManagedUser {
   deleted_at?: string | null;
   /** Có bản mã hoá hai chiều → xem/xuất được mật khẩu. false = chỉ còn bcrypt một chiều. */
   password_stored?: boolean;
+  /** Chỉ tổ dân phố: HCC xã cha. */
+  parent_id?: string | null;
+  parent?: ParentAccount | null;
 }
 
 /** Trạng thái lọc ở trang Quản lý tài khoản. "deleted" là cửa duy nhất thấy tài khoản đã xóa. */
@@ -51,6 +64,7 @@ export interface UserCreateBody {
   xa?: string | null;
   tinh?: string | null;
   role: Role;
+  parent_id?: string | null;
 }
 
 export interface PasswordRevealResp {
@@ -79,6 +93,7 @@ export interface UserUpdateBody {
   role?: Role;
   access_disabled?: boolean;
   password?: string;
+  parent_id?: string | null;
 }
 
 export interface LoginResp {

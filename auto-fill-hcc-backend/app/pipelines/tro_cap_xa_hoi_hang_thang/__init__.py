@@ -14,7 +14,7 @@ HAI vai (có thể NỘP THAY — như sua_doi / di_chuyen):
 Cấu trúc form (field-key data[...] lấy CHUẨN từ HTML thật — mỗi key XUẤT HIỆN 1 LẦN, KHÔNG occurrence):
   Phần 1 Người nộp   → data[fullname/birthday/gender/identityNumber/identityDate/idIssuePlace/province/
                        district/address/phoneNumber/email], chonDoiTuong="Cá nhân".
-  Phần 2 Chủ hồ sơ   → data[owner*] + data[ghiChu]. BỎ TÍCH data[isOwnerDossierCheck] để mở + điền.
+  Phần 2 Chủ hồ sơ   → data[owner*] (ô Ghi chú để trống). BỎ TÍCH data[isOwnerDossierCheck] để mở + điền.
   Phần 3 Thành phần hồ sơ → bảng attp-row (đính kèm).
   Phần 4 receivingKind / captcha → cổng tự lo, KHÔNG điền.
 """

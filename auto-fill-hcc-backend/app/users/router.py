@@ -43,6 +43,12 @@ async def create_user(body: UserCreate, _admin: dict = Depends(require_admin)):
     return await service.create_user(body)
 
 
+@router.get("/parents")
+async def list_parent_accounts(_admin: dict = Depends(require_admin)):
+    """HCC xã chọn được làm cha của tổ dân phố (đủ cả danh sách — ô chọn tự lọc phía FE)."""
+    return {"items": await service.list_parent_accounts()}
+
+
 @router.get("/import/template")
 async def import_template(_admin: dict = Depends(require_admin)):
     return Response(

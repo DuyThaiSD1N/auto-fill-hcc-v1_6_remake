@@ -35,10 +35,6 @@ _LABELS: tuple[tuple[str, str], ...] = (
 # TRƯỚC câu mở đều thuộc người yêu cầu (mục I) nên không lọt vào khối này.
 _SUBJECT_START = r"cho\s*nguoi\s*co\s*ten\s*duoi\s*day"
 _SUBJECT_END = r"da\s*(?:duoc\s*)?dang\s*ky|noi\s*dung\s*:|ly\s*do\s*:"
-# Ô của khối tờ khai thắng giá trị agent kể cả khi cùng chủ thể (xem _apply_subject).
-_DECLARATION_WINS = ("ChuThe_DanToc",)
-# Ranh giới giữa các tài liệu trong OCR gộp (giống mapper._DOC_SEPARATOR).
-_DOC_SEPARATOR = "\n\n---\n\n"
 
 _SUBJECT_LABELS: tuple[tuple[str, str], ...] = (
     ("hoTen", r"ho\s*,?\s*chu\s*dem\s*,?\s*ten"),
@@ -218,31 +214,9 @@ def _name_key(value) -> str:
     return re.sub(r"\s+", " ", _fold(str(value or ""))).strip()
 
 
-def _subject_block(ocr_text: str) -> tuple[str, str]:
-    """Khối "cho người có tên dưới đây" của CHÍNH tờ khai.
-
-    Câu mở này còn gặp ở giấy tờ kèm (vd văn bản thỏa thuận chọn dân tộc cho con). Dò trên cả
-    OCR thì khối mở ở giấy kèm rồi chạy tràn sang tờ khai, nhặt nhãn họ tên của NGƯỜI YÊU CẦU
-    làm chủ thể. Nên chỉ dò trong từng tài liệu, và ở tài liệu có câu "Đề nghị cơ quan đăng ký
-    việc" (tờ khai) thì chỉ dò sau câu đó.
-    """
-    documents = str(ocr_text or "").split(_DOC_SEPARATOR)
-    fallback = ("", "")
-    for document in documents:
-        folded = _fold(document)
-        requester_end = re.search(_REQUESTER_END, folded)
-        if requester_end:
-            block = _block(document[requester_end.end():], _SUBJECT_START, _SUBJECT_END)
-            if block[0]:
-                return block
-        elif not fallback[0]:
-            fallback = _block(document, _SUBJECT_START, _SUBJECT_END)
-    return fallback
-
-
 def subject_fields(ocr_text: str) -> dict:
     """Đọc khối NGƯỜI ĐƯỢC thay đổi/cải chính của tờ khai -> dict ChuThe_* (bỏ ô trống)."""
-    block, folded_block = _subject_block(ocr_text)
+    block, folded_block = _block(ocr_text or "", _SUBJECT_START, _SUBJECT_END)
     if not block:
         return {}
 
@@ -296,10 +270,6 @@ def _apply_subject(fields: list[dict], subject: dict, comp_by_name: dict[str, st
         field for field in fields
         if not str(field.get("name") or "").startswith("ChuThe_")
     ]
-    # Hồ sơ XÁC ĐỊNH LẠI DÂN TỘC: agent hay trả dân tộc MỚI (vế "Thành:" của dòng Nội dung) vào
-    # ChuThe_DanToc, trong khi Mục II phải là dân tộc HIỆN TẠI mà khối tờ khai ghi rõ.
-    overridden = {name for name in _DECLARATION_WINS if subject.get(name)}
-    kept = [field for field in kept if field.get("name") not in overridden]
     present = {
         field.get("name")
         for field in kept

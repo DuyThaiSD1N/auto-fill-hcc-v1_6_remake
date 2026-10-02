@@ -16,7 +16,7 @@ def test_du_34_tinh_va_3321_xa():
 def test_slug_cu_van_tra_duoc():
     # Slug thời danh sách 9 tỉnh nhập tay — conversation cũ lưu province_slug dạng này.
     for slug, text in [
-        ("bacninh", "Tỉnh Bắc Ninh"),
+        ("bacninh", "Thành phố Bắc Ninh"),
         ("danang", "Thành phố Đà Nẵng"),
         ("khanhhoa", "Tỉnh Khánh Hòa"),
         ("laichau", "Tỉnh Lai Châu"),
@@ -41,7 +41,7 @@ def test_chuan_hoa_dau_kieu_moi():
 
 def test_wards_giu_nguyen_shape_va_noi_dung():
     bn = _WARDS["bacninh"]
-    assert bn["province"] == "Tỉnh Bắc Ninh"
+    assert bn["province"] == "Thành phố Bắc Ninh"
     assert len(bn["communes"]) == 99
     assert "Phường Kinh Bắc" in bn["communes"]
     # Đơn vị đặc thù sau sáp nhập vẫn có mặt.

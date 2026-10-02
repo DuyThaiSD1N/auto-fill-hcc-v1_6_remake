@@ -8,7 +8,7 @@ from typing import Any
 
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
-from app.pipelines.thi_tuyen_cong_chuc_mot_cua_moha.process.schema import UI_COMP_BY_NAME
+from app.pipelines.thi_tuyen_cong_chuc_mot_cua_moha.process.schema import MAX_NGUYEN_VONG, UI_COMP_BY_NAME
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -381,7 +381,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[Dut]", _number(values.get("Phieu_DiemUuTien")))
     add("data[XacNhan]", True)
 
-    for idx, item in enumerate(_list(values.get("Phieu_ThuTuUuTien"))[:5]):
+    for idx, item in enumerate(_list(values.get("Phieu_ThuTuUuTien"))[:MAX_NGUYEN_VONG]):
         add(f"data[DataGrid2][{idx}][stt]", str(idx + 1))
         add(f"data[DataGrid2][{idx}][txtDonViNV]", _item_text(item, "tenCoQuan", "coQuan", "donVi"))
         add(f"data[DataGrid2][{idx}][txtNguyenVong]", _nguyen_vong(_item_text(item, "nguyenVong", "thuTu"), idx))

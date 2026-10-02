@@ -156,6 +156,12 @@ for _i in range(5):
     UI_COMP_BY_NAME.update({
         f"data[DataGrid1][{_i}][TnDn]": "dom-input",
         f"data[DataGrid1][{_i}][CqTcDv]": "dom-input",
+    })
+
+# Thí sinh có thể đăng ký nhiều nguyện vọng; extension tự bấm "thêm dòng" theo chỉ số dòng lớn nhất.
+MAX_NGUYEN_VONG = 30
+for _i in range(MAX_NGUYEN_VONG):
+    UI_COMP_BY_NAME.update({
         f"data[DataGrid2][{_i}][stt]": "dom-input",
         f"data[DataGrid2][{_i}][txtDonViNV]": "dom-input",
         f"data[DataGrid2][{_i}][txtNguyenVong]": "dom-input",

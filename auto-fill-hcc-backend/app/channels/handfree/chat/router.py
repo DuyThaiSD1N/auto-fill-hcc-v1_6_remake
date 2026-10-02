@@ -165,6 +165,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết sửa TẠI CHỖ bong bóng bot gần nhất (Reply.replace_last) — vd chỉnh nơi làm trên
         # card xác nhận thủ tục. Client cũ không khai → BE vẽ thêm bong bóng như trước.
         "supportsReplaceLast": raw.get("supportsReplaceLast") is True,
+        # Biết mở tab "Tạo giấy ủy quyền" từ mục Giấy tờ soạn tại quầy. Client cũ không khai →
+        # card chọn thủ tục không có mục này (bấm vào cũng không có gì để mở).
+        "supportsAuthorizationLetter": raw.get("supportsAuthorizationLetter") is True,
     }
 
 
@@ -183,7 +186,7 @@ class ChatRequest(BaseModel):
 
 def _default_location() -> dict:
     # Mặc định nơi pilot: Bắc Ninh — Song Liễu. Đổi nơi triển khai = đổi env sau (docs/03a §1).
-    return {"province": "Tỉnh Bắc Ninh", "province_slug": "bacninh", "ward": "Phường Song Liễu"}
+    return {"province": "Thành phố Bắc Ninh", "province_slug": "bacninh", "ward": "Phường Song Liễu"}
 
 
 def _serialize(conv: dict, reply: flow.Reply) -> dict:
@@ -260,7 +263,17 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         conv["form_context"] = {
             "applicantFullname": str(raw_form_context.get("applicantFullname") or "")[:200],
             "applicantIdentityNumber": str(raw_form_context.get("applicantIdentityNumber") or "")[:30],
+            "applicantBirthday": str(raw_form_context.get("applicantBirthday") or "")[:20],
+            "applicantGender": str(raw_form_context.get("applicantGender") or "")[:10],
+            "applicantEthnicity": str(raw_form_context.get("applicantEthnicity") or "")[:50],
+            "applicantIdDate": str(raw_form_context.get("applicantIdDate") or "")[:20],
+            "applicantIdIssuer": str(raw_form_context.get("applicantIdIssuer") or "")[:200],
         }
+        address = raw_form_context.get("applicantAddress")
+        if isinstance(address, dict):
+            conv["form_context"]["applicantAddress"] = {
+                key: str(address.get(key) or "")[:200] for key in ("tinh", "xa", "diaChi")
+            }
 
     if req.client_context:
         capabilities = req.client_context.capabilities or {}
@@ -353,20 +366,28 @@ async def _sync_dossier(conv: dict, *, persist: bool = True) -> None:
     started_at = conv.get("dossier_started_at")
     if not started_at:
         return
-    # Chỉ vào sổ khi hồ sơ đã CÓ VIỆC THẬT (điền / đính kèm / bấm nộp). Mốc bắt đầu của
-    # Handfree chấm ngay lúc xác nhận thủ tục (_start_guide_login), nên chọn thủ tục rồi bỏ
-    # giữa chừng cũng đẻ ra một dòng rỗng trong danh sách quản trị — Auto Fill không có
-    # chuyện đó vì nó chỉ upsert ở lượt /process và /attachments/plan.
+    # Chỉ vào sổ khi hồ sơ đã CÓ VIỆC THẬT: một lượt ĐIỀN hoặc ĐÍNH KÈM (flow.dossier_has_real_work).
+    # Mốc bắt đầu của Handfree chấm ngay lúc xác nhận thủ tục (_start_guide_login), nên chọn thủ
+    # tục rồi bỏ giữa chừng cũng đẻ ra một dòng rỗng — Auto Fill không có chuyện đó vì nó chỉ
+    # upsert ở lượt /process và /attachments/plan.
+    #
+    # Bấm nộp KHÔNG phải việc thật: cán bộ mở sidebar Handfree, chọn thủ tục rồi làm bằng Auto
+    # Fill thì Handfree vẫn bắt được cú bấm — trước đây thành một hồ sơ "đã nộp" rỗng, cùng lần
+    # nộp bị đếm ở cả hai kênh. Cú bấm lúc chưa có việc thật bị BỎ HẲN (xoá khỏi phiên) để về sau
+    # có điền/đính cũng không ghi bù mốc cũ; lần nộp thật sau đó là một cú bấm mới.
     #
     # `started_at` KHÔNG đổi: upsert_started dùng $setOnInsert, nên hồ sơ vẫn mang đúng mốc
     # lúc xác nhận thủ tục, "Thời gian làm" không bị ngắn đi.
-    if not conv.get("dossier_has_activity"):
-        if not (conv.get("trace_request_id") or conv.get("attach_trace_request_id")
-                or conv.get("submit_clicked_at") or conv.get("attach_done")):
-            return
-        # Dính luôn: bước "bổ sung giấy tờ" reset trace_request_id về None, mất cờ thì các
-        # lượt sau ngừng cập nhật tên công dân/nhãn thủ tục cho hồ sơ đã có trong sổ.
-        conv["dossier_has_activity"] = True
+    if not flow.dossier_has_real_work(conv):
+        if conv.get("submit_clicked_at"):
+            conv.update({"submit_clicked_at": None, "submit_clicked_source": "", "submit_click_id": "",
+                         "submit_clicked_synced_at": None})
+            if persist:
+                await store.save(conv)
+        return
+    # Dính luôn: bước "bổ sung giấy tờ" reset trace_request_id về None, mất cờ thì các
+    # lượt sau ngừng cập nhật tên công dân/nhãn thủ tục cho hồ sơ đã có trong sổ.
+    conv["dossier_has_activity"] = True
     auth_user = conv.get("auth_user") or {}
     loc = conv.get("location") or {}
     procedure_key = conv.get("procedure_key") or ""

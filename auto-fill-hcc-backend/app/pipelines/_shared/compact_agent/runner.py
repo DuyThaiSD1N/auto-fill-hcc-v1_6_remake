@@ -195,6 +195,8 @@ async def run(
     context_builder=None,
     document_filter=None,
     max_tokens: int = _COMPACT_AGENT_MAX_TOKENS,
+    system_prompt_builder=None,
+    user_content_builder=None,
 ) -> dict:
     errors: list[str] = []
     files = flatten(files_by_role)
@@ -282,10 +284,13 @@ async def run(
     llm_output: dict | None = None  # JSON thô LLM parse được (lưu trace).
     t1 = time.monotonic()
     if llm_documents:
+        # Thủ tục có prompt nền riêng truyền builder của mình; mặc định là khung dùng chung.
+        build_system = system_prompt_builder or compact_prompt.build_system_prompt
+        user_content = (user_content_builder(llm_documents, options or {}) if user_content_builder
+                        else compact_prompt.build_user_content(llm_documents))
         messages = [
-            {"role": "system",
-             "content": compact_prompt.build_system_prompt(fields, extra_rules + reasoning_context)},
-            {"role": "user", "content": compact_prompt.build_user_content(llm_documents)},
+            {"role": "system", "content": build_system(fields, extra_rules + reasoning_context)},
+            {"role": "user", "content": user_content},
         ]
         try:
             raw = await client.chat(

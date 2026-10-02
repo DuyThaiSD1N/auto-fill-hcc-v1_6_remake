@@ -49,7 +49,6 @@ async def test_chon_thu_tuc_roi_bo_thi_khong_vao_so(calls):
     {"trace_request_id": "req-1"},        # đã có lượt điền
     {"attach_trace_request_id": "req-2"},  # đã có lượt đính kèm
     {"attach_done": True},
-    {"submit_clicked_at": _STARTED},       # attach-only: bấm nộp là đủ nghĩa
 ])
 async def test_co_viec_that_thi_vao_so(calls, marker):
     await chat_router._sync_dossier(_conv(**marker))
@@ -74,3 +73,12 @@ async def test_co_dinh_luon_sau_khi_da_co_viec(calls):
     conv["applicant_name"] = "TỐNG ĐỨC HẢI"
     await chat_router._sync_dossier(conv)
     assert len(calls) == 2, "hồ sơ đã vào sổ thì vẫn phải tiếp tục được cập nhật"
+
+
+async def test_chi_bam_nop_ma_chua_dien_dinh_thi_khong_vao_so(calls):
+    """Cán bộ mở sidebar Handfree, chọn thủ tục rồi làm bằng Auto Fill: Handfree vẫn bắt được cú
+    bấm nộp. Không có lượt điền/đính nào của trợ lý → không phải hồ sơ của kênh này, không tính."""
+    conv = _conv(submit_clicked_at=_STARTED, submit_clicked_source="click", submit_click_id="c1")
+    await chat_router._sync_dossier(conv)
+    assert calls == []
+    assert conv["submit_clicked_at"] is None, "cú bấm phải bị bỏ hẳn, không chờ ghi bù về sau"

@@ -2,7 +2,7 @@
 import re
 import unicodedata
 
-from app.locations.catalog import PROVINCES, WARDS_BY_SLUG
+from app.locations.catalog import WARDS_BY_SLUG, find_province
 
 _WARD_TYPE = re.compile(r"^(Phường|Xã|Đặc khu)\s+", re.IGNORECASE)
 
@@ -22,15 +22,8 @@ def location_for(tinh: str | None, xa: str | None) -> dict | None:
     if not province_value:
         return None
 
-    folded_province = _fold(province_value)
-    province = next(
-        (
-            item
-            for item in PROVINCES
-            if folded_province in {_fold(item["text"]), _fold(item["name"])}
-        ),
-        None,
-    )
+    # Cùng quy tắc tra tỉnh với tài khoản (nhận cả "Tỉnh X" của tỉnh đã lên thành phố).
+    province = find_province(province_value)
     if not province:
         return None
 

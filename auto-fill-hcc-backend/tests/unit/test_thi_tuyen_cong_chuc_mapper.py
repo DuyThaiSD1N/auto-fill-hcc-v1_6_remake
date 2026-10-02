@@ -151,7 +151,7 @@ def test_thi_tuyen_cong_chuc_does_not_overwrite_mismatched_requester():
     )
     d = _values(out)
 
-    assert warnings == []
+    assert any("Không xác định được người đang nộp" in w for w in warnings)
     assert d["data[isOwnerDossierCheck]"] is False
     assert d["data[chonDoiTuong1]"] == "Cá nhân"
     assert not [f for f in out if f["name"] == "data[fullname]" and f.get("occurrence") == 0]

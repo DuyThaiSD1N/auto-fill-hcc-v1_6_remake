@@ -25,7 +25,10 @@ def mock_save(monkeypatch):
 
 
 def _new_conv():
-    return {"_id": "c-rate", "client_capabilities": {"supportsRating": True}, "state": "done"}
+    # Hồ sơ đã có lượt đính kèm của trợ lý — không có thì cú bấm không được tính và không hỏi
+    # đánh giá (flow.dossier_has_real_work).
+    return {"_id": "c-rate", "client_capabilities": {"supportsRating": True}, "state": "done",
+            "attach_trace_request_id": "req-1"}
 
 
 async def test_submitted_new_client_shows_rating_before_logout(mock_save):
@@ -131,7 +134,8 @@ async def test_submitted_reload_reshows_rating(mock_save):
 
 def _mid_flow_conv():
     """Đang dở bước đính kèm — đúng tình huống lúc công dân bấm nút nộp trên cổng."""
-    return {"_id": "c-click", "client_capabilities": {"supportsRating": True}, "state": "attaching"}
+    return {"_id": "c-click", "client_capabilities": {"supportsRating": True}, "state": "attaching",
+            "attach_trace_request_id": "req-1"}
 
 
 async def test_bam_nut_nop_mo_ngay_man_danh_gia(mock_save):

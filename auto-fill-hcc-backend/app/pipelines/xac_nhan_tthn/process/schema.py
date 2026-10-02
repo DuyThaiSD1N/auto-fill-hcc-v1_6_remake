@@ -6,16 +6,62 @@ requester/subject fields are derived in Python.
 """
 
 FIELDS: list[dict] = [
-    {"name": "Cccd_HoTen", "desc": "Họ tên trên CCCD/CMND của cá nhân yêu cầu xác nhận."},
-    {"name": "Cccd_SoDinhDanh", "desc": "Số định danh/CCCD/CMND; có thể đọc từ MRZ mặt sau."},
-    {"name": "Cccd_NgaySinh", "desc": "Ngày sinh trên CCCD/CMND, dd/mm/yyyy."},
-    {"name": "Cccd_GioiTinh", "desc": 'Giới tính trên CCCD/CMND: "Nam" hoặc "Nữ".'},
-    {"name": "Cccd_DanToc", "desc": "Dân tộc của người yêu cầu. Ưu tiên đọc ở TỜ KHAI (dòng 'Dân tộc: ...'), sau đó tới CCCD/CMND. Thẻ CCCD mẫu mới thường không in dân tộc → PHẢI lấy từ tờ khai; BẮT BUỘC điền nếu giấy nào ghi."},
-    {"name": "Cccd_QuocTich", "desc": "Quốc tịch trên CCCD/CMND nếu OCR ghi rõ hoặc khác Việt Nam."},
-    {"name": "Cccd_NgayCap", "desc": "Ngày cấp CCCD/CMND, Thường ở mặt sau của CCCD, Ngày, tháng, năm / Date, month, year (mặt sau), hoặc ở tờ khai, dạng dd/mm/yyyy"},
-    {"name": "Cccd_NoiCap",
-     "desc": 'Nơi cấp CCCD/CMND từ mặt sau. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
-             'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội", nếu là Bộ công an... thì trả "Bộ Công An".'},
+    # --- NGƯỜI ĐƯỢC CẤP giấy XNTTHN: thông tin IN trên giấy tờ của chính người đó ---
+    # Nguồn phổ biến là thẻ CCCD/CMND/căn cước; field nào thẻ không in (thường là dân tộc) thì lấy giấy in
+    # khác đứng tên họ — chọn nguồn theo TỪNG field, không theo cả nhóm. KHÔNG lấy từ tờ khai (đã có
+    # ToKhai_*): mapper cần hai nguồn riêng để bản in thắng chữ viết tay khi cùng số định danh. Hồ sơ
+    # ủy quyền: người được cấp là NGƯỜI ỦY QUYỀN.
+    {"name": "NguoiDuocCap_HoTen",
+     "desc": 'Họ tên NGƯỜI ĐƯỢC CẤP giấy XNTTHN in trên giấy tờ của chính họ — thường là thẻ CCCD/CMND/'
+             'căn cước; không có thẻ thì giấy in khác đứng tên họ (giấy XNTTHN đã cấp trước đây, xác nhận '
+             'thông tin cư trú). KHÔNG lấy từ tờ khai. Hồ sơ ủy quyền: đây là NGƯỜI ỦY QUYỀN (người cần '
+             'giấy); thẻ của người đi nộp thuộc NguoiYeuCau_*.'},
+    {"name": "NguoiDuocCap_SoDinhDanh",
+     "desc": "Số định danh/CCCD/CMND của người được cấp, cùng nguồn với NguoiDuocCap_HoTen; trên thẻ có thể "
+             "đọc từ dòng MRZ mặt sau."},
+    {"name": "NguoiDuocCap_NgaySinh",
+     "desc": "Ngày sinh của người được cấp, cùng nguồn với NguoiDuocCap_HoTen, dd/mm/yyyy."},
+    {"name": "NguoiDuocCap_GioiTinh",
+     "desc": 'Giới tính của người được cấp, cùng nguồn với NguoiDuocCap_HoTen: "Nam" hoặc "Nữ".'},
+    {"name": "NguoiDuocCap_DanToc",
+     "desc": "Dân tộc IN trên thẻ CCCD/CMND của người được cấp (CMND cũ có in; thẻ mẫu mới thường không in "
+             "thì bỏ trống). Dân tộc ghi trên giấy tờ khác thuộc GiayToKhac_DanToc."},
+    {"name": "GiayToKhac_DanToc",
+     "desc": "Dân tộc của NGƯỜI ĐƯỢC CẤP ghi trên giấy tờ KHÁC tờ khai và thẻ: khối \"XÁC NHẬN\" của giấy XNTTHN đã "
+             "cấp trước đây, xác nhận thông tin cư trú, giấy chứng nhận kết hôn (đúng cột của người được cấp), "
+             "giấy khai sinh của CHÍNH người được cấp. BẮT BUỘC trả khi một giấy như vậy có ghi, KỂ CẢ khi hồ sơ "
+             "có thẻ hoặc tờ khai. KHÔNG lấy dân tộc của người đã mất, của con, cha mẹ, hay của vợ/chồng. Chép "
+             "nguyên chữ, giữ cả dấu nháy (\"K'Ho\")."},
+    {"name": "NguoiDuocCap_QuocTich",
+     "desc": "Quốc tịch của người được cấp nếu giấy ghi rõ."},
+    {"name": "NguoiDuocCap_NgayCap",
+     "desc": 'Ngày cấp thẻ CCCD/CMND của người được cấp — mặt sau thẻ, dòng "Ngày, tháng, năm / Date, '
+             'month, year", dd/mm/yyyy. Không có thẻ thì ngày cấp giấy tờ tùy thân ghi trên giấy in khác '
+             'đứng tên họ. KHÔNG lấy từ tờ khai.'},
+    {"name": "NguoiDuocCap_NoiCap",
+     "desc": 'Nơi cấp thẻ của người được cấp (mặt sau thẻ). Thấy "CỤC TRƯỞNG CỤC CẢNH SÁT..." thì trả '
+             '"Cục Cảnh sát quản lý hành chính về trật tự xã hội"; thẻ CĂN CƯỚC mẫu mới ghi "BỘ CÔNG AN" '
+             'thì trả "Bộ Công an".'},
+    {"name": "NguoiDuocCap_NoiCuTru",
+     "desc": 'Nơi thường trú/cư trú của người được cấp in trên thẻ (không có thẻ thì giấy in khác đứng tên '
+             'họ), object {quocGia,tinh,xa,diaChi}. KHÔNG lấy từ tờ khai; KHÔNG lấy "nơi thường trú cuối '
+             'cùng" trên giấy khai tử (đó là của người đã mất).'},
+    # --- NGƯỜI YÊU CẦU / NGƯỜI ĐI NỘP KHÁC người được cấp: thông tin IN trên thẻ của người đó ---
+    # Người được ủy quyền đi nộp, hoặc người thân khai hộ có kèm thẻ. Chỉ một người thì nhóm này trống.
+    {"name": "NguoiYeuCau_HoTen",
+     "desc": 'Họ tên in trên thẻ CCCD/CMND/căn cước của NGƯỜI ĐI NỘP / NGƯỜI YÊU CẦU, CHỈ trả khi người này '
+             'KHÁC người được cấp: người được ủy quyền (phần "Người được ủy quyền" của giấy ủy quyền) hoặc '
+             'người thân khai hộ (khối đầu tờ khai ghi tên người khác). Hồ sơ chỉ có một người thì để trống.'},
+    {"name": "NguoiYeuCau_SoDinhDanh",
+     "desc": "Số định danh in trên thẻ của người đi nộp (NguoiYeuCau_HoTen); có thể đọc từ MRZ mặt sau."},
+    {"name": "NguoiYeuCau_NgaySinh",
+     "desc": "Ngày sinh in trên thẻ của người đi nộp, dd/mm/yyyy."},
+    {"name": "NguoiYeuCau_NgayCap",
+     "desc": "Ngày cấp thẻ của người đi nộp (mặt sau thẻ), dd/mm/yyyy."},
+    {"name": "NguoiYeuCau_NoiCap",
+     "desc": 'Nơi cấp thẻ của người đi nộp; chuẩn hóa như NguoiDuocCap_NoiCap.'},
+    {"name": "NguoiYeuCau_NoiCuTru",
+     "desc": "Nơi thường trú in trên thẻ của người đi nộp, object {quocGia,tinh,xa,diaChi}."},
     # --- Fields từ TỜ KHAI (thông tin NGƯỜI YÊU CẦU - Section I, ghi ở ĐẦU tờ khai) ---
     # Tờ khai luôn có HAI khối riêng: "Họ, chữ đệm, tên người yêu cầu" (đầu tờ khai) và "Đề nghị cấp
     # Giấy xác nhận... cho người có tên dưới đây" (Section II, → ToKhai_*). Hai khối này CÓ THỂ khác
@@ -24,7 +70,8 @@ FIELDS: list[dict] = [
     {"name": "ToKhaiYeuCau_HoTen",
      "desc": 'Họ tên NGƯỜI YÊU CẦU, lấy từ dòng "Họ, chữ đệm, tên người yêu cầu:" ở ĐẦU tờ khai. '
              'Đây là người ĐI NỘP đơn, CÓ THỂ KHÁC người được cấp giấy ở Section II — không tự suy '
-             'đoán trùng nhau, lấy đúng tên ghi ở dòng này.'},
+             'đoán trùng nhau, lấy đúng tên ghi ở dòng này. Chỉ lấy từ TỜ KHAI: người được khai sinh, cha, '
+             'mẹ trên giấy khai sinh và người đã mất trên giấy khai tử KHÔNG phải người yêu cầu.'},
     {"name": "ToKhaiYeuCau_NgaySinh",
      "desc": 'Ngày sinh NGƯỜI YÊU CẦU, lấy từ dòng "Ngày, tháng, năm sinh:" NGAY DƯỚI "Họ, chữ đệm, '
              'tên người yêu cầu" ở ĐẦU tờ khai, dd/mm/yyyy. KHÔNG lấy ngày sinh ở Section II (người '
@@ -45,7 +92,7 @@ FIELDS: list[dict] = [
              '"là cháu". Giữ nguyên chữ trên tờ khai, KHÔNG tự diễn giải hay quy đổi.'},
     # --- Fields từ TỜ KHAI (thông tin người được xác nhận - Section II) ---
     {"name": "ToKhai_HoTen",
-     "desc": 'Họ tên từ TỜ KHAI cấp giấy XNTTHN, lấy từ dòng "Họ, chữ đệm, tên:" trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (người được cấp).'},
+     "desc": 'Họ tên từ TỜ KHAI cấp giấy XNTTHN, lấy từ dòng "Họ, chữ đệm, tên:" trong phần "Đề nghị cấp Giấy xác nhận tình trạng hôn nhân cho người có tên dưới đây" (người được cấp). Chỉ lấy từ TỜ KHAI: người được khai sinh, cha, mẹ trên giấy khai sinh và người đã mất trên giấy khai tử KHÔNG phải người được cấp.'},
     {"name": "ToKhai_NgaySinh",
      "desc": 'Ngày sinh từ TỜ KHAI, lấy từ dòng "Ngày, tháng, năm sinh:" trong phần người được cấp, dd/mm/yyyy.'},
     {"name": "ToKhai_GioiTinh",
@@ -63,44 +110,18 @@ FIELDS: list[dict] = [
     {"name": "ToKhai_NoiCuTru",
      "desc": 'Nơi cư trú hiện tại trên TỜ KHAI cấp giấy XNTTHN, object {quocGia,tinh,xa,diaChi}. '
              'Lấy đúng dòng "Nơi cư trú" của người yêu cầu/người được cấp; bắt buộc trả khi tờ khai có.'},
-    # --- Fields từ GIẤY KHAI SINH / TRÍCH LỤC KHAI SINH của chính người xin giấy ---
-    # Hồ sơ hay kèm GKS để chứng minh nhân thân (dân tộc, ngày sinh) khi thẻ căn cước mẫu mới không
-    # in dân tộc. GKS KHÔNG có "người yêu cầu": ngoài người được khai sinh nó chỉ còn cha, mẹ, người
-    # đi khai sinh và cán bộ ký. Không có field riêng cho cha/mẹ thì agent đẩy tên họ sang
-    # ToKhaiYeuCau_*/ToKhai_*, kéo mục I hoặc mục II của form thành tên cha/mẹ.
-    {"name": "Gks_HoTen",
-     "desc": 'Họ tên NGƯỜI ĐƯỢC KHAI SINH trên GIẤY KHAI SINH/TRÍCH LỤC KHAI SINH (dòng "Họ, chữ '
-             'đệm, tên:" ở khối "Người được khai sinh"). KHÔNG lấy tên cha/mẹ/người đi khai sinh.'},
-    {"name": "Gks_NgaySinh",
-     "desc": "Ngày sinh của người được khai sinh trên giấy khai sinh, dd/mm/yyyy."},
-    {"name": "Gks_GioiTinh",
-     "desc": 'Giới tính của người được khai sinh trên giấy khai sinh: "Nam" hoặc "Nữ".'},
-    {"name": "Gks_DanToc",
-     "desc": "Dân tộc của người được khai sinh trên giấy khai sinh. Nguồn quý vì thẻ căn cước mẫu "
-             "mới không in dân tộc."},
-    {"name": "Gks_QuocTich",
-     "desc": "Quốc tịch của người được khai sinh trên giấy khai sinh."},
-    {"name": "Gks_ChaHoTen",
-     "desc": 'Họ tên NGƯỜI CHA ghi trên giấy khai sinh (khối "Người cha"). BẮT BUỘC trả khi giấy có '
-             '— Python mapper dùng để loại tên cha ra khỏi mục người yêu cầu/người được cấp. '
-             'TUYỆT ĐỐI KHÔNG đẩy tên này sang ToKhaiYeuCau_* hay ToKhai_*.'},
-    {"name": "Gks_MeHoTen",
-     "desc": 'Họ tên NGƯỜI MẸ ghi trên giấy khai sinh (khối "Người mẹ"). BẮT BUỘC trả khi giấy có. '
-             'TUYỆT ĐỐI KHÔNG đẩy tên này sang ToKhaiYeuCau_* hay ToKhai_*.'},
-    {"name": "Cccd_NoiCuTru",
-     "desc": 'Nơi thường trú/cư trú trên CCCD/CMND, object {quocGia,tinh,xa,diaChi}. Chỉ lấy từ thẻ '
-             'CCCD/CMND; đây là nguồn dự phòng khi tờ khai không có nơi cư trú.'},
     {"name": "ToKhai_LaBanThan",
      "desc": 'Trả true CHỈ khi TỜ KHAI ghi quan hệ "Tự khai"/"Bản thân" và họ tên người yêu cầu '
              'trùng họ tên người được cấp giấy. Không suy luận từ một CCCD đơn lẻ.'},
     {"name": "TinhTrangHonNhanC1",
      "desc": 'Tình trạng hôn nhân'},
     {"name": "DivorceDecision_Number",
-     "desc": "Số bản án/quyết định ly hôn, chỉ lấy từ tài liệu quyết định/bản án ly hôn thật."},
+     "desc": "Số bản án/quyết định ly hôn: lấy từ bản án/quyết định ly hôn thật; hồ sơ không có văn bản đó thì "
+             "lấy từ dòng tình trạng hôn nhân trên TỜ KHAI / giấy XNTTHN cũ."},
     {"name": "DivorceDecision_Date",
-     "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn, dd/mm/yyyy."},
+     "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn, dd/mm/yyyy; nguồn như DivorceDecision_Number."},
     {"name": "DivorceDecision_Agency",
-     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn."},
+     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn; nguồn như DivorceDecision_Number."},
     {"name": "DeathCert_Number",
      "desc": "Số giấy chứng tử/trích lục khai tử/giấy báo tử của vợ/chồng đã chết, chỉ lấy từ giấy tờ khai tử thật."},
     {"name": "DeathCert_Date",
@@ -127,11 +148,12 @@ FIELDS: list[dict] = [
              'dd/mm/yyyy. Lấy ở dòng "Tình trạng hôn nhân" của TỜ KHAI, sau chữ "Từ ngày ... tháng '
              '... năm ..." HOẶC dạng viết gọn "Từ ngày 27/4/2016", "Từ 27-4-2016". BẮT BUỘC trả kể '
              'cả khi ngày này TRÙNG ngày bản án ly hôn (DivorceDecision_Date) — một ngày được phép '
-             'nằm ở cả hai field. Không có khoảng thời gian thì bỏ trống.'},
+             'nằm ở cả hai field. Không có khoảng thời gian thì bỏ trống. CHỈ lấy từ TỜ KHAI: hồ sơ không '
+             'có tờ khai thì bỏ trống; ngày chết của vợ/chồng hay ngày cấp giấy khác KHÔNG phải mốc này.'},
     {"name": "Period_DenNgay",
      "desc": 'Ngày KẾT THÚC của khoảng thời gian nói trên, dd/mm/yyyy. Lấy sau chữ "đến ngày ... '
              'tháng ... năm ..." trên cùng dòng, kể cả khi viết gọn "đến 14/9/2016" hay "tới '
-             '14-9-2016" (chữ "ngày" có thể vắng). Không có thì bỏ trống.'},
+             '14-9-2016" (chữ "ngày" có thể vắng). Không có thì bỏ trống, không tự đặt.'},
     {"name": "Purpose",
      "desc": 'Mục đích sử dụng giấy XNTTHN.'},
     # --- Fields từ GIẤY ỦY QUYỀN (khi người yêu cầu nhờ người khác nộp thay) ---
@@ -153,33 +175,15 @@ FIELDS: list[dict] = [
      "desc": "Nơi cư trú của người ủy quyền (Section I giấy ủy quyền), object {tinh, xa, diaChi}."},
     {"name": "PoA_SubjectDanToc",
      "desc": 'Dân tộc của người ủy quyền nếu giấy ủy quyền ghi ("Dân tộc: Kinh").'},
-    # --- THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (nếu hồ sơ kèm) — bản IN, ưu tiên hơn giấy ủy quyền/tờ khai ---
-    {"name": "PoA_SubjectCccdHoTen",
-     "desc": "Họ tên IN trên THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (thẻ có số trùng/gần trùng PoA_SubjectIdNumber). "
-             "KHÔNG lấy thẻ của người đi nộp (thẻ đó thuộc Cccd_*)."},
-    {"name": "PoA_SubjectCccdSoDinhDanh",
-     "desc": "Số định danh IN trên thẻ CCCD/CMND của người ủy quyền; có thể đọc từ MRZ mặt sau."},
-    {"name": "PoA_SubjectCccdNgaySinh",
-     "desc": "Ngày sinh IN trên thẻ CCCD/CMND của người ủy quyền, dd/mm/yyyy."},
-    {"name": "PoA_SubjectCccdGioiTinh",
-     "desc": 'Giới tính IN trên thẻ CCCD/CMND của người ủy quyền: "Nam" hoặc "Nữ".'},
-    {"name": "PoA_SubjectCccdNgayCap",
-     "desc": "Ngày cấp trên thẻ CCCD/CMND của người ủy quyền (mặt sau), dd/mm/yyyy."},
-    {"name": "PoA_SubjectCccdNoiCap",
-     "desc": 'Nơi cấp thẻ CCCD/CMND của người ủy quyền (mặt sau). "CỤC TRƯỞNG CỤC CẢNH SÁT..." → '
-             '"Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
-    {"name": "PoA_SubjectCccdNoiCuTru",
-     "desc": 'Nơi thường trú IN trên THẺ CCCD/CMND CỦA NGƯỜI ỦY QUYỀN (thẻ có số trùng PoA_SubjectIdNumber) '
-             'nếu hồ sơ có kèm thẻ đó, object {quocGia,tinh,xa,diaChi}. KHÔNG lấy từ giấy ủy quyền, '
-             'KHÔNG lấy thẻ của người đi nộp (thẻ đó thuộc Cccd_*).'},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("Cccd_NgaySinh", "Cccd_NgayCap", "PoA_SubjectDoB", "PoA_SubjectIdDate",
-              "PoA_SubjectCccdNgaySinh", "PoA_SubjectCccdNgayCap", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo", "ToKhaiYeuCau_NgaySinh", "ToKhaiYeuCau_NgayCapGiayTo", "Gks_NgaySinh"):
+for _name in ("NguoiDuocCap_NgaySinh", "NguoiDuocCap_NgayCap", "NguoiYeuCau_NgaySinh", "NguoiYeuCau_NgayCap",
+              "PoA_SubjectDoB", "PoA_SubjectIdDate", "ToKhai_NgaySinh", "ToKhai_NgayCapGiayTo",
+              "ToKhaiYeuCau_NgaySinh", "ToKhaiYeuCau_NgayCapGiayTo"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
@@ -188,9 +192,9 @@ COMPACT_COMP_BY_NAME["Period_TuNgay"] = "x-date"
 COMPACT_COMP_BY_NAME["Period_DenNgay"] = "x-date"
 COMPACT_COMP_BY_NAME["ToKhai_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["ToKhaiYeuCau_NoiCuTru"] = "x-select-area"
-COMPACT_COMP_BY_NAME["Cccd_NoiCuTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiDuocCap_NoiCuTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiYeuCau_NoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["PoA_SubjectAddress"] = "x-select-area"
-COMPACT_COMP_BY_NAME["PoA_SubjectCccdNoiCuTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["TinhTrangHonNhanC1"] = "x-select"
 
 UI_COMP_BY_NAME = {

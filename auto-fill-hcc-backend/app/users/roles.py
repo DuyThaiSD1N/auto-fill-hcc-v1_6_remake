@@ -15,6 +15,14 @@ NOT_DELETED = {"deleted_at": None}
 
 OFFICIAL_ACCOUNT_ROLES = frozenset({"commune", "province"})
 
+# Tổ dân phố: tài khoản CON của một HCC xã (`users.parent_id`), dùng extension như cán bộ xã.
+# Không phải một đơn vị: tỉnh/xã chép từ xã cha, số hồ sơ cộng dồn vào xã cha
+# (app/stats/cutover.py) nên KHÔNG đưa vào OFFICIAL_ACCOUNT_ROLES — thêm vào là mọc dòng riêng
+# trong "Theo đơn vị" và báo cáo.
+TDP_ROLE = "tdp"
+# Vai trò duy nhất được làm cha của tổ dân phố.
+TDP_PARENT_ROLE = "commune"
+
 # Role CHỈ dùng để XEM báo cáo cấp tỉnh trên bảng thống kê (KHÁC "province" của HCC — role đó là
 # tài khoản nghiệp vụ cấp tỉnh). Tài khoản này không xử lý hồ sơ; chỉ được xem số liệu tổng hợp của
 # mọi phường/xã cùng tỉnh (khóa theo `tinh` của chính tài khoản, không nhận tỉnh/xã từ client).

@@ -441,7 +441,10 @@ def _fold_province(text: str) -> str:
 
 # Thành phố trực thuộc trung ương (sau sắp xếp 2025): nhãn đúng là "Thành phố X", tỉnh còn lại "Tỉnh X".
 # Nhiều cổng Form.io chọn option theo ĐÚNG chuỗi nhãn → "Tỉnh Đà Nẵng" sẽ TRƯỢT option "Thành phố Đà Nẵng".
-_CENTRAL_CITIES = frozenset({"ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue"})
+# Bắc Ninh: cổng DVC đã đổi option sang "Thành phố Bắc Ninh" (khớp danh mục locations).
+_CENTRAL_CITIES = frozenset({
+    "ha noi", "hai phong", "da nang", "can tho", "ho chi minh", "hue", "bac ninh",
+})
 
 
 def province_label(value: object) -> Optional[str]:
@@ -753,8 +756,9 @@ _CITY_TO_PROVINCE: dict[str, str] = {
     "thua thien hue": "Huế",
     "hue":            "Huế",
     "thanh pho hue":  "Huế",
-    # Bắc Ninh
+    # Bắc Ninh → Thành phố Bắc Ninh trực thuộc TW
     "bac ninh":      "Bắc Ninh",
+    "thanh pho bac ninh": "Bắc Ninh",
     "tu son":        "Bắc Ninh",
     # Bắc Giang
     "bac giang":     "Bắc Giang",
