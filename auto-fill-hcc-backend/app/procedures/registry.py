@@ -267,6 +267,8 @@ from app.pipelines.dang_ky_giam_ho.attach import plan as dang_ky_giam_ho_attach
 from app.pipelines.dang_ky_giam_ho.process import run as dang_ky_giam_ho_process
 from app.pipelines.nhan_cha_me_con.attach import plan as nhan_cha_me_con_attach
 from app.pipelines.nhan_cha_me_con.process import run as nhan_cha_me_con_process
+from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.attach import plan as dang_ky_nuoi_con_nuoi_trong_nuoc_attach
+from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.process import run as dang_ky_nuoi_con_nuoi_trong_nuoc_process
 from app.pipelines.khai_tu.attach import plan as khai_tu_attach
 from app.pipelines.khai_tu.process import run as khai_tu_process
 from app.pipelines.khai_tu_lien_thong.attach import plan as khai_tu_lien_thong_attach
@@ -1066,6 +1068,30 @@ PROCEDURES: list[dict] = [
             "\nBước 3: eForm online ở STT 1 bỏ qua; kết quả ADN/văn bản y tế/giám định vào STT 2; "
             "nếu không có văn bản xác nhận quan hệ thì văn bản cam đoan + người làm chứng vào STT 3; "
             "tờ khai bản giấy, CCCD/căn cước và giấy khai sinh/giấy chứng sinh thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "dang-ky-nuoi-con-nuoi-trong-nuoc",
+        # Mã TTHC 2.001263. Cổng DVCQG, tờ khai là eForm hộ tịch "NCNV5" (tokhaidientu.moj.gov.vn,
+        # id 2081) — engine legacy x-*. Thông tin cha/mẹ nuôi nằm TRONG khối x-select-area
+        # (VoChongNhanNuoi khi vợ chồng cùng nhận, MeNuoi/ChaNuoi khi đơn thân).
+        "detect": {"textIncludes": ["Đăng ký việc nuôi con nuôi trong nước"], "headingDisabled": True},
+        "label": "Đăng ký việc nuôi con nuôi trong nước",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Đơn xin nhận con nuôi trong nước — nguồn chính của phần cha/mẹ nuôi, con nuôi, nơi trẻ đang sống.\n"
+            "2. CCCD/căn cước của cha mẹ nuôi; giấy chứng nhận kết hôn (vợ chồng cùng nhận).\n"
+            "3. Giấy khai sinh của trẻ.\n"
+            "4. Giấy khám sức khỏe, giấy tờ chứng minh chỗ ở/thu nhập (sổ đỏ, bảng lương, xác nhận thu nhập), "
+            "ảnh của trẻ, giấy tờ của mẹ đẻ nếu có.\n"
+            "Bước 3: CCCD cha mẹ nuôi→STT 1; giấy khám sức khỏe cha mẹ nuôi→STT 2; giấy tờ hoàn cảnh, chỗ ở, "
+            "thu nhập→STT 3; giấy chứng nhận kết hôn→STT 4; STT 5–6 là tờ khai trên cổng, không đính file. "
+            "Giấy khai sinh, giấy khám sức khỏe, ảnh của trẻ, CCCD/giấy tờ của mẹ đẻ và phiếu lý lịch tư pháp "
+            "thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -7033,6 +7059,7 @@ _PIPELINE = {
     "dang-ky-lai-ket-hon": ket_hon_lai_process,
     "dang-ky-giam-ho": dang_ky_giam_ho_process,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_process,
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_process,
     "trich-luc-ks": trich_luc_process,
     "khai-tu": khai_tu_process,
     "khai-tu-lien-thong": khai_tu_lien_thong_process,
@@ -7317,6 +7344,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-lai-ket-hon": ket_hon_lai_attach,
     "dang-ky-giam-ho": dang_ky_giam_ho_attach,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
+    "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_attach,
     "trich-luc-ks": trich_luc_attach,
     "khai-tu": khai_tu_attach,
     "khai-tu-lien-thong": khai_tu_lien_thong_attach,

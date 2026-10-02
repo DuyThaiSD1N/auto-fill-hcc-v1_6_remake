@@ -228,6 +228,67 @@ def test_moi_componentName_chi_khop_dung_mot_dong():
         assert hits == [row_index], f"componentName của dòng {row_index} khớp {hits}"
 
 
+# Bảng RÚT GỌN 17 dòng (crawl thật ở UBND phường), theo đúng thứ tự trên cổng: dòng 1-3, trích lục
+# (23), miễn giảm (24), rồi dòng 9-20 của bảng 24 dòng.
+_ROWS_17 = [_ROWS[i - 1] for i in (1, 2, 3, 23, 24, *range(9, 21))]
+
+
+def _fe_pick_row(rows: list[str], route: dict) -> int | None:
+    """attachFilesByAttpRow của content.js: dòng chính trước, không thấy mới thử fallbackComponentName."""
+    for name in (route["name"], route.get("fallbackName")):
+        hits = [i + 1 for i, row in enumerate(rows) if name and _row_matches(row, name)]
+        assert len(hits) <= 1, f"'{name}' khớp nhiều dòng {hits}"
+        if hits:
+            return hits[0]
+    return None
+
+
+def test_bang_rut_gon_17_dong_moi_route_van_tim_duoc_dong():
+    """req thật: cổng chỉ hiện 17 dòng → Đơn Mẫu 02 + GCN Điều 137 không còn dòng, trước đây báo
+    'Không tìm thấy dòng'. Giờ mọi route phải rơi vào đúng dòng dự phòng, bảng 24 dòng vẫn như cũ."""
+    assert len(_ROWS_17) == 17
+    expected_17 = {
+        "Đơn, Mẫu số 02 Phụ lục VI": 1,
+        "Đơn, Mẫu số 03 Phụ lục VI": 1,
+        "Đơn theo Mẫu số 4a Phụ lục VI": 1,
+        "Đơn, Mẫu số 4b Phụ lục VI": 1,
+        "cho phép thay đổi thời hạn hoạt động của dự án đầu tư": 2,
+        "hoặc một trong các loại giấy tờ quy định tại Điều 137 Luật Đất đai": 3,
+        "Bản trích lục bản đồ địa chính hoặc trích đo bản đồ địa chính": 4,
+        "Các giấy tờ đề nghị miễn, giảm tiền sử dụng đất, tiền thuê đất tại Phụ lục V": 5,
+        "Tờ khai lệ phí trước bạ": 6,
+        "Tờ khai thuế sử dụng đất phi nông nghiệp": 7,
+        "Giấy chứng nhận đầu tư hoặc Giấy phép đầu tư hoặc Giấy chứng nhận đăng ký đầu tư": 10,
+        "Xác nhận thông tin về cư trú hoặc Thông báo số định danh cá nhân": 11,
+        "cho phép gia hạn thời hạn hoạt động của dự án đầu tư": 2,
+    }
+    routes = list(planner._DON_ROUTES.values()) + list(planner._ROUTES.values())
+    for route in routes:
+        # Bảng đầy đủ: luôn trúng dòng CHÍNH, không bao giờ đi dự phòng.
+        assert _fe_pick_row(_ROWS, route) == route["index"], route["name"]
+        picked = _fe_pick_row(_ROWS_17, route)
+        if route["name"].startswith("Quyết định giao đất, quyết định cho thuê đất"):
+            assert _ROWS_17[picked - 1] == "Quyết định giao đất của cơ quan nhà nước có thẩm quyền"
+        else:
+            assert picked == expected_17[route["name"]], route["name"]
+
+
+def test_route_co_the_vang_mang_fallback_component_name():
+    files = _files(["don-cmd.pdf", "cccd.pdf", "gcn.pdf", "trich-luc.pdf"])
+    llm_types = {0: "don_chuyen_muc_dich", 1: "cccd", 2: "giay_chung_nhan", 3: "trich_luc_ban_do"}
+
+    attachments, _, _ = planner.build_plan_items(files, _ocr(files), llm_types)
+
+    fallback = {item["detectedType"]: item.get("fallbackComponentName") for item in attachments}
+    assert fallback == {
+        "don_chuyen_muc_dich": planner._FALLBACK_DON,
+        "cccd": planner._FALLBACK_DON,
+        "giay_chung_nhan": planner._FALLBACK_GCN,
+        # Trích lục có ở cả hai bảng → không cần dự phòng.
+        "trich_luc_ban_do": None,
+    }
+
+
 def test_file_la_duoc_xep_tai_lieu_khac_va_dinh_vao_dong_don():
     """File không nhận ra loại: xếp 'Tài liệu khác', đính vào dòng Đơn, giữ tên gốc + cảnh báo."""
     files = _files(["don-cmd.pdf", "giay-la.pdf"])
@@ -518,3 +579,28 @@ def test_registry_wiring():
     assert "1.116365" in procedure["detect"]["textIncludes"]
     assert get_pipeline(_KEY) is not None
     assert get_attach_pipeline(_KEY) is not None
+
+
+def test_buoc_chon_truong_hop_nhan_dien_theo_ma_tthc_tren_url():
+    """Trang "Chọn trường hợp giải quyết" (/vi/nps/apply?MaTTHC=1.116365&...) chưa có tên thủ tục
+    trong text, chỉ mã trên URL. Mã ghép từ ke_khai_links.json nên mất entry đó là popup hết nhận
+    diện ở bước này. Mô phỏng đúng bước 1 (urlScope + urlIncludes) của popup.js."""
+    from app.procedures.ke_khai_links import with_ke_khai_detect_urls
+    from app.procedures.registry import public_list
+
+    url = (
+        "https://dichvucong.lamdong.gov.vn/vi/nps/apply?vneid=1&MaTTHC=1.116365"
+        "&MaCoQuanThucHien=H36.100&MaDVC=1.116365.01&MaTTHCDP=1.116365"
+    ).lower()
+    matched = ""
+    for procedure in with_ke_khai_detect_urls(public_list()):
+        detect = procedure.get("detect") or {}
+        if procedure.get("detectDisabled") or not detect:
+            continue
+        scope = detect.get("urlScope") or []
+        if scope and not any(part.lower() in url for part in scope):
+            continue
+        if any(part and part.lower() in url for part in detect.get("urlIncludes") or []):
+            matched = procedure["key"]
+            break
+    assert matched == _KEY
