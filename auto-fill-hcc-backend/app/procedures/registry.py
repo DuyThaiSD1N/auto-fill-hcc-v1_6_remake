@@ -365,6 +365,8 @@ from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.attach import plan a
 from app.pipelines.chia_tach_sap_nhap_hop_nhat_hoi_cap_tinh.process import run as chia_tach_sap_nhap_hop_nhat_hoi_process
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.attach import plan as bao_cao_to_chuc_dai_hoi_attach
 from app.pipelines.bao_cao_to_chuc_dai_hoi_hoi_cap_tinh.process import run as bao_cao_to_chuc_dai_hoi_process
+from app.pipelines.thong_bao_ket_qua_dai_hoi_phe_duyet_dieu_le_hoi_cap_tinh.attach import plan as thong_bao_ket_qua_dai_hoi_attach
+from app.pipelines.thong_bao_ket_qua_dai_hoi_phe_duyet_dieu_le_hoi_cap_tinh.process import run as thong_bao_ket_qua_dai_hoi_process
 from app.pipelines.cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san.attach import plan as cap_moi_cchn_moi_gioi_bds_attach
 from app.pipelines.cap_moi_chung_chi_hanh_nghe_moi_gioi_bat_dong_san.process import run as cap_moi_cchn_moi_gioi_bds_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_nha_nuoc_giao_quan_ly.attach import plan as dk_dat_dai_lan_dau_nn_giao_quan_ly_attach
@@ -6445,6 +6447,43 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh",
+        # Mã TTHC 1.012943. Cổng DVCQG — Form.io, engine fillFormStandard dom-* + attach attp-row 7 dòng. Form có mẫu
+        # khai "Văn bản báo cáo kết quả đại hội" (tên hội, số văn bản, ngày đại hội, loại đại hội, nhiệm kỳ, địa điểm,
+        # toàn văn quyết nghị, datagrid hồ sơ gửi kèm, TM. BCH). Họ tên + CCCD + ngày sinh người nộp khoá theo tài
+        # khoản → mốc formContext. Không urlScope (cổng quốc gia). Bản cấp bộ (1.012931) cùng tên nhưng chưa khai
+        # báo; khi thêm phải tách detect bằng "(cấp tỉnh)" / "(cấp bộ)".
+        "detect": {
+            "textIncludes": ["thông báo kết quả đại hội", "phê duyệt điều lệ hội"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp tỉnh)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Tờ trình / văn bản báo cáo kết quả đại hội gửi Sở Nội vụ (kèm Danh sách Ban chấp hành nếu có).\n"
+            "2. Nghị quyết đại hội — nguồn của ô 'Đại hội đã thảo luận và thông qua nội dung sau' (chép toàn văn phần "
+            "quyết nghị), địa điểm, nhiệm kỳ.\n"
+            "3. Biên bản đại hội / Biên bản bầu cử, Biên bản họp Ban chấp hành lần thứ nhất và các Danh sách Ban chấp "
+            "hành, Ban thường vụ, Chủ tịch – Phó Chủ tịch, Ban kiểm tra.\n"
+            "4. Chương trình hoạt động của hội (không có thì hệ thống đính tạm Báo cáo tổng kết nhiệm kỳ).\n"
+            "5. Nếu có: Dự thảo Điều lệ sửa đổi, Đơn đề nghị đổi tên hội, Sơ yếu lý lịch + Phiếu LLTP số 1 của Chủ "
+            "tịch; CCCD của người nộp (tài khoản đăng nhập) để điền ngày cấp, nơi cấp, địa chỉ.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form điền: giữ tích 'Người nộp hồ sơ là chủ hồ sơ' (trừ khi có CCCD của người ký TM. BCH khác tài "
+            "khoản); bảng 'Hồ sơ kèm theo gồm' và 'Hồ sơ gửi kèm theo' liệt kê từng giấy tờ; mẫu khai điền theo "
+            "Tờ trình, Nghị quyết, Biên bản.\n"
+            "Bước đính kèm (mỗi dòng 1 file gộp, đều Bản chính): Tờ trình + Danh sách kèm tờ trình→dòng 1; Biên "
+            "bản + các danh sách nhân sự→dòng 3; Nghị quyết đại hội→dòng 5; Chương trình hoạt động / Báo cáo tổng "
+            "kết→dòng 6. Dòng 2 (đổi tên), 4 (Điều lệ), 7 (SYLL + LLTP) chỉ đính khi có giấy tờ, không có thì bỏ "
+            "tick."
+        ),
+    },
+    {
         "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
         # Mã TTHC 1.012906 (Sở Xây dựng). Form.io, engine fillFormStandard dom-* + attach attp-row 6 dòng (tách
         # theo trang: Đơn trang 1 + CCCD trang 2 của cùng một PDF về 2 dòng). Phần I người nộp khoá họ tên/ngày
@@ -7130,6 +7169,7 @@ _PIPELINE = {
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": bao_cao_to_chuc_dai_hoi_process,
+    "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh": thong_bao_ket_qua_dai_hoi_process,
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": cap_moi_cchn_moi_gioi_bds_process,
     "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly": dk_dat_dai_lan_dau_nn_giao_quan_ly_process,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_process,
@@ -7328,6 +7368,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,
     "bao-cao-to-chuc-dai-hoi-hoi-cap-tinh": bao_cao_to_chuc_dai_hoi_attach,
+    "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-tinh": thong_bao_ket_qua_dai_hoi_attach,
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": cap_moi_cchn_moi_gioi_bds_attach,
     "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly": dk_dat_dai_lan_dau_nn_giao_quan_ly_attach,
     "xac-nhan-ho-so-so-nha-da-nang": xn_ho_so_so_nha_dn_attach,
