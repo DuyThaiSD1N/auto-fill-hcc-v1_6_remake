@@ -20,13 +20,17 @@ QUY TẮC KHỚP (BẮT BUỘC): với MỖI thẻ CCCD, đọc 'Họ và tên' 
 - KHÁC tên → thông tin CCCD đó thuộc NGƯỜI NỘP THAY (NguoiNop_*).
 TUYỆT ĐỐI KHÔNG lấy số CCCD/ngày sinh/thường trú của người nộp thay điền vào ChuHoSo_* (và ngược lại).
 Nếu chỉ có 1 CCCD và nó TRÙNG tên văn bằng → chỉ có chủ văn bằng (tự nộp), bỏ trống NguoiNop_*.
+⚠ Không có văn bằng mà chỉ có PHIẾU ĐỀ NGHỊ: VanBang_HoTen/NgaySinh/SoGiayTo/DienThoai vẫn LẤY TỪ PHIẾU ('Tên
+tôi là', 'Sinh ngày', 'Số định danh cá nhân', 'Số điện thoại'). CCCD tên KHÁC 'Tên tôi là' (vd CCCD CÁN BỘ
+tiếp nhận) → NguoiNop_*, TUYỆT ĐỐI KHÔNG vào ChuHoSo_*.
 
 ⚠ VanBang_LoaiTotNghiep BẮT BUỘC khi có văn bằng — MỘT trong {"THPT","Bổ túc THPT","THCS"}. Căn cứ MẠNH
 nhất là TÊN văn bằng ("BẰNG TỐT NGHIỆP TRUNG HỌC PHỔ THÔNG"→"THPT"; có "BỔ TÚC"→"Bổ túc THPT"; "TRUNG HỌC
 CƠ SỞ"→"THCS"), KHÔNG cần phải có Phiếu BM04. Không bỏ trống khi tiêu đề bằng đã ghi rõ loại.
 
 ⚠ Số giấy tờ/điện thoại của CHỦ VĂN BẰNG lấy từ Phiếu BM04/văn bằng (VanBang_SoGiayTo, VanBang_NgayCap,
-VanBang_DienThoai). TUYỆT ĐỐI KHÔNG lấy địa chỉ/số trên CCCD của người nộp thay (tên khác văn bằng) điền
+VanBang_DienThoai). Phiếu mẫu mới ghi số ở dòng 'Số định danh cá nhân' ngay dưới 'Tên tôi là'/'Sinh ngày'
+→ BẮT BUỘC lấy vào VanBang_SoGiayTo. TUYỆT ĐỐI KHÔNG lấy địa chỉ/số trên CCCD của người nộp thay (tên khác văn bằng) điền
 vào các field VanBang_*/ChuHoSo_*.
 
 ⚠⚠ ĐỊA CHỈ CHỦ VĂN BẰNG = địa chỉ HIỆN TẠI: ChuHoSo_ThuongTru lấy từ 'Nơi thường trú' IN TRÊN CCCD chủ văn

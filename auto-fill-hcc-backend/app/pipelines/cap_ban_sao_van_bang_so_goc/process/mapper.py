@@ -267,10 +267,20 @@ def _co_quan_cap(values: dict) -> str | None:
     return f"Sở Giáo dục và Đào tạo {tinh}".strip()
 
 
-def _thong_tin_khac(values: dict) -> str | None:
-    """Dòng 'Thông tin khác' = tên trường + năm tốt nghiệp (khi Phiếu không có sẵn cụm này)."""
-    truong = _text(values.get("VanBang_Truong"))
-    nam = _year(values.get("VanBang_KhoaThi")) or _year(values.get("VanBang_NamSinh"))
+_NAM_TOT_NGHIEP = re.compile(r"tốt\s+nghiệp\D{0,20}?\b((?:19|20)\d{2})\b", re.IGNORECASE)
+
+
+def _thong_tin_khac(values: dict, ocr_text: str = "") -> str | None:
+    """Dòng 'Thông tin khác' = tên trường + năm TỐT NGHIỆP (khi Phiếu không có sẵn cụm này). Năm tốt nghiệp:
+    năm CUỐI của khóa thi ('2004-2005' → 2005), rồi cụm 'tốt nghiệp … yyyy' trên phiếu. KHÔNG dùng năm sinh."""
+    co_quan = _text(values.get("Phieu_CoQuanCapVanBang"))
+    truong = _text(values.get("VanBang_Truong")) or (co_quan if _fold(co_quan).startswith("truong") else None)
+    khoa =re.findall(r"\b(?:19|20)\d{2}\b", _text(values.get("VanBang_KhoaThi")) or "")
+    nam = khoa[-1] if khoa else None
+    for src in (values.get("Phieu_SoHieu"), ocr_text):
+        m = None if nam else _NAM_TOT_NGHIEP.search(unicodedata.normalize("NFC", _text(src) or ""))
+        if m:
+            nam = m.group(1)
     parts = [p for p in (truong, nam) if p]
     return ", ".join(parts) or None
 
@@ -284,6 +294,56 @@ def _lien_he(phone: Any, tt: Any) -> str | None:
 
 _UY = r"(?:ỦY|UỶ|UY)\s*QUYỀN"
 _UY_QUYEN = re.compile(rf"(?:GIẤY|HỢP\s+ĐỒNG|VĂN\s+BẢN)\s+{_UY}|BÊN\s+ĐƯỢC\s+{_UY}", re.IGNORECASE)
+
+
+# Phiếu đề nghị: "Tên tôi là: …" rồi vài dòng sau là ngày sinh + số giấy tờ của CHỦ văn bằng. Mẫu mới (TT
+# 10/2026) ghi "Số định danh cá nhân", mẫu cũ "Số chứng minh nhân dân/Hộ chiếu". CHỈ đọc trong khối ngay sau
+# "Tên tôi là" — CCCD gắn chip mới cũng in "Số định danh cá nhân", có thể là thẻ của người nộp thay/cán bộ.
+_PHIEU_TEN_TOI = re.compile(r"t[êe]n\s+t[ôo]i\s+l[àa]\s*:\s*([^\n]*)", re.IGNORECASE)
+_PHIEU_SINH_NGAY = re.compile(r"sinh\s+ngày\s*:?\s*(\d{1,2}\s*[/.\-]\s*\d{1,2}\s*[/.\-]\s*\d{4})", re.IGNORECASE)
+_PHIEU_SO_GIAY_TO = re.compile(r"(?:số\s+định\s+danh(?:\s+cá\s+nhân)?|số\s+(?:chứng\s+minh\s+nhân\s+dân|cmnd|"
+                               r"cccd|căn\s+cước)[^:\n]*)\s*:?\s*([\d .]{9,20})", re.IGNORECASE)
+_PHIEU_LIEN_HE = re.compile(r"(?:số\s+)?điện\s+thoại[^:\n]*:\s*([^\n]*)", re.IGNORECASE)
+
+
+def _phieu_owner(ocr_text: str) -> dict:
+    """Nhân thân chủ văn bằng đọc THẲNG từ OCR phiếu đề nghị — dự phòng khi LLM bỏ sót/nhầm sang CCCD cán bộ."""
+    text = unicodedata.normalize("NFC", ocr_text or "")
+    head = _PHIEU_TEN_TOI.search(text)
+    if not head:
+        return {}
+    name = re.sub(r"\(\d+\)|[.…]+", " ", head.group(1))
+    near = text[head.end():head.end() + 300]
+    dob = _PHIEU_SINH_NGAY.search(near)
+    so = _PHIEU_SO_GIAY_TO.search(near)
+    digits = re.sub(r"\D+", "", so.group(1)) if so else ""
+    lien_he = _PHIEU_LIEN_HE.search(text[head.end():head.end() + 2500])
+    phone = re.search(r"(?<!\d)0\d{9}(?!\d)", re.sub(r"(?<=\d)[ .](?=\d)", "", lien_he.group(1))) if lien_he else None
+    return {
+        "name": (_text(name) or "").upper() or None,
+        "dob": _date(re.sub(r"\s+", "", dob.group(1)).replace(".", "/")) if dob else None,
+        "id": digits if len(digits) in (9, 12) else None,
+        "phone": phone.group(0) if phone else None,
+    }
+
+
+# Mặt sau CCCD gắn chip: "Ngày, tháng, năm (cấp) / Date …: dd/mm/yyyy" + dòng MRZ "IDVNM…<số CCCD><<…". LLM
+# hay bỏ sót ngày cấp ở mặt sau. Chỉ nhận ngày trong ĐÚNG file có MRZ chứa số CCCD đó → không lẫn thẻ khác.
+_OCR_FILE_SPLIT = re.compile(r"^=====.*=====\s*$", re.MULTILINE)
+_CCCD_NGAY_CAP = re.compile(r"ngày,?\s*tháng,?\s*năm(?!\s*sinh)[^\n\d]*(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{4})",
+                            re.IGNORECASE)
+
+
+def _ngay_cap_by_mrz(ocr_text: str, so: str | None) -> str | None:
+    if not so or not ocr_text:
+        return None
+    for seg in _OCR_FILE_SPLIT.split(unicodedata.normalize("NFC", ocr_text)):
+        if not any(line.startswith("IDVNM") and so in line for line in seg.split()):
+            continue
+        m = _CCCD_NGAY_CAP.search(seg)
+        if m:
+            return _date(re.sub(r"\s+", "", m.group(1)))
+    return None
 
 
 def _has_authorization(ocr_text: str) -> bool:
@@ -378,7 +438,10 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
             add(name, True)
 
     # ===== NEO: tên chủ văn bằng (từ chính VĂN BẰNG / BM04) =====
-    anchor = _text(values.get("VanBang_HoTen"))
+    # LLM có thể bỏ trống VanBang_* và nhét CCCD cán bộ/người nộp thay vào ChuHoSo_* → thiếu neo thì CCCD
+    # đó thành "chủ". Đọc thẳng "Tên tôi là" trên phiếu làm neo dự phòng.
+    phieu = _phieu_owner(ocr_text)
+    anchor = _text(values.get("VanBang_HoTen")) or phieu.get("name")
 
     def _person(prefix: str) -> dict:
         return {
@@ -410,7 +473,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
             nop = chu
             chu = dict(empty)
             warnings.append("CCCD tải lên không khớp tên chủ văn bằng — coi là CCCD người nộp; chủ hồ sơ "
-                            "lấy nhân thân theo văn bằng, số CCCD chủ có thể trống.")
+                            "lấy nhân thân theo văn bằng/phiếu đề nghị.")
 
     # Có người nộp thay riêng? (CCCD mang tên KHÁC chủ văn bằng). Quyết định độ tin của CCCD slot "chu".
     distinct_nop = bool(nop.get("name") or nop.get("id"))
@@ -428,11 +491,17 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
 
     chu_name = anchor or (chu["name"] if chu_cccd_valid else None)
     chu_gender = _gender(values.get("VanBang_GioiTinh")) or (chu["gender"] if chu_cccd_valid else None)
-    chu_dob = _date(values.get("VanBang_NgaySinh")) or (chu["dob"] if chu_cccd_valid else None)
+    chu_dob = (_date(values.get("VanBang_NgaySinh")) or phieu.get("dob")
+               or (chu["dob"] if chu_cccd_valid else None))
     # Số/ngày cấp/địa chỉ/điện thoại chủ: ưu tiên BM04 (VanBang_*), rồi tới CCCD chủ (nếu hợp lệ).
-    chu_id = _identity(values.get("VanBang_SoGiayTo")) or (chu["id"] if chu_cccd_valid else None)
-    chu_ngaycap = _date(values.get("VanBang_NgayCap")) or (chu["ngaycap"] if chu_cccd_valid else None)
+    # LLM hay bỏ sót số trên phiếu (nhãn mới "Số định danh cá nhân") → đọc thẳng OCR phiếu làm dự phòng.
+    chu_id = (_identity(values.get("VanBang_SoGiayTo")) or phieu.get("id")
+              or (chu["id"] if chu_cccd_valid else None))
+    chu_ngaycap = (_date(values.get("VanBang_NgayCap")) or (chu["ngaycap"] if chu_cccd_valid else None)
+                   or _ngay_cap_by_mrz(ocr_text, chu_id))
     chu_phone, chu_phone_ok = _phone_read(values.get("VanBang_DienThoai"))
+    if not chu_phone and phieu.get("phone"):
+        chu_phone, chu_phone_ok = phieu["phone"], True
     if not chu_phone and chu_cccd_valid and chu["phone"]:
         chu_phone, chu_phone_ok = chu["phone"], True
     if chu_phone and not chu_phone_ok:
@@ -463,9 +532,9 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     if not (chu_name or org_name):
         warnings.append("Thiếu tên chủ văn bằng (chủ hồ sơ).")
 
-    # ===== Phần I: NGƯỜI NỘP — chỉ điền khi SỐ CCCD tài khoản đăng nhập (formContext) TRÙNG số CCCD chủ hồ
-    # sơ (người nộp chính là chủ). Điền các thông tin còn lại từ nhân thân chủ, KHÔNG điền họ tên (tài khoản
-    # tự đổ). Khác số / thiếu số → bỏ trống cả Phần I. CCCD người nộp thay (NguoiNop_*) chỉ dùng định tuyến. =====
+    # ===== Phần I: NGƯỜI NỘP — chỉ điền khi SỐ CCCD tài khoản đăng nhập (formContext) TRÙNG số một CCCD trong
+    # hồ sơ: của chủ (người nộp chính là chủ) hoặc CCCD khác tên chủ (cán bộ/người nộp thay). Điền từ đúng CCCD
+    # trùng số, KHÔNG điền họ tên (tài khoản tự đổ). Không CCCD nào trùng số → bỏ trống cả Phần I. =====
     ctx = (options or {}).get("formContext") or {}
     ctx_id = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
     # CÓ GIẤY ỦY QUYỀN → người nộp là BÊN ĐƯỢC ỦY QUYỀN: GHI ĐÈ cả Phần I (khối tài khoản VNeID tự đổ, thường
@@ -514,6 +583,24 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         add("data[address]", chu_diachi)
         add("data[phoneNumber]", chu_phone)
         add("data[email]", chu["email"] if chu_cccd_valid else None)
+    elif nop["id"] and ctx_id and nop["id"] == ctx_id:
+        # CCCD của người nộp (vd cán bộ tiếp nhận đăng nhập bằng tài khoản của mình) — SĐT/địa chỉ chủ hồ sơ
+        # KHÔNG dùng cho người này.
+        n_loai = _id_doc_type_by_len(nop["id"]) or "Căn cước công dân"
+        n_ngaycap = nop["ngaycap"] or _ngay_cap_by_mrz(ocr_text, nop["id"])
+        n_tt = _remap(_area(nop["tt"]) or {}, ocr_text)
+        n_tinh = _province_label(n_tt.get("tinh") or n_tt.get("tinhThanh"))
+        n_xa, n_xa_guess = _current_ward(n_tinh, _text(n_tt.get("xa") or n_tt.get("phuong")), ocr_text)
+        add("data[identityNumber]", nop["id"])
+        add("data[gender]", nop["gender"])
+        add("data[birthday]", nop["dob"])
+        add("data[identityDate]", n_ngaycap)
+        add("data[idIssuePlace]", _issue_place(nop["noicap"], n_loai, n_ngaycap))
+        add("data[province]", n_tinh)
+        add("data[district]", n_xa, default=n_xa_guess)
+        add("data[address]", _text(n_tt.get("diaChi") or n_tt.get("chiTiet")))
+        add("data[phoneNumber]", nop["phone"])
+        add("data[email]", nop["email"])
 
     # ===== Phần II: loại chủ hồ sơ =====
     add("data[ChuHS]", "Doanh nghiệp" if is_dn else ("Tổ chức" if is_org else "Cá nhân"))
@@ -550,7 +637,7 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     add("data[requestQty]", _identity(values.get("Phieu_SoLuongBanSao")) or "1")
     check("data[sogoc]", True)                             # thủ tục = cấp BẢN SAO TỪ SỔ GỐC
     add("data[lydo]", _text(values.get("Phieu_LyDo")))
-    add("data[thongtinkhac]", _text(values.get("Phieu_ThongTinKhac")) or _thong_tin_khac(values))
+    add("data[thongtinkhac]", _text(values.get("Phieu_ThongTinKhac")) or _thong_tin_khac(values, ocr_text))
     add("data[lienhe]", _text(values.get("Phieu_LienHe")) or _lien_he(chu_phone, chu_tt))
     add("data[ngay]", _date(values.get("Phieu_NgayLap")))
     add("data[nguoidenghi]", _text(values.get("Phieu_NguoiViet")) or chu_name or org_name)

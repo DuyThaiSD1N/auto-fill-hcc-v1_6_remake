@@ -55,8 +55,9 @@ _VANBANG_FIELDS = [
     ("LoaiGiayTo", 'Loại giấy tờ tùy thân của chủ văn bằng. ⚠ KHÔNG suy từ nhãn cố định "Số chứng minh '
         'nhân dân/Hộ chiếu" trên BM04 (đó chỉ là nhãn form). Xác định theo SỐ: 12 chữ số → "Căn cước công '
         'dân"; 9 chữ số → "Chứng minh nhân dân". Không rõ → bỏ trống.'),
-    ("SoGiayTo", "Số CCCD/CMND của CHỦ VĂN BẰNG lấy từ Phiếu BM04 ('Số chứng minh nhân dân/Hộ chiếu') hoặc "
-        "văn bằng. Chỉ chữ số. ĐÂY là số của chủ (KHÔNG phải của người nộp thay)."),
+    ("SoGiayTo", "Số CCCD/CMND của CHỦ VĂN BẰNG lấy từ Phiếu đề nghị — mẫu mới ghi 'Số định danh cá nhân', "
+        "mẫu BM04 cũ ghi 'Số chứng minh nhân dân/Hộ chiếu' — hoặc văn bằng. Chỉ chữ số. ĐÂY là số của chủ "
+        "(KHÔNG phải của người nộp thay). Phiếu có số → BẮT BUỘC điền."),
     ("NgayCap", "Ngày cấp giấy tờ của chủ văn bằng, dd/mm/yyyy — Phiếu BM04 'Ngày và nơi cấp'."),
     ("DienThoai", "Số điện thoại chủ văn bằng — Phiếu BM04 'Điện thoại'. Chỉ chữ số."),
     ("ThuongTru", "NƠI THƯỜNG TRÚ HIỆN NAY của chủ văn bằng, " + _AREA_DESC + " Phiếu BM04 'Địa chỉ thường "
@@ -199,7 +200,9 @@ UI_COMP_BY_NAME = {
     # ----- Panel "Phieu" (Phiếu đề nghị BM04) — chép gần nguyên văn phiếu -----
     "data[Kinhgui]": "dom-input",
     "data[ToiTen]": "dom-input",
-    "data[sinhNam]": "dom-input",        # hidden "Sinh ngày" = ngày sinh chủ văn bằng
+    # "Sinh ngày" = ngày sinh chủ văn bằng. Ô datetime flatpickr: input name=data[sinhNam] là ô gốc BỊ ẨN →
+    # dom-input chỉ ghi vào ô ẩn, flatpickr không nhận → ô hiển thị trống. dom-date chọn trên lịch.
+    "data[sinhNam]": "dom-date",
     "data[Sodinhdanh]": "dom-input",
     "data[Duoccap]": "dom-input",        # "Đã được cấp (tên văn bằng)"
     "data[do]": "dom-input",             # "Do … cấp" (cơ quan cấp văn bằng)
