@@ -52,7 +52,7 @@ assert.match(content, /return labels\.some\(\(label\) => attachmentKeyEquals\(at
 // ── Đã đính được thì KHÔNG báo lỗi ───────────────────────────────────────────────────────
 // Cổng ghi nhận chậm: tệp ta đã bỏ cuộc vẫn có thể nằm sẵn trên dòng vài giây sau.
 // Càng cần từ khi các mốc chờ rút ngắn.
-const loop = content.slice(content.indexOf("const MAX_ROUNDS = 3"));
+const loop = content.slice(content.indexOf("const MAX_ROUNDS = 5"));
 const loopBody = loop.slice(0, loop.indexOf("// Lượt chốt: đánh số các dòng"));
 assert.match(loopBody, /await sleep\(1500\); \/\/ ân hạn/);
 assert.match(loopBody, /const landedRow = payloadFile \? findExistingAttachedRowForPlanItem\(item, payloadFile\) : null;/);

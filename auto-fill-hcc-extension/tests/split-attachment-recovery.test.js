@@ -139,7 +139,7 @@ assert.match(content, /markAttachmentResult\(persisted\.row, true\)/);
 // cho cặp cờ persistedRetryUsed cũ. Vẫn đúng cam kết gốc: không để tệp này bị thử ba lượt liên
 // tiếp rồi vẫn tô xanh — nhưng lần thử sau được giãn ra sau khi đã đính các tệp khác, và hỏng
 // một tệp không còn chặn phần còn lại.
-assert.match(content, /const MAX_ROUNDS = 3/);
+assert.match(content, /const MAX_ROUNDS = 5/);
 assert.match(content, /for \(let round = 1; round <= MAX_ROUNDS && queue\.length && !splitAbort/);
 assert.match(content, /action: "pausePendingAttach"/);
 assert.match(background, /msg\?\.action === "pausePendingAttach"/);

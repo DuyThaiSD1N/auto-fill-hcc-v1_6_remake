@@ -38,7 +38,7 @@ test("đóng toast + báo trước khi sang tệp kế, ở cả hai nhánh hỏ
 });
 
 test("MỌI nhánh hoãn đều ghi mốc hỏng; thử lại chờ phần còn thiếu", () => {
-  const loop = content.slice(content.indexOf("const MAX_ROUNDS = 3"));
+  const loop = content.slice(content.indexOf("const MAX_ROUNDS = 5"));
   const body = loop.slice(0, loop.indexOf("queue = deferred;"));
   assert.equal((body.match(/lastFailAt = Date\.now\(\);/g) || []).length, 4);
   assert.equal((body.match(/deferred\.push\(/g) || []).length, 4);

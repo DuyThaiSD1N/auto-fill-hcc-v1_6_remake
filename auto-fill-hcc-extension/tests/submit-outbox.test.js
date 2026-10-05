@@ -185,10 +185,10 @@ test("content: mã + giờ bấm sinh ngay tại cú bấm; dò chữ thành cô
 });
 
 test("popup: refresh bị từ chối vì background vừa xoay token → dùng token mới, không đá ra đăng nhập", () => {
+  // Hành vi chạy thật ở tests/auth-keep-session.test.js; ở đây chỉ khoá chỗ đọc lại storage.
   const client = fs.readFileSync(path.join(__dirname, "..", "api", "client.js"), "utf8");
-  const nhanh = client.slice(client.indexOf("if (r.ok) {"), client.indexOf("await AuthStore.clearTokens();"));
-  assert.match(nhanh, /cur\.refreshToken !== tokens\.refreshToken/);
-  assert.match(nhanh, /withAuth\(cur\.accessToken\)/);
+  const fn = client.slice(client.indexOf("function refreshTokens("), client.indexOf("async function apiCall("));
+  assert.match(fn, /cur\.refreshToken !== tokens\.refreshToken\) return \{ status: "ok", tokens: cur \}/);
 });
 
 // ── Chứng thực tách nhiều tab: CHUNG một khóa hồ sơ, mỗi tab một lần nộp ──

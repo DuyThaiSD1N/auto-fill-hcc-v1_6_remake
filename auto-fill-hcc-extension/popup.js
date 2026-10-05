@@ -545,8 +545,27 @@ async function bootstrap() {
     showLogin();
     return;
   }
+  let me;
   try {
-    const me = await api.me();
+    me = await api.me();
+  } catch (e) {
+    // CHỈ phiên hết thật (BE từ chối refresh token) mới về màn đăng nhập. Mất mạng / BE đang khởi
+    // động lại / bảo trì thì GIỮ phiên: panel dựng lại sau mỗi lần chuyển trang, xoá token ở đây là
+    // cán bộ bị đá ra đúng lúc BE chập chờn vài giây.
+    if (e?.unauthorized) {
+      await AuthStore.clearTokens();
+      showLogin();
+      return;
+    }
+    console.warn("[Popup] Chưa kết nối được máy chủ, giữ phiên và thử lại:", e);
+    showMain(await lastKnownUser());
+    setStatus("Chưa kết nối được máy chủ — đang thử lại…", "err");
+    clearTimeout(bootstrapRetryTimer);
+    bootstrapRetryTimer = setTimeout(() => { void bootstrap(); }, BOOTSTRAP_RETRY_MS);
+    return;
+  }
+  void rememberLastUser(me);
+  try {
     showMain(me);
     await loadProcedures();
     await restoreSplitMode();
@@ -562,9 +581,31 @@ async function bootstrap() {
     // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
     await resumePendingRating();
   } catch (e) {
-    await AuthStore.clearTokens();
-    showLogin();
+    // Lỗi ở các bước khôi phục (tải thủ tục, khôi phục phiên…) KHÔNG phải lý do đăng xuất.
+    if (e?.unauthorized) {
+      await AuthStore.clearTokens();
+      showLogin();
+      return;
+    }
+    console.warn("[Popup] Khôi phục panel lỗi (giữ phiên):", e);
+    setStatus("Có lỗi khi tải lại panel — thử tải lại trang nếu thiếu thông tin.", "warn");
   }
+}
+
+// Tên tài khoản lần đăng nhập gần nhất — để panel vẫn hiện đúng người khi tạm mất kết nối máy chủ.
+const LAST_USER_KEY = "autofill_last_user";
+const BOOTSTRAP_RETRY_MS = 8000;
+let bootstrapRetryTimer = null;
+async function rememberLastUser(me) {
+  try {
+    await chrome.storage.local.set({
+      [LAST_USER_KEY]: { name: me?.name || "", username: me?.username || "", tinh: me?.tinh || "", xa: me?.xa || "" },
+    });
+  } catch (_) { /* không chặn */ }
+}
+async function lastKnownUser() {
+  try { return (await chrome.storage.local.get([LAST_USER_KEY]))?.[LAST_USER_KEY] || null; }
+  catch (_) { return null; }
 }
 
 loginBtn.addEventListener("click", async () => {
@@ -639,6 +680,8 @@ forgetLoginBtn.addEventListener("click", async () => {
 
 logoutBtn.addEventListener("click", async () => {
   await AuthStore.clearTokens();
+  clearTimeout(bootstrapRetryTimer);
+  try { await chrome.storage.local.remove(LAST_USER_KEY); } catch (_) { /* không chặn */ }
   currentUser = null;
   await clearSession();
   files.length = 0;

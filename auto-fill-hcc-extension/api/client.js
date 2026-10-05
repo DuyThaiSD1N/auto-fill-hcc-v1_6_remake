@@ -117,6 +117,48 @@ function _makeRes(ok, status, body) {
   };
 }
 
+// ── Làm mới token ──
+// CHỈ đăng xuất khi BE nói rõ phiên không còn (401/403 ở /auth/refresh). Mất mạng, timeout, BE đang
+// khởi động lại (502/503), bảo trì… là lỗi TẠM: giữ token, báo lỗi để thử lại. Trước đây mọi lỗi
+// làm mới đều xoá token → cán bộ bị đá ra màn đăng nhập mỗi lần BE chập chờn.
+// Một lượt làm mới tại một thời điểm: các lời gọi cùng lúc (cùng gặp 401) chờ chung lượt đó, không
+// tự tranh chấp nhau (BE xoay vòng refresh token — token cũ bị thu hồi ngay).
+let refreshInFlight = null; // { used: refreshToken đã dùng, promise }
+function refreshTokens(tokens) {
+  if (refreshInFlight && refreshInFlight.used === tokens.refreshToken) return refreshInFlight.promise;
+  const promise = (async () => {
+    let r;
+    try {
+      r = await backendFetch("/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+      });
+    } catch (error) {
+      return { status: "transient", error };
+    }
+    if (r.ok) {
+      const nt = await r.json();
+      await AuthStore.saveTokens(nt);
+      return { status: "ok", tokens: nt };
+    }
+    if (r.status === 401 || r.status === 403) {
+      // Nơi khác (tab khác, background gửi mốc nộp) vừa làm mới trước → cặp mới đã (sắp) nằm trong
+      // storage. Đọc lại trước khi kết luận phiên hết.
+      for (const waitMs of [0, 1500]) {
+        if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+        const cur = await AuthStore.getTokens();
+        if (cur?.accessToken && cur.refreshToken !== tokens.refreshToken) return { status: "ok", tokens: cur };
+      }
+      return { status: "invalid" };
+    }
+    const data = await r.json().catch(() => null);
+    return { status: "transient", httpStatus: r.status, message: data?.message };
+  })().finally(() => { refreshInFlight = null; });
+  refreshInFlight = { used: tokens.refreshToken, promise };
+  return promise;
+}
+
 async function apiCall(path, opts = {}) {
   const tokens = await AuthStore.getTokens();
   const isMultipart = typeof FormData !== "undefined" && opts.body instanceof FormData;
@@ -135,31 +177,18 @@ async function apiCall(path, opts = {}) {
   let res = await backendFetch(path, withAuth(tokens?.accessToken));
 
   if (res.status === 401 && tokens?.refreshToken) {
-    const r = await backendFetch("/auth/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken: tokens.refreshToken }),
-    });
-    if (r.ok) {
-      const nt = await r.json();
-      await AuthStore.saveTokens(nt);
-      res = await backendFetch(path, withAuth(nt.accessToken));
-    } else {
-      // BE xoay vòng refresh token (token cũ bị thu hồi ngay). Background gửi lại mốc nộp hồ sơ
-      // cũng làm mới token — nó thắng thì refresh của ta bị từ chối dù cặp mới đã (sắp) nằm
-      // trong storage. Đọc lại trước khi đá cán bộ ra màn đăng nhập.
-      for (const waitMs of [0, 1500]) {
-        if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
-        const cur = await AuthStore.getTokens();
-        if (cur?.accessToken && cur.refreshToken !== tokens.refreshToken) {
-          const retried = await backendFetch(path, withAuth(cur.accessToken));
-          if (retried.status !== 401) return retried;
-          break;
-        }
-      }
+    const out = await refreshTokens(tokens);
+    if (out.status === "ok") {
+      res = await backendFetch(path, withAuth(out.tokens.accessToken));
+    } else if (out.status === "invalid") {
       await AuthStore.clearTokens();
       const err = new Error("UNAUTHORIZED");
       err.unauthorized = true;
+      throw err;
+    } else {
+      const err = new Error(out.message || "Không kết nối được máy chủ. Vui lòng thử lại sau ít phút.");
+      err.transient = true;
+      err.status = out.httpStatus;
       throw err;
     }
   }

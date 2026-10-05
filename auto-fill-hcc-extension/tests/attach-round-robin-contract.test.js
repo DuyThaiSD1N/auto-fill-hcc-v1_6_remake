@@ -13,7 +13,7 @@ const root = path.join(__dirname, "..");
 const content = fs.readFileSync(path.join(root, "content.js"), "utf8");
 
 test("hỏng một tệp thì HOÃN rồi đi tiếp, không chặn các tệp sau", () => {
-  assert.match(content, /const MAX_ROUNDS = 3/);
+  assert.match(content, /const MAX_ROUNDS = 5/);
   assert.match(content, /for \(let round = 1; round <= MAX_ROUNDS && queue\.length/);
   // Trước retry chỉ chờ PHẦN CÒN THIẾU kể từ lần hỏng gần nhất: đính các tệp sau đã là khoảng nghỉ.
   assert.match(content, /const minGapMs = round === 2 \? 500 : 1000;/);

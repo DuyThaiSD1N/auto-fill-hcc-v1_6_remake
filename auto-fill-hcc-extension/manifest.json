@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.20.7",
+  "version": "1.21",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -13,7 +13,6 @@
     "idle"
   ],
   "host_permissions": [
-    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],
@@ -113,16 +112,6 @@
     },
     {
       "matches": [
-        "https://dichvucong.gov.vn/*"
-      ],
-      "world": "MAIN",
-      "js": [
-        "content/fill-survey-main.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
         "https://*.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
@@ -151,6 +140,17 @@
       "world": "MAIN",
       "js": [
         "content/formio-select-main.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://dichvucongnganhtuphap.moj.gov.vn/*"
+      ],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": [
+        "content/moj-upload-watch-main.js"
       ],
       "run_at": "document_start"
     }

@@ -3,6 +3,20 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.21",
+    date: "5/10/2026",
+    items: [
+      "Không còn tự thoát ra màn đăng nhập khi mạng hoặc máy chủ chập chờn.",
+      "Ghi nhận \"đã nộp hồ sơ\" ổn định hơn, kể cả khi mất mạng đúng lúc bấm nộp.",
+      "Đính kèm cổng Tư pháp: tự thử lại khi cổng lỗi, không bỏ sót tệp.",
+      "Chọn đúng Phường/Xã khi cổng ghi khác dấu hoặc khác tiền tố (vd Hiệp Hòa).",
+      "Bắc Ninh: địa chỉ trong tờ khai ghi đúng \"Thành phố Bắc Ninh\".",
+      "Bộ VHTTDL: điền đủ thẻ hướng dẫn viên (ngày cấp, nơi cấp, loại thẻ) và số lượng băng-rôn.",
+      "Không giữ thông tin tài khoản đăng nhập điền nhầm cho người nộp khác.",
+      "Thêm thủ tục mới: giấy phép khám chữa bệnh, hành nghề y; thi tuyển công chức; thủ tục Lào Cai, Đà Nẵng.",
+    ],
+  },
+  {
     version: "1.20",
     date: "28/9/2026",
     items: [
