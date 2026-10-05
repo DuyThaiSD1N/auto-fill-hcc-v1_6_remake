@@ -647,6 +647,9 @@
   /** Đã tới bước kê khai chưa: có heading "Kê khai thông tin" hoặc eform trong iframe. */
   function formReady() {
     if (document.querySelector('iframe[src*="eform"], iframe[src*="ke-khai"]')) return true;
+    // Trang nộp hồ sơ bản mới (/nop-ho-so, biểu mẫu SurveyJS) không có tiêu đề "Kê khai thông tin"
+    // cũng không có iframe eform → nhận theo route và câu hỏi survey đã render.
+    if (/^\/nop-ho-so\/?$/.test(location.pathname) || document.querySelector(".sd-question[data-name]")) return true;
     return textNodes().some((node) => {
       const text = fold(node.textContent);
       return text.length < 60 && FORM_MARKERS.some((marker) => text.includes(marker));

@@ -684,6 +684,12 @@
       "label": "Đà Nẵng - Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất, góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
       "needsAgencySelect": true,
+      "selectSoProvinces": [
+        "danang"
+      ],
+      "submitCardIncludesByWard": {
+        "Phường Liên Chiểu": "Khu vực 5 (Hòa Khánh, Liên Chiểu, Hải Vân)"
+      },
       "autoConfirm": true
     },
     {

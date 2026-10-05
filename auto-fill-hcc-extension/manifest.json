@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.21",
+  "version": "1.21.1",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -76,6 +76,7 @@
         "content/fill-liz.js",
         "content/fill-legacy.js",
         "content/fill-bacninh.js",
+        "content/fill-surveyjs.js",
         "content/procedures/business-registration.js",
         "content/procedures/enterprise-registration.js",
         "content/portal-login.js",
@@ -102,22 +103,23 @@
     },
     {
       "matches": [
+        "https://dichvucong.gov.vn/*"
+      ],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": [
+        "content/surveyjs-main.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://dichvucong.lamdong.gov.vn/*"
       ],
       "all_frames": true,
       "world": "MAIN",
       "js": [
         "content/fill-lamdong-main.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://dichvucong.gov.vn/*"
-      ],
-      "world": "MAIN",
-      "js": [
-        "content/fill-survey-main.js"
       ],
       "run_at": "document_start"
     },

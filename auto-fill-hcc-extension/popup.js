@@ -254,7 +254,7 @@ async function sendToContent(payload) {
         // PHẢI khớp danh sách js của content_scripts trong manifest.json (trừ khối world: MAIN ở
         // trên). Thiếu một file thì tab vừa re-inject sẽ chạy thiếu tính năng một cách IM LẶNG —
         // vd thiếu enterprise-registration.js là mất nhận diện + tự tiến bước ở cổng ĐKKD qua mạng.
-        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js"],
+        files: ["api/config.js", "content/locations.js", "content/bbox-overlay.js", "content.js", "content/attach-mae.js", "content/fill-angular.js", "content/fill-liz.js", "content/fill-legacy.js", "content/fill-bacninh.js", "content/fill-surveyjs.js", "content/procedures/business-registration.js", "content/procedures/enterprise-registration.js", "content/agency-select.js", "content/review.js"],
       });
       res = await sendOnce();
       if (!res?.__messageError) return res;
@@ -4292,6 +4292,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "khai-tu-dang-ky-lai" ||
       cfg.key === "thay-doi-cai-chinh-ho-tich" ||
       cfg.key === "trich-luc-ks" ||
+      // Khai sinh trên Cổng DVC quốc gia mới: khối người nộp khóa theo tài khoản → cần tên + số định danh để
+      // tính quan hệ Cha / Mẹ / Khác với người được khai sinh.
+      cfg.key === "khai-sinh-dang-ky-thuong" ||
       cfg.key === "xac-nhan-thong-tin-ho-tich" ||
       cfg.key === "xet-tuyen-vien-chuc" ||
       cfg.key === "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" ||
@@ -4803,6 +4806,8 @@ async function dispatchFill(allFields, errors, page = null) {
       // Mọi trang HKD đều cần defaults theo địa bàn (ghi chú ngành nghề, lý do giải thể, địa chỉ
       // nhận kết quả...), không riêng trang ngành nghề như trước.
       businessDefaults: page?.key ? buildBusinessDefaults(currentUser) : null,
+      // Biểu mẫu Cổng DVC quốc gia mới: "Kính gửi" / "Tại" lấy theo địa bàn của tài khoản trợ lý.
+      toolAccount: { tinh: currentUser?.tinh || "", xa: currentUser?.xa || "" },
     });
     const filled = Math.max(0, Number(fillRes?.filled || 0));
     const details = buildFillDetails(fillRes, errors, allFields.length);

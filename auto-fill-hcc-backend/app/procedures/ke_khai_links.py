@@ -24,6 +24,11 @@ thực hiện" / "Đối tượng". Mặc định trợ lý lấy thẻ ĐẦU; 
 đó (vd "Cơ quan thực hiện: Văn phòng Đăng ký đất đai") rồi mới bấm "Nộp trực tuyến" — bấm nhầm thẻ là
 hồ sơ đi lạc cơ quan tiếp nhận ngay từ bước đầu. Không khớp thì cảnh báo và rơi về quy ước thẻ đầu.
 
+`submitCardIncludesByWard`: như `submitCardIncludes` nhưng CHỈ áp cho Phường/Xã liệt kê, dạng
+`{"Phường Liên Chiểu": "Khu vực 5 (Hòa Khánh, Liên Chiểu, Hải Vân)"}` (tên xã theo /locations/catalog).
+Xã có trong bảng thì đè `submitCardIncludes`; xã khác giữ nguyên cách chọn thẻ cũ. Extension chốt
+chuỗi theo xã đang chọn ở popup.js:submitCardIncludesFor.
+
 `provincePortalFlow`: thủ tục đặc thù của tỉnh — bấm "Nộp trực tuyến" trên cổng quốc gia xong là
 cổng ném sang CỔNG TỈNH, ở đó còn phải bấm "Nộp hồ sơ" đúng dòng, qua đăng nhập riêng của tỉnh rồi
 chọn cơ quan tiếp nhận. `{host, rowIncludes, rowIndex, agency}` do content/portal-quangninh.js đọc:

@@ -94,8 +94,8 @@ def _area(value):
     if not raw_area or (not raw_area.get("tinh") and not raw_area.get("xa") and not raw_area.get("diaChi")):
         return None
     
-    # Áp dụng remap phường/xã
-    remapped_area = remap_area(raw_area, allow_diachi_fallback=True)
+    # Áp dụng remap phường/xã; sửa luôn lỗi chính tả OCR ở tên tỉnh/xã ("Đôn Dương" -> "Đơn Dương").
+    remapped_area = remap_area(raw_area, allow_diachi_fallback=True, correct_spelling=True)
     return remapped_area
 
 
@@ -337,13 +337,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     warnings: list[str] = []
     seen: set[str] = set()
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, default: bool = False) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        out.append({"name": name, "comp": comp, "value": value, **({"default": True} if default else {})})
         seen.add(name)
 
     owner_seed = owner_from_don or health or assessment
@@ -351,6 +351,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         return out, ["Không đọc được Đơn đề nghị/Giấy khám sức khỏe để xác định chủ hồ sơ."]
 
     owner = _merge_owner(owner_seed, people, health, assessment)
+    # Hồ sơ không có địa chỉ cư trú nào của chủ cơ sở (đơn không ghi riêng, không kèm CCCD) → tạm lấy
+    # địa chỉ CƠ SỞ kinh doanh, nếu không ô Tỉnh/Xã bỏ trống. Hộ kinh doanh thường ở ngay tại cơ sở
+    # nhưng không chắc → đánh dấu default (extension tô vàng) và cảnh báo cho cán bộ soát lại.
+    area_default = False
+    if not owner.residence:
+        facility_area = _area(values.get("DonDeNghi_DiaChiCoSo"))
+        if facility_area:
+            owner.residence = facility_area
+            area_default = True
+            warnings.append(
+                "Hồ sơ không có địa chỉ cư trú của chủ cơ sở — tạm điền địa chỉ cơ sở kinh doanh vào ô "
+                "địa chỉ; cán bộ kiểm tra lại."
+            )
     if context.get("applicant_identity") or context.get("applicant_name"):
         owner_matches_ui = _same_person(
             owner.identity,
@@ -368,7 +381,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     if owner_matches_ui:
         add("data[isOwnerDossierCheck]", True)
-        _add_requester(add, owner)
+        _add_requester(add, owner, area_default)
         # Form tự copy hầu hết thông tin khi tick "Người nộp là chủ hồ sơ"
         # nhưng bỏ sót riêng ngày sinh chủ hồ sơ. Gửi field này sau khối người
         # nộp để extension điền trực tiếp, không nhân đôi các owner field khác.
@@ -382,11 +395,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[isOwnerDossierCheck]", False)
     if requester:
         _add_requester(add, requester)
-    _add_owner(add, owner)
+    _add_owner(add, owner, area_default)
     return out, warnings
 
 
-def _add_requester(add, person: Person) -> None:
+def _add_requester(add, person: Person, area_default: bool = False) -> None:
     add("data[fullname]", person.name)
     add("data[birthday]", person.birthday)
     add("data[gender]", person.gender)
@@ -394,15 +407,15 @@ def _add_requester(add, person: Person) -> None:
     add("data[identityDate]", person.issue_date)
     add("data[idIssuePlace]", person.issuer)
     if person.residence:
-        add("data[province]", _area_label(person.residence.get("tinh")))
-        add("data[district]", _area_label(person.residence.get("xa")))
-        add("data[address]", person.residence.get("diaChi"))
+        add("data[province]", _area_label(person.residence.get("tinh")), area_default)
+        add("data[district]", _area_label(person.residence.get("xa")), area_default)
+        add("data[address]", person.residence.get("diaChi"), area_default)
     add("data[phoneNumber]", person.phone)
     add("data[email]", person.email)
     add("data[fax]", person.fax)
 
 
-def _add_owner(add, person: Person) -> None:
+def _add_owner(add, person: Person, area_default: bool = False) -> None:
     add("data[ownerFullname]", person.name)
     add("data[ownerBirthday]", person.birthday)
     add("data[ownerGender]", person.gender)
@@ -410,9 +423,9 @@ def _add_owner(add, person: Person) -> None:
     add("data[ownerIdentityDate]", person.issue_date)
     add("data[ownerIdIssuePlace]", person.issuer)
     if person.residence:
-        add("data[ownerProvince]", _area_label(person.residence.get("tinh")))
-        add("data[ownerDistrict]", _area_label(person.residence.get("xa")))
-        add("data[ownerAddress]", person.residence.get("diaChi"))
+        add("data[ownerProvince]", _area_label(person.residence.get("tinh")), area_default)
+        add("data[ownerDistrict]", _area_label(person.residence.get("xa")), area_default)
+        add("data[ownerAddress]", person.residence.get("diaChi"), area_default)
     add("data[ownerPhoneNumber]", person.phone)
     add("data[ownerEmail]", person.email)
     add("data[ownerFax]", person.fax)
