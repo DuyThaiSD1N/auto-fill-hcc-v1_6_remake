@@ -115,8 +115,8 @@ FIELDS: list[dict] = [
     {"name": "HoSo_NoiDangKy", "desc": "Nơi đăng ký hồ sơ gốc (cơ quan đã đăng ký sự kiện hộ tịch)."},
 
     # Nội dung đề nghị (chỉ có trên TỜ KHAI cải chính/thay đổi hộ tịch).
-    {"name": "NoiDungThayDoi", "desc": "Nội dung đề nghị thay đổi/cải chính/bổ sung (mục 'Nội dung: ...' trên tờ khai). Vd 'Cải chính tên từ X sang Y'."},
-    {"name": "LyDo", "desc": "Lý do đề nghị thay đổi/cải chính (mục 'Lý do: ...' trên tờ khai)."},
+    {"name": "NoiDungThayDoi", "desc": "Nội dung đề nghị thay đổi/cải chính/bổ sung (mục 'Nội dung: ...' trên tờ khai), CHỈ các thay đổi — không kèm lý do; viết thành câu có nghĩa. Vd 'Cải chính tên từ X sang Y'."},
+    {"name": "LyDo", "desc": "Lý do đề nghị thay đổi/cải chính (mục 'Lý do: ...' trên tờ khai, kể cả khi OCR nối nó vào cuối phần nội dung); viết thành câu ngắn có nghĩa."},
     {"name": "ViecDangKy", "desc": "Loại việc đăng ký ở dòng 'Đề nghị cơ quan đăng ký việc <X>' trên tờ khai. Trả ĐÚNG một trong 5 giá trị: 'Cải chính' | 'Thay đổi' | 'Bổ sung hộ tịch' | 'Xác định lại dân tộc' | '' (rỗng nếu không rõ). KHÔNG lấy từ tiêu đề tờ khai (tiêu đề liệt kê cả 4)."},
 
     # Chủ thể (khai sinh = con; khai tử = người đã mất).

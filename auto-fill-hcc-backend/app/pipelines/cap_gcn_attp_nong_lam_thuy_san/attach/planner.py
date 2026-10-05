@@ -103,14 +103,20 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str, detected_type: str | None = None) -> dict:
+_CCCD_LABEL = "Căn cước công dân"
+
+
+def _build_row_item(
+    file: dict, file_index: int, doc_type: str, detected_type: str | None = None, document_name: str = "",
+) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        # GIỮ NGUYÊN tên file gốc — engine attp-row đặt tên file theo documentName (content.js dataUrlToFile).
-        "documentName": file_name,
+        # Engine attp-row đặt tên tệp tải lên theo documentName (cài đặt tài khoản tắt "đổi tên tệp" thì FE
+        # tự giữ tên gốc). Giấy chưa biết loại giữ tên gốc.
+        "documentName": document_name or file_name,
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -121,13 +127,13 @@ def _build_row_item(file: dict, file_index: int, doc_type: str, detected_type: s
 
 def _build_cccd_item(cccd_group: list[tuple[int, dict]]) -> dict:
     """1 item CCCD cho modal 'Thêm giấy tờ'. Nếu ≥2 file (2 MẶT CCCD) → gộp thành 1 PDF qua
-    sourceFileIndexes (FE applyMergeGroups.mergeToPdf). Giữ NGUYÊN tên file gốc (file đầu)."""
+    sourceFileIndexes (FE applyMergeGroups.mergeToPdf, tệp gộp mang tên documentName)."""
     first_index, first_file = cccd_group[0]
     first_name = str(first_file.get("name") or f"file-{first_index + 1}")
     item = {
         "fileIndex": first_index,
         "fileName": first_name,
-        "documentName": first_name,
+        "documentName": _CCCD_LABEL,
         "componentName": _CCCD_COMPONENT,
         "loaiBan": _LOAI_BAN,
         "quantity": 1,
@@ -151,6 +157,8 @@ def build_plan_items(
     warnings: list[str] = []
     classified: list[dict] = []
     cccd_group: list[tuple[int, dict]] = []   # gom mọi file CCCD để gộp 2 mặt thành 1 PDF
+    # Hai tệp cùng loại vào cùng một dòng phải khác tên để cán bộ phân biệt trên cổng.
+    name_counts: dict[str, int] = {}
 
     for index, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{index + 1}")
@@ -165,7 +173,11 @@ def build_plan_items(
             doc_type, source = _OTHER, "unknown"
 
         if doc_type in _ROWS:
-            attachments.append(_build_row_item(file, index, doc_type))
+            document_name = _ROWS[doc_type]["documentName"]
+            name_counts[document_name] = name_counts.get(document_name, 0) + 1
+            if name_counts[document_name] > 1:
+                document_name = f"{document_name} {name_counts[document_name]}"
+            attachments.append(_build_row_item(file, index, doc_type, document_name=document_name))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
         elif doc_type == _CCCD:
             cccd_group.append((index, file))
@@ -175,7 +187,7 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
         else:
             # Giấy tờ ngoài 2 loại đã định nghĩa (other) → ĐÍNH CHUNG vào HÀNG TỜ KHAI (Đơn Phụ lục I),
-            # KHÔNG bỏ qua; giữ nguyên tên file gốc (attp-row nhận nhiều file/1 dòng).
+            # KHÔNG bỏ qua; giữ tên file gốc vì không biết là giấy gì (attp-row nhận nhiều file/1 dòng).
             attachments.append(_build_row_item(file, index, _DON, detected_type=_OTHER))
             classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "routedTo": _DON})
 

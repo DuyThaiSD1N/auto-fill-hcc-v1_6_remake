@@ -124,7 +124,9 @@ def _sheet_overview(wb: Workbook, data: dict) -> None:
     top = kpis.get("topProcedure") or {}
     rows = [("Tổng hồ sơ tiếp nhận", kpis.get("dossiers", 0), True)]
     if scope.get("canViewUnits"):
-        rows.append(("Số đơn vị trong phạm vi", scope.get("unitCount", 0), True))
+        # Chỉ đếm đơn vị có hồ sơ trong kỳ — khớp màn hình, đơn vị 0 hồ sơ không đưa vào thống kê.
+        with_data = sum(1 for u in data.get("units") or [] if int(u.get("dossiers") or 0) > 0)
+        rows.append(("Số đơn vị có số liệu", with_data, True))
     rows.append(("Loại thủ tục phát sinh", kpis.get("procedureTypes", 0), True))
     rows.append(("Thủ tục nhiều hồ sơ nhất", top.get("count", 0) if top else 0, True))
     for label, value, num in rows:
@@ -170,7 +172,8 @@ def _sheet_overview(wb: Workbook, data: dict) -> None:
 def _sheet_units(wb: Workbook, data: dict) -> None:
     ws = wb.create_sheet("Theo đơn vị")
     ws.sheet_view.showGridLines = False
-    units = data.get("units") or []
+    # Đơn vị 0 hồ sơ trong kỳ không đưa vào thống kê (khớp màn hình bảng thống kê).
+    units = [u for u in data.get("units") or [] if int(u.get("dossiers") or 0) > 0]
     _write_header(ws, 1, [
         ("STT", "c", 6),
         ("Đơn vị", "l", 34),

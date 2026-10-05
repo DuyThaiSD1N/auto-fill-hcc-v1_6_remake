@@ -34,9 +34,9 @@ def test_moi_file_deu_duoc_dinh_kem_khong_bo_sot():
     assert by_name["GCN CT.pdf"]["fallback"] is False
 
 
-def test_document_name_rong_giu_ten_goc():
+def test_document_name_theo_loai_giay():
     items, _, _ = _plan([("Đơn 1.pdf", "ĐƠN ĐĂNG KÝ BIẾN ĐỘNG ĐẤT ĐAI", "don_m18")])
-    assert items[0]["documentName"] == ""  # FE giữ tên file gốc + dedup theo fileName
+    assert items[0]["documentName"] == items[0]["rowDocumentName"]  # FE đặt tên tệp theo documentName
     assert items[0]["rowDocumentName"]  # tên thành phần vẫn giữ để tham chiếu
 
 
@@ -48,4 +48,7 @@ def test_nhieu_file_cung_dong_don():
     ])
     don_items = [it for it in items if it["componentName"] == "Đơn đăng ký biến động đất đai"]
     assert len(don_items) == 3  # 2 đơn + 1 cccd fallback, tất cả vào dòng đơn
-    assert all(it["documentName"] == "" for it in don_items)  # dedup theo fileName (unique) → không bị coi trùng
+    names = [it["documentName"] for it in don_items]
+    # FE dedup theo documentName → các tệp cùng dòng phải KHÁC tên, không bị coi là trùng.
+    assert len(set(names)) == 3
+    assert names[1] == f"{names[0]} 2" and names[2] == "Căn cước công dân"

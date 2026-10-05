@@ -257,9 +257,9 @@ def test_attach_known_file_still_routes_to_its_own_row():
     assert len(items) == 1
     assert items[0]["componentName"] == "Giấy khai sinh của trẻ em"
     assert classified[0]["docType"] == "khai_sinh"
-    # GIỮ NGUYÊN tên file gốc: documentName = tên file (BE-only) → engine attp-row FE đặt tên File =
-    # documentName nên file giữ đúng tên tải lên; loại giấy tờ vẫn ở componentName/detectedType.
-    assert items[0]["documentName"] == "ks.pdf"
+    # documentName = tên theo loại giấy: engine attp-row FE đặt tên tệp theo documentName (cài đặt tài
+    # khoản tắt "đổi tên tệp" thì FE tự giữ tên gốc).
+    assert items[0]["documentName"] == "Giấy khai sinh của trẻ em"
     assert items[0]["fileName"] == "ks.pdf"
     assert items[0]["detectedType"] == "khai_sinh"
 

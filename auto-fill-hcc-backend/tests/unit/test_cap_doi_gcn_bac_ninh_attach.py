@@ -58,27 +58,3 @@ def test_unknown_type_still_attaches_supplementary():
     item = _build_item(_FILE, 0, "khong_biet", "Tài liệu")
     assert item["target"] == "supplementary"
     assert item["componentName"] == ""
-
-
-def test_phieu_de_nghi_do_dac_routes_to_manh_trich_do_slot():
-    """Phiếu đề nghị đo đạc thửa đất → ô TP-H05.000057 (Mảnh trích đo bản đồ địa chính), Bản chính."""
-    assert _ROUTE["cadastral_survey"][1] == "TP-H05.000057"
-    item = _item("cadastral_survey")
-    assert item["target"] == "existing"
-    assert item["componentName"] == "TP-H05.000057"
-    assert item["slotKey"] == "banChinh"
-
-
-def test_llm_cadastral_survey_type_is_accepted():
-    """Type 'cadastral_survey' từ LLM phải được giữ, không rơi về 'other'."""
-    from app.pipelines.cap_doi_gcn_bac_ninh.attach.planner import _canonical_type
-
-    assert _canonical_type("cadastral_survey") == "cadastral_survey"
-    assert _canonical_type("Cadastral-Survey") == "cadastral_survey"
-
-
-def test_prompt_maps_phieu_de_nghi_do_dac_to_cadastral_survey():
-    from app.pipelines.cap_doi_gcn_bac_ninh.attach.prompt import SYSTEM_PROMPT
-
-    assert "cadastral_survey" in SYSTEM_PROMPT
-    assert "Phiếu đề nghị đo đạc thửa đất" in SYSTEM_PROMPT

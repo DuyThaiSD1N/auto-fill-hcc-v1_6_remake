@@ -15,14 +15,17 @@ def test_tep_gop_co_don_cap_lai_vao_dong_mau_05():
     assert not warnings
 
 
-def test_giay_phep_cu_va_cccd_di_kem_dong_don_giu_ten_goc():
+def test_giay_phep_cu_va_cccd_di_kem_dong_don_dat_ten_theo_loai():
     llm = {0: "giay_phep_cu", 1: "don_cap_lai", 2: "cccd", 3: "other"}
     items, warnings, classified = planner.build_plan_items(
         _files("gp.pdf", "don.pdf", "cccd.jpg", "tau.pdf"), [], llm
     )
     assert [i["fileIndex"] for i in items] == [0, 1, 2, 3], "không bỏ tệp nào"
     assert {i["componentName"] for i in items} == {"Đơn đề nghị cấp lại theo Mẫu số 05"}
-    assert items[0]["documentName"] == "gp.pdf" and items[0]["detectedType"] == "giay_phep_cu"
+    assert items[0]["documentName"] == "Giấy phép khai thác thủy sản đã cấp"
+    assert items[0]["detectedType"] == "giay_phep_cu"
+    assert items[2]["documentName"] == "Căn cước công dân"
+    assert items[3]["documentName"] == "tau.pdf", "giấy chưa nhận ra loại giữ tên gốc"
     assert items[1]["documentName"].startswith("Đơn đề nghị cấp lại")
     assert all(c.get("routedTo") == "don_cap_lai" for c in classified if c["fileName"] != "don.pdf")
     assert not warnings

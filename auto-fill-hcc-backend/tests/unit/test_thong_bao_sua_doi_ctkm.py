@@ -132,13 +132,34 @@ def test_moi_field_mapper_phat_deu_co_trong_ui_va_prompt_chi_dung_field_hop_le()
         assert name in ALLOWED and name in EXTRA_RULES
 
 
-def test_dinh_kem_moi_tep_ke_ca_cccd_vao_dong_thong_bao_giu_ten_goc():
+def test_dinh_kem_moi_tep_ke_ca_cccd_vao_dong_thong_bao_khong_co_llm_giu_ten_goc():
     files = [{"name": "Thong bao sua doi.pdf"}, {"name": "cccd mat truoc.jpg"}, {"name": "cccd mat sau.jpg"}]
     items = planner.build_plan_items(files)
     assert [item["fileIndex"] for item in items] == [0, 1, 2]
     assert all(item["target"] == "attp-row" and item["loaiBan"] == "Bản chính" for item in items)
     assert all(item["componentName"] == "Thông báo sửa đổi, bổ sung nội dung chương trình" for item in items)
     assert [item["documentName"] for item in items] == [f["name"] for f in files]
+
+
+def test_dinh_kem_dat_ten_theo_loai_khi_llm_phan_loai():
+    files = [{"name": n} for n in ("a.pdf", "b.jpg", "c.jpg", "d.pdf", "e.pdf")]
+    llm = {
+        0: {"docType": "thong_bao_sua_doi", "title": ""},
+        1: {"docType": "cccd", "title": ""},
+        2: {"docType": "cccd", "title": ""},
+        3: {"docType": "other", "title": "Thể lệ chương trình khuyến mại"},
+        4: {"docType": "other", "title": ""},
+    }
+    items = planner.build_plan_items(files, llm)
+    assert {item["componentName"] for item in items} == {"Thông báo sửa đổi, bổ sung nội dung chương trình"}
+    assert [item["documentName"] for item in items] == [
+        "Thông báo sửa đổi, bổ sung chương trình khuyến mại",
+        "Căn cước công dân",
+        "Căn cước công dân 2",
+        "Thể lệ chương trình khuyến mại",
+        "e.pdf",
+    ]
+    assert all(len(item["documentName"]) <= 50 for item in items)
 
 
 def test_popup_gui_form_context_cho_thu_tuc_nay():

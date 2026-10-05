@@ -1,74 +1,108 @@
-"""Field thật của tờ khai đăng ký khai tử trên Cổng DVC quốc gia bản mới.
+"""Schema khai tử trên Cổng DVC quốc gia bản mới (dichvucong.gov.vn/nop-ho-so, React + SurveyJS).
 
-Trang dichvucong.gov.vn/nop-ho-so?formalityCaseId=...: React + SurveyJS. Nguồn: formJson của API
-`configuring/formality/get-formality-form-by-citizen` (mẫu "ThongTinNguoiNopKhaiTuGopVer2Catalog",
-version 19, crawl 2026-10-05). Mỗi câu hỏi có tên `<tên>__<mã mẫu>`, vd `citizenNDK_HoVaTen__1761724625529`.
-Đuôi `__<mã>` là mã phiên bản mẫu nên backend CHỈ gửi phần tên trước `__`; extension khớp câu hỏi có
-tên bằng `<tên>` hoặc bắt đầu bằng `<tên>__` (DOM: `[data-name]`). Không dùng id `sq_*` (đánh số lại mỗi
-lần render).
+Tên câu hỏi + mã choice lấy từ formJson của cổng (mẫu "ThongTinNguoiNopKhaiTuGopVer2Catalog", version 19). Mỗi
+câu hỏi tên `<tên>__<mã mẫu>` → backend chỉ gửi phần trước `__`, extension khớp theo tiền tố.
 
-Mỗi field gửi extension: {name, comp, value, code?, default?}
-- value: NHÃN hiển thị (để khớp option trên DOM / cán bộ đọc);
-- code: giá trị lưu trong model SurveyJS khi biết chắc (choice value tĩnh, ngày ISO) — extension ưu tiên
-  `survey.setValue(tên đầy đủ, code)` để kích hoạt visibleIf/trigger của cổng.
+Khối THÔNG TIN NGƯỜI NỘP do cổng đổ từ tài khoản định danh và khóa → không trích. LLM trả dữ kiện của NGƯỜI
+MẤT (đúng người đã chốt ở bước phân vai), giấy báo tử / giấy tờ thay thế, dòng người yêu cầu + quan hệ trên tờ
+khai (để đối chiếu với tài khoản) và yêu cầu cấp bản sao.
 
-Comp:
-- "sv-text" / "sv-number": ô chữ / ô số.
-- "sv-date": câu hỏi inputType=date (flatpickr). value "dd/mm/yyyy", code "yyyy-mm-dd".
-- "sv-dropdown": dropdown SurveyJS. Có code khi danh mục tĩnh; tỉnh/xã nạp qua API của cổng
-  (province-vn / ward list-by-citizen) nên chỉ có nhãn, phải chọn theo nhãn sau khi danh sách nạp.
-- "sv-radio": radiogroup, code "1" = Trong nước, "2" = Khác.
-- "sv-diachi": (tạm) cụm nơi chết — chờ phần formJson còn lại để tách tên ô thật.
-
-THỨ TỰ quan trọng: họ tên + số định danh + ngày sinh người mất kích hoạt `get-citizen-by-code` của cổng;
-tra được trong CSDL dân cư thì cổng tự đổ và KHÓA (isReadOnlyWhenFillForm) giới tính, dân tộc, quốc
-tịch, giấy tờ, nơi cư trú. Mapper xếp ba ô đó đầu tiên; extension phải bỏ qua ô đã bị cổng khóa.
-
-Khối "Thông tin người nộp" (citizenName, citizenIdentity, citizenField18, citizenNyc*...) và "Kính gửi"
-(citizenField27, cổng tự lấy theo cơ quan) cổng tự điền → KHÔNG có trong bảng này.
+Field gửi extension (engine chung content/surveyjs-main.js): {name, comp, value, code?, default?, lookup?, radio?}
+- code: mã option tĩnh trong formJson → extension khớp mã trước, nhãn sau.
+- Ba ô họ tên + số định danh + ngày sinh người mất mang cờ `lookup`: cổng tra CSDL dân cư rồi tự đổ + khóa
+  giới tính, dân tộc, quốc tịch, giấy tờ, nơi cư trú → extension chờ cổng tra, không ghi đè ô cổng đã đổ.
 """
+
+FIELDS: list[dict] = [
+    {"name": "NguoiMat_HoTen", "desc": "Họ, chữ đệm, tên của NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ (người đã chết)."},
+    {"name": "NguoiMat_SoDinhDanh",
+     "desc": "Số định danh cá nhân (đúng 12 chữ số) của người chết. Số 9 chữ số là CMND → không trả ở đây."},
+    {"name": "NguoiMat_NgaySinh",
+     "desc": "Ngày sinh người chết: dd/mm/yyyy; giấy chỉ ghi tháng/năm hoặc năm thì trả đúng mm/yyyy hoặc yyyy."},
+    {"name": "NguoiMat_GioiTinh", "desc": 'Giới tính người chết: "Nam" hoặc "Nữ" — chỉ khi giấy ghi.'},
+    {"name": "NguoiMat_DanToc", "desc": "Dân tộc người chết nếu giấy ghi."},
+    {"name": "NguoiMat_QuocTich", "desc": "Quốc tịch người chết nếu giấy ghi."},
+    {"name": "NguoiMat_LoaiGiayTo",
+     "desc": "Loại giấy tờ tùy thân CỦA CHÍNH người chết: Căn cước, Căn cước công dân, CMND, Hộ chiếu..."},
+    {"name": "NguoiMat_SoGiayTo", "desc": "Số giấy tờ tùy thân CỦA CHÍNH người chết."},
+    {"name": "NguoiMat_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân của người chết, dd/mm/yyyy."},
+    {"name": "NguoiMat_NoiCap",
+     "desc": "Cơ quan cấp giấy tờ tùy thân của người chết, CHÉP ĐÚNG chữ trên giấy. Không ghi → bỏ."},
+    {"name": "NguoiMat_NoiCuTru",
+     "desc": "NƠI CƯ TRÚ CUỐI CÙNG của người chết, object {quocGia,tinh,xa,diaChi[,huyen]}."},
+    {"name": "NguoiMat_NgayMat",
+     "desc": 'Ngày chết ("Đã chết vào lúc ... ngày"): dd/mm/yyyy; chỉ có tháng/năm hoặc năm thì mm/yyyy hoặc yyyy.'},
+    {"name": "NguoiMat_GioMat", "desc": 'Giờ chết "HH:mm" — chỉ khi đọc chắc cả giờ và phút.'},
+    {"name": "NguoiMat_NoiChet",
+     "desc": "Nơi chết theo nhãn 'Nơi chết'/'Nơi tử vong', object {quocGia,tinh,xa,diaChi[,huyen]}."},
+    {"name": "NguoiMat_NguyenNhan", "desc": "Nguyên nhân chết nếu giấy ghi."},
+    {"name": "Gbt_Loai",
+     "desc": '"Giấy báo tử" khi hồ sơ có chính GIẤY BÁO TỬ; "Giấy tờ thay thế" khi dùng giấy tờ thay giấy báo tử '
+             '(trích lục khai tử, biên bản xác minh, văn bản xác nhận...). Không có → bỏ.'},
+    {"name": "Gbt_So",
+     "desc": "Số hiệu ĐẦY ĐỦ của giấy báo tử / giấy tờ thay thế như in trên giấy (vd '01/UBND-GBT', số trích lục)."},
+    {"name": "Gbt_NgayCap", "desc": "Ngày cấp giấy báo tử / giấy tờ thay thế, dd/mm/yyyy."},
+    {"name": "Gbt_CoQuanCap", "desc": "Cơ quan cấp giấy báo tử / giấy tờ thay thế (letterhead hoặc khối ký)."},
+    {"name": "NguoiYeuCau_HoTen", "desc": "Họ tên người yêu cầu ở khối TRÊN câu 'Đề nghị...' của tờ khai."},
+    {"name": "NguoiYeuCau_SoDinhDanh", "desc": "Số giấy tờ tùy thân của người yêu cầu trên tờ khai."},
+    {"name": "NguoiYeuCau_QuanHe",
+     "desc": "Dòng 'Quan hệ với người đã chết' trên tờ khai, chép đúng chữ (vd 'Con', 'Vợ')."},
+    {"name": "ToKhai_LoaiDangKy", "desc": "Nhãn 'Loại đăng ký' trên tờ khai / mẫu hộ tịch điện tử nếu ghi."},
+    {"name": "SoLuongBanSao",
+     "desc": "Số bản sao trích lục đề nghị cấp: số nguyên; tờ khai đánh dấu KHÔNG → 0; ô Có/Không đều trống → bỏ."},
+]
+
+ALLOWED = {f["name"] for f in FIELDS}
+ALIASES: dict[str, list[str]] = {}
+
+COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
+for _name in ("NguoiMat_NgayCap", "Gbt_NgayCap"):
+    COMPACT_COMP_BY_NAME[_name] = "x-date"
+for _name in ("NguoiMat_NoiCuTru", "NguoiMat_NoiChet"):
+    COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {
     # Người nộp: chỉ ô quan hệ là cổng để trống.
-    "citizenmoiquanhe": "sv-text",
+    "citizenmoiquanhe": "sjs-text",
     # NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ — ba ô tra cứu CSDL dân cư đi đầu.
-    "citizenNDK_HoVaTen": "sv-text",
-    "citizenNDK_SoDinhDanh": "sv-text",  # regex cổng: đúng 12 số
-    "citizenNDK_NgaySinh": "sv-text",  # regex cổng: dd/mm/yyyy | mm/yyyy | yyyy
-    "citizenGioitinh_NgdcKT": "sv-dropdown",
-    "citizenDantoc_NgdcKT": "sv-dropdown",
-    "citizenQuoctich_NgdcKT": "sv-dropdown",
-    "citizenLoaiGiaytotuythan_NgdcKT": "sv-dropdown",
-    "citizenSogiaytotuythan_NgdcKT": "sv-text",
-    "citizenField19": "sv-date",  # Ngày cấp giấy tờ tùy thân
-    "citizenNoicapgiaytotuythan_NgdcKT": "sv-text",
-    "citizenField56": "sv-text",  # Ngày, tháng, năm chết — bắt buộc, cùng regex với ngày sinh
-    "citizenGiomat": "sv-number",
-    "citizenPhutmat": "sv-number",
-    "citizenNDKLoaidangky": "sv-dropdown",
-    "citizenNDKLoaicutru": "sv-dropdown",
-    "citizenNDKnoicutru": "sv-radio",  # Nơi cư trú cuối cùng
+    "citizenNDK_HoVaTen": "sjs-text",
+    "citizenNDK_SoDinhDanh": "sjs-text",  # regex cổng: đúng 12 số
+    "citizenNDK_NgaySinh": "sjs-text",  # regex cổng: dd/mm/yyyy | mm/yyyy | yyyy
+    "citizenGioitinh_NgdcKT": "sjs-dropdown",
+    "citizenDantoc_NgdcKT": "sjs-dropdown",
+    "citizenQuoctich_NgdcKT": "sjs-dropdown",
+    "citizenLoaiGiaytotuythan_NgdcKT": "sjs-dropdown",
+    "citizenSogiaytotuythan_NgdcKT": "sjs-text",
+    "citizenField19": "sjs-date",  # Ngày cấp giấy tờ tùy thân
+    "citizenNoicapgiaytotuythan_NgdcKT": "sjs-text",
+    "citizenField56": "sjs-text",  # Ngày, tháng, năm chết — bắt buộc, cùng regex với ngày sinh
+    "citizenGiomat": "sjs-text",
+    "citizenPhutmat": "sjs-text",
+    "citizenNDKLoaidangky": "sjs-dropdown",
+    "citizenNDKLoaicutru": "sjs-dropdown",
+    "citizenNDKnoicutru": "sjs-radio",  # Nơi cư trú cuối cùng
     # Cụm địa chỉ hiện theo (radio, loại cư trú). Quốc gia của nhánh trong nước cổng khóa sẵn "VN".
-    "citizenNDKTinh_Thtru": "sv-dropdown",
-    "citizenNDKXa_Thtru": "sv-dropdown",
-    "citizenNDKDiaChi_Thtru": "sv-text",
-    "citizenNDKTinh_Tamtru": "sv-dropdown",
-    "citizenNDKXa_Tamtru": "sv-dropdown",
-    "citizenNDKDiachi_Tamtru": "sv-text",
-    "citizenNDKTinh_Ohientai": "sv-dropdown",
-    "citizenNDKXa_Ohientai": "sv-dropdown",
-    "citizenNDKDiachi_Ohientai": "sv-text",
-    "citizenNDKQG_Khac": "sv-dropdown",
-    "citizenNDKDiaChi_Khac": "sv-text",
-    "citizenNoichet": "sv-diachi",
-    "citizenNguyennhanchet_NgdcKT": "sv-text",
+    "citizenNDKTinh_Thtru": "sjs-dropdown",
+    "citizenNDKXa_Thtru": "sjs-dropdown",
+    "citizenNDKDiaChi_Thtru": "sjs-text",
+    "citizenNDKTinh_Tamtru": "sjs-dropdown",
+    "citizenNDKXa_Tamtru": "sjs-dropdown",
+    "citizenNDKDiachi_Tamtru": "sjs-text",
+    "citizenNDKTinh_Ohientai": "sjs-dropdown",
+    "citizenNDKXa_Ohientai": "sjs-dropdown",
+    "citizenNDKDiachi_Ohientai": "sjs-text",
+    "citizenNDKQG_Khac": "sjs-dropdown",
+    "citizenNDKDiaChi_Khac": "sjs-text",
+    "citizenNoichet": "sjs-radio",  # Nơi chết: Trong nước / Khác
+    "citizenNoichet_TrongNuoc": "sjs-area",
+    "citizenNguyennhanchet_NgdcKT": "sjs-text",
     # Giấy báo tử.
-    "citizenLoaigiaybaotu": "sv-dropdown",
-    "citizenSogiaybaotu_NgdcKT": "sv-text",
-    "citizenNgaythangnamcapgiaybaotu": "sv-date",
-    "citizenCoquancapgiaybaotucochuthichneukhongcothidetrong": "sv-text",
+    "citizenLoaigiaybaotu": "sjs-dropdown",
+    "citizenSogiaybaotu_NgdcKT": "sjs-text",
+    "citizenNgaythangnamcapgiaybaotu": "sjs-date",
+    "citizenCoquancapgiaybaotucochuthichneukhongcothidetrong": "sjs-text",
     # Bắt buộc, cổng ghi "điền 0 nếu không cần".
-    "citizenSoluongbansaonguoiyeucaudenghi": "sv-number",
+    "citizenSoluongbansaonguoiyeucaudenghi": "sjs-text",
 }
 
 # Tên ô địa chỉ nơi cư trú cuối cùng theo mã loại cư trú (choice value của citizenNDKLoaicutru).

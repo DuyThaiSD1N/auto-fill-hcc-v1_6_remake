@@ -45,31 +45,44 @@ _KET_HON = [
     "NgayCapDD_BenNu", "NoiCapDD_BenNu", "NoiCuTru_BenNu_TrongNuoc",
 ]  # 14
 
+_KHAI_SINH_DVC = [
+    # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package khai_sinh_dvc_moi).
+    "citizenQuanhevoinguoiduockhaisinh", "citizenLoaiDangKy", "citizenLoaikhaisinh_NgdcKS",
+    # Người được khai sinh
+    "citizenHoVaTen_NgdcKS", "citizenNgaythangnamsinh_NgdcKS", "citizenGioitinh_NgdcKS", "citizenDanToc_NgdcKS",
+    "citizenNoisinhnks_TrongNuoc", "citizenQuequannks_TrongNuoc",
+    # Mẹ / cha
+    "citizenNDK_HoVaTen", "citizenNDK_SoDinhDanh", "citizenNDK_NgaySinh",
+    "citizenNDK_HoVaTenCha", "citizenNDK_SoDinhDanhCha", "citizenNDK_NgaySinhCha",
+]  # 15
 _KHAI_TU = [
-    # Người yêu cầu
-    "HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC", "nycNoiCuTru_TrongNuoc",
+    # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package khai_tu_dvcqg).
+    "citizenmoiquanhe",
     # Người mất
-    "HoTen", "NgaySinh", "GioiTinh", "nktDanToc", "SoDinhDanh", "NgayCapDD", "NoiCapDD",
-    "nktNoiCuTru_TrongNuoc", "nktNoiChet_TrongNuoc",
+    "citizenNDK_HoVaTen", "citizenNDK_SoDinhDanh", "citizenNDK_NgaySinh", "citizenGioitinh_NgdcKT",
+    "citizenSogiaytotuythan_NgdcKT", "citizenNDKTinh_Thtru", "citizenNDKXa_Thtru", "citizenNoichet_TrongNuoc",
     # Sự kiện chết
-    "NgayMat", "GioMat", "PhutMat", "NguyenNhanMat",
+    "citizenField56", "citizenGiomat", "citizenNguyennhanchet_NgdcKT",
     # Giấy báo tử
-    "gbtSo", "gbtCoQuanCap", "gbtNgay",
-]  # 21
+    "citizenLoaigiaybaotu", "citizenSogiaybaotu_NgdcKT", "citizenNgaythangnamcapgiaybaotu",
+    "citizenCoquancapgiaybaotucochuthichneukhongcothidetrong",
+]  # 16
 
 _THAY_DOI_HO_TICH = [
-    "SoGiayToTuyThanC",
-    "ntdHoTen", "ntdNgaySinh", "ntdGioiTinh", "ntdDanToc", "ntdSoDDCN",
-    "ntdNgayCapGiayToTuyThan", "ntdNoiCapGiayToTuyThan", "ntdNoiCuTru_TrongNuoc",
-    "soDangKyHSGoc", "quyenDangKyHSGoc", "ngayDangKyHSGoc", "noiDangKyHSGoc",
-]  # 13
+    # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package cai_chinh_dvc_moi).
+    "citizenQuanhevsngcaichinhhotich1",
+    "citizenNDKHoTen", "citizenNDKNgaysinh", "citizenNDKGioitinh", "citizenNDKSodinhdanh",
+    "citizenViecDangKy", "citizenLoainghiepvu", "citizenTTSodangkyhosogoc", "citizenTTngayDangKyHSGoc",
+    "citizenTTNoidangkyhosogoc", "citizenTTNoidungdk", "citizenLydothaydoi",
+]  # 12
 
 _TRICH_LUC = [
-    "HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC", "NYC_NoiCuTru_TrongNuoc",
-    "NDK_HoVaTen", "NDK_NgaySinh", "NDK_GioiTinh", "NDK_DanToc", "NDK_SoDinhDanh",
-    "NDK_NgayCap", "NDK_NoiCap", "NDK_NoiCuTru_TrongNuoc",
-    "HoSo_TenGiayTo", "HoSo_CoQuanDangKy", "HoSo_So", "HoSo_QuyenSo", "HoSo_NgayCapSo",
-]  # 18
+    # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package trich_luc_dvc_moi).
+    "citizenQuanhe",
+    "citizenNDK_HoVaTen", "citizenNDK_NgaySinh", "citizenField13", "citizenNDK_SoDinhDanh",
+    "citizenLoaiViecYeuCau", "citizenHoSo_CoQuanDangKy", "citizenTenGiayToHoTich", "citizencauhoi3",
+    "citizencauhoi5", "citizenSoLuongBanSao",
+]  # 11
 
 _TTHN = [
     "HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC", "nycNoiCuTru_TrongNuoc",
@@ -152,7 +165,7 @@ _KINH_DOANH = [
 ]  # 11
 
 KEY_FIELDS_BY_PROCEDURE: dict[str, list] = {
-    "khai-sinh-dang-ky-thuong": _KHAI_SINH_THUONG,
+    "khai-sinh-dang-ky-thuong": _KHAI_SINH_DVC,
     "khai-sinh-ket-hop-nhan-cha-me-con": _KHAI_SINH_THUONG,
     "khai-sinh-dang-ky-lai": _DANG_KY_LAI,
     # Cùng bộ trường then chốt với khai sinh thường: thủ tục này KHÔNG có khối "đăng ký trước đây".

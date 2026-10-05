@@ -138,12 +138,24 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _row_item(file_name: str, file_index: int, row: dict[str, str], doc_type: str) -> dict:
+# Tên tài liệu theo loại (≤50 ký tự, không ngoặc, không dấu chấm). Engine attp-row đặt tên tệp tải lên
+# theo documentName; cài đặt tài khoản tắt "đổi tên tệp" thì FE tự giữ tên gốc. Loại không có ở đây
+# (other) giữ tên gốc vì không biết là giấy gì.
+_LABELS: dict[str, str] = {
+    _DON: "Đơn đăng ký gia hạn Chứng chỉ hành nghề thú y",
+    _GKSK: "Giấy chứng nhận sức khỏe",
+    _GPLD: "Giấy phép lao động",
+    _VAN_BANG: "Văn bằng chuyên môn",
+    _CCHN_CU: "Chứng chỉ hành nghề thú y đã cấp",
+    _ANH_THE: "Ảnh chân dung 4x6",
+}
+
+
+def _row_item(file_name: str, file_index: int, row: dict[str, str], doc_type: str, document_name: str) -> dict:
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        # GIỮ NGUYÊN tên file gốc — engine attp-row đặt tên file theo documentName.
-        "documentName": file_name,
+        "documentName": document_name,
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -152,11 +164,11 @@ def _row_item(file_name: str, file_index: int, row: dict[str, str], doc_type: st
     }
 
 
-def _van_bang_item(file_name: str, file_index: int) -> dict:
+def _van_bang_item(file_name: str, file_index: int, document_name: str) -> dict:
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        "documentName": file_name,
+        "documentName": document_name,
         "componentName": _VAN_BANG_ROW["componentName"],
         "loaiBan": _VAN_BANG_ROW["loaiBan"],
         "quantity": 1,
@@ -178,6 +190,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # Hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
+    name_counts: dict[str, int] = {}
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -198,14 +212,22 @@ def build_plan_items(
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
             continue
 
+        document_name = _LABELS.get(doc_type, "")
+        if document_name:
+            name_counts[document_name] = name_counts.get(document_name, 0) + 1
+            if name_counts[document_name] > 1:
+                document_name = f"{document_name} {name_counts[document_name]}"
+        else:
+            document_name = file_name
+
         if doc_type == _VAN_BANG:
-            items.append(_van_bang_item(file_name, idx))
+            items.append(_van_bang_item(file_name, idx, document_name))
             routed = _VAN_BANG
         elif doc_type in _ROWS:
-            items.append(_row_item(file_name, idx, _ROWS[doc_type], doc_type))
+            items.append(_row_item(file_name, idx, _ROWS[doc_type], doc_type, document_name))
             routed = doc_type
         else:
-            items.append(_row_item(file_name, idx, _ROWS[_DON], doc_type))
+            items.append(_row_item(file_name, idx, _ROWS[_DON], doc_type, document_name))
             routed = _DON
             if doc_type == _OTHER:
                 warnings.append(

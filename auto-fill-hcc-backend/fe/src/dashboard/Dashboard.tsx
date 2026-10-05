@@ -15,6 +15,7 @@ import {
 } from "./api";
 import { RATING_FACE } from "../rating";
 import { dayMonthYear } from "../format";
+import UnitPicker from "./UnitPicker";
 import { DonutMini, BarDays, WeekColumns, buildSlices, PAL, PALBG, fmt } from "./charts";
 
 type View = "tq" | "dv" | "tt" | "nk";
@@ -297,7 +298,9 @@ export default function Dashboard({ user, onLogout }: Props) {
   const kpis = summary?.kpis;
   const byProc = summary?.byProcedure ?? [];
   const byDay = summary?.byDay ?? [];
-  const units = summary?.units ?? [];
+  // Đơn vị 0 hồ sơ trong kỳ KHÔNG đưa vào thống kê (bộ lọc, xếp hạng, bảng, số đơn vị, bình quân):
+  // trăm dòng 0 làm loãng số liệu và bộ lọc. Phạm vi xem vẫn khoá theo token ở backend.
+  const units = (summary?.units ?? []).filter((u) => u.dossiers > 0);
   const handfreeMissing = summary != null && summary.sources?.handfree === false;
   // Mốc 14/9/2026 đổi cách đếm hồ sơ. CHỈ nói khi khoảng vắt qua mốc — lúc đó con số là hai
   // cách đếm cộng lại nên trông như tụt. Kỳ nằm trọn một bên thì số nhất quán, khỏi chú thích.
@@ -307,7 +310,12 @@ export default function Dashboard({ user, onLogout }: Props) {
       ? `Khoảng này vắt qua ngày ${dayMonthYear(counting.submittedFrom)}: trước đó là số ước tính theo lượt xử lý, từ đó trở đi đếm theo hồ sơ đã bấm nộp.`
       : "";
   const scopeTotal = units.reduce((a, b) => a + b.dossiers, 0);
-  const unitsWithData = units.filter((u) => u.dossiers > 0).length;
+  const unitsWithData = units.length;
+  // Bộ lọc đơn vị: chỉ đơn vị có hồ sơ trong kỳ (giữ đơn vị đang chọn để không mất lựa chọn khi đổi kỳ).
+  const unitIdsWithData = new Set(units.map((u) => u.unitId));
+  const pickerUnits = summary
+    ? (scope?.units ?? []).filter((u) => unitIdsWithData.has(u.unitId) || u.unitId === selectedUnit)
+    : scope?.units ?? [];
   const slices = useMemo(() => buildSlices(byProc), [byProc]);
   const provinceName = scope?.province || user.tinh || "—";
   const roleLabel = canViewUnits
@@ -340,7 +348,7 @@ export default function Dashboard({ user, onLogout }: Props) {
     { id: "dm", label: "Danh mục thủ tục", icon: "doc", group: "Quản trị", soon: true },
   ];
   const navCount: Record<string, number | undefined> = {
-    dv: scope?.unitCount,
+    dv: summary ? unitsWithData : undefined,
     tt: kpis?.procedureTypes,
     nk: logs?.total,
   };
@@ -434,7 +442,7 @@ export default function Dashboard({ user, onLogout }: Props) {
             </div>
             <div className="st">
               <div>
-                <b className="num">{fmt(canViewUnits ? scope?.unitCount ?? 0 : 1)}</b>
+                <b className="num">{fmt(canViewUnits ? unitsWithData : 1)}</b>
                 <span>Đơn vị</span>
               </div>
               <div>
@@ -519,22 +527,18 @@ export default function Dashboard({ user, onLogout }: Props) {
             )}
             <div className="fl">
               <label>Đơn vị</label>
-              <select
-                className="ctl"
-                value={selectedUnit}
-                disabled={!canViewUnits}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-              >
-                <option value="all">
-                  {canViewUnits ? `Tất cả đơn vị trong tỉnh (${scope?.unitCount ?? 0})` : acctName}
-                </option>
-                {canViewUnits &&
-                  scope?.units.map((u) => (
-                    <option key={u.unitId} value={u.unitId}>
-                      {u.name || u.xa}
-                    </option>
-                  ))}
-              </select>
+              {canViewUnits ? (
+                <UnitPicker
+                  units={pickerUnits}
+                  value={selectedUnit}
+                  allLabel={`Tất cả đơn vị có số liệu (${summary ? unitsWithData : pickerUnits.length})`}
+                  onChange={setSelectedUnit}
+                />
+              ) : (
+                <select className="ctl" value="all" disabled>
+                  <option value="all">{acctName}</option>
+                </select>
+              )}
               {!canViewUnits && (
                 <span className="hint">
                   <Ic n="lock" /> Chỉ đơn vị của bạn
@@ -637,7 +641,6 @@ export default function Dashboard({ user, onLogout }: Props) {
             bg: "var(--vio-bg)",
             label: "Đơn vị có phát sinh",
             value: fmt(unitsWithData),
-            vs: `/${scope?.unitCount ?? 0}`,
             foot: (
               <>
                 Bình quân <b>{fmt(unitsWithData ? Math.round(scopeTotal / unitsWithData) : 0)}</b> hồ sơ mỗi đơn vị
@@ -799,20 +802,16 @@ export default function Dashboard({ user, onLogout }: Props) {
     const ranked = [...units].sort((a, b) => b.dossiers - a.dossiers);
     const best = ranked[0];
     const mx = best?.dossiers || 1;
-    const avg = scope?.unitCount ? Math.round(scopeTotal / scope.unitCount) : 0;
+    const avg = unitsWithData ? Math.round(scopeTotal / unitsWithData) : 0;
 
     const kpiSpecs: KpiSpec[] = [
       {
         icon: "bank",
         color: "var(--pri)",
         bg: "var(--pri-bg)",
-        label: "Đơn vị trong phạm vi",
-        value: fmt(scope?.unitCount ?? 0),
-        foot: (
-          <>
-            <b>{fmt(unitsWithData)}</b> đơn vị có phát sinh hồ sơ trong kỳ
-          </>
-        ),
+        label: "Đơn vị có số liệu",
+        value: fmt(unitsWithData),
+        foot: <>Chỉ tính đơn vị có phát sinh hồ sơ trong kỳ</>,
       },
       {
         icon: "cup",
@@ -828,7 +827,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         bg: "var(--amb-bg)",
         label: "Bình quân mỗi đơn vị",
         value: fmt(avg),
-        foot: <>Trên tổng {fmt(scope?.unitCount ?? 0)} đơn vị trong phạm vi</>,
+        foot: <>Trên {fmt(unitsWithData)} đơn vị có phát sinh hồ sơ</>,
       },
       {
         icon: "grid",
@@ -849,7 +848,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         </div>
         <Card
           title="Xếp hạng đơn vị theo số hồ sơ"
-          sub={`${scope?.unitCount ?? 0} đơn vị · tổng ${fmt(scopeTotal)} hồ sơ trong kỳ`}
+          sub={`${unitsWithData} đơn vị có số liệu · tổng ${fmt(scopeTotal)} hồ sơ trong kỳ`}
         >
           <div className="rank">
             {ranked.filter((u) => u.dossiers > 0).length ? (
@@ -1071,7 +1070,7 @@ export default function Dashboard({ user, onLogout }: Props) {
         <Card
           title="Danh mục thủ tục phát sinh hồ sơ"
           sub={`${all} thủ tục · tổng ${fmt(total)} hồ sơ · ${
-            summary?.selected ? summary.selected.name || summary.selected.xa : canViewUnits ? `toàn tỉnh (${scope?.unitCount ?? 0} đơn vị)` : acctName
+            summary?.selected ? summary.selected.name || summary.selected.xa : canViewUnits ? `toàn tỉnh (${unitsWithData} đơn vị có số liệu)` : acctName
           }`}
           right={
             <input
@@ -1114,7 +1113,7 @@ export default function Dashboard({ user, onLogout }: Props) {
                         {showUnitsCol && (
                           <td className="r num">
                             {fmt(r.units ?? 0)}
-                            <span style={{ color: "var(--ink3)" }}>/{scope?.unitCount ?? 0}</span>
+                            <span style={{ color: "var(--ink3)" }}>/{unitsWithData}</span>
                           </td>
                         )}
                         <td>
@@ -1291,11 +1290,11 @@ export default function Dashboard({ user, onLogout }: Props) {
     const donViXuat = canViewUnits
       ? selUnit
         ? selUnit.name || selUnit.xa || "1 đơn vị"
-        : `Tất cả ${scope?.unitCount ?? 0} đơn vị`
+        : `Tất cả ${unitsWithData} đơn vị có số liệu`
       : acctName;
-    const phamVi = canViewUnits ? `Toàn tỉnh ${provinceName} — ${scope?.unitCount ?? 0} đơn vị` : acctName;
+    const phamVi = canViewUnits ? `Toàn tỉnh ${provinceName} — ${unitsWithData} đơn vị có số liệu` : acctName;
     const soDong = selUnit ? kpis?.dossiers ?? 0 : scopeTotal;
-    const soDonVi = selUnit ? 1 : scope?.unitCount ?? 1;
+    const soDonVi = selUnit ? 1 : unitsWithData;
     const cauTruc = canViewUnits
       ? "4 sheet: Tổng hợp · Theo đơn vị · Theo thủ tục · Nhật ký hồ sơ"
       : "3 sheet: Tổng hợp · Theo thủ tục · Nhật ký hồ sơ";

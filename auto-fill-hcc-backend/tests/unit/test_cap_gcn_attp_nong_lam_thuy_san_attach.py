@@ -17,7 +17,7 @@ def _by_file(files, ocr):
     return attachments, warnings, {c["fileName"]: c for c in classified}, {a["fileName"]: a for a in attachments}
 
 
-def test_don_va_thuyet_minh_giu_ten_file_goc():
+def test_don_va_thuyet_minh_dat_ten_theo_loai():
     files = [
         {"name": "scan-don.pdf", "type": "application/pdf"},
         {"name": "scan-thuyet-minh.pdf", "type": "application/pdf"},
@@ -31,9 +31,9 @@ def test_don_va_thuyet_minh_giu_ten_file_goc():
     attachments, warnings, _, by_name = _by_file(files, ocr)
     assert warnings == []
     # Giữ NGUYÊN tên file gốc, KHÔNG đổi thành nhãn "Đơn... (Phụ lục I)".
-    assert by_name["scan-don.pdf"]["documentName"] == "scan-don.pdf"
+    assert by_name["scan-don.pdf"]["documentName"] == planner._ROWS["don_de_nghi"]["documentName"]
     assert by_name["scan-don.pdf"]["componentName"] == _DON_ROW
-    assert by_name["scan-thuyet-minh.pdf"]["documentName"] == "scan-thuyet-minh.pdf"
+    assert by_name["scan-thuyet-minh.pdf"]["documentName"] == planner._ROWS["thuyet_minh"]["documentName"]
     assert by_name["scan-thuyet-minh.pdf"]["componentName"] == _TM_ROW
 
 
@@ -74,7 +74,7 @@ def test_hai_mat_cccd_gop_thanh_mot():
     assert len(cccd) == 1
     assert cccd[0]["sourceFileIndexes"] == [0, 1]
     assert cccd[0]["target"] == "add-document-dialog"
-    assert cccd[0]["documentName"] == "cccd-truoc.jpg"   # tên file gốc (file đầu)
+    assert cccd[0]["documentName"] == "Căn cước công dân"   # tệp gộp 2 mặt mang tên theo loại
 
 
 def test_mot_cccd_khong_gop():
@@ -84,4 +84,4 @@ def test_mot_cccd_khong_gop():
     cccd = [a for a in attachments if a["detectedType"] == "cccd"]
     assert len(cccd) == 1
     assert "sourceFileIndexes" not in cccd[0]
-    assert cccd[0]["documentName"] == "cccd.pdf"
+    assert cccd[0]["documentName"] == "Căn cước công dân"

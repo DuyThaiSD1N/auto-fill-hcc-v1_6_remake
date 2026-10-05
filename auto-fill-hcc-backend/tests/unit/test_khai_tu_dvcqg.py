@@ -1,295 +1,160 @@
-"""Khai tử trên Cổng DVC quốc gia bản mới (SurveyJS): nhận diện, mapper sang tên câu hỏi, đính kèm.
+import re
+import unicodedata
+from datetime import date, timedelta
+from pathlib import Path
 
-Tên câu hỏi lấy theo crawl form dichvucong.gov.vn/nop-ho-so (2026-10-05). Dữ liệu dưới đây là hồ sơ GIẢ.
-"""
+import pytest
 
-from app.pipelines.khai_tu import process as khai_tu_process
-from app.pipelines.khai_tu.attach import planner as khai_tu_planner
-from app.pipelines.khai_tu_dvcqg import attach as dvcqg_attach
-from app.pipelines.khai_tu_dvcqg import process as dvcqg_process
-from app.pipelines.khai_tu_dvcqg.attach import planner
-from app.pipelines.khai_tu_dvcqg.process import mapper
+from app.pipelines.khai_tu_dvcqg.attach.planner import ROW_GIAY_BAO_TU, ROWS, build_plan_items
+from app.pipelines.khai_tu_dvcqg.process import mapper, reason
 from app.pipelines.khai_tu_dvcqg.process.schema import UI_COMP_BY_NAME
-from app.process.schemas import FileItem
-from app.procedures.ke_khai_links import KE_KHAI_LINKS
-from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
+from app.procedures.registry import PROCEDURES
 
-KEY = "khai-tu-dvcqg"
-
-_DOSSIER = {
-    "NguoiYeuCau_HoTen": "Trần Thị Mai",
-    "NguoiYeuCau_SoDinhDanh": "001190000001",
-    "ToKhai_QuanHeNguoiYeuCau": "Con",
-    "ToKhai_LoaiDangKy": "Đăng ký khai tử đúng hạn",
-    "NguoiMat_HoTen": "Lê Văn An",
-    "NguoiMat_NgaySinh": "07/03/1940",
-    "NguoiMat_GioiTinh": "Nam",
-    "NguoiMat_DanToc": "kinh",
-    "NguoiMat_QuocTich": "Việt Nam",
-    "NguoiMat_SoDinhDanh": "001040000002",
-    "NguoiMat_NgayCapGiayTo": "6/11/2021",
-    "NguoiMat_NoiCapGiayTo": "Bộ Công an",
-    "NguoiMat_NoiCuTruCuoiCung": {"tinh": "Tỉnh Nghệ An", "xa": "Xã Nghi Lộc", "diaChi": "Xóm 3"},
-    "NguoiMat_NgayMat": "01/08/2026",
-    "NguoiMat_GioMat": "18:05",
-    "NguoiMat_NguyenNhanMat": "Bệnh già",
-    "NguoiMat_NoiChet": {"tinh": "Tỉnh Nghệ An", "xa": "Xã Nghi Lộc", "diaChi": "Xóm 3"},
-    "Gbt_So": "01",
-    "Gbt_CoQuanCap": "UBND xã Nghi Lộc",
-    "Gbt_NgayCap": "11/08/2026",
-    "CopyRequest_WantsCopy": "Có",
-    "CopyRequest_Quantity": "3",
+HTML_DIR = Path(__file__).resolve().parents[3] / "html mới"
+SNAPSHOTS = {
+    "khai-tu": HTML_DIR / "khai tử" / "khai tử html mới.html",
+    "khai-sinh-dang-ky-thuong": HTML_DIR / "khai sinh" / "khai sinh html mới.html",
+    "trich-luc-ks": HTML_DIR / "trích lụcc" / "trích lục html mới.html",
+    "thay-doi-cai-chinh-ho-tich": HTML_DIR / "cải chính" / "cải chính html mới.html",
 }
-_NOTICE_OCR = "ỦY BAN NHÂN DÂN\nXÃ NGHI LỘC\nSố: 01/UBND-GBT\nGIẤY BÁO TỬ\nHọ tên người chết: Lê Văn An"
+ACCOUNT = {"applicantFullname": "NGUYEN VAN B", "applicantIdentityNumber": "001090000002"}
 
 
-def _enrich(values: dict, options: dict | None = None, ocr_text: str = "") -> list[dict]:
-    return mapper.enrich([{"name": k, "value": v} for k, v in values.items()], options, ocr_text=ocr_text)
+def _fold(value: str) -> str:
+    text = unicodedata.normalize("NFD", value).replace("Đ", "D").replace("đ", "d")
+    return re.sub(r"\s+", " ", "".join(c for c in text if unicodedata.category(c) != "Mn")).lower()
 
 
-def _by_name(rows: list[dict]) -> dict:
-    return {row["name"]: row for row in rows}
+def _body(path: Path) -> str:
+    html = re.sub(r"<(script|style)[\s\S]*?</\1>", " ", path.read_text(encoding="utf-8"))
+    return _fold(re.sub(r"<[^>]+>", " ", html))
 
 
-def test_registered_with_own_pipelines_and_old_khai_tu_untouched():
-    procedure = get_procedure(KEY)
-    assert procedure["mode"] == "agent"
-    assert procedure["hasAttachmentStep"] is True
-    assert get_pipeline(KEY) is dvcqg_process.run
-    assert get_attach_pipeline(KEY) is dvcqg_attach.plan
-    assert get_pipeline("khai-tu") is khai_tu_process.run
-
-
-def test_detect_targets_new_portal_khai_tu_only():
-    detect = get_procedure(KEY)["detect"]
-    # formalityId trên URL nộp hồ sơ chính là mã trang thủ tục khai tử trong danh mục kê khai.
-    khai_tu_link = next(item for item in KE_KHAI_LINKS if item["key"] == "khai-tu")["url"]
-    formality_id = detect["urlIncludes"][0].split("=", 1)[1]
-    assert khai_tu_link.endswith(formality_id)
-    # Chỉ xét trên trang nộp hồ sơ của cổng quốc gia, không lan sang cổng tỉnh hay liên thông.
-    assert detect["urlScope"] == ["//dichvucong.gov.vn/nop-ho-so"]
-    assert "//dichvucong.gov.vn/nop-ho-so" not in "https://lienthong.dichvucong.gov.vn/nop-ho-so"
-    assert "//dichvucong.gov.vn/nop-ho-so" not in "https://dichvucong.quangninh.gov.vn/nop-ho-so"
-    assert detect["textPriority"] is True and detect["headingDisabled"] is True
-    # "Đăng ký lại khai tử" không được khớp cụm của khai tử thường.
-    assert "thủ tục đăng ký khai tử" not in "thủ tục đăng ký lại khai tử"
-
-
-def test_mapper_fills_deceased_block_with_survey_question_names():
-    rows = _by_name(_enrich(_DOSSIER, {}, _NOTICE_OCR))
-    values = {name: row["value"] for name, row in rows.items()}
-
-    assert values["citizenmoiquanhe"] == "Con"
-    assert values["citizenNDK_HoVaTen"] == "LÊ VĂN AN"
-    assert values["citizenNDK_SoDinhDanh"] == "001040000002"
-    assert values["citizenNDK_NgaySinh"] == "07/03/1940"
-    codes = {name: row.get("code") for name, row in rows.items()}
-    # Dropdown danh mục tĩnh: nhãn đúng formJson + mã choice để extension setValue vào model SurveyJS.
-    assert (values["citizenGioitinh_NgdcKT"], codes["citizenGioitinh_NgdcKT"]) == ("Nam", "1")
-    assert (values["citizenDantoc_NgdcKT"], codes["citizenDantoc_NgdcKT"]) == ("Kinh", "01")
-    assert (values["citizenQuoctich_NgdcKT"], codes["citizenQuoctich_NgdcKT"]) == ("Việt Nam", "VN")
-    assert values["citizenSogiaytotuythan_NgdcKT"] == "001040000002"
-    assert (values["citizenField19"], codes["citizenField19"]) == ("06/11/2021", "2021-11-06")
-    assert values["citizenNoicapgiaytotuythan_NgdcKT"] == "Bộ Công an"
-    assert values["citizenField56"] == "01/08/2026"
-    assert (values["citizenGiomat"], values["citizenPhutmat"]) == ("18", "5")
-    assert (values["citizenNDKLoaidangky"], codes["citizenNDKLoaidangky"]) == ("Đăng ký đúng hạn", "1")
-    assert (values["citizenNDKLoaicutru"], codes["citizenNDKLoaicutru"]) == ("Thường trú", "1")
-    assert rows["citizenNDKLoaicutru"]["default"] is True
-    assert (values["citizenNDKnoicutru"], codes["citizenNDKnoicutru"]) == ("Trong nước", "1")
-    # Thường trú trong nước → cụm ô *_Thtru. Dropdown tỉnh/xã của cổng ghi đủ tiền tố nên giữ nguyên.
-    assert values["citizenNDKTinh_Thtru"] == "Tỉnh Nghệ An"
-    assert values["citizenNDKXa_Thtru"] == "Xã Nghi Lộc"
-    assert values["citizenNDKDiaChi_Thtru"] == "Xóm 3"
-    assert values["citizenNoichet"]["luaChon"] == "Trong nước"
-    assert values["citizenNguyennhanchet_NgdcKT"] == "Bệnh già"
-    assert values["citizenLoaigiaybaotu"] == "Giấy báo tử"
-    # Ô chữ của cổng mới nhận đủ số hiệu, không chỉ phần số như biểu mẫu cũ.
-    assert values["citizenSogiaybaotu_NgdcKT"] == "01/UBND-GBT"
-    assert codes["citizenNgaythangnamcapgiaybaotu"] == "2026-08-11"
-    assert values["citizenCoquancapgiaybaotucochuthichneukhongcothidetrong"] == "UBND xã Nghi Lộc"
-    assert values["citizenSoluongbansaonguoiyeucaudenghi"] == "3"
-
-
-def test_lookup_trio_goes_first_so_portal_can_fetch_population_data():
-    """Họ tên + số định danh + ngày sinh kích hoạt get-citizen-by-code; cổng tự đổ + khóa ô còn lại."""
-    names = [row["name"] for row in _enrich(_DOSSIER, {}, _NOTICE_OCR)]
-    assert names[:4] == ["citizenmoiquanhe", "citizenNDK_HoVaTen", "citizenNDK_SoDinhDanh", "citizenNDK_NgaySinh"]
-    # Loại cư trú + radio quyết định cụm ô địa chỉ nào hiện ra → phải đi trước cụm đó.
-    assert names.index("citizenNDKLoaicutru") < names.index("citizenNDKnoicutru") < names.index("citizenNDKTinh_Thtru")
-
-
-def test_values_respect_portal_validators():
-    values = dict(_DOSSIER, NguoiMat_SoDinhDanh="040123456", NguoiMat_NgaySinh="1940",
-                  NguoiMat_NgayMat="1/8/2026", NguoiMat_DanToc="Khmer")
-    rows = _by_name(_enrich(values, {}))
-    # Regex cổng chỉ nhận số định danh 12 số → CMND 9 số không đưa vào ô này.
-    assert "citizenNDK_SoDinhDanh" not in rows
-    assert rows["citizenNDK_NgaySinh"]["value"] == "1940"
-    assert rows["citizenField56"]["value"] == "01/08/2026"
-    assert (rows["citizenDantoc_NgdcKT"]["value"], rows["citizenDantoc_NgdcKT"]["code"]) == ("Khơ-me", "05")
-
-
-def test_registration_type_inferred_when_declaration_is_silent():
-    """Tờ khai không ghi loại đăng ký: hồ sơ biên bản xác minh / bản cam đoan, không giấy báo tử → người chết
-    đã lâu; còn lại theo 15 ngày kể từ ngày mất. Suy luận thì tô vàng."""
-    from datetime import date
-
-    proof_ocr = "TỜ KHAI ĐĂNG KÝ KHAI TỬ\n...\nCỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nBIÊN BẢN XÁC MINH\nVề việc người chết"
-    assert mapper._loai_dang_ky("", False, "01/01/1990", False, proof_ocr) == ("5", True)
-    # Có giấy báo tử thì không phải "người chết đã lâu" dù hồ sơ kèm biên bản.
-    today = date(2026, 10, 5)
-    assert mapper._loai_dang_ky("", False, "01/10/2026", True, proof_ocr, today) == ("1", True)
-    assert mapper._loai_dang_ky("", False, "01/08/2026", False, "TỜ KHAI", today) == ("4", True)
-    # Câu "Tôi cam đoan…" trong tờ khai không phải tiêu đề BẢN CAM ĐOAN.
-    assert mapper._loai_dang_ky("", False, "", False, "Tôi cam đoan những nội dung khai trên") == ("1", True)
-    # Tờ khai ghi rõ thì theo tờ khai, không tô vàng.
-    assert mapper._loai_dang_ky("4", True, "01/10/2026", True, proof_ocr, today) == ("4", False)
-
-    values = {k: v for k, v in _DOSSIER.items() if k != "ToKhai_LoaiDangKy" and not k.startswith("Gbt_")}
-    row = _by_name(_enrich(values, {}, proof_ocr))["citizenNDKLoaidangky"]
-    assert (row["value"], row["code"], row["default"]) == ("Đăng ký khai tử cho người chết đã lâu", "5", True)
-
-
-def test_ethnic_snap_never_guesses():
-    assert mapper._snap(mapper.DAN_TOC, "H'Mông") == ("08", "H'Mông")
-    assert mapper._snap(mapper.DAN_TOC, "Mông", mapper._DAN_TOC_ALIAS) == ("08", "H'Mông")
-    assert mapper._snap(mapper.DAN_TOC, "Ê Đê") == ("12", "Ê-đê")
-    assert mapper._snap(mapper.DAN_TOC, "Xơ Đăng") == ("14", "Xơ-Đăng")
-    assert mapper._snap(mapper.DAN_TOC, "Dân tộc lạ", mapper._DAN_TOC_ALIAS) is None
-
-
-def test_residence_fields_follow_residence_type_and_abroad_branch():
-    legacy = [
-        {"name": "nktLoaiCuTru", "value": "Tạm trú"},
-        {"name": "nktNoiCuTru", "value": "1"},
-        {"name": "nktNoiCuTru_TrongNuoc", "value": {"tinh": "Tỉnh Nghệ An", "xa": "Xã Nghi Lộc", "diaChi": "Xóm 3"}},
-    ]
-    names = [row["name"] for row in mapper.translate(legacy)]
-    assert {"citizenNDKTinh_Tamtru", "citizenNDKXa_Tamtru", "citizenNDKDiachi_Tamtru"} <= set(names)
-    assert not [n for n in names if n.endswith("_Thtru")]
-
-    abroad = [
-        {"name": "nktNoiCuTru", "value": "2"},
-        {"name": "nktNoiCuTru_TrongNuoc", "value": {"quocGia": "Lào", "diaChi": "Viêng Chăn"}},
-    ]
-    rows = _by_name(mapper.translate(abroad))
-    assert rows["citizenNDKnoicutru"]["code"] == "2"
-    assert rows["citizenNDKQG_Khac"]["value"] == "Lào" and "code" not in rows["citizenNDKQG_Khac"]
-    assert rows["citizenNDKDiaChi_Khac"]["value"] == "Viêng Chăn"
-
-
-def test_every_row_uses_declared_comp_and_requester_block_is_never_written():
-    rows = _enrich(_DOSSIER, {}, _NOTICE_OCR)
-    assert all(row["comp"] == UI_COMP_BY_NAME[row["name"]] for row in rows)
-    names = [row["name"] for row in rows]
-    # Khối người nộp cổng đổ từ VNeID và khóa readonly.
-    khoi_nguoi_nop = ("citizenName", "citizenIdentity", "citizenDateOfBirth", "citizenField18",
-                      "citizenField16", "citizenIssuePlace", "citizenIssueDate", "citizenNyc")
-    assert not [n for n in names if n.startswith(khoi_nguoi_nop)]
-    # Kính gửi + địa điểm/ngày lập tờ khai: giấy tờ không có, cổng tự điền ngày.
-    assert not set(names) & {"citizenField27", "citizenField29", "citizenField28", "citizenField31", "citizenField32"}
-    assert len(names) == len(set(names))
-
-
-def test_copy_quantity_is_required_so_zero_when_no_request():
-    values = dict(_DOSSIER)
-    values.pop("CopyRequest_WantsCopy")
-    values.pop("CopyRequest_Quantity")
-    row = _by_name(_enrich(values, {}))["citizenSoluongbansaonguoiyeucaudenghi"]
-    assert row["value"] == "0" and row["default"] is True
-
-    values["CopyRequest_WantsCopy"] = "Không"
-    row = _by_name(_enrich(values, {}))["citizenSoluongbansaonguoiyeucaudenghi"]
-    assert row["value"] == "0" and "default" not in row
-
-
-def test_death_extract_replaces_missing_death_notice():
-    """Không có giấy báo tử mà có trích lục khai tử → ghi trích lục là giấy tờ thay thế (quy tắc "khai-tu")."""
-    values = {k: v for k, v in _DOSSIER.items() if not k.startswith("Gbt_")}
-    extract_ocr = (
-        "TRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: LÊ VĂN AN\n"
-        "Đã được đăng ký khai tử tại UBND xã Nghi Lộc\nSố: 15/2026\n"
+def _context(relation="", loai="", gbt="Giấy báo tử"):
+    return (
+        "<phan_vai_da_xac_dinh>\n<nguoi_mat>\nHọ tên: NGUYEN VAN A\n</nguoi_mat>\n"
+        f"<quan_he>\nKết luận: {relation}\n</quan_he>\n"
+        f"<loai_dang_ky>\nKết luận: {loai}\nGiấy báo tử: {gbt}\n</loai_dang_ky>\n</phan_vai_da_xac_dinh>"
     )
-    rows = _by_name(_enrich(values, {}, extract_ocr))
-    assert rows["citizenLoaigiaybaotu"]["value"] == "Giấy tờ thay thế"
-    assert rows["citizenSogiaybaotu_NgdcKT"]["value"] == "15/2026"
 
 
-def test_death_notice_number_recovers_full_serial_from_ocr():
-    assert mapper._death_notice_number("01", "Số: 01/UBND-GBT") == "01/UBND-GBT"
-    assert mapper._death_notice_number("1", "SỐ 01 / UBND-GBT.") == "01/UBND-GBT"
-    assert mapper._death_notice_number("01", "Số: 01/TLKT-BS") == "01"
-    assert mapper._death_notice_number("5", "Số: 12/UBND-GBT") == "5"
+def _enrich(values: dict, context: str = "", account=ACCOUNT):
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    return mapper.enrich(fields, {"formContext": account, "_reasoning_context": context})
 
 
-def test_portal_rows_follow_new_table_order():
-    """Cổng mới đổi thứ tự: ủy quyền lên dòng 2, chứng cứ sự kiện chết xuống dòng 3."""
-    options = planner._with_portal_rows({})
-    assert khai_tu_planner._slot_for_type(options, "death_notice")[0] == 1
-    assert khai_tu_planner._slot_for_type(options, "authorization")[0] == 2
-    assert khai_tu_planner._slot_for_type(options, "death_event_proof")[0] == 3
-    assert khai_tu_planner._slot_for_type(options, "death_place_proof")[0] == 4
-    # Extension đã gửi bảng thật thì dùng bảng đó.
-    real = {"attachmentContext": {"components": [{"index": 7, "componentName": "Văn bản ủy quyền"}]}}
-    assert planner._with_portal_rows(real) == real
+def _by(out):
+    return {f["name"]: f for f in out}
 
 
-async def test_attach_drops_documents_without_a_row(monkeypatch):
-    seen = {}
-
-    async def fake_plan(files, options, session):
-        seen["options"] = options
-        return {
-            "attachments": [
-                {"fileIndex": 0, "fileName": "gbt.pdf", "documentName": "Giấy báo tử",
-                 "target": "existing", "componentIndex": 1},
-                {"fileIndex": 1, "fileName": "cccd.pdf", "documentName": "Căn cước công dân",
-                 "target": "new", "componentIndex": None},
-            ],
-            "extracted": {"classified": []},
-            "errors": [],
-        }
-
-    monkeypatch.setattr(khai_tu_planner, "plan", fake_plan)
-    files = [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
-             for n in ("gbt.pdf", "cccd.pdf")]
-
-    result = await planner.plan(files, {}, {})
-
-    assert len(seen["options"]["attachmentContext"]["components"]) == 4
-    assert [item["fileIndex"] for item in result["attachments"]] == [0]
-    assert result["extracted"]["skipped"] == ["cccd.pdf (Căn cước công dân)"]
+BASE = {
+    "NguoiMat_HoTen": "Nguyen Van A",
+    "NguoiMat_SoDinhDanh": "001050000001",
+    "NguoiMat_NgaySinh": "1950",
+    "NguoiMat_GioiTinh": "Nam",
+    "NguoiMat_DanToc": "Kinh",
+    "NguoiMat_SoGiayTo": "001050000001",
+    "NguoiMat_NgayCap": "02/03/2021",
+    "NguoiMat_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Xã Tam Hợp", "diaChi": "Xóm 5"},
+    "NguoiMat_NgayMat": (date.today() - timedelta(days=3)).strftime("%d/%m/%Y"),
+    "NguoiMat_GioMat": "09:30",
+    "NguoiMat_NoiChet": {"quocGia": "Việt Nam", "tinh": "Nghệ An", "xa": "Xã Tam Hợp", "diaChi": "Tại nhà"},
+    "Gbt_Loai": "Giấy báo tử",
+    "Gbt_So": "01/UBND-GBT",
+    "Gbt_NgayCap": "05/10/2026",
+    "Gbt_CoQuanCap": "UBND xã Tam Hợp",
+    "NguoiYeuCau_HoTen": "Nguyen Van B",
+    "NguoiYeuCau_SoDinhDanh": "001090000002",
+    "NguoiYeuCau_QuanHe": "Con",
+    "SoLuongBanSao": "2",
+}
 
 
-async def test_attach_puts_same_type_documents_on_one_row(monkeypatch):
-    """Ô "Tài liệu đính kèm" của cổng mới nhận nhiều tệp: biên bản xác minh + bản cam đoan cùng vào dòng 3
-    (planner "khai-tu" cho tệp thứ hai đi "thêm thành phần", cổng mới không có nút đó)."""
-    async def fake_plan(files, options, session):
-        return {
-            "attachments": [
-                {"fileIndex": 0, "fileName": "a.pdf", "documentName": "Biên bản xác minh",
-                 "target": "existing", "componentIndex": 3, "componentName": "chứng cứ"},
-                {"fileIndex": 1, "fileName": "b.pdf", "documentName": "Bản cam đoan",
-                 "target": "new", "componentIndex": None, "componentName": "Bản cam đoan", "needsAddComponent": True},
-                {"fileIndex": 2, "fileName": "c.pdf", "documentName": "Căn cước công dân", "target": "new"},
-            ],
-            "extracted": {"classified": [
-                {"fileIndex": 0, "documentName": "Biên bản xác minh", "type": "death_event_proof"},
-                {"fileIndex": 1, "documentName": "Bản cam đoan", "type": "death_event_proof"},
-                {"fileIndex": 2, "documentName": "Căn cước công dân", "type": "identity"},
-            ]},
-            "errors": [],
-        }
+def test_contract_uses_shared_new_portal_engine():
+    assert all(comp.startswith("sjs-") for comp in UI_COMP_BY_NAME.values())
+    assert UI_COMP_BY_NAME["citizenNoichet"] == "sjs-radio"
+    assert UI_COMP_BY_NAME["citizenNoichet_TrongNuoc"] == "sjs-area"
 
-    monkeypatch.setattr(khai_tu_planner, "plan", fake_plan)
-    files = [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,AAA", role="doc")
-             for n in ("a.pdf", "b.pdf", "c.pdf")]
 
-    result = await planner.plan(files, {}, {})
+@pytest.mark.skipif(not all(p.exists() for p in SNAPSHOTS.values()), reason="thiếu snapshot cổng")
+def test_detect_text_unique_across_new_portal_forms():
+    bodies = {key: _body(path) for key, path in SNAPSHOTS.items()}
+    for key in SNAPSHOTS:
+        phrases = [_fold(p) for p in next(p for p in PROCEDURES if p["key"] == key)["detect"]["textIncludes"]]
+        for page, body in bodies.items():
+            assert all(p in body for p in phrases) == (key == page), (key, page)
 
-    assert [(i["fileIndex"], i["componentIndex"], i["target"]) for i in result["attachments"]] == [
-        (0, 3, "existing"), (1, 3, "existing"),
+
+@pytest.mark.skipif(not SNAPSHOTS["khai-tu"].exists(), reason="thiếu snapshot cổng")
+def test_static_ui_keys_exist_in_snapshot():
+    data_names = set(re.findall(r'data-name="([A-Za-z0-9_]+?)__\d+"',
+                                SNAPSHOTS["khai-tu"].read_text(encoding="utf-8")))
+    always = {"citizenmoiquanhe", "citizenNDK_HoVaTen", "citizenNDK_SoDinhDanh", "citizenNDK_NgaySinh",
+              "citizenNDKnoicutru", "citizenNoichet", "citizenLoaigiaybaotu", "citizenSoluongbansaonguoiyeucaudenghi",
+              "citizenGioitinh_NgdcKT", "citizenField56", "citizenNDKLoaidangky"}
+    assert always <= data_names
+
+
+def test_full_case_order_codes_and_relation():
+    out, warnings = _enrich(BASE, _context("Con"))
+    names = [f["name"] for f in out]
+    by = _by(out)
+    assert names[:4] == ["citizenmoiquanhe", "citizenNDK_HoVaTen", "citizenNDK_SoDinhDanh", "citizenNDK_NgaySinh"]
+    assert by["citizenmoiquanhe"]["value"] == "Con" and not by["citizenmoiquanhe"].get("default")
+    assert all(by[n].get("lookup") for n in names[1:4]) and not by["citizenGioitinh_NgdcKT"].get("lookup")
+    assert by["citizenNDK_NgaySinh"]["value"] == "1950"
+    assert by["citizenGioitinh_NgdcKT"]["code"] == "1" and by["citizenDantoc_NgdcKT"]["code"] == "01"
+    assert by["citizenField19"]["code"] == "2021-03-02"
+    assert by["citizenNoicapgiaytotuythan_NgdcKT"]["value"]       # thẻ 12 số → mặc định theo ngày cấp
+    assert by["citizenGiomat"]["value"] == "9" and by["citizenPhutmat"]["value"] == "30"
+    assert by["citizenNDKLoaidangky"]["code"] == "1"             # chết 3 ngày trước → đúng hạn
+    assert names.index("citizenNDKnoicutru") < names.index("citizenNDKTinh_Thtru")
+    assert by["citizenNDKXa_Thtru"]["value"] == "Xã Tam Hợp"
+    assert by["citizenNoichet_TrongNuoc"]["radio"] == "citizenNoichet"
+    assert names.index("citizenNoichet") < names.index("citizenNoichet_TrongNuoc")
+    assert by["citizenSogiaybaotu_NgdcKT"]["value"] == "01/UBND-GBT"
+    assert by["citizenSoluongbansaonguoiyeucaudenghi"]["value"] == "2"
+    assert not warnings
+
+
+def test_late_and_long_dead_registration():
+    late = {**BASE, "NguoiMat_NgayMat": "01/01/2020"}
+    assert _by(_enrich(late, _context("Con"))[0])["citizenNDKLoaidangky"]["code"] == "4"
+    long_dead = _enrich(late, _context("Con", loai="Đăng ký khai tử cho người chết đã lâu"))[0]
+    assert _by(long_dead)["citizenNDKLoaidangky"]["code"] == "5"
+
+
+def test_relation_from_declaration_only_when_requester_is_account():
+    other = {"applicantFullname": "LE THI C", "applicantIdentityNumber": "001190000003"}
+    out, warnings = _enrich(BASE, _context(""), account=other)
+    assert "citizenmoiquanhe" not in _by(out) and warnings
+    out, _ = _enrich(BASE, _context("Cháu nội"), account=other)
+    assert _by(out)["citizenmoiquanhe"]["value"] == "Cháu nội" and _by(out)["citizenmoiquanhe"]["default"]
+
+
+def test_cmnd_issuer_not_defaulted_and_copies_default_zero():
+    values = {**BASE, "NguoiMat_SoDinhDanh": "", "NguoiMat_SoGiayTo": "210369831", "NguoiMat_NoiCap": ""}
+    values.pop("SoLuongBanSao")
+    by = _by(_enrich(values, _context("Con"))[0])
+    assert by["citizenLoaiGiaytotuythan_NgdcKT"]["code"] == "2"
+    assert "citizenNoicapgiaytotuythan_NgdcKT" not in by
+    assert by["citizenSoluongbansaonguoiyeucaudenghi"]["value"] == "0"
+    assert by["citizenSoluongbansaonguoiyeucaudenghi"]["default"]
+
+
+def test_reason_parsing():
+    raw = "<nguoi_mat>\nHọ tên: A\n</nguoi_mat>\n<quan_he>\nKết luận: Con\n</quan_he>\n<loai_dang_ky>\nKết luận:"
+    ctx = reason._render_context(raw, {"formContext": ACCOUNT})
+    assert reason.labeled_value(reason.section(ctx, "quan_he"), "Kết luận") == "Con"
+    assert reason._render_context("rỗng", {}) == ""
+
+
+def test_attach_rows_no_file_dropped():
+    items = build_plan_items(["gbt.pdf", "uq.pdf", "bb.pdf", "nc.pdf", "cccd.pdf"],
+                             {0: "death_notice", 1: "authorization", 2: "death_event_proof",
+                              3: "death_place_proof", 4: "other"})
+    assert [i["slotName"] for i in items] == [
+        ROW_GIAY_BAO_TU["slotName"], ROWS["authorization"]["slotName"], ROWS["death_event_proof"]["slotName"],
+        ROWS["death_place_proof"]["slotName"], ROW_GIAY_BAO_TU["slotName"],
     ]
-    assert result["attachments"][1]["needsAddComponent"] is False
-    assert result["extracted"]["skipped"] == ["c.pdf (Căn cước công dân)"]
+    assert all(i["target"] == "fixed-slot" for i in items)

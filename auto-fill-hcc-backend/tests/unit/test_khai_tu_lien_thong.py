@@ -6,7 +6,6 @@ không dùng dữ liệu công dân trong bộ mẫu của BA.
 
 import json
 
-from app.pipelines.khai_tu import process as khai_tu_process
 from app.pipelines.khai_tu_lien_thong import attach as lien_thong_attach
 from app.pipelines.khai_tu_lien_thong import process as lien_thong_process
 from app.pipelines.khai_tu_lien_thong.attach import planner
@@ -69,8 +68,8 @@ def test_khai_tu_lien_thong_registered_with_own_pipelines():
     assert "CHƯA hỗ trợ" not in procedure["uploadHint"]
     assert get_pipeline(KEY) is lien_thong_process.run
     assert get_attach_pipeline(KEY) is lien_thong_attach.plan
-    # Thủ tục khai tử trên cổng cũ giữ nguyên pipeline của nó.
-    assert get_pipeline("khai-tu") is khai_tu_process.run
+    # "khai-tu" giờ chạy biểu mẫu SurveyJS của Cổng DVC quốc gia mới (package riêng), không dùng chung liên thông.
+    assert get_pipeline("khai-tu") is not lien_thong_process.run
 
 
 def test_khai_tu_lien_thong_ke_khai_link_matches_detect_url():

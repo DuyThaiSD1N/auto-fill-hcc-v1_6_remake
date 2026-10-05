@@ -1,98 +1,101 @@
-"""Đính kèm "Thành phần hồ sơ" cho khai tử trên Cổng DVC quốc gia bản mới.
+"""Đính kèm khai tử (Cổng DVC quốc gia mới).
 
-Bảng trên cổng có 4 dòng cố định, tên dòng giống hệt cổng cũ nhưng THỨ TỰ khác:
-  1. Giấy báo tử hoặc giấy tờ thay Giấy báo tử
-  2. Văn bản ủy quyền
-  3. Giấy tờ chứng minh sự kiện chết (người chết đã lâu)
-  4. Giấy tờ chứng minh nơi chết hoặc nơi phát hiện thi thể
-Mỗi dòng có nút icon "Tải lên file"; trang KHÔNG có nút "Thêm thành phần hồ sơ".
-
-Phân loại, tách trang, gộp CCCD dùng nguyên planner "khai-tu" (khớp dòng theo tên). Khác biệt:
-- extension chưa gửi `attachmentContext` thì cấp sẵn 4 dòng trên, index = STT trên cổng;
-- ô "Tài liệu đính kèm" của một dòng nhận NHIỀU tệp (cổng cũ mỗi dòng một tệp, tệp sau phải "thêm thành
-  phần"): tài liệu cùng loại thứ hai trở đi (vd biên bản xác minh + bản cam đoan) vào chung dòng của loại đó;
-- tài liệu không thuộc dòng nào (CCCD, tờ khai thứ hai...) không có chỗ "thêm thành phần" nên bỏ,
-  ghi vào `extracted.skipped`.
+Bảng thành phần có 4 dòng cố định (giấy báo tử / văn bản ủy quyền / chứng cứ người chết đã lâu / chứng minh nơi
+chết), một dòng nhận nhiều tệp qua nút "Tải lên file", không có nút "Thêm thành phần". LLM đọc từng tệp để xếp
+đúng dòng; tệp không thuộc dòng nào (tờ khai, CCCD...) đính chung dòng giấy báo tử để không sót tệp. LLM lỗi /
+OCR hụt → dòng giấy báo tử.
 """
 
-from app.pipelines.khai_tu.attach import planner as khai_tu_planner
+import asyncio
+import os
+import time
+
+from app.config import settings
 from app.process.schemas import FileItem
+from app.services.llm import client
 
-PORTAL_ROWS = [
-    {
-        "index": 1,
-        "componentName": (
-            "- Giấy báo tử hoặc giấy tờ thay Giấy báo tử do cơ quan có thẩm quyền cấp."
-        ),
-    },
-    {
-        "index": 2,
-        "componentName": (
-            "- Văn bản ủy quyền (được chứng thực) theo quy định của pháp luật trong trường hợp ủy quyền "
-            "thực hiện việc đăng ký khai tử."
-        ),
-    },
-    {
-        "index": 3,
-        "componentName": (
-            "- Giấy tờ, tài liệu, chứng cứ do cơ quan, tổ chức có thẩm quyền cấp hoặc xác nhận hợp lệ "
-            "chứng minh sự kiện chết đối với trường hợp đăng ký khai tử cho người chết đã lâu"
-        ),
-    },
-    {
-        "index": 4,
-        "componentName": (
-            "- Trường hợp không xác định được nơi cư trú cuối cùng của người chết thì xuất trình giấy tờ "
-            "chứng minh nơi người đó chết hoặc nơi phát hiện thi thể của người chết."
-        ),
-    },
-]
+from .prompt import SYSTEM_PROMPT, build_user_prompt
+
+_OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
+
+ROW_GIAY_BAO_TU = {"slotKey": "khai_tu_giay_bao_tu", "slotIndex": 0,
+                   "slotName": "Giấy báo tử hoặc giấy tờ thay Giấy báo tử"}
+ROWS = {
+    "death_notice": ROW_GIAY_BAO_TU,
+    "authorization": {"slotKey": "khai_tu_uy_quyen", "slotIndex": 1,
+                      "slotName": "Văn bản ủy quyền (được chứng thực) theo quy định"},
+    "death_event_proof": {"slotKey": "khai_tu_chet_da_lau", "slotIndex": 2,
+                          "slotName": "Giấy tờ, tài liệu, chứng cứ do cơ quan, tổ chức có thẩm quyền"},
+    "death_place_proof": {"slotKey": "khai_tu_noi_chet", "slotIndex": 3,
+                          "slotName": "Trường hợp không xác định được nơi cư trú cuối cùng"},
+}
 
 
-def _with_portal_rows(options: dict | None) -> dict:
-    options = dict(options or {})
-    context = dict(options.get("attachmentContext") or {})
-    if not context.get("components"):
-        context["components"] = [dict(row) for row in PORTAL_ROWS]
-        options["attachmentContext"] = context
-    return options
+def build_plan_items(file_names: list[str], doc_types: dict[int, str]) -> list[dict]:
+    items = []
+    for index, name in enumerate(file_names):
+        doc_type = doc_types.get(index) if doc_types.get(index) in ROWS else "other"
+        row = ROWS.get(doc_type, ROW_GIAY_BAO_TU)
+        items.append({
+            "fileIndex": index,
+            "fileName": name,
+            "documentName": os.path.splitext(name)[0] or name,
+            "componentName": row["slotName"],
+            "target": "fixed-slot",
+            "needsAddComponent": False,
+            "detectedType": doc_type,
+            "noChooserClick": True,
+            **row,
+        })
+    return items
 
 
-async def plan_khai_tu_dvcqg_attachments(
-    files: list[FileItem],
-    options: dict | None = None,
-    session: dict | None = None,
-) -> dict:
-    options = _with_portal_rows(options)
-    result = await khai_tu_planner.plan(files, options, session)
-    # Loại tài liệu của từng mục (planner "khai-tu" ghi trong extracted.classified, khớp theo tệp + tên).
-    doc_types = {
-        (row.get("fileIndex"), row.get("documentName")): row.get("type")
-        for row in (result.get("extracted") or {}).get("classified") or []
-    }
-    kept, dropped = [], []
-    for item in result.get("attachments") or []:
-        if item.get("target") != "existing":
-            slot = khai_tu_planner._slot_for_type(
-                options, doc_types.get((item.get("fileIndex"), item.get("documentName")), "")
-            )
-            if not slot:
-                dropped.append(item)
-                continue
-            item.update({
-                "target": "existing",
-                "componentIndex": slot[0],
-                "componentName": slot[1],
-                "needsAddComponent": False,
-            })
-        kept.append(item)
-    result["attachments"] = kept
-    extracted = result.setdefault("extracted", {})
-    extracted["skipped"] = [
-        f"{item.get('fileName')} ({item.get('documentName')})" for item in dropped
+async def _classify_one(index: int, text: str) -> tuple[int, str]:
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": build_user_prompt([{"index": index, "text": text[:12000]}])},
     ]
-    return result
+    raw = await client.chat(messages, max_tokens=120, enable_thinking=settings.agent_reasoning)
+    first = next(iter(client.extract_json_block(raw).get("documents", []) or []), {})
+    return index, str(first.get("docType") or "").strip()
 
 
-# Entrypoint thống nhất cho registry app.pipelines.<procedure>.attach.
-plan = plan_khai_tu_dvcqg_attachments
+async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    from app.services import ocr
+
+    raw_files = [{"name": f.name, "type": f.type, "dataUrl": f.dataUrl} for f in files]
+    errors: list[str] = []
+    pairs = [(i, f) for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES]
+    started = time.monotonic()
+    ocr_results = await ocr.ocr_per_file([f for _, f in pairs]) if pairs else []
+    ocr_ms = int((time.monotonic() - started) * 1000)
+    texts = {}
+    for (index, file), result in zip(pairs, ocr_results):
+        if result.get("error"):
+            errors.append(f"OCR {file.get('name')}: {result['error']}")
+        if str(result.get("text") or "").strip():
+            texts[index] = str(result["text"])
+
+    started = time.monotonic()
+    outcomes = await asyncio.gather(*(_classify_one(i, t) for i, t in texts.items()), return_exceptions=True)
+    llm_ms = int((time.monotonic() - started) * 1000)
+    doc_types: dict[int, str] = {}
+    for index, outcome in zip(texts, outcomes):
+        if isinstance(outcome, BaseException):
+            errors.append(f"attachment_agent file {index}: {outcome}")
+            continue
+        doc_types[index] = outcome[1]
+
+    attachments = build_plan_items([f["name"] for f in raw_files], doc_types)
+    return {
+        "attachments": attachments,
+        "extracted": {
+            "documents": [f["name"] for f in raw_files],
+            "classified": [
+                {"fileName": item["fileName"], "docType": item["detectedType"], "slotIndex": item["slotIndex"]}
+                for item in attachments
+            ],
+        },
+        "stats": {"ocr_latency_ms": ocr_ms, "llm_latency_ms": llm_ms, "total_latency_ms": ocr_ms + llm_ms},
+        "errors": errors,
+    }

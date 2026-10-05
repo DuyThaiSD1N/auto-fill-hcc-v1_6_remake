@@ -32,6 +32,9 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "Tờ khai chấp thuận đóng mới/cải hoán/thuê/mua tàu cá (Mẫu số 12.TC)",
     },
 }
+# Tên tài liệu của loại đã nhận diện nhưng đính chung dòng Tờ khai (≤50 ký tự, không ngoặc, không dấu
+# chấm — extension đặt tên tệp tải lên theo documentName).
+_EXTRA_LABELS: dict[str, str] = {_CCCD: "Căn cước công dân"}
 # CCCD chỉ đối chiếu, KHÔNG có dòng riêng trên bảng → bỏ qua.
 _SKIP_DOCS = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
@@ -115,6 +118,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # Mọi tệp vào cùng MỘT dòng: hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
+    name_counts: dict[str, int] = {}
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -130,8 +135,17 @@ def build_plan_items(
             doc_type, source = _OTHER, "unknown"
 
         # Form chỉ có 1 dòng "Tờ khai Mẫu 12" (ô upload nhận NHIỀU file) → ĐÍNH MỌI file vào dòng này.
-        # Tờ khai → tên chuẩn Mẫu 12; CCCD/CNĐK tàu/thẩm định thiết kế/giấy tờ khác → giữ TÊN GỐC.
-        document_name = _ROWS[_TO_KHAI]["documentName"] if doc_type == _TO_KHAI else file_name
+        # Tờ khai → tên chuẩn Mẫu 12; CCCD → tên theo loại; CNĐK tàu/thẩm định thiết kế/giấy tờ khác (LLM
+        # không tách loại riêng) → giữ TÊN GỐC.
+        if doc_type == _TO_KHAI:
+            document_name = _ROWS[_TO_KHAI]["documentName"]
+        elif doc_type in _EXTRA_LABELS:
+            document_name = _EXTRA_LABELS[doc_type]
+            name_counts[document_name] = name_counts.get(document_name, 0) + 1
+            if name_counts[document_name] > 1:
+                document_name = f"{document_name} {name_counts[document_name]}"
+        else:
+            document_name = file_name
         items.append(_build_row_item(file, idx, doc_type, document_name))
         classified.append({"fileName": file_name, "docType": doc_type, "source": source})
 

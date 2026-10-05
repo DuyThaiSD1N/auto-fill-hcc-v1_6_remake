@@ -156,6 +156,9 @@ async def ensure_indexes() -> None:
     await _ensure_ttl(db, "upload_sessions", "expires_at", 0)
     # Hội thoại Handfree gia hạn theo mỗi lượt chat.
     await _ensure_ttl(db, "conversations", "updated_at", 24 * 3600)
+    # Nhật ký đăng nhập / làm mới token (app/auth/audit.py) — tra "vì sao bị đá ra", giữ 30 ngày.
+    await _ensure_ttl(db, "auth_events", "at", 30 * 24 * 3600)
+    await db.auth_events.create_index([("user_id", 1), ("at", -1)])
     # Vòng đời hồ sơ Handfree (_id = conversation_id) — KHÔNG TTL: conversations tự xoá sau
     # 24h, mốc bắt đầu/nộp phải sống lâu hơn thế thì báo cáo mới dùng được.
     await db.dossiers.create_index([("user_id", 1), ("started_at", -1)])

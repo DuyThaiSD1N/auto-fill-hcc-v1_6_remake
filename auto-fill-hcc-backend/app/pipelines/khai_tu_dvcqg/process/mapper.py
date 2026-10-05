@@ -1,25 +1,20 @@
-"""Map compact facts khai tử sang tờ khai SurveyJS của Cổng DVC quốc gia bản mới.
+"""Dịch dữ kiện đã trích sang câu hỏi SurveyJS của tờ khai khai tử (Cổng DVC quốc gia mới).
 
-Chọn nguồn (tờ khai → giấy báo tử → CCCD), phân vai người yêu cầu/người mất và thay giấy báo tử bằng
-trích lục khai tử đã có sẵn và đã được kiểm thử ở pipeline "khai-tu". Module này KHÔNG chọn nguồn lại:
-gọi mapper "khai-tu" ra bộ field biểu mẫu cũ rồi dịch sang câu hỏi SurveyJS (tên + mã choice của
-formJson, xem schema.py). Đổi tên field ở mapper "khai-tu" thì phải sửa phần dịch ở đây;
-tests/unit/test_khai_tu_dvcqg.py bắt lỗi này.
-
-- Khối "Thông tin người nộp" + "Kính gửi": cổng tự điền → KHÔNG ghi. Chỉ điền ô quan hệ.
-- Khối "Người được đăng ký khai tử", "Giấy báo tử", "Số lượng bản sao": điền.
-- Giá trị nào không khớp được danh mục/định dạng của cổng thì BỎ TRỐNG cho cán bộ, không gửi giá
-  trị cổng sẽ báo lỗi validate.
+Giá trị nào không khớp được danh mục / định dạng của cổng thì BỎ TRỐNG cho cán bộ, không gửi giá trị cổng sẽ báo
+lỗi validate.
 """
 
 import re
 import unicodedata
 from datetime import date
 
+from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
-from app.pipelines.khai_tu.process import mapper as khai_tu_mapper
-from app.pipelines.khai_tu.process import runner as khai_tu_runner
-from app.pipelines.khai_tu_dvcqg.process.schema import (
+from app.pipelines._shared.formatting import upper_person_name
+
+from .reason import labeled_value, requester_context, section
+from .schema import (
     DAN_TOC,
     GIOI_TINH,
     LOAI_CU_TRU,
@@ -31,10 +26,10 @@ from app.pipelines.khai_tu_dvcqg.process.schema import (
     UI_COMP_BY_NAME,
 )
 
-# Số hiệu đầy đủ trên giấy báo tử, vd "Số: 01/UBND-GBT".
-_NOTICE_NUMBER_RE = re.compile(r"\bs[ốo]\s*[:.]?\s*(\d{1,6}\s*/\s*[0-9a-zđ][0-9a-zđ.\-/]*)", re.IGNORECASE)
 _DATE_RE = re.compile(r"\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})\b")
-
+# Luật Hộ tịch Đ.33: đăng ký khai tử trong 15 ngày kể từ ngày có người chết.
+_DUNG_HAN_NGAY = 15
+_HCM_PROVINCE_KEYS = {"hochiminh", "tphochiminh", "thanhphohochiminh", "tphcm", "hcm"}
 # Tên gọi khác của dân tộc → mã danh mục cổng (khóa đã bỏ dấu, bỏ khoảng trắng/gạch nối).
 _DAN_TOC_ALIAS = {
     "khmer": "05", "mong": "08", "hmong": "08", "meo": "08", "ede": "12", "jrai": "10",
@@ -43,11 +38,19 @@ _DAN_TOC_ALIAS = {
 }
 
 
+def _fold(value) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
 def _compact(value) -> str:
     """Bỏ dấu, lowercase, bỏ mọi ký tự không phải chữ/số: "Khơ-me" ≡ "khome", "H'Mông" ≡ "hmong"."""
-    text = unicodedata.normalize("NFD", str(value or "").replace("Đ", "D").replace("đ", "d"))
-    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
-    return re.sub(r"[^a-z0-9]", "", text.lower())
+    return re.sub(r"[^a-z0-9]", "", _fold(value))
+
+
+def _digits(value) -> str:
+    return re.sub(r"\D", "", str(value or ""))
 
 
 def _snap(table: dict, label, aliases: dict | None = None) -> tuple[str, str] | None:
@@ -86,100 +89,107 @@ def _iso(ddmmyyyy: str) -> str:
     return f"{year}-{month}-{day}"
 
 
-# Tiêu đề giấy tờ chứng minh sự kiện chết thay giấy báo tử (đứng riêng một dòng trên OCR đã bỏ dấu).
-_DEATH_PROOF_TITLE_RE = re.compile(r"(?m)^[^a-z0-9\n]*(bien ban xac minh|ban cam doan)\b")
-# Luật Hộ tịch Đ.33: đăng ký khai tử trong 15 ngày kể từ ngày có người chết.
-_DUNG_HAN_NGAY = 15
+def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
+    # Căn cước/CCCD luôn 12 chữ số → số 9 chữ số chỉ có thể là CMND cũ (trừ khi giấy ghi rõ hộ chiếu).
+    if len(_digits(number)) == 9 and "chieu" not in _fold(hint):
+        return "Chứng minh nhân dân"
+    return id_doc_type(hint or "Căn cước", issuer)
 
 
-def _fold_lines(text) -> str:
-    folded = unicodedata.normalize("NFD", str(text or "").replace("Đ", "D").replace("đ", "d"))
-    folded = "".join(ch for ch in folded if unicodedata.category(ch) != "Mn").lower()
-    return "\n".join(line.strip() for line in folded.splitlines())
+def _area(value):
+    if not isinstance(value, dict):
+        return None
+    province = str(value.get("tinh") or "").strip()
+    if re.sub(r"[^a-z0-9]+", "", _fold(province)) in _HCM_PROVINCE_KEYS:
+        province = "Thành phố Hồ Chí Minh"
+    area = {
+        "quocGia": value.get("quocGia") or "Việt Nam",
+        "tinh": province,
+        "xa": str(value.get("xa") or "").strip(),
+        "diaChi": str(value.get("diaChi") or "").strip(),
+    }
+    if not area["tinh"] and not area["xa"] and not area["diaChi"]:
+        return None
+    if _fold(area["quocGia"]) not in ("viet nam", "vn"):
+        return area
+    huyen = str(value.get("huyen") or "").strip()
+    remapped = remap_area({**area, "huyen": huyen} if huyen else dict(area))
+    if not isinstance(remapped, dict):
+        return area
+    # Xã cũ đã sáp nhập sang đơn vị mới khác tên → giữ tên cũ cuối địa chỉ chi tiết để lần ra địa bàn.
+    old_name = re.sub(r"^(xã|phường|thị trấn)\s+", "", area["xa"], flags=re.IGNORECASE).strip()
+    new_ward = str(remapped.get("xa") or "")
+    detail = str(remapped.get("diaChi") or "").strip()
+    if old_name and new_ward and _fold(old_name) not in _fold(new_ward) and _fold(old_name) not in _fold(detail):
+        remapped = {**remapped, "diaChi": f"{detail}, {area['xa']}" if detail else area["xa"]}
+    return remapped
 
 
-def _loai_dang_ky(legacy_code: str, from_declaration: bool, ngay_mat, has_notice: bool, ocr_text: str,
-                  today: date | None = None) -> tuple[str, bool]:
-    """(mã loại đăng ký, có phải suy luận không).
+def _same_person(account_name: str, account_id: str, name, number) -> tuple[bool, bool]:
+    """(cùng người, chỉ khớp họ tên). Có số hai phía thì số quyết định."""
+    digits = _digits(number)
+    if account_id and digits:
+        return account_id == digits, False
+    if account_name and name and _fold(account_name) == _fold(name):
+        return True, True
+    return False, False
 
-    Tờ khai ghi rõ thì theo tờ khai. Không ghi thì suy: không có giấy báo tử mà có biên bản xác minh /
-    bản cam đoan → người chết đã lâu (5); đủ ngày mất → trong 15 ngày là đúng hạn (1), quá là quá hạn (4).
-    Mapper cũ mặc định luôn "1" — sai với hồ sơ người chết đã lâu.
-    """
-    if legacy_code in LOAI_DANG_KY and from_declaration:
-        return legacy_code, False
-    if not has_notice and _DEATH_PROOF_TITLE_RE.search(_fold_lines(ocr_text)):
-        return "5", True
-    text = _full_date(ngay_mat)
+
+def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bool, str]:
+    """(quan hệ người nộp với người mất, suy đoán, cảnh báo)."""
+    account_name, account_id = requester_context(options)
+    declared = values.get("NguoiYeuCau_QuanHe")
+    same, by_name = _same_person(account_name, account_id, values.get("NguoiYeuCau_HoTen"),
+                                 values.get("NguoiYeuCau_SoDinhDanh"))
+    if declared and (same or not (account_name or account_id)):
+        return declared, by_name or not same, ""
+    reasoned = labeled_value(section(context, "quan_he"), "Kết luận")
+    if reasoned:
+        return reasoned, True, ""
+    return "", False, "Chưa xác định được quan hệ của người nộp với người mất — cán bộ ghi ô Quan hệ."
+
+
+def _loai_dang_ky(values: dict, context: str, today: date | None = None) -> tuple[tuple[str, str], bool]:
+    """((mã, nhãn), suy luận). Tờ khai → phân vai → 15 ngày kể từ ngày chết → mặc định đúng hạn."""
+    declared = _snap(LOAI_DANG_KY, values.get("ToKhai_LoaiDangKy"))
+    if declared:
+        return declared, False
+    reasoned = _snap(LOAI_DANG_KY, labeled_value(section(context, "loai_dang_ky"), "Kết luận"))
+    if reasoned:
+        return reasoned, True
+    text = _full_date(values.get("NguoiMat_NgayMat"))
     if text:
         day, month, year = (int(part) for part in text.split("/"))
         try:
-            died = date(year, month, day)
+            elapsed = ((today or date.today()) - date(year, month, day)).days
+            code = "1" if 0 <= elapsed <= _DUNG_HAN_NGAY else "4"
+            return (code, LOAI_DANG_KY[code]), True
         except ValueError:
-            died = None
-        if died:
-            elapsed = ((today or date.today()) - died).days
-            return ("1" if 0 <= elapsed <= _DUNG_HAN_NGAY else "4"), True
-    return (legacy_code if legacy_code in LOAI_DANG_KY else "1"), True
+            pass
+    return ("1", LOAI_DANG_KY["1"]), True
 
 
-def _so_nguyen(value) -> str:
-    text = str(value or "").strip()
-    return str(int(text)) if text.isdigit() else ""
-
-
-def _death_notice_number(number, ocr_text: str) -> str:
-    """Số hiệu đầy đủ của giấy báo tử ("01/UBND-GBT").
-
-    Prompt "khai-tu" chỉ lấy phần số đầu vì biểu mẫu cũ chỉ nhận số. Ô của cổng mới là ô chữ, nên tìm
-    lại trên OCR số hiệu có cùng phần số đầu; không thấy thì giữ giá trị agent trả. Bỏ qua số trích lục
-    khai tử (TLKT) vì đó không phải giấy báo tử.
-    """
-    raw = " ".join(str(number or "").split())
-    if not raw or not raw.isdigit():
-        return raw
-    for match in _NOTICE_NUMBER_RE.finditer(ocr_text or ""):
-        full = re.sub(r"\s+", "", match.group(1)).rstrip(".-/")
-        if int(re.match(r"\d+", full).group()) == int(raw) and "tlkt" not in full.lower():
-            return full
-    return raw
-
-
-def _noi_chet(lua_chon, area) -> dict:
-    """{luaChon, quocGia, tinh, xa, diaChi} cho comp "sv-diachi" của nơi chết, bỏ khóa rỗng."""
-    value = {"luaChon": NOI_CU_TRU.get(str(lua_chon or ""), "")}
-    if isinstance(area, dict):
-        for key in ("quocGia", "tinh", "xa", "diaChi"):
-            value[key] = str(area.get(key) or "").strip()
-    return {key: text for key, text in value.items() if text}
-
-
-def translate(legacy_fields: list[dict], ocr_text: str = "") -> list[dict]:
-    """Dịch output mapper "khai-tu" sang câu hỏi SurveyJS, theo đúng thứ tự cần điền."""
-    legacy = {
-        item["name"]: item
-        for item in legacy_fields
-        if item.get("value") not in (None, "", {}, [])
-    }
+def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
+    values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
+    options = options or {}
+    context = str(options.get("_reasoning_context") or "")
     out: list[dict] = []
+    warnings: list[str] = []
+    seen: set[str] = set()
 
-    def value(name: str):
-        return (legacy.get(name) or {}).get("value")
-
-    def is_default(*names: str) -> bool:
-        return any((legacy.get(name) or {}).get("default") for name in names)
-
-    def add(name: str, val, *, code: str | None = None, default: bool = False) -> None:
-        if val in (None, "", {}, []):
-            return
-        item = {"name": name, "comp": UI_COMP_BY_NAME[name], "value": val}
+    def add(name: str, value, *, code: str | None = None, default: bool = False) -> dict | None:
+        if name in seen or value in (None, "", {}, []):
+            return None
+        field = {"name": name, "comp": UI_COMP_BY_NAME[name], "value": value}
         if code:
-            item["code"] = code
+            field["code"] = code
         if default:
-            item["default"] = True  # extension tô viền vàng để cán bộ rà
-        out.append(item)
+            field["default"] = True  # extension tô viền vàng: giá trị không đọc từ giấy tờ
+        out.append(field)
+        seen.add(name)
+        return field
 
-    def add_choice(name: str, snapped: tuple[str, str] | None, *, default: bool = False) -> None:
+    def add_choice(name: str, snapped, *, default: bool = False) -> None:
         if snapped:
             add(name, snapped[1], code=snapped[0], default=default)
 
@@ -188,99 +198,90 @@ def translate(legacy_fields: list[dict], ocr_text: str = "") -> list[dict]:
         if text:
             add(name, text, code=_iso(text))
 
-    # ===== Người nộp: chỉ ô quan hệ =====
-    add("citizenmoiquanhe", value("QuanHe"))
+    relation, guessed, warning = _relation(values, context, options)
+    if warning:
+        warnings.append(warning)
+    add("citizenmoiquanhe", relation, default=guessed)
 
-    # ===== NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ =====
-    # Ba ô tra cứu CSDL dân cư đi đầu: cổng tra được thì tự đổ + khóa các ô bên dưới.
-    add("citizenNDK_HoVaTen", value("HoTen"), default=is_default("HoTen"))
-    so_dinh_danh = re.sub(r"\D", "", str(value("SoDinhDanh") or ""))
-    if len(so_dinh_danh) == 12:  # regex của cổng chỉ nhận 12 số
-        add("citizenNDK_SoDinhDanh", so_dinh_danh, default=is_default("SoDinhDanh"))
-    add("citizenNDK_NgaySinh", _ngay(value("NgaySinh")), default=is_default("NgaySinh"))
+    # Ba ô tra cứu CSDL dân cư đi đầu (cờ lookup): cổng tra được thì tự đổ + khóa các ô bên dưới.
+    personal_id = _digits(values.get("NguoiMat_SoDinhDanh"))
+    lookup = [
+        add("citizenNDK_HoVaTen", upper_person_name(values.get("NguoiMat_HoTen"))),
+        add("citizenNDK_SoDinhDanh", personal_id if len(personal_id) == 12 else ""),  # cổng chỉ nhận 12 số
+        add("citizenNDK_NgaySinh", _ngay(values.get("NguoiMat_NgaySinh"))),
+    ]
+    for item in lookup:
+        if item:
+            item["lookup"] = True
+    if not values.get("NguoiMat_HoTen"):
+        warnings.append("Không đọc được người được đăng ký khai tử — cán bộ nhập khối người mất.")
 
-    add_choice("citizenGioitinh_NgdcKT", _snap(GIOI_TINH, value("GioiTinh")), default=is_default("GioiTinh"))
-    dan_toc = value("nktDanToc")
-    add_choice(
-        "citizenDantoc_NgdcKT",
-        _snap(DAN_TOC, dan_toc, _DAN_TOC_ALIAS) or _snap(DAN_TOC, normalize_ethnic(dan_toc), _DAN_TOC_ALIAS),
-    )
-    quoc_tich = value("nktQuocTich")
+    add_choice("citizenGioitinh_NgdcKT", _snap(GIOI_TINH, values.get("NguoiMat_GioiTinh")))
+    dan_toc = values.get("NguoiMat_DanToc")
+    add_choice("citizenDantoc_NgdcKT",
+               _snap(DAN_TOC, dan_toc, _DAN_TOC_ALIAS) or _snap(DAN_TOC, normalize_ethnic(dan_toc), _DAN_TOC_ALIAS))
+    quoc_tich = values.get("NguoiMat_QuocTich")
     if quoc_tich:
         add("citizenQuoctich_NgdcKT", quoc_tich, code=(_snap(QUOC_TICH, quoc_tich) or (None,))[0])
-    add_choice(
-        "citizenLoaiGiaytotuythan_NgdcKT",
-        _snap(LOAI_GIAY_TO, value("LoaiGiayToDinhDanh")),
-        default=is_default("LoaiGiayToDinhDanh"),
-    )
-    add("citizenSogiaytotuythan_NgdcKT", value("SoGiayToDinhDanh"), default=is_default("SoGiayToDinhDanh"))
-    add_date("citizenField19", value("NgayCapDD"))
-    add("citizenNoicapgiaytotuythan_NgdcKT", value("NoiCapDD"))
-    add("citizenField56", _ngay(value("NgayMat")))
-    add("citizenGiomat", _so_nguyen(value("GioMat")))
-    add("citizenPhutmat", _so_nguyen(value("PhutMat")))
-    loai_dang_ky, suy_luan = _loai_dang_ky(
-        str(value("loaiDangKy") or ""),
-        bool(value("loaiDangKy")) and not is_default("loaiDangKy"),
-        value("NgayMat"),
-        bool(value("gbtLoai")),
-        ocr_text,
-    )
-    add("citizenNDKLoaidangky", LOAI_DANG_KY[loai_dang_ky], code=loai_dang_ky, default=suy_luan)
 
-    # Nơi cư trú cuối cùng: loại cư trú + radio quyết định cụm ô địa chỉ nào hiện ra, nên đi trước.
-    # Loại cư trú không in trên giấy tờ nào: mặc định của mapper cũ, tô vàng.
-    loai_cu_tru = _snap(LOAI_CU_TRU, value("nktLoaiCuTru"))
-    add_choice("citizenNDKLoaicutru", loai_cu_tru, default=True)
-    noi_cu_tru = str(value("nktNoiCuTru") or "")
-    if noi_cu_tru in NOI_CU_TRU:
-        area = value("nktNoiCuTru_TrongNuoc") or {}
-        area_default = is_default("nktNoiCuTru", "nktNoiCuTru_TrongNuoc")
-        add("citizenNDKnoicutru", NOI_CU_TRU[noi_cu_tru], code=noi_cu_tru, default=area_default)
-        if noi_cu_tru == "1":
-            tinh, xa, dia_chi = NDK_ADDRESS_FIELDS[loai_cu_tru[0] if loai_cu_tru else "1"]
-            add(tinh, str(area.get("tinh") or "").strip(), default=area_default)
-            add(xa, str(area.get("xa") or "").strip(), default=area_default)
-            add(dia_chi, str(area.get("diaChi") or "").strip(), default=area_default)
+    number = str(values.get("NguoiMat_SoGiayTo") or "").strip() or (
+        personal_id if values.get("NguoiMat_NgayCap") else "")
+    if number:
+        issue_date = _full_date(values.get("NguoiMat_NgayCap"))
+        # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
+        issuer = normalize_issuer(values.get("NguoiMat_NoiCap")) or (
+            default_issuer(issue_date) if len(_digits(number)) == 12 and issue_date else "")
+        add_choice("citizenLoaiGiaytotuythan_NgdcKT",
+                   _snap(LOAI_GIAY_TO, _id_doc_type_with_number(number, values.get("NguoiMat_LoaiGiayTo"), issuer)))
+        add("citizenSogiaytotuythan_NgdcKT", number)
+        add_date("citizenField19", issue_date)
+        add("citizenNoicapgiaytotuythan_NgdcKT", issuer)
+
+    add("citizenField56", _ngay(values.get("NguoiMat_NgayMat")))
+    gio = re.match(r"^\s*(\d{1,2})\s*[:hg]\s*(\d{1,2})", str(values.get("NguoiMat_GioMat") or ""))
+    if gio and int(gio.group(1)) < 24 and int(gio.group(2)) < 60:
+        add("citizenGiomat", str(int(gio.group(1))))
+        add("citizenPhutmat", str(int(gio.group(2))))
+    loai_dang_ky, suy_luan = _loai_dang_ky(values, context)
+    add_choice("citizenNDKLoaidangky", loai_dang_ky, default=suy_luan)
+
+    # Nơi cư trú cuối cùng: loại cư trú + radio quyết định cụm ô địa chỉ nào hiện ra nên đi trước. Loại cư trú
+    # không in trên giấy tờ nào → mặc định Thường trú, tô vàng.
+    residence = _area(values.get("NguoiMat_NoiCuTru"))
+    if residence:
+        add_choice("citizenNDKLoaicutru", ("1", LOAI_CU_TRU["1"]), default=True)
+        if _fold(residence.get("quocGia")) in ("viet nam", "vn"):
+            add("citizenNDKnoicutru", NOI_CU_TRU["1"], code="1")
+            tinh, xa, dia_chi = NDK_ADDRESS_FIELDS["1"]
+            add(tinh, residence.get("tinh"))
+            add(xa, residence.get("xa"))
+            add(dia_chi, residence.get("diaChi"))
         else:
-            quoc_gia = str(area.get("quocGia") or "").strip()
-            add("citizenNDKQG_Khac", quoc_gia, code=(_snap(QUOC_TICH, quoc_gia) or (None,))[0],
-                default=area_default)
-            add("citizenNDKDiaChi_Khac", str(area.get("diaChi") or "").strip(), default=area_default)
+            add("citizenNDKnoicutru", NOI_CU_TRU["2"], code="2")
+            add("citizenNDKQG_Khac", residence.get("quocGia"))
+            add("citizenNDKDiaChi_Khac", residence.get("diaChi"))
 
-    if value("nktNoiChet"):
-        add(
-            "citizenNoichet",
-            _noi_chet(value("nktNoiChet"), value("nktNoiChet_TrongNuoc")),
-            default=is_default("nktNoiChet", "nktNoiChet_TrongNuoc"),
-        )
-    add("citizenNguyennhanchet_NgdcKT", value("NguyenNhanMat"))
+    death_place = _area(values.get("NguoiMat_NoiChet"))
+    if death_place:
+        in_country = _fold(death_place.get("quocGia")) in ("viet nam", "vn")
+        # Radio chọn trước: cụm ô địa chỉ nơi chết chỉ hiện sau khi chọn, extension dò ô theo nhãn sau radio.
+        add("citizenNoichet", NOI_CU_TRU["1" if in_country else "2"], code="1" if in_country else "2")
+        if in_country:
+            area_field = add("citizenNoichet_TrongNuoc", death_place)
+            if area_field:
+                area_field["radio"] = "citizenNoichet"
+    add("citizenNguyennhanchet_NgdcKT", values.get("NguoiMat_NguyenNhan"))
 
-    # ===== Giấy báo tử (hoặc trích lục khai tử thay thế) =====
-    if value("gbtLoai"):
-        add("citizenLoaigiaybaotu", value("gbtLoai"))
-        add("citizenSogiaybaotu_NgdcKT", _death_notice_number(value("gbtSo"), ocr_text))
-        add_date("citizenNgaythangnamcapgiaybaotu", value("gbtNgay"))
-        add("citizenCoquancapgiaybaotucochuthichneukhongcothidetrong", value("gbtCoQuanCap"))
+    if values.get("Gbt_Loai") or values.get("Gbt_So"):
+        add("citizenLoaigiaybaotu", values.get("Gbt_Loai"))
+        add("citizenSogiaybaotu_NgdcKT", " ".join(str(values.get("Gbt_So") or "").split()))
+        add_date("citizenNgaythangnamcapgiaybaotu", values.get("Gbt_NgayCap"))
+        add("citizenCoquancapgiaybaotucochuthichneukhongcothidetrong", values.get("Gbt_CoQuanCap"))
 
-    # ===== Số lượng bản sao: bắt buộc, cổng ghi "điền 0 nếu không cần" =====
-    copy_request = value("CapBanSao")
-    if copy_request == "Có" and _so_nguyen(value("SoLuong")):
-        add("citizenSoluongbansaonguoiyeucaudenghi", _so_nguyen(value("SoLuong")))
+    # Ô bắt buộc, cổng ghi "điền 0 nếu không cần": không đọc được yêu cầu bản sao thì điền 0, tô vàng.
+    quantity = _digits(values.get("SoLuongBanSao"))
+    if quantity:
+        add("citizenSoluongbansaonguoiyeucaudenghi", str(int(quantity)))
     else:
-        # Không đọc được yêu cầu bản sao thì vẫn điền 0 cho qua ô bắt buộc, tô vàng để cán bộ rà.
-        add("citizenSoluongbansaonguoiyeucaudenghi", "0", default=copy_request != "Không")
-    return out
-
-
-def enrich(
-    fields: list[dict],
-    options: dict | None = None,
-    *,
-    reasoning_context: str = "",
-    ocr_text: str = "",
-) -> list[dict]:
-    """Compact facts → field SurveyJS: qua mapper "khai-tu" (kể cả trích lục thay giấy báo tử) rồi dịch."""
-    legacy = khai_tu_mapper.enrich(fields, options, reasoning_context=reasoning_context)
-    legacy = khai_tu_runner._fill_death_extract_substitute(legacy, ocr_text)
-    return translate(legacy, ocr_text)
+        add("citizenSoluongbansaonguoiyeucaudenghi", "0", default=True)
+    return out, warnings

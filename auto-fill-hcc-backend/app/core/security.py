@@ -1,5 +1,6 @@
 """Password hashing (bcrypt) + JWT sign/verify."""
 import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -45,6 +46,9 @@ def create_refresh_token(user_id: str) -> str:
         "type": "refresh",
         "iat": _now(),
         "exp": _now() + timedelta(seconds=settings.jwt_refresh_ttl),
+        # Duy nhất: hai lần làm mới trong cùng một giây (tranh chấp nhiều tab) không được ra hai
+        # token GIỐNG HỆT nhau — trùng token_hash thì thu hồi một là lệch bản ghi còn lại.
+        "jti": secrets.token_hex(8),
     }
     return jwt.encode(payload, settings.jwt_refresh_secret, algorithm=settings.jwt_alg)
 

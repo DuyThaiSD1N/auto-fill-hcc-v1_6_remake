@@ -150,7 +150,10 @@ def test_planner_3_dong_giay_to_ngoai_danh_muc_vao_dong_dang_ky():
     llm = {0: "dang_ky", 1: "the_le", 2: "bang_chung", 3: "chat_luong", 4: "other", 5: "cccd"}
     items, warnings, _ = planner.build_plan_items(files, llm)
     assert [i["fileIndex"] for i in items] == list(range(6))
-    assert all(i["target"] == "attp-row" and i["documentName"] == i["fileName"] for i in items)
+    assert all(i["target"] == "attp-row" for i in items)
+    names = {i["fileName"]: i["documentName"] for i in items}
+    assert names["cq.pdf"] == planner._LABELS["chat_luong"] and names["cccd.jpg"] == "Căn cước công dân"
+    assert names["anh.pdf"] == "anh.pdf", "giấy chưa biết loại giữ tên gốc"
     comp = {i["fileName"]: i["componentName"] for i in items}
     dang_ky = planner._ROWS["dang_ky"]["componentName"]
     assert comp["dk.pdf"] == comp["cq.pdf"] == comp["anh.pdf"] == comp["cccd.jpg"] == dang_ky

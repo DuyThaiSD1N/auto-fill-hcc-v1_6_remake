@@ -150,6 +150,12 @@ Nhiệm vụ: trích loại sự kiện, danh tính chủ thể (hoặc cả hai
     của người trong khối "cho người có tên dưới đây".
   + NoiDungThayDoi = mục "Nội dung: ..." (nội dung đề nghị cải chính, vd "Cải chính tên từ X sang Y").
   + LyDo = mục "Lý do: ..." nếu có.
+    TÁCH NỘI DUNG / LÝ DO: tờ khai viết tay hay bị OCR chèn nhãn "Lý do:" vào GIỮA đoạn nội dung hoặc nối lý do
+    vào cuối nội dung ("... lý do - do sai sót ..."). NoiDungThayDoi CHỈ gồm các thay đổi (thông tin nào, từ giá
+    trị cũ thành giá trị mới) — BỎ mọi cụm lý do và nhãn "Lý do:" lạc chỗ; phần lý do đưa vào LyDo.
+    Viết lại thành câu có nghĩa: sửa lỗi OCR ở TỪ THÔNG THƯỜNG (vd "Phàn"→"Phần", "tự"→"từ", "Thành"→"thành",
+    "tiền thân"→"tùy thân"), nối các thay đổi bằng dấu chấm phẩy; GIỮ NGUYÊN họ tên, số giấy tờ, ngày tháng như
+    OCR đọc, không tự sửa tên. LyDo cũng viết thành câu ngắn có nghĩa (bỏ "lý do", gạch đầu dòng).
   + ViecDangKy = LOẠI VIỆC đăng ký, đọc ở dòng "Đề nghị cơ quan đăng ký việc <X> ... cho người có tên dưới đây".
     CHỈ lấy ở dòng này — TUYỆT ĐỐI KHÔNG lấy từ TIÊU ĐỀ tờ khai (tiêu đề luôn liệt kê CẢ 4 loại).
     Trả về ĐÚNG MỘT trong 5 GIÁ TRỊ sau (nguyên văn, không thêm/bớt chữ):

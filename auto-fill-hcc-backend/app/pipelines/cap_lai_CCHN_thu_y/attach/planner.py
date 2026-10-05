@@ -39,6 +39,12 @@ _ROWS: dict[str, dict[str, str]] = {
         "documentName": "Đơn đăng ký cấp lại Chứng chỉ hành nghề thú y (Mẫu 03.HNTY)",
     },
 }
+# Tên tài liệu của các loại đã nhận diện nhưng không có dòng riêng (đính chung dòng Đơn). ≤50 ký tự,
+# không ngoặc, không dấu chấm — extension đặt tên tệp tải lên theo documentName.
+_EXTRA_LABELS: dict[str, str] = {
+    _CCHN_CU: "Chứng chỉ hành nghề thú y đã cấp",
+    _ANH_THE: "Ảnh chân dung 4x6",
+}
 # CCCD chỉ dùng đối chiếu ở bước thông tin, KHÔNG có dòng riêng trên bảng → bỏ qua.
 _SKIP_DOCS = {_CCCD}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_CCHN_CU, _ANH_THE, _OTHER}
@@ -132,6 +138,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # Mọi tệp vào cùng MỘT dòng: hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
+    name_counts: dict[str, int] = {}
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -155,8 +163,16 @@ def build_plan_items(
             continue
 
         # Form chỉ có 1 dòng "Đơn đăng ký cấp lại" (ô upload nhận NHIỀU file) → mọi giấy tờ còn lại vào
-        # dòng này. Đơn → tên chuẩn Mẫu 03.HNTY; chứng chỉ cũ/ảnh 4x6/giấy tờ khác → giữ TÊN GỐC.
-        document_name = _ROWS[_DON]["documentName"] if doc_type == _DON else file_name
+        # dòng này. Đơn → tên chuẩn Mẫu 03.HNTY; chứng chỉ cũ/ảnh 4x6 → tên theo loại; giấy tờ khác → giữ TÊN GỐC.
+        if doc_type == _DON:
+            document_name = _ROWS[_DON]["documentName"]
+        elif doc_type in _EXTRA_LABELS:
+            document_name = _EXTRA_LABELS[doc_type]
+            name_counts[document_name] = name_counts.get(document_name, 0) + 1
+            if name_counts[document_name] > 1:
+                document_name = f"{document_name} {name_counts[document_name]}"
+        else:
+            document_name = file_name
         items.append(_build_row_item(file, idx, doc_type, document_name))
         classified.append({"fileName": file_name, "docType": doc_type, "source": source})
         if doc_type == _OTHER:

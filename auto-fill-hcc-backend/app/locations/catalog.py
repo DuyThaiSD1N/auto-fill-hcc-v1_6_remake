@@ -25,7 +25,7 @@ _WARD_TYPE = re.compile(r"^(Phường|Xã|Đặc khu)\s+", re.IGNORECASE)
 
 # Tên HIỂN THỊ khác tên trong danh mục ("label" cho extension in ra màn hình; "text" là tên khớp
 # option cổng / lưu tài khoản). Hiện trống: Bắc Ninh đã đổi thẳng trong danh mục thành "Thành phố
-# Bắc Ninh"; riêng khối chọn cơ quan của cổng DVC quốc gia còn tên cũ → _PORTAL_AGENCY_PROVINCES.
+# Bắc Ninh" (cả khối chọn cơ quan của cổng DVC quốc gia).
 _DISPLAY_LABEL: dict[str, str] = {}
 
 
@@ -98,12 +98,11 @@ _PORTAL_AGENCY_WARDS: dict[str, dict[str, str]] = {
 
 
 # Tên TỈNH ở khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia khi cổng CHƯA cập nhật việc tỉnh
-# lên thành phố trực thuộc TW. Extension Handfree gõ nguyên chuỗi vào ô tìm của cổng: gõ
-# "Thành phố Bắc Ninh" thì cổng (còn ghi "Tỉnh Bắc Ninh") lọc ra rỗng. CHỈ dùng cho bước chọn cơ
-# quan — danh mục, tài khoản và biểu mẫu kê khai vẫn dùng tên hiện hành. Cổng cập nhật rồi thì xóa dòng.
-_PORTAL_AGENCY_PROVINCES: dict[str, str] = {
-    "bacninh": "Tỉnh Bắc Ninh",
-}
+# lên thành phố trực thuộc TW. Extension Handfree gõ nguyên chuỗi vào ô tìm của cổng: cổng còn tên
+# cũ thì gõ tên mới lọc ra rỗng. CHỈ dùng cho bước chọn cơ quan — danh mục, tài khoản và biểu mẫu kê
+# khai vẫn dùng tên hiện hành. Cổng cập nhật rồi thì xóa dòng. Hiện trống: cổng đã đổi Bắc Ninh sang
+# "Thành phố Bắc Ninh".
+_PORTAL_AGENCY_PROVINCES: dict[str, str] = {}
 
 
 def portal_agency_province(province: str | None) -> str:

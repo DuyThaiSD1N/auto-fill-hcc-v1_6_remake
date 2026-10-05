@@ -103,7 +103,7 @@ def test_che_do_nguoi_nop_la_chu_ho_so_bo_qua_moc_tai_khoan():
     assert not any(k.startswith("data[owner") for k in ui)
 
 
-def test_dinh_kem_moi_loai_dung_dong_va_cccd_other_vao_dong_don_giu_ten_goc():
+def test_dinh_kem_moi_loai_dung_dong_va_cccd_other_vao_dong_don():
     names = ["don.pdf", "cchn.jpg", "anh.jpg", "cccd.jpg", "la.pdf"]
     types = {0: "don_de_nghi", 1: "giay_phep_cu", 2: "anh_chan_dung", 3: "cccd", 4: "other"}
     items, warnings, _ = planner.build_plan_items([{"name": n} for n in names], types)
@@ -111,7 +111,7 @@ def test_dinh_kem_moi_loai_dung_dong_va_cccd_other_vao_dong_don_giu_ten_goc():
     comp = [i["componentName"] for i in items]
     assert comp[1] == "hợp lệ giấy phép hành nghề đã được cấp" and comp[2] == "02 ảnh chân dung cỡ 04"
     assert comp[3] == comp[4] == comp[0] == "Đơn theo Mẫu 08 Phụ lục I"
-    assert items[3]["documentName"] == "cccd.jpg" and items[4]["documentName"] == "la.pdf"
+    assert items[3]["documentName"] == "Căn cước công dân" and items[4]["documentName"] == "la.pdf"
     assert warnings and "la.pdf" in warnings[0] and "cccd.jpg" not in warnings[0]
 
 

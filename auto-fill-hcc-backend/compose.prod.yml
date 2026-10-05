@@ -17,7 +17,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "12004:27017"
+      - "127.0.0.1:12004:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s

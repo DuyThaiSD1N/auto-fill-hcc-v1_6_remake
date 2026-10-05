@@ -98,16 +98,21 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str, *, fallback: bool = False) -> dict:
+_CCCD_LABEL = "Căn cước công dân"
+
+
+def _build_row_item(
+    file: dict, file_index: int, doc_type: str, *, fallback: bool = False, document_name: str = "",
+) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        # ⚠ GIỮ NGUYÊN TÊN FILE GỐC: FE (attp-row) đặt tên File tải lên = documentName (nếu có), rỗng thì
-        # dùng tên gốc. Để RỖNG → không đổi tên file. Đồng thời FE dedup theo (documentName || fileName):
-        # rỗng → dedup theo fileName (unique) nên NHIỀU file dồn vào cùng 1 dòng không bị coi trùng.
-        "documentName": "",
+        # FE (attp-row) đặt tên File tải lên = documentName, rỗng thì dùng tên gốc (giấy chưa biết loại).
+        # FE dedup theo (documentName || fileName) → nhiều file cùng loại trong 1 dòng phải mang tên KHÁC
+        # nhau (đánh số ở build_plan_items) để không bị coi là trùng.
+        "documentName": document_name,
         # Tên thành phần hồ sơ (để tham chiếu/hiển thị; KHÔNG dùng đặt tên file).
         "rowDocumentName": row["documentName"],
         "componentName": row["componentName"],
@@ -129,6 +134,11 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    name_counts: dict[str, int] = {}
+
+    def numbered(label: str) -> str:
+        name_counts[label] = name_counts.get(label, 0) + 1
+        return label if name_counts[label] == 1 else f"{label} {name_counts[label]}"
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -144,14 +154,15 @@ def build_plan_items(
             doc_type, source = _OTHER, "unknown"
 
         if doc_type in _ROWS:
-            items.append(_build_row_item(file, idx, doc_type))
+            items.append(_build_row_item(file, idx, doc_type, document_name=numbered(_ROWS[doc_type]["documentName"])))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
 
         # KHÔNG khớp dòng cụ thể (CCCD / giấy tờ khác / không xác định) → MẶC ĐỊNH đưa vào dòng "Đơn đăng ký
-        # biến động" (thành phần chính) để KHÔNG bỏ sót file nào (user yêu cầu). Giữ tên file gốc; dòng đơn
-        # nhận nhiều file. Cán bộ tự sắp xếp lại nếu cần.
-        items.append(_build_row_item(file, idx, _DON_M18, fallback=True))
+        # biến động" (thành phần chính) để KHÔNG bỏ sót file nào. CCCD mang tên theo loại; giấy chưa biết loại
+        # giữ tên file gốc; dòng đơn nhận nhiều file. Cán bộ tự sắp xếp lại nếu cần.
+        fallback_name = numbered(_CCCD_LABEL) if doc_type == _CCCD else ""
+        items.append(_build_row_item(file, idx, _DON_M18, fallback=True, document_name=fallback_name))
         classified.append({"fileName": file_name, "docType": doc_type, "source": source, "fallbackTo": _DON_M18})
 
     return items, warnings, classified

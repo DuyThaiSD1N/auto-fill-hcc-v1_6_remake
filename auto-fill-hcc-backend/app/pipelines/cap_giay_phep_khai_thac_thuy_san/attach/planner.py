@@ -45,6 +45,12 @@ _ROWS: dict[str, dict[str, str]] = {
 }
 # CCCD + tờ GIẤY PHÉP cũ: KHÔNG có dòng riêng trên bảng → đi kèm dòng Đơn (xem build_plan_items).
 _SKIP_DOCS = {_CCCD, _GIAY_PHEP_CU}
+# Tên tài liệu của loại đã nhận diện nhưng đi kèm dòng Đơn (≤50 ký tự, không ngoặc, không dấu chấm —
+# extension đặt tên tệp tải lên theo documentName).
+_EXTRA_LABELS: dict[str, str] = {
+    _CCCD: "Căn cước công dân",
+    _GIAY_PHEP_CU: "Giấy phép khai thác thủy sản đã cấp",
+}
 _ALLOWED_DOC_TYPES = set(_ROWS) | _SKIP_DOCS | {_OTHER}
 
 
@@ -113,14 +119,17 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str, detected_type: str | None = None) -> dict:
+def _build_row_item(
+    file: dict, file_index: int, doc_type: str, detected_type: str | None = None, document_name: str = "",
+) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        # Tệp đi kèm dòng Đơn giữ tên gốc — engine attp-row đặt tên tệp theo documentName.
-        "documentName": row["documentName"] if detected_type is None else file_name,
+        # Tệp đi kèm dòng Đơn: tên theo loại nếu đã nhận diện, giấy khác giữ tên gốc — engine attp-row đặt
+        # tên tệp theo documentName.
+        "documentName": row["documentName"] if detected_type is None else (document_name or file_name),
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -158,12 +167,19 @@ def build_plan_items(
     # Bảng chỉ có 2 dòng Đơn (nộp 1 trong 2): tệp không phải Đơn đi kèm dòng Đơn đầu tiên của lượt.
     don_row = next((doc_type for *_, doc_type, _src in typed if doc_type in _ROWS), None)
     stray: list[str] = []
+    # Các tệp đi kèm cùng một dòng Đơn: hai tệp cùng loại phải khác tên để cán bộ phân biệt trên cổng.
+    name_counts: dict[str, int] = {}
     for idx, file, file_name, doc_type, source in typed:
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
         elif don_row:
-            items.append(_build_row_item(file, idx, don_row, detected_type=doc_type))
+            document_name = _EXTRA_LABELS.get(doc_type, "")
+            if document_name:
+                name_counts[document_name] = name_counts.get(document_name, 0) + 1
+                if name_counts[document_name] > 1:
+                    document_name = f"{document_name} {name_counts[document_name]}"
+            items.append(_build_row_item(file, idx, don_row, detected_type=doc_type, document_name=document_name))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source, "routedTo": don_row})
         else:
             stray.append(file_name)

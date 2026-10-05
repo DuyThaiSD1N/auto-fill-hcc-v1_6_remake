@@ -24,6 +24,11 @@ _MA_TT_BO_SUNG = {
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": "1.013792",
     "giai-quyet-che-do-khang-chien": "2.009383",
     "xet-tuyen-vien-chuc-lai-chau": "3.000601",
+    # Hộ tịch trên Cổng DVC quốc gia mới: URL chỉ có formalityId, không có maThuTuc để đọc mã.
+    "khai-sinh-dang-ky-thuong": "1.001193",
+    "trich-luc-ks": "2.000635",
+    "khai-tu": "1.000656",
+    "thay-doi-cai-chinh-ho-tich": "1.004859",
 }
 _MA_TT_RE = re.compile(r"(?:mathutuc|matthc)=(\d+\.\d+)", re.IGNORECASE)
 

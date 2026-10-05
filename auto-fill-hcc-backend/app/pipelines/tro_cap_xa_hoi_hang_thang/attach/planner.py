@@ -193,17 +193,20 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str) -> dict:
+def _file_label(document_name: str) -> str:
+    # Tên tệp tải lên không được chứa "/" (trình duyệt/cổng coi là đường dẫn, cắt mất phần trước).
+    return document_name.replace(" / ", ", ").replace("/", ", ")
+
+
+def _build_row_item(file: dict, file_index: int, doc_type: str, document_name: str) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        # GIỮ NGUYÊN tên file gốc khi đính kèm (BE-only, KHÔNG cần sửa extension): engine attp-row FE
-        # đặt tên File = documentName qua safeAttachmentFileName (không sanitize documentName, chỉ khớp
-        # đuôi) → cho documentName = TÊN FILE GỐC thì file giữ đúng tên tải lên. Loại giấy tờ vẫn còn ở
-        # detectedType (+ dòng trên form khớp bằng componentName), nên không mất thông tin phân loại.
-        "documentName": file_name,
+        # Engine attp-row FE đặt tên tệp tải lên theo documentName (cán bộ tắt "đổi tên tệp" trong cài
+        # đặt tài khoản thì FE tự giữ tên gốc).
+        "documentName": document_name,
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -222,6 +225,8 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
+    # Hai tệp cùng loại vào cùng một dòng phải khác tên để cán bộ phân biệt trên cổng.
+    name_counts: dict[str, int] = {}
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -237,7 +242,11 @@ def build_plan_items(
             doc_type, source = _OTHER, "unknown"
 
         if doc_type in _ROWS:
-            items.append(_build_row_item(file, idx, doc_type))
+            document_name = _file_label(_ROWS[doc_type]["documentName"])
+            name_counts[document_name] = name_counts.get(document_name, 0) + 1
+            if name_counts[document_name] > 1:
+                document_name = f"{document_name} {name_counts[document_name]}"
+            items.append(_build_row_item(file, idx, doc_type, document_name))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
             continue
         if doc_type in _SKIP_DOCS:
@@ -248,7 +257,8 @@ def build_plan_items(
         # FE báo "chưa có kế hoạch đính kèm"). Theo nguyên tắc "đính đủ, không rớt": route file chưa
         # nhận diện chắc về dòng ĐƠN chính (Tờ khai Mẫu 1a-1d) — giấy tờ bắt buộc, khả năng cao nhất;
         # cán bộ soát lại. FE gom nhiều file cùng componentName vào 1 dòng nên không đè file đã đúng.
-        items.append(_build_row_item(file, idx, _TK_DOITUONG))
+        # Chưa biết loại → giữ TÊN GỐC: đặt tên Tờ khai cho tệp lạ là cán bộ nhầm hai tệp cùng dòng.
+        items.append(_build_row_item(file, idx, _TK_DOITUONG, file_name))
         warnings.append(
             f"Chưa nhận diện chắc loại giấy tờ cho '{file_name}' — tạm đính vào dòng Tờ khai "
             f"(Mẫu số 1a/1b/1c/1d); cán bộ kiểm tra lại."
@@ -298,7 +308,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     # bộ tự soát/tách lại), thay vì kẹt không đính được gì.
     if not attachments and raw_files:
         seed = next((i for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES), 0)
-        attachments.append(_build_row_item(raw_files[seed], seed, _TK_DOITUONG))
+        seed_name = str(raw_files[seed].get("name") or f"file-{seed + 1}")
+        attachments.append(_build_row_item(raw_files[seed], seed, _TK_DOITUONG, seed_name))
         warnings.append(
             "Chưa nhận diện được loại giấy tờ nào khớp bảng thành phần hồ sơ — tạm đính vào dòng "
             "Tờ khai (Mẫu số 1a/1b/1c/1d); cán bộ kiểm tra, tách lại nếu file gộp nhiều giấy tờ."

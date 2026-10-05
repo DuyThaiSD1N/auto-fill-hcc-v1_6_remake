@@ -56,6 +56,8 @@ _ROWS: dict[str, dict[str, str]] = {
 # CCCD không có dòng riêng → đi kèm dòng giấy tờ điểm b khoản 3 Điều 54 như tệp other (không bỏ tệp).
 _FALLBACK = _TO_CHUC_LAI
 _ALLOWED_DOC_TYPES = set(_ROWS) | {_CCCD, _OTHER}
+# Tên tài liệu cho CCCD đính kèm dòng khác (≤50 ký tự, không ngoặc — extension đặt tên tệp theo documentName).
+_CCCD_LABEL = "Căn cước công dân"
 
 
 def _canon(value: Any) -> str:
@@ -105,15 +107,23 @@ async def _classify_with_llm(
     return result
 
 
-def _build_row_item(file: dict, file_index: int, doc_type: str, *, detected_type: str | None = None) -> dict:
+def _build_row_item(
+    file: dict, file_index: int, doc_type: str, *, detected_type: str | None = None, document_name: str = "",
+) -> dict:
     row = _ROWS[doc_type]
     file_name = str(file.get("name") or f"file-{file_index + 1}")
+    if detected_type == _CCCD:
+        name = document_name or _CCCD_LABEL
+    elif detected_type == _OTHER:
+        # Tệp lạ giữ TÊN GỐC: đặt tên dòng cho nó thì cán bộ không phân biệt được hai tệp cùng dòng.
+        name = file_name
+    else:
+        name = row["documentName"]
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        # Tệp dồn vào dòng Đơn giữ TÊN GỐC: engine attp-row đặt tên tệp theo documentName, đặt tên
-        # "Đơn đề nghị…" cho một tệp lạ là cán bộ không phân biệt được hai tệp cùng dòng.
-        "documentName": file_name if detected_type in (_OTHER, _CCCD) else row["documentName"],
+        # engine attp-row đặt tên tệp theo documentName.
+        "documentName": name,
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -131,6 +141,7 @@ def build_plan_items(
     warnings: list[str] = []
     classified: list[dict] = []
     fallback: list[str] = []
+    cccd_count = 0
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
@@ -143,7 +154,12 @@ def build_plan_items(
             continue
         # CCCD / chưa xếp được loại → dồn vào dòng giấy tờ điểm b khoản 3 Điều 54 chứ KHÔNG bỏ: bảng không
         # có dòng "giấy tờ khác", mà bỏ tệp là hồ sơ thiếu giấy người dân đã đưa.
-        items.append(_build_row_item(file, idx, _FALLBACK, detected_type=doc_type))
+        document_name = ""
+        if doc_type == _CCCD:
+            # Nhiều CCCD cùng dòng phải khác tên để cán bộ phân biệt.
+            cccd_count += 1
+            document_name = _CCCD_LABEL if cccd_count == 1 else f"{_CCCD_LABEL} {cccd_count}"
+        items.append(_build_row_item(file, idx, _FALLBACK, detected_type=doc_type, document_name=document_name))
         classified.append({"fileName": file_name, "docType": doc_type, "source": source, "fallbackRow": _FALLBACK})
         if doc_type == _OTHER:
             fallback.append(file_name)

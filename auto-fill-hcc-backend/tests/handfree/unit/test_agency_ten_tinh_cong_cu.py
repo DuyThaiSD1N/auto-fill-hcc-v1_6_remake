@@ -1,9 +1,9 @@
-"""Khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia còn ghi tên tỉnh CŨ.
+"""Khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia dùng tên tỉnh HIỆN HÀNH.
 
-Bắc Ninh đã lên "Thành phố Bắc Ninh" (danh mục, tài khoản, biểu mẫu kê khai đều đổi), nhưng
-dropdown Tỉnh/Thành phố ở khối chọn cơ quan của dichvucong.gov.vn vẫn là "Tỉnh Bắc Ninh".
-Extension gõ nguyên chuỗi vào ô tìm → lệnh select_agency phải mang tên cổng đang dùng, còn câu
-thoại/địa bàn phiên vẫn là tên hiện hành.
+Bắc Ninh đã lên "Thành phố Bắc Ninh" và dropdown Tỉnh/Thành phố ở khối chọn cơ quan của
+dichvucong.gov.vn cũng đã đổi theo. Extension gõ nguyên chuỗi vào ô tìm → lệnh select_agency phải
+mang đúng tên cổng đang dùng. Cổng nào còn tên cũ thì khai ngoại lệ ở
+catalog._PORTAL_AGENCY_PROVINCES (hiện trống).
 """
 from app.channels.handfree.chat import flow
 from app.channels.handfree.procedure_registry import get_procedure
@@ -12,17 +12,14 @@ from app.locations.catalog import portal_agency_province
 KEY = "dieu-chinh-huu-tri-xa-hoi"
 
 
-def test_ten_tinh_cho_khoi_chon_co_quan():
-    assert portal_agency_province("Thành phố Bắc Ninh") == "Tỉnh Bắc Ninh"
-    assert portal_agency_province("Bắc Ninh") == "Tỉnh Bắc Ninh"
-    assert portal_agency_province("bacninh") == "Tỉnh Bắc Ninh"
-    # Tỉnh không có ngoại lệ: giữ nguyên chuỗi đang có.
+def test_ten_tinh_cho_khoi_chon_co_quan_giu_ten_hien_hanh():
+    assert portal_agency_province("Thành phố Bắc Ninh") == "Thành phố Bắc Ninh"
     assert portal_agency_province("Thành phố Đà Nẵng") == "Thành phố Đà Nẵng"
     assert portal_agency_province("Tỉnh Lai Châu") == "Tỉnh Lai Châu"
     assert portal_agency_province("") == ""
 
 
-def test_lenh_select_agency_mang_ten_tinh_cua_cong():
+def test_lenh_select_agency_mang_ten_thanh_pho_bac_ninh():
     loc = {"province": "Thành phố Bắc Ninh", "province_slug": "bacninh", "ward": "Phường Bắc Giang"}
     conv = {
         "_id": "t-bn", "state": "guide_login", "history": [], "milestones": [],
@@ -32,6 +29,5 @@ def test_lenh_select_agency_mang_ten_tinh_cua_cong():
     assert len(r.actions) == 1
     action = r.actions[0]
     assert action["type"] == "select_agency"
-    assert action["province"] == "Tỉnh Bắc Ninh"
+    assert action["province"] == "Thành phố Bắc Ninh", "cổng đã đổi tên — không gõ 'Tỉnh Bắc Ninh' nữa"
     assert action["ward"] == "Phường Bắc Giang"
-    assert conv["location"]["province"] == "Thành phố Bắc Ninh"

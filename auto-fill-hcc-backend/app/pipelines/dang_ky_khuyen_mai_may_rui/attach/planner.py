@@ -9,8 +9,8 @@ Giấy tờ chất lượng hàng hóa khuyến mại, CCCD, giấy tờ khác k
 (ô upload nhận nhiều tệp), không bỏ tệp nào. Không dùng modal "+ Thêm giấy tờ": ô "Giấy tờ" của modal chỉ
 nhận tên có trong danh mục giấy tờ của thủ tục, danh mục này không có giấy tờ chất lượng.
 
-Phân loại THUẦN LLM (1 lượt cho cả hồ sơ); LLM lỗi → mọi tệp về dòng Đăng ký. Mọi item GIỮ TÊN TỆP GỐC
-(engine attp-row đặt tên tệp theo documentName).
+Phân loại THUẦN LLM (1 lượt cho cả hồ sơ); LLM lỗi → mọi tệp về dòng Đăng ký. documentName = tên theo loại
+giấy (engine attp-row đặt tên tệp theo documentName); giấy chưa biết loại giữ TÊN TỆP GỐC.
 """
 
 import time
@@ -36,6 +36,15 @@ _ROWS: dict[str, dict[str, str]] = {
     _BANG_CHUNG: {"componentName": "Mẫu bằng chứng xác định trúng thưởng", "loaiBan": "Bản chính"},
 }
 _FALLBACK = _DANG_KY
+# Tên tài liệu theo loại (≤50 ký tự, không ngoặc, không dấu chấm). Cài đặt tài khoản tắt "đổi tên tệp"
+# thì FE tự giữ tên gốc.
+_LABELS: dict[str, str] = {
+    _DANG_KY: "Đăng ký thực hiện chương trình khuyến mại",
+    _THE_LE: "Thể lệ chương trình khuyến mại",
+    _BANG_CHUNG: "Mẫu bằng chứng xác định trúng thưởng",
+    _CHAT_LUONG: "Giấy tờ chất lượng hàng hóa khuyến mại",
+    _CCCD: "Căn cước công dân",
+}
 _ALLOWED = set(_ROWS) | {_CHAT_LUONG, _CCCD, _OTHER}
 
 
@@ -66,11 +75,11 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     return out
 
 
-def _row_item(file_name: str, file_index: int, row: dict[str, str], detected_type: str) -> dict:
+def _row_item(file_name: str, file_index: int, row: dict[str, str], detected_type: str, document_name: str) -> dict:
     return {
         "fileIndex": file_index,
         "fileName": file_name,
-        "documentName": file_name,
+        "documentName": document_name,
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
@@ -85,14 +94,23 @@ def build_plan_items(
     llm_types = llm_types or {}
     items: list[dict] = []
     classified: list[dict] = []
+    # Nhiều tệp vào cùng một dòng (ô upload nhận nhiều tệp): cùng loại phải khác tên để cán bộ phân biệt.
+    name_counts: dict[str, int] = {}
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         doc_type = llm_types.get(idx, _OTHER)
+        document_name = _LABELS.get(doc_type, "")
+        if document_name:
+            name_counts[document_name] = name_counts.get(document_name, 0) + 1
+            if name_counts[document_name] > 1:
+                document_name = f"{document_name} {name_counts[document_name]}"
+        else:
+            document_name = file_name
         entry = {"fileName": file_name, "docType": doc_type, "source": "llm" if idx in llm_types else "unknown"}
         row_type = doc_type if doc_type in _ROWS else _FALLBACK
         if row_type != doc_type:
             entry["routedTo"] = row_type
-        items.append(_row_item(file_name, idx, _ROWS[row_type], doc_type))
+        items.append(_row_item(file_name, idx, _ROWS[row_type], doc_type, document_name))
         classified.append(entry)
     return items, [], classified
 

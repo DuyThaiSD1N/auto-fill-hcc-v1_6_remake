@@ -5,7 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.area_remap import canonical_province
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.xac_nhan_tthn.process import base_prompt, mapper
+from app.pipelines.xac_nhan_tthn.process import base_prompt, mapper, purpose
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
 from app.pipelines.xac_nhan_tthn.process.schema import (
     ALIASES,
@@ -274,6 +274,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         system_prompt_builder=base_prompt.build_system_prompt,
         user_content_builder=base_prompt.build_user_content,
     )
+    await purpose.normalize(res["fields"], res.get("ocr_text") or "")
     res["fields"] = mapper.enrich(res["fields"], options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).

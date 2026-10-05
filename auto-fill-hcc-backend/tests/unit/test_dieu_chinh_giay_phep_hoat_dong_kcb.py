@@ -104,7 +104,7 @@ def test_dinh_kem_dung_dong_va_khong_bo_tep():
     comp = [i["componentName"] for i in items]
     assert comp[1] == comp[2] == "Bản gốc giấy phép hoạt động", "GPHĐ + QĐ Sở Y tế chung một dòng"
     assert comp[4] == comp[5] == comp[6] == "Các giấy tờ quy định tại điểm b khoản 3 Điều 54"
-    assert items[5]["documentName"] == "cccd.jpg" and items[6]["documentName"] == "la.pdf"
+    assert items[5]["documentName"] == "Căn cước công dân" and items[6]["documentName"] == "la.pdf"
     assert warnings and "la.pdf" in warnings[0]
 
 

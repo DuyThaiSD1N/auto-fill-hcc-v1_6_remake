@@ -253,8 +253,6 @@ from app.pipelines.khai_sinh_dang_ky_lai.attach import plan as khai_sinh_dang_ky
 from app.pipelines.khai_sinh_dang_ky_lai.process import run as khai_sinh_dang_ky_lai_process
 from app.pipelines.khai_sinh_co_ho_so.attach import plan as khai_sinh_co_ho_so_attach
 from app.pipelines.khai_sinh_co_ho_so.process import run as khai_sinh_co_ho_so_process
-from app.pipelines.khai_sinh_thuong.attach import plan as khai_sinh_thuong_attach
-from app.pipelines.khai_sinh_thuong.process import run as khai_sinh_thuong_process
 from app.pipelines.khai_sinh_ket_hop_nhan_cmc.attach import plan as khai_sinh_ket_hop_nhan_cmc_attach
 from app.pipelines.khai_sinh_ket_hop_nhan_cmc.process import run as khai_sinh_ket_hop_nhan_cmc_process
 from app.pipelines.ket_hon.attach import plan as ket_hon_attach
@@ -269,8 +267,6 @@ from app.pipelines.nhan_cha_me_con.attach import plan as nhan_cha_me_con_attach
 from app.pipelines.nhan_cha_me_con.process import run as nhan_cha_me_con_process
 from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.attach import plan as dang_ky_nuoi_con_nuoi_trong_nuoc_attach
 from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.process import run as dang_ky_nuoi_con_nuoi_trong_nuoc_process
-from app.pipelines.khai_tu.attach import plan as khai_tu_attach
-from app.pipelines.khai_tu.process import run as khai_tu_process
 from app.pipelines.khai_tu_dvcqg.attach import plan as khai_tu_dvcqg_attach
 from app.pipelines.khai_tu_dvcqg.process import run as khai_tu_dvcqg_process
 from app.pipelines.khai_tu_lien_thong.attach import plan as khai_tu_lien_thong_attach
@@ -281,10 +277,12 @@ from app.pipelines.khuyet_tat.attach import plan as khuyet_tat_attach
 from app.pipelines.khuyet_tat.process import run as khuyet_tat_process
 from app.pipelines.mai_tang_dan_cong.process import run as mai_tang_dan_cong_process
 from app.pipelines.mai_tang_dan_cong.attach import plan as mai_tang_dan_cong_attach
-from app.pipelines.trich_luc.attach import plan as trich_luc_attach
-from app.pipelines.trich_luc.process import run as trich_luc_process
-from app.pipelines.thay_doi_ho_tich.attach import plan as thay_doi_ho_tich_attach
-from app.pipelines.thay_doi_ho_tich.process import run as thay_doi_ho_tich_process
+from app.pipelines.trich_luc_dvc_moi.attach import plan as trich_luc_dvc_moi_attach
+from app.pipelines.trich_luc_dvc_moi.process import run as trich_luc_dvc_moi_process
+from app.pipelines.cai_chinh_dvc_moi.attach import plan as cai_chinh_dvc_moi_attach
+from app.pipelines.cai_chinh_dvc_moi.process import run as cai_chinh_dvc_moi_process
+from app.pipelines.khai_sinh_dvc_moi.attach import plan as khai_sinh_dvc_moi_attach
+from app.pipelines.khai_sinh_dvc_moi.process import run as khai_sinh_dvc_moi_process
 from app.pipelines.xac_nhan_tthn.attach import plan as xac_nhan_tthn_attach
 from app.pipelines.xac_nhan_tthn.process import run as xac_nhan_tthn_process
 from app.pipelines.thi_tuyen_cong_chuc.attach import plan as thi_tuyen_cong_chuc_attach
@@ -862,23 +860,24 @@ PROCEDURES: list[dict] = [
             {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
         ],
     },
-    {
-        "key": "khai-sinh-dang-ky-thuong",
-        "detect": {"urlIncludes": ["maThuTuc=1.001193"]},
-        "label": "Thủ tục đăng ký khai sinh",
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. CCCD của cha (cả 2 mặt).\n"
-            "2. CCCD của mẹ (cả 2 mặt).\n"
-            "3. Giấy chứng sinh của con.\n"
-            "Bước 3: hệ thống có thể đính giấy chứng sinh vào thành phần hồ sơ có sẵn, "
-            "hoặc thêm thành phần CCCD bố/mẹ nếu cần."
-        ),
-    },
+    # Biểu mẫu eForm cũ đã thay bằng SurveyJS của Cổng DVC quốc gia mới: key "khai-sinh-dang-ky-thuong" giờ chạy package mới (entry ngay dưới).
+#     {
+#         "key": "khai-sinh-dang-ky-thuong",
+#         "detect": {"urlIncludes": ["maThuTuc=1.001193"]},
+#         "label": "Thủ tục đăng ký khai sinh",
+#         "mode": "agent",
+#         "hasAttachmentStep": True,
+#         "roles": [],
+#         "useDangKyBy": False,
+#         "uploadHint": (
+#             "Giấy tờ cần tải lên:\n"
+#             "1. CCCD của cha (cả 2 mặt).\n"
+#             "2. CCCD của mẹ (cả 2 mặt).\n"
+#             "3. Giấy chứng sinh của con.\n"
+#             "Bước 3: hệ thống có thể đính giấy chứng sinh vào thành phần hồ sơ có sẵn, "
+#             "hoặc thêm thành phần CCCD bố/mẹ nếu cần."
+#         ),
+#     },
     {
         "key": "khai-sinh-ket-hop-nhan-cha-me-con",
         "detect": {"urlIncludes": ["maThuTuc=1.000689"]},
@@ -1096,23 +1095,113 @@ PROCEDURES: list[dict] = [
             "thêm thành phần hồ sơ mới."
         ),
     },
+    # Biểu mẫu eForm cũ đã thay bằng SurveyJS của Cổng DVC quốc gia mới: key "trich-luc-ks" giờ chạy package mới (entry ngay dưới).
+#     {
+#         "key": "trich-luc-ks",
+#         "detect": {"urlIncludes": ["maThuTuc=2.000635"]},
+#         "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
+#         # Chế độ agent: không gắn role, BE tự suy luận từ text OCR.
+#         "mode": "agent",
+#         "hasAttachmentStep": True,
+#         # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+#         "supportsSplitDocuments": True,
+#         "review": False,
+#         "roles": [],
+#         "useDangKyBy": False,
+#         "uploadHint": (
+#             "Giấy tờ cần tải lên:\n"
+#             "1. CCCD của người yêu cầu.\n"
+#             "2. Giấy tờ hộ tịch cần cấp bản sao: giấy khai sinh, giấy đăng ký kết hôn hoặc trích lục khai tử.\n"
+#             "3. Nếu có: văn bản ủy quyền hoặc giấy tờ chứng minh cư trú."
+#         ),
+#     },
     {
         "key": "trich-luc-ks",
-        "detect": {"urlIncludes": ["maThuTuc=2.000635"]},
-        "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
-        # Chế độ agent: không gắn role, BE tự suy luận từ text OCR.
+        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId (đổi theo cơ
+        # quan) và trang không in mã TTHC → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người được cấp.
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "cấp bản sao trích lục hộ tịch, bản sao giấy khai sinh",
+                "thông tin người được cấp giấy tờ hộ tịch",
+            ],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh (Cổng DVC quốc gia mới)",
         "mode": "agent",
         "hasAttachmentStep": True,
-        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
-        "supportsSplitDocuments": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. CCCD của người yêu cầu.\n"
-            "2. Giấy tờ hộ tịch cần cấp bản sao: giấy khai sinh, giấy đăng ký kết hôn hoặc trích lục khai tử.\n"
-            "3. Nếu có: văn bản ủy quyền hoặc giấy tờ chứng minh cư trú."
+            "1. Giấy tờ hộ tịch cần cấp bản sao: giấy khai sinh, giấy chứng nhận kết hôn hoặc trích lục khai tử.\n"
+            "2. Tờ khai cấp bản sao / giấy ủy quyền nếu có.\n"
+            "3. CCCD của người được cấp (nếu khác người nộp).\n"
+            "Khối người nộp giữ nguyên theo tài khoản. Hệ thống tự chọn quan hệ với người được cấp; "
+            "'Bản thân' thì cổng tự điền khối người được cấp. Kính gửi = UBND xã/phường, 'Tại' = tỉnh của "
+            "tài khoản trợ lý đang đăng nhập.\n"
+            "Đính kèm: cổng chỉ có một dòng thành phần hồ sơ — mọi tệp được tải lên dòng đó."
+        ),
+    },
+    {
+        "key": "thay-doi-cai-chinh-ho-tich",
+        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId, trang không in
+        # mã TTHC → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người có nội dung thay đổi.
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
+                "thông tin về người có nội dung thay đổi",
+            ],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc (Cổng DVC quốc gia mới)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi, cải chính, bổ sung thông tin hộ tịch (nếu có).\n"
+            "2. Giấy tờ hộ tịch đã đăng ký (giấy khai sinh / trích lục) và giấy tờ làm căn cứ.\n"
+            "3. CCCD của người có nội dung thay đổi; văn bản ủy quyền nếu nộp thay.\n"
+            "Khối người nộp giữ nguyên theo tài khoản. Hệ thống tự chọn Quan hệ (Bản thân / Khác); 'Bản thân' "
+            "thì cổng tự điền khối người có nội dung thay đổi. Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
+            "Đính kèm: văn bản ủy quyền vào dòng ủy quyền, mọi giấy tờ khác (CCCD, trích lục, tờ khai, giấy tờ "
+            "làm căn cứ) vào dòng 'Giấy tờ làm căn cứ'."
+        ),
+    },
+    {
+        "key": "khai-sinh-dang-ky-thuong",
+        # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId, mã TTHC chỉ nằm trong
+        # aria-label của panel (không vào innerText) → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người được
+        # khai sinh. "thủ tục đăng ký khai sinh" không trùng "đăng ký lại khai sinh".
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai sinh", "người được đăng ký khai sinh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Thủ tục đăng ký khai sinh (Cổng DVC quốc gia mới)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đăng ký khai sinh (nếu có) và giấy chứng sinh / văn bản người làm chứng / giấy cam đoan về "
+            "việc sinh.\n"
+            "2. Giấy chứng nhận kết hôn của cha mẹ; CCCD / hộ chiếu của cha, mẹ.\n"
+            "3. Nếu có: văn bản xác nhận mang thai hộ, biên bản trẻ bị bỏ rơi, văn bản ủy quyền, trích lục khai tử "
+            "của cha/mẹ, giấy tờ cá nhân của người được khai sinh.\n"
+            "Khối người nộp giữ nguyên theo tài khoản. Hệ thống tự chọn Quan hệ (Cha / Mẹ / Khác), Loại khai sinh, "
+            "Loại đăng ký; Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
+            "Đính kèm: mang thai hộ / bỏ rơi / ủy quyền vào đúng dòng; mọi giấy tờ khác đính chung dòng Giấy chứng sinh."
         ),
     },
     {
@@ -1137,28 +1226,29 @@ PROCEDURES: list[dict] = [
             "đính CCCD vào ô STT 2, giấy tờ chứng minh quan hệ vào ô STT 1."
         ),
     },
+    # Biểu mẫu eForm cũ đã thay bằng SurveyJS của Cổng DVC quốc gia mới: key "khai-tu" giờ chạy package mới (entry ngay dưới).
+#     {
+#         "key": "khai-tu",
+#         "detect": {"urlIncludes": ["maThuTuc=1.000656"]},
+#         "label": "Thủ tục đăng ký khai tử",
+#         "mode": "agent",
+#         "hasAttachmentStep": True,
+#         "review": False,  # pilot rà soát bbox
+#         "roles": [],
+#         "useDangKyBy": False,
+#         "uploadHint": (
+#             "Giấy tờ cần tải lên:\n"
+#             "1. CCCD/CMND/Hộ chiếu có trong hồ sơ; có thể tải riêng từng mặt hoặc nhiều người.\n"
+#             "2. Giấy báo tử/giấy chứng tử hoặc giấy tờ thay giấy báo tử.\n"
+#             "3. Nếu có: tờ khai bản giấy, văn bản ủy quyền, giấy tờ chứng minh sự kiện chết hoặc nơi chết.\n"
+#             "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR, tách tài liệu trong PDF "
+#             "và gộp tất cả giấy tờ tùy thân thành một nhóm.\n"
+#             "Bước 3: hệ thống đưa giấy tờ vào đúng thành phần hồ sơ có sẵn; tờ khai bản giấy vào ô STT 2 "
+#             "(nếu hồ sơ không có giấy báo tử); giấy tờ tùy thân được thêm thành phần mới."
+#         ),
+#     },
     {
         "key": "khai-tu",
-        "detect": {"urlIncludes": ["maThuTuc=1.000656"]},
-        "label": "Thủ tục đăng ký khai tử",
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "review": False,  # pilot rà soát bbox
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. CCCD/CMND/Hộ chiếu có trong hồ sơ; có thể tải riêng từng mặt hoặc nhiều người.\n"
-            "2. Giấy báo tử/giấy chứng tử hoặc giấy tờ thay giấy báo tử.\n"
-            "3. Nếu có: tờ khai bản giấy, văn bản ủy quyền, giấy tờ chứng minh sự kiện chết hoặc nơi chết.\n"
-            "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR, tách tài liệu trong PDF "
-            "và gộp tất cả giấy tờ tùy thân thành một nhóm.\n"
-            "Bước 3: hệ thống đưa giấy tờ vào đúng thành phần hồ sơ có sẵn; tờ khai bản giấy vào ô STT 2 "
-            "(nếu hồ sơ không có giấy báo tử); giấy tờ tùy thân được thêm thành phần mới."
-        ),
-    },
-    {
-        "key": "khai-tu-dvcqg",
         # Cổng DVC quốc gia bản mới: dichvucong.gov.vn/nop-ho-so?formalityCaseId=…&formalityId=…, form
         # React + SurveyJS, KHÔNG dùng chung eForm moj với "khai-tu". URL chỉ có UUID nên nhận diện theo
         # cụm chữ trên form (tiêu đề panel "THỦ TỤC ĐĂNG KÝ KHAI TỬ" + khối "NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ"),
@@ -1173,7 +1263,7 @@ PROCEDURES: list[dict] = [
             "textPriority": True,
         },
         "label": "Thủ tục đăng ký khai tử (Cổng DVC quốc gia bản mới)",
-        # Trích xuất dùng chung agent "khai-tu" (cùng bộ giấy tờ), mapper riêng khớp câu hỏi SurveyJS.
+        # Package riêng: phân vai → trích → mapper ra câu hỏi SurveyJS (engine chung các thủ tục cổng mới).
         # Khối người nộp do cổng đổ từ VNeID và khóa, không ghi đè.
         "mode": "agent",
         "hasAttachmentStep": True,
@@ -1182,11 +1272,12 @@ PROCEDURES: list[dict] = [
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Giấy báo tử/giấy chứng tử hoặc giấy tờ thay giấy báo tử.\n"
-            "2. CCCD của người được khai tử nếu có (chỉ để đọc thông tin, không đính kèm).\n"
+            "2. CCCD của người được khai tử nếu có.\n"
             "3. Nếu có: tờ khai bản giấy, văn bản ủy quyền, giấy tờ chứng minh sự kiện chết hoặc nơi chết.\n"
-            "Thông tin người nộp do cổng điền sẵn từ VNeID.\n"
-            "Bước đính kèm: giấy báo tử vào dòng 1, văn bản ủy quyền dòng 2, chứng cứ sự kiện chết "
-            "(người chết đã lâu) dòng 3, giấy tờ chứng minh nơi chết dòng 4."
+            "Thông tin người nộp do cổng điền sẵn từ VNeID; Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
+            "Bước đính kèm: giấy báo tử / giấy tờ thay thế vào dòng 1, văn bản ủy quyền dòng 2, chứng cứ sự kiện "
+            "chết (người chết đã lâu) dòng 3, giấy tờ chứng minh nơi chết dòng 4; giấy tờ khác (tờ khai, CCCD) "
+            "đính chung dòng 1."
         ),
     },
     {
@@ -1233,31 +1324,32 @@ PROCEDURES: list[dict] = [
             "(người chết đã lâu) vào dòng 2."
         ),
     },
-    {
-        "key": "thay-doi-cai-chinh-ho-tich",
-        "detect": {"urlIncludes": ["maThuTuc=1.004859"]},
-        "label": (
-            "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc"
-        ),
-        "review": False,
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        # Client cũ không có option sẽ giữ nguyên từng file; chỉ boolean True mới tách theo trang.
-        "supportsSplitDocuments": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Giấy tờ làm căn cứ thay đổi/cải chính: giấy khai sinh, trích lục hộ tịch, đăng ký kết hôn, "
-            "khai tử, học bạ, bằng cấp, giấy xác nhận, quyết định hoặc giấy tờ liên quan khác.\n"
-            "2. CCCD/CMND/Hộ chiếu có trong hồ sơ; có thể tải riêng từng mặt hoặc nhiều người.\n"
-            "3. Nếu có: tờ khai bản giấy và văn bản ủy quyền.\n"
-            "Mục I (người yêu cầu) do cổng tự điền; hệ thống chỉ đặt mặc định cư trú và "
-            "phương thức nhận kết quả (viền vàng). Không tự chọn cấp/số lượng bản sao.\n"
-            "Bước 3: giấy tờ làm căn cứ vào ô 'Giấy tờ liên quan', văn bản ủy quyền vào ô ủy quyền; "
-            "mọi giấy tờ tùy thân được gộp thành một thành phần mới, tờ khai bản giấy thêm thành phần mới."
-        ),
-    },
+    # Biểu mẫu eForm cũ đã thay bằng SurveyJS của Cổng DVC quốc gia mới: key "thay-doi-cai-chinh-ho-tich" giờ chạy package mới (entry ngay dưới).
+#     {
+#         "key": "thay-doi-cai-chinh-ho-tich",
+#         "detect": {"urlIncludes": ["maThuTuc=1.004859"]},
+#         "label": (
+#             "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc"
+#         ),
+#         "review": False,
+#         "mode": "agent",
+#         "hasAttachmentStep": True,
+#         # Client cũ không có option sẽ giữ nguyên từng file; chỉ boolean True mới tách theo trang.
+#         "supportsSplitDocuments": True,
+#         "roles": [],
+#         "useDangKyBy": False,
+#         "uploadHint": (
+#             "Giấy tờ cần tải lên:\n"
+#             "1. Giấy tờ làm căn cứ thay đổi/cải chính: giấy khai sinh, trích lục hộ tịch, đăng ký kết hôn, "
+#             "khai tử, học bạ, bằng cấp, giấy xác nhận, quyết định hoặc giấy tờ liên quan khác.\n"
+#             "2. CCCD/CMND/Hộ chiếu có trong hồ sơ; có thể tải riêng từng mặt hoặc nhiều người.\n"
+#             "3. Nếu có: tờ khai bản giấy và văn bản ủy quyền.\n"
+#             "Mục I (người yêu cầu) do cổng tự điền; hệ thống chỉ đặt mặc định cư trú và "
+#             "phương thức nhận kết quả (viền vàng). Không tự chọn cấp/số lượng bản sao.\n"
+#             "Bước 3: giấy tờ làm căn cứ vào ô 'Giấy tờ liên quan', văn bản ủy quyền vào ô ủy quyền; "
+#             "mọi giấy tờ tùy thân được gộp thành một thành phần mới, tờ khai bản giấy thêm thành phần mới."
+#         ),
+#     },
     {
         "key": "xac-nhan-tinh-trang-hon-nhan",
         "detect": {"urlIncludes": ["maThuTuc=1.004873"]},
@@ -7083,7 +7175,7 @@ PROCEDURES: list[dict] = [
 
 # Map procedure key → hàm pipeline.run
 _PIPELINE = {
-    "khai-sinh-dang-ky-thuong": khai_sinh_thuong_process,
+    "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_process,
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_process,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_process,
     "khai-sinh-dang-ky-lai": khai_sinh_dang_ky_lai_process,
@@ -7094,12 +7186,11 @@ _PIPELINE = {
     "dang-ky-giam-ho": dang_ky_giam_ho_process,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_process,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_process,
-    "trich-luc-ks": trich_luc_process,
-    "khai-tu": khai_tu_process,
-    "khai-tu-dvcqg": khai_tu_dvcqg_process,
+    "trich-luc-ks": trich_luc_dvc_moi_process,
+    "khai-tu": khai_tu_dvcqg_process,
     "khai-tu-lien-thong": khai_tu_lien_thong_process,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
-    "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_process,
+    "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_process,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_process,
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_process,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_process,
@@ -7368,7 +7459,7 @@ _ATTACH_PIPELINE = {
     "ho-tro-mai-tang-huu-tri-xa-hoi": ho_tro_mai_tang_huu_tri_xa_hoi_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
-    "khai-sinh-dang-ky-thuong": khai_sinh_thuong_attach,
+    "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_attach,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_attach,
     "khai-sinh-dang-ky-lai": khai_sinh_dang_ky_lai_attach,
@@ -7380,12 +7471,11 @@ _ATTACH_PIPELINE = {
     "dang-ky-giam-ho": dang_ky_giam_ho_attach,
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_attach,
-    "trich-luc-ks": trich_luc_attach,
-    "khai-tu": khai_tu_attach,
-    "khai-tu-dvcqg": khai_tu_dvcqg_attach,
+    "trich-luc-ks": trich_luc_dvc_moi_attach,
+    "khai-tu": khai_tu_dvcqg_attach,
     "khai-tu-lien-thong": khai_tu_lien_thong_attach,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
-    "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_attach,
+    "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_attach,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_attach,
     "xet-tuyen-vien-chuc": xet_tuyen_vien_chuc_attach,
