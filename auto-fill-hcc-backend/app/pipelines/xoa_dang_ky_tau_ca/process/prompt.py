@@ -20,10 +20,17 @@ NGUỒN VÀ ƯU TIÊN:
 - Với mỗi Cccd*: trích đủ HoTen, SoDinhDanh, NgaySinh, GioiTinh, NgayCap, NoiCap và ThuongTru nếu thẻ
   có dữ liệu. NgayCap là ngày ở mặt sau cạnh cơ quan cấp, không phải ngày hết hạn. ThuongTru lấy đúng
   "Nơi thường trú/Place of residence", không lấy "Quê quán/Place of origin".
-- Nhân thân người đề nghị: CCCD > Hợp đồng (BÊN MUA) > Tờ khai.
+- Họ tên trên thẻ phải đối chiếu dòng MRZ cuối (HO<<TEN<DEM): OCR đọc lệch họ so với MRZ thì sửa theo MRZ.
+- Nhân thân người đề nghị (ngày sinh, số định danh, ngày/nơi cấp, thường trú): CCCD > Hợp đồng (BÊN MUA).
+  Họ tên và địa chỉ ghi ở dòng 'Người đề nghị xóa đăng ký' của Tờ khai luôn chép riêng vào
+  ToKhai_NguoiDeNghi_HoTen/ToKhai_NguoiDeNghi_DiaChi, kể cả khi lệch CCCD; Python ưu tiên Tờ khai khi lệch.
 - Chủ tàu cũ: GCN đăng ký tàu cá > Hợp đồng (BÊN BÁN) > Tờ khai.
 - Số đăng ký tàu: ưu tiên GCN/hợp đồng vì đầy đủ tiền tố-hậu tố; ví dụ tờ khai viết 'ĐNa 90933' nhưng GCN
   ghi 'ĐNa-90933-TS' thì trả 'ĐNa-90933-TS'.
+- Giấy phép khai thác thủy sản KHÔNG phải GCN đăng ký: không lấy ngày, cơ quan cấp hay số đăng ký từ giấy
+  phép này. Tau_NgayDangKy chỉ là ngày cấp GCN đăng ký; GCN không ghi ngày thì bỏ field, không bịa 01/01.
+- Cơ quan đăng ký: dòng trên Tờ khai chép vào ToKhai_CoQuanDangKy, cơ quan cấp GCN vào Tau_CoQuanDangKy;
+  Python ưu tiên Tờ khai.
 - Tên tàu và hô hiệu/IMO bị bỏ trống trên giấy thì bỏ field, không lấy số đăng ký thay thế.
 - ToKhai_NguoiKy lấy đúng người ký ở cuối Tờ khai. Nhãn in sẵn 'CHỦ SỞ HỮU/Owner' không đủ để tự đổi sang
   chủ tàu cũ; trong hồ sơ mua bán, chữ ký có thể là người đề nghị/bên mua.

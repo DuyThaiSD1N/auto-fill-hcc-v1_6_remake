@@ -10,6 +10,7 @@ import re
 import unicodedata
 from typing import Any
 
+from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.xoa_dang_ky_tau_ca.process.schema import UI_COMP_BY_NAME
@@ -102,11 +103,9 @@ def _area(value: Any) -> dict | None:
     }
     if not any(out.values()):
         return None
-    # Mapping/HTML dùng danh mục địa giới mới của Đà Nẵng. Hồ sơ cũ còn ghi phường An Hải Tây (quận
-    # Sơn Trà), nay phải chọn Phường An Hải để Choices.js khớp được option hiện hành.
-    if "da nang" in _fold(out.get("tinh")) and _fold(out.get("xa")) == "an hai tay":
-        out["xa"] = "Phường An Hải"
-    return out
+    # Cổng dùng danh mục địa giới sau sáp nhập: CCCD/hợp đồng cũ còn ghi phường cũ (Hòa Hiệp Bắc, An Hải
+    # Tây...) phải đổi sang phường hiện hành (Phường Hải Vân, Phường An Hải) thì dropdown mới khớp option.
+    return remap_area(out) or out
 
 
 def _full_address(area: dict | None) -> str | None:
@@ -174,6 +173,67 @@ def _single_owner_default(name: Any, ratio: Any) -> str | None:
     return None
 
 
+def _form_address(value: Any) -> str | None:
+    text = _text(value)
+    if not text:
+        return None
+    # Tờ khai hay ghi kèm "(SĐT: ...)" sau địa chỉ người đề nghị; ô địa chỉ không nhận số điện thoại.
+    text = re.sub(r"\(?\s*(?:SĐT|ĐT|Điện thoại|Tel)\s*[:.]?\s*[\d .]+\)?", "", text, flags=re.IGNORECASE)
+    return _text(text)
+
+
+
+_WARD_PREFIX = re.compile(r"^(xã|phường|thị trấn|đặc khu|p\.|x\.)\s*", re.IGNORECASE)
+_DISTRICT_PREFIX = re.compile(r"^(huyện|quận|thị xã|q\.|h\.)\s*", re.IGNORECASE)
+_WARD_LABEL = {"p.": "Phường", "x.": "Xã"}
+
+
+def _form_area(value: Any, card_area: dict | None) -> dict | None:
+    """Tách địa chỉ người đề nghị ghi trên Tờ khai thành {tinh,xa,diaChi}."""
+    text = _form_address(value)
+    if not text:
+        return None
+    # Tờ khai viết "phường A, thành phố B" hoặc kiểu GCN "P. A-Q. C-TP B".
+    parts = [part.strip(" .") for part in re.split(r"\s*[,;]\s*|\s*-\s*", text) if part.strip(" .")]
+    ward_index = next((i for i, part in enumerate(parts) if _WARD_PREFIX.match(part)), None)
+    if ward_index is None:
+        return _area(text)
+    prefix = _WARD_PREFIX.match(parts[ward_index]).group(1)
+    ward = f"{_WARD_LABEL.get(prefix.lower(), prefix.capitalize())} {parts[ward_index][len(prefix):].strip()}"
+    tail = [part for part in parts[ward_index + 1:] if not _DISTRICT_PREFIX.match(part)]
+    province = _strip_admin_prefix(tail[-1]) if tail else (card_area or {}).get("tinh", "")
+    detail = ", ".join(parts[:ward_index])
+    # Tờ khai thường chỉ ghi phường/tỉnh: mượn số nhà/tổ của CCCD khi cùng phường, khác phường thì bỏ
+    # để không ghép tổ của phường cũ vào phường mới.
+    if not detail and card_area and _fold(_strip_admin_prefix(card_area.get("xa"))) == _fold(
+            _strip_admin_prefix(ward)):
+        detail = card_area.get("diaChi") or ""
+    return _area({"quocGia": "Việt Nam", "tinh": province, "xa": ward, "diaChi": detail})
+
+_CCCD_PARTS = ("NgaySinh", "GioiTinh", "SoDinhDanh", "NgayCap", "NoiCap", "ThuongTru")
+
+
+def _fill_applicant_from_cccd(values: dict, names: tuple[str | None, ...], options: dict | None) -> None:
+    """LLM lúc lặp CCCD chủ hồ sơ vào NguoiDeNghi_*, lúc chỉ để ở Cccd*: bù từ Cccd* để kết quả ổn định."""
+    if _identity(values.get("NguoiDeNghi_SoDinhDanh")):
+        return
+    context = (options or {}).get("formContext") or {}
+    context_identity = _identity(context.get("applicantIdentityNumber") or context.get("identityNumber"))
+    wanted = {_fold(name) for name in names if name}
+    cards = [prefix for prefix in ("Cccd1", "Cccd2") if _identity(values.get(f"{prefix}_SoDinhDanh"))]
+    chosen = [prefix for prefix in cards if _fold(_text(values.get(f"{prefix}_HoTen"))) in wanted]
+    if not chosen and len(cards) == 1 and _identity(values.get(f"{cards[0]}_SoDinhDanh")) != context_identity:
+        # Một thẻ duy nhất, không phải của người nộp: là CCCD chủ hồ sơ dù OCR đọc lệch họ tên.
+        chosen = cards
+    if len(chosen) != 1:
+        return
+    for part in _CCCD_PARTS:
+        if values.get(f"NguoiDeNghi_{part}") in (None, "", {}, []):
+            value = values.get(f"{chosen[0]}_{part}")
+            if value not in (None, "", {}, []):
+                values[f"NguoiDeNghi_{part}"] = value
+
+
 def _requester_from_context(values: dict, options: dict | None) -> tuple[dict | None, str | None]:
     context = (options or {}).get("formContext") or {}
     context_name = _text(context.get("applicantFullname") or context.get("fullname"))
@@ -235,12 +295,26 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
-    applicant_name = _text(values.get("NguoiDeNghi_HoTen"))
+    card_name = _text(values.get("NguoiDeNghi_HoTen"))
+    form_name = _text(values.get("ToKhai_NguoiDeNghi_HoTen"))
+    _fill_applicant_from_cccd(values, (card_name, form_name), options)
+    applicant_name = card_name
+    # CCCD (nhất là bản OCR) và Tờ khai lệch họ tên thì theo Tờ khai: người dân tự khai, cán bộ đối chiếu.
+    if form_name and (not card_name or _fold(form_name) != _fold(card_name)):
+        if card_name:
+            warnings.append(
+                f"Họ tên người đề nghị trên Tờ khai ({form_name}) khác CCCD ({card_name}); điền theo Tờ khai."
+            )
+        applicant_name = form_name
     applicant_identity = _identity(values.get("NguoiDeNghi_SoDinhDanh"))
     residence = _area(values.get("NguoiDeNghi_ThuongTru"))
-    # Ưu tiên địa chỉ đã tách/chuẩn hóa để dùng phường hiện hành; chuỗi đầy đủ từ LLM có thể còn quận,
-    # phường cũ trên CCCD/hợp đồng.
-    full_applicant_address = _full_address(residence) or _text(values.get("NguoiDeNghi_DiaChiDayDu"))
+    # Địa chỉ ghi trên Tờ khai đi thẳng vào ô của Tờ khai. Không có thì ưu tiên địa chỉ đã tách/chuẩn hóa
+    # để dùng phường hiện hành; chuỗi đầy đủ từ LLM có thể còn quận, phường cũ trên CCCD/hợp đồng.
+    full_applicant_address = (
+        _form_address(values.get("ToKhai_NguoiDeNghi_DiaChi"))
+        or _full_address(residence)
+        or _text(values.get("NguoiDeNghi_DiaChiDayDu"))
+    )
     current_owner = _text(values.get("ChuTau_HoTen"))
     requester, requester_warning = _requester_from_context(values, options)
     requester_residence = _area(requester.get("residence")) if requester else None
@@ -251,6 +325,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         and _fold(requester.get("name")) == _fold(applicant_name)
         and requester.get("identity") == applicant_identity
     )
+    if requester_is_owner:
+        # Tài khoản đăng nhập chính là chủ hồ sơ: địa chỉ Phần I (cổng tự chép sang chủ hồ sơ) theo Tờ khai.
+        requester_residence = (
+            _form_area(values.get("ToKhai_NguoiDeNghi_DiaChi"), requester_residence) or requester_residence
+        )
 
     if not applicant_name:
         warnings.append("Thiếu họ tên người đề nghị xóa đăng ký từ CCCD/Tờ khai/Hợp đồng mua bán.")
@@ -300,7 +379,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add(f"{_FORM}[NoiDangKy]", _text(values.get("Tau_NoiDangKy")))
     add(f"{_FORM}[SoDangKy]", _registration_number(values.get("Tau_SoDangKy")))
     add(f"{_FORM}[ngayDK]", _date(values.get("Tau_NgayDangKy")))
-    add(f"{_FORM}[CoQuanDangKy]", _text(values.get("Tau_CoQuanDangKy")))
+    # Ô này thuộc Tờ khai: dòng "Cơ quan đăng ký" người dân đã ghi thắng cơ quan cấp GCN cũ.
+    add(f"{_FORM}[CoQuanDangKy]",
+        _text(values.get("ToKhai_CoQuanDangKy")) or _text(values.get("Tau_CoQuanDangKy")))
     add(f"{_FORM}[lyDoXoaDangKy]", _text(values.get("ToKhai_LyDoXoa")))
     add(f"{_FORM}[diaDanh]", _province_label(values.get("ToKhai_DiaDanh")))
     add(f"{_FORM}[ngayKhai]", _date(values.get("ToKhai_NgayKhai")))

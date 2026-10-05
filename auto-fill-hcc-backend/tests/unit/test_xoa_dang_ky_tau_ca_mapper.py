@@ -286,3 +286,150 @@ def test_prompt_locks_buyer_seller_and_requester_roles():
     } <= schema_names
     assert "ĐNa-90933-TS" in system_prompt
     assert "KHÔNG trả field UI dạng data[...]" in system_prompt
+
+
+def _lech_ten_fields(layout: str) -> list[dict]:
+    # Cùng một PDF, LLM lúc lặp CCCD vào NguoiDeNghi_*, lúc chỉ để ở Cccd1_*; OCR CCCD đọc lệch họ.
+    cccd = [
+        _field("Cccd1_HoTen", "LƯU VĂN KHOA"),
+        _field("Cccd1_SoDinhDanh", "001080000123"),
+        _field("Cccd1_NgaySinh", "02/03/1980"),
+        _field("Cccd1_GioiTinh", "Nam"),
+        _field("Cccd1_NgayCap", "04/05/2021"),
+        _field("Cccd1_NoiCap", "Cục Cảnh sát quản lý hành chính về trật tự xã hội"),
+        _field("Cccd1_ThuongTru", {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Phường Hải Vân",
+                                   "diaChi": "Tổ 5"}),
+    ]
+    common = [
+        _field("ToKhai_NguoiDeNghi_HoTen", "Lò Văn Khoa"),
+        _field("ToKhai_NguoiDeNghi_DiaChi", "phường Hải Vân, thành phố Đà Nẵng (SĐT: 0900000000)"),
+        _field("ToKhai_NguoiKy", "Lò Văn Khoa"),
+        _field("ChuTau_HoTen", "LÒ VĂN KHOA"),
+    ]
+    if layout == "cccd_vao_nguoi_de_nghi":
+        return common + [
+            _field("NguoiDeNghi_HoTen", "LƯU VĂN KHOA"),
+            _field("NguoiDeNghi_SoDinhDanh", "001080000123"),
+            _field("NguoiDeNghi_NgaySinh", "02/03/1980"),
+            _field("NguoiDeNghi_ThuongTru", {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Phường Hải Vân",
+                                             "diaChi": "Tổ 5"}),
+        ]
+    return common + cccd + [_field("NguoiDeNghi_HoTen", "Lò Văn Khoa")]
+
+
+def test_mapper_prefers_to_khai_name_when_cccd_differs_and_is_stable_across_llm_layouts():
+    form = "data[toKhaiDangKyTamThoiTauCa_Mau08]"
+    context = {"formContext": {"applicantFullname": "Nhân Viên Nộp", "applicantIdentityNumber": "034203010212"}}
+    results = []
+    for layout in ("cccd_vao_nguoi_de_nghi", "chi_o_cccd1"):
+        out, warnings = mapper.enrich(_lech_ten_fields(layout), context)
+        data = _values(out)
+        assert data["data[ownerFullname]"] == "Lò Văn Khoa"
+        assert data[f"{form}[tenNguoiDNXoa]"] == "Lò Văn Khoa"
+        assert data[f"{form}[chuCS]"] == "Lò Văn Khoa"
+        assert data[f"{form}[diaChiNguoiXoa]"] == "phường Hải Vân, thành phố Đà Nẵng"
+        # Các thông tin Tờ khai không có vẫn lấy từ CCCD.
+        assert data["data[ownerIdentityNumber]"] == "001080000123"
+        assert data["data[ownerBirthday]"] == "02/03/1980"
+        assert data["data[ownerProvince]"] == "Thành phố Đà Nẵng"
+        assert data["data[ownerDistrict]"] == "Phường Hải Vân"
+        assert data["data[ownerAddress]"] == "Tổ 5"
+        assert "data[fullname]" not in data
+        results.append({k: v for k, v in data.items() if k in {
+            "data[ownerFullname]", "data[ownerIdentityNumber]", "data[ownerBirthday]",
+            f"{form}[tenNguoiDNXoa]", f"{form}[diaChiNguoiXoa]", f"{form}[chuCS]",
+        }})
+    assert results[0] == results[1]
+    out, warnings = mapper.enrich(_lech_ten_fields("cccd_vao_nguoi_de_nghi"), context)
+    assert any("khác CCCD" in warning for warning in warnings)
+
+
+def test_mapper_does_not_take_requester_cccd_as_applicant():
+    out, _ = mapper.enrich([
+        _field("ToKhai_NguoiDeNghi_HoTen", "Lò Văn Khoa"),
+        _field("Cccd1_HoTen", "NHÂN VIÊN NỘP"),
+        _field("Cccd1_SoDinhDanh", "034203010212"),
+    ], {"formContext": {"applicantFullname": "Nhân Viên Nộp", "applicantIdentityNumber": "034203010212"}})
+    data = _values(out)
+
+    assert data["data[ownerFullname]"] == "Lò Văn Khoa"
+    assert "data[ownerIdentityNumber]" not in data
+    assert data["data[identityNumber]"] == "034203010212"
+
+
+def test_mapper_prefers_to_khai_registrar_over_gcn_issuer():
+    form = "data[toKhaiDangKyTamThoiTauCa_Mau08]"
+    out, _ = mapper.enrich([
+        _field("NguoiDeNghi_HoTen", "NGUYỄN VĂN A"),
+        _field("ToKhai_CoQuanDangKy", "Chi cục Thủy sản TP Đà Nẵng"),
+        _field("Tau_CoQuanDangKy", "Ủy ban nhân dân quận X"),
+    ])
+    assert _values(out)[f"{form}[CoQuanDangKy]"] == "Chi cục Thủy sản TP Đà Nẵng"
+
+    out, _ = mapper.enrich([
+        _field("NguoiDeNghi_HoTen", "NGUYỄN VĂN A"),
+        _field("Tau_CoQuanDangKy", "Ủy ban nhân dân quận X"),
+    ])
+    assert _values(out)[f"{form}[CoQuanDangKy]"] == "Ủy ban nhân dân quận X"
+
+
+def test_prompt_forbids_fishing_licence_dates_for_registration():
+    system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
+
+    assert "Giấy phép khai thác thủy sản KHÔNG phải GCN đăng ký" in system_prompt
+    assert "ToKhai_CoQuanDangKy" in {field["name"] for field in FIELDS}
+
+
+def _chu_ho_so_nop(to_khai_dia_chi: str) -> list[dict]:
+    the = {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Phường Hải Vân", "diaChi": "Tổ 5"}
+    return [
+        _field("Cccd1_HoTen", "LÒ VĂN KHOA"),
+        _field("Cccd1_SoDinhDanh", "001080000123"),
+        _field("Cccd1_ThuongTru", the),
+        _field("NguoiDeNghi_HoTen", "LÒ VĂN KHOA"),
+        _field("NguoiDeNghi_SoDinhDanh", "001080000123"),
+        _field("NguoiDeNghi_ThuongTru", the),
+        _field("ToKhai_NguoiDeNghi_HoTen", "Lò Văn Khoa"),
+        _field("ToKhai_NguoiDeNghi_DiaChi", to_khai_dia_chi),
+        _field("ChuTau_HoTen", "TRẦN VĂN B"),
+    ]
+
+
+_CHU_HO_SO = {"formContext": {"applicantFullname": "Lò Văn Khoa", "applicantIdentityNumber": "001080000123"}}
+
+
+def test_mapper_account_is_owner_takes_part_one_address_from_to_khai():
+    out, _ = mapper.enrich(_chu_ho_so_nop("Thôn 2, xã Mới, tỉnh Quảng Ngãi (SĐT: 0900000000)"), _CHU_HO_SO)
+    data = _values(out)
+
+    assert data["data[isOwnerDossierCheck]"] is True
+    assert data["data[province]"] == "Tỉnh Quảng Ngãi"
+    assert data["data[district]"] == "Xã Mới"
+    assert data["data[address]"] == "Thôn 2"
+    assert data["data[toKhaiDangKyTamThoiTauCa_Mau08][diaChiNguoiXoa]"] == "Thôn 2, xã Mới, tỉnh Quảng Ngãi"
+
+
+def test_mapper_account_is_owner_keeps_cccd_detail_only_for_same_ward():
+    data = _values(mapper.enrich(_chu_ho_so_nop("phường Hải Vân, thành phố Đà Nẵng"), _CHU_HO_SO)[0])
+    assert data["data[province]"] == "Thành phố Đà Nẵng"
+    assert data["data[district]"] == "Phường Hải Vân"
+    assert data["data[address]"] == "Tổ 5"
+
+    data = _values(mapper.enrich(_chu_ho_so_nop("P. Hòa Mới-Q. Cũ-TP Đà Nẵng"), _CHU_HO_SO)[0])
+    assert data["data[district]"] == "Phường Hòa Mới"
+    assert "data[address]" not in data
+
+
+def test_mapper_remaps_old_ward_on_cccd_to_current_ward():
+    out, _ = mapper.enrich([
+        _field("NguoiDeNghi_HoTen", "LÒ VĂN KHOA"),
+        _field("NguoiDeNghi_SoDinhDanh", "001080000123"),
+        _field("NguoiDeNghi_ThuongTru", {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Hòa Hiệp Bắc",
+                                         "diaChi": "Tổ 5"}),
+    ])
+    data = _values(out)
+
+    # Hòa Hiệp Bắc (quận Liên Chiểu cũ) nay thuộc Phường Hải Vân, không phải Phường Liên Chiểu.
+    assert data["data[ownerProvince]"] == "Thành phố Đà Nẵng"
+    assert data["data[ownerDistrict]"] == "Phường Hải Vân"
+    assert data["data[ownerAddress]"] == "Tổ 5"

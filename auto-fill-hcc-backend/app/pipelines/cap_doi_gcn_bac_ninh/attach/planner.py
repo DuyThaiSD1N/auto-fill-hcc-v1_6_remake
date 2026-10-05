@@ -9,6 +9,7 @@ fold, BỀN hơn khớp nhãn tiếng Việt hay đổi; vd form ghi "Giấy ch�
 KHÔNG có chữ "Bản gốc" nên khớp theo nhãn cũ sẽ TRƯỢT):
 - Đơn đăng ký biến động (Mẫu 18) → TP-H05.000026.
 - Bản gốc GCN đã cấp → TP-H05.000040.
+- Mảnh trích đo bản đồ địa chính thửa đất, gồm cả PHIẾU ĐỀ NGHỊ ĐO ĐẠC THỬA ĐẤT → TP-H05.000057.
 - CCCD / văn bản ủy quyền / giấy tờ khác: form cấp đổi (1.012783) KHÔNG có ô riêng → ô "File đính kèm
   khác" (target "supplementary"). Tránh dồn nhiều file vào 1 ô Bản chính (chỉ nhận 1 file → mất file).
 
@@ -29,17 +30,20 @@ from app.services.llm import client
 from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
-_ALLOWED_LLM_TYPES = {"identity", "application", "land_certificate", "authorization"}
+_ALLOWED_LLM_TYPES = {"identity", "application", "land_certificate", "cadastral_survey", "authorization"}
 
 # componentName = MÃ TP-H05 (FE khớp substring đã fold: "tp h05.000040" nằm trong dòng tiêu đề thành phần).
 _COMP_APPLICATION = "TP-H05.000026"   # Đơn đăng ký biến động đất đai (Mẫu số 18)
 _COMP_LAND_CERT = "TP-H05.000040"     # Bản gốc Giấy chứng nhận đã cấp
+_COMP_SURVEY = "TP-H05.000057"        # Mảnh trích đo bản đồ địa chính thửa đất (+ phiếu đề nghị đo đạc)
 
 # type → (target, componentName, nhãn hiển thị mặc định).
-# Form cấp đổi chỉ có ô riêng cho Đơn (000026) + GCN (000040); CCCD/ủy quyền/khác → "File đính kèm khác".
+# Form cấp đổi có ô riêng cho Đơn (000026), GCN (000040), Mảnh trích đo (000057);
+# CCCD/ủy quyền/khác → "File đính kèm khác".
 _ROUTE = {
     "application": ("existing", _COMP_APPLICATION, "Đơn đăng ký biến động Mẫu số 18"),
     "land_certificate": ("existing", _COMP_LAND_CERT, "Bản gốc Giấy chứng nhận QSDĐ"),
+    "cadastral_survey": ("existing", _COMP_SURVEY, "Phiếu đề nghị đo đạc thửa đất"),
     "identity": ("supplementary", "", "Căn cước công dân"),
     "authorization": ("supplementary", "", "Văn bản ủy quyền"),
     "other": ("supplementary", "", "Giấy tờ kèm theo đơn"),

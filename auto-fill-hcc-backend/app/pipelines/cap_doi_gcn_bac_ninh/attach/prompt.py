@@ -14,6 +14,8 @@ Thủ tục có các thành phần hồ sơ:
 - Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — do công dân tự khai.
 - CCCD/CMND/Thẻ căn cước của người yêu cầu (đính kèm CHUNG nhóm với Đơn Mẫu 18).
 - Bản gốc Giấy chứng nhận QSDĐ/quyền sở hữu tài sản đã cấp (giấy đỏ/giấy hồng) cần cấp đổi.
+- Mảnh trích đo bản đồ địa chính thửa đất (khi trích đo mà ranh giới không đổi, hoặc người sử dụng đất
+  có nhu cầu đo đạc lại kích thước cạnh, diện tích) — gồm cả PHIẾU ĐỀ NGHỊ ĐO ĐẠC THỬA ĐẤT.
 - Văn bản ủy quyền (nếu nộp qua người đại diện).
 </boi_canh>
 
@@ -24,19 +26,24 @@ Thủ tục có các thành phần hồ sơ:
 4. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu nhà ở / tài sản gắn liền với đất
    (sổ đỏ/sổ hồng) → type = land_certificate.
 5. Văn bản/giấy ủy quyền → type = authorization.
-6. Tài liệu KHÔNG thuộc 4 nhóm trên (vd mảnh trích đo địa chính, giấy tờ hộ tịch...) hoặc OCR quá thiếu
-   để chắc chắn → type = other. KHÔNG ép về một trong 4 nhóm khi không chắc.
-7. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
+6. Phiếu đề nghị đo đạc thửa đất / đơn đề nghị đo đạc, trích đo; mảnh trích đo bản đồ địa chính;
+   trích đo địa chính thửa đất; phiếu xác nhận kết quả đo đạc; bản mô tả ranh giới, mốc giới thửa đất
+   → type = cadastral_survey. "Phiếu đề nghị đo đạc" KHÔNG phải application (application chỉ là Đơn
+   đăng ký biến động Mẫu số 18).
+7. Tài liệu KHÔNG thuộc 5 nhóm trên (vd giấy tờ hộ tịch...) hoặc OCR quá thiếu để chắc chắn
+   → type = other. KHÔNG ép về một trong 5 nhóm khi không chắc.
+8. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>
 Mỗi tài liệu phải trả type thuộc đúng một trong:
-identity | application | land_certificate | authorization | other
+identity | application | land_certificate | cadastral_survey | authorization | other
 </allowed_types>
 
 <document_name_rules>
 - documentName là tên tiếng Việt ngắn gọn, CỤ THỂ theo nội dung đọc được, dùng để hiển thị.
-  Ví dụ: "Căn cước công dân", "Đơn đăng ký biến động Mẫu số 18", "Bản gốc Giấy chứng nhận QSDĐ".
+  Ví dụ: "Căn cước công dân", "Đơn đăng ký biến động Mẫu số 18", "Bản gốc Giấy chứng nhận QSDĐ",
+  "Phiếu đề nghị đo đạc thửa đất".
 - Nếu nhiều tài liệu CÙNG loại, documentName mỗi tài liệu BẮT BUỘC khác nhau (thêm tên người/số hiệu/năm).
 - Chỉ dùng chữ, số, khoảng trắng, gạch dưới, gạch ngang; tối đa khoảng 50 ký tự.
 - Nếu OCR quá thiếu để biết loại, để documentName rỗng.

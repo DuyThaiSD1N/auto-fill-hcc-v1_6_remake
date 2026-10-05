@@ -68,11 +68,21 @@ FIELDS: list[dict] = [
         "tờ không ghi thì bỏ; mapper chỉ mặc định 100 khi xác định duy nhất một chủ tàu."},
     {"name": "NguoiDeNghi_DiaChiDayDu", "desc": "Địa chỉ đầy đủ của người đề nghị xóa/bên mua để điền mục "
         "'Địa chỉ người đề nghị xóa đăng ký'. Ưu tiên hợp đồng, có thể gồm tổ/phường/thành phố."},
+    {"name": "ToKhai_NguoiDeNghi_HoTen", "desc": "Họ tên chép NGUYÊN VĂN ở dòng 'Người đề nghị xóa đăng ký "
+        "(tên, địa chỉ)/Applicant' trên Tờ khai, chỉ phần tên. Không lấy từ CCCD/hợp đồng; Tờ khai không ghi "
+        "thì bỏ. Lệch với họ tên trên CCCD vẫn trả đúng chữ trên Tờ khai."},
+    {"name": "ToKhai_NguoiDeNghi_DiaChi", "desc": "Địa chỉ chép NGUYÊN VĂN ở dòng 'Người đề nghị xóa đăng ký "
+        "(tên, địa chỉ)' trên Tờ khai, phần sau tên; bỏ số điện thoại. Tờ khai không ghi thì bỏ."},
     {"name": "Tau_NoiDangKy", "desc": "Nơi đăng ký tàu ghi trên Tờ khai/GCN, ví dụ 'Chi cục Thủy sản TP Đà Nẵng'."},
     {"name": "Tau_SoDangKy", "desc": "Số đăng ký tàu. Ưu tiên chuỗi ĐẦY ĐỦ trên GCN/hợp đồng hơn bản viết "
         "tay rút gọn trên Tờ khai; giữ chữ, dấu gạch và hậu tố, ví dụ 'ĐNa-90933-TS'."},
-    {"name": "Tau_NgayDangKy", "desc": "Ngày đăng ký/cấp GCN tàu, dd/mm/yyyy — GCN đăng ký hoặc hợp đồng."},
-    {"name": "Tau_CoQuanDangKy", "desc": "Cơ quan đăng ký/cấp GCN tàu, không lấy văn phòng công chứng."},
+    {"name": "Tau_NgayDangKy", "desc": "Ngày cấp GIẤY CHỨNG NHẬN ĐĂNG KÝ TÀU CÁ, dd/mm/yyyy — chỉ lấy ngày ghi "
+        "trên GCN đăng ký hoặc ngày cấp GCN được hợp đồng nêu rõ. Không lấy ngày của Giấy phép khai thác thủy "
+        "sản, ngày ký Tờ khai; không suy ra từ năm trong số GCN. Không đọc được ngày thì bỏ field."},
+    {"name": "Tau_CoQuanDangKy", "desc": "Cơ quan cấp GCN đăng ký tàu cá (ghi trên GCN), không lấy văn phòng "
+        "công chứng, không lấy cơ quan cấp Giấy phép khai thác thủy sản."},
+    {"name": "ToKhai_CoQuanDangKy", "desc": "Cơ quan chép NGUYÊN VĂN ở dòng 'Cơ quan đăng ký/The Registrar of "
+        "ship' trên Tờ khai. Không lấy từ GCN/giấy phép; Tờ khai bỏ trống thì bỏ field."},
     {"name": "ToKhai_LyDoXoa", "desc": "Lý do xin xóa đăng ký trên Tờ khai; đối chiếu hợp đồng (mua bán, "
         "tặng cho...) nhưng ưu tiên câu ghi trên Tờ khai. Chép ngắn gọn."},
     {"name": "ToKhai_DiaDanh", "desc": "Địa danh tại dòng ký Tờ khai, chỉ Tỉnh/Thành phố."},
