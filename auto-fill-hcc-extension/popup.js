@@ -5237,6 +5237,23 @@ function selectSoFor(link) {
   return provinces.includes(agencyLocationFor(link).provinceSlug);
 }
 
+/**
+ * Chuỗi chốt thẻ "Nộp trực tuyến" phải bấm cho ĐỊA BÀN đang chọn.
+ *
+ * `submitCardIncludesByWard` = {tên xã: chuỗi} — vd Đà Nẵng ra nhiều thẻ "Chi nhánh VPĐKĐĐ Khu vực N",
+ * xã Liên Chiểu phải vào thẻ Khu vực 5. Xã không có trong bảng giữ nguyên `submitCardIncludes`.
+ */
+function submitCardIncludesFor(link) {
+  const byWard = link?.submitCardIncludesByWard;
+  const ward = String(agencyLocationFor(link).ward || "").normalize("NFC").trim().toLowerCase();
+  if (byWard && ward) {
+    for (const [name, card] of Object.entries(byWard)) {
+      if (String(name).normalize("NFC").trim().toLowerCase() === ward) return String(card || "");
+    }
+  }
+  return link?.submitCardIncludes || "";
+}
+
 /** Tên tỉnh để IN RA cho cán bộ đọc; chỗ điền hộ trên cổng vẫn dùng area.province. */
 function provinceLabel(provinceText) {
   return locationStore()?.labelFor?.(provinceText) || provinceText;
@@ -5452,8 +5469,8 @@ async function openKeKhaiPage() {
         // Cờ chốt theo TỈNH đang chọn (xem selectSoFor) nên phải tính ở đây, không đọc thẳng link.
         selectSo: selectSoFor(link),
         // Trang kết quả cổng QG ra nhiều thẻ khác nhau ở CƠ QUAN THỰC HIỆN -> chuỗi này chốt đúng
-        // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu".
-        submitCardIncludes: link.submitCardIncludes || "",
+        // thẻ phải bấm, thay cho quy ước "lấy thẻ đầu". Chốt theo XÃ đang chọn (xem submitCardIncludesFor).
+        submitCardIncludes: submitCardIncludesFor(link),
         // Thủ tục đặc thù của tỉnh: sau "Nộp trực tuyến" cổng QG ném sang cổng tỉnh, còn ba việc
         // nữa (bấm "Nộp hồ sơ" đúng dòng, đăng nhập riêng, chọn cơ quan tiếp nhận) do
         // content/portal-quangninh.js làm nốt theo đúng cấu hình này.
