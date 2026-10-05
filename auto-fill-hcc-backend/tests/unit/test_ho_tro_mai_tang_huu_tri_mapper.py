@@ -191,3 +191,95 @@ NGƯỜI KÝ TRÍCH LỤC
     assert "owner_support_ocr" in context
     assert "068049000055" not in context
     assert "ĐẶNG VĂN LONG" not in context
+
+
+# === Cấu hình phường Cam Đường: người chết là chủ hồ sơ (dữ liệu bịa) ===
+_NGUOI_DUNG_RA = {
+    "ChuHoSo_HoTen": "LÊ VĂN MINH",
+    "ChuHoSo_NgaySinh": "12/04/1975",
+    "ChuHoSo_GioiTinh": "Nam",
+    "ChuHoSo_SoDinhDanh": "010075001234",
+    "ChuHoSo_NgayCap": "01/02/2021",
+    "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    "ChuHoSo_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Lào Cai", "xa": "Cam Đường", "diaChi": "Tổ 5"},
+    "ChuHoSo_DienThoai": "0900000001",
+}
+_NGUOI_MAT = {
+    "NguoiMat_HoTen": "LÊ THỊ HOA",
+    "NguoiMat_NgaySinh": "05/05/1945",
+    "NguoiMat_GioiTinh": "Nữ",
+    "NguoiMat_SoDinhDanh": "035145009876",
+    "NguoiMat_NgayCap": "10/10/2024",
+    "NguoiMat_NoiCap": "Bộ Công an",
+    "NguoiMat_NoiCuTru": {"quocGia": "Việt Nam", "tinh": "Lào Cai", "xa": "Phường Cam Đường", "diaChi": "Tổ 9"},
+}
+
+
+def _run_deceased(values: dict, form_context: dict | None = None, mode: str | None = None):
+    options = {"formContext": form_context or {}, mapper.DECEASED_AS_OWNER_OPTION: True}
+    if mode:
+        options["submitterMode"] = mode
+    compact = [{"name": name, "value": value} for name, value in values.items()]
+    fields, warnings = mapper.enrich(compact, options)
+    return {field["name"]: field["value"] for field in fields}, warnings
+
+
+def test_cam_duong_account_flag_only_for_cam_duong_lao_cai():
+    cam_duong = {"tinh": "Tỉnh Lào Cai", "xa": "Phường Cam Đường"}
+    opts = mapper.with_account_process_options({}, cam_duong, mapper.PROCEDURE_KEY)
+    assert opts[mapper.DECEASED_AS_OWNER_OPTION] is True
+    assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options(
+        {}, cam_duong, "ho-tro-mai-tang")
+    assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options(
+        {}, {"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đơn Dương"}, mapper.PROCEDURE_KEY)
+    # Client tự gửi cờ lên cũng bị server xoá.
+    assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options(
+        {mapper.DECEASED_AS_OWNER_OPTION: True}, None, mapper.PROCEDURE_KEY)
+
+
+def test_cam_duong_deceased_fills_owner_block_without_anchor_match():
+    values = {**_NGUOI_DUNG_RA, **_NGUOI_MAT}
+    got, warnings = _run_deceased(
+        values, {"applicantFullname": "Cán Bộ Khác", "applicantIdentityNumber": "001200000000"})
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert got["data[ownerFullname]"] == "LÊ THỊ HOA"
+    assert got["data[ownerBirthday]"] == "05/05/1945"
+    assert got["data[ownerGender]"] == "Nữ"
+    assert got["data[ownerIdentityNumber]"] == "035145009876"
+    assert got["data[ownerIdIssuePlace]"] == "Bộ Công an"
+    assert got["data[ownerProvince]"] == "Lào Cai"
+    assert got["data[ownerDistrict]"] == "Cam Đường"
+    assert got["data[ownerAddress]"] == "Tổ 9"
+    assert "data[fullname]" not in got  # người đứng ra không khớp UI → không điền người nộp
+    assert any("người nộp" in w for w in warnings)
+
+
+def test_cam_duong_organizer_matching_ui_becomes_requester():
+    values = {**_NGUOI_DUNG_RA, **_NGUOI_MAT}
+    got, warnings = _run_deceased(
+        values, {"applicantFullname": "Lê Văn Minh", "applicantIdentityNumber": "010075001234"})
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert got["data[fullname]"] == "LÊ VĂN MINH"
+    assert got["data[identityNumber]"] == "010075001234"
+    assert got["data[ownerFullname]"] == "LÊ THỊ HOA"
+    assert warnings == []
+
+
+def test_cam_duong_owner_mode_uses_organizer_as_requester():
+    got, _ = _run_deceased({**_NGUOI_DUNG_RA, **_NGUOI_MAT}, mode="owner_as_submitter")
+    assert got["data[isOwnerDossierCheck]"] is False
+    assert got["data[fullname]"] == "LÊ VĂN MINH"
+    assert got["data[ownerFullname]"] == "LÊ THỊ HOA"
+
+
+def test_cam_duong_missing_deceased_warns_and_never_uses_organizer_as_owner():
+    got, warnings = _run_deceased(dict(_NGUOI_DUNG_RA))
+    assert "data[ownerFullname]" not in got
+    assert any("người chết" in w for w in warnings)
+
+
+def test_default_account_ignores_deceased_fields():
+    """Không có cờ: hành vi cũ, người chết không vào khối chủ hồ sơ."""
+    got, _ = _run({**_NGUOI_DUNG_RA, **_NGUOI_MAT})
+    assert got["data[ownerFullname]"] == "LÊ VĂN MINH"
+    assert "LÊ THỊ HOA" not in str(list(got.values()))

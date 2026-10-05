@@ -55,3 +55,21 @@ QUY TẮC FIELD:
   không lặp xã/huyện/tỉnh.
 - Không trả field UI như data[fullname], data[ownerFullname], data[isOwnerDossierCheck], email, fax, ghi chú.
 - Không tạo field không có bằng chứng OCR."""
+
+
+# Nối sau EXTRA_RULES khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường).
+DECEASED_OWNER_RULES = """
+
+CẤU HÌNH TÀI KHOẢN: NGƯỜI CHẾT LÀ CHỦ HỒ SƠ TRÊN CỔNG
+- Riêng cấu hình này PHẢI trích thêm nhóm thứ ba NguoiMat_* = người chết được tổ chức mai táng. Đây là
+  ngoại lệ duy nhất cho quy tắc "không trích người chết"; ChuHoSo_* và NguoiNop_* giữ nguyên nghĩa và
+  cách lấy như trên (ChuHoSo_* vẫn là người đứng ra mai táng, không phải người chết).
+- Nguồn NguoiMat_*: mục I "Thông tin người chết" (Mẫu số 04) hoặc mục 2 "Thông tin người chết được tổ
+  chức mai táng" (Mẫu số 02) của tờ khai; khối chính "Họ, chữ đệm, tên" trên Trích lục khai tử/Giấy báo tử.
+- Mẫu số 02: mục 1 "Thông tin người đề nghị (người khai)" và mục 3.1 "cá nhân, thân nhân đứng ra tổ chức
+  mai táng" là người đứng ra mai táng -> nguồn ChuHoSo_*; mục 2 là người chết -> nguồn NguoiMat_*.
+- Họ tên, ngày sinh, giới tính, số định danh, ngày cấp, nơi cấp của người chết ưu tiên Trích lục khai
+  tử/giấy tờ định danh của chính người chết; NguoiMat_NoiCuTru lấy dòng "Nơi cư trú" của người chết trên
+  tờ khai, tuyệt đối không lấy "Nơi chết" hay "Nơi đăng ký khai tử".
+- Không đưa người khai, người đi khai tử, người đứng ra mai táng vào NguoiMat_*; không đưa người chết
+  vào ChuHoSo_* hoặc NguoiNop_*."""

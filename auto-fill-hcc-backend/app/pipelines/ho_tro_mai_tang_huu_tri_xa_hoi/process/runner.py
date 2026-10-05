@@ -5,11 +5,16 @@ import unicodedata
 
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process import mapper
-from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.prompt import EXTRA_RULES
+from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.prompt import (
+    DECEASED_OWNER_RULES,
+    EXTRA_RULES,
+)
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.schema import (
     ALIASES,
     ALLOWED,
     COMPACT_COMP_BY_NAME,
+    DECEASED_OWNER_ALLOWED,
+    DECEASED_OWNER_FIELDS,
     FIELDS,
 )
 
@@ -209,13 +214,15 @@ async def _owner_only_context(documents: list[dict], options: dict) -> str:
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     # Toggle extension: "owner_as_submitter" bỏ mỏ neo UI; mapper LUÔN lấy chủ hồ sơ làm người nộp.
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    # Cờ theo tài khoản (phường Cam Đường): người chết là chủ hồ sơ nên trích thêm NguoiMat_*.
+    deceased_owner = (options or {}).get(mapper.DECEASED_AS_OWNER_OPTION) is True
     res = await runner.run(
         files_by_role,
-        fields=FIELDS,
-        allowed=ALLOWED,
+        fields=DECEASED_OWNER_FIELDS if deceased_owner else FIELDS,
+        allowed=DECEASED_OWNER_ALLOWED if deceased_owner else ALLOWED,
         comp_by_name=COMPACT_COMP_BY_NAME,
         aliases=ALIASES,
-        extra_rules=EXTRA_RULES,
+        extra_rules=EXTRA_RULES + (DECEASED_OWNER_RULES if deceased_owner else ""),
         options=options,
         context_builder=_owner_only_context if owner_mode else _requester_context,
     )

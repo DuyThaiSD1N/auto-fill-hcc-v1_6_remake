@@ -88,3 +88,47 @@ async def test_unmatched_ui_returns_owner_only(monkeypatch):
     assert fields["data[ownerFullname]"] == "ĐẶNG VĂN LÂM"
     assert fields["data[ownerBirthday]"] == "03/03/1980"
     assert "không điền phần người nộp" in result["errors"][0]
+
+
+_DECEASED = {
+    "NguoiMat_HoTen": "LÊ THỊ HOA",
+    "NguoiMat_NgaySinh": "05/05/1945",
+    "NguoiMat_GioiTinh": "Nữ",
+    "NguoiMat_SoDinhDanh": "035145009876",
+}
+
+
+@respx.mock
+async def test_deceased_as_owner_flag_requests_and_fills_deceased(monkeypatch):
+    """Cờ Cam Đường: prompt có nhóm NguoiMat_* và người chết vào khối chủ hồ sơ."""
+    _mock_services(monkeypatch, {"fields": {**_OWNER, **_DECEASED}})
+
+    result = await agent.run(
+        {"doc": [_file("to-khai.jpg"), _file("trich-luc.jpg")]},
+        {"deceasedAsOwner": True, "formContext": {
+            "applicantFullname": "ĐẶNG VĂN LÂM",
+            "applicantIdentityNumber": "068080000292",
+        }},
+    )
+    fields = {field["name"]: field["value"] for field in result["fields"]}
+    system_prompt = json.loads(respx.calls.last.request.content)["messages"][0]["content"]
+
+    assert "NguoiMat_HoTen" in system_prompt
+    assert fields["data[isOwnerDossierCheck]"] is False
+    assert fields["data[fullname]"] == "ĐẶNG VĂN LÂM"
+    assert fields["data[ownerFullname]"] == "LÊ THỊ HOA"
+    assert fields["data[ownerIdentityNumber]"] == "035145009876"
+    assert not result["errors"]
+
+
+@respx.mock
+async def test_without_flag_deceased_fields_are_dropped(monkeypatch):
+    _mock_services(monkeypatch, {"fields": {**_OWNER, **_DECEASED}})
+
+    result = await agent.run({"doc": [_file("to-khai.jpg")]}, {"formContext": {}})
+    fields = {field["name"]: field["value"] for field in result["fields"]}
+    system_prompt = json.loads(respx.calls.last.request.content)["messages"][0]["content"]
+
+    assert "NguoiMat_HoTen" not in system_prompt
+    assert fields["data[ownerFullname]"] == "ĐẶNG VĂN LÂM"
+    assert "LÊ THỊ HOA" not in fields.values()

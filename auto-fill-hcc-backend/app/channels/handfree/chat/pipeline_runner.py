@@ -26,6 +26,9 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
     with_account_process_options as with_gpxd_account_process_options,
 )
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
+from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
+    with_account_process_options as with_mai_tang_htxh_account_process_options,
+)
 from app.pipelines.xac_nhan_tthn.process.mapper import (
     with_account_process_options as with_tthn_account_process_options,
 )
@@ -158,6 +161,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_account_process_options(options, owner_user, procedure_key)
             options = with_tthn_account_process_options(options, owner_user, procedure_key)
             options = with_gpxd_account_process_options(options, owner_user, procedure_key)
+            options = with_mai_tang_htxh_account_process_options(options, owner_user, procedure_key)
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):

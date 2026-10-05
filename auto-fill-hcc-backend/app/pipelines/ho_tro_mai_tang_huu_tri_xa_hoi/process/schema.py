@@ -81,18 +81,59 @@ FIELDS: list[dict] = [
     },
 ]
 
+# Chỉ dùng khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường): người chết là chủ hồ sơ trên
+# cổng nên phải trích thêm nhóm NguoiMat_*. Tài khoản khác không thấy nhóm này.
+DECEASED_FIELDS: list[dict] = [
+    {
+        "name": "NguoiMat_HoTen",
+        "desc": "Họ tên NGƯỜI CHẾT được tổ chức mai táng (mục thông tin người chết của tờ khai hoặc khối chính của Trích lục khai tử).",
+    },
+    {
+        "name": "NguoiMat_NgaySinh",
+        "desc": "Ngày sinh người chết, dd/mm/yyyy; ưu tiên Trích lục khai tử/giấy tờ định danh của người chết.",
+    },
+    {
+        "name": "NguoiMat_GioiTinh",
+        "desc": 'Giới tính người chết, chỉ "Nam" hoặc "Nữ" khi tài liệu ghi rõ.',
+    },
+    {
+        "name": "NguoiMat_SoDinhDanh",
+        "desc": "Số định danh/CCCD của người chết; chỉ giữ chữ số.",
+    },
+    {
+        "name": "NguoiMat_NgayCap",
+        "desc": "Ngày cấp giấy tờ định danh của người chết, dd/mm/yyyy, khi tài liệu ghi rõ.",
+    },
+    {
+        "name": "NguoiMat_NoiCap",
+        "desc": "Nơi cấp giấy tờ định danh của người chết; không lấy chữ trên logo/dấu.",
+    },
+    {
+        "name": "NguoiMat_NoiCuTru",
+        "desc": "Nơi cư trú của người chết trên tờ khai, object {quocGia,tinh,xa,diaChi}. Không lấy Nơi chết.",
+    },
+    {
+        "name": "NguoiMat_QuocTich",
+        "desc": "Quốc tịch người chết khi tài liệu ghi rõ.",
+    },
+]
+
 ALLOWED = {field["name"] for field in FIELDS}
+DECEASED_OWNER_FIELDS = FIELDS + DECEASED_FIELDS
+DECEASED_OWNER_ALLOWED = {field["name"] for field in DECEASED_OWNER_FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
-COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
+COMPACT_COMP_BY_NAME = {name: "x-input" for name in DECEASED_OWNER_ALLOWED}
 for _name in (
     "ChuHoSo_NgaySinh",
     "ChuHoSo_NgayCap",
     "NguoiNop_NgaySinh",
     "NguoiNop_NgayCap",
+    "NguoiMat_NgaySinh",
+    "NguoiMat_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru"):
+for _name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru", "NguoiMat_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {

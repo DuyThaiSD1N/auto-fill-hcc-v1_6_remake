@@ -44,6 +44,37 @@ def _norm_identity(value: str | None) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
+# Cấu hình theo tài khoản: phường Cam Đường (Lào Cai) khai NGƯỜI CHẾT làm chủ hồ sơ trên cổng; người
+# đứng ra mai táng chỉ còn là ứng viên người nộp. Nơi khác giữ nguyên logic. Mapper không biết tài
+# khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server
+# tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+PROCEDURE_KEY = "ho-tro-mai-tang-huu-tri-xa-hoi"
+DECEASED_AS_OWNER_OPTION = "deceasedAsOwner"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def is_lao_cai_cam_duong(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Cam Đường, tỉnh Lào Cai (khớp tỉnh và ĐÚNG tên phường)."""
+    if not user:
+        return False
+    tinh = _norm_text(user.get("tinh"))
+    xa = _norm_text(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "lao cai" in tinh and xa == "cam duong"
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ người chết là chủ hồ sơ do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(DECEASED_AS_OWNER_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_lao_cai_cam_duong(user):
+        result[DECEASED_AS_OWNER_OPTION] = True
+    return result
+
+
 def _strip_admin_prefix(value) -> str:
     text = str(value or "").strip()
     return re.sub(
@@ -196,6 +227,9 @@ def enrich(
         out.append({"name": name, "comp": comp, "value": value})
         seen.add(name)
 
+    if (options or {}).get(DECEASED_AS_OWNER_OPTION) is True:
+        return out, _fill_deceased_owner(add, values, owner, requester, context, options)
+
     if not owner and not requester:
         return out, ["Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."]
 
@@ -257,6 +291,49 @@ def enrich(
         "Người nộp trích xuất không khớp thông tin trên form "
         f"({anchor}); không điền để tránh nhầm người."
     ]
+
+
+def _fill_deceased_owner(
+    add,
+    values: dict,
+    organizer: Person | None,
+    requester: Person | None,
+    context: dict,
+    options: dict | None,
+) -> list[str]:
+    """Cờ deceasedAsOwner: khối chủ hồ sơ = người chết, không bao giờ tick tự nộp.
+
+    Người đứng ra mai táng (ChuHoSo_*) hoặc NguoiNop_* chỉ vào khối người nộp khi khớp mỏ neo UI;
+    toggle owner_as_submitter thì lấy thẳng người đứng ra mai táng làm người nộp.
+    """
+    deceased = _person(values, "NguoiMat")
+    warnings: list[str] = []
+    add("data[isOwnerDossierCheck]", False)
+
+    submitter: Person | None = None
+    if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        submitter = organizer or requester
+    elif organizer and _matches_applicant(organizer, context):
+        submitter = organizer
+    elif requester and _matches_applicant(requester, context):
+        submitter = requester
+    elif _has_applicant_anchor(context):
+        anchor = context.get("applicant_identity") or context.get("applicant_name")
+        warnings.append(
+            "Không xác định được người nộp khớp thông tin trên form "
+            f"({anchor}); không điền phần người nộp."
+        )
+    # Người chết không thể là người nộp, kể cả khi LLM lỡ trộn vai.
+    if submitter and deceased and _same_person(submitter, deceased):
+        submitter = None
+    if submitter:
+        _add_requester(add, submitter)
+
+    if deceased:
+        _add_owner(add, deceased)
+    else:
+        warnings.append("Không đọc được thông tin người chết để điền chủ hồ sơ.")
+    return warnings
 
 
 def _add_requester(add, person: Person) -> None:

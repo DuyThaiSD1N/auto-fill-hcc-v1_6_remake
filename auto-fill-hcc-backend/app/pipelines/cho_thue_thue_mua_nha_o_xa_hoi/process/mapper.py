@@ -24,7 +24,7 @@ import unicodedata
 from typing import Any
 
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.compact_agent.issuer import normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import ISSUER_BO_CONG_AN, ISSUER_CUC, normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
 from app.pipelines.cho_thue_thue_mua_nha_o_xa_hoi.process.schema import UI_COMP_BY_NAME, _MAX_TV
 
@@ -202,8 +202,16 @@ def _date(value: Any) -> str | None:
 
 
 def _issuer(value: Any) -> str | None:
+    """Nơi cấp → option của ô select identityAgency. Ô này không có "Công an tỉnh/TP…" (CMND/CCCD cũ ghi
+    "Công an TP Đà Nẵng"…) nên giữ nguyên văn là bị bỏ trống → mọi nơi cấp thuộc ngành công an còn lại
+    quy về "Bộ Công an"."""
     text = _text(value)
-    return normalize_issuer(text) if text else None
+    if not text:
+        return None
+    issuer = normalize_issuer(text)
+    if issuer not in (ISSUER_BO_CONG_AN, ISSUER_CUC) and "cong an" in _fold(issuer):
+        return ISSUER_BO_CONG_AN
+    return issuer
 
 
 _ORG_MARKERS = ("cong ty", "doanh nghiep", "hop tac xa", "htx", "cty", "co phan", "tnhh", "co quan",

@@ -16,6 +16,9 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
     with_account_process_options as with_gpxd_account_process_options,
 )
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
+from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
+    with_account_process_options as with_mai_tang_htxh_account_process_options,
+)
 from app.pipelines.xac_nhan_tthn.process.mapper import (
     with_account_process_options as with_tthn_account_process_options,
 )
@@ -58,7 +61,8 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             include_review=True,
         )
         # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây, Hiệp Hòa lấy người ủy quyền
-        # làm người yêu cầu TTHN, Đăk Cấm luôn chọn cá nhân lập thiết kế GPXD) do server đặt từ `user`.
+        # làm người yêu cầu TTHN, Đăk Cấm luôn chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết
+        # làm chủ hồ sơ mai táng hưu trí xã hội) do server đặt từ `user`.
         prepared.pipeline_options = with_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
@@ -66,6 +70,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_gpxd_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_mai_tang_htxh_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

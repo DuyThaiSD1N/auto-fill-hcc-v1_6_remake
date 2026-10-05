@@ -86,3 +86,12 @@ def test_prompt_cam_tu_chon_mot_nua_nhan_in_san():
     assert "Vợ (hoặc chồng)" in EXTRA_RULES
     desc = next(f["desc"] for f in FIELDS if f["name"] == "ThanhVienGiaDinh")
     assert "Vợ (hoặc chồng)" in desc
+
+
+def test_noi_cap_cong_an_tinh_quy_ve_bo_cong_an():
+    # Ô select Nơi cấp không có "Công an tỉnh/TP…" → chọn "Bộ Công an" thay vì bỏ trống.
+    assert mapper._issuer("Công an TP Đà Nẵng") == "Bộ Công an"
+    assert mapper._issuer("CÔNG AN TỈNH QUẢNG NAM") == "Bộ Công an"
+    assert mapper._issuer("BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY") == "Bộ Công an"
+    assert mapper._issuer("Cục Cảnh sát QLHC về TTXH") == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert mapper._issuer("") is None
