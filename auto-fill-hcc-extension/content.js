@@ -13,6 +13,9 @@
   }
   window.__AUTOFILL_HCC_CONTENT__ = true;
   window.__AUTOFILL_HCC_CONTENT_VERSION__ = CONTENT_VERSION;
+  // Dấu hiệu "content script đã nạp" đọc được từ Console ngữ cảnh top (biến window ở trên nằm trong
+  // isolated world, Console của trang không thấy): document.documentElement.dataset.hccContent.
+  try { document.documentElement?.setAttribute("data-hcc-content", CONTENT_VERSION); } catch (_) { /* ignore */ }
 
   // Namespace chia sẻ giữa các file content (fill-angular.js...). Mỗi file 1 IIFE, giao tiếp qua đây.
   const H = (window.__HCC__ = window.__HCC__ || {});
@@ -1525,7 +1528,12 @@
       return true;
     }
     if (msg?.action === "collectAttachmentContext") {
-      if (!hasAttachmentTarget()) return;
+      if (!hasAttachmentTarget()) {
+        // Cổng DVC quốc gia bản mới chỉ có một frame: im lặng thì popup chỉ báo "Không kết nối được
+        // trang", không biết vì sao. Trả lý do kèm số đếm để biết bảng có/không, nút có/không.
+        if (IS_TOP_FRAME && isDvcqgSubmitPage()) sendResponse({ error: dvcqgAttachProbeMessage() });
+        return;
+      }
       sendResponse({ ok: true, attachmentContext: collectAttachmentContext() });
       return;
     }
@@ -1659,6 +1667,7 @@
     // Form Bắc Ninh dùng engine riêng (khớp ô theo NHÃN, comp bn-*) — ưu tiên trước mọi nhánh khác.
     const filler = formKind === "bacninh"
       ? H.fillFormBacNinh
+      : formKind === "survey" ? fillFormSurvey
       : (forceStandard
         ? fillFormStandard
         : (formKind === "liz" ? H.fillFormLiz
@@ -2140,6 +2149,10 @@
       document.querySelectorAll("liz-form-component, liz-input, liz-datepicker, liz-select").length >= 3 &&
       document.querySelectorAll("[formcontrolname]").length === 0
     ) return "liz";
+    // Tờ khai SurveyJS của Cổng DVC quốc gia bản mới (dichvucong.gov.vn/nop-ho-so): câu hỏi là
+    // `.sd-question[data-name]`, không có formcontrolname, input không có name (chỉ vài radio có) → không bắt
+    // ở đây thì rơi nhầm vào "standard" (engine dò theo name/id) và không điền được ô nào.
+    if (document.querySelectorAll(".sd-question[data-name]").length >= 3) return "survey";
     const ngCount = document.querySelectorAll("[formcontrolname]").length;
     const legacyCount = document.querySelectorAll("x-input, x-date, x-radio").length;
     const standardCount = document.querySelectorAll(
@@ -2198,6 +2211,7 @@
   }
 
   function hasAttachmentTarget() {
+    if (dvcqgAttachmentRows().length) return true;
     return !!(
       document.querySelector('input[type="file"][name*="filethanhPhanHoSo"]') || // cổng Bắc Ninh
       findCopyCertificationAttachmentRow() ||
@@ -2598,6 +2612,17 @@
   }
 
   function collectAttachmentContext() {
+    const dvcqgRows = dvcqgAttachmentRows();
+    if (dvcqgRows.length) {
+      return {
+        components: dvcqgRows.map((row, index) => ({
+          index: index + 1,
+          componentName: dvcqgRowName(row),
+          required: false,
+          hasFile: !!dvcqgRowFileText(row),
+        })),
+      };
+    }
     return {
       components: findAttachmentRows().map((row, index) => ({
         index: index + 1,
@@ -4496,12 +4521,129 @@
     };
   }
 
+  // ===== Đính kèm Cổng DVC quốc gia bản mới (dichvucong.gov.vn/nop-ho-so) =====
+  // Bảng "Thành phần hồ sơ": mỗi dòng chỉ có nút icon title="Tải lên file", không có nút "Chọn tệp" hay input
+  // riêng; cả bảng dùng CHUNG một input file (không multiple) đặt sau bảng. Bấm nút của dòng để cổng ghi nhớ
+  // dòng đang chọn (không có user activation nên hộp chọn tệp không bật), rồi gán tệp vào input chung và chờ
+  // tên tệp hiện trong ô "Tài liệu đính kèm" (div#profile-component-<i>) của dòng đó. Mỗi lượt một tệp.
+  // So title đã bỏ dấu: chuỗi tiếng Việt trên cổng có thể ở dạng NFD, selector `[title="Tải lên file"]` (NFC)
+  // sẽ trượt. Không dùng hằng số cấp module: handler message đăng ký từ đầu file, hằng số khai báo ở đây
+  // mà phần giữa file lỗi trên một trang nào đó là chạm TDZ và popup báo "Không kết nối được trang".
+  function dvcqgUploadButton(row) {
+    return Array.from(row?.querySelectorAll?.("button[title]") || [])
+      .find((button) => foldChoiceText(button.getAttribute("title")) === "tai len file") || null;
+  }
+
+  function isDvcqgSubmitPage() {
+    return location.hostname === "dichvucong.gov.vn" && location.pathname.startsWith("/nop-ho-so");
+  }
+
+  function dvcqgAttachProbeMessage() {
+    const rows = Array.from(document.querySelectorAll("table tbody tr"));
+    const withButton = rows.filter((row) => dvcqgUploadButton(row));
+    const shown = withButton.filter((row) => isVisible(row));
+    return "Chưa thấy bảng thành phần hồ sơ để đính kèm "
+      + `(bảng: ${document.querySelectorAll("table").length}, dòng có nút "Tải lên file": ${withButton.length}, `
+      + `đang hiển thị: ${shown.length}). Kéo xuống phần THÀNH PHẦN HỒ SƠ rồi bấm lại.`;
+  }
+
+  function dvcqgAttachmentRows() {
+    return Array.from(document.querySelectorAll("table tbody tr"))
+      .filter((row) => dvcqgUploadButton(row) && isVisible(row));
+  }
+
+  function dvcqgRowName(row) {
+    return nodeText(row.cells?.[1] || row);
+  }
+
+  function dvcqgRowFileText(row) {
+    return nodeText(row.querySelector('[id^="profile-component-"]') || row.cells?.[4]);
+  }
+
+  // Input của hộp thoại tải lên (nếu nút mở modal) hoặc input dùng chung gần bảng nhất.
+  function dvcqgUploadInput(row) {
+    const dialogInput = Array.from(document.querySelectorAll('[role="dialog"] input[type="file"], .modal input[type="file"]'))
+      .find((input) => isVisible(input.closest('[role="dialog"], .modal')));
+    if (dialogInput) return dialogInput;
+    for (let node = row.closest("table"); node && node !== document.body; node = node.parentElement) {
+      const input = node.querySelector('input[type="file"]');
+      if (input) return input;
+    }
+    return document.querySelector('input[type="file"]');
+  }
+
+  // Khớp dòng theo STT backend gửi, có đối chiếu đầu tên dòng; lệch thì tìm theo tên.
+  function dvcqgFindRow(rows, item) {
+    const want = foldChoiceText(item.componentName || "").slice(0, 40);
+    const matches = (row) => !want || foldChoiceText(dvcqgRowName(row)).includes(want);
+    const byIndex = item.componentIndex ? rows[item.componentIndex - 1] : null;
+    if (byIndex && matches(byIndex)) return byIndex;
+    return want ? rows.find(matches) || null : null;
+  }
+
+  async function attachDvcqgByPlan(payloadFiles, attachments) {
+    if (window.__AUTOFILL_HCC_ATTACH_BUSY__) {
+      return { error: "Đang có lượt đính kèm khác đang chạy, vui lòng đợi hoàn tất." };
+    }
+    window.__AUTOFILL_HCC_ATTACH_BUSY__ = true;
+    const fileNames = [];
+    const errors = [];
+    try {
+      const rows = dvcqgAttachmentRows();
+      for (const item of attachments) {
+        const row = dvcqgFindRow(rows, item);
+        const label = item.documentName || item.fileName || "tài liệu";
+        if (!row) { errors.push(`Không tìm thấy dòng "${item.componentName || label}".`); continue; }
+        const payload = payloadFiles[item.fileIndex];
+        if (!payload) { errors.push(`Thiếu file cho "${label}".`); continue; }
+        let file;
+        try { file = dataUrlToFile(payload, item.documentName); }
+        catch (e) { errors.push(`Không đọc được tệp "${label}".`); continue; }
+        const before = dvcqgRowFileText(row);
+        // Nút "Tải lên file" gọi input.click() để mở hộp chọn tệp. Cán bộ vừa bấm nút trong panel (iframe con
+        // của trang) nên trang CÓ user activation → Edge/Chrome mở hộp chọn tệp thật. Cờ này bảo
+        // content/fill-survey-main.js (MAIN world) nuốt lệnh mở hộp thoại trong lúc ta bấm hộ.
+        const pageRoot = document.documentElement;
+        pageRoot.setAttribute("data-hcc-suppress-picker", "1");
+        try {
+          clickLikeUser(dvcqgUploadButton(row));
+          await sleep(400);
+        } finally {
+          pageRoot.removeAttribute("data-hcc-suppress-picker");
+        }
+        const input = dvcqgUploadInput(row);
+        const assigned = setFilesOnInput(input, [file], { assumeConsumed: true, allowMultiple: false });
+        // Cổng tải tệp lên server rồi mới vẽ tên vào ô của dòng → chờ ô đổi.
+        const shown = assigned && !!(await waitFor(() => dvcqgRowFileText(row) !== before, 8000, 200));
+        markAttachmentResult(row, shown);
+        console.log("[AutoFill-DVCQG-Attach]", { row: dvcqgRowName(row).slice(0, 60), file: file.name, assigned, shown });
+        if (shown) fileNames.push(item.fileName || file.name);
+        else errors.push(assigned ? `Cổng chưa nhận tệp "${label}".` : `Không gắn được tệp "${label}".`);
+        if (input) input.value = "";
+        await sleep(300);
+      }
+    } finally {
+      window.__AUTOFILL_HCC_ATTACH_BUSY__ = false;
+    }
+    return {
+      ok: !errors.length,
+      method: "dvcqg-row",
+      attached: fileNames.length,
+      skipped: 0,
+      fileNames,
+      skippedNames: [],
+      errors,
+      error: errors.length ? errors.join("; ") : undefined,
+    };
+  }
+
   async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
     await accountSettingsReady; // cờ đổi tên tệp phải có trước khi dựng File đầu tiên
     // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
     if (detectFormKind() === "bacninh" && typeof H.attachBacNinhByPlan === "function") {
       return H.attachBacNinhByPlan(payloadFiles, attachments, opts);
     }
+    if (dvcqgAttachmentRows().length) return attachDvcqgByPlan(payloadFiles, attachments);
     if (window.__AUTOFILL_HCC_ATTACH_BUSY__) {
       return { error: "Đang có lượt đính kèm khác đang chạy, vui lòng đợi hoàn tất." };
     }
@@ -6732,6 +6874,55 @@
     } finally {
       select.removeAttribute(FORMIO_SELECT_TARGET_ATTR);
     }
+  }
+
+  // Tờ khai SurveyJS (Cổng DVC quốc gia bản mới): nhờ content/fill-survey-main.js (MAIN world) ghi thẳng vào
+  // model SurveyJS của cổng — isolated world không thấy model, gõ DOM thì không chạy được visibleIf/trigger/
+  // API tra cứu dân cư. Field comp "sv-*" do backend khai_tu_dvcqg trả; MAIN tự tô viền từng câu hỏi.
+  const SURVEY_FILL_REQUEST_EVENT = "__HCC_SURVEY_FILL_REQUEST__";
+  const SURVEY_FILL_RESULT_EVENT = "__HCC_SURVEY_FILL_RESULT__";
+  const SURVEY_FILL_READY_ATTR = "data-hcc-survey-ready";
+
+  async function fillFormSurvey(fields) {
+    injectAutofillStyles();
+    clearAutofillMarks();
+    if (document.documentElement?.getAttribute(SURVEY_FILL_READY_ATTR) !== "1") {
+      return { error: "Engine điền tờ khai SurveyJS chưa nạp — tải lại trang (F5) rồi thử lại." };
+    }
+    const requestId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const data = await new Promise((resolve) => {
+      let timer = null;
+      const onResult = (event) => {
+        let payload;
+        try { payload = JSON.parse(String(event.detail || "{}")); } catch { return; }
+        if (payload.requestId !== requestId) return;
+        clearTimeout(timer);
+        document.removeEventListener(SURVEY_FILL_RESULT_EVENT, onResult);
+        resolve(payload);
+      };
+      timer = setTimeout(() => {
+        document.removeEventListener(SURVEY_FILL_RESULT_EVENT, onResult);
+        resolve({ handled: false, reason: "quá thời gian chờ" });
+      }, 90000);
+      document.addEventListener(SURVEY_FILL_RESULT_EVENT, onResult);
+      document.dispatchEvent(new CustomEvent(SURVEY_FILL_REQUEST_EVENT, {
+        detail: JSON.stringify({ requestId, fields }),
+      }));
+    });
+    if (!data.handled) {
+      console.warn("[AutoFill-Survey] Không điền được:", data.reason);
+      return { error: `Không điền được tờ khai: ${data.reason || "không rõ lý do"}.` };
+    }
+    const results = data.results || [];
+    const result = {
+      filled: results.filter((r) => r.ok).length,
+      notFound: results.filter((r) => !r.ok && !r.skipped).map((r) => r.name),
+      errors: [],
+    };
+    console.table(results.map((r) => ({ o: r.name, ketQua: r.ok ? "đã điền" : (r.skipped ? "bỏ qua" : "KHÔNG điền"),
+      chiTiet: r.label || r.reason || "" })));
+    console.log("[AutoFill-Survey] Kết quả:", result);
+    return result;
   }
 
   // BE gắn f.searchOnce cho ô Choices tìm TỪ XA mà mở/gõ lại nhiều lần là HỎNG (cổng Bộ XD cấp phù hiệu: Màu

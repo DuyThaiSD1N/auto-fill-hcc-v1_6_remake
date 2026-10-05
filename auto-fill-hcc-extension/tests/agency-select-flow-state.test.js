@@ -23,6 +23,12 @@ assert.equal(sandbox.isProcedureDetailPage(`${detailUrl}?source=extension#detail
 assert.equal(sandbox.isProcedureDetailPage("https://dichvucong.gov.vn/thu-tuc-hanh-chinh"), false);
 assert.equal(sandbox.isProcedureDetailPage("https://dichvucong.gov.vn/danh-sach-thu-tuc"), false);
 assert.equal(sandbox.isProcedureDetailPage("https://example.com/thu-tuc-hanh-chinh/uuid"), false);
+// Trang nộp hồ sơ của cổng mới (form SurveyJS) là trang thủ tục, không phải trang chủ cổng.
+const submitUrl = "https://dichvucong.gov.vn/nop-ho-so?formalityCaseId=019d6642-b82d-75cb-b429-16055891d02c"
+  + "&formalityId=019d2bfd-3fac-7489-b53b-9c6c958f2da4&isFormalityCaseTest=false";
+assert.equal(sandbox.isProcedureDetailPage(submitUrl), true);
+assert.equal(sandbox.isProcedureDetailPage("https://dichvucong.gov.vn/nop-ho-so"), false);
+assert.equal(sandbox.isProcedureDetailPage("https://dichvucong.quangninh.gov.vn/nop-ho-so?formalityId=x"), false);
 
 assert.match(
   source,
