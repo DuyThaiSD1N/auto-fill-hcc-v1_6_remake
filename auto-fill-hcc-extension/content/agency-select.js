@@ -665,11 +665,15 @@
   // Trang chi tiết DVCQG đã định danh thủ tục ngay trong route. Không chờ thẻ "Chọn cơ quan
   // thực hiện" render mới kết luận, vì trong nhịp tải đầu popup sẽ hiểu nhầm đây là trang chủ và
   // hiện lại màn tìm/chọn thủ tục dù URL đã đủ để auto-detect.
+  // Trang nộp hồ sơ của cổng mới (/nop-ho-so?formalityId=…, form SurveyJS) cũng là trang thủ tục:
+  // không có iframe eform hay chữ "Kê khai thông tin" nên formReady() không nhận ra, thiếu nhánh này
+  // panel kẹt ở màn "Đi đến thủ tục" và giấu khối giấy tờ dù đã nhận diện đúng thủ tục.
   function isProcedureDetailPage(rawUrl = location.href) {
     try {
       const url = new URL(rawUrl);
-      return url.hostname === "dichvucong.gov.vn"
-        && /^\/thu-tuc-hanh-chinh\/[^/]+\/?$/.test(url.pathname);
+      if (url.hostname !== "dichvucong.gov.vn") return false;
+      if (/^\/nop-ho-so\/?$/.test(url.pathname)) return !!url.searchParams.get("formalityId");
+      return /^\/thu-tuc-hanh-chinh\/[^/]+\/?$/.test(url.pathname);
     } catch (_) {
       return false;
     }

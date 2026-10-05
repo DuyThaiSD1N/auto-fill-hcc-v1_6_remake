@@ -271,6 +271,8 @@ from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.attach import plan as dang_k
 from app.pipelines.dang_ky_nuoi_con_nuoi_trong_nuoc.process import run as dang_ky_nuoi_con_nuoi_trong_nuoc_process
 from app.pipelines.khai_tu.attach import plan as khai_tu_attach
 from app.pipelines.khai_tu.process import run as khai_tu_process
+from app.pipelines.khai_tu_dvcqg.attach import plan as khai_tu_dvcqg_attach
+from app.pipelines.khai_tu_dvcqg.process import run as khai_tu_dvcqg_process
 from app.pipelines.khai_tu_lien_thong.attach import plan as khai_tu_lien_thong_attach
 from app.pipelines.khai_tu_lien_thong.process import run as khai_tu_lien_thong_process
 from app.pipelines.khai_tu_dang_ky_lai.attach import plan as khai_tu_dang_ky_lai_attach
@@ -1153,6 +1155,38 @@ PROCEDURES: list[dict] = [
             "và gộp tất cả giấy tờ tùy thân thành một nhóm.\n"
             "Bước 3: hệ thống đưa giấy tờ vào đúng thành phần hồ sơ có sẵn; tờ khai bản giấy vào ô STT 2 "
             "(nếu hồ sơ không có giấy báo tử); giấy tờ tùy thân được thêm thành phần mới."
+        ),
+    },
+    {
+        "key": "khai-tu-dvcqg",
+        # Cổng DVC quốc gia bản mới: dichvucong.gov.vn/nop-ho-so?formalityCaseId=…&formalityId=…, form
+        # React + SurveyJS, KHÔNG dùng chung eForm moj với "khai-tu". URL chỉ có UUID nên nhận diện theo
+        # cụm chữ trên form (tiêu đề panel "THỦ TỤC ĐĂNG KÝ KHAI TỬ" + khối "NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ"),
+        # giới hạn trong trang nộp hồ sơ của cổng này. textPriority để thắng mọi rule heading/URL chung;
+        # "đăng ký lại khai tử" không chứa liền cụm "thủ tục đăng ký khai tử" nên không bị bắt nhầm.
+        # formalityId là mã thủ tục trên cổng mới (crawl 2026-10-05), khớp URL thì nhận ngay.
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-3fac-7489-b53b-9c6c958f2da4"],
+            "urlScope": ["//dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai tử", "người được đăng ký khai tử"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thủ tục đăng ký khai tử (Cổng DVC quốc gia bản mới)",
+        # Trích xuất dùng chung agent "khai-tu" (cùng bộ giấy tờ), mapper riêng khớp câu hỏi SurveyJS.
+        # Khối người nộp do cổng đổ từ VNeID và khóa, không ghi đè.
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy báo tử/giấy chứng tử hoặc giấy tờ thay giấy báo tử.\n"
+            "2. CCCD của người được khai tử nếu có (chỉ để đọc thông tin, không đính kèm).\n"
+            "3. Nếu có: tờ khai bản giấy, văn bản ủy quyền, giấy tờ chứng minh sự kiện chết hoặc nơi chết.\n"
+            "Thông tin người nộp do cổng điền sẵn từ VNeID.\n"
+            "Bước đính kèm: giấy báo tử vào dòng 1, văn bản ủy quyền dòng 2, chứng cứ sự kiện chết "
+            "(người chết đã lâu) dòng 3, giấy tờ chứng minh nơi chết dòng 4."
         ),
     },
     {
@@ -7062,6 +7096,7 @@ _PIPELINE = {
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_process,
     "trich-luc-ks": trich_luc_process,
     "khai-tu": khai_tu_process,
+    "khai-tu-dvcqg": khai_tu_dvcqg_process,
     "khai-tu-lien-thong": khai_tu_lien_thong_process,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_process,
@@ -7347,6 +7382,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_attach,
     "trich-luc-ks": trich_luc_attach,
     "khai-tu": khai_tu_attach,
+    "khai-tu-dvcqg": khai_tu_dvcqg_attach,
     "khai-tu-lien-thong": khai_tu_lien_thong_attach,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
     "thay-doi-cai-chinh-ho-tich": thay_doi_ho_tich_attach,

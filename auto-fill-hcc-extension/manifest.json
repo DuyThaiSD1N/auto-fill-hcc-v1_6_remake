@@ -113,6 +113,16 @@
     },
     {
       "matches": [
+        "https://dichvucong.gov.vn/*"
+      ],
+      "world": "MAIN",
+      "js": [
+        "content/fill-survey-main.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://*.gov.vn/*",
         "https://dichvucongnganhtuphap.moj.gov.vn/*",
         "https://tokhaidientu.moj.gov.vn/*",
