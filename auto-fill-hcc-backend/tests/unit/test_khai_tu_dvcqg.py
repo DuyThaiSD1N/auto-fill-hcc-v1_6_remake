@@ -158,3 +158,10 @@ def test_attach_rows_no_file_dropped():
         ROWS["death_place_proof"]["slotName"], ROW_GIAY_BAO_TU["slotName"],
     ]
     assert all(i["target"] == "fixed-slot" for i in items)
+
+
+@pytest.mark.parametrize("dan_toc", ["Cill", "Cil", "Chil", "K'Ho", "K’Ho", "Lạch"])
+def test_co_ho_local_group_maps_to_co_ho(dan_toc):
+    # Cổng mới không có option "Khác" → nhóm địa phương Cơ Ho chọn thẳng "Cơ-ho".
+    out, _ = _enrich({**BASE, "NguoiMat_DanToc": dan_toc}, _context("Con"))
+    assert _by(out)["citizenDantoc_NgdcKT"]["code"] == "16"

@@ -2691,7 +2691,9 @@
       && Array.isArray(payload.attachments) && payload.attachments.length
       && typeof H.startAttachAllBusiness === "function") {
       H.setRunProgressText(`✓ Đã điền xong ${businessPageCount(st)} trang. Bắt đầu đính kèm hồ sơ…\n(đừng thao tác tới khi xong)`);
-      await H.startAttachAllBusiness(payload.files, payload.attachments);
+      // Ngoại lệ địa bàn ở bước đính kèm chỉ áp cho "Đăng ký hộ kinh doanh" (workflow create).
+      const attachDefaults = (st.workflow || "create") === "create" ? st.businessDefaults : null;
+      await H.startAttachAllBusiness(payload.files, payload.attachments, attachDefaults);
       setTimeout(H.stepAttachAll, 400);
       return;
     }
@@ -2928,8 +2930,19 @@
     return `Đang đính kèm hồ sơ — ${label}\n(đừng thao tác tới khi xong)`;
   }
 
+  // Bỏ dấu tiếng Việt khỏi tên tệp (giữ đuôi): "Giấy đề nghị.pdf" → "Giay de nghi.pdf".
+  function asciiFileName(name) {
+    return String(name || "")
+      .replace(/Đ/g, "D")
+      .replace(/đ/g, "d")
+      .normalize("NFD")
+      .replace(/\p{Mn}/gu, "");
+  }
+
   // Khởi tạo phiên (gọi từ content handler). plan[i] khớp files[i] theo attachment.fileIndex.
-  async function startAttachAllBusiness(files, attachments) {
+  // defaults = businessDefaults của popup; asciiAttachmentFileNames (tài khoản Phường Hải Châu, Đà Nẵng)
+  // → tên tệp tải lên cổng không dấu.
+  async function startAttachAllBusiness(files, attachments, defaults) {
     const plan = files.map((f, i) => {
       const a = (attachments || []).find((x) => x && x.fileIndex === i) || {};
       const category = ATTACH_TYPE[a.category] ? a.category : "OTHERS"; // BUSREGFRM | CPID | OTHERS
@@ -2942,7 +2955,10 @@
       if (!declareTypes.includes(p.category)) declareTypes.push(p.category);
       declareCounts[p.category] = (declareCounts[p.category] || 0) + 1;
     }
-    const st = { files, plan, declareTypes, declareCounts, declared: [], phase: "declare", uploadTries: 0 };
+    const st = {
+      files, plan, declareTypes, declareCounts, declared: [], phase: "declare", uploadTries: 0,
+      asciiFileNames: !!(defaults && defaults.asciiAttachmentFileNames),
+    };
     await setAttachAllState(st);
     return { ok: true, started: true };
   }
@@ -3143,10 +3159,14 @@
     if (st.uploadTries > 3) return void failAttachAll("Tải file lên thất bại (thử lại quá số lần).");
     // Tên tệp theo cài đặt tài khoản (đổi tên theo loại giấy / giữ tên gốc). Ghi lại tên đã tải lên để
     // pha classify còn khớp theo tên khi số dòng lệch số tệp.
-    const files = H.dataUrlFilesForBatch((st.files || []).map((f, i) => ({
+    let files = H.dataUrlFilesForBatch((st.files || []).map((f, i) => ({
       payload: f,
       documentName: st.plan?.[i]?.documentName || "",
     })));
+    // Bỏ dấu SAU khi đặt tên để áp cho cả hai chế độ (đổi tên theo loại giấy / giữ tên gốc).
+    if (st.asciiFileNames) {
+      files = files.map((f) => new File([f], asciiFileName(f.name), { type: f.type, lastModified: f.lastModified }));
+    }
     (st.plan || []).forEach((p, i) => { if (files[i]) p.uploadName = files[i].name; });
     st.uploaded = true; // sau postback "Tải lên" → dòng file hiện ra → pha classify
     await setAttachAllState(st);

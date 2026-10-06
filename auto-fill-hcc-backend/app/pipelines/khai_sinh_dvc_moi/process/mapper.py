@@ -6,6 +6,7 @@ from datetime import date
 
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.hospital_lookup import lookup_hospital
 
@@ -203,7 +204,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenGioitinh_NgdcKS", values.get("Con_GioiTinh"))
     quoc_tich = values.get("Con_QuocTich")
     add("citizenQuoctich_NgdcKS", quoc_tich or "Việt Nam", default=not quoc_tich)
-    add("citizenDanToc_NgdcKS", values.get("Con_DanToc"))
+    # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+    add("citizenDanToc_NgdcKS", co_ho_local_group(values.get("Con_DanToc")))
     add_area("citizenNoisinhnks", _birth_place(values.get("Con_NoiSinh")))
     add_area("citizenQuequannks", _area(values.get("Con_QueQuan")))
 
@@ -231,7 +233,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(ui["id"], personal_id if len(personal_id) == 12 else "")
         add(ui["birth"], _full_date(values.get(f"{prefix}_NgaySinh")))
         add(ui["nation"], values.get(f"{prefix}_QuocTich"))
-        add(ui["ethnic"], values.get(f"{prefix}_DanToc"))
+        add(ui["ethnic"], co_ho_local_group(values.get(f"{prefix}_DanToc")))
         hint = values.get(f"{prefix}_LoaiGiayTo")
         number = str(values.get(f"{prefix}_SoGiayTo") or "").strip() or personal_id
         if number:

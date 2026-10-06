@@ -10,7 +10,7 @@ from datetime import date
 
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
-from app.pipelines._shared.ethnic_normalize import normalize_ethnic
+from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
 
 from .reason import labeled_value, requester_context, section
@@ -217,7 +217,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         warnings.append("Không đọc được người được đăng ký khai tử — cán bộ nhập khối người mất.")
 
     add_choice("citizenGioitinh_NgdcKT", _snap(GIOI_TINH, values.get("NguoiMat_GioiTinh")))
-    dan_toc = values.get("NguoiMat_DanToc")
+    # Danh mục cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+    dan_toc = co_ho_local_group(values.get("NguoiMat_DanToc"))
     add_choice("citizenDantoc_NgdcKT",
                _snap(DAN_TOC, dan_toc, _DAN_TOC_ALIAS) or _snap(DAN_TOC, normalize_ethnic(dan_toc), _DAN_TOC_ALIAS))
     quoc_tich = values.get("NguoiMat_QuocTich")

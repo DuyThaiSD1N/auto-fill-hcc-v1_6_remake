@@ -792,6 +792,8 @@ function buildBusinessDefaults(user) {
   if (isHaiChauDaNangUser(user)) {
     defaults.dissolutionReason = HAI_CHAU_DISSOLUTION_REASON;
     defaults.postalServiceAddress = HAI_CHAU_POSTAL_ADDRESS;
+    // Bước đính kèm của "Đăng ký hộ kinh doanh": tên tệp tải lên cổng KHÔNG dấu tiếng Việt.
+    defaults.asciiAttachmentFileNames = true;
   }
   if (isDakBlaLamDongUser(user)) defaults.dissolutionReason = DAK_BLA_DISSOLUTION_REASON;
   return Object.keys(defaults).length ? defaults : null;
@@ -3207,6 +3209,7 @@ async function runBusinessAttach(cfg, options) {
     action: "startAttachAllBusiness",
     files: payloadFiles,
     attachments,
+    businessDefaults: buildBusinessDefaults(currentUser),
   });
   if (startRes?.error) return startRes;
   return {

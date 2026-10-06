@@ -5,6 +5,7 @@ import unicodedata
 
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
 
 from .reason import labeled_value, requester_context, section
@@ -160,7 +161,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenNDKGioitinh", values.get("NguoiThayDoi_GioiTinh"))
         quoc_tich = values.get("NguoiThayDoi_QuocTich")
         add("citizenNDKQuocTich", quoc_tich or "Việt Nam", default=not quoc_tich)
-        add("citizenNDKDantoc", values.get("NguoiThayDoi_DanToc"))
+        # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+        add("citizenNDKDantoc", co_ho_local_group(values.get("NguoiThayDoi_DanToc")))
         area = _area(values.get("NguoiThayDoi_NoiCuTru"))
         if area:
             # Radio "Trong Nước" phải chọn trước: các ô địa chỉ chỉ hiện sau khi chọn.

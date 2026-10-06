@@ -1497,7 +1497,7 @@
         return true;
       }
       sessSet(SS_FILLALL, "1");
-      H.startAttachAllBusiness(files, attachments).then((r) => {
+      H.startAttachAllBusiness(files, attachments, (msg && msg.businessDefaults) || null).then((r) => {
         sendResponse(r || { ok: true, started: true });
         setTimeout(() => { beginFillAllUI(); H.stepAttachAll(); }, 60);
       });

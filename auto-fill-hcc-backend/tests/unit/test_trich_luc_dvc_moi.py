@@ -201,3 +201,10 @@ def test_attach_plan_async_contract():
     files = [FileItem(name="a.pdf", type="application/pdf", dataUrl="data:,", role="")]
     res = asyncio.run(plan(files, {}))
     assert len(res["attachments"]) == 1 and res["errors"] == []
+
+
+@pytest.mark.parametrize("dan_toc", ["Cill", "Cil", "Chil", "K'Ho", "K’Ho", "Lạch"])
+def test_co_ho_local_group_maps_to_co_ho(dan_toc):
+    # Cổng mới không có option "Khác" → nhóm địa phương Cơ Ho chọn thẳng "Cơ Ho".
+    out, _ = _enrich({**SUBJECT, "NguoiDuocCap_DanToc": dan_toc}, _context("Mẹ đẻ", subject_id="001190000002"))
+    assert {f["name"]: f for f in out}["citizenField32"]["value"] == "Cơ Ho"

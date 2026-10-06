@@ -290,6 +290,20 @@ def _fold_option(text: str) -> str:
 OTHER_ETHNICITY_NAMES = frozenset({"cil", "cill", "cao lan"})
 
 
+# Nhóm địa phương của dân tộc Cơ Ho (khóa đã _fold: "K'Ho" → "kho", "Lạch" → "lach"). Biểu mẫu Cổng DVC quốc
+# gia mới (khai sinh, khai tử, trích lục, cải chính) KHÔNG có option "Khác" để ghi nguyên văn như eForm cũ.
+CO_HO_LOCAL_GROUPS = frozenset({"cil", "cill", "chil", "kho", "k ho", "ko ho", "lach"})
+
+
+def co_ho_local_group(value: str | None) -> str:
+    """Nhóm địa phương của Cơ Ho → "Cơ Ho"; giá trị khác trả nguyên văn.
+
+    Chỉ dùng cho biểu mẫu không có option "Khác". Biểu mẫu còn "Khác" thì dùng ethnicity_for_form.
+    """
+    raw = str(value or "").strip()
+    return "Cơ Ho" if _fold(raw) in CO_HO_LOCAL_GROUPS else raw
+
+
 def ethnicity_for_form(value: str | None) -> tuple[str, str]:
     """(giá trị dropdown, chữ ghi vào ô "Khác").
 

@@ -6,6 +6,7 @@ from datetime import date
 
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
 
 from .reason import QUAN_HE_OPTIONS, labeled_value, requester_context, section
@@ -207,7 +208,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             add("citizenNDK_NgayCap", issue_date)
 
         add("citizenField13", values.get("NguoiDuocCap_GioiTinh"))
-        add("citizenField32", values.get("NguoiDuocCap_DanToc"))
+        # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
+        add("citizenField32", co_ho_local_group(values.get("NguoiDuocCap_DanToc")))
         area = _area(values.get("NguoiDuocCap_NoiCuTru"))
         if area:
             add("citizenNDK_LoaiCuTru", "Thường trú", default=True)

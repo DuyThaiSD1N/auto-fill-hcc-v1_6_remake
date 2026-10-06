@@ -179,3 +179,10 @@ def test_attach_routes_authorization_and_everything_else():
     assert rows == [ROW_CAN_CU["slotName"]] * 3 + [ROW_UY_QUYEN["slotName"]]
     assert [i["fileIndex"] for i in items] == [0, 1, 2, 3]
     assert all(i["target"] == "fixed-slot" for i in items)
+
+
+@pytest.mark.parametrize("dan_toc", ["Cill", "Cil", "Chil", "K'Ho", "K’Ho", "Lạch"])
+def test_co_ho_local_group_maps_to_co_ho(dan_toc):
+    # Cổng mới không có option "Khác" → nhóm địa phương Cơ Ho chọn thẳng "Cơ Ho".
+    out, _ = _enrich({**SUBJECT, "NguoiThayDoi_DanToc": dan_toc}, _context())
+    assert {f["name"]: f for f in out}["citizenNDKDantoc"]["value"] == "Cơ Ho"
