@@ -6,9 +6,12 @@ pipeline riêng của thủ tục.
 Ảnh không nhận ra → doc_key=None, mobile cho người dân chọn tay (hint doc_key khi chụp
 theo từng dòng checklist được ƯU TIÊN nếu OCR không phủ quyết).
 """
+import asyncio
+import json
 import re
 import unicodedata
 
+from app.pipelines._shared.documents import representative_excerpt
 from app.services import ocr
 from app.upload_session import classifier_registry, llm_classifier
 
@@ -153,6 +156,73 @@ def route_to_slot(info: dict, required_docs: list[dict], files: list[dict],
     return None, None, "chưa nhận ra loại giấy tờ"
 
 
+def _slot_free(key: str, required_docs: list[dict], files: list[dict]) -> bool:
+    doc = next((d for d in required_docs if d.get("key") == key), None)
+    if not doc:
+        return False
+    if doc.get("repeatable"):
+        return True
+    return sum(1 for f in files if f.get("doc_key") == key) < int(doc.get("sides") or 1)
+
+
+# Thủ tục CHƯA có bộ phân loại riêng (upload_classification.py) chỉ có bộ từ khoá chung ở trên —
+# vốn chỉ biết giấy hộ tịch/CCCD. Giấy tờ chuyên ngành (đơn xin phép xây dựng, bản vẽ, sổ đỏ…) vì
+# thế rơi hết vào "Giấy tờ khác". Tệp nào bộ từ khoá KHÔNG nhận ra thì hỏi LLM theo chính TÊN các ô
+# trong checklist của thủ tục: không phải viết prompt riêng cho từng thủ tục.
+_SLOT_NAME_SYSTEM_PROMPT = """
+Bạn là bộ phân loại giấy tờ cho một thủ tục hành chính. Mỗi yêu cầu chỉ chứa OCR của ĐÚNG MỘT
+tệp và danh sách các ô giấy tờ của thủ tục. Chọn đúng một doc_key mà tệp này thuộc về, dựa
+vào TIÊU ĐỀ và BẢN CHẤT của tài liệu (không dựa vào việc tài liệu nhắc tới giấy tờ khác: đơn
+đề nghị vẫn là đơn dù có ghi số sổ đỏ hay số căn cước bên trong).
+Tài liệu không thuộc ô nào → doc_key của ô "giấy tờ khác" nếu danh sách có, không thì "unknown".
+OCR trống hoặc quá thiếu để xác định an toàn → "unknown". Không dùng tên tệp làm bằng chứng.
+Chỉ trả JSON object đúng schema, không giải thích: {"doc_key":"..."}
+""".strip()
+
+
+def _slot_name_spec(required_docs: list[dict]) -> llm_classifier.ClassificationSpec:
+    slots = [{"doc_key": d["key"], "ten_o": str(d.get("name") or "")} for d in required_docs]
+
+    def build_user_prompt(_file_name: str, text: str) -> str:
+        compact = representative_excerpt(text, 5000)
+        return json.dumps({"cacO": slots, "ocrText": compact}, ensure_ascii=False)
+
+    return llm_classifier.ClassificationSpec(
+        system_prompt=_SLOT_NAME_SYSTEM_PROMPT,
+        allowed_keys=frozenset(d["key"] for d in required_docs),
+        build_user_prompt=build_user_prompt,
+    )
+
+
+async def _classify_by_slot_names(payload_files: list[dict], ocr_results: list[dict],
+                                  infos: list[dict], required_docs: list[dict],
+                                  hint_doc_key: str | None, procedure_key: str) -> dict[int, str]:
+    """{chỉ số tệp: doc_key} cho các tệp bộ từ khoá không nhận ra. Rỗng = giữ luồng cũ.
+
+    Chỉ chạy khi: biết thủ tục, công dân KHÔNG chụp theo dòng cụ thể (hint thắng), và checklist
+    có ít nhất một ô chuyên ngành ngoài "khác"/CCCD — không thì chẳng có gì để phân biệt.
+    """
+    if not procedure_key or hint_doc_key:
+        return {}
+    named_slots = [d for d in required_docs
+                   if d.get("key") != "khac" and not str(d.get("key") or "").startswith("cccd")]
+    if not named_slots:
+        return {}
+    pending = [
+        index for index, result in enumerate(ocr_results)
+        if not infos[index].get("doc_type") and (result.get("text") or "").strip()
+        and index < len(payload_files)
+    ]
+    if not pending:
+        return {}
+    spec = _slot_name_spec(required_docs)
+    keys = await asyncio.gather(*(
+        llm_classifier._classify_one(payload_files[index], ocr_results[index], spec)
+        for index in pending
+    ))
+    return {index: key for index, key in zip(pending, keys) if key}
+
+
 async def classify_files(payload_files: list[dict], required_docs: list[dict],
                          existing_files: list[dict], hint_doc_key: str | None,
                          procedure_key: str = "",
@@ -189,12 +259,20 @@ async def classify_files(payload_files: list[dict], required_docs: list[dict],
 
     # Phân loại realtime vẫn dùng provider duy nhất Tiếng Nói, với giới hạn token ngắn.
     ocr_results = await ocr.ocr_per_file(payload_files, classify=True)
+    infos = [classify_text(r.get("text") or "") for r in ocr_results]
+    by_slot_name = await _classify_by_slot_names(
+        payload_files, ocr_results, infos, required_docs, hint_doc_key, procedure_key,
+    )
     out = []
     # files tích lũy dần trong lô: ảnh sau biết ảnh trước đã chiếm ô nào.
     acc = list(existing_files)
-    for r in ocr_results:
-        info = classify_text(r.get("text") or "")
-        doc_key, side, note = route_to_slot(info, required_docs, acc, hint_doc_key)
+    for index, r in enumerate(ocr_results):
+        info = infos[index]
+        named = by_slot_name.get(index)
+        if named and _slot_free(named, required_docs, acc):
+            doc_key, side, note = named, None, "LLM theo tên ô checklist"
+        else:
+            doc_key, side, note = route_to_slot(info, required_docs, acc, hint_doc_key)
         item = {"doc_key": doc_key, "side": side, "note": note, "ocr_ok": bool(r.get("text"))}
         out.append(item)
         if doc_key:

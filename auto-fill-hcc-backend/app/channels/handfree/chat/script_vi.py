@@ -152,6 +152,45 @@ VARIANT_DIALOG_AUTOFILL_GUIDE = {
     ),
 }
 
+# Hộp thoại "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng — danh sách lựa chọn ĐỌC TỪ CỔNG
+# (ô Đơn vị thực hiện = nơi xử lý, ô Trường hợp giải quyết = trường hợp kèm thời gian). Chỉ hỏi
+# những ô có từ 2 lựa chọn; {questions} = "nơi xử lý" / "trường hợp giải quyết" / cả hai.
+CHOOSE_MAE_DIALOG = {
+    "md": (
+        "Dạ, thủ tục **{procedure}** cần chọn **{questions}** ạ.\n\n{options_md}\n\n"
+        "Công dân chọn ở thẻ bên dưới rồi bấm **Xác nhận** giúp em nhé ạ."
+    ),
+    "tts": (
+        "Dạ, thủ tục này cần chọn {questions}. {options_tts}. Công dân chọn ở thẻ bên dưới "
+        "rồi bấm xác nhận giúp em nhé ạ."
+    ),
+}
+
+CHOOSE_MAE_DIALOG_REMIND = {
+    "md": (
+        "Dạ, công dân chọn giúp em **{questions}** ở thẻ bên dưới rồi bấm **Xác nhận** để em "
+        "làm tiếp ạ."
+    ),
+    "tts": "Dạ, công dân chọn giúp em {questions} ở thẻ bên dưới rồi bấm xác nhận để em làm tiếp ạ.",
+}
+
+MAE_DIALOG_FAILED = {
+    "md": (
+        "⚠️ Em chưa chọn tự động được trên trang: *{error}*\n\n"
+        "Công dân chọn tay giúp em ở hộp thoại **Chọn trường hợp giải quyết**: Đơn vị thực hiện "
+        "**{agency}**, Trường hợp giải quyết **{process}**, rồi bấm **Đồng ý** ạ."
+    ),
+    "tts": (
+        "Em chưa chọn tự động được ạ. Công dân chọn tay giúp em đơn vị thực hiện và trường hợp "
+        "giải quyết ở hộp thoại trên trang, rồi bấm đồng ý ạ."
+    ),
+}
+
+MAE_DIALOG_AUTOFILL_GUIDE = {
+    "md": "Dạ, em chọn {choice_md} rồi ấn **Đồng ý** để sang trang kê khai nhé ạ.",
+    "tts": "Dạ, em chọn {choice_tts} rồi ấn đồng ý để sang trang kê khai nhé ạ.",
+}
+
 # Trang MAE "chọn nơi và loại": bot tự điền Tỉnh + Sở + Trường hợp giải quyết rồi bấm
 # "Đồng ý và tiếp tục" — câu hướng dẫn theo yêu cầu nghiệp vụ.
 MAE_AGENCY_AUTOFILL_GUIDE = {
@@ -1749,6 +1788,7 @@ STEP_LABELS = {
     "confirm_procedure": "Xác nhận thủ tục",
     "choose_variant": "Chọn trường hợp",
     "guide_login": "Đăng nhập VNeID",
+    "choose_mae_dialog": "Chọn nơi xử lý, trường hợp",
     "consent": "Xin phép xử lý dữ liệu",
     "ask_doc_method": "Cách cung cấp giấy tờ",
     "qr_waiting": "Quét mã QR",
@@ -1764,7 +1804,7 @@ STEP_LABELS = {
 
 # Thứ tự bước cho progress.step (1-based).
 STEP_ORDER = [
-    "greet", "confirm_procedure", "choose_variant", "guide_login", "consent", "ask_doc_method",
-    "qr_waiting", "collecting_docs", "choosing_attach_mode", "owner_filling", "owner_waiting_next",
-    "filling", "reviewing", "attaching", "done",
+    "greet", "confirm_procedure", "choose_variant", "guide_login", "choose_mae_dialog", "consent",
+    "ask_doc_method", "qr_waiting", "collecting_docs", "choosing_attach_mode", "owner_filling",
+    "owner_waiting_next", "filling", "reviewing", "attaching", "done",
 ]

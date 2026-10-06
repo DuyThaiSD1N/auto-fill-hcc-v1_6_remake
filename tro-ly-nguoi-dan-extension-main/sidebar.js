@@ -105,6 +105,10 @@
     // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
     // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
     supportsTuPhapMoi: true,
+    // Đọc được danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng,
+    // content/portal-mae.js), vẽ thẻ mae_dialog_choice và chọn đúng nhãn công dân đã chốt
+    // (agencyExact/processExact). Thiếu cờ → BE giữ đường variants khai sẵn.
+    supportsMaeDialogChoice: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -935,6 +939,20 @@
     const payload = docsCompletePagePayload(ctx);
     return ask(`${command}:${JSON.stringify(payload)}`, source, displayText);
   }
+  // Mở từng ô của hộp thoại để đọc lựa chọn là thao tác CÓ HIỆN trên màn hình → nhớ kết quả theo
+  // URL một lúc, các lần gửi page_status kế tiếp (thử lại, kiểm tra tay) không mở ô lần nữa.
+  let maeDialogRead = { url: "", at: 0, data: null };
+  async function readMaeDialogOptions(url) {
+    if (maeDialogRead.data && maeDialogRead.url === url && Date.now() - maeDialogRead.at < 15000) {
+      return maeDialogRead.data;
+    }
+    const res = await sendToContent({ action: "readMaeDialogOptions" });
+    const data = res?.ok && (res.agency || res.process)
+      ? { agency: res.agency || null, process: res.process || null } : null;
+    maeDialogRead = { url, at: Date.now(), data };
+    return data;
+  }
+
   async function sendPageStatus(pre) {
     let c = pre || null;
     for (let i = 0; !c && i < 12; i++) {
@@ -980,6 +998,12 @@
       // rõ đang còn ở đăng nhập hay chưa tới hồ sơ, thay vì im lặng như watcher nền.
       manualCheck: !!c.manualCheck,
     };
+    // Hộp thoại "Chọn trường hợp giải quyết": gửi kèm danh sách nơi xử lý + trường hợp đọc từ
+    // cổng để BE hỏi công dân. KHÔNG nằm trong chữ ký trang của watcher (tránh gửi lặp).
+    if (c.maeAgencyBlock && CLIENT_CAPABILITIES.supportsMaeDialogChoice) {
+      const dialogOptions = await readMaeDialogOptions(c.url || "");
+      if (dialogOptions) pageStatus.maeDialogOptions = dialogOptions;
+    }
     const hasVneidModal = pageStatus.vneidLoginCodePrompt
       || pageStatus.vneidDataSharingPrompt || pageStatus.vneidPasscodePrompt;
     if (hasVneidModal) {
@@ -1099,6 +1123,8 @@
   const WATCH_STATES = [
     "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
     "owner_waiting_next", "attaching", "done", "filling",
+    // Đang hỏi nơi xử lý / trường hợp: công dân tự bấm Đồng ý trên cổng thì BE phải biết.
+    "choose_mae_dialog",
   ];
   const isWatchedState = () => WATCH_STATES.includes(lastState)
     && (lastState !== "filling" || lastReplyData?.procedure_key === "dang-ky-kinh-doanh");
@@ -1169,6 +1195,7 @@
     if (card.kind === "location_picker") return renderLocationPicker(card);
     if (card.kind === "doc_options") return renderDocOptions(card);
     if (card.kind === "result_methods") return renderResultMethods(card);
+    if (card.kind === "mae_dialog_choice") return renderMaeDialogChoice(card);
     // Contract cũ từng xin SĐT sau khi nộp hồ sơ. Đã ngừng hoàn toàn; bỏ qua cả card
     // còn sót trong last_reply của phiên được tạo trước khi extension cập nhật.
     if (card.kind === "phone_form") return;
@@ -1545,7 +1572,8 @@
     if (!list) return;
     const ql = foldVi(query).trim();
     const subset = serviceSheetItems.filter((it) => !ql || foldVi(it.title).includes(ql)
-      || foldVi(it.subtitle).includes(ql));
+      || foldVi(it.subtitle).includes(ql) || foldVi(it.label).includes(ql)
+      || codeMatches(it.code, query));
     list.innerHTML = "";
     if (!subset.length) {
       const none = document.createElement("div");
@@ -1562,13 +1590,26 @@
         ? `<span class="srow-hm">${window.escapeHtml(it.titleHmong)}</span>` : "";
       const sub = it.subtitle
         ? `<span class="srow-sd">${window.escapeHtml(it.subtitle)}</span>` : "";
+      const code = it.code
+        ? `<span class="srow-cd">Mã ${codeMatches(it.code, query)
+          ? `<mark>${window.escapeHtml(it.code)}</mark>` : window.escapeHtml(it.code)}</span>` : "";
       row.innerHTML = `<span class="srow-ic">${window.escapeHtml(it.icon || "📄")}</span>
-        <span class="srow-tx"><span class="srow-tn">${highlightMatch(it.title, query)}</span>${hmongLine}${sub}</span>
+        <span class="srow-tx"><span class="srow-tn">${highlightMatch(it.title, query)}</span>${hmongLine}${sub}${code}</span>
         <span class="srow-ch">›</span>`;
       row.addEventListener("click", () => { closeServiceSheet(); pickProcedure(it); });
       list.appendChild(row);
     });
   }
+  // Tìm theo MÃ TTHC (vd "1.013225"): chỉ xét khi ô tìm kiếm toàn chữ số/dấu chấm và có từ 3 chữ
+  // số — gõ đủ mã, bỏ "1.", hay chỉ vài số cuối ("13225") đều ra. Gõ chữ thì không đụng tới mã.
+  function codeMatches(code, query) {
+    const q = String(query || "").trim();
+    if (!code || !/^[\d.\s]+$/.test(q)) return false;
+    const digits = q.replace(/\D/g, "");
+    if (digits.length < 3) return false;
+    return String(code).includes(q.replace(/\s/g, "")) || String(code).replace(/\D/g, "").includes(digits);
+  }
+
   // Tô vàng đoạn khớp khi gõ CÓ dấu (khớp trực tiếp); gõ không dấu vẫn lọc ra nhưng không tô
   // (map vị trí qua bỏ dấu dễ lệch) — an toàn hơn là tô sai.
   function highlightMatch(title, query) {
@@ -1815,6 +1856,52 @@
       });
       wrap.appendChild(el);
     });
+    addNode(wrap);
+  }
+
+  // Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): mỗi nhóm (Nơi xử lý / Trường hợp
+  // – thời gian) là một danh sách chọn một; nhãn đúng chữ đọc từ cổng. Chọn xong bấm "Xác nhận"
+  // → gửi chỉ số đã chọn của từng nhóm, BE gửi lại nhãn nguyên văn để engine chọn trên cổng.
+  function renderMaeDialogChoice(card) {
+    document.querySelectorAll(".mae-dialog-choice").forEach((el) => el.remove());
+    const groups = (card.groups || []).filter((g) => Array.isArray(g.options) && g.options.length);
+    if (!groups.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "result-methods mae-dialog-choice";
+    const picks = {};
+    groups.forEach((group) => {
+      picks[group.key] = Number.isInteger(group.selected) ? group.selected : 0;
+      const title = document.createElement("div");
+      title.className = "mdc-title";
+      title.textContent = group.label || "";
+      wrap.appendChild(title);
+      const rows = group.options.map((opt, index) => {
+        const el = document.createElement("div");
+        el.className = "opt" + (index === picks[group.key] ? " picked" : "");
+        el.innerHTML = `<div>
+          <div class="ot">${window.escapeHtml(opt.label || "")}</div>
+          <div class="od">${window.escapeHtml(opt.desc || "")}</div></div>`;
+        el.addEventListener("click", () => {
+          picks[group.key] = index;
+          rows.forEach((row, i) => row.classList.toggle("picked", i === index));
+        });
+        wrap.appendChild(el);
+        return el;
+      });
+    });
+    const submit = document.createElement("button");
+    submit.className = "chip solid";
+    submit.textContent = card.submitLabel || "Xác nhận";
+    submit.addEventListener("click", () => {
+      wrap.querySelectorAll(".opt, button").forEach((el) => {
+        el.style.pointerEvents = "none";
+        if (el.tagName === "BUTTON") el.disabled = true;
+      });
+      const summary = groups.map((g) => g.options[picks[g.key]]?.label || "").filter(Boolean).join(" · ");
+      addUserText(summary);
+      ask(`__action:set_mae_dialog:${JSON.stringify(picks)}`, "chip", summary);
+    });
+    wrap.appendChild(submit);
     addNode(wrap);
   }
 
@@ -4286,6 +4373,9 @@
           variant: a.variant || "",
           variantMatch: a.variantMatch || "",
           variantAvoid: a.variantAvoid || "",
+          // Hộp thoại Bộ Xây dựng: nhãn NGUYÊN VĂN công dân đã chọn trên thẻ mae_dialog_choice.
+          agencyExact: a.agencyExact || "",
+          processExact: a.processExact || "",
         });
         if (res?.ok) {
           setStatus("Đã chọn cơ quan và trường hợp xong ✓");

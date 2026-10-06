@@ -168,6 +168,10 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết mở tab "Tạo giấy ủy quyền" từ mục Giấy tờ soạn tại quầy. Client cũ không khai →
         # card chọn thủ tục không có mục này (bấm vào cũng không có gì để mở).
         "supportsAuthorizationLetter": raw.get("supportsAuthorizationLetter") is True,
+        # Biết ĐỌC danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây
+        # dựng), vẽ thẻ mae_dialog_choice và chọn đúng nhãn (agencyExact/processExact). Client cũ
+        # không khai → BE giữ đường variants khai sẵn trong registry.
+        "supportsMaeDialogChoice": raw.get("supportsMaeDialogChoice") is True,
     }
 
 

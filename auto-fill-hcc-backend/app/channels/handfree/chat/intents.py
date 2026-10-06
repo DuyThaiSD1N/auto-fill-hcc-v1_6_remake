@@ -13,7 +13,9 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-from app.channels.handfree.procedure_registry import public_list
+from app.channels.handfree.procedure_registry import procedure_code, public_list
+
+_CODE_ONLY_RE = re.compile(r"^(?:ma\s*(?:so\s*)?(?:thu\s*tuc\s*)?[:\s]*)?([12]\.\d{6})[.\s]*$")
 from app.services.llm.client import chat as llm_chat
 
 logger = logging.getLogger(__name__)
@@ -172,6 +174,21 @@ _PROCEDURE_HINTS: dict[str, list[str]] = {
                                                "giải chấp quyền sử dụng đất", "xóa thế chấp đất đai",
                                                "xóa đăng ký giao dịch bảo đảm",
                                                "giải chấp sổ đỏ ngân hàng"],
+    # ── Cổng Bộ Xây dựng (luồng chung "xay-dung") ──
+    "dieu-chinh-giay-phep-xay-dung": ["điều chỉnh giấy phép xây dựng", "sửa giấy phép xây dựng",
+                                      "thay đổi thiết kế đã được cấp phép",
+                                      "xin điều chỉnh giấy phép xây nhà"],
+    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": ["xin phép sửa nhà", "giấy phép sửa chữa cải tạo",
+                                             "cải tạo nhà ở", "xin phép cơi nới nhà",
+                                             "giấy phép sửa chữa công trình"],
+    "cung-cap-thong-tin-quy-hoach": ["cung cấp thông tin quy hoạch", "xem quy hoạch đất",
+                                     "tra cứu quy hoạch thửa đất", "đất có dính quy hoạch không",
+                                     "xin thông tin quy hoạch"],
+    "tham-dinh-bcnckt": ["thẩm định báo cáo nghiên cứu khả thi", "thẩm định dự án đầu tư xây dựng",
+                         "thẩm định báo cáo khả thi"],
+    "cap-phep-long-duong-via-he": ["xin phép sử dụng vỉa hè", "sử dụng tạm lòng đường",
+                                   "giấy phép dùng vỉa hè", "xin phép tổ chức sự kiện trên vỉa hè",
+                                   "tập kết vật liệu trên vỉa hè"],
 }
 
 # "profile" (Lấy dữ liệu đã lưu) tạm ẨN khỏi UI + LLM (xem _doc_options_card). Để bật lại: thêm
@@ -208,6 +225,13 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "xin phép xây NHÀ Ở RIÊNG LẺ của hộ gia đình, cá nhân"},
         {"kind": "action", "value": "variant_cong_trinh",
          "desc": "xin phép xây CÔNG TRÌNH cấp III, cấp IV (không phải nhà ở riêng lẻ)"},
+    ],
+    # Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): lựa chọn đọc từ cổng nên chỉ
+    # nhận SỐ THỨ TỰ; flow chỉ áp khi đang hỏi đúng một ô (nơi xử lý HOẶC trường hợp).
+    "choose_mae_dialog": [
+        {"kind": "action", "value": f"mae_pick_{n}",
+         "desc": f"chọn lựa chọn số {n} (thứ {word}) trong danh sách đang hỏi"}
+        for n, word in ((1, "nhất"), (2, "hai"), (3, "ba"), (4, "tư"), (5, "năm"), (6, "sáu"))
     ],
     "guide_login": [
         {"kind": "event", "value": "sso_success",
@@ -446,6 +470,13 @@ async def resolve(message: str, state: str) -> Intent:
     text = str(message or "").strip()
     if not text:
         return Intent("unknown")
+
+    # Gõ/nói đúng MÃ TTHC (vd "1.013225", "mã 1.013225") → chọn thẳng thủ tục, không qua LLM.
+    code_match = _CODE_ONLY_RE.match(fold(text))
+    if code_match:
+        for procedure in public_list():
+            if procedure_code(procedure) == code_match.group(1):
+                return Intent("pick_procedure", procedure["key"])
 
     proc_keys = {p["key"] for p in public_list()}
     # (2) Mọi câu tự do → LLM phân loại (1 lượt). Lỗi/không chắc → unknown (flow hiện lại card).

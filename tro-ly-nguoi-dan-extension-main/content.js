@@ -1544,8 +1544,13 @@
         "dichvucongbnv.moha.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
-      const maeAgencyBlock = maeHost && !!document.querySelector(
-        "form#ngSelectAgencyForm1, form#ngSelectAgencyForm");
+      // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính
+      // khi form đang HIỆN và trang chưa có wizard (mat-step-header), không thì trợ lý tưởng hộp
+      // thoại còn mở rồi hỏi lại nơi xử lý/trường hợp ngay trên trang kê khai.
+      const maeFormEl = maeHost
+        ? document.querySelector("form#ngSelectAgencyForm1, form#ngSelectAgencyForm") : null;
+      const maeAgencyBlock = !!maeFormEl && isPageVisible(maeFormEl)
+        && !document.querySelector("mat-step-header");
       // Trang thủ tục đang hiện khối "Chọn cơ quan thực hiện" (khớp text fold dấu,
       // không dựa id/class dễ đổi). Trên host MAE tắt hẳn: engine chọn cơ quan React
       // không chạy được ở đó, tín hiệu riêng là maeAgencyBlock.
