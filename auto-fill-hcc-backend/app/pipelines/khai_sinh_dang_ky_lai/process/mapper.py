@@ -39,6 +39,20 @@ _STRUCTURAL_DEFAULTS = [
     {"name": "nksLoaiKhaiSinh", "comp": "x-select-default", "value": "Đã xác định được cả cha lẫn mẹ"},
 ]
 
+# Ô mục IV (cha) mà extension xoá được: ô chữ, ô ngày, dropdown.
+_FATHER_CLEARABLE_FIELDS = (
+    "HoTenChaKS",
+    "SoDinhDanhCha",
+    "SoGiayToDinhDanhCha",
+    "LoaiGiayToDinhDanhCha",
+    "NgayCapDDCha",
+    "NoiCapDDCha",
+    "NamSinhChaKS",
+    "DanTocChaKS",
+    "QuocTichChaKS",
+    "ChaLoaiCuTru",
+)
+
 
 def _fold(value: str) -> str:
     text = unicodedata.normalize("NFD", value or "")
@@ -1024,6 +1038,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         add("DanTocChaKS", normalize_ethnic(values.get("Father_Ethnicity")), cha_default)
         add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
         _add_residence(add, "Cha", _resolve_residence(values, "Father", context), cha_default)
+    elif has_subject:
+        # Hồ sơ đọc được nhưng KHÔNG có thông tin cha: xoá trắng khối cha để không sót dữ liệu cổng
+        # đã điền sẵn. Radio/ô địa chỉ extension không xoá được nên không gửi.
+        for _name in _FATHER_CLEARABLE_FIELDS:
+            clear(_name)
 
     # Thong tin dang ky truoc day.
     if not omit_previous_registration:

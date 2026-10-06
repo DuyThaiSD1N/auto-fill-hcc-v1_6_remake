@@ -1101,6 +1101,12 @@ def _remap_area_cached(
     # Khi xa đã có nhãn hành chính rõ, diaChi chỉ là chi tiết địa chỉ.
     xa_has_admin_label = bool(_WARD_LABEL_RE.match(xa_expanded)) if xa_expanded else False
 
+    # Ten tinh NHU GIAY TO GHI, truoc Buoc 1. _CITY_TO_PROVINCE co ca tinh cu da doi ten ("Thua Thien
+    # Hue" -> "Hue"), trong khi bang sap nhap khoa theo TINH CU -> tra bang ten da doi thi khong bao
+    # gio trung, xa cu cua Hue chi con duong _remap_by_new_province() so CO dau. "Khê Tre" (OCR them
+    # dau) truot ca hai, roi lot ra ngoai nguyen van.
+    tinh_goc_folded = _fold(tinh)
+
     # Buoc 1: normalize thanh pho thuoc tinh -> ten tinh
     tinh_for_lookup = re.sub(
         r"^\s*(tp|thanh pho|thi xa|tx|city of)\.?\s+",
@@ -1129,6 +1135,13 @@ def _remap_area_cached(
     # Buoc 2: lookup bang sap nhap (tinh, xa)
     key = (tinh_folded, _fold(xa_expanded))
     mapping = _REMAP.get(key)
+    if (
+        not mapping
+        and xa_expanded
+        and tinh_goc_folded != tinh_folded
+        and not is_current_area(tinh, xa_expanded)
+    ):
+        mapping = _REMAP.get((tinh_goc_folded, _fold(xa_expanded)))
     if not mapping and xa_expanded and _is_glued_ward_name(xa_expanded):
         # Ten xa THUC SU viet dinh lien khong dau cach (vd "langbiang" thay vi "Lang Biang") ->
         # khop bat chap khoang trang. CHI ap dung khi phan ten (sau khi cat nhan "Xa/Phuong/Thi
@@ -1237,11 +1250,15 @@ def _canonical_tinh(value: object) -> str:
     Gia tri da la mot trong hai thi de yen -- mot so pipeline (ket_hon, trich_luc) da chot nhan day
     du va co test khoa, sua tiep la dap len quyet dinh cua ho. Chi cac cach viet NGOAI danh muc
     ("TP Ho Chi Minh", "TP.HCM", "Tinh Bac Ninh") moi duoc dan ve ten tran.
+
+    Tinh CU thi dan ve dung cach viet cua bang sap nhap, bo qua dau gach: bang ghi "Thua Thien Hue"
+    nhung CMND cu ghi "Thua Thien - Hue"; bang ghi "Ba Ria - Vung Tau" nhung giay to hay bo gach.
+    Lech mot dau gach la truot het: khong doi sang tinh moi, khong sua duoc chinh ta xa.
     """
     text = str(value or "")
     if _fold(text) in _PROVINCE_LABELS_FOLD:
         return text
-    return canonical_province(text) or text
+    return canonical_province(text) or dict(_province_vocab()).get(_province_key(text)) or text
 
 
 def remap_area(

@@ -1183,6 +1183,12 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
         r"(?:CCCD|CMND|C[aă]n\s+c[uư][oớ]c|Ch[uứ]ng\s+minh)[^0-9\n]{0,40}?([0-9][0-9 ]{8,})",
     )))
     residence = _strip_marker(_first_match(block, (r"N[oơ]i\s+c[uư]\s+tr[uú]\s*:?\s*([^\n\r]+)",)))
+    # Quê quán chỉ có ở mục người được đăng ký lại khai sinh.
+    hometown = (
+        _strip_marker(_first_match(block, (r"Qu[eê]\s+qu[aá]n\s*:?\s*([^\n\r]+)",)))
+        if tag == "con"
+        else ""
+    )
     # Dòng giấy tờ tùy thân: "CCCD số 0240..., Cục CSQLHC về TTXH cấp ngày 17-12-2021".
     issue_date = _declared_date(_first_match(block, (
         r"c[aấ]p\s+ng[aà]y\s*:?\s*(\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*\d{4})",
@@ -1208,7 +1214,8 @@ def _person_from_declaration_block(tag: str, block: str, source: str) -> dict | 
         f"Dân tộc: {ethnicity or 'Không xác định'}\n"
         f"Quốc tịch: {nationality or 'Không xác định'}\n"
         f"{_RESIDENCE_LABEL}: {residence or 'Không xác định'}\n"
-        f"Trạng thái: {status}\n"
+        + (f"{_HOMETOWN_LABEL}: {hometown}\n" if hometown else "")
+        + f"Trạng thái: {status}\n"
         f"Nguồn: {source}\n"
         f"Căn cứ phân vai: {_DECLARATION_ROLE_BASIS}"
     )
@@ -2560,6 +2567,7 @@ def _declaration_role_rebuild(context: str, tag: str) -> dict:
 # Nhãn "Nơi cư trú" trong khối vai: dòng đọc TẤT ĐỊNH từ tờ khai, không qua LLM. Có nhãn này
 # nghĩa là tờ khai CÓ ghi nơi cư trú của vai đó và bước trích xuất phải dùng đúng nó.
 _RESIDENCE_LABEL = "Nơi cư trú"
+_HOMETOWN_LABEL = "Quê quán"
 
 # Tờ khai ghi cha/mẹ đã mất bằng chính ô nơi cư trú — để nguyên cho nhánh xử lý "đã chết".
 _DEAD_RESIDENCE_MARKERS = ("da chet", "da mat", "tu tran")
@@ -2639,6 +2647,20 @@ def _declaration_residence_overrides(context: str, tag: str) -> dict:
     return {_ROLE_PREFIX[tag] + "ResidenceDomestic": area} if area else {}
 
 
+def _declaration_hometown_override(context: str) -> dict:
+    """Quê quán người được đăng ký đã ghi trên tờ khai -> giá trị bắt buộc của bước trích xuất.
+
+    CMND/CCCD cũ cũng IN quê quán, theo địa giới TRƯỚC sáp nhập ("Hương Trà, Thừa Thiên - Huế"),
+    nên agent hay lấy theo thẻ dù tờ khai đã ghi theo địa giới mới. Đọc từ khối tờ khai gốc vì
+    khối <con> có thể đã được bù bằng CCCD.
+    """
+    section = _section(context, f"{_DECLARED_ROLES_TAG}_con")
+    if not section:
+        return {}
+    area = _residence_from_declaration_line(_labeled_value(section, _HOMETOWN_LABEL))
+    return {_ROLE_PREFIX["con"] + "HometownDomestic": area} if area else {}
+
+
 def _apply_declaration_residence_overrides(
     fields: list[dict],
     context: str,
@@ -2669,6 +2691,8 @@ def _apply_declaration_residence_overrides(
         ):
             continue
         overrides.update(_declaration_residence_overrides(context, tag))
+    if _ROLE_PREFIX["con"] not in invalid_prefixes:
+        overrides.update(_declaration_hometown_override(context))
     if not overrides:
         return fields
 
@@ -3426,9 +3450,9 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     if context:
         result = _apply_generation_card_overrides(result, context)
 
-    # ===== BƯỚC 6: NƠI CƯ TRÚ CHA/MẸ LẤY THEO TỜ KHAI =====
+    # ===== BƯỚC 6: NƠI CƯ TRÚ CHA/MẸ + QUÊ QUÁN CON LẤY THEO TỜ KHAI =====
     # Chạy sau BƯỚC 5 vì hai bước không giẫm ô nhau: bước trên chốt ba ô giấy tờ tùy thân theo
-    # CCCD, bước này chốt ô nơi cư trú theo tờ khai — đúng thứ tự nguồn đã quy định.
+    # CCCD, bước này chốt ô nơi cư trú/quê quán theo tờ khai — đúng thứ tự nguồn đã quy định.
     if context:
         result = _apply_declaration_residence_overrides(
             result, context, invalid_prefixes - empty_prefixes

@@ -144,3 +144,20 @@ def test_correct_area_handles_garbled_unit_label_and_rn_for_m():
     assert result["xa"] == "Xã Tân Trụ"
     # "m" doc thanh "rn" la hai loi theo khoang cach chu, gop lai thi chi con mot.
     assert area_remap.correct_area("Hà Nội", "Phường Hoàn Kiếrn")[1] == "Phường Hoàn Kiếm"
+
+
+def test_remap_area_old_province_ignores_dash_spelling():
+    # CMND cũ ghi "Thừa Thiên - Huế", bảng sáp nhập ghi "Thừa Thiên Huế"; ngược lại với Bà Rịa - Vũng Tàu.
+    area = area_remap.remap_area({"tinh": "Thừa Thiên - Huế", "xa": "Thị trấn Khe Tre", "diaChi": ""})
+    assert (area["tinh"], area["xa"]) == ("Huế", "Xã Khe Tre")
+    area = area_remap.remap_area({"tinh": "Bà Rịa Vũng Tàu", "xa": "Xã Long Sơn", "diaChi": ""})
+    assert area["tinh"] == area_remap.remap_area(
+        {"tinh": "Bà Rịa - Vũng Tàu", "xa": "Xã Long Sơn", "diaChi": ""}
+    )["tinh"]
+
+
+def test_remap_area_fixes_extra_tone_mark_on_old_ward_of_renamed_province():
+    # "Khê Tre" (OCR thêm dấu) với tỉnh cũ đã đổi tên: phải tra bảng theo tỉnh cũ như giấy ghi.
+    for tinh in ("Thừa Thiên Huế", "Thừa Thiên - Huế", "Thành phố Huế"):
+        area = area_remap.remap_area({"tinh": tinh, "xa": "xã Khê Tre", "diaChi": ""})
+        assert (area["tinh"], area["xa"]) == ("Huế", "Xã Khe Tre"), tinh
