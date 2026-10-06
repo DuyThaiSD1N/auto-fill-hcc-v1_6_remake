@@ -10,7 +10,8 @@ from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.process 
 from app.process.schemas import FileItem
 from app.procedures.registry import public_list
 
-_KEY = "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang"
+# Entry registry đã đổi key theo ke_khai_links.json và trỏ sang pipeline dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bat_dong_san.
+_KEY = "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san"
 _ROOT = Path(__file__).resolve().parents[2].parent
 _OWNER = {
     "ChuHoSo_LoaiChuThe": "Cá nhân",

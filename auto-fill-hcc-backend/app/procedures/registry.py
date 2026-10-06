@@ -237,8 +237,8 @@ from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.process import run as dinh_chin
 from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.attach import plan as dinh_chinh_gcn_dn_attach
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_gcn_truoc_2004.process import run as xac_dinh_lai_dt_dat_o_dn_process
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_gcn_truoc_2004.attach import plan as xac_dinh_lai_dt_dat_o_dn_attach
-from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.process import run as nhan_chuyen_nhuong_du_an_dn_process
-from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.attach import plan as nhan_chuyen_nhuong_du_an_dn_attach
+from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bat_dong_san.process import run as nhan_chuyen_nhuong_du_an_dn_process
+from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bat_dong_san.attach import plan as nhan_chuyen_nhuong_du_an_dn_attach
 from app.pipelines.tach_hop_thua_dat_bac_ninh.process import run as tach_hop_thua_dat_bac_ninh_process
 from app.pipelines.tach_hop_thua_dat_bac_ninh.attach import plan as tach_hop_thua_dat_bac_ninh_attach
 from app.pipelines.doi_ten_nuoc_sach.attach import plan as doi_ten_nuoc_sach_attach
@@ -6456,11 +6456,14 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
-        "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang",
-        # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, field-key TRÙNG KHÍT dang-ky-bien-dong-dat-
+        "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san",
+        # Mã TTHC 1.012787. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, field-key TRÙNG KHÍT dang-ky-bien-dong-dat-
         # dai-da-nang (panel "Thông tin chung"). Attach attp-row 11 dòng (dòng trùng + 1 dòng không tên →
         # componentIndex), hồ sơ thường 1 PDF gộp → tách theo trang. urlScope khoá host: CÙNG tên thủ tục với
         # bản Lào Cai (dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai).
+        # Key trùng ke_khai_links.json (trước đây "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang", pipeline
+        # cũ dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang vẫn giữ thư mục nhưng không còn được gọi);
+        # mapping theo "Mapping_DKCapGCN_nhan_chuyen_nhuong_DuAnBDS_DaNang.xlsx" + ảnh ánh xạ đính kèm.
         "detect": {
             "urlScope": ["dichvucong.danang.gov.vn"],
             "textIncludes": [
@@ -6478,17 +6481,23 @@ PROCEDURES: list[dict] = [
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
-            "Giấy tờ cần tải lên (có thể là MỘT file scan gộp cả bộ hồ sơ — hệ thống tự tách theo trang):\n"
-            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký.\n"
-            "2. Hợp đồng chuyển nhượng với chủ đầu tư dự án + biên bản bàn giao nhà, đất.\n"
-            "3. Giấy chứng nhận đã cấp cho chủ đầu tư dự án; văn bản đủ điều kiện chuyển nhượng (Sở Xây dựng).\n"
-            "4. Chứng từ nghĩa vụ tài chính / tờ khai lệ phí trước bạ, thuế sử dụng đất phi nông nghiệp (nếu có).\n"
-            "5. CCCD người nhận chuyển nhượng; nếu nộp thay: văn bản ủy quyền + CCCD người được ủy quyền.\n"
-            "Form điền: Chủ hồ sơ = bên NHẬN chuyển nhượng (người mua) + Người nộp. Tự nộp → tích 'Chủ hồ sơ "
-            "cũng là người nộp'; ủy quyền → bỏ tích và điền cả hai. Ô 'Nội dung yêu cầu giải quyết' chép mục 2 "
-            "'Nội dung biến động' của Đơn Mẫu 18.\n"
-            "Bước đính kèm: mỗi giấy vào đúng dòng (Đơn Mẫu 18 / Hợp đồng / Biên bản bàn giao / GCN chủ đầu tư "
-            "/ Văn bản đủ điều kiện / Chứng từ tài chính); CCCD, ủy quyền và giấy khác vào dòng Đơn."
+            "Giấy tờ cần tải lên (nhiều file hoặc MỘT file scan gộp — hệ thống tự tách theo trang):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký — cả bản chủ đầu tư "
+            "ký lẫn bản người nhận chuyển nhượng ký.\n"
+            "2. Hợp đồng mua bán / chuyển nhượng với chủ đầu tư + MỌI văn bản sửa đổi, bổ sung hợp đồng.\n"
+            "3. Biên bản bàn giao nhà, đất (+ biên bản điều chỉnh nếu có).\n"
+            "4. Giấy chứng nhận đã cấp cho chủ đầu tư (bản sao chứng thực).\n"
+            "5. Hóa đơn GTGT, giấy nộp tiền NSNN, tờ khai lệ phí trước bạ, tờ khai thuế SDĐPNN, bảng kê thuế; "
+            "kèm CCCD/Giấy xác nhận cư trú CT07, Giấy chứng nhận kết hôn, Giấy ĐKDN chủ đầu tư (nếu có).\n"
+            "6. Nếu nộp thay: văn bản ủy quyền + CCCD người được ủy quyền.\n"
+            "Form điền: Chủ hồ sơ = bên NHẬN chuyển nhượng (vợ chồng → người đứng tên đầu tiên) + Người nộp. Tự "
+            "nộp → tích 'Chủ hồ sơ cũng là người nộp'; ủy quyền → bỏ tích và điền cả hai. Ô 'Nội dung yêu cầu "
+            "giải quyết' GIỮ NGUYÊN câu cổng điền sẵn. Địa chỉ = nơi thường trú hiện hành (CCCD/CT07).\n"
+            "Bước đính kèm (mỗi dòng MỘT tệp, nhiều giấy ghép thành một PDF): Đơn → dòng 2; Hợp đồng + văn bản "
+            "sửa đổi → dòng 3; Biên bản bàn giao → dòng 4 và đính lại dòng 8; GCN chủ đầu tư → dòng 5 (Bản "
+            "sao); chứng từ tài chính cùng mọi giấy không có dòng riêng → dòng 7 và đính lại dòng 11 (Bản sao). "
+            "Dòng 1, 6, 9 chỉ đính khi hồ sơ có; dòng 10 cổng không ghi tên → để trống.\n"
+            "⚠ Thiếu CCCD/CT07 thì ô 'Ngày sinh' giữ ngày sinh của tài khoản đăng nhập — sửa tay trước khi nộp."
         ),
     },
     {
@@ -7367,7 +7376,7 @@ _PIPELINE = {
     "dang-ky-thay-doi-bien-phap-bao-dam-qsdd": dktd_bpbd_dn_process,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
     "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004": xac_dinh_lai_dt_dat_o_dn_process,
-    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_process,
+    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san": nhan_chuyen_nhuong_du_an_dn_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
@@ -7568,7 +7577,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-thay-doi-bien-phap-bao-dam-qsdd": dktd_bpbd_dn_attach,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
     "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004": xac_dinh_lai_dt_dat_o_dn_attach,
-    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_attach,
+    "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san": nhan_chuyen_nhuong_du_an_dn_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,
