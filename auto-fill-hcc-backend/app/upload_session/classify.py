@@ -208,10 +208,13 @@ async def _classify_by_slot_names(payload_files: list[dict], ocr_results: list[d
                    if d.get("key") != "khac" and not str(d.get("key") or "").startswith("cccd")]
     if not named_slots:
         return {}
+    # Từ khoá chung có nhận ra loại nhưng checklist không có ô cho loại đó (vd đơn xin phép xây
+    # dựng có cụm "cam đoan" → cam_doan) thì vẫn rơi xuống "khác" — tệp đó cũng phải hỏi LLM.
     pending = [
         index for index, result in enumerate(ocr_results)
-        if not infos[index].get("doc_type") and (result.get("text") or "").strip()
-        and index < len(payload_files)
+        if (result.get("text") or "").strip() and index < len(payload_files)
+        and (not infos[index].get("doc_type")
+             or route_to_slot(infos[index], required_docs, [], None)[0] in (None, "khac"))
     ]
     if not pending:
         return {}
