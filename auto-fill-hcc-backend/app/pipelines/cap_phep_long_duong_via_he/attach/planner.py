@@ -136,15 +136,6 @@ def build_plan_items(
         # other = giấy tờ chỉ trích thông tin (CCCD/GCN ĐKDN/cam kết/hợp đồng) → bỏ qua, KHÔNG cảnh báo.
         classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
 
-    # Cả 2 dòng đều bắt buộc: dòng trống là hồ sơ THIẾU thật (vd công dân không nộp phương án) —
-    # trước đây kế hoạch vẫn báo xong mà không ai biết phải bổ sung.
-    covered = {item["detectedType"] for item in items}
-    for doc_type, row in _ROWS.items():
-        if doc_type not in covered:
-            warnings.append(
-                f"Chưa có tệp nào cho dòng '{row['componentName']}' — công dân cần bổ sung giấy tờ này."
-            )
-
     return items, warnings, classified
 
 

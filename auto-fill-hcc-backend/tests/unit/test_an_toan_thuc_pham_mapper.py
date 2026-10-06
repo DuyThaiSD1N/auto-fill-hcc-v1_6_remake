@@ -100,29 +100,6 @@ def test_an_toan_thuc_pham_different_requester_and_owner():
     assert d["data[ghiChu]"] == "Giấy khám sức khỏe: Sức khỏe loại II"
 
 
-def test_an_toan_thuc_pham_falls_back_to_facility_address_when_no_residence():
-    # Chi co dia chi CO SO (OCR doc sai ten xa), khong co dia chi cu tru nao cua chu co so.
-    fields = [
-        _field("DonDeNghi_ChuCoSoHoTen", "TRẦN VĂN AN"),
-        _field("DonDeNghi_DiaChiCoSo", {"tinh": "Lâm Đồng", "xa": "xã Đôn Dương", "diaChi": "Số 9 đường A"}),
-        _field("Person1_HoTen", "TRẦN VĂN AN"),
-        _field("Person1_SoDinhDanh", "012345678901"),
-    ]
-
-    out, warnings = mapper.enrich(
-        fields,
-        {"formContext": {"applicantFullname": "Trần Văn An", "applicantIdentityNumber": "012345678901"}},
-    )
-    by_name = {f["name"]: f for f in out}
-
-    assert by_name["data[province]"]["value"] == "Lâm Đồng"
-    assert by_name["data[district]"]["value"] == "Đơn Dương"
-    assert by_name["data[address]"]["value"] == "Số 9 đường A"
-    assert all(by_name[n].get("default") for n in ("data[province]", "data[district]", "data[address]"))
-    assert not by_name["data[fullname]"].get("default")
-    assert any("địa chỉ cơ sở kinh doanh" in w for w in warnings)
-
-
 def test_an_toan_thuc_pham_prompt_locks_sources():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 

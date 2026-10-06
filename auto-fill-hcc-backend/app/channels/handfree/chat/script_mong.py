@@ -96,6 +96,10 @@ CHIP_HMONG = {
     "❌ Không chứng thực thẻ này": "Tsis ua pov thawj daim no",
     "Xong, sang bước nhận kết quả →": "Tiav lawm, mus txais",
     "📨 Gửi hồ sơ": "Xa ntaub ntawv",
+    # Nút của luồng tư pháp mới (trang nộp một trang).
+    "📎 Đính kèm thành phần hồ sơ": "Muab ntaub ntawv tso",
+    "📮 Chọn hình thức nhận kết quả": "Xaiv txoj kev txais txiaj ntsig",
+    "💾 Lưu và nộp hồ sơ": "Xa ntaub ntawv",
     "🗑️ Xóa dữ liệu": "Rho tawm",
     # Nhãn động (không nằm trong literal "label": ... của flow):
     "Kiểm tra lại trang hiện tại": "Xyuas dua nplooj no",
@@ -265,6 +269,22 @@ PROCEDURE_NOT_RECOGNIZED = {
     "md": "Kuv tsis paub yam pej xeem xav ua. Pej xeem nias xaiv hauv qab no los yog hais dua lub npe.",
     "tts": "Kuv tsis paub yam pej xeem xav ua. Pej xeem xaiv hauv qab no los yog hais dua lub npe.",
 }
+
+# Dùng lại câu "chưa nhận ra thủ tục, chọn bên dưới hoặc nói lại" — các nút gợi ý nằm ngay dưới.
+PROCEDURE_UNCLEAR = {
+    "md": "Kuv tsis paub yam pej xeem xav ua. Pej xeem nias xaiv hauv qab no los yog hais dua lub npe.",
+    "tts": "Kuv tsis paub yam pej xeem xav ua. Pej xeem xaiv hauv qab no los yog hais dua lub npe.",
+}
+
+# Câu chưa hiểu / chưa chắc nơi làm: ghép từ các câu đã dịch ("Kuv tsis nkag siab." + "Pej xeem nias
+# xaiv hauv qab no los yog hais dua"). Phần liệt kê nút/xã là chữ Việt nên chỉ hiện ở khối tiếng Việt.
+VOICE_NOT_UNDERSTOOD = {
+    "md": "Kuv tsis nkag siab. Pej xeem nias xaiv hauv qab no los yog hais dua.",
+    "tts": "Kuv tsis nkag siab. Pej xeem xaiv hauv qab no los yog hais dua.",
+}
+VOICE_NOT_UNDERSTOOD_OPTIONS = VOICE_NOT_UNDERSTOOD
+PLACE_WARD_UNCLEAR = VOICE_NOT_UNDERSTOOD
+PLACE_NOT_HEARD = VOICE_NOT_UNDERSTOOD
 
 GUIDE_LOGIN = {
     "md": (
@@ -1230,4 +1250,78 @@ GUIDED_AUTHORIZATION_ATTACH_FAILED = {
         "Kuv muab tsis tau daim ntawv tso cai. Pej xeem nias Chọn tệp đính kèm ntawm kab "
         "giấy ủy quyền hauv nplooj ntawv."
     ),
+}
+
+
+# ── Tư pháp luồng mới: trang nộp một trang của Cổng DVC quốc gia ──
+# Ghép từ các câu đã dịch ở trên (muab ntaub ntawv tso, txoj kev txais txiaj ntsig, xa ntaub
+# ntawv, thawv liab). Theo lối GUIDED_RESULT_*: KHÔNG nhúng chữ Việt qua placeholder.
+TPM_UPDATE_REQUIRED = {
+    "md": "Tus pab no tseem ua tsis tau daim foos tshiab. Cán bộ hloov tus pab tshiab ces qhib dua; tam sim no pej xeem xaiv tau lwm yam.",
+    "tts": "Tus pab no tseem ua tsis tau daim foos tshiab. Cán bộ hloov tus pab tshiab ces qhib dua.",
+}
+
+TPM_FILL_NEXT = {
+    "md": "\n\nThaum pej xeem xyuas, kuv npaj cov ntaub ntawv tos. Xyuas tiav ces nias Muab ntaub ntawv tso.",
+    "tts": " Thaum pej xeem xyuas, kuv npaj cov ntaub ntawv tos. Xyuas tiav ces nias lub pob muab ntaub ntawv tso.",
+}
+
+TPM_ATTACH_WAIT_PLAN = {
+    "md": "Kuv tab tom npaj, tiav ces kuv muab ntaub ntawv tso kiag. Tos ib pliag…",
+    "tts": "Kuv tab tom npaj, tiav ces kuv muab ntaub ntawv tso kiag. Tos ib pliag.",
+}
+
+TPM_ATTACH_DONE = {
+    "md": "Kuv muab {attached} daim tso tiav lawm. Pej xeem xyuas ces nias Xaiv txoj kev txais txiaj ntsig.",
+    "tts": "Kuv muab tso tiav lawm. Pej xeem xyuas ces nias lub pob xaiv txoj kev txais txiaj ntsig.",
+}
+
+TPM_ATTACH_ALL_EXIST = {
+    "md": "Cov ntaub ntawv twb muaj lawm, kuv tsis muab tso dua. Pej xeem nias Xaiv txoj kev txais txiaj ntsig.",
+    "tts": "Cov ntaub ntawv twb muaj lawm, kuv tsis muab tso dua. Pej xeem nias lub pob xaiv txoj kev txais txiaj ntsig.",
+}
+
+TPM_ATTACH_DONE_WITH_ERRORS = {
+    "md": "Kuv muab tau {attached} daim, tshuav qee daim tsis tau. Pej xeem nias muab tso dua, los yog kho cov ntaub ntawv.",
+    "tts": "Kuv muab tau ib txhia, tshuav qee daim. Pej xeem nias muab tso dua, los yog kho cov ntaub ntawv.",
+}
+
+TPM_ATTACH_NONE = {
+    "md": "Kuv muab tsis tau ib daim twg. Pej xeem nias muab tso dua, los yog kho cov ntaub ntawv.",
+    "tts": "Kuv muab tsis tau. Pej xeem nias muab tso dua, los yog kho cov ntaub ntawv.",
+}
+
+TPM_RESULT_PICK = {
+    "md": "Pej xeem xav txais txiaj ntsig li cas ne? Kuv twb xaiv ib txoj kev. Xav hloov txoj twg ces nias txoj ntawd.",
+    "tts": "Pej xeem xav txais txiaj ntsig li cas ne? Kuv twb xaiv ib txoj kev. Xav hloov txoj twg ces nias txoj ntawd.",
+}
+
+TPM_SUBMIT_HINT = {
+    "md": "\n\nPej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Lưu và nộp hồ sơ kuv xa ntaub ntawv.",
+    "tts": " Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias lub pob xa ntaub ntawv.",
+}
+
+TPM_RESULT_FAILED = {
+    "md": "Kuv xaiv tsis tau txoj kev txais txiaj ntsig. Pej xeem xaiv pab kuv ntawm nplooj ntawv ces nias Lưu và nộp hồ sơ.",
+    "tts": "Kuv xaiv tsis tau txoj kev txais txiaj ntsig. Pej xeem xaiv pab kuv ntawm nplooj ntawv ces nias lub pob xa ntaub ntawv.",
+}
+
+TPM_SUBMIT_MISSING = {
+    "md": "Kuv tseem tsis tau xa vim nplooj ntawv tseem tshuav qhov khoob, kuv cim thawv liab. Pej xeem sau ntxiv ces nias Lưu và nộp hồ sơ dua.",
+    "tts": "Kuv tseem tsis tau xa vim nplooj ntawv tseem tshuav qhov khoob, kuv cim thawv liab. Pej xeem sau ntxiv ces nias lub pob xa ntaub ntawv dua.",
+}
+
+TPM_SUBMIT_BLOCKED = {
+    "md": "Nplooj ntawv tsis txais. Pej xeem xyuas nplooj ntawv ces nias Lưu và nộp hồ sơ dua.",
+    "tts": "Nplooj ntawv tsis txais. Pej xeem xyuas nplooj ntawv ces nias lub pob xa ntaub ntawv dua.",
+}
+
+TPM_SUBMIT_STUCK = {
+    "md": "Kuv nias tsis tau lub pob xa ntaub ntawv. Pej xeem nias ncaj qha lub pob Lưu và nộp hồ sơ hauv qab nplooj ntawv.",
+    "tts": "Kuv nias tsis tau lub pob xa ntaub ntawv. Pej xeem nias ncaj qha lub pob xa ntaub ntawv hauv qab nplooj ntawv.",
+}
+
+TPM_DONE_REMIND = {
+    "md": "Pej xeem nias lub pob hauv qab no mus ntxiv.",
+    "tts": "Pej xeem nias lub pob hauv qab no mus ntxiv.",
 }

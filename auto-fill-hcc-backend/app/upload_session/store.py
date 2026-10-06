@@ -87,6 +87,27 @@ async def save(sess: dict) -> None:
     await get_db().upload_sessions.replace_one({"_id": sess["_id"]}, sess, upsert=True)
 
 
+# Phiên QR của Auto Fill hết hạn TRƯỢT: còn dùng (panel hỏi danh sách, điện thoại gửi ảnh, máy kéo
+# ảnh về) thì gia hạn thêm đủ UPLOAD_SESSION_TTL_MINUTES tính từ lúc đó; bỏ không thì tự hết. Trước
+# đây hạn cố định từ lúc tạo mã → cán bộ mở QR từ hồ sơ trước, làm tiếp quá 30 phút là "hết hạn"
+# giữa chừng. Chỉ ghi khi hạn mới xa hơn hạn đang có ≥ 1 phút: panel hỏi vài giây một lần không
+# biến thành một lần ghi DB mỗi lượt hỏi. Phiên Handfree (hạn tính bằng giờ) không đụng tới.
+_EXTEND_MIN_STEP = timedelta(minutes=1)
+
+
+async def extend_autofill_expiry(sid: str) -> None:
+    if not sid:
+        return
+    new_expiry = _now() + timedelta(minutes=settings.upload_session_ttl_minutes)
+    try:
+        await get_db().upload_sessions.update_one(
+            {"_id": sid, "experience": "autofill", "expires_at": {"$lt": new_expiry - _EXTEND_MIN_STEP}},
+            {"$set": {"expires_at": new_expiry}},
+        )
+    except Exception:  # noqa: BLE001 — gia hạn hỏng thì phiên hết theo hạn cũ, không chặn việc chính
+        return
+
+
 # ── Cập nhật NGUYÊN TỬ (không đọc-sửa-ghi cả doc) ──
 # Nhiều POST ảnh "chụp lần lượt" + nút "Dừng & gửi tất cả" (/complete) chạy song song. Nếu mỗi
 # đường get→sửa→replace_one cả doc thì cái ghi sau ĐÈ cái trước → mất `files` → "Phiên không còn

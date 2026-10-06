@@ -11,7 +11,6 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold as _fold
-from app.pipelines._shared.documents import representative_excerpt, split_ocr_pages
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.attach import prompt
 from app.process.schemas import FileItem
 from app.services.llm import client
@@ -21,8 +20,8 @@ _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
 def _truncate(text: str, limit: int = 2500) -> str:
     """Loại giấy tờ nhận ra từ TRANG ĐẦU (tiêu đề); cắt ngắn để 3 file 9–11 trang không vượt context LLM."""
-    # Đầu TỪNG trang + bỏ dòng OCR rác lặp lại (xem representative_excerpt).
-    return representative_excerpt(text, limit)
+    value = re.sub(r"\s+", " ", text or "").strip()
+    return value if len(value) <= limit else value[:limit] + "..."
 
 _GPXD = "gpxd_da_cap"
 _HSTK = "hstk_dieu_chinh"
@@ -134,38 +133,6 @@ def _build_row_item(file: dict, file_index: int, doc_type: str) -> dict:
     }
 
 
-# Đầu trang (vùng tiêu đề) — đủ để thấy "GIẤY PHÉP XÂY DỰNG Số: 12/GPXD" / "GIẤY CHỨNG NHẬN QUYỀN SỬ
-# DỤNG ĐẤT" mà không vớ phải các cụm này khi chúng chỉ được NHẮC TỚI trong thân đơn.
-_PAGE_HEAD_CHARS = 300
-_GPXD_TITLE_RE = re.compile(r"giay phep xay dung\s*so\s*:?\s*\d|/\s*gpxd")
-# Dòng bắt buộc của thủ tục: thiếu là hồ sơ thiếu thật, phải báo cán bộ/công dân.
-_REQUIRED_ROWS = (_DON, _GPXD, _HSTK)
-
-
-def _page_doc_type(page: str) -> str:
-    """Loại giấy tờ của MỘT trang theo tiêu đề đầu trang — để nhận giấy tờ nằm GỘP trong tệp khác."""
-    head = _fold(page)[:_PAGE_HEAD_CHARS]
-    if "don de nghi" in head:
-        return _DON
-    if _GPXD_TITLE_RE.search(head):
-        return _GPXD
-    if "giay chung nhan quyen su dung dat" in head:
-        return _DAT_DAI
-    if "ket qua tham dinh" in head:
-        return _THAM_DINH
-    return ""
-
-
-def _is_approved_drawing_set(text: str) -> bool:
-    """Bộ bản vẽ ĐÃ ĐƯỢC CẤP PHÉP (bản cũ): tờ nào cũng mang dấu/khung "Giấy phép xây dựng" của cơ
-    quan cấp phép và không nhắc "điều chỉnh". Bản vẽ điều chỉnh chưa được duyệt nên gần như không
-    có dấu này (hồ sơ thật: bản cũ 39 lần trên 13 trang, bản điều chỉnh 1 lần)."""
-    folded = _fold(text)
-    stamps = folded.count("giay phep xay dung")
-    pages = max(1, len(split_ocr_pages(text)))
-    return "dieu chinh" not in folded and stamps >= max(3, pages // 3)
-
-
 def build_plan_items(
     files: list[dict],
     ocr_results: list[dict],
@@ -176,13 +143,10 @@ def build_plan_items(
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
-    texts: dict[int, str] = {}
-    covered: set[str] = set()
 
     for idx, file in enumerate(files):
         file_name = str(file.get("name") or f"file-{idx + 1}")
         text = str(by_name.get(file_name, {}).get("text") or "")
-        texts[idx] = text
         llm_type = llm_types.get(idx, "")
         rule_type = _rule_doc_type(text)
         if llm_type in _ROWS:
@@ -191,36 +155,13 @@ def build_plan_items(
             doc_type, source = rule_type, "rule"
         else:
             doc_type, source = _OTHER, "unknown"
-        # Hai bộ bản vẽ (cũ + điều chỉnh) trông gần như nhau nên LLM hay xếp cả hai vào dòng bản vẽ
-        # điều chỉnh; bộ mang dấu cấp phép trên từng tờ là bản ĐÃ ĐƯỢC CẤP → dòng GPXD đã cấp.
-        if doc_type == _HSTK and _is_approved_drawing_set(text):
-            doc_type, source = _GPXD, f"{source}+approved_drawings"
 
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": source})
-            covered.add(doc_type)
             continue
         warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
         classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
-
-    # Tệp GỘP (vd đơn + GPXD đã cấp + sổ đỏ trong một bản scan): dòng nào chưa có tệp riêng mà
-    # có trang mang đúng tiêu đề của dòng đó → đính CÙNG tệp vào dòng đó (engine attp-row nhận
-    # một tệp ở nhiều dòng). Dòng đã có tệp riêng thì thôi, không đính trùng.
-    for idx, file in enumerate(files):
-        page_types = {_page_doc_type(page) for page in split_ocr_pages(texts.get(idx, ""))}
-        for doc_type in [t for t in _ROWS if t in page_types and t not in covered]:
-            items.append(_build_row_item(file, idx, doc_type))
-            covered.add(doc_type)
-            file_name = str(file.get("name") or f"file-{idx + 1}")
-            classified.append({"fileName": file_name, "docType": doc_type, "source": "bundled_page"})
-
-    for doc_type in _REQUIRED_ROWS:
-        if doc_type not in covered:
-            warnings.append(
-                f"Chưa có tệp nào cho dòng '{_ROWS[doc_type]['componentName']}' — nếu giấy tờ này nằm "
-                "trong tệp khác mà hệ thống chưa nhận ra thì cán bộ đính thêm thủ công."
-            )
 
     return items, warnings, classified
 

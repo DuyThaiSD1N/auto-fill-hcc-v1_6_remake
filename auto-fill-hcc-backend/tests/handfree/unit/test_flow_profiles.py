@@ -275,6 +275,19 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert bn_secured["agencySoFirst"] is True
         assert "wizard" not in bn_secured and "maePortal" not in bn_secured
 
+    # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
+    # không bước chủ hồ sơ; detect giống hệt core.
+    core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
+    for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich"):
+        single_page = procedures.pop(key)
+        assert single_page["flowProfile"] == "tu-phap-moi"
+        assert single_page["singlePageDossier"] is True
+        assert single_page["needsAgencySelect"] is True and single_page["hasAttachmentStep"] is True
+        assert "wizard" not in single_page and "executionSubject" not in single_page
+        assert "ownerInfo" not in single_page
+        assert single_page["detect"] == core_detect[key]
+        assert get_owner_info_pipeline(key) is None
+
     assert procedures
     assert {
         key for key, procedure in procedures.items()

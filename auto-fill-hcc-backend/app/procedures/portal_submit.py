@@ -137,6 +137,14 @@ PORTAL_SUBMIT: dict[str, dict] = {
         # token class khác nên selector không dính.
         "buttonSelector": "button.style_btn",
     },
+    # Cổng DVC quốc gia — trang nộp một trang (React + SurveyJS) của các thủ tục hộ tịch mới:
+    # form, thành phần hồ sơ và hình thức nhận kết quả cùng một trang /nop-ho-so (mã hồ sơ nằm ở
+    # query nên không có ref). Nút không có id; khớp NGUYÊN VĂN nhãn để không tính nút
+    # "Lưu hồ sơ" (chỉ lưu nháp) hay "Gửi Phản ánh kiến nghị" cùng trang.
+    "dichvucong.gov.vn": {
+        "urlPattern": r"^/nop-ho-so$",
+        "buttonText": ["luu va nop ho so"],
+    },
     # Mười cổng dưới đây chạy CÙNG nền Form.io/iGate, mỗi cổng đã đối chiếu snapshot màn cuối riêng.
     "dichvucong.danang.gov.vn": _FORMIO,
     "dvc.moc.gov.vn": _FORMIO,

@@ -146,14 +146,13 @@ def _compact_code(value) -> str:
 
 
 def _owner_profile(values: dict) -> dict:
-    """Hồ sơ CHỦ HỒ SƠ = người đứng đơn trong Mẫu số 01.
+    """Hồ sơ CHỦ HỒ SƠ = người được xác định mức độ khuyết tật (mục I Mẫu số 01).
 
-    LLM nhiều lần chỉ trả ``Ndd_*``/``Nkt_*`` mà bỏ trống nhóm ``ChuHoSo_*`` vì thấy
-    thông tin đã có ở mục II/mục I. Trước đây mapper coi như không có chủ hồ sơ nên
-    KHÔNG phát ``data[isOwnerDossierCheck]``, cổng giữ nguyên tích "Người nộp hồ sơ
-    là chủ hồ sơ" và khối chủ hồ sơ bị khoá theo tài khoản đang đăng nhập. Suy ngược
-    từ mục II (người đại diện hợp pháp đứng đơn), hết mới tới mục I (người khuyết tật
-    tự đề nghị), để luôn biết chủ hồ sơ là ai mà quyết định bỏ tích.
+    LLM có lúc chỉ trả ``Nkt_*`` mà bỏ trống nhóm ``ChuHoSo_*`` vì thấy thông tin đã có
+    ở mục I. Thiếu chủ hồ sơ thì mapper KHÔNG phát ``data[isOwnerDossierCheck]``, cổng
+    giữ nguyên tích "Người nộp hồ sơ là chủ hồ sơ" và khối chủ hồ sơ bị khoá theo tài
+    khoản đang đăng nhập → suy ngược từ mục I. Người đại diện (mục II) không bao giờ là
+    chủ hồ sơ nên không dùng làm dự phòng.
     """
     profile = {
         "name": values.get("ChuHoSo_HoTen"),
@@ -169,14 +168,6 @@ def _owner_profile(values: dict) -> dict:
     if profile["name"] or profile["identity"]:
         return profile
 
-    ndd_identity = _identity(values.get("Ndd_SoDinhDanh"))
-    if values.get("Ndd_HoTen") or ndd_identity:
-        profile["name"] = values.get("Ndd_HoTen")
-        profile["identity"] = ndd_identity
-        profile["area"] = profile["area"] or _area(values.get("Ndd_NoiCuTru"))
-        profile["phone"] = profile["phone"] or values.get("Ndd_SoDienThoai")
-        return profile
-
     nkt_identity = _identity(values.get("Nkt_SoDinhDanh"))
     if values.get("Nkt_HoTen") or nkt_identity:
         profile["name"] = values.get("Nkt_HoTen")
@@ -186,6 +177,24 @@ def _owner_profile(values: dict) -> dict:
         profile["area"] = profile["area"] or _area(values.get("Nkt_ThuongTru"))
 
     return profile
+
+
+def _representative_profile(values: dict) -> dict | None:
+    """Người đại diện hợp pháp (mục II) — người nộp ở chế độ theo tờ khai."""
+    name = values.get("Ndd_HoTen")
+    identity = _identity(values.get("Ndd_SoDinhDanh"))
+    if not name and not identity:
+        return None
+    return {
+        "name": name,
+        "identity": identity,
+        "birthday": values.get("Ndd_NgaySinh"),
+        "gender": values.get("Ndd_GioiTinh"),
+        "identityDate": values.get("Ndd_NgayCap"),
+        "issuer": values.get("Ndd_NoiCap"),
+        "area": _area(values.get("Ndd_NoiCuTru")),
+        "phone": values.get("Ndd_SoDienThoai"),
+    }
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
@@ -240,16 +249,42 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         owner_identity,
     )
 
-    # Checkbox phải phát trước hai khối. Cổng có side effect copy/reset Chủ hồ sơ
-    # khi đổi checkbox, nên mọi field phụ thuộc luôn được gửi sau action này.
-    if owner_present:
-        add("data[isOwnerDossierCheck]", bool(owner_matches_applicant))
+    theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    if theo_to_khai:
+        # THEO TỜ KHAI: bỏ mỏ neo tài khoản. Người nộp = người đại diện hợp pháp (mục II);
+        # mục II trống tức người khuyết tật tự đứng đơn → người nộp là chủ hồ sơ.
+        submitter = _representative_profile(values)
+        self_submit = submitter is None
+        if self_submit:
+            submitter = owner if owner_present else None
+        # Checkbox trước hai khối (cổng copy/reset Chủ hồ sơ khi đổi checkbox).
+        if submitter is not None:
+            # Họ tên + CCCD Phần I cổng khoá (disabled) theo tài khoản VNeID; người nộp theo tờ khai là người
+            # khác nên kèm enableInput để extension bỏ disabled trước khi ghi, cán bộ còn sửa được khi OCR sai.
+            unlock = {"enableInput": True}
+            add("data[isOwnerDossierCheck]", self_submit)
+            add("data[fullname]", submitter["name"], extra=unlock)
+            add("data[birthday]", submitter["birthday"])
+            add("data[gender]", submitter["gender"])
+            add("data[identityNumber]", submitter["identity"], extra=unlock)
+            add("data[identityDate]", submitter["identityDate"])
+            add("data[idIssuePlace]", submitter["issuer"])
+            if submitter["area"]:
+                add("data[province]", submitter["area"].get("tinh"))
+                add("data[district]", submitter["area"].get("xa"))
+                add("data[address]", submitter["area"].get("diaChi"))
+            add("data[phoneNumber]", _phone(submitter["phone"]))
+    else:
+        # Checkbox phải phát trước hai khối. Cổng có side effect copy/reset Chủ hồ sơ
+        # khi đổi checkbox, nên mọi field phụ thuộc luôn được gửi sau action này.
+        if owner_present:
+            add("data[isOwnerDossierCheck]", bool(owner_matches_applicant))
 
-    # Tên + CCCD UI là mỏ neo có thẩm quyền. Các field nhân thân còn lại chỉ
-    # được nhận từ NguoiNop_* sau khi LLM trả lại đúng cả hai mỏ neo OCR.
-    add("data[fullname]", applicant_name or (requester_name if requester_matches_applicant else None))
-    add("data[identityNumber]", applicant_identity or (requester_identity if requester_matches_applicant else None))
-    if requester_matches_applicant:
+        # Tên + CCCD UI là mỏ neo có thẩm quyền. Các field nhân thân còn lại chỉ
+        # được nhận từ NguoiNop_* sau khi LLM trả lại đúng cả hai mỏ neo OCR.
+        add("data[fullname]", applicant_name or (requester_name if requester_matches_applicant else None))
+        add("data[identityNumber]", applicant_identity or (requester_identity if requester_matches_applicant else None))
+    if requester_matches_applicant and not theo_to_khai:
         add("data[birthday]", values.get("NguoiNop_NgaySinh"))
         add("data[gender]", values.get("NguoiNop_GioiTinh"))
         add("data[identityDate]", values.get("NguoiNop_NgayCap"))

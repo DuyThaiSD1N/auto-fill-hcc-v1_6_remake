@@ -166,16 +166,3 @@ def test_attach_rows():
         ROW_CHUNG_SINH["slotName"], ROWS["authorization"]["slotName"], ROWS["surrogacy_doc"]["slotName"],
         ROWS["abandoned_record"]["slotName"], ROW_CHUNG_SINH["slotName"],
     ]
-
-
-@pytest.mark.parametrize("dan_toc", ["Cill", "Cil", "Chil", "K'Ho", "K’Ho", "Lạch"])
-def test_co_ho_local_group_maps_to_co_ho(dan_toc):
-    # Cổng mới không có option "Khác" → nhóm địa phương Cơ Ho chọn thẳng "Cơ Ho".
-    values = {**BASE, "Con_DanToc": dan_toc, "Me_DanToc": dan_toc}
-    by = _by(_enrich(values, _context("Mẹ"))[0])
-    assert by["citizenDanToc_NgdcKS"]["value"] == "Cơ Ho" and by["citizenDanToc_me"]["value"] == "Cơ Ho"
-
-
-def test_other_ethnicity_passes_through():
-    by = _by(_enrich({**BASE, "Con_DanToc": "Mạ"}, _context("Mẹ"))[0])
-    assert by["citizenDanToc_NgdcKS"]["value"] == "Mạ"

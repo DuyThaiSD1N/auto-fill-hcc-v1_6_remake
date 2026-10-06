@@ -34,10 +34,11 @@ người nộp.
 </nguoi_thay_doi>
 
 <noi_dung_de_nghi>
-7. ViecDangKy theo <viec_dang_ky> đã phân vai; không có thì xét bản chất nội dung + lý do (sai sót → "Cải
-   chính"; đổi theo nguyện vọng → "Thay đổi"; ghi thêm thông tin còn trống → "Bổ sung"; "Xác định lại dân tộc"
-   CHỈ khi nội dung là dân tộc — quốc tịch/họ tên/ngày sinh không bao giờ là "Xác định lại dân tộc").
-   Không đủ căn cứ → bỏ field.
+7. ViecDangKy theo <viec_dang_ky> đã phân vai. Không có khối đó thì ưu tiên dòng "Đề nghị cơ quan đăng ký
+   việc ..." của tờ khai khi dòng đó nêu đúng một trong bốn việc (không dùng tiêu đề in sẵn đủ bốn việc); dòng
+   đó trống hoặc nêu việc khác thì xét bản chất nội dung + lý do (sai sót → "Cải chính"; đổi theo nguyện vọng
+   → "Thay đổi"; ghi thêm thông tin còn trống → "Bổ sung"; "Xác định lại dân tộc" CHỈ khi nội dung là dân tộc
+   — quốc tịch/họ tên/ngày sinh không bao giờ là "Xác định lại dân tộc"). Không đủ căn cứ → bỏ field.
 8. NoiDung lấy dòng "Nội dung" của tờ khai (cả thông tin cũ và mới, vd "Cải chính tên từ X thành Y"); LyDo lấy
    dòng "Lý do". Tờ khai không có → bỏ, không tự viết.
    TÁCH NỘI DUNG / LÝ DO: tờ khai viết tay hay bị OCR chèn nhãn "Lý do:" vào GIỮA đoạn nội dung hoặc nối lý do

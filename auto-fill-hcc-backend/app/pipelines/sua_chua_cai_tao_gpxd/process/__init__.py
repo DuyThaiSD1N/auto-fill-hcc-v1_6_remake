@@ -13,10 +13,7 @@ from app.pipelines.cap_giay_phep_xay_dung.process.runner import run as _cap_moi_
 
 async def _run(files_by_role: dict[str, list[dict]], options: dict, variant: str) -> dict:
     opts = dict(options or {})
-    # Biến thể theo registry key chỉ là MẶC ĐỊNH: kênh trợ lý gộp hai quy trình vào một thủ tục và
-    # truyền nhánh theo trường hợp công dân chọn trên hộp thoại của cổng — giá trị đó phải thắng.
-    if not opts.get("constructionVariant"):
-        opts["constructionVariant"] = variant
+    opts["constructionVariant"] = variant
     return await _cap_moi_run(files_by_role, opts)
 
 

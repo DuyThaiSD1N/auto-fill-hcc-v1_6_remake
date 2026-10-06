@@ -11,7 +11,6 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold as _fold
-from app.pipelines._shared.documents import representative_excerpt
 from app.pipelines.sua_chua_cai_tao_gpxd.attach import prompt
 from app.process.schemas import FileItem
 from app.services.llm import client
@@ -21,8 +20,8 @@ _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
 def _truncate(text: str, limit: int = 2500) -> str:
     """Loại giấy tờ nhận ra từ TRANG ĐẦU; cắt ngắn để hồ sơ nhiều trang không vượt context LLM."""
-    # Đầu TỪNG trang + bỏ dòng OCR rác lặp lại (xem representative_excerpt).
-    return representative_excerpt(text, limit)
+    value = re.sub(r"\s+", " ", text or "").strip()
+    return value if len(value) <= limit else value[:limit] + "..."
 
 
 _DON = "don_gpxd"

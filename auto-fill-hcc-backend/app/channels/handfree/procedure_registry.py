@@ -4,23 +4,11 @@ Core process/attach luôn lấy từ ``app.procedures.registry``. File này đư
 registry Handfree cũ để giữ nguyên card, flow profile và checklist, nhưng không còn
 sở hữu bản sao pipeline nghiệp vụ.
 """
-import re
-
 from app.channels.handfree.owner_info import run as tu_phap_owner_info
 from app.channels.handfree.flow_profiles import resolve_flow_profile
 from app.procedures import agency_plans
-from app.procedures import ke_khai_links as core_ke_khai_links
 from app.procedures import portal_submit as core_portal_submit
 from app.procedures import registry as core_registry
-from app.pipelines._shared.naming import fold
-
-# Cổng Bộ Xây dựng: nhãn "Trường hợp giải quyết" có chữ "nhà ở riêng lẻ" → form nhánh nhà ở
-# (element ...NhaO); còn lại là nhánh công trình (...KhongTheoTuyen). Dùng chung cho GPXD mới
-# và sửa chữa, cải tạo (cùng process cap_giay_phep_xay_dung, đọc options["constructionVariant"]).
-_GPXD_CASE_OPTIONS = [
-    {"match": "nha o rieng le", "options": {"constructionVariant": "nha_o_rieng_le"}},
-    {"match": "", "options": {"constructionVariant": "khong_theo_tuyen"}},
-]
 
 PROCEDURES: list[dict] = [
     {
@@ -42,7 +30,7 @@ PROCEDURES: list[dict] = [
             "cấp thẻ bảo hiểm y tế cho trẻ em dưới 6 tuổi"
         ),
         # Metadata cho card chọn thủ tục + action navigate của trợ lý (docs/03).
-        "shortLabel": "Đăng ký Khai sinh (liên thông)",
+        "shortLabel": "Liên thông đăng ký khai sinh",
         "subtitle": "Khai sinh + thường trú + BHYT cho trẻ dưới 6 tuổi",
         "icon": "👶",
         "keKhaiUrl": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000987",
@@ -86,14 +74,19 @@ PROCEDURES: list[dict] = [
     {
         # Đăng ký khai sinh ĐƠN LẺ (chỉ khai sinh) — KHÁC "khai-sinh-dang-ky" ở trên là liên
         # thông (khai sinh + thường trú + BHYT trên cổng lienthong.dichvucong.gov.vn Angular).
-        # Thủ tục này chạy trên cổng React mới của Bộ Tư pháp, cùng wizard với kết hôn/khai tử.
         "key": "khai-sinh-dang-ky-thuong",
-        "detect": {"urlIncludes": ["maThuTuc=1.001193"]},
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai sinh", "người được đăng ký khai sinh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
         "label": "Thủ tục đăng ký khai sinh",
         "shortLabel": "Đăng ký Khai sinh",
         "subtitle": "Chỉ đăng ký khai sinh (không kèm thường trú, BHYT)",
         "icon": "👶",
-        "flowProfile": "tu-phap",
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "supportsSplitDocuments": True,
         # URL kê khai đã xác minh trong ke_khai_links.json (mã TTHC 1.001193).
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7",
@@ -191,14 +184,22 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "trich-luc-ks",
-        "detect": {"urlIncludes": ["maThuTuc=2.000635"]},
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "cấp bản sao trích lục hộ tịch, bản sao giấy khai sinh",
+                "thông tin người được cấp giấy tờ hộ tịch",
+            ],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
         "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
         "shortLabel": "Bản sao Trích lục hộ tịch",
         "subtitle": "Trích lục khai sinh, kết hôn, khai tử",
         "icon": "📜",
-        "flowProfile": "tu-phap",
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "supportsSplitDocuments": True,
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/TTHN.
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-867c-72db-b6a7-dcbd8c763807",
         # TỜ KHAI là giấy CHÍNH (chứa đủ thông tin sự kiện hộ tịch để kê khai); giấy hộ tịch
         # cũ chỉ bổ trợ khi có — thực tế CCCD + tờ khai là fill trọn form.
@@ -331,13 +332,19 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-tu",
-        "detect": {"urlIncludes": ["maThuTuc=1.000656"]},
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-3fac-7489-b53b-9c6c958f2da4"],
+            "urlScope": ["//dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai tử", "người được đăng ký khai tử"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
         "label": "Thủ tục đăng ký khai tử",
         "shortLabel": "Đăng ký Khai tử",
         "subtitle": "Thủ tục đăng ký khai tử trong nước",
         "icon": "🕯️",
-        "flowProfile": "tu-phap",
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/TTHN/trích lục.
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-9c6c958f2da4",
         # Giấy báo tử BẮT BUỘC (nguồn chính của sự kiện chết); tờ khai bổ trợ khi có.
         # Mỗi nhóm tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
@@ -442,14 +449,22 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thay-doi-cai-chinh-ho-tich",
-        "detect": {"urlIncludes": ["maThuTuc=1.004859"]},
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
+                "thông tin về người có nội dung thay đổi",
+            ],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
         "label": "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
         "shortLabel": "Cải chính hộ tịch",
         "subtitle": "Thay đổi, bổ sung thông tin hộ tịch",
         "icon": "📝",
-        "flowProfile": "tu-phap",
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/khai tử/TTHN. URL kê khai
-        # đã xác minh trong ke_khai_links.json (mã TTHC 1.004859).
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
+        # URL kê khai đã xác minh trong ke_khai_links.json (mã TTHC 1.004859).
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671e-714b-8fd6-8230c82f7867",
         "review": False,
         "mode": "agent",
@@ -1008,11 +1023,13 @@ PROCEDURES: list[dict] = [
         "subtitle": "Đăng ký thuê, thuê mua nhà ở xã hội vốn đầu tư công (Sở Xây dựng)",
         "icon": "🏠",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88ac-71f9-b970-b83cf0372841",
-        # Luồng chung cổng Bộ Xây dựng (flow_profiles/__init__.py: XAY_DUNG_FLOW).
-        "flowProfile": "xay-dung",
+        "needsAgencySelect": True,
         "agencyProvinceOnly": True,
         "agencySoFirst": True,
         "agencyDeptLabel": "Sở Xây dựng",
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "don", "name": "Tờ đơn đăng ký thuê (hoặc thuê mua) nhà ở xã hội theo mẫu "
              "— đã ký", "icon": "📄", "sides": 1, "repeatable": True},
@@ -1027,6 +1044,10 @@ PROCEDURES: list[dict] = [
             {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
              "sides": 1, "optional": True, "repeatable": True},
         ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Tờ đơn đăng ký thuê (hoặc thuê mua) nhà ở xã hội theo mẫu, đã ký.\n"
@@ -1616,27 +1637,25 @@ PROCEDURES: list[dict] = [
         "subtitle": "Giấy phép xây dựng nhà ở riêng lẻ hoặc công trình cấp III, cấp IV",
         "icon": "🏗️",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9088-744d-aa0a-e846b6dce3d5",
-        "flowProfile": "xay-dung",
-        # Đường DỰ PHÒNG cho extension chưa đọc được hộp thoại (thiếu supportsMaeDialogChoice):
-        # hỏi 2 trường hợp khai sẵn. portalMatch/portalAvoid là token ĐÃ FOLD DẤU để khớp option
-        # trong ô "Trường hợp giải quyết". Option ĐẦU là mặc định (chip tô đậm).
-        # pipelineOptions: ép nhánh form công trình cho mapper, khỏi đoán lại từ giấy tờ.
+        "needsAgencySelect": True,
+        "maePortal": True,
+        # portalMatch/portalAvoid là token ĐÃ FOLD DẤU để khớp option trong ô "Trường hợp giải
+        # quyết" — tên option do cổng đặt, không cố định, nên khớp theo cụm đặc trưng thay vì
+        # nguyên văn. Option ĐẦU là mặc định (chip tô đậm).
         "variants": {
             "options": [
                 {"key": "nha_o_rieng_le", "label": "Nhà ở riêng lẻ",
                  "chip": "🏠 Nhà ở riêng lẻ", "portalMatch": "nha o rieng le",
-                 "desc": "xây nhà ở của hộ gia đình, cá nhân",
-                 "pipelineOptions": {"constructionVariant": "nha_o_rieng_le"}},
+                 "desc": "xây nhà ở của hộ gia đình, cá nhân"},
                 {"key": "cong_trinh", "label": "Công trình cấp III, cấp IV",
                  "chip": "🏢 Công trình cấp III, cấp IV",
                  "portalMatch": "cong trinh", "portalAvoid": "nha o rieng le",
-                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ",
-                 "pipelineOptions": {"constructionVariant": "khong_theo_tuyen"}},
+                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ"},
             ],
         },
-        # Trường hợp người dân chọn trên hộp thoại (nhãn đọc từ cổng) → tuỳ chọn pipeline.
-        # Khớp theo cụm đã fold dấu, luật ĐẦU TIÊN khớp thắng; match rỗng = mặc định.
-        "caseOptions": _GPXD_CASE_OPTIONS,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "hasAttachmentStep": True,
+        "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "don", "name": "Đơn đề nghị cấp giấy phép xây dựng — đã ký", "icon": "📄",
              "sides": 1, "repeatable": True},
@@ -1649,6 +1668,10 @@ PROCEDURES: list[dict] = [
             {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
              "sides": 1, "optional": True, "repeatable": True},
         ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Đơn đề nghị cấp giấy phép xây dựng, đã ký.\n"
@@ -1659,187 +1682,6 @@ PROCEDURES: list[dict] = [
             "Bước Thành phần hồ sơ: bảng của cổng chia thành nhiều KHỐI theo LOẠI CÔNG TRÌNH, "
             "mỗi khối lặp lại gần như y hệt bộ giấy tờ — hệ thống tự nhận loại công trình từ "
             "đơn/bản vẽ để đính đúng khối."
-        ),
-    },
-    # ── Các thủ tục cổng Bộ Xây dựng dùng luồng chung "xay-dung" ──
-    # Key TRÙNG registry lõi (app/procedures/registry.py) để process/attach tự nối. keKhaiUrl lấy
-    # từ app/procedures/data/ke_khai_links.json. Cách chọn cơ quan trên DVCQG theo đúng
-    # ke_khai_links: selectSo → agencyProvinceOnly + agencySoFirst.
-    {
-        "key": "dieu-chinh-giay-phep-xay-dung",
-        "flowProfile": "xay-dung",
-        "label": (
-            "Cấp điều chỉnh giấy phép xây dựng đối với công trình cấp III, cấp IV và nhà ở riêng lẻ"
-        ),
-        "shortLabel": "Điều chỉnh giấy phép xây dựng",
-        "subtitle": "Điều chỉnh giấy phép xây dựng đã được cấp (thiết kế, quy mô, công năng)",
-        "icon": "📝",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9097-7135-94e7-f539d8b0cc19",
-        "requiredDocs": [
-            {"key": "don", "name": "Đơn đề nghị điều chỉnh giấy phép xây dựng (Mẫu số 02) — đã ký",
-             "icon": "📄", "sides": 1, "repeatable": True},
-            {"key": "gpxd", "name": "Giấy phép xây dựng đã được cấp (kèm bản vẽ đã cấp)",
-             "icon": "📑", "sides": 1, "repeatable": True},
-            {"key": "ban_ve", "name": "Bộ bản vẽ thiết kế xây dựng điều chỉnh", "icon": "📐",
-             "sides": 1, "repeatable": True},
-            {"key": "cccd", "name": "Căn cước công dân của chủ hộ / người nộp", "icon": "🪪",
-             "sides": 1, "repeatable": True},
-            {"key": "khac", "name": "Giấy chứng nhận quyền sử dụng đất, giấy ủy quyền hoặc giấy "
-             "tờ khác (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
-        ],
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Đơn đề nghị điều chỉnh giấy phép xây dựng (Mẫu số 02), đã ký.\n"
-            "2. Giấy phép xây dựng đã được cấp (kèm bản vẽ đã cấp).\n"
-            "3. Bộ bản vẽ thiết kế xây dựng điều chỉnh.\n"
-            "4. Căn cước công dân của chủ hộ / người nộp.\n"
-            "5. Nếu có: Giấy chứng nhận quyền sử dụng đất, giấy ủy quyền, giấy chứng nhận đăng "
-            "ký doanh nghiệp.\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
-        ),
-    },
-    {
-        # Registry lõi tách 2 key theo quy trình (nhà ở riêng lẻ / công trình) nhưng CÙNG process
-        # và attach. Trợ lý chỉ khai MỘT thủ tục: trường hợp người dân chọn trên hộp thoại quyết
-        # định nhánh form qua caseOptions (sua_chua_cai_tao_gpxd nhận constructionVariant truyền vào).
-        "key": "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
-        "code": "1.013229",  # ke_khai_links ghi mã này dưới key "...-cong-trinh"
-        "flowProfile": "xay-dung",
-        "label": (
-            "Cấp giấy phép xây dựng sửa chữa, cải tạo đối với công trình cấp III, cấp IV và nhà "
-            "ở riêng lẻ"
-        ),
-        "shortLabel": "Cấp phép sửa chữa, cải tạo",
-        "subtitle": "Giấy phép sửa chữa, cải tạo nhà ở riêng lẻ hoặc công trình cấp III, cấp IV",
-        "icon": "🔨",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-909c-759d-9dc9-416500074f0f",
-        "variants": {
-            "options": [
-                {"key": "nha_o_rieng_le", "label": "Nhà ở riêng lẻ",
-                 "chip": "🏠 Nhà ở riêng lẻ", "portalMatch": "nha o rieng le",
-                 "desc": "sửa chữa, cải tạo nhà ở của hộ gia đình, cá nhân",
-                 "pipelineOptions": {"constructionVariant": "nha_o_rieng_le"}},
-                {"key": "cong_trinh", "label": "Công trình cấp III, cấp IV",
-                 "chip": "🏢 Công trình cấp III, cấp IV",
-                 "portalMatch": "cong trinh", "portalAvoid": "nha o rieng le",
-                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ",
-                 "pipelineOptions": {"constructionVariant": "khong_theo_tuyen"}},
-            ],
-        },
-        "caseOptions": _GPXD_CASE_OPTIONS,
-        "requiredDocs": [
-            {"key": "don", "name": "Đơn đề nghị cấp giấy phép xây dựng (Mẫu số 01) — đã ký",
-             "icon": "📄", "sides": 1, "repeatable": True},
-            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (sổ đỏ) hoặc giấy tờ về "
-             "quyền sử dụng đất", "icon": "📜", "sides": 1, "repeatable": True},
-            {"key": "ban_ve", "name": "Bản vẽ hiện trạng và bản vẽ thiết kế sửa chữa, cải tạo",
-             "icon": "📐", "sides": 1, "repeatable": True},
-            {"key": "anh", "name": "Ảnh chụp hiện trạng công trình và công trình lân cận",
-             "icon": "📷", "sides": 1, "repeatable": True},
-            {"key": "cccd", "name": "Căn cước công dân của chủ hộ / người nộp", "icon": "🪪",
-             "sides": 1, "repeatable": True},
-            {"key": "khac", "name": "Giấy ủy quyền hoặc giấy tờ khác (nếu có)", "icon": "📎",
-             "sides": 1, "optional": True, "repeatable": True},
-        ],
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Đơn đề nghị cấp giấy phép xây dựng (Mẫu số 01), đã ký.\n"
-            "2. Giấy chứng nhận quyền sử dụng đất hoặc giấy tờ hợp pháp về đất đai.\n"
-            "3. Bản vẽ hiện trạng bộ phận công trình sửa chữa, cải tạo và bộ bản vẽ thiết kế.\n"
-            "4. Ảnh chụp hiện trạng công trình và công trình lân cận.\n"
-            "5. Căn cước công dân của chủ hộ / người nộp; nếu ủy quyền: giấy ủy quyền.\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
-        ),
-    },
-    {
-        "key": "cung-cap-thong-tin-quy-hoach",
-        "flowProfile": "xay-dung",
-        "label": "Cung cấp thông tin quy hoạch đô thị và nông thôn",
-        "shortLabel": "Cung cấp thông tin quy hoạch",
-        "subtitle": "Xin thông tin quy hoạch của thửa đất, khu vực",
-        "icon": "🗺️",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-9852-71ed-96f2-8110da8fd4f0",
-        "agencyProvinceOnly": True,
-        "agencySoFirst": True,
-        "agencyDeptLabel": "Sở Xây dựng",
-        "requiredDocs": [
-            {"key": "don", "name": "Đơn (văn bản) đề nghị cung cấp thông tin quy hoạch — đã ký",
-             "icon": "📄", "sides": 1, "repeatable": True},
-            {"key": "cccd", "name": "Căn cước công dân của người nộp", "icon": "🪪",
-             "sides": 1, "repeatable": True},
-            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất của thửa đất cần tra cứu",
-             "icon": "📜", "sides": 1, "repeatable": True},
-            {"key": "khac", "name": "Giấy ủy quyền hoặc giấy tờ khác (nếu có)", "icon": "📎",
-             "sides": 1, "optional": True, "repeatable": True},
-        ],
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Đơn (văn bản) đề nghị cung cấp thông tin quy hoạch, đã ký.\n"
-            "2. Căn cước công dân của người nộp.\n"
-            "3. Giấy chứng nhận quyền sử dụng đất của thửa đất cần tra cứu quy hoạch.\n"
-            "4. Nếu nộp thay: giấy ủy quyền.\n"
-            "Hệ thống gộp đơn, giấy chứng nhận và căn cước thành 1 tệp để đính kèm."
-        ),
-    },
-    {
-        "key": "tham-dinh-bcnckt",
-        # Link kê khai trên DVCQG gắn Ninh Bình → chỉ tài khoản Ninh Bình thấy + gọi được.
-        "provinceOnly": ["ninhbinh"],
-        "flowProfile": "xay-dung",
-        "label": (
-            "Thẩm định Báo cáo nghiên cứu khả thi đầu tư xây dựng/Báo cáo nghiên cứu khả thi "
-            "đầu tư xây dựng điều chỉnh"
-        ),
-        "shortLabel": "Thẩm định báo cáo nghiên cứu khả thi",
-        "subtitle": "Chủ đầu tư đề nghị thẩm định báo cáo nghiên cứu khả thi dự án",
-        "icon": "📊",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90c2-742a-9dfb-c6d2bdd9aac8",
-        "requiredDocs": [
-            {"key": "to_trinh", "name": "Tờ trình thẩm định báo cáo nghiên cứu khả thi (Mẫu số 01)",
-             "icon": "📄", "sides": 1, "repeatable": True},
-            {"key": "cccd", "name": "Căn cước công dân của người nộp (đại diện chủ đầu tư)",
-             "icon": "🪪", "sides": 1, "repeatable": True},
-            {"key": "khac", "name": "Quyết định chủ trương đầu tư, đánh giá tác động môi trường, "
-             "quy hoạch, danh sách nhà thầu, hồ sơ khảo sát/thiết kế (nếu có)", "icon": "📎",
-             "sides": 1, "optional": True, "repeatable": True},
-        ],
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Tờ trình thẩm định báo cáo nghiên cứu khả thi (Mẫu số 01).\n"
-            "2. Căn cước công dân của người nộp (đại diện chủ đầu tư).\n"
-            "3. Nếu có: quyết định chủ trương đầu tư, quyết định phê duyệt đánh giá tác động môi "
-            "trường, quyết định phê duyệt quy hoạch, danh sách nhà thầu kèm chứng chỉ, hồ sơ "
-            "khảo sát, thiết kế cơ sở, giấy chứng nhận đầu tư.\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
-        ),
-    },
-    {
-        "key": "cap-phep-long-duong-via-he",
-        "flowProfile": "xay-dung",
-        "label": "Cấp phép sử dụng tạm thời lòng đường, vỉa hè vào mục đích khác",
-        "shortLabel": "Sử dụng tạm thời lòng đường, vỉa hè",
-        "subtitle": "Xin phép dùng tạm lòng đường, vỉa hè (sự kiện, tập kết vật liệu...)",
-        "icon": "🚧",
-        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-90a2-7673-a2f5-9ba3da842499",
-        "requiredDocs": [
-            {"key": "don", "name": "Đơn đề nghị cấp phép sử dụng tạm thời lòng đường, vỉa hè — đã "
-             "ký", "icon": "📄", "sides": 1, "repeatable": True},
-            {"key": "phuong_an", "name": "Phương án sử dụng / sơ đồ vị trí", "icon": "🗺️",
-             "sides": 1, "repeatable": True},
-            {"key": "cccd", "name": "Căn cước công dân của người nộp / người đại diện",
-             "icon": "🪪", "sides": 1, "repeatable": True},
-            {"key": "khac", "name": "Giấy chứng nhận đăng ký doanh nghiệp, giấy cam kết, hợp đồng "
-             "thuê nhà hoặc giấy tờ khác (nếu có)", "icon": "📎", "sides": 1, "optional": True,
-             "repeatable": True},
-        ],
-        "uploadHint": (
-            "Giấy tờ cần tải lên:\n"
-            "1. Đơn đề nghị cấp phép sử dụng tạm thời lòng đường, vỉa hè, đã ký.\n"
-            "2. Phương án sử dụng hoặc sơ đồ vị trí.\n"
-            "3. Căn cước công dân của người nộp / người đại diện.\n"
-            "4. Nếu có: giấy chứng nhận đăng ký doanh nghiệp, giấy cam kết, hợp đồng thuê nhà, "
-            "giấy phép cũ.\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
     {
@@ -2141,59 +1983,6 @@ def get_owner_info_pipeline(key: str):
 
 def get_attach_pipeline(key: str):
     return core_registry.get_attach_pipeline(key)
-
-
-_CODE_PARAM_RE = re.compile(r"(?:mathutuc(?:hanhchinh)?|matthc)=([12]\.\d{6})\b", re.IGNORECASE)
-# Mã TTHC quốc gia theo key — nguồn chung với Auto Fill (app/procedures/data/ke_khai_links.json).
-_LINK_CODE_BY_KEY: dict[str, str] = {}
-for _link in core_ke_khai_links.KE_KHAI_LINKS:
-    if _link.get("key") and _link.get("code"):
-        _LINK_CODE_BY_KEY.setdefault(str(_link["key"]), str(_link["code"]))
-
-
-def procedure_code(proc: dict | None) -> str:
-    """Mã TTHC quốc gia (vd "1.013225") để công dân tìm thủ tục theo mã số.
-
-    Thứ tự: "code" khai thẳng trên entry → ke_khai_links theo key → mã nằm trong URL nhận diện
-    (maThuTuc= / maThuTucHanhChinh= / MaTTHC=). Không có → "" (thủ tục chỉ tìm được theo tên).
-    """
-    if not proc:
-        return ""
-    if proc.get("code"):
-        return str(proc["code"])
-    if proc.get("key") in _LINK_CODE_BY_KEY:
-        return _LINK_CODE_BY_KEY[proc["key"]]
-    match = _CODE_PARAM_RE.search(str(proc.get("detect") or ""))
-    return match.group(1) if match else ""
-
-
-def case_pipeline_options(proc: dict | None, conv: dict | None) -> dict:
-    """Tuỳ chọn pipeline theo TRƯỜNG HỢP GIẢI QUYẾT công dân đã chốt (vd nhánh form nhà ở riêng
-    lẻ / công trình) — để mapper khỏi đoán lại từ giấy tờ.
-
-    Nguồn 1: nhãn ô "Trường hợp giải quyết" đọc từ cổng (mae_dialog_*) khớp `caseOptions` theo cụm
-    đã fold dấu, luật đầu tiên khớp thắng (match rỗng = mặc định). Nguồn 2 (extension cũ): key
-    `procedure_variant` → `variants.options[].pipelineOptions`. Không có gì → {} (mapper tự suy).
-    """
-    if not proc or not conv:
-        return {}
-    process = (conv.get("mae_dialog_options") or {}).get("process") or {}
-    labels = process.get("options") or []
-    picked = (conv.get("mae_dialog_choice") or {}).get("process")
-    if isinstance(picked, int) and 0 <= picked < len(labels):
-        label = labels[picked]
-    else:
-        label = process.get("current") or (labels[0] if labels else "")
-    if label and proc.get("caseOptions"):
-        folded = fold(label)
-        for rule in proc["caseOptions"]:
-            if fold(rule.get("match") or "") in folded:
-                return dict(rule.get("options") or {})
-    variant = str(conv.get("procedure_variant") or "")
-    for option in (proc.get("variants") or {}).get("options") or []:
-        if variant and option.get("key") == variant:
-            return dict(option.get("pipelineOptions") or {})
-    return {}
 
 
 def portal_submit_rules() -> dict[str, dict]:

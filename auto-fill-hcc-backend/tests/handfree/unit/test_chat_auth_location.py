@@ -48,7 +48,7 @@ def test_phien_moi_lay_noi_tu_acc(monkeypatch):
     # province_slug = tỉnh account → khóa thủ tục đặc thù tỉnh (độc lập location picker).
     assert saved["auth_user"] == {
         "id": "u1", "username": "hcctanphong", "name": "Phường Tân Phong",
-        "province_slug": "laichau",
+        "province_slug": "laichau", "tinh": "Tỉnh Lai Châu", "xa": "Phường Tân Phong",
     }
 
 
