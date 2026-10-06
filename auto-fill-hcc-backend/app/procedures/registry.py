@@ -127,6 +127,9 @@ from app.pipelines.dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_mien_nui_hai_dao
     plan as dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
 )
 from app.pipelines.dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as dang_ky_bien_phap_bao_dam_quang_ninh_attach
+from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_quang_ninh.attach import (
+    plan as tinh_tien_su_dung_dat_nd_50_2026_quang_ninh_attach,
+)
 from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.attach import plan as dang_ky_gcn_chuyen_quyen_lao_cai_attach
 from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.process import run as dang_ky_gcn_chuyen_quyen_lao_cai_process
 from app.pipelines.dang_ky_bien_dong_chia_tach_to_chuc_lao_cai.attach import plan as dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach
@@ -2620,6 +2623,41 @@ PROCEDURES: list[dict] = [
             "tờ nằm chung và đề xuất nội dung ô 'Ghi chú (Trích yếu nội dung hồ sơ)' để cán bộ dán vào.\n"
             "Văn bản ủy quyền, giấy tờ tài sản đứng riêng và giấy tờ ngoài danh mục được thêm thành phần "
             "hồ sơ mới."
+        ),
+    },
+    {
+        "key": "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh",
+        # 1.115148 — key TRÙNG ke_khai_links nên chọn ở panel là vào đúng pipeline. URL /nop-ho-so/<id>
+        # đổi theo cấu hình cổng → khóa domain + cụm tên thủ tục + số nghị định.
+        "detect": {
+            "urlScope": ["dichvucong.quangninh.gov.vn"],
+            "textIncludes": [
+                "tính lại tiền sử dụng đất",
+                "50/2026/NĐ-CP",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Quảng Ninh] Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, "
+            "c và d khoản 2 Điều 12 Nghị định số 50/2026/NĐ-CP"
+        ),
+        # Trang chỉ có bước thành phần hồ sơ; engine wallet-modal (React/Radix), không chạy process.
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên:\n"
+            "1. Đơn đề nghị tính lại tiền sử dụng đất → dòng 1.\n"
+            "2. Giấy tờ kèm theo đơn (quyết định chuyển mục đích, Giấy chứng nhận, thông báo và chứng từ "
+            "nộp tiền, phiếu chuyển thông tin địa chính, tờ trình, biên bản, trích lục bản đồ) → dòng 2. "
+            "Nên gộp vào một PDF; nhiều file thì mỗi file thêm một dòng cùng tên đánh số 2, 3…\n"
+            "Cổng không có dòng đặt tên sẵn: hệ thống gõ tên vào ô 'Tên Hồ Sơ' của dòng trống, thiếu dòng "
+            "thì tự bấm 'Thêm thành phần hồ sơ' rồi mới chọn tệp.\n"
+            "Hệ thống phân loại theo NỘI DUNG, không theo tên file. Mỗi file đính NGUYÊN, không tách trang; "
+            "hệ thống liệt kê giấy tờ nằm chung và đề xuất nội dung ô 'Ghi chú (Trích yếu nội dung hồ sơ)' "
+            "để cán bộ dán vào.\n"
+            "Văn bản ủy quyền và giấy tờ ngoài danh mục được thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -7508,6 +7546,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-tai-san-dat-quang-ninh-mien-nui-hai-dao": dang_ky_tai_san_dat_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
+    "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh": tinh_tien_su_dung_dat_nd_50_2026_quang_ninh_attach,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
     "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai": ctdt_lao_cai_dieu_chinh_bql_attach,
     "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai": ctdt_lao_cai_dieu_chinh_ubnd_attach,

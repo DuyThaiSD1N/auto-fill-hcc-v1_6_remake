@@ -2002,6 +2002,20 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh",
+      "code": "1.115148",
+      "label": "Quảng Ninh - Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 Nghị định số 50/2026/NĐ-CP ngày 31/01/2026 của Chính phủ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e8732-a3da-753b-85f5-0590fe1e27c7",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIndex": 1,
+        "agency": "Đặc khu Cô Tô"
+      },
+      "autoConfirm": true
     }
   ]
 }
