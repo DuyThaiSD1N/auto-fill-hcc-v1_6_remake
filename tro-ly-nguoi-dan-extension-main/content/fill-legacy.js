@@ -380,6 +380,158 @@ function guessOtherTextOfSelect(field) {
 }
 
 
+// ---- Đăng ký lại khai sinh: giữ dữ liệu khi người dùng đổi "Quan hệ với người được khai sinh" ----
+// eForm dựng lại ba khối con/cha/mẹ mỗi lần QuanHe đổi: Bản thân → chép người yêu cầu sang khối con, xóa
+// khối cha/mẹ; Cha/Mẹ → chép sang khối cha/mẹ, xóa khối con và một phần khối còn lại. Ô do tool điền hoặc
+// người dùng đã sửa phải giữ nguyên (không bị xóa, không bị chép đè); ô chưa ai điền thì để eForm chép/xóa.
+// Chỉ mẫu đăng ký lại khai sinh (có ô thông tin đăng ký trước đây soDKTruocDay).
+const RELATION_KEEPER_COMPS = [
+  "x-input", "x-input-number", "x-date", "x-date-text", "x-radio", "x-select", "x-select-default", "x-select-area",
+];
+const RELATION_KEEPER_DRIVERS = new Set(["x-radio", "x-select", "x-select-default"]);
+const relationKeeper = { installed: false, protectedNames: new Set(), restoring: false, busy: false, again: false };
+
+function isBirthReRegistrationForm() {
+  return !!document.querySelector('x-radio[name="QuanHe"]') && !!document.querySelector('[name="soDKTruocDay"]');
+}
+
+const keeperText = (el) => String(el?.textContent || "").replace(/[▲▼▾▿]/g, "").replace(/\s+/g, " ").trim();
+const keeperChoice = (el) => {
+  const text = keeperText(el);
+  return isPlaceholderOpt(norm(text)) ? "" : text;
+};
+
+// Giá trị đang hiện của một ô, đúng dạng các hàm điền nhận lại (chuỗi / dd/mm/yyyy / mã option / {tinh, xa}).
+function readLegacyComponent(el) {
+  const comp = el.tagName.toLowerCase();
+  if (comp === "x-input" || comp === "x-input-number") return String(el.querySelector("input")?.value || "").trim();
+  if (comp === "x-date" || comp === "x-date-text") {
+    const attr = comp === "x-date" ? "name" : "id";
+    const part = (suffix) => String(el.querySelector(`input[${attr}$="-${suffix}"]`)?.value || "").trim();
+    const [day, month, year] = [part("day"), part("month"), part("year")];
+    if (day && month && year) return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+    return comp === "x-date-text" && year && !day && !month ? year : "";
+  }
+  if (comp === "x-radio") {
+    const box = Array.from(el.querySelectorAll('input[type="checkbox"]')).find((b) => b.checked);
+    return box ? String(box.id || "").split("-").pop() : "";
+  }
+  if (comp === "x-select") return keeperChoice(el.querySelector(".input-field-select"));
+  if (comp === "x-select-default") return keeperChoice(el.querySelector('[id^="custom-select-default-"] div[tabindex]'));
+  const widgets = Array.from(el.querySelectorAll('[id^="custom-select-"]'));
+  if (!widgets.length) return String(selectAreaPlainTextInput(el, el.getAttribute("name"))?.value || "").trim();
+  const area = {};
+  for (const widget of widgets) {
+    const role = areaRoleOf(widget);
+    if (role && !(role in area)) area[role] = keeperChoice(widget.querySelector(".input-field-select"));
+  }
+  const detail = String(el.querySelector("input.input-field")?.value || "").trim();
+  if (detail) area.diaChi = detail;
+  return area.tinh || area.xa || area.diaChi ? area : "";
+}
+
+const keeperSame = (a, b) => JSON.stringify(a ?? "") === JSON.stringify(b ?? "");
+
+function snapshotKeptFields() {
+  const snap = new Map();
+  for (const el of document.querySelectorAll(RELATION_KEEPER_COMPS.join(","))) {
+    const name = el.getAttribute("name");
+    if (!name || name === "QuanHe" || snap.has(name) || !relationKeeper.protectedNames.has(name)) continue;
+    const value = readLegacyComponent(el);
+    if (value !== "") snap.set(name, { name, comp: el.tagName.toLowerCase(), value });
+  }
+  return [...snap.values()];
+}
+
+// Chờ eForm dựng lại xong: DOM lặng 350ms (tối đa 3s).
+function waitLegacySettle(maxMs = 3000, quietMs = 350) {
+  return new Promise((resolve) => {
+    let quiet = null;
+    let cap = null;
+    const observer = new MutationObserver(() => { clearTimeout(quiet); quiet = setTimeout(done, quietMs); });
+    function done() {
+      observer.disconnect();
+      clearTimeout(quiet);
+      clearTimeout(cap);
+      resolve();
+    }
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+    quiet = setTimeout(done, quietMs);
+    cap = setTimeout(done, maxMs);
+  });
+}
+
+// Ghi lại ô bị xóa / bị chép đè. Radio + dropdown trước (dựng lại khối phía sau), ô chữ / ngày sau; soát lại
+// vì đổi tỉnh làm eForm xóa xã.
+async function restoreKeptFields(snap) {
+  relationKeeper.restoring = true;
+  try {
+    const ordered = [
+      ...snap.filter((f) => RELATION_KEEPER_DRIVERS.has(f.comp)),
+      ...snap.filter((f) => !RELATION_KEEPER_DRIVERS.has(f.comp)),
+    ];
+    for (let pass = 0; pass < 3; pass++) {
+      let changed = false;
+      for (const field of ordered) {
+        const el = findNamedElement(field.comp, [field.name]).el;
+        if (!el || keeperSame(readLegacyComponent(el), field.value)) continue;
+        changed = true;
+        // Khối địa bàn đã hết lượt điền của fillSelectArea sau lần điền đầu → gọi thẳng bộ điền widget.
+        if (field.comp === "x-select-area" && typeof field.value === "object") await fillAreaWidgets(el, field.value);
+        else await fillLegacyComponent(el, field);
+        await sleep(RELATION_KEEPER_DRIVERS.has(field.comp) ? 250 : 40);
+      }
+      if (!changed) break;
+      await sleep(500);
+    }
+  } finally {
+    relationKeeper.restoring = false;
+  }
+}
+
+function armLegacyRelationKeeper(fields, filledNames) {
+  if (!isBirthReRegistrationForm()) return;
+  for (const field of fields || []) {
+    if (!filledNames.has(field.name)) continue;
+    const found = findNamedElement(field.comp, fieldCandidates(field));
+    if (found.el) relationKeeper.protectedNames.add(found.usedName);
+  }
+  if (relationKeeper.installed) return;
+  relationKeeper.installed = true;
+  // Người dùng gõ / chọn ở ô nào thì ô đó thành dữ liệu cần giữ (sự kiện thật, không phải lệnh của tool).
+  const markEdited = (event) => {
+    if (!event.isTrusted || relationKeeper.restoring) return;
+    const name = event.target?.closest?.(RELATION_KEEPER_COMPS.join(","))?.getAttribute("name");
+    if (name && name !== "QuanHe") relationKeeper.protectedNames.add(name);
+  };
+  document.addEventListener("input", markEdited, true);
+  document.addEventListener("click", markEdited, true);
+  // Chụp ở pha capture của pointerdown / phím — chạy TRƯỚC khi eForm xử lý lần đổi QuanHe.
+  const onRelation = (event) => {
+    if (!event.isTrusted || relationKeeper.restoring) return;
+    if (event.type === "keydown" && event.key !== " " && event.key !== "Enter") return;
+    if (!event.target?.closest?.('x-radio[name="QuanHe"]')) return;
+    if (relationKeeper.busy) { relationKeeper.again = true; return; }
+    const snap = snapshotKeptFields();
+    if (!snap.length) return;
+    relationKeeper.busy = true;
+    (async () => {
+      try {
+        do {
+          relationKeeper.again = false;
+          await sleep(150);
+          await waitLegacySettle();
+          await restoreKeptFields(snap);
+        } while (relationKeeper.again);
+      } finally {
+        relationKeeper.busy = false;
+      }
+    })();
+  };
+  document.addEventListener("pointerdown", onRelation, true);
+  document.addEventListener("keydown", onRelation, true);
+}
+
 async function fillForm(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
@@ -509,6 +661,7 @@ async function fillForm(fields) {
   // Field mặc định (default=true) → đổi viền XANH sang VÀNG (chạy sau cùng để không bị đè).
   markLegacyDefaultsYellow(fields);
   if (isBirthRelationshipForm) armLegacyStabilityGuard(fields, filledNames);
+  armLegacyRelationKeeper(fields, filledNames);
   H.resolveAltNameGroups(result, fields);
   console.log("[AutoFill] Kết quả:", result);
   return result;

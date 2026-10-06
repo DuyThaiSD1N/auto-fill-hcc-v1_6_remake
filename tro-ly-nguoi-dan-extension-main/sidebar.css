@@ -667,7 +667,6 @@ body.settings-mode .bot-f { display: none; }
 .srow-tn { font-size: 14px; font-weight: 800; line-height: 1.25; }
 .srow-hm { font-style: italic; color: var(--muted); font-size: 11px; margin-top: 1px; }
 .srow-sd { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.srow-cd { font-size: 10.5px; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
 .srow mark { background: #fdf0c8; color: inherit; border-radius: 3px; padding: 0 1px; }
 .srow-ch { color: #9fb2c4; font-size: 18px; flex: none; }
 .snone {
@@ -810,13 +809,6 @@ body.settings-mode .bot-f { display: none; }
   content: "✓"; margin-left: auto; align-self: center;
   color: var(--teal-d); font-size: 17px; font-weight: 800;
 }
-/* Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): nhóm Nơi xử lý / Trường hợp. */
-.mae-dialog-choice .mdc-title {
-  color: var(--teal-d); font-weight: 800; font-size: 11px;
-  text-transform: uppercase; letter-spacing: .06em; margin-top: 4px;
-}
-.mae-dialog-choice .opt.picked { cursor: pointer; }
-.mae-dialog-choice .chip.solid { align-self: stretch; justify-content: center; margin-top: 4px; }
 
 /* ── Nơi làm thủ tục: nhãn trên, ô chọn dưới — dễ đọc, dễ chạm ── */
 .loc {
@@ -1149,6 +1141,52 @@ body.settings-mode .bot-f { display: none; }
 .bot-status {
   padding: 6px 14px; font-size: 11.5px;
   color: #8a5b09; background: #fff7e6; border-top: 1px solid #f0dda6;
+}
+
+/* Khung đang nghe giọng nói: mic nhịp + sóng + trạng thái + chữ đang nhận dạng. */
+.voice-panel {
+  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+  padding: 10px 14px; background: #fff;
+  border-top: 1px solid var(--line); box-shadow: 0 -8px 20px rgba(20, 40, 30, .08);
+}
+.voice-panel[hidden] { display: none; }
+body.start-mode .voice-panel,
+body.settings-mode .voice-panel { display: none; }
+.vp-top { display: flex; align-items: center; gap: 10px; }
+.vp-mic {
+  width: 34px; height: 34px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; font-size: 16px;
+  background: var(--teal); color: #fff;
+  animation: vpPulse 1.5s ease-out infinite;
+}
+@keyframes vpPulse {
+  0% { box-shadow: 0 0 0 0 rgba(18, 160, 106, .5); }
+  80%, 100% { box-shadow: 0 0 0 10px rgba(18, 160, 106, 0); }
+}
+.vp-wave { display: flex; align-items: center; gap: 3px; height: 24px; flex: none; }
+.vp-wave i {
+  display: block; width: 3px; height: 6px; border-radius: 2px;
+  background: var(--teal); animation: vpWave 1s ease-in-out infinite;
+}
+.vp-wave i:nth-child(2), .vp-wave i:nth-child(6) { animation-delay: .12s; }
+.vp-wave i:nth-child(3), .vp-wave i:nth-child(5) { animation-delay: .24s; }
+.vp-wave i:nth-child(4) { animation-delay: .36s; }
+@keyframes vpWave { 0%, 100% { height: 6px; } 50% { height: 22px; } }
+.voice-panel.connecting .vp-wave i { animation: none; opacity: .4; }
+.vp-status { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--ink); }
+.vp-close {
+  width: 28px; height: 28px; border-radius: 50%; border: 0; flex: none; cursor: pointer;
+  background: #eef1f4; color: #3b4453; font-size: 13px;
+}
+.vp-close:hover { background: #e2e7ec; }
+.vp-interim { font-size: 14px; font-weight: 700; font-style: italic; color: var(--teal-d); }
+.vp-interim:empty { display: none; }
+/* Câu công dân NÓI (nhận từ giọng nói) — khác câu gõ để cán bộ thấy máy nghe ra chữ gì. */
+.msg.user.voice { font-style: italic; }
+.msg.user.voice::before { content: "🎙 "; font-style: normal; }
+.consent-card .cverbal { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--teal-d); }
+@media (prefers-reduced-motion: reduce) {
+  .vp-mic, .vp-wave i { animation: none; }
 }
 
 /* Trạng thái máy quét tại quầy (scan-bridge) — chỉ hiện khi có gì để nói (setScanAgentStatus). */

@@ -105,10 +105,9 @@
     // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
     // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
     supportsTuPhapMoi: true,
-    // Đọc được danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng,
-    // content/portal-mae.js), vẽ thẻ mae_dialog_choice và chọn đúng nhãn công dân đã chốt
-    // (agencyExact/processExact). Thiếu cờ → BE giữ đường variants khai sẵn.
-    supportsMaeDialogChoice: true,
+    // Công dân chọn một nút bằng lời → BE nhờ bấm hộ đúng nút đó (press_chip) hoặc báo nhóm nút đã
+    // dùng (chip_used). Thiếu cờ → BE chạy thẳng lệnh của nút như trước.
+    supportsVoiceChips: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -126,8 +125,13 @@
     $messages.scrollTop = $messages.scrollHeight;
     return el;
   }
-  const addUserText = (t, hm) => addBubble("user", window.escapeHtml(t)
-    + (hm ? `<span class="u-hm">${window.escapeHtml(hm)}</span>` : ""));
+  // voice=true: câu nhận từ giọng nói → 🎙 + chữ nghiêng, cán bộ thấy máy nghe ra chữ gì.
+  const addUserText = (t, hm, voice = false) => {
+    const el = addBubble("user", window.escapeHtml(t)
+      + (hm ? `<span class="u-hm">${window.escapeHtml(hm)}</span>` : ""));
+    if (voice) el.classList.add("voice");
+    return el;
+  };
   // Tông màu card suy từ emoji mở đầu (✅ mốc xong / ⚠️ cảnh báo / ℹ️ giải thích) —
   // tất định theo text nên khôi phục phiên render y hệt, BE không cần đổi hợp đồng.
   function botTone(md) {
@@ -744,6 +748,10 @@
     if (!opts?.noTts) updatePipeFromState(prevState, d);
   }
 
+  // Đang "bấm hộ" một nút theo lời nói (press_chip): câu nói đã hiện thành bong bóng → cú bấm này
+  // không thêm bong bóng nhãn nút nữa.
+  let chipPressByVoice = false;
+
   function renderChips(chips) {
     // Ẩn nút hoàn thành thủ công còn sót trong last_reply của phiên cũ. Luồng mới chỉ
     // kết thúc khi watcher đọc được xác nhận nộp thành công từ chính cổng dịch vụ công.
@@ -797,14 +805,16 @@
           $fileInput.click();
           return;
         }
+        const byVoice = chipPressByVoice;
+        chipPressByVoice = false;
         // 1 nhóm chip chỉ bấm 1 lần — disable cả nhóm rồi gửi.
         wrap.querySelectorAll("button").forEach((x) => (x.disabled = true));
         // Nút chốt giấy tờ được chuyển sang holder riêng dưới checklist; vẫn khoá cả
         // chính nó lẫn nhóm nút phụ ban đầu để không bấm đổi cách gửi khi đang xử lý.
         b.closest(".chips")?.querySelectorAll("button").forEach((x) => (x.disabled = true));
-        // Làm thủ tục khác → xóa phiên thật và về màn bắt đầu.
-        if (c.send === "__action:new_procedure") { resetConversation(); return; }
-        addUserText(c.label, c.labelHmong);
+        // Chọn/Làm thủ tục khác → xóa phiên thật rồi mở ngay danh sách thủ tục.
+        if (c.send === "__action:new_procedure") { changeProcedure(); return; }
+        if (!byVoice) addUserText(c.label, c.labelHmong);
         if (["__action:logout_citizen", "__action:continue_dossiers"].includes(c.send)) {
           void (async () => {
             await claimCompletionChoice();
@@ -939,20 +949,6 @@
     const payload = docsCompletePagePayload(ctx);
     return ask(`${command}:${JSON.stringify(payload)}`, source, displayText);
   }
-  // Mở từng ô của hộp thoại để đọc lựa chọn là thao tác CÓ HIỆN trên màn hình → nhớ kết quả theo
-  // URL một lúc, các lần gửi page_status kế tiếp (thử lại, kiểm tra tay) không mở ô lần nữa.
-  let maeDialogRead = { url: "", at: 0, data: null };
-  async function readMaeDialogOptions(url) {
-    if (maeDialogRead.data && maeDialogRead.url === url && Date.now() - maeDialogRead.at < 15000) {
-      return maeDialogRead.data;
-    }
-    const res = await sendToContent({ action: "readMaeDialogOptions" });
-    const data = res?.ok && (res.agency || res.process)
-      ? { agency: res.agency || null, process: res.process || null } : null;
-    maeDialogRead = { url, at: Date.now(), data };
-    return data;
-  }
-
   async function sendPageStatus(pre) {
     let c = pre || null;
     for (let i = 0; !c && i < 12; i++) {
@@ -998,12 +994,6 @@
       // rõ đang còn ở đăng nhập hay chưa tới hồ sơ, thay vì im lặng như watcher nền.
       manualCheck: !!c.manualCheck,
     };
-    // Hộp thoại "Chọn trường hợp giải quyết": gửi kèm danh sách nơi xử lý + trường hợp đọc từ
-    // cổng để BE hỏi công dân. KHÔNG nằm trong chữ ký trang của watcher (tránh gửi lặp).
-    if (c.maeAgencyBlock && CLIENT_CAPABILITIES.supportsMaeDialogChoice) {
-      const dialogOptions = await readMaeDialogOptions(c.url || "");
-      if (dialogOptions) pageStatus.maeDialogOptions = dialogOptions;
-    }
     const hasVneidModal = pageStatus.vneidLoginCodePrompt
       || pageStatus.vneidDataSharingPrompt || pageStatus.vneidPasscodePrompt;
     if (hasVneidModal) {
@@ -1123,8 +1113,6 @@
   const WATCH_STATES = [
     "guide_login", "ask_doc_method", "qr_waiting", "collecting_docs",
     "owner_waiting_next", "attaching", "done", "filling",
-    // Đang hỏi nơi xử lý / trường hợp: công dân tự bấm Đồng ý trên cổng thì BE phải biết.
-    "choose_mae_dialog",
   ];
   const isWatchedState = () => WATCH_STATES.includes(lastState)
     && (lastState !== "filling" || lastReplyData?.procedure_key === "dang-ky-kinh-doanh");
@@ -1195,7 +1183,6 @@
     if (card.kind === "location_picker") return renderLocationPicker(card);
     if (card.kind === "doc_options") return renderDocOptions(card);
     if (card.kind === "result_methods") return renderResultMethods(card);
-    if (card.kind === "mae_dialog_choice") return renderMaeDialogChoice(card);
     // Contract cũ từng xin SĐT sau khi nộp hồ sơ. Đã ngừng hoàn toàn; bỏ qua cả card
     // còn sót trong last_reply của phiên được tạo trước khi extension cập nhật.
     if (card.kind === "phone_form") return;
@@ -1435,6 +1422,20 @@
     addNode(el);
   }
 
+  // Công dân trả lời thẻ xin phép BẰNG LỜI: thẻ đổi theo (đồng ý → tích đủ ô) và khoá lại, kèm dòng
+  // ghi nhận, để không còn nút bấm được ở một câu hỏi đã trả lời xong.
+  function markConsentVerbal(accepted) {
+    const el = [...document.querySelectorAll(".consent-card")].pop();
+    if (!el || el.dataset.answered) return;
+    el.dataset.answered = "1";
+    if (accepted) el.querySelectorAll('input[type="checkbox"]').forEach((b) => { b.checked = true; });
+    el.querySelectorAll("button, input").forEach((x) => { x.disabled = true; });
+    const note = document.createElement("div");
+    note.className = "cverbal";
+    note.textContent = accepted ? "🎙 Công dân đã đồng ý bằng lời nói" : "🎙 Công dân đã từ chối bằng lời nói";
+    el.querySelector(".cactions")?.after(note);
+  }
+
   // Bỏ dấu để lọc tìm kiếm (khớp cả khi gõ không dấu). Dùng chung cho sheet "tất cả thủ tục".
   function foldVi(s) {
     return String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d")
@@ -1572,8 +1573,7 @@
     if (!list) return;
     const ql = foldVi(query).trim();
     const subset = serviceSheetItems.filter((it) => !ql || foldVi(it.title).includes(ql)
-      || foldVi(it.subtitle).includes(ql) || foldVi(it.label).includes(ql)
-      || codeMatches(it.code, query));
+      || foldVi(it.subtitle).includes(ql));
     list.innerHTML = "";
     if (!subset.length) {
       const none = document.createElement("div");
@@ -1590,26 +1590,13 @@
         ? `<span class="srow-hm">${window.escapeHtml(it.titleHmong)}</span>` : "";
       const sub = it.subtitle
         ? `<span class="srow-sd">${window.escapeHtml(it.subtitle)}</span>` : "";
-      const code = it.code
-        ? `<span class="srow-cd">Mã ${codeMatches(it.code, query)
-          ? `<mark>${window.escapeHtml(it.code)}</mark>` : window.escapeHtml(it.code)}</span>` : "";
       row.innerHTML = `<span class="srow-ic">${window.escapeHtml(it.icon || "📄")}</span>
-        <span class="srow-tx"><span class="srow-tn">${highlightMatch(it.title, query)}</span>${hmongLine}${sub}${code}</span>
+        <span class="srow-tx"><span class="srow-tn">${highlightMatch(it.title, query)}</span>${hmongLine}${sub}</span>
         <span class="srow-ch">›</span>`;
       row.addEventListener("click", () => { closeServiceSheet(); pickProcedure(it); });
       list.appendChild(row);
     });
   }
-  // Tìm theo MÃ TTHC (vd "1.013225"): chỉ xét khi ô tìm kiếm toàn chữ số/dấu chấm và có từ 3 chữ
-  // số — gõ đủ mã, bỏ "1.", hay chỉ vài số cuối ("13225") đều ra. Gõ chữ thì không đụng tới mã.
-  function codeMatches(code, query) {
-    const q = String(query || "").trim();
-    if (!code || !/^[\d.\s]+$/.test(q)) return false;
-    const digits = q.replace(/\D/g, "");
-    if (digits.length < 3) return false;
-    return String(code).includes(q.replace(/\s/g, "")) || String(code).replace(/\D/g, "").includes(digits);
-  }
-
   // Tô vàng đoạn khớp khi gõ CÓ dấu (khớp trực tiếp); gõ không dấu vẫn lọc ra nhưng không tô
   // (map vị trí qua bỏ dấu dễ lệch) — an toàn hơn là tô sai.
   function highlightMatch(title, query) {
@@ -1856,52 +1843,6 @@
       });
       wrap.appendChild(el);
     });
-    addNode(wrap);
-  }
-
-  // Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): mỗi nhóm (Nơi xử lý / Trường hợp
-  // – thời gian) là một danh sách chọn một; nhãn đúng chữ đọc từ cổng. Chọn xong bấm "Xác nhận"
-  // → gửi chỉ số đã chọn của từng nhóm, BE gửi lại nhãn nguyên văn để engine chọn trên cổng.
-  function renderMaeDialogChoice(card) {
-    document.querySelectorAll(".mae-dialog-choice").forEach((el) => el.remove());
-    const groups = (card.groups || []).filter((g) => Array.isArray(g.options) && g.options.length);
-    if (!groups.length) return;
-    const wrap = document.createElement("div");
-    wrap.className = "result-methods mae-dialog-choice";
-    const picks = {};
-    groups.forEach((group) => {
-      picks[group.key] = Number.isInteger(group.selected) ? group.selected : 0;
-      const title = document.createElement("div");
-      title.className = "mdc-title";
-      title.textContent = group.label || "";
-      wrap.appendChild(title);
-      const rows = group.options.map((opt, index) => {
-        const el = document.createElement("div");
-        el.className = "opt" + (index === picks[group.key] ? " picked" : "");
-        el.innerHTML = `<div>
-          <div class="ot">${window.escapeHtml(opt.label || "")}</div>
-          <div class="od">${window.escapeHtml(opt.desc || "")}</div></div>`;
-        el.addEventListener("click", () => {
-          picks[group.key] = index;
-          rows.forEach((row, i) => row.classList.toggle("picked", i === index));
-        });
-        wrap.appendChild(el);
-        return el;
-      });
-    });
-    const submit = document.createElement("button");
-    submit.className = "chip solid";
-    submit.textContent = card.submitLabel || "Xác nhận";
-    submit.addEventListener("click", () => {
-      wrap.querySelectorAll(".opt, button").forEach((el) => {
-        el.style.pointerEvents = "none";
-        if (el.tagName === "BUTTON") el.disabled = true;
-      });
-      const summary = groups.map((g) => g.options[picks[g.key]]?.label || "").filter(Boolean).join(" · ");
-      addUserText(summary);
-      ask(`__action:set_mae_dialog:${JSON.stringify(picks)}`, "chip", summary);
-    });
-    wrap.appendChild(submit);
     addNode(wrap);
   }
 
@@ -4133,7 +4074,7 @@
       } else if (a.type === "new_conversation") {
         // Công dân NÓI "làm thủ tục khác" (chip đã tự xử ở renderChips). Một conversation =
         // một hồ sơ, nên đi đúng luồng của chip: xoá phiên rồi mở phiên mới.
-        await returnToStart("manual");
+        await returnToStart("new_procedure");
         return;
       } else if (a.type === "navigate" && a.url) {
         // Phải chờ storage ghi xong trước khi điều hướng; nếu iframe bị hủy sớm ở lượt đầu,
@@ -4201,6 +4142,25 @@
         setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(); }, 0);
+      } else if (a.type === "press_chip" && a.send) {
+        // Công dân chọn nút bằng lời → bấm đúng nút đó (nút còn sống gần nhất) để đi cùng đường
+        // với bấm tay (đọc ô trên trang, ngữ cảnh trang…). setTimeout: không chạy lượt hỏi mới
+        // ngay trong runActions.
+        setTimeout(() => {
+          const btn = [...document.querySelectorAll(".chip")]
+            .filter((b) => b.dataset.send === a.send && !b.disabled).pop();
+          if (!btn) return;
+          chipPressByVoice = true;
+          btn.click();
+        }, 0);
+      } else if (a.type === "chip_used" && a.send) {
+        document.querySelectorAll(".chip").forEach((b) => {
+          if (b.dataset.send !== a.send) return;
+          (b.closest(".chips") || b.parentElement)?.querySelectorAll("button")
+            .forEach((x) => { x.disabled = true; });
+        });
+      } else if (a.type === "consent_verbal") {
+        markConsentVerbal(!!a.accepted);
       } else if (a.type === "select_result_method") {
         setTimeout(() => { void runSelectResultMethod(a); }, 0);
       } else if (a.type === "attach_authorization_doc") {
@@ -4373,9 +4333,6 @@
           variant: a.variant || "",
           variantMatch: a.variantMatch || "",
           variantAvoid: a.variantAvoid || "",
-          // Hộp thoại Bộ Xây dựng: nhãn NGUYÊN VĂN công dân đã chọn trên thẻ mae_dialog_choice.
-          agencyExact: a.agencyExact || "",
-          processExact: a.processExact || "",
         });
         if (res?.ok) {
           setStatus("Đã chọn cơ quan và trường hợp xong ✓");
@@ -4478,7 +4435,9 @@
     if (busy) { pendingReturnReason = reason; return; }
     endingSession = true;
     try {
-      const shouldOpenProcedurePicker = reason === "continue";
+      // "new_procedure" (Chọn/Làm thủ tục khác): công dân vẫn ở quầy, chỉ đổi thủ tục → mở thẳng
+      // danh sách thủ tục, không về màn giới thiệu, không đưa trang cổng về trang chủ.
+      const shouldOpenProcedurePicker = reason === "continue" || reason === "new_procedure";
       stopCompletionLogoutRuntime();
       completionLogoutState = null;
       await writeCompletionLogoutState(null);
@@ -4562,6 +4521,11 @@
     await returnToStart(completionLogoutState ? "continue" : "manual");
   }
   document.getElementById("reset-btn")?.addEventListener("click", resetConversation);
+
+  async function changeProcedure() {
+    if (busy) return;
+    await returnToStart("new_procedure");
+  }
 
   $startBtn?.addEventListener("click", async () => {
     if (busy || endingSession) return;
@@ -4747,18 +4711,35 @@
     });
   }
 
-  function setMicUI(listening, label) {
+  const $voicePanel = document.getElementById("voice-panel");
+  const $vpStatus = document.getElementById("vp-status");
+  const $vpInterim = document.getElementById("vp-interim");
+  function setMicUI(listening, label, connecting = false) {
     voiceListening = listening;
     $micBtn?.classList.toggle("listening", listening);
+    if (listening && $voicePanel) {
+      // Micro đang mở → khung nghe (mic nhịp + sóng) thay cho dòng trạng thái nhỏ: công dân
+      // nhìn là biết máy đang nghe, và có nút ✕ để tắt ngay tại đó.
+      $voicePanel.hidden = false;
+      $voicePanel.classList.toggle("connecting", connecting);
+      $vpStatus.textContent = label || "Đang nghe… công dân hãy nói";
+      $vpInterim.textContent = "";
+      setStatus("");
+      return;
+    }
+    if ($voicePanel) { $voicePanel.hidden = true; $vpInterim.textContent = ""; }
     if (label) setStatus(label); else setStatus("");
   }
+  document.getElementById("vp-close")?.addEventListener("click", () => {
+    if (handsfree) setHandsfree(false); else stopVoice();
+  });
 
   async function startVoice() {
     // asr-stop phát event "stopped" bất đồng bộ; nếu đang ở Cài đặt, vòng rảnh tay
     // không được tự nối lại micro cho tới khi người dùng quay về hội thoại.
     if (document.body.classList.contains("settings-mode") || !voiceCfg.asr || voiceListening) return;
     stopReplyTts(); // đang đọc mà mở mic = ngắt lời (barge-in)
-    setMicUI(true, "🎤 Đang kết nối…");
+    setMicUI(true, "Đang kết nối micro…", true);
     const accessToken = await window.tlndAuth?.getAccessToken?.();
     // Trong lúc refresh, người dùng có thể dừng mic hoặc mở Cài đặt.
     if (!voiceListening || document.body.classList.contains("settings-mode")) return;
@@ -4841,7 +4822,7 @@
       if (msg.event === "partial") ratingNoteSink(msg.text || "", false);
       else if (msg.event === "final") { setMicUI(false); ratingNoteSink((msg.text || "").trim(), true); }
       else if (msg.event === "state") {
-        if (msg.state === "listening") setMicUI(true, "🎤 Đang nghe ý kiến…");
+        if (msg.state === "listening") setMicUI(true, "Đang nghe ý kiến…");
         else if (msg.state === "stopped") setMicUI(false);
       } else if (msg.event === "error") {
         setMicUI(false);
@@ -4851,7 +4832,7 @@
       return;
     }
     if (msg.event === "state") {
-      if (msg.state === "listening") setMicUI(true, "🎤 Đang lắng nghe… công dân nói đi ạ");
+      if (msg.state === "listening") setMicUI(true, "Đang nghe… công dân hãy nói");
       else if (msg.state === "stopped") {
         // Server đóng mà không có final (không nghe thấy gì).
         setMicUI(false);
@@ -4863,13 +4844,14 @@
       }
     } else if (msg.event === "partial") {
       $input.value = msg.text || "";
+      if ($vpInterim) $vpInterim.textContent = msg.text ? `“${msg.text}…”` : "";
     } else if (msg.event === "final") {
       setMicUI(false);
       $input.value = "";
       const text = (msg.text || "").trim();
       if (text) {
         emptyTurns = 0;
-        addUserText(text);
+        addUserText(text, "", true);
         ask(text, "voice");
       } else if (handsfree) {
         emptyTurns += 1;

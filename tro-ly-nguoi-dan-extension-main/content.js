@@ -1266,12 +1266,50 @@
     // gửi qua chat — cùng mã thì BE chỉ ghi một sự kiện.
     let clickId = "";
     try { clickId = crypto.randomUUID(); } catch (_) { clickId = "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
-    try {
-      chrome.runtime.sendMessage({
-        __tlnd: "submitClicked", host: location.hostname, ref: hit.ref, clickId, clickedAt: lastSubmitClickAt,
-      }, () => void chrome.runtime.lastError);
-    } catch (_) {}
+    const click = { __tlnd: "submitClicked", host: location.hostname, ref: hit.ref, clickId, clickedAt: lastSubmitClickAt };
+    rememberPendingSubmit(click);
+    sendSubmitClick(click);
   }, true);
+
+  // Cổng nộp bằng TẢI LẠI CẢ TRANG (HkdOnline: confirm() rồi postback ASP.NET): sendMessage chưa kịp
+  // mở kênh thì trang đã bị huỷ cùng content script → tin báo mất, hồ sơ "chưa nộp" ở mọi lần. Ghi
+  // cú bấm vào sessionStorage (ghi đồng bộ, còn sau khi tải lại trong cùng tab + cùng tên miền)
+  // TRƯỚC khi gửi; trang kế tiếp nạp lên thì gửi lại. Gửi lại cú bấm đã tới là vô hại: cùng clickId
+  // nên BE chỉ ghi một sự kiện.
+  const SS_PENDING_SUBMIT_KEY = "__tlnd_pending_submit";
+  const PENDING_SUBMIT_TTL_MS = 10 * 60 * 1000;
+  function sendSubmitClick(click) {
+    try { chrome.runtime.sendMessage(click, () => void chrome.runtime.lastError); } catch (_) {}
+  }
+  function readPendingSubmits() {
+    try {
+      const list = JSON.parse(sessionStorage.getItem(SS_PENDING_SUBMIT_KEY) || "[]");
+      return Array.isArray(list) ? list : [];
+    } catch (_) { return []; }
+  }
+  function rememberPendingSubmit(click) {
+    try {
+      const list = readPendingSubmits().filter((it) => Date.now() - Number(it?.clickedAt || 0) < PENDING_SUBMIT_TTL_MS);
+      list.push(click);
+      sessionStorage.setItem(SS_PENDING_SUBMIT_KEY, JSON.stringify(list.slice(-5)));
+    } catch (_) { /* sessionStorage bị chặn → vẫn còn đường gửi thẳng */ }
+  }
+  if (IS_TOP_FRAME) {
+    const pending = readPendingSubmits().filter((it) => it?.__tlnd === "submitClicked" && it.clickId
+      && Date.now() - Number(it.clickedAt || 0) < PENDING_SUBMIT_TTL_MS);
+    if (pending.length) {
+      // Gửi ngay (background ghi mốc nộp), rồi gửi lại sau 4 giây cho sidebar dạng khung trong
+      // trang — nó dựng lại cùng trang mới nên lần đầu có thể chưa nghe kịp (phiếu đánh giá).
+      // Chỉ xoá sau lần thứ hai: trang lại chuyển tiếp trong 4 giây thì trang sau gửi tiếp.
+      pending.forEach(sendSubmitClick);
+      setTimeout(() => {
+        pending.forEach(sendSubmitClick);
+        try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) {}
+      }, 4000);
+    } else {
+      try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) {}
+    }
+  }
 
   // Mốc thao tác gần nhất trên trang — dùng cho câu "tab này im lặng bao lâu rồi".
   window.__TLND_HOAT_DONG_CUOI__ = Date.now();
@@ -1544,13 +1582,8 @@
         "dichvucongbnv.moha.gov.vn"].includes(location.hostname);
       // ngSelectAgencyForm1 = trang "chọn nơi và loại" (MAE/GD&ĐT); ngSelectAgencyForm = HỘP
       // THOẠI "Chọn trường hợp giải quyết" của cổng Bộ Xây dựng. Cả hai đều do portal-mae.js lo.
-      // Cổng Bộ Xây dựng còn GIỮ khối hộp thoại trong DOM sau khi đã sang trang kê khai → chỉ tính
-      // khi form đang HIỆN và trang chưa có wizard (mat-step-header), không thì trợ lý tưởng hộp
-      // thoại còn mở rồi hỏi lại nơi xử lý/trường hợp ngay trên trang kê khai.
-      const maeFormEl = maeHost
-        ? document.querySelector("form#ngSelectAgencyForm1, form#ngSelectAgencyForm") : null;
-      const maeAgencyBlock = !!maeFormEl && isPageVisible(maeFormEl)
-        && !document.querySelector("mat-step-header");
+      const maeAgencyBlock = maeHost && !!document.querySelector(
+        "form#ngSelectAgencyForm1, form#ngSelectAgencyForm");
       // Trang thủ tục đang hiện khối "Chọn cơ quan thực hiện" (khớp text fold dấu,
       // không dựa id/class dễ đổi). Trên host MAE tắt hẳn: engine chọn cơ quan React
       // không chạy được ở đó, tín hiệu riêng là maeAgencyBlock.

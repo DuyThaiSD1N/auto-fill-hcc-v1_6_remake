@@ -231,6 +231,17 @@
          Xem setScanAgentStatus trong sidebar.js. -->
     <div class="scan-agent-status" id="scan-agent-status" hidden></div>
 
+    <!-- Khung đang nghe giọng nói — hiện khi micro mở (setMicUI trong sidebar.js). -->
+    <div class="voice-panel" id="voice-panel" role="region" aria-label="Nhập bằng giọng nói" hidden>
+      <div class="vp-top">
+        <span class="vp-mic" aria-hidden="true">🎙</span>
+        <span class="vp-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="vp-status" id="vp-status">Đang nghe… công dân hãy nói</span>
+        <button type="button" class="vp-close" id="vp-close" aria-label="Tắt giọng nói" title="Tắt giọng nói">✕</button>
+      </div>
+      <div class="vp-interim" id="vp-interim" aria-live="polite"></div>
+    </div>
+
     <!-- Footer: camera + mic + ô nhập + gửi -->
     <footer class="bot-f">
       <button id="doc-btn" class="fi" type="button" title="Gửi ảnh giấy tờ (Bước 5)">📷</button>
@@ -279,7 +290,7 @@
       <div class="svc-search">
         <span class="svc-search-ic" aria-hidden="true">🔍</span>
         <input id="svc-search-input" type="text" autocomplete="off" spellcheck="false"
-               placeholder="Tìm theo tên hoặc mã thủ tục (vd 1.013225)…" />
+               placeholder="Tìm thủ tục… (gõ không dấu cũng được)" />
       </div>
       <div class="svc-slist" id="svc-slist" aria-live="polite"></div>
     </section>
