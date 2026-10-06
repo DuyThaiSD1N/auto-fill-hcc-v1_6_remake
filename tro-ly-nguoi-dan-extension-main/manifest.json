@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.5.4",
+  "version": "1.8.2",
   "description": "Trợ lý toàn trình hỗ trợ nhân dân làm thủ tục hành chính công bằng giọng nói và chat, điền hồ sơ tự động từ ảnh giấy tờ.",
   "icons": {
     "16": "assets/icons/icon-16.png",
@@ -12,10 +12,10 @@
   "permissions": ["activeTab", "storage", "unlimitedStorage", "offscreen", "cookies", "browsingData", "alarms", "idle", "sidePanel", "scripting"],
   "host_permissions": [
     "https://*.gov.vn/*",
-    "http://localhost:12005/*",
-    "ws://localhost:12005/*",
-    "http://127.0.0.1:12005/*",
-    "ws://127.0.0.1:12005/*",
+    "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
+    "wss://trolyhoso-hcc-admin.tiengnoi.vn/*",
+    "https://trolyhoso-hcc-admin.vnekyc.vn/*",
+    "wss://trolyhoso-hcc-admin.vnekyc.vn/*",
     "https://trolyhoso-hcc.tiengnoi.vn/*",
     "wss://trolyhoso-hcc.tiengnoi.vn/*",
     "https://trolyhoso-hcc.vnekyc.vn/*",
@@ -83,6 +83,8 @@
         "content/fill-angular.js",
         "content/fill-bacninh.js",
         "content/attach-core.js",
+        "content/fill-surveyjs.js",
+        "content/tu-phap-moi.js",
         "content/business-registration-adapter.js",
         "content/procedures/business-registration.js",
         "content/portal-dvc.js",
@@ -94,6 +96,20 @@
         "content/split-attach.js"
       ],
       "css": ["content/bbox-overlay.css"]
+    },
+    {
+      "matches": ["https://dichvucongnganhtuphap.moj.gov.vn/*"],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": ["content/moj-upload-watch-main.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://dichvucong.gov.vn/*"],
+      "all_frames": true,
+      "world": "MAIN",
+      "js": ["content/surveyjs-main.js"],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [

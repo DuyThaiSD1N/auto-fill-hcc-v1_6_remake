@@ -57,7 +57,8 @@ test("background nhớ tab tách → tab gốc và CHỈ chuyển tiếp tab tá
   assert.match(background, /rememberSplitTabOrigin\(tab\.id, state\.originTabId\)/);
   assert.match(background, /originTabId: Number\(msg\.originTabId\)/);
   // Chỉ chuyển tiếp khi tab CÓ trong bản đồ — tab gốc không có nên không bị đếm hai lần.
-  assert.match(background, /const originTabId = \(await getSplitTabOrigins\(\)\)\[tabId\];\s*if \(!originTabId\) return;/);
+  // (Giữa hai dòng là lệnh background tự gửi mốc lên BE — xem submit-background-reporter.test.js.)
+  assert.match(background, /const originTabId = \(await getSplitTabOrigins\(\)\)\[tabId\];[\s\S]{0,400}?if \(!originTabId\) return;\s*try \{\s*await chrome\.runtime\.sendMessage/);
   assert.match(background, /__tlnd: "submitClickedRelay"/);
   // Dọn bản đồ khi đóng tab.
   assert.match(background, /chrome\.tabs\.onRemoved\.addListener[\s\S]{0,80}?forgetSplitTabOrigin/);

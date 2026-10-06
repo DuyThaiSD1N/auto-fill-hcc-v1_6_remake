@@ -81,6 +81,20 @@
       this.conversationId = null;
     }
 
+    // GET/PATCH /api/v1/account/settings — cài đặt THEO TÀI KHOẢN lưu ở BE (đổi tên tệp khi đính kèm…).
+    async getAccountSettings() {
+      return await this._json(await this._fetchApi(`/api/v1/account/settings`));
+    }
+
+    async updateAccountSettings(changes) {
+      const res = await this._fetchApi(`/api/v1/account/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(changes || {}),
+      });
+      return await this._json(res);
+    }
+
     // GET /api/v1/wards?slug= — danh sách xã của tỉnh (đổ combobox card location).
     async getWards(slug) {
       try {

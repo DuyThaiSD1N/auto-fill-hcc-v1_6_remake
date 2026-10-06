@@ -8,6 +8,8 @@
 // là hỏng: hàm đó đòi user gesture, mà đọc cài đặt là async nên gesture đã mất.
 
 importScripts("lib/panelMode.js");
+// config.js: base BE + failover (dùng chung với sidebar). submitClickReporter: gửi mốc nộp hồ sơ.
+importScripts("api/config.js", "lib/submitClickReporter.js");
 const PM = globalThis.__TLND_PANEL_MODE__;
 
 // Bấm icon. Content script còn sống thì chỉ bật/tắt panel như trước.
@@ -585,6 +587,28 @@ function splitDocLabel(item) {
   return raw.length > 40 ? `${raw.slice(0, 39)}…` : raw;
 }
 
+// Chỉ giữ đúng các trường engine gạt công tắc cần; dữ liệu lạ không được lọt vào storage chung.
+function cleanResultMethod(raw) {
+  const label = String(raw?.label || "").trim();
+  if (!label) return null;
+  return {
+    method: String(raw.method || ""),
+    label,
+    allLabels: (Array.isArray(raw.allLabels) ? raw.allLabels : []).map((x) => String(x || "")).filter(Boolean),
+    needsInput: raw.needsInput === true,
+    // Danh sách để khung hồ sơ phụ vẽ card chọn cách nhận kết quả như hồ sơ chính.
+    options: (Array.isArray(raw.options) ? raw.options : [])
+      .map((o) => ({
+        key: String(o?.key || ""),
+        label: String(o?.label || ""),
+        icon: String(o?.icon || ""),
+        desc: String(o?.desc || ""),
+        needsInput: o?.needsInput === true,
+      }))
+      .filter((o) => o.key && o.label),
+  };
+}
+
 async function rememberSplitTabInfo(splitTabId, info) {
   if (!splitTabId) return;
   const map = await getSplitTabInfos();
@@ -615,21 +639,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-// Cú bấm "Nộp" ở tab tách → chuyển tiếp về sidebar tab gốc. CHỈ chuyển tiếp tab TÁCH (có trong
-// bản đồ): cú bấm ở chính tab gốc thì sidebar đã tự nhận trực tiếp — chuyển tiếp nữa là đếm đôi.
-// Cùng đường đó cho câu báo "dịch vụ công đang lỗi, em đính lại": tab tách không có sidebar để đọc.
+// Cú bấm "Nộp": (1) background TỰ gửi mốc lên BE (lib/submitClickReporter.js) — không phụ thuộc
+// sidebar còn sống; (2) tab tách thì chuyển tiếp thêm về sidebar tab gốc để nó hiện phiếu đánh
+// giá. CHỈ chuyển tiếp tab TÁCH (có trong bản đồ): cú bấm ở chính tab gốc thì sidebar đã tự nhận
+// trực tiếp. Hai đường mang chung clickId nên BE không đếm đôi.
+// Cùng đường chuyển tiếp cho câu báo "dịch vụ công đang lỗi, em đính lại": tab tách không có sidebar.
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg?.__tlnd !== "submitClicked" && msg?.__tlnd !== "attachRetrying") return;
   const tabId = sender?.tab?.id;
   if (!tabId) return;
   void (async () => {
     const originTabId = (await getSplitTabOrigins())[tabId];
+    if (msg.__tlnd === "submitClicked") {
+      void globalThis.__TLND_SUBMIT__?.reportClick({
+        tabId, originTabId, host: msg.host, ref: msg.ref, clickId: msg.clickId, clickedAt: msg.clickedAt,
+      });
+    }
     if (!originTabId) return;
     try {
       await chrome.runtime.sendMessage(msg.__tlnd === "attachRetrying"
         ? { __tlnd: "attachRetryingRelay", originTabId }
-        : { __tlnd: "submitClickedRelay", originTabId, host: msg.host || "", ref: msg.ref || "" });
-    } catch (_) { /* sidebar tab gốc đã đóng → không còn phiên để chấm mốc */ }
+        : {
+          __tlnd: "submitClickedRelay", originTabId, host: msg.host || "", ref: msg.ref || "",
+          clickId: msg.clickId || "", clickedAt: msg.clickedAt,
+        });
+    } catch (_) { /* sidebar tab gốc đã đóng — mốc nộp background đã gửi ở trên */ }
   })();
 });
 
@@ -672,6 +706,7 @@ async function openNextSplitQueueItemUnlocked() {
         total: Number(state.total) || null,
         label: splitDocLabel(item),
         originTabId: Number(state.originTabId) || null,
+        resultMethod: state.resultMethod || null,
       });
       state.activeTabId = tab.id;
       state.activeItem = { ordinal: item.ordinal || null };
@@ -808,6 +843,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             activeItem: waitForTabId ? { ordinal: 1 } : null,
             // Tab có sidebar đã bắt đầu lượt tách — đích chuyển tiếp mốc "Nộp" của các tab tách.
             originTabId: Number(msg.originTabId) || waitForTabId || null,
+            // Lệnh gạt "cách nhận kết quả" mặc định do BE gửi kèm. Tab tách chạy khung hồ sơ phụ
+            // không nói chuyện với BE nên chỉ có nguồn này để tự gạt ở bước nhận kết quả.
+            resultMethod: cleanResultMethod(msg.resultMethod),
             results: initialResults,
             startedAt: Date.now(),
             updatedAt: Date.now(),

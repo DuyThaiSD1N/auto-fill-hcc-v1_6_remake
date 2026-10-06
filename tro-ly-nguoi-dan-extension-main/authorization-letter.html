@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tạo giấy ủy quyền</title>
+  <link rel="stylesheet" href="authorization-letter.css">
+</head>
+<body>
+  <div class="ws">
+    <header class="ws-top">
+      <div class="ws-id">
+        <span class="ws-id-icon" aria-hidden="true">✍️</span>
+        <div>
+          <h1>Tạo giấy ủy quyền</h1>
+          <p>Giấy tự soạn tại quầy — không thuộc thủ tục dịch vụ công</p>
+        </div>
+      </div>
+      <div class="ws-top-actions">
+        <button class="ghost-btn" id="resetAll" type="button">Xóa hết, làm lại</button>
+        <button class="ghost-btn" id="closeTab" type="button">Đóng</button>
+      </div>
+    </header>
+
+    <nav class="stepper" aria-label="Các bước">
+      <button class="step-chip is-active" type="button" data-goto="1"><span class="step-num">1</span>Tải ảnh giấy tờ</button>
+      <button class="step-chip" type="button" data-goto="2"><span class="step-num">2</span>Kiểm tra thông tin</button>
+      <button class="step-chip" type="button" data-goto="3"><span class="step-num">3</span>Nội dung &amp; tạo file</button>
+    </nav>
+
+    <div class="gate" id="authGate" hidden>
+      <div class="panel">
+        <h2 class="panel-title">Chưa đăng nhập trợ lý</h2>
+        <p class="panel-sub">Mở khung Trợ lý nhân dân trên trang dịch vụ công, đăng nhập tài khoản quầy, rồi mở lại
+          "Tạo giấy ủy quyền".</p>
+      </div>
+    </div>
+
+    <main class="ws-body" id="wsBody">
+      <section class="ws-form">
+        <!-- Bước 1 -->
+        <div class="step" data-step="1">
+          <p class="lead">Xin căn cước của <b>cả hai người</b>, chụp <b>cả mặt trước và mặt sau</b>. Không cần sắp xếp —
+            cứ đưa hết vào một chỗ, máy tự nhận ra ai là ai.</p>
+
+          <div class="panel" id="uploadPanel">
+            <label class="dropzone" id="dropzone">
+              <input type="file" id="fileInput" multiple accept="image/*,application/pdf">
+              <div class="dz-empty" id="dzEmpty">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/><path d="M12 4v11"/><path d="m7 9 5-5 5 5"/></svg>
+                <strong>Chụp hoặc chọn tất cả giấy tờ</strong>
+                <small>Căn cước của cả hai người, cả mặt trước và mặt sau. Ảnh hay PDF, bao nhiêu tệp cũng được, thứ tự nào cũng được.</small>
+                <div class="dz-formats"><span>JPG</span><span>PNG</span><span>PDF</span></div>
+              </div>
+              <div class="dz-files" id="dzFiles" hidden></div>
+            </label>
+
+            <div class="count-bar">
+              <span class="count-num" id="countNum">0</span><span>tệp đã nhận</span>
+              <button class="link-btn" id="clearFiles" type="button" hidden>Bỏ hết, chọn lại</button>
+            </div>
+          </div>
+
+          <div class="panel sources">
+            <div class="source">
+              <img class="qr" id="qrImg" alt="Mã QR tải ảnh bằng điện thoại" hidden>
+              <div>
+                <h3 class="panel-title">Chụp bằng điện thoại</h3>
+                <p class="panel-sub">Quét mã bằng camera điện thoại, chụp giấy tờ rồi gửi — ảnh tự hiện ở đây.</p>
+              </div>
+            </div>
+            <div class="source">
+              <span class="source-ic" aria-hidden="true">🖨️</span>
+              <div>
+                <h3 class="panel-title">Máy quét tại quầy</h3>
+                <p class="panel-sub" id="scanStatus">Đặt giấy vào máy và bấm quét — tệp mới tự đưa vào đây.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="reading" id="reading" hidden>
+            <h4>Đang đọc thông tin trên giấy tờ…</h4>
+            <div class="read-line" data-read="0"><span class="spin"></span>Đọc từng ảnh giấy tờ</div>
+            <div class="read-line" data-read="1"><span class="spin"></span>Ghép mặt trước với mặt sau của cùng một người</div>
+            <div class="read-line" data-read="2"><span class="spin"></span>Tách ra thành từng người</div>
+            <div class="read-line" data-read="3"><span class="spin"></span>Điền vào mẫu giấy ủy quyền</div>
+          </div>
+
+          <div class="panel role-panel" id="rolePick" hidden>
+            <p class="role-kicker" id="roleKicker">Máy đọc xong rồi</p>
+            <p class="role-q">Mỗi người thuộc bên nào?</p>
+            <p class="panel-sub"><b>Bên ủy quyền</b> là người giao việc, <b>bên được ủy quyền</b> là người đi làm thay.
+              Mỗi bên có thể có nhiều người. Chạm lại lựa chọn đang sáng để bỏ chọn.</p>
+            <div class="role-grid" id="roleGrid"></div>
+            <div class="role-foot">
+              <span class="role-summary" id="roleSummary"></span>
+              <button class="btn btn-primary" id="roleNext" type="button" disabled>Tiếp tục</button>
+            </div>
+          </div>
+
+          <div class="actions" id="uploadActions">
+            <button class="btn btn-primary" id="extractBtn" type="button" disabled>Đọc giấy tờ</button>
+            <button class="btn btn-quiet" id="manualBtn" type="button">Không có ảnh — tự nhập tay</button>
+          </div>
+
+          <p class="privacy">Ảnh được gửi lên hệ thống để đọc và tự xoá khi đóng cửa sổ này.</p>
+        </div>
+
+        <!-- Bước 2 -->
+        <div class="step" data-step="2" hidden>
+          <div class="roles-bar" id="rolesBar" hidden>
+            <span id="rolesText"></span>
+            <button class="link-btn" id="swapRoles" type="button">Đổi hai bên</button>
+          </div>
+          <div class="note note-amber" id="checkNote">Ô viền vàng là chỗ máy đọc chưa chắc chắn — cần nhìn lại giấy tờ.
+            Cán bộ luôn đối chiếu với giấy tờ gốc trước khi in.</div>
+
+          <div class="panel side-panel" data-side="A">
+            <h2 class="panel-title"><span class="tag tag-a">Bên ủy quyền</span><span class="side-count" id="countA"></span></h2>
+            <div class="people" id="peopleA"></div>
+            <button class="link-btn add-person" type="button" data-add="A">+ Thêm người vào bên ủy quyền</button>
+          </div>
+          <div class="panel side-panel" data-side="B">
+            <h2 class="panel-title"><span class="tag tag-b">Bên được ủy quyền</span><span class="side-count" id="countB"></span></h2>
+            <div class="people" id="peopleB"></div>
+            <button class="link-btn add-person" type="button" data-add="B">+ Thêm người vào bên được ủy quyền</button>
+            <label class="check-line"><input type="checkbox" id="showBBirth"> Ghi thêm ngày sinh của bên được ủy quyền
+              vào giấy (mẫu gốc không có dòng này)</label>
+          </div>
+          <div class="actions">
+            <button class="btn btn-quiet" type="button" data-goto="1">Quay lại</button>
+            <button class="btn btn-primary" type="button" data-goto="3">Thông tin đã đúng, tiếp tục</button>
+          </div>
+        </div>
+
+        <!-- Bước 3 -->
+        <div class="step" data-step="3" hidden>
+          <div class="panel">
+            <h2 class="panel-title">Nội dung ủy quyền</h2>
+            <p class="panel-sub">Ghi rõ việc gì, ở đâu. Chạm vào câu gợi ý để điền nhanh rồi sửa lại cho đúng.</p>
+            <div class="field"><textarea id="content" rows="4"></textarea></div>
+            <div class="chips" id="contentChips"></div>
+          </div>
+          <div class="panel">
+            <h2 class="panel-title">Nơi lập và ngày lập</h2>
+            <div class="fields">
+              <div class="field"><label for="place">Lập tại</label><input id="place"></div>
+              <div class="field-row">
+                <div class="field"><label for="madeDate">Ngày lập</label><input id="madeDate" type="date"></div>
+                <div class="field"><label>Số bản</label>
+                  <div class="copies">Lập thành <input id="copies" value="2" inputmode="numeric"> bản, mỗi bên giữ
+                    <input id="copiesEach" value="1" inputmode="numeric"> bản.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="note note-teal">Trước khi in nhắc công dân: hai bên phải <b>ký tươi</b> vào giấy, mang theo căn cước
+            bản gốc của cả hai. Tùy việc ủy quyền, một số trường hợp phải chứng thực chữ ký theo quy định.</div>
+          <div class="actions">
+            <button class="btn btn-gold" id="downloadWord" type="button">Tải file Word</button>
+            <button class="btn btn-primary" id="printBtn" type="button">In giấy ủy quyền</button>
+            <button class="btn btn-quiet" type="button" data-goto="2">Sửa thông tin</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="ws-preview">
+        <div class="preview-bar"><h3>Bản xem trước</h3><span id="previewState">Khổ A4 · tự cập nhật khi sửa</span></div>
+        <iframe class="sheet" id="preview" title="Bản xem trước giấy ủy quyền"></iframe>
+      </aside>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="api/config.js"></script>
+  <script src="api/auth.js"></script>
+  <script src="lib/scanAgent.js"></script>
+  <script src="authorization-letter.js"></script>
+</body>
+</html>

@@ -1262,9 +1262,13 @@
     // Bấm dồn (double-click, cổng chưa phản hồi) chỉ tính một lần trong 3 giây.
     if (Date.now() - lastSubmitClickAt < 3000) return;
     lastSubmitClickAt = Date.now();
+    // Mã + giờ bấm sinh NGAY tại cú bấm: background gửi lên BE (có thể gửi lại muộn), sidebar
+    // gửi qua chat — cùng mã thì BE chỉ ghi một sự kiện.
+    let clickId = "";
+    try { clickId = crypto.randomUUID(); } catch (_) { clickId = "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
     try {
       chrome.runtime.sendMessage({
-        __tlnd: "submitClicked", host: location.hostname, ref: hit.ref,
+        __tlnd: "submitClicked", host: location.hostname, ref: hit.ref, clickId, clickedAt: lastSubmitClickAt,
       }, () => void chrome.runtime.lastError);
     } catch (_) {}
   }, true);

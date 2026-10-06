@@ -24,7 +24,7 @@ test("verify đính bền với cổng ĐƠ: poll thật + check lần cuối + 
     attach.slice(attach.indexOf("async function waitForPersistedAttachment")).split("\n}")[0]));
   // Tệp CUỐI/DUY NHẤT hỏng: round-robin không có tệp khác chen → backoff TĂNG DẦN trước khi thử lại.
   assert.match(attach, /const backoffMs = Math\.max\(0, minGapMs - \(Date\.now\(\) - lastFailAt\)\)/);
-  assert.match(attach, /const MAX_ROUNDS = 3/);
+  assert.match(attach, /const MAX_ROUNDS = 5/);
 });
 
 test("chỉ tô xanh khi TÊN FILE hiện thật trên dòng", () => {
@@ -46,7 +46,7 @@ test("tạo được DÒNG chưa phải là đính xong", () => {
 });
 
 test("hỏng một tệp KHÔNG chặn các tệp còn lại", () => {
-  assert.match(attach, /const MAX_ROUNDS = 3/);
+  assert.match(attach, /const MAX_ROUNDS = 5/);
   assert.match(attach, /for \(let round = 1; round <= MAX_ROUNDS && queue\.length; round\+\+\)/);
   assert.match(attach, /deferred\.push\(\{ item, index: i \}\);\s*\n\s*continue;/);
   assert.match(attach, /queue = deferred;/);

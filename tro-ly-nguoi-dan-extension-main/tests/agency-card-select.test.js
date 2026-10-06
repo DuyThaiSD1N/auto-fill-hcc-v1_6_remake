@@ -117,22 +117,3 @@ test("thủ tục không khai thẻ giữ nguyên đường bấm thẻ đầu",
   assert.match(sel, /if \(cardIncludes && !fold\(submitLabel\)\.includes\("nop truc tuyen"\)\)/);
   assert.match(sel, /await clickNopTrucTuyen\(\)/);
 });
-
-// Cổng còn liệt kê "Xã Hiệp Hòa" dù danh mục hiện hành là "Phường Hiệp Hòa" → chọn cơ quan phải gõ
-// tên theo cổng; tỉnh khác hay xã khác giữ nguyên tên.
-test("chọn cơ quan dùng tên xã theo cổng (Phường Hiệp Hòa → Xã Hiệp Hòa)", () => {
-  const start = dvc.indexOf("const PORTAL_AGENCY_WARDS");
-  const end = dvc.indexOf("function comboValue", start);
-  assert.ok(start >= 0 && end > start, "không cắt được bảng tên xã theo cổng");
-  const ctx = { fold };
-  vm.createContext(ctx);
-  vm.runInContext(dvc.slice(start, end) + "\nthis.portalAgencyWard = portalAgencyWard;", ctx);
-  const { portalAgencyWard } = ctx;
-  assert.equal(portalAgencyWard("Tỉnh Bắc Ninh", "Phường Hiệp Hòa"), "Xã Hiệp Hòa");
-  assert.equal(portalAgencyWard("Bắc Ninh", "phường hiệp hoà"), "Xã Hiệp Hòa");
-  assert.equal(portalAgencyWard("Tỉnh Bắc Ninh", "Phường Song Liễu"), "Phường Song Liễu");
-  assert.equal(portalAgencyWard("Tỉnh Quảng Ninh", "Phường Hiệp Hòa"), "Phường Hiệp Hòa");
-  assert.equal(portalAgencyWard("Tỉnh Bắc Ninh", ""), "");
-  const sel = strip(dvc).slice(strip(dvc).indexOf("async function selectAgency"));
-  assert.match(sel, /pickCombo\(combos\[1\],\s*portalAgencyWard\(province,\s*ward\)/);
-});

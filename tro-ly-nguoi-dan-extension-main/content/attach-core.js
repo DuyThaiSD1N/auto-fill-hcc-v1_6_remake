@@ -361,8 +361,56 @@ function fileExtension(name) {
   return match ? match[1] : "";
 }
 
-function safeAttachmentFileName(payload, documentName) {
+// Cài đặt THEO TÀI KHOẢN "đổi tên tệp theo loại giấy tờ khi đính kèm": sidebar chép từ BE vào storage
+// (khoá phải trùng chữ với ACCOUNT_SETTINGS_KEY trong sidebar.js). Thiếu bản sao = BẬT, đúng hành vi cũ.
+const ACCOUNT_SETTINGS_KEY = "tlnd_account_settings";
+let renameAttachmentFiles = true;
+function applyAccountSettings(value) {
+  renameAttachmentFiles = !(value && typeof value === "object" && value.renameAttachmentFiles === false);
+}
+const accountSettingsReady = new Promise((resolve) => {
+  try {
+    chrome.storage.local.get([ACCOUNT_SETTINGS_KEY], (res) => {
+      if (!chrome.runtime.lastError) applyAccountSettings(res?.[ACCOUNT_SETTINGS_KEY]);
+      resolve();
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === "local" && changes[ACCOUNT_SETTINGS_KEY]) {
+        applyAccountSettings(changes[ACCOUNT_SETTINGS_KEY].newValue);
+      }
+    });
+  } catch (_) { resolve(); }
+});
+
+// Tắt đổi tên: nhiều tệp gốc trùng tên (ảnh điện thoại cùng tên "image.jpg") mà tải lên y nguyên thì
+// bước "đã có trong hồ sơ" coi tệp sau là tệp trước → bỏ sót. Tên thuộc về tệp ĐẦU TIÊN giữ nó
+// (nhận theo nội dung), tệp khác cùng tên được thêm số " 2", " 3"… — cùng một tệp luôn ra cùng tên
+// nên đính lại/hậu kiểm vẫn khớp.
+const originalUploadNameOwners = new Map();
+function payloadContentKey(payload) {
+  const dataUrl = String(payload?.dataUrl || "");
+  const mid = Math.floor(dataUrl.length / 2);
+  return `${dataUrl.length}:${dataUrl.slice(mid, mid + 64)}:${dataUrl.slice(-64)}`;
+}
+function uniqueOriginalFileName(payload, ext) {
+  const base = attachmentDocumentName(payload);
+  const owner = payloadContentKey(payload);
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? "" : ` ${n}`;
+    const name = base.slice(0, 50 - suffix.length).trim() + suffix;
+    const key = foldChoiceText(name);
+    const current = originalUploadNameOwners.get(key);
+    if (!current || current === owner) {
+      originalUploadNameOwners.set(key, owner);
+      return name + ext;
+    }
+  }
+}
+
+// forceRename: tệp ẢO (virtualCopy, cùng byte với tệp thật) phải giữ tên riêng dù tắt đổi tên.
+function safeAttachmentFileName(payload, documentName, { forceRename = false } = {}) {
   const ext = fileExtension(payload?.name);
+  if (!renameAttachmentFiles && !forceRename) return uniqueOriginalFileName(payload, ext);
   let base = String(documentName || "").trim() || attachmentDocumentName(payload);
   // documentName có thể ĐÃ kèm đuôi (vd "…đất.pdf") → bỏ đuôi trùng để KHÔNG thành "…đất.pdf.pdf".
   if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length);
@@ -374,6 +422,7 @@ function safeAttachmentFileName(payload, documentName) {
 // file + dấu chấm + ký tự lạ. KHÔNG fold dấu, KHÔNG đổi dấu cách thành "_".
 function walletSafeDocumentName(name) {
   const s = String(name || "")
+    .normalize("NFC")                         // tên NFD (macOS) → dấu không bị lọc mất, xem attachmentDocumentName
     .replace(/\.[^.\s]+$/, "")               // bỏ đuôi file (.pdf, .jpg…)
     .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")   // giữ chữ (mọi ngôn ngữ), số, _, -, dấu cách; bỏ dấu chấm & ký tự khác
     .replace(/\s+/g, " ")
@@ -381,7 +430,24 @@ function walletSafeDocumentName(name) {
   return s.slice(0, 100) || "Tài liệu";
 }
 
-function dataUrlToFile(payload, documentName = "") {
+// Nhiều tệp cùng lên MỘT ô (fixed-slot, HkdOnline) mà cùng loại giấy thì cùng tên → đánh số " 2", " 3"…
+// để cổng và cán bộ phân biệt được. Tắt đổi tên thì uniqueOriginalFileName đã tự tách tên theo nội dung.
+function dataUrlFilesForBatch(entries) {
+  const seen = new Map();
+  return entries.map(({ payload, documentName }) => {
+    let name = String(documentName || "").trim();
+    if (renameAttachmentFiles && name) {
+      name = name.replace(/\.[a-z0-9]{2,5}$/i, "");
+      const key = foldChoiceText(name);
+      const count = (seen.get(key) || 0) + 1;
+      seen.set(key, count);
+      if (count > 1) name = `${name} ${count}`;
+    }
+    return dataUrlToFile(payload, name);
+  });
+}
+
+function dataUrlToFile(payload, documentName = "", nameOptions = {}) {
   const dataUrl = String(payload?.dataUrl || "");
   const comma = dataUrl.indexOf(",");
   if (comma < 0) throw new Error(`File ${payload?.name || ""} không có dataUrl hợp lệ.`);
@@ -391,14 +457,17 @@ function dataUrlToFile(payload, documentName = "") {
   const binary = atob(b64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new File([bytes], safeAttachmentFileName(payload, documentName), {
+  return new File([bytes], safeAttachmentFileName(payload, documentName, nameOptions), {
     type: mime,
     lastModified: Date.now(),
   });
 }
 
+// normalize NFC: tên tệp tạo trên macOS ở dạng NFD (chữ + dấu tách rời) → dấu bị coi là ký tự lạ,
+// thành "uy quye n thie t". Dựng sẵn dấu trước khi lọc ký tự.
 function attachmentDocumentName(file) {
   const raw = String(file?.name || "tai-lieu")
+    .normalize("NFC")
     .replace(/\.[^.]+$/, "")
     .replace(/[^\p{L}\p{N}_\-\s]+/gu, " ")
     .replace(/\s+/g, " ")
@@ -609,13 +678,16 @@ function attachmentKeyEquals(a, b) {
 
 function attachmentPlanLabels(planItem = {}, payloadFile = {}) {
   const componentName = String(planItem.componentName || "").trim();
+  // Tắt đổi tên: tên gốc thô có thể trùng tệp KHÁC (hai ảnh "image.jpg") → chỉ nhận đúng tên sẽ tải lên.
+  const ownNames = renameAttachmentFiles || planItem.virtualCopy === true
+    ? [attachmentDocumentName(payloadFile), payloadFile.name]
+    : [safeAttachmentFileName(payloadFile, planItem.documentName)];
   return uniqueElements([
     isCopyCertificationDefaultComponentName(componentName) ? "" : componentName,
     planItem.detectedType,
     planItem.documentName,
     componentNameForAppendedFile(planItem, payloadFile),
-    attachmentDocumentName(payloadFile),
-    payloadFile.name,
+    ...ownNames,
   ].filter(Boolean)).map(attachmentTextKey).filter(Boolean);
 }
 
@@ -759,6 +831,36 @@ function newPortalUploadFailure(before = []) {
 // Hai câu cổng thật: "Upload thất bại (File Service): Upload failed: 500…" và
 // "Tải lên tài liệu thất bại, vui lòng thử lại".
 const UPLOAD_FAILURE_RE = /upload thất bại|upload failed|tải lên thất bại|tải lên tài liệu thất bại|tải tệp thất bại|không tải được (?:file|tệp)/i;
+
+// Lưới thứ hai cạnh toast: mã HTTP của API tải tệp moj, do content/moj-upload-watch-main.js (MAIN
+// world) báo sang. Cổng có ca lỗi HTTP mà không hiện toast → không có lưới này thì phải chờ hết hạn.
+// Chỉ xét MÃ HTTP (khác 2xx hoặc 0 = lỗi mạng); không có script đó (trang mở trước khi cài) → không
+// có sự kiện nào, engine chạy y luồng cũ.
+const MOJ_FILE_API_EVENT = "__HCC_MOJ_FILE_API__";
+const mojFileApiFailures = [];
+let mojFileApiSeq = 0;
+document.addEventListener(MOJ_FILE_API_EVENT, (event) => {
+  let detail = null;
+  try { detail = JSON.parse(event.detail); } catch (_) { return; }
+  if (!detail || detail.phase !== "end") return;
+  mojFileApiSeq++;
+  const status = Number(detail.status) || 0;
+  if (status >= 200 && status < 300) return;
+  mojFileApiFailures.push({ seq: mojFileApiSeq, path: String(detail.path || ""), status, message: String(detail.message || "") });
+  if (mojFileApiFailures.length > 20) mojFileApiFailures.shift();
+});
+
+/** Mốc chụp NGAY TRƯỚC khi đưa tệp vào ô tải: chỉ lỗi API SAU mốc mới là của tệp này. */
+function mojFileApiMark() {
+  return mojFileApiSeq;
+}
+
+function newMojFileApiFailure(mark = 0) {
+  const hit = mojFileApiFailures.find((item) => item.seq > mark);
+  if (!hit) return "";
+  const code = hit.status ? `HTTP ${hit.status}` : "lỗi mạng";
+  return `API ${hit.path} trả ${code}${hit.message ? `: ${hit.message}` : ""}`;
+}
 
 /** Đóng toast "Upload thất bại…" (nút X) TRƯỚC khi sang tệp kế.
  *
@@ -1105,10 +1207,11 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
     error: "Không tìm thấy input tải tệp trong modal.",
   };
 
-  const file = dataUrlToFile(payloadFile, intendedDocumentName);
+  const file = dataUrlToFile(payloadFile, intendedDocumentName, { forceRename: planItem.virtualCopy === true });
   // Mốc toast để SOẠN CÂU BÁO LỖI cho đúng tệp này. Toast KHÔNG kết luận thành công; riêng câu
   // "upload thất bại" MỚI được hoãn tệp sớm (newPortalUploadFailure).
   const errorsBefore = snapshotPortalUploadErrors();
+  const apiMark = mojFileApiMark();
   if (!setFilesOnInput(uploadInput, [file], { allowMultiple: false })) {
     markAttachmentResult(dialog, false);
     return { error: `Không gắn được file ${file.name} vào input tải tệp.`, fileNames: [file.name] };
@@ -1117,7 +1220,7 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   // Cổng 502 ở bước tải tệp → dừng NGAY, trả câu cổng báo. Chờ hết hạn ở đây chỉ làm các tệp
   // còn lại phải xếp hàng; việc thử lại đã có vòng round-robin lo.
   // Cổng hiện đúng câu "upload thất bại" → hoãn tệp NGAY (xem newPortalUploadFailure).
-  const uploadFailed = () => newPortalUploadFailure(errorsBefore);
+  const uploadFailed = () => newPortalUploadFailure(errorsBefore) || newMojFileApiFailure(apiMark);
   await waitFor(
     () => uploadFailed() || dialog.querySelector('input[name="documentName"]') || findWalletUploadDoneButton(dialog),
     4000,
@@ -1125,7 +1228,10 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   );
   let doneButton = null;
   if (!uploadFailed()) {
-    const nameOk = await ensureWalletDocumentName(dialog, intendedDocumentName);
+    // Cổng hiển thị "Tên tài liệu" (không phải tên tệp) trên dòng thành phần → tắt đổi tên thì ô này cũng
+    // mang tên tệp vừa tải lên; tệp ảo vẫn giữ tên loại giấy như tên tệp của nó.
+    const walletDocumentName = renameAttachmentFiles || planItem.virtualCopy === true ? intendedDocumentName : file.name;
+    const nameOk = await ensureWalletDocumentName(dialog, walletDocumentName);
     if (!nameOk) {
       markAttachmentResult(dialog, false);
       return { error: `Không tìm thấy ô Tên tài liệu cho file ${file.name}.`, fileNames: [file.name] };
@@ -1140,7 +1246,7 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   }
   if (!doneButton) {
     markAttachmentResult(dialog, false);
-    const portalError = newPortalUploadError(errorsBefore);
+    const portalError = newPortalUploadError(errorsBefore) || newMojFileApiFailure(apiMark);
     return {
       code: "wallet-upload-rejected",
       error: `Cổng chưa tải xong ${file.name}${portalError ? ` — cổng báo: ${portalError}` : ""}.`,
@@ -1160,7 +1266,7 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   if (!persisted) {
     const liveRow = (await resolveLiveAttachmentRow(row, planItem)) || row;
     markAttachmentResult(liveRow || dialog, false);
-    const portalError = newPortalUploadError(errorsBefore);
+    const portalError = newPortalUploadError(errorsBefore) || newMojFileApiFailure(apiMark);
     return {
       code: "wallet-file-not-persisted",
       error: `Cổng chưa ghi nhận ${file.name} vào dòng hồ sơ${portalError ? ` — cổng báo: ${portalError}` : ""}.`,
@@ -1264,13 +1370,17 @@ function attpRowAttachedFingerprints(row) {
 }
 
 // CHỐNG TRÙNG: dòng đã có file trùng tài liệu này chưa? So 24 ký tự đầu (chịu tên bị cắt "...").
-function attpRowHasDoc(row, item) {
-  const want = attpDocFingerprint(item.documentName || item.fileName || "");
-  if (want.length < 6) return false;
-  const probe = want.slice(0, 24);
-  return attpRowAttachedFingerprints(row).some(
-    (fp) => fp.startsWith(probe) || probe.startsWith(fp.slice(0, 24))
-  );
+// Tắt đổi tên: tệp lên cổng mang tên gốc → so thêm đúng tên sẽ tải lên (payload), không chỉ documentName.
+function attpRowHasDoc(row, item, payload = null) {
+  const names = [item.documentName || item.fileName || ""];
+  if (!renameAttachmentFiles && payload) names.push(safeAttachmentFileName(payload, item.documentName));
+  const attached = attpRowAttachedFingerprints(row);
+  return names.some((name) => {
+    const want = attpDocFingerprint(name);
+    if (want.length < 6) return false;
+    const probe = want.slice(0, 24);
+    return attached.some((fp) => fp.startsWith(probe) || probe.startsWith(fp.slice(0, 24)));
+  });
 }
 
 async function attachFilesByAttpRow(payloadFiles, attachments) {
@@ -1295,7 +1405,7 @@ async function attachFilesByAttpRow(payloadFiles, attachments) {
     if (!row) { errors.push(`Không tìm thấy dòng "${first.documentName || first.componentName}".`); continue; }
     row.scrollIntoView?.({ block: "center" });
     const pending = items.filter((item) => {
-      if (attpRowHasDoc(row, item)) {
+      if (attpRowHasDoc(row, item, payloadForPlanItem(payloadFiles, item))) {
         skippedNames.push(item.documentName || item.fileName || "");
         return false;
       }
@@ -1711,10 +1821,9 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
 
   for (const { item, indices } of bySlot.values()) {
     const slotLabel = item.slotName || item.componentName || "";
-    const files = indices
-      .map((i) => payloadForPlanItem(payloadFiles, attachments[i], i))
-      .filter(Boolean)
-      .map((payload) => dataUrlToFile(payload));
+    const files = dataUrlFilesForBatch(indices
+      .map((i) => ({ payload: payloadForPlanItem(payloadFiles, attachments[i], i), documentName: attachments[i].documentName }))
+      .filter((entry) => entry.payload));
     if (!files.length) {
       errors.push(`Không tìm thấy file cho ô "${slotLabel}".`);
       continue;
@@ -1905,6 +2014,7 @@ async function clearAddedAttachmentRows() {
 }
 
 async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
+  await accountSettingsReady; // cờ đổi tên tệp phải có trước khi dựng File đầu tiên
   // Cổng Bắc Ninh: DOM đính kèm khác hẳn (checkbox + input file theo thành phần) → engine riêng.
   // Ô đính kèm nằm ở tab "Tải thành phần hồ sơ" CÙNG TRANG với đơn (Liferay Tabs) — mở đúng
   // tab trước để công dân nhìn thấy bot thao tác và trạng thái file hiển thị đúng pane.
@@ -1978,10 +2088,10 @@ async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts
     // Không thử lại tại chỗ vì (1) cổng vừa trả 500 thì thử ngay cũng 500, (2) sleep tại chỗ là
     // thời gian chết, (3) hỏng một tệp không được chặn các tệp còn lại. Khoảng cách giữa hai
     // lần thử của cùng một tệp = thời gian đính các tệp khác, giãn hơn nhiều so với sleep(2000).
-    // 3 lượt: File Service của cổng hay trả 500/đơ ở bước "Thêm vào ví" — 2 lượt quá ít cho lỗi
-    // TẠM THỜI. Không thử lại TẠI CHỖ vì cổng vừa 500 thì thử ngay cũng 500; round-robin giãn cách
+    // 5 lượt: File Service của cổng hay trả 500/đơ ở bước "Thêm vào ví" — lỗi TẠM THỜI, và lỗi HTTP
+    // giờ được bắt ngay (newMojFileApiFailure) nên lượt hỏng tốn ít thời gian. Không thử lại TẠI CHỖ vì cổng vừa 500 thì thử ngay cũng 500; round-robin giãn cách
     // bằng thời gian đính tệp khác + backoff tăng dần để server kịp hồi. Hỏng 1 tệp không chặn tệp khác.
-    const MAX_ROUNDS = 3;
+    const MAX_ROUNDS = 5;
     const lastErrorByIndex = new Map();
     let queue = plannedAttachments.map((item, index) => ({ item: item || {}, index }));
     // Báo sidebar MỘT lần mỗi lượt khi cổng làm hỏng một tệp và tệp đó còn lượt thử lại: trong lúc
@@ -2213,7 +2323,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 Object.assign(H, {
   attachFilesByPlan, collectAttachmentContext, hasAttachmentTarget,
   hasAuthorizationAttachmentBlock,
-  dataUrlToFile, setFilesOnInput, payloadForPlanItem, collectProcedureSignals,
+  dataUrlToFile, dataUrlFilesForBatch, setFilesOnInput, payloadForPlanItem, collectProcedureSignals,
 });
 
 })(); // end guard

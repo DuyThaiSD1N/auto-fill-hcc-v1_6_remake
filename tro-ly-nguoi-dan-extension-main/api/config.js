@@ -1,14 +1,23 @@
-const TLND_DEFAULT_BASE_URL = "http://localhost:12005";  // Backend CHÍNH (LOCAL test — production: https://trolyhoso-hcc.tiengnoi.vn)
+// Gọi THẲNG domain API của backend (cùng domain Auto Fill dùng). Domain FE trang quản lý
+// (trolyhoso-hcc.*) chỉ chuyển tiếp /api,/auth,/ws qua nginx của FE — sẽ bàn giao cho web thống kê.
+const TLND_DEFAULT_BASE_URL = "https://trolyhoso-hcc-admin.tiengnoi.vn";  // Backend CHÍNH
 
 const TLND_BASE_URL_KEY = "tlnd_base_url";
+// Giá trị cũ còn lưu trong storage của máy đã cài → tự chuyển sang backend chính hiện tại.
+// Domain FE trolyhoso-hcc.* từng được GHI CỨNG vào storage khi migrate từ trolynguoidan-admin.
 const TLND_LEGACY_BASE_URLS = new Set([
   "https://trolynguoidan-admin.vnekyc.vn",
+  "https://trolyhoso-hcc.tiengnoi.vn",
+  "https://trolyhoso-hcc.vnekyc.vn",
 ]);
 
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).
 // ⚠ 2 backend PHẢI dùng chung JWT_ACCESS_SECRET/JWT_REFRESH_SECRET và có cùng tài khoản, nếu không
 // khi chuyển sang phụ user sẽ bị đá ra đăng nhập lại.
-const TLND_FALLBACK_BASE_URL = "";  // LOCAL test: tắt failover (production: https://trolyhoso-hcc.vnekyc.vn)
+// TẮT: server phụ hiện KHÁC database với server chính — chuyển sang đó thì refresh token không tồn
+// tại (cán bộ bị đá ra màn đăng nhập) và hồ sơ ghi lệch sang database kia. Chỉ bật lại khi server
+// phụ dùng CHUNG database + JWT secret với server chính. Quyền host trong manifest giữ nguyên.
+const TLND_FALLBACK_BASE_URL = "";
 const TLND_API_TIMEOUT_MS = 100000;        // đủ dài cho chat/OCR+LLM; chỉ cắt server TREO thật rồi mới failover
 const TLND_FAILOVER_COOLDOWN_MS = 30000;   // chính vừa lỗi thì ưu tiên phụ trong khoảng này rồi thử lại chính
 
@@ -98,10 +107,12 @@ async function tlndOverBases(doReq) {
   throw lastErr || new Error("Không có backend nào khả dụng");
 }
 
-window.tlndBaseUrl = tlndBaseUrl;
-window.tlndWsBase = tlndWsBase;
-window.tlndBases = tlndBases;
-window.tlndFetch = tlndFetch;
-window.tlndOverBases = tlndOverBases;
-window.TLND_DEFAULT_BASE_URL = TLND_DEFAULT_BASE_URL;
-window.TLND_FALLBACK_BASE_URL = TLND_FALLBACK_BASE_URL;
+// globalThis: service worker (background.js nạp file này qua importScripts để gửi mốc nộp hồ sơ)
+// không có `window`. Ở trang sidebar/companion globalThis CHÍNH LÀ window — không đổi gì.
+globalThis.tlndBaseUrl = tlndBaseUrl;
+globalThis.tlndWsBase = tlndWsBase;
+globalThis.tlndBases = tlndBases;
+globalThis.tlndFetch = tlndFetch;
+globalThis.tlndOverBases = tlndOverBases;
+globalThis.TLND_DEFAULT_BASE_URL = TLND_DEFAULT_BASE_URL;
+globalThis.TLND_FALLBACK_BASE_URL = TLND_FALLBACK_BASE_URL;

@@ -31,10 +31,13 @@
   const BUOC_NHAN_KET_QUA = 4;
 
   const api = new window.TlndApiClient();
-  let theHoSo = null;          // thẻ hồ sơ của tab này (ordinal/total/label/originTabId)
+  let theHoSo = null;          // thẻ hồ sơ của tab này (ordinal/total/label/originTabId/resultMethod)
   let dangTai = false;
   let choVeLai = false;        // có lượt vẽ tới trong lúc đang vẽ → vẽ lại ngay sau
   let loiVuaRoi = "";          // kết quả cú bấm vừa xong, vẽ kèm ở lượt vẽ lại
+  let daGatKetQua = false;     // đã gạt sẵn cách nhận kết quả cho tab này (chỉ gạt MỘT lần)
+  let ketQuaDangChon = "";     // key cách nhận kết quả đang bật trên trang (card đánh dấu)
+  let dangDoiKetQua = false;   // đang gạt theo cú bấm trên card — chặn bấm dồn
 
   // ── Vẽ ──
   function botTone(md) {
@@ -100,6 +103,107 @@
     });
   }
 
+  const ngu = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Gạt sẵn cách nhận kết quả mặc định (BE gửi kèm lúc tách hồ sơ) trên CHÍNH trang của tab này
+  // — hồ sơ chính được sidebar gạt, các tab tách thì không ai gạt nếu khung phụ không làm.
+  // onlyIfUnset: trang đã có công tắc bật (công dân tự chọn) thì engine không đụng.
+  // Trả câu báo cho công dân, "" khi không có gì để nói.
+  async function gatSanKetQua(step) {
+    const lenh = theHoSo?.resultMethod;
+    if (!lenh?.label || step < BUOC_NHAN_KET_QUA || daGatKetQua) return "";
+    daGatKetQua = true;
+    let res = null;
+    // Vừa chuyển sang bước này thì React có thể chưa dựng xong công tắc: engine chỉ trả lời khi
+    // thấy công tắc, nên chưa có trả lời = chờ chút rồi hỏi lại.
+    for (let lan = 0; lan < 4 && !res; lan++) {
+      if (lan) await ngu(700);
+      res = await guiToiTrang({ action: "selectResultMethod", ...lenh, onlyIfUnset: true });
+    }
+    if (res?.ok && res.skipped) {
+      // Công dân đã tự chọn trên trang: card đánh dấu đúng cái đang bật, không gạt gì thêm.
+      ketQuaDangChon = keyTheoNhan(res.current);
+      return "";
+    }
+    if (res?.ok) {
+      ketQuaDangChon = String(lenh.method || "");
+      const thieu = Array.isArray(res.missing) && res.missing.length
+        ? ` Công dân điền giúp em: ${res.missing.map((m) => `**${m}**`).join(", ")}.` : "";
+      const doiCach = (lenh.options || []).length
+        ? "chọn ở danh sách bên dưới" : "gạt lại trên trang";
+      return `✅ Em đã chọn sẵn **${lenh.label}** cho hồ sơ này.${thieu} Muốn nhận cách khác thì `
+        + `công dân ${doiCach}, rồi bấm nút **Gửi hồ sơ** ạ.`;
+    }
+    daGatKetQua = false; // cho lượt vẽ sau thử lại
+    return `⚠️ Em chưa chọn sẵn được cách nhận kết quả${res?.error ? `: *${res.error}*` : ""}. `
+      + `Công dân gạt **${lenh.label}** trên trang giúp em, rồi bấm nút **Gửi hồ sơ** bên dưới ạ.`;
+  }
+
+  function keyTheoNhan(nhan) {
+    const opt = (theHoSo?.resultMethod?.options || []).find((o) => o.label === nhan);
+    return opt ? opt.key : "";
+  }
+
+  const NHAC_GUI = "\n\nCông dân kiểm tra thông tin, nếu đã ổn thì bấm **Gửi hồ sơ** để em nộp "
+    + "hồ sơ ạ.";
+
+  // Câu báo sau khi đổi cách — cùng lời với hồ sơ chính (GUIDED_RESULT_* ở BE) để hai nơi
+  // không nói hai kiểu.
+  function baoDoiKetQua(opt, res) {
+    if (!res?.ok) {
+      return `⚠️ Em chưa gạt được công tắc **${opt.label}** trên trang. Công dân gạt giúp em `
+        + "ngay trên trang rồi bấm **Gửi hồ sơ** ạ.";
+    }
+    const daChon = `✅ Em đã chọn **${opt.label}** trên trang.`;
+    const thieu = Array.isArray(res.missing) ? res.missing : [];
+    if (thieu.length) {
+      return `${daChon}\n\nTrang còn thiếu **${thieu.join(", ")}** — công dân điền nốt giúp em ạ.`;
+    }
+    if (opt.needsInput) {
+      return `${daChon}\n\nCách này cần thêm thông tin người nhận — công dân điền trực tiếp `
+        + "trên trang giúp em nhé, em không điền hộ địa chỉ hay tên người nhận đâu ạ." + NHAC_GUI;
+    }
+    return daChon + NHAC_GUI;
+  }
+
+  // Công dân đổi cách ngay trên card: gạt thẳng trên trang của tab này, KHÔNG hỏi BE (khung phụ
+  // chỉ đọc hội thoại). Không có onlyIfUnset — đây là lựa chọn chủ động, phải tắt cái đang bật.
+  async function chonKetQua(opt) {
+    const lenh = theHoSo?.resultMethod;
+    if (!lenh || dangDoiKetQua || opt.key === ketQuaDangChon) return;
+    dangDoiKetQua = true;
+    try {
+      const res = await guiToiTrang({
+        action: "selectResultMethod", label: opt.label, allLabels: lenh.allLabels || [],
+        needsInput: !!opt.needsInput,
+      });
+      if (res?.ok) ketQuaDangChon = opt.key;
+      daGatKetQua = true; // đã có lựa chọn chủ động — lượt vẽ sau không tự gạt đè
+      loiVuaRoi = baoDoiKetQua(opt, res);
+    } finally {
+      dangDoiKetQua = false;
+    }
+    await ve();
+  }
+
+  // Card 3 lựa chọn như hồ sơ chính (cùng class .result-methods trong sidebar.css).
+  function veCardKetQua(step) {
+    const options = theHoSo?.resultMethod?.options || [];
+    if (step < BUOC_NHAN_KET_QUA || !options.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "result-methods";
+    options.forEach((opt) => {
+      const el = document.createElement("div");
+      el.className = "opt" + (opt.key === ketQuaDangChon ? " picked" : "");
+      el.innerHTML = `<div class="oi">${window.escapeHtml(opt.icon || "")}</div><div>
+        <div class="ot">${window.escapeHtml(opt.label || "")}</div>
+        <div class="od">${window.escapeHtml(opt.desc || "")}</div></div>`;
+      el.addEventListener("click", () => { void chonKetQua(opt); });
+      wrap.appendChild(el);
+    });
+    $messages.appendChild(wrap);
+  }
+
   async function docBuocHienTai() {
     const ctx = await guiToiTrang({ action: "getPageContext" });
     const step = Number(ctx?.wizardStep);
@@ -138,8 +242,10 @@
           // mà engine cố tình bỏ qua lời "thành công" nên ở đây không có căn cứ khẳng định hơn.
           loiVuaRoi = "✅ Em đã bấm **Gửi hồ sơ** cho hồ sơ ở tab này rồi ạ.";
         } else if (buocSau > step) {
-          loiVuaRoi = "✅ Đã sang bước **Thông tin nhận kết quả**. Công dân chọn cách nhận kết "
-            + "quả trên trang rồi bấm nút bên dưới để em gửi hồ sơ này ạ.";
+          loiVuaRoi = theHoSo?.resultMethod?.label
+            ? "✅ Đã sang bước **Thông tin nhận kết quả**."
+            : "✅ Đã sang bước **Thông tin nhận kết quả**. Công dân chọn cách nhận kết "
+              + "quả trên trang rồi bấm nút bên dưới để em gửi hồ sơ này ạ.";
         } else {
           loiVuaRoi = "⚠️ Em bấm rồi mà trang chưa chuyển bước và cũng không báo gì. Công dân "
             + "rà lại các ô còn thiếu trên trang giúp em, rồi bấm lại nút bên dưới ạ.";
@@ -199,6 +305,7 @@
         try { conv = await api.getConversation(convId); } catch (_) { conv = null; }
       }
       const step = await docBuocHienTai();
+      const baoGatKetQua = await gatSanKetQua(step);
       $messages.replaceChildren();
       // Hội thoại của hồ sơ chính để công dân không thấy mình rơi vào một cuộc nói chuyện
       // trắng. KHÔNG vẽ chips/cards của last_reply: nút ở đây bấm sẽ không có ai thi hành.
@@ -213,6 +320,8 @@
       themBot(loiNoiCuaTabNay(step));
       themBot("💬 Công dân muốn hỏi gì thì quay về **hồ sơ chính** nhé — em trả lời ở bên đó ạ.");
       if (loiVuaRoi) { themBot(loiVuaRoi); loiVuaRoi = ""; }
+      if (baoGatKetQua) themBot(baoGatKetQua);
+      veCardKetQua(step);
       themNutVeHoSoChinh();
       themNutBuoc(step);
       $messages.scrollTop = $messages.scrollHeight;

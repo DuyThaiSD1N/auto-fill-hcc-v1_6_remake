@@ -587,15 +587,12 @@
     return null;
   }
 
-  // Khối "Chọn cơ quan thực hiện" của cổng CHƯA cập nhật tên một số xã sau sáp nhập: còn liệt kê
-  // "Xã Hiệp Hòa" trong khi danh mục hiện hành (tài khoản, mọi ô kê khai) là "Phường Hiệp Hòa".
-  // Gõ tên hiện hành vào ô xã là không ra option nào. CHỈ đổi tên lúc CHỌN cơ quan — dữ liệu điền
-  // form vẫn là "Phường Hiệp Hòa". Cùng bảng _PORTAL_AGENCY_WARDS của backend
-  // (app/locations/catalog.py); BE mới đã đổi sẵn, bảng này đỡ khi BE đang trỏ tới chưa cập nhật.
-  // Cổng cập nhật rồi thì xóa dòng.
-  const PORTAL_AGENCY_WARDS = {
-    "bac ninh": { "phuong hiep hoa": "Xã Hiệp Hòa" },
-  };
+  // Khối "Chọn cơ quan thực hiện" của cổng có lúc CHƯA cập nhật tên xã sau sáp nhập (còn "Xã …"
+  // trong khi danh mục hiện hành là "Phường …"): gõ tên hiện hành là không ra option nào. CHỈ đổi
+  // tên lúc CHỌN cơ quan. Cùng bảng _PORTAL_AGENCY_WARDS của backend (app/locations/catalog.py);
+  // BE đã đổi sẵn, bảng này đỡ khi BE đang trỏ tới chưa cập nhật. Hiện trống: cổng đã đổi Hiệp Hòa
+  // (Bắc Ninh) sang "Phường Hiệp Hòa".
+  const PORTAL_AGENCY_WARDS = {};
 
   function portalAgencyWard(province, ward) {
     const provinceCore = fold(province).replace(/^(tinh|thanh pho)\s+/, "");
@@ -929,9 +926,18 @@
     return missing.slice(0, 5);
   }
 
-  async function selectResultMethod({ label, allLabels, needsInput }) {
+  async function selectResultMethod({ label, allLabels, needsInput, onlyIfUnset = false }) {
     const target = resultSwitchByLabel(label);
     if (!target) return { ok: false, error: "Không thấy công tắc trên trang." };
+    // Khung hồ sơ phụ gọi lại mỗi lần công dân quay về tab: đã có công tắc nào bật (công dân tự
+    // chọn, hoặc lượt trước đã gạt) thì KHÔNG đụng — gạt tiếp là tắt mất lựa chọn của công dân.
+    if (onlyIfUnset) {
+      const dangBat = [label, ...(allLabels || [])].find((ten) => {
+        const sw = resultSwitchByLabel(ten);
+        return sw && resultSwitchOn(sw);
+      });
+      if (dangBat) return { ok: true, skipped: true, current: dangBat, missing: [] };
+    }
     if (!await setResultSwitch(target, true)) {
       return { ok: false, error: "Gạt công tắc mà trang không đổi trạng thái." };
     }

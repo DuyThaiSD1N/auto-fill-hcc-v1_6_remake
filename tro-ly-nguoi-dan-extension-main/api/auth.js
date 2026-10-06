@@ -17,6 +17,18 @@
       });
     });
   }
+  // Thời điểm NHẬN token (giờ máy) + tuổi thọ token: tính hạn theo hai số này thì máy chạy sai giờ
+  // (hay gặp ở máy quầy cũ) không còn tưởng token luôn hết hạn rồi làm mới liên tục.
+  function _withClock(v) {
+    if (!v?.access) return v;
+    let ttl = 0;
+    try {
+      const p = JSON.parse(atob(v.access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")
+        .padEnd(Math.ceil(v.access.split(".")[1].length / 4) * 4, "=")));
+      ttl = Number(p.exp) - Number(p.iat);
+    } catch (_) { /* token lạ → rơi về so exp với giờ máy */ }
+    return { ...v, obtained_at: Date.now(), ttl_s: Number.isFinite(ttl) && ttl > 0 ? ttl : 0 };
+  }
   function _write(v) {
     return new Promise((resolve) => {
       if (v) chrome.storage.local.set({ [KEY]: v }, () => { void chrome.runtime.lastError; resolve(); });
@@ -44,7 +56,7 @@
       error.data = data;
       throw error;
     }
-    state = { access: data.accessToken, refresh: data.refreshToken, user: data.user };
+    state = _withClock({ access: data.accessToken, refresh: data.refreshToken, user: data.user });
     loaded = true;
     await _write(state);
     return state.user;
@@ -56,28 +68,70 @@
     await _write(null);
   }
 
-  async function refresh() {
-    if (!state?.refresh) return false;
-    try {
-      // Refresh cũng phải failover: nếu chính chết mà chỉ refresh vào chính sẽ fail → user bị đá oan.
-      const res = await window.tlndOverBases((base) =>
-        window.tlndFetch(`${base}/auth/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: state.refresh }),
-        }));
-      if (!res.ok) return false;
-      const data = await res.json();
-      state = { access: data.accessToken, refresh: data.refreshToken, user: data.user || state.user };
-      await _write(state);
-      return true;
-    } catch (_) {
-      return false;
+  // BE XOAY VÒNG refresh token (token cũ bị thu hồi ngay). Background (gửi mốc nộp hồ sơ) và
+  // sidebar tab khác cũng làm mới — cầm cặp cũ trong RAM là lần refresh sau bị từ chối và cán bộ
+  // bị đá ra màn đăng nhập. Nhận cặp mới ngay khi storage đổi. Chỉ nhận cặp CÓ token: xoá token
+  // (đăng xuất ở tab khác) giữ hành vi cũ — tab này tự biết khi gặp 401.
+  try {
+    chrome.storage.onChanged.addListener((changes, area) => {
+      const next = area === "local" ? changes[KEY]?.newValue : null;
+      if (next?.access && next?.refresh) { state = next; loaded = true; }
+    });
+  } catch (_) { /* không có chrome.storage (test) */ }
+
+  // Refresh bị từ chối nhưng storage đã có cặp khác → bên kia vừa thắng cuộc đua làm mới.
+  // Cặp đó có thể về chậm hơn câu từ chối một nhịp nên đọc lại 2 lần.
+  async function adoptRotatedTokens(usedRefresh) {
+    for (const waitMs of [0, 1500]) {
+      if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+      const cur = await _read();
+      if (cur?.access && cur?.refresh && cur.refresh !== usedRefresh) {
+        state = cur;
+        loaded = true;
+        return true;
+      }
     }
+    return false;
+  }
+
+  // Kết quả: "ok" · "invalid" (BE nói rõ phiên không còn: 401/403) · "transient" (mất mạng, timeout,
+  // BE đang khởi động lại, bảo trì…). CHỈ "invalid" mới được đăng xuất — trước đây mọi lỗi đều đăng
+  // xuất nên cán bộ bị đá ra mỗi lần BE chập chờn.
+  // Một lượt làm mới tại một thời điểm: TTS, nghe giọng nói và chat cùng cần token mới thì chờ chung.
+  let refreshInFlight = null;
+  function refresh() {
+    if (!state?.refresh) return Promise.resolve("invalid");
+    if (refreshInFlight) return refreshInFlight;
+    const usedRefresh = state.refresh;
+    refreshInFlight = (async () => {
+      try {
+        const res = await window.tlndOverBases((base) =>
+          window.tlndFetch(`${base}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: usedRefresh }),
+          }));
+        if (res.status === 401 || res.status === 403) {
+          return (await adoptRotatedTokens(usedRefresh)) ? "ok" : "invalid";
+        }
+        if (!res.ok) return "transient";
+        const data = await res.json();
+        state = _withClock({ access: data.accessToken, refresh: data.refreshToken, user: data.user || state?.user });
+        await _write(state);
+        return "ok";
+      } catch (_) {
+        return "transient";
+      }
+    })().finally(() => { refreshInFlight = null; });
+    return refreshInFlight;
   }
 
   function _accessNeedsRefresh(token, minValiditySeconds = 30) {
     if (!token) return true;
+    // Có mốc nhận token → tính theo đồng hồ CỦA MÁY từ lúc nhận (không phụ thuộc máy đúng giờ hay sai).
+    if (state?.access === token && state?.obtained_at && state?.ttl_s) {
+      return Date.now() >= state.obtained_at + (state.ttl_s - minValiditySeconds) * 1000;
+    }
     try {
       const payloadRaw = token.split(".")[1] || "";
       const normalized = payloadRaw.replace(/-/g, "+").replace(/_/g, "/");
@@ -95,12 +149,13 @@
   async function getAccessToken(minValiditySeconds = 30) {
     await load();
     if (_accessNeedsRefresh(state?.access, minValiditySeconds)) {
-      const refreshed = await refresh();
-      if (!refreshed) {
+      const result = await refresh();
+      if (result === "invalid") {
         await logout();
         window.dispatchEvent(new CustomEvent("tlnd-auth-required"));
         return "";
       }
+      // "transient": giữ phiên, dùng token đang có — lượt giọng nói này có thể hỏng, lượt sau thử lại.
     }
     return state?.access || "";
   }
@@ -120,16 +175,21 @@
       });
     let res = await doFetch();
     if (res.status === 401) {
-      const refreshed = await refresh();
-      console.warn("[TLND-Auth] API trả 401", { refreshSucceeded: refreshed });
-      if (refreshed) {
+      const result = await refresh();
+      console.warn("[TLND-Auth] API trả 401", { refresh: result });
+      if (result === "ok") {
         res = await doFetch();
         console.info("[TLND-Auth] kết quả gọi lại sau refresh", { status: res.status });
+        if (res.status === 401) {
+          // Token vừa cấp mà vẫn 401 = phiên thật sự không dùng được nữa.
+          await logout();
+          window.dispatchEvent(new CustomEvent("tlnd-auth-required"));
+        }
+      } else if (result === "invalid") {
+        await logout();
+        window.dispatchEvent(new CustomEvent("tlnd-auth-required"));
       }
-    }
-    if (res.status === 401) {
-      await logout();
-      window.dispatchEvent(new CustomEvent("tlnd-auth-required"));
+      // "transient": trả nguyên 401 cho nơi gọi báo lỗi, KHÔNG đăng xuất.
     }
     return res;
   }

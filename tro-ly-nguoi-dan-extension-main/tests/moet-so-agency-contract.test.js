@@ -71,10 +71,9 @@ test("portal-dvc: soMode CHỈ gạt toggle Sở rồi Đồng ý — không ch�
   // KHÔNG phải option đầu của dropdown Sở → cấm mọi bước chọn combo trong nhánh soMode.
   assert.ok(!portalDvc.includes("pickComboFirst"));
   assert.ok(/if \(soMode\) \{[\s\S]{0,400}switchToSoToggle\(block\)[\s\S]{0,200}\} else \{/.test(portalDvc));
-  // Nhánh cũ (chọn xã) giữ nguyên cho các thủ tục tư pháp đang phát hành.
-  // (tên xã đi qua portalAgencyWard: cổng còn ghi "Xã Hiệp Hòa" dù danh mục là Phường).
-  assert.match(portalDvc,
-    /await pickCombo\(combos\[1\], portalAgencyWard\(province, ward\),\s*\{ force: true, timeout: 8000 \}\)/);
+  // Nhánh cũ (chọn xã) giữ nguyên cho các thủ tục tư pháp đang phát hành; tên xã qua portalAgencyWard
+  // (tên xã cổng chưa cập nhật sau sáp nhập).
+  assert.match(portalDvc, /await pickCombo\(combos\[1\], portalAgencyWard\(province, ward\),\s*\{ force: true, timeout: 8000 \}\)/);
   // Listener truyền tham số mới.
   assert.ok(portalDvc.includes("soMode: msg.soMode === true"));
 });

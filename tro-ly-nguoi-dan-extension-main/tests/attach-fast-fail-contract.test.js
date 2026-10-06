@@ -92,7 +92,7 @@ for (const tooLong of ["12000", "15000", "20000", "25000"]) {
 }
 
 // ── ⑤ Hoãn rồi đi tiếp — không chặn các tệp còn lại ──────────────────────────────────────
-const loop = attach.slice(attach.indexOf("const MAX_ROUNDS = 3"));
+const loop = attach.slice(attach.indexOf("const MAX_ROUNDS = 5"));
 const loopBody = loop.slice(0, loop.indexOf("\n    if (errors.length)"));
 assert.match(loopBody, /const backoffMs = Math\.max\(0, minGapMs - \(Date\.now\(\) - lastFailAt\)\)/);
 assert.equal((loopBody.match(/deferred\.push\(\{ item, index: i \}\);\s*\n\s*continue;/g) || []).length, 4,

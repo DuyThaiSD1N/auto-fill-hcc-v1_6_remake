@@ -316,6 +316,7 @@ body.start-mode .bot-f { display: none; }
   transition: transform .18s ease;
 }
 .settings-switch.on { background: var(--teal); }
+.settings-switch:disabled { opacity: .45; cursor: not-allowed; }
 .settings-switch.on .settings-switch-knob { transform: translateX(20px); }
 /* Card xếp dọc cho control rộng (segmented) — sidebar 400px không đủ chỗ xếp ngang. */
 .settings-card-col { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -579,6 +580,29 @@ body.settings-mode .bot-f { display: none; }
 .allbar-tn { font-weight: 800; font-size: 13.5px; color: var(--teal-d); }
 .allbar-ss { font-size: 11px; color: var(--muted); margin-top: 1px; }
 .allbar-ch { color: var(--teal); font-size: 20px; flex-shrink: 0; }
+
+/* Giấy tờ soạn tại quầy (không phải thủ tục DVC) — tông vàng để tách khỏi lưới thủ tục */
+.ctools { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.ctools-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 2px; }
+.ctools-tt { font-size: 12px; font-weight: 800; color: var(--navy); text-transform: uppercase; letter-spacing: .03em; }
+.ctools-note { font-size: 10.5px; color: var(--muted); }
+.ctool {
+  display: flex; align-items: center; gap: 11px; width: 100%;
+  background: #fff8e1; border: 1.5px solid #f2d27a; border-radius: 13px;
+  padding: 10px 13px; cursor: pointer; text-align: left; font-family: inherit;
+  color: var(--navy); transition: border-color .15s, background .15s;
+}
+.ctool:hover { border-color: #d9a520; background: #fff2c4; }
+.ctool:focus-visible { outline: 2px solid #d9a520; outline-offset: 2px; }
+.ctool-ic { font-size: 20px; flex-shrink: 0; }
+.ctool-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ctool-tn { font-weight: 800; font-size: 13.5px; color: #7a5200; display: flex; align-items: center; gap: 6px; }
+.ctool-badge {
+  font-size: 9.5px; font-weight: 800; color: #fff; background: #d9892b;
+  border-radius: 999px; padding: 1px 7px; letter-spacing: .02em;
+}
+.ctool-ss { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.ctool-ch { color: #d9a520; font-size: 20px; flex-shrink: 0; }
 
 /* Nút NÓI to ở bước chọn thủ tục — mời người dân nói tên thay vì tìm trong danh sách */
 .svc-voice {

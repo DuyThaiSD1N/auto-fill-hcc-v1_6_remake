@@ -103,6 +103,9 @@
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const submit = msg?.action === "guidedSubmit";
     if (msg?.action !== "guidedClickNext" && !submit) return;
+    // Trang nộp một trang (Cổng DVC quốc gia) do content/tu-phap-moi.js soát ô rồi mới bấm nộp;
+    // khớp chữ "nop ho so" ở đây sẽ bấm thẳng "Lưu và nộp hồ sơ" khi chưa soát.
+    if (window.__TLND__?.isSurveyDossierPage?.()) return;
     const button = submit
       ? findButton(SUBMIT_SELECTORS, SUBMIT_TEXTS)
       : findButton(NEXT_SELECTORS, NEXT_TEXTS);

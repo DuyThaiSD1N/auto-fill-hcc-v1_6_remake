@@ -27,7 +27,7 @@
             <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
                  extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
                  Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
-            <span class="release-meta" id="release-meta" data-ngay="22/09/2026"></span>
+            <span class="release-meta" id="release-meta" data-ngay="05/10/2026"></span>
             <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
             <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
@@ -122,6 +122,23 @@
         <button id="attach-split-switch" class="settings-switch" type="button" role="switch"
                 aria-checked="false" aria-labelledby="attach-split-label"
                 aria-describedby="attach-split-description">
+          <span class="settings-switch-knob"></span>
+        </button>
+      </div>
+
+      <!-- Đổi tên tệp khi đính kèm: cài đặt THEO TÀI KHOẢN lưu ở BE (/api/v1/account/settings),
+           khoá tới khi đọc được giá trị từ BE — xem refreshAccountSettings trong sidebar.js. -->
+      <div class="settings-card">
+        <div class="settings-copy">
+          <label id="rename-files-label" for="rename-files-switch">Đổi tên tệp theo loại giấy tờ</label>
+          <p id="rename-files-description">
+            Tệp tải lên cổng (và ô "Tên tài liệu" của ví) đặt theo loại giấy tờ. Tắt thì giữ tên tệp gốc;
+            tệp gộp/tách vẫn theo loại giấy tờ. Lưu theo tài khoản.
+          </p>
+        </div>
+        <button id="rename-files-switch" class="settings-switch on" type="button" role="switch"
+                aria-checked="true" aria-labelledby="rename-files-label"
+                aria-describedby="rename-files-description" disabled>
           <span class="settings-switch-knob"></span>
         </button>
       </div>

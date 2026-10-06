@@ -16,6 +16,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const norm = (s) => (s || "").normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
 
 function detectFormKind() {
+  // Trang nộp một trang của Cổng DVC quốc gia (SurveyJS trong React) — engine content/fill-surveyjs.js.
+  // Câu hỏi SurveyJS không có input[name] nên các nhánh dưới không nhận ra; xét trước để không lẫn.
+  if (document.querySelectorAll(".sd-question[data-name]").length >= 3) return "surveyjs";
   // Cổng Bắc Ninh (Liferay) có field portlet đặc trưng `_org_bn_hoso_noptructuyen_*` —
   // prefix chỉ cổng này dùng → nhận diện chắc chắn, ưu tiên trước "standard" (cũng có input[name]).
   if (document.querySelectorAll('[name^="_org_bn_hoso_noptructuyen_"]').length >= 3) return "bacninh";
@@ -399,17 +402,24 @@ function readNgReflectValue(attrName) {
   return el ? String(el.getAttribute(attrName) || "").trim() : "";
 }
 
+// Khối "Thông tin người nộp" của trang SurveyJS do cổng đổ từ tài khoản VNeID (ô chỉ đọc).
+function readSurveyJsAccountValue(name) {
+  return typeof H.readSurveyJsValue === "function" ? H.readSurveyJsValue(name) : "";
+}
+
 function collectFormContext() {
   const checkbox = document.querySelector('input[type="checkbox"][name="data[isOwnerDossierCheck]"]');
   const combinedVariant = detectCombinedBirthFormVariant();
   return {
     applicantFullname:
+      readSurveyJsAccountValue("citizenName") ||
       readInputLikeValue("data[fullname]") ||
       readNgReflectValue("ng-reflect-fullname") ||
       // Form eform (vd Xác nhận TTHN, Khai tử): người yêu cầu cổng điền sẵn ở HoVaTenC.
       readInputLikeValue(["HoVaTenC", "NYC_HoVaTen"]) ||
       readBacNinhAccountValue("hoTen"),
     applicantIdentityNumber:
+      readSurveyJsAccountValue("citizenIdentity") ||
       readInputLikeValue("data[identityNumber]") ||
       readNgReflectValue("ng-reflect-identity-number") ||
       readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]) ||
@@ -2174,6 +2184,17 @@ function handleFillMessage(msg, _sender, sendResponse) {
     String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[")
   );
   // Bắc Ninh engine riêng (khớp theo NHÃN) — ưu tiên trước mọi nhánh khác.
+  if (formKind === "surveyjs") {
+    if (typeof H.fillFormSurveyJs !== "function") {
+      sendResponse({ error: "Engine điền chưa nạp (formKind=surveyjs)." });
+      return;
+    }
+    // toolAccount: tỉnh/xã tài khoản quầy để điền "Kính gửi"/"Tại" (BE gửi kèm lệnh fill_fields).
+    H.fillFormSurveyJs(fields, msg.toolAccount || null)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
+    return true;
+  }
   const filler = formKind === "bacninh"
     ? H.fillFormBacNinh
     : (forceStandard

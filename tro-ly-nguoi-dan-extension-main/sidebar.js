@@ -56,6 +56,11 @@
   // Ưu tiên Scan tại quầy: bật → bước tải giấy tự vào Scan (bỏ hỏi QR/Scan). Mặc định tắt.
   const PREFER_SCAN_KEY = "tlnd_prefer_scan";
   let preferScan = false;
+  // Cài đặt THEO TÀI KHOẢN lưu ở BE; bản sao ở storage cho content/attach-core.js đọc lúc đính kèm
+  // (khoá phải trùng chữ với ACCOUNT_SETTINGS_KEY bên đó). Thiếu bản sao = đổi tên (hành vi cũ).
+  const ACCOUNT_SETTINGS_KEY = "tlnd_account_settings";
+  let renameAttachmentFiles = true;
+  let accountSettingsLoaded = false;
   // Reply đang render có phải LIVE (không phải khôi phục phiên noTts) — để renderDocOptions chỉ
   // TỰ chọn Scan khi là lượt thật, khôi phục phiên thì không tự bấm lại.
   let renderingLiveReply = true;
@@ -91,6 +96,15 @@
     // Bấm "Nộp trực tuyến" ở đúng thẻ theo chữ BE gửi (portal-dvc.js::clickNopTrucTuyenByCard).
     // Thiếu cờ → BE dặn công dân chọn tay thay vì để engine cũ bấm thẻ đầu (cấp Sở).
     supportsAgencyCard: true,
+    // Biết sửa TẠI CHỖ bong bóng bot gần nhất (d.replace_last) — chỉnh nơi làm/đối tượng trên card
+    // xác nhận thủ tục thì câu hỏi đổi theo ngay trong bong bóng cũ, không đẻ bong bóng mới.
+    supportsReplaceLast: true,
+    // Biết mở tab "Tạo giấy ủy quyền" (authorization-letter.html) từ mục Giấy tờ soạn tại quầy.
+    // Thiếu cờ → BE không gửi mục này trên màn chọn thủ tục.
+    supportsAuthorizationLetter: true,
+    // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
+    // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
+    supportsTuPhapMoi: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -337,6 +351,10 @@
     if (!api.conversationId) return;                              // chưa có hồ sơ nào để chấm
     void ask(`__event:submit_clicked:${JSON.stringify({
       host: String(msg.host || ""), ref: String(msg.ref || ""),
+      // Cùng cú bấm background đã gửi thẳng lên BE — mã này để BE không ghi hai lần.
+      click_id: String(msg.clickId || ""),
+      // Giờ bấm thật: BE phân biệt cú bấm của tab tách với mốc dò chữ của tab gốc.
+      clicked_at: Number(msg.clickedAt) || undefined,
     })}`, "system");
   });
 
@@ -662,7 +680,23 @@
     if ((d.actions || []).some((a) => a.type === "drop_stale_ask" && a.tag === "doc_method")) {
       dropStaleDocMethodAsk();
     }
+    // Sửa tại chỗ câu xác nhận thủ tục: card nơi làm đã hiện đúng lựa chọn công dân vừa bấm, chỉ
+    // còn câu hỏi phải đổi theo. Không vẽ thêm bong bóng/card/chip, không đọc lại. Không tìm thấy
+    // bong bóng cũ (vd vừa dựng lại phiên) thì rơi xuống vẽ bình thường.
+    if (d.replace_last && d.display_md) {
+      const cu = [...$messages.querySelectorAll('.msg.bot[data-ask="confirm-procedure"]')].pop();
+      if (cu) {
+        cu.className = "msg bot" + botTone(d.display_md);
+        cu.innerHTML = window.renderMarkdown(d.display_md);
+        return;
+      }
+    }
     const $botBubble = (d.display_md && !duplicateLogoutChoice) ? addBotMd(d.display_md) : null;
+    // Đánh dấu câu xác nhận thủ tục (đi liền card chọn nơi) để lượt chỉnh nơi làm sửa đúng nó.
+    if ($botBubble && d.state === "confirm_procedure"
+        && (d.cards || []).some((c) => c.kind === "location_picker")) {
+      $botBubble.dataset.ask = "confirm-procedure";
+    }
     // Bong bóng mở đầu lời hỏi cách cung cấp giấy tờ đi liền với thẻ QR/Scan → gỡ thì gỡ cả cặp.
     if ($botBubble && (d.cards || []).some((c) => c.kind === "doc_options")) {
       $botBubble.dataset.ask = "doc-method";
@@ -1038,6 +1072,8 @@
     // báo cú bấm có ăn không: không bấm được, hoặc cổng nháy toast báo thiếu.
     await ask(`__action:guided_submit_report:${JSON.stringify({
       ok: !!res?.clicked && !res?.message, message: res?.message || "",
+      // Trang nộp một trang soát ô bắt buộc trước khi bấm: thiếu thì không bấm, trả danh sách ô.
+      missing: Array.isArray(res?.missing) ? res.missing : [],
     })}`, "system");
   }
 
@@ -1436,7 +1472,40 @@
       bar.addEventListener("click", () => openServiceSheet(all));
       el.appendChild(bar);
     }
+    const tools = renderCounterTools(card.counterTools);
+    if (tools) el.appendChild(tools);
     addNode(el);
+  }
+
+  // Giấy tờ soạn tại quầy (không phải thủ tục DVC) — BE chỉ gửi khi extension khai
+  // supportsAuthorizationLetter. Bấm là mở TAB RIÊNG: form + bản xem trước A4 không vừa khung 400px.
+  const COUNTER_TOOL_PAGES = { "giay-uy-quyen": "authorization-letter.html" };
+  function renderCounterTools(section) {
+    const items = (section?.items || []).filter((it) => COUNTER_TOOL_PAGES[it.key]);
+    if (!items.length) return null;
+    const box = document.createElement("div");
+    box.className = "ctools";
+    box.innerHTML = `<div class="ctools-hd"><span class="ctools-tt">${window.escapeHtml(section.title || "")}</span>
+      <span class="ctools-note">${window.escapeHtml(section.note || "")}</span></div>`;
+    items.forEach((it) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "ctool";
+      const badge = it.badge ? `<span class="ctool-badge">${window.escapeHtml(it.badge)}</span>` : "";
+      b.innerHTML = `<span class="ctool-ic">${window.escapeHtml(it.icon || "📝")}</span>
+        <span class="ctool-tx"><span class="ctool-tn">${window.escapeHtml(it.title)}${badge}</span>
+          <span class="ctool-ss">${window.escapeHtml(it.subtitle || "")}</span></span>
+        <span class="ctool-ch">›</span>`;
+      b.addEventListener("click", () => openCounterTool(it.key));
+      box.appendChild(b);
+    });
+    return box;
+  }
+  function openCounterTool(key) {
+    const url = chrome.runtime.getURL(COUNTER_TOOL_PAGES[key]);
+    try {
+      chrome.tabs.create({ url }, () => { if (chrome.runtime.lastError) window.open(url, "_blank"); });
+    } catch (_) { window.open(url, "_blank"); }
   }
 
   // ── Sheet "Tất cả thủ tục" (singleton trong sidebar.html) ──
@@ -3842,6 +3911,9 @@
       waitForTabId,
       // Tab của sidebar này — background chuyển tiếp mốc "Nộp" của các tab tách về đây.
       originTabId: Number(TAB_ID) || null,
+      // Lệnh gạt "cách nhận kết quả" mặc định (BE gửi khi tách hồ sơ) — khung hồ sơ phụ ở tab
+      // tách tự gạt theo lệnh này, vì nó không nhận lệnh nào từ BE.
+      resultMethod: a.resultMethod || null,
       initialResults,
       itemsStorageKey: SPLIT_STAGE_KEY,
     });
@@ -4077,7 +4149,9 @@
       } else if (a.type === "fill_fields" && Array.isArray(a.fields)) {
         pipeDone(); // dữ liệu về tới nơi — card tiến trình chốt ✓ dù WS có rớt
         setStatus("Đang điền form…");
-        const res = await sendToContent({ action: "fillFields", fields: a.fields });
+        const res = await sendToContent({
+          action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
+        });
         setStatus("");
         if (res?.error) addBotMd(`⚠️ ${res.error}`);
         renderFillLegend(a.fields, res);
@@ -4944,6 +5018,7 @@
   const $settingsBackBtn = document.getElementById("settings-back-btn");
   const $attachSplitSwitch = document.getElementById("attach-split-switch");
   const $preferScanSwitch = document.getElementById("prefer-scan-switch");
+  const $renameFilesSwitch = document.getElementById("rename-files-switch");
   const $attachModeMerge = document.getElementById("attach-mode-merge");
   const $attachModeSplit = document.getElementById("attach-mode-split");
   const $panelModePush = document.getElementById("panel-mode-push");
@@ -5062,6 +5137,60 @@
         announceAttachmentSettingsSaved();
       },
     );
+  }
+
+  function renderRenameFilesSetting() {
+    if (!$renameFilesSwitch) return;
+    $renameFilesSwitch.classList.toggle("on", renameAttachmentFiles);
+    $renameFilesSwitch.setAttribute("aria-checked", renameAttachmentFiles ? "true" : "false");
+    // Khoá tới khi đọc được giá trị thật từ BE: lưu lúc chưa biết giá trị là ghi đè mù.
+    $renameFilesSwitch.disabled = !accountSettingsLoaded;
+  }
+
+  function storeAccountSettings(settings) {
+    renameAttachmentFiles = settings?.renameAttachmentFiles !== false;
+    accountSettingsLoaded = true;
+    renderRenameFilesSetting();
+    return new Promise((resolve) => {
+      chrome.storage.local.set({ [ACCOUNT_SETTINGS_KEY]: settings || {} }, () => {
+        void chrome.runtime.lastError;
+        resolve();
+      });
+    });
+  }
+
+  // BE lỗi → giữ bản sao đang có trong storage (content vẫn đọc được), chỉ khoá công tắc.
+  async function refreshAccountSettings() {
+    try {
+      await storeAccountSettings(await api.getAccountSettings());
+    } catch (e) {
+      console.warn("[TLND] Không tải được cài đặt tài khoản:", e);
+      accountSettingsLoaded = false;
+      renderRenameFilesSetting();
+    }
+  }
+
+  // Đăng xuất: bỏ bản sao để cài đặt của cán bộ trước không áp sang người đăng nhập sau.
+  function forgetAccountSettings() {
+    renameAttachmentFiles = true;
+    accountSettingsLoaded = false;
+    renderRenameFilesSetting();
+    chrome.storage.local.remove([ACCOUNT_SETTINGS_KEY], () => { void chrome.runtime.lastError; });
+  }
+
+  async function saveRenameAttachmentFiles(value) {
+    if (!accountSettingsLoaded) return;
+    accountSettingsLoaded = false; // khoá trong lúc lưu, chống bấm dồn
+    renderRenameFilesSetting();
+    try {
+      await storeAccountSettings(await api.updateAccountSettings({ renameAttachmentFiles: value === true }));
+      announceAttachmentSettingsSaved();
+    } catch (e) {
+      console.warn("[TLND] Không lưu được cài đặt tài khoản:", e);
+      accountSettingsLoaded = true;
+      renderRenameFilesSetting();
+      if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
+    }
   }
 
   function savePreferScan(value) {
@@ -5198,6 +5327,7 @@
     $settingsBtn.classList.add("active");
     $settingsBtn.setAttribute("aria-label", "Đóng cài đặt");
     $subtitle.textContent = "Cài đặt";
+    void refreshAccountSettings(); // có thể vừa đổi ở máy khác
     markActivity();
     requestAnimationFrame(() => $settingsBackBtn?.focus());
   }
@@ -5227,6 +5357,10 @@
   $preferScanSwitch?.addEventListener("click", () => {
     savePreferScan(!preferScan);
   });
+  $renameFilesSwitch?.addEventListener("click", () => {
+    markActivity();
+    void saveRenameAttachmentFiles(!renameAttachmentFiles);
+  });
   $attachSplitSwitch?.addEventListener("click", () => {
     markActivity();
     saveAttachmentSettings(!attachSplitDocuments);
@@ -5255,6 +5389,7 @@
 
   function showLogin() {
     closeSettingsScreen({ resumeVoice: false, restoreFocus: false });
+    forgetAccountSettings();
     $scrim.hidden = false;
     $settingsBtn.hidden = true;
     $accBtn.hidden = true;
@@ -5327,6 +5462,7 @@
       $loginPass.value = "";
       $scrim.hidden = true;
       renderAccount();
+      void refreshAccountSettings();
       // BASE_URL có thể chưa sẵn nếu người dùng đăng nhập cực nhanh — chờ init voice xong.
       if (!BASE_URL) BASE_URL = await window.tlndBaseUrl();
       window.HCC_BASE_URL = BASE_URL;
@@ -5363,7 +5499,7 @@
     await restoreAttachmentSettings();
     await restorePanelMode();
     const st = await window.tlndAuth.load();
-    if (st?.access) { renderAccount(); bootChat(); }
+    if (st?.access) { renderAccount(); void refreshAccountSettings(); bootChat(); }
     else showLogin();
   })();
 
