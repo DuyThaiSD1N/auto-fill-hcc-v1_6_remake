@@ -667,6 +667,7 @@ body.settings-mode .bot-f { display: none; }
 .srow-tn { font-size: 14px; font-weight: 800; line-height: 1.25; }
 .srow-hm { font-style: italic; color: var(--muted); font-size: 11px; margin-top: 1px; }
 .srow-sd { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.srow-cd { font-size: 10.5px; color: var(--muted); margin-top: 1px; font-variant-numeric: tabular-nums; }
 .srow mark { background: #fdf0c8; color: inherit; border-radius: 3px; padding: 0 1px; }
 .srow-ch { color: #9fb2c4; font-size: 18px; flex: none; }
 .snone {
@@ -809,6 +810,13 @@ body.settings-mode .bot-f { display: none; }
   content: "✓"; margin-left: auto; align-self: center;
   color: var(--teal-d); font-size: 17px; font-weight: 800;
 }
+/* Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): nhóm Nơi xử lý / Trường hợp. */
+.mae-dialog-choice .mdc-title {
+  color: var(--teal-d); font-weight: 800; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .06em; margin-top: 4px;
+}
+.mae-dialog-choice .opt.picked { cursor: pointer; }
+.mae-dialog-choice .chip.solid { align-self: stretch; justify-content: center; margin-top: 4px; }
 
 /* ── Nơi làm thủ tục: nhãn trên, ô chọn dưới — dễ đọc, dễ chạm ── */
 .loc {
