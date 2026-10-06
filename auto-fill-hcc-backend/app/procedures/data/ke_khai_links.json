@@ -1824,6 +1824,7 @@
       "label": "Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng trong dự án bất động sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2b45f564b292",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {
@@ -1832,6 +1833,7 @@
       "label": "Xóa đăng ký thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f11-772a-8dda-5bf1a8d83029",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {

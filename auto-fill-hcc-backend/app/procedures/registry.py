@@ -239,6 +239,8 @@ from app.pipelines.xac_dinh_lai_dien_tich_dat_o_gcn_truoc_2004.process import ru
 from app.pipelines.xac_dinh_lai_dien_tich_dat_o_gcn_truoc_2004.attach import plan as xac_dinh_lai_dt_dat_o_dn_attach
 from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bat_dong_san.process import run as nhan_chuyen_nhuong_du_an_dn_process
 from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bat_dong_san.attach import plan as nhan_chuyen_nhuong_du_an_dn_attach
+from app.pipelines.xoa_dang_ky_thue_cho_thue_lai_qsdd_du_an_ket_cau_ha_tang.process import run as xoa_dk_thue_qsdd_kcht_process
+from app.pipelines.xoa_dang_ky_thue_cho_thue_lai_qsdd_du_an_ket_cau_ha_tang.attach import plan as xoa_dk_thue_qsdd_kcht_attach
 from app.pipelines.tach_hop_thua_dat_bac_ninh.process import run as tach_hop_thua_dat_bac_ninh_process
 from app.pipelines.tach_hop_thua_dat_bac_ninh.attach import plan as tach_hop_thua_dat_bac_ninh_attach
 from app.pipelines.doi_ten_nuoc_sach.attach import plan as doi_ten_nuoc_sach_attach
@@ -6501,6 +6503,48 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "xoa-dang-ky-thue-cho-thue-lai-qsdd-du-an-ket-cau-ha-tang",
+        # Mã TTHC 1.012766 (Văn phòng Đăng ký đất đai — ke_khai_links đặt selectSo). Cổng DVC TP Đà Nẵng
+        # dichvucong.danang.gov.vn — Form.io, CÙNG khối "Thông tin chung" với các thủ tục đất đai Đà Nẵng (không có
+        # panel thửa đất) + attach attp-row 4 dòng. Hồ sơ mẫu là MỘT PDF gộp hợp đồng chấm dứt thuê + Đơn Mẫu 18 +
+        # văn bản thỏa thuận → KHÔNG tách, đính nguyên file một lần ở dòng 1. Key trùng ke_khai_links.json; mapping
+        # theo "Mapping_Xoa_DK_thue_QSDD_DaNang.xlsx" + ảnh ánh xạ đính kèm. urlScope khoá host Đà Nẵng: mã quốc
+        # gia dùng chung, cổng tỉnh khác không cùng field-key.
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": [
+                "Xóa đăng ký thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Đà Nẵng] Xóa đăng ký thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ "
+            "tầng"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (nhiều file hoặc MỘT file scan gộp — hệ thống KHÔNG tách trang):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) của người sử dụng đất — chủ hồ "
+            "sơ, số căn cước, địa chỉ, điện thoại.\n"
+            "2. Hợp đồng chấm dứt hợp đồng thuê quyền sử dụng đất và/hoặc văn bản thỏa thuận với bên thuê, kèm lời "
+            "chứng của công chứng viên.\n"
+            "3. Giấy chứng nhận đã cấp (bản chính) — thành phần bắt buộc.\n"
+            "4. Nếu có: CCCD của người đứng đơn; văn bản ủy quyền nộp hồ sơ khi người khác nộp thay.\n"
+            "Form điền: chủ hồ sơ = người đứng tên Đơn Mẫu 18 (bên cho thuê), KHÔNG phải bên thuê. Tự nộp → tích "
+            "'Chủ hồ sơ cũng là người nộp'; ủy quyền → bỏ tích và điền cả hai. 'Nội dung yêu cầu giải quyết' ghi lại "
+            "theo tên chủ hồ sơ kèm căn cứ xóa thuê.\n"
+            "Bước đính kèm: tệp có Đơn → dòng 1 (Bản chính), kể cả khi gộp luôn hợp đồng chấm dứt thuê (dòng 4 coi "
+            "như đã đính chung); tệp GCN riêng → dòng 2 (Bản chính); văn bản ủy quyền → dòng 3 (Bản sao); hợp đồng "
+            "chấm dứt thuê riêng → dòng 4 (Bản sao). Nhiều tệp cùng dòng được ghép nguyên thành một PDF.\n"
+            "⚠ Thiếu CCCD thì ô 'Ngày sinh' có thể giữ ngày sinh của tài khoản đăng nhập — sửa tay trước khi nộp. "
+            "Đơn chưa ghi mục II / ngày tháng / chữ ký thì bổ sung trên đơn giấy."
+        ),
+    },
+    {
         "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn",
         # Mã TTHC 1.013995. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
         # dom-* (CÙNG field-key panel "Thông tin chung" với #75) + attach attp-row 8 dòng, tách PDF gộp theo
@@ -7377,6 +7421,7 @@ _PIPELINE = {
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
     "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004": xac_dinh_lai_dt_dat_o_dn_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san": nhan_chuyen_nhuong_du_an_dn_process,
+    "xoa-dang-ky-thue-cho-thue-lai-qsdd-du-an-ket-cau-ha-tang": xoa_dk_thue_qsdd_kcht_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_process,
@@ -7578,6 +7623,7 @@ _ATTACH_PIPELINE = {
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
     "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004": xac_dinh_lai_dt_dat_o_dn_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san": nhan_chuyen_nhuong_du_an_dn_attach,
+    "xoa-dang-ky-thue-cho-thue-lai-qsdd-du-an-ket-cau-ha-tang": xoa_dk_thue_qsdd_kcht_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,
     "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh": chia_tach_sap_nhap_hop_nhat_hoi_attach,
