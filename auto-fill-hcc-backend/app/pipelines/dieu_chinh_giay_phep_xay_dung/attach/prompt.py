@@ -30,9 +30,12 @@ III/IV & nhà ở riêng lẻ, cổng Bộ Xây dựng). Đọc OCR_TEXT của t
 - don_dieu_chinh: ĐƠN ĐỀ NGHỊ ĐIỀU CHỈNH/GIA HẠN/CẤP LẠI GIẤY PHÉP XÂY DỰNG (Mẫu số 02). Có tiêu đề
   "ĐƠN ĐỀ NGHỊ ĐIỀU CHỈNH", "Kính gửi", "Nội dung đề nghị điều chỉnh so với Giấy phép đã được cấp".
 - gpxd_da_cap: GIẤY PHÉP XÂY DỰNG ĐÃ ĐƯỢC CẤP (kèm bản vẽ đã cấp). Có "GIẤY PHÉP XÂY DỰNG", "Số …/GPXD",
-  "Cấp cho …", "Loại công trình", "cấp ngày". KHÔNG phải đơn đề nghị.
+  "Cấp cho …", "Loại công trình", "cấp ngày". KHÔNG phải đơn đề nghị. Bộ BẢN VẼ ĐÃ ĐƯỢC CẤP PHÉP (bản
+  cũ) cũng thuộc loại này: các tờ bản vẽ mang dấu/khung "GIẤY PHÉP XÂY DỰNG Số…" của cơ quan cấp phép
+  lặp lại trên nhiều trang và KHÔNG nhắc "điều chỉnh".
 - hstk_dieu_chinh: BỘ BẢN VẼ THIẾT KẾ XÂY DỰNG ĐIỀU CHỈNH / hồ sơ thiết kế xây dựng điều chỉnh (bản vẽ
-  kiến trúc/kết cấu mới theo phương án điều chỉnh, thuyết minh thiết kế điều chỉnh).
+  kiến trúc/kết cấu mới theo phương án điều chỉnh, thuyết minh thiết kế điều chỉnh) — chưa có dấu cấp
+  phép trên từng tờ.
 - bao_cao_tham_dinh: BÁO CÁO KẾT QUẢ THẨM ĐỊNH và VĂN BẢN PHÊ DUYỆT thiết kế xây dựng điều chỉnh.
 - giay_to_dat_dai: GIẤY CHỨNG NHẬN quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất (sổ đỏ/sổ hồng)
   hoặc giấy tờ hợp pháp khác về đất đai.

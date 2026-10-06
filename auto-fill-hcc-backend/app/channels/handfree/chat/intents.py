@@ -20,7 +20,10 @@ import unicodedata
 from dataclasses import dataclass, field
 
 from app.channels.handfree.chat import procedure_picker, store
+from app.channels.handfree.procedure_registry import procedure_code, public_list
 from app.services.llm.client import chat as llm_chat
+
+_CODE_ONLY_RE = re.compile(r"^(?:ma\s*(?:so\s*)?(?:thu\s*tuc\s*)?[:\s]*)?([12]\.\d{6})[.\s]*$")
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +85,13 @@ _STATE_INTENTS: dict[str, list[dict]] = {
          "desc": "muốn ĐỔI nơi làm thủ tục (tỉnh/thành phố, phường/xã) hoặc ĐỔI người/đối tượng thực "
                  "hiện (làm cho bản thân, cho người khác, được người khác ủy quyền, doanh nghiệp ủy "
                  "quyền, đại diện cơ quan) — kể cả câu mở đầu bằng \"không phải\" rồi nêu nơi/người khác"},
+    ],
+    # Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng): lựa chọn đọc từ cổng nên chỉ
+    # nhận SỐ THỨ TỰ; flow chỉ áp khi đang hỏi đúng một ô (nơi xử lý HOẶC trường hợp).
+    "choose_mae_dialog": [
+        {"kind": "action", "value": f"mae_pick_{n}",
+         "desc": f"chọn lựa chọn số {n} (thứ {word}) trong danh sách đang hỏi"}
+        for n, word in ((1, "nhất"), (2, "hai"), (3, "ba"), (4, "tư"), (5, "năm"), (6, "sáu"))
     ],
     "guide_login": [
         {"kind": "event", "value": "sso_success",
@@ -402,6 +412,13 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
     if not text:
         return Intent("unknown")
     conv = conv or {}
+
+    # Gõ/nói đúng MÃ TTHC (vd "1.013225", "mã 1.013225") → chọn thẳng thủ tục, không qua LLM.
+    code_match = _CODE_ONLY_RE.match(fold(text))
+    if code_match:
+        for procedure in public_list():
+            if procedure_code(procedure) == code_match.group(1):
+                return Intent("pick_procedure", procedure["key"])
 
     # (2) Màn chào / vừa gợi ý thủ tục: gần như mọi câu là chọn thủ tục → agent chọn thủ tục trước,
     # chỉ câu không nói về thủ tục mới sang bộ phân loại (1 lượt LLM cho trường hợp thường gặp).

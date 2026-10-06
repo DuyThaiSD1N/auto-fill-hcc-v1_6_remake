@@ -169,6 +169,21 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                               "làm lại khai sinh do cả bản chính lẫn sổ gốc đều mất"],
     "khai-tu-dang-ky-lai": ["đăng ký lại khai tử", "làm lại khai tử do sổ hộ tịch gốc bị mất",
                             "đã khai tử trước đây nhưng sổ hộ tịch bị mất, hư hỏng"],
+    # ── Cổng Bộ Xây dựng (luồng chung "xay-dung") ──
+    "dieu-chinh-giay-phep-xay-dung": ["điều chỉnh giấy phép xây dựng", "sửa giấy phép xây dựng",
+                                      "thay đổi thiết kế đã được cấp phép",
+                                      "xin điều chỉnh giấy phép xây nhà"],
+    "sua-chua-cai-tao-gpxd-nha-o-rieng-le": ["xin phép sửa nhà", "giấy phép sửa chữa cải tạo",
+                                             "cải tạo nhà ở", "xin phép cơi nới nhà",
+                                             "giấy phép sửa chữa công trình"],
+    "cung-cap-thong-tin-quy-hoach": ["cung cấp thông tin quy hoạch", "xem quy hoạch đất",
+                                     "tra cứu quy hoạch thửa đất", "đất có dính quy hoạch không",
+                                     "xin thông tin quy hoạch"],
+    "tham-dinh-bcnckt": ["thẩm định báo cáo nghiên cứu khả thi", "thẩm định dự án đầu tư xây dựng",
+                         "thẩm định báo cáo khả thi"],
+    "cap-phep-long-duong-via-he": ["xin phép sử dụng vỉa hè", "sử dụng tạm lòng đường",
+                                   "giấy phép dùng vỉa hè", "xin phép tổ chức sự kiện trên vỉa hè",
+                                   "tập kết vật liệu trên vỉa hè"],
 }
 
 

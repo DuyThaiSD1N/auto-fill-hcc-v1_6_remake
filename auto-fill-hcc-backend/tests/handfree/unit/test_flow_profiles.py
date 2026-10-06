@@ -138,12 +138,13 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert "maePortal" not in moet_diploma
     assert moet_diploma["wizard"]["declarationStep"] == 1
     assert moet_diploma["wizard"]["attachmentStep"] == 2
-    # Bộ Xây dựng (NOXH): cùng khuôn agencySoFirst + wizard iGate như văn bằng.
+    # Bộ Xây dựng (NOXH): cùng khuôn agencySoFirst + wizard iGate như văn bằng, nay đi luồng chung
+    # "xay-dung" (hộp thoại "Chọn trường hợp giải quyết" đọc từ cổng).
     moc_housing = procedures.pop("cho-thue-thue-mua-nha-o-xa-hoi")
-    assert moc_housing.get("flowProfile") is None
+    assert moc_housing["flowProfile"] == "xay-dung"
     assert moc_housing["agencyProvinceOnly"] is True
     assert moc_housing["agencySoFirst"] is True
-    assert "maePortal" not in moc_housing
+    assert moc_housing["maePortal"] is True
     assert moc_housing["wizard"]["declarationStep"] == 1
     assert moc_housing["wizard"]["attachmentStep"] == 2
     # Bộ Y tế (trợ cấp hưu trí xã hội): CÙNG wizard iGate 1 kê khai / 2 đính kèm, nhưng bước
@@ -153,7 +154,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     # cổng còn chèn HỘP THOẠI "Chọn trường hợp giải quyết" → maePortal + variants. Trợ lý hỏi
     # trường hợp ngay tại hộp thoại đó, nên variants phải có ít nhất 2 option kèm token khớp.
     moc_permit = procedures.pop("cap-giay-phep-xay-dung-moi-nha-o-rieng-le")
-    assert moc_permit.get("flowProfile") is None
+    assert moc_permit["flowProfile"] == "xay-dung"
     assert moc_permit["needsAgencySelect"] is True
     assert moc_permit["maePortal"] is True
     assert "agencyProvinceOnly" not in moc_permit
@@ -163,6 +164,14 @@ def test_registered_procedures_use_their_declared_flow_family():
     variant_options = moc_permit["variants"]["options"]
     assert [o["key"] for o in variant_options] == ["nha_o_rieng_le", "cong_trinh"]
     assert all(o.get("label") and o.get("portalMatch") for o in variant_options)
+
+    # Các thủ tục khác của cổng Bộ Xây dựng: cùng luồng chung "xay-dung", cùng hộp thoại.
+    for key in ("dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
+                "cung-cap-thong-tin-quy-hoach", "tham-dinh-bcnckt", "cap-phep-long-duong-via-he"):
+        moc_other = procedures.pop(key)
+        assert moc_other["flowProfile"] == "xay-dung", key
+        assert moc_other["maePortal"] is True, key
+        assert moc_other["maeDialogChoice"]["enabled"] is True, key
 
     byt_pension = procedures.pop("dieu-chinh-huu-tri-xa-hoi")
     assert byt_pension.get("flowProfile") is None
@@ -322,8 +331,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +3 cổng Bộ Nội vụ: "di-chuyen-ho-so-nguoi-huong-tro-cap" (cấp Sở),
     # "uu-dai-ncc-tu-tran" + "tro-cap-tho-cung-liet-si" (cấp xã);
     # +1 cổng Bộ Y tế "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham" (ATTP);
-    # +2 attach-only tư pháp "chung-thuc-phan-chia-di-san", "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich".
-    assert len(procedures) == 37
+    # +2 attach-only tư pháp "chung-thuc-phan-chia-di-san", "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich";
+    # +5 cổng Bộ Xây dựng (luồng chung "xay-dung"): điều chỉnh GPXD, sửa chữa cải tạo, thông tin
+    # quy hoạch, thẩm định BCNCKT, lòng đường vỉa hè.
+    assert len(procedures) == 42
 
     for procedure in procedures:
         key = procedure["key"]

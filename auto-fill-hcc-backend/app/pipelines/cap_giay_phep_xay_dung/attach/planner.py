@@ -43,7 +43,7 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold, normalize_document_name
-from app.pipelines._shared.documents import join_ocr_documents
+from app.pipelines._shared.documents import join_ocr_documents, representative_excerpt
 from app.pipelines.cap_giay_phep_xay_dung.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -187,10 +187,9 @@ _GROUP_PRIORITY = {
 
 
 def _truncate_text(text: str, limit: int = 3000) -> str:
-    text = re.sub(r"\s+", " ", text or "").strip()
-    if len(text) <= limit:
-        return text
-    return text[:limit] + "..."
+    # Lấy đầu TỪNG trang thay vì N ký tự đầu: bộ hồ sơ thiết kế scan có vài trang đầu OCR ra rác
+    # lặp lại, cắt đầu là LLM chỉ thấy rác rồi nhận nhầm thành căn cước.
+    return representative_excerpt(text, limit)
 
 
 def _has_any(haystack: str, needles: tuple[str, ...]) -> bool:

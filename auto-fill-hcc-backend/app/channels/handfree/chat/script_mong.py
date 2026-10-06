@@ -975,6 +975,32 @@ MAE_AGENCY_AUTOFILL_GUIDE = {
             "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
 }
 
+# Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng). CHƯA CÓ BẢN DỊCH RIÊNG: ghép từ các
+# vế đã dịch của CHOOSE_VARIANT / CHOOSE_VARIANT_REMIND / VARIANT_DIALOG_AUTOFILL_GUIDE /
+# MAE_AGENCY_FAILED, không tự đặt câu Mông mới. Lựa chọn đọc từ cổng là chữ Việt → không nhúng
+# vào bản Mông (danh sách vẫn hiện ở khối Việt và trên thẻ). Có bản dịch thật thì thay nguyên khối.
+CHOOSE_MAE_DIALOG = {
+    "md": "{procedure} txog kauj ruam xaiv qhov ua. Pej xeem xaiv ib qho nyob saum npo kom kuv ua tau ntxiv.",
+    "tts": "Pej xeem xaiv ib qho nyob saum npo kom kuv ua tau ntxiv.",
+}
+
+CHOOSE_MAE_DIALOG_REMIND = {
+    "md": "Pej xeem xaiv ib qho nyob saum npo kom kuv ua tau ntxiv.",
+    "tts": "Pej xeem xaiv ib qho nyob saum npo kom kuv ua tau ntxiv.",
+}
+
+MAE_DIALOG_AUTOFILL_GUIDE = {
+    "md": "Kuv xaiv ces nias Đồng ý kom mus rau nplooj sau ntawv.",
+    "tts": "Kuv xaiv ces nias Đồng ý kom mus rau nplooj sau ntawv.",
+}
+
+MAE_DIALOG_FAILED = {
+    "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv Đơn vị thực hiện thiab "
+           "Trường hợp giải quyết, ces nias Đồng ý."),
+    "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv Đơn vị thực hiện thiab Trường hợp giải quyết, "
+            "ces nias Đồng ý."),
+}
+
 MAE_AGENCY_FAILED = {
     "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv: Xeev {province}, ces Sở/Ban ngành "
            "xaiv {agency}, ces qhov {variant_label}, ces nias Đồng ý và tiếp tục."),

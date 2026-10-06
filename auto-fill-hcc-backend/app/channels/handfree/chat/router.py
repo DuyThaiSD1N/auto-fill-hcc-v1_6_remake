@@ -175,6 +175,10 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết "bấm hộ" một nút khi công dân chọn nút đó bằng lời (action press_chip / chip_used).
         # Client cũ không khai → BE chạy thẳng lệnh của nút như trước.
         "supportsVoiceChips": raw.get("supportsVoiceChips") is True,
+        # Biết ĐỌC danh sách lựa chọn của hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây
+        # dựng), vẽ thẻ mae_dialog_choice và chọn đúng nhãn (agencyExact/processExact). Client cũ
+        # không khai → BE giữ đường variants khai sẵn trong registry.
+        "supportsMaeDialogChoice": raw.get("supportsMaeDialogChoice") is True,
     }
 
 

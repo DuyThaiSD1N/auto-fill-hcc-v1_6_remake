@@ -6,9 +6,34 @@ from .tu_phap import TU_PHAP_FLOW
 from .tu_phap_moi import TU_PHAP_MOI_FLOW
 
 
+# Cổng Bộ Xây dựng dvc.moc.gov.vn (nền iGate/Form.io). Khác tư pháp:
+# - KHÔNG có trang "Thông tin chủ hồ sơ": Phần I người nộp nằm cùng trang kê khai (bước 1)
+#   → ownerInfo/executionSubject/authorizationInfo tắt; ownerStep = 5 (cổng chỉ có 4 bước nên
+#   nhánh chủ hồ sơ không bao giờ chạy).
+# - DVCQG chọn cơ quan xong, cổng mở HỘP THOẠI "Chọn trường hợp giải quyết" (Đơn vị thực hiện +
+#   Trường hợp giải quyết) → maePortal. maeDialogChoice: extension đọc danh sách lựa chọn của
+#   hộp thoại, ô nào có >1 lựa chọn thì hỏi người dân (nơi xử lý / trường hợp – thời gian).
+XAY_DUNG_FLOW: dict = {
+    "needsAgencySelect": True,
+    "maePortal": True,
+    "maeDialogChoice": {"enabled": True},
+    "hasAttachmentStep": True,
+    "hideRepeatableHint": True,
+    "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+    "mode": "agent",
+    "review": False,
+    "roles": [],
+    "useDangKyBy": False,
+    "executionSubject": {"enabled": False},
+    "ownerInfo": {"enabled": False},
+    "authorizationInfo": {"enabled": False},
+}
+
+
 FLOW_PROFILES: dict[str, dict] = {
     "tu-phap": TU_PHAP_FLOW,
     "tu-phap-moi": TU_PHAP_MOI_FLOW,
+    "xay-dung": XAY_DUNG_FLOW,
 }
 
 
