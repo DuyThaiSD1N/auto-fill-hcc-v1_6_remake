@@ -235,6 +235,8 @@ from app.pipelines.cap_hoc_tap_bac_ninh.attach import plan as cap_hoc_tap_bac_ni
 from app.pipelines.cap_hoc_tap_bac_ninh.process import run as cap_hoc_tap_bac_ninh_process
 from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.process import run as dinh_chinh_gcn_dn_process
 from app.pipelines.dinh_chinh_gcn_da_cap_da_nang.attach import plan as dinh_chinh_gcn_dn_attach
+from app.pipelines.xac_dinh_lai_dien_tich_dat_o_gcn_truoc_2004.process import run as xac_dinh_lai_dt_dat_o_dn_process
+from app.pipelines.xac_dinh_lai_dien_tich_dat_o_gcn_truoc_2004.attach import plan as xac_dinh_lai_dt_dat_o_dn_attach
 from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.process import run as nhan_chuyen_nhuong_du_an_dn_process
 from app.pipelines.dang_ky_cap_gcn_nhan_chuyen_nhuong_du_an_bds_da_nang.attach import plan as nhan_chuyen_nhuong_du_an_dn_attach
 from app.pipelines.tach_hop_thua_dat_bac_ninh.process import run as tach_hop_thua_dat_bac_ninh_process
@@ -6407,6 +6409,53 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
+        # 1.012817 — Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn (Form.io, field-key Y HỆT dang-ky-dat-dai-
+        # lan-dau-da-nang: khối "Thông tin chung" 2 vai + panel thửa đất) + attach attp-row 3 dòng. Key trùng
+        # ke_khai_links.json; mapping theo "Mapping_XacDinhLaiDienTichDatO_DVC_DaNang.xlsx".
+        #
+        # ⚑ TÊN THỦ TỤC TRÙNG KHÍT với bản Quảng Ngãi (xac-dinh-lai-dien-tich-dat-o-quang-ngai, cũng khai
+        # textPriority) và bản Lào Cai (xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004). urlScope là thứ DUY
+        # NHẤT tách ba entry — KHÔNG được bỏ. Có test chặn.
+        "detect": {
+            "urlScope": ["dichvucong.danang.gov.vn"],
+            "textIncludes": [
+                "Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước "
+                "ngày 01 tháng 7 năm 2004",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Đà Nẵng] Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận "
+            "trước ngày 01 tháng 7 năm 2004"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể là MỘT file scan gộp cả bộ hồ sơ — hệ thống tự tách theo trang):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất đã ký — chủ hồ sơ, số CCCD, địa chỉ, "
+            "điện thoại và nội dung biến động.\n"
+            "2. Giấy chứng nhận đã cấp (cấp trước 01/7/2004), scan cả bìa lẫn trang 'Những thay đổi sau khi cấp "
+            "Giấy chứng nhận'.\n"
+            "3. Nếu có: Bản mô tả ranh giới, mốc giới thửa đất; công văn của Chi nhánh Văn phòng Đăng ký đất "
+            "đai; phiếu đo đạc chỉnh lý — nguồn số thửa, tờ bản đồ, địa chỉ thửa đất.\n"
+            "4. CCCD người đứng đơn (để có ngày sinh, ngày cấp); nếu nộp thay: văn bản ủy quyền + CCCD người "
+            "được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form điền: Chủ hồ sơ + Người nộp (tự nộp → tích 'Chủ hồ sơ cũng là người nộp'), 'Nội dung yêu cầu "
+            "giải quyết' chép mục 2 của Đơn, panel thửa đất (địa chỉ, số tờ, số thửa — ưu tiên số liệu đo đạc "
+            "mới), 'Ghi chú' liệt kê giấy tờ trong tệp đính chung.\n"
+            "Bước đính kèm: GCN → dòng 1; văn bản đại diện → dòng 2 (chỉ khi nộp thay); Đơn cùng MỌI giấy tờ "
+            "còn lại (bản mô tả ranh giới, công văn, CCCD…) → đính CHUNG dòng 3 (đều Bản chính).\n"
+            "⚠ Thiếu CCCD thì ô 'Ngày sinh' giữ ngày sinh của tài khoản đăng nhập — sửa tay trước khi nộp. Cổng "
+            "ghi Đơn 'Mẫu số 18' nhưng người dân hay dùng Mẫu số 25 — đối chiếu với nơi tiếp nhận. Kiểm tra cơ "
+            "quan tiếp nhận ở bước chọn thủ tục đúng UBND phường/xã nơi có đất."
+        ),
+    },
+    {
         "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang",
         # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, field-key TRÙNG KHÍT dang-ky-bien-dong-dat-
         # dai-da-nang (panel "Thông tin chung"). Attach attp-row 11 dòng (dòng trùng + 1 dòng không tên →
@@ -7317,6 +7366,7 @@ _PIPELINE = {
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_process,
     "dang-ky-thay-doi-bien-phap-bao-dam-qsdd": dktd_bpbd_dn_process,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_process,
+    "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004": xac_dinh_lai_dt_dat_o_dn_process,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_process,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_process,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_process,
@@ -7517,6 +7567,7 @@ _ATTACH_PIPELINE = {
     "xoa-dang-ky-bien-phap-bao-dam-da-nang": xoa_bpbd_dn_attach,
     "dang-ky-thay-doi-bien-phap-bao-dam-qsdd": dktd_bpbd_dn_attach,
     "dinh-chinh-gcn-da-cap-da-nang": dinh_chinh_gcn_dn_attach,
+    "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004": xac_dinh_lai_dt_dat_o_dn_attach,
     "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bds-da-nang": nhan_chuyen_nhuong_du_an_dn_attach,
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn": dk_tai_san_gan_lien_dat_attach,
     "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua": dk_bien_dong_chia_tach_to_chuc_dn_attach,

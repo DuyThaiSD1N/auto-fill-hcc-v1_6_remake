@@ -1559,7 +1559,7 @@
     {
       "key": "xac-dinh-lai-dien-tich-dat-o-gcn-truoc-2004",
       "code": "1.012817",
-      "label": "Quảng Ngãi - Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
+      "label": "Xác định lại diện tích đất ở của hộ gia đình, cá nhân đã được cấp Giấy chứng nhận trước ngày 01 tháng 7 năm 2004",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76ef-752f-a5e5-ff4ce5737bb1",
       "needsAgencySelect": true,
       "autoConfirm": true
@@ -1823,6 +1823,14 @@
       "code": "1.012787",
       "label": "Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất cho người nhận chuyển nhượng quyền sử dụng đất, quyền sở hữu nhà ở, công trình xây dựng trong dự án bất động sản",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2b45f564b292",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xoa-dang-ky-thue-cho-thue-lai-qsdd-du-an-ket-cau-ha-tang",
+      "code": "1.012766",
+      "label": "Xóa đăng ký thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f11-772a-8dda-5bf1a8d83029",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
