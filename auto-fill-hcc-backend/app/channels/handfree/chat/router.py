@@ -168,6 +168,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết mở tab "Tạo giấy ủy quyền" từ mục Giấy tờ soạn tại quầy. Client cũ không khai →
         # card chọn thủ tục không có mục này (bấm vào cũng không có gì để mở).
         "supportsAuthorizationLetter": raw.get("supportsAuthorizationLetter") is True,
+        # Biết action focus_field/patch_fields (sửa từng ô bằng lời nói) và gửi patch_report.
+        # Client cũ không khai → BE không mở state "correcting" (không ai báo kết quả điền đè).
+        "supportsFieldCorrection": raw.get("supportsFieldCorrection") is True,
     }
 
 
@@ -315,8 +318,18 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             decided = intents.resolve_logout_choice(message)
             if decided:
                 intent = intents.Intent("action", decided)
+        if intent is None and message and not message.startswith("__") and flow.correction_ready(conv):
+            # Đang rà soát / sửa ô: câu tự do có thể là "tên mẹ sai, phải là ..." — hỏi bộ hiểu
+            # câu sửa ô trước. Ngoài state "correcting" chỉ nhận ý MỞ việc sửa; "đúng rồi",
+            # "thôi" ở bước rà soát vẫn để intents.resolve hiểu như cũ.
+            ctx = flow.correction_context(conv)
+            corrected = await intents.resolve_correction(message, ctx["rows"], ctx["pending"])
+            if corrected is not None and (
+                conv.get("state") == "correcting" or corrected.value in ("correct", "start", "undo")
+            ):
+                intent = corrected
         if intent is None:
-            intent = await intents.resolve(message, conv.get("state", "greet"))
+            intent = await intents.resolve(message, flow.intent_state(conv))
         reply = await flow.handle_turn(
             conv,
             intent,

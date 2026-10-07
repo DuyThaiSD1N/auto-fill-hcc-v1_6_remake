@@ -105,6 +105,9 @@
     // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
     // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
     supportsTuPhapMoi: true,
+    // Biết action focus_field/patch_fields (sửa từng ô bằng lời nói) và báo patch_report.
+    // Thiếu cờ → BE không mở bước sửa ô (không ai báo kết quả điền đè, phiên sẽ kẹt).
+    supportsFieldCorrection: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -4155,9 +4158,28 @@
         setStatus("");
         if (res?.error) addBotMd(`⚠️ ${res.error}`);
         renderFillLegend(a.fields, res);
+        // Nhãn ô đọc từ trang ({name: nhãn}) — BE cần để hiểu "tên mẹ sai" là ô nào khi công dân sửa bằng lời.
+        const described = await sendToContent({ action: "describeFields", fields: a.fields });
         // Báo BE kết quả điền THẬT (engine trả {filled, notFound, errors}) → bot sang rà soát.
-        const report = { filled: res?.filled || 0, notFound: res?.notFound || [], errors: res?.errors || [] };
+        const report = {
+          filled: res?.filled || 0, notFound: res?.notFound || [], errors: res?.errors || [],
+          labels: described?.labels || {},
+        };
         ask(`__action:fill_report:${JSON.stringify(report)}`, "system");
+      } else if (a.type === "focus_field" && Array.isArray(a.fields)) {
+        // Sửa ô bằng lời: cuộn tới + khoanh cam ô bot đang hỏi/đề xuất sửa.
+        await sendToContent({ action: "focusFields", fields: a.fields });
+      } else if (a.type === "patch_fields" && Array.isArray(a.fields)) {
+        // Điền đè đúng các ô công dân vừa xác nhận sửa; màu ô khác giữ nguyên, ô sửa tô xanh dương.
+        setStatus("Đang sửa trên tờ khai…");
+        const res = await sendToContent({ action: "fillFields", fields: a.fields, patch: true });
+        setStatus("");
+        const report = {
+          filled: res?.filled || 0,
+          notFound: res?.notFound || [],
+          errors: res?.errors || (res?.error ? [res.error] : (res ? [] : ["Không thấy tờ khai trên trang"])),
+        };
+        ask(`__action:patch_report:${JSON.stringify(report)}`, "system");
       } else if (a.type === "select_agency") {
         // Cổng React mới: engine content/portal-dvc.js chọn Tỉnh/Xã + bấm "Đồng ý".
         // Không chụp trạng thái đăng nhập trước khi bấm: phiên trên DVCQG không chứng minh

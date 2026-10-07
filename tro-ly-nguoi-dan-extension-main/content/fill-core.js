@@ -86,6 +86,42 @@ function injectAutofillStyles() {
       border-radius: 3px !important;
       transition: background-color 0.3s, outline 0.3s;
     }
+    /* Sửa ô bằng lời nói: xanh dương = đã sửa theo lời công dân, cam nhấp nháy = ô đang hỏi. */
+    .autofill-corrected {
+      background-color: #e8f0fe !important;
+      outline: 2px solid #2f6be0 !important;
+      outline-offset: 1px !important;
+      border-radius: 3px !important;
+      transition: background-color 0.3s, outline 0.3s;
+    }
+    .autofill-focus {
+      background-color: #fff4e5 !important;
+      outline: 3px solid #c2410c !important;
+      outline-offset: 2px !important;
+      border-radius: 3px !important;
+      animation: autofill-focus-pulse 1.4s ease-out infinite;
+    }
+    /* SurveyJS (Cổng DVC quốc gia mới): React vẽ lại là ghi đè class → đánh dấu bằng thuộc tính. */
+    [data-tlnd-mark="corrected"] .sd-input, [data-tlnd-mark="corrected"] fieldset,
+    [data-tlnd-mark="corrected"] > input, [data-tlnd-mark="corrected"] .cc-select {
+      background-color: #e8f0fe !important;
+      outline: 2px solid #2f6be0 !important;
+      outline-offset: 1px !important;
+      border-radius: 3px !important;
+    }
+    [data-tlnd-focus] .sd-input, [data-tlnd-focus] fieldset,
+    [data-tlnd-focus] > input, [data-tlnd-focus] .cc-select {
+      background-color: #fff4e5 !important;
+      outline: 3px solid #c2410c !important;
+      outline-offset: 2px !important;
+      border-radius: 3px !important;
+      animation: autofill-focus-pulse 1.4s ease-out infinite;
+    }
+    @keyframes autofill-focus-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(194, 65, 12, .45); }
+      70% { box-shadow: 0 0 0 10px rgba(194, 65, 12, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(194, 65, 12, 0); }
+    }
   `;
   (document.head || document.documentElement).appendChild(st);
 }
@@ -2168,6 +2204,142 @@ function _cellMatches(base, sub, val) {
   return choiceMatches({ textContent: cur, getAttribute: () => "" }, String(val));
 }
 
+// ── Sửa từng ô bằng lời nói: tìm ô theo field BE, đọc nhãn, khoanh ô, điền đè giữ màu ô khác ──
+const AUTOFILL_MARK_CLASSES = ["autofill-filled", "autofill-not-filled", "autofill-default", "autofill-corrected"];
+
+function locateFieldElement(f) {
+  for (const n of standardNameVariants(fieldCandidates(f || {}))) {
+    const esc = CSS.escape(n);
+    // SurveyJS: data-name thật kèm hậu tố "__<số>" đổi theo phiên bản biểu mẫu (vd citizenNDK_HoVaTen__1901).
+    const el = document.querySelector(`.sd-question[data-name="${esc}"], .sd-question[data-name^="${esc}__"]`)
+      || document.querySelector(`[formcontrolname="${esc}"]`)
+      || document.querySelector(`[name="${esc}"]:not([type="hidden"])`)
+      || document.querySelector(`[name$="_${esc}"]:not([type="hidden"])`);
+    if (el) return el;
+  }
+  return null;
+}
+
+// Phần tử bao trọn MỘT ô (để gỡ màu cũ của cả cụm ngày/tháng/năm, select2...).
+function fieldContainer(el) {
+  if (!el) return null;
+  return el.closest(".sd-question, mat-form-field, app-input, .formio-component")
+    || (el.tagName?.startsWith("X-") ? el : null)
+    || el.closest("x-input, x-input-number, x-date, x-date-text, x-select, x-select-area, x-radio, x-textarea")
+    || el;
+}
+
+function fieldMarkTarget(el) {
+  const box = fieldContainer(el);
+  if (!box) return null;
+  if (box.matches(".sd-question, mat-form-field, app-input")) return box;
+  if (box.tagName?.startsWith("X-")) return box.querySelector("input, select, textarea")?.parentElement || box;
+  return el;
+}
+
+function fieldLabelText(el) {
+  if (!el) return "";
+  const clean = (t) => String(t || "").replace(/\s+/g, " ").replace(/[\s*:]+$/, "").trim();
+  const ok = (t) => t && t.length <= 120;
+  const q = el.closest(".sd-question");
+  if (q) {
+    // Cổng SurveyJS lặp nhãn giữa các khối ("Họ, chữ đệm, tên" của con/mẹ/cha) → ghép tiêu đề khối.
+    const title = clean(q.querySelector(".sd-question__title, .sd-title")?.textContent);
+    const panel = clean(q.closest(".sd-panel")?.querySelector(".sd-panel__title, .sd-title")?.textContent);
+    return panel && panel !== title ? `${panel} › ${title}` : title;
+  }
+  const matLabel = el.closest("mat-form-field")?.querySelector("mat-label");
+  if (matLabel) return clean(matLabel.textContent);
+  const input = el.matches("input, select, textarea") ? el : el.querySelector("input, select, textarea");
+  if (input?.id) {
+    const lab = document.querySelector(`label[for="${CSS.escape(input.id)}"]`);
+    if (ok(clean(lab?.textContent))) return clean(lab.textContent);
+  }
+  const attr = clean(el.getAttribute("label") || el.getAttribute("aria-label") || input?.getAttribute("aria-label"));
+  if (ok(attr)) return attr;
+  // Leo tối đa 5 cấp: nhãn là <label>/legend con trực tiếp, hoặc ô chữ đứng ngay trước (bảng eForm).
+  let node = el;
+  for (let i = 0; i < 5 && node && node !== document.body; i++) {
+    const lab = Array.from(node.children || []).find((c) => c.matches("label, legend, .control-label, mat-label"));
+    if (lab && ok(clean(lab.textContent))) return clean(lab.textContent);
+    const sib = node.previousElementSibling;
+    if (sib && !sib.querySelector("input, select, textarea") && ok(clean(sib.textContent))) return clean(sib.textContent);
+    node = node.parentElement;
+  }
+  return "";
+}
+
+function describeFields(fields) {
+  const labels = {};
+  for (const f of fields || []) {
+    if (!f?.name || labels[f.name]) continue;
+    const label = fieldLabelText(locateFieldElement(f));
+    if (label) labels[f.name] = label;
+  }
+  return labels;
+}
+
+let fieldFocusTimer = null;
+function clearFieldFocus() {
+  document.querySelectorAll(".autofill-focus").forEach((el) => el.classList.remove("autofill-focus"));
+  document.querySelectorAll("[data-tlnd-focus]").forEach((el) => el.removeAttribute("data-tlnd-focus"));
+}
+
+// Ô SurveyJS: đánh dấu bằng thuộc tính trên .sd-question (class bị React ghi đè khi vẽ lại).
+const isSurveyQuestion = (el) => !!el?.matches?.(".sd-question");
+
+function focusFields(fields) {
+  injectAutofillStyles();
+  clearFieldFocus();
+  const targets = (fields || []).map((f) => fieldMarkTarget(locateFieldElement(f))).filter(Boolean);
+  targets.forEach((el) => (isSurveyQuestion(el)
+    ? el.setAttribute("data-tlnd-focus", "1")
+    : el.classList.add("autofill-focus")));
+  targets[0]?.scrollIntoView({ block: "center", behavior: "smooth" });
+  clearTimeout(fieldFocusTimer);
+  fieldFocusTimer = setTimeout(clearFieldFocus, 30000);
+  return targets.length;
+}
+
+function snapshotAutofillMarks() {
+  const sel = AUTOFILL_MARK_CLASSES.map((c) => "." + c).join(", ") + ", [data-tlnd-mark]";
+  return Array.from(document.querySelectorAll(sel)).map((el) => ({
+    el,
+    cls: AUTOFILL_MARK_CLASSES.filter((c) => el.classList.contains(c)),
+    attr: el.getAttribute("data-tlnd-mark"),
+  }));
+}
+
+function restoreMarkSnapshot(snapshot) {
+  for (const { el, cls, attr } of snapshot) {
+    if (!el.isConnected) continue;
+    el.classList.remove(...AUTOFILL_MARK_CLASSES);
+    if (cls.length) el.classList.add(...cls);
+    if (attr != null) el.setAttribute("data-tlnd-mark", attr);
+  }
+}
+
+// Engine điền nào cũng clearAutofillMarks() lúc bắt đầu → điền đè vài ô sẽ xoá màu của CẢ form.
+// Chụp màu trước, trả lại sau, rồi tô xanh dương riêng các ô vừa sửa được.
+function restoreMarksAfterPatch(snapshot, fields, result) {
+  restoreMarkSnapshot(snapshot);
+  const failed = new Set([...(result?.notFound || [])].map(String));
+  for (const f of fields || []) {
+    if (failed.has(String(f.name))) continue;
+    const el = locateFieldElement(f);
+    const box = fieldContainer(el);
+    const target = fieldMarkTarget(el);
+    if (!box || !target) continue;
+    [box, ...box.querySelectorAll("*")].forEach((node) => {
+      node.classList?.remove(...AUTOFILL_MARK_CLASSES, "autofill-focus");
+      node.removeAttribute?.("data-tlnd-mark");
+      node.removeAttribute?.("data-tlnd-focus");
+    });
+    if (isSurveyQuestion(target)) target.setAttribute("data-tlnd-mark", "corrected");
+    else target.classList.add("autofill-corrected");
+  }
+}
+
 function handleFillMessage(msg, _sender, sendResponse) {
   if (!msg) return;
   if (msg.action === "collectFormContext") {
@@ -2175,11 +2347,28 @@ function handleFillMessage(msg, _sender, sendResponse) {
     sendResponse({ ok: true, formContext: collectFormContext() });
     return;
   }
+  if (msg.action === "describeFields") {
+    if (!detectFormKind()) return;
+    sendResponse({ ok: true, labels: describeFields(msg.fields) });
+    return;
+  }
+  if (msg.action === "focusFields") {
+    if (!detectFormKind()) return;
+    sendResponse({ ok: true, found: focusFields(msg.fields) });
+    return;
+  }
   if (msg.action !== "fillFields") return;
   const formKind = detectFormKind();
   if (!formKind) return; // frame không chứa form thật
   const fields = Array.isArray(msg.fields) ? msg.fields : [];
   if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
+  // patch: điền đè vài ô công dân vừa sửa bằng lời — giữ màu các ô khác, ô sửa tô xanh dương.
+  const patch = msg.patch === true;
+  const snapshot = patch ? snapshotAutofillMarks() : null;
+  const finish = (res) => {
+    if (patch) { clearFieldFocus(); restoreMarksAfterPatch(snapshot, fields, res); }
+    sendResponse(res);
+  };
   const forceStandard = fields.some((f) =>
     String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[")
   );
@@ -2190,8 +2379,10 @@ function handleFillMessage(msg, _sender, sendResponse) {
       return;
     }
     // toolAccount: tỉnh/xã tài khoản quầy để điền "Kính gửi"/"Tại" (BE gửi kèm lệnh fill_fields).
-    H.fillFormSurveyJs(fields, msg.toolAccount || null)
-      .then(sendResponse)
+    const running = H.fillFormSurveyJs(fields, msg.toolAccount || null);
+    if (patch) restoreMarkSnapshot(snapshot); // engine vừa xoá màu đồng bộ — trả ngay, trước khi trang kịp vẽ
+    running
+      .then(finish)
       .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
     return true;
   }
@@ -2211,8 +2402,14 @@ function handleFillMessage(msg, _sender, sendResponse) {
     ? Promise.resolve(H.activateBacNinhTab("nhapdondangky"))
     : Promise.resolve(null);
   // LUÔN trả response (kể cả engine ném lỗi) → tránh sidebar retry gây điền lặp.
-  prepare.then(() => filler(fields))
-    .then(sendResponse)
+  prepare.then(() => {
+    const running = filler(fields);
+    // Engine xoá màu cả form NGAY phần đồng bộ đầu hàm; trả lại liền trong cùng nhịp để form
+    // không nhấp nháy mất màu suốt lúc điền đè (cuối lượt finish() trả lại lần nữa cho chắc).
+    if (patch) restoreMarkSnapshot(snapshot);
+    return running;
+  })
+    .then(finish)
     .catch((e) => sendResponse({ error: `Lỗi điền: ${e?.message || e}` }));
   return true; // giữ kênh phản hồi bất đồng bộ (cascade địa danh cần chờ)
 }
@@ -2225,6 +2422,7 @@ Object.assign(H, {
   FIELD_NAME_ALIASES, LEGACY_MIRROR_FIELDS,
   fillFormStandard, findStandardInput, findStandardSelect, isPostbackAddressField,
   detectFormKind, collectFormContext, readInputLikeValue, foldChoiceText, nodeText,
+  locateFieldElement, fieldLabelText, describeFields, focusFields,
 });
 
 })(); // end guard chống nạp trùng

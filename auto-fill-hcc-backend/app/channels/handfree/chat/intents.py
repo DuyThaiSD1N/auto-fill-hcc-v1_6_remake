@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Intent:
     kind: str                      # action | event | pick_procedure | pick_doc_method |
-                                   # confirm | deny | provide_phone | ask_question | unknown
+                                   # confirm | deny | provide_phone | ask_question | unknown |
+                                   # correct_field (value: correct|start|confirm|cancel)
     value: str = ""               # action name / event name / procedure_key / doc method...
     payload: dict = field(default_factory=dict)
 
@@ -487,3 +488,85 @@ async def resolve(message: str, state: str) -> Intent:
         logger.warning("[intents] LLM phân loại lỗi: %s", e)
 
     return Intent("unknown")
+
+
+# ── Sửa từng ô bằng lời nói (flow state "correcting") ──
+_CORRECTION_KINDS = {"correct", "start", "confirm", "cancel", "undo"}
+
+_CORRECTION_SYSTEM = """Bạn giúp người dân SỬA các ô đã điền sai trên tờ khai thủ tục hành chính.
+DANH SÁCH Ô trên tờ khai (id | mã ô | nhãn trên trang | giá trị đang ghi):
+{rows}
+{pending}
+Đọc câu của người dân và trả DUY NHẤT một JSON:
+{{"kind": "<correct|start|confirm|cancel|undo|other>", "targets": [{{"id": "<id ô>", "value": "<giá trị mới>"}}], "candidates": ["<id ô>"], "value": "<giá trị mới khi chưa rõ ô>", "subject_explicit": true, "include_related": false}}
+
+- correct: người dân chỉ ra ô sai và/hoặc nói giá trị đúng.
+  + Xác định ô theo NHÃN, mã ô và GIÁ TRỊ ĐANG GHI (vd "tên mẹ" → ô họ tên người mẹ). Nhãn dạng
+    "<Khối> › <Tên ô>" = cùng một tên ô lặp ở nhiều khối (người được khai sinh, mẹ, cha...).
+  + "subject_explicit": true khi câu nói RÕ ô của AI ("của mẹ", "tên bố", "cháu", "tôi"...); false khi
+    chỉ nói tên ô ("ngày sinh sai", "dân tộc là Tày"). Câu không rõ của ai mà nhiều khối có cùng tên ô
+    → KHÔNG tự đoán theo giá trị (năm sinh 1993 KHÔNG có nghĩa là của cha): trả "candidates".
+  + Chắc chắn ô nào → "targets". Câu khớp NHIỀU ô ngang nhau mà không nói rõ của ai (vd "ngày sinh"
+    khi có ngày sinh của con, mẹ, cha) → "targets": [], "candidates" = các id đó, "value" = giá trị mới.
+  + Nói ô sai nhưng CHƯA nói giá trị đúng → targets với "value": "".
+  + Đang hỏi giá trị cho một ô cụ thể mà người dân chỉ đọc giá trị → targets = ô đó.
+  + Đang chờ xác nhận mà người dân nói giá trị KHÁC ("không, là ...") → correct với ô đang chờ.
+  + CHUẨN HOÁ giá trị theo KIỂU của giá trị đang ghi: ngày dd/mm/yyyy (người dân không nói năm → giữ
+    năm đang ghi); số đọc bằng chữ → chữ số ("không không một" → "001"); tên riêng viết đủ dấu tiếng Việt,
+    giữ kiểu chữ HOA/thường như giá trị đang ghi; làm theo lời dặn chính tả ("Hoa không dấu", "Thủy chữ y").
+- start: muốn sửa nhưng CHƯA nói ô nào ("tôi muốn sửa", "có chỗ sai").
+- confirm: đồng ý đề xuất đang chờ ("đúng rồi", "sửa đi"). Nói "sửa cả"/"sửa hết" → "include_related": true.
+- cancel: thôi không sửa, giữ nguyên.
+- undo: muốn TRẢ LẠI / hoàn tác lần sửa vừa làm ("trả lại như cũ", "lúc nãy đúng rồi, để như cũ").
+  KHÔNG dùng correct với giá trị y hệt giá trị đang ghi.
+- other: câu KHÔNG phải sửa ô (đính kèm, hỏi lệ phí, chuyển bước, điền lại toàn bộ...).
+Chỉ dùng id có trong danh sách. Chỉ trả JSON, không giải thích."""
+
+
+def _correction_rows(rows: list[dict]) -> str:
+    return "\n".join(
+        f'  {r["id"]} | {r["name"]} | {r.get("label") or "-"} | {r.get("value") or "(trống)"}'
+        for r in rows[:200]
+    )
+
+
+async def resolve_correction(message: str, rows: list[dict], pending: str = "") -> Intent | None:
+    """Câu tự do lúc rà soát/đang sửa ô → Intent("correct_field", kind, payload) hoặc None
+    (không phải việc sửa ô → router chạy `resolve` như thường). Lỗi LLM → None."""
+    text = str(message or "").strip()
+    if not text or text.startswith("__") or not rows:
+        return None
+    ids = {r["id"] for r in rows}
+    try:
+        raw = await llm_chat(
+            [
+                {"role": "system", "content": _CORRECTION_SYSTEM.format(
+                    rows=_correction_rows(rows), pending=pending)},
+                {"role": "user", "content": text[:500]},
+            ],
+            temperature=0.0,
+            max_tokens=400,
+        )
+        m = re.search(r"\{[\s\S]*\}", raw or "")
+        data = json.loads(m.group(0)) if m else {}
+    except Exception as e:  # noqa: BLE001 — LLM best-effort, rơi về resolve thường
+        logger.warning("[intents] LLM sửa ô lỗi: %s", e)
+        return None
+    kind = str(data.get("kind") or "other")
+    if kind not in _CORRECTION_KINDS:
+        return None
+    targets = [
+        {"id": str(t.get("id")), "value": str(t.get("value") or "").strip()}
+        for t in data.get("targets") or [] if isinstance(t, dict) and str(t.get("id")) in ids
+    ]
+    candidates = [str(c) for c in data.get("candidates") or [] if str(c) in ids]
+    if kind == "correct" and not targets and not candidates:
+        return Intent("correct_field", "start")
+    return Intent("correct_field", kind, {
+        "targets": targets,
+        "candidates": candidates,
+        "value": str(data.get("value") or "").strip(),
+        "include_related": data.get("include_related") is True,
+        # Mặc định coi là đã rõ của ai: chỉ khi LLM nói rõ false mới mở rộng ra ô cùng tên.
+        "subject_explicit": data.get("subject_explicit") is not False,
+    })

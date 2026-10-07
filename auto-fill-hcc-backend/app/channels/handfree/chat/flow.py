@@ -3073,6 +3073,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                "notFound": list(intent.payload.get("notFound") or []),
                "errors": list(intent.payload.get("errors") or [])}
         conv["fill_report"] = rep
+        conv["field_labels"] = _clean_field_labels(intent.payload.get("labels"))
         auto_wait_attachment = bool(
             conv.get("auto_attach_after_fill")
             and get_attach_pipeline(conv.get("procedure_key") or "")
@@ -3112,11 +3113,13 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         _clear_documents_adjustment(conv)
         if auto_wait_attachment:
             r.chips = [
+                *_correction_chip(conv),
                 {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                 _supplement_documents_chip(),
             ]
         else:
             r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
+                       *_correction_chip(conv),
                        {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip()]
         return r
@@ -3153,6 +3156,9 @@ async def _restart_declaration_pipeline(conv: dict) -> Reply:
 async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
     from app.channels.handfree.chat import pipeline_runner
 
+    corrected = await _correction_entry(conv, intent)
+    if corrected is not None:
+        return corrected
     if intent.kind == "action" and intent.value == "refill":
         return await _restart_declaration_pipeline(conv)
     if intent.kind == "action" and intent.value == "add_documents":
@@ -3175,15 +3181,459 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
             conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or "",
             _attachment_options(conv)))
         return Reply(*_fmt(vi.ATTACH_PLANNING))
-    r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=(conv.get("fill_report") or {}).get("filled", 0),
+    hint = vi.CORRECTION_HINT if correction_ready(conv) else None
+    r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, note=hint, filled=(conv.get("fill_report") or {}).get("filled", 0),
                     missing_note=""))
     r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
+               *_correction_chip(conv),
                {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                _supplement_documents_chip()]
     return r
 
 
+# ── Sửa từng ô bằng lời nói (state "correcting") ──
+# Người dân nói "tên mẹ sai, phải là ..." → LLM (intents.resolve_correction) chỉ ra ô + giá trị
+# mới → đọc lại xác nhận → extension điền đè ĐÚNG các ô đó (action patch_fields) → báo
+# patch_report → quay về state cũ (reviewing/attaching). Chỉ bật khi extension khai
+# supportsFieldCorrection: client cũ không hiểu patch_fields sẽ để phiên kẹt ở "correcting".
+_CORRECTION_STATES = ("reviewing", "attaching", "correcting")
+_CORRECTION_LOG_LIMIT = 50
+
+
+def _supports_field_correction(conv: dict) -> bool:
+    return (conv.get("client_capabilities") or {}).get("supportsFieldCorrection") is True
+
+
+def _clean_field_labels(raw) -> dict:
+    """Nhãn ô đọc từ trang (extension gửi kèm fill_report): {name: nhãn} — chặn kích thước."""
+    if not isinstance(raw, dict):
+        return {}
+    out = {}
+    for k, v in list(raw.items())[:300]:
+        k, v = str(k)[:200], " ".join(str(v or "").split())[:120]
+        if k and v:
+            out[k] = v
+    return out
+
+
+def _correction_chip(conv: dict) -> list[dict]:
+    if not correction_ready(conv):
+        return []
+    return [{"label": "✏️ Sửa một ô", "send": "__action:start_correction"}]
+
+
+def intent_state(conv: dict) -> str:
+    """State dùng để phân loại câu tự do bằng intents.resolve. "correcting" là bước phụ, không có
+    bảng lệnh riêng — LLM thấy state lạ sẽ chỉ còn lệnh toàn cục (new_procedure) và hiểu nhầm
+    "sang đính kèm đi" thành ĐỔI THỦ TỤC, xoá cả phiên. Dùng state gốc (reviewing/attaching)."""
+    state = conv.get("state", "greet")
+    if state == "correcting":
+        return (conv.get("correction") or {}).get("return_state") or "reviewing"
+    return state
+
+
+def correction_ready(conv: dict) -> bool:
+    """Câu tự do lượt này có cần qua bộ hiểu câu SỬA Ô không (router hỏi trước intents.resolve)."""
+    state = conv.get("state")
+    if state not in _CORRECTION_STATES or not _supports_field_correction(conv):
+        return False
+    if not conv.get("fields") or not conv.get("fill_report"):
+        return False
+    # Đang chờ sang bước Thành phần hồ sơ = trang VẪN là tờ khai. Planner đính kèm đã chạy thì
+    # trang đã rời Kê khai, điền đè không còn chỗ để điền.
+    if state == "attaching" and conv.get("pipeline_status") != "waiting_attachment_page":
+        return False
+    return True
+
+
+def _field_value_text(value) -> str:
+    if isinstance(value, dict):
+        return ", ".join(str(v) for v in value.values() if v not in (None, ""))
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value if v not in (None, ""))
+    return "" if value is None else str(value)
+
+
+def _correction_field_label(conv: dict, field: dict) -> str:
+    labels = conv.get("field_labels") or {}
+    return str(labels.get(field.get("name")) or field.get("name") or "")
+
+
+def correction_context(conv: dict) -> dict:
+    """Ngữ cảnh cho LLM: danh sách ô (id fN theo vị trí trong conv.fields) + việc đang chờ."""
+    rows = []
+    for i, f in enumerate(conv.get("fields") or []):
+        if not isinstance(f, dict) or not f.get("name") or f.get("comp") == "dom-expect":
+            continue
+        rows.append({
+            "id": f"f{i}",
+            "name": str(f["name"]),
+            "label": str((conv.get("field_labels") or {}).get(f["name"]) or ""),
+            "value": _field_value_text(f.get("value"))[:120],
+        })
+    corr = conv.get("correction") or {}
+    pending = ""
+    if conv.get("state") == "correcting":
+        stage = corr.get("stage")
+        if stage == "confirm":
+            pending = "ĐANG CHỜ người dân xác nhận đề xuất sửa: " + "; ".join(
+                f'{t["id"]} ({t["label"]}) → "{t["new"]}"' for t in corr.get("targets") or []
+            )
+        elif stage == "ask_value":
+            t = (corr.get("targets") or [{}])[0]
+            pending = f'ĐANG HỎI giá trị đúng cho ô {t.get("id")} ({t.get("label")}) — câu trả lời là giá trị của ô này.'
+        elif stage == "pick":
+            pending = ("ĐANG HỎI người dân chọn MỘT trong các ô: " + ", ".join(corr.get("candidates") or [])
+                       + f' (giá trị mới đã nói: "{corr.get("value") or ""}").')
+    return {"rows": rows, "pending": pending}
+
+
+def _correction_target(conv: dict, fid: str, new_value: str) -> dict | None:
+    fields = conv.get("fields") or []
+    try:
+        idx = int(str(fid)[1:]) if str(fid).startswith("f") else -1
+    except ValueError:
+        return None
+    if not 0 <= idx < len(fields) or not isinstance(fields[idx], dict):
+        return None
+    f = fields[idx]
+    return {
+        "id": f"f{idx}",
+        "idx": idx,
+        "name": str(f.get("name") or ""),
+        "label": _correction_field_label(conv, f),
+        "old": _field_value_text(f.get("value")),
+        "new": str(new_value or "").strip(),
+        "structured": isinstance(f.get("value"), (dict, list)),
+    }
+
+
+def _focus_action(conv: dict, targets: list[dict]) -> dict:
+    fields = conv.get("fields") or []
+    return {"type": "focus_field", "fields": [dict(fields[t["idx"]]) for t in targets]}
+
+
+def _correction_cancel_chip() -> dict:
+    return {"label": "✖ Thôi, giữ nguyên", "send": "__action:cancel_correction"}
+
+
+def _undo_chip(conv: dict) -> list[dict]:
+    if (conv.get("correction") or {}).get("last_applied"):
+        return [{"label": "↩️ Hoàn tác lần sửa trước", "send": "__action:undo_correction"}]
+    return []
+
+
+def _correction_ask_reply() -> Reply:
+    r = Reply(*_fmt(vi.CORRECTION_ASK))
+    r.chips = [_correction_cancel_chip()]
+    return r
+
+
+def _short_label(label: str) -> str:
+    return fold(str(label or "").split("›")[-1])
+
+
+def _same_label_fields(conv: dict, target: dict) -> list[str]:
+    """Id các ô KHÁC có cùng tên ô (phần sau "›") với ô đích — chỉ khi nhãn có tiêu đề khối."""
+    if "›" not in target["label"]:
+        return []
+    want = _short_label(target["label"])
+    out = []
+    for i, f in enumerate(conv.get("fields") or []):
+        if i == target["idx"] or not isinstance(f, dict) or f.get("comp") == "dom-expect":
+            continue
+        if _short_label(_correction_field_label(conv, f)) == want:
+            out.append(f"f{i}")
+    return out
+
+
+# Ô chọn (dropdown/radio/địa bàn): giá trị trùng giữa các ô là chuyện thường ("Kinh", "Nam") →
+# không phải cùng một thông tin nên KHÔNG gợi ý sửa kèm.
+_CHOICE_COMP_HINTS = ("select", "dropdown", "radio", "area", "checkbox")
+
+
+def _is_choice_field(field: dict) -> bool:
+    comp = str(field.get("comp") or "").lower()
+    return any(h in comp for h in _CHOICE_COMP_HINTS)
+
+
+def _correction_related(conv: dict, targets: list[dict]) -> list[dict]:
+    """Ô KHÁC đang ghi y hệt giá trị cũ của ô đang sửa (vd mẹ cũng là người đi khai).
+
+    Chỉ xét ô nhập tự do có giá trị đủ dài (họ tên, số giấy tờ, ngày) — giá trị ngắn hoặc ô chọn
+    trùng nhau là ngẫu nhiên."""
+    fields = conv.get("fields") or []
+    taken = {t["idx"] for t in targets}
+    related = []
+    for t in targets:
+        old = fold(t["old"])
+        if len(old.replace(" ", "")) < 6 or _is_choice_field(fields[t["idx"]]):
+            continue
+        for i, f in enumerate(fields):
+            if i in taken or not isinstance(f, dict) or isinstance(f.get("value"), (dict, list)):
+                continue
+            if _is_choice_field(f):
+                continue
+            if fold(_field_value_text(f.get("value"))) == old:
+                rel = _correction_target(conv, f"f{i}", t["new"])
+                if rel:
+                    related.append(rel)
+                    taken.add(i)
+    return related
+
+
+def _correction_confirm_reply(conv: dict) -> Reply:
+    corr = conv["correction"]
+    targets = corr.get("targets") or []
+    related = _correction_related(conv, targets)
+    corr["stage"] = "confirm"
+    corr["related"] = related
+    lines = "\n".join(
+        f'• **{t["label"]}**: ~~{t["old"] or "(đang trống)"}~~ → **{t["new"]}**' for t in targets
+    )
+    tts_lines = "; ".join(f'{t["label"]} thành {t["new"]}' for t in targets)
+    note = vi.CORRECTION_RELATED_NOTE if related else None
+    r = Reply(*_fmt(vi.CORRECTION_CONFIRM, note=note, lines=lines, tts_lines=tts_lines,
+                    related=", ".join(t["label"] for t in related)))
+    if related:
+        r.chips = [
+            {"label": "✅ Sửa cả ô trùng", "send": '__action:apply_correction:{"related":true}', "solid": True},
+            {"label": "Chỉ sửa ô này", "send": "__action:apply_correction"},
+        ]
+    else:
+        r.chips = [{"label": "✅ Đúng, sửa đi", "send": "__action:apply_correction", "solid": True}]
+    r.chips += [{"label": "🎤 Nói lại", "send": "__action:start_correction"}, _correction_cancel_chip()]
+    r.actions = [_focus_action(conv, targets + related)]
+    return r
+
+
+def _correction_from_intent(conv: dict, intent: Intent) -> Reply:
+    """Áp kết quả LLM (kind=correct) vào phiên sửa đang mở."""
+    corr = conv["correction"]
+    payload = intent.payload or {}
+    targets = [t for t in (
+        _correction_target(conv, x.get("id"), x.get("value"))
+        for x in payload.get("targets") or [] if isinstance(x, dict)
+    ) if t]
+    candidates = [c for c in payload.get("candidates") or [] if _correction_target(conv, c, "")]
+    value = str(payload.get("value") or "").strip()
+    if len(targets) == 1 and payload.get("subject_explicit") is False:
+        # Câu không nói của ai ("ngày sinh sai") mà form có cùng tên ô ở khối khác (con/mẹ/cha) →
+        # hỏi lại, không để LLM đoán theo giá trị rồi sửa nhầm ngày sinh của cháu thành năm 1993.
+        siblings = _same_label_fields(conv, targets[0])
+        if siblings:
+            candidates, value, targets = [targets[0]["id"], *siblings], targets[0]["new"], []
+    if not targets and len(candidates) == 1:
+        targets = [_correction_target(conv, candidates[0], value)]
+    if not targets and len(candidates) > 1:
+        corr.update(stage="pick", candidates=candidates, value=value, targets=[])
+        picks = [_correction_target(conv, c, value) for c in candidates]
+        r = Reply(*_fmt(vi.CORRECTION_PICK_FIELD, count=len(picks)))
+        r.chips = [{
+            "label": f'{t["label"]} — {t["old"] or "đang trống"}',
+            "send": f'__action:pick_correction_field:{t["id"]}',
+        } for t in picks] + [_correction_cancel_chip()]
+        r.actions = [_focus_action(conv, picks)]
+        return r
+    if not targets:
+        r = Reply(*_fmt(vi.CORRECTION_NOT_UNDERSTOOD))
+        r.chips = [_correction_cancel_chip()]
+        return r
+    structured = next((t for t in targets if t["structured"]), None)
+    if structured:
+        corr.update(stage="ask", targets=[])
+        r = Reply(*_fmt(vi.CORRECTION_UNSUPPORTED, label=structured["label"]))
+        r.chips = [_correction_cancel_chip()]
+        r.actions = [_focus_action(conv, [structured])]
+        return r
+    unchanged = [t for t in targets if t["new"] and t["new"] == t["old"]]
+    if unchanged and len(unchanged) == len(targets):
+        same = unchanged[0]
+        corr.update(stage="ask_value", targets=[{**same, "new": ""}])
+        r = Reply(*_fmt(vi.CORRECTION_SAME_VALUE, label=same["label"], old=same["old"]))
+        r.chips = _undo_chip(conv) + [_correction_cancel_chip()]
+        r.actions = [_focus_action(conv, [same])]
+        return r
+    targets = [t for t in targets if t not in unchanged]
+    missing = next((t for t in targets if not t["new"]), None)
+    if missing:
+        corr.update(stage="ask_value", targets=[missing])
+        r = Reply(*_fmt(vi.CORRECTION_ASK_VALUE, label=missing["label"], old=missing["old"] or "trống"))
+        r.chips = [_correction_cancel_chip()]
+        r.actions = [_focus_action(conv, [missing])]
+        return r
+    corr["targets"] = targets
+    return _correction_confirm_reply(conv)
+
+
+def _begin_correction(conv: dict, intent: Intent | None = None) -> Reply:
+    prev = conv.get("correction") or {}
+    if conv.get("state") != "correcting":
+        prev = {"return_state": conv.get("state"), "last_applied": prev.get("last_applied") or []}
+    prev.update(stage="ask", targets=[], candidates=[], related=[], value="")
+    conv["correction"] = prev
+    conv["state"] = "correcting"
+    if intent is None or intent.kind != "correct_field" or intent.value != "correct":
+        return _correction_ask_reply()
+    return _correction_from_intent(conv, intent)
+
+
+def _patch_fields_reply(conv: dict, targets: list[dict], *, undo: bool) -> Reply:
+    fields = conv.get("fields") or []
+    patch = []
+    for t in targets:
+        f = dict(fields[t["idx"]])
+        f["value"] = t["new"]
+        f["overwrite"] = True
+        f.pop("default", None)
+        patch.append(f)
+    corr = conv["correction"]
+    corr.update(stage="applying", applying=targets, undo=undo)
+    conv["state"] = "correcting"
+    r = Reply(*_fmt(vi.CORRECTION_APPLYING))
+    r.actions = [{"type": "patch_fields", "fields": patch}]
+    return r
+
+
+def _end_correction(conv: dict, tpl: dict | None = None) -> Reply:
+    corr = conv.get("correction") or {}
+    conv["state"] = corr.get("return_state") or "reviewing"
+    corr.update(stage="", targets=[], candidates=[], related=[], applying=[])
+    return Reply(*_fmt(tpl)) if tpl else Reply()
+
+
+def _correction_next_chips(conv: dict) -> list[dict]:
+    chips = []
+    if conv.get("state") == "reviewing":
+        chips.append({"label": "📎 Không, sang đính kèm ▶", "send": "__action:confirm_review", "solid": True})
+    chips.append({"label": "✏️ Sửa ô khác", "send": "__action:start_correction"})
+    if (conv.get("correction") or {}).get("last_applied"):
+        chips.append({"label": "↩️ Hoàn tác", "send": "__action:undo_correction"})
+    return chips
+
+
+async def _handle_patch_report(conv: dict, payload: dict) -> Reply:
+    corr = conv.get("correction") or {}
+    applying = corr.get("applying") or []
+    undo = bool(corr.get("undo"))
+    not_found = {str(x) for x in payload.get("notFound") or []}
+    errors = list(payload.get("errors") or [])
+    filled = int(payload.get("filled") or 0)
+    if errors and filled == 0:
+        ok, failed = [], applying
+    else:
+        ok = [t for t in applying if t["name"] not in not_found]
+        failed = [t for t in applying if t["name"] in not_found]
+    fields = conv.get("fields") or []
+    for t in ok:
+        if 0 <= t["idx"] < len(fields):
+            fields[t["idx"]] = {**fields[t["idx"]], "value": t["new"]}
+            fields[t["idx"]].pop("default", None)
+    if ok and not undo:
+        log = conv.setdefault("correction_log", [])
+        now = datetime.now(timezone.utc).isoformat()
+        log.extend({"name": t["name"], "label": t["label"], "old": t["old"], "new": t["new"], "at": now}
+                   for t in ok)
+        del log[:-_CORRECTION_LOG_LIMIT]
+        from app.channels.handfree.chat import tracing
+        await tracing.set_report(conv.get("trace_request_id"), "corrections", {"items": list(log)})
+    corr["last_applied"] = [] if undo else ok
+    _end_correction(conv)
+    names = ", ".join(t["label"] for t in ok)
+    failed_names = ", ".join(t["label"] for t in failed)
+    if not ok:
+        r = Reply(*_fmt(vi.CORRECTION_ALL_FAILED, failed=failed_names or "đã chọn"))
+    elif undo:
+        r = Reply(*_fmt(vi.CORRECTION_UNDONE, count=len(ok), names=names))
+    else:
+        r = Reply(*_fmt(vi.CORRECTION_DONE, note=vi.CORRECTION_FAILED_NOTE if failed else None,
+                        count=len(ok), names=names, failed=failed_names))
+    r.chips = _correction_next_chips(conv)
+    return r
+
+
+def _undo_correction(conv: dict) -> Reply:
+    corr = conv.setdefault("correction", {})
+    last = corr.get("last_applied") or []
+    if not last:
+        return Reply(*_fmt(vi.CORRECTION_NOTHING_TO_UNDO))
+    if conv.get("state") != "correcting":
+        corr["return_state"] = conv.get("state")
+    back = [{**t, "old": t["new"], "new": t["old"]} for t in last]
+    return _patch_fields_reply(conv, back, undo=True)
+
+
+async def _correction_entry(conv: dict, intent: Intent) -> Reply | None:
+    """Lối vào sửa ô từ reviewing/attaching. None = không phải việc sửa ô."""
+    if not correction_ready(conv):
+        return None
+    if intent.kind == "action" and intent.value == "start_correction":
+        return _begin_correction(conv)
+    if intent.kind == "action" and intent.value == "undo_correction":
+        return _undo_correction(conv)
+    if intent.kind == "correct_field" and intent.value in ("correct", "start"):
+        return _begin_correction(conv, intent)
+    if intent.kind == "correct_field" and intent.value == "undo":
+        return _undo_correction(conv)
+    return None
+
+
+async def _handle_correcting(conv: dict, intent: Intent) -> Reply:
+    corr = conv.get("correction") or {}
+    stage = corr.get("stage") or "ask"
+    if intent.kind == "action":
+        if intent.value == "patch_report":
+            return await _handle_patch_report(conv, intent.payload or {})
+        if stage == "applying":
+            return Reply(*_fmt(vi.CORRECTION_STILL_APPLYING))
+        if intent.value == "start_correction":
+            return _begin_correction(conv)
+        if intent.value == "cancel_correction":
+            return _end_correction(conv, vi.CORRECTION_CANCELLED)
+        if intent.value == "undo_correction":
+            return _undo_correction(conv)
+        if intent.value == "apply_correction" and stage == "confirm":
+            related = bool((intent.payload or {}).get("related"))
+            return _patch_fields_reply(conv, list(corr.get("targets") or [])
+                                       + (list(corr.get("related") or []) if related else []), undo=False)
+        if intent.value == "pick_correction_field" and stage == "pick":
+            fid = str((intent.payload or {}).get("value") or "")
+            if fid in (corr.get("candidates") or []):
+                return _correction_from_intent(conv, Intent(
+                    "correct_field", "correct", {"targets": [{"id": fid, "value": corr.get("value") or ""}]}))
+        # Lệnh của bước cũ (Đính kèm, Điền lại...) → thoát sửa ô, trả về đúng handler của bước đó.
+        _end_correction(conv)
+        handler = _HANDLERS.get(conv["state"], _handle_reviewing)
+        return await handler(conv, intent)
+    if intent.kind == "event":
+        return Reply()
+    if stage == "applying":
+        return Reply(*_fmt(vi.CORRECTION_STILL_APPLYING))
+    if intent.kind == "correct_field":
+        if intent.value == "cancel":
+            return _end_correction(conv, vi.CORRECTION_CANCELLED)
+        if intent.value == "confirm" and stage == "confirm":
+            related = bool((intent.payload or {}).get("include_related"))
+            return _patch_fields_reply(conv, list(corr.get("targets") or [])
+                                       + (list(corr.get("related") or []) if related else []), undo=False)
+        if intent.value == "start":
+            return _begin_correction(conv)
+        if intent.value == "undo":
+            return _undo_correction(conv)
+        return _correction_from_intent(conv, intent)
+    if intent.kind == "confirm" and stage == "confirm":
+        return _patch_fields_reply(conv, list(corr.get("targets") or []), undo=False)
+    if intent.kind == "deny":
+        return _begin_correction(conv) if stage == "confirm" else _end_correction(conv, vi.CORRECTION_CANCELLED)
+    r = Reply(*_fmt(vi.CORRECTION_NOT_UNDERSTOOD))
+    r.chips = [_correction_cancel_chip()]
+    return r
+
+
 async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
+    corrected = await _correction_entry(conv, intent)
+    if corrected is not None:
+        return corrected
     if intent.kind == "action" and intent.value == "refill":
         return await _restart_declaration_pipeline(conv)
     if intent.kind == "action" and intent.value == "add_documents":
@@ -3587,12 +4037,16 @@ _HANDLERS = {
     "filling": _handle_filling,
     "reviewing": _handle_reviewing,
     "attaching": _handle_attaching,
+    "correcting": _handle_correcting,
     "done": _handle_done,
 }
 
 
 def build_progress(conv: dict) -> dict:
     state = conv.get("state", "greet")
+    if state == "correcting":
+        # Sửa ô là bước phụ trong Rà soát/Đính kèm — thanh tiến trình giữ bước gốc.
+        state = (conv.get("correction") or {}).get("return_state") or "reviewing"
     try:
         step = vi.STEP_ORDER.index(state) + 1
     except ValueError:

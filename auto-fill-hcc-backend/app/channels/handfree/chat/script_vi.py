@@ -997,6 +997,104 @@ FILL_REPORT_REVIEW = {
     "tts": "Em điền xong các ô rồi ạ. Công dân rà lại trên form và sửa trực tiếp ô nào chưa đúng giúp em ạ.",
 }
 
+# ── Sửa từng ô bằng lời nói (state "correcting") ──
+CORRECTION_HINT = {
+    "md": "\n\n✏️ Ô nào sai, công dân cứ **nói** cho em, ví dụ: “tên mẹ sai, phải là Nguyễn Thị Hoa”.",
+    "tts": " Ô nào sai công dân cứ nói cho em nhé.",
+}
+
+CORRECTION_ASK = {
+    "md": (
+        "✏️ Công dân nói giúp em **ô nào sai** và **thông tin đúng** là gì.\n\n"
+        "Ví dụ: “tên mẹ sai, phải là Nguyễn Thị Hoa” hoặc “ngày sinh của cháu là 5 tháng 3 năm 2026”."
+    ),
+    "tts": "Công dân nói giúp em ô nào sai và thông tin đúng là gì ạ.",
+}
+
+CORRECTION_ASK_VALUE = {
+    "md": "Ô **{label}** đang ghi “{old}”. Công dân nói giúp em **thông tin đúng** ạ.",
+    "tts": "Ô {label} đang ghi {old}. Công dân nói giúp em thông tin đúng ạ.",
+}
+
+CORRECTION_PICK_FIELD = {
+    "md": "Tờ khai có **{count} ô** khớp với câu công dân nói. Công dân muốn sửa ô nào ạ?",
+    "tts": "Tờ khai có mấy ô giống nhau. Công dân muốn sửa ô nào ạ?",
+}
+
+CORRECTION_CONFIRM = {
+    "md": "Em hiểu là sửa:\n\n{lines}\n\n**Đúng không ạ?**",
+    "tts": "Em sửa {tts_lines}. Đúng không ạ?",
+}
+
+CORRECTION_RELATED_NOTE = {
+    "md": "\n\nℹ️ Ô **{related}** cũng đang ghi giống vậy — công dân có muốn sửa luôn không?",
+    "tts": " Ô {related} cũng đang ghi giống vậy, công dân có muốn sửa luôn không?",
+}
+
+CORRECTION_APPLYING = {
+    "md": "⏳ Em đang sửa trên tờ khai…",
+    "tts": "Em đang sửa trên tờ khai.",
+}
+
+CORRECTION_DONE = {
+    "md": "✓ Em đã sửa **{count} ô**: {names} (viền xanh dương trên tờ khai).\n\n**Còn ô nào sai nữa không ạ?** Công dân cứ nói tiếp.",
+    "tts": "Em đã sửa xong. Còn ô nào sai nữa không ạ?",
+}
+
+CORRECTION_FAILED_NOTE = {
+    "md": "\n\n⚠️ Em chưa sửa được ô **{failed}** trên trang hiện tại — công dân sửa trực tiếp trên tờ khai giúp em.",
+    "tts": " Có ô em chưa sửa được, công dân sửa trực tiếp trên tờ khai giúp em.",
+}
+
+CORRECTION_ALL_FAILED = {
+    "md": (
+        "⚠️ Em chưa sửa được ô **{failed}** — có thể trang không còn ở bước Kê khai."
+        " Công dân quay lại trang tờ khai rồi nói lại, hoặc sửa trực tiếp trên tờ khai giúp em."
+    ),
+    "tts": "Em chưa sửa được trên trang. Công dân quay lại trang tờ khai rồi nói lại giúp em.",
+}
+
+CORRECTION_UNDONE = {
+    "md": "↩️ Em đã trả lại giá trị cũ cho **{count} ô**: {names}.",
+    "tts": "Em đã trả lại giá trị cũ rồi ạ.",
+}
+
+CORRECTION_NOTHING_TO_UNDO = {
+    "md": "Chưa có lần sửa nào để hoàn tác ạ.",
+    "tts": "Chưa có lần sửa nào để hoàn tác ạ.",
+}
+
+CORRECTION_CANCELLED = {
+    "md": "Dạ, em giữ nguyên tờ khai.",
+    "tts": "Dạ, em giữ nguyên tờ khai.",
+}
+
+CORRECTION_NOT_UNDERSTOOD = {
+    "md": (
+        "Em chưa rõ ô nào cần sửa. Công dân nói lại giúp em **tên ô** và **thông tin đúng**, "
+        "ví dụ “họ tên cha là Trần Văn Nam”."
+    ),
+    "tts": "Em chưa rõ ô nào cần sửa. Công dân nói lại giúp em tên ô và thông tin đúng ạ.",
+}
+
+CORRECTION_UNSUPPORTED = {
+    "md": (
+        "Ô **{label}** là ô chọn nhiều cấp, bản thử này chưa sửa bằng lời được — "
+        "công dân chọn trực tiếp trên tờ khai giúp em ạ."
+    ),
+    "tts": "Ô này em chưa sửa bằng lời được, công dân chọn trực tiếp trên tờ khai giúp em ạ.",
+}
+
+CORRECTION_SAME_VALUE = {
+    "md": "Ô **{label}** đang ghi đúng là “{old}” rồi ạ. Công dân muốn sửa thành gì ạ?",
+    "tts": "Ô {label} đang ghi đúng là {old} rồi ạ. Công dân muốn sửa thành gì ạ?",
+}
+
+CORRECTION_STILL_APPLYING = {
+    "md": "⏳ Em vẫn đang sửa trên tờ khai, công dân chờ em một chút ạ.",
+    "tts": "Em vẫn đang sửa, công dân chờ em một chút ạ.",
+}
+
 PIPELINE_ERROR = {
     "md": (
         "⚠️ Em gặp lỗi khi đọc giấy tờ: *{error}*\n\n"
@@ -1759,6 +1857,7 @@ STEP_LABELS = {
     "filling": "Điền hồ sơ",
     "reviewing": "Rà soát",
     "attaching": "Đính kèm",
+    "correcting": "Sửa thông tin",
     "done": "Hoàn thành",
 }
 
