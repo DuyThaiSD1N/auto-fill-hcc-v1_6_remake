@@ -27,14 +27,15 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     opts = options or {}
     page = opts.get("page") or opts.get("businessPage") or DEFAULT_PAGE
     compact = res["fields"]  # facts thô từ LLM — dùng để map cho từng trang
+    skip_start_date = bool(opts.get(mapper.SKIP_START_DATE_OPTION))  # server đặt theo tài khoản
 
     # Chế độ FILL TẤT CẢ 8 trang trong 1 lần (extension tự lặp fill→lưu→sang trang).
     if opts.get("allPages") or str(page).lower() in _ALL_PAGES:
-        res["pages"] = mapper.enrich_all(compact)
+        res["pages"] = mapper.enrich_all(compact, skip_start_date=skip_start_date)
         res["fields"] = res["pages"].get(DEFAULT_PAGE, [])
         res.setdefault("extracted", {})["page"] = "__all__"
         return res
 
-    res["fields"] = mapper.enrich(compact, page=page)
+    res["fields"] = mapper.enrich(compact, page=page, skip_start_date=skip_start_date)
     res.setdefault("extracted", {})["page"] = page
     return res

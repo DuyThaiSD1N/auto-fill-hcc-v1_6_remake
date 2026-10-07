@@ -11,6 +11,40 @@ from app.pipelines._shared.formatting import normalize_date
 from app.pipelines._shared.area_remap import remap_area
 
 
+# Cấu hình theo tài khoản: phường Phương Liễu (Bắc Ninh) KHÔNG điền "Ngày bắt đầu hoạt động kinh
+# doanh" (trang Thông tin về thuế), kể cả khi giấy tờ có ghi; nơi khác giữ nguyên. Mapper không biết
+# tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để
+# server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+PROCEDURE_KEY = "dang-ky-kinh-doanh"
+SKIP_START_DATE_OPTION = "skipBusinessStartDate"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
+
+def is_bac_ninh_phuong_lieu(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Phương Liễu, Bắc Ninh ("Tỉnh"/"Thành phố Bắc Ninh", có/không
+    tiền tố "Phường"/"Xã" đều khớp; xã khớp ĐÚNG tên để không dính nơi khác có tên chứa "Phương Liễu")."""
+    if not user:
+        return False
+    tinh = _fold_vi(user.get("tinh") or "")
+    xa = _fold_vi(user.get("xa") or "")
+    # "Phương Liễu" fold ra "phuong lieu" trùng tiền tố "Phường" → so cả bản gốc lẫn bản đã bỏ tiền tố.
+    names = {xa}
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            names.add(xa[len(prefix):].strip())
+            break
+    return "bac ninh" in tinh and "phuong lieu" in names
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ bỏ ngày bắt đầu kinh doanh do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(SKIP_START_DATE_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_bac_ninh_phuong_lieu(user):
+        result[SKIP_START_DATE_OPTION] = True
+    return result
+
+
 def _by_name(fields: list[dict]) -> dict[str, Any]:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -461,7 +495,7 @@ def _main_business_code(values: dict[str, Any]) -> str:
     return ""
 
 
-def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
+def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool = False) -> list[dict]:
     values = _by_name(fields)
     selected_page = page or DEFAULT_PAGE
     out: list[dict] = []
@@ -544,7 +578,8 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
         add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld", "dom-input", _clean_phone(values.get("Thue_DienThoai")))
         add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_FAXFld", "dom-input", values.get("Thue_Fax"))
         add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_EMAILFld", "dom-input", _clean_email(values.get("Thue_Email")))
-        add("ctl00$C$UC_DW_TAXEditCtl$BUSINESS_START_DATEFld", "dom-date", normalize_date(values.get("Thue_NgayBatDau")))
+        if not skip_start_date:  # tài khoản phường Phương Liễu không nhập ngày bắt đầu
+            add("ctl00$C$UC_DW_TAXEditCtl$BUSINESS_START_DATEFld", "dom-date", normalize_date(values.get("Thue_NgayBatDau")))
         add("ctl00$C$UC_DW_TAXEditCtl$TOTAL_OF_LABORSFld", "dom-input", values.get("Thue_SoLaoDong"))
         add("ctl00$C$UC_DW_TAXEditCtl$TAX_CAL_METHOD_IDRbBox", "dom-radio", _tax_method_code(values.get("Thue_PhuongPhapTinh")))
 
@@ -597,9 +632,9 @@ def enrich(fields: list[dict], *, page: str | None = None) -> list[dict]:
     return out
 
 
-def enrich_all(fields: list[dict]) -> dict[str, list[dict]]:
+def enrich_all(fields: list[dict], *, skip_start_date: bool = False) -> dict[str, list[dict]]:
     """Map 1 bộ compact facts thành field cho TẤT CẢ trang (fill 8 trang trong 1 lần).
 
     Trả {page_key: [ui_fields]} theo đúng thứ tự PAGES để extension lặp: fill → lưu → sang trang.
     """
-    return {p["key"]: enrich(fields, page=p["key"]) for p in PAGES}
+    return {p["key"]: enrich(fields, page=p["key"], skip_start_date=skip_start_date) for p in PAGES}
