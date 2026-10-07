@@ -4,6 +4,9 @@ Bảng thành phần có 4 dòng cố định (giấy báo tử / văn bản ủ
 chết), một dòng nhận nhiều tệp qua nút "Tải lên file", không có nút "Thêm thành phần". LLM đọc từng tệp để xếp
 đúng dòng; tệp không thuộc dòng nào (tờ khai, CCCD...) đính chung dòng giấy báo tử để không sót tệp. LLM lỗi /
 OCR hụt → dòng giấy báo tử.
+
+Cổng chỉ nhận tệp dưới 2 MB: tệp trên 2 MB được nén bằng đúng thang của cải chính (cùng Cổng DVC quốc gia mới), trả
+về ở `replaceFiles` để extension đính bản nén thay bản gốc. Tệp nhỏ hơn để nguyên. OCR vẫn đọc bản gốc.
 """
 
 import asyncio
@@ -11,6 +14,7 @@ import os
 import time
 
 from app.config import settings
+from app.pipelines.cai_chinh_dvc_moi.attach.planner import shrink_oversized
 from app.process.schemas import FileItem
 from app.services.llm import client
 
@@ -67,6 +71,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     errors: list[str] = []
     pairs = [(i, f) for i, f in enumerate(raw_files) if f.get("type") in _OCR_TYPES]
     started = time.monotonic()
+    shrink_task = asyncio.create_task(shrink_oversized(raw_files, errors))
     ocr_results = await ocr.ocr_per_file([f for _, f in pairs]) if pairs else []
     ocr_ms = int((time.monotonic() - started) * 1000)
     texts = {}
@@ -86,14 +91,21 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             continue
         doc_types[index] = outcome[1]
 
-    attachments = build_plan_items([f["name"] for f in raw_files], doc_types)
+    replace_files = await shrink_task
+    names = [replace_files[str(i)]["name"] if str(i) in replace_files else f["name"] for i, f in enumerate(raw_files)]
+    attachments = build_plan_items(names, doc_types)
     return {
         "attachments": attachments,
+        "replaceFiles": replace_files or None,
         "extracted": {
             "documents": [f["name"] for f in raw_files],
             "classified": [
                 {"fileName": item["fileName"], "docType": item["detectedType"], "slotIndex": item["slotIndex"]}
                 for item in attachments
+            ],
+            "shrunk": [
+                {"fileName": r["name"], "originalBytes": r["originalBytes"], "bytes": r["bytes"], "level": r["level"]}
+                for r in replace_files.values()
             ],
         },
         "stats": {"ocr_latency_ms": ocr_ms, "llm_latency_ms": llm_ms, "total_latency_ms": ocr_ms + llm_ms},

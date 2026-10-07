@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from app.pipelines.cai_chinh_dvc_moi.attach import planner as attach_planner
 from app.pipelines.cai_chinh_dvc_moi.attach.planner import ROW_CAN_CU, ROW_UY_QUYEN, build_plan_items
 from app.pipelines.cai_chinh_dvc_moi.process import mapper, reason
 from app.pipelines.cai_chinh_dvc_moi.process.schema import UI_COMP_BY_NAME
@@ -199,3 +200,69 @@ def test_attach_routes_authorization_and_everything_else():
     assert rows == [ROW_CAN_CU["slotName"]] * 3 + [ROW_UY_QUYEN["slotName"]]
     assert [i["fileIndex"] for i in items] == [0, 1, 2, 3]
     assert all(i["target"] == "fixed-slot" for i in items)
+
+
+def _scan_pdf(pages: int) -> bytes:
+    """PDF giả lập bản scan màu 200 dpi: nền nhiễu để JPEG không nén nhỏ được như trang trắng."""
+    import io
+
+    import pymupdf
+    from PIL import Image
+
+    out = pymupdf.open()
+    for seed in range(pages):
+        img = Image.effect_noise((1650, 2330), 40 + seed).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=92)
+        page = out.new_page(width=595, height=842)
+        page.insert_image(page.rect, stream=buf.getvalue())
+    return out.tobytes()
+
+
+def _data_url(raw: bytes) -> str:
+    import base64
+
+    return "data:application/pdf;base64," + base64.b64encode(raw).decode()
+
+
+def test_shrink_brings_large_scan_under_portal_limit():
+    raw = _scan_pdf(3)
+    assert len(raw) > attach_planner.MAX_FILE_BYTES
+    out, level = attach_planner.shrink_file(raw)
+    assert len(out) <= attach_planner.MAX_FILE_BYTES
+    assert level
+    import pymupdf
+
+    assert len(pymupdf.open(stream=out)) == 3
+
+
+def test_plan_replaces_only_oversized_files(monkeypatch):
+    from app.process.schemas import FileItem
+    from app.services import ocr
+
+    async def fake_ocr(files):
+        return [{"text": ""} for _ in files]
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    small = pytest.importorskip("pymupdf").open()
+    small.new_page()
+    files = [
+        FileItem(name="nho.pdf", type="application/pdf", role="doc", dataUrl=_data_url(small.tobytes())),
+        FileItem(name="lon.pdf", type="application/pdf", role="doc", dataUrl=_data_url(_scan_pdf(3))),
+    ]
+    import asyncio
+
+    result = asyncio.run(attach_planner.plan(files))
+    assert list(result["replaceFiles"]) == ["1"]
+    shrunk = result["replaceFiles"]["1"]
+    assert shrunk["name"] == "lon.pdf" and shrunk["type"] == "application/pdf"
+    assert shrunk["bytes"] <= attach_planner.MAX_FILE_BYTES < shrunk["originalBytes"]
+    assert [a["fileIndex"] for a in result["attachments"]] == [0, 1]
+    assert result["extracted"]["shrunk"][0]["fileName"] == "lon.pdf"
+    assert not result["errors"]
+
+
+def test_files_up_to_2mb_are_left_untouched():
+    # Giữa đích nén 1,9 MB và ngưỡng 2 MB: không nén, không cần mở PDF.
+    for size in (attach_planner.MAX_FILE_BYTES + 50_000, attach_planner.SHRINK_ABOVE_BYTES):
+        assert attach_planner._shrink_one({"name": "x.pdf", "dataUrl": _data_url(b"0" * size)}) is None

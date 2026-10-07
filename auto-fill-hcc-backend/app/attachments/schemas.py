@@ -102,6 +102,9 @@ class AttachmentPlanResp(BaseModel):
     # chèn 1 file ẢO (copy đổi tên của file thật) vào ô STT1. Không khai ở đây thì response_model
     # lược mất → extension không nhận được directive. None với mọi trường hợp khác.
     stt1VirtualCopy: dict[str, Any] | None = None
+    # Bản nén thay tệp gốc vượt giới hạn dung lượng của cổng (Cổng DVC quốc gia mới < 2 MB), khóa = fileIndex
+    # dạng chuỗi, giá trị {name, type, dataUrl, ...}. Extension thay tệp trước khi đính. None = không thay.
+    replaceFiles: dict[str, dict[str, Any]] | None = None
 
 
 class ClientAttachmentFileMeta(BaseModel):

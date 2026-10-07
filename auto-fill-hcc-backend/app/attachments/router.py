@@ -188,7 +188,9 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
             # key nội bộ) — dựng lúc ghi nền để không tốn CPU trên đường chính.
             rec.output("plan", result.get("attachments"))
             rec.output("extracted", result.get("extracted"))
-            rec.output("response", lambda r=result: AttachmentPlanResp.model_validate(r).model_dump(mode="json"))
+            # replaceFiles mang cả tệp nén (base64, cỡ MB) → không ghi vào trace; kích thước đã có ở extracted.shrunk.
+            rec.output("response", lambda r=result: AttachmentPlanResp.model_validate(r).model_dump(
+                mode="json", exclude={"replaceFiles"}))
         # Mỗi lượt đính kèm là một hành động riêng trên hồ sơ. Lưu trace kind="attach"
         # cho cả attach-only và thủ tục có hasAttachmentStep để màn trace đối chiếu được.
         await _save_attach_trace(body, proc, options, result, user, total_bytes, request_id)

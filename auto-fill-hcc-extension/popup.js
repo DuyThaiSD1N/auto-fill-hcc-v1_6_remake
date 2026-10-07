@@ -3132,6 +3132,15 @@ async function toPdfForAttach(payloadFiles) {
   return out;
 }
 
+// Thay tệp theo `replaceFiles` của kế hoạch BE ({fileIndex: {name, type, dataUrl}}); giữ role của tệp gốc.
+function applyReplaceFiles(payloadFiles, replaceFiles) {
+  if (!replaceFiles || typeof replaceFiles !== "object") return payloadFiles;
+  return payloadFiles.map((f, i) => {
+    const r = replaceFiles[String(i)];
+    return r?.dataUrl ? { ...f, name: r.name || f.name, type: r.type || f.type, dataUrl: r.dataUrl } : f;
+  });
+}
+
 // DỰNG file theo kế hoạch BE:
 // - sourceSegments: trích/gộp đúng các trang từ một hoặc nhiều file;
 // - sourceFileIndexes: contract cũ, gộp nguyên các file.
@@ -3312,8 +3321,11 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     return { error: reason };
   }
 
+  // Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): BE trả bản nén thay tệp gốc, OCR đã đọc bản gốc.
+  const shrunkFiles = applyReplaceFiles(payloadFiles, planRes.replaceFiles);
+
   // GỘP file theo kế hoạch (CCCD mặt trước/sau → 1 PDF) trước khi gửi content.
-  const { files: sendFiles, attachments } = await applyMergeGroups(payloadFiles, rawAttachments);
+  const { files: sendFiles, attachments } = await applyMergeGroups(shrunkFiles, rawAttachments);
 
   // Chế độ TÁCH HỒ SƠ (split): mỗi tài liệu 1 hồ sơ riêng → điều phối đa-tab.
   if (attachSplitMode && isSplitEligibleProcedure() && sendFiles.length > 1) {

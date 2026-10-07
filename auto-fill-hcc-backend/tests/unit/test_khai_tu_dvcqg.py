@@ -158,3 +158,46 @@ def test_attach_rows_no_file_dropped():
         ROWS["death_place_proof"]["slotName"], ROW_GIAY_BAO_TU["slotName"],
     ]
     assert all(i["target"] == "fixed-slot" for i in items)
+
+
+def test_attach_plan_shrinks_files_over_2mb(monkeypatch):
+    """Cổng chỉ nhận < 2 MB: tệp > 2 MB trả bản nén ở replaceFiles, tệp nhỏ để nguyên."""
+    import asyncio
+    import base64
+    import io
+
+    import pymupdf
+    from PIL import Image
+
+    from app.pipelines.khai_tu_dvcqg.attach import planner as attach_planner
+    from app.process.schemas import FileItem
+    from app.services import ocr
+
+    def data_url(raw: bytes) -> str:
+        return "data:application/pdf;base64," + base64.b64encode(raw).decode()
+
+    big = pymupdf.open()
+    for seed in range(3):  # nền nhiễu giả lập bản scan màu 200 dpi
+        buf = io.BytesIO()
+        Image.effect_noise((1650, 2330), 40 + seed).convert("RGB").save(buf, "JPEG", quality=92)
+        page = big.new_page(width=595, height=842)
+        page.insert_image(page.rect, stream=buf.getvalue())
+    small = pymupdf.open()
+    small.new_page()
+
+    async def fake_ocr(files):
+        return [{"text": ""} for _ in files]
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+
+    files = [
+        FileItem(name="nho.pdf", type="application/pdf", role="doc", dataUrl=data_url(small.tobytes())),
+        FileItem(name="lon.pdf", type="application/pdf", role="doc", dataUrl=data_url(big.tobytes())),
+    ]
+    result = asyncio.run(attach_planner.plan(files))
+    assert list(result["replaceFiles"]) == ["1"]
+    shrunk = result["replaceFiles"]["1"]
+    assert shrunk["bytes"] <= 1_900_000 < 2_000_000 < shrunk["originalBytes"]
+    assert [a["slotName"] for a in result["attachments"]] == [ROW_GIAY_BAO_TU["slotName"]] * 2
+    assert result["extracted"]["shrunk"][0]["fileName"] == "lon.pdf"
+    assert not result["errors"]

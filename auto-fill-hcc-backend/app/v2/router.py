@@ -117,6 +117,7 @@ async def process_v2(
     with mon.span("post.response"):
         payload = AttachmentPlanResp.model_validate(result).model_dump(mode="json")
     if rec is not None:
-        rec.output("response", payload)
+        # replaceFiles mang cả tệp nén (base64, cỡ MB) → không ghi vào trace.
+        rec.output("response", {k: v for k, v in payload.items() if k != "replaceFiles"})
         rec.mark_wait_end()
     return {"action": action, **payload}

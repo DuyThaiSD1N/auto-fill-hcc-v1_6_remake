@@ -201,3 +201,40 @@ def test_attach_plan_async_contract():
     files = [FileItem(name="a.pdf", type="application/pdf", dataUrl="data:,", role="")]
     res = asyncio.run(plan(files, {}))
     assert len(res["attachments"]) == 1 and res["errors"] == []
+
+
+def test_attach_plan_shrinks_files_over_2mb(monkeypatch):
+    """Cổng chỉ nhận < 2 MB: tệp > 2 MB trả bản nén ở replaceFiles, tệp nhỏ để nguyên."""
+    import asyncio
+    import base64
+    import io
+
+    import pymupdf
+    from PIL import Image
+
+    from app.pipelines.trich_luc_dvc_moi.attach import planner as attach_planner
+    from app.process.schemas import FileItem
+
+    def data_url(raw: bytes) -> str:
+        return "data:application/pdf;base64," + base64.b64encode(raw).decode()
+
+    big = pymupdf.open()
+    for seed in range(3):  # nền nhiễu giả lập bản scan màu 200 dpi
+        buf = io.BytesIO()
+        Image.effect_noise((1650, 2330), 40 + seed).convert("RGB").save(buf, "JPEG", quality=92)
+        page = big.new_page(width=595, height=842)
+        page.insert_image(page.rect, stream=buf.getvalue())
+    small = pymupdf.open()
+    small.new_page()
+
+    files = [
+        FileItem(name="nho.pdf", type="application/pdf", role="doc", dataUrl=data_url(small.tobytes())),
+        FileItem(name="lon.pdf", type="application/pdf", role="doc", dataUrl=data_url(big.tobytes())),
+    ]
+    result = asyncio.run(attach_planner.plan(files))
+    assert list(result["replaceFiles"]) == ["1"]
+    shrunk = result["replaceFiles"]["1"]
+    assert shrunk["bytes"] <= 1_900_000 < 2_000_000 < shrunk["originalBytes"]
+    assert [a["slotName"] for a in result["attachments"]] == [attach_planner.ROW_NAME] * 2
+    assert result["extracted"]["shrunk"][0]["fileName"] == "lon.pdf"
+    assert not result["errors"]
