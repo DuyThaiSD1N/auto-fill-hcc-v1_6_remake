@@ -161,3 +161,16 @@ def test_remap_area_fixes_extra_tone_mark_on_old_ward_of_renamed_province():
     for tinh in ("Thừa Thiên Huế", "Thừa Thiên - Huế", "Thành phố Huế"):
         area = area_remap.remap_area({"tinh": tinh, "xa": "xã Khê Tre", "diaChi": ""})
         assert (area["tinh"], area["xa"]) == ("Huế", "Xã Khe Tre"), tinh
+
+
+def test_remap_area_ward_name_shared_by_two_old_districts():
+    # "Phường 1" có ở cả TP Đà Lạt cũ lẫn TP Bảo Lộc cũ. Thiếu huyện thì KHÔNG được trả nguyên tên cũ
+    # (extension snap sang "Phường 1 Bảo Lộc") — để trống cho cán bộ chọn; có huyện thì chọn đúng.
+    base = {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Phường 1", "diaChi": "5 Hoa Sen"}
+    assert area_remap.remap_area(dict(base))["xa"] == ""
+    assert area_remap.remap_area(dict(base), huyen_hint="TP Đà Lạt")["xa"] == "Phường Xuân Hương - Đà Lạt"
+    assert area_remap.remap_area(dict(base), huyen_hint="Bảo Lộc")["xa"] == "Phường 1 Bảo Lộc"
+    in_detail = area_remap.remap_area({**base, "diaChi": "5 Hoa Sen, thành phố Đà Lạt"})
+    assert in_detail["xa"] == "Phường Xuân Hương - Đà Lạt"
+    current = area_remap.remap_area({**base, "xa": "Phường 1 Bảo Lộc"})
+    assert current["xa"] == "Phường 1 Bảo Lộc"

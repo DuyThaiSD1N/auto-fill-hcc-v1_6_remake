@@ -3,7 +3,7 @@
 import re
 import unicodedata
 
-from app.pipelines._shared.area_remap import canonical_province
+from app.pipelines._shared.area_remap import canonical_province, is_current_area, remap_area
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.xac_nhan_tthn.process import base_prompt, mapper, purpose
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
@@ -123,11 +123,72 @@ def _area_from_text(text: str) -> dict | None:
     if len(parts) < 2 or not canonical_province(parts[-1]):
         return None
     rest = parts[:-1]
-    # Địa chỉ 3 cấp trên thẻ cũ: bỏ cấp huyện, remap tự quy xã cũ về đơn vị mới.
-    if len(rest) >= 2 and _DISTRICT_PREFIX_RE.match(_fold(rest[-1])):
-        rest.pop()
+    # Địa chỉ 3 cấp trên thẻ cũ: cấp huyện không lên form, nhưng là căn cứ duy nhất chọn đúng xã
+    # mới khi tên xã cũ trùng ở nhiều huyện ("Phường 1" của Đà Lạt cũ và của Bảo Lộc cũ).
+    huyen = rest.pop() if len(rest) >= 2 and _DISTRICT_PREFIX_RE.match(_fold(rest[-1])) else ""
     xa = rest.pop()
-    return {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": xa, "diaChi": ", ".join(rest)}
+    area = {"quocGia": "Việt Nam", "tinh": parts[-1], "xa": xa, "diaChi": ", ".join(rest)}
+    return _remap_with_district(area, huyen) or area
+
+
+def _remap_with_district(area: dict, huyen: str) -> dict | None:
+    """Area đã quy về xã HIỆN HÀNH nhờ gợi ý cấp huyện cũ; không quy được thì None."""
+    if not huyen:
+        return None
+    remapped = remap_area(dict(area), huyen_hint=huyen)
+    if isinstance(remapped, dict) and remapped.get("xa") and is_current_area(remapped.get("tinh") or "", remapped["xa"]):
+        return remapped
+    return None
+
+
+_DISTRICT_HINT_RE = re.compile(r"^(huyen|quan|thi xa|thanh pho|tp|tx)\b")
+
+
+def _district_hints_from_ocr(area: dict, documents: list[dict]) -> list[str]:
+    """Cấp huyện cũ in NGAY SAU tên xã trong OCR ("..., Phường 1, TP Đà Lạt, Lâm Đồng").
+
+    Chỗ ghi cùng số nhà/đường với địa chỉ đang xét đứng trước — bản án ly hôn hay ghi địa chỉ
+    của cả hai đương sự, mỗi người một huyện.
+    """
+    xa = _fold(area.get("xa"))
+    street = _squash(area.get("diaChi"))
+    same_street: list[str] = []
+    others: list[str] = []
+    for document in documents:
+        for line in str(document.get("text") or "").splitlines():
+            segments = [s.strip(" .") for s in re.split(r"[,;]", line)]
+            for index, segment in enumerate(segments[:-1]):
+                nxt = segments[index + 1]
+                if _fold(segment) != xa or not _DISTRICT_HINT_RE.match(_fold(nxt)):
+                    continue
+                before = _squash(",".join(segments[:index]))
+                (same_street if street and street in before else others).append(nxt)
+    return same_street or others
+
+
+def _resolve_old_ward(area, documents: list[dict]):
+    """Xã cũ trùng tên ở nhiều huyện mà LLM bỏ mất cấp huyện → lấy huyện từ OCR mà quy về xã mới.
+
+    Không có huyện, remap phải để nguyên tên cũ ("Phường 1") và extension snap nhầm sang đơn vị
+    mới cùng tên ("Phường 1 Bảo Lộc") thay vì đơn vị thật ("Phường Xuân Hương - Đà Lạt"). Trả
+    area mới, hoặc ... nếu giữ nguyên.
+    """
+    if not isinstance(area, dict):
+        return ...
+    tinh, xa = str(area.get("tinh") or ""), str(area.get("xa") or "")
+    if not tinh or not xa or is_current_area(tinh, xa):
+        return ...
+    # Remap trơn bỏ trống xã khi tên trùng nhiều huyện — xã rỗng chưa phải là đã quy được.
+    plain = remap_area(dict(area))
+    if isinstance(plain, dict) and plain.get("xa") and is_current_area(plain.get("tinh") or "", plain["xa"]):
+        return ...
+    hint = str(area.get("huyen") or area.get("quanHuyen") or "")
+    candidates = [hint] if hint else _district_hints_from_ocr(area, documents)
+    results = [r for r in (_remap_with_district(area, h) for h in candidates) if r]
+    # Các chỗ ghi chỉ về những xã mới khác nhau thì không đủ căn cứ chọn, để người dùng tự chọn.
+    if not results or len({(r["tinh"], r["xa"]) for r in results}) != 1:
+        return ...
+    return results[0]
 
 
 def _squash(value) -> str:
@@ -253,6 +314,12 @@ def _compact_field_fallback(raw_fields, documents: list[dict]):
         residence = _card_residence_update(values, documents, prefix)
         if residence is not ...:
             updates[f"{prefix}NoiCuTru"] = residence
+    for name, value in values.items():
+        if not str(name or "").endswith("NoiCuTru") and name != "PoA_SubjectAddress":
+            continue
+        resolved = _resolve_old_ward(updates.get(name, value), documents)
+        if resolved is not ...:
+            updates[name] = resolved
     if not any(values.get(k) for k in ("ToKhai_DanToc", "NguoiDuocCap_DanToc", "GiayToKhac_DanToc")):
         ethnic = _ethnicity_from_ocr(
             documents, str(updates.get("NguoiDuocCap_HoTen") or values.get("NguoiDuocCap_HoTen") or ""))

@@ -2016,6 +2016,14 @@
         "agency": "Đặc khu Cô Tô"
       },
       "autoConfirm": true
+    },
+    {
+      "key": "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+      "code": "1.013997",
+      "label": "Hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật (cơ sở sản xuất không thuộc lực lượng vũ trang nhân dân)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8686-732b-b2d5-e6a422f1b242",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

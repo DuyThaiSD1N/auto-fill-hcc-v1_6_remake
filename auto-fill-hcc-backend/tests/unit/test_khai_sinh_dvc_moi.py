@@ -179,3 +179,13 @@ def test_co_ho_local_group_maps_to_co_ho(dan_toc):
 def test_other_ethnicity_passes_through():
     by = _by(_enrich({**BASE, "Con_DanToc": "Mạ"}, _context("Mẹ"))[0])
     assert by["citizenDanToc_NgdcKS"]["value"] == "Mạ"
+
+
+def test_lookup_hospital_hieu_viet_tat_trung_tam_y_te():
+    """Giấy chứng sinh hay ghi nơi sinh viết tắt (kể cả gõ thừa chữ T) — vẫn phải ra đúng xã của cơ sở y tế."""
+    from app.pipelines._shared.hospital_lookup import lookup_hospital
+
+    expected = {"xa": "Xã Đơn Dương", "tinh": "Tỉnh Lâm Đồng"}
+    for name in ("TTYTKV Đơn Dương", "TTTYTKV ĐƠN DƯƠNG", "TTYT KV Đơn Dương", "TTYT Đơn Dương"):
+        assert lookup_hospital(name) == expected
+    assert lookup_hospital("BVĐK tỉnh Lâm Đồng") == {"xa": "Phường Cam Ly", "tinh": "Tỉnh Lâm Đồng"}

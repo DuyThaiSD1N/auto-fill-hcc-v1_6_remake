@@ -53,6 +53,27 @@ def _fold(text: str) -> str:
     return re.sub(r"\s+", " ", t).strip().lower()
 
 
+# Viet tat hay gap tren Giay chung sinh / to khai (da fold). Thu tu quan trong: cum dai truoc cum ngan.
+# "tttytkv" la loi go/OCR thua mot chu T cua "ttytkv" — van gap that tren ho so.
+_ABBREVIATIONS: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"\bt{2,3} ?yt ?kv\b"), "trung tam y te khu vuc"),
+    (re.compile(r"\bt{2,3} ?yt\b"), "trung tam y te"),
+    (re.compile(r"\bbv ?dk\b"), "benh vien da khoa"),
+    (re.compile(r"\bpk ?dk\b"), "phong kham da khoa"),
+    (re.compile(r"\bbv\b"), "benh vien"),
+    (re.compile(r"\btyt\b"), "tram y te"),
+    (re.compile(r"\bkv\b"), "khu vuc"),
+]
+
+
+def _normalize(text: str) -> str:
+    """Fold + bo dau cau + mo rong viet tat: "TTYTKV Đơn Dương" == "Trung tâm Y tế khu vực Đơn Dương"."""
+    t = re.sub(r"[^a-z0-9]+", " ", _fold(text)).strip()
+    for pattern, full in _ABBREVIATIONS:
+        t = pattern.sub(full, t)
+    return t
+
+
 def _load_hospital_files() -> None:
     """Load tat ca bv_*.json va build lookup list."""
     if not _DATA_DIR.exists():
@@ -75,7 +96,7 @@ def _load_hospital_files() -> None:
             if not ten or not xa or not tinh:
                 continue
             _HOSPITALS.append({
-                "ten_folded": _fold(ten),
+                "ten_folded": _normalize(ten),
                 "xa": xa,
                 "tinh": tinh,
             })
@@ -101,7 +122,7 @@ def lookup_hospital(name: Optional[str]) -> Optional[dict]:
     if not name:
         return None
 
-    needle = _fold(name)
+    needle = _normalize(name)
     if not needle:
         return None
 

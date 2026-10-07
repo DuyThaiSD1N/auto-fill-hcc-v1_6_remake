@@ -428,6 +428,8 @@ from app.pipelines.dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan
 from app.pipelines.dang_ky_lai_phuong_tien_chuyen_quyen_so_huu_khong_doi_co_quan.process import run as dk_lai_phuong_tien_chuyen_quyen_process
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.attach import plan as xn_dien_tich_nha_o_thuong_tru_attach
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process import run as xn_dien_tich_nha_o_thuong_tru_process
+from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.attach import plan as ho_tro_thiet_hai_dich_benh_dv_attach
+from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.process import run as ho_tro_thiet_hai_dich_benh_dv_process
 
 PROCEDURES: list[dict] = [
     {
@@ -7310,6 +7312,39 @@ PROCEDURES: list[dict] = [
             "vào dòng Tờ khai — ghi chú hồ sơ."
         ),
     },
+    {
+        "key": "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
+        # Mã TTHC 1.013997 (UBND cấp xã). Đi từ link kê khai DVCQG, chọn tỉnh + phường/xã như bình thường rồi sang
+        # cổng ngành Nông nghiệp và Môi trường: Form.io (Phần I người nộp khoá theo tài khoản, Phần II chủ hồ sơ,
+        # ô Ghi chú) + bảng Angular MỘT dòng Đơn đề nghị Mẫu 2a/2b, engine attp-row. Không urlScope: mã ghép từ
+        # ke_khai_links, tên thủ tục đủ đặc trưng.
+        "detect": {
+            "textIncludes": [
+                "Hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật (cơ sở sản xuất không thuộc lực lượng vũ trang"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Hỗ trợ cơ sở sản xuất bị thiệt hại do dịch bệnh động vật (cơ sở sản xuất không thuộc lực lượng vũ trang "
+            "nhân dân)"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Đơn đề nghị hỗ trợ thiệt hại do dịch bệnh động vật (Mẫu số 2a/2b, NĐ 116/2025/NĐ-CP) đã ký — nguồn "
+            "chính về chủ hộ, số CCCD, địa chỉ thường trú.\n"
+            "2. Biên bản tiêu hủy động vật, sản phẩm động vật trên cạn (một hoặc nhiều biên bản, đủ trang chữ ký).\n"
+            "3. CCCD của chủ hộ (nếu có) — để điền ngày sinh, ngày cấp; không đính kèm.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR. Ô Ghi chú được điền tóm "
+            "tắt dịch bệnh + số con, khối lượng của từng biên bản.\n"
+            "Bước đính kèm: Đơn đề nghị + các Biên bản tiêu hủy gộp vào dòng 'Đơn đề nghị' (Bản chính), Đơn đứng "
+            "trước."
+        ),
+    },
 ]
 
 
@@ -7493,6 +7528,7 @@ _PIPELINE = {
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": cap_lai_cap_doi_gcn_ho_kinh_doanh_process,
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_process,
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_process,
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7701,6 +7737,7 @@ _ATTACH_PIPELINE = {
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_attach,
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_attach,
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_attach,
+    "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

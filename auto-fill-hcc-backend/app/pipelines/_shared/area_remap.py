@@ -90,6 +90,10 @@ _REMAP_SOURCE_ENTRIES: list[tuple[str, str, str]] = []
 # Bang nay nap TAT CA entry co "huyen_cu" -- KE CA nhung entry bi vong loc ambiguous gat di, vi day
 # chinh la cho dung den chung. Khong co goi y huyen thi khong ai tra bang nay -> hanh vi cu giu nguyen.
 _REMAP_BY_DISTRICT: dict[tuple[str, str, str], dict[str, str]] = {}
+# Cung du lieu voi _REMAP_BY_DISTRICT, gom theo (tinh, xa): (fold(tinh_cu), fold(xa_cu)) ->
+# {fold_district(huyen_cu): mapping}. Biet mot ten xa cu la TRUNG o nhieu huyen de khong tra nguyen
+# ten cu ra ngoai khi thieu goi y huyen (xem _remap_area_cached, buoc 1c).
+_DISTRICTS_BY_WARD: dict[tuple[str, str], dict[str, dict[str, str]]] = {}
 
 
 _UNIT_PREFIX_RE = re.compile(
@@ -286,6 +290,9 @@ def _load_remap_files() -> None:
             if huyen_cu:
                 _REMAP_BY_DISTRICT.setdefault(
                     (key[0], _fold(xa_cu_district), _fold_district(huyen_cu)), mapping
+                )
+                _DISTRICTS_BY_WARD.setdefault((key[0], _fold(xa_cu_district)), {}).setdefault(
+                    _fold_district(huyen_cu), mapping
                 )
             
             # Track all entries for this key to detect duplicates
@@ -1131,6 +1138,25 @@ def _remap_area_cached(
         )
         if mapping_huyen:
             return (mapping_huyen["tinh"], mapping_huyen["xa"], dia_chi)
+
+    # Buoc 1c: ten xa cu TRUNG o nhieu huyen (bang 2 khoa da bo qua) ma khong co goi y huyen dung.
+    # Tra nguyen ten cu ("Phường 1") ra ngoai thi extension snap sang don vi moi CUNG TEN ("Phường 1
+    # Bảo Lộc") du giay to ghi Da Lat -> sai im lang. Thu tim ten huyen trong diaChi; van khong ra
+    # thi BO TRONG xa de can bo tu chon, khong doan.
+    if xa_expanded and (tinh_folded, _fold(xa_expanded)) not in _REMAP:
+        by_district = _DISTRICTS_BY_WARD.get((tinh_folded, _fold(xa_expanded))) or {}
+        destinations = {(m["tinh"], m["xa"]) for m in by_district.values()}
+        if len(destinations) > 1 and not is_current_area(tinh, xa_expanded):
+            dia_folded = _fold(dia_chi)
+            hits = {
+                (m["tinh"], m["xa"])
+                for district, m in by_district.items()
+                if district and re.search(rf"(?<![a-z0-9]){re.escape(district)}(?![a-z0-9])", dia_folded)
+            }
+            if len(hits) == 1:
+                tinh_hit, xa_hit = next(iter(hits))
+                return (tinh_hit, xa_hit, dia_chi)
+            return (tinh, "", dia_chi)
 
     # Buoc 2: lookup bang sap nhap (tinh, xa)
     key = (tinh_folded, _fold(xa_expanded))
