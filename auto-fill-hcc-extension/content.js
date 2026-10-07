@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "5/10";
+  const APP_RELEASE_DATE = "7/10";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -1709,6 +1709,8 @@
     const SUBMIT_WATCH_KEY = (typeof window !== "undefined" && window.SUBMIT_WATCH_KEY)
       || "autofill_submit_watch";
     const SUBMIT_CLICKABLE = 'button, a, input[type="submit"], input[type="button"]';
+    const SS_PENDING_SUBMIT_KEY = "__autofill_pending_submit";
+    const PENDING_SUBMIT_TTL_MS = 10 * 60 * 1000;
 
     const foldSubmitLabel = (s) => String(s || "")
       .replace(/Đ/g, "D").replace(/đ/g, "d")
@@ -1760,13 +1762,38 @@
       // mất mạng) — BE cần giờ thật và cần nhận ra lần gửi lại là cùng một cú bấm.
       let clickId = "";
       try { clickId = crypto.randomUUID(); } catch (_) { clickId = "c-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
-      try {
-        chrome.runtime.sendMessage(
-          { action: "dossierSubmitClicked", host: location.hostname, ref, clickId, clickedAt: lastSubmitClickAt },
-          () => void chrome.runtime.lastError,
-        );
-      } catch (_) {}
+      const click = { action: "dossierSubmitClicked", host: location.hostname, ref, clickId, clickedAt: lastSubmitClickAt };
+      rememberPendingSubmit(click);
+      sendSubmitClick(click);
     }, true); // capture: cổng có handler riêng có thể stopPropagation
+
+    // Cổng nộp bằng TẢI LẠI CẢ TRANG (HkdOnline: confirm() rồi postback ASP.NET): sendMessage chưa
+    // kịp mở kênh thì trang đã bị huỷ cùng content script → mốc nộp mất ở mọi lần. Ghi cú bấm vào
+    // sessionStorage (ghi đồng bộ, còn sau khi tải lại trong cùng tab + cùng tên miền) TRƯỚC khi gửi;
+    // trang kế tiếp nạp lên thì gửi lại. Gửi lại cú bấm đã tới là vô hại: cùng clickId nên BE chỉ
+    // ghi một sự kiện.
+    function sendSubmitClick(click) {
+      try { chrome.runtime.sendMessage(click, () => void chrome.runtime.lastError); } catch (_) {}
+    }
+    function readPendingSubmits() {
+      try {
+        const list = JSON.parse(sessionStorage.getItem(SS_PENDING_SUBMIT_KEY) || "[]");
+        return Array.isArray(list) ? list : [];
+      } catch (_) { return []; }
+    }
+    function rememberPendingSubmit(click) {
+      try {
+        const list = readPendingSubmits().filter((it) => Date.now() - Number(it?.clickedAt || 0) < PENDING_SUBMIT_TTL_MS);
+        list.push(click);
+        sessionStorage.setItem(SS_PENDING_SUBMIT_KEY, JSON.stringify(list.slice(-5)));
+      } catch (_) { /* sessionStorage bị chặn → vẫn còn đường gửi thẳng */ }
+    }
+    {
+      const pending = readPendingSubmits().filter((it) => it?.action === "dossierSubmitClicked" && it.clickId
+        && Date.now() - Number(it.clickedAt || 0) < PENDING_SUBMIT_TTL_MS);
+      try { sessionStorage.removeItem(SS_PENDING_SUBMIT_KEY); } catch (_) {}
+      pending.forEach(sendSubmitClick);
+    }
 
     // Lớp 2 — chữ trên MÀN KẾT QUẢ, cho lúc cú bấm không bắt được (nút trong khung lạ, nộp bằng
     // phím Enter, cổng đổi nút). Chỉ tin câu xác nhận nộp/gửi hồ sơ của cổng, KHÔNG ghép
@@ -4379,6 +4406,26 @@
     return true;
   }
 
+  // Cổng tick sẵn MỌI dòng (dvc.moc Bộ Xây dựng) → dòng không đính bị coi là bắt buộc khi chuyển bước. BE gửi
+  // untickUnplannedRows → bấm "Chọn/Bỏ chọn tất cả" tới khi không còn dòng tick (ô đang lửng thì lần 1 tick hết,
+  // lần 2 bỏ hết). Đã có dòng mang tệp (bấm Đính kèm lần 2) thì KHÔNG bấm: bỏ chọn tất cả bỏ tick cả dòng đó.
+  async function uncheckAllAttpRows() {
+    const rows = findAttachmentRows();
+    if (!rows.length || rows.some((row) => attpRowAttachedFingerprints(row).length)) return false;
+    const header = document.querySelector(".check-all-checkbox mat-checkbox, .check-all-checkbox input[type='checkbox']");
+    if (!header) return false;
+    const anyRowChecked = () => findAttachmentRows().some((row) => {
+      const cell = row.cells?.[1] || row.cells?.[0] || row;
+      const cb = cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
+      return !!cb?.checked;
+    });
+    for (let i = 0; i < 2 && anyRowChecked(); i++) {
+      (header.querySelector("label") || header).click();
+      await sleep(300);
+    }
+    return !anyRowChecked();
+  }
+
   async function setAttpRowLoaiBan(row, loaiBan) {
     const want = foldChoiceText(loaiBan || "");   // "ban chinh" | "ban sao"
     if (!want) return;
@@ -4464,6 +4511,7 @@
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(item);
     }
+    if (attachments.some((item) => item.untickUnplannedRows)) await uncheckAllAttpRows();
     // Dòng cổng tick sẵn mà hồ sơ không có (untickRows) → bỏ tick, trừ dòng chính kế hoạch sắp đính tệp.
     const untickNames = [...new Set(attachments.flatMap((item) => item.untickRows || []))];
     for (const name of untickNames) {
@@ -5438,7 +5486,10 @@
   }
 
   async function collectMojAccountContext() {
-    if (location.host !== MOJ_EFORM_HOST || !document.querySelector('[name="HoVaTenC"]')) return {};
+    // TTHN có mục I người yêu cầu (HoVaTenC); tờ khai kết hôn không có mục này (chỉ bên nam/nữ) nhưng
+    // getDataEform vẫn trả thông tin chủ tài khoản → họ tên/số cũng lấy từ API.
+    if (location.host !== MOJ_EFORM_HOST
+      || !document.querySelector('[name="HoVaTenC"], [name="HoTenBenNam"], [name="HoTenBenNu"]')) return {};
     const fromDom = {
       applicantBirthday: readEformDate("NgaySinhC"),
       applicantIdDate: readEformDate("NgayCapDDC"),
@@ -5470,6 +5521,8 @@
       const pick = (key) => String(body[key] ?? "").trim();
       // Dân tộc/giới tính/tỉnh/xã là MÃ danh mục của cổng — BE giải mã.
       return withoutEmpty({
+        applicantFullname: pick("HoVaTenC"),
+        applicantIdentityNumber: pick("SoDinhDanhC") || pick("SoGiayToDinhDanhC"),
         applicantBirthday: pick("NgaySinhC") || fromDom.applicantBirthday,
         applicantGender: pick("GioiTinhC"),
         applicantEthnicity: pick("DanTocC"),

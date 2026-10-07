@@ -86,6 +86,19 @@ const api = {
     return apiJson("/api/v2/process", { method: "POST", body: buildV2ProcessForm("fill", body) });
   },
 
+  // Ảnh HEIC → JPG (BE đổi; Chrome không giải mã được HEIC). Trả Blob JPG, lỗi thì ném.
+  async convertHeic(file) {
+    const form = new FormData();
+    form.append("file", file, file.name || "anh.heic");
+    const res = await apiCall("/api/v1/files/convert-image", { method: "POST", body: form });
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return res.blob();
+  },
+
   attachmentPlan(body) {
     // Báo NĂNG LỰC đính kèm của extension để BE phát plan tương thích ngược: chỉ bản này (mới) mới xử lý
     // được luồng "Thêm giấy tờ" (add-document-dialog) trộn với ô cố định. Bản CŨ không gửi cờ → BE giữ

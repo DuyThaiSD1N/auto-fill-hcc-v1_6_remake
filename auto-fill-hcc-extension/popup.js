@@ -160,7 +160,7 @@ const SEARCH_PROCEDURE_LIMIT = 5;
 const SPLIT_MODE_KEY = "autofill_attach_split_mode";
 // Cài đặt "tách GIẤY TỜ trong 1 file" (bật/tắt ở settings.html) — KHÁC splitMode (tách hồ sơ).
 const SPLIT_DOCUMENTS_SETTING_KEY = "autofill_attach_split_documents";
-// Cài đặt "Người nộp = chủ hồ sơ (bỏ so khớp form)" (settings.html) — gửi BE qua options.submitterMode.
+// Cài đặt "Lấy người nộp theo tờ khai" (settings.html) — gửi BE qua options.submitterMode.
 const SUBMITTER_OWNER_MODE_KEY = "autofill_submitter_owner_mode";
 // Cài đặt "Không gộp giấy tờ" — CHỈ thủ tục chứng thực phân chia di sản (gửi BE qua options.splitDocuments).
 const ESTATE_SPLIT_ATTACH_KEY = "autofill_estate_split_attachments";
@@ -178,7 +178,7 @@ const SPLIT_RELOADABLE_WALLET_CODES = new Set([
 let attachSplitMode = false; // hiệu lực từ ô tick (đã khôi phục từ storage)
 // Tách GIẤY TỜ bên trong một file (khác splitMode). Cài đặt toàn extension, đọc từ storage (settings.html).
 let attachSplitDocuments = false;
-// Cài đặt "Người nộp = chủ hồ sơ (bỏ so khớp form)" — gửi BE qua options.submitterMode="owner_as_submitter".
+// Cài đặt "Lấy người nộp theo tờ khai" — gửi BE qua options.submitterMode="owner_as_submitter".
 let submitterOwnerMode = false;
 // Cài đặt "Không gộp giấy tờ" (phân chia di sản) — BẬT → gửi options.splitDocuments=true cho thủ tục đó.
 let estateSplitAttachments = false;
@@ -2397,9 +2397,37 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes[RATING_ENABLED_BY_USER_KEY] || changes[CURRENT_USERNAME_KEY]) void restoreRatingEnabled();
 });
 
-fileInput.addEventListener("change", () => {
-  for (const f of fileInput.files) files.push({ file: f, role: defaultRoleFor(f) });
+// Ảnh HEIC (mặc định camera iPhone): cổng DVC từ chối ("…tệp đúng định dạng!") và Chrome không giải mã được
+// → nhờ BE đổi sang JPG NGAY khi thêm, để quét lẫn đính kèm đều dùng bản JPG. Đổi lỗi thì giữ tệp gốc.
+function isHeicFile(f) {
+  return /\.(heic|heif)$/i.test(f?.name || "") || /^image\/hei[cf]/i.test(f?.type || "");
+}
+
+async function convertHeicFiles(list) {
+  const out = [];
+  let failed = 0;
+  for (const f of list) {
+    if (!isHeicFile(f)) { out.push(f); continue; }
+    try {
+      const blob = await api.convertHeic(f);
+      const name = `${String(f.name || "anh").replace(/\.(heic|heif)$/i, "")}.jpg`;
+      out.push(new File([blob], name, { type: "image/jpeg", lastModified: Date.now() }));
+    } catch (e) {
+      console.warn("[Popup] Không đổi được HEIC sang JPG:", f.name, e);
+      failed++;
+      out.push(f);
+    }
+  }
+  if (failed) {
+    setStatus(`${failed} ảnh HEIC chưa đổi được sang JPG — cổng có thể không nhận, nên chụp lại dạng JPG.`, "warn");
+  }
+  return out;
+}
+
+fileInput.addEventListener("change", async () => {
+  const picked = Array.from(fileInput.files);
   fileInput.value = "";
+  for (const f of await convertHeicFiles(picked)) files.push({ file: f, role: defaultRoleFor(f) });
   renderFiles();
   refreshAttachStepUI();
   saveSession();
@@ -2423,10 +2451,11 @@ function isFileDrag(e) {
 }
 
 // Thêm file kéo-thả/nhận qua postMessage vào files[] — dùng chung cho cả 2 đường.
-function addDroppedFiles(fileListLike) {
-  const list = Array.from(fileListLike || []);
-  console.log("[Popup][DnD] addDroppedFiles nhận", list.length, "file:", list.map((f) => f.name));
-  if (!list.length) return;
+async function addDroppedFiles(fileListLike) {
+  const dropped = Array.from(fileListLike || []);
+  console.log("[Popup][DnD] addDroppedFiles nhận", dropped.length, "file:", dropped.map((f) => f.name));
+  if (!dropped.length) return;
+  const list = await convertHeicFiles(dropped);
   for (const f of list) files.push({ file: f, role: defaultRoleFor(f), _justAdded: true });
   renderFiles();
   refreshAttachStepUI();
@@ -3132,15 +3161,6 @@ async function toPdfForAttach(payloadFiles) {
   return out;
 }
 
-// Thay tệp theo `replaceFiles` của kế hoạch BE ({fileIndex: {name, type, dataUrl}}); giữ role của tệp gốc.
-function applyReplaceFiles(payloadFiles, replaceFiles) {
-  if (!replaceFiles || typeof replaceFiles !== "object") return payloadFiles;
-  return payloadFiles.map((f, i) => {
-    const r = replaceFiles[String(i)];
-    return r?.dataUrl ? { ...f, name: r.name || f.name, type: r.type || f.type, dataUrl: r.dataUrl } : f;
-  });
-}
-
 // DỰNG file theo kế hoạch BE:
 // - sourceSegments: trích/gộp đúng các trang từ một hoặc nhiều file;
 // - sourceFileIndexes: contract cũ, gộp nguyên các file.
@@ -3321,11 +3341,8 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     return { error: reason };
   }
 
-  // Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): BE trả bản nén thay tệp gốc, OCR đã đọc bản gốc.
-  const shrunkFiles = applyReplaceFiles(payloadFiles, planRes.replaceFiles);
-
   // GỘP file theo kế hoạch (CCCD mặt trước/sau → 1 PDF) trước khi gửi content.
-  const { files: sendFiles, attachments } = await applyMergeGroups(shrunkFiles, rawAttachments);
+  const { files: sendFiles, attachments } = await applyMergeGroups(payloadFiles, rawAttachments);
 
   // Chế độ TÁCH HỒ SƠ (split): mỗi tài liệu 1 hồ sơ riêng → điều phối đa-tab.
   if (attachSplitMode && isSplitEligibleProcedure() && sendFiles.length > 1) {
@@ -4301,6 +4318,10 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
       cfg.key === "xac-nhan-tinh-trang-hon-nhan" ||
+      // Kết hôn: bên nam/nữ trùng chủ tài khoản được BE điền lại theo dữ liệu VNeID.
+      cfg.key === "ket-hon" ||
+      cfg.key === "ket-hon-nuoc-ngoai" ||
+      cfg.key === "dang-ky-lai-ket-hon" ||
       cfg.key === "khai-sinh-dang-ky-lai" ||
       cfg.key === "khai-sinh-ket-hop-nhan-cha-me-con" ||
       cfg.key === "khai-tu" ||
@@ -4459,6 +4480,9 @@ ocrBtn.addEventListener("click", async () => {
       // theo tài khoản cần mốc để biết tài khoản có phải người dự tuyển không (tự nộp → tích ô "Người
       // nộp là chủ hồ sơ"); thiếu mốc là BE để trống Phần I.
       cfg.key === "thi-tuyen-cong-chuc" ||
+      // [Bộ Nội vụ] Chia, tách, sáp nhập, hợp nhất hội: chủ hồ sơ = Chủ tịch dự kiến; chế độ theo tài khoản cần mốc
+      // để biết tài khoản có phải chủ hồ sơ không (tích "Người nộp là chủ hồ sơ") — thiếu mốc BE để trống Phần I.
+      cfg.key === "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
     ) {
@@ -4485,7 +4509,7 @@ ocrBtn.addEventListener("click", async () => {
       : "Đang xử lý trên máy chủ (OCR + trích trường)...",
       "info"
     );
-    // Toggle "Người nộp = chủ hồ sơ": bỏ so khớp mỏ neo UI (BE thủ tục nào hỗ trợ mới honor).
+    // Toggle "Lấy người nộp theo tờ khai": bỏ so khớp mỏ neo UI (BE thủ tục nào hỗ trợ mới honor).
     if (submitterOwnerMode) options.submitterMode = "owner_as_submitter";
     if (cfg.hasAttachmentStep) {
       lastProcessSession = null;

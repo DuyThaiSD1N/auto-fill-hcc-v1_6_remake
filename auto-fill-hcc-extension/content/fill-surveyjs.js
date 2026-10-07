@@ -257,8 +257,12 @@
           for (let t = 0; t < ticks && !portalError; t++) {
             await sleep(200);
             if (shown()) return true;
+            // Lời từ chối dung lượng/định dạng ("Vui lòng chọn tệp nhỏ hơn 2MB!", "…tệp đúng định dạng!") không
+            // chứa chữ lỗi nào → phải khớp riêng, không thì chờ hết hạn rồi nạp lại lần hai trong khi cổng đã từ
+            // chối ngay.
             portalError = portalToasts()
-              .find((msg) => !toastsBefore.has(msg) && /loi|that bai|khong|vuot|qua/.test(fold(msg))) || "";
+              .find((msg) => !toastsBefore.has(msg)
+                && /loi|that bai|khong|vuot|qua|nho hon \d|dung luong|dinh dang/.test(fold(msg))) || "";
           }
           return false;
         };

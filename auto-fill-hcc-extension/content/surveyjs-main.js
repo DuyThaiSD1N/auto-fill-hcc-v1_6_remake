@@ -205,6 +205,17 @@
   async function setValues(fields) {
     const survey = findSurvey();
     if (!survey) return { ok: false, error: "no-survey" };
+    installRelationGuards(survey);
+    // Engine tự chọn quan hệ / tự điền khối: bộ giữ khối không chụp, không ghi lại trong lượt này.
+    toolWriting = true;
+    try {
+      return await setValuesCore(survey, fields);
+    } finally {
+      toolWriting = false;
+    }
+  }
+
+  async function setValuesCore(survey, fields) {
     const before = new Map((survey.getAllQuestions(false) || []).map((q) => [q.name, q.isEmpty?.()]));
     const results = [];
     let lookupDone = false;
@@ -231,6 +242,87 @@
       }
     }
     return { ok: true, results };
+  }
+
+  // ---- Giữ khối thông tin người được cấp khi đổi ô "Quan hệ…" ----
+  // Biểu mẫu trích lục / cải chính khai resetValueIf "{<ô quan hệ>} <> <Bản thân>" cho cả khối người được
+  // cấp: mỗi lần ô quan hệ đổi sang lựa chọn khác "Bản thân", SurveyJS xoá trắng khối, kể cả dữ liệu đã
+  // điền / sửa tay. Chọn "Bản thân" thì trigger copyvalue chép thông tin người nộp vào khối. Giữ khối bằng
+  // cách chụp trước khi đổi rồi ghi lại sau khi cổng xoá:
+  //   - đổi giữa các lựa chọn khác "Bản thân" (kể cả từ trống): ghi lại đúng dữ liệu đang có;
+  //   - người dùng đổi sang "Bản thân": lưu ảnh khối lúc đó; đổi tiếp sang lựa chọn khác thì ghi lại đúng
+  //     ảnh đã lưu (ô trống vẫn trống) — dữ liệu người nộp cổng vừa chép không được giữ lại;
+  //   - "Bản thân" do engine tự chọn khi điền: không có ảnh, đổi sang lựa chọn khác thì để cổng xoá.
+  // Chỉ áp cho các ô quan hệ khai dưới đây; khai sinh / khai tử giữ nguyên hành vi của cổng.
+  const RELATION_GUARD_NAMES = ["citizenQuanhe", "citizenQuanhevsngcaichinhhotich1"];
+  const guardedSurveys = new WeakSet();
+  let toolWriting = false;
+  let restoringBlock = false;
+  const baseName = (name) => String(name || "").replace(/__\d+$/, "");
+  const cloneValue = (v) => (v === undefined ? v : JSON.parse(JSON.stringify(v)));
+  const sameValue = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+  function snapshotBlock(questions) {
+    const snap = new Map();
+    for (const q of questions) if (!q.isEmpty?.()) snap.set(q.name, cloneValue(q.value));
+    return snap;
+  }
+
+  // Ghi lại theo thứ tự trên trang: loại / nơi cư trú trước để ô địa chỉ hiện ra; ô chọn chờ cổng chạy
+  // chuỗi tỉnh → xã (đổi tỉnh làm cổng xoá xã rồi nạp lại danh mục) nên soát lại vài lượt.
+  async function restoreBlock(survey, questions, snap) {
+    restoringBlock = true;
+    try {
+      const targets = questions.filter((q) => snap.has(q.name));
+      for (let pass = 0; pass < 3; pass++) {
+        let changed = false;
+        for (const q of targets) {
+          const want = snap.get(q.name);
+          if (sameValue(q.value, want)) continue;
+          q.value = cloneValue(want);
+          changed = true;
+          if (["dropdown", "radiogroup"].includes(q.getType?.())) await sleep(300);
+        }
+        if (!changed && pass > 0) break;
+        await sleep(800);
+      }
+    } finally {
+      restoringBlock = false;
+    }
+  }
+
+  function installRelationGuards(survey) {
+    if (guardedSurveys.has(survey)) return;
+    guardedSurveys.add(survey);
+    const all = survey.getAllQuestions(false) || [];
+    for (const relation of all.filter((q) => RELATION_GUARD_NAMES.includes(baseName(q.name)))) {
+      const block = all.filter((q) => String(q.resetValueIf || "").includes(`{${relation.name}}`));
+      if (!block.length) continue;
+      const selfValue = choicesOf(relation).find((c) => fold(c.text) === "ban than")?.value;
+      const isSelf = (v) => selfValue !== undefined && v !== undefined && v !== null && String(v) === String(selfValue);
+      let beforeSelf = null;   // ảnh khối lúc người dùng đổi sang "Bản thân"
+      let pending = null;      // ảnh khối ngay trước lần đổi hiện tại
+      survey.onValueChanging.add((_sender, opt) => {
+        if (opt.name !== relation.name || restoringBlock) return;
+        if (toolWriting) { pending = null; return; }
+        pending = { from: opt.oldValue, snap: snapshotBlock(block) };
+        if (isSelf(opt.value) && !isSelf(opt.oldValue)) beforeSelf = pending.snap;
+      });
+      survey.onValueChanged.add((_sender, opt) => {
+        if (opt.name !== relation.name || restoringBlock || toolWriting) return;
+        const change = pending;
+        pending = null;
+        if (!change || isSelf(opt.value)) return;
+        let snap = change.snap;
+        if (isSelf(change.from)) {
+          snap = beforeSelf;
+          beforeSelf = null;
+          if (!snap) return;   // "Bản thân" do engine chọn: để cổng xoá như bình thường
+        }
+        // Chạy sau các xử lý đồng bộ của cổng cho cùng lần đổi (resetValueIf, trigger).
+        setTimeout(() => { void restoreBlock(survey, block, snap); }, 0);
+      });
+    }
   }
 
   // ---- Chặn hộp thoại chọn tệp của OS ----

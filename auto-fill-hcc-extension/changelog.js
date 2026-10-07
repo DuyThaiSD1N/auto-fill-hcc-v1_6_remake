@@ -3,6 +3,18 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.22",
+    date: "7/10/2026",
+    items: [
+      "Điền được trang nộp hồ sơ hộ tịch MỚI trên Cổng DVC quốc gia (khai tử, trích lục, cải chính…).",
+      "Không mất thông tin đã điền khi đổi ô \"Quan hệ…\" (đăng ký lại khai sinh, trích lục, cải chính).",
+      "Đăng ký hộ kinh doanh: ghi nhận \"đã nộp\" đầy đủ, không còn sót sau khi bấm nộp.",
+      "Kết hôn: bên nam/nữ trùng chủ tài khoản được điền theo dữ liệu VNeID.",
+      "Đà Nẵng: tự bấm đúng thẻ \"Nộp trực tuyến\" theo phường (vd Liên Chiểu → Khu vực 5); tệp hộ kinh doanh tự bỏ dấu tên.",
+      "Cài đặt: đổi tên thành \"Lấy người nộp theo tờ khai\", mô tả rõ hơn.",
+    ],
+  },
+  {
     version: "1.21",
     date: "5/10/2026",
     items: [
