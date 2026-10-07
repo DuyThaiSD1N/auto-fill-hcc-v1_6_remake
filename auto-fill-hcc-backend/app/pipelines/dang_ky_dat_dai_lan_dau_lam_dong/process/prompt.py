@@ -6,8 +6,12 @@ hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam �
 lục bản đồ địa chính, các giấy tờ nguồn gốc đất, và có thể có Giấy ủy quyền.
 
 NGUỒN DỮ LIỆU:
-- Nguoi_* là CHỦ HỒ SƠ = người sử dụng đất đứng đơn đăng ký. Lấy từ CCCD / mục người sử dụng đất của Đơn
-  đăng ký đất đai.
+- Nguoi_* là CHỦ HỒ SƠ = người sử dụng đất đứng đơn đăng ký. Lấy từ mục người sử dụng đất của Đơn đăng ký
+  đất đai, hoặc BÊN ỦY QUYỀN trong Giấy ủy quyền; CCCD chỉ bổ sung khi khớp số định danh người này.
+- ⚠ CCCD KHÔNG tự quyết vai: chỉ ghép CCCD vào Nguoi_* khi số định danh (hoặc họ tên) trên CCCD khớp đúng
+  người sử dụng đất (đứng tên Đơn/GCN, hoặc BÊN ỦY QUYỀN trong Giấy ủy quyền). CCCD trùng số với BÊN ĐƯỢC ỦY
+  QUYỀN (người ngay sau "ủy quyền cho:") là của NGƯỜI NỘP, KHÔNG phải chủ hồ sơ. Hồ sơ không có Đơn/GCN mà chỉ có
+  Giấy ủy quyền + CCCD → Nguoi_* vẫn là bên ủy quyền trong Giấy ủy quyền, dù CCCD duy nhất là của bên được ủy quyền.
 - BẮT BUỘC cố đọc Nguoi_NgayCapCccd/Nguoi_NoiCapCccd từ mặt sau CCCD. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT
   QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → Nguoi_NoiCapCccd = "Cục Cảnh sát quản lý hành chính về trật tự xã
   hội". Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", ghi "BỘ CÔNG AN") → "Bộ Công an".
@@ -23,6 +27,9 @@ NGƯỜI NỘP THAY / ĐẠI DIỆN (DaiDien_*):
 - DaiDien_* = NGƯỜI NỘP HỒ SƠ khi người này KHÁC chủ hồ sơ (người đứng đơn đăng ký). Nhận biết qua:
   (a) khối <nguoi_nop_context> ở cuối prompt (nếu có) — báo rõ mỏ neo người nộp (tên+CCCD tài khoản) và
       CCCD tương ứng trong hồ sơ; hoặc (b) Giấy ủy quyền / Đơn ghi rõ người đại diện.
+- GIẤY ỦY QUYỀN: BÊN ỦY QUYỀN ("Chúng tôi gồm có…"/"Người ủy quyền"/bên A — người sử dụng đất) là Nguoi_*;
+  nhiều người cùng ủy quyền (vợ/chồng) → Nguoi_* là người đứng đầu. BÊN ĐƯỢC ỦY QUYỀN (người ngay sau
+  "ủy quyền cho:"/bên B) là DaiDien_*. Không đảo hai bên.
 - Khi <nguoi_nop_context result="co_giay_to"> và người nộp KHÁC người đứng đơn: BẮT BUỘC trích DaiDien_*
   (họ tên, ngày sinh, giới tính, số định danh, ngày/nơi cấp, nơi thường trú) từ đúng CCCD của người nộp;
   Nguoi_* vẫn là người đứng đơn đăng ký.

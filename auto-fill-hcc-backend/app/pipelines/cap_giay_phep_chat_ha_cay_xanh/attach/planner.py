@@ -137,6 +137,8 @@ def _build_row_item(file: dict, file_index: int, doc_type: str) -> dict:
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
+        # Cổng tick sẵn mọi dòng → dòng không đính bị bắt buộc khi chuyển bước; FE bỏ tick trước khi đính.
+        "untickUnplannedRows": True,
         "needsAddComponent": False,
         "detectedType": doc_type,
     }

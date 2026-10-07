@@ -2,11 +2,13 @@
 (1.012945, cổng DVCQG).
 
 Theo mapping của thủ tục:
-- Phần I người nộp: data[fullname] / data[birthday] / data[identityNumber] / data[chonDoiTuong] cổng khoá theo tài
-  khoản → KHÔNG phát. Giới tính, ngày cấp, nơi cấp, địa chỉ chỉ lấy từ CCCD KHỚP tài khoản (không có tài khoản thì
-  khớp người được BCH giao làm thủ tục).
-- Phần II chủ hồ sơ = Chủ tịch dự kiến (CCCD → Phiếu LLTP số 1). data[isOwnerDossierCheck] tích khi chủ hồ sơ
-  chính là người nộp, còn lại bỏ tích.
+- Phần II chủ hồ sơ = Chủ tịch dự kiến (CCCD → Phiếu LLTP số 1).
+- Phần I người nộp — hai chế độ như các thủ tục hưu trí:
+  · THEO TÀI KHOẢN (mặc định): mốc formContext. Khớp chủ hồ sơ → TÍCH, Phần I = chủ hồ sơ; khớp CCCD người khác
+    trong hồ sơ → bỏ tích, Phần I = người đó; không khớp / không có mốc → bỏ tích, KHÔNG điền Phần I. Họ tên, ngày
+    sinh, CCCD Phần I cổng khoá và đổ sẵn từ VNeID → không phát.
+  · THEO TỜ KHAI (`submitterMode="owner_as_submitter"`): người nộp = chủ hồ sơ, TÍCH; ba ô khoá phát kèm
+    enableInput (extension bỏ disabled) và ghim occurrence 0 — mẫu tách hội dùng TRÙNG field-key Phần I.
 - Phần III datagrid "Hồ sơ kèm theo gồm": mỗi giấy tờ trong hồ sơ một dòng, Loại bản "Bản chính".
 - Phần IV: data[noiGui] = tỉnh ở dòng "Kính gửi"; data[ChonTruongHop] mở MỘT trong 4 fieldset, các ô còn lại điền
   theo bộ field-key của fieldset đó (MAU_DON). Mẫu tách trùng field-key Phần I → gắn scope fieldset2.
@@ -152,7 +154,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     warnings: list[str] = []
     seen: set[tuple[str, bool]] = set()
 
-    def add(name: str, value, *, scoped: bool = False) -> None:
+    def add(name: str, value, *, scoped: bool = False, extra: dict | None = None) -> None:
         key = (name, scoped)
         if key in seen or value in (None, "", {}, []):
             return
@@ -164,10 +166,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             field["scope"] = TACH_SCOPE
             field["scopeNear"] = TACH_SCOPE_NEAR
             field["scopeAway"] = list(NGUOI_NOP_MARKERS)
+        if extra:
+            field.update(extra)
         out.append(field)
         seen.add(key)
 
     # --- Mốc tài khoản đăng nhập (extension gửi formContext) ---
+    theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     ctx = (options or {}).get("formContext") or {}
     ctx_name = _text(ctx.get("applicantFullname") or ctx.get("fullname"))
     ctx_identity = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
@@ -177,35 +182,59 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     nguoi_ky = _text(values.get("NguoiKy_TMBCH"))
     lien_he = lien_he or nguoi_ky
     phone = _phone(values.get("NguoiLienHe_DienThoai"))
-    lien_he_la_nguoi_nop = (not has_ctx) or (bool(lien_he) and _person_matches(lien_he, None, ctx_name, None))
 
-    # --- Phần I: người nộp — chỉ từ CCCD khớp tài khoản (không có tài khoản: khớp người liên hệ) ---
-    nop_name = _text(values.get("NguoiNop_HoTen"))
-    nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
-    if has_ctx:
-        nop_ok = bool(nop_name or nop_id) and _person_matches(nop_name, nop_id, ctx_name, ctx_identity)
-    else:
-        nop_ok = bool(nop_name and lien_he and _same_name(nop_name, lien_he))
-    if nop_ok:
-        add("data[gender]", _gender(values.get("NguoiNop_GioiTinh")))
-        add("data[identityDate]", _date(values.get("NguoiNop_NgayCap")))
-        add("data[idIssuePlace]", _issuer(values.get("NguoiNop_NoiCap")))
-        nop_area = _area(values.get("NguoiNop_DiaChi"))
-        if nop_area:
-            add("data[province]", province_label(nop_area.get("tinh")))
-            add("data[district]", _text(nop_area.get("xa")))
-            add("data[address]", _text(nop_area.get("diaChi")))
-    if lien_he_la_nguoi_nop:
-        add("data[phoneNumber]", phone)
-
-    # --- Phần II: chủ hồ sơ = Chủ tịch dự kiến ---
     owner_name = _text(values.get("ChuHoSo_HoTen"))
     owner_id = _identity(values.get("ChuHoSo_SoDinhDanh"))
+    owner = {
+        "name": owner_name, "identity": owner_id, "birthday": _date(values.get("ChuHoSo_NgaySinh")),
+        "gender": values.get("ChuHoSo_GioiTinh"), "issue_date": values.get("ChuHoSo_NgayCap"),
+        "issuer": values.get("ChuHoSo_NoiCap"), "area": _area(values.get("ChuHoSo_DiaChi")),
+    }
+    nop_name = _text(values.get("NguoiNop_HoTen"))
+    nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
+    nop = {
+        "name": nop_name, "identity": nop_id, "birthday": None,
+        "gender": values.get("NguoiNop_GioiTinh"), "issue_date": values.get("NguoiNop_NgayCap"),
+        "issuer": values.get("NguoiNop_NoiCap"), "area": _area(values.get("NguoiNop_DiaChi")),
+    }
+
+    # --- Ai là người nộp (Phần I) ---
+    part_one: dict | None = None
+    self_submit = False
+    if theo_to_khai:
+        if owner_name:
+            part_one, self_submit = owner, True
+    elif has_ctx:
+        if owner_name and _person_matches(owner_name, owner_id, ctx_name, ctx_identity):
+            part_one, self_submit = owner, True
+        elif (nop_name or nop_id) and _person_matches(nop_name, nop_id, ctx_name, ctx_identity):
+            part_one = nop
+
+    if part_one is not None:
+        if theo_to_khai:
+            # Ô khoá theo VNeID: bỏ disabled rồi ghi; occurrence 0 = Phần I (mẫu tách hội trùng field-key).
+            locked = {"enableInput": True, "occurrence": 0}
+            add("data[fullname]", part_one["name"], extra=locked)
+            add("data[identityNumber]", part_one["identity"], extra=locked)
+            if part_one["birthday"]:
+                add("data[birthday]", part_one["birthday"], extra=locked)
+            else:
+                # Ngày sinh tài khoản VNeID đổ sẵn không phải của người nộp theo tờ khai → xoá + tô đỏ.
+                out.append({"name": "data[birthday]", "comp": "dom-date", "value": "", "clear": True,
+                            "markEmpty": True, **locked})
+        add("data[gender]", _gender(part_one["gender"]))
+        add("data[identityDate]", _date(part_one["issue_date"]))
+        add("data[idIssuePlace]", _issuer(part_one["issuer"]))
+        if part_one["area"]:
+            add("data[province]", province_label(part_one["area"].get("tinh")))
+            add("data[district]", _text(part_one["area"].get("xa")))
+            add("data[address]", _text(part_one["area"].get("diaChi")))
+        # SĐT trên Đơn là của người liên hệ — chỉ dùng cho Phần I khi người nộp chính là người đó.
+        if lien_he and _same_name(part_one["name"] or "", lien_he):
+            add("data[phoneNumber]", phone)
+
+    # --- Phần II: chủ hồ sơ = Chủ tịch dự kiến ---
     if owner_name:
-        if has_ctx:
-            self_submit = _person_matches(owner_name, owner_id, ctx_name, ctx_identity)
-        else:
-            self_submit = bool(lien_he) and _same_name(owner_name, lien_he)
         add("data[isOwnerDossierCheck]", self_submit)
         add("data[ownerFullname]", owner_name)
         add("data[ownerBirthday]", _date(values.get("ChuHoSo_NgaySinh")))
@@ -291,10 +320,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                         "tin chủ hồ sơ.")
     elif not owner_id:
         warnings.append("Chưa có số CCCD của chủ hồ sơ (Phiếu LLTP mục 8 / CCCD) — vui lòng nhập tay.")
-    if not has_ctx and nop_ok:
-        warnings.append("Không đọc được tài khoản đang đăng nhập trên form — giới tính, ngày cấp, nơi cấp của người "
-                        "nộp lấy theo CCCD của người được giao làm thủ tục, kiểm tra lại.")
-    if not nop_ok:
-        warnings.append("Hồ sơ không có CCCD khớp người nộp — vui lòng tự nhập giới tính, ngày cấp, nơi cấp, địa chỉ "
-                        "của người nộp.")
+    if part_one is None:
+        if theo_to_khai:
+            warnings.append("Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng chưa đọc được chủ hồ sơ — phần người "
+                            "nộp để trống, vui lòng nhập tay.")
+        elif not has_ctx:
+            warnings.append("Chưa đọc được tài khoản đăng nhập trên trang (F5 trang cổng rồi quét lại) — phần người "
+                            "nộp để trống. Người nộp theo tờ khai thì bật cài đặt \"Lấy người nộp theo tờ khai\".")
+        else:
+            warnings.append(f"Hồ sơ không có giấy tờ của tài khoản đăng nhập ({ctx_identity or ctx_name}) — phần "
+                            "người nộp để trống, vui lòng nhập tay; người nộp theo tờ khai thì bật cài đặt \"Lấy "
+                            "người nộp theo tờ khai\".")
     return out, warnings

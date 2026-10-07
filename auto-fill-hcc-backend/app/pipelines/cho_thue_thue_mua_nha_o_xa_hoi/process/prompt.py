@@ -30,17 +30,26 @@ Don_ThucTrangNhaO: thực trạng nhà ở của người viết đơn (mục th
 trên form, vd "Chưa có nhà ở thuộc sở hữu của mình".
 
 ThanhVienGiaDinh (mảng): trích các thành viên hộ gia đình (mục 9 đơn) — mỗi dòng {hoTen, soCccd, ngayCap,
-noiCap, quanHe}. quanHe = đúng chữ NGƯỜI DÂN TỰ VIẾT trước họ tên (Con, Con dâu, Con rể, Cháu…). Ô nào
-đơn để trống thì BỎ (đừng bịa số CCCD/ngày cấp).
+noiCap, quanHe}. quanHe = đúng chữ NGƯỜI DÂN TỰ VIẾT về quan hệ của dòng đó, chép nguyên văn. Dòng chỉ
+có nhãn in sẵn "Họ và tên:" + tên + năm sinh + CCCD, KHÔNG có chữ chỉ quan hệ nào người dân viết thêm →
+KHÔNG trả khoá quanHe cho dòng đó (cán bộ tự chọn trên form). KHÔNG suy quan hệ từ năm sinh, chênh tuổi,
+họ/tên đệm, thứ tự dòng hay đối tượng chính sách. Chú thích cuối trang yêu cầu "ghi rõ mối quan hệ" là
+hướng dẫn in sẵn, KHÔNG phải căn cứ để tự điền quan hệ. Ô nào đơn để trống thì BỎ (đừng bịa số
+CCCD/ngày cấp).
 
 ⚑ DÒNG (a) "Họ và tên vợ (hoặc chồng)": cụm "vợ (hoặc chồng)" là NHÃN IN SẴN trên mẫu đơn, không phải
 thông tin người dân khai. Không có gì trong đơn nói người đó là vợ hay là chồng, và TÊN ĐỆM
-("Văn"/"Thị") KHÔNG phải bằng chứng. → quanHe của dòng này trả đúng chuỗi "Vợ (hoặc chồng)".
-Downstream tự chốt lại bằng số định danh. Các dòng (b)(c)(d) giữ nguyên chữ người dân viết.
+("Văn"/"Thị") KHÔNG phải bằng chứng. → quanHe của dòng này trả đúng chuỗi "Vợ (hoặc chồng)" để cán bộ
+tự chọn. Các dòng (b)(c)(d) giữ nguyên chữ người dân viết, không viết thì bỏ.
 
 NGÀY (dd/mm/yyyy): NguoiNop_NgaySinh, NguoiNop_NgayCap, Don_NgayKy, và ngayCap của từng thành viên. Đọc
-đúng, KHÔNG bịa. Nếu đơn chỉ ghi năm sinh, lấy ngày/tháng đầy đủ theo CCCD.
+đúng, KHÔNG bịa. NguoiNop_NgaySinh chỉ trả khi có MỘT giấy tờ trong hồ sơ ghi ĐỦ ngày/tháng/năm sinh của
+người viết đơn (CCCD hoặc giấy tờ khác). Mọi giấy tờ chỉ ghi năm sinh → BỎ NguoiNop_NgaySinh, KHÔNG tự ghép
+ngày/tháng.
 
 Don_NoiKy: nơi lập/ký đơn (dòng ký cuối) — tên tỉnh/thành phố (vd "Đà Nẵng").
+
+NguoiNop_DienThoai: dòng "Số điện thoại liên hệ" ở khối ký cuối đơn (cạnh tên người viết đơn) — đơn có
+ghi số thì PHẢI trích, kể cả khi khối ký bị OCR dồn lẫn với ý kiến xác nhận của UBND.
 
 KHÔNG trả field UI dạng data[...]. KHÔNG bịa thông tin còn thiếu; giấy tờ không có thì bỏ field."""

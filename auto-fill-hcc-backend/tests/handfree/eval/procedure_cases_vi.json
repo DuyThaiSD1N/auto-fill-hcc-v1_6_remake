@@ -1,0 +1,774 @@
+{
+ "_mo_ta": "Bộ câu đo nhận diện thủ tục bằng câu gõ/nói (tiếng Việt). Chạy: .venv/bin/python -m tests.handfree.eval.eval_procedure_picker --mode picker|resolve. expect: pick=chọn đúng key | unclear=không được tự chọn, phải gợi ý ít nhất 1 key trong danh sách (all=true: phải gợi ý đủ cả danh sách) | ask_about=hỏi về thủ tục key | none=không chọn thủ tục nào | not_pick=không được chọn key này. province mặc định laichau.",
+ "cases": [
+  {
+   "id": "A01",
+   "group": "ten_chuan",
+   "text": "đăng ký kết hôn",
+   "expect": {
+    "pick": "ket-hon"
+   }
+  },
+  {
+   "id": "A02",
+   "group": "ten_chuan",
+   "text": "tôi muốn đăng ký khai sinh cho con",
+   "expect": {
+    "unclear": [
+     "khai-sinh-dang-ky-thuong",
+     "khai-sinh-dang-ky"
+    ],
+    "all": true
+   }
+  },
+  {
+   "id": "A03",
+   "group": "ten_chuan",
+   "text": "làm khai sinh liên thông kèm thẻ bảo hiểm y tế cho bé",
+   "expect": {
+    "pick": "khai-sinh-dang-ky"
+   }
+  },
+  {
+   "id": "A04",
+   "group": "ten_chuan",
+   "text": "chứng thực bản sao",
+   "expect": {
+    "pick": "chung-thuc-ban-sao"
+   }
+  },
+  {
+   "id": "A05",
+   "group": "ten_chuan",
+   "text": "xin giấy xác nhận tình trạng hôn nhân",
+   "expect": {
+    "pick": "xac-nhan-tinh-trang-hon-nhan"
+   }
+  },
+  {
+   "id": "A06",
+   "group": "ten_chuan",
+   "text": "đăng ký khai tử",
+   "expect": {
+    "pick": "khai-tu"
+   }
+  },
+  {
+   "id": "A07",
+   "group": "ten_chuan",
+   "text": "đăng ký thành lập hộ kinh doanh",
+   "expect": {
+    "pick": "dang-ky-kinh-doanh"
+   }
+  },
+  {
+   "id": "A08",
+   "group": "ten_chuan",
+   "text": "chấm dứt hoạt động hộ kinh doanh",
+   "expect": {
+    "pick": "cham-dut-hoat-dong-ho-kinh-doanh"
+   }
+  },
+  {
+   "id": "A09",
+   "group": "ten_chuan",
+   "text": "cấp giấy phép xây dựng nhà ở riêng lẻ",
+   "expect": {
+    "pick": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le"
+   }
+  },
+  {
+   "id": "A10",
+   "group": "ten_chuan",
+   "text": "chứng thực chữ ký",
+   "expect": {
+    "pick": "chung-thuc-chu-ky"
+   }
+  },
+  {
+   "id": "A11",
+   "group": "ten_chuan",
+   "text": "đăng ký khai sinh",
+   "expect": {
+    "unclear": [
+     "khai-sinh-dang-ky-thuong",
+     "khai-sinh-dang-ky"
+    ],
+    "all": true
+   }
+  },
+  {
+   "id": "B01",
+   "group": "dan_da",
+   "text": "tôi muốn lấy vợ người Lào",
+   "expect": {
+    "pick": "ket-hon-nuoc-ngoai"
+   }
+  },
+  {
+   "id": "B02",
+   "group": "dan_da",
+   "text": "bố tôi mới mất, làm giấy báo tử cho ông",
+   "expect": {
+    "pick": "khai-tu"
+   }
+  },
+  {
+   "id": "B03",
+   "group": "dan_da",
+   "text": "công chứng cái căn cước",
+   "expect": {
+    "pick": "chung-thuc-ban-sao"
+   }
+  },
+  {
+   "id": "B04",
+   "group": "dan_da",
+   "text": "tôi muốn mở cửa hàng tạp hóa, đăng ký kinh doanh hộ gia đình",
+   "expect": {
+    "pick": "dang-ky-kinh-doanh"
+   }
+  },
+  {
+   "id": "B05",
+   "group": "dan_da",
+   "text": "giấy khai sinh của con ghi sai tên, muốn sửa lại",
+   "expect": {
+    "pick": "thay-doi-cai-chinh-ho-tich"
+   }
+  },
+  {
+   "id": "B06",
+   "group": "dan_da",
+   "text": "xin giấy độc thân để đi làm hồ sơ cưới",
+   "expect": {
+    "pick": "xac-nhan-tinh-trang-hon-nhan"
+   }
+  },
+  {
+   "id": "B07",
+   "group": "dan_da",
+   "text": "bà nội tôi 80 tuổi không có lương hưu, xin trợ cấp cho bà",
+   "expect": {
+    "pick": "dieu-chinh-huu-tri-xa-hoi"
+   }
+  },
+  {
+   "id": "B08",
+   "group": "dan_da",
+   "text": "đi giám định khuyết tật cho cháu",
+   "expect": {
+    "pick": "xac-dinh-muc-do-khuyet-tat"
+   }
+  },
+  {
+   "id": "B09",
+   "group": "dan_da",
+   "text": "chứng thực hợp đồng tặng cho đất cho con",
+   "expect": {
+    "pick": "chung-thuc-giao-dich-tai-san"
+   }
+  },
+  {
+   "id": "B10",
+   "group": "dan_da",
+   "text": "anh ấy muốn nhận đứa bé là con mình",
+   "expect": {
+    "pick": "dang-ky-nhan-cha-me-con"
+   }
+  },
+  {
+   "id": "B11",
+   "group": "dan_da",
+   "text": "dịch thuật công chứng bản dịch hộ chiếu",
+   "expect": {
+    "pick": "chung-thuc-chu-ky-nguoi-dich-ctv"
+   }
+  },
+  {
+   "id": "B12",
+   "group": "dan_da",
+   "text": "chỉ làm giấy khai sinh thôi, không làm hộ khẩu",
+   "expect": {
+    "pick": "khai-sinh-dang-ky-thuong"
+   }
+  },
+  {
+   "id": "B13",
+   "group": "dan_da",
+   "text": "đăng ký khai sinh quá hạn cho tôi, giờ tôi 30 tuổi rồi",
+   "expect": {
+    "pick": "khai-sinh-dang-ky-thuong"
+   }
+  },
+  {
+   "id": "B14",
+   "group": "dan_da",
+   "text": "chứng thực sơ yếu lý lịch đi xin việc",
+   "expect": {
+    "pick": "chung-thuc-chu-ky"
+   }
+  },
+  {
+   "id": "B15",
+   "group": "dan_da",
+   "text": "công chứng giấy ủy quyền cho chồng đi rút tiền",
+   "expect": {
+    "pick": "chung-thuc-chu-ky"
+   }
+  },
+  {
+   "id": "B16",
+   "group": "dan_da",
+   "text": "chứng thực hợp đồng ủy quyền bán mảnh đất",
+   "expect": {
+    "pick": "chung-thuc-giao-dich-tai-san"
+   }
+  },
+  {
+   "id": "C01",
+   "group": "khong_dau_sai_asr",
+   "text": "dang ky ket hon",
+   "expect": {
+    "pick": "ket-hon"
+   }
+  },
+  {
+   "id": "C02",
+   "group": "khong_dau_sai_asr",
+   "text": "lam giay khai sinh cho con",
+   "expect": {
+    "unclear": [
+     "khai-sinh-dang-ky-thuong",
+     "khai-sinh-dang-ky"
+    ],
+    "all": true
+   }
+  },
+  {
+   "id": "C03",
+   "group": "khong_dau_sai_asr",
+   "text": "chung thuc ban sao so do",
+   "expect": {
+    "pick": "chung-thuc-ban-sao"
+   }
+  },
+  {
+   "id": "C04",
+   "group": "khong_dau_sai_asr",
+   "text": "đăng kí khai tữ cho bố",
+   "expect": {
+    "pick": "khai-tu"
+   }
+  },
+  {
+   "id": "C05",
+   "group": "khong_dau_sai_asr",
+   "text": "xác nhận tình trạng hông nhân",
+   "expect": {
+    "pick": "xac-nhan-tinh-trang-hon-nhan"
+   }
+  },
+  {
+   "id": "C06",
+   "group": "khong_dau_sai_asr",
+   "text": "ừ thì em ơi làm cho chị cái đăng ký kết hôn với",
+   "expect": {
+    "pick": "ket-hon"
+   }
+  },
+  {
+   "id": "C07",
+   "group": "khong_dau_sai_asr",
+   "text": "đăng ký khai xinh cho bé",
+   "expect": {
+    "unclear": [
+     "khai-sinh-dang-ky-thuong",
+     "khai-sinh-dang-ky"
+    ],
+    "all": true
+   }
+  },
+  {
+   "id": "C08",
+   "group": "khong_dau_sai_asr",
+   "text": "trứng thực chữ ký",
+   "expect": {
+    "pick": "chung-thuc-chu-ky"
+   }
+  },
+  {
+   "id": "C09",
+   "group": "khong_dau_sai_asr",
+   "text": "hộ kinh doanh muốn đổi địa chỉ",
+   "expect": {
+    "pick": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh"
+   }
+  },
+  {
+   "id": "C10",
+   "group": "khong_dau_sai_asr",
+   "text": "làm thủ tục thờ cúng liệt sỹ",
+   "expect": {
+    "pick": "tro-cap-tho-cung-liet-si"
+   }
+  },
+  {
+   "id": "D01",
+   "group": "mo_ho",
+   "text": "làm thủ tục mai táng",
+   "expect": {
+    "unclear": [
+     "ho-tro-mai-tang",
+     "ho-tro-mai-tang-huu-tri-xa-hoi"
+    ]
+   }
+  },
+  {
+   "id": "D02",
+   "group": "mo_ho",
+   "text": "xin trợ cấp xã hội",
+   "expect": {
+    "unclear": [
+     "dieu-chinh-huu-tri-xa-hoi",
+     "tro-cap-xa-hoi-hang-thang"
+    ]
+   }
+  },
+  {
+   "id": "D03",
+   "group": "mo_ho",
+   "text": "mất giấy khai sinh rồi",
+   "expect": {
+    "unclear": [
+     "trich-luc-ks",
+     "khai-sinh-dang-ky-lai"
+    ]
+   }
+  },
+  {
+   "id": "D04",
+   "group": "mo_ho",
+   "text": "chứng thực",
+   "expect": {
+    "unclear": [
+     "chung-thuc-ban-sao",
+     "chung-thuc-chu-ky",
+     "chung-thuc-giao-dich-tai-san",
+     "chung-thuc-phan-chia-di-san",
+     "chung-thuc-sua-doi-bo-sung-huy-bo-giao-dich",
+     "chung-thuc-chu-ky-nguoi-dich-ctv"
+    ]
+   }
+  },
+  {
+   "id": "D05",
+   "group": "mo_ho",
+   "text": "hộ kinh doanh",
+   "expect": {
+    "unclear": [
+     "dang-ky-kinh-doanh",
+     "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+     "cham-dut-hoat-dong-ho-kinh-doanh"
+    ]
+   }
+  },
+  {
+   "id": "D06",
+   "group": "mo_ho",
+   "text": "làm lại giấy tờ hộ tịch bị mất",
+   "expect": {
+    "unclear": [
+     "khai-sinh-dang-ky-lai",
+     "dang-ky-lai-ket-hon",
+     "khai-tu-dang-ky-lai",
+     "trich-luc-ks"
+    ]
+   }
+  },
+  {
+   "id": "D07",
+   "group": "mo_ho",
+   "text": "người nhà mất rồi thì làm thủ tục gì",
+   "expect": {
+    "unclear": [
+     "khai-tu",
+     "ho-tro-mai-tang",
+     "ho-tro-mai-tang-huu-tri-xa-hoi"
+    ]
+   }
+  },
+  {
+   "id": "D08",
+   "group": "mo_ho",
+   "text": "trợ cấp người có công",
+   "expect": {
+    "unclear": [
+     "di-chuyen-ho-so-nguoi-huong-tro-cap",
+     "tro-cap-tho-cung-liet-si",
+     "uu-dai-ncc-tu-tran"
+    ]
+   }
+  },
+  {
+   "id": "D09",
+   "group": "mo_ho",
+   "text": "mất giấy kết hôn",
+   "expect": {
+    "unclear": [
+     "trich-luc-ks",
+     "dang-ky-lai-ket-hon"
+    ]
+   }
+  },
+  {
+   "id": "E01",
+   "group": "nhieu_luot",
+   "text": "ông ấy là người khuyết tật",
+   "history": [
+    {
+     "role": "user",
+     "text": "làm thủ tục mai táng"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Hỗ trợ chi phí mai táng — đối tượng bảo trợ xã hội; Hỗ trợ chi phí mai táng — người hưởng trợ cấp hưu trí xã hội?"
+    }
+   ],
+   "candidates_shown": [
+    "ho-tro-mai-tang",
+    "ho-tro-mai-tang-huu-tri-xa-hoi"
+   ],
+   "expect": {
+    "pick": "ho-tro-mai-tang"
+   }
+  },
+  {
+   "id": "E02",
+   "group": "nhieu_luot",
+   "text": "cái thứ hai",
+   "history": [
+    {
+     "role": "user",
+     "text": "làm thủ tục mai táng"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Hỗ trợ chi phí mai táng — đối tượng bảo trợ xã hội; Hỗ trợ chi phí mai táng — người hưởng trợ cấp hưu trí xã hội?"
+    }
+   ],
+   "candidates_shown": [
+    "ho-tro-mai-tang",
+    "ho-tro-mai-tang-huu-tri-xa-hoi"
+   ],
+   "expect": {
+    "pick": "ho-tro-mai-tang-huu-tri-xa-hoi"
+   }
+  },
+  {
+   "id": "E03",
+   "group": "nhieu_luot",
+   "text": "sổ gốc ở xã vẫn còn, chỉ cần bản sao thôi",
+   "history": [
+    {
+     "role": "user",
+     "text": "mất giấy khai sinh rồi"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Bản sao Trích lục hộ tịch; Đăng ký lại Khai sinh?"
+    }
+   ],
+   "candidates_shown": [
+    "trich-luc-ks",
+    "khai-sinh-dang-ky-lai"
+   ],
+   "expect": {
+    "pick": "trich-luc-ks"
+   }
+  },
+  {
+   "id": "E04",
+   "group": "nhieu_luot",
+   "text": "cho mẹ tôi 82 tuổi, không có lương hưu",
+   "history": [
+    {
+     "role": "user",
+     "text": "xin trợ cấp xã hội"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Trợ cấp hưu trí xã hội; Trợ cấp xã hội hàng tháng cho đối tượng bảo trợ xã hội?"
+    }
+   ],
+   "candidates_shown": [
+    "dieu-chinh-huu-tri-xa-hoi",
+    "tro-cap-xa-hoi-hang-thang"
+   ],
+   "expect": {
+    "pick": "dieu-chinh-huu-tri-xa-hoi"
+   }
+  },
+  {
+   "id": "E05",
+   "group": "nhieu_luot",
+   "text": "nghỉ bán rồi, muốn đóng luôn",
+   "history": [
+    {
+     "role": "user",
+     "text": "hộ kinh doanh"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Đăng ký thành lập hộ kinh doanh; Thay đổi nội dung hộ kinh doanh; Chấm dứt hộ kinh doanh?"
+    }
+   ],
+   "candidates_shown": [
+    "dang-ky-kinh-doanh",
+    "dang-ky-thay-doi-noi-dung-ho-kinh-doanh",
+    "cham-dut-hoat-dong-ho-kinh-doanh"
+   ],
+   "expect": {
+    "pick": "cham-dut-hoat-dong-ho-kinh-doanh"
+   }
+  },
+  {
+   "id": "E06",
+   "group": "nhieu_luot",
+   "text": "hợp đồng mua bán xe máy",
+   "history": [
+    {
+     "role": "user",
+     "text": "chứng thực"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Chứng thực bản sao; Chứng thực chữ ký; Chứng thực giao dịch tài sản?"
+    }
+   ],
+   "candidates_shown": [
+    "chung-thuc-ban-sao",
+    "chung-thuc-chu-ky",
+    "chung-thuc-giao-dich-tai-san"
+   ],
+   "expect": {
+    "pick": "chung-thuc-giao-dich-tai-san"
+   }
+  },
+  {
+   "id": "E07",
+   "group": "nhieu_luot",
+   "text": "làm cả thẻ bảo hiểm cho cháu",
+   "history": [
+    {
+     "role": "user",
+     "text": "đăng ký khai sinh"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Đăng ký Khai sinh; Liên thông đăng ký khai sinh?"
+    }
+   ],
+   "candidates_shown": [
+    "khai-sinh-dang-ky-thuong",
+    "khai-sinh-dang-ky"
+   ],
+   "expect": {
+    "pick": "khai-sinh-dang-ky"
+   }
+  },
+  {
+   "id": "E08",
+   "group": "nhieu_luot",
+   "text": "cái đầu tiên",
+   "history": [
+    {
+     "role": "user",
+     "text": "đăng ký khai sinh"
+    },
+    {
+     "role": "bot",
+     "text": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải một trong các thủ tục sau không ạ: Đăng ký Khai sinh; Liên thông đăng ký khai sinh?"
+    }
+   ],
+   "candidates_shown": [
+    "khai-sinh-dang-ky-thuong",
+    "khai-sinh-dang-ky"
+   ],
+   "expect": {
+    "pick": "khai-sinh-dang-ky-thuong"
+   }
+  },
+  {
+   "id": "F01",
+   "group": "hoi_khong_phai_thu_tuc",
+   "text": "chào em",
+   "expect": {
+    "none": true
+   }
+  },
+  {
+   "id": "F02",
+   "group": "hoi_khong_phai_thu_tuc",
+   "text": "lệ phí đăng ký kết hôn bao nhiêu",
+   "expect": {
+    "ask_about": "ket-hon"
+   }
+  },
+  {
+   "id": "F03",
+   "group": "hoi_khong_phai_thu_tuc",
+   "text": "làm khai tử cần những giấy tờ gì",
+   "expect": {
+    "ask_about": "khai-tu"
+   }
+  },
+  {
+   "id": "F04",
+   "group": "hoi_khong_phai_thu_tuc",
+   "text": "hôm nay trời nóng quá",
+   "expect": {
+    "none": true
+   }
+  },
+  {
+   "id": "G01",
+   "group": "khoa_tinh",
+   "province": "laichau",
+   "text": "cấp bản sao văn bằng tốt nghiệp từ sổ gốc",
+   "expect": {
+    "not_pick": "cap-ban-sao-van-bang-so-goc"
+   }
+  },
+  {
+   "id": "G02",
+   "group": "khoa_tinh",
+   "province": "bacninh",
+   "text": "cấp bản sao văn bằng tốt nghiệp từ sổ gốc",
+   "expect": {
+    "pick": "cap-ban-sao-van-bang-so-goc"
+   }
+  },
+  {
+   "id": "G03",
+   "group": "khoa_tinh",
+   "province": "laichau",
+   "text": "đăng ký thế chấp quyền sử dụng đất",
+   "expect": {
+    "not_pick": "dang-ky-bien-phap-bao-dam-bac-ninh"
+   }
+  },
+  {
+   "id": "H01",
+   "group": "kiem_tra_moi",
+   "text": "con tôi mới đẻ được một tuần, muốn làm giấy khai sinh và nhập khẩu luôn",
+   "expect": {
+    "pick": "khai-sinh-dang-ky"
+   }
+  },
+  {
+   "id": "H02",
+   "group": "kiem_tra_moi",
+   "text": "em muốn cưới anh người Trung Quốc",
+   "expect": {
+    "pick": "ket-hon-nuoc-ngoai"
+   }
+  },
+  {
+   "id": "H03",
+   "group": "kiem_tra_moi",
+   "text": "photo công chứng mấy cái bằng đại học",
+   "expect": {
+    "pick": "chung-thuc-ban-sao"
+   }
+  },
+  {
+   "id": "H04",
+   "group": "kiem_tra_moi",
+   "text": "đang bán phở muốn thêm ngành nghề kinh doanh",
+   "expect": {
+    "pick": "dang-ky-thay-doi-noi-dung-ho-kinh-doanh"
+   }
+  },
+  {
+   "id": "H05",
+   "group": "kiem_tra_moi",
+   "text": "xin phép xây nhà",
+   "expect": {
+    "pick": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le"
+   }
+  },
+  {
+   "id": "H06",
+   "group": "kiem_tra_moi",
+   "text": "tên bố trong giấy khai sinh bị viết sai dấu",
+   "expect": {
+    "pick": "thay-doi-cai-chinh-ho-tich"
+   }
+  },
+  {
+   "id": "H07",
+   "group": "kiem_tra_moi",
+   "text": "bố tôi là thương binh đang hưởng trợ cấp, vừa mất tuần trước",
+   "expect": {
+    "pick": "uu-dai-ncc-tu-tran"
+   }
+  },
+  {
+   "id": "H08",
+   "group": "kiem_tra_moi",
+   "text": "dang ky khai tu cho me",
+   "expect": {
+    "pick": "khai-tu"
+   }
+  },
+  {
+   "id": "H09",
+   "group": "kiem_tra_moi",
+   "text": "chứng thực văn bản thỏa thuận chia thừa kế",
+   "expect": {
+    "pick": "chung-thuc-phan-chia-di-san"
+   }
+  },
+  {
+   "id": "H10",
+   "group": "kiem_tra_moi",
+   "text": "mở quán ăn cần giấy an toàn thực phẩm",
+   "expect": {
+    "pick": "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham"
+   }
+  },
+  {
+   "id": "H11",
+   "group": "kiem_tra_moi",
+   "text": "nhà tôi chuyển vào miền nam, chuyển hồ sơ hưởng chế độ người có công theo",
+   "expect": {
+    "pick": "di-chuyen-ho-so-nguoi-huong-tro-cap"
+   }
+  },
+  {
+   "id": "H12",
+   "group": "kiem_tra_moi",
+   "text": "chau toi mo coi ca bo lan me, xin tro cap hang thang",
+   "expect": {
+    "pick": "tro-cap-xa-hoi-hang-thang"
+   }
+  },
+  {
+   "id": "H13",
+   "group": "kiem_tra_moi",
+   "text": "đăng ký nhận con nuôi",
+   "expect": {
+    "none": true
+   }
+  },
+  {
+   "id": "H14",
+   "group": "kiem_tra_moi",
+   "text": "làm giám hộ cho em trai bị tâm thần",
+   "expect": {
+    "pick": "dang-ky-giam-ho"
+   }
+  }
+ ]
+}

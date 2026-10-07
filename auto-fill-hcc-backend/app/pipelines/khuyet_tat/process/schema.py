@@ -3,7 +3,8 @@
 Hai vai trò đầu hồ sơ được tách rõ:
 - ``NguoiNop_*`` là người khớp mỏ neo tên + CCCD trong ``formContext``; LLM
   vẫn phải trích đầy đủ nhân thân từ đúng giấy tờ của người này.
-- ``ChuHoSo_*`` là người đứng đơn/người đại diện hợp pháp trong hồ sơ.
+- ``ChuHoSo_*`` là người được xác định mức độ khuyết tật (mục I Mẫu số 01), kể cả
+  khi người đại diện hợp pháp đứng đơn.
 
 Các nhóm ``Nkt_*`` và ``Ndd_*`` vẫn là dữ liệu nghiệp vụ của Mẫu số 01, không
 được dùng thay tên cho hai vai trò đầu hồ sơ.
@@ -35,10 +36,10 @@ FIELDS: list[dict] = [
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người nộp nếu đúng tài liệu của người này ghi rõ."},
     {"name": "NguoiNop_QuocTich", "desc": "Quốc tịch người nộp khi đúng giấy tờ ghi rõ."},
 
-    # Chủ hồ sơ: người đứng đơn/người đại diện hợp pháp, có thể hợp nhất với
+    # Chủ hồ sơ: người được xác định mức độ khuyết tật (mục I), có thể hợp nhất với
     # CCCD đúng người. Không dùng CCCD bất kỳ hoặc context UI làm nguồn nhóm này.
-    {"name": "ChuHoSo_HoTen", "desc": "Họ tên CHỦ HỒ SƠ: người đứng đơn/người đại diện hợp pháp trong Mẫu số 01. Nếu không có người đại diện và người khuyết tật tự đề nghị thì chủ hồ sơ là người khuyết tật."},
-    {"name": "ChuHoSo_SoDinhDanh", "desc": "Số định danh/CCCD/CMND chủ hồ sơ; chỉ bổ sung từ CCCD khớp đúng họ tên hoặc số định danh của người đứng đơn."},
+    {"name": "ChuHoSo_HoTen", "desc": "Họ tên CHỦ HỒ SƠ: LUÔN là người được xác định mức độ khuyết tật ở mục I Mẫu số 01, kể cả khi mục II có người đại diện hợp pháp đứng đơn. Không bao giờ là người đại diện/người viết đơn."},
+    {"name": "ChuHoSo_SoDinhDanh", "desc": "Số định danh/CCCD/CMND chủ hồ sơ (người ở mục I); chỉ bổ sung từ CCCD khớp đúng họ tên hoặc số định danh của người này."},
     {"name": "ChuHoSo_NgaySinh", "desc": "Ngày sinh chủ hồ sơ, dd/mm/yyyy; ưu tiên CCCD khớp đúng người."},
     {"name": "ChuHoSo_GioiTinh", "desc": 'Giới tính chủ hồ sơ: "Nam" hoặc "Nữ" khi tài liệu ghi rõ.'},
     {"name": "ChuHoSo_NgayCap",
@@ -47,8 +48,8 @@ FIELDS: list[dict] = [
      "desc": 'Nơi cấp CCCD/CMND của chủ hồ sơ. Nếu đúng mặt sau thẻ có "CỤC TRƯỞNG CỤC CẢNH SÁT..." '
              'thì trả "Cục Cảnh sát quản lý hành chính về trật tự xã hội".'},
     {"name": "ChuHoSo_NoiCuTru",
-     "desc": "Nơi thường trú/cư trú của chủ hồ sơ, object {quocGia,tinh,xa,diaChi}; ưu tiên đúng mục người đứng đơn trong Mẫu số 01, CCCD chỉ bổ sung khi mục này thiếu."},
-    {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại chủ hồ sơ tại đúng mục người đứng đơn/người đại diện hợp pháp nếu có."},
+     "desc": "Hộ khẩu thường trú của chủ hồ sơ, object {quocGia,tinh,xa,diaChi}; ưu tiên mục I Mẫu số 01, CCCD đúng người chỉ bổ sung khi mục này thiếu."},
+    {"name": "ChuHoSo_DienThoai", "desc": "Số điện thoại tại mục I Mẫu số 01 nếu có."},
     {"name": "ChuHoSo_QuocTich", "desc": "Quốc tịch chủ hồ sơ khi tài liệu đúng người ghi rõ."},
 
     # Đơn đề nghị.
@@ -67,6 +68,10 @@ FIELDS: list[dict] = [
     # Người đại diện hợp pháp.
     {"name": "Ndd_HoTen", "desc": "Họ tên người đại diện hợp pháp trên đơn đề nghị."},
     {"name": "Ndd_SoDinhDanh", "desc": "Số CMND/CCCD của người đại diện hợp pháp."},
+    {"name": "Ndd_NgaySinh", "desc": "Ngày sinh người đại diện hợp pháp tại mục II hoặc CCCD đúng người này, dd/mm/yyyy; chỉ có năm thì bỏ."},
+    {"name": "Ndd_GioiTinh", "desc": 'Mặc định BỎ field này: mục II Mẫu số 01 không có dòng giới tính. Chỉ trả "Nam"/"Nữ" khi OCR có CCCD/CMND mang đúng số Ndd_SoDinhDanh ghi giới tính; không suy từ họ tên, quan hệ hay chữ "Người viết đơn".'},
+    {"name": "Ndd_NgayCap", "desc": "Ngày cấp CMND/CCCD của người đại diện tại mục II hoặc mặt sau CCCD đúng người này, dd/mm/yyyy."},
+    {"name": "Ndd_NoiCap", "desc": "Nơi cấp CMND/CCCD của người đại diện CHỈ khi mục II hoặc CCCD đúng người này ghi rõ; không có thì bỏ, không lấy nơi cấp của thẻ người khác."},
     {"name": "Ndd_QuanHe", "desc": 'Quan hệ với người khuyết tật, trả theo nhãn gốc nếu có: "bố đẻ", "mẹ đẻ", "cha", "mẹ"...'},
     {"name": "Ndd_SoDienThoai", "desc": "Số điện thoại người đại diện hợp pháp, số di động VN nếu có."},
     {"name": "Ndd_NoiCuTru", "desc": "Địa chỉ thường trú/nơi ở người đại diện, object {quocGia,tinh,xa,diaChi}."},
@@ -92,6 +97,8 @@ for _name in (
     "ChuHoSo_NgaySinh",
     "ChuHoSo_NgayCap",
     "Nkt_NgaySinh",
+    "Ndd_NgaySinh",
+    "Ndd_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 for _name in (

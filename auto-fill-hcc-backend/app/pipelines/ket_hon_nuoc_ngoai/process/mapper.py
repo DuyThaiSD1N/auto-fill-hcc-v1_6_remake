@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.tai_khoan import apply_account_marriage
 from app.pipelines._shared.compact_agent.issuer import (
     ISSUER_BO_CONG_AN,
     ISSUER_CUC,
@@ -144,7 +145,17 @@ def _card_is_other_person(card_name, card_id, declared_name, declared_id) -> boo
     return not (card_digits and declared_digits and _ids_close(card_digits, declared_digits))
 
 
-def enrich(fields: list[dict]) -> list[dict]:
+def _ui_field(name: str, value) -> dict | None:
+    comp = UI_COMP_BY_NAME.get(name)
+    return {"name": name, "comp": comp, "value": value} if comp else None
+
+
+def _vn_area(value):
+    area = _area(value)
+    return {**area, "quocGia": area["quocGia"] or "Việt Nam"} if area else None
+
+
+def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     values = _by_name(fields)
     out: list[dict] = []
     seen: set[str] = set()
@@ -275,4 +286,5 @@ def enrich(fields: list[dict]) -> list[dict]:
 
     add_person("CccdNu", "BenNu")
     add_person("CccdNam", "BenNam")
-    return out
+    return apply_account_marriage(out, options, _ui_field, _vn_area,
+                                  lambda issuer: id_doc_type("Căn cước", issuer))

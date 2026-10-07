@@ -145,13 +145,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     warnings: list[str] = []
     seen: set[str] = set()
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, extra: dict | None = None) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        field = {"name": name, "comp": comp, "value": value}
+        if extra:
+            field.update(extra)
+        out.append(field)
         seen.add(name)
 
     residence = _area(values.get("ChuThe_DiaChi"))
@@ -167,7 +170,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[district]", _commune_label(area.get("xa")))
         add("data[address]", _text(area.get("diaChi")))
 
-    # Xác định cá nhân / tổ chức.
+    # Xác định cá nhân / tổ chức (chủ hồ sơ = người yêu cầu đăng ký).
     loai = _fold(values.get("ChuThe_LoaiChuThe"))
     ten_tc = _text(values.get("ChuThe_TenToChuc"))
     mst = _identity(values.get("ChuThe_MaSoThue"))
@@ -175,37 +178,76 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     identity = _identity(values.get("ChuThe_SoDinhDanh"))
     is_to_chuc = ("chuc" in loai) or (bool(ten_tc or mst) and not (ho_ten or identity))
 
+    # Người nộp = người được giới thiệu/ủy quyền (chỉ khi khác chủ hồ sơ).
+    nop_name = _text(values.get("NguoiNop_HoTen"))
+    nop_id = _identity(values.get("NguoiNop_SoDinhDanh"))
+    same_as_owner = not is_to_chuc and (
+        (nop_id and identity and nop_id == identity) or (not nop_id and nop_name and _fold(nop_name) == _fold(ho_ten))
+    )
+    nop = None
+    if (nop_name or nop_id) and not same_as_owner:
+        nop = {
+            "name": nop_name, "identity": nop_id, "birthday": _date(values.get("NguoiNop_NgaySinh")),
+            "gender": _text(values.get("NguoiNop_GioiTinh")), "issue_date": _date(values.get("NguoiNop_NgayCap")),
+            "issuer": _issuer(values.get("NguoiNop_NoiCap")), "phone": _phone(values.get("NguoiNop_DienThoai")),
+        }
+
+    # Chỉ có chế độ tờ khai: cổng đổ sẵn họ tên/ngày sinh/CCCD của TÀI KHOẢN (cán bộ một cửa) vào các ô người nộp
+    # → bỏ khoá rồi ghi đè; ngày sinh tờ khai không có thì xoá trắng + tô đỏ, không giữ ngày sinh của tài khoản.
+    unlock = {"enableInput": True}
+
+    def add_person(person: dict) -> None:
+        add("data[fullname]", person["name"], unlock)
+        add("data[identityNumber]", person["identity"], unlock)
+        if person["birthday"]:
+            add("data[birthday]", person["birthday"], unlock)
+        elif "data[birthday]" not in seen:
+            out.append({"name": "data[birthday]", "comp": "dom-date", "value": "", "clear": True,
+                        "markEmpty": True, **unlock})
+            seen.add("data[birthday]")
+        add("data[gender]", person["gender"])
+        add("data[identityDate]", person["issue_date"])
+        add("data[identityAgency]", person["issuer"])
+
     if is_to_chuc:
-        # === TỔ CHỨC (vd ngân hàng) === chủ hồ sơ tổ chức → data[organization] (KHÔNG dùng ownerFullname
-        # là ô của cá nhân). Người nộp (fullname) do cổng tự đổ từ tài khoản; tích isOwnerDossier để copy.
+        # === Chủ hồ sơ TỔ CHỨC (vd ngân hàng) === → ô "Họ và tên chủ hồ sơ" nhận cả tên tổ chức, kèm
+        # data[organization]/data[taxCode].
         add("data[chonDoiTuong]", "Tổ chức")
+        add("data[ownerFullname]", ten_tc)
         add("data[organization]", ten_tc)
         add("data[taxCode]", mst)
-        add("data[identityNumber]", mst)
         add("data[nation]", "Việt Nam")
         add_address(residence)
-        add("data[phoneNumber]", phone)
+        add("data[isOwnerDossier]", False)
+        if nop:
+            add_person(nop)
+        else:
+            add("data[identityNumber]", mst)
+            warnings.append("Hồ sơ không có Giấy giới thiệu/ủy quyền ghi người đi nộp — phần người nộp vui lòng nhập tay.")
+        add("data[phoneNumber]", phone or (nop or {}).get("phone"))
         add("data[email]", email)
         if not ten_tc:
             warnings.append("Thiếu tên tổ chức người yêu cầu đăng ký.")
     else:
-        # === CÁ NHÂN ===
+        # === Chủ hồ sơ CÁ NHÂN ===
         add("data[chonDoiTuong]", "Cá nhân")
-        add("data[fullname]", ho_ten)
         add("data[ownerFullname]", ho_ten)
-        add("data[birthday]", _date(values.get("ChuThe_NgaySinh")))
-        add("data[gender]", _text(values.get("ChuThe_GioiTinh")))
-        add("data[identityNumber]", identity)
-        add("data[identityDate]", id_date)
-        add("data[identityAgency]", issuer)
         add("data[nation]", "Việt Nam")
         add_address(residence)
-        add("data[phoneNumber]", phone)
+        if nop:
+            add("data[isOwnerDossier]", False)
+            add_person(nop)
+            add("data[phoneNumber]", nop["phone"])
+        else:
+            # Tự đi đăng ký: chủ hồ sơ cũng là người nộp.
+            add("data[isOwnerDossier]", True)
+            add_person({
+                "name": ho_ten, "identity": identity, "birthday": _date(values.get("ChuThe_NgaySinh")),
+                "gender": _text(values.get("ChuThe_GioiTinh")), "issue_date": id_date, "issuer": issuer,
+            })
+            add("data[phoneNumber]", phone)
         add("data[email]", email)
         if not ho_ten:
             warnings.append("Thiếu họ tên người yêu cầu đăng ký (cá nhân) từ CCCD/Phiếu Mẫu 01a.")
-
-    # Chủ hồ sơ = người nộp → TICH (ô mặc định CHƯA tick).
-    add("data[isOwnerDossier]", True)
 
     return out, warnings

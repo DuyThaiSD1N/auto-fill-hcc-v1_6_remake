@@ -21,7 +21,7 @@ cá nhân + tổ chức) và 2 hồ sơ mẫu HS1/HS2:
    bật thu thập cho key này, hoặc trang chưa đăng nhập) thì quay về đối chiếu hai khối trong giấy tờ
    và nói rõ trong cảnh báo rằng mode chỉ là suy đoán.
 
-   ⚑ `options.submitterMode="owner_as_submitter"` (cài đặt "Người nộp = chủ hồ sơ" của extension) —
+   ⚑ `options.submitterMode="owner_as_submitter"` (cài đặt "Lấy người nộp theo tờ khai" của extension) —
    CHẾ ĐỘ THEO TỜ KHAI: bỏ mốc tài khoản khi chọn người nộp. Người nộp là khối `NguoiNop_*` (prompt
    định nghĩa là bên được ủy quyền, không có ủy quyền thì chép chủ hồ sơ); khối đó trống thì lấy người
    đứng tên `ChuHoSo_*` (hồ sơ tổ chức: người đại diện ký đơn). Trùng/khác chủ hồ sơ chốt bằng
@@ -244,7 +244,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     is_org = _is_org(values)
     ctx_id, ctx_name = _account_anchor(options)
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     if theo_to_khai:
         same_person = _cung_nguoi_theo_to_khai(values)
@@ -394,7 +394,7 @@ def _to_khai_warnings(
     """
     if nguoi_nop is None:
         return [
-            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không ghi họ tên/số định danh của người "
+            "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không ghi họ tên/số định danh của người "
             "được ủy quyền lẫn người đứng tên chủ hồ sơ, nên trợ lý để trống khối \"Thông tin người "
             "nộp hồ sơ\" — cán bộ nhập tay."
         ]
@@ -411,7 +411,7 @@ def _to_khai_warnings(
         + ") nhưng tài khoản đang đăng nhập là người khác"
         + (f" (số căn cước {ctx_id})" if ctx_id else "")
         + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp — lệch là bị "
-        "chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+        "chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
     ]
 
 

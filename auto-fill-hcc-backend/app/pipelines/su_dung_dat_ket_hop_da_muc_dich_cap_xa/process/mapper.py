@@ -382,7 +382,7 @@ def _canh_bao_theo_to_khai(nguoi_nop: dict | None, options: dict | None) -> list
     """Cảnh báo riêng của chế độ THEO TỜ KHAI — không có cảnh báo "thiếu mốc tài khoản" ở đây."""
     if not nguoi_nop:
         return [
-            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng tờ khai không xác định được người nộp (không "
+            "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng tờ khai không xác định được người nộp (không "
             "có bên được ủy quyền, chủ hồ sơ không phải cá nhân hoặc không đọc được họ tên/số căn cước) "
             "nên trợ lý để trống nhân thân khối \"Thông tin người nộp\" — cán bộ nhập tay."
         ]
@@ -405,7 +405,7 @@ def _canh_bao_theo_to_khai(nguoi_nop: dict | None, options: dict | None) -> list
         + (_plain(ctx.get("applicantFullname")) or "người khác")
         + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh của khối người nộp với tài khoản trước khi "
         "cho nộp — lệch là bị chặn. "
-        "Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+        "Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
     ]
 
 
@@ -429,7 +429,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     is_org = _is_org(values)
     ctx_id, ctx_name = _account_anchor(options)
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     if theo_to_khai:
         # Trùng/khác chủ hồ sơ chốt theo HAI KHỐI FACTS (không truyền mốc) — người nộp lúc này là

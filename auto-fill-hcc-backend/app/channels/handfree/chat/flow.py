@@ -6,6 +6,7 @@ Bước 3 làm THẬT: greet → confirm_procedure → guide_login → ask_doc_m
 được thay ruột ở Bước 5-6 mà KHÔNG đổi khung máy trạng thái.
 """
 import asyncio
+import json
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -16,9 +17,11 @@ from app.channels.handfree.chat import guided_steps as guided
 from app.channels.handfree.chat import script_mong as mong
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat import store as conv_store
+from app.channels.handfree.chat import tu_phap_moi as tpm
 from app.channels.handfree.chat.intents import Intent, fold
 from app.locations.catalog import (
     PROVINCES,
+    handfree_agency_ward,
     portal_agency_province,
     portal_agency_ward,
     province_by_slug,
@@ -174,6 +177,14 @@ def _execution_subject_config(proc: dict | None = None) -> dict:
     if not isinstance(config, dict):
         config = (FLOW_PROFILES.get("tu-phap") or {}).get("executionSubject")
     return config if isinstance(config, dict) else {}
+
+
+def execution_subject_options(proc: dict | None = None) -> list[dict]:
+    """Các đối tượng thực hiện hợp lệ của thủ tục (agent nơi làm dùng làm danh sách đóng)."""
+    config = _execution_subject_config(proc)
+    if not config.get("enabled"):
+        return []
+    return [dict(option) for option in config.get("options", []) if isinstance(option, dict)]
 
 
 def _execution_subject_selection(conv: dict, proc: dict | None = None) -> dict | None:
@@ -749,17 +760,120 @@ async def handle_turn(
     conv: dict,
     intent: Intent,
     client_page_context: dict | None = None,
+    free_text: bool = False,
 ) -> Reply:
     # Ngôn ngữ của lượt: _fmt đọc qua ContextVar nên mọi handler tự song ngữ hoá,
     # không phải truyền conv xuống từng chỗ dựng câu.
     _TURN_LANG.set(conv.get("lang") or "vi")
     _TURN_HMONG_TTS.set(False)
+    voice_send = ""
+    if isinstance(intent.payload, dict) and "_voice_button" in intent.payload:
+        voice_send = str(intent.payload.pop("_voice_button") or "")
+    if voice_send and voice_send in _VOICE_PRESS_SENDS and _supports_voice_chips(conv):
+        # Lời nói chọn nút cần extension gom dữ liệu trên trang → nhờ extension bấm đúng nút đó;
+        # cú bấm đó quay lại đây như một lượt bấm tay bình thường.
+        r = Reply()
+        r.actions = [{"type": "press_chip", "send": voice_send}]
+        return r
     reply = await _handle_turn_inner(conv, intent, client_page_context)
+    if free_text and not (reply.display_md or reply.chips or reply.cards or reply.actions):
+        # Công dân đã gõ/nói mà bước hiện tại không có phản hồi → nói rõ là chưa hiểu.
+        reply = not_understood_reply(conv)
+    if voice_send and _supports_voice_chips(conv):
+        # Nhóm nút vừa được chọn bằng lời: extension khoá lại như khi bấm.
+        reply.actions = [*reply.actions, {"type": "chip_used", "send": voice_send}]
     if _TURN_HMONG_TTS.get() and reply.tts_text:
         reply.tts_lang = "hmong"
     if (conv.get("lang") or "vi") == "hmong":
         _localize_reply_labels(reply)
     return reply
+
+
+# ── Giọng nói: nút nào đang hiện thì nói được nút đó ─────────────────────────────────────────
+# Lệnh KHÔNG được chạy bằng lời: xoá dữ liệu (chỉ bấm tay); nộp hồ sơ (công dân tự bấm trên cổng);
+# mở hộp chọn tệp (trình duyệt chỉ cho mở trong cú bấm thật); nút FE đã ẩn.
+_VOICE_BLOCKED_SENDS = {
+    "__action:delete_data", "__action:guided_submit", "__action:tpm_submit",
+    "__action:pick_files_again", "__event:sso_success", "__action:finish_procedure",
+}
+# Nút mà extension phải gom dữ liệu trên trang rồi mới gửi (giá trị ô chủ hồ sơ, ngữ cảnh trang):
+# extension mới bấm hộ đúng nút đó; extension cũ thì chạy thẳng lệnh như trước.
+_VOICE_PRESS_SENDS = {"__action:guided_next", "__action:docs_done", "__event:docs_complete"}
+
+
+def _supports_voice_chips(conv: dict) -> bool:
+    return (conv.get("client_capabilities") or {}).get("supportsVoiceChips") is True
+
+
+def _card_voice_items(card: dict) -> list[dict]:
+    """Nút trên card cũng nói được — map về lệnh đã có cho đường nói."""
+    kind = card.get("kind")
+    if kind == "consent":
+        return [
+            {"label": vi.VOICE_CONSENT_AGREE, "send": "__action:consent_agree"},
+            {"label": vi.VOICE_CONSENT_DECLINE, "send": "__action:consent_decline"},
+        ]
+    if kind == "doc_options":
+        return [{"label": vi.VOICE_DOC_OPTION[o], "send": f'__action:doc_method:{{"value":"{o}"}}'}
+                for o in card.get("options") or [] if o in vi.VOICE_DOC_OPTION]
+    if kind == "result_methods":
+        return [{"label": str(o.get("label") or ""), "desc": str(o.get("desc") or ""),
+                 "send": str(o.get("send") or "")}
+                for o in card.get("options") or [] if isinstance(o, dict) and o.get("send")]
+    if kind == "rating":
+        return [{"label": str(item.get("label") or ""),
+                 "send": "__action:rate:" + json.dumps({"level": item.get("value")})}
+                for item in card.get("scale") or [] if isinstance(item, dict)]
+    return []
+
+
+def update_voice_options(conv: dict, reply: Reply) -> None:
+    """Ghi các nút của lượt này để câu nói sau chọn được (bộ phân loại nhận đúng danh sách này).
+
+    Lượt có nút/card → thay danh sách. Lượt chỉ có chữ hoặc im lặng mà vẫn ở bước cũ → giữ (nút cũ
+    còn trên màn hình); sang bước khác → bỏ, nút cũ không còn đúng bước nữa.
+    """
+    items = []
+    for chip in reply.chips:
+        send = str((chip or {}).get("send") or "")
+        if not send or send in _VOICE_BLOCKED_SENDS:
+            continue
+        item = {"label": str(chip.get("label") or ""), "send": send, "chip": dict(chip)}
+        if chip.get("phase"):
+            item["phase"] = chip["phase"]
+        items.append(item)
+    for card in reply.cards:
+        if isinstance(card, dict):
+            items += [i for i in _card_voice_items(card) if i["send"] not in _VOICE_BLOCKED_SENDS]
+    state = conv.get("state", "greet")
+    if items:
+        conv["voice_options"] = {"state": state, "items": items}
+    elif (conv.get("voice_options") or {}).get("state") != state:
+        conv["voice_options"] = None
+
+
+def clear_voice_options_if_pressed(conv: dict, message: str) -> None:
+    """Công dân vừa BẤM một nút trong danh sách → nhóm nút đó đã dùng (FE khoá cả nhóm)."""
+    items = (conv.get("voice_options") or {}).get("items") or []
+    if any(message == i.get("send") or message.startswith(f"{i.get('send')}:") for i in items):
+        conv["voice_options"] = None
+
+
+def not_understood_reply(conv: dict) -> Reply:
+    """Câu gõ/nói không ra việc gì ở bước này → nói rõ là chưa hiểu + những gì nói được, kèm lại
+    các nút. Không bao giờ im lặng, không đọc lại nguyên câu hỏi cũ."""
+    from app.channels.handfree.chat.intents import voice_buttons
+
+    items = voice_buttons(conv, conv.get("state", "greet"))
+    if not items:
+        return Reply(*_fmt(vi.VOICE_NOT_UNDERSTOOD))
+    labels = [i["label"] for i in items if i.get("label")]
+    r = Reply(*_fmt(vi.VOICE_NOT_UNDERSTOOD_OPTIONS,
+                    options_md=" · ".join(f"**{x}**" for x in labels),
+                    options_tts=", ".join(labels)))
+    # Chỉ dựng lại nút gốc (chip); nút trên card thì card vẫn còn trên màn hình.
+    r.chips = [dict(i["chip"]) for i in items if isinstance(i.get("chip"), dict)]
+    return r
 
 
 def _localize_reply_labels(reply: Reply) -> None:
@@ -906,6 +1020,8 @@ async def _handle_turn_inner(
                                procedure=_proc_label(conv),
                                step=vi.STEP_LABELS.get(state, state)))
         return _to_confirm_procedure(conv, intent.value)
+    if intent.kind == "procedure_unclear":
+        return _procedure_unclear(conv, intent.payload.get("candidates") or [])
     if intent.kind == "event" and intent.value == "submit_clicked":
         return _record_submit_click(conv, intent.payload)
     # ── Đánh giá trải nghiệm ─────────────────────────────────────────────────────────────
@@ -1006,6 +1122,7 @@ async def _handle_turn_inner(
         conv["auto_attach_after_fill"] = False
         _clear_documents_adjustment(conv)
         conv["consent"] = None  # chấp thuận gắn với TỪNG thủ tục (phạm vi giấy tờ khác nhau)
+        conv["procedure_candidates"] = []
         r = Reply(*_fmt(vi.CHANGED_PROCEDURE_RESET))
         r.cards = [_service_list_card(conv)]
         # Reset tại chỗ ở trên là đường TƯƠNG THÍCH cho extension bản cũ (bỏ qua action lạ).
@@ -1016,6 +1133,11 @@ async def _handle_turn_inner(
     if intent.kind == "ask_question":
         return _answer_question(conv, intent.value, intent.payload.get("procedure_key"))
 
+    if tpm.is_active(current_proc) and state in ("attaching", "done"):
+        # Trang nộp một trang: đính kèm / nhận kết quả / nộp do nút trong khung chat điều phối.
+        tpm_reply = await tpm.handle(conv, current_proc, intent)
+        if tpm_reply is not None:
+            return tpm_reply
     handler = _HANDLERS.get(state, _handle_greet)
     result = handler(conv, intent)
     if asyncio.iscoroutine(result):  # một số handler cần I/O (tạo phiên QR, chạy pipeline...)
@@ -1094,13 +1216,40 @@ def _confirm_procedure_refresh(conv: dict) -> Reply:
     return r
 
 
+def _procedure_not_recognized(conv: dict) -> Reply:
+    conv["procedure_candidates"] = []
+    r = Reply(*_fmt(vi.PROCEDURE_NOT_RECOGNIZED,
+                    count=len(public_list_for(_account_province_slug(conv)))))
+    r.cards = [_service_list_card(conv)]
+    return r
+
+
+def _procedure_unclear(conv: dict, keys: list) -> Reply:
+    """Câu gõ/nói hợp với nhiều thủ tục → hỏi lại kèm 2–3 nút gợi ý.
+
+    Gợi ý được lưu lại: lượt sau agent chọn thủ tục đọc chúng để ghép câu trả lời ngắn của công dân
+    ("cái thứ hai", "người mất là người khuyết tật") với câu trước.
+    """
+    slug = _account_province_slug(conv)
+    procs = [p for k in keys if (p := get_procedure(str(k))) and is_allowed_in_province(p, slug)][:3]
+    if not procs:
+        return _procedure_not_recognized(conv)
+    conv["procedure_candidates"] = [p["key"] for p in procs]
+    names = [p.get("shortLabel") or p["label"] for p in procs]
+    r = Reply(*_fmt(vi.PROCEDURE_UNCLEAR,
+                    options_md="\n".join(f"- **{n}**" for n in names),
+                    options_tts=" hay ".join(names)))
+    r.chips = [{"label": n, "send": "__action:pick_procedure:" + json.dumps({"key": p["key"]})}
+               for p, n in zip(procs, names)]
+    return r
+
+
 def _to_confirm_procedure(conv: dict, key: str) -> Reply:
     account_slug = _account_province_slug(conv)
     proc = get_procedure(key)
     if not proc:
-        r = Reply(*_fmt(vi.PROCEDURE_NOT_RECOGNIZED, count=len(public_list_for(account_slug))))
-        r.cards = [_service_list_card(conv)]
-        return r
+        return _procedure_not_recognized(conv)
+    conv["procedure_candidates"] = []
     # Khóa theo tỉnh: choke point DUY NHẤT cho mọi lối chọn (bấm ô, gọi tên, detect). Account
     # khác tỉnh → không mở, giữ state greet, mời chọn thủ tục khác.
     if not is_allowed_in_province(proc, account_slug):
@@ -1196,7 +1345,11 @@ def _procedure_first(conv: dict) -> bool:
 
 
 def _handle_greet(conv: dict, intent: Intent) -> Reply:
-    # Lượt đầu / không hiểu ở màn chào → chào + card chọn nơi + chọn thủ tục.
+    # Công dân đã gõ/nói mà không nhận ra thủ tục → nói thẳng là chưa nhận ra; chào lại từ đầu
+    # khiến công dân tưởng trợ lý không nghe thấy gì.
+    if intent.kind == "unknown" and intent.payload.get("free_text"):
+        return _procedure_not_recognized(conv)
+    # Lượt đầu / lệnh không thuộc màn chào → chào + card chọn nơi + chọn thủ tục.
     if _procedure_first(conv):
         r = Reply(*_fmt(vi.GREET_PROCEDURE_FIRST))
         r.cards = [_service_list_card(conv)]
@@ -1227,9 +1380,8 @@ def _agency_ward_display(proc: dict, loc: dict) -> str:
 
 
 def _portal_ward(loc: dict) -> str:
-    """Tên xã để CHỌN trên khối cơ quan của cổng: cổng chưa cập nhật một số xã (vd còn "Xã Hiệp
-    Hòa" trong khi danh mục đã là Phường) nên lấy theo bảng ngoại lệ của catalog. Câu đọc cho
-    công dân vẫn dùng loc["ward"] như cũ."""
+    """Tên xã để CHỌN trên khối cơ quan của cổng khi cổng chưa cập nhật tên xã — lấy theo bảng
+    ngoại lệ của catalog. Câu đọc cho công dân vẫn dùng loc["ward"] như cũ."""
     return portal_agency_ward(loc.get("province_slug") or loc.get("province"), loc.get("ward"))
 
 
@@ -1241,6 +1393,9 @@ def _agency_province(proc: dict, loc: dict) -> str:
 
 
 def _start_guide_login(conv: dict) -> Reply:
+    if tpm.is_active(get_procedure(conv.get("procedure_key") or "")) and not tpm.supported(conv):
+        # Engine cũ không điền/đính được trang nộp một trang — dẫn vào là công dân kẹt giữa chừng.
+        return tpm.update_required_reply(conv)
     conv["state"] = "guide_login"
     # MỐC BẮT ĐẦU HỒ SƠ. Đặt ở đây chứ không dùng conversations.created_at vì đây mới là
     # điểm "một hồ sơ mới khởi động" trong luồng: mọi đường làm thủ tục đều đi qua đây
@@ -1512,7 +1667,48 @@ def _handle_choose_variant(conv: dict, intent: Intent) -> Reply:
     return r
 
 
+def _apply_spoken_place(conv: dict, payload: dict) -> Reply:
+    """Agent nơi làm đã lấy ra tỉnh/xã/đối tượng → áp như chọn trên card rồi hỏi xác nhận lại.
+
+    Lượt NÓI nên dựng bong bóng mới và đọc lên (khác lượt chỉnh dropdown: sửa tại chỗ, im lặng).
+    """
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    changed = False
+    subject = str(payload.get("subject") or "")
+    if subject and subject in {str(o.get("key") or "") for o in execution_subject_options(proc)}:
+        conv["execution_subject"] = subject
+        changed = True
+    loc = dict(conv.get("location") or {})
+    slug = str(payload.get("province_slug") or loc.get("province_slug")
+               or _account_province_slug(conv))
+    ward = str(payload.get("ward") or "")
+    if payload.get("province_slug") or ward:
+        prov = province_by_slug(slug) or {}
+        # Đổi tỉnh mà chưa nêu xã → bỏ xã cũ (thuộc tỉnh cũ), câu xác nhận sẽ hỏi "(chưa chọn xã)".
+        keep_ward = "" if payload.get("province_slug") else loc.get("ward", "")
+        conv["location"] = {"province": prov.get("text", loc.get("province", "")),
+                            "province_slug": slug, "ward": ward or keep_ward}
+        changed = True
+    candidates = [str(w) for w in payload.get("ward_candidates") or [] if str(w)]
+    if candidates:
+        r = Reply(*_fmt(vi.PLACE_WARD_UNCLEAR,
+                        options_md="\n".join(f"- **{w}**" for w in candidates),
+                        options_tts=" hay ".join(candidates)))
+        r.chips = [{"label": w, "send": "__action:set_location:" + json.dumps(
+            {"province_slug": slug, "ward": w}, ensure_ascii=False)} for w in candidates]
+        return r
+    if not changed:
+        r = Reply(*_fmt(vi.PLACE_NOT_HEARD))
+        r.cards = [_location_card(conv)]
+        return r
+    return _to_confirm_procedure(conv, conv["procedure_key"])
+
+
 def _handle_confirm_procedure(conv: dict, intent: Intent) -> Reply:
+    if intent.kind == "action" and intent.value == "set_place":
+        return _apply_spoken_place(conv, intent.payload or {})
+    if intent.kind == "unknown" and (intent.payload or {}).get("free_text"):
+        return not_understood_reply(conv)
     if intent.kind == "confirm" or (intent.kind == "action" and intent.value == "goto_login"):
         # "Trường hợp giải quyết" KHÔNG hỏi ở đây nữa: hỏi đúng lúc công dân tới màn đó trên
         # cổng (xem nhánh maeAgencyBlock trong _guide_login_on_page). Hỏi từ đầu khiến công dân
@@ -1637,10 +1833,12 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "action" and intent.value == "consent":
         accepted = bool(intent.payload.get("accepted"))
         checks = list(intent.payload.get("checks") or [])
-    elif intent.kind == "action" and intent.value == "consent_agree":
-        # Nói "đồng ý" là khẳng định tường minh — hợp lệ, ghi rõ method=verbal trong log.
+    elif (intent.kind == "action" and intent.value == "consent_agree") or intent.kind == "confirm":
+        # Nói "đồng ý" là khẳng định tường minh — hợp lệ, ghi rõ method=verbal trong log. Câu hỏi
+        # duy nhất đang chờ ở bước này là xin phép, nên "đồng ý"/"đồng ý tất cả" mà bộ phân loại
+        # xếp vào confirm cũng là đồng ý xin phép.
         accepted, method, checks = True, "verbal", [True, True]
-    elif intent.kind == "action" and intent.value == "consent_decline":
+    elif (intent.kind == "action" and intent.value == "consent_decline") or intent.kind == "deny":
         accepted, method = False, "verbal"
     elif intent.kind == "action" and intent.value == "show_consent":
         r = Reply(*_fmt(vi.CONSENT_RESHOW))
@@ -1654,13 +1852,22 @@ async def _handle_consent(conv: dict, intent: Intent) -> Reply:
     conv["consent"] = {"accepted": accepted, "id": entry["_id"],
                        "version": entry["version"], "at": entry["at"].isoformat()}
     await consent_log.persist(entry)
+    # Trả lời bằng lời: card trên màn hình phải đổi theo (tích đủ ô, khoá nút) để công dân thấy lời
+    # vừa nói đã được ghi nhận. Extension cũ bỏ qua action lạ.
+    verbal_action = ({"type": "consent_verbal", "accepted": accepted}
+                     if method == "verbal" else None)
     if accepted:
         intro = _fmt(vi.CONSENT_ACCEPTED, log_id=entry["_id"],
                      time=entry["at_display"], version=entry["version"])
-        return _to_ask_doc_method(conv, intro=intro)
+        r = _to_ask_doc_method(conv, intro=intro)
+        if verbal_action:
+            r.actions = [verbal_action, *r.actions]
+        return r
     r = Reply(*_fmt(vi.CONSENT_DECLINED))
     r.chips = [{"label": "✅ Xem lại và đồng ý", "send": "__action:show_consent", "solid": True},
                {"label": "🆕 Làm thủ tục khác", "send": "__action:new_procedure"}]
+    if verbal_action:
+        r.actions = [verbal_action]
     return r
 
 
@@ -1741,7 +1948,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
         # cụ thể) rồi Đồng ý; "Nộp trực tuyến" ở kết quả ĐẦU TIÊN của danh sách sau đó mới
         # là Sở chuyên ngành của thủ tục.
         r = Reply()
-        ward = "" if proc.get("agencyProvinceOnly") else _portal_ward(loc)
+        ward = "" if proc.get("agencyProvinceOnly") else handfree_agency_ward(
+            loc.get("province_slug") or loc.get("province"), loc.get("ward"),
+        )
         # Tên tỉnh theo khối chọn cơ quan của cổng (có thể còn tên cũ, vd "Tỉnh Bắc Ninh").
         action = {"type": "select_agency",
                   "province": portal_agency_province(_agency_province(proc, loc)), "ward": ward}
@@ -2109,7 +2318,7 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         # (hoặc ngược lại) vì SPA còn giữ DOM của bước trước. Cổng 2-tab cùng trang
         # (samePageAttach) thì trang LUÔN đúng cho cả hai bước — bỏ chốt chặn nhầm trang.
         if (captured_now and page_bound and target != adjustment_target
-                and not proc.get("samePageAttach")):
+                and not proc.get("samePageAttach") and not tpm.is_active(proc)):
             conv["docs_target"] = adjustment_target
             conv["owner_phase"] = False
             conv["pipeline_status"] = (
@@ -2233,7 +2442,10 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
                       if conv.get("attach_mode") in ("merge", "split") else {})
     # samePageAttach: bảng đính kèm Bắc Ninh không đọc được qua collectAttachmentContext chung
     # (DOM checkbox + input file riêng) mà planner cũng không cần — chạy planner ngay.
-    if proc.get("samePageAttach") or not _wait_for_attachment_context(conv):
+    if proc.get("samePageAttach") or tpm.is_active(proc) or not _wait_for_attachment_context(conv):
+        if tpm.is_active(proc):
+            # Lượt điều chỉnh sau khi đã đính: đính lại toàn bộ ngay khi có kế hoạch mới.
+            conv["tpm_attach_requested"] = True
         conv["attachment_plan_started"] = True
         pipeline_runner.spawn(pipeline_runner.run_attach(
             conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or "",
@@ -2454,6 +2666,8 @@ def _fill_fields_reply(conv: dict) -> Reply:
     fields = conv.get("fields") or []
     r = Reply(*_fmt(vi.FILL_READY, count=len(fields)))
     r.actions = [{"type": "fill_fields", "fields": fields}]  # hợp đồng CŨ nguyên xi (docs/00 §4)
+    if tpm.is_active(get_procedure(conv.get("procedure_key") or "")):
+        r.actions[0]["toolAccount"] = tpm.tool_account(conv)
     return r
 
 
@@ -2586,7 +2800,9 @@ async def _handle_guided_action(conv: dict, proc: dict, intent: Intent) -> Reply
 
     if intent.value == "guided_next":
         phase = str(intent.payload.get("phase") or "")
-        if phase == guided.OWNER:
+        # Không có ownerFields = lượt nói ở extension chưa biết bấm hộ → không đọc được ô trên
+        # trang; để cổng tự chặn và guided_step_report báo lại như mọi lần bấm.
+        if phase == guided.OWNER and "ownerFields" in intent.payload:
             missing = guided.missing_owner_labels(proc, intent.payload.get("ownerFields"))
             if missing:
                 text = _join_owner_labels(missing)
@@ -2798,8 +3014,11 @@ async def _handle_owner_filling(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "event" and intent.value == "pipeline_error":
         conv["owner_info_done"] = True
         conv["state"] = "owner_waiting_next"
-        return Reply(*_fmt(vi.OWNER_PIPELINE_ERROR,
-                           error=conv.get("pipeline_error") or "không rõ"))
+        r = Reply(*_fmt(vi.OWNER_PIPELINE_ERROR,
+                        error=conv.get("pipeline_error") or "không rõ"))
+        # Lối thoát: gửi lại giấy tờ. Trước đây lượt này không có nút nào, công dân kẹt lại.
+        r.chips = [{"label": vi.OWNER_RESEND_DOCS_CTA, "send": "__action:resend_owner_docs"}]
+        return r
     if intent.kind == "action" and intent.value == "owner_fill_report":
         rep = {
             "filled": int(intent.payload.get("filled") or 0),
@@ -2851,6 +3070,23 @@ async def _handle_owner_waiting_next(conv: dict, intent: Intent) -> Reply:
         conv["state"] = "owner_filling"
         conv["owner_info_done"] = False
         return _owner_fields_reply(conv)
+    method = _picked_doc_method(intent)
+    if method in ("qr", "scan") or (intent.kind == "action" and intent.value == "resend_owner_docs"):
+        # Giấy tờ chủ hồ sơ không đọc được (vd phiên tải ảnh không còn tệp) → nhận lại từ đầu,
+        # vẫn ở bước chủ hồ sơ. Trước đây bước này chỉ hiểu "điền lại" nên câu "quét bằng điện
+        # thoại" rơi vào im lặng.
+        conv["owner_phase"] = True
+        conv["owner_info_done"] = False
+        conv["owner_fields"] = []
+        conv["upload_session_id"] = None
+        conv["doc_method"] = None
+        conv["supplementing_documents"] = False
+        conv["pipeline_status"] = ""
+        conv["pipeline_error"] = ""
+        if method in ("qr", "scan"):
+            conv["state"] = "ask_doc_method"
+            return await _apply_doc_method(conv, method, reuse_session=False)
+        return _to_ask_doc_method(conv)
     proc = get_procedure(conv.get("procedure_key") or "") or {}
     if (
         intent.kind == "event"
@@ -3073,6 +3309,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                "notFound": list(intent.payload.get("notFound") or []),
                "errors": list(intent.payload.get("errors") or [])}
         conv["fill_report"] = rep
+        if tpm.is_active(proc):
+            return await tpm.fill_report_reply(conv, rep)
         auto_wait_attachment = bool(
             conv.get("auto_attach_after_fill")
             and get_attach_pipeline(conv.get("procedure_key") or "")
@@ -3159,7 +3397,9 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         if conv.get("docs_target") != "declaration":
             return Reply(*_fmt(vi.REFILL_WRONG_PAGE))
         return await _start_documents_adjustment(conv, "declaration")
-    if intent.kind == "action" and intent.value in {"confirm_review", "request_attach"}:
+    # "Đúng rồi" ở bước này là trả lời câu hỏi đang chờ: đã rà soát xong form.
+    if (intent.kind == "action" and intent.value in {"confirm_review", "request_attach"}) \
+            or intent.kind == "confirm":
         conv["state"] = "attaching"
         if conv.get("docs_target") == "declaration":
             conv["pipeline_status"] = "waiting_attachment_page"

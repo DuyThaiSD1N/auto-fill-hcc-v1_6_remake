@@ -28,7 +28,11 @@ LIỆT KÊ chữ "Giấy ủy quyền" — ĐÓ KHÔNG PHẢI tài liệu ủy q
 
 NGUỒN DỮ LIỆU:
 - Nguoi_* là CHỦ HỒ SƠ = NGƯỜI SỬ DỤNG ĐẤT ở mục 1 Đơn Mẫu 18, cũng là người đứng tên GCN. Lấy từ
-  CCCD / mục 1a Đơn Mẫu 18 / GCN.
+  mục 1a Đơn Mẫu 18 / GCN / bên ủy quyền; CCCD chỉ bổ sung khi khớp số định danh người này.
+- ⚠ CCCD KHÔNG tự quyết vai: chỉ ghép CCCD vào Nguoi_* khi số định danh (hoặc họ tên) trên CCCD khớp đúng
+  người sử dụng đất (đứng tên Đơn/GCN, hoặc BÊN ỦY QUYỀN trong Giấy ủy quyền). CCCD trùng số với BÊN ĐƯỢC ỦY
+  QUYỀN (người ngay sau "ủy quyền cho:") là của NGƯỜI NỘP, KHÔNG phải chủ hồ sơ. Hồ sơ không có Đơn/GCN mà chỉ có
+  Giấy ủy quyền + CCCD → Nguoi_* vẫn là bên ủy quyền trong Giấy ủy quyền, dù CCCD duy nhất là của bên được ủy quyền.
 - ⚠ GCN CŨ CÓ THỂ ĐÃ SANG TÊN: nếu GCN có mục ghi "Những thay đổi sau khi cấp Giấy chứng nhận" (thừa
   kế, chuyển nhượng, tặng cho…) thì chủ hồ sơ là người NHẬN ở mục đó, KHÔNG phải tên in sẵn ở trang
   đầu GCN. Đối chiếu với tên trên Đơn Mẫu 18 và CCCD để chốt.

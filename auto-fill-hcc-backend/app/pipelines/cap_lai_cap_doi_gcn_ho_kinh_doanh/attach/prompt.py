@@ -10,6 +10,10 @@ Allowed type:
 - reissue_application: Giấy đề nghị cấp lại/cấp đổi Giấy chứng nhận đăng ký hộ kinh doanh (Mẫu số 2).
 - other: CCCD, GCN cũ, ủy quyền và mọi tài liệu khác/không đủ chắc chắn.
 
+Phân loại theo TIÊU ĐỀ và bản chất văn bản. Văn bản ỦY QUYỀN (có "Bên ủy quyền"/"Bên được ủy quyền")
+luôn là other, kể cả khi nội dung nhắc "giấy đề nghị cấp lại/cấp đổi giấy chứng nhận" — đó chỉ là
+phạm vi ủy quyền. Chữ "Mẫu số 2" đứng một mình không đủ để là reissue_application.
+
 Nếu một file scan gộp có Mẫu số 2 ở trang đầu và kèm CCCD/GCN ở trang sau, phân loại file đó là
 reissue_application vì đây là thành phần chính của bộ hồ sơ.
 

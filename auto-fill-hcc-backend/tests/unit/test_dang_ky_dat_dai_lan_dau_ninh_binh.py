@@ -111,33 +111,47 @@ def test_identity_shares_don_dang_ky_row():
     assert "loaiBan" not in attachments[0]
 
 
-def test_other_is_skipped_with_warning_and_no_item():
+def test_other_goes_to_don_row_with_llm_name_and_warning():
     files = [
         {"name": "don.pdf", "type": "application/pdf"},
         {"name": "la.pdf", "type": "application/pdf"},
     ]
     ocr = [{"name": item["name"], "text": "ocr"} for item in files]
 
-    attachments, warnings, classified = planner.build_plan_items(files, ocr, {0: "don_dang_ky", 1: "other"})
+    attachments, warnings, classified = planner.build_plan_items(
+        files, ocr, {0: "don_dang_ky", 1: "other"}, {1: "Biên bản (xác minh) hiện trạng.pdf"}
+    )
 
-    assert len(attachments) == 1
-    assert attachments[0]["fileIndex"] == 0
-    assert len(warnings) == 1
-    assert "la.pdf" in warnings[0]
-    assert classified[1]["skipped"] is True
-    assert classified[1]["docType"] == "other"
+    # Không bỏ sót file: form không có dòng "Giấy tờ khác" → đính vào dòng Đơn đăng ký.
+    assert [item["fileIndex"] for item in attachments] == [0, 1]
+    assert attachments[1]["componentIndex"] == 19
+    assert attachments[1]["documentName"] == "Biên bản xác minh hiện trạng"
+    assert len(warnings) == 1 and "la.pdf" in warnings[0]
+    assert classified[1]["docType"] == "other" and "skipped" not in classified[1]
 
 
-def test_unknown_llm_type_falls_back_to_other():
+def test_unknown_llm_type_still_attached_to_don_row():
     files = [{"name": "x.pdf", "type": "application/pdf"}]
     ocr = [{"name": "x.pdf", "text": "ocr"}]
 
     attachments, warnings, classified = planner.build_plan_items(files, ocr, {})
 
-    assert attachments == []
+    assert len(attachments) == 1 and attachments[0]["componentIndex"] == 19
+    assert attachments[0]["documentName"]
     assert len(warnings) == 1
     assert classified[0]["docType"] == "other"
     assert classified[0]["source"] == "unknown"
+
+
+def test_giay_to_nhan_than_vao_dong_don_khong_canh_bao():
+    files = [{"name": "kh.pdf", "type": "application/pdf"}]
+    ocr = [{"name": "kh.pdf", "text": "GIẤY CHỨNG NHẬN KẾT HÔN"}]
+
+    attachments, warnings, _ = planner.build_plan_items(files, ocr, {0: "nhan_than"}, {0: "Giấy chứng nhận kết hôn"})
+
+    assert warnings == []
+    assert attachments[0]["componentIndex"] == 19
+    assert attachments[0]["documentName"] == "Giấy chứng nhận kết hôn"
 
 
 def test_no_rule_fallback_helpers_exist():

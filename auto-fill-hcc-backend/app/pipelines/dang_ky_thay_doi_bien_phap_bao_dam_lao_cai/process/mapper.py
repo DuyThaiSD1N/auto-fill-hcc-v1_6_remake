@@ -1,6 +1,6 @@
 """Ánh xạ facts → ô eForm `CongDan_*` / `ChuHoSo_*` của cổng Lào Cai (thủ tục 1.011442.H38).
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: mốc là Họ tên + Số Căn cước cổng đổ sẵn từ tài khoản định danh, gửi lên
     trong `options.formContext`. Chỉ bù nhân thân người nộp bằng giấy tờ CỦA CHÍNH người đó; không có
     mốc, hoặc hồ sơ không có giấy tờ của người đó → bỏ trống nhân thân + cảnh báo.
@@ -403,11 +403,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                     + ". Cổng xác thực Họ tên/Số Căn cước/Ngày sinh với CSDL quốc gia dân cư trước khi cho "
                     "nộp — lệch tài khoản sẽ bị chặn với thông báo \"Thông tin người nộp hồ sơ không đúng "
                     "với tài khoản đăng nhập!\". Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt "
-                    "\"Người nộp = chủ hồ sơ\"."
+                    "\"Lấy người nộp theo tờ khai\"."
                 )
     elif theo_to_khai:
         warnings.append(
-            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có giấy giới thiệu/văn bản ủy quyền, "
+            "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có giấy giới thiệu/văn bản ủy quyền, "
             "Phiếu 02a không ghi người liên hệ và không đọc được người yêu cầu là cá nhân, nên trợ lý không "
             "xác định được người đi nộp theo tờ khai — khối \"Thông tin người nộp\" để trống nhân thân, cán "
             "bộ nhập tay."
@@ -417,7 +417,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             "Không xác định được NGƯỜI ĐANG ĐI NỘP: trợ lý chưa đọc được Họ tên/Số Căn cước cổng đổ sẵn từ "
             "tài khoản định danh (trang chưa đăng nhập, hoặc vừa cập nhật extension mà chưa F5 trang cổng). "
             "Khối \"Thông tin người nộp\" để trống nhân thân để khỏi điền nhầm người — F5 trang cổng rồi "
-            "quét lại, hoặc bật cài đặt \"Người nộp = chủ hồ sơ\" để điền theo tờ khai."
+            "quét lại, hoặc bật cài đặt \"Lấy người nộp theo tờ khai\" để điền theo tờ khai."
         )
     else:
         warnings.append(
@@ -425,7 +425,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             + (f" ({_plain(ctx.get('applicantFullname'))})" if ctx.get("applicantFullname") else "")
             + " nên khối \"Thông tin người nộp\" để trống nhân thân — cán bộ nhập tay, KHÔNG lấy thông tin "
             "của người khác trong hồ sơ vì cổng xác thực với CSDL quốc gia dân cư trước khi cho nộp. Muốn "
-            "điền theo người trong tờ khai thì bật cài đặt \"Người nộp = chủ hồ sơ\"."
+            "điền theo người trong tờ khai thì bật cài đặt \"Lấy người nộp theo tờ khai\"."
         )
 
     # --- Khối CHỦ HỒ SƠ: đối tượng đứng đầu, rồi đủ các ô đang hiện theo đối tượng ---

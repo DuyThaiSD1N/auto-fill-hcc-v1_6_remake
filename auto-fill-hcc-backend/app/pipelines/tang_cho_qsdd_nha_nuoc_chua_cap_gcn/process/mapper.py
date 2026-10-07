@@ -29,7 +29,7 @@ nhân + tổ chức) và bộ hồ sơ mẫu Lương Thị Linh / Nguyễn Tiế
    trang cổng là của TÀI KHOẢN ĐĂNG NHẬP, không phải của người trong giấy tờ, "không tự điền" —
    nên phải đối chiếu chứ không chép.
 
-   ⚑ `options.submitterMode="owner_as_submitter"` (cài đặt "Người nộp = chủ hồ sơ" của extension) —
+   ⚑ `options.submitterMode="owner_as_submitter"` (cài đặt "Lấy người nộp theo tờ khai" của extension) —
    CHẾ ĐỘ THEO TỜ KHAI: bỏ mốc tài khoản, `nop_source` chọn theo hồ sơ (`_khoi_nguoi_nop_theo_to_khai`):
    khối `NguoiNop_*` (người được uỷ quyền) → không có thì chủ hồ sơ CÁ NHÂN. Trùng/khác chủ hồ sơ chốt
    bằng `_cung_nguoi_theo_to_khai`. Người theo tờ khai lệch tài khoản đang đăng nhập → cảnh báo, vì cổng
@@ -347,7 +347,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     is_org = _is_org(values)
     ctx_id, ctx_name = _account_anchor(options)
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     # Hai khối facts CHẮC CHẮN là hai người khác nhau → cấm mọi việc chép nhân thân chéo.
     khac_nguoi = _nop_block_is_other_person(values)
@@ -595,7 +595,7 @@ def _to_khai_warnings(
     mốc để chọn người."""
     if nop_source is None:
         return [
-            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có người được uỷ quyền và chủ hồ "
+            "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có người được uỷ quyền và chủ hồ "
             "sơ không phải cá nhân đọc được họ tên/số định danh, nên trợ lý để trống khối \"Thông tin "
             "người nộp\" — cán bộ nhập tay."
         ]
@@ -613,7 +613,7 @@ def _to_khai_warnings(
             + ") nhưng tài khoản đang đăng nhập là người khác"
             + (f" (số căn cước {ctx_id})" if ctx_id else "")
             + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp — lệch là "
-            "bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+            "bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
         )
     return warnings
 

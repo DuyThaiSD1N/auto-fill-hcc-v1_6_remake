@@ -13,6 +13,10 @@ Allowed type:
 - family_minutes: Biên bản họp thành viên hộ gia đình về việc chấm dứt hoạt động HKD.
 - other: CCCD, ủy quyền và mọi tài liệu khác/không đủ chắc chắn.
 
+Phân loại theo TIÊU ĐỀ và bản chất văn bản. Văn bản ỦY QUYỀN (có "Bên ủy quyền"/"Bên được ủy quyền")
+luôn là other, kể cả khi nội dung nhắc "thông báo về việc chấm dứt hoạt động hộ kinh doanh" hay số Giấy
+chứng nhận đăng ký hộ kinh doanh — đó chỉ là phạm vi ủy quyền.
+
 Nếu một file scan gộp có Mẫu số 1 ở trang đầu và kèm GCN/Thông báo thuế ở các trang sau,
 phân loại file đó là dissolution_notice vì đây là thành phần chính của bộ hồ sơ.
 

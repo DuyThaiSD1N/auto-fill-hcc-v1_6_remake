@@ -92,9 +92,17 @@ def names_by_code(province_code, ward_code) -> tuple[str, str]:
 # tìm kiếm của cổng, lệch tiền tố Xã/Phường là không ra option nào và ô xã bị bỏ trống.
 # CHỈ dùng cho bước chọn cơ quan: WARDS_BY_SLUG giữ tên hiện hành vì biểu mẫu kê khai
 # (area_remap) và tài khoản (canonical_location) vẫn cần "Phường ...". Cổng cập nhật rồi thì xóa dòng.
-_PORTAL_AGENCY_WARDS: dict[str, dict[str, str]] = {
-    "bacninh": {"Phường Hiệp Hòa": "Xã Hiệp Hòa"},
+# Hiện trống: cổng đã đổi Hiệp Hòa (Bắc Ninh) sang "Phường Hiệp Hòa".
+_PORTAL_AGENCY_WARDS: dict[str, dict[str, str]] = {}
+
+# Extension Handfree đã phát hành còn bảng riêng (content/portal-dvc.js PORTAL_AGENCY_WARDS) đổi
+# các tên dưới đây sang tên cũ "Xã ..." ngay trước khi gõ vào ô xã của cổng. Gửi TÊN TRẦN để bảng đó
+# không khớp; engine chọn option theo "chứa chữ" nên vẫn ra đúng "Phường ...". Chỉ khai xã mà tên
+# trần không trùng xã nào khác cùng tỉnh. Bản extension đã xóa bảng lên chợ hết thì xóa dòng.
+_HANDFREE_STALE_WARD_ALIASES: dict[str, set[str]] = {
+    "bacninh": {"Phường Hiệp Hòa"},
 }
+_WARD_TYPE = re.compile(r"^(xã|phường|thị trấn|đặc khu)\s+", re.IGNORECASE)
 
 
 # Tên TỈNH ở khối "Chọn cơ quan thực hiện" của Cổng DVC quốc gia khi cổng CHƯA cập nhật việc tỉnh
@@ -137,6 +145,18 @@ def portal_agency_ward(province: str | None, ward: str | None) -> str:
         (portal for current, portal in aliases.items() if _fold(current) == ward_folded),
         ward_text,
     )
+
+
+def handfree_agency_ward(province: str | None, ward: str | None) -> str:
+    """Tên xã cho lệnh select_agency của Handfree — như portal_agency_ward, trừ các xã extension
+    cũ còn tự đổi sang tên cũ (_HANDFREE_STALE_WARD_ALIASES) thì gửi tên trần."""
+    ward_text = portal_agency_ward(province, ward)
+    province_text = (province or "").strip()
+    found = province_by_slug(province_text) or _find_province(province_text)
+    stale = _HANDFREE_STALE_WARD_ALIASES.get(found["slug"], set()) if found else set()
+    if any(_fold(name) == _fold(ward_text) for name in stale):
+        return _WARD_TYPE.sub("", ward_text)
+    return ward_text
 
 
 def portal_agency_wards_by_slug() -> dict[str, dict]:

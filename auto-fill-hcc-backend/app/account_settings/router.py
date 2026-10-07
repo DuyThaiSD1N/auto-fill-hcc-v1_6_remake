@@ -16,6 +16,7 @@ class AccountSettingsUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     renameAttachmentFiles: bool | None = None
+    submitterFromDeclaration: bool | None = None
 
 
 @router.get("")

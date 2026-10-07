@@ -29,8 +29,9 @@ FIELDS: list[dict] = [
         'đăng ký doanh nghiệp); "Cá nhân" nếu một người tự đăng ký. Thuê NOXH hầu hết là CÁ NHÂN.'},
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI VIẾT ĐƠN (= người nộp, chính chủ đăng ký thuê). "
         "IN HOA như CCCD. Lấy ở CCCD / Tờ đơn (mục 'Họ và tên người viết đơn')."},
-    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh, dd/mm/yyyy — CCCD (ngày/tháng/năm đầy đủ). Tờ đơn "
-        "thường chỉ ghi năm sinh → lấy ngày/tháng theo CCCD."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh, dd/mm/yyyy — CHỈ khi một giấy tờ trong hồ sơ (CCCD "
+        "hoặc giấy khác) ghi đủ ngày/tháng/năm. Tờ đơn thường chỉ ghi năm sinh: không giấy nào có đủ → BỎ, "
+        "KHÔNG ghép ngày/tháng."},
     {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính: "Nam"/"Nữ" — CCCD. KHÔNG suy từ tên đệm.'},
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/định danh cá nhân. CCCD / Tờ đơn (mục 'Căn cước công "
         "dân số'). Chỉ chữ số, ưu tiên 12 số."},
@@ -74,8 +75,8 @@ FIELDS += [
     {"name": "ThanhVienGiaDinh", "desc": "MẢNG các thành viên trong hộ gia đình (Tờ đơn mục 9). Mỗi phần "
         "tử: {hoTen, soCccd, ngayCap, noiCap, quanHe}. hoTen=họ tên thành viên; soCccd=số căn cước (bỏ nếu "
         "trống); ngayCap=ngày cấp CCCD dd/mm/yyyy (bỏ nếu trống); noiCap=nơi cấp (bỏ nếu trống); "
-        "quanHe=mối quan hệ với người viết đơn, chỉ lấy CHỮ NGƯỜI DÂN TỰ VIẾT trước họ tên (Con, Con dâu, "
-        "Con rể, Cháu, Mẹ, Bố…). ⚠ Dòng (a) có nhãn IN SẴN \"Họ và tên vợ (hoặc chồng)\": người dân KHÔNG "
+        "quanHe=mối quan hệ với người viết đơn, chỉ lấy CHỮ NGƯỜI DÂN TỰ VIẾT ở dòng đó; không viết → BỎ, "
+        "KHÔNG suy từ năm sinh/tên/thứ tự dòng. ⚠ Dòng (a) có nhãn IN SẴN \"Họ và tên vợ (hoặc chồng)\": người dân KHÔNG "
         "viết quan hệ ở dòng này, nên KHÔNG được tự chọn \"Vợ\" hay \"Chồng\" — trả đúng chuỗi "
         "\"Vợ (hoặc chồng)\". Trích ĐÚNG số dòng có trong đơn."},
 ]

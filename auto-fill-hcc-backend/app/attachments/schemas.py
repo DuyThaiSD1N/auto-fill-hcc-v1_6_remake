@@ -85,6 +85,9 @@ class AttachmentPlanItem(BaseModel):
     # Dùng cho engine attp-row: các dòng cổng TICK SẴN nhưng hồ sơ không có giấy tờ (vd "Giấy phép lao
     # động … đối với người nước ngoài") → FE BỎ TICK nếu dòng chưa có tệp và không nằm trong kế hoạch.
     untickRows: list[str] | None = None
+    # Engine attp-row: cổng tick sẵn MỌI dòng → trước khi đính FE bấm "Chọn/Bỏ chọn tất cả" cho tới khi
+    # không còn dòng nào tick (chỉ khi chưa dòng nào có tệp), rồi tick lại dòng sắp đính.
+    untickUnplannedRows: bool | None = None
 
 
 class AttachmentPlanResp(BaseModel):

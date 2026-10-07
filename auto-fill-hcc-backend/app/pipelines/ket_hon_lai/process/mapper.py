@@ -6,6 +6,7 @@ import unicodedata
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.tai_khoan import apply_account_marriage
 from app.pipelines.ket_hon_lai.process.schema import UI_COMP_BY_NAME
 
 _TINH_TRANG_HON_NHAN_DEFAULT = "Hiện tại đang có vợ/chồng"
@@ -118,6 +119,11 @@ def _previous_registration_area(values: dict) -> dict | None:
     return remap_area({"quocGia": "Việt Nam", "tinh": tinh, "xa": xa, "diaChi": ""})
 
 
+def _ui_field(name: str, value) -> dict | None:
+    comp = UI_COMP_BY_NAME.get(name)
+    return {"name": name, "comp": comp, "value": value} if comp else None
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Suy field UI tất định từ compact facts."""
     values = _by_name(fields)
@@ -202,4 +208,5 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add("CapBanSao", "Có", default=True)
     add("SoLuong", "1", default=True)
 
-    return out
+    return apply_account_marriage(out, options, _ui_field, _area,
+                                  lambda issuer: id_doc_type("Căn cước công dân", issuer))

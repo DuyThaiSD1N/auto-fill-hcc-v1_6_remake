@@ -4,7 +4,9 @@ Nghiệp vụ hiện tại chỉ dùng 2 loại đính kèm của cổng:
 - BUSREGFRM: "Giấy đề nghị đăng ký hộ kinh doanh".
 - OTHERS ("Khác"): mọi giấy tờ còn lại (CCCD, biên bản, ủy quyền...).
 
-OCR + LLM chỉ để phân loại business_form vs other; route category là TẤT ĐỊNH.
+LLM-FIRST: LLM phân loại business_form / personal_legal / other → category. Marker OCR (_detect_category)
+CHỈ dự phòng khi LLM không trả gì — giấy ủy quyền ghi "nộp hồ sơ đề nghị đăng ký hộ kinh doanh" từng khớp
+marker giấy đề nghị và bị đè thành BUSREGFRM dù LLM đã trả other.
 FE (content/procedures/business-registration.js) tự suy ra attId (ô modal) + droptypleValue
 (ô "Loại đính kèm") từ category, và tự tính danh sách loại cần khai báo trong modal.
 """
@@ -207,10 +209,12 @@ async def plan(
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "", "documentName": ""}
         ocr_text = ocr_text_by_index.get(idx, "")
-        # Route TẤT ĐỊNH theo nội dung OCR; LLM chỉ để fallback + documentName.
-        category = _detect_category(ocr_text)
-        if category is None:
-            category = _LLM_TO_CAT.get(detected.get("type") or "", _CAT_OTHERS)
+        # LLM quyết loại; marker OCR chỉ dự phòng khi LLM không trả gì (lỗi/thiếu tài liệu).
+        llm_type = detected.get("type") or ""
+        if llm_type in _LLM_TO_CAT:
+            category = _LLM_TO_CAT[llm_type]
+        else:
+            category = _detect_category(ocr_text) or _CAT_OTHERS
 
         base_name = detected.get("documentName") or _LABEL_BY_CAT[category]
         document_name = _unique_document_name(base_name, used_names, _LABEL_BY_CAT[category])

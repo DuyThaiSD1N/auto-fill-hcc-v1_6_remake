@@ -41,7 +41,7 @@ Lọc ô theo đối tượng: khối chủ hồ sơ có 2 nhóm ô loại trừ
 `INDIVIDUAL_ONLY_FIELDS`); chọn "Cá nhân" thì nhóm tổ chức bị display:none và ngược lại. Phát ô đang
 ẩn chỉ làm engine báo "không điền được" một cách vô cớ.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: điểm 3 ở trên (`_khoi_cua_nguoi_dang_nhap`).
   · `submitterMode="owner_as_submitter"` — THEO TỜ KHAI: bỏ mốc, `_khoi_theo_to_khai` chọn khối
     `NguoiNop_*` (bên được uỷ quyền) khi đó là người KHÁC người đại diện, không thì `NguoiDaiDien_*`
@@ -364,7 +364,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     is_org = _is_org(values)
     ctx_id, ctx_name = _account_anchor(options)
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     if theo_to_khai:
         cung_nguoi = _cung_mot_nguoi_theo_to_khai(values)
@@ -534,7 +534,7 @@ def _mode_warnings_theo_to_khai(
     """Cảnh báo khối người nộp ở chế độ THEO TỜ KHAI — không có câu kiểu "thiếu mốc tài khoản"."""
     if nop_source is None:
         return [
-            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không đọc được người được ủy quyền lẫn "
+            "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không đọc được người được ủy quyền lẫn "
             "người đại diện theo pháp luật của tổ chức, nên trợ lý để trống nhân thân khối \"Thông tin "
             "người nộp\" — cán bộ nhập tay theo giấy tờ của chính người đi nộp."
         ]
@@ -550,7 +550,7 @@ def _mode_warnings_theo_to_khai(
             + ") nhưng tài khoản đang đăng nhập là người khác"
             + (f" (số căn cước {ctx_id})" if ctx_id else "")
             + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp — lệch là "
-            "bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+            "bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
         )
     # Phần còn lại (nộp thay: đừng tick checkbox, thiếu tên đơn vị/MST/di động/địa chỉ) không phụ thuộc
     # mốc nên dùng lại của chế độ tài khoản. Luôn truyền "nop": câu riêng của nhánh "ddn" khẳng định

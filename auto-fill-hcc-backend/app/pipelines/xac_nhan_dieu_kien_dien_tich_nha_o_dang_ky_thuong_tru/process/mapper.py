@@ -31,6 +31,34 @@ def _fold(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+PROCEDURE_KEY = "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru"
+# Cờ do SERVER đặt theo tài khoản (không nhận từ client): nội dung yêu cầu chỉ ghi tên thủ tục.
+TITLE_ONLY_OPTION = "_requestContentTitleOnly"
+_WARD_PREFIXES = ("phuong ", "xa ", "thi tran ")
+
+
+def is_quang_ngai_dak_bla(user: dict | None) -> bool:
+    """Tài khoản phường Đăk Bla (Quảng Ngãi; tài khoản cũ có thể còn ghi Kon Tum trước sáp nhập)."""
+    if not user:
+        return False
+    tinh = _fold(user.get("tinh"))
+    xa = _fold(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return xa == "dak bla" and ("quang ngai" in tinh or "kon tum" in tinh)
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Bản sao options kèm cờ theo tài khoản; luôn gỡ cờ client tự gửi."""
+    result = dict(options or {})
+    result.pop(TITLE_ONLY_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_quang_ngai_dak_bla(user):
+        result[TITLE_ONLY_OPTION] = True
+    return result
+
+
 def _identity(value: Any) -> str | None:
     digits = re.sub(r"\D+", "", _text(value) or "")
     # Ô "Mã số định danh cá nhân" nhận số định danh 12 số; số CMND 9 số cũ (hay in trên Giấy chứng nhận)
@@ -128,7 +156,7 @@ def _request_content(values: dict[str, Any]) -> str:
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    del options
+    title_only = (options or {}).get(TITLE_ONLY_OPTION) is True
     values = _by_name(fields)
     out: list[dict] = []
     seen: set[str] = set()
@@ -177,7 +205,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         # Nhãn form là "Phường/xã" nhưng field-key là district (mô hình hành chính 2 cấp).
         add("data[district]", _text(owner_area.get("xa")))
         add("data[address]", _text(owner_area.get("diaChi")))
-    add("data[noidungyeucaugiaiquyet]", _request_content(values))
+    add("data[noidungyeucaugiaiquyet]", TEN_THU_TUC if title_only else _request_content(values))
 
     # Panel "Địa chỉ thửa đất/ địa chỉ xây dựng" = CHỖ Ở HỢP PHÁP đề nghị xác nhận. Chỉ phát từ nguồn riêng
     # ChoO_DiaChi (+ thửa/tờ trên Giấy chứng nhận), không mượn nơi cư trú của chủ hồ sơ.

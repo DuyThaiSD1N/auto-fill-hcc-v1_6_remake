@@ -3,10 +3,12 @@
 from copy import deepcopy
 
 from .tu_phap import TU_PHAP_FLOW
+from .tu_phap_moi import TU_PHAP_MOI_FLOW
 
 
 FLOW_PROFILES: dict[str, dict] = {
     "tu-phap": TU_PHAP_FLOW,
+    "tu-phap-moi": TU_PHAP_MOI_FLOW,
 }
 
 
@@ -30,7 +32,10 @@ def _validate_resolved(procedure: dict) -> None:
     steps = [wizard.get(name) for name in (
         "ownerStep", "declarationStep", "attachmentStep", "resultStep"
     )]
-    if any(not isinstance(step, int) or step <= 0 for step in steps) or len(set(steps)) != 4:
+    # Trang nộp một trang không có thanh bước nên không có số bước nào để kiểm.
+    if not procedure.get("singlePageDossier") and (
+        any(not isinstance(step, int) or step <= 0 for step in steps) or len(set(steps)) != 4
+    ):
         raise ValueError(
             f"Thủ tục {procedure.get('key')} có wizard không hợp lệ cho profile {profile_key}."
         )

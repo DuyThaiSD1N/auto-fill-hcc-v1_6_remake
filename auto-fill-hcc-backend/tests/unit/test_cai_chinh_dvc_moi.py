@@ -84,7 +84,8 @@ def test_detect_matches_own_page_only():
 @pytest.mark.skipif(not SNAPSHOT.exists(), reason="thiếu snapshot cổng")
 def test_ui_keys_exist_in_snapshot():
     data_names = set(re.findall(r'data-name="([A-Za-z0-9_]+?)__\d+"', SNAPSHOT.read_text(encoding="utf-8")))
-    for name in set(UI_COMP_BY_NAME) - {"citizenNDKNoiCuTru_TrongNuoc"}:
+    # Snapshot chụp trước khi cổng đổi ô ngày sinh "citizenNDKNgaysinh" → "citizenNDK_NgaySinh" (DOM thật).
+    for name in set(UI_COMP_BY_NAME) - {"citizenNDKNoiCuTru_TrongNuoc", "citizenNDK_NgaySinh"}:
         assert name in data_names, name
 
 
@@ -95,6 +96,18 @@ def test_self_by_identity_skips_subject_block():
     assert out[1] == {"name": RELATION, "comp": "sjs-radio", "value": "Bản thân"}
     assert not [n for n in _names(out) if n.startswith("citizenNDK")]
     assert {"citizenViecDangKy", "citizenTTNoidungdk", "citizenLydothaydoi"} <= set(_names(out))
+    assert not warnings
+
+
+def test_only_account_documents_means_self_marked_default():
+    """Không tờ khai / ủy quyền / giấy hộ tịch, chỉ có giấy tờ của chủ tài khoản → Bản thân, tô vàng."""
+    context = _context(subject_id=ACCOUNT["applicantIdentityNumber"], viec="không xác định",
+                       giay_to="không xác định").replace(
+        "Trạng thái: còn sống", "Trạng thái: còn sống\nNguồn: giấy tờ chủ tài khoản")
+    out, warnings = _enrich({}, context)
+    relation = next(f for f in out if f["name"] == RELATION)
+    assert relation["value"] == "Bản thân" and relation["default"] is True
+    assert not [n for n in _names(out) if n.startswith("citizenNDK")]
     assert not warnings
 
 
@@ -110,6 +123,13 @@ def test_other_person_fills_subject_block_in_order():
     assert by["citizenViecDangKy"]["value"] == "Cải chính thông tin hộ tịch"
     assert by["citizenLoainghiepvu"]["value"] == "Giấy khai sinh"
     assert by["citizenSoluongbansao"]["value"] == "3"
+
+
+def test_birth_date_uses_current_portal_key_as_text():
+    out, _ = _enrich(SUBJECT, _context())
+    birth = next(f for f in out if f["name"] == "citizenNDK_NgaySinh")
+    assert birth == {"name": "citizenNDK_NgaySinh", "comp": "sjs-text", "value": SUBJECT["NguoiThayDoi_NgaySinh"]}
+    assert "citizenNDKNgaysinh" not in _names(out)
 
 
 def test_relation_by_name_when_no_identity_is_marked_default():
@@ -179,35 +199,3 @@ def test_attach_routes_authorization_and_everything_else():
     assert rows == [ROW_CAN_CU["slotName"]] * 3 + [ROW_UY_QUYEN["slotName"]]
     assert [i["fileIndex"] for i in items] == [0, 1, 2, 3]
     assert all(i["target"] == "fixed-slot" for i in items)
-
-
-@pytest.mark.parametrize("dan_toc", ["Cill", "Cil", "Chil", "K'Ho", "K’Ho", "Lạch"])
-def test_co_ho_local_group_maps_to_co_ho(dan_toc):
-    # Cổng mới không có option "Khác" → nhóm địa phương Cơ Ho chọn thẳng "Cơ Ho".
-    out, _ = _enrich({**SUBJECT, "NguoiThayDoi_DanToc": dan_toc}, _context())
-    assert {f["name"]: f for f in out}["citizenNDKDantoc"]["value"] == "Cơ Ho"
-
-
-@pytest.mark.parametrize("xa", ["Phường Xuân Hương - Đà Lạt", "Phường Xuân Hương", "Xuân Hương"])
-def test_xuan_huong_account_sets_zero_copies_flag(xa):
-    user = {"tinh": "Tỉnh Lâm Đồng", "xa": xa}
-    opts = mapper.with_account_process_options({}, user, mapper.PROCEDURE_KEY)
-    assert opts[mapper.ZERO_COPIES_OPTION] is True
-
-
-def test_zero_copies_flag_only_for_xuan_huong_and_this_procedure():
-    xuan_huong = {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}
-    other_ward = {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Lâm Viên - Đà Lạt"}
-    assert mapper.ZERO_COPIES_OPTION not in mapper.with_account_process_options({}, other_ward, mapper.PROCEDURE_KEY)
-    assert mapper.ZERO_COPIES_OPTION not in mapper.with_account_process_options({}, xuan_huong, "khai-tu")
-    # Client tự gửi cờ cũng bị server ghi đè theo tài khoản.
-    assert mapper.ZERO_COPIES_OPTION not in mapper.with_account_process_options(
-        {mapper.ZERO_COPIES_OPTION: True}, other_ward, mapper.PROCEDURE_KEY)
-
-
-def test_zero_copies_flag_overrides_quantity_on_form():
-    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in SUBJECT.items()]
-    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(),
-                                    mapper.ZERO_COPIES_OPTION: True})
-    field = {f["name"]: f for f in out}["citizenSoluongbansao"]
-    assert field["value"] == "0" and field["default"] is True

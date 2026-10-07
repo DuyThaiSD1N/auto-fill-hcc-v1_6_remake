@@ -301,3 +301,44 @@ def test_lien_thong_nhan_duoc_man_ket_qua_that():
     )
     assert any(all(p in page for p in group) for group in rule["successText"])
     assert re.match(rule["urlPattern"], "/#/ke-khai/2.000987")
+
+
+# ── Cổng DVC quốc gia, trang nộp một trang (/nop-ho-so) của các thủ tục hộ tịch mới ──────────
+_DVCQG_HOST = "dichvucong.gov.vn"
+_DVCQG_NEW_DIR = pathlib.Path(__file__).resolve().parents[3] / "html mới"
+
+
+def test_dvcqg_bat_dung_nut_luu_va_nop():
+    assert _matches(_DVCQG_HOST, "/nop-ho-so", label="Lưu và nộp hồ sơ")
+
+
+def test_dvcqg_bo_qua_nut_luu_nhap_va_cac_nut_khac():
+    """Nguyên văn các nút khác trên cùng trang — "Lưu hồ sơ" chỉ lưu nháp, chưa nộp."""
+    for label in ["Lưu hồ sơ", "Đóng", "Gửi Phản ánh kiến nghị", "Tải lên file", "Nộp trực tuyến"]:
+        assert not _matches(_DVCQG_HOST, "/nop-ho-so", label=label)
+
+
+def test_dvcqg_khong_tinh_ngoai_trang_nop_ho_so():
+    """Trang chi tiết thủ tục có nút "Nộp trực tuyến" và nhiều trang khác cùng host."""
+    assert not _matches(_DVCQG_HOST, "/thu-tuc-hanh-chinh/019d2bfd", label="Lưu và nộp hồ sơ")
+
+
+@pytest.mark.parametrize("rel", [
+    "khai sinh/khai sinh html mới.html",
+    "khai tử/khai tử html mới.html",
+    "trích lụcc/trích lục html mới.html",
+    "cải chính/cải chính html mới.html",
+])
+def test_dvcqg_snapshot_co_nut_va_url_khop(rel):
+    path = _DVCQG_NEW_DIR / rel
+    if not path.exists():
+        pytest.skip(f"không có thư mục mẫu: {path}")
+    html = path.read_text(encoding="utf-8", errors="ignore")
+    labels = re.findall(r"<span>([^<]*nộp hồ sơ[^<]*)</span>", html, flags=re.IGNORECASE)
+    assert [label for label in labels if _matches(_DVCQG_HOST, "/nop-ho-so", label=label)] == [
+        "Lưu và nộp hồ sơ"
+    ]
+    found = re.search(r"saved from url=\(\d+\)(https?://[^\s\"']+)", html[:4000])
+    assert found and _DVCQG_HOST in found.group(1)
+    path_only = "/" + found.group(1).split("/", 3)[3].split("?")[0]
+    assert re.search(PORTAL_SUBMIT[_DVCQG_HOST]["urlPattern"], path_only)

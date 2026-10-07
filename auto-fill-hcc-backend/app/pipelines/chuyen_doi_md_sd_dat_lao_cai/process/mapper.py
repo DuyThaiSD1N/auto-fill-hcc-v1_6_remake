@@ -11,7 +11,7 @@ Chọn nguồn theo sheet "Ma trận đa nguồn" của file mapping:
               (mapping dùng vị trí khu đất trên bản đồ khi hồ sơ không có giấy tờ nào ghi trụ sở).
               Di động/Email → Đơn → GCN ĐKDN.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: như trên, mốc là `options.formContext`.
   · `submitterMode="owner_as_submitter"` — THEO TỜ KHAI: bỏ mốc, người nộp là chủ hồ sơ CÁ NHÂN, nhân thân
     bù từ CCCD/giấy tờ khác của CHÍNH người đó (`_merge_person`). Schema không có vai bên được uỷ quyền /
@@ -222,7 +222,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     ctx = (options or {}).get("formContext") or {}
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     out: list[dict] = []
     seen: set[str] = set()
@@ -299,7 +299,7 @@ def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tup
                 )
         else:
             warnings.append(
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng "
                 + ("chủ hồ sơ là tổ chức (trợ lý không xác định được người đại diện/bên được uỷ quyền đi nộp)"
                    if is_org else "không đọc được họ tên/số định danh của chủ hồ sơ")
                 + ", nên trợ lý để trống nhân thân khối \"Thông tin người nộp hồ sơ\" — cán bộ nhập tay."

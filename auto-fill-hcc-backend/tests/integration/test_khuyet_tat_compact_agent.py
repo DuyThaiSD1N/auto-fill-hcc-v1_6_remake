@@ -160,12 +160,10 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
                 "diaChi": "Xóm Long Thành",
             },
             "NguoiNop_QuocTich": "Việt Nam",
-            "ChuHoSo_HoTen": "LẠI NGỌC MINH",
-            "ChuHoSo_SoDinhDanh": "012084000160",
-            "ChuHoSo_NgaySinh": "01/01/1984",
+            "ChuHoSo_HoTen": "LẠI MINH QUANG",
+            "ChuHoSo_SoDinhDanh": "012219003077",
+            "ChuHoSo_NgaySinh": "27/10/2019",
             "ChuHoSo_GioiTinh": "Nam",
-            "ChuHoSo_NgayCap": "25/04/2021",
-            "ChuHoSo_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
             "ChuHoSo_NoiCuTru": {
                 "quocGia": "Việt Nam",
                 "tinh": "Tỉnh Lai Châu",
@@ -256,10 +254,11 @@ async def test_khuyet_tat_compact_agent_maps_application_and_cccd(monkeypatch):
     assert "data[phoneNumber]" not in d
 
     assert d["data[isOwnerDossierCheck]"] is False
-    assert d["data[ownerFullname]"] == "LẠI NGỌC MINH"
-    assert d["data[ownerIdentityNumber]"] == "012084000160"
-    assert d["data[ownerIdentityDate]"] == "25/04/2021"
-    assert d["data[ownerIdIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    # Chủ hồ sơ là người ở mục I (người khuyết tật), không phải người đại diện đứng đơn.
+    assert d["data[ownerFullname]"] == "LẠI MINH QUANG"
+    assert d["data[ownerIdentityNumber]"] == "012219003077"
+    assert d["data[ownerBirthday]"] == "27/10/2019"
+    assert "data[ownerIdentityDate]" not in d
     assert d["data[ownerProvince]"] == "Lai Châu"
     assert d["data[ownerDistrict]"] == "Phường Tân Phong"
     assert d["data[ownerAddress]"] == "Số nhà 003, phố Yết Kiêu, Tổ 16"
@@ -308,8 +307,9 @@ def test_khuyet_tat_compact_prompt_contract():
     assert "matched_requester_ocr" in system_prompt
     assert "BẮT BUỘC trả mọi NguoiNop_*" in system_prompt
     assert "NguoiNop_NgaySinh" in system_prompt
-    assert "CẢ HAI nhóm ChuHoSo_* và Ndd_*" in system_prompt
-    assert "Ndd_NoiCuTru -> ChuHoSo_NoiCuTru" in system_prompt
+    assert "CẢ HAI nhóm ChuHoSo_* và Nkt_*" in system_prompt
+    assert "Nkt_ThuongTru -> ChuHoSo_NoiCuTru" in system_prompt
+    assert "KHÔNG phải chủ hồ sơ" in system_prompt
     assert "không suy đoán field không có nguồn" in system_prompt
     assert "Thường người nộp là chủ hồ sơ" not in system_prompt
     assert "Cccd_HoTen" not in system_prompt

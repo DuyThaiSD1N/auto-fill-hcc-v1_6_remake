@@ -27,7 +27,8 @@ FIELDS: list[dict] = [
 
     # --- NGƯỜI CÓ SAI SÓT / CHỦ HỒ SƠ (chủ Giấy chứng nhận) — nguồn chính CCCD + Đơn + khai sinh.
     {"name": "Nguoi_HoTen", "desc": "Họ tên CHỦ HỒ SƠ = người đứng tên trên Giấy chứng nhận (người có "
-        "thông tin sai sót). Lấy từ CCCD / mục a) Tên của Đơn Mẫu 18 / tên người sử dụng đất trên GCN."},
+        "thông tin sai sót). Lấy từ mục a) Tên của Đơn Mẫu 18 / tên người sử dụng đất trên GCN / bên ủy quyền trong Giấy ủy "
+        "quyền; KHÔNG phải bên được ủy quyền. CCCD chỉ bổ sung khi khớp số định danh người này."},
     {"name": "Nguoi_NgaySinh", "desc": "Ngày sinh ĐÚNG của chủ hồ sơ, dd/mm/yyyy — lấy từ CCCD hoặc Giấy "
         "khai sinh (đây thường là giá trị cần đính chính). TUYỆT ĐỐI KHÔNG lấy năm sinh SAI ghi trên GCN cũ."},
     {"name": "Nguoi_GioiTinh", "desc": 'Giới tính chủ hồ sơ: "Nam" hoặc "Nữ" (từ CCCD/khai sinh).'},

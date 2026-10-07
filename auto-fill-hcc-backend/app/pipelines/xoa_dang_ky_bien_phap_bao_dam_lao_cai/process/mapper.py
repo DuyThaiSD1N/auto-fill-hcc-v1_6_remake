@@ -1,7 +1,7 @@
 """Ánh xạ facts → ô eForm `CongDan_*` / `ChuHoSo_*` của cổng Lào Cai (thủ tục 1.011443.H38).
 
 Bước 2 của thủ tục này dùng ĐÚNG bộ ô với 1.115650 (`giao_thue_dat_lao_cai`), nên toàn bộ phần chọn
-người nộp (mốc tài khoản / chế độ "Người nộp = chủ hồ sơ"), luật chỉ phát ngày đủ ngày-tháng-năm và
+người nộp (mốc tài khoản / chế độ "Lấy người nộp theo tờ khai"), luật chỉ phát ngày đủ ngày-tháng-năm và
 luật luôn phát đủ khối địa chỉ chủ hồ sơ đi qua `giao_thue_dat_lao_cai.process.mapper.enrich` — kể cả
 bước chốt khối người nộp `_shared/lao_cai_nguoi_nop.chot_khoi_nguoi_nop` (tài khoản: không ghi hai ô
 readonly; tờ khai: họ tên + căn cước đứng đầu, xoá nhân thân tài khoản mà hồ sơ không có). Bộ lọc ô ẩn

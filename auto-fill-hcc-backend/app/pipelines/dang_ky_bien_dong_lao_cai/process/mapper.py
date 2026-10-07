@@ -12,7 +12,7 @@ Chọn nguồn theo sheet "Mapping B2 - Người nộp" của file mapping:
               Địa chỉ → Đơn (mục 1.e, địa chỉ SAU biến động) → văn bản căn cứ → GCN ĐKDN → CCCD.
               Di động → Đơn → văn bản căn cứ → GCN ĐKDN. Email → Đơn → GCN ĐKDN.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: như mô tả ở trên, mốc là `options.formContext`.
   · `submitterMode="owner_as_submitter"` — THEO TỜ KHAI: bỏ mốc. Schema thủ tục này không tách vai bên
     được uỷ quyền/người ký đơn (NguoiTrongGiayTo không mang vai), nên người nộp theo tờ khai là CHỦ HỒ SƠ
@@ -274,7 +274,7 @@ def _merge_person(base: dict | None, *groups: list[dict]) -> dict | None:
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     ctx = (options or {}).get("formContext") or {}
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     out: list[dict] = []
     seen: set[str] = set()
@@ -352,11 +352,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                         + (_plain(applicant_name) or "người khác")
                         + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp "
                         "— lệch là bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt "
-                        "\"Người nộp = chủ hồ sơ\"."
+                        "\"Lấy người nộp theo tờ khai\"."
                     )
         else:
             warnings.append(
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng chủ hồ sơ không phải cá nhân (hoặc không đọc "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng chủ hồ sơ không phải cá nhân (hoặc không đọc "
                 "được người đứng tên ở mục 1.a của Đơn), nên trợ lý để trống nhân thân khối \"Thông tin "
                 "người nộp hồ sơ\" — cán bộ nhập tay theo giấy tờ của chính người đi nộp."
             )

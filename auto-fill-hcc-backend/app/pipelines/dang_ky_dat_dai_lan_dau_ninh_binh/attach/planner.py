@@ -5,13 +5,15 @@ với một loại giấy tờ. componentIndex là vị trí DOM 0-based của d
 text đặc trưng trong cột "Tên giấy tờ" của dòng đó (khớp substring sau khi fold dấu ở FE).
 
 Phân loại LLM-FIRST tuyệt đối: doc_type CHỈ lấy từ LLM. Không có nhánh rule keyword nào (giòn, dễ sai).
-Không rõ/không hợp lệ -> "other" -> cảnh báo, KHÔNG ép vào dòng gần giống. Mỗi file chỉ sinh một plan
-item để không nhân bản một tài liệu sang nhiều dòng.
+Form KHÔNG có dòng "Giấy tờ khác": giấy nhân thân/hôn nhân và file "other"/không phân loại được đính vào
+dòng Đơn đăng ký (dòng nhận cả CCCD) kèm cảnh báo cho cán bộ kiểm — không bỏ sót file nào. Mỗi file chỉ
+sinh một plan item để không nhân bản một tài liệu sang nhiều dòng.
 
 Các nhóm dòng có tên gần giống (thừa kế 4/5/16, thỏa thuận cấp chung 12/18, Điều 137 10/17) chỉ route
 về dòng CHÍNH; componentIndex giúp FE chọn đúng dòng khi text trùng nhau.
 """
 
+import re
 import time
 from typing import Any
 
@@ -32,7 +34,9 @@ _MANH_TRICH_DO = "manh_trich_do"
 _THOA_THUAN_CAP_CHUNG = "thoa_thuan_cap_chung"
 _GIAY_TO_DIEU_137 = "giay_to_dieu_137"
 _VAN_BAN_DAI_DIEN = "van_ban_dai_dien"
+_NHAN_THAN = "nhan_than"
 _OTHER = "other"
+_DON_ROW = {"index": 19, "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất"}
 
 # componentName lấy VERBATIM từ cột "Tên giấy tờ" của html đính kèm.html (đã đối chiếu 20 dòng).
 _ROUTES: dict[str, dict[str, Any]] = {
@@ -77,8 +81,20 @@ _ROUTES: dict[str, dict[str, Any]] = {
         "name": "Văn bản về việc đại diện theo quy định của pháp luật về dân sự",
         "documentName": "Văn bản đại diện/ủy quyền",
     },
+    # Giấy chứng nhận kết hôn, xác nhận tình trạng hôn nhân, sổ hộ khẩu, giấy khai sinh — không có dòng riêng.
+    _NHAN_THAN: {**_DON_ROW, "documentName": "Giấy tờ nhân thân"},
 }
 _ALLOWED = set(_ROUTES) | {_OTHER}
+# Tên đặt theo tiêu đề thật do LLM đọc (giấy lạ không có tên cố định theo dòng).
+_LLM_NAMED = {_NHAN_THAN, _OTHER}
+_NAME_MAX = 50
+
+
+def _clean_document_name(value: Any) -> str | None:
+    text = re.sub(r"[()\[\]{}]", " ", str(value or ""))
+    text = re.sub(r"\.(pdf|jpe?g|png|docx?)$", "", text.strip(), flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text.replace(".", " ")).strip(" -,;:")
+    return text[:_NAME_MAX].rstrip() or None
 
 
 def _normalize_doc_type(value: Any) -> str:
@@ -89,9 +105,9 @@ def _normalize_doc_type(value: Any) -> str:
     return _OTHER
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
+async def _classify_with_llm(documents: list[dict[str, Any]]) -> tuple[dict[int, str], dict[int, str]]:
     if not documents:
-        return {}
+        return {}, {}
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": build_user_prompt(documents)},
@@ -99,20 +115,24 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
     raw = await client.chat(messages, max_tokens=700, enable_thinking=settings.agent_reasoning)
     parsed = client.extract_json_block(raw)
     result: dict[int, str] = {}
+    names: dict[int, str] = {}
     for item in parsed.get("documents", []) or []:
         try:
-            result[int(item.get("index"))] = _normalize_doc_type(item.get("docType") or item.get("type"))
+            index = int(item.get("index"))
         except (TypeError, ValueError):
             continue
-    return result
+        result[index] = _normalize_doc_type(item.get("docType") or item.get("type"))
+        if item.get("documentName"):
+            names[index] = str(item["documentName"])
+    return result, names
 
 
-def _build_item(file: dict, file_index: int, doc_type: str) -> dict:
-    route = _ROUTES[doc_type]
+def _build_item(file: dict, file_index: int, doc_type: str, llm_name: str | None = None) -> dict:
+    route = _ROUTES.get(doc_type) or {**_DON_ROW, "documentName": "Giấy tờ kèm theo"}
     return {
         "fileIndex": file_index,
         "fileName": str(file.get("name") or f"file-{file_index + 1}"),
-        "documentName": route["documentName"],
+        "documentName": (_clean_document_name(llm_name) if doc_type in _LLM_NAMED else None) or route["documentName"],
         "componentName": route["name"],
         "componentIndex": route["index"],
         "target": "attp-row",
@@ -125,9 +145,11 @@ def build_plan_items(
     files: list[dict],
     ocr_results: list[dict] | None = None,
     llm_types: dict[int, str] | None = None,
+    llm_names: dict[int, str] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
     del ocr_results  # LLM-first: không dùng OCR text để suy luận rule ở đây.
     llm_types = llm_types or {}
+    llm_names = llm_names or {}
     attachments: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
@@ -138,22 +160,21 @@ def build_plan_items(
         # doc_type CHỈ lấy từ LLM; không có rule fallback.
         doc_type = llm_type if llm_type in _ROUTES else _OTHER
 
-        if doc_type in _ROUTES:
-            item = _build_item(file, index, doc_type)
-            attachments.append(item)
-            classified.append(
-                {
-                    "fileName": file_name,
-                    "docType": doc_type,
-                    "source": "llm",
-                    "componentIndex": item["componentIndex"],
-                }
+        item = _build_item(file, index, doc_type, llm_names.get(index))
+        attachments.append(item)
+        if doc_type == _OTHER:
+            warnings.append(
+                f"File '{file_name}' không thuộc dòng thành phần nào — đã đính vào dòng Đơn đăng ký đất đai, "
+                "cán bộ kiểm lại."
             )
-            continue
-
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        source = "llm" if llm_type == _OTHER else "unknown"
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        classified.append(
+            {
+                "fileName": file_name,
+                "docType": doc_type,
+                "source": "llm" if llm_type else "unknown",
+                "componentIndex": item["componentIndex"],
+            }
+        )
 
     return attachments, warnings, classified
 
@@ -181,14 +202,15 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     ]
     started = time.monotonic()
     llm_types: dict[int, str] = {}
+    llm_names: dict[int, str] = {}
     if llm_documents:
         try:
-            llm_types = await _classify_with_llm(llm_documents)
+            llm_types, llm_names = await _classify_with_llm(llm_documents)
         except Exception as exc:  # noqa: BLE001
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
 
-    attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types)
+    attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types, llm_names)
     errors.extend(warnings)
     return {
         "attachments": attachments,

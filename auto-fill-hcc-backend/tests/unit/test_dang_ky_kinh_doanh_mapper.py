@@ -191,31 +191,3 @@ def test_business_schema_and_prompt_only_define_three_phone_sources():
     assert "NguoiNop_DienThoai" not in names
     assert "CHỈ có 3 nhóm liên hệ cần trích từ hồ sơ" in EXTRA_RULES
     assert "KHÔNG lấy liên hệ người nộp thay cho trụ sở, chủ hộ hoặc thuế" in EXTRA_RULES
-
-_START_DATE = "ctl00$C$UC_DW_TAXEditCtl$BUSINESS_START_DATEFld"
-
-
-def test_phuong_lieu_account_flag_only_for_bac_ninh_phuong_lieu():
-    opts = mapper.with_account_process_options(
-        {}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Phương Liễu"}, "dang-ky-kinh-doanh")
-    assert opts[mapper.SKIP_START_DATE_OPTION] is True
-    assert mapper.is_bac_ninh_phuong_lieu({"tinh": "Thành phố Bắc Ninh", "xa": "Phương Liễu"})
-    # Xã khác, tỉnh khác, thủ tục khác → không bật; client tự gửi cờ cũng bị gỡ.
-    assert not mapper.is_bac_ninh_phuong_lieu({"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"})
-    assert not mapper.is_bac_ninh_phuong_lieu({"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Phương Liễu"})
-    assert mapper.SKIP_START_DATE_OPTION not in mapper.with_account_process_options(
-        {mapper.SKIP_START_DATE_OPTION: True}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"},
-        "dang-ky-kinh-doanh")
-    assert mapper.SKIP_START_DATE_OPTION not in mapper.with_account_process_options(
-        {}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Phương Liễu"}, "tam-ngung-kinh-doanh")
-
-
-def test_skip_start_date_omits_field_on_tax_page():
-    fields = [{"name": "Thue_NgayBatDau", "value": "01/02/2026"}, {"name": "Thue_SoLaoDong", "value": "2"}]
-    normal = {f["name"] for f in mapper.enrich(fields, page="thong-tin-ve-thue")}
-    skipped = {f["name"] for f in mapper.enrich(fields, page="thong-tin-ve-thue", skip_start_date=True)}
-    assert _START_DATE in normal
-    assert _START_DATE not in skipped
-    assert "ctl00$C$UC_DW_TAXEditCtl$TOTAL_OF_LABORSFld" in skipped
-    pages = mapper.enrich_all(fields, skip_start_date=True)
-    assert _START_DATE not in {f["name"] for f in pages["thong-tin-ve-thue"]}

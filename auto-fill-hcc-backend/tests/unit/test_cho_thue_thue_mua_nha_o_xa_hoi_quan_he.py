@@ -1,97 +1,91 @@
-"""Cột "Mối quan hệ" của datagrid thành viên gia đình (NOXH 1.012896).
+"""Cột "Mối quan hệ" của datagrid thành viên gia đình + nhân thân người viết đơn (NOXH 1.012896).
 
 Dòng (a) mục 9 của đơn in sẵn nhãn "Họ và tên vợ (hoặc chồng)" — không có gì trong đơn nói người đó là
-vợ hay chồng. Mặc định "Vợ" là bịa. Chốt lại bằng chữ số thứ 4 của CCCD (mã giới tính).
+vợ hay chồng (dân còn hay ghi bố/mẹ vào dòng này) → luôn trả nhãn gốc để cán bộ chọn. Dữ liệu giả.
 """
-
-import inspect
 
 from app.pipelines.cho_thue_thue_mua_nha_o_xa_hoi.process import mapper
 
 # CCCD 12 số, chữ số thứ 4: chẵn = Nam, lẻ = Nữ.
-_CCCD_NAM = "049061002750"
-_CCCD_NU = "040168007428"
-_CCCD_NU_2 = "049304012492"
+_CCCD_NAM = "001060000001"
+_CCCD_NU = "001165000002"
+_CCCD_NU_2000 = "001304000003"
+
+
+def _by_name(values):
+    fields, _ = mapper.enrich([{"name": k, "value": v} for k, v in values.items()])
+    return {(f["name"], f.get("occurrence")): f["value"] for f in fields}
 
 
 def test_gender_from_cccd():
     assert mapper._gender_from_cccd(_CCCD_NAM) == "Nam"
     assert mapper._gender_from_cccd(_CCCD_NU) == "Nữ"
+    assert mapper._gender_from_cccd(_CCCD_NU_2000) == "Nữ"
     # CMND 9 số / số rác không suy được → None, KHÔNG đoán bừa.
     assert mapper._gender_from_cccd("123456789") is None
     assert mapper._gender_from_cccd("") is None
     assert mapper._gender_from_cccd(None) is None
 
 
-def test_cccd_nam_o_dong_vo_chong_phai_ra_chong():
-    assert mapper._resolve_quan_he("Vợ", _CCCD_NAM, _CCCD_NU_2) == "Chồng"
-
-
-def test_cccd_nu_o_dong_vo_chong_van_ra_vo():
-    assert mapper._resolve_quan_he("Vợ", _CCCD_NU, _CCCD_NAM) == "Vợ"
-
-
-def test_nhan_day_du_tu_llm_cung_duoc_chot_lai():
-    assert mapper._resolve_quan_he("Vợ (hoặc chồng)", _CCCD_NAM, None) == "Chồng"
-    assert mapper._resolve_quan_he("vợ/chồng", _CCCD_NU, None) == "Vợ"
-
-
-def test_thieu_cccd_thanh_vien_thi_dao_vai_theo_nguoi_viet_don():
-    assert mapper._resolve_quan_he("Vợ (hoặc chồng)", "", _CCCD_NAM) == "Vợ"
-    assert mapper._resolve_quan_he("Vợ (hoặc chồng)", None, _CCCD_NU) == "Chồng"
-
-
-def test_khong_co_cccd_nao_thi_giu_nhan_in_tren_don_khong_mac_dinh_vo():
-    assert mapper._resolve_quan_he("Vợ", None, None) == "Vợ (hoặc chồng)"
-    assert mapper._resolve_quan_he("Chồng", None, None) == "Vợ (hoặc chồng)"
+def test_dong_vo_chong_luon_tra_nhan_goc():
+    for value in ("Vợ", "Chồng", "Vợ (hoặc chồng)", "vợ/chồng"):
+        assert mapper._resolve_quan_he(value) == "Vợ (hoặc chồng)"
 
 
 def test_cac_dong_khac_giu_nguyen_chu_nguoi_dan_viet():
     for value in ("Con", "Con dâu", "Con rể", "Con gái", "Cháu", "Cháu nội", "Mẹ"):
-        assert mapper._resolve_quan_he(value, _CCCD_NAM, _CCCD_NU) == value
+        assert mapper._resolve_quan_he(value) == value
 
 
 def test_o_trong_van_de_trong():
-    assert mapper._resolve_quan_he("", _CCCD_NAM, _CCCD_NU) is None
-    assert mapper._resolve_quan_he(None, _CCCD_NAM, _CCCD_NU) is None
+    assert mapper._resolve_quan_he("") is None
+    assert mapper._resolve_quan_he(None) is None
 
 
 def test_datagrid_phat_dung_quan_he_cho_tung_dong():
-    fields, _ = mapper.enrich([
-        {"name": "NguoiNop_HoTen", "value": "NGUYỄN VĂN A"},
-        {"name": "NguoiNop_SoDinhDanh", "value": _CCCD_NU_2},
-        {"name": "ThanhVienGiaDinh", "value": [
-            {"hoTen": "LÊ VĂN DŨNG", "soCccd": _CCCD_NAM, "quanHe": "Vợ"},
-            {"hoTen": "LÊ THỊ B", "soCccd": _CCCD_NU, "quanHe": "Con gái"},
-        ]},
-    ])
-    by_name = {f["name"]: f["value"] for f in fields}
-
-    assert by_name["data[dtgrid1][0][namsanxuat1]"] == "Chồng"
-    assert by_name["data[dtgrid1][1][namsanxuat1]"] == "Con gái"
-    assert by_name["data[dtgrid1][0][identityNumber1]"] == _CCCD_NAM
-
-
-def test_khong_doan_quan_he_theo_ten_dem():
-    """"Văn"/"Thị" trong tên KHÔNG được dùng làm bằng chứng giới tính."""
-    src = inspect.getsource(mapper._quan_he_vo_chong) + inspect.getsource(mapper._resolve_quan_he)
-    assert "Thị" not in src and "hoTen" not in src
+    d = _by_name({
+        "NguoiNop_HoTen": "NGUYỄN THỊ A",
+        "NguoiNop_SoDinhDanh": _CCCD_NU_2000,
+        "ThanhVienGiaDinh": [
+            {"hoTen": "NGUYỄN VĂN B", "soCccd": _CCCD_NAM, "quanHe": "Vợ (hoặc chồng)"},
+            {"hoTen": "TRẦN THỊ C", "soCccd": _CCCD_NU},
+        ],
+    })
+    assert d[("data[dtgrid1][0][namsanxuat1]", None)] == "Vợ (hoặc chồng)"
+    assert d[("data[dtgrid1][0][identityNumber1]", None)] == _CCCD_NAM
+    # Dòng người dân không ghi quan hệ → ô quan hệ bỏ trống.
+    assert ("data[dtgrid1][1][namsanxuat1]", None) not in d
 
 
-def test_prompt_cam_tu_chon_mot_nua_nhan_in_san():
+def test_gioi_tinh_lech_cccd_thi_theo_cccd():
+    d = _by_name({"NguoiNop_HoTen": "NGUYỄN THỊ A", "NguoiNop_SoDinhDanh": _CCCD_NU_2000, "NguoiNop_GioiTinh": "Nam"})
+    assert d[("data[gender]", None)] == "Nữ"
+
+
+def test_khong_co_cccd_12_so_thi_giu_gioi_tinh_llm():
+    d = _by_name({"NguoiNop_HoTen": "NGUYỄN VĂN A", "NguoiNop_GioiTinh": "Nam"})
+    assert d[("data[gender]", None)] == "Nam"
+
+
+def test_ngay_sinh_chi_co_nam_thi_bo_trong():
+    d = _by_name({"NguoiNop_HoTen": "NGUYỄN VĂN A", "NguoiNop_NgaySinh": "2004"})
+    assert ("data[birthday]", None) not in d
+
+
+def test_ngay_sinh_du_ngay_thang_thi_dien():
+    d = _by_name({"NguoiNop_HoTen": "NGUYỄN VĂN A", "NguoiNop_NgaySinh": "6/5/2004"})
+    assert d[("data[birthday]", None)] == "06/05/2004"
+
+
+def test_prompt_cam_suy_quan_he_va_ghep_ngay_sinh():
     from app.pipelines.cho_thue_thue_mua_nha_o_xa_hoi.process.prompt import EXTRA_RULES
     from app.pipelines.cho_thue_thue_mua_nha_o_xa_hoi.process.schema import FIELDS
 
     assert "NHÃN IN SẴN" in EXTRA_RULES
     assert "Vợ (hoặc chồng)" in EXTRA_RULES
-    desc = next(f["desc"] for f in FIELDS if f["name"] == "ThanhVienGiaDinh")
-    assert "Vợ (hoặc chồng)" in desc
-
-
-def test_noi_cap_cong_an_tinh_quy_ve_bo_cong_an():
-    # Ô select Nơi cấp không có "Công an tỉnh/TP…" → chọn "Bộ Công an" thay vì bỏ trống.
-    assert mapper._issuer("Công an TP Đà Nẵng") == "Bộ Công an"
-    assert mapper._issuer("CÔNG AN TỈNH QUẢNG NAM") == "Bộ Công an"
-    assert mapper._issuer("BỘ CÔNG AN / MINISTRY OF PUBLIC SECURITY") == "Bộ Công an"
-    assert mapper._issuer("Cục Cảnh sát QLHC về TTXH") == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
-    assert mapper._issuer("") is None
+    assert "KHÔNG suy quan hệ từ năm sinh" in EXTRA_RULES
+    assert "lấy ngày/tháng đầy đủ theo CCCD" not in EXTRA_RULES
+    desc = {f["name"]: f["desc"] for f in FIELDS}
+    assert "Vợ (hoặc chồng)" in desc["ThanhVienGiaDinh"]
+    assert "Mẹ, Bố" not in desc["ThanhVienGiaDinh"]
+    assert "KHÔNG ghép ngày/tháng" in desc["NguoiNop_NgaySinh"]

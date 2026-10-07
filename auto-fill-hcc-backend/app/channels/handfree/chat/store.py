@@ -3,6 +3,7 @@
 Nguồn sự thật DUY NHẤT của phiên nằm ở đây (Mongo `conversations`, TTL 24h trượt theo
 updated_at — index khai ở app/db/indexes.py). FE chỉ giữ con trỏ conversation_id.
 """
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -97,6 +98,31 @@ def push_history(conv: dict, role: str, text: str, source: str = "") -> None:
     # Giữ history gọn (phiên dài chủ yếu là sự kiện) — 200 lượt là quá đủ để khôi phục UI.
     if len(conv["history"]) > 200:
         conv["history"] = conv["history"][-200:]
+
+
+_MD_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MD_MARK = re.compile(r"[*_`#>]+")
+
+
+def recent_dialogue(conv: dict, limit: int) -> list[dict]:
+    """`limit` lượt chat gần nhất (người dân + trợ lý) dạng tin nhắn cho LLM.
+
+    Bỏ câu hiện tại của người dân (router lưu vào history TRƯỚC khi phân loại) và lệnh máy; bỏ
+    định dạng markdown, cắt mỗi câu 300 ký tự để prompt không phình theo độ dài phiên.
+    """
+    history = list(conv.get("history") or [])
+    if history and history[-1].get("role") == "user":
+        history = history[:-1]
+    out = []
+    for item in history:
+        raw = str(item.get("text") or "").strip()
+        if raw.startswith("__"):
+            continue
+        text = re.sub(r"\s+", " ", _MD_MARK.sub("", _MD_LINK.sub(r"\1", raw))).strip()
+        if not text:
+            continue
+        out.append({"role": "assistant" if item.get("role") == "bot" else "user", "content": text[:300]})
+    return out[-limit:] if limit > 0 else []
 
 
 def drop_last_bot_history(conv: dict, state: str) -> bool:

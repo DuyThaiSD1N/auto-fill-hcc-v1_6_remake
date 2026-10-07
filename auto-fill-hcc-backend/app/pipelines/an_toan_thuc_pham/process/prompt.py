@@ -6,6 +6,9 @@ EXTRA_RULES = """<critical_rules>
 3. CCCD/CMND là nguồn mạnh nhất cho số định danh, ngày sinh, giới tính, ngày cấp, nơi cấp và địa chỉ cư trú của đúng người đó.
 4. Không dùng tên file hoặc thứ tự upload để quyết định vai trò; OCR là nguồn chính.
 5. Không bịa. Không chắc field nào thì bỏ field đó.
+6. Mọi field ngày sinh (Person*_NgaySinh, GiayKham_NgaySinh...) phải có ĐỦ ngày, tháng, năm ghi trên giấy. Giấy chỉ ghi
+   NĂM sinh → BỎ field đó; TUYỆT ĐỐI không tự ghép thành "01/01/<năm>".
+7. Person*_NoiCuTru chỉ là nơi thường trú/cư trú ghi trên CCCD; địa chỉ cơ sở kinh doanh không phải nơi cư trú.
 </critical_rules>
 
 <document_classification>
@@ -23,9 +26,14 @@ EXTRA_RULES = """<critical_rules>
 4. DonDeNghi_DiaChiChuCoSo chỉ trả nếu đơn có địa chỉ cư trú/thường trú của chính chủ cơ sở; không dùng địa chỉ cơ sở kinh doanh để thay thế.
 5. DonDeNghi_DienThoai chỉ trả số điện thoại rõ ràng, ưu tiên số di động 10 chữ số; bỏ số bàn/chuỗi mơ hồ.
 6. DonDeNghi_NganhNghe lấy từ nội dung đề nghị hoặc loại hình hoạt động, ví dụ "kinh doanh dịch vụ ăn uống".
+7. DonDeNghi_* CHỈ lấy từ Đơn đề nghị. Địa chỉ/điện thoại cơ sở ghi ở Bản thuyết minh hoặc Danh sách nhân viên tập huấn
+   trả vào CoSoKhac_DiaChi / CoSoKhac_DienThoai (ưu tiên thuyết minh); KHÔNG chép chúng vào DonDeNghi_* dù Đơn để trống.
 </don_de_nghi_extraction>
 
 <person_extraction>
+0. Person*_ ưu tiên giấy tờ định danh thật (CCCD/CMND/thẻ căn cước). Hồ sơ KHÔNG có CCCD thì chỉ được lấy họ tên, số
+   CCCD, giới tính, ngày cấp, nơi cấp từ ĐÚNG dòng của chủ cơ sở trong "Danh sách nhân viên được tập huấn"; KHÔNG lấy
+   ngày sinh (danh sách chỉ ghi NĂM sinh) và KHÔNG lấy nơi cư trú (địa chỉ trong danh sách là địa chỉ CƠ SỞ).
 1. Tự gộp mặt trước và mặt sau của cùng một CCCD thành cùng một Person* theo số định danh/MRZ/họ tên.
 2. Nếu có một CCCD: trả Person1_*. Nếu có hai CCCD khác nhau: trả Person1_* và Person2_*.
 3. Mỗi nhóm Person* phải lấy từ đúng một người, không trộn dữ liệu giữa hai CCCD.

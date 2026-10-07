@@ -49,8 +49,14 @@ nào cũng trả anh_chan_dung:
   · CHỈ có chữ của app scan điện thoại in đè lên ảnh, vd "Scanned with CamScanner", "Scanned with CS
     CamScanner", "CamScanner", kèm hoặc không kèm mốc trang kiểu "Trang 1/1";
   · chỉ có nhãn ảnh, vd "image", "Left image Right image";
-  · vài mẩu chữ vụn KHÔNG thành câu, không có tiêu đề, không có tên giấy tờ hành chính nào.
-Tên tệp kiểu "ảnh thẻ", "ảnh chân dung", "anh 4x6", "photo", "portrait" củng cố thêm kết luận này.
+  · vài mẩu chữ vụn KHÔNG thành câu, không có tiêu đề, không có tên giấy tờ hành chính nào;
+  · chỉ MỘT VÀI TỪ lẻ (khoảng dưới một dòng), kể cả từ có nghĩa — OCR đọc nhầm nét mặt/tóc/áo/nền ảnh thành
+    chữ (vd một từ ngắn bất kỳ đứng một mình). Có nghĩa hay không không quan trọng: không có tiêu đề, không có
+    câu văn, không có tên cơ quan/giấy tờ thì vẫn là ảnh.
+OCR_TEXT rơi vào các dạng trên thì KHÔNG trả other: tệp gần như không có chữ trong hồ sơ này chỉ có thể là ảnh
+chân dung (mọi giấy tờ khác của thủ tục đều có tiêu đề và nhiều dòng chữ).
+Tên tệp kiểu "ảnh thẻ", "ảnh chân dung", "anh 4x6", "photo", "portrait", hoặc tên ảnh chụp từ điện thoại/máy
+ảnh như "IMG_<số>", "DSC_<số>", "image<số>" củng cố thêm kết luận này.
 ⚠ Watermark CamScanner cũng xuất hiện ở CUỐI trang của các giấy tờ văn bản (bằng, lý lịch…) — nó KHÔNG
 làm một giấy tờ CÓ nội dung văn bản trở thành ảnh. Chỉ trả anh_chan_dung khi NGOÀI những chữ nhiễu kể
 trên ra thì OCR_TEXT không còn nội dung gì đáng kể.

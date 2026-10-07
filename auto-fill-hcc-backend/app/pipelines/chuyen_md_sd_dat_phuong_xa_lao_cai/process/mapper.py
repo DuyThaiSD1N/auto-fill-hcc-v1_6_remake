@@ -9,7 +9,7 @@ Chọn nguồn theo sheet "Ma trận đa nguồn" của "Mapping_CMDSDD_1.115679
               Địa chỉ → CCCD → Đơn → Giấy uỷ quyền → Giấy chứng nhận/hồ sơ đo đạc → vị trí thửa đất.
               Di động/Email → Đơn → Phiếu chuyển thông tin.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: mốc là Họ tên + Số Căn cước cổng đổ sẵn từ tài khoản định danh
     (`options.formContext`). Ngày sinh/giới tính/dân tộc/ngày cấp/nơi cấp/ĐỊA CHỈ lấy từ giấy tờ của
     CHÍNH người đó: CCCD đã upload (khớp số định danh, không có số thì khớp họ tên) rồi đến người được ghi
@@ -289,7 +289,7 @@ def _merge_person(base: dict | None, *groups: list[dict]) -> dict | None:
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     ctx = (options or {}).get("formContext") or {}
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     out: list[dict] = []
     seen: set[str] = set()
@@ -378,7 +378,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                     )
         else:
             warnings.append(
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có văn bản uỷ quyền và cũng "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có văn bản uỷ quyền và cũng "
                 "không đọc được người sử dụng đất ở mục 1 của Đơn, nên trợ lý để trống khối \"Thông tin "
                 "người nộp hồ sơ\" — cán bộ nhập tay."
             )

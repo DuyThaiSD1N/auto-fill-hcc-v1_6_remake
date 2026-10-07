@@ -25,7 +25,9 @@ Cổng đăng ký hộ kinh doanh cho đính kèm các loại (theo nghiệp v�
 2. CHỈ khi đọc rõ đây là GIẤY ĐỀ NGHỊ ĐĂNG KÝ HỘ KINH DOANH mới trả type = business_form.
 3. Căn cước/CMND/Hộ chiếu của cá nhân → type = personal_legal. LƯU Ý: giấy đề nghị cũng ghi "số định
    danh cá nhân" của chủ hộ — nếu có tiêu đề giấy đề nghị thì vẫn là business_form, KHÔNG phải personal_legal.
-4. Còn lại (biên bản, ủy quyền, không rõ) → type = other.
+4. Còn lại (biên bản, ủy quyền, không rõ) → type = other. Giấy/văn bản ỦY QUYỀN (có "BÊN ỦY QUYỀN", "BÊN ĐƯỢC
+   ỦY QUYỀN", "nội dung ủy quyền") luôn là other, dù nội dung ủy quyền nhắc "nộp hồ sơ đề nghị đăng ký hộ kinh
+   doanh" — chỉ trả business_form khi CHÍNH tài liệu là mẫu Giấy đề nghị (tiêu đề + các mục kê khai hộ kinh doanh).
 5. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 

@@ -32,8 +32,9 @@ FIELDS: list[dict] = [
 
     # --- CHỦ HỒ SƠ = NGƯỜI SỬ DỤNG ĐẤT đứng đơn — nguồn chính CCCD + Đơn + GCN.
     {"name": "Nguoi_HoTen", "desc": "Họ tên CHỦ HỒ SƠ = người sử dụng đất đứng tên trên Giấy chứng nhận và "
-        "đứng đơn đề nghị. Lấy từ CCCD / mục 'Người sử dụng đất' của Đơn / tên người sử dụng đất trên GCN "
-        "(kể cả mục 6 'Những thay đổi sau khi cấp Giấy chứng nhận' nếu đất đã sang tên)."},
+        "đứng đơn đề nghị. Lấy từ mục 'Người sử dụng đất' của Đơn / tên người sử dụng đất trên GCN "
+        "(kể cả mục 6 'Những thay đổi sau khi cấp Giấy chứng nhận' nếu đất đã sang tên) / bên ủy quyền trong "
+        "Giấy ủy quyền. KHÔNG phải bên được ủy quyền; CCCD chỉ bổ sung khi khớp số định danh người này."},
     {"name": "Nguoi_NgaySinh", "desc": "Ngày sinh chủ hồ sơ, dd/mm/yyyy — lấy từ CCCD (hoặc Giấy ủy quyền, "
         "dòng 'Tôi là: … Sinh ngày …' của bên ủy quyền)."},
     {"name": "Nguoi_GioiTinh", "desc": 'Giới tính chủ hồ sơ: "Nam" hoặc "Nữ" (từ CCCD).'},

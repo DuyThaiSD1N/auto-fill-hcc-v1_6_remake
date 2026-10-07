@@ -288,10 +288,13 @@ def _phone_with_evidence(
     evidence_scope: str,
     has_ocr: bool,
 ) -> str | None:
-    if not value or not has_ocr:
-        return value
+    # Cổng nhận số điện thoại thuần chữ số; OCR/LLM hay giữ dấu chấm/cách ("0364.492.668").
     normalized = _norm_identity(value)
-    return str(value) if normalized and _identity_occurs(normalized, evidence_scope) else None
+    if not normalized:
+        return None
+    if not has_ocr:
+        return normalized
+    return normalized if _identity_occurs(normalized, evidence_scope) else None
 
 
 def _person(values: dict, prefix: str, ocr_text: str | None) -> Person | None:
@@ -447,7 +450,7 @@ def enrich(
             "Không bóc tách được chủ hồ sơ hoặc người nộp từ tài liệu hợp lệ."
         ]
 
-    # Toggle extension "Người nộp = chủ hồ sơ (bỏ so khớp form)": BỎ mỏ neo UI, LUÔN lấy chủ hồ sơ
+    # Toggle extension "Lấy người nộp theo tờ khai": BỎ mỏ neo UI, LUÔN lấy chủ hồ sơ
     # (ưu tiên) hoặc người nộp làm người nộp — tick tự nộp, điền Phần I, form tự copy sang chủ hồ sơ.
     if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
         submitter = owner or requester

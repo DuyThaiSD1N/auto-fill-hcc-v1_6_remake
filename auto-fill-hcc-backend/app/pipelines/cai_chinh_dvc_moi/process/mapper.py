@@ -121,9 +121,12 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bo
     subject_id = _digits(values.get("NguoiThayDoi_SoDinhDanh")) or _digits(labeled_value(subject, "Số định danh"))
     subject_name = values.get("NguoiThayDoi_HoTen") or labeled_value(subject, "Họ tên")
     deceased = _fold(labeled_value(subject, "Trạng thái")) == "da chet"
+    # Nguồn d của bước phân vai: không có tờ khai / ủy quyền / giấy hộ tịch, chỉ có giấy tờ của chủ tài khoản →
+    # suy là làm cho bản thân, không đọc từ giấy tờ nào → tô vàng để cán bộ rà.
+    from_account_docs = _fold(labeled_value(subject, "Nguồn")) == "giay to chu tai khoan"
 
     if account_id and subject_id:
-        return (_SELF if account_id == subject_id and not deceased else _OTHER), False, ""
+        return (_SELF if account_id == subject_id and not deceased else _OTHER), from_account_docs, ""
     if account_name and subject_name:
         same = _fold(account_name) == _fold(subject_name) and not deceased
         # Chỉ khớp họ tên (thiếu số định danh) → tô vàng để cán bộ rà.
@@ -172,7 +175,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenNDKHoTen", upper_person_name(name))
         personal_id = _digits(values.get("NguoiThayDoi_SoDinhDanh"))
         add("citizenNDKSodinhdanh", personal_id if len(personal_id) == 12 else "")
-        add("citizenNDKNgaysinh", values.get("NguoiThayDoi_NgaySinh"))
+        add("citizenNDK_NgaySinh", values.get("NguoiThayDoi_NgaySinh"))
 
         issue_date = values.get("NguoiThayDoi_NgayCap")
         card_number = _digits(values.get("NguoiThayDoi_SoGiayTo")) or (personal_id if issue_date else "")

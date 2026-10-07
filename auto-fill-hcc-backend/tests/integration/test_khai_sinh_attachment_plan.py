@@ -137,7 +137,7 @@ async def test_khai_sinh_attach_rule_fallback_when_llm_fails(monkeypatch):
 
 
 async def test_khai_sinh_attach_no_birth_proof(monkeypatch):
-    """Không có giấy chứng sinh → không đính gì, báo lỗi rõ ràng."""
+    """Không có giấy chứng sinh → VẪN đính giấy tờ khác vào ô STT1, kèm lời nhắc bổ sung chứng sinh."""
     async def fake_ocr_per_file(files):
         return [{"name": "cccd-bo.pdf", "text": "CĂN CƯỚC CÔNG DÂN"}]
 
@@ -149,9 +149,11 @@ async def test_khai_sinh_attach_no_birth_proof(monkeypatch):
 
     res = await khai_sinh.plan_khai_sinh_attachments([_file("cccd-bo.pdf")], {}, _session())
 
-    assert res["attachments"] == []
-    assert res["extracted"]["birthProof"] is None
-    assert any("Không tìm thấy giấy chứng sinh" in e for e in res["errors"])
+    items = res["attachments"]
+    assert [(it["fileName"], it["slotIndex"], it["detectedType"]) for it in items] == [("cccd-bo.pdf", 0, "other")]
+    assert items[0]["repeatUpload"] is True and items[0]["fallbackSlotIndex"] == 1
+    assert res["extracted"]["birthProof"] is None and res["extracted"]["skipped"] == []
+    assert any("Không tìm thấy giấy chứng sinh" in e and "cần bổ sung" in e for e in res["errors"])
 
 
 async def test_khai_sinh_attach_keeps_identity_and_marriage_as_other(monkeypatch):
@@ -272,3 +274,70 @@ def test_khai_sinh_procedure_has_attachment_step():
     proc = get_procedure("khai-sinh-dang-ky-thuong")
 
     assert proc["hasAttachmentStep"] is True
+
+
+_GHEP_KET_HON_CHUNG_SINH = (
+    "GIẤY CHỨNG NHẬN KẾT HÔN\nHọ, chữ đệm, tên vợ: NGUYỄN THỊ A\nHọ, chữ đệm, tên chồng: TRẦN VĂN B\n"
+    "PHẦN GHI CHÚ NHỮNG THÔNG TIN THAY ĐỔI SAU NÀY\n"
+    # Trang giấy chứng sinh — OCR mất tiêu đề, chỉ còn các ô của mẫu.
+    "SỞ Y TẾ\nBỆNH VIỆN SẢN NHI\nMã số GCS: GCS.00000.GCS.00000.00\nCấp lần đầu: [X]\n"
+    "Đã sinh con vào lúc: 10 giờ 30 phút, ngày 01 tháng 01 năm 2026\nSố con trong lần sinh này: 1\n"
+    "Giới tính của con: Nữ\nCân nặng: 3000 gam\nNgười đỡ đẻ\nĐại diện cơ sở KBCB"
+)
+
+
+async def test_khai_sinh_scan_ghep_ket_hon_va_chung_sinh_mat_tieu_de_van_vao_o_chung_sinh(monkeypatch):
+    """Một PDF ghép: trang đầu giấy kết hôn, trang sau giấy chứng sinh (OCR mất tiêu đề). Trước đây
+    cả tệp bị xếp `other` → không có ô chứng sinh → kế hoạch đính kèm rỗng."""
+    async def fake_ocr_per_file(files):
+        return [{"name": "Scan_0001.pdf", "text": _GHEP_KET_HON_CHUNG_SINH}]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": 0, "docType": "other"}]})  # LLM trượt như trace thật
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    res = await khai_sinh.plan_khai_sinh_attachments([_file("Scan_0001.pdf")], {}, _session())
+    assert res["extracted"]["birthProof"] == "Scan_0001.pdf"
+    assert [(it["fileName"], it["slotIndex"]) for it in res["attachments"]] == [("Scan_0001.pdf", 0)]
+
+
+def test_prompt_dan_doc_het_file_ghep_va_nhan_mau_chung_sinh_khi_mat_tieu_de():
+    from app.pipelines.khai_sinh_lien_thong.attach import prompt
+    assert "BẢN SCAN GHÉP NHIỀU GIẤY" in prompt.SYSTEM_PROMPT
+    assert "Mã số GCS" in prompt.SYSTEM_PROMPT
+    long_text = "x " * 2000 + "Mã số GCS"
+    assert "Mã số GCS" in prompt.build_user_prompt([{"index": 0, "fileName": "a.pdf", "text": long_text}])
+
+
+async def test_khai_sinh_moi_chung_sinh_vao_stt1_moi_to_khai_cu_tru_vao_stt2_con_lai_stt1_du_phong_stt2(monkeypatch):
+    """Quy tắc ô: giấy chứng sinh + tệp ghép có giấy chứng sinh → STT1 (không bao giờ dời);
+    tờ khai cư trú → STT2; giấy khác → STT1, dự phòng STT2. Đúng cho MỌI tệp, kể cả tệp cùng loại thứ hai."""
+    async def fake_ocr_per_file(files):
+        return [
+            {"name": "cccd.pdf", "text": "CĂN CƯỚC CÔNG DÂN\nHọ và tên: TRẦN VĂN B"},
+            {"name": "chung-sinh-1.pdf", "text": "GIẤY CHỨNG SINH\nĐã sinh con vào lúc 08 giờ"},
+            {"name": "ct01-a.pdf", "text": "TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\nMẫu CT01"},
+            {"name": "ghep.pdf", "text": _GHEP_KET_HON_CHUNG_SINH},
+            {"name": "ct01-b.pdf", "text": "TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\nMẫu CT01"},
+            {"name": "ket-hon.pdf", "text": "GIẤY CHỨNG NHẬN KẾT HÔN\nHọ, chữ đệm, tên vợ: NGUYỄN THỊ A"},
+        ]
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [{"index": i, "docType": "other"} for i in range(6)]})
+
+    monkeypatch.setattr(khai_sinh.ocr, "ocr_per_file", fake_ocr_per_file)
+    monkeypatch.setattr(khai_sinh.client, "chat", fake_chat)
+    res = await khai_sinh.plan_khai_sinh_attachments(
+        [_file(n) for n in ("cccd.pdf", "chung-sinh-1.pdf", "ct01-a.pdf", "ghep.pdf", "ct01-b.pdf", "ket-hon.pdf")],
+        {}, _session())
+    by_name = {it["fileName"]: it for it in res["attachments"]}
+    for name in ("chung-sinh-1.pdf", "ghep.pdf"):
+        assert by_name[name]["slotIndex"] == 0 and "fallbackSlotIndex" not in by_name[name], name
+    for name in ("ct01-a.pdf", "ct01-b.pdf"):
+        assert by_name[name]["slotIndex"] == 1 and by_name[name]["repeatUpload"] is True, name
+    for name in ("cccd.pdf", "ket-hon.pdf"):
+        assert by_name[name]["slotIndex"] == 0 and by_name[name]["fallbackSlotIndex"] == 1, name
+    # Giấy chứng sinh đứng trước trong STT1.
+    assert [it["fileName"] for it in res["attachments"] if it["slotIndex"] == 0][:2] == ["chung-sinh-1.pdf", "ghep.pdf"]
+    assert res["extracted"]["skipped"] == []

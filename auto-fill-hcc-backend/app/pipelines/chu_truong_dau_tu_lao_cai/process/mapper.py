@@ -6,7 +6,7 @@
 tính, dân tộc, căn cước) vì cổng đang ẩn chúng. Nhà đầu tư cá nhân → "Cá nhân" + đủ nhân thân.
 Không phát checkbox "Người nộp là chủ hồ sơ": nút đó không copy địa chỉ, và trang 1.009645 không có nút này.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: mốc là Họ tên + Số Căn cước cổng đổ sẵn từ tài khoản định danh (gửi lên trong
     `options.formContext`). Chỉ điền nhân thân lấy từ giấy tờ CỦA CHÍNH người đó (CCCD rời, người đại diện
     theo pháp luật ghi trong Văn bản đề nghị, bên được ủy quyền); không có mốc, hoặc hồ sơ không có giấy tờ
@@ -260,7 +260,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         [_person_block(values, "ChuHoSo")] if not is_org and _person_block(values, "ChuHoSo") else [],
     )
 
-    # Chế độ TỜ KHAI (cài đặt "Người nộp = chủ hồ sơ"): bỏ mốc tài khoản, lấy người nộp theo hồ sơ —
+    # Chế độ TỜ KHAI (cài đặt "Lấy người nộp theo tờ khai"): bỏ mốc tài khoản, lấy người nộp theo hồ sơ —
     # bên được ủy quyền trước, rồi người ký Văn bản đề nghị, cuối cùng là chủ hồ sơ cá nhân.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     if theo_to_khai:
@@ -316,7 +316,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                 + ". Cổng xác thực Họ tên/Số Căn cước/Ngày sinh với CSDL quốc gia dân cư trước khi cho "
                 "nộp — lệch tài khoản sẽ bị chặn với thông báo \"Thông tin người nộp hồ sơ không đúng "
                 "với tài khoản đăng nhập!\". Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt "
-                "\"Người nộp = chủ hồ sơ\"."
+                "\"Lấy người nộp theo tờ khai\"."
             )
         if nop_area:
             add("CongDan_maTinhThanh", _province_label(nop_area.get("tinh")))

@@ -66,6 +66,16 @@ PROCEDURE_NOT_RECOGNIZED = {
     "tts": "Dạ em chưa nhận ra thủ tục công dân cần. Công dân chọn trong danh sách hoặc nói lại tên giúp em nhé.",
 }
 
+# Câu gõ/nói hợp với nhiều thủ tục → hỏi lại kèm nút gợi ý. options_* là tên thủ tục lấy từ registry.
+PROCEDURE_UNCLEAR = {
+    "md": (
+        "Dạ em chưa chắc công dân cần thủ tục nào ạ. Có phải một trong các thủ tục sau không?\n\n"
+        "{options_md}\n\nCông dân bấm chọn hoặc nói rõ thêm giúp em nhé."
+    ),
+    "tts": "Dạ em chưa chắc công dân cần thủ tục nào. Có phải {options_tts} không ạ? "
+           "Công dân bấm chọn hoặc nói rõ thêm giúp em nhé.",
+}
+
 # Thủ tục đặc thù tỉnh (provinceOnly) mà tài khoản đang đăng nhập ở tỉnh khác → không mở được.
 PROCEDURE_PROVINCE_LOCKED = {
     "md": (
@@ -1743,6 +1753,157 @@ GUIDED_ATTACH_SPLIT_DONE = {
 GUIDED_ATTACH_CTA = "Xong, sang bước nhận kết quả →"
 GUIDED_SUBMIT_CTA = "📨 Gửi hồ sơ"
 
+# ── Tư pháp luồng mới: trang nộp MỘT TRANG của Cổng DVC quốc gia (chat/tu_phap_moi.py) ──
+# Form, thành phần hồ sơ và hình thức nhận kết quả nằm cùng một trang: không có câu "chuyển
+# sang bước…"; nút trong khung chat đặt đúng tên nút/ô trên trang để công dân đối chiếu.
+TPM_ATTACH_CTA = "📎 Đính kèm thành phần hồ sơ"
+TPM_RESULT_CTA = "📮 Chọn hình thức nhận kết quả"
+TPM_SUBMIT_CTA = "💾 Lưu và nộp hồ sơ"
+
+# Extension trên máy quầy chưa có engine cho trang mới — dẫn vào là kẹt ở trang không điền được.
+TPM_UPDATE_REQUIRED = {
+    "md": (
+        "⚠️ Cổng Dịch vụ công đã đổi sang **mẫu nộp hồ sơ mới** cho thủ tục **{procedure}**, "
+        "bản Trợ lý đang cài chưa làm được mẫu này.\n\n"
+        "Cán bộ cập nhật Trợ lý lên bản mới nhất rồi mở lại giúp em ạ. Trong lúc chờ, công dân "
+        "có thể chọn thủ tục khác."
+    ),
+    "tts": (
+        "Cổng dịch vụ công đã đổi sang mẫu nộp hồ sơ mới cho thủ tục này, bản trợ lý đang cài "
+        "chưa làm được. Cán bộ cập nhật trợ lý lên bản mới nhất rồi mở lại giúp em ạ."
+    ),
+}
+
+# Câu đuôi sau báo cáo điền (note= của FILL_REPORT_REVIEW): planner đính kèm chạy nền ngay lúc này.
+TPM_FILL_NEXT = {
+    "md": (
+        "\n\nTrong lúc công dân rà, em xếp sẵn giấy tờ vào đúng dòng **Thành phần hồ sơ**. "
+        "Rà xong, công dân bấm **Đính kèm thành phần hồ sơ** để em đính ngay trên trang này ạ."
+    ),
+    "tts": (
+        " Trong lúc công dân rà, em xếp sẵn giấy tờ vào đúng dòng thành phần hồ sơ. Rà xong, "
+        "công dân bấm đính kèm thành phần hồ sơ để em đính ngay trên trang này ạ."
+    ),
+}
+
+TPM_ATTACH_WAIT_PLAN = {
+    "md": "Em đang xếp giấy tờ vào đúng dòng thành phần hồ sơ, xong là em đính kèm ngay — công dân chờ em chút nhé ạ…",
+    "tts": "Em đang xếp giấy tờ vào đúng dòng thành phần hồ sơ, xong là em đính kèm ngay. Công dân chờ em chút nhé ạ.",
+}
+
+TPM_ATTACH_DONE = {
+    "md": (
+        "✅ Em đã đính xong **{attached} tệp** vào **Thành phần hồ sơ**.\n\n"
+        "Công dân rà lại các dòng giấy tờ trên trang, rồi bấm **Chọn hình thức nhận kết quả** "
+        "để em chọn cách nhận ạ."
+    ),
+    "tts": (
+        "Em đã đính xong các tệp vào thành phần hồ sơ. Công dân rà lại trên trang, rồi bấm chọn "
+        "hình thức nhận kết quả giúp em ạ."
+    ),
+}
+
+TPM_ATTACH_ALL_EXIST = {
+    "md": (
+        "✅ Các tệp đều đã có sẵn trên **Thành phần hồ sơ**, em không đính trùng nữa.\n\n"
+        "Công dân bấm **Chọn hình thức nhận kết quả** để đi tiếp ạ."
+    ),
+    "tts": (
+        "Các tệp đều đã có sẵn trên thành phần hồ sơ, em không đính trùng nữa. Công dân bấm "
+        "chọn hình thức nhận kết quả để đi tiếp ạ."
+    ),
+}
+
+TPM_ATTACH_DONE_WITH_ERRORS = {
+    "md": (
+        "⚠️ Em đính được **{attached} tệp**, còn lỗi:\n\n{error_list}\n\n"
+        "Công dân bấm **Đính kèm lại** để em thử lần nữa (tệp đã có em tự bỏ qua), hoặc "
+        "**Điều chỉnh giấy tờ** nếu tệp chưa đúng ạ."
+    ),
+    "tts": (
+        "Em đính được một phần, còn vài tệp chưa đính được. Công dân bấm đính kèm lại để em thử "
+        "lần nữa, hoặc điều chỉnh giấy tờ nếu tệp chưa đúng ạ."
+    ),
+}
+
+TPM_ATTACH_NONE = {
+    "md": (
+        "⚠️ Em chưa gắn được tệp nào vào hồ sơ{error_note}. Công dân bấm **Đính kèm lại** để em "
+        "thử lần nữa, hoặc **Điều chỉnh giấy tờ** nếu tệp chưa đúng ạ."
+    ),
+    "tts": (
+        "Em chưa gắn được tệp nào vào hồ sơ ạ. Công dân bấm đính kèm lại để em thử lần nữa, "
+        "hoặc điều chỉnh giấy tờ nếu tệp chưa đúng ạ."
+    ),
+}
+
+TPM_RESULT_PICK = {
+    "md": (
+        "Công dân muốn nhận kết quả bằng cách nào ạ? Em đang chọn **{label}** — công dân bấm "
+        "chọn cách khác nếu muốn đổi nhé."
+    ),
+    "tts": (
+        "Công dân muốn nhận kết quả bằng cách nào ạ? Em đang chọn {label}. Công dân bấm chọn "
+        "cách khác nếu muốn đổi nhé."
+    ),
+}
+
+# Câu chốt đi kèm mọi lượt chọn cách nhận (note=).
+TPM_SUBMIT_HINT = {
+    "md": "\n\nKiểm tra xong, công dân bấm **Lưu và nộp hồ sơ** — em soát các ô bắt buộc rồi nộp giúp ạ.",
+    "tts": " Kiểm tra xong, công dân bấm lưu và nộp hồ sơ, em soát các ô bắt buộc rồi nộp giúp ạ.",
+}
+
+TPM_RESULT_FAILED = {
+    "md": (
+        "⚠️ Em chưa chọn được **{label}** ở ô **Hình thức nhận kết quả**. Công dân chọn giúp em "
+        "ngay trên trang rồi bấm **Lưu và nộp hồ sơ** ạ."
+    ),
+    "tts": (
+        "Em chưa chọn được {label} ở ô hình thức nhận kết quả. Công dân chọn giúp em ngay trên "
+        "trang rồi bấm lưu và nộp hồ sơ ạ."
+    ),
+}
+
+# Ô thiếu do FE đọc THẲNG trên trang (ô bắt buộc của form + khối nhận kết quả qua bưu điện).
+TPM_SUBMIT_MISSING = {
+    "md": (
+        "⚠️ Em chưa nộp vì trang còn thiếu: **{missing_note}** (em đã tô đỏ trên trang). Công "
+        "dân điền nốt rồi bấm lại **Lưu và nộp hồ sơ** giúp em ạ."
+    ),
+    "tts": (
+        "Em chưa nộp vì trang còn thiếu {missing_tts}. Em đã tô đỏ trên trang, công dân điền "
+        "nốt rồi bấm lại lưu và nộp hồ sơ giúp em ạ."
+    ),
+}
+
+TPM_SUBMIT_BLOCKED = {
+    "md": (
+        "⚠️ Trang chưa nhận hồ sơ, trang báo: *{portal_message}*\n\n"
+        "Công dân xử lý giúp em rồi bấm lại **Lưu và nộp hồ sơ** ạ."
+    ),
+    "tts": (
+        "Trang chưa nhận hồ sơ ạ. Trang báo: {portal_message}. Công dân xử lý giúp em rồi bấm "
+        "lại lưu và nộp hồ sơ ạ."
+    ),
+}
+
+TPM_SUBMIT_STUCK = {
+    "md": (
+        "⚠️ Em chưa bấm được nút **Lưu và nộp hồ sơ** trên trang. Công dân bấm trực tiếp nút đó "
+        "ở cuối trang giúp em ạ."
+    ),
+    "tts": (
+        "Em chưa bấm được nút lưu và nộp hồ sơ trên trang. Công dân bấm trực tiếp nút đó ở cuối "
+        "trang giúp em ạ."
+    ),
+}
+
+TPM_DONE_REMIND = {
+    "md": "Công dân bấm nút bên dưới để đi tiếp giúp em ạ.",
+    "tts": "Công dân bấm nút bên dưới để đi tiếp giúp em ạ.",
+}
+
 # Nhãn bước hiển thị trên thanh tiến trình (progress.label) — khớp docs/03a §3.
 STEP_LABELS = {
     "greet": "Chọn thủ tục",
@@ -1768,3 +1929,44 @@ STEP_ORDER = [
     "qr_waiting", "collecting_docs", "choosing_attach_mode", "owner_filling", "owner_waiting_next",
     "filling", "reviewing", "attaching", "done",
 ]
+
+
+# ── Giọng nói toàn trình ─────────────────────────────────────────────────────────────────────
+# Nhãn cho các nút TRÊN CARD khi đưa vào danh sách "nút đang hiện" của bộ phân loại (chip thì dùng
+# chính nhãn chip). Chỉ dành cho LLM + câu "nói được gì", không hiển thị thành nút.
+VOICE_CONSENT_AGREE = "Đồng ý cho xử lý dữ liệu và tự động điền"
+VOICE_CONSENT_DECLINE = "Không đồng ý, tự nhập"
+VOICE_DOC_OPTION = {
+    "qr": "Chụp giấy tờ bằng điện thoại (quét mã QR)",
+    "scan": "Scan tại quầy hoặc chọn tệp có sẵn trong máy",
+}
+
+OWNER_RESEND_DOCS_CTA = "📷 Gửi lại giấy tờ"
+
+# Câu gõ/nói không ra việc gì ở bước đang làm. options_* là nhãn các nút đang hiện.
+VOICE_NOT_UNDERSTOOD = {
+    "md": "Dạ em chưa hiểu ý công dân ạ. Công dân nói lại ngắn gọn hoặc bấm nút trên màn hình giúp em nhé.",
+    "tts": "Dạ em chưa hiểu ý công dân. Công dân nói lại ngắn gọn hoặc bấm nút trên màn hình giúp em nhé.",
+}
+VOICE_NOT_UNDERSTOOD_OPTIONS = {
+    "md": "Dạ em chưa hiểu ý công dân ạ. Ở bước này công dân có thể nói: {options_md}.",
+    "tts": "Dạ em chưa hiểu ý công dân. Ở bước này công dân có thể nói: {options_tts}.",
+}
+
+# Sửa nơi làm bằng lời: tên xã nghe được khớp nhiều xã / không trọn tên. options_* là tên xã.
+PLACE_WARD_UNCLEAR = {
+    "md": (
+        "Dạ em chưa chắc phường/xã nào ạ. Có phải một trong các nơi sau không?\n\n{options_md}\n\n"
+        "Công dân bấm chọn hoặc nói lại tên phường/xã giúp em nhé."
+    ),
+    "tts": "Dạ em chưa chắc phường xã nào. Có phải {options_tts} không ạ? "
+           "Công dân bấm chọn hoặc nói lại tên phường xã giúp em nhé.",
+}
+PLACE_NOT_HEARD = {
+    "md": (
+        "Dạ em chưa nghe rõ công dân muốn đổi nơi làm hay người làm thủ tục ạ. Công dân nói lại tên "
+        "**phường/xã, tỉnh/thành phố** hoặc **làm thủ tục cho ai**, hoặc chọn ngay bên dưới giúp em nhé."
+    ),
+    "tts": "Dạ em chưa nghe rõ. Công dân nói lại tên phường xã, tỉnh thành phố, hoặc làm thủ tục cho ai, "
+           "hoặc chọn ngay bên dưới giúp em nhé.",
+}

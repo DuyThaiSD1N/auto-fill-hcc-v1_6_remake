@@ -1,6 +1,6 @@
 """[Lào Cai] 1.115688 — hai chế độ xác định NGƯỜI NỘP.
 
-Mặc định (toggle tắt) giữ nguyên hành vi theo tài khoản. Bật "Người nộp = chủ hồ sơ" thì người nộp là chủ hồ
+Mặc định (toggle tắt) giữ nguyên hành vi theo tài khoản. Bật "Lấy người nộp theo tờ khai" thì người nộp là chủ hồ
 sơ CÁ NHÂN; schema không tách vai bên nhận ủy quyền nên hồ sơ có Giấy ủy quyền/chủ hồ sơ tổ chức → để trống
 nhân thân khối người nộp + cảnh báo. `enrich` giữ hợp đồng cũ (chỉ trả field), cảnh báo ở
 `enrich_with_warnings`.

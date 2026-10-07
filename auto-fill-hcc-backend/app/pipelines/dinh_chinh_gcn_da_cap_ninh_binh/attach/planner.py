@@ -7,6 +7,8 @@ Thứ tự dòng lấy từ HTML thật của thủ tục, không lấy từ ả
   3. Bản gốc Giấy chứng nhận đã cấp
 
 Mỗi file chỉ sinh một plan item để không nhân bản một tài liệu sang nhiều dòng.
+Form KHÔNG có dòng "Giấy tờ khác": file "other"/không phân loại được đính chung dòng Đơn Mẫu 18 kèm cảnh báo
+(không bỏ sót file). Rule keyword chỉ dùng khi LLM không trả gì, không đè kết quả LLM (kể cả "other").
 """
 
 import time
@@ -132,11 +134,13 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, str]:
 
 
 def _build_item(file: dict, file_index: int, doc_type: str) -> dict:
-    route = _ROUTES[doc_type]
+    file_name = str(file.get("name") or f"file-{file_index + 1}")
+    route = _ROUTES.get(doc_type) or _ROUTES[_APPLICATION]
     return {
         "fileIndex": file_index,
-        "fileName": str(file.get("name") or f"file-{file_index + 1}"),
-        "documentName": route["documentName"],
+        "fileName": file_name,
+        # Giấy lạ giữ tên file gốc để cán bộ nhận ra khi soát (cùng cách các thủ tục đất đai Ninh Bình khác).
+        "documentName": route["documentName"] if doc_type in _ROUTES else file_name,
         "componentName": route["name"],
         "componentIndex": route["index"],
         "loaiBan": _LOAI_BAN,
@@ -165,26 +169,26 @@ def build_plan_items(
 
         if llm_type in _ROUTES:
             doc_type, source = llm_type, "llm"
-        elif rule_type:
+        elif not llm_type and rule_type:
             doc_type, source = rule_type, "rule"
         else:
-            doc_type, source = _OTHER, "llm" if llm_type == _OTHER else "unknown"
+            doc_type, source = _OTHER, "llm" if llm_type else "unknown"
 
-        if doc_type in _ROUTES:
-            item = _build_item(file, index, doc_type)
-            attachments.append(item)
-            classified.append(
-                {
-                    "fileName": file_name,
-                    "docType": doc_type,
-                    "source": source,
-                    "componentIndex": item["componentIndex"],
-                }
+        item = _build_item(file, index, doc_type)
+        attachments.append(item)
+        if doc_type == _OTHER:
+            warnings.append(
+                f"Chưa nhận diện chắc loại giấy tờ cho '{file_name}' — tạm đính vào dòng Đơn đăng ký biến động "
+                "(Mẫu số 18); cán bộ kiểm tra lại."
             )
-            continue
-
-        warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-        classified.append({"fileName": file_name, "docType": _OTHER, "source": source, "skipped": True})
+        classified.append(
+            {
+                "fileName": file_name,
+                "docType": doc_type,
+                "source": source,
+                "componentIndex": item["componentIndex"],
+            }
+        )
 
     return attachments, warnings, classified
 

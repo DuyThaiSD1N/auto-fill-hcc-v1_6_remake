@@ -411,7 +411,7 @@ def _nguoi_nop_moi(values: dict, options: dict, is_org: bool) -> tuple[list[tupl
         base = proxy or flat_nop or flat_owner
         if not base:
             return [], [
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có văn bản ủy quyền và cũng không "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có văn bản ủy quyền và cũng không "
                 "đọc được người đứng tên đơn, nên trợ lý để trống khối \"Thông tin người nộp hồ sơ\" — cán "
                 "bộ nhập tay."
             ]
@@ -435,7 +435,7 @@ def _nguoi_nop_moi(values: dict, options: dict, is_org: bool) -> tuple[list[tupl
                 + ") nhưng tài khoản đang đăng nhập là " + (raw_name or raw_id or "người khác")
                 + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản và CSDL quốc gia dân cư "
                 "trước khi cho nộp — lệch là bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt "
-                "cài đặt \"Người nộp = chủ hồ sơ\"."
+                "cài đặt \"Lấy người nộp theo tờ khai\"."
             )
         return cells, warnings
 
@@ -445,7 +445,7 @@ def _nguoi_nop_moi(values: dict, options: dict, is_org: bool) -> tuple[list[tupl
             "\"Thông tin người nộp hồ sơ\" — cán bộ nhập tay nhân thân của CHÍNH người đăng nhập (cổng "
             "đối chiếu với CSDL quốc gia dân cư), không lấy thông tin người khác."
             " Vừa cập nhật/tải lại extension thì F5 trang cổng rồi quét lại; người nộp theo tờ khai thì "
-            "bật cài đặt \"Người nộp = chủ hồ sơ\"."
+            "bật cài đặt \"Lấy người nộp theo tờ khai\"."
         ]
     base = None
     for group in (cards, named, [proxy] if proxy else [], [flat_nop] if flat_nop else [],

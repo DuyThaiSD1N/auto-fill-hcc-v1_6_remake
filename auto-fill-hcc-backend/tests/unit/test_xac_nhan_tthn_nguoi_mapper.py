@@ -145,21 +145,3 @@ def test_ethnicity_fallback_reads_line_under_subject_name_only_when_llm_returns_
     two_columns = "Họ, chữ đệm, tên vợ: Họ, chữ đệm, tên chồng:\nLÒ THỊ HAI VŨ VĂN BA\nDân tộc: Thái Dân tộc: Kinh\n"
     out = _compact_field_fallback({"NguoiDuocCap_HoTen": "LÒ THỊ HAI"}, [{"text": two_columns}])
     assert "GiayToKhac_DanToc" not in out
-
-
-def test_card_residence_old_ward_resolved_by_district_in_ocr():
-    # LLM bỏ mất "TP Đà Lạt" → "Phường 1" trùng tên ở Bảo Lộc. Lấy huyện in ngay sau tên xã trên thẻ;
-    # bản án ghi thêm địa chỉ người khác ở Bảo Lộc thì chọn chỗ cùng số nhà/đường.
-    from app.pipelines.xac_nhan_tthn.process.runner import _compact_field_fallback
-
-    area = {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Phường 1", "diaChi": "5 Hoa Sen"}
-    docs = [
-        {"text": "Nơi thường trú / Place of residence: 5 Hoa Sen, Phường 1, TP Đà Lạt, Lâm Đồng.\n"},
-        {"text": "Bị đơn: Ông Trần Văn Bịa, địa chỉ: số 9, Lê Lợi, Phường 1, thành phố Bảo Lộc, tỉnh Lâm Đồng.\n"},
-    ]
-    out = _compact_field_fallback({"NguoiDuocCap_NoiCuTru": dict(area), "ToKhai_NoiCuTru": dict(area)}, docs)
-    assert out["NguoiDuocCap_NoiCuTru"]["xa"] == "Phường Xuân Hương - Đà Lạt"
-    assert out["ToKhai_NoiCuTru"]["xa"] == "Phường Xuân Hương - Đà Lạt"
-    # Không neo được số nhà mà hai chỗ ghi chỉ về hai huyện khác nhau → không đoán.
-    out = _compact_field_fallback({"ToKhai_NoiCuTru": {**area, "diaChi": ""}}, docs)
-    assert out["ToKhai_NoiCuTru"]["xa"] == "Phường 1"

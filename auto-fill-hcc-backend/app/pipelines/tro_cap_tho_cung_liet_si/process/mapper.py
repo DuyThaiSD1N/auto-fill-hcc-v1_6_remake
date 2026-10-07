@@ -353,7 +353,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(field)
         seen.add(seen_key)
 
-    # Toggle "Người nộp = chủ hồ sơ" (owner_as_submitter): LUÔN lấy chủ hồ sơ cho occ0, tick, bỏ mỏ neo UI.
+    # Toggle "Lấy người nộp theo tờ khai" (owner_as_submitter): LUÔN lấy chủ hồ sơ cho occ0, tick, bỏ mỏ neo UI.
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     owner_matches = bool(owner and _matches_context(owner, context))
     requester_matches = bool(requester and _matches_context(requester, context))

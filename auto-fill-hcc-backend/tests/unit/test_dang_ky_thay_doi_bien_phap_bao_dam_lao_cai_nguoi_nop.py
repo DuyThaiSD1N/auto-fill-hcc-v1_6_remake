@@ -104,7 +104,7 @@ def test_khong_moc_hoac_khong_co_form_context_thi_trong_va_canh_bao():
         values = _values(fields)
         for name in ("CongDan_tenCongDan", "CongDan_soCmnd", "CongDan_ngayCapCmnd", "CongDan_gioiTinhCongDan"):
             assert name not in values, (options, name)
-        assert any("NGƯỜI ĐANG ĐI NỘP" in w and "F5" in w and "Người nộp = chủ hồ sơ" in w for w in warnings)
+        assert any("NGƯỜI ĐANG ĐI NỘP" in w and "F5" in w and "Lấy người nộp theo tờ khai" in w for w in warnings)
         assert values["ChuHoSo_maDoiTuongNopHS"] == "DN"
 
 

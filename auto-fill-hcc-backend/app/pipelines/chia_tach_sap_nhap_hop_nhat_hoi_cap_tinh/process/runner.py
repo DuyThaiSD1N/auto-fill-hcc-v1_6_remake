@@ -53,6 +53,8 @@ async def _submitter_context(documents: list[dict], options: dict) -> str:
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Chế độ người nộp theo tờ khai: bỏ mốc tài khoản (người nộp = chủ hồ sơ, không cần neo CCCD người nộp).
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -61,7 +63,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_submitter_context,
+        context_builder=None if owner_mode else _submitter_context,
     )
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     res["fields"] = mapped_fields

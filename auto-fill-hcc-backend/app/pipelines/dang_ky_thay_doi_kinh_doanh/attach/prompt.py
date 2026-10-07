@@ -15,6 +15,11 @@ Allowed type:
 - family_authorization: văn bản ủy quyền của thành viên hộ gia đình cho một thành viên làm chủ hộ.
 - other: tài liệu khác/không đủ chắc chắn.
 
+Phân loại theo TIÊU ĐỀ và bản chất văn bản. Văn bản ỦY QUYỀN cho người đi nộp/nhận hồ sơ (có "Bên ủy
+quyền"/"Bên được ủy quyền") là other, kể cả khi nội dung nhắc "thông báo thay đổi nội dung đăng ký hộ
+kinh doanh" hay số Giấy chứng nhận; chỉ ủy quyền của thành viên hộ gia đình cho một thành viên làm chủ
+hộ mới là family_authorization. Văn bản chỉ NHẮC tên/số GCN hay Thông báo thì không thuộc các loại đó.
+
 Trả duy nhất JSON:
 {"documents":[{"index":0,"type":"change_notice","documentName":"Thông báo thay đổi nội dung đăng ký hộ kinh doanh"}]}
 documentName phải cụ thể, tiếng Việt, tối đa 50 ký tự; không rõ thì để rỗng.

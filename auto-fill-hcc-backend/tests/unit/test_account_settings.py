@@ -48,25 +48,25 @@ def make_client(monkeypatch):
 
 def test_tai_khoan_chua_luu_nhan_mac_dinh_doi_ten(make_client):
     c, _ = make_client({"username": "a"})
-    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": True}
+    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False}
 
 
 def test_gia_tri_da_luu_duoc_tra_ve(make_client):
     c, _ = make_client({"username": "a", "account_settings": {"renameAttachmentFiles": False}})
-    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": False}
+    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False}
 
 
 def test_patch_ghi_dung_khoa_va_tra_ve_ban_day_du(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"renameAttachmentFiles": False})
-    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": False}
+    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False}
     assert users.calls == [{"$set": {"account_settings.renameAttachmentFiles": False}}]
 
 
 def test_patch_khoa_la_bi_bo_qua(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"role": "admin", "xyz": 1})
-    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": True}
+    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False}
     assert users.calls == [], "không có khoá hợp lệ thì không ghi DB"
 
 
@@ -74,3 +74,11 @@ def test_patch_sai_kieu_bi_tu_choi(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"renameAttachmentFiles": "khong"})
     assert r.status_code == 422 and users.calls == []
+
+
+def test_lay_nguoi_nop_theo_to_khai_mac_dinh_tat_va_luu_duoc(make_client):
+    c, users = make_client({"username": "a"})
+    assert c.get("/api/v1/account/settings").json()["submitterFromDeclaration"] is False
+    r = c.patch("/api/v1/account/settings", json={"submitterFromDeclaration": True})
+    assert r.status_code == 200 and r.json()["submitterFromDeclaration"] is True
+    assert users.calls == [{"$set": {"account_settings.submitterFromDeclaration": True}}]

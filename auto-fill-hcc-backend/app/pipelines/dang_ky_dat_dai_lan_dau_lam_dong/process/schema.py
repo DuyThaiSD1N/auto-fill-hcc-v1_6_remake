@@ -15,12 +15,13 @@ GCN) → KHÔNG trích Gcn_*; ô Ghi chú để trống.
 
 FIELDS: list[dict] = [
     # --- CHỦ HỒ SƠ (chủ hộ đứng đơn đăng ký đất đai) — nguồn chính CCCD + Đơn đăng ký đất đai.
-    {"name": "Nguoi_HoTen", "desc": "Họ tên CHỦ HỒ SƠ = người sử dụng đất đứng đơn đăng ký. Lấy từ CCCD "
-        "hoặc mục người sử dụng đất/người đăng ký của Đơn đăng ký đất đai (Mẫu 15/ĐK)."},
+    {"name": "Nguoi_HoTen", "desc": "Họ tên CHỦ HỒ SƠ = người sử dụng đất đứng đơn đăng ký: mục người sử dụng "
+        "đất/người đăng ký của Đơn đăng ký đất đai (Mẫu 15/ĐK), hoặc BÊN ỦY QUYỀN trong Giấy ủy quyền. KHÔNG "
+        "phải bên được ủy quyền; CCCD chỉ bổ sung khi khớp số định danh người này."},
     {"name": "Nguoi_NgaySinh", "desc": "Ngày sinh chủ hồ sơ, dd/mm/yyyy — lấy từ CCCD."},
     {"name": "Nguoi_GioiTinh", "desc": 'Giới tính chủ hồ sơ: "Nam" hoặc "Nữ" (từ CCCD).'},
-    {"name": "Nguoi_SoDinhDanh", "desc": "Số định danh/CCCD/CMND của chủ hồ sơ; đọc mặt trước hoặc MRZ mặt sau, "
-        "hoặc dòng 'CCCD số' của Đơn đăng ký đất đai."},
+    {"name": "Nguoi_SoDinhDanh", "desc": "Số định danh/CCCD/CMND của chủ hồ sơ: dòng 'CCCD số' của Đơn đăng ký đất "
+        "đai hoặc của bên ủy quyền trong Giấy ủy quyền; CCCD rời chỉ dùng khi đúng người này."},
     {"name": "Nguoi_NgayCapCccd", "desc": "Ngày cấp CCCD/CMND của chủ hồ sơ (mặt sau), dd/mm/yyyy. Chỉ có nếu upload CCCD."},
     {"name": "Nguoi_NoiCapCccd",
      "desc": 'Nơi cấp CCCD/CMND của chủ hồ sơ (mặt sau). "CỤC TRƯỞNG CỤC CẢNH SÁT..." → '

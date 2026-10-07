@@ -168,6 +168,13 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Biết mở tab "Tạo giấy ủy quyền" từ mục Giấy tờ soạn tại quầy. Client cũ không khai →
         # card chọn thủ tục không có mục này (bấm vào cũng không có gì để mở).
         "supportsAuthorizationLetter": raw.get("supportsAuthorizationLetter") is True,
+        # Có engine SurveyJS cho trang nộp một trang của Cổng DVC quốc gia (điền, đính kèm,
+        # chọn hình thức nhận kết quả, bấm nộp). Extension cũ không khai → BE báo cần cập nhật
+        # thay vì dẫn vào trang mà engine cũ không điền được.
+        "supportsTuPhapMoi": raw.get("supportsTuPhapMoi") is True,
+        # Biết "bấm hộ" một nút khi công dân chọn nút đó bằng lời (action press_chip / chip_used).
+        # Client cũ không khai → BE chạy thẳng lệnh của nút như trước.
+        "supportsVoiceChips": raw.get("supportsVoiceChips") is True,
     }
 
 
@@ -254,6 +261,10 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         "username": user["username"],
         "name": user.get("name") or "",
         "province_slug": account_slug,
+        # Tỉnh/xã nguyên văn của tài khoản quầy — luồng tư pháp mới điền "Kính gửi"/"Tại"
+        # theo tài khoản, giống Auto Fill.
+        "tinh": str(user.get("tinh") or ""),
+        "xa": str(user.get("xa") or ""),
     }
 
     # Giữ mỏ neo người yêu cầu trong conversation để lượt "Đã đưa đủ" chạy nền vẫn nhận được
@@ -315,13 +326,17 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             decided = intents.resolve_logout_choice(message)
             if decided:
                 intent = intents.Intent("action", decided)
+        if message.startswith("__"):
+            flow.clear_voice_options_if_pressed(conv, message)
         if intent is None:
-            intent = await intents.resolve(message, conv.get("state", "greet"))
+            intent = await intents.resolve(message, conv.get("state", "greet"), conv)
         reply = await flow.handle_turn(
             conv,
             intent,
             client_page_context=(req.client_context.page_context if req.client_context else None),
+            free_text=bool(message) and not message.startswith("__"),
         )
+    flow.update_voice_options(conv, reply)
 
     payload = _serialize(conv, reply)
     # Reply RỖNG (bot im lặng chờ trang) → không lưu history, không đè last_reply —

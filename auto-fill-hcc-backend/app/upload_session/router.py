@@ -94,6 +94,7 @@ async def get_session(
             "progress": store.progress(sess),
         }
     ensure_upload_session_experience(sess, "autofill")
+    await store.extend_autofill_expiry(sid)  # panel/điện thoại còn hỏi = phiên còn dùng
     return {"session_id": sid,
             "files": [{k: f.get(k) for k in ("fid", "name", "type", "size")} for f in sess["files"]],
             "received": len(sess["files"]),
@@ -127,6 +128,8 @@ async def get_file(sid: str, fid: str):
     # nên bản extension đang chạy trên chợ cũng được ghi nhận. Ghi vết chạy nền để không
     # làm chậm việc trả bytes.
     updated = await store.mark_delivered(sid, [fid])
+    if upload_session_experience(sess) == "autofill":
+        await store.extend_autofill_expiry(sid)
     got = store.delivered_count(updated or sess)
     total = len(sess.get("files", []))
     logger.info("[phien-tai-anh] %s ← máy tính lấy %s (%s, %.2fMB) — đã lấy %d/%d",
@@ -224,6 +227,7 @@ async def upload_files(
                 ", ".join(str(a["name"]) for a in accepted), received)
     await audit.log_uploaded(sid, names=[str(a["name"]) for a in accepted],
                              nbytes=incoming_bytes, received=received)
+    await store.extend_autofill_expiry(sid)  # điện thoại vừa gửi ảnh = phiên còn dùng
     await broadcast(sid, {"type": "files_added", "files": accepted, "received": received})
     return {"accepted": accepted, "received": received}
 

@@ -93,7 +93,7 @@ def test_khong_co_form_context_nhu_khong_moc():
     for options in ({}, None, {"formContext": {}}):
         fields, warnings = mapper.enrich(_FACTS, options)
         assert _congdan(fields) == []
-        assert any("F5" in w and "Người nộp = chủ hồ sơ" in w for w in warnings)
+        assert any("F5" in w and "Lấy người nộp theo tờ khai" in w for w in warnings)
 
 
 def test_tai_khoan_la_nguoi_duoc_gioi_thieu_thi_o_to_chuc_la_don_vi():

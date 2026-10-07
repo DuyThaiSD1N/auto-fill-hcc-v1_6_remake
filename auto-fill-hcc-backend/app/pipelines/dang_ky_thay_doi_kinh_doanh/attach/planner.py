@@ -113,7 +113,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     llm_started = time.monotonic()
     classified: dict[int, dict[str, str]] = {}
     try:
-        # LLM luôn xử lý toàn bộ để đặt tên cụ thể và làm fallback cho mọi tài liệu rule không rõ.
+        # LLM xử lý toàn bộ để phân loại và đặt tên cụ thể; từ khoá chỉ dự phòng khi LLM không trả.
         classified = await _classify(docs) if any(item["text"] for item in docs) else {}
     except Exception as exc:  # noqa: BLE001
         errors.append(f"attachment_agent: {exc}")
@@ -125,7 +125,10 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     for index, item in enumerate(raw_files):
         text = str(ocr_by_name.get(item.get("name"), {}).get("text") or "")
         llm = classified.get(index) or {}
-        doc_type = _detect_type(text) or str(llm.get("type") or "other")
+        llm_type = str(llm.get("type") or "")
+        # LLM quyết loại trước; từ khoá chỉ dự phòng khi LLM không trả (lỗi/thiếu tài liệu) — từ khoá
+        # trúng cả văn bản chỉ NHẮC tên thành phần (vd giấy ủy quyền nêu tên thủ tục).
+        doc_type = llm_type if llm_type in _TYPE_CONFIG else (_detect_type(text) or "other")
         if doc_type not in _TYPE_CONFIG:
             doc_type = "other"
         category, component = _TYPE_CONFIG[doc_type]

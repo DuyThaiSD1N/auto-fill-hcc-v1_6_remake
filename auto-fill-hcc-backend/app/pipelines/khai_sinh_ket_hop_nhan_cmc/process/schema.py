@@ -7,7 +7,7 @@ FIELDS: list[dict] = [
     {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ người yêu cầu, dd/mm/yyyy."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ người yêu cầu."},
     {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "Requester_PhoneNumber", "desc": "Số điện thoại người yêu cầu nếu có."},
+    {"name": "Requester_PhoneNumber", "desc": "Số điện thoại CỦA CHÍNH người yêu cầu, chỉ lấy ở dòng điện thoại trong mục người yêu cầu của tờ khai (hoặc giấy tờ cá nhân của người đó). KHÔNG lấy hotline/số điện thoại của cơ quan, bệnh viện, công ty xét nghiệm in ở đầu/chân giấy. Tờ khai không ghi thì bỏ."},
     {"name": "Requester_Email", "desc": "Email người yêu cầu nếu có."},
     {"name": "Requester_RelationshipToChild", "desc": "Quan hệ của người yêu cầu với trẻ: Cha, Mẹ hoặc quan hệ khác."},
 

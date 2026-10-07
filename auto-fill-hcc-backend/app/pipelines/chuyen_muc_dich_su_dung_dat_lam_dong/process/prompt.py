@@ -26,9 +26,13 @@ người B. ⚠ Mục "giấy tờ nộp kèm theo đơn" của Đơn chỉ LI�
   + có số CCCD của bên B. Thiếu BẤT KỲ điều nào → để TRỐNG.
 
 NGUỒN DỮ LIỆU:
-- Nguoi_* là CHỦ HỒ SƠ = NGƯỜI SỬ DỤNG ĐẤT đứng tên trên Giấy chứng nhận và đứng đơn đề nghị. Lấy từ CCCD /
-  Đơn / GCN. Nếu thửa đất đã sang tên thì tên chủ MỚI nằm ở mục 6 "Những thay đổi sau khi cấp Giấy chứng
+- Nguoi_* là CHỦ HỒ SƠ = NGƯỜI SỬ DỤNG ĐẤT đứng tên trên Giấy chứng nhận và đứng đơn đề nghị. Lấy từ Đơn /
+  GCN / bên ủy quyền; CCCD chỉ bổ sung khi khớp số định danh người này. Nếu thửa đất đã sang tên thì tên chủ MỚI nằm ở mục 6 "Những thay đổi sau khi cấp Giấy chứng
   nhận" của GCN — lấy người ở mục 6, KHÔNG lấy người in sẵn ở trang 1.
+- ⚠ CCCD KHÔNG tự quyết vai: chỉ ghép CCCD vào Nguoi_* khi số định danh (hoặc họ tên) trên CCCD khớp đúng
+  người sử dụng đất (đứng tên Đơn/GCN, hoặc BÊN ỦY QUYỀN trong Giấy ủy quyền). CCCD trùng số với BÊN ĐƯỢC ỦY
+  QUYỀN (người ngay sau "ủy quyền cho:") là của NGƯỜI NỘP, KHÔNG phải chủ hồ sơ. Hồ sơ không có Đơn/GCN mà chỉ có
+  Giấy ủy quyền + CCCD → Nguoi_* vẫn là bên ủy quyền trong Giấy ủy quyền, dù CCCD duy nhất là của bên được ủy quyền.
 - BẮT BUỘC cố đọc Nguoi_NgayCapCccd/Nguoi_NoiCapCccd từ mặt sau CCCD. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT
   QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI" → Nguoi_NoiCapCccd = "Cục Cảnh sát quản lý hành chính về trật tự xã
   hội". Thẻ CĂN CƯỚC mới (tiêu đề "CĂN CƯỚC"/"IDENTITY CARD", ghi "BỘ CÔNG AN") → "Bộ Công an".

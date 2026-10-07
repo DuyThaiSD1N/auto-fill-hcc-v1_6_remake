@@ -148,3 +148,26 @@ def test_registry_has_scoped_ninh_binh_procedure_and_both_pipelines():
     assert procedure["detect"]["textIncludes"] == ["Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót"]
     assert get_pipeline(key) is not None
     assert get_attach_pipeline(key) is not None
+
+
+def test_attach_other_vao_dong_don_mau_18_khong_bo_sot():
+    files = [{"name": "la.pdf", "type": "application/pdf"}]
+    ocr = [{"name": "la.pdf", "text": "GIẤY CHỨNG NHẬN KẾT HÔN"}]
+
+    attachments, warnings, classified = planner.build_plan_items(files, ocr, {0: "other"})
+
+    assert len(attachments) == 1 and attachments[0]["componentIndex"] == 0
+    assert attachments[0]["documentName"] == "la.pdf"
+    assert len(warnings) == 1 and "la.pdf" in warnings[0]
+    assert "skipped" not in classified[0]
+
+
+def test_attach_rule_khong_de_llm_other_chi_dung_khi_llm_khong_tra():
+    files = [{"name": "uq.pdf", "type": "application/pdf"}]
+    ocr = [{"name": "uq.pdf", "text": "GIẤY ỦY QUYỀN"}]
+
+    _, _, classified = planner.build_plan_items(files, ocr, {0: "other"})
+    assert classified[0]["docType"] == "other" and classified[0]["source"] == "llm"
+
+    _, _, classified = planner.build_plan_items(files, ocr, {})
+    assert classified[0]["docType"] == "authorization" and classified[0]["source"] == "rule"

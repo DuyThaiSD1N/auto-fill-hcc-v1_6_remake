@@ -323,7 +323,7 @@ def _canh_bao_theo_to_khai(
     """Cảnh báo chế độ THEO TỜ KHAI — không nói tới "thiếu mốc tài khoản" vì chế độ này không dùng mốc."""
     if nop_source is None:
         return [
-            "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có người được ủy quyền và chủ hồ sơ "
+            "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có người được ủy quyền và chủ hồ sơ "
             "không phải cá nhân đọc được họ tên/số căn cước, nên trợ lý để trống nhân thân khối \"Thông "
             "tin người nộp\" — cán bộ nhập tay."
         ]
@@ -335,7 +335,7 @@ def _canh_bao_theo_to_khai(
             + ") nhưng tài khoản đang đăng nhập là "
             + (_plain((ctx_name or "").title()) or ctx_id or "người khác")
             + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp — lệch là "
-            "bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+            "bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
         )
     return warnings
 
@@ -370,7 +370,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     is_org = _is_org(values)
     ctx_id, ctx_name = _account_anchor(options)
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, chọn người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, chọn người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     if theo_to_khai:
         # Trùng/khác chủ hồ sơ quyết theo người đã chọn trong hồ sơ (không theo mốc) để khối chủ hồ sơ

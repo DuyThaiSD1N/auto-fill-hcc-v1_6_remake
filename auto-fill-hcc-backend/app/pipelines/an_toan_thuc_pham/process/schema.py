@@ -8,7 +8,7 @@ FIELDS: list[dict] = [
     # CCCD/CMND uploads. There can be one requester CCCD, or requester + owner.
     {"name": "Person1_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ nhất."},
     {"name": "Person1_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ nhất; có thể đọc từ MRZ mặt sau."},
-    {"name": "Person1_NgaySinh", "desc": "Ngày sinh người thứ nhất, dd/mm/yyyy."},
+    {"name": "Person1_NgaySinh", "desc": "Ngày sinh người thứ nhất trên CCCD/CMND, dd/mm/yyyy. Giấy chỉ ghi năm sinh (vd danh sách tập huấn) → BỎ field, không ghép 01/01."},
     {"name": "Person1_GioiTinh", "desc": 'Giới tính người thứ nhất: "Nam" hoặc "Nữ".'},
     {"name": "Person1_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "Person1_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ nhất, dd/mm/yyyy."},
@@ -17,7 +17,7 @@ FIELDS: list[dict] = [
 
     {"name": "Person2_HoTen", "desc": "Họ tên trên CCCD/CMND của người thứ hai, nếu có."},
     {"name": "Person2_SoDinhDanh", "desc": "Số định danh/CCCD/CMND người thứ hai; có thể đọc từ MRZ mặt sau."},
-    {"name": "Person2_NgaySinh", "desc": "Ngày sinh người thứ hai, dd/mm/yyyy."},
+    {"name": "Person2_NgaySinh", "desc": "Ngày sinh người thứ hai trên CCCD/CMND, dd/mm/yyyy. Giấy chỉ ghi năm sinh (vd danh sách tập huấn) → BỎ field, không ghép 01/01."},
     {"name": "Person2_GioiTinh", "desc": 'Giới tính người thứ hai: "Nam" hoặc "Nữ".'},
     {"name": "Person2_QuocTich", "desc": "Quốc tịch nếu giấy tờ ghi rõ hoặc khác Việt Nam."},
     {"name": "Person2_NgayCap", "desc": "Ngày cấp CCCD/CMND người thứ hai, dd/mm/yyyy."},
@@ -28,8 +28,10 @@ FIELDS: list[dict] = [
     {"name": "DonDeNghi_ChuCoSoHoTen", "desc": "Họ tên chủ cơ sở/chủ hồ sơ trong Đơn đề nghị cấp giấy chứng nhận ATTP."},
     {"name": "DonDeNghi_TenCoSo", "desc": "Tên cơ sở kinh doanh/sản xuất thực phẩm trong đơn."},
     {"name": "DonDeNghi_DiaChiChuCoSo", "desc": "Địa chỉ cư trú của chủ cơ sở nếu đơn có ghi riêng, object {quocGia,tinh,xa,diaChi}."},
-    {"name": "DonDeNghi_DiaChiCoSo", "desc": "Địa chỉ cơ sở kinh doanh/sản xuất thực phẩm, object {quocGia,tinh,xa,diaChi} nếu tách được."},
-    {"name": "DonDeNghi_DienThoai", "desc": "Số điện thoại liên hệ trong đơn đề nghị; chỉ trả số di động rõ ràng."},
+    {"name": "DonDeNghi_DiaChiCoSo", "desc": "Địa chỉ cơ sở CHỈ lấy đúng dòng 'Địa chỉ cơ sở…' trong ĐƠN ĐỀ NGHỊ, object {quocGia,tinh,xa,diaChi}. Đơn để trống dòng này thì bỏ field (không lấy từ thuyết minh/danh sách)."},
+    {"name": "DonDeNghi_DienThoai", "desc": "Số điện thoại CHỈ lấy đúng dòng 'Điện thoại' trong ĐƠN ĐỀ NGHỊ, chỉ chữ số. Đơn để trống thì bỏ field (không lấy từ thuyết minh/danh sách)."},
+    {"name": "CoSoKhac_DiaChi", "desc": "Địa chỉ cơ sở ghi ở BẢN THUYẾT MINH cơ sở vật chất (ưu tiên) hoặc DANH SÁCH nhân viên tập huấn, object {quocGia,tinh,xa,diaChi}."},
+    {"name": "CoSoKhac_DienThoai", "desc": "Số điện thoại ghi ở BẢN THUYẾT MINH cơ sở vật chất (ưu tiên) hoặc DANH SÁCH nhân viên tập huấn, chỉ chữ số."},
     {"name": "DonDeNghi_NganhNghe", "desc": "Nội dung/ngành nghề đề nghị cấp giấy chứng nhận, ví dụ kinh doanh dịch vụ ăn uống."},
 
     # Giấy khám sức khỏe đi kèm hồ sơ ATTP.
@@ -74,6 +76,7 @@ for _name in (
     "Person2_NoiCuTru",
     "DonDeNghi_DiaChiChuCoSo",
     "DonDeNghi_DiaChiCoSo",
+    "CoSoKhac_DiaChi",
     "GiayKham_NoiOHienTai",
     "GiamDinh_NoiCuTru",
 ):

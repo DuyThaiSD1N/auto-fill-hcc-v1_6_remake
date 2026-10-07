@@ -1,8 +1,8 @@
 """Đính kèm cho thủ tục Đăng ký thành lập công ty TNHH hai thành viên trở lên.
 
 Cùng khuôn với app/pipelines/thanh_lap_ctcp/attach: OCR + LLM CHỈ để phân loại tài liệu và đặt tên
-hiển thị; việc route sang category của cổng là TẤT ĐỊNH (đọc marker trong OCR trước, LLM chỉ là lưới
-đỡ). Extension nhận `attachments` rồi tự khai loại + tải file lên cổng.
+hiển thị; LLM quyết loại, marker OCR chỉ dự phòng khi LLM không trả; route loại → category của cổng
+là TẤT ĐỊNH. Extension nhận `attachments` rồi tự khai loại + tải file lên cổng.
 
 `category` ở đây là hợp đồng NGHIỆP VỤ (mã nội bộ), còn thứ extension dùng để khớp option trên cổng
 là NHÃN tiếng Việt ở `componentName`/`detectedType`. Mã option thật của cổng chỉ đọc được từ DOM,
@@ -83,7 +83,7 @@ def _truncate_text(text: str, limit: int = 3000) -> str:
 
 
 def _detect_category(ocr_text: str) -> str | None:
-    """Route TẤT ĐỊNH theo nội dung OCR. None = không rõ (để LLM/mặc định quyết)."""
+    """Dự phòng theo marker OCR khi LLM không trả loại. None = không rõ (mặc định Khác)."""
     haystack = _fold(ocr_text or "")
     if not haystack.strip():
         return None
@@ -218,9 +218,13 @@ async def plan(
     for idx, file in enumerate(raw_files):
         detected = llm_types.get(idx) or {"type": "", "documentName": ""}
         ocr_text = str(ocr_by_name.get(file.get("name"), {}).get("text") or "")
-        category = _detect_category(ocr_text)
-        if category is None:
-            category = _LLM_TO_CAT.get(detected.get("type") or "", _CAT_OTHERS)
+        llm_type = detected.get("type") or ""
+        # LLM quyết loại trước; từ khoá chỉ dự phòng khi LLM không trả (lỗi/thiếu tài liệu) — từ khoá
+        # trúng cả văn bản chỉ NHẮC tên thành phần (vd giấy ủy quyền nộp "hồ sơ đề nghị đăng ký doanh nghiệp").
+        if llm_type in _LLM_TO_CAT:
+            category = _LLM_TO_CAT[llm_type]
+        else:
+            category = _detect_category(ocr_text) or _CAT_OTHERS
 
         base_name = detected.get("documentName") or _LABEL_BY_CAT[category]
         document_name = _unique_document_name(base_name, used_names, _LABEL_BY_CAT[category])

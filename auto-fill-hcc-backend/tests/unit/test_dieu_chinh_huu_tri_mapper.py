@@ -542,3 +542,18 @@ Số điện thoại: 0976134251""",
     assert "data[gender]" not in data
     assert "data[idIssuePlace]" not in data
     assert not warnings
+
+
+def test_so_dien_thoai_chi_giu_chu_so_ca_khi_co_va_khong_co_ocr():
+    values = {
+        "ChuHoSo_HoTen": "HOÀNG THỊ A",
+        "ChuHoSo_SoDinhDanh": "031050000001",
+        "ChuHoSo_DienThoai": "0367.000.001",
+    }
+    data, _ = _run_owner_mode(values)
+    assert data["data[phoneNumber]"] == "0367000001"
+
+    ocr = "1. Họ và tên: HOÀNG THỊ A\n2. Số định danh: 031050000001\n6. Số điện thoại: 0367.000.001"
+    fields, _ = mapper.enrich(_fields(values), {"submitterMode": "owner_as_submitter", "_ocr_text": ocr})
+    data = {f["name"]: f["value"] for f in fields}
+    assert data["data[phoneNumber]"] == "0367000001"

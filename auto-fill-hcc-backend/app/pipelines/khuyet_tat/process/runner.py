@@ -1,10 +1,11 @@
 """Compact agent process pipeline for "Xác định mức độ khuyết tật"."""
 
+import asyncio
 import re
 import unicodedata
 
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.khuyet_tat.process import mapper
+from app.pipelines.khuyet_tat.process import mapper, vision
 from app.pipelines.khuyet_tat.process.prompt import EXTRA_RULES
 from app.pipelines.khuyet_tat.process.schema import (
     ALIASES,
@@ -86,8 +87,21 @@ async def _requester_context(documents: list[dict], options: dict) -> str:
     )
 
 
+async def _owner_only_context(documents: list[dict], options: dict) -> str:
+    """Chế độ THEO TỜ KHAI: không đưa mỏ neo tài khoản vào prompt; mapper lấy người nộp từ mục II."""
+    _ = documents, options
+    return (
+        '\n\n<requester_context result="missing_ui_anchor">\n'
+        "Chế độ người nộp theo tờ khai: KHÔNG dùng mỏ neo UI. Không trả NguoiNop_*; vẫn trích ChuHoSo_*, "
+        "Nkt_* và đủ Ndd_*.\n"
+        "</requester_context>"
+    )
+
+
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
-    res = await runner.run(
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    # Mục III đọc thẳng từ ảnh song song với OCR + LLM; luôn chờ cả hai xong.
+    res, section_iii = await asyncio.gather(runner.run(
         files_by_role,
         fields=FIELDS,
         allowed=ALLOWED,
@@ -95,8 +109,13 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
         options=options,
-        context_builder=_requester_context,
+        context_builder=_owner_only_context if owner_mode else _requester_context,
         max_tokens=2200,
-    )
+    ), vision.read_section_iii(runner.flatten(files_by_role)))
+    if section_iii is not None:
+        # Bảng tích ✓ viết tay: kết quả đọc ảnh thay hẳn phần LLM bóc từ OCR văn bản (kể cả khi rỗng).
+        res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [
+            {"name": name, "comp": "raw", "value": value} for name, value in section_iii.items()
+        ]
     res["fields"] = mapper.enrich(res["fields"], options)
     return res

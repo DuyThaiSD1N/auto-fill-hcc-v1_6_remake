@@ -23,7 +23,7 @@ chuyên ngành):
         cũ rơi về người được ủy quyền trong giấy (ông Trương Anh Tú) và điền nhầm ngày sinh/ngày cấp/
         nơi cấp của người đó vào khối người nộp.
 
-  ⚑ CHẾ ĐỘ THEO TỜ KHAI (`options.submitterMode="owner_as_submitter"`, cài đặt "Người nộp = chủ hồ sơ"
+  ⚑ CHẾ ĐỘ THEO TỜ KHAI (`options.submitterMode="owner_as_submitter"`, cài đặt "Lấy người nộp theo tờ khai"
     của extension): bỏ mốc tài khoản, người nộp là BÊN ĐƯỢC ỦY QUYỀN (NguoiDuocUyQuyen), không có thì
     chủ hồ sơ khi là CÁ NHÂN; nhân thân bù từ CCCD/NguoiTrongGiayTo của CHÍNH người đó (`_merge_person`).
     Hai ô Họ tên/Số Căn cước GHI theo người đó, đứng TRƯỚC mọi ô CongDan_* khác (sửa họ tên làm script
@@ -291,14 +291,14 @@ def _canh_bao_lech_tai_khoan(nguoi_nop: dict, ctx_id, ctx_name) -> str | None:
         + (_person_name(_get(nguoi_nop, "HoTen")) or "người trong hồ sơ")
         + ") nhưng tài khoản đang đăng nhập là " + (ctx_name or ctx_id or "người khác")
         + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp — lệch là bị "
-        "chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+        "chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
     )
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     ctx = (options or {}).get("formContext") or {}
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, chọn người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, chọn người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     out: list[dict] = []
     seen: set[str] = set()
@@ -432,7 +432,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                 )
         else:
             warnings.append(
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có giấy ủy quyền và chủ hồ sơ không "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có giấy ủy quyền và chủ hồ sơ không "
                 "phải cá nhân đọc được họ tên + số căn cước, nên trợ lý để trống nhân thân khối 'Thông tin "
                 "người nộp' — cán bộ nhập tay."
             )

@@ -95,15 +95,18 @@ def test_attachment_gcn_uses_only_renewal_row_when_dossier_has_mau_04():
         {0: "gcn", 1: "don_mau_04", 2: "uy_quyen", 3: "cccd", 4: "other"},
     )
 
+    # CCCD và giấy lạ không có dòng riêng → đi chung dòng Đơn Mẫu 04 của hồ sơ (không bỏ sót file).
     assert [(item["fileIndex"], item["componentIndex"]) for item in attachments] == [
-        (0, 14), (1, 15), (2, 16)
+        (0, 14), (1, 15), (2, 16), (3, 15), (4, 15)
     ]
     assert all(item["target"] == "attp-row" for item in attachments)
     assert all(item["loaiBan"] == "Bản chính" for item in attachments)
     assert all(item["needsAddComponent"] is False for item in attachments)
+    assert attachments[3]["documentName"] == "Căn cước công dân"
+    assert attachments[4]["documentName"] == "khac.pdf"
     assert len(warnings) == 1
     assert "khac.pdf" in warnings[0]
-    assert next(item for item in classified if item["fileName"] == "cccd.pdf")["skipped"] is True
+    assert not any(item.get("skipped") for item in classified)
 
 
 def test_attachment_change_purpose_dossier_has_three_files_and_three_plan_items():
@@ -127,17 +130,28 @@ def test_attachment_change_purpose_dossier_has_three_files_and_three_plan_items(
     assert warnings == []
 
 
-def test_attachment_gcn_is_not_forced_when_application_branch_is_unknown():
+def test_attachment_gcn_unknown_branch_goes_to_don_mau_01_row_with_warning():
     files = [{"name": "gcn.pdf", "type": "application/pdf"}]
     ocr = [{"name": "gcn.pdf", "text": "ocr"}]
 
     attachments, warnings, classified = planner.build_plan_items(files, ocr, {0: "gcn"})
 
-    assert attachments == []
+    # Không ép vào dòng GCN của nhánh nào; tạm đính dòng Đơn Mẫu 01 + cảnh báo để cán bộ chuyển.
+    assert [item["componentIndex"] for item in attachments] == [2]
     assert len(warnings) == 1
     assert "không xác định được nhánh" in warnings[0]
-    assert classified[0]["skipped"] is True
-    assert classified[0]["reason"] == "unresolved_branch"
+    assert "skipped" not in classified[0]
+
+
+def test_rule_chi_dung_khi_llm_khong_tra_khong_de_llm_other():
+    files = [{"name": "uq.pdf", "type": "application/pdf"}]
+    ocr = [{"name": "uq.pdf", "text": "GIẤY ỦY QUYỀN ... bên được ủy quyền"}]
+
+    attachments, _, classified = planner.build_plan_items(files, ocr, {0: "other"})
+    assert classified[0]["docType"] == "other" and classified[0]["source"] == "llm"
+
+    attachments, _, classified = planner.build_plan_items(files, ocr, {})
+    assert classified[0]["docType"] == "uy_quyen" and classified[0]["source"] == "rule"
 
 
 def test_change_purpose_application_title_is_a_confident_mau_01_rule():

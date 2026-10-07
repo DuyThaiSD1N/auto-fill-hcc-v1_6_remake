@@ -494,29 +494,3 @@ async def test_dang_ky_lai_compact_agent_maps_self_requester_from_paper_declarat
     assert "SoDinhDanhMe" not in d
     assert "soDKTruocDay" not in d
     assert not res["errors"]
-
-
-def test_dang_ky_lai_clears_father_block_when_dossier_has_no_father():
-    source_fields = [
-        {"name": "Subject_FullName", "comp": "x-input", "value": "Lê Thị Lan"},
-        {"name": "Mother_FullName", "comp": "x-input", "value": "Lê Thị Hoa"},
-    ]
-
-    result = {field["name"]: field for field in mapper.enrich(source_fields)}
-
-    for name in mapper._FATHER_CLEARABLE_FIELDS:
-        assert result[name]["value"] == "" and result[name]["clear"] is True, name
-    assert "ChaNoiCuTru" not in result
-    assert "ChaNoiCuTru_TrongNuoc" not in result
-
-
-def test_dang_ky_lai_keeps_father_values_when_father_is_known():
-    source_fields = [
-        {"name": "Subject_FullName", "comp": "x-input", "value": "Lê Thị Lan"},
-        {"name": "Father_FullName", "comp": "x-input", "value": "Lê Văn Bình"},
-    ]
-
-    result = {field["name"]: field for field in mapper.enrich(source_fields)}
-
-    assert result["HoTenChaKS"]["value"] == "LÊ VĂN BÌNH"
-    assert not result["HoTenChaKS"].get("clear")

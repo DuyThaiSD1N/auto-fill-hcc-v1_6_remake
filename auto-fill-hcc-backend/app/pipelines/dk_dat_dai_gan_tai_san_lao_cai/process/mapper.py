@@ -15,7 +15,7 @@ cáo 15d, Giấy ủy quyền, Đơn đề nghị xác nhận) → từ điển 
               Địa chỉ → Đơn Mẫu 15 → Giấy ủy quyền (bên ủy quyền) → Mẫu 15a/Đơn đề nghị xác nhận → CCCD.
               Di động/Email → Đơn Mẫu 15.
 
-⚑ CHẾ ĐỘ "THEO TỜ KHAI" (`options.submitterMode="owner_as_submitter"`, cài đặt "Người nộp = chủ hồ sơ" của
+⚑ CHẾ ĐỘ "THEO TỜ KHAI" (`options.submitterMode="owner_as_submitter"`, cài đặt "Lấy người nộp theo tờ khai" của
 extension): bỏ mốc tài khoản, người nộp = chủ hồ sơ CÁ NHÂN, nhân thân bù từ CCCD/giấy tờ của CHÍNH người đó
 (`_merge_person`). Schema không tách vai BÊN NHẬN ỦY QUYỀN (NguoiTrongGiayTo chỉ liệt kê mọi người có số định
 danh) và không có trường người ký đơn thay tổ chức → hồ sơ có Giấy ủy quyền hoặc chủ hồ sơ là tổ chức thì để
@@ -288,7 +288,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
     ctx = (options or {}).get("formContext") or {}
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     out: list[dict] = []
     seen: set[str] = set()
@@ -374,7 +374,7 @@ def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tup
                         + (_plain(applicant_name) or "người khác")
                         + ". Cổng đối chiếu Họ tên/Số Căn cước/Ngày sinh với tài khoản trước khi cho nộp "
                         "— lệch là bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài đặt "
-                        "\"Người nộp = chủ hồ sơ\"."
+                        "\"Lấy người nộp theo tờ khai\"."
                     )
         else:
             if co_uy_quyen:
@@ -385,7 +385,7 @@ def enrich_with_warnings(fields: list[dict], options: dict | None = None) -> tup
             else:
                 ly_do = "không đọc được họ tên/số căn cước của chủ hồ sơ"
             warnings.append(
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng " + ly_do + ", nên trợ lý để trống nhân thân "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng " + ly_do + ", nên trợ lý để trống nhân thân "
                 "khối \"Thông tin người nộp hồ sơ\" — cán bộ nhập tay, KHÔNG lấy thông tin của người khác."
             )
     else:

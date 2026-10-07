@@ -1,12 +1,7 @@
 """Map compact TTHN facts to legacy x-* UI fields."""
 
-import difflib
-import json
 import logging
 import re
-import unicodedata
-from functools import lru_cache
-from pathlib import Path
 
 from app.pipelines.xac_nhan_tthn.process.schema import UI_ALIASES, UI_COMP_BY_NAME
 
@@ -18,10 +13,21 @@ from app.pipelines._shared.compact_agent.issuer import (
     normalize_issuer,
 )
 from app.pipelines._shared.area_remap import remap_area
-from app.pipelines._shared.formatting import normalize_date, prefer_printed_street, upper_person_name
-from app.locations.catalog import names_by_code
+from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
 from app.monitor import recorder as mon
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
+from app.pipelines._shared import tai_khoan
+from app.pipelines._shared.tai_khoan import (
+    SAME_NAME_RATIO as _SAME_NAME_RATIO,
+    date_key as _date_key,
+    digits as _digits,
+    fold as _fold,
+    id_match as _id_match,
+    is_account_person as _is_account_person,
+    is_one_digit_misread as _is_one_digit_misread,
+    name_match as _name_match,
+    name_similarity as _name_similarity,
+)
 
 _DEFAULT_PURPOSE = "Sử dụng vào mục đích khác"
 
@@ -83,25 +89,6 @@ _PERIOD_MARRIED = "5"
 
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
-
-
-def _digits(value) -> str:
-    return re.sub(r"\D+", "", str(value or ""))
-
-
-def _date_key(value) -> tuple | None:
-    """dd/mm/yyyy -> tuple so sánh được; sai định dạng trả None (không kết luận)."""
-    match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(value or "").strip())
-    if not match:
-        return None
-    day, month, year = match.groups()
-    return (int(year), int(month), int(day))
-
-
-def _fold(value) -> str:
-    text = unicodedata.normalize("NFD", str(value or ""))
-    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
-    return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
 # Option "6 = Khác" CỐ Ý không nằm trong bảng tra ngược: chọn nó thì cổng bắt điền thêm ô mô tả
@@ -242,58 +229,6 @@ def _classify_relation(value) -> str | None:
     return "2"
 
 
-_CCCD_LEN = 12          # số định danh cá nhân luôn đúng 12 chữ số
-_ID_OCR_SLIP_MAX = 2    # số chữ số OCR được phép đọc thừa/thiếu so với thẻ
-
-
-def _is_subsequence(short: str, long: str) -> bool:
-    """`short` có phải `long` sau khi XÓA bớt vài ký tự (giữ nguyên thứ tự) không."""
-    it = iter(long)
-    return all(ch in it for ch in short)
-
-
-def _is_ocr_slip_of_card(left_digits: str, right_digits: str) -> bool:
-    """Hai chuỗi số là CÙNG một số trên thẻ, chỉ khác vì OCR đọc RƠI (hoặc nhân đôi) vài chữ số.
-
-    Tờ khai viết tay hay bị OCR nuốt mất một chữ số: "046175013623" ra "04617503623". Chuỗi thiếu
-    số đó không phải số định danh hợp lệ của BẤT KỲ ai (không đủ 12 chữ số), nên coi nó là số của
-    một người khác là vô nghĩa — nhưng so bằng `==` thì nó vẫn "khác số" và kéo theo cả mục I:
-    tên viết tay sai được giữ lại, ô quan hệ tick "Khác", và ô số định danh nhận 11 chữ số mà cổng
-    chắc chắn từ chối.
-
-    Chỉ nhận khi một bên là số thẻ ĐỦ 12 chữ số và chuỗi ngắn hơn nằm gọn trong nó theo đúng thứ
-    tự (chỉ XÓA, không đổi chữ số nào) — lệch tối đa 2 chữ số. Ràng buộc này rất chặt: một số 11
-    chữ số ngẫu nhiên chỉ có cỡ 12 phần 10^11 cơ hội lọt qua, nên không thể vô tình ghép nhân thân
-    của hai người khác nhau. OCR đọc NHẦM chữ số (5 thành 6) vẫn bị coi là khác người như cũ.
-    """
-    short, long = sorted((left_digits, right_digits), key=len)
-    if len(long) != _CCCD_LEN or len(short) == _CCCD_LEN:
-        return False
-    if not 0 < len(long) - len(short) <= _ID_OCR_SLIP_MAX:
-        return False
-    return _is_subsequence(short, long)
-
-
-def _id_match(left, right) -> bool | None:
-    """Hai số định danh có cùng một người không; thiếu một bên → None (không kết luận)."""
-    left_digits, right_digits = _digits(left), _digits(right)
-    if not (left_digits and right_digits):
-        return None
-    if left_digits == right_digits:
-        return True
-    return True if _is_ocr_slip_of_card(left_digits, right_digits) else False
-
-
-def _is_one_digit_misread(left, right) -> bool:
-    """Hai số 12 chữ số chỉ lệch ĐÚNG MỘT vị trí — dấu hiệu OCR đọc nhầm một chữ số viết tay.
-
-    Cố ý KHÔNG gộp vào `_id_match`: ở đó đọc nhầm chữ số vẫn tính là khác người (quyết định quan
-    hệ, mượn tên). Hàm này chỉ dùng kèm một bằng chứng độc lập khác (năm sinh / họ) ở chỗ gọi.
-    """
-    left_digits, right_digits = _digits(left), _digits(right)
-    if len(left_digits) != _CCCD_LEN or len(right_digits) != _CCCD_LEN:
-        return False
-    return sum(a != b for a, b in zip(left_digits, right_digits)) == 1
 
 
 def _birth_year(value) -> int | None:
@@ -307,14 +242,6 @@ def _birth_year(value) -> int | None:
 def _family_name(value) -> str:
     parts = _fold(value).split()
     return parts[0] if parts else ""
-
-
-def _name_match(left, right) -> bool | None:
-    """Hai họ tên có trùng không (bỏ dấu, gộp khoảng trắng); thiếu một bên → None."""
-    left_name, right_name = _fold(left), _fold(right)
-    if left_name and right_name:
-        return left_name == right_name
-    return None
 
 
 def _is_foreign_area(area) -> bool:
@@ -345,15 +272,6 @@ def _move_card(values: dict, source: str, target: str) -> None:
         values[target + key[len(source):]] = values.pop(key)
 
 
-def _name_similarity(left, right) -> float:
-    left_name, right_name = _fold(left), _fold(right)
-    if not (left_name and right_name):
-        return 0.0
-    return difflib.SequenceMatcher(None, left_name, right_name).ratio()
-
-
-# Hai tên cùng một người mà OCR lệch vài chữ ("Phan Thị Hiền" / "PHẠM THỊ HIỀN") vẫn trên mức này.
-_SAME_NAME_RATIO = 0.8
 # Dưới mức này là tên của hai người khác nhau hẳn.
 _OTHER_NAME_RATIO = 0.6
 
@@ -667,104 +585,14 @@ def _area(value):
     return remapped
 
 
-# =========================================================
-# TÀI KHOẢN ĐĂNG NHẬP CỔNG (formContext) — nguồn chuẩn nhất cho người trùng tài khoản
-# =========================================================
-# Extension đọc từ mục I cổng điền sẵn theo VNeID. Mọi khoá đều tuỳ chọn: bản cũ chỉ gửi tên + số.
-_ACCOUNT_KEYS = {
-    "HoTen": "applicantFullname",
-    "SoDinhDanh": "applicantIdentityNumber",
-    "NgaySinh": "applicantBirthday",
-    "GioiTinh": "applicantGender",
-    "DanToc": "applicantEthnicity",
-    "NgayCap": "applicantIdDate",
-    "NoiCap": "applicantIdIssuer",
-    "NoiCuTru": "applicantAddress",
-}
-
-
-_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
-
-
-@lru_cache(maxsize=None)
-def _moj_catalog(name: str) -> dict[str, str]:
-    """Danh mục mã → tên của eForm Bộ Tư pháp (dữ liệu VNeID trên cổng lưu dân tộc/giới tính bằng MÃ)."""
-    rows = json.loads((_DATA_DIR / name).read_text(encoding="utf-8"))
-    return {str(row["Ma"]).strip(): re.sub(r"\s+", " ", str(row["Ten"])).strip() for row in rows}
-
-
-def _catalog_label(value, catalog: str) -> str:
-    """Giá trị là MÃ danh mục thì đổi ra tên; không phải mã thì giữ nguyên chữ."""
-    text = str(value or "").strip()
-    return _moj_catalog(catalog).get(text, text) if text.isdigit() else text
-
-
-def _gender_label(value) -> str:
-    folded = _fold(value)
-    if folded in ("nam", "male", "m", "1"):
-        return "Nam"
-    if folded in ("nu", "female", "f", "0", "2"):
-        return "Nữ"
-    return ""
-
-
 def account_context(options: dict | None) -> dict:
-    """Thông tin tài khoản đăng nhập cổng từ options.formContext, đã chuẩn hoá; rỗng nếu không có."""
-    ctx = (options or {}).get("formContext") or {}
-    if not isinstance(ctx, dict):
-        return {}
-    out = {}
-    for key, ctx_key in _ACCOUNT_KEYS.items():
-        value = ctx.get(ctx_key)
-        if key == "NoiCuTru":
-            if isinstance(value, dict):
-                # Dữ liệu VNeID trên cổng lưu tỉnh/xã bằng MÃ danh mục hành chính.
-                tinh, xa = names_by_code(value.get("tinh"), value.get("xa"))
-                value = {**value, "tinh": tinh or value.get("tinh"), "xa": xa or value.get("xa")}
-            area = _area(value) if isinstance(value, dict) else None
-            if area:
-                out[key] = area
-            continue
-        text = re.sub(r"\s+", " ", str(value or "")).strip()
-        if not text:
-            continue
-        if key == "SoDinhDanh":
-            text = _digits(text)
-        elif key in ("NgaySinh", "NgayCap"):
-            text = normalize_date(text)
-            if not _date_key(text):
-                continue
-        elif key == "GioiTinh":
-            text = _gender_label(_catalog_label(text, "moj_eform_gioi_tinh.json"))
-        elif key == "DanToc":
-            text = _catalog_label(text, "moj_eform_dan_toc.json")
-        elif key == "NoiCap":
-            text = normalize_issuer(text)
-        if text:
-            out[key] = text
-    return out
-
-
-def _is_account_person(account: dict, name, id_number, birthday) -> bool:
-    """Khối nhân thân (tên, số, ngày sinh đã điền) có phải CHÍNH chủ tài khoản không.
-
-    Số trùng hẳn là đủ (tên lệch là do OCR). Số lệch vì OCR (rơi/thừa chữ số, sai đúng một chữ số)
-    phải kèm tên gần giống. Số trên tờ khai viết tay có khi lệch 2–3 chữ số: khi đó cần tên trùng
-    (bỏ dấu) VÀ cùng ngày sinh. Khối không có số thì cần tên gần giống VÀ cùng ngày sinh — chỉ giống
-    tên thì không đủ vì tên Việt trùng nhau rất nhiều.
-    """
-    account_id, block_id = account.get("SoDinhDanh"), _digits(id_number)
-    account_dob, block_dob = _date_key(account.get("NgaySinh")), _date_key(birthday)
-    same_dob = bool(account_dob and block_dob and account_dob == block_dob)
-    similarity = _name_similarity(account.get("HoTen"), name)
-    if account_id and block_id:
-        if account_id == block_id:
-            return True
-        near_id = _id_match(account_id, block_id) is True or _is_one_digit_misread(account_id, block_id)
-        if near_id and similarity >= _SAME_NAME_RATIO:
-            return True
-        return same_dob and _name_match(account.get("HoTen"), name) is True
-    return same_dob and similarity >= _SAME_NAME_RATIO
+    """Thông tin tài khoản đăng nhập cổng (xem `tai_khoan.account_context`), nơi cư trú chuẩn hoá theo ô form TTHN."""
+    account = tai_khoan.account_context(options)
+    if "NoiCuTru" in account:
+        area = _area(account.pop("NoiCuTru"))
+        if area:
+            account["NoiCuTru"] = area
+    return account
 
 
 # Ô của từng mục trên cổng → khoá tài khoản.

@@ -100,29 +100,6 @@ def test_an_toan_thuc_pham_different_requester_and_owner():
     assert d["data[ghiChu]"] == "Giấy khám sức khỏe: Sức khỏe loại II"
 
 
-def test_an_toan_thuc_pham_falls_back_to_facility_address_when_no_residence():
-    # Chi co dia chi CO SO (OCR doc sai ten xa), khong co dia chi cu tru nao cua chu co so.
-    fields = [
-        _field("DonDeNghi_ChuCoSoHoTen", "TRẦN VĂN AN"),
-        _field("DonDeNghi_DiaChiCoSo", {"tinh": "Lâm Đồng", "xa": "xã Đôn Dương", "diaChi": "Số 9 đường A"}),
-        _field("Person1_HoTen", "TRẦN VĂN AN"),
-        _field("Person1_SoDinhDanh", "012345678901"),
-    ]
-
-    out, warnings = mapper.enrich(
-        fields,
-        {"formContext": {"applicantFullname": "Trần Văn An", "applicantIdentityNumber": "012345678901"}},
-    )
-    by_name = {f["name"]: f for f in out}
-
-    assert by_name["data[province]"]["value"] == "Lâm Đồng"
-    assert by_name["data[district]"]["value"] == "Đơn Dương"
-    assert by_name["data[address]"]["value"] == "Số 9 đường A"
-    assert all(by_name[n].get("default") for n in ("data[province]", "data[district]", "data[address]"))
-    assert not by_name["data[fullname]"].get("default")
-    assert any("địa chỉ cơ sở kinh doanh" in w for w in warnings)
-
-
 def test_an_toan_thuc_pham_prompt_locks_sources():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
@@ -130,3 +107,75 @@ def test_an_toan_thuc_pham_prompt_locks_sources():
     assert "Đơn đề nghị cấp Giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm" in system_prompt
     assert "không gọi Giấy khám sức khỏe là giám định y khoa" in system_prompt
     assert "DonDeNghi_DiaChiChuCoSo chỉ trả nếu đơn có địa chỉ cư trú" in system_prompt
+
+
+_CHU_CO_SO_KHONG_CCCD = [
+    _field("DonDeNghi_ChuCoSoHoTen", "NGUYỄN THỊ A"),
+    _field("DonDeNghi_DienThoai", "0900000001"),
+    # Lấy từ danh sách tập huấn: chỉ có năm sinh.
+    _field("Person1_HoTen", "NGUYỄN THỊ A"),
+    _field("Person1_SoDinhDanh", "001188000001"),
+    _field("Person1_NgaySinh", "1988"),
+    _field("Person1_NgayCap", "19/4/2021"),
+]
+
+
+def test_theo_to_khai_nguoi_nop_la_chu_co_so_va_bo_khoa_2_o():
+    out, warnings = mapper.enrich(
+        _CHU_CO_SO_KHONG_CCCD,
+        {"submitterMode": "owner_as_submitter",
+         "formContext": {"applicantFullname": "Trần Văn B", "applicantIdentityNumber": "001099000009"}},
+    )
+    d = {f["name"]: f for f in out}
+    assert out[0]["name"] == "data[isOwnerDossierCheck]" and out[0]["value"] is True
+    assert d["data[fullname]"]["value"] == "NGUYỄN THỊ A" and d["data[fullname]"].get("enableInput") is True
+    assert d["data[identityNumber]"]["value"] == "001188000001" and d["data[identityNumber]"].get("enableInput") is True
+    assert d["data[phoneNumber]"]["value"] == "0900000001"
+    assert d["data[identityDate]"]["value"] == "19/04/2021"
+    # Chỉ có năm sinh → xoá trắng ô ngày sinh cổng đổ sẵn từ tài khoản (không giữ 01/01/<năm>), tô đỏ.
+    for name in ("data[birthday]", "data[ownerBirthday]"):
+        assert d[name]["value"] == "" and d[name]["clear"] is True and d[name]["markEmpty"] is True
+    assert not warnings
+
+
+def test_theo_tai_khoan_khong_khop_ai_thi_khong_dien_phan_i():
+    out, warnings = mapper.enrich(
+        _CHU_CO_SO_KHONG_CCCD,
+        {"formContext": {"applicantFullname": "Trần Văn B", "applicantIdentityNumber": "001099000009"}},
+    )
+    d = {f["name"]: f["value"] for f in out}
+    assert d["data[isOwnerDossierCheck]"] is False
+    assert "data[fullname]" not in d and "data[identityNumber]" not in d
+    assert d["data[ownerFullname]"] == "NGUYỄN THỊ A"
+    assert not any(f.get("enableInput") for f in out)
+    assert any("Không xác định được CCCD người nộp" in w for w in warnings)
+
+
+def test_khong_co_moc_giu_luong_cu_cccd_duy_nhat_lam_nguoi_nop():
+    fields = _CHU_CO_SO_KHONG_CCCD[:2] + [
+        _field("Person1_HoTen", "TRẦN VĂN B"),
+        _field("Person1_SoDinhDanh", "001099000009"),
+    ]
+    out, _ = mapper.enrich(fields, {})
+    d = {f["name"]: f["value"] for f in out}
+    assert d["data[isOwnerDossierCheck]"] is False
+    assert d["data[fullname]"] == "TRẦN VĂN B"
+    assert d["data[ownerFullname]"] == "NGUYỄN THỊ A"
+
+
+def test_khong_cccd_dia_chi_lay_dia_chi_co_so_don_truoc_roi_nguon_khac_sdt_theo_don():
+    area = lambda xa, so: {"tinh": "Lâm Đồng", "xa": xa, "diaChi": so}
+    base = [
+        _field("DonDeNghi_ChuCoSoHoTen", "NGUYỄN THỊ A"),
+        _field("DonDeNghi_DienThoai", "0900000001"),
+        _field("CoSoKhac_DienThoai", "0900000002"),
+        _field("CoSoKhac_DiaChi", area("Xã Khác", "Số 2")),
+    ]
+    out, _ = mapper.enrich(base + [_field("DonDeNghi_DiaChiCoSo", area("Xã Đơn", "Số 1"))], {"submitterMode": "owner_as_submitter"})
+    d = {f["name"]: f["value"] for f in out}
+    assert d["data[address]"] == "Số 1" and d["data[district]"] == "Đơn"
+    assert d["data[phoneNumber]"] == "0900000001"
+
+    out, _ = mapper.enrich([f for f in base if f["name"] != "DonDeNghi_DienThoai"], {"submitterMode": "owner_as_submitter"})
+    d = {f["name"]: f["value"] for f in out}
+    assert d["data[address]"] == "Số 2" and d["data[phoneNumber]"] == "0900000002"

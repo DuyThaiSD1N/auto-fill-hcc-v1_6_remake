@@ -612,18 +612,36 @@ def _stub_llm(monkeypatch, response):
     monkeypatch.setattr(intents, "llm_chat", fake)
 
 
+def _pid(key):
+    """Số thứ tự agent chọn thủ tục đưa LLM (resolve không có conv → danh sách mọi tỉnh)."""
+    from app.channels.handfree.procedure_registry import public_list
+    return [p["key"] for p in public_list()].index(key) + 1
+
+
+def _stub_picker(monkeypatch, response):
+    """Màn chào đi qua agent chọn thủ tục (LLM riêng) — giả lập để test không gọi mạng."""
+    from app.channels.handfree.chat.procedure_picker import agent
+
+    async def fake(messages, **_kw):
+        if isinstance(response, Exception):
+            raise response
+        return response
+    monkeypatch.setattr(agent, "llm_chat", fake)
+
+
 @pytest.mark.asyncio
 async def test_resolve_llm_pick_procedure_validate(monkeypatch):
-    """resolve() nhận key thủ tục hợp lệ từ LLM; key bịa → unknown (flow sẽ hiện lại card)."""
-    _stub_llm(monkeypatch, '{"kind":"pick_procedure","value":"ket-hon-nuoc-ngoai"}')
+    """resolve() đổi số thứ tự agent chọn thủ tục trả về ra key; số bịa → hỏi lại (không chọn bừa)."""
+    _stub_picker(monkeypatch, f'{{"result":"pick","id":{_pid("ket-hon-nuoc-ngoai")},"candidates":[]}}')
     i = await resolve("chồng tôi là người nước ngoài", "greet")
     assert (i.kind, i.value) == ("pick_procedure", "ket-hon-nuoc-ngoai")
 
-    _stub_llm(monkeypatch, '{"kind":"pick_procedure","value":"ket-hon"}')
+    _stub_picker(monkeypatch, f'{{"result":"pick","id":{_pid("ket-hon")},"candidates":[]}}')
     assert (await resolve("đăng ký kết hôn", "greet")).value == "ket-hon"
 
-    _stub_llm(monkeypatch, '{"kind":"pick_procedure","value":"thu-tuc-ma-quy"}')  # key bịa
-    assert (await resolve("làm cái gì đó", "greet")).kind == "unknown"
+    _stub_picker(monkeypatch, '{"result":"pick","id":999,"candidates":[]}')  # số ngoài danh sách
+    i = await resolve("làm cái gì đó", "greet")
+    assert i.kind == "procedure_unclear" and i.payload["candidates"] == []
 
 
 @pytest.mark.asyncio
@@ -689,7 +707,7 @@ def test_prompt_doc_method_co_mo_ta_va_chong_chup_scan():
         state="ask_doc_method",
         state_actions=intents._state_action_block("ask_doc_method"),
         doc_methods=intents._doc_method_block(),
-        procedures="  + \"x\" = X",
+        buttons=intents._buttons_block([]),
     )
     for meth in ("qr", "scan"):
         assert f'"{meth}" =' in s, f"prompt thiếu mô tả doc method {meth}"
@@ -701,20 +719,25 @@ def test_prompt_doc_method_co_mo_ta_va_chong_chup_scan():
 @pytest.mark.asyncio
 async def test_resolve_llm_question_va_loi(monkeypatch):
     """ask_question gắn đúng procedure_key; LLM lỗi/không parse → unknown (an toàn → card)."""
-    _stub_llm(monkeypatch, '{"kind":"ask_question","value":"lệ phí bao nhiêu","procedure":"ket-hon"}')
+    _stub_picker(monkeypatch, f'{{"result":"ask_about","id":{_pid("ket-hon")},"candidates":[]}}')
     i = await resolve("làm kết hôn hết bao nhiêu tiền", "greet")
     assert i.kind == "ask_question" and i.payload.get("procedure_key") == "ket-hon"
+
+    _stub_picker(monkeypatch, RuntimeError("LLM sập"))
+    assert (await resolve("câu mơ hồ", "greet")).kind == "unknown"
 
     async def boom(*_a, **_k):
         raise RuntimeError("LLM sập")
     monkeypatch.setattr(intents, "llm_chat", boom)
-    assert (await resolve("câu mơ hồ", "greet")).kind == "unknown"
+    assert (await resolve("câu mơ hồ", "consent")).kind == "unknown"
 
 
 def test_procedure_catalog_phan_biet_ket_hon():
     """Prompt LLM phải chứa cả 2 thủ tục kết hôn kèm mô tả để phân biệt trong nước / nước ngoài."""
-    cat = intents._procedure_catalog()  # noqa: SLF001
-    assert '"ket-hon"' in cat and '"ket-hon-nuoc-ngoai"' in cat
+    from app.channels.handfree.chat.procedure_picker import prompt
+    from app.channels.handfree.procedure_registry import public_list
+    cat = prompt.catalog(public_list())
+    assert "kết hôn trong nước" in cat and "yếu tố nước ngoài" in cat
     assert "nước ngoài" in cat  # mô tả phân biệt có mặt trong danh mục gửi LLM
 
 

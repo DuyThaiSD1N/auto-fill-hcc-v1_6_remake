@@ -12,6 +12,10 @@ Allowed type:
 - registration_certificate: Bản gốc/bản scan Giấy chứng nhận đăng ký hộ kinh doanh.
 - other: CCCD, ủy quyền và mọi tài liệu khác/không đủ chắc chắn.
 
+Phân loại theo TIÊU ĐỀ và bản chất văn bản. Văn bản ỦY QUYỀN (có "Bên ủy quyền"/"Bên được ủy quyền")
+luôn là other, kể cả khi nội dung nhắc "tạm ngừng kinh doanh" hay số Giấy chứng nhận đăng ký hộ kinh
+doanh — đó chỉ là phạm vi ủy quyền.
+
 Nếu một file scan gộp có Thông báo tạm ngừng ở trang đầu và kèm GCN ở các trang sau,
 phân loại file đó là suspension_notice vì đây là thành phần chính của bộ hồ sơ.
 

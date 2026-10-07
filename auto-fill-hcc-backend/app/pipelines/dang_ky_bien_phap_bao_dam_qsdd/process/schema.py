@@ -1,18 +1,20 @@
 """Compact schema cho "Đăng ký biện pháp bảo đảm bằng QSDĐ, tài sản gắn liền với đất" (cổng Đà Nẵng —
 Form.io, field-key RIÊNG).
 
-CHỦ THỂ = NGƯỜI YÊU CẦU ĐĂNG KÝ (tài khoản đăng nhập). Cá nhân → nhân thân; Tổ chức → tên + mã số thuế.
-Nguồn: CCCD + Phiếu yêu cầu Mẫu 01a (Mục 1 / Mục 3.3 hoặc 4.3).
+ChuThe_* = CHỦ HỒ SƠ = NGƯỜI YÊU CẦU ĐĂNG KÝ (Phiếu 01a Mục 1; không có Phiếu thì tổ chức cử người theo Giấy
+giới thiệu/ủy quyền, vd ngân hàng). Cá nhân → nhân thân; Tổ chức → tên + mã số thuế.
+NguoiNop_* = NGƯỜI NỘP = người được giới thiệu/ủy quyền (chỉ khi khác chủ hồ sơ). Thủ tục chỉ có chế độ tờ khai.
 """
 
 FIELDS: list[dict] = [
-    {"name": "ChuThe_LoaiChuThe", "desc": 'Loại chủ thể người yêu cầu đăng ký: "Cá nhân" hoặc "Tổ chức". '
-        "Xem ô tích Mục 1 Phiếu Mẫu 01a (Cá nhân/Tổ chức) hoặc suy từ việc có Mã số thuế (tổ chức) hay số "
-        "CCCD (cá nhân)."},
+    {"name": "ChuThe_LoaiChuThe", "desc": 'Loại chủ thể NGƯỜI YÊU CẦU ĐĂNG KÝ (chủ hồ sơ): "Cá nhân" hoặc "Tổ '
+        'chức". Xem ô tích Mục 1 Phiếu Mẫu 01a; không có Phiếu mà có Giấy giới thiệu/ủy quyền của một tổ chức '
+        '(vd ngân hàng) cử người đi đăng ký thì là "Tổ chức".'},
     {"name": "ChuThe_HoTen", "desc": "Họ và tên NGƯỜI YÊU CẦU ĐĂNG KÝ (khi là CÁ NHÂN). Lấy từ CCCD / Phiếu "
         "Mẫu 01a (Mục 1 'Họ và tên đầy đủ' hoặc Mục 3.1 bên bảo đảm / 4.1 bên nhận bảo đảm). IN HOA."},
-    {"name": "ChuThe_TenToChuc", "desc": "Tên đầy đủ TỔ CHỨC (khi người yêu cầu là TỔ CHỨC, vd ngân hàng). "
-        "Lấy từ Phiếu Mẫu 01a Mục 1/3.1/4.1. Bỏ trống nếu là cá nhân."},
+    {"name": "ChuThe_TenToChuc", "desc": "Tên đầy đủ TỔ CHỨC yêu cầu đăng ký (vd ngân hàng — bên nhận bảo đảm). "
+        "Phiếu Mẫu 01a Mục 1/3.1/4.1; không có Phiếu thì tên tổ chức ĐỨNG RA ký Giấy giới thiệu/ủy quyền (tiêu đề "
+        "góc trái + chi nhánh). KHÔNG phải công ty có tài sản thế chấp/chủ GCN. Bỏ trống nếu là cá nhân."},
     {"name": "ChuThe_NgaySinh", "desc": "Ngày sinh (cá nhân), dd/mm/yyyy — CCCD."},
     {"name": "ChuThe_GioiTinh", "desc": 'Giới tính (cá nhân): "Nam" hoặc "Nữ" — CCCD.'},
     {"name": "ChuThe_SoDinhDanh", "desc": "Số CCCD/CMND/định danh cá nhân NGƯỜI YÊU CẦU (khi cá nhân). Đọc "
@@ -31,14 +33,29 @@ FIELDS: list[dict] = [
         "Mục 3.5/4.4. Chỉ chữ số; không lấy số bàn/fax."},
     {"name": "ChuThe_Email", "desc": "Thư điện tử NGƯỜI YÊU CẦU nếu Phiếu Mục 1/3.5/4.4 có ('Thư điện tử "
         "(nếu có)')."},
+
+    # Người nộp = người được tổ chức/chủ hồ sơ GIỚI THIỆU / ỦY QUYỀN đi làm thủ tục (khác chủ hồ sơ).
+    {"name": "NguoiNop_HoTen", "desc": "Họ tên người ĐƯỢC GIỚI THIỆU/ỦY QUYỀN đi đăng ký (Giấy giới thiệu 'trân "
+        "trọng giới thiệu: Ông/Bà …', Giấy ủy quyền 'bên được ủy quyền'). Không có giấy này thì bỏ trống."},
+    {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/CMND của đúng người ở NguoiNop_HoTen (ghi cạnh tên trên Giấy "
+        "giới thiệu/ủy quyền hoặc CCCD của người đó). Chỉ chữ số."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh đầy đủ của người ở NguoiNop_HoTen, dd/mm/yyyy; chỉ khi giấy tờ "
+        "ghi rõ (CCCD của người đó). Không có hoặc chỉ có năm thì bỏ."},
+    {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính người ở NguoiNop_HoTen: "Nam"/"Nữ" CHỈ khi CCCD của người đó '
+        'ghi rõ; danh xưng "Ông/Bà" chung chung không đủ — không suy từ tên.'},
+    {"name": "NguoiNop_NgayCap", "desc": "Ngày cấp CCCD của người ở NguoiNop_HoTen (dòng 'số CCCD … cấp ngày …' "
+        "hoặc mặt sau CCCD), dd/mm/yyyy."},
+    {"name": "NguoiNop_NoiCap", "desc": "Nơi cấp CCCD của người ở NguoiNop_HoTen nếu giấy tờ ghi rõ; chuẩn hóa như "
+        "ChuThe_NoiCap. Không ghi thì bỏ."},
+    {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại của người ở NguoiNop_HoTen nếu giấy tờ ghi. Chỉ chữ số."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-COMPACT_COMP_BY_NAME["ChuThe_NgaySinh"] = "x-date"
-COMPACT_COMP_BY_NAME["ChuThe_NgayCap"] = "x-date"
+for _name in ("ChuThe_NgaySinh", "ChuThe_NgayCap", "NguoiNop_NgaySinh", "NguoiNop_NgayCap"):
+    COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["ChuThe_DiaChi"] = "x-select-area"
 
 # ---- UI Form.io fields (data[...]) — comp dom-*. Tên field-key RIÊNG cổng Đà Nẵng (lấy CHUẨN từ HTML).

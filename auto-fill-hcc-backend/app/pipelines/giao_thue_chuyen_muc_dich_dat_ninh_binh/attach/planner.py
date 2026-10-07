@@ -1,4 +1,9 @@
-"""Lập kế hoạch đính kèm vào đúng 16 dòng hồ sơ trên cổng DVC Ninh Bình."""
+"""Lập kế hoạch đính kèm vào đúng 16 dòng hồ sơ trên cổng DVC Ninh Bình.
+
+Form KHÔNG có dòng CCCD hay "Giấy tờ khác": CCCD, file "other"/không phân loại được và GCN không xác định
+được nhánh đính vào dòng ĐƠN của hồ sơ (Mẫu 04 khi hồ sơ chỉ có Mẫu 04, còn lại Mẫu 01) — không bỏ sót file.
+Rule keyword chỉ dùng khi LLM không trả gì, không bao giờ đè kết quả LLM (kể cả "other").
+"""
 
 import time
 from typing import Any
@@ -39,8 +44,9 @@ _ROUTES: dict[str, list[dict[str, Any]]] = {
     "don_mau_04": [{"index": 15, "name": "Đơn theo Mẫu số 04"}],
     "uy_quyen": [{"index": 16, "name": "phải có văn bản về việc ủy quyền"}],
 }
-_SKIP = {"cccd"}
-_ALLOWED = set(_ROUTES) | _SKIP | {"other"}
+# Loại không có dòng riêng → đi chung dòng Đơn của hồ sơ.
+_DON_ROW_TYPES = {"cccd"}
+_ALLOWED = set(_ROUTES) | _DON_ROW_TYPES | {"other"}
 
 _DISPLAY = {
     "gcn": "Giấy chứng nhận quyền sử dụng đất",
@@ -114,9 +120,17 @@ def _routes_for_doc_type(doc_type: str, dossier_types: set[str]) -> tuple[list[d
     return [], "không xác định được nhánh từ Đơn Mẫu số 01 hoặc Đơn Mẫu số 04"
 
 
-def _build_items(file: dict, file_index: int, doc_type: str, routes: list[dict[str, Any]]) -> list[dict]:
+def _don_route(dossier_types: set[str]) -> dict[str, Any]:
+    if "don_mau_04" in dossier_types and "don_mau_01" not in dossier_types:
+        return _ROUTES["don_mau_04"][0]
+    return _ROUTES["don_mau_01"][0]
+
+
+def _build_items(
+    file: dict, file_index: int, doc_type: str, routes: list[dict[str, Any]], document_name: str | None = None
+) -> list[dict]:
     file_name = str(file.get("name") or f"file-{file_index + 1}")
-    document_name = _DISPLAY.get(doc_type) or routes[0]["name"]
+    document_name = document_name or _DISPLAY.get(doc_type) or routes[0]["name"]
     return [
         {
             "fileIndex": file_index,
@@ -145,36 +159,40 @@ def build_plan_items(files: list[dict], ocr_results: list[dict], llm_types: dict
         text = str(ocr_by_name.get(file_name, {}).get("text") or "")
         llm_type = llm_types.get(index, "")
         rule_type = _rule_doc_type(text)
-        if llm_type in _ROUTES or llm_type in _SKIP:
+        if llm_type in _ROUTES or llm_type in _DON_ROW_TYPES:
             doc_type, source = llm_type, "llm"
-        elif rule_type:
+        elif not llm_type and rule_type:
             doc_type, source = rule_type, "rule"
         else:
-            doc_type, source = "other", "unknown"
+            doc_type, source = "other", "llm" if llm_type else "unknown"
 
         resolved.append((index, file, file_name, doc_type, source))
 
     dossier_types = {doc_type for _, _, _, doc_type, _ in resolved}
+    don_route = _don_route(dossier_types)
     for index, file, file_name, doc_type, source in resolved:
-
+        document_name = None
         if doc_type in _ROUTES:
             routes, route_error = _routes_for_doc_type(doc_type, dossier_types)
             if route_error:
+                routes = [don_route]
                 warnings.append(
-                    f"Không tự đính kèm '{file_name}': {route_error} — vui lòng chọn đúng thành phần thủ công."
+                    f"'{file_name}': {route_error} — tạm đính vào dòng {don_route['name']}; cán bộ chuyển sang đúng "
+                    "thành phần nếu cần."
                 )
-                classified.append({"fileName": file_name, "docType": doc_type, "source": source,
-                                   "skipped": True, "reason": "unresolved_branch"})
-                continue
-            items = _build_items(file, index, doc_type, routes)
-            attachments.extend(items)
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source,
-                               "componentIndexes": [item["componentIndex"] for item in items]})
-        elif doc_type in _SKIP:
-            classified.append({"fileName": file_name, "docType": doc_type, "source": source, "skipped": True})
+        elif doc_type in _DON_ROW_TYPES:
+            routes = [don_route]
         else:
-            warnings.append(f"Không xác định được loại giấy tờ cho file '{file_name}' — vui lòng đính kèm thủ công.")
-            classified.append({"fileName": file_name, "docType": "other", "source": source, "skipped": True})
+            # Giữ tên file gốc để cán bộ nhận ra giấy lạ khi soát (cùng cách các thủ tục đất đai Ninh Bình khác).
+            routes, document_name = [don_route], file_name
+            warnings.append(
+                f"Chưa nhận diện chắc loại giấy tờ cho '{file_name}' — tạm đính vào dòng {don_route['name']}; "
+                "cán bộ kiểm tra lại."
+            )
+        items = _build_items(file, index, doc_type, routes, document_name)
+        attachments.extend(items)
+        classified.append({"fileName": file_name, "docType": doc_type, "source": source,
+                           "componentIndexes": [item["componentIndex"] for item in items]})
     return attachments, warnings, classified
 
 

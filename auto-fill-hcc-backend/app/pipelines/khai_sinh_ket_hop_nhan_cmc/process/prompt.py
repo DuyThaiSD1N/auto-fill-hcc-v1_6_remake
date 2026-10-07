@@ -25,7 +25,10 @@ hai eForm liên tiếp nhưng lần trích xuất này chỉ trả các SOURCE F
 3. Không lấy tên người ký/cán bộ y tế/người đã chết làm thành viên hồ sơ.
 4. Mọi số CCCD/định danh là chuỗi và phải giữ số 0 ở đầu.
 5. Không trả field UI như HoTenKS, HoTenChaKS, HotenA, hotenB, loaiXacNhan.
-6. Có tờ khai thì BẮT BUỘC trả thêm ToKhai_Father_* và ToKhai_Mother_* CHÉP NGUYÊN VĂN từ tờ khai, KỂ CẢ
+6. Số điện thoại chỉ của CHÍNH người yêu cầu, ghi trong mục người yêu cầu của tờ khai. Số in ở tiêu đề/chân
+   trang của giấy do cơ quan, bệnh viện, công ty xét nghiệm ADN cấp (Hotline, Điện thoại, Website) là của
+   tổ chức đó → KHÔNG dùng. Tờ khai không ghi số thì bỏ Requester_PhoneNumber.
+7. Có tờ khai thì BẮT BUỘC trả thêm ToKhai_Father_* và ToKhai_Mother_* CHÉP NGUYÊN VĂN từ tờ khai, KỂ CẢ
    khi CCCD ghi khác; KHÔNG chép từ CCCD sang. Python tự đối chiếu: CCCD trùng số tờ khai thì theo thẻ,
    CCCD lệch cả tên lẫn số thì là thẻ của người khác và điền theo tờ khai.
 </identity_and_role_rules>

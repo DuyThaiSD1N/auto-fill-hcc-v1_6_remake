@@ -81,10 +81,14 @@ for _name in ("TruSo_DiaChi", "ChuHoSo_DiaChi", "NguoiNop_DiaChi"):
 for _name in ("HoiThamGia", "HoiMoi", "DanhMucHoSo"):
     COMPACT_COMP_BY_NAME[_name] = "x-array"
 
-# ---- UI Form.io fields (data[...]) — field-key lấy từ DOM thật (mapping 1.012945). data[fullname],
-# data[birthday], data[identityNumber], data[chonDoiTuong], data[chonDoiTuong1], data[ngayHt] cổng khoá → KHÔNG phát.
+# ---- UI Form.io fields (data[...]) — field-key lấy từ DOM thật (mapping 1.012945). data[chonDoiTuong],
+# data[chonDoiTuong1], data[ngayHt] cổng khoá → KHÔNG phát. data[fullname], data[birthday], data[identityNumber] cổng
+# khoá theo VNeID → chỉ phát ở chế độ người nộp theo tờ khai (kèm enableInput + occurrence 0).
 UI_COMP_BY_NAME: dict[str, str] = {
-    # Phần I — người nộp (ô không khoá).
+    # Phần I — người nộp.
+    "data[fullname]": "dom-input",
+    "data[birthday]": "dom-date",
+    "data[identityNumber]": "dom-input",
     "data[gender]": "dom-select",
     "data[identityDate]": "dom-date",
     "data[idIssuePlace]": "dom-input",

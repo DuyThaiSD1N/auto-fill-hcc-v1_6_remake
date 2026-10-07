@@ -383,7 +383,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             warnings.append(
                 f"Phần người nộp đang điền theo TỜ KHAI ({candidate_name or 'người dự tuyển'}) nhưng tài khoản "
                 f"đăng nhập là {context.get('applicant_name') or anchor_label}. Cổng lưu người nộp theo các ô "
-                "này — đăng nhập đúng tài khoản người dự tuyển, hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+                "này — đăng nhập đúng tài khoản người dự tuyển, hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
             )
     elif same_as_account(candidate_identity, candidate_name):
         part_one, tick = candidate, True
@@ -405,7 +405,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                     else "chưa đọc được tài khoản đăng nhập trên trang (F5 trang cổng rồi quét lại)"
                 )
                 + ". Phần người nộp để trống, người dự tuyển điền ở phần chủ hồ sơ; người nộp theo tờ khai "
-                "thì bật cài đặt \"Người nộp = chủ hồ sơ\"."
+                "thì bật cài đặt \"Lấy người nộp theo tờ khai\"."
             )
 
     if part_one is not None:

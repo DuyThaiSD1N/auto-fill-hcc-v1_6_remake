@@ -54,7 +54,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         compact_field_fallback=_compact_field_fallback,
     )
-    res["fields"] = mapper.enrich(res["fields"])
+    res["fields"] = mapper.enrich(res["fields"], options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
     # Đặt sau enrich để khớp trên FIELDS CUỐI (key theo DOM name mà FE điền). Lỗi → bỏ qua,

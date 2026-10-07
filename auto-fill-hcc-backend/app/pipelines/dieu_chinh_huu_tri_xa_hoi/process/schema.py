@@ -39,7 +39,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ChuHoSo_DienThoai",
-        "desc": "Số điện thoại chủ hồ sơ tại mục I Mẫu số 01 nếu đọc được; CCCD không có số điện thoại.",
+        "desc": "Số điện thoại chủ hồ sơ tại mục I Mẫu số 01 nếu đọc được, CHỈ chữ số (bỏ dấu chấm, khoảng trắng, gạch); CCCD không có số điện thoại.",
     },
     {
         "name": "ChuHoSo_QuocTich",
@@ -75,7 +75,7 @@ FIELDS: list[dict] = [
     },
     {
         "name": "NguoiNop_DienThoai",
-        "desc": "Số điện thoại người nộp tại mục II Mẫu số 01 nếu đọc được.",
+        "desc": "Số điện thoại người nộp tại mục II Mẫu số 01 nếu đọc được, CHỈ chữ số (bỏ dấu chấm, khoảng trắng, gạch).",
     },
     {
         "name": "NguoiNop_QuocTich",

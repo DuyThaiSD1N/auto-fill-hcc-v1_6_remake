@@ -62,7 +62,8 @@ UI_COMP_BY_NAME = {
     # THÔNG TIN VỀ NGƯỜI CÓ NỘI DUNG THAY ĐỔI
     "citizenNDKHoTen": "sjs-text",
     "citizenNDKSodinhdanh": "sjs-text",
-    "citizenNDKNgaysinh": "sjs-date",
+    # Cổng đã đổi ô ngày sinh từ "citizenNDKNgaysinh" (ô ngày) sang ô chữ dd/mm/yyyy dùng chung với trích lục.
+    "citizenNDK_NgaySinh": "sjs-text",
     "citizenNDKLoaiGiaytotuythan": "sjs-dropdown",
     "citizenNDKSogiaytotuythan": "sjs-text",
     "citizenNDKNgaycapgiaytotuythan": "sjs-date",

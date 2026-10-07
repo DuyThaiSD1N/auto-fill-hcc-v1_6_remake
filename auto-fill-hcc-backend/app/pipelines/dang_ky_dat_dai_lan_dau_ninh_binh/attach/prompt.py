@@ -17,6 +17,8 @@ tỉnh Ninh Bình. Đọc OCR_TEXT của từng file và trả đúng một lo�
 3. Nếu một PDF gộp nhiều loại giấy tờ, phân loại theo TÀI LIỆU CHÍNH ở trang đầu.
 4. Không đủ bằng chứng thì trả other. KHÔNG mặc định tài liệu lạ vào một dòng gần giống.
 5. Trả một JSON object duy nhất, không markdown, không giải thích.
+6. Với docType nhan_than hoặc other: thêm "documentName" = tiêu đề thật của giấy trên trang đầu (≤50 ký tự,
+   không ngoặc, không dấu chấm, không dùng tên file, không ghi chung chung "Tài liệu khác").
 </critical_rules>
 
 <doc_type_definitions>
@@ -35,6 +37,9 @@ tỉnh Ninh Bình. Đọc OCR_TEXT của từng file và trả đúng một lo�
 - van_ban_dai_dien: Giấy/văn bản ủy quyền hoặc văn bản về việc đại diện theo pháp luật dân sự (có BÊN
   ỦY QUYỀN/người được đại diện và BÊN ĐƯỢC ỦY QUYỀN/người đại diện).
 - identity: CCCD/CMND/Căn cước/Hộ chiếu thuần túy của người sử dụng đất hoặc người nộp.
+- nhan_than: Giấy tờ nhân thân/quan hệ hôn nhân, gia đình — Giấy chứng nhận kết hôn, Giấy xác nhận tình trạng
+  hôn nhân, Sổ hộ khẩu/xác nhận thông tin cư trú, Giấy khai sinh/trích lục khai sinh. PDF gộp có trang đầu là
+  các giấy này và các trang sau là CCCD vẫn là nhan_than.
 - other: Không thuộc các loại trên hoặc không đủ bằng chứng.
 </doc_type_definitions>
 
@@ -46,11 +51,11 @@ tỉnh Ninh Bình. Đọc OCR_TEXT của từng file và trả đúng một lo�
 </overlap_rules>
 
 <allowed_types>
-don_dang_ky | thoa_thuan_cap_chung | thua_ke_qsdd | chung_tu_tai_chinh | manh_trich_do | giay_to_dieu_137 | van_ban_dai_dien | identity | other
+don_dang_ky | thoa_thuan_cap_chung | thua_ke_qsdd | chung_tu_tai_chinh | manh_trich_do | giay_to_dieu_137 | van_ban_dai_dien | identity | nhan_than | other
 </allowed_types>
 
 <output_contract>
-{"documents":[{"index":0,"docType":"don_dang_ky"}]}
+{"documents":[{"index":0,"docType":"don_dang_ky"},{"index":1,"docType":"nhan_than","documentName":"<tiêu đề thật>"}]}
 </output_contract>
 """.strip()
 

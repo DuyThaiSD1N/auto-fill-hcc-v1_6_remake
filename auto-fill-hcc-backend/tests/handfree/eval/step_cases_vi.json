@@ -1,0 +1,892 @@
+{
+ "_mo_ta": "Bộ câu đo nhận ý định theo TỪNG BƯỚC (nút đang hiện + câu nói → lệnh đúng). Chạy: .venv/bin/python -m tests.handfree.eval.eval_step_intents. expect: any=một trong các kết quả (send:<lệnh nút> | <kind> | <kind>:<value>) · not=không được ra các kết quả này · place=agent nơi làm phải ra các giá trị này.",
+ "cases": [
+  {
+   "id": "XN1",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "không phải tôi muốn làm ở phường song liễu",
+   "expect": {
+    "place": {
+     "ward": "Phường Song Liễu"
+    }
+   }
+  },
+  {
+   "id": "XN2",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "tôi làm cho người khác",
+   "expect": {
+    "place": {
+     "subject": "other_person"
+    }
+   }
+  },
+  {
+   "id": "XN3",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "đúng rồi",
+   "expect": {
+    "any": [
+     "send:__action:goto_login",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "XN4",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "đồng ý",
+   "expect": {
+    "any": [
+     "send:__action:goto_login",
+     "confirm"
+    ]
+   }
+  },
+  {
+   "id": "XN5",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "người khác ủy quyền cho tôi làm",
+   "expect": {
+    "place": {
+     "subject": "authorized_person"
+    }
+   }
+  },
+  {
+   "id": "XN6",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "chuyển sang phường đa mai",
+   "expect": {
+    "place": {
+     "ward": "Phường Đa Mai"
+    }
+   }
+  },
+  {
+   "id": "XN7",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "không, tôi muốn làm thủ tục khai tử",
+   "expect": {
+    "any": [
+     "pick_procedure:khai-tu"
+    ]
+   }
+  },
+  {
+   "id": "XN8",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "làm ở hà nội, phường hoàn kiếm",
+   "expect": {
+    "place": {
+     "province_slug": "hanoi",
+     "ward": "Phường Hoàn Kiếm"
+    }
+   }
+  },
+  {
+   "id": "XN9",
+   "state": "confirm_procedure",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý",
+     "send": "__action:goto_login"
+    },
+    {
+     "label": "Chọn thủ tục khác",
+     "send": "__action:new_procedure"
+    }
+   ],
+   "text": "không phải phường này",
+   "expect": {
+    "not": [
+     "deny",
+     "send:__action:new_procedure"
+    ]
+   }
+  },
+  {
+   "id": "XP1",
+   "state": "consent",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý cho xử lý dữ liệu và tự động điền",
+     "send": "__action:consent_agree"
+    },
+    {
+     "label": "Không đồng ý, tự nhập",
+     "send": "__action:consent_decline"
+    }
+   ],
+   "text": "tôi đồng ý tất cả",
+   "expect": {
+    "any": [
+     "send:__action:consent_agree",
+     "confirm",
+     "action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "XP2",
+   "state": "consent",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý cho xử lý dữ liệu và tự động điền",
+     "send": "__action:consent_agree"
+    },
+    {
+     "label": "Không đồng ý, tự nhập",
+     "send": "__action:consent_decline"
+    }
+   ],
+   "text": "đồng ý hết",
+   "expect": {
+    "any": [
+     "send:__action:consent_agree",
+     "confirm",
+     "action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "XP3",
+   "state": "consent",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý cho xử lý dữ liệu và tự động điền",
+     "send": "__action:consent_agree"
+    },
+    {
+     "label": "Không đồng ý, tự nhập",
+     "send": "__action:consent_decline"
+    }
+   ],
+   "text": "chọn tất cả",
+   "expect": {
+    "any": [
+     "send:__action:consent_agree",
+     "confirm",
+     "action:consent_agree"
+    ]
+   }
+  },
+  {
+   "id": "XP4",
+   "state": "consent",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Đồng ý cho xử lý dữ liệu và tự động điền",
+     "send": "__action:consent_agree"
+    },
+    {
+     "label": "Không đồng ý, tự nhập",
+     "send": "__action:consent_decline"
+    }
+   ],
+   "text": "không đồng ý, tôi tự nhập",
+   "expect": {
+    "any": [
+     "send:__action:consent_decline",
+     "deny",
+     "action:consent_decline"
+    ]
+   }
+  },
+  {
+   "id": "CH1",
+   "state": "owner_waiting_next",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📷 Gửi lại giấy tờ",
+     "send": "__action:resend_owner_docs"
+    },
+    {
+     "label": "✅ Có, chứng thực luôn",
+     "send": "__action:certify_identity:yes"
+    },
+    {
+     "label": "❌ Không chứng thực thẻ này",
+     "send": "__action:certify_identity:no"
+    },
+    {
+     "label": "Xong, sang bước đính kèm →",
+     "send": "__action:guided_next",
+     "phase": "owner"
+    },
+    {
+     "label": "🔁 Điền lại thông tin chủ hồ sơ",
+     "send": "__action:retry_owner_fill"
+    }
+   ],
+   "text": "quét bằng điện thoại",
+   "expect": {
+    "any": [
+     "pick_doc_method:qr",
+     "send:__action:resend_owner_docs"
+    ]
+   }
+  },
+  {
+   "id": "CH2",
+   "state": "owner_waiting_next",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📷 Gửi lại giấy tờ",
+     "send": "__action:resend_owner_docs"
+    },
+    {
+     "label": "✅ Có, chứng thực luôn",
+     "send": "__action:certify_identity:yes"
+    },
+    {
+     "label": "❌ Không chứng thực thẻ này",
+     "send": "__action:certify_identity:no"
+    },
+    {
+     "label": "Xong, sang bước đính kèm →",
+     "send": "__action:guided_next",
+     "phase": "owner"
+    },
+    {
+     "label": "🔁 Điền lại thông tin chủ hồ sơ",
+     "send": "__action:retry_owner_fill"
+    }
+   ],
+   "text": "scan bằng điện thoại",
+   "expect": {
+    "any": [
+     "pick_doc_method:qr",
+     "pick_doc_method:scan",
+     "send:__action:resend_owner_docs"
+    ]
+   }
+  },
+  {
+   "id": "CH3",
+   "state": "owner_waiting_next",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📷 Gửi lại giấy tờ",
+     "send": "__action:resend_owner_docs"
+    },
+    {
+     "label": "✅ Có, chứng thực luôn",
+     "send": "__action:certify_identity:yes"
+    },
+    {
+     "label": "❌ Không chứng thực thẻ này",
+     "send": "__action:certify_identity:no"
+    },
+    {
+     "label": "Xong, sang bước đính kèm →",
+     "send": "__action:guided_next",
+     "phase": "owner"
+    },
+    {
+     "label": "🔁 Điền lại thông tin chủ hồ sơ",
+     "send": "__action:retry_owner_fill"
+    }
+   ],
+   "text": "có, chứng thực luôn",
+   "expect": {
+    "any": [
+     "send:__action:certify_identity:yes"
+    ]
+   }
+  },
+  {
+   "id": "CH4",
+   "state": "owner_waiting_next",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📷 Gửi lại giấy tờ",
+     "send": "__action:resend_owner_docs"
+    },
+    {
+     "label": "✅ Có, chứng thực luôn",
+     "send": "__action:certify_identity:yes"
+    },
+    {
+     "label": "❌ Không chứng thực thẻ này",
+     "send": "__action:certify_identity:no"
+    },
+    {
+     "label": "Xong, sang bước đính kèm →",
+     "send": "__action:guided_next",
+     "phase": "owner"
+    },
+    {
+     "label": "🔁 Điền lại thông tin chủ hồ sơ",
+     "send": "__action:retry_owner_fill"
+    }
+   ],
+   "text": "không cần chứng thực",
+   "expect": {
+    "any": [
+     "send:__action:certify_identity:no"
+    ]
+   }
+  },
+  {
+   "id": "CH5",
+   "state": "owner_waiting_next",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📷 Gửi lại giấy tờ",
+     "send": "__action:resend_owner_docs"
+    },
+    {
+     "label": "✅ Có, chứng thực luôn",
+     "send": "__action:certify_identity:yes"
+    },
+    {
+     "label": "❌ Không chứng thực thẻ này",
+     "send": "__action:certify_identity:no"
+    },
+    {
+     "label": "Xong, sang bước đính kèm →",
+     "send": "__action:guided_next",
+     "phase": "owner"
+    },
+    {
+     "label": "🔁 Điền lại thông tin chủ hồ sơ",
+     "send": "__action:retry_owner_fill"
+    }
+   ],
+   "text": "xong rồi sang bước tiếp đi",
+   "expect": {
+    "any": [
+     "send:__action:guided_next"
+    ]
+   }
+  },
+  {
+   "id": "CH6",
+   "state": "owner_waiting_next",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📷 Gửi lại giấy tờ",
+     "send": "__action:resend_owner_docs"
+    },
+    {
+     "label": "✅ Có, chứng thực luôn",
+     "send": "__action:certify_identity:yes"
+    },
+    {
+     "label": "❌ Không chứng thực thẻ này",
+     "send": "__action:certify_identity:no"
+    },
+    {
+     "label": "Xong, sang bước đính kèm →",
+     "send": "__action:guided_next",
+     "phase": "owner"
+    },
+    {
+     "label": "🔁 Điền lại thông tin chủ hồ sơ",
+     "send": "__action:retry_owner_fill"
+    }
+   ],
+   "text": "gửi lại giấy tờ",
+   "expect": {
+    "any": [
+     "send:__action:resend_owner_docs"
+    ]
+   }
+  },
+  {
+   "id": "RS1",
+   "state": "reviewing",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📎 Đính kèm giấy tờ ▶",
+     "send": "__action:confirm_review"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "đúng hết rồi, đính kèm đi",
+   "expect": {
+    "any": [
+     "send:__action:confirm_review",
+     "action:confirm_review"
+    ]
+   }
+  },
+  {
+   "id": "RS2",
+   "state": "reviewing",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📎 Đính kèm giấy tờ ▶",
+     "send": "__action:confirm_review"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "sai rồi điền lại đi",
+   "expect": {
+    "any": [
+     "send:__action:refill",
+     "action:refill"
+    ]
+   }
+  },
+  {
+   "id": "RS3",
+   "state": "reviewing",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📎 Đính kèm giấy tờ ▶",
+     "send": "__action:confirm_review"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "tôi muốn thêm giấy tờ",
+   "expect": {
+    "any": [
+     "send:__action:add_documents",
+     "action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "RS4",
+   "state": "reviewing",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📎 Đính kèm giấy tờ ▶",
+     "send": "__action:confirm_review"
+    },
+    {
+     "label": "🔁 Điền lại thông tin",
+     "send": "__action:refill"
+    },
+    {
+     "label": "🗂️ Điều chỉnh giấy tờ",
+     "send": "__action:add_documents"
+    }
+   ],
+   "text": "chào em",
+   "expect": {
+    "not": [
+     "send:__action:confirm_review",
+     "send:__action:refill",
+     "send:__action:add_documents"
+    ]
+   }
+  },
+  {
+   "id": "KQ1",
+   "state": "done",
+   "procedure": "chung-thuc-ban-sao",
+   "buttons": [
+    {
+     "label": "Nhận kết quả bản giấy có đóng dấu",
+     "send": "__action:pick_result_method:{\"method\":\"paper\"}"
+    },
+    {
+     "label": "Nhận kết quả trực tuyến",
+     "send": "__action:pick_result_method:{\"method\":\"online\"}"
+    },
+    {
+     "label": "Dịch vụ bưu chính công ích",
+     "send": "__action:pick_result_method:{\"method\":\"postal\"}"
+    }
+   ],
+   "text": "nhận bản giấy",
+   "expect": {
+    "any": [
+     "send:__action:pick_result_method:{\"method\":\"paper\"}"
+    ]
+   }
+  },
+  {
+   "id": "KQ2",
+   "state": "done",
+   "procedure": "chung-thuc-ban-sao",
+   "buttons": [
+    {
+     "label": "Nhận kết quả bản giấy có đóng dấu",
+     "send": "__action:pick_result_method:{\"method\":\"paper\"}"
+    },
+    {
+     "label": "Nhận kết quả trực tuyến",
+     "send": "__action:pick_result_method:{\"method\":\"online\"}"
+    },
+    {
+     "label": "Dịch vụ bưu chính công ích",
+     "send": "__action:pick_result_method:{\"method\":\"postal\"}"
+    }
+   ],
+   "text": "gửi qua bưu điện cho tôi",
+   "expect": {
+    "any": [
+     "send:__action:pick_result_method:{\"method\":\"postal\"}"
+    ]
+   }
+  },
+  {
+   "id": "KQ3",
+   "state": "done",
+   "procedure": "chung-thuc-ban-sao",
+   "buttons": [
+    {
+     "label": "Nhận kết quả bản giấy có đóng dấu",
+     "send": "__action:pick_result_method:{\"method\":\"paper\"}"
+    },
+    {
+     "label": "Nhận kết quả trực tuyến",
+     "send": "__action:pick_result_method:{\"method\":\"online\"}"
+    },
+    {
+     "label": "Dịch vụ bưu chính công ích",
+     "send": "__action:pick_result_method:{\"method\":\"postal\"}"
+    }
+   ],
+   "text": "nhận online",
+   "expect": {
+    "any": [
+     "send:__action:pick_result_method:{\"method\":\"online\"}"
+    ]
+   }
+  },
+  {
+   "id": "KQ4",
+   "state": "done",
+   "procedure": "chung-thuc-ban-sao",
+   "buttons": [
+    {
+     "label": "Nhận kết quả bản giấy có đóng dấu",
+     "send": "__action:pick_result_method:{\"method\":\"paper\"}"
+    },
+    {
+     "label": "Nhận kết quả trực tuyến",
+     "send": "__action:pick_result_method:{\"method\":\"online\"}"
+    },
+    {
+     "label": "Dịch vụ bưu chính công ích",
+     "send": "__action:pick_result_method:{\"method\":\"postal\"}"
+    }
+   ],
+   "text": "nộp hồ sơ đi",
+   "expect": {
+    "not": [
+     "send:__action:guided_submit",
+     "event:submitted"
+    ]
+   }
+  },
+  {
+   "id": "DG1",
+   "state": "done",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Rất hài lòng",
+     "send": "__action:rate:{\"level\": 5}"
+    },
+    {
+     "label": "Hài lòng",
+     "send": "__action:rate:{\"level\": 4}"
+    },
+    {
+     "label": "Bình thường",
+     "send": "__action:rate:{\"level\": 3}"
+    },
+    {
+     "label": "Chưa hài lòng",
+     "send": "__action:rate:{\"level\": 2}"
+    },
+    {
+     "label": "Không hài lòng",
+     "send": "__action:rate:{\"level\": 1}"
+    }
+   ],
+   "text": "rất hài lòng",
+   "expect": {
+    "any": [
+     "send:__action:rate:{\"level\": 5}"
+    ]
+   }
+  },
+  {
+   "id": "DG2",
+   "state": "done",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "Rất hài lòng",
+     "send": "__action:rate:{\"level\": 5}"
+    },
+    {
+     "label": "Hài lòng",
+     "send": "__action:rate:{\"level\": 4}"
+    },
+    {
+     "label": "Bình thường",
+     "send": "__action:rate:{\"level\": 3}"
+    },
+    {
+     "label": "Chưa hài lòng",
+     "send": "__action:rate:{\"level\": 2}"
+    },
+    {
+     "label": "Không hài lòng",
+     "send": "__action:rate:{\"level\": 1}"
+    }
+   ],
+   "text": "cũng bình thường thôi",
+   "expect": {
+    "any": [
+     "send:__action:rate:{\"level\": 3}"
+    ]
+   }
+  },
+  {
+   "id": "DK1",
+   "state": "choosing_attach_mode",
+   "procedure": "chung-thuc-ban-sao",
+   "buttons": [
+    {
+     "label": "📎 Đính kèm trong 1 hồ sơ",
+     "send": "__action:attach_mode:{\"value\":\"merge\"}"
+    },
+    {
+     "label": "🗂️ Đính kèm nhiều hồ sơ",
+     "send": "__action:attach_mode:{\"value\":\"split\"}"
+    }
+   ],
+   "text": "gộp hết vào một hồ sơ",
+   "expect": {
+    "any": [
+     "send:__action:attach_mode:{\"value\":\"merge\"}",
+     "action:attach_mode_merge"
+    ]
+   }
+  },
+  {
+   "id": "DK2",
+   "state": "choosing_attach_mode",
+   "procedure": "chung-thuc-ban-sao",
+   "buttons": [
+    {
+     "label": "📎 Đính kèm trong 1 hồ sơ",
+     "send": "__action:attach_mode:{\"value\":\"merge\"}"
+    },
+    {
+     "label": "🗂️ Đính kèm nhiều hồ sơ",
+     "send": "__action:attach_mode:{\"value\":\"split\"}"
+    }
+   ],
+   "text": "mỗi giấy một hồ sơ riêng",
+   "expect": {
+    "any": [
+     "send:__action:attach_mode:{\"value\":\"split\"}",
+     "action:attach_mode_split"
+    ]
+   }
+  },
+  {
+   "id": "QR1",
+   "state": "qr_waiting",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📱 Mở lại màn hình điện thoại",
+     "send": "__action:reshow_qr"
+    },
+    {
+     "label": "✅ Đã đưa đủ giấy tờ, điền tờ khai đi",
+     "send": "__action:docs_done"
+    },
+    {
+     "label": "🖨️ Đổi sang Scan tại quầy",
+     "send": "__action:doc_method:{\"value\":\"scan\"}"
+    }
+   ],
+   "text": "không quét được mã",
+   "expect": {
+    "any": [
+     "send:__action:reshow_qr",
+     "action:reshow_qr"
+    ]
+   }
+  },
+  {
+   "id": "QR2",
+   "state": "qr_waiting",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📱 Mở lại màn hình điện thoại",
+     "send": "__action:reshow_qr"
+    },
+    {
+     "label": "✅ Đã đưa đủ giấy tờ, điền tờ khai đi",
+     "send": "__action:docs_done"
+    },
+    {
+     "label": "🖨️ Đổi sang Scan tại quầy",
+     "send": "__action:doc_method:{\"value\":\"scan\"}"
+    }
+   ],
+   "text": "đổi sang scan đi",
+   "expect": {
+    "any": [
+     "send:__action:doc_method:{\"value\":\"scan\"}",
+     "pick_doc_method:scan"
+    ]
+   }
+  },
+  {
+   "id": "QR3",
+   "state": "qr_waiting",
+   "procedure": "khai-sinh-dang-ky-thuong",
+   "buttons": [
+    {
+     "label": "📱 Mở lại màn hình điện thoại",
+     "send": "__action:reshow_qr"
+    },
+    {
+     "label": "✅ Đã đưa đủ giấy tờ, điền tờ khai đi",
+     "send": "__action:docs_done"
+    },
+    {
+     "label": "🖨️ Đổi sang Scan tại quầy",
+     "send": "__action:doc_method:{\"value\":\"scan\"}"
+    }
+   ],
+   "text": "đủ rồi em xử lý đi",
+   "expect": {
+    "any": [
+     "send:__action:docs_done",
+     "event:docs_complete",
+     "action:docs_done"
+    ]
+   }
+  }
+ ]
+}

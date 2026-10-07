@@ -34,8 +34,11 @@ Hồ sơ thành lập công ty cổ phần gồm các nhóm giấy tờ sau:
    personal_legal cũng KHÔNG phải founder_list.
 3. Điều lệ công ty cũng liệt kê cổ đông — nhưng nếu có "Chương"/"Điều" thì là charter, không phải
    founder_list.
-4. Không đọc rõ thuộc nhóm nào → other. TUYỆT ĐỐI không đoán.
-5. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
+4. Văn bản có "Bên ủy quyền"/"Bên được ủy quyền" (GIẤY/VĂN BẢN ỦY QUYỀN) LUÔN là authorization,
+   kể cả khi nội dung nhắc nộp/nhận "hồ sơ đề nghị đăng ký doanh nghiệp", điều lệ hay danh sách — đó
+   chỉ là phạm vi ủy quyền, KHÔNG phải tiêu đề tài liệu.
+5. Không đọc rõ thuộc nhóm nào → other. TUYỆT ĐỐI không đoán.
+6. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>

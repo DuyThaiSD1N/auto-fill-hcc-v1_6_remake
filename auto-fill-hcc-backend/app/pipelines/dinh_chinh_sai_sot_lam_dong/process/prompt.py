@@ -19,8 +19,12 @@ tài liệu ủy quyền, chỉ là danh sách kê khai.
   + có số CCCD của bên B. Thiếu BẤT KỲ điều nào → để TRỐNG.
 
 NGUỒN DỮ LIỆU:
-- Nguoi_* là CHỦ HỒ SƠ = người đứng tên trên Giấy chứng nhận (người có thông tin sai sót). Lấy từ CCCD /
-  Đơn Mẫu 18 / Giấy khai sinh / tên người sử dụng đất trên GCN.
+- Nguoi_* là CHỦ HỒ SƠ = người đứng tên trên Giấy chứng nhận (người có thông tin sai sót). Lấy từ Đơn Mẫu 18 /
+  tên người sử dụng đất trên GCN / bên ủy quyền; CCCD / Giấy khai sinh bổ sung khi khớp đúng người này.
+- ⚠ CCCD KHÔNG tự quyết vai: chỉ ghép CCCD vào Nguoi_* khi số định danh (hoặc họ tên) trên CCCD khớp đúng
+  người sử dụng đất (đứng tên Đơn/GCN, hoặc BÊN ỦY QUYỀN trong Giấy ủy quyền). CCCD trùng số với BÊN ĐƯỢC ỦY
+  QUYỀN (người ngay sau "ủy quyền cho:") là của NGƯỜI NỘP, KHÔNG phải chủ hồ sơ. Hồ sơ không có Đơn/GCN mà chỉ có
+  Giấy ủy quyền + CCCD → Nguoi_* vẫn là bên ủy quyền trong Giấy ủy quyền, dù CCCD duy nhất là của bên được ủy quyền.
 - Nguoi_NgaySinh phải là ngày sinh ĐÚNG (từ CCCD/Giấy khai sinh). TUYỆT ĐỐI KHÔNG lấy năm sinh SAI in trên
   GCN cũ — đó chính là thứ cần đính chính.
 - BẮT BUỘC cố đọc Nguoi_NgayCapCccd/Nguoi_NoiCapCccd từ mặt sau CCCD. Nếu OCR thấy "CỤC TRƯỞNG CỤC CẢNH SÁT

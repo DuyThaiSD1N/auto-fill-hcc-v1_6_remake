@@ -13,6 +13,12 @@ Form cần tối đa 2 giấy tờ:
   có ý kiến/chữ ký của các thành phần.
 Với mỗi file, gán docType là một trong: birth_proof | residence_form | other.
 Các giấy tờ KHÁC như CCCD/CMND cha mẹ, sổ hộ khẩu, giấy đăng ký kết hôn → other.
+MỘT FILE CÓ THỂ LÀ BẢN SCAN GHÉP NHIỀU GIẤY (nhiều trang, mỗi trang một giấy khác nhau): đọc HẾT
+nội dung file, không chỉ trang đầu. File có chứa giấy chứng sinh ở BẤT KỲ trang nào → birth_proof,
+dù các trang khác là giấy kết hôn hay CCCD (ô giấy chứng sinh nhận cả các giấy tờ đi kèm).
+OCR có thể làm MẤT tiêu đề "GIẤY CHỨNG SINH"; vẫn nhận ra mẫu này qua nội dung riêng của nó:
+"Mã số GCS", "Đã sinh con vào lúc … giờ … ngày …", "Số con trong lần sinh này", "Giới tính của
+con", "Cân nặng", "Người đỡ đẻ", chữ ký đại diện cơ sở khám bệnh, chữa bệnh (bệnh viện, trạm y tế).
 Dữ liệu có thể không có hoặc chỉ có một trong hai loại cần nộp. KHÔNG ép mỗi hồ sơ
 phải có birth_proof/residence_form; tài liệu không có bằng chứng rõ ràng phải là other.
 Giữ nguyên chính xác index của từng file đầu vào, trả mỗi index đúng một lần và theo
@@ -22,7 +28,8 @@ Trả về JSON object duy nhất, không giải thích, không markdown.
 """.strip()
 
 
-def _truncate_text(text: str, limit: int = 3000) -> str:
+# File ghép nhiều giấy: giấy chứng sinh hay nằm ở trang sau — cắt ngắn là mất đúng phần cần.
+def _truncate_text(text: str, limit: int = 6000) -> str:
     text = re.sub(r"\s+", " ", text or "").strip()
     if len(text) <= limit:
         return text

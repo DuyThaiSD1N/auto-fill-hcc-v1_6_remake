@@ -7,6 +7,7 @@ from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_ty
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.ethnic_normalize import ethnicity_for_form
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
+from app.pipelines._shared.tai_khoan import apply_account_marriage
 from app.pipelines._shared.foreign_id import (
     normalize_nationality,
     normalize_id_type,
@@ -228,7 +229,17 @@ def _area(value, nationality: str = "Việt Nam"):
     return out
 
 
-def enrich(fields: list[dict]) -> list[dict]:
+def _ui_field(name: str, value) -> dict | None:
+    comp = UI_COMP_BY_NAME.get(name)
+    if not comp:
+        return None
+    item = {"name": name, "comp": comp, "value": value}
+    if name in UI_ALIASES:
+        item["aliases"] = UI_ALIASES[name]
+    return item
+
+
+def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields from compact source facts."""
     values = _by_name(fields)
     out: list[dict] = []
@@ -397,4 +408,5 @@ def enrich(fields: list[dict]) -> list[dict]:
     else:
         add("CapBanSao", _copy_value(values.get("CopyRequest_WantsCopy")))
 
-    return out
+    return apply_account_marriage(out, options, _ui_field, _area,
+                                  lambda issuer: id_doc_type("Căn cước công dân", issuer))

@@ -27,14 +27,26 @@ a. TỜ KHAI: người ở khối sau câu "... cho người có tên dưới đ
 b. Giấy ủy quyền: BÊN ỦY QUYỀN.
 c. Không có tờ khai: người được đăng ký trên giấy hộ tịch chính (giấy khai sinh / trích lục khai sinh → người
    được khai sinh, không phải cha/mẹ/người đi khai; khai tử → người chết).
+d. Không có cả a, b, c nhưng hồ sơ có giấy tờ của CHỦ TÀI KHOẢN (tài liệu chứa đúng số định danh trong
+   <requester_context>) → chủ tài khoản làm cho BẢN THÂN: người có nội dung thay đổi = chủ tài khoản, lấy họ
+   tên / số định danh / ngày sinh từ giấy tờ đó, ghi đúng "Nguồn: giấy tờ chủ tài khoản".
 
-LOẠI VIỆC — xét theo BẢN CHẤT nội dung + lý do, không theo tiêu đề tờ khai (tiêu đề luôn liệt kê đủ 4 việc):
-- Cải chính: sửa thông tin đã đăng ký bị SAI SÓT (lý do sai sót khi đăng ký, ghi nhầm, không khớp giấy tờ gốc).
-- Thay đổi: đổi họ, chữ đệm, tên... theo nguyện vọng khi thông tin cũ không sai.
-- Bổ sung: ghi thêm thông tin còn TRỐNG trong sổ hộ tịch.
-- Xác định lại dân tộc: CHỈ khi nội dung là DÂN TỘC. Quốc tịch, họ tên, ngày sinh, giới tính... KHÔNG phải
-  dân tộc — kể cả khi tờ khai ghi "xác định lại quốc tịch" thì vẫn xét theo lý do (sai sót → Cải chính).
-Không đủ căn cứ → "không xác định".
+LOẠI VIỆC — chọn MỘT trong bốn: Cải chính / Thay đổi / Bổ sung / Xác định lại dân tộc:
+1. Ưu tiên dòng "Đề nghị cơ quan đăng ký việc ..." của tờ khai (mục (4), phần người yêu cầu ghi sau chữ "việc";
+   KHÔNG dùng tiêu đề tờ khai vì tiêu đề in sẵn đủ bốn việc). Dòng đó có chữ "cải chính" / "thay đổi" / "bổ sung"
+   / "xác định lại dân tộc" → lấy đúng việc đó, KHÔNG xét lại theo nội dung, lý do.
+   Vd "Cải chính giấy khai sinh" → Cải chính, kể cả khi nội dung là đổi tên.
+   Dòng đó ghi "xác định lại" một thông tin KHÁC dân tộc (quốc tịch, họ tên, ngày sinh…) → KHÔNG phải "Xác định lại
+   dân tộc": lý do là sai sót / ghi nhầm → Cải chính; theo nguyện vọng → Thay đổi.
+2. Còn lại — không có tờ khai, dòng đó trống, hoặc dòng đó ghi việc khác bốn việc trên (vd "Xác định lại quốc
+   tịch", "xác định lại họ tên"; "xác định lại" mà không phải DÂN TỘC thì KHÔNG phải "Xác định lại dân tộc") →
+   kết luận theo BẢN CHẤT nội dung + lý do:
+   - Cải chính: sửa thông tin đã đăng ký bị SAI SÓT (lý do sai sót khi đăng ký, ghi nhầm, không khớp giấy tờ gốc).
+   - Thay đổi: đổi họ, chữ đệm, tên... theo nguyện vọng khi thông tin cũ không sai.
+   - Bổ sung: ghi thêm thông tin còn TRỐNG trong sổ hộ tịch.
+   - Xác định lại dân tộc: CHỈ khi nội dung là DÂN TỘC.
+   Vd dòng đề nghị ghi "Xác định lại quốc tịch", lý do "ghi nhầm khi đăng ký" → Cải chính.
+"không xác định" CHỈ khi hồ sơ không có cả dòng đề nghị, nội dung lẫn lý do.
 
 QUAN HỆ:
 - Người nộp CHÍNH LÀ người có nội dung thay đổi (trùng số định danh; thiếu số thì trùng họ tên VÀ ngày sinh)

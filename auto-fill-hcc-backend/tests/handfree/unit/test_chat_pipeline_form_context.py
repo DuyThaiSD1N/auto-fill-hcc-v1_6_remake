@@ -157,3 +157,48 @@ async def test_owner_info_runs_without_legacy_ocr_provider_reset(monkeypatch):
     assert conversation["pipeline_status"] == "owner_fields_ready"
     assert conversation["owner_fields"][0]["value"] == "02/07/2021"
     assert events == [{"type": "owner_fields_ready", "count": 1}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("account_settings, expected", [
+    ({"submitterFromDeclaration": True}, "owner_as_submitter"),
+    ({"submitterFromDeclaration": False}, None),
+    (None, None),
+])
+async def test_chat_process_doc_cai_dat_nguoi_nop_theo_to_khai_cua_tai_khoan(monkeypatch, account_settings, expected):
+    conversation = {"_id": "c-submitter", "form_context": {}, "auth_user": {"id": "64b000000000000000000001"}}
+    user = {"_id": "u", "account_settings": account_settings} if account_settings is not None else None
+    captured: dict = {}
+
+    async def fake_get_session(_sid):
+        return {"_id": "HS-TEST", "files": [{"name": "to-khai.pdf", "type": "application/pdf"}]}
+
+    async def fake_get_conversation(_conv_id):
+        return conversation
+
+    async def fake_pipeline(_files_by_role, options):
+        captured.update(options)
+        return {"fields": [], "stats": {}, "errors": []}
+
+    async def fake_owner_user(_conv, _sess):
+        return user
+
+    async def fake_record_process(*_args, **_kwargs):
+        return "trace-test"
+
+    async def noop_async(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(pipeline_runner.up_store, "get", fake_get_session)
+    monkeypatch.setattr(pipeline_runner.up_store, "file_to_data_url", lambda _sid, _file: "data:application/pdf;base64,AAA")
+    monkeypatch.setattr(pipeline_runner.conv_store, "get", fake_get_conversation)
+    monkeypatch.setattr(pipeline_runner.conv_store, "save", noop_async)
+    monkeypatch.setattr(pipeline_runner, "_load_owner_user", fake_owner_user)
+    monkeypatch.setattr(pipeline_runner, "get_procedure", lambda _key: {"review": False})
+    monkeypatch.setattr(pipeline_runner, "get_pipeline", lambda _key: fake_pipeline)
+    monkeypatch.setattr(pipeline_runner.tracing, "record_process", fake_record_process)
+    monkeypatch.setattr(pipeline_runner, "broadcast", noop_async)
+
+    await pipeline_runner.run_process("c-submitter", "HS-TEST", "tro-cap-xa-hoi-hang-thang")
+
+    assert captured.get("submitterMode") == expected

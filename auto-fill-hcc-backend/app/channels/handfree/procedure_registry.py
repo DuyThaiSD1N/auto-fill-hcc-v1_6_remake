@@ -30,7 +30,7 @@ PROCEDURES: list[dict] = [
             "cấp thẻ bảo hiểm y tế cho trẻ em dưới 6 tuổi"
         ),
         # Metadata cho card chọn thủ tục + action navigate của trợ lý (docs/03).
-        "shortLabel": "Đăng ký Khai sinh (liên thông)",
+        "shortLabel": "Liên thông đăng ký khai sinh",
         "subtitle": "Khai sinh + thường trú + BHYT cho trẻ dưới 6 tuổi",
         "icon": "👶",
         "keKhaiUrl": "https://lienthong.dichvucong.gov.vn/#/ke-khai/2.000987",
@@ -74,14 +74,19 @@ PROCEDURES: list[dict] = [
     {
         # Đăng ký khai sinh ĐƠN LẺ (chỉ khai sinh) — KHÁC "khai-sinh-dang-ky" ở trên là liên
         # thông (khai sinh + thường trú + BHYT trên cổng lienthong.dichvucong.gov.vn Angular).
-        # Thủ tục này chạy trên cổng React mới của Bộ Tư pháp, cùng wizard với kết hôn/khai tử.
         "key": "khai-sinh-dang-ky-thuong",
-        "detect": {"urlIncludes": ["maThuTuc=1.001193"]},
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai sinh", "người được đăng ký khai sinh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
         "label": "Thủ tục đăng ký khai sinh",
         "shortLabel": "Đăng ký Khai sinh",
         "subtitle": "Chỉ đăng ký khai sinh (không kèm thường trú, BHYT)",
         "icon": "👶",
-        "flowProfile": "tu-phap",
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "supportsSplitDocuments": True,
         # URL kê khai đã xác minh trong ke_khai_links.json (mã TTHC 1.001193).
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fe0-70ac-b9d6-5e9e20d6eef7",
@@ -179,14 +184,22 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "trich-luc-ks",
-        "detect": {"urlIncludes": ["maThuTuc=2.000635"]},
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "cấp bản sao trích lục hộ tịch, bản sao giấy khai sinh",
+                "thông tin người được cấp giấy tờ hộ tịch",
+            ],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
         "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
         "shortLabel": "Bản sao Trích lục hộ tịch",
         "subtitle": "Trích lục khai sinh, kết hôn, khai tử",
         "icon": "📜",
-        "flowProfile": "tu-phap",
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "supportsSplitDocuments": True,
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/TTHN.
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-867c-72db-b6a7-dcbd8c763807",
         # TỜ KHAI là giấy CHÍNH (chứa đủ thông tin sự kiện hộ tịch để kê khai); giấy hộ tịch
         # cũ chỉ bổ trợ khi có — thực tế CCCD + tờ khai là fill trọn form.
@@ -319,13 +332,19 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-tu",
-        "detect": {"urlIncludes": ["maThuTuc=1.000656"]},
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-3fac-7489-b53b-9c6c958f2da4"],
+            "urlScope": ["//dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["thủ tục đăng ký khai tử", "người được đăng ký khai tử"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
         "label": "Thủ tục đăng ký khai tử",
         "shortLabel": "Đăng ký Khai tử",
         "subtitle": "Thủ tục đăng ký khai tử trong nước",
         "icon": "🕯️",
-        "flowProfile": "tu-phap",
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/TTHN/trích lục.
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-9c6c958f2da4",
         # Giấy báo tử BẮT BUỘC (nguồn chính của sự kiện chết); tờ khai bổ trợ khi có.
         # Mỗi nhóm tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
@@ -430,14 +449,22 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thay-doi-cai-chinh-ho-tich",
-        "detect": {"urlIncludes": ["maThuTuc=1.004859"]},
+        "detect": {
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
+                "thông tin về người có nội dung thay đổi",
+            ],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
         "label": "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc",
         "shortLabel": "Cải chính hộ tịch",
         "subtitle": "Thay đổi, bổ sung thông tin hộ tịch",
         "icon": "📝",
-        "flowProfile": "tu-phap",
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn/khai tử/TTHN. URL kê khai
-        # đã xác minh trong ke_khai_links.json (mã TTHC 1.004859).
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
+        # URL kê khai đã xác minh trong ke_khai_links.json (mã TTHC 1.004859).
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-671e-714b-8fd6-8230c82f7867",
         "review": False,
         "mode": "agent",
@@ -1446,8 +1473,7 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
-            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng "
-             "(Mẫu số 02, Nghị định 176/2025/NĐ-CP) — đã ký", "icon": "📄",
+            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 04)", "icon": "📄",
              "sides": 1, "repeatable": True},
             {"key": "chung_tu", "name": "Giấy chứng tử hoặc trích lục khai tử của người đã mất",
              "icon": "📜", "sides": 1, "repeatable": True},
@@ -1462,8 +1488,7 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02 ban hành kèm theo Nghị định số "
-            "176/2025/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 04) — nguồn chính để điền form.\n"
             "2. Giấy chứng tử hoặc trích lục khai tử của đối tượng bảo trợ xã hội đã mất.\n"
             "3. Căn cước công dân của người đứng đơn đề nghị.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
@@ -1499,8 +1524,7 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
-            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng "
-             "(Mẫu số 02, Nghị định 176/2025/NĐ-CP) — đã ký", "icon": "📄",
+            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02)", "icon": "📄",
              "sides": 1, "repeatable": True},
             {"key": "chung_tu", "name": "Giấy chứng tử hoặc trích lục khai tử của người đã mất",
              "icon": "📜", "sides": 1, "repeatable": True},
@@ -1515,8 +1539,7 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02 ban hành kèm theo Nghị định số "
-            "176/2025/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02) — nguồn chính để điền form.\n"
             "2. Giấy chứng tử hoặc trích lục khai tử của người hưởng trợ cấp đã mất.\n"
             "3. Căn cước công dân của người đứng đơn đề nghị.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"

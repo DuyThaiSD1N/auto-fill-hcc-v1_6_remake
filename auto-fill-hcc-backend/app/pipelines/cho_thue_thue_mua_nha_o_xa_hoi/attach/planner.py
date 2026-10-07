@@ -143,6 +143,8 @@ def _build_row_item(file: dict, file_index: int, row_key: str, detected_type: st
         "componentName": row["componentName"],
         "loaiBan": row["loaiBan"],
         "target": "attp-row",
+        # Cổng tick sẵn mọi dòng → dòng không đính bị bắt buộc khi chuyển bước; FE bỏ tick trước khi đính.
+        "untickUnplannedRows": True,
         "needsAddComponent": False,
         "detectedType": detected_type,
     }

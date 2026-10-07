@@ -274,6 +274,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             "componentIndex": row["componentIndex"],
             "loaiBan": "Bản chính",
             "target": "attp-row",
+            # Cổng tick sẵn mọi dòng → dòng không đính bị bắt buộc khi chuyển bước; FE bỏ tick trước khi đính.
+            "untickUnplannedRows": True,
             "needsAddComponent": False,
             "detectedType": doc_type,
         }

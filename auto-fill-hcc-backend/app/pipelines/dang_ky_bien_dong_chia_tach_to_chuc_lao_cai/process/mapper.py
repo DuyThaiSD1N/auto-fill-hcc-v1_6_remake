@@ -347,7 +347,7 @@ def _nguoi_nop_hai_che_do(
         person = _merge_person(base, groups)
         if not person:
             warnings.append(
-                "Bật cài đặt \"Người nộp = chủ hồ sơ\" nhưng hồ sơ không có văn bản ủy quyền và cũng không "
+                "Bật cài đặt \"Lấy người nộp theo tờ khai\" nhưng hồ sơ không có văn bản ủy quyền và cũng không "
                 "đọc được người đứng tên đơn, nên trợ lý để trống khối \"Thông tin người nộp hồ sơ\" — cán "
                 "bộ nhập tay."
             )
@@ -367,7 +367,7 @@ def _nguoi_nop_hai_che_do(
                     + (anchor_name_raw or anchor_id_raw or "người khác")
                     + ". Cổng xác thực Họ tên/Số Căn cước/Ngày sinh với CSDL quốc gia dân cư và tài khoản "
                     "đăng nhập trước khi cho nộp — lệch là bị chặn. Đăng nhập đúng tài khoản người đi nộp, "
-                    "hoặc tắt cài đặt \"Người nộp = chủ hồ sơ\"."
+                    "hoặc tắt cài đặt \"Lấy người nộp theo tờ khai\"."
                 )
     else:
         if not has_anchor:
@@ -376,7 +376,7 @@ def _nguoi_nop_hai_che_do(
                 "định danh (hoặc trang chưa đăng nhập). Trợ lý bỏ trống nhân thân khối \"Thông tin người "
                 "nộp hồ sơ\" để khỏi điền nhầm người — đăng nhập đúng tài khoản người đi nộp rồi quét lại."
                 " Vừa cập nhật/tải lại extension thì F5 trang cổng rồi quét lại; người nộp theo tờ khai thì "
-                "bật cài đặt \"Người nộp = chủ hồ sơ\"."
+                "bật cài đặt \"Lấy người nộp theo tờ khai\"."
             )
             return None, warnings
         found = _find_by_anchor(groups, anchor_id, anchor_name)
@@ -424,7 +424,7 @@ def _is_org(values: dict) -> bool:
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     options = options if isinstance(options, dict) else {}
-    # Cài đặt "Người nộp = chủ hồ sơ" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
+    # Cài đặt "Lấy người nộp theo tờ khai" của extension: bỏ mốc tài khoản, lấy người nộp theo tờ khai.
     theo_to_khai = str(options.get("submitterMode") or "") == "owner_as_submitter"
     values = _by_name(fields)
     out: list[dict] = []

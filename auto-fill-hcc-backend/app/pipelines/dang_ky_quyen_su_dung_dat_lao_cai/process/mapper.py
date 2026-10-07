@@ -7,7 +7,7 @@ Chọn nguồn theo sheet "Ma trận đa nguồn" của file mapping:
               Địa chỉ → hợp đồng → Đơn → GCN ĐKDN → CCCD. Di động → Đơn → hợp đồng → GCN ĐKDN.
               Email → Đơn → GCN ĐKDN.
 
-⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Người nộp = chủ hồ sơ" của extension → `options.submitterMode`):
+⚑ HAI CHẾ ĐỘ NGƯỜI NỘP (cài đặt "Lấy người nộp theo tờ khai" của extension → `options.submitterMode`):
   · Mặc định — THEO TÀI KHOẢN: mốc là Họ tên + Số Căn cước cổng đổ sẵn từ tài khoản định danh
     (`options.formContext`). Chỉ bù ngày sinh/giới tính/dân tộc/ngày cấp/nơi cấp lấy từ giấy tờ CỦA
     CHÍNH người đó; không có mốc hoặc hồ sơ không có giấy tờ của người đó → BỎ TRỐNG + cảnh báo. Họ tên/
@@ -327,7 +327,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                     + (_plain(ctx.get("applicantFullname")) or "người khác")
                     + ". Cổng xác thực Họ tên/Số Căn cước/Ngày sinh với CSDL quốc gia dân cư trước khi cho "
                     "nộp — lệch tài khoản sẽ bị chặn. Đăng nhập đúng tài khoản người đi nộp, hoặc tắt cài "
-                    "đặt \"Người nộp = chủ hồ sơ\"."
+                    "đặt \"Lấy người nộp theo tờ khai\"."
                 )
     elif theo_to_khai and is_org and not proxy:
         warnings.append(

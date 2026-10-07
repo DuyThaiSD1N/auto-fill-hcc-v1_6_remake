@@ -1,7 +1,7 @@
 """[Lào Cai] 1.115682 — hai chế độ xác định NGƯỜI NỘP.
 
 Mặc định (toggle tắt) giữ nguyên hành vi theo tài khoản: chỉ điền nhân thân khối người nộp khi khớp mốc
-`options.formContext`. Bật "Người nộp = chủ hồ sơ" (`submitterMode="owner_as_submitter"`) thì người nộp lấy
+`options.formContext`. Bật "Lấy người nộp theo tờ khai" (`submitterMode="owner_as_submitter"`) thì người nộp lấy
 theo tờ khai: khối NguoiNop_* (bên được ủy quyền) → không có thì chủ hồ sơ cá nhân; hai ô readonly Họ tên/Số
 Căn cước ghi theo người đó, ô nhân thân tài khoản mà hồ sơ không có thì xoá.
 """

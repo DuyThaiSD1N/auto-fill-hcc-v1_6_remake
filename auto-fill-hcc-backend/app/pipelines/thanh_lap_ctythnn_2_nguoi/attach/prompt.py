@@ -39,8 +39,11 @@ Hồ sơ thành lập công ty TNHH hai thành viên trở lên gồm các nhóm
 4. Danh sách thành viên và Danh sách chủ sở hữu hưởng lợi RẤT GIỐNG NHAU (cùng bảng người + tỷ lệ).
    Phân biệt bằng TIÊU ĐỀ: có cụm "CHỦ SỞ HỮU HƯỞNG LỢI" → beneficial_owner_list; có cụm "DANH SÁCH
    THÀNH VIÊN" → member_list.
-5. Không đọc rõ thuộc nhóm nào → other. TUYỆT ĐỐI không đoán.
-6. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
+5. Văn bản có "Bên ủy quyền"/"Bên được ủy quyền" (GIẤY/VĂN BẢN ỦY QUYỀN) LUÔN là authorization,
+   kể cả khi nội dung nhắc nộp/nhận "hồ sơ đề nghị đăng ký doanh nghiệp", điều lệ hay danh sách — đó
+   chỉ là phạm vi ủy quyền, KHÔNG phải tiêu đề tài liệu.
+6. Không đọc rõ thuộc nhóm nào → other. TUYỆT ĐỐI không đoán.
+7. Trả về DUY NHẤT một JSON object, không giải thích, không markdown.
 </critical_rules>
 
 <allowed_types>

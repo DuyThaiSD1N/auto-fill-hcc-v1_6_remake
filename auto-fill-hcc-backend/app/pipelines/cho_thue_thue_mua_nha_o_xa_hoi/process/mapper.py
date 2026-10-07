@@ -149,33 +149,19 @@ def _gender_from_cccd(value: Any) -> str | None:
 
 
 # Dòng (a) mục 9 của đơn in sẵn nhãn "Họ và tên vợ (hoặc chồng)" — người dân KHÔNG viết quan hệ ở dòng
-# này, nên mọi giá trị "Vợ"/"Chồng" đọc ra chỉ là một nửa nhãn in sẵn, không phải bằng chứng.
+# này, nên mọi giá trị "Vợ"/"Chồng" đọc ra chỉ là một nửa nhãn in sẵn, không phải bằng chứng. Giới tính
+# hai người cũng không chốt được vai: dân hay ghi bố/mẹ vào dòng này → luôn trả nhãn gốc để cán bộ chọn.
 _QUANHE_VO_CHONG_MO_HO = {"vo", "chong", "vo (hoac chong)", "vo hoac chong", "vo/chong", "vo chong"}
 _QUANHE_LABEL_GOC = "Vợ (hoặc chồng)"
 
 
-def _quan_he_vo_chong(member_identity: Any, applicant_identity: Any) -> str:
-    """Chốt "Vợ" hay "Chồng" cho dòng (a) bằng CCCD, không đoán theo tên đệm.
-
-    Ưu tiên CCCD của CHÍNH thành viên đó; không đọc được thì lấy CCCD người viết đơn rồi đảo vai. Cả hai
-    đều không có → trả nguyên nhãn in trên đơn để cán bộ tự chọn, TUYỆT ĐỐI không mặc định "Vợ".
-    """
-    gender = _gender_from_cccd(member_identity)
-    if gender:
-        return "Chồng" if gender == "Nam" else "Vợ"
-    applicant_gender = _gender_from_cccd(applicant_identity)
-    if applicant_gender:
-        return "Vợ" if applicant_gender == "Nam" else "Chồng"
-    return _QUANHE_LABEL_GOC
-
-
-def _resolve_quan_he(raw: str | None, member_identity: Any, applicant_identity: Any) -> str | None:
+def _resolve_quan_he(raw: str | None) -> str | None:
     """Chỉ can thiệp dòng vợ/chồng; "Con", "Con dâu", "Cháu"… do người dân tự viết nên giữ nguyên."""
     text = _text(raw)
     if not text:
         return None
     if _fold(text) in _QUANHE_VO_CHONG_MO_HO:
-        return _quan_he_vo_chong(member_identity, applicant_identity)
+        return _QUANHE_LABEL_GOC
     return text
 
 
@@ -296,8 +282,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # --- Nhân thân (chính chủ: người nộp = người viết đơn) ---
     name = _text(values.get("NguoiNop_HoTen"))
     identity = _identity(values.get("NguoiNop_SoDinhDanh"))
+    # Ô ngày sinh chỉ nhận ngày đủ; đơn thường chỉ có năm sinh → bỏ trống, không ghép ngày/tháng.
     birthday = _date(values.get("NguoiNop_NgaySinh"))
-    gender = _text(values.get("NguoiNop_GioiTinh"))
+    if birthday and not re.fullmatch(r"\d{2}/\d{2}/\d{4}", birthday):
+        birthday = None
+    # Chữ số thứ 4 của CCCD 12 số mã hoá giới tính → tất định hơn giới tính LLM đọc.
+    gender = _gender_from_cccd(identity) or _text(values.get("NguoiNop_GioiTinh"))
     issue_date = _date(values.get("NguoiNop_NgayCap"))
     issue_agency = _issuer(values.get("NguoiNop_NoiCap"))
     phone = _phone(values.get("NguoiNop_DienThoai"))
@@ -364,10 +354,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             add(f"{base}[identityNumber1]", tv_identity)
             add(f"{base}[identityDate]", _date(_item_text(tv, "ngayCap", "identityDate")))
             add(f"{base}[namsanxuat]", _item_text(tv, "noiCap", "namsanxuat"))         # ⚠ = Nơi cấp.
-            # ⚠ = Quan hệ. Dòng vợ/chồng chốt lại bằng CCCD (xem _quan_he_vo_chong).
-            add(f"{base}[namsanxuat1]", _resolve_quan_he(
-                _item_text(tv, "quanHe", "moiQuanHe", "namsanxuat1"), tv_identity, identity
-            ))
+            # ⚠ = Quan hệ. Dòng vợ/chồng giữ nhãn gốc (xem _resolve_quan_he).
+            add(f"{base}[namsanxuat1]", _resolve_quan_he(_item_text(tv, "quanHe", "moiQuanHe", "namsanxuat1")))
 
     # === Phần III.2: thực trạng nhà ở + cam đoan ===
     add("data[thucTrang]", _thuc_trang(values.get("Don_ThucTrangNhaO")))

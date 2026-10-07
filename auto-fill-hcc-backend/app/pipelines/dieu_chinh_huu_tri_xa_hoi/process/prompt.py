@@ -85,7 +85,8 @@ QUY TẮC TỪNG FIELD:
     Nếu cùng ảnh có chữ "BỘ CÔNG AN" ở con dấu/logo thì phải bỏ qua chữ đó, không được trả Bộ Công an.
   + Chỉ thẻ "CĂN CƯỚC" mẫu mới, không có chữ "CÔNG DÂN" trong tiêu đề và ghi cơ quan Bộ Công an,
     mới trả "Bộ Công an".
-- DienThoai: chỉ lấy số điện thoại nằm trong đúng mục của chủ thể; không dùng số người kia.
+- DienThoai: chỉ lấy số điện thoại nằm trong đúng mục của chủ thể; không dùng số người kia. Trả CHỈ chữ số,
+  bỏ mọi dấu chấm/khoảng trắng/gạch ngăn cách nhóm số.
 - QuocTich: chỉ trả khi giấy tờ ghi rõ.
 - NoiCuTru trả object {quocGia,tinh,xa,diaChi}; xa chỉ là tên xã/phường/thị trấn, không chứa tiền tố;
   diaChi chỉ là số nhà/khu/xóm/thôn/bản/tổ, không lặp xã/huyện/tỉnh.

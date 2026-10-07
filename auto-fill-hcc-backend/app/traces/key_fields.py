@@ -71,7 +71,7 @@ _KHAI_TU = [
 _THAY_DOI_HO_TICH = [
     # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package cai_chinh_dvc_moi).
     "citizenQuanhevsngcaichinhhotich1",
-    "citizenNDKHoTen", "citizenNDKNgaysinh", "citizenNDKGioitinh", "citizenNDKSodinhdanh",
+    "citizenNDKHoTen", "citizenNDK_NgaySinh", "citizenNDKGioitinh", "citizenNDKSodinhdanh",
     "citizenViecDangKy", "citizenLoainghiepvu", "citizenTTSodangkyhosogoc", "citizenTTngayDangKyHSGoc",
     "citizenTTNoidangkyhosogoc", "citizenTTNoidungdk", "citizenLydothaydoi",
 ]  # 12

@@ -13,6 +13,8 @@ FIELD = "account_settings"
 DEFAULTS: dict[str, object] = {
     # Đổi tên tệp theo loại giấy tờ khi đính kèm lên cổng (extension quyết định tên tệp).
     "renameAttachmentFiles": True,
+    # Handfree: lấy người nộp theo tờ khai (bỏ so khớp tài khoản đăng nhập) → options.submitterMode của pipeline.
+    "submitterFromDeclaration": False,
 }
 
 

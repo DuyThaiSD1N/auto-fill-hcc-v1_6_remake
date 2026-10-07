@@ -196,7 +196,7 @@ def test_to_khai_lech_tai_khoan_thi_canh_bao_cong_chan():
     })
 
     assert _values(fields)["CongDan_tenCongDan"] == "Hoàng Thị Thử"
-    assert any("lệch là bị chặn" in w and "Người nộp = chủ hồ sơ" in w for w in warnings)
+    assert any("lệch là bị chặn" in w and "Lấy người nộp theo tờ khai" in w for w in warnings)
 
 
 def test_to_khai_khong_xac_dinh_duoc_ai_thi_bo_trong():
