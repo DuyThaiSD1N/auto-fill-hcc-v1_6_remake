@@ -1333,6 +1333,26 @@ async function tickAttpRowCheckbox(row) {
   }
 }
 
+// Cổng tick sẵn MỌI dòng (dvc.moc Bộ Xây dựng) → dòng không đính bị coi là bắt buộc khi chuyển bước. BE gửi
+// untickUnplannedRows → bấm "Chọn/Bỏ chọn tất cả" tới khi không còn dòng tick (ô đang lửng thì lần 1 tick hết,
+// lần 2 bỏ hết). Đã có dòng mang tệp (bấm Đính kèm lần 2) thì KHÔNG bấm: bỏ chọn tất cả bỏ tick cả dòng đó.
+async function uncheckAllAttpRows() {
+  const rows = findAttachmentRows();
+  if (!rows.length || rows.some((row) => attpRowAttachedFingerprints(row).length)) return false;
+  const header = document.querySelector(".check-all-checkbox mat-checkbox, .check-all-checkbox input[type='checkbox']");
+  if (!header) return false;
+  const anyRowChecked = () => findAttachmentRows().some((row) => {
+    const cell = row.cells?.[1] || row.cells?.[0] || row;
+    const cb = cell.querySelector('input[type="checkbox"]') || row.querySelector('input[type="checkbox"]');
+    return !!cb?.checked;
+  });
+  for (let i = 0; i < 2 && anyRowChecked(); i++) {
+    (header.querySelector("label") || header).click();
+    await sleep(300);
+  }
+  return !anyRowChecked();
+}
+
 async function setAttpRowLoaiBan(row, loaiBan) {
   const want = foldChoiceText(loaiBan || ""); // "ban chinh" | "ban sao" | "scan tep tin"
   if (!want) return;
@@ -1395,6 +1415,7 @@ async function attachFilesByAttpRow(payloadFiles, attachments) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(item);
   }
+  if (attachments.some((item) => item.untickUnplannedRows)) await uncheckAllAttpRows();
   for (const items of groups.values()) {
     const first = items[0];
     const row = await waitFor(

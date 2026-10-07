@@ -13,6 +13,7 @@
     "idle"
   ],
   "host_permissions": [
+    "http://localhost:12005/*",
     "https://trolyhoso-hcc-admin.tiengnoi.vn/*",
     "https://trolyhoso-hcc-admin.vnekyc.vn/*"
   ],

@@ -89,5 +89,6 @@ test("kết thúc phiên báo lý do để BE đóng sổ hồ sơ dở", () => 
 test("nói miệng 'làm thủ tục khác' cũng mở phiên mới như bấm chip", () => {
   // Một conversation = một hồ sơ; đường nói-miệng trước đây reset tại chỗ nên hai hồ sơ
   // dùng chung một phiên và mốc thời gian bị trộn.
-  assert.match(sidebar, /a\.type === "new_conversation"[\s\S]{0,300}?returnToStart\("manual"\)/);
+  // Cùng đường với chip "Chọn/Làm thủ tục khác": phiên mới + mở thẳng danh sách thủ tục.
+  assert.match(sidebar, /a\.type === "new_conversation"[\s\S]{0,300}?returnToStart\("new_procedure"\)/);
 });

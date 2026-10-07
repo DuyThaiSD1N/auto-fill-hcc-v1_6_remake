@@ -27,7 +27,7 @@
             <!-- Số phiên bản do sidebar.js điền từ manifest. Bản cũ ghi cứng "v1.2 · 01/09/2026" trong khi
                  extension đã lên 1.8 — đúng chỗ duy nhất cán bộ nhìn để biết máy đang chạy bản nào.
                  Ngày phát hành vẫn ghi tay ở data-ngay (tests/header-release-layout.test.js kiểm). -->
-            <span class="release-meta" id="release-meta" data-ngay="05/10/2026"></span>
+            <span class="release-meta" id="release-meta" data-ngay="07/10/2026"></span>
             <!-- Chỉ hiện khi agent đã tải bản mới mà Trợ lý chưa nạp — xem khối "Nút Cập nhật" trong sidebar.js. -->
             <button id="cap-nhat-btn" class="cap-nhat-btn" type="button" hidden>⬆ Cập nhật</button>
           </div>
@@ -143,6 +143,23 @@
         </button>
       </div>
 
+      <!-- Lấy người nộp theo tờ khai: cài đặt THEO TÀI KHOẢN lưu ở BE (/api/v1/account/settings); BE đọc khi
+           chạy pipeline → options.submitterMode. Khoá tới khi đọc được giá trị từ BE như công tắc đổi tên tệp. -->
+      <div class="settings-card">
+        <div class="settings-copy">
+          <label id="submitter-declaration-label" for="submitter-declaration-switch">Lấy người nộp theo tờ khai</label>
+          <p id="submitter-declaration-description">
+            Tắt (mặc định): người nộp lấy theo tài khoản đăng nhập trên cổng, chỉ điền khi giấy tờ khớp đúng người.
+            Bật: lấy người nộp theo tờ khai trong hồ sơ. Chỉ thủ tục đã hỗ trợ. Lưu theo tài khoản.
+          </p>
+        </div>
+        <button id="submitter-declaration-switch" class="settings-switch" type="button" role="switch"
+                aria-checked="false" aria-labelledby="submitter-declaration-label"
+                aria-describedby="submitter-declaration-description" disabled>
+          <span class="settings-switch-knob"></span>
+        </button>
+      </div>
+
       <!-- Ưu tiên Scan tại quầy: bật thì bước tải giấy TỰ vào Scan tại quầy (bỏ câu hỏi QR/Scan).
            FE-only — xem preferScan trong sidebar.js. -->
       <div class="settings-card">
@@ -230,6 +247,17 @@
     <!-- Trạng thái máy quét tại quầy (scan-bridge agent) — chỉ hiện khi có gì để nói.
          Xem setScanAgentStatus trong sidebar.js. -->
     <div class="scan-agent-status" id="scan-agent-status" hidden></div>
+
+    <!-- Khung đang nghe giọng nói — hiện khi micro mở (setMicUI trong sidebar.js). -->
+    <div class="voice-panel" id="voice-panel" role="region" aria-label="Nhập bằng giọng nói" hidden>
+      <div class="vp-top">
+        <span class="vp-mic" aria-hidden="true">🎙</span>
+        <span class="vp-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span class="vp-status" id="vp-status">Đang nghe… công dân hãy nói</span>
+        <button type="button" class="vp-close" id="vp-close" aria-label="Tắt giọng nói" title="Tắt giọng nói">✕</button>
+      </div>
+      <div class="vp-interim" id="vp-interim" aria-live="polite"></div>
+    </div>
 
     <!-- Footer: camera + mic + ô nhập + gửi -->
     <footer class="bot-f">

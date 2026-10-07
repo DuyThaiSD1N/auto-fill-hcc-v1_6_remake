@@ -60,6 +60,8 @@
   // (khoá phải trùng chữ với ACCOUNT_SETTINGS_KEY bên đó). Thiếu bản sao = đổi tên (hành vi cũ).
   const ACCOUNT_SETTINGS_KEY = "tlnd_account_settings";
   let renameAttachmentFiles = true;
+  // "Lấy người nộp theo tờ khai" — chỉ BE dùng (đọc từ tài khoản khi chạy pipeline), extension chỉ bật/tắt.
+  let submitterFromDeclaration = false;
   let accountSettingsLoaded = false;
   // Reply đang render có phải LIVE (không phải khôi phục phiên noTts) — để renderDocOptions chỉ
   // TỰ chọn Scan khi là lượt thật, khôi phục phiên thì không tự bấm lại.
@@ -105,6 +107,9 @@
     // Có engine trang nộp một trang của Cổng DVC quốc gia (content/fill-surveyjs.js +
     // content/tu-phap-moi.js). Thiếu cờ → BE báo cần cập nhật cho 4 thủ tục hộ tịch đã sang trang mới.
     supportsTuPhapMoi: true,
+    // Công dân chọn một nút bằng lời → BE nhờ bấm hộ đúng nút đó (press_chip) hoặc báo nhóm nút đã
+    // dùng (chip_used). Thiếu cờ → BE chạy thẳng lệnh của nút như trước.
+    supportsVoiceChips: true,
   });
 
   const BRAND_ICON_URL = chrome.runtime.getURL("assets/icons/icon-128.png");
@@ -122,8 +127,13 @@
     $messages.scrollTop = $messages.scrollHeight;
     return el;
   }
-  const addUserText = (t, hm) => addBubble("user", window.escapeHtml(t)
-    + (hm ? `<span class="u-hm">${window.escapeHtml(hm)}</span>` : ""));
+  // voice=true: câu nhận từ giọng nói → 🎙 + chữ nghiêng, cán bộ thấy máy nghe ra chữ gì.
+  const addUserText = (t, hm, voice = false) => {
+    const el = addBubble("user", window.escapeHtml(t)
+      + (hm ? `<span class="u-hm">${window.escapeHtml(hm)}</span>` : ""));
+    if (voice) el.classList.add("voice");
+    return el;
+  };
   // Tông màu card suy từ emoji mở đầu (✅ mốc xong / ⚠️ cảnh báo / ℹ️ giải thích) —
   // tất định theo text nên khôi phục phiên render y hệt, BE không cần đổi hợp đồng.
   function botTone(md) {
@@ -740,6 +750,10 @@
     if (!opts?.noTts) updatePipeFromState(prevState, d);
   }
 
+  // Đang "bấm hộ" một nút theo lời nói (press_chip): câu nói đã hiện thành bong bóng → cú bấm này
+  // không thêm bong bóng nhãn nút nữa.
+  let chipPressByVoice = false;
+
   function renderChips(chips) {
     // Ẩn nút hoàn thành thủ công còn sót trong last_reply của phiên cũ. Luồng mới chỉ
     // kết thúc khi watcher đọc được xác nhận nộp thành công từ chính cổng dịch vụ công.
@@ -793,14 +807,16 @@
           $fileInput.click();
           return;
         }
+        const byVoice = chipPressByVoice;
+        chipPressByVoice = false;
         // 1 nhóm chip chỉ bấm 1 lần — disable cả nhóm rồi gửi.
         wrap.querySelectorAll("button").forEach((x) => (x.disabled = true));
         // Nút chốt giấy tờ được chuyển sang holder riêng dưới checklist; vẫn khoá cả
         // chính nó lẫn nhóm nút phụ ban đầu để không bấm đổi cách gửi khi đang xử lý.
         b.closest(".chips")?.querySelectorAll("button").forEach((x) => (x.disabled = true));
-        // Làm thủ tục khác → xóa phiên thật và về màn bắt đầu.
-        if (c.send === "__action:new_procedure") { resetConversation(); return; }
-        addUserText(c.label, c.labelHmong);
+        // Chọn/Làm thủ tục khác → xóa phiên thật rồi mở ngay danh sách thủ tục.
+        if (c.send === "__action:new_procedure") { changeProcedure(); return; }
+        if (!byVoice) addUserText(c.label, c.labelHmong);
         if (["__action:logout_citizen", "__action:continue_dossiers"].includes(c.send)) {
           void (async () => {
             await claimCompletionChoice();
@@ -1406,6 +1422,20 @@
     $decline.addEventListener("click", () => finish(false, viLabel($decline, "Không đồng ý · Tự nhập"),
       card.hmong?.decline_label));
     addNode(el);
+  }
+
+  // Công dân trả lời thẻ xin phép BẰNG LỜI: thẻ đổi theo (đồng ý → tích đủ ô) và khoá lại, kèm dòng
+  // ghi nhận, để không còn nút bấm được ở một câu hỏi đã trả lời xong.
+  function markConsentVerbal(accepted) {
+    const el = [...document.querySelectorAll(".consent-card")].pop();
+    if (!el || el.dataset.answered) return;
+    el.dataset.answered = "1";
+    if (accepted) el.querySelectorAll('input[type="checkbox"]').forEach((b) => { b.checked = true; });
+    el.querySelectorAll("button, input").forEach((x) => { x.disabled = true; });
+    const note = document.createElement("div");
+    note.className = "cverbal";
+    note.textContent = accepted ? "🎙 Công dân đã đồng ý bằng lời nói" : "🎙 Công dân đã từ chối bằng lời nói";
+    el.querySelector(".cactions")?.after(note);
   }
 
   // Bỏ dấu để lọc tìm kiếm (khớp cả khi gõ không dấu). Dùng chung cho sheet "tất cả thủ tục".
@@ -4046,7 +4076,7 @@
       } else if (a.type === "new_conversation") {
         // Công dân NÓI "làm thủ tục khác" (chip đã tự xử ở renderChips). Một conversation =
         // một hồ sơ, nên đi đúng luồng của chip: xoá phiên rồi mở phiên mới.
-        await returnToStart("manual");
+        await returnToStart("new_procedure");
         return;
       } else if (a.type === "navigate" && a.url) {
         // Phải chờ storage ghi xong trước khi điều hướng; nếu iframe bị hủy sớm ở lượt đầu,
@@ -4114,6 +4144,25 @@
         setTimeout(() => { void runGuidedNext(phase, expect); }, 0);
       } else if (a.type === "guided_submit") {
         setTimeout(() => { void runGuidedSubmit(); }, 0);
+      } else if (a.type === "press_chip" && a.send) {
+        // Công dân chọn nút bằng lời → bấm đúng nút đó (nút còn sống gần nhất) để đi cùng đường
+        // với bấm tay (đọc ô trên trang, ngữ cảnh trang…). setTimeout: không chạy lượt hỏi mới
+        // ngay trong runActions.
+        setTimeout(() => {
+          const btn = [...document.querySelectorAll(".chip")]
+            .filter((b) => b.dataset.send === a.send && !b.disabled).pop();
+          if (!btn) return;
+          chipPressByVoice = true;
+          btn.click();
+        }, 0);
+      } else if (a.type === "chip_used" && a.send) {
+        document.querySelectorAll(".chip").forEach((b) => {
+          if (b.dataset.send !== a.send) return;
+          (b.closest(".chips") || b.parentElement)?.querySelectorAll("button")
+            .forEach((x) => { x.disabled = true; });
+        });
+      } else if (a.type === "consent_verbal") {
+        markConsentVerbal(!!a.accepted);
       } else if (a.type === "select_result_method") {
         setTimeout(() => { void runSelectResultMethod(a); }, 0);
       } else if (a.type === "attach_authorization_doc") {
@@ -4388,7 +4437,9 @@
     if (busy) { pendingReturnReason = reason; return; }
     endingSession = true;
     try {
-      const shouldOpenProcedurePicker = reason === "continue";
+      // "new_procedure" (Chọn/Làm thủ tục khác): công dân vẫn ở quầy, chỉ đổi thủ tục → mở thẳng
+      // danh sách thủ tục, không về màn giới thiệu, không đưa trang cổng về trang chủ.
+      const shouldOpenProcedurePicker = reason === "continue" || reason === "new_procedure";
       stopCompletionLogoutRuntime();
       completionLogoutState = null;
       await writeCompletionLogoutState(null);
@@ -4472,6 +4523,11 @@
     await returnToStart(completionLogoutState ? "continue" : "manual");
   }
   document.getElementById("reset-btn")?.addEventListener("click", resetConversation);
+
+  async function changeProcedure() {
+    if (busy) return;
+    await returnToStart("new_procedure");
+  }
 
   $startBtn?.addEventListener("click", async () => {
     if (busy || endingSession) return;
@@ -4657,18 +4713,35 @@
     });
   }
 
-  function setMicUI(listening, label) {
+  const $voicePanel = document.getElementById("voice-panel");
+  const $vpStatus = document.getElementById("vp-status");
+  const $vpInterim = document.getElementById("vp-interim");
+  function setMicUI(listening, label, connecting = false) {
     voiceListening = listening;
     $micBtn?.classList.toggle("listening", listening);
+    if (listening && $voicePanel) {
+      // Micro đang mở → khung nghe (mic nhịp + sóng) thay cho dòng trạng thái nhỏ: công dân
+      // nhìn là biết máy đang nghe, và có nút ✕ để tắt ngay tại đó.
+      $voicePanel.hidden = false;
+      $voicePanel.classList.toggle("connecting", connecting);
+      $vpStatus.textContent = label || "Đang nghe… công dân hãy nói";
+      $vpInterim.textContent = "";
+      setStatus("");
+      return;
+    }
+    if ($voicePanel) { $voicePanel.hidden = true; $vpInterim.textContent = ""; }
     if (label) setStatus(label); else setStatus("");
   }
+  document.getElementById("vp-close")?.addEventListener("click", () => {
+    if (handsfree) setHandsfree(false); else stopVoice();
+  });
 
   async function startVoice() {
     // asr-stop phát event "stopped" bất đồng bộ; nếu đang ở Cài đặt, vòng rảnh tay
     // không được tự nối lại micro cho tới khi người dùng quay về hội thoại.
     if (document.body.classList.contains("settings-mode") || !voiceCfg.asr || voiceListening) return;
     stopReplyTts(); // đang đọc mà mở mic = ngắt lời (barge-in)
-    setMicUI(true, "🎤 Đang kết nối…");
+    setMicUI(true, "Đang kết nối micro…", true);
     const accessToken = await window.tlndAuth?.getAccessToken?.();
     // Trong lúc refresh, người dùng có thể dừng mic hoặc mở Cài đặt.
     if (!voiceListening || document.body.classList.contains("settings-mode")) return;
@@ -4751,7 +4824,7 @@
       if (msg.event === "partial") ratingNoteSink(msg.text || "", false);
       else if (msg.event === "final") { setMicUI(false); ratingNoteSink((msg.text || "").trim(), true); }
       else if (msg.event === "state") {
-        if (msg.state === "listening") setMicUI(true, "🎤 Đang nghe ý kiến…");
+        if (msg.state === "listening") setMicUI(true, "Đang nghe ý kiến…");
         else if (msg.state === "stopped") setMicUI(false);
       } else if (msg.event === "error") {
         setMicUI(false);
@@ -4761,7 +4834,7 @@
       return;
     }
     if (msg.event === "state") {
-      if (msg.state === "listening") setMicUI(true, "🎤 Đang lắng nghe… công dân nói đi ạ");
+      if (msg.state === "listening") setMicUI(true, "Đang nghe… công dân hãy nói");
       else if (msg.state === "stopped") {
         // Server đóng mà không có final (không nghe thấy gì).
         setMicUI(false);
@@ -4773,13 +4846,14 @@
       }
     } else if (msg.event === "partial") {
       $input.value = msg.text || "";
+      if ($vpInterim) $vpInterim.textContent = msg.text ? `“${msg.text}…”` : "";
     } else if (msg.event === "final") {
       setMicUI(false);
       $input.value = "";
       const text = (msg.text || "").trim();
       if (text) {
         emptyTurns = 0;
-        addUserText(text);
+        addUserText(text, "", true);
         ask(text, "voice");
       } else if (handsfree) {
         emptyTurns += 1;
@@ -5019,6 +5093,7 @@
   const $attachSplitSwitch = document.getElementById("attach-split-switch");
   const $preferScanSwitch = document.getElementById("prefer-scan-switch");
   const $renameFilesSwitch = document.getElementById("rename-files-switch");
+  const $submitterDeclarationSwitch = document.getElementById("submitter-declaration-switch");
   const $attachModeMerge = document.getElementById("attach-mode-merge");
   const $attachModeSplit = document.getElementById("attach-mode-split");
   const $panelModePush = document.getElementById("panel-mode-push");
@@ -5147,10 +5222,24 @@
     $renameFilesSwitch.disabled = !accountSettingsLoaded;
   }
 
+  function renderSubmitterDeclarationSetting() {
+    if (!$submitterDeclarationSwitch) return;
+    $submitterDeclarationSwitch.classList.toggle("on", submitterFromDeclaration);
+    $submitterDeclarationSwitch.setAttribute("aria-checked", submitterFromDeclaration ? "true" : "false");
+    $submitterDeclarationSwitch.disabled = !accountSettingsLoaded;
+  }
+
+  function renderAccountSettings() {
+    renderRenameFilesSetting();
+    renderSubmitterDeclarationSetting();
+  }
+
   function storeAccountSettings(settings) {
     renameAttachmentFiles = settings?.renameAttachmentFiles !== false;
+    // BE cũ chưa có khoá này → coi như tắt (người nộp theo tài khoản, hành vi cũ).
+    submitterFromDeclaration = settings?.submitterFromDeclaration === true;
     accountSettingsLoaded = true;
-    renderRenameFilesSetting();
+    renderAccountSettings();
     return new Promise((resolve) => {
       chrome.storage.local.set({ [ACCOUNT_SETTINGS_KEY]: settings || {} }, () => {
         void chrome.runtime.lastError;
@@ -5166,31 +5255,36 @@
     } catch (e) {
       console.warn("[TLND] Không tải được cài đặt tài khoản:", e);
       accountSettingsLoaded = false;
-      renderRenameFilesSetting();
+      renderAccountSettings();
     }
   }
 
   // Đăng xuất: bỏ bản sao để cài đặt của cán bộ trước không áp sang người đăng nhập sau.
   function forgetAccountSettings() {
     renameAttachmentFiles = true;
+    submitterFromDeclaration = false;
     accountSettingsLoaded = false;
-    renderRenameFilesSetting();
+    renderAccountSettings();
     chrome.storage.local.remove([ACCOUNT_SETTINGS_KEY], () => { void chrome.runtime.lastError; });
   }
 
-  async function saveRenameAttachmentFiles(value) {
+  async function saveAccountSetting(changes) {
     if (!accountSettingsLoaded) return;
     accountSettingsLoaded = false; // khoá trong lúc lưu, chống bấm dồn
-    renderRenameFilesSetting();
+    renderAccountSettings();
     try {
-      await storeAccountSettings(await api.updateAccountSettings({ renameAttachmentFiles: value === true }));
+      await storeAccountSettings(await api.updateAccountSettings(changes));
       announceAttachmentSettingsSaved();
     } catch (e) {
       console.warn("[TLND] Không lưu được cài đặt tài khoản:", e);
       accountSettingsLoaded = true;
-      renderRenameFilesSetting();
+      renderAccountSettings();
       if ($settingsSaved) $settingsSaved.textContent = "Chưa lưu được cài đặt.";
     }
+  }
+
+  function saveRenameAttachmentFiles(value) {
+    return saveAccountSetting({ renameAttachmentFiles: value === true });
   }
 
   function savePreferScan(value) {
@@ -5360,6 +5454,10 @@
   $renameFilesSwitch?.addEventListener("click", () => {
     markActivity();
     void saveRenameAttachmentFiles(!renameAttachmentFiles);
+  });
+  $submitterDeclarationSwitch?.addEventListener("click", () => {
+    markActivity();
+    void saveAccountSetting({ submitterFromDeclaration: !submitterFromDeclaration });
   });
   $attachSplitSwitch?.addEventListener("click", () => {
     markActivity();

@@ -431,6 +431,91 @@ function collectFormContext() {
   };
 }
 
+// Tờ khai eForm Bộ Tư pháp (vd Xác nhận TTHN): mục I cổng đổ từ VNeID nhưng nhiều ô (ngày sinh,
+// dân tộc, nơi cư trú) là mã danh mục/ô tách ngày, nên đọc từ đúng API cổng dùng để nạp dữ liệu đó
+// (cùng origin, cookie phiên). CHỈ nhặt các khoá nhân thân làm mốc đối chiếu ở BE; phần còn lại
+// (SĐT, cha mẹ, hộ khẩu...) bỏ. API lỗi → đọc các ô mục I đang hiện trên DOM.
+const MOJ_EFORM_HOST = "tokhaidientu.moj.gov.vn";
+const MOJ_ACCOUNT_TIMEOUT_MS = 3000;
+// Mỗi lượt chat đều thu formContext; dữ liệu tài khoản không đổi trong một tờ khai nên chỉ gọi API
+// một lần cho mỗi URL, tránh cộng thêm độ trễ mạng vào từng câu trả lời.
+const mojAccountCache = new Map();
+
+function parseMaybeJson(value) {
+  if (typeof value !== "string") return value;
+  try { return JSON.parse(value); } catch { return null; }
+}
+
+function readEformDate(name) {
+  const d = readInputLikeValue(`${name}-day`);
+  const m = readInputLikeValue(`${name}-month`);
+  const y = readInputLikeValue(`${name}-year`);
+  return d && m && y ? `${d}/${m}/${y}` : readInputLikeValue(`${name}-name-date-input`);
+}
+
+function withoutEmpty(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v && (typeof v !== "object" || Object.values(v).some(Boolean))));
+}
+
+async function collectMojAccountContext() {
+  // TTHN có mục I người yêu cầu (HoVaTenC); tờ khai kết hôn không có mục này (chỉ bên nam/nữ) nhưng
+  // getDataEform vẫn trả thông tin chủ tài khoản → họ tên/số cũng lấy từ API.
+  if (location.host !== MOJ_EFORM_HOST
+    || !document.querySelector('[name="HoVaTenC"], [name="HoTenBenNam"], [name="HoTenBenNu"]')) return {};
+  if (mojAccountCache.has(location.href)) return mojAccountCache.get(location.href);
+  const fromDom = {
+    applicantBirthday: readEformDate("NgaySinhC"),
+    applicantIdDate: readEformDate("NgayCapDDC"),
+    applicantIdIssuer: readInputLikeValue("NoiCapDDC"),
+  };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), MOJ_ACCOUNT_TIMEOUT_MS);
+  try {
+    // Cổng gửi Uri = URL tờ khai bỏ tham số "mode".
+    const uri = new URL(location.href);
+    uri.searchParams.delete("mode");
+    const res = await fetch(`https://${MOJ_EFORM_HOST}/api/eform-service/eform/getDataEform`, {
+      method: "POST",
+      credentials: "include",
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        clienttype: "APP",
+        mahethong: "KPDL",
+        "csrf-session": "undefined",
+        "csrf-token": "undefined",
+      },
+      body: JSON.stringify({ Uri: uri.toString() }),
+    });
+    if (!res.ok) return withoutEmpty(fromDom);
+    const valueForm = parseMaybeJson((await res.json())?.result?.valueForm);
+    const body = parseMaybeJson(valueForm?.Body ?? valueForm?.body);
+    if (!body || typeof body !== "object") return withoutEmpty(fromDom);
+    const pick = (key) => String(body[key] ?? "").trim();
+    // Dân tộc/giới tính/tỉnh/xã là MÃ danh mục của cổng — BE giải mã.
+    const account = withoutEmpty({
+      applicantFullname: pick("HoVaTenC"),
+      applicantIdentityNumber: pick("SoDinhDanhC") || pick("SoGiayToDinhDanhC"),
+      applicantBirthday: pick("NgaySinhC") || fromDom.applicantBirthday,
+      applicantGender: pick("GioiTinhC"),
+      applicantEthnicity: pick("DanTocC"),
+      applicantIdDate: pick("NgayCapDDC") || fromDom.applicantIdDate,
+      applicantIdIssuer: pick("NoiCapDDC") || fromDom.applicantIdIssuer,
+      applicantAddress: {
+        tinh: pick("TT_TinhThanhC"),
+        xa: pick("TT_PhuongXaC"),
+        diaChi: pick("TT_SoNhaToDanPhoC"),
+      },
+    });
+    mojAccountCache.set(location.href, account);
+    return account;
+  } catch {
+    return withoutEmpty(fromDom);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function detectCombinedBirthFormVariant() {
   const hasNamedControl = (name) => !!document.querySelector(`[name="${CSS.escape(name)}"]`);
   const birthSignature = ["HoTenKS", "HoTenMeKS", "HoTenChaKS"];
@@ -1299,6 +1384,49 @@ async function ensureStandardDatagridRows(fields) {
   }
 }
 
+// Field `clear`: BE xoá giá trị cổng đổ sẵn (vd ngày sinh từ tài khoản VNeID khi người nộp theo tờ khai không
+// có ngày sinh đầy đủ). Ô vừa xoá là ô TRỐNG nên không mang viền xanh; `markEmpty` → tô đỏ để cán bộ nhập tay.
+// Bản copy của auto-fill-hcc-extension/content.js.
+function clearStandardDate(el) {
+  if (!el) return false;
+  const group = standardMarkTarget(el);
+  const visible = group?.querySelector?.('input:not([type="hidden"])');
+  setNativeValue(el, "", { typing: false, commit: false });
+  if (visible && visible !== el) setNativeValue(visible, "", { typing: true, commit: true });
+  else el.dispatchEvent(new Event("blur", { bubbles: true }));
+  return !String(el.value || "").trim();
+}
+
+function clearStandardInput(el) {
+  if (!el) return false;
+  setNativeValue(el, "", { typing: true, commit: true });
+  return !String(el.value || "").trim();
+}
+
+function markStandardCleared(f, candidates, occurrence) {
+  const el = findStandardInputForField(f, candidates, occurrence) || findStandardSelect(candidates, occurrence);
+  const target = standardMarkTarget(el);
+  if (!target?.classList) return;
+  target.classList.remove("autofill-filled");
+  if (f.markEmpty) target.classList.add("autofill-not-filled");
+}
+
+// Field `enableInput`: ô cổng khoá (disabled) theo tài khoản VNeID nhưng người nộp theo tờ khai là người
+// khác → bỏ disabled ở MỌI input của component (ô ngày Form.io = input ẩn flatpickr + ô hiển thị) rồi
+// mới ghi, để cán bộ còn sửa được khi OCR sai. Bản copy của auto-fill-hcc-extension/content.js.
+function enableStandardFieldInputs(f, candidates, occurrence) {
+  const el = findStandardInputForField(f, candidates, occurrence) || findStandardSelect(candidates, occurrence);
+  const group = el?.closest?.(".formio-component") || standardMarkTarget(el);
+  const inputs = group?.querySelectorAll ? Array.from(group.querySelectorAll("input, select, textarea")) : [];
+  if (el && !inputs.includes(el)) inputs.push(el);
+  for (const node of inputs) {
+    if (!node.disabled && !node.hasAttribute("disabled")) continue;
+    node.disabled = false;
+    node.removeAttribute("disabled");
+    node.setAttribute("data-autofill-enabled-disabled", "true");
+  }
+}
+
 async function fillFormStandard(fields) {
   injectAutofillStyles();
   clearAutofillMarks();
@@ -1311,6 +1439,7 @@ async function fillFormStandard(fields) {
   for (const f of orderedFields) {
     const candidates = fieldCandidates(f);
     const occurrence = standardOccurrence(f.occurrence);
+    if (f.enableInput) enableStandardFieldInputs(f, candidates, occurrence);
     // comp "dom-expect": ô extension CHỊU TRÁCH NHIỆM điền nhưng BE không có dữ liệu → KHÔNG điền, chỉ
     // TÔ ĐỎ nếu ô đang trống (để user biết cần điền tay), kể cả khi form không đánh dấu ô đó bắt buộc.
     // Không tính vào filled/notFound.
@@ -1355,17 +1484,19 @@ async function fillFormStandard(fields) {
         }
         // dom-datetime: ô lưu ISO có giờ (vd tuNgay/denNgay) → fallback set ISO 00:00:00; dom-date: ô
         // dd/MM/yyyy (vd birthday) → fallback gõ dd/mm/yyyy. setDate (khi có instance) đúng cho cả hai.
-        ok = fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
+        ok = f.clear ? clearStandardDate(el) : fillStandardDate(el, f.value, { iso: f.comp === "dom-datetime" });
       } else if (f.comp === "dom-input" || f.comp === "raw") {
         const el = findStandardInputForField(f, candidates, occurrence) || await waitFor(() => findStandardInputForField(f, candidates, occurrence), 1000, 80);
         const postbackAddressInput = isPostbackAddressField(f);
-        ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
+        if (f.clear) ok = clearStandardInput(el);
+        else ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
       } else {
         const input = findStandardInputForField(f, candidates, occurrence);
         if (input) ok = fillStandardInput(input, f.value);
         else ok = await fillStandardSelectAny(findStandardSelect(candidates, occurrence), f.value, candidates, occurrence);
       }
 
+      if (ok && f.clear) markStandardCleared(f, candidates, occurrence);
       if (ok) result.filled++;
       else {
         failedFieldKeys.add(standardFieldIdentity(f));
@@ -1455,7 +1586,8 @@ async function stabilizeStandardAreaSelects(fields, result, failedFieldKeys) {
 // điền lại các ô text/date đang trống; lặp vài lần phòng postback muộn xoá tiếp.
 async function reapplyEmptyStandardTextFields(fields) {
   const SIMPLE = new Set(["dom-input", "dom-date", "dom-datetime", "raw"]);
-  const targets = fields.filter((f) => SIMPLE.has(f.comp) && !isAreaSelectField(f));
+  // Field `clear` CỐ Ý để trống — điền lại chuỗi rỗng chỉ làm markFilled tô xanh đè lên màu đỏ.
+  const targets = fields.filter((f) => SIMPLE.has(f.comp) && !isAreaSelectField(f) && !f.clear);
   if (!targets.length) return;
 
   for (const delay of [250, 600, 1000]) {
@@ -2172,8 +2304,11 @@ function handleFillMessage(msg, _sender, sendResponse) {
   if (!msg) return;
   if (msg.action === "collectFormContext") {
     if (!detectFormKind()) return; // all_frames: chỉ frame chứa form thật trả lời
-    sendResponse({ ok: true, formContext: collectFormContext() });
-    return;
+    const formContext = collectFormContext();
+    collectMojAccountContext()
+      .then((account) => sendResponse({ ok: true, formContext: { ...formContext, ...account } }))
+      .catch(() => sendResponse({ ok: true, formContext }));
+    return true;
   }
   if (msg.action !== "fillFields") return;
   const formKind = detectFormKind();
