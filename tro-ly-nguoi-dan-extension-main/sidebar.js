@@ -3476,9 +3476,23 @@
       const entry = await ensureFileBytes(sid, f.fid, f.name);
       const { entry: readEntry, dataUrl } = await readEntryToDataUrl(sid, f, entry);
       // Tên cán bộ đã sửa (tenHienThi) phải đi vào payload đính kèm, không chỉ hiện trên danh sách.
-      out.push({ name: tenHienThi(f) || readEntry.name, type: readEntry.type, dataUrl });
+      out.push({ name: tenHienThi(f) || readEntry.name, type: readEntry.type, dataUrl, fid: f.fid });
     }
     setStatus("");
+    return out;
+  }
+
+  /** Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): BE đã nén tệp vượt mức và để bản nén trong
+   *  phiên. `replaceFiles` = {fid gốc: {fid, name, type}} → tải bản nén thay vào đúng vị trí tệp gốc. */
+  async function applyShrunkFiles(sid, files, replaceFiles) {
+    if (!replaceFiles || typeof replaceFiles !== "object") return files;
+    const out = [];
+    for (const file of files) {
+      const r = replaceFiles[file.fid];
+      if (!r?.fid) { out.push(file); continue; }
+      const { dataUrl } = await readEntryToDataUrl(sid, { fid: r.fid, name: r.name }, null);
+      out.push({ ...file, name: r.name || file.name, type: r.type || "application/pdf", dataUrl });
+    }
     return out;
   }
 
@@ -4005,7 +4019,8 @@
         }, 10000);
       }
       setStatus("📎 Đang đính kèm giấy tờ vào hồ sơ…");
-      const raw = await fetchSessionFilesAsPayload(a.session_id || uploadSid);
+      const attachSid = a.session_id || uploadSid;
+      const raw = await applyShrunkFiles(attachSid, await fetchSessionFilesAsPayload(attachSid), a.replaceFiles);
       const { files, attachments } = await preparePdfPayload(raw, a.attachments);
       if (a.mode === "split" && supportsSplitAttach(a.procedure)) {
         const split = await runSplitAttachPlan(a, files, attachments);

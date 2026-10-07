@@ -628,6 +628,10 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
     stt1_virtual = conv.get("attach_plan_stt1_virtual")
     if stt1_virtual:
         action["stt1VirtualCopy"] = stt1_virtual
+    # Bản nén thay tệp gốc vượt dung lượng cổng: {fid gốc: {fid, name, type}}, extension tải theo fid trong phiên.
+    replace_files = conv.get("attach_plan_replace_files")
+    if replace_files:
+        action["replaceFiles"] = replace_files
     # Tách nhiều hồ sơ: các tab tách chạy khung hồ sơ phụ CHỈ ĐỌC — không nói chuyện với BE nên
     # không bao giờ nhận lệnh select_result_method của hồ sơ chính. Gửi sẵn lệnh gạt mặc định
     # theo đây để khung phụ tự gạt trên chính trang của nó khi tới bước nhận kết quả.

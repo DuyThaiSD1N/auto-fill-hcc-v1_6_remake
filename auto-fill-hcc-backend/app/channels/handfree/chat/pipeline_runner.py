@@ -8,6 +8,7 @@ Hợp đồng fields/attachments GIỮ NGUYÊN của auto-fill (docs/00 §4) —
 extension chạy không sửa.
 """
 import asyncio
+import base64
 import logging
 import time
 
@@ -132,13 +133,42 @@ def _note_result(rec, result: dict) -> None:
 
 def _session_files(sess: dict) -> list[dict]:
     """Dựng lại payload {name,type,dataUrl} từ file đã lưu trên disk theo phiên."""
-    out = []
+    return _session_files_with_fids(sess)[0]
+
+
+def _session_files_with_fids(sess: dict) -> tuple[list[dict], list[str]]:
+    """Như `_session_files`, kèm fid của từng phần tử (cùng thứ tự) để ánh xạ ngược fileIndex → tệp phiên."""
+    out, fids = [], []
     for f in sess.get("files", []):
         data_url = up_store.file_to_data_url(sess["_id"], f)
         if data_url:
             out.append({"name": f["name"], "type": f.get("type") or "image/jpeg",
                         "dataUrl": data_url, "role": ""})
-    return out
+            fids.append(f["fid"])
+    return out, fids
+
+
+async def _store_shrunk_files(sid: str, fids: list[str], replace_files: dict | None) -> dict | None:
+    """Bản nén của planner (`replaceFiles`, khóa = fileIndex) → lưu vào phiên, trả {fid gốc: {fid, name, type}}.
+
+    Extension trợ lý tự kéo tệp từ phiên theo fid, nên bản nén phải nằm trong phiên chứ không đi kèm lệnh
+    (lệnh được lưu vào hội thoại trên Mongo, nhét base64 vài MB vào đó là phình doc).
+    """
+    metas, by_source = [], {}
+    for index, item in (replace_files or {}).items():
+        i = int(index)
+        if not (0 <= i < len(fids)) or not item.get("dataUrl"):
+            continue
+        data_url = str(item["dataUrl"])
+        raw = base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
+        name = str(item.get("name") or "tai-lieu.pdf")
+        meta = {"fid": up_store.new_file_id(name), "name": name, "type": item.get("type") or "application/pdf",
+                "size": len(raw), "source_fid": fids[i]}
+        up_store.save_file_bytes(sid, meta["fid"], raw)
+        metas.append(meta)
+        by_source[fids[i]] = {k: meta[k] for k in ("fid", "name", "type")}
+    await up_store.set_shrunk_files(sid, metas)
+    return by_source or None
 
 
 async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
@@ -401,7 +431,7 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             attach_fn = get_attach_pipeline(procedure_key)
             if not sess or not attach_fn:
                 raise RuntimeError("Thiếu phiên hoặc pipeline đính kèm.")
-            raw_files = _session_files(sess)
+            raw_files, raw_fids = _session_files_with_fids(sess)
             files = [FileItem(**f) for f in raw_files]
         if not files:
             raise RuntimeError("Phiên không còn file nào.")
@@ -443,6 +473,9 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         async with mon.span("post.plan", procedure=procedure_key):
             result = await attach_fn(files, attach_options, session=None)
         _note_result(rec, result)
+        # Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): lấy bản nén ra khỏi result trước khi ghi trace.
+        async with mon.span("post.shrunk"):
+            replace_by_fid = await _store_shrunk_files(sid, raw_fids, result.pop("replaceFiles", None))
 
         conv = await conv_store.get(conv_id)
         if not conv:
@@ -458,6 +491,7 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
                                     "stt1VirtualCopy": result.get("stt1VirtualCopy")})
         conv["attach_plan"] = result.get("attachments", [])
         conv["attach_plan_stt1_virtual"] = result.get("stt1VirtualCopy")
+        conv["attach_plan_replace_files"] = replace_by_fid
         conv["attach_errors"] = result.get("errors", [])
         conv["attach_fail_streak"] = 0  # kế hoạch MỚI → cho watcher tự đính lại từ đầu
         conv["attach_action_in_progress"] = False

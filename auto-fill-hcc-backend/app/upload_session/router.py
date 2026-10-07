@@ -119,11 +119,16 @@ async def get_file(sid: str, fid: str):
     if upload_session_experience(sess) == "handfree":
         _require_handfree_enabled()
     meta = next((f for f in sess.get("files", []) if f["fid"] == fid), None)
-    raw = store.read_file_bytes(sid, fid) if meta else None
+    # Bản nén do kế hoạch đính kèm sinh ra (cổng giới hạn dung lượng): tải được như tệp thường nhưng
+    # không phải tệp công dân gửi → không đếm "đã lấy N/N".
+    shrunk = None if meta else next((f for f in sess.get("shrunk_files") or [] if f["fid"] == fid), None)
+    raw = store.read_file_bytes(sid, fid) if (meta or shrunk) else None
     if raw is None:
         logger.warning("[phien-tai-anh] %s ✗ máy tính đòi tệp KHÔNG CÓ fid=%s", sid, fid)
         await audit.log_missing(sid, fid=fid)
         raise HTTPException(status_code=404, detail="File không tồn tại.")
+    if shrunk:
+        return Response(content=raw, media_type=shrunk.get("type") or "application/pdf")
     # Chính request này LÀ bằng chứng máy tính lấy được tệp — không cần extension báo thêm,
     # nên bản extension đang chạy trên chợ cũng được ghi nhận. Ghi vết chạy nền để không
     # làm chậm việc trả bytes.

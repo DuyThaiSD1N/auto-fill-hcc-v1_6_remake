@@ -142,6 +142,26 @@ async def mark_delivered(sid: str, fids: list[str]) -> dict | None:
     )
 
 
+async def set_shrunk_files(sid: str, metas: list[dict]) -> None:
+    """Thay danh sách bản nén của lượt lập kế hoạch đính kèm mới nhất ({fid, name, type, size, source_fid}).
+
+    Bản nén nằm RIÊNG ngoài `files`: không phải giấy tờ công dân gửi, không tính vào "đã nhận N/N" hay
+    checklist. Bytes của lượt cũ bị xoá để phiên bổ sung nhiều lượt không dồn tệp trên đĩa.
+    """
+    if not sid:
+        return
+    sess = await get(sid)
+    if not sess:
+        return
+    keep = {m["fid"] for m in metas}
+    for old in sess.get("shrunk_files") or []:
+        if old.get("fid") not in keep:
+            delete_file_bytes(sid, old["fid"])
+    await get_db().upload_sessions.update_one(
+        {"_id": sid}, {"$set": {"shrunk_files": metas, "updated_at": _now()}},
+    )
+
+
 def delivered_count(sess: dict) -> int:
     """Số file đã tới máy tính. Chỉ đếm fid CÒN trong phiên (file bị xoá không tính)."""
     alive = {str(f.get("fid")) for f in (sess.get("files") or [])}
