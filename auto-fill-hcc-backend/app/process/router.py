@@ -12,6 +12,9 @@ from app.dossiers import repo as dossiers_repo
 from app.dossiers.options import dossier_id_from_options
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
+from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
+    with_account_process_options as with_cai_chinh_account_process_options,
+)
 from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
     with_account_process_options as with_gpxd_account_process_options,
 )
@@ -65,8 +68,8 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         )
         # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây, Hiệp Hòa lấy người ủy quyền
         # làm người yêu cầu TTHN, Đăk Cấm luôn chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết
-        # làm chủ hồ sơ mai táng hưu trí xã hội, Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh) do
-        # server đặt từ `user`.
+        # làm chủ hồ sơ mai táng hưu trí xã hội, Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh, Xuân
+        # Hương để số lượng bản sao cải chính hộ tịch = 0) do server đặt từ `user`.
         prepared.pipeline_options = with_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
@@ -80,6 +83,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_hkd_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_cai_chinh_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

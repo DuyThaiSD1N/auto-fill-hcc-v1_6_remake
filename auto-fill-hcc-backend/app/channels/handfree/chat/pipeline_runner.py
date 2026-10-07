@@ -22,6 +22,9 @@ from app.channels.handfree.procedure_registry import (
     get_procedure,
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
+from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
+    with_account_process_options as with_cai_chinh_account_process_options,
+)
 from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
     with_account_process_options as with_gpxd_account_process_options,
 )
@@ -166,6 +169,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_gpxd_account_process_options(options, owner_user, procedure_key)
             options = with_mai_tang_htxh_account_process_options(options, owner_user, procedure_key)
             options = with_hkd_account_process_options(options, owner_user, procedure_key)
+            options = with_cai_chinh_account_process_options(options, owner_user, procedure_key)
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):

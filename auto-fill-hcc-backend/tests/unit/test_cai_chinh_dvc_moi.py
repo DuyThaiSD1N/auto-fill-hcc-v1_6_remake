@@ -186,3 +186,28 @@ def test_co_ho_local_group_maps_to_co_ho(dan_toc):
     # Cổng mới không có option "Khác" → nhóm địa phương Cơ Ho chọn thẳng "Cơ Ho".
     out, _ = _enrich({**SUBJECT, "NguoiThayDoi_DanToc": dan_toc}, _context())
     assert {f["name"]: f for f in out}["citizenNDKDantoc"]["value"] == "Cơ Ho"
+
+
+@pytest.mark.parametrize("xa", ["Phường Xuân Hương - Đà Lạt", "Phường Xuân Hương", "Xuân Hương"])
+def test_xuan_huong_account_sets_zero_copies_flag(xa):
+    user = {"tinh": "Tỉnh Lâm Đồng", "xa": xa}
+    opts = mapper.with_account_process_options({}, user, mapper.PROCEDURE_KEY)
+    assert opts[mapper.ZERO_COPIES_OPTION] is True
+
+
+def test_zero_copies_flag_only_for_xuan_huong_and_this_procedure():
+    xuan_huong = {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}
+    other_ward = {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Lâm Viên - Đà Lạt"}
+    assert mapper.ZERO_COPIES_OPTION not in mapper.with_account_process_options({}, other_ward, mapper.PROCEDURE_KEY)
+    assert mapper.ZERO_COPIES_OPTION not in mapper.with_account_process_options({}, xuan_huong, "khai-tu")
+    # Client tự gửi cờ cũng bị server ghi đè theo tài khoản.
+    assert mapper.ZERO_COPIES_OPTION not in mapper.with_account_process_options(
+        {mapper.ZERO_COPIES_OPTION: True}, other_ward, mapper.PROCEDURE_KEY)
+
+
+def test_zero_copies_flag_overrides_quantity_on_form():
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in SUBJECT.items()]
+    out, _ = mapper.enrich(fields, {"formContext": ACCOUNT, "_reasoning_context": _context(),
+                                    mapper.ZERO_COPIES_OPTION: True})
+    field = {f["name"]: f for f in out}["citizenSoluongbansao"]
+    assert field["value"] == "0" and field["default"] is True

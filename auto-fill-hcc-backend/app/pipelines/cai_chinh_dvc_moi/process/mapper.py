@@ -31,11 +31,40 @@ _GIAY_TO_OPTIONS = {
 }
 _HCM_PROVINCE_KEYS = {"hochiminh", "tphochiminh", "thanhphohochiminh", "tphcm", "hcm"}
 
+# Cấu hình theo tài khoản: phường Xuân Hương (Lâm Đồng) luôn để "Số lượng bản sao" = 0. Mapper không biết
+# tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server
+# tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+PROCEDURE_KEY = "thay-doi-cai-chinh-ho-tich"
+ZERO_COPIES_OPTION = "zeroCopies"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+
 
 def _fold(value) -> str:
     text = unicodedata.normalize("NFD", str(value or ""))
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
+
+
+def is_lam_dong_xuan_huong(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Xuân Hương - Đà Lạt, tỉnh Lâm Đồng."""
+    if not user:
+        return False
+    tinh = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("tinh"))).strip()
+    xa = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("xa"))).strip()
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return "lam dong" in tinh and xa in {"xuan huong", "xuan huong da lat"}
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ số lượng bản sao = 0 do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(ZERO_COPIES_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_lam_dong_xuan_huong(user):
+        result[ZERO_COPIES_OPTION] = True
+    return result
 
 
 def _digits(value) -> str:
@@ -182,6 +211,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenTTNoidangkyhosogoc", values.get("HoSo_NoiDangKy"))
     add("citizenTTNoidungdk", values.get("NoiDung"))
     add("citizenLydothaydoi", values.get("LyDo"))
-    quantity = _digits(values.get("SoLuongBanSao"))
-    add("citizenSoluongbansao", str(int(quantity)) if quantity else "")
+    if options.get(ZERO_COPIES_OPTION) is True:
+        add("citizenSoluongbansao", "0", default=True)
+    else:
+        quantity = _digits(values.get("SoLuongBanSao"))
+        add("citizenSoluongbansao", str(int(quantity)) if quantity else "")
     return out, warnings
