@@ -280,6 +280,8 @@ from app.pipelines.khai_tu_lien_thong.attach import plan as khai_tu_lien_thong_a
 from app.pipelines.khai_tu_lien_thong.process import run as khai_tu_lien_thong_process
 from app.pipelines.khai_tu_dang_ky_lai.attach import plan as khai_tu_dang_ky_lai_attach
 from app.pipelines.khai_tu_dang_ky_lai.process import run as khai_tu_dang_ky_lai_process
+from app.pipelines.doi_cap_lai_giay_xac_nhan_khuyet_tat.attach import plan as doi_cap_lai_giay_xac_nhan_khuyet_tat_attach
+from app.pipelines.doi_cap_lai_giay_xac_nhan_khuyet_tat.process import run as doi_cap_lai_giay_xac_nhan_khuyet_tat_process
 from app.pipelines.khuyet_tat.attach import plan as khuyet_tat_attach
 from app.pipelines.khuyet_tat.process import run as khuyet_tat_process
 from app.pipelines.mai_tang_dan_cong.process import run as mai_tang_dan_cong_process
@@ -5119,6 +5121,30 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "doi-cap-lai-giay-xac-nhan-khuyet-tat",
+        # Cùng cổng Bộ Y tế + cùng eForm Mẫu số 01 với "xac-dinh-muc-do-khuyet-tat"; khác mã TTHC nên
+        # URL tách được. Bảng thành phần hồ sơ chỉ một dòng → mọi file đính vào dòng 1.
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.001653"],
+            "textIncludes": ["Đổi, cấp lại Giấy xác nhận khuyết tật"],
+            "headingDisabled": True,
+        },
+        "label": "Đổi, cấp lại Giấy xác nhận khuyết tật",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đề nghị Mẫu số 01, đã tích ô Cấp lại hoặc Cấp đổi Giấy xác nhận khuyết tật.\n"
+            "2. CCCD của người khuyết tật/người đại diện đứng đơn.\n"
+            "Ô 'Lý do cấp đổi, cấp lại': đơn cấp lại tự chọn 'bị mất, hư hỏng'; đơn cấp đổi cán bộ tự chọn "
+            "nếu đơn không ghi lý do.\n"
+            "Bước đính kèm: cổng chỉ có MỘT dòng (Đơn đề nghị Mẫu số 01) nên mọi file đều đính vào dòng đó; "
+            "file không phải Đơn đề nghị vẫn đính kèm nhưng có cảnh báo."
+        ),
+    },
+    {
         "key": "xet-tuyen-vien-chuc",
         "detect": {"textIncludes": ["Thủ tục xét tuyển Viên chức (85/2023/NĐ-CP)"], "headingDisabled": True},
         "label": "Thủ tục xét tuyển Viên chức (85/2023/NĐ-CP)",
@@ -7453,6 +7479,7 @@ _PIPELINE = {
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_process,
+    "doi-cap-lai-giay-xac-nhan-khuyet-tat": doi_cap_lai_giay_xac_nhan_khuyet_tat_process,
     "xet-tuyen-vien-chuc": xet_tuyen_vien_chuc_process,
     "xet-tuyen-vien-chuc-lai-chau": xet_tuyen_vien_chuc_lai_chau_process,
     "xet-tuyen-cong-chuc": xet_tuyen_cong_chuc_process,
@@ -7656,6 +7683,7 @@ _ATTACH_PIPELINE = {
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
     "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_attach,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,
+    "doi-cap-lai-giay-xac-nhan-khuyet-tat": doi_cap_lai_giay_xac_nhan_khuyet_tat_attach,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_attach,
     "xet-tuyen-vien-chuc": xet_tuyen_vien_chuc_attach,
     "xet-tuyen-vien-chuc-lai-chau": xet_tuyen_vien_chuc_lai_chau_attach,

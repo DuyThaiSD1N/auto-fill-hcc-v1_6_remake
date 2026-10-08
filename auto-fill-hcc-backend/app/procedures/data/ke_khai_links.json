@@ -289,6 +289,14 @@
       "autoConfirm": true
     },
     {
+      "key": "doi-cap-lai-giay-xac-nhan-khuyet-tat",
+      "code": "1.001653",
+      "label": "Đổi, cấp lại Giấy xác nhận khuyết tật",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-b7ab-731d-844a-5e232b77afef",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dieu-chinh-huu-tri-xa-hoi",
       "code": "1.014027",
       "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
@@ -1542,9 +1550,9 @@
     },
     {
       "key": "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
-      "code": "1.013949",
-      "label": "Quảng Ngãi - Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
-      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "code": "1.116366",
+      "label": "[Lâm Đồng] Giao đất, cho thuê đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng; giao đất, cho thuê đất đồng thời giao khu vực biển để thực hiện hoạt động lấn biển",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019ff5b9-eb9e-7257-a8c2-bf8e32e5c57a",
       "needsAgencySelect": true,
       "autoConfirm": true
     },

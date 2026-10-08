@@ -4359,6 +4359,7 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
       cfg.key === "tro-cap-xa-hoi-hang-thang" ||
       cfg.key === "xac-dinh-muc-do-khuyet-tat" ||
+      cfg.key === "doi-cap-lai-giay-xac-nhan-khuyet-tat" ||
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep" ||

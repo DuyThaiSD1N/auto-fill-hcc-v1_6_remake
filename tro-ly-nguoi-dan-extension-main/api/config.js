@@ -1,6 +1,6 @@
 // Gọi THẲNG domain API của backend (cùng domain Auto Fill dùng). Domain FE trang quản lý
 // (trolyhoso-hcc.*) chỉ chuyển tiếp /api,/auth,/ws qua nginx của FE — sẽ bàn giao cho web thống kê.
-const TLND_DEFAULT_BASE_URL = "https://trolyhoso-hcc-admin.tiengnoi.vn";  // Backend CHÍNH
+const TLND_DEFAULT_BASE_URL = "http://localhost:12005";  // Backend CHÍNH (LOCAL — docker app cổng 12005; production: https://trolyhoso-hcc-admin.tiengnoi.vn)
 
 const TLND_BASE_URL_KEY = "tlnd_base_url";
 // Giá trị cũ còn lưu trong storage của máy đã cài → tự chuyển sang backend chính hiện tại.
@@ -9,6 +9,9 @@ const TLND_LEGACY_BASE_URLS = new Set([
   "https://trolynguoidan-admin.vnekyc.vn",
   "https://trolyhoso-hcc.tiengnoi.vn",
   "https://trolyhoso-hcc.vnekyc.vn",
+  // Máy đã cài có thể lưu sẵn domain production (do lần migrate trên ghi vào) → đổi mặc định sang
+  // local mà không có dòng này thì storage vẫn kéo về production. Khi mặc định là production thì vô hại.
+  "https://trolyhoso-hcc-admin.tiengnoi.vn",
 ]);
 
 // Backend PHỤ (dự phòng) — điền domain server phụ để BẬT failover; để TRỐNG = tắt (chạy như cũ).

@@ -39,6 +39,43 @@ def _matches_anchor(text: str, name: str, identity: str) -> bool:
     return name_matches if name else identity_matches
 
 
+_SECTION_I_RE = re.compile(
+    r"\bi\s*[.)]\s*thong tin nguoi duoc xac dinh(.*?)(?:\bii\s*[.)]\s*thong tin nguoi dai dien|$)", re.S
+)
+_SECTION_I_IDENTITY_RE = re.compile(
+    r"(?:cmnd|can cuoc|cccd|dinh danh)[^:\n]{0,40}:[ \t]*((?:\d[ .]?){8,11}\d)"
+)
+
+
+def section_i_identity(ocr_text: str) -> str:
+    """Số CMND/CCCD ghi ở mục I Mẫu số 01 (người được xác định mức độ khuyết tật).
+
+    Chỉ là lưới đỡ khi LLM bỏ sót Nkt_SoDinhDanh dù OCR đọc rõ: chỉ tìm TRONG khối mục I (dừng ở tiêu đề
+    mục II) nên không lấy nhầm số của người đại diện; số phải đủ 9 hoặc 12 chữ số.
+    """
+    text = str(ocr_text or "").replace("Đ", "D").replace("đ", "d")
+    text = unicodedata.normalize("NFD", text)
+    text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower()
+    section = _SECTION_I_RE.search(text)
+    if not section:
+        return ""
+    match = _SECTION_I_IDENTITY_RE.search(section.group(1))
+    digits = re.sub(r"\D+", "", match.group(1)) if match else ""
+    return digits if len(digits) in (9, 12) else ""
+
+
+def fill_section_i_identity(res: dict) -> None:
+    """Bù Nkt_SoDinhDanh từ mục I khi LLM không trả (mapper dùng nó cho cả khối người KT lẫn chủ hồ sơ)."""
+    fields = res.get("fields") or []
+    if any(f.get("name") == "Nkt_SoDinhDanh" and f.get("value") for f in fields):
+        return
+    identity = section_i_identity(res.get("ocr_text") or "")
+    if identity:
+        res["fields"] = [f for f in fields if f.get("name") != "Nkt_SoDinhDanh"] + [
+            {"name": "Nkt_SoDinhDanh", "comp": "x-input", "value": identity}
+        ]
+
+
 async def _requester_context(documents: list[dict], options: dict) -> str:
     """Khoanh giấy tờ người nộp bằng UI; dữ liệu output vẫn phải có trong OCR."""
     form = (options or {}).get("formContext") or {}
@@ -117,5 +154,6 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [
             {"name": name, "comp": "raw", "value": value} for name, value in section_iii.items()
         ]
+    fill_section_i_identity(res)
     res["fields"] = mapper.enrich(res["fields"], options)
     return res
