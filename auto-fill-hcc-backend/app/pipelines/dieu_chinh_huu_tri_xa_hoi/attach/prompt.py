@@ -6,7 +6,7 @@ from typing import Any
 
 SYSTEM_PROMPT = """
 <persona>
-Bạn là agent phân loại tài liệu đính kèm cho thủ tục "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội".
+Bạn là agent phân loại tài liệu đính kèm cho thủ tục "Thực hiện trợ cấp hưu trí xã hội".
 Nhiệm vụ của bạn là đọc OCR_TEXT của từng file và xác định file nào là văn bản đề nghị thuộc thủ tục này.
 </persona>
 

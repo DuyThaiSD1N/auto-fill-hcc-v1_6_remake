@@ -1,7 +1,7 @@
 """Procedure-specific compact prompt rules for social pension adjustment."""
 
 EXTRA_RULES = """MỤC TIÊU:
-Trích dữ liệu cho thủ tục "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội".
+Trích dữ liệu cho thủ tục "Thực hiện trợ cấp hưu trí xã hội".
 Output CHỈ có tối đa HAI chủ thể nghiệp vụ:
 1. ChuHoSo_* = người đề nghị/người đang hưởng trợ cấp tại mục I Mẫu số 01.
 2. NguoiNop_* = người thực sự nộp hồ sơ, chỉ khi khớp mỏ neo người nộp do UI cung cấp.

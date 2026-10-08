@@ -155,7 +155,7 @@ window.PROCEDURE_KE_KHAI_LINKS = [
   },
   {
     key: "dieu-chinh-huu-tri-xa-hoi",
-    label: "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
+    label: "Thực hiện trợ cấp hưu trí xã hội",
     url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bff-2d80-74d8-8515-90f6f61822f0",
     needsAgencySelect: true,
     autoConfirm: true,

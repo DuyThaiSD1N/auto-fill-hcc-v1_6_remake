@@ -10,6 +10,6 @@ def test_registry_uses_dieu_chinh_huu_tri_pipeline():
     assert get_attach_pipeline("dieu-chinh-huu-tri-xa-hoi") is attach_plan
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
-    assert proc["label"] == "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"
-    assert proc["detect"]["textIncludes"] == [proc["label"]]
+    assert proc["label"] == "Thực hiện trợ cấp hưu trí xã hội"
+    assert proc["detect"]["textIncludes"][0] == proc["label"]
     assert "người đề nghị" in proc["uploadHint"]

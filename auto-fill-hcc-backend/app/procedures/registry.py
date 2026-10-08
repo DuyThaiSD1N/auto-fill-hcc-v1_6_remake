@@ -5051,10 +5051,10 @@ PROCEDURES: list[dict] = [
         "key": "dieu-chinh-huu-tri-xa-hoi",
         "detect": {
             "urlIncludes": ["maThuTuc=1.014027"],
-            "textIncludes": ["Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"],
+            "textIncludes": ["Thực hiện trợ cấp hưu trí xã hội", "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"],
             "headingDisabled": True,
         },
-        "label": "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội",
+        "label": "Thực hiện trợ cấp hưu trí xã hội",
         "mode": "agent",
         "hasAttachmentStep": True,
         "roles": [],
