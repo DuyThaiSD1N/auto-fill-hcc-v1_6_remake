@@ -7947,11 +7947,11 @@
           "code": "07294",
           "name": "Bố Hạ",
           "name_en": "Bo Ha",
-          "full_name": "Xã Bố Hạ",
-          "full_name_en": "Bo Ha Commune",
+          "full_name": "Phường Bố Hạ",
+          "full_name_en": "Bo Ha Ward",
           "code_name": "bo_ha",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "07306",
@@ -8007,11 +8007,11 @@
           "code": "07375",
           "name": "Lạng Giang",
           "name_en": "Lang Giang",
-          "full_name": "Xã Lạng Giang",
-          "full_name_en": "Lang Giang Commune",
+          "full_name": "Phường Lạng Giang",
+          "full_name_en": "Lang Giang Ward",
           "code_name": "lang_giang",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "07381",
@@ -8027,11 +8027,11 @@
           "code": "07399",
           "name": "Kép",
           "name_en": "Kep",
-          "full_name": "Xã Kép",
-          "full_name_en": "Kep Commune",
+          "full_name": "Phường Kép",
+          "full_name_en": "Kep Ward",
           "code_name": "kep",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "07420",
@@ -8057,11 +8057,11 @@
           "code": "07444",
           "name": "Lục Nam",
           "name_en": "Luc Nam",
-          "full_name": "Xã Lục Nam",
-          "full_name_en": "Luc Nam Commune",
+          "full_name": "Phường Lục Nam",
+          "full_name_en": "Luc Nam Ward",
           "code_name": "luc_nam",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "07450",
@@ -8497,11 +8497,11 @@
           "code": "09193",
           "name": "Yên Phong",
           "name_en": "Yen Phong",
-          "full_name": "Xã Yên Phong",
-          "full_name_en": "Yen Phong Commune",
+          "full_name": "Phường Yên Phong",
+          "full_name_en": "Yen Phong Ward",
           "code_name": "yen_phong",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09202",
@@ -8587,11 +8587,11 @@
           "code": "09292",
           "name": "Phù Lãng",
           "name_en": "Phu Lang",
-          "full_name": "Xã Phù Lãng",
-          "full_name_en": "Phu Lang Commune",
+          "full_name": "Phường Phù Lãng",
+          "full_name_en": "Phu Lang Ward",
           "code_name": "phu_lang",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09295",
@@ -8617,21 +8617,21 @@
           "code": "09313",
           "name": "Chi Lăng",
           "name_en": "Chi Lang",
-          "full_name": "Xã Chi Lăng",
-          "full_name_en": "Chi Lang Commune",
+          "full_name": "Phường Chi Lăng",
+          "full_name_en": "Chi Lang Ward",
           "code_name": "chi_lang",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09319",
           "name": "Tiên Du",
           "name_en": "Tien Du",
-          "full_name": "Xã Tiên Du",
-          "full_name_en": "Tien Du Commune",
+          "full_name": "Phường Tiên Du",
+          "full_name_en": "Tien Du Ward",
           "code_name": "tien_du",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09325",
@@ -8787,11 +8787,11 @@
           "code": "09454",
           "name": "Gia Bình",
           "name_en": "Gia Binh",
-          "full_name": "Xã Gia Bình",
-          "full_name_en": "Gia Binh Commune",
+          "full_name": "Phường Gia Bình",
+          "full_name_en": "Gia Binh Ward",
           "code_name": "gia_binh",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09466",
@@ -8817,11 +8817,11 @@
           "code": "09475",
           "name": "Nhân Thắng",
           "name_en": "Nhan Thang",
-          "full_name": "Xã Nhân Thắng",
-          "full_name_en": "Nhan Thang Commune",
+          "full_name": "Phường Nhân Thắng",
+          "full_name_en": "Nhan Thang Ward",
           "code_name": "nhan_thang",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09487",
@@ -8837,11 +8837,11 @@
           "code": "09496",
           "name": "Lương Tài",
           "name_en": "Luong Tai",
-          "full_name": "Xã Lương Tài",
-          "full_name_en": "Luong Tai Commune",
+          "full_name": "Phường Lương Tài",
+          "full_name_en": "Luong Tai Ward",
           "code_name": "luong_tai",
-          "type": "Xã",
-          "type_en": "Commune"
+          "type": "Phường",
+          "type_en": "Ward"
         },
         {
           "code": "09499",
