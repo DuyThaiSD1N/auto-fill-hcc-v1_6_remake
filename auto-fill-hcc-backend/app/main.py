@@ -19,6 +19,7 @@ from app.consents.router import router as consents_router
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.db.indexes import ensure_indexes
 from app.db.mongo import close, connect
+from app.image_convert.router import router as image_convert_router
 from app.locations.router import router as locations_router
 from app.monitor.recorder import set_origin as set_monitor_origin
 from app.monitor.router import router as monitor_router
@@ -110,6 +111,7 @@ app.include_router(dashboard_router)  # bảng thống kê phường (require_wa
 app.include_router(reports_router)
 app.include_router(users_router)
 app.include_router(locations_router)
+app.include_router(image_convert_router)  # HEIC → JPG cho tệp chọn tay ở panel Auto Fill
 app.include_router(upload_session_router)
 app.include_router(upload_ws_router)
 app.include_router(consent_router)

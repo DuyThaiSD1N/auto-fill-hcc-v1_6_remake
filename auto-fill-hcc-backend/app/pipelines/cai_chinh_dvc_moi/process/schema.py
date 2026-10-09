@@ -38,10 +38,13 @@ FIELDS: list[dict] = [
     {"name": "HoSo_NoiDangKy", "desc": "Cơ quan / nơi đã đăng ký giấy tờ hộ tịch."},
     {"name": "NoiDung",
      "desc": "Nội dung đề nghị thay đổi / cải chính / bổ sung / xác định lại dân tộc theo dòng 'Nội dung' của "
-             "tờ khai (gồm thông tin cũ và mới), CHỈ các thay đổi — không kèm lý do; viết thành câu có nghĩa."},
+             "tờ khai (gồm thông tin cũ và mới), CHỈ các thay đổi — không kèm lý do; viết thành câu có nghĩa. Không "
+             "có tờ khai mà có bản cam đoan → theo bản cam đoan, đúng chiều từ giá trị đang ghi trên giấy hộ tịch "
+             "cần sửa thành giá trị theo giấy tờ khác."},
     {"name": "LyDo",
      "desc": "Lý do đề nghị theo dòng 'Lý do' của tờ khai (kể cả khi OCR nối nó vào cuối phần nội dung); "
-             "viết thành câu ngắn có nghĩa."},
+             "viết thành câu ngắn có nghĩa. Không có tờ khai mà có bản cam đoan → câu ngắn tóm căn cứ trong bản cam "
+             "đoan."},
     {"name": "SoLuongBanSao",
      "desc": "Số bản sao trích lục đề nghị cấp: số nguyên; tờ khai đánh dấu KHÔNG đề nghị cấp bản sao → 0. "
              "Tờ khai không ghi → bỏ field."},
@@ -59,6 +62,7 @@ COMPACT_COMP_BY_NAME["NguoiThayDoi_NoiCuTru"] = "x-select-area"
 UI_COMP_BY_NAME = {
     "citizenNycNoicutru": "sjs-radio",                 # Nơi cư trú người nộp: cổng hay để trống
     "citizenQuanhevsngcaichinhhotich1": "sjs-radio",   # Bản thân / Khác
+    "citizenMqhkhac": "sjs-text",                      # Quan hệ cụ thể, chỉ hiện khi chọn "Khác"
     # THÔNG TIN VỀ NGƯỜI CÓ NỘI DUNG THAY ĐỔI
     "citizenNDKHoTen": "sjs-text",
     "citizenNDKSodinhdanh": "sjs-text",

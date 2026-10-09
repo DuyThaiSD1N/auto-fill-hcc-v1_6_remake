@@ -10,6 +10,9 @@ Bỏ: danh sách phương tiện (datagrid nạp từ API tài khoản), selectb
 
 FIELDS: list[dict] = [
     # === NGƯỜI NỘP = người/đơn vị đứng đơn xin cấp phép (Phần I). Nguồn: CCCD + Giấy đề nghị. ===
+    {"name": "NguoiNop_LoaiDoiTuong", "desc": '"Tổ chức" khi người đứng đơn (Giấy đề nghị mục 1 "Tên tổ chức/cá '
+        'nhân", chủ xe trên cà vẹt) là công ty/doanh nghiệp/hợp tác xã/cơ quan/đơn vị; "Cá nhân" khi là một người. '
+        'Đơn không ghi rõ loại → nhận diện theo TÊN (Công ty, TNHH, Cổ phần, HTX, Doanh nghiệp…).'},
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI NỘP/đứng đơn. Lấy từ CCCD (Họ và tên) hoặc Giấy đề "
         "nghị mục 1 'Tên tổ chức/cá nhân' và dòng ký '(Ký, ghi rõ họ và tên)'. Ghi IN HOA như giấy tờ."},
     {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh người nộp, dd/mm/yyyy — CHỈ từ thẻ CCCD/CMND của người nộp. "
@@ -50,20 +53,21 @@ FIELDS: list[dict] = [
     {"name": "DeNghi_MucDich", "desc": "Mục đích chuyến đi (mục 7 Giấy đề nghị) — MỘT trong: 'Công vụ' (a), "
         "'Cá nhân' (b), 'Hoạt động kinh doanh' (c), 'Mục đích khác' (d). Lấy ô được tích trên đơn."},
     {"name": "DeNghi_PhuongTien", "desc": "DANH SÁCH PHƯƠNG TIỆN xin cấp phép — trả về MẢNG JSON (mỗi xe 1 "
-        "object). Lấy từ Giấy chứng nhận đăng ký xe ô tô + Giấy đề nghị mục 6 (bảng phương tiện). Mỗi object "
+        "object). Lấy từ Giấy chứng nhận đăng ký xe ô tô + Giấy đề nghị mục 4 (bảng phương tiện). Mỗi object "
         "gồm các khoá (bỏ khoá nếu giấy tờ không có): "
         "\"bienSo\" (biển kiểm soát, giữ nguyên định dạng vd '92C-12287'), "
         "\"trongTai\" (trọng tải/số chỗ ngồi, vd '5' hoặc '5 chỗ'), "
         "\"namSanXuat\" (năm sản xuất, vd '2017'), "
         "\"nhanHieu\" (nhãn hiệu, vd 'FORD RANGER'), "
-        "\"soKhung\", \"soMay\", "
-        "\"mauSon\" (vd 'Trắng'), "
-        "\"hinhThucHoatDong\" ('Vận chuyển hành khách' hoặc 'Vận chuyển hàng hóa'), "
+        "\"soKhung\", \"soMay\" (CHỈ cột Số khung/Số máy bảng Giấy đề nghị), "
+        "\"soKhungDangKy\", \"soMayDangKy\" (CHỈ số IN trên cà vẹt/Chứng nhận kiểm định), "
+        "\"mauSon\" (tên màu bằng chữ; không đọc rõ thì bỏ), "
+        "\"hinhThucHoatDong\" ('Vận chuyển hành khách' hoặc 'Vận chuyển hàng hóa' — chỉ khi đơn ghi rõ), "
         "\"cuaKhau\" (cửa khẩu xuất-nhập, vd 'Tất cả cửa khẩu' hoặc tên cửa khẩu cụ thể), "
-        "\"tuNgay\" + \"denNgay\" (thời gian đề nghị cấp phép, dd/mm/yyyy — tách từ khoảng 'từ - đến'), "
+        "\"tuNgay\" + \"denNgay\" (thời gian đề nghị cấp phép, dd/mm/yyyy — chỉ khi đơn ghi ngày cụ thể), "
         "\"nienHan\" (niên hạn sử dụng; không có ghi '0'). "
         "Ví dụ: [{\"bienSo\":\"92C-12287\",\"trongTai\":\"5\",\"namSanXuat\":\"2017\",\"nhanHieu\":\"FORD "
-        "RANGER\",\"soKhung\":\"...\",\"soMay\":\"...\",\"mauSon\":\"Trắng\",\"tuNgay\":\"24/02/2026\","
+        "RANGER\",\"soKhung\":\"...\",\"soMay\":\"...\",\"tuNgay\":\"24/02/2026\","
         "\"denNgay\":\"23/03/2026\"}]. Nhiều xe → nhiều phần tử."},
 ]
 

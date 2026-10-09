@@ -16,7 +16,7 @@ from typing import Callable
 
 from app.locations.catalog import names_by_code
 from app.monitor import recorder as mon
-from app.pipelines._shared.compact_agent.issuer import normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines._shared.formatting import normalize_date, upper_person_name
 
 ACCOUNT_KEYS = {
@@ -178,9 +178,13 @@ def account_context(options: dict | None) -> dict:
         elif key == "DanToc":
             text = _catalog_label(text, "moj_eform_dan_toc.json")
         elif key == "NoiCap":
-            text = normalize_issuer(text)
+            continue
         if text:
             out[key] = text
+    # Nơi cấp KHÔNG lấy từ tài khoản: cổng đổ sẵn mặc định "Cục Cảnh sát…" cho mọi người, kể cả thẻ cấp từ
+    # 01/07/2024 (do Bộ Công an cấp). Thẻ 12 số suy theo ngày cấp; không có ngày cấp / CMND thì để giấy tờ quyết.
+    if out.get("NgayCap") and len(out.get("SoDinhDanh") or "") == CCCD_LEN:
+        out["NoiCap"] = default_issuer(out["NgayCap"])
     return out
 
 

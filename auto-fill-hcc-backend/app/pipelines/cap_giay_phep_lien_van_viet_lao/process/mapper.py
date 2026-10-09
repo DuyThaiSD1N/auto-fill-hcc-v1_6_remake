@@ -221,11 +221,20 @@ def _vehicles(value: Any) -> list[dict]:
                 v = _date(item.get(k))
             elif k == "cuaKhau" and v and "tat ca" in _fold(v):
                 v = "Tất cả cửa khẩu"  # option web KHÔNG có chữ "các"
+            elif k == "mauSon" and v and re.search(r"\d", v):
+                v = None  # tên màu không có chữ số; chuỗi lẫn số là OCR đọc ô bị cắt góc ("B1").
             elif k == "trongTai" and v:
                 m = re.search(r"\d+", v)
                 v = m.group(0) if m else v  # "5 chỗ" → "5"
             if v:
                 car[k] = v
+        for k in ("soKhung", "soMay"):
+            # Số IN trên cà vẹt/giấy kiểm định (khoá *DangKy) chuẩn hơn số viết tay ở bảng Giấy đề nghị.
+            printed = re.sub(r"\s+", "", _text(item.get(f"{k}DangKy")) or "")
+            if printed:
+                car[k] = printed
+        if car.get("denNgay") and car.get("denNgay") == car.get("tuNgay"):
+            car.pop("denNgay")  # giấy phép không thể hết hạn đúng ngày bắt đầu: LLM chép một ngày sang cả hai ô.
         if car.get("bienSo") or len(car) >= 2:
             out.append(car)
     return out
@@ -307,14 +316,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     if not name:
         warnings.append("Thiếu họ tên người nộp từ CCCD/Giấy đề nghị.")
-    if raw_identity and not identity:
+    # Cổng hiện thêm khối doanh nghiệp khi chọn "Tổ chức"; ô CCCD/CMND/MST nhận mã số thuế.
+    is_org = "to chuc" in _fold(values.get("NguoiNop_LoaiDoiTuong"))
+    if is_org and not identity:
+        warnings.append("Người nộp là tổ chức — nhập mã số thuế vào ô CCCD/CMND/MST và kiểm tra khối thông tin "
+                        "doanh nghiệp.")
+    elif raw_identity and not identity:
         warnings.append(f"Số định danh người nộp đọc được '{raw_identity}' không phải số CCCD/CMND/MST hợp lệ "
                         "— đã để trống, vui lòng nhập tay.")
     elif not identity:
         warnings.append("Hồ sơ không có CCCD người nộp — đã để trống số CCCD, ngày sinh, ngày cấp; vui lòng "
                         "nhập tay.")
 
-    add("data[chonDoiTuong]", "Cá nhân")
+    add("data[chonDoiTuong]", "Tổ chức" if is_org else "Cá nhân")
     put("data[fullname]", name)
     put("data[birthday]", _date(values.get("NguoiNop_NgaySinh")))
     add("data[gender]", _text(values.get("NguoiNop_GioiTinh")))

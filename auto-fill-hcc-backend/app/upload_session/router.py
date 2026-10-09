@@ -15,6 +15,7 @@ from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.core.deps import require_auth
+from app.services import heic
 from app.upload_session import audit, store
 from app.upload_session.access import (
     create_upload_capability,
@@ -194,10 +195,13 @@ async def upload_files(
                             f"{settings.max_total_payload_mb}MB."),
                 ) from exc
             incoming_bytes += size
+            # Ảnh HEIC (iPhone) cổng không nhận → đổi JPG ngay tại đây để OCR/đính kèm chỉ thấy JPG.
+            filename, content_type, size = await run_in_threadpool(
+                heic.convert_file_if_heic, staged_path, filename, uf.content_type or "image/jpeg", size)
             staged.append({
                 "path": staged_path,
                 "name": filename,
-                "type": uf.content_type or "image/jpeg",
+                "type": content_type,
                 "size": size,
             })
 

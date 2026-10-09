@@ -114,6 +114,22 @@ def _area(value):
     return remapped
 
 
+_FROM_TO_RE = re.compile(r"\btừ\s+(.+?)\s+(?:thành|sang)\s+(.+?)\s*$", re.I)
+
+
+def _drop_no_change(text):
+    """Bỏ mục "… từ X thành X" (cũ = mới): bản cam đoan hay ghi cả thông tin chỉ để khẳng định cùng người, LLM chép
+    thành một mục cải chính vô nghĩa. Không còn mục nào thì giữ nguyên câu gốc."""
+    parts = [p.strip() for p in str(text or "").split(";") if p.strip()]
+    kept = []
+    for part in parts:
+        match = _FROM_TO_RE.search(part.rstrip("."))
+        if match and " ".join(match.group(1).lower().split()) == " ".join(match.group(2).lower().split()):
+            continue
+        kept.append(part)
+    return "; ".join(kept) if kept else text
+
+
 def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bool, str]:
     """(Bản thân / Khác, có phải suy đoán, cảnh báo). Số định danh hai phía quyết định trước, rồi họ tên."""
     account_name, account_id = requester_context(options)
@@ -125,16 +141,36 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, bo
     # suy là làm cho bản thân, không đọc từ giấy tờ nào → tô vàng để cán bộ rà.
     from_account_docs = _fold(labeled_value(subject, "Nguồn")) == "giay to chu tai khoan"
 
+    reasoned = _fold(labeled_value(section(context, "quan_he"), "Kết luận"))
+    declared_self = _fold(_declared_relation(context, options)) == "ban than"
     if account_id and subject_id:
         return (_SELF if account_id == subject_id and not deceased else _OTHER), from_account_docs, ""
     if account_name and subject_name:
-        same = _fold(account_name) == _fold(subject_name) and not deceased
+        # Cải chính / thay đổi TÊN: tên đang ghi trong sổ vốn khác tên hiện tại của chủ tài khoản, so tên sẽ ra
+        # "Khác" oan → bước phân vai (đã đọc dòng quan hệ của tờ khai, số định danh) kết luận "Bản thân" thì theo nó.
+        # Tờ khai do chính chủ tài khoản khai ghi quan hệ "Bản thân" cũng đủ chốt.
+        same = (_fold(account_name) == _fold(subject_name) or reasoned == "ban than" or declared_self) and not deceased
         # Chỉ khớp họ tên (thiếu số định danh) → tô vàng để cán bộ rà.
         return (_SELF if same else _OTHER), True, ""
-    reasoned = _fold(labeled_value(section(context, "quan_he"), "Kết luận"))
     if reasoned == "khac" or (reasoned == "ban than" and not deceased):
         return (_OTHER if reasoned == "khac" else _SELF), True, ""
     return "", False, "Chưa xác định được người nộp có phải người có nội dung thay đổi — cán bộ chọn ô Quan hệ."
+
+
+def _declared_relation(context: str, options: dict | None) -> str:
+    """Quan hệ ghi trên tờ khai chỉ là của NGƯỜI YÊU CẦU tờ khai: dùng được khi người đó chính là chủ tài khoản
+    (khác người → bên được ủy quyền nộp thay, quan hệ trên tờ khai không phải của họ). Số định danh OCR hay rớt
+    chữ số → chỉ so số khi cả hai đủ 12 chữ số, còn lại so họ tên."""
+    block = section(context, "quan_he")
+    declared = labeled_value(block, "Quan hệ trên tờ khai")
+    if not declared:
+        return ""
+    account_name, account_id = requester_context(options)
+    requester_id = _digits(labeled_value(block, "Số định danh người yêu cầu tờ khai"))
+    if len(account_id) == 12 and len(requester_id) == 12:
+        return declared if account_id == requester_id else ""
+    requester_name = labeled_value(block, "Người yêu cầu tờ khai")
+    return declared if account_name and requester_name and _fold(account_name) == _fold(requester_name) else ""
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
@@ -167,6 +203,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if warning:
         warnings.append(warning)
     add("citizenQuanhevsngcaichinhhotich1", relation, default=guessed)
+    if relation == _OTHER:
+        declared = _declared_relation(context, options)
+        add("citizenMqhkhac", "" if _fold(declared) in {"khac", "ban than"} else declared)
 
     if relation != _SELF:
         name = values.get("NguoiThayDoi_HoTen")
@@ -212,7 +251,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenTTQuyensodangkyhosogoc", values.get("HoSo_QuyenSo"))
     add("citizenTTngayDangKyHSGoc", values.get("HoSo_NgayDangKy"))
     add("citizenTTNoidangkyhosogoc", values.get("HoSo_NoiDangKy"))
-    add("citizenTTNoidungdk", values.get("NoiDung"))
+    # Chỉ dọn khi nội dung dựng từ bản cam đoan (phân vai có dòng "Thông tin cần sửa"); nội dung của tờ khai giữ
+    # nguyên để cán bộ thấy cả mục OCR đọc mất chữ khác nhau.
+    from_commitment = "thông tin cần sửa" in section(context, "viec_dang_ky").lower()
+    noi_dung = values.get("NoiDung")
+    add("citizenTTNoidungdk", _drop_no_change(noi_dung) if from_commitment else noi_dung)
     add("citizenLydothaydoi", values.get("LyDo"))
     if options.get(ZERO_COPIES_OPTION) is True:
         add("citizenSoluongbansao", "0", default=True)

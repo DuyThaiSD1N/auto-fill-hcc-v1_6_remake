@@ -346,6 +346,8 @@ PROCEDURES: list[dict] = [
         # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
         "flowProfile": "tu-phap-moi",
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-3fac-7489-b53b-9c6c958f2da4",
+        # Cài đặt "Tách giấy tờ" → planner chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
+        "supportsSplitDocuments": True,
         # Giấy báo tử BẮT BUỘC (nguồn chính của sự kiện chết); tờ khai bổ trợ khi có.
         # Mỗi nhóm tính theo TỆP, không theo mặt; checklist tự hiện "Đã nhận X tệp".
         "hideRepeatableHint": True,

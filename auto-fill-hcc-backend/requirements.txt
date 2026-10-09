@@ -10,6 +10,8 @@ openai>=1.12.0
 python-multipart==0.0.20
 pymupdf==1.27.2.3
 Pillow==11.0.0
+# Ảnh HEIC (iPhone): cổng DVC không nhận → đổi sang JPG lúc nhận tệp. Bản 0.22 khớp Pillow 11.0.
+pillow-heif==0.22.0
 pytesseract==0.3.13
 openpyxl==3.1.5
 # Giấy ủy quyền (Handfree): xuất .docx chuẩn để cán bộ mở bằng Word sửa tiếp.

@@ -125,7 +125,11 @@ def _relation(values: dict, context: str, options: dict | None) -> tuple[str, st
         requester_same, _ = _same_person(account_name, account_id, values.get("NguoiYeuCau_HoTen"),
                                          [values.get("NguoiYeuCau_SoDinhDanh")])
         detail = values.get("NguoiYeuCau_QuanHe") if requester_same else ""
-        detail = detail or labeled_value(section(context, "quan_he"), "Quan hệ cụ thể")
+        # Dòng "Quan hệ cụ thể" chỉ có nghĩa khi bước phân vai kết luận "Khác"; kết luận "Không xác định" thì dòng
+        # đó thường là câu giải thích, không phải tên quan hệ.
+        reasoned_block = section(context, "quan_he")
+        if not detail and _fold(labeled_value(reasoned_block, "Kết luận")) == "khac":
+            detail = labeled_value(reasoned_block, "Quan hệ cụ thể")
         if not detail:
             return _OTHER, "", False, "Người nộp không phải cha/mẹ — cán bộ ghi rõ ô 'Quan hệ khác'."
         return _OTHER, detail, False, ""

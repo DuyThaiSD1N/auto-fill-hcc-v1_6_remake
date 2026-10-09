@@ -40,7 +40,20 @@ người nộp.
    → "Thay đổi"; ghi thêm thông tin còn trống → "Bổ sung"; "Xác định lại dân tộc" CHỈ khi nội dung là dân tộc
    — quốc tịch/họ tên/ngày sinh không bao giờ là "Xác định lại dân tộc"). Không đủ căn cứ → bỏ field.
 8. NoiDung lấy dòng "Nội dung" của tờ khai (cả thông tin cũ và mới, vd "Cải chính tên từ X thành Y"); LyDo lấy
-   dòng "Lý do". Tờ khai không có → bỏ, không tự viết.
+   dòng "Lý do". Không có tờ khai mà <viec_dang_ky> có các dòng "Thông tin cần sửa" (đã xác định chiều) → NoiDung
+   ghép đúng các dòng đó: "Cải chính <thông tin> từ <đang ghi> thành <đúng theo>", nối bằng dấu chấm phẩy, KHÔNG
+   đảo chiều. Không có các dòng đó mà có BẢN CAM ĐOAN → lấy từ bản cam đoan, ĐÚNG CHIỀU: câu dạng "Trong <giấy hộ
+   tịch cần sửa> ghi A, nhưng trong <giấy tờ khác: CCCD, giấy khai sinh / chứng tử của người đó...> ghi B" →
+   "Cải chính <thông tin> từ A thành B" (giá trị CŨ = đang ghi trên giấy hộ tịch cần sửa; giá trị MỚI = theo
+   giấy tờ khác); dòng "Để thực hiện thủ tục: ..." cho biết những thông tin nào cần sửa. Vd cam đoan "trong giấy
+   khai sinh của tôi mẹ tôi là X sinh năm N1, nhưng trong căn cước của mẹ tôi là Y sinh năm N2" → "Cải chính tên
+   mẹ từ X thành Y; cải chính năm sinh mẹ từ N1 thành N2" — KHÔNG đảo thành "từ Y thành X". Giấy hộ tịch cần sửa
+   có trong hồ sơ thì soát lại: giá trị CŨ phải đúng là giá trị đang in trên giấy đó. Thông tin nào hai bên ghi
+   GIỐNG nhau (chỉ cam đoan là cùng người) thì không đưa vào NoiDung. KHÔNG đặt dấu ngoặc kép quanh tên / giá trị
+   trong NoiDung, LyDo (làm hỏng JSON). LyDo khi đó là câu ngắn
+   tóm căn cứ trong bản cam đoan (thông tin trên giấy hộ tịch không khớp với <giấy tờ khác>; cam đoan là cùng
+   một người) — không chép nguyên đoạn, không tự thêm lý do khác. Không có cả tờ khai lẫn bản cam đoan → bỏ,
+   không tự viết.
    TÁCH NỘI DUNG / LÝ DO: tờ khai viết tay hay bị OCR chèn nhãn "Lý do:" vào GIỮA đoạn nội dung hoặc nối lý do
    vào cuối nội dung ("... lý do - do sai sót ..."). NoiDung CHỈ gồm các thay đổi (thông tin nào, từ giá trị cũ
    thành giá trị mới) — BỎ mọi cụm lý do và nhãn "Lý do:" lạc chỗ; phần lý do đưa vào LyDo.

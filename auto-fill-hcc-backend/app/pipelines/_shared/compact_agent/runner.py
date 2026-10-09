@@ -79,7 +79,7 @@ def _docx_walk(container) -> list[str]:
 def _extract_docx_text(file: dict) -> dict:
     # Dùng chung cho bước điền và 8 planner đính kèm: text DOCX không đi qua dịch vụ OCR nên
     # ghi vào Monitor ngay tại đây để bước nào cũng có "OCR text" của file DOCX.
-    with mon.span("pre.docx", name=file.get("name")):
+    with mon.span("pre.docx", file=file.get("name")):
         item = _extract_docx_text_impl(file)
     rec = mon.current()
     if rec is not None:

@@ -19,7 +19,6 @@ from app.pipelines.khuyet_tat.process import vision
 from app.pipelines.khuyet_tat.process.runner import (
     _owner_only_context,
     _requester_context,
-    fill_section_i_identity,
 )
 
 
@@ -42,6 +41,5 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         res["fields"] = [f for f in res["fields"] if f.get("name") not in section_iii] + [
             {"name": name, "comp": "raw", "value": value} for name, value in section_iii.items()
         ]
-    fill_section_i_identity(res)
     res["fields"] = mapper.enrich(res["fields"], options)
     return res

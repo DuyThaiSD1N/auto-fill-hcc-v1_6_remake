@@ -10,24 +10,31 @@ import unicodedata
 from app.config import settings
 from app.services.llm import client
 
-_REASON_MAX_TOKENS = 900
+_REASON_MAX_TOKENS = 1200
 
 _ROLE_PROMPT = """
 Bạn là agent PHÂN VAI hồ sơ THAY ĐỔI, CẢI CHÍNH, BỔ SUNG THÔNG TIN HỘ TỊCH, XÁC ĐỊNH LẠI DÂN TỘC.
 Đọc TOÀN BỘ tài liệu. Không trích field biểu mẫu, không trả JSON. Chỉ xác định:
 1. NGƯỜI NỘP = chủ tài khoản đang đăng nhập cổng (cho trong <requester_context>): có mặt trong hồ sơ không,
    với vai gì.
-2. NGƯỜI CÓ NỘI DUNG THAY ĐỔI = người mà thông tin hộ tịch được đề nghị sửa.
+2. NGƯỜI CÓ NỘI DUNG THAY ĐỔI = CHỦ của giấy tờ hộ tịch được đề nghị sửa (người được khai sinh trên giấy khai
+   sinh đó, vợ / chồng trên giấy kết hôn...), KHÔNG phải người có tên hay năm sinh được sửa. Sửa tên / năm sinh
+   của cha, mẹ trên giấy khai sinh của con → người có nội dung thay đổi là CON; người cha / mẹ dù đã chết cũng
+   không phải người có nội dung thay đổi.
 3. GIẤY TỜ HỘ TỊCH ĐÃ ĐĂNG KÝ cần sửa và LOẠI VIỆC.
 4. QUAN HỆ của NGƯỜI NỘP với người có nội dung thay đổi: Bản thân hoặc Khác.
 
 XÁC ĐỊNH NGƯỜI CÓ NỘI DUNG THAY ĐỔI, theo thứ tự:
 a. TỜ KHAI: người ở khối sau câu "... cho người có tên dưới đây". Họ tên là tên ĐANG CÓ trong sổ hộ tịch,
    KHÔNG phải tên mới nêu ở dòng "Nội dung".
-b. Giấy ủy quyền: BÊN ỦY QUYỀN.
-c. Không có tờ khai: người được đăng ký trên giấy hộ tịch chính (giấy khai sinh / trích lục khai sinh → người
+b. Giấy ủy quyền: BÊN ỦY QUYỀN — kể cả khi thông tin cần sửa là tên / năm sinh của CHA, MẸ ghi trên giấy của
+   bên ủy quyền (cha, mẹ khi đó chỉ là nội dung bị sửa).
+c. Không có tờ khai, có BẢN CAM ĐOAN viết "trong giấy khai sinh (giấy hộ tịch) CỦA TÔI ...": NGƯỜI CAM ĐOAN — chủ
+   giấy hộ tịch cần sửa. Thông tin cha / mẹ / vợ / chồng ghi trên giấy đó chỉ là nội dung bị sửa, không biến cha,
+   mẹ thành người có nội dung thay đổi.
+d. Không có tờ khai: người được đăng ký trên giấy hộ tịch chính (giấy khai sinh / trích lục khai sinh → người
    được khai sinh, không phải cha/mẹ/người đi khai; khai tử → người chết).
-d. Không có cả a, b, c nhưng hồ sơ có giấy tờ của CHỦ TÀI KHOẢN (tài liệu chứa đúng số định danh trong
+e. Không có cả a, b, c, d nhưng hồ sơ có giấy tờ của CHỦ TÀI KHOẢN (tài liệu chứa đúng số định danh trong
    <requester_context>) → chủ tài khoản làm cho BẢN THÂN: người có nội dung thay đổi = chủ tài khoản, lấy họ
    tên / số định danh / ngày sinh từ giấy tờ đó, ghi đúng "Nguồn: giấy tờ chủ tài khoản".
 
@@ -53,6 +60,16 @@ QUAN HỆ:
   → "Bản thân". Người có nội dung thay đổi đã chết → không bao giờ "Bản thân".
 - Người nộp là người khác (khác số định danh hoặc khác họ tên) → "Khác".
 - Không đủ thông tin để so → "Không xác định". Không suy từ họ, tuổi, địa chỉ.
+- Ba dòng "... tờ khai" trong khối <quan_he> CHỈ chép từ TỜ KHAI, KHÔNG so với người nộp, KHÔNG ảnh hưởng
+  "Kết luận": "Quan hệ trên tờ khai" = chữ ghi sau dấu hai chấm của dòng "Quan hệ với người được thay đổi, cải
+  chính..." (vd "Chồng", "Mẹ đẻ"); "Người yêu cầu tờ khai" / "Số định danh người yêu cầu tờ khai" = họ tên / số
+  định danh trên dòng "Họ, chữ đệm, tên người yêu cầu" và dòng giấy tờ tùy thân ngay dưới. Không có tờ khai hoặc
+  dòng đó trống → "không có". Giấy ủy quyền, bản cam đoan, giấy hộ tịch KHÔNG dùng cho ba dòng này.
+
+THÔNG TIN CẦN SỬA — CHỈ khi KHÔNG có tờ khai mà có BẢN CAM ĐOAN: bản cam đoan thường viết "Trong <giấy hộ tịch
+cần sửa> của tôi thì <thông tin> là A, nhưng trong <giấy tờ khác: căn cước, giấy khai sinh / chứng tử của người
+đó...> là B". Mỗi thông tin một dòng: ĐANG GHI = A (giá trị trên giấy cần sửa), ĐÚNG THEO = B. Giấy cần sửa có
+trong hồ sơ thì soát: A phải đúng là giá trị in trên giấy đó. Thông tin hai bên ghi GIỐNG nhau thì không liệt kê.
 
 QUY TẮC GIỮ ĐÚNG NGƯỜI:
 - Dòng "Giấy tờ tùy thân" trên GIẤY KHAI SINH là của người đi khai sinh, không phải của con.
@@ -67,7 +84,8 @@ Có trong hồ sơ: Có|Không
 Vai trong hồ sơ: ...
 </nguoi_nop>
 <nguoi_thay_doi>
-Họ tên: ...
+Giấy hộ tịch cần sửa: <loại giấy> của <họ tên CHỦ giấy>
+Họ tên: <đúng chủ giấy ở dòng trên>
 Số định danh: ...
 Ngày sinh: ...
 Trạng thái: còn sống|đã chết|không xác định
@@ -78,10 +96,15 @@ Căn cứ phân vai: ...
 Giấy tờ hộ tịch đã đăng ký: khai sinh|khai tử|kết hôn|giám hộ|giám sát giám hộ|nhận cha mẹ con|không xác định
 Loại việc: Cải chính|Thay đổi|Bổ sung|Xác định lại dân tộc|không xác định
 Căn cứ: ...
+Thông tin cần sửa: (chỉ khi không có tờ khai mà có bản cam đoan; không có thì bỏ dòng này và các dòng "- ...")
+- <thông tin>: đang ghi <A> | đúng theo <tên giấy khác>: <B>
 </viec_dang_ky>
 <quan_he>
 Kết luận: Bản thân|Khác|Không xác định
 Căn cứ: ...
+Quan hệ trên tờ khai: ...
+Người yêu cầu tờ khai: ...
+Số định danh người yêu cầu tờ khai: ...
 </quan_he>
 """.strip()
 

@@ -165,23 +165,12 @@ def _owner_profile(values: dict) -> dict:
         "phone": values.get("ChuHoSo_DienThoai"),
         "nation": values.get("ChuHoSo_QuocTich"),
     }
-    nkt_name = values.get("Nkt_HoTen")
-    nkt_identity = _identity(values.get("Nkt_SoDinhDanh"))
     if profile["name"] or profile["identity"]:
-        # Chủ hồ sơ CHÍNH LÀ người ở mục I. LLM hay chỉ trả ChuHoSo_HoTen rồi để số định danh/ngày sinh/
-        # giới tính ở Nkt_* → bù field còn thiếu từ Nkt_* khi hai nhóm không mâu thuẫn mỏ neo nào.
-        name_ok = not (profile["name"] and nkt_name) or _norm_text(profile["name"]) == _norm_text(nkt_name)
-        identity_ok = not (profile["identity"] and nkt_identity) or profile["identity"] == nkt_identity
-        if name_ok and identity_ok and (nkt_name or nkt_identity):
-            profile["name"] = profile["name"] or nkt_name
-            profile["identity"] = profile["identity"] or nkt_identity
-            profile["birthday"] = profile["birthday"] or values.get("Nkt_NgaySinh")
-            profile["gender"] = profile["gender"] or values.get("Nkt_GioiTinh")
-            profile["area"] = profile["area"] or _area(values.get("Nkt_ThuongTru"))
         return profile
 
-    if nkt_name or nkt_identity:
-        profile["name"] = nkt_name
+    nkt_identity = _identity(values.get("Nkt_SoDinhDanh"))
+    if values.get("Nkt_HoTen") or nkt_identity:
+        profile["name"] = values.get("Nkt_HoTen")
         profile["identity"] = nkt_identity
         profile["birthday"] = profile["birthday"] or values.get("Nkt_NgaySinh")
         profile["gender"] = profile["gender"] or values.get("Nkt_GioiTinh")

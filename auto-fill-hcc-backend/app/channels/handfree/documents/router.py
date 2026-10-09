@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from app.config import settings
 from app.core.deps import require_auth
 from app.core.errors import AppError
+from app.services import heic
 from app.monitor import persist as monitor_persist
 from app.monitor import recorder as mon
 from app.traces import repo as traces_repo
@@ -222,11 +223,14 @@ async def _upload_files(sid: str, files: list[UploadFile], doc_key: str, sess: d
                                 f"{settings.max_total_payload_mb}MB."),
                     ) from exc
                 incoming_bytes += size
+                # Ảnh HEIC (iPhone) cổng không nhận → đổi JPG ngay tại đây để OCR/đính kèm chỉ thấy JPG.
+                filename, content_type, size = await run_in_threadpool(
+                    heic.convert_file_if_heic, staged_path, filename, uf.content_type or "image/jpeg", size)
                 item = {"path": staged_path, "size": size}
                 staged.append(item)
                 payloads.append({
                     "name": filename,
-                    "type": uf.content_type or "image/jpeg",
+                    "type": content_type,
                     # Chỉ là đường dẫn nội bộ do server tạo, không nhận từ request của người dùng.
                     "path": str(staged_path),
                 })

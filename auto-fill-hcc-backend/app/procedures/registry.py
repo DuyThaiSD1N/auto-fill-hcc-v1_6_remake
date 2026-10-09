@@ -1142,6 +1142,8 @@ PROCEDURES: list[dict] = [
         "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh (Cổng DVC quốc gia mới)",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
+        "supportsSplitDocuments": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -1172,6 +1174,8 @@ PROCEDURES: list[dict] = [
         "label": "Thay đổi, cải chính, bổ sung thông tin hộ tịch, xác định lại dân tộc (Cổng DVC quốc gia mới)",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
+        "supportsSplitDocuments": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -1200,6 +1204,8 @@ PROCEDURES: list[dict] = [
         "label": "Thủ tục đăng ký khai sinh (Cổng DVC quốc gia mới)",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
+        "supportsSplitDocuments": True,
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -1278,6 +1284,8 @@ PROCEDURES: list[dict] = [
         # Khối người nộp do cổng đổ từ VNeID và khóa, không ghi đè.
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

@@ -206,7 +206,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     seen: set[tuple[str, int | None]] = set()
     context = _form_context(options)
 
-    def add(name: str, value, *, occurrence=None) -> None:
+    def add(name: str, value, *, occurrence=None, extra: dict | None = None) -> None:
         seen_key = (name, occurrence)
         if seen_key in seen or value in (None, "", {}, []):
             return
@@ -216,6 +216,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         field = {"name": name, "comp": comp, "value": value}
         if occurrence is not None:
             field["occurrence"] = occurrence
+        if extra:
+            field.update(extra)
         out.append(field)
         seen.add(seen_key)
 
@@ -234,18 +236,29 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not kh_name or not kh_identity:
         warnings.append("Thiếu họ tên hoặc số định danh người khai từ Bản khai Mẫu 12/CCCD.")
 
+    # Toggle "Lấy người nộp theo tờ khai" (owner_as_submitter): người nộp LUÔN là người khai, bỏ mốc tài khoản.
+    owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     can_fill_applicant = (
-        not _has_context_anchor(context)
+        owner_mode
+        or not _has_context_anchor(context)
         or _same_person(kh_identity, kh_name, context.get("applicant_identity"), context.get("applicant_name"))
     )
+    # Họ tên + CCCD Phần I cổng khoá (disabled) theo tài khoản VNeID; người khai có thể là người khác nên kèm
+    # enableInput để extension bỏ disabled trước khi ghi, cán bộ còn sửa được khi OCR sai.
+    unlock = {"enableInput": True} if owner_mode else None
 
     # --- Phần 1: Người nộp (occurrence 0 = người khai) ---
     if can_fill_applicant:
         add("data[chonDoiTuong]", "Cá nhân")
-        add("data[fullname]", kh_name, occurrence=0)
+        add("data[fullname]", kh_name, occurrence=0, extra=unlock)
+        if owner_mode and not (kh_birthday and re.fullmatch(r"\d{2}/\d{2}/\d{4}", kh_birthday)):
+            # Cổng đổ sẵn ngày sinh của tài khoản → thiếu ngày đủ thì xoá + đánh dấu, không để ngày người khác.
+            out.append({"name": "data[birthday]", "comp": UI_COMP_BY_NAME["data[birthday]"], "value": "",
+                        "occurrence": 0, "clear": True, "markEmpty": True})
+            seen.add(("data[birthday]", 0))
         add("data[birthday]", kh_birthday, occurrence=0)
         add("data[gender]", kh_gender, occurrence=0)
-        add("data[identityNumber]", kh_identity)
+        add("data[identityNumber]", kh_identity, extra=unlock)
         add("data[identityDate]", kh_issue_date)
         add("data[idIssuePlace]", kh_issuer)
         _add_area(add, "data[province]", "data[district]", "data[address]", kh_residence, occurrence=0)

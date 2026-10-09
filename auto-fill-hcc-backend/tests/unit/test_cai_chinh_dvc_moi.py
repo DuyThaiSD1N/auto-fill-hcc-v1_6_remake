@@ -4,8 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from app.pipelines.cai_chinh_dvc_moi.attach import planner as attach_planner
-from app.pipelines.cai_chinh_dvc_moi.attach.planner import ROW_CAN_CU, ROW_UY_QUYEN, build_plan_items
+from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import ROW_CAN_CU, ROW_UY_QUYEN, build_plan_items
 from app.pipelines.cai_chinh_dvc_moi.process import mapper, reason
 from app.pipelines.cai_chinh_dvc_moi.process.schema import UI_COMP_BY_NAME
 from app.procedures.registry import PROCEDURES
@@ -85,8 +84,9 @@ def test_detect_matches_own_page_only():
 @pytest.mark.skipif(not SNAPSHOT.exists(), reason="thiếu snapshot cổng")
 def test_ui_keys_exist_in_snapshot():
     data_names = set(re.findall(r'data-name="([A-Za-z0-9_]+?)__\d+"', SNAPSHOT.read_text(encoding="utf-8")))
-    # Snapshot chụp trước khi cổng đổi ô ngày sinh "citizenNDKNgaysinh" → "citizenNDK_NgaySinh" (DOM thật).
-    for name in set(UI_COMP_BY_NAME) - {"citizenNDKNoiCuTru_TrongNuoc", "citizenNDK_NgaySinh"}:
+    # Snapshot chụp trước khi cổng đổi ô ngày sinh "citizenNDKNgaysinh" → "citizenNDK_NgaySinh" (DOM thật);
+    # ô "citizenMqhkhac" chỉ render sau khi chọn quan hệ "Khác".
+    for name in set(UI_COMP_BY_NAME) - {"citizenNDKNoiCuTru_TrongNuoc", "citizenNDK_NgaySinh", "citizenMqhkhac"}:
         assert name in data_names, name
 
 
@@ -202,67 +202,72 @@ def test_attach_routes_authorization_and_everything_else():
     assert all(i["target"] == "fixed-slot" for i in items)
 
 
-def _scan_pdf(pages: int) -> bytes:
-    """PDF giả lập bản scan màu 200 dpi: nền nhiễu để JPEG không nén nhỏ được như trang trắng."""
-    import io
-
-    import pymupdf
-    from PIL import Image
-
-    out = pymupdf.open()
-    for seed in range(pages):
-        img = Image.effect_noise((1650, 2330), 40 + seed).convert("RGB")
-        buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=92)
-        page = out.new_page(width=595, height=842)
-        page.insert_image(page.rect, stream=buf.getvalue())
-    return out.tobytes()
+def test_attach_ten_tep_theo_ten_giay_to_llm_doc():
+    items = build_plan_items(["IMG_1.jpg", "IMG_2.jpg", "scan.pdf", "z123.pdf"], {},
+                             {0: "Căn cước công dân", 1: "Căn cước công dân", 2: "Giấy khai sinh"})
+    # Trùng loại giấy → đánh số; LLM không đọc ra tên → giữ tên tệp gốc.
+    assert [i["documentName"] for i in items] == ["Căn cước công dân", "Căn cước công dân 2", "Giấy khai sinh", "z123"]
 
 
-def _data_url(raw: bytes) -> str:
-    import base64
-
-    return "data:application/pdf;base64," + base64.b64encode(raw).decode()
-
-
-def test_shrink_brings_large_scan_under_portal_limit():
-    raw = _scan_pdf(3)
-    assert len(raw) > attach_planner.MAX_FILE_BYTES
-    out, level = attach_planner.shrink_file(raw)
-    assert len(out) <= attach_planner.MAX_FILE_BYTES
-    assert level
-    import pymupdf
-
-    assert len(pymupdf.open(stream=out)) == 3
+def test_attach_ten_cccd_theo_chu_the_khong_dau_va_mat_the():
+    from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import _llm_document_name
+    front = _llm_document_name({"documentName": "CĂN CƯỚC CÔNG DÂN", "matThe": "truoc", "chuThe": "NGUYỄN VĂN AN"})
+    back = _llm_document_name({"documentName": "Căn cước công dân", "matThe": "sau", "chuThe": "NGUYEN<<VAN<AN"})
+    assert (front, back) == ("CCCD Nguyen Van An mặt trước", "CCCD Nguyen Van An mặt sau")
+    assert _llm_document_name({"documentName": "Giấy khai sinh", "matThe": ""}) == "Giấy khai sinh"
 
 
-def test_plan_replaces_only_oversized_files(monkeypatch):
-    from app.process.schemas import FileItem
-    from app.services import ocr
-
-    async def fake_ocr(files):
-        return [{"text": ""} for _ in files]
-
-    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
-    small = pytest.importorskip("pymupdf").open()
-    small.new_page()
-    files = [
-        FileItem(name="nho.pdf", type="application/pdf", role="doc", dataUrl=_data_url(small.tobytes())),
-        FileItem(name="lon.pdf", type="application/pdf", role="doc", dataUrl=_data_url(_scan_pdf(3))),
-    ]
-    import asyncio
-
-    result = asyncio.run(attach_planner.plan(files))
-    assert list(result["replaceFiles"]) == ["1"]
-    shrunk = result["replaceFiles"]["1"]
-    assert shrunk["name"] == "lon.pdf" and shrunk["type"] == "application/pdf"
-    assert shrunk["bytes"] <= attach_planner.MAX_FILE_BYTES < shrunk["originalBytes"]
-    assert [a["fileIndex"] for a in result["attachments"]] == [0, 1]
-    assert result["extracted"]["shrunk"][0]["fileName"] == "lon.pdf"
-    assert not result["errors"]
+def test_attach_ten_cccd_ca_hai_mat_tren_mot_trang_khong_ghi_mat():
+    from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import _llm_document_name
+    name = _llm_document_name({"documentName": "Căn cước công dân", "matThe": "ca_hai", "chuThe": "NGUYỄN VĂN AN"})
+    assert name == "CCCD Nguyen Van An"
 
 
-def test_files_up_to_2mb_are_left_untouched():
-    # Giữa đích nén 1,9 MB và ngưỡng 2 MB: không nén, không cần mở PDF.
-    for size in (attach_planner.MAX_FILE_BYTES + 50_000, attach_planner.SHRINK_ABOVE_BYTES):
-        assert attach_planner._shrink_one({"name": "x.pdf", "dataUrl": _data_url(b"0" * size)}) is None
+def test_quan_he_cai_chinh_ten_theo_ket_luan_phan_vai_khi_thieu_so():
+    from app.pipelines.cai_chinh_dvc_moi.process import mapper as cc_mapper
+    ctx = ("<nguoi_thay_doi>\nHọ tên: NGUYỄN THỊ AM\nSố định danh:\nTrạng thái: còn sống\n</nguoi_thay_doi>\n"
+           "<quan_he>\nKết luận: Bản thân\n</quan_he>")
+    opts = {"formContext": {"applicantFullname": "Nguyễn Thị An", "applicantIdentityNumber": "001183000001"}}
+    assert cc_mapper._relation({}, ctx, opts)[0] == "Bản thân"
+    assert cc_mapper._relation({}, ctx.replace("Bản thân", "Khác"), opts)[0] == "Khác"
+
+
+def test_noi_dung_bo_muc_cu_moi_giong_nhau():
+    from app.pipelines.cai_chinh_dvc_moi.process.mapper import _drop_no_change
+    text = "Cải chính tên mẹ từ A thành B; cải chính tên bố từ Trần Văn C thành Trần Văn C; cải chính năm sinh bố từ 1968 thành 1964"
+    assert _drop_no_change(text) == "Cải chính tên mẹ từ A thành B; cải chính năm sinh bố từ 1968 thành 1964"
+
+
+def test_quan_he_cu_the_chi_dien_khi_khac_va_nguoi_yeu_cau_la_tai_khoan():
+    def ctx(relation="Khác", requester_id=ACCOUNT["applicantIdentityNumber"], requester="NGUYEN VAN A"):
+        return _context(relation=relation).replace(
+            f"Kết luận: {relation}",
+            f"Kết luận: {relation}\nQuan hệ trên tờ khai: Chồng\nNgười yêu cầu tờ khai: {requester}\n"
+            f"Số định danh người yêu cầu tờ khai: {requester_id}")
+
+    out, _ = _enrich(SUBJECT, ctx())
+    names = _names(out)
+    assert {f["name"]: f["value"] for f in out}["citizenMqhkhac"] == "Chồng"
+    assert names.index(RELATION) < names.index("citizenMqhkhac") < names.index("citizenNDKHoTen")
+    # Thiếu số → so họ tên, bỏ qua dấu.
+    assert "citizenMqhkhac" in _names(_enrich(SUBJECT, ctx(requester_id="", requester="Nguyễn Văn Á"))[0])
+    # Người yêu cầu tờ khai không phải chủ tài khoản (bên được ủy quyền nộp thay) → bỏ trống.
+    assert "citizenMqhkhac" not in _names(_enrich(SUBJECT, ctx(requester_id="001090000009"))[0])
+    assert "citizenMqhkhac" not in _names(_enrich(SUBJECT, _context(relation="Khác"))[0])
+    self_out, _ = _enrich({**SUBJECT, "NguoiThayDoi_SoDinhDanh": ACCOUNT["applicantIdentityNumber"]},
+                          ctx(relation="Bản thân"))
+    assert "citizenMqhkhac" not in _names(self_out)
+    # Số người yêu cầu OCR rớt chữ số → so họ tên.
+    assert "citizenMqhkhac" in _names(_enrich(SUBJECT, ctx(requester_id="00109000000"))[0])
+
+
+def test_to_khai_ban_than_cua_chu_tai_khoan_chot_ban_than_khi_thieu_so():
+    """Thiếu số người thay đổi, tên trong sổ khác tên tài khoản, nhưng tờ khai do chủ tài khoản khai ghi "Bản thân"."""
+    context = _context(relation="Khác").replace(
+        "Kết luận: Khác",
+        "Kết luận: Khác\nQuan hệ trên tờ khai: Bản Thân\nNgười yêu cầu tờ khai: NGUYEN VAN A\n"
+        f"Số định danh người yêu cầu tờ khai: {ACCOUNT['applicantIdentityNumber']}")
+    out, _ = _enrich({**SUBJECT, "NguoiThayDoi_SoDinhDanh": ""}, context)
+    by = {f["name"]: f for f in out}
+    assert by[RELATION]["value"] == "Bản thân" and by[RELATION]["default"] is True
+    assert "citizenMqhkhac" not in by

@@ -663,10 +663,7 @@ def _applicant_card_requester(context: str) -> dict | None:
 def _resolve_requester(values: dict, context: str, options: dict | None = None) -> dict:
     """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
 
-    0. CÓ GIẤY ỦY QUYỀN: người đi nộp là BÊN ĐƯỢC ỦY QUYỀN → ưu tiên tuyệt đối, xem
-       _authorized_requester.
-
-    Còn lại HAI NHÁNH TÁCH BẠCH — quyết định bằng việc hồ sơ CÓ hay KHÔNG có tờ khai/đơn:
+    Quyết định bằng việc hồ sơ CÓ hay KHÔNG có tờ khai/đơn:
 
     A. CÓ TỜ KHAI: tờ khai là nguồn duy nhất của cả ô tích lẫn nhân thân người yêu cầu. Ghi đè
        thẳng lên dữ liệu cổng điền sẵn từ tài khoản VNeID đang đăng nhập (người nộp hộ thường
@@ -677,7 +674,13 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
        Nhân thân điền theo đúng vai đã tick, thiếu thì lấy bù từ CCCD của chính vai đó (Bản thân ←
        con, Cha ← cha, Mẹ ← mẹ) vì CCCD sạch hơn chữ viết tay trên tờ khai.
 
-    B. KHÔNG CÓ TỜ KHAI: không giấy tờ nào nói ai là người yêu cầu, nên đối chiếu NGƯỜI ĐANG
+       Kể cả khi có GIẤY ỦY QUYỀN: người yêu cầu là người đứng tên trên tờ khai (thường là bên ủy
+       quyền), không phải bên được ủy quyền đi nộp.
+
+    B. KHÔNG CÓ TỜ KHAI nhưng CÓ GIẤY ỦY QUYỀN: người đi nộp là BÊN ĐƯỢC ỦY QUYỀN, xem
+       _authorized_requester.
+
+    C. KHÔNG CÓ TỜ KHAI lẫn giấy ủy quyền: không giấy tờ nào nói ai là người yêu cầu, nên đối chiếu NGƯỜI ĐANG
        ĐĂNG NHẬP CỔNG (nhân thân VNeID cổng tự điền sẵn vào khối này) với <con>:
          - TRÙNG người (số định danh, hoặc họ tên khi một bên không có số) → chính chủ tự đi làm
            cho mình: tick "Bản thân" và điền khối người yêu cầu từ CCCD của chính họ trong hồ sơ
@@ -685,10 +688,6 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
          - KHÔNG trùng → người thứ ba đi nộp hộ, không suy được quan hệ: tick "Khác" và KHÔNG ghi
            đè khối này, để cổng giữ nguyên dữ liệu VNeID; dữ liệu quét được đổ vào con/cha/mẹ.
     """
-    authorized = _authorized_requester(values, context)
-    if authorized:
-        return authorized
-
     # Agent chỉ được trả Requester_* khi đọc từ tờ khai, nên bản thân việc có Requester_* đã là bằng
     # chứng; _has_declaration còn bắt được ca tờ khai chỉ tích ô quan hệ mà bỏ trống họ tên.
     has_requester_facts = any(
@@ -760,6 +759,11 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             "quan_he_default": not relation,
             "source": "to_khai",
         }
+
+    # Không có tờ khai mà có giấy ủy quyền: người đi nộp là bên được ủy quyền.
+    authorized = _authorized_requester(values, context)
+    if authorized:
+        return authorized
 
     # Không có tờ khai: mỏ neo VNeID của cổng là căn cứ DUY NHẤT còn lại. Chỉ dùng nó để nhận ra
     # ca chính chủ tự đi làm — không dùng để suy người yêu cầu là cha/mẹ, vì người nộp hộ nào cũng

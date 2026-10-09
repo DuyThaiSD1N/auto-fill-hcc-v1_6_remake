@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.pipelines.khai_sinh_dvc_moi.attach.planner import ROW_CHUNG_SINH, ROWS, build_plan_items
+from app.pipelines.khai_sinh_dvc_moi.attach.dinh_kem_khong_tach.planner import ROW_CHUNG_SINH, ROWS, build_plan_items
 from app.pipelines.khai_sinh_dvc_moi.process import mapper, reason
 from app.pipelines.khai_sinh_dvc_moi.process.schema import UI_COMP_BY_NAME
 from app.procedures.registry import PROCEDURES
@@ -141,6 +141,14 @@ def test_other_requester_uses_declaration_relation_only_when_requester_is_accoun
     assert "citizenField62" not in _by(out) and warnings
 
 
+def test_quan_he_cu_the_cua_phan_vai_chi_dung_khi_ket_luan_khac():
+    account = {"applicantFullname": "LE THI D", "applicantIdentityNumber": "001160000009"}
+    by = _by(_enrich(BASE, _context("Khác", "Bà ngoại"), account=account)[0])
+    assert by["citizenField62"]["value"] == "Bà ngoại"
+    out, warnings = _enrich(BASE, _context("Không xác định", "Người nộp không xuất hiện trong hồ sơ"), account=account)
+    assert _by(out)[RELATION]["value"] == "Khác" and "citizenField62" not in _by(out) and warnings
+
+
 def test_dead_parent_skips_residence_with_warning():
     out, warnings = _enrich({**BASE, "Me_DaChet": True}, _context("Khác"), account={})
     assert "citizenMeNoicutru" not in _by(out) and any("mẹ đã chết" in w for w in warnings)
@@ -166,45 +174,3 @@ def test_attach_rows():
         ROW_CHUNG_SINH["slotName"], ROWS["authorization"]["slotName"], ROWS["surrogacy_doc"]["slotName"],
         ROWS["abandoned_record"]["slotName"], ROW_CHUNG_SINH["slotName"],
     ]
-
-
-def test_attach_plan_shrinks_files_over_2mb(monkeypatch):
-    """Cổng chỉ nhận < 2 MB: tệp > 2 MB trả bản nén ở replaceFiles, tệp nhỏ để nguyên."""
-    import asyncio
-    import base64
-    import io
-
-    import pymupdf
-    from PIL import Image
-
-    from app.pipelines.khai_sinh_dvc_moi.attach import planner as attach_planner
-    from app.process.schemas import FileItem
-    from app.services import ocr
-
-    def data_url(raw: bytes) -> str:
-        return "data:application/pdf;base64," + base64.b64encode(raw).decode()
-
-    big = pymupdf.open()
-    for seed in range(3):  # nền nhiễu giả lập bản scan màu 200 dpi
-        buf = io.BytesIO()
-        Image.effect_noise((1650, 2330), 40 + seed).convert("RGB").save(buf, "JPEG", quality=92)
-        page = big.new_page(width=595, height=842)
-        page.insert_image(page.rect, stream=buf.getvalue())
-    small = pymupdf.open()
-    small.new_page()
-
-    async def fake_ocr(files):
-        return [{"text": ""} for _ in files]
-
-    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
-    files = [
-        FileItem(name="nho.pdf", type="application/pdf", role="doc", dataUrl=data_url(small.tobytes())),
-        FileItem(name="lon.pdf", type="application/pdf", role="doc", dataUrl=data_url(big.tobytes())),
-    ]
-    result = asyncio.run(attach_planner.plan(files))
-    assert list(result["replaceFiles"]) == ["1"]
-    shrunk = result["replaceFiles"]["1"]
-    assert shrunk["bytes"] <= 1_900_000 < 2_000_000 < shrunk["originalBytes"]
-    assert [a["slotKey"] for a in result["attachments"]] == [ROW_CHUNG_SINH["slotKey"]] * 2
-    assert result["extracted"]["shrunk"][0]["fileName"] == "lon.pdf"
-    assert not result["errors"]

@@ -31,7 +31,8 @@ Chỉ xác định:
 
 XÁC ĐỊNH VAI, theo thứ tự nguồn:
 a. TỜ KHAI ĐĂNG KÝ KHAI SINH: người sau câu "Đề nghị cơ quan đăng ký khai sinh cho người dưới đây" là CON; các
-   dòng "Họ, chữ đệm, tên người mẹ" / "người cha" là MẸ / CHA.
+   dòng "Họ, chữ đệm, tên người mẹ" / "người cha" là MẸ / CHA. Tờ khai để trống dòng người cha → CHA "Không xác
+   định" và loại khai sinh "Chưa xác định được cha", KHÔNG lấy cha từ giấy chứng sinh / bản cam đoan (tương tự mẹ).
 b. GIẤY CHỨNG SINH: con là "Dự định đặt tên con" (tên có thể bị gạch sửa tay — lấy tên khớp tờ khai), mẹ là
    người sinh; giấy chứng sinh KHÔNG có cha.
 c. GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ: chồng là CHA, vợ là MẸ.

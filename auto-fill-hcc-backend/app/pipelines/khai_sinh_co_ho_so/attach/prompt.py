@@ -57,6 +57,9 @@ Mỗi tài liệu trả type thuộc đúng một trong:
   thẻ BHYT → "Thẻ bảo hiểm y tế"; giấy chứng nhận kết hôn → "Giấy chứng nhận kết hôn";
   trích lục khai tử → "Trích lục khai tử"; commitment → "Bản cam đoan";
   authorization → "Văn bản ủy quyền"; paper_declaration → "Tờ khai đăng ký".
+- Một file GỘP NHIỀU giấy tờ khác nhau (các trang "Trang i/N" là những giấy khác loại hoặc của người khác
+  nhau, vd CCCD + giấy chứng nhận kết hôn + CCCD cha mẹ) → title = "Hồ sơ giấy tờ cá nhân"; KHÔNG lấy tên
+  giấy ở trang đầu. Nhiều trang của CÙNG một giấy (hai mặt một thẻ, nhiều trang một học bạ) vẫn đặt tên giấy đó.
 </title_rules>
 
 <output_contract>
@@ -72,7 +75,21 @@ Chỉ dựa vào OCR_TEXT.
 """.strip()
 
 
+_PAGE_RE = re.compile(r"(?m)^\W*Trang\s+\d+\s*/\s*\d+\W*$")
+
+
 def _truncate_text(text: str, limit: int = 3000) -> str:
+    """Rút gọn OCR cho LLM. File nhiều trang lấy PHẦN ĐẦU MỖI TRANG (giữ mốc trang) thay vì cắt cụt từ đầu:
+    cắt cụt thì LLM chỉ thấy vài trang đầu, không nhận ra file là một bộ gộp nhiều giấy tờ."""
+    marks = list(_PAGE_RE.finditer(text or ""))
+    if len(marks) > 1:
+        per_page = max(200, limit // len(marks))
+        parts = []
+        for k, m in enumerate(marks):
+            body = text[m.end():(marks[k + 1].start() if k + 1 < len(marks) else len(text))]
+            body = re.sub(r"\s+", " ", body).strip()
+            parts.append(f"{m.group(0).strip()} {body[:per_page]}{'...' if len(body) > per_page else ''}")
+        return " ".join(parts)
     text = re.sub(r"\s+", " ", text or "").strip()
     if len(text) <= limit:
         return text

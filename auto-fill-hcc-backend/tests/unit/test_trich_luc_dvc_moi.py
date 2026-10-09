@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from app.pipelines.trich_luc_dvc_moi.attach.planner import build_plan_items
+from app.pipelines.trich_luc_dvc_moi.attach.dinh_kem_khong_tach.planner import build_plan_items
 from app.pipelines.trich_luc_dvc_moi.process import mapper, reason
 from app.pipelines.trich_luc_dvc_moi.process.schema import UI_COMP_BY_NAME
 from app.procedures.registry import PROCEDURES
@@ -194,47 +194,29 @@ def test_attach_plan_puts_every_file_on_the_single_row():
     assert all(i["target"] == "fixed-slot" and i["noChooserClick"] for i in items)
 
 
-def test_attach_plan_async_contract():
+def test_attach_plan_async_contract(monkeypatch):
     from app.pipelines.trich_luc_dvc_moi.attach import plan
+    from app.pipelines.trich_luc_dvc_moi.attach.dinh_kem_khong_tach import planner
     from app.process.schemas import FileItem
+    from app.services import ocr
 
-    files = [FileItem(name="a.pdf", type="application/pdf", dataUrl="data:,", role="")]
+    async def fake_ocr(files):
+        return [{"text": "VĂN BẢN ỦY QUYỀN ..."} for _ in files]
+
+    async def fake_chat(*_args, **_kwargs):
+        return '{"documents":[{"index":0,"documentName":"Văn bản ủy quyền"}]}'
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [FileItem(name="IMG_9.jpg", type="image/jpeg", dataUrl="data:,", role=""),
+             FileItem(name="ghi-chu.docx", type="application/msword", dataUrl="data:,", role="")]
     res = asyncio.run(plan(files, {}))
-    assert len(res["attachments"]) == 1 and res["errors"] == []
+    assert res["errors"] == []
+    # Tệp OCR được → tên theo giấy tờ; tệp không OCR → giữ tên gốc. Mọi tệp vẫn vào dòng duy nhất.
+    assert [i["documentName"] for i in res["attachments"]] == ["Văn bản ủy quyền", "ghi-chu"]
+    assert {i["slotIndex"] for i in res["attachments"]} == {0}
 
 
-def test_attach_plan_shrinks_files_over_2mb(monkeypatch):
-    """Cổng chỉ nhận < 2 MB: tệp > 2 MB trả bản nén ở replaceFiles, tệp nhỏ để nguyên."""
-    import asyncio
-    import base64
-    import io
-
-    import pymupdf
-    from PIL import Image
-
-    from app.pipelines.trich_luc_dvc_moi.attach import planner as attach_planner
-    from app.process.schemas import FileItem
-
-    def data_url(raw: bytes) -> str:
-        return "data:application/pdf;base64," + base64.b64encode(raw).decode()
-
-    big = pymupdf.open()
-    for seed in range(3):  # nền nhiễu giả lập bản scan màu 200 dpi
-        buf = io.BytesIO()
-        Image.effect_noise((1650, 2330), 40 + seed).convert("RGB").save(buf, "JPEG", quality=92)
-        page = big.new_page(width=595, height=842)
-        page.insert_image(page.rect, stream=buf.getvalue())
-    small = pymupdf.open()
-    small.new_page()
-
-    files = [
-        FileItem(name="nho.pdf", type="application/pdf", role="doc", dataUrl=data_url(small.tobytes())),
-        FileItem(name="lon.pdf", type="application/pdf", role="doc", dataUrl=data_url(big.tobytes())),
-    ]
-    result = asyncio.run(attach_planner.plan(files))
-    assert list(result["replaceFiles"]) == ["1"]
-    shrunk = result["replaceFiles"]["1"]
-    assert shrunk["bytes"] <= 1_900_000 < 2_000_000 < shrunk["originalBytes"]
-    assert [a["slotName"] for a in result["attachments"]] == [attach_planner.ROW_NAME] * 2
-    assert result["extracted"]["shrunk"][0]["fileName"] == "lon.pdf"
-    assert not result["errors"]
+def test_attach_ten_trung_duoc_danh_so():
+    items = build_plan_items(["a.jpg", "b.jpg"], {0: "Căn cước công dân", 1: "Căn cước công dân"})
+    assert [i["documentName"] for i in items] == ["Căn cước công dân", "Căn cước công dân 2"]

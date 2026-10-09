@@ -263,7 +263,10 @@ async def plan_khai_sinh_co_ho_so_attachments(
                 # Ô gom chứa nhiều giấy tờ khác nhau → tên tài liệu phải nói rõ đó là giấy gì,
                 # kèm tên người với CCCD để cán bộ phân biệt được các file trong cùng một dòng.
                 label = detected.get("title") or _DOC_LABEL[doc_type]
-                person = _extract_person_name(text) if _is_cccd_text(text) else ""
+                # Chỉ gắn tên người khi tài liệu ĐÚNG là một tấm thẻ: bộ gộp nhiều giấy có CCCD ở trang đầu mà
+                # gắn tên thì đọc như CCCD của một người.
+                is_card = any(k in _fold(label) for k in ("can cuoc", "chung minh", "ho chieu"))
+                person = _extract_person_name(text) if is_card and _is_cccd_text(text) else ""
                 document_name = _unique_label(f"{label} {person}".strip() if person else label, used_labels)
             else:
                 document_name = _unique_label(
