@@ -5057,10 +5057,16 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-huu-tri-xa-hoi",
+        # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
+        # URL không mang mã TTHC → nhận theo tiêu đề <h2 class="title"> "Thực hiện trợ cấp hưu trí xã hội".
+        # textIncludes đòi ĐỦ mọi cụm nên chỉ để MỘT cụm (trang mới không in tên dài "Thực hiện, điều chỉnh,
+        # thôi hưởng..."). textPriority để thắng rule chung của cổng; urlScope giữ trong hai cổng đã gặp.
         "detect": {
             "urlIncludes": ["maThuTuc=1.014027"],
-            "textIncludes": ["Thực hiện trợ cấp hưu trí xã hội", "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội"],
+            "urlScope": ["dichvucongbyt.moh.gov.vn", "dichvucong.gov.vn"],
+            "textIncludes": ["Thực hiện trợ cấp hưu trí xã hội"],
             "headingDisabled": True,
+            "textPriority": True,
         },
         "label": "Thực hiện trợ cấp hưu trí xã hội",
         "mode": "agent",

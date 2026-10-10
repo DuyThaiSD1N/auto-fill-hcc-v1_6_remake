@@ -1153,6 +1153,14 @@
       "autoConfirm": true
     },
     {
+      "key": "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han",
+      "code": "1.013949",
+      "label": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te-bac-ninh",
       "code": "1.014076",
       "label": "Bắc Ninh - Cấp giấy chứng nhận đủ điều kiện kinh doanh dược thuộc thẩm quyền của Sở Y tế (Cơ sở bán buôn thuốc, nguyên liệu làm thuốc; Cơ sở bán lẻ thuốc bao gồm nhà thuốc, quầy thuốc, tủ thuốc trạm y tế xã, cơ sở chuyên bán lẻ dược liệu, thuốc dược liệu, thuốc cổ truyền)",

@@ -12,6 +12,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
+# Mạng tới pypi có lúc chỉ ~100 KB/s: timeout đọc mặc định 15s làm gói lớn đứt giữa chừng.
+ENV PIP_DEFAULT_TIMEOUT=120 PIP_RETRIES=10
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app

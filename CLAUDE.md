@@ -89,7 +89,10 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
-Baseline ngày 2026-10-07, sau commit "updaete BE mới" (máy local, có `--continue-on-collection-errors`):
+Baseline ngày 2026-10-09, sau commit "update BE mới" e9a9dda (máy local, có `--continue-on-collection-errors`):
+`111 failed, 2328 passed, 34 skipped, 6 errors`. So với bản 2026-10-07 (`108 failed, 2286 passed`) thêm 3 đỏ đến từ
+chính bản BE dán vào, trong đó `test_dieu_chinh_huu_tri_registry` còn đợi tên cũ "Thực hiện, điều chỉnh, thôi hưởng
+trợ cấp hưu trí xã hội" sau khi BE đổi label. Bản 2026-10-07:
 `108 failed, 2286 passed, 34 skipped, 6 errors`. Lỗi collect thứ 4 là `tests/unit/test_submit_click_khong_dem_doi.py`,
 thứ 5 và 6 là `tests/unit/test_auth_refresh_grace.py`, `tests/unit/test_upload_session_sliding_expiry.py` (máy local
 thiếu `mongomock`). Bản 2026-10-05 trước đó: `107 failed, 2204 passed, 30 skipped, 5 errors`. So với bản trước (103 failed):
