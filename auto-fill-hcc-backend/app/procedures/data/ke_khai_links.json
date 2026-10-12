@@ -1225,6 +1225,7 @@
       "label": "Thủ tục yêu cầu trợ giúp pháp lý",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-8e3d-737e-8aca-295dd1f2ea9f",
       "needsAgencySelect": true,
+      "selectSo": true,
       "autoConfirm": true
     },
     {

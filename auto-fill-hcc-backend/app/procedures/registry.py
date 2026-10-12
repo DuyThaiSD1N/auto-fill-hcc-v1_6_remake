@@ -432,6 +432,8 @@ from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.attach 
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process import run as xn_dien_tich_nha_o_thuong_tru_process
 from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.attach import plan as ho_tro_thiet_hai_dich_benh_dv_attach
 from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.process import run as ho_tro_thiet_hai_dich_benh_dv_process
+from app.pipelines.yeu_cau_tro_giup_phap_ly.attach import plan as yeu_cau_tro_giup_phap_ly_attach
+from app.pipelines.yeu_cau_tro_giup_phap_ly.process import run as yeu_cau_tro_giup_phap_ly_process
 
 PROCEDURES: list[dict] = [
     {
@@ -7385,6 +7387,29 @@ PROCEDURES: list[dict] = [
             "trước."
         ),
     },
+    {
+        "key": "yeu-cau-tro-giup-phap-ly",
+        # Mã TTHC 2.000829 (Bộ Tư pháp). Cổng DVCQG wizard tư pháp: bước Kê khai là eForm "ĐƠN YÊU CẦU TRỢ GIÚP
+        # PHÁP LÝ" (tokhaidientu.moj.gov.vn, id 1899) — engine legacy x-*. Mã + URL ghép từ ke_khai_links.
+        "detect": {"textIncludes": ["Thủ tục yêu cầu trợ giúp pháp lý"], "headingDisabled": True},
+        "label": "Thủ tục yêu cầu trợ giúp pháp lý",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy tờ chứng minh diện được trợ giúp pháp lý — thường là Thông báo về trợ giúp pháp lý của cơ "
+            "quan tiến hành tố tụng (Mẫu 03); hoặc giấy chứng nhận hộ nghèo, xác nhận khuyết tật…\n"
+            "2. CCCD/căn cước của người được trợ giúp pháp lý (cả 2 mặt).\n"
+            "3. Nếu có: Đơn yêu cầu trợ giúp pháp lý bản giấy (Mẫu 02-TP-TGPL), văn bản ủy quyền.\n"
+            "Người yêu cầu giữ nguyên theo tài khoản; hệ thống điền người được trợ giúp, diện, tóm tắt yêu cầu "
+            "(câu đề nghị + giai đoạn + vụ án), hình thức, tài liệu kèm theo.\n"
+            "Bước 3: Thông báo + CCCD gộp một tệp vào dòng 1 'Giấy tờ chứng minh người thuộc diện trợ giúp pháp "
+            "lý'; dòng 2 là Tờ khai cổng tự sinh, không đính đè; đơn bản giấy/ủy quyền thêm thành phần mới."
+        ),
+    },
 ]
 
 
@@ -7570,6 +7595,7 @@ _PIPELINE = {
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_process,
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_process,
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_process,
+    "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7780,6 +7806,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_attach,
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_attach,
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_attach,
+    "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}
