@@ -1576,10 +1576,12 @@ def _variant_default_key(proc: dict) -> str:
 
 def _variant_chips(proc: dict) -> list[dict]:
     default_key = _variant_default_key(proc)
+    # equalChips: các trường hợp ngang hàng, không có mặc định → mọi chip cùng màu tô đậm.
+    equal = bool((proc.get("variants") or {}).get("equalChips"))
     return [
         {"label": option.get("chip") or option.get("label", ""),
          "send": f'__action:set_variant:{{"value":"{option.get("key", "")}"}}',
-         "solid": option.get("key") == default_key}
+         "solid": equal or option.get("key") == default_key}
         for option in _variant_options(proc)
     ]
 

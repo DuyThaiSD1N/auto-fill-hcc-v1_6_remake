@@ -1639,15 +1639,20 @@ PROCEDURES: list[dict] = [
         # portalMatch/portalAvoid là token ĐÃ FOLD DẤU để khớp option trong ô "Trường hợp giải
         # quyết" — tên option do cổng đặt, không cố định, nên khớp theo cụm đặc trưng thay vì
         # nguyên văn. Option ĐẦU là mặc định (chip tô đậm).
+        # pipelineOptions: ép nhánh form cho mapper theo trường hợp đã chọn, khỏi đoán lại từ giấy tờ.
         "variants": {
+            # Hai trường hợp ngang hàng → hai chip cùng màu, không tô đậm riêng option đầu.
+            "equalChips": True,
             "options": [
                 {"key": "nha_o_rieng_le", "label": "Nhà ở riêng lẻ",
                  "chip": "🏠 Nhà ở riêng lẻ", "portalMatch": "nha o rieng le",
-                 "desc": "xây nhà ở của hộ gia đình, cá nhân"},
+                 "desc": "xây nhà ở của hộ gia đình, cá nhân",
+                 "pipelineOptions": {"constructionVariant": "nha_o_rieng_le"}},
                 {"key": "cong_trinh", "label": "Công trình cấp III, cấp IV",
                  "chip": "🏢 Công trình cấp III, cấp IV",
                  "portalMatch": "cong trinh", "portalAvoid": "nha o rieng le",
-                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ"},
+                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ",
+                 "pipelineOptions": {"constructionVariant": "khong_theo_tuyen"}},
             ],
         },
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
@@ -1980,6 +1985,19 @@ def get_owner_info_pipeline(key: str):
 
 def get_attach_pipeline(key: str):
     return core_registry.get_attach_pipeline(key)
+
+
+def variant_pipeline_options(proc: dict | None, conv: dict | None) -> dict:
+    """Tuỳ chọn pipeline theo TRƯỜNG HỢP GIẢI QUYẾT công dân đã chọn (`procedure_variant` →
+    `variants.options[].pipelineOptions`), vd nhánh form nhà ở riêng lẻ / công trình của GPXD.
+    Chưa chọn hoặc trường hợp không khai pipelineOptions → {} (mapper tự suy từ giấy tờ)."""
+    variant = str((conv or {}).get("procedure_variant") or "")
+    if not proc or not variant:
+        return {}
+    for option in (proc.get("variants") or {}).get("options") or []:
+        if option.get("key") == variant:
+            return dict(option.get("pipelineOptions") or {})
+    return {}
 
 
 def portal_submit_rules() -> dict[str, dict]:

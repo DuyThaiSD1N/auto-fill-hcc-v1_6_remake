@@ -564,7 +564,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         or _same_person(submitter_identity, submitter_name, context.get("applicant_identity"), context.get("applicant_name"))
     )
 
-    area_occ = 0
+    # Form luôn có 2 cặp Tỉnh/Phường: cặp 0 = khối người nộp, cặp 1 = địa điểm công trình. FE chọn ô
+    # theo thứ tự này nên địa điểm công trình LUÔN ở cặp 1, kể cả khi bỏ qua khối người nộp.
     if can_fill_applicant:
         add("data[chonDoiTuong]", "Cá nhân" if _looks_individual_owner(values) else "Tổ chức")
         add("data[fullname]", submitter_name)
@@ -600,10 +601,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         if submitter_residence:
             # NƠI CƯ TRÚ NGƯỜI NỘP (khác hoàn toàn địa điểm công trình). data[province]/data[district]
             # xuất hiện 2 lần trên form → occurrence đầu tiên cho KHỐI NGƯỜI NỘP.
-            add("data[province]", _province_label(submitter_residence.get("tinh")), occurrence=area_occ)
-            add("data[district]", _commune_label(submitter_residence.get("xa")), occurrence=area_occ)
+            add("data[province]", _province_label(submitter_residence.get("tinh")), occurrence=0)
+            add("data[district]", _commune_label(submitter_residence.get("xa")), occurrence=0)
             add("data[address]", _text(submitter_residence.get("diaChi")))
-            area_occ += 1
 
         # Ô person mà EXTENSION CHỊU TRÁCH NHIỆM điền nhưng giấy tờ KHÔNG có dữ liệu (vd giới tính, ngày
         # sinh không đọc được) → phát sentinel comp "dom-expect": FE KHÔNG điền, chỉ TÔ ĐỎ nếu ô đang
@@ -626,17 +626,26 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[nguoiDaiDien]", _text(values.get("ChuDauTu_NguoiDaiDien")))
         add("data[chucVu]", _text(values.get("ChuDauTu_ChucVu")))
         add("data[maSoDoanhNghiepCDT]", _text(values.get("ChuDauTu_MaSoDoanhNghiep")))
-        add("data[soDinhDanhNguoiDaiDien]", owner_identity)
-        add("data[soDienThoaiNguoiDaiDien]", owner_phone)
+        # Tổ chức: CCCD/SĐT người nộp chỉ dùng cho ô người đại diện khi người nộp CHÍNH LÀ người đại
+        # diện. Người nộp là người khác được ủy quyền → để trống, khỏi ghép số của họ vào tên giám đốc.
+        representative = _fold(values.get("ChuDauTu_NguoiDaiDien"))
+        submitter_is_representative = not representative or representative == _fold(values.get("Applicant_HoTen"))
+        add("data[soDinhDanhNguoiDaiDien]", _identity(_pick(
+            values.get("ChuHo_SoDinhDanh"),
+            values.get("Applicant_SoDinhDanh") if submitter_is_representative else None,
+        )))
+        add("data[soDienThoaiNguoiDaiDien]", _phone(_pick(
+            values.get("ChuHo_DienThoai"),
+            values.get("Applicant_DienThoai") if submitter_is_representative else None,
+        )))
 
     add("data[loDatSo]", _build_land_lot(values))
     add("data[dienTichLoDat]", _number(values.get("Dat_DienTich")))
     land_area = _area(values.get("Dat_DiaDiemXayDung"))
     if land_area:
         # ĐỊA ĐIỂM CÔNG TRÌNH = cặp Tỉnh/Phường kế tiếp theo thứ tự occurrence.
-        add("data[province]", _province_label(land_area.get("tinh")), occurrence=area_occ)
-        add("data[district]", _commune_label(land_area.get("xa")), occurrence=area_occ)
-        area_occ += 1
+        add("data[province]", _province_label(land_area.get("tinh")), occurrence=1)
+        add("data[district]", _commune_label(land_area.get("xa")), occurrence=1)
     # soNha CHỈ lấy số nhà rõ ràng (Dat_SoNha) — KHÔNG fallback sang diaChi vì diaChi là tên đường
     # ("Đường Vạn Hạnh") sẽ nhồi cả đường vào ô Số nhà (trùng duongPho). Đường/phố lấy diaChi.
     add("data[soNha]", _text(values.get("Dat_SoNha")))

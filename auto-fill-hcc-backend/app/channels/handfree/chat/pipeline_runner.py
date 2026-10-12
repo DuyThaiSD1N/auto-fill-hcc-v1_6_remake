@@ -22,6 +22,7 @@ from app.channels.handfree.procedure_registry import (
     get_owner_info_pipeline,
     get_pipeline,
     get_procedure,
+    variant_pipeline_options,
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
@@ -204,6 +205,9 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"
+            # Trường hợp giải quyết công dân đã chốt (vd nhà ở riêng lẻ / công trình) → ép nhánh
+            # form cho mapper thay vì để nó tự đoán từ giấy tờ.
+            options.update(variant_pipeline_options(proc, conv))
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):

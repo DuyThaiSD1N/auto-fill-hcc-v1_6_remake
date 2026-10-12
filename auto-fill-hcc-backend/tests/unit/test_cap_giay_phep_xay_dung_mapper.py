@@ -406,3 +406,195 @@ def test_desc_chi_tiet_nhan_ca_3_kieu_trinh_bay_va_bat_buoc_tra():
     assert "trong NGOẶC ĐƠN cùng dòng" in EXTRA_RULES
     # Cảnh báo "không lấy số ở dòng chiều cao" phải được giới hạn cho field SỐ, không chặn field chi tiết.
     assert "chỉ áp cho field SỐ" in EXTRA_RULES
+
+
+# ── Các trường hợp người nộp: tự làm cho bản thân / được ủy quyền / tổ chức (dữ liệu bịa) ──
+
+_CHU_HO = {"ten": "TRẦN VĂN AN", "id": "001090000001", "sdt": "0901000001",
+           "noiCuTru": {"quocGia": "Việt Nam", "tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt",
+                        "diaChi": "12 Đường Hoa Sen"}}
+_DUOC_UY_QUYEN = {"ten": "LÊ THỊ BÌNH", "id": "001195000002", "sdt": "0902000002",
+                  "noiCuTru": {"quocGia": "Việt Nam", "tinh": "Thành phố Hà Nội", "xa": "Phường Ba Đình",
+                               "diaChi": "5 Ngõ Trúc"}}
+_DIA_DIEM = {"quocGia": "Việt Nam", "tinh": "Tỉnh Lâm Đồng", "xa": "Phường Lâm Viên - Đà Lạt",
+             "diaChi": "Đường Hoa Hồng"}
+
+
+def _nguoi_nop(person):
+    return [
+        _field("Applicant_HoTen", person["ten"]),
+        _field("Applicant_SoDinhDanh", person["id"]),
+        _field("Applicant_DienThoai", person["sdt"]),
+        _field("Applicant_NoiCuTru", person["noiCuTru"]),
+    ]
+
+
+def _chu_ho(person):
+    return [
+        _field("ChuDauTu_Loai", "Chủ hộ"),
+        _field("ChuHo_HoTen", person["ten"]),
+        _field("ChuHo_SoDinhDanh", person["id"]),
+        _field("ChuHo_DienThoai", person["sdt"]),
+    ]
+
+
+def _cong_trinh():
+    return [
+        _field("Dat_DiaDiemXayDung", _DIA_DIEM),
+        _field("CongTrinh_Ten", "Nhà ở gia đình"),
+        _field("CongTrinh_Loai", "Nhà ở riêng lẻ"),
+    ]
+
+
+def _dang_nhap(person):
+    return {"formContext": {"applicantFullname": person["ten"], "applicantIdentityNumber": person["id"]}}
+
+
+def _theo_cap(mapped: list[dict], name: str) -> dict:
+    """{occurrence: value} của field xuất hiện nhiều lần (Tỉnh/Phường người nộp ↔ công trình)."""
+    return {f.get("occurrence"): f["value"] for f in mapped if f["name"] == name}
+
+
+def test_tu_lam_cho_ban_than_nguoi_nop_trung_chu_ho():
+    out, _ = mapper.enrich(_nguoi_nop(_CHU_HO) + _chu_ho(_CHU_HO) + _cong_trinh(), _dang_nhap(_CHU_HO))
+    d = _values(out)
+
+    assert d["data[chonDoiTuong]"] == "Cá nhân"
+    assert d["data[fullname]"] == d["data[tenChuHo]"] == "TRẦN VĂN AN"
+    assert d["data[identityNumber]"] == d["data[soDinhDanhChuHo]"] == "001090000001"
+    assert d["data[phoneNumber]"] == d["data[soDienThoaiChuHo]"] == "0901000001"
+    assert d["data[loaiHinhChuDauTu]"] == "chuHo"
+    assert d["data[address]"] == "12 Đường Hoa Sen"
+    assert _theo_cap(out, "data[province]") == {0: "Tỉnh Lâm Đồng", 1: "Tỉnh Lâm Đồng"}
+    assert _theo_cap(out, "data[district]") == {0: "Phường Xuân Hương - Đà Lạt", 1: "Phường Lâm Viên - Đà Lạt"}
+
+
+def test_tu_lam_cho_ban_than_don_chi_ghi_chu_ho():
+    # Đơn tự làm thường chỉ ghi mục chủ hộ → người nộp lấy theo chủ hộ, nơi cư trú lấy địa điểm xây dựng.
+    out, _ = mapper.enrich(_chu_ho(_CHU_HO) + _cong_trinh(), _dang_nhap(_CHU_HO))
+    d = _values(out)
+
+    assert d["data[fullname]"] == d["data[tenChuHo]"] == "TRẦN VĂN AN"
+    assert d["data[identityNumber]"] == "001090000001"
+    assert d["data[phoneNumber]"] == "0901000001"
+    assert _theo_cap(out, "data[district]") == {0: "Phường Lâm Viên - Đà Lạt", 1: "Phường Lâm Viên - Đà Lạt"}
+
+
+def test_duoc_uy_quyen_tach_nguoi_nop_va_chu_ho():
+    out, _ = mapper.enrich(
+        _nguoi_nop(_DUOC_UY_QUYEN) + _chu_ho(_CHU_HO) + _cong_trinh(), _dang_nhap(_DUOC_UY_QUYEN),
+    )
+    d = _values(out)
+
+    # Khối người nộp = người được ủy quyền.
+    assert d["data[chonDoiTuong]"] == "Cá nhân"
+    assert d["data[fullname]"] == "LÊ THỊ BÌNH"
+    assert d["data[identityNumber]"] == "001195000002"
+    assert d["data[phoneNumber]"] == "0902000002"
+    assert d["data[address]"] == "5 Ngõ Trúc"
+    # Khối chủ hộ = người ủy quyền (đứng tên công trình).
+    assert d["data[loaiHinhChuDauTu]"] == "chuHo"
+    assert d["data[tenChuHo]"] == "TRẦN VĂN AN"
+    assert d["data[soDinhDanhChuHo]"] == "001090000001"
+    assert d["data[soDienThoaiChuHo]"] == "0901000001"
+    # Cặp 0 = nơi cư trú người được ủy quyền, cặp 1 = địa điểm công trình.
+    assert _theo_cap(out, "data[province]") == {0: "Thành phố Hà Nội", 1: "Tỉnh Lâm Đồng"}
+    assert _theo_cap(out, "data[district]") == {0: "Phường Ba Đình", 1: "Phường Lâm Viên - Đà Lạt"}
+
+
+def test_duoc_uy_quyen_nhung_dang_nhap_tai_khoan_chu_ho():
+    # Tài khoản đăng nhập không phải người nộp trên giấy tờ → không đè khối người nộp; địa điểm công
+    # trình vẫn vào cặp Tỉnh/Phường THỨ HAI (cặp đầu là khối người nộp cổng đã điền sẵn).
+    out, _ = mapper.enrich(
+        _nguoi_nop(_DUOC_UY_QUYEN) + _chu_ho(_CHU_HO) + _cong_trinh(), _dang_nhap(_CHU_HO),
+    )
+    d = _values(out)
+
+    for name in ("data[chonDoiTuong]", "data[fullname]", "data[identityNumber]", "data[phoneNumber]",
+                 "data[address]"):
+        assert name not in d
+    assert d["data[tenChuHo]"] == "TRẦN VĂN AN"
+    assert d["data[soDinhDanhChuHo]"] == "001090000001"
+    assert _theo_cap(out, "data[province]") == {1: "Tỉnh Lâm Đồng"}
+    assert _theo_cap(out, "data[district]") == {1: "Phường Lâm Viên - Đà Lạt"}
+
+
+def test_to_chuc_chu_dau_tu_uy_quyen_cho_nhan_vien_nop():
+    to_chuc = [
+        _field("ChuDauTu_Loai", "Chủ đầu tư"),
+        _field("ChuDauTu_TenToChuc", "CÔNG TY TNHH XÂY DỰNG MẪU"),
+        _field("ChuDauTu_MaSoDoanhNghiep", "0100000001"),
+        _field("ChuDauTu_NguoiDaiDien", "PHẠM VĂN CƯỜNG"),
+        _field("ChuDauTu_ChucVu", "Giám đốc"),
+    ]
+    out, _ = mapper.enrich(_nguoi_nop(_DUOC_UY_QUYEN) + to_chuc + _cong_trinh(), _dang_nhap(_DUOC_UY_QUYEN))
+    d = _values(out)
+
+    assert d["data[chonDoiTuong]"] == "Tổ chức"
+    assert d["data[fullname]"] == "LÊ THỊ BÌNH"
+    assert d["data[loaiHinhChuDauTu]"] == "chuDauTu"
+    assert d["data[tenChuDauTu]"] == "CÔNG TY TNHH XÂY DỰNG MẪU"
+    assert d["data[maSoDoanhNghiepCDT]"] == "0100000001"
+    assert d["data[nguoiDaiDien]"] == "PHẠM VĂN CƯỜNG"
+    assert d["data[chucVu]"] == "Giám đốc"
+    # Người nộp KHÔNG phải giám đốc → không ghép CCCD/SĐT của người nộp vào ô người đại diện.
+    assert "data[soDinhDanhNguoiDaiDien]" not in d
+    assert "data[soDienThoaiNguoiDaiDien]" not in d
+    assert "data[tenChuHo]" not in d
+
+
+def test_to_chuc_nguoi_dai_dien_tu_di_nop():
+    giam_doc = {**_DUOC_UY_QUYEN, "ten": "PHẠM VĂN CƯỜNG"}
+    to_chuc = [
+        _field("ChuDauTu_Loai", "Chủ đầu tư"),
+        _field("ChuDauTu_TenToChuc", "CÔNG TY TNHH XÂY DỰNG MẪU"),
+        _field("ChuDauTu_NguoiDaiDien", "Phạm Văn Cường"),
+    ]
+    out, _ = mapper.enrich(_nguoi_nop(giam_doc) + to_chuc + _cong_trinh(), _dang_nhap(giam_doc))
+    d = _values(out)
+
+    assert d["data[fullname]"] == "PHẠM VĂN CƯỜNG"
+    assert d["data[soDinhDanhNguoiDaiDien]"] == "001195000002"
+    assert d["data[soDienThoaiNguoiDaiDien]"] == "0902000002"
+
+
+def test_truong_hop_cong_dan_chon_ep_nhanh_form_cong_trinh():
+    from app.channels.handfree.chat.flow import _variant_chips
+    from app.channels.handfree.procedure_registry import (
+        get_procedure as handfree_procedure,
+        variant_pipeline_options,
+    )
+
+    proc = handfree_procedure("cap-giay-phep-xay-dung-moi-nha-o-rieng-le")
+    # Hai trường hợp ngang hàng → cả hai chip cùng màu.
+    assert [chip["solid"] for chip in _variant_chips(proc)] == [True, True]
+    assert variant_pipeline_options(proc, {}) == {}
+    assert variant_pipeline_options(proc, {"procedure_variant": "nha_o_rieng_le"}) == {
+        "constructionVariant": "nha_o_rieng_le"}
+
+    # Giấy tờ ghi "Nhà ở riêng lẻ" nhưng công dân chọn "Công trình" trên cổng → theo form đang mở.
+    options = {**_dang_nhap(_CHU_HO), **variant_pipeline_options(proc, {"procedure_variant": "cong_trinh"})}
+    out, _ = mapper.enrich(_nguoi_nop(_CHU_HO) + _chu_ho(_CHU_HO) + _cong_trinh(), options)
+
+    assert _values(out)["data[loaiCongTrinh]"] == "Công trình không theo tuyến, tín ngưỡng, tôn giáo"
+
+
+def test_trich_doan_moi_trang_bo_dong_rac_lap_lai():
+    from app.pipelines._shared.documents import representative_excerpt
+
+    text = (
+        "───── Trang 1/3 ─────\nCƠ QUAN CÔNG AN\nCƠ QUAN CÔNG AN\nĐƠN ĐỀ NGHỊ CẤP GIẤY PHÉP XÂY DỰNG\n"
+        "───── Trang 2/3 ─────\nCƠ QUAN CÔNG AN\nBẢN VẼ MẶT BẰNG TẦNG 1\n"
+        "───── Trang 3/3 ─────\nMẶT CẮT A-A\n"
+    )
+    excerpt = representative_excerpt(text, 3000)
+
+    assert excerpt.count("CƠ QUAN CÔNG AN") == 1
+    assert "BẢN VẼ MẶT BẰNG TẦNG 1" in excerpt and "MẶT CẮT A-A" in excerpt
+    # Tệp dài hơn hạn mức → lấy đầu TỪNG trang, vẫn phủ tới trang cuối thay vì chỉ thấy trang đầu.
+    long_text = "".join(
+        f"───── Trang {i}/3 ─────\nTIÊU ĐỀ TRANG {i}\n" + "nội dung dài " * 200 + "\n" for i in (1, 2, 3)
+    )
+    excerpt = representative_excerpt(long_text, 600)
+    assert len(excerpt) <= 700
+    assert all(f"TIÊU ĐỀ TRANG {i}" in excerpt for i in (1, 2, 3))
