@@ -1040,6 +1040,22 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-quang-ninh",
+      "code": "1.115846",
+      "label": "Quảng Ninh - Đăng ký biến động chuyển mục đích sử dụng đất không phải xin phép cơ quan nhà nước có thẩm quyền",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f68e9-2c42-72c8-8cf6-c2dc6cc7eb21",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "submitCardIncludes": "Cơ quan thực hiện: Văn phòng Đăng ký đất đai",
+      "provincePortalFlow": {
+        "host": "dichvucong.quangninh.gov.vn",
+        "rowIncludes": "Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài - Miền núi, hải đảo",
+        "rowIndex": 2,
+        "agency": "Chi nhánh Văn phòng đăng ký đất đai số 12 Cô Tô"
+      },
+      "autoConfirm": true
+    },
+    {
       "key": "phe-duyet-phuong-an-khai-thac-thuc-vat-rung-thong-thuong",
       "code": "1.011470",
       "label": "Phê duyệt Phương án khai thác thực vật rừng thông thường thuộc thẩm quyền giải quyết của Sở Nông nghiệp và Phát triển nông thôn hoặc Cơ quan có thẩm quyền phê duyệt nguồn vốn trồng rừng",
