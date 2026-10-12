@@ -154,11 +154,21 @@ def _title(value: str) -> str:
     return " ".join(w[:1].upper() + w[1:].lower() for w in value.split())
 
 
+def _card_label(doc_type: str) -> str:
+    """Tên thẻ trong mục tài liệu kèm theo: "Thẻ căn cước công dân" như mapping; CMND/hộ chiếu giữ nguyên."""
+    label = doc_type or "Căn cước công dân"
+    return label if _fold(label).startswith(("the ", "chung minh", "ho chieu", "giay")) else f"Thẻ {label.lower()}"
+
+
 def _proof_line(values: dict) -> str:
     name = _clean(values.get("TB_TenVanBan"))
     number = _clean(values.get("TB_So"))
     issued = _date(values.get("TB_Ngay"))
     agency = _clean(values.get("TB_CoQuan"))
+    # OCR hay chép tiêu đề in hoa toàn bộ ("THÔNG BÁO VỀ …") và số có dấu cách quanh "/" ("62 /TB-…").
+    if name and name == name.upper():
+        name = name[:1] + name[1:].lower()
+    number = re.sub(r"\s*/\s*", "/", number)
     if not (name or number):
         return ""
     line = name or "Văn bản"
@@ -255,19 +265,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         warnings.append("Người yêu cầu khác người được trợ giúp pháp lý — vui lòng nhập 'Mối quan hệ với người "
                         "được trợ giúp pháp lý'.")
 
+    # Cổng đổ sẵn Tỉnh/Phường xã/địa chỉ/điện thoại của người yêu cầu theo VNeID → chỉ ghi khi Đơn bản giấy của
+    # chính người đó khai khác. Không lấy địa chỉ người được trợ giúp (thường đang ở trại giam/trường giáo dưỡng).
     paper_area = _area(values.get("Nyc_DiaChi")) if paper_is_requester else None
     if paper_area:
         add("TT_TinhThanhC", paper_area["tinh"])
         add("TT_PhuongXaC", paper_area["xa"])
         add("TT_SoNhaToDanPhoC", paper_area["diaChi"])
-    elif same_person and contact:
-        add("TT_TinhThanhC", contact["tinh"], default=True)
-        add("TT_PhuongXaC", contact["xa"], default=True)
-        add("TT_SoNhaToDanPhoC", contact["diaChi"], default=True)
     if paper_is_requester:
         add("SoDienThoai", _clean(values.get("Nyc_DienThoai")))
-    elif same_person:
-        add("SoDienThoai", phone, default=True)
 
     # ---- III. Nội dung vụ việc.
     org = _clean(values.get("YeuCau_ToChucTGPL"))
@@ -300,8 +306,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if proof:
         documents.append(proof)
     if values.get("TheCCCD_SoDinhDanh") and id_number:
-        documents.append(f"Bản chụp {doc_type or 'Căn cước công dân'} số {id_number}"
-                         + (f" của {_title(name)}" if name else ""))
+        documents.append(f"Bản chụp {_card_label(doc_type)} số {id_number}" + (f" của {_title(name)}" if name else ""))
     add("VuViec_TaiLieuKemTheo", "; ".join(f"{chr(ord('a') + i)}) {d}" for i, d in enumerate(documents)))
 
     # Nơi, ngày làm đơn + người làm đơn (người yêu cầu).

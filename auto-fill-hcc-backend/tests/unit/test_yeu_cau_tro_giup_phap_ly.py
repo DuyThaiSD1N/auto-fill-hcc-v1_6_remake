@@ -93,7 +93,7 @@ def test_case_content_from_notice():
     assert ui["VuViec_HinhThucTGPL"]["value"] == "Tham gia tố tụng"
     assert ui["VuViec_TaiLieuKemTheo"]["value"] == (
         "a) Thông báo về trợ giúp pháp lý số 15/TB-VPCQCSĐT ngày 01/10/2026 của Cơ quan Cảnh sát điều tra "
-        "Công an thành phố Đà Nẵng; b) Bản chụp Căn cước công dân số 001209012345 của Lê Văn An"
+        "Công an thành phố Đà Nẵng; b) Bản chụp Thẻ căn cước công dân số 001209012345 của Lê Văn An"
     )
     assert ui["LamTai"]["value"] == "Thành phố Đà Nẵng"
     assert ui["KyTen"]["value"] == "TRẦN THỊ BÌNH"
@@ -115,7 +115,15 @@ def test_requester_is_beneficiary_relation_self():
                                                          "applicantIdentityNumber": "001209012345"}})
     ui = _by_name(fields)
     assert ui["QuanHe"]["value"] == "Bản thân"
-    assert ui["TT_PhuongXaC"]["value"] == "Xã Hòa Vang"
+    # Cổng đổ sẵn địa chỉ/điện thoại người yêu cầu theo VNeID — không ghi đè bằng nơi người được trợ giúp đang ở.
+    assert not {"TT_TinhThanhC", "TT_PhuongXaC", "TT_SoNhaToDanPhoC", "SoDienThoai"} & set(ui)
+
+
+def test_proof_line_normalizes_ocr_title_and_number():
+    fields, _ = enrich(_notice_facts(TB_TenVanBan="THÔNG BÁO VỀ TRỢ GIÚP PHÁP LÝ", TB_So="15 /TB-VPCQCSĐT"), {})
+    assert _by_name(fields)["VuViec_TaiLieuKemTheo"]["value"].startswith(
+        "a) Thông báo về trợ giúp pháp lý số 15/TB-VPCQCSĐT ngày 01/10/2026"
+    )
 
 
 def test_paper_request_overrides_summary_and_form():
