@@ -37,7 +37,7 @@ def test_ba_to_khai_thue():
 
 
 def test_other_them_thanh_phan_moi():
-    """Giấy tờ ngoài 7 dòng (vd CCCD/ủy quyền) → thêm thành phần hồ sơ MỚI, tên theo file."""
+    """Giấy tờ ngoài 7 dòng (vd CCCD) → thêm thành phần hồ sơ MỚI, tên theo file."""
     files = [{"name": "CÔNG VĂN LẠ.pdf", "type": "application/pdf"}]
     attachments, warnings, classified = planner.build_plan_items(files, [], {0: "other"})
     assert len(attachments) == 1
@@ -45,6 +45,22 @@ def test_other_them_thanh_phan_moi():
     assert attachments[0]["needsAddComponent"] is True
     assert attachments[0]["componentName"] == "CÔNG VĂN LẠ"
     assert warnings == []
+
+
+def test_giay_uy_quyen_luu_ten_loai_giay_khong_theo_ten_file():
+    """File scan tên vô nghĩa (Scan_0004.pdf) là giấy ủy quyền → thành phần mới tên "Giấy ủy quyền"."""
+    files = [{"name": "Scan_0004.pdf", "type": "application/pdf"}]
+    attachments, warnings, classified = planner.build_plan_items(files, [], {0: "van_ban_uy_quyen"})
+    item = attachments[0]
+    assert item["detectedType"] == "van_ban_uy_quyen"
+    assert item["componentName"] == "Giấy ủy quyền"
+    assert "Scan" not in item["documentName"]
+    assert "quy" in item["documentName"]
+    assert item["target"] == "new" and item["needsAddComponent"] is True
+    assert classified[0]["docType"] == "van_ban_uy_quyen"
+    assert warnings == []
+    assert planner._normalize("Giấy ủy quyền") == "van_ban_uy_quyen"
+    assert "van_ban_uy_quyen" in planner.SYSTEM_PROMPT
 
 
 def test_normalize_llm_output_variants():

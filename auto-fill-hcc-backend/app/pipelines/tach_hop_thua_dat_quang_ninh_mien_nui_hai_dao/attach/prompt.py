@@ -21,13 +21,16 @@ hải đảo trên cổng dịch vụ công tỉnh Quảng Ninh.
 5. gcn_da_cap: bản thân file là GIẤY CHỨNG NHẬN quyền sử dụng đất/quyền sở hữu tài sản đã cấp. Không chọn
    loại này chỉ vì đơn/bản vẽ có trang GCN đính kèm.
 6. van_ban_co_quan: văn bản của cơ quan có thẩm quyền thể hiện nội dung tách/hợp thửa (nếu có).
-7. Giấy tờ KHÁC không thuộc các loại trên (vd CCCD, văn bản ủy quyền, giấy tờ lạ) → other.
-8. Trả duy nhất một JSON object, không markdown, không giải thích.
+7. van_ban_uy_quyen: GIẤY ỦY QUYỀN / hợp đồng ủy quyền / văn bản đại diện xác lập việc người khác thay mặt
+   người sử dụng đất làm thủ tục. Chỉ chọn khi bản thân file là văn bản ủy quyền; không suy ra từ việc đơn
+   ghi "người được ủy quyền".
+8. Giấy tờ KHÁC không thuộc các loại trên (vd CCCD, giấy tờ lạ) → other.
+9. Trả duy nhất một JSON object, không markdown, không giải thích.
 </critical_rules>
 
 <allowed_types>
 to_khai_01_lptb | to_khai_04_sddpnn | to_khai_03_bds_tncn | gcn_da_cap | don_mau_26 |
-ban_ve_mau_27 | van_ban_co_quan | other
+ban_ve_mau_27 | van_ban_co_quan | van_ban_uy_quyen | other
 </allowed_types>
 
 <output_contract>

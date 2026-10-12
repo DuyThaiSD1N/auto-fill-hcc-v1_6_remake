@@ -23,6 +23,9 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _LOAI_BAN = "Bản chính"
 _OTHER = "other"
+# Giấy ủy quyền không có dòng sẵn trong 7 dòng → thêm thành phần hồ sơ mới mang tên loại giấy.
+_AUTHORIZATION = "van_ban_uy_quyen"
+_AUTHORIZATION_NAME = "Giấy ủy quyền"
 
 # 7 dòng thành phần hồ sơ (thứ tự DOM, componentIndex 1-based). componentName = đoạn tiêu đề đặc trưng.
 _ROWS: dict[str, dict[str, Any]] = {
@@ -55,7 +58,7 @@ _ROWS: dict[str, dict[str, Any]] = {
         "display": "Văn bản của cơ quan có thẩm quyền về tách/hợp thửa",
     },
 }
-_ALLOWED = set(_ROWS) | {_OTHER}
+_ALLOWED = set(_ROWS) | {_AUTHORIZATION, _OTHER}
 
 
 def _derive_component_name(file_name: str) -> str:
@@ -81,6 +84,8 @@ def _normalize(value: str) -> str:
         return "don_mau_26"
     if "van ban" in f and "co quan" in f:
         return "van_ban_co_quan"
+    if "uy quyen" in f or "dai dien" in f:
+        return _AUTHORIZATION
     if "giay chung nhan" in f or "gcn" in f:
         return "gcn_da_cap"
     return value if value in _ALLOWED else _OTHER
@@ -146,6 +151,18 @@ def build_plan_items(
         if doc_type in _ROWS:
             attachments.append(_build_item(file, index, doc_type))
             classified.append({"fileName": file_name, "docType": doc_type, "source": "llm", "target": "existing"})
+        elif doc_type == _AUTHORIZATION:
+            attachments.append({
+                "fileIndex": index,
+                "fileName": file_name,
+                "documentName": _wallet_label(_AUTHORIZATION_NAME),
+                "loaiBan": _LOAI_BAN,
+                "detectedType": _AUTHORIZATION,
+                "componentName": _AUTHORIZATION_NAME,
+                "target": "new",
+                "needsAddComponent": True,
+            })
+            classified.append({"fileName": file_name, "docType": _AUTHORIZATION, "source": "llm", "target": "new"})
         else:
             # Ngoài danh mục → THÊM thành phần hồ sơ MỚI (không bỏ qua), tên theo file.
             new_name = _derive_component_name(file_name)
