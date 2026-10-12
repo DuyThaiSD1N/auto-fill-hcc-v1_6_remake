@@ -1056,6 +1056,14 @@
       "autoConfirm": true
     },
     {
+      "key": "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+      "code": "1.116909",
+      "label": "Thực hiện trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng, hỗ trợ kinh phí nhận chăm sóc, nuôi dưỡng hằng tháng",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/01a0f668-d09b-7368-9850-3c8288daf506",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "cap-moi-chung-chi-hanh-nghe-xay-dung",
       "code": "1.013237",
       "label": "Cấp mới chứng chỉ hành nghề hoạt động xây dựng",

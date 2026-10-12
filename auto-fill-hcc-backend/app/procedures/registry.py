@@ -434,6 +434,8 @@ from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.attach imp
 from app.pipelines.ho_tro_co_so_san_xuat_thiet_hai_dich_benh_dong_vat.process import run as ho_tro_thiet_hai_dich_benh_dv_process
 from app.pipelines.yeu_cau_tro_giup_phap_ly.attach import plan as yeu_cau_tro_giup_phap_ly_attach
 from app.pipelines.yeu_cau_tro_giup_phap_ly.process import run as yeu_cau_tro_giup_phap_ly_process
+from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.attach import plan as tcxh_nd335_attach
+from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process import run as tcxh_nd335_process
 
 PROCEDURES: list[dict] = [
     {
@@ -7410,6 +7412,36 @@ PROCEDURES: list[dict] = [
             "lý'; dòng 2 là Tờ khai cổng tự sinh, không đính đè; đơn bản giấy/ủy quyền thêm thành phần mới."
         ),
     },
+    {
+        "key": "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang",
+        # Mã TTHC 1.116909 (NĐ 335/2026/NĐ-CP) — key TRÙNG ke_khai_links.json. Cổng Bộ Y tế
+        # dichvucongbyt.moh.gov.vn: Form.io (fillFormStandard dom-*) + bảng thành phần hồ sơ 2 dòng (attp-row).
+        # URL SPA là ObjectId không mang mã → nhận theo cụm tên; textPriority để thắng rule chung của cổng.
+        # Cụm này không có ở thủ tục cũ 1.001776 ("thực hiện, điều chỉnh, thôi hưởng...") và ngược lại.
+        "detect": {
+            "textIncludes": ["Thực hiện trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thực hiện trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng, hỗ trợ kinh phí nhận chăm sóc, "
+                 "nuôi dưỡng hằng tháng",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Tờ khai đề nghị trợ cấp xã hội, trợ cấp hưu trí xã hội (Mẫu số 01 — NĐ 335/2026/NĐ-CP) hoặc Tờ "
+            "khai nhận chăm sóc, nuôi dưỡng (Mẫu số 02) — nguồn chính.\n"
+            "2. CCCD/thẻ căn cước của đối tượng hưởng trợ cấp và của người giám hộ/người khai thay.\n"
+            "3. Nếu có: Giấy xác nhận khuyết tật, Giấy khai sinh, Giấy xác nhận thông tin về cư trú.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đối tượng hưởng trợ cấp là chủ hồ sơ; người giám hộ/người khai thay điền vào Phần người nộp, "
+            "extension BỎ TÍCH ô 'Người nộp là chủ hồ sơ'. Đối tượng không có SĐT thì dùng SĐT người khai thay.\n"
+            "Bước thành phần hồ sơ: Tờ khai Mẫu 01 + CCCD + Giấy xác nhận khuyết tật đính chung dòng Mẫu số 01 "
+            "(tờ khai đứng đầu); Tờ khai Mẫu 02 vào dòng Mẫu số 02 (không có thì không tick dòng này)."
+        ),
+    },
 ]
 
 
@@ -7596,6 +7628,7 @@ _PIPELINE = {
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_process,
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_process,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_process,
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7807,6 +7840,7 @@ _ATTACH_PIPELINE = {
     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru": xn_dien_tich_nha_o_thuong_tru_attach,
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_attach,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_attach,
+    "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}
