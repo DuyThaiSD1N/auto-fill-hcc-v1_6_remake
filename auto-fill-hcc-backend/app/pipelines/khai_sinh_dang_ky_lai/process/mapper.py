@@ -8,6 +8,8 @@ from app.pipelines._shared.formatting import upper_person_name as _upper_person_
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
+from app.pipelines._shared.tai_khoan import account_context, matches_account
+from app.monitor import recorder as mon
 from app.pipelines.khai_sinh_dang_ky_lai.process import reason as _reason_mod
 
 _COMP_BY_NAME = {
@@ -59,6 +61,28 @@ def _fold(value: str) -> str:
     text = "".join(ch for ch in text if unicodedata.category(ch) != "Mn")
     text = text.replace("Đ", "D").replace("đ", "d")
     return re.sub(r"\s+", " ", text).strip().lower()
+
+
+# Cấu hình theo tài khoản: tỉnh Lâm Đồng KHÔNG điền cụm "Loại đăng ký / cơ quan, số, quyển số,
+# ngày đăng ký khai sinh trước đây / Loại khai sinh" ở mục II — cán bộ tự nhập. Mapper không biết
+# tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options
+# để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho tỉnh khác.
+PROCEDURE_KEY = "khai-sinh-dang-ky-lai"
+OMIT_PREVIOUS_REGISTRATION_OPTION = "omitPreviousRegistration"
+
+
+def is_lam_dong_account(user: dict | None) -> bool:
+    """True khi tài khoản thuộc tỉnh Lâm Đồng ("Tỉnh Lâm Đồng" hay "Lâm Đồng" đều khớp)."""
+    return "lam dong" in _fold((user or {}).get("tinh") or "")
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ bỏ cụm đăng ký trước đây do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(OMIT_PREVIOUS_REGISTRATION_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_lam_dong_account(user):
+        result[OMIT_PREVIOUS_REGISTRATION_OPTION] = True
+    return result
 
 
 def _digits(value) -> str:
@@ -773,6 +797,53 @@ def _requester_is_portal_account(requester: dict, options: dict | None) -> bool:
     return _same_person(name, identity, requester.get("ho_ten"), requester.get("so_dinh_danh"))
 
 
+def _requester_is_account_despite_ocr(requester: dict, values: dict, context: str, options: dict | None) -> bool:
+    """Người yêu cầu ĐỌC TỪ TỜ KHAI là chủ tài khoản dù OCR lệch — phép so tuyệt đối ở trên coi đó
+    là người khác. So bằng số thô trên tờ khai (kể cả số thiếu chữ số) để nhận ra số bị rơi."""
+    if requester.get("source") != "to_khai":
+        return False
+    account = account_context(options)
+    if not (account.get("HoTen") or account.get("SoDinhDanh")):
+        return False
+    birthday = next(
+        (
+            value
+            for tag in ("nguoi_yeu_cau", "to_khai_goc_nguoi_yeu_cau")
+            if (value := _reason_mod._labeled_value(_reason_mod._section(context, tag), "Ngày sinh"))
+        ),
+        "",
+    )
+    id_number = requester.get("so_dinh_danh") or values.get("Requester_IdNumber")
+    return matches_account(account, requester.get("ho_ten"), id_number, birthday)
+
+
+# Khoá người yêu cầu → khoá tài khoản (`tai_khoan.account_context`).
+_ACCOUNT_KEY_BY_REQUESTER = {
+    "ho_ten": "HoTen", "so_dinh_danh": "SoDinhDanh", "ngay_cap": "NgayCap", "noi_cap": "NoiCap",
+    "dan_toc": "DanToc", "noi_cu_tru": "NoiCuTru",
+}
+
+
+def _with_account(requester: dict, options: dict | None) -> dict:
+    """Người yêu cầu là CHÍNH chủ tài khoản → ô nào tài khoản có giá trị thì lấy theo tài khoản: dữ liệu
+    VNeID là bản chuẩn CSDLQG, tờ khai viết tay hay bị OCR đọc sai. Ô bị đổi ghi vào trace."""
+    account = account_context(options)
+    person = dict(requester)
+    changes = []
+    for key, account_key in _ACCOUNT_KEY_BY_REQUESTER.items():
+        value = account.get(account_key)
+        if key == "noi_cu_tru" and value:
+            value = _normalize_domestic_area({"quocGia": "Việt Nam", **value})
+        if not value:
+            continue
+        if value != person.get(key):
+            changes.append({"muc": "I", "field": key, "cu": person.get(key), "moi": value})
+        person[key] = value
+    if changes:
+        mon.output("account_override", changes)
+    return person
+
+
 def _previous_registration_number(values: dict) -> str:
     number = str(values.get("PreviousRegistration_Number") or "").strip()
     if not number:
@@ -882,14 +953,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append({"name": name, "comp": comp, "value": "", "clear": True})
         seen.add(name)
 
-    for default in _STRUCTURAL_DEFAULTS:
-        add(default["name"], default["value"])
+    omit_previous_registration = (options or {}).get(OMIT_PREVIOUS_REGISTRATION_OPTION) is True
+    if not omit_previous_registration:
+        for default in _STRUCTURAL_DEFAULTS:
+            add(default["name"], default["value"])
 
     # I. Nguoi yeu cau.
     # Buoc 1 BAT BUOC: chot o tich "(5) Quan he voi nguoi duoc khai sinh" TRUOC khi dien nhan than —
     # bieu mau legacy dung lai ca khoi nguoi yeu cau moi lan doi o tich, dien ho ten/CCCD truoc se bi xoa.
     requester = _resolve_requester(values, context, options)
     quan_he = requester.get("quan_he")
+    account_person = False
     add("QuanHe", quan_he, default=bool(requester.get("quan_he_default")))
 
     # Buoc 2: chi ghi de khoi nhan than khi da BIET CHAC nguoi yeu cau la ai — tu to khai, hoac tu
@@ -897,6 +971,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # dien san tu tai khoan VNeID, chi tick "Khac" o buoc 1.
     if requester.get("source") in _REQUESTER_OVERWRITE_SOURCES:
         if requester.get("ho_ten") or requester.get("so_dinh_danh"):
+            account_person = _requester_is_portal_account(requester, options) or _requester_is_account_despite_ocr(
+                requester, values, context, options
+            )
+            if account_person:
+                requester = _with_account(requester, options)
             req_id = requester.get("so_dinh_danh")
             add("HoVaTenC", upper_person_name(requester.get("ho_ten")))
             add("SoDinhDanhC", req_id)
@@ -907,13 +986,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                     _id_doc_type(req_id, requester.get("noi_cap")),
                     default=bool(requester.get("loai_giay_to_default")),
                 )
-            add("NgayCapDDC", requester.get("ngay_cap"))
-            add("NoiCapDDC", requester.get("noi_cap"))
+            # Người khác mà không có số dùng được thì ngày cấp, nơi cấp cũng bỏ (bị xóa bên dưới):
+            # cụm giấy tờ không số chỉ là nửa tấm thẻ.
+            if req_id or account_person:
+                add("NgayCapDDC", requester.get("ngay_cap"))
+                add("NoiCapDDC", requester.get("noi_cap"))
 
             # Đã ghi đè khối này bằng nhân thân người khác thì mọi ô còn lại của mục I vẫn đang
             # mang dữ liệu tài khoản đang đăng nhập → xóa, không để nửa người này nửa người kia.
             # (Không đọc được gì thì KHÔNG vào nhánh này: khối cổng điền vẫn là một người trọn vẹn.)
-            if not _requester_is_portal_account(requester, options):
+            if not account_person:
                 for _name in _REQUESTER_IDENTITY_FIELDS:
                     clear(_name)
 
@@ -945,10 +1027,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         self_name = _self_full_name(context) if quan_he == "BanThan" else ""
         # Con chốt CCCD theo thế hệ (tờ khai lệch mọi CCCD) → tô vàng nhân thân cho cán bộ soát.
         ks_default = "Subject_FullName" in default_names
-        add("HoTenKS", upper_person_name(self_name or values.get("Subject_FullName")), ks_default)
-        add("NgaySinhChon", _subject_birth_date(values), ks_default)
-        add("GioiTinhKS", values.get("Subject_Gender"), ks_default)
-        add("DanTocKS", normalize_ethnic(values.get("Subject_Ethnicity")))
+        subject = {
+            "HoTen": self_name or values.get("Subject_FullName"),
+            "NgaySinh": _subject_birth_date(values),
+            "GioiTinh": values.get("Subject_Gender"),
+            "DanToc": values.get("Subject_Ethnicity"),
+        }
+        # Tự đi làm cho chính mình và người yêu cầu đã khớp tài khoản → mục II cũng là chủ tài khoản,
+        # lấy theo VNeID. Bản thân người con cũng phải khớp tài khoản: ô "Bản thân" OCR tích nhầm thì
+        # không kéo người con thành chủ tài khoản.
+        account = account_context(options) if account_person and quan_he == "BanThan" else {}
+        if account and matches_account(account, subject["HoTen"], values.get("Subject_IdNumber"), subject["NgaySinh"]):
+            changes = [
+                {"muc": "II", "field": key, "cu": subject[key], "moi": account[key]}
+                for key in subject if account.get(key) and account[key] != subject[key]
+            ]
+            subject.update({key: account[key] for key in subject if account.get(key)})
+            if changes:
+                mon.output("account_override", changes)
+        add("HoTenKS", upper_person_name(subject["HoTen"]), ks_default)
+        add("NgaySinhChon", subject["NgaySinh"], ks_default)
+        add("GioiTinhKS", subject["GioiTinh"], ks_default)
+        add("DanTocKS", normalize_ethnic(subject["DanToc"]))
         add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
         if values.get("Subject_BirthPlaceDomestic"):
             add("nksNoiSinh", "1")
@@ -1021,14 +1121,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             clear(_name)
 
     # Thong tin dang ky truoc day.
-    agency_province, agency_commune, agency_guessed = _previous_registration_agency(values)
-    add("coQuanDKTruocDay_filter", agency_province)
-    # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh. Tên suy ra từ phép dò gần đúng
-    # là phỏng đoán, không phải chữ đọc được -> đánh dấu default để extension tô vàng.
-    add("coQuanDKTruocDay", agency_commune, agency_guessed)
-    add("soDKTruocDay", _previous_registration_number(values))
-    add("quyenSoDKTruocDay", values.get("PreviousRegistration_BookNumber"))
-    add("ngayDKTruocDay", values.get("PreviousRegistration_Date"))
+    if not omit_previous_registration:
+        agency_province, agency_commune, agency_guessed = _previous_registration_agency(values)
+        add("coQuanDKTruocDay_filter", agency_province)
+        # Ô Xã/Phường nạp option theo tỉnh -> phải đứng SAU ô tỉnh. Tên suy ra từ phép dò gần đúng
+        # là phỏng đoán, không phải chữ đọc được -> đánh dấu default để extension tô vàng.
+        add("coQuanDKTruocDay", agency_commune, agency_guessed)
+        add("soDKTruocDay", _previous_registration_number(values))
+        add("quyenSoDKTruocDay", values.get("PreviousRegistration_BookNumber"))
+        add("ngayDKTruocDay", values.get("PreviousRegistration_Date"))
 
     # Chi dien yeu cau ban sao khi to khai co khai bao that.
     if _is_birth_reregistration_declaration(values.get("CopyRequest_SourceDocumentTitle")):

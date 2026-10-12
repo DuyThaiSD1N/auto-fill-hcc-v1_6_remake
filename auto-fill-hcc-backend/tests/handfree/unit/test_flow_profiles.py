@@ -278,7 +278,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
-    for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich"):
+    for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
+                "xac-nhan-tinh-trang-hon-nhan"):
         single_page = procedures.pop(key)
         assert single_page["flowProfile"] == "tu-phap-moi"
         assert single_page["singlePageDossier"] is True

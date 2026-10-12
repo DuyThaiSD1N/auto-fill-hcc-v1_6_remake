@@ -16,6 +16,7 @@ SNAPSHOTS = {
     "khai-sinh-dang-ky-thuong": HTML_DIR / "khai sinh" / "khai sinh html mới.html",
     "trich-luc-ks": HTML_DIR / "trích lụcc" / "trích lục html mới.html",
     "thay-doi-cai-chinh-ho-tich": HTML_DIR / "cải chính" / "cải chính html mới.html",
+    "xac-nhan-tinh-trang-hon-nhan": HTML_DIR / "tình trạng hôn nhân" / "tình trạng hôn nhân form mới.html",
 }
 ACCOUNT = {"applicantFullname": "NGUYEN VAN B", "applicantIdentityNumber": "001090000002"}
 
@@ -158,3 +159,22 @@ def test_attach_rows_no_file_dropped():
         ROWS["death_place_proof"]["slotName"], ROW_GIAY_BAO_TU["slotName"],
     ]
     assert all(i["target"] == "fixed-slot" for i in items)
+
+
+def _context_nguoi_nop(co: str):
+    return _context("Con").replace("<phan_vai_da_xac_dinh>\n",
+                                   f"<phan_vai_da_xac_dinh>\n<nguoi_nop>\nCó trong hồ sơ: {co}\n</nguoi_nop>\n")
+
+
+def test_so_dien_thoai_nguoi_nop_co_trong_ho_so():
+    out, _ = _enrich({**BASE, "NguoiNop_SoDienThoai": "0912.345.678"}, _context_nguoi_nop("Có"))
+    assert _by(out)["citizenPhone"]["value"] == "0912345678"
+    out, _ = _enrich({**BASE, "NguoiNop_SoDienThoai": "+84 912 345 678"}, _context_nguoi_nop("Có"))
+    assert _by(out)["citizenPhone"]["value"] == "0912345678"
+
+
+def test_so_dien_thoai_bo_khi_nguoi_nop_khong_co_trong_ho_so_hoac_sai_dang():
+    out, _ = _enrich({**BASE, "NguoiNop_SoDienThoai": "0912345678"}, _context_nguoi_nop("Không"))
+    assert "citizenPhone" not in _by(out)
+    out, _ = _enrich({**BASE, "NguoiNop_SoDienThoai": "091234"}, _context_nguoi_nop("Có"))
+    assert "citizenPhone" not in _by(out)

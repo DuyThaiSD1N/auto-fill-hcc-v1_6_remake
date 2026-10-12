@@ -193,7 +193,9 @@ def _render_context(raw: str, options: dict | None) -> str:
         "- NguoiDuocCap_* CHỈ lấy của đúng người ở <nguoi_duoc_cap>; không lấy của người nộp, cha/mẹ, "
         "người đi khai, người ủy quyền khác.\n"
         "- GiayTo_* CHỈ lấy theo loại trích lục ở <giay_to_ho_tich> và đúng người được cấp.\n"
-        "- Khối <nguoi_duoc_cap> \"Không xác định\" thì bỏ toàn bộ NguoiDuocCap_*.\n"
+        "- Khối <nguoi_duoc_cap> CHỈ có đúng một dòng \"Không xác định\" (không có Họ tên) thì bỏ toàn bộ "
+        "NguoiDuocCap_*. Khối có Họ tên thì PHẢI trích NguoiDuocCap_* đọc được trên giấy; một dòng trong khối ghi "
+        "\"Không xác định\" (vd số định danh, giới tính) chỉ là thông tin đó chưa có, không bỏ cả khối.\n"
         "</phan_vai_da_xac_dinh>"
     )
 

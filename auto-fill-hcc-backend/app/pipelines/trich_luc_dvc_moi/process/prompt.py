@@ -16,14 +16,16 @@ Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG tríc
 
 <nguoi_duoc_cap>
 1. Thứ tự nguồn: khối người được cấp trên TỜ KHAI → giấy hộ tịch của chính người đó → CCCD/căn cước
-   của chính người đó (chỉ bù ô còn thiếu). Số, ngày cấp, nơi cấp giấy tờ tùy thân đi NGUYÊN CỤM từ
+   của chính người đó (chỉ bù ô còn thiếu, và CHỈ khi họ tên in trên thẻ trùng người được cấp — thẻ của người
+   khác, kể cả người nộp, KHÔNG dùng để bù). Số, ngày cấp, nơi cấp giấy tờ tùy thân đi NGUYÊN CỤM từ
    MỘT giấy tờ; người có cả căn cước 12 số lẫn CMND 9 số thì lấy cụm của thẻ 12 số.
 2. GIẤY KHAI SINH: dòng "Giấy tờ tùy thân: ... số ... cấp ngày ..." là của NGƯỜI ĐI KHAI SINH (cha/mẹ/
    người thân) → KHÔNG đưa vào NguoiDuocCap_LoaiGiayTo/SoGiayTo/NgayCap/NoiCap. Giấy khai sinh chỉ có
    "Số định danh cá nhân" của trẻ → chỉ trả NguoiDuocCap_SoDinhDanh. Dòng này để trống → bỏ.
 3. TRÍCH LỤC KHAI TỬ: người được cấp đã chết, không có thẻ trong hồ sơ; giấy tờ tùy thân của họ chỉ là
    dòng in trong block NGƯỜI CHẾT ("Giấy tờ tùy thân: ... số ..., ... cấp ngày ...") → lấy đủ cụm đó.
-   KHÔNG lấy của người đi khai tử. Mọi CCCD kèm trích lục khai tử là của người khác.
+   KHÔNG lấy của người đi khai tử. Mọi CCCD kèm trích lục khai tử là của người khác. Dòng đó để trống →
+   BỎ TRỐNG NguoiDuocCap_LoaiGiayTo/SoGiayTo/NgayCap/NoiCap, không lấy từ thẻ nào trong hồ sơ.
 4. GIẤY CHỨNG NHẬN KẾT HÔN: chỉ lấy cột của đúng người được cấp; giới tính theo vai (chồng = Nam,
    vợ = Nữ); không trộn cột vợ/chồng.
 5. GIẤY CHỨNG SINH: họ tên ở "Dự định đặt tên con", ngày sinh trong "Đã sinh con ... ngày ...", giới tính

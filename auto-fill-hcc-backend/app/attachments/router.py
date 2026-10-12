@@ -20,7 +20,7 @@ from app.monitor import recorder as mon
 from app.process import requests_repo
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
-from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
+from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
 from app.procedures.registry import get_attach_pipeline, get_procedure
 from app.services import ocr
 from app.storage.files import save_request_files

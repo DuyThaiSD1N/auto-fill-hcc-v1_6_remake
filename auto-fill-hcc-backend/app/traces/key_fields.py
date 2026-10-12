@@ -85,11 +85,11 @@ _TRICH_LUC = [
 ]  # 11
 
 _TTHN = [
-    "HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC", "nycNoiCuTru_TrongNuoc",
-    "HoVaTenC1", "NgaySinhC1", "GioiTinhC1", "DanTocC1", "SoDinhDanhC1",
-    "NgayCapDDC1", "NoiCapDDC1", "nxnNoiCuTru_TrongNuoc", "TinhTrangHonNhanC1",
-    "quanhevoinguoiduocxacminh",
-]  # 15
+    # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package xac_nhan_tthn_dvc_moi).
+    "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan",
+    "citizenNDKHochudemtenngdccap", "citizenNDKNgaythangnamsinh", "citizenNDKSoDinhDanh",
+    "citizenNDKTinh_ThTru", "citizenNDKXa_ThTru", "citizenTinhtranghonnhan", "citizenField60", "citizenField70",
+]  # 9
 
 _DAT_DAI = [
     "CongDan_tenCongDan", "CongDan_ngaySinhCongDan", "CongDan_gioiTinhCongDan", "CongDan_danTocCongDan",

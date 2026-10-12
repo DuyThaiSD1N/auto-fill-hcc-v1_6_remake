@@ -11,6 +11,7 @@ from app.pipelines.xac_nhan_tthn import process as agent
 from app.pipelines.xac_nhan_tthn.process import mapper
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
 from app.pipelines.xac_nhan_tthn.process.schema import FIELDS
+from app.pipelines.xac_nhan_tthn_dvc_moi import process as dvc_moi_agent
 from app.procedures.registry import get_pipeline, get_procedure
 
 
@@ -310,9 +311,10 @@ async def test_xac_nhan_tthn_compact_agent_defaults_issuer(monkeypatch):
 def test_registry_uses_xac_nhan_tthn_compact_agent_mode():
     proc = get_procedure("xac-nhan-tinh-trang-hon-nhan")
 
-    assert get_pipeline("xac-nhan-tinh-trang-hon-nhan") is agent.run
+    # eForm moj đã tắt: key chạy package Cổng DVC quốc gia mới.
+    assert get_pipeline("xac-nhan-tinh-trang-hon-nhan") is dvc_moi_agent.run
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
     assert proc["roles"] == []
     assert "useRequestMode" not in proc
-    assert "Mặc định người yêu cầu là bản thân" in proc["uploadHint"]
+    assert proc["detect"]["urlScope"] == ["//dichvucong.gov.vn/nop-ho-so"]

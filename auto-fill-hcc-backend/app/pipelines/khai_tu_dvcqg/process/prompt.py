@@ -4,8 +4,16 @@ EXTRA_RULES = """<ho_so>
 Hồ sơ đăng ký khai tử: tờ khai đăng ký khai tử (nếu có), GIẤY BÁO TỬ hoặc giấy tờ thay thế (trích lục khai tử,
 biên bản xác minh, văn bản xác nhận việc chết), CCCD/CMND của người mất và người yêu cầu, giấy ủy quyền, giấy tờ
 chứng minh nơi chết, công văn xác minh người chết lâu năm. Khối người nộp trên cổng khóa theo tài khoản → KHÔNG
-trích người nộp.
+trích người nộp, trừ số điện thoại (ô cổng để trống, xem <nguoi_nop>).
 </ho_so>
+
+<nguoi_nop>
+- NguoiNop_SoDienThoai: CHỈ khi <nguoi_nop> ghi "Có trong hồ sơ: Có". Lấy số điện thoại của CHÍNH người nộp ở:
+  (a) dòng "Số điện thoại" in trong khối người yêu cầu của tờ khai, khi người yêu cầu là người nộp;
+  (b) số viết tay cạnh / dưới tên, chữ ký của người nộp ("SĐT", "ĐT", hoặc chỉ một dãy số 10 chữ số);
+  (c) dòng "Số điện thoại"/"ĐT" trong đơn do chính người nộp đứng tên.
+  Chép đủ chữ số. Số của người khác, cơ quan, cán bộ xác nhận → bỏ.
+</nguoi_nop>
 
 <phan_vai>
 - Có khối <phan_vai_da_xac_dinh> phía dưới → người mất theo đúng khối đó.

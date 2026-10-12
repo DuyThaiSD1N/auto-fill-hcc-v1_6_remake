@@ -23,7 +23,7 @@ from app.pipelines._shared.tai_khoan import (
     digits as _digits,
     fold as _fold,
     id_match as _id_match,
-    is_account_person as _is_account_person,
+    matches_account as _matches_account,
     is_one_digit_misread as _is_one_digit_misread,
     name_match as _name_match,
     name_similarity as _name_similarity,
@@ -97,6 +97,10 @@ def _by_name(fields: list[dict]) -> dict:
 _STATUS_CODE_BY_LABEL = {
     _fold(label): code for code, label in _TINH_TRANG_HON_NHAN.items() if code != "6"
 }
+_STATUS_CODE_BY_KEY = {
+    "co_vo_chong": _MARRIED, "chua_ket_hon": _NEVER_MARRIED, "ly_hon": _DIVORCED, "goa": _WIDOWED,
+    "khoang_thoi_gian": _PERIOD_MARRIED,
+}
 # "hiện tại" là chữ chốt: nhãn option 3/4 cũng có cụm "đã có vợ/chồng" nhưng nói về QUÁ KHỨ.
 _NOW_MARRIED_MARKERS = (
     "hien tai dang co", "hien tai co vo", "hien tai co chong", "hien tai da ket hon",
@@ -126,6 +130,11 @@ def _status_code(value) -> str | None:
     folded = _fold(value)
     if not folded:
         return None
+    # Prompt bắt LLM trả MÃ chữ (không dùng số: mẫu tờ khai in sẵn chú thích "(4)" cạnh dòng tình
+    # trạng hôn nhân, LLM chép nhầm thành mã); nhãn chữ bên dưới giữ cho output cũ / LLM lỡ trả chữ.
+    code = _STATUS_CODE_BY_KEY.get(folded.strip(' "\'.'))
+    if code:
+        return code
     exact = _STATUS_CODE_BY_LABEL.get(folded)
     if exact:
         return exact
@@ -624,7 +633,7 @@ def _apply_account(out: list[dict], options: dict | None) -> list[dict]:
 
     Vai (ai là người yêu cầu, ai là người được cấp) vẫn do giấy tờ quyết định — tài khoản A mà hồ
     sơ là của B thì không đụng gì. Chỉ khi một mục đã điền trùng người tài khoản (xem
-    `_is_account_person`) thì các ô tài khoản có giá trị mới ghi đè: dữ liệu VNeID là bản chuẩn
+    `_matches_account`: khớp 1 trong 3 tên/số/ngày sinh) thì các ô tài khoản có giá trị mới ghi đè: dữ liệu VNeID là bản chuẩn
     CSDLQG, còn giấy tờ (nhất là tờ khai viết tay) hay bị OCR đọc sai. Mọi ô bị sửa ghi vào trace.
     """
     account = account_context(options)
@@ -655,8 +664,8 @@ def _apply_account(out: list[dict], options: dict | None) -> list[dict]:
     for section, names in _ACCOUNT_SECTIONS.items():
         if not current(names["HoTen"]) and not current(names["SoDinhDanh"]):
             continue
-        if not _is_account_person(account, current(names["HoTen"]), current(names["SoDinhDanh"]),
-                                  current(names["NgaySinh"])):
+        if not _matches_account(account, current(names["HoTen"]), current(names["SoDinhDanh"]),
+                                current(names["NgaySinh"])):
             continue
         matched.append(section)
         for key in ("HoTen", "SoDinhDanh", "NgaySinh", "GioiTinh", "DanToc", "NgayCap", "NoiCap"):
@@ -1141,9 +1150,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     death_number = values.get("DeathCert_Number")
     death_date = values.get("DeathCert_Date")
     death_agency = values.get("DeathCert_Agency")
-    divorce_number = values.get("DivorceDecision_Number")
-    divorce_date = values.get("DivorceDecision_Date")
-    divorce_agency = values.get("DivorceDecision_Agency")
+    # Văn bản bản án thật (BanAn_*) thắng dòng người dân tự chép lên tờ khai (DivorceDecision_*) — tờ
+    # khai hay chép nhầm năm/cơ quan; ô văn bản không đọc được thì tờ khai bù.
+    divorce_number = values.get("BanAn_Number") or values.get("DivorceDecision_Number")
+    divorce_date = values.get("BanAn_Date") or values.get("DivorceDecision_Date")
+    divorce_agency = values.get("BanAn_Agency") or values.get("DivorceDecision_Agency")
     def add_marriage_raw_inputs(number, date, agency) -> None:
         """Ô con của vùng động (=2 và =5) được render sau khi chọn option → phát thêm theo DOM name.
 
@@ -1217,6 +1228,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # đăng ký kết hôn với ai" nên chọn chúng là khai SAI sự thật. Chỉ áp dụng khi tờ khai
         # KHÔNG tự khai trạng thái (có khai thì theo tờ khai).
         status = _MARRIED
+    elif declared_code == _NEVER_MARRIED and (has_death or has_divorce):
+        # "Chưa đăng ký kết hôn" là đuôi chung của cả mã 2/3/4: hồ sơ có giấy chứng tử / bản án ly
+        # hôn thì mã cụ thể hơn mới đúng, chọn 2 là mất luôn vùng nhập bản án/giấy chứng tử.
+        status = _WIDOWED if has_death else _DIVORCED
     elif declared_code:
         status = declared_code                  # tờ khai tự khai → tin tờ khai
     elif has_death:

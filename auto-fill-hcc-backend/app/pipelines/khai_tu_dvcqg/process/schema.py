@@ -48,6 +48,9 @@ FIELDS: list[dict] = [
     {"name": "NguoiYeuCau_QuanHe",
      "desc": "Dòng 'Quan hệ với người đã chết' trên tờ khai, chép đúng chữ (vd 'Con', 'Vợ')."},
     {"name": "ToKhai_LoaiDangKy", "desc": "Nhãn 'Loại đăng ký' trên tờ khai / mẫu hộ tịch điện tử nếu ghi."},
+    {"name": "NguoiNop_SoDienThoai",
+     "desc": "Số điện thoại của NGƯỜI NỘP (khối <nguoi_nop>) ghi trên giấy tờ, chỉ khi số ghi cạnh tên / chữ ký của "
+             "CHÍNH người đó. Không lấy số của người khác, cơ quan, cán bộ xác nhận. Không có → bỏ."},
     {"name": "SoLuongBanSao",
      "desc": "Số bản sao trích lục đề nghị cấp: số nguyên; tờ khai đánh dấu KHÔNG → 0; ô Có/Không đều trống → bỏ."},
 ]
@@ -62,8 +65,9 @@ for _name in ("NguoiMat_NoiCuTru", "NguoiMat_NoiChet"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {
-    # Người nộp: chỉ ô quan hệ là cổng để trống.
+    # Người nộp: chỉ ô quan hệ và số điện thoại là cổng để trống.
     "citizenmoiquanhe": "sjs-text",
+    "citizenPhone": "sjs-text",
     # NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ — ba ô tra cứu CSDL dân cư đi đầu.
     "citizenNDK_HoVaTen": "sjs-text",
     "citizenNDK_SoDinhDanh": "sjs-text",  # regex cổng: đúng 12 số

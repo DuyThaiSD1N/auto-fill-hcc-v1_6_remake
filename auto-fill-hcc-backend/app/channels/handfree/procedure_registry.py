@@ -497,15 +497,23 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-tinh-trang-hon-nhan",
-        "detect": {"urlIncludes": ["maThuTuc=1.004873"]},
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9"],
+            "urlScope": ["//dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "thủ tục cấp giấy xác nhận tình trạng hôn nhân",
+                "quan hệ với người được cấp giấy xác nhận tình trạng hôn nhân",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
         "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân",
         "shortLabel": "Xác nhận tình trạng hôn nhân",
         "subtitle": "Cấp giấy xác nhận độc thân / tình trạng hôn nhân",
         "icon": "💍",
-        "flowProfile": "tu-phap",
+        # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).
+        "flowProfile": "tu-phap-moi",
         "supportsSplitDocuments": True,
-        # Cổng React mới (Bộ Tư pháp) — cùng wizard với kết hôn: chọn cơ quan → Nộp trực
-        # tuyến → modal Thông tin chung → chủ hồ sơ → kê khai.
         "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9",
         # Mỗi nhóm tính theo TỆP, không theo mặt. Không đọc câu "không giới hạn số lượng"
         # vì checklist đã hiển thị trực tiếp "Đã nhận X tệp".
@@ -530,8 +538,8 @@ PROCEDURES: list[dict] = [
             "2. Nếu có: tờ khai cấp giấy xác nhận tình trạng hôn nhân.\n"
             "3. Nếu có: giấy tờ chứng minh tình trạng hôn nhân.\n"
             "4. Các giấy tờ khác liên quan.\n"
-            "Mặc định người yêu cầu là bản thân; không cần chọn trước vai trò giấy tờ.\n"
-            "Bước 3: hệ thống có thể đính kèm CCCD hoặc giấy tờ điều kiện vào thành phần hồ sơ phù hợp."
+            "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước 3: tờ khai vào dòng tờ khai, các giấy tờ còn lại vào dòng giấy tờ."
         ),
     },
     {
@@ -1639,15 +1647,20 @@ PROCEDURES: list[dict] = [
         # portalMatch/portalAvoid là token ĐÃ FOLD DẤU để khớp option trong ô "Trường hợp giải
         # quyết" — tên option do cổng đặt, không cố định, nên khớp theo cụm đặc trưng thay vì
         # nguyên văn. Option ĐẦU là mặc định (chip tô đậm).
+        # pipelineOptions: ép nhánh form cho mapper theo trường hợp đã chọn, khỏi đoán lại từ giấy tờ.
         "variants": {
+            # Hai trường hợp ngang hàng → hai chip cùng màu, không tô đậm riêng option đầu.
+            "equalChips": True,
             "options": [
                 {"key": "nha_o_rieng_le", "label": "Nhà ở riêng lẻ",
                  "chip": "🏠 Nhà ở riêng lẻ", "portalMatch": "nha o rieng le",
-                 "desc": "xây nhà ở của hộ gia đình, cá nhân"},
+                 "desc": "xây nhà ở của hộ gia đình, cá nhân",
+                 "pipelineOptions": {"constructionVariant": "nha_o_rieng_le"}},
                 {"key": "cong_trinh", "label": "Công trình cấp III, cấp IV",
                  "chip": "🏢 Công trình cấp III, cấp IV",
                  "portalMatch": "cong trinh", "portalAvoid": "nha o rieng le",
-                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ"},
+                 "desc": "công trình cấp III, cấp IV, không phải nhà ở riêng lẻ",
+                 "pipelineOptions": {"constructionVariant": "khong_theo_tuyen"}},
             ],
         },
         "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
@@ -1980,6 +1993,19 @@ def get_owner_info_pipeline(key: str):
 
 def get_attach_pipeline(key: str):
     return core_registry.get_attach_pipeline(key)
+
+
+def variant_pipeline_options(proc: dict | None, conv: dict | None) -> dict:
+    """Tuỳ chọn pipeline theo TRƯỜNG HỢP GIẢI QUYẾT công dân đã chọn (`procedure_variant` →
+    `variants.options[].pipelineOptions`), vd nhánh form nhà ở riêng lẻ / công trình của GPXD.
+    Chưa chọn hoặc trường hợp không khai pipelineOptions → {} (mapper tự suy từ giấy tờ)."""
+    variant = str((conv or {}).get("procedure_variant") or "")
+    if not proc or not variant:
+        return {}
+    for option in (proc.get("variants") or {}).get("options") or []:
+        if option.get("key") == variant:
+            return dict(option.get("pipelineOptions") or {})
+    return {}
 
 
 def portal_submit_rules() -> dict[str, dict]:

@@ -7,11 +7,11 @@ import respx
 
 from app.config import settings
 from app.pipelines.xac_nhan_tthn.process import base_prompt as compact_prompt
-from app.channels.handfree.owner_info import run as owner_info_run
 from app.pipelines.xac_nhan_tthn import process as agent
 from app.pipelines.xac_nhan_tthn.process.prompt import EXTRA_RULES
 from app.pipelines.xac_nhan_tthn.process.schema import FIELDS
 from app.channels.handfree.procedure_registry import get_owner_info_pipeline, get_pipeline, get_procedure
+from app.pipelines.xac_nhan_tthn_dvc_moi import process as dvc_moi_agent
 
 
 def _file(name, typ="image/jpeg"):
@@ -93,29 +93,26 @@ def test_xac_nhan_tthn_compact_prompt_rejects_ui_fields():
     system_prompt = compact_prompt.build_system_prompt(FIELDS, EXTRA_RULES)
 
     # Wording lõi mới 2026-08 (đồng bộ auto-fill): phân vai BẢN THÂN/ỦY QUYỀN thay câu
-    # "mặc định là bản thân"; TinhTrangHonNhanC1 được trả khi tờ khai ghi rõ trạng thái chuẩn.
+    # "mặc định là bản thân"; TinhTrangHonNhanC1 là MÃ chữ đọc theo nội dung dòng tình trạng hôn nhân.
     assert "A. BẢN THÂN: người yêu cầu chính là người cần giấy XNTTHN" in system_prompt
     assert "NguoiDuocCap_* = thông tin IN trên giấy tờ của NGƯỜI ĐƯỢC CẤP" in system_prompt
     assert "Không trả field UI/default" in system_prompt
     assert "quanhevoinguoiduocxacminh" in system_prompt
-    assert "DivorceDecision_* lấy từ tài liệu quyết định/bản án ly hôn thật" in system_prompt
+    assert "BanAn_Number/Date/Agency: CHỈ đọc từ VĂN BẢN quyết định/bản án ly hôn" in system_prompt
     assert "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ" in system_prompt  # nguồn giấy XNTTHN cũ
-    assert "RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ" in system_prompt
+    assert "TinhTrangHonNhanC1 = MỘT mã chữ dưới đây" in system_prompt
     assert "Không suy luận tình trạng hôn nhân từ CCCD" in system_prompt
 
 
 def test_registry_uses_xac_nhan_tthn_compact_agent_mode():
     proc = get_procedure("xac-nhan-tinh-trang-hon-nhan")
 
-    assert get_pipeline("xac-nhan-tinh-trang-hon-nhan") is agent.run
-    assert get_owner_info_pipeline("xac-nhan-tinh-trang-hon-nhan") is owner_info_run
-    assert proc["flowProfile"] == "tu-phap"
-    assert proc["ownerInfo"]["enabled"] is True
-    assert {
-        spec["reportLabel"] for spec in proc["ownerInfo"]["fields"].values()
-    } == {"ngày cấp", "nơi cấp", "số điện thoại", "địa chỉ"}
+    # Trang nộp một trang của Cổng DVC quốc gia mới: không bước chủ hồ sơ.
+    assert get_pipeline("xac-nhan-tinh-trang-hon-nhan") is dvc_moi_agent.run
+    assert get_owner_info_pipeline("xac-nhan-tinh-trang-hon-nhan") is None
+    assert proc["flowProfile"] == "tu-phap-moi"
+    assert "ownerInfo" not in proc
     assert proc["mode"] == "agent"
     assert proc["hasAttachmentStep"] is True
     assert proc["roles"] == []
     assert "useRequestMode" not in proc
-    assert "Mặc định người yêu cầu là bản thân" in proc["uploadHint"]

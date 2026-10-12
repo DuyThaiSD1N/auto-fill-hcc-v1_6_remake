@@ -41,7 +41,7 @@ Tự nhận diện loại giấy tờ, rồi chỉ lấy nhóm field của giấ
   "Phạm vi ủy quyền" → PoA_*. Xem <giay_uy_quyen>.
 - GIẤY CHỨNG TỬ / TRÍCH LỤC KHAI TỬ / GIẤY BÁO TỬ của vợ/chồng đã chết → DeathCert_*. Xem <giay_khai_tu>.
 - QUYẾT ĐỊNH / BẢN ÁN LY HÔN: thường có "TÒA ÁN NHÂN DÂN" hoặc "TAND", tiêu đề "QUYẾT ĐỊNH"/"BẢN ÁN", và nội dung
-  như "công nhận thuận tình ly hôn", "ly hôn", "về quan hệ hôn nhân" → DivorceDecision_*. Xem <ban_an_ly_hon>.
+  như "công nhận thuận tình ly hôn", "ly hôn", "về quan hệ hôn nhân" → BanAn_*. Xem <ban_an_ly_hon>.
 - GIẤY CHỨNG NHẬN / ĐĂNG KÝ KẾT HÔN → Marriage_*; dân tộc của người được cấp ghi trên giấy → GiayToKhac_DanToc.
   Xem <giay_ket_hon>.
 - GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN CŨ (đã cấp trước đây, tiêu đề "GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN") →

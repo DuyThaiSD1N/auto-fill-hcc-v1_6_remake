@@ -169,6 +169,16 @@ def _loai_dang_ky(values: dict, context: str, today: date | None = None) -> tupl
     return ("1", LOAI_DANG_KY["1"]), True
 
 
+def _submitter_phone(value, context: str) -> str:
+    """Số điện thoại người nộp đọc từ giấy: chỉ khi người nộp có trong hồ sơ và số đúng dạng di động/cố định VN."""
+    if _fold(labeled_value(section(context, "nguoi_nop"), "Có trong hồ sơ")) != "co":
+        return ""
+    digits = _digits(value)
+    if digits.startswith("84") and len(digits) in (11, 12):
+        digits = "0" + digits[2:]
+    return digits if re.fullmatch(r"0\d{9,10}", digits) else ""
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
@@ -202,6 +212,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if warning:
         warnings.append(warning)
     add("citizenmoiquanhe", relation, default=guessed)
+    add("citizenPhone", _submitter_phone(values.get("NguoiNop_SoDienThoai"), context))
 
     # Ba ô tra cứu CSDL dân cư đi đầu (cờ lookup): cổng tra được thì tự đổ + khóa các ô bên dưới.
     personal_id = _digits(values.get("NguoiMat_SoDinhDanh"))

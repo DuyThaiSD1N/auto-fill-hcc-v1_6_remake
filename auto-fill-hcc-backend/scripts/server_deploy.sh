@@ -25,6 +25,8 @@ SERVICES=(app fe monitor-fe)
 # lọt qua SSH (tag còn được ghép vào tên image).
 TAG_RE='^v(0[1-9]|[12][0-9]|3[01])\.(0[1-9]|1[0-2])\.20[0-9]{2}(\.[1-9][0-9]{0,2})?$'
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
+PULL_ATTEMPTS="${PULL_ATTEMPTS:-5}"
+PULL_RETRY_DELAY="${PULL_RETRY_DELAY:-15}"
 KEEP_TAGS=3   # số tag GHCR giữ lại trên đĩa cho mỗi image (đỡ đầy ổ, vẫn quay về được vài bản)
 HISTORY=deploy-history.log
 
@@ -66,6 +68,17 @@ restart_services() {
   "${COMPOSE[@]}" up -d --no-build --no-deps "${SERVICES[@]}"
 }
 
+# DNS của server lúc được lúc không ("lookup ghcr.io … i/o timeout") → thử lại thay vì bỏ cả lượt.
+pull() {
+  local ref="$1" attempt
+  for ((attempt = 1; attempt <= PULL_ATTEMPTS; attempt++)); do
+    docker pull -q "$ref" && return 0
+    ((attempt < PULL_ATTEMPTS)) && { log "Kéo ${ref} lỗi (lần ${attempt}/${PULL_ATTEMPTS}) — thử lại sau ${PULL_RETRY_DELAY}s"; sleep "$PULL_RETRY_DELAY"; }
+  done
+  log "Kéo ${ref} lỗi ${PULL_ATTEMPTS} lần — dừng, prod giữ nguyên bản đang chạy."
+  return 1
+}
+
 image_id() { docker image inspect --format '{{.Id}}' "$1" 2>/dev/null || true; }
 
 rollback_to_prev() {
@@ -105,7 +118,7 @@ fi
 
 TAG="$arg"
 log "DEPLOY ${TAG} từ ${REGISTRY}"
-for img in "${IMAGES[@]}"; do docker pull -q "${REGISTRY}/${img}:${TAG}"; done
+for img in "${IMAGES[@]}"; do pull "${REGISTRY}/${img}:${TAG}"; done
 
 declare -A PREV_BEFORE=()
 for img in "${IMAGES[@]}"; do

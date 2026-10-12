@@ -210,6 +210,51 @@ def is_account_person(account: dict, name, id_number, birthday) -> bool:
     return same_dob and similarity >= SAME_NAME_RATIO
 
 
+def _one_char_apart(a: str, b: str) -> bool:
+    """Hai chuỗi lệch đúng một ký tự (thay, thêm hoặc bớt)."""
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long = sorted((a, b), key=len)
+    return any(long[:i] + long[i + 1:] == short for i in range(len(long)))
+
+
+def matches_account(account: dict, name, id_number, birthday) -> bool:
+    """Khối nhân thân đọc từ tờ khai viết tay có phải CHÍNH chủ tài khoản không — bản NỚI cho OCR chữ viết tay
+    (`is_account_person` chặt hơn, dùng cho tờ khai kết hôn).
+
+    OCR chữ viết tay hay sai một trong ba thông tin nên chỉ cần khớp MỘT: họ tên (trùng bỏ dấu hoặc
+    lệch một ký tự), số định danh (trùng, lệch/rơi tối đa hai chữ số) hoặc ngày sinh đủ ngày tháng
+    năm. Bằng chứng ngược chặn lại: hai số cùng đủ 12 chữ số lệch từ ba chữ số (số định danh là
+    duy nhất — chặn người trùng tên), khác họ (chặn người lạ trùng ngày sinh), ngày sinh khác nhau
+    mà số không khớp, tên khác hẳn mà hai số đủ 12 chữ số không trùng hẳn (chặn sinh đôi)."""
+    account_name = re.sub(r"\s+", " ", str(account.get("HoTen") or "")).strip().lower()
+    block_name = re.sub(r"\s+", " ", str(name or "")).strip().lower()
+    account_id, block_id = digits(account.get("SoDinhDanh")), digits(id_number)
+    if account_name and block_name and fold(account_name).split()[0] != fold(block_name).split()[0]:
+        return False
+    both_full = len(account_id) == CCCD_LEN and len(block_id) == CCCD_LEN
+    id_gap = sum(x != y for x, y in zip(account_id, block_id)) if both_full else None
+    if id_gap is not None and id_gap > 2:
+        return False
+    same_name = bool(account_name and block_name) and (
+        fold(account_name) == fold(block_name) or _one_char_apart(account_name, block_name)
+    )
+    same_id = id_match(account_id, block_id) is True or (id_gap is not None and id_gap <= 2)
+    # Tên khác hẳn mà hai số đủ 12 chữ số vẫn lệch → hai người (vd sinh đôi: cùng họ, cùng ngày sinh,
+    # số liền nhau). Lệch vài chữ số chỉ tha cho OCR khi tên còn khớp.
+    if account_name and block_name and not same_name and id_gap:
+        return False
+    account_dob = date_key(account.get("NgaySinh"))
+    block_dob = date_key(normalize_date(re.sub(r"\s+", "", str(birthday or ""))))
+    # Ngày sinh hai bên cùng đủ mà khác nhau (vd hai anh em tên lệch một chữ) → tên thôi không đủ,
+    # phải có số khớp (trùng hoặc lệch/rơi tối đa hai chữ số).
+    if account_dob and block_dob and account_dob != block_dob:
+        return same_id
+    return same_name or same_id or account_dob is not None and account_dob == block_dob
+
+
 # Tờ khai kết hôn eForm Bộ Tư pháp (kết hôn, kết hôn có yếu tố nước ngoài, đăng ký lại kết hôn dùng
 # chung một mẫu): mỗi bên một bộ ô, hậu tố theo bên.
 _MARRIAGE_SIDES = {"BenNam": "Nam", "BenNu": "Nữ"}

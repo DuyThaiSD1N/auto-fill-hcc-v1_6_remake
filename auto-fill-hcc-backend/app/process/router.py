@@ -21,14 +21,12 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
+from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
-)
-from app.pipelines.xac_nhan_tthn.process.mapper import (
-    with_account_process_options as with_tthn_account_process_options,
 )
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process.mapper import (
     with_account_process_options as with_dien_tich_nha_o_account_process_options,
@@ -71,12 +69,11 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             pipeline=pipeline,
             include_review=True,
         )
-        # Cấu hình theo tài khoản (Hiệp Hòa lấy người ủy quyền làm người yêu cầu TTHN, Đăk Cấm luôn
-        # chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết làm chủ hồ sơ mai táng hưu trí xã hội,
-        # Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh, Xuân Hương để số lượng bản sao cải chính
-        # hộ tịch = 0, Đăk Bla ghi nội dung yêu cầu chỉ bằng tên thủ tục diện tích nhà ở thường trú) do
-        # server đặt từ `user`.
-        prepared.pipeline_options = with_tthn_account_process_options(
+        # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây, Đăk Cấm luôn chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết
+        # làm chủ hồ sơ mai táng hưu trí xã hội, Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh, Xuân
+        # Hương để số lượng bản sao cải chính hộ tịch = 0, Đăk Bla ghi nội dung yêu cầu chỉ bằng tên thủ
+        # tục diện tích nhà ở thường trú) do server đặt từ `user`.
+        prepared.pipeline_options = with_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_gpxd_account_process_options(
@@ -94,7 +91,7 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         prepared.pipeline_options = with_dien_tich_nha_o_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
-        # 4 phường Đà Lạt: khai sinh liên thông chọn giám hộ thẻ BHYT = mẹ, nơi KCB = BV Sản - Nhi tỉnh Lâm Đồng.
+        # 4 phường Đà Lạt: khai sinh liên thông chọn giám hộ thẻ BHYT = mẹ, nơi KCB = BV Sản Nhi Lâm Đồng.
         prepared.pipeline_options = with_khai_sinh_lien_thong_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )

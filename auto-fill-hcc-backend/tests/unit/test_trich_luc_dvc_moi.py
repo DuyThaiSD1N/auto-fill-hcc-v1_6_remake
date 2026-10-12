@@ -166,6 +166,7 @@ def test_unknown_relation_left_blank_with_warning():
 def test_child_under_14_without_card_has_no_id_cluster():
     values = {k: v for k, v in SUBJECT.items() if k not in ("NguoiDuocCap_NgayCap", "NguoiDuocCap_SoGiayTo")}
     values["NguoiDuocCap_NgaySinh"] = "01/02/2020"
+    values["NguoiDuocCap_SoDinhDanh"] = "001320000002"  # bé gái sinh 2020: mã thế kỷ/giới tính 3, năm 20
     out, _ = _enrich(values, _context("Mẹ đẻ"))
     names = _names(out)
     assert "citizenNDK_SoDinhDanh" in names
@@ -220,3 +221,71 @@ def test_attach_plan_async_contract(monkeypatch):
 def test_attach_ten_trung_duoc_danh_so():
     items = build_plan_items(["a.jpg", "b.jpg"], {0: "Căn cước công dân", 1: "Căn cước công dân"})
     assert [i["documentName"] for i in items] == ["Căn cước công dân", "Căn cước công dân 2"]
+
+
+_CUM_GIAY_TO = ("citizenNDK_SoGiayToTuyThan", "citizenNDK_NgayCap", "citizenNDK_NoiCap",
+                "citizenNDK_LoaiGiayToTuyThan", "citizenNDK_SoDinhDanh")
+
+
+def _the_cua_nguoi_nop(**extra):
+    return {"NguoiDuocCap_HoTen": "Tran Van C", "NguoiDuocCap_LoaiGiayTo": "Căn cước",
+            "NguoiDuocCap_SoGiayTo": ACCOUNT["applicantIdentityNumber"], "NguoiDuocCap_NgayCap": "28/06/2021",
+            "NguoiDuocCap_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+            "GiayTo_LoaiSuKien": "death", **extra}
+
+
+def test_khai_tu_khong_lay_the_cua_nguoi_nop_cho_nguoi_da_chet():
+    out, warnings = _enrich(_the_cua_nguoi_nop(), _context("Không xác định", status="đã chết", event="khai tử"))
+    names = _names(out)
+    assert "citizenNDK_HoVaTen" in names
+    assert not [n for n in _CUM_GIAY_TO if n in names]
+    assert any("trùng số của người nộp" in w for w in warnings)
+
+
+def test_nguoi_khac_ten_khong_lay_the_cua_nguoi_nop():
+    out, warnings = _enrich(_the_cua_nguoi_nop(GiayTo_LoaiSuKien="birth"), _context("Mẹ đẻ"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by.get("citizenQuanhe") == "Mẹ đẻ"
+    assert not [n for n in _CUM_GIAY_TO if n in by]
+    assert any("trùng số của người nộp" in w for w in warnings)
+
+
+def test_chinh_chu_tai_khoan_chua_chot_quan_he_van_giu_the():
+    values = _the_cua_nguoi_nop(NguoiDuocCap_HoTen="Nguyen Van A", GiayTo_LoaiSuKien="birth")
+    out, _ = _enrich(values, _context("Không xác định"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by.get("citizenNDK_SoGiayToTuyThan") == ACCOUNT["applicantIdentityNumber"]
+
+
+def test_khai_tu_giu_giay_to_that_cua_nguoi_da_chet():
+    values = _the_cua_nguoi_nop(NguoiDuocCap_SoGiayTo="123456789", NguoiDuocCap_NgayCap="01/02/1990",
+                                NguoiDuocCap_LoaiGiayTo="CMND", NguoiDuocCap_NoiCap="Công an tỉnh Lâm Đồng")
+    out, _ = _enrich(values, _context("Không xác định", status="đã chết", event="khai tử"))
+    by = {f["name"]: f["value"] for f in out}
+    assert by.get("citizenNDK_SoGiayToTuyThan") == "123456789"
+
+
+def _the_nguoi_khac(**extra):
+    # Hồ sơ chỉ có CCCD của một người khác (không phải người nộp đang đăng nhập), giấy hộ tịch không ghi giấy tờ.
+    return {**SUBJECT, "NguoiDuocCap_HoTen": "Trần Văn Ông", "NguoiDuocCap_GioiTinh": "Nam",
+            "NguoiDuocCap_NgaySinh": "1934", "NguoiDuocCap_SoDinhDanh": "", "NguoiDuocCap_SoGiayTo": "001168000009",
+            "NguoiDuocCap_NgayCap": "28/06/2021", "GiayTo_LoaiSuKien": "death", "GiayTo_NgayDangKy": "02/06/2008",
+            **extra}
+
+
+def test_so_the_ma_hoa_gioi_tinh_nam_sinh_khac_nguoi_duoc_cap_thi_bo():
+    out, warnings = _enrich(_the_nguoi_khac(), _context("Con đẻ"))
+    assert "citizenNDK_SoGiayToTuyThan" not in _names(out) and "citizenNDK_NgayCap" not in _names(out)
+    assert any("không khớp người được cấp" in w for w in warnings)
+
+
+def test_the_cap_sau_ngay_khai_tu_thi_bo():
+    # Số khớp giới tính + năm sinh nhưng thẻ cấp SAU ngày đăng ký khai tử → không thể là thẻ người đã chết.
+    out, _ = _enrich(_the_nguoi_khac(NguoiDuocCap_SoGiayTo="001034000009"), _context("Con đẻ"))
+    assert "citizenNDK_SoGiayToTuyThan" not in _names(out)
+
+
+def test_the_khop_nguoi_da_chet_van_giu():
+    out, _ = _enrich(_the_nguoi_khac(NguoiDuocCap_SoGiayTo="001034000009", NguoiDuocCap_NgayCap="01/01/2005"),
+                     _context("Con đẻ"))
+    assert "citizenNDK_SoGiayToTuyThan" in _names(out)

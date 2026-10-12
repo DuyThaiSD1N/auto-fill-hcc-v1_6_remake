@@ -807,26 +807,6 @@ async def test_wizard_ket_hon_modal_chu_ho_so_ke_khai():
 
 
 @pytest.mark.asyncio
-async def test_wizard_xac_nhan_tthn_ap_dung_luong_chu_ho_so_moi():
-    """XNTTHN xin consent và nhận giấy tờ ngay tại bước chủ hồ sơ như kết hôn."""
-    conv = _conv()
-    await _turn(conv, "tình trạng hôn nhân")
-    await _turn(conv, "__action:goto_login")
-
-    owner = '{"fullName":"VŨ ĐÌNH THIẾT","identityNumber":"040203015844"}'
-    r = await _turn(
-        conv,
-        f'__event:page_status:{{"wizardStep":1,"loggedIn":true,"ownerContext":{owner}}}',
-    )
-
-    assert conv["procedure_key"] == "xac-nhan-tinh-trang-hon-nhan"
-    assert conv["state"] == "consent" and conv["owner_phase"] is True
-    assert conv["owner_context"]["identityNumber"] == "040203015844"
-    assert "Thông tin chủ hồ sơ" in r.display_md
-    assert any(card["kind"] == "consent_form" for card in r.cards)
-
-
-@pytest.mark.asyncio
 async def test_ket_hon_owner_context_fallback_tu_principal_vneid():
     conv = _conv()
     await _turn(conv, "kết hôn")

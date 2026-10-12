@@ -51,29 +51,18 @@ NƠI CƯ TRÚ TRÊN TỜ KHAI:
 </to_khai>
 
 <tinh_trang_hon_nhan>
-- Từ dòng "Tình trạng hôn nhân" trên TỜ KHAI:
-  + Nếu ghi "đã đăng ký kết hôn nhưng chồng đã chết" hoặc "đã đăng ký kết hôn nhưng vợ đã chết"
-    hoặc "vợ/chồng đã chết" VÀ CÓ dòng "Theo giấy chứng tử số ... do ... cấp ngày ..." → BẮT BUỘC
-    trích xuất DeathCert_Number, DeathCert_Date, DeathCert_Agency từ dòng đó (xem GIẤY CHỨNG TỬ GHI
-    TRÊN TỜ KHAI bên dưới). TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 trong trường hợp này
-    (Python mapper sẽ tự điền trạng thái GÓA từ DeathCert_*).
-  + Nếu ghi "đã ly hôn" hoặc "đã đăng ký kết hôn nhưng đã ly hôn" VÀ CÓ dòng "Theo bản án/quyết định
-    ly hôn số ... do/của ... cấp/ngày ..." → trích xuất DivorceDecision_* (tương tự giấy chứng tử).
-    KHÔNG trả TinhTrangHonNhanC1.
-  + Nếu nội dung bắt đầu bằng "Chưa kết hôn" hoặc CHỈ ghi "hiện tại chưa đăng ký kết hôn với ai"
-    (KHÔNG có thông tin về chồng/vợ đã chết hay ly hôn) → TinhTrangHonNhanC1 = "Hiện tại chưa đăng ký kết hôn với ai".
-  + Nếu ghi rõ "hiện tại đang có chồng" hoặc "hiện tại đang có vợ" → TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
-- NGOẠI LỆ ĐÈ LÊN HAI GẠCH ĐẦU DÒNG LY HÔN/GÓA Ở TRÊN — ĐÃ LY HÔN (hoặc góa) RỒI KẾT HÔN LẠI:
-  nếu cùng dòng tình trạng hôn nhân còn ghi người đó HIỆN TẠI đã có vợ/chồng ("hiện tại đã kết hôn
-  với ...", "hiện nay đã kết hôn với ...", "hiện tại đang có vợ/chồng là ...") thì BẮT BUỘC trả
-  TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng" (KÈM theo DivorceDecision_*/DeathCert_* và
-  Marriage_*). Ly hôn/góa lúc này chỉ là quá khứ; hai trạng thái "…đã ly hôn/vợ chồng đã chết;
-  hiện tại chưa đăng ký kết hôn với ai" là SAI SỰ THẬT với người đã cưới lại.
-- RIÊNG TinhTrangHonNhanC1 được trả khi TỜ KHAI ghi rõ một trong hai trạng thái chuẩn:
-  "Hiện tại chưa đăng ký kết hôn với ai" hoặc "Hiện tại đang có vợ/chồng".
-  Trạng thái GÓA/ĐÃ LY HÔN do Python chọn từ DeathCert_*/DivorceDecision_* và ưu tiên hơn tờ khai —
-  NHƯNG CHỈ khi người đó HIỆN TẠI CHƯA kết hôn lại. Tờ khai ghi "hiện tại đã kết hôn với ..." thì
-  vẫn PHẢI trả TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng".
+- TinhTrangHonNhanC1 = MỘT mã chữ dưới đây, đọc theo NỘI DUNG CẢ dòng "Tình trạng hôn nhân" trên TỜ KHAI (không có
+  tờ khai → bỏ). Số chú thích in sẵn trên mẫu như "(4)" KHÔNG phải mã.
+  "co_vo_chong" = HIỆN TẠI đang có vợ/chồng — kể cả đã ly hôn/góa rồi kết hôn lại ("hiện tại đã kết hôn với ...").
+  "chua_ket_hon" = chưa từng kết hôn: dòng KHÔNG nhắc ly hôn hay vợ/chồng chết.
+  "ly_hon" = đã kết hôn nhưng ĐÃ LY HÔN, hiện tại chưa kết hôn lại.
+  "goa" = vợ/chồng ĐÃ CHẾT, hiện tại chưa kết hôn lại.
+  "khoang_thoi_gian" = xin xác nhận chưa đăng ký kết hôn TỪ ngày ... ĐẾN ngày ... đã qua, hiện tại đang có vợ/chồng.
+- Đuôi "hiện tại chưa đăng ký kết hôn với ai" có ở cả chua_ket_hon, ly_hon, goa → quyết định theo phần ĐẦU dòng: có ly
+  hôn → "ly_hon", có vợ/chồng đã chết → "goa", không nhắc gì → "chua_ket_hon". Vd "Đã đăng ký kết hôn nhưng đã ly hôn
+  theo bản án số ... hiện tại chưa đăng ký kết hôn với ai" → "ly_hon".
+- ly_hon/goa vẫn trả kèm DivorceDecision_*/DeathCert_* đọc được; co_vo_chong có ly hôn/góa trước đó thì trả kèm
+  cả DivorceDecision_*/DeathCert_* lẫn Marriage_*.
 - Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
 - Trả ToKhai_LaBanThan=true CHỈ khi dòng quan hệ ghi "Tự khai"/"Bản thân" VÀ họ tên người yêu cầu
   trùng họ tên người được cấp.
@@ -87,11 +76,6 @@ ngày <D>":
   Chuẩn hóa: "UBND" → "Ủy ban nhân dân", giữ nguyên địa danh phía sau.
 LƯU Ý:
 - BẮT BUỘC trả CẢ BA field DeathCert_* khi tờ khai có đủ thông tin số, cơ quan, ngày.
-- TUYỆT ĐỐI KHÔNG trả TinhTrangHonNhanC1 khi đã trích được DeathCert_* từ tờ khai, vì Python mapper
-  sẽ tự động điền trạng thái "Đã đăng ký kết hôn hoặc đã có vợ/chồng nhưng vợ/chồng đã chết; hiện tại
-  chưa đăng ký kết hôn với ai" dựa trên sự hiện diện của DeathCert_*.
-- Dòng "Hiện tại chưa đăng ký kết hôn với ai" trong tờ khai CHỈ LÀ phần bổ sung, KHÔNG được dùng để
-  đè lên trạng thái GÓA khi đã có thông tin chồng/vợ đã chết.
 Ví dụ: TỜ KHAI ghi:
   "Tình trạng hôn nhân: (4) đã đăng ký kết hôn nhưng chồng đã chết
    Theo giấy chứng tử số 12 do UBND phường 1 TP Dalat tỉnh Lâm Đồng cấp ngày 28-2-2005
@@ -100,7 +84,7 @@ Ví dụ: TỜ KHAI ghi:
   - DeathCert_Number = "12"
   - DeathCert_Date = "28/02/2005"
   - DeathCert_Agency = "Ủy ban nhân dân phường 1 TP Đà Lạt tỉnh Lâm Đồng"
-  - KHÔNG trả TinhTrangHonNhanC1 (để Python mapper xử lý).
+  - TinhTrangHonNhanC1 = "goa".
 
 KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
 - Dòng "Tình trạng hôn nhân" của tờ khai có thể xin xác nhận CHƯA ĐĂNG KÝ KẾT HÔN TRONG MỘT KHOẢNG
@@ -118,7 +102,7 @@ KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
   đã chết. Đây là ca phổ biến nhất: "Đã kết hôn, ly hôn theo bản án số 12/2016 ngày 27/4/2016 do
   Tòa án ... Từ ngày 27/4/2016 đến 14/9/2016 chưa đăng ký kết hôn với ai. Hiện tại đã kết hôn với
   <tên vợ/chồng>" → trả ĐỦ CẢ BA nhóm: DivorceDecision_*, Period_TuNgay/Period_DenNgay VÀ
-  Marriage_* (+ TinhTrangHonNhanC1 = "Hiện tại đang có vợ/chồng").
+  Marriage_* (+ TinhTrangHonNhanC1 = "co_vo_chong").
 - MỐC BẮT ĐẦU THƯỜNG TRÙNG NGÀY BẢN ÁN LY HÔN (người ta xin xác nhận từ lúc ly hôn tới lúc cưới
   lại). TUYỆT ĐỐI KHÔNG vì thấy ngày đó đã dùng cho DivorceDecision_Date mà bỏ Period_TuNgay —
   MỘT NGÀY ĐƯỢC PHÉP xuất hiện ở CẢ HAI field. Bỏ Period_* là mất đúng cái khoảng thời gian người
@@ -253,30 +237,30 @@ Ví dụ: TRÍCH LỤC KHAI TỬ (BẢN SAO) của UBND xã Nghĩa Thương:
 </giay_khai_tu>
 
 <ban_an_ly_hon>
-- DivorceDecision_* lấy từ tài liệu quyết định/bản án ly hôn thật (dấu hiệu ở <giay_to>), HOẶC từ dòng tình trạng
-  hôn nhân trên tờ khai / giấy XNTTHN cũ (nhắc lại "Bản án/Quyết định ly hôn số ..."). Không dùng tên file để kết luận.
-- DivorceDecision_Number: lấy số ở nhãn "Số:" NGAY ĐẦU văn bản (phần tiêu đề, ngay dưới tên Tòa án).
-  TUYỆT ĐỐI KHÔNG lấy số ở các cụm DẪN CHIẾU trong phần nội dung như "Tại quyết định dân sự số ...",
-  "tại bản án số ...", "theo quyết định số ..." — đó là số văn bản GỐC được trích lục/dẫn chiếu,
-  KHÔNG phải số của văn bản đang xét.
-  Không lấy số thụ lý, số biên lai, số án phí, số trang hoặc số mục trong nội dung.
-- DivorceDecision_Date: lấy ngày ban hành/cấp quyết định ở dòng địa danh + ngày tháng năm
-  gần đầu văn bản, ví dụ "Thị xã Lai Châu, ngày 03 tháng 5 năm 2012" -> "03/05/2012".
-  Không lấy ngày hòa giải, ngày thụ lý, ngày biên lai, ngày hiệu lực hoặc ngày sinh.
-- DivorceDecision_Agency: lấy cơ quan ban hành/cấp quyết định từ đầu văn bản hoặc phần ký.
-  Chuẩn hóa "TAND" thành "Tòa án nhân dân". Ví dụ "TAND THỊ XÃ LAI CHÂU / TỈNH LAI CHÂU"
-  -> "Tòa án nhân dân thị xã Lai Châu, tỉnh Lai Châu".
-- Chỉ trả DivorceDecision_* khi có bản án/quyết định ly hôn thật HOẶC tờ khai / giấy XNTTHN cũ ghi đã ly hôn
-  theo bản án/quyết định số .... Nếu chỉ có CCCD hoặc giấy tờ không nhắc tới ly hôn thì bỏ qua toàn bộ DivorceDecision_*.
-- BẢN ÁN/QUYẾT ĐỊNH LY HÔN GHI TRÊN TỜ KHAI — hồ sơ KHÔNG có văn bản bản án/quyết định mà dòng tình trạng hôn nhân
-  của tờ khai (hoặc giấy XNTTHN cũ) ghi đã ly hôn theo bản án/quyết định số <N> của/do <CQ> ... ngày <D>:
+- HAI nhóm field, mỗi nhóm đúng MỘT nguồn. Hồ sơ có cả hai nguồn thì trả CẢ HAI nhóm, kể cả khi chúng ghi khác nhau
+  (người dân hay chép nhầm năm, cơ quan lên tờ khai — Python tự chọn):
+  + BanAn_Number/Date/Agency: CHỈ đọc từ VĂN BẢN quyết định/bản án ly hôn của Tòa án kèm trong hồ sơ (dấu hiệu ở
+    <giay_to>). Hồ sơ không kèm văn bản đó → bỏ cả nhóm.
+  + DivorceDecision_Number/Date/Agency: CHỈ đọc từ dòng tình trạng hôn nhân trên TỜ KHAI / giấy XNTTHN cũ (nhắc lại
+    "Bản án/Quyết định ly hôn số ..."). Không có dòng đó → bỏ cả nhóm.
+  Không dùng tên file để kết luận. Hồ sơ không nhắc tới ly hôn → bỏ cả hai nhóm.
+- Đọc VĂN BẢN bản án/quyết định (BanAn_*):
+  + BanAn_Number: số ở nhãn "Số:" NGAY ĐẦU văn bản (phần tiêu đề, ngay dưới tên Tòa án). TUYỆT ĐỐI KHÔNG lấy số
+    ở các cụm DẪN CHIẾU trong nội dung như "Tại quyết định dân sự số ...", "tại bản án số ...", "theo quyết định
+    số ..." — đó là số văn bản GỐC được trích lục/dẫn chiếu. Không lấy số thụ lý, số biên lai, số án phí, số trang
+    hoặc số mục trong nội dung.
+  + BanAn_Date: ngày ban hành ở dòng địa danh + ngày tháng năm gần đầu văn bản ("Thị xã Lai Châu, ngày 03 tháng 5
+    năm 2012" -> "03/05/2012"), hoặc ở nhãn "Ngày:" ngay dưới "Bản án số:"/"Quyết định số:". Không lấy ngày hòa
+    giải, ngày thụ lý, ngày biên lai, ngày hiệu lực hoặc ngày sinh.
+  + BanAn_Agency: cơ quan ban hành từ đầu văn bản hoặc phần ký. Chuẩn hóa "TAND" thành "Tòa án nhân dân", vd
+    "TAND THỊ XÃ LAI CHÂU / TỈNH LAI CHÂU" -> "Tòa án nhân dân thị xã Lai Châu, tỉnh Lai Châu".
+- Đọc dòng TỜ KHAI (DivorceDecision_*): dòng ghi đã ly hôn theo bản án/quyết định số <N> của/do <CQ> ... ngày <D>:
   + BẮT BUỘC trả ĐỦ CẢ BA field khi dòng đó có: DivorceDecision_Number = <N> (GIỮ NGUYÊN số và ký hiệu như
     "105/2018/QĐST-HNGĐ"), DivorceDecision_Agency = <CQ> (chuẩn hóa "TAND" → "Tòa án nhân dân"),
     DivorceDecision_Date = <D>.
   + <D> là ngày GẮN VỚI việc ly hôn trên chính dòng đó, có thể đứng SAU số ("số ... ngày <D>") hoặc đứng TRƯỚC
     ("đến ngày <D> thì ly hôn theo quyết định số ..."). KHÔNG lấy ngày đăng ký kết hôn ("ngày ... đã đăng ký kết
     hôn với ...") hay ngày làm tờ khai.
-  + Có văn bản bản án/quyết định thật thì lấy theo văn bản đó (các gạch đầu dòng trên), không lấy từ tờ khai.
 </ban_an_ly_hon>
 
 <giay_ket_hon>

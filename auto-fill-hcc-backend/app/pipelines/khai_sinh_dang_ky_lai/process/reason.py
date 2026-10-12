@@ -18,6 +18,7 @@ from app.pipelines._shared.area_remap import (
     is_current_area,
     remap_area,
 )
+from app.pipelines._shared.cccd import id_birth_year as _id_birth_year, id_gender as _id_gender
 from app.pipelines._shared.formatting import normalize_date
 from app.services.llm import client
 
@@ -365,35 +366,6 @@ def _year_of(value) -> int | None:
     """Năm sinh đọc từ một giá trị field thô ("1970", "10/05/2000", "Không xác định")."""
     years = re.findall(r"(?<!\d)(?:18|19|20)\d{2}(?!\d)", str(value or ""))
     return int(years[-1]) if years else None
-
-
-# Số CCCD 12 chữ số: chữ số thứ 4 mã hoá giới tính + thế kỷ sinh, hai chữ số kế tiếp là năm sinh.
-_ID_CENTURY_BY_CODE = {"0": 1900, "1": 1900, "2": 2000, "3": 2000, "4": 2100, "5": 2100, "8": 1800, "9": 1800}
-
-
-def _id_birth_year(id_number, gender=None) -> int | None:
-    """Năm sinh mã hoá trong số CCCD; None nếu không đọc được hoặc giới tính mã hoá lệch thẻ.
-
-    Giới tính in trên thẻ lệch với mã trong số thì chính con số đang bị OCR đọc sai → không tin.
-    """
-    digits = _digits(id_number)
-    if len(digits) != 12 or digits[3] not in _ID_CENTURY_BY_CODE:
-        return None
-    folded_gender = _fold(gender)
-    id_is_female = int(digits[3]) % 2 == 1
-    if folded_gender in {"nam", "male"} and id_is_female:
-        return None
-    if folded_gender in {"nu", "female"} and not id_is_female:
-        return None
-    return _ID_CENTURY_BY_CODE[digits[3]] + int(digits[4:6])
-
-
-def _id_gender(id_number) -> str:
-    """Giới tính mã hoá trong số CCCD 12 chữ số (chữ số thứ 4 chẵn = Nam, lẻ = Nữ)."""
-    digits = _digits(id_number)
-    if len(digits) != 12 or digits[3] not in _ID_CENTURY_BY_CODE:
-        return ""
-    return "Nữ" if int(digits[3]) % 2 else "Nam"
 
 
 def reconcile_birth_with_id(birth, id_number, gender=None):

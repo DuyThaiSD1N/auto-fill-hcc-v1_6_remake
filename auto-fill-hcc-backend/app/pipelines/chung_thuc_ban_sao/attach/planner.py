@@ -363,6 +363,7 @@ def _validated_segments(
             "subjectName": str(raw.get("subjectName") or "").strip(),
             "identityNumber": re.sub(r"\D+", "", str(raw.get("identityNumber") or "")),
             "logicalKey": str(raw.get("logicalKey") or "").strip(),
+            "isPartOfLargerDocument": raw.get("isPartOfLargerDocument") is True,
         })
 
     valid: list[dict] = []
@@ -680,8 +681,14 @@ def build_segment_plan_items(
     file_meta: dict[int, dict],
     page_text_by_file: dict[int, dict[int, str]],
     full_text_by_file: dict[int, str],
+    require_part_flag: bool = False,
 ) -> tuple[list[dict], list[dict]]:
-    """Dựng attachment theo TÀI LIỆU LOGIC, không theo số file người dùng tải lên."""
+    """Dựng attachment theo TÀI LIỆU LOGIC, không theo số file người dùng tải lên.
+
+    require_part_flag (chế độ giữ nguyên file): mỗi file đã là một giấy đầy đủ, chỉ gom file với file
+    khác khi LLM đánh dấu file là MỘT PHẦN của giấy nằm ở nhiều file. LLM đặt trùng logicalKey cho hai
+    giấy độc lập cùng loại (hai giấy ra viện khác đợt) thì không được ghép thành một PDF.
+    """
     records: list[dict] = []
     for order, segment in enumerate(segments):
         file_index = segment["fileIndex"]
@@ -723,7 +730,10 @@ def build_segment_plan_items(
     for record in records:
         if record["isIdentity"]:
             record["identityKey"] = _identity_key(record, known_numbers)
-        record["groupKey"] = _logical_group_key(record)
+        if require_part_flag and not record["isIdentity"] and not record["segment"].get("isPartOfLargerDocument"):
+            record["groupKey"] = ""
+        else:
+            record["groupKey"] = _logical_group_key(record)
 
     groups: list[list[dict]] = []
     group_position: dict[str, int] = {}
@@ -944,6 +954,7 @@ async def plan(
         file_meta,
         page_text_by_file,
         full_text_by_file,
+        require_part_flag=not split_documents,
     )
     classified = sorted(classified + [
         {

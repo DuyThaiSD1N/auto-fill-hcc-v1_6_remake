@@ -5,6 +5,7 @@ import unicodedata
 from datetime import date
 
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.cccd import id_birth_year, id_gender
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group
 from app.pipelines._shared.formatting import upper_person_name
@@ -87,6 +88,27 @@ def _is_under_14(value) -> bool:
     today = date.today()
     age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
     return age < _CAN_CUOC_MIN_AGE
+
+
+def _date_key(value) -> tuple | None:
+    match = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", str(value or "").strip())
+    return (int(match[3]), int(match[2]), int(match[1])) if match else None
+
+
+def _card_not_recipient(number, birth, gender, issue_date, event: str, event_date) -> bool:
+    """Thẻ đọc ra mâu thuẫn với chính người được cấp → thẻ của người khác trong hồ sơ bị gán nhầm.
+
+    Số căn cước mã hoá giới tính + năm sinh chủ thẻ; người đã chết không thể được cấp thẻ sau ngày khai tử.
+    """
+    card_gender = id_gender(number)
+    if card_gender and _fold(gender) in {"nam", "nu"} and _fold(card_gender) != _fold(gender):
+        return True
+    card_year = id_birth_year(number)
+    birth_year = re.search(r"(\d{4})\s*$", str(birth or ""))
+    if card_year and birth_year and card_year != int(birth_year[1]):
+        return True
+    issued, died = _date_key(issue_date), _date_key(event_date)
+    return event == "death" and bool(issued and died) and issued > died
 
 
 def _id_doc_type_with_number(number, hint, issuer: str = "") -> str:
@@ -197,12 +219,28 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             warnings.append("Không đọc được người được cấp bản sao — cán bộ nhập khối người được cấp.")
         add("citizenNDK_HoVaTen", upper_person_name(name))
         personal_id = _digits(values.get("NguoiDuocCap_SoDinhDanh"))
-        add("citizenNDK_SoDinhDanh", personal_id if len(personal_id) == 12 else "")
-        birth = values.get("NguoiDuocCap_NgaySinh")
-        add("citizenNDK_NgaySinh", birth)
-
         issue_date = values.get("NguoiDuocCap_NgayCap")
         card_number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (personal_id if issue_date else "")
+        # Số trùng tài khoản mà người được cấp đã chết hoặc khác tên chủ tài khoản → thẻ của người nộp bị gán nhầm
+        # (hay gặp: trích lục khai tử kèm CCCD người thân, giấy hộ tịch để trống giấy tờ tùy thân) → bỏ cả cụm.
+        account_name, account_id = requester_context(options)
+        other_person = event == "death" or _fold(account_name) != _fold(name)
+        if account_id and account_id in {card_number, personal_id} and other_person:
+            warnings.append("Số giấy tờ đọc ra cho người được cấp trùng số của người nộp — đã bỏ trống, cán bộ "
+                            "nhập giấy tờ tùy thân của người được cấp.")
+            card_number = personal_id = ""
+        birth = values.get("NguoiDuocCap_NgaySinh")
+        if (card_number or personal_id) and _card_not_recipient(
+            card_number or personal_id, birth, values.get("NguoiDuocCap_GioiTinh"), issue_date, event,
+            values.get("GiayTo_NgayDangKy"),
+        ):
+            warnings.append("Giấy tờ tùy thân đọc ra không khớp người được cấp (giới tính/năm sinh trong số thẻ, "
+                            "hoặc thẻ cấp sau ngày khai tử) — đã bỏ trống, cán bộ nhập giấy tờ tùy thân của người "
+                            "được cấp.")
+            card_number = personal_id = ""
+        add("citizenNDK_SoDinhDanh", personal_id if len(personal_id) == 12 else "")
+        add("citizenNDK_NgaySinh", birth)
+
         # Trẻ dưới 14 tuổi không có thẻ thật (không có ngày cấp) thì bỏ cả cụm giấy tờ tùy thân.
         if card_number and not (_is_under_14(birth) and not issue_date):
             # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số; CMND do công an tỉnh cấp.

@@ -292,8 +292,8 @@ from app.pipelines.cai_chinh_dvc_moi.attach import plan as cai_chinh_dvc_moi_att
 from app.pipelines.cai_chinh_dvc_moi.process import run as cai_chinh_dvc_moi_process
 from app.pipelines.khai_sinh_dvc_moi.attach import plan as khai_sinh_dvc_moi_attach
 from app.pipelines.khai_sinh_dvc_moi.process import run as khai_sinh_dvc_moi_process
-from app.pipelines.xac_nhan_tthn.attach import plan as xac_nhan_tthn_attach
-from app.pipelines.xac_nhan_tthn.process import run as xac_nhan_tthn_process
+from app.pipelines.xac_nhan_tthn_dvc_moi.attach import plan as xac_nhan_tthn_dvc_moi_attach
+from app.pipelines.xac_nhan_tthn_dvc_moi.process import run as xac_nhan_tthn_dvc_moi_process
 from app.pipelines.thi_tuyen_cong_chuc.attach import plan as thi_tuyen_cong_chuc_attach
 from app.pipelines.thi_tuyen_cong_chuc.process import run as thi_tuyen_cong_chuc_process
 from app.pipelines.thi_tuyen_cong_chuc_mot_cua_moha.attach import (
@@ -436,8 +436,6 @@ from app.pipelines.yeu_cau_tro_giup_phap_ly.attach import plan as yeu_cau_tro_gi
 from app.pipelines.yeu_cau_tro_giup_phap_ly.process import run as yeu_cau_tro_giup_phap_ly_process
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.attach import plan as tcxh_nd335_attach
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process import run as tcxh_nd335_process
-from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.attach import plan as dien_mat_troi_mai_nha_attach
-from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.process import run as dien_mat_troi_mai_nha_process
 
 PROCEDURES: list[dict] = [
     {
@@ -1377,20 +1375,36 @@ PROCEDURES: list[dict] = [
 #     },
     {
         "key": "xac-nhan-tinh-trang-hon-nhan",
-        "detect": {"urlIncludes": ["maThuTuc=1.004873"]},
-        "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân",
+        # Cổng DVC quốc gia bản mới (eForm moj maThuTuc=1.004873 đã tắt): dichvucong.gov.vn/nop-ho-so, form React +
+        # SurveyJS. URL chỉ có UUID nên nhận diện theo cụm chữ trên form (tiêu đề panel + nhãn quan hệ của khối người
+        # nộp), giới hạn trong trang nộp hồ sơ của cổng này; formalityId khớp URL thì nhận ngay.
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9"],
+            "urlScope": ["//dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": [
+                "thủ tục cấp giấy xác nhận tình trạng hôn nhân",
+                "quan hệ với người được cấp giấy xác nhận tình trạng hôn nhân",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân (Cổng DVC quốc gia bản mới)",
+        # Package riêng: phân vai + chuẩn hoá mục đích → trích → mapper ra câu hỏi SurveyJS (engine chung các thủ
+        # tục cổng mới). Khối người nộp do cổng đổ từ VNeID và khóa, chỉ điền số điện thoại + quan hệ.
         "mode": "agent",
         "hasAttachmentStep": True,
-        # Client cũ không có option sẽ giữ nguyên từng file; chỉ boolean True mới cho phép tách trang.
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, đặt từng giấy vào đúng dòng có sẵn.
         "supportsSplitDocuments": True,
-        "review": False,  # pilot rà soát bbox
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. CCCD của cá nhân yêu cầu xác nhận tình trạng hôn nhân.\n"
-            "Mặc định người yêu cầu là bản thân; không cần chọn trước vai trò giấy tờ.\n"
-            "Bước 3: hệ thống có thể đính kèm CCCD hoặc giấy tờ điều kiện vào thành phần hồ sơ phù hợp."
+            "1. Tờ khai cấp Giấy xác nhận tình trạng hôn nhân (nếu có).\n"
+            "2. CCCD của người được cấp giấy.\n"
+            "3. Nếu có: bản án/quyết định ly hôn, giấy chứng tử của vợ/chồng, giấy chứng nhận kết hôn, giấy xác nhận "
+            "tình trạng hôn nhân đã cấp, văn bản ủy quyền.\n"
+            "Thông tin người nộp do cổng điền sẵn từ VNeID; Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
+            "Bước đính kèm: tờ khai vào dòng tờ khai, các giấy tờ còn lại vào dòng giấy tờ."
         ),
     },
     {
@@ -7444,44 +7458,6 @@ PROCEDURES: list[dict] = [
             "(tờ khai đứng đầu); Tờ khai Mẫu 02 vào dòng Mẫu số 02 (không có thì không tick dòng này)."
         ),
     },
-    {
-        "key": "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
-        # Mã TTHC 1.115377 (NĐ 58/2025 sửa đổi bởi NĐ 243/2026) — key TRÙNG ke_khai_links.json và tên package.
-        # Cổng một cửa Bộ Công Thương (Form.io + bảng đính kèm attp-row, cùng engine 2.001474), tiếp nhận ở UBND
-        # cấp xã. Không khai urlScope: snapshot ghi host motcua-tthc.moit.gov.vn, khác host dichvucong-tthc của
-        # 2 thủ tục khuyến mại → nhận theo cụm tên (đủ đặc trưng, chỉ có ở thủ tục này) + textPriority.
-        "detect": {
-            "textIncludes": [
-                "Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất",
-                "cấp điện áp hạ áp",
-            ],
-            "headingDisabled": True,
-            "textPriority": True,
-        },
-        "label": "Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất, tự tiêu thụ đấu nối với hệ thống "
-                 "điện quốc gia tại cấp điện áp hạ áp",
-        "mode": "agent",
-        "hasAttachmentStep": True,
-        "roles": [],
-        "useDangKyBy": False,
-        "uploadHint": (
-            "Giấy tờ cần tải lên để tự động điền:\n"
-            "1. Thông báo phát triển nguồn điện mặt trời mái nhà (Mẫu số 01 Phụ lục III — NĐ 243/2026/NĐ-CP), đã "
-            "ký — nguồn chính.\n"
-            "2. Bản vẽ thiết kế lắp đặt nguồn điện (dự phòng công suất tấm pin / pin lưu trữ / inverter).\n"
-            "3. CCCD của người đứng tên (cá nhân) hoặc người đại diện (tổ chức/hộ kinh doanh).\n"
-            "4. Nếu có: Giấy chứng nhận QSDĐ/QSHN, giấy phép xây dựng, nghiệm thu PCCC; hình ảnh dự án; C/O, CQ "
-            "thiết bị.\n"
-            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
-            "Form điền: Loại đối tượng Cá nhân/Tổ chức theo Thông báo (có mã số doanh nghiệp hoặc tên công ty/hộ kinh "
-            "doanh → Tổ chức), mục I–II của Thông báo, chủ hồ sơ. Người đứng tên trùng tài khoản thì tích 'Cũng là "
-            "thông tin của tài khoản nộp hồ sơ'.\n"
-            "Bước thành phần hồ sơ: Thông báo vào dòng Mẫu số 01; Bản vẽ thiết kế và Bản sao tài liệu công trình có "
-            "mái nhà thêm dòng qua nút '+ Thêm giấy tờ' (không thêm được thì đính chung dòng Thông báo); mọi tệp "
-            "khác (hình ảnh, chứng từ thiết bị, CCCD, biên nhận, phiếu kiểm soát, Thông báo UBND) đính chung dòng "
-            "Thông báo, đặt tên theo loại giấy. Chỉ bỏ qua file Excel."
-        ),
-    },
 ]
 
 
@@ -7503,7 +7479,7 @@ _PIPELINE = {
     "khai-tu-lien-thong": khai_tu_lien_thong_process,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
     "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_process,
-    "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_process,
+    "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_dvc_moi_process,
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_process,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_process,
     "dinh-chinh-sai-sot-lam-dong": dinh_chinh_sai_sot_lam_dong_process,
@@ -7669,7 +7645,6 @@ _PIPELINE = {
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_process,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_process,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_process,
-    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7798,7 +7773,7 @@ _ATTACH_PIPELINE = {
     "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_attach,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,
     "doi-cap-lai-giay-xac-nhan-khuyet-tat": doi_cap_lai_giay_xac_nhan_khuyet_tat_attach,
-    "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_attach,
+    "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_dvc_moi_attach,
     "xet-tuyen-vien-chuc": xet_tuyen_vien_chuc_attach,
     "xet-tuyen-vien-chuc-lai-chau": xet_tuyen_vien_chuc_lai_chau_attach,
     "xet-tuyen-cong-chuc": xet_tuyen_cong_chuc_attach,
@@ -7882,7 +7857,6 @@ _ATTACH_PIPELINE = {
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_attach,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_attach,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_attach,
-    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

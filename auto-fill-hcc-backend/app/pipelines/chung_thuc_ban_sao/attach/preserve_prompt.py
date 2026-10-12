@@ -37,18 +37,27 @@ Mỗi file có thể chứa một hoặc nhiều giấy tờ, nhưng tuyệt đ�
 8. Chỉ điền subjectName khi toàn bộ file có một chủ thể chung rõ ràng. Chỉ điền identityNumber khi
    toàn bộ file là giấy tờ tùy thân của đúng một người; file hỗn hợp thì để trống hai trường này.
 9. logicalKey chỉ dùng cho file chứa một giấy tờ logic. File hỗn hợp phải để logicalKey rỗng.
-10. documentName chỉ gồm chữ, số, khoảng trắng, gạch dưới, gạch ngang; tối đa 40 ký tự (quá dài thì
+   Khóa gồm loại + chủ thể + SỐ HIỆU hoặc NGÀY phân biệt của chính giấy đó (số giấy, ngày cấp, ngày ra
+   viện…), không chỉ năm. Hai giấy tờ ĐỘC LẬP dù cùng loại, cùng người (hai giấy ra viện khác đợt, hai
+   hợp đồng khác số) phải có logicalKey KHÁC nhau. Cùng một giấy bị quét LẶP thành bản đầy đủ khác cũng
+   là bản riêng → khóa khác (thêm hậu tố "-ban-2").
+10. isPartOfLargerDocument = true CHỈ KHI file này là MỘT PHẦN của một giấy tờ mà phần còn lại nằm ở
+   file KHÁC (mặt trước/mặt sau tách 2 file, trang 1 và trang 2 tách 2 file, học bạ chia nhiều file);
+   các file phần đó dùng chung logicalKey. File tự nó đã là một giấy tờ đầy đủ → false.
+11. Hồ sơ có từ 2 giấy CÙNG LOẠI trở lên thì documentName của chúng PHẢI khác nhau nhờ mốc phân biệt
+   (ngày, số hiệu) theo document_name_rules.
+12. documentName chỉ gồm chữ, số, khoảng trắng, gạch dưới, gạch ngang; tối đa 40 ký tự (quá dài thì
     rút gọn theo document_name_rules, không để hệ thống cắt cụt).
-11. Không trả tên chung chung "Tài liệu chứng thực" khi OCR nhận biết được nội dung.
-12. OCR rỗng hoặc không đủ nhận biết thì để detectedType, documentName, subjectName,
+13. Không trả tên chung chung "Tài liệu chứng thực" khi OCR nhận biết được nội dung.
+14. OCR rỗng hoặc không đủ nhận biết thì để detectedType, documentName, subjectName,
     identityNumber, logicalKey rỗng.
-13. Trả duy nhất một JSON object, không markdown, không giải thích.
+15. Trả duy nhất một JSON object, không markdown, không giải thích.
 </critical_rules>
 
 """ + DOCUMENT_NAME_RULES + """
 
 <output_contract>
-{"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":3,"detectedType":"Hồ sơ tổng hợp","documentName":"Hồ sơ đăng ký khai sinh","subjectName":"","identityNumber":"","logicalKey":""}]}
+{"documents":[{"fileIndex":0,"pageFrom":1,"pageTo":3,"detectedType":"Hồ sơ tổng hợp","documentName":"Hồ sơ đăng ký khai sinh","subjectName":"","identityNumber":"","logicalKey":"","isPartOfLargerDocument":false}]}
 </output_contract>
 """.strip()
 

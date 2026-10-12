@@ -22,6 +22,7 @@ from app.channels.handfree.procedure_registry import (
     get_owner_info_pipeline,
     get_pipeline,
     get_procedure,
+    variant_pipeline_options,
 )
 from app.pipelines.chung_thuc_ban_sao.attach.stt1_virtual import apply_stt1_virtual_copy
 from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
@@ -33,17 +34,12 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
-from app.pipelines.khai_sinh_lien_thong.process.mapper import (
-    with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
-)
+from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
 )
-from app.pipelines.xac_nhan_tthn.process.mapper import (
-    with_account_process_options as with_tthn_account_process_options,
-)
 from app.pipelines.khai_sinh_lien_thong.attach.planner import with_nghia_lo_attach_options
-from app.pipelines.xac_nhan_tthn.attach.nghia_hung import with_account_attach_options
+from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
 from app.process.schemas import FileItem
 from app.upload_session import store as up_store
 from app.upload_session.ws import broadcast
@@ -197,15 +193,17 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             if proc.get("review"):
                 options["_review"] = True
             owner_user = await _load_owner_user(conv, sess)
-            options = with_tthn_account_process_options(options, owner_user, procedure_key)
+            options = with_account_process_options(options, owner_user, procedure_key)
             options = with_gpxd_account_process_options(options, owner_user, procedure_key)
             options = with_mai_tang_htxh_account_process_options(options, owner_user, procedure_key)
             options = with_hkd_account_process_options(options, owner_user, procedure_key)
             options = with_cai_chinh_account_process_options(options, owner_user, procedure_key)
-            options = with_khai_sinh_lien_thong_account_process_options(options, owner_user, procedure_key)
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"
+            # Trường hợp giải quyết công dân đã chốt (vd nhà ở riêng lẻ / công trình) → ép nhánh
+            # form cho mapper thay vì để nó tự đoán từ giấy tờ.
+            options.update(variant_pipeline_options(proc, conv))
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):

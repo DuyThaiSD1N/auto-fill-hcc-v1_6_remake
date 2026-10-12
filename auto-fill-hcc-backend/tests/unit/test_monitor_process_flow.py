@@ -119,7 +119,12 @@ def test_response_khong_doi_khi_tat_bo_ghi(env, monkeypatch):
     monkeypatch.setattr(settings, "trace_detail", "off")
     off = env["client"].post("/api/v1/process", json=_body()).json()
     for key in ("fields", "extracted", "stats", "errors", "pages", "businessFlow"):
-        assert on[key] == off[key], key
+        a, b = on[key], off[key]
+        if key == "stats":
+            # Thời gian đo thật dao động theo máy (0ms/1ms); test chỉ khoá cấu trúc response không đổi.
+            a = {k: v for k, v in (a or {}).items() if not k.endswith("_latency_ms")}
+            b = {k: v for k, v in (b or {}).items() if not k.endswith("_latency_ms")}
+        assert a == b, key
 
 
 def test_ocr_loi_thi_outcome_partial_va_luu_errors(env, monkeypatch):

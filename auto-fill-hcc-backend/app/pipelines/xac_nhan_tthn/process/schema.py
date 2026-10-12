@@ -114,14 +114,21 @@ FIELDS: list[dict] = [
      "desc": 'Trả true CHỈ khi TỜ KHAI ghi quan hệ "Tự khai"/"Bản thân" và họ tên người yêu cầu '
              'trùng họ tên người được cấp giấy. Không suy luận từ một CCCD đơn lẻ.'},
     {"name": "TinhTrangHonNhanC1",
-     "desc": 'Tình trạng hôn nhân'},
+     "desc": 'MÃ tình trạng hôn nhân theo dòng "Tình trạng hôn nhân" trên TỜ KHAI: co_vo_chong | chua_ket_hon | '
+             'ly_hon | goa | khoang_thoi_gian — xem <tinh_trang_hon_nhan>.'},
+    {"name": "BanAn_Number",
+     "desc": "Số bản án/quyết định ly hôn đọc từ CHÍNH VĂN BẢN của Tòa án kèm trong hồ sơ; không có văn bản → bỏ."},
+    {"name": "BanAn_Date",
+     "desc": "Ngày ban hành bản án/quyết định ly hôn, dd/mm/yyyy; chỉ từ chính văn bản như BanAn_Number."},
+    {"name": "BanAn_Agency",
+     "desc": "Tòa án ban hành bản án/quyết định ly hôn; chỉ từ chính văn bản như BanAn_Number."},
     {"name": "DivorceDecision_Number",
-     "desc": "Số bản án/quyết định ly hôn: lấy từ bản án/quyết định ly hôn thật; hồ sơ không có văn bản đó thì "
-             "lấy từ dòng tình trạng hôn nhân trên TỜ KHAI / giấy XNTTHN cũ."},
+     "desc": "Số bản án/quyết định ly hôn GHI TRÊN dòng tình trạng hôn nhân của TỜ KHAI / giấy XNTTHN cũ (không "
+             "lấy từ văn bản bản án — văn bản đó là BanAn_*)."},
     {"name": "DivorceDecision_Date",
-     "desc": "Ngày cấp/ban hành bản án/quyết định ly hôn, dd/mm/yyyy; nguồn như DivorceDecision_Number."},
+     "desc": "Ngày bản án/quyết định ly hôn ghi trên tờ khai, dd/mm/yyyy; nguồn như DivorceDecision_Number."},
     {"name": "DivorceDecision_Agency",
-     "desc": "Cơ quan ban hành/cấp bản án/quyết định ly hôn; nguồn như DivorceDecision_Number."},
+     "desc": "Cơ quan ban hành bản án/quyết định ly hôn ghi trên tờ khai; nguồn như DivorceDecision_Number."},
     {"name": "DeathCert_Number",
      "desc": "Số giấy chứng tử/trích lục khai tử/giấy báo tử của vợ/chồng đã chết, chỉ lấy từ giấy tờ khai tử thật."},
     {"name": "DeathCert_Date",
@@ -186,6 +193,7 @@ for _name in ("NguoiDuocCap_NgaySinh", "NguoiDuocCap_NgayCap", "NguoiYeuCau_Ngay
               "ToKhaiYeuCau_NgaySinh", "ToKhaiYeuCau_NgayCapGiayTo"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["DivorceDecision_Date"] = "x-date"
+COMPACT_COMP_BY_NAME["BanAn_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["DeathCert_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["Marriage_Date"] = "x-date"
 COMPACT_COMP_BY_NAME["Period_TuNgay"] = "x-date"

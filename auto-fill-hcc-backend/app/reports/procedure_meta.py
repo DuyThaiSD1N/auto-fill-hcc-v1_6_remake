@@ -29,6 +29,7 @@ _MA_TT_BO_SUNG = {
     "trich-luc-ks": "2.000635",
     "khai-tu": "1.000656",
     "thay-doi-cai-chinh-ho-tich": "1.004859",
+    "xac-nhan-tinh-trang-hon-nhan": "1.004873",
 }
 _MA_TT_RE = re.compile(r"(?:mathutuc|matthc)=(\d+\.\d+)", re.IGNORECASE)
 
