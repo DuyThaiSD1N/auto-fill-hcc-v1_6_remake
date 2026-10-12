@@ -20,7 +20,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES,
     )
-    res["fields"] = mapper.enrich(res["fields"])
+    res["fields"] = mapper.enrich(res["fields"], options)
 
     # Rà soát bbox (Kiểu A): chỉ chạy khi router bật cờ _review (thủ tục có "review": True).
     if (options or {}).get("_review"):

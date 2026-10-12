@@ -22,6 +22,9 @@ from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
 from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
+from app.pipelines.khai_sinh_lien_thong.process.mapper import (
+    with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
+)
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
 )
@@ -93,6 +96,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_dien_tich_nha_o_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # 4 phường Đà Lạt: khai sinh liên thông chọn giám hộ thẻ BHYT = mẹ, nơi KCB = BV Sản - Nhi tỉnh Lâm Đồng.
+        prepared.pipeline_options = with_khai_sinh_lien_thong_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     total_bytes = prepared.total_bytes

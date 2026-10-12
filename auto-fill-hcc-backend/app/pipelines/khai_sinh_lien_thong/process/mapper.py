@@ -9,6 +9,43 @@ from app.pipelines._shared.hospital_lookup import lookup_hospital
 from app.pipelines.khai_sinh_lien_thong.process.schema import STATIC_DEFAULTS, UI_COMP_BY_NAME
 
 
+# Cấu hình theo tài khoản: 4 phường Đà Lạt (Xuân Hương, Lâm Viên, Cam Ly, Lang Biang — Lâm Đồng) mục
+# "Thông tin cấp thẻ BHYT" luôn chọn giám hộ trên thẻ = mẹ và nơi KCB ban đầu = Bệnh viện Sản - Nhi tỉnh Lâm
+# Đồng. Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
+# with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không
+# tự bật được cho xã khác.
+PROCEDURE_KEY = "khai-sinh-dang-ky"
+DA_LAT_BHYT_OPTION = "daLatBhytDefaults"
+_DA_LAT_WARDS = {"xuan huong", "lam vien", "cam ly", "lang biang"}
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+# ng-select Nơi KCB: extension gõ chuỗi này vào ô tìm rồi chọn option CHỨA nó.
+DA_LAT_NOI_KCB = "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
+
+
+def is_da_lat_bhyt_ward(user: dict | None) -> bool:
+    """True khi tài khoản thuộc phường Xuân Hương/Lâm Viên/Cam Ly/Lang Biang - Đà Lạt, tỉnh Lâm Đồng."""
+    if not user:
+        return False
+    tinh = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("tinh"))).strip()
+    xa = re.sub(r"[^a-z0-9]+", " ", _fold(user.get("xa"))).strip()
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    if xa.endswith(" da lat"):
+        xa = xa[: -len(" da lat")].strip()
+    return "lam dong" in tinh and xa in _DA_LAT_WARDS
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ mặc định BHYT Đà Lạt do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(DA_LAT_BHYT_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_da_lat_bhyt_ward(user):
+        result[DA_LAT_BHYT_OPTION] = True
+    return result
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -206,8 +243,9 @@ def _area(value):
     return remap_area(out) if out else None
 
 
-def enrich(fields: list[dict]) -> list[dict]:
+def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic Angular form fields from compact source facts."""
+    options = options or {}
     values = _by_name(fields)
     for name_field in (
         "Gcs_HoTenCon",
@@ -478,6 +516,12 @@ def enrich(fields: list[dict]) -> list[dict]:
     if copy_quantity:
         add("CapBanSao", "1")
         add("BanSaoSoLuong", copy_quantity)
+
+    # 4 phường Đà Lạt: giám hộ trên thẻ BHYT = mẹ, nơi KCB ban đầu = BV Sản - Nhi tỉnh Lâm Đồng (viền vàng).
+    # Thêm TRƯỚC STATIC_DEFAULTS để đè mặc định "Thông tin cha".
+    if options.get(DA_LAT_BHYT_OPTION):
+        add("NguoiGiamHo", "Thông tin mẹ", default=True)
+        add("CskcbbdMa", DA_LAT_NOI_KCB, default=True)
 
     for default in STATIC_DEFAULTS:
         if default["name"] not in seen:

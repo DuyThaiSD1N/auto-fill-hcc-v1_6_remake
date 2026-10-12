@@ -135,6 +135,10 @@ UI_COMP_BY_NAME = {
     # Quan hệ người yêu cầu với trẻ: extension tự so khớp CCCD/tên người đăng nhập (cổng điền
     # sẵn trên form) với cha/mẹ để chọn Cha/Mẹ; khác cả hai → "Người giám hộ/đại diện hợp pháp".
     "NycQuanHe": "quanhe-auto",
+    # Thông tin cấp thẻ BHYT. CskcbbdMa là ng-select (danh sách theo tỉnh tài khoản) — chỉ mapper
+    # điền theo cấu hình tài khoản (4 phường Đà Lạt).
+    "NguoiGiamHo": "select",
+    "CskcbbdMa": "select",
 }
 
 STATIC_DEFAULTS: list[dict] = [

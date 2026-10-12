@@ -56,3 +56,55 @@ def test_sinh_o_lam_dong_van_lay_que_quan_me():
     })
     qq = _fields(result).get("QqDiaChi") or {}
     assert "Lâm Đồng" in str(qq), "sinh ở Lâm Đồng thì quê quán con theo MẸ"
+
+
+# --- Cấu hình theo tài khoản: 4 phường Đà Lạt chọn sẵn mục "Thông tin cấp thẻ BHYT" ---
+import pytest
+
+from app.pipelines.khai_sinh_lien_thong.process.mapper import (
+    DA_LAT_BHYT_OPTION,
+    with_account_process_options,
+)
+
+_HO_SO = {
+    "ThongTinBo_HoTen": "NGUYỄN VĂN A",
+    "ThongTinMe_HoTen": "TRẦN THỊ B",
+}
+
+
+@pytest.mark.parametrize("xa", [
+    "Phường Xuân Hương - Đà Lạt",
+    "Phường Lâm Viên - Đà Lạt",
+    "Phường Cam Ly - Đà Lạt",
+    "Phường Lang Biang - Đà Lạt",
+    "Lâm Viên",
+])
+def test_bon_phuong_da_lat_bat_co_bhyt(xa):
+    opts = with_account_process_options({}, {"tinh": "Tỉnh Lâm Đồng", "xa": xa}, "khai-sinh-dang-ky")
+    assert opts.get(DA_LAT_BHYT_OPTION) is True
+
+
+@pytest.mark.parametrize("user, procedure", [
+    ({"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đơn Dương"}, "khai-sinh-dang-ky"),
+    ({"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}, "khai-sinh-dang-ky"),
+    ({"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}, "khai-tu-lien-thong"),
+    (None, "khai-sinh-dang-ky"),
+])
+def test_tai_khoan_khac_khong_bat_co_va_client_khong_tu_bat(user, procedure):
+    opts = with_account_process_options({DA_LAT_BHYT_OPTION: True}, user, procedure)
+    assert DA_LAT_BHYT_OPTION not in opts
+
+
+def test_phuong_da_lat_chon_me_va_bv_san_nhi():
+    rows = enrich([{"name": k, "value": v} for k, v in _HO_SO.items()], {DA_LAT_BHYT_OPTION: True})
+    by = {f["name"]: f for f in rows}
+    assert by["NguoiGiamHo"]["value"] == "Thông tin mẹ"
+    assert by["CskcbbdMa"]["value"] == "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
+    assert by["CskcbbdMa"]["comp"] == "select" and by["CskcbbdMa"].get("default") is True
+    assert [f["name"] for f in rows].count("NguoiGiamHo") == 1
+
+
+def test_khong_co_co_giu_mac_dinh_cha_va_bo_trong_noi_kcb():
+    fields = _fields(_run(_HO_SO))
+    assert fields["NguoiGiamHo"] == "Thông tin cha"
+    assert "CskcbbdMa" not in fields
