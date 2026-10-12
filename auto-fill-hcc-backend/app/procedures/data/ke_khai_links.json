@@ -2049,6 +2049,14 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8686-732b-b2d5-e6a422f1b242",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
+      "code": "1.115377",
+      "label": "Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất, tự tiêu thụ đấu nối với hệ thống điện quốc gia tại cấp điện áp hạ áp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1695-894f-72b8-80a8-2fee368722be",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

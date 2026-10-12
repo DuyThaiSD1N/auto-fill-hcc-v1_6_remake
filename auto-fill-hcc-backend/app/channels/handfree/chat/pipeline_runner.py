@@ -34,7 +34,6 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
-from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import (
     with_account_process_options as with_mai_tang_htxh_account_process_options,
 )
@@ -193,7 +192,6 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             if proc.get("review"):
                 options["_review"] = True
             owner_user = await _load_owner_user(conv, sess)
-            options = with_account_process_options(options, owner_user, procedure_key)
             options = with_gpxd_account_process_options(options, owner_user, procedure_key)
             options = with_mai_tang_htxh_account_process_options(options, owner_user, procedure_key)
             options = with_hkd_account_process_options(options, owner_user, procedure_key)
