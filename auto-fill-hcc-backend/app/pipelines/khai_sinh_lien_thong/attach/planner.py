@@ -14,13 +14,18 @@ Cấu hình theo tài khoản: phường Nghĩa Lộ (Quảng Ngãi) KHÔNG đí
 giấy tờ khác vẫn đính như thường. Planner không biết tài khoản nên router (Auto Fill) và
 pipeline_runner (Handfree) gọi ``with_nghia_lo_attach_options`` để server tự đặt cờ
 ``omitBirthDeclaration``. Tài khoản khác: không có cờ, hành vi giữ y hệt.
+
+Tệp trên 2 MB được nén bằng đúng thang của 4 thủ tục Cổng DVC quốc gia mới (cải chính), trả về ở
+`replaceFiles` để extension đính bản nén thay bản gốc. Tệp nhỏ hơn để nguyên. OCR vẫn đọc bản gốc.
 """
+import asyncio
 import re
 import time
 import unicodedata
 from typing import Any
 
 from app.config import settings
+from app.pipelines.cai_chinh_dvc_moi.attach.dinh_kem_khong_tach.planner import shrink_oversized
 from app.pipelines.khai_sinh_lien_thong.attach import prompt
 from app.process.schemas import FileItem
 from app.services import ocr
@@ -205,6 +210,7 @@ async def plan_khai_sinh_attachments(
     ocr_files = [f for f in raw_files if f.get("type") in _OCR_TYPES]
 
     t0 = time.monotonic()
+    shrink_task = asyncio.create_task(shrink_oversized(raw_files, errors))
     ocr_results = await ocr.ocr_per_file(ocr_files) if ocr_files else []
     ocr_ms = int((time.monotonic() - t0) * 1000)
     for r in ocr_results:
@@ -344,8 +350,16 @@ async def plan_khai_sinh_attachments(
             + ", ".join(skipped_names)
         )
 
+    # Bản nén là PDF cùng tên gốc → đổi tên tệp trong mục đính kèm cho khớp tệp extension sẽ đính.
+    replace_files = await shrink_task
+    for item in attachments:
+        entry = replace_files.get(str(item["fileIndex"]))
+        if entry:
+            item["fileName"] = entry["name"]
+
     return {
         "attachments": attachments,
+        "replaceFiles": replace_files or None,
         "extracted": {
             "documents": [f["name"] for f in raw_files],
             "ocrDocuments": [r.get("name") for r in ocr_results if r.get("text")],
@@ -362,6 +376,10 @@ async def plan_khai_sinh_attachments(
             "residenceForm": raw_files[residence_index]["name"] if residence_index is not None else None,
             "skipped": skipped_names,
             "omittedDeclarations": [raw_files[i]["name"] for i in declaration_indices],
+            "shrunk": [
+                {"fileName": r["name"], "originalBytes": r["originalBytes"], "bytes": r["bytes"], "level": r["level"]}
+                for r in replace_files.values()
+            ],
             "sessionId": (session or {}).get("request_id"),
         },
         "stats": {
