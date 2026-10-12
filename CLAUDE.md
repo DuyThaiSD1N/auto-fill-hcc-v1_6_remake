@@ -18,27 +18,45 @@ cd auto-fill-hcc-backend
 # 1. Test riêng pipeline vừa sửa — bắt buộc pass hết
 python -m pytest tests/unit/test_<ten_pipeline>.py -q -p no:cacheprovider
 
-# 2. Test toàn bộ để so với baseline
-python -m pytest tests/unit tests/integration -q --continue-on-collection-errors -p no:cacheprovider
+# 2. Test toàn bộ để so với baseline (cần plugin win_socketpair + UTF-8, xem ghi chú bước 2)
+$env:PYTHONUTF8="1"; $env:PYTHONPATH="<thu-muc-chua-win_socketpair.py>"
+python -m pytest tests/unit tests/integration -q --continue-on-collection-errors -p no:cacheprovider -p win_socketpair --tb=native
 
 # 3. Build + restart (chọn service theo bảng bên dưới)
-docker compose -f compose.prod.yml up -d --build app batch-worker
+docker compose -f compose.prod.yml up -d --build --remove-orphans app
 
 # 4. Kiểm tra container đã Up
 docker compose -f compose.prod.yml ps
 
-# 5. Kiểm tra backend sống — phải trả về {"ok":true}
+# 5. Kiểm tra backend sống — phải trả về {"ok":true,...}
 curl.exe -s http://localhost:12005/healthz
 ```
 
 Ghi chú từng bước:
 
 - Bước 1: nếu test của pipeline vừa sửa đỏ thì sửa tiếp, KHÔNG build Docker.
-- Bước 2: bắt buộc có `--continue-on-collection-errors`. Ở máy local, 3 file
-  `tests/unit/test_monitor_attach_flow.py`, `test_monitor_process_flow.py`,
-  `test_trace_document_content_access.py` lỗi collect do protobuf local cũ (thiếu
-  `runtime_version`). Thiếu cờ này thì pytest dừng ngay, không chạy test nào. Đây là lỗi môi
-  trường, không phải lỗi code, và không ảnh hưởng image Docker.
+- Bước 2: bắt buộc có `--continue-on-collection-errors` (máy local thiếu `mongomock` → 3 file lỗi collect;
+  thiếu cờ này pytest dừng ngay).
+- Bước 2: từ bản BE 2026-10-12, `tests/conftest.py` chặn mọi `socket.connect` trừ `AF_UNIX` — Windows
+  không có `AF_UNIX`, asyncio lại tạo socketpair qua 127.0.0.1 → chạy trơn ra ~440 errors và pytest có thể
+  INTERNALERROR (`AST constructor recursion depth mismatch`, tránh bằng `--tb=native`). KHÔNG sửa
+  conftest (bản BE dán đè lại). Tạo file `win_socketpair.py` trong scratchpad, trỏ `PYTHONPATH` tới đó:
+  ```python
+  import socket
+  _connect_goc = socket.socket.connect
+  if not hasattr(socket, "AF_UNIX"):
+      socket.AF_UNIX = -1  # conftest vẫn chặn kết nối mạng thật
+  _pair_goc = socket.socketpair
+  def _pair(*a, **k):
+      cur = socket.socket.connect
+      socket.socket.connect = _connect_goc
+      try:
+          return _pair_goc(*a, **k)
+      finally:
+          socket.socket.connect = cur
+  socket.socketpair = _pair
+  ```
+  `PYTHONUTF8=1` để test chạy node (vd `test_mobile_send_queue.py`) không vỡ vì cp1252.
 - Bước 2: so số fail với baseline ở mục "Test". Số fail tăng, hoặc có test fail thuộc pipeline vừa
   sửa, thì phải xem lại trước khi build.
 - Bước 5: trong PowerShell phải gõ `curl.exe`. `curl` trơn là alias của `Invoke-WebRequest`.
@@ -51,7 +69,7 @@ Chọn service để build theo chỗ đã sửa:
 
 | Sửa ở | Lệnh build |
 | --- | --- |
-| `app/`, `scripts/`, `requirements.txt`, `Dockerfile` | `up -d --build app batch-worker` |
+| `app/`, `scripts/`, `requirements.txt`, `Dockerfile` | `up -d --build --remove-orphans app` |
 | `fe/` | `up -d --build fe` |
 | `monitor-fe/` | `up -d --build monitor-fe` |
 
@@ -89,7 +107,14 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
-Baseline ngày 2026-10-09, sau commit "update BE mới" e9a9dda (máy local, có `--continue-on-collection-errors`):
+Baseline ngày 2026-10-12, sau commit "thay BE mới" 8b35314 (máy local, plugin win_socketpair, chưa đặt
+PYTHONUTF8): `15 failed, 2400 passed, 38 skipped, 3 errors`. Cả 15 đỏ là môi trường, chạy trong image Docker đều pass:
+4 `test_heic_to_jpeg` (local thiếu `pillow-heif`), 4 `test_mobile_send_queue` (cp1252; có `PYTHONUTF8=1` thì pass),
+7 test v2 trả 422 ở `test_v2_process` / `test_monitor_*_flow` (local fastapi 0.111 / python-multipart 0.0.9, requirements
+ghi 0.115.6 / 0.0.20). 3 errors là collect thiếu `mongomock`. Bản BE này bỏ service `batch-worker`
+(và `scripts/run_batch_worker.py`) khỏi compose.prod.yml.
+
+Baseline cũ ngày 2026-10-09, sau commit "update BE mới" e9a9dda (máy local, có `--continue-on-collection-errors`):
 `111 failed, 2328 passed, 34 skipped, 6 errors`. So với bản 2026-10-07 (`108 failed, 2286 passed`) thêm 3 đỏ đến từ
 chính bản BE dán vào, trong đó `test_dieu_chinh_huu_tri_registry` còn đợi tên cũ "Thực hiện, điều chỉnh, thôi hưởng
 trợ cấp hưu trí xã hội" sau khi BE đổi label. Bản 2026-10-07:

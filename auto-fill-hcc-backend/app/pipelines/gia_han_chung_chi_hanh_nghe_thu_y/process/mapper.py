@@ -3,10 +3,11 @@
 Form cùng họ với "Cấp lại Chứng chỉ hành nghề thú y" nên dùng lại toàn bộ helper chuẩn hoá của
 cap_lai_CCHN_thu_y.process.mapper. Nguyên tắc giữ nguyên:
 
-NGƯỜI TRONG HỒ SƠ ĐI XUỐNG PHẦN II, KHÔNG LÊN PHẦN I. Phần I "Thông tin người nộp hồ sơ" là nhân thân
-TÀI KHOẢN ĐANG ĐĂNG NHẬP do cổng đổ vào (ô số căn cước bị khoá). Mapper KHÔNG phát ô nhân thân nào của
-Phần I; nó bỏ tích "Người nộp hồ sơ là chủ hồ sơ" để mở khoá Phần II rồi đổ người đề nghị vào
-data[owner*] và khối "Thông tin chung" của tờ đơn 02.HNTY (gắn scope vì field-key trùng Phần I).
+NGƯỜI ĐỀ NGHỊ ĐI XUỐNG PHẦN II. Mapper bỏ tích "Người nộp hồ sơ là chủ hồ sơ" để mở khoá Phần II rồi đổ
+người đề nghị vào data[owner*] và khối "Thông tin chung" của tờ đơn 02.HNTY (gắn scope vì field-key trùng
+Phần I). Phần I "Thông tin người nộp hồ sơ" = NGƯỜI NỘP: nộp thay (có CCCD riêng của người nộp) → nhân
+thân trên CCCD đó; tự nộp (formContext tài khoản khớp người đề nghị) → người đề nghị; không rõ → không
+đụng, chỉ cảnh báo (ô số căn cước Phần I bị khoá theo tài khoản, đoán sai là ghép hai người).
 
 Mục "Đã được cấp Chứng chỉ hành nghề thú y" là selectboxes 12 option dùng chung name data[deNghi][];
 mapper khớp phạm vi đọc trong Đơn với nhãn chuẩn rồi gửi optionLabel cho FE tự tick.
@@ -22,6 +23,7 @@ from app.pipelines.cap_lai_CCHN_thu_y.process.mapper import (
     _by_name,
     _commune_label,
     _date,
+    _fold,
     _identity,
     _match_pham_vi,
     _phone,
@@ -41,24 +43,36 @@ from app.pipelines.gia_han_chung_chi_hanh_nghe_thu_y.process.schema import (
 )
 
 
+def _is_tu_nop(options: dict | None, name: str | None, identity: str | None) -> bool:
+    """Tài khoản đăng nhập (formContext Phần I) có phải chính người đứng đơn không."""
+    context = (options or {}).get("formContext") or {}
+    ctx_identity = _identity(context.get("applicantIdentityNumber") or context.get("identityNumber"))
+    if ctx_identity and identity:
+        return ctx_identity == identity
+    ctx_name = _text(context.get("applicantFullname") or context.get("fullname"))
+    return bool(ctx_name and name and _fold(ctx_name) == _fold(name))
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
-    # Không cần formContext: người trong hồ sơ luôn xuống khối chủ hồ sơ, khối người nộp không đụng tới
-    # dù tự nộp hay nộp thay.
-    _ = options
     values = _by_name(fields)
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[tuple[str, str]] = set()
 
-    def add(name: str, value, *, option_label: str | None = None) -> None:
-        seen_key = (name, option_label or "")
+    def add(name: str, value, *, option_label: str | None = None, nguoi_nop: bool = False) -> None:
+        seen_key = (name, option_label or ("nguoi_nop" if nguoi_nop else ""))
         if seen_key in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
         field = {"name": name, "comp": comp, "value": value}
-        if name in DON_SCOPED_FIELDS:
+        if nguoi_nop:
+            # Phần I nằm ĐẦU trang → ô đầu tiên trùng key; không gắn scope để extension không coi là
+            # khối cấm ghi và trả lại giá trị cũ.
+            if name in DON_SCOPED_FIELDS:
+                field["occurrence"] = 0
+        elif name in DON_SCOPED_FIELDS:
             # scope = panel tờ đơn; scopeNear/scopeAway để extension tự thu hẹp khi panel đó bọc cả
             # hai khối nhân thân, và BỎ ô nếu vẫn không tách được — thà trống còn hơn ghi đè Phần I.
             field["scope"] = DON_SCOPE
@@ -88,6 +102,48 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # Bỏ tích "Người nộp hồ sơ là chủ hồ sơ" để mở khoá Phần II — không đọc được ô số căn cước bị khoá
     # của Phần I để đối chiếu, bỏ tích rồi khai đủ Phần II thì đúng cả khi tự nộp lẫn nộp thay.
     add("data[isOwnerDossierCheck]", False)
+
+    # --- Phần I "Thông tin người nộp hồ sơ" ---
+    nop_name = _text(values.get("NguoiNop_HoTen"))
+    nop_identity = _identity(values.get("NguoiNop_SoDinhDanh"))
+    # LLM đôi khi chép lại chính người đứng đơn vào NguoiNop_* → coi là tự nộp.
+    if (nop_identity and nop_identity == identity) or (
+        not nop_identity and nop_name and name and _fold(nop_name) == _fold(name)
+    ):
+        nop_name = nop_identity = None
+    if nop_name or nop_identity:
+        # NỘP THAY: người trên CCCD riêng của người nộp.
+        nop_residence = _area(values.get("NguoiNop_ThuongTru"))
+        add("data[fullname]", nop_name, nguoi_nop=True)
+        add("data[birthday]", _date(values.get("NguoiNop_NgaySinh")), nguoi_nop=True)
+        add("data[gender]", _text(values.get("NguoiNop_GioiTinh")), nguoi_nop=True)
+        add("data[identityNumber]", nop_identity, nguoi_nop=True)
+        add("data[identityDate]", _date(values.get("NguoiNop_NgayCapCCCD")), nguoi_nop=True)
+        add("data[idIssuePlace]", normalize_issuer(values.get("NguoiNop_NoiCapCCCD")) or None, nguoi_nop=True)
+        if nop_residence:
+            add("data[province]", _province_label(nop_residence.get("tinh")), nguoi_nop=True)
+            add("data[district]", _commune_label(nop_residence.get("xa")), nguoi_nop=True)
+            add("data[address]", _text(nop_residence.get("diaChi")), nguoi_nop=True)
+        add("data[phoneNumber]", _phone(values.get("NguoiNop_DienThoai")), nguoi_nop=True)
+    elif _is_tu_nop(options, name, identity):
+        # TỰ NỘP (tài khoản đăng nhập = người đứng đơn): Phần I cũng là người đứng đơn.
+        add("data[fullname]", name, nguoi_nop=True)
+        add("data[birthday]", birthday, nguoi_nop=True)
+        add("data[gender]", _text(values.get("NguoiDeNghi_GioiTinh")), nguoi_nop=True)
+        add("data[identityNumber]", identity, nguoi_nop=True)
+        add("data[identityDate]", identity_date, nguoi_nop=True)
+        add("data[idIssuePlace]", normalize_issuer(values.get("NguoiDeNghi_NoiCapCCCD")) or None, nguoi_nop=True)
+        add("data[province]", province, nguoi_nop=True)
+        add("data[district]", commune, nguoi_nop=True)
+        add("data[address]", address, nguoi_nop=True)
+        add("data[phoneNumber]", phone, nguoi_nop=True)
+    else:
+        # Không có CCCD người nộp và không biết tài khoản là ai → không đoán, tránh ghép họ tên người
+        # đứng đơn vào số căn cước (bị khoá) của tài khoản.
+        warnings.append(
+            "Hồ sơ không có CCCD của người nộp — mục 'Thông tin người nộp hồ sơ' giữ theo tài khoản đăng "
+            "nhập, vui lòng kiểm tra/bổ sung tay (hoặc tải kèm CCCD người nộp)."
+        )
 
     add("data[ownerFullname]", name)
     add("data[ownerBirthday]", birthday)

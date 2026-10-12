@@ -209,7 +209,7 @@ test("một bước dọn hỏng KHÔNG được làm lỡ việc xóa phiên c�
   // Ca thật: cả thân returnToStart nằm trong try…finally KHÔNG có catch, khối xóa cookie nằm
   // CUỐI — deleteConversation/showStartScreen ném lỗi là nhảy thẳng ra finally, bỏ qua việc
   // xóa phiên, không một dòng cảnh báo. Công dân sau ngồi vào máy còn nguyên đăng nhập.
-  const start = sidebar.indexOf('async function returnToStart(reason = "manual")');
+  const start = sidebar.indexOf('async function returnToStart(reason = "manual"');
   const end = sidebar.indexOf("// 🔄 Trò chuyện mới", start);
   const body = sidebar.slice(start, end);
   assert.match(body, /\} catch \(error\) \{[\s\S]{0,400}?Lỗi khi kết thúc phiên/);

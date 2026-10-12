@@ -71,7 +71,7 @@ test("nộp: soát ô bắt buộc + khối bưu điện, thiếu thì KHÔNG b�
 });
 
 test("đính lại cả lượt: tệp cùng tên đã có trên dòng thì bỏ qua", () => {
-  assert.match(engine, /if \(count\(beforeText, wanted\) > 0\) \{\s*skippedNames\.push\(file\.name\)/);
+  assert.match(engine, /if \(count\(beforeText, wanted\) > 0 \|\| sameContent\) \{\s*skippedNames\.push\(sameContent \? sameContent\.name : file\.name\)/);
   // Đặt tên cả lượt một lần để hai tệp cùng tên tài liệu không bị coi là trùng.
   assert.match(engine, /H\.dataUrlFilesForBatch\(named\.filter\(Boolean\)\)/);
 });

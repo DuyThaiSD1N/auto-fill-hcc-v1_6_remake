@@ -7,9 +7,10 @@ fillFormStandard dom-* / attach `attp-row`, field-key y hệt — nên dùng l�
 tờ đơn của pipeline đó.
 
 Cấu trúc form (đọc từ DOM thật, xem file mapping_gia_han_CCHN_thu_y.xlsx):
-  Phần I Người nộp    → data[chonDoiTuong/fullname/birthday/identityNumber/…] = TÀI KHOẢN ĐĂNG NHẬP,
-                        cổng tự đổ, ô số căn cước bị KHOÁ. KHÔNG ghi đè. Chỉ bỏ tích
-                        data[isOwnerDossierCheck] để mở khoá Phần II.
+  Phần I Người nộp    → data[fullname/birthday/gender/identityNumber/identityDate/idIssuePlace/province/
+                        district/address/phoneNumber] (không scope, occurrence=0) = NGƯỜI NỘP: CCCD riêng
+                        của người nộp thay, hoặc người đề nghị khi tài khoản = người đề nghị; không rõ thì
+                        không đụng. Bỏ tích data[isOwnerDossierCheck] để mở khoá Phần II.
   Phần II Chủ hồ sơ   → data[owner*] = NGƯỜI ĐỀ NGHỊ gia hạn chứng chỉ.
   Tờ đơn Mẫu 02.HNTY  → data[kinhGui] + "Thông tin chung" data[fullname/birthday/identityNumber/
                         identityDate/toiLaNguoiNuocNgoai/province/district/address/bangCapChuyenMon/

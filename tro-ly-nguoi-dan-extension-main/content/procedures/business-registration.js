@@ -296,7 +296,9 @@
   }
 
   const FILLALL_KEY = "autofill_fillall_state";
-  const FILLALL_SESSION_MIRROR_KEY = FILLALL_KEY + "_mirror";
+  // sessionStorage thuộc trang nên extension Auto-fill (cùng engine, cùng FILLALL_KEY) đọc chung được;
+  // khóa mirror phải riêng, nếu không bên này sẽ nhặt state của bên kia sau postback rồi tự chạy tiếp.
+  const FILLALL_SESSION_MIRROR_KEY = "__tlnd_fillall_state_mirror";
 
   function readFillAllSessionMirror() {
     try {

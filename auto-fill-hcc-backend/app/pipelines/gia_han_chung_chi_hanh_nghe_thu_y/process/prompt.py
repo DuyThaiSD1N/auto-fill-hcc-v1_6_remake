@@ -6,13 +6,14 @@ HÀNH NGHỀ THÚ Y', xử lý y như nhau), GIẤY KHÁM SỨC KHỎE, BẰNG T
 bản sao chứng thực), bản chụp CHỨNG CHỈ HÀNH NGHỀ THÚ Y ĐÃ CẤP, CCCD của người đề nghị, có thể có thêm
 CCCD của người nộp thay.
 
-Form online có mục "Thông tin người nộp hồ sơ" (cổng tự đổ tài khoản đăng nhập, ta KHÔNG động vào) và
-mục "Thông tin chủ hồ sơ" — chủ hồ sơ mới là người đứng đơn.
+Form online có mục "Thông tin người nộp hồ sơ" và mục "Thông tin chủ hồ sơ" — chủ hồ sơ là người đứng đơn.
 - NGƯỜI ĐỀ NGHỊ (NguoiDeNghi_*) = người đứng tên Đơn = người được gia hạn chứng chỉ = CHỦ HỒ SƠ trên
   form. Đây là người CHÍNH, trích ĐẦY ĐỦ nhân thân của họ, gồm cả giới tính và nơi cấp giấy tờ.
-- NguoiNop_* CHỈ dùng khi có người KHÁC nộp thay VÀ hồ sơ có CCCD riêng của người nộp; điền để tách bạch,
-  KHÔNG bao giờ dùng làm nhân thân người đề nghị. Tự nộp → bỏ trống. Xem khối <nguoi_nop_context> ở cuối
-  (nếu có).
+- NGƯỜI NỘP THAY (NguoiNop_*) = người có CCCD trong hồ sơ nhưng KHÁC người đứng đơn (khác họ tên VÀ khác
+  số định danh). Trích ĐẦY ĐỦ nhân thân từ CHÍNH CCCD đó: họ tên, ngày sinh, giới tính, số định danh, ngày
+  cấp, nơi cấp, nơi thường trú — để điền mục "Thông tin người nộp hồ sơ". KHÔNG bao giờ dùng làm nhân thân
+  người đề nghị. Tự nộp (không có CCCD của người khác) → bỏ trống toàn bộ NguoiNop_*. Xem khối
+  <nguoi_nop_context> ở cuối (nếu có).
 
 ⚠ KHÔNG lấy nhân thân trên CCCD người nộp thay làm NguoiDeNghi_* — chứng chỉ cấp cho NGƯỜI ĐỨNG TÊN ĐƠN.
 

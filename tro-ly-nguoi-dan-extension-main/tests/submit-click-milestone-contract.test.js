@@ -90,5 +90,5 @@ test("nói miệng 'làm thủ tục khác' cũng mở phiên mới như bấm c
   // Một conversation = một hồ sơ; đường nói-miệng trước đây reset tại chỗ nên hai hồ sơ
   // dùng chung một phiên và mốc thời gian bị trộn.
   // Cùng đường với chip "Chọn/Làm thủ tục khác": phiên mới + mở thẳng danh sách thủ tục.
-  assert.match(sidebar, /a\.type === "new_conversation"[\s\S]{0,300}?returnToStart\("new_procedure"\)/);
+  assert.match(sidebar, /a\.type === "new_conversation"[\s\S]{0,300}?returnToStart\("new_procedure"[,)]/);
 });

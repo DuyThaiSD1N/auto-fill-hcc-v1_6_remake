@@ -428,6 +428,7 @@
   // XẾP HÀNG chạy sau — nuốt im lặng là mất thao tác của người dùng.
   let busy = false;
   let pendingReturnReason = "";
+  let pendingReturnProcedure = "";
   const pendingQueue = [];
   async function ask(message, source = "text", displayText = "", uiOptions = {}) {
     const userInitiated = source === "text" || source === "voice" || source === "chip";
@@ -511,8 +512,10 @@
       busy = false;
       if (pendingReturnReason) {
         const reason = pendingReturnReason;
+        const procedureKey = pendingReturnProcedure;
         pendingReturnReason = "";
-        returnToStart(reason);
+        pendingReturnProcedure = "";
+        returnToStart(reason, { procedureKey });
         return;
       }
       if (pendingQueue.length) {
@@ -3239,6 +3242,27 @@
     let completeSent = false;
     let reconnectAttempt = 0;
     let reconnectStatusShown = false;
+    let everOpened = false;
+
+    async function resyncAfterReconnect() {
+      if (generation !== uploadWsGeneration || sid !== uploadSid) return;
+      let data = null;
+      try { data = await loadUploadSessionFiles(); } catch (e) {
+        console.warn("[TLND] Đọc lại tiến độ phiên sau khi nối lại lỗi:", e?.message || e);
+        return;
+      }
+      if (!data?.progress) return;
+      void prefetchSessionFiles(uploadSid);
+      const p = data.progress;
+      const got = (p.docs || []).reduce((n, x) => n + (x.received || 0), 0) + (p.unknown || 0);
+      // Điện thoại bấm "Dừng & gửi tất cả" đúng lúc WS đứt → lỡ sự kiện `complete` → hội thoại treo
+      // ở bước nhận giấy. Chỉ bù khi hội thoại VẪN đang chờ giấy tờ.
+      if (p.complete && got > 0 && !completeSent
+          && ["qr_waiting", "collecting_docs"].includes(lastState)) {
+        completeSent = true;
+        void submitDocsComplete("__event:docs_complete", "system");
+      }
+    }
 
     function scheduleReconnect() {
       if (generation !== uploadWsGeneration || sid !== uploadSid || !api.conversationId) return;
@@ -3264,6 +3288,10 @@
         if (reconnectStatusShown) setStatus("");
         reconnectStatusShown = false;
         reconnectAttempt = 0;
+        // Sự kiện phát lúc WS đang đứt KHÔNG được gửi lại → nối lại là đọc lại tiến độ phiên, nếu
+        // không danh sách giấy tờ đứng yên và nút "Đã đưa đủ giấy tờ" vẫn khoá dù máy chủ đã có tệp.
+        if (everOpened) void resyncAfterReconnect();
+        everOpened = true;
       };
       ws.onmessage = (ev) => {
         let d;
@@ -3839,6 +3867,7 @@
         }
         if (Date.now() > deadline || missingCount >= 10) {
           setStatus("");
+          await sendToBackground({ action: "abandonSplitAttachQueue", queueId });
           const acknowledged = await ask(`__action:attach_report:${JSON.stringify({
             attached: 0,
             errors: ["Không còn đọc được trạng thái hàng đợi tách hồ sơ."],
@@ -4091,7 +4120,7 @@
       } else if (a.type === "new_conversation") {
         // Công dân NÓI "làm thủ tục khác" (chip đã tự xử ở renderChips). Một conversation =
         // một hồ sơ, nên đi đúng luồng của chip: xoá phiên rồi mở phiên mới.
-        await returnToStart("new_procedure");
+        await returnToStart("new_procedure", { procedureKey: String(a.procedure_key || "") });
         return;
       } else if (a.type === "navigate" && a.url) {
         // Phải chờ storage ghi xong trước khi điều hướng; nếu iframe bị hủy sớm ở lượt đầu,
@@ -4447,9 +4476,10 @@
   }
 
   // Một đường dọn phiên dùng chung cho: hoàn thành, timeout và nút Trò chuyện mới.
-  async function returnToStart(reason = "manual") {
+  // procedureKey: công dân NÓI tên thủ tục khác giữa chừng → phiên mới tự chọn luôn thủ tục đó.
+  async function returnToStart(reason = "manual", { procedureKey = "" } = {}) {
     if (endingSession) return;
-    if (busy) { pendingReturnReason = reason; return; }
+    if (busy) { pendingReturnReason = reason; pendingReturnProcedure = procedureKey; return; }
     endingSession = true;
     try {
       // "new_procedure" (Chọn/Làm thủ tục khác): công dân vẫn ở quầy, chỉ đổi thủ tục → mở thẳng
@@ -4490,13 +4520,15 @@
       fallbackChipShown = false;
       submittedReported = false;
       pendingReturnReason = "";
+      pendingReturnProcedure = "";
       if (shouldOpenProcedurePicker) {
         // “Không, nộp thêm hồ sơ” và “Trò chuyện mới” trong lúc chờ logout đều giữ
         // nguyên VNeID/trang thành công, nhưng phải mở ngay một conversation sạch để
         // cán bộ chọn thủ tục tiếp theo — không bắt quay qua màn giới thiệu.
         showChatScreen(Date.now());
         await ask("", "system");
-        showProcedurePicker();
+        if (procedureKey) await ask(`__action:pick_procedure:${JSON.stringify({ key: procedureKey })}`, "system");
+        else showProcedurePicker();
       } else {
         showStartScreen();
       }

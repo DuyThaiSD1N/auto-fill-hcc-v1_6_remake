@@ -9,7 +9,7 @@ DÙNG LẠI hằng số scope tờ đơn + 12 nhãn phạm vi của cap_lai_CCHN
 
 Nhóm field:
 - NguoiDeNghi_* : nhân thân người đứng đơn (nguồn duy nhất cho Phần II + "Thông tin chung").
-- NguoiNop_*    : chỗ để LLM "đỗ" nhân thân người nộp thay, KHÔNG đổ ra form.
+- NguoiNop_*    : nhân thân người nộp thay (CCCD riêng) → Phần I "Thông tin người nộp hồ sơ".
 - Don_*         : nội dung Đơn đăng ký gia hạn (Mẫu 02.HNTY).
 - CCHNCu_*      : Chứng chỉ hành nghề thú y ĐÃ CẤP (số đăng ký + ngày hết hiệu lực).
 """
@@ -58,10 +58,23 @@ FIELDS: list[dict] = [
         "'Tại' hay 'Địa chỉ hành nghề' của Đơn — đó là nơi hành nghề, không phải nơi cư trú."},
     {"name": "NguoiDeNghi_DienThoai", "desc": "Số điện thoại DI ĐỘNG NGƯỜI ĐỀ NGHỊ. Chỉ chữ số; KHÔNG "
         "lấy số bàn. Đơn hay ghi 'ĐT …' ngay sau địa chỉ hành nghề, hoặc mục 'Số điện thoại liên hệ'."},
-    # Hai field dưới CHỈ để tách vai, mapper KHÔNG đổ ra form.
+    # Nhân thân NGƯỜI NỘP THAY → mapper đổ vào Phần I "Thông tin người nộp hồ sơ".
     {"name": "NguoiNop_HoTen", "desc": "Họ và tên NGƯỜI NỘP THAY — CHỈ điền khi hồ sơ có CCCD RIÊNG của "
-        "người nộp và người đó KHÁC người đứng đơn. Tự nộp → bỏ trống."},
+        "người nộp và người đó KHÁC người đứng đơn. Ghi IN HOA đúng như CCCD. Tự nộp → bỏ trống."},
     {"name": "NguoiNop_SoDinhDanh", "desc": "Số CCCD/định danh NGƯỜI NỘP THAY, chỉ chữ số. Tự nộp → bỏ trống."},
+    {"name": "NguoiNop_NgaySinh", "desc": "Ngày sinh NGƯỜI NỘP THAY, dd/mm/yyyy — CCCD của người nộp. Tự "
+        "nộp → bỏ trống."},
+    {"name": "NguoiNop_GioiTinh", "desc": 'Giới tính NGƯỜI NỘP THAY: "Nam" hoặc "Nữ" — CCCD của người '
+        "nộp (Giới tính / Sex). Tự nộp → bỏ trống."},
+    {"name": "NguoiNop_NgayCapCCCD", "desc": "Ngày cấp CCCD NGƯỜI NỘP THAY, dd/mm/yyyy — mặt sau CCCD của "
+        "người nộp. Không có mặt sau thì bỏ trống."},
+    {"name": "NguoiNop_NoiCapCCCD", "desc": "Nơi cấp CCCD NGƯỜI NỘP THAY (mặt sau CCCD). 'CỤC TRƯỞNG CỤC "
+        "CẢNH SÁT QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI' → \"Cục Cảnh sát quản lý hành chính về trật tự xã "
+        'hội"; thẻ Căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an". Không có mặt sau thì bỏ trống.'},
+    {"name": "NguoiNop_ThuongTru", "desc": "NƠI THƯỜNG TRÚ / nơi cư trú NGƯỜI NỘP THAY trên CCCD của người "
+        "nộp, object {quocGia,tinh,xa,diaChi}; diaChi chỉ phần số nhà/đường/thôn/tổ."},
+    {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại DI ĐỘNG NGƯỜI NỘP THAY nếu giấy tờ có ghi riêng "
+        "cho người nộp (KHÔNG lấy số của người đứng đơn). Thường không có → bỏ trống."},
 ]
 
 # --- Nội dung Đơn đăng ký gia hạn Mẫu 02.HNTY ---
@@ -105,9 +118,21 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 COMPACT_COMP_BY_NAME["NguoiDeNghi_NgaySinh"] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiDeNghi_NgayCapCCCD"] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiDeNghi_ThuongTru"] = "x-select-area"
+COMPACT_COMP_BY_NAME["NguoiNop_NgaySinh"] = "x-date"
+COMPACT_COMP_BY_NAME["NguoiNop_NgayCapCCCD"] = "x-date"
+COMPACT_COMP_BY_NAME["NguoiNop_ThuongTru"] = "x-select-area"
 COMPACT_COMP_BY_NAME["Don_NgayLamDon"] = "x-date"
 COMPACT_COMP_BY_NAME["CCHNCu_NgayHetHan"] = "x-date"
 
 # ---- UI Form.io fields (data[...]) — đúng bộ ô của form cấp lại, chỉ BỎ data[lyDo] (Mẫu 02.HNTY không
 # có ô lý do). Xem chú thích từng ô ở cap_lai_CCHN_thu_y.process.schema.
 UI_COMP_BY_NAME = {name: comp for name, comp in _CAP_LAI_UI_COMP_BY_NAME.items() if name != "data[lyDo]"}
+
+# Phần I "THÔNG TIN NGƯỜI NỘP HỒ SƠ" — field-key trùng khít #66/#101 (xem cap_gcn_dang_ky_tau_ca). Các ô
+# fullname/birthday/identityNumber/identityDate/province/district/address/phoneNumber dùng CHUNG key với
+# "Thông tin chung" của tờ đơn: bản Phần I gửi KHÔNG scope + occurrence=0 (khối đầu trang), bản tờ đơn
+# gửi kèm DON_SCOPE. Hai ô dưới chỉ có ở Phần I.
+UI_COMP_BY_NAME.update({
+    "data[gender]": "dom-select",
+    "data[idIssuePlace]": "dom-input",
+})

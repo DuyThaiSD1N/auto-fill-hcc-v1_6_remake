@@ -291,6 +291,13 @@ test("Tiêu đề tiến độ phân biệt mở trang với kê khai và đính
   assert.doesNotMatch(content, /let title = "Đang tự động kê khai"/);
 });
 
+test("Mirror sessionStorage của fill-all không trùng khóa với extension Auto-fill", () => {
+  // sessionStorage thuộc trang, hai extension cùng đọc được → trùng khóa thì Handfree tự chạy tiếp lượt của Auto-fill.
+  assert.match(source, /FILLALL_SESSION_MIRROR_KEY = "__tlnd_fillall_state_mirror"/);
+  assert.doesNotMatch(source, /FILLALL_KEY \+ "_mirror"/);
+  assert.doesNotMatch(source, /autofill_fillall_state_mirror|__af_fillall_state_mirror/);
+});
+
 test("Handfree hủy banner xanh và state machine Auto-fill cũ khi bắt đầu", () => {
   assert.match(content, /LEGACY_AUTOFILL_PROGRESS_ID = "af-fillall-progress"/);
   assert.match(content, /LEGACY_AUTOFILL_CANCEL_ID = "af-fillall-progress-cancel"/);

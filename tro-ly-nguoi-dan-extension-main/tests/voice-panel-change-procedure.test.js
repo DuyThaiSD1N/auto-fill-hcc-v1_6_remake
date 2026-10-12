@@ -33,7 +33,7 @@ test("nút ✕ tắt micro (đang rảnh tay thì tắt cả rảnh tay)", () =>
 
 test("chip Chọn/Làm thủ tục khác + câu nói tương đương → mở danh sách thủ tục, không về trang chủ", () => {
   assert.match(js, /if \(c\.send === "__action:new_procedure"\) \{ changeProcedure\(\); return; \}/);
-  assert.match(js, /a\.type === "new_conversation"[\s\S]{0,80}await returnToStart\("new_procedure"\);/);
+  assert.match(js, /a\.type === "new_conversation"[\s\S]{0,80}await returnToStart\("new_procedure"(, \{[^}]*\})?\);/);
   assert.match(js, /const shouldOpenProcedurePicker = reason === "continue" \|\| reason === "new_procedure";/);
   // Chỉ "Trò chuyện mới" thủ công mới đưa trang cổng về trang chủ DVC.
   assert.match(js, /if \(reason === "manual" && !alreadyOnDvcHome\)/);

@@ -530,6 +530,19 @@ async function completeSplitQueueUnlocked(state) {
   return { done: true, summary: splitQueueSummary(state) };
 }
 
+// Hàng đợi nằm trong chrome.storage.local nên sống qua cả lần tắt Chrome. Tab đang xử lý không bao
+// giờ báo xong (trang chuyển đi, lỗi, Chrome tắt giữa chừng — mở lại thì mã tab đổi nên onRemoved
+// không còn khớp) là "running" kẹt mãi và mọi lượt tách sau đều bị từ chối. Coi là BỎ DỞ khi tab
+// đang xử lý không còn, hoặc quá hạn chờ của sidebar (monitorSplitQueue) mà không tiến triển.
+const SPLIT_QUEUE_STALE_MS = 30 * 60 * 1000;
+async function isSplitQueueAbandoned(state) {
+  if (state?.status !== "running") return false;
+  if (Date.now() - Number(state.updatedAt || state.startedAt || 0) > SPLIT_QUEUE_STALE_MS) return true;
+  if (!state.activeTabId) return false;
+  try { await chrome.tabs.get(Number(state.activeTabId)); return false; }
+  catch (_) { return true; }
+}
+
 // ── Tab tách → tab gốc (để đếm được cú bấm "Nộp" ở tab tách) ──
 // Chứng thực tách mỗi tài liệu thành một hồ sơ riêng trên một tab MỚI. Mốc nộp của handfree đi
 // qua sidebar của tab gốc (sidebar mới có token + phiên trò chuyện), mà sidebar chỉ nhận cú bấm
@@ -758,8 +771,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
       const current = await getSplitAttachQueue();
       if (current?.status === "running") {
-        sendResponse({ error: "Đang có một lượt tách hồ sơ khác chưa hoàn tất." });
-        return;
+        if (!await isSplitQueueAbandoned(current)) {
+          sendResponse({ error: "Đang có một lượt tách hồ sơ khác chưa hoàn tất." });
+          return;
+        }
+        console.warn("[TLND-SplitQueue] Dọn hàng đợi bỏ dở", splitQueueSummary(current));
       }
       await setPendingMap({});
       await chrome.storage.local.remove([SPLIT_ATTACH_QUEUE_KEY, SPLIT_ATTACH_QUEUE_STAGE_KEY]);
@@ -857,6 +873,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ ...result, queueId });
       } catch (e) { sendResponse({ error: e?.message || String(e) }); }
       finally { try { await chrome.storage.local.remove(itemsStorageKey); } catch (_) { /* bỏ qua */ } }
+    })();
+    return true;
+  }
+  // Sidebar hết hạn chờ đã báo lỗi về BE → bỏ hàng đợi đó, không để "running" chặn lượt sau.
+  if (msg?.action === "abandonSplitAttachQueue") {
+    (async () => {
+      await withSplitQueueLock(async () => {
+        const state = await getSplitAttachQueue();
+        if (!state || state.status !== "running" || state.queueId !== msg.queueId) return;
+        const pending = await getPendingMap();
+        if (state.activeTabId && pending[state.activeTabId]) {
+          delete pending[state.activeTabId];
+          await setPendingMap(pending);
+        }
+        await completeSplitQueueUnlocked(state);
+      });
+      sendResponse({ ok: true });
     })();
     return true;
   }
