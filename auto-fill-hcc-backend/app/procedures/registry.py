@@ -436,6 +436,8 @@ from app.pipelines.yeu_cau_tro_giup_phap_ly.attach import plan as yeu_cau_tro_gi
 from app.pipelines.yeu_cau_tro_giup_phap_ly.process import run as yeu_cau_tro_giup_phap_ly_process
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.attach import plan as tcxh_nd335_attach
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process import run as tcxh_nd335_process
+from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.attach import plan as dien_mat_troi_mai_nha_attach
+from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.process import run as dien_mat_troi_mai_nha_process
 
 PROCEDURES: list[dict] = [
     {
@@ -7442,6 +7444,44 @@ PROCEDURES: list[dict] = [
             "(tờ khai đứng đầu); Tờ khai Mẫu 02 vào dòng Mẫu số 02 (không có thì không tick dòng này)."
         ),
     },
+    {
+        "key": "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha",
+        # Mã TTHC 1.115377 (NĐ 58/2025 sửa đổi bởi NĐ 243/2026) — key TRÙNG ke_khai_links.json và tên package.
+        # Cổng một cửa Bộ Công Thương (Form.io + bảng đính kèm attp-row, cùng engine 2.001474), tiếp nhận ở UBND
+        # cấp xã. Không khai urlScope: snapshot ghi host motcua-tthc.moit.gov.vn, khác host dichvucong-tthc của
+        # 2 thủ tục khuyến mại → nhận theo cụm tên (đủ đặc trưng, chỉ có ở thủ tục này) + textPriority.
+        "detect": {
+            "textIncludes": [
+                "Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất",
+                "cấp điện áp hạ áp",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Thông báo phát triển nguồn điện mặt trời mái nhà tự sản xuất, tự tiêu thụ đấu nối với hệ thống "
+                 "điện quốc gia tại cấp điện áp hạ áp",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Thông báo phát triển nguồn điện mặt trời mái nhà (Mẫu số 01 Phụ lục III — NĐ 243/2026/NĐ-CP), đã "
+            "ký — nguồn chính.\n"
+            "2. Bản vẽ thiết kế lắp đặt nguồn điện (dự phòng công suất tấm pin / pin lưu trữ / inverter).\n"
+            "3. CCCD của người đứng tên (cá nhân) hoặc người đại diện (tổ chức/hộ kinh doanh).\n"
+            "4. Nếu có: Giấy chứng nhận QSDĐ/QSHN, giấy phép xây dựng, nghiệm thu PCCC; hình ảnh dự án; C/O, CQ "
+            "thiết bị.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "Form điền: Loại đối tượng Cá nhân/Tổ chức theo Thông báo (có mã số doanh nghiệp hoặc tên công ty/hộ kinh "
+            "doanh → Tổ chức), mục I–II của Thông báo, chủ hồ sơ. Người đứng tên trùng tài khoản thì tích 'Cũng là "
+            "thông tin của tài khoản nộp hồ sơ'.\n"
+            "Bước thành phần hồ sơ: Thông báo vào dòng Mẫu số 01; Bản vẽ thiết kế và Bản sao tài liệu công trình có "
+            "mái nhà thêm dòng qua nút '+ Thêm giấy tờ' (không thêm được thì đính chung dòng Thông báo); mọi tệp "
+            "khác (hình ảnh, chứng từ thiết bị, CCCD, biên nhận, phiếu kiểm soát, Thông báo UBND) đính chung dòng "
+            "Thông báo, đặt tên theo loại giấy. Chỉ bỏ qua file Excel."
+        ),
+    },
 ]
 
 
@@ -7629,6 +7669,7 @@ _PIPELINE = {
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_process,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_process,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_process,
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -7841,6 +7882,7 @@ _ATTACH_PIPELINE = {
     "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat": ho_tro_thiet_hai_dich_benh_dv_attach,
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_attach,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_attach,
+    "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

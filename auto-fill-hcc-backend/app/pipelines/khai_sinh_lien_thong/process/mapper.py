@@ -77,6 +77,11 @@ def _ethnicity_for_form(value) -> tuple[str, str]:
     return normalize_ethnic(raw), ""
 
 
+# Bệnh viện Hoàn Mỹ Đà Lạt: chi tiết nơi sinh luôn ghi đủ "… - Đồi Long Thọ". OCR tờ khai viết tay hay
+# đọc "Đồi" thành "Đài"/"Đổi" (hoặc bỏ mất phần đuôi) → ghi cố định cả cụm thay vì chép đuôi OCR.
+_HOAN_MY_DA_LAT = "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt - Đồi Long Thọ"
+
+
 def _norm_birth_place(area):
     """Nơi sinh là cơ sở y tế tuyến tỉnh (vd "Bệnh viện đa khoa TỈNH") mà OCR ghi tắt, thiếu tên
     tỉnh → nối tên tỉnh vào chi tiết để ra "Bệnh viện đa khoa tỉnh <Tỉnh>"."""
@@ -85,10 +90,12 @@ def _norm_birth_place(area):
     tinh = area.get("tinh") or area.get("tỉnh")
     dia = str(area.get("diaChi") or area.get("dia_chi") or area.get("diachi") or "").strip()
     xa = area.get("xa") or area.get("xã")
+    low = _fold(dia)
+    if "hoan my" in low and "da lat" in low:
+        return {**area, "diaChi": _HOAN_MY_DA_LAT}
     if not (tinh and dia):
         return area
     out = dict(area)
-    low = _fold(dia)
     is_facility = any(k in low for k in ("benh vien", "trung tam y te", "tram y te", "phong kham", "nha ho sinh"))
     if is_facility and _fold(tinh) not in low and re.search(r"(tinh|thanh pho)$", low):
         dia = f"{dia} {tinh}"

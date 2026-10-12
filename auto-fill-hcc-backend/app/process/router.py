@@ -21,7 +21,6 @@ from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
-from app.pipelines.khai_sinh_dang_ky_lai.process.mapper import with_account_process_options
 from app.pipelines.khai_sinh_lien_thong.process.mapper import (
     with_account_process_options as with_khai_sinh_lien_thong_account_process_options,
 )
@@ -72,14 +71,11 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             pipeline=pipeline,
             include_review=True,
         )
-        # Cấu hình theo tài khoản (Lâm Đồng bỏ cụm đăng ký trước đây, Hiệp Hòa lấy người ủy quyền
-        # làm người yêu cầu TTHN, Đăk Cấm luôn chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết
-        # làm chủ hồ sơ mai táng hưu trí xã hội, Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh, Xuân
-        # Hương để số lượng bản sao cải chính hộ tịch = 0, Đăk Bla ghi nội dung yêu cầu chỉ bằng tên thủ
-        # tục diện tích nhà ở thường trú) do server đặt từ `user`.
-        prepared.pipeline_options = with_account_process_options(
-            prepared.pipeline_options, user, body.procedure
-        )
+        # Cấu hình theo tài khoản (Hiệp Hòa lấy người ủy quyền làm người yêu cầu TTHN, Đăk Cấm luôn
+        # chọn cá nhân lập thiết kế GPXD, Cam Đường lấy người chết làm chủ hồ sơ mai táng hưu trí xã hội,
+        # Phương Liễu bỏ ngày bắt đầu kinh doanh hộ kinh doanh, Xuân Hương để số lượng bản sao cải chính
+        # hộ tịch = 0, Đăk Bla ghi nội dung yêu cầu chỉ bằng tên thủ tục diện tích nhà ở thường trú) do
+        # server đặt từ `user`.
         prepared.pipeline_options = with_tthn_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )

@@ -431,6 +431,24 @@ def test_birth_place_known_mapping_stays_deterministic_in_mapper():
     assert lam_dong.get("xa") is None
 
 
+def test_birth_place_hoan_my_da_lat_luon_ghi_doi_long_tho():
+    # OCR tờ khai viết tay đọc "Đồi" thành "Đài", hoặc giấy chứng sinh chỉ có tên bệnh viện.
+    for dia in (
+        "Bệnh Viện Đa Khoa Hoàn Mỹ Đà Lạt - Đài Long Thọ",
+        "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt",
+        "BV Hoàn Mỹ Đà Lạt, Đổi Long Thọ",
+    ):
+        out = mapper._norm_birth_place({"tinh": "Lâm Đồng", "xa": "Xuân Hương", "diaChi": dia})
+        assert out == {
+            "tinh": "Lâm Đồng", "xa": "Xuân Hương",
+            "diaChi": "Bệnh viện Đa khoa Hoàn Mỹ Đà Lạt - Đồi Long Thọ",
+        }
+    # Thiếu tỉnh vẫn sửa chi tiết; bệnh viện khác giữ nguyên.
+    assert mapper._norm_birth_place({"diaChi": "Hoàn Mỹ Đà Lạt"})["diaChi"].endswith("Đồi Long Thọ")
+    assert mapper._norm_birth_place({"tinh": "Lâm Đồng", "diaChi": "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"})[
+        "diaChi"] == "Bệnh viện Sản - Nhi tỉnh Lâm Đồng"
+
+
 @respx.mock
 async def test_khai_sinh_compact_agent_rejects_direct_ui_keys(monkeypatch):
     _disable_external_fallbacks(monkeypatch)
