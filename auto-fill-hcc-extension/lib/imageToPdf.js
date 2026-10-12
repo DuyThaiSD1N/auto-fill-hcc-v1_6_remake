@@ -78,7 +78,9 @@ const PdfConvert = {
     if (!window.PDFLib) throw new Error("Thiếu thư viện PDF (pdf-lib).");
     const { PDFDocument } = window.PDFLib;
     const bytes = this._dataUrlToBytes(dataUrl);
-    const pdf = await PDFDocument.create();
+    // updateMetadata:false — pdf-lib mặc định ghi ngày giờ tạo tệp → cùng nội dung mà mỗi lượt ra byte khác, lượt đính
+    // lại không nhận ra tệp đã có (đổi tên " 2", đính trùng). Bỏ để cùng nguồn luôn ra cùng một PDF.
+    const pdf = await PDFDocument.create({ updateMetadata: false });
     const img = await this._embedImage(pdf, bytes, dataUrl, name, type);
     const page = pdf.addPage([img.width, img.height]);
     page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
@@ -143,7 +145,7 @@ const PdfConvert = {
   async composeSegmentsToPdf(sourceFiles, segments, name) {
     if (!window.PDFLib) throw new Error("Thiếu thư viện PDF (pdf-lib).");
     const { PDFDocument } = window.PDFLib;
-    const out = await PDFDocument.create();
+    const out = await PDFDocument.create({ updateMetadata: false }); // cùng nguồn → cùng byte (xem imageToPdf)
     const sourcePages = [];
 
     for (const segment of segments || []) {

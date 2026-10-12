@@ -7,14 +7,14 @@ BA NHÓM NHÂN THÂN — TÁCH RIÊNG (có thể là 2 người khác nhau: ch�
   CCCD). VanBang_HoTen là NEO xác định ai là chủ hồ sơ.
 - ChuHoSo_* : CCCD của CHỦ VĂN BẰNG — tức CCCD có họ tên TRÙNG với văn bằng (số định danh, ngày cấp, nơi
   cấp, thường trú). Kèm ChuHoSo_HoTen (tên IN trên CCCD đó) để mapper kiểm tra khớp.
-- NguoiNop_* : CCCD của NGƯỜI NỘP THAY — CCCD có họ tên KHÁC văn bằng. KHÔNG điền Phần I, chỉ để mapper
-  loại CCCD này khỏi chủ hồ sơ.
+- NguoiNop_* : CCCD của NGƯỜI NỘP THAY — CCCD có họ tên KHÁC văn bằng. Mapper điền Phần I (người nộp) từ
+  nhóm này và loại CCCD này khỏi chủ hồ sơ.
 
 Mapper định tuyến TẤT ĐỊNH theo khớp tên (không tin LLM phân nhóm): CCCD nào khớp VanBang_HoTen → chủ hồ
 sơ; CCCD còn lại → người nộp.
 
 Cấu trúc form:
-- Phần I   Người nộp — chỉ điền khi số CCCD tài khoản TRÙNG số CCCD chủ hồ sơ (trừ họ tên); nút
+- Phần I   Người nộp — từ CCCD người nộp thay / giấy ủy quyền; không có thì CCCD chủ (chủ tự nộp); nút
   data[isOwnerDossier] KHÔNG đụng tới.
 - Phần II  data[ChuHS] = loại chủ hồ sơ.
 - Phần III-V data[owner...] : chủ văn bằng (cá nhân owner*; tổ chức/DN ownerOrganizationFullname/ownerTaxCode).

@@ -14,6 +14,7 @@ test("ảnh HEIC được đổi sang JPG ở cả hai lối thêm tệp (chọn
 });
 
 test("đổi HEIC gọi API BE, lỗi thì giữ tệp gốc", () => {
-  assert.match(endpoints, /apiCall\("\/api\/v1\/files\/convert-image", \{ method: "POST", body: form \}\)/);
+  assert.match(endpoints, /apiJson\("\/api\/v1\/files\/convert-image", \{ method: "POST", body: form \}\)/);
+  assert.match(endpoints, /dataUrlToBlob\(data\.dataUrl, "image\/jpeg"\)/);
   assert.match(popup, /catch \(e\) \{[\s\S]{0,120}out\.push\(f\);/);
 });

@@ -299,6 +299,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
     chrome.storage.local.remove([
       "autofill_panel_open_" + tabId,
       "autofill_session_" + tabId,
+      "autofill_phone_upload_" + tabId,
     ]);
     void mutateSubmitStore(SUBMIT_MARKS_KEY, (cur) => {
       const all = cur && typeof cur === "object" ? { ...cur } : {};

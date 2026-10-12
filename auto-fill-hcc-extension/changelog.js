@@ -3,6 +3,20 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.23",
+    date: "12/10/2026",
+    items: [
+      "Ảnh từ điện thoại (QR): không còn mất ảnh khi trang chuyển bước; điện thoại gửi từng tệp, có % tiến độ.",
+      "Trang hộ tịch mới (Cổng DVC quốc gia): xem trước tài liệu đã đính; không đính trùng, tự dọn tệp tải lỗi.",
+      "Tệp lớn tự nén dưới 2MB theo yêu cầu cổng; ảnh iPhone (HEIC) tự đổi sang JPG.",
+      "Bộ Xây dựng: tự bỏ tick các dòng không có giấy tờ, chuyển bước được ngay.",
+      "Hộ kinh doanh: điền 8 trang gọn hơn, panel không nhấp nháy, tiêu đề không vỡ dòng.",
+      "Điền đúng chủ hồ sơ: chia, tách, sáp nhập hội; người có công từ trần.",
+      "Xã Bát Xát: gợi ý tệp đã quét gần đây để chọn đính kèm (tắt được trong Cài đặt).",
+      "Máy quầy tự cập nhật lại bình thường sau khi Chrome bị tắt giữa lượt tách hồ sơ.",
+    ],
+  },
+  {
     version: "1.22",
     date: "7/10/2026",
     items: [

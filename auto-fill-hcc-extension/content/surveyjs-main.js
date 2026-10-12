@@ -404,6 +404,71 @@
     return { ok: true, names };
   }
 
+  // ---- Trạng thái tải lên của tệp đính kèm ----
+  // Cổng hiện tên tệp lên dòng ngay khi bắt đầu tải và GIỮ dòng đó khi tải hỏng (biểu tượng đỏ — vd tường lửa của
+  // cổng chặn tệp gần 2 MB) → tên tệp không đủ làm bằng chứng. Trạng thái thật nằm ở props React `fileInfo` của
+  // dòng tệp: uploadStatus pending/uploading/success/error; tệp có sẵn của hồ sơ không có uploadStatus.
+  const DELETE_FILE_BUTTON = 'button[title="Xóa file"]';
+
+  // React giữ HAI bản fiber (current / alternate) và phần tử DOM chỉ trỏ cố định MỘT bản → đọc props qua đó có thể ra
+  // bản CŨ (tệp đã tải xong vẫn đọc ra "uploading" khi không còn lượt vẽ lại nào). Trạng thái tải chỉ đi tới
+  // (pending → uploading → success/error) → lấy bản đi xa hơn, chỉ trong các bản cùng tên với tên đang hiện trên dòng.
+  const UPLOAD_RANK = { pending: 0, uploading: 1 };
+  function latestFileInfo(button) {
+    const nameOf = (x) => String(x?.file?.name || x?.fileName || "");
+    const score = (x) => (UPLOAD_RANK[x.uploadStatus] ?? 2) * 2 + (x.fileId || x.id ? 1 : 0);
+    for (let f = fiberOf(button), i = 0; f && i < 10; f = f.return, i++) {
+      const own = f.memoizedProps?.fileInfo;
+      if (!own) continue;
+      const shown = String(button.closest("div.justify-between")?.querySelector(".truncate")?.textContent || "").trim();
+      const candidates = [own, f.alternate?.memoizedProps?.fileInfo]
+        .filter((x) => x && (!shown || nameOf(x) === shown));
+      return { info: candidates.sort((a, b) => score(b) - score(a))[0] || own, level: i };
+    }
+    return null;
+  }
+
+  function uploadEntries(name) {
+    const out = [];
+    for (const button of document.querySelectorAll(DELETE_FILE_BUTTON)) {
+      if (!button.offsetParent) continue; // bảng vẽ hai lần, bản cho điện thoại đang ẩn
+      const info = latestFileInfo(button)?.info;
+      if (!info) continue;
+      const fileName = String(info.file?.name || info.fileName || "");
+      if (!name || fileName === name) {
+        out.push({ name: fileName, status: String(info.uploadStatus || "success"), button });
+      }
+    }
+    return out;
+  }
+
+  // Xoá các dòng tệp theo trạng thái (tải hỏng "error", kẹt "pending"/"uploading" — cổng ghi kết quả tải vào sai
+  // dòng khi tải chồng), theo tên hoặc mọi tệp: bấm "Xóa file" rồi xác nhận "Xóa" ở hộp thoại cổng.
+  async function removeUploads(name, statuses) {
+    const match = (e) => statuses.includes(e.status);
+    let removed = 0;
+    for (let round = 0; round < 20; round++) {
+      const failed = uploadEntries(name).find(match);
+      if (!failed) break;
+      failed.button.click();
+      let confirm = null;
+      for (let w = 0; w < 20 && !confirm; w++) {
+        await sleep(100);
+        confirm = [...document.querySelectorAll('[role="dialog"] button, .modal button, button')]
+          .find((b) => b.offsetParent && String(b.textContent || "").trim() === "Xóa");
+      }
+      if (!confirm) break;
+      const before = uploadEntries(name).filter(match).length;
+      confirm.click();
+      for (let w = 0; w < 20; w++) {
+        await sleep(100);
+        if (uploadEntries(name).filter(match).length < before) break;
+      }
+      removed++;
+    }
+    return { ok: true, removed };
+  }
+
   async function handleRequest(event) {
     let requestId = "";
     let result;
@@ -413,6 +478,12 @@
       if (payload.op === "setValues") result = await setValues(Array.isArray(payload.fields) ? payload.fields : []);
       else if (payload.op === "fillPlace") result = await fillPlace(payload.place || {});
       else if (payload.op === "emptyRequired") result = emptyRequired();
+      else if (payload.op === "uploadStatus") {
+        result = { ok: true, statuses: uploadEntries(String(payload.name || "")).map((e) => e.status) };
+      } else if (payload.op === "removeUploads") {
+        const statuses = Array.isArray(payload.statuses) ? payload.statuses.map(String) : ["error"];
+        result = await removeUploads(String(payload.name || ""), statuses);
+      }
       else if (payload.op === "suppressPicker") { suppressPicker = !!payload.on; result = { ok: true }; }
       else if (payload.op === "ping") result = { ok: !!findSurvey() };
       else result = { ok: false, error: "unknown-op" };

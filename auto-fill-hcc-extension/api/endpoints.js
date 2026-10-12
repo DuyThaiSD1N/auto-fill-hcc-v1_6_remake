@@ -86,17 +86,14 @@ const api = {
     return apiJson("/api/v2/process", { method: "POST", body: buildV2ProcessForm("fill", body) });
   },
 
-  // Ảnh HEIC → JPG (BE đổi; Chrome không giải mã được HEIC). Trả Blob JPG, lỗi thì ném.
+  // Ảnh HEIC → JPG (BE đổi; Chrome không giải mã được HEIC). BE trả JSON có dataUrl vì backendFetch đọc mọi
+  // phản hồi dạng chữ (không lấy được nhị phân). Trả Blob JPG, lỗi thì ném.
   async convertHeic(file) {
     const form = new FormData();
     form.append("file", file, file.name || "anh.heic");
-    const res = await apiCall("/api/v1/files/convert-image", { method: "POST", body: form });
-    if (!res.ok) {
-      const err = new Error(`HTTP ${res.status}`);
-      err.status = res.status;
-      throw err;
-    }
-    return res.blob();
+    const data = await apiJson("/api/v1/files/convert-image", { method: "POST", body: form });
+    if (!data?.dataUrl) throw new Error("BE không trả ảnh JPG");
+    return dataUrlToBlob(data.dataUrl, "image/jpeg");
   },
 
   attachmentPlan(body) {

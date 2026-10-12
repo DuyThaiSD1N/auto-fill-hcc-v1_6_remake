@@ -171,3 +171,53 @@ renameAttachmentFilesSetting.addEventListener("change", async () => {
 });
 
 void restoreRenameSetting();
+
+// ── Gợi ý tệp đã quét gần đây — CHỈ tài khoản xã Bát Xát ────────────────────────────────────
+// Trang này không có /auth/me: đọc tài khoản đăng nhập gần nhất popup ghi ra LAST_USER_KEY.
+// Chưa ghi = BẬT. Phải khớp cách popup.js isBatXatUser nhận tài khoản.
+const SCAN_RECENT_SUGGEST_KEY = "autofill_scan_recent_suggest";
+const LAST_USER_KEY = "autofill_last_user";
+
+const scanRecentSection = document.getElementById("scanRecentSection");
+const scanRecentSuggestSetting = document.getElementById("scanRecentSuggestSetting");
+const scanRecentSaveStatus = document.getElementById("scanRecentSaveStatus");
+let scanRecentStatusTimer = null;
+
+function isBatXatAccount(user) {
+  return String(user?.xa || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .includes("bat xat");
+}
+
+function showScanRecentStatus(message, error = false) {
+  scanRecentSaveStatus.textContent = message;
+  scanRecentSaveStatus.className = error ? "save-status error" : "save-status";
+  if (scanRecentStatusTimer) clearTimeout(scanRecentStatusTimer);
+  scanRecentStatusTimer = setTimeout(() => { scanRecentSaveStatus.textContent = ""; }, 2200);
+}
+
+async function restoreScanRecentSetting() {
+  try {
+    const store = await chrome.storage.local.get([LAST_USER_KEY, SCAN_RECENT_SUGGEST_KEY]);
+    scanRecentSection.hidden = !isBatXatAccount(store?.[LAST_USER_KEY]);
+    scanRecentSuggestSetting.checked = store?.[SCAN_RECENT_SUGGEST_KEY] !== false;
+  } catch (_) {
+    scanRecentSection.hidden = true;
+  }
+}
+
+scanRecentSuggestSetting.addEventListener("change", async () => {
+  try {
+    await chrome.storage.local.set({ [SCAN_RECENT_SUGGEST_KEY]: scanRecentSuggestSetting.checked === true });
+    showScanRecentStatus("Đã lưu cài đặt.");
+  } catch (_) {
+    showScanRecentStatus("Không lưu được cài đặt. Vui lòng thử lại.", true);
+    await restoreScanRecentSetting();
+  }
+});
+
+void restoreScanRecentSetting();

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Trợ lý nhân dân",
-  "version": "1.22.2",
+  "version": "1.23",
   "description": "Hỗ trợ nhân dân hoàn thiện thủ tục hành chính công",
   "incognito": "spanning",
   "permissions": [
@@ -108,7 +108,8 @@
       "all_frames": true,
       "world": "MAIN",
       "js": [
-        "content/surveyjs-main.js"
+        "content/surveyjs-main.js",
+        "content/attach-preview-main.js"
       ],
       "run_at": "document_start"
     },

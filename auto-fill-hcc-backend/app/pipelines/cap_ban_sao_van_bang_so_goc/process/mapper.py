@@ -4,8 +4,8 @@
 nộp thay (mỗi người 1 CCCD). CCCD khớp tên văn bằng → CHỦ HỒ SƠ; CCCD khác tên → NGƯỜI NỘP (chỉ để loại
 khỏi chủ hồ sơ). Nếu LLM gán nhầm, mapper HOÁN ĐỔI theo khớp tên (không tin LLM phân nhóm).
 
-- Phần I  Người nộp: chỉ điền khi số CCCD tài khoản đăng nhập TRÙNG số CCCD chủ hồ sơ — điền nhân thân chủ
-  trừ họ tên (tài khoản tự đổ). Không trùng → bỏ trống.
+- Phần I  Người nộp: giấy ủy quyền → bên được ủy quyền; có CCCD người nộp thay → CCCD đó; chỉ có CCCD chủ →
+  chủ tự nộp; không CCCD nào mà số chủ trùng tài khoản → nhân thân chủ trừ họ tên (tài khoản tự đổ).
 - Phần II data[ChuHS]: loại chủ hồ sơ.
 - Phần III-V data[owner...]: chủ văn bằng (nhân thân từ VĂN BẰNG, CCCD số/ngày cấp/nơi cấp/thường trú khớp tên).
 - Phần VIII: nội dung kê khai của CHỦ VĂN BẰNG theo Phiếu BM04.
@@ -532,15 +532,46 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     if not (chu_name or org_name):
         warnings.append("Thiếu tên chủ văn bằng (chủ hồ sơ).")
 
-    # ===== Phần I: NGƯỜI NỘP — chỉ điền khi SỐ CCCD tài khoản đăng nhập (formContext) TRÙNG số một CCCD trong
-    # hồ sơ: của chủ (người nộp chính là chủ) hoặc CCCD khác tên chủ (cán bộ/người nộp thay). Điền từ đúng CCCD
-    # trùng số, KHÔNG điền họ tên (tài khoản tự đổ). Không CCCD nào trùng số → bỏ trống cả Phần I. =====
+    # ===== Phần I: NGƯỜI NỘP — thứ tự nguồn:
+    # 1) Giấy ủy quyền → BÊN ĐƯỢC ỦY QUYỀN.
+    # 2) CCCD tải lên mang tên KHÁC chủ văn bằng (người nộp thay/cán bộ) → điền từ CCCD đó, kể cả họ tên.
+    # 3) Chỉ có CCCD của chính chủ văn bằng (chủ tự nộp) → điền từ CCCD chủ, kể cả họ tên.
+    # 4) Không có CCCD nào nhưng số định danh chủ (phiếu) TRÙNG tài khoản → điền nhân thân chủ trừ họ tên.
+    # Ô nào giấy không có mà người nộp KHÁC chủ tài khoản → XOÁ giá trị VNeID tự đổ, không để sót. =====
     ctx = (options or {}).get("formContext") or {}
     ctx_id = _identity(ctx.get("applicantIdentityNumber") or ctx.get("identityNumber"))
+
+    def _fill_phan_i(name, pid, gender, dob, ngaycap, noicap, tt, phone, email,
+                     phone_default: bool = False) -> None:
+        own_account = bool(pid and ctx_id and pid == ctx_id)
+        add("data[fullname]", (name or "").upper() or None)
+        add("data[identityNumber]", pid)
+        add("data[gender]", gender)
+        for ui_name, v in (("data[birthday]", dob), ("data[identityDate]", ngaycap)):
+            if v:
+                add(ui_name, v)
+            elif not own_account:
+                clear(ui_name)
+        p_loai = _id_doc_type_by_len(pid) or "Căn cước công dân"
+        add("data[idIssuePlace]", _issue_place(noicap, p_loai, ngaycap))
+        p_tinh = _province_label(tt.get("tinh") or tt.get("tinhThanh"))
+        p_xa, p_xa_guess = _current_ward(p_tinh, _text(tt.get("xa") or tt.get("phuong")), ocr_text)
+        add("data[province]", p_tinh)
+        add("data[district]", p_xa, default=p_xa_guess)
+        add("data[address]", _text(tt.get("diaChi") or tt.get("chiTiet")))
+        add("data[phoneNumber]", phone, default=phone_default)
+        add("data[email]", email)
+
     # CÓ GIẤY ỦY QUYỀN → người nộp là BÊN ĐƯỢC ỦY QUYỀN: GHI ĐÈ cả Phần I (khối tài khoản VNeID tự đổ, thường
     # là của cán bộ) bằng nhân thân người đó, kể cả họ tên.
     proxy = nop if (_has_authorization(ocr_text) and nop["name"]
                     and not (anchor and _same_name(nop["name"], anchor))) else None
+    # CCCD người nộp thay: tên khác chủ văn bằng (hoặc chưa đọc được tên) và số khác số chủ.
+    nop_cccd = (not proxy and bool(nop["name"] or nop["id"])
+                and not (anchor and _same_name(nop["name"], anchor))
+                and not (nop["id"] and chu_id and nop["id"] == chu_id))
+    # CCCD của chính chủ văn bằng (khớp tên) — chủ tự đi nộp.
+    chu_cccd = not is_org and chu_cccd_valid and bool(chu["id"])
     if proxy:
         add("data[fullname]", proxy["name"].upper())
         add("data[identityNumber]", proxy["id"])
@@ -572,35 +603,18 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
         # Giấy ủy quyền hiếm khi ghi SĐT bên được ủy quyền → dùng SĐT liên hệ của hồ sơ (đơn/phiếu).
         add("data[phoneNumber]", proxy["phone"] or chu_phone, default=not proxy["phone"])
         add("data[email]", proxy["email"])
-    elif not is_org and chu_id and ctx_id and chu_id == ctx_id:
-        add("data[identityNumber]", chu_id)
-        add("data[gender]", chu_gender)
-        add("data[birthday]", chu_dob)
-        add("data[identityDate]", chu_ngaycap)
-        add("data[idIssuePlace]", chu_noicap)
-        add("data[province]", chu_tinh)
-        add("data[district]", chu_xa, default=chu_xa_guess)
-        add("data[address]", chu_diachi)
-        add("data[phoneNumber]", chu_phone)
-        add("data[email]", chu["email"] if chu_cccd_valid else None)
-    elif nop["id"] and ctx_id and nop["id"] == ctx_id:
-        # CCCD của người nộp (vd cán bộ tiếp nhận đăng nhập bằng tài khoản của mình) — SĐT/địa chỉ chủ hồ sơ
-        # KHÔNG dùng cho người này.
-        n_loai = _id_doc_type_by_len(nop["id"]) or "Căn cước công dân"
-        n_ngaycap = nop["ngaycap"] or _ngay_cap_by_mrz(ocr_text, nop["id"])
-        n_tt = _remap(_area(nop["tt"]) or {}, ocr_text)
-        n_tinh = _province_label(n_tt.get("tinh") or n_tt.get("tinhThanh"))
-        n_xa, n_xa_guess = _current_ward(n_tinh, _text(n_tt.get("xa") or n_tt.get("phuong")), ocr_text)
-        add("data[identityNumber]", nop["id"])
-        add("data[gender]", nop["gender"])
-        add("data[birthday]", nop["dob"])
-        add("data[identityDate]", n_ngaycap)
-        add("data[idIssuePlace]", _issue_place(nop["noicap"], n_loai, n_ngaycap))
-        add("data[province]", n_tinh)
-        add("data[district]", n_xa, default=n_xa_guess)
-        add("data[address]", _text(n_tt.get("diaChi") or n_tt.get("chiTiet")))
-        add("data[phoneNumber]", nop["phone"])
-        add("data[email]", nop["email"])
+    elif nop_cccd:
+        # CCCD người nộp thay/cán bộ — SĐT/địa chỉ chủ hồ sơ KHÔNG dùng cho người này.
+        if nop["id"] and len(nop["id"]) not in (9, 12):
+            warnings.append(f"Số CCCD người nộp đọc được '{nop['id']}' không đủ chữ số — vui lòng kiểm tra.")
+        _fill_phan_i(nop["name"], nop["id"], nop["gender"], nop["dob"],
+                     nop["ngaycap"] or _ngay_cap_by_mrz(ocr_text, nop["id"]), nop["noicap"],
+                     _remap(_area(nop["tt"]) or {}, ocr_text), nop["phone"], nop["email"])
+    elif chu_cccd or (not is_org and chu_id and ctx_id and chu_id == ctx_id):
+        # Chủ văn bằng tự nộp. Không có CCCD chủ (chỉ trùng số tài khoản) → để tài khoản tự đổ họ tên.
+        _fill_phan_i(chu_name if chu_cccd else None, chu_id, chu_gender, chu_dob, chu_ngaycap,
+                     chu["noicap"] if chu_cccd_valid else None, chu_tt, chu_phone,
+                     chu["email"] if chu_cccd_valid else None)
 
     # ===== Phần II: loại chủ hồ sơ =====
     add("data[ChuHS]", "Doanh nghiệp" if is_dn else ("Tổ chức" if is_org else "Cá nhân"))

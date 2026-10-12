@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "7/10";
+  const APP_RELEASE_DATE = "12/10";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -231,10 +231,16 @@
     });
   }
 
+  // Button trong header/hộp xác nhận nằm ở light DOM nên ăn CSS thẻ `button` của trang (HkdOnline đặt
+  // display:block + float + margin + font Tahoma → hai nút –/× xếp chồng, header méo). Chốt inline các
+  // thuộc tính đó; inline thắng mọi rule không !important của trang.
+  const BUTTON_STYLE_RESET = { float: "none", margin: "0", fontFamily: "inherit", minWidth: "0", width: "auto", height: "auto" };
+
   function _headerBtn(txt) {
     const b = document.createElement("button");
     b.textContent = txt;
-    Object.assign(b.style, {
+    Object.assign(b.style, BUTTON_STYLE_RESET, {
+      display: "inline-block", fontWeight: "normal",
       background: "transparent", color: "#fff", border: "none",
       fontSize: "18px", lineHeight: "1", padding: "0 6px", cursor: "pointer",
     });
@@ -310,7 +316,7 @@
     Object.assign(canhBao.style, { display: "none", marginTop: "6px", color: "#92400e", fontWeight: "600" });
     const hang = document.createElement("div");
     Object.assign(hang.style, { display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "10px" });
-    const kieuNut = { borderRadius: "6px", padding: "6px 12px", fontSize: "12px", fontWeight: "700", cursor: "pointer" };
+    const kieuNut = { ...BUTTON_STYLE_RESET, borderRadius: "6px", padding: "6px 12px", fontSize: "12px", fontWeight: "700", cursor: "pointer" };
     const deSau = document.createElement("button");
     deSau.type = "button";
     deSau.textContent = "Để sau";
@@ -382,12 +388,15 @@
       flex: "0 0 auto",
     });
     const title = document.createElement("span");
-    Object.assign(title.style, { display: "flex", alignItems: "center", gap: "6px" });
+    // Header 360px vừa khít logo + tên + pill version + Lịch sử + 2 nút: font máy quầy rộng hơn vài px là
+    // tên rớt dòng. Cho khối tiêu đề co (minWidth 0), tên giữ một dòng, pill version co trước (có "…").
+    Object.assign(title.style, { display: "flex", alignItems: "center", gap: "6px", minWidth: "0", flex: "1 1 auto" });
     const logo = document.createElement("img");
     logo.src = chrome.runtime.getURL("assets/icons/hcc-48.png");
-    Object.assign(logo.style, { width: "18px", height: "18px", borderRadius: "3px", background: "#fff" });
+    Object.assign(logo.style, { width: "18px", height: "18px", borderRadius: "3px", background: "#fff", flex: "0 0 auto" });
     const titleText = document.createElement("span");
     titleText.textContent = "Trợ lý nhân dân";
+    Object.assign(titleText.style, { whiteSpace: "nowrap", flex: "0 0 auto" });
     // Pill version mờ ngay sau tiêu đề — nhận biết nhanh phiên bản khi hỗ trợ, không chiếm dòng riêng.
     const ver = document.createElement("span");
     ver.textContent = "v" + APP_VERSION_LABEL;
@@ -395,7 +404,8 @@
     // bản nào (bản tự host và bản trên store có ID khác nhau).
     try { ver.title = "Phiên bản " + APP_VERSION_LABEL + " · ID " + chrome.runtime.id; } catch (e) { /* ignore */ }
     Object.assign(ver.style, {
-      flex: "0 0 auto", fontSize: "10px", fontWeight: "600", lineHeight: "1",
+      flex: "0 1 auto", minWidth: "0", overflow: "hidden", textOverflow: "ellipsis",
+      fontSize: "10px", fontWeight: "600", lineHeight: "1",
       padding: "2px 6px", borderRadius: "999px", whiteSpace: "nowrap",
       background: "rgba(255,255,255,.22)", color: "#fff", letterSpacing: ".2px",
     });
@@ -404,7 +414,7 @@
     histBtn.type = "button";
     histBtn.textContent = "★ Lịch sử";
     histBtn.title = "Lịch sử cập nhật";
-    Object.assign(histBtn.style, {
+    Object.assign(histBtn.style, BUTTON_STYLE_RESET, {
       flex: "0 0 auto", fontSize: "10px", fontWeight: "700", lineHeight: "1",
       padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap", cursor: "pointer",
       background: "rgba(255,255,255,.18)", color: "#fff", border: "1px solid rgba(255,255,255,.42)",
@@ -420,7 +430,7 @@
     capNhatBtn.type = "button";
     capNhatBtn.id = UPDATE_BTN_ID;
     capNhatBtn.textContent = "⬆ Cập nhật";
-    Object.assign(capNhatBtn.style, {
+    Object.assign(capNhatBtn.style, BUTTON_STYLE_RESET, {
       display: "none", flex: "0 0 auto", fontSize: "10px", fontWeight: "800", lineHeight: "1",
       padding: "3px 8px", borderRadius: "999px", whiteSpace: "nowrap", cursor: "pointer",
       background: "#ffc107", color: "#3b2a00", border: "1px solid #ffe08a",
@@ -428,6 +438,7 @@
     capNhatBtn.addEventListener("click", (e) => { e.stopPropagation(); moXacNhanCapNhat(); });
     title.append(logo, titleText, ver, histBtn, capNhatBtn);
     const btns = document.createElement("div");
+    Object.assign(btns.style, { display: "flex", alignItems: "center", flex: "0 0 auto" });
     const minBtn = _headerBtn("–");
     minBtn.title = "Thu nhỏ";
     minBtn.addEventListener("click", (e) => { e.stopPropagation(); minimizePanel(); });
@@ -1058,42 +1069,142 @@
 
   H.showPageToast = showPageToast;
 
-  // ===== Chế độ "điền 8 trang": ẩn panel/iframe (nặng, nhấp nháy mỗi postback), chỉ giữ banner nhẹ =====
+  // ===== Chế độ "điền 8 trang": ẩn panel/iframe (nặng, nhấp nháy mỗi postback), chỉ giữ thẻ tiến độ nhẹ =====
+  // Extension Handfree tìm đúng 2 id này để bấm Dừng khi nó tiếp quản trang → không được đổi id,
+  // và nút Dừng phải nằm ở light DOM (slot) để querySelector từ ngoài thấy được.
   const FILLALL_BANNER_ID = "af-fillall-progress";
+  const FILLALL_CANCEL_ID = FILLALL_BANNER_ID + "-cancel";
+  // Kết quả lượt chạy cho popup đọc khi panel dựng lại (popup.js FILLALL_RESULT_KEY, cùng đuôi tabId).
+  const FILLALL_RESULT_KEY_PREFIX = "autofill_fillall_result_";
+  // Engine HkdOnline gửi tên màn wizard (sau dấu "—") khi đang mở hồ sơ; đổi sang câu dễ hiểu.
+  const FILLALL_STAGE_LABELS = {
+    home: "Đang mở trang đăng ký hộ kinh doanh",
+    "select-registration": "Đang chọn loại đăng ký",
+    "search-business": "Đang tra cứu hộ kinh doanh",
+    "select-change": "Đang chọn nội dung thay đổi",
+    confirm: "Đang xác nhận và mở trang kê khai",
+    "main-root": "Đang mở trang kê khai",
+    main: "Đang mở trang kê khai",
+    unknown: "Đang nhận diện màn hình hiện tại",
+  };
+  // Tách chuỗi tiến độ tự do của engine thành tiêu đề / chi tiết / số trang để dựng thẻ.
+  function parseFillAllProgress(text) {
+    const firstLine = String(text || "").split("\n").map((line) => line.trim()).find(Boolean)
+      || "Đang xử lý hồ sơ...";
+    const ratio = firstLine.match(/trang\s+(\d+)\s*\/\s*(\d+)/i);
+    const stage = firstLine.match(/—\s*(home|select-registration|search-business|select-change|confirm|main-root|main|unknown)\s*$/i);
+    const title = stage || /đang mở hồ sơ/i.test(firstLine)
+      ? "Đang tự động mở trang kê khai"
+      : "Đang tự động kê khai thông tin và đính kèm";
+    const detail = stage
+      ? FILLALL_STAGE_LABELS[stage[1].toLowerCase()]
+      : firstLine.replace(/^[✓⚠]\s*/, "").replace(/^Đang điền trang\s+\d+\s*\/\s*\d+\s*[—-]?\s*/i, "").trim();
+    return {
+      title,
+      detail: detail || (ratio ? "Đang điền thông tin" : "Đang xử lý hồ sơ..."),
+      phase: /đính kèm|tài liệu|khai loại/i.test(firstLine) ? "Văn bản đính kèm" : "Kê khai thông tin",
+      step: ratio ? Number(ratio[1]) : 0,
+      total: ratio ? Number(ratio[2]) : 0,
+    };
+  }
 
-  // Banner tiến độ tối giản (text + nút Huỷ) — nhẹ nên re-render mỗi reload gần như không thấy giật.
+  function ensureFillAllCard() {
+    let host = document.getElementById(FILLALL_BANNER_ID);
+    if (host?.shadowRoot) return host;
+    host?.remove(); // banner kiểu cũ (không shadow) còn sót khi extension được nạp lại giữa phiên
+    host = document.createElement("div");
+    host.id = FILLALL_BANNER_ID;
+    Object.assign(host.style, {
+      position: "fixed", top: "12px", right: "12px", width: "min(360px, calc(100vw - 24px))",
+      zIndex: "2147483646", display: "block",
+      pointerEvents: "none", // thẻ không chặn click trang; chỉ nút Dừng nhận click.
+    });
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.innerHTML = `
+      <style>
+        :host { color-scheme: light; }
+        * { box-sizing: border-box; }
+        .card {
+          overflow: hidden; border: 1px solid #b9dfd2; border-radius: 14px;
+          background: rgba(255,255,255,.98); color: #17324d;
+          box-shadow: 0 10px 28px rgba(15, 61, 82, .18);
+          font: 400 14px/1.45 system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+          padding: 14px 14px 12px;
+        }
+        .head { display: flex; align-items: flex-start; gap: 10px; }
+        .icon { flex: 0 0 22px; width: 22px; height: 22px; margin-top: 1px; }
+        .spinner { color: #0a8f68; animation: af-spin .9s linear infinite; }
+        .copy { min-width: 0; flex: 1; }
+        .title { margin: 0; color: #096b52; font-size: 14px; line-height: 1.35; font-weight: 750; }
+        .detail { margin: 3px 0 0; color: #28465f; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+        .meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 11px; color: #5b7185; font-size: 12px; }
+        .step { font-variant-numeric: tabular-nums; font-weight: 650; color: #36566f; }
+        .track { height: 5px; margin-top: 7px; overflow: hidden; border-radius: 999px; background: #e4f2ed; }
+        .bar {
+          width: 100%; height: 100%; border-radius: inherit; background: #10a77b;
+          transform: scaleX(1); transform-origin: left center; transition: transform 220ms ease-out;
+        }
+        .track.indeterminate .bar { width: 35%; transition: none; animation: af-slide 1.3s ease-in-out infinite; }
+        .actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+        ::slotted(button) {
+          min-height: 40px !important; padding: 0 15px !important; margin: 0 !important;
+          border: 1px solid #d8a5a5 !important; border-radius: 10px !important;
+          background: #fff !important; color: #a12626 !important; cursor: pointer !important;
+          font: 700 13px/1 system-ui, -apple-system, "Segoe UI", Arial, sans-serif !important;
+          pointer-events: auto !important; box-shadow: none !important; text-transform: none !important;
+        }
+        ::slotted(button:hover) { background: #fff5f5 !important; border-color: #c97979 !important; }
+        ::slotted(button:focus-visible) { outline: 3px solid rgba(10,143,104,.32) !important; outline-offset: 2px !important; }
+        @keyframes af-spin { to { transform: rotate(360deg); } }
+        @keyframes af-slide { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+        @media (prefers-reduced-motion: reduce) {
+          .spinner, .track.indeterminate .bar { animation: none; }
+          .bar { transition: none; }
+        }
+      </style>
+      <section class="card" role="status" aria-label="Tiến trình tự động kê khai">
+        <div class="head">
+          <svg class="icon spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" opacity=".22"></circle>
+            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+          </svg>
+          <div class="copy">
+            <p class="title" id="title"></p>
+            <p class="detail" id="detail" aria-live="polite"></p>
+          </div>
+        </div>
+        <div class="meta"><span id="phase"></span><span class="step" id="step"></span></div>
+        <div class="track" id="track"><div class="bar" id="bar"></div></div>
+        <div class="actions"><slot name="cancel"></slot></div>
+      </section>`;
+    (document.body || document.documentElement).appendChild(host);
+    return host;
+  }
+
   function showFillAllProgress(text) {
-    let el = document.getElementById(FILLALL_BANNER_ID);
-    if (!el) {
-      el = document.createElement("div");
-      el.id = FILLALL_BANNER_ID;
-      Object.assign(el.style, {
-        position: "fixed", top: "12px", right: "12px", zIndex: "2147483646",
-        padding: "8px 14px", borderRadius: "8px", background: "#1565c0", color: "#fff",
-        font: "600 13px/1.35 system-ui, 'Segoe UI', sans-serif",
-        boxShadow: "0 4px 14px rgba(0,0,0,.25)", maxWidth: "300px", whiteSpace: "pre-wrap",
-        pointerEvents: "none", // banner không chặn click trang; chỉ nút Huỷ mới nhận click.
-      });
-      const txt = document.createElement("div");
-      txt.id = FILLALL_BANNER_ID + "-txt";
+    const host = ensureFillAllCard();
+    const shadow = host.shadowRoot;
+    const view = parseFillAllProgress(text);
+    shadow.getElementById("title").textContent = view.title;
+    shadow.getElementById("detail").textContent = view.detail;
+    shadow.getElementById("phase").textContent = view.phase;
+    const determinate = view.step > 0 && view.total > 0;
+    shadow.getElementById("step").textContent = determinate ? `Trang ${view.step}/${view.total}` : "";
+    shadow.getElementById("track").classList.toggle("indeterminate", !determinate);
+    shadow.getElementById("bar").style.transform = determinate
+      ? `scaleX(${Math.max(0.04, Math.min(1, view.step / view.total))})`
+      : "";
+    if (!document.getElementById(FILLALL_CANCEL_ID)) {
       const btn = document.createElement("button");
-      btn.id = FILLALL_BANNER_ID + "-cancel";
+      btn.id = FILLALL_CANCEL_ID;
+      btn.slot = "cancel";
       btn.type = "button";
-      btn.textContent = "✕ Huỷ tiến trình";
-      Object.assign(btn.style, {
-        marginTop: "8px", width: "100%", padding: "5px 8px", cursor: "pointer",
-        border: "1px solid rgba(255,255,255,.6)", borderRadius: "6px",
-        background: "rgba(255,255,255,.15)", color: "#fff",
-        font: "600 12px/1.2 system-ui, 'Segoe UI', sans-serif", pointerEvents: "auto",
-      });
+      btn.textContent = "Dừng tiến trình";
+      btn.setAttribute("aria-label", "Dừng tiến trình tự động kê khai");
       btn.addEventListener("click", (e) => { e.stopPropagation(); cancelFillAll(); });
-      el.appendChild(txt);
-      el.appendChild(btn);
-      (document.body || document.documentElement).appendChild(el);
+      host.appendChild(btn);
     }
-    const txtEl = document.getElementById(FILLALL_BANNER_ID + "-txt");
-    if (txtEl) txtEl.textContent = text; else el.textContent = text;
-    return el;
+    return host;
   }
 
   // Huỷ toàn bộ tiến trình fill 8 trang + đính kèm: xoá state trong chrome.storage → các state machine
@@ -1104,19 +1215,20 @@
     } catch (e) { /* ignore */ }
     sessDel(SS_FILLALL);
     sessDel(SS_FILLALL_STEP);
-    const banner = document.getElementById(FILLALL_BANNER_ID);
-    if (banner) {
-      banner.style.background = "#b23b3b";
-      const txtEl = document.getElementById(FILLALL_BANNER_ID + "-txt");
-      if (txtEl) txtEl.textContent = "Đã huỷ tiến trình. Bạn có thể thao tác lại trên trang.";
-      const btn = document.getElementById(FILLALL_BANNER_ID + "-cancel");
-      if (btn) btn.remove();
-      setTimeout(() => document.getElementById(FILLALL_BANNER_ID)?.remove(), 5000);
-    }
-    // Dựng lại panel để user tiếp tục dùng.
-    if (!document.getElementById(PANEL_ID)) {
-      createPanel(CURRENT_TAB_ID ?? sessGet(SS_TAB) ?? "");
-    }
+    reopenPanelWithFillAllResult("Đã dừng tiến trình tự động. Bạn có thể thao tác lại trên trang.", "warn");
+  }
+
+  // Panel dựng lại nằm đúng góc của thẻ tiến độ (cùng z-index, gắn sau) nên mọi thông báo kết thúc vẽ trên
+  // trang đều bị che. Kết quả đi vào dòng trạng thái của panel: ghi theo tab, popup vừa dựng đọc rồi xoá.
+  function reopenPanelWithFillAllResult(text, type) {
+    document.getElementById(FILLALL_BANNER_ID)?.remove();
+    if (document.getElementById(PANEL_ID)) return;
+    const tabId = CURRENT_TAB_ID ?? sessGet(SS_TAB) ?? "";
+    const open = () => { if (!document.getElementById(PANEL_ID)) createPanel(tabId); };
+    if (!text) return void open();
+    try {
+      chrome.storage.local.set({ [FILLALL_RESULT_KEY_PREFIX + tabId]: { text, type, at: Date.now() } }, open);
+    } catch (e) { open(); } // context extension đã mất → vẫn dựng panel
   }
 
   // Bắt đầu phiên fill-all: đánh dấu (đồng bộ) + gỡ panel/bubble NGAY (không đụng SS_OPEN → nhớ để bật lại).
@@ -1141,23 +1253,10 @@
   function endFillAllUI(doneText) {
     sessDel(SS_FILLALL);
     sessDel(SS_FILLALL_STEP);
-    const banner = document.getElementById(FILLALL_BANNER_ID);
-    if (banner) {
-      if (doneText) {
-        banner.style.background = "#1e824c";
-        const txtEl = document.getElementById(FILLALL_BANNER_ID + "-txt");
-        if (txtEl) txtEl.textContent = doneText; else banner.textContent = doneText;
-        document.getElementById(FILLALL_BANNER_ID + "-cancel")?.remove(); // xong → bỏ nút Huỷ
-        setTimeout(() => document.getElementById(FILLALL_BANNER_ID)?.remove(), 8000);
-      } else {
-        banner.remove();
-      }
-    }
     // Fill-all CHỈ khởi động được từ panel đang mở → luôn dựng lại (không phụ thuộc sessionStorage, vốn có
     // thể đã bị reset qua các nhịp postback). createPanel sẽ tự set lại SS_OPEN + chrome.storage.
-    if (!document.getElementById(PANEL_ID)) {
-      createPanel(CURRENT_TAB_ID ?? sessGet(SS_TAB) ?? "");
-    }
+    // Engine báo lỗi bằng tiền tố "⚠", báo xong bằng "✓".
+    reopenPanelWithFillAllResult(doneText || "", /^\s*⚠/.test(doneText || "") ? "warn" : "ok");
   }
 
   H.beginFillAllUI = beginFillAllUI;

@@ -264,7 +264,9 @@
   }
 
   const FILLALL_KEY = "autofill_fillall_state";
-  const FILLALL_SESSION_MIRROR_KEY = FILLALL_KEY + "_mirror";
+  // sessionStorage thuộc trang nên extension Handfree (cùng engine, cùng FILLALL_KEY) đọc chung được;
+  // khóa mirror phải riêng, nếu không bên kia sẽ nhặt state của bên này sau postback rồi tự chạy tiếp.
+  const FILLALL_SESSION_MIRROR_KEY = "__af_fillall_state_mirror";
 
   function readFillAllSessionMirror() {
     try {

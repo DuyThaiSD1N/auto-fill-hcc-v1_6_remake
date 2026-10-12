@@ -86,3 +86,63 @@ def test_owner_block_still_maps():
     assert got["data[ownerFullname]"] == "NGUYỄN ANH QUÂN"
     assert got["data[ownerIdentityNumber]"] == "048202003364"
     assert got["data[ChuHS]"] == "Cá nhân"
+
+
+_NOP_THAY = {
+    "VanBang_HoTen": "TRẦN THỊ MẪU",
+    "VanBang_NgaySinh": "01/02/1990",
+    "VanBang_SoGiayTo": "001190000123",
+    "VanBang_LoaiTotNghiep": "THPT",
+    "NguoiNop_HoTen": "LÊ VĂN NỘP",
+    "NguoiNop_SoDinhDanh": "001095000456",
+    "NguoiNop_NgaySinh": "05/06/1995",
+    "NguoiNop_GioiTinh": "Nam",
+    "NguoiNop_NgayCap": "10/10/2021",
+    "NguoiNop_NoiCap": "Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    "NguoiNop_ThuongTru": {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Phước Mỹ", "diaChi": "Tổ 1"},
+}
+
+
+def test_cccd_nguoi_nop_thay_dien_phan_i_du_khong_trung_tai_khoan():
+    got, _ = _map(_NOP_THAY, {"applicantIdentityNumber": "001099000777"})
+    assert got["data[fullname]"] == "LÊ VĂN NỘP"
+    assert got["data[identityNumber]"] == "001095000456"
+    assert got["data[birthday]"] == "05/06/1995"
+    assert got["data[gender]"] == "Nam"
+    assert got["data[identityDate]"] == "10/10/2021"
+    assert got["data[idIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert got["data[address]"] == "Tổ 1"
+    # Chủ hồ sơ vẫn là chủ văn bằng, không lẫn CCCD người nộp.
+    assert got["data[ownerFullname]"] == "TRẦN THỊ MẪU"
+    assert got["data[ownerIdentityNumber]"] == "001190000123"
+
+
+def test_cccd_nguoi_nop_bi_llm_xep_vao_chu_ho_so_van_dien_phan_i():
+    v = {k: val for k, val in _NOP_THAY.items() if not k.startswith("NguoiNop_")}
+    v.update({"ChuHoSo_HoTen": "LÊ VĂN NỘP", "ChuHoSo_SoGiayTo": "001095000456", "ChuHoSo_NgaySinh": "05/06/1995"})
+    got, _ = _map(v)
+    assert got["data[fullname]"] == "LÊ VĂN NỘP"
+    assert got["data[identityNumber]"] == "001095000456"
+    assert got["data[ownerIdentityNumber]"] == "001190000123"
+
+
+def test_nguoi_nop_thieu_ngay_sinh_thi_xoa_gia_tri_tai_khoan():
+    v = dict(_NOP_THAY)
+    del v["NguoiNop_NgaySinh"]
+    out, _ = mapper.enrich([{"name": k, "value": val} for k, val in v.items()],
+                           {"formContext": {"applicantIdentityNumber": "001099000777"}})
+    birthday = next(f for f in out if f["name"] == "data[birthday]")
+    assert birthday.get("clear") is True
+
+
+def test_chi_co_cccd_chu_van_bang_thi_chu_tu_nop():
+    got, _ = _map(_VALUES, {"applicantIdentityNumber": "001099000777"})
+    assert got["data[fullname]"] == "NGUYỄN ANH QUÂN"
+    assert got["data[identityNumber]"] == "048202003364"
+    assert got["data[identityDate]"] == "19/12/2022"
+
+
+def test_khong_co_cccd_nao_va_khong_trung_tai_khoan_thi_bo_trong_phan_i():
+    v = {k: val for k, val in _NOP_THAY.items() if not k.startswith("NguoiNop_")}
+    got, _ = _map(v, {"applicantIdentityNumber": "001099000777"})
+    assert not set(got) & {"data[fullname]", "data[identityNumber]", "data[birthday]"}

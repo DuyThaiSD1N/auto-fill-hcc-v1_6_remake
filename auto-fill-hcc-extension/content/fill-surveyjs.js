@@ -198,11 +198,54 @@
       .filter(Boolean);
   }
 
+  // Nhớ NỘI DUNG các tệp đã đính trên trang này (theo tab): lượt đính lại bỏ qua tệp cùng nội dung mà tên còn trên
+  // dòng, dù tên tệp khác (một tệp tải lên hai lần, bật/tắt đổi tên). Cổng chỉ hiện tên, không cho đọc lại nội dung
+  // nên phải tự nhớ; tệp cán bộ đính tay không có trong bộ nhớ → vẫn chỉ nhận theo tên. sessionStorage: đóng tab là
+  // mất, không lẫn sang hồ sơ khác (khoá theo URL hồ sơ).
+  const ATTACHED_KEY = `hcc_sjs_attached:${location.pathname}${location.search}`;
+
+  function readAttached() {
+    try { return JSON.parse(sessionStorage.getItem(ATTACHED_KEY) || "[]"); } catch { return []; }
+  }
+
+  function rememberAttached(entry) {
+    try {
+      sessionStorage.setItem(ATTACHED_KEY, JSON.stringify([...readAttached(), entry].slice(-200)));
+    } catch { /* hết chỗ / bị chặn: chỉ mất khả năng nhận trùng theo nội dung */ }
+  }
+
+  async function contentHash(file) {
+    try {
+      const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+      return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+    } catch { return ""; }
+  }
+
+  // Trạng thái tải của tệp mới nhất mang tên `name` (MAIN world đọc props React của dòng tệp), chờ hết
+  // pending/uploading. Không đọc được (cổng đổi cấu trúc / bản MAIN cũ) → "unknown": giữ kết quả theo tên tệp.
+  async function uploadOutcome(name, ticks) {
+    let last = "";
+    for (let t = 0; t < ticks; t++) {
+      const res = await callMain({ op: "uploadStatus", name }, 3000);
+      last = Array.isArray(res?.statuses) ? res.statuses[res.statuses.length - 1] || "" : "";
+      if (!last) return "unknown";
+      if (last !== "pending" && last !== "uploading") return last;
+      await sleep(200);
+    }
+    console.warn("[AutoFill-SurveyJS] hết hạn chờ trạng thái tải", { file: name, status: last });
+    return "timeout";
+  }
+
   async function attachSurveyJsByPlan(payloadFiles, attachments) {
     injectMarkStyles();
     const attachedNames = [];
+    const skippedNames = [];
     const errors = [];
+    const runStartedAt = Date.now();
     await callMain({ op: "suppressPicker", on: true }, 5000);
+    // Dòng tệp tải hỏng (đỏ) hoặc kẹt "đang tải" (không fileId — nộp sẽ thiếu tệp) còn từ lượt trước: tên vẫn hiện
+    // nên bị coi là đã đính và bỏ qua → dọn trước.
+    await callMain({ op: "removeUploads", statuses: ["error", "pending", "uploading"] }, 30000);
     try {
       for (let i = 0; i < attachments.length; i++) {
         const item = attachments[i];
@@ -223,6 +266,16 @@
         const rowText = () => fold((findUploadRow(item) || row).textContent);
         const count = (text, part) => (part ? text.split(part).length - 1 : 0);
         const beforeText = rowText();
+        // Đính lại cả lượt: tệp cùng tên, hoặc cùng NỘI DUNG với tệp đã đính mà tên còn trên dòng, thì bỏ qua.
+        const hash = await contentHash(file);
+        const rowKey = fold(item.slotName || item.componentName || String(item.slotIndex || 0)).slice(0, 40);
+        const sameContent = hash && readAttached()
+          .find((e) => e.hash === hash && e.row === rowKey && count(beforeText, fold(e.name)) > 0);
+        if (count(beforeText, wanted) > 0 || sameContent) {
+          skippedNames.push(sameContent ? sameContent.name : file.name);
+          setMark(row, "filled");
+          continue;
+        }
         const before = count(beforeText, wanted);
         const beforeHead = count(beforeText, head);
         const shown = () => {
@@ -277,17 +330,38 @@
           ok = shown();
           if (!ok) { attempts = 2; ok = await attempt(firstTicks); }
         }
+        // Cổng chỉ chạy đúng khi tải TỪNG tệp: nạp chồng lúc tệp trước đang tải thì cổng bỏ qua tệp mới (tệp xong
+        // đặt lại dòng đang tải về rỗng) hoặc ghi kết quả tải vào sai chỗ (dòng kẹt "đang tải", không fileId dù
+        // server đã nhận — nộp sẽ thiếu tệp). Chờ trạng thái thật của tệp này rồi mới sang tệp kế; kẹt → xoá dòng,
+        // nạp lại một lần.
+        let outcome = ok ? await uploadOutcome(file.name, firstTicks) : "";
+        if (outcome === "timeout") {
+          await callMain({ op: "removeUploads", name: file.name, statuses: ["pending", "uploading"] }, 15000);
+          attempts++;
+          ok = await attempt(firstTicks);
+          outcome = ok ? await uploadOutcome(file.name, firstTicks) : "";
+        }
+        if (outcome === "error" || outcome === "timeout") {
+          ok = false;
+          portalError = outcome === "error"
+            ? "cổng từ chối khi tải lên — thường do tệp quá lớn (gần 2 MB), nén nhỏ rồi đính lại"
+            : "cổng không ghi nhận tệp sau khi tải — đính lại tệp này trước khi nộp";
+          await callMain({ op: "removeUploads", name: file.name, statuses: ["error", "pending", "uploading"] }, 15000);
+        }
         console.info("[AutoFill-SurveyJS] đính kèm", {
-          file: file.name, sizeKB: Math.round((file.size || 0) / 1024), ms: Date.now() - startedAt, attempts, ok,
+          file: file.name, sizeKB: Math.round((file.size || 0) / 1024), ms: Date.now() - startedAt, attempts, ok, outcome,
         });
-        if (ok) attachedNames.push(file.name);
-        else {
+        if (ok) {
+          attachedNames.push(file.name);
+          if (hash) rememberAttached({ hash, name: file.name, row: rowKey });
+        } else {
           errors.push(`Không đính kèm được "${file.name}"${portalError ? ` (cổng báo: ${portalError})` : ""}.`);
           console.warn("[AutoFill-SurveyJS] đính kèm hụt", { file: file.name, portalError, rowText: rowText().slice(0, 300) });
         }
         const markRow = findUploadRow(item) || row;
         if (markRow.isConnected) setMark(markRow, ok ? "filled" : "not-filled");
       }
+      console.info("[AutoFill-SurveyJS] xong lượt đính", { totalMs: Date.now() - runStartedAt, errors: errors.length });
     } finally {
       await callMain({ op: "suppressPicker", on: false }, 5000);
     }
@@ -295,18 +369,18 @@
       return {
         error: errors.join("; "),
         attached: attachedNames.length,
-        skipped: 0,
+        skipped: skippedNames.length,
         fileNames: attachedNames,
-        skippedNames: [],
+        skippedNames,
       };
     }
     return {
       ok: true,
       method: "surveyjs",
       attached: attachedNames.length,
-      skipped: 0,
+      skipped: skippedNames.length,
       fileNames: attachedNames,
-      skippedNames: [],
+      skippedNames,
     };
   }
 

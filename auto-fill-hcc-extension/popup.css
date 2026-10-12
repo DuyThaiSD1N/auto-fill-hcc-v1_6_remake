@@ -526,6 +526,39 @@ input, select, textarea { font-family: inherit; }
 /* Trạng thái kết nối máy quét (scan-bridge agent) — chỉ hiện khi có gì để nói,
    xem setScanAgentStatus trong popup.js. */
 .scan-agent-status { font-size: 11.5px; color: #0d7d52; margin: 8px 0; }
+/* Danh sách gợi ý tệp đã quét gần đây (CHỈ xã Bát Xát — xem attemptScanRecentSuggest trong popup.js):
+   cán bộ tự chọn, hệ thống không tự thêm. */
+.scan-recent-list {
+  border: 1px solid #f0c36d;
+  background: #fff8e6;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin: 8px 0;
+  font-size: 12px;
+}
+.scan-recent-hint { color: #8a5a00; margin-bottom: 4px; }
+.scan-recent-add-all {
+  width: auto;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  background: #8a5a00;
+}
+.scan-recent-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 0;
+}
+.scan-recent-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-recent-row button {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  font-size: 13px;
+  background: #0d7d52;
+}
 
 /* Nhãn 🖨️ cho file tự về từ máy quét trong danh sách file */
 .file-list .from-scan { flex: 0 0 auto; font-size: 12px; margin-left: 2px; }

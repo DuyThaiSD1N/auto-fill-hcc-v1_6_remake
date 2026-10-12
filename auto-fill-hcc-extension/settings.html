@@ -72,6 +72,33 @@
       <p id="saveStatus" class="save-status" role="status" aria-live="polite"></p>
     </section>
 
+    <!-- CHỈ hiện cho tài khoản xã Bát Xát (settings.js đọc tài khoản đăng nhập gần nhất popup ghi lại). -->
+    <section id="scanRecentSection" class="settings-card" aria-labelledby="scanRecentSettingsTitle" hidden>
+      <div class="settings-card-heading">
+        <div>
+          <h2 id="scanRecentSettingsTitle">Máy quét tại quầy</h2>
+          <p>Áp dụng trên máy này.</p>
+        </div>
+      </div>
+
+      <label class="setting-row" for="scanRecentSuggestSetting">
+        <span class="setting-copy">
+          <strong>Gợi ý tệp đã quét gần đây</strong>
+          <span>
+            BẬT (mặc định): khi chọn thủ tục, trợ lý liệt kê các tệp máy quét đã tạo trong 2 giờ gần nhất (chưa
+            có trong hồ sơ) để cán bộ bấm chọn đính kèm — dùng khi quét giấy tờ trước rồi mới mở trợ lý. Trợ lý
+            không tự thêm tệp nào. TẮT: không hiện danh sách gợi ý.
+          </span>
+        </span>
+        <span class="switch">
+          <input id="scanRecentSuggestSetting" type="checkbox" checked>
+          <span class="switch-track" aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p id="scanRecentSaveStatus" class="save-status" role="status" aria-live="polite"></p>
+    </section>
+
     <!-- Lưu THEO TÀI KHOẢN trên máy chủ (đi theo cán bộ sang máy khác) — cần đăng nhập trên trợ lý. -->
     <section class="settings-card" aria-labelledby="fileNameSettingsTitle">
       <div class="settings-card-heading">

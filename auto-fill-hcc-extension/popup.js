@@ -165,6 +165,8 @@ const SUBMITTER_OWNER_MODE_KEY = "autofill_submitter_owner_mode";
 // Cài đặt "Không gộp giấy tờ" — CHỈ thủ tục chứng thực phân chia di sản (gửi BE qua options.splitDocuments).
 const ESTATE_SPLIT_ATTACH_KEY = "autofill_estate_split_attachments";
 const ESTATE_SPLIT_PROCEDURE_KEY = "chung-thuc-phan-chia-di-san";
+// Cài đặt "Gợi ý tệp đã quét gần đây" (settings.html) — CHỈ tài khoản xã Bát Xát; chưa ghi = BẬT.
+const SCAN_RECENT_SUGGEST_KEY = "autofill_scan_recent_suggest";
 // Bundle tách hồ sơ chứa dataUrl base64 có thể vượt trần 64 MiB của runtime.sendMessage.
 // Popup ghi vào key cố định này; background nhận key, chuyển sang queue chính rồi xóa staging.
 const SPLIT_ATTACH_QUEUE_STAGE_KEY = "autofill_split_attach_queue_stage";
@@ -182,6 +184,7 @@ let attachSplitDocuments = false;
 let submitterOwnerMode = false;
 // Cài đặt "Không gộp giấy tờ" (phân chia di sản) — BẬT → gửi options.splitDocuments=true cho thủ tục đó.
 let estateSplitAttachments = false;
+let scanRecentSuggestEnabled = true;
 let activeSplitRunId = null;
 let splitProgressOriginTabId = null;
 
@@ -571,11 +574,14 @@ async function bootstrap() {
     await restoreSplitMode();
     await restoreSplitDocumentsSetting();
     await restoreSession();
+    await restoreScanWatermark(); // mốc "giấy tờ này của công dân trước" phải sống qua redirect
     await restoreScanDaGo();      // file cán bộ đã gỡ tay cũng phải sống qua redirect
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
+    await restorePhoneUpload(); // panel dựng lại giữa lúc điện thoại đang gửi → nghe tiếp, kéo nốt
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
+    await restoreFillAllResult();
     // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
     await resumeEnterpriseFillIfPending();
     // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
@@ -640,11 +646,14 @@ loginBtn.addEventListener("click", async () => {
     await restoreSplitMode();
     await restoreSplitDocumentsSetting();
     await restoreSession();
+    await restoreScanWatermark(); // mốc "giấy tờ này của công dân trước" phải sống qua redirect
     await restoreScanDaGo();      // file cán bộ đã gỡ tay cũng phải sống qua redirect
     await restoreConsent();   // khôi phục trạng thái đồng ý của phiên qua reload trang
     await autoDetectProcedure();
+    await restorePhoneUpload(); // panel dựng lại giữa lúc điện thoại đang gửi → nghe tiếp, kéo nốt
     restoreBusinessFillSupportCode();
     await restoreSplitProgressStatus();
+    await restoreFillAllResult();
     // Chặng 2 của luồng doanh nghiệp: wizard vừa đưa tới khối dữ liệu thì quét + điền luôn.
     await resumeEnterpriseFillIfPending();
     // Cán bộ vừa bấm nộp ở lượt trước, trang điều hướng làm panel nạp lại → mở lại màn đánh giá.
@@ -686,6 +695,7 @@ logoutBtn.addEventListener("click", async () => {
   await clearSession();
   files.length = 0;
   lastProcessSession = null;
+  resetScanRecentSuggestState(); // tài khoản sau có thể không thuộc xã được bật gợi ý
   renderFiles();
   refreshAttachStepUI();
   hideSupportCode();
@@ -699,6 +709,7 @@ if (newSessionBtn) {
     await clearSession();
     files.length = 0;
     lastProcessSession = null;
+    resetScanRecentSuggestState(); // công dân tiếp theo, cùng popup đang mở → gợi ý lại từ đầu
     // Đưa TẤT CẢ về mặc định: bỏ chọn thủ tục + mở khóa, xoá ô tìm, xoá card rà soát.
     selectedProcedureKey = "";
     selectedBusinessPageKey = "";
@@ -779,6 +790,13 @@ function isYenBaiLaoCaiUser(user) {
   // Phải khớp CẢ phường lẫn tỉnh: không dính địa danh "Yên Bái" (tỉnh cũ) ở nơi khác.
   return normalizeProcedureSearch(user?.tinh).includes("lao cai")
     && normalizeProcedureSearch(user?.xa).includes("yen bai");
+}
+
+// ===== Nghiệp vụ riêng xã Bát Xát (chỉ áp cho tài khoản của địa bàn này) =====
+// Gợi ý tệp máy quét đã có sẵn trong thư mục (quét trước rồi mới mở trợ lý) — xem attemptScanRecentSuggest.
+/** Tài khoản xã Bát Xát (/auth/me trả `xa`). */
+function isBatXatUser(user) {
+  return normalizeProcedureSearch(user?.xa).includes("bat xat");
 }
 
 function buildBusinessDefaults(user) {
@@ -1022,6 +1040,7 @@ function resetProcedureWorkState() {
   closePhoneUpload();
   currentConsentContext = null;
   pendingConsentTrigger = null;
+  resetScanRecentSuggestState(); // phiên làm việc mới → gợi ý lại từ đầu
   void sendToContent({ action: "clearPanelAutoRestore" });
   showView("main");
   setStatus("", "");
@@ -1066,6 +1085,9 @@ async function selectProcedure(key, { source = "manual", confirmedNavigation = f
   // Có thủ tục đang làm việc (tự nhận diện hay chọn tay đều tính) → dò máy quét, không đợi
   // cán bộ bấm gì. Hàm tự bỏ qua nếu đã kết nối từ lần chọn trước.
   ensureScanAgentConnected();
+  // Agent có thể đã kết nối sẵn (đổi thủ tục, "Phiên mới" trong cùng popup) → gợi ý ngay, không
+  // đợi onConnected (chỉ bắn lúc SSE mở).
+  void attemptScanRecentSuggest();
   // Detect lại cùng thủ tục (reload/chuyển bước/DOM đổi) không ghi lại cả khối base64 lớn vào storage.
   if (selectionChanged || workOwnerChanged) await saveSession();
   return true;
@@ -1691,6 +1713,8 @@ function fileItemToSnapshot(it) {
     rel: it.rel || null,
     hash: it.hash || null,
     canhBaoScan: it.canhBaoScan || null,
+    fromPhone: it.fromPhone || false,
+    phoneFid: it.phoneFid || null,
   };
 }
 function fileItemFromSnapshot(f) {
@@ -1703,6 +1727,8 @@ function fileItemFromSnapshot(f) {
     rel: f.rel || null,
     hash: f.hash || null,
     canhBaoScan: f.canhBaoScan || null,
+    fromPhone: !!f.fromPhone,
+    phoneFid: f.phoneFid || null,
   };
 }
 
@@ -1793,6 +1819,22 @@ async function purgeLegacyPrevSessions() {
   } catch (_) { /* không chặn khởi động */ }
 }
 void purgeLegacyPrevSessions();
+
+// Lượt điền/đính nhiều trang chạy khi panel đã gỡ; content.js ghi kết quả theo tab ngay trước khi dựng
+// lại panel (reopenPanelWithFillAllResult) → hiện ở dòng trạng thái rồi xoá để lần mở sau không lặp lại.
+const FILLALL_RESULT_KEY = "autofill_fillall_result_" + (EMBEDDED_TAB_ID ?? "");
+const FILLALL_RESULT_TTL_MS = 10 * 60 * 1000;
+
+async function restoreFillAllResult() {
+  let result = null;
+  try {
+    const stored = await chrome.storage.local.get(FILLALL_RESULT_KEY);
+    result = stored?.[FILLALL_RESULT_KEY] || null;
+    if (result) await chrome.storage.local.remove(FILLALL_RESULT_KEY);
+  } catch (_) { return; }
+  if (!result?.text || Date.now() - Number(result.at || 0) > FILLALL_RESULT_TTL_MS) return;
+  setStatus(result.text, result.type === "ok" ? "ok" : "warn");
+}
 
 function restoreBusinessFillSupportCode() {
   // Chỉ khôi phục trên thủ tục HKD; cùng tab có thể được điều hướng sang một thủ tục/cổng khác.
@@ -2380,8 +2422,9 @@ function ratingEnabledFor(map, username) {
 // Đọc cài đặt "tách giấy tờ trong file" từ storage (do settings.html ghi). Không có ô tick ở popup.
 async function restoreSplitDocumentsSetting() {
   try {
-    const result = await chrome.storage.local.get([SPLIT_DOCUMENTS_SETTING_KEY, SUBMITTER_OWNER_MODE_KEY, ESTATE_SPLIT_ATTACH_KEY]);
+    const result = await chrome.storage.local.get([SPLIT_DOCUMENTS_SETTING_KEY, SUBMITTER_OWNER_MODE_KEY, ESTATE_SPLIT_ATTACH_KEY, SCAN_RECENT_SUGGEST_KEY]);
     attachSplitDocuments = result[SPLIT_DOCUMENTS_SETTING_KEY] === true;
+    scanRecentSuggestEnabled = result[SCAN_RECENT_SUGGEST_KEY] !== false;
     submitterOwnerMode = result[SUBMITTER_OWNER_MODE_KEY] === true;
     estateSplitAttachments = result[ESTATE_SPLIT_ATTACH_KEY] === true;
   } catch (_) { attachSplitDocuments = false; submitterOwnerMode = false; estateSplitAttachments = false; }
@@ -2393,6 +2436,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (changes[SPLIT_DOCUMENTS_SETTING_KEY]) attachSplitDocuments = changes[SPLIT_DOCUMENTS_SETTING_KEY].newValue === true;
   if (changes[SUBMITTER_OWNER_MODE_KEY]) submitterOwnerMode = changes[SUBMITTER_OWNER_MODE_KEY].newValue === true;
   if (changes[ESTATE_SPLIT_ATTACH_KEY]) estateSplitAttachments = changes[ESTATE_SPLIT_ATTACH_KEY].newValue === true;
+  if (changes[SCAN_RECENT_SUGGEST_KEY]) {
+    scanRecentSuggestEnabled = changes[SCAN_RECENT_SUGGEST_KEY].newValue !== false;
+    scanRecentAttempted = false;
+    if (scanRecentSuggestEnabled) void attemptScanRecentSuggest();
+    else { scanRecentPending = []; renderScanRecentList(); }
+  }
   // Tắt ở tab Cài đặt phải ăn ngay vào bảng đang mở, không bắt đóng/mở lại trợ lý.
   if (changes[RATING_ENABLED_BY_USER_KEY] || changes[CURRENT_USERNAME_KEY]) void restoreRatingEnabled();
 });
@@ -2576,6 +2625,7 @@ async function sha256Hex(blob) {
 const phoneUploadBtn = document.getElementById("phoneUploadBtn");
 const qrCard = document.getElementById("qrCard");
 let phoneUploadSid = null;
+let phoneUploadQr = "";
 let phoneUploadWs = null;
 let phoneReconcile = null;     // poll ĐỐI SOÁT: LUÔN chạy làm lưới an toàn (kể cả khi WS không kết nối/miss event)
 let phone404 = 0;              // đếm 404 liên tiếp → chỉ đóng khi phiên THẬT SỰ hết hạn (không phải chớp mạng)
@@ -2590,8 +2640,49 @@ function stopPhoneUploadChannel() {
   if (phoneReconcile) { clearInterval(phoneReconcile); phoneReconcile = null; }
 }
 
+// Phiên QR sống THEO TAB qua các lần panel dựng lại (trang cổng chuyển bước/tải lại). Trước đây chỉ
+// nằm trong bộ nhớ panel: dựng lại là mất mã phiên, điện thoại vẫn gửi được (máy chủ báo thành công)
+// mà không còn ai kéo tệp về. `pulled` giữ cả tệp cán bộ đã bấm × để không kéo lại.
+const PHONE_UPLOAD_KEY = "autofill_phone_upload_" + (EMBEDDED_TAB_ID ?? "popup");
+const PHONE_UPLOAD_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+function savePhoneUpload() {
+  if (!phoneUploadSid) return;
+  try {
+    void chrome.storage.local.set({
+      [PHONE_UPLOAD_KEY]: { sid: phoneUploadSid, qr: phoneUploadQr, pulled: [...pulledFids], at: Date.now() },
+    });
+  } catch (_) { /* mất bản lưu chỉ làm mất khả năng nối lại, không hỏng luồng đang chạy */ }
+}
+
+async function restorePhoneUpload() {
+  if (phoneUploadSid || !currentUser) return;
+  let saved = null;
+  try { saved = (await chrome.storage.local.get(PHONE_UPLOAD_KEY))?.[PHONE_UPLOAD_KEY] || null; }
+  catch (_) { return; }
+  if (!saved?.sid) return;
+  if (Date.now() - Number(saved.at || 0) > PHONE_UPLOAD_MAX_AGE_MS) {
+    try { await chrome.storage.local.remove(PHONE_UPLOAD_KEY); } catch (_) { /* ignore */ }
+    return;
+  }
+  phoneUploadSid = saved.sid;
+  phoneUploadQr = saved.qr || "";
+  pulledFids.clear();
+  for (const fid of saved.pulled || []) pulledFids.add(fid);
+  // Tệp đã vào hồ sơ nhưng chưa kịp ghi vào `pulled` (panel dựng lại đúng giữa hai lần ghi).
+  for (const it of files) if (it.phoneFid) pulledFids.add(it.phoneFid);
+  if (phoneUploadQr) renderQrCard({ qr_png_base64: phoneUploadQr });
+  const n = files.filter((it) => it.fromPhone).length;
+  if (n) setQrStatus(`✅ Đã nhận ${n} ảnh từ điện thoại — có thể gửi tiếp hoặc bấm "Quét và nhập".`);
+  subscribePhoneUpload(saved.sid);
+  phoneReconcile = setInterval(reconcilePhoneOnce, 2000);
+  void reconcilePhoneOnce(); // kéo ngay các tệp điện thoại gửi trong lúc panel đang dựng lại
+}
+
 function closePhoneUpload() {
   phoneUploadSid = null; // đặt null TRƯỚC để mọi guard bằng sid tự vô hiệu
+  phoneUploadQr = "";
+  try { void chrome.storage.local.remove(PHONE_UPLOAD_KEY); } catch (_) { /* ignore */ }
   pulledFids.clear();
   phone404 = 0;
   stopPhoneUploadChannel();
@@ -2638,14 +2729,18 @@ async function pullPhoneFiles(list) {
     files.push({
       file: { name: r.f.name || "anh-dien-thoai.jpg", type },
       role: defaultRoleFor({ type }), dataUrl: r.res.dataUrl,
-      fromPhone: true,
+      fromPhone: true, phoneFid: r.f.fid,
     });
     added++;
   }
   if (added) {
     renderFiles();
     refreshAttachStepUI();
-    saveSession();
+    // Đợi hồ sơ ghi xong rồi mới ghi `pulled`: ngược lại mà panel dựng lại giữa chừng thì tệp bị
+    // đánh dấu đã kéo nhưng không nằm trong hồ sơ → mất.
+    await saveSession();
+    if (phoneUploadSid !== sid) return added;
+    savePhoneUpload();
     const n = files.filter((it) => it.fromPhone).length;
     setQrStatus(`✅ Đã nhận ${n} ảnh từ điện thoại — có thể gửi tiếp hoặc bấm "Quét và nhập".`);
   }
@@ -2679,6 +2774,8 @@ async function openPhoneUpload() {
     setStatus("Đang tạo mã QR…", "info");
     const s = await api.createUploadSession();
     phoneUploadSid = s.session_id;
+    phoneUploadQr = s.qr_png_base64 || "";
+    savePhoneUpload();
     renderQrCard(s);
     subscribePhoneUpload(s.session_id);                 // WS: giao tức thì (nếu proxy cho WS)
     phoneReconcile = setInterval(reconcilePhoneOnce, 2000); // lưới an toàn: LUÔN chạy, bắt cả lô WS bỏ sót
@@ -2729,6 +2826,7 @@ if (phoneUploadBtn) phoneUploadBtn.addEventListener("click", openPhoneUpload);
 // Máy không cài scan-bridge (đa số) thì dò mãi không thấy, không hiện gì, không ảnh
 // hưởng luồng cũ.
 const scanAgentStatusEl = document.getElementById("scanAgentStatus");
+const scanRecentListEl = document.getElementById("scanRecentList");
 let scanAgentConn = null; // giữ ĐÚNG MỘT kết nối suốt phiên popup, không dò lại mỗi lần detect
 
 function setScanAgentStatus(state) {
@@ -2745,9 +2843,9 @@ function setScanAgentStatus(state) {
   scanAgentStatusEl.hidden = !text;
 }
 
-// Tải + hash + thêm/cập nhật MỘT file quét vào files[] — đường DUY NHẤT đưa file
-// máy quét vào hồ sơ là sự kiện sống (SSE, handleScanAgentFile): chỉ nhận file
-// quét ra TRONG LÚC phiên đang mở, không gom file có sẵn trên đĩa. KHÔNG tự renderFiles/
+// Tải + hash + thêm/cập nhật MỘT file quét vào files[] — dùng chung cho sự kiện sống
+// (SSE, handleScanAgentFile) và cán bộ bấm chọn từ danh sách gợi ý (addScanRecentItems).
+// Tệp có sẵn trên đĩa KHÔNG BAO GIỜ tự vào hồ sơ. KHÔNG tự renderFiles/
 // saveSession ở đây: bên gọi tự quyết định gọi 1 lần sau khi xử lý xong cả
 // loạt, tránh vẽ lại/ghi session nhiều lần khi thêm nhiều file liên tiếp.
 // Trả true nếu files[] thực sự đổi (thêm mới hoặc cập nhật nội dung khác).
@@ -2763,6 +2861,10 @@ async function importOneScanFile(evt, fetchBlob, { tuDong = false } = {}) {
   const hash = await sha256Hex(blob); // toan ven noi dung luc keo ve, dung de doi soat sau nay
   const seqXoa = scanRemovedAt.get(evt.rel);
   if (seqXoa != null && seqXoa > seqBatDau) return false; // da bi xoa/doi ten giua chung - bo qua
+  // Mốc tệp quét mới nhất PHIÊN NÀY đã nhận — làm watermark cho phiên sau (resetScanRecentSuggestState).
+  // Tệp chọn từ danh sách gợi ý có `mtimeMs`; đường SSE sống chỉ có `at` (lúc agent phát event).
+  const ts = Number(evt.mtimeMs) || Date.parse(evt.at || "") || 0;
+  if (ts > scanNewestMs) scanNewestMs = ts;
   // Đã bị cán bộ gỡ thủ công → không tự đưa lại vào. Kiểm SAU khi có hash vì
   // bộ nhớ này khoá theo nội dung, không theo tên.
   if (tuDong) {
@@ -2997,6 +3099,22 @@ if (window.HccTrangThai) {
 //      tab ẩn, cửa sổ mất focus.
 //   2. Hàng đợi tách hồ sơ — sống trong chrome.storage, không thuộc panel nào.
 //   3. Các TAB KHÁC — panel ở tab khác cũng bị giết khi nạp lại, nên phải hỏi.
+// Hàng đợi tách hồ sơ nằm trong chrome.storage (sống qua tắt Chrome). Tab đang xử lý không bao giờ
+// báo xong (Chrome tắt giữa chừng → mở lại mã tab đổi) thì nó nằm đó mãi và máy KHÔNG BAO GIỜ tự
+// cập nhật cho tới lượt tách kế tiếp. Bỏ dở = tab đang xử lý không còn, hoặc chạy quá 2 giờ.
+const HANG_DOI_TACH_TOI_DA_MS = 2 * 60 * 60 * 1000;
+async function hangDoiTachBoDo(q) {
+  let boDo = Date.now() - Number(q.startedAt || 0) > HANG_DOI_TACH_TOI_DA_MS;
+  if (!boDo && q.activeTabId) {
+    try { await chrome.tabs.get(Number(q.activeTabId)); } catch (_) { boDo = true; }
+  }
+  if (boDo) {
+    console.info("[Popup] Dọn hàng đợi tách hồ sơ bỏ dở", { startedAt: q.startedAt, activeTabId: q.activeTabId });
+    try { await chrome.runtime.sendMessage({ action: "clearAllPendingAttach" }); } catch (_) { /* lượt sau dọn */ }
+  }
+  return boDo;
+}
+
 async function extUpdateDangBanRon() {
   // Thiếu module (nạp lỗi) thì coi như bận vĩnh viễn: thà không bao giờ tự cập
   // nhật còn hơn nạp lại giữa lúc cán bộ đang làm.
@@ -3005,7 +3123,8 @@ async function extUpdateDangBanRon() {
 
   try {
     const o = await chrome.storage.local.get("autofill_split_attach_queue");
-    if (o && o.autofill_split_attach_queue) return true; // hàng đợi tách hồ sơ đang chạy
+    const q = o && o.autofill_split_attach_queue;
+    if (q && !(await hangDoiTachBoDo(q))) return true; // hàng đợi tách hồ sơ đang chạy
   } catch (_) { /* không đọc được storage thì coi như rảnh */ }
 
   try {
@@ -3108,6 +3227,141 @@ function extUpdateGhiNhan(versionTrenDia) {
   void extUpdateThuNapLai();
 }
 
+// ===== Gợi ý tệp đã quét gần đây (CHỈ xã Bát Xát, tắt được ở Cài đặt) =====
+// Quầy hay quét TRƯỚC rồi mới mở trợ lý → các tệp đó không đi qua sự kiện sống (SSE). Đọc thư mục
+// quét, liệt kê tệp trong 2 giờ gần nhất chưa có trong hồ sơ để CÁN BỘ tự chọn. KHÔNG tự thêm:
+// tên tệp máy quét toàn dạng 2026xxxx.pdf, đoán lô theo khoảng cách thời gian từng kéo nhầm giấy
+// của người khác vào hồ sơ.
+const RECENT_LIST_WINDOW_MS = 2 * 60 * 60 * 1000;
+const RECENT_LIST_MAX = 30;
+let scanRecentAttempted = false; // riêng theo PHIÊN LÀM VIỆC (reset cùng "files.length = 0")
+let scanRecentPending = []; // [{rel, name, mtimeMs}]
+
+// ===== Watermark: không gợi ý giấy tờ của CÔNG DÂN TRƯỚC cho hồ sơ mới =====
+// "Phiên mới" xong, files[] rỗng nên không còn gì để loại trừ, mà loạt tệp mới nhất trên đĩa vẫn là
+// của công dân vừa xong. Nhớ mốc tệp quét mới nhất phiên trước đã dùng; phiên sau chỉ gợi ý tệp MỚI
+// HƠN mốc đó. Quét người mới trước hay bấm "Phiên mới" trước đều ra đúng.
+const SCAN_WATERMARK_KEY = "autofill_scan_watermark_" + (EMBEDDED_TAB_ID ?? "popup");
+let scanWatermarkMs = 0; // tệp có mtime <= mốc này thuộc một phiên TRƯỚC
+let scanNewestMs = 0;    // mtime mới nhất PHIÊN NÀY đã nhận từ máy quét
+
+function scanRecentSuggestOn() {
+  return scanRecentSuggestEnabled && isBatXatUser(currentUser);
+}
+
+function resetScanRecentSuggestState() {
+  // Giữ trong biến (không đọc lại storage lúc cần): attemptScanRecentSuggest chạy ngay sau vài
+  // mili giây, đợi storage ghi xong mới đọc là vớ phải mốc cũ.
+  if (scanNewestMs > scanWatermarkMs) scanWatermarkMs = scanNewestMs;
+  scanNewestMs = 0;
+  try {
+    void chrome.storage.local.set({ [SCAN_WATERMARK_KEY]: scanWatermarkMs });
+  } catch (e) { /* mất watermark chỉ làm mất lọc, không làm hỏng gì */ }
+  scanRecentAttempted = false;
+  scanRecentPending = [];
+  renderScanRecentList();
+}
+
+// Panel dựng lại liên tục sau redirect/postback — mất mốc là gợi ý lại giấy tờ của công dân trước.
+async function restoreScanWatermark() {
+  try {
+    const res = await chrome.storage.local.get(SCAN_WATERMARK_KEY);
+    const ms = Number(res?.[SCAN_WATERMARK_KEY] || 0);
+    if (Number.isFinite(ms) && ms > scanWatermarkMs) scanWatermarkMs = ms;
+  } catch (e) { /* ignore */ }
+}
+
+function formatRelativeTime(mtimeMs) {
+  const diffMin = Math.max(0, Math.round((Date.now() - mtimeMs) / 60000));
+  if (diffMin < 1) return "vừa xong";
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  return `${Math.round(diffMin / 60)} giờ trước`;
+}
+
+function renderScanRecentList() {
+  if (!scanRecentListEl) return;
+  scanRecentListEl.textContent = "";
+  if (!scanRecentPending.length || !scanRecentSuggestOn()) {
+    scanRecentListEl.hidden = true;
+    return;
+  }
+  scanRecentListEl.hidden = false;
+  const hint = document.createElement("div");
+  hint.className = "scan-recent-hint";
+  hint.textContent = "Máy quét có tệp quét trong 2 giờ gần đây — chọn đúng tệp của hồ sơ này để đính kèm:";
+  scanRecentListEl.appendChild(hint);
+  const addAllBtn = document.createElement("button");
+  addAllBtn.type = "button";
+  addAllBtn.className = "scan-recent-add-all";
+  addAllBtn.textContent = "+ Thêm tất cả";
+  addAllBtn.addEventListener("click", () => void addScanRecentItems([...scanRecentPending]));
+  scanRecentListEl.appendChild(addAllBtn);
+  for (const item of scanRecentPending) {
+    const row = document.createElement("div");
+    row.className = "scan-recent-row";
+    const label = document.createElement("span");
+    label.textContent = `${item.name} — ${formatRelativeTime(item.mtimeMs)}`;
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.textContent = "+";
+    addBtn.title = "Thêm tệp này vào danh sách đính kèm";
+    addBtn.addEventListener("click", () => void addScanRecentItems([item]));
+    row.append(label, addBtn);
+    scanRecentListEl.appendChild(row);
+  }
+}
+
+async function addScanRecentItems(items) {
+  if (!scanAgentHelpers) return;
+  let any = false;
+  for (const item of items) {
+    try {
+      // Không truyền tuDong: cán bộ tự bấm thì thêm được cả tệp từng gỡ tay (xem importOneScanFile).
+      const changed = await importOneScanFile({ rel: item.rel, mtimeMs: item.mtimeMs }, () => scanAgentHelpers.fetchBlob(item.rel));
+      if (changed) any = true;
+    } catch (e) {
+      console.warn("[Popup] Không thêm được tệp từ danh sách gợi ý:", item.rel, e);
+    }
+    scanRecentPending = scanRecentPending.filter((it) => it.rel !== item.rel);
+  }
+  renderScanRecentList();
+  if (any) {
+    renderFiles();
+    refreshAttachStepUI();
+    saveSession();
+  }
+}
+
+// Gọi 1 lần/phiên làm việc từ selectProcedure() (agent đã kết nối từ trước) và onConnected (agent
+// kết nối muộn hơn). Cờ phải đặt TRƯỚC await đầu tiên để 2 điểm gọi sát nhau không chạy đúp.
+async function attemptScanRecentSuggest() {
+  if (scanRecentAttempted || !scanRecentSuggestOn()) return;
+  if (!scanAgentHelpers) return; // agent chưa kết nối kịp - onConnected sẽ tự gọi lại
+  scanRecentAttempted = true;
+  let current;
+  try {
+    current = await scanAgentHelpers.listFiles();
+  } catch (e) {
+    console.warn("[Popup] Không đọc được /v1/files để gợi ý tệp quét gần đây:", e);
+    scanRecentAttempted = false; // lỗi tạm thời - lần sau thử lại
+    return;
+  }
+  const daCo = new Set(files.filter((it) => it.fromScan && it.rel).map((it) => it.rel));
+  const now = Date.now();
+  scanRecentPending = (current.files || [])
+    .filter((f) => f?.rel && !daCo.has(f.rel))
+    .map((f) => ({ rel: f.rel, name: f.name || String(f.rel).split("/").pop(), mtimeMs: new Date(f.mtime).getTime() }))
+    .filter((f) => Number.isFinite(f.mtimeMs) && f.mtimeMs > scanWatermarkMs && now - f.mtimeMs <= RECENT_LIST_WINDOW_MS)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .slice(0, RECENT_LIST_MAX);
+  console.info("[Popup] Gợi ý tệp quét gần đây:", {
+    tren_dia: (current.files || []).length,
+    goi_y: scanRecentPending.length,
+    watermark: scanWatermarkMs ? new Date(scanWatermarkMs).toLocaleString() : "chưa có",
+  });
+  renderScanRecentList();
+}
+
 function ensureScanAgentConnected() {
   if (scanAgentConn || typeof ScanAgent === "undefined") return;
   scanAgentConn = ScanAgent.connect({
@@ -3122,7 +3376,10 @@ function ensureScanAgentConnected() {
       const doiCaps = capsMoi.join() !== scanAgentCaps.join();
       scanAgentCaps = capsMoi;
       if (doiCaps) renderFiles(); // vua biet agent ho tro gi -> ve lai de hien/an nut sua ten
-      void reconcileScanAgentFiles(helpers);
+      void (async () => {
+        await reconcileScanAgentFiles(helpers);
+        await attemptScanRecentSuggest();
+      })();
     },
   });
 }
@@ -4329,6 +4586,8 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "ho-tro-mai-tang-huu-tri-xa-hoi" ||
       cfg.key === "dieu-chinh-huu-tri-xa-hoi" ||
       cfg.key === "mai-tang-dan-cong-hoa-tuyen" ||
+      // Người có công từ trần: người khai ≠ tài khoản nộp hộ → BE chỉ điền Phần I khi mốc khớp người khai.
+      cfg.key === "uu-dai-ncc-tu-tran" ||
       cfg.key === "xac-nhan-tinh-trang-hon-nhan" ||
       // Kết hôn: bên nam/nữ trùng chủ tài khoản được BE điền lại theo dữ liệu VNeID.
       cfg.key === "ket-hon" ||
@@ -4359,7 +4618,6 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "sua-doi-thong-tin-ho-so-nguoi-co-cong" ||
       cfg.key === "tro-cap-xa-hoi-hang-thang" ||
       cfg.key === "xac-dinh-muc-do-khuyet-tat" ||
-      cfg.key === "doi-cap-lai-giay-xac-nhan-khuyet-tat" ||
       cfg.key === "cap-gcn-attp-nong-lam-thuy-san" ||
       cfg.key === "cap-moi-giay-phep-hanh-nghe-chuyen-tiep" ||
       cfg.key === "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep" ||
