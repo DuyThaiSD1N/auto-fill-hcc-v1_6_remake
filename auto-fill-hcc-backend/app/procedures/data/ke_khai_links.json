@@ -2072,6 +2072,14 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1695-894f-72b8-80a8-2fee368722be",
       "needsAgencySelect": true,
       "autoConfirm": true
+    },
+    {
+      "key": "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc",
+      "code": "1.014335",
+      "label": "Đề nghị miễn, giảm học phí trong cơ sở giáo dục nghề nghiệp, cơ sở giáo dục đại học tư thục và cơ sở giáo dục nghề nghiệp, cơ sở giáo dục đại học thuộc tổ chức kinh tế, doanh nghiệp nhà nước",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf8-c7e3-746e-8437-305980ee5536",
+      "needsAgencySelect": true,
+      "autoConfirm": true
     }
   ]
 }

@@ -21,6 +21,8 @@ from app.pipelines.cap_giay_phep_xay_dung.attach import plan as cap_giay_phep_xa
 from app.pipelines.cap_giay_phep_xay_dung.process import run as cap_giay_phep_xay_dung_process
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.attach import plan as dieu_chinh_gpxd_attach
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.process import run as dieu_chinh_gpxd_process
+from app.pipelines.gia_han_giay_phep_xay_dung.attach import plan as gia_han_gpxd_attach
+from app.pipelines.gia_han_giay_phep_xay_dung.process import run as gia_han_gpxd_process
 from app.pipelines.sua_chua_cai_tao_gpxd.attach import plan as sua_chua_gpxd_attach
 from app.pipelines.sua_chua_cai_tao_gpxd.process import run_nha_o as sua_chua_gpxd_nha_o_process
 from app.pipelines.sua_chua_cai_tao_gpxd.process import run_cong_trinh as sua_chua_gpxd_cong_trinh_process
@@ -4108,6 +4110,48 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "gia-han-giay-phep-xay-dung",
+        # Mã QG 1.013227 — cổng Bộ Xây dựng dvc.moc.gov.vn, Form.io (engine fillFormStandard dom-*) + đính kèm
+        # attp-row (2 dòng cố định) + modal "Thêm giấy tờ" (dòng GCN QSDĐ). Tờ đơn gia hạn dùng field-key RIÊNG
+        # (data[recipient]/lotNumber/existingPermit*/requestType/extensionReason…), KHÔNG dùng lại form điều chỉnh.
+        # Nhận diện bằng H2 tên thủ tục trên trang cổng: `heading` = nguyên văn h2 (trùng label kê khai QG).
+        # apply-online/process id đổi theo đơn vị nên không bám URL; URL kê khai DVCQG + MaTTHC=1.013227 được
+        # with_ke_khai_detect_urls() ghép thêm. KHÔNG khai urlScope (địa phương vào hệ thống Bộ XD bằng host
+        # khác nhau, urlScope chặn cả rule heading). H2 dài ~308 ký tự → cần content.js bản nhặt heading dài.
+        "detect": {
+            "heading": (
+                "Gia hạn giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo "
+                "tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Sửa chữa, cải tạo/Theo giai "
+                "đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án) "
+                "và nhà ở riêng lẻ"
+            ),
+        },
+        "label": (
+            "Gia hạn giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/Theo "
+            "tuyến trong đô thị/Tín ngưỡng, tôn giáo/Tượng đài, tranh hoành tráng/Sửa chữa, cải tạo/Theo giai "
+            "đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án) "
+            "và nhà ở riêng lẻ"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền:\n"
+            "1. Đơn đề nghị điều chỉnh/gia hạn/cấp lại giấy phép xây dựng (Phụ lục II - Mẫu số 02) — nguồn chính: "
+            "kính gửi, chủ hộ, địa điểm xây dựng, GPXD đã cấp, lý do gia hạn, số tháng dự kiến hoàn thành.\n"
+            "2. CCCD 2 mặt của chủ hộ (hai vợ chồng thì đủ cả hai) — có thể gộp chung file với Đơn.\n"
+            "3. Bản chính Giấy phép xây dựng đã được cấp (đủ các trang).\n"
+            "4. Giấy chứng nhận QSDĐ (đủ trang, gồm trang 'Những thay đổi sau khi cấp' nếu đã chuyển nhượng).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Form điền: Người nộp, Chủ hộ/Chủ đầu tư, Kính gửi, Địa điểm xây dựng, GPXD đã cấp, Loại đề nghị = Gia "
+            "hạn + Lý do gia hạn, số tháng hoàn thành, cam kết, ký đơn. Ô nhân thân người nộp thiếu dữ liệu sẽ "
+            "được tô đỏ để bổ sung tay.\n"
+            "Bước đính kèm: Đơn + CCCD (+ giấy ủy quyền) gộp chung dòng 1; GPXD dòng 2; GCN QSDĐ được thêm dòng "
+            "bằng nút '+ Thêm giấy tờ' (1 Bản sao)."
+        ),
+    },
+    {
         "key": "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
         # Cổng Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row.
         # TÁI SỬ DỤNG process của cap_giay_phep_xay_dung (giống ~95%), nhánh nhà ở riêng lẻ (element ...NhaO).
@@ -7662,6 +7706,7 @@ _PIPELINE = {
     "dang-ky-khuyen-mai-may-rui-mot-tinh": dang_ky_khuyen_mai_may_rui_process,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_process,
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_process,
+    "gia-han-giay-phep-xay-dung": gia_han_gpxd_process,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_nha_o_process,
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_cong_trinh_process,
     "dieu-chinh-dat-dai": dieu_chinh_dat_dai_process,
@@ -7978,6 +8023,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-khuyen-mai-may-rui-mot-tinh": dang_ky_khuyen_mai_may_rui_attach,
     "cap-giay-phep-xay-dung-moi-nha-o-rieng-le": cap_giay_phep_xay_dung_attach,
     "dieu-chinh-giay-phep-xay-dung": dieu_chinh_gpxd_attach,
+    "gia-han-giay-phep-xay-dung": gia_han_gpxd_attach,
     "sua-chua-cai-tao-gpxd-nha-o-rieng-le": sua_chua_gpxd_attach,
     "sua-chua-cai-tao-gpxd-cong-trinh": sua_chua_gpxd_attach,
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": dk_lai_phuong_tien_chuyen_quyen_attach,

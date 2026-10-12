@@ -2456,9 +2456,12 @@
     const headings = [];
     const visibleHeadings = [];
     const seen = new Set();
+    // Trần độ dài phải đủ cho TÊN THỦ TỤC ĐẦY ĐỦ: h2 cổng Bộ Xây dựng in nguyên tên gộp mọi loại công trình
+    // (vd "Gia hạn giấy phép xây dựng đối với công trình cấp III, cấp IV (công trình Không theo tuyến/…) và
+    // nhà ở riêng lẻ" ~308 ký tự). Trần cũ 250 loại mất h2 này nên nhận diện theo heading không bao giờ khớp.
     const push = (raw, visible = false) => {
       const s = String(raw || "").replace(/\s+/g, " ").trim();
-      if (s.length >= 6 && s.length <= 250 && !seen.has(s)) {
+      if (s.length >= 6 && s.length <= 1200 && !seen.has(s)) {
         seen.add(s);
         headings.push(s);
         if (visible) visibleHeadings.push(s);
@@ -6119,7 +6122,9 @@
     //   cascade theo "Loại đăng ký thay đổi" (CHANGE_OWNER_TYPE_TITLE_IDFld) — danh sách lý do nạp lại
     //   SAU khi đổi Loại, không nhận area-select thì thử 1 lần rồi bỏ, hụt mất "Khác" dù giá trị đúng.
     // diachihoatdong][tinhthanh|xaphuong: Tỉnh/Phường-xã của đơn vị KDVT (Bộ XD, cấp phù hiệu).
-    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)/.test(String(name || "").toLowerCase());
+    // phuongxaaa/tinhthanhqwaasa: Phường/xã của lô đất (con cascade của data[province] lần 2) và Tỉnh nơi làm
+    //   đơn ở tờ đơn Gia hạn GPXD (Bộ XD dvc.moc) — key đặt bừa, không chứa mẫu nào ở trên.
+    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|phuongxaaa|tinhthanhqwaasa/.test(String(name || "").toLowerCase());
   }
 
   function isAreaSelectField(f) {
