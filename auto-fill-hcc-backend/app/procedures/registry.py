@@ -446,6 +446,8 @@ from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process import run as tcxh_nd335_process
 from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.attach import plan as dien_mat_troi_mai_nha_attach
 from app.pipelines.thong_bao_phat_trien_nguon_dien_mat_troi_mai_nha.process import run as dien_mat_troi_mai_nha_process
+from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.attach import plan as mien_giam_hoc_phi_gdnn_attach
+from app.pipelines.mien_giam_hoc_phi_gdnn_dai_hoc_tu_thuc.process import run as mien_giam_hoc_phi_gdnn_process
 
 PROCEDURES: list[dict] = [
     {
@@ -7625,6 +7627,43 @@ PROCEDURES: list[dict] = [
             "Thông báo, đặt tên theo loại giấy. Chỉ bỏ qua file Excel."
         ),
     },
+    {
+        "key": "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc",
+        # Mã QG 1.014335 — cổng DVC Bộ GD&ĐT dvc.moet.gov.vn, Form.io (engine fillFormStandard dom-*) + đính kèm
+        # attp-row (2 dòng cố định, mỗi dòng 1 PDF gộp). Field-key PHẲNG data[...] theo
+        # Mapping_Mien_giam_hoc_phi_GDNN_BoGDDT.xlsx. Người nộp (Phần I) khoá họ tên/CCCD/ngày sinh theo tài khoản;
+        # chủ hồ sơ = sinh viên (data[ChuHS]=Cá nhân + owner*); nút "Người nộp là chủ hồ sơ" KHÔNG tick.
+        # Nhận diện: tiêu đề panel Đơn PL IV — chỉ thủ tục GDNN/ĐH tư thục dùng Phụ lục IV NĐ 238 (mầm non/phổ
+        # thông dùng phụ lục khác). KHÔNG khai urlScope để URL kê khai DVCQG (with_ke_khai_detect_urls) vẫn khớp.
+        "detect": {
+            "textIncludes": [
+                "đơn đề nghị chi trả tiền miễn giảm học phí theo mẫu tại phụ lục iv",
+            ],
+            "textPriority": True,
+        },
+        "label": (
+            "Đề nghị miễn, giảm học phí trong cơ sở giáo dục nghề nghiệp, cơ sở giáo dục đại học tư thục và cơ sở "
+            "giáo dục nghề nghiệp, cơ sở giáo dục đại học thuộc tổ chức kinh tế, doanh nghiệp nhà nước"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên để tự động điền (của HỌC SINH, SINH VIÊN được miễn, giảm học phí):\n"
+            "1. Đơn đề nghị chi trả tiền miễn, giảm học phí (Phụ lục IV NĐ 238/2025/NĐ-CP) đã ký — nguồn chính.\n"
+            "2. Giấy xác nhận của trường (mẫu Phụ lục V và/hoặc mẫu riêng của trường) hoặc giấy tờ chứng minh đối "
+            "tượng khác (người có công, khuyết tật, hộ nghèo…).\n"
+            "3. Dự toán kinh phí cấp bù (Phụ lục VI) nếu có.\n"
+            "4. CCCD, Giấy khai sinh, Bằng tốt nghiệp của sinh viên; nếu cha/mẹ nộp thay: kèm CCCD người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại theo nội dung OCR.\n"
+            "Form điền: người nộp (phần sửa được), chủ hồ sơ = sinh viên, panel Đơn Phụ lục IV (kính gửi, lớp, khóa, "
+            "khoa, đối tượng, nơi sinh, nơi thường trú). Ô bắt buộc thiếu dữ liệu được tô đỏ để bổ sung tay.\n"
+            "Bước đính kèm: dòng 1 gộp 1 PDF (Giấy xác nhận trường → Giấy xác nhận PL V → CCCD → Giấy khai sinh → Bằng "
+            "tốt nghiệp); dòng 2 gộp 1 PDF (Đơn PL IV → Dự toán PL VI); cả hai '1 Bản chính'. Giấy tiếp nhận hồ sơ "
+            "không đính."
+        ),
+    },
 ]
 
 
@@ -7814,6 +7853,7 @@ _PIPELINE = {
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_process,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_process,
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_process,
+    "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_process,
 }
 
 # Map procedure key → hàm đính kèm (mỗi thủ tục migrate sang app/pipelines thêm 1 dòng ở đây,
@@ -8032,6 +8072,7 @@ _ATTACH_PIPELINE = {
     "yeu-cau-tro-giup-phap-ly": yeu_cau_tro_giup_phap_ly_attach,
     "thuc-hien-tro-cap-xa-hoi-nhan-cham-soc-nuoi-duong-hang-thang": tcxh_nd335_attach,
     "thong-bao-phat-trien-nguon-dien-mat-troi-mai-nha": dien_mat_troi_mai_nha_attach,
+    "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc": mien_giam_hoc_phi_gdnn_attach,
 }
 
 _BY_KEY = {p["key"]: p for p in PROCEDURES}

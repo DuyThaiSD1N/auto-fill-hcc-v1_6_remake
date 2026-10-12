@@ -4665,6 +4665,9 @@ ocrBtn.addEventListener("click", async () => {
       // không kèm CCCD → họ tên tài khoản là mốc duy nhất để lấy đúng SĐT Bên B thay cho SĐT đơn vị.
       cfg.key === "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai" ||
       cfg.key === "cap-ban-sao-van-bang-so-goc" ||
+      // [Bộ GD&ĐT] 1.014335 miễn, giảm học phí GDNN/ĐH tư thục: Phần I khoá theo VNeID, hồ sơ có thể kèm CCCD
+      // cha/mẹ/cán bộ nộp thay → họ tên + số định danh tài khoản là mốc chọn đúng CCCD người nộp.
+      cfg.key === "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc" ||
       cfg.key === "chap-thuan-dau-noi-tam" ||
       // [Lào Cai] 1.115667: tài khoản prefill CongDan_tenCongDan/CongDan_soCmnd → mốc chọn CCCD người nộp.
       cfg.key === "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai" ||
