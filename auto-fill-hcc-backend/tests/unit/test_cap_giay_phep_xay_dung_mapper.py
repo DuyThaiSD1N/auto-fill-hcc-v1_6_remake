@@ -598,3 +598,45 @@ def test_trich_doan_moi_trang_bo_dong_rac_lap_lai():
     excerpt = representative_excerpt(long_text, 600)
     assert len(excerpt) <= 700
     assert all(f"TIÊU ĐỀ TRANG {i}" in excerpt for i in (1, 2, 3))
+
+
+_UPLOAD_DOCS = [
+    {"key": key, "name": key, "sides": 1, "repeatable": True, **({"optional": True} if key == "khac" else {})}
+    for key in ("don", "gcn", "ban_ve", "cccd", "khac")
+]
+
+
+def test_upload_classifier_dang_ky_cho_gpxd():
+    from app.upload_session import classifier_registry
+
+    classifier = classifier_registry.get_upload_classifier("cap-giay-phep-xay-dung-moi-nha-o-rieng-le")
+
+    assert classifier is not None
+    assert classifier.spec.allowed_keys == {"don", "gcn", "ban_ve", "cccd", "khac"}
+    assert classifier.fallback_to_slot is not None
+
+
+def test_upload_fallback_xep_ban_scan_gop_theo_trang_dau():
+    from app.pipelines.cap_giay_phep_xay_dung.handfree.upload_classification import fallback_to_slot
+
+    # Bản gộp: đơn ở trang đầu, phía sau có sổ đỏ + chứng chỉ → vẫn là đơn.
+    don_gop = (
+        "───── Trang 1/3 ─────\nMẫu số 01\nĐƠN ĐỀ NGHỊ CẤP GIẤY PHÉP XÂY DỰNG\nKính gửi: UBND phường A\n"
+        "───── Trang 2/3 ─────\nGIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT\n"
+        "───── Trang 3/3 ─────\nCHỨNG CHỈ HÀNH NGHỀ HOẠT ĐỘNG XÂY DỰNG\n"
+    )
+    # Bộ bản vẽ: trang sau có chữ rác giống tên cơ quan công an — không được thành CCCD.
+    ban_ve = (
+        "───── Trang 1/3 ─────\nHỒ SƠ XIN PHÉP XÂY DỰNG\nCÔNG TRÌNH NHÀ Ở GIA ĐÌNH\n"
+        "───── Trang 2/3 ─────\nCỤC CẢNH SÁT QUẢN LÝ HÀNH CHÍNH\n"
+        "───── Trang 3/3 ─────\nMẶT BẰNG CẤP THOÁT NƯỚC TL: 1/100\n"
+    )
+    so_do = "GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT, QUYỀN SỞ HỮU NHÀ Ở VÀ TÀI SẢN KHÁC GẮN LIỀN VỚI ĐẤT"
+    the_cccd = "CĂN CƯỚC CÔNG DÂN Số định danh cá nhân: 001090000001 Họ và tên: NGUYỄN VĂN A Ngày sinh: 01/01/1990"
+
+    assert fallback_to_slot(don_gop, _UPLOAD_DOCS, [], None)[0] == "don"
+    assert fallback_to_slot(ban_ve, _UPLOAD_DOCS, [], None)[0] == "ban_ve"
+    assert fallback_to_slot(so_do, _UPLOAD_DOCS, [], None)[0] == "gcn"
+    assert fallback_to_slot(the_cccd, _UPLOAD_DOCS, [], None)[0] == "cccd"
+    assert fallback_to_slot("giấy ủy quyền", _UPLOAD_DOCS, [], None)[0] == "khac"
+    assert fallback_to_slot("", _UPLOAD_DOCS, [], "gcn")[0] == "gcn"

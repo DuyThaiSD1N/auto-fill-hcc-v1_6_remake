@@ -130,6 +130,9 @@ from app.pipelines.dang_ky_bien_phap_bao_dam_quang_ninh.attach import plan as da
 from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_quang_ninh.attach import (
     plan as tinh_tien_su_dung_dat_nd_50_2026_quang_ninh_attach,
 )
+from app.pipelines.cap_lai_gcn_do_bi_mat_quang_ninh.attach import (
+    plan as cap_lai_gcn_do_bi_mat_quang_ninh_attach,
+)
 from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.attach import plan as dang_ky_gcn_chuyen_quyen_lao_cai_attach
 from app.pipelines.dang_ky_gcn_chuyen_quyen_truoc_2024_lao_cai.process import run as dang_ky_gcn_chuyen_quyen_lao_cai_process
 from app.pipelines.dang_ky_bien_dong_chia_tach_to_chuc_lao_cai.attach import plan as dang_ky_bien_dong_chia_tach_to_chuc_lao_cai_attach
@@ -2692,6 +2695,46 @@ PROCEDURES: list[dict] = [
             "hệ thống liệt kê giấy tờ nằm chung và đề xuất nội dung ô 'Ghi chú (Trích yếu nội dung hồ sơ)' "
             "để cán bộ dán vào.\n"
             "Văn bản ủy quyền và giấy tờ ngoài danh mục được thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        "key": "cap-lai-gcn-do-bi-mat-quang-ninh",
+        # 1.115849 — key TRÙNG ke_khai_links nên chọn ở panel là vào đúng pipeline. URL /nop-ho-so/<id>
+        # đổi theo cấu hình cổng → khóa domain + tiêu đề "Cấp lại Giấy chứng nhận do bị mất" (chỉ thủ tục
+        # này có) + "Miền núi, hải đảo" (ke_khai_links chọn dòng miền núi, hải đảo trên bảng cổng tỉnh).
+        "detect": {
+            "urlScope": ["dichvucong.quangninh.gov.vn"],
+            "textIncludes": [
+                "Cấp lại Giấy chứng nhận do bị mất",
+                "Miền núi, hải đảo",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "[Tỉnh Quảng Ninh] [Đặc thù] Cấp lại Giấy chứng nhận do bị mất - Trường hợp không phải thực "
+            "hiện nghĩa vụ tài chính - Đối với cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở "
+            "nước ngoài - Miền núi, hải đảo"
+        ),
+        # Trang chỉ có bước thành phần hồ sơ; engine wallet-modal (React/Radix), không chạy process.
+        "mode": "attach",
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên:\n"
+            "1. Phiếu đo đạc chỉnh lý thửa đất / mảnh trích đo (kèm phiếu xác nhận kết quả đo đạc, bản mô "
+            "tả ranh giới, bản photo GCN, hợp đồng ủy quyền nếu quét chung) → dòng 2.\n"
+            "2. Tờ khai lệ phí trước bạ (01/LPTB), thuế SDĐ phi nông nghiệp (01 hoặc 04/TK-SDDPNN), thuế "
+            "TNCN (03/BĐS-TNCN) → dòng 3/4/5; không có thì để trống.\n"
+            "3. Giấy tờ trường hợp cấp lại GCN bị mất: bản cam kết, xác nhận niêm yết thông báo mất GCN, "
+            "văn bản phân chia di sản, trích lục hộ tịch, văn bản từ chối nhận di sản... → dòng 6.\n"
+            "4. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) → dòng 8.\n"
+            "GCN gốc đã mất nên dòng 1 thường để trống (chỉ đính khi có file GCN đứng riêng); dòng 7 chỉ "
+            "dùng khi mất Trang bổ sung.\n"
+            "Hệ thống phân loại theo NỘI DUNG 2 trang đầu mỗi file, không theo tên file. Mỗi file đính NGUYÊN "
+            "vào một dòng, không tách trang; hệ thống đề xuất nội dung ô 'Ghi chú (Trích yếu nội dung hồ sơ)' "
+            "để cán bộ dán vào.\n"
+            "Văn bản ủy quyền đứng riêng và giấy tờ ngoài danh mục được thêm thành phần hồ sơ mới."
         ),
     },
     {
@@ -7740,6 +7783,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-bien-dong-doi-ten-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_doi_ten_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-cap-gcn-toan-bo-dien-tich-dang-su-dung-quang-ninh": dang_ky_cap_gcn_toan_bo_dien_tich_quang_ninh_attach,
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ninh": tinh_tien_su_dung_dat_nd_50_2026_quang_ninh_attach,
+    "cap-lai-gcn-do-bi-mat-quang-ninh": cap_lai_gcn_do_bi_mat_quang_ninh_attach,
     "dieu-chinh-quyet-dinh-giao-dat-lao-cai": dieu_chinh_giao_dat_lao_cai_attach,
     "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai": ctdt_lao_cai_dieu_chinh_bql_attach,
     "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai": ctdt_lao_cai_dieu_chinh_ubnd_attach,
